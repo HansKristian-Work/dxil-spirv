@@ -15,7 +15,9 @@ endif()
 
 add_library(dxil-parser STATIC
         memory_stream.hpp memory_stream.cpp
+        llvm_bitcode_parser.hpp llvm_bitcode_parser.cpp
         dxil.hpp
+        dxil_converter.hpp dxil_converter.cpp
         dxil_parser.hpp dxil_parser.cpp)
 target_include_directories(dxil-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

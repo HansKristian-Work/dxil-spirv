@@ -1,14 +1,13 @@
 #include "dxil_parser.hpp"
+#include "llvm_bitcode_parser.hpp"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <vector>
 
-#include <llvm/IR/Module.h>
-#include <llvm/IRReader/IRReader.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/Support/SourceMgr.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/CFG.h>
 
 static std::vector<uint8_t> read_file(const char *path)
 {
@@ -49,14 +48,11 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	auto memory = llvm::WritableMemoryBuffer::getNewUninitMemBuffer(parser.get_bitcode_size());
-	memcpy(memory->getBufferStart(), parser.get_bitcode_data(), parser.get_bitcode_size());
-
-	llvm::SMDiagnostic error;
-	llvm::LLVMContext context;
-	auto module = llvm::parseIR(*memory, error, context);
-	if (!module)
+	DXIL2SPIRV::LLVMBCParser bc_parser;
+	if (!bc_parser.parse(parser.get_bitcode_data(), parser.get_bitcode_size()))
 		return EXIT_FAILURE;
+
+	auto *module = &bc_parser.get_module();
 	module->print(llvm::errs(), nullptr);
 
 	llvm::NamedMDNode *meta = module->getNamedMetadata("llvm.ident");
@@ -75,11 +71,17 @@ int main(int argc, char **argv)
 		assert(func);
 
 		llvm::BasicBlock &block = func->getEntryBlock();
+
+		for (auto itr = llvm::succ_begin(&block); itr != llvm::succ_end(&block); ++itr)
+		{
+			fprintf(stderr, "Successor!\n");
+		}
+
 		//block.print(llvm::errs());
 
 		for (auto itr = block.begin(); itr != block.end(); ++itr)
 		{
-			const llvm::Instruction &inst = *itr;
+			llvm::Instruction &inst = *itr;
 			if (llvm::isa<llvm::CallInst>(inst))
 			{
 				fprintf(stderr, "Call!\n");
@@ -88,6 +90,12 @@ int main(int argc, char **argv)
 				auto *constant = llvm::cast<llvm::ConstantInt>(call.getOperand(0));
 				uint32_t value = constant->getZExtValue();
 				fprintf(stderr, "Calling opcode: %u\n", value);
+
+				call.setMetadata(0, llvm::MDNode::get(call.getContext(), llvm::MDString::get(call.getContext(), "OHAI")));
+				fflush(stderr);
+				llvm::cast<llvm::MDString>(call.getMetadata(0)->getOperand(0))->print(llvm::errs());
+				fflush(stderr);
+				//fprintf(stderr, "Value name: %s\n", call.getName().data());
 			}
 			else if (llvm::isa<llvm::ReturnInst>(inst))
 				fprintf(stderr, "Return!\n");
@@ -96,7 +104,23 @@ int main(int argc, char **argv)
 			else if (llvm::isa<llvm::CmpInst>(inst))
 				fprintf(stderr, "Compare instruction!\n");
 			else if (llvm::isa<llvm::BinaryOperator>(inst))
+			{
 				fprintf(stderr, "Binary operator!\n");
+				auto &binop = llvm::cast<llvm::BinaryOperator>(inst);
+				switch (binop.getOpcode())
+				{
+				case llvm::BinaryOperator::FAdd:
+					fprintf(stderr, "FADD!\n");
+					break;
+
+				case llvm::BinaryOperator::FMul:
+					fprintf(stderr, "FMul!\n");
+					break;
+
+				default:
+					break;
+				}
+			}
 			else
 				fprintf(stderr, "? ...\n");
 		}
