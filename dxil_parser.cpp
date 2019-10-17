@@ -37,6 +37,50 @@ bool DXILContainerParser::parse_dxil(MemoryStream &stream)
 	return true;
 }
 
+bool DXILContainerParser::parse_iosg1(MemoryStream &stream, std::vector<DXIL::IOElement> &elements)
+{
+	uint32_t element_count;
+	if (!stream.read(element_count))
+		return false;
+
+	if (!stream.skip(sizeof(uint32_t)))
+		return false;
+
+	elements.resize(element_count);
+	for (uint32_t i = 0; i < element_count; i++)
+	{
+		if (!stream.read(elements[i].stream_index))
+			return false;
+
+		uint32_t string_offset;
+		if (!stream.read(string_offset))
+			return false;
+
+		if (!stream.read(elements[i].semantic_index))
+			return false;
+		if (!stream.read(elements[i].system_value_semantic))
+			return false;
+		if (!stream.read(elements[i].component_type))
+			return false;
+		if (!stream.read(elements[i].register_index))
+			return false;
+		if (!stream.read(elements[i].mask))
+			return false;
+		if (!stream.read(elements[i].min_precision))
+			return false;
+
+		size_t offset = stream.get_offset();
+		if (!stream.seek(string_offset))
+			return false;
+		if (!stream.read_string(elements[i].semantic_name))
+			return false;
+		if (!stream.seek(offset))
+			return false;
+	}
+
+	return true;
+}
+
 bool DXILContainerParser::parse_container(const void *data, size_t size)
 {
 	MemoryStream stream(data, size);
@@ -81,12 +125,20 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 			break;
 
 		case DXIL::FourCC::InputSignature:
-			printf("Input signature\n");
+		{
+			auto substream = stream.create_substream(stream.get_offset(), part_header.part_size);
+			if (!parse_iosg1(substream, input_elements))
+				return false;
 			break;
+		}
 
 		case DXIL::FourCC::OutputSignature:
-			printf("Output signature\n");
+		{
+			auto substream = stream.create_substream(stream.get_offset(), part_header.part_size);
+			if (!parse_iosg1(substream, output_elements))
+				return false;
 			break;
+		}
 
 		case DXIL::FourCC::PatchConstantSignature:
 			printf("Patch constant signature\n");

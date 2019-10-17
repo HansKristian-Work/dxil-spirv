@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <vector>
+#include "dxil.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -18,6 +19,10 @@ public:
 
 private:
 	std::vector<uint8_t> dxil_blob;
+	std::vector<DXIL::IOElement> input_elements;
+	std::vector<DXIL::IOElement> output_elements;
+
 	bool parse_dxil(MemoryStream &stream);
+	bool parse_iosg1(MemoryStream &stream, std::vector<DXIL::IOElement> &elements);
 };
 }

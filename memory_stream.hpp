@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string>
 
 namespace DXIL2SPIRV
 {
@@ -19,7 +20,9 @@ public:
 	}
 
 	bool read(void *buffer, size_t size);
+	bool read_string(std::string &str);
 	bool seek(size_t offset);
+	bool skip(size_t count);
 
 	size_t get_offset() const;
 	size_t get_size() const;

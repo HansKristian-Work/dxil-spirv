@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <string>
 
 namespace DXIL
 {
@@ -31,6 +32,18 @@ struct ProgramHeader
 	uint32_t dxil_version;
 	uint32_t bitcode_offset;
 	uint32_t bitcode_size;
+};
+
+struct IOElement
+{
+	std::string semantic_name;
+	uint32_t stream_index;
+	uint32_t semantic_index;
+	uint32_t system_value_semantic;
+	uint32_t component_type;
+	uint32_t register_index;
+	uint32_t mask;
+	uint32_t min_precision;
 };
 
 constexpr uint32_t fourcc(uint32_t a, uint32_t b, uint32_t c, uint32_t d)

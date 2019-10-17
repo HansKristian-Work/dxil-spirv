@@ -23,6 +23,22 @@ bool MemoryStream::read(void *buffer, size_t size)
 	return true;
 }
 
+bool MemoryStream::read_string(std::string &str)
+{
+	str.clear();
+
+	for (;;)
+	{
+		char c;
+		if (!read(c))
+			return false;
+		else if (c == '\0')
+			return true;
+		else
+			str += c;
+	}
+}
+
 bool MemoryStream::seek(size_t new_offset)
 {
 	if (new_offset > blob_size)
@@ -30,6 +46,11 @@ bool MemoryStream::seek(size_t new_offset)
 
 	blob_offset = new_offset;
 	return true;
+}
+
+bool MemoryStream::skip(size_t count)
+{
+	return seek(blob_offset + count);
 }
 
 MemoryStream MemoryStream::create_substream(size_t offset, size_t size) const
