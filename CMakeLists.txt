@@ -8,7 +8,7 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
-    set(DXIL2SPIRV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter)
+    set(DXIL2SPIRV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -Wshadow)
 elseif (MSVC)
     set(DXIL2SPIRV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
@@ -28,5 +28,9 @@ target_link_libraries(dxil-parser PRIVATE ${llvm_libs})
 add_executable(dxil-parser-test dxil_parser_test.cpp)
 target_link_libraries(dxil-parser-test PRIVATE dxil-parser)
 target_compile_options(dxil-parser-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+
+add_executable(structurize-test structurize_test.cpp)
+target_link_libraries(structurize-test PRIVATE dxil-parser)
+target_compile_options(structurize-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 

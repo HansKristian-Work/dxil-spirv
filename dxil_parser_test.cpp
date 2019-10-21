@@ -4,10 +4,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <vector>
+#include <unordered_map>
 
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
+
+#include "structurize_cfg.hpp"
 
 static std::vector<uint8_t> read_file(const char *path)
 {
@@ -70,6 +73,38 @@ int main(int argc, char **argv)
 		llvm::Function *func = module->getFunction(llvm::cast<llvm::MDString>(node->getOperand(1))->getString());
 		assert(func);
 
+		std::unordered_map<llvm::BasicBlock *, std::unique_ptr<DXIL2SPIRV::CFGNode>> cfg_nodes;
+		auto *entry = &func->getEntryBlock();
+		cfg_nodes[entry].reset(new DXIL2SPIRV::CFGNode);
+		cfg_nodes[entry]->name = entry->getName().data();
+		std::vector<llvm::BasicBlock *> to_process;
+		std::vector<llvm::BasicBlock *> processing;
+		to_process.push_back(entry);
+
+		while (!to_process.empty())
+		{
+			std::swap(to_process, processing);
+			for (auto *block : processing)
+			{
+				for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
+				{
+					auto *succ = *itr;
+					if (cfg_nodes.count(succ) == 0)
+					{
+						to_process.push_back(succ);
+						cfg_nodes[succ].reset(new DXIL2SPIRV::CFGNode);
+						cfg_nodes[succ]->name = succ->getName().data();
+					}
+
+					cfg_nodes[block]->add_branch(cfg_nodes[succ].get());
+				}
+			}
+			processing.clear();
+		}
+
+		DXIL2SPIRV::CFGStructurizer structurizer(*cfg_nodes[entry]);
+
+#if 0
 		llvm::BasicBlock &block = func->getEntryBlock();
 
 		for (auto itr = llvm::succ_begin(&block); itr != llvm::succ_end(&block); ++itr)
@@ -124,5 +159,6 @@ int main(int argc, char **argv)
 			else
 				fprintf(stderr, "? ...\n");
 		}
+#endif
 	}
 }

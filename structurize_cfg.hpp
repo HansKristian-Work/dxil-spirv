@@ -2,37 +2,66 @@
 
 #include <vector>
 #include <stdint.h>
+#include <string>
 
 namespace DXIL2SPIRV
 {
-struct CFGNode
+enum class MergeType
 {
-	uint32_t id = 0;
-	uint32_t visit_order = 0;
-	bool visited = false;
-	bool is_back_edge = false;
-
-	std::vector<CFGNode *> succ;
-	std::vector<CFGNode *> pred;
-
-	void add_unique_succ(CFGNode *node);
-	void add_unique_pred(CFGNode *node);
+	None,
+	Loop,
+	Selection
 };
 
-class CFGPostOrderTraverser
+struct CFGNode
 {
-public:
-	explicit CFGPostOrderTraverser(CFGNode &entry);
+	std::string name;
+	uint32_t visit_order = 0;
+	bool visited = false;
+	bool traversing = false;
 
-private:
-	std::vector<CFGNode *> post_visit_order;
-	void visit(CFGNode &entry);
+	MergeType merge = MergeType::None;
+	const CFGNode *merge_block = nullptr;
+	const CFGNode *merged_from_header = nullptr;
+
+	CFGNode *immediate_dominator = nullptr;
+	std::vector<CFGNode *> succ;
+	std::vector<CFGNode *> pred;
+	CFGNode *pred_back_edge = nullptr;
+	CFGNode *succ_back_edge = nullptr;
+
+	void add_branch(CFGNode *to);
+	void add_unique_succ(CFGNode *node);
+	void add_unique_pred(CFGNode *node);
+	unsigned num_forward_preds() const;
+	bool has_pred_back_edges() const;
+	bool post_dominates(const CFGNode *other) const;
 };
 
 class CFGStructurizer
 {
 public:
-	explicit CFGStructurizer(const CFGPostOrderTraverser &cfg);
+	explicit CFGStructurizer(CFGNode &entry);
+	static CFGNode *find_common_dominator(const CFGNode *a, const CFGNode *b);
+
+private:
+	std::vector<CFGNode *> post_visit_order;
+	void visit(CFGNode &entry);
+	void build_immediate_dominators(CFGNode &entry);
+	void structurize();
+	void find_loops();
 };
 
+class DominatorBuilder
+{
+public:
+	void add_block(CFGNode *block);
+	CFGNode *get_dominator() const
+	{
+		return dominator;
+	}
+
+private:
+	CFGNode *dominator = nullptr;
+};
 }
