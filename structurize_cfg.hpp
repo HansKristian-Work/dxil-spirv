@@ -20,6 +20,7 @@ struct CFGNode
 	uint32_t visit_order = 0;
 	bool visited = false;
 	bool traversing = false;
+	bool need_ladder_loop_fixup = false;
 
 	MergeType merge = MergeType::None;
 	const CFGNode *loop_merge_block = nullptr;

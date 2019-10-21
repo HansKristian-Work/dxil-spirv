@@ -295,8 +295,12 @@ void CFGStructurizer::find_selection_merges()
 
 void CFGStructurizer::find_loops()
 {
-	for (auto *node : post_visit_order)
+	for (auto index = post_visit_order.size(); index; index--)
 	{
+		// Visit in reverse order so we resolve outer loops first,
+		// this lets us detect ladder-breaking loops.
+		auto *node = post_visit_order[index - 1];
+
 		if (!node->has_pred_back_edges())
 			continue;
 
@@ -335,16 +339,15 @@ void CFGStructurizer::find_loops()
 		if (non_terminating_exits.empty())
 		{
 			// There can be zero loop exits. This means we have no merge block.
-			// We will invent a merge block, and declare it as unreachable.
+			// We will invent a merge block to satisfy SPIR-V validator, and declare it as unreachable.
 
-			// Unreachable.
 			node->loop_merge_block = nullptr;
 			fprintf(stderr, "Loop without merge: %p (%s)\n",
 					static_cast<const void *>(node), node->name.c_str());
 		}
 		else if (non_terminating_exits.size() == 1)
 		{
-			// This is a unique merge block. There can be no other candidate.
+			// This is a unique merge block. There can be no other merge candidate.
 			node->loop_merge_block = *merge_tracer.loop_exits.begin();
 
 			assert(node->loop_merge_block->merged_from_header == nullptr);
@@ -357,9 +360,33 @@ void CFGStructurizer::find_loops()
 		}
 		else
 		{
-			// Multiple candidates. Hopefully, there is a block which post-dominates the others.
+			// Multiple candidates. Hopefully, there exists a block which post-dominates all candidates.
 			// That block becomes the merge target.
 			const CFGNode *merge_block = nullptr;
+
+			// Try to thread through blocks with unique successor to make it
+			// possible to use post-domination check in more cases.
+			// This lets us detect multi-level breaks, which DXIL can do, but SPIR-V cannot.
+			bool did_work;
+			do
+			{
+				did_work = false;
+				for (auto *&candidate : non_terminating_exits)
+				{
+					for (auto *other : non_terminating_exits)
+					{
+						// Only iterate if our post visit order is > the other one. This lets blocks catch up
+						// with each other.
+						if (candidate->succ.size() == 1 && candidate->visit_order > other->visit_order)
+						{
+							candidate = candidate->succ.front();
+							did_work = true;
+						}
+					}
+				}
+			} while (did_work);
+
+			// Now, we try to figure out is there is a post-dominating block among the candidates.
 			for (auto *candidate : non_terminating_exits)
 			{
 				bool post_dominates_all = true;
@@ -382,9 +409,18 @@ void CFGStructurizer::find_loops()
 			if (merge_block)
 			{
 				node->loop_merge_block = merge_block;
-				assert(node->loop_merge_block->merged_from_header == nullptr);
-				const_cast<CFGNode *>(node->loop_merge_block)->merged_from_header = node;
-				fprintf(stderr, "Loop with merge: %s -> %s\n", node->name.c_str(), node->loop_merge_block->name.c_str());
+				if (node->loop_merge_block->merged_from_header == nullptr)
+				{
+					const_cast<CFGNode *>(node->loop_merge_block)->merged_from_header = node;
+					fprintf(stderr, "Loop with merge: %s -> %s\n", node->name.c_str(),
+					        node->loop_merge_block->name.c_str());
+				}
+				else
+				{
+					fprintf(stderr, "Detecting multi-level breaking loop ...\n");
+					// We'll need to fix this up somehow after the fact.
+					node->need_ladder_loop_fixup = true;
+				}
 			}
 			else
 			{
