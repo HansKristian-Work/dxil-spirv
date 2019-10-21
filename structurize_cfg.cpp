@@ -283,6 +283,13 @@ void CFGStructurizer::find_selection_merges()
 						node->name.c_str());
 			}
 		}
+		else
+		{
+			// We are hosed. There is no obvious way to merge execution here.
+			fprintf(stderr, "Cannot merge execution for node %p (%s).\n",
+			        static_cast<const void *>(node),
+			        node->name.c_str());
+		}
 	}
 }
 
