@@ -10,7 +10,8 @@ enum class MergeType
 {
 	None,
 	Loop,
-	Selection
+	Selection,
+	LoopToSelection
 };
 
 struct CFGNode
@@ -21,7 +22,8 @@ struct CFGNode
 	bool traversing = false;
 
 	MergeType merge = MergeType::None;
-	const CFGNode *merge_block = nullptr;
+	const CFGNode *loop_merge_block = nullptr;
+	const CFGNode *selection_merge_block = nullptr;
 	const CFGNode *merged_from_header = nullptr;
 
 	CFGNode *immediate_dominator = nullptr;
@@ -50,6 +52,7 @@ private:
 	void build_immediate_dominators(CFGNode &entry);
 	void structurize();
 	void find_loops();
+	void find_selection_merges();
 };
 
 class DominatorBuilder

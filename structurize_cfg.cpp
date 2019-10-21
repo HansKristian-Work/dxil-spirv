@@ -78,6 +78,11 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 	if (start_node->succ.empty())
 		return false;
 
+	// If post-visit order is lower, post-dominance is impossible.
+	// As we traverse, post visit order will monotonically decrease.
+	if (start_node->visit_order < visit_order)
+		return false;
+
 	for (auto *node : start_node->succ)
 		if (!post_dominates(node))
 			return false;
@@ -197,6 +202,90 @@ void LoopMergeTracer::trace_from_parent(const CFGNode *header)
 	}
 }
 
+void CFGStructurizer::find_selection_merges()
+{
+	for (auto *node : post_visit_order)
+	{
+		if (node->num_forward_preds() <= 1)
+			continue;
+
+		// If there are 2 or more pred edges, try to merge execution.
+
+		if (node->merged_from_header)
+		{
+			// This has already been merged, skip.
+			continue;
+		}
+
+		// The idom is a natural header block.
+		auto *idom = node->immediate_dominator;
+		assert(idom->succ.size() >= 2);
+
+		if (idom->merge == MergeType::None)
+		{
+			idom->merge = MergeType::Selection;
+			idom->selection_merge_block = node;
+			node->merged_from_header = idom;
+			fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n",
+			        static_cast<const void *>(idom),
+					idom->name.c_str(),
+					static_cast<const void *>(node),
+					node->name.c_str());
+		}
+		else if (idom->merge == MergeType::Loop)
+		{
+			fprintf(stderr, "IDOM is already a loop header somewhere else.\n");
+			// TODO: If idom is a loop header, we might have to split blocks here?
+			// If we split the loop header into the loop header -> selection merge header,
+			// then we can merge into a continue block.
+			idom->merge = MergeType::LoopToSelection;
+			idom->selection_merge_block = node;
+			node->merged_from_header = idom;
+			fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n",
+			        static_cast<const void *>(idom),
+			        idom->name.c_str(),
+			        static_cast<const void *>(node),
+					node->name.c_str());
+		}
+		else if (idom->merge == MergeType::Selection)
+		{
+			fprintf(stderr, "IDOM is already a selection header somewhere else.\n");
+			// We might have a classic "exit sequence" here.
+			// This is a case where a return is called from nested branches.
+			// The only way we can perform this "exit" in a structured way is by wrapping
+			// the construct in a loop.
+			if (idom->selection_merge_block->post_dominates(node))
+			{
+				// If the outer selection merge post dominates our inner merge block,
+				// we can split the outer selection header in two. One outer loop header,
+				// and one outer selection construct.
+
+				idom->merge = MergeType::LoopToSelection;
+				idom->loop_merge_block = idom->selection_merge_block;
+				idom->selection_merge_block = node;
+				node->merged_from_header = idom;
+				fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n",
+				        static_cast<const void *>(idom),
+				        idom->name.c_str(),
+				        static_cast<const void *>(node),
+				        node->name.c_str());
+				fprintf(stderr, "Hoisted loop: %p (%s) -> %p (%s)\n",
+				        static_cast<const void *>(idom),
+						idom->name.c_str(),
+						static_cast<const void *>(idom->loop_merge_block),
+						idom->loop_merge_block->name.c_str());
+			}
+			else
+			{
+				// We are hosed. There is no obvious way to merge execution here.
+				fprintf(stderr, "Cannot merge execution for node %p (%s).\n",
+						static_cast<const void *>(node),
+						node->name.c_str());
+			}
+		}
+	}
+}
+
 void CFGStructurizer::find_loops()
 {
 	for (auto *node : post_visit_order)
@@ -242,17 +331,22 @@ void CFGStructurizer::find_loops()
 			// We will invent a merge block, and declare it as unreachable.
 
 			// Unreachable.
-			node->merge_block = nullptr;
-			fprintf(stderr, "Loop without merge: %s\n", node->name.c_str());
+			node->loop_merge_block = nullptr;
+			fprintf(stderr, "Loop without merge: %p (%s)\n",
+					static_cast<const void *>(node), node->name.c_str());
 		}
 		else if (non_terminating_exits.size() == 1)
 		{
 			// This is a unique merge block. There can be no other candidate.
-			node->merge_block = *merge_tracer.loop_exits.begin();
+			node->loop_merge_block = *merge_tracer.loop_exits.begin();
 
-			assert(node->merge_block->merged_from_header == nullptr);
-			const_cast<CFGNode *>(node->merge_block)->merged_from_header = node;
-			fprintf(stderr, "Loop with merge: %s -> %s\n", node->name.c_str(), node->merge_block->name.c_str());
+			assert(node->loop_merge_block->merged_from_header == nullptr);
+			const_cast<CFGNode *>(node->loop_merge_block)->merged_from_header = node;
+			fprintf(stderr, "Loop with merge: %p (%s) -> %p (%s)\n",
+					static_cast<const void *>(node),
+					node->name.c_str(),
+					static_cast<const void *>(node->loop_merge_block),
+					node->loop_merge_block->name.c_str());
 		}
 		else
 		{
@@ -280,10 +374,10 @@ void CFGStructurizer::find_loops()
 
 			if (merge_block)
 			{
-				node->merge_block = merge_block;
-				assert(node->merge_block->merged_from_header == nullptr);
-				const_cast<CFGNode *>(node->merge_block)->merged_from_header = node;
-				fprintf(stderr, "Loop with merge: %s -> %s\n", node->name.c_str(), node->merge_block->name.c_str());
+				node->loop_merge_block = merge_block;
+				assert(node->loop_merge_block->merged_from_header == nullptr);
+				const_cast<CFGNode *>(node->loop_merge_block)->merged_from_header = node;
+				fprintf(stderr, "Loop with merge: %s -> %s\n", node->name.c_str(), node->loop_merge_block->name.c_str());
 			}
 			else
 			{
@@ -297,50 +391,7 @@ void CFGStructurizer::find_loops()
 void CFGStructurizer::structurize()
 {
 	find_loops();
-#if 0
-	for (auto *node : post_visit_order)
-	{
-		if (node->merge != MergeType::None)
-			continue;
-
-		if (node->num_forward_preds() > 1)
-		{
-			// This is a merge candidate.
-			DominatorBuilder builder;
-			for (auto *pred : node->pred)
-			{
-				if (pred->back_edge != node)
-					builder.add_block(pred);
-			}
-
-			auto *dominator = builder.get_dominator();
-			assert(dominator->merge == MergeType::None);
-
-			if (dominator->has_pred_back_edges())
-			{
-				dominator->merge = MergeType::Loop;
-				fprintf(stderr, "Found loop header: %s\n", dominator->name.c_str());
-				fprintf(stderr, "  Merge: %s\n", node->name.c_str());
-			}
-			else
-			{
-				dominator->merge = MergeType::Selection;
-				fprintf(stderr, "Found selection header: %s\n", dominator->name.c_str());
-				fprintf(stderr, "  Merge: %s\n", node->name.c_str());
-			}
-			dominator->merge_block = node;
-		}
-		else if (node->has_pred_back_edges())
-		{
-			// This is a loop.
-			assert(node->succ.size() == 2);
-			node->merge = MergeType::Loop;
-			node->merge_block = node->succ[0] != node ? node->succ[0] : node->succ[1];
-			fprintf(stderr, "Found loop header: %s\n", node->name.c_str());
-			fprintf(stderr, "  Merge: %s\n", node->merge_block->name.c_str());
-		}
-	}
-#endif
+	find_selection_merges();
 }
 
 void DominatorBuilder::add_block(CFGNode *block)
