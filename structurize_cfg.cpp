@@ -27,8 +27,8 @@ struct CFGNode
 	bool traversing = false;
 
 	MergeType merge = MergeType::None;
-	const CFGNode *loop_merge_block = nullptr;
-	const CFGNode *selection_merge_block = nullptr;
+	CFGNode *loop_merge_block = nullptr;
+	CFGNode *selection_merge_block = nullptr;
 	std::vector<const CFGNode *> headers;
 
 	CFGNode *immediate_dominator = nullptr;
@@ -257,8 +257,8 @@ CFGNode *CFGNode::find_common_dominator(const CFGNode *a, const CFGNode *b)
 
 struct LoopBacktracer
 {
-	void trace_to_parent(const CFGNode *header, const CFGNode *block);
-	std::unordered_set<const CFGNode *> traced_blocks;
+	void trace_to_parent(CFGNode *header, CFGNode *block);
+	std::unordered_set<CFGNode *> traced_blocks;
 };
 
 struct LoopMergeTracer
@@ -268,13 +268,13 @@ struct LoopMergeTracer
 	{
 	}
 
-	void trace_from_parent(const CFGNode *header);
+	void trace_from_parent(CFGNode *header);
 	const LoopBacktracer &backtracer;
-	std::unordered_set<const CFGNode *> loop_exits;
-	std::unordered_set<const CFGNode *> traced_blocks;
+	std::unordered_set<CFGNode *> loop_exits;
+	std::unordered_set<CFGNode *> traced_blocks;
 };
 
-void LoopBacktracer::trace_to_parent(const CFGNode *header, const CFGNode *block)
+void LoopBacktracer::trace_to_parent(CFGNode *header, CFGNode *block)
 {
 	if (block == header)
 	{
@@ -290,7 +290,7 @@ void LoopBacktracer::trace_to_parent(const CFGNode *header, const CFGNode *block
 	}
 }
 
-void LoopMergeTracer::trace_from_parent(const CFGNode *header)
+void LoopMergeTracer::trace_from_parent(CFGNode *header)
 {
 	if (backtracer.traced_blocks.count(header) == 0)
 	{
@@ -434,7 +434,7 @@ void CFGStructurizer::find_loops()
 		merge_tracer.trace_from_parent(node);
 
 		// Only care about exit blocks which do not terminate the CFG right away (e.g. kill/return/etc).
-		std::vector<const CFGNode *> non_terminating_exits;
+		std::vector<CFGNode *> non_terminating_exits;
 		for (auto *loop_exit : merge_tracer.loop_exits)
 			if (!loop_exit->trivial_flow_to_exit())
 				non_terminating_exits.push_back(loop_exit);
@@ -465,7 +465,7 @@ void CFGStructurizer::find_loops()
 		{
 			// Multiple candidates. Hopefully, there exists a block which post-dominates all candidates.
 			// That block becomes the merge target.
-			const CFGNode *merge_block = nullptr;
+			CFGNode *merge_block = nullptr;
 
 			// Try to thread through blocks with unique successor to make it
 			// possible to use post-domination check in more cases.
@@ -573,6 +573,10 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 			succ->ensure_ids(iface);
 		if (block->pred_back_edge)
 			block->pred_back_edge->ensure_ids(iface);
+		if (block->selection_merge_block)
+			block->selection_merge_block->ensure_ids(iface);
+		if (block->loop_merge_block)
+			block->loop_merge_block->ensure_ids(iface);
 
 		if (block->headers.size() >= 2)
 		{
