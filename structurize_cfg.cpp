@@ -27,7 +27,7 @@ void CFGStructurizer::build_immediate_dominators(CFGNode &entry)
 		for (auto *edge : pred)
 		{
 			if (block->immediate_dominator)
-				block->immediate_dominator = find_common_dominator(block->immediate_dominator, edge);
+				block->immediate_dominator = CFGNode::find_common_dominator(block->immediate_dominator, edge);
 			else
 				block->immediate_dominator = edge;
 		}
@@ -39,6 +39,13 @@ void CFGNode::add_unique_pred(CFGNode *node)
 	auto itr = std::find(pred.begin(), pred.end(), node);
 	if (itr == pred.end())
 		pred.push_back(node);
+}
+
+void CFGNode::add_unique_header(CFGNode *node)
+{
+	auto itr = std::find(headers.begin(), headers.end(), node);
+	if (itr == headers.end())
+		headers.push_back(node);
 }
 
 void CFGNode::add_branch(CFGNode *to)
@@ -62,6 +69,21 @@ unsigned CFGNode::num_forward_preds() const
 bool CFGNode::has_pred_back_edges() const
 {
 	return pred_back_edge != nullptr;
+}
+
+bool CFGNode::dominates(const CFGNode *other) const
+{
+	// Follow immediate dominator graph. Either we end up at this, or entry block.
+	while (this != other)
+	{
+		// Entry block case.
+		if (other->pred.empty())
+			return false;
+
+		other = other->immediate_dominator;
+	}
+
+	return this == other;
 }
 
 bool CFGNode::post_dominates(const CFGNode *start_node) const
@@ -131,7 +153,7 @@ void CFGStructurizer::visit(CFGNode &entry)
 	post_visit_order.push_back(&entry);
 }
 
-CFGNode *CFGStructurizer::find_common_dominator(const CFGNode *a, const CFGNode *b)
+CFGNode *CFGNode::find_common_dominator(const CFGNode *a, const CFGNode *b)
 {
 	assert(a);
 	assert(b);
@@ -211,13 +233,7 @@ void CFGStructurizer::find_selection_merges()
 
 		// If there are 2 or more pred edges, try to merge execution.
 
-		if (node->merged_from_header)
-		{
-			// This has already been merged, skip.
-			continue;
-		}
-
-		// The idom is a natural header block.
+		// The idom is the natural header block.
 		auto *idom = node->immediate_dominator;
 		assert(idom->succ.size() >= 2);
 
@@ -225,7 +241,7 @@ void CFGStructurizer::find_selection_merges()
 		{
 			idom->merge = MergeType::Selection;
 			idom->selection_merge_block = node;
-			node->merged_from_header = idom;
+			node->add_unique_header(idom);
 			fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n",
 			        static_cast<const void *>(idom),
 					idom->name.c_str(),
@@ -234,13 +250,14 @@ void CFGStructurizer::find_selection_merges()
 		}
 		else if (idom->merge == MergeType::Loop)
 		{
-			fprintf(stderr, "IDOM is already a loop header somewhere else.\n");
+			//fprintf(stderr, "IDOM is already a loop header somewhere else.\n");
+
 			// TODO: If idom is a loop header, we might have to split blocks here?
 			// If we split the loop header into the loop header -> selection merge header,
 			// then we can merge into a continue block.
 			idom->merge = MergeType::LoopToSelection;
 			idom->selection_merge_block = node;
-			node->merged_from_header = idom;
+			node->add_unique_header(idom);
 			fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n",
 			        static_cast<const void *>(idom),
 			        idom->name.c_str(),
@@ -249,7 +266,8 @@ void CFGStructurizer::find_selection_merges()
 		}
 		else if (idom->merge == MergeType::Selection)
 		{
-			fprintf(stderr, "IDOM is already a selection header somewhere else.\n");
+			//fprintf(stderr, "IDOM is already a selection header somewhere else.\n");
+
 			// We might have a classic "exit sequence" here.
 			// This is a case where a return is called from nested branches.
 			// The only way we can perform this "exit" in a structured way is by wrapping
@@ -263,7 +281,7 @@ void CFGStructurizer::find_selection_merges()
 				idom->merge = MergeType::LoopToSelection;
 				idom->loop_merge_block = idom->selection_merge_block;
 				idom->selection_merge_block = node;
-				node->merged_from_header = idom;
+				node->add_unique_header(idom);
 				fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n",
 				        static_cast<const void *>(idom),
 				        idom->name.c_str(),
@@ -350,8 +368,7 @@ void CFGStructurizer::find_loops()
 			// This is a unique merge block. There can be no other merge candidate.
 			node->loop_merge_block = *merge_tracer.loop_exits.begin();
 
-			assert(node->loop_merge_block->merged_from_header == nullptr);
-			const_cast<CFGNode *>(node->loop_merge_block)->merged_from_header = node;
+			const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
 			fprintf(stderr, "Loop with merge: %p (%s) -> %p (%s)\n",
 					static_cast<const void *>(node),
 					node->name.c_str(),
@@ -409,18 +426,9 @@ void CFGStructurizer::find_loops()
 			if (merge_block)
 			{
 				node->loop_merge_block = merge_block;
-				if (node->loop_merge_block->merged_from_header == nullptr)
-				{
-					const_cast<CFGNode *>(node->loop_merge_block)->merged_from_header = node;
-					fprintf(stderr, "Loop with merge: %s -> %s\n", node->name.c_str(),
-					        node->loop_merge_block->name.c_str());
-				}
-				else
-				{
-					fprintf(stderr, "Detecting multi-level breaking loop ...\n");
-					// We'll need to fix this up somehow after the fact.
-					node->need_ladder_loop_fixup = true;
-				}
+				const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
+				fprintf(stderr, "Loop with merge: %s -> %s\n", node->name.c_str(),
+				        node->loop_merge_block->name.c_str());
 			}
 			else
 			{
@@ -431,10 +439,37 @@ void CFGStructurizer::find_loops()
 	}
 }
 
+void CFGStructurizer::split_merge_blocks()
+{
+	for (auto *node : post_visit_order)
+	{
+		if (node->headers.size() > 1)
+		{
+			// If this block was the merge target for more than one construct,
+			// we will need to split the block. In SPIR-V, a merge block can only be the merge target for one construct.
+			// However, we can set up a chain of merges where inner scope breaks to outer scope with a dummy basic block.
+			// The outer scope comes before the inner scope merge.
+			std::sort(node->headers.begin(), node->headers.end(),
+			          [](const CFGNode *a, const CFGNode *b) {
+				          return a->visit_order > b->visit_order;
+			          });
+
+			// Verify that scopes are actually nested.
+			// This means header[N] must dominate header[M] where N > M.
+			for (size_t i = 1; i < node->headers.size(); i++)
+			{
+				if (!node->headers[i - 1]->dominates(node->headers[i]))
+					fprintf(stderr, "Scopes are not nested.\n");
+			}
+		}
+	}
+}
+
 void CFGStructurizer::structurize()
 {
 	find_loops();
 	find_selection_merges();
+	split_merge_blocks();
 }
 
 void DominatorBuilder::add_block(CFGNode *block)
@@ -442,6 +477,6 @@ void DominatorBuilder::add_block(CFGNode *block)
 	if (!dominator)
 		dominator = block;
 	else if (dominator != block)
-		dominator = CFGStructurizer::find_common_dominator(dominator, block);
+		dominator = CFGNode::find_common_dominator(dominator, block);
 }
 }

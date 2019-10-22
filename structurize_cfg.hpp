@@ -20,12 +20,11 @@ struct CFGNode
 	uint32_t visit_order = 0;
 	bool visited = false;
 	bool traversing = false;
-	bool need_ladder_loop_fixup = false;
 
 	MergeType merge = MergeType::None;
 	const CFGNode *loop_merge_block = nullptr;
 	const CFGNode *selection_merge_block = nullptr;
-	const CFGNode *merged_from_header = nullptr;
+	std::vector<const CFGNode *> headers;
 
 	CFGNode *immediate_dominator = nullptr;
 	std::vector<CFGNode *> succ;
@@ -36,16 +35,18 @@ struct CFGNode
 	void add_branch(CFGNode *to);
 	void add_unique_succ(CFGNode *node);
 	void add_unique_pred(CFGNode *node);
+	void add_unique_header(CFGNode *node);
 	unsigned num_forward_preds() const;
 	bool has_pred_back_edges() const;
+	bool dominates(const CFGNode *other) const;
 	bool post_dominates(const CFGNode *other) const;
+	static CFGNode *find_common_dominator(const CFGNode *a, const CFGNode *b);
 };
 
 class CFGStructurizer
 {
 public:
 	explicit CFGStructurizer(CFGNode &entry);
-	static CFGNode *find_common_dominator(const CFGNode *a, const CFGNode *b);
 
 private:
 	std::vector<CFGNode *> post_visit_order;
@@ -54,6 +55,7 @@ private:
 	void structurize();
 	void find_loops();
 	void find_selection_merges();
+	void split_merge_blocks();
 };
 
 class DominatorBuilder
