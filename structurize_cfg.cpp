@@ -574,7 +574,17 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 		if (block->pred_back_edge)
 			block->pred_back_edge->ensure_ids(iface);
 
+		if (block->headers.size() >= 2)
+		{
+			// Emit ladder breaking branches to resolve multi-level merges.
+			uint32_t start_id = block->id + (block->headers.size() - 1) +
+			                    (block->merge == MergeType::LoopToSelection ? 1 : 0);
+			for (size_t i = 0; i < block->headers.size() - 1; i++, start_id--)
+				iface.emit_helper_block(start_id, start_id - 1, {});
+		}
+
 		BlockEmissionInterface::MergeInfo merge;
+
 		switch (block->merge)
 		{
 		case MergeType::Selection:
