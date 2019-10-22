@@ -5,7 +5,55 @@
 
 namespace DXIL2SPIRV
 {
+class DominatorBuilder
+{
+public:
+	void add_block(CFGNode *block);
+	CFGNode *get_dominator() const
+	{
+		return dominator;
+	}
+
+private:
+	CFGNode *dominator = nullptr;
+};
+
+struct CFGNode
+{
+	std::string name;
+	uint32_t id = 0;
+	uint32_t visit_order = 0;
+	bool visited = false;
+	bool traversing = false;
+
+	MergeType merge = MergeType::None;
+	const CFGNode *loop_merge_block = nullptr;
+	const CFGNode *selection_merge_block = nullptr;
+	std::vector<const CFGNode *> headers;
+
+	CFGNode *immediate_dominator = nullptr;
+	std::vector<CFGNode *> succ;
+	std::vector<CFGNode *> pred;
+	CFGNode *pred_back_edge = nullptr;
+	CFGNode *succ_back_edge = nullptr;
+
+	void add_branch(CFGNode *to);
+	void add_unique_succ(CFGNode *node);
+	void add_unique_pred(CFGNode *node);
+	void add_unique_header(CFGNode *node);
+	unsigned num_forward_preds() const;
+	bool has_pred_back_edges() const;
+	bool dominates(const CFGNode *other) const;
+	bool post_dominates(const CFGNode *other) const;
+	bool trivial_flow_to_exit() const;
+	void ensure_ids(BlockEmissionInterface &iface);
+	static CFGNode *find_common_dominator(const CFGNode *a, const CFGNode *b);
+
+	void *userdata = nullptr;
+};
+
 CFGStructurizer::CFGStructurizer(CFGNode &entry)
+	: entry_block(entry)
 {
 	visit(entry);
 	build_immediate_dominators(entry);
@@ -61,6 +109,39 @@ void CFGNode::add_unique_succ(CFGNode *node)
 		succ.push_back(node);
 }
 
+void CFGNode::ensure_ids(BlockEmissionInterface &iface)
+{
+	if (id != 0)
+		return;
+
+	uint32_t count = 1;
+	if (headers.size() > 1)
+		count = headers.size();
+	if (merge == MergeType::LoopToSelection)
+		count++;
+
+	id = iface.allocate_ids(count);
+}
+
+bool CFGNode::trivial_flow_to_exit() const
+{
+	// Checks if there is a direct, branch-less path to a terminating block.
+	// There cannot be any merge on this path. We're essentially checking if we could trivially reduce
+	// a path of A (start) -> B -> C -> EXIT into one block.
+	const auto *node = this;
+	while (!node->succ.empty())
+	{
+		if (node->succ.size() >= 2)
+			return false;
+		else
+			node = node->succ.front();
+
+		if (node->pred.size() >= 2)
+			return false;
+	}
+	return true;
+}
+
 unsigned CFGNode::num_forward_preds() const
 {
 	return unsigned(pred.size());
@@ -78,7 +159,7 @@ bool CFGNode::dominates(const CFGNode *other) const
 	{
 		// Entry block case.
 		if (other->pred.empty())
-			return false;
+			break;
 
 		other = other->immediate_dominator;
 	}
@@ -122,10 +203,12 @@ void CFGStructurizer::visit(CFGNode &entry)
 		if (succ->traversing)
 		{
 			// For now, only support one back edge.
+			// DXIL seems to obey this.
 			assert(!entry.succ_back_edge);
 			entry.succ_back_edge = succ;
 
 			// For now, only support one back edge.
+			// DXIL seems to obey this.
 			assert(!succ->pred_back_edge);
 			succ->pred_back_edge = &entry;
 		}
@@ -134,6 +217,7 @@ void CFGStructurizer::visit(CFGNode &entry)
 	}
 
 	// Any back edges need to be handled specifically, only keep forward edges in succ/pred lists.
+	// This avoids any infinite loop scenarios and needing to special case a lot of checks.
 	if (entry.succ_back_edge)
 	{
 		auto itr = std::find(entry.succ.begin(), entry.succ.end(), entry.succ_back_edge);
@@ -296,6 +380,7 @@ void CFGStructurizer::find_selection_merges()
 			else
 			{
 				// We are hosed. There is no obvious way to merge execution here.
+				// This might be okay.
 				fprintf(stderr, "Cannot merge execution for node %p (%s).\n",
 						static_cast<const void *>(node),
 						node->name.c_str());
@@ -304,6 +389,7 @@ void CFGStructurizer::find_selection_merges()
 		else
 		{
 			// We are hosed. There is no obvious way to merge execution here.
+			// This might be okay.
 			fprintf(stderr, "Cannot merge execution for node %p (%s).\n",
 			        static_cast<const void *>(node),
 			        node->name.c_str());
@@ -347,10 +433,10 @@ void CFGStructurizer::find_loops()
 		LoopMergeTracer merge_tracer(tracer);
 		merge_tracer.trace_from_parent(node);
 
-		// Only care about exit blocks which do not terminate the CFG (e.g. kill/return/etc).
+		// Only care about exit blocks which do not terminate the CFG right away (e.g. kill/return/etc).
 		std::vector<const CFGNode *> non_terminating_exits;
 		for (auto *loop_exit : merge_tracer.loop_exits)
-			if (!loop_exit->succ.empty())
+			if (!loop_exit->trivial_flow_to_exit())
 				non_terminating_exits.push_back(loop_exit);
 
 		// There are several cases here.
@@ -392,6 +478,9 @@ void CFGStructurizer::find_loops()
 				{
 					for (auto *other : non_terminating_exits)
 					{
+						if (candidate == other)
+							continue;
+
 						// Only iterate if our post visit order is > the other one. This lets blocks catch up
 						// with each other.
 						if (candidate->succ.size() == 1 && candidate->visit_order > other->visit_order)
@@ -472,6 +561,55 @@ void CFGStructurizer::structurize()
 	split_merge_blocks();
 }
 
+void CFGStructurizer::traverse(BlockEmissionInterface &iface)
+{
+	// Need to emit blocks such that dominating blocks come before dominated blocks.
+	for (auto index = post_visit_order.size(); index; index--)
+	{
+		auto *block = post_visit_order[index - 1];
+
+		block->ensure_ids(iface);
+		for (auto *succ : block->succ)
+			succ->ensure_ids(iface);
+		if (block->pred_back_edge)
+			block->pred_back_edge->ensure_ids(iface);
+
+		BlockEmissionInterface::MergeInfo merge;
+		switch (block->merge)
+		{
+		case MergeType::Selection:
+			merge.merge_block = block->selection_merge_block->id;
+			merge.merge_type = block->merge;
+			iface.emit_basic_block(block->id, block->userdata, merge);
+			break;
+
+		case MergeType::Loop:
+			merge.merge_block = block->loop_merge_block->id;
+			merge.merge_type = block->merge;
+			merge.continue_block = block->pred_back_edge->id;
+			iface.emit_basic_block(block->id, block->userdata, merge);
+			break;
+
+		case MergeType::LoopToSelection:
+			// Start with a dummy loop header.
+			merge.merge_block = block->loop_merge_block->id;
+			merge.merge_type = MergeType::Loop;
+			merge.continue_block = iface.allocate_id();
+			iface.emit_helper_block(block->id, block->id + 1, merge);
+			iface.emit_helper_block(merge.continue_block, block->id, {});
+			merge.merge_block = block->selection_merge_block->id;
+			merge.merge_type = MergeType::Selection;
+			merge.continue_block = 0;
+			iface.emit_basic_block(block->id + 1, block->userdata, merge);
+			break;
+
+		default:
+			iface.emit_basic_block(block->id, block->userdata, merge);
+			break;
+		}
+	}
+}
+
 void DominatorBuilder::add_block(CFGNode *block)
 {
 	if (!dominator)
@@ -479,4 +617,50 @@ void DominatorBuilder::add_block(CFGNode *block)
 	else if (dominator != block)
 		dominator = CFGNode::find_common_dominator(dominator, block);
 }
+
+CFGNode *CFGNodePool::get_node_from_userdata(void *userdata)
+{
+	auto *node = find_node_from_userdata(userdata);
+	if (node)
+		return node;
+
+	auto &cfg = nodes[userdata];
+	cfg.reset(new CFGNode);
+	cfg->userdata = userdata;
+	return cfg.get();
+}
+
+void CFGNodePool::set_name(void *userdata, const std::string &str)
+{
+	get_node_from_userdata(userdata)->name = str;
+}
+
+void CFGNodePool::add_branch(void *from, void *to)
+{
+	get_node_from_userdata(from)->add_branch(get_node_from_userdata(to));
+}
+
+CFGNode *CFGNodePool::find_node_from_userdata(void *userdata) const
+{
+	auto itr = nodes.find(userdata);
+	if (itr != nodes.end())
+		return itr->second.get();
+	else
+		return nullptr;
+}
+
+uint32_t CFGNodePool::get_block_id(void *userdata) const
+{
+	auto *node = find_node_from_userdata(userdata);
+	if (node)
+		return node->id;
+	else
+		return 0;
+}
+
+CFGNodePool::CFGNodePool()
+{}
+
+CFGNodePool::~CFGNodePool()
+{}
 }

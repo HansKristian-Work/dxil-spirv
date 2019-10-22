@@ -32,6 +32,89 @@ static std::vector<uint8_t> read_file(const char *path)
 	return result;
 }
 
+struct Emitter : DXIL2SPIRV::BlockEmissionInterface
+{
+	uint32_t allocate_id() override;
+	uint32_t allocate_ids(uint32_t count) override;
+	void emit_basic_block(uint32_t id, void *userdata, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_helper_block(uint32_t id, uint32_t next_id, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+
+	uint32_t base_id = 1;
+	const DXIL2SPIRV::CFGNodePool *pool = nullptr;
+};
+
+uint32_t Emitter::allocate_id()
+{
+	uint32_t ret = base_id;
+	base_id += 1;
+	return ret;
+}
+
+uint32_t Emitter::allocate_ids(uint32_t count)
+{
+	uint32_t ret = base_id;
+	base_id += count;
+	return ret;
+}
+
+void Emitter::emit_basic_block(uint32_t id, void *userdata, const BlockEmissionInterface::MergeInfo &info)
+{
+	auto *block = static_cast<llvm::BasicBlock *>(userdata);
+	fprintf(stderr, "%u:\n", id);
+
+	// Emit opcodes here ...
+
+	switch (info.merge_type)
+	{
+	case DXIL2SPIRV::MergeType::Selection:
+		fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block);
+		break;
+
+	case DXIL2SPIRV::MergeType::Loop:
+		fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block, info.continue_block);
+		break;
+
+	default:
+		break;
+	}
+
+	for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
+	{
+		auto *succ = *itr;
+		fprintf(stderr, "  -> %u\n", pool->get_block_id(succ));
+	}
+
+	if (llvm::succ_begin(block) == llvm::succ_end(block))
+		fprintf(stderr, "  -> Exit\n");
+}
+
+void Emitter::emit_helper_block(uint32_t id, uint32_t next_id, const BlockEmissionInterface::MergeInfo &info)
+{
+	fprintf(stderr, "%u:\n", id);
+	if (next_id)
+	{
+		switch (info.merge_type)
+		{
+		case DXIL2SPIRV::MergeType::Selection:
+			fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block);
+			break;
+
+		case DXIL2SPIRV::MergeType::Loop:
+			fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block, info.continue_block);
+			break;
+
+		default:
+			break;
+		}
+
+		fprintf(stderr, "  -> %u\n", next_id);
+	}
+	else
+	{
+		fprintf(stderr, "  Unreachable\n");
+	}
+}
+
 int main(int argc, char **argv)
 {
 	if (argc != 2)
@@ -73,10 +156,9 @@ int main(int argc, char **argv)
 		llvm::Function *func = module->getFunction(llvm::cast<llvm::MDString>(node->getOperand(1))->getString());
 		assert(func);
 
-		std::unordered_map<llvm::BasicBlock *, std::unique_ptr<DXIL2SPIRV::CFGNode>> cfg_nodes;
+		DXIL2SPIRV::CFGNodePool pool;
 		auto *entry = &func->getEntryBlock();
-		cfg_nodes[entry].reset(new DXIL2SPIRV::CFGNode);
-		cfg_nodes[entry]->name = entry->getName().data();
+		pool.set_name(entry, entry->getName().data());
 		std::vector<llvm::BasicBlock *> to_process;
 		std::vector<llvm::BasicBlock *> processing;
 		to_process.push_back(entry);
@@ -89,20 +171,22 @@ int main(int argc, char **argv)
 				for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
 				{
 					auto *succ = *itr;
-					if (cfg_nodes.count(succ) == 0)
+					if (!pool.find_node_from_userdata(succ))
 					{
 						to_process.push_back(succ);
-						cfg_nodes[succ].reset(new DXIL2SPIRV::CFGNode);
-						cfg_nodes[succ]->name = succ->getName().data();
+						pool.set_name(succ, succ->getName().data());
 					}
 
-					cfg_nodes[block]->add_branch(cfg_nodes[succ].get());
+					pool.add_branch(block, succ);
 				}
 			}
 			processing.clear();
 		}
 
-		DXIL2SPIRV::CFGStructurizer structurizer(*cfg_nodes[entry]);
+		DXIL2SPIRV::CFGStructurizer structurizer(*pool.get_node_from_userdata(entry));
+		Emitter iface;
+		iface.pool = &pool;
+		structurizer.traverse(iface);
 
 #if 0
 		llvm::BasicBlock &block = func->getEntryBlock();
