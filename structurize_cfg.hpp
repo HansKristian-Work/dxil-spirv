@@ -12,8 +12,7 @@ enum class MergeType
 {
 	None,
 	Loop,
-	Selection,
-	LoopToSelection
+	Selection
 };
 
 class BlockEmissionInterface;
@@ -133,5 +132,6 @@ private:
 	CFGNode *create_helper_pred_block(CFGNode *node);
 	CFGNode *create_helper_succ_block(CFGNode *node);
 	void reset_traversal();
+	void validate_structured();
 };
 }

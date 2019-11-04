@@ -35,6 +35,8 @@ CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
 
 	fprintf(stderr, "=== Structurize pass ===\n");
 	structurize();
+
+	validate_structured();
 }
 
 void CFGStructurizer::build_immediate_dominators(CFGNode &entry)
@@ -94,8 +96,6 @@ void CFGNode::ensure_ids(BlockEmissionInterface &iface)
 	uint32_t count = 1;
 	if (headers.size() > 1)
 		count = headers.size();
-	if (merge == MergeType::LoopToSelection)
-		count++;
 
 	id = iface.allocate_ids(count);
 }
@@ -394,6 +394,7 @@ void CFGStructurizer::find_selection_merges()
 		}
 		else if (idom->merge == MergeType::Selection)
 		{
+#if 0
 			//fprintf(stderr, "IDOM is already a selection header somewhere else.\n");
 
 			// We might have a classic "exit sequence" here.
@@ -429,6 +430,7 @@ void CFGStructurizer::find_selection_merges()
 						static_cast<const void *>(node),
 						node->name.c_str());
 			}
+#endif
 		}
 		else
 		{
@@ -704,6 +706,37 @@ void CFGStructurizer::structurize()
 	split_merge_blocks();
 }
 
+void CFGStructurizer::validate_structured()
+{
+	for (auto *node : post_visit_order)
+	{
+		if (node->headers.size() > 1)
+		{
+			fprintf(stderr, "Node %s has %u headers!\n", node->name.c_str(), unsigned(node->headers.size()));
+		}
+
+		if (node->merge == MergeType::Loop)
+		{
+			if (!node->dominates(node->loop_merge_block))
+			{
+				fprintf(stderr, "Node %s does not dominate its merge block %s!\n",
+				        node->name.c_str(),
+				        node->loop_merge_block->name.c_str());
+			}
+		}
+		else if (node->merge == MergeType::Selection)
+		{
+			if (!node->dominates(node->selection_merge_block))
+			{
+				fprintf(stderr, "Node %s does not dominate its selection merge block %s!\n",
+				        node->name.c_str(),
+				        node->selection_merge_block->name.c_str());
+			}
+		}
+	}
+	fprintf(stderr, "Successful CFG validation!\n");
+}
+
 void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 {
 	// Need to emit blocks such that dominating blocks come before dominated blocks.
@@ -724,8 +757,7 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 		if (block->headers.size() >= 2)
 		{
 			// Emit ladder breaking branches to resolve multi-level merges.
-			uint32_t start_id = block->id + (block->headers.size() - 1) +
-			                    (block->merge == MergeType::LoopToSelection ? 1 : 0);
+			uint32_t start_id = block->id + (block->headers.size() - 1);
 			for (size_t i = 0; i < block->headers.size() - 1; i++, start_id--)
 				iface.emit_helper_block(start_id, nullptr, start_id - 1, {});
 		}
@@ -745,19 +777,6 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 			merge.merge_type = block->merge;
 			merge.continue_block = block->pred_back_edge->id;
 			iface.emit_basic_block(block->id, block, block->userdata, merge);
-			break;
-
-		case MergeType::LoopToSelection:
-			// Start with a dummy loop header.
-			merge.merge_block = block->loop_merge_block->id;
-			merge.merge_type = MergeType::Loop;
-			merge.continue_block = iface.allocate_id();
-			iface.emit_helper_block(block->id, nullptr, block->id + 1, merge);
-			iface.emit_helper_block(merge.continue_block, nullptr, block->id, {});
-			merge.merge_block = block->selection_merge_block->id;
-			merge.merge_type = MergeType::Selection;
-			merge.continue_block = 0;
-			iface.emit_basic_block(block->id + 1, block, block->userdata, merge);
 			break;
 
 		default:
