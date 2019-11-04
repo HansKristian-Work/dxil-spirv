@@ -1,46 +1,156 @@
 #include "structurize_cfg.hpp"
 #include <stdio.h>
+#include <string>
+#include <unordered_map>
 using namespace DXIL2SPIRV;
+
+struct BlockMeta
+{
+	CFGNode *node = nullptr;
+};
+
+struct Emitter : BlockEmissionInterface
+{
+	uint32_t allocate_id() override;
+	uint32_t allocate_ids(uint32_t count) override;
+	void emit_basic_block(uint32_t id, void *userdata, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_helper_block(uint32_t id, uint32_t next_id, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+
+	uint32_t base_id = 1;
+	CFGNodePool *pool = nullptr;
+};
+
+uint32_t Emitter::allocate_id()
+{
+	uint32_t ret = base_id;
+	base_id += 1;
+	return ret;
+}
+
+uint32_t Emitter::allocate_ids(uint32_t count)
+{
+	uint32_t ret = base_id;
+	base_id += count;
+	return ret;
+}
+
+void Emitter::emit_basic_block(uint32_t id, void *userdata, const BlockEmissionInterface::MergeInfo &info)
+{
+	auto *meta = static_cast<const BlockMeta *>(userdata);
+	fprintf(stderr, "%u (%s):\n", id, pool->get_name(userdata).c_str());
+
+	// Emit opcodes here ...
+
+	switch (info.merge_type)
+	{
+	case MergeType::Selection:
+		fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block);
+		break;
+
+	case MergeType::Loop:
+		fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block, info.continue_block);
+		break;
+
+	default:
+		break;
+	}
+
+	for (auto *succ : meta->node->succ)
+		fprintf(stderr, " -> %s\n", succ->name.c_str());
+	if (meta->node->succ_back_edge)
+		fprintf(stderr, " %s <- back edge\n", meta->node->succ_back_edge->name.c_str());
+}
+
+void Emitter::emit_helper_block(uint32_t id, uint32_t next_id, const BlockEmissionInterface::MergeInfo &info)
+{
+#if 0
+	fprintf(stderr, "%u:\n", id);
+	if (next_id)
+	{
+		switch (info.merge_type)
+		{
+		case MergeType::Selection:
+			fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block);
+			break;
+
+		case MergeType::Loop:
+			fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block, info.continue_block);
+			break;
+
+		default:
+			break;
+		}
+
+		fprintf(stderr, "  -> %u\n", next_id);
+	}
+	else
+	{
+		fprintf(stderr, "  Unreachable\n");
+	}
+#endif
+}
 
 int main()
 {
-	CFGNode l, l0, l1, le;
-	CFGNode a, a0, a1, ae;
-	CFGNode b, b0, b1, be;
+	std::unordered_map<std::string, BlockMeta> block_metas;
 
-	l.name = "l";
-	l0.name = "l0";
-	l1.name = "l1";
-	le.name = "le";
+	CFGNodePool pool;
+	const auto get = [&](const std::string &name) -> CFGNode * {
+		auto itr = block_metas.find(name);
+		if (itr == block_metas.end())
+		{
+			auto &new_entry = block_metas[name];
+			auto *node = pool.get_node_from_userdata(&new_entry);
+			pool.set_name(&new_entry, name);
+			new_entry.node = node;
+			return node;
+		}
+		else
+			return itr->second.node;
+	};
 
-	a.name = "a";
-	a0.name = "a0";
-	a1.name = "a1";
-	ae.name = "ae";
+	const auto get_user = [&](const std::string &name) -> void * {
+		return &block_metas[name];
+	};
 
-	b.name = "b";
-	b0.name = "b0";
-	b1.name = "b1";
-	be.name = "be";
+	const auto add_branch = [&](const char *from, const char *to) {
+		get(from);
+		get(to);
+		pool.add_branch(get_user(from), get_user(to));
+	};
 
-	l.add_branch(&a);
-	l.add_branch(&b);
+	const auto add_selection = [&](const char *from, const char *to0, const char *to1) {
+		add_branch(from, to0);
+		add_branch(from, to1);
+	};
 
-	a.add_branch(&a0);
-	a.add_branch(&a1);
-	a0.add_branch(&ae);
-	a1.add_branch(&ae);
-	ae.add_branch(&l0);
+#if 0
+	add_selection("b0", "l0", "b0.exit");
+	{
+		add_selection("l0", "l1", "c0");
+		{
+			add_branch("l1", "l1.cond");
+			add_selection("l1.cond", "b0.exit", "c1");
+			add_selection("c1", "l1", "m1");
+			add_branch("m1", "c0");
+		}
+		add_selection("c0", "l0", "l0.exit");
+		add_branch("l0.exit", "b0.exit");
+	}
+#elif 0
+	add_selection("b0", "body", "b0.exit");
+	add_branch("body", "b0.exit");
+#else
+	add_selection("b0", "l0", "b0.exit");
+	{
+		add_selection("l0", "c0", "b0.exit");
+		add_selection("c0", "l0", "l0.exit");
+		add_branch("l0.exit", "b0.exit");
+	}
+#endif
 
-	b.add_branch(&b0);
-	b.add_branch(&b1);
-	b0.add_branch(&be);
-	b1.add_branch(&be);
-	be.add_branch(&l1);
-
-	l0.add_branch(&le);
-	l1.add_branch(&le);
-
-	CFGStructurizer traverser(l);
-	printf("Hai!\n");
+	CFGStructurizer traverser(*get("b0"));
+	Emitter emitter;
+	emitter.pool = &pool;
+	traverser.traverse(emitter);
 }

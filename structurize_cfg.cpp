@@ -18,40 +18,6 @@ private:
 	CFGNode *dominator = nullptr;
 };
 
-struct CFGNode
-{
-	std::string name;
-	uint32_t id = 0;
-	uint32_t visit_order = 0;
-	bool visited = false;
-	bool traversing = false;
-
-	MergeType merge = MergeType::None;
-	CFGNode *loop_merge_block = nullptr;
-	CFGNode *selection_merge_block = nullptr;
-	std::vector<const CFGNode *> headers;
-
-	CFGNode *immediate_dominator = nullptr;
-	std::vector<CFGNode *> succ;
-	std::vector<CFGNode *> pred;
-	CFGNode *pred_back_edge = nullptr;
-	CFGNode *succ_back_edge = nullptr;
-
-	void add_branch(CFGNode *to);
-	void add_unique_succ(CFGNode *node);
-	void add_unique_pred(CFGNode *node);
-	void add_unique_header(CFGNode *node);
-	unsigned num_forward_preds() const;
-	bool has_pred_back_edges() const;
-	bool dominates(const CFGNode *other) const;
-	bool post_dominates(const CFGNode *other) const;
-	bool trivial_flow_to_exit() const;
-	void ensure_ids(BlockEmissionInterface &iface);
-	static CFGNode *find_common_dominator(const CFGNode *a, const CFGNode *b);
-
-	void *userdata = nullptr;
-};
-
 CFGStructurizer::CFGStructurizer(CFGNode &entry)
 	: entry_block(entry)
 {
@@ -191,6 +157,23 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 			return false;
 
 	return true;
+}
+
+bool CFGNode::dominates_all_reachable_exits(const CFGNode &header) const
+{
+	if (succ_back_edge)
+		return false;
+
+	for (auto *node : succ)
+		if (!header.dominates(node) || !node->dominates_all_reachable_exits(header))
+			return false;
+
+	return true;
+}
+
+bool CFGNode::dominates_all_reachable_exits() const
+{
+	return dominates_all_reachable_exits(*this);
 }
 
 void CFGStructurizer::visit(CFGNode &entry)
@@ -397,6 +380,48 @@ void CFGStructurizer::find_selection_merges()
 	}
 }
 
+CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode &header, const CFGNode &node) const
+{
+	if (header.dominates(&node) && node.dominates_all_reachable_exits())
+		return LoopExitType::Exit;
+
+	if (header.dominates(&node))
+		return LoopExitType::Merge;
+	else
+		return LoopExitType::Escape;
+}
+
+CFGNode *CFGStructurizer::find_common_post_dominator(std::vector<CFGNode *> candidates)
+{
+	std::vector<CFGNode *> next_nodes;
+	const auto add_unique_next_node = [&](CFGNode *node) {
+		if (std::find(next_nodes.begin(), next_nodes.end(), node) == next_nodes.end())
+			next_nodes.push_back(node);
+	};
+
+	while (candidates.size() != 1)
+	{
+		// Sort candidates by post visit order.
+		std::sort(candidates.begin(), candidates.end(), [](const CFGNode *a, const CFGNode *b) {
+			return a->visit_order > b->visit_order;
+		});
+
+		// We reached exit without merging execution, there is no common post dominator.
+		if (candidates.front()->succ.empty())
+			return nullptr;
+
+		for (auto *succ : candidates.front()->succ)
+			add_unique_next_node(succ);
+		for (auto itr = candidates.begin() + 1; itr != candidates.end(); ++itr)
+			add_unique_next_node(*itr);
+
+		candidates.clear();
+		std::swap(candidates, next_nodes);
+	}
+
+	return candidates.front();
+}
+
 void CFGStructurizer::find_loops()
 {
 	for (auto index = post_visit_order.size(); index; index--)
@@ -433,96 +458,119 @@ void CFGStructurizer::find_loops()
 		LoopMergeTracer merge_tracer(tracer);
 		merge_tracer.trace_from_parent(node);
 
-		// Only care about exit blocks which do not terminate the CFG right away (e.g. kill/return/etc).
-		std::vector<CFGNode *> non_terminating_exits;
-		for (auto *loop_exit : merge_tracer.loop_exits)
-			if (!loop_exit->trivial_flow_to_exit())
-				non_terminating_exits.push_back(loop_exit);
+		std::vector<CFGNode *> direct_exits;
+		std::vector<CFGNode *> dominated_exit;
+		std::vector<CFGNode *> non_dominated_exit;
 
-		// There are several cases here.
-		if (non_terminating_exits.empty())
+		for (auto *loop_exit : merge_tracer.loop_exits)
+		{
+			auto exit_type = get_loop_exit_type(*node, *loop_exit);
+			switch (exit_type)
+			{
+			case LoopExitType::Exit:
+				direct_exits.push_back(loop_exit);
+				break;
+
+			case LoopExitType::Merge:
+				dominated_exit.push_back(loop_exit);
+				break;
+
+			case LoopExitType::Escape:
+				non_dominated_exit.push_back(loop_exit);
+				break;
+			}
+		}
+
+		// If we only have one direct exit, consider it our merge block.
+		// Pick either Merge or Escape.
+		if (direct_exits.size() == 1 && dominated_exit.empty() && non_dominated_exit.empty())
+		{
+			if (node->dominates(direct_exits.front()))
+				std::swap(dominated_exit, direct_exits);
+			else
+				std::swap(non_dominated_exit, direct_exits);
+		}
+
+#if 0
+		std::vector<CFGNode *> merges;
+		merges.insert(merges.end(), dominated_exit.begin(), dominated_exit.end());
+		merges.insert(merges.end(), non_dominated_exit.begin(), non_dominated_exit.end());
+		bool has_merge_block = !dominated_exit.empty();
+		bool has_escape_block = !non_dominated_exit.empty();
+#endif
+
+		if (dominated_exit.empty() && non_dominated_exit.empty())
 		{
 			// There can be zero loop exits. This means we have no merge block.
 			// We will invent a merge block to satisfy SPIR-V validator, and declare it as unreachable.
-
 			node->loop_merge_block = nullptr;
 			fprintf(stderr, "Loop without merge: %p (%s)\n",
-					static_cast<const void *>(node), node->name.c_str());
+			        static_cast<const void *>(node), node->name.c_str());
 		}
-		else if (non_terminating_exits.size() == 1)
+		else if (dominated_exit.size() == 1 && non_dominated_exit.empty())
 		{
+			// Clean merge.
 			// This is a unique merge block. There can be no other merge candidate.
-			node->loop_merge_block = *merge_tracer.loop_exits.begin();
+			node->loop_merge_block = dominated_exit.front();
 
 			const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
-			fprintf(stderr, "Loop with merge: %p (%s) -> %p (%s)\n",
-					static_cast<const void *>(node),
-					node->name.c_str(),
-					static_cast<const void *>(node->loop_merge_block),
-					node->loop_merge_block->name.c_str());
+			fprintf(stderr, "Loop with simple merge: %p (%s) -> %p (%s)\n",
+			        static_cast<const void *>(node),
+			        node->name.c_str(),
+			        static_cast<const void *>(node->loop_merge_block),
+			        node->loop_merge_block->name.c_str());
+		}
+		else if (dominated_exit.empty() && non_dominated_exit.size() == 1)
+		{
+			// Single-escape merge.
+			// It is unique, but we need workarounds later.
+			node->loop_merge_block = non_dominated_exit.front();
+
+			const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
+			fprintf(stderr, "Loop with ladder merge: %p (%s) -> %p (%s)\n",
+			        static_cast<const void *>(node),
+			        node->name.c_str(),
+			        static_cast<const void *>(node->loop_merge_block),
+			        node->loop_merge_block->name.c_str());
 		}
 		else
 		{
-			// Multiple candidates. Hopefully, there exists a block which post-dominates all candidates.
-			// That block becomes the merge target.
-			CFGNode *merge_block = nullptr;
+			// We have multiple blocks which are merge candidates. We need to figure out where execution reconvenes.
+			std::vector<CFGNode *> merges;
+			merges.insert(merges.end(), dominated_exit.begin(), dominated_exit.end());
+			merges.insert(merges.end(), non_dominated_exit.begin(), non_dominated_exit.end());
 
-			// Try to thread through blocks with unique successor to make it
-			// possible to use post-domination check in more cases.
-			// This lets us detect multi-level breaks, which DXIL can do, but SPIR-V cannot.
-			bool did_work;
-			do
+			// If we have multiple exit blocks, figure out where execution can reconvene.
+			CFGNode *merge = CFGStructurizer::find_common_post_dominator(std::move(merges));
+			if (!merge)
 			{
-				did_work = false;
-				for (auto *&candidate : non_terminating_exits)
-				{
-					for (auto *other : non_terminating_exits)
-					{
-						if (candidate == other)
-							continue;
-
-						// Only iterate if our post visit order is > the other one. This lets blocks catch up
-						// with each other.
-						if (candidate->succ.size() == 1 && candidate->visit_order > other->visit_order)
-						{
-							candidate = candidate->succ.front();
-							did_work = true;
-						}
-					}
-				}
-			} while (did_work);
-
-			// Now, we try to figure out is there is a post-dominating block among the candidates.
-			for (auto *candidate : non_terminating_exits)
-			{
-				bool post_dominates_all = true;
-				for (auto *source : non_terminating_exits)
-				{
-					if (!candidate->post_dominates(source))
-					{
-						post_dominates_all = false;
-						break;
-					}
-				}
-
-				if (post_dominates_all)
-				{
-					merge_block = candidate;
-					break;
-				}
-			}
-
-			if (merge_block)
-			{
-				node->loop_merge_block = merge_block;
-				const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
-				fprintf(stderr, "Loop with merge: %s -> %s\n", node->name.c_str(),
-				        node->loop_merge_block->name.c_str());
+				fprintf(stderr, "Failed to find a common merge ...\n");
 			}
 			else
 			{
-				// No candidate was found. We are kinda screwed ...
-				assert(0 && "Could not find unique loop merge candidate.");
+				node->loop_merge_block = merge;
+				const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
+
+				if (node->dominates(merge))
+				{
+					// Clean merge.
+					// This is a unique merge block. There can be no other merge candidate.
+					fprintf(stderr, "Loop with simple multi-exit merge: %p (%s) -> %p (%s)\n",
+					        static_cast<const void *>(node),
+					        node->name.c_str(),
+					        static_cast<const void *>(node->loop_merge_block),
+					        node->loop_merge_block->name.c_str());
+				}
+				else
+				{
+					// Single-escape merge.
+					// It is unique, but we need workarounds later.
+					fprintf(stderr, "Loop with ladder multi-exit merge: %p (%s) -> %p (%s)\n",
+					        static_cast<const void *>(node),
+					        node->name.c_str(),
+					        static_cast<const void *>(node->loop_merge_block),
+					        node->loop_merge_block->name.c_str());
+				}
 			}
 		}
 	}
@@ -647,6 +695,11 @@ CFGNode *CFGNodePool::get_node_from_userdata(void *userdata)
 void CFGNodePool::set_name(void *userdata, const std::string &str)
 {
 	get_node_from_userdata(userdata)->name = str;
+}
+
+const std::string &CFGNodePool::get_name(void *userdata)
+{
+	return get_node_from_userdata(userdata)->name;
 }
 
 void CFGNodePool::add_branch(void *from, void *to)
