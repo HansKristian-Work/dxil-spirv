@@ -13,8 +13,8 @@ struct Emitter : BlockEmissionInterface
 {
 	uint32_t allocate_id() override;
 	uint32_t allocate_ids(uint32_t count) override;
-	void emit_basic_block(uint32_t id, void *userdata, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
-	void emit_helper_block(uint32_t id, uint32_t next_id, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_basic_block(uint32_t id, CFGNode *node, void *userdata, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_helper_block(uint32_t id, CFGNode *node, uint32_t next_id, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
 
 	uint32_t base_id = 1;
 	CFGNodePool *pool = nullptr;
@@ -34,10 +34,9 @@ uint32_t Emitter::allocate_ids(uint32_t count)
 	return ret;
 }
 
-void Emitter::emit_basic_block(uint32_t id, void *userdata, const BlockEmissionInterface::MergeInfo &info)
+void Emitter::emit_basic_block(uint32_t id, CFGNode *node, void *, const BlockEmissionInterface::MergeInfo &info)
 {
-	auto *meta = static_cast<const BlockMeta *>(userdata);
-	fprintf(stderr, "%u (%s):\n", id, pool->get_name(userdata).c_str());
+	fprintf(stderr, "%u (%s):\n", id, node->name.c_str());
 
 	// Emit opcodes here ...
 
@@ -55,13 +54,13 @@ void Emitter::emit_basic_block(uint32_t id, void *userdata, const BlockEmissionI
 		break;
 	}
 
-	for (auto *succ : meta->node->succ)
+	for (auto *succ : node->succ)
 		fprintf(stderr, " -> %s\n", succ->name.c_str());
-	if (meta->node->succ_back_edge)
-		fprintf(stderr, " %s <- back edge\n", meta->node->succ_back_edge->name.c_str());
+	if (node->succ_back_edge)
+		fprintf(stderr, " %s <- back edge\n", node->succ_back_edge->name.c_str());
 }
 
-void Emitter::emit_helper_block(uint32_t id, uint32_t next_id, const BlockEmissionInterface::MergeInfo &info)
+void Emitter::emit_helper_block(uint32_t id, CFGNode *, uint32_t next_id, const BlockEmissionInterface::MergeInfo &info)
 {
 #if 0
 	fprintf(stderr, "%u:\n", id);
@@ -143,13 +142,22 @@ int main()
 #else
 	add_selection("b0", "l0", "b0.exit");
 	{
-		add_selection("l0", "c0", "b0.exit");
+		add_selection("l0", "b1", "b0.exit");
+		{
+			add_selection("b1", "a", "b");
+			{
+				add_branch("a", "c0");
+			}
+			{
+				add_branch("b", "c0");
+			}
+		}
 		add_selection("c0", "l0", "l0.exit");
 		add_branch("l0.exit", "b0.exit");
 	}
 #endif
 
-	CFGStructurizer traverser(*get("b0"));
+	CFGStructurizer traverser(*get("b0"), pool);
 	Emitter emitter;
 	emitter.pool = &pool;
 	traverser.traverse(emitter);
