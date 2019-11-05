@@ -116,7 +116,7 @@ private:
 	std::vector<CFGNode *> post_visit_order;
 	void visit(CFGNode &entry);
 	void build_immediate_dominators(CFGNode &entry);
-	void structurize();
+	void structurize(unsigned pass);
 	void find_loops();
 	void find_selection_merges();
 	void split_merge_blocks();

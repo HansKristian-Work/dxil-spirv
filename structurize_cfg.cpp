@@ -25,7 +25,7 @@ CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
 	build_immediate_dominators(entry);
 
 	fprintf(stderr, "=== Structurize pass ===\n");
-	structurize();
+	structurize(0);
 
 	reset_traversal();
 
@@ -34,7 +34,7 @@ CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
 	build_immediate_dominators(entry);
 
 	fprintf(stderr, "=== Structurize pass ===\n");
-	structurize();
+	structurize(1);
 
 	validate_structured();
 }
@@ -119,6 +119,7 @@ bool CFGNode::dominates(const CFGNode *other) const
 		if (other->pred.empty())
 			break;
 
+		assert(other->immediate_dominator);
 		other = other->immediate_dominator;
 	}
 
@@ -475,10 +476,10 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 	succ_node->visit_order = node->visit_order;
 
 	std::swap(succ_node->succ, node->succ);
-	std::swap(succ_node->pred, node->pred);
 
 	// Do not swap back edges, only forward edges.
 	succ_node->retarget_succ_from(node);
+	succ_node->immediate_dominator = node;
 
 	node->add_branch(succ_node);
 	return succ_node;
@@ -699,11 +700,12 @@ void CFGStructurizer::split_merge_blocks()
 	}
 }
 
-void CFGStructurizer::structurize()
+void CFGStructurizer::structurize(unsigned pass)
 {
 	find_loops();
 	find_selection_merges();
-	split_merge_blocks();
+	if (pass == 0)
+		split_merge_blocks();
 }
 
 void CFGStructurizer::validate_structured()
@@ -713,6 +715,7 @@ void CFGStructurizer::validate_structured()
 		if (node->headers.size() > 1)
 		{
 			fprintf(stderr, "Node %s has %u headers!\n", node->name.c_str(), unsigned(node->headers.size()));
+			return;
 		}
 
 		if (node->merge == MergeType::Loop)
@@ -722,6 +725,7 @@ void CFGStructurizer::validate_structured()
 				fprintf(stderr, "Node %s does not dominate its merge block %s!\n",
 				        node->name.c_str(),
 				        node->loop_merge_block->name.c_str());
+				return;
 			}
 		}
 		else if (node->merge == MergeType::Selection)
@@ -731,6 +735,7 @@ void CFGStructurizer::validate_structured()
 				fprintf(stderr, "Node %s does not dominate its selection merge block %s!\n",
 				        node->name.c_str(),
 				        node->selection_merge_block->name.c_str());
+				return;
 			}
 		}
 	}

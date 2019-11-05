@@ -123,7 +123,7 @@ int main()
 		add_branch(from, to1);
 	};
 
-#if 0
+#if 1
 	add_selection("b0", "l0", "b0.exit");
 	{
 		add_selection("l0", "l1", "c0");
