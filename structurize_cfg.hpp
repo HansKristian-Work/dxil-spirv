@@ -27,6 +27,7 @@ struct CFGNode
 
 	MergeType merge = MergeType::None;
 	CFGNode *loop_merge_block = nullptr;
+	CFGNode *loop_ladder_block = nullptr;
 	CFGNode *selection_merge_block = nullptr;
 	std::vector<CFGNode *> headers;
 
@@ -43,6 +44,7 @@ struct CFGNode
 	unsigned num_forward_preds() const;
 	bool has_pred_back_edges() const;
 	bool dominates(const CFGNode *other) const;
+	bool branchless_path_to(const CFGNode *to) const;
 	bool post_dominates(const CFGNode *other) const;
 	bool dominates_all_reachable_exits() const;
 	void ensure_ids(BlockEmissionInterface &iface);
@@ -51,6 +53,7 @@ struct CFGNode
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to);
 	void retarget_succ_from(CFGNode *node);
+	void retarget_pred_from(CFGNode *node);
 
 	void *userdata = nullptr;
 
