@@ -122,8 +122,10 @@ private:
 	void structurize(unsigned pass);
 	void find_loops();
 	void find_selection_merges();
+	void fixup_broken_selection_merges();
 	void split_merge_blocks();
 	static CFGNode *find_common_post_dominator(std::vector<CFGNode *> candidates);
+	static CFGNode *find_common_dominated_merge_block(CFGNode *header);
 
 	enum class LoopExitType
 	{

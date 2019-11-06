@@ -123,7 +123,7 @@ int main()
 		add_branch(from, to1);
 	};
 
-#if 1
+#if 0
 	add_selection("b0", "l0", "b0.exit");
 	{
 		add_selection("l0", "l1", "c0");
@@ -135,6 +135,29 @@ int main()
 		}
 		add_selection("c0", "l0", "l0.exit");
 		add_branch("l0.exit", "b0.exit");
+	}
+#elif 1
+	add_selection("b0", "b0.true", "b0.false");
+	{
+		add_selection("b0.true", "b1.true", "b1.false");
+		{
+			// Break out of selection construct.
+			add_branch("b1.true", "b0.merge");
+		}
+		{
+			add_branch("b1.false", "b1.merge");
+		}
+		add_branch("b1.merge", "b0.merge");
+	}
+	{
+		add_selection("b0.false", "b2.true", "b2.false");
+		{
+			add_branch("b2.true", "b2.merge");
+		}
+		{
+			add_branch("b2.false", "b2.merge");
+		}
+		add_branch("b2.merge", "b0.merge");
 	}
 #elif 0
 	add_selection("b0", "body", "b0.exit");

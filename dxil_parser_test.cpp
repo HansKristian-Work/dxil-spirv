@@ -36,8 +36,8 @@ struct Emitter : DXIL2SPIRV::BlockEmissionInterface
 {
 	uint32_t allocate_id() override;
 	uint32_t allocate_ids(uint32_t count) override;
-	void emit_basic_block(uint32_t id, void *userdata, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
-	void emit_helper_block(uint32_t id, uint32_t next_id, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdata, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_helper_block(uint32_t id, DXIL2SPIRV::CFGNode *, uint32_t next_id, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
 
 	uint32_t base_id = 1;
 	const DXIL2SPIRV::CFGNodePool *pool = nullptr;
@@ -57,7 +57,7 @@ uint32_t Emitter::allocate_ids(uint32_t count)
 	return ret;
 }
 
-void Emitter::emit_basic_block(uint32_t id, void *userdata, const BlockEmissionInterface::MergeInfo &info)
+void Emitter::emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdata, const BlockEmissionInterface::MergeInfo &info)
 {
 	auto *block = static_cast<llvm::BasicBlock *>(userdata);
 	fprintf(stderr, "%u:\n", id);
@@ -78,17 +78,22 @@ void Emitter::emit_basic_block(uint32_t id, void *userdata, const BlockEmissionI
 		break;
 	}
 
-	for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
+	if (block)
 	{
-		auto *succ = *itr;
-		fprintf(stderr, "  -> %u\n", pool->get_block_id(succ));
-	}
+		for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
+		{
+			auto *succ = *itr;
+			fprintf(stderr, "  -> %u\n", pool->get_block_id(succ));
+		}
 
-	if (llvm::succ_begin(block) == llvm::succ_end(block))
-		fprintf(stderr, "  -> Exit\n");
+		if (llvm::succ_begin(block) == llvm::succ_end(block))
+			fprintf(stderr, "  -> Exit\n");
+	}
+	else
+		fprintf(stderr, " ... Synthetic block\n");
 }
 
-void Emitter::emit_helper_block(uint32_t id, uint32_t next_id, const BlockEmissionInterface::MergeInfo &info)
+void Emitter::emit_helper_block(uint32_t id, DXIL2SPIRV::CFGNode *, uint32_t next_id, const BlockEmissionInterface::MergeInfo &info)
 {
 	fprintf(stderr, "%u:\n", id);
 	if (next_id)
@@ -183,7 +188,7 @@ int main(int argc, char **argv)
 			processing.clear();
 		}
 
-		DXIL2SPIRV::CFGStructurizer structurizer(*pool.get_node_from_userdata(entry));
+		DXIL2SPIRV::CFGStructurizer structurizer(*pool.get_node_from_userdata(entry), pool);
 		Emitter iface;
 		iface.pool = &pool;
 		structurizer.traverse(iface);
