@@ -113,7 +113,7 @@ public:
 	void traverse(BlockEmissionInterface &iface);
 
 private:
-	CFGNode &entry_block;
+	CFGNode *entry_block;
 	CFGNodePool &pool;
 
 	std::vector<CFGNode *> post_visit_order;

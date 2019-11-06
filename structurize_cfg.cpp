@@ -19,9 +19,9 @@ private:
 };
 
 CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
-	: entry_block(entry), pool(pool_)
+	: entry_block(&entry), pool(pool_)
 {
-	visit(entry);
+	visit(*entry_block);
 	build_immediate_dominators(entry);
 
 	fprintf(stderr, "=== Structurize pass ===\n");
@@ -30,8 +30,8 @@ CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
 	reset_traversal();
 
 	// We have created new blocks, so recompute these.
-	visit(entry);
-	build_immediate_dominators(entry);
+	visit(*entry_block);
+	build_immediate_dominators(*entry_block);
 
 	fprintf(stderr, "=== Structurize pass ===\n");
 	structurize(1);
@@ -591,6 +591,10 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 	pred_node->retarget_pred_from(node);
 
 	pred_node->add_branch(node);
+
+	if (node == entry_block)
+		entry_block = pred_node;
+
 	return pred_node;
 }
 
@@ -862,6 +866,8 @@ void CFGStructurizer::split_merge_blocks()
 				fprintf(stderr, "Scopes are not nested.\n");
 		}
 
+		CFGNode *full_break_target = nullptr;
+
 		// Start from innermost scope, and rewrite all escape branches to a merge block which is dominated by the loop header in question.
 		// The merge block for the loop must have a ladder block before the old merge block.
 		// This ladder block will break to outer scope, or keep executing the old merge block.
@@ -929,10 +935,51 @@ void CFGStructurizer::split_merge_blocks()
 					// This ladder will then break out to inner loop scope.
 					auto *ladder = pool.create_internal_node();
 					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
-					ladder->add_branch(target_header);
+
+					// Ladder breaks out to outer scope.
+					if (target_header->loop_ladder_block)
+						ladder->add_branch(target_header->loop_ladder_block);
+					else if (target_header->loop_merge_block)
+						ladder->add_branch(target_header->loop_merge_block);
+					else
+						fprintf(stderr, "No loop merge block?\n");
+				}
+				else if (full_break_target)
+				{
+					auto *ladder = pool.create_internal_node();
+					ladder->name = node->headers[i]->name + ".ladder";
+					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
+					ladder->add_branch(full_break_target);
 				}
 				else
-					fprintf(stderr, "Need to break out of selection construct, but there is no loop header to break out of.\n");
+				{
+					auto *new_selection_merge = create_helper_pred_block(node); // Selection merge to this dummy instead.
+
+					// Inherit the headers.
+					new_selection_merge->headers = node->headers;
+
+					// This is our fallback loop break target.
+					full_break_target = node;
+
+					auto *loop = create_helper_pred_block(node->headers[0]);
+
+					// Reassign header node.
+					assert(node->headers[0]->merge == MergeType::Selection);
+					node->headers[0]->selection_merge_block = new_selection_merge;
+
+					loop->merge = MergeType::Loop;
+					loop->loop_merge_block = node;
+					node->headers[0] = loop;
+
+					// This is our new "multi-merge" node.
+					// Full break target is the place we branch when there is no loop candidate.
+					node = new_selection_merge;
+
+					auto *ladder = pool.create_internal_node();
+					ladder->name = node->headers[i]->name + ".ladder";
+					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
+					ladder->add_branch(full_break_target);
+				}
 			}
 			else
 				fprintf(stderr, "Invalid merge type.\n");
