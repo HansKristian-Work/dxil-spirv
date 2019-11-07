@@ -18,15 +18,67 @@
 
 #include "dxil_converter.hpp"
 #include <utility>
+#include "SpvBuilder.h"
 
 using namespace llvm;
 
 namespace DXIL2SPIRV
 {
-Converter::Converter(const DXILContainerParser &container_parser_, LLVMBCParser bitcode_parser_)
-    : container_parser(container_parser_)
-    , bitcode_parser(std::move(bitcode_parser_))
+struct Converter::Impl
 {
+	Impl(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_)
+		: container_parser(std::move(container_parser_)),
+		  bitcode_parser(std::move(bitcode_parser_)),
+		  builder(0, &build_logger)
+	{
+		setup_module();
+	}
+
+	DXILContainerParser container_parser;
+	LLVMBCParser bitcode_parser;
+	spv::SpvBuildLogger build_logger;
+	spv::Builder builder;
+
+	void setup_module();
+	bool finalize_spirv(std::vector<uint32_t> &spirv);
+};
+
+Converter::Converter(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_)
+{
+	impl.reset(new Impl(std::move(container_parser_), std::move(bitcode_parser_)));
+}
+
+Converter::~Converter()
+{
+}
+
+bool Converter::Impl::finalize_spirv(std::vector<uint32_t> &spirv)
+{
+	builder.dump(spirv);
+	if (spirv.size() >= 2)
+	{
+		static const unsigned int Version_1_3 = 0x00010300;
+		spirv[1] = Version_1_3;
+	}
+	return true;
+}
+
+void Converter::Impl::setup_module()
+{
+	builder.addCapability(spv::Capability::CapabilityShader);
+	builder.setMemoryModel(spv::AddressingModel::AddressingModelLogical,
+	                       spv::MemoryModel::MemoryModelGLSL450);
+
+	auto *function = builder.makeEntryPoint("main");
+	builder.addEntryPoint(spv::ExecutionModel::ExecutionModelFragment, function, "main");
+	builder.addExecutionMode(function, spv::ExecutionMode::ExecutionModeOriginUpperLeft);
+	builder.makeReturn(false);
+	builder.leaveFunction();
+}
+
+bool Converter::finalize_spirv(std::vector<uint32_t> &spirv)
+{
+	return impl->finalize_spirv(spirv);
 }
 
 } // namespace DXIL2SPIRV

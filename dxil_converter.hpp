@@ -20,16 +20,19 @@
 
 #include "dxil_parser.hpp"
 #include "llvm_bitcode_parser.hpp"
+#include <memory>
 
 namespace DXIL2SPIRV
 {
 class Converter
 {
 public:
-	Converter(const DXILContainerParser &container_parser, LLVMBCParser bitcode_parser);
+	Converter(DXILContainerParser container_parser, LLVMBCParser bitcode_parser);
+	~Converter();
+	bool finalize_spirv(std::vector<uint32_t> &spirv);
 
 private:
-	DXILContainerParser container_parser;
-	LLVMBCParser bitcode_parser;
+	struct Impl;
+	std::unique_ptr<Impl> impl;
 };
 } // namespace DXIL2SPIRV

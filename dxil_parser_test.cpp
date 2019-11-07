@@ -29,6 +29,7 @@
 #include <llvm/IR/Instructions.h>
 
 #include "structurize_cfg.hpp"
+#include "dxil_converter.hpp"
 
 static std::vector<uint8_t> read_file(const char *path)
 {
@@ -214,6 +215,19 @@ int main(int argc, char **argv)
 		Emitter iface;
 		iface.pool = &pool;
 		structurizer.traverse(iface);
+
+		DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser));
+		std::vector<uint32_t> spirv;
+		converter.finalize_spirv(spirv);
+
+		{
+			FILE *file = fopen("/tmp/test.spv", "wb");
+			if (file)
+			{
+				fwrite(spirv.data(), sizeof(uint32_t), spirv.size(), file);
+				fclose(file);
+			}
+		}
 
 #if 0
 		llvm::BasicBlock &block = func->getEntryBlock();
