@@ -464,6 +464,20 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			// B is obvious candidate.
 			merge_to_succ(node, 1);
 		}
+		else if (dominates_a && dominates_b && !merge_a_has_header && merge_b_has_header)
+		{
+			// Not as obvious of a candidate, but this can happen if one path hits continue block,
+			// and other path hits a ladder merge block.
+			// For do/while style loop, the loop body may dominate the merge block.
+			merge_to_succ(node, 0);
+		}
+		else if (dominates_a && dominates_b && !merge_b_has_header && merge_a_has_header)
+		{
+			// Not as obvious of a candidate, but this can happen if one path hits continue block,
+			// and other path hits a ladder merge block.
+			// For do/while style loop, the loop body may dominate the merge block.
+			merge_to_succ(node, 1);
+		}
 		else if (dominates_a && dominates_b && !merge_a_has_header && !merge_b_has_header)
 		{
 			// We could merge to both, no obvious merge point.

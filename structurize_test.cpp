@@ -141,7 +141,7 @@ int main()
 		add_branch(from, to1);
 	};
 
-#if 0
+#if 1
 	add_selection("b0", "l0", "b0.exit");
 	{
 		add_selection("l0", "l1", "c0");
@@ -200,7 +200,7 @@ int main()
 	}
 #endif
 
-	CFGStructurizer traverser(*get("a0"), pool);
+	CFGStructurizer traverser(*get("b0"), pool);
 	Emitter emitter;
 	emitter.pool = &pool;
 	traverser.traverse(emitter);
