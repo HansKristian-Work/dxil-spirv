@@ -155,12 +155,13 @@ int main()
 		add_branch("l0.exit", "b0.exit");
 	}
 #elif 1
+	add_selection("a0", "b0", "exit");
 	add_selection("b0", "b0.true", "b0.false");
 	{
 		add_selection("b0.true", "b1.true", "b1.false");
 		{
 			// Break out of selection construct.
-			add_branch("b1.true", "b0.merge");
+			add_branch("b1.true", "exit");
 		}
 		{
 			add_branch("b1.false", "b1.merge");
@@ -177,6 +178,7 @@ int main()
 		}
 		add_branch("b2.merge", "b0.merge");
 	}
+	add_branch("b0.merge", "exit");
 #elif 0
 	add_selection("b0", "body", "b0.exit");
 	add_branch("body", "b0.exit");
@@ -198,7 +200,7 @@ int main()
 	}
 #endif
 
-	CFGStructurizer traverser(*get("b0"), pool);
+	CFGStructurizer traverser(*get("a0"), pool);
 	Emitter emitter;
 	emitter.pool = &pool;
 	traverser.traverse(emitter);

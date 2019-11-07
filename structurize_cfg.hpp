@@ -42,6 +42,7 @@ struct CFGNode
 	uint32_t visit_order = 0;
 	bool visited = false;
 	bool traversing = false;
+	bool freeze_structured_analysis = false;
 
 	MergeType merge = MergeType::None;
 	CFGNode *loop_merge_block = nullptr;
@@ -140,10 +141,11 @@ private:
 	void structurize(unsigned pass);
 	void find_loops();
 	void find_selection_merges();
-	void fixup_broken_selection_merges();
+	void fixup_broken_selection_merges(unsigned pass);
 	void split_merge_blocks();
 	static CFGNode *find_common_post_dominator(std::vector<CFGNode *> candidates);
 	static CFGNode *find_common_dominated_merge_block(CFGNode *header);
+	static bool control_flow_is_breaking(const CFGNode *header, const CFGNode *node, const CFGNode *merge);
 
 	enum class LoopExitType
 	{
