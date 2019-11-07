@@ -13,6 +13,18 @@ elseif (MSVC)
     set(DXIL2SPIRV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
 
+add_subdirectory(third_party/spirv-headers EXCLUDE_FROM_ALL)
+add_library(spirv-builder STATIC
+        third_party/spvIR.h
+        third_party/Logger.cpp
+        third_party/Logger.h
+        third_party/SpvBuilder.h
+        third_party/SpvBuilder.cpp)
+
+target_include_directories(spirv-builder PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers/include/spirv/unified1
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+
 add_library(dxil-parser STATIC
         memory_stream.hpp memory_stream.cpp
         llvm_bitcode_parser.hpp llvm_bitcode_parser.cpp
@@ -24,6 +36,7 @@ target_include_directories(dxil-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-parser PRIVATE ${llvm_libs})
+target_link_libraries(dxil-parser PRIVATE spirv-builder)
 
 add_executable(dxil-parser-test dxil_parser_test.cpp)
 target_link_libraries(dxil-parser-test PRIVATE dxil-parser)
