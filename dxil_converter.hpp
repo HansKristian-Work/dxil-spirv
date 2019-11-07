@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include "llvm_bitcode_parser.hpp"
 #include "dxil_parser.hpp"
+#include "llvm_bitcode_parser.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -32,4 +32,4 @@ private:
 	DXILContainerParser container_parser;
 	LLVMBCParser bitcode_parser;
 };
-}
+} // namespace DXIL2SPIRV

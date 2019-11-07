@@ -18,8 +18,8 @@
 
 #include "structurize_cfg.hpp"
 #include <algorithm>
-#include <unordered_set>
 #include <assert.h>
+#include <unordered_set>
 
 namespace DXIL2SPIRV
 {
@@ -37,7 +37,8 @@ private:
 };
 
 CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
-	: entry_block(&entry), pool(pool_)
+    : entry_block(&entry)
+    , pool(pool_)
 {
 	visit(*entry_block);
 	build_immediate_dominators(entry);
@@ -359,7 +360,7 @@ struct LoopBacktracer
 struct LoopMergeTracer
 {
 	explicit LoopMergeTracer(const LoopBacktracer &backtracer_)
-		: backtracer(backtracer_)
+	    : backtracer(backtracer_)
 	{
 	}
 
@@ -502,11 +503,8 @@ void CFGStructurizer::find_selection_merges()
 			idom->merge = MergeType::Selection;
 			idom->selection_merge_block = node;
 			node->add_unique_header(idom);
-			fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n",
-			        static_cast<const void *>(idom),
-					idom->name.c_str(),
-					static_cast<const void *>(node),
-					node->name.c_str());
+			fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(idom),
+			        idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
 		}
 		else if (idom->merge == MergeType::Loop)
 		{
@@ -524,11 +522,8 @@ void CFGStructurizer::find_selection_merges()
 				selection_idom->merge = MergeType::Selection;
 				idom->selection_merge_block = node;
 				node->add_unique_header(idom);
-				fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n",
-				        static_cast<const void *>(selection_idom),
-				        selection_idom->name.c_str(),
-				        static_cast<const void *>(node),
-				        node->name.c_str());
+				fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(selection_idom),
+				        selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
 			}
 		}
 		else if (idom->merge == MergeType::Selection)
@@ -575,8 +570,7 @@ void CFGStructurizer::find_selection_merges()
 		{
 			// We are hosed. There is no obvious way to merge execution here.
 			// This might be okay.
-			fprintf(stderr, "Cannot merge execution for node %p (%s).\n",
-			        static_cast<const void *>(node),
+			fprintf(stderr, "Cannot merge execution for node %p (%s).\n", static_cast<const void *>(node),
 			        node->name.c_str());
 		}
 	}
@@ -685,9 +679,8 @@ CFGNode *CFGStructurizer::find_common_post_dominator(std::vector<CFGNode *> cand
 	while (candidates.size() != 1)
 	{
 		// Sort candidates by post visit order.
-		std::sort(candidates.begin(), candidates.end(), [](const CFGNode *a, const CFGNode *b) {
-			return a->visit_order > b->visit_order;
-		});
+		std::sort(candidates.begin(), candidates.end(),
+		          [](const CFGNode *a, const CFGNode *b) { return a->visit_order > b->visit_order; });
 
 		// We reached exit without merging execution, there is no common post dominator.
 		if (candidates.front()->succ.empty())
@@ -779,8 +772,7 @@ void CFGStructurizer::find_loops()
 			// There can be zero loop exits. This means we have no merge block.
 			// We will invent a merge block to satisfy SPIR-V validator, and declare it as unreachable.
 			node->loop_merge_block = nullptr;
-			fprintf(stderr, "Loop without merge: %p (%s)\n",
-			        static_cast<const void *>(node), node->name.c_str());
+			fprintf(stderr, "Loop without merge: %p (%s)\n", static_cast<const void *>(node), node->name.c_str());
 		}
 		else if (dominated_exit.size() == 1 && non_dominated_exit.empty())
 		{
@@ -789,10 +781,8 @@ void CFGStructurizer::find_loops()
 			node->loop_merge_block = dominated_exit.front();
 
 			const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
-			fprintf(stderr, "Loop with simple merge: %p (%s) -> %p (%s)\n",
-			        static_cast<const void *>(node),
-			        node->name.c_str(),
-			        static_cast<const void *>(node->loop_merge_block),
+			fprintf(stderr, "Loop with simple merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node),
+			        node->name.c_str(), static_cast<const void *>(node->loop_merge_block),
 			        node->loop_merge_block->name.c_str());
 		}
 		else if (dominated_exit.empty() && non_dominated_exit.size() == 1)
@@ -802,10 +792,8 @@ void CFGStructurizer::find_loops()
 			node->loop_merge_block = non_dominated_exit.front();
 
 			const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
-			fprintf(stderr, "Loop with ladder merge: %p (%s) -> %p (%s)\n",
-			        static_cast<const void *>(node),
-			        node->name.c_str(),
-			        static_cast<const void *>(node->loop_merge_block),
+			fprintf(stderr, "Loop with ladder merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node),
+			        node->name.c_str(), static_cast<const void *>(node->loop_merge_block),
 			        node->loop_merge_block->name.c_str());
 		}
 		else
@@ -837,20 +825,16 @@ void CFGStructurizer::find_loops()
 					// Clean merge.
 					// This is a unique merge block. There can be no other merge candidate.
 					fprintf(stderr, "Loop with simple multi-exit merge: %p (%s) -> %p (%s)\n",
-					        static_cast<const void *>(node),
-					        node->name.c_str(),
-					        static_cast<const void *>(node->loop_merge_block),
-					        node->loop_merge_block->name.c_str());
+					        static_cast<const void *>(node), node->name.c_str(),
+					        static_cast<const void *>(node->loop_merge_block), node->loop_merge_block->name.c_str());
 				}
 				else
 				{
 					// Single-escape merge.
 					// It is unique, but we need workarounds later.
 					fprintf(stderr, "Loop with ladder multi-exit merge: %p (%s) -> %p (%s)\n",
-					        static_cast<const void *>(node),
-					        node->name.c_str(),
-					        static_cast<const void *>(node->loop_merge_block),
-					        node->loop_merge_block->name.c_str());
+					        static_cast<const void *>(node), node->name.c_str(),
+					        static_cast<const void *>(node->loop_merge_block), node->loop_merge_block->name.c_str());
 
 					// We will use this block as a ladder.
 					node->loop_ladder_block = dominated_merge;
@@ -872,9 +856,7 @@ void CFGStructurizer::split_merge_blocks()
 		// However, we can set up a chain of merges where inner scope breaks to outer scope with a dummy basic block.
 		// The outer scope comes before the inner scope merge.
 		std::sort(node->headers.begin(), node->headers.end(),
-		          [](const CFGNode *a, const CFGNode *b) {
-			          return a->visit_order > b->visit_order;
-		          });
+		          [](const CFGNode *a, const CFGNode *b) { return a->visit_order > b->visit_order; });
 
 		// Verify that scopes are actually nested.
 		// This means header[N] must dominate header[M] where N > M.
@@ -971,7 +953,8 @@ void CFGStructurizer::split_merge_blocks()
 				}
 				else
 				{
-					auto *new_selection_merge = create_helper_pred_block(node); // Selection merge to this dummy instead.
+					auto *new_selection_merge =
+					    create_helper_pred_block(node); // Selection merge to this dummy instead.
 
 					// Inherit the headers.
 					new_selection_merge->headers = node->headers;
@@ -1028,8 +1011,7 @@ void CFGStructurizer::validate_structured()
 		{
 			if (!node->dominates(node->loop_merge_block))
 			{
-				fprintf(stderr, "Node %s does not dominate its merge block %s!\n",
-				        node->name.c_str(),
+				fprintf(stderr, "Node %s does not dominate its merge block %s!\n", node->name.c_str(),
 				        node->loop_merge_block->name.c_str());
 				return;
 			}
@@ -1038,8 +1020,7 @@ void CFGStructurizer::validate_structured()
 		{
 			if (!node->dominates(node->selection_merge_block))
 			{
-				fprintf(stderr, "Node %s does not dominate its selection merge block %s!\n",
-				        node->name.c_str(),
+				fprintf(stderr, "Node %s does not dominate its selection merge block %s!\n", node->name.c_str(),
 				        node->selection_merge_block->name.c_str());
 				return;
 			}
@@ -1048,8 +1029,8 @@ void CFGStructurizer::validate_structured()
 		if (node->succ.size() >= 2 && node->merge == MergeType::None)
 		{
 			// This might not be critical.
-			fprintf(stderr, "Node %s has %u successors, but no merge header.\n",
-					node->name.c_str(), unsigned(node->succ.size()));
+			fprintf(stderr, "Node %s has %u successors, but no merge header.\n", node->name.c_str(),
+			        unsigned(node->succ.size()));
 		}
 	}
 	fprintf(stderr, "Successful CFG validation!\n");
@@ -1164,8 +1145,10 @@ uint32_t CFGNodePool::get_block_id(void *userdata) const
 }
 
 CFGNodePool::CFGNodePool()
-{}
+{
+}
 
 CFGNodePool::~CFGNodePool()
-{}
+{
 }
+} // namespace DXIL2SPIRV

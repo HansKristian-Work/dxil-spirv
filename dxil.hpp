@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string>
 
 namespace DXIL
@@ -87,4 +87,4 @@ enum class FourCC : uint32_t
 	RuntimeData = fourcc('R', 'D', 'A', 'T'),
 	ShaderHash = fourcc('H', 'A', 'S', 'H')
 };
-}
+} // namespace DXIL

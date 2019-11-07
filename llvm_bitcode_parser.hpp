@@ -35,4 +35,4 @@ private:
 	std::unique_ptr<llvm::LLVMContext> context;
 	std::unique_ptr<llvm::Module> module;
 };
-}
+} // namespace DXIL2SPIRV

@@ -31,8 +31,10 @@ struct Emitter : BlockEmissionInterface
 {
 	uint32_t allocate_id() override;
 	uint32_t allocate_ids(uint32_t count) override;
-	void emit_basic_block(uint32_t id, CFGNode *node, void *userdata, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
-	void emit_helper_block(uint32_t id, CFGNode *node, uint32_t next_id, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_basic_block(uint32_t id, CFGNode *node, void *userdata,
+	                      const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_helper_block(uint32_t id, CFGNode *node, uint32_t next_id,
+	                       const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
 
 	uint32_t base_id = 1;
 	CFGNodePool *pool = nullptr;
@@ -126,9 +128,7 @@ int main()
 			return itr->second.node;
 	};
 
-	const auto get_user = [&](const std::string &name) -> void * {
-		return &block_metas[name];
-	};
+	const auto get_user = [&](const std::string &name) -> void * { return &block_metas[name]; };
 
 	const auto add_branch = [&](const char *from, const char *to) {
 		get(from);

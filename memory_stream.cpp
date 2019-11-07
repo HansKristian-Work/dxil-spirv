@@ -22,7 +22,8 @@
 namespace DXIL2SPIRV
 {
 MemoryStream::MemoryStream(const void *blob_, size_t size)
-	: blob(static_cast<const uint8_t *>(blob_)), blob_size(size)
+    : blob(static_cast<const uint8_t *>(blob_))
+    , blob_size(size)
 {
 }
 
@@ -97,4 +98,4 @@ size_t MemoryStream::get_size() const
 	return blob_size;
 }
 
-}
+} // namespace DXIL2SPIRV

@@ -18,15 +18,15 @@
 
 #include "dxil_parser.hpp"
 #include "llvm_bitcode_parser.hpp"
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
-#include <vector>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unordered_map>
+#include <vector>
 
-#include <llvm/IR/Instructions.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
+#include <llvm/IR/Instructions.h>
 
 #include "structurize_cfg.hpp"
 
@@ -54,8 +54,10 @@ struct Emitter : DXIL2SPIRV::BlockEmissionInterface
 {
 	uint32_t allocate_id() override;
 	uint32_t allocate_ids(uint32_t count) override;
-	void emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdata, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
-	void emit_helper_block(uint32_t id, DXIL2SPIRV::CFGNode *, uint32_t next_id, const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdata,
+	                      const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_helper_block(uint32_t id, DXIL2SPIRV::CFGNode *, uint32_t next_id,
+	                       const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
 
 	uint32_t base_id = 1;
 	const DXIL2SPIRV::CFGNodePool *pool = nullptr;
@@ -75,7 +77,8 @@ uint32_t Emitter::allocate_ids(uint32_t count)
 	return ret;
 }
 
-void Emitter::emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdata, const BlockEmissionInterface::MergeInfo &info)
+void Emitter::emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdata,
+                               const BlockEmissionInterface::MergeInfo &info)
 {
 	auto *block = static_cast<llvm::BasicBlock *>(userdata);
 	fprintf(stderr, "%u:\n", id);
@@ -111,7 +114,8 @@ void Emitter::emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdat
 		fprintf(stderr, " ... Synthetic block\n");
 }
 
-void Emitter::emit_helper_block(uint32_t id, DXIL2SPIRV::CFGNode *, uint32_t next_id, const BlockEmissionInterface::MergeInfo &info)
+void Emitter::emit_helper_block(uint32_t id, DXIL2SPIRV::CFGNode *, uint32_t next_id,
+                                const BlockEmissionInterface::MergeInfo &info)
 {
 	fprintf(stderr, "%u:\n", id);
 	if (next_id)
@@ -168,13 +172,13 @@ int main(int argc, char **argv)
 	for (unsigned i = 0; i < meta->getNumOperands(); i++)
 	{
 		llvm::MDNode *op = meta->getOperand(i);
-		fprintf(stderr,"Str: %s\n", llvm::cast<llvm::MDString>(op->getOperand(0))->getString().data());
+		fprintf(stderr, "Str: %s\n", llvm::cast<llvm::MDString>(op->getOperand(0))->getString().data());
 	}
 
 	{
 		auto *meta = module->getNamedMetadata("dx.entryPoints");
 		auto *node = meta->getOperand(0);
-		fprintf(stderr,"Entry point: %s\n", llvm::cast<llvm::MDString>(node->getOperand(1))->getString().data());
+		fprintf(stderr, "Entry point: %s\n", llvm::cast<llvm::MDString>(node->getOperand(1))->getString().data());
 
 		llvm::Function *func = module->getFunction(llvm::cast<llvm::MDString>(node->getOperand(1))->getString());
 		assert(func);

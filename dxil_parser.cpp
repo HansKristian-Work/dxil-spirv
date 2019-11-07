@@ -19,8 +19,8 @@
 #include "dxil_parser.hpp"
 #include "dxil.hpp"
 #include "memory_stream.hpp"
-#include <vector>
 #include <stdio.h>
+#include <vector>
 
 namespace DXIL2SPIRV
 {
@@ -194,4 +194,4 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 
 	return true;
 }
-}
+} // namespace DXIL2SPIRV

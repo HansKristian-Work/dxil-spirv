@@ -18,11 +18,11 @@
 
 #pragma once
 
-#include <vector>
+#include <memory>
 #include <stdint.h>
 #include <string>
 #include <unordered_map>
-#include <memory>
+#include <vector>
 
 namespace DXIL2SPIRV
 {
@@ -157,4 +157,4 @@ private:
 	void reset_traversal();
 	void validate_structured();
 };
-}
+} // namespace DXIL2SPIRV

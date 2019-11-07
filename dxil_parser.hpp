@@ -18,10 +18,10 @@
 
 #pragma once
 
+#include "dxil.hpp"
 #include <stddef.h>
 #include <stdint.h>
 #include <vector>
-#include "dxil.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -43,4 +43,4 @@ private:
 	bool parse_dxil(MemoryStream &stream);
 	bool parse_iosg1(MemoryStream &stream, std::vector<DXIL::IOElement> &elements);
 };
-}
+} // namespace DXIL2SPIRV

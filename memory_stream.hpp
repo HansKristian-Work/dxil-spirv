@@ -52,4 +52,4 @@ private:
 	size_t blob_size;
 	size_t blob_offset = 0;
 };
-}
+} // namespace DXIL2SPIRV
