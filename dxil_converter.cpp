@@ -160,6 +160,20 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 	builder.setBuildPoint(block);
 
 	// Emit block code here.
+	// Dummy code.
+	spv::Id tmp_variable;
+	if (node->name.empty())
+	{
+		tmp_variable = builder.createVariable(spv::StorageClass::StorageClassFunction, builder.makeBoolType(),
+		                                      (std::string("COND") + std::to_string(node->id)).c_str());
+	}
+	else
+	{
+		tmp_variable = builder.createVariable(spv::StorageClass::StorageClassFunction, builder.makeBoolType(),
+		                                      node->name.c_str());
+	}
+
+	spv::Id cond_id = builder.createLoad(tmp_variable);
 
 	// Emit merge information if any.
 	switch (info.merge_type)
@@ -187,10 +201,9 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 	}
 	else if (node->succ.size() == 1 && node->succ_back_edge)
 	{
-		spv::Id true_id = builder.makeBoolConstant(true);
 		auto *true_block = get_spv_block(node->succ[0]);
 		auto *false_block = get_spv_block(node->succ_back_edge);
-		builder.createConditionalBranch(true_id, true_block, false_block);
+		builder.createConditionalBranch(cond_id, true_block, false_block);
 	}
 	else if (node->succ.size() == 1)
 	{
@@ -198,11 +211,9 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 	}
 	else if (node->succ.size() == 2)
 	{
-		spv::Id true_id = builder.makeBoolConstant(true);
-
 		auto *true_block = get_spv_block(node->succ[0]);
 		auto *false_block = get_spv_block(node->succ[1]);
-		builder.createConditionalBranch(true_id, true_block, false_block);
+		builder.createConditionalBranch(cond_id, true_block, false_block);
 	}
 
 	emit_debug_basic_block(node, info);
