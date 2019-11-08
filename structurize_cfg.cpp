@@ -1104,6 +1104,10 @@ void CFGStructurizer::validate_structured()
 
 void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 {
+	// Make sure all blocks are known to the backend before we emit code.
+	for (auto *block : post_visit_order)
+		iface.register_block(block);
+
 	// Need to emit blocks such that dominating blocks come before dominated blocks.
 	for (auto index = post_visit_order.size(); index; index--)
 	{

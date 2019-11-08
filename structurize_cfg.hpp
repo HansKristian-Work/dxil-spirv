@@ -119,6 +119,7 @@ public:
 		CFGNode *continue_block = nullptr;
 	};
 	virtual void emit_basic_block(CFGNode *node, const MergeInfo &info) = 0;
+	virtual void register_block(CFGNode *node) = 0;
 	//virtual void emit_helper_block(CFGNode *node, CFGNode *next_block, const MergeInfo &info) = 0;
 
 	uint32_t allocate_ids()
