@@ -419,6 +419,9 @@ static void merge_to_succ(CFGNode *node, unsigned index)
 bool CFGStructurizer::control_flow_is_breaking(const CFGNode *header, const CFGNode *node,
                                                const CFGNode *merge)
 {
+	if (node == merge)
+		return false;
+
 	// If header dominates a block, which branches out to some merge block, where header does not dominate merge,
 	// we have a "breaking" construct.
 	for (auto *succ : node->succ)
@@ -848,7 +851,7 @@ void CFGStructurizer::find_loops()
 
 		if (dominated_exit.empty() && non_dominated_exit.empty())
 		{
-			// There can be zero loop exits. This means we have no merge block.
+			// There can be zero loop exits, i.e. infinite loop. This means we have no merge block.
 			// We will invent a merge block to satisfy SPIR-V validator, and declare it as unreachable.
 			node->loop_merge_block = nullptr;
 			fprintf(stderr, "Loop without merge: %p (%s)\n", static_cast<const void *>(node), node->name.c_str());
@@ -879,17 +882,31 @@ void CFGStructurizer::find_loops()
 		{
 			// We have multiple blocks which are merge candidates. We need to figure out where execution reconvenes.
 			std::vector<CFGNode *> merges;
+			merges.reserve(dominated_exit.size() + non_dominated_exit.size());
 			merges.insert(merges.end(), dominated_exit.begin(), dominated_exit.end());
 			merges.insert(merges.end(), non_dominated_exit.begin(), non_dominated_exit.end());
+			CFGNode *merge = CFGStructurizer::find_common_post_dominator(std::move(merges));
 
-			CFGNode *dominated_merge = CFGStructurizer::find_common_post_dominator(dominated_exit);
+			// Now, we might have Merge blocks which end up escaping out of the loop construct.
+			// We might have to remove candidates which end up being break blocks after all.
+			std::vector<CFGNode *> non_breaking_exits;
+			non_breaking_exits.reserve(dominated_exit.size());
+			for (auto *exit : dominated_exit)
+				if (!control_flow_is_breaking(node, exit, merge))
+					non_breaking_exits.push_back(exit);
+
+			CFGNode *dominated_merge = CFGStructurizer::find_common_post_dominator(non_breaking_exits);
 			if (!dominated_merge)
 			{
 				fprintf(stderr, "There is no candidate for ladder merging.\n");
 			}
 
-			// If we have multiple exit blocks, figure out where execution can reconvene.
-			CFGNode *merge = CFGStructurizer::find_common_post_dominator(std::move(merges));
+			if (dominated_merge && !node->dominates(dominated_merge))
+			{
+				fprintf(stderr, "We don't dominate the merge target ...\n");
+				dominated_merge = nullptr;
+			}
+
 			if (!merge)
 			{
 				fprintf(stderr, "Failed to find a common merge point ...\n");
@@ -914,6 +931,12 @@ void CFGStructurizer::find_loops()
 					fprintf(stderr, "Loop with ladder multi-exit merge: %p (%s) -> %p (%s)\n",
 					        static_cast<const void *>(node), node->name.c_str(),
 					        static_cast<const void *>(node->loop_merge_block), node->loop_merge_block->name.c_str());
+
+					if (dominated_merge)
+					{
+						fprintf(stderr, "    Ladder block: %p (%s)\n", static_cast<const void *>(dominated_merge),
+						        dominated_merge->name.c_str());
+					}
 
 					// We will use this block as a ladder.
 					node->loop_ladder_block = dominated_merge;
@@ -990,7 +1013,7 @@ void CFGStructurizer::split_merge_blocks()
 						else
 							fprintf(stderr, "No loop merge block?\n");
 					}
-					else if (loop_ladder->branchless_path_to(node))
+					else if (loop_ladder->succ.size() == 1 && loop_ladder->succ.front() == node)
 					{
 						// We have a case where we're trivially breaking out of a selection construct.
 						// We cannot directly break out of a selection construct, so our ladder must be a bit more sophisticated.

@@ -51,7 +51,7 @@ struct Converter::Impl : BlockEmissionInterface
 
 	struct BlockMeta
 	{
-		BlockMeta(BasicBlock *bb_)
+		explicit BlockMeta(BasicBlock *bb_)
 			: bb(bb_)
 		{
 		}
@@ -64,7 +64,7 @@ struct Converter::Impl : BlockEmissionInterface
 	std::unordered_map<BasicBlock *, BlockMeta *> bb_map;
 
 	void setup_module();
-	void structurize_module(BlockMeta *meta);
+	void structurize_module(BlockMeta *block);
 	bool finalize_spirv(std::vector<uint32_t> &spirv);
 
 	void emit_basic_block(CFGNode *node, const MergeInfo &info) override;
@@ -78,7 +78,7 @@ struct Converter::Impl : BlockEmissionInterface
 
 Converter::Converter(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_)
 {
-	impl.reset(new Impl(std::move(container_parser_), std::move(bitcode_parser_)));
+	impl = std::make_unique<Impl>(std::move(container_parser_), std::move(bitcode_parser_));
 }
 
 Converter::~Converter()
@@ -126,10 +126,7 @@ spv::Block *Converter::Impl::get_spv_block(CFGNode *node)
 void Converter::Impl::emit_debug_basic_block(CFGNode *node, const MergeInfo &info)
 {
 	auto *meta = static_cast<BlockMeta *>(node->userdata);
-	BasicBlock *bb = meta->bb;
-	fprintf(stderr, "%u (%s):\n",
-	        node->id,
-	        node->name.c_str());
+	fprintf(stderr, "%u (%s):\n", node->id, node->name.c_str());
 
 	switch (info.merge_type)
 	{
@@ -151,22 +148,10 @@ void Converter::Impl::emit_debug_basic_block(CFGNode *node, const MergeInfo &inf
 		break;
 	}
 
-	if (bb)
-	{
-		for (auto itr = succ_begin(bb); itr != succ_end(bb); ++itr)
-		{
-			auto *succ = *itr;
-			CFGNode *succ_node = bb_map[succ]->node;
-			fprintf(stderr, "  -> %u (%s)\n",
-			        succ_node->id,
-			        succ_node->name.c_str());
-		}
-
-		if (succ_begin(bb) == succ_end(bb))
-			fprintf(stderr, "  -> Exit\n");
-	}
-	else
-		fprintf(stderr, " ... Synthetic block\n");
+	for (auto *succ : node->succ)
+		fprintf(stderr, "  -> %u (%s)\n", succ->id, succ->name.c_str());
+	if (node->succ_back_edge)
+		fprintf(stderr, " %s <- back edge\n", node->succ_back_edge->name.c_str());
 }
 
 void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)

@@ -29,45 +29,28 @@ struct BlockMeta
 
 struct Emitter : BlockEmissionInterface
 {
-	uint32_t allocate_id() override;
-	uint32_t allocate_ids(uint32_t count) override;
-	void emit_basic_block(uint32_t id, CFGNode *node, void *userdata,
-	                      const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
-	void emit_helper_block(uint32_t id, CFGNode *node, uint32_t next_id,
-	                       const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
+	void emit_basic_block(CFGNode *node, const MergeInfo &info) override;
+	void register_block(CFGNode *) override
+	{
+	}
 
-	uint32_t base_id = 1;
 	CFGNodePool *pool = nullptr;
 };
 
-uint32_t Emitter::allocate_id()
+void Emitter::emit_basic_block(CFGNode *node, const MergeInfo &info)
 {
-	uint32_t ret = base_id;
-	base_id += 1;
-	return ret;
-}
-
-uint32_t Emitter::allocate_ids(uint32_t count)
-{
-	uint32_t ret = base_id;
-	base_id += count;
-	return ret;
-}
-
-void Emitter::emit_basic_block(uint32_t id, CFGNode *node, void *, const BlockEmissionInterface::MergeInfo &info)
-{
-	fprintf(stderr, "%u (%s):\n", id, node->name.c_str());
+	fprintf(stderr, "%u (%s):\n", node->id, node->name.c_str());
 
 	// Emit opcodes here ...
 
 	switch (info.merge_type)
 	{
 	case MergeType::Selection:
-		fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block);
+		fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block->id);
 		break;
 
 	case MergeType::Loop:
-		fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block, info.continue_block);
+		fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block->id, info.continue_block->id);
 		break;
 
 	default:
@@ -78,35 +61,6 @@ void Emitter::emit_basic_block(uint32_t id, CFGNode *node, void *, const BlockEm
 		fprintf(stderr, " -> %s\n", succ->name.c_str());
 	if (node->succ_back_edge)
 		fprintf(stderr, " %s <- back edge\n", node->succ_back_edge->name.c_str());
-}
-
-void Emitter::emit_helper_block(uint32_t id, CFGNode *, uint32_t next_id, const BlockEmissionInterface::MergeInfo &info)
-{
-#if 0
-	fprintf(stderr, "%u:\n", id);
-	if (next_id)
-	{
-		switch (info.merge_type)
-		{
-		case MergeType::Selection:
-			fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block);
-			break;
-
-		case MergeType::Loop:
-			fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block, info.continue_block);
-			break;
-
-		default:
-			break;
-		}
-
-		fprintf(stderr, "  -> %u\n", next_id);
-	}
-	else
-	{
-		fprintf(stderr, "  Unreachable\n");
-	}
-#endif
 }
 
 int main()
