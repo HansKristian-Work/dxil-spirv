@@ -63,6 +63,7 @@ struct CFGNode
 	unsigned num_forward_preds() const;
 	bool has_pred_back_edges() const;
 	bool dominates(const CFGNode *other) const;
+	bool is_innermost_loop_header_for(const CFGNode *other) const;
 	bool branchless_path_to(const CFGNode *to) const;
 	bool post_dominates(const CFGNode *other) const;
 	bool dominates_all_reachable_exits() const;
@@ -164,7 +165,9 @@ private:
 	{
 		Exit,
 		Merge,
-		Escape
+		Escape,
+		InnerLoopExit,
+		InnerLoopMerge
 	};
 	LoopExitType get_loop_exit_type(const CFGNode &header, const CFGNode &node) const;
 	CFGNode *create_helper_pred_block(CFGNode *node);
