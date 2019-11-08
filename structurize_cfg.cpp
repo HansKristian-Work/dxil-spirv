@@ -1119,36 +1119,26 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 		if (block->loop_merge_block)
 			block->loop_merge_block->ensure_ids(iface);
 
-		if (block->headers.size() >= 2)
-		{
-			// Emit ladder breaking branches to resolve multi-level merges.
-			uint32_t start_id = block->id + (block->headers.size() - 1);
-			for (size_t i = 0; i < block->headers.size() - 1; i++, start_id--)
-				iface.emit_helper_block(start_id, nullptr, start_id - 1, {});
-		}
-
 		BlockEmissionInterface::MergeInfo merge;
 
 		switch (block->merge)
 		{
 		case MergeType::Selection:
-			merge.merge_block = block->selection_merge_block->id;
+			merge.merge_block = block->selection_merge_block;
 			merge.merge_type = block->merge;
-			iface.emit_basic_block(block->id, block, block->userdata, merge);
+			iface.emit_basic_block(block, merge);
 			break;
 
 		case MergeType::Loop:
-			merge.merge_block = block->loop_merge_block->id;
+			merge.merge_block = block->loop_merge_block;
 			merge.merge_type = block->merge;
+			merge.continue_block = block->pred_back_edge;
 
-			// If we have a ladder-breaking loop, we don't have a continue block, but SPIR-V will have to emit something.
-			merge.continue_block = block->pred_back_edge ? block->pred_back_edge->id : 0;
-
-			iface.emit_basic_block(block->id, block, block->userdata, merge);
+			iface.emit_basic_block(block, merge);
 			break;
 
 		default:
-			iface.emit_basic_block(block->id, block, block->userdata, merge);
+			iface.emit_basic_block(block, merge);
 			break;
 		}
 	}

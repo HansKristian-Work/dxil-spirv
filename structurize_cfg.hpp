@@ -112,17 +112,29 @@ private:
 class BlockEmissionInterface
 {
 public:
-	virtual uint32_t allocate_id() = 0;
-	virtual uint32_t allocate_ids(uint32_t count) = 0;
-
 	struct MergeInfo
 	{
 		MergeType merge_type = MergeType::None;
-		uint32_t merge_block = 0;
-		uint32_t continue_block = 0;
+		CFGNode *merge_block = nullptr;
+		CFGNode *continue_block = nullptr;
 	};
-	virtual void emit_basic_block(uint32_t id, CFGNode *node, void *userdata, const MergeInfo &info) = 0;
-	virtual void emit_helper_block(uint32_t id, CFGNode *node, uint32_t next_block, const MergeInfo &info) = 0;
+	virtual void emit_basic_block(CFGNode *node, const MergeInfo &info) = 0;
+	//virtual void emit_helper_block(CFGNode *node, CFGNode *next_block, const MergeInfo &info) = 0;
+
+	uint32_t allocate_ids()
+	{
+		return id_counter++;
+	}
+
+	uint32_t allocate_ids(uint32_t count)
+	{
+		auto ret = id_counter;
+		id_counter += count;
+		return ret;
+	}
+
+private:
+	uint32_t id_counter = 1;
 };
 
 class CFGStructurizer

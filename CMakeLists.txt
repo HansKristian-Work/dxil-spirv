@@ -47,4 +47,3 @@ add_executable(structurize-test structurize_test.cpp)
 target_link_libraries(structurize-test PRIVATE dxil-parser)
 target_compile_options(structurize-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
-

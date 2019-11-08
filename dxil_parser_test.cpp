@@ -24,10 +24,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/CFG.h>
-#include <llvm/IR/Instructions.h>
-
 #include "structurize_cfg.hpp"
 #include "dxil_converter.hpp"
 
@@ -51,32 +47,16 @@ static std::vector<uint8_t> read_file(const char *path)
 	return result;
 }
 
+#if 0
 struct Emitter : DXIL2SPIRV::BlockEmissionInterface
 {
-	uint32_t allocate_id() override;
-	uint32_t allocate_ids(uint32_t count) override;
 	void emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdata,
 	                      const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
 	void emit_helper_block(uint32_t id, DXIL2SPIRV::CFGNode *, uint32_t next_id,
 	                       const DXIL2SPIRV::BlockEmissionInterface::MergeInfo &info) override;
 
-	uint32_t base_id = 1;
 	const DXIL2SPIRV::CFGNodePool *pool = nullptr;
 };
-
-uint32_t Emitter::allocate_id()
-{
-	uint32_t ret = base_id;
-	base_id += 1;
-	return ret;
-}
-
-uint32_t Emitter::allocate_ids(uint32_t count)
-{
-	uint32_t ret = base_id;
-	base_id += count;
-	return ret;
-}
 
 void Emitter::emit_basic_block(uint32_t id, DXIL2SPIRV::CFGNode *, void *userdata,
                                const BlockEmissionInterface::MergeInfo &info)
@@ -142,6 +122,7 @@ void Emitter::emit_helper_block(uint32_t id, DXIL2SPIRV::CFGNode *, uint32_t nex
 		fprintf(stderr, "  Unreachable\n");
 	}
 }
+#endif
 
 int main(int argc, char **argv)
 {
@@ -169,121 +150,73 @@ int main(int argc, char **argv)
 	auto *module = &bc_parser.get_module();
 	module->print(llvm::errs(), nullptr);
 
-	llvm::NamedMDNode *meta = module->getNamedMetadata("llvm.ident");
-	for (unsigned i = 0; i < meta->getNumOperands(); i++)
+	DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser));
+	std::vector<uint32_t> spirv;
+	if (converter.finalize_spirv(spirv))
 	{
-		llvm::MDNode *op = meta->getOperand(i);
-		fprintf(stderr, "Str: %s\n", llvm::cast<llvm::MDString>(op->getOperand(0))->getString().data());
+		FILE *file = fopen("/tmp/test.spv", "wb");
+		if (file)
+		{
+			fwrite(spirv.data(), sizeof(uint32_t), spirv.size(), file);
+			fclose(file);
+		}
 	}
-
-	{
-		auto *meta = module->getNamedMetadata("dx.entryPoints");
-		auto *node = meta->getOperand(0);
-		fprintf(stderr, "Entry point: %s\n", llvm::cast<llvm::MDString>(node->getOperand(1))->getString().data());
-
-		llvm::Function *func = module->getFunction(llvm::cast<llvm::MDString>(node->getOperand(1))->getString());
-		assert(func);
-
-		DXIL2SPIRV::CFGNodePool pool;
-		auto *entry = &func->getEntryBlock();
-		pool.set_name(entry, entry->getName().data());
-		std::vector<llvm::BasicBlock *> to_process;
-		std::vector<llvm::BasicBlock *> processing;
-		to_process.push_back(entry);
-
-		while (!to_process.empty())
-		{
-			std::swap(to_process, processing);
-			for (auto *block : processing)
-			{
-				for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
-				{
-					auto *succ = *itr;
-					if (!pool.find_node_from_userdata(succ))
-					{
-						to_process.push_back(succ);
-						pool.set_name(succ, succ->getName().data());
-					}
-
-					pool.add_branch(block, succ);
-				}
-			}
-			processing.clear();
-		}
-
-		DXIL2SPIRV::CFGStructurizer structurizer(*pool.get_node_from_userdata(entry), pool);
-		Emitter iface;
-		iface.pool = &pool;
-		structurizer.traverse(iface);
-
-		DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser));
-		std::vector<uint32_t> spirv;
-		converter.finalize_spirv(spirv);
-
-		{
-			FILE *file = fopen("/tmp/test.spv", "wb");
-			if (file)
-			{
-				fwrite(spirv.data(), sizeof(uint32_t), spirv.size(), file);
-				fclose(file);
-			}
-		}
 
 #if 0
-		llvm::BasicBlock &block = func->getEntryBlock();
+	llvm::BasicBlock &block = func->getEntryBlock();
 
-		for (auto itr = llvm::succ_begin(&block); itr != llvm::succ_end(&block); ++itr)
-		{
-			fprintf(stderr, "Successor!\n");
-		}
-
-		//block.print(llvm::errs());
-
-		for (auto itr = block.begin(); itr != block.end(); ++itr)
-		{
-			llvm::Instruction &inst = *itr;
-			if (llvm::isa<llvm::CallInst>(inst))
-			{
-				fprintf(stderr, "Call!\n");
-				auto &call = llvm::cast<llvm::CallInst>(inst);
-				fprintf(stderr, "Calling %s\n", call.getCalledFunction()->getName().data());
-				auto *constant = llvm::cast<llvm::ConstantInt>(call.getOperand(0));
-				uint32_t value = constant->getZExtValue();
-				fprintf(stderr, "Calling opcode: %u\n", value);
-
-				call.setMetadata(0, llvm::MDNode::get(call.getContext(), llvm::MDString::get(call.getContext(), "OHAI")));
-				fflush(stderr);
-				llvm::cast<llvm::MDString>(call.getMetadata(0)->getOperand(0))->print(llvm::errs());
-				fflush(stderr);
-				//fprintf(stderr, "Value name: %s\n", call.getName().data());
-			}
-			else if (llvm::isa<llvm::ReturnInst>(inst))
-				fprintf(stderr, "Return!\n");
-			else if (llvm::isa<llvm::SelectInst>(inst))
-				fprintf(stderr, "Select instruction!\n");
-			else if (llvm::isa<llvm::CmpInst>(inst))
-				fprintf(stderr, "Compare instruction!\n");
-			else if (llvm::isa<llvm::BinaryOperator>(inst))
-			{
-				fprintf(stderr, "Binary operator!\n");
-				auto &binop = llvm::cast<llvm::BinaryOperator>(inst);
-				switch (binop.getOpcode())
-				{
-				case llvm::BinaryOperator::FAdd:
-					fprintf(stderr, "FADD!\n");
-					break;
-
-				case llvm::BinaryOperator::FMul:
-					fprintf(stderr, "FMul!\n");
-					break;
-
-				default:
-					break;
-				}
-			}
-			else
-				fprintf(stderr, "? ...\n");
-		}
-#endif
+	for (auto itr = llvm::succ_begin(&block); itr != llvm::succ_end(&block); ++itr)
+	{
+		fprintf(stderr, "Successor!\n");
 	}
+
+	//block.print(llvm::errs());
+
+	for (auto itr = block.begin(); itr != block.end(); ++itr)
+	{
+		llvm::Instruction &inst = *itr;
+		if (llvm::isa<llvm::CallInst>(inst))
+		{
+			fprintf(stderr, "Call!\n");
+			auto &call = llvm::cast<llvm::CallInst>(inst);
+			fprintf(stderr, "Calling %s\n", call.getCalledFunction()->getName().data());
+			auto *constant = llvm::cast<llvm::ConstantInt>(call.getOperand(0));
+			uint32_t value = constant->getZExtValue();
+			fprintf(stderr, "Calling opcode: %u\n", value);
+
+			call.setMetadata(0, llvm::MDNode::get(call.getContext(), llvm::MDString::get(call.getContext(), "OHAI")));
+			fflush(stderr);
+			llvm::cast<llvm::MDString>(call.getMetadata(0)->getOperand(0))->print(llvm::errs());
+			fflush(stderr);
+			//fprintf(stderr, "Value name: %s\n", call.getName().data());
+		}
+		else if (llvm::isa<llvm::ReturnInst>(inst))
+			fprintf(stderr, "Return!\n");
+		else if (llvm::isa<llvm::SelectInst>(inst))
+			fprintf(stderr, "Select instruction!\n");
+		else if (llvm::isa<llvm::CmpInst>(inst))
+			fprintf(stderr, "Compare instruction!\n");
+		else if (llvm::isa<llvm::BinaryOperator>(inst))
+		{
+			fprintf(stderr, "Binary operator!\n");
+			auto &binop = llvm::cast<llvm::BinaryOperator>(inst);
+			switch (binop.getOpcode())
+			{
+			case llvm::BinaryOperator::FAdd:
+				fprintf(stderr, "FADD!\n");
+				break;
+
+			case llvm::BinaryOperator::FMul:
+				fprintf(stderr, "FMul!\n");
+				break;
+
+			default:
+				break;
+			}
+		}
+		else
+			fprintf(stderr, "? ...\n");
+	}
+	}
+#endif
 }
