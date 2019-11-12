@@ -679,8 +679,26 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				idom = header;
 		}
 
-		if (idom->merge == MergeType::None)
+		if (idom->merge == MergeType::None || idom->merge == MergeType::Selection)
 		{
+			// If the idom is already a selection construct, this must mean
+			// we have some form of breaking construct inside this inner construct.
+			// This fooled find_selection_merges() to think we had a selection merge target at the break target.
+			// Fix this up here, where we rewrite the outer construct as a fixed loop instead.
+			if (idom->merge == MergeType::Selection)
+			{
+				if (pass == 0)
+				{
+					idom->merge = MergeType::Loop;
+					idom->loop_merge_block = idom->selection_merge_block;
+					idom->selection_merge_block = nullptr;
+					idom->freeze_structured_analysis = true;
+					idom = create_helper_succ_block(idom);
+				}
+				else
+					fprintf(stderr, "Mismatch headers in pass 1 ... ?\n");
+			}
+
 			idom->merge = MergeType::Selection;
 			idom->selection_merge_block = node;
 			node->add_unique_header(idom);
@@ -709,13 +727,13 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 					// which could do the actual merge.
 					if (inner_block->succ.size() >= 2 && inner_block->merge == MergeType::None)
 					{
-						fprintf(stderr, "Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.%u.\n",
+						fprintf(stderr, "Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.\n",
 						        inner_block->name.c_str(),
 						        ladder_to->name.c_str(),
-						        ladder_to->name.c_str(), pass);
+						        ladder_to->name.c_str());
 
 						auto *ladder = pool.create_internal_node();
-						ladder->name = ladder_to->name + ".ladder." + std::to_string(pass);
+						ladder->name = ladder_to->name + ".ladder";
 						inner_block->traverse_dominated_blocks_and_rewrite_branch(ladder_to, ladder);
 						if (!ladder->pred.empty())
 						{
@@ -748,7 +766,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				        selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
 			}
 		}
-		else if (idom->merge != MergeType::Selection)
+		else
 		{
 			// We are hosed. There is no obvious way to merge execution here.
 			// This might be okay.
