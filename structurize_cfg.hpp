@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace DXIL2SPIRV
@@ -74,6 +75,7 @@ struct CFGNode
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to);
 	void retarget_succ_from(CFGNode *node);
 	void retarget_pred_from(CFGNode *node);
+	void recompute_immediate_dominator();
 
 	void *userdata = nullptr;
 
@@ -154,12 +156,13 @@ private:
 	void build_immediate_dominators(CFGNode &entry);
 	void structurize(unsigned pass);
 	void find_loops();
-	void find_selection_merges();
+	void find_selection_merges(unsigned pass);
 	void fixup_broken_selection_merges(unsigned pass);
 	void split_merge_blocks();
 	static CFGNode *find_common_post_dominator(std::vector<CFGNode *> candidates);
-	static CFGNode *find_common_dominated_merge_block(CFGNode *header);
 	static bool control_flow_is_breaking(const CFGNode *header, const CFGNode *node, const CFGNode *merge);
+	static std::vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
+	static void isolate_structured(std::unordered_set<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
 
 	enum class LoopExitType
 	{
