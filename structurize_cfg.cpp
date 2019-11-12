@@ -310,6 +310,7 @@ CFGNode *CFGNode::find_common_dominator(const CFGNode *a, const CFGNode *b)
 
 void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 {
+	fprintf(stderr, "Retargeting branch for %s: %s -> %s\n", name.c_str(), to_prev->name.c_str(), to_next->name.c_str());
 	assert(std::find(succ.begin(), succ.end(), to_prev) != succ.end());
 	assert(std::find(to_prev->pred.begin(), to_prev->pred.end(), this) != to_prev->pred.end());
 	assert(std::find(succ.begin(), succ.end(), to_next) == succ.end());
@@ -477,6 +478,11 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 		if (node->merge != MergeType::None)
 			continue;
 
+		// A continue block will never need to merge execution, but it shouldn't have succ.size() == 2,
+		// but rather succ.size() == 1 and a back edge.
+		if (node->succ_back_edge)
+			continue;
+
 		bool dominates_a = node->dominates(node->succ[0]);
 		bool dominates_b = node->dominates(node->succ[1]);
 
@@ -588,8 +594,22 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				}
 			}
 		}
-		else
-			fprintf(stderr, "Failed to find a clean selection merge target.\n");
+		else if (pass == 0)
+		{
+			// No possible merge target. Just need to pick whatever node is the merge block here.
+			// Only do this in first pass, so that we can get a proper ladder breaking mechanism in place if we are escaping.
+			CFGNode *merge = CFGStructurizer::find_common_post_dominator(node->succ);
+			if (merge)
+			{
+				node->selection_merge_block = merge;
+				node->merge = MergeType::Selection;
+				merge->headers.push_back(node);
+				fprintf(stderr, "Merging %s -> %s\n", node->name.c_str(),
+				        node->selection_merge_block->name.c_str());
+			}
+			else
+				fprintf(stderr, "Cannot find a merge target for block %s ...\n", node->name.c_str());
+		}
 	}
 }
 

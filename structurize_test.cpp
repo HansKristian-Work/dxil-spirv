@@ -50,7 +50,7 @@ void Emitter::emit_basic_block(CFGNode *node, const MergeInfo &info)
 		break;
 
 	case MergeType::Loop:
-		fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block->id, info.continue_block->id);
+		fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block->id, info.continue_block ? info.continue_block->id : 0);
 		break;
 
 	default:
@@ -96,6 +96,15 @@ int main()
 	};
 
 #if 1
+	add_selection("entry", "b0", "entry.exit");
+	{
+		add_selection("b0", "b1", "entry.exit");
+		{
+			add_selection("b1", "exit", "entry.exit");
+		}
+	}
+	add_branch("entry.exit", "exit");
+#elif 1
 	add_selection("b0", "l0", "b0.exit");
 	{
 		add_selection("l0", "l1", "c0");
@@ -170,7 +179,7 @@ int main()
 	}
 #endif
 
-	CFGStructurizer traverser(*get("b0"), pool);
+	CFGStructurizer traverser(*get("entry"), pool);
 	Emitter emitter;
 	emitter.pool = &pool;
 	traverser.traverse(emitter);

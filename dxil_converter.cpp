@@ -140,8 +140,8 @@ void Converter::Impl::emit_debug_basic_block(CFGNode *node, const MergeInfo &inf
 		fprintf(stderr, "    LoopMerge -> %u (%s), Continue <- %u (%s)\n",
 		        info.merge_block->id,
 		        info.merge_block->name.c_str(),
-		        info.continue_block->id,
-		        info.continue_block->name.c_str());
+		        info.continue_block ? info.continue_block->id : 0,
+		        info.continue_block ? info.continue_block->name.c_str() : "Unreachable");
 		break;
 
 	default:
@@ -175,6 +175,8 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 
 	spv::Id cond_id = builder.createLoad(tmp_variable);
 
+	spv::Block *continue_block = nullptr;
+
 	// Emit merge information if any.
 	switch (info.merge_type)
 	{
@@ -186,7 +188,14 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 
 	case MergeType::Loop:
 	{
-		builder.createLoopMerge(get_spv_block(info.merge_block), get_spv_block(info.continue_block), 0);
+		if (info.continue_block)
+			builder.createLoopMerge(get_spv_block(info.merge_block), get_spv_block(info.continue_block), 0);
+		else
+		{
+			continue_block = new spv::Block(builder.getUniqueId(), *function);
+			function->addBlock(continue_block);
+			builder.createLoopMerge(get_spv_block(info.merge_block), continue_block, 0);
+		}
 		break;
 	}
 
@@ -217,6 +226,12 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 	}
 
 	emit_debug_basic_block(node, info);
+
+	if (continue_block)
+	{
+		builder.setBuildPoint(continue_block);
+		builder.createBranch(block);
+	}
 }
 
 void Converter::Impl::structurize_module(BlockMeta *entry)
