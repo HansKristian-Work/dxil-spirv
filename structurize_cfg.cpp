@@ -327,6 +327,9 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNod
 
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to)
 {
+	if (from == to)
+		return;
+
 	for (auto *node : succ)
 	{
 		if (node == from)
@@ -441,6 +444,10 @@ bool CFGStructurizer::control_flow_is_breaking(const CFGNode *header, const CFGN
 	if (node == merge)
 		return false;
 
+	// Any loop exits from continue block is not considered a break.
+	if (node->succ_back_edge)
+		return false;
+
 	// If header dominates a block, which branches out to some merge block, where header does not dominate merge,
 	// we have a "breaking" construct.
 	for (auto *succ : node->succ)
@@ -513,7 +520,25 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			if (merge)
 			{
 				bool dominates_merge = node->dominates(merge);
-				if (dominates_merge || pass == 0)
+				if (dominates_merge && !merge->headers.empty())
+				{
+					// Here we have a likely case where one block is doing a clean "break" out of a loop, and
+					// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
+					bool a_path_is_break = control_flow_is_breaking(node, node->succ[0], merge);
+					bool b_path_is_break = control_flow_is_breaking(node, node->succ[1], merge);
+					if (a_path_is_break && b_path_is_break)
+					{
+						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
+						node->merge = MergeType::Selection;
+						node->selection_merge_block = nullptr;
+						fprintf(stderr, "Merging %s -> Unreachable\n", node->name.c_str());
+					}
+					else if (b_path_is_break)
+						merge_to_succ(node, 0);
+					else
+						merge_to_succ(node, 1);
+				}
+				else if (merge->headers.empty() || (pass == 0))
 				{
 					// Happens first iteration. We'll have to split blocks, so register a merge target where we want it.
 					// Otherwise, this is the easy case if we observe it in pass 1.
@@ -526,7 +551,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				}
 				else
 				{
-					// We don't dominate the merge block ...
+					// We don't dominate the merge block in pass 1. We cannot split blocks now.
 					// Check to see which paths can actually reach the merge target without going through a ladder block.
 					// If we don't go through ladder it means an outer scope will actually reach the merge node.
 					// If we reach a ladder it means a block we dominate will make the escape.
@@ -890,6 +915,18 @@ void CFGStructurizer::find_loops()
 				std::swap(non_dominated_exit, direct_exits);
 		}
 
+		if (dominated_exit.size() >= 2)
+		{
+			// Try to see if we can reduce the number of merge blocks to just 1.
+			// This is relevant if we have various "clean" break blocks.
+			auto *post_dominator = find_common_post_dominator(dominated_exit);
+			if (std::find(dominated_exit.begin(), dominated_exit.end(), post_dominator) != dominated_exit.end())
+			{
+				dominated_exit.clear();
+				dominated_exit.push_back(post_dominator);
+			}
+		}
+
 		if (dominated_exit.empty() && non_dominated_exit.empty())
 		{
 			// There can be zero loop exits, i.e. infinite loop. This means we have no merge block.
@@ -897,7 +934,7 @@ void CFGStructurizer::find_loops()
 			node->loop_merge_block = nullptr;
 			fprintf(stderr, "Loop without merge: %p (%s)\n", static_cast<const void *>(node), node->name.c_str());
 		}
-		else if (dominated_exit.size() == 1 && inner_dominated_exit.empty() && non_dominated_exit.empty())
+		else if (dominated_exit.size() == 1 && non_dominated_exit.empty())
 		{
 			// Clean merge.
 			// This is a unique merge block. There can be no other merge candidate.

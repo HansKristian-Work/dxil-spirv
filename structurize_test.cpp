@@ -101,6 +101,22 @@ int main()
 		add_selection("l0", "l1", "c0");
 		{
 			add_branch("l1", "l1.cond");
+			add_selection("l1.cond", "l1.exit", "c1");
+			{
+				add_branch("l1.exit", "m1");
+			}
+			add_selection("c1", "l1", "m1");
+			add_branch("m1", "c0");
+		}
+		add_selection("c0", "l0", "l0.exit");
+		add_branch("l0.exit", "b0.exit");
+	}
+#elif 1
+	add_selection("b0", "l0", "b0.exit");
+	{
+		add_selection("l0", "l1", "c0");
+		{
+			add_branch("l1", "l1.cond");
 			add_selection("l1.cond", "b0.exit", "c1");
 			add_selection("c1", "l1", "m1");
 			add_branch("m1", "c0");
