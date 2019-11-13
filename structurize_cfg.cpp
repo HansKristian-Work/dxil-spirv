@@ -23,34 +23,18 @@
 
 namespace DXIL2SPIRV
 {
-class DominatorBuilder
-{
-public:
-	void add_block(CFGNode *block);
-	CFGNode *get_dominator() const
-	{
-		return dominator;
-	}
-
-private:
-	CFGNode *dominator = nullptr;
-};
-
 CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
     : entry_block(&entry)
     , pool(pool_)
 {
-	visit(*entry_block);
-	build_immediate_dominators(entry);
+	recompute_cfg();
+
+	split_merge_scopes();
 
 	fprintf(stderr, "=== Structurize pass ===\n");
 	structurize(0);
 
-	reset_traversal();
-
-	// We have created new blocks, so recompute these.
-	visit(*entry_block);
-	build_immediate_dominators(*entry_block);
+	recompute_cfg();
 
 	fprintf(stderr, "=== Structurize pass ===\n");
 	structurize(1);
@@ -296,6 +280,22 @@ CFGNode *CFGNode::find_common_dominator(const CFGNode *a, const CFGNode *b)
 	return const_cast<CFGNode *>(a);
 }
 
+CFGNode *CFGNode::get_immediate_dominator_loop_header()
+{
+	assert(immediate_dominator);
+	auto *node = this;
+	while (!node->pred_back_edge)
+	{
+		if (node->pred.empty())
+			return nullptr;
+
+		assert(node->immediate_dominator);
+		node = node->immediate_dominator;
+	}
+
+	return node;
+}
+
 void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 {
 	fprintf(stderr, "Retargeting branch for %s: %s -> %s\n", name.c_str(), to_prev->name.c_str(), to_next->name.c_str());
@@ -310,16 +310,33 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 	*std::find(succ.begin(), succ.end(), to_prev) = to_next;
 	add_branch(to_next);
 
-	to_prev->recompute_immediate_dominator();
-	to_next->recompute_immediate_dominator();
+	// Branch targets have changed, so recompute immediate dominators.
+	if (to_prev->visit_order > to_next->visit_order)
+	{
+		to_prev->recompute_immediate_dominator();
+		to_next->recompute_immediate_dominator();
+	}
+	else
+	{
+		to_next->recompute_immediate_dominator();
+		to_prev->recompute_immediate_dominator();
+	}
+}
+
+template <typename Op>
+void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to, const Op &op)
+{
+	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, op);
 }
 
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to)
 {
-	traverse_dominated_blocks_and_rewrite_branch(*this, from, to);
+	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *) { return true; });
 }
 
-void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to)
+template <typename Op>
+void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from,
+                                                           CFGNode *to, const Op &op)
 {
 	if (from == to)
 		return;
@@ -330,11 +347,11 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header
 		{
 			// Don't introduce a cycle.
 			// We only retarget branches when we have "escape-like" edges.
-			if (!to->dominates(this))
+			if (!to->dominates(this) && op(this))
 				retarget_branch(from, to);
 		}
 		else if (header.dominates(node) && node != to) // Do not traverse beyond the new branch target.
-			node->traverse_dominated_blocks_and_rewrite_branch(header, from, to);
+			node->traverse_dominated_blocks_and_rewrite_branch(header, from, to, op);
 	}
 }
 
@@ -659,6 +676,70 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 	}
 }
 
+void CFGStructurizer::split_merge_scopes()
+{
+	for (auto *node : post_visit_order)
+	{
+		if (node->num_forward_preds() <= 1)
+			continue;
+
+		// The idom is the natural header block.
+		auto *idom = node->immediate_dominator;
+		assert(idom->succ.size() >= 2);
+
+		// Now we want to deal with cases where we are using this selection merge block as "goto" target for inner selection constructs.
+		// Using a loop header might be possible,
+		// but we will need to split up blocks to make sure that we don't end up with headers where the only branches
+		// are either merges or breaks.
+
+		// This case is relevant when we have something like:
+		// A -> B -> C -> D -> M
+		// A -> M
+		// B -> M
+		// C -> M
+		// D -> M
+		// We'll need intermediate blocks which merge each layer of the selection "onion".
+		auto construct = isolate_structured_sorted(idom, node);
+		auto *ladder_to = node;
+		for (auto *inner_block : construct)
+		{
+			// If there are any branches to the merge block here, we need to introduce an intermediate block
+			// which could do the actual merge.
+
+			// FIXME: What if there are multiple inner selection constructs?
+			// Probably want to carve out scopes one by one here ...
+			if (inner_block->succ.size() >= 2)
+			{
+				// Stop rewriting branch targets once we hit a loop.
+				auto *inner_loop_header = inner_block->get_immediate_dominator_loop_header();
+				if (inner_loop_header && idom->dominates(inner_loop_header))
+					continue;
+
+				fprintf(stderr, "Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.\n",
+				        inner_block->name.c_str(),
+				        ladder_to->name.c_str(),
+				        ladder_to->name.c_str());
+
+				auto *ladder = pool.create_internal_node();
+				ladder->name = ladder_to->name + ".ladder";
+
+				ladder->add_branch(ladder_to);
+				inner_block->traverse_dominated_blocks_and_rewrite_branch(ladder_to, ladder);
+				ladder_to = ladder;
+			}
+		}
+	}
+
+	recompute_cfg();
+}
+
+void CFGStructurizer::recompute_cfg()
+{
+	reset_traversal();
+	visit(*entry_block);
+	build_immediate_dominators(*entry_block);
+}
+
 void CFGStructurizer::find_selection_merges(unsigned pass)
 {
 	for (auto *node : post_visit_order)
@@ -700,61 +781,14 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 			}
 
 			idom->merge = MergeType::Selection;
-			idom->selection_merge_block = node;
 			node->add_unique_header(idom);
+			idom->selection_merge_block = node;
 			fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(idom),
 			        idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
-
-			if (pass == 0)
-			{
-				// Now we want to deal with cases where we are using this selection merge block as "goto" target for inner selection constructs.
-				// Using a loop header might be possible,
-				// but we will need to split up blocks to make sure that we don't end up with headers where the only branches
-				// are either merges or breaks.
-
-				// This case is relevant when we have something like:
-				// A -> B -> C -> D -> M
-				// A -> M
-				// B -> M
-				// C -> M
-				// D -> M
-				// We'll need intermediate blocks which merge each layer of the selection "onion".
-				auto construct = isolate_structured_sorted(idom, node);
-				auto *ladder_to = node;
-				for (auto *inner_block : construct)
-				{
-					// If there are any branches to the merge block here, we need to introduce an intermediate block
-					// which could do the actual merge.
-					if (inner_block->succ.size() >= 2 && inner_block->merge == MergeType::None)
-					{
-						fprintf(stderr, "Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.\n",
-						        inner_block->name.c_str(),
-						        ladder_to->name.c_str(),
-						        ladder_to->name.c_str());
-
-						auto *ladder = pool.create_internal_node();
-						ladder->name = ladder_to->name + ".ladder";
-						inner_block->traverse_dominated_blocks_and_rewrite_branch(ladder_to, ladder);
-						if (!ladder->pred.empty())
-						{
-							ladder->add_branch(ladder_to);
-							ladder->recompute_immediate_dominator();
-							ladder_to->recompute_immediate_dominator();
-							ladder_to = ladder;
-						}
-					}
-				}
-			}
 		}
 		else if (idom->merge == MergeType::Loop)
 		{
-			//fprintf(stderr, "IDOM is already a loop header somewhere else.\n");
-
-			if (idom->loop_merge_block == node)
-			{
-				// This was a loop merge, not selection merge, ignore.
-			}
-			else
+			if (idom->loop_merge_block != node)
 			{
 				auto *selection_idom = create_helper_succ_block(idom);
 				// If we split the loop header into the loop header -> selection merge header,
@@ -1196,8 +1230,35 @@ void CFGStructurizer::split_merge_blocks()
 						auto *ladder_post = create_helper_succ_block(loop_ladder);
 						ladder_pre->add_branch(ladder_post);
 					}
+					else if (full_break_target)
+					{
+						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
+					}
 					else
-						fprintf(stderr, "Need complex break out of selection construct.\n");
+					{
+						// Selection merge to this dummy instead.
+						auto *new_selection_merge = create_helper_pred_block(node);
+
+						// Inherit the headers.
+						new_selection_merge->headers = node->headers;
+
+						// This is now our fallback loop break target.
+						full_break_target = node;
+
+						auto *loop = create_helper_pred_block(node->headers[0]);
+
+						// Reassign header node.
+						assert(node->headers[0]->merge == MergeType::Selection);
+						node->headers[0]->selection_merge_block = new_selection_merge;
+						node->headers[0] = loop;
+
+						loop->merge = MergeType::Loop;
+						loop->loop_merge_block = node;
+						loop->freeze_structured_analysis = true;
+
+						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
+						node = new_selection_merge;
+					}
 				}
 				else
 					fprintf(stderr, "No loop ladder candidate.\n");
@@ -1342,14 +1403,6 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 			break;
 		}
 	}
-}
-
-void DominatorBuilder::add_block(CFGNode *block)
-{
-	if (!dominator)
-		dominator = block;
-	else if (dominator != block)
-		dominator = CFGNode::find_common_dominator(dominator, block);
 }
 
 CFGNode *CFGNodePool::get_node_from_userdata(void *userdata)

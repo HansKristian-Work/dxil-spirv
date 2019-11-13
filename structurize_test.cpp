@@ -96,6 +96,22 @@ int main()
 	};
 
 #if 1
+	add_selection("entry", "b0", "exit");
+	{
+		add_selection("b0", "l0", "exit");
+		{
+			add_selection("l0", "l1", "c0");
+			{
+				add_branch("l1", "l1.cond");
+				add_selection("l1.cond", "exit", "c1");
+				add_selection("c1", "l1", "m1");
+				add_branch("m1", "c0");
+			}
+			add_selection("c0", "l0", "l0.exit");
+			add_branch("l0.exit", "exit");
+		}
+	}
+#elif 1
 	add_selection("entry", "b0", "entry.exit");
 	{
 		add_selection("b0", "b1", "entry.exit");

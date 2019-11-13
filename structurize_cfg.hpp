@@ -70,9 +70,14 @@ struct CFGNode
 	bool dominates_all_reachable_exits() const;
 	void ensure_ids(BlockEmissionInterface &iface);
 	static CFGNode *find_common_dominator(const CFGNode *a, const CFGNode *b);
+	CFGNode *get_immediate_dominator_loop_header();
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to);
+
+	template <typename Op>
+	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to, const Op &op);
+
 	void retarget_succ_from(CFGNode *node);
 	void retarget_pred_from(CFGNode *node);
 	void recompute_immediate_dominator();
@@ -81,7 +86,8 @@ struct CFGNode
 
 private:
 	bool dominates_all_reachable_exits(const CFGNode &header) const;
-	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to);
+	template <typename Op>
+	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op);
 };
 
 class CFGNodePool
@@ -156,6 +162,7 @@ private:
 	void build_immediate_dominators(CFGNode &entry);
 	void structurize(unsigned pass);
 	void find_loops();
+	void split_merge_scopes();
 	void find_selection_merges(unsigned pass);
 	void fixup_broken_selection_merges(unsigned pass);
 	void split_merge_blocks();
@@ -177,5 +184,6 @@ private:
 	CFGNode *create_helper_succ_block(CFGNode *node);
 	void reset_traversal();
 	void validate_structured();
+	void recompute_cfg();
 };
 } // namespace DXIL2SPIRV
