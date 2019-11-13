@@ -1053,7 +1053,7 @@ void CFGStructurizer::find_loops()
 			node->loop_merge_block = nullptr;
 			fprintf(stderr, "Loop without merge: %p (%s)\n", static_cast<const void *>(node), node->name.c_str());
 		}
-		else if (dominated_exit.size() == 1 && non_dominated_exit.empty())
+		else if (dominated_exit.size() == 1 && non_dominated_exit.empty() && inner_dominated_exit.empty())
 		{
 			// Clean merge.
 			// This is a unique merge block. There can be no other merge candidate.
@@ -1064,7 +1064,7 @@ void CFGStructurizer::find_loops()
 			        node->name.c_str(), static_cast<const void *>(node->loop_merge_block),
 			        node->loop_merge_block->name.c_str());
 		}
-		else if (dominated_exit.empty() && non_dominated_exit.size() == 1)
+		else if (dominated_exit.empty() && inner_dominated_exit.empty() && non_dominated_exit.size() == 1)
 		{
 			// Single-escape merge.
 			// It is unique, but we need workarounds later.
