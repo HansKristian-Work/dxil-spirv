@@ -612,6 +612,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// Happens first iteration. We'll have to split blocks, so register a merge target where we want it.
 					// Otherwise, this is the easy case if we observe it in pass 1.
 					// This shouldn't really happen though, as we'd normally resolve this earlier in find_selection_merges.
+					assert(merge);
 					node->selection_merge_block = merge;
 					node->merge = MergeType::Selection;
 					merge->headers.push_back(node);
@@ -653,7 +654,9 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// Both paths lead to exit. Do we even need to merge here?
 					// In worst case we can always merge to an unreachable node in the CFG.
 					node->merge = MergeType::Selection;
-					node->selection_merge_block = nullptr;
+					auto *dummy_merge = pool.create_internal_node();
+					node->selection_merge_block = dummy_merge;
+					dummy_merge->name = node->name + ".unreachable";
 				}
 			}
 		}
@@ -771,6 +774,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				if (pass == 0)
 				{
 					idom->merge = MergeType::Loop;
+					assert(idom->selection_merge_block);
 					idom->loop_merge_block = idom->selection_merge_block;
 					idom->selection_merge_block = nullptr;
 					idom->freeze_structured_analysis = true;
@@ -782,6 +786,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 
 			idom->merge = MergeType::Selection;
 			node->add_unique_header(idom);
+			assert(node);
 			idom->selection_merge_block = node;
 			fprintf(stderr, "Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(idom),
 			        idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
@@ -1332,7 +1337,7 @@ void CFGStructurizer::validate_structured()
 
 		if (node->merge == MergeType::Loop)
 		{
-			if (!node->dominates(node->loop_merge_block))
+			if (!node->dominates(node->loop_merge_block) && !node->loop_merge_block->pred.empty())
 			{
 				fprintf(stderr, "Node %s does not dominate its merge block %s!\n", node->name.c_str(),
 				        node->loop_merge_block->name.c_str());
@@ -1341,7 +1346,7 @@ void CFGStructurizer::validate_structured()
 		}
 		else if (node->merge == MergeType::Selection)
 		{
-			if (!node->dominates(node->selection_merge_block))
+			if (!node->dominates(node->selection_merge_block) && !node->selection_merge_block->pred.empty())
 			{
 				fprintf(stderr, "Node %s does not dominate its selection merge block %s!\n", node->name.c_str(),
 				        node->selection_merge_block->name.c_str());

@@ -96,6 +96,24 @@ int main()
 	};
 
 #if 1
+	add_selection("entry", "b0", "b1");
+	{
+		add_selection("b0", "b0.true", "b0.false");
+		{
+			add_branch("b0.true", "exit");
+		}
+		{
+			add_branch("b0.false", "exit");
+		}
+		add_selection("b1", "b1.true", "b1.false");
+		{
+			add_branch("b1.true", "exit");
+		}
+		{
+			add_branch("b1.false", "exit");
+		}
+	}
+#elif 1
 	add_selection("entry", "b0", "exit");
 	{
 		add_selection("b0", "l0", "exit");
