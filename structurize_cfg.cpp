@@ -355,6 +355,25 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header
 	}
 }
 
+template <typename Op>
+void CFGNode::traverse_dominated_blocks(const CFGNode &header, const Op &op)
+{
+	for (auto *node : succ)
+	{
+		if (header.dominates(node))
+		{
+			if (op(node))
+				node->traverse_dominated_blocks(header, op);
+		}
+	}
+}
+
+template <typename Op>
+void CFGNode::traverse_dominated_blocks(const Op &op)
+{
+	traverse_dominated_blocks(*this, op);
+}
+
 void CFGNode::retarget_succ_from(CFGNode *old_pred)
 {
 	for (auto *s : succ)
@@ -407,6 +426,23 @@ void CFGNode::recompute_immediate_dominator()
 				immediate_dominator = edge;
 		}
 	}
+}
+
+CFGNode *CFGNode::get_outer_selection_dominator()
+{
+	assert(immediate_dominator);
+	auto *node = immediate_dominator;
+
+	while (node->succ.size() == 1)
+	{
+		if (node->pred.empty())
+			break;
+
+		assert(node->immediate_dominator);
+		node = node->immediate_dominator;
+	}
+
+	return node;
 }
 
 struct LoopBacktracer
@@ -679,6 +715,47 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 	}
 }
 
+void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_to)
+{
+	// Don't rewrite loops.
+	if (header->pred_back_edge)
+		return;
+
+	std::unordered_set<CFGNode *> nodes;
+	std::unordered_set<CFGNode *> construct;
+
+	header->traverse_dominated_blocks([&](CFGNode *node) -> bool {
+		if (nodes.count(node) == 0)
+		{
+			nodes.insert(node);
+			if (node->succ.size() >= 2)
+			{
+				auto *outer_header = node->get_outer_selection_dominator();
+				if (outer_header == header)
+					construct.insert(node);
+			}
+			return true;
+		}
+		else
+			return false;
+	});
+
+	for (auto *inner_block : construct)
+	{
+		fprintf(stderr, "Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.\n",
+		        inner_block->name.c_str(),
+		        ladder_to->name.c_str(),
+		        ladder_to->name.c_str());
+
+		auto *ladder = pool.create_internal_node();
+		ladder->name = ladder_to->name + "." + inner_block->name + ".ladder";
+		ladder->add_branch(ladder_to);
+
+		inner_block->traverse_dominated_blocks_and_rewrite_branch(ladder_to, ladder);
+		rewrite_selection_breaks(inner_block, ladder);
+	}
+}
+
 void CFGStructurizer::split_merge_scopes()
 {
 	for (auto *node : post_visit_order)
@@ -702,35 +779,7 @@ void CFGStructurizer::split_merge_scopes()
 		// C -> M
 		// D -> M
 		// We'll need intermediate blocks which merge each layer of the selection "onion".
-		auto construct = isolate_structured_sorted(idom, node);
-		auto *ladder_to = node;
-		for (auto *inner_block : construct)
-		{
-			// If there are any branches to the merge block here, we need to introduce an intermediate block
-			// which could do the actual merge.
-
-			// FIXME: What if there are multiple inner selection constructs?
-			// Probably want to carve out scopes one by one here ...
-			if (inner_block->succ.size() >= 2)
-			{
-				// Stop rewriting branch targets once we hit a loop.
-				auto *inner_loop_header = inner_block->get_immediate_dominator_loop_header();
-				if (inner_loop_header && idom->dominates(inner_loop_header))
-					continue;
-
-				fprintf(stderr, "Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.\n",
-				        inner_block->name.c_str(),
-				        ladder_to->name.c_str(),
-				        ladder_to->name.c_str());
-
-				auto *ladder = pool.create_internal_node();
-				ladder->name = ladder_to->name + ".ladder";
-
-				ladder->add_branch(ladder_to);
-				inner_block->traverse_dominated_blocks_and_rewrite_branch(ladder_to, ladder);
-				ladder_to = ladder;
-			}
-		}
+		rewrite_selection_breaks(idom, node);
 	}
 
 	recompute_cfg();

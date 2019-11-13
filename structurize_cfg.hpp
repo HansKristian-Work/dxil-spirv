@@ -84,10 +84,16 @@ struct CFGNode
 
 	void *userdata = nullptr;
 
+	template <typename Op>
+	void traverse_dominated_blocks(const Op &op);
+	CFGNode *get_outer_selection_dominator();
+
 private:
 	bool dominates_all_reachable_exits(const CFGNode &header) const;
 	template <typename Op>
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op);
+	template <typename Op>
+	void traverse_dominated_blocks(const CFGNode &header, const Op &op);
 };
 
 class CFGNodePool
@@ -170,6 +176,8 @@ private:
 	static bool control_flow_is_breaking(const CFGNode *header, const CFGNode *node, const CFGNode *merge);
 	static std::vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
 	static void isolate_structured(std::unordered_set<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
+
+	void rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_to);
 
 	enum class LoopExitType
 	{
