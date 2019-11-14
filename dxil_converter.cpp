@@ -262,6 +262,21 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 			builder.createConditionalBranch(cond_id, true_block, false_block);
 		}
 	}
+	else
+	{
+		auto *instruction = new spv::Instruction(spv::NoResult, spv::NoType, spv::OpSwitch);
+		instruction->addIdOperand(builder.makeIntConstant(42));
+		instruction->addIdOperand(node->selection_merge_block->id);
+
+		get_spv_block(node->selection_merge_block)->addPredecessor(block);
+		for (size_t i = 0; i < node->succ.size(); i++)
+		{
+			instruction->addImmediateOperand(i);
+			instruction->addIdOperand(node->succ[i]->id);
+			get_spv_block(node->succ[i])->addPredecessor(block);
+		}
+		block->addInstruction(std::unique_ptr<spv::Instruction>(instruction));
+	}
 
 	emit_debug_basic_block(node, info);
 

@@ -30,11 +30,14 @@ struct BlockMeta
 struct Emitter : BlockEmissionInterface
 {
 	void emit_basic_block(CFGNode *node, const MergeInfo &info) override;
-	void register_block(CFGNode *) override
+	void register_block(CFGNode *node) override
 	{
+		if (node->id == 0)
+			node->id = base_id++;
 	}
 
 	CFGNodePool *pool = nullptr;
+	unsigned base_id = 1;
 };
 
 void Emitter::emit_basic_block(CFGNode *node, const MergeInfo &info)
@@ -90,12 +93,24 @@ int main()
 		pool.add_branch(get_user(from), get_user(to));
 	};
 
+	const auto add_switch = [&](const char *from, const std::vector<const char *> &tos) {
+		for (auto *to : tos)
+			add_branch(from, to);
+	};
+
 	const auto add_selection = [&](const char *from, const char *to0, const char *to1) {
 		add_branch(from, to0);
 		add_branch(from, to1);
 	};
 
 #if 1
+	add_selection("entry", "switch", "exit");
+	add_switch("switch", { "case0", "case1", "default", "merge" });
+	add_selection("case0", "exit", "merge");
+	add_branch("case1", "merge");
+	add_branch("default", "merge");
+	add_branch("merge", "exit");
+#elif 1
 	add_selection("entry", "b0", "b1");
 	{
 		add_selection("b0", "b0.true", "b0.false");

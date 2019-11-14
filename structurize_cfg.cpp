@@ -275,6 +275,9 @@ void CFGStructurizer::visit(CFGNode &entry)
 	entry.traversing = false;
 	entry.visit_order = post_visit_order.size();
 	post_visit_order.push_back(&entry);
+
+	// Should be fed from frontend instead.
+	entry.is_switch = entry.succ.size() > 2;
 }
 
 CFGNode *CFGNode::find_common_dominator(const CFGNode *a, const CFGNode *b)
@@ -461,7 +464,23 @@ CFGNode *CFGNode::get_outer_selection_dominator()
 	assert(immediate_dominator);
 	auto *node = immediate_dominator;
 
-	while (node->succ.size() == 1)
+	while (node->succ.size() == 1 && !node->is_switch)
+	{
+		if (node->pred.empty())
+			break;
+
+		assert(node->immediate_dominator);
+		node = node->immediate_dominator;
+	}
+
+	return node;
+}
+
+CFGNode *CFGNode::get_outer_header_dominator()
+{
+	assert(immediate_dominator);
+	auto *node = immediate_dominator;
+	while (node->succ.size() == 1 && !node->is_switch && !node->pred_back_edge)
 	{
 		if (node->pred.empty())
 			break;
@@ -729,13 +748,24 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			// No possible merge target. Just need to pick whatever node is the merge block here.
 			// Only do this in first pass, so that we can get a proper ladder breaking mechanism in place if we are escaping.
 			CFGNode *merge = CFGStructurizer::find_common_post_dominator(node->succ);
+
 			if (merge)
 			{
-				node->selection_merge_block = merge;
-				node->merge = MergeType::Selection;
-				merge->headers.push_back(node);
-				fprintf(stderr, "Merging %s -> %s\n", node->name.c_str(),
-				        node->selection_merge_block->name.c_str());
+				// Don't try to merge to our switch block.
+				auto *inner_header = node->get_outer_header_dominator();
+				bool conditional_switch_break =
+						inner_header &&
+						inner_header->merge == MergeType::Selection &&
+						inner_header->selection_merge_block == merge;
+
+				if (!conditional_switch_break)
+				{
+					node->selection_merge_block = merge;
+					node->merge = MergeType::Selection;
+					merge->headers.push_back(node);
+					fprintf(stderr, "Merging %s -> %s\n", node->name.c_str(),
+					        node->selection_merge_block->name.c_str());
+				}
 			}
 			else
 				fprintf(stderr, "Cannot find a merge target for block %s ...\n", node->name.c_str());
@@ -747,6 +777,10 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 {
 	// Don't rewrite loops.
 	if (header->pred_back_edge)
+		return;
+
+	// Don't rewrite switch blocks either.
+	if (header->is_switch)
 		return;
 
 	std::unordered_set<CFGNode *> nodes;
@@ -820,6 +854,39 @@ void CFGStructurizer::recompute_cfg()
 	build_immediate_dominators(*entry_block);
 }
 
+void CFGStructurizer::find_switch_blocks()
+{
+	for (auto index = post_visit_order.size(); index; index--)
+	{
+		auto *node = post_visit_order[index - 1];
+		if (!node->is_switch)
+			continue;
+
+		auto *merge = find_common_post_dominator(node->succ);
+		if (node->dominates(merge))
+		{
+			fprintf(stderr, "Switch merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node),
+			        node->name.c_str(), static_cast<const void *>(merge), merge->name.c_str());
+			node->merge = MergeType::Selection;
+			node->selection_merge_block = merge;
+			merge->add_unique_header(node);
+		}
+		else
+		{
+			// We got a switch block where someone is escaping. Similar idea as for loop analysis.
+			// Find a post-dominator where we ignore branches which are "escaping".
+			auto *dominated_merge_target = find_common_post_dominator_with_ignored_break(node->succ, merge);
+			if (node->dominates(dominated_merge_target))
+			{
+				node->merge = MergeType::Selection;
+				node->selection_merge_block = merge;
+				dominated_merge_target->add_unique_header(node);
+				merge->add_unique_header(node);
+			}
+		}
+	}
+}
+
 void CFGStructurizer::find_selection_merges(unsigned pass)
 {
 	for (auto *node : post_visit_order)
@@ -833,6 +900,23 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 		auto *idom = node->immediate_dominator;
 		assert(idom->succ.size() >= 2);
 
+		// Check for case fallthrough here. In this case, we do not have a merge scenario, just ignore.
+		auto *inner_header = node->get_outer_selection_dominator();
+		if (inner_header && inner_header->is_switch)
+		{
+			if (inner_header->selection_merge_block == node)
+			{
+				// We just found a switch block which we have already handled.
+				continue;
+			}
+
+			if (std::find(inner_header->succ.begin(), inner_header->succ.end(), node) != inner_header->succ.end())
+			{
+				// Fallthrough.
+				continue;
+			}
+		}
+
 		for (auto *header : node->headers)
 		{
 			// If we have a loop header already associated with this block, treat that as our idom.
@@ -842,6 +926,10 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 
 		if (idom->merge == MergeType::None || idom->merge == MergeType::Selection)
 		{
+			// We just found a switch block which we have already handled.
+			if (idom->is_switch)
+				continue;
+
 			// If the idom is already a selection construct, this must mean
 			// we have some form of breaking construct inside this inner construct.
 			// This fooled find_selection_merges() to think we had a selection merge target at the break target.
@@ -1026,11 +1114,17 @@ CFGNode *CFGStructurizer::find_common_dominated_merge_block(CFGNode *header)
 
 CFGNode *CFGStructurizer::find_common_post_dominator(std::vector<CFGNode *> candidates)
 {
+	return find_common_post_dominator_with_ignored_break(std::move(candidates), nullptr);
+}
+
+CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates, const CFGNode *ignored_node)
+{
 	if (candidates.empty())
 		return nullptr;
 
 	std::vector<CFGNode *> next_nodes;
 	const auto add_unique_next_node = [&](CFGNode *node) {
+		if (node != ignored_node)
 		if (std::find(next_nodes.begin(), next_nodes.end(), node) == next_nodes.end())
 			next_nodes.push_back(node);
 	};
@@ -1437,6 +1531,7 @@ void CFGStructurizer::split_merge_blocks()
 void CFGStructurizer::structurize(unsigned pass)
 {
 	find_loops();
+	find_switch_blocks();
 	find_selection_merges(pass);
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)

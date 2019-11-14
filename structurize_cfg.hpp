@@ -44,6 +44,7 @@ struct CFGNode
 	bool visited = false;
 	bool traversing = false;
 	bool freeze_structured_analysis = false;
+	bool is_switch = false;
 
 	MergeType merge = MergeType::None;
 	CFGNode *loop_merge_block = nullptr;
@@ -87,6 +88,7 @@ struct CFGNode
 	template <typename Op>
 	void traverse_dominated_blocks(const Op &op);
 	CFGNode *get_outer_selection_dominator();
+	CFGNode *get_outer_header_dominator();
 
 	struct LadderPhi
 	{
@@ -178,8 +180,10 @@ private:
 	void split_merge_scopes();
 	void find_selection_merges(unsigned pass);
 	void fixup_broken_selection_merges(unsigned pass);
+	void find_switch_blocks();
 	void split_merge_blocks();
 	static CFGNode *find_common_post_dominator(std::vector<CFGNode *> candidates);
+	static CFGNode *find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates, const CFGNode *break_node);
 	static bool control_flow_is_breaking(const CFGNode *header, const CFGNode *node, const CFGNode *merge);
 	static std::vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
 	static void isolate_structured(std::unordered_set<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
