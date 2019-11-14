@@ -241,6 +241,11 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 	{
 		if (node->ladder_phi.normal_succ)
 		{
+			assert((node->ladder_phi.normal_succ == node->succ[0] &&
+			        node->ladder_phi.break_succ == node->succ[1]) ||
+			       (node->ladder_phi.normal_succ == node->succ[1] &&
+			        node->ladder_phi.break_succ == node->succ[0]));
+
 			builder.createConditionalBranch(cond_id,
 			                                get_spv_block(node->ladder_phi.break_succ),
 			                                get_spv_block(node->ladder_phi.normal_succ));

@@ -331,6 +331,11 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 		to_next->recompute_immediate_dominator();
 		to_prev->recompute_immediate_dominator();
 	}
+
+	if (ladder_phi.normal_succ == to_prev)
+		ladder_phi.normal_succ = to_next;
+	if (ladder_phi.break_succ == to_prev)
+		ladder_phi.break_succ = to_next;
 }
 
 template <typename Op>
@@ -406,8 +411,15 @@ void CFGNode::retarget_pred_from(CFGNode *old_succ)
 		for (auto &s : p->succ)
 			if (s == old_succ)
 				s = this;
+
+		if (p->ladder_phi.normal_succ == old_succ)
+			p->ladder_phi.normal_succ = this;
+		if (p->ladder_phi.break_succ == old_succ)
+			p->ladder_phi.break_succ = this;
 	}
 
+	// Do not swap back edges.
+#if 0
 	// Swap back edge, new pred edge assumes loop header position if relevant.
 	if (old_succ->pred_back_edge)
 	{
@@ -415,6 +427,7 @@ void CFGNode::retarget_pred_from(CFGNode *old_succ)
 		assert(pred_back_edge->succ_back_edge == old_succ);
 		pred_back_edge->succ_back_edge = this;
 	}
+#endif
 }
 
 void CFGNode::recompute_immediate_dominator()
@@ -852,7 +865,18 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 		}
 		else if (idom->merge == MergeType::Loop)
 		{
-			if (idom->loop_merge_block != node)
+			if (idom->loop_merge_block == node && idom->loop_ladder_block)
+			{
+				// We need to create an outer shell for this header since we need to ladder break to this node.
+				auto *loop = create_helper_pred_block(idom);
+				loop->merge = MergeType::Loop;
+				loop->loop_merge_block = node;
+				loop->freeze_structured_analysis = true;
+				node->add_unique_header(loop);
+				fprintf(stderr, "Loop merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(loop),
+						loop->name.c_str(), static_cast<const void *>(node), node->name.c_str());
+			}
+			else if (idom->loop_merge_block != node)
 			{
 				auto *selection_idom = create_helper_succ_block(idom);
 				// If we split the loop header into the loop header -> selection merge header,
@@ -1234,7 +1258,7 @@ void CFGStructurizer::split_merge_blocks()
 		// However, we can set up a chain of merges where inner scope breaks to outer scope with a dummy basic block.
 		// The outer scope comes before the inner scope merge.
 		std::sort(node->headers.begin(), node->headers.end(),
-		          [](const CFGNode *a, const CFGNode *b) { return a->visit_order > b->visit_order; });
+		          [](const CFGNode *a, const CFGNode *b) -> bool { return a->dominates(b); });
 
 		// Verify that scopes are actually nested.
 		// This means header[N] must dominate header[M] where N > M.
@@ -1242,6 +1266,11 @@ void CFGStructurizer::split_merge_blocks()
 		{
 			if (!node->headers[i - 1]->dominates(node->headers[i]))
 				fprintf(stderr, "Scopes are not nested.\n");
+		}
+
+		if (node->headers[0]->loop_ladder_block)
+		{
+			fprintf(stderr, "Outer loop header needs ladder break.\n");
 		}
 
 		CFGNode *full_break_target = nullptr;
@@ -1278,11 +1307,12 @@ void CFGStructurizer::split_merge_blocks()
 						// We'll also need to rewrite a lot of Phi nodes this way as well.
 						auto *ladder = create_helper_pred_block(loop_ladder);
 
+						// All pred branches into ladder here are "normal", expected branches,
+						// unless the pred is a ladder break from previous iteration.
 						for (auto *ladder_pred : ladder->pred)
-						{
-							ladder->ladder_phi.normal_preds.insert(ladder_pred);
-							ladder->ladder_phi.normal_succ = loop_ladder;
-						}
+							if (!ladder_pred->ladder_phi.normal_succ)
+								ladder->ladder_phi.normal_preds.insert(ladder_pred);
+						ladder->ladder_phi.normal_succ = loop_ladder;
 
 						// Merge to ladder instead.
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
