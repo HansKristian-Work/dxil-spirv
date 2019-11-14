@@ -111,8 +111,13 @@ bool CFGNode::can_loop_merge_to(const CFGNode *other) const
 		return false;
 
 	auto *c = pred_back_edge;
+
 	if (c && !c->succ.empty())
 	{
+		for (auto *cs : c->succ)
+			if (cs->post_dominates(other))
+				return true;
+
 		// If the continue block branches to something which is not the loop header,
 		// it must be the merge block we're after, i.e., it must be a clean break (or we are kind of screwed).
 		// Detect a "fake" merge branch here.
