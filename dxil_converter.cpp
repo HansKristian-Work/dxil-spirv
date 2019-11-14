@@ -179,6 +179,7 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 	{
 		cond_id = builder.getUniqueId();
 		auto *phi = new spv::Instruction(cond_id, builder.makeBoolType(), spv::OpPhi);
+		builder.addName(cond_id, (std::string("PHI_") + node->name).c_str());
 		auto true_id = builder.makeBoolConstant(true);
 		auto false_id = builder.makeBoolConstant(false);
 		for (auto *pred : node->pred)
@@ -192,7 +193,11 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 		block->addInstruction(std::unique_ptr<spv::Instruction>(phi));
 	}
 	else
+	{
+		if (node->userdata)
+			builder.createStore(builder.makeBoolConstant(true), tmp_variable);
 		cond_id = builder.createLoad(tmp_variable);
+	}
 
 	spv::Block *continue_block = nullptr;
 

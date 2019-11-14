@@ -932,6 +932,20 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 		return LoopExitType::Escape;
 }
 
+CFGNode *CFGStructurizer::create_helper_ladder_block(CFGNode *node)
+{
+	auto *ladder = create_helper_pred_block(node);
+
+	// All pred branches into ladder here are "normal", expected branches,
+	// unless the pred is a ladder break from previous iteration.
+	for (auto *ladder_pred : ladder->pred)
+		if (!ladder_pred->ladder_phi.normal_succ)
+			ladder->ladder_phi.normal_preds.insert(ladder_pred);
+	ladder->ladder_phi.normal_succ = node;
+
+	return ladder;
+}
+
 CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 {
 	auto *pred_node = pool.create_internal_node();
@@ -1310,14 +1324,7 @@ void CFGStructurizer::split_merge_blocks()
 						// If we have an escape edge, we can break to outer level, and continue the ladder that way.
 						// Otherwise we branch to the existing merge block and continue as normal.
 						// We'll also need to rewrite a lot of Phi nodes this way as well.
-						auto *ladder = create_helper_pred_block(loop_ladder);
-
-						// All pred branches into ladder here are "normal", expected branches,
-						// unless the pred is a ladder break from previous iteration.
-						for (auto *ladder_pred : ladder->pred)
-							if (!ladder_pred->ladder_phi.normal_succ)
-								ladder->ladder_phi.normal_preds.insert(ladder_pred);
-						ladder->ladder_phi.normal_succ = loop_ladder;
+						auto *ladder = create_helper_ladder_block(loop_ladder);
 
 						// Merge to ladder instead.
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
@@ -1342,7 +1349,7 @@ void CFGStructurizer::split_merge_blocks()
 						// We cannot directly break out of a selection construct, so our ladder must be a bit more sophisticated.
 						// ladder-pre -> merge -> ladder-post -> selection merge
 						//      \-------------------/
-						auto *ladder_pre = create_helper_pred_block(loop_ladder);
+						auto *ladder_pre = create_helper_ladder_block(loop_ladder);
 						auto *ladder_post = create_helper_succ_block(loop_ladder);
 						ladder_pre->add_branch(ladder_post);
 					}

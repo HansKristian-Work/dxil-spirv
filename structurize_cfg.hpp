@@ -196,6 +196,7 @@ private:
 	};
 	LoopExitType get_loop_exit_type(const CFGNode &header, const CFGNode &node) const;
 	CFGNode *create_helper_pred_block(CFGNode *node);
+	CFGNode *create_helper_ladder_block(CFGNode *node);
 	CFGNode *create_helper_succ_block(CFGNode *node);
 	void reset_traversal();
 	void validate_structured();
