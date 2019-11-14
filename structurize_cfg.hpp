@@ -64,11 +64,11 @@ struct CFGNode
 	unsigned num_forward_preds() const;
 	bool has_pred_back_edges() const;
 	bool dominates(const CFGNode *other) const;
+	bool can_loop_merge_to(const CFGNode *other) const;
 	bool is_innermost_loop_header_for(const CFGNode *other) const;
 	bool branchless_path_to(const CFGNode *to) const;
 	bool post_dominates(const CFGNode *other) const;
 	bool dominates_all_reachable_exits() const;
-	void ensure_ids(BlockEmissionInterface &iface);
 	static CFGNode *find_common_dominator(const CFGNode *a, const CFGNode *b);
 	CFGNode *get_immediate_dominator_loop_header();
 
@@ -87,6 +87,13 @@ struct CFGNode
 	template <typename Op>
 	void traverse_dominated_blocks(const Op &op);
 	CFGNode *get_outer_selection_dominator();
+
+	struct LadderPhi
+	{
+		std::unordered_set<CFGNode *> normal_preds;
+		CFGNode *break_succ = nullptr;
+		CFGNode *normal_succ = nullptr;
+	} ladder_phi;
 
 private:
 	bool dominates_all_reachable_exits(const CFGNode &header) const;

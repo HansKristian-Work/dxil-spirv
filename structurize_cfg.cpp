@@ -78,18 +78,6 @@ void CFGNode::add_unique_succ(CFGNode *node)
 		succ.push_back(node);
 }
 
-void CFGNode::ensure_ids(BlockEmissionInterface &iface)
-{
-	if (id != 0)
-		return;
-
-	uint32_t count = 1;
-	if (headers.size() > 1)
-		count = headers.size();
-
-	id = iface.allocate_ids(count);
-}
-
 unsigned CFGNode::num_forward_preds() const
 {
 	return unsigned(pred.size());
@@ -115,6 +103,28 @@ bool CFGNode::dominates(const CFGNode *other) const
 	}
 
 	return this == other;
+}
+
+bool CFGNode::can_loop_merge_to(const CFGNode *other) const
+{
+	if (!dominates(other))
+		return false;
+
+	auto *c = pred_back_edge;
+	if (c && !c->succ.empty())
+	{
+		// If the continue block branches to something which is not the loop header,
+		// it must be the merge block we're after, i.e., it must be a clean break (or we are kind of screwed).
+		// Detect a "fake" merge branch here.
+		// E.g., we have a fake merge branch if an escaping edge is branching to one block beyond the real merge block.
+		// This can happen after split_merge_scopes() transform where inner loop
+		// tries to break out of multiple loops and multiple selection scopes at the same time.
+		// We can still dominate this escape target, but it's still an escape which must be resolved some other way with ladders.
+		if (std::find(c->succ.begin(), c->succ.end(), other) == c->succ.end())
+			return false;
+	}
+
+	return true;
 }
 
 bool CFGNode::is_innermost_loop_header_for(const CFGNode *other) const
@@ -866,6 +876,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 
 CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode &header, const CFGNode &node) const
 {
+	// If there exists an inner loop which dominates this exit, we treat it as an inner loop exit.
 	bool is_innermost_loop_header = header.is_innermost_loop_header_for(&node);
 	if (header.dominates(&node) && node.dominates_all_reachable_exits())
 	{
@@ -875,12 +886,16 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 			return LoopExitType::InnerLoopExit;
 	}
 
-	// If there exists an inner loop which dominates this exit, we treat it as an inner loop exit.
-
 	if (header.dominates(&node))
 	{
 		if (is_innermost_loop_header)
+		{
+			// Even if we dominate node, we might not be able to merge to it.
+			if (!header.can_loop_merge_to(&node))
+				return LoopExitType::Escape;
+
 			return LoopExitType::Merge;
+		}
 		else
 			return LoopExitType::InnerLoopMerge;
 	}
@@ -1177,7 +1192,7 @@ void CFGStructurizer::find_loops()
 				node->loop_merge_block = merge;
 				const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
 
-				if (node->dominates(merge))
+				if (node->can_loop_merge_to(merge))
 				{
 					// Clean merge.
 					// This is a unique merge block. There can be no other merge candidate.
@@ -1263,14 +1278,26 @@ void CFGStructurizer::split_merge_blocks()
 						// We'll also need to rewrite a lot of Phi nodes this way as well.
 						auto *ladder = create_helper_pred_block(loop_ladder);
 
+						for (auto *ladder_pred : ladder->pred)
+						{
+							ladder->ladder_phi.normal_preds.insert(ladder_pred);
+							ladder->ladder_phi.normal_succ = loop_ladder;
+						}
+
 						// Merge to ladder instead.
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
 
 						// Ladder breaks out to outer scope.
 						if (target_header->loop_ladder_block)
+						{
 							ladder->add_branch(target_header->loop_ladder_block);
+							ladder->ladder_phi.break_succ = target_header->loop_ladder_block;
+						}
 						else if (target_header->loop_merge_block)
+						{
 							ladder->add_branch(target_header->loop_merge_block);
+							ladder->ladder_phi.break_succ = target_header->loop_merge_block;
+						}
 						else
 							fprintf(stderr, "No loop merge block?\n");
 					}
@@ -1423,16 +1450,6 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 	for (auto index = post_visit_order.size(); index; index--)
 	{
 		auto *block = post_visit_order[index - 1];
-
-		block->ensure_ids(iface);
-		for (auto *succ : block->succ)
-			succ->ensure_ids(iface);
-		if (block->pred_back_edge)
-			block->pred_back_edge->ensure_ids(iface);
-		if (block->selection_merge_block)
-			block->selection_merge_block->ensure_ids(iface);
-		if (block->loop_merge_block)
-			block->loop_merge_block->ensure_ids(iface);
 
 		BlockEmissionInterface::MergeInfo merge;
 

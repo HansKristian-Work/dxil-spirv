@@ -112,6 +112,7 @@ void Converter::Impl::register_block(CFGNode *node)
 	{
 		meta->spv_block = new spv::Block(builder.getUniqueId(), *function);
 		function->addBlock(meta->spv_block);
+		node->id = meta->spv_block->getId();
 	}
 
 	meta->node = node;
@@ -173,7 +174,25 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 		                                      node->name.c_str());
 	}
 
-	spv::Id cond_id = builder.createLoad(tmp_variable);
+	spv::Id cond_id;
+	if (node->ladder_phi.normal_succ)
+	{
+		cond_id = builder.getUniqueId();
+		auto *phi = new spv::Instruction(cond_id, builder.makeBoolType(), spv::OpPhi);
+		auto true_id = builder.makeBoolConstant(true);
+		auto false_id = builder.makeBoolConstant(false);
+		for (auto *pred : node->pred)
+		{
+			if (node->ladder_phi.normal_preds.count(pred))
+				phi->addIdOperand(false_id);
+			else
+				phi->addIdOperand(true_id);
+			phi->addIdOperand(pred->id);
+		}
+		block->addInstruction(std::unique_ptr<spv::Instruction>(phi));
+	}
+	else
+		cond_id = builder.createLoad(tmp_variable);
 
 	spv::Block *continue_block = nullptr;
 
@@ -220,9 +239,18 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 	}
 	else if (node->succ.size() == 2)
 	{
-		auto *true_block = get_spv_block(node->succ[0]);
-		auto *false_block = get_spv_block(node->succ[1]);
-		builder.createConditionalBranch(cond_id, true_block, false_block);
+		if (node->ladder_phi.normal_succ)
+		{
+			builder.createConditionalBranch(cond_id,
+			                                get_spv_block(node->ladder_phi.break_succ),
+			                                get_spv_block(node->ladder_phi.normal_succ));
+		}
+		else
+		{
+			auto *true_block = get_spv_block(node->succ[0]);
+			auto *false_block = get_spv_block(node->succ[1]);
+			builder.createConditionalBranch(cond_id, true_block, false_block);
+		}
 	}
 
 	emit_debug_basic_block(node, info);
