@@ -79,6 +79,9 @@ struct CFGNode
 	template <typename Op>
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to, const Op &op);
 
+	template <typename Op>
+	void walk_cfg_from(const Op &op);
+
 	void retarget_succ_from(CFGNode *node);
 	void retarget_pred_from(CFGNode *node);
 	void recompute_immediate_dominator();
@@ -96,6 +99,8 @@ struct CFGNode
 		CFGNode *break_succ = nullptr;
 		CFGNode *normal_succ = nullptr;
 	} ladder_phi;
+
+	std::vector<CFGNode *> dominance_frontier;
 
 private:
 	bool dominates_all_reachable_exits(const CFGNode &header) const;
@@ -168,6 +173,13 @@ public:
 	CFGStructurizer(CFGNode &entry, CFGNodePool &pool);
 	void traverse(BlockEmissionInterface &iface);
 
+	struct IncomingValue
+	{
+		CFGNode *from_block;
+		uint32_t id;
+	};
+	void register_phi(CFGNode *phi_node, std::vector<IncomingValue> incoming);
+
 private:
 	CFGNode *entry_block;
 	CFGNodePool &pool;
@@ -206,5 +218,17 @@ private:
 	void reset_traversal();
 	void validate_structured();
 	void recompute_cfg();
+	void compute_dominance_frontier();
+	void recompute_dominance_frontier(CFGNode *node);
+	void recompute_dominance_frontier(CFGNode *header, const CFGNode *node, std::unordered_set<const CFGNode *> traversed);
+
+	struct PHINode
+	{
+		CFGNode *block;
+		std::vector<IncomingValue> incoming;
+	};
+	std::vector<PHINode> phi_nodes;
+	void insert_phi();
+	void insert_phi(PHINode &node);
 };
 } // namespace DXIL2SPIRV

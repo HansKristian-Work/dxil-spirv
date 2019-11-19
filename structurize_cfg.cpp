@@ -40,7 +40,97 @@ CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
 	fprintf(stderr, "=== Structurize pass ===\n");
 	structurize(1);
 
+	insert_phi();
+
 	validate_structured();
+}
+
+void CFGStructurizer::insert_phi()
+{
+	compute_dominance_frontier();
+
+	// Resolve phi-nodes top-down since PHI nodes may depend on other PHI nodes.
+	std::sort(phi_nodes.begin(), phi_nodes.end(), [](const PHINode &a, const PHINode &b) {
+		return a.block->visit_order > b.block->visit_order;
+	});
+
+	for (auto &phi_node : phi_nodes)
+		insert_phi(phi_node);
+}
+
+void CFGStructurizer::insert_phi(PHINode &node)
+{
+	// We start off with N values defined in N blocks.
+	// These N blocks *used* to branch to the PHI node, but due to our structurizer,
+	// there might not be branch targets here anymore, primary example here is ladders.
+	// In order to fix this we need to follow control flow from these values and insert phi nodes as necessary to link up
+	// a set of values where dominance frontiers are shared.
+	std::unordered_set<CFGNode *> candidate_dominance_frontiers;
+
+	// First, figure out which subset of the CFG we need to work on.
+	std::unordered_set<CFGNode *> cfg_subset;
+	const auto walk_op = [&](CFGNode *n) -> bool {
+		if (cfg_subset.count(n) || node.block == n)
+			return false;
+		else
+		{
+			cfg_subset.insert(n);
+			return true;
+		}
+	};
+
+	for (auto &incoming : node.incoming)
+		incoming.from_block->walk_cfg_from(walk_op);
+
+	for (;;)
+	{
+		// Advance the from blocks to get as close as we can to a dominance frontier.
+		for (auto &incoming : node.incoming)
+		{
+			CFGNode *b = incoming.from_block;
+			while (b->succ.size() == 1 && b->dominates(b->succ.front()))
+				b = incoming.from_block = b->succ.front();
+		}
+
+		// We can check if all inputs are now direct branches, in this case, we can complete the PHI transformation.
+		auto &preds = node.block->pred;
+		bool need_phi_merge = false;
+		for (auto &incoming : node.incoming)
+		{
+			if (std::find(preds.begin(), preds.end(), incoming.from_block) == preds.end())
+			{
+				need_phi_merge = true;
+				break;
+			}
+		}
+
+		if (!need_phi_merge)
+		{
+			fprintf(stderr, "Found PHI for %s.\n", node.block->name.c_str());
+			break;
+		}
+
+		// Inside the CFG subset, place the dominance frontiers for all our input blocks.
+		candidate_dominance_frontiers.clear();
+		for (auto &incoming : node.incoming)
+			for (auto &frontier : incoming.from_block->dominance_frontier)
+				if (cfg_subset.count(frontier))
+					candidate_dominance_frontiers.insert(frontier);
+
+		assert(!candidate_dominance_frontiers.empty());
+		// A candidate dominance frontier is a place where we might want to place a PHI node in order to merge values.
+	}
+}
+
+void CFGStructurizer::compute_dominance_frontier()
+{
+	for (auto *node : post_visit_order)
+		recompute_dominance_frontier(node);
+}
+
+void CFGStructurizer::register_phi(CFGNode *phi_node, std::vector<IncomingValue> incoming)
+{
+	phi_nodes.push_back({ phi_node, std::move(incoming) });
 }
 
 void CFGStructurizer::build_immediate_dominators(CFGNode &entry)
@@ -380,6 +470,16 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNod
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to)
 {
 	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *) { return true; });
+}
+
+template <typename Op>
+void CFGNode::walk_cfg_from(const Op &op)
+{
+	if (!op(this))
+		return;
+
+	for (auto *s : succ)
+		s->walk_cfg_from(op);
 }
 
 template <typename Op>
@@ -1640,6 +1740,34 @@ void CFGStructurizer::structurize(unsigned pass)
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)
 		split_merge_blocks();
+}
+
+void CFGStructurizer::recompute_dominance_frontier(CFGNode *node)
+{
+	std::unordered_set<const CFGNode *> traversed;
+	node->dominance_frontier.clear();
+	recompute_dominance_frontier(node, node, traversed);
+}
+
+void CFGStructurizer::recompute_dominance_frontier(CFGNode *header, const CFGNode *node,
+                                                   std::unordered_set<const CFGNode *> traversed)
+{
+	// Not very efficient, but it'll do for now ...
+	if (traversed.count(node))
+		return;
+	traversed.insert(node);
+
+	for (auto *succ : node->succ)
+	{
+		if (header->dominates(succ))
+			recompute_dominance_frontier(header, succ, traversed);
+		else
+		{
+			auto &frontier = header->dominance_frontier;
+			if (std::find(frontier.begin(), frontier.end(), succ) == frontier.end())
+				header->dominance_frontier.push_back(succ);
+		}
+	}
 }
 
 void CFGStructurizer::validate_structured()
