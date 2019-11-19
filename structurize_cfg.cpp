@@ -730,7 +730,9 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					{
 						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
 						node->merge = MergeType::Selection;
-						node->selection_merge_block = nullptr;
+						auto *dummy_merge = pool.create_internal_node();
+						node->selection_merge_block = dummy_merge;
+						dummy_merge->name = node->name + ".unreachable";
 						fprintf(stderr, "Merging %s -> Unreachable\n", node->name.c_str());
 					}
 					else if (b_path_is_break)
@@ -1616,6 +1618,8 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 		{
 		case MergeType::Selection:
 			merge.merge_block = block->selection_merge_block;
+			if (merge.merge_block)
+				iface.register_block(merge.merge_block);
 			merge.merge_type = block->merge;
 			iface.emit_basic_block(block, merge);
 			break;
@@ -1624,6 +1628,10 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 			merge.merge_block = block->loop_merge_block;
 			merge.merge_type = block->merge;
 			merge.continue_block = block->pred_back_edge;
+			if (merge.merge_block)
+				iface.register_block(merge.merge_block);
+			if (merge.continue_block)
+				iface.register_block(merge.continue_block);
 
 			iface.emit_basic_block(block, merge);
 			break;
