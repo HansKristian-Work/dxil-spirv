@@ -70,7 +70,7 @@ struct CFGNode
 	bool branchless_path_to(const CFGNode *to) const;
 	bool post_dominates(const CFGNode *other) const;
 	bool dominates_all_reachable_exits() const;
-	static CFGNode *find_common_dominator(const CFGNode *a, const CFGNode *b);
+	static CFGNode *find_common_dominator(CFGNode *a, CFGNode *b);
 	CFGNode *get_immediate_dominator_loop_header();
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
@@ -184,7 +184,7 @@ private:
 	void split_merge_blocks();
 	static CFGNode *find_common_post_dominator(std::vector<CFGNode *> candidates);
 	static CFGNode *find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates, const CFGNode *break_node);
-	static bool control_flow_is_breaking(const CFGNode *header, const CFGNode *node, const CFGNode *merge);
+	static bool control_flow_is_escaping(const CFGNode *header, const CFGNode *node, const CFGNode *merge);
 	static std::vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
 	static void isolate_structured(std::unordered_set<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
 

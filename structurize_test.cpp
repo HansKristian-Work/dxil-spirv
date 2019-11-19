@@ -49,7 +49,7 @@ void Emitter::emit_basic_block(CFGNode *node, const MergeInfo &info)
 	switch (info.merge_type)
 	{
 	case MergeType::Selection:
-		fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block->id);
+		fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block ? info.merge_block->id : 0);
 		break;
 
 	case MergeType::Loop:
@@ -104,6 +104,24 @@ int main()
 	};
 
 #if 1
+	add_selection("entry", "l0", "exit");
+	{
+		add_selection("l0", "b0", "merge");
+		{
+			add_selection("b0", "c1", "b1");
+			add_selection("b1", "b2", "c1.p");
+			{
+				add_branch("b2", "c1");
+			}
+			{
+				//add_branch("b3", "c1.p");
+			}
+			add_branch("c1.p", "c1");
+		}
+		add_selection("c1", "l0", "merge");
+		add_branch("merge", "exit");
+	}
+#elif 1
 	add_selection("entry", "switch", "exit");
 	add_switch("switch", { "case0", "case1", "default", "merge" });
 	add_selection("case0", "exit", "merge");

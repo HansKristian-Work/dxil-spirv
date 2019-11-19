@@ -280,15 +280,26 @@ void CFGStructurizer::visit(CFGNode &entry)
 	entry.is_switch = entry.succ.size() > 2;
 }
 
-CFGNode *CFGNode::find_common_dominator(const CFGNode *a, const CFGNode *b)
+CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 {
 	assert(a);
 	assert(b);
 
 	while (a != b)
 	{
-		assert(a->immediate_dominator);
-		assert(b->immediate_dominator);
+		if (!a->immediate_dominator)
+		{
+			for (auto *p : a->pred)
+				p->recompute_immediate_dominator();
+			a->recompute_immediate_dominator();
+		}
+
+		if (!b->immediate_dominator)
+		{
+			for (auto *p: b->pred)
+				p->recompute_immediate_dominator();
+			b->recompute_immediate_dominator();
+		}
 
 		if (a->visit_order < b->visit_order)
 			a = a->immediate_dominator;
@@ -585,7 +596,7 @@ std::vector<CFGNode *> CFGStructurizer::isolate_structured_sorted(const CFGNode 
 	return sorted;
 }
 
-bool CFGStructurizer::control_flow_is_breaking(const CFGNode *header, const CFGNode *node,
+bool CFGStructurizer::control_flow_is_escaping(const CFGNode *header, const CFGNode *node,
                                                const CFGNode *merge)
 {
 	if (node == merge)
@@ -603,7 +614,7 @@ bool CFGStructurizer::control_flow_is_breaking(const CFGNode *header, const CFGN
 			return true;
 		else if (header->dominates(succ))
 		{
-			if (control_flow_is_breaking(header, succ, merge))
+			if (control_flow_is_escaping(header, succ, merge))
 				return true;
 		}
 	}
@@ -637,19 +648,19 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 
 		if (dominates_a && !dominates_b && !merge_a_has_header)
 		{
-			// A is obvious candidate.
+			// A is obvious candidate. B is a direct break/continue construct target most likely.
 			merge_to_succ(node, 0);
 		}
 		else if (dominates_b && !dominates_a && !merge_b_has_header)
 		{
-			// B is obvious candidate.
+			// B is obvious candidate. A is a direct break/continue construct target most likely.
 			merge_to_succ(node, 1);
 		}
 		else if (dominates_a && dominates_b && !merge_a_has_header && merge_b_has_header)
 		{
 			// Not as obvious of a candidate, but this can happen if one path hits continue block,
 			// and other path hits a ladder merge block.
-			// For do/while style loop, the loop body may dominate the merge block.
+			// For do/while(false) style loop, the loop body may dominate the merge block.
 			merge_to_succ(node, 0);
 		}
 		else if (dominates_a && dominates_b && !merge_b_has_header && merge_a_has_header)
@@ -672,12 +683,13 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			if (merge)
 			{
 				bool dominates_merge = node->dominates(merge);
+				bool merges_to_continue = merge && merge->succ_back_edge;
 				if (dominates_merge && !merge->headers.empty())
 				{
 					// Here we have a likely case where one block is doing a clean "break" out of a loop, and
 					// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
-					bool a_path_is_break = control_flow_is_breaking(node, node->succ[0], merge);
-					bool b_path_is_break = control_flow_is_breaking(node, node->succ[1], merge);
+					bool a_path_is_break = control_flow_is_escaping(node, node->succ[0], merge);
+					bool b_path_is_break = control_flow_is_escaping(node, node->succ[1], merge);
 					if (a_path_is_break && b_path_is_break)
 					{
 						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
@@ -690,7 +702,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					else
 						merge_to_succ(node, 1);
 				}
-				else if (merge->headers.empty() || (pass == 0))
+				else if (!merges_to_continue && (merge->headers.empty() || pass == 0))
 				{
 					// Happens first iteration. We'll have to split blocks, so register a merge target where we want it.
 					// Otherwise, this is the easy case if we observe it in pass 1.
@@ -708,8 +720,12 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// Check to see which paths can actually reach the merge target without going through a ladder block.
 					// If we don't go through ladder it means an outer scope will actually reach the merge node.
 					// If we reach a ladder it means a block we dominate will make the escape.
-					bool a_path_is_break = control_flow_is_breaking(node, node->succ[0], merge);
-					bool b_path_is_break = control_flow_is_breaking(node, node->succ[1], merge);
+
+					// Another case is when one path is "breaking" out to a continue block which we don't dominate.
+					// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
+
+					bool a_path_is_break = control_flow_is_escaping(node, node->succ[0], merge);
+					bool b_path_is_break = control_flow_is_escaping(node, node->succ[1], merge);
 					if (a_path_is_break && b_path_is_break)
 					{
 						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
@@ -823,6 +839,10 @@ void CFGStructurizer::split_merge_scopes()
 	for (auto *node : post_visit_order)
 	{
 		if (node->num_forward_preds() <= 1)
+			continue;
+
+		// Continue blocks can always be branched to, from any scope, so don't rewrite anything here.
+		if (node->succ_back_edge)
 			continue;
 
 		// The idom is the natural header block.
@@ -1299,7 +1319,7 @@ void CFGStructurizer::find_loops()
 				std::vector<CFGNode *> non_breaking_exits;
 				non_breaking_exits.reserve(dominated_exit.size());
 				for (auto *exit : dominated_exit)
-					if (!control_flow_is_breaking(node, exit, merge))
+					if (!control_flow_is_escaping(node, exit, merge))
 						non_breaking_exits.push_back(exit);
 
 				dominated_merge = CFGStructurizer::find_common_post_dominator(std::move(non_breaking_exits));
@@ -1559,7 +1579,9 @@ void CFGStructurizer::validate_structured()
 		}
 		else if (node->merge == MergeType::Selection)
 		{
-			if (!node->dominates(node->selection_merge_block) && !node->selection_merge_block->pred.empty())
+			if (!node->selection_merge_block)
+				fprintf(stderr, "No selection merge block for %s\n", node->name.c_str());
+			else if (!node->dominates(node->selection_merge_block) && !node->selection_merge_block->pred.empty())
 			{
 				fprintf(stderr, "Node %s does not dominate its selection merge block %s!\n", node->name.c_str(),
 				        node->selection_merge_block->name.c_str());
