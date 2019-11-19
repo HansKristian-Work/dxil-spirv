@@ -302,9 +302,22 @@ CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 		}
 
 		if (a->visit_order < b->visit_order)
+		{
+			// Awkward case which can happen when nodes are unreachable in the CFG.
+			// Can occur with the dummy blocks we create.
+			if (a == a->immediate_dominator)
+				return b;
 			a = a->immediate_dominator;
+		}
 		else
+		{
+			// Awkward case which can happen when nodes are unreachable in the CFG.
+			// Can occur with the dummy blocks we create.
+			if (b == b->immediate_dominator)
+				return a;
+
 			b = b->immediate_dominator;
+		}
 	}
 	return const_cast<CFGNode *>(a);
 }

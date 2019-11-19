@@ -106,6 +106,20 @@ int main()
 #if 1
 	add_selection("entry", "l0", "exit");
 	{
+		add_selection("l0", "l0.true", "m0");
+		{
+			add_branch("l0.true", "m0");
+		}
+		add_branch("m0", "l1");
+		add_selection("l1", "l1.true", "m1");
+		{
+			add_branch("l1.true", "m1");
+		}
+		add_branch("m1", "exit");
+	}
+#elif 1
+	add_selection("entry", "l0", "exit");
+	{
 		add_selection("l0", "b0", "merge");
 		{
 			add_selection("b0", "c1", "b1");
