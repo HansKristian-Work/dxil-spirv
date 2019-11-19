@@ -30,6 +30,7 @@ CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
 	recompute_cfg();
 
 	split_merge_scopes();
+	recompute_cfg();
 
 	fprintf(stderr, "=== Structurize pass ===\n");
 	structurize(0);
@@ -390,11 +391,14 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header
 
 	for (auto *node : succ)
 	{
+		if (!op(node))
+			continue;
+
 		if (node == from)
 		{
 			// Don't introduce a cycle.
 			// We only retarget branches when we have "escape-like" edges.
-			if (!to->dominates(this) && op(this))
+			if (!to->dominates(this))
 				retarget_branch(from, to);
 		}
 		else if (header.dominates(node) && node != to) // Do not traverse beyond the new branch target.
@@ -492,6 +496,10 @@ CFGNode *CFGNode::get_outer_selection_dominator()
 	{
 		if (node->pred.empty())
 			break;
+
+		// Skip from merge block to header.
+		while (std::find(node->headers.begin(), node->headers.end(), node->immediate_dominator) != node->headers.end())
+			node = node->immediate_dominator;
 
 		assert(node->immediate_dominator);
 		node = node->immediate_dominator;
@@ -844,13 +852,35 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		ladder->name = ladder_to->name + "." + inner_block->name + ".ladder";
 		ladder->add_branch(ladder_to);
 
-		inner_block->traverse_dominated_blocks_and_rewrite_branch(ladder_to, ladder);
+		// Stop rewriting once we hit a merge block.
+		inner_block->traverse_dominated_blocks_and_rewrite_branch(ladder_to, ladder, [inner_block](CFGNode *node) {
+			return inner_block->selection_merge_block != node;
+		});
 		rewrite_selection_breaks(inner_block, ladder);
 	}
 }
 
 void CFGStructurizer::split_merge_scopes()
 {
+	for (auto *node : post_visit_order)
+	{
+		// Setup a preliminary merge scope so we know when to stop traversal.
+		// We don't care about traversing inner scopes, out starting from merge block as well.
+		if (node->num_forward_preds() <= 1)
+			continue;
+
+		// The idom is the natural header block.
+		auto *idom = node->immediate_dominator;
+		assert(idom->succ.size() >= 2);
+
+		if (idom->merge == MergeType::None)
+		{
+			idom->merge = MergeType::Selection;
+			idom->selection_merge_block = node;
+		}
+		node->headers.push_back(idom);
+	}
+
 	for (auto *node : post_visit_order)
 	{
 		if (node->num_forward_preds() <= 1)
@@ -1152,6 +1182,42 @@ CFGNode *CFGStructurizer::find_common_post_dominator(std::vector<CFGNode *> cand
 	return find_common_post_dominator_with_ignored_break(std::move(candidates), nullptr);
 }
 
+CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_exits(const CFGNode *header)
+{
+	std::vector<CFGNode *> candidates;
+	std::vector<CFGNode *> next_nodes;
+	const auto add_unique_next_node = [&](CFGNode *node) {
+		if (std::find(next_nodes.begin(), next_nodes.end(), node) == next_nodes.end())
+			next_nodes.push_back(node);
+	};
+
+	// Ignore any exit paths.
+	for (auto *succ : header->succ)
+		if (!succ->dominates_all_reachable_exits())
+			add_unique_next_node(succ);
+	std::swap(next_nodes, candidates);
+
+	while (candidates.size() != 1)
+	{
+		// Sort candidates by post visit order.
+		std::sort(candidates.begin(), candidates.end(),
+		          [](const CFGNode *a, const CFGNode *b) { return a->visit_order > b->visit_order; });
+
+		for (auto *succ : candidates.front()->succ)
+			add_unique_next_node(succ);
+		for (auto itr = candidates.begin() + 1; itr != candidates.end(); ++itr)
+			add_unique_next_node(*itr);
+
+		candidates.clear();
+		std::swap(candidates, next_nodes);
+	}
+
+	if (candidates.empty())
+		return nullptr;
+	else
+		return candidates.front();
+}
+
 CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates, const CFGNode *ignored_node)
 {
 	if (candidates.empty())
@@ -1160,8 +1226,8 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(std::vec
 	std::vector<CFGNode *> next_nodes;
 	const auto add_unique_next_node = [&](CFGNode *node) {
 		if (node != ignored_node)
-		if (std::find(next_nodes.begin(), next_nodes.end(), node) == next_nodes.end())
-			next_nodes.push_back(node);
+			if (std::find(next_nodes.begin(), next_nodes.end(), node) == next_nodes.end())
+				next_nodes.push_back(node);
 	};
 
 	while (candidates.size() != 1)
@@ -1182,6 +1248,9 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(std::vec
 		candidates.clear();
 		std::swap(candidates, next_nodes);
 	}
+
+	if (candidates.empty())
+		return nullptr;
 
 	return candidates.front();
 }
