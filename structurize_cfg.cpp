@@ -54,6 +54,10 @@ void CFGStructurizer::insert_phi()
 {
 	compute_dominance_frontier();
 
+	for (auto *node : post_visit_order)
+		for (auto &phi : node->ir.phi)
+			phi_nodes.push_back({ node, &phi });
+
 	// Resolve phi-nodes top-down since PHI nodes may depend on other PHI nodes.
 	std::sort(phi_nodes.begin(), phi_nodes.end(), [](const PHINode &a, const PHINode &b) {
 		return a.block->visit_order > b.block->visit_order;
@@ -63,9 +67,9 @@ void CFGStructurizer::insert_phi()
 		insert_phi(phi_node);
 }
 
-static std::vector<CFGStructurizer::IncomingValue>::const_iterator find_incoming_value(
+std::vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
 		const CFGNode *frontier_pred,
-		const std::vector<CFGStructurizer::IncomingValue> &incoming)
+		const std::vector<IncomingValue> &incoming)
 {
 	// Find the incoming block which dominates frontier_pred and has the lowest post visit order.
 	// There are cases where two or more blocks dominate, but we want the most immediate dominator.
@@ -73,9 +77,9 @@ static std::vector<CFGStructurizer::IncomingValue>::const_iterator find_incoming
 
 	for (auto itr = incoming.begin(); itr != incoming.end(); ++itr)
 	{
-		if (itr->from_block->dominates(frontier_pred))
+		if (itr->block->dominates(frontier_pred))
 		{
-			if (candidate == incoming.end() || itr->from_block->visit_order < candidate->from_block->visit_order)
+			if (candidate == incoming.end() || itr->block->visit_order < candidate->block->visit_order)
 				candidate = itr;
 		}
 	}
@@ -103,8 +107,10 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		}
 	};
 
-	for (auto &incoming : node.incoming)
-		incoming.from_block->walk_cfg_from(walk_op);
+	auto &incoming_values = node.phi->incoming;
+
+	for (auto &incoming : incoming_values)
+		incoming.block->walk_cfg_from(walk_op);
 
 	fprintf(stderr, "\n=== CFG subset ===\n");
 	for (auto *subset_node : cfg_subset)
@@ -115,19 +121,19 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	{
 		fprintf(stderr, "\n=== PHI iteration ===\n");
 		// Advance the from blocks to get as close as we can to a dominance frontier.
-		for (auto &incoming : node.incoming)
+		for (auto &incoming : incoming_values)
 		{
-			CFGNode *b = incoming.from_block;
+			CFGNode *b = incoming.block;
 			while (b->succ.size() == 1 && b->dominates(b->succ.front()))
-				b = incoming.from_block = b->succ.front();
+				b = incoming.block = b->succ.front();
 		}
 
 		// We can check if all inputs are now direct branches, in this case, we can complete the PHI transformation.
 		auto &preds = node.block->pred;
 		bool need_phi_merge = false;
-		for (auto &incoming : node.incoming)
+		for (auto &incoming : incoming_values)
 		{
-			if (std::find(preds.begin(), preds.end(), incoming.from_block) == preds.end())
+			if (std::find(preds.begin(), preds.end(), incoming.block) == preds.end())
 			{
 				need_phi_merge = true;
 				break;
@@ -142,9 +148,9 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 		// Inside the CFG subset, find a dominance frontiers where we merge PHIs this iteration.
 		CFGNode *frontier = nullptr;
-		for (auto &incoming : node.incoming)
+		for (auto &incoming : incoming_values)
 		{
-			for (auto *candidate_frontier : incoming.from_block->dominance_frontier)
+			for (auto *candidate_frontier : incoming.block->dominance_frontier)
 			{
 				if (cfg_subset.count(candidate_frontier))
 				{
@@ -169,21 +175,21 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		// Remove old inputs.
 		for (auto *input : frontier->pred)
 		{
-			auto itr = find_incoming_value(input, node.incoming);
-			assert(itr != node.incoming.end());
+			auto itr = find_incoming_value(input, incoming_values);
+			assert(itr != incoming_values.end());
 
 			// Do we remove the incoming value now or not?
 			// If all paths from incoming value must go through frontier, we can remove it,
 			// otherwise, we might still need to use the incoming value somewhere else.
-			bool exists_path = itr->from_block->exists_path_in_cfg_without_intermediate_node(node.block, frontier);
+			bool exists_path = itr->block->exists_path_in_cfg_without_intermediate_node(node.block, frontier);
 			if (exists_path)
 			{
-				fprintf(stderr, "   ... keeping input in %s\n", itr->from_block->name.c_str());
+				fprintf(stderr, "   ... keeping input in %s\n", itr->block->name.c_str());
 			}
 			else
 			{
-				fprintf(stderr, "   ... removing input in %s\n", itr->from_block->name.c_str());
-				node.incoming.erase(itr);
+				fprintf(stderr, "   ... removing input in %s\n", itr->block->name.c_str());
+				incoming_values.erase(itr);
 			}
 		}
 
@@ -193,8 +199,8 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		// Replace with merged value.
 		IncomingValue new_incoming = {};
 		new_incoming.id = 0;
-		new_incoming.from_block = frontier;
-		node.incoming.push_back(new_incoming);
+		new_incoming.block = frontier;
+		incoming_values.push_back(new_incoming);
 		fprintf(stderr, "=========================\n");
 	}
 }
@@ -203,11 +209,6 @@ void CFGStructurizer::compute_dominance_frontier()
 {
 	for (auto *node : post_visit_order)
 		recompute_dominance_frontier(node);
-}
-
-void CFGStructurizer::register_phi(CFGNode *phi_node, std::vector<IncomingValue> incoming)
-{
-	phi_nodes.push_back({ phi_node, std::move(incoming) });
 }
 
 void CFGStructurizer::build_immediate_dominators(CFGNode &entry)
@@ -774,7 +775,7 @@ void LoopMergeTracer::trace_from_parent(CFGNode *header)
 	}
 }
 
-static void merge_to_succ(CFGNode *node, unsigned index)
+void CFGStructurizer::merge_to_succ(CFGNode *node, unsigned index)
 {
 	node->succ[index]->headers.push_back(node);
 	node->selection_merge_block = node->succ[index];
@@ -1919,7 +1920,7 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 	{
 		auto *block = post_visit_order[index - 1];
 
-		BlockEmissionInterface::MergeInfo merge;
+		auto &merge = block->ir.merge_info;
 
 		switch (block->merge)
 		{
@@ -1928,7 +1929,7 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 			if (merge.merge_block)
 				iface.register_block(merge.merge_block);
 			merge.merge_type = block->merge;
-			iface.emit_basic_block(block, merge);
+			iface.emit_basic_block(block);
 			break;
 
 		case MergeType::Loop:
@@ -1940,11 +1941,11 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 			if (merge.continue_block)
 				iface.register_block(merge.continue_block);
 
-			iface.emit_basic_block(block, merge);
+			iface.emit_basic_block(block);
 			break;
 
 		default:
-			iface.emit_basic_block(block, merge);
+			iface.emit_basic_block(block);
 			break;
 		}
 	}

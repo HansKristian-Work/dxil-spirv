@@ -32,6 +32,7 @@ add_library(dxil-parser STATIC
         dxil.hpp
         dxil_converter.hpp dxil_converter.cpp
         structurize_cfg.hpp structurize_cfg.cpp
+        ir.hpp ir.cpp
         dxil_parser.hpp dxil_parser.cpp)
 target_include_directories(dxil-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

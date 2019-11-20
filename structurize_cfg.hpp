@@ -24,22 +24,28 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "ir.hpp"
 
 namespace DXIL2SPIRV
 {
-enum class MergeType
-{
-	None,
-	Loop,
-	Selection
-};
 
 class BlockEmissionInterface;
 
 struct CFGNode
 {
+public:
 	std::string name;
 	uint32_t id = 0;
+	void *userdata = nullptr;
+	IRBlock ir;
+
+private:
+	CFGNode() = default;
+	friend class CFGNodePool;
+	friend class CFGStructurizer;
+	friend struct LoopBacktracer;
+	friend struct LoopMergeTracer;
+
 	uint32_t visit_order = 0;
 	bool visited = false;
 	bool traversing = false;
@@ -86,8 +92,6 @@ struct CFGNode
 	void retarget_succ_from(CFGNode *node);
 	void retarget_pred_from(CFGNode *node);
 	void recompute_immediate_dominator();
-
-	void *userdata = nullptr;
 
 	template <typename Op>
 	void traverse_dominated_blocks(const Op &op);
@@ -142,13 +146,8 @@ private:
 class BlockEmissionInterface
 {
 public:
-	struct MergeInfo
-	{
-		MergeType merge_type = MergeType::None;
-		CFGNode *merge_block = nullptr;
-		CFGNode *continue_block = nullptr;
-	};
-	virtual void emit_basic_block(CFGNode *node, const MergeInfo &info) = 0;
+
+	virtual void emit_basic_block(CFGNode *node) = 0;
 	virtual void register_block(CFGNode *node) = 0;
 	//virtual void emit_helper_block(CFGNode *node, CFGNode *next_block, const MergeInfo &info) = 0;
 
@@ -175,13 +174,6 @@ public:
 	bool run();
 	void traverse(BlockEmissionInterface &iface);
 
-	struct IncomingValue
-	{
-		CFGNode *from_block;
-		uint32_t id;
-	};
-	void register_phi(CFGNode *phi_node, std::vector<IncomingValue> incoming);
-
 private:
 	CFGNode *entry_block;
 	CFGNodePool &pool;
@@ -203,6 +195,10 @@ private:
 	static std::vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
 	static void isolate_structured(std::unordered_set<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
 
+	static std::vector<IncomingValue>::const_iterator find_incoming_value(
+			const CFGNode *frontier_pred,
+			const std::vector<IncomingValue> &incoming);
+
 	void rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_to);
 
 	enum class LoopExitType
@@ -223,11 +219,12 @@ private:
 	void compute_dominance_frontier();
 	void recompute_dominance_frontier(CFGNode *node);
 	void recompute_dominance_frontier(CFGNode *header, const CFGNode *node, std::unordered_set<const CFGNode *> traversed);
+	static void merge_to_succ(CFGNode *node, unsigned index);
 
 	struct PHINode
 	{
 		CFGNode *block;
-		std::vector<IncomingValue> incoming;
+		PHI *phi;
 	};
 	std::vector<PHINode> phi_nodes;
 	void insert_phi();

@@ -67,7 +67,7 @@ struct Converter::Impl : BlockEmissionInterface
 	void structurize_module(BlockMeta *block);
 	bool finalize_spirv(std::vector<uint32_t> &spirv);
 
-	void emit_basic_block(CFGNode *node, const MergeInfo &info) override;
+	void emit_basic_block(CFGNode *node) override;
 	void register_block(CFGNode *node) override;
 
 	void emit_debug_basic_block(CFGNode *node, const MergeInfo &info);
@@ -149,13 +149,15 @@ void Converter::Impl::emit_debug_basic_block(CFGNode *node, const MergeInfo &inf
 		break;
 	}
 
+#if 0
 	for (auto *succ : node->succ)
 		fprintf(stderr, "  -> %u (%s)\n", succ->id, succ->name.c_str());
 	if (node->succ_back_edge)
 		fprintf(stderr, " %s <- back edge\n", node->succ_back_edge->name.c_str());
+#endif
 }
 
-void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
+void Converter::Impl::emit_basic_block(CFGNode *node)
 {
 	auto *block = get_spv_block(node);
 	builder.setBuildPoint(block);
@@ -174,6 +176,7 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 		                                      node->name.c_str());
 	}
 
+#if 0
 	spv::Id cond_id;
 	if (node->ladder_phi.normal_succ)
 	{
@@ -285,6 +288,7 @@ void Converter::Impl::emit_basic_block(CFGNode *node, const MergeInfo &info)
 		builder.setBuildPoint(continue_block);
 		builder.createBranch(block);
 	}
+#endif
 }
 
 void Converter::Impl::structurize_module(BlockMeta *entry)

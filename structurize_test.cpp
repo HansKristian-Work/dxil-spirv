@@ -29,7 +29,7 @@ struct BlockMeta
 
 struct Emitter : BlockEmissionInterface
 {
-	void emit_basic_block(CFGNode *node, const MergeInfo &info) override;
+	void emit_basic_block(CFGNode *node) override;
 	void register_block(CFGNode *node) override
 	{
 		if (node->id == 0)
@@ -40,8 +40,9 @@ struct Emitter : BlockEmissionInterface
 	unsigned base_id = 1;
 };
 
-void Emitter::emit_basic_block(CFGNode *node, const MergeInfo &info)
+void Emitter::emit_basic_block(CFGNode *node)
 {
+	auto &info = node->ir.merge_info;
 	fprintf(stderr, "%u (%s):\n", node->id, node->name.c_str());
 
 	// Emit opcodes here ...
@@ -60,10 +61,12 @@ void Emitter::emit_basic_block(CFGNode *node, const MergeInfo &info)
 		break;
 	}
 
+#if 0
 	for (auto *succ : node->succ)
 		fprintf(stderr, " -> %s\n", succ->name.c_str());
 	if (node->succ_back_edge)
 		fprintf(stderr, " %s <- back edge\n", node->succ_back_edge->name.c_str());
+#endif
 }
 
 int main()
@@ -272,8 +275,10 @@ int main()
 	}
 #endif
 
+	auto *b0_exit = get("b0.exit");
+	b0_exit->ir.phi.push_back({ 0, 0, {{ get("b0"), 0 }, { get("l1.cond"), 1 }, { get("l0.exit"), 2 }}});
+
 	CFGStructurizer traverser(*get("entry"), pool);
-	traverser.register_phi(get("b0.exit"), {{ get("b0"), 0 }, { get("l1.cond"), 1 }, { get("l0.exit"), 2 }});
 	traverser.run();
 	Emitter emitter;
 	emitter.pool = &pool;
