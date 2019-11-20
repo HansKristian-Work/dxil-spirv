@@ -16,7 +16,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "structurize_cfg.hpp"
+#include "cfg_structurizer.hpp"
+#include "node.hpp"
+#include "node_pool.hpp"
 #include <stdio.h>
 #include <string>
 #include <unordered_map>

@@ -19,7 +19,9 @@
 #include "dxil_converter.hpp"
 #include <utility>
 #include "SpvBuilder.h"
-#include "structurize_cfg.hpp"
+#include "cfg_structurizer.hpp"
+#include "node_pool.hpp"
+#include "node.hpp"
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
@@ -31,23 +33,18 @@ namespace DXIL2SPIRV
 {
 constexpr uint32_t GENERATOR = 1967215134;
 
-struct Converter::Impl : BlockEmissionInterface
+struct Converter::Impl
 {
-	Impl(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_)
+	Impl(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)
 		: container_parser(std::move(container_parser_)),
 		  bitcode_parser(std::move(bitcode_parser_)),
-		  builder(GENERATOR, &build_logger)
+		  spirv_module(module_)
 	{
-		setup_module();
 	}
 
 	DXILContainerParser container_parser;
 	LLVMBCParser bitcode_parser;
-	spv::SpvBuildLogger build_logger;
-	spv::Builder builder;
-	CFGNodePool pool;
-	std::unique_ptr<CFGStructurizer> structurizer;
-	spv::Function *function = nullptr;
+	SPIRVModule &spirv_module;
 
 	struct BlockMeta
 	{
@@ -57,261 +54,34 @@ struct Converter::Impl : BlockEmissionInterface
 		}
 
 		BasicBlock *bb;
-		spv::Block *spv_block = nullptr;
 		CFGNode *node = nullptr;
 	};
 	std::vector<std::unique_ptr<BlockMeta>> metas;
 	std::unordered_map<BasicBlock *, BlockMeta *> bb_map;
 
-	void setup_module();
-	void structurize_module(BlockMeta *block);
-	bool finalize_spirv(std::vector<uint32_t> &spirv);
-
-	void emit_basic_block(CFGNode *node) override;
-	void register_block(CFGNode *node) override;
-
-	void emit_debug_basic_block(CFGNode *node, const MergeInfo &info);
-	//void emit_helper_block(CFGNode *node, CFGNode *next_block, const MergeInfo &info) override;
-
-	static spv::Block *get_spv_block(CFGNode *node);
+	ConvertedFunction convert_entry_point();
 };
 
-Converter::Converter(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_)
+Converter::Converter(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)
 {
-	impl = std::make_unique<Impl>(std::move(container_parser_), std::move(bitcode_parser_));
+	impl = std::make_unique<Impl>(std::move(container_parser_), std::move(bitcode_parser_), module_);
 }
 
 Converter::~Converter()
 {
 }
 
-bool Converter::Impl::finalize_spirv(std::vector<uint32_t> &spirv)
+ConvertedFunction Converter::convert_entry_point()
 {
-	builder.dump(spirv);
-	if (spirv.size() >= 2)
-	{
-		static const unsigned int Version_1_3 = 0x00010300;
-		spirv[1] = Version_1_3;
-	}
-	return true;
+	return impl->convert_entry_point();
 }
 
-void Converter::Impl::register_block(CFGNode *node)
+ConvertedFunction Converter::Impl::convert_entry_point()
 {
-	auto *meta = static_cast<BlockMeta *>(node->userdata);
+	ConvertedFunction result;
+	result.node_pool = std::make_unique<CFGNodePool>();
+	auto &pool = *result.node_pool;
 
-	// For internal blocks, we don't have userdata, so make it here.
-	if (!meta)
-	{
-		auto dummy_meta = std::make_unique<BlockMeta>(nullptr);
-		node->userdata = meta = dummy_meta.get();
-		metas.push_back(std::move(dummy_meta));
-	}
-
-	if (!meta->spv_block)
-	{
-		meta->spv_block = new spv::Block(builder.getUniqueId(), *function);
-		function->addBlock(meta->spv_block);
-		node->id = meta->spv_block->getId();
-	}
-
-	meta->node = node;
-}
-
-spv::Block *Converter::Impl::get_spv_block(CFGNode *node)
-{
-	auto *meta = static_cast<BlockMeta *>(node->userdata);
-	return meta->spv_block;
-}
-
-void Converter::Impl::emit_debug_basic_block(CFGNode *node, const MergeInfo &info)
-{
-	auto *meta = static_cast<BlockMeta *>(node->userdata);
-	fprintf(stderr, "%u (%s):\n", node->id, node->name.c_str());
-
-	switch (info.merge_type)
-	{
-	case MergeType::Selection:
-		fprintf(stderr, "    SelectionMerge -> %u (%s)\n",
-		        info.merge_block->id,
-		        info.merge_block->name.c_str());
-		break;
-
-	case MergeType::Loop:
-		fprintf(stderr, "    LoopMerge -> %u (%s), Continue <- %u (%s)\n",
-		        info.merge_block->id,
-		        info.merge_block->name.c_str(),
-		        info.continue_block ? info.continue_block->id : 0,
-		        info.continue_block ? info.continue_block->name.c_str() : "Unreachable");
-		break;
-
-	default:
-		break;
-	}
-
-#if 0
-	for (auto *succ : node->succ)
-		fprintf(stderr, "  -> %u (%s)\n", succ->id, succ->name.c_str());
-	if (node->succ_back_edge)
-		fprintf(stderr, " %s <- back edge\n", node->succ_back_edge->name.c_str());
-#endif
-}
-
-void Converter::Impl::emit_basic_block(CFGNode *node)
-{
-	auto *block = get_spv_block(node);
-	builder.setBuildPoint(block);
-
-	// Emit block code here.
-	// Dummy code.
-	spv::Id tmp_variable;
-	if (node->name.empty())
-	{
-		tmp_variable = builder.createVariable(spv::StorageClass::StorageClassFunction, builder.makeBoolType(),
-		                                      (std::string("COND") + std::to_string(node->id)).c_str());
-	}
-	else
-	{
-		tmp_variable = builder.createVariable(spv::StorageClass::StorageClassFunction, builder.makeBoolType(),
-		                                      node->name.c_str());
-	}
-
-#if 0
-	spv::Id cond_id;
-	if (node->ladder_phi.normal_succ)
-	{
-		cond_id = builder.getUniqueId();
-		auto *phi = new spv::Instruction(cond_id, builder.makeBoolType(), spv::OpPhi);
-		builder.addName(cond_id, (std::string("PHI_") + node->name).c_str());
-		auto true_id = builder.makeBoolConstant(true);
-		auto false_id = builder.makeBoolConstant(false);
-		for (auto *pred : node->pred)
-		{
-			if (node->ladder_phi.normal_preds.count(pred))
-				phi->addIdOperand(false_id);
-			else
-				phi->addIdOperand(true_id);
-			phi->addIdOperand(pred->id);
-		}
-		block->addInstruction(std::unique_ptr<spv::Instruction>(phi));
-	}
-	else
-	{
-		if (node->userdata)
-			builder.createStore(builder.makeBoolConstant(true), tmp_variable);
-		cond_id = builder.createLoad(tmp_variable);
-	}
-
-	spv::Block *continue_block = nullptr;
-
-	// Emit merge information if any.
-	switch (info.merge_type)
-	{
-	case MergeType::Selection:
-	{
-		builder.createSelectionMerge(get_spv_block(info.merge_block), 0);
-		break;
-	}
-
-	case MergeType::Loop:
-	{
-		if (info.continue_block)
-			builder.createLoopMerge(get_spv_block(info.merge_block), get_spv_block(info.continue_block), 0);
-		else
-		{
-			continue_block = new spv::Block(builder.getUniqueId(), *function);
-			function->addBlock(continue_block);
-			builder.createLoopMerge(get_spv_block(info.merge_block), continue_block, 0);
-		}
-		break;
-	}
-
-	default:
-		break;
-	}
-
-	// Emit some dummy branch code.
-	if (node->succ.empty())
-	{
-		builder.makeReturn(false);
-	}
-	else if (node->succ.size() == 1 && node->succ_back_edge)
-	{
-		auto *true_block = get_spv_block(node->succ[0]);
-		auto *false_block = get_spv_block(node->succ_back_edge);
-		builder.createConditionalBranch(cond_id, true_block, false_block);
-	}
-	else if (node->succ.size() == 1)
-	{
-		builder.createBranch(get_spv_block(node->succ[0]));
-	}
-	else if (node->succ.size() == 2)
-	{
-		if (node->ladder_phi.normal_succ)
-		{
-			assert((node->ladder_phi.normal_succ == node->succ[0] &&
-			        node->ladder_phi.break_succ == node->succ[1]) ||
-			       (node->ladder_phi.normal_succ == node->succ[1] &&
-			        node->ladder_phi.break_succ == node->succ[0]));
-
-			builder.createConditionalBranch(cond_id,
-			                                get_spv_block(node->ladder_phi.break_succ),
-			                                get_spv_block(node->ladder_phi.normal_succ));
-		}
-		else
-		{
-			auto *true_block = get_spv_block(node->succ[0]);
-			auto *false_block = get_spv_block(node->succ[1]);
-			builder.createConditionalBranch(cond_id, true_block, false_block);
-		}
-	}
-	else
-	{
-		auto *instruction = new spv::Instruction(spv::NoResult, spv::NoType, spv::OpSwitch);
-		instruction->addIdOperand(builder.makeIntConstant(42));
-		instruction->addIdOperand(node->selection_merge_block->id);
-
-		get_spv_block(node->selection_merge_block)->addPredecessor(block);
-		for (size_t i = 0; i < node->succ.size(); i++)
-		{
-			instruction->addImmediateOperand(i);
-			instruction->addIdOperand(node->succ[i]->id);
-			get_spv_block(node->succ[i])->addPredecessor(block);
-		}
-		block->addInstruction(std::unique_ptr<spv::Instruction>(instruction));
-	}
-
-	emit_debug_basic_block(node, info);
-
-	if (continue_block)
-	{
-		builder.setBuildPoint(continue_block);
-		builder.createBranch(block);
-	}
-#endif
-}
-
-void Converter::Impl::structurize_module(BlockMeta *entry)
-{
-	structurizer = std::make_unique<CFGStructurizer>(*pool.get_node_from_userdata(entry), pool);
-
-	builder.addCapability(spv::Capability::CapabilityShader);
-	builder.setMemoryModel(spv::AddressingModel::AddressingModelLogical,
-	                       spv::MemoryModel::MemoryModelGLSL450);
-
-	function = builder.makeEntryPoint("main");
-	builder.addEntryPoint(spv::ExecutionModel::ExecutionModelFragment, function, "main");
-	builder.addExecutionMode(function, spv::ExecutionMode::ExecutionModeOriginUpperLeft);
-
-	structurizer->traverse(*this);
-
-	builder.setBuildPoint(function->getEntryBlock());
-	builder.createBranch(get_spv_block(pool.get_node_from_userdata(entry)));
-	builder.leaveFunction();
-}
-
-void Converter::Impl::setup_module()
-{
 	auto *module = &bitcode_parser.get_module();
 
 	NamedMDNode *meta = module->getNamedMetadata("llvm.ident");
@@ -331,13 +101,16 @@ void Converter::Impl::setup_module()
 	auto *entry = &func->getEntryBlock();
 	auto entry_meta = std::make_unique<BlockMeta>(entry);
 	bb_map[entry] = entry_meta.get();
-	pool.set_name(entry_meta.get(), entry->getName().data());
+	result.entry = pool.create_node();
+	bb_map[entry]->node = result.entry;
+	result.entry->name = entry->getName().data();
 	metas.push_back(std::move(entry_meta));
 
 	std::vector<BasicBlock *> to_process;
 	std::vector<BasicBlock *> processing;
 	to_process.push_back(entry);
 
+	// Traverse the CFG and register all blocks in the pool.
 	while (!to_process.empty())
 	{
 		std::swap(to_process, processing);
@@ -351,17 +124,54 @@ void Converter::Impl::setup_module()
 					to_process.push_back(succ);
 					auto succ_meta = std::make_unique<BlockMeta>(succ);
 					bb_map[succ] = succ_meta.get();
-					pool.set_name(succ_meta.get(), succ->getName().data());
+					auto *succ_node = pool.create_node();
+					bb_map[succ]->node = succ_node;
+					succ_node->name = succ->getName().data();
 					metas.push_back(std::move(succ_meta));
 				}
 
-				pool.add_branch(bb_map[block], bb_map[succ]);
+				bb_map[block]->node->add_branch(bb_map[succ]->node);
 			}
 		}
 		processing.clear();
 	}
 
-	structurize_module(bb_map[entry]);
+	for (auto &key_value : bb_map)
+	{
+		BasicBlock *bb = key_value.first;
+		CFGNode *node = key_value.second->node;
+
+		auto *instruction = bb->getTerminator();
+		if (auto *inst = dyn_cast<BranchInst>(instruction))
+		{
+			if (inst->isConditional())
+			{
+				node->ir.terminator.type = Terminator::Type::Condition;
+				node->ir.terminator.conditional_id = spirv_module.get_builder().makeBoolConstant(true);
+				assert(inst->getNumSuccessors() == 2);
+				node->ir.terminator.true_block = bb_map[inst->getSuccessor(0)]->node;
+				node->ir.terminator.false_block = bb_map[inst->getSuccessor(1)]->node;
+			}
+			else
+			{
+				node->ir.terminator.type = Terminator::Type::Branch;
+				assert(inst->getNumSuccessors() == 1);
+				node->ir.terminator.direct_block = bb_map[inst->getSuccessor(0)]->node;
+			}
+		}
+		else if (auto *inst = dyn_cast<ReturnInst>(instruction))
+		{
+			node->ir.terminator.type = Terminator::Type::Return;
+			if (inst->getReturnValue())
+				node->ir.terminator.return_value = spirv_module.get_builder().makeBoolConstant(true);
+		}
+		else if (auto *inst = dyn_cast<UnreachableInst>(instruction))
+		{
+			node->ir.terminator.type = Terminator::Type::Unreachable;
+		}
+		else
+			fprintf(stderr, "Unsupported terminator ...\n");
+	}
 
 #if 0
 		BasicBlock &block = func->getEntryBlock();
@@ -420,11 +230,7 @@ void Converter::Impl::setup_module()
 		}
 	}
 #endif
-}
 
-bool Converter::finalize_spirv(std::vector<uint32_t> &spirv)
-{
-	return impl->finalize_spirv(spirv);
+	return result;
 }
-
 } // namespace DXIL2SPIRV

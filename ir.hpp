@@ -80,6 +80,8 @@ struct Terminator
 		Return,
 		Kill
 	};
+
+	uint32_t conditional_id = 0;
 	Type type = Type::Unreachable;
 	CFGNode *direct_block = nullptr;
 	CFGNode *true_block = nullptr;
@@ -91,6 +93,8 @@ struct Terminator
 		uint32_t value;
 	};
 	std::vector<Case> cases;
+	Case default_case;
+	uint32_t return_value = 0;
 };
 
 struct IRBlock

@@ -18,30 +18,33 @@
 
 #pragma once
 
-#include "dxil_parser.hpp"
-#include "llvm_bitcode_parser.hpp"
-#include "spirv_module.hpp"
-#include "cfg_structurizer.hpp"
-#include "node_pool.hpp"
 #include <memory>
+#include <vector>
+#include "cfg_structurizer.hpp"
+#include "SpvBuilder.h"
 
 namespace DXIL2SPIRV
 {
-struct ConvertedFunction
-{
-	CFGNode *entry;
-	std::unique_ptr<CFGNodePool> node_pool;
-};
+struct CFGNode;
+class CFGNodePool;
 
-class Converter
+class SPIRVModule
 {
 public:
-	Converter(DXILContainerParser container_parser, LLVMBCParser bitcode_parser, SPIRVModule &module);
-	~Converter();
-	ConvertedFunction convert_entry_point();
+	SPIRVModule();
+	~SPIRVModule();
+	bool finalize_spirv(std::vector<uint32_t> &spirv);
+
+	uint32_t allocate_id();
+	uint32_t allocate_ids(uint32_t count);
+
+	void emit_entry_point(spv::ExecutionModel model, const char *name);
+	void emit_function_body(CFGStructurizer &structurizer);
+
+	spv::Builder &get_builder();
 
 private:
 	struct Impl;
 	std::unique_ptr<Impl> impl;
 };
-} // namespace DXIL2SPIRV
+}

@@ -24,8 +24,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "structurize_cfg.hpp"
+#include "cfg_structurizer.hpp"
 #include "dxil_converter.hpp"
+#include "spirv_module.hpp"
 
 static std::vector<uint8_t> read_file(const char *path)
 {
@@ -136,6 +137,8 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	DXIL2SPIRV::SPIRVModule spirv_module;
+
 	DXIL2SPIRV::DXILContainerParser parser;
 	if (!parser.parse_container(binary.data(), binary.size()))
 	{
@@ -150,9 +153,17 @@ int main(int argc, char **argv)
 	auto *module = &bc_parser.get_module();
 	module->print(llvm::errs(), nullptr);
 
-	DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser));
+	DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser), spirv_module);
+
+	spirv_module.emit_entry_point(spv::ExecutionModel::ExecutionModelFragment, "main");
+	auto entry_point = converter.convert_entry_point();
+
+	DXIL2SPIRV::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, spirv_module);
+	structurizer.run();
+	spirv_module.emit_function_body(structurizer);
+
 	std::vector<uint32_t> spirv;
-	if (converter.finalize_spirv(spirv))
+	if (spirv_module.finalize_spirv(spirv))
 	{
 		FILE *file = fopen("/tmp/test.spv", "wb");
 		if (file)

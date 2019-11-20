@@ -18,30 +18,29 @@
 
 #pragma once
 
-#include "dxil_parser.hpp"
-#include "llvm_bitcode_parser.hpp"
-#include "spirv_module.hpp"
-#include "cfg_structurizer.hpp"
-#include "node_pool.hpp"
+#include <vector>
 #include <memory>
 
 namespace DXIL2SPIRV
 {
-struct ConvertedFunction
-{
-	CFGNode *entry;
-	std::unique_ptr<CFGNodePool> node_pool;
-};
+struct CFGNode;
 
-class Converter
+class CFGNodePool
 {
 public:
-	Converter(DXILContainerParser container_parser, LLVMBCParser bitcode_parser, SPIRVModule &module);
-	~Converter();
-	ConvertedFunction convert_entry_point();
+	CFGNodePool();
+	~CFGNodePool();
+
+	CFGNode *create_node();
+
+	template <typename Op>
+	void for_each_node(const Op &op)
+	{
+		for (auto &node : nodes)
+			op(*node);
+	}
 
 private:
-	struct Impl;
-	std::unique_ptr<Impl> impl;
+	std::vector<std::unique_ptr<CFGNode>> nodes;
 };
-} // namespace DXIL2SPIRV
+}

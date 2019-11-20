@@ -16,32 +16,26 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#pragma once
-
-#include "dxil_parser.hpp"
-#include "llvm_bitcode_parser.hpp"
-#include "spirv_module.hpp"
-#include "cfg_structurizer.hpp"
 #include "node_pool.hpp"
-#include <memory>
+#include "node.hpp"
+#include <utility>
 
 namespace DXIL2SPIRV
 {
-struct ConvertedFunction
+CFGNodePool::CFGNodePool()
 {
-	CFGNode *entry;
-	std::unique_ptr<CFGNodePool> node_pool;
-};
+}
 
-class Converter
+CFGNodePool::~CFGNodePool()
 {
-public:
-	Converter(DXILContainerParser container_parser, LLVMBCParser bitcode_parser, SPIRVModule &module);
-	~Converter();
-	ConvertedFunction convert_entry_point();
+}
 
-private:
-	struct Impl;
-	std::unique_ptr<Impl> impl;
-};
-} // namespace DXIL2SPIRV
+CFGNode *CFGNodePool::create_node()
+{
+	auto node = std::unique_ptr<CFGNode>(new CFGNode);
+	auto *ret = node.get();
+	nodes.push_back(std::move(node));
+	return ret;
+}
+
+}

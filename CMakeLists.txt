@@ -26,19 +26,26 @@ target_include_directories(spirv-builder PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers/include/spirv/unified1
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 
+add_library(spirv-module STATIC
+        spirv_module.hpp spirv_module.cpp)
+target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(spirv-module PUBLIC spirv-builder)
+
 add_library(dxil-parser STATIC
         memory_stream.hpp memory_stream.cpp
         llvm_bitcode_parser.hpp llvm_bitcode_parser.cpp
         dxil.hpp
         dxil_converter.hpp dxil_converter.cpp
-        structurize_cfg.hpp structurize_cfg.cpp
+        cfg_structurizer.hpp cfg_structurizer.cpp
+        node_pool.hpp node_pool.cpp
+        node.hpp node.cpp
         ir.hpp ir.cpp
         dxil_parser.hpp dxil_parser.cpp)
 target_include_directories(dxil-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-parser PRIVATE ${llvm_libs})
-target_link_libraries(dxil-parser PRIVATE spirv-builder)
+target_link_libraries(dxil-parser PUBLIC spirv-module)
 
 add_executable(dxil-parser-test dxil_parser_test.cpp)
 target_link_libraries(dxil-parser-test PRIVATE dxil-parser)
