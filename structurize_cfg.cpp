@@ -27,6 +27,10 @@ CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
     : entry_block(&entry)
     , pool(pool_)
 {
+}
+
+bool CFGStructurizer::run()
+{
 	recompute_cfg();
 
 	split_merge_scopes();
@@ -43,6 +47,7 @@ CFGStructurizer::CFGStructurizer(CFGNode &entry, CFGNodePool &pool_)
 	insert_phi();
 
 	validate_structured();
+	return true;
 }
 
 void CFGStructurizer::insert_phi()
@@ -58,6 +63,26 @@ void CFGStructurizer::insert_phi()
 		insert_phi(phi_node);
 }
 
+static std::vector<CFGStructurizer::IncomingValue>::const_iterator find_incoming_value(
+		const CFGNode *frontier_pred,
+		const std::vector<CFGStructurizer::IncomingValue> &incoming)
+{
+	// Find the incoming block which dominates frontier_pred and has the lowest post visit order.
+	// There are cases where two or more blocks dominate, but we want the most immediate dominator.
+	auto candidate = incoming.end();
+
+	for (auto itr = incoming.begin(); itr != incoming.end(); ++itr)
+	{
+		if (itr->from_block->dominates(frontier_pred))
+		{
+			if (candidate == incoming.end() || itr->from_block->visit_order < candidate->from_block->visit_order)
+				candidate = itr;
+		}
+	}
+
+	return candidate;
+}
+
 void CFGStructurizer::insert_phi(PHINode &node)
 {
 	// We start off with N values defined in N blocks.
@@ -65,11 +90,10 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	// there might not be branch targets here anymore, primary example here is ladders.
 	// In order to fix this we need to follow control flow from these values and insert phi nodes as necessary to link up
 	// a set of values where dominance frontiers are shared.
-	std::unordered_set<CFGNode *> candidate_dominance_frontiers;
 
 	// First, figure out which subset of the CFG we need to work on.
-	std::unordered_set<CFGNode *> cfg_subset;
-	const auto walk_op = [&](CFGNode *n) -> bool {
+	std::unordered_set<const CFGNode *> cfg_subset;
+	const auto walk_op = [&](const CFGNode *n) -> bool {
 		if (cfg_subset.count(n) || node.block == n)
 			return false;
 		else
@@ -82,8 +106,14 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	for (auto &incoming : node.incoming)
 		incoming.from_block->walk_cfg_from(walk_op);
 
+	fprintf(stderr, "\n=== CFG subset ===\n");
+	for (auto *subset_node : cfg_subset)
+		fprintf(stderr, "  %s\n", subset_node->name.c_str());
+	fprintf(stderr, "=================\n");
+
 	for (;;)
 	{
+		fprintf(stderr, "\n=== PHI iteration ===\n");
 		// Advance the from blocks to get as close as we can to a dominance frontier.
 		for (auto &incoming : node.incoming)
 		{
@@ -110,15 +140,62 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			break;
 		}
 
-		// Inside the CFG subset, place the dominance frontiers for all our input blocks.
-		candidate_dominance_frontiers.clear();
+		// Inside the CFG subset, find a dominance frontiers where we merge PHIs this iteration.
+		CFGNode *frontier = nullptr;
 		for (auto &incoming : node.incoming)
-			for (auto &frontier : incoming.from_block->dominance_frontier)
-				if (cfg_subset.count(frontier))
-					candidate_dominance_frontiers.insert(frontier);
+		{
+			for (auto *candidate_frontier : incoming.from_block->dominance_frontier)
+			{
+				if (cfg_subset.count(candidate_frontier))
+				{
+					if (frontier == nullptr ||
+					    candidate_frontier->visit_order > frontier->visit_order)
+					{
+						// Pick the earliest frontier in the CFG.
+						// We want to merge top to bottom.
+						frontier = candidate_frontier;
+					}
+				}
+			}
+		}
 
-		assert(!candidate_dominance_frontiers.empty());
+		assert(frontier);
+
 		// A candidate dominance frontier is a place where we might want to place a PHI node in order to merge values.
+		// For a successful iteration, we need to find at least one candidate where we can merge PHI.
+
+		fprintf(stderr, "Testing dominance frontier %s ...\n", frontier->name.c_str());
+
+		// Remove old inputs.
+		for (auto *input : frontier->pred)
+		{
+			auto itr = find_incoming_value(input, node.incoming);
+			assert(itr != node.incoming.end());
+
+			// Do we remove the incoming value now or not?
+			// If all paths from incoming value must go through frontier, we can remove it,
+			// otherwise, we might still need to use the incoming value somewhere else.
+			bool exists_path = itr->from_block->exists_path_in_cfg_without_intermediate_node(node.block, frontier);
+			if (exists_path)
+			{
+				fprintf(stderr, "   ... keeping input in %s\n", itr->from_block->name.c_str());
+			}
+			else
+			{
+				fprintf(stderr, "   ... removing input in %s\n", itr->from_block->name.c_str());
+				node.incoming.erase(itr);
+			}
+		}
+
+		// We've handled this node now, remove it from consideration w.r.t. frontiers.
+		cfg_subset.erase(frontier);
+
+		// Replace with merged value.
+		IncomingValue new_incoming = {};
+		new_incoming.id = 0;
+		new_incoming.from_block = frontier;
+		node.incoming.push_back(new_incoming);
+		fprintf(stderr, "=========================\n");
 	}
 }
 
@@ -371,6 +448,26 @@ void CFGStructurizer::visit(CFGNode &entry)
 	entry.is_switch = entry.succ.size() > 2;
 }
 
+bool CFGNode::exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block,
+                                                           const CFGNode *stop_block) const
+{
+	bool found_path = false;
+	std::unordered_set<const CFGNode *> visited;
+	walk_cfg_from([&](const CFGNode *node) -> bool {
+		if (found_path)
+			return false;
+		if (visited.count(node))
+			return false;
+		visited.insert(node);
+
+		if (node == end_block)
+			found_path = true;
+
+		return node != stop_block;
+	});
+	return found_path;
+}
+
 CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 {
 	assert(a);
@@ -473,7 +570,7 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNod
 }
 
 template <typename Op>
-void CFGNode::walk_cfg_from(const Op &op)
+void CFGNode::walk_cfg_from(const Op &op) const
 {
 	if (!op(this))
 		return;

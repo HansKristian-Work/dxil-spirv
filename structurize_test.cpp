@@ -103,7 +103,18 @@ int main()
 		add_branch(from, to1);
 	};
 
-#if 1
+#if 0
+	add_selection("entry", "b0", "exit");
+	{
+		add_selection("b0", "b1", "b2");
+		{
+			add_branch("b1", "exit");
+		}
+		{
+			add_branch("b2", "exit");
+		}
+	}
+#elif 0
 	add_selection("entry", "l0", "exit");
 	{
 		add_selection("l0", "l0.true", "m0");
@@ -117,7 +128,7 @@ int main()
 		}
 		add_branch("m1", "exit");
 	}
-#elif 1
+#elif 0
 	add_selection("entry", "l0", "exit");
 	{
 		add_selection("l0", "b0", "merge");
@@ -135,14 +146,14 @@ int main()
 		add_selection("c1", "l0", "merge");
 		add_branch("merge", "exit");
 	}
-#elif 1
+#elif 0
 	add_selection("entry", "switch", "exit");
 	add_switch("switch", { "case0", "case1", "default", "merge" });
 	add_selection("case0", "exit", "merge");
 	add_branch("case1", "merge");
 	add_branch("default", "merge");
 	add_branch("merge", "exit");
-#elif 1
+#elif 0
 	add_selection("entry", "b0", "b1");
 	{
 		add_selection("b0", "b0.true", "b0.false");
@@ -160,7 +171,7 @@ int main()
 			add_branch("b1.false", "exit");
 		}
 	}
-#elif 1
+#elif 0
 	add_selection("entry", "b0", "exit");
 	{
 		add_selection("b0", "l0", "exit");
@@ -176,7 +187,7 @@ int main()
 			add_branch("l0.exit", "exit");
 		}
 	}
-#elif 1
+#elif 0
 	add_selection("entry", "b0", "entry.exit");
 	{
 		add_selection("b0", "b1", "entry.exit");
@@ -185,7 +196,7 @@ int main()
 		}
 	}
 	add_branch("entry.exit", "exit");
-#elif 1
+#elif 0
 	add_selection("b0", "l0", "b0.exit");
 	{
 		add_selection("l0", "l1", "c0");
@@ -202,6 +213,7 @@ int main()
 		add_branch("l0.exit", "b0.exit");
 	}
 #elif 1
+	add_branch("entry", "b0");
 	add_selection("b0", "l0", "b0.exit");
 	{
 		add_selection("l0", "l1", "c0");
@@ -261,6 +273,8 @@ int main()
 #endif
 
 	CFGStructurizer traverser(*get("entry"), pool);
+	traverser.register_phi(get("b0.exit"), {{ get("b0"), 0 }, { get("l1.cond"), 1 }, { get("l0.exit"), 2 }});
+	traverser.run();
 	Emitter emitter;
 	emitter.pool = &pool;
 	traverser.traverse(emitter);

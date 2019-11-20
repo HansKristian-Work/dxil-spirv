@@ -72,6 +72,7 @@ struct CFGNode
 	bool dominates_all_reachable_exits() const;
 	static CFGNode *find_common_dominator(CFGNode *a, CFGNode *b);
 	CFGNode *get_immediate_dominator_loop_header();
+	bool exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block, const CFGNode *stop_block) const;
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to);
@@ -80,7 +81,7 @@ struct CFGNode
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to, const Op &op);
 
 	template <typename Op>
-	void walk_cfg_from(const Op &op);
+	void walk_cfg_from(const Op &op) const;
 
 	void retarget_succ_from(CFGNode *node);
 	void retarget_pred_from(CFGNode *node);
@@ -171,6 +172,7 @@ class CFGStructurizer
 {
 public:
 	CFGStructurizer(CFGNode &entry, CFGNodePool &pool);
+	bool run();
 	void traverse(BlockEmissionInterface &iface);
 
 	struct IncomingValue
