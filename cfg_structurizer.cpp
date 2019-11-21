@@ -1300,10 +1300,12 @@ void CFGStructurizer::split_merge_blocks()
 						// Otherwise we branch to the existing merge block and continue as normal.
 						// We'll also need to rewrite a lot of Phi nodes this way as well.
 						auto *ladder = create_helper_pred_block(loop_ladder);
+						ladder->is_ladder = true;
 
 						std::unordered_set<const CFGNode *> normal_preds;
 						for (auto *pred : ladder->pred)
-							normal_preds.insert(pred);
+							if (!pred->is_ladder)
+								normal_preds.insert(pred);
 
 						// Merge to ladder instead.
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
@@ -1349,9 +1351,22 @@ void CFGStructurizer::split_merge_blocks()
 						ladder_pre->add_branch(ladder_post);
 
 						ladder_pre->ir.terminator.type = Terminator::Type::Condition;
-						ladder_pre->ir.terminator.conditional_id = module.get_builder().makeBoolConstant(true);
+						ladder_pre->ir.terminator.conditional_id = module.allocate_id();
 						ladder_pre->ir.terminator.true_block = ladder_post;
 						ladder_pre->ir.terminator.false_block = loop_ladder;
+
+						ladder_pre->is_ladder = true;
+						PHI phi;
+						phi.id = ladder_pre->ir.terminator.conditional_id;
+						phi.type_id = module.get_builder().makeBoolType();
+						for (auto *pred : ladder_pre->pred)
+						{
+							IncomingValue incoming = {};
+							incoming.block = pred;
+							incoming.id = module.get_builder().makeBoolConstant(pred->is_ladder);
+							phi.incoming.push_back(incoming);
+						}
+						ladder_pre->ir.phi.push_back(std::move(phi));
 					}
 					else if (full_break_target)
 					{
