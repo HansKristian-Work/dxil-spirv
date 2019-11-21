@@ -86,9 +86,10 @@ std::vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
 
 	for (auto itr = incoming.begin(); itr != incoming.end(); ++itr)
 	{
-		if (itr->block->dominates(frontier_pred))
+		auto *block = itr->block;
+		if (block->dominates(frontier_pred))
 		{
-			if (candidate == incoming.end() || itr->block->visit_order < candidate->block->visit_order)
+			if (candidate == incoming.end() || block->visit_order < candidate->block->visit_order)
 				candidate = itr;
 		}
 	}
@@ -107,10 +108,6 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	// First, figure out which subset of the CFG we need to work on.
 	std::unordered_set<const CFGNode *> cfg_subset;
 	const auto walk_op = [&](const CFGNode *n) -> bool {
-		// Don't walk through continue blocks.
-		if (n->succ_back_edge)
-			return false;
-
 		if (cfg_subset.count(n) || node.block->dominates(n))
 			return false;
 		else
@@ -136,7 +133,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		for (auto &incoming : incoming_values)
 		{
 			CFGNode *b = incoming.block;
-			while (b->succ.size() == 1 && b->dominates(b->succ.front()) && b->succ.front() != node.block)
+			while (!b->succ_back_edge && b->succ.size() == 1 && b->dominates(b->succ.front()) && b->succ.front() != node.block)
 				b = incoming.block = b->succ.front();
 		}
 
@@ -195,6 +192,13 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		{
 			auto itr = find_incoming_value(input, incoming_values);
 			assert(itr != incoming_values.end());
+			auto *incoming_block = itr->block;
+
+			fprintf(stderr, " ... For pred %s (%p), found incoming value from %s (%p)\n",
+					input->name.c_str(),
+			        static_cast<const void *>(input),
+			        incoming_block->name.c_str(),
+			        static_cast<const void *>(incoming_block));
 
 			IncomingValue value = {};
 			value.id = itr->id;
@@ -204,14 +208,14 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			// Do we remove the incoming value now or not?
 			// If all paths from incoming value must go through frontier, we can remove it,
 			// otherwise, we might still need to use the incoming value somewhere else.
-			bool exists_path = itr->block->exists_path_in_cfg_without_intermediate_node(node.block, frontier);
+			bool exists_path = incoming_block->exists_path_in_cfg_without_intermediate_node(node.block, frontier);
 			if (exists_path)
 			{
-				fprintf(stderr, "   ... keeping input in %s\n", itr->block->name.c_str());
+				fprintf(stderr, "   ... keeping input in %s\n", incoming_block->name.c_str());
 			}
 			else
 			{
-				fprintf(stderr, "   ... removing input in %s\n", itr->block->name.c_str());
+				fprintf(stderr, "   ... removing input in %s\n", incoming_block->name.c_str());
 				incoming_values.erase(itr);
 			}
 		}
