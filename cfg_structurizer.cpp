@@ -1255,7 +1255,7 @@ void CFGStructurizer::split_merge_blocks()
 		          [](const CFGNode *a, const CFGNode *b) -> bool { return a->dominates(b); });
 
 		// Verify that scopes are actually nested.
-		// This means header[N] must dominate header[M] where N > M.
+		// This means header[N] must dominate header[M] where N < M.
 		for (size_t i = 1; i < node->headers.size(); i++)
 		{
 			if (!node->headers[i - 1]->dominates(node->headers[i]))
