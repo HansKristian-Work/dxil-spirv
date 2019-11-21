@@ -27,6 +27,7 @@ target_include_directories(spirv-builder PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 
 add_library(spirv-module STATIC
+        ir.hpp ir.cpp
         spirv_module.hpp spirv_module.cpp)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC spirv-builder)
@@ -39,7 +40,6 @@ add_library(dxil-parser STATIC
         cfg_structurizer.hpp cfg_structurizer.cpp
         node_pool.hpp node_pool.cpp
         node.hpp node.cpp
-        ir.hpp ir.cpp
         dxil_parser.hpp dxil_parser.cpp)
 target_include_directories(dxil-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <stdint.h>
+#include "SpvBuilder.h"
 
 // A simple IR representation which allows the CFGStructurizer to do some simple rewrites of blocks,
 // PHI nodes in particular.
@@ -43,8 +44,10 @@ struct MergeInfo
 
 enum class Op
 {
-	Nop
+	Nop = spv::OpNop,
+	Select = spv::OpSelect
 };
+unsigned operation_argument_count(Op op);
 
 struct IncomingValue
 {
@@ -104,4 +107,5 @@ struct IRBlock
 	MergeInfo merge_info;
 	Terminator terminator;
 };
+
 }

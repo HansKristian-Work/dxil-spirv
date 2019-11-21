@@ -111,7 +111,22 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	}
 
 	// Emit opcodes.
-	for (auto &op : ir.operations);
+	for (auto &op : ir.operations)
+	{
+		unsigned num_instructions = operation_argument_count(op.op);
+		if (num_instructions)
+		{
+			auto inst = std::make_unique<spv::Instruction>(op.id, op.type_id, static_cast<spv::Op>(op.op));
+			for (unsigned i = 0; i < num_instructions; i++)
+				inst->addIdOperand(op.arguments[i]);
+			bb->addInstruction(std::move(inst));
+		}
+		else
+		{
+			auto inst = std::make_unique<spv::Instruction>(static_cast<spv::Op>(op.op));
+			bb->addInstruction(std::move(inst));
+		}
+	}
 
 	// Emit structured merge information.
 	switch (ir.merge_info.merge_type)

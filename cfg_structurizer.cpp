@@ -147,8 +147,11 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	// In order to fix this we need to follow control flow from these values and insert phi nodes as necessary to link up
 	// a set of values where dominance frontiers are shared.
 
+	fprintf(stderr, "\n=== INSERT PHI FOR %s ===\n", node.block->name.c_str());
+
 	// First, figure out which subset of the CFG we need to work on.
 	std::unordered_set<const CFGNode *> cfg_subset;
+	cfg_subset.insert(node.block);
 	const auto walk_op = [&](const CFGNode *n) -> bool {
 		if (cfg_subset.count(n) || node.block->dominates(n))
 			return false;
@@ -170,60 +173,79 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 	for (;;)
 	{
-		fprintf(stderr, "\n=== PHI iteration ===\n");
+		fprintf(stderr, "\n=== PHI iteration for %s ===\n", node.block->name.c_str());
 
-		// Advance the from blocks to get as close as we can to a dominance frontier.
+		// Inside the CFG subset, find a dominance frontiers where we merge PHIs this iteration.
+		CFGNode *frontier = node.block;
+
+		// If all incoming values have at least one pred block they dominate, we can merge the final PHI.
 		for (auto &incoming : incoming_values)
 		{
-			CFGNode *b = incoming.block;
-			fprintf(stderr, "Incoming block: %s\n", b->name.c_str());
-			while (b->succ.size() == 1 && b->dominates(b->succ.front()) && b->succ.front() != node.block)
-			{
-				b = incoming.block = b->succ.front();
-				fprintf(stderr, " ... advances to %s.\n", b->name.c_str());
-			}
-		}
+			auto itr = std::find_if(node.block->pred.begin(), node.block->pred.end(), [&](const CFGNode *n) {
+				return incoming.block->dominates(n);
+			});
 
-		// We can check if all inputs are now direct branches, in this case, we can complete the PHI transformation.
-		auto &preds = node.block->pred;
-		bool need_phi_merge = false;
-		for (auto &incoming : incoming_values)
-		{
-			if (incoming.block != node.block->pred_back_edge &&
-			    std::find(preds.begin(), preds.end(), incoming.block) == preds.end())
+			if (itr == node.block->pred.end() &&
+			    (!node.block->pred_back_edge || !incoming.block->dominates(node.block->pred_back_edge)))
 			{
-				need_phi_merge = true;
+				frontier = nullptr;
 				break;
 			}
 		}
 
-		if (!need_phi_merge)
+		if (!frontier)
 		{
-			fprintf(stderr, "Found PHI for %s.\n", node.block->name.c_str());
-			break;
-		}
-
-		// Inside the CFG subset, find a dominance frontiers where we merge PHIs this iteration.
-		CFGNode *frontier = nullptr;
-		for (auto &incoming : incoming_values)
-		{
-			for (auto *candidate_frontier : incoming.block->dominance_frontier)
+			// We need some intermediate merge, so find a frontier node to work on.
+			for (auto &incoming : incoming_values)
 			{
-				if (cfg_subset.count(candidate_frontier))
+				for (auto *candidate_frontier : incoming.block->dominance_frontier)
 				{
-					if (frontier == nullptr ||
-					    candidate_frontier->visit_order > frontier->visit_order)
+					if (cfg_subset.count(candidate_frontier))
 					{
-						// Pick the earliest frontier in the CFG.
-						// We want to merge top to bottom.
-						frontier = candidate_frontier;
+						if (frontier == nullptr ||
+						    candidate_frontier->visit_order > frontier->visit_order)
+						{
+							// Pick the earliest frontier in the CFG.
+							// We want to merge top to bottom.
+							frontier = candidate_frontier;
+						}
 					}
 				}
 			}
 		}
 
 		assert(frontier);
-		assert(frontier != node.block);
+
+		if (frontier == node.block)
+		{
+			std::vector<IncomingValue> final_incoming;
+
+			// Final merge.
+			for (auto *input : frontier->pred)
+			{
+				auto itr = find_incoming_value(input, incoming_values);
+				assert(itr != incoming_values.end());
+
+				IncomingValue value = {};
+				value.id = itr->id;
+				value.block = input;
+				final_incoming.push_back(value);
+			}
+
+			if (frontier->pred_back_edge)
+			{
+				auto itr = find_incoming_value(frontier->pred_back_edge, incoming_values);
+				assert(itr != incoming_values.end());
+
+				IncomingValue value = {};
+				value.id = itr->id;
+				value.block = frontier->pred_back_edge;
+				final_incoming.push_back(value);
+			}
+
+			incoming_values = std::move(final_incoming);
+			return;
+		}
 
 		// A candidate dominance frontier is a place where we might want to place a PHI node in order to merge values.
 		// For a successful iteration, we need to find at least one candidate where we can merge PHI.
@@ -235,6 +257,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		frontier_phi.id = module.allocate_id();
 		frontier_phi.type_id = node.phi->type_id;
 
+		assert(!frontier->pred_back_edge);
 		for (auto *input : frontier->pred)
 		{
 			auto itr = find_incoming_value(input, incoming_values);
@@ -270,13 +293,61 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		// We've handled this node now, remove it from consideration w.r.t. frontiers.
 		cfg_subset.erase(frontier);
 
-		// Replace with merged value.
-		IncomingValue new_incoming = {};
-		new_incoming.id = frontier_phi.id;
-		new_incoming.block = frontier;
-		incoming_values.push_back(new_incoming);
-		fprintf(stderr, "=========================\n");
+		IncomingValue *dominated_incoming = nullptr;
+		for (auto &incoming : incoming_values)
+		{
+			if (frontier->dominates(incoming.block))
+			{
+				// There should be only one block the frontier can dominate.
+				assert(!dominated_incoming);
+				dominated_incoming = &incoming;
+			}
+		}
 
+		if (dominated_incoming)
+		{
+			// If our frontier dominates another incoming block, we need to merge two incoming values
+			// using an auxillary phi node as well as an OpSelect to resolve two conflicting values into one.
+
+			// For every pred edge of the frontier where pred did not dominate, we are now suddenly dominating.
+			// If we came from such a block,
+			// we should replace the incoming value of dominating_incoming rather than adding a new incoming value.
+			PHI merge_phi;
+			merge_phi.id = module.allocate_id();
+			merge_phi.type_id = module.get_builder().makeBoolType();
+			for (auto *input : frontier->pred)
+			{
+				auto itr = find_incoming_value(input, incoming_values);
+				assert(itr != incoming_values.end());
+
+				IncomingValue value = {};
+				value.id = module.get_builder().makeBoolConstant(input->dominates(dominated_incoming->block));
+				value.block = input;
+				merge_phi.incoming.push_back(value);
+			}
+
+			Operation op;
+			op.id = module.allocate_id();
+			op.op = Op::Select;
+			op.type_id = node.phi->type_id;
+			op.arguments[0] = merge_phi.id;
+			op.arguments[1] = dominated_incoming->id;
+			op.arguments[2] = frontier_phi.id;
+			dominated_incoming->block->ir.operations.push_back(op);
+			dominated_incoming->id = op.id;
+
+			frontier->ir.phi.push_back(std::move(merge_phi));
+		}
+		else
+		{
+			// Replace with merged value.
+			IncomingValue new_incoming = {};
+			new_incoming.id = frontier_phi.id;
+			new_incoming.block = frontier;
+			incoming_values.push_back(new_incoming);
+		}
+
+		fprintf(stderr, "=========================\n");
 		frontier->ir.phi.push_back(std::move(frontier_phi));
 	}
 }
