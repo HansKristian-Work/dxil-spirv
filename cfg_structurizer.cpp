@@ -63,9 +63,21 @@ void CFGStructurizer::insert_phi()
 {
 	compute_dominance_frontier();
 
+	// Build a map of value ID -> creating block.
+	// This allows us to detect if a value is consumed in a situation where the declaration does not dominate use.
+	// This can happen when introducing ladder blocks or similar.
 	for (auto *node : post_visit_order)
+	{
 		for (auto &phi : node->ir.phi)
+		{
 			phi_nodes.push_back({ node, &phi });
+			value_id_to_block[phi.id] = node;
+		}
+
+		for (auto &op : node->ir.operations)
+			if (op.id)
+				value_id_to_block[op.id] = node;
+	}
 
 	// Resolve phi-nodes top-down since PHI nodes may depend on other PHI nodes.
 	std::sort(phi_nodes.begin(), phi_nodes.end(), [](const PHINode &a, const PHINode &b) {

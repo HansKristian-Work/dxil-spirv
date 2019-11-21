@@ -103,5 +103,7 @@ private:
 	std::vector<PHINode> phi_nodes;
 	void insert_phi();
 	void insert_phi(PHINode &node);
+
+	std::unordered_map<uint32_t, CFGNode *> value_id_to_block;
 };
 } // namespace DXIL2SPIRV
