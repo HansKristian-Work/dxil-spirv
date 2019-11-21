@@ -176,8 +176,12 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		for (auto &incoming : incoming_values)
 		{
 			CFGNode *b = incoming.block;
+			fprintf(stderr, "Incoming block: %s\n", b->name.c_str());
 			while (b->succ.size() == 1 && b->dominates(b->succ.front()) && b->succ.front() != node.block)
+			{
 				b = incoming.block = b->succ.front();
+				fprintf(stderr, " ... advances to %s.\n", b->name.c_str());
+			}
 		}
 
 		// We can check if all inputs are now direct branches, in this case, we can complete the PHI transformation.
