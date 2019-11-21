@@ -85,7 +85,10 @@ void CFGStructurizer::insert_phi()
 	});
 
 	for (auto &phi_node : phi_nodes)
+	{
+		fixup_phi(phi_node);
 		insert_phi(phi_node);
+	}
 }
 
 std::vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
@@ -107,6 +110,33 @@ std::vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
 	}
 
 	return candidate;
+}
+
+void CFGStructurizer::fixup_phi(PHINode &node)
+{
+#if 1
+	// We want to move any incoming block to where the ID was created.
+	// This avoids some problematic cases of crossing edges when using ladders.
+
+	for (auto &incoming : node.phi->incoming)
+	{
+		auto itr = value_id_to_block.find(incoming.id);
+		if (itr == end(value_id_to_block))
+		{
+			// This is a global.
+			continue;
+		}
+
+		if (!itr->second->dominates(incoming.block))
+		{
+			fprintf(stderr, "For node %s, move incoming node %s to %s.\n",
+			        node.block->name.c_str(),
+			        incoming.block->name.c_str(),
+			        itr->second->name.c_str());
+			incoming.block = itr->second;
+		}
+	}
+#endif
 }
 
 void CFGStructurizer::insert_phi(PHINode &node)
@@ -141,11 +171,12 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	for (;;)
 	{
 		fprintf(stderr, "\n=== PHI iteration ===\n");
+
 		// Advance the from blocks to get as close as we can to a dominance frontier.
 		for (auto &incoming : incoming_values)
 		{
 			CFGNode *b = incoming.block;
-			while (!b->succ_back_edge && b->succ.size() == 1 && b->dominates(b->succ.front()) && b->succ.front() != node.block)
+			while (b->succ.size() == 1 && b->dominates(b->succ.front()) && b->succ.front() != node.block)
 				b = incoming.block = b->succ.front();
 		}
 

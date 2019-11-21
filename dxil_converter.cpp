@@ -116,6 +116,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	result.entry = pool.create_node();
 	bb_map[entry]->node = result.entry;
 	result.entry->name = entry->getName().data();
+	result.entry->name += ".entry";
 	metas.push_back(std::move(entry_meta));
 
 	std::vector<BasicBlock *> to_process;
