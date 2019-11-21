@@ -107,7 +107,11 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	// First, figure out which subset of the CFG we need to work on.
 	std::unordered_set<const CFGNode *> cfg_subset;
 	const auto walk_op = [&](const CFGNode *n) -> bool {
-		if (cfg_subset.count(n) || node.block == n)
+		// Don't walk through continue blocks.
+		if (n->succ_back_edge)
+			return false;
+
+		if (cfg_subset.count(n) || node.block->dominates(n))
 			return false;
 		else
 		{
@@ -117,7 +121,6 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	};
 
 	auto &incoming_values = node.phi->incoming;
-
 	for (auto &incoming : incoming_values)
 		incoming.block->walk_cfg_from(walk_op);
 
@@ -133,7 +136,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		for (auto &incoming : incoming_values)
 		{
 			CFGNode *b = incoming.block;
-			while (b->succ.size() == 1 && b->dominates(b->succ.front()))
+			while (b->succ.size() == 1 && b->dominates(b->succ.front()) && b->succ.front() != node.block)
 				b = incoming.block = b->succ.front();
 		}
 
@@ -142,7 +145,8 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		bool need_phi_merge = false;
 		for (auto &incoming : incoming_values)
 		{
-			if (std::find(preds.begin(), preds.end(), incoming.block) == preds.end())
+			if (incoming.block != node.block->pred_back_edge &&
+			    std::find(preds.begin(), preds.end(), incoming.block) == preds.end())
 			{
 				need_phi_merge = true;
 				break;
@@ -175,6 +179,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		}
 
 		assert(frontier);
+		assert(frontier != node.block);
 
 		// A candidate dominance frontier is a place where we might want to place a PHI node in order to merge values.
 		// For a successful iteration, we need to find at least one candidate where we can merge PHI.
@@ -182,10 +187,19 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		fprintf(stderr, "Testing dominance frontier %s ...\n", frontier->name.c_str());
 
 		// Remove old inputs.
+		PHI frontier_phi;
+		frontier_phi.id = module.allocate_id();
+		frontier_phi.type_id = node.phi->type_id;
+
 		for (auto *input : frontier->pred)
 		{
 			auto itr = find_incoming_value(input, incoming_values);
 			assert(itr != incoming_values.end());
+
+			IncomingValue value = {};
+			value.id = itr->id;
+			value.block = input;
+			frontier_phi.incoming.push_back(value);
 
 			// Do we remove the incoming value now or not?
 			// If all paths from incoming value must go through frontier, we can remove it,
@@ -207,10 +221,12 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 		// Replace with merged value.
 		IncomingValue new_incoming = {};
-		new_incoming.id = 0;
+		new_incoming.id = frontier_phi.id;
 		new_incoming.block = frontier;
 		incoming_values.push_back(new_incoming);
 		fprintf(stderr, "=========================\n");
+
+		frontier->ir.phi.push_back(std::move(frontier_phi));
 	}
 }
 

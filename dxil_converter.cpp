@@ -58,8 +58,10 @@ struct Converter::Impl
 	};
 	std::vector<std::unique_ptr<BlockMeta>> metas;
 	std::unordered_map<BasicBlock *, BlockMeta *> bb_map;
+	std::unordered_map<const Value *, uint32_t> value_map;
 
 	ConvertedFunction convert_entry_point();
+	uint32_t get_id_for_value(const Value *value);
 };
 
 Converter::Converter(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)
@@ -74,6 +76,16 @@ Converter::~Converter()
 ConvertedFunction Converter::convert_entry_point()
 {
 	return impl->convert_entry_point();
+}
+
+uint32_t Converter::Impl::get_id_for_value(const Value *value)
+{
+	auto itr = value_map.find(value);
+	if (itr != value_map.end())
+		return itr->second;
+
+	value_map[value] = spirv_module.allocate_id();
+	return value_map[value];
 }
 
 ConvertedFunction Converter::Impl::convert_entry_point()
@@ -140,6 +152,35 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	{
 		BasicBlock *bb = key_value.first;
 		CFGNode *node = key_value.second->node;
+
+		// Scan opcodes.
+		for (auto &instruction : *bb)
+		{
+			if (auto *phi_inst = dyn_cast<PHINode>(&instruction))
+			{
+				PHI phi;
+				phi.id = get_id_for_value(phi_inst);
+				phi.type_id = spirv_module.get_builder().makeIntegerType(32, false);
+
+				unsigned count = phi_inst->getNumIncomingValues();
+				for (unsigned i = 0; i < count; i++)
+				{
+					IncomingValue incoming = {};
+					incoming.block = bb_map[phi_inst->getIncomingBlock(i)]->node;
+					auto *value = phi_inst->getIncomingValue(i);
+					if (isa<PHINode>(value))
+						incoming.id = get_id_for_value(value);
+					else
+					{
+						// Just invent something ...
+						incoming.id = spirv_module.get_builder().makeUintConstant(phi.id);
+					}
+					phi.incoming.push_back(incoming);
+				}
+
+				node->ir.phi.push_back(std::move(phi));
+			}
+		}
 
 		auto *instruction = bb->getTerminator();
 		if (auto *inst = dyn_cast<BranchInst>(instruction))
