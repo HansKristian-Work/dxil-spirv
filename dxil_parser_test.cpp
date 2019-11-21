@@ -155,7 +155,7 @@ int main(int argc, char **argv)
 
 	DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser), spirv_module);
 
-	spirv_module.emit_entry_point(spv::ExecutionModel::ExecutionModelFragment, "main");
+	spirv_module.emit_entry_point(spv::ExecutionModel::ExecutionModelVertex, "main");
 	auto entry_point = converter.convert_entry_point();
 
 	DXIL2SPIRV::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, spirv_module);

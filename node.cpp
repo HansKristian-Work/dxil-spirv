@@ -321,6 +321,19 @@ void CFGNode::retarget_pred_from(CFGNode *old_succ)
 		for (auto &s : p->succ)
 			if (s == old_succ)
 				s = this;
+
+		auto &p_term = p->ir.terminator;
+		if (p_term.direct_block == old_succ)
+			p_term.direct_block = this;
+		if (p_term.true_block == old_succ)
+			p_term.true_block = this;
+		if (p_term.false_block == old_succ)
+			p_term.false_block = this;
+		if (p_term.default_case.node == old_succ)
+			p_term.default_case.node = this;
+		for (auto &c : p_term.cases)
+			if (c.node == old_succ)
+				c.node = this;
 	}
 
 	// Do not swap back edges.

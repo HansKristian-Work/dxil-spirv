@@ -54,6 +54,11 @@ bool CFGStructurizer::run()
 	return true;
 }
 
+CFGNode *CFGStructurizer::get_entry_block() const
+{
+	return entry_block;
+}
+
 void CFGStructurizer::insert_phi()
 {
 	compute_dominance_frontier();
@@ -527,6 +532,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
 						node->merge = MergeType::Selection;
 						auto *dummy_merge = pool.create_node();
+						dummy_merge->ir.terminator.type = Terminator::Type::Unreachable;
 						node->selection_merge_block = dummy_merge;
 						dummy_merge->name = node->name + ".unreachable";
 						fprintf(stderr, "Merging %s -> Unreachable\n", node->name.c_str());
@@ -552,6 +558,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// In worst case we can always merge to an unreachable node in the CFG.
 					node->merge = MergeType::Selection;
 					auto *dummy_merge = pool.create_node();
+					dummy_merge->ir.terminator.type = Terminator::Type::Unreachable;
 					node->selection_merge_block = dummy_merge;
 					dummy_merge->name = node->name + ".unreachable";
 				}
@@ -626,6 +633,8 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		auto *ladder = pool.create_node();
 		ladder->name = ladder_to->name + "." + inner_block->name + ".ladder";
 		ladder->add_branch(ladder_to);
+		ladder->ir.terminator.type = Terminator::Type::Branch;
+		ladder->ir.terminator.direct_block = ladder_to;
 
 		// Stop rewriting once we hit a merge block.
 		inner_block->traverse_dominated_blocks_and_rewrite_branch(ladder_to, ladder, [inner_block](CFGNode *node) {
@@ -1338,6 +1347,11 @@ void CFGStructurizer::split_merge_blocks()
 						auto *ladder_pre = create_helper_pred_block(loop_ladder);
 						auto *ladder_post = create_helper_succ_block(loop_ladder);
 						ladder_pre->add_branch(ladder_post);
+
+						ladder_pre->ir.terminator.type = Terminator::Type::Condition;
+						ladder_pre->ir.terminator.conditional_id = module.get_builder().makeBoolConstant(true);
+						ladder_pre->ir.terminator.true_block = ladder_post;
+						ladder_pre->ir.terminator.false_block = loop_ladder;
 					}
 					else if (full_break_target)
 					{
