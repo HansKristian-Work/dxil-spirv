@@ -70,6 +70,7 @@ void Emitter::emit_basic_block(CFGNode *node)
 #endif
 }
 
+#if 0
 static void print_spirv_assembly(const std::vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
@@ -78,6 +79,19 @@ static void print_spirv_assembly(const std::vector<uint32_t> &code)
 		fprintf(stderr, "Failed to disassemble SPIR-V.\n");
 	else
 		fprintf(stderr, "\nSPIR-V:\n%s\n", str.c_str());
+}
+#endif
+
+static void validate_spirv(const std::vector<uint32_t> &code)
+{
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
+	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t&, const char *message) {
+		fprintf(stderr, "Message: %s\n", message);
+	});
+	if (!tools.Validate(code))
+		fprintf(stderr, "Validation error.\n");
+	else
+		fprintf(stderr, "Validated successfully!\n");
 }
 
 static void print_glsl(const std::vector<uint32_t> &code)
@@ -152,7 +166,8 @@ int main()
 		{
 			IncomingValue value = {};
 			value.block = get(from);
-			value.id = emitter.module.get_builder().makeUintConstant(uint32_t(std::hash<std::string>()(from)));
+			value.id = emitter.module.get_builder().makeUintConstant(uint32_t(std::hash<std::string>()(from)), true);
+			emitter.module.get_builder().addName(value.id, (std::string("incoming_value_") + from).c_str());
 			phi_node.incoming.push_back(value);
 		}
 	};
@@ -342,6 +357,7 @@ int main()
 	std::vector<uint32_t> code;
 	emitter.module.finalize_spirv(code);
 
-	print_spirv_assembly(code);
+	//print_spirv_assembly(code);
 	print_glsl(code);
+	validate_spirv(code);
 }

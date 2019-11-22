@@ -262,6 +262,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		PHI frontier_phi;
 		frontier_phi.id = module.allocate_id();
 		frontier_phi.type_id = node.phi->type_id;
+		module.get_builder().addName(frontier_phi.id, (std::string("frontier_phi_") + frontier->name).c_str());
 
 		assert(!frontier->pred_back_edge);
 		for (auto *input : frontier->pred)
@@ -320,6 +321,8 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			// we should replace the incoming value of dominating_incoming rather than adding a new incoming value.
 			PHI merge_phi;
 			merge_phi.id = module.allocate_id();
+			module.get_builder().addName(merge_phi.id, (std::string("merged_phi_") + dominated_incoming->block->name).c_str());
+
 			merge_phi.type_id = module.get_builder().makeBoolType();
 			for (auto *input : frontier->pred)
 			{
@@ -1444,11 +1447,6 @@ void CFGStructurizer::split_merge_blocks()
 						auto *ladder = create_helper_pred_block(loop_ladder);
 						ladder->is_ladder = true;
 
-						std::unordered_set<const CFGNode *> normal_preds;
-						for (auto *pred : ladder->pred)
-							if (!pred->is_ladder)
-								normal_preds.insert(pred);
-
 						// Merge to ladder instead.
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
 
@@ -1459,11 +1457,14 @@ void CFGStructurizer::split_merge_blocks()
 						PHI phi;
 						phi.id = ladder->ir.terminator.conditional_id;
 						phi.type_id = module.get_builder().makeBoolType();
+						module.get_builder().addName(phi.id, (std::string("ladder_phi_") + loop_ladder->name).c_str());
+
 						for (auto *pred : ladder->pred)
 						{
 							IncomingValue incoming = {};
 							incoming.block = pred;
-							incoming.id = module.get_builder().makeBoolConstant(!normal_preds.count(pred));
+							bool is_normal_pred = !pred->is_ladder;
+							incoming.id = module.get_builder().makeBoolConstant(!is_normal_pred);
 							phi.incoming.push_back(incoming);
 						}
 						ladder->ir.phi.push_back(std::move(phi));
@@ -1501,6 +1502,7 @@ void CFGStructurizer::split_merge_blocks()
 						PHI phi;
 						phi.id = ladder_pre->ir.terminator.conditional_id;
 						phi.type_id = module.get_builder().makeBoolType();
+						module.get_builder().addName(phi.id, (std::string("ladder_phi_") + loop_ladder->name).c_str());
 						for (auto *pred : ladder_pre->pred)
 						{
 							IncomingValue incoming = {};
