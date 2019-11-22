@@ -51,23 +51,42 @@ void Emitter::emit_basic_block(CFGNode *node)
 	switch (info.merge_type)
 	{
 	case MergeType::Selection:
-		fprintf(stderr, "    SelectionMerge -> %u\n", info.merge_block ? info.merge_block->id : 0);
+		fprintf(stderr, "    SelectionMerge -> %s\n", info.merge_block->name.c_str());
 		break;
 
 	case MergeType::Loop:
-		fprintf(stderr, "    LoopMerge -> %u, Continue <- %u\n", info.merge_block->id, info.continue_block ? info.continue_block->id : 0);
+		fprintf(stderr, "    LoopMerge -> %s, Continue <- %s\n",
+				info.merge_block->name.c_str(),
+				info.continue_block ? info.continue_block->name.c_str() : "Unreachable");
 		break;
 
 	default:
 		break;
 	}
 
-#if 0
-	for (auto *succ : node->succ)
-		fprintf(stderr, " -> %s\n", succ->name.c_str());
-	if (node->succ_back_edge)
-		fprintf(stderr, " %s <- back edge\n", node->succ_back_edge->name.c_str());
-#endif
+	switch (node->ir.terminator.type)
+	{
+	case Terminator::Type::Branch:
+		fprintf(stderr, "  Direct -> %s\n", node->ir.terminator.direct_block->name.c_str());
+		break;
+
+	case Terminator::Type::Condition:
+		fprintf(stderr, "  Selection -> %s : %s\n",
+				node->ir.terminator.true_block->name.c_str(),
+				node->ir.terminator.false_block->name.c_str());
+		break;
+
+	case Terminator::Type::Return:
+		fprintf(stderr, "  Return\n");
+		break;
+
+	case Terminator::Type::Unreachable:
+		fprintf(stderr, "  Unreachable\n");
+		break;
+
+	default:
+		break;
+	}
 }
 
 #if 0

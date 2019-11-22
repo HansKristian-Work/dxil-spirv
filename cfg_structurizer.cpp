@@ -303,9 +303,11 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		IncomingValue *dominated_incoming = nullptr;
 		for (auto &incoming : incoming_values)
 		{
-			if (frontier->dominates(incoming.block))
+			if (frontier->dominates(incoming.block) && !frontier->exists_path_in_cfg_without_intermediate_node(node.block, incoming.block))
 			{
 				// There should be only one block the frontier can dominate.
+				// The candidate block must also post-dominate the frontier on the CFG subset which terminates at node.block,
+				// otherwise we will get a proper merge later anyways.
 				assert(!dominated_incoming);
 				dominated_incoming = &incoming;
 			}
@@ -324,16 +326,26 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			module.get_builder().addName(merge_phi.id, (std::string("merged_phi_") + dominated_incoming->block->name).c_str());
 
 			merge_phi.type_id = module.get_builder().makeBoolType();
+
+			// Should be possible to handle multiple merges with chained selects, but not sure if will ever be needed.
+			assert(frontier->pred.size() == 2);
+			unsigned dominate_count = 0;
 			for (auto *input : frontier->pred)
 			{
 				auto itr = find_incoming_value(input, incoming_values);
 				assert(itr != incoming_values.end());
 
 				IncomingValue value = {};
-				value.id = module.get_builder().makeBoolConstant(input->dominates(dominated_incoming->block));
+
+				bool input_dominates = input->dominates(dominated_incoming->block);
+				if (input_dominates)
+					dominate_count++;
+
+				value.id = module.get_builder().makeBoolConstant(input_dominates);
 				value.block = input;
 				merge_phi.incoming.push_back(value);
 			}
+			assert(dominate_count == 1);
 
 			Operation op;
 			op.id = module.allocate_id();
