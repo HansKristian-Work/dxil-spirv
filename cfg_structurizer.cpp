@@ -1414,6 +1414,15 @@ void CFGStructurizer::split_merge_blocks()
 
 		CFGNode *full_break_target = nullptr;
 
+		// Before we start splitting and rewriting branches, we need to know which preds are considered "normal",
+		// and which branches are considered ladder breaking branches (rewritten branches).
+		// This will influence if a pred block gets false or true when emitting ladder breaking blocks later.
+		std::vector<std::unordered_set<const CFGNode *>> normal_preds(node->headers.size());
+		for (size_t i = 0; i < node->headers.size(); i++)
+			if (node->headers[i]->loop_ladder_block)
+				for (auto *pred : node->headers[i]->loop_ladder_block->pred)
+					normal_preds[i].insert(pred);
+
 		// Start from innermost scope, and rewrite all escape branches to a merge block which is dominated by the loop header in question.
 		// The merge block for the loop must have a ladder block before the old merge block.
 		// This ladder block will break to outer scope, or keep executing the old merge block.
@@ -1463,8 +1472,8 @@ void CFGStructurizer::split_merge_blocks()
 						{
 							IncomingValue incoming = {};
 							incoming.block = pred;
-							bool is_normal_pred = !pred->is_ladder;
-							incoming.id = module.get_builder().makeBoolConstant(!is_normal_pred);
+							bool is_breaking_pred = normal_preds[i].count(pred) == 0;
+							incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
 							phi.incoming.push_back(incoming);
 						}
 						ladder->ir.phi.push_back(std::move(phi));
