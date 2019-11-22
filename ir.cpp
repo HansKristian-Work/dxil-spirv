@@ -20,15 +20,4 @@
 
 namespace DXIL2SPIRV
 {
-unsigned operation_argument_count(Op op)
-{
-	switch (op)
-	{
-	case Op::Select:
-		return 3;
-
-	default:
-		return 0;
-	}
-}
 }

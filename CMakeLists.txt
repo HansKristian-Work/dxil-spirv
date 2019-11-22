@@ -14,6 +14,10 @@ elseif (MSVC)
 endif()
 
 add_subdirectory(third_party/spirv-headers EXCLUDE_FROM_ALL)
+set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers" CACHE STRING "SPIRV-Headers path" FORCE)
+add_subdirectory(third_party/SPIRV-Tools EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/SPIRV-Cross EXCLUDE_FROM_ALL)
+
 add_library(spirv-builder STATIC
         third_party/spvIR.h
         third_party/Logger.cpp
@@ -54,4 +58,6 @@ target_compile_options(dxil-parser-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 add_executable(structurize-test structurize_test.cpp)
 target_link_libraries(structurize-test PRIVATE dxil-parser)
 target_compile_options(structurize-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+
+target_link_libraries(structurize-test PRIVATE SPIRV-Tools spirv-cross-glsl)
 

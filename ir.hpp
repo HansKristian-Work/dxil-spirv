@@ -45,9 +45,14 @@ struct MergeInfo
 enum class Op
 {
 	Nop = spv::OpNop,
-	Select = spv::OpSelect
+	Select = spv::OpSelect,
+	IAdd = spv::OpIAdd,
+	ISub = spv::OpISub,
+	IMul = spv::OpIMul,
+	FAdd = spv::OpFAdd,
+	FSub = spv::OpFSub,
+	FMul = spv::OpFMul,
 };
-unsigned operation_argument_count(Op op);
 
 struct IncomingValue
 {
@@ -69,7 +74,7 @@ struct Operation
 	enum { MaxArguments = 4 };
 	uint32_t id = 0;
 	uint32_t type_id = 0;
-	uint32_t arguments[MaxArguments] = {};
+	std::vector<uint32_t> arguments;
 };
 
 struct Terminator

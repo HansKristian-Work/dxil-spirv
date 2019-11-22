@@ -40,7 +40,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void register_block(CFGNode *node) override;
 	void emit_basic_block(CFGNode *node) override;
 	void emit_function_body(CFGStructurizer &structurizer);
-	spv::Block *get_spv_block(CFGNode *node);
+	static spv::Block *get_spv_block(CFGNode *node);
 };
 
 spv::Block *SPIRVModule::Impl::get_spv_block(CFGNode *node)
@@ -83,7 +83,7 @@ bool SPIRVModule::Impl::finalize_spirv(std::vector<uint32_t> &spirv)
 
 void SPIRVModule::Impl::register_block(CFGNode *node)
 {
-	if (!node->userdata)
+	if (!node->userdata || node->id == 0)
 	{
 		auto *bb = new spv::Block(builder.getUniqueId(), *entry_function);
 		entry_function->addBlock(bb);
@@ -99,6 +99,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 	builder.setBuildPoint(bb);
 
+	// Emit phi nodes.
 	for (auto &phi : ir.phi)
 	{
 		auto phi_op = std::make_unique<spv::Instruction>(phi.id, phi.type_id, spv::OpPhi);
@@ -113,12 +114,11 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	// Emit opcodes.
 	for (auto &op : ir.operations)
 	{
-		unsigned num_instructions = operation_argument_count(op.op);
-		if (num_instructions)
+		if (!op.arguments.empty())
 		{
 			auto inst = std::make_unique<spv::Instruction>(op.id, op.type_id, static_cast<spv::Op>(op.op));
-			for (unsigned i = 0; i < num_instructions; i++)
-				inst->addIdOperand(op.arguments[i]);
+			for (auto &arg : op.arguments)
+				inst->addIdOperand(arg);
 			bb->addInstruction(std::move(inst));
 		}
 		else

@@ -22,12 +22,12 @@
 #include <stdio.h>
 #include <string>
 #include <unordered_map>
-using namespace DXIL2SPIRV;
+#include "spirv_module.hpp"
 
-struct BlockMeta
-{
-	CFGNode *node = nullptr;
-};
+#include "spirv-tools/libspirv.hpp"
+#include "spirv_glsl.hpp"
+
+using namespace DXIL2SPIRV;
 
 struct Emitter : BlockEmissionInterface
 {
@@ -35,11 +35,10 @@ struct Emitter : BlockEmissionInterface
 	void register_block(CFGNode *node) override
 	{
 		if (node->id == 0)
-			node->id = base_id++;
+			node->id = module.allocate_id();
 	}
 
-	CFGNodePool *pool = nullptr;
-	unsigned base_id = 1;
+	SPIRVModule module;
 };
 
 void Emitter::emit_basic_block(CFGNode *node)
@@ -71,41 +70,91 @@ void Emitter::emit_basic_block(CFGNode *node)
 #endif
 }
 
+static void print_spirv_assembly(const std::vector<uint32_t> &code)
+{
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
+	std::string str;
+	if (!tools.Disassemble(code.data(), code.size(), &str))
+		fprintf(stderr, "Failed to disassemble SPIR-V.\n");
+	else
+		fprintf(stderr, "\nSPIR-V:\n%s\n", str.c_str());
+}
+
+static void print_glsl(const std::vector<uint32_t> &code)
+{
+	try
+	{
+		spirv_cross::CompilerGLSL compiler(code);
+		auto opts = compiler.get_common_options();
+		opts.es = false;
+		opts.version = 460;
+		compiler.set_common_options(opts);
+		auto str = compiler.compile();
+		fprintf(stderr, "\n=== GLSL ===\n%s\n", str.c_str());
+	}
+	catch (const std::exception &e)
+	{
+		fprintf(stderr, "Failed to decompile to GLSL: %s.\n", e.what());
+	}
+}
+
 int main()
 {
-	std::unordered_map<std::string, BlockMeta> block_metas;
-
+	std::unordered_map<std::string, CFGNode *> block_metas;
+	Emitter emitter;
 	CFGNodePool pool;
+
 	const auto get = [&](const std::string &name) -> CFGNode * {
 		auto itr = block_metas.find(name);
 		if (itr == block_metas.end())
 		{
 			auto &new_entry = block_metas[name];
-			auto *node = pool.get_node_from_userdata(&new_entry);
-			pool.set_name(&new_entry, name);
-			new_entry.node = node;
+			auto *node = pool.create_node();
+			node->ir.terminator.type = Terminator::Type::Return;
+			node->name = name;
+			new_entry = node;
 			return node;
 		}
 		else
-			return itr->second.node;
+			return itr->second;
 	};
-
-	const auto get_user = [&](const std::string &name) -> void * { return &block_metas[name]; };
 
 	const auto add_branch = [&](const char *from, const char *to) {
-		get(from);
-		get(to);
-		pool.add_branch(get_user(from), get_user(to));
-	};
-
-	const auto add_switch = [&](const char *from, const std::vector<const char *> &tos) {
-		for (auto *to : tos)
-			add_branch(from, to);
+		auto *f = get(from);
+		auto *t = get(to);
+		f->add_branch(t);
+		f->ir.terminator.type = Terminator::Type::Branch;
+		f->ir.terminator.direct_block = t;
 	};
 
 	const auto add_selection = [&](const char *from, const char *to0, const char *to1) {
-		add_branch(from, to0);
-		add_branch(from, to1);
+		auto *f = get(from);
+		auto *t0 = get(to0);
+		auto *t1 = get(to1);
+		f->add_branch(t0);
+		f->add_branch(t1);
+		f->ir.terminator.type = Terminator::Type::Condition;
+		f->ir.terminator.true_block = t0;
+		f->ir.terminator.false_block = t1;
+		f->ir.terminator.conditional_id = emitter.module.get_builder().makeBoolConstant(true, true);
+		emitter.module.get_builder().addName(f->ir.terminator.conditional_id, (std::string(from) + "_sel").c_str());
+	};
+
+	const auto add_phi = [&](const char *phi, const std::vector<const char *> &from_nodes) {
+		auto *p = get(phi);
+		p->ir.phi.emplace_back();
+		auto &phi_node = p->ir.phi.back();
+		phi_node.type_id = emitter.module.get_builder().makeUintType(32);
+		phi_node.id = emitter.module.allocate_id();
+		emitter.module.get_builder().addName(phi_node.id, phi);
+
+		for (auto &from : from_nodes)
+		{
+			IncomingValue value = {};
+			value.block = get(from);
+			value.id = emitter.module.get_builder().makeUintConstant(uint32_t(std::hash<std::string>()(from)));
+			phi_node.incoming.push_back(value);
+		}
 	};
 
 #if 0
@@ -277,12 +326,22 @@ int main()
 	}
 #endif
 
-	auto *b0_exit = get("b0.exit");
-	b0_exit->ir.phi.push_back({ 0, 0, {{ get("b0"), 0 }, { get("l1.cond"), 1 }, { get("l0.exit"), 2 }}});
+	add_phi("b0.exit", { "b0", "l1.cond", "l0.exit" });
 
-	CFGStructurizer traverser(*get("entry"), pool);
+	CFGStructurizer traverser(get("entry"), pool, emitter.module);
 	traverser.run();
-	Emitter emitter;
-	emitter.pool = &pool;
 	traverser.traverse(emitter);
+
+	pool.for_each_node([](CFGNode &node) {
+		node.userdata = nullptr;
+		node.id = 0;
+	});
+
+	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main");
+	emitter.module.emit_function_body(traverser);
+	std::vector<uint32_t> code;
+	emitter.module.finalize_spirv(code);
+
+	print_spirv_assembly(code);
+	print_glsl(code);
 }

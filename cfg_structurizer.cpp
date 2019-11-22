@@ -71,7 +71,8 @@ void CFGStructurizer::insert_phi()
 		for (auto &phi : node->ir.phi)
 		{
 			phi_nodes.push_back({ node, &phi });
-			value_id_to_block[phi.id] = node;
+			if (phi.id)
+				value_id_to_block[phi.id] = node;
 		}
 
 		for (auto &op : node->ir.operations)
@@ -166,14 +167,19 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	for (auto &incoming : incoming_values)
 		incoming.block->walk_cfg_from(walk_op);
 
+#if 0
 	fprintf(stderr, "\n=== CFG subset ===\n");
 	for (auto *subset_node : cfg_subset)
 		fprintf(stderr, "  %s\n", subset_node->name.c_str());
 	fprintf(stderr, "=================\n");
+#endif
 
 	for (;;)
 	{
-		fprintf(stderr, "\n=== PHI iteration for %s ===\n", node.block->name.c_str());
+		fprintf(stderr, "\n=== PHI iteration ===\n", node.block->name.c_str());
+
+		for (auto &incoming : incoming_values)
+			fprintf(stderr, "  Incoming value from %s\n", incoming.block->name.c_str());
 
 		// Inside the CFG subset, find a dominance frontiers where we merge PHIs this iteration.
 		CFGNode *frontier = node.block;
@@ -330,9 +336,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			op.id = module.allocate_id();
 			op.op = Op::Select;
 			op.type_id = node.phi->type_id;
-			op.arguments[0] = merge_phi.id;
-			op.arguments[1] = dominated_incoming->id;
-			op.arguments[2] = frontier_phi.id;
+			op.arguments = { merge_phi.id, dominated_incoming->id, frontier_phi.id };
 			dominated_incoming->block->ir.operations.push_back(op);
 			dominated_incoming->id = op.id;
 
@@ -1670,7 +1674,10 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 {
 	// Make sure all blocks are known to the backend before we emit code.
 	for (auto *block : post_visit_order)
+	{
+		block->id = 0;
 		iface.register_block(block);
+	}
 
 	// Need to emit blocks such that dominating blocks come before dominated blocks.
 	for (auto index = post_visit_order.size(); index; index--)
