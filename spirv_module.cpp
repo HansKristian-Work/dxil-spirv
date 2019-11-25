@@ -117,14 +117,14 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	{
 		if (!op.arguments.empty())
 		{
-			auto inst = std::make_unique<spv::Instruction>(op.id, op.type_id, static_cast<spv::Op>(op.op));
+			auto inst = std::make_unique<spv::Instruction>(op.id, op.type_id, op.op);
 			for (auto &arg : op.arguments)
 				inst->addIdOperand(arg);
 			bb->addInstruction(std::move(inst));
 		}
 		else
 		{
-			auto inst = std::make_unique<spv::Instruction>(static_cast<spv::Op>(op.op));
+			auto inst = std::make_unique<spv::Instruction>(op.op);
 			bb->addInstruction(std::move(inst));
 		}
 	}

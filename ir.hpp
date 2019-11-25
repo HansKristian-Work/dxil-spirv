@@ -42,21 +42,6 @@ struct MergeInfo
 	CFGNode *continue_block = nullptr;
 };
 
-enum class Op
-{
-	Nop = spv::OpNop,
-	Select = spv::OpSelect,
-	IAdd = spv::OpIAdd,
-	ISub = spv::OpISub,
-	IMul = spv::OpIMul,
-	FAdd = spv::OpFAdd,
-	FSub = spv::OpFSub,
-	FMul = spv::OpFMul,
-	InBoundsAccessChain = spv::OpInBoundsAccessChain,
-	Load = spv::OpLoad,
-	Store = spv::OpStore
-};
-
 struct IncomingValue
 {
 	CFGNode *block = nullptr;
@@ -72,7 +57,7 @@ struct PHI
 
 struct Operation
 {
-	Op op = Op::Nop;
+	spv::Op op = spv::OpNop;
 
 	enum { MaxArguments = 4 };
 	uint32_t id = 0;

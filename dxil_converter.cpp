@@ -77,6 +77,7 @@ struct Converter::Impl
 	void emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction);
 	void emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
 	void emit_binary_instruction(CFGNode *block, const llvm::BinaryOperator &instruction);
+	void emit_compare_instruction(CFGNode *block, const llvm::CmpInst &instruction);
 
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
 };
@@ -137,9 +138,7 @@ spv::Id Converter::Impl::get_id_for_undef(const llvm::UndefValue &undef)
 	switch (undef.getType()->getTypeID())
 	{
 	case llvm::Type::TypeID::FloatTyID:
-	{
-		return 0;
-	}
+		return builder.createUndefined(builder.makeFloatType(32));
 
 	default:
 		return 0;
@@ -198,6 +197,15 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type &type)
 	{
 	case llvm::Type::TypeID::FloatTyID:
 		return builder.makeFloatType(32);
+
+	case llvm::Type::TypeID::IntegerTyID:
+		switch (type.getIntegerBitWidth())
+		{
+		case 1:
+			return builder.makeBoolType();
+		default:
+			return builder.makeIntegerType(type.getIntegerBitWidth(), false);
+		}
 
 	default:
 		return 0;
@@ -427,7 +435,7 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 		{
 			ptr_id = spirv_module.allocate_id();
 
-			op.op = Op::InBoundsAccessChain;
+			op.op = spv::OpInBoundsAccessChain;
 			op.id = ptr_id;
 			op.type_id = get_type_id(*instruction.getType());
 			op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
@@ -444,7 +452,7 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 			ptr_id = var_id;
 
 		op = {};
-		op.op = Op::Load;
+		op.op = spv::OpLoad;
 		op.id = get_id_for_value(instruction);
 		op.type_id = get_type_id(*instruction.getType());
 		op.arguments = { ptr_id };
@@ -466,7 +474,7 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 		{
 			ptr_id = spirv_module.allocate_id();
 
-			op.op = Op::InBoundsAccessChain;
+			op.op = spv::OpInBoundsAccessChain;
 			op.id = ptr_id;
 			op.type_id = builder.getScalarTypeId(builder.getDerefTypeId(var_id));
 			op.type_id = builder.makePointer(spv::StorageClassOutput, op.type_id);
@@ -483,7 +491,7 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 			ptr_id = var_id;
 
 		op = {};
-		op.op = Op::Store;
+		op.op = spv::OpStore;
 		op.arguments = {
 			ptr_id,
 			get_id_for_value(*instruction.getOperand(4))
@@ -525,6 +533,128 @@ void Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 	block->ir.phi.push_back(std::move(phi));
 }
 
+void Converter::Impl::emit_compare_instruction(CFGNode *block, const llvm::CmpInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+
+	Operation op;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+
+	uint32_t id0 = get_id_for_value(*instruction.getOperand(0));
+	uint32_t id1 = get_id_for_value(*instruction.getOperand(1));
+	op.arguments = { id0, id1 };
+
+	switch (instruction.getPredicate())
+	{
+	case llvm::CmpInst::Predicate::FCMP_OEQ:
+		op.op = spv::OpFOrdEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_UEQ:
+		op.op = spv::OpFUnordEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_OGT:
+		op.op = spv::OpFOrdGreaterThan;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_UGT:
+		op.op = spv::OpFUnordGreaterThan;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_OGE:
+		op.op = spv::OpFOrdGreaterThanEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_UGE:
+		op.op = spv::OpFUnordGreaterThanEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_OLT:
+		op.op = spv::OpFOrdLessThan;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_ULT:
+		op.op = spv::OpFUnordLessThan;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_OLE:
+		op.op = spv::OpFOrdLessThanEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_ULE:
+		op.op = spv::OpFUnordLessThanEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_ONE:
+		op.op = spv::OpFOrdNotEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_UNE:
+		op.op = spv::OpFUnordNotEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_FALSE:
+		// Why on earth is this a thing ...
+		op.op = spv::OpCopyLogical;
+		op.arguments = { builder.makeBoolConstant(false) };
+		break;
+
+	case llvm::CmpInst::Predicate::FCMP_TRUE:
+		// Why on earth is this a thing ...
+		op.op = spv::OpCopyLogical;
+		op.arguments = { builder.makeBoolConstant(true) };
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_EQ:
+		op.op = spv::OpIEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_NE:
+		op.op = spv::OpINotEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_SLT:
+		op.op = spv::OpSLessThan;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_SLE:
+		op.op = spv::OpSLessThanEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_SGT:
+		op.op = spv::OpSGreaterThan;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_SGE:
+		op.op = spv::OpSGreaterThanEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_ULT:
+		op.op = spv::OpULessThan;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_ULE:
+		op.op = spv::OpULessThanEqual;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_UGT:
+		op.op = spv::OpUGreaterThan;
+		break;
+
+	case llvm::CmpInst::Predicate::ICMP_UGE:
+		op.op = spv::OpUGreaterThanEqual;
+		break;
+
+	default:
+		fprintf(stderr, "Unknown CmpInst predicate.\n");
+		break;
+	}
+
+	block->ir.operations.push_back(std::move(op));
+}
+
 void Converter::Impl::emit_binary_instruction(CFGNode *block, const llvm::BinaryOperator &instruction)
 {
 	Operation op;
@@ -538,11 +668,80 @@ void Converter::Impl::emit_binary_instruction(CFGNode *block, const llvm::Binary
 	switch (instruction.getOpcode())
 	{
 	case llvm::BinaryOperator::BinaryOps::FAdd:
-		op.op = Op::FAdd;
+		op.op = spv::OpFAdd;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::FSub:
+		op.op = spv::OpFSub;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::FMul:
+		op.op = spv::OpFMul;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::FDiv:
+		op.op = spv::OpFDiv;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::Add:
+		op.op = spv::OpIAdd;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::Sub:
+		op.op = spv::OpISub;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::Mul:
+		op.op = spv::OpIMul;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::SDiv:
+		op.op = spv::OpSDiv;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::UDiv:
+		op.op = spv::OpUDiv;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::Shl:
+		op.op = spv::OpShiftLeftLogical;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::LShr:
+		op.op = spv::OpShiftRightLogical;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::AShr:
+		op.op = spv::OpShiftRightArithmetic;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::SRem:
+		op.op = spv::OpSRem;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::FRem:
+		op.op = spv::OpFRem;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::URem:
+		// Is this correct? There is no URem.
+		op.op = spv::OpUMod;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::Xor:
+		op.op = spv::OpBitwiseXor;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::And:
+		op.op = spv::OpBitwiseAnd;
+		break;
+
+	case llvm::BinaryOperator::BinaryOps::Or:
+		op.op = spv::OpBitwiseOr;
 		break;
 
 	default:
-		op.op = Op::Nop;
+		fprintf(stderr, "Unknown binary operator.\n");
 		break;
 	}
 
@@ -566,6 +765,10 @@ void Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	else if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))
 	{
 		emit_binary_instruction(block, *binary_inst);
+	}
+	else if (auto *compare_inst = llvm::dyn_cast<llvm::CmpInst>(&instruction))
+	{
+		emit_compare_instruction(block, *compare_inst);
 	}
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
 	{
@@ -644,7 +847,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 			if (inst->isConditional())
 			{
 				node->ir.terminator.type = Terminator::Type::Condition;
-				node->ir.terminator.conditional_id = spirv_module.get_builder().makeBoolConstant(true);
+				node->ir.terminator.conditional_id = get_id_for_value(*inst->getCondition());
 				assert(inst->getNumSuccessors() == 2);
 				node->ir.terminator.true_block = bb_map[inst->getSuccessor(0)]->node;
 				node->ir.terminator.false_block = bb_map[inst->getSuccessor(1)]->node;
@@ -660,7 +863,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		{
 			node->ir.terminator.type = Terminator::Type::Return;
 			if (inst->getReturnValue())
-				node->ir.terminator.return_value = spirv_module.get_builder().makeBoolConstant(true);
+				node->ir.terminator.return_value = get_id_for_value(*inst->getReturnValue());
 		}
 		else if (llvm::isa<llvm::UnreachableInst>(instruction))
 		{
