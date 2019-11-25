@@ -42,6 +42,7 @@ public:
 	void emit_function_body(CFGStructurizer &structurizer);
 
 	spv::Builder &get_builder();
+	spv::Instruction *get_entry_point();
 
 private:
 	struct Impl;

@@ -87,4 +87,79 @@ enum class FourCC : uint32_t
 	RuntimeData = fourcc('R', 'D', 'A', 'T'),
 	ShaderHash = fourcc('H', 'A', 'S', 'H')
 };
+
+enum class ComponentType : uint8_t
+{
+	Invalid = 0,
+	I1,
+	I16,
+	U16,
+	I32,
+	U32,
+	I64,
+	U64,
+	F16,
+	F32,
+	F64,
+	SNormF16,
+	UNormF16,
+	SNormF32,
+	UNormF32,
+	SNormF64,
+	UNormF64
+};
+
+enum class InterpolationMode : uint8_t
+{
+	Undefined,
+	Constant,
+	Linear,
+	LinearCentroid,
+	LinearNoperspective,
+	LinearNoperspectiveCentroid,
+	LinearSample,
+	LinearNoperspectiveSample,
+	Invalid
+};
+
+enum class Semantic : uint8_t
+{
+	User,
+	VertexID,
+	InstanceID,
+	Position,
+	RenderTargetArrayIndex,
+	ViewPortArrayIndex,
+	ClipDistance,
+	CullDistance,
+	OutputControlPointID,
+	DomainLocation,
+	PrimitiveID,
+	GSInstanceID,
+	SampleIndex,
+	IsFrontFace,
+	Coverage,
+	InnerCoverage,
+	Target,
+	Depth,
+	DepthLessEqual,
+	DepthGreaterEqual,
+	StencilRef,
+	DispatchThreadID,
+	GroupID,
+	GroupIndex,
+	GroupThreadID,
+	TessFactor,
+	InsideTessFactor,
+	ViewID,
+	Barycentrics,
+	ShadingRate,
+	CullPrimitive
+};
+
+enum class Op : unsigned
+{
+	LoadInput = 4,
+	StoreOutput = 5
+};
 } // namespace DXIL

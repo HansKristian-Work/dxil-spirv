@@ -28,6 +28,8 @@
 #include "dxil_converter.hpp"
 #include "spirv_module.hpp"
 
+#include <llvm/Support/raw_os_ostream.h>
+
 static std::vector<uint8_t> read_file(const char *path)
 {
 	FILE *file = fopen(path, "rb");

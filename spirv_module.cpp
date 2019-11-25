@@ -33,6 +33,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::SpvBuildLogger build_logger;
 	spv::Builder builder;
 	spv::Function *entry_function = nullptr;
+	spv::Instruction *entry_point = nullptr;
 
 	void emit_entry_point(spv::ExecutionModel model, const char *name);
 	bool finalize_spirv(std::vector<uint32_t> &spirv);
@@ -55,7 +56,7 @@ void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model, const char *
 	                       spv::MemoryModel::MemoryModelGLSL450);
 
 	entry_function = builder.makeEntryPoint("main");
-	builder.addEntryPoint(model, entry_function, name);
+	entry_point = builder.addEntryPoint(model, entry_function, name);
 	if (model == spv::ExecutionModel::ExecutionModelFragment)
 		builder.addExecutionMode(entry_function, spv::ExecutionMode::ExecutionModeOriginUpperLeft);
 }
@@ -224,6 +225,11 @@ void SPIRVModule::emit_function_body(CFGStructurizer &structurizer)
 spv::Builder &SPIRVModule::get_builder()
 {
 	return impl->builder;
+}
+
+spv::Instruction *SPIRVModule::get_entry_point()
+{
+	return impl->entry_point;
 }
 
 uint32_t SPIRVModule::allocate_id()

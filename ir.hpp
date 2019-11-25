@@ -52,6 +52,9 @@ enum class Op
 	FAdd = spv::OpFAdd,
 	FSub = spv::OpFSub,
 	FMul = spv::OpFMul,
+	InBoundsAccessChain = spv::OpInBoundsAccessChain,
+	Load = spv::OpLoad,
+	Store = spv::OpStore
 };
 
 struct IncomingValue
