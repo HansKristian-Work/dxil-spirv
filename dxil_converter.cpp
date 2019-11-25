@@ -66,6 +66,18 @@ struct Converter::Impl
 	void emit_stage_input_variables();
 	void emit_stage_output_variables();
 
+	void emit_resources();
+	void emit_srvs(const llvm::MDNode *srvs);
+	void emit_uavs(const llvm::MDNode *uavs);
+	void emit_cbvs(const llvm::MDNode *cbvs);
+	void emit_samplers(const llvm::MDNode *samplers);
+
+	std::vector<spv::Id> srv_index_to_id;
+	std::vector<spv::Id> uav_index_to_id;
+	std::vector<spv::Id> cbv_index_to_id;
+	std::vector<spv::Id> sampler_index_to_id;
+	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
+
 	spv::Id get_type_id(unsigned element_type, unsigned rows, unsigned cols);
 	spv::Id get_type_id(const llvm::Type &type);
 
@@ -78,6 +90,7 @@ struct Converter::Impl
 	void emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
 	void emit_binary_instruction(CFGNode *block, const llvm::BinaryOperator &instruction);
 	void emit_compare_instruction(CFGNode *block, const llvm::CmpInst &instruction);
+	void emit_extract_value_instruction(CFGNode *block, const llvm::ExtractValueInst &instruction);
 
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
 };
@@ -94,6 +107,90 @@ Converter::~Converter()
 ConvertedFunction Converter::convert_entry_point()
 {
 	return impl->convert_entry_point();
+}
+
+template <typename T = uint32_t>
+static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
+{
+	return T(llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
+}
+
+static std::string get_string_metadata(const llvm::MDNode *node, unsigned index)
+{
+	return llvm::cast<llvm::MDString>(node->getOperand(index))->getString();
+}
+
+void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
+{
+
+}
+
+void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
+{
+
+}
+
+void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
+{
+	auto &builder = spirv_module.get_builder();
+
+	unsigned num_cbvs = cbvs->getNumOperands();
+	for (unsigned i = 0; i < num_cbvs; i++)
+	{
+		auto *cbv = llvm::cast<llvm::MDNode>(cbvs->getOperand(i));
+		unsigned index = get_constant_metadata(cbv, 0);
+		auto name = get_string_metadata(cbv, 2);
+		unsigned bind_space = get_constant_metadata(cbv, 3);
+		unsigned bind_register = get_constant_metadata(cbv, 4);
+		// range_size = 5
+		unsigned cbv_size = get_constant_metadata(cbv, 6);
+
+		unsigned vec4_length = (cbv_size + 15) / 16;
+
+		// It seems like we will have to bitcast ourselves away from vec4 here after loading.
+		spv::Id member_array_type = builder.makeArrayType(
+				builder.makeVectorType(
+						builder.makeFloatType(32), 4),
+				builder.makeUintConstant(vec4_length, false),
+				16);
+
+		builder.addDecoration(member_array_type, spv::DecorationArrayStride, 16);
+
+		spv::Id type_id = builder.makeStructType({ member_array_type }, name.c_str());
+		builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+		builder.addDecoration(type_id, spv::DecorationBlock);
+		spv::Id var_id = builder.createVariable(spv::StorageClassUniform, type_id, name.c_str());
+
+		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
+		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
+
+		cbv_index_to_id.resize(std::max(cbv_index_to_id.size(), size_t(index + 1)));
+		cbv_index_to_id[index] = var_id;
+	}
+}
+
+void Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
+{
+
+}
+
+void Converter::Impl::emit_resources()
+{
+	auto &module = bitcode_parser.get_module();
+	auto *resource_meta = module.getNamedMetadata("dx.resources");
+	if (!resource_meta)
+		return;
+
+	auto *metas = resource_meta->getOperand(0);
+
+	if (metas->getOperand(0))
+		emit_srvs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(0)));
+	if (metas->getOperand(1))
+		emit_uavs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(1)));
+	if (metas->getOperand(2))
+		emit_cbvs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(2)));
+	if (metas->getOperand(3))
+		emit_samplers(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(3)));
 }
 
 spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant &constant, unsigned forced_width)
@@ -170,11 +267,6 @@ static std::string get_entry_point_name(const llvm::Module &module)
 	return llvm::cast<llvm::MDString>(node->getOperand(1))->getString();
 }
 
-template <typename T = uint32_t>
-static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
-{
-	return T(llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
-}
 
 static void print_shader_model(const llvm::Module &module)
 {
@@ -183,11 +275,6 @@ static void print_shader_model(const llvm::Module &module)
 	fprintf(stderr, "Profile: %s_%u_%u\n", llvm::cast<llvm::MDString>(shader_model_node->getOperand(0))->getString().data(),
 	        get_constant_metadata(shader_model_node, 1),
 	        get_constant_metadata(shader_model_node, 2));
-}
-
-static std::string get_string_metadata(const llvm::MDNode *node, unsigned index)
-{
-	return llvm::cast<llvm::MDString>(node->getOperand(index))->getString();
 }
 
 spv::Id Converter::Impl::get_type_id(const llvm::Type &type)
@@ -503,6 +590,66 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 		break;
 	}
 
+	case DXIL::Op::CreateHandle:
+	{
+		auto resource_type = static_cast<DXIL::ResourceType>(get_constant_operand(instruction, 1));
+		auto resource_range = get_constant_operand(instruction, 2);
+		// 3 = index into range
+		// 4 = non-uniform resource index
+		switch (resource_type)
+		{
+		case DXIL::ResourceType::SRV:
+			handle_to_ptr_id[&instruction] = srv_index_to_id[resource_range];
+			break;
+
+		case DXIL::ResourceType::UAV:
+			handle_to_ptr_id[&instruction] = uav_index_to_id[resource_range];
+			break;
+
+		case DXIL::ResourceType::CBV:
+			handle_to_ptr_id[&instruction] = cbv_index_to_id[resource_range];
+			break;
+
+		case DXIL::ResourceType::Sampler:
+			handle_to_ptr_id[&instruction] = sampler_index_to_id[resource_range];
+			break;
+
+		default:
+			break;
+		}
+		break;
+	}
+
+	case DXIL::Op::CBufferLoadLegacy:
+	{
+		// This function returns a struct, but ignore that, and just return a vec4 for now.
+		// extractvalue is used to pull out components and that works for vectors as well.
+		spv::Id ptr_id = handle_to_ptr_id[instruction.getOperand(1)];
+		assert(ptr_id);
+
+		spv::Id vec4_index = get_id_for_value(*instruction.getOperand(2));
+		spv::Id access_chain_id = spirv_module.allocate_id();
+
+		Operation op;
+		op.op = spv::OpInBoundsAccessChain;
+		op.id = access_chain_id;
+		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
+		op.type_id = builder.makePointer(spv::StorageClassUniform, op.type_id);
+		op.arguments = { ptr_id, builder.makeUintConstant(0), vec4_index };
+
+		block->ir.operations.push_back(std::move(op));
+
+		op = {};
+		op.op = spv::OpLoad;
+		op.id = get_id_for_value(instruction);
+		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
+		op.arguments = { access_chain_id };
+
+		block->ir.operations.push_back(std::move(op));
+
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -512,7 +659,7 @@ void Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 {
 	PHI phi;
 	phi.id = get_id_for_value(instruction);
-	phi.type_id = spirv_module.get_builder().makeIntegerType(32, false);
+	phi.type_id = get_type_id(*instruction.getType());
 
 	unsigned count = instruction.getNumIncomingValues();
 	for (unsigned i = 0; i < count; i++)
@@ -520,13 +667,7 @@ void Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 		IncomingValue incoming = {};
 		incoming.block = bb_map[instruction.getIncomingBlock(i)]->node;
 		auto *value = instruction.getIncomingValue(i);
-		if (llvm::isa<llvm::PHINode>(value))
-			incoming.id = get_id_for_value(*value);
-		else
-		{
-			// Just invent something ...
-			incoming.id = spirv_module.get_builder().makeUintConstant(phi.id);
-		}
+		incoming.id = get_id_for_value(*value);
 		phi.incoming.push_back(incoming);
 	}
 
@@ -655,6 +796,23 @@ void Converter::Impl::emit_compare_instruction(CFGNode *block, const llvm::CmpIn
 	block->ir.operations.push_back(std::move(op));
 }
 
+void Converter::Impl::emit_extract_value_instruction(CFGNode *block,
+                                                     const llvm::ExtractValueInst &instruction)
+{
+	Operation op;
+	op.op = spv::OpCompositeExtract;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+
+	op.arguments.push_back(get_id_for_value(*instruction.getAggregateOperand()));
+	for (unsigned i = 0; i < instruction.getNumIndices(); i++)
+	{
+		op.arguments.push_back(instruction.getIndices()[i]);
+	}
+
+	block->ir.operations.push_back(std::move(op));
+}
+
 void Converter::Impl::emit_binary_instruction(CFGNode *block, const llvm::BinaryOperator &instruction)
 {
 	Operation op;
@@ -770,6 +928,10 @@ void Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	{
 		emit_compare_instruction(block, *compare_inst);
 	}
+	else if (auto *extract_inst = llvm::dyn_cast<llvm::ExtractValueInst>(&instruction))
+	{
+		emit_extract_value_instruction(block, *extract_inst);
+	}
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
 	{
 		emit_phi_instruction(block, *phi_inst);
@@ -787,6 +949,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	print_shader_model(*module);
 	fprintf(stderr, "Entry point: %s\n", get_entry_point_name(*module).c_str());
 
+	emit_resources();
 	emit_stage_input_variables();
 	emit_stage_output_variables();
 

@@ -157,9 +157,22 @@ enum class Semantic : uint8_t
 	CullPrimitive
 };
 
+enum class ResourceType : uint8_t
+{
+	SRV = 0,
+	UAV = 1,
+	CBV = 2,
+	Sampler = 3
+};
+
 enum class Op : unsigned
 {
+	// Input output
 	LoadInput = 4,
-	StoreOutput = 5
+	StoreOutput = 5,
+
+	// Resources
+	CreateHandle = 57,
+	CBufferLoadLegacy = 59
 };
 } // namespace DXIL
