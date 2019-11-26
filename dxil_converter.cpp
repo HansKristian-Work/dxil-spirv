@@ -1237,64 +1237,6 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 			fprintf(stderr, "Unsupported terminator ...\n");
 	}
 
-#if 0
-		BasicBlock &block = func->getEntryBlock();
-
-		for (auto itr = succ_begin(&block); itr != succ_end(&block); ++itr)
-		{
-			fprintf(stderr, "Successor!\n");
-		}
-
-		//block.print(errs());
-
-		for (auto itr = block.begin(); itr != block.end(); ++itr)
-		{
-			Instruction &inst = *itr;
-			if (isa<llvm::CallInst>(inst))
-			{
-				fprintf(stderr, "Call!\n");
-				auto &call = cast<llvm::CallInst>(inst);
-				fprintf(stderr, "Calling %s\n", call.getCalledFunction()->getName().data());
-				auto *constant = cast<llvm::ConstantInt>(call.getOperand(0));
-				uint32_t value = constant->getZExtValue();
-				fprintf(stderr, "Calling opcode: %u\n", value);
-
-				call.setMetadata(0, MDNode::get(call.getContext(), MDString::get(call.getContext(), "OHAI")));
-				fflush(stderr);
-				cast<llvm::MDString>(call.getMetadata(0)->getOperand(0))->print(errs());
-				fflush(stderr);
-				//fprintf(stderr, "Value name: %s\n", call.getName().data());
-			}
-			else if (isa<llvm::ReturnInst>(inst))
-				fprintf(stderr, "Return!\n");
-			else if (isa<llvm::SelectInst>(inst))
-				fprintf(stderr, "Select instruction!\n");
-			else if (isa<llvm::CmpInst>(inst))
-				fprintf(stderr, "Compare instruction!\n");
-			else if (isa<llvm::BinaryOperator>(inst))
-			{
-				fprintf(stderr, "Binary operator!\n");
-				auto &binop = cast<llvm::BinaryOperator>(inst);
-				switch (binop.getOpcode())
-				{
-				case BinaryOperator::FAdd:
-					fprintf(stderr, "FADD!\n");
-					break;
-
-				case BinaryOperator::FMul:
-					fprintf(stderr, "FMul!\n");
-					break;
-
-				default:
-					break;
-				}
-			}
-			else
-				fprintf(stderr, "? ...\n");
-		}
-	}
-#endif
-
 	return result;
 }
 } // namespace DXIL2SPIRV
