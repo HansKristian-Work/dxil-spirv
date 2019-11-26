@@ -165,6 +165,29 @@ enum class ResourceType : uint8_t
 	Sampler = 3
 };
 
+enum class ResourceKind : uint8_t
+{
+	Invalid = 0,
+	Texture1D,
+	Texture2D,
+	Texture2DMS,
+	Texture3D,
+	TextureCube,
+	Texture1DArray,
+	Texture2DArray,
+	Texture2DMSArray,
+	TextureCubeArray,
+	TypedBuffer,
+	RawBuffer,
+	StructuredBuffer,
+	CBuffer,
+	Sampler,
+	TBuffer,
+	RTAccelerationStructure,
+	FeedbackTexture2D,
+	FeedbackTexture2DArray
+};
+
 enum class Op : unsigned
 {
 	// Input output
@@ -173,6 +196,9 @@ enum class Op : unsigned
 
 	// Resources
 	CreateHandle = 57,
-	CBufferLoadLegacy = 59
+	CBufferLoadLegacy = 59,
+
+	// Sampling
+	SampleLevel = 62
 };
 } // namespace DXIL

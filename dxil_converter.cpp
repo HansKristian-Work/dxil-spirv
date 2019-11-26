@@ -77,16 +77,19 @@ struct Converter::Impl
 	std::vector<spv::Id> cbv_index_to_id;
 	std::vector<spv::Id> sampler_index_to_id;
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
+	std::unordered_map<spv::Id, spv::Id> id_to_type;
 
 	spv::Id get_type_id(unsigned element_type, unsigned rows, unsigned cols);
 	spv::Id get_type_id(const llvm::Type &type);
+	spv::Id get_type_id(spv::Id id) const;
 
 	std::unordered_map<uint32_t, spv::Id> input_elements_ids;
 	std::unordered_map<uint32_t, spv::Id> output_elements_ids;
 	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic);
 
 	void emit_instruction(CFGNode *block, const llvm::Instruction &instruction);
-	void emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction);
+
+	// Native LLVM instructions.
 	void emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
 	void emit_binary_instruction(CFGNode *block, const llvm::BinaryOperator &instruction);
 	void emit_unary_instruction(CFGNode *block, const llvm::UnaryOperator &instruction);
@@ -98,7 +101,18 @@ struct Converter::Impl
 	void emit_extract_value_instruction(CFGNode *block, const llvm::ExtractValueInst &instruction);
 	void emit_alloca_instruction(CFGNode *block, const llvm::AllocaInst &instruction);
 
+	// DXIL intrinsics.
+	void emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction);
+
+	void emit_load_input_instruction(CFGNode *block, const llvm::CallInst &instruction);
+	void emit_store_output_instruction(CFGNode *block, const llvm::CallInst &instruction);
+	void emit_create_handle_instruction(CFGNode *block, const llvm::CallInst &instruction);
+	void emit_cbuffer_load_legacy_instruction(CFGNode *block, const llvm::CallInst &instruction);
+	void emit_sample_level_instruction(CFGNode *block, const llvm::CallInst &instruction);
+
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
+	spv::Id build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id);
+	spv::Id build_vector(CFGNode *block, spv::Id element_type, spv::Id *elements, unsigned count);
 };
 
 Converter::Converter(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)
@@ -126,9 +140,111 @@ static std::string get_string_metadata(const llvm::MDNode *node, unsigned index)
 	return llvm::cast<llvm::MDString>(node->getOperand(index))->getString();
 }
 
+static spv::Dim image_dimension_from_resource_kind(DXIL::ResourceKind kind)
+{
+	switch (kind)
+	{
+	case DXIL::ResourceKind::Texture1D:
+	case DXIL::ResourceKind::Texture1DArray:
+		return spv::Dim1D;
+	case DXIL::ResourceKind::Texture2D:
+	case DXIL::ResourceKind::Texture2DMS:
+	case DXIL::ResourceKind::Texture2DArray:
+	case DXIL::ResourceKind::Texture2DMSArray:
+		return spv::Dim2D;
+	case DXIL::ResourceKind::Texture3D:
+		return spv::Dim3D;
+	case DXIL::ResourceKind::TextureCube:
+	case DXIL::ResourceKind::TextureCubeArray:
+		return spv::DimCube;
+
+	case DXIL::ResourceKind::TypedBuffer:
+	case DXIL::ResourceKind::StructuredBuffer:
+	case DXIL::ResourceKind::RawBuffer:
+		return spv::DimBuffer;
+
+	default:
+		return spv::DimMax;
+	}
+}
+
+static bool image_dimension_is_arrayed(DXIL::ResourceKind kind)
+{
+	switch (kind)
+	{
+	case DXIL::ResourceKind::Texture1DArray:
+	case DXIL::ResourceKind::Texture2DArray:
+	case DXIL::ResourceKind::Texture2DMSArray:
+	case DXIL::ResourceKind::TextureCubeArray:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+static bool image_dimension_is_multisampled(DXIL::ResourceKind kind)
+{
+	switch (kind)
+	{
+	case DXIL::ResourceKind::Texture2DMS:
+	case DXIL::ResourceKind::Texture2DMSArray:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 {
+	auto &builder = spirv_module.get_builder();
+	unsigned num_srvs = srvs->getNumOperands();
 
+	for (unsigned i = 0; i < num_srvs; i++)
+	{
+		auto *srv = llvm::cast<llvm::MDNode>(srvs->getOperand(i));
+		unsigned index = get_constant_metadata(srv, 0);
+		auto name = get_string_metadata(srv, 2);
+		unsigned bind_space = get_constant_metadata(srv, 3);
+		unsigned bind_register = get_constant_metadata(srv, 4);
+		// range_size = 5
+
+		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
+
+		auto *tags = srv->getNumOperands() >= 9 ? llvm::dyn_cast<llvm::MDNode>(srv->getOperand(8)) : nullptr;
+		assert(tags);
+
+		spv::Id sampled_type_id = 0;
+		if (get_constant_metadata(tags, 0) == 0)
+		{
+			// Sampled format.
+			sampled_type_id = get_type_id(get_constant_metadata(tags, 1), 1, 1);
+		}
+		else
+		{
+			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
+			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
+			sampled_type_id = builder.makeUintType(32);
+		}
+
+		spv::Id type_id = builder.makeImageType(sampled_type_id,
+		                                        image_dimension_from_resource_kind(resource_kind),
+		                                        false,
+		                                        image_dimension_is_arrayed(resource_kind),
+		                                        image_dimension_is_multisampled(resource_kind),
+		                                        1,
+		                                        spv::ImageFormatUnknown);
+
+		spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
+		                                        name.empty() ? nullptr : name.c_str());
+
+		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
+		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
+
+		srv_index_to_id.resize(std::max(srv_index_to_id.size(), size_t(index + 1)));
+		srv_index_to_id[index] = var_id;
+	}
 }
 
 void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
@@ -165,7 +281,8 @@ void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		spv::Id type_id = builder.makeStructType({ member_array_type }, name.c_str());
 		builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 		builder.addDecoration(type_id, spv::DecorationBlock);
-		spv::Id var_id = builder.createVariable(spv::StorageClassUniform, type_id, name.c_str());
+		spv::Id var_id = builder.createVariable(spv::StorageClassUniform, type_id,
+		                                        name.empty() ? nullptr : name.c_str());
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
@@ -177,7 +294,28 @@ void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 
 void Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 {
+	auto &builder = spirv_module.get_builder();
+	unsigned num_samplers = samplers->getNumOperands();
 
+	for (unsigned i = 0; i < num_samplers; i++)
+	{
+		auto *sampler = llvm::cast<llvm::MDNode>(samplers->getOperand(i));
+		unsigned index = get_constant_metadata(sampler, 0);
+		auto name = get_string_metadata(sampler, 2);
+		unsigned bind_space = get_constant_metadata(sampler, 3);
+		unsigned bind_register = get_constant_metadata(sampler, 4);
+		// range_size = 5
+
+		spv::Id type_id = builder.makeSamplerType();
+		spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
+		                                        name.empty() ? nullptr : name.c_str());
+
+		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
+		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
+
+		sampler_index_to_id.resize(std::max(sampler_index_to_id.size(), size_t(index + 1)));
+		sampler_index_to_id[index] = var_id;
+	}
 }
 
 void Converter::Impl::emit_resources()
@@ -238,14 +376,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant &constant, uns
 spv::Id Converter::Impl::get_id_for_undef(const llvm::UndefValue &undef)
 {
 	auto &builder = spirv_module.get_builder();
-	switch (undef.getType()->getTypeID())
-	{
-	case llvm::Type::TypeID::FloatTyID:
-		return builder.createUndefined(builder.makeFloatType(32));
-
-	default:
-		return 0;
-	}
+	return builder.createUndefined(get_type_id(*undef.getType()));
 }
 
 spv::Id Converter::Impl::get_id_for_value(const llvm::Value &value, unsigned forced_width)
@@ -255,10 +386,10 @@ spv::Id Converter::Impl::get_id_for_value(const llvm::Value &value, unsigned for
 		return itr->second;
 
 	spv::Id ret;
-	if (auto *constant = llvm::dyn_cast<llvm::Constant>(&value))
-		ret = get_id_for_constant(*constant, forced_width);
-	else if (auto *undef = llvm::dyn_cast<llvm::UndefValue>(&value))
+	if (auto *undef = llvm::dyn_cast<llvm::UndefValue>(&value))
 		ret = get_id_for_undef(*undef);
+	else if (auto *constant = llvm::dyn_cast<llvm::Constant>(&value))
+		ret = get_id_for_constant(*constant, forced_width);
 	else
 		ret = spirv_module.allocate_id();
 
@@ -361,6 +492,7 @@ spv::Id Converter::Impl::get_type_id(unsigned element_type, unsigned rows, unsig
 		break;
 
 	default:
+		fprintf(stderr, "Unknown component type.\n");
 		return 0;
 	}
 
@@ -376,6 +508,15 @@ spv::Id Converter::Impl::get_type_id(unsigned element_type, unsigned rows, unsig
 		auto matrix_type = builder.makeMatrixType(component_type, rows, cols);
 		return matrix_type;
 	}
+}
+
+spv::Id Converter::Impl::get_type_id(spv::Id id) const
+{
+	auto itr = id_to_type.find(id);
+	if (itr == id_to_type.end())
+		return 0;
+	else
+		return itr->second;
 }
 
 void Converter::Impl::emit_stage_output_variables()
@@ -514,10 +655,305 @@ uint32_t Converter::Impl::get_constant_operand(const llvm::CallInst &value, unsi
 	return uint32_t(constant->getUniqueInteger().getZExtValue());
 }
 
+void Converter::Impl::emit_load_input_instruction(CFGNode *block, const llvm::CallInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+	uint32_t var_id = input_elements_ids[get_constant_operand(instruction, 1)];
+	uint32_t ptr_id;
+	Operation op;
+
+	uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
+
+	if (num_rows > 1)
+	{
+		ptr_id = spirv_module.allocate_id();
+
+		op.op = spv::OpInBoundsAccessChain;
+		op.id = ptr_id;
+		op.type_id = get_type_id(*instruction.getType());
+		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
+		op.arguments = {
+				var_id,
+				get_id_for_value(*instruction.getOperand(3), 32)
+		};
+		assert(op.arguments[0]);
+		assert(op.arguments[1]);
+
+		block->ir.operations.push_back(std::move(op));
+	}
+	else
+		ptr_id = var_id;
+
+	op = {};
+	op.op = spv::OpLoad;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+	op.arguments = { ptr_id };
+	assert(op.arguments[0]);
+
+	block->ir.operations.push_back(std::move(op));
+}
+
+void Converter::Impl::emit_store_output_instruction(CFGNode *block, const llvm::CallInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+	uint32_t var_id = output_elements_ids[get_constant_operand(instruction, 1)];
+	uint32_t ptr_id;
+	Operation op;
+
+	uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
+
+	if (num_rows > 1)
+	{
+		ptr_id = spirv_module.allocate_id();
+
+		op.op = spv::OpInBoundsAccessChain;
+		op.id = ptr_id;
+		op.type_id = builder.getScalarTypeId(builder.getDerefTypeId(var_id));
+		op.type_id = builder.makePointer(spv::StorageClassOutput, op.type_id);
+		op.arguments = {
+				var_id,
+				get_id_for_value(*instruction.getOperand(3), 32)
+		};
+		assert(op.arguments[0]);
+		assert(op.arguments[1]);
+
+		block->ir.operations.push_back(std::move(op));
+	}
+	else
+		ptr_id = var_id;
+
+	op = {};
+	op.op = spv::OpStore;
+	op.arguments = {
+			ptr_id,
+			get_id_for_value(*instruction.getOperand(4))
+	};
+	assert(op.arguments[0]);
+	assert(op.arguments[1]);
+
+	block->ir.operations.push_back(std::move(op));
+}
+
+void Converter::Impl::emit_create_handle_instruction(CFGNode *block, const llvm::CallInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+	auto resource_type = static_cast<DXIL::ResourceType>(get_constant_operand(instruction, 1));
+	auto resource_range = get_constant_operand(instruction, 2);
+	// 3 = index into range
+	// 4 = non-uniform resource index
+	switch (resource_type)
+	{
+	case DXIL::ResourceType::SRV:
+	{
+		spv::Id image_id = srv_index_to_id[resource_range];
+		spv::Id type_id = builder.getDerefTypeId(image_id);
+		Operation op;
+		op.op = spv::OpLoad;
+		op.id = spirv_module.allocate_id();
+		op.type_id = type_id;
+		op.arguments = { image_id };
+		id_to_type[op.id] = type_id;
+		handle_to_ptr_id[&instruction] = op.id;
+		block->ir.operations.push_back(std::move(op));
+		break;
+	}
+
+	case DXIL::ResourceType::UAV:
+		handle_to_ptr_id[&instruction] = uav_index_to_id[resource_range];
+		break;
+
+	case DXIL::ResourceType::CBV:
+		handle_to_ptr_id[&instruction] = cbv_index_to_id[resource_range];
+		break;
+
+	case DXIL::ResourceType::Sampler:
+	{
+		spv::Id sampler_id = sampler_index_to_id[resource_range];
+		spv::Id type_id = builder.getDerefTypeId(sampler_id);
+		Operation op;
+		op.op = spv::OpLoad;
+		op.id = spirv_module.allocate_id();
+		op.type_id = type_id;
+		op.arguments = {sampler_id };
+		handle_to_ptr_id[&instruction] = op.id;
+		id_to_type[op.id] = type_id;
+		block->ir.operations.push_back(std::move(op));
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
+void Converter::Impl::emit_cbuffer_load_legacy_instruction(CFGNode *block, const llvm::CallInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+	// This function returns a struct, but ignore that, and just return a vec4 for now.
+	// extractvalue is used to pull out components and that works for vectors as well.
+	spv::Id ptr_id = handle_to_ptr_id[instruction.getOperand(1)];
+	assert(ptr_id);
+
+	spv::Id vec4_index = get_id_for_value(*instruction.getOperand(2));
+	spv::Id access_chain_id = spirv_module.allocate_id();
+
+	Operation op;
+	op.op = spv::OpInBoundsAccessChain;
+	op.id = access_chain_id;
+	op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
+	op.type_id = builder.makePointer(spv::StorageClassUniform, op.type_id);
+	op.arguments = { ptr_id, builder.makeUintConstant(0), vec4_index };
+
+	block->ir.operations.push_back(std::move(op));
+
+	bool need_bitcast = false;
+	auto *result_type = instruction.getType();
+	assert(result_type->getTypeID() == llvm::Type::TypeID::StructTyID);
+	assert(result_type->getStructNumElements() == 4);
+	if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
+		need_bitcast = true;
+
+	spv::Id bitcast_input_id = 0;
+	op = {};
+	op.op = spv::OpLoad;
+	op.id = need_bitcast ? spirv_module.allocate_id() : get_id_for_value(instruction);
+	op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
+	op.arguments = { access_chain_id };
+
+	bitcast_input_id = op.id;
+	block->ir.operations.push_back(std::move(op));
+
+	if (need_bitcast)
+	{
+		op = {};
+		op.op = spv::OpBitcast;
+		op.id = get_id_for_value(instruction);
+
+		assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
+		op.type_id = builder.makeVectorType(builder.makeUintType(32), 4);
+		op.arguments = { bitcast_input_id };
+		block->ir.operations.push_back(std::move(op));
+	}
+}
+
+spv::Id Converter::Impl::build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id)
+{
+	spv::Id id = spirv_module.allocate_id();
+	auto &builder = spirv_module.get_builder();
+	Operation op;
+	op.op = spv::OpSampledImage;
+	op.id = id;
+	op.type_id = builder.makeSampledImageType(get_type_id(image_id));
+	op.arguments = { image_id, sampler_id };
+
+	block->ir.operations.push_back(std::move(op));
+	return id;
+}
+
+spv::Id Converter::Impl::build_vector(CFGNode *block, spv::Id element_type, spv::Id *elements, unsigned count)
+{
+	uint32_t id = spirv_module.allocate_id();
+	auto &builder = spirv_module.get_builder();
+
+	Operation op;
+	op.op = spv::OpCompositeConstruct;
+	op.id = id;
+	op.type_id = builder.makeVectorType(element_type, count);
+	op.arguments.insert(op.arguments.end(), elements, elements + count);
+
+	block->ir.operations.push_back(std::move(op));
+	return id;
+}
+
+void Converter::Impl::emit_sample_level_instruction(CFGNode *block, const llvm::CallInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+
+	spv::Id image_id = handle_to_ptr_id[instruction.getOperand(1)];
+	spv::Id sampler_id = handle_to_ptr_id[instruction.getOperand(2)];
+	spv::Id combined_image_sampler_id = build_sampled_image(block, image_id, sampler_id);
+
+	spv::Dim dim = builder.getTypeDimensionality(get_type_id(image_id));
+	bool arrayed = builder.isArrayedImageType(get_type_id(image_id));
+	unsigned num_coords;
+	switch (dim)
+	{
+	case spv::Dim1D:
+	case spv::DimBuffer:
+		num_coords = 1;
+		break;
+
+	case spv::Dim2D:
+		num_coords = 2;
+		break;
+
+	case spv::Dim3D:
+	case spv::DimCube:
+		num_coords = 3;
+		break;
+
+	default:
+		fprintf(stderr, "Unexpected sample dimensionality.\n");
+		return;
+	}
+
+	unsigned num_coords_full = arrayed ? num_coords + 1 : num_coords;
+
+	spv::Id coord[4] = {};
+	for (unsigned i = 0; i < num_coords_full; i++)
+		coord[i] = get_id_for_value(*instruction.getOperand(i + 3));
+
+	uint32_t image_ops = 0;
+	image_ops |= spv::ImageOperandsLodMask;
+
+	spv::Id offsets[3] = {};
+	for (unsigned i = 0; i < num_coords; i++)
+	{
+		if (!llvm::isa<llvm::UndefValue>(instruction.getOperand(i + 7)))
+		{
+			assert(llvm::isa<llvm::ConstantInt>(instruction.getOperand(i + 7)));
+			image_ops |= spv::ImageOperandsConstOffsetMask;
+			offsets[i] = builder.makeIntConstant(
+					int(llvm::cast<llvm::ConstantInt>(instruction.getOperand(i + 7))->getUniqueInteger().getSExtValue()));
+		}
+		else
+			offsets[i] = get_id_for_value(*instruction.getOperand(i + 7));
+	}
+
+	spv::Id lod = get_id_for_value(*instruction.getOperand(10));
+
+	Operation op;
+	op.op = spv::OpImageSampleExplicitLod;
+	op.id = get_id_for_value(instruction);
+
+	auto *result_type = instruction.getType();
+	assert(result_type->getTypeID() == llvm::Type::TypeID::StructTyID);
+
+	// For tiled resources, there is a status result in the 5th member, but as long as noone attempts to extract it,
+	// we should be fine ...
+	assert(result_type->getStructNumElements() == 5);
+
+	op.type_id = get_type_id(*result_type->getStructElementType(0));
+	op.type_id = builder.makeVectorType(op.type_id, 4);
+
+	op.arguments.push_back(combined_image_sampler_id);
+	op.arguments.push_back(build_vector(block,
+			builder.makeFloatType(32), coord, num_coords_full));
+
+	op.arguments.push_back(image_ops);
+
+	if (image_ops & spv::ImageOperandsLodMask)
+		op.arguments.push_back(lod);
+	if (image_ops & spv::ImageOperandsConstOffsetMask)
+		op.arguments.push_back(build_vector(block, builder.makeIntegerType(32, true), offsets, num_coords));
+
+	block->ir.operations.push_back(std::move(op));
+}
+
 void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
-	// DXIL built-in call.
 
 	// The opcode is encoded as a constant integer.
 	auto opcode = static_cast<DXIL::Op>(get_constant_operand(instruction, 0));
@@ -525,165 +961,24 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 	switch (opcode)
 	{
 	case DXIL::Op::LoadInput:
-	{
-		uint32_t var_id = input_elements_ids[get_constant_operand(instruction, 1)];
-		uint32_t ptr_id;
-		Operation op;
-
-		uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
-
-		if (num_rows > 1)
-		{
-			ptr_id = spirv_module.allocate_id();
-
-			op.op = spv::OpInBoundsAccessChain;
-			op.id = ptr_id;
-			op.type_id = get_type_id(*instruction.getType());
-			op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
-			op.arguments = {
-				var_id,
-				get_id_for_value(*instruction.getOperand(3), 32)
-			};
-			assert(op.arguments[0]);
-			assert(op.arguments[1]);
-
-			block->ir.operations.push_back(std::move(op));
-		}
-		else
-			ptr_id = var_id;
-
-		op = {};
-		op.op = spv::OpLoad;
-		op.id = get_id_for_value(instruction);
-		op.type_id = get_type_id(*instruction.getType());
-		op.arguments = { ptr_id };
-		assert(op.arguments[0]);
-
-		block->ir.operations.push_back(std::move(op));
+		emit_load_input_instruction(block, instruction);
 		break;
-	}
 
 	case DXIL::Op::StoreOutput:
-	{
-		uint32_t var_id = output_elements_ids[get_constant_operand(instruction, 1)];
-		uint32_t ptr_id;
-		Operation op;
-
-		uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
-
-		if (num_rows > 1)
-		{
-			ptr_id = spirv_module.allocate_id();
-
-			op.op = spv::OpInBoundsAccessChain;
-			op.id = ptr_id;
-			op.type_id = builder.getScalarTypeId(builder.getDerefTypeId(var_id));
-			op.type_id = builder.makePointer(spv::StorageClassOutput, op.type_id);
-			op.arguments = {
-				var_id,
-				get_id_for_value(*instruction.getOperand(3), 32)
-			};
-			assert(op.arguments[0]);
-			assert(op.arguments[1]);
-
-			block->ir.operations.push_back(std::move(op));
-		}
-		else
-			ptr_id = var_id;
-
-		op = {};
-		op.op = spv::OpStore;
-		op.arguments = {
-			ptr_id,
-			get_id_for_value(*instruction.getOperand(4))
-		};
-		assert(op.arguments[0]);
-		assert(op.arguments[1]);
-
-		block->ir.operations.push_back(std::move(op));
+		emit_store_output_instruction(block, instruction);
 		break;
-	}
 
 	case DXIL::Op::CreateHandle:
-	{
-		auto resource_type = static_cast<DXIL::ResourceType>(get_constant_operand(instruction, 1));
-		auto resource_range = get_constant_operand(instruction, 2);
-		// 3 = index into range
-		// 4 = non-uniform resource index
-		switch (resource_type)
-		{
-		case DXIL::ResourceType::SRV:
-			handle_to_ptr_id[&instruction] = srv_index_to_id[resource_range];
-			break;
-
-		case DXIL::ResourceType::UAV:
-			handle_to_ptr_id[&instruction] = uav_index_to_id[resource_range];
-			break;
-
-		case DXIL::ResourceType::CBV:
-			handle_to_ptr_id[&instruction] = cbv_index_to_id[resource_range];
-			break;
-
-		case DXIL::ResourceType::Sampler:
-			handle_to_ptr_id[&instruction] = sampler_index_to_id[resource_range];
-			break;
-
-		default:
-			break;
-		}
+		emit_create_handle_instruction(block, instruction);
 		break;
-	}
 
 	case DXIL::Op::CBufferLoadLegacy:
-	{
-		// This function returns a struct, but ignore that, and just return a vec4 for now.
-		// extractvalue is used to pull out components and that works for vectors as well.
-		spv::Id ptr_id = handle_to_ptr_id[instruction.getOperand(1)];
-		assert(ptr_id);
-
-		spv::Id vec4_index = get_id_for_value(*instruction.getOperand(2));
-		spv::Id access_chain_id = spirv_module.allocate_id();
-
-		Operation op;
-		op.op = spv::OpInBoundsAccessChain;
-		op.id = access_chain_id;
-		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
-		op.type_id = builder.makePointer(spv::StorageClassUniform, op.type_id);
-		op.arguments = { ptr_id, builder.makeUintConstant(0), vec4_index };
-
-		block->ir.operations.push_back(std::move(op));
-
-		bool need_bitcast = false;
-		auto *result_type = instruction.getType();
-		assert(result_type->getTypeID() == llvm::Type::TypeID::StructTyID);
-		assert(result_type->getStructNumElements() == 4);
-		if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
-			need_bitcast = true;
-
-		spv::Id bitcast_input_id = 0;
-		op = {};
-		op.op = spv::OpLoad;
-		op.id = need_bitcast ? spirv_module.allocate_id() : get_id_for_value(instruction);
-		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
-		op.arguments = { access_chain_id };
-
-		bitcast_input_id = op.id;
-		block->ir.operations.push_back(std::move(op));
-
-		if (need_bitcast)
-		{
-			op = {};
-			op.op = spv::OpBitcast;
-			op.id = get_id_for_value(instruction);
-
-			assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
-			op.type_id = builder.makeVectorType(builder.makeUintType(32), 4);
-			op.arguments = { bitcast_input_id };
-			block->ir.operations.push_back(std::move(op));
-		}
-
+		emit_cbuffer_load_legacy_instruction(block, instruction);
 		break;
-	}
+
+	case DXIL::Op::SampleLevel:
+		emit_sample_level_instruction(block, instruction);
+		break;
 
 	default:
 		break;
