@@ -89,6 +89,8 @@ struct Converter::Impl
 	void emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction);
 	void emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
 	void emit_binary_instruction(CFGNode *block, const llvm::BinaryOperator &instruction);
+	void emit_unary_instruction(CFGNode *block, const llvm::UnaryOperator &instruction);
+	void emit_cast_instruction(CFGNode *block, const llvm::CastInst &instruction);
 	void emit_compare_instruction(CFGNode *block, const llvm::CmpInst &instruction);
 	void emit_extract_value_instruction(CFGNode *block, const llvm::ExtractValueInst &instruction);
 
@@ -639,13 +641,34 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 
 		block->ir.operations.push_back(std::move(op));
 
+		bool need_bitcast = false;
+		auto *result_type = instruction.getType();
+		assert(result_type->getTypeID() == llvm::Type::TypeID::StructTyID);
+		assert(result_type->getStructNumElements() == 4);
+		if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
+			need_bitcast = true;
+
+		spv::Id bitcast_input_id = 0;
 		op = {};
 		op.op = spv::OpLoad;
-		op.id = get_id_for_value(instruction);
+		op.id = need_bitcast ? spirv_module.allocate_id() : get_id_for_value(instruction);
 		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
 		op.arguments = { access_chain_id };
 
+		bitcast_input_id = op.id;
 		block->ir.operations.push_back(std::move(op));
+
+		if (need_bitcast)
+		{
+			op = {};
+			op.op = spv::OpBitcast;
+			op.id = get_id_for_value(instruction);
+
+			assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
+			op.type_id = builder.makeVectorType(builder.makeUintType(32), 4);
+			op.arguments = { bitcast_input_id };
+			block->ir.operations.push_back(std::move(op));
+		}
 
 		break;
 	}
@@ -813,6 +836,80 @@ void Converter::Impl::emit_extract_value_instruction(CFGNode *block,
 	block->ir.operations.push_back(std::move(op));
 }
 
+void Converter::Impl::emit_cast_instruction(CFGNode *block, const llvm::CastInst &instruction)
+{
+	Operation op;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+
+	op.arguments = { get_id_for_value(*instruction.getOperand(0)) };
+
+	switch (instruction.getOpcode())
+	{
+	case llvm::CastInst::CastOps::BitCast:
+		op.op = spv::OpBitcast;
+		break;
+
+	case llvm::CastInst::CastOps::SExt:
+		op.op = spv::OpSConvert;
+		break;
+
+	case llvm::CastInst::CastOps::Trunc:
+	case llvm::CastInst::CastOps::ZExt:
+		op.op = spv::OpUConvert;
+		break;
+
+	case llvm::CastInst::CastOps::FPTrunc:
+	case llvm::CastInst::CastOps::FPExt:
+		op.op = spv::OpFConvert;
+		break;
+
+	case llvm::CastInst::CastOps::FPToUI:
+		op.op = spv::OpConvertFToU;
+		break;
+
+	case llvm::CastInst::CastOps::FPToSI:
+		op.op = spv::OpConvertFToS;
+		break;
+
+	case llvm::CastInst::CastOps::SIToFP:
+		op.op = spv::OpConvertSToF;
+		break;
+
+	case llvm::CastInst::CastOps::UIToFP:
+		op.op = spv::OpConvertUToF;
+		break;
+
+	default:
+		fprintf(stderr, "Unknown cast operation.\n");
+		return;
+	}
+
+	block->ir.operations.push_back(std::move(op));
+}
+
+void Converter::Impl::emit_unary_instruction(CFGNode *block, const llvm::UnaryOperator &instruction)
+{
+	Operation op;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+
+	op.arguments = { get_id_for_value(*instruction.getOperand(0)) };
+
+	switch (instruction.getOpcode())
+	{
+	case llvm::UnaryOperator::UnaryOps::FNeg:
+		op.op = spv::OpFNegate;
+		break;
+
+	default:
+		fprintf(stderr, "Unknown unary operator.\n");
+		return;
+	}
+
+	block->ir.operations.push_back(std::move(op));
+}
+
 void Converter::Impl::emit_binary_instruction(CFGNode *block, const llvm::BinaryOperator &instruction)
 {
 	Operation op;
@@ -923,6 +1020,14 @@ void Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	else if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))
 	{
 		emit_binary_instruction(block, *binary_inst);
+	}
+	else if (auto *unary_inst = llvm::dyn_cast<llvm::UnaryOperator>(&instruction))
+	{
+		emit_unary_instruction(block, *unary_inst);
+	}
+	else if (auto *cast_inst = llvm::dyn_cast<llvm::CastInst>(&instruction))
+	{
+		emit_cast_instruction(block, *cast_inst);
 	}
 	else if (auto *compare_inst = llvm::dyn_cast<llvm::CmpInst>(&instruction))
 	{
