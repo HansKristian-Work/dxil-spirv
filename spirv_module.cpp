@@ -183,6 +183,22 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		break;
 	}
 
+	case Terminator::Type::Switch:
+	{
+		auto switch_op = std::make_unique<spv::Instruction>(spv::OpSwitch);
+		switch_op->addIdOperand(ir.terminator.conditional_id);
+		switch_op->addIdOperand(ir.terminator.default_node->id);
+		get_spv_block(ir.terminator.default_node)->addPredecessor(bb);
+		for (auto &switch_case : ir.terminator.cases)
+		{
+			switch_op->addImmediateOperand(switch_case.value);
+			switch_op->addIdOperand(switch_case.node->id);
+			get_spv_block(switch_case.node)->addPredecessor(bb);
+		}
+		bb->addInstruction(std::move(switch_op));
+		break;
+	}
+
 	case Terminator::Type::Kill:
 	{
 		auto kill_op = std::make_unique<spv::Instruction>(spv::OpKill);
@@ -196,7 +212,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		break;
 	}
 
-	case Terminator::Type::Switch:
+	default:
 		break;
 	}
 

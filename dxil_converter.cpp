@@ -1177,7 +1177,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		for (auto *block : processing)
 		{
 			visit_order.push_back(block);
-			for (auto itr = succ_begin(block); itr != succ_end(block); ++itr)
+			for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
 			{
 				auto *succ = *itr;
 				if (!bb_map.count(succ))
@@ -1221,6 +1221,19 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 				node->ir.terminator.type = Terminator::Type::Branch;
 				assert(inst->getNumSuccessors() == 1);
 				node->ir.terminator.direct_block = bb_map[inst->getSuccessor(0)]->node;
+			}
+		}
+		else if (auto *inst = llvm::dyn_cast<llvm::SwitchInst>(instruction))
+		{
+			node->ir.terminator.type = Terminator::Type::Switch;
+			node->ir.terminator.default_node = bb_map[inst->getDefaultDest()]->node;
+			node->ir.terminator.conditional_id = get_id_for_value(*inst->getCondition());
+			for (auto itr = inst->case_begin(); itr != inst->case_end(); ++itr)
+			{
+				Terminator::Case switch_case = {};
+				switch_case.node = bb_map[itr->getCaseSuccessor()]->node;
+				switch_case.value = uint32_t(itr->getCaseValue()->getUniqueInteger().getZExtValue());
+				node->ir.terminator.cases.push_back(switch_case);
 			}
 		}
 		else if (auto *inst = llvm::dyn_cast<llvm::ReturnInst>(instruction))

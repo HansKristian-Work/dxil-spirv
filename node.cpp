@@ -287,8 +287,8 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 		ir.terminator.true_block = to_next;
 	if (ir.terminator.false_block == to_prev)
 		ir.terminator.false_block = to_next;
-	if (ir.terminator.default_case.node == to_prev)
-		ir.terminator.default_case.node = to_next;
+	if (ir.terminator.default_node == to_prev)
+		ir.terminator.default_node = to_next;
 	for (auto &c : ir.terminator.cases)
 		if (c.node == to_prev)
 			c.node = to_next;
@@ -329,8 +329,8 @@ void CFGNode::retarget_pred_from(CFGNode *old_succ)
 			p_term.true_block = this;
 		if (p_term.false_block == old_succ)
 			p_term.false_block = this;
-		if (p_term.default_case.node == old_succ)
-			p_term.default_case.node = this;
+		if (p_term.default_node == old_succ)
+			p_term.default_node = this;
 		for (auto &c : p_term.cases)
 			if (c.node == old_succ)
 				c.node = this;

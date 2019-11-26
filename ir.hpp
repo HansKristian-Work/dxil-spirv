@@ -89,7 +89,7 @@ struct Terminator
 		uint32_t value;
 	};
 	std::vector<Case> cases;
-	Case default_case;
+	CFGNode *default_node = nullptr;
 	uint32_t return_value = 0;
 };
 
