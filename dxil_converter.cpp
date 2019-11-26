@@ -91,8 +91,12 @@ struct Converter::Impl
 	void emit_binary_instruction(CFGNode *block, const llvm::BinaryOperator &instruction);
 	void emit_unary_instruction(CFGNode *block, const llvm::UnaryOperator &instruction);
 	void emit_cast_instruction(CFGNode *block, const llvm::CastInst &instruction);
+	void emit_getelementptr_instruction(CFGNode *block, const llvm::GetElementPtrInst &instruction);
+	void emit_load_instruction(CFGNode *block, const llvm::LoadInst &instruction);
+	void emit_store_instruction(CFGNode *block, const llvm::StoreInst &instruction);
 	void emit_compare_instruction(CFGNode *block, const llvm::CmpInst &instruction);
 	void emit_extract_value_instruction(CFGNode *block, const llvm::ExtractValueInst &instruction);
+	void emit_alloca_instruction(CFGNode *block, const llvm::AllocaInst &instruction);
 
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
 };
@@ -284,17 +288,25 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type &type)
 	auto &builder = spirv_module.get_builder();
 	switch (type.getTypeID())
 	{
+	case llvm::Type::TypeID::HalfTyID:
+		return builder.makeFloatType(16);
 	case llvm::Type::TypeID::FloatTyID:
 		return builder.makeFloatType(32);
+	case llvm::Type::TypeID::DoubleTyID:
+		return builder.makeFloatType(64);
 
 	case llvm::Type::TypeID::IntegerTyID:
-		switch (type.getIntegerBitWidth())
-		{
-		case 1:
+		if (type.getIntegerBitWidth() == 1)
 			return builder.makeBoolType();
-		default:
+		else
 			return builder.makeIntegerType(type.getIntegerBitWidth(), false);
-		}
+
+	case llvm::Type::TypeID::PointerTyID:
+		return builder.makePointer(spv::StorageClassFunction, get_type_id(*type.getPointerElementType()));
+
+	case llvm::Type::TypeID::ArrayTyID:
+		return builder.makeArrayType(get_type_id(*type.getArrayElementType()),
+		                             builder.makeUintConstant(type.getArrayNumElements(), false), 0);
 
 	default:
 		return 0;
@@ -836,6 +848,73 @@ void Converter::Impl::emit_extract_value_instruction(CFGNode *block,
 	block->ir.operations.push_back(std::move(op));
 }
 
+void Converter::Impl::emit_alloca_instruction(CFGNode *block, const llvm::AllocaInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+
+	spv::Id type_id = get_type_id(*instruction.getType());
+	spv::Id pointee_type_id = get_type_id(*instruction.getType()->getPointerElementType());
+
+	// DXC seems to allocate arrays on stack as 1 element of array type rather than N elements of basic non-array type.
+	// Should be possible to support both schemes if desirable, but this will do.
+	assert(llvm::isa<llvm::ConstantInt>(instruction.getArraySize()));
+	assert(llvm::cast<llvm::ConstantInt>(instruction.getArraySize())->getUniqueInteger().getZExtValue() == 1);
+
+	spv::Id var_id = builder.createVariable(spv::StorageClassFunction, pointee_type_id, instruction.getName().data());
+	value_map[&instruction] = var_id;
+}
+
+void Converter::Impl::emit_load_instruction(CFGNode *block, const llvm::LoadInst &instruction)
+{
+	Operation op;
+	op.op = spv::OpLoad;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+	op.arguments = { get_id_for_value(*instruction.getPointerOperand()) };
+
+	block->ir.operations.push_back(std::move(op));
+}
+
+void Converter::Impl::emit_store_instruction(CFGNode *block, const llvm::StoreInst &instruction)
+{
+	Operation op;
+	op.op = spv::OpStore;
+	op.arguments = {
+		get_id_for_value(*instruction.getOperand(1)),
+		get_id_for_value(*instruction.getOperand(0))
+	};
+
+	block->ir.operations.push_back(std::move(op));
+}
+
+void Converter::Impl::emit_getelementptr_instruction(CFGNode *block,
+                                                     const llvm::GetElementPtrInst &instruction)
+{
+	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
+	// For now, just assert that the first index is constant 0, in which case PtrAccessChain == AccessChain.
+
+	Operation op;
+	op.op = instruction.isInBounds() ? spv::OpInBoundsAccessChain : spv::OpAccessChain;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+
+	unsigned num_operands = instruction.getNumOperands();
+	for (uint32_t i = 0; i < num_operands; i++)
+	{
+		auto *operand = instruction.getOperand(i);
+		if (i == 1)
+		{
+			// This one must be constant 0, ignore it.
+			assert(llvm::isa<llvm::ConstantInt>(operand));
+			assert(llvm::cast<llvm::ConstantInt>(operand)->getUniqueInteger().getZExtValue() == 0);
+		}
+		else
+			op.arguments.push_back(get_id_for_value(*operand));
+	}
+
+	block->ir.operations.push_back(std::move(op));
+}
+
 void Converter::Impl::emit_cast_instruction(CFGNode *block, const llvm::CastInst &instruction)
 {
 	Operation op;
@@ -1029,6 +1108,18 @@ void Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	{
 		emit_cast_instruction(block, *cast_inst);
 	}
+	else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&instruction))
+	{
+		emit_getelementptr_instruction(block, *getelementptr_inst);
+	}
+	else if (auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(&instruction))
+	{
+		emit_load_instruction(block, *load_inst);
+	}
+	else if (auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(&instruction))
+	{
+		emit_store_instruction(block, *store_inst);
+	}
 	else if (auto *compare_inst = llvm::dyn_cast<llvm::CmpInst>(&instruction))
 	{
 		emit_compare_instruction(block, *compare_inst);
@@ -1036,6 +1127,10 @@ void Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	else if (auto *extract_inst = llvm::dyn_cast<llvm::ExtractValueInst>(&instruction))
 	{
 		emit_extract_value_instruction(block, *extract_inst);
+	}
+	else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&instruction))
+	{
+		emit_alloca_instruction(block, *alloca_inst);
 	}
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
 	{
@@ -1073,6 +1168,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	std::vector<llvm::BasicBlock *> to_process;
 	std::vector<llvm::BasicBlock *> processing;
 	to_process.push_back(entry);
+	std::vector<llvm::BasicBlock *> visit_order;
 
 	// Traverse the CFG and register all blocks in the pool.
 	while (!to_process.empty())
@@ -1080,6 +1176,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		std::swap(to_process, processing);
 		for (auto *block : processing)
 		{
+			visit_order.push_back(block);
 			for (auto itr = succ_begin(block); itr != succ_end(block); ++itr)
 			{
 				auto *succ = *itr;
@@ -1100,10 +1197,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		processing.clear();
 	}
 
-	for (auto &key_value : bb_map)
+	for (auto *bb : visit_order)
 	{
-		llvm::BasicBlock *bb = key_value.first;
-		CFGNode *node = key_value.second->node;
+		CFGNode *node = bb_map[bb]->node;
 
 		// Scan opcodes.
 		for (auto &instruction : *bb)
