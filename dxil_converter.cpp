@@ -404,6 +404,26 @@ static std::string get_entry_point_name(const llvm::Module &module)
 	return llvm::cast<llvm::MDString>(node->getOperand(1))->getString();
 }
 
+static spv::ExecutionModel get_execution_model(const llvm::Module &module)
+{
+	auto *shader_model = module.getNamedMetadata("dx.shaderModel");
+	auto *shader_model_node = shader_model->getOperand(0);
+	auto model = llvm::cast<llvm::MDString>(shader_model_node->getOperand(0))->getString();
+	if (model == "vs")
+		return spv::ExecutionModelVertex;
+	else if (model == "ps")
+		return spv::ExecutionModelFragment;
+	else if (model == "hs")
+		return spv::ExecutionModelTessellationControl;
+	else if (model == "ds")
+		return spv::ExecutionModelTessellationEvaluation;
+	else if (model == "gs")
+		return spv::ExecutionModelGeometry;
+	else if (model == "cs")
+		return spv::ExecutionModelGLCompute;
+	else
+		return spv::ExecutionModelMax;
+}
 
 static void print_shader_model(const llvm::Module &module)
 {
@@ -565,8 +585,15 @@ void Converter::Impl::emit_stage_output_variables()
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, semantic_name.c_str());
 		output_elements_ids[element_id] = variable_id;
 
-		if (system_value != DXIL::Semantic::User)
+		if (system_value == DXIL::Semantic::Target)
+		{
+			auto semantic_index = get_constant_metadata(output, 8);
+			builder.addDecoration(variable_id, spv::DecorationLocation, semantic_index);
+		}
+		else if (system_value != DXIL::Semantic::User)
+		{
 			emit_builtin_decoration(variable_id, system_value);
+		}
 		else
 		{
 			builder.addDecoration(variable_id, spv::DecorationLocation, location);
@@ -726,8 +753,8 @@ void Converter::Impl::emit_store_output_instruction(CFGNode *block, const llvm::
 	op = {};
 	op.op = spv::OpStore;
 	op.arguments = {
-			ptr_id,
-			get_id_for_value(*instruction.getOperand(4))
+		ptr_id,
+		get_id_for_value(*instruction.getOperand(4))
 	};
 	assert(op.arguments[0]);
 	assert(op.arguments[1]);
@@ -775,7 +802,7 @@ void Converter::Impl::emit_create_handle_instruction(CFGNode *block, const llvm:
 		op.op = spv::OpLoad;
 		op.id = spirv_module.allocate_id();
 		op.type_id = type_id;
-		op.arguments = {sampler_id };
+		op.arguments = { sampler_id };
 		handle_to_ptr_id[&instruction] = op.id;
 		id_to_type[op.id] = type_id;
 		block->ir.operations.push_back(std::move(op));
@@ -853,6 +880,9 @@ spv::Id Converter::Impl::build_sampled_image(CFGNode *block, spv::Id image_id, s
 
 spv::Id Converter::Impl::build_vector(CFGNode *block, spv::Id element_type, spv::Id *elements, unsigned count)
 {
+	if (count == 1)
+		return elements[0];
+
 	uint32_t id = spirv_module.allocate_id();
 	auto &builder = spirv_module.get_builder();
 
@@ -918,7 +948,7 @@ void Converter::Impl::emit_sample_level_instruction(CFGNode *block, const llvm::
 					int(llvm::cast<llvm::ConstantInt>(instruction.getOperand(i + 7))->getUniqueInteger().getSExtValue()));
 		}
 		else
-			offsets[i] = get_id_for_value(*instruction.getOperand(i + 7));
+			offsets[i] = builder.makeIntConstant(0);
 	}
 
 	spv::Id lod = get_id_for_value(*instruction.getOperand(10));
@@ -944,9 +974,16 @@ void Converter::Impl::emit_sample_level_instruction(CFGNode *block, const llvm::
 	op.arguments.push_back(image_ops);
 
 	if (image_ops & spv::ImageOperandsLodMask)
+	{
 		op.arguments.push_back(lod);
+	}
+
 	if (image_ops & spv::ImageOperandsConstOffsetMask)
-		op.arguments.push_back(build_vector(block, builder.makeIntegerType(32, true), offsets, num_coords));
+	{
+		op.arguments.push_back(build_vector(block,
+		                                    builder.makeIntegerType(32, true),
+		                                    offsets, num_coords));
+	}
 
 	block->ir.operations.push_back(std::move(op));
 }
@@ -1440,6 +1477,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto &pool = *result.node_pool;
 
 	auto *module = &bitcode_parser.get_module();
+	spirv_module.emit_entry_point(get_execution_model(*module), "main");
 
 	print_shader_model(*module);
 	fprintf(stderr, "Entry point: %s\n", get_entry_point_name(*module).c_str());
