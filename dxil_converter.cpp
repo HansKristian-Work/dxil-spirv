@@ -108,7 +108,7 @@ struct Converter::Impl
 	void emit_store_output_instruction(CFGNode *block, const llvm::CallInst &instruction);
 	void emit_create_handle_instruction(CFGNode *block, const llvm::CallInst &instruction);
 	void emit_cbuffer_load_legacy_instruction(CFGNode *block, const llvm::CallInst &instruction);
-	void emit_sample_level_instruction(CFGNode *block, const llvm::CallInst &instruction);
+	void emit_sample_instruction(DXIL::Op op, CFGNode *block, const llvm::CallInst &instruction);
 
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
 	spv::Id build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id);
@@ -896,7 +896,7 @@ spv::Id Converter::Impl::build_vector(CFGNode *block, spv::Id element_type, spv:
 	return id;
 }
 
-void Converter::Impl::emit_sample_level_instruction(CFGNode *block, const llvm::CallInst &instruction)
+void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, const llvm::CallInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
 
@@ -935,7 +935,11 @@ void Converter::Impl::emit_sample_level_instruction(CFGNode *block, const llvm::
 		coord[i] = get_id_for_value(*instruction.getOperand(i + 3));
 
 	uint32_t image_ops = 0;
-	image_ops |= spv::ImageOperandsLodMask;
+
+	if (opcode == DXIL::Op::SampleLevel)
+		image_ops |= spv::ImageOperandsLodMask;
+	else if (opcode == DXIL::Op::SampleBias)
+		image_ops |= spv::ImageOperandsBiasMask;
 
 	spv::Id offsets[3] = {};
 	for (unsigned i = 0; i < num_coords; i++)
@@ -951,10 +955,20 @@ void Converter::Impl::emit_sample_level_instruction(CFGNode *block, const llvm::
 			offsets[i] = builder.makeIntConstant(0);
 	}
 
-	spv::Id lod = get_id_for_value(*instruction.getOperand(10));
+	spv::Id aux_argument = 0;
+	if (opcode == DXIL::Op::Sample)
+	{
+		if (!llvm::isa<llvm::UndefValue>(instruction.getOperand(10)))
+		{
+			aux_argument = get_id_for_value(*instruction.getOperand(10));
+			image_ops |= spv::ImageOperandsMinLodMask;
+		}
+	}
+	else
+		aux_argument = get_id_for_value(*instruction.getOperand(10));
 
 	Operation op;
-	op.op = spv::OpImageSampleExplicitLod;
+	op.op = opcode == DXIL::Op::SampleLevel ? spv::OpImageSampleExplicitLod : spv::OpImageSampleImplicitLod;
 	op.id = get_id_for_value(instruction);
 
 	auto *result_type = instruction.getType();
@@ -973,10 +987,8 @@ void Converter::Impl::emit_sample_level_instruction(CFGNode *block, const llvm::
 
 	op.arguments.push_back(image_ops);
 
-	if (image_ops & spv::ImageOperandsLodMask)
-	{
-		op.arguments.push_back(lod);
-	}
+	if (image_ops & (spv::ImageOperandsBiasMask | spv::ImageOperandsLodMask))
+		op.arguments.push_back(aux_argument);
 
 	if (image_ops & spv::ImageOperandsConstOffsetMask)
 	{
@@ -984,6 +996,9 @@ void Converter::Impl::emit_sample_level_instruction(CFGNode *block, const llvm::
 		                                    builder.makeIntegerType(32, true),
 		                                    offsets, num_coords));
 	}
+
+	if (image_ops & spv::ImageOperandsMinLodMask)
+		op.arguments.push_back(aux_argument);
 
 	block->ir.operations.push_back(std::move(op));
 }
@@ -1013,8 +1028,10 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 		emit_cbuffer_load_legacy_instruction(block, instruction);
 		break;
 
+	case DXIL::Op::Sample:
+	case DXIL::Op::SampleBias:
 	case DXIL::Op::SampleLevel:
-		emit_sample_level_instruction(block, instruction);
+		emit_sample_instruction(opcode, block, instruction);
 		break;
 
 	default:

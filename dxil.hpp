@@ -199,6 +199,11 @@ enum class Op : unsigned
 	CBufferLoadLegacy = 59,
 
 	// Sampling
-	SampleLevel = 62
+	Sample = 60,
+	SampleBias = 61,
+	SampleLevel = 62,
+	SampleGrad = 63,
+	SampleCmp = 64,
+	SampleCmpLevelZero = 65
 };
 } // namespace DXIL
