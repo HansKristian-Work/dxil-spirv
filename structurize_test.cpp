@@ -191,7 +191,10 @@ int main()
 		}
 	};
 
-#if 0
+#if 1
+	add_selection("entry", "l0", "exit");
+	add_selection("l0", "l0", "exit");
+#elif 0
 	add_selection("entry", "b0", "exit");
 	{
 		add_selection("b0", "b1", "b2");
@@ -360,7 +363,7 @@ int main()
 	}
 #endif
 
-	add_phi("b0.exit", { "b0", "l1.cond", "l0.exit" });
+	//add_phi("b0.exit", { "b0", "l1.cond", "l0.exit" });
 
 	CFGStructurizer traverser(get("entry"), pool, emitter.module);
 	traverser.run();
