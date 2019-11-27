@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 namespace DXIL2SPIRV
 {
@@ -43,4 +43,4 @@ public:
 private:
 	std::vector<std::unique_ptr<CFGNode>> nodes;
 };
-}
+} // namespace DXIL2SPIRV

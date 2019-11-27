@@ -179,8 +179,7 @@ bool CFGNode::dominates_all_reachable_exits() const
 {
 	return dominates_all_reachable_exits(*this);
 }
-bool CFGNode::exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block,
-                                                           const CFGNode *stop_block) const
+bool CFGNode::exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block, const CFGNode *stop_block) const
 {
 	bool found_path = false;
 	std::unordered_set<const CFGNode *> visited;
@@ -215,7 +214,7 @@ CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 
 		if (!b->immediate_dominator)
 		{
-			for (auto *p: b->pred)
+			for (auto *p : b->pred)
 				p->recompute_immediate_dominator();
 			b->recompute_immediate_dominator();
 		}
@@ -399,4 +398,4 @@ CFGNode *CFGNode::get_outer_header_dominator()
 	return node;
 }
 
-}
+} // namespace DXIL2SPIRV

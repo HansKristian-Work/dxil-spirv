@@ -19,10 +19,10 @@
 #pragma once
 
 #include "ir.hpp"
+#include <stdint.h>
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include <stdint.h>
 
 namespace DXIL2SPIRV
 {
@@ -121,8 +121,8 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNod
 	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, op);
 }
 template <typename Op>
-void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from,
-                                                           CFGNode *to, const Op &op)
+void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to,
+                                                           const Op &op)
 {
 	if (from == to)
 		return;
@@ -163,4 +163,4 @@ void CFGNode::traverse_dominated_blocks(const Op &op)
 	traverse_dominated_blocks(*this, op);
 }
 
-}
+} // namespace DXIL2SPIRV

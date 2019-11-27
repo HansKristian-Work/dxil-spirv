@@ -18,11 +18,11 @@
 
 #pragma once
 
+#include "cfg_structurizer.hpp"
 #include "dxil_parser.hpp"
 #include "llvm_bitcode_parser.hpp"
-#include "spirv_module.hpp"
-#include "cfg_structurizer.hpp"
 #include "node_pool.hpp"
+#include "spirv_module.hpp"
 #include <memory>
 
 namespace DXIL2SPIRV

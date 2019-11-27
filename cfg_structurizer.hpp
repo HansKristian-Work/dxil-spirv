@@ -18,13 +18,13 @@
 
 #pragma once
 
+#include "ir.hpp"
 #include <memory>
 #include <stdint.h>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "ir.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -64,15 +64,15 @@ private:
 	void find_switch_blocks();
 	void split_merge_blocks();
 	static CFGNode *find_common_post_dominator(std::vector<CFGNode *> candidates);
-	static CFGNode *find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates, const CFGNode *break_node);
+	static CFGNode *find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates,
+	                                                              const CFGNode *break_node);
 	static CFGNode *find_common_post_dominator_with_ignored_exits(const CFGNode *header);
 	static bool control_flow_is_escaping(const CFGNode *header, const CFGNode *node, const CFGNode *merge);
 	static std::vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
 	static void isolate_structured(std::unordered_set<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
 
-	static std::vector<IncomingValue>::const_iterator find_incoming_value(
-			const CFGNode *frontier_pred,
-			const std::vector<IncomingValue> &incoming);
+	static std::vector<IncomingValue>::const_iterator find_incoming_value(const CFGNode *frontier_pred,
+	                                                                      const std::vector<IncomingValue> &incoming);
 
 	void rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_to);
 
@@ -92,7 +92,8 @@ private:
 	void recompute_cfg();
 	void compute_dominance_frontier();
 	static void recompute_dominance_frontier(CFGNode *node);
-	static void recompute_dominance_frontier(CFGNode *header, const CFGNode *node, std::unordered_set<const CFGNode *> traversed);
+	static void recompute_dominance_frontier(CFGNode *header, const CFGNode *node,
+	                                         std::unordered_set<const CFGNode *> traversed);
 	static void merge_to_succ(CFGNode *node, unsigned index);
 
 	struct PHINode

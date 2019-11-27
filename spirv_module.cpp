@@ -25,7 +25,8 @@ namespace DXIL2SPIRV
 constexpr uint32_t GENERATOR = 1967215134;
 struct SPIRVModule::Impl : BlockEmissionInterface
 {
-	Impl() : builder(GENERATOR, &build_logger)
+	Impl()
+	    : builder(GENERATOR, &build_logger)
 	{
 	}
 
@@ -51,8 +52,7 @@ spv::Block *SPIRVModule::Impl::get_spv_block(CFGNode *node)
 void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model, const char *name)
 {
 	builder.addCapability(spv::Capability::CapabilityShader);
-	builder.setMemoryModel(spv::AddressingModel::AddressingModelLogical,
-	                       spv::MemoryModel::MemoryModelGLSL450);
+	builder.setMemoryModel(spv::AddressingModel::AddressingModelLogical, spv::MemoryModel::MemoryModelGLSL450);
 
 	entry_function = builder.makeEntryPoint("main");
 	entry_point = builder.addEntryPoint(model, entry_function, name);
@@ -148,8 +148,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			builder.setBuildPoint(continue_bb);
 			builder.createBranch(get_spv_block(node));
 			builder.setBuildPoint(bb);
-			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block),
-			                        continue_bb, 0);
+			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block), continue_bb, 0);
 			break;
 		}
 		break;
@@ -176,8 +175,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 	case Terminator::Type::Condition:
 	{
-		builder.createConditionalBranch(ir.terminator.conditional_id,
-		                                get_spv_block(ir.terminator.true_block),
+		builder.createConditionalBranch(ir.terminator.conditional_id, get_spv_block(ir.terminator.true_block),
 		                                get_spv_block(ir.terminator.false_block));
 		break;
 	}
@@ -258,4 +256,4 @@ uint32_t SPIRVModule::allocate_ids(uint32_t count)
 SPIRVModule::~SPIRVModule()
 {
 }
-}
+} // namespace DXIL2SPIRV

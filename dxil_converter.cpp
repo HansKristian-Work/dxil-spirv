@@ -19,9 +19,9 @@
 #include "dxil_converter.hpp"
 #include "SpvBuilder.h"
 #include "cfg_structurizer.hpp"
-#include "node_pool.hpp"
-#include "node.hpp"
 #include "logging.hpp"
+#include "node.hpp"
+#include "node_pool.hpp"
 
 #include <utility>
 
@@ -34,9 +34,9 @@ namespace DXIL2SPIRV
 struct Converter::Impl
 {
 	Impl(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)
-		: container_parser(std::move(container_parser_)),
-		  bitcode_parser(std::move(bitcode_parser_)),
-		  spirv_module(module_)
+	    : container_parser(std::move(container_parser_))
+	    , bitcode_parser(std::move(bitcode_parser_))
+	    , spirv_module(module_)
 	{
 	}
 
@@ -47,7 +47,7 @@ struct Converter::Impl
 	struct BlockMeta
 	{
 		explicit BlockMeta(llvm::BasicBlock *bb_)
-			: bb(bb_)
+		    : bb(bb_)
 		{
 		}
 
@@ -132,7 +132,8 @@ ConvertedFunction Converter::convert_entry_point()
 template <typename T = uint32_t>
 static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
 {
-	return T(llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
+	return T(
+	    llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
 }
 
 static std::string get_string_metadata(const llvm::MDNode *node, unsigned index)
@@ -228,16 +229,13 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			sampled_type_id = builder.makeUintType(32);
 		}
 
-		spv::Id type_id = builder.makeImageType(sampled_type_id,
-		                                        image_dimension_from_resource_kind(resource_kind),
-		                                        false,
-		                                        image_dimension_is_arrayed(resource_kind),
-		                                        image_dimension_is_multisampled(resource_kind),
-		                                        1,
-		                                        spv::ImageFormatUnknown);
+		spv::Id type_id =
+		    builder.makeImageType(sampled_type_id, image_dimension_from_resource_kind(resource_kind), false,
+		                          image_dimension_is_arrayed(resource_kind),
+		                          image_dimension_is_multisampled(resource_kind), 1, spv::ImageFormatUnknown);
 
-		spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
-		                                        name.empty() ? nullptr : name.c_str());
+		spv::Id var_id =
+		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
@@ -249,7 +247,6 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 {
-
 }
 
 void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
@@ -270,19 +267,16 @@ void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned vec4_length = (cbv_size + 15) / 16;
 
 		// It seems like we will have to bitcast ourselves away from vec4 here after loading.
-		spv::Id member_array_type = builder.makeArrayType(
-				builder.makeVectorType(
-						builder.makeFloatType(32), 4),
-				builder.makeUintConstant(vec4_length, false),
-				16);
+		spv::Id member_array_type = builder.makeArrayType(builder.makeVectorType(builder.makeFloatType(32), 4),
+		                                                  builder.makeUintConstant(vec4_length, false), 16);
 
 		builder.addDecoration(member_array_type, spv::DecorationArrayStride, 16);
 
 		spv::Id type_id = builder.makeStructType({ member_array_type }, name.c_str());
 		builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 		builder.addDecoration(type_id, spv::DecorationBlock);
-		spv::Id var_id = builder.createVariable(spv::StorageClassUniform, type_id,
-		                                        name.empty() ? nullptr : name.c_str());
+		spv::Id var_id =
+		    builder.createVariable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
@@ -307,8 +301,8 @@ void Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		// range_size = 5
 
 		spv::Id type_id = builder.makeSamplerType();
-		spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
-		                                        name.empty() ? nullptr : name.c_str());
+		spv::Id var_id =
+		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
@@ -690,10 +684,7 @@ void Converter::Impl::emit_load_input_instruction(CFGNode *block, const llvm::Ca
 		op.id = ptr_id;
 		op.type_id = get_type_id(*instruction.getType());
 		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
-		op.arguments = {
-				var_id,
-				get_id_for_value(*instruction.getOperand(3), 32)
-		};
+		op.arguments = { var_id, get_id_for_value(*instruction.getOperand(3), 32) };
 		assert(op.arguments[0]);
 		assert(op.arguments[1]);
 
@@ -729,10 +720,7 @@ void Converter::Impl::emit_store_output_instruction(CFGNode *block, const llvm::
 		op.id = ptr_id;
 		op.type_id = builder.getScalarTypeId(builder.getDerefTypeId(var_id));
 		op.type_id = builder.makePointer(spv::StorageClassOutput, op.type_id);
-		op.arguments = {
-				var_id,
-				get_id_for_value(*instruction.getOperand(3), 32)
-		};
+		op.arguments = { var_id, get_id_for_value(*instruction.getOperand(3), 32) };
 		assert(op.arguments[0]);
 		assert(op.arguments[1]);
 
@@ -743,10 +731,7 @@ void Converter::Impl::emit_store_output_instruction(CFGNode *block, const llvm::
 
 	op = {};
 	op.op = spv::OpStore;
-	op.arguments = {
-		ptr_id,
-		get_id_for_value(*instruction.getOperand(4))
-	};
+	op.arguments = { ptr_id, get_id_for_value(*instruction.getOperand(4)) };
 	assert(op.arguments[0]);
 	assert(op.arguments[1]);
 
@@ -864,9 +849,8 @@ spv::Id Converter::Impl::build_sampled_image(CFGNode *block, spv::Id image_id, s
 	bool multisampled = builder.isMultisampledImageType(image_type_id);
 	spv::Id sampled_format = builder.getImageComponentType(image_type_id);
 
-	image_type_id = builder.makeImageType(sampled_format,
-	                                      dim, comparison, arrayed, multisampled,
-	                                      2, spv::ImageFormatUnknown);
+	image_type_id =
+	    builder.makeImageType(sampled_format, dim, comparison, arrayed, multisampled, 2, spv::ImageFormatUnknown);
 
 	spv::Id id = spirv_module.allocate_id();
 	Operation op;
@@ -954,7 +938,7 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 			assert(llvm::isa<llvm::ConstantInt>(instruction.getOperand(i + 7)));
 			image_ops |= spv::ImageOperandsConstOffsetMask;
 			offsets[i] = builder.makeIntConstant(
-					int(llvm::cast<llvm::ConstantInt>(instruction.getOperand(i + 7))->getUniqueInteger().getSExtValue()));
+			    int(llvm::cast<llvm::ConstantInt>(instruction.getOperand(i + 7))->getUniqueInteger().getSExtValue()));
 		}
 		else
 			offsets[i] = builder.makeIntConstant(0);
@@ -1030,8 +1014,7 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 		op.type_id = builder.makeVectorType(op.type_id, 4);
 
 	op.arguments.push_back(combined_image_sampler_id);
-	op.arguments.push_back(build_vector(block,
-			builder.makeFloatType(32), coord, num_coords_full));
+	op.arguments.push_back(build_vector(block, builder.makeFloatType(32), coord, num_coords_full));
 
 	if (dref_id)
 		op.arguments.push_back(dref_id);
@@ -1043,9 +1026,7 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 
 	if (image_ops & spv::ImageOperandsConstOffsetMask)
 	{
-		op.arguments.push_back(build_vector(block,
-		                                    builder.makeIntegerType(32, true),
-		                                    offsets, num_coords));
+		op.arguments.push_back(build_vector(block, builder.makeIntegerType(32, true), offsets, num_coords));
 	}
 
 	if (image_ops & spv::ImageOperandsMinLodMask)
@@ -1243,8 +1224,7 @@ void Converter::Impl::emit_compare_instruction(CFGNode *block, const llvm::CmpIn
 	block->ir.operations.push_back(std::move(op));
 }
 
-void Converter::Impl::emit_extract_value_instruction(CFGNode *block,
-                                                     const llvm::ExtractValueInst &instruction)
+void Converter::Impl::emit_extract_value_instruction(CFGNode *block, const llvm::ExtractValueInst &instruction)
 {
 	Operation op;
 	op.op = spv::OpCompositeExtract;
@@ -1291,16 +1271,12 @@ void Converter::Impl::emit_store_instruction(CFGNode *block, const llvm::StoreIn
 {
 	Operation op;
 	op.op = spv::OpStore;
-	op.arguments = {
-		get_id_for_value(*instruction.getOperand(1)),
-		get_id_for_value(*instruction.getOperand(0))
-	};
+	op.arguments = { get_id_for_value(*instruction.getOperand(1)), get_id_for_value(*instruction.getOperand(0)) };
 
 	block->ir.operations.push_back(std::move(op));
 }
 
-void Converter::Impl::emit_getelementptr_instruction(CFGNode *block,
-                                                     const llvm::GetElementPtrInst &instruction)
+void Converter::Impl::emit_getelementptr_instruction(CFGNode *block, const llvm::GetElementPtrInst &instruction)
 {
 	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
 	// For now, just assert that the first index is constant 0, in which case PtrAccessChain == AccessChain.

@@ -19,14 +19,14 @@
 #include "cfg_structurizer.hpp"
 #include "node.hpp"
 #include "node_pool.hpp"
+#include "spirv_module.hpp"
 #include <stdio.h>
 #include <string>
 #include <unordered_map>
-#include "spirv_module.hpp"
 
+#include "logging.hpp"
 #include "spirv-tools/libspirv.hpp"
 #include "spirv_glsl.hpp"
-#include "logging.hpp"
 
 using namespace DXIL2SPIRV;
 
@@ -56,9 +56,8 @@ void Emitter::emit_basic_block(CFGNode *node)
 		break;
 
 	case MergeType::Loop:
-		LOGE("    LoopMerge -> %s, Continue <- %s\n",
-				info.merge_block->name.c_str(),
-				info.continue_block ? info.continue_block->name.c_str() : "Unreachable");
+		LOGE("    LoopMerge -> %s, Continue <- %s\n", info.merge_block->name.c_str(),
+		     info.continue_block ? info.continue_block->name.c_str() : "Unreachable");
 		break;
 
 	default:
@@ -72,9 +71,8 @@ void Emitter::emit_basic_block(CFGNode *node)
 		break;
 
 	case Terminator::Type::Condition:
-		LOGE("  Selection -> %s : %s\n",
-				node->ir.terminator.true_block->name.c_str(),
-				node->ir.terminator.false_block->name.c_str());
+		LOGE("  Selection -> %s : %s\n", node->ir.terminator.true_block->name.c_str(),
+		     node->ir.terminator.false_block->name.c_str());
 		break;
 
 	case Terminator::Type::Return:
@@ -105,7 +103,7 @@ static void print_spirv_assembly(const std::vector<uint32_t> &code)
 static void validate_spirv(const std::vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
-	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t&, const char *message) {
+	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("Message: %s\n", message);
 	});
 	if (!tools.Validate(code))

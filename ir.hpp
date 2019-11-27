@@ -18,9 +18,9 @@
 
 #pragma once
 
-#include <vector>
-#include <stdint.h>
 #include "SpvBuilder.h"
+#include <stdint.h>
+#include <vector>
 
 // A simple IR representation which allows the CFGStructurizer to do some simple rewrites of blocks,
 // PHI nodes in particular.
@@ -59,7 +59,10 @@ struct Operation
 {
 	spv::Op op = spv::OpNop;
 
-	enum { MaxArguments = 4 };
+	enum
+	{
+		MaxArguments = 4
+	};
 	uint32_t id = 0;
 	uint32_t type_id = 0;
 	std::vector<uint32_t> arguments;
@@ -101,4 +104,4 @@ struct IRBlock
 	Terminator terminator;
 };
 
-}
+} // namespace DXIL2SPIRV

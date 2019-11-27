@@ -18,10 +18,10 @@
 
 #pragma once
 
+#include "SpvBuilder.h"
+#include "cfg_structurizer.hpp"
 #include <memory>
 #include <vector>
-#include "cfg_structurizer.hpp"
-#include "SpvBuilder.h"
 
 namespace DXIL2SPIRV
 {
@@ -48,4 +48,4 @@ private:
 	struct Impl;
 	std::unique_ptr<Impl> impl;
 };
-}
+} // namespace DXIL2SPIRV

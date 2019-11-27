@@ -25,13 +25,13 @@
 #include <vector>
 
 #include "cfg_structurizer.hpp"
-#include "dxil_converter.hpp"
-#include "spirv_module.hpp"
 #include "cli_parser.hpp"
+#include "dxil_converter.hpp"
 #include "logging.hpp"
+#include "spirv_module.hpp"
 
-#include "spirv_glsl.hpp"
 #include "spirv-tools/libspirv.hpp"
+#include "spirv_glsl.hpp"
 
 #include <llvm/Support/raw_os_ostream.h>
 
@@ -40,7 +40,7 @@ using namespace DXIL2SPIRV;
 static bool validate_spirv(const std::vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
-	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t&, const char *message) {
+	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
 	return tools.Validate(code);
@@ -49,7 +49,7 @@ static bool validate_spirv(const std::vector<uint32_t> &code)
 static std::string convert_to_asm(const std::vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
-	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t&, const char *message) {
+	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
 
@@ -119,7 +119,10 @@ int main(int argc, char **argv)
 	Arguments args;
 
 	CLICallbacks cbs;
-	cbs.add("--help", [](CLIParser &parser) { print_help(); parser.end(); });
+	cbs.add("--help", [](CLIParser &parser) {
+		print_help();
+		parser.end();
+	});
 	cbs.add("--dump-module", [&](CLIParser &) { args.dump_module = true; });
 	cbs.add("--glsl", [&](CLIParser &) { args.glsl = true; });
 	cbs.add("--validate", [&](CLIParser &) { args.validate = true; });

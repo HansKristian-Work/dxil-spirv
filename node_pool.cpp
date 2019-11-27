@@ -38,4 +38,4 @@ CFGNode *CFGNodePool::create_node()
 	return ret;
 }
 
-}
+} // namespace DXIL2SPIRV
