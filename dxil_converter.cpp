@@ -749,9 +749,12 @@ void Converter::Impl::emit_load_input_instruction(CFGNode *block, const llvm::Ca
 	else
 		ptr_id = var_id;
 
+	bool need_bitcast_after_load = get_type_id(meta.component_type, 1, 1) != get_type_id(*instruction.getType());
+	spv::Id loaded_id = need_bitcast_after_load ? spirv_module.allocate_id() : get_id_for_value(instruction);
+
 	op = {};
 	op.op = spv::OpLoad;
-	op.id = get_id_for_value(instruction);
+	op.id = loaded_id;
 
 	// Need to deal with signed vs unsigned here.
 	op.type_id = get_type_id(meta.component_type, 1, 1);
@@ -760,6 +763,17 @@ void Converter::Impl::emit_load_input_instruction(CFGNode *block, const llvm::Ca
 	assert(op.arguments[0]);
 
 	block->ir.operations.push_back(std::move(op));
+
+	// Need to bitcast after we load.
+	if (need_bitcast_after_load)
+	{
+		Operation bitcast_op;
+		bitcast_op.op = spv::OpBitcast;
+		bitcast_op.type_id = get_type_id(*instruction.getType());
+		bitcast_op.arguments = { loaded_id };
+		bitcast_op.id = get_id_for_value(instruction);
+		block->ir.operations.push_back(std::move(bitcast_op));
+	}
 }
 
 void Converter::Impl::emit_store_output_instruction(CFGNode *block, const llvm::CallInst &instruction)

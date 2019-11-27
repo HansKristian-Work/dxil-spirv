@@ -5,7 +5,7 @@ layout(location = 0) out int SV_Target;
 
 void main()
 {
-    SV_Target = int(uint(max(A.x, A.y)));
+    SV_Target = int(uint(max(int(uint(A.x)), int(uint(A.y)))));
 }
 
 
@@ -64,10 +64,10 @@ attributes #1 = { nounwind }
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 24
+; Bound: 26
 ; Schema: 0
 OpCapability Shader
-%19 = OpExtInstImport "GLSL.std.450"
+%21 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %8 %10
 OpExecutionMode %3 OriginUpperLeft
@@ -88,18 +88,20 @@ OpDecorate %10 Location 0
 %12 = OpTypePointer Input %5
 %13 = OpTypeInt 32 0
 %14 = OpConstant %13 0
-%17 = OpConstant %13 1
+%18 = OpConstant %13 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %22
-%22 = OpLabel
+OpBranch %24
+%24 = OpLabel
 %11 = OpInBoundsAccessChain %12 %8 %14
 %15 = OpLoad %5 %11
-%16 = OpInBoundsAccessChain %12 %8 %17
-%18 = OpLoad %5 %16
-%20 = OpExtInst %13 %19 SMax %15 %18
-%21 = OpBitcast %5 %20
-OpStore %10 %21
+%16 = OpBitcast %13 %15
+%17 = OpInBoundsAccessChain %12 %8 %18
+%19 = OpLoad %5 %17
+%20 = OpBitcast %13 %19
+%22 = OpExtInst %13 %21 SMax %16 %20
+%23 = OpBitcast %5 %22
+OpStore %10 %23
 OpReturn
 OpFunctionEnd
 #endif
