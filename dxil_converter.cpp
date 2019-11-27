@@ -1716,15 +1716,24 @@ void Converter::Impl::emit_binary_instruction(CFGNode *block, const llvm::Binary
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Xor:
-		op.op = spv::OpBitwiseXor;
+		if (instruction.getType()->getIntegerBitWidth() == 1)
+			op.op = spv::OpLogicalNotEqual;
+		else
+			op.op = spv::OpBitwiseXor;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::And:
-		op.op = spv::OpBitwiseAnd;
+		if (instruction.getType()->getIntegerBitWidth() == 1)
+			op.op = spv::OpLogicalAnd;
+		else
+			op.op = spv::OpBitwiseAnd;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Or:
-		op.op = spv::OpBitwiseOr;
+		if (instruction.getType()->getIntegerBitWidth() == 1)
+			op.op = spv::OpLogicalOr;
+		else
+			op.op = spv::OpBitwiseOr;
 		break;
 
 	default:
