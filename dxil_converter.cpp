@@ -114,6 +114,7 @@ struct Converter::Impl
 
 	void emit_dxil_unary_instruction(spv::Op op, CFGNode *block, const llvm::CallInst &instruction);
 	void emit_dxil_std450_unary_instruction(GLSLstd450 op, CFGNode *block, const llvm::CallInst &instruction);
+	void emit_dxil_std450_binary_instruction(GLSLstd450 op, CFGNode *block, const llvm::CallInst &instruction);
 
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
 	spv::Id build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id, bool comparison);
@@ -911,6 +912,26 @@ void Converter::Impl::emit_dxil_std450_unary_instruction(GLSLstd450 opcode, DXIL
 	op.id = get_id_for_value(instruction);
 	op.type_id = get_type_id(*instruction.getType());
 	op.arguments = { glsl_std450_ext, opcode, get_id_for_value(*instruction.getOperand(1)) };
+
+	block->ir.operations.push_back(std::move(op));
+}
+
+void Converter::Impl::emit_dxil_std450_binary_instruction(GLSLstd450 opcode, DXIL2SPIRV::CFGNode *block,
+                                                          const llvm::CallInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+	if (!glsl_std450_ext)
+		glsl_std450_ext = builder.import("GLSL.std.450");
+
+	Operation op;
+	op.op = spv::OpExtInst;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+	op.arguments = {
+		glsl_std450_ext, opcode,
+		get_id_for_value(*instruction.getOperand(1)),
+		get_id_for_value(*instruction.getOperand(2))
+	};
 
 	block->ir.operations.push_back(std::move(op));
 }

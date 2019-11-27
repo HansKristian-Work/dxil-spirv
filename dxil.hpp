@@ -225,6 +225,13 @@ enum class Op : unsigned
 	Saturate = 7,
 	Sin = 13,
 	Sqrt = 24,
-	Tan = 14
+	Tan = 14,
+
+	FMax = 35,
+	FMin = 36,
+	IMax = 37,
+	IMin = 38,
+	UMax = 39,
+	UMin = 40,
 };
 } // namespace DXIL
