@@ -1096,6 +1096,10 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 		emit_dxil_unary_instruction(spv::OpIsNan, block, instruction);
 		break;
 
+	case DXIL::Op::IsInf:
+		emit_dxil_unary_instruction(spv::OpIsInf, block, instruction);
+		break;
+
 	default:
 		break;
 	}

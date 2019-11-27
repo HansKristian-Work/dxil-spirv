@@ -207,6 +207,7 @@ enum class Op : unsigned
 	SampleCmpLevelZero = 65,
 	TextureLoad = 66,
 
-	IsNan = 8
+	IsNan = 8,
+	IsInf = 9
 };
 } // namespace DXIL
