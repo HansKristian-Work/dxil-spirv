@@ -205,6 +205,8 @@ enum class Op : unsigned
 	SampleGrad = 63,
 	SampleCmp = 64,
 	SampleCmpLevelZero = 65,
-	TextureLoad = 66
+	TextureLoad = 66,
+
+	IsNan = 8
 };
 } // namespace DXIL

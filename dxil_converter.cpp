@@ -111,6 +111,8 @@ struct Converter::Impl
 	void emit_cbuffer_load_legacy_instruction(CFGNode *block, const llvm::CallInst &instruction);
 	void emit_sample_instruction(DXIL::Op op, CFGNode *block, const llvm::CallInst &instruction);
 
+	void emit_dxil_unary_instruction(spv::Op op, CFGNode *block, const llvm::CallInst &instruction);
+
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
 	spv::Id build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id, bool comparison);
 	spv::Id build_vector(CFGNode *block, spv::Id element_type, spv::Id *elements, unsigned count);
@@ -882,6 +884,17 @@ spv::Id Converter::Impl::build_vector(CFGNode *block, spv::Id element_type, spv:
 	return id;
 }
 
+void Converter::Impl::emit_dxil_unary_instruction(spv::Op opcode, CFGNode *block, const llvm::CallInst &instruction)
+{
+	Operation op;
+	op.op = opcode;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+	op.arguments = { get_id_for_value(*instruction.getOperand(1)) };
+
+	block->ir.operations.push_back(std::move(op));
+}
+
 void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, const llvm::CallInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
@@ -1077,6 +1090,10 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 	case DXIL::Op::SampleCmp:
 	case DXIL::Op::SampleCmpLevelZero:
 		emit_sample_instruction(opcode, block, instruction);
+		break;
+
+	case DXIL::Op::IsNan:
+		emit_dxil_unary_instruction(spv::OpIsNan, block, instruction);
 		break;
 
 	default:
