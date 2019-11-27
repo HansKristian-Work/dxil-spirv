@@ -111,7 +111,7 @@ struct Converter::Impl
 	void emit_sample_instruction(DXIL::Op op, CFGNode *block, const llvm::CallInst &instruction);
 
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
-	spv::Id build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id);
+	spv::Id build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id, bool comparison);
 	spv::Id build_vector(CFGNode *block, spv::Id element_type, spv::Id *elements, unsigned count);
 };
 
@@ -864,14 +864,24 @@ void Converter::Impl::emit_cbuffer_load_legacy_instruction(CFGNode *block, const
 	}
 }
 
-spv::Id Converter::Impl::build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id)
+spv::Id Converter::Impl::build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id, bool comparison)
 {
-	spv::Id id = spirv_module.allocate_id();
 	auto &builder = spirv_module.get_builder();
+	spv::Id image_type_id = get_type_id(image_id);
+	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
+	bool arrayed = builder.isArrayedImageType(image_type_id);
+	bool multisampled = builder.isMultisampledImageType(image_type_id);
+	spv::Id sampled_format = builder.getImageComponentType(image_type_id);
+
+	image_type_id = builder.makeImageType(sampled_format,
+	                                      dim, comparison, arrayed, multisampled,
+	                                      2, spv::ImageFormatUnknown);
+
+	spv::Id id = spirv_module.allocate_id();
 	Operation op;
 	op.op = spv::OpSampledImage;
 	op.id = id;
-	op.type_id = builder.makeSampledImageType(get_type_id(image_id));
+	op.type_id = builder.makeSampledImageType(image_type_id);
 	op.arguments = { image_id, sampler_id };
 
 	block->ir.operations.push_back(std::move(op));
@@ -899,13 +909,17 @@ spv::Id Converter::Impl::build_vector(CFGNode *block, spv::Id element_type, spv:
 void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, const llvm::CallInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
+	bool comparison_sampling = opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero;
 
 	spv::Id image_id = handle_to_ptr_id[instruction.getOperand(1)];
 	spv::Id sampler_id = handle_to_ptr_id[instruction.getOperand(2)];
-	spv::Id combined_image_sampler_id = build_sampled_image(block, image_id, sampler_id);
+	spv::Id combined_image_sampler_id = build_sampled_image(block, image_id, sampler_id, comparison_sampling);
 
-	spv::Dim dim = builder.getTypeDimensionality(get_type_id(image_id));
-	bool arrayed = builder.isArrayedImageType(get_type_id(image_id));
+	spv::Id image_type_id = get_type_id(image_id);
+
+	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
+	bool arrayed = builder.isArrayedImageType(image_type_id);
+
 	unsigned num_coords;
 	switch (dim)
 	{
@@ -936,7 +950,7 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 
 	uint32_t image_ops = 0;
 
-	if (opcode == DXIL::Op::SampleLevel)
+	if (opcode == DXIL::Op::SampleLevel || opcode == DXIL::Op::SampleCmpLevelZero)
 		image_ops |= spv::ImageOperandsLodMask;
 	else if (opcode == DXIL::Op::SampleBias)
 		image_ops |= spv::ImageOperandsBiasMask;
@@ -955,21 +969,63 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 			offsets[i] = builder.makeIntConstant(0);
 	}
 
+	spv::Id dref_id = 0;
+
+	if (opcode == DXIL::Op::SampleCmp)
+		dref_id = get_id_for_value(*instruction.getOperand(10));
+
 	spv::Id aux_argument = 0;
-	if (opcode == DXIL::Op::Sample)
+	unsigned aux_argument_index = opcode == DXIL::Op::SampleCmp ? 11 : 10;
+
+	if (opcode == DXIL::Op::Sample || opcode == DXIL::Op::SampleCmp)
 	{
-		if (!llvm::isa<llvm::UndefValue>(instruction.getOperand(10)))
+		if (!llvm::isa<llvm::UndefValue>(instruction.getOperand(aux_argument_index)))
 		{
-			aux_argument = get_id_for_value(*instruction.getOperand(10));
+			aux_argument = get_id_for_value(*instruction.getOperand(aux_argument_index));
 			image_ops |= spv::ImageOperandsMinLodMask;
+			builder.addCapability(spv::CapabilityMinLod);
 		}
 	}
+	else if (opcode != DXIL::Op::SampleCmpLevelZero)
+		aux_argument = get_id_for_value(*instruction.getOperand(aux_argument_index));
 	else
-		aux_argument = get_id_for_value(*instruction.getOperand(10));
+		aux_argument = builder.makeFloatConstant(0.0f);
 
 	Operation op;
-	op.op = opcode == DXIL::Op::SampleLevel ? spv::OpImageSampleExplicitLod : spv::OpImageSampleImplicitLod;
-	op.id = get_id_for_value(instruction);
+
+	switch (opcode)
+	{
+	case DXIL::Op::SampleLevel:
+		op.op = spv::OpImageSampleExplicitLod;
+		break;
+
+	case DXIL::Op::Sample:
+	case DXIL::Op::SampleBias:
+		op.op = spv::OpImageSampleImplicitLod;
+		break;
+
+	case DXIL::Op::SampleCmp:
+		op.op = spv::OpImageSampleDrefImplicitLod;
+		break;
+
+	case DXIL::Op::SampleCmpLevelZero:
+		op.op = spv::OpImageSampleDrefExplicitLod;
+		break;
+
+	default:
+		break;
+	}
+
+	spv::Id sampled_value_id = 0;
+
+	// Comparison sampling only returns a scalar, so we'll need to splat out result.
+	if (comparison_sampling)
+	{
+		sampled_value_id = spirv_module.allocate_id();
+		op.id = sampled_value_id;
+	}
+	else
+		op.id = get_id_for_value(instruction);
 
 	auto *result_type = instruction.getType();
 	assert(result_type->getTypeID() == llvm::Type::TypeID::StructTyID);
@@ -979,11 +1035,15 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 	assert(result_type->getStructNumElements() == 5);
 
 	op.type_id = get_type_id(*result_type->getStructElementType(0));
-	op.type_id = builder.makeVectorType(op.type_id, 4);
+	if (!comparison_sampling)
+		op.type_id = builder.makeVectorType(op.type_id, 4);
 
 	op.arguments.push_back(combined_image_sampler_id);
 	op.arguments.push_back(build_vector(block,
 			builder.makeFloatType(32), coord, num_coords_full));
+
+	if (dref_id)
+		op.arguments.push_back(dref_id);
 
 	op.arguments.push_back(image_ops);
 
@@ -1001,6 +1061,16 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 		op.arguments.push_back(aux_argument);
 
 	block->ir.operations.push_back(std::move(op));
+
+	if (comparison_sampling)
+	{
+		op = {};
+		op.op = spv::OpCompositeConstruct;
+		op.id = get_id_for_value(instruction);
+		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
+		op.arguments = { sampled_value_id, sampled_value_id, sampled_value_id, sampled_value_id };
+		block->ir.operations.push_back(std::move(op));
+	}
 }
 
 void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction)
@@ -1031,6 +1101,8 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 	case DXIL::Op::Sample:
 	case DXIL::Op::SampleBias:
 	case DXIL::Op::SampleLevel:
+	case DXIL::Op::SampleCmp:
+	case DXIL::Op::SampleCmpLevelZero:
 		emit_sample_instruction(opcode, block, instruction);
 		break;
 

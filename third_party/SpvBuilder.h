@@ -208,6 +208,16 @@ public:
         assert(isImageType(typeId));
         return module.getInstruction(typeId)->getImmediateOperand(3) != 0;
     }
+    bool isMultisampledImageType(Id typeId) const
+    {
+        assert(isImageType(typeId));
+        return module.getInstruction(typeId)->getImmediateOperand(4) != 0;
+    }
+    Id getImageComponentType(Id typeId) const
+    {
+        assert(isImageType(typeId));
+        return module.getInstruction(typeId)->getImmediateOperand(0);
+    }
 
     // For making new constants (will return old constant if the requested one was already made).
     Id makeBoolConstant(bool b, bool specConstant = false);
@@ -570,7 +580,7 @@ public:
     // Check if the builder is generating code for spec constants.
     bool isInSpecConstCodeGenMode() { return generatingOpCodeForSpecConst; }
 
-	void createSelectionMerge(Block* mergeBlock, unsigned int control);
+    void createSelectionMerge(Block* mergeBlock, unsigned int control);
 
 protected:
     Id makeIntConstant(Id typeId, unsigned value, bool specConstant);
