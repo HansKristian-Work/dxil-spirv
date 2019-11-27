@@ -80,12 +80,17 @@ struct Converter::Impl
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	std::unordered_map<spv::Id, spv::Id> id_to_type;
 
-	spv::Id get_type_id(unsigned element_type, unsigned rows, unsigned cols);
+	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols);
 	spv::Id get_type_id(const llvm::Type &type);
 	spv::Id get_type_id(spv::Id id) const;
 
-	std::unordered_map<uint32_t, spv::Id> input_elements_ids;
-	std::unordered_map<uint32_t, spv::Id> output_elements_ids;
+	struct ElementMeta
+	{
+		spv::Id id;
+		DXIL::ComponentType component_type;
+	};
+	std::unordered_map<uint32_t, ElementMeta> input_elements_meta;
+	std::unordered_map<uint32_t, ElementMeta> output_elements_meta;
 	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic);
 
 	void emit_instruction(CFGNode *block, const llvm::Instruction &instruction);
@@ -229,7 +234,7 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		if (get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
-			sampled_type_id = get_type_id(get_constant_metadata(tags, 1), 1, 1);
+			sampled_type_id = get_type_id(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)), 1, 1);
 		}
 		else
 		{
@@ -458,12 +463,12 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type &type)
 	}
 }
 
-spv::Id Converter::Impl::get_type_id(unsigned element_type, unsigned rows, unsigned cols)
+spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols)
 {
 	auto &builder = spirv_module.get_builder();
 
 	spv::Id component_type;
-	switch (static_cast<DXIL::ComponentType>(element_type))
+	switch (element_type)
 	{
 	case DXIL::ComponentType::I1:
 		component_type = builder.makeBoolType();
@@ -551,7 +556,7 @@ void Converter::Impl::emit_stage_output_variables()
 		auto *output = llvm::cast<llvm::MDNode>(outputs_node->getOperand(i));
 		auto element_id = get_constant_metadata(output, 0);
 		auto semantic_name = get_string_metadata(output, 1);
-		auto element_type = get_constant_metadata(output, 2);
+		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
 
 		// Semantic index?
@@ -577,7 +582,7 @@ void Converter::Impl::emit_stage_output_variables()
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, semantic_name.c_str());
-		output_elements_ids[element_id] = variable_id;
+		output_elements_meta[element_id] = { variable_id, element_type };
 
 		if (system_value == DXIL::Semantic::Target)
 		{
@@ -630,7 +635,7 @@ void Converter::Impl::emit_stage_input_variables()
 		auto *input = llvm::cast<llvm::MDNode>(inputs_node->getOperand(i));
 		auto element_id = get_constant_metadata(input, 0);
 		auto semantic_name = get_string_metadata(input, 1);
-		auto element_type = get_constant_metadata(input, 2);
+		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(input, 2));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(input, 3));
 
 		// Semantic index?
@@ -656,7 +661,7 @@ void Converter::Impl::emit_stage_input_variables()
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, semantic_name.c_str());
-		input_elements_ids[element_id] = variable_id;
+		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };
 
 		if (system_value != DXIL::Semantic::User)
 			emit_builtin_decoration(variable_id, system_value);
@@ -679,7 +684,8 @@ uint32_t Converter::Impl::get_constant_operand(const llvm::CallInst &value, unsi
 void Converter::Impl::emit_load_input_instruction(CFGNode *block, const llvm::CallInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
-	uint32_t var_id = input_elements_ids[get_constant_operand(instruction, 1)];
+	const auto &meta = input_elements_meta[get_constant_operand(instruction, 1)];
+	uint32_t var_id = meta.id;
 	uint32_t ptr_id;
 	Operation op;
 
@@ -691,7 +697,9 @@ void Converter::Impl::emit_load_input_instruction(CFGNode *block, const llvm::Ca
 
 		op.op = spv::OpInBoundsAccessChain;
 		op.id = ptr_id;
-		op.type_id = get_type_id(*instruction.getType());
+
+		// Need to deal with signed vs unsigned here.
+		op.type_id = get_type_id(meta.component_type, 1, 1);
 		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
 		op.arguments = { var_id, get_id_for_value(*instruction.getOperand(3), 32) };
 		assert(op.arguments[0]);
@@ -705,7 +713,10 @@ void Converter::Impl::emit_load_input_instruction(CFGNode *block, const llvm::Ca
 	op = {};
 	op.op = spv::OpLoad;
 	op.id = get_id_for_value(instruction);
-	op.type_id = get_type_id(*instruction.getType());
+
+	// Need to deal with signed vs unsigned here.
+	op.type_id = get_type_id(meta.component_type, 1, 1);
+
 	op.arguments = { ptr_id };
 	assert(op.arguments[0]);
 
@@ -715,7 +726,8 @@ void Converter::Impl::emit_load_input_instruction(CFGNode *block, const llvm::Ca
 void Converter::Impl::emit_store_output_instruction(CFGNode *block, const llvm::CallInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
-	uint32_t var_id = output_elements_ids[get_constant_operand(instruction, 1)];
+	const auto &meta = output_elements_meta[get_constant_operand(instruction, 1)];
+	uint32_t var_id = meta.id;
 	uint32_t ptr_id;
 	Operation op;
 
@@ -738,9 +750,24 @@ void Converter::Impl::emit_store_output_instruction(CFGNode *block, const llvm::
 	else
 		ptr_id = var_id;
 
+	spv::Id store_value = get_id_for_value(*instruction.getOperand(4));
+
+	// Need to bitcast before we can store.
+	if (get_type_id(meta.component_type, 1, 1) !=
+	    get_type_id(*instruction.getOperand(4)->getType()))
+	{
+		Operation bitcast_op;
+		bitcast_op.op = spv::OpBitcast;
+		bitcast_op.type_id = get_type_id(meta.component_type, 1, 1);
+		bitcast_op.arguments = { store_value };
+		bitcast_op.id = spirv_module.allocate_id();
+		store_value = bitcast_op.id;
+		block->ir.operations.push_back(std::move(bitcast_op));
+	}
+
 	op = {};
 	op.op = spv::OpStore;
-	op.arguments = { ptr_id, get_id_for_value(*instruction.getOperand(4)) };
+	op.arguments = { ptr_id, store_value };
 	assert(op.arguments[0]);
 	assert(op.arguments[1]);
 
@@ -1163,6 +1190,14 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 
 	case DXIL::Op::FMax:
 		emit_dxil_std450_binary_instruction(GLSLstd450NMax, block, instruction);
+		break;
+
+	case DXIL::Op::IMin:
+		emit_dxil_std450_binary_instruction(GLSLstd450SMin, block, instruction);
+		break;
+
+	case DXIL::Op::IMax:
+		emit_dxil_std450_binary_instruction(GLSLstd450SMax, block, instruction);
 		break;
 
 	case DXIL::Op::IsNan:
