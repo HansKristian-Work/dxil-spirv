@@ -18,7 +18,6 @@
 
 #include "spirv_module.hpp"
 #include "SpvBuilder.h"
-#include "spirv.hpp11"
 #include "node.hpp"
 
 namespace DXIL2SPIRV

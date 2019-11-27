@@ -17,12 +17,13 @@
  */
 
 #include "dxil_converter.hpp"
-#include <utility>
 #include "SpvBuilder.h"
 #include "cfg_structurizer.hpp"
 #include "node_pool.hpp"
 #include "node.hpp"
 #include "logging.hpp"
+
+#include <utility>
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
@@ -30,8 +31,6 @@
 
 namespace DXIL2SPIRV
 {
-constexpr uint32_t GENERATOR = 1967215134;
-
 struct Converter::Impl
 {
 	Impl(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)

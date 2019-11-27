@@ -19,16 +19,16 @@ add_subdirectory(third_party/SPIRV-Tools EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/SPIRV-Cross EXCLUDE_FROM_ALL)
 
 add_library(spirv-builder STATIC
-        third_party/spvIR.h
-        third_party/Logger.cpp
-        third_party/Logger.h
-        third_party/InReadableOrder.cpp
-        third_party/SpvBuilder.h
-        third_party/SpvBuilder.cpp)
+        third_party/glslang-spirv/spvIR.h
+        third_party/glslang-spirv/Logger.cpp
+        third_party/glslang-spirv/Logger.h
+        third_party/glslang-spirv/InReadableOrder.cpp
+        third_party/glslang-spirv/SpvBuilder.h
+        third_party/glslang-spirv/SpvBuilder.cpp)
 
 target_include_directories(spirv-builder PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers/include/spirv/unified1
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glslang-spirv)
 
 add_library(spirv-module STATIC
         ir.hpp ir.cpp
