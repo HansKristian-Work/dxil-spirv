@@ -66,6 +66,7 @@ struct Converter::Impl
 
 	void emit_stage_input_variables();
 	void emit_stage_output_variables();
+	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
 	void emit_resources();
 	void emit_srvs(const llvm::MDNode *srvs);
@@ -560,7 +561,7 @@ void Converter::Impl::emit_stage_output_variables()
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
 
 		// Semantic index?
-		//auto interpolation = get_constant_metadata(input, 5);
+		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(output, 5));
 		auto rows = get_constant_metadata(output, 6);
 		auto cols = get_constant_metadata(output, 7);
 
@@ -595,11 +596,48 @@ void Converter::Impl::emit_stage_output_variables()
 		}
 		else
 		{
+			emit_interpolation_decorations(variable_id, interpolation);
 			builder.addDecoration(variable_id, spv::DecorationLocation, location);
 			location += rows;
 		}
 
 		spirv_module.get_entry_point()->addIdOperand(variable_id);
+	}
+}
+
+void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode)
+{
+	auto &builder = spirv_module.get_builder();
+	switch (mode)
+	{
+	case DXIL::InterpolationMode::Constant:
+		builder.addDecoration(variable_id, spv::DecorationFlat);
+		break;
+
+	case DXIL::InterpolationMode::LinearCentroid:
+		builder.addDecoration(variable_id, spv::DecorationCentroid);
+		break;
+
+	case DXIL::InterpolationMode::LinearSample:
+		builder.addDecoration(variable_id, spv::DecorationSample);
+		break;
+
+	case DXIL::InterpolationMode::LinearNoperspective:
+		builder.addDecoration(variable_id, spv::DecorationNoPerspective);
+		break;
+
+	case DXIL::InterpolationMode::LinearNoperspectiveCentroid:
+		builder.addDecoration(variable_id, spv::DecorationNoPerspective);
+		builder.addDecoration(variable_id, spv::DecorationCentroid);
+		break;
+
+	case DXIL::InterpolationMode::LinearNoperspectiveSample:
+		builder.addDecoration(variable_id, spv::DecorationNoPerspective);
+		builder.addDecoration(variable_id, spv::DecorationSample);
+		break;
+
+	default:
+		break;
 	}
 }
 
@@ -639,7 +677,7 @@ void Converter::Impl::emit_stage_input_variables()
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(input, 3));
 
 		// Semantic index?
-		//auto interpolation = get_constant_metadata(input, 5);
+		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(input, 5));
 		auto rows = get_constant_metadata(input, 6);
 		auto cols = get_constant_metadata(input, 7);
 
@@ -667,6 +705,7 @@ void Converter::Impl::emit_stage_input_variables()
 			emit_builtin_decoration(variable_id, system_value);
 		else
 		{
+			emit_interpolation_decorations(variable_id, interpolation);
 			builder.addDecoration(variable_id, spv::DecorationLocation, location);
 			location += rows;
 		}

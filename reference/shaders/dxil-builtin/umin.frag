@@ -1,6 +1,6 @@
 #version 460
 
-layout(location = 0) in uvec2 A;
+layout(location = 0) flat in uvec2 A;
 layout(location = 0) out uint SV_Target;
 
 void main()
@@ -74,6 +74,7 @@ OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "A"
 OpName %10 "SV_Target"
+OpDecorate %8 Flat
 OpDecorate %8 Location 0
 OpDecorate %10 Location 0
 %1 = OpTypeVoid
