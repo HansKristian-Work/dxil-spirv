@@ -100,6 +100,7 @@ struct Converter::Impl
 	void emit_compare_instruction(CFGNode *block, const llvm::CmpInst &instruction);
 	void emit_extract_value_instruction(CFGNode *block, const llvm::ExtractValueInst &instruction);
 	void emit_alloca_instruction(CFGNode *block, const llvm::AllocaInst &instruction);
+	void emit_select_instruction(CFGNode *block, const llvm::SelectInst &instruction);
 
 	// DXIL intrinsics.
 	void emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction);
@@ -1243,8 +1244,6 @@ void Converter::Impl::emit_extract_value_instruction(CFGNode *block, const llvm:
 void Converter::Impl::emit_alloca_instruction(CFGNode *block, const llvm::AllocaInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
-
-	spv::Id type_id = get_type_id(*instruction.getType());
 	spv::Id pointee_type_id = get_type_id(*instruction.getType()->getPointerElementType());
 
 	// DXC seems to allocate arrays on stack as 1 element of array type rather than N elements of basic non-array type.
@@ -1254,6 +1253,22 @@ void Converter::Impl::emit_alloca_instruction(CFGNode *block, const llvm::Alloca
 
 	spv::Id var_id = builder.createVariable(spv::StorageClassFunction, pointee_type_id, instruction.getName().data());
 	value_map[&instruction] = var_id;
+}
+
+void Converter::Impl::emit_select_instruction(CFGNode *block, const llvm::SelectInst &instruction)
+{
+	Operation op;
+	op.op = spv::OpSelect;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+
+	op.arguments = {
+		get_id_for_value(*instruction.getOperand(0)),
+		get_id_for_value(*instruction.getOperand(1)),
+		get_id_for_value(*instruction.getOperand(2)),
+	};
+
+	block->ir.operations.push_back(std::move(op));
 }
 
 void Converter::Impl::emit_load_instruction(CFGNode *block, const llvm::LoadInst &instruction)
@@ -1519,6 +1534,10 @@ void Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&instruction))
 	{
 		emit_alloca_instruction(block, *alloca_inst);
+	}
+	else if (auto *select_inst = llvm::dyn_cast<llvm::SelectInst>(&instruction))
+	{
+		emit_select_instruction(block, *select_inst);
 	}
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
 	{
