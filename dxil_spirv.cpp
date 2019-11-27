@@ -170,11 +170,11 @@ int main(int argc, char **argv)
 		module->print(llvm::errs(), nullptr);
 	}
 
-	std::string asm_string;
+	std::string llvm_asm_string;
 	if (args.glsl_embed_asm)
 	{
 		auto *module = &bc_parser.get_module();
-		llvm::raw_string_ostream str(asm_string);
+		llvm::raw_string_ostream str(llvm_asm_string);
 		module->print(str, nullptr);
 	}
 
@@ -201,6 +201,10 @@ int main(int argc, char **argv)
 		}
 	}
 
+	std::string spirv_asm_string;
+	if (args.glsl_embed_asm)
+		spirv_asm_string = convert_to_asm(spirv);
+
 	if (args.glsl)
 	{
 		auto glsl = convert_to_glsl(std::move(spirv));
@@ -210,11 +214,19 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 
-		if (!asm_string.empty())
+		if (!llvm_asm_string.empty())
 		{
-			glsl += "#if 0\n";
+			glsl += "\n#if 0\n";
 			glsl += "// LLVM disassembly\n";
-			glsl += asm_string;
+			glsl += llvm_asm_string;
+			glsl += "#endif";
+		}
+
+		if (!spirv_asm_string.empty())
+		{
+			glsl += "\n#if 0\n";
+			glsl += "// SPIR-V disassembly\n";
+			glsl += spirv_asm_string;
 			glsl += "#endif";
 		}
 
