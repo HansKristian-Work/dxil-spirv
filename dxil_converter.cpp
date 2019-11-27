@@ -111,6 +111,7 @@ struct Converter::Impl
 	void emit_create_handle_instruction(CFGNode *block, const llvm::CallInst &instruction);
 	void emit_cbuffer_load_legacy_instruction(CFGNode *block, const llvm::CallInst &instruction);
 	void emit_sample_instruction(DXIL::Op op, CFGNode *block, const llvm::CallInst &instruction);
+	void emit_saturate_instruction(CFGNode *block, const llvm::CallInst &instruction);
 
 	void emit_dxil_unary_instruction(spv::Op op, CFGNode *block, const llvm::CallInst &instruction);
 	void emit_dxil_std450_unary_instruction(GLSLstd450 op, CFGNode *block, const llvm::CallInst &instruction);
@@ -1100,6 +1101,25 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 	}
 }
 
+void Converter::Impl::emit_saturate_instruction(CFGNode *block, const llvm::CallInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+	if (!glsl_std450_ext)
+		glsl_std450_ext = builder.import("GLSL.std.450");
+
+	Operation op;
+	op.op = spv::OpExtInst;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+	op.arguments = {
+		glsl_std450_ext, GLSLstd450NClamp,
+		get_id_for_value(*instruction.getOperand(1)),
+		builder.makeFloatConstant(0.0f),
+		builder.makeFloatConstant(1.0f)
+	};
+	block->ir.operations.push_back(std::move(op));
+}
+
 void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
@@ -1131,6 +1151,10 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 	case DXIL::Op::SampleCmp:
 	case DXIL::Op::SampleCmpLevelZero:
 		emit_sample_instruction(opcode, block, instruction);
+		break;
+
+	case DXIL::Op::Saturate:
+		emit_saturate_instruction(block, instruction);
 		break;
 
 	case DXIL::Op::IsNan:
