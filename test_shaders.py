@@ -67,10 +67,10 @@ def get_sm(shader):
 def cross_compile_dxil(shader, args, paths):
     dxil_path = create_temporary()
     glsl_path = create_temporary(os.path.basename(shader))
-    dxil_cmd = [paths.dxc, '-T' + get_sm(shader), '-Fo', dxil_path]
+    dxil_cmd = [paths.dxc, '-T' + get_sm(shader), '-Fo', dxil_path, shader]
     subprocess.check_call(dxil_cmd)
 
-    glsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl', '--validate']
+    glsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', '--validate', dxil_path]
     subprocess.check_call(glsl_cmd)
     return (dxil_path, glsl_path)
 
@@ -142,7 +142,7 @@ def test_shader(shader, args, paths):
     remove_file(dxil)
 
 def test_shader_file(relpath, args):
-    paths = Paths(args.dxc, args.dxc_spirv)
+    paths = Paths(args.dxc, args.dxil_spirv)
     try:
         test_shader((args.folder, relpath), args, paths)
         return None

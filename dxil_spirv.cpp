@@ -102,7 +102,7 @@ static std::vector<uint8_t> read_file(const char *path)
 
 static void print_help()
 {
-	LOGE("Usage: dxil-spirv <input path> [--output <path>] [--glsl] [--validate]\n");
+	LOGE("Usage: dxil-spirv <input path> [--output <path>] [--glsl] [--validate] [--glsl-embed-asm]\n");
 }
 
 struct Arguments
@@ -112,6 +112,7 @@ struct Arguments
 	bool dump_module = false;
 	bool glsl = false;
 	bool validate = false;
+	bool glsl_embed_asm = false;
 };
 
 int main(int argc, char **argv)
@@ -124,6 +125,7 @@ int main(int argc, char **argv)
 		parser.end();
 	});
 	cbs.add("--dump-module", [&](CLIParser &) { args.dump_module = true; });
+	cbs.add("--glsl-embed-asm", [&](CLIParser &) { args.glsl_embed_asm = true; });
 	cbs.add("--glsl", [&](CLIParser &) { args.glsl = true; });
 	cbs.add("--validate", [&](CLIParser &) { args.validate = true; });
 	cbs.add("--output", [&](CLIParser &parser) { args.output_path = parser.next_string(); });
@@ -142,10 +144,10 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	auto binary = read_file(argv[1]);
+	auto binary = read_file(args.input_path.c_str());
 	if (binary.empty())
 	{
-		LOGE("Failed to load file: %s\n", argv[1]);
+		LOGE("Failed to load file: %s\n", args.input_path.c_str());
 		return EXIT_FAILURE;
 	}
 
@@ -166,6 +168,14 @@ int main(int argc, char **argv)
 	{
 		auto *module = &bc_parser.get_module();
 		module->print(llvm::errs(), nullptr);
+	}
+
+	std::string asm_string;
+	if (args.glsl_embed_asm)
+	{
+		auto *module = &bc_parser.get_module();
+		llvm::raw_string_ostream str(asm_string);
+		module->print(str, nullptr);
 	}
 
 	DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser), spirv_module);
@@ -198,6 +208,14 @@ int main(int argc, char **argv)
 		{
 			LOGE("Failed to convert to GLSL.\n");
 			return EXIT_FAILURE;
+		}
+
+		if (!asm_string.empty())
+		{
+			glsl += "#if 0\n";
+			glsl += "// LLVM disassembly\n";
+			glsl += asm_string;
+			glsl += "#endif";
 		}
 
 		if (args.output_path.empty())
