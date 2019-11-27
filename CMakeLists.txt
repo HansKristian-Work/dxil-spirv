@@ -63,13 +63,11 @@ llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-parser PRIVATE ${llvm_libs})
 target_link_libraries(dxil-parser PUBLIC spirv-module)
 
-add_executable(dxil-parser-test dxil_parser_test.cpp)
-target_link_libraries(dxil-parser-test PRIVATE dxil-parser cli-parser SPIRV-Tools spirv-cross-glsl dxil-debug)
-target_compile_options(dxil-parser-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+add_executable(dxil-spirv dxil_spirv.cpp)
+target_link_libraries(dxil-spirv PRIVATE dxil-parser cli-parser SPIRV-Tools spirv-cross-glsl dxil-debug)
+target_compile_options(dxil-spirv PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 add_executable(structurize-test structurize_test.cpp)
-target_link_libraries(structurize-test PRIVATE dxil-parser)
+target_link_libraries(structurize-test PRIVATE dxil-parser SPIRV-Tools spirv-cross-glsl dxil-debug)
 target_compile_options(structurize-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
-
-target_link_libraries(structurize-test PRIVATE SPIRV-Tools spirv-cross-glsl dxil-debug)
 
