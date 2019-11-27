@@ -27,8 +27,58 @@
 #include "cfg_structurizer.hpp"
 #include "dxil_converter.hpp"
 #include "spirv_module.hpp"
+#include "cli_parser.hpp"
+#include "logging.hpp"
+
+#include "spirv_glsl.hpp"
+#include "spirv-tools/libspirv.hpp"
 
 #include <llvm/Support/raw_os_ostream.h>
+
+using namespace DXIL2SPIRV;
+
+static bool validate_spirv(const std::vector<uint32_t> &code)
+{
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
+	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t&, const char *message) {
+		LOGE("SPIRV-Tools message: %s\n", message);
+	});
+	return tools.Validate(code);
+}
+
+static std::string convert_to_asm(const std::vector<uint32_t> &code)
+{
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
+	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t&, const char *message) {
+		LOGE("SPIRV-Tools message: %s\n", message);
+	});
+
+	std::string str;
+	if (!tools.Disassemble(code, &str, 0))
+		return "";
+	else
+		return str;
+}
+
+static std::string convert_to_glsl(std::vector<uint32_t> code)
+{
+	try
+	{
+		spirv_cross::CompilerGLSL compiler(std::move(code));
+		auto opts = compiler.get_common_options();
+		opts.es = false;
+		opts.version = 460;
+		opts.vulkan_semantics = true;
+		compiler.set_common_options(opts);
+		auto str = compiler.compile();
+		return str;
+	}
+	catch (const std::exception &e)
+	{
+		LOGE("Failed to decompile to GLSL: %s.\n", e.what());
+		return "";
+	}
+}
 
 static std::vector<uint8_t> read_file(const char *path)
 {
@@ -50,15 +100,49 @@ static std::vector<uint8_t> read_file(const char *path)
 	return result;
 }
 
+static void print_help()
+{
+	LOGE("Usage: dxil-spirv <input path> [--output <path>] [--glsl] [--validate]\n");
+}
+
+struct Arguments
+{
+	std::string input_path;
+	std::string output_path;
+	bool dump_module = false;
+	bool glsl = false;
+	bool validate = false;
+};
+
 int main(int argc, char **argv)
 {
-	if (argc != 2)
+	Arguments args;
+
+	CLICallbacks cbs;
+	cbs.add("--help", [](CLIParser &parser) { print_help(); parser.end(); });
+	cbs.add("--dump-module", [&](CLIParser &) { args.dump_module = true; });
+	cbs.add("--glsl", [&](CLIParser &) { args.glsl = true; });
+	cbs.add("--validate", [&](CLIParser &) { args.validate = true; });
+	cbs.add("--output", [&](CLIParser &parser) { args.output_path = parser.next_string(); });
+	cbs.error_handler = [] { print_help(); };
+	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
+	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
+	if (!cli_parser.parse())
 		return EXIT_FAILURE;
+	else if (cli_parser.is_ended_state())
+		return EXIT_SUCCESS;
+
+	if (args.input_path.empty())
+	{
+		LOGE("No input file.\n");
+		print_help();
+		return EXIT_FAILURE;
+	}
 
 	auto binary = read_file(argv[1]);
 	if (binary.empty())
 	{
-		fprintf(stderr, "Failed to load file: %s\n", argv[1]);
+		LOGE("Failed to load file: %s\n", argv[1]);
 		return EXIT_FAILURE;
 	}
 
@@ -67,7 +151,7 @@ int main(int argc, char **argv)
 	DXIL2SPIRV::DXILContainerParser parser;
 	if (!parser.parse_container(binary.data(), binary.size()))
 	{
-		fprintf(stderr, "Failed to parse DXIL archive.\n");
+		LOGE("Failed to parse DXIL archive.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -75,11 +159,13 @@ int main(int argc, char **argv)
 	if (!bc_parser.parse(parser.get_bitcode_data(), parser.get_bitcode_size()))
 		return EXIT_FAILURE;
 
-	auto *module = &bc_parser.get_module();
-	module->print(llvm::errs(), nullptr);
+	if (args.dump_module)
+	{
+		auto *module = &bc_parser.get_module();
+		module->print(llvm::errs(), nullptr);
+	}
 
 	DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser), spirv_module);
-
 	auto entry_point = converter.convert_entry_point();
 
 	DXIL2SPIRV::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, spirv_module);
@@ -87,12 +173,66 @@ int main(int argc, char **argv)
 	spirv_module.emit_function_body(structurizer);
 
 	std::vector<uint32_t> spirv;
-	if (spirv_module.finalize_spirv(spirv))
+	if (!spirv_module.finalize_spirv(spirv))
 	{
-		FILE *file = fopen("/tmp/test.spv", "wb");
-		if (file)
+		LOGE("Failed to finalize SPIR-V.\n");
+		return EXIT_FAILURE;
+	}
+
+	if (args.validate)
+	{
+		if (!validate_spirv(spirv))
 		{
-			fwrite(spirv.data(), sizeof(uint32_t), spirv.size(), file);
+			LOGE("Failed to validate SPIR-V.\n");
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (args.glsl)
+	{
+		auto glsl = convert_to_glsl(std::move(spirv));
+		if (glsl.empty())
+		{
+			LOGE("Failed to convert to GLSL.\n");
+			return EXIT_FAILURE;
+		}
+
+		if (args.output_path.empty())
+		{
+			printf("%s\n", glsl.c_str());
+		}
+		else
+		{
+			FILE *file = fopen(args.output_path.c_str(), "w");
+			if (!file)
+			{
+				LOGE("Failed to open %s for writing.\n", args.output_path.c_str());
+				return EXIT_FAILURE;
+			}
+			fprintf(file, "%s\n", glsl.c_str());
+			fclose(file);
+		}
+	}
+	else
+	{
+		if (args.output_path.empty())
+		{
+			auto assembly = convert_to_asm(spirv);
+			if (assembly.empty())
+			{
+				LOGE("Failed to convert to SPIR-V asm.\n");
+				return EXIT_FAILURE;
+			}
+			printf("%s\n", assembly.c_str());
+		}
+		else
+		{
+			FILE *file = fopen(args.output_path.c_str(), "wb");
+			if (fwrite(spirv.data(), sizeof(uint32_t), spirv.size(), file) != spirv.size())
+			{
+				LOGE("Failed to write SPIR-V.\n");
+				return EXIT_FAILURE;
+			}
 			fclose(file);
 		}
 	}

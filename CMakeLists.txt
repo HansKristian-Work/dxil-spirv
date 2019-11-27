@@ -35,6 +35,17 @@ add_library(spirv-module STATIC
         spirv_module.hpp spirv_module.cpp)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC spirv-builder)
+target_compile_options(spirv-module PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+
+add_library(dxil-debug INTERFACE)
+target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
+
+add_library(cli-parser STATIC
+        third_party/cli_parser/cli_parser.hpp
+        third_party/cli_parser/cli_parser.cpp)
+target_include_directories(cli-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cli_parser)
+target_link_libraries(cli-parser PUBLIC dxil-debug)
+target_compile_options(cli-parser PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 add_library(dxil-parser STATIC
         memory_stream.hpp memory_stream.cpp
@@ -46,18 +57,19 @@ add_library(dxil-parser STATIC
         node.hpp node.cpp
         dxil_parser.hpp dxil_parser.cpp)
 target_include_directories(dxil-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(dxil-parser PRIVATE dxil-debug)
 
 llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-parser PRIVATE ${llvm_libs})
 target_link_libraries(dxil-parser PUBLIC spirv-module)
 
 add_executable(dxil-parser-test dxil_parser_test.cpp)
-target_link_libraries(dxil-parser-test PRIVATE dxil-parser)
+target_link_libraries(dxil-parser-test PRIVATE dxil-parser cli-parser SPIRV-Tools spirv-cross-glsl dxil-debug)
 target_compile_options(dxil-parser-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 add_executable(structurize-test structurize_test.cpp)
 target_link_libraries(structurize-test PRIVATE dxil-parser)
 target_compile_options(structurize-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
-target_link_libraries(structurize-test PRIVATE SPIRV-Tools spirv-cross-glsl)
+target_link_libraries(structurize-test PRIVATE SPIRV-Tools spirv-cross-glsl dxil-debug)
 

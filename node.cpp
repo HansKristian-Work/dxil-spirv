@@ -17,6 +17,8 @@
  */
 
 #include "node.hpp"
+#include "logging.hpp"
+
 #include <algorithm>
 #include <assert.h>
 
@@ -257,7 +259,7 @@ CFGNode *CFGNode::get_immediate_dominator_loop_header()
 
 void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 {
-	fprintf(stderr, "Retargeting branch for %s: %s -> %s\n", name.c_str(), to_prev->name.c_str(), to_next->name.c_str());
+	LOGI("Retargeting branch for %s: %s -> %s\n", name.c_str(), to_prev->name.c_str(), to_next->name.c_str());
 	assert(std::find(succ.begin(), succ.end(), to_prev) != succ.end());
 	assert(std::find(to_prev->pred.begin(), to_prev->pred.end(), this) != to_prev->pred.end());
 	assert(std::find(succ.begin(), succ.end(), to_next) == succ.end());

@@ -215,8 +215,6 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	default:
 		break;
 	}
-
-	fprintf(stderr, "Block %u / %s\n", node->id, node->name.c_str());
 }
 
 bool SPIRVModule::finalize_spirv(std::vector<uint32_t> &spirv)

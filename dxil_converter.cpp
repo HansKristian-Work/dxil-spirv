@@ -22,6 +22,7 @@
 #include "cfg_structurizer.hpp"
 #include "node_pool.hpp"
 #include "node.hpp"
+#include "logging.hpp"
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
@@ -425,15 +426,6 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module)
 		return spv::ExecutionModelMax;
 }
 
-static void print_shader_model(const llvm::Module &module)
-{
-	auto *shader_model = module.getNamedMetadata("dx.shaderModel");
-	auto *shader_model_node = shader_model->getOperand(0);
-	fprintf(stderr, "Profile: %s_%u_%u\n", llvm::cast<llvm::MDString>(shader_model_node->getOperand(0))->getString().data(),
-	        get_constant_metadata(shader_model_node, 1),
-	        get_constant_metadata(shader_model_node, 2));
-}
-
 spv::Id Converter::Impl::get_type_id(const llvm::Type &type)
 {
 	auto &builder = spirv_module.get_builder();
@@ -512,7 +504,7 @@ spv::Id Converter::Impl::get_type_id(unsigned element_type, unsigned rows, unsig
 		break;
 
 	default:
-		fprintf(stderr, "Unknown component type.\n");
+		LOGE("Unknown component type.\n");
 		return 0;
 	}
 
@@ -571,14 +563,14 @@ void Converter::Impl::emit_stage_output_variables()
 #endif
 
 #if 0
-		fprintf(stderr, "Semantic output %u: %s\n", element_id, semantic_name.c_str());
-		fprintf(stderr, "  Type: %u\n", element_type);
-		fprintf(stderr, "  System value: %u\n", system_value);
-		fprintf(stderr, "  Interpolation: %u\n", interpolation);
-		fprintf(stderr, "  Rows: %u\n", rows);
-		fprintf(stderr, "  Cols: %u\n", cols);
-		fprintf(stderr, "  Start row: %u\n", start_row);
-		fprintf(stderr, "  Col: %u\n", col);
+		LOGE("Semantic output %u: %s\n", element_id, semantic_name.c_str());
+		LOGE("  Type: %u\n", element_type);
+		LOGE("  System value: %u\n", system_value);
+		LOGE("  Interpolation: %u\n", interpolation);
+		LOGE("  Rows: %u\n", rows);
+		LOGE("  Cols: %u\n", cols);
+		LOGE("  Start row: %u\n", start_row);
+		LOGE("  Col: %u\n", col);
 #endif
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
@@ -650,14 +642,14 @@ void Converter::Impl::emit_stage_input_variables()
 #endif
 
 #if 0
-		fprintf(stderr, "Semantic output %u: %s\n", element_id, semantic_name.c_str());
-		fprintf(stderr, "  Type: %u\n", element_type);
-		fprintf(stderr, "  System value: %u\n", system_value);
-		fprintf(stderr, "  Interpolation: %u\n", interpolation);
-		fprintf(stderr, "  Rows: %u\n", rows);
-		fprintf(stderr, "  Cols: %u\n", cols);
-		fprintf(stderr, "  Start row: %u\n", start_row);
-		fprintf(stderr, "  Col: %u\n", col);
+		LOGE("Semantic output %u: %s\n", element_id, semantic_name.c_str());
+		LOGE("  Type: %u\n", element_type);
+		LOGE("  System value: %u\n", system_value);
+		LOGE("  Interpolation: %u\n", interpolation);
+		LOGE("  Rows: %u\n", rows);
+		LOGE("  Cols: %u\n", cols);
+		LOGE("  Start row: %u\n", start_row);
+		LOGE("  Col: %u\n", col);
 #endif
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
@@ -938,7 +930,7 @@ void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, c
 		break;
 
 	default:
-		fprintf(stderr, "Unexpected sample dimensionality.\n");
+		LOGE("Unexpected sample dimensionality.\n");
 		return;
 	}
 
@@ -1245,7 +1237,7 @@ void Converter::Impl::emit_compare_instruction(CFGNode *block, const llvm::CmpIn
 		break;
 
 	default:
-		fprintf(stderr, "Unknown CmpInst predicate.\n");
+		LOGE("Unknown CmpInst predicate.\n");
 		break;
 	}
 
@@ -1381,7 +1373,7 @@ void Converter::Impl::emit_cast_instruction(CFGNode *block, const llvm::CastInst
 		break;
 
 	default:
-		fprintf(stderr, "Unknown cast operation.\n");
+		LOGE("Unknown cast operation.\n");
 		return;
 	}
 
@@ -1403,7 +1395,7 @@ void Converter::Impl::emit_unary_instruction(CFGNode *block, const llvm::UnaryOp
 		break;
 
 	default:
-		fprintf(stderr, "Unknown unary operator.\n");
+		LOGE("Unknown unary operator.\n");
 		return;
 	}
 
@@ -1496,7 +1488,7 @@ void Converter::Impl::emit_binary_instruction(CFGNode *block, const llvm::Binary
 		break;
 
 	default:
-		fprintf(stderr, "Unknown binary operator.\n");
+		LOGE("Unknown binary operator.\n");
 		break;
 	}
 
@@ -1514,7 +1506,7 @@ void Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		}
 		else
 		{
-			fprintf(stderr, "Normal function call ...\n");
+			LOGE("Normal function call ...\n");
 		}
 	}
 	else if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))
@@ -1567,9 +1559,6 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	auto *module = &bitcode_parser.get_module();
 	spirv_module.emit_entry_point(get_execution_model(*module), "main");
-
-	print_shader_model(*module);
-	fprintf(stderr, "Entry point: %s\n", get_entry_point_name(*module).c_str());
 
 	emit_resources();
 	emit_stage_input_variables();
@@ -1669,7 +1658,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 			node->ir.terminator.type = Terminator::Type::Unreachable;
 		}
 		else
-			fprintf(stderr, "Unsupported terminator ...\n");
+			LOGE("Unsupported terminator ...\n");
 	}
 
 	return result;

@@ -26,6 +26,7 @@
 
 #include "spirv-tools/libspirv.hpp"
 #include "spirv_glsl.hpp"
+#include "logging.hpp"
 
 using namespace DXIL2SPIRV;
 
@@ -44,18 +45,18 @@ struct Emitter : BlockEmissionInterface
 void Emitter::emit_basic_block(CFGNode *node)
 {
 	auto &info = node->ir.merge_info;
-	fprintf(stderr, "%u (%s):\n", node->id, node->name.c_str());
+	LOGE("%u (%s):\n", node->id, node->name.c_str());
 
 	// Emit opcodes here ...
 
 	switch (info.merge_type)
 	{
 	case MergeType::Selection:
-		fprintf(stderr, "    SelectionMerge -> %s\n", info.merge_block->name.c_str());
+		LOGE("    SelectionMerge -> %s\n", info.merge_block->name.c_str());
 		break;
 
 	case MergeType::Loop:
-		fprintf(stderr, "    LoopMerge -> %s, Continue <- %s\n",
+		LOGE("    LoopMerge -> %s, Continue <- %s\n",
 				info.merge_block->name.c_str(),
 				info.continue_block ? info.continue_block->name.c_str() : "Unreachable");
 		break;
@@ -67,21 +68,21 @@ void Emitter::emit_basic_block(CFGNode *node)
 	switch (node->ir.terminator.type)
 	{
 	case Terminator::Type::Branch:
-		fprintf(stderr, "  Direct -> %s\n", node->ir.terminator.direct_block->name.c_str());
+		LOGE("  Direct -> %s\n", node->ir.terminator.direct_block->name.c_str());
 		break;
 
 	case Terminator::Type::Condition:
-		fprintf(stderr, "  Selection -> %s : %s\n",
+		LOGE("  Selection -> %s : %s\n",
 				node->ir.terminator.true_block->name.c_str(),
 				node->ir.terminator.false_block->name.c_str());
 		break;
 
 	case Terminator::Type::Return:
-		fprintf(stderr, "  Return\n");
+		LOGE("  Return\n");
 		break;
 
 	case Terminator::Type::Unreachable:
-		fprintf(stderr, "  Unreachable\n");
+		LOGE("  Unreachable\n");
 		break;
 
 	default:
@@ -95,9 +96,9 @@ static void print_spirv_assembly(const std::vector<uint32_t> &code)
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
 	std::string str;
 	if (!tools.Disassemble(code.data(), code.size(), &str))
-		fprintf(stderr, "Failed to disassemble SPIR-V.\n");
+		LOGE("Failed to disassemble SPIR-V.\n");
 	else
-		fprintf(stderr, "\nSPIR-V:\n%s\n", str.c_str());
+		LOGE("\nSPIR-V:\n%s\n", str.c_str());
 }
 #endif
 
@@ -105,12 +106,12 @@ static void validate_spirv(const std::vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t&, const char *message) {
-		fprintf(stderr, "Message: %s\n", message);
+		LOGE("Message: %s\n", message);
 	});
 	if (!tools.Validate(code))
-		fprintf(stderr, "Validation error.\n");
+		LOGE("Validation error.\n");
 	else
-		fprintf(stderr, "Validated successfully!\n");
+		LOGE("Validated successfully!\n");
 }
 
 static void print_glsl(const std::vector<uint32_t> &code)
@@ -123,11 +124,11 @@ static void print_glsl(const std::vector<uint32_t> &code)
 		opts.version = 460;
 		compiler.set_common_options(opts);
 		auto str = compiler.compile();
-		fprintf(stderr, "\n=== GLSL ===\n%s\n", str.c_str());
+		LOGE("\n=== GLSL ===\n%s\n", str.c_str());
 	}
 	catch (const std::exception &e)
 	{
-		fprintf(stderr, "Failed to decompile to GLSL: %s.\n", e.what());
+		LOGE("Failed to decompile to GLSL: %s.\n", e.what());
 	}
 }
 

@@ -139,7 +139,6 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 		}
 
 		case DXIL::FourCC::FeatureInfo:
-			printf("FeatureInfo\n");
 			break;
 
 		case DXIL::FourCC::InputSignature:
@@ -159,35 +158,27 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 		}
 
 		case DXIL::FourCC::PatchConstantSignature:
-			printf("Patch constant signature\n");
 			break;
 
 		case DXIL::FourCC::PrivateData:
-			printf("Private data\n");
 			break;
 
 		case DXIL::FourCC::RootSignature:
-			printf("Root signature\n");
 			break;
 
 		case DXIL::FourCC::PipelineStateValidation:
-			printf("Pipeline state validation\n");
 			break;
 
 		case DXIL::FourCC::ResourceDef:
-			printf("ResourceDef\n");
 			break;
 
 		case DXIL::FourCC::ShaderStatistics:
-			printf("ShaderStatistics\n");
 			break;
 
 		case DXIL::FourCC::ShaderHash:
-			printf("ShaderHash\n");
 			break;
 
 		default:
-			printf("Some fourcc ...\n");
 			break;
 		}
 	}
