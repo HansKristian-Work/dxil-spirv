@@ -910,7 +910,7 @@ void Converter::Impl::emit_dxil_std450_unary_instruction(GLSLstd450 opcode, DXIL
 	op.op = spv::OpExtInst;
 	op.id = get_id_for_value(instruction);
 	op.type_id = get_type_id(*instruction.getType());
-	op.arguments = { glsl_std450_ext, get_id_for_value(*instruction.getOperand(1)) };
+	op.arguments = { glsl_std450_ext, opcode, get_id_for_value(*instruction.getOperand(1)) };
 
 	block->ir.operations.push_back(std::move(op));
 }
@@ -1174,6 +1174,10 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 
 	case DXIL::Op::Tan:
 		emit_dxil_std450_unary_instruction(GLSLstd450Tan, block, instruction);
+		break;
+
+	case DXIL::Op::Sin:
+		emit_dxil_std450_unary_instruction(GLSLstd450Sin, block, instruction);
 		break;
 
 	default:
