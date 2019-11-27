@@ -1157,6 +1157,14 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 		emit_saturate_instruction(block, instruction);
 		break;
 
+	case DXIL::Op::FMin:
+		emit_dxil_std450_binary_instruction(GLSLstd450NMin, block, instruction);
+		break;
+
+	case DXIL::Op::FMax:
+		emit_dxil_std450_binary_instruction(GLSLstd450NMax, block, instruction);
+		break;
+
 	case DXIL::Op::IsNan:
 		emit_dxil_unary_instruction(spv::OpIsNan, block, instruction);
 		break;
