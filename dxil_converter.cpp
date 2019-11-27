@@ -22,6 +22,7 @@
 #include "logging.hpp"
 #include "node.hpp"
 #include "node_pool.hpp"
+#include "GLSL.std.450.h"
 
 #include <utility>
 
@@ -112,10 +113,13 @@ struct Converter::Impl
 	void emit_sample_instruction(DXIL::Op op, CFGNode *block, const llvm::CallInst &instruction);
 
 	void emit_dxil_unary_instruction(spv::Op op, CFGNode *block, const llvm::CallInst &instruction);
+	void emit_dxil_std450_unary_instruction(GLSLstd450 op, CFGNode *block, const llvm::CallInst &instruction);
 
 	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
 	spv::Id build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id, bool comparison);
 	spv::Id build_vector(CFGNode *block, spv::Id element_type, spv::Id *elements, unsigned count);
+
+	spv::Id glsl_std450_ext = 0;
 };
 
 Converter::Converter(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)
@@ -895,6 +899,22 @@ void Converter::Impl::emit_dxil_unary_instruction(spv::Op opcode, CFGNode *block
 	block->ir.operations.push_back(std::move(op));
 }
 
+void Converter::Impl::emit_dxil_std450_unary_instruction(GLSLstd450 opcode, DXIL2SPIRV::CFGNode *block,
+                                                         const llvm::CallInst &instruction)
+{
+	auto &builder = spirv_module.get_builder();
+	if (!glsl_std450_ext)
+		glsl_std450_ext = builder.import("GLSL.std.450");
+
+	Operation op;
+	op.op = spv::OpExtInst;
+	op.id = get_id_for_value(instruction);
+	op.type_id = get_type_id(*instruction.getType());
+	op.arguments = { glsl_std450_ext, get_id_for_value(*instruction.getOperand(1)) };
+
+	block->ir.operations.push_back(std::move(op));
+}
+
 void Converter::Impl::emit_sample_instruction(DXIL::Op opcode, CFGNode *block, const llvm::CallInst &instruction)
 {
 	auto &builder = spirv_module.get_builder();
@@ -1098,6 +1118,62 @@ void Converter::Impl::emit_builtin_instruction(CFGNode *block, const llvm::CallI
 
 	case DXIL::Op::IsInf:
 		emit_dxil_unary_instruction(spv::OpIsInf, block, instruction);
+		break;
+
+	case DXIL::Op::Acos:
+		emit_dxil_std450_unary_instruction(GLSLstd450Acos, block, instruction);
+		break;
+
+	case DXIL::Op::Asin:
+		emit_dxil_std450_unary_instruction(GLSLstd450Asin, block, instruction);
+		break;
+
+	case DXIL::Op::Atan:
+		emit_dxil_std450_unary_instruction(GLSLstd450Atan, block, instruction);
+		break;
+
+	case DXIL::Op::Cos:
+		emit_dxil_std450_unary_instruction(GLSLstd450Cos, block, instruction);
+		break;
+
+	case DXIL::Op::Exp:
+		emit_dxil_std450_unary_instruction(GLSLstd450Exp2, block, instruction);
+		break;
+
+	case DXIL::Op::FAbs:
+		emit_dxil_std450_unary_instruction(GLSLstd450FAbs, block, instruction);
+		break;
+
+	case DXIL::Op::Frc:
+		emit_dxil_std450_unary_instruction(GLSLstd450Fract, block, instruction);
+		break;
+
+	case DXIL::Op::Hcos:
+		emit_dxil_std450_unary_instruction(GLSLstd450Cosh, block, instruction);
+		break;
+
+	case DXIL::Op::Hsin:
+		emit_dxil_std450_unary_instruction(GLSLstd450Sinh, block, instruction);
+		break;
+
+	case DXIL::Op::Htan:
+		emit_dxil_std450_unary_instruction(GLSLstd450Tanh, block, instruction);
+		break;
+
+	case DXIL::Op::Log:
+		emit_dxil_std450_unary_instruction(GLSLstd450Log2, block, instruction);
+		break;
+
+	case DXIL::Op::Rsqrt:
+		emit_dxil_std450_unary_instruction(GLSLstd450InverseSqrt, block, instruction);
+		break;
+
+	case DXIL::Op::Sqrt:
+		emit_dxil_std450_unary_instruction(GLSLstd450Sqrt, block, instruction);
+		break;
+
+	case DXIL::Op::Tan:
+		emit_dxil_std450_unary_instruction(GLSLstd450Tan, block, instruction);
 		break;
 
 	default:

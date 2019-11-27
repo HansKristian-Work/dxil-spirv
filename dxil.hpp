@@ -208,6 +208,23 @@ enum class Op : unsigned
 	TextureLoad = 66,
 
 	IsNan = 8,
-	IsInf = 9
+	IsInf = 9,
+
+	Acos = 15,
+	Asin = 16,
+	Atan = 17,
+	Cos = 12,
+	Exp = 21,
+	FAbs = 6,
+	Frc = 22,
+	Hcos = 18,
+	Hsin = 19,
+	Htan = 20,
+	Log = 23,
+	Rsqrt = 25,
+	Saturate = 7,
+	Sin = 13,
+	Sqrt = 24,
+	Tan = 14
 };
 } // namespace DXIL
