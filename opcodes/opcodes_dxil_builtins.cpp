@@ -340,7 +340,7 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 
 	spv::Id dref_id = 0;
 
-	if (opcode == DXIL::Op::SampleCmp)
+	if (opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero)
 		dref_id = impl.get_id_for_value(instruction->getOperand(10));
 
 	spv::Id aux_argument = 0;
