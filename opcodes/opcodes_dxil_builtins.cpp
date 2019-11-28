@@ -30,7 +30,7 @@ static bool get_constant_operand(const llvm::CallInst *value, unsigned index, ui
 		return false;
 	}
 
-	auto *constant = llvm::dyn_cast<llvm::Constant>(value->getOperand(index));
+	auto *constant = llvm::dyn_cast<llvm::ConstantInt>(value->getOperand(index));
 	if (!constant)
 	{
 		LOGE("Operand is not constant.\n");
@@ -546,7 +546,7 @@ struct DXILDispatcher
 		OP(LoadInput) = emit_load_input_instruction;
 		OP(StoreOutput) = emit_store_output_instruction;
 		OP(CreateHandle) = emit_create_handle_instruction;
-		OP(CBufferLoadLegacy) = emit_create_handle_instruction;
+		OP(CBufferLoadLegacy) = emit_cbuffer_load_legacy_instruction;
 
 		OP(Saturate) = emit_saturate_instruction;
 

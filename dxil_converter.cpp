@@ -444,7 +444,13 @@ void Converter::Impl::emit_stage_output_variables()
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	auto *node = ep_meta->getOperand(0);
 	auto &signature = node->getOperand(2);
-	auto *outputs_node = llvm::cast<llvm::MDNode>(llvm::cast<llvm::MDNode>(signature)->getOperand(1));
+
+	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
+	auto &outputs = signature_node->getOperand(1);
+	if (!outputs)
+		return;
+
+	auto *outputs_node = llvm::dyn_cast<llvm::MDNode>(outputs);
 
 	auto &builder = spirv_module.get_builder();
 
@@ -560,7 +566,13 @@ void Converter::Impl::emit_stage_input_variables()
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	auto *node = ep_meta->getOperand(0);
 	auto &signature = node->getOperand(2);
-	auto *inputs_node = llvm::cast<llvm::MDNode>(llvm::cast<llvm::MDNode>(signature)->getOperand(0));
+
+	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
+	auto &inputs = signature_node->getOperand(0);
+	if (!inputs)
+		return;
+
+	auto *inputs_node = llvm::dyn_cast<llvm::MDNode>(inputs);
 
 	auto &builder = spirv_module.get_builder();
 
