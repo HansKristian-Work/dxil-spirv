@@ -445,6 +445,13 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 	return true;
 }
 
+template <DXIL::Op opcode>
+static bool emit_sample_instruction_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                             const llvm::CallInst *instruction)
+{
+	return emit_sample_instruction(opcode, ops, impl, builder, instruction);
+}
+
 static bool emit_saturate_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                       const llvm::CallInst *instruction)
 {
@@ -508,142 +515,102 @@ static bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, std::vector<O
 	return true;
 }
 
+template <GLSLstd450 opcode>
+static bool std450_binary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
+                                   spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	return emit_dxil_std450_binary_instruction(opcode, ops, impl, builder, instruction);
+}
+
+template <GLSLstd450 opcode>
+static bool std450_unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
+                                  spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	return emit_dxil_std450_unary_instruction(opcode, ops, impl, builder, instruction);
+}
+
+template <spv::Op opcode>
+static bool unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
+                                  spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	return emit_dxil_unary_instruction(opcode, ops, impl, builder, instruction);
+}
+
+struct DXILDispatcher
+{
+#define OP(x) builder_lut[unsigned(DXIL::Op::x)]
+	DXILDispatcher() noexcept
+	{
+		// Work around lack of designated initializers in C++.
+
+		OP(LoadInput) = emit_load_input_instruction;
+		OP(StoreOutput) = emit_store_output_instruction;
+		OP(CreateHandle) = emit_create_handle_instruction;
+		OP(CBufferLoadLegacy) = emit_create_handle_instruction;
+
+		OP(Saturate) = emit_saturate_instruction;
+
+		OP(Sample) = emit_sample_instruction_dispatch<DXIL::Op::Sample>;
+		OP(SampleBias) = emit_sample_instruction_dispatch<DXIL::Op::SampleBias>;
+		OP(SampleLevel) = emit_sample_instruction_dispatch<DXIL::Op::SampleLevel>;
+		OP(SampleCmp) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmp>;
+		OP(SampleCmpLevelZero) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevelZero>;
+
+		OP(FMin) = std450_binary_dispatch<GLSLstd450NMin>;
+		OP(FMax) = std450_binary_dispatch<GLSLstd450NMax>;
+		OP(IMin) = std450_binary_dispatch<GLSLstd450SMin>;
+		OP(IMax) = std450_binary_dispatch<GLSLstd450SMax>;
+		OP(UMin) = std450_binary_dispatch<GLSLstd450UMin>;
+		OP(UMax) = std450_binary_dispatch<GLSLstd450UMax>;
+		OP(IsNan) = unary_dispatch<spv::OpIsNan>;
+		OP(IsInf) = unary_dispatch<spv::OpIsInf>;
+
+		OP(Cos) = std450_unary_dispatch<GLSLstd450Cos>;
+		OP(Sin) = std450_unary_dispatch<GLSLstd450Sin>;
+		OP(Tan) = std450_unary_dispatch<GLSLstd450Tan>;
+		OP(Acos) = std450_unary_dispatch<GLSLstd450Acos>;
+		OP(Asin) = std450_unary_dispatch<GLSLstd450Asin>;
+		OP(Atan) = std450_unary_dispatch<GLSLstd450Atan>;
+		OP(Hcos) = std450_unary_dispatch<GLSLstd450Cosh>;
+		OP(Hsin) = std450_unary_dispatch<GLSLstd450Sinh>;
+		OP(Htan) = std450_unary_dispatch<GLSLstd450Tanh>;
+		OP(Exp) = std450_unary_dispatch<GLSLstd450Exp2>;
+		OP(Log) = std450_unary_dispatch<GLSLstd450Log2>;
+
+		OP(Rsqrt) = std450_unary_dispatch<GLSLstd450InverseSqrt>;
+		OP(Sqrt) = std450_unary_dispatch<GLSLstd450Sqrt>;
+		OP(FAbs) = std450_unary_dispatch<GLSLstd450FAbs>;
+		OP(Frc) = std450_unary_dispatch<GLSLstd450Fract>;
+	}
+
+#undef OP
+
+	DXILOperationBuilder builder_lut[unsigned(DXIL::Op::Count)] = {};
+};
+
+// Sets up LUT once.
+static DXILDispatcher global_dispatcher;
+
 bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                            const llvm::CallInst *instruction)
 {
 	// The opcode is encoded as a constant integer.
-	uint32_t opcode_operand;
-	if (!get_constant_operand(instruction, 0, &opcode_operand))
+	uint32_t opcode;
+	if (!get_constant_operand(instruction, 0, &opcode))
 		return false;
 
-	auto opcode = static_cast<DXIL::Op>(opcode_operand);
-
-	switch (opcode)
+	if (opcode >= unsigned(DXIL::Op::Count))
 	{
-	case DXIL::Op::LoadInput:
-		emit_load_input_instruction(ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::StoreOutput:
-		emit_store_output_instruction(ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::CreateHandle:
-		emit_create_handle_instruction(ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::CBufferLoadLegacy:
-		emit_cbuffer_load_legacy_instruction(ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Sample:
-	case DXIL::Op::SampleBias:
-	case DXIL::Op::SampleLevel:
-	case DXIL::Op::SampleCmp:
-	case DXIL::Op::SampleCmpLevelZero:
-		emit_sample_instruction(opcode, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Saturate:
-		emit_saturate_instruction(ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::FMin:
-		emit_dxil_std450_binary_instruction(GLSLstd450NMin, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::FMax:
-		emit_dxil_std450_binary_instruction(GLSLstd450NMax, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::IMin:
-		emit_dxil_std450_binary_instruction(GLSLstd450SMin, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::IMax:
-		emit_dxil_std450_binary_instruction(GLSLstd450SMax, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::UMin:
-		emit_dxil_std450_binary_instruction(GLSLstd450UMin, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::UMax:
-		emit_dxil_std450_binary_instruction(GLSLstd450UMax, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::IsNan:
-		emit_dxil_unary_instruction(spv::OpIsNan, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::IsInf:
-		emit_dxil_unary_instruction(spv::OpIsInf, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Acos:
-		emit_dxil_std450_unary_instruction(GLSLstd450Acos, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Asin:
-		emit_dxil_std450_unary_instruction(GLSLstd450Asin, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Atan:
-		emit_dxil_std450_unary_instruction(GLSLstd450Atan, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Cos:
-		emit_dxil_std450_unary_instruction(GLSLstd450Cos, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Exp:
-		emit_dxil_std450_unary_instruction(GLSLstd450Exp2, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::FAbs:
-		emit_dxil_std450_unary_instruction(GLSLstd450FAbs, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Frc:
-		emit_dxil_std450_unary_instruction(GLSLstd450Fract, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Hcos:
-		emit_dxil_std450_unary_instruction(GLSLstd450Cosh, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Hsin:
-		emit_dxil_std450_unary_instruction(GLSLstd450Sinh, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Htan:
-		emit_dxil_std450_unary_instruction(GLSLstd450Tanh, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Log:
-		emit_dxil_std450_unary_instruction(GLSLstd450Log2, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Rsqrt:
-		emit_dxil_std450_unary_instruction(GLSLstd450InverseSqrt, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Sqrt:
-		emit_dxil_std450_unary_instruction(GLSLstd450Sqrt, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Tan:
-		emit_dxil_std450_unary_instruction(GLSLstd450Tan, ops, impl, builder, instruction);
-		break;
-
-	case DXIL::Op::Sin:
-		emit_dxil_std450_unary_instruction(GLSLstd450Sin, ops, impl, builder, instruction);
-		break;
-
-	default:
+		LOGE("DXIL opcode %u is out of range.\n", opcode);
 		return false;
 	}
 
-	return true;
+	if (global_dispatcher.builder_lut[opcode] == nullptr)
+	{
+		LOGE("Unimplemented DXIL opcode %u\n", opcode);
+		return false;
+	}
+
+	return global_dispatcher.builder_lut[opcode](ops, impl, builder, instruction);
 }
 } // namespace DXIL2SPIRV
