@@ -667,6 +667,18 @@ spv::Id Converter::Impl::build_vector(std::vector<Operation> &ops, spv::Id eleme
 	return id;
 }
 
+spv::Id Converter::Impl::build_constant_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements,
+                                               unsigned count)
+{
+	if (count == 1)
+		return elements[0];
+
+	auto &builder = spirv_module.get_builder();
+	return builder.makeCompositeConstant(
+			builder.makeVectorType(element_type, count),
+			{ elements, elements + count });
+}
+
 bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction)
 {
 	PHI phi;

@@ -424,7 +424,7 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 
 	if (image_ops & spv::ImageOperandsConstOffsetMask)
 	{
-		op.arguments.push_back(impl.build_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
+		op.arguments.push_back(impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
 	}
 
 	if (image_ops & spv::ImageOperandsMinLodMask)

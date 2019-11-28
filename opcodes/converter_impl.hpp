@@ -96,6 +96,7 @@ struct Converter::Impl
 
 	spv::Id build_sampled_image(std::vector<Operation> &ops, spv::Id image_id, spv::Id sampler_id, bool comparison);
 	spv::Id build_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
+	spv::Id build_constant_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
 
 	spv::Id glsl_std450_ext = 0;
 

@@ -13,13 +13,13 @@ float2 main(float4 UV : TEXCOORD) : SV_Target
 	float2 res = 0.0.xx;
 
 	// Sample without bias.
-	res += Tex1D.Sample(Samp, UV.x);
-	res += Tex1DArray.Sample(Samp, UV.xy);
-	res += Tex2D.Sample(Samp, UV.xy);
-	res += Tex2DArray.Sample(Samp, UV.xyz);
-	res += Tex3D.Sample(Samp, UV.xyz);
-	res += TexCube.Sample(Samp, UV.xyz);
-	res += TexCubeArray.Sample(Samp, UV);
+	res += Tex1D.Sample(Samp, UV.x, 1);
+	res += Tex1DArray.Sample(Samp, UV.xy, 2);
+	res += Tex2D.Sample(Samp, UV.xy, int2(3, 4));
+	res += Tex2DArray.Sample(Samp, UV.xyz, int2(5, 6));
+	res += Tex3D.Sample(Samp, UV.xyz, int3(7, 6, 5));
+
+	// TextureCube does not support offset.
 
 	return res;
 }

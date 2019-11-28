@@ -17,17 +17,15 @@ void main()
     vec4 _63 = texture(sampler1D(Tex1D, Samp), TEXCOORD.x);
     vec4 _69 = texture(sampler1DArray(Tex1DArray, Samp), vec2(TEXCOORD.x, TEXCOORD.y));
     float _71 = _69.x;
-    vec4 _75 = texture(sampler1DArray(Tex1DArray, Samp), vec2(TEXCOORD.x, TEXCOORD.y));
-    float _77 = _75.x;
-    vec4 _83 = texture(sampler2D(Tex2D, Samp), vec2(TEXCOORD.x, TEXCOORD.y));
-    vec4 _92 = texture(sampler2DArray(Tex2DArray, Samp), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z));
-    float _95 = _92.x;
-    vec4 _101 = texture(sampler3D(Tex3D, Samp), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z));
-    vec4 _110 = texture(samplerCube(TexCube, Samp), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z));
-    vec4 _119 = texture(samplerCubeArray(TexCubeArray, Samp), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w));
-    float _121 = _119.x;
-    SV_Target.x = ((((((_71 + _63.x) + _77) + _83.x) + _95) + _101.x) + _110.x) + _121;
-    SV_Target.y = ((((((_71 + _63.y) + _77) + _83.y) + _95) + _101.y) + _110.y) + _121;
+    vec4 _77 = texture(sampler2D(Tex2D, Samp), vec2(TEXCOORD.x, TEXCOORD.y));
+    vec4 _86 = texture(sampler2DArray(Tex2DArray, Samp), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z));
+    float _89 = _86.x;
+    vec4 _95 = texture(sampler3D(Tex3D, Samp), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z));
+    vec4 _104 = texture(samplerCube(TexCube, Samp), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z));
+    vec4 _113 = texture(samplerCubeArray(TexCubeArray, Samp), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w));
+    float _115 = _113.x;
+    SV_Target.x = (((((_71 + _63.x) + _77.x) + _89) + _95.x) + _104.x) + _115;
+    SV_Target.y = (((((_71 + _63.y) + _77.y) + _89) + _95.y) + _104.y) + _115;
 }
 
 
@@ -81,35 +79,31 @@ define void @main() {
   %9 = extractvalue %dx.types.ResRet.f32 %8, 0
   %.i0 = fadd fast float %9, %6
   %.i1 = fadd fast float %9, %7
-  %10 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %Tex1DArray_texture_1darray, %dx.types.Handle %Samp_sampler, float %1, float %2, float undef, float undef, i32 undef, i32 undef, i32 undef, float undef)
+  %10 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %Tex2D_texture_2d, %dx.types.Handle %Samp_sampler, float %1, float %2, float undef, float undef, i32 undef, i32 undef, i32 undef, float undef)
   %11 = extractvalue %dx.types.ResRet.f32 %10, 0
+  %12 = extractvalue %dx.types.ResRet.f32 %10, 1
   %.i01 = fadd fast float %.i0, %11
-  %.i12 = fadd fast float %.i1, %11
-  %12 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %Tex2D_texture_2d, %dx.types.Handle %Samp_sampler, float %1, float %2, float undef, float undef, i32 undef, i32 undef, i32 undef, float undef)
-  %13 = extractvalue %dx.types.ResRet.f32 %12, 0
-  %14 = extractvalue %dx.types.ResRet.f32 %12, 1
-  %.i03 = fadd fast float %.i01, %13
+  %.i12 = fadd fast float %.i1, %12
+  %13 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %Tex2DArray_texture_2darray, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float undef, i32 undef, i32 undef, i32 undef, float undef)
+  %14 = extractvalue %dx.types.ResRet.f32 %13, 0
+  %.i03 = fadd fast float %.i01, %14
   %.i14 = fadd fast float %.i12, %14
-  %15 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %Tex2DArray_texture_2darray, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float undef, i32 undef, i32 undef, i32 undef, float undef)
+  %15 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %Tex3D_texture_3d, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float undef, i32 undef, i32 undef, i32 undef, float undef)
   %16 = extractvalue %dx.types.ResRet.f32 %15, 0
+  %17 = extractvalue %dx.types.ResRet.f32 %15, 1
   %.i05 = fadd fast float %.i03, %16
-  %.i16 = fadd fast float %.i14, %16
-  %17 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %Tex3D_texture_3d, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float undef, i32 undef, i32 undef, i32 undef, float undef)
-  %18 = extractvalue %dx.types.ResRet.f32 %17, 0
-  %19 = extractvalue %dx.types.ResRet.f32 %17, 1
-  %.i07 = fadd fast float %.i05, %18
-  %.i18 = fadd fast float %.i16, %19
-  %20 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %TexCube_texture_cube, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float undef, i32 undef, i32 undef, i32 undef, float undef)
-  %21 = extractvalue %dx.types.ResRet.f32 %20, 0
-  %22 = extractvalue %dx.types.ResRet.f32 %20, 1
-  %.i09 = fadd fast float %.i07, %21
+  %.i16 = fadd fast float %.i14, %17
+  %18 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %TexCube_texture_cube, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float undef, i32 undef, i32 undef, i32 undef, float undef)
+  %19 = extractvalue %dx.types.ResRet.f32 %18, 0
+  %20 = extractvalue %dx.types.ResRet.f32 %18, 1
+  %.i07 = fadd fast float %.i05, %19
+  %.i18 = fadd fast float %.i16, %20
+  %21 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %TexCubeArray_texture_cubearray, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float %4, i32 undef, i32 undef, i32 undef, float undef)
+  %22 = extractvalue %dx.types.ResRet.f32 %21, 0
+  %.i09 = fadd fast float %.i07, %22
   %.i110 = fadd fast float %.i18, %22
-  %23 = call %dx.types.ResRet.f32 @dx.op.sample.f32(i32 60, %dx.types.Handle %TexCubeArray_texture_cubearray, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float %4, i32 undef, i32 undef, i32 undef, float undef)
-  %24 = extractvalue %dx.types.ResRet.f32 %23, 0
-  %.i011 = fadd fast float %.i09, %24
-  %.i112 = fadd fast float %.i110, %24
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %.i011)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %.i112)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %.i09)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %.i110)
   ret void
 }
 
@@ -180,7 +174,7 @@ attributes #2 = { nounwind readonly }
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 129
+; Bound: 123
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageCubeArray
@@ -264,22 +258,22 @@ OpDecorate %35 Location 0
 %62 = OpConstant %61 0
 %66 = OpTypeImage %5 1D 0 1 0 2 Unknown
 %68 = OpTypeSampledImage %66
-%80 = OpTypeImage %5 2D 0 0 0 2 Unknown
-%82 = OpTypeSampledImage %80
-%89 = OpTypeImage %5 2D 0 1 0 2 Unknown
-%91 = OpTypeSampledImage %89
-%94 = OpTypeVector %5 3
-%98 = OpTypeImage %5 3D 0 0 0 2 Unknown
-%100 = OpTypeSampledImage %98
-%107 = OpTypeImage %5 Cube 0 0 0 2 Unknown
-%109 = OpTypeSampledImage %107
-%116 = OpTypeImage %5 Cube 0 1 0 2 Unknown
-%118 = OpTypeSampledImage %116
-%125 = OpTypePointer Output %5
+%74 = OpTypeImage %5 2D 0 0 0 2 Unknown
+%76 = OpTypeSampledImage %74
+%83 = OpTypeImage %5 2D 0 1 0 2 Unknown
+%85 = OpTypeSampledImage %83
+%88 = OpTypeVector %5 3
+%92 = OpTypeImage %5 3D 0 0 0 2 Unknown
+%94 = OpTypeSampledImage %92
+%101 = OpTypeImage %5 Cube 0 0 0 2 Unknown
+%103 = OpTypeSampledImage %101
+%110 = OpTypeImage %5 Cube 0 1 0 2 Unknown
+%112 = OpTypeSampledImage %110
+%119 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %127
-%127 = OpLabel
+OpBranch %121
+%121 = OpLabel
 %36 = OpLoad %24 %26
 %37 = OpLoad %21 %23
 %38 = OpLoad %18 %20
@@ -306,49 +300,43 @@ OpBranch %127
 %71 = OpCompositeExtract %5 %69 0
 %72 = OpFAdd %5 %71 %64
 %73 = OpFAdd %5 %71 %65
-%74 = OpSampledImage %68 %41 %43
-%76 = OpCompositeConstruct %33 %48 %51
-%75 = OpImageSampleImplicitLod %30 %74 %76 None
-%77 = OpCompositeExtract %5 %75 0
-%78 = OpFAdd %5 %72 %77
-%79 = OpFAdd %5 %73 %77
-%81 = OpSampledImage %82 %40 %43
-%84 = OpCompositeConstruct %33 %48 %51
-%83 = OpImageSampleImplicitLod %30 %81 %84 None
-%85 = OpCompositeExtract %5 %83 0
-%86 = OpCompositeExtract %5 %83 1
-%87 = OpFAdd %5 %78 %85
-%88 = OpFAdd %5 %79 %86
-%90 = OpSampledImage %91 %39 %43
-%93 = OpCompositeConstruct %94 %48 %51 %54
-%92 = OpImageSampleImplicitLod %30 %90 %93 None
-%95 = OpCompositeExtract %5 %92 0
-%96 = OpFAdd %5 %87 %95
-%97 = OpFAdd %5 %88 %95
-%99 = OpSampledImage %100 %38 %43
-%102 = OpCompositeConstruct %94 %48 %51 %54
-%101 = OpImageSampleImplicitLod %30 %99 %102 None
-%103 = OpCompositeExtract %5 %101 0
-%104 = OpCompositeExtract %5 %101 1
-%105 = OpFAdd %5 %96 %103
-%106 = OpFAdd %5 %97 %104
-%108 = OpSampledImage %109 %37 %43
-%111 = OpCompositeConstruct %94 %48 %51 %54
-%110 = OpImageSampleImplicitLod %30 %108 %111 None
-%112 = OpCompositeExtract %5 %110 0
-%113 = OpCompositeExtract %5 %110 1
-%114 = OpFAdd %5 %105 %112
-%115 = OpFAdd %5 %106 %113
-%117 = OpSampledImage %118 %36 %43
-%120 = OpCompositeConstruct %30 %48 %51 %54 %57
-%119 = OpImageSampleImplicitLod %30 %117 %120 None
-%121 = OpCompositeExtract %5 %119 0
-%122 = OpFAdd %5 %114 %121
-%123 = OpFAdd %5 %115 %121
-%124 = OpInBoundsAccessChain %125 %35 %47
-OpStore %124 %122
-%126 = OpInBoundsAccessChain %125 %35 %50
-OpStore %126 %123
+%75 = OpSampledImage %76 %40 %43
+%78 = OpCompositeConstruct %33 %48 %51
+%77 = OpImageSampleImplicitLod %30 %75 %78 None
+%79 = OpCompositeExtract %5 %77 0
+%80 = OpCompositeExtract %5 %77 1
+%81 = OpFAdd %5 %72 %79
+%82 = OpFAdd %5 %73 %80
+%84 = OpSampledImage %85 %39 %43
+%87 = OpCompositeConstruct %88 %48 %51 %54
+%86 = OpImageSampleImplicitLod %30 %84 %87 None
+%89 = OpCompositeExtract %5 %86 0
+%90 = OpFAdd %5 %81 %89
+%91 = OpFAdd %5 %82 %89
+%93 = OpSampledImage %94 %38 %43
+%96 = OpCompositeConstruct %88 %48 %51 %54
+%95 = OpImageSampleImplicitLod %30 %93 %96 None
+%97 = OpCompositeExtract %5 %95 0
+%98 = OpCompositeExtract %5 %95 1
+%99 = OpFAdd %5 %90 %97
+%100 = OpFAdd %5 %91 %98
+%102 = OpSampledImage %103 %37 %43
+%105 = OpCompositeConstruct %88 %48 %51 %54
+%104 = OpImageSampleImplicitLod %30 %102 %105 None
+%106 = OpCompositeExtract %5 %104 0
+%107 = OpCompositeExtract %5 %104 1
+%108 = OpFAdd %5 %99 %106
+%109 = OpFAdd %5 %100 %107
+%111 = OpSampledImage %112 %36 %43
+%114 = OpCompositeConstruct %30 %48 %51 %54 %57
+%113 = OpImageSampleImplicitLod %30 %111 %114 None
+%115 = OpCompositeExtract %5 %113 0
+%116 = OpFAdd %5 %108 %115
+%117 = OpFAdd %5 %109 %115
+%118 = OpInBoundsAccessChain %119 %35 %47
+OpStore %118 %116
+%120 = OpInBoundsAccessChain %119 %35 %50
+OpStore %120 %117
 OpReturn
 OpFunctionEnd
 #endif
