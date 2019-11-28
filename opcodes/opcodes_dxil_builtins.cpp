@@ -349,9 +349,9 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 
 	for (unsigned i = 0; i < num_coords; i++)
 	{
-		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(i + 7)))
+		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(i + 6)))
 		{
-			auto *constant_arg = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(i + 7));
+			auto *constant_arg = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(i + 6));
 			if (!constant_arg)
 			{
 				LOGE("Sampling offset must be a constant int.\n");
@@ -382,6 +382,7 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 	op.id = impl.get_id_for_value(instruction);
 	op.arguments.push_back(image_id);
 	op.arguments.push_back(impl.build_vector(ops, builder.makeUintType(32), coord, num_coords_full));
+	op.arguments.push_back(image_ops);
 
 	if (!is_uav)
 	{
@@ -397,6 +398,8 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 		if (image_ops & spv::ImageOperandsSampleMask)
 			op.arguments.push_back(mip_or_sample);
 	}
+	else
+		builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
 
 	ops.push_back(std::move(op));
 	return true;
