@@ -282,8 +282,8 @@ static bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Co
 	return true;
 }
 
-static bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder,
-                                 spv::Id image_id, uint32_t *num_coords, uint32_t *num_dimensions)
+static bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder, spv::Id image_id, uint32_t *num_coords,
+                                 uint32_t *num_dimensions)
 {
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
@@ -314,8 +314,8 @@ static bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder,
 	return true;
 }
 
-static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
-                                          spv::Builder &builder, const llvm::CallInst *instruction)
+static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                          const llvm::CallInst *instruction)
 {
 	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
 	spv::Id image_type_id = impl.get_type_id(image_id);
@@ -391,7 +391,7 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 		if (image_ops & spv::ImageOperandsConstOffsetMask)
 		{
 			op.arguments.push_back(
-					impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
+			    impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
 		}
 
 		if (image_ops & spv::ImageOperandsSampleMask)
@@ -402,8 +402,8 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 	return true;
 }
 
-static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
-                                         spv::Builder &builder, const llvm::CallInst *instruction)
+static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                         const llvm::CallInst *instruction)
 {
 	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
 	spv::Id sampler_id = impl.handle_to_ptr_id[instruction->getOperand(2)];
@@ -704,22 +704,22 @@ static bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, std::vector<O
 }
 
 template <GLSLstd450 opcode>
-static bool std450_binary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
-                                   spv::Builder &builder, const llvm::CallInst *instruction)
+static bool std450_binary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                   const llvm::CallInst *instruction)
 {
 	return emit_dxil_std450_binary_instruction(opcode, ops, impl, builder, instruction);
 }
 
 template <GLSLstd450 opcode>
-static bool std450_unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
-                                  spv::Builder &builder, const llvm::CallInst *instruction)
+static bool std450_unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                  const llvm::CallInst *instruction)
 {
 	return emit_dxil_std450_unary_instruction(opcode, ops, impl, builder, instruction);
 }
 
 template <spv::Op opcode>
-static bool unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
-                                  spv::Builder &builder, const llvm::CallInst *instruction)
+static bool unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                           const llvm::CallInst *instruction)
 {
 	return emit_dxil_unary_instruction(opcode, ops, impl, builder, instruction);
 }

@@ -197,12 +197,12 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		}
 
 		spv::Id type_id =
-				builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
-				                      image_dimension_is_arrayed(resource_kind),
-				                      image_dimension_is_multisampled(resource_kind), 2, spv::ImageFormatUnknown);
+		    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
+		                          image_dimension_is_arrayed(resource_kind),
+		                          image_dimension_is_multisampled(resource_kind), 2, spv::ImageFormatUnknown);
 
 		spv::Id var_id =
-				builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
+		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
@@ -727,9 +727,7 @@ spv::Id Converter::Impl::build_constant_vector(std::vector<Operation> &ops, spv:
 		return elements[0];
 
 	auto &builder = spirv_module.get_builder();
-	return builder.makeCompositeConstant(
-			builder.makeVectorType(element_type, count),
-			{ elements, elements + count });
+	return builder.makeCompositeConstant(builder.makeVectorType(element_type, count), { elements, elements + count });
 }
 
 bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction)
