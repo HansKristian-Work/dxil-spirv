@@ -94,24 +94,11 @@ struct Converter::Impl
 	bool emit_instruction(CFGNode *block, const llvm::Instruction &instruction);
 	bool emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
 
-	// DXIL intrinsics.
-	bool emit_builtin_instruction(CFGNode *block, const llvm::CallInst &instruction);
-
-	void emit_load_input_instruction(CFGNode *block, const llvm::CallInst &instruction);
-	void emit_store_output_instruction(CFGNode *block, const llvm::CallInst &instruction);
-	void emit_create_handle_instruction(CFGNode *block, const llvm::CallInst &instruction);
-	void emit_cbuffer_load_legacy_instruction(CFGNode *block, const llvm::CallInst &instruction);
-	void emit_sample_instruction(DXIL::Op op, CFGNode *block, const llvm::CallInst &instruction);
-	void emit_saturate_instruction(CFGNode *block, const llvm::CallInst &instruction);
-
-	void emit_dxil_unary_instruction(spv::Op op, CFGNode *block, const llvm::CallInst &instruction);
-	void emit_dxil_std450_unary_instruction(GLSLstd450 op, CFGNode *block, const llvm::CallInst &instruction);
-	void emit_dxil_std450_binary_instruction(GLSLstd450 op, CFGNode *block, const llvm::CallInst &instruction);
-
-	static uint32_t get_constant_operand(const llvm::CallInst &value, unsigned index);
-	spv::Id build_sampled_image(CFGNode *block, spv::Id image_id, spv::Id sampler_id, bool comparison);
-	spv::Id build_vector(CFGNode *block, spv::Id element_type, spv::Id *elements, unsigned count);
+	spv::Id build_sampled_image(std::vector<Operation> &ops, spv::Id image_id, spv::Id sampler_id, bool comparison);
+	spv::Id build_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
 
 	spv::Id glsl_std450_ext = 0;
+
+	spv::Id allocate_id();
 };
 }

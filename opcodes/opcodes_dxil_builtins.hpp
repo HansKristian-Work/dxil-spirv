@@ -18,13 +18,10 @@
 
 #pragma once
 
-#include "ir.hpp"
-#include "dxil_converter.hpp"
-
-#include <llvm/IR/Instructions.h>
-#include <vector>
+#include "opcodes.hpp"
 
 namespace DXIL2SPIRV
 {
+using DXILOperationBuilder = bool (*)(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::CallInst *instruction);
+bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::CallInst *instruction);
 }
-
