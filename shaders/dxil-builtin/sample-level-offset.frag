@@ -12,13 +12,11 @@ float2 main(float4 UV : TEXCOORD) : SV_Target
 {
 	float2 res = 0.0.xx;
 
-	res += Tex1D.SampleLevel(Samp, UV.x, UV.w);
-	res += Tex1DArray.SampleLevel(Samp, UV.xy, UV.w);
-	res += Tex2D.SampleLevel(Samp, UV.xy, UV.w);
-	res += Tex2DArray.SampleLevel(Samp, UV.xyz, UV.w);
-	res += Tex3D.SampleLevel(Samp, UV.xyz, UV.w);
-	res += TexCube.SampleLevel(Samp, UV.xyz, UV.w);
-	res += TexCubeArray.SampleLevel(Samp, UV, UV.w);
+	res += Tex1D.SampleLevel(Samp, UV.x, UV.w, 1);
+	res += Tex1DArray.SampleLevel(Samp, UV.xy, UV.w, 2);
+	res += Tex2D.SampleLevel(Samp, UV.xy, UV.w, int2(2, 3));
+	res += Tex2DArray.SampleLevel(Samp, UV.xyz, UV.w, int2(-1, -3));
+	res += Tex3D.SampleLevel(Samp, UV.xyz, UV.w, int3(-4, -5, 3));
 
 	return res;
 }
