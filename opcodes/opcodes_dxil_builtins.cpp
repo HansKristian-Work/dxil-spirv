@@ -271,6 +271,113 @@ static bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Co
 	return true;
 }
 
+static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
+                                         spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
+	spv::Id sampler_id = impl.handle_to_ptr_id[instruction->getOperand(2)];
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
+
+	spv::Id image_type_id = impl.get_type_id(image_id);
+	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
+	bool arrayed = builder.isArrayedImageType(image_type_id);
+
+	unsigned num_coords;
+	switch (dim)
+	{
+	case spv::Dim1D:
+	case spv::DimBuffer:
+		num_coords = 1;
+		break;
+
+	case spv::Dim2D:
+		num_coords = 2;
+		break;
+
+	case spv::Dim3D:
+	case spv::DimCube:
+		num_coords = 3;
+		break;
+
+	default:
+		LOGE("Unexpected sample dimensionality.\n");
+		return false;
+	}
+
+	unsigned num_coords_full = arrayed ? num_coords + 1 : num_coords;
+	uint32_t image_ops = spv::ImageOperandsGradMask;
+
+	spv::Id coord[4] = {};
+	for (unsigned i = 0; i < num_coords_full; i++)
+		coord[i] = impl.get_id_for_value(instruction->getOperand(i + 3));
+
+	spv::Id offsets[3] = {};
+	for (unsigned i = 0; i < num_coords; i++)
+	{
+		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(i + 7)))
+		{
+			auto *constant_arg = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(i + 7));
+			if (!constant_arg)
+			{
+				LOGE("Sampling offset must be a constant int.\n");
+				return false;
+			}
+			image_ops |= spv::ImageOperandsConstOffsetMask;
+			offsets[i] = builder.makeIntConstant(int(constant_arg->getUniqueInteger().getSExtValue()));
+		}
+		else
+			offsets[i] = builder.makeIntConstant(0);
+	}
+
+	spv::Id grad_x[3] = {};
+	spv::Id grad_y[3] = {};
+	for (unsigned i = 0; i < num_coords; i++)
+		grad_x[i] = impl.get_id_for_value(instruction->getOperand(i + 10));
+	for (unsigned i = 0; i < num_coords; i++)
+		grad_y[i] = impl.get_id_for_value(instruction->getOperand(i + 13));
+
+	spv::Id aux_argument = 0;
+	if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(16)))
+	{
+		aux_argument = impl.get_id_for_value(instruction->getOperand(16));
+		image_ops |= spv::ImageOperandsMinLodMask;
+		builder.addCapability(spv::CapabilityMinLod);
+	}
+
+	Operation op;
+	op.op = spv::OpImageSampleExplicitLod;
+	op.id = impl.get_id_for_value(instruction);
+	auto *result_type = instruction->getType();
+	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
+	{
+		LOGE("Expected return type is a struct.\n");
+		return false;
+	}
+
+	// For tiled resources, there is a status result in the 5th member, but as long as noone attempts to extract it,
+	// we should be fine ...
+	assert(result_type->getStructNumElements() == 5);
+	op.type_id = impl.get_type_id(result_type->getStructElementType(0));
+	op.type_id = builder.makeVectorType(op.type_id, 4);
+
+	op.arguments.push_back(combined_image_sampler_id);
+	op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), coord, num_coords_full));
+	op.arguments.push_back(image_ops);
+
+	if (image_ops & spv::ImageOperandsGradMask)
+	{
+		op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), grad_x, num_coords));
+		op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), grad_y, num_coords));
+	}
+	if (image_ops & spv::ImageOperandsConstOffsetMask)
+		op.arguments.push_back(impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
+	if (image_ops & spv::ImageOperandsMinLodMask)
+		op.arguments.push_back(aux_argument);
+
+	ops.push_back(std::move(op));
+	return true;
+}
+
 static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl,
                                     spv::Builder &builder, const llvm::CallInst *instruction)
 {
@@ -423,9 +530,7 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 		op.arguments.push_back(aux_argument);
 
 	if (image_ops & spv::ImageOperandsConstOffsetMask)
-	{
 		op.arguments.push_back(impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
-	}
 
 	if (image_ops & spv::ImageOperandsMinLodMask)
 		op.arguments.push_back(aux_argument);
@@ -555,6 +660,7 @@ struct DXILDispatcher
 		OP(SampleLevel) = emit_sample_instruction_dispatch<DXIL::Op::SampleLevel>;
 		OP(SampleCmp) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmp>;
 		OP(SampleCmpLevelZero) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevelZero>;
+		OP(SampleGrad) = emit_sample_grad_instruction;
 
 		OP(FMin) = std450_binary_dispatch<GLSLstd450NMin>;
 		OP(FMax) = std450_binary_dispatch<GLSLstd450NMax>;
