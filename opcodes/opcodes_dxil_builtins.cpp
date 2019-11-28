@@ -74,7 +74,8 @@ static bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::
 	else
 		ptr_id = var_id;
 
-	bool need_bitcast_after_load = impl.get_type_id(meta.component_type, 1, 1) != impl.get_type_id(instruction->getType());
+	bool need_bitcast_after_load =
+	    impl.get_type_id(meta.component_type, 1, 1) != impl.get_type_id(instruction->getType());
 	spv::Id loaded_id = need_bitcast_after_load ? impl.allocate_id() : impl.get_id_for_value(instruction);
 
 	op = {};
@@ -135,8 +136,7 @@ static bool emit_store_output_instruction(std::vector<Operation> &ops, Converter
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
 	// Need to bitcast before we can store.
-	if (impl.get_type_id(meta.component_type, 1, 1) !=
-			impl.get_type_id(instruction->getOperand(4)->getType()))
+	if (impl.get_type_id(meta.component_type, 1, 1) != impl.get_type_id(instruction->getOperand(4)->getType()))
 	{
 		Operation bitcast_op;
 		bitcast_op.op = spv::OpBitcast;
@@ -216,9 +216,8 @@ static bool emit_create_handle_instruction(std::vector<Operation> &ops, Converte
 	return true;
 }
 
-static bool
-emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                     const llvm::CallInst *instruction)
+static bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
+                                                 spv::Builder &builder, const llvm::CallInst *instruction)
 {
 	// This function returns a struct, but ignore that, and just return a vec4 for now.
 	// extractvalue is used to pull out components and that works for vectors as well.
@@ -272,9 +271,8 @@ emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Converter::Imp
 	return true;
 }
 
-static bool
-emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                        const llvm::CallInst *instruction)
+static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl,
+                                    spv::Builder &builder, const llvm::CallInst *instruction)
 {
 	bool comparison_sampling = opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero;
 
@@ -457,20 +455,15 @@ static bool emit_saturate_instruction(std::vector<Operation> &ops, Converter::Im
 	op.op = spv::OpExtInst;
 	op.id = impl.get_id_for_value(instruction);
 	op.type_id = impl.get_type_id(instruction->getType());
-	op.arguments = {
-			impl.glsl_std450_ext, GLSLstd450NClamp,
-			impl.get_id_for_value(instruction->getOperand(1)),
-			builder.makeFloatConstant(0.0f),
-			builder.makeFloatConstant(1.0f)
-	};
+	op.arguments = { impl.glsl_std450_ext, GLSLstd450NClamp, impl.get_id_for_value(instruction->getOperand(1)),
+		             builder.makeFloatConstant(0.0f), builder.makeFloatConstant(1.0f) };
 
 	ops.push_back(std::move(op));
 	return true;
 }
 
-static bool
-emit_dxil_unary_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                            const llvm::CallInst *instruction)
+static bool emit_dxil_unary_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl,
+                                        spv::Builder &builder, const llvm::CallInst *instruction)
 {
 	Operation op;
 	op.op = opcode;
@@ -508,16 +501,12 @@ static bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, std::vector<O
 	op.op = spv::OpExtInst;
 	op.id = impl.get_id_for_value(instruction);
 	op.type_id = impl.get_type_id(instruction->getType());
-	op.arguments = {
-			impl.glsl_std450_ext, opcode,
-			impl.get_id_for_value(instruction->getOperand(1)),
-			impl.get_id_for_value(instruction->getOperand(2))
-	};
+	op.arguments = { impl.glsl_std450_ext, opcode, impl.get_id_for_value(instruction->getOperand(1)),
+		             impl.get_id_for_value(instruction->getOperand(2)) };
 
 	ops.push_back(std::move(op));
 	return true;
 }
-
 
 bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                            const llvm::CallInst *instruction)
@@ -657,4 +646,4 @@ bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, s
 
 	return true;
 }
-}
+} // namespace DXIL2SPIRV

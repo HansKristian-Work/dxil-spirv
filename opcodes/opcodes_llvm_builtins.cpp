@@ -260,10 +260,8 @@ bool emit_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, 
 {
 	Operation op;
 	op.op = spv::OpStore;
-	op.arguments = {
-		impl.get_id_for_value(instruction->getOperand(1)),
-		impl.get_id_for_value(instruction->getOperand(0))
-	};
+	op.arguments = { impl.get_id_for_value(instruction->getOperand(1)),
+		             impl.get_id_for_value(instruction->getOperand(0)) };
 
 	ops.push_back(std::move(op));
 	return true;
@@ -448,4 +446,4 @@ bool emit_select_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
 	ops.push_back(std::move(op));
 	return true;
 }
-}
+} // namespace DXIL2SPIRV

@@ -17,8 +17,8 @@
  */
 
 #include "opcodes/converter_impl.hpp"
-#include "opcodes/opcodes_llvm_builtins.hpp"
 #include "opcodes/opcodes_dxil_builtins.hpp"
+#include "opcodes/opcodes_llvm_builtins.hpp"
 
 #include "logging.hpp"
 #include "node.hpp"
@@ -612,7 +612,8 @@ void Converter::Impl::emit_stage_input_variables()
 	}
 }
 
-spv::Id Converter::Impl::build_sampled_image(std::vector<Operation> &ops, spv::Id image_id, spv::Id sampler_id, bool comparison)
+spv::Id Converter::Impl::build_sampled_image(std::vector<Operation> &ops, spv::Id image_id, spv::Id sampler_id,
+                                             bool comparison)
 {
 	auto &builder = spirv_module.get_builder();
 	spv::Id image_type_id = get_type_id(image_id);
@@ -635,7 +636,8 @@ spv::Id Converter::Impl::build_sampled_image(std::vector<Operation> &ops, spv::I
 	return id;
 }
 
-spv::Id Converter::Impl::build_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count)
+spv::Id Converter::Impl::build_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements,
+                                      unsigned count)
 {
 	if (count == 1)
 		return elements[0];

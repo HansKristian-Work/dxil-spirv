@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include "ir.hpp"
 #include "dxil_converter.hpp"
+#include "ir.hpp"
 
 #include <llvm/IR/Instructions.h>
 #include <vector>
@@ -27,4 +27,3 @@
 namespace DXIL2SPIRV
 {
 }
-

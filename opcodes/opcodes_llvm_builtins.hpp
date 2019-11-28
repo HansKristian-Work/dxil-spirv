@@ -22,14 +22,24 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_binary_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::BinaryOperator *instruction);
-bool emit_unary_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::UnaryOperator *instruction);
-bool emit_cast_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::CastInst *instruction);
-bool emit_getelementptr_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::GetElementPtrInst *instruction);
-bool emit_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::LoadInst *instruction);
-bool emit_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::StoreInst *instruction);
-bool emit_compare_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::CmpInst *instruction);
-bool emit_extract_value_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::ExtractValueInst *instruction);
-bool emit_alloca_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::AllocaInst *instruction);
-bool emit_select_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder, const llvm::SelectInst *instruction);
-}
+bool emit_binary_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                             const llvm::BinaryOperator *instruction);
+bool emit_unary_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                            const llvm::UnaryOperator *instruction);
+bool emit_cast_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                           const llvm::CastInst *instruction);
+bool emit_getelementptr_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                    const llvm::GetElementPtrInst *instruction);
+bool emit_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                           const llvm::LoadInst *instruction);
+bool emit_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                            const llvm::StoreInst *instruction);
+bool emit_compare_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                              const llvm::CmpInst *instruction);
+bool emit_extract_value_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                    const llvm::ExtractValueInst *instruction);
+bool emit_alloca_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                             const llvm::AllocaInst *instruction);
+bool emit_select_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                             const llvm::SelectInst *instruction);
+} // namespace DXIL2SPIRV

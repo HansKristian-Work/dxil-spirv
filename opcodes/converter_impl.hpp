@@ -18,23 +18,23 @@
 
 #pragma once
 
-#include "dxil_converter.hpp"
 #include "SpvBuilder.h"
 #include "cfg_structurizer.hpp"
+#include "dxil_converter.hpp"
 
+#include "GLSL.std.450.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Instructions.h>
-#include "GLSL.std.450.h"
 
 namespace DXIL2SPIRV
 {
 struct Converter::Impl
 {
 	Impl(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)
-			: container_parser(std::move(container_parser_))
-			, bitcode_parser(std::move(bitcode_parser_))
-			, spirv_module(module_)
+	    : container_parser(std::move(container_parser_))
+	    , bitcode_parser(std::move(bitcode_parser_))
+	    , spirv_module(module_)
 	{
 	}
 
@@ -45,7 +45,7 @@ struct Converter::Impl
 	struct BlockMeta
 	{
 		explicit BlockMeta(llvm::BasicBlock *bb_)
-				: bb(bb_)
+		    : bb(bb_)
 		{
 		}
 
@@ -101,4 +101,4 @@ struct Converter::Impl
 
 	spv::Id allocate_id();
 };
-}
+} // namespace DXIL2SPIRV
