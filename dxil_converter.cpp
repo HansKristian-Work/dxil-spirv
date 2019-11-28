@@ -160,6 +160,59 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 {
+	auto &builder = spirv_module.get_builder();
+	unsigned num_uavs = uavs->getNumOperands();
+
+	for (unsigned i = 0; i < num_uavs; i++)
+	{
+		auto *uav = llvm::cast<llvm::MDNode>(uavs->getOperand(i));
+		unsigned index = get_constant_metadata(uav, 0);
+		auto name = get_string_metadata(uav, 2);
+		unsigned bind_space = get_constant_metadata(uav, 3);
+		unsigned bind_register = get_constant_metadata(uav, 4);
+		// range_size = 5
+
+		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
+
+		bool globally_coherent = get_constant_metadata(uav, 7) != 0;
+		bool has_counter = get_constant_metadata(uav, 8) != 0;
+		bool is_rov = get_constant_metadata(uav, 9) != 0;
+		assert(!has_counter);
+		assert(!is_rov);
+
+		auto *tags = uav->getNumOperands() >= 11 ? llvm::dyn_cast<llvm::MDNode>(uav->getOperand(10)) : nullptr;
+		assert(tags);
+
+		spv::Id element_type_id = 0;
+		if (get_constant_metadata(tags, 0) == 0)
+		{
+			// Sampled format.
+			element_type_id = get_type_id(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)), 1, 1);
+		}
+		else
+		{
+			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
+			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
+			element_type_id = builder.makeUintType(32);
+		}
+
+		spv::Id type_id =
+				builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
+				                      image_dimension_is_arrayed(resource_kind),
+				                      image_dimension_is_multisampled(resource_kind), 2, spv::ImageFormatUnknown);
+
+		spv::Id var_id =
+				builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
+
+		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
+		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
+
+		if (globally_coherent)
+			builder.addDecoration(var_id, spv::DecorationCoherent);
+
+		uav_index_to_id.resize(std::max(uav_index_to_id.size(), size_t(index + 1)));
+		uav_index_to_id[index] = var_id;
+	}
 }
 
 void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)

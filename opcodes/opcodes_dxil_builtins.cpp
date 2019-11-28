@@ -187,8 +187,19 @@ static bool emit_create_handle_instruction(std::vector<Operation> &ops, Converte
 	}
 
 	case DXIL::ResourceType::UAV:
-		impl.handle_to_ptr_id[instruction] = impl.uav_index_to_id[resource_range];
+	{
+		spv::Id image_id = impl.uav_index_to_id[resource_range];
+		spv::Id type_id = builder.getDerefTypeId(image_id);
+		Operation op;
+		op.op = spv::OpLoad;
+		op.id = impl.allocate_id();
+		op.type_id = type_id;
+		op.arguments = { image_id };
+		impl.id_to_type[op.id] = type_id;
+		impl.handle_to_ptr_id[instruction] = op.id;
+		ops.push_back(std::move(op));
 		break;
+	}
 
 	case DXIL::ResourceType::CBV:
 		impl.handle_to_ptr_id[instruction] = impl.cbv_index_to_id[resource_range];
@@ -271,32 +282,27 @@ static bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Co
 	return true;
 }
 
-static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
-                                         spv::Builder &builder, const llvm::CallInst *instruction)
+static bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder,
+                                 spv::Id image_id, uint32_t *num_coords, uint32_t *num_dimensions)
 {
-	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
-	spv::Id sampler_id = impl.handle_to_ptr_id[instruction->getOperand(2)];
-	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
-
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
 	bool arrayed = builder.isArrayedImageType(image_type_id);
 
-	unsigned num_coords;
 	switch (dim)
 	{
 	case spv::Dim1D:
 	case spv::DimBuffer:
-		num_coords = 1;
+		*num_dimensions = 1;
 		break;
 
 	case spv::Dim2D:
-		num_coords = 2;
+		*num_dimensions = 2;
 		break;
 
 	case spv::Dim3D:
 	case spv::DimCube:
-		num_coords = 3;
+		*num_dimensions = 3;
 		break;
 
 	default:
@@ -304,7 +310,109 @@ static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter:
 		return false;
 	}
 
-	unsigned num_coords_full = arrayed ? num_coords + 1 : num_coords;
+	*num_coords = *num_dimensions + unsigned(arrayed);
+	return true;
+}
+
+static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
+                                          spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
+	spv::Id image_type_id = impl.get_type_id(image_id);
+
+	bool is_uav = builder.isStorageImageType(image_type_id);
+	uint32_t image_ops = 0;
+
+	spv::Id mip_or_sample = 0;
+	if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(2)))
+	{
+		mip_or_sample = impl.get_id_for_value(instruction->getOperand(2));
+		if (builder.isMultisampledImageType(image_type_id))
+			image_ops |= spv::ImageOperandsSampleMask;
+		else
+			image_ops |= spv::ImageOperandsLodMask;
+	}
+
+	spv::Id coord[3] = {};
+	spv::Id offsets[3] = {};
+
+	unsigned num_coords_full, num_coords;
+	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+		return false;
+
+	// Cubes are not supported here.
+	if (num_coords_full > 3)
+		return false;
+
+	for (unsigned i = 0; i < num_coords_full; i++)
+		coord[i] = impl.get_id_for_value(instruction->getOperand(i + 3));
+
+	for (unsigned i = 0; i < num_coords; i++)
+	{
+		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(i + 7)))
+		{
+			auto *constant_arg = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(i + 7));
+			if (!constant_arg)
+			{
+				LOGE("Sampling offset must be a constant int.\n");
+				return false;
+			}
+			image_ops |= spv::ImageOperandsConstOffsetMask;
+			offsets[i] = builder.makeIntConstant(int(constant_arg->getUniqueInteger().getSExtValue()));
+		}
+		else
+			offsets[i] = builder.makeIntConstant(0);
+	}
+
+	Operation op;
+	op.op = is_uav ? spv::OpImageRead : spv::OpImageFetch;
+	auto *result_type = instruction->getType();
+	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
+	{
+		LOGE("Expected return type is a struct.\n");
+		return false;
+	}
+
+	// For tiled resources, there is a status result in the 5th member, but as long as noone attempts to extract it,
+	// we should be fine ...
+	assert(result_type->getStructNumElements() == 5);
+	op.type_id = impl.get_type_id(result_type->getStructElementType(0));
+	op.type_id = builder.makeVectorType(op.type_id, 4);
+
+	op.id = impl.get_id_for_value(instruction);
+	op.arguments.push_back(image_id);
+	op.arguments.push_back(impl.build_vector(ops, builder.makeUintType(32), coord, num_coords_full));
+
+	if (!is_uav)
+	{
+		if (image_ops & spv::ImageOperandsLodMask)
+			op.arguments.push_back(mip_or_sample);
+
+		if (image_ops & spv::ImageOperandsConstOffsetMask)
+		{
+			op.arguments.push_back(
+					impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
+		}
+
+		if (image_ops & spv::ImageOperandsSampleMask)
+			op.arguments.push_back(mip_or_sample);
+	}
+
+	ops.push_back(std::move(op));
+	return true;
+}
+
+static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
+                                         spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
+	spv::Id sampler_id = impl.handle_to_ptr_id[instruction->getOperand(2)];
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
+
+	unsigned num_coords_full, num_coords;
+	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+		return false;
+
 	uint32_t image_ops = spv::ImageOperandsGradMask;
 
 	spv::Id coord[4] = {};
@@ -387,34 +495,9 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 	spv::Id sampler_id = impl.handle_to_ptr_id[instruction->getOperand(2)];
 	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, comparison_sampling);
 
-	spv::Id image_type_id = impl.get_type_id(image_id);
-
-	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
-	bool arrayed = builder.isArrayedImageType(image_type_id);
-
-	unsigned num_coords;
-	switch (dim)
-	{
-	case spv::Dim1D:
-	case spv::DimBuffer:
-		num_coords = 1;
-		break;
-
-	case spv::Dim2D:
-		num_coords = 2;
-		break;
-
-	case spv::Dim3D:
-	case spv::DimCube:
-		num_coords = 3;
-		break;
-
-	default:
-		LOGE("Unexpected sample dimensionality.\n");
+	unsigned num_coords_full, num_coords;
+	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
 		return false;
-	}
-
-	unsigned num_coords_full = arrayed ? num_coords + 1 : num_coords;
 
 	spv::Id coord[4] = {};
 	for (unsigned i = 0; i < num_coords_full; i++)
@@ -661,6 +744,7 @@ struct DXILDispatcher
 		OP(SampleCmp) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmp>;
 		OP(SampleCmpLevelZero) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevelZero>;
 		OP(SampleGrad) = emit_sample_grad_instruction;
+		OP(TextureLoad) = emit_texture_load_instruction;
 
 		OP(FMin) = std450_binary_dispatch<GLSLstd450NMin>;
 		OP(FMax) = std450_binary_dispatch<GLSLstd450NMax>;

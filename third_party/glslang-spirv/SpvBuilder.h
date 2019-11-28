@@ -213,6 +213,11 @@ public:
         assert(isImageType(typeId));
         return module.getInstruction(typeId)->getImmediateOperand(4) != 0;
     }
+    bool isStorageImageType(Id typeId) const
+    {
+        assert(isImageType(typeId));
+        return module.getInstruction(typeId)->getImmediateOperand(5) == 2;
+    }
     Id getImageComponentType(Id typeId) const
     {
         assert(isImageType(typeId));
