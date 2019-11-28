@@ -73,7 +73,10 @@ add_library(dxil-parser STATIC
         cfg_structurizer.hpp cfg_structurizer.cpp
         node_pool.hpp node_pool.cpp
         node.hpp node.cpp
-        dxil_parser.hpp dxil_parser.cpp)
+        dxil_parser.hpp dxil_parser.cpp
+        opcodes/converter_impl.hpp
+        opcodes/opcodes.hpp
+        opcodes/opcodes_llvm_builtins.hpp opcodes/opcodes_llvm_builtins.cpp)
 target_include_directories(dxil-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-parser PRIVATE dxil-debug)
 

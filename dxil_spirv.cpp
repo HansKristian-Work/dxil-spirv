@@ -180,6 +180,11 @@ int main(int argc, char **argv)
 
 	DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser), spirv_module);
 	auto entry_point = converter.convert_entry_point();
+	if (entry_point.entry == nullptr)
+	{
+		LOGE("Failed to convert function.\n");
+		return EXIT_FAILURE;
+	}
 
 	DXIL2SPIRV::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, spirv_module);
 	structurizer.run();
