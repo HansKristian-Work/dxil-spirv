@@ -77,7 +77,6 @@ OpName %8 "A"
 OpName %10 "SV_Target"
 OpDecorate %8 Location 0
 OpDecorate %10 Location 0
-OpDecorate %23 NoContraction
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

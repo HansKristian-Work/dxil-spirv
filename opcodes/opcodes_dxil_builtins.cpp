@@ -679,7 +679,8 @@ static bool emit_fmad_instruction(std::vector<Operation> &ops, Converter::Impl &
 	};
 
 	// Not sure about this one. Will have to figure it out when we start looking at tessellation or something ...
-	builder.addDecoration(op.id, spv::DecorationNoContraction);
+	if (instruction->getMetadata("dx.precise") != nullptr)
+		builder.addDecoration(op.id, spv::DecorationNoContraction);
 
 	ops.push_back(std::move(op));
 	return true;
