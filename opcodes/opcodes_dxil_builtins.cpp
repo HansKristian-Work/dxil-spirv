@@ -660,6 +660,36 @@ static bool emit_saturate_instruction(std::vector<Operation> &ops, Converter::Im
 	return true;
 }
 
+static bool emit_imad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                  const llvm::CallInst *instruction)
+{
+	// FIXME: Do we need to deal with intermediate mul overflow here somehow?
+
+	spv::Id mul_result_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpIMul;
+		op.id = mul_result_id;
+		op.type_id = impl.get_type_id(instruction->getType());
+		op.arguments = {
+			impl.get_id_for_value(instruction->getOperand(1)),
+			impl.get_id_for_value(instruction->getOperand(2))
+		};
+		ops.push_back(std::move(op));
+	}
+
+	Operation op;
+	op.op = spv::OpIAdd;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = {
+		mul_result_id,
+		impl.get_id_for_value(instruction->getOperand(3))
+	};
+	ops.push_back(std::move(op));
+	return true;
+}
+
 static bool emit_fmad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                   const llvm::CallInst *instruction)
 {
@@ -951,6 +981,8 @@ struct DXILDispatcher
 		OP(Dot4) = emit_dot_dispatch<4>;
 
 		OP(FMad) = emit_fmad_instruction;
+		OP(IMad) = emit_imad_instruction;
+		OP(UMad) = emit_imad_instruction;
 	}
 
 #undef OP
