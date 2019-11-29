@@ -774,6 +774,11 @@ struct DXILDispatcher
 		OP(Sqrt) = std450_unary_dispatch<GLSLstd450Sqrt>;
 		OP(FAbs) = std450_unary_dispatch<GLSLstd450FAbs>;
 		OP(Frc) = std450_unary_dispatch<GLSLstd450Fract>;
+
+		OP(Round_ne) = std450_unary_dispatch<GLSLstd450RoundEven>;
+		OP(Round_ni) = std450_unary_dispatch<GLSLstd450Floor>;
+		OP(Round_pi) = std450_unary_dispatch<GLSLstd450Ceil>;
+		OP(Round_z) = std450_unary_dispatch<GLSLstd450Trunc>;
 	}
 
 #undef OP
