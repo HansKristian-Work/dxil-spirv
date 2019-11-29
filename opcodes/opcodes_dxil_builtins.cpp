@@ -314,6 +314,42 @@ static bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder, s
 	return true;
 }
 
+static bool emit_texture_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                           const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
+	spv::Id image_type_id = impl.get_type_id(image_id);
+	spv::Id coord[3] = {};
+
+	unsigned num_coords_full, num_coords;
+	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+		return false;
+
+	// Cubes are not supported here.
+	if (num_coords_full > 3)
+		return false;
+
+	for (unsigned i = 0; i < num_coords_full; i++)
+		coord[i] = impl.get_id_for_value(instruction->getOperand(i + 2));
+
+	spv::Id write_values[4] = {};
+	for (unsigned i = 0; i < 4; i++)
+		write_values[i] = impl.get_id_for_value(instruction->getOperand(i + 5));
+
+	// Ignore write mask. We cannot do anything meaningful about it.
+
+	Operation op;
+	op.op = spv::OpImageWrite;
+
+	op.arguments.push_back(image_id);
+	op.arguments.push_back(impl.build_vector(ops, builder.makeUintType(32), coord, num_coords_full));
+	op.arguments.push_back(impl.build_vector(ops, builder.getTypeId(write_values[0]), write_values, 4));
+	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
+
+	ops.push_back(std::move(op));
+	return true;
+}
+
 static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                           const llvm::CallInst *instruction)
 {
@@ -1021,6 +1057,7 @@ struct DXILDispatcher
 		OP(SampleCmpLevelZero) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevelZero>;
 		OP(SampleGrad) = emit_sample_grad_instruction;
 		OP(TextureLoad) = emit_texture_load_instruction;
+		OP(TextureStore) = emit_texture_store_instruction;
 
 		OP(FMin) = std450_binary_dispatch<GLSLstd450NMin>;
 		OP(FMax) = std450_binary_dispatch<GLSLstd450NMax>;
