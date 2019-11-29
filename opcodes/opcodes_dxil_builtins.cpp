@@ -864,6 +864,31 @@ static bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, std::vector<O
 	return true;
 }
 
+static bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, std::vector<Operation> &ops, Converter::Impl &impl,
+                                                spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	Operation op;
+	op.op = spv::OpExtInst;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { impl.glsl_std450_ext, opcode, impl.get_id_for_value(instruction->getOperand(1)),
+	                 impl.get_id_for_value(instruction->getOperand(2)),
+	                 impl.get_id_for_value(instruction->getOperand(3)) };
+
+	ops.push_back(std::move(op));
+	return true;
+}
+
+template <GLSLstd450 opcode>
+static bool std450_trinary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                    const llvm::CallInst *instruction)
+{
+	return emit_dxil_std450_trinary_instruction(opcode, ops, impl, builder, instruction);
+}
+
 template <GLSLstd450 opcode>
 static bool std450_binary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                    const llvm::CallInst *instruction)
@@ -980,6 +1005,7 @@ struct DXILDispatcher
 		OP(Dot3) = emit_dot_dispatch<3>;
 		OP(Dot4) = emit_dot_dispatch<4>;
 
+		OP(Fma) = std450_trinary_dispatch<GLSLstd450Fma>;
 		OP(FMad) = emit_fmad_instruction;
 		OP(IMad) = emit_imad_instruction;
 		OP(UMad) = emit_imad_instruction;
