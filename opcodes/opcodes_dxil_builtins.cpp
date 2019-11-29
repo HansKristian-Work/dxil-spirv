@@ -660,6 +660,31 @@ static bool emit_saturate_instruction(std::vector<Operation> &ops, Converter::Im
 	return true;
 }
 
+static bool emit_fmad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                  const llvm::CallInst *instruction)
+{
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	Operation op;
+	op.op = spv::OpExtInst;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = {
+		impl.glsl_std450_ext,
+		GLSLstd450Fma,
+		impl.get_id_for_value(instruction->getOperand(1)),
+		impl.get_id_for_value(instruction->getOperand(2)),
+		impl.get_id_for_value(instruction->getOperand(3)),
+	};
+
+	// Not sure about this one. Will have to figure it out when we start looking at tessellation or something ...
+	builder.addDecoration(op.id, spv::DecorationNoContraction);
+
+	ops.push_back(std::move(op));
+	return true;
+}
+
 static bool emit_isfinite_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                       const llvm::CallInst *instruction)
 {
@@ -923,6 +948,8 @@ struct DXILDispatcher
 		OP(Dot2) = emit_dot_dispatch<2>;
 		OP(Dot3) = emit_dot_dispatch<3>;
 		OP(Dot4) = emit_dot_dispatch<4>;
+
+		OP(FMad) = emit_fmad_instruction;
 	}
 
 #undef OP
