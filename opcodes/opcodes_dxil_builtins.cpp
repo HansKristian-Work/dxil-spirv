@@ -941,6 +941,65 @@ static bool emit_dot_dispatch(std::vector<Operation> &ops, Converter::Impl &impl
 	return emit_dot_instruction(Dim, ops, impl, builder, instruction);
 }
 
+static spv::Id mask_input(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                          const llvm::Value *value)
+{
+	spv::Id id = impl.allocate_id();
+
+	Operation op;
+	op.op = spv::OpBitwiseAnd;
+	op.id = id;
+	op.type_id = impl.get_type_id(value->getType());
+	op.arguments = {
+		impl.get_id_for_value(value),
+		builder.makeUintConstant(31),
+	};
+
+	ops.push_back(std::move(op));
+	return id;
+}
+
+static bool emit_bfe_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                 const llvm::CallInst *instruction)
+{
+	// SPIR-V spec doesn't say anything about masking inputs, but Ibfe/Ubfe do, so ...
+	spv::Id masked_width_id = mask_input(ops, impl, builder, instruction->getOperand(1));
+	spv::Id masked_offset_id = mask_input(ops, impl, builder, instruction->getOperand(2));
+
+	Operation op;
+	op.op = opcode;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { impl.get_id_for_value(instruction->getOperand(3)), masked_offset_id, masked_width_id };
+	ops.push_back(std::move(op));
+	return true;
+}
+
+template <spv::Op opcode>
+static bool emit_bfe_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                              const llvm::CallInst *instruction)
+{
+	return emit_bfe_instruction(opcode, ops, impl, builder, instruction);
+}
+
+static bool emit_bfi_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                 const llvm::CallInst *instruction)
+{
+	spv::Id masked_width_id = mask_input(ops, impl, builder, instruction->getOperand(1));
+	spv::Id masked_offset_id = mask_input(ops, impl, builder, instruction->getOperand(2));
+	spv::Id src_id = impl.get_id_for_value(instruction->getOperand(3));
+	spv::Id dst_id = impl.get_id_for_value(instruction->getOperand(4));
+
+	Operation op;
+	op.op = spv::OpBitFieldInsert;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { dst_id, src_id, masked_offset_id, masked_width_id };
+	ops.push_back(std::move(op));
+
+	return true;
+}
+
 struct DXILDispatcher
 {
 #define OP(x) builder_lut[unsigned(DXIL::Op::x)]
@@ -1009,6 +1068,11 @@ struct DXILDispatcher
 		OP(FMad) = emit_fmad_instruction;
 		OP(IMad) = emit_imad_instruction;
 		OP(UMad) = emit_imad_instruction;
+
+		// FIXME: Untested. Not sure how to trick dxc to generate these.
+		OP(Ibfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract>;
+		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract>;
+		OP(Bfi) = emit_bfi_instruction;
 	}
 
 #undef OP
