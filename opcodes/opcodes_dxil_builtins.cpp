@@ -825,6 +825,8 @@ struct DXILDispatcher
 		OP(Round_ni) = std450_unary_dispatch<GLSLstd450Floor>;
 		OP(Round_pi) = std450_unary_dispatch<GLSLstd450Ceil>;
 		OP(Round_z) = std450_unary_dispatch<GLSLstd450Trunc>;
+
+		OP(Countbits) = unary_dispatch<spv::OpBitCount>;
 	}
 
 #undef OP
