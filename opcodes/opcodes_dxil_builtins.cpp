@@ -705,6 +705,63 @@ static bool emit_isfinite_instruction(std::vector<Operation> &ops, Converter::Im
 	return true;
 }
 
+static bool emit_find_high_bit_instruction(GLSLstd450 opcode, std::vector<Operation> &ops, Converter::Impl &impl,
+                                           spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	// This is actually CLZ, and not FindMSB.
+	spv::Id msb_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpExtInst;
+		op.id = msb_id;
+		op.type_id = impl.get_type_id(instruction->getType());
+		op.arguments = {
+			impl.glsl_std450_ext,
+			opcode,
+			impl.get_id_for_value(instruction->getOperand(1))
+		};
+		ops.push_back(std::move(op));
+	}
+
+	spv::Id eq_neg1_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpIEqual;
+		op.id = eq_neg1_id;
+		op.type_id = builder.makeBoolType();
+		op.arguments = { msb_id, builder.makeUintConstant(~0u) };
+		ops.push_back(std::move(op));
+	}
+
+	spv::Id msb_sub_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpISub;
+		op.id = msb_sub_id;
+		op.type_id = impl.get_type_id(instruction->getType());
+		op.arguments = { builder.makeUintConstant(31), msb_id };
+		ops.push_back(std::move(op));
+	}
+
+	Operation op;
+	op.op = spv::OpSelect;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { eq_neg1_id, builder.makeUintConstant(~0u), msb_sub_id };
+	ops.push_back(std::move(op));
+	return true;
+}
+
+template <GLSLstd450 opcode>
+static bool emit_find_high_bit_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
+                                        spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	return emit_find_high_bit_instruction(opcode, ops, impl, builder, instruction);
+}
+
 static bool emit_dxil_unary_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl,
                                         spv::Builder &builder, const llvm::CallInst *instruction)
 {
@@ -826,7 +883,11 @@ struct DXILDispatcher
 		OP(Round_pi) = std450_unary_dispatch<GLSLstd450Ceil>;
 		OP(Round_z) = std450_unary_dispatch<GLSLstd450Trunc>;
 
+		OP(Bfrev) = unary_dispatch<spv::OpBitReverse>;
 		OP(Countbits) = unary_dispatch<spv::OpBitCount>;
+		OP(FirstbitLo) = std450_unary_dispatch<GLSLstd450FindILsb>;
+		OP(FirstbitSHi) = emit_find_high_bit_dispatch<GLSLstd450FindSMsb>;
+		OP(FirstbitHi) = emit_find_high_bit_dispatch<GLSLstd450FindUMsb>;
 	}
 
 #undef OP
