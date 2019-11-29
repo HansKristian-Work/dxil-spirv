@@ -660,6 +660,51 @@ static bool emit_saturate_instruction(std::vector<Operation> &ops, Converter::Im
 	return true;
 }
 
+static bool emit_isfinite_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                      const llvm::CallInst *instruction)
+{
+	// There is an OpIsFinite instruction, but it's only supported in kernel mode, so we have to decompose here.
+
+	spv::Id nan_id = impl.allocate_id();
+	spv::Id inf_id = impl.allocate_id();
+
+	{
+		Operation op;
+		op.op = spv::OpIsNan;
+		op.id = nan_id;
+		op.type_id = builder.makeBoolType();
+		op.arguments = { impl.get_id_for_value(instruction->getOperand(1)) };
+		ops.push_back(std::move(op));
+	}
+
+	{
+		Operation op;
+		op.op = spv::OpIsInf;
+		op.id = inf_id;
+		op.type_id = builder.makeBoolType();
+		op.arguments = { impl.get_id_for_value(instruction->getOperand(1)) };
+		ops.push_back(std::move(op));
+	}
+
+	spv::Id not_finite_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpLogicalOr;
+		op.id = not_finite_id;
+		op.type_id = builder.makeBoolType();
+		op.arguments = { nan_id, inf_id };
+		ops.push_back(std::move(op));
+	}
+
+	Operation op;
+	op.op = spv::OpLogicalNot;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { not_finite_id };
+	ops.push_back(std::move(op));
+	return true;
+}
+
 static bool emit_dxil_unary_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl,
                                         spv::Builder &builder, const llvm::CallInst *instruction)
 {
@@ -757,6 +802,7 @@ struct DXILDispatcher
 		OP(UMax) = std450_binary_dispatch<GLSLstd450UMax>;
 		OP(IsNan) = unary_dispatch<spv::OpIsNan>;
 		OP(IsInf) = unary_dispatch<spv::OpIsInf>;
+		OP(IsFinite) = emit_isfinite_instruction;
 
 		OP(Cos) = std450_unary_dispatch<GLSLstd450Cos>;
 		OP(Sin) = std450_unary_dispatch<GLSLstd450Sin>;
