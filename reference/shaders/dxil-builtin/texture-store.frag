@@ -1,23 +1,23 @@
 #version 460
 
-layout(set = 0, binding = 1) uniform writeonly image1D RWTex1D;
-layout(set = 0, binding = 2) uniform coherent writeonly image1DArray RWTex1DArray;
-layout(set = 0, binding = 3) uniform writeonly image2D RWTex2D;
-layout(set = 0, binding = 4) uniform coherent writeonly image2DArray RWTex2DArray;
-layout(set = 0, binding = 5) uniform writeonly image3D RWTex3D;
+layout(set = 0, binding = 1) uniform writeonly image1D _8;
+layout(set = 0, binding = 2) uniform coherent writeonly image1DArray _11;
+layout(set = 0, binding = 3) uniform writeonly image2D _14;
+layout(set = 0, binding = 4) uniform coherent writeonly image2DArray _17;
+layout(set = 0, binding = 5) uniform writeonly image3D _20;
 
 layout(location = 0) in vec3 TEXCOORD;
 
 void main()
 {
     uint _40 = uint(int(TEXCOORD.x));
-    imageStore(RWTex1D, int(_40), vec4(1.0, 2.0, 1.0, 1.0));
+    imageStore(_8, int(_40), vec4(1.0, 2.0, 1.0, 1.0));
     uint _45 = uint(int(TEXCOORD.y));
-    imageStore(RWTex1DArray, ivec2(uvec2(_40, _45)), vec4(3.0, 4.0, 3.0, 3.0));
-    imageStore(RWTex2D, ivec2(uvec2(_40, _45)), vec4(5.0, 6.0, 5.0, 5.0));
+    imageStore(_11, ivec2(uvec2(_40, _45)), vec4(3.0, 4.0, 3.0, 3.0));
+    imageStore(_14, ivec2(uvec2(_40, _45)), vec4(5.0, 6.0, 5.0, 5.0));
     uint _55 = uint(int(TEXCOORD.z));
-    imageStore(RWTex2DArray, ivec3(uvec3(_40, _45, _55)), vec4(7.0, 8.0, 7.0, 7.0));
-    imageStore(RWTex3D, ivec3(uvec3(_40, _45, _55)), vec4(9.0, -9.0, 9.0, 9.0));
+    imageStore(_17, ivec3(uvec3(_40, _45, _55)), vec4(7.0, 8.0, 7.0, 7.0));
+    imageStore(_20, ivec3(uvec3(_40, _45, _55)), vec4(9.0, -9.0, 9.0, 9.0));
 }
 
 
@@ -26,36 +26,30 @@ void main()
 target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
 target triple = "dxil-ms-dx"
 
+%dx.types.Handle = type { i8* }
 %"class.RWTexture1D<vector<float, 2> >" = type { <2 x float> }
 %"class.RWTexture1DArray<vector<float, 2> >" = type { <2 x float> }
 %"class.RWTexture2D<vector<float, 2> >" = type { <2 x float> }
 %"class.RWTexture2DArray<vector<float, 2> >" = type { <2 x float> }
 %"class.RWTexture3D<vector<float, 2> >" = type { <2 x float> }
-%dx.types.Handle = type { i8* }
-
-@"\01?RWTex1D@@3V?$RWTexture1D@V?$vector@M$01@@@@A" = external constant %"class.RWTexture1D<vector<float, 2> >", align 4
-@"\01?RWTex1DArray@@3V?$RWTexture1DArray@V?$vector@M$01@@@@A" = external constant %"class.RWTexture1DArray<vector<float, 2> >", align 4
-@"\01?RWTex2D@@3V?$RWTexture2D@V?$vector@M$01@@@@A" = external constant %"class.RWTexture2D<vector<float, 2> >", align 4
-@"\01?RWTex2DArray@@3V?$RWTexture2DArray@V?$vector@M$01@@@@A" = external constant %"class.RWTexture2DArray<vector<float, 2> >", align 4
-@"\01?RWTex3D@@3V?$RWTexture3D@V?$vector@M$01@@@@A" = external constant %"class.RWTexture3D<vector<float, 2> >", align 4
 
 define void @main() {
-  %RWTex3D_UAV_3d = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 4, i32 5, i1 false)
-  %RWTex2DArray_UAV_2darray = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 3, i32 4, i1 false)
-  %RWTex2D_UAV_2d = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 2, i32 3, i1 false)
-  %RWTex1DArray_UAV_1darray = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 1, i32 2, i1 false)
-  %RWTex1D_UAV_1d = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 1, i1 false)
-  %1 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)
-  %2 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
-  %3 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
-  %4 = fptosi float %1 to i32
-  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %RWTex1D_UAV_1d, i32 %4, i32 undef, i32 undef, float 1.000000e+00, float 2.000000e+00, float 1.000000e+00, float 1.000000e+00, i8 15)
-  %5 = fptosi float %2 to i32
-  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %RWTex1DArray_UAV_1darray, i32 %4, i32 %5, i32 undef, float 3.000000e+00, float 4.000000e+00, float 3.000000e+00, float 3.000000e+00, i8 15)
-  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %RWTex2D_UAV_2d, i32 %4, i32 %5, i32 undef, float 5.000000e+00, float 6.000000e+00, float 5.000000e+00, float 5.000000e+00, i8 15)
-  %6 = fptosi float %3 to i32
-  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %RWTex2DArray_UAV_2darray, i32 %4, i32 %5, i32 %6, float 7.000000e+00, float 8.000000e+00, float 7.000000e+00, float 7.000000e+00, i8 15)
-  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %RWTex3D_UAV_3d, i32 %4, i32 %5, i32 %6, float 9.000000e+00, float -9.000000e+00, float 9.000000e+00, float 9.000000e+00, i8 15)
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 4, i32 5, i1 false)
+  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 3, i32 4, i1 false)
+  %3 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 2, i32 3, i1 false)
+  %4 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 1, i32 2, i1 false)
+  %5 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 1, i1 false)
+  %6 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)
+  %7 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
+  %8 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
+  %9 = fptosi float %6 to i32
+  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %5, i32 %9, i32 undef, i32 undef, float 1.000000e+00, float 2.000000e+00, float 1.000000e+00, float 1.000000e+00, i8 15)
+  %10 = fptosi float %7 to i32
+  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %4, i32 %9, i32 %10, i32 undef, float 3.000000e+00, float 4.000000e+00, float 3.000000e+00, float 3.000000e+00, i8 15)
+  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %3, i32 %9, i32 %10, i32 undef, float 5.000000e+00, float 6.000000e+00, float 5.000000e+00, float 5.000000e+00, i8 15)
+  %11 = fptosi float %8 to i32
+  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %2, i32 %9, i32 %10, i32 %11, float 7.000000e+00, float 8.000000e+00, float 7.000000e+00, float 7.000000e+00, i8 15)
+  call void @dx.op.textureStore.f32(i32 67, %dx.types.Handle %1, i32 %9, i32 %10, i32 %11, float 9.000000e+00, float -9.000000e+00, float 9.000000e+00, float 9.000000e+00, i8 15)
   ret void
 }
 
@@ -77,35 +71,28 @@ attributes #2 = { nounwind readonly }
 !dx.valver = !{!2}
 !dx.shaderModel = !{!3}
 !dx.resources = !{!4}
-!dx.typeAnnotations = !{!12, !15}
-!dx.viewIdState = !{!19}
-!dx.entryPoints = !{!20}
+!dx.viewIdState = !{!12}
+!dx.entryPoints = !{!13}
 
-!0 = !{!"dxcoob 2019.05.00"}
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
 !1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 4}
+!2 = !{i32 1, i32 5}
 !3 = !{!"ps", i32 6, i32 0}
 !4 = !{null, !5, null, null}
 !5 = !{!6, !8, !9, !10, !11}
-!6 = !{i32 0, %"class.RWTexture1D<vector<float, 2> >"* undef, !"RWTex1D", i32 0, i32 1, i32 1, i32 1, i1 false, i1 false, i1 false, !7}
+!6 = !{i32 0, %"class.RWTexture1D<vector<float, 2> >"* undef, !"", i32 0, i32 1, i32 1, i32 1, i1 false, i1 false, i1 false, !7}
 !7 = !{i32 0, i32 9}
-!8 = !{i32 1, %"class.RWTexture1DArray<vector<float, 2> >"* undef, !"RWTex1DArray", i32 0, i32 2, i32 1, i32 6, i1 true, i1 false, i1 false, !7}
-!9 = !{i32 2, %"class.RWTexture2D<vector<float, 2> >"* undef, !"RWTex2D", i32 0, i32 3, i32 1, i32 2, i1 false, i1 false, i1 false, !7}
-!10 = !{i32 3, %"class.RWTexture2DArray<vector<float, 2> >"* undef, !"RWTex2DArray", i32 0, i32 4, i32 1, i32 7, i1 true, i1 false, i1 false, !7}
-!11 = !{i32 4, %"class.RWTexture3D<vector<float, 2> >"* undef, !"RWTex3D", i32 0, i32 5, i32 1, i32 4, i1 false, i1 false, i1 false, !7}
-!12 = !{i32 0, %"class.RWTexture1D<vector<float, 2> >" undef, !13, %"class.RWTexture1DArray<vector<float, 2> >" undef, !13, %"class.RWTexture2D<vector<float, 2> >" undef, !13, %"class.RWTexture2DArray<vector<float, 2> >" undef, !13, %"class.RWTexture3D<vector<float, 2> >" undef, !13}
-!13 = !{i32 8, !14}
-!14 = !{i32 6, !"h", i32 3, i32 0, i32 7, i32 9}
-!15 = !{i32 1, void ()* @main, !16}
-!16 = !{!17}
-!17 = !{i32 0, !18, !18}
-!18 = !{}
-!19 = !{[2 x i32] [i32 3, i32 0]}
-!20 = !{void ()* @main, !"main", !21, !4, null}
-!21 = !{!22, null, null}
-!22 = !{!23}
-!23 = !{i32 0, !"TEXCOORD", i8 9, i8 0, !24, i8 2, i32 1, i8 3, i32 0, i8 0, null}
-!24 = !{i32 0}
+!8 = !{i32 1, %"class.RWTexture1DArray<vector<float, 2> >"* undef, !"", i32 0, i32 2, i32 1, i32 6, i1 true, i1 false, i1 false, !7}
+!9 = !{i32 2, %"class.RWTexture2D<vector<float, 2> >"* undef, !"", i32 0, i32 3, i32 1, i32 2, i1 false, i1 false, i1 false, !7}
+!10 = !{i32 3, %"class.RWTexture2DArray<vector<float, 2> >"* undef, !"", i32 0, i32 4, i32 1, i32 7, i1 true, i1 false, i1 false, !7}
+!11 = !{i32 4, %"class.RWTexture3D<vector<float, 2> >"* undef, !"", i32 0, i32 5, i32 1, i32 4, i1 false, i1 false, i1 false, !7}
+!12 = !{[2 x i32] [i32 3, i32 0]}
+!13 = !{void ()* @main, !"main", !14, !4, null}
+!14 = !{!15, null, null}
+!15 = !{!16}
+!16 = !{i32 0, !"TEXCOORD", i8 9, i8 0, !17, i8 2, i32 1, i8 3, i32 0, i8 0, !18}
+!17 = !{i32 0}
+!18 = !{i32 3, i32 7}
 #endif
 #if 0
 // SPIR-V disassembly
@@ -121,11 +108,6 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %23
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
-OpName %8 "RWTex1D"
-OpName %11 "RWTex1DArray"
-OpName %14 "RWTex2D"
-OpName %17 "RWTex2DArray"
-OpName %20 "RWTex3D"
 OpName %23 "TEXCOORD"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 1

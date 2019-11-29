@@ -27,14 +27,14 @@ define void @main() {
   %6 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
   %7 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
   %8 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 undef)
-  %.i0 = frem fast float %5, %1
-  %.i1 = frem fast float %6, %2
-  %.i2 = frem fast float %7, %3
-  %.i3 = frem fast float %8, %4
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %.i0)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %.i1)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 2, float %.i2)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 3, float %.i3)
+  %9 = frem fast float %5, %1
+  %10 = frem fast float %6, %2
+  %11 = frem fast float %7, %3
+  %12 = frem fast float %8, %4
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %9)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %10)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 2, float %11)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 3, float %12)
   ret void
 }
 
@@ -51,27 +51,23 @@ attributes #1 = { nounwind }
 !dx.version = !{!1}
 !dx.valver = !{!2}
 !dx.shaderModel = !{!3}
-!dx.typeAnnotations = !{!4}
-!dx.viewIdState = !{!8}
-!dx.entryPoints = !{!9}
+!dx.viewIdState = !{!4}
+!dx.entryPoints = !{!5}
 
-!0 = !{!"dxcoob 2019.05.00"}
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
 !1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 4}
+!2 = !{i32 1, i32 5}
 !3 = !{!"ps", i32 6, i32 0}
-!4 = !{i32 1, void ()* @main, !5}
-!5 = !{!6}
-!6 = !{i32 0, !7, !7}
-!7 = !{}
-!8 = !{[10 x i32] [i32 8, i32 4, i32 1, i32 2, i32 4, i32 8, i32 1, i32 2, i32 4, i32 8]}
-!9 = !{void ()* @main, !"main", !10, null, null}
-!10 = !{!11, !15, null}
-!11 = !{!12, !14}
-!12 = !{i32 0, !"A", i8 9, i8 0, !13, i8 2, i32 1, i8 4, i32 0, i8 0, null}
-!13 = !{i32 0}
-!14 = !{i32 1, !"B", i8 9, i8 0, !13, i8 2, i32 1, i8 4, i32 1, i8 0, null}
-!15 = !{!16}
-!16 = !{i32 0, !"SV_Target", i8 9, i8 16, !13, i8 0, i32 1, i8 4, i32 0, i8 0, null}
+!4 = !{[10 x i32] [i32 8, i32 4, i32 1, i32 2, i32 4, i32 8, i32 1, i32 2, i32 4, i32 8]}
+!5 = !{void ()* @main, !"main", !6, null, null}
+!6 = !{!7, !12, null}
+!7 = !{!8, !11}
+!8 = !{i32 0, !"A", i8 9, i8 0, !9, i8 2, i32 1, i8 4, i32 0, i8 0, !10}
+!9 = !{i32 0}
+!10 = !{i32 3, i32 15}
+!11 = !{i32 1, !"B", i8 9, i8 0, !9, i8 2, i32 1, i8 4, i32 1, i8 0, !10}
+!12 = !{!13}
+!13 = !{i32 0, !"SV_Target", i8 9, i8 16, !9, i8 0, i32 1, i8 4, i32 0, i8 0, !10}
 #endif
 #if 0
 // SPIR-V disassembly

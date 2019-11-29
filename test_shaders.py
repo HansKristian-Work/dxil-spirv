@@ -67,7 +67,7 @@ def get_sm(shader):
 def cross_compile_dxil(shader, args, paths):
     dxil_path = create_temporary()
     glsl_path = create_temporary(os.path.basename(shader))
-    dxil_cmd = [paths.dxc, '-T' + get_sm(shader), '-Fo', dxil_path, shader]
+    dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader), '-Fo', dxil_path, shader]
     subprocess.check_call(dxil_cmd)
 
     glsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', '--validate', dxil_path]
@@ -199,7 +199,7 @@ def main():
             action = 'store_true',
             help = 'Execute tests in parallel.  Useful for doing regression quickly, but bad for debugging and stat output.')
     parser.add_argument('--dxc',
-            default = 'dxc',
+            default = './external/dxc-build/output/bin/dxc',
             help = 'Explicit path to DXC')
     parser.add_argument('--dxil-spirv',
             default = './dxil-spirv',

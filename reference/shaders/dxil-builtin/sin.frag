@@ -16,8 +16,8 @@ target triple = "dxil-ms-dx"
 
 define void @main() {
   %1 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)
-  %Sin = call float @dx.op.unary.f32(i32 13, float %1)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %Sin)
+  %2 = call float @dx.op.unary.f32(i32 13, float %1)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %2)
   ret void
 }
 
@@ -37,26 +37,22 @@ attributes #1 = { nounwind }
 !dx.version = !{!1}
 !dx.valver = !{!2}
 !dx.shaderModel = !{!3}
-!dx.typeAnnotations = !{!4}
-!dx.viewIdState = !{!8}
-!dx.entryPoints = !{!9}
+!dx.viewIdState = !{!4}
+!dx.entryPoints = !{!5}
 
-!0 = !{!"dxcoob 2019.05.00"}
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
 !1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 4}
+!2 = !{i32 1, i32 5}
 !3 = !{!"ps", i32 6, i32 0}
-!4 = !{i32 1, void ()* @main, !5}
-!5 = !{!6}
-!6 = !{i32 0, !7, !7}
-!7 = !{}
-!8 = !{[3 x i32] [i32 1, i32 1, i32 1]}
-!9 = !{void ()* @main, !"main", !10, null, null}
-!10 = !{!11, !14, null}
+!4 = !{[3 x i32] [i32 1, i32 1, i32 1]}
+!5 = !{void ()* @main, !"main", !6, null, null}
+!6 = !{!7, !11, null}
+!7 = !{!8}
+!8 = !{i32 0, !"A", i8 9, i8 0, !9, i8 2, i32 1, i8 1, i32 0, i8 0, !10}
+!9 = !{i32 0}
+!10 = !{i32 3, i32 1}
 !11 = !{!12}
-!12 = !{i32 0, !"A", i8 9, i8 0, !13, i8 2, i32 1, i8 1, i32 0, i8 0, null}
-!13 = !{i32 0}
-!14 = !{!15}
-!15 = !{i32 0, !"SV_Target", i8 9, i8 16, !13, i8 0, i32 1, i8 1, i32 0, i8 0, null}
+!12 = !{i32 0, !"SV_Target", i8 9, i8 16, !9, i8 0, i32 1, i8 1, i32 0, i8 0, !10}
 #endif
 #if 0
 // SPIR-V disassembly

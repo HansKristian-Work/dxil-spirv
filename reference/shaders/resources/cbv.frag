@@ -1,22 +1,22 @@
 #version 460
 
-layout(set = 2, binding = 1, std140) uniform A
+layout(set = 2, binding = 1, std140) uniform _10_12
 {
     vec4 _m0[1];
-} A_1;
+} _12;
 
-layout(set = 2, binding = 2, std140) uniform B
+layout(set = 2, binding = 2, std140) uniform _14_16
 {
     vec4 _m0[1];
-} B_1;
+} _16;
 
 layout(location = 0) out float SV_Target;
 
 void main()
 {
-    uvec4 _30 = floatBitsToUint(A_1._m0[0u]);
-    uvec4 _35 = floatBitsToUint(B_1._m0[0u]);
-    SV_Target = ((B_1._m0[0u].x + A_1._m0[0u].x) + float(_35.y + _30.y)) + float(int(_35.z + _30.z));
+    uvec4 _30 = floatBitsToUint(_12._m0[0u]);
+    uvec4 _35 = floatBitsToUint(_16._m0[0u]);
+    SV_Target = ((_16._m0[0u].x + _12._m0[0u].x) + float(_35.y + _30.y)) + float(int(_35.z + _30.z));
 }
 
 
@@ -25,36 +25,33 @@ void main()
 target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
 target triple = "dxil-ms-dx"
 
-%A = type { float, i32, i32 }
-%B = type { float, i32, i32 }
 %dx.types.Handle = type { i8* }
 %dx.types.CBufRet.f32 = type { float, float, float, float }
 %dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }
-
-@A = external constant %A
-@B = external constant %B
+%A = type { float, i32, i32 }
+%B = type { float, i32, i32 }
 
 define void @main() {
-  %B_cbuffer = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 1, i32 2, i1 false)
-  %A_cbuffer = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 0, i32 1, i1 false)
-  %1 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %A_cbuffer, i32 0)
-  %2 = extractvalue %dx.types.CBufRet.f32 %1, 0
-  %3 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %B_cbuffer, i32 0)
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 1, i32 2, i1 false)
+  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 0, i32 1, i1 false)
+  %3 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %2, i32 0)
   %4 = extractvalue %dx.types.CBufRet.f32 %3, 0
-  %5 = fadd fast float %4, %2
-  %6 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %A_cbuffer, i32 0)
-  %7 = extractvalue %dx.types.CBufRet.i32 %6, 1
-  %8 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %B_cbuffer, i32 0)
+  %5 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %1, i32 0)
+  %6 = extractvalue %dx.types.CBufRet.f32 %5, 0
+  %7 = fadd fast float %6, %4
+  %8 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %2, i32 0)
   %9 = extractvalue %dx.types.CBufRet.i32 %8, 1
-  %10 = add i32 %9, %7
-  %11 = uitofp i32 %10 to float
-  %12 = fadd fast float %5, %11
-  %13 = extractvalue %dx.types.CBufRet.i32 %6, 2
-  %14 = extractvalue %dx.types.CBufRet.i32 %8, 2
-  %15 = add nsw i32 %14, %13
-  %16 = sitofp i32 %15 to float
-  %17 = fadd fast float %12, %16
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %17)
+  %10 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %1, i32 0)
+  %11 = extractvalue %dx.types.CBufRet.i32 %10, 1
+  %12 = add i32 %11, %9
+  %13 = uitofp i32 %12 to float
+  %14 = fadd fast float %7, %13
+  %15 = extractvalue %dx.types.CBufRet.i32 %8, 2
+  %16 = extractvalue %dx.types.CBufRet.i32 %10, 2
+  %17 = add nsw i32 %16, %15
+  %18 = sitofp i32 %17 to float
+  %19 = fadd fast float %14, %18
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %19)
   ret void
 }
 
@@ -78,37 +75,24 @@ attributes #1 = { nounwind readonly }
 !dx.valver = !{!2}
 !dx.shaderModel = !{!3}
 !dx.resources = !{!4}
-!dx.typeAnnotations = !{!8, !17}
-!dx.viewIdState = !{!21}
-!dx.entryPoints = !{!22}
+!dx.viewIdState = !{!8}
+!dx.entryPoints = !{!9}
 
-!0 = !{!"dxcoob 2019.05.00"}
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
 !1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 4}
+!2 = !{i32 1, i32 5}
 !3 = !{!"ps", i32 6, i32 0}
 !4 = !{null, null, !5, null}
 !5 = !{!6, !7}
-!6 = !{i32 0, %A* undef, !"A", i32 2, i32 1, i32 1, i32 12, null}
-!7 = !{i32 1, %B* undef, !"B", i32 2, i32 2, i32 1, i32 12, null}
-!8 = !{i32 0, %A undef, !9, %B undef, !13}
-!9 = !{i32 12, !10, !11, !12}
-!10 = !{i32 6, !"a", i32 3, i32 0, i32 7, i32 9}
-!11 = !{i32 6, !"b", i32 3, i32 4, i32 7, i32 5}
-!12 = !{i32 6, !"c", i32 3, i32 8, i32 7, i32 4}
-!13 = !{i32 12, !14, !15, !16}
-!14 = !{i32 6, !"a2", i32 3, i32 0, i32 7, i32 9}
-!15 = !{i32 6, !"b2", i32 3, i32 4, i32 7, i32 5}
-!16 = !{i32 6, !"c2", i32 3, i32 8, i32 7, i32 4}
-!17 = !{i32 1, void ()* @main, !18}
-!18 = !{!19}
-!19 = !{i32 0, !20, !20}
-!20 = !{}
-!21 = !{[2 x i32] [i32 0, i32 1]}
-!22 = !{void ()* @main, !"main", !23, !4, null}
-!23 = !{null, !24, null}
-!24 = !{!25}
-!25 = !{i32 0, !"SV_Target", i8 9, i8 16, !26, i8 0, i32 1, i8 1, i32 0, i8 0, null}
-!26 = !{i32 0}
+!6 = !{i32 0, %A* undef, !"", i32 2, i32 1, i32 1, i32 12, null}
+!7 = !{i32 1, %B* undef, !"", i32 2, i32 2, i32 1, i32 12, null}
+!8 = !{[2 x i32] [i32 0, i32 1]}
+!9 = !{void ()* @main, !"main", !10, !4, null}
+!10 = !{null, !11, null}
+!11 = !{!12}
+!12 = !{i32 0, !"SV_Target", i8 9, i8 16, !13, i8 0, i32 1, i8 1, i32 0, i8 0, !14}
+!13 = !{i32 0}
+!14 = !{i32 3, i32 1}
 #endif
 #if 0
 // SPIR-V disassembly
@@ -122,10 +106,8 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %18
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
-OpName %10 "A"
-OpName %12 "A"
-OpName %14 "B"
-OpName %16 "B"
+OpName %10 ""
+OpName %14 ""
 OpName %18 "SV_Target"
 OpDecorate %9 ArrayStride 16
 OpMemberDecorate %10 0 Offset 0

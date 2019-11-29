@@ -18,12 +18,12 @@ define void @main() {
   %1 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)
   %2 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
   %3 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
-  %.i0 = fpext float %1 to double
-  %.i1 = fpext float %2 to double
-  %.i2 = fpext float %3 to double
-  %Fma = call double @dx.op.tertiary.f64(i32 47, double %.i0, double %.i1, double %.i2)
-  %4 = fptrunc double %Fma to float
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %4)
+  %4 = fpext float %1 to double
+  %5 = fpext float %2 to double
+  %6 = fpext float %3 to double
+  %7 = call double @dx.op.tertiary.f64(i32 47, double %4, double %5, double %6)
+  %8 = fptrunc double %7 to float
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %8)
   ret void
 }
 
@@ -43,27 +43,24 @@ attributes #1 = { nounwind }
 !dx.version = !{!1}
 !dx.valver = !{!2}
 !dx.shaderModel = !{!3}
-!dx.typeAnnotations = !{!4}
-!dx.viewIdState = !{!8}
-!dx.entryPoints = !{!9}
+!dx.viewIdState = !{!4}
+!dx.entryPoints = !{!5}
 
-!0 = !{!"dxcoob 2019.05.00"}
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
 !1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 4}
+!2 = !{i32 1, i32 5}
 !3 = !{!"ps", i32 6, i32 0}
-!4 = !{i32 1, void ()* @main, !5}
-!5 = !{!6}
-!6 = !{i32 0, !7, !7}
-!7 = !{}
-!8 = !{[5 x i32] [i32 3, i32 1, i32 1, i32 1, i32 1]}
-!9 = !{void ()* @main, !"main", !10, null, !16}
-!10 = !{!11, !14, null}
+!4 = !{[5 x i32] [i32 3, i32 1, i32 1, i32 1, i32 1]}
+!5 = !{void ()* @main, !"main", !6, null, !14}
+!6 = !{!7, !11, null}
+!7 = !{!8}
+!8 = !{i32 0, !"A", i8 9, i8 0, !9, i8 2, i32 1, i8 3, i32 0, i8 0, !10}
+!9 = !{i32 0}
+!10 = !{i32 3, i32 7}
 !11 = !{!12}
-!12 = !{i32 0, !"A", i8 9, i8 0, !13, i8 2, i32 1, i8 3, i32 0, i8 0, null}
-!13 = !{i32 0}
-!14 = !{!15}
-!15 = !{i32 0, !"SV_Target", i8 9, i8 16, !13, i8 0, i32 1, i8 1, i32 0, i8 0, null}
-!16 = !{i32 0, i64 68}
+!12 = !{i32 0, !"SV_Target", i8 9, i8 16, !9, i8 0, i32 1, i8 1, i32 0, i8 0, !13}
+!13 = !{i32 3, i32 1}
+!14 = !{i32 0, i64 68}
 #endif
 #if 0
 // SPIR-V disassembly

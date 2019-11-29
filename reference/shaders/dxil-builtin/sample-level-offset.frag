@@ -1,24 +1,24 @@
 #version 460
 
-layout(set = 1, binding = 0) uniform texture1D Tex1D;
-layout(set = 1, binding = 1) uniform texture1DArray Tex1DArray;
-layout(set = 1, binding = 2) uniform texture2D Tex2D;
-layout(set = 1, binding = 3) uniform texture2DArray Tex2DArray;
-layout(set = 1, binding = 4) uniform texture3D Tex3D;
-layout(set = 0, binding = 0) uniform sampler Samp;
+layout(set = 1, binding = 0) uniform texture1D _8;
+layout(set = 1, binding = 1) uniform texture1DArray _11;
+layout(set = 1, binding = 2) uniform texture2D _14;
+layout(set = 1, binding = 3) uniform texture2DArray _17;
+layout(set = 1, binding = 4) uniform texture3D _20;
+layout(set = 0, binding = 0) uniform sampler _23;
 
 layout(location = 0) in vec4 TEXCOORD;
 layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    vec4 _55 = textureLodOffset(sampler1D(Tex1D, Samp), TEXCOORD.x, TEXCOORD.w, 1);
-    vec4 _62 = textureLodOffset(sampler1DArray(Tex1DArray, Samp), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w, 2);
+    vec4 _55 = textureLodOffset(sampler1D(_8, _23), TEXCOORD.x, TEXCOORD.w, 1);
+    vec4 _62 = textureLodOffset(sampler1DArray(_11, _23), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w, 2);
     float _64 = _62.x;
-    vec4 _71 = textureLodOffset(sampler2D(Tex2D, Samp), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w, ivec2(2, 3));
-    vec4 _84 = textureLodOffset(sampler2DArray(Tex2DArray, Samp), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w, ivec2(-1, -3));
+    vec4 _71 = textureLodOffset(sampler2D(_14, _23), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w, ivec2(2, 3));
+    vec4 _84 = textureLodOffset(sampler2DArray(_17, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w, ivec2(-1, -3));
     float _88 = _84.x;
-    vec4 _96 = textureLodOffset(sampler3D(Tex3D, Samp), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w, ivec3(-4, -5, 3));
+    vec4 _96 = textureLodOffset(sampler3D(_20, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w, ivec3(-4, -5, 3));
     SV_Target.x = (((_64 + _55.x) + _71.x) + _88) + _96.x;
     SV_Target.y = (((_64 + _55.y) + _71.y) + _88) + _96.y;
 }
@@ -29,6 +29,8 @@ void main()
 target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
 target triple = "dxil-ms-dx"
 
+%dx.types.Handle = type { i8* }
+%dx.types.ResRet.f32 = type { float, float, float, float, i32 }
 %"class.Texture1D<vector<float, 2> >" = type { <2 x float>, %"class.Texture1D<vector<float, 2> >::mips_type" }
 %"class.Texture1D<vector<float, 2> >::mips_type" = type { i32 }
 %"class.Texture1DArray<float>" = type { float, %"class.Texture1DArray<float>::mips_type" }
@@ -40,52 +42,41 @@ target triple = "dxil-ms-dx"
 %"class.Texture3D<vector<float, 2> >" = type { <2 x float>, %"class.Texture3D<vector<float, 2> >::mips_type" }
 %"class.Texture3D<vector<float, 2> >::mips_type" = type { i32 }
 %struct.SamplerState = type { i32 }
-%dx.types.Handle = type { i8* }
-%dx.types.ResRet.f32 = type { float, float, float, float, i32 }
-%"class.TextureCube<vector<float, 2> >" = type { <2 x float> }
-%"class.TextureCubeArray<float>" = type { float }
-
-@"\01?Tex1D@@3V?$Texture1D@V?$vector@M$01@@@@A" = external constant %"class.Texture1D<vector<float, 2> >", align 4
-@"\01?Tex1DArray@@3V?$Texture1DArray@M@@A" = external constant %"class.Texture1DArray<float>", align 4
-@"\01?Tex2D@@3V?$Texture2D@V?$vector@M$01@@@@A" = external constant %"class.Texture2D<vector<float, 2> >", align 4
-@"\01?Tex2DArray@@3V?$Texture2DArray@M@@A" = external constant %"class.Texture2DArray<float>", align 4
-@"\01?Tex3D@@3V?$Texture3D@V?$vector@M$01@@@@A" = external constant %"class.Texture3D<vector<float, 2> >", align 4
-@"\01?Samp@@3USamplerState@@A" = external constant %struct.SamplerState, align 4
 
 define void @main() {
-  %Tex3D_texture_3d = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 4, i32 4, i1 false)
-  %Tex2DArray_texture_2darray = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 3, i32 3, i1 false)
-  %Tex2D_texture_2d = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 2, i32 2, i1 false)
-  %Tex1DArray_texture_1darray = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 1, i32 1, i1 false)
-  %Tex1D_texture_1d = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 0, i32 0, i1 false)
-  %Samp_sampler = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 3, i32 0, i32 0, i1 false)
-  %1 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)
-  %2 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
-  %3 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
-  %4 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 undef)
-  %5 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %Tex1D_texture_1d, %dx.types.Handle %Samp_sampler, float %1, float undef, float undef, float undef, i32 1, i32 undef, i32 undef, float %4)
-  %6 = extractvalue %dx.types.ResRet.f32 %5, 0
-  %7 = extractvalue %dx.types.ResRet.f32 %5, 1
-  %8 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %Tex1DArray_texture_1darray, %dx.types.Handle %Samp_sampler, float %1, float %2, float undef, float undef, i32 2, i32 undef, i32 undef, float %4)
-  %9 = extractvalue %dx.types.ResRet.f32 %8, 0
-  %.i0 = fadd fast float %9, %6
-  %.i1 = fadd fast float %9, %7
-  %10 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %Tex2D_texture_2d, %dx.types.Handle %Samp_sampler, float %1, float %2, float undef, float undef, i32 2, i32 3, i32 undef, float %4)
-  %11 = extractvalue %dx.types.ResRet.f32 %10, 0
-  %12 = extractvalue %dx.types.ResRet.f32 %10, 1
-  %.i01 = fadd fast float %.i0, %11
-  %.i12 = fadd fast float %.i1, %12
-  %13 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %Tex2DArray_texture_2darray, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float undef, i32 -1, i32 -3, i32 undef, float %4)
-  %14 = extractvalue %dx.types.ResRet.f32 %13, 0
-  %.i03 = fadd fast float %.i01, %14
-  %.i14 = fadd fast float %.i12, %14
-  %15 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %Tex3D_texture_3d, %dx.types.Handle %Samp_sampler, float %1, float %2, float %3, float undef, i32 -4, i32 -5, i32 3, float %4)
-  %16 = extractvalue %dx.types.ResRet.f32 %15, 0
-  %17 = extractvalue %dx.types.ResRet.f32 %15, 1
-  %.i05 = fadd fast float %.i03, %16
-  %.i16 = fadd fast float %.i14, %17
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %.i05)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %.i16)
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 4, i32 4, i1 false)
+  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 3, i32 3, i1 false)
+  %3 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 2, i32 2, i1 false)
+  %4 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 1, i32 1, i1 false)
+  %5 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 0, i32 0, i1 false)
+  %6 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 3, i32 0, i32 0, i1 false)
+  %7 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)
+  %8 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
+  %9 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
+  %10 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 undef)
+  %11 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %5, %dx.types.Handle %6, float %7, float undef, float undef, float undef, i32 1, i32 undef, i32 undef, float %10)
+  %12 = extractvalue %dx.types.ResRet.f32 %11, 0
+  %13 = extractvalue %dx.types.ResRet.f32 %11, 1
+  %14 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %4, %dx.types.Handle %6, float %7, float %8, float undef, float undef, i32 2, i32 undef, i32 undef, float %10)
+  %15 = extractvalue %dx.types.ResRet.f32 %14, 0
+  %16 = fadd fast float %15, %12
+  %17 = fadd fast float %15, %13
+  %18 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %3, %dx.types.Handle %6, float %7, float %8, float undef, float undef, i32 2, i32 3, i32 undef, float %10)
+  %19 = extractvalue %dx.types.ResRet.f32 %18, 0
+  %20 = extractvalue %dx.types.ResRet.f32 %18, 1
+  %21 = fadd fast float %16, %19
+  %22 = fadd fast float %17, %20
+  %23 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %2, %dx.types.Handle %6, float %7, float %8, float %9, float undef, i32 -1, i32 -3, i32 undef, float %10)
+  %24 = extractvalue %dx.types.ResRet.f32 %23, 0
+  %25 = fadd fast float %21, %24
+  %26 = fadd fast float %22, %24
+  %27 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %1, %dx.types.Handle %6, float %7, float %8, float %9, float undef, i32 -4, i32 -5, i32 3, float %10)
+  %28 = extractvalue %dx.types.ResRet.f32 %27, 0
+  %29 = extractvalue %dx.types.ResRet.f32 %27, 1
+  %30 = fadd fast float %25, %28
+  %31 = fadd fast float %26, %29
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %30)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %31)
   ret void
 }
 
@@ -110,44 +101,33 @@ attributes #2 = { nounwind readonly }
 !dx.valver = !{!2}
 !dx.shaderModel = !{!3}
 !dx.resources = !{!4}
-!dx.typeAnnotations = !{!14, !22}
-!dx.viewIdState = !{!26}
-!dx.entryPoints = !{!27}
+!dx.viewIdState = !{!14}
+!dx.entryPoints = !{!15}
 
-!0 = !{!"dxcoob 2019.05.00"}
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
 !1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 4}
+!2 = !{i32 1, i32 5}
 !3 = !{!"ps", i32 6, i32 0}
 !4 = !{!5, null, null, !12}
 !5 = !{!6, !8, !9, !10, !11}
-!6 = !{i32 0, %"class.Texture1D<vector<float, 2> >"* undef, !"Tex1D", i32 1, i32 0, i32 1, i32 1, i32 0, !7}
+!6 = !{i32 0, %"class.Texture1D<vector<float, 2> >"* undef, !"", i32 1, i32 0, i32 1, i32 1, i32 0, !7}
 !7 = !{i32 0, i32 9}
-!8 = !{i32 1, %"class.Texture1DArray<float>"* undef, !"Tex1DArray", i32 1, i32 1, i32 1, i32 6, i32 0, !7}
-!9 = !{i32 2, %"class.Texture2D<vector<float, 2> >"* undef, !"Tex2D", i32 1, i32 2, i32 1, i32 2, i32 0, !7}
-!10 = !{i32 3, %"class.Texture2DArray<float>"* undef, !"Tex2DArray", i32 1, i32 3, i32 1, i32 7, i32 0, !7}
-!11 = !{i32 4, %"class.Texture3D<vector<float, 2> >"* undef, !"Tex3D", i32 1, i32 4, i32 1, i32 4, i32 0, !7}
+!8 = !{i32 1, %"class.Texture1DArray<float>"* undef, !"", i32 1, i32 1, i32 1, i32 6, i32 0, !7}
+!9 = !{i32 2, %"class.Texture2D<vector<float, 2> >"* undef, !"", i32 1, i32 2, i32 1, i32 2, i32 0, !7}
+!10 = !{i32 3, %"class.Texture2DArray<float>"* undef, !"", i32 1, i32 3, i32 1, i32 7, i32 0, !7}
+!11 = !{i32 4, %"class.Texture3D<vector<float, 2> >"* undef, !"", i32 1, i32 4, i32 1, i32 4, i32 0, !7}
 !12 = !{!13}
-!13 = !{i32 0, %struct.SamplerState* undef, !"Samp", i32 0, i32 0, i32 1, i32 0, null}
-!14 = !{i32 0, %"class.Texture1D<vector<float, 2> >" undef, !15, %"class.Texture1D<vector<float, 2> >::mips_type" undef, !18, %"class.Texture1DArray<float>" undef, !15, %"class.Texture1DArray<float>::mips_type" undef, !18, %"class.Texture2D<vector<float, 2> >" undef, !15, %"class.Texture2D<vector<float, 2> >::mips_type" undef, !18, %"class.Texture2DArray<float>" undef, !15, %"class.Texture2DArray<float>::mips_type" undef, !18, %"class.Texture3D<vector<float, 2> >" undef, !15, %"class.Texture3D<vector<float, 2> >::mips_type" undef, !18, %"class.TextureCube<vector<float, 2> >" undef, !20, %"class.TextureCubeArray<float>" undef, !21}
-!15 = !{i32 20, !16, !17}
-!16 = !{i32 6, !"h", i32 3, i32 0, i32 7, i32 9}
-!17 = !{i32 6, !"mips", i32 3, i32 16}
-!18 = !{i32 4, !19}
-!19 = !{i32 6, !"handle", i32 3, i32 0, i32 7, i32 5}
-!20 = !{i32 8, !16}
-!21 = !{i32 4, !16}
-!22 = !{i32 1, void ()* @main, !23}
-!23 = !{!24}
-!24 = !{i32 0, !25, !25}
-!25 = !{}
-!26 = !{[6 x i32] [i32 4, i32 2, i32 3, i32 3, i32 3, i32 3]}
-!27 = !{void ()* @main, !"main", !28, !4, null}
-!28 = !{!29, !32, null}
-!29 = !{!30}
-!30 = !{i32 0, !"TEXCOORD", i8 9, i8 0, !31, i8 2, i32 1, i8 4, i32 0, i8 0, null}
-!31 = !{i32 0}
-!32 = !{!33}
-!33 = !{i32 0, !"SV_Target", i8 9, i8 16, !31, i8 0, i32 1, i8 2, i32 0, i8 0, null}
+!13 = !{i32 0, %struct.SamplerState* undef, !"", i32 0, i32 0, i32 1, i32 0, null}
+!14 = !{[6 x i32] [i32 4, i32 2, i32 3, i32 3, i32 3, i32 3]}
+!15 = !{void ()* @main, !"main", !16, !4, null}
+!16 = !{!17, !21, null}
+!17 = !{!18}
+!18 = !{i32 0, !"TEXCOORD", i8 9, i8 0, !19, i8 2, i32 1, i8 4, i32 0, i8 0, !20}
+!19 = !{i32 0}
+!20 = !{i32 3, i32 15}
+!21 = !{!22}
+!22 = !{i32 0, !"SV_Target", i8 9, i8 16, !19, i8 0, i32 1, i8 2, i32 0, i8 0, !23}
+!23 = !{i32 3, i32 3}
 #endif
 #if 0
 // SPIR-V disassembly
@@ -163,12 +143,6 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %26 %29
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
-OpName %8 "Tex1D"
-OpName %11 "Tex1DArray"
-OpName %14 "Tex2D"
-OpName %17 "Tex2DArray"
-OpName %20 "Tex3D"
-OpName %23 "Samp"
 OpName %26 "TEXCOORD"
 OpName %29 "SV_Target"
 OpDecorate %8 DescriptorSet 1
