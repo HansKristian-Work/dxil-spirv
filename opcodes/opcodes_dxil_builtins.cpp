@@ -829,6 +829,37 @@ static bool unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, s
 	return emit_dxil_unary_instruction(opcode, ops, impl, builder, instruction);
 }
 
+static bool emit_dot_instruction(unsigned dimensions,
+                                 std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                 const llvm::CallInst *instruction)
+{
+	Operation op;
+	op.op = spv::OpDot;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+
+	spv::Id vec0_args[4] = {};
+	spv::Id vec1_args[4] = {};
+	for (unsigned i = 0; i < dimensions; i++)
+		vec0_args[i] = impl.get_id_for_value(instruction->getOperand(1 + i));
+	for (unsigned i = 0; i < dimensions; i++)
+		vec1_args[i] = impl.get_id_for_value(instruction->getOperand(1 + i + dimensions));
+
+	spv::Id vec0 = impl.build_vector(ops, op.type_id, vec0_args, dimensions);
+	spv::Id vec1 = impl.build_vector(ops, op.type_id, vec1_args, dimensions);
+
+	op.arguments = { vec0, vec1 };
+	ops.push_back(std::move(op));
+	return true;
+}
+
+template <unsigned Dim>
+static bool emit_dot_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                              const llvm::CallInst *instruction)
+{
+	return emit_dot_instruction(Dim, ops, impl, builder, instruction);
+}
+
 struct DXILDispatcher
 {
 #define OP(x) builder_lut[unsigned(DXIL::Op::x)]
@@ -888,6 +919,10 @@ struct DXILDispatcher
 		OP(FirstbitLo) = std450_unary_dispatch<GLSLstd450FindILsb>;
 		OP(FirstbitSHi) = emit_find_high_bit_dispatch<GLSLstd450FindSMsb>;
 		OP(FirstbitHi) = emit_find_high_bit_dispatch<GLSLstd450FindUMsb>;
+
+		OP(Dot2) = emit_dot_dispatch<2>;
+		OP(Dot3) = emit_dot_dispatch<3>;
+		OP(Dot4) = emit_dot_dispatch<4>;
 	}
 
 #undef OP
