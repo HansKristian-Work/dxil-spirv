@@ -106,7 +106,8 @@ struct Converter::Impl
 	spv::Id build_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
 	spv::Id build_constant_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
 	spv::Id build_offset(std::vector<Operation> &ops, spv::Id value, unsigned offset);
-	void fixup_load_store_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
+	void fixup_load_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
+	spv::Id fixup_store_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, spv::Id value);
 
 	spv::Id glsl_std450_ext = 0;
 

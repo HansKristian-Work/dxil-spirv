@@ -318,7 +318,7 @@ static bool emit_texture_store_instruction(std::vector<Operation> &ops, Converte
                                            const llvm::CallInst *instruction)
 {
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
-	spv::Id image_type_id = impl.get_type_id(image_id);
+	const auto &meta = impl.handle_to_resource_meta[image_id];
 	spv::Id coord[3] = {};
 
 	unsigned num_coords_full, num_coords;
@@ -345,6 +345,7 @@ static bool emit_texture_store_instruction(std::vector<Operation> &ops, Converte
 	op.arguments.push_back(image_id);
 	op.arguments.push_back(impl.build_vector(ops, builder.makeUintType(32), coord, num_coords_full));
 	op.arguments.push_back(impl.build_vector(ops, builder.getTypeId(write_values[0]), write_values, 4));
+	op.arguments[2] = impl.fixup_store_sign(ops, meta.component_type, 4, op.arguments[2]);
 	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
 
 	ops.push_back(std::move(op));
@@ -693,7 +694,7 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 	ops.push_back(std::move(op));
 
 	// Deal with signed component types.
-	impl.fixup_load_store_sign(ops, meta.component_type, 4, instruction);
+	impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
 
 	return true;
 }
@@ -771,7 +772,7 @@ static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter:
 	ops.push_back(std::move(op));
 
 	// Deal with signed component types.
-	impl.fixup_load_store_sign(ops, meta.component_type, 4, instruction);
+	impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
 	return true;
 }
 
@@ -907,7 +908,7 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 	}
 
 	// Deal with signed component types.
-	impl.fixup_load_store_sign(ops, meta.component_type, 4, instruction);
+	impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
 
 	return true;
 }

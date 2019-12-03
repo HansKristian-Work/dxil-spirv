@@ -766,7 +766,7 @@ spv::Id Converter::Impl::build_offset(std::vector<Operation> &ops, spv::Id value
 	return id;
 }
 
-void Converter::Impl::fixup_load_store_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
+void Converter::Impl::fixup_load_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
 {
 	if (component_type == DXIL::ComponentType::I32)
 	{
@@ -781,6 +781,25 @@ void Converter::Impl::fixup_load_store_sign(std::vector<Operation> &ops, DXIL::C
 
 		ops.push_back(std::move(op));
 	}
+}
+
+spv::Id Converter::Impl::fixup_store_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, spv::Id value)
+{
+	if (component_type == DXIL::ComponentType::I32)
+	{
+		auto &builder = spirv_module.get_builder();
+		spv::Id new_id = allocate_id();
+		Operation op;
+		op.op = spv::OpBitcast;
+		op.id = new_id;
+		op.type_id = get_type_id(DXIL::ComponentType::I32, 1, components);
+		op.arguments = { value };
+
+		ops.push_back(std::move(op));
+		return new_id;
+	}
+	else
+		return value;
 }
 
 bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction)
