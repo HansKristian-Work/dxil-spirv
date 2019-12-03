@@ -82,6 +82,7 @@ struct Converter::Impl
 		DXIL::ResourceKind kind;
 		DXIL::ComponentType component_type;
 		unsigned stride;
+		spv::Id var_id;
 		spv::Id counter_var_id;
 	};
 	std::unordered_map<spv::Id, ResourceMeta> handle_to_resource_meta;

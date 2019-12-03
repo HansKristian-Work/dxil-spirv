@@ -410,4 +410,17 @@ enum class Op : unsigned
 
 	Count
 };
+
+enum class AtomicBinOp : uint8_t
+{
+	IAdd = 0,
+	And = 1,
+	Or = 2,
+	Xor = 3,
+	IMin = 4,
+	IMax = 5,
+	UMin = 6,
+	UMax = 7,
+	Exchange = 8
+};
 } // namespace DXIL

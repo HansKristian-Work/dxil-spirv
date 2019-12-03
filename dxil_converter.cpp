@@ -161,7 +161,7 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
 		srv_index_to_id.resize(std::max(srv_index_to_id.size(), size_t(index + 1)));
 		srv_index_to_id[index] = var_id;
-		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, 0u };
+		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, 0u };
 	}
 }
 
@@ -238,7 +238,7 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet, bind_space + 1);
 			builder.addDecoration(counter_var_id, spv::DecorationBinding, bind_register);
 		}
-		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, counter_var_id };
+		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id };
 	}
 }
 
