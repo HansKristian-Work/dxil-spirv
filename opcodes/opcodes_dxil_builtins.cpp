@@ -480,6 +480,9 @@ static bool emit_buffer_store_instruction(std::vector<Operation> &ops, Converter
 			image_id, access.index_id,
 			impl.build_vector(ops, element_type_id, store_values, 4)
 		};
+
+		// Deal with signed resource store.
+		op.arguments[2] = impl.fixup_store_sign(ops, meta.component_type, 4, op.arguments[2]);
 		ops.push_back(std::move(op));
 	}
 	else
