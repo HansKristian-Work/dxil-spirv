@@ -704,6 +704,7 @@ static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter:
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
 	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
+	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	unsigned num_coords_full, num_coords;
 	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
@@ -751,18 +752,7 @@ static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter:
 	Operation op;
 	op.op = spv::OpImageSampleExplicitLod;
 	op.id = impl.get_id_for_value(instruction);
-	auto *result_type = instruction->getType();
-	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
-	{
-		LOGE("Expected return type is a struct.\n");
-		return false;
-	}
-
-	// For tiled resources, there is a status result in the 5th member, but as long as noone attempts to extract it,
-	// we should be fine ...
-	assert(result_type->getStructNumElements() == 5);
-	op.type_id = impl.get_type_id(result_type->getStructElementType(0));
-	op.type_id = builder.makeVectorType(op.type_id, 4);
+	op.type_id = impl.get_type_id(meta.component_type, 1, 4);
 
 	op.arguments.push_back(combined_image_sampler_id);
 	op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), coord, num_coords_full));
@@ -779,6 +769,9 @@ static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter:
 		op.arguments.push_back(aux_argument);
 
 	ops.push_back(std::move(op));
+
+	// Deal with signed component types.
+	impl.fixup_load_store_sign(ops, meta.component_type, 4, instruction);
 	return true;
 }
 
@@ -790,6 +783,7 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
 	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, comparison_sampling);
+	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	unsigned num_coords_full, num_coords;
 	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
@@ -882,21 +876,7 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 	else
 		op.id = impl.get_id_for_value(instruction);
 
-	auto *result_type = instruction->getType();
-	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
-	{
-		LOGE("Expected return type is a struct.\n");
-		return false;
-	}
-
-	// For tiled resources, there is a status result in the 5th member, but as long as noone attempts to extract it,
-	// we should be fine ...
-	assert(result_type->getStructNumElements() == 5);
-
-	op.type_id = impl.get_type_id(result_type->getStructElementType(0));
-	if (!comparison_sampling)
-		op.type_id = builder.makeVectorType(op.type_id, 4);
-
+	op.type_id = impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4);
 	op.arguments.push_back(combined_image_sampler_id);
 	op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), coord, num_coords_full));
 
@@ -925,6 +905,9 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 		op.arguments = { sampled_value_id, sampled_value_id, sampled_value_id, sampled_value_id };
 		ops.push_back(std::move(op));
 	}
+
+	// Deal with signed component types.
+	impl.fixup_load_store_sign(ops, meta.component_type, 4, instruction);
 
 	return true;
 }
