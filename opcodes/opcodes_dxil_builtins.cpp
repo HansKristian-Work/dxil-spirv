@@ -351,16 +351,20 @@ static bool emit_texture_store_instruction(std::vector<Operation> &ops, Converte
 	return true;
 }
 
-static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                         const llvm::CallInst *instruction)
+struct BufferAccessInfo
+{
+	spv::Id index_id;
+	unsigned num_components;
+};
+
+static BufferAccessInfo build_buffer_access(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                            const llvm::CallInst *instruction)
 {
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
-	spv::Id image_type_id = impl.get_type_id(image_id);
-	bool is_uav = builder.isStorageImageType(image_type_id);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2));
-	unsigned constant_offset = 0;
+	unsigned num_components = 4;
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
@@ -375,6 +379,7 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
+		unsigned constant_offset = 0;
 		spv::Id offset_id = impl.get_id_for_value(instruction->getOperand(3));
 		bool has_constant_offset = false;
 		if (llvm::isa<llvm::ConstantInt>(instruction->getOperand(3)))
@@ -384,6 +389,8 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 			has_constant_offset = true;
 		}
 
+		num_components = std::min(4u, (meta.stride - constant_offset) / 4);
+
 		Operation op;
 
 		if (meta.stride != 4)
@@ -391,7 +398,7 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 			op.op = spv::OpIMul;
 			op.id = impl.allocate_id();
 			op.type_id = builder.makeUintType(32);
-			op.arguments = {index_id, builder.makeUintConstant(meta.stride / 4)};
+			op.arguments = { index_id, builder.makeUintConstant(meta.stride / 4) };
 			index_id = op.id;
 			ops.push_back(std::move(op));
 		}
@@ -416,7 +423,7 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 			op.op = spv::OpShiftRightLogical;
 			op.id = impl.allocate_id();
 			op.type_id = builder.makeUintType(32);
-			op.arguments = {offset_id, builder.makeUintConstant(2)};
+			op.arguments = { offset_id, builder.makeUintConstant(2) };
 			offset_id = op.id;
 			ops.push_back(std::move(op));
 
@@ -424,11 +431,99 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 			op.op = spv::OpIAdd;
 			op.id = impl.allocate_id();
 			op.type_id = builder.makeUintType(32);
-			op.arguments = {index_id, offset_id};
+			op.arguments = { index_id, offset_id };
 			index_id = op.id;
 			ops.push_back(std::move(op));
 		}
 	}
+
+	return { index_id, num_components };
+}
+
+static bool emit_buffer_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                          const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+	auto access = build_buffer_access(ops, impl, builder, instruction);
+
+	spv::Id store_values[4] = {};
+	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
+
+	for (unsigned i = 0; i < 4; i++)
+	{
+		store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+		if (!is_typed && (mask & (1u << i)))
+		{
+			if (instruction->getOperand(4 + i)->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+			{
+				Operation op;
+				op.op = spv::OpBitcast;
+				op.type_id = builder.makeUintType(32);
+				op.id = impl.allocate_id();
+				op.arguments = { store_values[i] };
+				store_values[i] = op.id;
+				ops.push_back(std::move(op));
+			}
+		}
+	}
+
+	if (is_typed)
+	{
+		spv::Id element_type_id = impl.get_type_id(instruction->getOperand(4)->getType());
+
+		Operation op;
+		op.op = spv::OpImageWrite;
+		op.arguments = {
+			image_id, access.index_id,
+			impl.build_vector(ops, element_type_id, store_values, 4)
+		};
+		ops.push_back(std::move(op));
+	}
+	else
+	{
+		spv::Id splat_type_id = builder.makeVectorType(builder.makeUintType(32), 4);
+		for (unsigned i = 0; i < 4; i++)
+		{
+			if (mask & (1u << i))
+			{
+				spv::Id splat_id = impl.allocate_id();
+
+				Operation op;
+				op.op = spv::OpCompositeConstruct;
+				op.type_id = splat_type_id;
+				op.id = splat_id;
+				op.arguments = { store_values[i], store_values[i], store_values[i], store_values[i] };
+				ops.push_back(std::move(op));
+
+				op = {};
+				op.op = spv::OpImageWrite;
+				op.arguments = {
+					image_id, impl.build_offset(ops, access.index_id, i),
+					splat_id,
+				};
+				ops.push_back(std::move(op));
+			}
+		}
+	}
+
+	if (is_typed)
+		builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
+
+	return true;
+}
+
+static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                         const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id image_type_id = impl.get_type_id(image_id);
+	bool is_uav = builder.isStorageImageType(image_type_id);
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
+
+	auto access = build_buffer_access(ops, impl, builder, instruction);
 
 	auto *result_type = instruction->getType();
 	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
@@ -441,7 +536,7 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 	// we should be fine ...
 	assert(result_type->getStructNumElements() == 5);
 
-	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
+	if (!is_typed)
 	{
 		// Unroll 4 loads. Ideally, we'd probably use physical_storage_buffer here, but unfortunately we have no indication
 		// how many components we need to load here, and the number of components we load is not necessarily constant,
@@ -450,8 +545,7 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 
 		// For raw buffers, we have no stride information, so assume we need to load 4 components.
 		// Hopefully compiler can eliminate loads which are never used ...
-		unsigned conservative_num_elements = meta.kind == DXIL::ResourceKind::RawBuffer ?
-				4u : std::min(4u, (meta.stride - constant_offset) / 4);
+		unsigned conservative_num_elements = access.num_components;
 
 		spv::Id component_ids[4] = {};
 
@@ -467,7 +561,7 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 			op.op = is_uav ? spv::OpImageRead : spv::OpImageFetch;
 			op.id = loaded_id;
 			op.type_id = loaded_id_type;
-			op.arguments = { image_id, impl.build_offset(ops, index_id, i) };
+			op.arguments = { image_id, impl.build_offset(ops, access.index_id, i) };
 			ops.push_back(std::move(op));
 
 			op = {};
@@ -501,7 +595,7 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 			ops.push_back(std::move(op));
 		}
 	}
-	else if (meta.kind == DXIL::ResourceKind::TypedBuffer)
+	else
 	{
 		Operation op;
 		op.op = is_uav ? spv::OpImageRead : spv::OpImageFetch;
@@ -509,13 +603,11 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 
 		op.type_id = impl.get_type_id(result_type->getStructElementType(0));
 		op.type_id = builder.makeVectorType(op.type_id, 4);
-		op.arguments = {image_id, index_id};
+		op.arguments = { image_id, access.index_id };
 		ops.push_back(std::move(op));
 	}
-	else
-		return false;
 
-	if (is_uav && meta.kind != DXIL::ResourceKind::RawBuffer && meta.kind != DXIL::ResourceKind::StructuredBuffer)
+	if (is_uav && is_typed)
 		builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
 
 	return true;
@@ -1230,6 +1322,7 @@ struct DXILDispatcher
 		OP(TextureLoad) = emit_texture_load_instruction;
 		OP(TextureStore) = emit_texture_store_instruction;
 		OP(BufferLoad) = emit_buffer_load_instruction;
+		OP(BufferStore) = emit_buffer_store_instruction;
 
 		OP(FMin) = std450_binary_dispatch<GLSLstd450NMin>;
 		OP(FMax) = std450_binary_dispatch<GLSLstd450NMax>;
