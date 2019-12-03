@@ -190,13 +190,15 @@ static bool emit_create_handle_instruction(std::vector<Operation> &ops, Converte
 	{
 		spv::Id image_id = impl.uav_index_to_id[resource_range];
 		spv::Id type_id = builder.getDerefTypeId(image_id);
+		const auto &meta = impl.handle_to_resource_meta[image_id];
 		Operation op;
 		op.op = spv::OpLoad;
 		op.id = impl.get_id_for_value(instruction);
 		op.type_id = type_id;
 		op.arguments = { image_id };
 		impl.id_to_type[op.id] = type_id;
-		impl.handle_to_resource_meta[op.id] = impl.handle_to_resource_meta[image_id];
+		impl.handle_to_resource_meta[op.id] = meta;
+
 		ops.push_back(std::move(op));
 		break;
 	}
@@ -439,6 +441,50 @@ static BufferAccessInfo build_buffer_access(std::vector<Operation> &ops, Convert
 	}
 
 	return { index_id, num_components };
+}
+
+static bool emit_buffer_update_counter_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                                   const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+	int direction = llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getSExtValue();
+
+	spv::Id counter_ptr_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpImageTexelPointer;
+		op.type_id = builder.makePointer(spv::StorageClassImage, builder.makeUintType(32));
+		op.id = counter_ptr_id;
+		op.arguments = { meta.counter_var_id, builder.makeUintConstant(0), builder.makeUintConstant(0) };
+		ops.push_back(std::move(op));
+	}
+
+	Operation op;
+	op.op = spv::OpAtomicIAdd;
+	op.type_id = builder.makeUintType(32);
+	op.id = direction > 0 ? impl.get_id_for_value(instruction) : impl.allocate_id();
+	op.arguments = {
+		counter_ptr_id,
+		builder.makeUintConstant(spv::ScopeDevice),
+		builder.makeUintConstant(0), // Relaxed.
+		builder.makeUintConstant(direction)
+	};
+
+	spv::Id result_id = op.id;
+	ops.push_back(std::move(op));
+
+	if (direction < 0)
+	{
+		op = {};
+		op.op = spv::OpISub;
+		op.type_id = builder.makeUintType(32);
+		op.id = impl.get_id_for_value(instruction);
+		op.arguments = { result_id, builder.makeUintConstant(1) };
+		ops.push_back(std::move(op));
+	}
+
+	return true;
 }
 
 static bool emit_buffer_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
@@ -1296,6 +1342,8 @@ struct DXILDispatcher
 		OP(TextureStore) = emit_texture_store_instruction;
 		OP(BufferLoad) = emit_buffer_load_instruction;
 		OP(BufferStore) = emit_buffer_store_instruction;
+
+		OP(BufferUpdateCounter) = emit_buffer_update_counter_instruction;
 
 		OP(FMin) = std450_binary_dispatch<GLSLstd450NMin>;
 		OP(FMax) = std450_binary_dispatch<GLSLstd450NMax>;

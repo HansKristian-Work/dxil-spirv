@@ -161,7 +161,7 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
 		srv_index_to_id.resize(std::max(srv_index_to_id.size(), size_t(index + 1)));
 		srv_index_to_id[index] = var_id;
-		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride };
+		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, 0u };
 	}
 }
 
@@ -184,7 +184,6 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		bool globally_coherent = get_constant_metadata(uav, 7) != 0;
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
 		bool is_rov = get_constant_metadata(uav, 9) != 0;
-		assert(!has_counter);
 		assert(!is_rov);
 
 		llvm::MDNode *tags = nullptr;
@@ -229,7 +228,17 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		uav_index_to_id.resize(std::max(uav_index_to_id.size(), size_t(index + 1)));
 		uav_index_to_id[index] = var_id;
-		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride };
+
+		spv::Id counter_var_id = 0;
+		if (has_counter)
+		{
+			counter_var_id =
+					builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : (name + "Counter").c_str());
+
+			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet, bind_space + 1);
+			builder.addDecoration(counter_var_id, spv::DecorationBinding, bind_register);
+		}
+		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, counter_var_id };
 	}
 }
 
