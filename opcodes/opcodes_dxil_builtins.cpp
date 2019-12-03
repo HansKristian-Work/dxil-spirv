@@ -214,7 +214,7 @@ static bool emit_create_handle_instruction(std::vector<Operation> &ops, Converte
 		op.id = impl.get_id_for_value(instruction);
 		op.type_id = type_id;
 		op.arguments = { sampler_id };
-		impl.handle_to_resource_meta[op.id] = { DXIL::ResourceKind::Sampler, 0u };
+		impl.handle_to_resource_meta[op.id] = { DXIL::ResourceKind::Sampler, DXIL::ComponentType::Invalid, 0u };
 		impl.id_to_type[op.id] = type_id;
 		ops.push_back(std::move(op));
 		break;
@@ -618,6 +618,7 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 {
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
+	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	bool is_uav = builder.isStorageImageType(image_type_id);
 	uint32_t image_ops = 0;
@@ -665,18 +666,7 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 
 	Operation op;
 	op.op = is_uav ? spv::OpImageRead : spv::OpImageFetch;
-	auto *result_type = instruction->getType();
-	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
-	{
-		LOGE("Expected return type is a struct.\n");
-		return false;
-	}
-
-	// For tiled resources, there is a status result in the 5th member, but as long as noone attempts to extract it,
-	// we should be fine ...
-	assert(result_type->getStructNumElements() == 5);
-	op.type_id = impl.get_type_id(result_type->getStructElementType(0));
-	op.type_id = builder.makeVectorType(op.type_id, 4);
+	op.type_id = impl.get_type_id(meta.component_type, 1, 4);
 
 	op.id = impl.get_id_for_value(instruction);
 	op.arguments.push_back(image_id);
@@ -701,6 +691,10 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 		builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
 
 	ops.push_back(std::move(op));
+
+	// Deal with signed component types.
+	impl.fixup_load_store_sign(ops, meta.component_type, 4, instruction);
+
 	return true;
 }
 

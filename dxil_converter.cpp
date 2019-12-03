@@ -131,20 +131,23 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			tags = llvm::dyn_cast<llvm::MDNode>(srv->getOperand(8));
 
 		spv::Id sampled_type_id = 0;
+		DXIL::ComponentType component_type = DXIL::ComponentType::U32;
 		unsigned stride = 0;
+
 		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
-			sampled_type_id = get_type_id(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)), 1, 1);
+			component_type = static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1));
 		}
 		else
 		{
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
 			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
-			sampled_type_id = builder.makeUintType(32);
 			if (tags)
 				stride = get_constant_metadata(tags, 1);
 		}
+
+		sampled_type_id = get_type_id(component_type, 1, 1);
 
 		spv::Id type_id =
 		    builder.makeImageType(sampled_type_id, image_dimension_from_resource_kind(resource_kind), false,
@@ -158,7 +161,7 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
 		srv_index_to_id.resize(std::max(srv_index_to_id.size(), size_t(index + 1)));
 		srv_index_to_id[index] = var_id;
-		handle_to_resource_meta[var_id] = { resource_kind, stride };
+		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride };
 	}
 }
 
@@ -192,20 +195,23 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		unsigned stride = 0;
 		spv::ImageFormat format = spv::ImageFormatUnknown;
 
+		DXIL::ComponentType component_type = DXIL::ComponentType::U32;
+
 		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
-			element_type_id = get_type_id(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)), 1, 1);
+			component_type = static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1));
 		}
 		else
 		{
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
 			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
-			element_type_id = builder.makeUintType(32);
 			format = spv::ImageFormatR32ui;
 			if (tags)
 				stride = get_constant_metadata(tags, 1);
 		}
+
+		element_type_id = get_type_id(component_type, 1, 1);
 
 		spv::Id type_id =
 		    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
@@ -223,7 +229,7 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		uav_index_to_id.resize(std::max(uav_index_to_id.size(), size_t(index + 1)));
 		uav_index_to_id[index] = var_id;
-		handle_to_resource_meta[var_id] = { resource_kind, stride };
+		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride };
 	}
 }
 
@@ -758,6 +764,23 @@ spv::Id Converter::Impl::build_offset(std::vector<Operation> &ops, spv::Id value
 
 	ops.push_back(std::move(op));
 	return id;
+}
+
+void Converter::Impl::fixup_load_store_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
+{
+	if (component_type == DXIL::ComponentType::I32)
+	{
+		auto &builder = spirv_module.get_builder();
+		spv::Id new_id = allocate_id();
+		Operation op;
+		op.op = spv::OpBitcast;
+		op.id = new_id;
+		op.type_id = get_type_id(DXIL::ComponentType::U32, 1, components);
+		op.arguments = { get_id_for_value(value) };
+		value_map[value] = new_id;
+
+		ops.push_back(std::move(op));
+	}
 }
 
 bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction)
