@@ -76,6 +76,13 @@ struct Converter::Impl
 	std::vector<spv::Id> cbv_index_to_id;
 	std::vector<spv::Id> sampler_index_to_id;
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
+
+	struct ResourceMeta
+	{
+		DXIL::ResourceKind kind;
+		unsigned stride;
+	};
+	std::unordered_map<spv::Id, ResourceMeta> handle_to_resource_meta;
 	std::unordered_map<spv::Id, spv::Id> id_to_type;
 
 	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols);
@@ -97,6 +104,7 @@ struct Converter::Impl
 	spv::Id build_sampled_image(std::vector<Operation> &ops, spv::Id image_id, spv::Id sampler_id, bool comparison);
 	spv::Id build_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
 	spv::Id build_constant_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
+	spv::Id build_offset(std::vector<Operation> &ops, spv::Id value, unsigned offset);
 
 	spv::Id glsl_std450_ext = 0;
 

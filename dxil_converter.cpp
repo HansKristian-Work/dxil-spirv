@@ -126,11 +126,13 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
 
-		auto *tags = srv->getNumOperands() >= 9 ? llvm::dyn_cast<llvm::MDNode>(srv->getOperand(8)) : nullptr;
-		assert(tags);
+		llvm::MDNode *tags = nullptr;
+		if (srv->getNumOperands() >= 9 && srv->getOperand(8))
+			tags = llvm::dyn_cast<llvm::MDNode>(srv->getOperand(8));
 
 		spv::Id sampled_type_id = 0;
-		if (get_constant_metadata(tags, 0) == 0)
+		unsigned stride = 0;
+		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
 			sampled_type_id = get_type_id(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)), 1, 1);
@@ -140,6 +142,8 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
 			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
 			sampled_type_id = builder.makeUintType(32);
+			if (tags)
+				stride = get_constant_metadata(tags, 1);
 		}
 
 		spv::Id type_id =
@@ -152,9 +156,9 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
-
 		srv_index_to_id.resize(std::max(srv_index_to_id.size(), size_t(index + 1)));
 		srv_index_to_id[index] = var_id;
+		handle_to_resource_meta[var_id] = { resource_kind, stride };
 	}
 }
 
@@ -180,11 +184,15 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		assert(!has_counter);
 		assert(!is_rov);
 
-		auto *tags = uav->getNumOperands() >= 11 ? llvm::dyn_cast<llvm::MDNode>(uav->getOperand(10)) : nullptr;
-		assert(tags);
+		llvm::MDNode *tags = nullptr;
+		if (uav->getNumOperands() >= 11 && uav->getOperand(10))
+			tags = llvm::dyn_cast<llvm::MDNode>(uav->getOperand(10));
 
 		spv::Id element_type_id = 0;
-		if (get_constant_metadata(tags, 0) == 0)
+		unsigned stride = 0;
+		spv::ImageFormat format = spv::ImageFormatUnknown;
+
+		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
 			element_type_id = get_type_id(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)), 1, 1);
@@ -194,12 +202,15 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
 			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
 			element_type_id = builder.makeUintType(32);
+			format = spv::ImageFormatR32ui;
+			if (tags)
+				stride = get_constant_metadata(tags, 1);
 		}
 
 		spv::Id type_id =
 		    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
 		                          image_dimension_is_arrayed(resource_kind),
-		                          image_dimension_is_multisampled(resource_kind), 2, spv::ImageFormatUnknown);
+		                          image_dimension_is_multisampled(resource_kind), 2, format);
 
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
@@ -212,6 +223,7 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		uav_index_to_id.resize(std::max(uav_index_to_id.size(), size_t(index + 1)));
 		uav_index_to_id[index] = var_id;
+		handle_to_resource_meta[var_id] = { resource_kind, stride };
 	}
 }
 
@@ -728,6 +740,24 @@ spv::Id Converter::Impl::build_constant_vector(std::vector<Operation> &ops, spv:
 
 	auto &builder = spirv_module.get_builder();
 	return builder.makeCompositeConstant(builder.makeVectorType(element_type, count), { elements, elements + count });
+}
+
+spv::Id Converter::Impl::build_offset(std::vector<Operation> &ops, spv::Id value, unsigned offset)
+{
+	if (offset == 0)
+		return value;
+
+	auto &builder = spirv_module.get_builder();
+	spv::Id id = allocate_id();
+
+	Operation op;
+	op.op = spv::OpIAdd;
+	op.id = id;
+	op.type_id = builder.makeUintType(32);
+	op.arguments = { value, builder.makeUintConstant(offset) };
+
+	ops.push_back(std::move(op));
+	return id;
 }
 
 bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction)

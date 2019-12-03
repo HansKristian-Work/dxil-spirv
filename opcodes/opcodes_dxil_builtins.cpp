@@ -177,11 +177,11 @@ static bool emit_create_handle_instruction(std::vector<Operation> &ops, Converte
 		spv::Id type_id = builder.getDerefTypeId(image_id);
 		Operation op;
 		op.op = spv::OpLoad;
-		op.id = impl.allocate_id();
+		op.id = impl.get_id_for_value(instruction);
 		op.type_id = type_id;
 		op.arguments = { image_id };
 		impl.id_to_type[op.id] = type_id;
-		impl.handle_to_ptr_id[instruction] = op.id;
+		impl.handle_to_resource_meta[op.id] = impl.handle_to_resource_meta[image_id];
 		ops.push_back(std::move(op));
 		break;
 	}
@@ -192,11 +192,11 @@ static bool emit_create_handle_instruction(std::vector<Operation> &ops, Converte
 		spv::Id type_id = builder.getDerefTypeId(image_id);
 		Operation op;
 		op.op = spv::OpLoad;
-		op.id = impl.allocate_id();
+		op.id = impl.get_id_for_value(instruction);
 		op.type_id = type_id;
 		op.arguments = { image_id };
 		impl.id_to_type[op.id] = type_id;
-		impl.handle_to_ptr_id[instruction] = op.id;
+		impl.handle_to_resource_meta[op.id] = impl.handle_to_resource_meta[image_id];
 		ops.push_back(std::move(op));
 		break;
 	}
@@ -211,10 +211,10 @@ static bool emit_create_handle_instruction(std::vector<Operation> &ops, Converte
 		spv::Id type_id = builder.getDerefTypeId(sampler_id);
 		Operation op;
 		op.op = spv::OpLoad;
-		op.id = impl.allocate_id();
+		op.id = impl.get_id_for_value(instruction);
 		op.type_id = type_id;
 		op.arguments = { sampler_id };
-		impl.handle_to_ptr_id[instruction] = op.id;
+		impl.handle_to_resource_meta[op.id] = { DXIL::ResourceKind::Sampler, 0u };
 		impl.id_to_type[op.id] = type_id;
 		ops.push_back(std::move(op));
 		break;
@@ -317,7 +317,7 @@ static bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder, s
 static bool emit_texture_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                            const llvm::CallInst *instruction)
 {
-	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	spv::Id coord[3] = {};
 
@@ -337,6 +337,7 @@ static bool emit_texture_store_instruction(std::vector<Operation> &ops, Converte
 		write_values[i] = impl.get_id_for_value(instruction->getOperand(i + 5));
 
 	// Ignore write mask. We cannot do anything meaningful about it.
+	// The write mask must cover all components in the image, and there is no "sliced write" support for typed resources.
 
 	Operation op;
 	op.op = spv::OpImageWrite;
@@ -350,10 +351,180 @@ static bool emit_texture_store_instruction(std::vector<Operation> &ops, Converte
 	return true;
 }
 
+static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                         const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id image_type_id = impl.get_type_id(image_id);
+	bool is_uav = builder.isStorageImageType(image_type_id);
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+
+	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2));
+	unsigned constant_offset = 0;
+
+	if (meta.kind == DXIL::ResourceKind::RawBuffer)
+	{
+		// For raw buffers, the index is in bytes. Since we only consider bytes, shift by 4.
+		Operation op;
+		op.op = spv::OpShiftRightLogical;
+		op.id = impl.allocate_id();
+		op.type_id = builder.makeUintType(32);
+		op.arguments = { index_id, builder.makeUintConstant(2) };
+		index_id = op.id;
+		ops.push_back(std::move(op));
+	}
+	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+	{
+		spv::Id offset_id = impl.get_id_for_value(instruction->getOperand(3));
+		bool has_constant_offset = false;
+		if (llvm::isa<llvm::ConstantInt>(instruction->getOperand(3)))
+		{
+			constant_offset = unsigned(llvm::cast<llvm::ConstantInt>(
+					instruction->getOperand(3))->getUniqueInteger().getZExtValue());
+			has_constant_offset = true;
+		}
+
+		Operation op;
+
+		if (meta.stride != 4)
+		{
+			op.op = spv::OpIMul;
+			op.id = impl.allocate_id();
+			op.type_id = builder.makeUintType(32);
+			op.arguments = {index_id, builder.makeUintConstant(meta.stride / 4)};
+			index_id = op.id;
+			ops.push_back(std::move(op));
+		}
+
+		if (has_constant_offset)
+		{
+			if (constant_offset != 0)
+			{
+				op = {};
+				op.op = spv::OpIAdd;
+				op.id = impl.allocate_id();
+				op.type_id = builder.makeUintType(32);
+				op.arguments = { index_id, builder.makeUintConstant(constant_offset / 4) };
+				index_id = op.id;
+				ops.push_back(std::move(op));
+			}
+		}
+		else
+		{
+			// Dynamically offset into the structured element.
+			op = {};
+			op.op = spv::OpShiftRightLogical;
+			op.id = impl.allocate_id();
+			op.type_id = builder.makeUintType(32);
+			op.arguments = {offset_id, builder.makeUintConstant(2)};
+			offset_id = op.id;
+			ops.push_back(std::move(op));
+
+			op = {};
+			op.op = spv::OpIAdd;
+			op.id = impl.allocate_id();
+			op.type_id = builder.makeUintType(32);
+			op.arguments = {index_id, offset_id};
+			index_id = op.id;
+			ops.push_back(std::move(op));
+		}
+	}
+
+	auto *result_type = instruction->getType();
+	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
+	{
+		LOGE("Expected return type is a struct.\n");
+		return false;
+	}
+
+	// For tiled resources, there is a status result in the 5th member, but as long as noone attempts to extract it,
+	// we should be fine ...
+	assert(result_type->getStructNumElements() == 5);
+
+	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
+	{
+		// Unroll 4 loads. Ideally, we'd probably use physical_storage_buffer here, but unfortunately we have no indication
+		// how many components we need to load here, and the number of components we load is not necessarily constant,
+		// so we cannot reliably encode this information in the SRV.
+		// The best we can do is to infer it from stride if we can.
+
+		// For raw buffers, we have no stride information, so assume we need to load 4 components.
+		// Hopefully compiler can eliminate loads which are never used ...
+		unsigned conservative_num_elements = meta.kind == DXIL::ResourceKind::RawBuffer ?
+				4u : std::min(4u, (meta.stride - constant_offset) / 4);
+
+		spv::Id component_ids[4] = {};
+
+		spv::Id extracted_id_type = builder.makeUintType(32);
+		spv::Id loaded_id_type = builder.makeVectorType(extracted_id_type, 4);
+
+		for (unsigned i = 0; i < conservative_num_elements; i++)
+		{
+			spv::Id loaded_id = impl.allocate_id();
+			spv::Id extracted_id = impl.allocate_id();
+
+			Operation op;
+			op.op = is_uav ? spv::OpImageRead : spv::OpImageFetch;
+			op.id = loaded_id;
+			op.type_id = loaded_id_type;
+			op.arguments = { image_id, impl.build_offset(ops, index_id, i) };
+			ops.push_back(std::move(op));
+
+			op = {};
+			op.op = spv::OpCompositeExtract;
+			op.id = extracted_id;
+			op.type_id = extracted_id_type;
+			op.arguments = { loaded_id, 0 };
+			ops.push_back(std::move(op));
+
+			component_ids[i] = extracted_id;
+		}
+
+		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
+		spv::Id construct_id = need_bitcast ? impl.allocate_id() : impl.get_id_for_value(instruction);
+
+		Operation op;
+		op.op = spv::OpCompositeConstruct;
+		op.id = construct_id;
+		op.type_id = builder.makeVectorType(extracted_id_type, conservative_num_elements);
+		op.arguments.insert(op.arguments.end(), component_ids, component_ids + conservative_num_elements);
+		ops.push_back(std::move(op));
+
+		if (need_bitcast)
+		{
+			op = {};
+			op.op = spv::OpBitcast;
+			op.id = impl.get_id_for_value(instruction);
+			op.type_id = impl.get_type_id(result_type->getStructElementType(0));
+			op.type_id = builder.makeVectorType(op.type_id, conservative_num_elements);
+			op.arguments = { construct_id };
+			ops.push_back(std::move(op));
+		}
+	}
+	else if (meta.kind == DXIL::ResourceKind::TypedBuffer)
+	{
+		Operation op;
+		op.op = is_uav ? spv::OpImageRead : spv::OpImageFetch;
+		op.id = impl.get_id_for_value(instruction);
+
+		op.type_id = impl.get_type_id(result_type->getStructElementType(0));
+		op.type_id = builder.makeVectorType(op.type_id, 4);
+		op.arguments = {image_id, index_id};
+		ops.push_back(std::move(op));
+	}
+	else
+		return false;
+
+	if (is_uav && meta.kind != DXIL::ResourceKind::RawBuffer && meta.kind != DXIL::ResourceKind::StructuredBuffer)
+		builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
+
+	return true;
+}
+
 static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                           const llvm::CallInst *instruction)
 {
-	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
 
 	bool is_uav = builder.isStorageImageType(image_type_id);
@@ -444,8 +615,8 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                          const llvm::CallInst *instruction)
 {
-	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
-	spv::Id sampler_id = impl.handle_to_ptr_id[instruction->getOperand(2)];
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
 	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
 
 	unsigned num_coords_full, num_coords;
@@ -530,8 +701,8 @@ static bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops
 {
 	bool comparison_sampling = opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero;
 
-	spv::Id image_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
-	spv::Id sampler_id = impl.handle_to_ptr_id[instruction->getOperand(2)];
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
 	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, comparison_sampling);
 
 	unsigned num_coords_full, num_coords;
@@ -1058,6 +1229,7 @@ struct DXILDispatcher
 		OP(SampleGrad) = emit_sample_grad_instruction;
 		OP(TextureLoad) = emit_texture_load_instruction;
 		OP(TextureStore) = emit_texture_store_instruction;
+		OP(BufferLoad) = emit_buffer_load_instruction;
 
 		OP(FMin) = std450_binary_dispatch<GLSLstd450NMin>;
 		OP(FMax) = std450_binary_dispatch<GLSLstd450NMax>;
