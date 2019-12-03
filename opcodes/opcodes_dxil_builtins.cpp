@@ -361,12 +361,12 @@ struct BufferAccessInfo
 };
 
 static BufferAccessInfo build_buffer_access(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                            const llvm::CallInst *instruction)
+                                            const llvm::CallInst *instruction, unsigned operand_offset = 0)
 {
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
-	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2));
+	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
 	unsigned num_components = 4;
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
@@ -383,12 +383,12 @@ static BufferAccessInfo build_buffer_access(std::vector<Operation> &ops, Convert
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
 		unsigned constant_offset = 0;
-		spv::Id offset_id = impl.get_id_for_value(instruction->getOperand(3));
+		spv::Id offset_id = impl.get_id_for_value(instruction->getOperand(3 + operand_offset));
 		bool has_constant_offset = false;
-		if (llvm::isa<llvm::ConstantInt>(instruction->getOperand(3)))
+		if (llvm::isa<llvm::ConstantInt>(instruction->getOperand(3 + operand_offset)))
 		{
 			constant_offset = unsigned(llvm::cast<llvm::ConstantInt>(
-					instruction->getOperand(3))->getUniqueInteger().getZExtValue());
+					instruction->getOperand(3 + operand_offset))->getUniqueInteger().getZExtValue());
 			has_constant_offset = true;
 		}
 
@@ -460,8 +460,16 @@ static bool emit_atomic_binop_instruction(std::vector<Operation> &ops, Converter
 	if (num_coords_full > 3)
 		return false;
 
-	for (uint32_t i = 0; i < num_coords_full; i++)
-		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
+	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
+	{
+		auto access = build_buffer_access(ops, impl, builder, instruction, 1);
+		coords[0] = access.index_id;
+	}
+	else
+	{
+		for (uint32_t i = 0; i < num_coords_full; i++)
+			coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
+	}
 	spv::Id coord = impl.build_vector(ops, builder.makeUintType(32), coords, num_coords_full);
 
 	spv::Id counter_ptr_id = impl.allocate_id();

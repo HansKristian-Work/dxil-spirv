@@ -8,6 +8,14 @@ RWBuffer<uint> RWBuf : register(u5);
 RWTexture1D<int> RWTex1DSigned : register(u0, space1);
 RWTexture2D<int> RWTex2DSigned : register(u2, space1);
 
+struct Composite
+{
+	int a, b, c, d;
+};
+
+RWStructuredBuffer<Composite> RWStructured : register(u6);
+RWByteAddressBuffer Raw : register(u7);
+
 uint main(nointerpolation uint3 coord : TEXCOORD) : SV_Target
 {
 	uint res = 0;
@@ -39,6 +47,12 @@ uint main(nointerpolation uint3 coord : TEXCOORD) : SV_Target
 	res += output_signed;
 
 	InterlockedMax(RWTex2DSigned[coord.xy], 9, output_signed);
+	res += output_signed;
+
+	InterlockedAdd(RWStructured[coord.x].c, 10, output_signed);
+	res += output_signed;
+
+	Raw.InterlockedMax(coord.x * 4, 12, output_signed);
 	res += output_signed;
 
 	return res;
