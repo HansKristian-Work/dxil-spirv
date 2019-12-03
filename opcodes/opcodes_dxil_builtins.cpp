@@ -525,17 +525,7 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
 	auto access = build_buffer_access(ops, impl, builder, instruction);
-
 	auto *result_type = instruction->getType();
-	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
-	{
-		LOGE("Expected return type is a struct.\n");
-		return false;
-	}
-
-	// For tiled resources, there is a status result in the 5th member, but as long as noone attempts to extract it,
-	// we should be fine ...
-	assert(result_type->getStructNumElements() == 5);
 
 	if (!is_typed)
 	{
@@ -602,10 +592,12 @@ static bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter:
 		op.op = is_uav ? spv::OpImageRead : spv::OpImageFetch;
 		op.id = impl.get_id_for_value(instruction);
 
-		op.type_id = impl.get_type_id(result_type->getStructElementType(0));
-		op.type_id = builder.makeVectorType(op.type_id, 4);
+		op.type_id = impl.get_type_id(meta.component_type, 1, 4);
 		op.arguments = { image_id, access.index_id };
 		ops.push_back(std::move(op));
+
+		// Deal with loads from signed resources.
+		impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
 	}
 
 	if (is_uav && is_typed)
