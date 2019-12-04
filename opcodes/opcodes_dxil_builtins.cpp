@@ -284,6 +284,39 @@ static bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Co
 	return true;
 }
 
+static bool get_image_dimensions_query_size(Converter::Impl &impl, spv::Builder &builder, spv::Id image_id, uint32_t *num_coords)
+{
+	spv::Id image_type_id = impl.get_type_id(image_id);
+	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
+	bool is_array = builder.isArrayedImageType(image_type_id);
+
+	switch (dim)
+	{
+	case spv::Dim1D:
+	case spv::DimBuffer:
+		*num_coords = 1;
+		break;
+
+	case spv::Dim2D:
+	case spv::DimCube:
+		*num_coords = 2;
+		break;
+
+	case spv::Dim3D:
+		*num_coords = 3;
+		break;
+
+	default:
+		LOGE("Unexpected sample dimensionality.\n");
+		return false;
+	}
+
+	if (is_array)
+		(*num_coords)++;
+
+	return true;
+}
+
 static bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder, spv::Id image_id, uint32_t *num_coords,
                                  uint32_t *num_dimensions)
 {
@@ -581,6 +614,104 @@ static bool emit_buffer_update_counter_instruction(std::vector<Operation> &ops, 
 		ops.push_back(std::move(op));
 	}
 
+	return true;
+}
+
+static bool emit_get_dimensions_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                            const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id image_type_id = impl.get_type_id(image_id);
+
+	uint32_t num_coords = 0;
+	if (!get_image_dimensions_query_size(impl, builder, image_id, &num_coords))
+		return false;
+
+	bool is_uav = builder.isStorageImageType(image_type_id);
+	bool has_samples = builder.isMultisampledImageType(image_type_id);
+	bool has_lod = !is_uav && builder.getTypeDimensionality(image_type_id) != spv::DimBuffer && !has_samples;
+
+	spv::Id dimensions_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = has_lod ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize;
+		op.type_id = builder.makeUintType(32);
+		if (num_coords > 1)
+			op.type_id = builder.makeVectorType(op.type_id, num_coords);
+		op.arguments = { image_id };
+		if (has_lod)
+			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(2)));
+		op.id = dimensions_id;
+		ops.push_back(std::move(op));
+	}
+
+	if (impl.handle_to_resource_meta[image_id].kind == DXIL::ResourceKind::RawBuffer)
+	{
+		spv::Id byte_size_id = impl.allocate_id();
+		Operation op;
+		op.op = spv::OpIMul;
+		op.id = byte_size_id;
+		op.type_id = builder.makeUintType(32);
+		op.arguments = { dimensions_id, builder.makeUintConstant(4) };
+		dimensions_id = byte_size_id;
+		ops.push_back(std::move(op));
+	}
+
+	spv::Id aux_id = 0;
+	if (has_lod)
+	{
+		aux_id = impl.allocate_id();
+		Operation op;
+		op.op = spv::OpImageQueryLevels;
+		op.id = aux_id;
+		op.type_id = builder.makeUintType(32);
+		op.arguments = { image_id };
+		ops.push_back(std::move(op));
+	}
+	else if (has_samples)
+	{
+		aux_id = impl.allocate_id();
+		Operation op;
+		op.op = spv::OpImageQuerySamples;
+		op.id = aux_id;
+		op.type_id = builder.makeUintType(32);
+		op.arguments = { image_id };
+		ops.push_back(std::move(op));
+	}
+
+	if (!has_lod && !has_samples)
+	{
+		if (num_coords == 1)
+		{
+			// Must create a composite for good measure as calling code expects to extract component.
+			Operation op;
+			op.op = spv::OpCompositeConstruct;
+			op.type_id = builder.makeVectorType(builder.makeUintType(32), 2);
+			op.id = impl.get_id_for_value(instruction);
+			op.arguments = { dimensions_id, builder.createUndefined(builder.makeUintType(32)) };
+			ops.push_back(std::move(op));
+		}
+		else
+			impl.value_map[instruction] = dimensions_id;
+	}
+	else
+	{
+		Operation op;
+		op.op = spv::OpCompositeConstruct;
+		op.type_id = builder.makeVectorType(builder.makeUintType(32), 4);
+		op.id = impl.get_id_for_value(instruction);
+		op.arguments.push_back(dimensions_id);
+
+		// This element cannot be statically accessed if we don't have LOD, so don't bother returning anything here.
+		// Otherwise, we need to pad out.
+		for (unsigned i = num_coords; i < 3; i++)
+			op.arguments.push_back(builder.createUndefined(builder.makeUintType(32)));
+		op.arguments.push_back(aux_id);
+
+		ops.push_back(std::move(op));
+	}
+
+	builder.addCapability(spv::CapabilityImageQuery);
 	return true;
 }
 
@@ -1439,6 +1570,7 @@ struct DXILDispatcher
 		OP(TextureStore) = emit_texture_store_instruction;
 		OP(BufferLoad) = emit_buffer_load_instruction;
 		OP(BufferStore) = emit_buffer_store_instruction;
+		OP(GetDimensions) = emit_get_dimensions_instruction;
 
 		OP(BufferUpdateCounter) = emit_buffer_update_counter_instruction;
 
