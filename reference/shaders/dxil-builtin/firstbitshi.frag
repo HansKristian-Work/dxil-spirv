@@ -84,23 +84,23 @@ OpDecorate %9 Location 0
 %7 = OpVariable %6 Input
 %8 = OpTypePointer Output %5
 %9 = OpVariable %8 Output
-%10 = OpTypeInt 32 0
+%12 = OpTypeInt 32 0
 %16 = OpTypeBool
-%17 = OpConstant %10 4294967295
-%19 = OpConstant %10 31
+%17 = OpConstant %12 4294967295
+%19 = OpConstant %12 31
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %25
 %25 = OpLabel
-%11 = OpLoad %5 %7
-%12 = OpBitcast %10 %11
-%14 = OpExtInst %10 %13 FindSMsb %12
+%10 = OpLoad %5 %7
+%11 = OpBitcast %12 %10
+%14 = OpExtInst %12 %13 FindSMsb %11
 %15 = OpIEqual %16 %14 %17
-%18 = OpISub %10 %19 %14
-%20 = OpSelect %10 %15 %17 %18
-%21 = OpISub %10 %19 %20
+%18 = OpISub %12 %19 %14
+%20 = OpSelect %12 %15 %17 %18
+%21 = OpISub %12 %19 %20
 %22 = OpIEqual %16 %20 %17
-%23 = OpSelect %10 %22 %17 %21
+%23 = OpSelect %12 %22 %17 %21
 %24 = OpBitcast %5 %23
 OpStore %9 %24
 OpReturn

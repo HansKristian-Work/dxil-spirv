@@ -74,33 +74,17 @@ static bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::
 	else
 		ptr_id = var_id;
 
-	bool need_bitcast_after_load =
-	    impl.get_type_id(meta.component_type, 1, 1) != impl.get_type_id(instruction->getType());
-	spv::Id loaded_id = need_bitcast_after_load ? impl.allocate_id() : impl.get_id_for_value(instruction);
-
 	op = {};
 	op.op = spv::OpLoad;
-	op.id = loaded_id;
-
+	op.id = impl.get_id_for_value(instruction);
 	// Need to deal with signed vs unsigned here.
 	op.type_id = impl.get_type_id(meta.component_type, 1, 1);
-
 	op.arguments = { ptr_id };
-	assert(op.arguments[0]);
 
 	ops.push_back(std::move(op));
 
 	// Need to bitcast after we load.
-	if (need_bitcast_after_load)
-	{
-		Operation bitcast_op;
-		bitcast_op.op = spv::OpBitcast;
-		bitcast_op.type_id = impl.get_type_id(instruction->getType());
-		bitcast_op.arguments = { loaded_id };
-		bitcast_op.id = impl.get_id_for_value(instruction);
-		ops.push_back(std::move(bitcast_op));
-	}
-
+	impl.fixup_load_sign(ops, meta.component_type, 1, instruction);
 	return true;
 }
 
