@@ -423,4 +423,28 @@ enum class AtomicBinOp : uint8_t
 	UMax = 7,
 	Exchange = 8
 };
+
+enum class ShaderPropertyTag : uint8_t
+{
+	ShaderFlags = 0,
+	GSState = 1,
+	DSState = 2,
+	HSState = 3,
+	NumThreads = 4,
+	AutoBindingSpace = 5,
+	RayPayloadSize = 6,
+	RayAttribSizeTag = 7,
+	ShaderKind = 8,
+	MSState = 9,
+	ASState = 10
+};
+
+enum class BarrierMode : uint8_t
+{
+	Invalid = 0,
+	GroupMemoryBarrier = 8,
+	AllMemoryBarrier = 10,
+	GroupMemoryBarrierWithGroupSync = 9,
+	AllMemoryBarrierWithGroupSync = 11
+};
 } // namespace DXIL

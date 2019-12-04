@@ -43,6 +43,7 @@ public:
 
 	spv::Builder &get_builder();
 	spv::Instruction *get_entry_point();
+	void emit_workgroup_size(uint32_t x, uint32_t y, uint32_t z);
 
 private:
 	struct Impl;

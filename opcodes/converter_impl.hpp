@@ -65,6 +65,7 @@ struct Converter::Impl
 	void emit_stage_output_variables();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
+	void emit_execution_modes();
 	void emit_resources();
 	void emit_srvs(const llvm::MDNode *srvs);
 	void emit_uavs(const llvm::MDNode *uavs);

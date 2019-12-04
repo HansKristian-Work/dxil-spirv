@@ -523,8 +523,11 @@ void Converter::Impl::emit_stage_output_variables()
 
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	auto *node = ep_meta->getOperand(0);
-	auto &signature = node->getOperand(2);
 
+	if (!node->getOperand(2))
+		return;
+
+	auto &signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
 	auto &outputs = signature_node->getOperand(1);
 	if (!outputs)
@@ -645,8 +648,10 @@ void Converter::Impl::emit_stage_input_variables()
 
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	auto *node = ep_meta->getOperand(0);
-	auto &signature = node->getOperand(2);
+	if (!node->getOperand(2))
+		return;
 
+	auto &signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
 	auto &inputs = signature_node->getOperand(0);
 	if (!inputs)
@@ -878,6 +883,37 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	return false;
 }
 
+void Converter::Impl::emit_execution_modes()
+{
+	auto &module = bitcode_parser.get_module();
+	auto &builder = spirv_module.get_builder();
+
+	if (get_execution_model(module) != spv::ExecutionModelGLCompute)
+		return;
+
+	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
+	auto *node = ep_meta->getOperand(0);
+
+	if (node->getOperand(4))
+	{
+		auto *tag_values = llvm::cast<llvm::MDNode>(node->getOperand(4));
+		unsigned num_pairs = tag_values->getNumOperands() / 2;
+		for (unsigned i = 0; i < num_pairs; i++)
+		{
+			auto tag = static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i));
+			if (tag == DXIL::ShaderPropertyTag::NumThreads)
+			{
+				auto *num_threads = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
+				unsigned threads[3];
+				for (unsigned dim = 0; dim < 3; dim++)
+					threads[dim] = get_constant_metadata(num_threads, dim);
+
+				spirv_module.emit_workgroup_size(threads[0], threads[1], threads[2]);
+			}
+		}
+	}
+}
+
 ConvertedFunction Converter::Impl::convert_entry_point()
 {
 	ConvertedFunction result;
@@ -887,6 +923,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto *module = &bitcode_parser.get_module();
 	spirv_module.emit_entry_point(get_execution_model(*module), "main");
 
+	emit_execution_modes();
 	emit_resources();
 	emit_stage_input_variables();
 	emit_stage_output_variables();

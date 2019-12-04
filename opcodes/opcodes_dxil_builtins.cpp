@@ -1650,6 +1650,66 @@ static bool emit_bfi_instruction(std::vector<Operation> &ops, Converter::Impl &i
 	return true;
 }
 
+static bool emit_barrier_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                     const llvm::CallInst *instruction)
+{
+	uint32_t operation;
+	if (!get_constant_operand(instruction, 1, &operation))
+		return false;
+
+	// Match DXC SPIR-V output here.
+	Operation op;
+
+	switch (static_cast<DXIL::BarrierMode>(operation))
+	{
+	case DXIL::BarrierMode::GroupMemoryBarrierWithGroupSync:
+		op.op = spv::OpControlBarrier;
+		op.arguments = {
+			builder.makeUintConstant(spv::ScopeWorkgroup),
+			builder.makeUintConstant(spv::ScopeWorkgroup),
+			builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask),
+		};
+		break;
+
+	case DXIL::BarrierMode::AllMemoryBarrierWithGroupSync:
+		op.op = spv::OpControlBarrier;
+		op.arguments = {
+			builder.makeUintConstant(spv::ScopeWorkgroup),
+			builder.makeUintConstant(spv::ScopeDevice),
+			builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
+			                         spv::MemorySemanticsImageMemoryMask |
+			                         spv::MemorySemanticsUniformMemoryMask |
+			                         spv::MemorySemanticsAcquireReleaseMask),
+		};
+		break;
+
+	case DXIL::BarrierMode::GroupMemoryBarrier:
+		op.op = spv::OpMemoryBarrier;
+		op.arguments = {
+			builder.makeUintConstant(spv::ScopeWorkgroup),
+			builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask),
+		};
+		break;
+
+	case DXIL::BarrierMode::AllMemoryBarrier:
+		op.op = spv::OpMemoryBarrier;
+		op.arguments = {
+			builder.makeUintConstant(spv::ScopeDevice),
+			builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
+									 spv::MemorySemanticsImageMemoryMask |
+									 spv::MemorySemanticsUniformMemoryMask |
+									 spv::MemorySemanticsAcquireReleaseMask),
+		};
+		break;
+
+	default:
+		return false;
+	}
+
+	ops.push_back(std::move(op));
+	return true;
+}
+
 struct DXILDispatcher
 {
 #define OP(x) builder_lut[unsigned(DXIL::Op::x)]
@@ -1734,6 +1794,8 @@ struct DXILDispatcher
 		OP(Ibfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract>;
 		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract>;
 		OP(Bfi) = emit_bfi_instruction;
+
+		OP(Barrier) = emit_barrier_instruction;
 	}
 
 #undef OP

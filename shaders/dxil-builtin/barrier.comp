@@ -1,0 +1,15 @@
+RWByteAddressBuffer Buf : register(u0);
+
+[numthreads(7, 8, 9)]
+void main()
+{
+	Buf.Store(0, 5u);
+	GroupMemoryBarrier();
+	Buf.Store(0, 10u);
+	AllMemoryBarrier();
+	Buf.Store(0, 15u);
+	GroupMemoryBarrierWithGroupSync();
+	Buf.Store(0, 20u);
+	AllMemoryBarrierWithGroupSync();
+	Buf.Store(0, 30u);
+}

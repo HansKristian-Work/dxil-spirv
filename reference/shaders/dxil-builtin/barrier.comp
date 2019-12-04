@@ -1,0 +1,140 @@
+#version 460
+layout(local_size_x = 7, local_size_y = 8, local_size_z = 9) in;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+
+uint _14;
+
+void main()
+{
+    imageStore(_8, int(0u >> 2u), uvec4(5u));
+    memoryBarrierShared();
+    imageStore(_8, int(0u >> 2u), uvec4(10u));
+    memoryBarrierShared();
+    memoryBarrierBuffer();
+    memoryBarrierImage();
+    imageStore(_8, int(0u >> 2u), uvec4(15u));
+    memoryBarrierShared();
+    barrier();
+    imageStore(_8, int(0u >> 2u), uvec4(20u));
+    memoryBarrierShared();
+    memoryBarrierBuffer();
+    memoryBarrierImage();
+    barrier();
+    imageStore(_8, int(0u >> 2u), uvec4(30u));
+}
+
+
+#if 0
+// LLVM disassembly
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%struct.RWByteAddressBuffer = type { i32 }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 0, i32 undef, i32 5, i32 undef, i32 undef, i32 undef, i8 1)
+  call void @dx.op.barrier(i32 80, i32 8)
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 0, i32 undef, i32 10, i32 undef, i32 undef, i32 undef, i8 1)
+  call void @dx.op.barrier(i32 80, i32 10)
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 0, i32 undef, i32 15, i32 undef, i32 undef, i32 undef, i8 1)
+  call void @dx.op.barrier(i32 80, i32 9)
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 0, i32 undef, i32 20, i32 undef, i32 undef, i32 undef, i8 1)
+  call void @dx.op.barrier(i32 80, i32 11)
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 0, i32 undef, i32 30, i32 undef, i32 undef, i32 undef, i8 1)
+  ret void
+}
+
+; Function Attrs: noduplicate nounwind
+declare void @dx.op.barrier(i32, i32) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #1
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8) #2
+
+attributes #0 = { noduplicate nounwind }
+attributes #1 = { nounwind readonly }
+attributes #2 = { nounwind }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!7}
+
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
+!1 = !{i32 1, i32 0}
+!2 = !{i32 1, i32 5}
+!3 = !{!"cs", i32 6, i32 0}
+!4 = !{null, !5, null, null}
+!5 = !{!6}
+!6 = !{i32 0, %struct.RWByteAddressBuffer* undef, !"", i32 0, i32 0, i32 1, i32 11, i1 false, i1 false, i1 false, null}
+!7 = !{void ()* @main, !"main", null, !4, !8}
+!8 = !{i32 0, i64 16, i32 4, !9}
+!9 = !{i32 7, i32 8, i32 9}
+#endif
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 34
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main"
+OpExecutionMode %3 LocalSize 7 8 9
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpConstant %5 0
+%12 = OpConstant %5 2
+%13 = OpConstant %5 5
+%15 = OpTypeVector %5 4
+%17 = OpConstant %5 264
+%19 = OpConstant %5 10
+%21 = OpConstant %5 1
+%22 = OpConstant %5 2376
+%24 = OpConstant %5 15
+%27 = OpConstant %5 20
+%30 = OpConstant %5 30
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%14 = OpUndef %5
+OpBranch %32
+%32 = OpLabel
+%9 = OpLoad %6 %8
+%11 = OpShiftRightLogical %5 %10 %12
+%16 = OpCompositeConstruct %15 %13 %13 %13 %13
+OpImageWrite %9 %11 %16
+OpMemoryBarrier %12 %17
+%18 = OpShiftRightLogical %5 %10 %12
+%20 = OpCompositeConstruct %15 %19 %19 %19 %19
+OpImageWrite %9 %18 %20
+OpMemoryBarrier %21 %22
+%23 = OpShiftRightLogical %5 %10 %12
+%25 = OpCompositeConstruct %15 %24 %24 %24 %24
+OpImageWrite %9 %23 %25
+OpControlBarrier %12 %12 %17
+%26 = OpShiftRightLogical %5 %10 %12
+%28 = OpCompositeConstruct %15 %27 %27 %27 %27
+OpImageWrite %9 %26 %28
+OpControlBarrier %12 %21 %22
+%29 = OpShiftRightLogical %5 %10 %12
+%31 = OpCompositeConstruct %15 %30 %30 %30 %30
+OpImageWrite %9 %29 %31
+OpReturn
+OpFunctionEnd
+#endif
