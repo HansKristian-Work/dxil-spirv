@@ -76,6 +76,10 @@ add_library(dxil-converter STATIC
         dxil_parser.hpp dxil_parser.cpp
         opcodes/converter_impl.hpp
         opcodes/opcodes.hpp
+        opcodes/dxil/dxil_common.hpp opcodes/dxil/dxil_common.cpp
+        opcodes/dxil/dxil_resources.hpp opcodes/dxil/dxil_resources.cpp
+        opcodes/dxil/dxil_sampling.hpp opcodes/dxil/dxil_sampling.cpp
+        opcodes/dxil/dxil_buffer.hpp opcodes/dxil/dxil_buffer.cpp
         opcodes/opcodes_llvm_builtins.hpp opcodes/opcodes_llvm_builtins.cpp
         opcodes/opcodes_dxil_builtins.hpp opcodes/opcodes_dxil_builtins.cpp)
 target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
