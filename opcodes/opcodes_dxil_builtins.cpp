@@ -993,7 +993,10 @@ static bool emit_texture_gather_instruction(bool compare, std::vector<Operation>
 		for (unsigned i = 0; i < num_coords; i++)
 		{
 			auto *constant_int = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(7 + i));
-			if (constant_int)
+
+			// DXC compiler seems to emit 0 offsets in weird cases where source did not do so.
+			// just try to guard against this a bit to make output more as expected.
+			if (constant_int && constant_int->getUniqueInteger().getSExtValue() != 0)
 			{
 				offsets[i] = builder.makeIntConstant(constant_int->getUniqueInteger().getSExtValue());
 				image_flags |= spv::ImageOperandsConstOffsetMask;

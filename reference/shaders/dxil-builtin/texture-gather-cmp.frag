@@ -4,17 +4,21 @@ layout(set = 0, binding = 3) uniform texture2D _8;
 layout(set = 0, binding = 4) uniform texture2DArray _11;
 layout(set = 0, binding = 6) uniform textureCube _14;
 layout(set = 0, binding = 7) uniform textureCubeArray _17;
-layout(set = 0, binding = 1) uniform sampler _20;
+layout(set = 0, binding = 1) uniform samplerShadow _20;
 
 layout(location = 0) in vec4 TEXCOORD;
 layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    vec4 _52 = textureGather(sampler2D(_8, _20), vec2(TEXCOORD.x, TEXCOORD.y), 0u);
-    vec4 _62 = textureGather(sampler2DArray(_11, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), 1u);
-    vec4 _75 = textureGather(samplerCube(_14, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), 2u);
-    vec4 _88 = textureGather(samplerCubeArray(_17, _20), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w), 3u);
+    vec2 _48 = vec2(TEXCOORD.x, TEXCOORD.y);
+    vec4 _52 = textureGather(sampler2DShadow(_8, _20), _48, TEXCOORD.z);
+    vec3 _60 = vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z);
+    vec4 _62 = textureGather(sampler2DArrayShadow(_11, _20), _60, TEXCOORD.w);
+    vec3 _74 = vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z);
+    vec4 _75 = textureGather(samplerCubeShadow(_14, _20), _74, TEXCOORD.w);
+    vec4 _87 = vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w);
+    vec4 _88 = textureGather(samplerCubeArrayShadow(_17, _20), _87, TEXCOORD.w);
     SV_Target.x = ((_62.x + _52.x) + _75.x) + _88.x;
     SV_Target.y = ((_62.y + _52.y) + _75.y) + _88.y;
     SV_Target.z = ((_62.z + _52.z) + _75.z) + _88.z;
@@ -35,7 +39,7 @@ target triple = "dxil-ms-dx"
 %"class.Texture2DArray<vector<float, 4> >::mips_type" = type { i32 }
 %"class.TextureCube<vector<float, 4> >" = type { <4 x float> }
 %"class.TextureCubeArray<vector<float, 4> >" = type { <4 x float> }
-%struct.SamplerState = type { i32 }
+%struct.SamplerComparisonState = type { i32 }
 
 define void @main() {
   %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 3, i32 7, i1 false)
@@ -47,12 +51,12 @@ define void @main() {
   %7 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
   %8 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
   %9 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 undef)
-  %10 = call %dx.types.ResRet.f32 @dx.op.textureGather.f32(i32 73, %dx.types.Handle %4, %dx.types.Handle %5, float %6, float %7, float undef, float undef, i32 0, i32 0, i32 0)
+  %10 = call %dx.types.ResRet.f32 @dx.op.textureGatherCmp.f32(i32 74, %dx.types.Handle %4, %dx.types.Handle %5, float %6, float %7, float undef, float undef, i32 0, i32 0, i32 0, float %8)
   %11 = extractvalue %dx.types.ResRet.f32 %10, 0
   %12 = extractvalue %dx.types.ResRet.f32 %10, 1
   %13 = extractvalue %dx.types.ResRet.f32 %10, 2
   %14 = extractvalue %dx.types.ResRet.f32 %10, 3
-  %15 = call %dx.types.ResRet.f32 @dx.op.textureGather.f32(i32 73, %dx.types.Handle %3, %dx.types.Handle %5, float %6, float %7, float %8, float undef, i32 0, i32 0, i32 1)
+  %15 = call %dx.types.ResRet.f32 @dx.op.textureGatherCmp.f32(i32 74, %dx.types.Handle %3, %dx.types.Handle %5, float %6, float %7, float %8, float undef, i32 0, i32 0, i32 0, float %9)
   %16 = extractvalue %dx.types.ResRet.f32 %15, 0
   %17 = extractvalue %dx.types.ResRet.f32 %15, 1
   %18 = extractvalue %dx.types.ResRet.f32 %15, 2
@@ -61,7 +65,7 @@ define void @main() {
   %21 = fadd fast float %17, %12
   %22 = fadd fast float %18, %13
   %23 = fadd fast float %19, %14
-  %24 = call %dx.types.ResRet.f32 @dx.op.textureGather.f32(i32 73, %dx.types.Handle %2, %dx.types.Handle %5, float %6, float %7, float %8, float undef, i32 undef, i32 undef, i32 2)
+  %24 = call %dx.types.ResRet.f32 @dx.op.textureGatherCmp.f32(i32 74, %dx.types.Handle %2, %dx.types.Handle %5, float %6, float %7, float %8, float undef, i32 undef, i32 undef, i32 0, float %9)
   %25 = extractvalue %dx.types.ResRet.f32 %24, 0
   %26 = extractvalue %dx.types.ResRet.f32 %24, 1
   %27 = extractvalue %dx.types.ResRet.f32 %24, 2
@@ -70,7 +74,7 @@ define void @main() {
   %30 = fadd fast float %21, %26
   %31 = fadd fast float %22, %27
   %32 = fadd fast float %23, %28
-  %33 = call %dx.types.ResRet.f32 @dx.op.textureGather.f32(i32 73, %dx.types.Handle %1, %dx.types.Handle %5, float %6, float %7, float %8, float %9, i32 undef, i32 undef, i32 3)
+  %33 = call %dx.types.ResRet.f32 @dx.op.textureGatherCmp.f32(i32 74, %dx.types.Handle %1, %dx.types.Handle %5, float %6, float %7, float %8, float %9, i32 undef, i32 undef, i32 0, float %9)
   %34 = extractvalue %dx.types.ResRet.f32 %33, 0
   %35 = extractvalue %dx.types.ResRet.f32 %33, 1
   %36 = extractvalue %dx.types.ResRet.f32 %33, 2
@@ -93,7 +97,7 @@ declare float @dx.op.loadInput.f32(i32, i32, i32, i8, i32) #0
 declare void @dx.op.storeOutput.f32(i32, i32, i32, i8, float) #1
 
 ; Function Attrs: nounwind readonly
-declare %dx.types.ResRet.f32 @dx.op.textureGather.f32(i32, %dx.types.Handle, %dx.types.Handle, float, float, float, float, i32, i32, i32) #2
+declare %dx.types.ResRet.f32 @dx.op.textureGatherCmp.f32(i32, %dx.types.Handle, %dx.types.Handle, float, float, float, float, i32, i32, i32, float) #2
 
 ; Function Attrs: nounwind readonly
 declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #2
@@ -122,7 +126,7 @@ attributes #2 = { nounwind readonly }
 !9 = !{i32 2, %"class.TextureCube<vector<float, 4> >"* undef, !"", i32 0, i32 6, i32 1, i32 5, i32 0, !7}
 !10 = !{i32 3, %"class.TextureCubeArray<vector<float, 4> >"* undef, !"", i32 0, i32 7, i32 1, i32 9, i32 0, !7}
 !11 = !{!12}
-!12 = !{i32 0, %struct.SamplerState* undef, !"", i32 0, i32 1, i32 1, i32 0, null}
+!12 = !{i32 0, %struct.SamplerComparisonState* undef, !"", i32 0, i32 1, i32 1, i32 1, null}
 !13 = !{[6 x i32] [i32 4, i32 4, i32 15, i32 15, i32 15, i32 15]}
 !14 = !{void ()* @main, !"main", !15, !4, null}
 !15 = !{!16, !20, null}
@@ -222,14 +226,14 @@ OpBranch %102
 %44 = OpLoad %5 %42
 %46 = OpSampledImage %47 %29 %30
 %48 = OpCompositeConstruct %49 %35 %38
-%52 = OpImageGather %21 %46 %48 %34
+%52 = OpImageDrefGather %21 %46 %48 %41
 %53 = OpCompositeExtract %5 %52 0
 %54 = OpCompositeExtract %5 %52 1
 %55 = OpCompositeExtract %5 %52 2
 %56 = OpCompositeExtract %5 %52 3
 %58 = OpSampledImage %59 %28 %30
 %60 = OpCompositeConstruct %61 %35 %38 %41
-%62 = OpImageGather %21 %58 %60 %37
+%62 = OpImageDrefGather %21 %58 %60 %44
 %63 = OpCompositeExtract %5 %62 0
 %64 = OpCompositeExtract %5 %62 1
 %65 = OpCompositeExtract %5 %62 2
@@ -240,7 +244,7 @@ OpBranch %102
 %70 = OpFAdd %5 %66 %56
 %72 = OpSampledImage %73 %27 %30
 %74 = OpCompositeConstruct %61 %35 %38 %41
-%75 = OpImageGather %21 %72 %74 %40
+%75 = OpImageDrefGather %21 %72 %74 %44
 %76 = OpCompositeExtract %5 %75 0
 %77 = OpCompositeExtract %5 %75 1
 %78 = OpCompositeExtract %5 %75 2
@@ -251,7 +255,7 @@ OpBranch %102
 %83 = OpFAdd %5 %70 %79
 %85 = OpSampledImage %86 %26 %30
 %87 = OpCompositeConstruct %21 %35 %38 %41 %44
-%88 = OpImageGather %21 %85 %87 %43
+%88 = OpImageDrefGather %21 %85 %87 %44
 %89 = OpCompositeExtract %5 %88 0
 %90 = OpCompositeExtract %5 %88 1
 %91 = OpCompositeExtract %5 %88 2
