@@ -119,21 +119,9 @@ static bool emit_store_output_instruction(std::vector<Operation> &ops, Converter
 
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
-	// Need to bitcast before we can store.
-	if (impl.get_type_id(meta.component_type, 1, 1) != impl.get_type_id(instruction->getOperand(4)->getType()))
-	{
-		Operation bitcast_op;
-		bitcast_op.op = spv::OpBitcast;
-		bitcast_op.type_id = impl.get_type_id(meta.component_type, 1, 1);
-		bitcast_op.arguments = { store_value };
-		bitcast_op.id = impl.allocate_id();
-		store_value = bitcast_op.id;
-		ops.push_back(std::move(bitcast_op));
-	}
-
 	op = {};
 	op.op = spv::OpStore;
-	op.arguments = { ptr_id, store_value };
+	op.arguments = { ptr_id, impl.fixup_store_sign(ops, meta.component_type, 1, store_value) };
 
 	ops.push_back(std::move(op));
 	return true;
