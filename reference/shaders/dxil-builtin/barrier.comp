@@ -10,16 +10,11 @@ void main()
     imageStore(_8, int(0u >> 2u), uvec4(5u));
     memoryBarrierShared();
     imageStore(_8, int(0u >> 2u), uvec4(10u));
-    memoryBarrierShared();
-    memoryBarrierBuffer();
-    memoryBarrierImage();
+    memoryBarrier();
     imageStore(_8, int(0u >> 2u), uvec4(15u));
-    memoryBarrierShared();
     barrier();
     imageStore(_8, int(0u >> 2u), uvec4(20u));
-    memoryBarrierShared();
-    memoryBarrierBuffer();
-    memoryBarrierImage();
+    memoryBarrier();
     barrier();
     imageStore(_8, int(0u >> 2u), uvec4(30u));
 }
