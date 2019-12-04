@@ -448,6 +448,67 @@ static BufferAccessInfo build_buffer_access(std::vector<Operation> &ops, Convert
 	return { index_id, num_components };
 }
 
+static bool emit_atomic_cmpxchg_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                            const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+	spv::Id coords[3] = {};
+
+	uint32_t num_coords_full = 0, num_coords = 0;
+	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+		return false;
+
+	if (num_coords_full > 3)
+		return false;
+
+	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
+	{
+		auto access = build_buffer_access(ops, impl, builder, instruction);
+		coords[0] = access.index_id;
+	}
+	else
+	{
+		for (uint32_t i = 0; i < num_coords_full; i++)
+			coords[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
+	}
+
+	spv::Id coord = impl.build_vector(ops, builder.makeUintType(32), coords, num_coords_full);
+
+	spv::Id counter_ptr_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpImageTexelPointer;
+		op.type_id = builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1));
+		op.id = counter_ptr_id;
+		op.arguments = { meta.var_id, coord, builder.makeUintConstant(0) };
+		ops.push_back(std::move(op));
+	}
+
+	Operation op;
+	op.op = spv::OpAtomicCompareExchange;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(meta.component_type, 1, 1);
+
+	spv::Id comparison_id = impl.get_id_for_value(instruction->getOperand(5));
+	spv::Id new_value_id = impl.get_id_for_value(instruction->getOperand(6));
+	comparison_id = impl.fixup_store_sign(ops, meta.component_type, 1, comparison_id);
+	new_value_id = impl.fixup_store_sign(ops, meta.component_type, 1, new_value_id);
+
+	op.arguments = {
+		counter_ptr_id,
+		builder.makeUintConstant(spv::ScopeDevice),
+		builder.makeUintConstant(0), // Relaxed
+		builder.makeUintConstant(0), // Relaxed
+		new_value_id,
+		comparison_id,
+	};
+
+	ops.push_back(std::move(op));
+	impl.fixup_load_sign(ops, meta.component_type, 1, instruction);
+	return true;
+}
+
 static bool emit_atomic_binop_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                           const llvm::CallInst *instruction)
 {
@@ -1620,6 +1681,7 @@ struct DXILDispatcher
 		OP(BufferUpdateCounter) = emit_buffer_update_counter_instruction;
 
 		OP(AtomicBinOp) = emit_atomic_binop_instruction;
+		OP(AtomicCompareExchange) = emit_atomic_cmpxchg_instruction;
 
 		OP(FMin) = std450_binary_dispatch<GLSLstd450NMin>;
 		OP(FMax) = std450_binary_dispatch<GLSLstd450NMax>;
