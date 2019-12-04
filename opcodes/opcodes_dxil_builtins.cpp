@@ -53,6 +53,7 @@ struct DXILDispatcher
 		OP(GetDimensions) = emit_get_dimensions_instruction;
 		OP(TextureGather) = emit_texture_gather_dispatch<false>;
 		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true>;
+		OP(CalculateLOD) = emit_calculate_lod_instruction;
 
 		// dxil_buffer.hpp
 		OP(BufferLoad) = emit_buffer_load_instruction;

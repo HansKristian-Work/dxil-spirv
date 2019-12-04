@@ -586,4 +586,46 @@ bool emit_texture_gather_instruction(bool compare, std::vector<Operation> &ops, 
 	return true;
 }
 
+bool emit_calculate_lod_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                    const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+
+	uint32_t num_coords_full = 0, num_coords = 0;
+	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+		return false;
+
+	spv::Id coords[3] = {};
+	for (unsigned i = 0; i < num_coords; i++)
+		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
+
+	auto *clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
+	bool clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
+
+	spv::Id query_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpImageQueryLod;
+		op.id = query_id;
+		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 2);
+		op.arguments = {
+			combined_image_sampler_id,
+			impl.build_vector(ops, builder.makeFloatType(32), coords, num_coords)
+		};
+		ops.push_back(std::move(op));
+	}
+
+	Operation op;
+	op.op = spv::OpCompositeExtract;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { query_id, clamped ? 0u : 1u };
+	ops.push_back(std::move(op));
+
+	builder.addCapability(spv::CapabilityImageQuery);
+	return true;
+}
 }

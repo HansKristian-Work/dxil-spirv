@@ -38,6 +38,9 @@ bool emit_texture_store_instruction(std::vector<Operation> &ops, Converter::Impl
 bool emit_get_dimensions_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                      const llvm::CallInst *instruction);
 
+bool emit_calculate_lod_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                    const llvm::CallInst *instruction);
+
 template <DXIL::Op opcode>
 static inline bool emit_sample_instruction_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                                     const llvm::CallInst *instruction)
