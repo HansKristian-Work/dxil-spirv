@@ -968,6 +968,73 @@ static bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter
 	return true;
 }
 
+static bool emit_texture_gather_instruction(bool compare, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                            const llvm::CallInst *instruction)
+{
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+
+	uint32_t num_coords_full = 0, num_coords = 0;
+	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+		return false;
+
+	spv::Id coords[3] = {};
+	spv::Id offsets[2] = {};
+	uint32_t image_flags = 0;
+
+	for (unsigned i = 0; i < num_coords_full; i++)
+		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
+	spv::Id coord_id = impl.build_vector(ops, builder.makeFloatType(32), coords, num_coords_full);
+
+	if (num_coords == 2)
+	{
+		for (unsigned i = 0; i < num_coords; i++)
+		{
+			auto *constant_int = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(7 + i));
+			if (constant_int)
+			{
+				offsets[i] = builder.makeIntConstant(constant_int->getUniqueInteger().getSExtValue());
+				image_flags |= spv::ImageOperandsConstOffsetMask;
+			}
+			else
+				offsets[i] = builder.makeIntConstant(0);
+		}
+	}
+
+	spv::Id aux_id;
+	if (compare)
+	{
+		// TextureGatherCmp has a component here. Perhaps it is to select depth vs stencil?
+		aux_id = impl.get_id_for_value(instruction->getOperand(10));
+	}
+	else
+		aux_id = impl.get_id_for_value(instruction->getOperand(9));
+
+	Operation op;
+	op.op = compare ? spv::OpImageDrefGather : spv::OpImageGather;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(meta.component_type, 1, 4);
+	op.arguments = { combined_image_sampler_id, coord_id, aux_id };
+
+	if (image_flags)
+	{
+		op.arguments.push_back(image_flags);
+		op.arguments.push_back(impl.build_constant_vector(ops, builder.makeIntType(32), offsets, num_coords));
+	}
+
+	ops.push_back(std::move(op));
+	return true;
+}
+
+template <bool compare>
+static bool emit_texture_gather_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                         const llvm::CallInst *instruction)
+{
+	return emit_texture_gather_instruction(compare, ops, impl, builder, instruction);
+}
+
 static bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                          const llvm::CallInst *instruction)
 {
@@ -1571,6 +1638,8 @@ struct DXILDispatcher
 		OP(BufferLoad) = emit_buffer_load_instruction;
 		OP(BufferStore) = emit_buffer_store_instruction;
 		OP(GetDimensions) = emit_get_dimensions_instruction;
+		OP(TextureGather) = emit_texture_gather_dispatch<false>;
+		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true>;
 
 		OP(BufferUpdateCounter) = emit_buffer_update_counter_instruction;
 
