@@ -1028,6 +1028,7 @@ static bool emit_texture_gather_instruction(bool compare, std::vector<Operation>
 	}
 
 	ops.push_back(std::move(op));
+	impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
 	return true;
 }
 
