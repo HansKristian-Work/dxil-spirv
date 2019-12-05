@@ -447,4 +447,11 @@ enum class BarrierMode : uint8_t
 	GroupMemoryBarrierWithGroupSync = 9,
 	AllMemoryBarrierWithGroupSync = 11
 };
+
+enum class AddressSpace : uint8_t
+{
+	Thread = 0,
+	GroupShared = 3,
+	Invalid
+};
 } // namespace DXIL

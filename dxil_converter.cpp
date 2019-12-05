@@ -431,7 +431,13 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 			return builder.makeIntegerType(type->getIntegerBitWidth(), false);
 
 	case llvm::Type::TypeID::PointerTyID:
-		return builder.makePointer(spv::StorageClassFunction, get_type_id(type->getPointerElementType()));
+	{
+		auto address_space = static_cast<DXIL::AddressSpace>(type->getPointerAddressSpace());
+		return builder.makePointer(address_space == DXIL::AddressSpace::GroupShared ?
+		                           spv::StorageClassWorkgroup :
+		                           spv::StorageClassFunction,
+		                           get_type_id(type->getPointerElementType()));
+	}
 
 	case llvm::Type::TypeID::ArrayTyID:
 		return builder.makeArrayType(get_type_id(type->getArrayElementType()),
@@ -639,6 +645,28 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 
 	default:
 		break;
+	}
+}
+
+void Converter::Impl::emit_global_variables()
+{
+	auto &module = bitcode_parser.get_module();
+	auto &builder = spirv_module.get_builder();
+
+	for (auto itr = module.global_begin(); itr != module.global_end(); ++itr)
+	{
+		llvm::GlobalVariable &global = *itr;
+
+		spv::Id pointee_type_id = get_type_id(global.getType()->getPointerElementType());
+		auto address_space = static_cast<DXIL::AddressSpace>(global.getType()->getAddressSpace());
+
+		if (address_space != DXIL::AddressSpace::GroupShared)
+			LOGW("Global variable address space is not GroupShared, this is unexpected!\n");
+
+		spv::Id var_id = builder.createVariable(
+				address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
+				pointee_type_id, global.getName().data());
+		value_map[&global] = var_id;
 	}
 }
 
@@ -927,6 +955,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	emit_resources();
 	emit_stage_input_variables();
 	emit_stage_output_variables();
+	emit_global_variables();
 
 	llvm::Function *func = module->getFunction(get_entry_point_name(*module));
 	assert(func);

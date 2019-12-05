@@ -1,0 +1,20 @@
+struct Foo
+{
+	float2 a[2];
+	float2 b;
+};
+
+groupshared Foo foos[64];
+
+RWStructuredBuffer<float2> outputs : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint ThreadID : SV_GroupIndex)
+{
+	foos[ThreadID].a[0] = float2(ThreadID, ThreadID + 1);
+	foos[ThreadID].a[1] = float2(ThreadID + 1, ThreadID + 2);
+	foos[ThreadID].b = float2(ThreadID + 2, ThreadID + 3);
+	GroupMemoryBarrierWithGroupSync();
+
+	outputs[ThreadID] = foos[ThreadID ^ 1].a[0] * foos[ThreadID ^ 2].a[1] * foos[ThreadID ^ 4].b;
+}

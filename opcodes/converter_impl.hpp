@@ -63,6 +63,7 @@ struct Converter::Impl
 
 	void emit_stage_input_variables();
 	void emit_stage_output_variables();
+	void emit_global_variables();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
 	void emit_execution_modes();

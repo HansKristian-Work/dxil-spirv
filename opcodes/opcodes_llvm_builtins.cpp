@@ -424,7 +424,11 @@ bool emit_alloca_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
 		return false;
 	}
 
-	spv::Id var_id = builder.createVariable(spv::StorageClassFunction, pointee_type_id, instruction->getName().data());
+	auto address_space = static_cast<DXIL::AddressSpace>(instruction->getType()->getAddressSpace());
+
+	spv::Id var_id = builder.createVariable(
+			address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassFunction,
+			pointee_type_id, instruction->getName().data());
 	impl.value_map[instruction] = var_id;
 	return true;
 }
