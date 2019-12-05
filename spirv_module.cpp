@@ -53,7 +53,9 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
+	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;
 	std::unordered_map<spv::BuiltIn, spv::Id> builtins;
+	std::unordered_map<spv::Id, spv::BuiltIn> id_to_builtin;
 
 	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
 };
@@ -67,6 +69,10 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 
 	case spv::BuiltInLocalInvocationIndex:
 	case spv::BuiltInSampleId:
+	case spv::BuiltInVertexIndex:
+	case spv::BuiltInInstanceIndex:
+	case spv::BuiltInBaseVertex:
+	case spv::BuiltInBaseInstance:
 		return builder.makeUintType(32);
 
 	case spv::BuiltInGlobalInvocationId:
@@ -82,6 +88,19 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 void SPIRVModule::Impl::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin)
 {
 	builtins[builtin] = id;
+	id_to_builtin[id] = builtin;
+}
+
+bool SPIRVModule::Impl::query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const
+{
+	auto itr = id_to_builtin.find(id);
+	if (itr != id_to_builtin.end())
+	{
+		*builtin = itr->second;
+		return true;
+	}
+	else
+		return false;
 }
 
 spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
@@ -93,7 +112,7 @@ spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 	spv::Id var_id = builder.createVariable(spv::StorageClassInput, get_type_for_builtin(builtin));
 	builder.addDecoration(var_id, spv::DecorationBuiltIn, builtin);
 	entry_point->addIdOperand(var_id);
-	builtins[builtin] = var_id;
+	register_builtin_shader_input(var_id, builtin);
 	return var_id;
 }
 
@@ -381,6 +400,11 @@ spv::Id SPIRVModule::get_builtin_shader_input(spv::BuiltIn builtin)
 void SPIRVModule::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin)
 {
 	impl->register_builtin_shader_input(id, builtin);
+}
+
+bool SPIRVModule::query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const
+{
+	return impl->query_builtin_shader_input(id, builtin);
 }
 
 SPIRVModule::~SPIRVModule()

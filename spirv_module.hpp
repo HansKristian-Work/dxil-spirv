@@ -48,6 +48,7 @@ public:
 	void enable_shader_discard();
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
+	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;
 
 private:
 	struct Impl;
