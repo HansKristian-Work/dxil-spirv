@@ -19,15 +19,14 @@
 #pragma once
 
 #include "opcodes/opcodes.hpp"
+#include "GLSL.std.450.h"
 
 namespace DXIL2SPIRV
 {
 bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                  const llvm::CallInst *instruction);
-bool emit_eval_snapped_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                   const llvm::CallInst *instruction);
-bool emit_sample_index_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                   const llvm::CallInst *instruction);
+bool emit_interpolate_instruction(GLSLstd450 opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                  const llvm::CallInst *instruction);
 bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                    const llvm::CallInst *instruction);
 bool emit_create_handle_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
@@ -35,4 +34,11 @@ bool emit_create_handle_instruction(std::vector<Operation> &ops, Converter::Impl
 
 bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
                                           spv::Builder &builder, const llvm::CallInst *instruction);
+
+template <GLSLstd450 opcode>
+static inline bool emit_interpolate_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
+                                             spv::Builder &builder, const llvm::CallInst *instruction)
+{
+	return emit_interpolate_instruction(opcode, ops, impl, builder, instruction);
+}
 }

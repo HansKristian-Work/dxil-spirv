@@ -41,8 +41,9 @@ struct DXILDispatcher
 		OP(StoreOutput) = emit_store_output_instruction;
 		OP(CreateHandle) = emit_create_handle_instruction;
 		OP(CBufferLoadLegacy) = emit_cbuffer_load_legacy_instruction;
-		OP(EvalSnapped) = emit_eval_snapped_instruction;
-		OP(EvalSampleIndex) = emit_sample_index_instruction;
+		OP(EvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset>;
+		OP(EvalSampleIndex) = emit_interpolate_dispatch<GLSLstd450InterpolateAtSample>;
+		OP(EvalCentroid) = emit_interpolate_dispatch<GLSLstd450InterpolateAtCentroid>;
 
 		// dxil_sampling.hpp
 		OP(Sample) = emit_sample_instruction_dispatch<DXIL::Op::Sample>;
