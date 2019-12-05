@@ -663,6 +663,16 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		spirv_module.register_builtin_shader_input(id, spv::BuiltInSampleId);
 		break;
 
+	case DXIL::Semantic::VertexID:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInVertexIndex);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInVertexIndex);
+		break;
+
+	case DXIL::Semantic::InstanceID:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInInstanceIndex);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInInstanceIndex);
+		break;
+
 	default:
 		break;
 	}
