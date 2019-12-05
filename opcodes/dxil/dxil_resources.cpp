@@ -68,6 +68,117 @@ bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &i
 	return true;
 }
 
+static spv::Id build_attribute_offset(spv::Id id, std::vector<Operation> &ops, Converter::Impl &impl,
+                                      spv::Builder &builder)
+{
+	Operation op;
+	op.id = impl.allocate_id();
+	op.op = spv::OpBitFieldSExtract;
+	op.type_id = builder.makeUintType(32);
+	op.arguments = { id, builder.makeUintConstant(0), builder.makeUintConstant(4) };
+	id = op.id;
+	ops.push_back(std::move(op));
+
+	op = {};
+	op.id = impl.allocate_id();
+	op.op = spv::OpConvertSToF;
+	op.type_id = builder.makeFloatType(32);
+	op.arguments = { id };
+	id = op.id;
+	ops.push_back(std::move(op));
+
+	op = {};
+	op.id = impl.allocate_id();
+	op.op = spv::OpFMul;
+	op.type_id = builder.makeFloatType(32);
+	op.arguments = { id, builder.makeFloatConstant(1.0f / 16.0f) };
+	id = op.id;
+	ops.push_back(std::move(op));
+
+	return id;
+}
+
+bool emit_eval_snapped_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                   const llvm::CallInst *instruction)
+{
+	uint32_t input_element_index;
+	if (!get_constant_operand(instruction, 1, &input_element_index))
+		return false;
+
+	const auto &meta = impl.input_elements_meta[input_element_index];
+	uint32_t var_id = meta.id;
+	uint32_t ptr_id;
+	Operation op;
+
+	uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
+
+	if (num_rows > 1)
+	{
+		ptr_id = impl.allocate_id();
+
+		op.op = spv::OpInBoundsAccessChain;
+		op.id = ptr_id;
+
+		// Need to deal with signed vs unsigned here.
+		op.type_id = impl.get_type_id(meta.component_type, 1, 1);
+		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
+		op.arguments = { var_id, impl.get_id_for_value(instruction->getOperand(3), 32) };
+
+		ops.push_back(std::move(op));
+	}
+	else
+		ptr_id = var_id;
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	spv::Id offset_id;
+	spv::Id offsets[2] = {};
+	bool is_non_const = false;
+	for (unsigned i = 0; i < 2; i++)
+	{
+		auto *operand = instruction->getOperand(4 + i);
+		auto *constant_operand = llvm::dyn_cast<llvm::ConstantInt>(operand);
+
+		// Need to do it the tedious way, extracting bits and converting to float ...
+		if (!constant_operand)
+		{
+			offsets[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+			offsets[i] = build_attribute_offset(offsets[i], ops, impl, builder);
+			is_non_const = true;
+		}
+		else
+		{
+			float off = float(constant_operand->getUniqueInteger().getSExtValue()) / 16.0f;
+			offsets[i] = builder.makeFloatConstant(off);
+		}
+	}
+
+	if (is_non_const)
+		offset_id = impl.build_vector(ops, builder.makeFloatType(32), offsets, 2);
+	else
+		offset_id = impl.build_constant_vector(ops, builder.makeFloatType(32), offsets, 2);
+
+	op = {};
+	op.op = spv::OpExtInst;
+	op.id = impl.get_id_for_value(instruction);
+	// Need to deal with signed vs unsigned here.
+	op.type_id = impl.get_type_id(meta.component_type, 1, 1);
+	op.arguments = {
+		impl.glsl_std450_ext,
+		GLSLstd450InterpolateAtOffset,
+		ptr_id,
+		offset_id,
+	};
+
+	ops.push_back(std::move(op));
+
+	// Need to bitcast after we load.
+	impl.fixup_load_sign(ops, meta.component_type, 1, instruction);
+	builder.addCapability(spv::CapabilityInterpolationFunction);
+	return true;
+}
+
 bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                    const llvm::CallInst *instruction)
 {
