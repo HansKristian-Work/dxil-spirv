@@ -123,6 +123,7 @@ struct DXILDispatcher
 		OP(ThreadId) = emit_thread_id_load_dispatch<spv::BuiltInGlobalInvocationId>;
 		OP(GroupId) = emit_thread_id_load_dispatch<spv::BuiltInWorkgroupId>;
 		OP(ThreadIdInGroup) = emit_thread_id_load_dispatch<spv::BuiltInLocalInvocationId>;
+		OP(FlattenedThreadIdInGroup) = emit_thread_id_load_dispatch<spv::BuiltInLocalInvocationIndex>;
 
 		// dxil_pixel_ops.hpp
 		OP(Discard) = emit_discard_instruction;

@@ -86,8 +86,14 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, std::vector<Operation
                                      const llvm::CallInst *instruction)
 {
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
-	spv::Id ptr_id = impl.allocate_id();
 
+	spv::Id ptr_id;
+	if (builtin == spv::BuiltInLocalInvocationIndex)
+		ptr_id = var_id;
+	else
+		ptr_id = impl.allocate_id();
+
+	if (ptr_id != var_id)
 	{
 		Operation op;
 		op.op = spv::OpAccessChain;

@@ -53,7 +53,26 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	std::unordered_map<spv::BuiltIn, spv::Id> builtins;
+
+	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
 };
+
+spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
+{
+	switch (builtin)
+	{
+	case spv::BuiltInLocalInvocationIndex:
+		return builder.makeUintType(32);
+
+	case spv::BuiltInGlobalInvocationId:
+	case spv::BuiltInLocalInvocationId:
+	case spv::BuiltInWorkgroupId:
+		return builder.makeVectorType(builder.makeUintType(32), 3);
+
+	default:
+		return 0;
+	}
+}
 
 spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 {
@@ -61,7 +80,7 @@ spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 	if (itr != builtins.end())
 		return itr->second;
 
-	spv::Id var_id = builder.createVariable(spv::StorageClassInput, builder.makeVectorType(builder.makeUintType(32), 3));
+	spv::Id var_id = builder.createVariable(spv::StorageClassInput, get_type_for_builtin(builtin));
 	builder.addDecoration(var_id, spv::DecorationBuiltIn, builtin);
 	entry_point->addIdOperand(var_id);
 	builtins[builtin] = var_id;
