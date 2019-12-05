@@ -19,6 +19,7 @@
 #include "spirv_module.hpp"
 #include "SpvBuilder.h"
 #include "node.hpp"
+#include <unordered_map>
 
 namespace DXIL2SPIRV
 {
@@ -49,7 +50,23 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void build_discard_call_exit();
 	spv::Function *discard_function = nullptr;
 	spv::Id discard_state_var_id = 0;
+
+	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
+	std::unordered_map<spv::BuiltIn, spv::Id> builtins;
 };
+
+spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
+{
+	auto itr = builtins.find(builtin);
+	if (itr != builtins.end())
+		return itr->second;
+
+	spv::Id var_id = builder.createVariable(spv::StorageClassInput, builder.makeVectorType(builder.makeUintType(32), 3));
+	builder.addDecoration(var_id, spv::DecorationBuiltIn, builtin);
+	entry_point->addIdOperand(var_id);
+	builtins[builtin] = var_id;
+	return var_id;
+}
 
 spv::Block *SPIRVModule::Impl::get_spv_block(CFGNode *node)
 {
@@ -325,6 +342,11 @@ uint32_t SPIRVModule::allocate_ids(uint32_t count)
 void SPIRVModule::enable_shader_discard()
 {
 	impl->enable_shader_discard();
+}
+
+spv::Id SPIRVModule::get_builtin_shader_input(spv::BuiltIn builtin)
+{
+	return impl->get_builtin_shader_input(builtin);
 }
 
 SPIRVModule::~SPIRVModule()

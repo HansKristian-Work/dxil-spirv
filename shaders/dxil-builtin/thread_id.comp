@@ -1,0 +1,9 @@
+RWStructuredBuffer<float> RWBuf : register(u0);
+
+[numthreads(2, 2, 2)]
+void main(uint3 ThreadID : SV_DispatchThreadID)
+{
+	RWBuf[ThreadID.x] = 10.0;
+	RWBuf[ThreadID.y] = 20.0;
+	RWBuf[ThreadID.z] = 30.0;
+}
