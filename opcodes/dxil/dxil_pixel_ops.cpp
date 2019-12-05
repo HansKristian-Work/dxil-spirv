@@ -44,4 +44,18 @@ bool emit_derivative_instruction(spv::Op opcode, std::vector<Operation> &ops, Co
 	builder.addCapability(spv::CapabilityDerivativeControl);
 	return true;
 }
+
+bool emit_sample_index_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                   const llvm::CallInst *instruction)
+{
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSampleId);
+	builder.addCapability(spv::CapabilitySampleRateShading);
+	Operation op;
+	op.op = spv::OpLoad;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { var_id };
+	ops.push_back(std::move(op));
+	return true;
+}
 }

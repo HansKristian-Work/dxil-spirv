@@ -52,6 +52,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id discard_state_var_id = 0;
 
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
+	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
 	std::unordered_map<spv::BuiltIn, spv::Id> builtins;
 
 	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
@@ -62,6 +63,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	switch (builtin)
 	{
 	case spv::BuiltInLocalInvocationIndex:
+	case spv::BuiltInSampleId:
 		return builder.makeUintType(32);
 
 	case spv::BuiltInGlobalInvocationId:
@@ -72,6 +74,11 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	default:
 		return 0;
 	}
+}
+
+void SPIRVModule::Impl::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin)
+{
+	builtins[builtin] = id;
 }
 
 spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
@@ -366,6 +373,11 @@ void SPIRVModule::enable_shader_discard()
 spv::Id SPIRVModule::get_builtin_shader_input(spv::BuiltIn builtin)
 {
 	return impl->get_builtin_shader_input(builtin);
+}
+
+void SPIRVModule::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin)
+{
+	impl->register_builtin_shader_input(id, builtin);
 }
 
 SPIRVModule::~SPIRVModule()

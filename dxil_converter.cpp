@@ -598,7 +598,7 @@ void Converter::Impl::emit_stage_output_variables()
 		}
 		else if (system_value != DXIL::Semantic::User)
 		{
-			emit_builtin_decoration(variable_id, system_value);
+			emit_builtin_decoration(variable_id, system_value, spv::StorageClassOutput);
 		}
 		else
 		{
@@ -647,13 +647,20 @@ void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::
 	}
 }
 
-void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic)
+void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage)
 {
 	auto &builder = spirv_module.get_builder();
 	switch (semantic)
 	{
 	case DXIL::Semantic::Position:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPosition);
+		if (storage == spv::StorageClassInput)
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInSampleId);
+		break;
+
+	case DXIL::Semantic::SampleIndex:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInSampleId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInSampleId);
 		break;
 
 	default:
@@ -753,7 +760,9 @@ void Converter::Impl::emit_stage_input_variables()
 		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };
 
 		if (system_value != DXIL::Semantic::User)
-			emit_builtin_decoration(variable_id, system_value);
+		{
+			emit_builtin_decoration(variable_id, system_value, spv::StorageClassInput);
+		}
 		else
 		{
 			emit_interpolation_decorations(variable_id, interpolation);

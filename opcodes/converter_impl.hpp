@@ -101,7 +101,7 @@ struct Converter::Impl
 	};
 	std::unordered_map<uint32_t, ElementMeta> input_elements_meta;
 	std::unordered_map<uint32_t, ElementMeta> output_elements_meta;
-	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic);
+	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage);
 
 	bool emit_instruction(CFGNode *block, const llvm::Instruction &instruction);
 	bool emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
