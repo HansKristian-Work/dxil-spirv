@@ -58,4 +58,27 @@ bool emit_sample_index_instruction(std::vector<Operation> &ops, Converter::Impl 
 	ops.push_back(std::move(op));
 	return true;
 }
+
+bool emit_coverage_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                               const llvm::CallInst *instruction)
+{
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSampleMask);
+	spv::Id ptr_id = impl.allocate_id();
+	{
+		Operation op;
+		op.op = spv::OpAccessChain;
+		op.id = ptr_id;
+		op.type_id = builder.makePointer(spv::StorageClassInput, builder.makeUintType(32));
+		op.arguments = { var_id, builder.makeUintConstant(0) };
+		ops.push_back(std::move(op));
+	}
+
+	Operation op;
+	op.op = spv::OpLoad;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { ptr_id };
+	ops.push_back(std::move(op));
+	return true;
+}
 }

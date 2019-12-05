@@ -62,6 +62,9 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 {
 	switch (builtin)
 	{
+	case spv::BuiltInSampleMask:
+		return builder.makeArrayType(builder.makeUintType(32), builder.makeUintConstant(1), 0);
+
 	case spv::BuiltInLocalInvocationIndex:
 	case spv::BuiltInSampleId:
 		return builder.makeUintType(32);

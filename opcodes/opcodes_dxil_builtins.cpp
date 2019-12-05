@@ -135,6 +135,7 @@ struct DXILDispatcher
 		OP(DerivFineX) = emit_derivative_dispatch<spv::OpDPdxFine>;
 		OP(DerivFineY) = emit_derivative_dispatch<spv::OpDPdyFine>;
 		OP(SampleIndex) = emit_sample_index_instruction;
+		OP(Coverage) = emit_coverage_instruction;
 	}
 
 #undef OP

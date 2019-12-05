@@ -27,6 +27,9 @@ bool emit_discard_instruction(std::vector<Operation> &ops, Converter::Impl &impl
 bool emit_sample_index_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                    const llvm::CallInst *instruction);
 
+bool emit_coverage_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                               const llvm::CallInst *instruction);
+
 bool emit_derivative_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                  const llvm::CallInst *instruction);
 
