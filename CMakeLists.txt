@@ -80,6 +80,7 @@ add_library(dxil-converter STATIC
         opcodes/dxil/dxil_resources.hpp opcodes/dxil/dxil_resources.cpp
         opcodes/dxil/dxil_compute.hpp opcodes/dxil/dxil_compute.cpp
         opcodes/dxil/dxil_arithmetic.hpp opcodes/dxil/dxil_arithmetic.cpp
+        opcodes/dxil/dxil_pixel_ops.hpp opcodes/dxil/dxil_pixel_ops.cpp
         opcodes/dxil/dxil_sampling.hpp opcodes/dxil/dxil_sampling.cpp
         opcodes/dxil/dxil_buffer.hpp opcodes/dxil/dxil_buffer.cpp
         opcodes/opcodes_llvm_builtins.hpp opcodes/opcodes_llvm_builtins.cpp

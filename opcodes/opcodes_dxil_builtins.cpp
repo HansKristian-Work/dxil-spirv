@@ -25,6 +25,7 @@
 #include "opcodes/dxil/dxil_resources.hpp"
 #include "opcodes/dxil/dxil_sampling.hpp"
 #include "opcodes/dxil/dxil_buffer.hpp"
+#include "opcodes/dxil/dxil_pixel_ops.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -119,6 +120,9 @@ struct DXILDispatcher
 
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;
+
+		// dxil_pixel_ops.hpp
+		OP(Discard) = emit_discard_instruction;
 	}
 
 #undef OP

@@ -43,6 +43,12 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void emit_basic_block(CFGNode *node) override;
 	void emit_function_body(CFGStructurizer &structurizer);
 	static spv::Block *get_spv_block(CFGNode *node);
+
+	void enable_shader_discard();
+	void build_discard_call_early();
+	void build_discard_call_exit();
+	spv::Function *discard_function = nullptr;
+	spv::Id discard_state_var_id = 0;
 };
 
 spv::Block *SPIRVModule::Impl::get_spv_block(CFGNode *node)
@@ -59,6 +65,49 @@ void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model, const char *
 	entry_point = builder.addEntryPoint(model, entry_function, name);
 	if (model == spv::ExecutionModel::ExecutionModelFragment)
 		builder.addExecutionMode(entry_function, spv::ExecutionMode::ExecutionModeOriginUpperLeft);
+}
+
+void SPIRVModule::Impl::enable_shader_discard()
+{
+	if (!discard_state_var_id)
+	{
+		auto *current_build_point = builder.getBuildPoint();
+		discard_state_var_id = builder.createVariable(spv::StorageClassPrivate, builder.makeBoolType(), "discard_state");
+		builder.setBuildPoint(entry_function->getEntryBlock());
+		builder.createStore(builder.makeBoolConstant(false), discard_state_var_id);
+		builder.setBuildPoint(current_build_point);
+	}
+}
+
+void SPIRVModule::Impl::build_discard_call_early()
+{
+	builder.createStore(builder.makeBoolConstant(true), discard_state_var_id);
+}
+
+void SPIRVModule::Impl::build_discard_call_exit()
+{
+	auto *current_build_point = builder.getBuildPoint();
+
+	if (!discard_function)
+	{
+		spv::Block *entry = nullptr;
+		discard_function = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+		                                             "discard_exit", {}, {}, &entry);
+
+		auto *true_block = new spv::Block(builder.getUniqueId(), *discard_function);
+		auto *false_block = new spv::Block(builder.getUniqueId(), *discard_function);
+
+		builder.setBuildPoint(entry);
+		spv::Id loaded_state = builder.createLoad(discard_state_var_id);
+		builder.createSelectionMerge(false_block, 0);
+		builder.createConditionalBranch(loaded_state, true_block, false_block);
+		true_block->addInstruction(std::make_unique<spv::Instruction>(spv::OpKill));
+		builder.setBuildPoint(false_block);
+		builder.makeReturn(false);
+	}
+
+	builder.setBuildPoint(current_build_point);
+	builder.createFunctionCall(discard_function, {});
 }
 
 SPIRVModule::SPIRVModule()
@@ -120,17 +169,24 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	// Emit opcodes.
 	for (auto &op : ir.operations)
 	{
-		if (!op.arguments.empty())
+		if (op.op == spv::OpDemoteToHelperInvocationEXT)
 		{
-			auto inst = std::make_unique<spv::Instruction>(op.id, op.type_id, op.op);
-			for (auto &arg : op.arguments)
-				inst->addIdOperand(arg);
-			bb->addInstruction(std::move(inst));
+			build_discard_call_early();
 		}
 		else
 		{
-			auto inst = std::make_unique<spv::Instruction>(op.op);
-			bb->addInstruction(std::move(inst));
+			if (!op.arguments.empty())
+			{
+				auto inst = std::make_unique<spv::Instruction>(op.id, op.type_id, op.op);
+				for (auto &arg : op.arguments)
+					inst->addIdOperand(arg);
+				bb->addInstruction(std::move(inst));
+			}
+			else
+			{
+				auto inst = std::make_unique<spv::Instruction>(op.op);
+				bb->addInstruction(std::move(inst));
+			}
 		}
 	}
 
@@ -211,6 +267,8 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 	case Terminator::Type::Return:
 	{
+		if (discard_state_var_id)
+			build_discard_call_exit();
 		builder.makeReturn(false, ir.terminator.return_value);
 		break;
 	}
@@ -262,6 +320,11 @@ uint32_t SPIRVModule::allocate_id()
 uint32_t SPIRVModule::allocate_ids(uint32_t count)
 {
 	return impl->builder.getUniqueIds(count);
+}
+
+void SPIRVModule::enable_shader_discard()
+{
+	impl->enable_shader_discard();
 }
 
 SPIRVModule::~SPIRVModule()

@@ -17,38 +17,10 @@
  */
 
 #pragma once
-
-#include "SpvBuilder.h"
-#include "cfg_structurizer.hpp"
-#include <memory>
-#include <vector>
+#include "opcodes/opcodes.hpp"
 
 namespace DXIL2SPIRV
 {
-struct CFGNode;
-class CFGNodePool;
-
-class SPIRVModule
-{
-public:
-	SPIRVModule();
-	~SPIRVModule();
-	bool finalize_spirv(std::vector<uint32_t> &spirv);
-
-	uint32_t allocate_id();
-	uint32_t allocate_ids(uint32_t count);
-
-	void emit_entry_point(spv::ExecutionModel model, const char *name);
-	void emit_function_body(CFGStructurizer &structurizer);
-
-	spv::Builder &get_builder();
-	spv::Instruction *get_entry_point();
-	void emit_workgroup_size(uint32_t x, uint32_t y, uint32_t z);
-
-	void enable_shader_discard();
-
-private:
-	struct Impl;
-	std::unique_ptr<Impl> impl;
-};
-} // namespace DXIL2SPIRV
+bool emit_discard_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                              const llvm::CallInst *instruction);
+}
