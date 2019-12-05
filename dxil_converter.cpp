@@ -355,6 +355,21 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		}
 	}
 
+	case llvm::Type::TypeID::ArrayTyID:
+	{
+		std::vector<spv::Id> constituents;
+		spv::Id type_id = get_type_id(constant->getType());
+
+		auto *array = llvm::cast<llvm::ConstantDataArray>(constant);
+		constituents.reserve(array->getType()->getArrayNumElements());
+		for (unsigned i = 0; i < array->getNumElements(); i++)
+		{
+			llvm::Constant *c = array->getElementAsConstant(i);
+			constituents.push_back(get_id_for_constant(c, 0));
+		}
+		return builder.makeCompositeConstant(type_id, constituents);
+	}
+
 	default:
 		return 0;
 	}
@@ -432,11 +447,9 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 
 	case llvm::Type::TypeID::PointerTyID:
 	{
-		auto address_space = static_cast<DXIL::AddressSpace>(type->getPointerAddressSpace());
-		return builder.makePointer(address_space == DXIL::AddressSpace::GroupShared ?
-		                           spv::StorageClassWorkgroup :
-		                           spv::StorageClassFunction,
-		                           get_type_id(type->getPointerElementType()));
+		// Have to deal with this from the outside. Should only be relevant for getelementptr and instructions like that.
+		LOGE("Cannot reliably convert LLVM pointer type, we cannot differentiate between Function and Private.\n");
+		std::terminate();
 	}
 
 	case llvm::Type::TypeID::ArrayTyID:
@@ -659,13 +672,28 @@ void Converter::Impl::emit_global_variables()
 
 		spv::Id pointee_type_id = get_type_id(global.getType()->getPointerElementType());
 		auto address_space = static_cast<DXIL::AddressSpace>(global.getType()->getAddressSpace());
+		spv::Id initializer_id = 0;
 
-		if (address_space != DXIL::AddressSpace::GroupShared)
-			LOGW("Global variable address space is not GroupShared, this is unexpected!\n");
+		llvm::Constant *initializer = nullptr;
+		if (global.hasInitializer())
+			initializer = global.getInitializer();
+		if (initializer && llvm::isa<llvm::UndefValue>(initializer))
+			initializer = nullptr;
 
-		spv::Id var_id = builder.createVariable(
+		if (address_space == DXIL::AddressSpace::GroupShared && initializer)
+			LOGW("Global variable address space cannot have initializer! Ignoring ...\n");
+		else
+		{
+			if (!global.isConstant())
+				LOGW("Declaring LUT, but it must be constant.\n");
+		}
+
+		if (initializer)
+			initializer_id = get_id_for_constant(initializer, 0);
+
+		spv::Id var_id = builder.createVariableWithInitializer(
 				address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
-				pointee_type_id, global.getName().data());
+				pointee_type_id, initializer_id, global.getName().data());
 		value_map[&global] = var_id;
 	}
 }

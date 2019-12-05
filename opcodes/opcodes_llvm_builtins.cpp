@@ -213,30 +213,32 @@ bool emit_getelementptr_instruction(std::vector<Operation> &ops, Converter::Impl
 	Operation op;
 	op.op = instruction->isInBounds() ? spv::OpInBoundsAccessChain : spv::OpAccessChain;
 	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
+
+	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(0));
+	spv::StorageClass storage_class = builder.getStorageClass(ptr_id);
+
+	op.type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
+	op.type_id = builder.makePointer(storage_class, op.type_id);
+	op.arguments.push_back(ptr_id);
+
+	auto *elem_index = instruction->getOperand(1);
+
+	// This one must be constant 0, ignore it.
+	if (!llvm::isa<llvm::ConstantInt>(elem_index))
+	{
+		LOGE("First GetElementPtr operand is not constant 0.\n");
+		return false;
+	}
+
+	if (llvm::cast<llvm::ConstantInt>(elem_index)->getUniqueInteger().getZExtValue() != 0)
+	{
+		LOGE("First GetElementPtr operand is not constant 0.\n");
+		return false;
+	}
 
 	unsigned num_operands = instruction->getNumOperands();
-	for (uint32_t i = 0; i < num_operands; i++)
-	{
-		auto *operand = instruction->getOperand(i);
-		if (i == 1)
-		{
-			// This one must be constant 0, ignore it.
-			if (!llvm::isa<llvm::ConstantInt>(operand))
-			{
-				LOGE("First GetElementPtr operand is not constant 0.\n");
-				return false;
-			}
-
-			if (llvm::cast<llvm::ConstantInt>(operand)->getUniqueInteger().getZExtValue() != 0)
-			{
-				LOGE("First GetElementPtr operand is not constant 0.\n");
-				return false;
-			}
-		}
-		else
-			op.arguments.push_back(impl.get_id_for_value(operand));
-	}
+	for (uint32_t i = 2; i < num_operands; i++)
+		op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(i)));
 
 	ops.push_back(std::move(op));
 	return true;
@@ -425,10 +427,10 @@ bool emit_alloca_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
 	}
 
 	auto address_space = static_cast<DXIL::AddressSpace>(instruction->getType()->getAddressSpace());
+	if (address_space != DXIL::AddressSpace::Thread)
+		return false;
 
-	spv::Id var_id = builder.createVariable(
-			address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassFunction,
-			pointee_type_id, instruction->getName().data());
+	spv::Id var_id = builder.createVariable(spv::StorageClassFunction, pointee_type_id, instruction->getName().data());
 	impl.value_map[instruction] = var_id;
 	return true;
 }

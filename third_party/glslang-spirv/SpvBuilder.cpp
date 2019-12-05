@@ -1068,9 +1068,16 @@ void Builder::makeDiscard()
 // Comments in header
 Id Builder::createVariable(StorageClass storageClass, Id type, const char* name)
 {
+    return createVariableWithInitializer(storageClass, type, 0, name);
+}
+
+Id Builder::createVariableWithInitializer(StorageClass storageClass, Id type, Id initializer, const char* name)
+{
     Id pointerType = makePointer(storageClass, type);
     Instruction* inst = new Instruction(getUniqueId(), pointerType, OpVariable);
     inst->addImmediateOperand(storageClass);
+    if (initializer)
+        inst->addIdOperand(initializer);
 
     switch (storageClass) {
     case StorageClassFunction:
