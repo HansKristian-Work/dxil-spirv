@@ -30,4 +30,18 @@ bool emit_discard_instruction(std::vector<Operation> &ops, Converter::Impl &impl
 	impl.spirv_module.enable_shader_discard();
 	return true;
 }
+
+bool emit_derivative_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                 const llvm::CallInst *instruction)
+{
+	Operation op;
+	op.op = opcode;
+	op.id = impl.get_id_for_value(instruction);
+	op.type_id = impl.get_type_id(instruction->getType());
+	op.arguments = { impl.get_id_for_value(instruction->getOperand(1)) };
+
+	ops.push_back(std::move(op));
+	builder.addCapability(spv::CapabilityDerivativeControl);
+	return true;
+}
 }

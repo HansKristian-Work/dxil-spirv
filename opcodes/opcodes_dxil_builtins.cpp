@@ -123,6 +123,10 @@ struct DXILDispatcher
 
 		// dxil_pixel_ops.hpp
 		OP(Discard) = emit_discard_instruction;
+		OP(DerivCoarseX) = emit_derivative_dispatch<spv::OpDPdxCoarse>;
+		OP(DerivCoarseY) = emit_derivative_dispatch<spv::OpDPdyCoarse>;
+		OP(DerivFineX) = emit_derivative_dispatch<spv::OpDPdxFine>;
+		OP(DerivFineY) = emit_derivative_dispatch<spv::OpDPdyFine>;
 	}
 
 #undef OP
