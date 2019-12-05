@@ -26,6 +26,8 @@ bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &i
                                  const llvm::CallInst *instruction);
 bool emit_eval_snapped_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                    const llvm::CallInst *instruction);
+bool emit_sample_index_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                   const llvm::CallInst *instruction);
 bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                    const llvm::CallInst *instruction);
 bool emit_create_handle_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,

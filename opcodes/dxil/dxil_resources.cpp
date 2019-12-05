@@ -179,6 +179,62 @@ bool emit_eval_snapped_instruction(std::vector<Operation> &ops, Converter::Impl 
 	return true;
 }
 
+bool emit_sample_index_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                   const llvm::CallInst *instruction)
+{
+	uint32_t input_element_index;
+	if (!get_constant_operand(instruction, 1, &input_element_index))
+		return false;
+
+	const auto &meta = impl.input_elements_meta[input_element_index];
+	uint32_t var_id = meta.id;
+	uint32_t ptr_id;
+	Operation op;
+
+	uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
+
+	if (num_rows > 1)
+	{
+		ptr_id = impl.allocate_id();
+
+		op.op = spv::OpInBoundsAccessChain;
+		op.id = ptr_id;
+
+		// Need to deal with signed vs unsigned here.
+		op.type_id = impl.get_type_id(meta.component_type, 1, 1);
+		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
+		op.arguments = { var_id, impl.get_id_for_value(instruction->getOperand(3), 32) };
+
+		ops.push_back(std::move(op));
+	}
+	else
+		ptr_id = var_id;
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	spv::Id sample_index_id = impl.get_id_for_value(instruction->getOperand(4));
+
+	op = {};
+	op.op = spv::OpExtInst;
+	op.id = impl.get_id_for_value(instruction);
+	// Need to deal with signed vs unsigned here.
+	op.type_id = impl.get_type_id(meta.component_type, 1, 1);
+	op.arguments = {
+		impl.glsl_std450_ext,
+		GLSLstd450InterpolateAtSample,
+		ptr_id,
+		sample_index_id,
+	};
+
+	ops.push_back(std::move(op));
+
+	// Need to bitcast after we load.
+	impl.fixup_load_sign(ops, meta.component_type, 1, instruction);
+	builder.addCapability(spv::CapabilityInterpolationFunction);
+	return true;
+}
+
 bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                    const llvm::CallInst *instruction)
 {
