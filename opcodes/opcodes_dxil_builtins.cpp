@@ -121,6 +121,8 @@ struct DXILDispatcher
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;
 		OP(ThreadId) = emit_thread_id_load_dispatch<spv::BuiltInGlobalInvocationId>;
+		OP(GroupId) = emit_thread_id_load_dispatch<spv::BuiltInWorkgroupId>;
+		OP(ThreadIdInGroup) = emit_thread_id_load_dispatch<spv::BuiltInLocalInvocationId>;
 
 		// dxil_pixel_ops.hpp
 		OP(Discard) = emit_discard_instruction;
