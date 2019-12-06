@@ -17,6 +17,7 @@
  */
 
 #include "spirv_module.hpp"
+#include "scratch_pool.hpp"
 #include "SpvBuilder.h"
 #include "node.hpp"
 #include <unordered_map>
@@ -57,6 +58,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	std::unordered_map<spv::Id, spv::BuiltIn> id_to_builtin;
 
 	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
+	ScratchPool<Operation> operation_pool;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -227,24 +229,32 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	}
 
 	// Emit opcodes.
-	for (auto &op : ir.operations)
+	for (auto *op : ir.operations)
 	{
-		if (op.op == spv::OpDemoteToHelperInvocationEXT)
+		if (op->op == spv::OpDemoteToHelperInvocationEXT)
 		{
 			build_discard_call_early();
 		}
 		else
 		{
-			if (!op.arguments.empty())
+			if (op->op != 0)
 			{
-				auto inst = std::make_unique<spv::Instruction>(op.id, op.type_id, op.op);
-				for (auto &arg : op.arguments)
-					inst->addIdOperand(arg);
+				auto inst = std::make_unique<spv::Instruction>(op->id, op->type_id, op->op);
+				unsigned literal_mask = op->get_literal_mask();
+
+				for (auto &arg : *op)
+				{
+					if (literal_mask & 1u)
+						inst->addIdOperand(arg);
+					else
+						inst->addImmediateOperand(arg);
+					literal_mask >>= 1u;
+				}
 				bb->addInstruction(std::move(inst));
 			}
 			else
 			{
-				auto inst = std::make_unique<spv::Instruction>(op.op);
+				auto inst = std::make_unique<spv::Instruction>(op->op);
 				bb->addInstruction(std::move(inst));
 			}
 		}
@@ -400,6 +410,21 @@ void SPIRVModule::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin
 bool SPIRVModule::query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const
 {
 	return impl->query_builtin_shader_input(id, builtin);
+}
+
+Operation *SPIRVModule::allocate_op()
+{
+	return impl->operation_pool.allocate();
+}
+
+Operation *SPIRVModule::allocate_op(spv::Op op)
+{
+	return impl->operation_pool.allocate(op);
+}
+
+Operation *SPIRVModule::allocate_op(spv::Op op, spv::Id id, spv::Id type_id)
+{
+	return impl->operation_pool.allocate(op, id, type_id);
 }
 
 SPIRVModule::~SPIRVModule()

@@ -23,35 +23,25 @@
 
 namespace DXIL2SPIRV
 {
-static void fixup_builtin_load(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                               spv::Id var_id, const llvm::CallInst *instruction)
+static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	spv::BuiltIn builtin;
 	if (impl.spirv_module.query_builtin_shader_input(var_id, &builtin) && builtin == spv::BuiltInInstanceIndex)
 	{
 		// Need to shift InstanceIndex down to 0-base.
 		spv::Id base_instance_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInBaseInstance);
 		{
-			Operation op;
-			op.op = spv::OpLoad;
-			op.id = impl.allocate_id();
-			op.type_id = builder.makeUintType(32);
-			op.arguments = { base_instance_id };
-			base_instance_id = op.id;
-			ops.push_back(std::move(op));
+			Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+			op->add_id(base_instance_id);
+			base_instance_id = op->id;
+			impl.add(op);
 		}
 
-		spv::Id sub_id = impl.allocate_id();
-		{
-			Operation op;
-			op.op = spv::OpISub;
-			op.id = sub_id;
-			op.type_id = builder.makeUintType(32);
-			op.arguments = { impl.get_id_for_value(instruction), base_instance_id };
-			ops.push_back(std::move(op));
-		}
-
-		impl.value_map[instruction] = sub_id;
+		Operation *sub_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
+		sub_op->add_ids({ impl.get_id_for_value(instruction), base_instance_id });
+		impl.add(sub_op);
+		impl.value_map[instruction] = sub_op->id;
 		builder.addCapability(spv::CapabilityDrawParameters);
 	}
 }

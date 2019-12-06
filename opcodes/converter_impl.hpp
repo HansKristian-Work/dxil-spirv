@@ -21,14 +21,17 @@
 #include "SpvBuilder.h"
 #include "cfg_structurizer.hpp"
 #include "dxil_converter.hpp"
+#include "scratch_pool.hpp"
 
 #include "GLSL.std.450.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Instructions.h>
+#include <stdlib.h>
 
 namespace DXIL2SPIRV
 {
+
 struct Converter::Impl
 {
 	Impl(DXILContainerParser container_parser_, LLVMBCParser bitcode_parser_, SPIRVModule &module_)
@@ -128,5 +131,15 @@ struct Converter::Impl
 	spv::Id glsl_std450_ext = 0;
 
 	spv::Id allocate_id();
+
+	std::vector<Operation *> *current_block = nullptr;
+	void add(Operation *op);
+	Operation *allocate_op();
+	Operation *allocate(spv::Op op);
+	Operation *allocate(spv::Op op, const llvm::Value *value);
+	Operation *allocate(spv::Op op, spv::Id type_id);
+	Operation *allocate(spv::Op op, const llvm::Value *value, spv::Id type_id);
+	Operation *allocate(spv::Op op, spv::Id id, spv::Id type_id);
+	spv::Builder &builder();
 };
 } // namespace DXIL2SPIRV

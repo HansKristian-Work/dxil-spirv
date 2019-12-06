@@ -74,6 +74,7 @@ add_library(dxil-converter STATIC
         node_pool.hpp node_pool.cpp
         node.hpp node.cpp
         dxil_parser.hpp dxil_parser.cpp
+        scratch_pool.hpp
         opcodes/converter_impl.hpp
         opcodes/opcodes.hpp
         opcodes/dxil/dxil_common.hpp opcodes/dxil/dxil_common.cpp

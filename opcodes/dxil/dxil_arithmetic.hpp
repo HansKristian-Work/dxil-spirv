@@ -22,83 +22,83 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_imad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_imad_instruction(Converter::Impl &impl,
                            const llvm::CallInst *instruction);
-bool emit_fmad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_fmad_instruction(Converter::Impl &impl,
                            const llvm::CallInst *instruction);
-bool emit_isfinite_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_isfinite_instruction(Converter::Impl &impl,
                                const llvm::CallInst *instruction);
-bool emit_saturate_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_saturate_instruction(Converter::Impl &impl,
                                const llvm::CallInst *instruction);
 
-bool emit_find_high_bit_instruction(GLSLstd450 opcode, std::vector<Operation> &ops, Converter::Impl &impl,
-                                    spv::Builder &builder, const llvm::CallInst *instruction);
+bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl,
+                                    const llvm::CallInst *instruction);
 
-bool emit_dxil_unary_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl,
-                                 spv::Builder &builder, const llvm::CallInst *instruction);
-bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, std::vector<Operation> &ops, Converter::Impl &impl,
-                                        spv::Builder &builder, const llvm::CallInst *instruction);
-bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, std::vector<Operation> &ops, Converter::Impl &impl,
-                                         spv::Builder &builder, const llvm::CallInst *instruction);
-bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, std::vector<Operation> &ops, Converter::Impl &impl,
-                                          spv::Builder &builder, const llvm::CallInst *instruction);
+bool emit_dxil_unary_instruction(spv::Op opcode, Converter::Impl &impl,
+                                 const llvm::CallInst *instruction);
+bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl,
+                                        const llvm::CallInst *instruction);
+bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &impl,
+                                         const llvm::CallInst *instruction);
+bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &impl,
+                                          const llvm::CallInst *instruction);
 
 bool emit_dot_instruction(unsigned dimensions,
-                          std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                          Converter::Impl &impl,
                           const llvm::CallInst *instruction);
 
-bool emit_bfe_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl,
                           const llvm::CallInst *instruction);
-bool emit_bfi_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_bfi_instruction(Converter::Impl &impl,
                           const llvm::CallInst *instruction);
 
 template <GLSLstd450 opcode>
-static inline bool emit_find_high_bit_dispatch(std::vector<Operation> &ops, Converter::Impl &impl,
-                                               spv::Builder &builder, const llvm::CallInst *instruction)
+static inline bool emit_find_high_bit_dispatch(Converter::Impl &impl,
+                                               const llvm::CallInst *instruction)
 {
-	return emit_find_high_bit_instruction(opcode, ops, impl, builder, instruction);
+	return emit_find_high_bit_instruction(opcode, impl, instruction);
 }
 
 template <GLSLstd450 opcode>
-static inline bool std450_trinary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+static inline bool std450_trinary_dispatch(Converter::Impl &impl,
                                            const llvm::CallInst *instruction)
 {
-	return emit_dxil_std450_trinary_instruction(opcode, ops, impl, builder, instruction);
+	return emit_dxil_std450_trinary_instruction(opcode, impl, instruction);
 }
 
 template <GLSLstd450 opcode>
-static inline bool std450_binary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+static inline bool std450_binary_dispatch(Converter::Impl &impl,
                                           const llvm::CallInst *instruction)
 {
-	return emit_dxil_std450_binary_instruction(opcode, ops, impl, builder, instruction);
+	return emit_dxil_std450_binary_instruction(opcode, impl, instruction);
 }
 
 template <GLSLstd450 opcode>
-static inline bool std450_unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+static inline bool std450_unary_dispatch(Converter::Impl &impl,
                                          const llvm::CallInst *instruction)
 {
-	return emit_dxil_std450_unary_instruction(opcode, ops, impl, builder, instruction);
+	return emit_dxil_std450_unary_instruction(opcode, impl, instruction);
 }
 
 template <spv::Op opcode>
-static inline bool unary_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+static inline bool unary_dispatch(Converter::Impl &impl,
                                   const llvm::CallInst *instruction)
 {
-	return emit_dxil_unary_instruction(opcode, ops, impl, builder, instruction);
+	return emit_dxil_unary_instruction(opcode, impl, instruction);
 }
 
 template <unsigned Dim>
-static inline bool emit_dot_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+static inline bool emit_dot_dispatch(Converter::Impl &impl,
                                      const llvm::CallInst *instruction)
 {
-	return emit_dot_instruction(Dim, ops, impl, builder, instruction);
+	return emit_dot_instruction(Dim, impl, instruction);
 }
 
 template <spv::Op opcode>
-static inline bool emit_bfe_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+static inline bool emit_bfe_dispatch(Converter::Impl &impl,
                                      const llvm::CallInst *instruction)
 {
-	return emit_bfe_instruction(opcode, ops, impl, builder, instruction);
+	return emit_bfe_instruction(opcode, impl, instruction);
 }
 
 }

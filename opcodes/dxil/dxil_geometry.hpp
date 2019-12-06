@@ -21,12 +21,12 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_stream_instruction(Converter::Impl &impl,
                              const llvm::CallInst *instruction);
-bool emit_cut_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_cut_stream_instruction(Converter::Impl &impl,
                                  const llvm::CallInst *instruction);
-bool emit_then_cut_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_then_cut_stream_instruction(Converter::Impl &impl,
                                       const llvm::CallInst *instruction);
-bool emit_gs_instance_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_gs_instance_instruction(Converter::Impl &impl,
                                   const llvm::CallInst *instruction);
 }

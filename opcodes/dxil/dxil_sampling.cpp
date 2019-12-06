@@ -87,18 +87,18 @@ bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder, spv::Id 
 	return true;
 }
 
-bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl,
-                             spv::Builder &builder, const llvm::CallInst *instruction)
+bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	bool comparison_sampling = opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero;
+	auto &builder = impl.builder();
 
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
-	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, comparison_sampling);
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, comparison_sampling);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	unsigned num_coords_full, num_coords;
-	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
 	spv::Id coord[4] = {};
@@ -152,25 +152,25 @@ bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops, Conve
 	else
 		aux_argument = builder.makeFloatConstant(0.0f);
 
-	Operation op;
+	Operation *op = impl.allocate_op();
 
 	switch (opcode)
 	{
 	case DXIL::Op::SampleLevel:
-		op.op = spv::OpImageSampleExplicitLod;
+		op->op = spv::OpImageSampleExplicitLod;
 		break;
 
 	case DXIL::Op::Sample:
 	case DXIL::Op::SampleBias:
-		op.op = spv::OpImageSampleImplicitLod;
+		op->op = spv::OpImageSampleImplicitLod;
 		break;
 
 	case DXIL::Op::SampleCmp:
-		op.op = spv::OpImageSampleDrefImplicitLod;
+		op->op = spv::OpImageSampleDrefImplicitLod;
 		break;
 
 	case DXIL::Op::SampleCmpLevelZero:
-		op.op = spv::OpImageSampleDrefExplicitLod;
+		op->op = spv::OpImageSampleDrefExplicitLod;
 		break;
 
 	default:
@@ -183,43 +183,40 @@ bool emit_sample_instruction(DXIL::Op opcode, std::vector<Operation> &ops, Conve
 	if (comparison_sampling)
 	{
 		sampled_value_id = impl.allocate_id();
-		op.id = sampled_value_id;
+		op->id = sampled_value_id;
 	}
 	else
-		op.id = impl.get_id_for_value(instruction);
+		op->id = impl.get_id_for_value(instruction);
 
-	op.type_id = impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4);
-	op.arguments.push_back(combined_image_sampler_id);
-	op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), coord, num_coords_full));
+	op->type_id = impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4);
+	op->add_id(combined_image_sampler_id);
+	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
 
 	if (dref_id)
-		op.arguments.push_back(dref_id);
+		op->add_id(dref_id);
 
-	op.arguments.push_back(image_ops);
+	op->add_literal(image_ops);
 
 	if (image_ops & (spv::ImageOperandsBiasMask | spv::ImageOperandsLodMask))
-		op.arguments.push_back(aux_argument);
+		op->add_id(aux_argument);
 
 	if (image_ops & spv::ImageOperandsConstOffsetMask)
-		op.arguments.push_back(impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
+		op->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
 
 	if (image_ops & spv::ImageOperandsMinLodMask)
-		op.arguments.push_back(aux_argument);
+		op->add_id(aux_argument);
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 
 	if (comparison_sampling)
 	{
-		op = {};
-		op.op = spv::OpCompositeConstruct;
-		op.id = impl.get_id_for_value(instruction);
-		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
-		op.arguments = { sampled_value_id, sampled_value_id, sampled_value_id, sampled_value_id };
-		ops.push_back(std::move(op));
+		op = impl.allocate(spv::OpCompositeConstruct, instruction, builder.makeVectorType(builder.makeFloatType(32), 4));
+		op->add_ids({ sampled_value_id, sampled_value_id, sampled_value_id, sampled_value_id });
+		impl.add(op);
 	}
 
 	// Deal with signed component types.
-	impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
+	impl.fixup_load_sign(meta.component_type, 4, instruction);
 
 	return true;
 }

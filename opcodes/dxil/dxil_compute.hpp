@@ -22,15 +22,15 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_barrier_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_barrier_instruction(Converter::Impl &impl,
                               const llvm::CallInst *instruction);
-bool emit_thread_id_load_instruction(spv::BuiltIn builtin, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl,
                                      const llvm::CallInst *instruction);
 
 template <spv::BuiltIn builtin>
-static inline bool emit_thread_id_load_dispatch(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+static inline bool emit_thread_id_load_dispatch(Converter::Impl &impl,
                                                 const llvm::CallInst *instruction)
 {
-	return emit_thread_id_load_instruction(builtin, ops, impl, builder, instruction);
+	return emit_thread_id_load_instruction(builtin, impl, instruction);
 }
 }

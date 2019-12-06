@@ -22,8 +22,6 @@
 
 namespace DXIL2SPIRV
 {
-using DXILOperationBuilder = bool (*)(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                      const llvm::CallInst *instruction);
-bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                           const llvm::CallInst *instruction);
+using DXILOperationBuilder = bool (*)(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace DXIL2SPIRV

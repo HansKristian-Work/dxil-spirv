@@ -22,63 +22,56 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_barrier_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_barrier_instruction(Converter::Impl &impl,
                               const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	uint32_t operation;
 	if (!get_constant_operand(instruction, 1, &operation))
 		return false;
 
 	// Match DXC SPIR-V output here.
-	Operation op;
+	Operation *op = nullptr;
 
 	switch (static_cast<DXIL::BarrierMode>(operation))
 	{
 	case DXIL::BarrierMode::GroupMemoryBarrierWithGroupSync:
-		op.op = spv::OpControlBarrier;
-		op.arguments = {
-				builder.makeUintConstant(spv::ScopeWorkgroup),
-				builder.makeUintConstant(spv::ScopeWorkgroup),
-				builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask),
-		};
+		op = impl.allocate(spv::OpControlBarrier);
+		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup);
+		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	case DXIL::BarrierMode::AllMemoryBarrierWithGroupSync:
-		op.op = spv::OpControlBarrier;
-		op.arguments = {
-				builder.makeUintConstant(spv::ScopeWorkgroup),
-				builder.makeUintConstant(spv::ScopeDevice),
-				builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
-				                         spv::MemorySemanticsImageMemoryMask |
-				                         spv::MemorySemanticsUniformMemoryMask |
-				                         spv::MemorySemanticsAcquireReleaseMask),
-		};
+		op = impl.allocate(spv::OpControlBarrier);
+		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
+		                                    spv::MemorySemanticsImageMemoryMask |
+		                                    spv::MemorySemanticsUniformMemoryMask |
+		                                    spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	case DXIL::BarrierMode::GroupMemoryBarrier:
-		op.op = spv::OpMemoryBarrier;
-		op.arguments = {
-				builder.makeUintConstant(spv::ScopeWorkgroup),
-				builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask),
-		};
+		op = impl.allocate(spv::OpMemoryBarrier);
+		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	case DXIL::BarrierMode::AllMemoryBarrier:
-		op.op = spv::OpMemoryBarrier;
-		op.arguments = {
-				builder.makeUintConstant(spv::ScopeDevice),
-				builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
-				                         spv::MemorySemanticsImageMemoryMask |
-				                         spv::MemorySemanticsUniformMemoryMask |
-				                         spv::MemorySemanticsAcquireReleaseMask),
-		};
+		op = impl.allocate(spv::OpMemoryBarrier);
+		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
+		                                    spv::MemorySemanticsImageMemoryMask |
+		                                    spv::MemorySemanticsUniformMemoryMask |
+		                                    spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	default:
 		return false;
 	}
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 
@@ -87,28 +80,21 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, std::vector<Operation
 {
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
 
-	spv::Id ptr_id;
-	if (builtin == spv::BuiltInLocalInvocationIndex)
-		ptr_id = var_id;
-	else
-		ptr_id = impl.allocate_id();
-
-	if (ptr_id != var_id)
+	if (builtin != spv::BuiltInLocalInvocationIndex)
 	{
-		Operation op;
-		op.op = spv::OpAccessChain;
-		op.id = ptr_id;
-		op.type_id = builder.makePointer(spv::StorageClassInput, impl.get_type_id(instruction->getType()));
-		op.arguments = { var_id, impl.get_id_for_value(instruction->getOperand(1)) };
-		ops.push_back(std::move(op));
+		Operation *op = impl.allocate(
+				spv::OpAccessChain,
+				builder.makePointer(spv::StorageClassInput, impl.get_type_id(instruction->getType())));
+
+		op->add_id(var_id);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(op);
+		var_id = op->get_id();
 	}
 
-	Operation op;
-	op.op = spv::OpLoad;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-	op.arguments = { ptr_id };
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(spv::OpLoad, instruction);
+	op->add_id(var_id);
+	impl.add(op);
 	return true;
 }
 }

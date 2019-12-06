@@ -27,17 +27,17 @@ struct BufferAccessInfo
 	unsigned num_components;
 };
 
-BufferAccessInfo build_buffer_access(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+BufferAccessInfo build_buffer_access(Converter::Impl &impl,
                                      const llvm::CallInst *instruction, unsigned operand_offset = 0);
 
-bool emit_buffer_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_buffer_load_instruction(Converter::Impl &impl,
                                   const llvm::CallInst *instruction);
-bool emit_buffer_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_buffer_store_instruction(Converter::Impl &impl,
                                    const llvm::CallInst *instruction);
-bool emit_atomic_binop_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_atomic_binop_instruction(Converter::Impl &impl,
                                    const llvm::CallInst *instruction);
-bool emit_atomic_cmpxchg_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl,
                                      const llvm::CallInst *instruction);
-bool emit_buffer_update_counter_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_buffer_update_counter_instruction(Converter::Impl &impl,
                                             const llvm::CallInst *instruction);
 }

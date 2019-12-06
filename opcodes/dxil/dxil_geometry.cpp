@@ -22,14 +22,15 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_stream_instruction(Converter::Impl &impl,
                              const llvm::CallInst *instruction)
 {
-	Operation op;
+	Operation *op;
+	auto &builder = impl.builder();
 
 	if (impl.execution_mode_meta.gs_stream_active_mask != 1)
 	{
-		op.op = spv::OpEmitStreamVertex;
+		op = impl.allocate(spv::OpEmitStreamVertex);
 
 		auto *constant = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1));
 		if (!constant)
@@ -37,24 +38,25 @@ bool emit_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
 			LOGE("Argument to emitStream must be a constant.\n");
 			return false;
 		}
-		op.arguments = {builder.makeUintConstant(constant->getUniqueInteger().getZExtValue())};
+		op->add_id(builder.makeUintConstant(constant->getUniqueInteger().getZExtValue()));
 		builder.addCapability(spv::CapabilityGeometryStreams);
 	}
 	else
-		op.op = spv::OpEmitVertex;
+		op = impl.allocate(spv::OpEmitVertex);
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 
-bool emit_cut_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_cut_stream_instruction(Converter::Impl &impl,
                                  const llvm::CallInst *instruction)
 {
-	Operation op;
+	Operation *op;
+	auto &builder = impl.builder();
 
 	if (impl.execution_mode_meta.gs_stream_active_mask != 1)
 	{
-		op.op = spv::OpEndStreamPrimitive;
+		op = impl.allocate(spv::OpEndStreamPrimitive);
 
 		auto *constant = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1));
 		if (!constant)
@@ -62,34 +64,31 @@ bool emit_cut_stream_instruction(std::vector<Operation> &ops, Converter::Impl &i
 			LOGE("Argument to emitStream must be a constant.\n");
 			return false;
 		}
-		op.arguments = {builder.makeUintConstant(constant->getUniqueInteger().getZExtValue())};
+		op->add_id(builder.makeUintConstant(constant->getUniqueInteger().getZExtValue()));
 		builder.addCapability(spv::CapabilityGeometryStreams);
 	}
 	else
-		op.op = spv::OpEndPrimitive;
+		op = impl.allocate(spv::OpEndPrimitive);
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 
-bool emit_then_cut_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_then_cut_stream_instruction(Converter::Impl &impl,
                                       const llvm::CallInst *instruction)
 {
-	if (!emit_stream_instruction(ops, impl, builder, instruction))
+	if (!emit_stream_instruction(impl, instruction))
 		return false;
-	return emit_cut_stream_instruction(ops, impl, builder, instruction);
+	return emit_cut_stream_instruction(impl, instruction);
 }
 
-bool emit_gs_instance_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_gs_instance_instruction(Converter::Impl &impl,
                                   const llvm::CallInst *instruction)
 {
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId);
-	Operation op;
-	op.op = spv::OpLoad;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = builder.makeUintType(32);
-	op.arguments = { var_id };
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(spv::OpLoad, instruction);
+	op->add_id(var_id);
+	impl.add(op);
 	return true;
 }
 
