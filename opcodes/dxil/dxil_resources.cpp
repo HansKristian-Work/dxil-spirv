@@ -68,9 +68,14 @@ bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &i
 	uint32_t ptr_id;
 	Operation op;
 
-	uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
+	spv::Id input_type_id = builder.getDerefTypeId(var_id);
+	if (builder.isArrayType(input_type_id))
+		input_type_id = builder.getContainedTypeId(input_type_id);
+	uint32_t num_rows = builder.getNumTypeComponents(input_type_id);
 
-	if (num_rows > 1)
+	bool array_index = !llvm::isa<llvm::UndefValue>(instruction->getOperand(4));
+
+	if (num_rows > 1 || array_index)
 	{
 		ptr_id = impl.allocate_id();
 
@@ -82,12 +87,14 @@ bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &i
 		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
 
 		op.arguments.push_back(var_id);
-		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(4)))
+		if (array_index)
 		{
 			// Vertex array index for GS/DS/HS.
 			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(4)));
 		}
-		op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(3), 32));
+
+		if (num_rows > 1)
+			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(3), 32));
 
 		ops.push_back(std::move(op));
 	}
