@@ -37,7 +37,6 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Instruction *entry_point = nullptr;
 
 	void emit_entry_point(spv::ExecutionModel model, const char *name);
-	void emit_workgroup_size(uint32_t x, uint32_t y, uint32_t z);
 	bool finalize_spirv(std::vector<uint32_t> &spirv);
 
 	void register_block(CFGNode *node) override;
@@ -183,11 +182,6 @@ SPIRVModule::SPIRVModule()
 void SPIRVModule::emit_entry_point(spv::ExecutionModel model, const char *name)
 {
 	impl->emit_entry_point(model, name);
-}
-
-void SPIRVModule::emit_workgroup_size(uint32_t x, uint32_t y, uint32_t z)
-{
-	impl->emit_workgroup_size(x, y, z);
 }
 
 bool SPIRVModule::Impl::finalize_spirv(std::vector<uint32_t> &spirv)
@@ -357,11 +351,6 @@ void SPIRVModule::Impl::emit_function_body(CFGStructurizer &structurizer)
 	builder.leaveFunction();
 }
 
-void SPIRVModule::Impl::emit_workgroup_size(uint32_t x, uint32_t y, uint32_t z)
-{
-	builder.addExecutionMode(entry_function, spv::ExecutionModeLocalSize, x, y, z);
-}
-
 void SPIRVModule::emit_function_body(CFGStructurizer &structurizer)
 {
 	impl->emit_function_body(structurizer);
@@ -375,6 +364,11 @@ spv::Builder &SPIRVModule::get_builder()
 spv::Instruction *SPIRVModule::get_entry_point()
 {
 	return impl->entry_point;
+}
+
+spv::Function *SPIRVModule::get_entry_function()
+{
+	return impl->entry_function;
 }
 
 uint32_t SPIRVModule::allocate_id()

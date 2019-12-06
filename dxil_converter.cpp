@@ -730,6 +730,10 @@ void Converter::Impl::emit_stage_input_variables()
 	if (!inputs)
 		return;
 
+	bool arrayed_input = execution_model == spv::ExecutionModelGeometry ||
+	                     execution_model == spv::ExecutionModelTessellationControl ||
+	                     execution_model == spv::ExecutionModelTessellationEvaluation;
+
 	auto *inputs_node = llvm::dyn_cast<llvm::MDNode>(inputs);
 
 	auto &builder = spirv_module.get_builder();
@@ -766,6 +770,9 @@ void Converter::Impl::emit_stage_input_variables()
 #endif
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
+		if (arrayed_input)
+			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(stage_input_num_vertex), 0);
+
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, semantic_name.c_str());
 		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };
 
@@ -958,16 +965,12 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	return false;
 }
 
-void Converter::Impl::emit_execution_modes()
+void Converter::Impl::emit_execution_modes_compute()
 {
 	auto &module = bitcode_parser.get_module();
-	auto &builder = spirv_module.get_builder();
-
-	if (get_execution_model(module) != spv::ExecutionModelGLCompute)
-		return;
-
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	auto *node = ep_meta->getOperand(0);
+	auto &builder = spirv_module.get_builder();
 
 	if (node->getOperand(4))
 	{
@@ -983,9 +986,115 @@ void Converter::Impl::emit_execution_modes()
 				for (unsigned dim = 0; dim < 3; dim++)
 					threads[dim] = get_constant_metadata(num_threads, dim);
 
-				spirv_module.emit_workgroup_size(threads[0], threads[1], threads[2]);
+				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
+				                         threads[0], threads[1], threads[2]);
 			}
 		}
+	}
+}
+
+void Converter::Impl::emit_execution_modes_geometry()
+{
+	auto &module = bitcode_parser.get_module();
+	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
+	auto *node = ep_meta->getOperand(0);
+	auto &builder = spirv_module.get_builder();
+	builder.addCapability(spv::CapabilityGeometry);
+
+	if (node->getOperand(4))
+	{
+		auto *tag_values = llvm::cast<llvm::MDNode>(node->getOperand(4));
+		unsigned num_pairs = tag_values->getNumOperands() / 2;
+		for (unsigned i = 0; i < num_pairs; i++)
+		{
+			auto tag = static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i));
+			if (tag == DXIL::ShaderPropertyTag::GSState)
+			{
+				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
+
+				auto input_primitive = static_cast<DXIL::InputPrimitive>(get_constant_metadata(arguments, 0));
+				unsigned max_vertex_count = get_constant_metadata(arguments, 1);
+				DXIL::PrimitiveTopology topologies[4] = {};
+				for (unsigned j = 2; j < arguments->getNumOperands(); j++)
+					topologies[j - 2] = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, j));
+
+				auto topology = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, 3));
+
+				auto *func = spirv_module.get_entry_function();
+				builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
+
+				switch (input_primitive)
+				{
+				case DXIL::InputPrimitive::Point:
+					builder.addExecutionMode(func, spv::ExecutionModeInputPoints);
+					stage_input_num_vertex = 1;
+					break;
+
+				case DXIL::InputPrimitive::Line:
+					builder.addExecutionMode(func, spv::ExecutionModeInputLines);
+					stage_input_num_vertex = 2;
+					break;
+
+				case DXIL::InputPrimitive::LineWithAdjacency:
+					builder.addExecutionMode(func, spv::ExecutionModeInputLinesAdjacency);
+					stage_input_num_vertex = 4;
+					break;
+
+				case DXIL::InputPrimitive::Triangle:
+					builder.addExecutionMode(func, spv::ExecutionModeTriangles);
+					stage_input_num_vertex = 3;
+					break;
+
+				case DXIL::InputPrimitive::TriangleWithAdjaceny:
+					builder.addExecutionMode(func, spv::ExecutionModeInputTrianglesAdjacency);
+					stage_input_num_vertex = 6;
+					break;
+
+				default:
+					LOGE("Unexpected input primitive (%u).\n", unsigned(input_primitive));
+					break;
+				}
+
+				switch (topology)
+				{
+				case DXIL::PrimitiveTopology::PointList:
+					builder.addExecutionMode(func, spv::ExecutionModeOutputPoints);
+					break;
+
+				case DXIL::PrimitiveTopology::LineList:
+					builder.addExecutionMode(func, spv::ExecutionModeOutputLineStrip);
+					break;
+
+				case DXIL::PrimitiveTopology::TriangleStrip:
+					builder.addExecutionMode(func, spv::ExecutionModeOutputTriangleStrip);
+					break;
+
+				default:
+					LOGE("Unexpected output primitive topology (%u).\n", unsigned(topology));
+					break;
+				}
+			}
+		}
+	}
+}
+
+void Converter::Impl::emit_execution_modes()
+{
+	auto &module = bitcode_parser.get_module();
+	execution_model = get_execution_model(module);
+
+	switch (execution_model)
+	{
+	case spv::ExecutionModelGLCompute:
+		emit_execution_modes_compute();
+		break;
+
+	case spv::ExecutionModelGeometry:
+		emit_execution_modes_geometry();
+		break;
+
+	default:
+		break;
 	}
 }
 

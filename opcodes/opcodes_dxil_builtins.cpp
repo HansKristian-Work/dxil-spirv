@@ -26,6 +26,7 @@
 #include "opcodes/dxil/dxil_sampling.hpp"
 #include "opcodes/dxil/dxil_buffer.hpp"
 #include "opcodes/dxil/dxil_pixel_ops.hpp"
+#include "opcodes/dxil/dxil_geometry.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -136,6 +137,11 @@ struct DXILDispatcher
 		OP(DerivFineY) = emit_derivative_dispatch<spv::OpDPdyFine>;
 		OP(SampleIndex) = emit_sample_index_instruction;
 		OP(Coverage) = emit_coverage_instruction;
+
+		// dxil_geometry.hpp
+		OP(EmitStream) = emit_stream_instruction;
+		OP(CutStream) = emit_cut_stream_instruction;
+		OP(EmitThenCutStream) = emit_then_cut_stream_instruction;
 	}
 
 #undef OP

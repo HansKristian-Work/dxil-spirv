@@ -80,7 +80,14 @@ bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &i
 		// Need to deal with signed vs unsigned here.
 		op.type_id = impl.get_type_id(meta.component_type, 1, 1);
 		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
-		op.arguments = { var_id, impl.get_id_for_value(instruction->getOperand(3), 32) };
+
+		op.arguments.push_back(var_id);
+		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(4)))
+		{
+			// Vertex array index for GS/DS/HS.
+			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(4)));
+		}
+		op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(3), 32));
 
 		ops.push_back(std::move(op));
 	}

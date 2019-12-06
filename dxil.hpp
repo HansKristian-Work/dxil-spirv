@@ -454,4 +454,24 @@ enum class AddressSpace : uint8_t
 	GroupShared = 3,
 	Invalid
 };
+
+enum class InputPrimitive : uint8_t
+{
+	Undefined = 0,
+	Point = 1,
+	Line = 2,
+	Triangle = 3,
+	LineWithAdjacency = 6,
+	TriangleWithAdjaceny = 7
+};
+
+enum class PrimitiveTopology : uint8_t
+{
+	Undefined = 0,
+	PointList = 1,
+	LineList = 2,
+	LineStrip = 3,
+	TriangleList = 4,
+	TriangleStrip = 5
+};
 } // namespace DXIL

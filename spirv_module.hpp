@@ -43,7 +43,7 @@ public:
 
 	spv::Builder &get_builder();
 	spv::Instruction *get_entry_point();
-	void emit_workgroup_size(uint32_t x, uint32_t y, uint32_t z);
+	spv::Function *get_entry_function();
 
 	void enable_shader_discard();
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);

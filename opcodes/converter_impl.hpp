@@ -66,7 +66,11 @@ struct Converter::Impl
 	void emit_global_variables();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
+	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
+	unsigned stage_input_num_vertex = 0;
 	void emit_execution_modes();
+	void emit_execution_modes_compute();
+	void emit_execution_modes_geometry();
 	void emit_resources();
 	void emit_srvs(const llvm::MDNode *srvs);
 	void emit_uavs(const llvm::MDNode *uavs);
