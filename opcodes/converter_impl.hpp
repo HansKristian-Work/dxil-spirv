@@ -70,10 +70,12 @@ struct Converter::Impl
 	void emit_execution_modes();
 	void emit_execution_modes_compute();
 	void emit_execution_modes_geometry();
+	void emit_execution_modes_hull();
 
 	struct ExecutionModeMeta
 	{
 		unsigned stage_input_num_vertex = 0;
+		unsigned stage_output_num_vertex = 0;
 		unsigned gs_stream_active_mask = 0;
 	} execution_mode_meta;
 

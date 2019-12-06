@@ -236,6 +236,20 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, std::vector<Operation> &ops
 	return true;
 }
 
+static spv::Id build_load_invocation_id(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder)
+{
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId);
+	Operation op;
+	op.op = spv::OpLoad;
+	op.id = impl.allocate_id();
+	op.type_id = builder.makeUintType(32);
+	op.arguments = { var_id };
+
+	var_id = op.id;
+	ops.push_back(std::move(op));
+	return var_id;
+}
+
 bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                    const llvm::CallInst *instruction)
 {
@@ -248,17 +262,27 @@ bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl 
 	uint32_t ptr_id;
 	Operation op;
 
-	uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
+	spv::Id output_type_id = builder.getDerefTypeId(var_id);
+	if (builder.isArrayType(output_type_id))
+		output_type_id = builder.getContainedTypeId(output_type_id);
+	uint32_t num_rows = builder.getNumTypeComponents(output_type_id);
 
-	if (num_rows > 1)
+	bool is_control_point_output = impl.execution_model == spv::ExecutionModelTessellationControl;
+
+	if (num_rows > 1 || is_control_point_output)
 	{
 		ptr_id = impl.allocate_id();
 
 		op.op = spv::OpInBoundsAccessChain;
 		op.id = ptr_id;
-		op.type_id = builder.getScalarTypeId(builder.getDerefTypeId(var_id));
+		op.type_id = builder.getScalarTypeId(output_type_id);
 		op.type_id = builder.makePointer(spv::StorageClassOutput, op.type_id);
-		op.arguments = { var_id, impl.get_id_for_value(instruction->getOperand(3), 32) };
+
+		op.arguments.push_back(var_id);
+		if (is_control_point_output)
+			op.arguments.push_back(build_load_invocation_id(ops, impl, builder));
+		if (num_rows > 1)
+			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(3), 32));
 
 		ops.push_back(std::move(op));
 	}
