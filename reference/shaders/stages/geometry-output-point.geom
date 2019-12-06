@@ -15,7 +15,7 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
     gl_Position.w = gl_in[1u].gl_Position.w;
-    EmitStreamVertex();
+    EmitVertex();
 }
 
 
@@ -88,7 +88,6 @@ attributes #1 = { nounwind }
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
-OpCapability GeometryStreams
 OpMemoryModel Logical GLSL450
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %15
 OpExecutionMode %3 OutputVertices 1
@@ -157,7 +156,7 @@ OpStore %42 %31
 OpStore %43 %33
 %44 = OpInBoundsAccessChain %37 %15 %8
 OpStore %44 %35
-OpEmitStreamVertex %18
+OpEmitVertex
 OpReturn
 OpFunctionEnd
 #endif

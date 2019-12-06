@@ -771,7 +771,7 @@ void Converter::Impl::emit_stage_input_variables()
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		if (arrayed_input)
-			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(stage_input_num_vertex), 0);
+			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, semantic_name.c_str());
 		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };
@@ -1023,6 +1023,8 @@ void Converter::Impl::emit_execution_modes_geometry()
 				auto topology = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, 3));
 				unsigned gs_instances = get_constant_metadata(arguments, 4);
 
+				execution_mode_meta.gs_stream_active_mask = get_constant_metadata(arguments, 2);
+
 				if (gs_instances > 1)
 					builder.addExecutionMode(func, spv::ExecutionModeInvocations, gs_instances);
 
@@ -1032,27 +1034,27 @@ void Converter::Impl::emit_execution_modes_geometry()
 				{
 				case DXIL::InputPrimitive::Point:
 					builder.addExecutionMode(func, spv::ExecutionModeInputPoints);
-					stage_input_num_vertex = 1;
+					execution_mode_meta.stage_input_num_vertex = 1;
 					break;
 
 				case DXIL::InputPrimitive::Line:
 					builder.addExecutionMode(func, spv::ExecutionModeInputLines);
-					stage_input_num_vertex = 2;
+					execution_mode_meta.stage_input_num_vertex = 2;
 					break;
 
 				case DXIL::InputPrimitive::LineWithAdjacency:
 					builder.addExecutionMode(func, spv::ExecutionModeInputLinesAdjacency);
-					stage_input_num_vertex = 4;
+					execution_mode_meta.stage_input_num_vertex = 4;
 					break;
 
 				case DXIL::InputPrimitive::Triangle:
 					builder.addExecutionMode(func, spv::ExecutionModeTriangles);
-					stage_input_num_vertex = 3;
+					execution_mode_meta.stage_input_num_vertex = 3;
 					break;
 
 				case DXIL::InputPrimitive::TriangleWithAdjaceny:
 					builder.addExecutionMode(func, spv::ExecutionModeInputTrianglesAdjacency);
-					stage_input_num_vertex = 6;
+					execution_mode_meta.stage_input_num_vertex = 6;
 					break;
 
 				default:

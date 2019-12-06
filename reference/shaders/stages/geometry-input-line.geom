@@ -15,7 +15,7 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
     gl_Position.w = gl_in[1u].gl_Position.w;
-    EmitStreamVertex();
+    EmitVertex();
     TEXCOORD_1.x = TEXCOORD[0u].x;
     TEXCOORD_1.y = TEXCOORD[0u].y;
     TEXCOORD_1.z = TEXCOORD[0u].z;
@@ -24,7 +24,7 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
     gl_Position.w = gl_in[1u].gl_Position.w;
-    EmitStreamVertex();
+    EmitVertex();
     float _55 = gl_in[1u].gl_Position.x + 0.0199999995529651641845703125;
     TEXCOORD_1.x = TEXCOORD[0u].x;
     TEXCOORD_1.y = TEXCOORD[0u].y;
@@ -34,8 +34,8 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
     gl_Position.w = gl_in[1u].gl_Position.w;
-    EmitStreamVertex();
-    EndStreamPrimitive();
+    EmitVertex();
+    EndPrimitive();
     TEXCOORD_1.x = TEXCOORD[0u].x;
     TEXCOORD_1.y = TEXCOORD[0u].y;
     TEXCOORD_1.z = TEXCOORD[0u].z;
@@ -44,7 +44,7 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
     gl_Position.w = gl_in[1u].gl_Position.w;
-    EmitStreamVertex();
+    EmitVertex();
     TEXCOORD_1.x = TEXCOORD[0u].x;
     TEXCOORD_1.y = TEXCOORD[0u].y;
     TEXCOORD_1.z = TEXCOORD[0u].z;
@@ -53,7 +53,7 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
     gl_Position.w = gl_in[1u].gl_Position.w;
-    EmitStreamVertex();
+    EmitVertex();
     TEXCOORD_1.x = TEXCOORD[0u].x;
     TEXCOORD_1.y = TEXCOORD[0u].y;
     TEXCOORD_1.z = TEXCOORD[0u].z;
@@ -62,7 +62,7 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
     gl_Position.w = gl_in[1u].gl_Position.w;
-    EmitStreamVertex();
+    EmitVertex();
 }
 
 
@@ -186,7 +186,6 @@ attributes #1 = { nounwind }
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
-OpCapability GeometryStreams
 OpMemoryModel Logical GLSL450
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %15
 OpExecutionMode %3 OutputVertices 6
@@ -257,7 +256,7 @@ OpStore %42 %31
 OpStore %43 %33
 %44 = OpInBoundsAccessChain %37 %15 %26
 OpStore %44 %35
-OpEmitStreamVertex %18
+OpEmitVertex
 %45 = OpFAdd %5 %29 %46
 %47 = OpInBoundsAccessChain %37 %14 %18
 OpStore %47 %19
@@ -275,7 +274,7 @@ OpStore %52 %31
 OpStore %53 %33
 %54 = OpInBoundsAccessChain %37 %15 %26
 OpStore %54 %35
-OpEmitStreamVertex %18
+OpEmitVertex
 %55 = OpFAdd %5 %29 %56
 %57 = OpInBoundsAccessChain %37 %14 %18
 OpStore %57 %19
@@ -293,8 +292,8 @@ OpStore %62 %31
 OpStore %63 %33
 %64 = OpInBoundsAccessChain %37 %15 %26
 OpStore %64 %35
-OpEmitStreamVertex %18
-OpEndStreamPrimitive %18
+OpEmitVertex
+OpEndPrimitive
 %65 = OpInBoundsAccessChain %37 %14 %18
 OpStore %65 %19
 %66 = OpInBoundsAccessChain %37 %14 %21
@@ -311,7 +310,7 @@ OpStore %70 %31
 OpStore %71 %33
 %72 = OpInBoundsAccessChain %37 %15 %26
 OpStore %72 %35
-OpEmitStreamVertex %18
+OpEmitVertex
 %73 = OpInBoundsAccessChain %37 %14 %18
 OpStore %73 %19
 %74 = OpInBoundsAccessChain %37 %14 %21
@@ -328,7 +327,7 @@ OpStore %78 %31
 OpStore %79 %33
 %80 = OpInBoundsAccessChain %37 %15 %26
 OpStore %80 %35
-OpEmitStreamVertex %18
+OpEmitVertex
 %81 = OpInBoundsAccessChain %37 %14 %18
 OpStore %81 %19
 %82 = OpInBoundsAccessChain %37 %14 %21
@@ -345,7 +344,7 @@ OpStore %86 %31
 OpStore %87 %33
 %88 = OpInBoundsAccessChain %37 %15 %26
 OpStore %88 %35
-OpEmitStreamVertex %18
+OpEmitVertex
 OpReturn
 OpFunctionEnd
 #endif

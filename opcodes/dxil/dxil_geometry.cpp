@@ -26,18 +26,24 @@ bool emit_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
                              const llvm::CallInst *instruction)
 {
 	Operation op;
-	op.op = spv::OpEmitStreamVertex;
 
-	auto *constant = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1));
-	if (!constant)
+	if (impl.execution_mode_meta.gs_stream_active_mask != 1)
 	{
-		LOGE("Argument to emitStream must be a constant.\n");
-		return false;
-	}
-	op.arguments = { builder.makeUintConstant(constant->getUniqueInteger().getZExtValue()) };
-	ops.push_back(std::move(op));
+		op.op = spv::OpEmitStreamVertex;
 
-	builder.addCapability(spv::CapabilityGeometryStreams);
+		auto *constant = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1));
+		if (!constant)
+		{
+			LOGE("Argument to emitStream must be a constant.\n");
+			return false;
+		}
+		op.arguments = {builder.makeUintConstant(constant->getUniqueInteger().getZExtValue())};
+		builder.addCapability(spv::CapabilityGeometryStreams);
+	}
+	else
+		op.op = spv::OpEmitVertex;
+
+	ops.push_back(std::move(op));
 	return true;
 }
 
@@ -45,18 +51,24 @@ bool emit_cut_stream_instruction(std::vector<Operation> &ops, Converter::Impl &i
                                  const llvm::CallInst *instruction)
 {
 	Operation op;
-	op.op = spv::OpEndStreamPrimitive;
 
-	auto *constant = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1));
-	if (!constant)
+	if (impl.execution_mode_meta.gs_stream_active_mask != 1)
 	{
-		LOGE("Argument to emitStream must be a constant.\n");
-		return false;
-	}
-	op.arguments = { builder.makeUintConstant(constant->getUniqueInteger().getZExtValue()) };
-	ops.push_back(std::move(op));
+		op.op = spv::OpEndStreamPrimitive;
 
-	builder.addCapability(spv::CapabilityGeometryStreams);
+		auto *constant = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1));
+		if (!constant)
+		{
+			LOGE("Argument to emitStream must be a constant.\n");
+			return false;
+		}
+		op.arguments = {builder.makeUintConstant(constant->getUniqueInteger().getZExtValue())};
+		builder.addCapability(spv::CapabilityGeometryStreams);
+	}
+	else
+		op.op = spv::OpEndPrimitive;
+
+	ops.push_back(std::move(op));
 	return true;
 }
 

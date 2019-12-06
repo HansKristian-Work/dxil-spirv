@@ -15,7 +15,7 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
     gl_Position.w = gl_in[1u].gl_Position.w;
-    EmitStreamVertex();
+    EmitVertex();
     TEXCOORD_1.x = TEXCOORD[0u].x;
     TEXCOORD_1.y = TEXCOORD[0u].y;
     TEXCOORD_1.z = TEXCOORD[0u].z;
@@ -24,7 +24,7 @@ void main()
     gl_Position.y = gl_in[1u].gl_Position.y + 0.00999999977648258209228515625;
     gl_Position.z = gl_in[1u].gl_Position.z + 0.00999999977648258209228515625;
     gl_Position.w = gl_in[1u].gl_Position.w + 0.00999999977648258209228515625;
-    EmitStreamVertex();
+    EmitVertex();
 }
 
 
@@ -110,7 +110,6 @@ attributes #1 = { nounwind }
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
-OpCapability GeometryStreams
 OpMemoryModel Logical GLSL450
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %15
 OpExecutionMode %3 OutputVertices 2
@@ -180,7 +179,7 @@ OpStore %42 %31
 OpStore %43 %33
 %44 = OpInBoundsAccessChain %37 %15 %8
 OpStore %44 %35
-OpEmitStreamVertex %18
+OpEmitVertex
 %45 = OpFAdd %5 %29 %46
 %47 = OpFAdd %5 %31 %46
 %48 = OpFAdd %5 %33 %46
@@ -201,7 +200,7 @@ OpStore %55 %47
 OpStore %56 %48
 %57 = OpInBoundsAccessChain %37 %15 %8
 OpStore %57 %49
-OpEmitStreamVertex %18
+OpEmitVertex
 OpReturn
 OpFunctionEnd
 #endif
