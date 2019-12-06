@@ -1061,7 +1061,7 @@ void Converter::Impl::emit_execution_modes_geometry()
 					builder.addExecutionMode(func, spv::ExecutionModeOutputPoints);
 					break;
 
-				case DXIL::PrimitiveTopology::LineList:
+				case DXIL::PrimitiveTopology::LineStrip:
 					builder.addExecutionMode(func, spv::ExecutionModeOutputLineStrip);
 					break;
 
