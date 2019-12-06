@@ -142,6 +142,7 @@ struct DXILDispatcher
 		OP(EmitStream) = emit_stream_instruction;
 		OP(CutStream) = emit_cut_stream_instruction;
 		OP(EmitThenCutStream) = emit_then_cut_stream_instruction;
+		OP(GSInstanceID) = emit_gs_instance_instruction;
 	}
 
 #undef OP

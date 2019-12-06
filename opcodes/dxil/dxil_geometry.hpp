@@ -27,4 +27,6 @@ bool emit_cut_stream_instruction(std::vector<Operation> &ops, Converter::Impl &i
                                  const llvm::CallInst *instruction);
 bool emit_then_cut_stream_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
                                       const llvm::CallInst *instruction);
+bool emit_gs_instance_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+                                  const llvm::CallInst *instruction);
 }

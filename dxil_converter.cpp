@@ -1018,9 +1018,14 @@ void Converter::Impl::emit_execution_modes_geometry()
 				for (unsigned j = 2; j < arguments->getNumOperands(); j++)
 					topologies[j - 2] = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, j));
 
-				auto topology = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, 3));
-
 				auto *func = spirv_module.get_entry_function();
+
+				auto topology = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, 3));
+				unsigned gs_instances = get_constant_metadata(arguments, 4);
+
+				if (gs_instances > 1)
+					builder.addExecutionMode(func, spv::ExecutionModeInvocations, gs_instances);
+
 				builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
 
 				switch (input_primitive)
