@@ -474,4 +474,30 @@ enum class PrimitiveTopology : uint8_t
 	TriangleList = 4,
 	TriangleStrip = 5
 };
+
+enum class TessellatorDomain : uint8_t
+{
+	Undefined = 0,
+	IsoLine = 1,
+	Tri = 2,
+	Quad = 3
+};
+
+enum class TessellatorOutputPrimitive : uint8_t
+{
+	Undefined = 0,
+	Point = 1,
+	Line = 2,
+	TriangleCW = 3,
+	TriangleCCW = 4
+};
+
+enum class TessellatorPartitioning : uint8_t
+{
+	Undefined = 0,
+	Integer = 1,
+	Pow2 = 2,
+	FractionalOdd = 3,
+	FractionalEven = 4
+};
 } // namespace DXIL

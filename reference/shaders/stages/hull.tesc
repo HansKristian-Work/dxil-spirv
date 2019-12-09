@@ -99,6 +99,7 @@ OpCapability Tessellation
 OpMemoryModel Logical GLSL450
 OpEntryPoint TessellationControl %3 "main" %10 %14 %15 %19 %21 %35
 OpExecutionMode %3 Quads
+OpExecutionMode %3 SpacingEqual
 OpExecutionMode %3 VertexOrderCw
 OpExecutionMode %3 OutputVertices 4
 OpName %3 "main"

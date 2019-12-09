@@ -1072,13 +1072,82 @@ void Converter::Impl::emit_execution_modes_hull()
 			{
 				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
 
-				unsigned output_control_points = get_constant_metadata(arguments, 2);
 				unsigned input_control_points = get_constant_metadata(arguments, 1);
+				unsigned output_control_points = get_constant_metadata(arguments, 2);
+				auto domain = static_cast<DXIL::TessellatorDomain>(get_constant_metadata(arguments, 3));
+				auto partitioning = static_cast<DXIL::TessellatorPartitioning>(get_constant_metadata(arguments, 4));
+				auto primitive = static_cast<DXIL::TessellatorOutputPrimitive>(get_constant_metadata(arguments, 5));
 
 				auto *func = spirv_module.get_entry_function();
-				builder.addExecutionMode(func, spv::ExecutionModeQuads);
-				builder.addExecutionMode(func, spv::ExecutionModeVertexOrderCw);
+
+				switch (domain)
+				{
+				case DXIL::TessellatorDomain::IsoLine:
+					builder.addExecutionMode(func, spv::ExecutionModeIsolines);
+					break;
+
+				case DXIL::TessellatorDomain::Tri:
+					builder.addExecutionMode(func, spv::ExecutionModeTriangles);
+					break;
+
+				case DXIL::TessellatorDomain::Quad:
+					builder.addExecutionMode(func, spv::ExecutionModeQuads);
+					break;
+
+				default:
+					LOGE("Unknown tessellator domain!\n");
+					break;
+				}
+
+				switch (partitioning)
+				{
+				case DXIL::TessellatorPartitioning::Integer:
+					builder.addExecutionMode(func, spv::ExecutionModeSpacingEqual);
+					break;
+
+				case DXIL::TessellatorPartitioning::Pow2:
+					LOGE("Emulating Pow2 spacing as Integer.\n");
+					builder.addExecutionMode(func, spv::ExecutionModeSpacingEqual);
+					break;
+
+				case DXIL::TessellatorPartitioning::FractionalEven:
+					builder.addExecutionMode(func, spv::ExecutionModeSpacingFractionalEven);
+					break;
+
+				case DXIL::TessellatorPartitioning::FractionalOdd:
+					builder.addExecutionMode(func, spv::ExecutionModeSpacingFractionalOdd);
+					break;
+
+				default:
+					LOGE("Unknown tessellator partitioning.\n");
+					break;
+				}
+
+				switch (primitive)
+				{
+				case DXIL::TessellatorOutputPrimitive::TriangleCCW:
+					builder.addExecutionMode(func, spv::ExecutionModeVertexOrderCcw);
+					break;
+
+				case DXIL::TessellatorOutputPrimitive::TriangleCW:
+					builder.addExecutionMode(func, spv::ExecutionModeVertexOrderCw);
+					break;
+
+				case DXIL::TessellatorOutputPrimitive::Point:
+					builder.addExecutionMode(func, spv::ExecutionModePointMode);
+					// TODO: Do we have to specify CCW/CW in point mode?
+					break;
+
+				case DXIL::TessellatorOutputPrimitive::Line:
+					break;
+
+				default:
+					LOGE("Unknown tessellator primitive.\n");
+					break;
+				}
+
 				builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, output_control_points);
+
 				execution_mode_meta.stage_input_num_vertex = input_control_points;
 				execution_mode_meta.stage_output_num_vertex = output_control_points;
 			}
