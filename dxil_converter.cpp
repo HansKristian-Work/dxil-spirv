@@ -212,10 +212,9 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		element_type_id = get_type_id(component_type, 1, 1);
 
-		spv::Id type_id =
-		    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
-		                          image_dimension_is_arrayed(resource_kind),
-		                          image_dimension_is_multisampled(resource_kind), 2, format);
+		spv::Id type_id = builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind),
+		                                        false, image_dimension_is_arrayed(resource_kind),
+		                                        image_dimension_is_multisampled(resource_kind), 2, format);
 
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
@@ -232,8 +231,8 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		spv::Id counter_var_id = 0;
 		if (has_counter)
 		{
-			counter_var_id =
-					builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : (name + "Counter").c_str());
+			counter_var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
+			                                        name.empty() ? nullptr : (name + "Counter").c_str());
 
 			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet, bind_space + 1);
 			builder.addDecoration(counter_var_id, spv::DecorationBinding, bind_register);
@@ -589,7 +588,8 @@ void Converter::Impl::emit_stage_output_variables()
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		if (execution_model == spv::ExecutionModelTessellationControl)
-			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, 0), 0);
+			type_id = builder.makeArrayType(
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, 0), 0);
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, semantic_name.c_str());
 		output_elements_meta[element_id] = { variable_id, element_type };
@@ -712,8 +712,8 @@ void Converter::Impl::emit_global_variables()
 			initializer_id = get_id_for_constant(initializer, 0);
 
 		spv::Id var_id = builder.createVariableWithInitializer(
-				address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
-				pointee_type_id, initializer_id, global.getName().data());
+		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
+		    pointee_type_id, initializer_id, global.getName().data());
 		value_map[&global] = var_id;
 	}
 }
@@ -774,7 +774,8 @@ void Converter::Impl::emit_stage_input_variables()
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		if (arrayed_input)
-			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
+			type_id =
+			    builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, semantic_name.c_str());
 		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };
@@ -794,8 +795,7 @@ void Converter::Impl::emit_stage_input_variables()
 	}
 }
 
-spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_id,
-                                             bool comparison)
+spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_id, bool comparison)
 {
 	auto &builder = spirv_module.get_builder();
 	spv::Id image_type_id = get_type_id(image_id);
@@ -813,8 +813,7 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	return op->id;
 }
 
-spv::Id Converter::Impl::build_vector(spv::Id element_type, spv::Id *elements,
-                                      unsigned count)
+spv::Id Converter::Impl::build_vector(spv::Id element_type, spv::Id *elements, unsigned count)
 {
 	if (count == 1)
 		return elements[0];
@@ -829,8 +828,7 @@ spv::Id Converter::Impl::build_vector(spv::Id element_type, spv::Id *elements,
 	return op->id;
 }
 
-spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, spv::Id *elements,
-                                               unsigned count)
+spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, spv::Id *elements, unsigned count)
 {
 	if (count == 1)
 		return elements[0];
@@ -967,8 +965,8 @@ void Converter::Impl::emit_execution_modes_compute()
 				for (unsigned dim = 0; dim < 3; dim++)
 					threads[dim] = get_constant_metadata(num_threads, dim);
 
-				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
-				                         threads[0], threads[1], threads[2]);
+				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize, threads[0],
+				                         threads[1], threads[2]);
 			}
 		}
 	}

@@ -19,10 +19,10 @@
 #pragma once
 
 #include "SpvBuilder.h"
-#include <stdint.h>
 #include <assert.h>
-#include <vector>
 #include <initializer_list>
+#include <stdint.h>
+#include <vector>
 
 // A simple IR representation which allows the CFGStructurizer to do some simple rewrites of blocks,
 // PHI nodes in particular.
@@ -60,7 +60,7 @@ struct PHI
 struct IDArgument
 {
 	explicit IDArgument(spv::Id id_)
-		: id(id_)
+	    : id(id_)
 	{
 	}
 
@@ -70,7 +70,7 @@ struct IDArgument
 struct LiteralArgument
 {
 	explicit LiteralArgument(uint32_t lit_)
-		: lit(lit_)
+	    : lit(lit_)
 	{
 	}
 
@@ -87,12 +87,14 @@ struct Operation
 	Operation() = default;
 
 	explicit Operation(spv::Op op_)
-		: op(op_)
+	    : op(op_)
 	{
 	}
 
 	Operation(spv::Op op_, spv::Id id_, spv::Id type_id_)
-		: op(op_), id(id_), type_id(type_id_)
+	    : op(op_)
+	    , id(id_)
+	    , type_id(type_id_)
 	{
 	}
 

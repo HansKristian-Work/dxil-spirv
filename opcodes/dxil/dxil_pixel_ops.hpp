@@ -21,22 +21,17 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_discard_instruction(Converter::Impl &impl,
-                              const llvm::CallInst *instruction);
+bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
-bool emit_sample_index_instruction(Converter::Impl &impl,
-                                   const llvm::CallInst *instruction);
+bool emit_sample_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
-bool emit_coverage_instruction(Converter::Impl &impl,
-                               const llvm::CallInst *instruction);
+bool emit_coverage_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
-bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl,
-                                 const llvm::CallInst *instruction);
+bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 
 template <spv::Op opcode>
-static inline bool emit_derivative_dispatch(Converter::Impl &impl,
-                                            const llvm::CallInst *instruction)
+static inline bool emit_derivative_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	return emit_derivative_instruction(opcode, impl, instruction);
 }
-}
+} // namespace DXIL2SPIRV

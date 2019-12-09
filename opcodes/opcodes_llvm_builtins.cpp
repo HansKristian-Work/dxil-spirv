@@ -22,8 +22,7 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_binary_instruction(Converter::Impl &impl,
-                             const llvm::BinaryOperator *instruction)
+bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
 {
 	spv::Op opcode;
 	switch (instruction->getOpcode())
@@ -125,8 +124,7 @@ bool emit_binary_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_unary_instruction(Converter::Impl &impl,
-                            const llvm::UnaryOperator *instruction)
+bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *instruction)
 {
 	spv::Op opcode;
 
@@ -148,8 +146,7 @@ bool emit_unary_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_cast_instruction(Converter::Impl &impl,
-                           const llvm::CastInst *instruction)
+bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
 {
 	spv::Op opcode;
 	switch (instruction->getOpcode())
@@ -199,8 +196,7 @@ bool emit_cast_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_getelementptr_instruction(Converter::Impl &impl,
-                                    const llvm::GetElementPtrInst *instruction)
+bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
 {
 	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
 	// For now, just assert that the first index is constant 0, in which case PtrAccessChain == AccessChain.
@@ -239,8 +235,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_load_instruction(Converter::Impl &impl,
-                           const llvm::LoadInst *instruction)
+bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
 	Operation *op = impl.allocate(spv::OpLoad, instruction);
 	op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
@@ -249,19 +244,17 @@ bool emit_load_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_store_instruction(Converter::Impl &impl,
-                            const llvm::StoreInst *instruction)
+bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instruction)
 {
 	Operation *op = impl.allocate(spv::OpStore);
-	op->add_ids({ impl.get_id_for_value(instruction->getOperand(1)),
-	              impl.get_id_for_value(instruction->getOperand(0)) });
+	op->add_ids(
+	    { impl.get_id_for_value(instruction->getOperand(1)), impl.get_id_for_value(instruction->getOperand(0)) });
 
 	impl.add(op);
 	return true;
 }
 
-bool emit_compare_instruction(Converter::Impl &impl,
-                              const llvm::CmpInst *instruction)
+bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instruction)
 {
 	spv::Op opcode;
 	switch (instruction->getPredicate())
@@ -382,8 +375,7 @@ bool emit_compare_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_extract_value_instruction(Converter::Impl &impl,
-                                    const llvm::ExtractValueInst *instruction)
+bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction)
 {
 	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
 
@@ -395,8 +387,7 @@ bool emit_extract_value_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_alloca_instruction(Converter::Impl &impl,
-                             const llvm::AllocaInst *instruction)
+bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction)
 {
 	spv::Id pointee_type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
 
@@ -418,20 +409,20 @@ bool emit_alloca_instruction(Converter::Impl &impl,
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	spv::Id var_id = impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id, instruction->getName().data());
+	spv::Id var_id =
+	    impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id, instruction->getName().data());
 	impl.value_map[instruction] = var_id;
 	return true;
 }
 
-bool emit_select_instruction(Converter::Impl &impl,
-                             const llvm::SelectInst *instruction)
+bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *instruction)
 {
 	Operation *op = impl.allocate(spv::OpSelect, instruction);
 
 	op->add_ids({
-		impl.get_id_for_value(instruction->getOperand(0)),
-		impl.get_id_for_value(instruction->getOperand(1)),
-		impl.get_id_for_value(instruction->getOperand(2)),
+	    impl.get_id_for_value(instruction->getOperand(0)),
+	    impl.get_id_for_value(instruction->getOperand(1)),
+	    impl.get_id_for_value(instruction->getOperand(2)),
 	});
 
 	impl.add(op);

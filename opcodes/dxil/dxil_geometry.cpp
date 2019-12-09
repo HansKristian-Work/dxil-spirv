@@ -16,14 +16,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include <opcodes/converter_impl.hpp>
 #include "dxil_geometry.hpp"
 #include "logging.hpp"
+#include <opcodes/converter_impl.hpp>
 
 namespace DXIL2SPIRV
 {
-bool emit_stream_instruction(Converter::Impl &impl,
-                             const llvm::CallInst *instruction)
+bool emit_stream_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	Operation *op;
 	auto &builder = impl.builder();
@@ -48,8 +47,7 @@ bool emit_stream_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_cut_stream_instruction(Converter::Impl &impl,
-                                 const llvm::CallInst *instruction)
+bool emit_cut_stream_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	Operation *op;
 	auto &builder = impl.builder();
@@ -74,16 +72,14 @@ bool emit_cut_stream_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_then_cut_stream_instruction(Converter::Impl &impl,
-                                      const llvm::CallInst *instruction)
+bool emit_then_cut_stream_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	if (!emit_stream_instruction(impl, instruction))
 		return false;
 	return emit_cut_stream_instruction(impl, instruction);
 }
 
-bool emit_gs_instance_instruction(Converter::Impl &impl,
-                                  const llvm::CallInst *instruction)
+bool emit_gs_instance_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId);
 	Operation *op = impl.allocate(spv::OpLoad, instruction);
@@ -92,4 +88,4 @@ bool emit_gs_instance_instruction(Converter::Impl &impl,
 	return true;
 }
 
-}
+} // namespace DXIL2SPIRV

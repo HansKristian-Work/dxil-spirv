@@ -16,14 +16,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include <opcodes/converter_impl.hpp>
 #include "dxil_compute.hpp"
 #include "dxil_common.hpp"
+#include <opcodes/converter_impl.hpp>
 
 namespace DXIL2SPIRV
 {
-bool emit_barrier_instruction(Converter::Impl &impl,
-                              const llvm::CallInst *instruction)
+bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	uint32_t operation;
@@ -39,32 +38,32 @@ bool emit_barrier_instruction(Converter::Impl &impl,
 		op = impl.allocate(spv::OpControlBarrier);
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+		op->add_id(
+		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	case DXIL::BarrierMode::AllMemoryBarrierWithGroupSync:
 		op = impl.allocate(spv::OpControlBarrier);
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
 		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
-		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
-		                                    spv::MemorySemanticsImageMemoryMask |
-		                                    spv::MemorySemanticsUniformMemoryMask |
-		                                    spv::MemorySemanticsAcquireReleaseMask));
+		op->add_id(
+		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsImageMemoryMask |
+		                             spv::MemorySemanticsUniformMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	case DXIL::BarrierMode::GroupMemoryBarrier:
 		op = impl.allocate(spv::OpMemoryBarrier);
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+		op->add_id(
+		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	case DXIL::BarrierMode::AllMemoryBarrier:
 		op = impl.allocate(spv::OpMemoryBarrier);
 		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
-		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
-		                                    spv::MemorySemanticsImageMemoryMask |
-		                                    spv::MemorySemanticsUniformMemoryMask |
-		                                    spv::MemorySemanticsAcquireReleaseMask));
+		op->add_id(
+		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsImageMemoryMask |
+		                             spv::MemorySemanticsUniformMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	default:
@@ -75,16 +74,15 @@ bool emit_barrier_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl,
-                                     const llvm::CallInst *instruction)
+bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
 
 	if (builtin != spv::BuiltInLocalInvocationIndex)
 	{
-		Operation *op = impl.allocate(
-				spv::OpAccessChain,
-				impl.builder().makePointer(spv::StorageClassInput, impl.get_type_id(instruction->getType())));
+		Operation *op =
+		    impl.allocate(spv::OpAccessChain,
+		                  impl.builder().makePointer(spv::StorageClassInput, impl.get_type_id(instruction->getType())));
 
 		op->add_id(var_id);
 		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
@@ -97,5 +95,4 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl
 	impl.add(op);
 	return true;
 }
-}
-
+} // namespace DXIL2SPIRV

@@ -17,14 +17,13 @@
  */
 
 #include "dxil_buffer.hpp"
-#include "opcodes/converter_impl.hpp"
-#include "logging.hpp"
 #include "dxil_sampling.hpp"
+#include "logging.hpp"
+#include "opcodes/converter_impl.hpp"
 
 namespace DXIL2SPIRV
 {
-BufferAccessInfo build_buffer_access(Converter::Impl &impl,
-                                     const llvm::CallInst *instruction, unsigned operand_offset)
+BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -48,8 +47,9 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl,
 		bool has_constant_offset = false;
 		if (llvm::isa<llvm::ConstantInt>(instruction->getOperand(3 + operand_offset)))
 		{
-			constant_offset = unsigned(llvm::cast<llvm::ConstantInt>(
-					instruction->getOperand(3 + operand_offset))->getUniqueInteger().getZExtValue());
+			constant_offset = unsigned(llvm::cast<llvm::ConstantInt>(instruction->getOperand(3 + operand_offset))
+			                               ->getUniqueInteger()
+			                               .getZExtValue());
 			has_constant_offset = true;
 		}
 
@@ -91,8 +91,7 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl,
 	return { index_id, num_components };
 }
 
-bool emit_buffer_load_instruction(Converter::Impl &impl,
-                                  const llvm::CallInst *instruction)
+bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -136,8 +135,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl,
 
 		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
 
-		Operation *construct_op = impl.allocate(spv::OpCompositeConstruct,
-		                                        instruction,
+		Operation *construct_op = impl.allocate(spv::OpCompositeConstruct, instruction,
 		                                        builder.makeVectorType(extracted_id_type, conservative_num_elements));
 
 		for (unsigned i = 0; i < conservative_num_elements; i++)
@@ -147,7 +145,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl,
 		if (need_bitcast)
 		{
 			Operation *op = impl.allocate(spv::OpBitcast,
-			                              builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), conservative_num_elements));
+			                              builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)),
+			                                                     conservative_num_elements));
 			op->add_id(construct_op->id);
 			impl.add(op);
 			impl.value_map[instruction] = op->id;
@@ -155,8 +154,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl,
 	}
 	else
 	{
-		Operation *op = impl.allocate(is_uav ? spv::OpImageRead : spv::OpImageFetch,
-		                              instruction,
+		Operation *op = impl.allocate(is_uav ? spv::OpImageRead : spv::OpImageFetch, instruction,
 		                              impl.get_type_id(meta.component_type, 1, 4));
 
 		op->add_ids({ image_id, access.index_id });
@@ -172,8 +170,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_buffer_store_instruction(Converter::Impl &impl,
-                                   const llvm::CallInst *instruction)
+bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -205,10 +202,9 @@ bool emit_buffer_store_instruction(Converter::Impl &impl,
 
 		// Deal with signed resource store.
 		Operation *op = impl.allocate(spv::OpImageWrite);
-		op->add_ids({
-			image_id, access.index_id,
-			impl.fixup_store_sign(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4))
-		});
+		op->add_ids(
+		    { image_id, access.index_id,
+		      impl.fixup_store_sign(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
 
 		impl.add(op);
 	}
@@ -225,8 +221,9 @@ bool emit_buffer_store_instruction(Converter::Impl &impl,
 
 				Operation *op = impl.allocate(spv::OpImageWrite);
 				op->add_ids({
-					image_id, impl.build_offset(access.index_id, i),
-					splat_op->id,
+				    image_id,
+				    impl.build_offset(access.index_id, i),
+				    splat_op->id,
 				});
 				impl.add(op);
 			}
@@ -239,14 +236,13 @@ bool emit_buffer_store_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_atomic_binop_instruction(Converter::Impl &impl,
-                                   const llvm::CallInst *instruction)
+bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
-	auto binop =
-			static_cast<DXIL::AtomicBinOp>(llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getZExtValue());
+	auto binop = static_cast<DXIL::AtomicBinOp>(
+	    llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getZExtValue());
 
 	spv::Id coords[3] = {};
 
@@ -269,8 +265,9 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl,
 	}
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
-	Operation *counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
-	                                          builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
+	Operation *counter_ptr_op =
+	    impl.allocate(spv::OpImageTexelPointer,
+	                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
 	counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
 	impl.add(counter_ptr_op);
 
@@ -320,10 +317,10 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl,
 
 	Operation *op = impl.allocate(opcode, instruction, impl.get_type_id(meta.component_type, 1, 1));
 	op->add_ids({
-		counter_ptr_op->id,
-		builder.makeUintConstant(spv::ScopeDevice),
-		builder.makeUintConstant(0), // Relaxed
-		impl.fixup_store_sign(meta.component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
+	    counter_ptr_op->id,
+	    builder.makeUintConstant(spv::ScopeDevice),
+	    builder.makeUintConstant(0), // Relaxed
+	    impl.fixup_store_sign(meta.component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
 	});
 
 	impl.add(op);
@@ -331,8 +328,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl,
-                                     const llvm::CallInst *instruction)
+bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -359,13 +355,14 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl,
 
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
-	Operation *counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
-	                                          builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
+	Operation *counter_ptr_op =
+	    impl.allocate(spv::OpImageTexelPointer,
+	                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
 	counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
 	impl.add(counter_ptr_op);
 
-	Operation *op = impl.allocate(spv::OpAtomicCompareExchange,
-	                              instruction, impl.get_type_id(meta.component_type, 1, 1));
+	Operation *op =
+	    impl.allocate(spv::OpAtomicCompareExchange, instruction, impl.get_type_id(meta.component_type, 1, 1));
 
 	spv::Id comparison_id = impl.get_id_for_value(instruction->getOperand(5));
 	spv::Id new_value_id = impl.get_id_for_value(instruction->getOperand(6));
@@ -373,12 +370,12 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl,
 	new_value_id = impl.fixup_store_sign(meta.component_type, 1, new_value_id);
 
 	op->add_ids({
-		counter_ptr_op->id,
-		builder.makeUintConstant(spv::ScopeDevice),
-		builder.makeUintConstant(0), // Relaxed
-		builder.makeUintConstant(0), // Relaxed
-		new_value_id,
-		comparison_id,
+	    counter_ptr_op->id,
+	    builder.makeUintConstant(spv::ScopeDevice),
+	    builder.makeUintConstant(0), // Relaxed
+	    builder.makeUintConstant(0), // Relaxed
+	    new_value_id,
+	    comparison_id,
 	});
 
 	impl.add(op);
@@ -386,26 +383,22 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_buffer_update_counter_instruction(Converter::Impl &impl,
-                                            const llvm::CallInst *instruction)
+bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	int direction = llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getSExtValue();
 
-	Operation *counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
-	                                          builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
+	Operation *counter_ptr_op =
+	    impl.allocate(spv::OpImageTexelPointer, builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
 	counter_ptr_op->add_ids({ meta.counter_var_id, builder.makeUintConstant(0), builder.makeUintConstant(0) });
 	impl.add(counter_ptr_op);
 
 	Operation *op = impl.allocate(spv::OpAtomicIAdd, instruction);
-	op->add_ids({
-		counter_ptr_op->id,
-		builder.makeUintConstant(spv::ScopeDevice),
-		builder.makeUintConstant(0), // Relaxed.
-		builder.makeUintConstant(direction)
-	});
+	op->add_ids({ counter_ptr_op->id, builder.makeUintConstant(spv::ScopeDevice),
+	              builder.makeUintConstant(0), // Relaxed.
+	              builder.makeUintConstant(direction) });
 
 	impl.add(op);
 
@@ -421,5 +414,4 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl,
 	return true;
 }
 
-}
-
+} // namespace DXIL2SPIRV

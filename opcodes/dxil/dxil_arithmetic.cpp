@@ -21,25 +21,22 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_imad_instruction(Converter::Impl &impl,
-                           const llvm::CallInst *instruction)
+bool emit_imad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// FIXME: Do we need to deal with intermediate mul overflow here somehow?
 
 	Operation *mul = impl.allocate(spv::OpIMul, impl.get_type_id(instruction->getType()));
-	mul->add_ids({ impl.get_id_for_value(instruction->getOperand(1)),
-	               impl.get_id_for_value(instruction->getOperand(2)) });
+	mul->add_ids(
+	    { impl.get_id_for_value(instruction->getOperand(1)), impl.get_id_for_value(instruction->getOperand(2)) });
 	impl.add(mul);
 
 	Operation *add = impl.allocate(spv::OpIAdd, instruction);
-	add->add_ids({ mul->id,
-	               impl.get_id_for_value(instruction->getOperand(3)) });
+	add->add_ids({ mul->id, impl.get_id_for_value(instruction->getOperand(3)) });
 	impl.add(add);
 	return true;
 }
 
-bool emit_fmad_instruction(Converter::Impl &impl,
-                           const llvm::CallInst *instruction)
+bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
@@ -47,11 +44,11 @@ bool emit_fmad_instruction(Converter::Impl &impl,
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_ids({
-		impl.glsl_std450_ext,
-		GLSLstd450Fma,
-		impl.get_id_for_value(instruction->getOperand(1)),
-		impl.get_id_for_value(instruction->getOperand(2)),
-		impl.get_id_for_value(instruction->getOperand(3)),
+	    impl.glsl_std450_ext,
+	    GLSLstd450Fma,
+	    impl.get_id_for_value(instruction->getOperand(1)),
+	    impl.get_id_for_value(instruction->getOperand(2)),
+	    impl.get_id_for_value(instruction->getOperand(3)),
 	});
 
 	// Not sure about this one. Will have to figure it out when we start looking at tessellation or something ...
@@ -62,8 +59,7 @@ bool emit_fmad_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_isfinite_instruction(Converter::Impl &impl,
-                               const llvm::CallInst *instruction)
+bool emit_isfinite_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	// There is an OpIsFinite instruction, but it's only supported in kernel mode, so we have to decompose here.
@@ -86,8 +82,7 @@ bool emit_isfinite_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl,
-                                    const llvm::CallInst *instruction)
+bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
@@ -96,11 +91,7 @@ bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl,
 	// This is actually CLZ, and not FindMSB.
 	Operation *msb_op = impl.allocate(spv::OpExtInst, impl.get_type_id(instruction->getType()));
 	{
-		msb_op->add_ids({
-			impl.glsl_std450_ext,
-			opcode,
-			impl.get_id_for_value(instruction->getOperand(1))
-		});
+		msb_op->add_ids({ impl.glsl_std450_ext, opcode, impl.get_id_for_value(instruction->getOperand(1)) });
 		impl.add(msb_op);
 	}
 
@@ -122,8 +113,7 @@ bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl,
 	return true;
 }
 
-bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &impl,
-                                         const llvm::CallInst *instruction)
+bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
@@ -137,8 +127,7 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 	return true;
 }
 
-bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &impl,
-                                          const llvm::CallInst *instruction)
+bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
@@ -153,8 +142,7 @@ bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &im
 	return true;
 }
 
-bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl,
-                                        const llvm::CallInst *instruction)
+bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
@@ -167,8 +155,7 @@ bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl
 	return true;
 }
 
-bool emit_dxil_unary_instruction(spv::Op opcode, Converter::Impl &impl,
-                                 const llvm::CallInst *instruction)
+bool emit_dxil_unary_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	Operation *op = impl.allocate(opcode, instruction);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
@@ -176,8 +163,7 @@ bool emit_dxil_unary_instruction(spv::Op opcode, Converter::Impl &impl,
 	return true;
 }
 
-bool emit_saturate_instruction(Converter::Impl &impl,
-                               const llvm::CallInst *instruction)
+bool emit_saturate_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
@@ -191,9 +177,7 @@ bool emit_saturate_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_dot_instruction(unsigned dimensions,
-                          Converter::Impl &impl,
-                          const llvm::CallInst *instruction)
+bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	Operation *op = impl.allocate(spv::OpDot, instruction);
 
@@ -212,21 +196,19 @@ bool emit_dot_instruction(unsigned dimensions,
 	return true;
 }
 
-static spv::Id mask_input(Converter::Impl &impl,
-                          const llvm::Value *value)
+static spv::Id mask_input(Converter::Impl &impl, const llvm::Value *value)
 {
 	Operation *op = impl.allocate(spv::OpBitwiseAnd, impl.get_type_id(value->getType()));
 	op->add_ids({
-		impl.get_id_for_value(value),
-		impl.builder().makeUintConstant(31),
+	    impl.get_id_for_value(value),
+	    impl.builder().makeUintConstant(31),
 	});
 
 	impl.add(op);
 	return op->id;
 }
 
-bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl,
-                          const llvm::CallInst *instruction)
+bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// SPIR-V spec doesn't say anything about masking inputs, but Ibfe/Ubfe do, so ...
 	spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
@@ -238,8 +220,7 @@ bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl,
 	return true;
 }
 
-bool emit_bfi_instruction(Converter::Impl &impl,
-                          const llvm::CallInst *instruction)
+bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
 	spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
@@ -253,4 +234,4 @@ bool emit_bfi_instruction(Converter::Impl &impl,
 	return true;
 }
 
-}
+} // namespace DXIL2SPIRV

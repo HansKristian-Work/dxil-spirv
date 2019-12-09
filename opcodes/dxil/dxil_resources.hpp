@@ -18,27 +18,21 @@
 
 #pragma once
 
-#include "opcodes/opcodes.hpp"
 #include "GLSL.std.450.h"
+#include "opcodes/opcodes.hpp"
 
 namespace DXIL2SPIRV
 {
-bool emit_load_input_instruction(Converter::Impl &impl,
-                                 const llvm::CallInst *instruction);
-bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl,
-                                  const llvm::CallInst *instruction);
-bool emit_store_output_instruction(Converter::Impl &impl,
-                                   const llvm::CallInst *instruction);
-bool emit_create_handle_instruction(Converter::Impl &impl,
-                                    const llvm::CallInst *instruction);
+bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
-bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl,
-                                          const llvm::CallInst *instruction);
+bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 template <GLSLstd450 opcode>
-static inline bool emit_interpolate_dispatch(Converter::Impl &impl,
-                                             const llvm::CallInst *instruction)
+static inline bool emit_interpolate_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	return emit_interpolate_instruction(opcode, impl, instruction);
 }
-}
+} // namespace DXIL2SPIRV

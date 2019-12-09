@@ -18,8 +18,8 @@
 
 #include "dxil_resources.hpp"
 #include "dxil_common.hpp"
-#include "opcodes/converter_impl.hpp"
 #include "logging.hpp"
+#include "opcodes/converter_impl.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -46,8 +46,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 	}
 }
 
-bool emit_load_input_instruction(Converter::Impl &impl,
-                                 const llvm::CallInst *instruction)
+bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	uint32_t input_element_index;
@@ -68,8 +67,9 @@ bool emit_load_input_instruction(Converter::Impl &impl,
 	if (num_rows > 1 || array_index)
 	{
 		// Need to deal with signed vs unsigned here.
-		Operation *op = impl.allocate(spv::OpAccessChain,
-		                              builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
+		Operation *op =
+		    impl.allocate(spv::OpAccessChain,
+		                  builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
 		ptr_id = op->id;
 
 		op->add_id(var_id);
@@ -88,8 +88,7 @@ bool emit_load_input_instruction(Converter::Impl &impl,
 		ptr_id = var_id;
 
 	// Need to deal with signed vs unsigned here.
-	Operation *op = impl.allocate(spv::OpLoad,
-	                              instruction, impl.get_type_id(meta.component_type, 1, 1));
+	Operation *op = impl.allocate(spv::OpLoad, instruction, impl.get_type_id(meta.component_type, 1, 1));
 	op->add_id(ptr_id);
 	impl.add(op);
 
@@ -127,8 +126,7 @@ static spv::Id build_attribute_offset(spv::Id id, Converter::Impl &impl)
 	return id;
 }
 
-bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl,
-                                  const llvm::CallInst *instruction)
+bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	uint32_t input_element_index;
@@ -144,8 +142,9 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl,
 	if (num_rows > 1)
 	{
 		// Need to deal with signed vs unsigned here.
-		Operation *op = impl.allocate(spv::OpAccessChain,
-		                              builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
+		Operation *op =
+		    impl.allocate(spv::OpAccessChain,
+		                  builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
 
 		op->add_ids({ var_id, impl.get_id_for_value(instruction->getOperand(3), 32) });
 		impl.add(op);
@@ -191,12 +190,11 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl,
 		aux_id = impl.get_id_for_value(instruction->getOperand(4));
 
 	// Need to deal with signed vs unsigned here.
-	Operation *op = impl.allocate(spv::OpExtInst, instruction,
-	                              impl.get_type_id(meta.component_type, 1, 1));
+	Operation *op = impl.allocate(spv::OpExtInst, instruction, impl.get_type_id(meta.component_type, 1, 1));
 	op->add_ids({
-		impl.glsl_std450_ext,
-		opcode,
-		ptr_id,
+	    impl.glsl_std450_ext,
+	    opcode,
+	    ptr_id,
 	});
 
 	if (aux_id)
@@ -222,8 +220,7 @@ static spv::Id build_load_invocation_id(Converter::Impl &impl)
 	return op->id;
 }
 
-bool emit_store_output_instruction(Converter::Impl &impl,
-                                   const llvm::CallInst *instruction)
+bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	uint32_t output_element_index;
@@ -243,8 +240,8 @@ bool emit_store_output_instruction(Converter::Impl &impl,
 
 	if (num_rows > 1 || is_control_point_output)
 	{
-		Operation *op = impl.allocate(spv::OpAccessChain,
-		                              builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+		Operation *op = impl.allocate(
+		    spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
 		ptr_id = op->id;
 
 		op->add_id(var_id);
@@ -266,8 +263,7 @@ bool emit_store_output_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_create_handle_instruction(Converter::Impl &impl,
-                                    const llvm::CallInst *instruction)
+bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	uint32_t resource_type_operand, resource_range;
@@ -331,8 +327,7 @@ bool emit_create_handle_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl,
-                                          const llvm::CallInst *instruction)
+bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
@@ -344,9 +339,9 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl,
 
 	spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
 
-	Operation *access_chain_op = impl.allocate(spv::OpAccessChain,
-	                                           builder.makePointer(spv::StorageClassUniform,
-	                                                               builder.makeVectorType(builder.makeFloatType(32), 4)));
+	Operation *access_chain_op =
+	    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniform,
+	                                                          builder.makeVectorType(builder.makeFloatType(32), 4)));
 	access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
 	impl.add(access_chain_op);
 
@@ -359,15 +354,13 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl,
 	if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
 		need_bitcast = true;
 
-	Operation *load_op = impl.allocate(spv::OpLoad, instruction,
-	                                   builder.makeVectorType(builder.makeFloatType(32), 4));
+	Operation *load_op = impl.allocate(spv::OpLoad, instruction, builder.makeVectorType(builder.makeFloatType(32), 4));
 	load_op->add_id(access_chain_op->id);
 	impl.add(load_op);
 
 	if (need_bitcast)
 	{
-		Operation *op = impl.allocate(spv::OpBitcast,
-		                              builder.makeVectorType(builder.makeUintType(32), 4));
+		Operation *op = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(32), 4));
 
 		assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
 		op->add_id(load_op->id);
@@ -378,4 +371,4 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl,
 	return true;
 }
 
-}
+} // namespace DXIL2SPIRV

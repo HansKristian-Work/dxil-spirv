@@ -17,12 +17,13 @@
  */
 
 #include "dxil_sampling.hpp"
-#include "opcodes/converter_impl.hpp"
 #include "logging.hpp"
+#include "opcodes/converter_impl.hpp"
 
 namespace DXIL2SPIRV
 {
-bool get_image_dimensions_query_size(Converter::Impl &impl, spv::Builder &builder, spv::Id image_id, uint32_t *num_coords)
+bool get_image_dimensions_query_size(Converter::Impl &impl, spv::Builder &builder, spv::Id image_id,
+                                     uint32_t *num_coords)
 {
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
@@ -55,8 +56,7 @@ bool get_image_dimensions_query_size(Converter::Impl &impl, spv::Builder &builde
 	return true;
 }
 
-bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num_coords,
-                          uint32_t *num_dimensions)
+bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num_coords, uint32_t *num_dimensions)
 {
 	auto &builder = impl.builder();
 	spv::Id image_type_id = impl.get_type_id(image_id);
@@ -179,8 +179,8 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	}
 
 	// Comparison sampling only returns a scalar, so we'll need to splat out result.
-	Operation *op = impl.allocate(spv_op, instruction,
-	                              impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4));
+	Operation *op =
+	    impl.allocate(spv_op, instruction, impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4));
 
 	op->add_id(combined_image_sampler_id);
 	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
@@ -203,7 +203,8 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	if (comparison_sampling)
 	{
-		Operation *splat_op = impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeFloatType(32), 4));
+		Operation *splat_op =
+		    impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeFloatType(32), 4));
 		splat_op->add_ids({ op->id, op->id, op->id, op->id });
 		impl.add(splat_op);
 		impl.value_map[instruction] = splat_op->id;
@@ -215,8 +216,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	return true;
 }
 
-bool emit_sample_grad_instruction(Converter::Impl &impl,
-                                  const llvm::CallInst *instruction)
+bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -267,12 +267,13 @@ bool emit_sample_grad_instruction(Converter::Impl &impl,
 		builder.addCapability(spv::CapabilityMinLod);
 	}
 
-	Operation *op = impl.allocate(spv::OpImageSampleExplicitLod, instruction, impl.get_type_id(meta.component_type, 1, 4));
+	Operation *op =
+	    impl.allocate(spv::OpImageSampleExplicitLod, instruction, impl.get_type_id(meta.component_type, 1, 4));
 
 	op->add_ids({
-		combined_image_sampler_id,
-		impl.build_vector(builder.makeFloatType(32), coord, num_coords_full),
-		image_ops,
+	    combined_image_sampler_id,
+	    impl.build_vector(builder.makeFloatType(32), coord, num_coords_full),
+	    image_ops,
 	});
 
 	if (image_ops & spv::ImageOperandsGradMask)
@@ -292,8 +293,7 @@ bool emit_sample_grad_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_texture_load_instruction(Converter::Impl &impl,
-                                   const llvm::CallInst *instruction)
+bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -373,8 +373,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_get_dimensions_instruction(Converter::Impl &impl,
-                                     const llvm::CallInst *instruction)
+bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -435,8 +434,8 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl,
 	}
 	else
 	{
-		Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction,
-		                              builder.makeVectorType(builder.makeUintType(32), 4));
+		Operation *op =
+		    impl.allocate(spv::OpCompositeConstruct, instruction, builder.makeVectorType(builder.makeUintType(32), 4));
 		op->add_id(dimensions_op->id);
 
 		// This element cannot be statically accessed if we don't have LOD, so don't bother returning anything here.
@@ -452,8 +451,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_texture_store_instruction(Converter::Impl &impl,
-                                    const llvm::CallInst *instruction)
+bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
@@ -493,8 +491,7 @@ bool emit_texture_store_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl,
-                                     const llvm::CallInst *instruction)
+bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
@@ -542,8 +539,7 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl,
 	else
 		aux_id = impl.get_id_for_value(instruction->getOperand(9));
 
-	Operation *op = impl.allocate(compare ? spv::OpImageDrefGather : spv::OpImageGather,
-	                              instruction,
+	Operation *op = impl.allocate(compare ? spv::OpImageDrefGather : spv::OpImageGather, instruction,
 	                              impl.get_type_id(meta.component_type, 1, 4));
 
 	op->add_ids({ combined_image_sampler_id, coord_id, aux_id });
@@ -559,8 +555,7 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl,
 	return true;
 }
 
-bool emit_calculate_lod_instruction(Converter::Impl &impl,
-                                    const llvm::CallInst *instruction)
+bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -579,12 +574,8 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl,
 	auto *clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
 	bool clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
 
-	Operation *query_op = impl.allocate(spv::OpImageQueryLod,
-	                                    builder.makeVectorType(builder.makeFloatType(32), 2));
-	query_op->add_ids({
-		combined_image_sampler_id,
-		impl.build_vector(builder.makeFloatType(32), coords, num_coords)
-	});
+	Operation *query_op = impl.allocate(spv::OpImageQueryLod, builder.makeVectorType(builder.makeFloatType(32), 2));
+	query_op->add_ids({ combined_image_sampler_id, impl.build_vector(builder.makeFloatType(32), coords, num_coords) });
 	impl.add(query_op);
 
 	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
@@ -595,4 +586,4 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl,
 	builder.addCapability(spv::CapabilityImageQuery);
 	return true;
 }
-}
+} // namespace DXIL2SPIRV

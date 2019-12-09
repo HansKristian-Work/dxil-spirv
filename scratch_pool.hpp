@@ -18,7 +18,7 @@
 
 namespace DXIL2SPIRV
 {
-template<typename T>
+template <typename T>
 class ScratchPool
 {
 public:
@@ -27,11 +27,11 @@ public:
 		static_assert(std::is_trivially_destructible<T>::value, "T must be trivially destructible.");
 	}
 
-	template<typename... P>
+	template <typename... P>
 	T *allocate(P &&... p)
 	{
 		T *t = allocate_raw();
-		return new(t) T(std::forward<P>(p)...);
+		return new (t) T(std::forward<P>(p)...);
 	}
 
 	T *allocate_raw()
@@ -75,4 +75,4 @@ private:
 	size_t next_allocate_size = 64;
 	std::vector<std::unique_ptr<T, MallocDeleter>> blocks;
 };
-}
+} // namespace DXIL2SPIRV

@@ -17,9 +17,9 @@
  */
 
 #include "spirv_module.hpp"
-#include "scratch_pool.hpp"
 #include "SpvBuilder.h"
 #include "node.hpp"
+#include "scratch_pool.hpp"
 #include <unordered_map>
 
 namespace DXIL2SPIRV
@@ -139,7 +139,8 @@ void SPIRVModule::Impl::enable_shader_discard()
 	if (!discard_state_var_id)
 	{
 		auto *current_build_point = builder.getBuildPoint();
-		discard_state_var_id = builder.createVariable(spv::StorageClassPrivate, builder.makeBoolType(), "discard_state");
+		discard_state_var_id =
+		    builder.createVariable(spv::StorageClassPrivate, builder.makeBoolType(), "discard_state");
 		builder.setBuildPoint(entry_function->getEntryBlock());
 		builder.createStore(builder.makeBoolConstant(false), discard_state_var_id);
 		builder.setBuildPoint(current_build_point);
@@ -158,8 +159,8 @@ void SPIRVModule::Impl::build_discard_call_exit()
 	if (!discard_function)
 	{
 		spv::Block *entry = nullptr;
-		discard_function = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
-		                                             "discard_exit", {}, {}, &entry);
+		discard_function =
+		    builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "discard_exit", {}, {}, &entry);
 
 		auto *true_block = new spv::Block(builder.getUniqueId(), *discard_function);
 		auto *false_block = new spv::Block(builder.getUniqueId(), *discard_function);
