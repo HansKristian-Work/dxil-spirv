@@ -39,4 +39,4 @@ bool get_constant_operand(const llvm::CallInst *value, unsigned index, uint32_t 
 	*operand = uint32_t(constant->getUniqueInteger().getZExtValue());
 	return true;
 }
-}
+} // namespace DXIL2SPIRV

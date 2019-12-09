@@ -76,9 +76,9 @@ void CFGStructurizer::insert_phi()
 				value_id_to_block[phi.id] = node;
 		}
 
-		for (auto &op : node->ir.operations)
-			if (op.id)
-				value_id_to_block[op.id] = node;
+		for (auto *op : node->ir.operations)
+			if (op->id)
+				value_id_to_block[op->id] = node;
 	}
 
 	// Resolve phi-nodes top-down since PHI nodes may depend on other PHI nodes.
@@ -342,13 +342,10 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			}
 			assert(dominate_count == 1);
 
-			Operation op;
-			op.id = module.allocate_id();
-			op.op = spv::OpSelect;
-			op.type_id = node.phi->type_id;
-			op.arguments = { merge_phi.id, dominated_incoming->id, frontier_phi.id };
+			Operation *op = module.allocate_op(spv::OpSelect, module.allocate_id(), node.phi->type_id);
+			op->add_ids({ merge_phi.id, dominated_incoming->id, frontier_phi.id });
 			dominated_incoming->block->ir.operations.push_back(op);
-			dominated_incoming->id = op.id;
+			dominated_incoming->id = op->id;
 
 			frontier->ir.phi.push_back(std::move(merge_phi));
 		}

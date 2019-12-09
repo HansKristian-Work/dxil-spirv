@@ -96,44 +96,44 @@ OpDecorate %11 Location 0
 %9 = OpVariable %7 Input
 %10 = OpTypePointer Output %6
 %11 = OpVariable %10 Output
-%13 = OpTypePointer Input %5
+%12 = OpTypePointer Input %5
 %14 = OpTypeInt 32 0
 %15 = OpConstant %14 0
 %18 = OpConstant %14 1
 %21 = OpConstant %14 2
 %24 = OpConstant %14 3
-%39 = OpTypePointer Output %5
+%38 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %43
 %43 = OpLabel
-%12 = OpInBoundsAccessChain %13 %9 %15
-%16 = OpLoad %5 %12
-%17 = OpInBoundsAccessChain %13 %9 %18
+%13 = OpAccessChain %12 %9 %15
+%16 = OpLoad %5 %13
+%17 = OpAccessChain %12 %9 %18
 %19 = OpLoad %5 %17
-%20 = OpInBoundsAccessChain %13 %9 %21
+%20 = OpAccessChain %12 %9 %21
 %22 = OpLoad %5 %20
-%23 = OpInBoundsAccessChain %13 %9 %24
+%23 = OpAccessChain %12 %9 %24
 %25 = OpLoad %5 %23
-%26 = OpInBoundsAccessChain %13 %8 %15
+%26 = OpAccessChain %12 %8 %15
 %27 = OpLoad %5 %26
-%28 = OpInBoundsAccessChain %13 %8 %18
+%28 = OpAccessChain %12 %8 %18
 %29 = OpLoad %5 %28
-%30 = OpInBoundsAccessChain %13 %8 %21
+%30 = OpAccessChain %12 %8 %21
 %31 = OpLoad %5 %30
-%32 = OpInBoundsAccessChain %13 %8 %24
+%32 = OpAccessChain %12 %8 %24
 %33 = OpLoad %5 %32
 %34 = OpFRem %5 %27 %16
 %35 = OpFRem %5 %29 %19
 %36 = OpFRem %5 %31 %22
 %37 = OpFRem %5 %33 %25
-%38 = OpInBoundsAccessChain %39 %11 %15
-OpStore %38 %34
-%40 = OpInBoundsAccessChain %39 %11 %18
+%39 = OpAccessChain %38 %11 %15
+OpStore %39 %34
+%40 = OpAccessChain %38 %11 %18
 OpStore %40 %35
-%41 = OpInBoundsAccessChain %39 %11 %21
+%41 = OpAccessChain %38 %11 %21
 OpStore %41 %36
-%42 = OpInBoundsAccessChain %39 %11 %24
+%42 = OpAccessChain %38 %11 %24
 OpStore %42 %37
 OpReturn
 OpFunctionEnd

@@ -19,14 +19,14 @@
 #include "opcodes_dxil_builtins.hpp"
 #include "converter_impl.hpp"
 #include "logging.hpp"
-#include "opcodes/dxil/dxil_common.hpp"
 #include "opcodes/dxil/dxil_arithmetic.hpp"
+#include "opcodes/dxil/dxil_buffer.hpp"
+#include "opcodes/dxil/dxil_common.hpp"
 #include "opcodes/dxil/dxil_compute.hpp"
+#include "opcodes/dxil/dxil_geometry.hpp"
+#include "opcodes/dxil/dxil_pixel_ops.hpp"
 #include "opcodes/dxil/dxil_resources.hpp"
 #include "opcodes/dxil/dxil_sampling.hpp"
-#include "opcodes/dxil/dxil_buffer.hpp"
-#include "opcodes/dxil/dxil_pixel_ops.hpp"
-#include "opcodes/dxil/dxil_geometry.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -153,8 +153,7 @@ struct DXILDispatcher
 // Sets up LUT once.
 static DXILDispatcher global_dispatcher;
 
-bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                           const llvm::CallInst *instruction)
+bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// The opcode is encoded as a constant integer.
 	uint32_t opcode;
@@ -173,6 +172,6 @@ bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, s
 		return false;
 	}
 
-	return global_dispatcher.builder_lut[opcode](ops, impl, builder, instruction);
+	return global_dispatcher.builder_lut[opcode](impl, instruction);
 }
 } // namespace DXIL2SPIRV

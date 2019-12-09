@@ -19,6 +19,7 @@
 #include "spirv_module.hpp"
 #include "SpvBuilder.h"
 #include "node.hpp"
+#include "scratch_pool.hpp"
 #include <unordered_map>
 
 namespace DXIL2SPIRV
@@ -57,6 +58,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	std::unordered_map<spv::Id, spv::BuiltIn> id_to_builtin;
 
 	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
+	ScratchPool<Operation> operation_pool;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -137,7 +139,8 @@ void SPIRVModule::Impl::enable_shader_discard()
 	if (!discard_state_var_id)
 	{
 		auto *current_build_point = builder.getBuildPoint();
-		discard_state_var_id = builder.createVariable(spv::StorageClassPrivate, builder.makeBoolType(), "discard_state");
+		discard_state_var_id =
+		    builder.createVariable(spv::StorageClassPrivate, builder.makeBoolType(), "discard_state");
 		builder.setBuildPoint(entry_function->getEntryBlock());
 		builder.createStore(builder.makeBoolConstant(false), discard_state_var_id);
 		builder.setBuildPoint(current_build_point);
@@ -156,8 +159,8 @@ void SPIRVModule::Impl::build_discard_call_exit()
 	if (!discard_function)
 	{
 		spv::Block *entry = nullptr;
-		discard_function = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
-		                                             "discard_exit", {}, {}, &entry);
+		discard_function =
+		    builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "discard_exit", {}, {}, &entry);
 
 		auto *true_block = new spv::Block(builder.getUniqueId(), *discard_function);
 		auto *false_block = new spv::Block(builder.getUniqueId(), *discard_function);
@@ -227,26 +230,34 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	}
 
 	// Emit opcodes.
-	for (auto &op : ir.operations)
+	for (auto *op : ir.operations)
 	{
-		if (op.op == spv::OpDemoteToHelperInvocationEXT)
+		if (op->op == spv::OpDemoteToHelperInvocationEXT)
 		{
 			build_discard_call_early();
 		}
 		else
 		{
-			if (!op.arguments.empty())
-			{
-				auto inst = std::make_unique<spv::Instruction>(op.id, op.type_id, op.op);
-				for (auto &arg : op.arguments)
-					inst->addIdOperand(arg);
-				bb->addInstruction(std::move(inst));
-			}
+			std::unique_ptr<spv::Instruction> inst;
+			if (op->id != 0)
+				inst = std::make_unique<spv::Instruction>(op->id, op->type_id, op->op);
 			else
+				inst = std::make_unique<spv::Instruction>(op->op);
+
+			unsigned literal_mask = op->get_literal_mask();
+
+			for (auto &arg : *op)
 			{
-				auto inst = std::make_unique<spv::Instruction>(op.op);
-				bb->addInstruction(std::move(inst));
+				if (literal_mask & 1u)
+					inst->addImmediateOperand(arg);
+				else
+				{
+					assert(arg);
+					inst->addIdOperand(arg);
+				}
+				literal_mask >>= 1u;
 			}
+			bb->addInstruction(std::move(inst));
 		}
 	}
 
@@ -400,6 +411,21 @@ void SPIRVModule::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin
 bool SPIRVModule::query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const
 {
 	return impl->query_builtin_shader_input(id, builtin);
+}
+
+Operation *SPIRVModule::allocate_op()
+{
+	return impl->operation_pool.allocate();
+}
+
+Operation *SPIRVModule::allocate_op(spv::Op op)
+{
+	return impl->operation_pool.allocate(op);
+}
+
+Operation *SPIRVModule::allocate_op(spv::Op op, spv::Id id, spv::Id type_id)
+{
+	return impl->operation_pool.allocate(op, id, type_id);
 }
 
 SPIRVModule::~SPIRVModule()

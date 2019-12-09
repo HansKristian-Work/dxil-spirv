@@ -18,47 +18,37 @@
 
 #include "dxil_resources.hpp"
 #include "dxil_common.hpp"
-#include "opcodes/converter_impl.hpp"
 #include "logging.hpp"
+#include "opcodes/converter_impl.hpp"
 
 namespace DXIL2SPIRV
 {
-static void fixup_builtin_load(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                               spv::Id var_id, const llvm::CallInst *instruction)
+static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	spv::BuiltIn builtin;
 	if (impl.spirv_module.query_builtin_shader_input(var_id, &builtin) && builtin == spv::BuiltInInstanceIndex)
 	{
 		// Need to shift InstanceIndex down to 0-base.
 		spv::Id base_instance_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInBaseInstance);
 		{
-			Operation op;
-			op.op = spv::OpLoad;
-			op.id = impl.allocate_id();
-			op.type_id = builder.makeUintType(32);
-			op.arguments = { base_instance_id };
-			base_instance_id = op.id;
-			ops.push_back(std::move(op));
+			Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+			op->add_id(base_instance_id);
+			base_instance_id = op->id;
+			impl.add(op);
 		}
 
-		spv::Id sub_id = impl.allocate_id();
-		{
-			Operation op;
-			op.op = spv::OpISub;
-			op.id = sub_id;
-			op.type_id = builder.makeUintType(32);
-			op.arguments = { impl.get_id_for_value(instruction), base_instance_id };
-			ops.push_back(std::move(op));
-		}
-
-		impl.value_map[instruction] = sub_id;
+		Operation *sub_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
+		sub_op->add_ids({ impl.get_id_for_value(instruction), base_instance_id });
+		impl.add(sub_op);
+		impl.value_map[instruction] = sub_op->id;
 		builder.addCapability(spv::CapabilityDrawParameters);
 	}
 }
 
-bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                 const llvm::CallInst *instruction)
+bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	uint32_t input_element_index;
 	if (!get_constant_operand(instruction, 1, &input_element_index))
 		return false;
@@ -66,7 +56,6 @@ bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &i
 	const auto &meta = impl.input_elements_meta[input_element_index];
 	uint32_t var_id = meta.id;
 	uint32_t ptr_id;
-	Operation op;
 
 	spv::Id input_type_id = builder.getDerefTypeId(var_id);
 	if (builder.isArrayType(input_type_id))
@@ -77,79 +66,69 @@ bool emit_load_input_instruction(std::vector<Operation> &ops, Converter::Impl &i
 
 	if (num_rows > 1 || array_index)
 	{
-		ptr_id = impl.allocate_id();
-
-		op.op = spv::OpInBoundsAccessChain;
-		op.id = ptr_id;
-
 		// Need to deal with signed vs unsigned here.
-		op.type_id = impl.get_type_id(meta.component_type, 1, 1);
-		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
+		Operation *op =
+		    impl.allocate(spv::OpAccessChain,
+		                  builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
+		ptr_id = op->id;
 
-		op.arguments.push_back(var_id);
+		op->add_id(var_id);
 		if (array_index)
 		{
 			// Vertex array index for GS/DS/HS.
-			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(4)));
+			op->add_id(impl.get_id_for_value(instruction->getOperand(4)));
 		}
 
 		if (num_rows > 1)
-			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(3), 32));
+			op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
 
-		ops.push_back(std::move(op));
+		impl.add(op);
 	}
 	else
 		ptr_id = var_id;
 
-	op = {};
-	op.op = spv::OpLoad;
-	op.id = impl.get_id_for_value(instruction);
 	// Need to deal with signed vs unsigned here.
-	op.type_id = impl.get_type_id(meta.component_type, 1, 1);
-	op.arguments = { ptr_id };
+	Operation *op = impl.allocate(spv::OpLoad, instruction, impl.get_type_id(meta.component_type, 1, 1));
+	op->add_id(ptr_id);
+	impl.add(op);
 
-	ops.push_back(std::move(op));
-
-	fixup_builtin_load(ops, impl, builder, var_id, instruction);
+	fixup_builtin_load(impl, var_id, instruction);
 
 	// Need to bitcast after we load.
-	impl.fixup_load_sign(ops, meta.component_type, 1, instruction);
+	impl.fixup_load_sign(meta.component_type, 1, instruction);
 	return true;
 }
 
-static spv::Id build_attribute_offset(spv::Id id, std::vector<Operation> &ops, Converter::Impl &impl,
-                                      spv::Builder &builder)
+static spv::Id build_attribute_offset(spv::Id id, Converter::Impl &impl)
 {
-	Operation op;
-	op.id = impl.allocate_id();
-	op.op = spv::OpBitFieldSExtract;
-	op.type_id = builder.makeUintType(32);
-	op.arguments = { id, builder.makeUintConstant(0), builder.makeUintConstant(4) };
-	id = op.id;
-	ops.push_back(std::move(op));
+	auto &builder = impl.builder();
+	{
+		Operation *op = impl.allocate(spv::OpBitFieldSExtract, builder.makeUintType(32));
+		op->add_ids({ id, builder.makeUintConstant(0), builder.makeUintConstant(4) });
+		id = op->id;
+		impl.add(op);
+	}
 
-	op = {};
-	op.id = impl.allocate_id();
-	op.op = spv::OpConvertSToF;
-	op.type_id = builder.makeFloatType(32);
-	op.arguments = { id };
-	id = op.id;
-	ops.push_back(std::move(op));
+	{
+		Operation *op = impl.allocate(spv::OpConvertSToF, builder.makeFloatType(32));
+		op->add_id(id);
+		id = op->id;
+		impl.add(op);
+	}
 
-	op = {};
-	op.id = impl.allocate_id();
-	op.op = spv::OpFMul;
-	op.type_id = builder.makeFloatType(32);
-	op.arguments = { id, builder.makeFloatConstant(1.0f / 16.0f) };
-	id = op.id;
-	ops.push_back(std::move(op));
+	{
+		Operation *op = impl.allocate(spv::OpFMul, builder.makeFloatType(32));
+		op->add_ids({ id, builder.makeFloatConstant(1.0f / 16.0f) });
+		id = op->id;
+		impl.add(op);
+	}
 
 	return id;
 }
 
-bool emit_interpolate_instruction(GLSLstd450 opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                  const llvm::CallInst *instruction)
+bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	uint32_t input_element_index;
 	if (!get_constant_operand(instruction, 1, &input_element_index))
 		return false;
@@ -157,23 +136,19 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, std::vector<Operation> &ops
 	const auto &meta = impl.input_elements_meta[input_element_index];
 	uint32_t var_id = meta.id;
 	uint32_t ptr_id;
-	Operation op;
 
 	uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
 
 	if (num_rows > 1)
 	{
-		ptr_id = impl.allocate_id();
-
-		op.op = spv::OpInBoundsAccessChain;
-		op.id = ptr_id;
-
 		// Need to deal with signed vs unsigned here.
-		op.type_id = impl.get_type_id(meta.component_type, 1, 1);
-		op.type_id = builder.makePointer(spv::StorageClassInput, op.type_id);
-		op.arguments = { var_id, impl.get_id_for_value(instruction->getOperand(3), 32) };
+		Operation *op =
+		    impl.allocate(spv::OpAccessChain,
+		                  builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
 
-		ops.push_back(std::move(op));
+		op->add_ids({ var_id, impl.get_id_for_value(instruction->getOperand(3), 32) });
+		impl.add(op);
+		ptr_id = op->id;
 	}
 	else
 		ptr_id = var_id;
@@ -196,7 +171,7 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, std::vector<Operation> &ops
 			if (!constant_operand)
 			{
 				offsets[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
-				offsets[i] = build_attribute_offset(offsets[i], ops, impl, builder);
+				offsets[i] = build_attribute_offset(offsets[i], impl);
 				is_non_const = true;
 			}
 			else
@@ -207,52 +182,47 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, std::vector<Operation> &ops
 		}
 
 		if (is_non_const)
-			aux_id = impl.build_vector(ops, builder.makeFloatType(32), offsets, 2);
+			aux_id = impl.build_vector(builder.makeFloatType(32), offsets, 2);
 		else
-			aux_id = impl.build_constant_vector(ops, builder.makeFloatType(32), offsets, 2);
+			aux_id = impl.build_constant_vector(builder.makeFloatType(32), offsets, 2);
 	}
 	else if (opcode == GLSLstd450InterpolateAtSample)
 		aux_id = impl.get_id_for_value(instruction->getOperand(4));
 
-	op = {};
-	op.op = spv::OpExtInst;
-	op.id = impl.get_id_for_value(instruction);
 	// Need to deal with signed vs unsigned here.
-	op.type_id = impl.get_type_id(meta.component_type, 1, 1);
-	op.arguments = {
-		impl.glsl_std450_ext,
-		opcode,
-		ptr_id,
-	};
+	Operation *op = impl.allocate(spv::OpExtInst, instruction, impl.get_type_id(meta.component_type, 1, 1));
+	op->add_ids({
+	    impl.glsl_std450_ext,
+	    opcode,
+	    ptr_id,
+	});
 
 	if (aux_id)
-		op.arguments.push_back(aux_id);
+		op->add_id(aux_id);
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 
 	// Need to bitcast after we load.
-	impl.fixup_load_sign(ops, meta.component_type, 1, instruction);
+	impl.fixup_load_sign(meta.component_type, 1, instruction);
 	builder.addCapability(spv::CapabilityInterpolationFunction);
 	return true;
 }
 
-static spv::Id build_load_invocation_id(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder)
+static spv::Id build_load_invocation_id(Converter::Impl &impl)
 {
+	auto &builder = impl.builder();
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId);
-	Operation op;
-	op.op = spv::OpLoad;
-	op.id = impl.allocate_id();
-	op.type_id = builder.makeUintType(32);
-	op.arguments = { var_id };
 
-	var_id = op.id;
-	ops.push_back(std::move(op));
-	return var_id;
+	Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	op->add_id(var_id);
+
+	impl.add(op);
+	return op->id;
 }
 
-bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                   const llvm::CallInst *instruction)
+bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	uint32_t output_element_index;
 	if (!get_constant_operand(instruction, 1, &output_element_index))
 		return false;
@@ -260,7 +230,6 @@ bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl 
 	const auto &meta = impl.output_elements_meta[output_element_index];
 	uint32_t var_id = meta.id;
 	uint32_t ptr_id;
-	Operation op;
 
 	spv::Id output_type_id = builder.getDerefTypeId(var_id);
 	if (builder.isArrayType(output_type_id))
@@ -271,37 +240,32 @@ bool emit_store_output_instruction(std::vector<Operation> &ops, Converter::Impl 
 
 	if (num_rows > 1 || is_control_point_output)
 	{
-		ptr_id = impl.allocate_id();
+		Operation *op = impl.allocate(
+		    spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+		ptr_id = op->id;
 
-		op.op = spv::OpInBoundsAccessChain;
-		op.id = ptr_id;
-		op.type_id = builder.getScalarTypeId(output_type_id);
-		op.type_id = builder.makePointer(spv::StorageClassOutput, op.type_id);
-
-		op.arguments.push_back(var_id);
+		op->add_id(var_id);
 		if (is_control_point_output)
-			op.arguments.push_back(build_load_invocation_id(ops, impl, builder));
+			op->add_id(build_load_invocation_id(impl));
 		if (num_rows > 1)
-			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(3), 32));
+			op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
 
-		ops.push_back(std::move(op));
+		impl.add(op);
 	}
 	else
 		ptr_id = var_id;
 
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
-	op = {};
-	op.op = spv::OpStore;
-	op.arguments = { ptr_id, impl.fixup_store_sign(ops, meta.component_type, 1, store_value) };
-
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(spv::OpStore);
+	op->add_ids({ ptr_id, impl.fixup_store_sign(meta.component_type, 1, store_value) });
+	impl.add(op);
 	return true;
 }
 
-bool emit_create_handle_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                    const llvm::CallInst *instruction)
+bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	uint32_t resource_type_operand, resource_range;
 
 	if (!get_constant_operand(instruction, 1, &resource_type_operand))
@@ -319,14 +283,11 @@ bool emit_create_handle_instruction(std::vector<Operation> &ops, Converter::Impl
 	{
 		spv::Id image_id = impl.srv_index_to_id[resource_range];
 		spv::Id type_id = builder.getDerefTypeId(image_id);
-		Operation op;
-		op.op = spv::OpLoad;
-		op.id = impl.get_id_for_value(instruction);
-		op.type_id = type_id;
-		op.arguments = { image_id };
-		impl.id_to_type[op.id] = type_id;
-		impl.handle_to_resource_meta[op.id] = impl.handle_to_resource_meta[image_id];
-		ops.push_back(std::move(op));
+		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
+		op->add_id(image_id);
+		impl.id_to_type[op->id] = type_id;
+		impl.handle_to_resource_meta[op->id] = impl.handle_to_resource_meta[image_id];
+		impl.add(op);
 		break;
 	}
 
@@ -335,15 +296,11 @@ bool emit_create_handle_instruction(std::vector<Operation> &ops, Converter::Impl
 		spv::Id image_id = impl.uav_index_to_id[resource_range];
 		spv::Id type_id = builder.getDerefTypeId(image_id);
 		const auto &meta = impl.handle_to_resource_meta[image_id];
-		Operation op;
-		op.op = spv::OpLoad;
-		op.id = impl.get_id_for_value(instruction);
-		op.type_id = type_id;
-		op.arguments = { image_id };
-		impl.id_to_type[op.id] = type_id;
-		impl.handle_to_resource_meta[op.id] = meta;
-
-		ops.push_back(std::move(op));
+		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
+		op->add_id(image_id);
+		impl.id_to_type[op->id] = type_id;
+		impl.handle_to_resource_meta[op->id] = meta;
+		impl.add(op);
 		break;
 	}
 
@@ -355,14 +312,11 @@ bool emit_create_handle_instruction(std::vector<Operation> &ops, Converter::Impl
 	{
 		spv::Id sampler_id = impl.sampler_index_to_id[resource_range];
 		spv::Id type_id = builder.getDerefTypeId(sampler_id);
-		Operation op;
-		op.op = spv::OpLoad;
-		op.id = impl.get_id_for_value(instruction);
-		op.type_id = type_id;
-		op.arguments = { sampler_id };
-		impl.handle_to_resource_meta[op.id] = { DXIL::ResourceKind::Sampler, DXIL::ComponentType::Invalid, 0u };
-		impl.id_to_type[op.id] = type_id;
-		ops.push_back(std::move(op));
+		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
+		op->add_id(sampler_id);
+		impl.handle_to_resource_meta[op->id] = { DXIL::ResourceKind::Sampler, DXIL::ComponentType::Invalid, 0u };
+		impl.id_to_type[op->id] = type_id;
+		impl.add(op);
 		break;
 	}
 
@@ -373,9 +327,10 @@ bool emit_create_handle_instruction(std::vector<Operation> &ops, Converter::Impl
 	return true;
 }
 
-bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
-                                          spv::Builder &builder, const llvm::CallInst *instruction)
+bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
+
 	// This function returns a struct, but ignore that, and just return a vec4 for now.
 	// extractvalue is used to pull out components and that works for vectors as well.
 	spv::Id ptr_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
@@ -383,16 +338,12 @@ bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Converter
 		return false;
 
 	spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
-	spv::Id access_chain_id = impl.allocate_id();
 
-	Operation op;
-	op.op = spv::OpInBoundsAccessChain;
-	op.id = access_chain_id;
-	op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
-	op.type_id = builder.makePointer(spv::StorageClassUniform, op.type_id);
-	op.arguments = { ptr_id, builder.makeUintConstant(0), vec4_index };
-
-	ops.push_back(std::move(op));
+	Operation *access_chain_op =
+	    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniform,
+	                                                          builder.makeVectorType(builder.makeFloatType(32), 4)));
+	access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
+	impl.add(access_chain_op);
 
 	bool need_bitcast = false;
 	auto *result_type = instruction->getType();
@@ -403,29 +354,21 @@ bool emit_cbuffer_load_legacy_instruction(std::vector<Operation> &ops, Converter
 	if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
 		need_bitcast = true;
 
-	spv::Id bitcast_input_id = 0;
-	op = {};
-	op.op = spv::OpLoad;
-	op.id = need_bitcast ? impl.allocate_id() : impl.get_id_for_value(instruction);
-	op.type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
-	op.arguments = { access_chain_id };
-
-	bitcast_input_id = op.id;
-	ops.push_back(std::move(op));
+	Operation *load_op = impl.allocate(spv::OpLoad, instruction, builder.makeVectorType(builder.makeFloatType(32), 4));
+	load_op->add_id(access_chain_op->id);
+	impl.add(load_op);
 
 	if (need_bitcast)
 	{
-		op = {};
-		op.op = spv::OpBitcast;
-		op.id = impl.get_id_for_value(instruction);
+		Operation *op = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(32), 4));
 
 		assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
-		op.type_id = builder.makeVectorType(builder.makeUintType(32), 4);
-		op.arguments = { bitcast_input_id };
-		ops.push_back(std::move(op));
+		op->add_id(load_op->id);
+		impl.add(op);
+		impl.value_map[instruction] = op->id;
 	}
 
 	return true;
 }
 
-}
+} // namespace DXIL2SPIRV

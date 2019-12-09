@@ -99,32 +99,32 @@ OpDecorate %14 Location 0
 %12 = OpVariable %11 Input
 %13 = OpTypePointer Output %6
 %14 = OpVariable %13 Output
-%16 = OpTypePointer Input %9
+%15 = OpTypePointer Input %9
 %17 = OpTypeInt 32 0
 %18 = OpConstant %17 0
 %22 = OpConstant %17 1
-%26 = OpTypePointer Input %5
+%25 = OpTypePointer Input %5
 %28 = OpConstant %5 -0.4375
 %29 = OpConstant %5 0.25
 %30 = OpConstantComposite %6 %28 %29
 %36 = OpConstant %17 4
 %39 = OpConstant %5 0.0625
-%57 = OpTypePointer Output %5
+%56 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %59
 %59 = OpLabel
-%15 = OpInBoundsAccessChain %16 %12 %18
-%19 = OpLoad %9 %15
+%16 = OpAccessChain %15 %12 %18
+%19 = OpLoad %9 %16
 %20 = OpBitcast %17 %19
-%21 = OpInBoundsAccessChain %16 %12 %22
+%21 = OpAccessChain %15 %12 %22
 %23 = OpLoad %9 %21
 %24 = OpBitcast %17 %23
-%25 = OpInBoundsAccessChain %26 %8 %18
-%31 = OpExtInst %5 %27 InterpolateAtOffset %25 %30
-%32 = OpInBoundsAccessChain %26 %8 %22
+%26 = OpAccessChain %25 %8 %18
+%31 = OpExtInst %5 %27 InterpolateAtOffset %26 %30
+%32 = OpAccessChain %25 %8 %22
 %33 = OpExtInst %5 %27 InterpolateAtOffset %32 %30
-%34 = OpInBoundsAccessChain %26 %8 %18
+%34 = OpAccessChain %25 %8 %18
 %35 = OpBitFieldSExtract %17 %20 %18 %36
 %37 = OpConvertSToF %5 %35
 %38 = OpFMul %5 %37 %39
@@ -133,7 +133,7 @@ OpBranch %59
 %42 = OpFMul %5 %41 %39
 %43 = OpCompositeConstruct %6 %38 %42
 %44 = OpExtInst %5 %27 InterpolateAtOffset %34 %43
-%45 = OpInBoundsAccessChain %26 %8 %22
+%45 = OpAccessChain %25 %8 %22
 %46 = OpBitFieldSExtract %17 %20 %18 %36
 %47 = OpConvertSToF %5 %46
 %48 = OpFMul %5 %47 %39
@@ -144,9 +144,9 @@ OpBranch %59
 %53 = OpExtInst %5 %27 InterpolateAtOffset %45 %52
 %54 = OpFAdd %5 %44 %31
 %55 = OpFAdd %5 %53 %33
-%56 = OpInBoundsAccessChain %57 %14 %18
-OpStore %56 %54
-%58 = OpInBoundsAccessChain %57 %14 %22
+%57 = OpAccessChain %56 %14 %18
+OpStore %57 %54
+%58 = OpAccessChain %56 %14 %22
 OpStore %58 %55
 OpReturn
 OpFunctionEnd

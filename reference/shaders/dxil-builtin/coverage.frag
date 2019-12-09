@@ -71,14 +71,14 @@ OpDecorate %11 BuiltIn SampleMask
 %9 = OpTypeArray %5 %8
 %10 = OpTypePointer Input %9
 %11 = OpVariable %10 Input
-%13 = OpTypePointer Input %5
+%12 = OpTypePointer Input %5
 %14 = OpConstant %5 0
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %16
 %16 = OpLabel
-%12 = OpAccessChain %13 %11 %14
-%15 = OpLoad %5 %12
+%13 = OpAccessChain %12 %11 %14
+%15 = OpLoad %5 %13
 OpStore %7 %15
 OpReturn
 OpFunctionEnd

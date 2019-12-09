@@ -22,99 +22,91 @@
 
 namespace DXIL2SPIRV
 {
-bool emit_binary_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                             const llvm::BinaryOperator *instruction)
+bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
 {
-	Operation op;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-
-	uint32_t id0 = impl.get_id_for_value(instruction->getOperand(0));
-	uint32_t id1 = impl.get_id_for_value(instruction->getOperand(1));
-	op.arguments = { id0, id1 };
-
+	spv::Op opcode;
 	switch (instruction->getOpcode())
 	{
 	case llvm::BinaryOperator::BinaryOps::FAdd:
-		op.op = spv::OpFAdd;
+		opcode = spv::OpFAdd;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FSub:
-		op.op = spv::OpFSub;
+		opcode = spv::OpFSub;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FMul:
-		op.op = spv::OpFMul;
+		opcode = spv::OpFMul;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FDiv:
-		op.op = spv::OpFDiv;
+		opcode = spv::OpFDiv;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Add:
-		op.op = spv::OpIAdd;
+		opcode = spv::OpIAdd;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Sub:
-		op.op = spv::OpISub;
+		opcode = spv::OpISub;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Mul:
-		op.op = spv::OpIMul;
+		opcode = spv::OpIMul;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::SDiv:
-		op.op = spv::OpSDiv;
+		opcode = spv::OpSDiv;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::UDiv:
-		op.op = spv::OpUDiv;
+		opcode = spv::OpUDiv;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Shl:
-		op.op = spv::OpShiftLeftLogical;
+		opcode = spv::OpShiftLeftLogical;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::LShr:
-		op.op = spv::OpShiftRightLogical;
+		opcode = spv::OpShiftRightLogical;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::AShr:
-		op.op = spv::OpShiftRightArithmetic;
+		opcode = spv::OpShiftRightArithmetic;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::SRem:
-		op.op = spv::OpSRem;
+		opcode = spv::OpSRem;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FRem:
-		op.op = spv::OpFRem;
+		opcode = spv::OpFRem;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::URem:
 		// Is this correct? There is no URem.
-		op.op = spv::OpUMod;
+		opcode = spv::OpUMod;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Xor:
 		if (instruction->getType()->getIntegerBitWidth() == 1)
-			op.op = spv::OpLogicalNotEqual;
+			opcode = spv::OpLogicalNotEqual;
 		else
-			op.op = spv::OpBitwiseXor;
+			opcode = spv::OpBitwiseXor;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::And:
 		if (instruction->getType()->getIntegerBitWidth() == 1)
-			op.op = spv::OpLogicalAnd;
+			opcode = spv::OpLogicalAnd;
 		else
-			op.op = spv::OpBitwiseAnd;
+			opcode = spv::OpBitwiseAnd;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Or:
 		if (instruction->getType()->getIntegerBitWidth() == 1)
-			op.op = spv::OpLogicalOr;
+			opcode = spv::OpLogicalOr;
 		else
-			op.op = spv::OpBitwiseOr;
+			opcode = spv::OpBitwiseOr;
 		break;
 
 	default:
@@ -122,23 +114,24 @@ bool emit_binary_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
 		return false;
 	}
 
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(opcode, instruction);
+
+	uint32_t id0 = impl.get_id_for_value(instruction->getOperand(0));
+	uint32_t id1 = impl.get_id_for_value(instruction->getOperand(1));
+	op->add_ids({ id0, id1 });
+
+	impl.add(op);
 	return true;
 }
 
-bool emit_unary_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                            const llvm::UnaryOperator *instruction)
+bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *instruction)
 {
-	Operation op;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-
-	op.arguments = { impl.get_id_for_value(instruction->getOperand(0)) };
+	spv::Op opcode;
 
 	switch (instruction->getOpcode())
 	{
 	case llvm::UnaryOperator::UnaryOps::FNeg:
-		op.op = spv::OpFNegate;
+		opcode = spv::OpFNegate;
 		break;
 
 	default:
@@ -146,53 +139,50 @@ bool emit_unary_instruction(std::vector<Operation> &ops, Converter::Impl &impl, 
 		return false;
 	}
 
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(opcode, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+
+	impl.add(op);
 	return true;
 }
 
-bool emit_cast_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                           const llvm::CastInst *instruction)
+bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
 {
-	Operation op;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-
-	op.arguments = { impl.get_id_for_value(instruction->getOperand(0)) };
-
+	spv::Op opcode;
 	switch (instruction->getOpcode())
 	{
 	case llvm::CastInst::CastOps::BitCast:
-		op.op = spv::OpBitcast;
+		opcode = spv::OpBitcast;
 		break;
 
 	case llvm::CastInst::CastOps::SExt:
-		op.op = spv::OpSConvert;
+		opcode = spv::OpSConvert;
 		break;
 
 	case llvm::CastInst::CastOps::Trunc:
 	case llvm::CastInst::CastOps::ZExt:
-		op.op = spv::OpUConvert;
+		opcode = spv::OpUConvert;
 		break;
 
 	case llvm::CastInst::CastOps::FPTrunc:
 	case llvm::CastInst::CastOps::FPExt:
-		op.op = spv::OpFConvert;
+		opcode = spv::OpFConvert;
 		break;
 
 	case llvm::CastInst::CastOps::FPToUI:
-		op.op = spv::OpConvertFToU;
+		opcode = spv::OpConvertFToU;
 		break;
 
 	case llvm::CastInst::CastOps::FPToSI:
-		op.op = spv::OpConvertFToS;
+		opcode = spv::OpConvertFToS;
 		break;
 
 	case llvm::CastInst::CastOps::SIToFP:
-		op.op = spv::OpConvertSToF;
+		opcode = spv::OpConvertSToF;
 		break;
 
 	case llvm::CastInst::CastOps::UIToFP:
-		op.op = spv::OpConvertUToF;
+		opcode = spv::OpConvertUToF;
 		break;
 
 	default:
@@ -200,26 +190,27 @@ bool emit_cast_instruction(std::vector<Operation> &ops, Converter::Impl &impl, s
 		return false;
 	}
 
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(opcode, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+	impl.add(op);
 	return true;
 }
 
-bool emit_getelementptr_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                    const llvm::GetElementPtrInst *instruction)
+bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
 {
 	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
 	// For now, just assert that the first index is constant 0, in which case PtrAccessChain == AccessChain.
 
-	Operation op;
-	op.op = instruction->isInBounds() ? spv::OpInBoundsAccessChain : spv::OpAccessChain;
-	op.id = impl.get_id_for_value(instruction);
-
+	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(0));
 	spv::StorageClass storage_class = builder.getStorageClass(ptr_id);
+	spv::Id type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
+	type_id = builder.makePointer(storage_class, type_id);
 
-	op.type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
-	op.type_id = builder.makePointer(storage_class, op.type_id);
-	op.arguments.push_back(ptr_id);
+	Operation *op = impl.allocate(instruction->isInBounds() ? spv::OpInBoundsAccessChain : spv::OpAccessChain,
+	                              instruction, type_id);
+
+	op->add_id(ptr_id);
 
 	auto *elem_index = instruction->getOperand(1);
 
@@ -238,177 +229,165 @@ bool emit_getelementptr_instruction(std::vector<Operation> &ops, Converter::Impl
 
 	unsigned num_operands = instruction->getNumOperands();
 	for (uint32_t i = 2; i < num_operands; i++)
-		op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(i)));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 
-bool emit_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                           const llvm::LoadInst *instruction)
+bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
-	Operation op;
-	op.op = spv::OpLoad;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-	op.arguments = { impl.get_id_for_value(instruction->getPointerOperand()) };
+	Operation *op = impl.allocate(spv::OpLoad, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 
-bool emit_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                            const llvm::StoreInst *instruction)
+bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instruction)
 {
-	Operation op;
-	op.op = spv::OpStore;
-	op.arguments = { impl.get_id_for_value(instruction->getOperand(1)),
-		             impl.get_id_for_value(instruction->getOperand(0)) };
+	Operation *op = impl.allocate(spv::OpStore);
+	op->add_ids(
+	    { impl.get_id_for_value(instruction->getOperand(1)), impl.get_id_for_value(instruction->getOperand(0)) });
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 
-bool emit_compare_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                              const llvm::CmpInst *instruction)
+bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instruction)
 {
-	Operation op;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-
-	uint32_t id0 = impl.get_id_for_value(instruction->getOperand(0));
-	uint32_t id1 = impl.get_id_for_value(instruction->getOperand(1));
-	op.arguments = { id0, id1 };
-
+	spv::Op opcode;
 	switch (instruction->getPredicate())
 	{
 	case llvm::CmpInst::Predicate::FCMP_OEQ:
-		op.op = spv::OpFOrdEqual;
+		opcode = spv::OpFOrdEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_UEQ:
-		op.op = spv::OpFUnordEqual;
+		opcode = spv::OpFUnordEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_OGT:
-		op.op = spv::OpFOrdGreaterThan;
+		opcode = spv::OpFOrdGreaterThan;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_UGT:
-		op.op = spv::OpFUnordGreaterThan;
+		opcode = spv::OpFUnordGreaterThan;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_OGE:
-		op.op = spv::OpFOrdGreaterThanEqual;
+		opcode = spv::OpFOrdGreaterThanEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_UGE:
-		op.op = spv::OpFUnordGreaterThanEqual;
+		opcode = spv::OpFUnordGreaterThanEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_OLT:
-		op.op = spv::OpFOrdLessThan;
+		opcode = spv::OpFOrdLessThan;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_ULT:
-		op.op = spv::OpFUnordLessThan;
+		opcode = spv::OpFUnordLessThan;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_OLE:
-		op.op = spv::OpFOrdLessThanEqual;
+		opcode = spv::OpFOrdLessThanEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_ULE:
-		op.op = spv::OpFUnordLessThanEqual;
+		opcode = spv::OpFUnordLessThanEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_ONE:
-		op.op = spv::OpFOrdNotEqual;
+		opcode = spv::OpFOrdNotEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_UNE:
-		op.op = spv::OpFUnordNotEqual;
+		opcode = spv::OpFUnordNotEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::FCMP_FALSE:
+	{
 		// Why on earth is this a thing ...
-		op.op = spv::OpCopyLogical;
-		op.arguments = { builder.makeBoolConstant(false) };
-		break;
+		impl.value_map[instruction] = impl.builder().makeBoolConstant(false);
+		return true;
+	}
 
 	case llvm::CmpInst::Predicate::FCMP_TRUE:
+	{
 		// Why on earth is this a thing ...
-		op.op = spv::OpCopyLogical;
-		op.arguments = { builder.makeBoolConstant(true) };
-		break;
+		impl.value_map[instruction] = impl.builder().makeBoolConstant(true);
+		return true;
+	}
 
 	case llvm::CmpInst::Predicate::ICMP_EQ:
-		op.op = spv::OpIEqual;
+		opcode = spv::OpIEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_NE:
-		op.op = spv::OpINotEqual;
+		opcode = spv::OpINotEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_SLT:
-		op.op = spv::OpSLessThan;
+		opcode = spv::OpSLessThan;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_SLE:
-		op.op = spv::OpSLessThanEqual;
+		opcode = spv::OpSLessThanEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_SGT:
-		op.op = spv::OpSGreaterThan;
+		opcode = spv::OpSGreaterThan;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_SGE:
-		op.op = spv::OpSGreaterThanEqual;
+		opcode = spv::OpSGreaterThanEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_ULT:
-		op.op = spv::OpULessThan;
+		opcode = spv::OpULessThan;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_ULE:
-		op.op = spv::OpULessThanEqual;
+		opcode = spv::OpULessThanEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_UGT:
-		op.op = spv::OpUGreaterThan;
+		opcode = spv::OpUGreaterThan;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_UGE:
-		op.op = spv::OpUGreaterThanEqual;
+		opcode = spv::OpUGreaterThanEqual;
 		break;
 
 	default:
 		LOGE("Unknown CmpInst predicate.\n");
-		break;
+		return false;
 	}
 
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(opcode, instruction);
+	uint32_t id0 = impl.get_id_for_value(instruction->getOperand(0));
+	uint32_t id1 = impl.get_id_for_value(instruction->getOperand(1));
+	op->add_ids({ id0, id1 });
+
+	impl.add(op);
 	return true;
 }
 
-bool emit_extract_value_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                                    const llvm::ExtractValueInst *instruction)
+bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction)
 {
-	Operation op;
-	op.op = spv::OpCompositeExtract;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
+	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
 
-	op.arguments.push_back(impl.get_id_for_value(instruction->getAggregateOperand()));
+	op->add_id(impl.get_id_for_value(instruction->getAggregateOperand()));
 	for (unsigned i = 0; i < instruction->getNumIndices(); i++)
-		op.arguments.push_back(instruction->getIndices()[i]);
+		op->add_literal(instruction->getIndices()[i]);
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 
-bool emit_alloca_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                             const llvm::AllocaInst *instruction)
+bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction)
 {
 	spv::Id pointee_type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
 
@@ -430,26 +409,23 @@ bool emit_alloca_instruction(std::vector<Operation> &ops, Converter::Impl &impl,
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	spv::Id var_id = builder.createVariable(spv::StorageClassFunction, pointee_type_id, instruction->getName().data());
+	spv::Id var_id =
+	    impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id, instruction->getName().data());
 	impl.value_map[instruction] = var_id;
 	return true;
 }
 
-bool emit_select_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
-                             const llvm::SelectInst *instruction)
+bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *instruction)
 {
-	Operation op;
-	op.op = spv::OpSelect;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
+	Operation *op = impl.allocate(spv::OpSelect, instruction);
 
-	op.arguments = {
-		impl.get_id_for_value(instruction->getOperand(0)),
-		impl.get_id_for_value(instruction->getOperand(1)),
-		impl.get_id_for_value(instruction->getOperand(2)),
-	};
+	op->add_ids({
+	    impl.get_id_for_value(instruction->getOperand(0)),
+	    impl.get_id_for_value(instruction->getOperand(1)),
+	    impl.get_id_for_value(instruction->getOperand(2)),
+	});
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 } // namespace DXIL2SPIRV

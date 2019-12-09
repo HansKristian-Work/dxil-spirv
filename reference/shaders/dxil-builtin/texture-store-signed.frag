@@ -144,21 +144,21 @@ OpDecorate %24 Location 0
 %22 = OpTypeVector %21 3
 %23 = OpTypePointer Input %22
 %24 = OpVariable %23 Input
-%31 = OpTypePointer Input %21
+%30 = OpTypePointer Input %21
 %32 = OpTypeInt 32 0
 %33 = OpConstant %32 0
 %36 = OpConstant %32 1
 %39 = OpConstant %32 2
-%43 = OpTypeVector %32 4
-%45 = OpTypeVector %5 4
+%42 = OpTypeVector %32 4
+%44 = OpTypeVector %5 4
 %47 = OpConstant %32 3
 %48 = OpConstant %32 4
-%50 = OpTypeVector %32 2
+%49 = OpTypeVector %32 2
 %53 = OpConstant %32 5
 %54 = OpConstant %32 6
 %59 = OpConstant %32 7
 %60 = OpConstant %32 8
-%62 = OpTypeVector %32 3
+%61 = OpTypeVector %32 3
 %65 = OpConstant %32 9
 %66 = OpConstant %32 4294967287
 %3 = OpFunction %1 None %2
@@ -170,33 +170,33 @@ OpBranch %70
 %27 = OpLoad %12 %14
 %28 = OpLoad %9 %11
 %29 = OpLoad %6 %8
-%30 = OpInBoundsAccessChain %31 %24 %33
-%34 = OpLoad %21 %30
-%35 = OpInBoundsAccessChain %31 %24 %36
+%31 = OpAccessChain %30 %24 %33
+%34 = OpLoad %21 %31
+%35 = OpAccessChain %30 %24 %36
 %37 = OpLoad %21 %35
-%38 = OpInBoundsAccessChain %31 %24 %39
+%38 = OpAccessChain %30 %24 %39
 %40 = OpLoad %21 %38
 %41 = OpConvertFToS %32 %34
-%42 = OpCompositeConstruct %43 %36 %39 %36 %36
-%44 = OpBitcast %45 %42
-OpImageWrite %29 %41 %44
+%43 = OpCompositeConstruct %42 %36 %39 %36 %36
+%45 = OpBitcast %44 %43
+OpImageWrite %29 %41 %45
 %46 = OpConvertFToS %32 %37
-%49 = OpCompositeConstruct %50 %41 %46
-%51 = OpCompositeConstruct %43 %47 %48 %47 %47
-%52 = OpBitcast %45 %51
-OpImageWrite %28 %49 %52
-%55 = OpCompositeConstruct %50 %41 %46
-%56 = OpCompositeConstruct %43 %53 %54 %53 %53
-%57 = OpBitcast %45 %56
+%50 = OpCompositeConstruct %49 %41 %46
+%51 = OpCompositeConstruct %42 %47 %48 %47 %47
+%52 = OpBitcast %44 %51
+OpImageWrite %28 %50 %52
+%55 = OpCompositeConstruct %49 %41 %46
+%56 = OpCompositeConstruct %42 %53 %54 %53 %53
+%57 = OpBitcast %44 %56
 OpImageWrite %27 %55 %57
 %58 = OpConvertFToS %32 %40
-%61 = OpCompositeConstruct %62 %41 %46 %58
-%63 = OpCompositeConstruct %43 %59 %60 %59 %59
-%64 = OpBitcast %45 %63
-OpImageWrite %26 %61 %64
-%67 = OpCompositeConstruct %62 %41 %46 %58
-%68 = OpCompositeConstruct %43 %65 %66 %65 %65
-%69 = OpBitcast %45 %68
+%62 = OpCompositeConstruct %61 %41 %46 %58
+%63 = OpCompositeConstruct %42 %59 %60 %59 %59
+%64 = OpBitcast %44 %63
+OpImageWrite %26 %62 %64
+%67 = OpCompositeConstruct %61 %41 %46 %58
+%68 = OpCompositeConstruct %42 %65 %66 %65 %65
+%69 = OpBitcast %44 %68
 OpImageWrite %25 %67 %69
 OpReturn
 OpFunctionEnd

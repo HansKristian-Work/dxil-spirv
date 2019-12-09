@@ -143,22 +143,22 @@ OpDecorate %23 Location 0
 %21 = OpTypeVector %5 3
 %22 = OpTypePointer Input %21
 %23 = OpVariable %22 Input
-%30 = OpTypePointer Input %5
+%29 = OpTypePointer Input %5
 %31 = OpTypeInt 32 0
 %32 = OpConstant %31 0
 %35 = OpConstant %31 1
 %38 = OpConstant %31 2
 %41 = OpConstant %5 1
 %42 = OpConstant %5 2
-%44 = OpTypeVector %5 4
+%43 = OpTypeVector %5 4
 %46 = OpConstant %5 3
 %47 = OpConstant %5 4
-%49 = OpTypeVector %31 2
+%48 = OpTypeVector %31 2
 %51 = OpConstant %5 5
 %52 = OpConstant %5 6
 %56 = OpConstant %5 7
 %57 = OpConstant %5 8
-%59 = OpTypeVector %31 3
+%58 = OpTypeVector %31 3
 %61 = OpConstant %5 9
 %62 = OpConstant %5 -9
 %3 = OpFunction %1 None %2
@@ -170,28 +170,28 @@ OpBranch %65
 %26 = OpLoad %12 %14
 %27 = OpLoad %9 %11
 %28 = OpLoad %6 %8
-%29 = OpInBoundsAccessChain %30 %23 %32
-%33 = OpLoad %5 %29
-%34 = OpInBoundsAccessChain %30 %23 %35
+%30 = OpAccessChain %29 %23 %32
+%33 = OpLoad %5 %30
+%34 = OpAccessChain %29 %23 %35
 %36 = OpLoad %5 %34
-%37 = OpInBoundsAccessChain %30 %23 %38
+%37 = OpAccessChain %29 %23 %38
 %39 = OpLoad %5 %37
 %40 = OpConvertFToS %31 %33
-%43 = OpCompositeConstruct %44 %41 %42 %41 %41
-OpImageWrite %28 %40 %43
+%44 = OpCompositeConstruct %43 %41 %42 %41 %41
+OpImageWrite %28 %40 %44
 %45 = OpConvertFToS %31 %36
-%48 = OpCompositeConstruct %49 %40 %45
-%50 = OpCompositeConstruct %44 %46 %47 %46 %46
-OpImageWrite %27 %48 %50
-%53 = OpCompositeConstruct %49 %40 %45
-%54 = OpCompositeConstruct %44 %51 %52 %51 %51
+%49 = OpCompositeConstruct %48 %40 %45
+%50 = OpCompositeConstruct %43 %46 %47 %46 %46
+OpImageWrite %27 %49 %50
+%53 = OpCompositeConstruct %48 %40 %45
+%54 = OpCompositeConstruct %43 %51 %52 %51 %51
 OpImageWrite %26 %53 %54
 %55 = OpConvertFToS %31 %39
-%58 = OpCompositeConstruct %59 %40 %45 %55
-%60 = OpCompositeConstruct %44 %56 %57 %56 %56
-OpImageWrite %25 %58 %60
-%63 = OpCompositeConstruct %59 %40 %45 %55
-%64 = OpCompositeConstruct %44 %61 %62 %61 %61
+%59 = OpCompositeConstruct %58 %40 %45 %55
+%60 = OpCompositeConstruct %43 %56 %57 %56 %56
+OpImageWrite %25 %59 %60
+%63 = OpCompositeConstruct %58 %40 %45 %55
+%64 = OpCompositeConstruct %43 %61 %62 %61 %61
 OpImageWrite %24 %63 %64
 OpReturn
 OpFunctionEnd

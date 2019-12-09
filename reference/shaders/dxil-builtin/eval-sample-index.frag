@@ -6,9 +6,9 @@ layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    uint _15 = uint(SAMPLE);
-    SV_Target.x = interpolateAtSample(TEXCOORD.x, _15) + interpolateAtSample(TEXCOORD.x, 1u);
-    SV_Target.y = interpolateAtSample(TEXCOORD.y, _15) + interpolateAtSample(TEXCOORD.y, 1u);
+    uint _16 = uint(SAMPLE);
+    SV_Target.x = interpolateAtSample(TEXCOORD.x, _16) + interpolateAtSample(TEXCOORD.x, 1u);
+    SV_Target.y = interpolateAtSample(TEXCOORD.y, _16) + interpolateAtSample(TEXCOORD.y, 1u);
 }
 
 
@@ -97,30 +97,30 @@ OpDecorate %13 Location 0
 %11 = OpVariable %10 Input
 %12 = OpTypePointer Output %6
 %13 = OpVariable %12 Output
-%16 = OpTypeInt 32 0
-%18 = OpTypePointer Input %5
-%19 = OpConstant %16 0
-%21 = OpConstant %16 1
-%32 = OpTypePointer Output %5
+%15 = OpTypeInt 32 0
+%17 = OpTypePointer Input %5
+%19 = OpConstant %15 0
+%21 = OpConstant %15 1
+%31 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %34
 %34 = OpLabel
 %14 = OpLoad %9 %11
-%15 = OpBitcast %16 %14
-%17 = OpInBoundsAccessChain %18 %8 %19
-%22 = OpExtInst %5 %20 InterpolateAtSample %17 %21
-%23 = OpInBoundsAccessChain %18 %8 %21
+%16 = OpBitcast %15 %14
+%18 = OpAccessChain %17 %8 %19
+%22 = OpExtInst %5 %20 InterpolateAtSample %18 %21
+%23 = OpAccessChain %17 %8 %21
 %24 = OpExtInst %5 %20 InterpolateAtSample %23 %21
-%25 = OpInBoundsAccessChain %18 %8 %19
-%26 = OpExtInst %5 %20 InterpolateAtSample %25 %15
-%27 = OpInBoundsAccessChain %18 %8 %21
-%28 = OpExtInst %5 %20 InterpolateAtSample %27 %15
+%25 = OpAccessChain %17 %8 %19
+%26 = OpExtInst %5 %20 InterpolateAtSample %25 %16
+%27 = OpAccessChain %17 %8 %21
+%28 = OpExtInst %5 %20 InterpolateAtSample %27 %16
 %29 = OpFAdd %5 %26 %22
 %30 = OpFAdd %5 %28 %24
-%31 = OpInBoundsAccessChain %32 %13 %19
-OpStore %31 %29
-%33 = OpInBoundsAccessChain %32 %13 %21
+%32 = OpAccessChain %31 %13 %19
+OpStore %32 %29
+%33 = OpAccessChain %31 %13 %21
 OpStore %33 %30
 OpReturn
 OpFunctionEnd

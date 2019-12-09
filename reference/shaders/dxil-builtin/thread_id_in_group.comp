@@ -89,7 +89,7 @@ OpDecorate %12 BuiltIn LocalInvocationId
 %10 = OpTypeVector %5 3
 %11 = OpTypePointer Input %10
 %12 = OpVariable %11 Input
-%14 = OpTypePointer Input %5
+%13 = OpTypePointer Input %5
 %15 = OpConstant %5 0
 %18 = OpConstant %5 1
 %21 = OpConstant %5 2
@@ -104,11 +104,11 @@ OpDecorate %12 BuiltIn LocalInvocationId
 OpBranch %35
 %35 = OpLabel
 %9 = OpLoad %6 %8
-%13 = OpAccessChain %14 %12 %15
-%16 = OpLoad %5 %13
-%17 = OpAccessChain %14 %12 %18
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%17 = OpAccessChain %13 %12 %18
 %19 = OpLoad %5 %17
-%20 = OpAccessChain %14 %12 %21
+%20 = OpAccessChain %13 %12 %21
 %22 = OpLoad %5 %20
 %25 = OpBitcast %5 %24
 %28 = OpCompositeConstruct %27 %25 %25 %25 %25
