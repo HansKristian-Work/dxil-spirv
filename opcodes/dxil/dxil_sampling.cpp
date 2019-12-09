@@ -206,7 +206,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		Operation *splat_op = impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeFloatType(32), 4));
 		splat_op->add_ids({ op->id, op->id, op->id, op->id });
 		impl.add(splat_op);
-		impl.value_map[instruction] = op->id;
+		impl.value_map[instruction] = splat_op->id;
 	}
 
 	// Deal with signed component types.

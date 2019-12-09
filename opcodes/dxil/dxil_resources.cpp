@@ -359,7 +359,6 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl,
 	if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
 		need_bitcast = true;
 
-	spv::Id bitcast_input_id = 0;
 	Operation *load_op = impl.allocate(spv::OpLoad, instruction,
 	                                   builder.makeVectorType(builder.makeFloatType(32), 4));
 	load_op->add_id(access_chain_op->id);
@@ -371,7 +370,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl,
 		                              builder.makeVectorType(builder.makeUintType(32), 4));
 
 		assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
-		op->add_id(bitcast_input_id);
+		op->add_id(load_op->id);
 		impl.add(op);
 		impl.value_map[instruction] = op->id;
 	}

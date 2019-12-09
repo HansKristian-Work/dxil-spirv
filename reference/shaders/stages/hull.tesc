@@ -116,28 +116,28 @@ OpDecorate %30 BuiltIn InvocationId
 %12 = OpTypeArray %5 %11
 %13 = OpTypePointer Output %12
 %14 = OpVariable %13 Output
-%16 = OpTypePointer Input %5
+%15 = OpTypePointer Input %5
 %17 = OpConstant %6 0
 %20 = OpConstant %6 1
 %24 = OpConstant %6 2
-%28 = OpTypePointer Output %5
+%27 = OpTypePointer Output %5
 %29 = OpTypePointer Input %6
 %30 = OpVariable %29 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %32
 %32 = OpLabel
-%15 = OpInBoundsAccessChain %16 %10 %17
-%18 = OpLoad %5 %15
-%19 = OpInBoundsAccessChain %16 %10 %20
+%16 = OpAccessChain %15 %10 %17
+%18 = OpLoad %5 %16
+%19 = OpAccessChain %15 %10 %20
 %21 = OpLoad %5 %19
 %22 = OpFAdd %5 %21 %18
-%23 = OpInBoundsAccessChain %16 %10 %24
+%23 = OpAccessChain %15 %10 %24
 %25 = OpLoad %5 %23
 %26 = OpFAdd %5 %22 %25
 %31 = OpLoad %6 %30
-%27 = OpInBoundsAccessChain %28 %14 %31
-OpStore %27 %26
+%28 = OpAccessChain %27 %14 %31
+OpStore %28 %26
 OpReturn
 OpFunctionEnd
 #endif

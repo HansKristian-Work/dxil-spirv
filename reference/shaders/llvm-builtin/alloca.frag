@@ -107,7 +107,7 @@ OpDecorate %9 Location 0
 %11 = OpConstant %5 4
 %12 = OpTypeArray %5 %11
 %13 = OpTypePointer Function %12
-%16 = OpTypePointer Function %5
+%15 = OpTypePointer Function %5
 %17 = OpConstant %5 0
 %18 = OpConstant %5 1
 %20 = OpConstant %5 2
@@ -118,18 +118,18 @@ OpDecorate %9 Location 0
 OpBranch %33
 %33 = OpLabel
 %10 = OpLoad %5 %7
-%15 = OpInBoundsAccessChain %16 %14 %17
-OpStore %15 %18
-%19 = OpInBoundsAccessChain %16 %14 %18
+%16 = OpInBoundsAccessChain %15 %14 %17
+OpStore %16 %18
+%19 = OpInBoundsAccessChain %15 %14 %18
 OpStore %19 %20
-%21 = OpInBoundsAccessChain %16 %14 %20
+%21 = OpInBoundsAccessChain %15 %14 %20
 OpStore %21 %22
-%23 = OpInBoundsAccessChain %16 %14 %22
+%23 = OpInBoundsAccessChain %15 %14 %22
 OpStore %23 %11
 %24 = OpBitwiseAnd %5 %10 %22
-%25 = OpInBoundsAccessChain %16 %14 %24
+%25 = OpInBoundsAccessChain %15 %14 %24
 OpStore %25 %10
-%26 = OpLoad %5 %15
+%26 = OpLoad %5 %16
 %27 = OpLoad %5 %19
 %28 = OpIAdd %5 %27 %26
 %29 = OpLoad %5 %21

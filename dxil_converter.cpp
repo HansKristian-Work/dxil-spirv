@@ -807,11 +807,10 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	image_type_id =
 	    builder.makeImageType(sampled_format, dim, comparison, arrayed, multisampled, 2, spv::ImageFormatUnknown);
 
-	spv::Id id = spirv_module.allocate_id();
 	Operation *op = allocate(spv::OpSampledImage, builder.makeSampledImageType(image_type_id));
 	op->add_ids({ image_id, sampler_id });
 	add(op);
-	return id;
+	return op->id;
 }
 
 spv::Id Converter::Impl::build_vector(spv::Id element_type, spv::Id *elements,
@@ -820,7 +819,6 @@ spv::Id Converter::Impl::build_vector(spv::Id element_type, spv::Id *elements,
 	if (count == 1)
 		return elements[0];
 
-	uint32_t id = spirv_module.allocate_id();
 	auto &builder = spirv_module.get_builder();
 
 	Operation *op = allocate(spv::OpCompositeConstruct, builder.makeVectorType(element_type, count));
@@ -828,7 +826,7 @@ spv::Id Converter::Impl::build_vector(spv::Id element_type, spv::Id *elements,
 		op->add_id(elements[i]);
 
 	add(op);
-	return id;
+	return op->id;
 }
 
 spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, spv::Id *elements,
@@ -847,13 +845,12 @@ spv::Id Converter::Impl::build_offset(spv::Id value, unsigned offset)
 		return value;
 
 	auto &builder = spirv_module.get_builder();
-	spv::Id id = allocate_id();
 
 	Operation *op = allocate(spv::OpIAdd, builder.makeUintType(32));
 	op->add_ids({ value, builder.makeUintConstant(offset) });
 
 	add(op);
-	return id;
+	return op->id;
 }
 
 void Converter::Impl::fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
@@ -1250,45 +1247,29 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	return result;
 }
 
-spv::Id Converter::Impl::allocate_id()
-{
-	return spirv_module.allocate_id();
-}
-
-Operation *Converter::Impl::allocate_op()
-{
-	return spirv_module.allocate_op();
-}
-
 Operation *Converter::Impl::allocate(spv::Op op)
 {
-	auto *new_op = spirv_module.allocate_op(op);
-	current_block->push_back(new_op);
-	return new_op;
+	return spirv_module.allocate_op(op);
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, spv::Id id, spv::Id type_id)
 {
-	auto *new_op = spirv_module.allocate_op(op, id, type_id);
-	return new_op;
+	return spirv_module.allocate_op(op, id, type_id);
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, spv::Id type_id)
 {
-	auto *new_op = spirv_module.allocate_op(op, allocate_id(), type_id);
-	return new_op;
+	return spirv_module.allocate_op(op, spirv_module.allocate_id(), type_id);
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value)
 {
-	auto *new_op = spirv_module.allocate_op(op, get_id_for_value(value), get_type_id(value->getType()));
-	return new_op;
+	return spirv_module.allocate_op(op, get_id_for_value(value), get_type_id(value->getType()));
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value, spv::Id type_id)
 {
-	auto *new_op = spirv_module.allocate_op(op, get_id_for_value(value), type_id);
-	return new_op;
+	return spirv_module.allocate_op(op, get_id_for_value(value), type_id);
 }
 
 void Converter::Impl::add(Operation *op)

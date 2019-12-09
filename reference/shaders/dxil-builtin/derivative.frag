@@ -99,20 +99,20 @@ OpDecorate %11 Location 0
 %9 = OpTypeVector %5 4
 %10 = OpTypePointer Output %9
 %11 = OpVariable %10 Output
-%13 = OpTypePointer Input %5
+%12 = OpTypePointer Input %5
 %14 = OpTypeInt 32 0
 %15 = OpConstant %14 0
 %18 = OpConstant %14 1
-%33 = OpTypePointer Output %5
+%32 = OpTypePointer Output %5
 %36 = OpConstant %14 2
 %38 = OpConstant %14 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %39
 %39 = OpLabel
-%12 = OpInBoundsAccessChain %13 %8 %15
-%16 = OpLoad %5 %12
-%17 = OpInBoundsAccessChain %13 %8 %18
+%13 = OpAccessChain %12 %8 %15
+%16 = OpLoad %5 %13
+%17 = OpAccessChain %12 %8 %18
 %19 = OpLoad %5 %17
 %20 = OpDPdxCoarse %5 %16
 %21 = OpDPdxCoarse %5 %19
@@ -126,13 +126,13 @@ OpBranch %39
 %29 = OpDPdyFine %5 %19
 %30 = OpFAdd %5 %28 %22
 %31 = OpFAdd %5 %29 %23
-%32 = OpInBoundsAccessChain %33 %11 %15
-OpStore %32 %26
-%34 = OpInBoundsAccessChain %33 %11 %18
+%33 = OpAccessChain %32 %11 %15
+OpStore %33 %26
+%34 = OpAccessChain %32 %11 %18
 OpStore %34 %27
-%35 = OpInBoundsAccessChain %33 %11 %36
+%35 = OpAccessChain %32 %11 %36
 OpStore %35 %30
-%37 = OpInBoundsAccessChain %33 %11 %38
+%37 = OpAccessChain %32 %11 %38
 OpStore %37 %31
 OpReturn
 OpFunctionEnd

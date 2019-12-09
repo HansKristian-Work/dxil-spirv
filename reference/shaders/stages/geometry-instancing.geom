@@ -223,11 +223,11 @@ OpDecorate %17 BuiltIn InvocationId
 %15 = OpVariable %13 Output
 %16 = OpTypePointer Input %7
 %17 = OpVariable %16 Input
-%20 = OpTypePointer Input %5
+%19 = OpTypePointer Input %5
 %21 = OpConstant %7 0
 %24 = OpConstant %7 1
 %27 = OpConstant %7 2
-%41 = OpTypePointer Output %5
+%40 = OpTypePointer Output %5
 %50 = OpConstant %5 0.00999999978
 %60 = OpConstant %5 0.0199999996
 %3 = OpFunction %1 None %2
@@ -235,126 +235,126 @@ OpDecorate %17 BuiltIn InvocationId
 OpBranch %93
 %93 = OpLabel
 %18 = OpLoad %7 %17
-%19 = OpInBoundsAccessChain %20 %11 %18 %21
-%22 = OpLoad %5 %19
-%23 = OpInBoundsAccessChain %20 %11 %18 %24
+%20 = OpAccessChain %19 %11 %18 %21
+%22 = OpLoad %5 %20
+%23 = OpAccessChain %19 %11 %18 %24
 %25 = OpLoad %5 %23
-%26 = OpInBoundsAccessChain %20 %11 %18 %27
+%26 = OpAccessChain %19 %11 %18 %27
 %28 = OpLoad %5 %26
-%29 = OpInBoundsAccessChain %20 %11 %18 %8
+%29 = OpAccessChain %19 %11 %18 %8
 %30 = OpLoad %5 %29
 %31 = OpBitwiseXor %7 %18 %24
-%32 = OpInBoundsAccessChain %20 %12 %31 %21
+%32 = OpAccessChain %19 %12 %31 %21
 %33 = OpLoad %5 %32
-%34 = OpInBoundsAccessChain %20 %12 %31 %24
+%34 = OpAccessChain %19 %12 %31 %24
 %35 = OpLoad %5 %34
-%36 = OpInBoundsAccessChain %20 %12 %31 %27
+%36 = OpAccessChain %19 %12 %31 %27
 %37 = OpLoad %5 %36
-%38 = OpInBoundsAccessChain %20 %12 %31 %8
+%38 = OpAccessChain %19 %12 %31 %8
 %39 = OpLoad %5 %38
-%40 = OpInBoundsAccessChain %41 %14 %21
-OpStore %40 %22
-%42 = OpInBoundsAccessChain %41 %14 %24
+%41 = OpAccessChain %40 %14 %21
+OpStore %41 %22
+%42 = OpAccessChain %40 %14 %24
 OpStore %42 %25
-%43 = OpInBoundsAccessChain %41 %14 %27
+%43 = OpAccessChain %40 %14 %27
 OpStore %43 %28
-%44 = OpInBoundsAccessChain %41 %14 %8
+%44 = OpAccessChain %40 %14 %8
 OpStore %44 %30
-%45 = OpInBoundsAccessChain %41 %15 %21
+%45 = OpAccessChain %40 %15 %21
 OpStore %45 %33
-%46 = OpInBoundsAccessChain %41 %15 %24
+%46 = OpAccessChain %40 %15 %24
 OpStore %46 %35
-%47 = OpInBoundsAccessChain %41 %15 %27
+%47 = OpAccessChain %40 %15 %27
 OpStore %47 %37
-%48 = OpInBoundsAccessChain %41 %15 %8
+%48 = OpAccessChain %40 %15 %8
 OpStore %48 %39
 OpEmitVertex
 %49 = OpFAdd %5 %33 %50
-%51 = OpInBoundsAccessChain %41 %14 %21
+%51 = OpAccessChain %40 %14 %21
 OpStore %51 %22
-%52 = OpInBoundsAccessChain %41 %14 %24
+%52 = OpAccessChain %40 %14 %24
 OpStore %52 %25
-%53 = OpInBoundsAccessChain %41 %14 %27
+%53 = OpAccessChain %40 %14 %27
 OpStore %53 %28
-%54 = OpInBoundsAccessChain %41 %14 %8
+%54 = OpAccessChain %40 %14 %8
 OpStore %54 %30
-%55 = OpInBoundsAccessChain %41 %15 %21
+%55 = OpAccessChain %40 %15 %21
 OpStore %55 %49
-%56 = OpInBoundsAccessChain %41 %15 %24
+%56 = OpAccessChain %40 %15 %24
 OpStore %56 %35
-%57 = OpInBoundsAccessChain %41 %15 %27
+%57 = OpAccessChain %40 %15 %27
 OpStore %57 %37
-%58 = OpInBoundsAccessChain %41 %15 %8
+%58 = OpAccessChain %40 %15 %8
 OpStore %58 %39
 OpEmitVertex
 %59 = OpFAdd %5 %33 %60
-%61 = OpInBoundsAccessChain %41 %14 %21
+%61 = OpAccessChain %40 %14 %21
 OpStore %61 %22
-%62 = OpInBoundsAccessChain %41 %14 %24
+%62 = OpAccessChain %40 %14 %24
 OpStore %62 %25
-%63 = OpInBoundsAccessChain %41 %14 %27
+%63 = OpAccessChain %40 %14 %27
 OpStore %63 %28
-%64 = OpInBoundsAccessChain %41 %14 %8
+%64 = OpAccessChain %40 %14 %8
 OpStore %64 %30
-%65 = OpInBoundsAccessChain %41 %15 %21
+%65 = OpAccessChain %40 %15 %21
 OpStore %65 %59
-%66 = OpInBoundsAccessChain %41 %15 %24
+%66 = OpAccessChain %40 %15 %24
 OpStore %66 %35
-%67 = OpInBoundsAccessChain %41 %15 %27
+%67 = OpAccessChain %40 %15 %27
 OpStore %67 %37
-%68 = OpInBoundsAccessChain %41 %15 %8
+%68 = OpAccessChain %40 %15 %8
 OpStore %68 %39
 OpEmitVertex
 OpEndPrimitive
-%69 = OpInBoundsAccessChain %41 %14 %21
+%69 = OpAccessChain %40 %14 %21
 OpStore %69 %22
-%70 = OpInBoundsAccessChain %41 %14 %24
+%70 = OpAccessChain %40 %14 %24
 OpStore %70 %25
-%71 = OpInBoundsAccessChain %41 %14 %27
+%71 = OpAccessChain %40 %14 %27
 OpStore %71 %28
-%72 = OpInBoundsAccessChain %41 %14 %8
+%72 = OpAccessChain %40 %14 %8
 OpStore %72 %30
-%73 = OpInBoundsAccessChain %41 %15 %21
+%73 = OpAccessChain %40 %15 %21
 OpStore %73 %59
-%74 = OpInBoundsAccessChain %41 %15 %24
+%74 = OpAccessChain %40 %15 %24
 OpStore %74 %35
-%75 = OpInBoundsAccessChain %41 %15 %27
+%75 = OpAccessChain %40 %15 %27
 OpStore %75 %37
-%76 = OpInBoundsAccessChain %41 %15 %8
+%76 = OpAccessChain %40 %15 %8
 OpStore %76 %39
 OpEmitVertex
-%77 = OpInBoundsAccessChain %41 %14 %21
+%77 = OpAccessChain %40 %14 %21
 OpStore %77 %22
-%78 = OpInBoundsAccessChain %41 %14 %24
+%78 = OpAccessChain %40 %14 %24
 OpStore %78 %25
-%79 = OpInBoundsAccessChain %41 %14 %27
+%79 = OpAccessChain %40 %14 %27
 OpStore %79 %28
-%80 = OpInBoundsAccessChain %41 %14 %8
+%80 = OpAccessChain %40 %14 %8
 OpStore %80 %30
-%81 = OpInBoundsAccessChain %41 %15 %21
+%81 = OpAccessChain %40 %15 %21
 OpStore %81 %59
-%82 = OpInBoundsAccessChain %41 %15 %24
+%82 = OpAccessChain %40 %15 %24
 OpStore %82 %35
-%83 = OpInBoundsAccessChain %41 %15 %27
+%83 = OpAccessChain %40 %15 %27
 OpStore %83 %37
-%84 = OpInBoundsAccessChain %41 %15 %8
+%84 = OpAccessChain %40 %15 %8
 OpStore %84 %39
 OpEmitVertex
-%85 = OpInBoundsAccessChain %41 %14 %21
+%85 = OpAccessChain %40 %14 %21
 OpStore %85 %22
-%86 = OpInBoundsAccessChain %41 %14 %24
+%86 = OpAccessChain %40 %14 %24
 OpStore %86 %25
-%87 = OpInBoundsAccessChain %41 %14 %27
+%87 = OpAccessChain %40 %14 %27
 OpStore %87 %28
-%88 = OpInBoundsAccessChain %41 %14 %8
+%88 = OpAccessChain %40 %14 %8
 OpStore %88 %30
-%89 = OpInBoundsAccessChain %41 %15 %21
+%89 = OpAccessChain %40 %15 %21
 OpStore %89 %59
-%90 = OpInBoundsAccessChain %41 %15 %24
+%90 = OpAccessChain %40 %15 %24
 OpStore %90 %35
-%91 = OpInBoundsAccessChain %41 %15 %27
+%91 = OpAccessChain %40 %15 %27
 OpStore %91 %37
-%92 = OpInBoundsAccessChain %41 %15 %8
+%92 = OpAccessChain %40 %15 %8
 OpStore %92 %39
 OpEmitVertex
 OpReturn

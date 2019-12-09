@@ -146,7 +146,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl,
 
 		if (need_bitcast)
 		{
-			Operation *op = impl.allocate(spv::OpBitcast, instruction,
+			Operation *op = impl.allocate(spv::OpBitcast,
 			                              builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), conservative_num_elements));
 			op->add_id(construct_op->id);
 			impl.add(op);

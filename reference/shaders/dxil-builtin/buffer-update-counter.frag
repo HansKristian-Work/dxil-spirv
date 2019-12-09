@@ -105,7 +105,7 @@ OpDecorate %13 Location 0
 %11 = OpVariable %7 UniformConstant
 %12 = OpTypePointer Output %5
 %13 = OpVariable %12 Output
-%17 = OpTypePointer Image %5
+%16 = OpTypePointer Image %5
 %18 = OpConstant %5 0
 %20 = OpConstant %5 1
 %23 = OpConstant %5 4294967295
@@ -115,9 +115,9 @@ OpBranch %26
 %26 = OpLabel
 %14 = OpLoad %6 %10
 %15 = OpLoad %6 %8
-%16 = OpImageTexelPointer %17 %9 %18 %18
-%19 = OpAtomicIAdd %5 %16 %20 %18 %20
-%21 = OpImageTexelPointer %17 %11 %18 %18
+%17 = OpImageTexelPointer %16 %9 %18 %18
+%19 = OpAtomicIAdd %5 %17 %20 %18 %20
+%21 = OpImageTexelPointer %16 %11 %18 %18
 %22 = OpAtomicIAdd %5 %21 %20 %18 %23
 %24 = OpISub %5 %22 %20
 %25 = OpIAdd %5 %24 %19

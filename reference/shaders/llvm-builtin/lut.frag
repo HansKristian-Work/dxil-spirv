@@ -113,8 +113,8 @@ OpDecorate %10 Location 0
 %30 = OpTypePointer Private %12
 %31 = OpVariable %30 Private %29
 %35 = OpConstant %5 0
-%37 = OpTypePointer Private %5
-%44 = OpTypePointer Output %5
+%36 = OpTypePointer Private %5
+%43 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %46
@@ -122,15 +122,15 @@ OpBranch %46
 %32 = OpLoad %5 %7
 %33 = OpIMul %5 %32 %15
 %34 = OpIAdd %5 %35 %33
-%36 = OpAccessChain %37 %31 %34
-%38 = OpLoad %5 %36
+%37 = OpAccessChain %36 %31 %34
+%38 = OpLoad %5 %37
 %39 = OpIMul %5 %32 %15
 %40 = OpIAdd %5 %13 %39
-%41 = OpAccessChain %37 %31 %40
+%41 = OpAccessChain %36 %31 %40
 %42 = OpLoad %5 %41
-%43 = OpInBoundsAccessChain %44 %10 %35
-OpStore %43 %38
-%45 = OpInBoundsAccessChain %44 %10 %13
+%44 = OpAccessChain %43 %10 %35
+OpStore %44 %38
+%45 = OpAccessChain %43 %10 %13
 OpStore %45 %42
 OpReturn
 OpFunctionEnd

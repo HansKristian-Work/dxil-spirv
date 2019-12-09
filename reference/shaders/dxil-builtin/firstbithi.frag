@@ -84,7 +84,7 @@ OpDecorate %9 Location 0
 %7 = OpVariable %6 Input
 %8 = OpTypePointer Output %5
 %9 = OpVariable %8 Output
-%14 = OpTypeBool
+%13 = OpTypeBool
 %15 = OpConstant %5 4294967295
 %17 = OpConstant %5 31
 %3 = OpFunction %1 None %2
@@ -93,11 +93,11 @@ OpBranch %22
 %22 = OpLabel
 %10 = OpLoad %5 %7
 %12 = OpExtInst %5 %11 FindUMsb %10
-%13 = OpIEqual %14 %12 %15
+%14 = OpIEqual %13 %12 %15
 %16 = OpISub %5 %17 %12
-%18 = OpSelect %5 %13 %15 %16
+%18 = OpSelect %5 %14 %15 %16
 %19 = OpISub %5 %17 %18
-%20 = OpIEqual %14 %18 %15
+%20 = OpIEqual %13 %18 %15
 %21 = OpSelect %5 %20 %15 %19
 OpStore %9 %21
 OpReturn

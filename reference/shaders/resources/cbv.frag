@@ -14,9 +14,9 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    uvec4 _30 = floatBitsToUint(_12._m0[0u]);
+    uvec4 _31 = floatBitsToUint(_12._m0[0u]);
     uvec4 _35 = floatBitsToUint(_16._m0[0u]);
-    SV_Target = ((_16._m0[0u].x + _12._m0[0u].x) + float(_35.y + _30.y)) + float(int(_35.z + _30.z));
+    SV_Target = ((_16._m0[0u].x + _12._m0[0u].x) + float(_35.y + _31.y)) + float(int(_35.z + _31.z));
 }
 
 
@@ -137,31 +137,31 @@ OpDecorate %18 Location 0
 %17 = OpTypePointer Output %7
 %18 = OpVariable %17 Output
 %19 = OpConstant %5 0
-%21 = OpTypePointer Uniform %8
-%31 = OpTypeVector %5 4
+%20 = OpTypePointer Uniform %8
+%30 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %45
 %45 = OpLabel
-%20 = OpInBoundsAccessChain %21 %12 %19 %19
-%22 = OpLoad %8 %20
+%21 = OpAccessChain %20 %12 %19 %19
+%22 = OpLoad %8 %21
 %23 = OpCompositeExtract %7 %22 0
-%24 = OpInBoundsAccessChain %21 %16 %19 %19
+%24 = OpAccessChain %20 %16 %19 %19
 %25 = OpLoad %8 %24
 %26 = OpCompositeExtract %7 %25 0
 %27 = OpFAdd %7 %26 %23
-%28 = OpInBoundsAccessChain %21 %12 %19 %19
+%28 = OpAccessChain %20 %12 %19 %19
 %29 = OpLoad %8 %28
-%30 = OpBitcast %31 %29
-%32 = OpCompositeExtract %5 %30 1
-%33 = OpInBoundsAccessChain %21 %16 %19 %19
+%31 = OpBitcast %30 %29
+%32 = OpCompositeExtract %5 %31 1
+%33 = OpAccessChain %20 %16 %19 %19
 %34 = OpLoad %8 %33
-%35 = OpBitcast %31 %34
+%35 = OpBitcast %30 %34
 %36 = OpCompositeExtract %5 %35 1
 %37 = OpIAdd %5 %36 %32
 %38 = OpConvertUToF %7 %37
 %39 = OpFAdd %7 %27 %38
-%40 = OpCompositeExtract %5 %30 2
+%40 = OpCompositeExtract %5 %31 2
 %41 = OpCompositeExtract %5 %35 2
 %42 = OpIAdd %5 %41 %40
 %43 = OpConvertSToF %7 %42

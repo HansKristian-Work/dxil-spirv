@@ -152,10 +152,10 @@ OpDecorate %19 Location 1
 %17 = OpTypeVector %5 2
 %18 = OpTypePointer Input %17
 %19 = OpVariable %18 Input
-%25 = OpTypePointer Input %5
+%24 = OpTypePointer Input %5
 %26 = OpConstant %9 0
 %29 = OpConstant %9 1
-%33 = OpTypeVector %5 4
+%32 = OpTypeVector %5 4
 %37 = OpConstant %9 3
 %39 = OpConstant %9 2
 %41 = OpTypeVector %9 4
@@ -171,13 +171,13 @@ OpBranch %61
 %21 = OpLoad %10 %13
 %22 = OpLoad %10 %12
 %23 = OpLoad %6 %8
-%24 = OpInBoundsAccessChain %25 %19 %26
-%27 = OpLoad %5 %24
-%28 = OpInBoundsAccessChain %25 %19 %29
+%25 = OpAccessChain %24 %19 %26
+%27 = OpLoad %5 %25
+%28 = OpAccessChain %24 %19 %29
 %30 = OpLoad %5 %28
 %31 = OpLoad %9 %16
-%32 = OpCompositeConstruct %33 %27 %30 %27 %27
-OpImageWrite %23 %31 %32
+%33 = OpCompositeConstruct %32 %27 %30 %27 %27
+OpImageWrite %23 %31 %33
 %34 = OpBitcast %9 %27
 %35 = OpBitcast %9 %30
 %36 = OpShiftLeftLogical %9 %31 %37

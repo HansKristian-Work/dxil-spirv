@@ -199,7 +199,7 @@ OpDecorate %20 BuiltIn LocalInvocationIndex
 %24 = OpConstant %5 1
 %27 = OpConstant %5 2
 %29 = OpConstant %5 0
-%33 = OpTypePointer Workgroup %10
+%32 = OpTypePointer Workgroup %10
 %52 = OpConstant %5 3
 %60 = OpConstant %5 264
 %90 = OpConstant %5 4
@@ -218,13 +218,13 @@ OpBranch %109
 %28 = OpIAdd %5 %29 %26
 %30 = OpIMul %5 %28 %27
 %31 = OpIAdd %5 %29 %30
-%32 = OpAccessChain %33 %13 %31
-OpStore %32 %22
+%33 = OpAccessChain %32 %13 %31
+OpStore %33 %22
 %34 = OpIMul %5 %21 %27
 %35 = OpIAdd %5 %29 %34
 %36 = OpIMul %5 %35 %27
 %37 = OpIAdd %5 %24 %36
-%38 = OpAccessChain %33 %13 %37
+%38 = OpAccessChain %32 %13 %37
 OpStore %38 %25
 %39 = OpIAdd %5 %21 %27
 %40 = OpConvertUToF %10 %39
@@ -232,23 +232,23 @@ OpStore %38 %25
 %42 = OpIAdd %5 %24 %41
 %43 = OpIMul %5 %42 %27
 %44 = OpIAdd %5 %29 %43
-%45 = OpAccessChain %33 %13 %44
+%45 = OpAccessChain %32 %13 %44
 OpStore %45 %25
 %46 = OpIMul %5 %21 %27
 %47 = OpIAdd %5 %24 %46
 %48 = OpIMul %5 %47 %27
 %49 = OpIAdd %5 %24 %48
-%50 = OpAccessChain %33 %13 %49
+%50 = OpAccessChain %32 %13 %49
 OpStore %50 %40
 %51 = OpIAdd %5 %21 %52
 %53 = OpConvertUToF %10 %51
 %54 = OpIMul %5 %21 %27
 %55 = OpIAdd %5 %29 %54
-%56 = OpAccessChain %33 %17 %55
+%56 = OpAccessChain %32 %17 %55
 OpStore %56 %40
 %57 = OpIMul %5 %21 %27
 %58 = OpIAdd %5 %24 %57
-%59 = OpAccessChain %33 %17 %58
+%59 = OpAccessChain %32 %17 %58
 OpStore %59 %53
 OpControlBarrier %27 %27 %60
 %61 = OpBitwiseXor %5 %21 %24
@@ -256,37 +256,37 @@ OpControlBarrier %27 %27 %60
 %63 = OpIAdd %5 %29 %62
 %64 = OpIMul %5 %63 %27
 %65 = OpIAdd %5 %29 %64
-%66 = OpAccessChain %33 %13 %65
+%66 = OpAccessChain %32 %13 %65
 %67 = OpLoad %10 %66
 %68 = OpIMul %5 %61 %27
 %69 = OpIAdd %5 %29 %68
 %70 = OpIMul %5 %69 %27
 %71 = OpIAdd %5 %24 %70
-%72 = OpAccessChain %33 %13 %71
+%72 = OpAccessChain %32 %13 %71
 %73 = OpLoad %10 %72
 %74 = OpBitwiseXor %5 %21 %27
 %75 = OpIMul %5 %74 %27
 %76 = OpIAdd %5 %24 %75
 %77 = OpIMul %5 %76 %27
 %78 = OpIAdd %5 %29 %77
-%79 = OpAccessChain %33 %13 %78
+%79 = OpAccessChain %32 %13 %78
 %80 = OpLoad %10 %79
 %81 = OpIMul %5 %74 %27
 %82 = OpIAdd %5 %24 %81
 %83 = OpIMul %5 %82 %27
 %84 = OpIAdd %5 %24 %83
-%85 = OpAccessChain %33 %13 %84
+%85 = OpAccessChain %32 %13 %84
 %86 = OpLoad %10 %85
 %87 = OpFMul %10 %80 %67
 %88 = OpFMul %10 %86 %73
 %89 = OpBitwiseXor %5 %21 %90
 %91 = OpIMul %5 %89 %27
 %92 = OpIAdd %5 %29 %91
-%93 = OpAccessChain %33 %17 %92
+%93 = OpAccessChain %32 %17 %92
 %94 = OpLoad %10 %93
 %95 = OpIMul %5 %89 %27
 %96 = OpIAdd %5 %24 %95
-%97 = OpAccessChain %33 %17 %96
+%97 = OpAccessChain %32 %17 %96
 %98 = OpLoad %10 %97
 %99 = OpFMul %10 %87 %94
 %100 = OpFMul %10 %88 %98

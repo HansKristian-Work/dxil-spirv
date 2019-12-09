@@ -83,7 +83,7 @@ OpDecorate %13 BuiltIn BaseInstance
 %10 = OpTypePointer Output %9
 %11 = OpVariable %10 Output
 %13 = OpVariable %6 Input
-%18 = OpTypePointer Output %8
+%17 = OpTypePointer Output %8
 %19 = OpConstant %5 0
 %21 = OpConstant %5 1
 %23 = OpConstant %5 2
@@ -96,13 +96,13 @@ OpBranch %26
 %14 = OpLoad %5 %13
 %15 = OpISub %5 %12 %14
 %16 = OpConvertUToF %8 %15
-%17 = OpInBoundsAccessChain %18 %11 %19
-OpStore %17 %16
-%20 = OpInBoundsAccessChain %18 %11 %21
+%18 = OpAccessChain %17 %11 %19
+OpStore %18 %16
+%20 = OpAccessChain %17 %11 %21
 OpStore %20 %16
-%22 = OpInBoundsAccessChain %18 %11 %23
+%22 = OpAccessChain %17 %11 %23
 OpStore %22 %16
-%24 = OpInBoundsAccessChain %18 %11 %25
+%24 = OpAccessChain %17 %11 %25
 OpStore %24 %16
 OpReturn
 OpFunctionEnd

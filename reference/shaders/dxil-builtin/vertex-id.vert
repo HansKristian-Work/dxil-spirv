@@ -80,7 +80,7 @@ OpDecorate %11 BuiltIn Position
 %9 = OpTypeVector %8 4
 %10 = OpTypePointer Output %9
 %11 = OpVariable %10 Output
-%15 = OpTypePointer Output %8
+%14 = OpTypePointer Output %8
 %16 = OpConstant %5 0
 %18 = OpConstant %5 1
 %20 = OpConstant %5 2
@@ -91,13 +91,13 @@ OpBranch %23
 %23 = OpLabel
 %12 = OpLoad %5 %7
 %13 = OpConvertUToF %8 %12
-%14 = OpInBoundsAccessChain %15 %11 %16
-OpStore %14 %13
-%17 = OpInBoundsAccessChain %15 %11 %18
+%15 = OpAccessChain %14 %11 %16
+OpStore %15 %13
+%17 = OpAccessChain %14 %11 %18
 OpStore %17 %13
-%19 = OpInBoundsAccessChain %15 %11 %20
+%19 = OpAccessChain %14 %11 %20
 OpStore %19 %13
-%21 = OpInBoundsAccessChain %15 %11 %22
+%21 = OpAccessChain %14 %11 %22
 OpStore %21 %13
 OpReturn
 OpFunctionEnd

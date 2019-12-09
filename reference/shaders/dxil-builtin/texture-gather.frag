@@ -184,25 +184,25 @@ OpDecorate %25 Location 0
 %23 = OpVariable %22 Input
 %24 = OpTypePointer Output %21
 %25 = OpVariable %24 Output
-%32 = OpTypePointer Input %5
+%31 = OpTypePointer Input %5
 %33 = OpTypeInt 32 0
 %34 = OpConstant %33 0
 %37 = OpConstant %33 1
 %40 = OpConstant %33 2
 %43 = OpConstant %33 3
 %45 = OpTypeImage %5 2D 0 0 0 2 Unknown
-%47 = OpTypeSampledImage %45
-%49 = OpTypeVector %5 2
+%46 = OpTypeSampledImage %45
+%48 = OpTypeVector %5 2
 %50 = OpTypeInt 32 1
 %51 = OpConstant %50 0
 %57 = OpTypeImage %5 2D 0 1 0 2 Unknown
-%59 = OpTypeSampledImage %57
-%61 = OpTypeVector %5 3
+%58 = OpTypeSampledImage %57
+%60 = OpTypeVector %5 3
 %71 = OpTypeImage %5 Cube 0 0 0 2 Unknown
-%73 = OpTypeSampledImage %71
+%72 = OpTypeSampledImage %71
 %84 = OpTypeImage %5 Cube 0 1 0 2 Unknown
-%86 = OpTypeSampledImage %84
-%98 = OpTypePointer Output %5
+%85 = OpTypeSampledImage %84
+%97 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %102
@@ -212,24 +212,24 @@ OpBranch %102
 %28 = OpLoad %9 %11
 %29 = OpLoad %6 %8
 %30 = OpLoad %18 %20
-%31 = OpInBoundsAccessChain %32 %23 %34
-%35 = OpLoad %5 %31
-%36 = OpInBoundsAccessChain %32 %23 %37
+%32 = OpAccessChain %31 %23 %34
+%35 = OpLoad %5 %32
+%36 = OpAccessChain %31 %23 %37
 %38 = OpLoad %5 %36
-%39 = OpInBoundsAccessChain %32 %23 %40
+%39 = OpAccessChain %31 %23 %40
 %41 = OpLoad %5 %39
-%42 = OpInBoundsAccessChain %32 %23 %43
+%42 = OpAccessChain %31 %23 %43
 %44 = OpLoad %5 %42
-%46 = OpSampledImage %47 %29 %30
-%48 = OpCompositeConstruct %49 %35 %38
-%52 = OpImageGather %21 %46 %48 %34
+%47 = OpSampledImage %46 %29 %30
+%49 = OpCompositeConstruct %48 %35 %38
+%52 = OpImageGather %21 %47 %49 %34
 %53 = OpCompositeExtract %5 %52 0
 %54 = OpCompositeExtract %5 %52 1
 %55 = OpCompositeExtract %5 %52 2
 %56 = OpCompositeExtract %5 %52 3
-%58 = OpSampledImage %59 %28 %30
-%60 = OpCompositeConstruct %61 %35 %38 %41
-%62 = OpImageGather %21 %58 %60 %37
+%59 = OpSampledImage %58 %28 %30
+%61 = OpCompositeConstruct %60 %35 %38 %41
+%62 = OpImageGather %21 %59 %61 %37
 %63 = OpCompositeExtract %5 %62 0
 %64 = OpCompositeExtract %5 %62 1
 %65 = OpCompositeExtract %5 %62 2
@@ -238,9 +238,9 @@ OpBranch %102
 %68 = OpFAdd %5 %64 %54
 %69 = OpFAdd %5 %65 %55
 %70 = OpFAdd %5 %66 %56
-%72 = OpSampledImage %73 %27 %30
-%74 = OpCompositeConstruct %61 %35 %38 %41
-%75 = OpImageGather %21 %72 %74 %40
+%73 = OpSampledImage %72 %27 %30
+%74 = OpCompositeConstruct %60 %35 %38 %41
+%75 = OpImageGather %21 %73 %74 %40
 %76 = OpCompositeExtract %5 %75 0
 %77 = OpCompositeExtract %5 %75 1
 %78 = OpCompositeExtract %5 %75 2
@@ -249,9 +249,9 @@ OpBranch %102
 %81 = OpFAdd %5 %68 %77
 %82 = OpFAdd %5 %69 %78
 %83 = OpFAdd %5 %70 %79
-%85 = OpSampledImage %86 %26 %30
+%86 = OpSampledImage %85 %26 %30
 %87 = OpCompositeConstruct %21 %35 %38 %41 %44
-%88 = OpImageGather %21 %85 %87 %43
+%88 = OpImageGather %21 %86 %87 %43
 %89 = OpCompositeExtract %5 %88 0
 %90 = OpCompositeExtract %5 %88 1
 %91 = OpCompositeExtract %5 %88 2
@@ -260,13 +260,13 @@ OpBranch %102
 %94 = OpFAdd %5 %81 %90
 %95 = OpFAdd %5 %82 %91
 %96 = OpFAdd %5 %83 %92
-%97 = OpInBoundsAccessChain %98 %25 %34
-OpStore %97 %93
-%99 = OpInBoundsAccessChain %98 %25 %37
+%98 = OpAccessChain %97 %25 %34
+OpStore %98 %93
+%99 = OpAccessChain %97 %25 %37
 OpStore %99 %94
-%100 = OpInBoundsAccessChain %98 %25 %40
+%100 = OpAccessChain %97 %25 %40
 OpStore %100 %95
-%101 = OpInBoundsAccessChain %98 %25 %43
+%101 = OpAccessChain %97 %25 %43
 OpStore %101 %96
 OpReturn
 OpFunctionEnd

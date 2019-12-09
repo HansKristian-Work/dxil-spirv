@@ -248,12 +248,12 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			for (auto &arg : *op)
 			{
 				if (literal_mask & 1u)
+					inst->addImmediateOperand(arg);
+				else
 				{
 					assert(arg);
 					inst->addIdOperand(arg);
 				}
-				else
-					inst->addImmediateOperand(arg);
 				literal_mask >>= 1u;
 			}
 			bb->addInstruction(std::move(inst));

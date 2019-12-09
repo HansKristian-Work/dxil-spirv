@@ -132,15 +132,11 @@ struct Converter::Impl
 
 	std::vector<Operation *> *current_block = nullptr;
 	void add(Operation *op);
-	Operation *allocate_op();
 	Operation *allocate(spv::Op op);
 	Operation *allocate(spv::Op op, const llvm::Value *value);
 	Operation *allocate(spv::Op op, spv::Id type_id);
 	Operation *allocate(spv::Op op, const llvm::Value *value, spv::Id type_id);
 	Operation *allocate(spv::Op op, spv::Id id, spv::Id type_id);
 	spv::Builder &builder();
-
-private:
-	spv::Id allocate_id();
 };
 } // namespace DXIL2SPIRV
