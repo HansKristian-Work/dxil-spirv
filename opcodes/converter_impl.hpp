@@ -66,6 +66,7 @@ struct Converter::Impl
 
 	void emit_stage_input_variables();
 	void emit_stage_output_variables();
+	void emit_patch_variables();
 	void emit_global_variables();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
@@ -116,6 +117,7 @@ struct Converter::Impl
 	};
 	std::unordered_map<uint32_t, ElementMeta> input_elements_meta;
 	std::unordered_map<uint32_t, ElementMeta> output_elements_meta;
+	std::unordered_map<uint32_t, ElementMeta> patch_elements_meta;
 	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage);
 
 	bool emit_instruction(CFGNode *block, const llvm::Instruction &instruction);

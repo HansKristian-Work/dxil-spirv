@@ -58,13 +58,26 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	uint32_t ptr_id;
 
 	spv::Id input_type_id = builder.getDerefTypeId(var_id);
-	if (builder.isArrayType(input_type_id))
+
+	bool array_index = false;
+	if (impl.execution_model == spv::ExecutionModelTessellationControl ||
+	    impl.execution_model == spv::ExecutionModelGeometry ||
+	    impl.execution_model == spv::ExecutionModelTessellationEvaluation)
+	{
 		input_type_id = builder.getContainedTypeId(input_type_id);
-	uint32_t num_rows = builder.getNumTypeComponents(input_type_id);
+		array_index = true;
+	}
 
-	bool array_index = !llvm::isa<llvm::UndefValue>(instruction->getOperand(4));
+	bool row_index = false;
+	if (builder.isArrayType(input_type_id))
+	{
+		row_index = true;
+		input_type_id = builder.getContainedTypeId(input_type_id);
+	}
 
-	if (num_rows > 1 || array_index)
+	uint32_t num_cols = builder.getNumTypeComponents(input_type_id);
+
+	if (num_cols > 1 || row_index || array_index)
 	{
 		// Need to deal with signed vs unsigned here.
 		Operation *op =
@@ -73,13 +86,12 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 		ptr_id = op->id;
 
 		op->add_id(var_id);
+		// Vertex array index for GS/DS/HS.
 		if (array_index)
-		{
-			// Vertex array index for GS/DS/HS.
 			op->add_id(impl.get_id_for_value(instruction->getOperand(4)));
-		}
-
-		if (num_rows > 1)
+		if (row_index)
+			op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		if (num_cols > 1)
 			op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
 
 		impl.add(op);
@@ -232,13 +244,19 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	uint32_t ptr_id;
 
 	spv::Id output_type_id = builder.getDerefTypeId(var_id);
-	if (builder.isArrayType(output_type_id))
-		output_type_id = builder.getContainedTypeId(output_type_id);
-	uint32_t num_rows = builder.getNumTypeComponents(output_type_id);
-
 	bool is_control_point_output = impl.execution_model == spv::ExecutionModelTessellationControl;
+	if (is_control_point_output)
+		output_type_id = builder.getContainedTypeId(output_type_id);
 
-	if (num_rows > 1 || is_control_point_output)
+	bool row_index = false;
+	if (builder.isArrayType(output_type_id))
+	{
+		row_index = true;
+		output_type_id = builder.getContainedTypeId(output_type_id);
+	}
+	uint32_t num_cols = builder.getNumTypeComponents(output_type_id);
+
+	if (num_cols > 1 || row_index || is_control_point_output)
 	{
 		Operation *op = impl.allocate(
 		    spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
@@ -247,7 +265,9 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 		op->add_id(var_id);
 		if (is_control_point_output)
 			op->add_id(build_load_invocation_id(impl));
-		if (num_rows > 1)
+		if (row_index)
+			op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		if (num_cols > 1)
 			op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
 
 		impl.add(op);

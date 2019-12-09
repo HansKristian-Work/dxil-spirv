@@ -12,6 +12,7 @@ struct PatchConstant
 {
 	float outer[4] : SV_TessFactor;
 	float inner[2] : SV_InsideTessFactor;
+	float patch : PATCH;
 };
 
 [domain("quad")]
@@ -35,5 +36,6 @@ PatchConstant main_patch(OutputPatch<HSControlPoint, 4> op, InputPatch<VSControl
 	pc.outer[1] = ip[1].value;
 	pc.outer[2] = ip[2].value;
 	pc.outer[3] = ip[0].value + op[0].value;
+	pc.patch = 2.0;
 	return pc;
 }

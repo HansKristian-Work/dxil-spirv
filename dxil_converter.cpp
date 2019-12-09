@@ -512,18 +512,11 @@ spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned 
 		return 0;
 	}
 
-	if (rows == 1 && cols == 1)
-		return component_type;
-	else if (rows == 1)
-	{
-		auto vector_type = builder.makeVectorType(component_type, cols);
-		return vector_type;
-	}
-	else
-	{
-		auto matrix_type = builder.makeMatrixType(component_type, rows, cols);
-		return matrix_type;
-	}
+	if (cols > 1)
+		component_type = builder.makeVectorType(component_type, cols);
+	if (rows > 1)
+		component_type = builder.makeArrayType(component_type, builder.makeUintConstant(rows), 0);
+	return component_type;
 }
 
 spv::Id Converter::Impl::get_type_id(spv::Id id) const
@@ -533,6 +526,79 @@ spv::Id Converter::Impl::get_type_id(spv::Id id) const
 		return 0;
 	else
 		return itr->second;
+}
+
+void Converter::Impl::emit_patch_variables()
+{
+	auto &module = bitcode_parser.get_module();
+	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
+	auto *node = ep_meta->getOperand(0);
+
+	if (!node->getOperand(2))
+		return;
+
+	auto &signature = node->getOperand(2);
+	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
+	auto &patch_variables = signature_node->getOperand(2);
+	if (!patch_variables)
+		return;
+
+	auto *patch_node = llvm::dyn_cast<llvm::MDNode>(patch_variables);
+
+	auto &builder = spirv_module.get_builder();
+
+	spv::StorageClass storage = execution_model == spv::ExecutionModelTessellationControl ?
+			spv::StorageClassOutput : spv::StorageClassInput;
+
+	unsigned location = 0;
+
+	for (unsigned i = 0; i < patch_node->getNumOperands(); i++)
+	{
+		auto *output = llvm::cast<llvm::MDNode>(patch_node->getOperand(i));
+		auto element_id = get_constant_metadata(output, 0);
+		auto semantic_name = get_string_metadata(output, 1);
+		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2));
+		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
+
+		// Semantic index?
+		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(output, 5));
+		auto rows = get_constant_metadata(output, 6);
+		auto cols = get_constant_metadata(output, 7);
+
+#if 0
+		auto start_row = get_constant_metadata(input, 8);
+		auto col = get_constant_metadata(input, 9);
+#endif
+
+#if 0
+		LOGE("Semantic output %u: %s\n", element_id, semantic_name.c_str());
+		LOGE("  Type: %u\n", element_type);
+		LOGE("  System value: %u\n", system_value);
+		LOGE("  Interpolation: %u\n", interpolation);
+		LOGE("  Rows: %u\n", rows);
+		LOGE("  Cols: %u\n", cols);
+		LOGE("  Start row: %u\n", start_row);
+		LOGE("  Col: %u\n", col);
+#endif
+
+		spv::Id type_id = get_type_id(element_type, rows, cols);
+		spv::Id variable_id = builder.createVariable(storage, type_id, semantic_name.c_str());
+		patch_elements_meta[element_id] = { variable_id, element_type };
+
+		if (system_value != DXIL::Semantic::User)
+		{
+			emit_builtin_decoration(variable_id, system_value, storage);
+		}
+		else
+		{
+			emit_interpolation_decorations(variable_id, interpolation);
+			builder.addDecoration(variable_id, spv::DecorationLocation, location);
+			location += rows;
+		}
+
+		builder.addDecoration(variable_id, spv::DecorationPatch);
+		spirv_module.get_entry_point()->addIdOperand(variable_id);
+	}
 }
 
 void Converter::Impl::emit_stage_output_variables()
@@ -674,6 +740,16 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::InstanceID:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInInstanceIndex);
 		spirv_module.register_builtin_shader_input(id, spv::BuiltInInstanceIndex);
+		break;
+
+	case DXIL::Semantic::InsideTessFactor:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInTessLevelInner);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInTessLevelInner);
+		break;
+
+	case DXIL::Semantic::TessFactor:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInTessLevelOuter);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInTessLevelOuter);
 		break;
 
 	default:
@@ -1134,6 +1210,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	emit_resources();
 	emit_stage_input_variables();
 	emit_stage_output_variables();
+	emit_patch_variables();
 	emit_global_variables();
 
 	llvm::Function *func = module->getFunction(get_entry_point_name(*module));

@@ -3,6 +3,7 @@ layout(vertices = 4) out;
 
 layout(location = 0) in float VSValue[];
 layout(location = 0) out float HSValue[4];
+layout(location = 0) patch out float PATCH;
 
 void main()
 {
@@ -38,6 +39,7 @@ define void @"\01?main_patch@@YA?AUPatchConstant@@V?$OutputPatch@UHSControlPoint
   call void @dx.op.storePatchConstant.f32(i32 106, i32 0, i32 2, i8 0, float %5)
   %6 = fadd fast float %1, %3
   call void @dx.op.storePatchConstant.f32(i32 106, i32 0, i32 3, i8 0, float %6)
+  call void @dx.op.storePatchConstant.f32(i32 106, i32 2, i32 0, i8 0, float 2.000000e+00)
   ret void
 }
 
@@ -68,7 +70,7 @@ attributes #1 = { nounwind }
 !2 = !{i32 1, i32 5}
 !3 = !{!"hs", i32 6, i32 0}
 !4 = !{[5 x i32] [i32 1, i32 1, i32 1, i32 24, i32 8947848]}
-!5 = !{void ()* @main, !"main", !6, null, !18}
+!5 = !{void ()* @main, !"main", !6, null, !19}
 !6 = !{!7, !11, !13}
 !7 = !{!8}
 !8 = !{i32 0, !"VSValue", i8 9, i8 0, !9, i8 2, i32 1, i8 1, i32 0, i8 0, !10}
@@ -76,34 +78,44 @@ attributes #1 = { nounwind }
 !10 = !{i32 3, i32 1}
 !11 = !{!12}
 !12 = !{i32 0, !"HSValue", i8 9, i8 0, !9, i8 2, i32 1, i8 1, i32 0, i8 0, !10}
-!13 = !{!14, !16}
+!13 = !{!14, !16, !18}
 !14 = !{i32 0, !"SV_TessFactor", i8 9, i8 25, !15, i8 0, i32 4, i8 1, i32 0, i8 3, !10}
 !15 = !{i32 0, i32 1, i32 2, i32 3}
 !16 = !{i32 1, !"SV_InsideTessFactor", i8 9, i8 26, !17, i8 0, i32 2, i8 1, i32 4, i8 3, !10}
 !17 = !{i32 0, i32 1}
-!18 = !{i32 3, !19}
-!19 = !{void ()* @"\01?main_patch@@YA?AUPatchConstant@@V?$OutputPatch@UHSControlPoint@@$03@@V?$InputPatch@UVSControlPoint@@$04@@@Z", i32 5, i32 4, i32 3, i32 1, i32 3, float 6.400000e+01}
+!18 = !{i32 2, !"PATCH", i8 9, i8 0, !9, i8 0, i32 1, i8 1, i32 0, i8 0, !10}
+!19 = !{i32 3, !20}
+!20 = !{void ()* @"\01?main_patch@@YA?AUPatchConstant@@V?$OutputPatch@UHSControlPoint@@$03@@V?$InputPatch@UVSControlPoint@@$04@@@Z", i32 5, i32 4, i32 3, i32 1, i32 3, float 6.400000e+01}
 #endif
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 34
+; Bound: 39
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
 OpMemoryModel Logical GLSL450
-OpEntryPoint TessellationControl %3 "main" %10 %14 %30
+OpEntryPoint TessellationControl %3 "main" %10 %14 %15 %19 %21 %35
 OpExecutionMode %3 Quads
 OpExecutionMode %3 VertexOrderCw
 OpExecutionMode %3 OutputVertices 4
 OpName %3 "main"
 OpName %10 "VSValue"
 OpName %14 "HSValue"
+OpName %15 "SV_TessFactor"
+OpName %19 "SV_InsideTessFactor"
+OpName %21 "PATCH"
 OpDecorate %10 Location 0
 OpDecorate %14 Location 0
-OpDecorate %30 BuiltIn InvocationId
+OpDecorate %15 BuiltIn TessLevelOuter
+OpDecorate %15 Patch
+OpDecorate %19 BuiltIn TessLevelInner
+OpDecorate %19 Patch
+OpDecorate %21 Location 0
+OpDecorate %21 Patch
+OpDecorate %35 BuiltIn InvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -116,28 +128,33 @@ OpDecorate %30 BuiltIn InvocationId
 %12 = OpTypeArray %5 %11
 %13 = OpTypePointer Output %12
 %14 = OpVariable %13 Output
-%15 = OpTypePointer Input %5
-%17 = OpConstant %6 0
-%20 = OpConstant %6 1
-%24 = OpConstant %6 2
-%27 = OpTypePointer Output %5
-%29 = OpTypePointer Input %6
-%30 = OpVariable %29 Input
+%15 = OpVariable %13 Output
+%16 = OpConstant %6 2
+%17 = OpTypeArray %5 %16
+%18 = OpTypePointer Output %17
+%19 = OpVariable %18 Output
+%20 = OpTypePointer Output %5
+%21 = OpVariable %20 Output
+%22 = OpTypePointer Input %5
+%24 = OpConstant %6 0
+%27 = OpConstant %6 1
+%34 = OpTypePointer Input %6
+%35 = OpVariable %34 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %32
-%32 = OpLabel
-%16 = OpAccessChain %15 %10 %17
-%18 = OpLoad %5 %16
-%19 = OpAccessChain %15 %10 %20
-%21 = OpLoad %5 %19
-%22 = OpFAdd %5 %21 %18
-%23 = OpAccessChain %15 %10 %24
+OpBranch %37
+%37 = OpLabel
+%23 = OpAccessChain %22 %10 %24
 %25 = OpLoad %5 %23
-%26 = OpFAdd %5 %22 %25
-%31 = OpLoad %6 %30
-%28 = OpAccessChain %27 %14 %31
-OpStore %28 %26
+%26 = OpAccessChain %22 %10 %27
+%28 = OpLoad %5 %26
+%29 = OpFAdd %5 %28 %25
+%30 = OpAccessChain %22 %10 %16
+%31 = OpLoad %5 %30
+%32 = OpFAdd %5 %29 %31
+%36 = OpLoad %6 %35
+%33 = OpAccessChain %20 %14 %36
+OpStore %33 %32
 OpReturn
 OpFunctionEnd
 #endif
