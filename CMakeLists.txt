@@ -83,6 +83,7 @@ add_library(dxil-converter STATIC
         opcodes/dxil/dxil_arithmetic.hpp opcodes/dxil/dxil_arithmetic.cpp
         opcodes/dxil/dxil_pixel_ops.hpp opcodes/dxil/dxil_pixel_ops.cpp
         opcodes/dxil/dxil_geometry.hpp opcodes/dxil/dxil_geometry.cpp
+        opcodes/dxil/dxil_tessellation.hpp opcodes/dxil/dxil_tessellation.cpp
         opcodes/dxil/dxil_sampling.hpp opcodes/dxil/dxil_sampling.cpp
         opcodes/dxil/dxil_buffer.hpp opcodes/dxil/dxil_buffer.cpp
         opcodes/opcodes_llvm_builtins.hpp opcodes/opcodes_llvm_builtins.cpp

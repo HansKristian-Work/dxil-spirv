@@ -5,9 +5,30 @@ layout(location = 0) in float VSValue[];
 layout(location = 0) out float HSValue[4];
 layout(location = 0) patch out float PATCH;
 
-void main()
+void hull_main()
 {
     HSValue[gl_InvocationID] = (VSValue[1u] + VSValue[0u]) + VSValue[2u];
+}
+
+void patch_main()
+{
+    gl_TessLevelInner[0u] = HSValue[0u];
+    gl_TessLevelInner[1u] = HSValue[1u];
+    gl_TessLevelOuter[0u] = VSValue[0u];
+    gl_TessLevelOuter[1u] = VSValue[1u];
+    gl_TessLevelOuter[2u] = VSValue[2u];
+    gl_TessLevelOuter[3u] = HSValue[0u] + VSValue[0u];
+    PATCH = 2.0;
+}
+
+void main()
+{
+    hull_main();
+    barrier();
+    if (gl_InvocationID == 0u)
+    {
+        patch_main();
+    }
 }
 
 
@@ -92,7 +113,7 @@ attributes #1 = { nounwind }
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 39
+; Bound: 73
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
@@ -108,6 +129,8 @@ OpName %14 "HSValue"
 OpName %15 "SV_TessFactor"
 OpName %19 "SV_InsideTessFactor"
 OpName %21 "PATCH"
+OpName %56 "hull_main"
+OpName %58 "patch_main"
 OpDecorate %10 Location 0
 OpDecorate %14 Location 0
 OpDecorate %15 BuiltIn TessLevelOuter
@@ -141,10 +164,29 @@ OpDecorate %35 BuiltIn InvocationId
 %27 = OpConstant %6 1
 %34 = OpTypePointer Input %6
 %35 = OpVariable %34 Input
+%54 = OpConstant %6 3
+%55 = OpConstant %5 2
+%62 = OpTypeBool
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %37
-%37 = OpLabel
+OpBranch %65
+%65 = OpLabel
+%60 = OpFunctionCall %1 %56
+%61 = OpLoad %6 %35
+%63 = OpIEqual %62 %61 %24
+OpControlBarrier %16 %11 %24
+OpSelectionMerge %67 None
+OpBranchConditional %63 %66 %67
+%66 = OpLabel
+%64 = OpFunctionCall %1 %58
+OpBranch %67
+%67 = OpLabel
+OpReturn
+OpFunctionEnd
+%56 = OpFunction %1 None %2
+%57 = OpLabel
+OpBranch %69
+%69 = OpLabel
 %23 = OpAccessChain %22 %10 %24
 %25 = OpLoad %5 %23
 %26 = OpAccessChain %22 %10 %27
@@ -156,6 +198,36 @@ OpBranch %37
 %36 = OpLoad %6 %35
 %33 = OpAccessChain %20 %14 %36
 OpStore %33 %32
+OpReturn
+OpFunctionEnd
+%58 = OpFunction %1 None %2
+%59 = OpLabel
+OpBranch %71
+%71 = OpLabel
+%37 = OpAccessChain %20 %14 %24
+%38 = OpLoad %5 %37
+%39 = OpAccessChain %20 %19 %24
+OpStore %39 %38
+%40 = OpAccessChain %20 %14 %27
+%41 = OpLoad %5 %40
+%42 = OpAccessChain %20 %19 %27
+OpStore %42 %41
+%43 = OpAccessChain %22 %10 %24
+%44 = OpLoad %5 %43
+%45 = OpAccessChain %20 %15 %24
+OpStore %45 %44
+%46 = OpAccessChain %22 %10 %27
+%47 = OpLoad %5 %46
+%48 = OpAccessChain %20 %15 %27
+OpStore %48 %47
+%49 = OpAccessChain %22 %10 %16
+%50 = OpLoad %5 %49
+%51 = OpAccessChain %20 %15 %16
+OpStore %51 %50
+%52 = OpFAdd %5 %38 %44
+%53 = OpAccessChain %20 %15 %54
+OpStore %53 %52
+OpStore %21 %55
 OpReturn
 OpFunctionEnd
 #endif

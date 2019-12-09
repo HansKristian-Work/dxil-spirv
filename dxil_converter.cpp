@@ -1279,8 +1279,11 @@ CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &poo
 {
 	auto *hull_main = convert_function(func, pool);
 	auto *patch_main = convert_function(execution_mode_meta.patch_constant_function, pool);
-	auto *hull_func = builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {});
-	auto *patch_func = builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "patch_main", {}, {});
+
+	// Just make sure there is an entry block already created.
+	spv::Block *hull_entry, *patch_entry;
+	auto *hull_func = builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {}, &hull_entry);
+	auto *patch_func = builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "patch_main", {}, {}, &patch_entry);
 
 	leaves.push_back({ hull_main, hull_func });
 	leaves.push_back({ patch_main, patch_func });

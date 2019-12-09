@@ -27,6 +27,7 @@
 #include "opcodes/dxil/dxil_pixel_ops.hpp"
 #include "opcodes/dxil/dxil_resources.hpp"
 #include "opcodes/dxil/dxil_sampling.hpp"
+#include "opcodes/dxil/dxil_tessellation.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -143,6 +144,10 @@ struct DXILDispatcher
 		OP(CutStream) = emit_cut_stream_instruction;
 		OP(EmitThenCutStream) = emit_then_cut_stream_instruction;
 		OP(GSInstanceID) = emit_gs_instance_instruction;
+
+		// dxil_tessellation.hpp
+		OP(StorePatchConstant) = emit_store_patch_constant_instruction;
+		OP(LoadOutputControlPoint) = emit_load_output_control_point_instruction;
 	}
 
 #undef OP
