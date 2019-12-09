@@ -22,13 +22,29 @@ struct PatchConstant
 [patchconstantfunc("main_patch")]
 HSControlPoint main(InputPatch<VSControlPoint, 5> ip)
 {
+	// Test that alloca gets directly appropriately.
+	float4 v;
+	v.x = ip[0].value;
+	v.y = ip[1].value;
+	v.z = ip[2].value;
+	v.w = ip[3].value;
+	v[int(ip[0].value)] += 40.0;
+
 	HSControlPoint cp;
-	cp.value = ip[0].value + ip[1].value + ip[2].value;
+	cp.value = ip[0].value + ip[1].value + ip[2].value + v[3];
 	return cp;
 }
 
 PatchConstant main_patch(OutputPatch<HSControlPoint, 4> op, InputPatch<VSControlPoint, 5> ip)
 {
+	// Test that alloca gets directly appropriately.
+	float4 v;
+	v.x = ip[0].value;
+	v.y = ip[1].value;
+	v.z = ip[2].value;
+	v.w = ip[3].value;
+	v[int(ip[0].value)] += 40.0;
+
 	PatchConstant pc;
 	pc.inner[0] = op[0].value;
 	pc.inner[1] = op[1].value;
@@ -36,6 +52,6 @@ PatchConstant main_patch(OutputPatch<HSControlPoint, 4> op, InputPatch<VSControl
 	pc.outer[1] = ip[1].value;
 	pc.outer[2] = ip[2].value;
 	pc.outer[3] = ip[0].value + op[0].value;
-	pc.patch = 2.0;
+	pc.patch = v[3];
 	return pc;
 }
