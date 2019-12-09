@@ -153,7 +153,7 @@ struct DXILDispatcher
 // Sets up LUT once.
 static DXILDispatcher global_dispatcher;
 
-bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_dxil_instruction(Converter::Impl &impl,
                            const llvm::CallInst *instruction)
 {
 	// The opcode is encoded as a constant integer.
@@ -173,6 +173,6 @@ bool emit_dxil_instruction(std::vector<Operation> &ops, Converter::Impl &impl, s
 		return false;
 	}
 
-	return global_dispatcher.builder_lut[opcode](ops, impl, builder, instruction);
+	return global_dispatcher.builder_lut[opcode](impl, instruction);
 }
 } // namespace DXIL2SPIRV

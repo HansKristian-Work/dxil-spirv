@@ -794,7 +794,7 @@ void Converter::Impl::emit_stage_input_variables()
 	}
 }
 
-spv::Id Converter::Impl::build_sampled_image(std::vector<Operation> &ops, spv::Id image_id, spv::Id sampler_id,
+spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_id,
                                              bool comparison)
 {
 	auto &builder = spirv_module.get_builder();
@@ -808,17 +808,13 @@ spv::Id Converter::Impl::build_sampled_image(std::vector<Operation> &ops, spv::I
 	    builder.makeImageType(sampled_format, dim, comparison, arrayed, multisampled, 2, spv::ImageFormatUnknown);
 
 	spv::Id id = spirv_module.allocate_id();
-	Operation op;
-	op.op = spv::OpSampledImage;
-	op.id = id;
-	op.type_id = builder.makeSampledImageType(image_type_id);
-	op.arguments = { image_id, sampler_id };
-
-	ops.push_back(std::move(op));
+	Operation *op = allocate(spv::OpSampledImage, builder.makeSampledImageType(image_type_id));
+	op->add_ids({ image_id, sampler_id });
+	add(op);
 	return id;
 }
 
-spv::Id Converter::Impl::build_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements,
+spv::Id Converter::Impl::build_vector(spv::Id element_type, spv::Id *elements,
                                       unsigned count)
 {
 	if (count == 1)
@@ -827,17 +823,15 @@ spv::Id Converter::Impl::build_vector(std::vector<Operation> &ops, spv::Id eleme
 	uint32_t id = spirv_module.allocate_id();
 	auto &builder = spirv_module.get_builder();
 
-	Operation op;
-	op.op = spv::OpCompositeConstruct;
-	op.id = id;
-	op.type_id = builder.makeVectorType(element_type, count);
-	op.arguments.insert(op.arguments.end(), elements, elements + count);
+	Operation *op = allocate(spv::OpCompositeConstruct, builder.makeVectorType(element_type, count));
+	for (unsigned i = 0; i < count; i++)
+		op->add_id(elements[i]);
 
-	ops.push_back(std::move(op));
+	add(op);
 	return id;
 }
 
-spv::Id Converter::Impl::build_constant_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements,
+spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, spv::Id *elements,
                                                unsigned count)
 {
 	if (count == 1)
@@ -847,7 +841,7 @@ spv::Id Converter::Impl::build_constant_vector(std::vector<Operation> &ops, spv:
 	return builder.makeCompositeConstant(builder.makeVectorType(element_type, count), { elements, elements + count });
 }
 
-spv::Id Converter::Impl::build_offset(std::vector<Operation> &ops, spv::Id value, unsigned offset)
+spv::Id Converter::Impl::build_offset(spv::Id value, unsigned offset)
 {
 	if (offset == 0)
 		return value;
@@ -855,47 +849,34 @@ spv::Id Converter::Impl::build_offset(std::vector<Operation> &ops, spv::Id value
 	auto &builder = spirv_module.get_builder();
 	spv::Id id = allocate_id();
 
-	Operation op;
-	op.op = spv::OpIAdd;
-	op.id = id;
-	op.type_id = builder.makeUintType(32);
-	op.arguments = { value, builder.makeUintConstant(offset) };
+	Operation *op = allocate(spv::OpIAdd, builder.makeUintType(32));
+	op->add_ids({ value, builder.makeUintConstant(offset) });
 
-	ops.push_back(std::move(op));
+	add(op);
 	return id;
 }
 
-void Converter::Impl::fixup_load_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
+void Converter::Impl::fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
 {
 	if (component_type == DXIL::ComponentType::I32)
 	{
 		auto &builder = spirv_module.get_builder();
-		spv::Id new_id = allocate_id();
-		Operation op;
-		op.op = spv::OpBitcast;
-		op.id = new_id;
-		op.type_id = get_type_id(DXIL::ComponentType::U32, 1, components);
-		op.arguments = { get_id_for_value(value) };
-		value_map[value] = new_id;
-
-		ops.push_back(std::move(op));
+		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, components));
+		op->add_id(get_id_for_value(value));
+		add(op);
+		value_map[value] = op->id;
 	}
 }
 
-spv::Id Converter::Impl::fixup_store_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, spv::Id value)
+spv::Id Converter::Impl::fixup_store_sign(DXIL::ComponentType component_type, unsigned components, spv::Id value)
 {
 	if (component_type == DXIL::ComponentType::I32)
 	{
 		auto &builder = spirv_module.get_builder();
-		spv::Id new_id = allocate_id();
-		Operation op;
-		op.op = spv::OpBitcast;
-		op.id = new_id;
-		op.type_id = get_type_id(DXIL::ComponentType::I32, 1, components);
-		op.arguments = { value };
-
-		ops.push_back(std::move(op));
-		return new_id;
+		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::I32, 1, components));
+		op->add_id(value);
+		add(op);
+		return op->id;
 	}
 	else
 		return value;
@@ -926,15 +907,14 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	if (instruction.isTerminator())
 		return true;
 
-	auto &ops = block->ir.operations;
-	auto &builder = spirv_module.get_builder();
+	current_block = &block->ir.operations;
 
 	if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&instruction))
 	{
 		auto *called_function = call_inst->getCalledFunction();
 		if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 		{
-			return emit_dxil_instruction(ops, *this, builder, call_inst);
+			return emit_dxil_instruction(*this, call_inst);
 		}
 		else
 		{
@@ -943,28 +923,29 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		}
 	}
 	else if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))
-		return emit_binary_instruction(ops, *this, builder, binary_inst);
+		return emit_binary_instruction(*this, binary_inst);
 	else if (auto *unary_inst = llvm::dyn_cast<llvm::UnaryOperator>(&instruction))
-		return emit_unary_instruction(ops, *this, builder, unary_inst);
+		return emit_unary_instruction(*this, unary_inst);
 	else if (auto *cast_inst = llvm::dyn_cast<llvm::CastInst>(&instruction))
-		return emit_cast_instruction(ops, *this, builder, cast_inst);
+		return emit_cast_instruction(*this, cast_inst);
 	else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&instruction))
-		return emit_getelementptr_instruction(ops, *this, builder, getelementptr_inst);
+		return emit_getelementptr_instruction(*this, getelementptr_inst);
 	else if (auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(&instruction))
-		return emit_load_instruction(ops, *this, builder, load_inst);
+		return emit_load_instruction(*this, load_inst);
 	else if (auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(&instruction))
-		return emit_store_instruction(ops, *this, builder, store_inst);
+		return emit_store_instruction(*this, store_inst);
 	else if (auto *compare_inst = llvm::dyn_cast<llvm::CmpInst>(&instruction))
-		return emit_compare_instruction(ops, *this, builder, compare_inst);
+		return emit_compare_instruction(*this, compare_inst);
 	else if (auto *extract_inst = llvm::dyn_cast<llvm::ExtractValueInst>(&instruction))
-		return emit_extract_value_instruction(ops, *this, builder, extract_inst);
+		return emit_extract_value_instruction(*this, extract_inst);
 	else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&instruction))
-		return emit_alloca_instruction(ops, *this, builder, alloca_inst);
+		return emit_alloca_instruction(*this, alloca_inst);
 	else if (auto *select_inst = llvm::dyn_cast<llvm::SelectInst>(&instruction))
-		return emit_select_instruction(ops, *this, builder, select_inst);
+		return emit_select_instruction(*this, select_inst);
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
 		return emit_phi_instruction(block, *phi_inst);
 
+	current_block = nullptr;
 	return false;
 }
 

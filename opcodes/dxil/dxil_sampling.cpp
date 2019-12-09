@@ -55,9 +55,10 @@ bool get_image_dimensions_query_size(Converter::Impl &impl, spv::Builder &builde
 	return true;
 }
 
-bool get_image_dimensions(Converter::Impl &impl, spv::Builder &builder, spv::Id image_id, uint32_t *num_coords,
+bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num_coords,
                           uint32_t *num_dimensions)
 {
+	auto &builder = impl.builder();
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
 	bool arrayed = builder.isArrayedImageType(image_type_id);
@@ -152,43 +153,35 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	else
 		aux_argument = builder.makeFloatConstant(0.0f);
 
-	Operation *op = impl.allocate_op();
+	spv::Op spv_op;
 
 	switch (opcode)
 	{
 	case DXIL::Op::SampleLevel:
-		op->op = spv::OpImageSampleExplicitLod;
+		spv_op = spv::OpImageSampleExplicitLod;
 		break;
 
 	case DXIL::Op::Sample:
 	case DXIL::Op::SampleBias:
-		op->op = spv::OpImageSampleImplicitLod;
+		spv_op = spv::OpImageSampleImplicitLod;
 		break;
 
 	case DXIL::Op::SampleCmp:
-		op->op = spv::OpImageSampleDrefImplicitLod;
+		spv_op = spv::OpImageSampleDrefImplicitLod;
 		break;
 
 	case DXIL::Op::SampleCmpLevelZero:
-		op->op = spv::OpImageSampleDrefExplicitLod;
+		spv_op = spv::OpImageSampleDrefExplicitLod;
 		break;
 
 	default:
 		return false;
 	}
 
-	spv::Id sampled_value_id = 0;
-
 	// Comparison sampling only returns a scalar, so we'll need to splat out result.
-	if (comparison_sampling)
-	{
-		sampled_value_id = impl.allocate_id();
-		op->id = sampled_value_id;
-	}
-	else
-		op->id = impl.get_id_for_value(instruction);
+	Operation *op = impl.allocate(spv_op, instruction,
+	                              impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4));
 
-	op->type_id = impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4);
 	op->add_id(combined_image_sampler_id);
 	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
 
@@ -210,9 +203,10 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	if (comparison_sampling)
 	{
-		op = impl.allocate(spv::OpCompositeConstruct, instruction, builder.makeVectorType(builder.makeFloatType(32), 4));
-		op->add_ids({ sampled_value_id, sampled_value_id, sampled_value_id, sampled_value_id });
-		impl.add(op);
+		Operation *splat_op = impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeFloatType(32), 4));
+		splat_op->add_ids({ op->id, op->id, op->id, op->id });
+		impl.add(splat_op);
+		impl.value_map[instruction] = op->id;
 	}
 
 	// Deal with signed component types.
@@ -221,16 +215,17 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	return true;
 }
 
-bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_sample_grad_instruction(Converter::Impl &impl,
                                   const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
-	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, false);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	unsigned num_coords_full, num_coords;
-	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
 	uint32_t image_ops = spv::ImageOperandsGradMask;
@@ -272,35 +267,35 @@ bool emit_sample_grad_instruction(std::vector<Operation> &ops, Converter::Impl &
 		builder.addCapability(spv::CapabilityMinLod);
 	}
 
-	Operation op;
-	op.op = spv::OpImageSampleExplicitLod;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(meta.component_type, 1, 4);
+	Operation *op = impl.allocate(spv::OpImageSampleExplicitLod, instruction, impl.get_type_id(meta.component_type, 1, 4));
 
-	op.arguments.push_back(combined_image_sampler_id);
-	op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), coord, num_coords_full));
-	op.arguments.push_back(image_ops);
+	op->add_ids({
+		combined_image_sampler_id,
+		impl.build_vector(builder.makeFloatType(32), coord, num_coords_full),
+		image_ops,
+	});
 
 	if (image_ops & spv::ImageOperandsGradMask)
 	{
-		op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), grad_x, num_coords));
-		op.arguments.push_back(impl.build_vector(ops, builder.makeFloatType(32), grad_y, num_coords));
+		op->add_id(impl.build_vector(builder.makeFloatType(32), grad_x, num_coords));
+		op->add_id(impl.build_vector(builder.makeFloatType(32), grad_y, num_coords));
 	}
 	if (image_ops & spv::ImageOperandsConstOffsetMask)
-		op.arguments.push_back(impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
+		op->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
 	if (image_ops & spv::ImageOperandsMinLodMask)
-		op.arguments.push_back(aux_argument);
+		op->add_id(aux_argument);
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 
 	// Deal with signed component types.
-	impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
+	impl.fixup_load_sign(meta.component_type, 4, instruction);
 	return true;
 }
 
-bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_texture_load_instruction(Converter::Impl &impl,
                                    const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
@@ -322,7 +317,7 @@ bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter::Impl 
 	spv::Id offsets[3] = {};
 
 	unsigned num_coords_full, num_coords;
-	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
 	// Cubes are not supported here.
@@ -349,43 +344,39 @@ bool emit_texture_load_instruction(std::vector<Operation> &ops, Converter::Impl 
 			offsets[i] = builder.makeIntConstant(0);
 	}
 
-	Operation op;
-	op.op = is_uav ? spv::OpImageRead : spv::OpImageFetch;
-	op.type_id = impl.get_type_id(meta.component_type, 1, 4);
+	Operation *op = impl.allocate(is_uav ? spv::OpImageRead : spv::OpImageFetch, instruction,
+	                              impl.get_type_id(meta.component_type, 1, 4));
 
-	op.id = impl.get_id_for_value(instruction);
-	op.arguments.push_back(image_id);
-	op.arguments.push_back(impl.build_vector(ops, builder.makeUintType(32), coord, num_coords_full));
-	op.arguments.push_back(image_ops);
+	op->add_ids({ image_id, impl.build_vector(builder.makeUintType(32), coord, num_coords_full) });
+	op->add_literal(image_ops);
 
 	if (!is_uav)
 	{
 		if (image_ops & spv::ImageOperandsLodMask)
-			op.arguments.push_back(mip_or_sample);
+			op->add_id(mip_or_sample);
 
 		if (image_ops & spv::ImageOperandsConstOffsetMask)
 		{
-			op.arguments.push_back(
-					impl.build_constant_vector(ops, builder.makeIntegerType(32, true), offsets, num_coords));
+			op->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
 		}
 
 		if (image_ops & spv::ImageOperandsSampleMask)
-			op.arguments.push_back(mip_or_sample);
+			op->add_id(mip_or_sample);
 	}
 	else
 		builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 
 	// Deal with signed component types.
-	impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
-
+	impl.fixup_load_sign(meta.component_type, 4, instruction);
 	return true;
 }
 
-bool emit_get_dimensions_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_get_dimensions_instruction(Converter::Impl &impl,
                                      const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
 
@@ -397,52 +388,36 @@ bool emit_get_dimensions_instruction(std::vector<Operation> &ops, Converter::Imp
 	bool has_samples = builder.isMultisampledImageType(image_type_id);
 	bool has_lod = !is_uav && builder.getTypeDimensionality(image_type_id) != spv::DimBuffer && !has_samples;
 
-	spv::Id dimensions_id = impl.allocate_id();
-	{
-		Operation op;
-		op.op = has_lod ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize;
-		op.type_id = builder.makeUintType(32);
-		if (num_coords > 1)
-			op.type_id = builder.makeVectorType(op.type_id, num_coords);
-		op.arguments = { image_id };
-		if (has_lod)
-			op.arguments.push_back(impl.get_id_for_value(instruction->getOperand(2)));
-		op.id = dimensions_id;
-		ops.push_back(std::move(op));
-	}
+	spv::Id dim_type_id = builder.makeUintType(32);
+	if (num_coords > 1)
+		dim_type_id = builder.makeVectorType(dim_type_id, num_coords);
+
+	Operation *dimensions_op = impl.allocate(has_lod ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize, dim_type_id);
+	dimensions_op->add_id(image_id);
+	if (has_lod)
+		dimensions_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+	impl.add(dimensions_op);
 
 	if (impl.handle_to_resource_meta[image_id].kind == DXIL::ResourceKind::RawBuffer)
 	{
-		spv::Id byte_size_id = impl.allocate_id();
-		Operation op;
-		op.op = spv::OpIMul;
-		op.id = byte_size_id;
-		op.type_id = builder.makeUintType(32);
-		op.arguments = { dimensions_id, builder.makeUintConstant(4) };
-		dimensions_id = byte_size_id;
-		ops.push_back(std::move(op));
+		Operation *byte_size_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		byte_size_op->add_ids({ dimensions_op->id, builder.makeUintConstant(4) });
+		impl.add(byte_size_op);
+		dimensions_op = byte_size_op;
 	}
 
-	spv::Id aux_id = 0;
+	Operation *aux_op = nullptr;
 	if (has_lod)
 	{
-		aux_id = impl.allocate_id();
-		Operation op;
-		op.op = spv::OpImageQueryLevels;
-		op.id = aux_id;
-		op.type_id = builder.makeUintType(32);
-		op.arguments = { image_id };
-		ops.push_back(std::move(op));
+		aux_op = impl.allocate(spv::OpImageQueryLevels, builder.makeUintType(32));
+		aux_op->add_id(image_id);
+		impl.add(aux_op);
 	}
 	else if (has_samples)
 	{
-		aux_id = impl.allocate_id();
-		Operation op;
-		op.op = spv::OpImageQuerySamples;
-		op.id = aux_id;
-		op.type_id = builder.makeUintType(32);
-		op.arguments = { image_id };
-		ops.push_back(std::move(op));
+		aux_op = impl.allocate(spv::OpImageQuerySamples, builder.makeUintType(32));
+		aux_op->add_id(image_id);
+		impl.add(aux_op);
 	}
 
 	if (!has_lod && !has_samples)
@@ -450,46 +425,44 @@ bool emit_get_dimensions_instruction(std::vector<Operation> &ops, Converter::Imp
 		if (num_coords == 1)
 		{
 			// Must create a composite for good measure as calling code expects to extract component.
-			Operation op;
-			op.op = spv::OpCompositeConstruct;
-			op.type_id = builder.makeVectorType(builder.makeUintType(32), 2);
-			op.id = impl.get_id_for_value(instruction);
-			op.arguments = { dimensions_id, builder.createUndefined(builder.makeUintType(32)) };
-			ops.push_back(std::move(op));
+			Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction,
+			                              builder.makeVectorType(builder.makeUintType(32), 2));
+			op->add_ids({ dimensions_op->id, builder.createUndefined(builder.makeUintType(32)) });
+			impl.add(op);
 		}
 		else
-			impl.value_map[instruction] = dimensions_id;
+			impl.value_map[instruction] = dimensions_op->id;
 	}
 	else
 	{
-		Operation op;
-		op.op = spv::OpCompositeConstruct;
-		op.type_id = builder.makeVectorType(builder.makeUintType(32), 4);
-		op.id = impl.get_id_for_value(instruction);
-		op.arguments.push_back(dimensions_id);
+		Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction,
+		                              builder.makeVectorType(builder.makeUintType(32), 4));
+		op->add_id(dimensions_op->id);
 
 		// This element cannot be statically accessed if we don't have LOD, so don't bother returning anything here.
 		// Otherwise, we need to pad out.
 		for (unsigned i = num_coords; i < 3; i++)
-			op.arguments.push_back(builder.createUndefined(builder.makeUintType(32)));
-		op.arguments.push_back(aux_id);
+			op->add_id(builder.createUndefined(builder.makeUintType(32)));
+		op->add_id(aux_op->id);
 
-		ops.push_back(std::move(op));
+		impl.add(op);
 	}
 
 	builder.addCapability(spv::CapabilityImageQuery);
 	return true;
 }
 
-bool emit_texture_store_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_texture_store_instruction(Converter::Impl &impl,
                                     const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
+
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	spv::Id coord[3] = {};
 
 	unsigned num_coords_full, num_coords;
-	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
 	// Cubes are not supported here.
@@ -506,29 +479,32 @@ bool emit_texture_store_instruction(std::vector<Operation> &ops, Converter::Impl
 	// Ignore write mask. We cannot do anything meaningful about it.
 	// The write mask must cover all components in the image, and there is no "sliced write" support for typed resources.
 
-	Operation op;
-	op.op = spv::OpImageWrite;
+	Operation *op = impl.allocate(spv::OpImageWrite);
 
-	op.arguments.push_back(image_id);
-	op.arguments.push_back(impl.build_vector(ops, builder.makeUintType(32), coord, num_coords_full));
-	op.arguments.push_back(impl.build_vector(ops, builder.getTypeId(write_values[0]), write_values, 4));
-	op.arguments[2] = impl.fixup_store_sign(ops, meta.component_type, 4, op.arguments[2]);
+	op->add_id(image_id);
+	op->add_id(impl.build_vector(builder.makeUintType(32), coord, num_coords_full));
+
+	spv::Id store_id = impl.build_vector(builder.getTypeId(write_values[0]), write_values, 4);
+	store_id = impl.fixup_store_sign(meta.component_type, 4, store_id);
+	op->add_id(store_id);
 	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
 
-	ops.push_back(std::move(op));
+	impl.add(op);
 	return true;
 }
 
-bool emit_texture_gather_instruction(bool compare, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl,
                                      const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
+
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
-	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, false);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	uint32_t num_coords_full = 0, num_coords = 0;
-	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
 	spv::Id coords[3] = {};
@@ -537,7 +513,7 @@ bool emit_texture_gather_instruction(bool compare, std::vector<Operation> &ops, 
 
 	for (unsigned i = 0; i < num_coords_full; i++)
 		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
-	spv::Id coord_id = impl.build_vector(ops, builder.makeFloatType(32), coords, num_coords_full);
+	spv::Id coord_id = impl.build_vector(builder.makeFloatType(32), coords, num_coords_full);
 
 	if (num_coords == 2)
 	{
@@ -566,33 +542,34 @@ bool emit_texture_gather_instruction(bool compare, std::vector<Operation> &ops, 
 	else
 		aux_id = impl.get_id_for_value(instruction->getOperand(9));
 
-	Operation op;
-	op.op = compare ? spv::OpImageDrefGather : spv::OpImageGather;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(meta.component_type, 1, 4);
-	op.arguments = { combined_image_sampler_id, coord_id, aux_id };
+	Operation *op = impl.allocate(compare ? spv::OpImageDrefGather : spv::OpImageGather,
+	                              instruction,
+	                              impl.get_type_id(meta.component_type, 1, 4));
+
+	op->add_ids({ combined_image_sampler_id, coord_id, aux_id });
 
 	if (image_flags)
 	{
-		op.arguments.push_back(image_flags);
-		op.arguments.push_back(impl.build_constant_vector(ops, builder.makeIntType(32), offsets, num_coords));
+		op->add_literal(image_flags);
+		op->add_id(impl.build_constant_vector(builder.makeIntType(32), offsets, num_coords));
 	}
 
-	ops.push_back(std::move(op));
-	impl.fixup_load_sign(ops, meta.component_type, 4, instruction);
+	impl.add(op);
+	impl.fixup_load_sign(meta.component_type, 4, instruction);
 	return true;
 }
 
-bool emit_calculate_lod_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_calculate_lod_instruction(Converter::Impl &impl,
                                     const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
-	spv::Id combined_image_sampler_id = impl.build_sampled_image(ops, image_id, sampler_id, false);
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, false);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	uint32_t num_coords_full = 0, num_coords = 0;
-	if (!get_image_dimensions(impl, builder, image_id, &num_coords_full, &num_coords))
+	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
 	spv::Id coords[3] = {};
@@ -602,25 +579,18 @@ bool emit_calculate_lod_instruction(std::vector<Operation> &ops, Converter::Impl
 	auto *clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
 	bool clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
 
-	spv::Id query_id = impl.allocate_id();
-	{
-		Operation op;
-		op.op = spv::OpImageQueryLod;
-		op.id = query_id;
-		op.type_id = builder.makeVectorType(builder.makeFloatType(32), 2);
-		op.arguments = {
-			combined_image_sampler_id,
-			impl.build_vector(ops, builder.makeFloatType(32), coords, num_coords)
-		};
-		ops.push_back(std::move(op));
-	}
+	Operation *query_op = impl.allocate(spv::OpImageQueryLod,
+	                                    builder.makeVectorType(builder.makeFloatType(32), 2));
+	query_op->add_ids({
+		combined_image_sampler_id,
+		impl.build_vector(builder.makeFloatType(32), coords, num_coords)
+	});
+	impl.add(query_op);
 
-	Operation op;
-	op.op = spv::OpCompositeExtract;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-	op.arguments = { query_id, clamped ? 0u : 1u };
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
+	op->add_id(query_op->id);
+	op->add_literal(clamped ? 0u : 1u);
+	impl.add(op);
 
 	builder.addCapability(spv::CapabilityImageQuery);
 	return true;

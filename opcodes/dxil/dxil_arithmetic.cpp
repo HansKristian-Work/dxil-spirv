@@ -212,54 +212,43 @@ bool emit_dot_instruction(unsigned dimensions,
 	return true;
 }
 
-static spv::Id mask_input(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+static spv::Id mask_input(Converter::Impl &impl,
                           const llvm::Value *value)
 {
-	spv::Id id = impl.allocate_id();
+	Operation *op = impl.allocate(spv::OpBitwiseAnd, impl.get_type_id(value->getType()));
+	op->add_ids({
+		impl.get_id_for_value(value),
+		impl.builder().makeUintConstant(31),
+	});
 
-	Operation op;
-	op.op = spv::OpBitwiseAnd;
-	op.id = id;
-	op.type_id = impl.get_type_id(value->getType());
-	op.arguments = {
-			impl.get_id_for_value(value),
-			builder.makeUintConstant(31),
-	};
-
-	ops.push_back(std::move(op));
-	return id;
+	impl.add(op);
+	return op->id;
 }
 
-bool emit_bfe_instruction(spv::Op opcode, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl,
                           const llvm::CallInst *instruction)
 {
 	// SPIR-V spec doesn't say anything about masking inputs, but Ibfe/Ubfe do, so ...
-	spv::Id masked_width_id = mask_input(ops, impl, builder, instruction->getOperand(1));
-	spv::Id masked_offset_id = mask_input(ops, impl, builder, instruction->getOperand(2));
+	spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
+	spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
 
-	Operation op;
-	op.op = opcode;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-	op.arguments = { impl.get_id_for_value(instruction->getOperand(3)), masked_offset_id, masked_width_id };
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(opcode, instruction);
+	op->add_ids({ impl.get_id_for_value(instruction->getOperand(3)), masked_offset_id, masked_width_id });
+	impl.add(op);
 	return true;
 }
 
-bool emit_bfi_instruction(std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_bfi_instruction(Converter::Impl &impl,
                           const llvm::CallInst *instruction)
 {
-	spv::Id masked_width_id = mask_input(ops, impl, builder, instruction->getOperand(1));
-	spv::Id masked_offset_id = mask_input(ops, impl, builder, instruction->getOperand(2));
+	spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
+	spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
 	spv::Id src_id = impl.get_id_for_value(instruction->getOperand(3));
 	spv::Id dst_id = impl.get_id_for_value(instruction->getOperand(4));
 
-	Operation op;
-	op.op = spv::OpBitFieldInsert;
-	op.id = impl.get_id_for_value(instruction);
-	op.type_id = impl.get_type_id(instruction->getType());
-	op.arguments = { dst_id, src_id, masked_offset_id, masked_width_id };
-	ops.push_back(std::move(op));
+	Operation *op = impl.allocate(spv::OpBitFieldInsert, instruction);
+	op->add_ids({ dst_id, src_id, masked_offset_id, masked_width_id });
+	impl.add(op);
 
 	return true;
 }

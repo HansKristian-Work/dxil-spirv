@@ -121,16 +121,14 @@ struct Converter::Impl
 	bool emit_instruction(CFGNode *block, const llvm::Instruction &instruction);
 	bool emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
 
-	spv::Id build_sampled_image(std::vector<Operation> &ops, spv::Id image_id, spv::Id sampler_id, bool comparison);
-	spv::Id build_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
-	spv::Id build_constant_vector(std::vector<Operation> &ops, spv::Id element_type, spv::Id *elements, unsigned count);
-	spv::Id build_offset(std::vector<Operation> &ops, spv::Id value, unsigned offset);
-	void fixup_load_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
-	spv::Id fixup_store_sign(std::vector<Operation> &ops, DXIL::ComponentType component_type, unsigned components, spv::Id value);
+	spv::Id build_sampled_image(spv::Id image_id, spv::Id sampler_id, bool comparison);
+	spv::Id build_vector(spv::Id element_type, spv::Id *elements, unsigned count);
+	spv::Id build_constant_vector(spv::Id element_type, spv::Id *elements, unsigned count);
+	spv::Id build_offset(spv::Id value, unsigned offset);
+	void fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
+	spv::Id fixup_store_sign(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 
 	spv::Id glsl_std450_ext = 0;
-
-	spv::Id allocate_id();
 
 	std::vector<Operation *> *current_block = nullptr;
 	void add(Operation *op);
@@ -141,5 +139,8 @@ struct Converter::Impl
 	Operation *allocate(spv::Op op, const llvm::Value *value, spv::Id type_id);
 	Operation *allocate(spv::Op op, spv::Id id, spv::Id type_id);
 	spv::Builder &builder();
+
+private:
+	spv::Id allocate_id();
 };
 } // namespace DXIL2SPIRV

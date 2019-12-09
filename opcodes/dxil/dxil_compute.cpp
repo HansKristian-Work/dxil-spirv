@@ -37,7 +37,7 @@ bool emit_barrier_instruction(Converter::Impl &impl,
 	{
 	case DXIL::BarrierMode::GroupMemoryBarrierWithGroupSync:
 		op = impl.allocate(spv::OpControlBarrier);
-		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup);
+		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
 		op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
 		break;
@@ -75,7 +75,7 @@ bool emit_barrier_instruction(Converter::Impl &impl,
 	return true;
 }
 
-bool emit_thread_id_load_instruction(spv::BuiltIn builtin, std::vector<Operation> &ops, Converter::Impl &impl, spv::Builder &builder,
+bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl,
                                      const llvm::CallInst *instruction)
 {
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
@@ -84,12 +84,12 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, std::vector<Operation
 	{
 		Operation *op = impl.allocate(
 				spv::OpAccessChain,
-				builder.makePointer(spv::StorageClassInput, impl.get_type_id(instruction->getType())));
+				impl.builder().makePointer(spv::StorageClassInput, impl.get_type_id(instruction->getType())));
 
 		op->add_id(var_id);
 		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 		impl.add(op);
-		var_id = op->get_id();
+		var_id = op->id;
 	}
 
 	Operation *op = impl.allocate(spv::OpLoad, instruction);
