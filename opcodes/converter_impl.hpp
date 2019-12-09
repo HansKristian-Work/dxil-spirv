@@ -61,6 +61,8 @@ struct Converter::Impl
 
 	ConvertedFunction convert_entry_point();
 	CFGNode *convert_function(llvm::Function *func, CFGNodePool &pool);
+	CFGNode *build_hull_main(llvm::Function *func, CFGNodePool &pool,
+	                         std::vector<ConvertedFunction::LeafFunction> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
@@ -82,6 +84,7 @@ struct Converter::Impl
 		unsigned stage_input_num_vertex = 0;
 		unsigned stage_output_num_vertex = 0;
 		unsigned gs_stream_active_mask = 0;
+		llvm::Function *patch_constant_function = nullptr;
 	} execution_mode_meta;
 
 	void emit_resources();

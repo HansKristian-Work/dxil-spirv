@@ -1072,6 +1072,10 @@ void Converter::Impl::emit_execution_modes_hull()
 			{
 				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
 
+				auto *patch_constant = llvm::cast<llvm::ValueAsMetadata>(arguments->getOperand(0));
+				auto *patch_constant_value = patch_constant->getValue();
+				execution_mode_meta.patch_constant_function = llvm::cast<llvm::Function>(patch_constant_value);
+
 				unsigned input_control_points = get_constant_metadata(arguments, 1);
 				unsigned output_control_points = get_constant_metadata(arguments, 2);
 				auto domain = static_cast<DXIL::TessellatorDomain>(get_constant_metadata(arguments, 3));
@@ -1271,6 +1275,71 @@ void Converter::Impl::emit_execution_modes()
 	}
 }
 
+CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &pool, std::vector<ConvertedFunction::LeafFunction> &leaves)
+{
+	auto *hull_main = convert_function(func, pool);
+	auto *patch_main = convert_function(execution_mode_meta.patch_constant_function, pool);
+	auto *hull_func = builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {});
+	auto *patch_func = builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "patch_main", {}, {});
+
+	leaves.push_back({ hull_main, hull_func });
+	leaves.push_back({ patch_main, patch_func });
+
+	auto *entry = pool.create_node();
+
+	auto *call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
+	call_op->add_id(hull_func->getId());
+	entry->ir.operations.push_back(call_op);
+
+	if (execution_mode_meta.stage_output_num_vertex > 1)
+	{
+		auto *load_op = allocate(spv::OpLoad, builder().makeUintType(32));
+		load_op->add_id(spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId));
+		entry->ir.operations.push_back(load_op);
+
+		auto *cmp_op = allocate(spv::OpIEqual, builder().makeBoolType());
+		cmp_op->add_ids({ load_op->id, builder().makeUintConstant(0) });
+		entry->ir.operations.push_back(cmp_op);
+
+		auto *barrier_op = allocate(spv::OpControlBarrier);
+		// Not 100% sure what to emit here. Just do what glslang does.
+		barrier_op->add_id(builder().makeUintConstant(spv::ScopeWorkgroup));
+		barrier_op->add_id(builder().makeUintConstant(spv::ScopeInvocation));
+		barrier_op->add_id(builder().makeUintConstant(0));
+		entry->ir.operations.push_back(barrier_op);
+
+		auto *patch_block = pool.create_node();
+		auto *merge_block = pool.create_node();
+
+		entry->add_branch(patch_block);
+		entry->add_branch(merge_block);
+		patch_block->add_branch(merge_block);
+
+		entry->ir.terminator.type = Terminator::Type::Condition;
+		entry->ir.terminator.true_block = patch_block;
+		entry->ir.terminator.false_block = merge_block;
+		entry->ir.terminator.conditional_id = cmp_op->id;
+
+		patch_block->ir.terminator.type = Terminator::Type::Branch;
+		patch_block->ir.terminator.direct_block = merge_block;
+
+		call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
+		call_op->add_id(patch_func->getId());
+		patch_block->ir.operations.push_back(call_op);
+
+		merge_block->ir.terminator.type = Terminator::Type::Return;
+	}
+	else
+	{
+		call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
+		call_op->add_id(patch_func->getId());
+		entry->ir.operations.push_back(call_op);
+		entry->ir.terminator.type = Terminator::Type::Return;
+	}
+
+	return entry;
+}
+
 CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &pool)
 {
 	auto *entry = &func->getEntryBlock();
@@ -1398,7 +1467,11 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	llvm::Function *func = module->getFunction(get_entry_point_name(*module));
 	assert(func);
 
-	result.entry = convert_function(func, pool);
+	if (execution_model == spv::ExecutionModelTessellationControl)
+		result.entry = build_hull_main(func, pool, result.leaf_functions);
+	else
+		result.entry = convert_function(func, pool);
+
 	return result;
 }
 

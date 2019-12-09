@@ -31,12 +31,12 @@ struct ConvertedFunction
 {
 	CFGNode *entry;
 
-	struct LeafFunctions
+	struct LeafFunction
 	{
 		CFGNode *entry;
 		spv::Function *func;
 	};
-	std::vector<LeafFunctions> leaf_functions;
+	std::vector<LeafFunction> leaf_functions;
 	std::unique_ptr<CFGNodePool> node_pool;
 };
 
