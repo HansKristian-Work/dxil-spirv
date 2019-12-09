@@ -581,6 +581,11 @@ void Converter::Impl::emit_patch_variables()
 		LOGE("  Col: %u\n", col);
 #endif
 
+		if (system_value == DXIL::Semantic::TessFactor)
+			rows = 4;
+		else if (system_value == DXIL::Semantic::InsideTessFactor)
+			rows = 2;
+
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		spv::Id variable_id = builder.createVariable(storage, type_id, semantic_name.c_str());
 		patch_elements_meta[element_id] = { variable_id, element_type };
