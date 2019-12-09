@@ -237,26 +237,26 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else
 		{
-			if (op->op != 0)
-			{
-				auto inst = std::make_unique<spv::Instruction>(op->id, op->type_id, op->op);
-				unsigned literal_mask = op->get_literal_mask();
-
-				for (auto &arg : *op)
-				{
-					if (literal_mask & 1u)
-						inst->addIdOperand(arg);
-					else
-						inst->addImmediateOperand(arg);
-					literal_mask >>= 1u;
-				}
-				bb->addInstruction(std::move(inst));
-			}
+			std::unique_ptr<spv::Instruction> inst;
+			if (op->id != 0)
+				inst = std::make_unique<spv::Instruction>(op->id, op->type_id, op->op);
 			else
+				inst = std::make_unique<spv::Instruction>(op->op);
+
+			unsigned literal_mask = op->get_literal_mask();
+
+			for (auto &arg : *op)
 			{
-				auto inst = std::make_unique<spv::Instruction>(op->op);
-				bb->addInstruction(std::move(inst));
+				if (literal_mask & 1u)
+				{
+					assert(arg);
+					inst->addIdOperand(arg);
+				}
+				else
+					inst->addImmediateOperand(arg);
+				literal_mask >>= 1u;
 			}
+			bb->addInstruction(std::move(inst));
 		}
 	}
 

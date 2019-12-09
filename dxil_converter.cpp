@@ -1270,28 +1270,24 @@ Operation *Converter::Impl::allocate(spv::Op op)
 Operation *Converter::Impl::allocate(spv::Op op, spv::Id id, spv::Id type_id)
 {
 	auto *new_op = spirv_module.allocate_op(op, id, type_id);
-	current_block->push_back(new_op);
 	return new_op;
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, spv::Id type_id)
 {
 	auto *new_op = spirv_module.allocate_op(op, allocate_id(), type_id);
-	current_block->push_back(new_op);
 	return new_op;
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value)
 {
 	auto *new_op = spirv_module.allocate_op(op, get_id_for_value(value), get_type_id(value->getType()));
-	current_block->push_back(new_op);
 	return new_op;
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value, spv::Id type_id)
 {
 	auto *new_op = spirv_module.allocate_op(op, get_id_for_value(value), type_id);
-	current_block->push_back(new_op);
 	return new_op;
 }
 
