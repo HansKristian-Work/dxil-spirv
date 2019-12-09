@@ -60,6 +60,7 @@ struct Converter::Impl
 	std::unordered_map<const llvm::Value *, spv::Id> value_map;
 
 	ConvertedFunction convert_entry_point();
+	CFGNode *convert_function(llvm::Function *func, CFGNodePool &pool);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);

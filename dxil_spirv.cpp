@@ -186,9 +186,18 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	DXIL2SPIRV::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, spirv_module);
-	structurizer.run();
-	spirv_module.emit_function_body(structurizer);
+	{
+		DXIL2SPIRV::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, spirv_module);
+		structurizer.run();
+		spirv_module.emit_entry_point_function_body(structurizer);
+	}
+
+	for (auto &leaf : entry_point.leaf_functions)
+	{
+		DXIL2SPIRV::CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, spirv_module);
+		structurizer.run();
+		spirv_module.emit_leaf_function_body(leaf.func, structurizer);
+	}
 
 	std::vector<uint32_t> spirv;
 	if (!spirv_module.finalize_spirv(spirv))

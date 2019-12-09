@@ -35,6 +35,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::SpvBuildLogger build_logger;
 	spv::Builder builder;
 	spv::Function *entry_function = nullptr;
+	spv::Function *active_function = nullptr;
 	spv::Instruction *entry_point = nullptr;
 
 	void emit_entry_point(spv::ExecutionModel model, const char *name);
@@ -42,7 +43,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	void register_block(CFGNode *node) override;
 	void emit_basic_block(CFGNode *node) override;
-	void emit_function_body(CFGStructurizer &structurizer);
+	void emit_entry_point_function_body(CFGStructurizer &structurizer);
+	void emit_leaf_function_body(spv::Function *func, CFGStructurizer &structurizer);
 	static spv::Block *get_spv_block(CFGNode *node);
 
 	void enable_shader_discard();
@@ -203,8 +205,8 @@ void SPIRVModule::Impl::register_block(CFGNode *node)
 {
 	if (!node->userdata || node->id == 0)
 	{
-		auto *bb = new spv::Block(builder.getUniqueId(), *entry_function);
-		entry_function->addBlock(bb);
+		auto *bb = new spv::Block(builder.getUniqueId(), *active_function);
+		active_function->addBlock(bb);
 		node->id = bb->getId();
 		node->userdata = bb;
 	}
@@ -276,8 +278,8 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else
 		{
-			auto *continue_bb = new spv::Block(builder.getUniqueId(), *entry_function);
-			entry_function->addBlock(continue_bb);
+			auto *continue_bb = new spv::Block(builder.getUniqueId(), *active_function);
+			active_function->addBlock(continue_bb);
 			builder.setBuildPoint(continue_bb);
 			builder.createBranch(get_spv_block(node));
 			builder.setBuildPoint(bb);
@@ -354,18 +356,38 @@ bool SPIRVModule::finalize_spirv(std::vector<uint32_t> &spirv)
 	return impl->finalize_spirv(spirv);
 }
 
-void SPIRVModule::Impl::emit_function_body(CFGStructurizer &structurizer)
+void SPIRVModule::Impl::emit_entry_point_function_body(CFGStructurizer &structurizer)
 {
-	structurizer.traverse(*this);
-
-	builder.setBuildPoint(entry_function->getEntryBlock());
-	builder.createBranch(get_spv_block(structurizer.get_entry_block()));
-	builder.leaveFunction();
+	active_function = entry_function;
+	{
+		structurizer.traverse(*this);
+		builder.setBuildPoint(active_function->getEntryBlock());
+		builder.createBranch(get_spv_block(structurizer.get_entry_block()));
+		builder.leaveFunction();
+	}
+	active_function = nullptr;
 }
 
-void SPIRVModule::emit_function_body(CFGStructurizer &structurizer)
+void SPIRVModule::Impl::emit_leaf_function_body(spv::Function *func, CFGStructurizer &structurizer)
 {
-	impl->emit_function_body(structurizer);
+	active_function = func;
+	{
+		structurizer.traverse(*this);
+		builder.setBuildPoint(active_function->getEntryBlock());
+		builder.createBranch(get_spv_block(structurizer.get_entry_block()));
+		builder.leaveFunction();
+	}
+	active_function = nullptr;
+}
+
+void SPIRVModule::emit_entry_point_function_body(CFGStructurizer &structurizer)
+{
+	impl->emit_entry_point_function_body(structurizer);
+}
+
+void SPIRVModule::emit_leaf_function_body(spv::Function *func, CFGStructurizer &structurizer)
+{
+	impl->emit_leaf_function_body(func, structurizer);
 }
 
 spv::Builder &SPIRVModule::get_builder()

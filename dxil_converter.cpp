@@ -1271,32 +1271,15 @@ void Converter::Impl::emit_execution_modes()
 	}
 }
 
-ConvertedFunction Converter::Impl::convert_entry_point()
+CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &pool)
 {
-	ConvertedFunction result;
-	result.node_pool = std::make_unique<CFGNodePool>();
-	auto &pool = *result.node_pool;
-
-	auto *module = &bitcode_parser.get_module();
-	spirv_module.emit_entry_point(get_execution_model(*module), "main");
-
-	emit_execution_modes();
-	emit_resources();
-	emit_stage_input_variables();
-	emit_stage_output_variables();
-	emit_patch_variables();
-	emit_global_variables();
-
-	llvm::Function *func = module->getFunction(get_entry_point_name(*module));
-	assert(func);
-
 	auto *entry = &func->getEntryBlock();
 	auto entry_meta = std::make_unique<BlockMeta>(entry);
 	bb_map[entry] = entry_meta.get();
-	result.entry = pool.create_node();
-	bb_map[entry]->node = result.entry;
-	result.entry->name = entry->getName().data();
-	result.entry->name += ".entry";
+	auto *entry_node = pool.create_node();
+	bb_map[entry]->node = entry_node;
+	entry_node->name = entry->getName().data();
+	entry_node->name += ".entry";
 	metas.push_back(std::move(entry_meta));
 
 	std::vector<llvm::BasicBlock *> to_process;
@@ -1393,6 +1376,29 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		}
 	}
 
+	return entry_node;
+}
+
+ConvertedFunction Converter::Impl::convert_entry_point()
+{
+	ConvertedFunction result;
+	result.node_pool = std::make_unique<CFGNodePool>();
+	auto &pool = *result.node_pool;
+
+	auto *module = &bitcode_parser.get_module();
+	spirv_module.emit_entry_point(get_execution_model(*module), "main");
+
+	emit_execution_modes();
+	emit_resources();
+	emit_stage_input_variables();
+	emit_stage_output_variables();
+	emit_patch_variables();
+	emit_global_variables();
+
+	llvm::Function *func = module->getFunction(get_entry_point_name(*module));
+	assert(func);
+
+	result.entry = convert_function(func, pool);
 	return result;
 }
 

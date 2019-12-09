@@ -30,6 +30,13 @@ namespace DXIL2SPIRV
 struct ConvertedFunction
 {
 	CFGNode *entry;
+
+	struct LeafFunctions
+	{
+		CFGNode *entry;
+		spv::Function *func;
+	};
+	std::vector<LeafFunctions> leaf_functions;
 	std::unique_ptr<CFGNodePool> node_pool;
 };
 
