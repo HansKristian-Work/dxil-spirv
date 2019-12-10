@@ -46,8 +46,7 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 	if (row_index || num_cols > 1)
 	{
 		Operation *op = impl.allocate(
-				spv::OpAccessChain,
-				builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+		    spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
 		ptr_id = op->id;
 		op->add_id(var_id);
 		if (row_index)
@@ -91,9 +90,8 @@ bool emit_load_output_control_point_instruction(Converter::Impl &impl, const llv
 	uint32_t num_cols = builder.getNumTypeComponents(input_type_id);
 
 	// Need to deal with signed vs unsigned here.
-	Operation *op =
-			impl.allocate(spv::OpAccessChain,
-			              builder.makePointer(spv::StorageClassOutput, impl.get_type_id(meta.component_type, 1, 1)));
+	Operation *op = impl.allocate(
+	    spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, impl.get_type_id(meta.component_type, 1, 1)));
 	spv::Id ptr_id = op->id;
 
 	op->add_id(var_id);
@@ -120,7 +118,8 @@ bool emit_domain_location_instruction(Converter::Impl &impl, const llvm::CallIns
 	auto &builder = impl.builder();
 	spv::Id tess_coord_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInTessCoord);
 
-	auto *op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassInput, builder.makeFloatType(32)));
+	auto *op =
+	    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassInput, builder.makeFloatType(32)));
 	op->add_id(tess_coord_id);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1), 32));
 	impl.add(op);
@@ -167,13 +166,13 @@ bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::Cal
 	uint32_t num_cols = builder.getNumTypeComponents(output_type_id);
 
 	spv::StorageClass storage = impl.execution_model == spv::ExecutionModelTessellationEvaluation ?
-	                            spv::StorageClassInput : spv::StorageClassOutput;
+	                                spv::StorageClassInput :
+	                                spv::StorageClassOutput;
 
 	if (row_index || num_cols > 1)
 	{
-		Operation *op = impl.allocate(
-				spv::OpAccessChain,
-				builder.makePointer(storage, builder.getScalarTypeId(output_type_id)));
+		Operation *op =
+		    impl.allocate(spv::OpAccessChain, builder.makePointer(storage, builder.getScalarTypeId(output_type_id)));
 		ptr_id = op->id;
 		op->add_id(var_id);
 		if (row_index)
@@ -193,5 +192,4 @@ bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::Cal
 	impl.fixup_load_sign(meta.component_type, 1, instruction);
 	return true;
 }
-}
-
+} // namespace DXIL2SPIRV

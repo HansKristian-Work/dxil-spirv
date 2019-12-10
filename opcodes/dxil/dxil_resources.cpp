@@ -41,8 +41,7 @@ static spv::Id get_clip_distance_access_chain(Converter::Impl &impl, const llvm:
 	auto &builder = impl.builder();
 	uint32_t var_id = meta.id;
 
-	Operation *op = impl.allocate(
-			spv::OpAccessChain, builder.makePointer(storage, builder.makeFloatType(32)));
+	Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(storage, builder.makeFloatType(32)));
 	op->add_id(var_id);
 
 	auto *row = instruction->getOperand(2);
@@ -50,9 +49,8 @@ static spv::Id get_clip_distance_access_chain(Converter::Impl &impl, const llvm:
 	auto *row_const = llvm::dyn_cast<llvm::ConstantInt>(row);
 	auto *col_const = llvm::dyn_cast<llvm::ConstantInt>(col);
 
-	auto stride = storage == spv::StorageClassOutput ?
-	              impl.execution_mode_meta.stage_output_clip_distance_stride :
-	              impl.execution_mode_meta.stage_input_clip_distance_stride;
+	auto stride = storage == spv::StorageClassOutput ? impl.execution_mode_meta.stage_output_clip_distance_stride :
+	                                                   impl.execution_mode_meta.stage_input_clip_distance_stride;
 
 	if (stride == 1)
 	{
@@ -61,9 +59,8 @@ static spv::Id get_clip_distance_access_chain(Converter::Impl &impl, const llvm:
 	}
 	else if (row_const && col_const)
 	{
-		op->add_id(builder.makeUintConstant(
-				row_const->getUniqueInteger().getZExtValue() * stride +
-				col_const->getUniqueInteger().getZExtValue()));
+		op->add_id(builder.makeUintConstant(row_const->getUniqueInteger().getZExtValue() * stride +
+		                                    col_const->getUniqueInteger().getZExtValue()));
 	}
 	else
 	{
@@ -136,9 +133,9 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 		{
 			Operation *cast_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
 			cast_op->add_ids({
-				impl.get_id_for_value(instruction),
-				builder.makeUintConstant(1),
-				builder.makeUintConstant(0),
+			    impl.get_id_for_value(instruction),
+			    builder.makeUintConstant(1),
+			    builder.makeUintConstant(0),
 			});
 			impl.add(cast_op);
 			impl.value_map[instruction] = cast_op->id;

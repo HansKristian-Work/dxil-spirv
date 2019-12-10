@@ -547,8 +547,8 @@ void Converter::Impl::emit_patch_variables()
 
 	auto &builder = spirv_module.get_builder();
 
-	spv::StorageClass storage = execution_model == spv::ExecutionModelTessellationControl ?
-			spv::StorageClassOutput : spv::StorageClassInput;
+	spv::StorageClass storage =
+	    execution_model == spv::ExecutionModelTessellationControl ? spv::StorageClassOutput : spv::StorageClassInput;
 
 	unsigned location = 0;
 
@@ -1367,12 +1367,15 @@ void Converter::Impl::emit_execution_modes()
 	}
 }
 
-CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &pool, std::vector<ConvertedFunction::LeafFunction> &leaves)
+CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &pool,
+                                          std::vector<ConvertedFunction::LeafFunction> &leaves)
 {
 	// Just make sure there is an entry block already created.
 	spv::Block *hull_entry, *patch_entry;
-	auto *hull_func = builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {}, &hull_entry);
-	auto *patch_func = builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "patch_main", {}, {}, &patch_entry);
+	auto *hull_func =
+	    builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {}, &hull_entry);
+	auto *patch_func =
+	    builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "patch_main", {}, {}, &patch_entry);
 
 	// Set build point so alloca() functions can create variables correctly.
 	builder().setBuildPoint(hull_entry);
