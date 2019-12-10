@@ -17,17 +17,17 @@ void main()
     gl_Position.y = gl_in[0u].gl_Position.y;
     gl_Position.z = gl_in[0u].gl_Position.z;
     gl_Position.w = gl_in[0u].gl_Position.w;
-    EmitStreamVertex();
+    EmitStreamVertex(int(0u));
     B.x = TEXCOORD[0u].x + 1.0;
     B.y = TEXCOORD[0u].y + 1.0;
     B.z = TEXCOORD[0u].z + 1.0;
     B.w = TEXCOORD[0u].w + 1.0;
-    EmitStreamVertex();
+    EmitStreamVertex(int(1u));
     C.x = TEXCOORD[0u].x + 2.0;
     C.y = TEXCOORD[0u].y + 2.0;
     C.z = TEXCOORD[0u].z + 2.0;
     C.w = TEXCOORD[0u].w + 2.0;
-    EmitStreamVertex();
+    EmitStreamVertex(int(2u));
 }
 
 

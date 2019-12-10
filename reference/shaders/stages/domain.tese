@@ -2,7 +2,7 @@
 
 layout(location = 0) in float A[][3];
 layout(location = 3) in float B[];
-layout(location = 0) patch in float C[];
+layout(location = 0) patch in float C[3];
 layout(location = 3) patch in float D;
 
 void main()
