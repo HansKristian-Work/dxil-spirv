@@ -836,6 +836,15 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addCapability(spv::CapabilityGeometry);
 		break;
 
+	case DXIL::Semantic::ViewPortArrayIndex:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInViewportIndex);
+		if (storage == spv::StorageClassOutput)
+			spirv_module.register_builtin_shader_output(id, spv::BuiltInViewportIndex);
+		else
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInViewportIndex);
+		builder.addCapability(spv::CapabilityMultiViewport);
+		break;
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
