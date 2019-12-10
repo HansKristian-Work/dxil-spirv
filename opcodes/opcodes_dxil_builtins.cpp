@@ -126,6 +126,7 @@ struct DXILDispatcher
 		OP(MakeDouble) = emit_make_double_instruction;
 		OP(SplitDouble) = emit_split_double_instruction;
 		OP(LegacyF16ToF32) = emit_legacy_f16_to_f32_instruction;
+		OP(LegacyF32ToF16) = emit_legacy_f32_to_f16_instruction;
 
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;
