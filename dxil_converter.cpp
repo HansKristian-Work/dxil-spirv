@@ -764,7 +764,13 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInSampleMask);
 		break;
 
+	case DXIL::Semantic::Depth:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragDepth);
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthReplacing);
+		break;
+
 	default:
+		LOGE("Unknown DXIL semantic.\n");
 		break;
 	}
 }
