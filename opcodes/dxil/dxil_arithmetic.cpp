@@ -239,6 +239,7 @@ bool emit_make_double_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
 	op->add_id(GLSLstd450PackDouble2x32);
@@ -248,6 +249,21 @@ bool emit_make_double_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		inputs[i] = impl.get_id_for_value(instruction->getOperand(1 + i));
 	op->add_id(impl.build_vector(builder.makeUintType(32), inputs, 2));
 
+	impl.add(op);
+	return true;
+}
+
+bool emit_split_double_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	Operation *op = impl.allocate(spv::OpExtInst, instruction,
+	                              builder.makeVectorType(builder.makeUintType(32), 2));
+	op->add_id(impl.glsl_std450_ext);
+	op->add_id(GLSLstd450UnpackDouble2x32);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	impl.add(op);
 	return true;
 }

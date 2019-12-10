@@ -124,6 +124,7 @@ struct DXILDispatcher
 		OP(Bfi) = emit_bfi_instruction;
 
 		OP(MakeDouble) = emit_make_double_instruction;
+		OP(SplitDouble) = emit_split_double_instruction;
 
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;
