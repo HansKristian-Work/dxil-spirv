@@ -737,11 +737,21 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	switch (semantic)
 	{
 	case DXIL::Semantic::Position:
-		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPosition);
-		if (storage == spv::StorageClassInput)
+		if (execution_model == spv::ExecutionModelFragment)
+		{
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragCoord);
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInFragCoord);
+		}
+		else if (storage == spv::StorageClassInput)
+		{
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPosition);
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInPosition);
+		}
 		else if (storage == spv::StorageClassOutput)
+		{
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPosition);
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInPosition);
+		}
 		break;
 
 	case DXIL::Semantic::SampleIndex:

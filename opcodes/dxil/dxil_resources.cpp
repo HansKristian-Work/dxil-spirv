@@ -140,6 +140,19 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			impl.add(cast_op);
 			impl.value_map[instruction] = cast_op->id;
 		}
+		else if (builtin == spv::BuiltInFragCoord)
+		{
+			auto *col = llvm::cast<llvm::ConstantInt>(instruction->getOperand(3));
+			if (col->getUniqueInteger().getZExtValue() == 3)
+			{
+				// FragCoord.w is inverted in DX.
+				Operation *op = impl.allocate(spv::OpFDiv, builder.makeFloatType(32));
+				op->add_id(builder.makeFloatConstant(1.0f));
+				op->add_id(impl.get_id_for_value(instruction));
+				impl.add(op);
+				impl.value_map[instruction] = op->id;
+			}
+		}
 	}
 }
 
