@@ -769,6 +769,18 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthReplacing);
 		break;
 
+	case DXIL::Semantic::DepthLessEqual:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragDepth);
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthReplacing);
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthLess);
+		break;
+
+	case DXIL::Semantic::DepthGreaterEqual:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragDepth);
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthReplacing);
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthGreater);
+		break;
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
