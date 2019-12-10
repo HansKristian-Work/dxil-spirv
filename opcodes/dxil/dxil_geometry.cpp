@@ -88,4 +88,13 @@ bool emit_gs_instance_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	return true;
 }
 
+bool emit_primitive_id_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInPrimitiveId);
+	Operation *op = impl.allocate(spv::OpLoad, instruction);
+	op->add_id(var_id);
+	impl.add(op);
+	return true;
+}
+
 } // namespace DXIL2SPIRV

@@ -845,6 +845,15 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addCapability(spv::CapabilityMultiViewport);
 		break;
 
+	case DXIL::Semantic::PrimitiveID:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPrimitiveId);
+		if (storage == spv::StorageClassOutput)
+			spirv_module.register_builtin_shader_output(id, spv::BuiltInPrimitiveId);
+		else
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInPrimitiveId);
+		builder.addCapability(spv::CapabilityGeometry);
+		break;
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
@@ -958,6 +967,11 @@ void Converter::Impl::emit_stage_input_variables()
 			unsigned num_elements = rows * cols;
 			execution_mode_meta.stage_input_clip_distance_stride = cols;
 			type_id = get_type_id(element_type, num_elements, 1);
+		}
+		else if (system_value == DXIL::Semantic::PrimitiveID)
+		{
+			// These are loaded from PrimitiveID opcode, so not sure why they appear here ...
+			continue;
 		}
 
 		if (arrayed_input)
