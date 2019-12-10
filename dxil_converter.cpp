@@ -662,6 +662,9 @@ void Converter::Impl::emit_stage_output_variables()
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, 0), 0);
 
+		if (system_value == DXIL::Semantic::Coverage)
+			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(1), 0);
+
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, semantic_name.c_str());
 		output_elements_meta[element_id] = { variable_id, element_type };
 
@@ -755,6 +758,10 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::TessFactor:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInTessLevelOuter);
 		spirv_module.register_builtin_shader_input(id, spv::BuiltInTessLevelOuter);
+		break;
+
+	case DXIL::Semantic::Coverage:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInSampleMask);
 		break;
 
 	default:
