@@ -781,6 +781,11 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthGreater);
 		break;
 
+	case DXIL::Semantic::IsFrontFace:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFrontFacing);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInFrontFacing);
+		break;
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
@@ -882,6 +887,10 @@ void Converter::Impl::emit_stage_input_variables()
 		if (arrayed_input)
 			type_id =
 			    builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
+
+		// Need to cast this to uint when loading the semantic input.
+		if (system_value == DXIL::Semantic::IsFrontFace)
+			type_id = builder.makeBoolType();
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, semantic_name.c_str());
 		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };

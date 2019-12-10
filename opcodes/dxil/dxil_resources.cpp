@@ -27,23 +27,46 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 {
 	auto &builder = impl.builder();
 	spv::BuiltIn builtin;
-	if (impl.spirv_module.query_builtin_shader_input(var_id, &builtin) && builtin == spv::BuiltInInstanceIndex)
+	if (impl.spirv_module.query_builtin_shader_input(var_id, &builtin))
 	{
-		// Need to shift InstanceIndex down to 0-base.
-		spv::Id base_instance_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInBaseInstance);
+		if (builtin == spv::BuiltInInstanceIndex)
 		{
-			Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
-			op->add_id(base_instance_id);
-			base_instance_id = op->id;
-			impl.add(op);
-		}
+			// Need to shift InstanceIndex down to 0-base.
+			spv::Id base_instance_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInBaseInstance);
+			{
+				Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+				op->add_id(base_instance_id);
+				base_instance_id = op->id;
+				impl.add(op);
+			}
 
-		Operation *sub_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
-		sub_op->add_ids({ impl.get_id_for_value(instruction), base_instance_id });
-		impl.add(sub_op);
-		impl.value_map[instruction] = sub_op->id;
-		builder.addCapability(spv::CapabilityDrawParameters);
+			Operation *sub_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
+			sub_op->add_ids({ impl.get_id_for_value(instruction), base_instance_id });
+			impl.add(sub_op);
+			impl.value_map[instruction] = sub_op->id;
+			builder.addCapability(spv::CapabilityDrawParameters);
+		}
+		else if (builtin == spv::BuiltInFrontFacing)
+		{
+			Operation *cast_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+			cast_op->add_ids({
+				impl.get_id_for_value(instruction),
+				builder.makeUintConstant(1),
+				builder.makeUintConstant(0),
+			});
+			impl.add(cast_op);
+			impl.value_map[instruction] = cast_op->id;
+		}
 	}
+}
+
+static spv::Id get_builtin_load_type(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta)
+{
+	spv::BuiltIn builtin;
+	if (impl.spirv_module.query_builtin_shader_input(meta.id, &builtin) && builtin == spv::BuiltInFrontFacing)
+		return impl.builder().makeBoolType();
+	else
+		return impl.get_type_id(meta.component_type, 1, 1);
 }
 
 bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -100,7 +123,9 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 		ptr_id = var_id;
 
 	// Need to deal with signed vs unsigned here.
-	Operation *op = impl.allocate(spv::OpLoad, instruction, impl.get_type_id(meta.component_type, 1, 1));
+	spv::Id load_type = get_builtin_load_type(impl, meta);
+
+	Operation *op = impl.allocate(spv::OpLoad, instruction, load_type);
 	op->add_id(ptr_id);
 	impl.add(op);
 
