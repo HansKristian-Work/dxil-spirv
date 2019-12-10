@@ -913,6 +913,13 @@ void Converter::Impl::emit_stage_input_variables()
 		// Need to cast this to uint when loading the semantic input.
 		if (system_value == DXIL::Semantic::IsFrontFace)
 			type_id = builder.makeBoolType();
+		else if (system_value == DXIL::Semantic::ClipDistance)
+		{
+			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
+			unsigned num_elements = rows * cols;
+			execution_mode_meta.stage_input_clip_distance_stride = cols;
+			type_id = get_type_id(element_type, num_elements, 1);
+		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, semantic_name.c_str());
 		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };

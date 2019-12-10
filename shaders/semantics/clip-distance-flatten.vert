@@ -12,3 +12,4 @@ VSOut main(float4 pos : POS, float2 clip : CLIP)
 	vs.clip[1] = clip + 1.0;
 	return vs;
 }
+
