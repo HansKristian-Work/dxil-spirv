@@ -1172,6 +1172,30 @@ void Converter::Impl::emit_execution_modes_compute()
 	}
 }
 
+void Converter::Impl::emit_execution_modes_pixel()
+{
+	auto &module = bitcode_parser.get_module();
+	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
+	auto *node = ep_meta->getOperand(0);
+	auto &builder = spirv_module.get_builder();
+
+	if (node->getOperand(4))
+	{
+		auto *tag_values = llvm::cast<llvm::MDNode>(node->getOperand(4));
+		unsigned num_pairs = tag_values->getNumOperands() / 2;
+		for (unsigned i = 0; i < num_pairs; i++)
+		{
+			auto tag = static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i));
+			if (tag == DXIL::ShaderPropertyTag::ShaderFlags)
+			{
+				auto flags = get_constant_metadata<uint64_t>(tag_values, 2 * i + 1);
+				if (flags & DXIL::ShaderFlagEarlyDepthStencil)
+					builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeEarlyFragmentTests);
+			}
+		}
+	}
+}
+
 void Converter::Impl::emit_execution_modes_domain()
 {
 	auto &module = bitcode_parser.get_module();
@@ -1416,6 +1440,10 @@ void Converter::Impl::emit_execution_modes()
 
 	case spv::ExecutionModelTessellationEvaluation:
 		emit_execution_modes_domain();
+		break;
+
+	case spv::ExecutionModelFragment:
+		emit_execution_modes_pixel();
 		break;
 
 	default:

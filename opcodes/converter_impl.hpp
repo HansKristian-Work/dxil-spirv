@@ -79,6 +79,7 @@ struct Converter::Impl
 	void emit_execution_modes_geometry();
 	void emit_execution_modes_hull();
 	void emit_execution_modes_domain();
+	void emit_execution_modes_pixel();
 
 	struct ExecutionModeMeta
 	{

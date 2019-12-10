@@ -500,4 +500,9 @@ enum class TessellatorPartitioning : uint8_t
 	FractionalOdd = 3,
 	FractionalEven = 4
 };
+
+enum ShaderFlag
+{
+	ShaderFlagEarlyDepthStencil = 1 << 3
+};
 } // namespace DXIL
