@@ -658,18 +658,27 @@ void Converter::Impl::emit_stage_output_variables()
 #endif
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
-		if (execution_model == spv::ExecutionModelTessellationControl)
-			type_id = builder.makeArrayType(
-			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, 0), 0);
 
-		if (system_value == DXIL::Semantic::Coverage)
+		if (system_value == DXIL::Semantic::Position)
+		{
+			type_id = get_type_id(element_type, rows, 4);
+		}
+		else if (system_value == DXIL::Semantic::Coverage)
+		{
 			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(1), 0);
+		}
 		else if (system_value == DXIL::Semantic::ClipDistance)
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			unsigned num_elements = rows * cols;
 			execution_mode_meta.stage_output_clip_distance_stride = cols;
 			type_id = get_type_id(element_type, num_elements, 1);
+		}
+
+		if (execution_model == spv::ExecutionModelTessellationControl)
+		{
+			type_id = builder.makeArrayType(
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, 0), 0);
 		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, semantic_name.c_str());
@@ -916,19 +925,27 @@ void Converter::Impl::emit_stage_input_variables()
 #endif
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
-		if (arrayed_input)
-			type_id =
-			    builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
-
-		// Need to cast this to uint when loading the semantic input.
-		if (system_value == DXIL::Semantic::IsFrontFace)
+		if (system_value == DXIL::Semantic::Position)
+		{
+			type_id = get_type_id(element_type, rows, 4);
+		}
+		else if (system_value == DXIL::Semantic::IsFrontFace)
+		{
+			// Need to cast this to uint when loading the semantic input.
 			type_id = builder.makeBoolType();
+		}
 		else if (system_value == DXIL::Semantic::ClipDistance)
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			unsigned num_elements = rows * cols;
 			execution_mode_meta.stage_input_clip_distance_stride = cols;
 			type_id = get_type_id(element_type, num_elements, 1);
+		}
+
+		if (arrayed_input)
+		{
+			type_id =
+			    builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
 		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, semantic_name.c_str());
