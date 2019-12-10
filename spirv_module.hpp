@@ -51,6 +51,9 @@ public:
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
 	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;
 
+	void register_builtin_shader_output(spv::Id id, spv::BuiltIn builtin);
+	bool query_builtin_shader_output(spv::Id id, spv::BuiltIn *builtin) const;
+
 	Operation *allocate_op();
 	Operation *allocate_op(spv::Op op);
 	Operation *allocate_op(spv::Op op, spv::Id id, spv::Id type_id);

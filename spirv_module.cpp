@@ -56,8 +56,12 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
 	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;
-	std::unordered_map<spv::BuiltIn, spv::Id> builtins;
-	std::unordered_map<spv::Id, spv::BuiltIn> id_to_builtin;
+	void register_builtin_shader_output(spv::Id id, spv::BuiltIn builtin);
+	bool query_builtin_shader_output(spv::Id id, spv::BuiltIn *builtin) const;
+	std::unordered_map<spv::BuiltIn, spv::Id> builtins_input;
+	std::unordered_map<spv::Id, spv::BuiltIn> id_to_builtin_input;
+	std::unordered_map<spv::BuiltIn, spv::Id> builtins_output;
+	std::unordered_map<spv::Id, spv::BuiltIn> id_to_builtin_output;
 
 	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
 	ScratchPool<Operation> operation_pool;
@@ -94,14 +98,32 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 
 void SPIRVModule::Impl::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin)
 {
-	builtins[builtin] = id;
-	id_to_builtin[id] = builtin;
+	builtins_input[builtin] = id;
+	id_to_builtin_input[id] = builtin;
+}
+
+void SPIRVModule::Impl::register_builtin_shader_output(spv::Id id, spv::BuiltIn builtin)
+{
+	builtins_output[builtin] = id;
+	id_to_builtin_output[id] = builtin;
 }
 
 bool SPIRVModule::Impl::query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const
 {
-	auto itr = id_to_builtin.find(id);
-	if (itr != id_to_builtin.end())
+	auto itr = id_to_builtin_input.find(id);
+	if (itr != id_to_builtin_input.end())
+	{
+		*builtin = itr->second;
+		return true;
+	}
+	else
+		return false;
+}
+
+bool SPIRVModule::Impl::query_builtin_shader_output(spv::Id id, spv::BuiltIn *builtin) const
+{
+	auto itr = id_to_builtin_output.find(id);
+	if (itr != id_to_builtin_output.end())
 	{
 		*builtin = itr->second;
 		return true;
@@ -112,8 +134,8 @@ bool SPIRVModule::Impl::query_builtin_shader_input(spv::Id id, spv::BuiltIn *bui
 
 spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 {
-	auto itr = builtins.find(builtin);
-	if (itr != builtins.end())
+	auto itr = builtins_input.find(builtin);
+	if (itr != builtins_input.end())
 		return itr->second;
 
 	spv::Id var_id = builder.createVariable(spv::StorageClassInput, get_type_for_builtin(builtin));
@@ -433,9 +455,19 @@ void SPIRVModule::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin
 	impl->register_builtin_shader_input(id, builtin);
 }
 
+void SPIRVModule::register_builtin_shader_output(spv::Id id, spv::BuiltIn builtin)
+{
+	impl->register_builtin_shader_output(id, builtin);
+}
+
 bool SPIRVModule::query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const
 {
 	return impl->query_builtin_shader_input(id, builtin);
+}
+
+bool SPIRVModule::query_builtin_shader_output(spv::Id id, spv::BuiltIn *builtin) const
+{
+	return impl->query_builtin_shader_output(id, builtin);
 }
 
 Operation *SPIRVModule::allocate_op()

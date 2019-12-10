@@ -664,6 +664,13 @@ void Converter::Impl::emit_stage_output_variables()
 
 		if (system_value == DXIL::Semantic::Coverage)
 			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(1), 0);
+		else if (system_value == DXIL::Semantic::ClipDistance)
+		{
+			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
+			unsigned num_elements = rows * cols;
+			execution_mode_meta.stage_output_clip_distance_stride = cols;
+			type_id = get_type_id(element_type, num_elements, 1);
+		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, semantic_name.c_str());
 		output_elements_meta[element_id] = { variable_id, element_type };
@@ -732,7 +739,9 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::Position:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPosition);
 		if (storage == spv::StorageClassInput)
-			spirv_module.register_builtin_shader_input(id, spv::BuiltInSampleId);
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInPosition);
+		else if (storage == spv::StorageClassOutput)
+			spirv_module.register_builtin_shader_output(id, spv::BuiltInPosition);
 		break;
 
 	case DXIL::Semantic::SampleIndex:
@@ -762,28 +771,41 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 
 	case DXIL::Semantic::Coverage:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInSampleMask);
+		spirv_module.register_builtin_shader_output(id, spv::BuiltInSampleMask);
 		break;
 
 	case DXIL::Semantic::Depth:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragDepth);
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthReplacing);
+		spirv_module.register_builtin_shader_output(id, spv::BuiltInFragDepth);
 		break;
 
 	case DXIL::Semantic::DepthLessEqual:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragDepth);
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthReplacing);
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthLess);
+		spirv_module.register_builtin_shader_output(id, spv::BuiltInFragDepth);
 		break;
 
 	case DXIL::Semantic::DepthGreaterEqual:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragDepth);
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthReplacing);
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthGreater);
+		spirv_module.register_builtin_shader_output(id, spv::BuiltInFragDepth);
 		break;
 
 	case DXIL::Semantic::IsFrontFace:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFrontFacing);
 		spirv_module.register_builtin_shader_input(id, spv::BuiltInFrontFacing);
+		break;
+
+	case DXIL::Semantic::ClipDistance:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInClipDistance);
+		builder.addCapability(spv::CapabilityClipDistance);
+		if (storage == spv::StorageClassOutput)
+			spirv_module.register_builtin_shader_output(id, spv::BuiltInClipDistance);
+		else if (storage == spv::StorageClassInput)
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInClipDistance);
 		break;
 
 	default:
