@@ -70,6 +70,9 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInSampleMask:
 		return builder.makeArrayType(builder.makeUintType(32), builder.makeUintConstant(1), 0);
 
+	case spv::BuiltInTessCoord:
+		return builder.makeVectorType(builder.makeFloatType(32), 3);
+
 	case spv::BuiltInLocalInvocationIndex:
 	case spv::BuiltInSampleId:
 	case spv::BuiltInVertexIndex:

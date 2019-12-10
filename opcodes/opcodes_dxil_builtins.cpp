@@ -148,6 +148,8 @@ struct DXILDispatcher
 		// dxil_tessellation.hpp
 		OP(StorePatchConstant) = emit_store_patch_constant_instruction;
 		OP(LoadOutputControlPoint) = emit_load_output_control_point_instruction;
+		OP(DomainLocation) = emit_domain_location_instruction;
+		OP(LoadPatchConstant) = emit_load_patch_constant_instruction;
 	}
 
 #undef OP
