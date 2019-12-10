@@ -39,6 +39,8 @@ bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm
 bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
+bool emit_make_double_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
 template <GLSLstd450 opcode>
 static inline bool emit_find_high_bit_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {

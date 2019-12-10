@@ -123,6 +123,8 @@ struct DXILDispatcher
 		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract>;
 		OP(Bfi) = emit_bfi_instruction;
 
+		OP(MakeDouble) = emit_make_double_instruction;
+
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;
 		OP(ThreadId) = emit_thread_id_load_dispatch<spv::BuiltInGlobalInvocationId>;

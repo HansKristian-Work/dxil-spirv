@@ -234,4 +234,22 @@ bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instructi
 	return true;
 }
 
+bool emit_make_double_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+	Operation *op = impl.allocate(spv::OpExtInst, instruction);
+	op->add_id(impl.glsl_std450_ext);
+	op->add_id(GLSLstd450PackDouble2x32);
+
+	spv::Id inputs[2];
+	for (unsigned i = 0; i < 2; i++)
+		inputs[i] = impl.get_id_for_value(instruction->getOperand(1 + i));
+	op->add_id(impl.build_vector(builder.makeUintType(32), inputs, 2));
+
+	impl.add(op);
+	return true;
+}
+
 } // namespace DXIL2SPIRV
