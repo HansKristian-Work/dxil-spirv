@@ -268,4 +268,24 @@ bool emit_split_double_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
+bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	Operation *unpack_op = impl.allocate(spv::OpExtInst,
+	                                     builder.makeVectorType(builder.makeFloatType(32), 2));
+	unpack_op->add_id(impl.glsl_std450_ext);
+	unpack_op->add_id(GLSLstd450UnpackHalf2x16);
+	unpack_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(unpack_op);
+
+	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
+	op->add_id(unpack_op->id);
+	op->add_literal(0);
+	impl.add(op);
+	return true;
+}
+
 } // namespace DXIL2SPIRV
