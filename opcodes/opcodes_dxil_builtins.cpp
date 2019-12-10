@@ -150,6 +150,7 @@ struct DXILDispatcher
 		OP(LoadOutputControlPoint) = emit_load_output_control_point_instruction;
 		OP(DomainLocation) = emit_domain_location_instruction;
 		OP(LoadPatchConstant) = emit_load_patch_constant_instruction;
+		OP(OutputControlPointID) = emit_output_control_point_instruction;
 	}
 
 #undef OP

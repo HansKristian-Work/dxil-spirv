@@ -20,7 +20,7 @@ struct PatchConstant
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(4)]
 [patchconstantfunc("main_patch")]
-HSControlPoint main(InputPatch<VSControlPoint, 5> ip)
+HSControlPoint main(InputPatch<VSControlPoint, 5> ip, uint control : SV_OutputControlPointID)
 {
 	// Test that alloca gets directly appropriately.
 	float4 v;
@@ -31,7 +31,7 @@ HSControlPoint main(InputPatch<VSControlPoint, 5> ip)
 	v[int(ip[0].value)] += 40.0;
 
 	HSControlPoint cp;
-	cp.value = ip[0].value + ip[1].value + ip[2].value + v[3];
+	cp.value = ip[0].value + ip[1].value + ip[2].value + v[3] + float(control);
 	return cp;
 }
 

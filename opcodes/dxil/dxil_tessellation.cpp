@@ -133,6 +133,18 @@ bool emit_domain_location_instruction(Converter::Impl &impl, const llvm::CallIns
 	return true;
 }
 
+bool emit_output_control_point_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId);
+
+	auto *op = impl.allocate(spv::OpLoad, instruction);
+	op->add_id(var_id);
+	impl.add(op);
+
+	return true;
+}
+
 bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
