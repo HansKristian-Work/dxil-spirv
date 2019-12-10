@@ -96,11 +96,12 @@ OpExecutionMode %3 InputPoints
 OpExecutionMode %3 OutputPoints
 OpName %3 "main"
 OpName %11 "A"
-OpName %13 "SV_Position"
-OpName %15 "SV_PrimitiveID"
+OpName %13 "SV_PrimitiveID"
+OpName %15 "SV_Position"
+OpName %17 "SV_PrimitiveID"
 OpDecorate %11 Location 0
-OpDecorate %13 BuiltIn Position
-OpDecorate %15 BuiltIn PrimitiveId
+OpDecorate %13 BuiltIn PrimitiveId
+OpDecorate %15 BuiltIn Position
 OpDecorate %17 BuiltIn PrimitiveId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -111,12 +112,12 @@ OpDecorate %17 BuiltIn PrimitiveId
 %9 = OpTypeArray %6 %8
 %10 = OpTypePointer Input %9
 %11 = OpVariable %10 Input
-%12 = OpTypePointer Output %6
-%13 = OpVariable %12 Output
-%14 = OpTypePointer Output %7
+%12 = OpTypePointer Input %7
+%13 = OpVariable %12 Input
+%14 = OpTypePointer Output %6
 %15 = OpVariable %14 Output
-%16 = OpTypePointer Input %7
-%17 = OpVariable %16 Input
+%16 = OpTypePointer Output %7
+%17 = OpVariable %16 Output
 %19 = OpTypePointer Input %5
 %21 = OpConstant %7 0
 %26 = OpConstant %7 2
@@ -126,7 +127,7 @@ OpDecorate %17 BuiltIn PrimitiveId
 %4 = OpLabel
 OpBranch %37
 %37 = OpLabel
-%18 = OpLoad %7 %17
+%18 = OpLoad %7 %13
 %20 = OpAccessChain %19 %11 %21 %21
 %22 = OpLoad %5 %20
 %23 = OpAccessChain %19 %11 %21 %8
@@ -136,15 +137,15 @@ OpBranch %37
 %28 = OpAccessChain %19 %11 %21 %29
 %30 = OpLoad %5 %28
 %31 = OpIAdd %7 %18 %8
-%33 = OpAccessChain %32 %13 %21
+%33 = OpAccessChain %32 %15 %21
 OpStore %33 %22
-%34 = OpAccessChain %32 %13 %8
+%34 = OpAccessChain %32 %15 %8
 OpStore %34 %24
-%35 = OpAccessChain %32 %13 %26
+%35 = OpAccessChain %32 %15 %26
 OpStore %35 %27
-%36 = OpAccessChain %32 %13 %29
+%36 = OpAccessChain %32 %15 %29
 OpStore %36 %30
-OpStore %15 %31
+OpStore %17 %31
 OpEmitVertex
 OpReturn
 OpFunctionEnd

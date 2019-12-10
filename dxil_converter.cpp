@@ -969,10 +969,7 @@ void Converter::Impl::emit_stage_input_variables()
 			type_id = get_type_id(element_type, num_elements, 1);
 		}
 		else if (system_value == DXIL::Semantic::PrimitiveID)
-		{
-			// These are loaded from PrimitiveID opcode, so not sure why they appear here ...
-			continue;
-		}
+			arrayed_input = false;
 
 		if (arrayed_input)
 		{
