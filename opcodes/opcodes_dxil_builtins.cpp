@@ -169,6 +169,8 @@ struct DXILDispatcher
 		OP(WaveActiveBallot) = emit_wave_ballot_instruction;
 		OP(WaveReadLaneFirst) = emit_wave_read_lane_first_instruction;
 		OP(WaveReadLaneAt) = emit_wave_read_lane_at_instruction;
+
+		OP(WaveAllBitCount) = emit_wave_all_bit_count_instruction;
 	}
 
 #undef OP

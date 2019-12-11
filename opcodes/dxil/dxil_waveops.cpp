@@ -107,4 +107,24 @@ bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallI
 	impl.add(op);
 	return true;
 }
+
+bool emit_wave_all_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	auto *ballot_op = impl.allocate(spv::OpGroupNonUniformBallot,
+	                         builder.makeVectorType(builder.makeUintType(32), 4));
+	ballot_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	ballot_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(ballot_op);
+
+	auto *op = impl.allocate(spv::OpGroupNonUniformBallotBitCount, instruction);
+	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	op->add_literal(spv::GroupOperationReduce);
+	op->add_id(ballot_op->id);
+
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	impl.add(op);
+	return true;
+}
 }
