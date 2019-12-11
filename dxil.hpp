@@ -505,4 +505,25 @@ enum ShaderFlag
 {
 	ShaderFlagEarlyDepthStencil = 1 << 3
 };
+
+enum class WaveOpKind : uint8_t
+{
+	Sum = 0,
+	Product = 1,
+	Min = 2,
+	Max = 3
+};
+
+enum class WaveBitOpKind : uint8_t
+{
+	And = 0,
+	Or = 1,
+	Xor = 2
+};
+
+enum class SignedOpKind : uint8_t
+{
+	Signed = 0,
+	Unsigned = 1
+};
 } // namespace DXIL

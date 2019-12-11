@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include "dxil_common.hpp"
 #include "dxil_waveops.hpp"
 #include "opcodes/converter_impl.hpp"
 
@@ -125,6 +126,108 @@ bool emit_wave_all_bit_count_instruction(Converter::Impl &impl, const llvm::Call
 
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
 	impl.add(op);
+	return true;
+}
+
+static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv::Op s, spv::Op u)
+{
+	uint32_t sign_kind;
+	if (!get_constant_operand(instruction, 3, &sign_kind))
+		return spv::OpNop;
+
+	if (instruction->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+		return fp;
+	else if (static_cast<DXIL::SignedOpKind>(sign_kind) == DXIL::SignedOpKind::Signed)
+		return s;
+	else
+		return u;
+}
+
+bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	spv::Op opcode;
+
+	uint32_t op_kind;
+	if (!get_constant_operand(instruction, 2, &op_kind))
+		return false;
+
+
+	switch (static_cast<DXIL::WaveOpKind>(op_kind))
+	{
+	case DXIL::WaveOpKind::Sum:
+		opcode = select_opcode(instruction,
+		                       spv::OpGroupNonUniformFAdd,
+		                       spv::OpGroupNonUniformIAdd,
+		                       spv::OpGroupNonUniformIAdd);
+		break;
+
+	case DXIL::WaveOpKind::Product:
+		opcode = select_opcode(instruction,
+		                       spv::OpGroupNonUniformFMul,
+		                       spv::OpGroupNonUniformIMul,
+		                       spv::OpGroupNonUniformIMul);
+		break;
+
+	case DXIL::WaveOpKind::Min:
+		opcode = select_opcode(instruction,
+		                       spv::OpGroupNonUniformFMin,
+		                       spv::OpGroupNonUniformSMin,
+		                       spv::OpGroupNonUniformUMin);
+		break;
+
+	case DXIL::WaveOpKind::Max:
+		opcode = select_opcode(instruction,
+		                       spv::OpGroupNonUniformFMax,
+		                       spv::OpGroupNonUniformSMax,
+		                       spv::OpGroupNonUniformUMax);
+		break;
+	}
+
+	auto *op = impl.allocate(opcode, instruction);
+	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	op->add_literal(spv::GroupOperationReduce);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
+
+	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
+	return true;
+}
+
+bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	spv::Op opcode;
+
+	uint32_t op_kind;
+	if (!get_constant_operand(instruction, 2, &op_kind))
+		return false;
+
+
+	switch (static_cast<DXIL::WaveBitOpKind>(op_kind))
+	{
+	case DXIL::WaveBitOpKind::And:
+		opcode = spv::OpGroupNonUniformBitwiseAnd;
+		break;
+
+	case DXIL::WaveBitOpKind::Or:
+		opcode = spv::OpGroupNonUniformBitwiseOr;
+		break;
+
+	case DXIL::WaveBitOpKind::Xor:
+		opcode = spv::OpGroupNonUniformBitwiseXor;
+		break;
+	}
+
+	auto *op = impl.allocate(opcode, instruction);
+	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	op->add_literal(spv::GroupOperationReduce);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
+
+	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
 	return true;
 }
 }

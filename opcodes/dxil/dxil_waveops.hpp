@@ -29,6 +29,9 @@ bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::Ca
 bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_all_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
+bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
 template <spv::Op opcode>
 static inline bool emit_wave_boolean_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
