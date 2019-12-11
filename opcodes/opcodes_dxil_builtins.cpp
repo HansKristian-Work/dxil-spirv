@@ -167,6 +167,8 @@ struct DXILDispatcher
 		OP(WaveAnyTrue) = emit_wave_boolean_dispatch<spv::OpGroupNonUniformAny>;
 		OP(WaveActiveAllEqual) = emit_wave_boolean_dispatch<spv::OpGroupNonUniformAllEqual>;
 		OP(WaveActiveBallot) = emit_wave_ballot_instruction;
+		OP(WaveReadLaneFirst) = emit_wave_read_lane_first_instruction;
+		OP(WaveReadLaneAt) = emit_wave_read_lane_at_instruction;
 	}
 
 #undef OP

@@ -1,0 +1,9 @@
+RWByteAddressBuffer Buf : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint3 index : SV_DispatchThreadID)
+{
+	uint3 first_value = WaveReadLaneAt(index, index.x & (WaveGetLaneCount() - 1));
+	first_value += WaveReadLaneAt(index, 11);
+	Buf.Store3(index.x * 12, first_value);
+}

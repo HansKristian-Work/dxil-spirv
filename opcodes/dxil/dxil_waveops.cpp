@@ -67,4 +67,44 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
 	return true;
 }
+
+bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	auto *op = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, instruction);
+	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	impl.add(op);
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	return true;
+}
+
+bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	auto *lane = instruction->getOperand(2);
+
+	Operation *op;
+	if (llvm::isa<llvm::ConstantInt>(lane))
+	{
+		op = impl.allocate(spv::OpGroupNonUniformBroadcast, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		op->add_id(impl.get_id_for_value(lane));
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	}
+	else
+	{
+		op = impl.allocate(spv::OpGroupNonUniformShuffle, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		op->add_id(impl.get_id_for_value(lane));
+		builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
+	}
+
+	impl.add(op);
+	return true;
+}
 }
