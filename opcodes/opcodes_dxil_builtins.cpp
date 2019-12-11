@@ -28,6 +28,7 @@
 #include "opcodes/dxil/dxil_resources.hpp"
 #include "opcodes/dxil/dxil_sampling.hpp"
 #include "opcodes/dxil/dxil_tessellation.hpp"
+#include "opcodes/dxil/dxil_waveops.hpp"
 
 namespace DXIL2SPIRV
 {
@@ -157,6 +158,9 @@ struct DXILDispatcher
 		OP(DomainLocation) = emit_domain_location_instruction;
 		OP(LoadPatchConstant) = emit_load_patch_constant_instruction;
 		OP(OutputControlPointID) = emit_output_control_point_instruction;
+
+		// dxil_waveops.hpp
+		OP(WaveIsFirstLane) = emit_wave_is_first_lane_instruction;
 	}
 
 #undef OP

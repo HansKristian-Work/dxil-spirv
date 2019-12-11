@@ -1,0 +1,10 @@
+RWByteAddressBuffer Buf : register(u0);
+
+[numthreads(64, 1, 1)]
+void main()
+{
+	if (WaveIsFirstLane())
+		Buf.Store(0, 1);
+	else
+		Buf.Store(0, 0);
+}
