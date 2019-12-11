@@ -23,4 +23,5 @@ namespace DXIL2SPIRV
 {
 bool emit_wave_is_first_lane_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_get_lane_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_wave_get_lane_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 }
