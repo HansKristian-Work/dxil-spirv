@@ -1,0 +1,138 @@
+#version 460
+#extension GL_KHR_shader_subgroup_ballot : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+
+void main()
+{
+    uvec4 _21 = subgroupBallot(gl_GlobalInvocationID.x < 100u);
+    uint _29 = (gl_GlobalInvocationID.x << 4u) >> 2u;
+    imageStore(_8, int(_29), uvec4(_21.x));
+    imageStore(_8, int(_29 + 1u), uvec4(_21.y));
+    imageStore(_8, int(_29 + 2u), uvec4(_21.z));
+    imageStore(_8, int(_29 + 3u), uvec4(_21.w));
+}
+
+
+#if 0
+// LLVM disassembly
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.fouri32 = type { i32, i32, i32, i32 }
+%struct.RWByteAddressBuffer = type { i32 }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)
+  %2 = call i32 @dx.op.threadId.i32(i32 93, i32 0)
+  %3 = icmp ult i32 %2, 100
+  %4 = call %dx.types.fouri32 @dx.op.waveActiveBallot(i32 116, i1 %3)
+  %5 = extractvalue %dx.types.fouri32 %4, 0
+  %6 = extractvalue %dx.types.fouri32 %4, 1
+  %7 = extractvalue %dx.types.fouri32 %4, 2
+  %8 = extractvalue %dx.types.fouri32 %4, 3
+  %9 = shl i32 %2, 4
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 %9, i32 undef, i32 %5, i32 %6, i32 %7, i32 %8, i8 15)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.threadId.i32(i32, i32) #0
+
+; Function Attrs: nounwind
+declare %dx.types.fouri32 @dx.op.waveActiveBallot(i32, i1) #1
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #2
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8) #1
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind }
+attributes #2 = { nounwind readonly }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!7}
+
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
+!1 = !{i32 1, i32 0}
+!2 = !{i32 1, i32 5}
+!3 = !{!"cs", i32 6, i32 0}
+!4 = !{null, !5, null, null}
+!5 = !{!6}
+!6 = !{i32 0, %struct.RWByteAddressBuffer* undef, !"", i32 0, i32 0, i32 1, i32 11, i1 false, i1 false, i1 false, null}
+!7 = !{void ()* @main, !"main", null, !4, !8}
+!8 = !{i32 0, i64 524304, i32 4, !9}
+!9 = !{i32 64, i32 1, i32 1}
+#endif
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 41
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability GroupNonUniformBallot
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%17 = OpTypeBool
+%19 = OpConstant %5 100
+%20 = OpTypeVector %5 4
+%22 = OpConstant %5 3
+%28 = OpConstant %5 4
+%30 = OpConstant %5 2
+%34 = OpConstant %5 1
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %39
+%39 = OpLabel
+%9 = OpLoad %6 %8
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%18 = OpULessThan %17 %16 %19
+%21 = OpGroupNonUniformBallot %20 %22 %18
+%23 = OpCompositeExtract %5 %21 0
+%24 = OpCompositeExtract %5 %21 1
+%25 = OpCompositeExtract %5 %21 2
+%26 = OpCompositeExtract %5 %21 3
+%27 = OpShiftLeftLogical %5 %16 %28
+%29 = OpShiftRightLogical %5 %27 %30
+%31 = OpCompositeConstruct %20 %23 %23 %23 %23
+OpImageWrite %9 %29 %31
+%32 = OpCompositeConstruct %20 %24 %24 %24 %24
+%33 = OpIAdd %5 %29 %34
+OpImageWrite %9 %33 %32
+%35 = OpCompositeConstruct %20 %25 %25 %25 %25
+%36 = OpIAdd %5 %29 %30
+OpImageWrite %9 %36 %35
+%37 = OpCompositeConstruct %20 %26 %26 %26 %26
+%38 = OpIAdd %5 %29 %22
+OpImageWrite %9 %38 %37
+OpReturn
+OpFunctionEnd
+#endif

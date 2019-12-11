@@ -54,4 +54,17 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 	impl.add(op);
 	return true;
 }
+
+bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	auto *op = impl.allocate(spv::OpGroupNonUniformBallot, instruction,
+	                         builder.makeVectorType(builder.makeUintType(32), 4));
+	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	impl.add(op);
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	return true;
+}
 }
