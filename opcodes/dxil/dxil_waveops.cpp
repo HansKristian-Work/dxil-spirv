@@ -321,4 +321,38 @@ bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallIns
 	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
 	return true;
 }
+
+bool emit_wave_quad_op(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	// Matches with SPIR-V.
+	uint32_t swap_kind;
+	if (!get_constant_operand(instruction, 2, &swap_kind))
+		return false;
+
+	Operation *op;
+	if (impl.execution_model == spv::ExecutionModelFragment)
+	{
+		op = impl.allocate(spv::OpGroupNonUniformQuadSwap, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		op->add_id(builder.makeUintConstant(swap_kind));
+		builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+	}
+	else
+	{
+		// Use ShuffleXor for non-fragment stages.
+		op = impl.allocate(spv::OpGroupNonUniformShuffleXor, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+		// 1: Horizontal, 2: Vertical, 3: Diagonal.
+		op->add_id(builder.makeUintConstant(swap_kind + 1));
+		builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
+	}
+
+	impl.add(op);
+	return true;
+}
 }

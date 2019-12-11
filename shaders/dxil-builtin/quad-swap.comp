@@ -1,0 +1,14 @@
+RWByteAddressBuffer A : register(u0);
+RWByteAddressBuffer B : register(u1);
+
+[numthreads(64, 1, 1)]
+void main(uint index : SV_DispatchThreadID)
+{
+	uint value = A.Load(index * 4);
+	uint4 r;
+	r.x = value;
+	r.y = QuadReadAcrossX(value);
+	r.z = QuadReadAcrossY(value);
+	r.w = QuadReadAcrossDiagonal(value);
+	B.Store4(index * 16, r);
+}

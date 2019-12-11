@@ -34,6 +34,7 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_wave_quad_op(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 template <spv::GroupOperation operation>
 static inline bool emit_wave_bit_count_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)

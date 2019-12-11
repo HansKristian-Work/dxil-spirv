@@ -1,0 +1,164 @@
+#version 460
+#extension GL_KHR_shader_subgroup_shuffle : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform readonly uimageBuffer _8;
+layout(set = 0, binding = 1, r32ui) uniform writeonly uimageBuffer _9;
+
+void main()
+{
+    uint _21 = (gl_GlobalInvocationID.x << 2u) >> 2u;
+    uvec4 _23 = imageLoad(_8, int(_21));
+    uvec4 _25 = imageLoad(_8, int(_21 + 1u));
+    uvec4 _29 = imageLoad(_8, int(_21 + 2u));
+    uvec4 _32 = imageLoad(_8, int(_21 + 3u));
+    uvec4 _36 = uvec4(_23.x, _25.x, _29.x, _32.x);
+    uint _37 = _36.x;
+    uint _43 = (gl_GlobalInvocationID.x << 4u) >> 2u;
+    imageStore(_9, int(_43), uvec4(_37));
+    imageStore(_9, int(_43 + 1u), uvec4(subgroupShuffleXor(_37, 1u)));
+    imageStore(_9, int(_43 + 2u), uvec4(subgroupShuffleXor(_37, 2u)));
+    imageStore(_9, int(_43 + 3u), uvec4(subgroupShuffleXor(_37, 3u)));
+}
+
+
+#if 0
+// LLVM disassembly
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.ResRet.i32 = type { i32, i32, i32, i32, i32 }
+%struct.RWByteAddressBuffer = type { i32 }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 1, i32 1, i1 false)
+  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)
+  %3 = call i32 @dx.op.threadId.i32(i32 93, i32 0)
+  %4 = shl i32 %3, 2
+  %5 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %2, i32 %4, i32 undef)
+  %6 = extractvalue %dx.types.ResRet.i32 %5, 0
+  %7 = call i32 @dx.op.quadOp.i32(i32 123, i32 %6, i8 0)
+  %8 = call i32 @dx.op.quadOp.i32(i32 123, i32 %6, i8 1)
+  %9 = call i32 @dx.op.quadOp.i32(i32 123, i32 %6, i8 2)
+  %10 = shl i32 %3, 4
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 %10, i32 undef, i32 %6, i32 %7, i32 %8, i32 %9, i8 15)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.threadId.i32(i32, i32) #0
+
+; Function Attrs: nounwind
+declare i32 @dx.op.quadOp.i32(i32, i32, i8) #1
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32, %dx.types.Handle, i32, i32) #2
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8) #1
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind }
+attributes #2 = { nounwind readonly }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!8}
+
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
+!1 = !{i32 1, i32 0}
+!2 = !{i32 1, i32 5}
+!3 = !{!"cs", i32 6, i32 0}
+!4 = !{null, !5, null, null}
+!5 = !{!6, !7}
+!6 = !{i32 0, %struct.RWByteAddressBuffer* undef, !"", i32 0, i32 0, i32 1, i32 11, i1 false, i1 false, i1 false, null}
+!7 = !{i32 1, %struct.RWByteAddressBuffer* undef, !"", i32 0, i32 1, i32 1, i32 11, i1 false, i1 false, i1 false, null}
+!8 = !{void ()* @main, !"main", null, !4, !9}
+!9 = !{i32 0, i64 524304, i32 4, !10}
+!10 = !{i32 64, i32 1, i32 1}
+#endif
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 53
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability GroupNonUniformShuffle
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %14
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 1
+OpDecorate %14 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpVariable %7 UniformConstant
+%12 = OpTypeVector %5 3
+%13 = OpTypePointer Input %12
+%14 = OpVariable %13 Input
+%15 = OpTypePointer Input %5
+%17 = OpConstant %5 0
+%20 = OpConstant %5 2
+%22 = OpTypeVector %5 4
+%27 = OpConstant %5 1
+%34 = OpConstant %5 3
+%42 = OpConstant %5 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %51
+%51 = OpLabel
+%10 = OpLoad %6 %9
+%11 = OpLoad %6 %8
+%16 = OpAccessChain %15 %14 %17
+%18 = OpLoad %5 %16
+%19 = OpShiftLeftLogical %5 %18 %20
+%21 = OpShiftRightLogical %5 %19 %20
+%23 = OpImageRead %22 %11 %21
+%24 = OpCompositeExtract %5 %23 0
+%26 = OpIAdd %5 %21 %27
+%25 = OpImageRead %22 %11 %26
+%28 = OpCompositeExtract %5 %25 0
+%30 = OpIAdd %5 %21 %20
+%29 = OpImageRead %22 %11 %30
+%31 = OpCompositeExtract %5 %29 0
+%33 = OpIAdd %5 %21 %34
+%32 = OpImageRead %22 %11 %33
+%35 = OpCompositeExtract %5 %32 0
+%36 = OpCompositeConstruct %22 %24 %28 %31 %35
+%37 = OpCompositeExtract %5 %36 0
+%38 = OpGroupNonUniformShuffleXor %5 %34 %37 %27
+%39 = OpGroupNonUniformShuffleXor %5 %34 %37 %20
+%40 = OpGroupNonUniformShuffleXor %5 %34 %37 %34
+%41 = OpShiftLeftLogical %5 %18 %42
+%43 = OpShiftRightLogical %5 %41 %20
+%44 = OpCompositeConstruct %22 %37 %37 %37 %37
+OpImageWrite %10 %43 %44
+%45 = OpCompositeConstruct %22 %38 %38 %38 %38
+%46 = OpIAdd %5 %43 %27
+OpImageWrite %10 %46 %45
+%47 = OpCompositeConstruct %22 %39 %39 %39 %39
+%48 = OpIAdd %5 %43 %20
+OpImageWrite %10 %48 %47
+%49 = OpCompositeConstruct %22 %40 %40 %40 %40
+%50 = OpIAdd %5 %43 %34
+OpImageWrite %10 %50 %49
+OpReturn
+OpFunctionEnd
+#endif
