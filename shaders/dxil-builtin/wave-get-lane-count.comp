@@ -1,0 +1,7 @@
+RWByteAddressBuffer Buf : register(u0);
+
+[numthreads(64, 1, 1)]
+void main()
+{
+	Buf.Store(0, WaveGetLaneCount());
+}

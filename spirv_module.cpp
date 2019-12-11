@@ -85,6 +85,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInBaseInstance:
 	case spv::BuiltInInvocationId:
 	case spv::BuiltInPrimitiveId:
+	case spv::BuiltInSubgroupSize:
 		return builder.makeUintType(32);
 
 	case spv::BuiltInGlobalInvocationId:

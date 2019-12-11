@@ -31,4 +31,16 @@ bool emit_wave_is_first_lane_instruction(Converter::Impl &impl, const llvm::Call
 	impl.add(op);
 	return true;
 }
+
+bool emit_wave_get_lane_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSubgroupSize);
+	auto *op = impl.allocate(spv::OpLoad, instruction);
+	op->add_id(var_id);
+
+	builder.addCapability(spv::CapabilityGroupNonUniform);
+	impl.add(op);
+	return true;
+}
 }

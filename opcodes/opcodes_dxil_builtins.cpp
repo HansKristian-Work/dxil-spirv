@@ -161,6 +161,7 @@ struct DXILDispatcher
 
 		// dxil_waveops.hpp
 		OP(WaveIsFirstLane) = emit_wave_is_first_lane_instruction;
+		OP(WaveGetLaneCount) = emit_wave_get_lane_count_instruction;
 	}
 
 #undef OP
