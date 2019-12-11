@@ -109,7 +109,7 @@ bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallI
 	return true;
 }
 
-bool emit_wave_all_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_wave_bit_count_instruction(spv::GroupOperation operation, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
@@ -121,7 +121,7 @@ bool emit_wave_all_bit_count_instruction(Converter::Impl &impl, const llvm::Call
 
 	auto *op = impl.allocate(spv::OpGroupNonUniformBallotBitCount, instruction);
 	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	op->add_literal(spv::GroupOperationReduce);
+	op->add_literal(operation);
 	op->add_id(ballot_op->id);
 
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
@@ -143,6 +143,14 @@ static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv:
 		return u;
 }
 
+static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv::Op i)
+{
+	if (instruction->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+		return fp;
+	else
+		return i;
+}
+
 bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -152,7 +160,6 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	uint32_t op_kind;
 	if (!get_constant_operand(instruction, 2, &op_kind))
 		return false;
-
 
 	switch (static_cast<DXIL::WaveOpKind>(op_kind))
 	{
@@ -195,7 +202,7 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	return true;
 }
 
-bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_wave_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
@@ -205,6 +212,90 @@ bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallIns
 	if (!get_constant_operand(instruction, 2, &op_kind))
 		return false;
 
+	switch (static_cast<DXIL::WaveOpKind>(op_kind))
+	{
+	case DXIL::WaveOpKind::Sum:
+		opcode = select_opcode(instruction,
+		                       spv::OpGroupNonUniformFAdd,
+		                       spv::OpGroupNonUniformIAdd);
+		break;
+
+	case DXIL::WaveOpKind::Product:
+		opcode = select_opcode(instruction,
+		                       spv::OpGroupNonUniformFMul,
+		                       spv::OpGroupNonUniformIMul);
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *op = impl.allocate(opcode, instruction);
+	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	op->add_literal(spv::GroupOperationExclusiveScan);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
+
+	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
+	return true;
+}
+
+bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	spv::Op opcode;
+
+	uint32_t op_kind;
+	if (!get_constant_operand(instruction, 2, &op_kind))
+		return false;
+
+	switch (static_cast<DXIL::WaveMultiPrefixOpKind>(op_kind))
+	{
+	case DXIL::WaveMultiPrefixOpKind::Sum:
+		opcode = select_opcode(instruction,
+		                       spv::OpGroupNonUniformFAdd,
+		                       spv::OpGroupNonUniformIAdd);
+		break;
+
+	case DXIL::WaveMultiPrefixOpKind::Product:
+		opcode = select_opcode(instruction,
+		                       spv::OpGroupNonUniformFMul,
+		                       spv::OpGroupNonUniformIMul);
+		break;
+
+	case DXIL::WaveMultiPrefixOpKind::And:
+		opcode = spv::OpGroupNonUniformBitwiseAnd;
+		break;
+
+	case DXIL::WaveMultiPrefixOpKind::Or:
+		opcode = spv::OpGroupNonUniformBitwiseOr;
+		break;
+
+	case DXIL::WaveMultiPrefixOpKind::Xor:
+		opcode = spv::OpGroupNonUniformBitwiseXor;
+		break;
+	}
+
+	auto *op = impl.allocate(opcode, instruction);
+	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	op->add_literal(spv::GroupOperationExclusiveScan);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
+
+	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
+	return true;
+}
+
+bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	spv::Op opcode;
+
+	uint32_t op_kind;
+	if (!get_constant_operand(instruction, 2, &op_kind))
+		return false;
 
 	switch (static_cast<DXIL::WaveBitOpKind>(op_kind))
 	{

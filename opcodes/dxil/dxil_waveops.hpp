@@ -27,10 +27,19 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-bool emit_wave_all_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool emit_wave_bit_count_instruction(spv::GroupOperation operation, Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_wave_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+template <spv::GroupOperation operation>
+static inline bool emit_wave_bit_count_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_wave_bit_count_instruction(operation, impl, instruction);
+}
 
 template <spv::Op opcode>
 static inline bool emit_wave_boolean_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)

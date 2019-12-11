@@ -169,9 +169,12 @@ struct DXILDispatcher
 		OP(WaveActiveBallot) = emit_wave_ballot_instruction;
 		OP(WaveReadLaneFirst) = emit_wave_read_lane_first_instruction;
 		OP(WaveReadLaneAt) = emit_wave_read_lane_at_instruction;
-		OP(WaveAllBitCount) = emit_wave_all_bit_count_instruction;
+		OP(WaveAllBitCount) = emit_wave_bit_count_dispatch<spv::GroupOperationReduce>;
+		OP(WavePrefixBitCount) = emit_wave_bit_count_dispatch<spv::GroupOperationExclusiveScan>;
 		OP(WaveActiveOp) = emit_wave_active_op_instruction;
 		OP(WaveActiveBit) = emit_wave_active_bit_instruction;
+		OP(WavePrefixOp) = emit_wave_prefix_op_instruction;
+		OP(WaveMultiPrefixOp) = emit_wave_multi_prefix_op_instruction;
 	}
 
 #undef OP

@@ -521,6 +521,15 @@ enum class WaveBitOpKind : uint8_t
 	Xor = 2
 };
 
+enum class WaveMultiPrefixOpKind : uint8_t
+{
+	Sum = 0,
+	And = 1,
+	Or = 2,
+	Xor = 3,
+	Product = 4
+};
+
 enum class SignedOpKind : uint8_t
 {
 	Signed = 0,
