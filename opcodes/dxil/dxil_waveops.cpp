@@ -322,7 +322,7 @@ bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallIns
 	return true;
 }
 
-bool emit_wave_quad_op(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
@@ -349,6 +349,61 @@ bool emit_wave_quad_op(Converter::Impl &impl, const llvm::CallInst *instruction)
 
 		// 1: Horizontal, 2: Vertical, 3: Diagonal.
 		op->add_id(builder.makeUintConstant(swap_kind + 1));
+		builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
+	}
+
+	impl.add(op);
+	return true;
+}
+
+bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	auto *lane = instruction->getOperand(2);
+
+	Operation *op;
+	if (impl.execution_model == spv::ExecutionModelFragment && llvm::isa<llvm::ConstantInt>(lane))
+	{
+		op = impl.allocate(spv::OpGroupNonUniformQuadBroadcast, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		op->add_id(impl.get_id_for_value(lane));
+		builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+	}
+	else
+	{
+		// Have to emulate this with Shuffle.
+		spv::Id local_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSubgroupLocalInvocationId);
+		{
+			Operation *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+			load_op->add_id(local_id);
+			impl.add(load_op);
+			local_id = load_op->id;
+		}
+
+		{
+			Operation *mask_op = impl.allocate(spv::OpBitwiseAnd, builder.makeUintType(32));
+			mask_op->add_id(local_id);
+			mask_op->add_id(builder.makeUintConstant(~3u));
+			impl.add(mask_op);
+			local_id = mask_op->id;
+		}
+
+		{
+			Operation *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+			add_op->add_id(local_id);
+			add_op->add_id(impl.get_id_for_value(lane));
+			impl.add(add_op);
+			local_id = add_op->id;
+		}
+
+		// Use Shuffle for non-fragment stages.
+		op = impl.allocate(spv::OpGroupNonUniformShuffle, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		op->add_id(local_id);
+
 		builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
 	}
 

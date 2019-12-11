@@ -175,7 +175,8 @@ struct DXILDispatcher
 		OP(WaveActiveBit) = emit_wave_active_bit_instruction;
 		OP(WavePrefixOp) = emit_wave_prefix_op_instruction;
 		OP(WaveMultiPrefixOp) = emit_wave_multi_prefix_op_instruction;
-		OP(QuadOp) = emit_wave_quad_op;
+		OP(QuadOp) = emit_wave_quad_op_instruction;
+		OP(QuadReadLaneAt) = emit_wave_quad_read_lane_at_instruction;
 	}
 
 #undef OP
