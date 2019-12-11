@@ -161,8 +161,11 @@ struct DXILDispatcher
 
 		// dxil_waveops.hpp
 		OP(WaveIsFirstLane) = emit_wave_is_first_lane_instruction;
-		OP(WaveGetLaneCount) = emit_wave_get_lane_count_instruction;
-		OP(WaveGetLaneIndex) = emit_wave_get_lane_index_instruction;
+		OP(WaveGetLaneCount) = emit_wave_builtin_dispatch<spv::BuiltInSubgroupSize>;
+		OP(WaveGetLaneIndex) = emit_wave_builtin_dispatch<spv::BuiltInSubgroupLocalInvocationId>;
+		OP(WaveAllTrue) = emit_wave_boolean_dispatch<spv::OpGroupNonUniformAll>;
+		OP(WaveAnyTrue) = emit_wave_boolean_dispatch<spv::OpGroupNonUniformAny>;
+		OP(WaveActiveAllEqual) = emit_wave_boolean_dispatch<spv::OpGroupNonUniformAllEqual>;
 	}
 
 #undef OP
