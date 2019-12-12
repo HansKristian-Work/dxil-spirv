@@ -1,0 +1,16 @@
+groupshared uint data[64];
+
+RWByteAddressBuffer Buf : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint index : SV_DispatchThreadID)
+{
+	uint res = 0;
+	uint compare_value = 20;
+	uint value = 30;
+	uint output;
+
+	InterlockedCompareExchange(data[index], compare_value, value, output);
+	res += output;
+	Buf.Store(index * 4, res);
+}

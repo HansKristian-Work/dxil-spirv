@@ -428,4 +428,96 @@ bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *inst
 	impl.add(op);
 	return true;
 }
+
+bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	Operation *atomic_op = impl.allocate(spv::OpAtomicCompareExchange, builder.makeUintType(32));
+	atomic_op->add_ids({
+		impl.get_id_for_value(instruction->getPointerOperand()),
+		builder.makeUintConstant(spv::ScopeWorkgroup),
+		builder.makeUintConstant(0), // Relaxed
+		builder.makeUintConstant(0), // Relaxed
+		impl.get_id_for_value(instruction->getNewValOperand()),
+		impl.get_id_for_value(instruction->getCompareOperand())
+	});
+
+	impl.add(atomic_op);
+
+	Operation *cmp_op = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+	cmp_op->add_ids({ atomic_op->id, impl.get_id_for_value(instruction->getCompareOperand()) });
+	impl.add(cmp_op);
+
+	if (!impl.cmpxchg_type)
+		impl.cmpxchg_type = builder.makeStructType({ builder.makeUintType(32), builder.makeBoolType() }, "CmpXchgResult");
+
+	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
+	op->add_ids({ atomic_op->id, cmp_op->id });
+	impl.add(op);
+	return true;
+}
+
+bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Op opcode;
+	switch (instruction->getOperation())
+	{
+	case llvm::AtomicRMWInst::BinOp::Add:
+		opcode = spv::OpAtomicIAdd;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::Sub:
+		opcode = spv::OpAtomicISub;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::And:
+		opcode = spv::OpAtomicAnd;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::Or:
+		opcode = spv::OpAtomicOr;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::Xor:
+		opcode = spv::OpAtomicXor;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::UMax:
+		opcode = spv::OpAtomicUMax;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::UMin:
+		opcode = spv::OpAtomicUMin;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::Max:
+		opcode = spv::OpAtomicSMax;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::Min:
+		opcode = spv::OpAtomicSMin;
+		break;
+
+	case llvm::AtomicRMWInst::BinOp::Xchg:
+		opcode = spv::OpAtomicExchange;
+		break;
+
+	default:
+		LOGE("Unrecognized atomicrmw opcode: %u.\n", unsigned(instruction->getOperation()));
+		return false;
+	}
+
+	Operation *op = impl.allocate(opcode, instruction);
+	op->add_ids({
+		impl.get_id_for_value(instruction->getPointerOperand()),
+		builder.makeUintConstant(spv::ScopeWorkgroup),
+		builder.makeUintConstant(0), // Relaxed
+		impl.get_id_for_value(instruction->getValOperand()),
+	});
+
+	impl.add(op);
+	return true;
+}
 } // namespace DXIL2SPIRV

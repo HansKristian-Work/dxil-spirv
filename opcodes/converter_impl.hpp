@@ -138,8 +138,6 @@ struct Converter::Impl
 	void fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
 	spv::Id fixup_store_sign(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 
-	spv::Id glsl_std450_ext = 0;
-
 	std::vector<Operation *> *current_block = nullptr;
 	void add(Operation *op);
 	Operation *allocate(spv::Op op);
@@ -148,5 +146,8 @@ struct Converter::Impl
 	Operation *allocate(spv::Op op, const llvm::Value *value, spv::Id type_id);
 	Operation *allocate(spv::Op op, spv::Id id, spv::Id type_id);
 	spv::Builder &builder();
+
+	spv::Id glsl_std450_ext = 0;
+	spv::Id cmpxchg_type = 0;
 };
 } // namespace DXIL2SPIRV

@@ -1,0 +1,37 @@
+groupshared uint array[64];
+groupshared int array_signed[64];
+
+[numthreads(64, 1, 1)]
+void main(uint index : SV_DispatchThreadID)
+{
+	uint res = 0;
+	uint output;
+	int output_signed;
+
+	InterlockedAdd(array[index], 1, output);
+	res += output;
+
+	InterlockedAnd(array[index], 2, output);
+	res += output;
+
+	InterlockedExchange(array[index], 3, output);
+	res += output;
+
+	InterlockedMax(array[index], 4, output);
+	res += output;
+
+	InterlockedMin(array[index], 5, output);
+	res += output;
+
+	InterlockedOr(array[index], 6, output);
+	res += output;
+
+	InterlockedXor(array[index], 7, output);
+	res += output;
+
+	InterlockedMin(array_signed[index], 8, output_signed);
+	res += output_signed;
+
+	InterlockedMax(array_signed[index], 9, output_signed);
+	res += output_signed;
+}

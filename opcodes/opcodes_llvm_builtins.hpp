@@ -32,4 +32,6 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
 bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction);
 bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *instruction);
+bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction);
+bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgInst *instruction);
 } // namespace DXIL2SPIRV

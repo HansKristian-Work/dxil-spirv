@@ -879,8 +879,11 @@ void Converter::Impl::emit_global_variables()
 		if (initializer && llvm::isa<llvm::UndefValue>(initializer))
 			initializer = nullptr;
 
-		if (address_space == DXIL::AddressSpace::GroupShared && initializer)
-			LOGW("Global variable address space cannot have initializer! Ignoring ...\n");
+		if (address_space == DXIL::AddressSpace::GroupShared)
+		{
+			if (initializer)
+				LOGW("Global variable address space cannot have initializer! Ignoring ...\n");
+		}
 		else
 		{
 			if (!global.isConstant())
@@ -1137,6 +1140,10 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		return emit_alloca_instruction(*this, alloca_inst);
 	else if (auto *select_inst = llvm::dyn_cast<llvm::SelectInst>(&instruction))
 		return emit_select_instruction(*this, select_inst);
+	else if (auto *atomic_inst = llvm::dyn_cast<llvm::AtomicRMWInst>(&instruction))
+		return emit_atomicrmw_instruction(*this, atomic_inst);
+	else if (auto *cmpxchg_inst = llvm::dyn_cast<llvm::AtomicCmpXchgInst>(&instruction))
+		return emit_cmpxchg_instruction(*this, cmpxchg_inst);
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
 		return emit_phi_instruction(block, *phi_inst);
 
