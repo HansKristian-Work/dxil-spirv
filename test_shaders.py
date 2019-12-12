@@ -70,7 +70,10 @@ def cross_compile_dxil(shader, args, paths):
     dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader), '-Fo', dxil_path, shader]
     subprocess.check_call(dxil_cmd)
 
-    glsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', '--validate', dxil_path]
+    glsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', dxil_path]
+    if '.invalid.' not in shader:
+        glsl_cmd.append('--validate')
+
     subprocess.check_call(glsl_cmd)
     return (dxil_path, glsl_path)
 

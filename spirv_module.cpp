@@ -237,6 +237,10 @@ void SPIRVModule::Impl::register_block(CFGNode *node)
 	if (!node->userdata || node->id == 0)
 	{
 		auto *bb = new spv::Block(builder.getUniqueId(), *active_function);
+#if 0
+		if (!node->name.empty())
+			builder.addName(bb->getId(), node->name.c_str());
+#endif
 		active_function->addBlock(bb);
 		node->id = bb->getId();
 		node->userdata = bb;
