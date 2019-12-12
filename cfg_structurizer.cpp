@@ -319,32 +319,51 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 		if (frontier == node.block)
 		{
-			std::vector<IncomingValue> final_incoming;
-
-			// Final merge.
-			for (auto *input : frontier->pred)
+			if (frontier->pred.size() == 1 && !frontier->pred_back_edge)
 			{
-				auto itr = find_incoming_value(input, incoming_values);
+				// The PHI node has already been merged.
+				// This can happen if a ladder pred block merged all inputs, and we would
+				// end up with a single-pred PHI, which makes no sense (even if it should work).
+				// Just copy the ID for the frontier node which made the final merge.
+				auto itr = find_incoming_value(frontier->pred.front(), incoming_values);
 				assert(itr != incoming_values.end());
 
-				IncomingValue value = {};
-				value.id = itr->id;
-				value.block = input;
-				final_incoming.push_back(value);
-			}
+				auto *op = module.allocate_op(spv::OpCopyObject, node.phi->id, node.phi->type_id);
+				op->add_id(itr->id);
+				frontier->ir.operations.push_back(op);
 
-			if (frontier->pred_back_edge)
+				// Ignore this one when emitting PHIs later.
+				node.phi->id = 0;
+			}
+			else
 			{
-				auto itr = find_incoming_value(frontier->pred_back_edge, incoming_values);
-				assert(itr != incoming_values.end());
+				std::vector<IncomingValue> final_incoming;
 
-				IncomingValue value = {};
-				value.id = itr->id;
-				value.block = frontier->pred_back_edge;
-				final_incoming.push_back(value);
+				// Final merge.
+				for (auto *input : frontier->pred)
+				{
+					auto itr = find_incoming_value(input, incoming_values);
+					assert(itr != incoming_values.end());
+
+					IncomingValue value = {};
+					value.id = itr->id;
+					value.block = input;
+					final_incoming.push_back(value);
+				}
+
+				if (frontier->pred_back_edge)
+				{
+					auto itr = find_incoming_value(frontier->pred_back_edge, incoming_values);
+					assert(itr != incoming_values.end());
+
+					IncomingValue value = {};
+					value.id = itr->id;
+					value.block = frontier->pred_back_edge;
+					final_incoming.push_back(value);
+				}
+
+				incoming_values = std::move(final_incoming);
 			}
-
-			incoming_values = std::move(final_incoming);
 			return;
 		}
 
@@ -1065,8 +1084,8 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				// If we split the loop header into the loop header -> selection merge header,
 				// then we can merge into a continue block for example.
 				selection_idom->merge = MergeType::Selection;
-				idom->selection_merge_block = node;
-				node->add_unique_header(idom);
+				selection_idom->selection_merge_block = node;
+				node->add_unique_header(selection_idom);
 				LOGE("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(selection_idom),
 				     selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
 			}
@@ -1505,6 +1524,8 @@ void CFGStructurizer::split_merge_blocks()
 		{
 			LOGE("Outer loop header needs ladder break.\n");
 		}
+
+		LOGI("Splitting merge blocks for %s\n", node->name.c_str());
 
 		CFGNode *full_break_target = nullptr;
 

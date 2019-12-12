@@ -257,6 +257,9 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	// Emit phi nodes.
 	for (auto &phi : ir.phi)
 	{
+		if (!phi.id)
+			continue;
+
 		auto phi_op = std::make_unique<spv::Instruction>(phi.id, phi.type_id, spv::OpPhi);
 		for (auto &incoming : phi.incoming)
 		{

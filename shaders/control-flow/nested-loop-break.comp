@@ -5,7 +5,7 @@ void main(uint3 index : SV_DispatchThreadID)
 {
 	uint result = 0;
 
-	// Two level loop, with two breaks.
+	// Three level loop, with two breaks.
 	[loop]
 	for (uint i = 0; i < index.x; i++)
 	{
