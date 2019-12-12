@@ -100,8 +100,9 @@ void CFGStructurizer::log_cfg(const char *tag) const
 bool CFGStructurizer::run()
 {
 	recompute_cfg();
-
 	log_cfg("Input state");
+
+	create_continue_block_ladders();
 
 	split_merge_scopes();
 	recompute_cfg();
@@ -126,6 +127,25 @@ bool CFGStructurizer::run()
 CFGNode *CFGStructurizer::get_entry_block() const
 {
 	return entry_block;
+}
+
+void CFGStructurizer::create_continue_block_ladders()
+{
+	// It does not seem to be legal to merge directly to continue blocks.
+	// To make it possible to merge execution, we need to create a ladder block which we can merge to.
+	bool need_recompute_cfg = false;
+	for (auto *node : post_visit_order)
+	{
+		if (node->succ_back_edge && node->succ_back_edge != node)
+		{
+			LOGI("Creating helper pred block for continue block: %s\n", node->name.c_str());
+			create_helper_pred_block(node);
+			need_recompute_cfg = true;
+		}
+	}
+
+	if (need_recompute_cfg)
+		recompute_cfg();
 }
 
 void CFGStructurizer::prune_dead_preds()

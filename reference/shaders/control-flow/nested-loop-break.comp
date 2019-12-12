@@ -1,0 +1,489 @@
+#version 460
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
+
+uint _28;
+
+void main()
+{
+    uint _25;
+    if (!(gl_GlobalInvocationID.x == 0u))
+    {
+        uint _31;
+        _31 = 0u;
+        uint _26;
+        uint frontier_phi_6;
+        uint _33 = 0u;
+        bool _34;
+        for (;;)
+        {
+            _34 = gl_GlobalInvocationID.y == 0u;
+            uint frontier_phi_4_pred;
+            if (!_34)
+            {
+                uint _38;
+                _38 = 0u;
+                uint _36;
+                bool ladder_phi_12;
+                uint frontier_phi_12_pred;
+                uint _40 = _33;
+                for (;;)
+                {
+                    uint _43 = (_38 << 7u) >> 2u;
+                    if (uvec4(imageLoad(_8, int(_43)).x, imageLoad(_8, int(_43 + 1u)).x, imageLoad(_8, int(_43 + 2u)).x, imageLoad(_8, int(_43 + 3u)).x).x == 10u)
+                    {
+                        uint _61 = 4u >> 2u;
+                        ladder_phi_12 = true;
+                        frontier_phi_12_pred = uvec4(imageLoad(_8, int(_61)).x, imageLoad(_8, int(_61 + 1u)).x, imageLoad(_8, int(_61 + 2u)).x, imageLoad(_8, int(_61 + 3u)).x).x + _40;
+                        break;
+                    }
+                    else
+                    {
+                        uint frontier_phi_10_pred;
+                        if (!(gl_GlobalInvocationID.z == 0u))
+                        {
+                            uint frontier_phi_16;
+                            uint _79 = _40;
+                            uint _80 = 0u;
+                            for (;;)
+                            {
+                                uint _83 = (_80 << 7u) >> 2u;
+                                if (uvec4(imageLoad(_8, int(_83)).x, imageLoad(_8, int(_83 + 1u)).x, imageLoad(_8, int(_83 + 2u)).x, imageLoad(_8, int(_83 + 3u)).x).x == 10u)
+                                {
+                                    uint _99 = 8u >> 2u;
+                                    frontier_phi_16 = uvec4(imageLoad(_8, int(_99)).x, imageLoad(_8, int(_99 + 1u)).x, imageLoad(_8, int(_99 + 2u)).x, imageLoad(_8, int(_99 + 3u)).x).x + _79;
+                                    break;
+                                }
+                                else
+                                {
+                                    uint _116 = (((_38 ^ _31) ^ _80) << 2u) >> 2u;
+                                    uint _77 = uvec4(imageLoad(_8, int(_116)).x, imageLoad(_8, int(_116 + 1u)).x, imageLoad(_8, int(_116 + 2u)).x, imageLoad(_8, int(_116 + 3u)).x).x + _79;
+                                    uint _81 = _80 + 1u;
+                                    if (_81 < gl_GlobalInvocationID.z)
+                                    {
+                                        _79 = _77;
+                                        _80 = _81;
+                                        continue;
+                                    }
+                                    else
+                                    {
+                                        frontier_phi_16 = _77;
+                                        break;
+                                    }
+                                }
+                            }
+                            frontier_phi_10_pred = frontier_phi_16;
+                        }
+                        else
+                        {
+                            frontier_phi_10_pred = _40;
+                        }
+                        _36 = frontier_phi_10_pred;
+                        uint _39 = _38 + 1u;
+                        if (_39 < gl_GlobalInvocationID.y)
+                        {
+                            _38 = _39;
+                            _40 = _36;
+                            continue;
+                        }
+                        else
+                        {
+                            ladder_phi_12 = false;
+                            frontier_phi_12_pred = _36;
+                            break;
+                        }
+                    }
+                }
+                if (ladder_phi_12)
+                {
+                    frontier_phi_6 = 0u;
+                    break;
+                }
+                frontier_phi_4_pred = frontier_phi_12_pred;
+            }
+            else
+            {
+                frontier_phi_4_pred = _33;
+            }
+            _26 = frontier_phi_4_pred;
+            uint _32 = _31 + 1u;
+            if (_32 == gl_GlobalInvocationID.x)
+            {
+                frontier_phi_6 = _26;
+                break;
+            }
+            else
+            {
+                _31 = _32;
+                _33 = _26;
+                continue;
+            }
+        }
+        _25 = frontier_phi_6;
+    }
+    else
+    {
+        _25 = 0u;
+    }
+    imageStore(_8, int(0u >> 2u), uvec4(_25));
+}
+
+
+#if 0
+// LLVM disassembly
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.ResRet.i32 = type { i32, i32, i32, i32, i32 }
+%struct.RWByteAddressBuffer = type { i32 }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)
+  %2 = call i32 @dx.op.threadId.i32(i32 93, i32 0)
+  %3 = call i32 @dx.op.threadId.i32(i32 93, i32 1)
+  %4 = call i32 @dx.op.threadId.i32(i32 93, i32 2)
+  %5 = icmp eq i32 %2, 0
+  br i1 %5, label %57, label %6
+
+6:                                                ; preds = %0
+  br label %7
+
+7:                                                ; preds = %52, %6
+  %8 = phi i32 [ %54, %52 ], [ 0, %6 ]
+  %9 = phi i32 [ %53, %52 ], [ 0, %6 ]
+  %10 = icmp eq i32 %3, 0
+  br i1 %10, label %52, label %11
+
+11:                                               ; preds = %7
+  br label %12
+
+12:                                               ; preds = %47, %11
+  %13 = phi i32 [ %49, %47 ], [ 0, %11 ]
+  %14 = phi i32 [ %48, %47 ], [ %9, %11 ]
+  %15 = shl i32 %13, 7
+  %16 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 %15, i32 undef)
+  %17 = extractvalue %dx.types.ResRet.i32 %16, 0
+  %18 = icmp eq i32 %17, 10
+  br i1 %18, label %19, label %23
+
+19:                                               ; preds = %12
+  %20 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 4, i32 undef)
+  %21 = extractvalue %dx.types.ResRet.i32 %20, 0
+  %22 = add i32 %21, %14
+  br label %52
+
+23:                                               ; preds = %12
+  %24 = icmp eq i32 %4, 0
+  br i1 %24, label %47, label %25
+
+25:                                               ; preds = %23
+  br label %26
+
+26:                                               ; preds = %37, %25
+  %27 = phi i32 [ %43, %37 ], [ %14, %25 ]
+  %28 = phi i32 [ %44, %37 ], [ 0, %25 ]
+  %29 = shl i32 %28, 7
+  %30 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 %29, i32 undef)
+  %31 = extractvalue %dx.types.ResRet.i32 %30, 0
+  %32 = icmp eq i32 %31, 10
+  br i1 %32, label %33, label %37
+
+33:                                               ; preds = %26
+  %34 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 8, i32 undef)
+  %35 = extractvalue %dx.types.ResRet.i32 %34, 0
+  %36 = add i32 %35, %27
+  br label %47
+
+37:                                               ; preds = %26
+  %38 = xor i32 %13, %8
+  %39 = xor i32 %38, %28
+  %40 = shl i32 %39, 2
+  %41 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 %40, i32 undef)
+  %42 = extractvalue %dx.types.ResRet.i32 %41, 0
+  %43 = add i32 %42, %27
+  %44 = add nuw i32 %28, 1
+  %45 = icmp ult i32 %44, %4
+  br i1 %45, label %26, label %46, !llvm.loop !10
+
+46:                                               ; preds = %37
+  br label %47
+
+47:                                               ; preds = %46, %33, %23
+  %48 = phi i32 [ %36, %33 ], [ %14, %23 ], [ %43, %46 ]
+  %49 = add nuw i32 %13, 1
+  %50 = icmp ult i32 %49, %3
+  br i1 %50, label %12, label %51, !llvm.loop !12
+
+51:                                               ; preds = %47
+  br label %52
+
+52:                                               ; preds = %51, %19, %7
+  %53 = phi i32 [ %22, %19 ], [ %9, %7 ], [ %48, %51 ]
+  %54 = add nuw i32 %8, 1
+  %55 = icmp eq i32 %54, %2
+  br i1 %55, label %56, label %7, !llvm.loop !13
+
+56:                                               ; preds = %52
+  br label %57
+
+57:                                               ; preds = %56, %0
+  %58 = phi i32 [ 0, %0 ], [ %53, %56 ]
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 0, i32 undef, i32 %58, i32 undef, i32 undef, i32 undef, i8 1)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.threadId.i32(i32, i32) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #1
+
+; Function Attrs: nounwind readonly
+declare %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32, %dx.types.Handle, i32, i32) #1
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8) #2
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind readonly }
+attributes #2 = { nounwind }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!7}
+
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
+!1 = !{i32 1, i32 0}
+!2 = !{i32 1, i32 5}
+!3 = !{!"cs", i32 6, i32 0}
+!4 = !{null, !5, null, null}
+!5 = !{!6}
+!6 = !{i32 0, %struct.RWByteAddressBuffer* undef, !"", i32 0, i32 0, i32 1, i32 11, i1 false, i1 false, i1 false, null}
+!7 = !{void ()* @main, !"main", null, !4, !8}
+!8 = !{i32 0, i64 16, i32 4, !9}
+!9 = !{i32 1, i32 1, i32 1}
+!10 = distinct !{!10, !11}
+!11 = !{!"llvm.loop.unroll.disable"}
+!12 = distinct !{!12, !11}
+!13 = distinct !{!13, !11}
+#endif
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 162
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %131 "ladder_phi_12"
+OpName %134 "frontier_phi_16"
+OpName %135 "frontier_phi_10.pred"
+OpName %136 "frontier_phi_12.pred"
+OpName %137 "frontier_phi_4.pred"
+OpName %138 "frontier_phi_6"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%18 = OpConstant %5 1
+%21 = OpConstant %5 2
+%23 = OpTypeBool
+%29 = OpTypeVector %5 4
+%42 = OpConstant %5 7
+%54 = OpConstant %5 3
+%59 = OpConstant %5 10
+%60 = OpConstant %5 4
+%98 = OpConstant %5 8
+%132 = OpConstantFalse %23
+%133 = OpConstantTrue %23
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%28 = OpUndef %5
+OpBranch %139
+%139 = OpLabel
+%9 = OpLoad %6 %8
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%17 = OpAccessChain %13 %12 %18
+%19 = OpLoad %5 %17
+%20 = OpAccessChain %13 %12 %21
+%22 = OpLoad %5 %20
+%24 = OpIEqual %23 %16 %15
+OpSelectionMerge %160 None
+OpBranchConditional %24 %160 %140
+%140 = OpLabel
+OpBranch %141
+%141 = OpLabel
+%31 = OpPhi %5 %15 %140 %32 %158
+%33 = OpPhi %5 %15 %140 %26 %158
+%34 = OpIEqual %23 %19 %15
+OpLoopMerge %159 %158 None
+OpBranch %142
+%142 = OpLabel
+OpSelectionMerge %157 None
+OpBranchConditional %34 %157 %143
+%143 = OpLabel
+OpBranch %144
+%144 = OpLabel
+%38 = OpPhi %5 %15 %143 %39 %153
+%40 = OpPhi %5 %33 %143 %36 %153
+%41 = OpShiftLeftLogical %5 %38 %42
+%43 = OpShiftRightLogical %5 %41 %21
+%44 = OpImageRead %29 %9 %43
+%45 = OpCompositeExtract %5 %44 0
+%47 = OpIAdd %5 %43 %18
+%46 = OpImageRead %29 %9 %47
+%48 = OpCompositeExtract %5 %46 0
+%50 = OpIAdd %5 %43 %21
+%49 = OpImageRead %29 %9 %50
+%51 = OpCompositeExtract %5 %49 0
+%53 = OpIAdd %5 %43 %54
+%52 = OpImageRead %29 %9 %53
+%55 = OpCompositeExtract %5 %52 0
+%56 = OpCompositeConstruct %29 %45 %48 %51 %55
+%57 = OpCompositeExtract %5 %56 0
+%58 = OpIEqual %23 %57 %59
+OpLoopMerge %155 %153 None
+OpBranchConditional %58 %154 %145
+%154 = OpLabel
+%61 = OpShiftRightLogical %5 %60 %21
+%62 = OpImageRead %29 %9 %61
+%63 = OpCompositeExtract %5 %62 0
+%65 = OpIAdd %5 %61 %18
+%64 = OpImageRead %29 %9 %65
+%66 = OpCompositeExtract %5 %64 0
+%68 = OpIAdd %5 %61 %21
+%67 = OpImageRead %29 %9 %68
+%69 = OpCompositeExtract %5 %67 0
+%71 = OpIAdd %5 %61 %54
+%70 = OpImageRead %29 %9 %71
+%72 = OpCompositeExtract %5 %70 0
+%73 = OpCompositeConstruct %29 %63 %66 %69 %72
+%74 = OpCompositeExtract %5 %73 0
+%35 = OpIAdd %5 %74 %40
+OpBranch %155
+%145 = OpLabel
+%75 = OpIEqual %23 %22 %15
+OpSelectionMerge %152 None
+OpBranchConditional %75 %152 %146
+%146 = OpLabel
+OpBranch %147
+%147 = OpLabel
+%79 = OpPhi %5 %40 %146 %77 %149
+%80 = OpPhi %5 %15 %146 %81 %149
+%82 = OpShiftLeftLogical %5 %80 %42
+%83 = OpShiftRightLogical %5 %82 %21
+%84 = OpImageRead %29 %9 %83
+%85 = OpCompositeExtract %5 %84 0
+%87 = OpIAdd %5 %83 %18
+%86 = OpImageRead %29 %9 %87
+%88 = OpCompositeExtract %5 %86 0
+%90 = OpIAdd %5 %83 %21
+%89 = OpImageRead %29 %9 %90
+%91 = OpCompositeExtract %5 %89 0
+%93 = OpIAdd %5 %83 %54
+%92 = OpImageRead %29 %9 %93
+%94 = OpCompositeExtract %5 %92 0
+%95 = OpCompositeConstruct %29 %85 %88 %91 %94
+%96 = OpCompositeExtract %5 %95 0
+%97 = OpIEqual %23 %96 %59
+OpLoopMerge %151 %149 None
+OpBranchConditional %97 %150 %148
+%150 = OpLabel
+%99 = OpShiftRightLogical %5 %98 %21
+%100 = OpImageRead %29 %9 %99
+%101 = OpCompositeExtract %5 %100 0
+%103 = OpIAdd %5 %99 %18
+%102 = OpImageRead %29 %9 %103
+%104 = OpCompositeExtract %5 %102 0
+%106 = OpIAdd %5 %99 %21
+%105 = OpImageRead %29 %9 %106
+%107 = OpCompositeExtract %5 %105 0
+%109 = OpIAdd %5 %99 %54
+%108 = OpImageRead %29 %9 %109
+%110 = OpCompositeExtract %5 %108 0
+%111 = OpCompositeConstruct %29 %101 %104 %107 %110
+%112 = OpCompositeExtract %5 %111 0
+%76 = OpIAdd %5 %112 %79
+OpBranch %151
+%148 = OpLabel
+OpBranch %149
+%149 = OpLabel
+%113 = OpBitwiseXor %5 %38 %31
+%114 = OpBitwiseXor %5 %113 %80
+%115 = OpShiftLeftLogical %5 %114 %21
+%116 = OpShiftRightLogical %5 %115 %21
+%117 = OpImageRead %29 %9 %116
+%118 = OpCompositeExtract %5 %117 0
+%120 = OpIAdd %5 %116 %18
+%119 = OpImageRead %29 %9 %120
+%121 = OpCompositeExtract %5 %119 0
+%123 = OpIAdd %5 %116 %21
+%122 = OpImageRead %29 %9 %123
+%124 = OpCompositeExtract %5 %122 0
+%126 = OpIAdd %5 %116 %54
+%125 = OpImageRead %29 %9 %126
+%127 = OpCompositeExtract %5 %125 0
+%128 = OpCompositeConstruct %29 %118 %121 %124 %127
+%129 = OpCompositeExtract %5 %128 0
+%77 = OpIAdd %5 %129 %79
+%81 = OpIAdd %5 %80 %18
+%130 = OpULessThan %23 %81 %22
+OpBranchConditional %130 %147 %151
+%151 = OpLabel
+%134 = OpPhi %5 %77 %149 %76 %150
+OpBranch %152
+%152 = OpLabel
+%135 = OpPhi %5 %40 %145 %134 %151
+OpBranch %153
+%153 = OpLabel
+%36 = OpPhi %5 %135 %152
+%39 = OpIAdd %5 %38 %18
+%78 = OpULessThan %23 %39 %19
+OpBranchConditional %78 %144 %155
+%155 = OpLabel
+%131 = OpPhi %23 %132 %153 %133 %154
+%136 = OpPhi %5 %36 %153 %35 %154
+OpSelectionMerge %156 None
+OpBranchConditional %131 %159 %156
+%156 = OpLabel
+OpBranch %157
+%157 = OpLabel
+%137 = OpPhi %5 %33 %142 %136 %156
+OpBranch %158
+%158 = OpLabel
+%26 = OpPhi %5 %137 %157
+%32 = OpIAdd %5 %31 %18
+%37 = OpIEqual %23 %32 %16
+OpBranchConditional %37 %159 %141
+%159 = OpLabel
+%138 = OpPhi %5 %26 %158 %15 %155
+OpBranch %160
+%160 = OpLabel
+%25 = OpPhi %5 %15 %139 %138 %159
+%27 = OpShiftRightLogical %5 %15 %21
+%30 = OpCompositeConstruct %29 %25 %25 %25 %25
+OpImageWrite %9 %27 %30
+OpReturn
+OpFunctionEnd
+#endif

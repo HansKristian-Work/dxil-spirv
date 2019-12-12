@@ -92,6 +92,7 @@ private:
 	void validate_structured();
 	void recompute_cfg();
 	void compute_dominance_frontier();
+	void create_continue_block_ladders();
 	static void recompute_dominance_frontier(CFGNode *node);
 	static void recompute_dominance_frontier(CFGNode *header, const CFGNode *node,
 	                                         std::unordered_set<const CFGNode *> traversed);
