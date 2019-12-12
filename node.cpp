@@ -366,7 +366,7 @@ CFGNode *CFGNode::get_outer_selection_dominator()
 	assert(immediate_dominator);
 	auto *node = immediate_dominator;
 
-	while (node->succ.size() == 1 && !node->is_switch)
+	while (node->succ.size() == 1 && node->ir.terminator.type != Terminator::Type::Switch)
 	{
 		if (node->pred.empty())
 			break;
@@ -386,7 +386,7 @@ CFGNode *CFGNode::get_outer_header_dominator()
 {
 	assert(immediate_dominator);
 	auto *node = immediate_dominator;
-	while (node->succ.size() == 1 && !node->is_switch && !node->pred_back_edge)
+	while (node->succ.size() == 1 && node->ir.terminator.type != Terminator::Type::Switch && !node->pred_back_edge)
 	{
 		if (node->pred.empty())
 			break;

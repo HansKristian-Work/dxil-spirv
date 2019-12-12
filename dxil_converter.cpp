@@ -1549,6 +1549,8 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	to_process.push_back(entry);
 	std::vector<llvm::BasicBlock *> visit_order;
 
+	unsigned fake_label_id = 0;
+
 	// Traverse the CFG and register all blocks in the pool.
 	while (!to_process.empty())
 	{
@@ -1566,7 +1568,12 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 					bb_map[succ] = succ_meta.get();
 					auto *succ_node = pool.create_node();
 					bb_map[succ]->node = succ_node;
-					succ_node->name = succ->getName().data();
+
+					if (succ->getName().empty())
+						succ_node->name = std::to_string(++fake_label_id);
+					else
+						succ_node->name = succ->getName().data();
+
 					metas.push_back(std::move(succ_meta));
 				}
 

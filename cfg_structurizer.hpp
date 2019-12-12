@@ -54,6 +54,7 @@ private:
 	SPIRVModule &module;
 
 	std::vector<CFGNode *> post_visit_order;
+	std::unordered_set<const CFGNode *> reachable_nodes;
 	void visit(CFGNode &entry);
 	void build_immediate_dominators(CFGNode &entry);
 	void structurize(unsigned pass);
@@ -105,7 +106,10 @@ private:
 	void insert_phi();
 	void insert_phi(PHINode &node);
 	void fixup_phi(PHINode &node);
+	void prune_dead_preds();
 
 	std::unordered_map<uint32_t, CFGNode *> value_id_to_block;
+
+	void log_cfg(const char *tag) const;
 };
 } // namespace DXIL2SPIRV
