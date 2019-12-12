@@ -47,7 +47,6 @@ private:
 	bool visited = false;
 	bool traversing = false;
 	bool freeze_structured_analysis = false;
-	bool is_ladder = false;
 
 	MergeType merge = MergeType::None;
 	CFGNode *loop_merge_block = nullptr;

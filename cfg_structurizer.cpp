@@ -826,7 +826,13 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	std::unordered_set<CFGNode *> construct;
 
 	header->traverse_dominated_blocks([&](CFGNode *node) -> bool {
-		if (node != ladder_to && nodes.count(node) == 0)
+		// Inner loop headers are not candidates for a rewrite. They are split in split_merge_blocks.
+		// Similar with switch blocks.
+		// Also, we need to stop traversing when we hit the target block ladder_to.
+		if (node != ladder_to &&
+		    nodes.count(node) == 0 &&
+		    !node->pred_back_edge &&
+		    node->ir.terminator.type != Terminator::Type::Switch)
 		{
 			nodes.insert(node);
 			if (node->succ.size() >= 2)
@@ -843,11 +849,11 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 
 	for (auto *inner_block : construct)
 	{
-		LOGE("Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.\n", inner_block->name.c_str(),
-		     ladder_to->name.c_str(), ladder_to->name.c_str());
-
 		auto *ladder = pool.create_node();
 		ladder->name = ladder_to->name + "." + inner_block->name + ".ladder";
+		LOGE("Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.\n", inner_block->name.c_str(),
+		     ladder_to->name.c_str(), ladder->name.c_str());
+
 		ladder->add_branch(ladder_to);
 		ladder->ir.terminator.type = Terminator::Type::Branch;
 		ladder->ir.terminator.direct_block = ladder_to;
@@ -1539,7 +1545,6 @@ void CFGStructurizer::split_merge_blocks()
 						// Otherwise we branch to the existing merge block and continue as normal.
 						// We'll also need to rewrite a lot of Phi nodes this way as well.
 						auto *ladder = create_helper_pred_block(loop_ladder);
-						ladder->is_ladder = true;
 
 						// Merge to ladder instead.
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
@@ -1579,32 +1584,50 @@ void CFGStructurizer::split_merge_blocks()
 					}
 					else if (loop_ladder->succ.size() == 1 && loop_ladder->succ.front() == node)
 					{
-						// We have a case where we're trivially breaking out of a selection construct.
-						// We cannot directly break out of a selection construct, so our ladder must be a bit more sophisticated.
-						// ladder-pre -> merge -> ladder-post -> selection merge
-						//      \-------------------/
-						auto *ladder_pre = create_helper_pred_block(loop_ladder);
-						auto *ladder_post = create_helper_succ_block(loop_ladder);
-						ladder_pre->add_branch(ladder_post);
-
-						ladder_pre->ir.terminator.type = Terminator::Type::Condition;
-						ladder_pre->ir.terminator.conditional_id = module.allocate_id();
-						ladder_pre->ir.terminator.true_block = ladder_post;
-						ladder_pre->ir.terminator.false_block = loop_ladder;
-
-						ladder_pre->is_ladder = true;
-						PHI phi;
-						phi.id = ladder_pre->ir.terminator.conditional_id;
-						phi.type_id = module.get_builder().makeBoolType();
-						module.get_builder().addName(phi.id, (std::string("ladder_phi_") + loop_ladder->name).c_str());
-						for (auto *pred : ladder_pre->pred)
+						if (loop_ladder->ir.operations.empty())
 						{
-							IncomingValue incoming = {};
-							incoming.block = pred;
-							incoming.id = module.get_builder().makeBoolConstant(pred->is_ladder);
-							phi.incoming.push_back(incoming);
+							// Simplest common case.
+							// If the loop ladder just branches to outer scope, and this block does not perform
+							// any operations we can avoid messing around with ladder PHI variables and just execute the branch.
+							// This block will likely become a frontier node when merging PHI instead.
+							// This is a common case when breaking out of a simple for loop.
+							node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, loop_ladder);
 						}
-						ladder_pre->ir.phi.push_back(std::move(phi));
+						else
+						{
+							// We have a case where we're trivially breaking out of a selection construct,
+							// but the loop ladder block contains operations which we must not execute,
+							// since we were supposed to branch directly out to node.
+							// We cannot directly break out of a selection construct, so our ladder must be a bit more sophisticated.
+							// ladder-pre -> merge -> ladder-post -> selection merge
+							//      \-------------------/
+							auto *ladder_pre = create_helper_pred_block(loop_ladder);
+							auto *ladder_post = create_helper_succ_block(loop_ladder);
+							ladder_pre->add_branch(ladder_post);
+
+							ladder_pre->ir.terminator.type = Terminator::Type::Condition;
+							ladder_pre->ir.terminator.conditional_id = module.allocate_id();
+							ladder_pre->ir.terminator.true_block = ladder_post;
+							ladder_pre->ir.terminator.false_block = loop_ladder;
+
+							// Merge to ladder instead.
+							node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder_pre);
+
+							PHI phi;
+							phi.id = ladder_pre->ir.terminator.conditional_id;
+							phi.type_id = module.get_builder().makeBoolType();
+							module.get_builder().addName(phi.id,
+							                             (std::string("ladder_phi_") + loop_ladder->name).c_str());
+							for (auto *pred : ladder_pre->pred)
+							{
+								IncomingValue incoming = {};
+								incoming.block = pred;
+								bool is_breaking_pred = normal_preds[i].count(pred) == 0;
+								incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
+								phi.incoming.push_back(incoming);
+							}
+							ladder_pre->ir.phi.push_back(std::move(phi));
+						}
 					}
 					else if (full_break_target)
 					{
