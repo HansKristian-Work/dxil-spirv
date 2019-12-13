@@ -1,0 +1,310 @@
+#version 460
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+
+uint _40;
+
+void main()
+{
+    uint _37;
+    uint _16;
+    uint _19;
+    uint _22;
+    bool _24;
+    for (;;)
+    {
+        _16 = gl_GlobalInvocationID.x;
+        _19 = gl_GlobalInvocationID.y;
+        _22 = gl_GlobalInvocationID.z;
+        _24 = _16 == 10u;
+        uint _31;
+        if (_24)
+        {
+            if (_22 == 40u)
+            {
+                _37 = _19 * 10u;
+                break;
+            }
+            _31 = 20u;
+        }
+        else
+        {
+            uint frontier_phi_4_2_ladder;
+            if (_19 == 20u)
+            {
+                if (_22 == 50u)
+                {
+                    _37 = _16 * 24u;
+                    break;
+                }
+                uint frontier_phi_4_2_ladder_5_ladder;
+                uint _44;
+                bool _45;
+                for (;;)
+                {
+                    _44 = _16 + 10u;
+                    _45 = _16 == 0u;
+                    uint _48;
+                    if (_45)
+                    {
+                        if (_22 == 30u)
+                        {
+                            frontier_phi_4_2_ladder_5_ladder = _44 * 30u;
+                            break;
+                        }
+                        _48 = _44;
+                    }
+                    else
+                    {
+                        _48 = 0u;
+                    }
+                    frontier_phi_4_2_ladder_5_ladder = _48 + _44;
+                    break;
+                }
+                frontier_phi_4_2_ladder = frontier_phi_4_2_ladder_5_ladder;
+            }
+            else
+            {
+                frontier_phi_4_2_ladder = 0u;
+            }
+            _31 = frontier_phi_4_2_ladder;
+        }
+        _37 = _31 + _16;
+        break;
+    }
+    imageStore(_8, int(0u >> 2u), uvec4(_37));
+}
+
+
+#if 0
+// LLVM disassembly
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%struct.RWByteAddressBuffer = type { i32 }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)
+  %2 = call i32 @dx.op.threadId.i32(i32 93, i32 0)
+  %3 = call i32 @dx.op.threadId.i32(i32 93, i32 1)
+  %4 = call i32 @dx.op.threadId.i32(i32 93, i32 2)
+  %5 = icmp eq i32 %2, 10
+  br i1 %5, label %6, label %10, !dx.controlflow.hints !10
+
+6:                                                ; preds = %0
+  %7 = icmp eq i32 %4, 40
+  br i1 %7, label %8, label %26, !dx.controlflow.hints !11
+
+8:                                                ; preds = %6
+  %9 = mul i32 %3, 10
+  br label %29
+
+10:                                               ; preds = %0
+  %11 = icmp eq i32 %3, 20
+  br i1 %11, label %12, label %26
+
+12:                                               ; preds = %10
+  %13 = icmp eq i32 %4, 50
+  br i1 %13, label %14, label %16, !dx.controlflow.hints !12
+
+14:                                               ; preds = %12
+  %15 = mul i32 %2, 24
+  br label %29
+
+16:                                               ; preds = %12
+  %17 = add i32 %2, 10
+  %18 = icmp eq i32 %2, 0
+  br i1 %18, label %19, label %23, !dx.controlflow.hints !13
+
+19:                                               ; preds = %16
+  %20 = icmp eq i32 %4, 30
+  br i1 %20, label %21, label %23, !dx.controlflow.hints !14
+
+21:                                               ; preds = %19
+  %22 = mul i32 %17, 30
+  br label %26
+
+23:                                               ; preds = %19, %16
+  %24 = phi i32 [ %17, %19 ], [ 0, %16 ]
+  %25 = add i32 %24, %17
+  br label %26
+
+26:                                               ; preds = %23, %21, %10, %6
+  %27 = phi i32 [ 0, %10 ], [ %22, %21 ], [ %25, %23 ], [ 20, %6 ]
+  %28 = add i32 %27, %2
+  br label %29
+
+29:                                               ; preds = %26, %14, %8
+  %30 = phi i32 [ %9, %8 ], [ %28, %26 ], [ %15, %14 ]
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 0, i32 undef, i32 %30, i32 undef, i32 undef, i32 undef, i8 1)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.threadId.i32(i32, i32) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #1
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8) #2
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind readonly }
+attributes #2 = { nounwind }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!7}
+
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
+!1 = !{i32 1, i32 0}
+!2 = !{i32 1, i32 5}
+!3 = !{!"cs", i32 6, i32 0}
+!4 = !{null, !5, null, null}
+!5 = !{!6}
+!6 = !{i32 0, %struct.RWByteAddressBuffer* undef, !"", i32 0, i32 0, i32 1, i32 11, i1 false, i1 false, i1 false, null}
+!7 = !{void ()* @main, !"main", null, !4, !8}
+!8 = !{i32 0, i64 16, i32 4, !9}
+!9 = !{i32 1, i32 1, i32 1}
+!10 = distinct !{!10, !"dx.controlflow.hints", i32 1}
+!11 = distinct !{!11, !"dx.controlflow.hints", i32 1}
+!12 = distinct !{!12, !"dx.controlflow.hints", i32 1}
+!13 = distinct !{!13, !"dx.controlflow.hints", i32 1}
+!14 = distinct !{!14, !"dx.controlflow.hints", i32 1}
+#endif
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 77
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %49 "frontier_phi_4.2.ladder.5.ladder"
+OpName %50 "frontier_phi_4.2.ladder"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%18 = OpConstant %5 1
+%21 = OpConstant %5 2
+%23 = OpTypeBool
+%25 = OpConstant %5 10
+%27 = OpConstant %5 40
+%29 = OpConstant %5 20
+%36 = OpConstant %5 50
+%41 = OpTypeVector %5 4
+%43 = OpConstant %5 24
+%47 = OpConstant %5 30
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%40 = OpUndef %5
+OpBranch %51
+%51 = OpLabel
+%9 = OpLoad %6 %8
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%17 = OpAccessChain %13 %12 %18
+%19 = OpLoad %5 %17
+%20 = OpAccessChain %13 %12 %21
+%22 = OpLoad %5 %20
+%24 = OpIEqual %23 %16 %25
+OpLoopMerge %73 %74 None
+OpBranch %52
+%52 = OpLabel
+OpSelectionMerge %70 None
+OpBranchConditional %24 %68 %53
+%68 = OpLabel
+%26 = OpIEqual %23 %22 %27
+OpSelectionMerge %69 None
+OpBranchConditional %26 %71 %69
+%71 = OpLabel
+%30 = OpIMul %5 %19 %25
+OpBranch %72
+%72 = OpLabel
+OpBranch %73
+%69 = OpLabel
+OpBranch %70
+%53 = OpLabel
+%28 = OpIEqual %23 %19 %29
+OpSelectionMerge %64 None
+OpBranchConditional %28 %54 %64
+%54 = OpLabel
+%35 = OpIEqual %23 %22 %36
+OpSelectionMerge %55 None
+OpBranchConditional %35 %65 %55
+%65 = OpLabel
+%38 = OpIMul %5 %16 %43
+OpBranch %66
+%66 = OpLabel
+OpBranch %67
+%67 = OpLabel
+OpBranch %73
+%55 = OpLabel
+%44 = OpIAdd %5 %16 %25
+%45 = OpIEqual %23 %16 %15
+OpLoopMerge %63 %75 None
+OpBranch %56
+%56 = OpLabel
+OpSelectionMerge %59 None
+OpBranchConditional %45 %57 %59
+%57 = OpLabel
+%46 = OpIEqual %23 %22 %47
+OpSelectionMerge %58 None
+OpBranchConditional %46 %60 %58
+%60 = OpLabel
+%32 = OpIMul %5 %44 %47
+OpBranch %61
+%61 = OpLabel
+OpBranch %62
+%62 = OpLabel
+OpBranch %63
+%58 = OpLabel
+OpBranch %59
+%59 = OpLabel
+%48 = OpPhi %5 %15 %56 %44 %58
+%33 = OpIAdd %5 %48 %44
+OpBranch %63
+%75 = OpLabel
+OpBranch %55
+%63 = OpLabel
+%49 = OpPhi %5 %33 %59 %32 %62
+OpBranch %64
+%64 = OpLabel
+%50 = OpPhi %5 %15 %53 %49 %63
+OpBranch %70
+%70 = OpLabel
+%31 = OpPhi %5 %50 %64 %29 %69
+%34 = OpIAdd %5 %31 %16
+OpBranch %73
+%74 = OpLabel
+OpBranch %51
+%73 = OpLabel
+%37 = OpPhi %5 %34 %70 %38 %67 %30 %72
+%39 = OpShiftRightLogical %5 %15 %21
+%42 = OpCompositeConstruct %41 %37 %37 %37 %37
+OpImageWrite %9 %39 %42
+OpReturn
+OpFunctionEnd
+#endif
