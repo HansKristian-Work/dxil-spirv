@@ -107,6 +107,8 @@ bool CFGStructurizer::run()
 	split_merge_scopes();
 	recompute_cfg();
 
+	log_cfg("Split merge scopes");
+
 	LOGE("=== Structurize pass ===\n");
 	structurize(0);
 
@@ -861,6 +863,8 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	if (header->ir.terminator.type == Terminator::Type::Switch)
 		return;
 
+	LOGI("Rewriting selection breaks %s -> %s\n", header->name.c_str(), ladder_to->name.c_str());
+
 	std::unordered_set<CFGNode *> nodes;
 	std::unordered_set<CFGNode *> construct;
 
@@ -890,7 +894,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	{
 		auto *ladder = pool.create_node();
 		ladder->name = ladder_to->name + "." + inner_block->name + ".ladder";
-		LOGE("Walking dominated blocks of %s, rewrite branches %s -> %s.ladder.\n", inner_block->name.c_str(),
+		LOGE("Walking dominated blocks of %s, rewrite branches %s -> %s.\n", inner_block->name.c_str(),
 		     ladder_to->name.c_str(), ladder->name.c_str());
 
 		ladder->add_branch(ladder_to);
@@ -961,6 +965,7 @@ void CFGStructurizer::recompute_cfg()
 	reset_traversal();
 	visit(*entry_block);
 	build_immediate_dominators(*entry_block);
+	prune_dead_preds();
 }
 
 void CFGStructurizer::find_switch_blocks()
