@@ -332,7 +332,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 				auto *op = module.allocate_op(spv::OpCopyObject, node.phi->id, node.phi->type_id);
 				op->add_id(itr->id);
-				frontier->ir.operations.push_back(op);
+				frontier->pred.front()->ir.operations.push_back(op);
 
 				// Ignore this one when emitting PHIs later.
 				node.phi->id = 0;

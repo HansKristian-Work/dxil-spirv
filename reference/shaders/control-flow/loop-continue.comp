@@ -12,7 +12,6 @@ void main()
     if (!(gl_GlobalInvocationID.x == 0u))
     {
         uint _20;
-        uint frontier_phi_6_pred;
         uint _26 = 0u;
         uint _27 = 0u;
         bool _46;
@@ -20,6 +19,7 @@ void main()
         {
             uint _30 = (_27 << 2u) >> 2u;
             _46 = uvec4(imageLoad(_8, int(_30)).x, imageLoad(_8, int(_30 + 1u)).x, imageLoad(_8, int(_30 + 2u)).x, imageLoad(_8, int(_30 + 3u)).x).x == 40u;
+            uint frontier_phi_6_pred;
             for (;;)
             {
                 uint _84;
@@ -45,8 +45,8 @@ void main()
                 frontier_phi_6_pred = (_84 + _26) + uvec4(imageLoad(_8, int(_87)).x, imageLoad(_8, int(_87 + 1u)).x, imageLoad(_8, int(_87 + 2u)).x, imageLoad(_8, int(_87 + 3u)).x).x;
                 break;
             }
-            uint _28 = _27 + 1u;
             _20 = frontier_phi_6_pred;
+            uint _28 = _27 + 1u;
             if (_28 == gl_GlobalInvocationID.x)
             {
                 break;
@@ -314,11 +314,11 @@ OpBranch %114
 OpBranch %108
 %114 = OpLabel
 %104 = OpPhi %5 %26 %111 %66 %113
+%20 = OpCopyObject %5 %104
 OpBranch %115
 %115 = OpLabel
 %28 = OpIAdd %5 %27 %35
 %67 = OpIEqual %17 %28 %16
-%20 = OpCopyObject %5 %104
 OpBranchConditional %67 %116 %107
 %116 = OpLabel
 OpBranch %117

@@ -13,12 +13,12 @@ void main()
         uint _29;
         _29 = 0u;
         uint _24;
-        uint frontier_phi_4_pred;
         uint _31 = 0u;
         bool _32;
         for (;;)
         {
             _32 = gl_GlobalInvocationID.z == 0u;
+            uint frontier_phi_4_pred;
             if (!_32)
             {
                 uint frontier_phi_10;
@@ -57,8 +57,8 @@ void main()
             {
                 frontier_phi_4_pred = _31;
             }
-            uint _30 = _29 + 1u;
             _24 = frontier_phi_4_pred;
+            uint _30 = _29 + 1u;
             if (_30 == gl_GlobalInvocationID.y)
             {
                 break;
@@ -317,11 +317,11 @@ OpBranchConditional %89 %97 %101
 OpBranch %102
 %102 = OpLabel
 %91 = OpPhi %5 %31 %95 %90 %101
+%24 = OpCopyObject %5 %91
 OpBranch %103
 %103 = OpLabel
 %30 = OpIAdd %5 %29 %15
 %35 = OpIEqual %20 %30 %16
-%24 = OpCopyObject %5 %91
 OpBranchConditional %35 %104 %94
 %104 = OpLabel
 OpBranch %105

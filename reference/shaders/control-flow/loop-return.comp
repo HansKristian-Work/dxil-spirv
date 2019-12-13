@@ -15,13 +15,14 @@ void main()
         {
             uint _37;
             _37 = 0u;
-            uint frontier_phi_8_pred;
+            uint _31;
             uint frontier_phi_12;
             uint _39 = 0u;
             bool _40;
             for (;;)
             {
                 _40 = gl_GlobalInvocationID.y == 0u;
+                uint frontier_phi_8_pred;
                 uint frontier_phi_8_pred_1;
                 if (!_40)
                 {
@@ -74,8 +75,8 @@ void main()
                     frontier_phi_8_pred = _39;
                     frontier_phi_8_pred_1 = 0u;
                 }
+                _31 = frontier_phi_8_pred;
                 uint _38 = _37 + 1u;
-                uint _31 = frontier_phi_8_pred;
                 if (_38 < gl_GlobalInvocationID.x)
                 {
                     _37 = _38;
@@ -103,13 +104,14 @@ void main()
         {
             uint _41;
             _41 = 0u;
-            uint frontier_phi_10_pred;
+            uint _32;
             uint frontier_phi_14;
             uint _43 = 0u;
             bool _44;
             for (;;)
             {
                 _44 = gl_GlobalInvocationID.y == 0u;
+                uint frontier_phi_10_pred;
                 uint frontier_phi_10_pred_1;
                 if (!_44)
                 {
@@ -162,8 +164,8 @@ void main()
                     frontier_phi_10_pred = _43;
                     frontier_phi_10_pred_1 = 0u;
                 }
+                _32 = frontier_phi_10_pred;
                 uint _42 = _41 + 1u;
-                uint _32 = frontier_phi_10_pred;
                 if (_42 < gl_GlobalInvocationID.z)
                 {
                     _41 = _42;
@@ -509,11 +511,11 @@ OpBranch %196
 %196 = OpLabel
 %160 = OpPhi %5 %39 %188 %159 %195
 %166 = OpPhi %5 %15 %188 %165 %195
+%31 = OpCopyObject %5 %160
 OpBranch %197
 %197 = OpLabel
 %38 = OpIAdd %5 %37 %18
 %46 = OpULessThan %23 %38 %16
-%31 = OpCopyObject %5 %160
 OpBranchConditional %46 %187 %198
 %198 = OpLabel
 %167 = OpPhi %5 %31 %197 %165 %194
@@ -611,11 +613,11 @@ OpBranch %181
 %181 = OpLabel
 %158 = OpPhi %5 %43 %173 %157 %180
 %162 = OpPhi %5 %15 %173 %161 %180
+%32 = OpCopyObject %5 %158
 OpBranch %182
 %182 = OpLabel
 %42 = OpIAdd %5 %41 %18
 %48 = OpULessThan %23 %42 %22
-%32 = OpCopyObject %5 %158
 OpBranchConditional %48 %172 %183
 %183 = OpLabel
 %163 = OpPhi %5 %32 %182 %161 %179

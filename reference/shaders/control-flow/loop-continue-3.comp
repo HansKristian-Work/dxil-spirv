@@ -1,0 +1,348 @@
+#version 460
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
+
+uint _26;
+
+void main()
+{
+    uint _22;
+    if (!(gl_GlobalInvocationID.x == 0u))
+    {
+        uint _23;
+        uint _31;
+        uint _29 = 0u;
+        uint _30 = 0u;
+        bool _48;
+        for (;;)
+        {
+            uint _33 = (_30 << 2u) >> 2u;
+            _48 = uvec4(imageLoad(_8, int(_33)).x, imageLoad(_8, int(_33 + 1u)).x, imageLoad(_8, int(_33 + 2u)).x, imageLoad(_8, int(_33 + 3u)).x).x == 40u;
+            uint frontier_phi_9_pred;
+            uint frontier_phi_9_pred_1;
+            for (;;)
+            {
+                uint _88;
+                if (_48)
+                {
+                    if (_30 == 10u)
+                    {
+                        imageStore(_8, int(2560u >> 2u), uvec4(10u));
+                        frontier_phi_9_pred = _29;
+                        frontier_phi_9_pred_1 = gl_GlobalInvocationID.y * 10u;
+                        break;
+                    }
+                    uint _74 = (_30 << 4u) >> 2u;
+                    _88 = uvec4(imageLoad(_8, int(_74)).x, imageLoad(_8, int(_74 + 1u)).x, imageLoad(_8, int(_74 + 2u)).x, imageLoad(_8, int(_74 + 3u)).x).x;
+                }
+                else
+                {
+                    uint _54 = (_30 * 12u) >> 2u;
+                    _88 = uvec4(imageLoad(_8, int(_54)).x, imageLoad(_8, int(_54 + 1u)).x, imageLoad(_8, int(_54 + 2u)).x, imageLoad(_8, int(_54 + 3u)).x).x;
+                }
+                uint _91 = (_30 << 3u) >> 2u;
+                frontier_phi_9_pred = (_88 + _29) + uvec4(imageLoad(_8, int(_91)).x, imageLoad(_8, int(_91 + 1u)).x, imageLoad(_8, int(_91 + 2u)).x, imageLoad(_8, int(_91 + 3u)).x).x;
+                frontier_phi_9_pred_1 = _30 + 1u;
+                break;
+            }
+            _23 = frontier_phi_9_pred;
+            _31 = frontier_phi_9_pred_1;
+            if (_31 < gl_GlobalInvocationID.x)
+            {
+                _29 = _23;
+                _30 = _31;
+                continue;
+            }
+            else
+            {
+                break;
+            }
+        }
+        _22 = _23;
+    }
+    else
+    {
+        _22 = 0u;
+    }
+    imageStore(_8, int(0u >> 2u), uvec4(_22));
+}
+
+
+#if 0
+// LLVM disassembly
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.ResRet.i32 = type { i32, i32, i32, i32, i32 }
+%struct.RWByteAddressBuffer = type { i32 }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)
+  %2 = call i32 @dx.op.threadId.i32(i32 93, i32 0)
+  %3 = call i32 @dx.op.threadId.i32(i32 93, i32 1)
+  %4 = icmp eq i32 %2, 0
+  br i1 %4, label %38, label %5
+
+5:                                                ; preds = %0
+  br label %6
+
+6:                                                ; preds = %17, %5
+  %7 = phi i32 [ %18, %17 ], [ 0, %5 ]
+  %8 = phi i32 [ %19, %17 ], [ 0, %5 ]
+  %9 = shl i32 %8, 2
+  %10 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 %9, i32 undef)
+  %11 = extractvalue %dx.types.ResRet.i32 %10, 0
+  %12 = icmp eq i32 %11, 40
+  br i1 %12, label %13, label %25, !dx.controlflow.hints !10
+
+13:                                               ; preds = %6
+  %14 = icmp eq i32 %8, 10
+  br i1 %14, label %15, label %21, !dx.controlflow.hints !11
+
+15:                                               ; preds = %13
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 2560, i32 undef, i32 10, i32 undef, i32 undef, i32 undef, i8 1)
+  %16 = mul i32 %3, 10
+  br label %17
+
+17:                                               ; preds = %29, %15
+  %18 = phi i32 [ %7, %15 ], [ %35, %29 ]
+  %19 = phi i32 [ %16, %15 ], [ %36, %29 ]
+  %20 = icmp ult i32 %19, %2
+  br i1 %20, label %6, label %37
+
+21:                                               ; preds = %13
+  %22 = shl i32 %8, 4
+  %23 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 %22, i32 undef)
+  %24 = extractvalue %dx.types.ResRet.i32 %23, 0
+  br label %29
+
+25:                                               ; preds = %6
+  %26 = mul i32 %8, 12
+  %27 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 %26, i32 undef)
+  %28 = extractvalue %dx.types.ResRet.i32 %27, 0
+  br label %29
+
+29:                                               ; preds = %25, %21
+  %30 = phi i32 [ %24, %21 ], [ %28, %25 ]
+  %31 = add i32 %30, %7
+  %32 = shl i32 %8, 3
+  %33 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 %32, i32 undef)
+  %34 = extractvalue %dx.types.ResRet.i32 %33, 0
+  %35 = add i32 %31, %34
+  %36 = add i32 %8, 1
+  br label %17
+
+37:                                               ; preds = %17
+  br label %38
+
+38:                                               ; preds = %37, %0
+  %39 = phi i32 [ 0, %0 ], [ %18, %37 ]
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %1, i32 0, i32 undef, i32 %39, i32 undef, i32 undef, i32 undef, i8 1)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.threadId.i32(i32, i32) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #1
+
+; Function Attrs: nounwind readonly
+declare %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32, %dx.types.Handle, i32, i32) #1
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8) #2
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind readonly }
+attributes #2 = { nounwind }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!7}
+
+!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
+!1 = !{i32 1, i32 0}
+!2 = !{i32 1, i32 5}
+!3 = !{!"cs", i32 6, i32 0}
+!4 = !{null, !5, null, null}
+!5 = !{!6}
+!6 = !{i32 0, %struct.RWByteAddressBuffer* undef, !"", i32 0, i32 0, i32 1, i32 11, i1 false, i1 false, i1 false, null}
+!7 = !{void ()* @main, !"main", null, !4, !8}
+!8 = !{i32 0, i64 16, i32 4, !9}
+!9 = !{i32 1, i32 1, i32 1}
+!10 = distinct !{!10, !"dx.controlflow.hints", i32 1}
+!11 = distinct !{!11, !"dx.controlflow.hints", i32 1}
+#endif
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 126
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %108 "frontier_phi_9.pred"
+OpName %109 "frontier_phi_9.pred"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%18 = OpConstant %5 1
+%20 = OpTypeBool
+%25 = OpConstant %5 2
+%27 = OpTypeVector %5 4
+%44 = OpConstant %5 3
+%49 = OpConstant %5 40
+%51 = OpConstant %5 10
+%53 = OpConstant %5 12
+%68 = OpConstant %5 2560
+%73 = OpConstant %5 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%26 = OpUndef %5
+OpBranch %110
+%110 = OpLabel
+%9 = OpLoad %6 %8
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%17 = OpAccessChain %13 %12 %18
+%19 = OpLoad %5 %17
+%21 = OpIEqual %20 %16 %15
+OpSelectionMerge %123 None
+OpBranchConditional %21 %123 %111
+%111 = OpLabel
+OpBranch %112
+%112 = OpLabel
+%29 = OpPhi %5 %15 %111 %23 %121
+%30 = OpPhi %5 %15 %111 %31 %121
+%32 = OpShiftLeftLogical %5 %30 %25
+%33 = OpShiftRightLogical %5 %32 %25
+%34 = OpImageRead %27 %9 %33
+%35 = OpCompositeExtract %5 %34 0
+%37 = OpIAdd %5 %33 %18
+%36 = OpImageRead %27 %9 %37
+%38 = OpCompositeExtract %5 %36 0
+%40 = OpIAdd %5 %33 %25
+%39 = OpImageRead %27 %9 %40
+%41 = OpCompositeExtract %5 %39 0
+%43 = OpIAdd %5 %33 %44
+%42 = OpImageRead %27 %9 %43
+%45 = OpCompositeExtract %5 %42 0
+%46 = OpCompositeConstruct %27 %35 %38 %41 %45
+%47 = OpCompositeExtract %5 %46 0
+%48 = OpIEqual %20 %47 %49
+OpLoopMerge %122 %121 None
+OpBranch %113
+%113 = OpLabel
+OpLoopMerge %120 %124 None
+OpBranch %114
+%114 = OpLabel
+OpSelectionMerge %118 None
+OpBranchConditional %48 %116 %115
+%116 = OpLabel
+%50 = OpIEqual %20 %30 %51
+OpSelectionMerge %117 None
+OpBranchConditional %50 %119 %117
+%119 = OpLabel
+%69 = OpShiftRightLogical %5 %68 %25
+%70 = OpCompositeConstruct %27 %51 %51 %51 %51
+OpImageWrite %9 %69 %70
+%71 = OpIMul %5 %19 %51
+OpBranch %120
+%117 = OpLabel
+%72 = OpShiftLeftLogical %5 %30 %73
+%74 = OpShiftRightLogical %5 %72 %25
+%75 = OpImageRead %27 %9 %74
+%76 = OpCompositeExtract %5 %75 0
+%78 = OpIAdd %5 %74 %18
+%77 = OpImageRead %27 %9 %78
+%79 = OpCompositeExtract %5 %77 0
+%81 = OpIAdd %5 %74 %25
+%80 = OpImageRead %27 %9 %81
+%82 = OpCompositeExtract %5 %80 0
+%84 = OpIAdd %5 %74 %44
+%83 = OpImageRead %27 %9 %84
+%85 = OpCompositeExtract %5 %83 0
+%86 = OpCompositeConstruct %27 %76 %79 %82 %85
+%87 = OpCompositeExtract %5 %86 0
+OpBranch %118
+%115 = OpLabel
+%52 = OpIMul %5 %30 %53
+%54 = OpShiftRightLogical %5 %52 %25
+%55 = OpImageRead %27 %9 %54
+%56 = OpCompositeExtract %5 %55 0
+%58 = OpIAdd %5 %54 %18
+%57 = OpImageRead %27 %9 %58
+%59 = OpCompositeExtract %5 %57 0
+%61 = OpIAdd %5 %54 %25
+%60 = OpImageRead %27 %9 %61
+%62 = OpCompositeExtract %5 %60 0
+%64 = OpIAdd %5 %54 %44
+%63 = OpImageRead %27 %9 %64
+%65 = OpCompositeExtract %5 %63 0
+%66 = OpCompositeConstruct %27 %56 %59 %62 %65
+%67 = OpCompositeExtract %5 %66 0
+OpBranch %118
+%118 = OpLabel
+%88 = OpPhi %5 %67 %115 %87 %117
+%89 = OpIAdd %5 %88 %29
+%90 = OpShiftLeftLogical %5 %30 %44
+%91 = OpShiftRightLogical %5 %90 %25
+%92 = OpImageRead %27 %9 %91
+%93 = OpCompositeExtract %5 %92 0
+%95 = OpIAdd %5 %91 %18
+%94 = OpImageRead %27 %9 %95
+%96 = OpCompositeExtract %5 %94 0
+%98 = OpIAdd %5 %91 %25
+%97 = OpImageRead %27 %9 %98
+%99 = OpCompositeExtract %5 %97 0
+%101 = OpIAdd %5 %91 %44
+%100 = OpImageRead %27 %9 %101
+%102 = OpCompositeExtract %5 %100 0
+%103 = OpCompositeConstruct %27 %93 %96 %99 %102
+%104 = OpCompositeExtract %5 %103 0
+%105 = OpIAdd %5 %89 %104
+%106 = OpIAdd %5 %30 %18
+OpBranch %120
+%124 = OpLabel
+OpBranch %113
+%120 = OpLabel
+%108 = OpPhi %5 %29 %119 %105 %118
+%109 = OpPhi %5 %71 %119 %106 %118
+%23 = OpCopyObject %5 %108
+%31 = OpCopyObject %5 %109
+OpBranch %121
+%121 = OpLabel
+%107 = OpULessThan %20 %31 %16
+OpBranchConditional %107 %112 %122
+%122 = OpLabel
+OpBranch %123
+%123 = OpLabel
+%22 = OpPhi %5 %15 %110 %23 %122
+%24 = OpShiftRightLogical %5 %15 %25
+%28 = OpCompositeConstruct %27 %22 %22 %22 %22
+OpImageWrite %9 %24 %28
+OpReturn
+OpFunctionEnd
+#endif
