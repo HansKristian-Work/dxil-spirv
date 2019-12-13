@@ -300,21 +300,6 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNod
 	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *) { return true; });
 }
 
-void CFGNode::retarget_succ_from(CFGNode *old_pred)
-{
-	for (auto *s : succ)
-	{
-		if (s->immediate_dominator == old_pred)
-			s->immediate_dominator = this;
-
-		for (auto &p : s->pred)
-			if (p == old_pred)
-				p = this;
-	}
-
-	// Do not swap back edges.
-}
-
 void CFGNode::retarget_pred_from(CFGNode *old_succ)
 {
 	for (auto *p : pred)

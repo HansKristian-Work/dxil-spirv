@@ -384,30 +384,40 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		for (auto *input : frontier->pred)
 		{
 			auto itr = find_incoming_value(input, incoming_values);
-			assert(itr != incoming_values.end());
-			auto *incoming_block = itr->block;
-
-			LOGE(" ... For pred %s (%p), found incoming value from %s (%p)\n", input->name.c_str(),
-			     static_cast<const void *>(input), incoming_block->name.c_str(),
-			     static_cast<const void *>(incoming_block));
-
-			IncomingValue value = {};
-			value.id = itr->id;
-			value.block = input;
-			frontier_phi.incoming.push_back(value);
-
-			// Do we remove the incoming value now or not?
-			// If all paths from incoming value must go through frontier, we can remove it,
-			// otherwise, we might still need to use the incoming value somewhere else.
-			bool exists_path = incoming_block->exists_path_in_cfg_without_intermediate_node(node.block, frontier);
-			if (exists_path)
+			if (itr != incoming_values.end())
 			{
-				LOGE("   ... keeping input in %s\n", incoming_block->name.c_str());
+				auto *incoming_block = itr->block;
+
+				LOGE(" ... For pred %s (%p), found incoming value from %s (%p)\n", input->name.c_str(),
+				     static_cast<const void *>(input), incoming_block->name.c_str(),
+				     static_cast<const void *>(incoming_block));
+
+				IncomingValue value = {};
+				value.id = itr->id;
+				value.block = input;
+				frontier_phi.incoming.push_back(value);
+
+				// Do we remove the incoming value now or not?
+				// If all paths from incoming value must go through frontier, we can remove it,
+				// otherwise, we might still need to use the incoming value somewhere else.
+				bool exists_path = incoming_block->exists_path_in_cfg_without_intermediate_node(node.block, frontier);
+				if (exists_path)
+				{
+					LOGE("   ... keeping input in %s\n", incoming_block->name.c_str());
+				}
+				else
+				{
+					LOGE("   ... removing input in %s\n", incoming_block->name.c_str());
+					incoming_values.erase(itr);
+				}
 			}
 			else
 			{
-				LOGE("   ... removing input in %s\n", incoming_block->name.c_str());
-				incoming_values.erase(itr);
+				// If there is no incoming value, we need to hallucinate an undefined value.
+				IncomingValue value = {};
+				value.id = module.get_builder().createUndefined(node.phi->type_id);
+				value.block = input;
+				frontier_phi.incoming.push_back(value);
 			}
 		}
 
@@ -446,33 +456,41 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			unsigned normal_branch_count = 0;
 			for (auto *input : frontier->pred)
 			{
-				auto itr = find_incoming_value(input, incoming_values);
-				assert(itr != incoming_values.end());
-
 				IncomingValue value = {};
-
-				// If the input does not dominate the frontier, this might be a case of cross-edge PHI merge.
-				// However, if we still have an incoming value which dominates the input block, ignore.
-				// This is considered a normal path and we will merge the actual result in a later iteration, because
-				// the frontier is not a post-dominator of the input value.
-				bool input_is_normal_edge = true;
-				if (!input->dominates(frontier))
+				auto itr = find_incoming_value(input, incoming_values);
+				if (itr != incoming_values.end())
 				{
-					input_is_normal_edge = false;
-					for (auto &incoming : incoming_values)
+
+					// If the input does not dominate the frontier, this might be a case of cross-edge PHI merge.
+					// However, if we still have an incoming value which dominates the input block, ignore.
+					// This is considered a normal path and we will merge the actual result in a later iteration, because
+					// the frontier is not a post-dominator of the input value.
+					bool input_is_normal_edge = true;
+					if (!input->dominates(frontier))
 					{
-						if (incoming.block->dominates(input))
+						input_is_normal_edge = false;
+						for (auto &incoming : incoming_values)
 						{
-							input_is_normal_edge = true;
-							break;
+							if (incoming.block->dominates(input))
+							{
+								input_is_normal_edge = true;
+								break;
+							}
 						}
 					}
+
+					if (input_is_normal_edge)
+						normal_branch_count++;
+
+					value.id = module.get_builder().makeBoolConstant(input_is_normal_edge);
+				}
+				else
+				{
+					// The input is undefined, so we don't really care. Just treat this as a normal edge.
+					normal_branch_count++;
+					value.id = module.get_builder().makeBoolConstant(true);
 				}
 
-				if (input_is_normal_edge)
-					normal_branch_count++;
-
-				value.id = module.get_builder().makeBoolConstant(input_is_normal_edge);
 				value.block = input;
 				merge_phi.incoming.push_back(value);
 			}
@@ -1181,6 +1199,21 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 	return pred_node;
 }
 
+void CFGStructurizer::retarget_succ_from(CFGNode *new_node, CFGNode *old_pred)
+{
+	for (auto *s : new_node->succ)
+		for (auto &p : s->pred)
+			if (p == old_pred)
+				p = new_node;
+
+	for (auto *node : post_visit_order)
+		if (node->immediate_dominator == old_pred)
+			node->immediate_dominator = new_node;
+	new_node->immediate_dominator = old_pred;
+
+	// Do not swap back edges.
+}
+
 CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 {
 	auto *succ_node = pool.create_node();
@@ -1196,8 +1229,7 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 	node->ir.terminator.type = Terminator::Type::Branch;
 	node->ir.terminator.direct_block = succ_node;
 
-	succ_node->retarget_succ_from(node);
-	succ_node->immediate_dominator = node;
+	retarget_succ_from(succ_node, node);
 
 	node->add_branch(succ_node);
 	return succ_node;

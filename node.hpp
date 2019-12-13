@@ -84,7 +84,6 @@ private:
 	template <typename Op>
 	void walk_cfg_from(const Op &op) const;
 
-	void retarget_succ_from(CFGNode *node);
 	void retarget_pred_from(CFGNode *node);
 	void recompute_immediate_dominator();
 

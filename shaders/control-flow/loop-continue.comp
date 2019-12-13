@@ -1,0 +1,28 @@
+RWByteAddressBuffer Buf : register(u0);
+
+[numthreads(1, 1, 1)]
+void main(uint3 index : SV_DispatchThreadID)
+{
+	uint result = 0;
+
+	for (uint i = 0; i < index.x; i++)
+	{
+		[branch]
+		if (Buf.Load(4 * i) == 40)
+		{
+			[branch]
+			if (i == 10)
+			{
+				continue;
+			}
+			result += Buf.Load(16 * i);
+		}
+		else
+		{
+			result += Buf.Load(12 * i);
+		}
+		result += Buf.Load(8 * i);
+	}
+
+	Buf.Store(0, result);
+}

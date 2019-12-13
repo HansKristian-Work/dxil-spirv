@@ -97,6 +97,7 @@ private:
 	static void recompute_dominance_frontier(CFGNode *header, const CFGNode *node,
 	                                         std::unordered_set<const CFGNode *> traversed);
 	static void merge_to_succ(CFGNode *node, unsigned index);
+	void retarget_succ_from(CFGNode *new_node, CFGNode *old_pred);
 
 	struct PHINode
 	{
