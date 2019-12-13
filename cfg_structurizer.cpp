@@ -436,16 +436,14 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			// For every pred edge of the frontier where pred did not dominate, we are now suddenly dominating.
 			// If we came from such a block,
 			// we should replace the incoming value of dominating_incoming rather than adding a new incoming value.
-			PHI merge_phi;
-			merge_phi.id = module.allocate_id();
-			module.get_builder().addName(merge_phi.id,
-			                             (std::string("merged_phi_") + dominated_incoming->block->name).c_str());
+			PHI merge_phi = {};
 
-			merge_phi.type_id = module.get_builder().makeBoolType();
+			// Here we need to figure out if we have a cross branch which functions as a ladder.
+			// If we have such a special edge, the PHI value we find here will override any other value on this path.
+			// However, if we only have expected branches, there is nothing to override, and any PHI values
+			// we created along this path turned out to be irrelevant after all.
 
-			// Should be possible to handle multiple merges with chained selects, but not sure if will ever be needed.
-			assert(frontier->pred.size() == 2);
-			unsigned dominate_count = 0;
+			unsigned normal_branch_count = 0;
 			for (auto *input : frontier->pred)
 			{
 				auto itr = find_incoming_value(input, incoming_values);
@@ -453,22 +451,46 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 				IncomingValue value = {};
 
-				bool input_dominates = input->dominates(dominated_incoming->block);
-				if (input_dominates)
-					dominate_count++;
+				// If the input does not dominate the frontier, this might be a case of cross-edge PHI merge.
+				// However, if we still have an incoming value which dominates the input block, ignore.
+				// This is considered a normal path and we will merge the actual result in a later iteration, because
+				// the frontier is not a post-dominator of the input value.
+				bool input_is_normal_edge = true;
+				if (!input->dominates(frontier))
+				{
+					input_is_normal_edge = false;
+					for (auto &incoming : incoming_values)
+					{
+						if (incoming.block->dominates(input))
+						{
+							input_is_normal_edge = true;
+							break;
+						}
+					}
+				}
 
-				value.id = module.get_builder().makeBoolConstant(input_dominates);
+				if (input_is_normal_edge)
+					normal_branch_count++;
+
+				value.id = module.get_builder().makeBoolConstant(input_is_normal_edge);
 				value.block = input;
 				merge_phi.incoming.push_back(value);
 			}
-			assert(dominate_count == 1);
 
-			Operation *op = module.allocate_op(spv::OpSelect, module.allocate_id(), node.phi->type_id);
-			op->add_ids({ merge_phi.id, dominated_incoming->id, frontier_phi.id });
-			dominated_incoming->block->ir.operations.push_back(op);
-			dominated_incoming->id = op->id;
+			if (normal_branch_count != frontier->pred.size())
+			{
+				merge_phi.id = module.allocate_id();
+				merge_phi.type_id = module.get_builder().makeBoolType();
 
-			frontier->ir.phi.push_back(std::move(merge_phi));
+				Operation *op = module.allocate_op(spv::OpSelect, module.allocate_id(), node.phi->type_id);
+				op->add_ids({ merge_phi.id, dominated_incoming->id, frontier_phi.id });
+				dominated_incoming->block->ir.operations.push_back(op);
+				dominated_incoming->id = op->id;
+
+				module.get_builder().addName(merge_phi.id,
+				                             (std::string("merged_phi_") + dominated_incoming->block->name).c_str());
+				frontier->ir.phi.push_back(std::move(merge_phi));
+			}
 		}
 		else
 		{

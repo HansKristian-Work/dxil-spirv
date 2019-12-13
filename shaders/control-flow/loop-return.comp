@@ -1,0 +1,33 @@
+RWByteAddressBuffer Buf : register(u0);
+
+uint func(uint3 index)
+{
+	uint result = 0;
+	for (uint i = 0; i < index.x; i++)
+	{
+		for (uint j = 0; j < index.y; j++)
+		{
+			if (Buf.Load(4 * (i ^ j)) == 100)
+			{
+				result += Buf.Load(128);
+				return result;
+			}
+
+			result += Buf.Load(4 * (i * j));
+		}
+	}
+
+	return result;
+}
+
+[numthreads(1, 1, 1)]
+void main(uint3 index : SV_DispatchThreadID)
+{
+	uint result;
+	[branch]
+	if (index.x < 100)
+		result = func(index);
+	else
+		result = func(index.zyx);
+	Buf.Store(0, result);
+}
