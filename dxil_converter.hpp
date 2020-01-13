@@ -40,12 +40,85 @@ struct ConvertedFunction
 	std::unique_ptr<CFGNodePool> node_pool;
 };
 
+struct D3DBinding
+{
+	// The index in which the resource was declared in the module.
+	// Range is [0, N), where N is number of resources.
+	unsigned resource_index;
+
+	// : register(N, spaceM)
+	unsigned register_space;
+	unsigned register_index;
+
+	// -1 -> unsized, 1 means non-arrayed resource.
+	unsigned range_size;
+};
+
+struct VulkanBinding
+{
+	unsigned descriptor_set;
+	unsigned binding;
+
+	struct
+	{
+		unsigned push_constant_member;
+		unsigned heap_offset;
+
+		// If true, the resource is accessed directly from a descriptor heap in way which emulates D3D12 closely.
+		// layout(set = descriptor_set, binding = binding) uniform Type HEAP[];
+		// HEAP[shader_index + heap_offset + registers.u32s[push_constant_member]].
+		bool heap;
+	} bindless;
+};
+
+struct D3DUAVBinding
+{
+	D3DBinding binding;
+	bool counter;
+};
+
+struct VulkanUAVBinding
+{
+	VulkanBinding buffer_binding;
+	VulkanBinding counter_binding;
+};
+
+struct VulkanPushConstantBinding
+{
+	unsigned offset_in_words;
+	unsigned size_in_words;
+};
+
+struct VulkanCBVBinding
+{
+	union
+	{
+		VulkanBinding buffer;
+		VulkanPushConstantBinding push;
+	};
+
+	// Select if the CBV should fetch constants from push constants, or regular UBO.
+	bool push_constant;
+};
+
+class ResourceRemappingInterface
+{
+public:
+	virtual bool remap_srv(const D3DBinding &d3d_binding, VulkanBinding &vulkan_binding) = 0;
+	virtual bool remap_sampler(const D3DBinding &d3d_binding, VulkanBinding &vulkan_binding) = 0;
+	virtual bool remap_uav(const D3DUAVBinding &d3d_binding, VulkanUAVBinding &vulkan_binding) = 0;
+	virtual bool remap_cbv(const D3DBinding &d3d_binding, VulkanCBVBinding &vulkan_binding) = 0;
+	virtual unsigned get_root_constant_word_count() = 0;
+};
+
 class Converter
 {
 public:
 	Converter(LLVMBCParser &bitcode_parser, SPIRVModule &module);
 	~Converter();
 	ConvertedFunction convert_entry_point();
+	void set_resource_remapping_interface(ResourceRemappingInterface *iface);
+
 	struct Impl;
 
 private:

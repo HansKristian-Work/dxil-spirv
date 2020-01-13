@@ -23,6 +23,7 @@
 #include "logging.hpp"
 #include "node.hpp"
 #include "node_pool.hpp"
+#include "dxil_converter.hpp"
 
 #include <utility>
 
@@ -110,7 +111,7 @@ static bool image_dimension_is_multisampled(DXIL::ResourceKind kind)
 	}
 }
 
-void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
+bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 {
 	auto &builder = spirv_module.get_builder();
 	unsigned num_srvs = srvs->getNumOperands();
@@ -179,15 +180,26 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
-		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
+		D3DBinding d3d_binding = { i, bind_space, bind_register, range_size };
+		VulkanBinding vulkan_binding = { bind_space, bind_register };
+		if (resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
+			return false;
+
+		// Not supported yet.
+		if (vulkan_binding.bindless.heap)
+			return false;
+
+		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
+		builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.binding);
 		srv_index_to_id.resize(std::max(srv_index_to_id.size(), size_t(index + 1)));
 		srv_index_to_id[index] = var_id;
 		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, 0u, false };
 	}
+
+	return true;
 }
 
-void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
+bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 {
 	auto &builder = spirv_module.get_builder();
 	unsigned num_uavs = uavs->getNumOperands();
@@ -263,8 +275,19 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
-		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
+		D3DUAVBinding d3d_binding = {};
+		d3d_binding.counter = has_counter;
+		d3d_binding.binding = { i, bind_space, bind_register, range_size };
+		VulkanUAVBinding vulkan_binding = {{ bind_space, bind_register }, { bind_space + 1, bind_register }};
+		if (resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
+			return false;
+
+		// Not supported yet.
+		if (vulkan_binding.buffer_binding.bindless.heap)
+			return false;
+
+		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
+		builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
 
 		if (globally_coherent)
 			builder.addDecoration(var_id, spv::DecorationCoherent);
@@ -278,14 +301,20 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			counter_var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
 			                                        name.empty() ? nullptr : (name + "Counter").c_str());
 
-			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet, bind_space + 1);
-			builder.addDecoration(counter_var_id, spv::DecorationBinding, bind_register);
+			// Not supported yet.
+			if (vulkan_binding.counter_binding.bindless.heap)
+				return false;
+
+			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet, vulkan_binding.counter_binding.descriptor_set);
+			builder.addDecoration(counter_var_id, spv::DecorationBinding, vulkan_binding.counter_binding.binding);
 		}
 		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id, false };
 	}
+
+	return true;
 }
 
-void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
+bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 {
 	auto &builder = spirv_module.get_builder();
 
@@ -329,15 +358,27 @@ void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
 
-		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
-		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
+		D3DBinding d3d_binding = { i, bind_space, bind_register, range_size };
+		VulkanCBVBinding vulkan_binding = {};
+		vulkan_binding.buffer = { bind_space, bind_register };
+		if (resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
+			return false;
+
+		// Not supported yet.
+		if (vulkan_binding.push_constant)
+			return false;
+
+		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
+		builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
 
 		cbv_index_to_id.resize(std::max(cbv_index_to_id.size(), size_t(index + 1)));
 		cbv_index_to_id[index] = var_id;
 	}
+
+	return true;
 }
 
-void Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
+bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 {
 	auto &builder = spirv_module.get_builder();
 	unsigned num_samplers = samplers->getNumOperands();
@@ -370,31 +411,68 @@ void Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		builder.addDecoration(var_id, spv::DecorationDescriptorSet, bind_space);
-		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
+		D3DBinding d3d_binding = { i, bind_space, bind_register, range_size };
+		VulkanBinding vulkan_binding = { bind_space, bind_register };
+		if (resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
+			return false;
+
+		// Not supported yet.
+		if (vulkan_binding.bindless.heap)
+			return false;
+
+		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
+		builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.binding);
 
 		sampler_index_to_id.resize(std::max(sampler_index_to_id.size(), size_t(index + 1)));
 		sampler_index_to_id[index] = var_id;
 	}
+
+	return true;
 }
 
-void Converter::Impl::emit_resources()
+void Converter::Impl::emit_root_constants(unsigned num_words)
 {
+	auto &builder = spirv_module.get_builder();
+
+	// Root constants cannot be dynamically indexed in DXIL, so emit them as members.
+	std::vector<spv::Id> members(num_words);
+	for (auto &memb : members)
+		memb = builder.makeUintType(32);
+
+	spv::Id type_id = builder.makeStructType(members, "RootConstants");
+	root_constant_id = builder.createVariable(spv::StorageClassPushConstant, type_id, "registers");
+}
+
+bool Converter::Impl::emit_resources()
+{
+	unsigned num_root_constant_words = 0;
+	if (resource_mapping_iface)
+		num_root_constant_words = resource_mapping_iface->get_root_constant_word_count();
+
+	if (num_root_constant_words != 0)
+		emit_root_constants(num_root_constant_words);
+
 	auto &module = bitcode_parser.get_module();
 	auto *resource_meta = module.getNamedMetadata("dx.resources");
 	if (!resource_meta)
-		return;
+		return true;
 
 	auto *metas = resource_meta->getOperand(0);
 
 	if (metas->getOperand(0))
-		emit_srvs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(0)));
+		if (!emit_srvs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(0))))
+			return false;
 	if (metas->getOperand(1))
-		emit_uavs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(1)));
+		if (!emit_uavs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(1))))
+			return false;
 	if (metas->getOperand(2))
-		emit_cbvs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(2)));
+		if (!emit_cbvs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(2))))
+			return false;
 	if (metas->getOperand(3))
-		emit_samplers(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(3)));
+		if (!emit_samplers(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(3))))
+			return false;
+
+	return true;
 }
 
 spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, unsigned forced_width)
@@ -1729,7 +1807,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 
 ConvertedFunction Converter::Impl::convert_entry_point()
 {
-	ConvertedFunction result;
+	ConvertedFunction result = {};
 	result.node_pool = std::make_unique<CFGNodePool>();
 	auto &pool = *result.node_pool;
 
@@ -1737,7 +1815,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	spirv_module.emit_entry_point(get_execution_model(*module), "main");
 
 	emit_execution_modes();
-	emit_resources();
+	if (!emit_resources())
+		return result;
 	emit_stage_input_variables();
 	emit_stage_output_variables();
 	emit_patch_variables();
@@ -1788,6 +1867,11 @@ void Converter::Impl::add(Operation *op)
 spv::Builder &Converter::Impl::builder()
 {
 	return spirv_module.get_builder();
+}
+
+void Converter::set_resource_remapping_interface(ResourceRemappingInterface *iface)
+{
+	impl->resource_mapping_iface = iface;
 }
 
 } // namespace DXIL2SPIRV

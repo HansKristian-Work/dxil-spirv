@@ -89,17 +89,19 @@ struct Converter::Impl
 		llvm::Function *patch_constant_function = nullptr;
 	} execution_mode_meta;
 
-	void emit_resources();
-	void emit_srvs(const llvm::MDNode *srvs);
-	void emit_uavs(const llvm::MDNode *uavs);
-	void emit_cbvs(const llvm::MDNode *cbvs);
-	void emit_samplers(const llvm::MDNode *samplers);
+	bool emit_resources();
+	bool emit_srvs(const llvm::MDNode *srvs);
+	bool emit_uavs(const llvm::MDNode *uavs);
+	bool emit_cbvs(const llvm::MDNode *cbvs);
+	bool emit_samplers(const llvm::MDNode *samplers);
+	void emit_root_constants(unsigned num_words);
 
 	std::vector<spv::Id> srv_index_to_id;
 	std::vector<spv::Id> uav_index_to_id;
 	std::vector<spv::Id> cbv_index_to_id;
 	std::vector<spv::Id> sampler_index_to_id;
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
+	spv::Id root_constant_id = 0;
 
 	struct ResourceMeta
 	{
@@ -148,5 +150,7 @@ struct Converter::Impl
 
 	spv::Id glsl_std450_ext = 0;
 	spv::Id cmpxchg_type = 0;
+
+	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 };
 } // namespace DXIL2SPIRV
