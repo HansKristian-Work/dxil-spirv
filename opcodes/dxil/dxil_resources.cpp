@@ -446,7 +446,6 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
 			op->add_id(image_id);
 			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
-			// TODO: non-uniform
 			impl.add(op);
 			image_id = op->id;
 		}
