@@ -541,13 +541,15 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 			if (non_uniform != 0)
 			{
-				LOGE("NonUniformResourceIndex on Sampler objects not supported by SPV_EXT_descriptor_indexing.\n");
+				// TODO: Verify if this is actually true.
+				LOGE("NonUniformResourceIndex on Sampler objects (apparently?) not supported by SPV_EXT_descriptor_indexing.\n");
 				return false;
 			}
 
 			if (!llvm::isa<llvm::ConstantInt>(instruction->getOperand(3)))
 			{
-				LOGE("Index to sampler array is not constant. This is not supported by Vulkan.\n");
+				// TODO: Verify if this is actually true.
+				LOGE("Index to sampler array is not constant. This is (apparently?) not supported by Vulkan.\n");
 				return false;
 			}
 
