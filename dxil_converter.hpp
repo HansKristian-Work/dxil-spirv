@@ -43,7 +43,7 @@ struct ConvertedFunction
 class Converter
 {
 public:
-	Converter(DXILContainerParser &container_parser, LLVMBCParser &bitcode_parser, SPIRVModule &module);
+	Converter(LLVMBCParser &bitcode_parser, SPIRVModule &module);
 	~Converter();
 	ConvertedFunction convert_entry_point();
 	struct Impl;

@@ -28,9 +28,9 @@
 
 namespace DXIL2SPIRV
 {
-Converter::Converter(DXILContainerParser &container_parser_, LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
+Converter::Converter(LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
 {
-	impl = std::make_unique<Impl>(container_parser_, bitcode_parser_, module_);
+	impl = std::make_unique<Impl>(bitcode_parser_, module_);
 }
 
 Converter::~Converter()

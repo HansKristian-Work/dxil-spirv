@@ -51,9 +51,11 @@ extern "C" {
 typedef enum dxil_spv_result
 {
 	DXIL_SPV_SUCCESS = 0,
-	DXIL_SPV_OUT_OF_MEMORY = -1,
-	DXIL_SPV_GENERIC_ERROR = -2,
-	DXIL_SPV_UNSUPPORTED_FEATURE = -3,
+	DXIL_SPV_ERROR_OUT_OF_MEMORY = -1,
+	DXIL_SPV_ERROR_GENERIC = -2,
+	DXIL_SPV_ERROR_UNSUPPORTED_FEATURE = -3,
+	DXIL_SPV_ERROR_PARSER = -4,
+	DXIL_SPV_ERROR_FAILED_VALIDATION = -5,
 	DXIL_SPV_RESULT_INT_MAX = 0x7fffffff
 } dxil_spv_result;
 
@@ -69,8 +71,10 @@ DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, 
 /* Parses and frees a DXBC blob. */
 typedef struct dxil_spv_parsed_blob_s *dxil_spv_parsed_blob;
 
-/* Parses a DXBC archive as is passed into CreatePipeline. */
+/* Parses a DXBC archive as is passed into CreatePipeline, which contains a DXIL blob. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob);
+/* Parses raw DXIL (LLVM BC). */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_parsed_blob *blob);
 /* Dumps the LLVM IR representation to console. For debugging. */
 DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob);
 DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob);
@@ -79,6 +83,7 @@ DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob);
 /* Converter API */
 typedef struct dxil_spv_converter_s *dxil_spv_converter;
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_converter *converter);
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
 
 /* Remaps input attribute to desired location. */
 typedef void (*dxil_spv_vertex_input_remapper_cb)(void *userdata, const char *semantic, unsigned index, unsigned *location);
@@ -168,7 +173,6 @@ typedef struct dxil_spv_compiled_spirv
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_spv_converter converter,
                                                                           dxil_spv_compiled_spirv *compiled);
 
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
 /* Converter API */
 
 }

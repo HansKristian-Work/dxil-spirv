@@ -34,14 +34,12 @@ namespace DXIL2SPIRV
 
 struct Converter::Impl
 {
-	Impl(DXILContainerParser &container_parser_, LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
-	    : container_parser(container_parser_)
-	    , bitcode_parser(bitcode_parser_)
+	Impl(LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
+	    : bitcode_parser(bitcode_parser_)
 	    , spirv_module(module_)
 	{
 	}
 
-	DXILContainerParser &container_parser;
 	LLVMBCParser &bitcode_parser;
 	SPIRVModule &spirv_module;
 

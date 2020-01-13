@@ -75,7 +75,6 @@ add_library(dxil-converter STATIC
         node.hpp node.cpp
         dxil_parser.hpp dxil_parser.cpp
         scratch_pool.hpp
-        dxil_spirv_c.h dxil_spirv_c.cpp
         opcodes/converter_impl.hpp
         opcodes/opcodes.hpp
         opcodes/dxil/dxil_common.hpp opcodes/dxil/dxil_common.cpp
@@ -92,6 +91,12 @@ add_library(dxil-converter STATIC
         opcodes/opcodes_dxil_builtins.hpp opcodes/opcodes_dxil_builtins.cpp)
 target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter PRIVATE dxil-debug)
+
+add_library(dxil-converter-c STATIC
+        dxil_spirv_c.h dxil_spirv_c.cpp)
+target_include_directories(dxil-converter-c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(dxil-converter-c PRIVATE dxil-debug SPIRV-Tools dxil-converter)
+
 
 llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-converter PRIVATE ${llvm_libs})
