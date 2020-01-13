@@ -374,7 +374,7 @@ int main()
 	});
 
 	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main");
-	emitter.module.emit_function_body(traverser);
+	emitter.module.emit_entry_point_function_body(traverser);
 	std::vector<uint32_t> code;
 	emitter.module.finalize_spirv(code);
 

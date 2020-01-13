@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 		module->print(str, nullptr);
 	}
 
-	DXIL2SPIRV::Converter converter(std::move(parser), std::move(bc_parser), spirv_module);
+	DXIL2SPIRV::Converter converter(parser, bc_parser, spirv_module);
 	auto entry_point = converter.convert_entry_point();
 	if (entry_point.entry == nullptr)
 	{
