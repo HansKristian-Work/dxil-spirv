@@ -297,7 +297,7 @@ void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		auto name = get_string_metadata(cbv, 2);
 		unsigned bind_space = get_constant_metadata(cbv, 3);
 		unsigned bind_register = get_constant_metadata(cbv, 4);
-		// range_size = 5
+		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
 		unsigned vec4_length = (cbv_size + 15) / 16;
@@ -311,6 +311,21 @@ void Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		spv::Id type_id = builder.makeStructType({ member_array_type }, name.c_str());
 		builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 		builder.addDecoration(type_id, spv::DecorationBlock);
+
+		if (range_size != 1)
+		{
+			if (range_size == ~0u)
+			{
+				type_id = builder.makeRuntimeArray(type_id);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+			}
+			else
+				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+
+			builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
+		}
+
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
 

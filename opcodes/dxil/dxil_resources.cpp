@@ -464,11 +464,13 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			{
 				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 			else
 			{
 				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 		}
 
@@ -512,11 +514,13 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			{
 				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilityStorageTexelBufferArrayNonUniformIndexing);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 			else
 			{
 				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilityStorageImageArrayNonUniformIndexingEXT);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 		}
 
@@ -525,8 +529,39 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 	}
 
 	case DXIL::ResourceType::CBV:
-		impl.handle_to_ptr_id[instruction] = impl.cbv_index_to_id[resource_range];
+	{
+		spv::Id base_cbv_id = impl.cbv_index_to_id[resource_range];
+		spv::Id type_id = builder.getDerefTypeId(base_cbv_id);
+
+		if (builder.isArrayType(type_id))
+		{
+			uint32_t non_uniform;
+			if (!get_constant_operand(instruction, 4, &non_uniform))
+				return false;
+
+			type_id = builder.getContainedTypeId(type_id);
+			Operation *op = impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(spv::StorageClassUniform, type_id));
+			op->add_id(base_cbv_id);
+			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+			impl.add(op);
+			impl.handle_to_ptr_id[instruction] = op->id;
+
+			auto &meta = impl.handle_to_resource_meta[op->id];
+			meta = {};
+			meta.non_uniform = non_uniform != 0;
+
+			if (meta.non_uniform)
+			{
+				builder.addCapability(spv::CapabilityUniformBufferArrayNonUniformIndexingEXT);
+				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+			}
+		}
+		else
+			impl.handle_to_ptr_id[instruction] = base_cbv_id;
+
 		break;
+	}
 
 	case DXIL::ResourceType::Sampler:
 	{
@@ -586,6 +621,10 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 	if (!ptr_id)
 		return false;
 
+	auto itr = impl.handle_to_resource_meta.find(ptr_id);
+	bool non_uniform = itr != impl.handle_to_resource_meta.end() &&
+	                   itr->second.non_uniform;
+
 	spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
 
 	Operation *access_chain_op =
@@ -593,6 +632,9 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 	                                                          builder.makeVectorType(builder.makeFloatType(32), 4)));
 	access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
 	impl.add(access_chain_op);
+
+	if (non_uniform)
+		builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
 
 	bool need_bitcast = false;
 	auto *result_type = instruction->getType();
