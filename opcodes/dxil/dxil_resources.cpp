@@ -558,7 +558,14 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			}
 		}
 		else
+		{
 			impl.handle_to_ptr_id[instruction] = base_cbv_id;
+			if (base_cbv_id == impl.root_constant_id)
+			{
+				unsigned member_offset = impl.cbv_push_constant_member[resource_range];
+				impl.handle_to_root_member_offset[instruction] = member_offset;
+			}
+		}
 
 		break;
 	}
@@ -611,6 +618,64 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 	return true;
 }
 
+static bool emit_cbuffer_load_legacy_instruction_root_constant(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	auto *constant_int = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2));
+	if (!constant_int)
+		return false;
+
+	unsigned member_index = 4 * unsigned(constant_int->getUniqueInteger().getZExtValue());
+	member_index += impl.handle_to_root_member_offset[instruction->getOperand(1)];
+
+	if (member_index >= impl.root_constant_num_words)
+		return false;
+
+	unsigned num_words = std::min(4u, impl.root_constant_num_words - member_index);
+
+	auto *result_type = instruction->getType();
+
+	// Root constants are emitted as uints as they are typically used as indices.
+	bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
+
+	spv::Id elements[4];
+	for (unsigned i = 0; i < 4; i++)
+	{
+		if (i < num_words)
+		{
+			auto *op = impl.allocate(spv::OpAccessChain,
+			                         builder.makePointer(spv::StorageClassPushConstant, builder.makeUintType(32)));
+
+			op->add_id(impl.root_constant_id);
+			op->add_id(builder.makeUintConstant(member_index + i));
+			impl.add(op);
+
+			auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+			load_op->add_id(op->id);
+			impl.add(load_op);
+			elements[i] = load_op->id;
+		}
+		else
+			elements[i] = builder.makeUintConstant(0);
+	}
+
+	spv::Id id = impl.build_vector(builder.makeUintType(32), elements, 4);
+	if (need_bitcast)
+	{
+		spv::Id type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+		auto *op = impl.allocate(spv::OpBitcast, instruction, type_id);
+		op->add_id(id);
+		impl.add(op);
+	}
+	else
+	{
+		impl.value_map[instruction] = id;
+	}
+
+	return true;
+}
+
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -621,45 +686,53 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 	if (!ptr_id)
 		return false;
 
-	auto itr = impl.handle_to_resource_meta.find(ptr_id);
-	bool non_uniform = itr != impl.handle_to_resource_meta.end() &&
-	                   itr->second.non_uniform;
-
-	spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
-
-	Operation *access_chain_op =
-	    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniform,
-	                                                          builder.makeVectorType(builder.makeFloatType(32), 4)));
-	access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
-	impl.add(access_chain_op);
-
-	if (non_uniform)
-		builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
-
-	bool need_bitcast = false;
-	auto *result_type = instruction->getType();
-	if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
-		return false;
-	if (result_type->getStructNumElements() != 4)
-		return false;
-	if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
-		need_bitcast = true;
-
-	Operation *load_op = impl.allocate(spv::OpLoad, instruction, builder.makeVectorType(builder.makeFloatType(32), 4));
-	load_op->add_id(access_chain_op->id);
-	impl.add(load_op);
-
-	if (need_bitcast)
+	if (ptr_id == impl.root_constant_id)
 	{
-		Operation *op = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(32), 4));
-
-		assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
-		op->add_id(load_op->id);
-		impl.add(op);
-		impl.value_map[instruction] = op->id;
+		return emit_cbuffer_load_legacy_instruction_root_constant(impl, instruction);
 	}
+	else
+	{
+		auto itr = impl.handle_to_resource_meta.find(ptr_id);
+		bool non_uniform = itr != impl.handle_to_resource_meta.end() &&
+		                   itr->second.non_uniform;
 
-	return true;
+		spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
+
+		Operation *access_chain_op =
+				impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniform,
+				                                                      builder.makeVectorType(builder.makeFloatType(32),
+				                                                                             4)));
+		access_chain_op->add_ids({ptr_id, builder.makeUintConstant(0), vec4_index});
+		impl.add(access_chain_op);
+
+		if (non_uniform)
+			builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
+
+		bool need_bitcast = false;
+		auto *result_type = instruction->getType();
+		if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
+			return false;
+		if (result_type->getStructNumElements() != 4)
+			return false;
+		if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
+			need_bitcast = true;
+
+		Operation *load_op = impl.allocate(spv::OpLoad, instruction,
+		                                   builder.makeVectorType(builder.makeFloatType(32), 4));
+		load_op->add_id(access_chain_op->id);
+		impl.add(load_op);
+
+		if (need_bitcast)
+		{
+			Operation *op = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(32), 4));
+
+			assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
+			op->add_id(load_op->id);
+			impl.add(op);
+			impl.value_map[instruction] = op->id;
+		}
+		return true;
+	}
 }
 
 } // namespace DXIL2SPIRV

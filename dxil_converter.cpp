@@ -317,8 +317,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 {
 	auto &builder = spirv_module.get_builder();
-
 	unsigned num_cbvs = cbvs->getNumOperands();
+
 	for (unsigned i = 0; i < num_cbvs; i++)
 	{
 		auto *cbv = llvm::cast<llvm::MDNode>(cbvs->getOperand(i));
@@ -329,50 +329,63 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
-		unsigned vec4_length = (cbv_size + 15) / 16;
-
-		// It seems like we will have to bitcast ourselves away from vec4 here after loading.
-		spv::Id member_array_type = builder.makeArrayType(builder.makeVectorType(builder.makeFloatType(32), 4),
-		                                                  builder.makeUintConstant(vec4_length, false), 16);
-
-		builder.addDecoration(member_array_type, spv::DecorationArrayStride, 16);
-
-		spv::Id type_id = builder.makeStructType({ member_array_type }, name.c_str());
-		builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
-		builder.addDecoration(type_id, spv::DecorationBlock);
-
-		if (range_size != 1)
-		{
-			if (range_size == ~0u)
-			{
-				type_id = builder.makeRuntimeArray(type_id);
-				builder.addExtension("SPV_EXT_descriptor_indexing");
-				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
-			}
-			else
-				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
-
-			builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
-		}
-
-		spv::Id var_id =
-		    builder.createVariable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
-
 		D3DBinding d3d_binding = { i, bind_space, bind_register, range_size };
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
 			return false;
 
-		// Not supported yet.
-		if (vulkan_binding.push_constant)
-			return false;
-
-		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
-		builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
-
 		cbv_index_to_id.resize(std::max(cbv_index_to_id.size(), size_t(index + 1)));
-		cbv_index_to_id[index] = var_id;
+		cbv_push_constant_member.resize(std::max(cbv_push_constant_member.size(), size_t(index + 1)));
+
+		if (vulkan_binding.push_constant)
+		{
+			if (root_constant_id == 0)
+			{
+				LOGE("Must have setup push constant block to use root constant path.\n");
+				return false;
+			}
+
+			cbv_index_to_id[index] = root_constant_id;
+			cbv_push_constant_member[index] = vulkan_binding.push.offset_in_words;
+		}
+		else
+		{
+			unsigned vec4_length = (cbv_size + 15) / 16;
+
+			// It seems like we will have to bitcast ourselves away from vec4 here after loading.
+			spv::Id member_array_type = builder.makeArrayType(builder.makeVectorType(builder.makeFloatType(32), 4),
+			                                                  builder.makeUintConstant(vec4_length, false), 16);
+
+			builder.addDecoration(member_array_type, spv::DecorationArrayStride, 16);
+
+			spv::Id type_id = builder.makeStructType({member_array_type}, name.c_str());
+			builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+			builder.addDecoration(type_id, spv::DecorationBlock);
+
+			if (range_size != 1)
+			{
+				if (range_size == ~0u)
+				{
+					type_id = builder.makeRuntimeArray(type_id);
+					builder.addExtension("SPV_EXT_descriptor_indexing");
+					builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+				}
+				else
+					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+
+				builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
+			}
+
+			spv::Id var_id =
+					builder.createVariable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
+
+
+			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
+			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
+
+			cbv_index_to_id[index] = var_id;
+		}
 	}
 
 	return true;
@@ -411,7 +424,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		D3DBinding d3d_binding = { i, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { index, bind_space, bind_register, range_size };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
 			return false;
@@ -440,7 +453,12 @@ void Converter::Impl::emit_root_constants(unsigned num_words)
 		memb = builder.makeUintType(32);
 
 	spv::Id type_id = builder.makeStructType(members, "RootConstants");
+	builder.addDecoration(type_id, spv::DecorationBlock);
+	for (unsigned i = 0; i < num_words; i++)
+		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, 4 * i);
+
 	root_constant_id = builder.createVariable(spv::StorageClassPushConstant, type_id, "registers");
+	root_constant_num_words = num_words;
 }
 
 bool Converter::Impl::emit_resources()

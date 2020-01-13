@@ -99,9 +99,11 @@ struct Converter::Impl
 	std::vector<spv::Id> srv_index_to_id;
 	std::vector<spv::Id> uav_index_to_id;
 	std::vector<spv::Id> cbv_index_to_id;
+	std::vector<unsigned> cbv_push_constant_member;
 	std::vector<spv::Id> sampler_index_to_id;
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;
+	unsigned root_constant_num_words = 0;
 
 	struct ResourceMeta
 	{
@@ -114,6 +116,7 @@ struct Converter::Impl
 	};
 	std::unordered_map<spv::Id, ResourceMeta> handle_to_resource_meta;
 	std::unordered_map<spv::Id, spv::Id> id_to_type;
+	std::unordered_map<const llvm::Value *, unsigned> handle_to_root_member_offset;
 
 	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols);
 	spv::Id get_type_id(const llvm::Type *type);

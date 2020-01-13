@@ -102,7 +102,12 @@ static std::vector<uint8_t> read_file(const char *path)
 
 static void print_help()
 {
-	LOGE("Usage: dxil-spirv <input path> [--output <path>] [--glsl] [--validate] [--glsl-embed-asm]\n");
+	LOGE("Usage: dxil-spirv <input path>\n"
+	     "\t[--output <path>]\n"
+	     "\t[--glsl]\n"
+	     "\t[--validate]\n"
+	     "\t[--glsl-embed-asm]\n"
+	     "\t[--root-constant space binding word_offset word_count]\n");
 }
 
 struct Arguments
@@ -115,9 +120,74 @@ struct Arguments
 	bool glsl_embed_asm = false;
 };
 
+struct Remapper : ResourceRemappingInterface
+{
+	bool remap_srv(const D3DBinding &binding, VulkanBinding &vk_binding) override
+	{
+		vk_binding.bindless.heap = false;
+		vk_binding.descriptor_set = binding.register_space;
+		vk_binding.binding = binding.register_index;
+		return true;
+	}
+
+	bool remap_sampler(const D3DBinding &binding, VulkanBinding &vk_binding) override
+	{
+		vk_binding.bindless.heap = false;
+		vk_binding.descriptor_set = binding.register_space;
+		vk_binding.binding = binding.register_index;
+		return true;
+	}
+
+	bool remap_uav(const D3DUAVBinding &binding, VulkanUAVBinding &vk_binding) override
+	{
+		vk_binding.buffer_binding.bindless.heap = false;
+		vk_binding.counter_binding.bindless.heap = false;
+		vk_binding.buffer_binding.descriptor_set = binding.binding.register_space;
+		vk_binding.buffer_binding.binding = binding.binding.register_index;
+		vk_binding.counter_binding.descriptor_set = binding.binding.register_space + 1;
+		vk_binding.counter_binding.binding = binding.binding.register_index;
+		return true;
+	}
+
+	bool remap_cbv(const D3DBinding &binding, VulkanCBVBinding &vk_binding) override
+	{
+		auto itr = std::find_if(root_constants.begin(), root_constants.end(), [&](const RootConstant &root) {
+			return root.register_space == binding.register_space && root.register_index == binding.register_index;
+		});
+
+		if (itr != root_constants.end())
+		{
+			vk_binding.push_constant = true;
+			vk_binding.push.offset_in_words = itr->word_offset;
+		}
+		else
+		{
+			vk_binding.buffer.bindless.heap = false;
+			vk_binding.buffer.descriptor_set = binding.register_space;
+			vk_binding.buffer.binding = binding.register_index;
+		}
+		return true;
+	}
+
+	unsigned get_root_constant_word_count() override
+	{
+		return root_constant_word_count;
+	}
+
+	struct RootConstant
+	{
+		unsigned register_space;
+		unsigned register_index;
+		unsigned word_offset;
+	};
+	std::vector<RootConstant> root_constants;
+	unsigned root_constant_word_count = 0;
+};
+
 int main(int argc, char **argv)
 {
 	Arguments args;
+	Remapper remapper;
 
 	CLICallbacks cbs;
 	cbs.add("--help", [](CLIParser &parser) {
@@ -129,6 +199,15 @@ int main(int argc, char **argv)
 	cbs.add("--glsl", [&](CLIParser &) { args.glsl = true; });
 	cbs.add("--validate", [&](CLIParser &) { args.validate = true; });
 	cbs.add("--output", [&](CLIParser &parser) { args.output_path = parser.next_string(); });
+	cbs.add("--root-constant", [&](CLIParser &parser) {
+		Remapper::RootConstant root = {};
+		root.register_space = parser.next_uint();
+		root.register_index = parser.next_uint();
+		root.word_offset = parser.next_uint();
+		unsigned word_count = parser.next_uint();
+		remapper.root_constant_word_count = std::max(remapper.root_constant_word_count, word_count + root.word_offset);
+		remapper.root_constants.push_back(root);
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -179,6 +258,7 @@ int main(int argc, char **argv)
 	}
 
 	DXIL2SPIRV::Converter converter(bc_parser, spirv_module);
+	converter.set_resource_remapping_interface(&remapper);
 	auto entry_point = converter.convert_entry_point();
 	if (entry_point.entry == nullptr)
 	{

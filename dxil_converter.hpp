@@ -86,7 +86,6 @@ struct VulkanUAVBinding
 struct VulkanPushConstantBinding
 {
 	unsigned offset_in_words;
-	unsigned size_in_words;
 };
 
 struct VulkanCBVBinding
