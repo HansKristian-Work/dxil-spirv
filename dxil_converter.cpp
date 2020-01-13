@@ -172,6 +172,8 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityUniformTexelBufferArrayDynamicIndexingEXT);
 			}
+			else
+				builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
 		}
 
 		spv::Id var_id =

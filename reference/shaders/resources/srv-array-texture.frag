@@ -113,6 +113,7 @@ attributes #2 = { nounwind readonly }
 ; Bound: 70
 ; Schema: 0
 OpCapability Shader
+OpCapability SampledImageArrayDynamicIndexing
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
