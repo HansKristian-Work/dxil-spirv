@@ -183,7 +183,7 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		builder.addDecoration(var_id, spv::DecorationBinding, bind_register);
 		srv_index_to_id.resize(std::max(srv_index_to_id.size(), size_t(index + 1)));
 		srv_index_to_id[index] = var_id;
-		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, 0u };
+		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, 0u, false };
 	}
 }
 
@@ -259,7 +259,7 @@ void Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet, bind_space + 1);
 			builder.addDecoration(counter_var_id, spv::DecorationBinding, bind_register);
 		}
-		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id };
+		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id, false };
 	}
 }
 
@@ -1035,6 +1035,17 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	Operation *op = allocate(spv::OpSampledImage, builder.makeSampledImageType(image_type_id));
 	op->add_ids({ image_id, sampler_id });
 	add(op);
+
+	bool is_non_uniform = handle_to_resource_meta[image_id].non_uniform;
+	if (is_non_uniform)
+	{
+		if (dim == spv::DimBuffer)
+			builder.addCapability(spv::CapabilityUniformBufferArrayNonUniformIndexingEXT);
+		else
+			builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
+		builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+	}
+
 	return op->id;
 }
 

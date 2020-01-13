@@ -110,6 +110,7 @@ struct Converter::Impl
 		unsigned stride;
 		spv::Id var_id;
 		spv::Id counter_var_id;
+		bool non_uniform;
 	};
 	std::unordered_map<spv::Id, ResourceMeta> handle_to_resource_meta;
 	std::unordered_map<spv::Id, spv::Id> id_to_type;

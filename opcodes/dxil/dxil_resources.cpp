@@ -431,11 +431,17 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 	{
 		spv::Id base_image_id = impl.srv_index_to_id[resource_range];
 		spv::Id image_id = base_image_id;
-
 		spv::Id type_id = builder.getDerefTypeId(image_id);
+
+		bool is_non_uniform = false;
 
 		if (builder.isArrayType(type_id))
 		{
+			uint32_t non_uniform;
+			if (!get_constant_operand(instruction, 4, &non_uniform))
+				return false;
+			is_non_uniform = non_uniform != 0;
+
 			type_id = builder.getContainedTypeId(type_id);
 			Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
 			op->add_id(image_id);
@@ -448,7 +454,11 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
 		op->add_id(image_id);
 		impl.id_to_type[op->id] = type_id;
-		impl.handle_to_resource_meta[op->id] = impl.handle_to_resource_meta[base_image_id];
+
+		auto &meta = impl.handle_to_resource_meta[op->id];
+		meta = impl.handle_to_resource_meta[base_image_id];
+		meta.non_uniform = is_non_uniform;
+
 		impl.add(op);
 		break;
 	}
