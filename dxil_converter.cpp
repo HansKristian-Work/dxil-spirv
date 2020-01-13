@@ -1039,10 +1039,7 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	bool is_non_uniform = handle_to_resource_meta[image_id].non_uniform;
 	if (is_non_uniform)
 	{
-		if (dim == spv::DimBuffer)
-			builder.addCapability(spv::CapabilityUniformBufferArrayNonUniformIndexingEXT);
-		else
-			builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
+		builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
 		builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 	}
 

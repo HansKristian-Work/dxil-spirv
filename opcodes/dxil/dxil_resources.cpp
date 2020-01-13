@@ -459,6 +459,20 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 		meta = impl.handle_to_resource_meta[base_image_id];
 		meta.non_uniform = is_non_uniform;
 
+		if (is_non_uniform)
+		{
+			if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
+			{
+				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+				builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
+			}
+			else
+			{
+				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+				builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
+			}
+		}
+
 		impl.add(op);
 		break;
 	}
