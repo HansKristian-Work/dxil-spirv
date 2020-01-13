@@ -312,9 +312,24 @@ void Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		auto name = get_string_metadata(sampler, 2);
 		unsigned bind_space = get_constant_metadata(sampler, 3);
 		unsigned bind_register = get_constant_metadata(sampler, 4);
-		// range_size = 5
+		unsigned range_size = get_constant_metadata(sampler, 5);
 
 		spv::Id type_id = builder.makeSamplerType();
+
+		if (range_size != 1)
+		{
+			// There does not seem to be any capability associated with sampler array dynamic indexing of any kind,
+			// so we will have to validate that any index is constant.
+			if (range_size == ~0u)
+			{
+				type_id = builder.makeRuntimeArray(type_id);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+			}
+			else
+				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+		}
+
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 

@@ -497,6 +497,33 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 	{
 		spv::Id sampler_id = impl.sampler_index_to_id[resource_range];
 		spv::Id type_id = builder.getDerefTypeId(sampler_id);
+
+		if (builder.isArrayType(type_id))
+		{
+			uint32_t non_uniform;
+			if (!get_constant_operand(instruction, 4, &non_uniform))
+				return false;
+
+			if (non_uniform != 0)
+			{
+				LOGE("NonUniformResourceIndex on Sampler objects not supported by SPV_EXT_descriptor_indexing.\n");
+				return false;
+			}
+
+			if (!llvm::isa<llvm::ConstantInt>(instruction->getOperand(3)))
+			{
+				LOGE("Index to sampler array is not constant. This is not supported by Vulkan.\n");
+				return false;
+			}
+
+			type_id = builder.getContainedTypeId(type_id);
+			Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
+			op->add_id(sampler_id);
+			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+			impl.add(op);
+			sampler_id = op->id;
+		}
+
 		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
 		op->add_id(sampler_id);
 		impl.handle_to_resource_meta[op->id] = { DXIL::ResourceKind::Sampler, DXIL::ComponentType::Invalid, 0u };
