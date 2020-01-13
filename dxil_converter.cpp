@@ -122,7 +122,7 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		auto name = get_string_metadata(srv, 2);
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
-		// range_size = 5
+		unsigned range_size = get_constant_metadata(srv, 5);
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
 
@@ -153,6 +153,26 @@ void Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		    builder.makeImageType(sampled_type_id, image_dimension_from_resource_kind(resource_kind), false,
 		                          image_dimension_is_arrayed(resource_kind),
 		                          image_dimension_is_multisampled(resource_kind), 1, spv::ImageFormatUnknown);
+
+		if (range_size != 1)
+		{
+			if (range_size == ~0u)
+			{
+				type_id = builder.makeRuntimeArray(type_id);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+			}
+			else
+				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+
+			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			    resource_kind == DXIL::ResourceKind::RawBuffer ||
+			    resource_kind == DXIL::ResourceKind::TypedBuffer)
+			{
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityUniformTexelBufferArrayDynamicIndexingEXT);
+			}
+		}
 
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());

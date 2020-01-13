@@ -158,7 +158,10 @@ public:
     bool isVectorType(Id typeId)       const { return getTypeClass(typeId) == OpTypeVector; }
     bool isMatrixType(Id typeId)       const { return getTypeClass(typeId) == OpTypeMatrix; }
     bool isStructType(Id typeId)       const { return getTypeClass(typeId) == OpTypeStruct; }
-    bool isArrayType(Id typeId)        const { return getTypeClass(typeId) == OpTypeArray; }
+    bool isArrayType(Id typeId)        const {
+        auto typeClass = getTypeClass(typeId);
+        return typeClass == OpTypeArray || typeClass == OpTypeRuntimeArray;
+    }
     bool isAggregateType(Id typeId)    const { return isArrayType(typeId) || isStructType(typeId); }
     bool isImageType(Id typeId)        const { return getTypeClass(typeId) == OpTypeImage; }
     bool isSamplerType(Id typeId)      const { return getTypeClass(typeId) == OpTypeSampler; }

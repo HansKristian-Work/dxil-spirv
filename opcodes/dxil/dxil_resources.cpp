@@ -425,18 +425,30 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 	auto resource_type = static_cast<DXIL::ResourceType>(resource_type_operand);
 
-	// 3 = index into range
-	// 4 = non-uniform resource index
 	switch (resource_type)
 	{
 	case DXIL::ResourceType::SRV:
 	{
-		spv::Id image_id = impl.srv_index_to_id[resource_range];
+		spv::Id base_image_id = impl.srv_index_to_id[resource_range];
+		spv::Id image_id = base_image_id;
+
 		spv::Id type_id = builder.getDerefTypeId(image_id);
+
+		if (builder.isArrayType(type_id))
+		{
+			type_id = builder.getContainedTypeId(type_id);
+			Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
+			op->add_id(image_id);
+			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+			// TODO: non-uniform
+			impl.add(op);
+			image_id = op->id;
+		}
+
 		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
 		op->add_id(image_id);
 		impl.id_to_type[op->id] = type_id;
-		impl.handle_to_resource_meta[op->id] = impl.handle_to_resource_meta[image_id];
+		impl.handle_to_resource_meta[op->id] = impl.handle_to_resource_meta[base_image_id];
 		impl.add(op);
 		break;
 	}
