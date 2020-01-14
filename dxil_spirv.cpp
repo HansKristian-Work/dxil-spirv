@@ -107,7 +107,8 @@ static void print_help()
 	     "\t[--glsl]\n"
 	     "\t[--validate]\n"
 	     "\t[--glsl-embed-asm]\n"
-	     "\t[--root-constant space binding word_offset word_count]\n");
+	     "\t[--root-constant space binding word_offset word_count]\n"
+	     "\t[--vertex-input semantic location]\n");
 }
 
 struct Arguments
@@ -130,6 +131,14 @@ struct Remapper
 	};
 	std::vector<RootConstant> root_constants;
 	unsigned root_constant_word_count = 0;
+
+	struct VertexInput
+	{
+		std::string semantic;
+		unsigned index;
+	};
+	std::vector<VertexInput> vertex_inputs;
+	unsigned base_location = 0;
 };
 
 static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_cbv_vulkan_binding *vk_binding)
@@ -152,6 +161,28 @@ static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *bindi
 		vk_binding->vulkan.uniform_binding.set = binding->register_space;
 		vk_binding->vulkan.uniform_binding.binding = binding->register_index;
 	}
+	return DXIL_SPV_TRUE;
+}
+
+static dxil_spv_bool remap_vertex_input(void *userdata, const dxil_spv_d3d_vertex_input *d3d_input,
+                                        dxil_spv_vulkan_vertex_input *vk_input)
+{
+	auto *remapper = static_cast<Remapper *>(userdata);
+
+	auto itr = std::find_if(remapper->vertex_inputs.begin(), remapper->vertex_inputs.end(), [&](const Remapper::VertexInput &vin) {
+		return vin.semantic == d3d_input->semantic;
+	});
+
+	if (itr != remapper->vertex_inputs.end())
+	{
+		vk_input->location = itr->index + d3d_input->index;
+	}
+	else
+	{
+		vk_input->location = remapper->base_location;
+		remapper->base_location += d3d_input->rows;
+	}
+
 	return DXIL_SPV_TRUE;
 }
 
@@ -178,6 +209,11 @@ int main(int argc, char **argv)
 		unsigned word_count = parser.next_uint();
 		remapper.root_constant_word_count = std::max(remapper.root_constant_word_count, word_count + root.word_offset);
 		remapper.root_constants.push_back(root);
+	});
+	cbs.add("--vertex-input", [&](CLIParser &parser) {
+		const char *sem = parser.next_string();
+		unsigned loc = parser.next_uint();
+		remapper.vertex_inputs.push_back({ std::string(sem), loc });
 	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
@@ -225,6 +261,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 
 	dxil_spv_converter_set_cbv_remapper(converter, remap_cbv, &remapper);
+	dxil_spv_converter_set_vertex_input_remapper(converter, remap_vertex_input, &remapper);
 	dxil_spv_converter_set_root_constant_word_count(converter, remapper.root_constant_word_count);
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
