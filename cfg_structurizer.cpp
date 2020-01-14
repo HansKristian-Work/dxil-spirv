@@ -275,7 +275,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 	for (;;)
 	{
-		LOGE("\n=== PHI iteration ===\n", node.block->name.c_str());
+		LOGE("\n=== PHI iteration ===\n");
 
 		for (auto &incoming : incoming_values)
 			LOGE("  Incoming value from %s\n", incoming.block->name.c_str());

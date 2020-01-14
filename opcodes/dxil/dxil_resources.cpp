@@ -99,7 +99,6 @@ static bool emit_load_clip_distance(Converter::Impl &impl, const llvm::CallInst 
 {
 	spv::Id ptr_id = get_clip_distance_access_chain(impl, instruction, meta, spv::StorageClassInput);
 
-	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 	Operation *op = impl.allocate(spv::OpLoad, instruction);
 	op->add_id(ptr_id);
 	impl.add(op);

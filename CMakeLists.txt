@@ -94,7 +94,7 @@ add_library(dxil-converter STATIC
 set_target_properties(dxil-converter PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter PRIVATE dxil-debug)
-
+target_compile_options(dxil-converter PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-converter PRIVATE ${llvm_libs})
@@ -104,6 +104,7 @@ add_library(dxil-converter-c-shared SHARED
         dxil_spirv_c.h dxil_spirv_c.cpp)
 target_include_directories(dxil-converter-c-shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter)
+target_compile_options(dxil-converter-c-shared PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 if (NOT MSVC)
     set_target_properties(dxil-converter-c-shared PROPERTIES LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/link.T")
@@ -113,7 +114,7 @@ add_executable(dxil-spirv dxil_spirv.cpp)
 target_link_libraries(dxil-spirv PRIVATE dxil-converter cli-parser SPIRV-Tools spirv-cross-glsl dxil-debug)
 target_compile_options(dxil-spirv PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
-add_executable(structurize-test structurize_test.cpp)
-target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools spirv-cross-glsl dxil-debug)
-target_compile_options(structurize-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+#add_executable(structurize-test structurize_test.cpp)
+#target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools spirv-cross-glsl dxil-debug)
+#target_compile_options(structurize-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 

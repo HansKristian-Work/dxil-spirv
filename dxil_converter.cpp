@@ -1233,7 +1233,6 @@ void Converter::Impl::fixup_load_sign(DXIL::ComponentType component_type, unsign
 {
 	if (component_type == DXIL::ComponentType::I32)
 	{
-		auto &builder = spirv_module.get_builder();
 		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, components));
 		op->add_id(get_id_for_value(value));
 		add(op);
@@ -1245,7 +1244,6 @@ spv::Id Converter::Impl::fixup_store_sign(DXIL::ComponentType component_type, un
 {
 	if (component_type == DXIL::ComponentType::I32)
 	{
-		auto &builder = spirv_module.get_builder();
 		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::I32, 1, components));
 		op->add_id(value);
 		add(op);
@@ -1530,9 +1528,6 @@ void Converter::Impl::emit_execution_modes_geometry()
 
 				auto input_primitive = static_cast<DXIL::InputPrimitive>(get_constant_metadata(arguments, 0));
 				unsigned max_vertex_count = get_constant_metadata(arguments, 1);
-				DXIL::PrimitiveTopology topologies[4] = {};
-				for (unsigned j = 2; j < arguments->getNumOperands(); j++)
-					topologies[j - 2] = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, j));
 
 				auto *func = spirv_module.get_entry_function();
 

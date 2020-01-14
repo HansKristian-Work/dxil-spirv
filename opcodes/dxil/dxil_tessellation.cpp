@@ -134,7 +134,6 @@ bool emit_domain_location_instruction(Converter::Impl &impl, const llvm::CallIns
 
 bool emit_output_control_point_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	auto &builder = impl.builder();
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId);
 
 	auto *op = impl.allocate(spv::OpLoad, instruction);

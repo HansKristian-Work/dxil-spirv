@@ -103,6 +103,7 @@ struct VulkanCBVBinding
 class ResourceRemappingInterface
 {
 public:
+	virtual ~ResourceRemappingInterface() = default;
 	virtual bool remap_srv(const D3DBinding &d3d_binding, VulkanBinding &vulkan_binding) = 0;
 	virtual bool remap_sampler(const D3DBinding &d3d_binding, VulkanBinding &vulkan_binding) = 0;
 	virtual bool remap_uav(const D3DUAVBinding &d3d_binding, VulkanUAVBinding &vulkan_binding) = 0;

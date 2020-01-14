@@ -561,7 +561,6 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
 	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, false);
-	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	uint32_t num_coords_full = 0, num_coords = 0;
 	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))

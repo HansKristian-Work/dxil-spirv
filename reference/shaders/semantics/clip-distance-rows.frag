@@ -4,8 +4,6 @@ in float gl_ClipDistance[2];
 
 layout(location = 0) out vec4 SV_Target;
 
-uint _17;
-
 void main()
 {
     SV_Target.x = gl_ClipDistance[0u];
@@ -67,7 +65,7 @@ attributes #1 = { nounwind }
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 30
+; Bound: 29
 ; Schema: 0
 OpCapability Shader
 OpCapability ClipDistance
@@ -92,26 +90,25 @@ OpDecorate %13 Location 0
 %13 = OpVariable %12 Output
 %14 = OpTypePointer Input %5
 %16 = OpConstant %6 0
-%20 = OpConstant %6 1
-%22 = OpTypePointer Output %5
-%27 = OpConstant %6 3
+%19 = OpConstant %6 1
+%21 = OpTypePointer Output %5
+%26 = OpConstant %6 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%17 = OpUndef %6
-OpBranch %28
-%28 = OpLabel
+OpBranch %27
+%27 = OpLabel
 %15 = OpAccessChain %14 %10 %16
-%18 = OpLoad %5 %15
-%19 = OpAccessChain %14 %10 %20
-%21 = OpLoad %5 %19
-%23 = OpAccessChain %22 %13 %16
-OpStore %23 %18
-%24 = OpAccessChain %22 %13 %20
-OpStore %24 %18
-%25 = OpAccessChain %22 %13 %7
-OpStore %25 %21
-%26 = OpAccessChain %22 %13 %27
-OpStore %26 %21
+%17 = OpLoad %5 %15
+%18 = OpAccessChain %14 %10 %19
+%20 = OpLoad %5 %18
+%22 = OpAccessChain %21 %13 %16
+OpStore %22 %17
+%23 = OpAccessChain %21 %13 %19
+OpStore %23 %17
+%24 = OpAccessChain %21 %13 %7
+OpStore %24 %20
+%25 = OpAccessChain %21 %13 %26
+OpStore %25 %20
 OpReturn
 OpFunctionEnd
 #endif
