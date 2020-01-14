@@ -124,7 +124,7 @@ struct Remapper : ResourceRemappingInterface
 {
 	bool remap_srv(const D3DBinding &binding, VulkanBinding &vk_binding) override
 	{
-		vk_binding.bindless.heap = false;
+		vk_binding.bindless.use_heap = false;
 		vk_binding.descriptor_set = binding.register_space;
 		vk_binding.binding = binding.register_index;
 		return true;
@@ -132,7 +132,7 @@ struct Remapper : ResourceRemappingInterface
 
 	bool remap_sampler(const D3DBinding &binding, VulkanBinding &vk_binding) override
 	{
-		vk_binding.bindless.heap = false;
+		vk_binding.bindless.use_heap = false;
 		vk_binding.descriptor_set = binding.register_space;
 		vk_binding.binding = binding.register_index;
 		return true;
@@ -140,8 +140,8 @@ struct Remapper : ResourceRemappingInterface
 
 	bool remap_uav(const D3DUAVBinding &binding, VulkanUAVBinding &vk_binding) override
 	{
-		vk_binding.buffer_binding.bindless.heap = false;
-		vk_binding.counter_binding.bindless.heap = false;
+		vk_binding.buffer_binding.bindless.use_heap = false;
+		vk_binding.counter_binding.bindless.use_heap = false;
 		vk_binding.buffer_binding.descriptor_set = binding.binding.register_space;
 		vk_binding.buffer_binding.binding = binding.binding.register_index;
 		vk_binding.counter_binding.descriptor_set = binding.binding.register_space + 1;
@@ -162,7 +162,7 @@ struct Remapper : ResourceRemappingInterface
 		}
 		else
 		{
-			vk_binding.buffer.bindless.heap = false;
+			vk_binding.buffer.bindless.use_heap = false;
 			vk_binding.buffer.descriptor_set = binding.register_space;
 			vk_binding.buffer.binding = binding.register_index;
 		}

@@ -186,7 +186,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			return false;
 
 		// Not supported yet.
-		if (vulkan_binding.bindless.heap)
+		if (vulkan_binding.bindless.use_heap)
 			return false;
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
@@ -283,7 +283,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			return false;
 
 		// Not supported yet.
-		if (vulkan_binding.buffer_binding.bindless.heap)
+		if (vulkan_binding.buffer_binding.bindless.use_heap)
 			return false;
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
@@ -302,7 +302,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			                                        name.empty() ? nullptr : (name + "Counter").c_str());
 
 			// Not supported yet.
-			if (vulkan_binding.counter_binding.bindless.heap)
+			if (vulkan_binding.counter_binding.bindless.use_heap)
 				return false;
 
 			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet, vulkan_binding.counter_binding.descriptor_set);
@@ -430,7 +430,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			return false;
 
 		// Not supported yet.
-		if (vulkan_binding.bindless.heap)
+		if (vulkan_binding.bindless.use_heap)
 			return false;
 
 		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);

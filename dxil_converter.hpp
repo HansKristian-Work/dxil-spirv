@@ -61,13 +61,13 @@ struct VulkanBinding
 
 	struct
 	{
-		unsigned push_constant_member;
-		unsigned heap_offset;
+		unsigned root_constant_word;
+		unsigned heap_root_offset;
 
 		// If true, the resource is accessed directly from a descriptor heap in way which emulates D3D12 closely.
 		// layout(set = descriptor_set, binding = binding) uniform Type HEAP[];
 		// HEAP[shader_index + heap_offset + registers.u32s[push_constant_member]].
-		bool heap;
+		bool use_heap;
 	} bindless;
 };
 

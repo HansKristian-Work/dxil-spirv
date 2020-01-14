@@ -94,24 +94,40 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_vertex_input_remapper
 
 typedef struct dxil_spv_d3d_binding
 {
+	unsigned resource_index;
 	unsigned register_space;
 	unsigned register_index;
+	unsigned range_size;
 } dxil_spv_d3d_binding;
 
 typedef struct dxil_spv_vulkan_binding
 {
 	unsigned set;
 	unsigned binding;
+	struct
+	{
+		unsigned root_constant_word;
+		unsigned heap_root_offset;
+		dxil_spv_bool use_heap;
+	} bindless;
 } dxil_spv_vulkan_binding;
 
 /* Remaps SRVs and Samplers to desired binding points. */
-typedef void (*dxil_spv_srv_sampler_remapper_cb)(void *userdata,
-                                                 const dxil_spv_d3d_binding *d3d_binding,
-                                                 dxil_spv_vulkan_binding *vulkan_binding);
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_srv_sampler_remapper(
+typedef dxil_spv_bool (*dxil_spv_srv_sampler_remapper_cb)(void *userdata,
+                                                          const dxil_spv_d3d_binding *d3d_binding,
+                                                          dxil_spv_vulkan_binding *vulkan_binding);
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_srv_remapper(
 		dxil_spv_converter converter,
 		dxil_spv_srv_sampler_remapper_cb remapper,
 		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_sampler_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_srv_sampler_remapper_cb remapper,
+		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_root_constant_word_count(dxil_spv_converter converter,
+                                                                         unsigned num_words);
 
 /* Remaps UAVs to desired binding points. */
 typedef struct dxil_spv_uav_d3d_binding
@@ -125,18 +141,17 @@ typedef struct dxil_spv_uav_vulkan_binding
 	dxil_spv_vulkan_binding buffer_binding;
 	dxil_spv_vulkan_binding counter_binding;
 } dxil_spv_uav_vulkan_binding;
-typedef void (*dxil_spv_uav_remapper_cb)(void *userdata,
-                                         const dxil_spv_uav_d3d_binding *d3d_uav_binding,
-                                         dxil_spv_uav_vulkan_binding *vulkan_uav_binding);
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_uav_remapper(
+typedef dxil_spv_bool (*dxil_spv_uav_remapper_cb)(void *userdata,
+                                                  const dxil_spv_uav_d3d_binding *d3d_uav_binding,
+                                                  dxil_spv_uav_vulkan_binding *vulkan_uav_binding);
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_uav_remapper(
 		dxil_spv_converter converter,
 		dxil_spv_uav_remapper_cb remapper,
 		void *userdata);
 
 typedef struct dxil_spv_push_constant_mapping
 {
-	unsigned offset_in_32bit_words;
-	unsigned size_in_32bit_words;
+	unsigned offset_in_words;
 } dxil_spv_push_constant_mapping;
 
 typedef struct dxil_spv_cbv_vulkan_binding
@@ -149,16 +164,16 @@ typedef struct dxil_spv_cbv_vulkan_binding
 	dxil_spv_bool push_constant;
 } dxil_spv_cbv_vulkan_binding;
 
-typedef void (*dxil_spv_cbv_remapper_cb)(void *userdata,
-                                         const dxil_spv_d3d_binding *d3d_uav_binding,
-                                         dxil_spv_cbv_vulkan_binding *vulkan_uav_binding);
+typedef dxil_spv_bool (*dxil_spv_cbv_remapper_cb)(void *userdata,
+                                                  const dxil_spv_d3d_binding *d3d_uav_binding,
+                                                  dxil_spv_cbv_vulkan_binding *vulkan_uav_binding);
 
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_cbv_remapper(
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_cbv_remapper(
 		dxil_spv_converter converter,
-		dxil_spv_uav_remapper_cb remapper,
+		dxil_spv_cbv_remapper_cb remapper,
 		void *userdata);
 
-/* After setting up options, runs the converted to SPIR-V. */
+/* After setting up converter, runs the converted to SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter);
 
 /* Validate final SPIR-V. Returns UNSUPPORTED_FEATURE if SPIRV-Tools was not enabled in build. */
