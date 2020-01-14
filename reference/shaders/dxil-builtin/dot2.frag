@@ -1,7 +1,7 @@
 #version 460
 
 layout(location = 0) in vec2 A;
-layout(location = 1) in vec2 B;
+layout(location = 0, component = 2) in vec2 B;
 layout(location = 0) out float SV_Target;
 
 void main()
@@ -76,7 +76,8 @@ OpName %8 "A"
 OpName %9 "B"
 OpName %11 "SV_Target"
 OpDecorate %8 Location 0
-OpDecorate %9 Location 1
+OpDecorate %9 Location 0
+OpDecorate %9 Component 2
 OpDecorate %11 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

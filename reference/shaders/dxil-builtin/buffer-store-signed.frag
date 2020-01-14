@@ -3,7 +3,7 @@
 layout(set = 0, binding = 0) uniform writeonly iimageBuffer _8;
 
 layout(location = 0) flat in uint INDEX;
-layout(location = 1) flat in ivec2 DATA;
+layout(location = 0, component = 1) flat in ivec2 DATA;
 
 void main()
 {
@@ -89,7 +89,8 @@ OpDecorate %8 Binding 0
 OpDecorate %11 Flat
 OpDecorate %11 Location 0
 OpDecorate %14 Flat
-OpDecorate %14 Location 1
+OpDecorate %14 Location 0
+OpDecorate %14 Component 1
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 1

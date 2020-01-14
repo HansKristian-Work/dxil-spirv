@@ -737,21 +737,8 @@ bool Converter::Impl::emit_patch_variables()
 		auto rows = get_constant_metadata(patch, 6);
 		auto cols = get_constant_metadata(patch, 7);
 
-#if 0
-		auto start_row = get_constant_metadata(input, 8);
-		auto col = get_constant_metadata(input, 9);
-#endif
-
-#if 0
-		LOGE("Semantic output %u: %s\n", element_id, semantic_name.c_str());
-		LOGE("  Type: %u\n", element_type);
-		LOGE("  System value: %u\n", system_value);
-		LOGE("  Interpolation: %u\n", interpolation);
-		LOGE("  Rows: %u\n", rows);
-		LOGE("  Cols: %u\n", cols);
-		LOGE("  Start row: %u\n", start_row);
-		LOGE("  Col: %u\n", col);
-#endif
+		auto start_row = get_constant_metadata(patch, 8);
+		auto start_col = get_constant_metadata(patch, 9);
 
 		if (system_value == DXIL::Semantic::TessFactor)
 			rows = 4;
@@ -776,10 +763,10 @@ bool Converter::Impl::emit_patch_variables()
 		}
 		else
 		{
-			auto &loc = storage == spv::StorageClassOutput ? stage_output_location : stage_input_location;
 			emit_interpolation_decorations(variable_id, interpolation);
-			builder.addDecoration(variable_id, spv::DecorationLocation, loc);
-			loc += rows;
+			builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
+			if (start_col != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
 
 		builder.addDecoration(variable_id, spv::DecorationPatch);
@@ -825,21 +812,8 @@ bool Converter::Impl::emit_stage_output_variables()
 		auto rows = get_constant_metadata(output, 6);
 		auto cols = get_constant_metadata(output, 7);
 
-#if 0
-		auto start_row = get_constant_metadata(input, 8);
-		auto col = get_constant_metadata(input, 9);
-#endif
-
-#if 0
-		LOGE("Semantic output %u: %s\n", element_id, semantic_name.c_str());
-		LOGE("  Type: %u\n", element_type);
-		LOGE("  System value: %u\n", system_value);
-		LOGE("  Interpolation: %u\n", interpolation);
-		LOGE("  Rows: %u\n", rows);
-		LOGE("  Cols: %u\n", cols);
-		LOGE("  Start row: %u\n", start_row);
-		LOGE("  Col: %u\n", col);
-#endif
+		auto start_row = get_constant_metadata(output, 8);
+		auto start_col = get_constant_metadata(output, 9);
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 
@@ -877,8 +851,7 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		if (system_value == DXIL::Semantic::Target)
 		{
-			auto semantic_index = get_constant_metadata(output, 8);
-			builder.addDecoration(variable_id, spv::DecorationLocation, semantic_index);
+			builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
 		}
 		else if (system_value != DXIL::Semantic::User)
 		{
@@ -887,8 +860,9 @@ bool Converter::Impl::emit_stage_output_variables()
 		else
 		{
 			emit_interpolation_decorations(variable_id, interpolation);
-			builder.addDecoration(variable_id, spv::DecorationLocation, stage_output_location);
-			stage_output_location += rows;
+			builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
+			if (start_col != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
 
 		spirv_module.get_entry_point()->addIdOperand(variable_id);
@@ -1140,21 +1114,8 @@ bool Converter::Impl::emit_stage_input_variables()
 		auto rows = get_constant_metadata(input, 6);
 		auto cols = get_constant_metadata(input, 7);
 
-#if 0
 		auto start_row = get_constant_metadata(input, 8);
-		auto col = get_constant_metadata(input, 9);
-#endif
-
-#if 0
-		LOGE("Semantic output %u: %s\n", element_id, semantic_name.c_str());
-		LOGE("  Type: %u\n", element_type);
-		LOGE("  System value: %u\n", system_value);
-		LOGE("  Interpolation: %u\n", interpolation);
-		LOGE("  Rows: %u\n", rows);
-		LOGE("  Cols: %u\n", cols);
-		LOGE("  Start row: %u\n", start_row);
-		LOGE("  Col: %u\n", col);
-#endif
+		auto start_col = get_constant_metadata(input, 9);
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		if (system_value == DXIL::Semantic::Position)
@@ -1200,17 +1161,18 @@ bool Converter::Impl::emit_stage_input_variables()
 		{
 			emit_interpolation_decorations(variable_id, interpolation);
 
-			VulkanVertexInput vk_input = { stage_input_location };
+			VulkanVertexInput vk_input = { start_row };
 			if (execution_model == spv::ExecutionModelVertex && resource_mapping_iface)
 			{
 				D3DVertexInput d3d_input = { semantic_name.c_str(), semantic_index, rows };
 				if (!resource_mapping_iface->remap_vertex_input(d3d_input, vk_input))
 					return false;
 			}
-			else
-				stage_input_location += rows;
 
 			builder.addDecoration(variable_id, spv::DecorationLocation, vk_input.location);
+
+			if (execution_model != spv::ExecutionModelVertex && start_col != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
 
 		spirv_module.get_entry_point()->addIdOperand(variable_id);

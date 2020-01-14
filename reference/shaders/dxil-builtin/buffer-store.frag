@@ -6,7 +6,7 @@ layout(set = 0, binding = 2, r32ui) uniform writeonly uimageBuffer _13;
 layout(set = 0, binding = 3, r32ui) uniform writeonly uimageBuffer _14;
 
 layout(location = 0) flat in uint INDEX;
-layout(location = 1) flat in vec2 DATA;
+layout(location = 0, component = 1) flat in vec2 DATA;
 
 uint _40;
 float _48;
@@ -134,7 +134,8 @@ OpDecorate %14 Binding 3
 OpDecorate %16 Flat
 OpDecorate %16 Location 0
 OpDecorate %19 Flat
-OpDecorate %19 Location 1
+OpDecorate %19 Location 0
+OpDecorate %19 Component 1
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

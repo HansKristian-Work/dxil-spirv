@@ -1,6 +1,6 @@
 #version 460
 
-layout(location = 0) flat in uint INDEX;
+layout(location = 1) flat in uint INDEX;
 layout(location = 0) out float SV_Target;
 
 void main()
@@ -97,7 +97,7 @@ OpName %13 "SV_Target"
 OpName %33 ""
 OpDecorate %8 BuiltIn FragCoord
 OpDecorate %11 Flat
-OpDecorate %11 Location 0
+OpDecorate %11 Location 1
 OpDecorate %13 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

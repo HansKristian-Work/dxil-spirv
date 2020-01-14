@@ -4,8 +4,8 @@ layout(max_vertices = 3, points) out;
 
 layout(location = 0) in vec4 TEXCOORD[1];
 layout(location = 0) out vec4 A;
-layout(location = 1) out vec4 B;
-layout(location = 2) out vec4 C;
+layout(location = 0) out vec4 B;
+layout(location = 0) out vec4 C;
 
 void main()
 {
@@ -141,8 +141,8 @@ OpDecorate %11 Location 0
 OpDecorate %12 BuiltIn Position
 OpDecorate %14 Location 0
 OpDecorate %15 BuiltIn Position
-OpDecorate %16 Location 1
-OpDecorate %17 Location 2
+OpDecorate %16 Location 0
+OpDecorate %17 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

@@ -1,8 +1,8 @@
 #version 460
 
 layout(location = 0) in vec4 POSITION;
-layout(location = 0) out vec4 ATTR[4];
-layout(location = 4) out float ATTR_4[4];
+layout(location = 1) out vec4 ATTR[4];
+layout(location = 5) out float ATTR_4[4];
 
 void main()
 {
@@ -134,8 +134,8 @@ OpName %15 "ATTR"
 OpName %18 "ATTR_4"
 OpDecorate %8 Location 0
 OpDecorate %10 BuiltIn Position
-OpDecorate %15 Location 0
-OpDecorate %18 Location 4
+OpDecorate %15 Location 1
+OpDecorate %18 Location 5
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

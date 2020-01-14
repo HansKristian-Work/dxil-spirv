@@ -79,9 +79,6 @@ struct Converter::Impl
 	bool emit_execution_modes_domain();
 	bool emit_execution_modes_pixel();
 
-	unsigned stage_input_location = 0;
-	unsigned stage_output_location = 0;
-
 	struct ExecutionModeMeta
 	{
 		unsigned stage_input_num_vertex = 0;
