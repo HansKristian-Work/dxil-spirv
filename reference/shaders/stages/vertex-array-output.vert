@@ -2,7 +2,7 @@
 
 layout(location = 0) in vec4 POSITION;
 layout(location = 0) out vec4 ATTR[4];
-layout(location = 4) out float ATTR_1[4];
+layout(location = 4) out float ATTR_4[4];
 
 void main()
 {
@@ -26,10 +26,10 @@ void main()
     ATTR[3u].y = POSITION.y + 3.0;
     ATTR[3u].z = POSITION.z + 3.0;
     ATTR[3u].w = POSITION.w + 3.0;
-    ATTR_1[0u] = POSITION.x;
-    ATTR_1[1u] = POSITION.y;
-    ATTR_1[2u] = POSITION.z;
-    ATTR_1[3u] = POSITION.w;
+    ATTR_4[0u] = POSITION.x;
+    ATTR_4[1u] = POSITION.y;
+    ATTR_4[2u] = POSITION.z;
+    ATTR_4[3u] = POSITION.w;
 }
 
 
@@ -131,7 +131,7 @@ OpName %3 "main"
 OpName %8 "POSITION"
 OpName %10 "SV_Position"
 OpName %15 "ATTR"
-OpName %18 "ATTR"
+OpName %18 "ATTR_4"
 OpDecorate %8 Location 0
 OpDecorate %10 BuiltIn Position
 OpDecorate %15 Location 0

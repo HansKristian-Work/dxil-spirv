@@ -1,14 +1,14 @@
 #version 460
 
-layout(location = 2) in vec4 ATTR;
-layout(location = 4) in float ATTR_1;
+layout(location = 2) in vec4 ATTR_2;
+layout(location = 4) in float ATTR_4;
 
 void main()
 {
-    gl_Position.x = ATTR.x + ATTR_1;
-    gl_Position.y = ATTR.y + ATTR_1;
-    gl_Position.z = ATTR.z + ATTR_1;
-    gl_Position.w = ATTR.w + ATTR_1;
+    gl_Position.x = ATTR_2.x + ATTR_4;
+    gl_Position.y = ATTR_2.y + ATTR_4;
+    gl_Position.z = ATTR_2.z + ATTR_4;
+    gl_Position.w = ATTR_2.w + ATTR_4;
 }
 
 
@@ -79,8 +79,8 @@ OpCapability Shader
 OpMemoryModel Logical GLSL450
 OpEntryPoint Vertex %3 "main" %8 %10 %12
 OpName %3 "main"
-OpName %8 "ATTR"
-OpName %10 "ATTR"
+OpName %8 "ATTR_2"
+OpName %10 "ATTR_4"
 OpName %12 "SV_Position"
 OpDecorate %8 Location 2
 OpDecorate %10 Location 4

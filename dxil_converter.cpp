@@ -723,16 +723,19 @@ bool Converter::Impl::emit_patch_variables()
 
 	for (unsigned i = 0; i < patch_node->getNumOperands(); i++)
 	{
-		auto *output = llvm::cast<llvm::MDNode>(patch_node->getOperand(i));
-		auto element_id = get_constant_metadata(output, 0);
-		auto semantic_name = get_string_metadata(output, 1);
-		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2));
-		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
+		auto *patch = llvm::cast<llvm::MDNode>(patch_node->getOperand(i));
+		auto element_id = get_constant_metadata(patch, 0);
+		auto semantic_name = get_string_metadata(patch, 1);
+		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(patch, 2));
+		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(patch, 3));
 
-		// Semantic index?
-		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(output, 5));
-		auto rows = get_constant_metadata(output, 6);
-		auto cols = get_constant_metadata(output, 7);
+		unsigned semantic_index = 0;
+		if (patch->getOperand(4))
+			semantic_index = get_constant_metadata(llvm::cast<llvm::MDNode>(patch->getOperand(4)), 0);
+
+		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(patch, 5));
+		auto rows = get_constant_metadata(patch, 6);
+		auto cols = get_constant_metadata(patch, 7);
 
 #if 0
 		auto start_row = get_constant_metadata(input, 8);
@@ -756,7 +759,15 @@ bool Converter::Impl::emit_patch_variables()
 			rows = 2;
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
-		spv::Id variable_id = builder.createVariable(storage, type_id, semantic_name.c_str());
+
+		auto variable_name = semantic_name;
+		if (semantic_index != 0)
+		{
+			variable_name += "_";
+			variable_name += std::to_string(semantic_index);
+		}
+
+		spv::Id variable_id = builder.createVariable(storage, type_id, variable_name.c_str());
 		patch_elements_meta[element_id] = { variable_id, element_type };
 
 		if (system_value != DXIL::Semantic::User)
@@ -806,7 +817,10 @@ bool Converter::Impl::emit_stage_output_variables()
 		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
 
-		// Semantic index?
+		unsigned semantic_index = 0;
+		if (output->getOperand(4))
+			semantic_index = get_constant_metadata(llvm::cast<llvm::MDNode>(output->getOperand(4)), 0);
+
 		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(output, 5));
 		auto rows = get_constant_metadata(output, 6);
 		auto cols = get_constant_metadata(output, 7);
@@ -851,7 +865,14 @@ bool Converter::Impl::emit_stage_output_variables()
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, 0), 0);
 		}
 
-		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, semantic_name.c_str());
+		auto variable_name = semantic_name;
+		if (semantic_index != 0)
+		{
+			variable_name += "_";
+			variable_name += std::to_string(semantic_index);
+		}
+
+		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, element_type };
 
 		if (system_value == DXIL::Semantic::Target)
@@ -1161,7 +1182,14 @@ bool Converter::Impl::emit_stage_input_variables()
 			    builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
 		}
 
-		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, semantic_name.c_str());
+		auto variable_name = semantic_name;
+		if (semantic_index != 0)
+		{
+			variable_name += "_";
+			variable_name += std::to_string(semantic_index);
+		}
+
+		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, variable_name.c_str());
 		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };
 
 		if (system_value != DXIL::Semantic::User)

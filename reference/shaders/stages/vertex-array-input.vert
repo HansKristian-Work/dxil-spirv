@@ -1,11 +1,11 @@
 #version 460
 
 layout(location = 0) in vec4 ATTR[4];
-layout(location = 4) in float ATTR_1[4];
+layout(location = 4) in float ATTR_4[4];
 
 void main()
 {
-    float _46 = ATTR_1[2u] + ATTR_1[1u];
+    float _46 = ATTR_4[2u] + ATTR_4[1u];
     gl_Position.x = (ATTR[3u].x + ATTR[0u].x) + _46;
     gl_Position.y = (ATTR[3u].y + ATTR[0u].y) + _46;
     gl_Position.z = (ATTR[3u].z + ATTR[0u].z) + _46;
@@ -91,7 +91,7 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint Vertex %3 "main" %11 %14 %16
 OpName %3 "main"
 OpName %11 "ATTR"
-OpName %14 "ATTR"
+OpName %14 "ATTR_4"
 OpName %16 "SV_Position"
 OpDecorate %11 Location 0
 OpDecorate %14 Location 4
