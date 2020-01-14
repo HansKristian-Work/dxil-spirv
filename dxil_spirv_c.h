@@ -20,7 +20,6 @@
 #define DXIL_SPV_C_API_H
 
 #include <stddef.h>
-#include "spirv.h"
 
 /* C89-compatible wrapper for DXIL2SPIRV. */
 
@@ -33,19 +32,19 @@ extern "C" {
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #if !defined(DXIL_SPV_PUBLIC_API)
-	#if defined(DXIL_SPV_EXPORT_SYMBOLS)
-		#if defined(__GNUC__)
-			#define DXIL_SPV_PUBLIC_API __attribute__((visibility("default")))
-		#elif defined(_MSC_VER)
-			#define DXIL_SPV_PUBLIC_API __declspec(dllexport)
-		#else
-			#define DXIL_SPV_PUBLIC_API
-		#endif
-	#else
-		#define DXIL_SPV_PUBLIC_API
-	#endif
+#if defined(DXIL_SPV_EXPORT_SYMBOLS)
+#if defined(__GNUC__)
+#define DXIL_SPV_PUBLIC_API __attribute__((visibility("default")))
+#elif defined(_MSC_VER)
+#define DXIL_SPV_PUBLIC_API __declspec(dllexport)
 #else
-	#define DXIL_SPV_PUBLIC_API
+#define DXIL_SPV_PUBLIC_API
+#endif
+#else
+#define DXIL_SPV_PUBLIC_API
+#endif
+#else
+#define DXIL_SPV_PUBLIC_API
 #endif
 
 typedef enum dxil_spv_result
@@ -86,7 +85,8 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_bl
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
 
 /* Remaps input attribute to desired location. */
-typedef void (*dxil_spv_vertex_input_remapper_cb)(void *userdata, const char *semantic, unsigned index, unsigned *location);
+typedef void (*dxil_spv_vertex_input_remapper_cb)(void *userdata, const char *semantic, unsigned index,
+                                                  unsigned *location);
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_vertex_input_remapper(
 		dxil_spv_converter converter,
 		dxil_spv_vertex_input_remapper_cb remapper,
@@ -190,5 +190,7 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_s
 
 /* Converter API */
 
+#ifdef __cplusplus
 }
+#endif
 #endif

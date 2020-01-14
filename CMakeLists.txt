@@ -100,19 +100,48 @@ llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-converter PRIVATE ${llvm_libs})
 target_link_libraries(dxil-converter PUBLIC spirv-module)
 
-add_library(dxil-converter-c-shared SHARED
+add_library(dxil-spirv-c-shared SHARED
         dxil_spirv_c.h dxil_spirv_c.cpp)
-target_include_directories(dxil-converter-c-shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(dxil-converter-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter)
-target_compile_options(dxil-converter-c-shared PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+target_include_directories(dxil-spirv-c-shared
+        PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include/dxil-spirv>)
+target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter)
+target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+set_target_properties(dxil-spirv-c-shared PROPERTIES
+        PUBLIC_HEADERS dxil_spirv_c.h)
 
 if (NOT MSVC)
-    set_target_properties(dxil-converter-c-shared PROPERTIES LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/link.T")
+    set_target_properties(dxil-spirv-c-shared PROPERTIES LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/link.T")
 endif()
 
 add_executable(dxil-spirv dxil_spirv.cpp)
 target_link_libraries(dxil-spirv PRIVATE dxil-converter cli-parser SPIRV-Tools spirv-cross-glsl dxil-debug)
 target_compile_options(dxil-spirv PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+
+set(DXIL_SPV_VERSION_MAJOR 0)
+set(DXIL_SPV_VERSION_MINOR 0)
+set(DXIL_SPV_VERSION_PATCH 0)
+set(DXIL_SPV_VERSION ${DXIL_SPV_VERSION_MAJOR}.${DXIL_SPV_VERSION_MINOR}.${DXIL_SPV_VERSION_PATCH})
+set_target_properties(dxil-spirv-c-shared PROPERTIES
+        VERSION ${DXIL_SPV_VERSION}
+        SOVERSION ${DXIL_SPV_VERSION_MAJOR})
+
+set(DXIL_SPV_INSTALL_LIB_DIR ${CMAKE_INSTALL_PREFIX}/lib)
+set(DXIL_SPV_INSTALL_INC_DIR ${CMAKE_INSTALL_PREFIX}/include/dxil-spirv)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pkg-config/dxil-spirv-c-shared.pc.in
+               ${CMAKE_CURRENT_BINARY_DIR}/dxil-spirv-c-shared.pc @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dxil-spirv-c-shared.pc DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pkgconfig)
+
+install(TARGETS dxil-spirv RUNTIME DESTINATION bin)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/dxil_spirv_c.h DESTINATION include/dxil-spirv)
+install(TARGETS dxil-spirv-c-shared
+        EXPORT dxil_spirv_c_sharedConfig
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        PUBLIC_HEADER DESTINATION include/dxil-spirv)
+install(EXPORT dxil_spirv_c_sharedConfig DESTINATION share/dxil_spirv_c_shared/cmake)
 
 #add_executable(structurize-test structurize_test.cpp)
 #target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools spirv-cross-glsl dxil-debug)
