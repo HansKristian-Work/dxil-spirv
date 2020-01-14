@@ -18,6 +18,7 @@
 
 #pragma once
 #include "opcodes/opcodes.hpp"
+#include "SpvBuilder.h"
 
 namespace DXIL2SPIRV
 {

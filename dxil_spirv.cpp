@@ -16,37 +16,22 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "dxil_parser.hpp"
-#include "llvm_bitcode_parser.hpp"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unordered_map>
 #include <vector>
+#include <algorithm>
 
-#include "cfg_structurizer.hpp"
-#include "cli_parser.hpp"
-#include "dxil_converter.hpp"
-#include "logging.hpp"
-#include "spirv_module.hpp"
+#include "dxil_spirv_c.h"
 
 #include "spirv-tools/libspirv.hpp"
-#include "spirv_glsl.hpp"
-
-#include <llvm/Support/raw_os_ostream.h>
+#include "spirv_cross_c.h"
+#include "logging.hpp"
+#include "cli_parser.hpp"
 
 using namespace DXIL2SPIRV;
 
-static bool validate_spirv(const std::vector<uint32_t> &code)
-{
-	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
-	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
-		LOGE("SPIRV-Tools message: %s\n", message);
-	});
-	return tools.Validate(code);
-}
-
-static std::string convert_to_asm(const std::vector<uint32_t> &code)
+static std::string convert_to_asm(const void *code, size_t size)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
@@ -54,30 +39,45 @@ static std::string convert_to_asm(const std::vector<uint32_t> &code)
 	});
 
 	std::string str;
-	if (!tools.Disassemble(code, &str, 0))
+	if (!tools.Disassemble(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), &str, 0))
 		return "";
 	else
 		return str;
 }
 
-static std::string convert_to_glsl(std::vector<uint32_t> code)
+static std::string convert_to_glsl(const void *code, size_t size)
 {
-	try
-	{
-		spirv_cross::CompilerGLSL compiler(std::move(code));
-		auto opts = compiler.get_common_options();
-		opts.es = false;
-		opts.version = 460;
-		opts.vulkan_semantics = true;
-		compiler.set_common_options(opts);
-		auto str = compiler.compile();
-		return str;
-	}
-	catch (const std::exception &e)
-	{
-		LOGE("Failed to decompile to GLSL: %s.\n", e.what());
-		return "";
-	}
+	std::string ret;
+	spvc_context context;
+	if (spvc_context_create(&context) != SPVC_SUCCESS)
+		return ret;
+
+	spvc_parsed_ir ir;
+	if (spvc_context_parse_spirv(context, static_cast<const SpvId *>(code), size / sizeof(uint32_t), &ir) != SPVC_SUCCESS)
+		goto cleanup;
+
+	spvc_compiler compiler;
+	if (spvc_context_create_compiler(context, SPVC_BACKEND_GLSL, ir, SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) != SPVC_SUCCESS)
+		goto cleanup;
+
+	spvc_compiler_options opts;
+	if (spvc_compiler_create_compiler_options(compiler, &opts) != SPVC_SUCCESS)
+		goto cleanup;
+
+	spvc_compiler_options_set_bool(opts, SPVC_COMPILER_OPTION_GLSL_ES, SPVC_FALSE);
+	spvc_compiler_options_set_uint(opts, SPVC_COMPILER_OPTION_GLSL_VERSION, 460);
+	spvc_compiler_options_set_bool(opts, SPVC_COMPILER_OPTION_GLSL_VULKAN_SEMANTICS, SPVC_TRUE);
+	spvc_compiler_install_compiler_options(compiler, opts);
+
+	const char *source;
+	if (spvc_compiler_compile(compiler, &source) != SPVC_SUCCESS)
+		goto cleanup;
+
+	ret = source;
+
+cleanup:
+	spvc_context_destroy(context);
+	return ret;
 }
 
 static std::vector<uint8_t> read_file(const char *path)
@@ -120,60 +120,8 @@ struct Arguments
 	bool glsl_embed_asm = false;
 };
 
-struct Remapper : ResourceRemappingInterface
+struct Remapper
 {
-	bool remap_srv(const D3DBinding &binding, VulkanBinding &vk_binding) override
-	{
-		vk_binding.bindless.use_heap = false;
-		vk_binding.descriptor_set = binding.register_space;
-		vk_binding.binding = binding.register_index;
-		return true;
-	}
-
-	bool remap_sampler(const D3DBinding &binding, VulkanBinding &vk_binding) override
-	{
-		vk_binding.bindless.use_heap = false;
-		vk_binding.descriptor_set = binding.register_space;
-		vk_binding.binding = binding.register_index;
-		return true;
-	}
-
-	bool remap_uav(const D3DUAVBinding &binding, VulkanUAVBinding &vk_binding) override
-	{
-		vk_binding.buffer_binding.bindless.use_heap = false;
-		vk_binding.counter_binding.bindless.use_heap = false;
-		vk_binding.buffer_binding.descriptor_set = binding.binding.register_space;
-		vk_binding.buffer_binding.binding = binding.binding.register_index;
-		vk_binding.counter_binding.descriptor_set = binding.binding.register_space + 1;
-		vk_binding.counter_binding.binding = binding.binding.register_index;
-		return true;
-	}
-
-	bool remap_cbv(const D3DBinding &binding, VulkanCBVBinding &vk_binding) override
-	{
-		auto itr = std::find_if(root_constants.begin(), root_constants.end(), [&](const RootConstant &root) {
-			return root.register_space == binding.register_space && root.register_index == binding.register_index;
-		});
-
-		if (itr != root_constants.end())
-		{
-			vk_binding.push_constant = true;
-			vk_binding.push.offset_in_words = itr->word_offset;
-		}
-		else
-		{
-			vk_binding.buffer.bindless.use_heap = false;
-			vk_binding.buffer.descriptor_set = binding.register_space;
-			vk_binding.buffer.binding = binding.register_index;
-		}
-		return true;
-	}
-
-	unsigned get_root_constant_word_count() override
-	{
-		return root_constant_word_count;
-	}
-
 	struct RootConstant
 	{
 		unsigned register_space;
@@ -183,6 +131,29 @@ struct Remapper : ResourceRemappingInterface
 	std::vector<RootConstant> root_constants;
 	unsigned root_constant_word_count = 0;
 };
+
+static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_cbv_vulkan_binding *vk_binding)
+{
+	auto *remapper = static_cast<Remapper *>(userdata);
+	*vk_binding = {};
+
+	auto itr = std::find_if(remapper->root_constants.begin(), remapper->root_constants.end(), [&](const Remapper::RootConstant &root) {
+		return root.register_space == binding->register_space && root.register_index == binding->register_index;
+	});
+
+	if (itr != remapper->root_constants.end())
+	{
+		vk_binding->push_constant = DXIL_SPV_TRUE;
+		vk_binding->vulkan.push_constant.offset_in_words = itr->word_offset;
+	}
+	else
+	{
+		vk_binding->vulkan.uniform_binding.bindless.use_heap = DXIL_SPV_FALSE;
+		vk_binding->vulkan.uniform_binding.set = binding->register_space;
+		vk_binding->vulkan.uniform_binding.binding = binding->register_index;
+	}
+	return DXIL_SPV_TRUE;
+}
 
 int main(int argc, char **argv)
 {
@@ -230,70 +201,45 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	DXIL2SPIRV::SPIRVModule spirv_module;
-
-	DXIL2SPIRV::DXILContainerParser parser;
-	if (!parser.parse_container(binary.data(), binary.size()))
+	dxil_spv_parsed_blob blob;
+	if (dxil_spv_parse_dxil_blob(binary.data(), binary.size(), &blob) != DXIL_SPV_SUCCESS)
 	{
-		LOGE("Failed to parse DXIL archive.\n");
+		LOGE("Failed to parse blob.\n");
 		return EXIT_FAILURE;
 	}
-
-	DXIL2SPIRV::LLVMBCParser bc_parser;
-	if (!bc_parser.parse(parser.get_bitcode_data(), parser.get_bitcode_size()))
-		return EXIT_FAILURE;
 
 	if (args.dump_module)
-	{
-		auto *module = &bc_parser.get_module();
-		module->print(llvm::errs(), nullptr);
-	}
+		dxil_spv_parsed_blob_dump_llvm_ir(blob);
 
 	std::string llvm_asm_string;
 	if (args.glsl_embed_asm)
 	{
-		auto *module = &bc_parser.get_module();
-		llvm::raw_string_ostream str(llvm_asm_string);
-		module->print(str, nullptr);
-	}
-
-	DXIL2SPIRV::Converter converter(bc_parser, spirv_module);
-	converter.set_resource_remapping_interface(&remapper);
-	auto entry_point = converter.convert_entry_point();
-	if (entry_point.entry == nullptr)
-	{
-		LOGE("Failed to convert function.\n");
-		return EXIT_FAILURE;
-	}
-
-	{
-		DXIL2SPIRV::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, spirv_module);
-		structurizer.run();
-		spirv_module.emit_entry_point_function_body(structurizer);
-	}
-
-	for (auto &leaf : entry_point.leaf_functions)
-	{
-		if (!leaf.entry)
-		{
-			LOGE("Leaf function is nullptr!\n");
+		const char *str;
+		if (dxil_spv_parsed_blob_get_disassembled_ir(blob, &str) != DXIL_SPV_SUCCESS)
 			return EXIT_FAILURE;
-		}
-		DXIL2SPIRV::CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, spirv_module);
-		structurizer.run();
-		spirv_module.emit_leaf_function_body(leaf.func, structurizer);
+		llvm_asm_string = str;
 	}
 
-	std::vector<uint32_t> spirv;
-	if (!spirv_module.finalize_spirv(spirv))
+	dxil_spv_converter converter;
+	if (dxil_spv_create_converter(blob, &converter) != DXIL_SPV_SUCCESS)
+		return EXIT_FAILURE;
+
+	dxil_spv_converter_set_cbv_remapper(converter, remap_cbv, &remapper);
+	dxil_spv_converter_set_root_constant_word_count(converter, remapper.root_constant_word_count);
+
+	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
 	{
-		LOGE("Failed to finalize SPIR-V.\n");
+		LOGE("Failed to convert DXIL to SPIR-V.\n");
 		return EXIT_FAILURE;
 	}
+
+	dxil_spv_compiled_spirv compiled;
+	if (dxil_spv_converter_get_compiled_spirv(converter, &compiled) != DXIL_SPV_SUCCESS)
+		return EXIT_FAILURE;
 
 	if (args.validate)
 	{
-		if (!validate_spirv(spirv))
+		if (dxil_spv_converter_validate_spirv(converter) != DXIL_SPV_SUCCESS)
 		{
 			LOGE("Failed to validate SPIR-V.\n");
 			return EXIT_FAILURE;
@@ -302,11 +248,11 @@ int main(int argc, char **argv)
 
 	std::string spirv_asm_string;
 	if (args.glsl_embed_asm)
-		spirv_asm_string = convert_to_asm(spirv);
+		spirv_asm_string = convert_to_asm(compiled.data, compiled.size);
 
 	if (args.glsl)
 	{
-		auto glsl = convert_to_glsl(std::move(spirv));
+		auto glsl = convert_to_glsl(compiled.data, compiled.size);
 		if (glsl.empty())
 		{
 			LOGE("Failed to convert to GLSL.\n");
@@ -349,7 +295,7 @@ int main(int argc, char **argv)
 	{
 		if (args.output_path.empty())
 		{
-			auto assembly = convert_to_asm(spirv);
+			auto assembly = convert_to_asm(compiled.data, compiled.size);
 			if (assembly.empty())
 			{
 				LOGE("Failed to convert to SPIR-V asm.\n");
@@ -360,7 +306,7 @@ int main(int argc, char **argv)
 		else
 		{
 			FILE *file = fopen(args.output_path.c_str(), "wb");
-			if (fwrite(spirv.data(), sizeof(uint32_t), spirv.size(), file) != spirv.size())
+			if (fwrite(compiled.data, 1, compiled.size, file) != compiled.size)
 			{
 				LOGE("Failed to write SPIR-V.\n");
 				return EXIT_FAILURE;
@@ -368,4 +314,8 @@ int main(int argc, char **argv)
 			fclose(file);
 		}
 	}
+
+	dxil_spv_converter_free(converter);
+	dxil_spv_parsed_blob_free(blob);
+	return EXIT_SUCCESS;
 }

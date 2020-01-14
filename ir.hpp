@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "SpvBuilder.h"
+#include "spirv.hpp"
 #include <assert.h>
 #include <initializer_list>
 #include <stdint.h>

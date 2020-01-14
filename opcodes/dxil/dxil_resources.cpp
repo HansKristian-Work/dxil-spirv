@@ -19,6 +19,7 @@
 #include "dxil_resources.hpp"
 #include "dxil_common.hpp"
 #include "logging.hpp"
+#include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
 
 namespace DXIL2SPIRV

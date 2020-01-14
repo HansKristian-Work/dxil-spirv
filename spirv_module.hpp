@@ -18,10 +18,17 @@
 
 #pragma once
 
-#include "SpvBuilder.h"
+#include "ir.hpp"
 #include "cfg_structurizer.hpp"
 #include <memory>
 #include <vector>
+
+namespace spv
+{
+class Function;
+class Builder;
+class Instruction;
+}
 
 namespace DXIL2SPIRV
 {

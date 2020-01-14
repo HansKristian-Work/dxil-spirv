@@ -19,6 +19,7 @@
 #include "dxil_spirv_c.h"
 #include "dxil_parser.hpp"
 #include "dxil_converter.hpp"
+#include "spirv_module.hpp"
 #include "llvm_bitcode_parser.hpp"
 #include "logging.hpp"
 #include <new>
@@ -37,6 +38,7 @@ void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch)
 struct dxil_spv_parsed_blob_s
 {
 	LLVMBCParser bc;
+	std::string disasm;
 };
 
 struct dxil_spv_converter_s : ResourceRemappingInterface
@@ -49,13 +51,28 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 	Converter converter;
 	std::vector<uint32_t> spirv;
 
+	static void copy_buffer_binding(VulkanBinding &vk_binding, const dxil_spv_vulkan_binding &c_vk_binding)
+	{
+		vk_binding.descriptor_set = c_vk_binding.set;
+		vk_binding.binding = c_vk_binding.binding;
+		vk_binding.bindless.use_heap = bool(c_vk_binding.bindless.use_heap);
+		vk_binding.bindless.heap_root_offset = c_vk_binding.bindless.heap_root_offset;
+		vk_binding.bindless.root_constant_word = c_vk_binding.bindless.root_constant_word;
+	}
+
 	bool remap_srv(const D3DBinding &binding, VulkanBinding &vk_binding) override
 	{
 		if (srv_remapper)
 		{
 			const dxil_spv_d3d_binding c_binding = { binding.resource_index, binding.register_space, binding.register_index, binding.range_size };
 			dxil_spv_vulkan_binding c_vk_binding = {};
-			return bool(srv_remapper(srv_userdata, &c_binding, &c_vk_binding));
+			if (srv_remapper(srv_userdata, &c_binding, &c_vk_binding) == DXIL_SPV_TRUE)
+			{
+				copy_buffer_binding(vk_binding, c_vk_binding);
+				return true;
+			}
+			else
+				return false;
 		}
 		else
 		{
@@ -72,7 +89,13 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 		{
 			const dxil_spv_d3d_binding c_binding = { binding.resource_index, binding.register_space, binding.register_index, binding.range_size };
 			dxil_spv_vulkan_binding c_vk_binding = {};
-			return bool(sampler_remapper(sampler_userdata, &c_binding, &c_vk_binding));
+			if (sampler_remapper(sampler_userdata, &c_binding, &c_vk_binding) == DXIL_SPV_TRUE)
+			{
+				copy_buffer_binding(vk_binding, c_vk_binding);
+				return true;
+			}
+			else
+				return false;
 		}
 		else
 		{
@@ -93,7 +116,14 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 			};
 
 			dxil_spv_uav_vulkan_binding c_vk_binding = {};
-			return bool(uav_remapper(uav_userdata, &c_binding, &c_vk_binding));
+			if (uav_remapper(uav_userdata, &c_binding, &c_vk_binding) == DXIL_SPV_TRUE)
+			{
+				copy_buffer_binding(vk_binding.buffer_binding, c_vk_binding.buffer_binding);
+				copy_buffer_binding(vk_binding.counter_binding, c_vk_binding.counter_binding);
+				return true;
+			}
+			else
+				return false;
 		}
 		else
 		{
@@ -113,7 +143,17 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 		{
 			const dxil_spv_d3d_binding c_binding = { binding.resource_index, binding.register_space, binding.register_index, binding.range_size };
 			dxil_spv_cbv_vulkan_binding c_vk_binding = {};
-			return bool(cbv_remapper(cbv_userdata, &c_binding, &c_vk_binding));
+			if (cbv_remapper(cbv_userdata, &c_binding, &c_vk_binding) == DXIL_SPV_TRUE)
+			{
+				vk_binding.push_constant = c_vk_binding.push_constant;
+				if (vk_binding.push_constant)
+					vk_binding.push.offset_in_words = c_vk_binding.vulkan.push_constant.offset_in_words;
+				else
+					copy_buffer_binding(vk_binding.buffer, c_vk_binding.vulkan.uniform_binding);
+				return true;
+			}
+			else
+				return false;
 		}
 		else
 		{
@@ -189,6 +229,17 @@ void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob)
 	module.print(llvm::errs(), nullptr);
 }
 
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob, const char **str)
+{
+	blob->disasm.clear();
+
+	auto *module = &blob->bc.get_module();
+	llvm::raw_string_ostream ostr(blob->disasm);
+	module->print(ostr, nullptr);
+	*str = blob->disasm.c_str();
+	return DXIL_SPV_SUCCESS;
+}
+
 void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob)
 {
 	delete blob;
@@ -200,6 +251,7 @@ dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_co
 	if (!conv)
 		return DXIL_SPV_ERROR_OUT_OF_MEMORY;
 
+	conv->converter.set_resource_remapping_interface(conv);
 	*converter = conv;
 	return DXIL_SPV_SUCCESS;
 }

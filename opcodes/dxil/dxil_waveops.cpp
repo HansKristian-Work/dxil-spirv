@@ -18,6 +18,7 @@
 
 #include "dxil_common.hpp"
 #include "dxil_waveops.hpp"
+#include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
 
 namespace DXIL2SPIRV

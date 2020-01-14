@@ -24,6 +24,7 @@
 #include "node.hpp"
 #include "node_pool.hpp"
 #include "dxil_converter.hpp"
+#include "spirv_module.hpp"
 
 #include <utility>
 

@@ -18,6 +18,7 @@
 
 #include "dxil_tessellation.hpp"
 #include "dxil_common.hpp"
+#include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
 
 namespace DXIL2SPIRV

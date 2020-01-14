@@ -17,7 +17,8 @@
  */
 
 #include "dxil_pixel_ops.hpp"
-#include <opcodes/converter_impl.hpp>
+#include "spirv_module.hpp"
+#include "opcodes/converter_impl.hpp"
 
 namespace DXIL2SPIRV
 {

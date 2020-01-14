@@ -22,8 +22,13 @@
 #include "dxil_parser.hpp"
 #include "llvm_bitcode_parser.hpp"
 #include "node_pool.hpp"
-#include "spirv_module.hpp"
+//#include "spirv_module.hpp"
 #include <memory>
+
+namespace spv
+{
+class Function;
+}
 
 namespace DXIL2SPIRV
 {

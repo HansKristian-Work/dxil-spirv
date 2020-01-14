@@ -26,7 +26,7 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
-    set(DXIL2SPIRV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter)
+    set(DXIL2SPIRV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -fno-exceptions)
 elseif (MSVC)
     set(DXIL2SPIRV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
@@ -36,25 +36,29 @@ set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-head
 add_subdirectory(third_party/SPIRV-Tools EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/SPIRV-Cross EXCLUDE_FROM_ALL)
 
-add_library(spirv-builder STATIC
+add_library(dxil-spirv-headers INTERFACE)
+target_include_directories(dxil-spirv-headers INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers/include/spirv/unified1)
+
+add_library(glslang-spirv-builder STATIC
         third_party/glslang-spirv/spvIR.h
         third_party/glslang-spirv/Logger.cpp
         third_party/glslang-spirv/Logger.h
         third_party/glslang-spirv/InReadableOrder.cpp
         third_party/glslang-spirv/SpvBuilder.h
         third_party/glslang-spirv/SpvBuilder.cpp)
-set_target_properties(spirv-builder PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(glslang-spirv-builder PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_include_directories(spirv-builder PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers/include/spirv/unified1
+target_include_directories(glslang-spirv-builder PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glslang-spirv)
+target_link_libraries(glslang-spirv-builder PUBLIC dxil-spirv-headers)
 
 add_library(spirv-module STATIC
         ir.hpp ir.cpp
         spirv_module.hpp spirv_module.cpp)
 set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(spirv-module PUBLIC spirv-builder)
+target_link_libraries(spirv-module PUBLIC glslang-spirv-builder dxil-spirv-headers)
 target_compile_options(spirv-module PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 add_library(dxil-debug INTERFACE)
@@ -116,7 +120,7 @@ if (NOT MSVC)
 endif()
 
 add_executable(dxil-spirv dxil_spirv.cpp)
-target_link_libraries(dxil-spirv PRIVATE dxil-converter cli-parser SPIRV-Tools spirv-cross-glsl dxil-debug)
+target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools spirv-cross-c dxil-debug)
 target_compile_options(dxil-spirv PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 set(DXIL_SPV_VERSION_MAJOR 0)
