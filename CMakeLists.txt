@@ -43,6 +43,7 @@ add_library(spirv-builder STATIC
         third_party/glslang-spirv/InReadableOrder.cpp
         third_party/glslang-spirv/SpvBuilder.h
         third_party/glslang-spirv/SpvBuilder.cpp)
+set_target_properties(spirv-builder PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(spirv-builder PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers/include/spirv/unified1
@@ -51,6 +52,7 @@ target_include_directories(spirv-builder PUBLIC
 add_library(spirv-module STATIC
         ir.hpp ir.cpp
         spirv_module.hpp spirv_module.cpp)
+set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC spirv-builder)
 target_compile_options(spirv-module PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
@@ -89,18 +91,23 @@ add_library(dxil-converter STATIC
         opcodes/dxil/dxil_buffer.hpp opcodes/dxil/dxil_buffer.cpp
         opcodes/opcodes_llvm_builtins.hpp opcodes/opcodes_llvm_builtins.cpp
         opcodes/opcodes_dxil_builtins.hpp opcodes/opcodes_dxil_builtins.cpp)
+set_target_properties(dxil-converter PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter PRIVATE dxil-debug)
-
-add_library(dxil-converter-c STATIC
-        dxil_spirv_c.h dxil_spirv_c.cpp)
-target_include_directories(dxil-converter-c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(dxil-converter-c PRIVATE dxil-debug SPIRV-Tools dxil-converter)
 
 
 llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-converter PRIVATE ${llvm_libs})
 target_link_libraries(dxil-converter PUBLIC spirv-module)
+
+add_library(dxil-converter-c-shared SHARED
+        dxil_spirv_c.h dxil_spirv_c.cpp)
+target_include_directories(dxil-converter-c-shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(dxil-converter-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter)
+
+if (NOT MSVC)
+    set_target_properties(dxil-converter-c-shared PROPERTIES LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/link.T")
+endif()
 
 add_executable(dxil-spirv dxil_spirv.cpp)
 target_link_libraries(dxil-spirv PRIVATE dxil-converter cli-parser SPIRV-Tools spirv-cross-glsl dxil-debug)
