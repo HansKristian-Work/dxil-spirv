@@ -65,19 +65,22 @@ struct Converter::Impl
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
 
-	void emit_stage_input_variables();
-	void emit_stage_output_variables();
-	void emit_patch_variables();
-	void emit_global_variables();
+	bool emit_stage_input_variables();
+	bool emit_stage_output_variables();
+	bool emit_patch_variables();
+	bool emit_global_variables();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
-	void emit_execution_modes();
-	void emit_execution_modes_compute();
-	void emit_execution_modes_geometry();
-	void emit_execution_modes_hull();
-	void emit_execution_modes_domain();
-	void emit_execution_modes_pixel();
+	bool emit_execution_modes();
+	bool emit_execution_modes_compute();
+	bool emit_execution_modes_geometry();
+	bool emit_execution_modes_hull();
+	bool emit_execution_modes_domain();
+	bool emit_execution_modes_pixel();
+
+	unsigned stage_input_location = 0;
+	unsigned stage_output_location = 0;
 
 	struct ExecutionModeMeta
 	{

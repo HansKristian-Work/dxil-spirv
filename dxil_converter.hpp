@@ -105,6 +105,18 @@ struct VulkanCBVBinding
 	bool push_constant;
 };
 
+struct D3DVertexInput
+{
+	const char *semantic;
+	unsigned index;
+	unsigned rows;
+};
+
+struct VulkanVertexInput
+{
+	unsigned location;
+};
+
 class ResourceRemappingInterface
 {
 public:
@@ -113,6 +125,7 @@ public:
 	virtual bool remap_sampler(const D3DBinding &d3d_binding, VulkanBinding &vulkan_binding) = 0;
 	virtual bool remap_uav(const D3DUAVBinding &d3d_binding, VulkanUAVBinding &vulkan_binding) = 0;
 	virtual bool remap_cbv(const D3DBinding &d3d_binding, VulkanCBVBinding &vulkan_binding) = 0;
+	virtual bool remap_vertex_input(const D3DVertexInput &d3d_input, VulkanVertexInput &vulkan_location) = 0;
 	virtual unsigned get_root_constant_word_count() = 0;
 };
 

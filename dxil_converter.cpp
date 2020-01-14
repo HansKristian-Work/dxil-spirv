@@ -699,20 +699,20 @@ spv::Id Converter::Impl::get_type_id(spv::Id id) const
 		return itr->second;
 }
 
-void Converter::Impl::emit_patch_variables()
+bool Converter::Impl::emit_patch_variables()
 {
 	auto &module = bitcode_parser.get_module();
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	auto *node = ep_meta->getOperand(0);
 
 	if (!node->getOperand(2))
-		return;
+		return true;
 
 	auto &signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
 	auto &patch_variables = signature_node->getOperand(2);
 	if (!patch_variables)
-		return;
+		return true;
 
 	auto *patch_node = llvm::dyn_cast<llvm::MDNode>(patch_variables);
 
@@ -720,8 +720,6 @@ void Converter::Impl::emit_patch_variables()
 
 	spv::StorageClass storage =
 	    execution_model == spv::ExecutionModelTessellationControl ? spv::StorageClassOutput : spv::StorageClassInput;
-
-	unsigned location = 0;
 
 	for (unsigned i = 0; i < patch_node->getNumOperands(); i++)
 	{
@@ -767,17 +765,20 @@ void Converter::Impl::emit_patch_variables()
 		}
 		else
 		{
+			auto &loc = storage == spv::StorageClassOutput ? stage_output_location : stage_input_location;
 			emit_interpolation_decorations(variable_id, interpolation);
-			builder.addDecoration(variable_id, spv::DecorationLocation, location);
-			location += rows;
+			builder.addDecoration(variable_id, spv::DecorationLocation, loc);
+			loc += rows;
 		}
 
 		builder.addDecoration(variable_id, spv::DecorationPatch);
 		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
+
+	return true;
 }
 
-void Converter::Impl::emit_stage_output_variables()
+bool Converter::Impl::emit_stage_output_variables()
 {
 	auto &module = bitcode_parser.get_module();
 
@@ -785,19 +786,17 @@ void Converter::Impl::emit_stage_output_variables()
 	auto *node = ep_meta->getOperand(0);
 
 	if (!node->getOperand(2))
-		return;
+		return true;
 
 	auto &signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
 	auto &outputs = signature_node->getOperand(1);
 	if (!outputs)
-		return;
+		return true;
 
 	auto *outputs_node = llvm::dyn_cast<llvm::MDNode>(outputs);
 
 	auto &builder = spirv_module.get_builder();
-
-	unsigned location = 0;
 
 	for (unsigned i = 0; i < outputs_node->getNumOperands(); i++)
 	{
@@ -867,12 +866,14 @@ void Converter::Impl::emit_stage_output_variables()
 		else
 		{
 			emit_interpolation_decorations(variable_id, interpolation);
-			builder.addDecoration(variable_id, spv::DecorationLocation, location);
-			location += rows;
+			builder.addDecoration(variable_id, spv::DecorationLocation, stage_output_location);
+			stage_output_location += rows;
 		}
 
 		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
+
+	return true;
 }
 
 void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode)
@@ -1031,7 +1032,7 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	}
 }
 
-void Converter::Impl::emit_global_variables()
+bool Converter::Impl::emit_global_variables()
 {
 	auto &module = bitcode_parser.get_module();
 	auto &builder = spirv_module.get_builder();
@@ -1053,12 +1054,18 @@ void Converter::Impl::emit_global_variables()
 		if (address_space == DXIL::AddressSpace::GroupShared)
 		{
 			if (initializer)
-				LOGW("Global variable address space cannot have initializer! Ignoring ...\n");
+			{
+				LOGE("Global variable address space cannot have initializer! Ignoring ...\n");
+				return false;
+			}
 		}
 		else
 		{
 			if (!global.isConstant())
-				LOGW("Declaring LUT, but it must be constant.\n");
+			{
+				LOGE("Declaring LUT, but it must be constant.\n");
+				return false;
+			}
 		}
 
 		if (initializer)
@@ -1069,22 +1076,24 @@ void Converter::Impl::emit_global_variables()
 		    pointee_type_id, initializer_id, global.getName().data());
 		value_map[&global] = var_id;
 	}
+
+	return true;
 }
 
-void Converter::Impl::emit_stage_input_variables()
+bool Converter::Impl::emit_stage_input_variables()
 {
 	auto &module = bitcode_parser.get_module();
 
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	auto *node = ep_meta->getOperand(0);
 	if (!node->getOperand(2))
-		return;
+		return true;
 
 	auto &signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
 	auto &inputs = signature_node->getOperand(0);
 	if (!inputs)
-		return;
+		return true;
 
 	bool arrayed_input = execution_model == spv::ExecutionModelGeometry ||
 	                     execution_model == spv::ExecutionModelTessellationControl ||
@@ -1094,8 +1103,6 @@ void Converter::Impl::emit_stage_input_variables()
 
 	auto &builder = spirv_module.get_builder();
 
-	unsigned location = 0;
-
 	for (unsigned i = 0; i < inputs_node->getNumOperands(); i++)
 	{
 		auto *input = llvm::cast<llvm::MDNode>(inputs_node->getOperand(i));
@@ -1104,7 +1111,10 @@ void Converter::Impl::emit_stage_input_variables()
 		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(input, 2));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(input, 3));
 
-		// Semantic index?
+		unsigned semantic_index = 0;
+		if (input->getOperand(4))
+			semantic_index = get_constant_metadata(llvm::cast<llvm::MDNode>(input->getOperand(4)), 0);
+
 		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(input, 5));
 		auto rows = get_constant_metadata(input, 6);
 		auto cols = get_constant_metadata(input, 7);
@@ -1161,12 +1171,24 @@ void Converter::Impl::emit_stage_input_variables()
 		else
 		{
 			emit_interpolation_decorations(variable_id, interpolation);
-			builder.addDecoration(variable_id, spv::DecorationLocation, location);
-			location += rows;
+
+			VulkanVertexInput vk_input = { stage_input_location };
+			if (execution_model == spv::ExecutionModelVertex && resource_mapping_iface)
+			{
+				D3DVertexInput d3d_input = { semantic_name.c_str(), semantic_index, rows };
+				if (!resource_mapping_iface->remap_vertex_input(d3d_input, vk_input))
+					return false;
+			}
+			else
+				stage_input_location += rows;
+
+			builder.addDecoration(variable_id, spv::DecorationLocation, vk_input.location);
 		}
 
 		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
+
+	return true;
 }
 
 spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_id, bool comparison)
@@ -1325,7 +1347,7 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	return false;
 }
 
-void Converter::Impl::emit_execution_modes_compute()
+bool Converter::Impl::emit_execution_modes_compute()
 {
 	auto &module = bitcode_parser.get_module();
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
@@ -1350,10 +1372,13 @@ void Converter::Impl::emit_execution_modes_compute()
 				                         threads[1], threads[2]);
 			}
 		}
+		return true;
 	}
+	else
+		return false;
 }
 
-void Converter::Impl::emit_execution_modes_pixel()
+bool Converter::Impl::emit_execution_modes_pixel()
 {
 	auto &module = bitcode_parser.get_module();
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
@@ -1375,9 +1400,10 @@ void Converter::Impl::emit_execution_modes_pixel()
 			}
 		}
 	}
+	return true;
 }
 
-void Converter::Impl::emit_execution_modes_domain()
+bool Converter::Impl::emit_execution_modes_domain()
 {
 	auto &module = bitcode_parser.get_module();
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
@@ -1399,10 +1425,13 @@ void Converter::Impl::emit_execution_modes_domain()
 				execution_mode_meta.stage_input_num_vertex = input_control_points;
 			}
 		}
+		return true;
 	}
+	else
+		return false;
 }
 
-void Converter::Impl::emit_execution_modes_hull()
+bool Converter::Impl::emit_execution_modes_hull()
 {
 	auto &module = bitcode_parser.get_module();
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
@@ -1505,10 +1534,13 @@ void Converter::Impl::emit_execution_modes_hull()
 				execution_mode_meta.stage_output_num_vertex = output_control_points;
 			}
 		}
+		return true;
 	}
+	else
+		return false;
 }
 
-void Converter::Impl::emit_execution_modes_geometry()
+bool Converter::Impl::emit_execution_modes_geometry()
 {
 	auto &module = bitcode_parser.get_module();
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
@@ -1594,10 +1626,13 @@ void Converter::Impl::emit_execution_modes_geometry()
 				}
 			}
 		}
+		return true;
 	}
+	else
+		return false;
 }
 
-void Converter::Impl::emit_execution_modes()
+bool Converter::Impl::emit_execution_modes()
 {
 	auto &module = bitcode_parser.get_module();
 	execution_model = get_execution_model(module);
@@ -1605,28 +1640,35 @@ void Converter::Impl::emit_execution_modes()
 	switch (execution_model)
 	{
 	case spv::ExecutionModelGLCompute:
-		emit_execution_modes_compute();
+		if (!emit_execution_modes_compute())
+			return false;
 		break;
 
 	case spv::ExecutionModelGeometry:
-		emit_execution_modes_geometry();
+		if (!emit_execution_modes_geometry())
+			return false;
 		break;
 
 	case spv::ExecutionModelTessellationControl:
-		emit_execution_modes_hull();
+		if (!emit_execution_modes_hull())
+			return false;
 		break;
 
 	case spv::ExecutionModelTessellationEvaluation:
-		emit_execution_modes_domain();
+		if (!emit_execution_modes_domain())
+			return false;
 		break;
 
 	case spv::ExecutionModelFragment:
-		emit_execution_modes_pixel();
+		if (!emit_execution_modes_pixel())
+			return false;
 		break;
 
 	default:
 		break;
 	}
+
+	return true;
 }
 
 CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &pool,
@@ -1828,13 +1870,18 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto *module = &bitcode_parser.get_module();
 	spirv_module.emit_entry_point(get_execution_model(*module), "main");
 
-	emit_execution_modes();
+	if (!emit_execution_modes())
+		return result;
 	if (!emit_resources())
 		return result;
-	emit_stage_input_variables();
-	emit_stage_output_variables();
-	emit_patch_variables();
-	emit_global_variables();
+	if (!emit_stage_input_variables())
+		return result;
+	if (!emit_stage_output_variables())
+		return result;
+	if (!emit_patch_variables())
+		return result;
+	if (!emit_global_variables())
+		return result;
 
 	llvm::Function *func = module->getFunction(get_entry_point_name(*module));
 	assert(func);

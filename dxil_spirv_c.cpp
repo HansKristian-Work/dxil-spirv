@@ -164,6 +164,29 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 		}
 	}
 
+	bool remap_vertex_input(const D3DVertexInput &d3d_input, VulkanVertexInput &vk_input) override
+	{
+		dxil_spv_d3d_vertex_input c_input = { d3d_input.semantic, d3d_input.index, d3d_input.rows };
+		dxil_spv_vulkan_vertex_input c_vk_input = {};
+
+		if (input_remapper)
+		{
+			if (input_remapper(input_userdata, &c_input, &c_vk_input) == DXIL_SPV_TRUE)
+			{
+				vk_input.location = c_vk_input.location;
+				return true;
+			}
+			else
+				return false;
+		}
+		else
+		{
+			vk_input.location = default_location;
+			default_location += d3d_input.rows;
+			return true;
+		}
+	}
+
 	unsigned get_root_constant_word_count() override
 	{
 		return root_constant_word_count;
@@ -181,7 +204,11 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 	dxil_spv_cbv_remapper_cb cbv_remapper = nullptr;
 	void *cbv_userdata = nullptr;
 
+	dxil_spv_vertex_input_remapper_cb input_remapper = nullptr;
+	void *input_userdata = nullptr;
+
 	unsigned root_constant_word_count = 0;
+	unsigned default_location = 0;
 };
 
 dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
@@ -360,5 +387,14 @@ void dxil_spv_converter_set_cbv_remapper(
 {
 	converter->cbv_remapper = remapper;
 	converter->cbv_userdata = userdata;
+}
+
+void dxil_spv_converter_set_vertex_input_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_vertex_input_remapper_cb remapper,
+		void *userdata)
+{
+	converter->input_remapper = remapper;
+	converter->input_userdata = userdata;
 }
 

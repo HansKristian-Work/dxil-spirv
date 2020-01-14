@@ -89,9 +89,21 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_bl
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
 
 /* Remaps input attribute to desired location. */
-typedef void (*dxil_spv_vertex_input_remapper_cb)(void *userdata, const char *semantic, unsigned index,
-                                                  unsigned *location);
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_vertex_input_remapper(
+
+typedef struct dxil_spv_d3d_vertex_input
+{
+	const char *semantic;
+	unsigned index;
+	unsigned rows;
+} dxil_spv_d3d_vertex_input;
+
+typedef struct dxil_spv_vulkan_vertex_input
+{
+	unsigned location;
+} dxil_spv_vulkan_vertex_input;
+typedef dxil_spv_bool (*dxil_spv_vertex_input_remapper_cb)(void *userdata, const dxil_spv_d3d_vertex_input *d3d_input,
+                                                           dxil_spv_vulkan_vertex_input *vulkan_input);
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_vertex_input_remapper(
 		dxil_spv_converter converter,
 		dxil_spv_vertex_input_remapper_cb remapper,
 		void *userdata);

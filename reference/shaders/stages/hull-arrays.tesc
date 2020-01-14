@@ -3,7 +3,7 @@ layout(vertices = 2) out;
 
 layout(location = 0) in float VSValue[][3];
 layout(location = 0) out float HSValue[2][3];
-layout(location = 0) patch out float PATCH[2];
+layout(location = 3) patch out float PATCH[2];
 
 void hull_main()
 {
@@ -144,7 +144,7 @@ OpDecorate %20 BuiltIn TessLevelOuter
 OpDecorate %20 Patch
 OpDecorate %23 BuiltIn TessLevelInner
 OpDecorate %23 Patch
-OpDecorate %24 Location 0
+OpDecorate %24 Location 3
 OpDecorate %24 Patch
 OpDecorate %47 BuiltIn InvocationId
 %1 = OpTypeVoid
