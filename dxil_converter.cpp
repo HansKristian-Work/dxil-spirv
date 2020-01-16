@@ -181,7 +181,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		D3DBinding d3d_binding = { get_remapping_stage(), index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model), index, bind_space, bind_register, range_size };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
 			return false;
@@ -278,7 +278,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		D3DUAVBinding d3d_binding = {};
 		d3d_binding.counter = has_counter;
-		d3d_binding.binding = { get_remapping_stage(), index, bind_space, bind_register, range_size };
+		d3d_binding.binding = { get_remapping_stage(execution_model), index, bind_space, bind_register, range_size };
 		VulkanUAVBinding vulkan_binding = {{ bind_space, bind_register }, { bind_space + 1, bind_register }};
 		if (resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
@@ -330,7 +330,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
-		D3DBinding d3d_binding = { get_remapping_stage(), index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model), index, bind_space, bind_register, range_size };
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
@@ -425,7 +425,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		D3DBinding d3d_binding = { get_remapping_stage(), index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model), index, bind_space, bind_register, range_size };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
 			return false;
@@ -494,7 +494,7 @@ bool Converter::Impl::emit_resources()
 	return true;
 }
 
-ShaderStage Converter::Impl::get_remapping_stage() const
+ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_model)
 {
 	switch (execution_model)
 	{
@@ -1944,6 +1944,11 @@ spv::Builder &Converter::Impl::builder()
 void Converter::set_resource_remapping_interface(ResourceRemappingInterface *iface)
 {
 	impl->resource_mapping_iface = iface;
+}
+
+ShaderStage Converter::get_shader_stage(const LLVMBCParser &bitcode_parser)
+{
+	return Impl::get_remapping_stage(get_execution_model(bitcode_parser.get_module()));
 }
 
 } // namespace DXIL2SPIRV

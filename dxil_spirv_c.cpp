@@ -294,6 +294,11 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxi
 	return DXIL_SPV_SUCCESS;
 }
 
+dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob blob)
+{
+	return static_cast<dxil_spv_shader_stage>(Converter::get_shader_stage(blob->bc));
+}
+
 void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob)
 {
 	delete blob;

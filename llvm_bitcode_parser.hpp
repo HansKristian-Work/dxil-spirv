@@ -30,6 +30,7 @@ public:
 	LLVMBCParser();
 	bool parse(const void *data, size_t size);
 	llvm::Module &get_module();
+	const llvm::Module &get_module() const;
 
 private:
 	std::unique_ptr<llvm::LLVMContext> context;

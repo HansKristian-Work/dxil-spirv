@@ -150,6 +150,8 @@ public:
 	ConvertedFunction convert_entry_point();
 	void set_resource_remapping_interface(ResourceRemappingInterface *iface);
 
+	static ShaderStage get_shader_stage(const LLVMBCParser &bitcode_parser);
+
 	struct Impl;
 
 private:

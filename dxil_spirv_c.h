@@ -58,6 +58,18 @@ typedef enum dxil_spv_result
 	DXIL_SPV_RESULT_INT_MAX = 0x7fffffff
 } dxil_spv_result;
 
+typedef enum dxil_spv_shader_stage
+{
+	DXIL_SPV_STAGE_UNKNOWN = 0,
+	DXIL_SPV_STAGE_VERTEX = 1,
+	DXIL_SPV_STAGE_HULL = 2,
+	DXIL_SPV_STAGE_DOMAIN = 3,
+	DXIL_SPV_STAGE_GEOMETRY = 4,
+	DXIL_SPV_STAGE_PIXEL = 5,
+	DXIL_SPV_STAGE_COMPUTE = 6,
+	DXIL_SPV_STAGE_INT_MAX = 0x7fffffff
+} dxil_spv_shader_stage;
+
 /* C89 does not have bool type. */
 typedef unsigned char dxil_spv_bool;
 #define DXIL_SPV_TRUE ((dxil_spv_bool)1)
@@ -79,6 +91,8 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t
 DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob);
 
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob, const char **str);
+
+DXIL_SPV_PUBLIC_API dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob blob);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob);
 /* Parsing API */
@@ -107,18 +121,6 @@ DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_vertex_input_remapper(
 		dxil_spv_converter converter,
 		dxil_spv_vertex_input_remapper_cb remapper,
 		void *userdata);
-
-typedef enum dxil_spv_shader_stage
-{
-	DXIL_SPV_STAGE_UNKNOWN = 0,
-	DXIL_SPV_STAGE_VERTEX = 1,
-	DXIL_SPV_STAGE_HULL = 2,
-	DXIL_SPV_STAGE_DOMAIN = 3,
-	DXIL_SPV_STAGE_GEOMETRY = 4,
-	DXIL_SPV_STAGE_PIXEL = 5,
-	DXIL_SPV_STAGE_COMPUTE = 6,
-	DXIL_SPV_STAGE_INT_MAX = 0x7fffffff
-} dxil_spv_shader_stage;
 
 typedef struct dxil_spv_d3d_binding
 {

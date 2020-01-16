@@ -47,4 +47,9 @@ llvm::Module &LLVMBCParser::get_module()
 {
 	return *module;
 }
+
+const llvm::Module &LLVMBCParser::get_module() const
+{
+	return *module;
+}
 } // namespace DXIL2SPIRV
