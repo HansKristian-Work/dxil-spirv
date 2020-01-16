@@ -45,8 +45,21 @@ struct ConvertedFunction
 	std::unique_ptr<CFGNodePool> node_pool;
 };
 
+enum class ShaderStage : unsigned
+{
+	Unknown = 0,
+	Vertex = 1,
+	Hull = 2,
+	Domain = 3,
+	Geometry = 4,
+	Pixel = 5,
+	Compute = 6
+};
+
 struct D3DBinding
 {
+	ShaderStage stage;
+
 	// The index in which the resource was declared in the module.
 	// Range is [0, N), where N is number of resources.
 	unsigned resource_index;

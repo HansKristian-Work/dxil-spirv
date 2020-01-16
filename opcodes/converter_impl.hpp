@@ -89,6 +89,8 @@ struct Converter::Impl
 		llvm::Function *patch_constant_function = nullptr;
 	} execution_mode_meta;
 
+	ShaderStage get_remapping_stage() const;
+
 	bool emit_resources();
 	bool emit_srvs(const llvm::MDNode *srvs);
 	bool emit_uavs(const llvm::MDNode *uavs);

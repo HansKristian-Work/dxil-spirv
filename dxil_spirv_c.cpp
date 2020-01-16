@@ -64,7 +64,14 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 	{
 		if (srv_remapper)
 		{
-			const dxil_spv_d3d_binding c_binding = { binding.resource_index, binding.register_space, binding.register_index, binding.range_size };
+			const dxil_spv_d3d_binding c_binding = {
+				static_cast<dxil_spv_shader_stage>(binding.stage),
+				binding.resource_index,
+				binding.register_space,
+				binding.register_index,
+				binding.range_size
+			};
+
 			dxil_spv_vulkan_binding c_vk_binding = {};
 			if (srv_remapper(srv_userdata, &c_binding, &c_vk_binding) == DXIL_SPV_TRUE)
 			{
@@ -87,7 +94,14 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 	{
 		if (sampler_remapper)
 		{
-			const dxil_spv_d3d_binding c_binding = { binding.resource_index, binding.register_space, binding.register_index, binding.range_size };
+			const dxil_spv_d3d_binding c_binding = {
+				static_cast<dxil_spv_shader_stage>(binding.stage),
+				binding.resource_index,
+				binding.register_space,
+				binding.register_index,
+				binding.range_size
+			};
+
 			dxil_spv_vulkan_binding c_vk_binding = {};
 			if (sampler_remapper(sampler_userdata, &c_binding, &c_vk_binding) == DXIL_SPV_TRUE)
 			{
@@ -110,8 +124,14 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 	{
 		if (uav_remapper)
 		{
-			dxil_spv_uav_d3d_binding c_binding = {
-				{ binding.binding.resource_index, binding.binding.register_space, binding.binding.resource_index, binding.binding.range_size },
+			const dxil_spv_uav_d3d_binding c_binding = {
+				{
+					static_cast<dxil_spv_shader_stage>(binding.binding.stage),
+					binding.binding.resource_index,
+					binding.binding.register_space,
+					binding.binding.register_index,
+					binding.binding.range_size
+				},
 				binding.counter ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
 			};
 
@@ -141,7 +161,14 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 	{
 		if (cbv_remapper)
 		{
-			const dxil_spv_d3d_binding c_binding = { binding.resource_index, binding.register_space, binding.register_index, binding.range_size };
+			const dxil_spv_d3d_binding c_binding = {
+				static_cast<dxil_spv_shader_stage>(binding.stage),
+				binding.resource_index,
+				binding.register_space,
+				binding.register_index,
+				binding.range_size
+			};
+
 			dxil_spv_cbv_vulkan_binding c_vk_binding = {};
 			if (cbv_remapper(cbv_userdata, &c_binding, &c_vk_binding) == DXIL_SPV_TRUE)
 			{
