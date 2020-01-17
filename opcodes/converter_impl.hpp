@@ -97,6 +97,11 @@ struct Converter::Impl
 	bool emit_cbvs(const llvm::MDNode *cbvs);
 	bool emit_samplers(const llvm::MDNode *samplers);
 	void emit_root_constants(unsigned num_words);
+	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &parser);
+	static bool scan_srvs(ResourceRemappingInterface *iface, const llvm::MDNode *srvs, ShaderStage stage);
+	static bool scan_uavs(ResourceRemappingInterface *iface, const llvm::MDNode *uavs, ShaderStage stage);
+	static bool scan_cbvs(ResourceRemappingInterface *iface, const llvm::MDNode *cbvs, ShaderStage stage);
+	static bool scan_samplers(ResourceRemappingInterface *iface, const llvm::MDNode *samplers, ShaderStage stage);
 
 	std::vector<spv::Id> srv_index_to_id;
 	std::vector<spv::Id> uav_index_to_id;

@@ -41,16 +41,8 @@ struct dxil_spv_parsed_blob_s
 	std::string disasm;
 };
 
-struct dxil_spv_converter_s : ResourceRemappingInterface
+struct Remapper : ResourceRemappingInterface
 {
-	explicit dxil_spv_converter_s(LLVMBCParser &bc_parser)
-		: converter(bc_parser, module)
-	{
-	}
-	SPIRVModule module;
-	Converter converter;
-	std::vector<uint32_t> spirv;
-
 	static void copy_buffer_binding(VulkanBinding &vk_binding, const dxil_spv_vulkan_binding &c_vk_binding)
 	{
 		vk_binding.descriptor_set = c_vk_binding.set;
@@ -65,11 +57,11 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 		if (srv_remapper)
 		{
 			const dxil_spv_d3d_binding c_binding = {
-				static_cast<dxil_spv_shader_stage>(binding.stage),
-				binding.resource_index,
-				binding.register_space,
-				binding.register_index,
-				binding.range_size
+					static_cast<dxil_spv_shader_stage>(binding.stage),
+					binding.resource_index,
+					binding.register_space,
+					binding.register_index,
+					binding.range_size
 			};
 
 			dxil_spv_vulkan_binding c_vk_binding = {};
@@ -95,11 +87,11 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 		if (sampler_remapper)
 		{
 			const dxil_spv_d3d_binding c_binding = {
-				static_cast<dxil_spv_shader_stage>(binding.stage),
-				binding.resource_index,
-				binding.register_space,
-				binding.register_index,
-				binding.range_size
+					static_cast<dxil_spv_shader_stage>(binding.stage),
+					binding.resource_index,
+					binding.register_space,
+					binding.register_index,
+					binding.range_size
 			};
 
 			dxil_spv_vulkan_binding c_vk_binding = {};
@@ -125,14 +117,14 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 		if (uav_remapper)
 		{
 			const dxil_spv_uav_d3d_binding c_binding = {
-				{
-					static_cast<dxil_spv_shader_stage>(binding.binding.stage),
-					binding.binding.resource_index,
-					binding.binding.register_space,
-					binding.binding.register_index,
-					binding.binding.range_size
-				},
-				binding.counter ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
+					{
+							static_cast<dxil_spv_shader_stage>(binding.binding.stage),
+							binding.binding.resource_index,
+							binding.binding.register_space,
+							binding.binding.register_index,
+							binding.binding.range_size
+					},
+					binding.counter ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
 			};
 
 			dxil_spv_uav_vulkan_binding c_vk_binding = {};
@@ -162,11 +154,11 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 		if (cbv_remapper)
 		{
 			const dxil_spv_d3d_binding c_binding = {
-				static_cast<dxil_spv_shader_stage>(binding.stage),
-				binding.resource_index,
-				binding.register_space,
-				binding.register_index,
-				binding.range_size
+					static_cast<dxil_spv_shader_stage>(binding.stage),
+					binding.resource_index,
+					binding.register_space,
+					binding.register_index,
+					binding.range_size
 			};
 
 			dxil_spv_cbv_vulkan_binding c_vk_binding = {};
@@ -238,6 +230,18 @@ struct dxil_spv_converter_s : ResourceRemappingInterface
 	unsigned default_location = 0;
 };
 
+struct dxil_spv_converter_s
+{
+	explicit dxil_spv_converter_s(LLVMBCParser &bc_parser)
+		: converter(bc_parser, module)
+	{
+	}
+	SPIRVModule module;
+	Converter converter;
+	std::vector<uint32_t> spirv;
+	Remapper remapper;
+};
+
 dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
 {
 	auto *parsed = new (std::nothrow) dxil_spv_parsed_blob_s;
@@ -299,6 +303,28 @@ dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob
 	return static_cast<dxil_spv_shader_stage>(Converter::get_shader_stage(blob->bc));
 }
 
+dxil_spv_result dxil_spv_parsed_blob_scan_resources(
+		dxil_spv_parsed_blob blob,
+		dxil_spv_srv_sampler_remapper_cb srv_remapper,
+		dxil_spv_srv_sampler_remapper_cb sampler_remapper,
+		dxil_spv_cbv_remapper_cb cbv_remapper,
+		dxil_spv_uav_remapper_cb uav_remapper,
+		void *userdata)
+{
+	Remapper remapper;
+	remapper.srv_remapper = srv_remapper;
+	remapper.srv_userdata = userdata;
+	remapper.sampler_remapper = sampler_remapper;
+	remapper.sampler_userdata = userdata;
+	remapper.cbv_remapper = cbv_remapper;
+	remapper.cbv_userdata = userdata;
+	remapper.uav_remapper = uav_remapper;
+	remapper.uav_userdata = userdata;
+
+	Converter::scan_resources(&remapper, blob->bc);
+	return DXIL_SPV_SUCCESS;
+}
+
 void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob)
 {
 	delete blob;
@@ -310,7 +336,7 @@ dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_co
 	if (!conv)
 		return DXIL_SPV_ERROR_OUT_OF_MEMORY;
 
-	conv->converter.set_resource_remapping_interface(conv);
+	conv->converter.set_resource_remapping_interface(&conv->remapper);
 	*converter = conv;
 	return DXIL_SPV_SUCCESS;
 }
@@ -384,8 +410,8 @@ void dxil_spv_converter_set_srv_remapper(
 		dxil_spv_srv_sampler_remapper_cb remapper,
 		void *userdata)
 {
-	converter->srv_remapper = remapper;
-	converter->srv_userdata = userdata;
+	converter->remapper.srv_remapper = remapper;
+	converter->remapper.srv_userdata = userdata;
 }
 
 void dxil_spv_converter_set_sampler_remapper(
@@ -393,14 +419,14 @@ void dxil_spv_converter_set_sampler_remapper(
 		dxil_spv_srv_sampler_remapper_cb remapper,
 		void *userdata)
 {
-	converter->sampler_remapper = remapper;
-	converter->sampler_userdata = userdata;
+	converter->remapper.sampler_remapper = remapper;
+	converter->remapper.sampler_userdata = userdata;
 }
 
 void dxil_spv_converter_set_root_constant_word_count(dxil_spv_converter converter,
                                                      unsigned num_words)
 {
-	converter->root_constant_word_count = num_words;
+	converter->remapper.root_constant_word_count = num_words;
 }
 
 void dxil_spv_converter_set_uav_remapper(
@@ -408,8 +434,8 @@ void dxil_spv_converter_set_uav_remapper(
 		dxil_spv_uav_remapper_cb remapper,
 		void *userdata)
 {
-	converter->uav_remapper = remapper;
-	converter->uav_userdata = userdata;
+	converter->remapper.uav_remapper = remapper;
+	converter->remapper.uav_userdata = userdata;
 }
 
 void dxil_spv_converter_set_cbv_remapper(
@@ -417,8 +443,8 @@ void dxil_spv_converter_set_cbv_remapper(
 		dxil_spv_cbv_remapper_cb remapper,
 		void *userdata)
 {
-	converter->cbv_remapper = remapper;
-	converter->cbv_userdata = userdata;
+	converter->remapper.cbv_remapper = remapper;
+	converter->remapper.cbv_userdata = userdata;
 }
 
 void dxil_spv_converter_set_vertex_input_remapper(
@@ -426,7 +452,7 @@ void dxil_spv_converter_set_vertex_input_remapper(
 		dxil_spv_vertex_input_remapper_cb remapper,
 		void *userdata)
 {
-	converter->input_remapper = remapper;
-	converter->input_userdata = userdata;
+	converter->remapper.input_remapper = remapper;
+	converter->remapper.input_userdata = userdata;
 }
 

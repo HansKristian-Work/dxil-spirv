@@ -151,6 +151,7 @@ public:
 	void set_resource_remapping_interface(ResourceRemappingInterface *iface);
 
 	static ShaderStage get_shader_stage(const LLVMBCParser &bitcode_parser);
+	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser);
 
 	struct Impl;
 

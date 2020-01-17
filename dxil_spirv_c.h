@@ -47,6 +47,11 @@ extern "C" {
 #define DXIL_SPV_PUBLIC_API
 #endif
 
+/* C89 does not have bool type. */
+typedef unsigned char dxil_spv_bool;
+#define DXIL_SPV_TRUE ((dxil_spv_bool)1)
+#define DXIL_SPV_FALSE ((dxil_spv_bool)0)
+
 typedef enum dxil_spv_result
 {
 	DXIL_SPV_SUCCESS = 0,
@@ -70,40 +75,7 @@ typedef enum dxil_spv_shader_stage
 	DXIL_SPV_STAGE_INT_MAX = 0x7fffffff
 } dxil_spv_shader_stage;
 
-/* C89 does not have bool type. */
-typedef unsigned char dxil_spv_bool;
-#define DXIL_SPV_TRUE ((dxil_spv_bool)1)
-#define DXIL_SPV_FALSE ((dxil_spv_bool)0)
-
-/* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
-DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
-
-/* Parsing API */
-/* Parses and frees a DXBC blob. */
-typedef struct dxil_spv_parsed_blob_s *dxil_spv_parsed_blob;
-
-/* Parses a DXBC archive as is passed into CreatePipeline, which contains a DXIL blob. */
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob);
-/* Parses raw DXIL (LLVM BC). */
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_parsed_blob *blob);
-
-/* Dumps the LLVM IR representation to console. For debugging. */
-DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob);
-
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob, const char **str);
-
-DXIL_SPV_PUBLIC_API dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob blob);
-
-DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob);
-/* Parsing API */
-
-/* Converter API */
-typedef struct dxil_spv_converter_s *dxil_spv_converter;
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_converter *converter);
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
-
 /* Remaps input attribute to desired location. */
-
 typedef struct dxil_spv_d3d_vertex_input
 {
 	const char *semantic;
@@ -117,10 +89,6 @@ typedef struct dxil_spv_vulkan_vertex_input
 } dxil_spv_vulkan_vertex_input;
 typedef dxil_spv_bool (*dxil_spv_vertex_input_remapper_cb)(void *userdata, const dxil_spv_d3d_vertex_input *d3d_input,
                                                            dxil_spv_vulkan_vertex_input *vulkan_input);
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_vertex_input_remapper(
-		dxil_spv_converter converter,
-		dxil_spv_vertex_input_remapper_cb remapper,
-		void *userdata);
 
 typedef struct dxil_spv_d3d_binding
 {
@@ -143,23 +111,6 @@ typedef struct dxil_spv_vulkan_binding
 	} bindless;
 } dxil_spv_vulkan_binding;
 
-/* Remaps SRVs and Samplers to desired binding points. */
-typedef dxil_spv_bool (*dxil_spv_srv_sampler_remapper_cb)(void *userdata,
-                                                          const dxil_spv_d3d_binding *d3d_binding,
-                                                          dxil_spv_vulkan_binding *vulkan_binding);
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_srv_remapper(
-		dxil_spv_converter converter,
-		dxil_spv_srv_sampler_remapper_cb remapper,
-		void *userdata);
-
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_sampler_remapper(
-		dxil_spv_converter converter,
-		dxil_spv_srv_sampler_remapper_cb remapper,
-		void *userdata);
-
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_root_constant_word_count(dxil_spv_converter converter,
-                                                                         unsigned num_words);
-
 /* Remaps UAVs to desired binding points. */
 typedef struct dxil_spv_uav_d3d_binding
 {
@@ -172,13 +123,6 @@ typedef struct dxil_spv_uav_vulkan_binding
 	dxil_spv_vulkan_binding buffer_binding;
 	dxil_spv_vulkan_binding counter_binding;
 } dxil_spv_uav_vulkan_binding;
-typedef dxil_spv_bool (*dxil_spv_uav_remapper_cb)(void *userdata,
-                                                  const dxil_spv_uav_d3d_binding *d3d_uav_binding,
-                                                  dxil_spv_uav_vulkan_binding *vulkan_uav_binding);
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_uav_remapper(
-		dxil_spv_converter converter,
-		dxil_spv_uav_remapper_cb remapper,
-		void *userdata);
 
 typedef struct dxil_spv_push_constant_mapping
 {
@@ -195,9 +139,81 @@ typedef struct dxil_spv_cbv_vulkan_binding
 	dxil_spv_bool push_constant;
 } dxil_spv_cbv_vulkan_binding;
 
+typedef struct dxil_spv_compiled_spirv
+{
+	const void *data;
+	size_t size;
+} dxil_spv_compiled_spirv;
+
+/* Remaps SRVs and Samplers to desired binding points. */
+typedef dxil_spv_bool (*dxil_spv_srv_sampler_remapper_cb)(void *userdata,
+                                                          const dxil_spv_d3d_binding *d3d_binding,
+                                                          dxil_spv_vulkan_binding *vulkan_binding);
+typedef dxil_spv_bool (*dxil_spv_uav_remapper_cb)(void *userdata,
+                                                  const dxil_spv_uav_d3d_binding *d3d_uav_binding,
+                                                  dxil_spv_uav_vulkan_binding *vulkan_uav_binding);
+
 typedef dxil_spv_bool (*dxil_spv_cbv_remapper_cb)(void *userdata,
                                                   const dxil_spv_d3d_binding *d3d_uav_binding,
                                                   dxil_spv_cbv_vulkan_binding *vulkan_uav_binding);
+
+/* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
+DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
+
+/* Parsing API */
+/* Parses and frees a DXBC blob. */
+typedef struct dxil_spv_parsed_blob_s *dxil_spv_parsed_blob;
+
+/* Parses a DXBC archive as is passed into CreatePipeline, which contains a DXIL blob. */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob);
+/* Parses raw DXIL (LLVM BC). */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_parsed_blob *blob);
+
+/* Dumps the LLVM IR representation to console. For debugging. */
+DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob, const char **str);
+
+DXIL_SPV_PUBLIC_API dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob blob);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_scan_resources(
+		dxil_spv_parsed_blob blob,
+		dxil_spv_srv_sampler_remapper_cb srv_remapper,
+		dxil_spv_srv_sampler_remapper_cb sampler_remapper,
+		dxil_spv_cbv_remapper_cb cbv_remapper,
+		dxil_spv_uav_remapper_cb uav_remapper,
+		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob);
+/* Parsing API */
+
+/* Converter API */
+typedef struct dxil_spv_converter_s *dxil_spv_converter;
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_converter *converter);
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_vertex_input_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_vertex_input_remapper_cb remapper,
+		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_srv_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_srv_sampler_remapper_cb remapper,
+		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_sampler_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_srv_sampler_remapper_cb remapper,
+		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_root_constant_word_count(dxil_spv_converter converter,
+                                                                         unsigned num_words);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_uav_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_uav_remapper_cb remapper,
+		void *userdata);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_cbv_remapper(
 		dxil_spv_converter converter,
@@ -211,11 +227,6 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter co
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_validate_spirv(dxil_spv_converter converter);
 
 /* Obtain final SPIR-V. */
-typedef struct dxil_spv_compiled_spirv
-{
-	const void *data;
-	size_t size;
-} dxil_spv_compiled_spirv;
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_spv_converter converter,
                                                                           dxil_spv_compiled_spirv *compiled);
 

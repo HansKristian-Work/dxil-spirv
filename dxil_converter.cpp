@@ -444,6 +444,87 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 	return true;
 }
 
+bool Converter::Impl::scan_srvs(ResourceRemappingInterface *iface, const llvm::MDNode *srvs, ShaderStage stage)
+{
+	unsigned num_srvs = srvs->getNumOperands();
+	for (unsigned i = 0; i < num_srvs; i++)
+	{
+		auto *srv = llvm::cast<llvm::MDNode>(srvs->getOperand(i));
+		unsigned index = get_constant_metadata(srv, 0);
+		unsigned bind_space = get_constant_metadata(srv, 3);
+		unsigned bind_register = get_constant_metadata(srv, 4);
+		unsigned range_size = get_constant_metadata(srv, 5);
+
+		D3DBinding d3d_binding = { stage, index, bind_space, bind_register, range_size };
+		VulkanBinding vulkan_binding = {};
+		if (iface && !iface->remap_srv(d3d_binding, vulkan_binding))
+			return false;
+	}
+
+	return true;
+}
+
+bool Converter::Impl::scan_samplers(ResourceRemappingInterface *iface, const llvm::MDNode *samplers, ShaderStage stage)
+{
+	unsigned num_samplers = samplers->getNumOperands();
+	for (unsigned i = 0; i < num_samplers; i++)
+	{
+		auto *sampler = llvm::cast<llvm::MDNode>(samplers->getOperand(i));
+		unsigned index = get_constant_metadata(sampler, 0);
+		unsigned bind_space = get_constant_metadata(sampler, 3);
+		unsigned bind_register = get_constant_metadata(sampler, 4);
+		unsigned range_size = get_constant_metadata(sampler, 5);
+
+		D3DBinding d3d_binding = { stage, index, bind_space, bind_register, range_size };
+		VulkanBinding vulkan_binding = {};
+		if (iface && !iface->remap_sampler(d3d_binding, vulkan_binding))
+			return false;
+	}
+
+	return true;
+}
+
+bool Converter::Impl::scan_cbvs(ResourceRemappingInterface *iface, const llvm::MDNode *cbvs, ShaderStage stage)
+{
+	unsigned num_cbvs = cbvs->getNumOperands();
+	for (unsigned i = 0; i < num_cbvs; i++)
+	{
+		auto *cbv = llvm::cast<llvm::MDNode>(cbvs->getOperand(i));
+		unsigned index = get_constant_metadata(cbv, 0);
+		unsigned bind_space = get_constant_metadata(cbv, 3);
+		unsigned bind_register = get_constant_metadata(cbv, 4);
+		unsigned range_size = get_constant_metadata(cbv, 5);
+
+		D3DBinding d3d_binding = { stage, index, bind_space, bind_register, range_size };
+		VulkanCBVBinding vulkan_binding = {};
+		if (iface && !iface->remap_cbv(d3d_binding, vulkan_binding))
+			return false;
+	}
+
+	return true;
+}
+
+bool Converter::Impl::scan_uavs(ResourceRemappingInterface *iface, const llvm::MDNode *uavs, ShaderStage stage)
+{
+	unsigned num_uavs = uavs->getNumOperands();
+	for (unsigned i = 0; i < num_uavs; i++)
+	{
+		auto *uav = llvm::cast<llvm::MDNode>(uavs->getOperand(i));
+		unsigned index = get_constant_metadata(uav, 0);
+		unsigned bind_space = get_constant_metadata(uav, 3);
+		unsigned bind_register = get_constant_metadata(uav, 4);
+		unsigned range_size = get_constant_metadata(uav, 5);
+		bool has_counter = get_constant_metadata(uav, 8) != 0;
+
+		D3DUAVBinding d3d_binding = { { stage, index, bind_space, bind_register, range_size }, has_counter };
+		VulkanUAVBinding vulkan_binding = {};
+		if (iface && !iface->remap_uav(d3d_binding, vulkan_binding))
+			return false;
+	}
+
+	return true;
+}
+
 void Converter::Impl::emit_root_constants(unsigned num_words)
 {
 	auto &builder = spirv_module.get_builder();
@@ -492,6 +573,30 @@ bool Converter::Impl::emit_resources()
 			return false;
 
 	return true;
+}
+
+void Converter::Impl::scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser)
+{
+	auto &module = bitcode_parser.get_module();
+	auto *resource_meta = module.getNamedMetadata("dx.resources");
+	if (!resource_meta)
+		return;
+
+	auto *metas = resource_meta->getOperand(0);
+	auto stage = get_shader_stage(bitcode_parser);
+
+	if (metas->getOperand(0))
+		if (!scan_srvs(iface, llvm::dyn_cast<llvm::MDNode>(metas->getOperand(0)), stage))
+			return;
+	if (metas->getOperand(1))
+		if (!scan_uavs(iface, llvm::dyn_cast<llvm::MDNode>(metas->getOperand(1)), stage))
+			return;
+	if (metas->getOperand(2))
+		if (!scan_cbvs(iface, llvm::dyn_cast<llvm::MDNode>(metas->getOperand(2)), stage))
+			return;
+	if (metas->getOperand(3))
+		if (!scan_samplers(iface, llvm::dyn_cast<llvm::MDNode>(metas->getOperand(3)), stage))
+			return;
 }
 
 ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_model)
@@ -1949,6 +2054,11 @@ void Converter::set_resource_remapping_interface(ResourceRemappingInterface *ifa
 ShaderStage Converter::get_shader_stage(const LLVMBCParser &bitcode_parser)
 {
 	return Impl::get_remapping_stage(get_execution_model(bitcode_parser.get_module()));
+}
+
+void Converter::scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser)
+{
+	Impl::scan_resources(iface, bitcode_parser);
 }
 
 } // namespace DXIL2SPIRV
