@@ -181,7 +181,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		D3DBinding d3d_binding = { get_remapping_stage(execution_model), index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
 			return false;
@@ -278,7 +278,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		D3DUAVBinding d3d_binding = {};
 		d3d_binding.counter = has_counter;
-		d3d_binding.binding = { get_remapping_stage(execution_model), index, bind_space, bind_register, range_size };
+		d3d_binding.binding = { get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size };
 		VulkanUAVBinding vulkan_binding = {{ bind_space, bind_register }, { bind_space + 1, bind_register }};
 		if (resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
@@ -330,7 +330,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
-		D3DBinding d3d_binding = { get_remapping_stage(execution_model), index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model), DXIL::ResourceKind::CBuffer, index, bind_space, bind_register, range_size };
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
@@ -425,7 +425,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		D3DBinding d3d_binding = { get_remapping_stage(execution_model), index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model), DXIL::ResourceKind::Sampler, index, bind_space, bind_register, range_size };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
 			return false;
@@ -454,8 +454,9 @@ bool Converter::Impl::scan_srvs(ResourceRemappingInterface *iface, const llvm::M
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
+		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
 
-		D3DBinding d3d_binding = { stage, index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { stage, resource_kind, index, bind_space, bind_register, range_size };
 		VulkanBinding vulkan_binding = {};
 		if (iface && !iface->remap_srv(d3d_binding, vulkan_binding))
 			return false;
@@ -475,7 +476,7 @@ bool Converter::Impl::scan_samplers(ResourceRemappingInterface *iface, const llv
 		unsigned bind_register = get_constant_metadata(sampler, 4);
 		unsigned range_size = get_constant_metadata(sampler, 5);
 
-		D3DBinding d3d_binding = { stage, index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { stage, DXIL::ResourceKind::Sampler, index, bind_space, bind_register, range_size };
 		VulkanBinding vulkan_binding = {};
 		if (iface && !iface->remap_sampler(d3d_binding, vulkan_binding))
 			return false;
@@ -495,7 +496,7 @@ bool Converter::Impl::scan_cbvs(ResourceRemappingInterface *iface, const llvm::M
 		unsigned bind_register = get_constant_metadata(cbv, 4);
 		unsigned range_size = get_constant_metadata(cbv, 5);
 
-		D3DBinding d3d_binding = { stage, index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { stage, DXIL::ResourceKind::CBuffer, index, bind_space, bind_register, range_size };
 		VulkanCBVBinding vulkan_binding = {};
 		if (iface && !iface->remap_cbv(d3d_binding, vulkan_binding))
 			return false;
@@ -514,9 +515,10 @@ bool Converter::Impl::scan_uavs(ResourceRemappingInterface *iface, const llvm::M
 		unsigned bind_space = get_constant_metadata(uav, 3);
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
+		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
 
-		D3DUAVBinding d3d_binding = { { stage, index, bind_space, bind_register, range_size }, has_counter };
+		D3DUAVBinding d3d_binding = { { stage, resource_kind, index, bind_space, bind_register, range_size }, has_counter };
 		VulkanUAVBinding vulkan_binding = {};
 		if (iface && !iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;

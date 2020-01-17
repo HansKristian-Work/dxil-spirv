@@ -57,11 +57,12 @@ struct Remapper : ResourceRemappingInterface
 		if (srv_remapper)
 		{
 			const dxil_spv_d3d_binding c_binding = {
-					static_cast<dxil_spv_shader_stage>(binding.stage),
-					binding.resource_index,
-					binding.register_space,
-					binding.register_index,
-					binding.range_size
+				static_cast<dxil_spv_shader_stage>(binding.stage),
+				static_cast<dxil_spv_resource_kind>(binding.kind),
+				binding.resource_index,
+				binding.register_space,
+				binding.register_index,
+				binding.range_size
 			};
 
 			dxil_spv_vulkan_binding c_vk_binding = {};
@@ -87,11 +88,12 @@ struct Remapper : ResourceRemappingInterface
 		if (sampler_remapper)
 		{
 			const dxil_spv_d3d_binding c_binding = {
-					static_cast<dxil_spv_shader_stage>(binding.stage),
-					binding.resource_index,
-					binding.register_space,
-					binding.register_index,
-					binding.range_size
+				static_cast<dxil_spv_shader_stage>(binding.stage),
+				static_cast<dxil_spv_resource_kind>(binding.kind),
+				binding.resource_index,
+				binding.register_space,
+				binding.register_index,
+				binding.range_size
 			};
 
 			dxil_spv_vulkan_binding c_vk_binding = {};
@@ -117,14 +119,15 @@ struct Remapper : ResourceRemappingInterface
 		if (uav_remapper)
 		{
 			const dxil_spv_uav_d3d_binding c_binding = {
-					{
-							static_cast<dxil_spv_shader_stage>(binding.binding.stage),
-							binding.binding.resource_index,
-							binding.binding.register_space,
-							binding.binding.register_index,
-							binding.binding.range_size
-					},
-					binding.counter ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
+				{
+					static_cast<dxil_spv_shader_stage>(binding.binding.stage),
+					static_cast<dxil_spv_resource_kind>(binding.binding.kind),
+					binding.binding.resource_index,
+					binding.binding.register_space,
+					binding.binding.register_index,
+					binding.binding.range_size
+				},
+				binding.counter ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
 			};
 
 			dxil_spv_uav_vulkan_binding c_vk_binding = {};
@@ -154,11 +157,12 @@ struct Remapper : ResourceRemappingInterface
 		if (cbv_remapper)
 		{
 			const dxil_spv_d3d_binding c_binding = {
-					static_cast<dxil_spv_shader_stage>(binding.stage),
-					binding.resource_index,
-					binding.register_space,
-					binding.register_index,
-					binding.range_size
+				static_cast<dxil_spv_shader_stage>(binding.stage),
+				static_cast<dxil_spv_resource_kind>(binding.kind),
+				binding.resource_index,
+				binding.register_space,
+				binding.register_index,
+				binding.range_size
 			};
 
 			dxil_spv_cbv_vulkan_binding c_vk_binding = {};

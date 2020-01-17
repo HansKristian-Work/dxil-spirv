@@ -59,6 +59,7 @@ enum class ShaderStage : unsigned
 struct D3DBinding
 {
 	ShaderStage stage;
+	DXIL::ResourceKind kind;
 
 	// The index in which the resource was declared in the module.
 	// Range is [0, N), where N is number of resources.
