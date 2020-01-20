@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <vector>
 #include <algorithm>
 
@@ -108,7 +109,8 @@ static void print_help()
 	     "\t[--validate]\n"
 	     "\t[--glsl-embed-asm]\n"
 	     "\t[--root-constant space binding word_offset word_count]\n"
-	     "\t[--vertex-input semantic location]\n");
+	     "\t[--vertex-input semantic location]\n"
+	     "\t[--stream-output semantic index offset stride buffer-index]\n");
 }
 
 struct Arguments
@@ -138,6 +140,17 @@ struct Remapper
 		unsigned index;
 	};
 	std::vector<VertexInput> vertex_inputs;
+
+	struct StreamOutput
+	{
+		std::string semantic;
+		unsigned index;
+
+		unsigned offset;
+		unsigned stride;
+		unsigned buffer_index;
+	};
+	std::vector<StreamOutput> stream_outputs;
 };
 
 static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_cbv_vulkan_binding *vk_binding)
@@ -184,6 +197,30 @@ static dxil_spv_bool remap_vertex_input(void *userdata, const dxil_spv_d3d_verte
 	return DXIL_SPV_TRUE;
 }
 
+static dxil_spv_bool remap_stream_output(void *userdata, const dxil_spv_d3d_stream_output *d3d_output,
+                                         dxil_spv_vulkan_stream_output *vk_output)
+{
+	auto *remapper = static_cast<Remapper *>(userdata);
+
+	auto itr = std::find_if(remapper->stream_outputs.begin(), remapper->stream_outputs.end(), [&](const Remapper::StreamOutput &vin) {
+		return strcasecmp(vin.semantic.c_str(), d3d_output->semantic) == 0 && vin.index == d3d_output->semantic_index;
+	});
+
+	if (itr != remapper->stream_outputs.end())
+	{
+		vk_output->enable = DXIL_SPV_TRUE;
+		vk_output->offset = itr->offset;
+		vk_output->stride = itr->stride;
+		vk_output->buffer_index = itr->buffer_index;
+	}
+	else
+	{
+		*vk_output = {};
+	}
+
+	return DXIL_SPV_TRUE;
+}
+
 int main(int argc, char **argv)
 {
 	Arguments args;
@@ -212,6 +249,15 @@ int main(int argc, char **argv)
 		const char *sem = parser.next_string();
 		unsigned loc = parser.next_uint();
 		remapper.vertex_inputs.push_back({ std::string(sem), loc });
+	});
+	cbs.add("--stream-output", [&](CLIParser &parser) {
+		const char *sem = parser.next_string();
+		unsigned index = parser.next_uint();
+
+		unsigned offset = parser.next_uint();
+		unsigned stride = parser.next_uint();
+		unsigned buffer_index = parser.next_uint();
+		remapper.stream_outputs.push_back({ std::string(sem), index, offset, stride, buffer_index });
 	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
@@ -260,6 +306,7 @@ int main(int argc, char **argv)
 
 	dxil_spv_converter_set_cbv_remapper(converter, remap_cbv, &remapper);
 	dxil_spv_converter_set_vertex_input_remapper(converter, remap_vertex_input, &remapper);
+	dxil_spv_converter_set_stream_output_remapper(converter, remap_stream_output, &remapper);
 	dxil_spv_converter_set_root_constant_word_count(converter, remapper.root_constant_word_count);
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)

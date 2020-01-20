@@ -132,6 +132,20 @@ struct VulkanVertexInput
 	unsigned location;
 };
 
+struct D3DStreamOutput
+{
+	const char *semantic;
+	unsigned semantic_index;
+};
+
+struct VulkanStreamOutput
+{
+	unsigned offset;
+	unsigned stride;
+	unsigned buffer_index;
+	bool enable;
+};
+
 class ResourceRemappingInterface
 {
 public:
@@ -141,6 +155,7 @@ public:
 	virtual bool remap_uav(const D3DUAVBinding &d3d_binding, VulkanUAVBinding &vulkan_binding) = 0;
 	virtual bool remap_cbv(const D3DBinding &d3d_binding, VulkanCBVBinding &vulkan_binding) = 0;
 	virtual bool remap_vertex_input(const D3DVertexInput &d3d_input, VulkanVertexInput &vulkan_location) = 0;
+	virtual bool remap_stream_output(const D3DStreamOutput &d3d_output, VulkanStreamOutput &vulkan_output) = 0;
 	virtual unsigned get_root_constant_word_count() = 0;
 };
 

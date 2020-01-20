@@ -977,6 +977,27 @@ bool Converter::Impl::emit_stage_output_variables()
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, element_type };
 
+		if (execution_model == spv::ExecutionModelVertex ||
+		    execution_model == spv::ExecutionModelGeometry ||
+		    execution_model == spv::ExecutionModelTessellationEvaluation)
+		{
+			if (resource_mapping_iface)
+			{
+				VulkanStreamOutput vk_output = {};
+				if (!resource_mapping_iface->remap_stream_output({ semantic_name.c_str(), semantic_index }, vk_output))
+					return false;
+
+				if (vk_output.enable)
+				{
+					builder.addCapability(spv::CapabilityTransformFeedback);
+					builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeXfb);
+					builder.addDecoration(variable_id, spv::DecorationOffset, vk_output.offset);
+					builder.addDecoration(variable_id, spv::DecorationXfbStride, vk_output.stride);
+					builder.addDecoration(variable_id, spv::DecorationXfbBuffer, vk_output.buffer_index);
+				}
+			}
+		}
+
 		if (system_value == DXIL::Semantic::Target)
 		{
 			builder.addDecoration(variable_id, spv::DecorationLocation, start_row);

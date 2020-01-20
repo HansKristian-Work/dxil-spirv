@@ -91,6 +91,23 @@ typedef struct dxil_spv_vulkan_vertex_input
 typedef dxil_spv_bool (*dxil_spv_vertex_input_remapper_cb)(void *userdata, const dxil_spv_d3d_vertex_input *d3d_input,
                                                            dxil_spv_vulkan_vertex_input *vulkan_input);
 
+typedef struct dxil_spv_d3d_stream_output
+{
+	const char *semantic;
+	unsigned semantic_index;
+} dxil_spv_d3d_stream_output;
+
+typedef struct dxil_spv_vulkan_stream_output
+{
+	unsigned offset;
+	unsigned stride;
+	unsigned buffer_index;
+	dxil_spv_bool enable;
+} dxil_spv_vulkan_stream_output;
+
+typedef dxil_spv_bool (*dxil_spv_stream_output_remapper_cb)(void *userdata, const dxil_spv_d3d_stream_output *d3d_output,
+                                                            dxil_spv_vulkan_stream_output *vulkan_output);
+
 /* Matches DXIL enum */
 typedef enum dxil_spv_resource_kind
 {
@@ -222,6 +239,11 @@ DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_vertex_input_remapper(
 		dxil_spv_converter converter,
 		dxil_spv_vertex_input_remapper_cb remapper,
+		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_stream_output_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_stream_output_remapper_cb remapper,
 		void *userdata);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_srv_remapper(

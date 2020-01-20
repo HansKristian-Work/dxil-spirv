@@ -77,6 +77,27 @@ def cross_compile_dxil(shader, args, paths):
         glsl_cmd.append('0')
         glsl_cmd.append('4')
         glsl_cmd.append('12')
+    if '.stream-out.' in shader:
+        glsl_cmd.append('--stream-output')
+        glsl_cmd.append('SV_Position')
+        glsl_cmd.append('0')
+        glsl_cmd.append('16')
+        glsl_cmd.append('32')
+        glsl_cmd.append('1')
+
+        glsl_cmd.append('--stream-output')
+        glsl_cmd.append('StreamOut')
+        glsl_cmd.append('0')
+        glsl_cmd.append('0')
+        glsl_cmd.append('32')
+        glsl_cmd.append('0')
+
+        glsl_cmd.append('--stream-output')
+        glsl_cmd.append('StreamOut')
+        glsl_cmd.append('1')
+        glsl_cmd.append('0')
+        glsl_cmd.append('16')
+        glsl_cmd.append('1')
 
     if '.invalid.' not in shader:
         glsl_cmd.append('--validate')

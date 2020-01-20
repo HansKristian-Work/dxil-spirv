@@ -204,8 +204,31 @@ struct Remapper : ResourceRemappingInterface
 		}
 		else
 		{
-			vk_input.location = default_location;
-			default_location += d3d_input.rows;
+			vk_input.location = d3d_input.start_row;
+			return true;
+		}
+	}
+
+	bool remap_stream_output(const D3DStreamOutput &d3d_output, VulkanStreamOutput &vk_output) override
+	{
+		dxil_spv_d3d_stream_output c_output = { d3d_output.semantic, d3d_output.semantic_index };
+		dxil_spv_vulkan_stream_output c_vk_output = {};
+
+		if (output_remapper)
+		{
+			if (output_remapper(output_userdata, &c_output, &c_vk_output) == DXIL_SPV_TRUE)
+			{
+				vk_output.enable = bool(c_vk_output.enable);
+				vk_output.offset = c_vk_output.offset;
+				vk_output.stride = c_vk_output.stride;
+				vk_output.buffer_index = c_vk_output.buffer_index;
+				return true;
+			}
+			else
+				return false;
+		}
+		else
+		{
 			return true;
 		}
 	}
@@ -230,8 +253,10 @@ struct Remapper : ResourceRemappingInterface
 	dxil_spv_vertex_input_remapper_cb input_remapper = nullptr;
 	void *input_userdata = nullptr;
 
+	dxil_spv_stream_output_remapper_cb output_remapper = nullptr;
+	void *output_userdata = nullptr;
+
 	unsigned root_constant_word_count = 0;
-	unsigned default_location = 0;
 };
 
 struct dxil_spv_converter_s
@@ -458,5 +483,14 @@ void dxil_spv_converter_set_vertex_input_remapper(
 {
 	converter->remapper.input_remapper = remapper;
 	converter->remapper.input_userdata = userdata;
+}
+
+void dxil_spv_converter_set_stream_output_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_stream_output_remapper_cb remapper,
+		void *userdata)
+{
+	converter->remapper.output_remapper = remapper;
+	converter->remapper.output_userdata = userdata;
 }
 
