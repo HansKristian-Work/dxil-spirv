@@ -138,7 +138,6 @@ struct Remapper
 		unsigned index;
 	};
 	std::vector<VertexInput> vertex_inputs;
-	unsigned base_location = 0;
 };
 
 static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_cbv_vulkan_binding *vk_binding)
@@ -175,12 +174,11 @@ static dxil_spv_bool remap_vertex_input(void *userdata, const dxil_spv_d3d_verte
 
 	if (itr != remapper->vertex_inputs.end())
 	{
-		vk_input->location = itr->index + d3d_input->index;
+		vk_input->location = itr->index + d3d_input->semantic_index;
 	}
 	else
 	{
-		vk_input->location = remapper->base_location;
-		remapper->base_location += d3d_input->rows;
+		vk_input->location = d3d_input->start_row;
 	}
 
 	return DXIL_SPV_TRUE;

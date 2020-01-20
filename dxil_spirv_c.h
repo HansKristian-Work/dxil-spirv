@@ -79,7 +79,8 @@ typedef enum dxil_spv_shader_stage
 typedef struct dxil_spv_d3d_vertex_input
 {
 	const char *semantic;
-	unsigned index;
+	unsigned semantic_index;
+	unsigned start_row;
 	unsigned rows;
 } dxil_spv_d3d_vertex_input;
 

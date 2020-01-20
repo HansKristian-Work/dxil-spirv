@@ -189,7 +189,7 @@ struct Remapper : ResourceRemappingInterface
 
 	bool remap_vertex_input(const D3DVertexInput &d3d_input, VulkanVertexInput &vk_input) override
 	{
-		dxil_spv_d3d_vertex_input c_input = { d3d_input.semantic, d3d_input.index, d3d_input.rows };
+		dxil_spv_d3d_vertex_input c_input = { d3d_input.semantic, d3d_input.semantic_index, d3d_input.start_row, d3d_input.rows };
 		dxil_spv_vulkan_vertex_input c_vk_input = {};
 
 		if (input_remapper)

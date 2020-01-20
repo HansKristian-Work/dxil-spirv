@@ -122,7 +122,8 @@ struct VulkanCBVBinding
 struct D3DVertexInput
 {
 	const char *semantic;
-	unsigned index;
+	unsigned semantic_index;
+	unsigned start_row;
 	unsigned rows;
 };
 

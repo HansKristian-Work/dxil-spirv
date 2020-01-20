@@ -1292,7 +1292,7 @@ bool Converter::Impl::emit_stage_input_variables()
 			VulkanVertexInput vk_input = { start_row };
 			if (execution_model == spv::ExecutionModelVertex && resource_mapping_iface)
 			{
-				D3DVertexInput d3d_input = { semantic_name.c_str(), semantic_index, rows };
+				D3DVertexInput d3d_input = { semantic_name.c_str(), semantic_index, start_row, rows };
 				if (!resource_mapping_iface->remap_vertex_input(d3d_input, vk_input))
 					return false;
 			}
