@@ -658,14 +658,21 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		std::vector<spv::Id> constituents;
 		spv::Id type_id = get_type_id(constant->getType());
 
-		auto *array = llvm::cast<llvm::ConstantDataArray>(constant);
-		constituents.reserve(array->getType()->getArrayNumElements());
-		for (unsigned i = 0; i < array->getNumElements(); i++)
+		if (llvm::isa<llvm::ConstantAggregateZero>(constant))
 		{
-			llvm::Constant *c = array->getElementAsConstant(i);
-			constituents.push_back(get_id_for_constant(c, 0));
+			return builder.makeNullConstant(type_id);
 		}
-		return builder.makeCompositeConstant(type_id, constituents);
+		else
+		{
+			auto *array = llvm::cast<llvm::ConstantDataArray>(constant);
+			constituents.reserve(array->getType()->getArrayNumElements());
+			for (unsigned i = 0; i < array->getNumElements(); i++)
+			{
+				llvm::Constant *c = array->getElementAsConstant(i);
+				constituents.push_back(get_id_for_constant(c, 0));
+			}
+			return builder.makeCompositeConstant(type_id, constituents);
+		}
 	}
 
 	default:

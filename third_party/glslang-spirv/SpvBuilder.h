@@ -242,6 +242,7 @@ public:
 #ifdef AMD_EXTENSIONS
     Id makeFloat16Constant(float f16, bool specConstant = false);
 #endif
+    Id makeNullConstant(Id type);
 
     // Turn the array of constants into a proper spv constant of the requested type.
     Id makeCompositeConstant(Id type, const std::vector<Id>& comps, bool specConst = false);
