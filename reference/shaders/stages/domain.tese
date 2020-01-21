@@ -2,8 +2,8 @@
 
 layout(location = 0) in float A[][3];
 layout(location = 0, component = 1) in float B[];
-layout(location = 0) patch in float C[3];
-layout(location = 0, component = 1) patch in float D;
+layout(location = 3) patch in float C[3];
+layout(location = 3, component = 1) patch in float D;
 
 void main()
 {
@@ -114,9 +114,9 @@ OpDecorate %11 Location 0
 OpDecorate %13 Location 0
 OpDecorate %13 Component 1
 OpDecorate %16 BuiltIn Position
-OpDecorate %17 Location 0
+OpDecorate %17 Location 3
 OpDecorate %17 Patch
-OpDecorate %19 Location 0
+OpDecorate %19 Location 3
 OpDecorate %19 Component 1
 OpDecorate %19 Patch
 OpDecorate %23 BuiltIn TessCoord

@@ -892,7 +892,12 @@ bool Converter::Impl::emit_patch_variables()
 		else
 		{
 			emit_interpolation_decorations(variable_id, interpolation);
-			builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
+			// Patch constants are packed together with control point variables,
+			// so we need to apply an offset to make this work in SPIR-V.
+			// The offset is deduced from the control point I/O signature.
+			// TODO: If it's possible to omit trailing CP members in domain shader, we will need to pass this offset
+			// into the compiler.
+			builder.addDecoration(variable_id, spv::DecorationLocation, start_row + patch_location_offset);
 			if (start_col != 0)
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
@@ -942,6 +947,9 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		auto start_row = get_constant_metadata(output, 8);
 		auto start_col = get_constant_metadata(output, 9);
+
+		if (execution_model == spv::ExecutionModelTessellationControl)
+			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 
@@ -1265,6 +1273,9 @@ bool Converter::Impl::emit_stage_input_variables()
 
 		auto start_row = get_constant_metadata(input, 8);
 		auto start_col = get_constant_metadata(input, 9);
+
+		if (execution_model == spv::ExecutionModelTessellationEvaluation)
+			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		if (system_value == DXIL::Semantic::Position)

@@ -111,6 +111,7 @@ struct Converter::Impl
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;
 	unsigned root_constant_num_words = 0;
+	unsigned patch_location_offset = 0;
 
 	struct ResourceMeta
 	{
