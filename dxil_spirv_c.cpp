@@ -411,18 +411,6 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	return DXIL_SPV_SUCCESS;
 }
 
-dxil_spv_result dxil_spv_converter_validate_spirv(dxil_spv_converter converter)
-{
-	if (converter->spirv.empty())
-		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
-
-	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
-	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
-		LOGE("SPIRV-Tools message: %s\n", message);
-	});
-	return tools.Validate(converter->spirv) ? DXIL_SPV_SUCCESS : DXIL_SPV_ERROR_FAILED_VALIDATION;
-}
-
 dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_spv_converter converter,
                                                       dxil_spv_compiled_spirv *compiled)
 {

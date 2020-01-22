@@ -272,9 +272,6 @@ DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_cbv_remapper(
 /* After setting up converter, runs the converted to SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter);
 
-/* Validate final SPIR-V. Returns UNSUPPORTED_FEATURE if SPIRV-Tools was not enabled in build. */
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_validate_spirv(dxil_spv_converter converter);
-
 /* Obtain final SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_spv_converter converter,
                                                                           dxil_spv_compiled_spirv *compiled);

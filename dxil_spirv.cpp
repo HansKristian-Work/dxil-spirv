@@ -46,6 +46,16 @@ static std::string convert_to_asm(const void *code, size_t size)
 		return str;
 }
 
+static bool validate_spirv(const void *code, size_t size)
+{
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
+	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
+		LOGE("SPIRV-Tools message: %s\n", message);
+	});
+
+	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t));
+}
+
 static std::string convert_to_glsl(const void *code, size_t size)
 {
 	std::string ret;
@@ -321,7 +331,7 @@ int main(int argc, char **argv)
 
 	if (args.validate)
 	{
-		if (dxil_spv_converter_validate_spirv(converter) != DXIL_SPV_SUCCESS)
+		if (!validate_spirv(compiled.data, compiled.size))
 		{
 			LOGE("Failed to validate SPIR-V.\n");
 			return EXIT_FAILURE;
