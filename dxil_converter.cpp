@@ -1657,7 +1657,7 @@ bool Converter::Impl::emit_execution_modes_hull()
 
 				default:
 					LOGE("Unknown tessellator domain!\n");
-					break;
+					return false;
 				}
 
 				switch (partitioning)
@@ -1681,7 +1681,7 @@ bool Converter::Impl::emit_execution_modes_hull()
 
 				default:
 					LOGE("Unknown tessellator partitioning.\n");
-					break;
+					return false;
 				}
 
 				switch (primitive)
@@ -1704,7 +1704,7 @@ bool Converter::Impl::emit_execution_modes_hull()
 
 				default:
 					LOGE("Unknown tessellator primitive.\n");
-					break;
+					return false;
 				}
 
 				builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, output_control_points);
@@ -1782,7 +1782,7 @@ bool Converter::Impl::emit_execution_modes_geometry()
 
 				default:
 					LOGE("Unexpected input primitive (%u).\n", unsigned(input_primitive));
-					break;
+					return false;
 				}
 
 				switch (topology)
@@ -1801,7 +1801,7 @@ bool Converter::Impl::emit_execution_modes_geometry()
 
 				default:
 					LOGE("Unexpected output primitive topology (%u).\n", unsigned(topology));
-					break;
+					return false;
 				}
 			}
 		}
