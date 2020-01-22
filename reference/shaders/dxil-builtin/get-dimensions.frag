@@ -34,10 +34,10 @@ uint _143;
 uint _156;
 uint _161;
 uint _180;
-uint _185;
-uint _190;
-uint _197;
-uint _203;
+uint _187;
+uint _193;
+uint _199;
+uint _205;
 
 void main()
 {
@@ -60,15 +60,15 @@ void main()
     uvec3 _174 = uvec3(imageSize(_55));
     uvec2 _179 = uvec2(uint(imageSize(_58)), _180);
     uint _181 = _179.x;
-    uvec2 _184 = uvec2(uint(textureSize(_39)), _185);
-    uint _186 = _184.x;
-    uvec2 _189 = uvec2(uint(imageSize(_61)), _190);
-    uint _191 = _189.x;
-    uvec2 _196 = uvec2(uint(textureSize(_40)) * 4u, _197);
-    uint _198 = _196.x;
-    uvec2 _202 = uvec2(uint(imageSize(_62)) * 4u, _203);
-    uint _204 = _202.x;
-    SV_Target = ((((((((((((((((((((((((((((((((((((((((((((((_91.w + 32u) + _91.x) + _99.y) + _99.x) + _99.w) + _106.y) + _106.x) + _106.w) + _114.y) + _114.x) + _114.z) + _114.w) + _121.y) + _121.x) + _121.w) + _128.y) + _128.x) + _128.z) + _128.w) + _135.y) + _135.x) + _135.z) + _135.w) + _142.y) + _142.x) + _142.w) + _149.y) + _149.x) + _149.z) + _149.w) + (_157 * _157)) + (_162 * _162)) + _164.y) + _164.x) + _167.y) + _167.x) + _170.y) + _170.x) + _170.z) + _174.y) + _174.x) + _174.z) + (_181 * _181)) + (_186 * _186)) + (_191 * _191)) + (_198 * _198)) + (_204 * _204);
+    uvec2 _186 = uvec2(uint(textureSize(_39)) / 4u, _187);
+    uint _188 = _186.x;
+    uvec2 _192 = uvec2(uint(imageSize(_61)) / 4u, _193);
+    uint _194 = _192.x;
+    uvec2 _198 = uvec2(uint(textureSize(_40)) * 4u, _199);
+    uint _200 = _198.x;
+    uvec2 _204 = uvec2(uint(imageSize(_62)) * 4u, _205);
+    uint _206 = _204.x;
+    SV_Target = ((((((((((((((((((((((((((((((((((((((((((((((_91.w + 32u) + _91.x) + _99.y) + _99.x) + _99.w) + _106.y) + _106.x) + _106.w) + _114.y) + _114.x) + _114.z) + _114.w) + _121.y) + _121.x) + _121.w) + _128.y) + _128.x) + _128.z) + _128.w) + _135.y) + _135.x) + _135.z) + _135.w) + _142.y) + _142.x) + _142.w) + _149.y) + _149.x) + _149.z) + _149.w) + (_157 * _157)) + (_162 * _162)) + _164.y) + _164.x) + _167.y) + _167.x) + _170.y) + _170.x) + _170.z) + _174.y) + _174.x) + _174.z) + (_181 * _181)) + (_188 * _188)) + (_194 * _194)) + (_200 * _200)) + (_206 * _206);
 }
 
 
@@ -323,7 +323,7 @@ attributes #2 = { nounwind readonly }
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 256
+; Bound: 258
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
@@ -448,8 +448,8 @@ OpDecorate %66 Location 0
 %90 = OpTypeVector %36 4
 %96 = OpTypeVector %36 2
 %111 = OpTypeVector %36 3
-%195 = OpConstant %36 4
-%207 = OpConstant %36 32
+%185 = OpConstant %36 4
+%209 = OpConstant %36 32
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %92 = OpUndef %36
@@ -461,12 +461,12 @@ OpDecorate %66 Location 0
 %156 = OpUndef %36
 %161 = OpUndef %36
 %180 = OpUndef %36
-%185 = OpUndef %36
-%190 = OpUndef %36
-%197 = OpUndef %36
-%203 = OpUndef %36
-OpBranch %254
-%254 = OpLabel
+%187 = OpUndef %36
+%193 = OpUndef %36
+%199 = OpUndef %36
+%205 = OpUndef %36
+OpBranch %256
+%256 = OpLabel
 %67 = OpLoad %59 %62
 %68 = OpLoad %59 %61
 %69 = OpLoad %56 %58
@@ -572,71 +572,73 @@ OpBranch %254
 %181 = OpCompositeExtract %36 %179 0
 %182 = OpIMul %36 %181 %181
 %183 = OpImageQuerySize %36 %76
-%184 = OpCompositeConstruct %96 %183 %185
-%186 = OpCompositeExtract %36 %184 0
-%187 = OpIMul %36 %186 %186
-%188 = OpImageQuerySize %36 %68
-%189 = OpCompositeConstruct %96 %188 %190
-%191 = OpCompositeExtract %36 %189 0
-%192 = OpIMul %36 %191 %191
-%193 = OpImageQuerySize %36 %75
-%194 = OpIMul %36 %193 %195
-%196 = OpCompositeConstruct %96 %194 %197
-%198 = OpCompositeExtract %36 %196 0
-%199 = OpIMul %36 %198 %198
-%200 = OpImageQuerySize %36 %67
-%201 = OpIMul %36 %200 %195
-%202 = OpCompositeConstruct %96 %201 %203
-%204 = OpCompositeExtract %36 %202 0
-%205 = OpIMul %36 %204 %204
-%206 = OpIAdd %36 %95 %207
-%208 = OpIAdd %36 %206 %94
-%209 = OpIAdd %36 %208 %102
-%210 = OpIAdd %36 %209 %101
-%211 = OpIAdd %36 %210 %103
-%212 = OpIAdd %36 %211 %109
-%213 = OpIAdd %36 %212 %108
-%214 = OpIAdd %36 %213 %110
-%215 = OpIAdd %36 %214 %116
-%216 = OpIAdd %36 %215 %115
-%217 = OpIAdd %36 %216 %117
-%218 = OpIAdd %36 %217 %118
-%219 = OpIAdd %36 %218 %124
-%220 = OpIAdd %36 %219 %123
-%221 = OpIAdd %36 %220 %125
-%222 = OpIAdd %36 %221 %130
-%223 = OpIAdd %36 %222 %129
-%224 = OpIAdd %36 %223 %131
-%225 = OpIAdd %36 %224 %132
-%226 = OpIAdd %36 %225 %137
-%227 = OpIAdd %36 %226 %136
-%228 = OpIAdd %36 %227 %138
-%229 = OpIAdd %36 %228 %139
-%230 = OpIAdd %36 %229 %145
-%231 = OpIAdd %36 %230 %144
-%232 = OpIAdd %36 %231 %146
-%233 = OpIAdd %36 %232 %151
-%234 = OpIAdd %36 %233 %150
-%235 = OpIAdd %36 %234 %152
-%236 = OpIAdd %36 %235 %153
-%237 = OpIAdd %36 %236 %158
-%238 = OpIAdd %36 %237 %163
-%239 = OpIAdd %36 %238 %166
-%240 = OpIAdd %36 %239 %165
-%241 = OpIAdd %36 %240 %169
-%242 = OpIAdd %36 %241 %168
-%243 = OpIAdd %36 %242 %172
-%244 = OpIAdd %36 %243 %171
-%245 = OpIAdd %36 %244 %173
-%246 = OpIAdd %36 %245 %176
-%247 = OpIAdd %36 %246 %175
-%248 = OpIAdd %36 %247 %177
-%249 = OpIAdd %36 %248 %182
-%250 = OpIAdd %36 %249 %187
-%251 = OpIAdd %36 %250 %192
-%252 = OpIAdd %36 %251 %199
-%253 = OpIAdd %36 %252 %205
-OpStore %66 %253
+%184 = OpUDiv %36 %183 %185
+%186 = OpCompositeConstruct %96 %184 %187
+%188 = OpCompositeExtract %36 %186 0
+%189 = OpIMul %36 %188 %188
+%190 = OpImageQuerySize %36 %68
+%191 = OpUDiv %36 %190 %185
+%192 = OpCompositeConstruct %96 %191 %193
+%194 = OpCompositeExtract %36 %192 0
+%195 = OpIMul %36 %194 %194
+%196 = OpImageQuerySize %36 %75
+%197 = OpIMul %36 %196 %185
+%198 = OpCompositeConstruct %96 %197 %199
+%200 = OpCompositeExtract %36 %198 0
+%201 = OpIMul %36 %200 %200
+%202 = OpImageQuerySize %36 %67
+%203 = OpIMul %36 %202 %185
+%204 = OpCompositeConstruct %96 %203 %205
+%206 = OpCompositeExtract %36 %204 0
+%207 = OpIMul %36 %206 %206
+%208 = OpIAdd %36 %95 %209
+%210 = OpIAdd %36 %208 %94
+%211 = OpIAdd %36 %210 %102
+%212 = OpIAdd %36 %211 %101
+%213 = OpIAdd %36 %212 %103
+%214 = OpIAdd %36 %213 %109
+%215 = OpIAdd %36 %214 %108
+%216 = OpIAdd %36 %215 %110
+%217 = OpIAdd %36 %216 %116
+%218 = OpIAdd %36 %217 %115
+%219 = OpIAdd %36 %218 %117
+%220 = OpIAdd %36 %219 %118
+%221 = OpIAdd %36 %220 %124
+%222 = OpIAdd %36 %221 %123
+%223 = OpIAdd %36 %222 %125
+%224 = OpIAdd %36 %223 %130
+%225 = OpIAdd %36 %224 %129
+%226 = OpIAdd %36 %225 %131
+%227 = OpIAdd %36 %226 %132
+%228 = OpIAdd %36 %227 %137
+%229 = OpIAdd %36 %228 %136
+%230 = OpIAdd %36 %229 %138
+%231 = OpIAdd %36 %230 %139
+%232 = OpIAdd %36 %231 %145
+%233 = OpIAdd %36 %232 %144
+%234 = OpIAdd %36 %233 %146
+%235 = OpIAdd %36 %234 %151
+%236 = OpIAdd %36 %235 %150
+%237 = OpIAdd %36 %236 %152
+%238 = OpIAdd %36 %237 %153
+%239 = OpIAdd %36 %238 %158
+%240 = OpIAdd %36 %239 %163
+%241 = OpIAdd %36 %240 %166
+%242 = OpIAdd %36 %241 %165
+%243 = OpIAdd %36 %242 %169
+%244 = OpIAdd %36 %243 %168
+%245 = OpIAdd %36 %244 %172
+%246 = OpIAdd %36 %245 %171
+%247 = OpIAdd %36 %246 %173
+%248 = OpIAdd %36 %247 %176
+%249 = OpIAdd %36 %248 %175
+%250 = OpIAdd %36 %249 %177
+%251 = OpIAdd %36 %250 %182
+%252 = OpIAdd %36 %251 %189
+%253 = OpIAdd %36 %252 %195
+%254 = OpIAdd %36 %253 %201
+%255 = OpIAdd %36 %254 %207
+OpStore %66 %255
 OpReturn
 OpFunctionEnd
 #endif

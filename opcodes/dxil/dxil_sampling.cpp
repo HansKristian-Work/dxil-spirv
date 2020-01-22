@@ -397,12 +397,20 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		dimensions_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
 	impl.add(dimensions_op);
 
-	if (impl.handle_to_resource_meta[image_id].kind == DXIL::ResourceKind::RawBuffer)
+	auto &meta = impl.handle_to_resource_meta[image_id];
+	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		Operation *byte_size_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
 		byte_size_op->add_ids({ dimensions_op->id, builder.makeUintConstant(4) });
 		impl.add(byte_size_op);
 		dimensions_op = byte_size_op;
+	}
+	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+	{
+		Operation *elem_count_op = impl.allocate(spv::OpUDiv, builder.makeUintType(32));
+		elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / 4) });
+		impl.add(elem_count_op);
+		dimensions_op = elem_count_op;
 	}
 
 	Operation *aux_op = nullptr;
