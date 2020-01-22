@@ -1578,6 +1578,28 @@ bool Converter::Impl::emit_execution_modes_domain()
 			if (tag == DXIL::ShaderPropertyTag::DSState)
 			{
 				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
+				auto domain = static_cast<DXIL::TessellatorDomain>(get_constant_metadata(arguments, 0));
+				auto *func = spirv_module.get_entry_function();
+
+				switch (domain)
+				{
+				case DXIL::TessellatorDomain::IsoLine:
+					builder.addExecutionMode(func, spv::ExecutionModeIsolines);
+					break;
+
+				case DXIL::TessellatorDomain::Tri:
+					builder.addExecutionMode(func, spv::ExecutionModeTriangles);
+					break;
+
+				case DXIL::TessellatorDomain::Quad:
+					builder.addExecutionMode(func, spv::ExecutionModeQuads);
+					break;
+
+				default:
+					LOGE("Unknown tessellator domain!\n");
+					return false;
+				}
+
 				unsigned input_control_points = get_constant_metadata(arguments, 1);
 				execution_mode_meta.stage_input_num_vertex = input_control_points;
 			}

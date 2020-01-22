@@ -1,4 +1,5 @@
 #version 460
+layout(triangles) in;
 
 layout(location = 0) in float A[][3];
 layout(location = 0, component = 1) in float B[];
@@ -104,6 +105,7 @@ OpCapability Shader
 OpCapability Tessellation
 OpMemoryModel Logical GLSL450
 OpEntryPoint TessellationEvaluation %3 "main" %11 %13 %16 %17 %19 %23
+OpExecutionMode %3 Triangles
 OpName %3 "main"
 OpName %11 "A"
 OpName %13 "B"
