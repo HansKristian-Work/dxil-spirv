@@ -19,7 +19,7 @@
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 99)
-project(DXIL2SPIRV LANGUAGES CXX C)
+project(dxil-spirv LANGUAGES CXX C)
 
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -33,8 +33,13 @@ endif()
 
 add_subdirectory(third_party/spirv-headers EXCLUDE_FROM_ALL)
 set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers" CACHE STRING "SPIRV-Headers path" FORCE)
-add_subdirectory(third_party/SPIRV-Tools EXCLUDE_FROM_ALL)
-add_subdirectory(third_party/SPIRV-Cross EXCLUDE_FROM_ALL)
+
+option(DXIL_SPIRV_CLI "Enable CLI support." ON)
+
+if (DXIL_SPIRV_CLI)
+    add_subdirectory(third_party/SPIRV-Tools EXCLUDE_FROM_ALL)
+    add_subdirectory(third_party/SPIRV-Cross EXCLUDE_FROM_ALL)
+endif()
 
 add_library(dxil-spirv-headers INTERFACE)
 target_include_directories(dxil-spirv-headers INTERFACE
@@ -63,13 +68,6 @@ target_compile_options(spirv-module PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 add_library(dxil-debug INTERFACE)
 target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
-
-add_library(cli-parser STATIC
-        third_party/cli_parser/cli_parser.hpp
-        third_party/cli_parser/cli_parser.cpp)
-target_include_directories(cli-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cli_parser)
-target_link_libraries(cli-parser PUBLIC dxil-debug)
-target_compile_options(cli-parser PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
 
 add_library(dxil-converter STATIC
         memory_stream.hpp memory_stream.cpp
@@ -119,9 +117,18 @@ if (NOT MSVC)
     set_target_properties(dxil-spirv-c-shared PROPERTIES LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/link.T")
 endif()
 
-add_executable(dxil-spirv dxil_spirv.cpp)
-target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools spirv-cross-c dxil-debug)
-target_compile_options(dxil-spirv PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+if (DXIL_SPIRV_CLI)
+    add_library(cli-parser STATIC
+            third_party/cli_parser/cli_parser.hpp
+            third_party/cli_parser/cli_parser.cpp)
+    target_include_directories(cli-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cli_parser)
+    target_link_libraries(cli-parser PUBLIC dxil-debug)
+    target_compile_options(cli-parser PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+
+    add_executable(dxil-spirv dxil_spirv.cpp)
+    target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools spirv-cross-c dxil-debug)
+    target_compile_options(dxil-spirv PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+endif()
 
 set(DXIL_SPV_VERSION_MAJOR 0)
 set(DXIL_SPV_VERSION_MINOR 0)
@@ -137,7 +144,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pkg-config/dxil-spirv-c-shared.pc.in
                ${CMAKE_CURRENT_BINARY_DIR}/dxil-spirv-c-shared.pc @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dxil-spirv-c-shared.pc DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pkgconfig)
 
-install(TARGETS dxil-spirv RUNTIME DESTINATION bin)
+if (DXIL_SPIRV_CLI)
+    install(TARGETS dxil-spirv RUNTIME DESTINATION bin)
+endif()
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/dxil_spirv_c.h DESTINATION include/dxil-spirv)
 install(TARGETS dxil-spirv-c-shared
         EXPORT dxil_spirv_c_sharedConfig
