@@ -19,11 +19,11 @@
 #pragma once
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_load_output_control_point_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_domain_location_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_output_control_point_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

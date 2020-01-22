@@ -20,7 +20,7 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 LLVMBCParser::LLVMBCParser()
 {
@@ -52,4 +52,4 @@ const llvm::Module &LLVMBCParser::get_module() const
 {
 	return *module;
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

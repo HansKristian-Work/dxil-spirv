@@ -24,6 +24,6 @@
 #include <llvm/IR/Instructions.h>
 #include <vector>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 }

@@ -20,7 +20,7 @@
 #include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
@@ -66,4 +66,4 @@ bool emit_coverage_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	impl.add(load_op);
 	return true;
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

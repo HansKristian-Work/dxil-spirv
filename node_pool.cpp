@@ -20,7 +20,7 @@
 #include "node.hpp"
 #include <utility>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 CFGNodePool::CFGNodePool()
 {
@@ -38,4 +38,4 @@ CFGNode *CFGNodePool::create_node()
 	return ret;
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

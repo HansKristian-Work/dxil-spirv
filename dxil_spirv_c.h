@@ -21,7 +21,7 @@
 
 #include <stddef.h>
 
-/* C89-compatible wrapper for DXIL2SPIRV. */
+/* C89-compatible wrapper for dxil_spv. */
 
 #ifdef __cplusplus
 extern "C" {

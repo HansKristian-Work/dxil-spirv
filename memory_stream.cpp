@@ -19,7 +19,7 @@
 #include "memory_stream.hpp"
 #include <string.h>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 MemoryStream::MemoryStream(const void *blob_, size_t size)
     : blob(static_cast<const uint8_t *>(blob_))
@@ -98,4 +98,4 @@ size_t MemoryStream::get_size() const
 	return blob_size;
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

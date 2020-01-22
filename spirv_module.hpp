@@ -30,7 +30,7 @@ class Builder;
 class Instruction;
 }
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 struct CFGNode;
 class CFGNodePool;
@@ -69,4 +69,4 @@ private:
 	struct Impl;
 	std::unique_ptr<Impl> impl;
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

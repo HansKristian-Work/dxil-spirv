@@ -5,7 +5,7 @@ sharedlibdir=@DXIL_SPV_INSTALL_LIB_DIR@
 includedir=@DXIL_SPV_INSTALL_INC_DIR@
 
 Name: dxil-spirv-c-shared
-Description: C API for DXIL2SPIRV
+Description: C API for dxil-spirv
 Version: @DXIL_SPV_VERSION@
 
 Requires:

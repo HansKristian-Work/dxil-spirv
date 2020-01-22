@@ -26,7 +26,7 @@
 
 #include "spirv-tools/libspirv.hpp"
 
-using namespace DXIL2SPIRV;
+using namespace dxil_spv;
 
 void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch)
 {
@@ -385,7 +385,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	}
 
 	{
-		DXIL2SPIRV::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, converter->module);
+		dxil_spv::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, converter->module);
 		structurizer.run();
 		converter->module.emit_entry_point_function_body(structurizer);
 	}
@@ -397,7 +397,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 			LOGE("Leaf function is nullptr!\n");
 			return DXIL_SPV_ERROR_GENERIC;
 		}
-		DXIL2SPIRV::CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, converter->module);
+		dxil_spv::CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, converter->module);
 		structurizer.run();
 		converter->module.emit_leaf_function_body(leaf.func, structurizer);
 	}

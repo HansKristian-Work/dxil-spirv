@@ -24,7 +24,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 struct CFGNode
 {
@@ -160,4 +160,4 @@ void CFGNode::traverse_dominated_blocks(const Op &op)
 	traverse_dominated_blocks(*this, op);
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

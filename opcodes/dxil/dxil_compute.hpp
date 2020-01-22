@@ -20,7 +20,7 @@
 
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction);
@@ -30,4 +30,4 @@ static inline bool emit_thread_id_load_dispatch(Converter::Impl &impl, const llv
 {
 	return emit_thread_id_load_instruction(builtin, impl, instruction);
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

@@ -29,7 +29,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 class CLIParser;
 

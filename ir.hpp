@@ -27,7 +27,7 @@
 // A simple IR representation which allows the CFGStructurizer to do some simple rewrites of blocks,
 // PHI nodes in particular.
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 enum class MergeType
 {
@@ -177,4 +177,4 @@ struct IRBlock
 	Terminator terminator;
 };
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

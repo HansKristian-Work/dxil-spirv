@@ -30,7 +30,7 @@ namespace spv
 class Function;
 }
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 struct ConvertedFunction
 {
@@ -175,4 +175,4 @@ public:
 private:
 	std::unique_ptr<Impl> impl;
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

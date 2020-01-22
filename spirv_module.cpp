@@ -22,7 +22,7 @@
 #include "scratch_pool.hpp"
 #include <unordered_map>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 constexpr uint32_t GENERATOR = 1967215134;
 struct SPIRVModule::Impl : BlockEmissionInterface
@@ -501,4 +501,4 @@ Operation *SPIRVModule::allocate_op(spv::Op op, spv::Id id, spv::Id type_id)
 SPIRVModule::~SPIRVModule()
 {
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

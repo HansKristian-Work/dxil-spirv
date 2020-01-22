@@ -20,7 +20,7 @@
 #include "converter_impl.hpp"
 #include "logging.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
 {
@@ -520,4 +520,4 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 	impl.add(op);
 	return true;
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

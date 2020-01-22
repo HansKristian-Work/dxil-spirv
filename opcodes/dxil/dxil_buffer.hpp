@@ -19,7 +19,7 @@
 #pragma once
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 struct BufferAccessInfo
 {
@@ -35,4 +35,4 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

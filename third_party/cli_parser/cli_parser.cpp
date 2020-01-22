@@ -28,7 +28,7 @@
 
 using namespace std;
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 CLIParser::CLIParser(CLICallbacks cbs_, int argc_, char *argv_[])
 	: cbs(move(cbs_)), argc(argc_), argv(argv_)

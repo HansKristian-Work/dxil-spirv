@@ -30,7 +30,7 @@
 #include "logging.hpp"
 #include "cli_parser.hpp"
 
-using namespace DXIL2SPIRV;
+using namespace dxil_spv;
 
 static std::string convert_to_asm(const void *code, size_t size)
 {

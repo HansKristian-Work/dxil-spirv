@@ -30,7 +30,7 @@
 #include "opcodes/dxil/dxil_tessellation.hpp"
 #include "opcodes/dxil/dxil_waveops.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 struct DXILDispatcher
 {
@@ -208,4 +208,4 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 
 	return global_dispatcher.builder_lut[opcode](impl, instruction);
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

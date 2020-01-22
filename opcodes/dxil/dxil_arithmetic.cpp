@@ -19,7 +19,7 @@
 #include "dxil_arithmetic.hpp"
 #include "opcodes/converter_impl.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_imad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
@@ -304,4 +304,4 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 	return true;
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

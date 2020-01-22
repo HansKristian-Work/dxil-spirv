@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <vector>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 const void *DXILContainerParser::get_bitcode_data() const
 {
@@ -185,4 +185,4 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 
 	return true;
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

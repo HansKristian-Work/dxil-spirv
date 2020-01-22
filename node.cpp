@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <assert.h>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 void CFGNode::add_unique_pred(CFGNode *node)
 {
@@ -383,4 +383,4 @@ CFGNode *CFGNode::get_outer_header_dominator()
 	return node;
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

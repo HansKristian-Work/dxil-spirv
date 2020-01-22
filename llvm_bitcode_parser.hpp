@@ -22,7 +22,7 @@
 #include <llvm/IR/Module.h>
 #include <stddef.h>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 class LLVMBCParser
 {
@@ -36,4 +36,4 @@ private:
 	std::unique_ptr<llvm::LLVMContext> context;
 	std::unique_ptr<llvm::Module> module;
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

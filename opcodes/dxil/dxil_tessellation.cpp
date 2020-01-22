@@ -21,7 +21,7 @@
 #include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
@@ -192,4 +192,4 @@ bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::Cal
 	impl.fixup_load_sign(meta.component_type, 1, instruction);
 	return true;
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

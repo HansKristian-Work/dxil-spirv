@@ -21,7 +21,7 @@
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset)
 {
@@ -414,4 +414,4 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 	return true;
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

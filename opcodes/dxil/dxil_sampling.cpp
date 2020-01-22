@@ -20,7 +20,7 @@
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool get_image_dimensions_query_size(Converter::Impl &impl, spv::Builder &builder, spv::Id image_id,
                                      uint32_t *num_coords)
@@ -593,4 +593,4 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	builder.addCapability(spv::CapabilityImageQuery);
 	return true;
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

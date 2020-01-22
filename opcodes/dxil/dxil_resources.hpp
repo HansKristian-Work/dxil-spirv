@@ -21,7 +21,7 @@
 #include "GLSL.std.450.h"
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
@@ -35,4 +35,4 @@ static inline bool emit_interpolate_dispatch(Converter::Impl &impl, const llvm::
 {
 	return emit_interpolate_instruction(opcode, impl, instruction);
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

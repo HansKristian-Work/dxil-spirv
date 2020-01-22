@@ -19,7 +19,7 @@
 #pragma once
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_wave_is_first_lane_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_builtin_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction);

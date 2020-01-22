@@ -20,7 +20,7 @@
 
 #include "opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction);
 bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *instruction);
@@ -34,4 +34,4 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *instruction);
 bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction);
 bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgInst *instruction);
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

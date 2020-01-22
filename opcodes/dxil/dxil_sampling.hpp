@@ -19,7 +19,7 @@
 #pragma once
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool get_image_dimensions_query_size(Converter::Impl &impl, spv::Id image_id, uint32_t *num_coords);
 bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num_coords, uint32_t *num_dimensions);
@@ -44,4 +44,4 @@ static inline bool emit_texture_gather_dispatch(Converter::Impl &impl, const llv
 {
 	return emit_texture_gather_instruction(compare, impl, instruction);
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

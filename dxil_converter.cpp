@@ -28,7 +28,7 @@
 
 #include <utility>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 Converter::Converter(LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
 {
@@ -2124,4 +2124,4 @@ void Converter::scan_resources(ResourceRemappingInterface *iface, const LLVMBCPa
 	Impl::scan_resources(iface, bitcode_parser);
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

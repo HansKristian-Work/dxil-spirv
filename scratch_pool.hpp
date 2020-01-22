@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 template <typename T>
 class ScratchPool
@@ -75,4 +75,4 @@ private:
 	size_t next_allocate_size = 64;
 	std::vector<std::unique_ptr<T, MallocDeleter>> blocks;
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

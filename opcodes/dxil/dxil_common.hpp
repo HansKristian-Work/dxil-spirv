@@ -20,7 +20,7 @@
 #include "opcodes/opcodes.hpp"
 #include "SpvBuilder.h"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool get_constant_operand(const llvm::CallInst *value, unsigned index, uint32_t *operand);
 }

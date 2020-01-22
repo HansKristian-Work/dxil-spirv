@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <vector>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 class MemoryStream;
 
@@ -43,4 +43,4 @@ private:
 	bool parse_dxil(MemoryStream &stream);
 	bool parse_iosg1(MemoryStream &stream, std::vector<DXIL::IOElement> &elements);
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

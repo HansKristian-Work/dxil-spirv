@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <string>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 class MemoryStream
 {
@@ -52,4 +52,4 @@ private:
 	size_t blob_size;
 	size_t blob_offset = 0;
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

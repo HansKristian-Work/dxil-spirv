@@ -19,11 +19,11 @@
 #pragma once
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_stream_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_cut_stream_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_then_cut_stream_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_gs_instance_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_primitive_id_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

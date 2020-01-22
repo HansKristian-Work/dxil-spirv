@@ -20,8 +20,8 @@
 
 #include "opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 using DXILOperationBuilder = bool (*)(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

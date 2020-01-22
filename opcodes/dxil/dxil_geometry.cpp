@@ -21,7 +21,7 @@
 #include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_stream_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
@@ -98,4 +98,4 @@ bool emit_primitive_id_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

@@ -29,7 +29,7 @@
 #include <llvm/IR/Instructions.h>
 #include <stdlib.h>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 
 struct Converter::Impl
@@ -164,4 +164,4 @@ struct Converter::Impl
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

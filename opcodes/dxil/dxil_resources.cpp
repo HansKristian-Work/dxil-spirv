@@ -22,7 +22,7 @@
 #include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 static bool input_is_clip_distance(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta)
 {
@@ -735,4 +735,4 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 	}
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

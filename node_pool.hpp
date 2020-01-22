@@ -21,7 +21,7 @@
 #include <memory>
 #include <vector>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 struct CFGNode;
 
@@ -43,4 +43,4 @@ public:
 private:
 	std::vector<std::unique_ptr<CFGNode>> nodes;
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

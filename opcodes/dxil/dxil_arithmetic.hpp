@@ -20,7 +20,7 @@
 #include "GLSL.std.450.h"
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_imad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
@@ -87,4 +87,4 @@ static inline bool emit_bfe_dispatch(Converter::Impl &impl, const llvm::CallInst
 	return emit_bfe_instruction(opcode, impl, instruction);
 }
 
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

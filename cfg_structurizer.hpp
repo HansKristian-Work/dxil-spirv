@@ -26,7 +26,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 class BlockEmissionInterface;
 class SPIRVModule;
@@ -114,4 +114,4 @@ private:
 
 	void log_cfg(const char *tag) const;
 };
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

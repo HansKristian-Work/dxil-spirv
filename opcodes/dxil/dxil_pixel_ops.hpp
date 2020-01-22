@@ -19,7 +19,7 @@
 #pragma once
 #include "opcodes/opcodes.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
@@ -34,4 +34,4 @@ static inline bool emit_derivative_dispatch(Converter::Impl &impl, const llvm::C
 {
 	return emit_derivative_instruction(opcode, impl, instruction);
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

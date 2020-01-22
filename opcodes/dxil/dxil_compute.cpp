@@ -21,7 +21,7 @@
 #include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
@@ -96,4 +96,4 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl
 	impl.add(op);
 	return true;
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

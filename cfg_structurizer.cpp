@@ -26,7 +26,7 @@
 #include <assert.h>
 #include <unordered_set>
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule &module_)
     : entry_block(entry)
@@ -1936,4 +1936,4 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 		}
 	}
 }
-} // namespace DXIL2SPIRV
+} // namespace dxil_spv

@@ -18,6 +18,6 @@
 
 #include "ir.hpp"
 
-namespace DXIL2SPIRV
+namespace dxil_spv
 {
 }
