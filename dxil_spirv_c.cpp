@@ -483,24 +483,32 @@ void dxil_spv_converter_set_stream_output_remapper(
 }
 
 /* Useful to check if the implementation recognizes a particular capability for ABI compatibility. */
-dxil_spv_bool dxil_spv_converter_supports_capability(dxil_spv_capability cap)
+dxil_spv_bool dxil_spv_converter_supports_option(dxil_spv_option cap)
 {
-	return Converter::recognizes_capability(static_cast<Capability>(cap)) ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+	return Converter::recognizes_option(static_cast<Option>(cap)) ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 }
 
-dxil_spv_result dxil_spv_converter_add_capability(dxil_spv_converter converter,
-                                                  const dxil_spv_capability_base *cap)
+dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter,
+                                              const dxil_spv_option_base *option)
 {
-	if (!dxil_spv_converter_supports_capability(cap->type))
+	if (!dxil_spv_converter_supports_option(option->type))
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 
-	switch (cap->type)
+	switch (option->type)
 	{
-	case DXIL_SPV_CAPABILITY_SHADER_DEMOTE_TO_HELPER:
+	case DXIL_SPV_OPTION_SHADER_DEMOTE_TO_HELPER:
 	{
-		CapabilityShaderDemoteToHelper helper;
-		helper.supported = bool(reinterpret_cast<const dxil_spv_capability_shader_demote_to_helper *>(cap)->supported);
-		converter->converter.add_capability(helper);
+		OptionShaderDemoteToHelper helper;
+		helper.supported = bool(reinterpret_cast<const dxil_spv_option_shader_demote_to_helper *>(option)->supported);
+		converter->converter.add_option(helper);
+		break;
+	}
+
+	case DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING:
+	{
+		OptionDualSourceBlending helper;
+		helper.enabled = bool(reinterpret_cast<const dxil_spv_option_dual_source_blending *>(option)->enabled);
+		converter->converter.add_option(helper);
 		break;
 	}
 

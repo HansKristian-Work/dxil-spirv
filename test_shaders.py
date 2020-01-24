@@ -104,6 +104,8 @@ def cross_compile_dxil(shader, args, paths):
 
     if '.demote-to-helper.' in shader:
         glsl_cmd.append('--enable-shader-demote')
+    if '.dual-source-blending.' in shader:
+        glsl_cmd.append('--enable-dual-source-blending')
 
     subprocess.check_call(glsl_cmd)
     return (dxil_path, glsl_path)

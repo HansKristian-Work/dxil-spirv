@@ -201,23 +201,30 @@ typedef dxil_spv_bool (*dxil_spv_cbv_remapper_cb)(void *userdata,
                                                   const dxil_spv_d3d_binding *d3d_uav_binding,
                                                   dxil_spv_cbv_vulkan_binding *vulkan_uav_binding);
 
-typedef enum dxil_spv_capability
+typedef enum dxil_spv_option
 {
-	DXIL_SPV_CAPABILITY_INVALID = 0,
-	DXIL_SPV_CAPABILITY_SHADER_DEMOTE_TO_HELPER = 1,
-	DXIL_SPV_CAPABILITY_INT_MAX = 0x7fffffff
-} dxil_spv_capability;
+	DXIL_SPV_OPTION_INVALID = 0,
+	DXIL_SPV_OPTION_SHADER_DEMOTE_TO_HELPER = 1,
+	DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING = 2,
+	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
+} dxil_spv_option;
 
-typedef struct dxil_spv_capability_base
+typedef struct dxil_spv_option_base
 {
-	dxil_spv_capability type;
-} dxil_spv_capability_base;
+	dxil_spv_option type;
+} dxil_spv_option_base;
 
-typedef struct dxil_spv_capability_shader_demote_to_helper
+typedef struct dxil_spv_option_shader_demote_to_helper
 {
-	dxil_spv_capability_base base;
+	dxil_spv_option_base base;
 	dxil_spv_bool supported;
-} dxil_spv_capability_shader_demote_to_helper;
+} dxil_spv_option_shader_demote_to_helper;
+
+typedef struct dxil_spv_option_dual_source_blending
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool enabled;
+} dxil_spv_option_dual_source_blending;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
@@ -294,12 +301,12 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter co
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_spv_converter converter,
                                                                           dxil_spv_compiled_spirv *compiled);
 
-/* Useful to check if the implementation recognizes a particular capability for ABI compatibility. */
-DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_supports_capability(dxil_spv_capability cap);
-/* Adds a generic capability to the implementation which allows it to generate more advanced code if desired.
+/* Useful to check if the implementation recognizes a particular option for ABI compatibility. */
+DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_supports_option(dxil_spv_option option);
+/* Adds a generic option to the implementation which allows it to generate more advanced code or change codegen if desired.
  * Baseline assumed feature set is Vulkan 1.1 / SPIR-V 1.3. */
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_add_capability(dxil_spv_converter converter,
-                                                                      const dxil_spv_capability_base *cap);
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter,
+                                                                  const dxil_spv_option_base *option);
 
 /* Converter API */
 

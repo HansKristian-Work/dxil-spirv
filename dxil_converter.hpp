@@ -159,28 +159,38 @@ public:
 	virtual unsigned get_root_constant_word_count() = 0;
 };
 
-enum class Capability : uint32_t
+enum class Option : uint32_t
 {
 	Invalid = 0,
-	ShaderDemoteToHelper = 1
+	ShaderDemoteToHelper = 1,
+	DualSourceBlending = 2
 };
 
-struct CapabilityBase
+struct OptionBase
 {
-	explicit CapabilityBase(Capability cap)
+	explicit OptionBase(Option cap)
 		: type(cap)
 	{
 	}
-	Capability type;
+	Option type;
 };
 
-struct CapabilityShaderDemoteToHelper : CapabilityBase
+struct OptionShaderDemoteToHelper : OptionBase
 {
-	CapabilityShaderDemoteToHelper()
-		: CapabilityBase(Capability::ShaderDemoteToHelper)
+	OptionShaderDemoteToHelper()
+		: OptionBase(Option::ShaderDemoteToHelper)
 	{
 	}
 	bool supported = false;
+};
+
+struct OptionDualSourceBlending : OptionBase
+{
+	OptionDualSourceBlending()
+		: OptionBase(Option::DualSourceBlending)
+	{
+	}
+	bool enabled = false;
 };
 
 class Converter
@@ -194,8 +204,8 @@ public:
 	static ShaderStage get_shader_stage(const LLVMBCParser &bitcode_parser);
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser);
 
-	void add_capability(const CapabilityBase &cap);
-	static bool recognizes_capability(Capability cap);
+	void add_option(const OptionBase &cap);
+	static bool recognizes_option(Option cap);
 
 	struct Impl;
 

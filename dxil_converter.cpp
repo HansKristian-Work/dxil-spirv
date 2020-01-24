@@ -1015,7 +1015,24 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		if (system_value == DXIL::Semantic::Target)
 		{
-			builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
+			if (options.dual_source_blending)
+			{
+				if (start_row == 0 || start_row == 1)
+				{
+					if (rows != 1)
+					{
+						LOGE("For dual source blending, number of rows must be 1.\n");
+						return false;
+					}
+					builder.addDecoration(variable_id, spv::DecorationLocation, 0);
+					builder.addDecoration(variable_id, spv::DecorationIndex, start_row);
+				}
+			}
+			else
+				builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
+
+			if (start_col != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
 		else if (system_value != DXIL::Semantic::User)
 		{
@@ -2113,12 +2130,16 @@ spv::Builder &Converter::Impl::builder()
 	return spirv_module.get_builder();
 }
 
-void Converter::Impl::add_capability(const CapabilityBase &cap)
+void Converter::Impl::add_capability(const OptionBase &cap)
 {
 	switch (cap.type)
 	{
-	case Capability::ShaderDemoteToHelper:
-		caps.shader_demote = static_cast<const CapabilityShaderDemoteToHelper &>(cap).supported;
+	case Option::ShaderDemoteToHelper:
+		options.shader_demote = static_cast<const OptionShaderDemoteToHelper &>(cap).supported;
+		break;
+
+	case Option::DualSourceBlending:
+		options.dual_source_blending = static_cast<const OptionDualSourceBlending &>(cap).enabled;
 		break;
 
 	default:
@@ -2141,16 +2162,17 @@ void Converter::scan_resources(ResourceRemappingInterface *iface, const LLVMBCPa
 	Impl::scan_resources(iface, bitcode_parser);
 }
 
-void Converter::add_capability(const CapabilityBase &cap)
+void Converter::add_option(const OptionBase &cap)
 {
 	impl->add_capability(cap);
 }
 
-bool Converter::recognizes_capability(Capability cap)
+bool Converter::recognizes_option(Option cap)
 {
 	switch (cap)
 	{
-	case Capability::ShaderDemoteToHelper:
+	case Option::ShaderDemoteToHelper:
+	case Option::DualSourceBlending:
 		return true;
 
 	default:

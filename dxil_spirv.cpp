@@ -121,7 +121,8 @@ static void print_help()
 	     "\t[--root-constant space binding word_offset word_count]\n"
 	     "\t[--vertex-input semantic location]\n"
 	     "\t[--stream-output semantic index offset stride buffer-index]\n"
-	     "\t[--enable-shader-demote]\n");
+	     "\t[--enable-shader-demote]\n"
+	     "\t[--enable-dual-source-blending]\n");
 }
 
 struct Arguments
@@ -133,6 +134,7 @@ struct Arguments
 	bool validate = false;
 	bool glsl_embed_asm = false;
 	bool shader_demote = false;
+	bool dual_source_blending = false;
 };
 
 struct Remapper
@@ -274,6 +276,9 @@ int main(int argc, char **argv)
 	cbs.add("--enable-shader-demote", [&](CLIParser &) {
 		args.shader_demote = true;
 	});
+	cbs.add("--enable-dual-source-blending", [&](CLIParser &) {
+		args.dual_source_blending = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -326,8 +331,14 @@ int main(int argc, char **argv)
 
 	if (args.shader_demote)
 	{
-		const dxil_spv_capability_shader_demote_to_helper helper = { { DXIL_SPV_CAPABILITY_SHADER_DEMOTE_TO_HELPER }, DXIL_SPV_TRUE };
-		dxil_spv_converter_add_capability(converter, &helper.base);
+		const dxil_spv_option_shader_demote_to_helper helper = {{DXIL_SPV_OPTION_SHADER_DEMOTE_TO_HELPER }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &helper.base);
+	}
+
+	if (args.dual_source_blending)
+	{
+		const dxil_spv_option_dual_source_blending helper = {{DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &helper.base);
 	}
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)

@@ -164,10 +164,11 @@ struct Converter::Impl
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 
-	void add_capability(const CapabilityBase &cap);
+	void add_capability(const OptionBase &cap);
 	struct
 	{
 		bool shader_demote = false;
-	} caps;
+		bool dual_source_blending = false;
+	} options;
 };
 } // namespace dxil_spv
