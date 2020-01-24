@@ -26,9 +26,9 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
-    set(DXIL2SPIRV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -fno-exceptions)
+    set(DXIL_SPV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -fno-exceptions)
 elseif (MSVC)
-    set(DXIL2SPIRV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
+    set(DXIL_SPV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
 
 add_subdirectory(third_party/spirv-headers EXCLUDE_FROM_ALL)
@@ -64,7 +64,7 @@ add_library(spirv-module STATIC
 set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC glslang-spirv-builder dxil-spirv-headers)
-target_compile_options(spirv-module PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+target_compile_options(spirv-module PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
 add_library(dxil-debug INTERFACE)
 target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
@@ -96,7 +96,7 @@ add_library(dxil-converter STATIC
 set_target_properties(dxil-converter PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter PRIVATE dxil-debug)
-target_compile_options(dxil-converter PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+target_compile_options(dxil-converter PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
 llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
 target_link_libraries(dxil-converter PRIVATE ${llvm_libs})
@@ -109,7 +109,7 @@ target_include_directories(dxil-spirv-c-shared
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include/dxil-spirv>)
 target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter)
-target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 set_target_properties(dxil-spirv-c-shared PROPERTIES
         PUBLIC_HEADERS dxil_spirv_c.h)
 
@@ -123,11 +123,11 @@ if (DXIL_SPIRV_CLI)
             third_party/cli_parser/cli_parser.cpp)
     target_include_directories(cli-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cli_parser)
     target_link_libraries(cli-parser PUBLIC dxil-debug)
-    target_compile_options(cli-parser PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+    target_compile_options(cli-parser PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
     add_executable(dxil-spirv dxil_spirv.cpp)
     target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools spirv-cross-c dxil-debug)
-    target_compile_options(dxil-spirv PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+    target_compile_options(dxil-spirv PRIVATE ${DXIL_SPV_CXX_FLAGS})
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 0)
@@ -158,5 +158,5 @@ install(EXPORT dxil_spirv_c_sharedConfig DESTINATION share/dxil_spirv_c_shared/c
 
 #add_executable(structurize-test structurize_test.cpp)
 #target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools spirv-cross-glsl dxil-debug)
-#target_compile_options(structurize-test PRIVATE ${DXIL2SPIRV_CXX_FLAGS})
+#target_compile_options(structurize-test PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
