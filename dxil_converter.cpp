@@ -1210,6 +1210,10 @@ bool Converter::Impl::emit_global_variables()
 		if (initializer && llvm::isa<llvm::UndefValue>(initializer))
 			initializer = nullptr;
 
+		// Workaround strange DXIL codegen where a resource is declared as an external constant.
+		if (global.getType()->getPointerElementType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+			continue;
+
 		if (address_space == DXIL::AddressSpace::GroupShared)
 		{
 			if (initializer)
