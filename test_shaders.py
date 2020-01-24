@@ -102,6 +102,9 @@ def cross_compile_dxil(shader, args, paths):
     if '.invalid.' not in shader:
         glsl_cmd.append('--validate')
 
+    if '.demote-to-helper.' in shader:
+        glsl_cmd.append('--enable-shader-demote')
+
     subprocess.check_call(glsl_cmd)
     return (dxil_path, glsl_path)
 

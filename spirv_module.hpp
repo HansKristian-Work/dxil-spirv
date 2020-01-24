@@ -53,7 +53,7 @@ public:
 	spv::Instruction *get_entry_point();
 	spv::Function *get_entry_function();
 
-	void enable_shader_discard();
+	void enable_shader_discard(bool support_demote);
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
 	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;

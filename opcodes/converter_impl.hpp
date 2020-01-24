@@ -163,5 +163,11 @@ struct Converter::Impl
 	spv::Id cmpxchg_type = 0;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
+
+	void add_capability(const CapabilityBase &cap);
+	struct
+	{
+		bool shader_demote = false;
+	} caps;
 };
 } // namespace dxil_spv

@@ -159,6 +159,30 @@ public:
 	virtual unsigned get_root_constant_word_count() = 0;
 };
 
+enum class Capability : uint32_t
+{
+	Invalid = 0,
+	ShaderDemoteToHelper = 1
+};
+
+struct CapabilityBase
+{
+	explicit CapabilityBase(Capability cap)
+		: type(cap)
+	{
+	}
+	Capability type;
+};
+
+struct CapabilityShaderDemoteToHelper : CapabilityBase
+{
+	CapabilityShaderDemoteToHelper()
+		: CapabilityBase(Capability::ShaderDemoteToHelper)
+	{
+	}
+	bool supported = false;
+};
+
 class Converter
 {
 public:
@@ -169,6 +193,9 @@ public:
 
 	static ShaderStage get_shader_stage(const LLVMBCParser &bitcode_parser);
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser);
+
+	void add_capability(const CapabilityBase &cap);
+	static bool recognizes_capability(Capability cap);
 
 	struct Impl;
 

@@ -26,7 +26,7 @@ bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 {
 	Operation *op = impl.allocate(spv::OpDemoteToHelperInvocationEXT);
 	impl.add(op);
-	impl.spirv_module.enable_shader_discard();
+	impl.spirv_module.enable_shader_discard(impl.caps.shader_demote);
 	return true;
 }
 

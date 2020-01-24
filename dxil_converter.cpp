@@ -2109,6 +2109,19 @@ spv::Builder &Converter::Impl::builder()
 	return spirv_module.get_builder();
 }
 
+void Converter::Impl::add_capability(const CapabilityBase &cap)
+{
+	switch (cap.type)
+	{
+	case Capability::ShaderDemoteToHelper:
+		caps.shader_demote = static_cast<const CapabilityShaderDemoteToHelper &>(cap).supported;
+		break;
+
+	default:
+		break;
+	}
+}
+
 void Converter::set_resource_remapping_interface(ResourceRemappingInterface *iface)
 {
 	impl->resource_mapping_iface = iface;
@@ -2122,6 +2135,23 @@ ShaderStage Converter::get_shader_stage(const LLVMBCParser &bitcode_parser)
 void Converter::scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser)
 {
 	Impl::scan_resources(iface, bitcode_parser);
+}
+
+void Converter::add_capability(const CapabilityBase &cap)
+{
+	impl->add_capability(cap);
+}
+
+bool Converter::recognizes_capability(Capability cap)
+{
+	switch (cap)
+	{
+	case Capability::ShaderDemoteToHelper:
+		return true;
+
+	default:
+		return false;
+	}
 }
 
 } // namespace dxil_spv

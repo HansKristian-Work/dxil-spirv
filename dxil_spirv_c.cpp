@@ -482,3 +482,32 @@ void dxil_spv_converter_set_stream_output_remapper(
 	converter->remapper.output_userdata = userdata;
 }
 
+/* Useful to check if the implementation recognizes a particular capability for ABI compatibility. */
+dxil_spv_bool dxil_spv_converter_supports_capability(dxil_spv_capability cap)
+{
+	return Converter::recognizes_capability(static_cast<Capability>(cap)) ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+}
+
+dxil_spv_result dxil_spv_converter_add_capability(dxil_spv_converter converter,
+                                                  const dxil_spv_capability_base *cap)
+{
+	if (!dxil_spv_converter_supports_capability(cap->type))
+		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
+
+	switch (cap->type)
+	{
+	case DXIL_SPV_CAPABILITY_SHADER_DEMOTE_TO_HELPER:
+	{
+		CapabilityShaderDemoteToHelper helper;
+		helper.supported = bool(reinterpret_cast<const dxil_spv_capability_shader_demote_to_helper *>(cap)->supported);
+		converter->converter.add_capability(helper);
+		break;
+	}
+
+	default:
+		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
+	}
+
+	return DXIL_SPV_SUCCESS;
+}
+

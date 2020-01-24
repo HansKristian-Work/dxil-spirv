@@ -47,11 +47,16 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void emit_leaf_function_body(spv::Function *func, CFGStructurizer &structurizer);
 	static spv::Block *get_spv_block(CFGNode *node);
 
-	void enable_shader_discard();
+	void enable_shader_discard(bool supports_demote);
 	void build_discard_call_early();
 	void build_discard_call_exit();
 	spv::Function *discard_function = nullptr;
 	spv::Id discard_state_var_id = 0;
+
+	struct
+	{
+		bool supports_demote = false;
+	} caps;
 
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
@@ -167,9 +172,10 @@ void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model, const char *
 		builder.addExecutionMode(entry_function, spv::ExecutionMode::ExecutionModeOriginUpperLeft);
 }
 
-void SPIRVModule::Impl::enable_shader_discard()
+void SPIRVModule::Impl::enable_shader_discard(bool supports_demote)
 {
-	if (!discard_state_var_id)
+	caps.supports_demote = supports_demote;
+	if (!discard_state_var_id && !caps.supports_demote)
 	{
 		auto *current_build_point = builder.getBuildPoint();
 		discard_state_var_id =
@@ -272,12 +278,18 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	// Emit opcodes.
 	for (auto *op : ir.operations)
 	{
-		if (op->op == spv::OpDemoteToHelperInvocationEXT)
+		if (op->op == spv::OpDemoteToHelperInvocationEXT && !caps.supports_demote)
 		{
 			build_discard_call_early();
 		}
 		else
 		{
+			if (op->op == spv::OpDemoteToHelperInvocationEXT)
+			{
+				builder.addExtension("SPV_EXT_demote_to_helper_invocation");
+				builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
+			}
+
 			std::unique_ptr<spv::Instruction> inst;
 			if (op->id != 0)
 				inst = std::make_unique<spv::Instruction>(op->id, op->type_id, op->op);
@@ -453,9 +465,9 @@ uint32_t SPIRVModule::allocate_ids(uint32_t count)
 	return impl->builder.getUniqueIds(count);
 }
 
-void SPIRVModule::enable_shader_discard()
+void SPIRVModule::enable_shader_discard(bool supports_demote)
 {
-	impl->enable_shader_discard();
+	impl->enable_shader_discard(supports_demote);
 }
 
 spv::Id SPIRVModule::get_builtin_shader_input(spv::BuiltIn builtin)

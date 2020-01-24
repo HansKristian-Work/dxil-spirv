@@ -120,7 +120,8 @@ static void print_help()
 	     "\t[--glsl-embed-asm]\n"
 	     "\t[--root-constant space binding word_offset word_count]\n"
 	     "\t[--vertex-input semantic location]\n"
-	     "\t[--stream-output semantic index offset stride buffer-index]\n");
+	     "\t[--stream-output semantic index offset stride buffer-index]\n"
+	     "\t[--enable-shader-demote]\n");
 }
 
 struct Arguments
@@ -131,6 +132,7 @@ struct Arguments
 	bool glsl = false;
 	bool validate = false;
 	bool glsl_embed_asm = false;
+	bool shader_demote = false;
 };
 
 struct Remapper
@@ -269,6 +271,9 @@ int main(int argc, char **argv)
 		unsigned buffer_index = parser.next_uint();
 		remapper.stream_outputs.push_back({ std::string(sem), index, offset, stride, buffer_index });
 	});
+	cbs.add("--enable-shader-demote", [&](CLIParser &) {
+		args.shader_demote = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -318,6 +323,12 @@ int main(int argc, char **argv)
 	dxil_spv_converter_set_vertex_input_remapper(converter, remap_vertex_input, &remapper);
 	dxil_spv_converter_set_stream_output_remapper(converter, remap_stream_output, &remapper);
 	dxil_spv_converter_set_root_constant_word_count(converter, remapper.root_constant_word_count);
+
+	if (args.shader_demote)
+	{
+		const dxil_spv_capability_shader_demote_to_helper helper = { { DXIL_SPV_CAPABILITY_SHADER_DEMOTE_TO_HELPER }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_capability(converter, &helper.base);
+	}
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
 	{
