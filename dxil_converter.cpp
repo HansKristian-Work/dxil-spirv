@@ -990,6 +990,10 @@ bool Converter::Impl::emit_stage_output_variables()
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, element_type };
 
+		// For HS <-> DS, ignore system values.
+		if (execution_model == spv::ExecutionModelTessellationControl)
+			system_value = DXIL::Semantic::User;
+
 		if (execution_model == spv::ExecutionModelVertex ||
 		    execution_model == spv::ExecutionModelGeometry ||
 		    execution_model == spv::ExecutionModelTessellationEvaluation)
@@ -1311,6 +1315,10 @@ bool Converter::Impl::emit_stage_input_variables()
 
 		if (execution_model == spv::ExecutionModelTessellationEvaluation)
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
+
+		// For HS <-> DS, ignore system values.
+		if (execution_model == spv::ExecutionModelTessellationEvaluation)
+			system_value = DXIL::Semantic::User;
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 		if (system_value == DXIL::Semantic::Position)
