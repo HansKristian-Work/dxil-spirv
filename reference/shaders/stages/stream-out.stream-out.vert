@@ -1,7 +1,12 @@
 #version 460
 
-layout(location = 1, offset = 0) out vec4 StreamOut;
-layout(location = 2, offset = 0) out vec4 StreamOut_1;
+layout(xfb_buffer = 1, xfb_stride = 32) out gl_PerVertex
+{
+    layout(xfb_offset = 16) vec4 gl_Position;
+};
+
+layout(location = 1, xfb_buffer = 0, xfb_stride = 32, xfb_offset = 0) out vec4 StreamOut;
+layout(location = 2, xfb_buffer = 1, xfb_stride = 16, xfb_offset = 0) out vec4 StreamOut_1;
 
 void main()
 {

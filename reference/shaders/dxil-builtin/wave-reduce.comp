@@ -29,8 +29,8 @@ void main()
     imageStore(_9, int(_36 >> 2u), uvec4(subgroupAnd(gl_GlobalInvocationID.x)));
     imageStore(_9, int(_41 >> 2u), uvec4(subgroupOr(gl_GlobalInvocationID.x)));
     imageStore(_9, int(_46 >> 2u), uvec4(subgroupXor(gl_GlobalInvocationID.x)));
-    imageStore(_9, int(_51 >> 2u), uvec4(subgroupMin(gl_GlobalInvocationID.x)));
-    imageStore(_9, int(_56 >> 2u), uvec4(subgroupMax(gl_GlobalInvocationID.x)));
+    imageStore(_9, int(_51 >> 2u), uvec4(uint(subgroupMin(int(gl_GlobalInvocationID.x)))));
+    imageStore(_9, int(_56 >> 2u), uvec4(uint(subgroupMax(int(gl_GlobalInvocationID.x)))));
     float _82 = float(gl_GlobalInvocationID.x);
     imageStore(_10, int(_23 >> 2u), uvec4(uint(subgroupAdd(_82))));
     imageStore(_10, int(_31 >> 2u), uvec4(uint(subgroupMul(_82))));
