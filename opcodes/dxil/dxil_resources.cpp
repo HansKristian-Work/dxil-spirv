@@ -134,7 +134,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			Operation *cast_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
 			cast_op->add_ids({
 			    impl.get_id_for_value(instruction),
-			    builder.makeUintConstant(1),
+			    builder.makeUintConstant(~0u),
 			    builder.makeUintConstant(0),
 			});
 			impl.add(cast_op);

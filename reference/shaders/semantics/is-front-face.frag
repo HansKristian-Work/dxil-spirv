@@ -4,7 +4,7 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    SV_Target = float(uint(gl_FrontFacing) != 0u);
+    SV_Target = float((gl_FrontFacing ? 4294967295u : 0u) != 0u);
 }
 
 
@@ -76,7 +76,7 @@ OpDecorate %11 Location 0
 %9 = OpTypeFloat 32
 %10 = OpTypePointer Output %9
 %11 = OpVariable %10 Output
-%14 = OpConstant %5 1
+%14 = OpConstant %5 4294967295
 %15 = OpConstant %5 0
 %18 = OpConstant %9 1
 %19 = OpConstant %9 0
