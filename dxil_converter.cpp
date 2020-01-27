@@ -868,7 +868,6 @@ bool Converter::Impl::emit_patch_variables()
 		if (patch->getOperand(4))
 			semantic_index = get_constant_metadata(llvm::cast<llvm::MDNode>(patch->getOperand(4)), 0);
 
-		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(patch, 5));
 		auto rows = get_constant_metadata(patch, 6);
 		auto cols = get_constant_metadata(patch, 7);
 
@@ -898,7 +897,6 @@ bool Converter::Impl::emit_patch_variables()
 		}
 		else
 		{
-			emit_interpolation_decorations(variable_id, interpolation);
 			// Patch constants are packed together with control point variables,
 			// so we need to apply an offset to make this work in SPIR-V.
 			// The offset is deduced from the control point I/O signature.
@@ -1040,7 +1038,13 @@ bool Converter::Impl::emit_stage_output_variables()
 		}
 		else
 		{
-			emit_interpolation_decorations(variable_id, interpolation);
+			if (execution_model == spv::ExecutionModelVertex ||
+			    execution_model == spv::ExecutionModelTessellationEvaluation ||
+			    execution_model == spv::ExecutionModelGeometry)
+			{
+				emit_interpolation_decorations(variable_id, interpolation);
+			}
+
 			builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
 			if (start_col != 0)
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
@@ -1350,7 +1354,8 @@ bool Converter::Impl::emit_stage_input_variables()
 		}
 		else
 		{
-			emit_interpolation_decorations(variable_id, interpolation);
+			if (execution_model == spv::ExecutionModelFragment)
+				emit_interpolation_decorations(variable_id, interpolation);
 
 			VulkanVertexInput vk_input = { start_row };
 			if (execution_model == spv::ExecutionModelVertex && resource_mapping_iface)
