@@ -104,6 +104,7 @@ OpCapability Geometry
 OpCapability MultiViewport
 OpMemoryModel Logical GLSL450
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %16
+OpExecutionMode %3 Invocations 1
 OpExecutionMode %3 OutputVertices 2
 OpExecutionMode %3 InputPoints
 OpExecutionMode %3 OutputPoints

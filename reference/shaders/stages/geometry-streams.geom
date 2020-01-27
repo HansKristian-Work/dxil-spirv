@@ -127,6 +127,7 @@ OpCapability Geometry
 OpCapability GeometryStreams
 OpMemoryModel Logical GLSL450
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %15 %16 %17
+OpExecutionMode %3 Invocations 1
 OpExecutionMode %3 OutputVertices 3
 OpExecutionMode %3 InputPoints
 OpExecutionMode %3 OutputPoints

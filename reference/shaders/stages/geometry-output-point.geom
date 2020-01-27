@@ -90,6 +90,7 @@ OpCapability Shader
 OpCapability Geometry
 OpMemoryModel Logical GLSL450
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %15
+OpExecutionMode %3 Invocations 1
 OpExecutionMode %3 OutputVertices 1
 OpExecutionMode %3 Triangles
 OpExecutionMode %3 OutputPoints

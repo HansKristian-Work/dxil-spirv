@@ -1769,9 +1769,7 @@ bool Converter::Impl::emit_execution_modes_geometry()
 
 				execution_mode_meta.gs_stream_active_mask = get_constant_metadata(arguments, 2);
 
-				if (gs_instances > 1)
-					builder.addExecutionMode(func, spv::ExecutionModeInvocations, gs_instances);
-
+				builder.addExecutionMode(func, spv::ExecutionModeInvocations, gs_instances);
 				builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
 
 				switch (input_primitive)
