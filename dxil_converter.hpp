@@ -163,7 +163,8 @@ enum class Option : uint32_t
 {
 	Invalid = 0,
 	ShaderDemoteToHelper = 1,
-	DualSourceBlending = 2
+	DualSourceBlending = 2,
+	OutputSwizzle = 3
 };
 
 struct OptionBase
@@ -191,6 +192,16 @@ struct OptionDualSourceBlending : OptionBase
 	{
 	}
 	bool enabled = false;
+};
+
+struct OptionOutputSwizzle : OptionBase
+{
+	OptionOutputSwizzle()
+		: OptionBase(Option::OutputSwizzle)
+	{
+	}
+	const unsigned *swizzles = nullptr;
+	unsigned swizzle_count = 0;
 };
 
 class Converter

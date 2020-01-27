@@ -99,6 +99,14 @@ def cross_compile_dxil(shader, args, paths):
         glsl_cmd.append('16')
         glsl_cmd.append('1')
 
+    if '.rt-swizzle.' in shader:
+        glsl_cmd.append('--output-rt-swizzle')
+        glsl_cmd.append('0')
+        glsl_cmd.append('wxyz')
+        glsl_cmd.append('--output-rt-swizzle')
+        glsl_cmd.append('1')
+        glsl_cmd.append('yxwz')
+
     if '.invalid.' not in shader:
         glsl_cmd.append('--validate')
 

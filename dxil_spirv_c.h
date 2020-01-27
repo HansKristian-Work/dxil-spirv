@@ -206,6 +206,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_INVALID = 0,
 	DXIL_SPV_OPTION_SHADER_DEMOTE_TO_HELPER = 1,
 	DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING = 2,
+	DXIL_SPV_OPTION_OUTPUT_SWIZZLE = 3,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -225,6 +226,21 @@ typedef struct dxil_spv_option_dual_source_blending
 	dxil_spv_option_base base;
 	dxil_spv_bool enabled;
 } dxil_spv_option_dual_source_blending;
+
+typedef struct dxil_spv_option_output_swizzle
+{
+	dxil_spv_option_base base;
+	/* Each element represents one SV_Target location in a pixel shader.
+	 * Bits [0:1] represent which output component to emit in R.
+	 * Bits [2:3] represent which output component to emit in G.
+	 * Bits [4:5] represent which output component to emit in B.
+	 * Bits [6:7] represent which output component to emit in A.
+	 * There must exist a 1:1 mapping between input and output, i.e. all components must be used
+	 * an an input to exactly one output component.
+	 */
+	const unsigned *swizzles;
+	unsigned swizzle_count;
+} dxil_spv_option_output_swizzle;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

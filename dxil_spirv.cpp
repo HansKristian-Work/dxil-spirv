@@ -122,7 +122,8 @@ static void print_help()
 	     "\t[--vertex-input semantic location]\n"
 	     "\t[--stream-output semantic index offset stride buffer-index]\n"
 	     "\t[--enable-shader-demote]\n"
-	     "\t[--enable-dual-source-blending]\n");
+	     "\t[--enable-dual-source-blending]\n"
+	     "\t[--output-rt-swizzle index xyzw]\n");
 }
 
 struct Arguments
@@ -135,6 +136,7 @@ struct Arguments
 	bool glsl_embed_asm = false;
 	bool shader_demote = false;
 	bool dual_source_blending = false;
+	std::vector<unsigned> swizzles;
 };
 
 struct Remapper
@@ -240,6 +242,9 @@ int main(int argc, char **argv)
 	Arguments args;
 	Remapper remapper;
 
+	// Begin with identity swizzles.
+	args.swizzles.resize(8, 0 | (1 << 2) | (2 << 4) | (3 << 6));
+
 	CLICallbacks cbs;
 	cbs.add("--help", [](CLIParser &parser) {
 		print_help();
@@ -278,6 +283,68 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--enable-dual-source-blending", [&](CLIParser &) {
 		args.dual_source_blending = true;
+	});
+	cbs.add("--output-rt-swizzle", [&](CLIParser &parser) {
+		unsigned index = parser.next_uint();
+		if (index >= args.swizzles.size())
+		{
+			LOGE("RT index out of range.\n");
+			print_help();
+			parser.end();
+			return;
+		}
+
+		const char *arg = parser.next_string();
+		if (strlen(arg) != 4)
+		{
+			LOGE("RT swizzle must be 4 characters (x, y, z, w).\n");
+			print_help();
+			parser.end();
+			return;
+		}
+
+		auto &swiz = args.swizzles[index];
+		swiz = 0;
+
+		for (unsigned c = 0; c < 4; c++)
+		{
+			switch (arg[c])
+			{
+			case 'x':
+			case 'X':
+			case 'r':
+			case 'R':
+				swiz |= 0 << (2 * c);
+				break;
+
+			case 'y':
+			case 'Y':
+			case 'g':
+			case 'G':
+				swiz |= 1 << (2 * c);
+				break;
+
+			case 'z':
+			case 'Z':
+			case 'b':
+			case 'B':
+				swiz |= 2 << (2 * c);
+				break;
+
+			case 'w':
+			case 'W':
+			case 'a':
+			case 'A':
+				swiz |= 3 << (2 * c);
+				break;
+
+			default:
+				LOGE("Invalid swizzle character %c.\n", arg[c]);
+				print_help();
+				parser.end();
+				return;
+			}
+		}
 	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
@@ -340,6 +407,9 @@ int main(int argc, char **argv)
 		const dxil_spv_option_dual_source_blending helper = {{DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING }, DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &helper.base);
 	}
+
+	const dxil_spv_option_output_swizzle swizzle = {{ DXIL_SPV_OPTION_OUTPUT_SWIZZLE }, args.swizzles.data(), unsigned(args.swizzles.size()) };
+	dxil_spv_converter_add_option(converter, &swizzle.base);
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
 	{

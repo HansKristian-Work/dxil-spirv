@@ -134,6 +134,7 @@ struct Converter::Impl
 	{
 		spv::Id id;
 		DXIL::ComponentType component_type;
+		unsigned rt_index;
 	};
 	std::unordered_map<uint32_t, ElementMeta> input_elements_meta;
 	std::unordered_map<uint32_t, ElementMeta> output_elements_meta;
@@ -169,6 +170,7 @@ struct Converter::Impl
 	{
 		bool shader_demote = false;
 		bool dual_source_blending = false;
+		std::vector<unsigned> output_swizzles;
 	} options;
 };
 } // namespace dxil_spv

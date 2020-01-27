@@ -889,7 +889,7 @@ bool Converter::Impl::emit_patch_variables()
 		}
 
 		spv::Id variable_id = builder.createVariable(storage, type_id, variable_name.c_str());
-		patch_elements_meta[element_id] = { variable_id, element_type };
+		patch_elements_meta[element_id] = { variable_id, element_type, 0 };
 
 		if (system_value != DXIL::Semantic::User)
 		{
@@ -988,7 +988,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, variable_name.c_str());
-		output_elements_meta[element_id] = { variable_id, element_type };
+		output_elements_meta[element_id] = { variable_id, element_type, 0 };
 
 		// For HS <-> DS, ignore system values.
 		if (execution_model == spv::ExecutionModelTessellationControl)
@@ -1028,10 +1028,19 @@ bool Converter::Impl::emit_stage_output_variables()
 					}
 					builder.addDecoration(variable_id, spv::DecorationLocation, 0);
 					builder.addDecoration(variable_id, spv::DecorationIndex, start_row);
+					output_elements_meta[element_id].rt_index = 0;
+				}
+				else
+				{
+					LOGE("For dual source blending, only RT 0 and 1 can be used.\n");
+					return false;
 				}
 			}
 			else
+			{
 				builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
+				output_elements_meta[element_id].rt_index = start_row;
+			}
 
 			if (start_col != 0)
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
@@ -1363,7 +1372,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, variable_name.c_str());
-		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type) };
+		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type), 0 };
 
 		if (system_value != DXIL::Semantic::User)
 		{
@@ -2165,6 +2174,14 @@ void Converter::Impl::add_capability(const OptionBase &cap)
 		options.dual_source_blending = static_cast<const OptionDualSourceBlending &>(cap).enabled;
 		break;
 
+	case Option::OutputSwizzle:
+	{
+		auto &swiz = static_cast<const OptionOutputSwizzle &>(cap);
+		options.output_swizzles.clear();
+		options.output_swizzles.insert(options.output_swizzles.end(), swiz.swizzles, swiz.swizzles + swiz.swizzle_count);
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -2196,6 +2213,7 @@ bool Converter::recognizes_option(Option cap)
 	{
 	case Option::ShaderDemoteToHelper:
 	case Option::DualSourceBlending:
+	case Option::OutputSwizzle:
 		return true;
 
 	default:

@@ -512,6 +512,16 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter,
 		break;
 	}
 
+	case DXIL_SPV_OPTION_OUTPUT_SWIZZLE:
+	{
+		OptionOutputSwizzle helper;
+		const auto *input = reinterpret_cast<const dxil_spv_option_output_swizzle *>(option);
+		helper.swizzles = input->swizzles;
+		helper.swizzle_count = input->swizzle_count;
+		converter->converter.add_option(helper);
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

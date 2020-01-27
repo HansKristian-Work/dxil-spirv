@@ -395,10 +395,37 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 		op->add_id(var_id);
 		if (is_control_point_output)
 			op->add_id(build_load_invocation_id(impl));
+
 		if (row_index)
 			op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+
 		if (num_cols > 1)
-			op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
+		{
+			unsigned col;
+			if (!get_constant_operand(instruction, 3, &col))
+			{
+				LOGE("Column index to StoreOutput must be a constant.\n");
+				return false;
+			}
+
+			// If we need to swizzle fragment shader outputs, do it here.
+			if (impl.execution_model == spv::ExecutionModelFragment &&
+			    meta.rt_index < impl.options.output_swizzles.size())
+			{
+				// Assume a 1:1 reversible mapping, so we don't need to splat the write or something like that.
+				unsigned swiz = impl.options.output_swizzles[meta.rt_index];
+				for (unsigned output_component = 0; output_component < 4; output_component++)
+				{
+					if (((swiz >> (2u * output_component)) & 3u) == col)
+					{
+						col = output_component;
+						break;
+					}
+				}
+			}
+
+			op->add_id(builder.makeUintConstant(col));
+		}
 
 		impl.add(op);
 	}
