@@ -1190,7 +1190,8 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		else
 		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInLayer);
-			builder.addDecoration(id, spv::DecorationFlat);
+			if (execution_model == spv::ExecutionModelFragment)
+				builder.addDecoration(id, spv::DecorationFlat);
 		}
 		builder.addCapability(spv::CapabilityGeometry);
 		break;
@@ -1200,7 +1201,11 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		if (storage == spv::StorageClassOutput)
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInViewportIndex);
 		else
+		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInViewportIndex);
+			if (execution_model == spv::ExecutionModelFragment)
+				builder.addDecoration(id, spv::DecorationFlat);
+		}
 		builder.addCapability(spv::CapabilityMultiViewport);
 		break;
 
@@ -1209,7 +1214,11 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		if (storage == spv::StorageClassOutput)
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInPrimitiveId);
 		else
+		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInPrimitiveId);
+			if (execution_model == spv::ExecutionModelFragment)
+				builder.addDecoration(id, spv::DecorationFlat);
+		}
 		builder.addCapability(spv::CapabilityGeometry);
 		break;
 
