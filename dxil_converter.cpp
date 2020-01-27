@@ -1180,7 +1180,10 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		if (storage == spv::StorageClassOutput)
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInLayer);
 		else
+		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInLayer);
+			builder.addDecoration(id, spv::DecorationFlat);
+		}
 		builder.addCapability(spv::CapabilityGeometry);
 		break;
 
