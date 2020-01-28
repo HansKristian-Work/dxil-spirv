@@ -55,6 +55,7 @@ public:
 
 	void enable_shader_discard(bool support_demote);
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
+	spv::Id get_builtin_shader_output(spv::BuiltIn builtin);
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
 	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;
 

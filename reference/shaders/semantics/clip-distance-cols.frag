@@ -72,7 +72,6 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %11 %14
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
-OpName %11 "SV_ClipDistance"
 OpName %14 "SV_Target"
 OpDecorate %11 BuiltIn ClipDistance
 OpDecorate %14 Location 0

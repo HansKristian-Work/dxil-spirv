@@ -947,6 +947,9 @@ bool Converter::Impl::emit_stage_output_variables()
 
 	auto &builder = spirv_module.get_builder();
 
+	unsigned clip_distance_count = 0;
+	unsigned cull_distance_count = 0;
+
 	for (unsigned i = 0; i < outputs_node->getNumOperands(); i++)
 	{
 		auto *output = llvm::cast<llvm::MDNode>(outputs_node->getOperand(i));
@@ -971,6 +974,10 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		spv::Id type_id = get_type_id(element_type, rows, cols);
 
+		// For HS <-> DS, ignore system values.
+		if (execution_model == spv::ExecutionModelTessellationControl)
+			system_value = DXIL::Semantic::User;
+
 		if (system_value == DXIL::Semantic::Position)
 		{
 			type_id = get_type_id(element_type, rows, 4);
@@ -982,16 +989,18 @@ bool Converter::Impl::emit_stage_output_variables()
 		else if (system_value == DXIL::Semantic::ClipDistance)
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
-			unsigned num_elements = rows * cols;
-			execution_mode_meta.stage_output_clip_distance_stride = cols;
-			type_id = get_type_id(element_type, num_elements, 1, true);
+			output_clip_cull_meta[element_id] = { clip_distance_count, cols, spv::BuiltInClipDistance };
+			output_elements_meta[element_id] = { 0, element_type, 0 };
+			clip_distance_count += rows * cols;
+			continue;
 		}
 		else if (system_value == DXIL::Semantic::CullDistance)
 		{
-			// DX is rather weird here and you can declare cull distance either as a vector or array, or both!
-			unsigned num_elements = rows * cols;
-			execution_mode_meta.stage_output_cull_distance_stride = cols;
-			type_id = get_type_id(element_type, num_elements, 1, true);
+			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
+			output_clip_cull_meta[element_id] = { cull_distance_count, cols, spv::BuiltInCullDistance };
+			output_elements_meta[element_id] = { 0, element_type, 0 };
+			cull_distance_count += rows * cols;
+			continue;
 		}
 
 		if (execution_model == spv::ExecutionModelTessellationControl)
@@ -1009,10 +1018,6 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, element_type, 0 };
-
-		// For HS <-> DS, ignore system values.
-		if (execution_model == spv::ExecutionModelTessellationControl)
-			system_value = DXIL::Semantic::User;
 
 		if (execution_model == spv::ExecutionModelVertex || execution_model == spv::ExecutionModelGeometry ||
 		    execution_model == spv::ExecutionModelTessellationEvaluation)
@@ -1082,6 +1087,36 @@ bool Converter::Impl::emit_stage_output_variables()
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
 
+		spirv_module.get_entry_point()->addIdOperand(variable_id);
+	}
+
+	if (clip_distance_count)
+	{
+		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, clip_distance_count, 1, true);
+		if (execution_model == spv::ExecutionModelTessellationControl)
+		{
+			type_id = builder.makeArrayType(
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
+		}
+
+		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id);
+		emit_builtin_decoration(variable_id, DXIL::Semantic::ClipDistance, spv::StorageClassOutput);
+		spirv_module.register_builtin_shader_output(variable_id, spv::BuiltInClipDistance);
+		spirv_module.get_entry_point()->addIdOperand(variable_id);
+	}
+
+	if (cull_distance_count)
+	{
+		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, cull_distance_count, 1, true);
+		if (execution_model == spv::ExecutionModelTessellationControl)
+		{
+			type_id = builder.makeArrayType(
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
+		}
+
+		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id);
+		emit_builtin_decoration(variable_id, DXIL::Semantic::CullDistance, spv::StorageClassOutput);
+		spirv_module.register_builtin_shader_output(variable_id, spv::BuiltInCullDistance);
 		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 
@@ -1340,6 +1375,9 @@ bool Converter::Impl::emit_stage_input_variables()
 
 	auto &builder = spirv_module.get_builder();
 
+	unsigned clip_distance_count = 0;
+	unsigned cull_distance_count = 0;
+
 	for (unsigned i = 0; i < inputs_node->getNumOperands(); i++)
 	{
 		auto *input = llvm::cast<llvm::MDNode>(inputs_node->getOperand(i));
@@ -1379,16 +1417,18 @@ bool Converter::Impl::emit_stage_input_variables()
 		else if (system_value == DXIL::Semantic::ClipDistance)
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
-			unsigned num_elements = rows * cols;
-			execution_mode_meta.stage_input_clip_distance_stride = cols;
-			type_id = get_type_id(element_type, num_elements, 1, true);
+			input_clip_cull_meta[element_id] = { clip_distance_count, cols, spv::BuiltInClipDistance };
+			input_elements_meta[element_id] = { 0, element_type, 0 };
+			clip_distance_count += rows * cols;
+			continue;
 		}
 		else if (system_value == DXIL::Semantic::CullDistance)
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
-			unsigned num_elements = rows * cols;
-			execution_mode_meta.stage_input_cull_distance_stride = cols;
-			type_id = get_type_id(element_type, num_elements, 1, true);
+			input_clip_cull_meta[element_id] = { cull_distance_count, cols, spv::BuiltInCullDistance };
+			input_elements_meta[element_id] = { 0, element_type, 0 };
+			cull_distance_count += rows * cols;
+			continue;
 		}
 		else if (system_value == DXIL::Semantic::PrimitiveID)
 			arrayed_input = false;
@@ -1432,6 +1472,36 @@ bool Converter::Impl::emit_stage_input_variables()
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
 
+		spirv_module.get_entry_point()->addIdOperand(variable_id);
+	}
+
+	if (clip_distance_count)
+	{
+		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, clip_distance_count, 1, true);
+		if (arrayed_input)
+		{
+			type_id = builder.makeArrayType(
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex, false), 0);
+		}
+
+		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id);
+		emit_builtin_decoration(variable_id, DXIL::Semantic::ClipDistance, spv::StorageClassInput);
+		spirv_module.register_builtin_shader_input(variable_id, spv::BuiltInClipDistance);
+		spirv_module.get_entry_point()->addIdOperand(variable_id);
+	}
+
+	if (cull_distance_count)
+	{
+		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, cull_distance_count, 1, true);
+		if (arrayed_input)
+		{
+			type_id = builder.makeArrayType(
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex, false), 0);
+		}
+
+		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id);
+		emit_builtin_decoration(variable_id, DXIL::Semantic::CullDistance, spv::StorageClassInput);
+		spirv_module.register_builtin_shader_input(variable_id, spv::BuiltInCullDistance);
 		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 

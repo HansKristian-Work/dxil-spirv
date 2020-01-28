@@ -84,10 +84,6 @@ struct Converter::Impl
 		unsigned stage_input_num_vertex = 0;
 		unsigned stage_output_num_vertex = 0;
 		unsigned gs_stream_active_mask = 0;
-		unsigned stage_input_clip_distance_stride = 0;
-		unsigned stage_output_clip_distance_stride = 0;
-		unsigned stage_input_cull_distance_stride = 0;
-		unsigned stage_output_cull_distance_stride = 0;
 		llvm::Function *patch_constant_function = nullptr;
 	} execution_mode_meta;
 
@@ -138,9 +134,18 @@ struct Converter::Impl
 		DXIL::ComponentType component_type;
 		unsigned rt_index;
 	};
+
+	struct ClipCullMeta
+	{
+		unsigned offset;
+		unsigned row_stride;
+		spv::BuiltIn builtin;
+	};
 	std::unordered_map<uint32_t, ElementMeta> input_elements_meta;
 	std::unordered_map<uint32_t, ElementMeta> output_elements_meta;
 	std::unordered_map<uint32_t, ElementMeta> patch_elements_meta;
+	std::unordered_map<uint32_t, ClipCullMeta> input_clip_cull_meta;
+	std::unordered_map<uint32_t, ClipCullMeta> output_clip_cull_meta;
 	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage);
 
 	bool emit_instruction(CFGNode *block, const llvm::Instruction &instruction);

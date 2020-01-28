@@ -82,7 +82,6 @@ OpName %3 "main"
 OpName %8 "POS"
 OpName %10 "CLIP"
 OpName %12 "SV_Position"
-OpName %17 "SV_ClipDistance"
 OpDecorate %8 Location 0
 OpDecorate %10 Location 1
 OpDecorate %12 BuiltIn Position

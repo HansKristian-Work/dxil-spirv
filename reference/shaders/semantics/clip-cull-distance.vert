@@ -108,8 +108,6 @@ OpName %8 "POS"
 OpName %9 "CLIP"
 OpName %10 "CULL"
 OpName %12 "SV_Position"
-OpName %17 "SV_ClipDistance"
-OpName %18 "SV_CullDistance"
 OpDecorate %8 Location 0
 OpDecorate %9 Location 1
 OpDecorate %10 Location 2
