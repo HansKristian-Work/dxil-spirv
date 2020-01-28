@@ -129,19 +129,20 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 	spv::BuiltIn builtin;
 	if (impl.spirv_module.query_builtin_shader_input(var_id, &builtin))
 	{
-		if (builtin == spv::BuiltInInstanceIndex)
+		if (builtin == spv::BuiltInInstanceIndex || builtin == spv::BuiltInVertexIndex)
 		{
-			// Need to shift InstanceIndex down to 0-base.
-			spv::Id base_instance_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInBaseInstance);
+			// Need to shift down to 0-base.
+			spv::Id base_id = impl.spirv_module.get_builtin_shader_input(
+			    builtin == spv::BuiltInInstanceIndex ? spv::BuiltInBaseInstance : spv::BuiltInBaseVertex);
 			{
 				Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
-				op->add_id(base_instance_id);
-				base_instance_id = op->id;
+				op->add_id(base_id);
+				base_id = op->id;
 				impl.add(op);
 			}
 
 			Operation *sub_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
-			sub_op->add_ids({ impl.get_id_for_value(instruction), base_instance_id });
+			sub_op->add_ids({ impl.get_id_for_value(instruction), base_id });
 			impl.add(sub_op);
 			impl.value_map[instruction] = sub_op->id;
 			builder.addCapability(spv::CapabilityDrawParameters);
