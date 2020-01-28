@@ -24,20 +24,41 @@
 
 namespace dxil_spv
 {
-static bool input_is_clip_distance(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta)
+static bool input_is_builtin(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta, spv::BuiltIn ref)
 {
 	spv::BuiltIn builtin;
-	return impl.spirv_module.query_builtin_shader_input(meta.id, &builtin) && builtin == spv::BuiltInClipDistance;
+	return impl.spirv_module.query_builtin_shader_input(meta.id, &builtin) && builtin == ref;
+}
+
+static bool output_is_builtin(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta, spv::BuiltIn ref)
+{
+	spv::BuiltIn builtin;
+	return impl.spirv_module.query_builtin_shader_output(meta.id, &builtin) && builtin == ref;
+}
+
+static bool input_is_clip_distance(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta)
+{
+	return input_is_builtin(impl, meta, spv::BuiltInClipDistance);
 }
 
 static bool output_is_clip_distance(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta)
 {
-	spv::BuiltIn builtin;
-	return impl.spirv_module.query_builtin_shader_output(meta.id, &builtin) && builtin == spv::BuiltInClipDistance;
+	return output_is_builtin(impl, meta, spv::BuiltInClipDistance);
 }
 
-static spv::Id get_clip_distance_access_chain(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                              const Converter::Impl::ElementMeta &meta, spv::StorageClass storage)
+static bool input_is_cull_distance(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta)
+{
+	return input_is_builtin(impl, meta, spv::BuiltInCullDistance);
+}
+
+static bool output_is_cull_distance(Converter::Impl &impl, const Converter::Impl::ElementMeta &meta)
+{
+	return output_is_builtin(impl, meta, spv::BuiltInCullDistance);
+}
+
+static spv::Id get_clip_cull_distance_access_chain(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                   const Converter::Impl::ElementMeta &meta, spv::StorageClass storage,
+                                                   spv::BuiltIn builtin)
 {
 	auto &builder = impl.builder();
 	uint32_t var_id = meta.id;
@@ -50,8 +71,17 @@ static spv::Id get_clip_distance_access_chain(Converter::Impl &impl, const llvm:
 	auto *row_const = llvm::dyn_cast<llvm::ConstantInt>(row);
 	auto *col_const = llvm::dyn_cast<llvm::ConstantInt>(col);
 
-	auto stride = storage == spv::StorageClassOutput ? impl.execution_mode_meta.stage_output_clip_distance_stride :
-	                                                   impl.execution_mode_meta.stage_input_clip_distance_stride;
+	unsigned stride;
+	if (builtin == spv::BuiltInClipDistance)
+	{
+		stride = storage == spv::StorageClassOutput ? impl.execution_mode_meta.stage_output_clip_distance_stride :
+		                                              impl.execution_mode_meta.stage_input_clip_distance_stride;
+	}
+	else
+	{
+		stride = storage == spv::StorageClassOutput ? impl.execution_mode_meta.stage_output_cull_distance_stride :
+		                                              impl.execution_mode_meta.stage_input_cull_distance_stride;
+	}
 
 	if (stride == 1)
 	{
@@ -83,10 +113,10 @@ static spv::Id get_clip_distance_access_chain(Converter::Impl &impl, const llvm:
 	return op->id;
 }
 
-static bool emit_store_clip_distance(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                     const Converter::Impl::ElementMeta &meta)
+static bool emit_store_clip_cull_distance(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                          const Converter::Impl::ElementMeta &meta, spv::BuiltIn builtin)
 {
-	spv::Id ptr_id = get_clip_distance_access_chain(impl, instruction, meta, spv::StorageClassOutput);
+	spv::Id ptr_id = get_clip_cull_distance_access_chain(impl, instruction, meta, spv::StorageClassOutput, builtin);
 
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 	Operation *store_op = impl.allocate(spv::OpStore);
@@ -95,10 +125,10 @@ static bool emit_store_clip_distance(Converter::Impl &impl, const llvm::CallInst
 	return true;
 }
 
-static bool emit_load_clip_distance(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                    const Converter::Impl::ElementMeta &meta)
+static bool emit_load_clip_cull_distance(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                         const Converter::Impl::ElementMeta &meta, spv::BuiltIn builtin)
 {
-	spv::Id ptr_id = get_clip_distance_access_chain(impl, instruction, meta, spv::StorageClassInput);
+	spv::Id ptr_id = get_clip_cull_distance_access_chain(impl, instruction, meta, spv::StorageClassInput, builtin);
 
 	Operation *op = impl.allocate(spv::OpLoad, instruction);
 	op->add_id(ptr_id);
@@ -178,7 +208,9 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 
 	// Need special handling for clip distance.
 	if (input_is_clip_distance(impl, meta))
-		return emit_load_clip_distance(impl, instruction, meta);
+		return emit_load_clip_cull_distance(impl, instruction, meta, spv::BuiltInClipDistance);
+	else if (input_is_cull_distance(impl, meta))
+		return emit_load_clip_cull_distance(impl, instruction, meta, spv::BuiltInCullDistance);
 
 	spv::Id input_type_id = builder.getDerefTypeId(var_id);
 
@@ -368,7 +400,9 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	// Need special handling for clip distance.
 	if (output_is_clip_distance(impl, meta))
-		return emit_store_clip_distance(impl, instruction, meta);
+		return emit_store_clip_cull_distance(impl, instruction, meta, spv::BuiltInClipDistance);
+	else if (output_is_cull_distance(impl, meta))
+		return emit_store_clip_cull_distance(impl, instruction, meta, spv::BuiltInCullDistance);
 
 	uint32_t var_id = meta.id;
 	uint32_t ptr_id;

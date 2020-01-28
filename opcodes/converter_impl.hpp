@@ -86,6 +86,8 @@ struct Converter::Impl
 		unsigned gs_stream_active_mask = 0;
 		unsigned stage_input_clip_distance_stride = 0;
 		unsigned stage_output_clip_distance_stride = 0;
+		unsigned stage_input_cull_distance_stride = 0;
+		unsigned stage_output_cull_distance_stride = 0;
 		llvm::Function *patch_constant_function = nullptr;
 	} execution_mode_meta;
 

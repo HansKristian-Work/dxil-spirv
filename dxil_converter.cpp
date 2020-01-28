@@ -986,11 +986,18 @@ bool Converter::Impl::emit_stage_output_variables()
 			execution_mode_meta.stage_output_clip_distance_stride = cols;
 			type_id = get_type_id(element_type, num_elements, 1, true);
 		}
+		else if (system_value == DXIL::Semantic::CullDistance)
+		{
+			// DX is rather weird here and you can declare cull distance either as a vector or array, or both!
+			unsigned num_elements = rows * cols;
+			execution_mode_meta.stage_output_cull_distance_stride = cols;
+			type_id = get_type_id(element_type, num_elements, 1, true);
+		}
 
 		if (execution_model == spv::ExecutionModelTessellationControl)
 		{
 			type_id = builder.makeArrayType(
-			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, 0), 0);
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
 		}
 
 		auto variable_name = semantic_name;
@@ -1204,6 +1211,15 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInClipDistance);
 		break;
 
+	case DXIL::Semantic::CullDistance:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInCullDistance);
+		builder.addCapability(spv::CapabilityCullDistance);
+		if (storage == spv::StorageClassOutput)
+			spirv_module.register_builtin_shader_output(id, spv::BuiltInCullDistance);
+		else if (storage == spv::StorageClassInput)
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInCullDistance);
+		break;
+
 	case DXIL::Semantic::RenderTargetArrayIndex:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInLayer);
 		if (storage == spv::StorageClassOutput)
@@ -1365,7 +1381,14 @@ bool Converter::Impl::emit_stage_input_variables()
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			unsigned num_elements = rows * cols;
 			execution_mode_meta.stage_input_clip_distance_stride = cols;
-			type_id = get_type_id(element_type, num_elements, 1);
+			type_id = get_type_id(element_type, num_elements, 1, true);
+		}
+		else if (system_value == DXIL::Semantic::CullDistance)
+		{
+			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
+			unsigned num_elements = rows * cols;
+			execution_mode_meta.stage_input_cull_distance_stride = cols;
+			type_id = get_type_id(element_type, num_elements, 1, true);
 		}
 		else if (system_value == DXIL::Semantic::PrimitiveID)
 			arrayed_input = false;
