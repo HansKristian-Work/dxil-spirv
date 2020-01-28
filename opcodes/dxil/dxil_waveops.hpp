@@ -28,7 +28,8 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
-bool emit_wave_bit_count_instruction(spv::GroupOperation operation, Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_wave_bit_count_instruction(spv::GroupOperation operation, Converter::Impl &impl,
+                                     const llvm::CallInst *instruction);
 
 bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
@@ -54,4 +55,4 @@ static inline bool emit_wave_builtin_dispatch(Converter::Impl &impl, const llvm:
 {
 	return emit_wave_builtin_instruction(builtin, impl, instruction);
 }
-}
+} // namespace dxil_spv

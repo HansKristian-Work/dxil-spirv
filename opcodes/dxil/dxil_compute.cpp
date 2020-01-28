@@ -18,8 +18,8 @@
 
 #include "dxil_compute.hpp"
 #include "dxil_common.hpp"
-#include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "spirv_module.hpp"
 
 namespace dxil_spv
 {

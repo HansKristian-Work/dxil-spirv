@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include "ir.hpp"
 #include "cfg_structurizer.hpp"
+#include "ir.hpp"
 #include <memory>
 #include <vector>
 
@@ -28,7 +28,7 @@ namespace spv
 class Function;
 class Builder;
 class Instruction;
-}
+} // namespace spv
 
 namespace dxil_spv
 {

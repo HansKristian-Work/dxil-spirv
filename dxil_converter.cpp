@@ -20,10 +20,10 @@
 #include "opcodes/opcodes_dxil_builtins.hpp"
 #include "opcodes/opcodes_llvm_builtins.hpp"
 
+#include "dxil_converter.hpp"
 #include "logging.hpp"
 #include "node.hpp"
 #include "node_pool.hpp"
-#include "dxil_converter.hpp"
 #include "spirv_module.hpp"
 
 #include <utility>
@@ -168,8 +168,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 
 			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
-			    resource_kind == DXIL::ResourceKind::RawBuffer ||
-			    resource_kind == DXIL::ResourceKind::TypedBuffer)
+			    resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
 			{
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityUniformTexelBufferArrayDynamicIndexingEXT);
@@ -181,7 +180,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		D3DBinding d3d_binding = { get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = {
+			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size
+		};
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
 			return false;
@@ -263,8 +264,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 
 			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
-			    resource_kind == DXIL::ResourceKind::RawBuffer ||
-			    resource_kind == DXIL::ResourceKind::TypedBuffer)
+			    resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
 			{
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityStorageTexelBufferArrayDynamicIndexingEXT);
@@ -278,8 +278,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		D3DUAVBinding d3d_binding = {};
 		d3d_binding.counter = has_counter;
-		d3d_binding.binding = { get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size };
-		VulkanUAVBinding vulkan_binding = {{ bind_space, bind_register }, { bind_space + 1, bind_register }};
+		d3d_binding.binding = {
+			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size
+		};
+		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register } };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
 
@@ -306,7 +308,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			if (vulkan_binding.counter_binding.bindless.use_heap)
 				return false;
 
-			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet, vulkan_binding.counter_binding.descriptor_set);
+			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
+			                      vulkan_binding.counter_binding.descriptor_set);
 			builder.addDecoration(counter_var_id, spv::DecorationBinding, vulkan_binding.counter_binding.binding);
 		}
 		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id, false };
@@ -330,7 +333,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
-		D3DBinding d3d_binding = { get_remapping_stage(execution_model), DXIL::ResourceKind::CBuffer, index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
+			                       DXIL::ResourceKind::CBuffer,
+			                       index,
+			                       bind_space,
+			                       bind_register,
+			                       range_size };
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
@@ -360,7 +368,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 
 			builder.addDecoration(member_array_type, spv::DecorationArrayStride, 16);
 
-			spv::Id type_id = builder.makeStructType({member_array_type}, name.c_str());
+			spv::Id type_id = builder.makeStructType({ member_array_type }, name.c_str());
 			builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 			builder.addDecoration(type_id, spv::DecorationBlock);
 
@@ -379,8 +387,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			}
 
 			spv::Id var_id =
-					builder.createVariable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
-
+			    builder.createVariable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
@@ -425,7 +432,12 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		spv::Id var_id =
 		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
-		D3DBinding d3d_binding = { get_remapping_stage(execution_model), DXIL::ResourceKind::Sampler, index, bind_space, bind_register, range_size };
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
+			                       DXIL::ResourceKind::Sampler,
+			                       index,
+			                       bind_space,
+			                       bind_register,
+			                       range_size };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
 			return false;
@@ -518,7 +530,8 @@ bool Converter::Impl::scan_uavs(ResourceRemappingInterface *iface, const llvm::M
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
 
-		D3DUAVBinding d3d_binding = { { stage, resource_kind, index, bind_space, bind_register, range_size }, has_counter };
+		D3DUAVBinding d3d_binding = { { stage, resource_kind, index, bind_space, bind_register, range_size },
+			                          has_counter };
 		VulkanUAVBinding vulkan_binding = {};
 		if (iface && !iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
@@ -994,8 +1007,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		if (execution_model == spv::ExecutionModelTessellationControl)
 			system_value = DXIL::Semantic::User;
 
-		if (execution_model == spv::ExecutionModelVertex ||
-		    execution_model == spv::ExecutionModelGeometry ||
+		if (execution_model == spv::ExecutionModelVertex || execution_model == spv::ExecutionModelGeometry ||
 		    execution_model == spv::ExecutionModelTessellationEvaluation)
 		{
 			if (resource_mapping_iface)
@@ -2178,7 +2190,8 @@ void Converter::Impl::add_capability(const OptionBase &cap)
 	{
 		auto &swiz = static_cast<const OptionOutputSwizzle &>(cap);
 		options.output_swizzles.clear();
-		options.output_swizzles.insert(options.output_swizzles.end(), swiz.swizzles, swiz.swizzles + swiz.swizzle_count);
+		options.output_swizzles.insert(options.output_swizzles.end(), swiz.swizzles,
+		                               swiz.swizzles + swiz.swizzle_count);
 		break;
 	}
 

@@ -17,8 +17,8 @@
  */
 
 #pragma once
-#include "opcodes/opcodes.hpp"
 #include "SpvBuilder.h"
+#include "opcodes/opcodes.hpp"
 
 namespace dxil_spv
 {

@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "SpvBuilder.h"
 #include "cfg_structurizer.hpp"
+#include "SpvBuilder.h"
 #include "logging.hpp"
 #include "node.hpp"
 #include "node_pool.hpp"
@@ -50,8 +50,7 @@ void CFGStructurizer::log_cfg(const char *tag) const
 			break;
 
 		case Terminator::Type::Condition:
-			LOGI("  Cond -> %s | %s\n",
-			     node->ir.terminator.true_block->name.c_str(),
+			LOGI("  Cond -> %s | %s\n", node->ir.terminator.true_block->name.c_str(),
 			     node->ir.terminator.false_block->name.c_str());
 			break;
 
@@ -83,10 +82,8 @@ void CFGStructurizer::log_cfg(const char *tag) const
 			break;
 
 		case MergeType::Loop:
-			LOGI("  LoopMerge -> %s\n",
-			     node->loop_merge_block ? node->loop_merge_block->name.c_str() : "N/A");
-			LOGI("    Continue -> %s\n",
-			     node->pred_back_edge ? node->pred_back_edge->name.c_str() : "N/A");
+			LOGI("  LoopMerge -> %s\n", node->loop_merge_block ? node->loop_merge_block->name.c_str() : "N/A");
+			LOGI("    Continue -> %s\n", node->pred_back_edge ? node->pred_back_edge->name.c_str() : "N/A");
 			break;
 
 		default:
@@ -157,9 +154,8 @@ void CFGStructurizer::prune_dead_preds()
 	// Having a pred means we need to map it to an incoming value when dealing with PHI.
 	for (auto *node : post_visit_order)
 	{
-		auto itr = std::remove_if(node->pred.begin(), node->pred.end(), [&](const CFGNode *node) {
-			return reachable_nodes.count(node) == 0;
-		});
+		auto itr = std::remove_if(node->pred.begin(), node->pred.end(),
+		                          [&](const CFGNode *node) { return reachable_nodes.count(node) == 0; });
 		node->pred.erase(itr, node->pred.end());
 	}
 }
@@ -915,9 +911,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		// Inner loop headers are not candidates for a rewrite. They are split in split_merge_blocks.
 		// Similar with switch blocks.
 		// Also, we need to stop traversing when we hit the target block ladder_to.
-		if (node != ladder_to &&
-		    nodes.count(node) == 0 &&
-		    !node->pred_back_edge &&
+		if (node != ladder_to && nodes.count(node) == 0 && !node->pred_back_edge &&
 		    node->ir.terminator.type != Terminator::Type::Switch)
 		{
 			nodes.insert(node);

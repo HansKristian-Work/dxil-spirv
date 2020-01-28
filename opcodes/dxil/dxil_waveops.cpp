@@ -16,10 +16,10 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "dxil_common.hpp"
 #include "dxil_waveops.hpp"
-#include "spirv_module.hpp"
+#include "dxil_common.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "spirv_module.hpp"
 
 namespace dxil_spv
 {
@@ -59,8 +59,8 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	auto *op = impl.allocate(spv::OpGroupNonUniformBallot, instruction,
-	                         builder.makeVectorType(builder.makeUintType(32), 4));
+	auto *op =
+	    impl.allocate(spv::OpGroupNonUniformBallot, instruction, builder.makeVectorType(builder.makeUintType(32), 4));
 	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 
@@ -109,12 +109,12 @@ bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallI
 	return true;
 }
 
-bool emit_wave_bit_count_instruction(spv::GroupOperation operation, Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_wave_bit_count_instruction(spv::GroupOperation operation, Converter::Impl &impl,
+                                     const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
-	auto *ballot_op = impl.allocate(spv::OpGroupNonUniformBallot,
-	                         builder.makeVectorType(builder.makeUintType(32), 4));
+	auto *ballot_op = impl.allocate(spv::OpGroupNonUniformBallot, builder.makeVectorType(builder.makeUintType(32), 4));
 	ballot_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 	ballot_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	impl.add(ballot_op);
@@ -164,30 +164,22 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	switch (static_cast<DXIL::WaveOpKind>(op_kind))
 	{
 	case DXIL::WaveOpKind::Sum:
-		opcode = select_opcode(instruction,
-		                       spv::OpGroupNonUniformFAdd,
-		                       spv::OpGroupNonUniformIAdd,
+		opcode = select_opcode(instruction, spv::OpGroupNonUniformFAdd, spv::OpGroupNonUniformIAdd,
 		                       spv::OpGroupNonUniformIAdd);
 		break;
 
 	case DXIL::WaveOpKind::Product:
-		opcode = select_opcode(instruction,
-		                       spv::OpGroupNonUniformFMul,
-		                       spv::OpGroupNonUniformIMul,
+		opcode = select_opcode(instruction, spv::OpGroupNonUniformFMul, spv::OpGroupNonUniformIMul,
 		                       spv::OpGroupNonUniformIMul);
 		break;
 
 	case DXIL::WaveOpKind::Min:
-		opcode = select_opcode(instruction,
-		                       spv::OpGroupNonUniformFMin,
-		                       spv::OpGroupNonUniformSMin,
+		opcode = select_opcode(instruction, spv::OpGroupNonUniformFMin, spv::OpGroupNonUniformSMin,
 		                       spv::OpGroupNonUniformUMin);
 		break;
 
 	case DXIL::WaveOpKind::Max:
-		opcode = select_opcode(instruction,
-		                       spv::OpGroupNonUniformFMax,
-		                       spv::OpGroupNonUniformSMax,
+		opcode = select_opcode(instruction, spv::OpGroupNonUniformFMax, spv::OpGroupNonUniformSMax,
 		                       spv::OpGroupNonUniformUMax);
 		break;
 	}
@@ -215,15 +207,11 @@ bool emit_wave_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	switch (static_cast<DXIL::WaveOpKind>(op_kind))
 	{
 	case DXIL::WaveOpKind::Sum:
-		opcode = select_opcode(instruction,
-		                       spv::OpGroupNonUniformFAdd,
-		                       spv::OpGroupNonUniformIAdd);
+		opcode = select_opcode(instruction, spv::OpGroupNonUniformFAdd, spv::OpGroupNonUniformIAdd);
 		break;
 
 	case DXIL::WaveOpKind::Product:
-		opcode = select_opcode(instruction,
-		                       spv::OpGroupNonUniformFMul,
-		                       spv::OpGroupNonUniformIMul);
+		opcode = select_opcode(instruction, spv::OpGroupNonUniformFMul, spv::OpGroupNonUniformIMul);
 		break;
 
 	default:
@@ -253,15 +241,11 @@ bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::Ca
 	switch (static_cast<DXIL::WaveMultiPrefixOpKind>(op_kind))
 	{
 	case DXIL::WaveMultiPrefixOpKind::Sum:
-		opcode = select_opcode(instruction,
-		                       spv::OpGroupNonUniformFAdd,
-		                       spv::OpGroupNonUniformIAdd);
+		opcode = select_opcode(instruction, spv::OpGroupNonUniformFAdd, spv::OpGroupNonUniformIAdd);
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::Product:
-		opcode = select_opcode(instruction,
-		                       spv::OpGroupNonUniformFMul,
-		                       spv::OpGroupNonUniformIMul);
+		opcode = select_opcode(instruction, spv::OpGroupNonUniformFMul, spv::OpGroupNonUniformIMul);
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::And:
@@ -410,4 +394,4 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 	impl.add(op);
 	return true;
 }
-}
+} // namespace dxil_spv

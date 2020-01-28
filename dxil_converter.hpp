@@ -109,8 +109,7 @@ struct VulkanPushConstantBinding
 
 struct VulkanCBVBinding
 {
-	union
-	{
+	union {
 		VulkanBinding buffer;
 		VulkanPushConstantBinding push;
 	};
@@ -170,7 +169,7 @@ enum class Option : uint32_t
 struct OptionBase
 {
 	explicit OptionBase(Option cap)
-		: type(cap)
+	    : type(cap)
 	{
 	}
 	Option type;
@@ -179,7 +178,7 @@ struct OptionBase
 struct OptionShaderDemoteToHelper : OptionBase
 {
 	OptionShaderDemoteToHelper()
-		: OptionBase(Option::ShaderDemoteToHelper)
+	    : OptionBase(Option::ShaderDemoteToHelper)
 	{
 	}
 	bool supported = false;
@@ -188,7 +187,7 @@ struct OptionShaderDemoteToHelper : OptionBase
 struct OptionDualSourceBlending : OptionBase
 {
 	OptionDualSourceBlending()
-		: OptionBase(Option::DualSourceBlending)
+	    : OptionBase(Option::DualSourceBlending)
 	{
 	}
 	bool enabled = false;
@@ -197,7 +196,7 @@ struct OptionDualSourceBlending : OptionBase
 struct OptionOutputSwizzle : OptionBase
 {
 	OptionOutputSwizzle()
-		: OptionBase(Option::OutputSwizzle)
+	    : OptionBase(Option::OutputSwizzle)
 	{
 	}
 	const unsigned *swizzles = nullptr;

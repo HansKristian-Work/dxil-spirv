@@ -259,8 +259,7 @@ bool emit_split_double_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
-	Operation *op = impl.allocate(spv::OpExtInst, instruction,
-	                              builder.makeVectorType(builder.makeUintType(32), 2));
+	Operation *op = impl.allocate(spv::OpExtInst, instruction, builder.makeVectorType(builder.makeUintType(32), 2));
 	op->add_id(impl.glsl_std450_ext);
 	op->add_id(GLSLstd450UnpackDouble2x32);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
@@ -274,8 +273,7 @@ bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallI
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
-	Operation *unpack_op = impl.allocate(spv::OpExtInst,
-	                                     builder.makeVectorType(builder.makeFloatType(32), 2));
+	Operation *unpack_op = impl.allocate(spv::OpExtInst, builder.makeVectorType(builder.makeFloatType(32), 2));
 	unpack_op->add_id(impl.glsl_std450_ext);
 	unpack_op->add_id(GLSLstd450UnpackHalf2x16);
 	unpack_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));

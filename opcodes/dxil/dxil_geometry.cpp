@@ -18,8 +18,8 @@
 
 #include "dxil_geometry.hpp"
 #include "logging.hpp"
-#include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "spirv_module.hpp"
 
 namespace dxil_spv
 {

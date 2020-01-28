@@ -17,8 +17,8 @@
  */
 
 #include "dxil_pixel_ops.hpp"
-#include "spirv_module.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "spirv_module.hpp"
 
 namespace dxil_spv
 {

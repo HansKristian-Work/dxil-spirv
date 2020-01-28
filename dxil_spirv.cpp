@@ -16,19 +16,19 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <algorithm>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
-#include <algorithm>
 
 #include "dxil_spirv_c.h"
 
+#include "cli_parser.hpp"
+#include "logging.hpp"
 #include "spirv-tools/libspirv.hpp"
 #include "spirv_cross_c.h"
-#include "logging.hpp"
-#include "cli_parser.hpp"
 
 using namespace dxil_spv;
 
@@ -64,11 +64,13 @@ static std::string convert_to_glsl(const void *code, size_t size)
 		return ret;
 
 	spvc_parsed_ir ir;
-	if (spvc_context_parse_spirv(context, static_cast<const SpvId *>(code), size / sizeof(uint32_t), &ir) != SPVC_SUCCESS)
+	if (spvc_context_parse_spirv(context, static_cast<const SpvId *>(code), size / sizeof(uint32_t), &ir) !=
+	    SPVC_SUCCESS)
 		goto cleanup;
 
 	spvc_compiler compiler;
-	if (spvc_context_create_compiler(context, SPVC_BACKEND_GLSL, ir, SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) != SPVC_SUCCESS)
+	if (spvc_context_create_compiler(context, SPVC_BACKEND_GLSL, ir, SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) !=
+	    SPVC_SUCCESS)
 		goto cleanup;
 
 	spvc_compiler_options opts;
@@ -169,14 +171,16 @@ struct Remapper
 	std::vector<StreamOutput> stream_outputs;
 };
 
-static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_cbv_vulkan_binding *vk_binding)
+static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *binding,
+                               dxil_spv_cbv_vulkan_binding *vk_binding)
 {
 	auto *remapper = static_cast<Remapper *>(userdata);
 	*vk_binding = {};
 
-	auto itr = std::find_if(remapper->root_constants.begin(), remapper->root_constants.end(), [&](const Remapper::RootConstant &root) {
-		return root.register_space == binding->register_space && root.register_index == binding->register_index;
-	});
+	auto itr = std::find_if(
+	    remapper->root_constants.begin(), remapper->root_constants.end(), [&](const Remapper::RootConstant &root) {
+		    return root.register_space == binding->register_space && root.register_index == binding->register_index;
+	    });
 
 	if (itr != remapper->root_constants.end())
 	{
@@ -197,9 +201,8 @@ static dxil_spv_bool remap_vertex_input(void *userdata, const dxil_spv_d3d_verte
 {
 	auto *remapper = static_cast<Remapper *>(userdata);
 
-	auto itr = std::find_if(remapper->vertex_inputs.begin(), remapper->vertex_inputs.end(), [&](const Remapper::VertexInput &vin) {
-		return vin.semantic == d3d_input->semantic;
-	});
+	auto itr = std::find_if(remapper->vertex_inputs.begin(), remapper->vertex_inputs.end(),
+	                        [&](const Remapper::VertexInput &vin) { return vin.semantic == d3d_input->semantic; });
 
 	if (itr != remapper->vertex_inputs.end())
 	{
@@ -218,9 +221,11 @@ static dxil_spv_bool remap_stream_output(void *userdata, const dxil_spv_d3d_stre
 {
 	auto *remapper = static_cast<Remapper *>(userdata);
 
-	auto itr = std::find_if(remapper->stream_outputs.begin(), remapper->stream_outputs.end(), [&](const Remapper::StreamOutput &vin) {
-		return strcasecmp(vin.semantic.c_str(), d3d_output->semantic) == 0 && vin.index == d3d_output->semantic_index;
-	});
+	auto itr = std::find_if(remapper->stream_outputs.begin(), remapper->stream_outputs.end(),
+	                        [&](const Remapper::StreamOutput &vin) {
+		                        return strcasecmp(vin.semantic.c_str(), d3d_output->semantic) == 0 &&
+		                               vin.index == d3d_output->semantic_index;
+	                        });
 
 	if (itr != remapper->stream_outputs.end())
 	{
@@ -278,12 +283,8 @@ int main(int argc, char **argv)
 		unsigned buffer_index = parser.next_uint();
 		remapper.stream_outputs.push_back({ std::string(sem), index, offset, stride, buffer_index });
 	});
-	cbs.add("--enable-shader-demote", [&](CLIParser &) {
-		args.shader_demote = true;
-	});
-	cbs.add("--enable-dual-source-blending", [&](CLIParser &) {
-		args.dual_source_blending = true;
-	});
+	cbs.add("--enable-shader-demote", [&](CLIParser &) { args.shader_demote = true; });
+	cbs.add("--enable-dual-source-blending", [&](CLIParser &) { args.dual_source_blending = true; });
 	cbs.add("--output-rt-swizzle", [&](CLIParser &parser) {
 		unsigned index = parser.next_uint();
 		if (index >= args.swizzles.size())
@@ -398,17 +399,20 @@ int main(int argc, char **argv)
 
 	if (args.shader_demote)
 	{
-		const dxil_spv_option_shader_demote_to_helper helper = {{DXIL_SPV_OPTION_SHADER_DEMOTE_TO_HELPER }, DXIL_SPV_TRUE };
+		const dxil_spv_option_shader_demote_to_helper helper = { { DXIL_SPV_OPTION_SHADER_DEMOTE_TO_HELPER },
+			                                                     DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &helper.base);
 	}
 
 	if (args.dual_source_blending)
 	{
-		const dxil_spv_option_dual_source_blending helper = {{DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING }, DXIL_SPV_TRUE };
+		const dxil_spv_option_dual_source_blending helper = { { DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING }, DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &helper.base);
 	}
 
-	const dxil_spv_option_output_swizzle swizzle = {{ DXIL_SPV_OPTION_OUTPUT_SWIZZLE }, args.swizzles.data(), unsigned(args.swizzles.size()) };
+	const dxil_spv_option_output_swizzle swizzle = { { DXIL_SPV_OPTION_OUTPUT_SWIZZLE },
+		                                             args.swizzles.data(),
+		                                             unsigned(args.swizzles.size()) };
 	dxil_spv_converter_add_option(converter, &swizzle.base);
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)

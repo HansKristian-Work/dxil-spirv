@@ -434,14 +434,12 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 	auto &builder = impl.builder();
 
 	Operation *atomic_op = impl.allocate(spv::OpAtomicCompareExchange, builder.makeUintType(32));
-	atomic_op->add_ids({
-		impl.get_id_for_value(instruction->getPointerOperand()),
-		builder.makeUintConstant(spv::ScopeWorkgroup),
-		builder.makeUintConstant(0), // Relaxed
-		builder.makeUintConstant(0), // Relaxed
-		impl.get_id_for_value(instruction->getNewValOperand()),
-		impl.get_id_for_value(instruction->getCompareOperand())
-	});
+	atomic_op->add_ids({ impl.get_id_for_value(instruction->getPointerOperand()),
+	                     builder.makeUintConstant(spv::ScopeWorkgroup),
+	                     builder.makeUintConstant(0), // Relaxed
+	                     builder.makeUintConstant(0), // Relaxed
+	                     impl.get_id_for_value(instruction->getNewValOperand()),
+	                     impl.get_id_for_value(instruction->getCompareOperand()) });
 
 	impl.add(atomic_op);
 
@@ -450,7 +448,8 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 	impl.add(cmp_op);
 
 	if (!impl.cmpxchg_type)
-		impl.cmpxchg_type = builder.makeStructType({ builder.makeUintType(32), builder.makeBoolType() }, "CmpXchgResult");
+		impl.cmpxchg_type =
+		    builder.makeStructType({ builder.makeUintType(32), builder.makeBoolType() }, "CmpXchgResult");
 
 	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
 	op->add_ids({ atomic_op->id, cmp_op->id });
@@ -511,10 +510,10 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 
 	Operation *op = impl.allocate(opcode, instruction);
 	op->add_ids({
-		impl.get_id_for_value(instruction->getPointerOperand()),
-		builder.makeUintConstant(spv::ScopeWorkgroup),
-		builder.makeUintConstant(0), // Relaxed
-		impl.get_id_for_value(instruction->getValOperand()),
+	    impl.get_id_for_value(instruction->getPointerOperand()),
+	    builder.makeUintConstant(spv::ScopeWorkgroup),
+	    builder.makeUintConstant(0), // Relaxed
+	    impl.get_id_for_value(instruction->getValOperand()),
 	});
 
 	impl.add(op);
