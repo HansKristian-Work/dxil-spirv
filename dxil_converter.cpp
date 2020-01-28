@@ -779,7 +779,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	}
 }
 
-spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols)
+spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array)
 {
 	auto &builder = spirv_module.get_builder();
 
@@ -833,7 +833,7 @@ spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned 
 
 	if (cols > 1)
 		component_type = builder.makeVectorType(component_type, cols);
-	if (rows > 1)
+	if (rows > 1 || force_array)
 		component_type = builder.makeArrayType(component_type, builder.makeUintConstant(rows), 0);
 	return component_type;
 }
@@ -984,7 +984,7 @@ bool Converter::Impl::emit_stage_output_variables()
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			unsigned num_elements = rows * cols;
 			execution_mode_meta.stage_output_clip_distance_stride = cols;
-			type_id = get_type_id(element_type, num_elements, 1);
+			type_id = get_type_id(element_type, num_elements, 1, true);
 		}
 
 		if (execution_model == spv::ExecutionModelTessellationControl)

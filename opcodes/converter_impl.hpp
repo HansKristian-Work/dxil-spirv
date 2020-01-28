@@ -126,7 +126,7 @@ struct Converter::Impl
 	std::unordered_map<spv::Id, spv::Id> id_to_type;
 	std::unordered_map<const llvm::Value *, unsigned> handle_to_root_member_offset;
 
-	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols);
+	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array = false);
 	spv::Id get_type_id(const llvm::Type *type);
 	spv::Id get_type_id(spv::Id id) const;
 
