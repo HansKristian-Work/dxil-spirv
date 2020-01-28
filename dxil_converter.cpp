@@ -2195,6 +2195,13 @@ void Converter::Impl::add_capability(const OptionBase &cap)
 		break;
 	}
 
+	case Option::RasterizerSampleCount:
+	{
+		auto &count = static_cast<const OptionRasterizerSampleCount &>(cap);
+		options.rasterizer_sample_count = count.count;
+		options.rasterizer_sample_count_spec_constant = count.spec_constant;
+	}
+
 	default:
 		break;
 	}
@@ -2227,6 +2234,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::ShaderDemoteToHelper:
 	case Option::DualSourceBlending:
 	case Option::OutputSwizzle:
+	case Option::RasterizerSampleCount:
 		return true;
 
 	default:

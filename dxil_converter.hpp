@@ -163,7 +163,8 @@ enum class Option : uint32_t
 	Invalid = 0,
 	ShaderDemoteToHelper = 1,
 	DualSourceBlending = 2,
-	OutputSwizzle = 3
+	OutputSwizzle = 3,
+	RasterizerSampleCount = 4
 };
 
 struct OptionBase
@@ -201,6 +202,16 @@ struct OptionOutputSwizzle : OptionBase
 	}
 	const unsigned *swizzles = nullptr;
 	unsigned swizzle_count = 0;
+};
+
+struct OptionRasterizerSampleCount : OptionBase
+{
+	OptionRasterizerSampleCount()
+	    : OptionBase(Option::RasterizerSampleCount)
+	{
+	}
+	unsigned count = 0;
+	bool spec_constant = false;
 };
 
 class Converter

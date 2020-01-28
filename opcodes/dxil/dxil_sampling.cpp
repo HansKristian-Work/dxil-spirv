@@ -659,24 +659,56 @@ static void build_sample_position_lut(Converter::Impl &impl)
 	}
 }
 
-bool emit_texture2dms_get_sample_position(Converter::Impl &impl, const llvm::CallInst *instruction)
+static spv::Id build_rasterizer_sample_count(Converter::Impl &impl)
 {
-
 	auto &builder = impl.builder();
-	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	if (!impl.rasterizer_sample_count_id)
+	{
+		if (impl.options.rasterizer_sample_count_spec_constant)
+		{
+			impl.rasterizer_sample_count_id = builder.makeUintConstant(1, true);
+			builder.addDecoration(impl.rasterizer_sample_count_id, spv::DecorationSpecId,
+			                      impl.options.rasterizer_sample_count);
+		}
+		else
+			impl.rasterizer_sample_count_id = builder.makeUintConstant(impl.options.rasterizer_sample_count, false);
+	}
+	return impl.rasterizer_sample_count_id;
+}
 
-	auto *query_samples_op = impl.allocate(spv::OpImageQuerySamples, builder.makeUintType(32));
-	query_samples_op->add_id(image_id);
-	impl.add(query_samples_op);
+bool emit_get_render_target_sample_count(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	impl.value_map[instruction] = build_rasterizer_sample_count(impl);
+	return true;
+}
 
-	spv::Id sample_index_id = impl.get_id_for_value(instruction->getOperand(2));
+bool emit_get_sample_position(Converter::Impl &impl, const llvm::CallInst *instruction, bool image)
+{
+	auto &builder = impl.builder();
+
+	spv::Id sample_count_id;
+	if (image)
+	{
+		spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+
+		auto *query_samples_op = impl.allocate(spv::OpImageQuerySamples, builder.makeUintType(32));
+		query_samples_op->add_id(image_id);
+		impl.add(query_samples_op);
+		sample_count_id = query_samples_op->id;
+	}
+	else
+	{
+		sample_count_id = build_rasterizer_sample_count(impl);
+	}
+
+	spv::Id sample_index_id = impl.get_id_for_value(instruction->getOperand(image ? 2 : 1));
 
 	// Build the LUT if we have to.
 	build_sample_position_lut(impl);
 
 	// Sample count is only POT, so table starts at N - 1.
 	auto *lut_base_offset_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
-	lut_base_offset_op->add_ids({ query_samples_op->id, builder.makeUintConstant(1) });
+	lut_base_offset_op->add_ids({ sample_count_id, builder.makeUintConstant(1) });
 	impl.add(lut_base_offset_op);
 
 	// Build LUT offset.
@@ -686,12 +718,12 @@ bool emit_texture2dms_get_sample_position(Converter::Impl &impl, const llvm::Cal
 
 	// Range check sample index against actual texture.
 	auto *cmp0_op = impl.allocate(spv::OpULessThan, builder.makeBoolType());
-	cmp0_op->add_ids({ sample_index_id, query_samples_op->id });
+	cmp0_op->add_ids({ sample_index_id, sample_count_id });
 	impl.add(cmp0_op);
 
 	// Range check sample index against max supported 16.
 	auto *cmp1_op = impl.allocate(spv::OpULessThanEqual, builder.makeBoolType());
-	cmp1_op->add_ids({ query_samples_op->id, builder.makeUintConstant(16) });
+	cmp1_op->add_ids({ sample_count_id, builder.makeUintConstant(16) });
 	impl.add(cmp1_op);
 
 	auto *cmp_op = impl.allocate(spv::OpLogicalAnd, builder.makeBoolType());

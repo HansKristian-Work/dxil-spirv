@@ -61,7 +61,9 @@ struct DXILDispatcher
 		OP(TextureGather) = emit_texture_gather_dispatch<false>;
 		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true>;
 		OP(CalculateLOD) = emit_calculate_lod_instruction;
-		OP(Texture2DMSGetSamplePosition) = emit_texture2dms_get_sample_position;
+		OP(Texture2DMSGetSamplePosition) = emit_get_sample_position_dispatch<true>;
+		OP(RenderTargetGetSamplePosition) = emit_get_sample_position_dispatch<false>;
+		OP(RenderTargetGetSampleCount) = emit_get_render_target_sample_count;
 
 		// dxil_buffer.hpp
 		OP(BufferLoad) = emit_buffer_load_instruction;

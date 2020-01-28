@@ -163,6 +163,7 @@ struct Converter::Impl
 	spv::Id glsl_std450_ext = 0;
 	spv::Id cmpxchg_type = 0;
 	spv::Id texture_sample_pos_lut_id = 0;
+	spv::Id rasterizer_sample_count_id = 0;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 
@@ -171,6 +172,8 @@ struct Converter::Impl
 	{
 		bool shader_demote = false;
 		bool dual_source_blending = false;
+		unsigned rasterizer_sample_count = 0;
+		bool rasterizer_sample_count_spec_constant = true;
 		std::vector<unsigned> output_swizzles;
 	} options;
 };
