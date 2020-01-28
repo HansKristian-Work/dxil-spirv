@@ -162,6 +162,7 @@ struct Converter::Impl
 
 	spv::Id glsl_std450_ext = 0;
 	spv::Id cmpxchg_type = 0;
+	spv::Id texture_sample_pos_lut_id = 0;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 

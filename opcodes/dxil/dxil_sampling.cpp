@@ -593,4 +593,129 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	builder.addCapability(spv::CapabilityImageQuery);
 	return true;
 }
+
+static void build_sample_position_lut(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+
+	// Standard sample locations from the Vulkan spec.
+	static const float standard_sample_positions[][2] = {
+		// 1 sample
+		{0.0 / 16.0,  0.0 / 16.0},
+		// 2 samples
+		{4.0 / 16.0,  4.0 / 16.0},
+		{-4.0 / 16.0, -4.0 / 16.0},
+		// 4 samples
+		{-2.0 / 16.0, -6.0 / 16.0},
+		{6.0 / 16.0,  -2.0 / 16.0},
+		{-6.0 / 16.0, 2.0 / 16.0},
+		{2.0 / 16.0,  6.0 / 16.0},
+		// 8 samples
+		{1.0 / 16.0,  -3.0 / 16.0},
+		{-1.0 / 16.0, 3.0 / 16.0},
+		{5.0 / 16.0,  1.0 / 16.0},
+		{-3.0 / 16.0, -5.0 / 16.0},
+		{-5.0 / 16.0, 5.0 / 16.0},
+		{-7.0 / 16.0, -1.0 / 16.0},
+		{3.0 / 16.0,  7.0 / 16.0},
+		{7.0 / 16.0,  -7.0 / 16.0},
+		// 16 samples
+		{1.0 / 16.0,  1.0 / 16.0},
+		{-1.0 / 16.0, -3.0 / 16.0},
+		{-3.0 / 16.0, 2.0 / 16.0},
+		{4.0 / 16.0,  -1.0 / 16.0},
+		{-5.0 / 16.0, -2.0 / 16.0},
+		{2.0 / 16.0,  5.0 / 16.0},
+		{5.0 / 16.0,  3.0 / 16.0},
+		{3.0 / 16.0,  -5.0 / 16.0},
+		{-2.0 / 16.0, 6.0 / 16.0},
+		{0.0 / 16.0,  -7.0 / 16.0},
+		{-4.0 / 16.0, -6.0 / 16.0},
+		{-6.0 / 16.0, 4.0 / 16.0},
+		{-8.0 / 16.0, 0.0 / 16.0},
+		{7.0 / 16.0,  -4.0 / 16.0},
+		{6.0 / 16.0,  7.0 / 16.0},
+		{-7.0 / 16.0, -8.0 / 16.0},
+	};
+
+	if (!impl.texture_sample_pos_lut_id)
+	{
+		spv::Id vec2_type = builder.makeVectorType(builder.makeFloatType(32), 2);
+
+		constexpr size_t num_pos = sizeof(standard_sample_positions) / sizeof(standard_sample_positions[0]);
+		std::vector<spv::Id> constituents(num_pos);
+		for (size_t i = 0; i < num_pos; i++)
+		{
+			spv::Id elems[2];
+			for (unsigned j = 0; j < 2; j++)
+				elems[j] = builder.makeFloatConstant(standard_sample_positions[i][j]);
+			constituents[i] = impl.build_constant_vector(builder.makeFloatType(32), elems, 2);
+		}
+
+		spv::Id array_type =
+				builder.makeArrayType(vec2_type,
+				                      builder.makeUintConstant(num_pos),
+				                      0);
+		spv::Id lut_id = builder.makeCompositeConstant(array_type, constituents);
+		impl.texture_sample_pos_lut_id = builder.createVariableWithInitializer(spv::StorageClassPrivate, array_type,
+		                                                                       lut_id, "Texture2DMSSamplePositionLUT");
+	}
+}
+
+bool emit_texture2dms_get_sample_position(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+
+	auto &builder = impl.builder();
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+
+	auto *query_samples_op = impl.allocate(spv::OpImageQuerySamples, builder.makeUintType(32));
+	query_samples_op->add_id(image_id);
+	impl.add(query_samples_op);
+
+	spv::Id sample_index_id = impl.get_id_for_value(instruction->getOperand(2));
+
+	// Build the LUT if we have to.
+	build_sample_position_lut(impl);
+
+	// Sample count is only POT, so table starts at N - 1.
+	auto *lut_base_offset_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
+	lut_base_offset_op->add_ids({ query_samples_op->id, builder.makeUintConstant(1) });
+	impl.add(lut_base_offset_op);
+
+	// Build LUT offset.
+	auto *lut_offset_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+	lut_offset_op->add_ids({ lut_base_offset_op->id, sample_index_id });
+	impl.add(lut_offset_op);
+
+	// Range check sample index against actual texture.
+	auto *cmp0_op = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+	cmp0_op->add_ids({ sample_index_id, query_samples_op->id });
+	impl.add(cmp0_op);
+
+	// Range check sample index against max supported 16.
+	auto *cmp1_op = impl.allocate(spv::OpULessThanEqual, builder.makeBoolType());
+	cmp1_op->add_ids({ query_samples_op->id, builder.makeUintConstant(16) });
+	impl.add(cmp1_op);
+
+	auto *cmp_op = impl.allocate(spv::OpLogicalAnd, builder.makeBoolType());
+	cmp_op->add_ids({ cmp0_op->id, cmp1_op->id });
+	impl.add(cmp_op);
+
+	auto *final_lut_index_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+	final_lut_index_op->add_ids({ cmp_op->id, lut_offset_op->id, builder.makeUintConstant(0) });
+	impl.add(final_lut_index_op);
+
+	spv::Id vec2_type = builder.makeVectorType(builder.makeFloatType(32), 2);
+
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPrivate, vec2_type));
+	chain_op->add_ids({ impl.texture_sample_pos_lut_id, final_lut_index_op->id });
+	impl.add(chain_op);
+
+	auto *load_op = impl.allocate(spv::OpLoad, instruction, vec2_type);
+	load_op->add_id(chain_op->id);
+	impl.add(load_op);
+
+	builder.addCapability(spv::CapabilityImageQuery);
+	return true;
+}
 } // namespace dxil_spv

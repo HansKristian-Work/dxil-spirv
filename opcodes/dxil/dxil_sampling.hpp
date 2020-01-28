@@ -32,6 +32,7 @@ bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst 
 bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_texture2dms_get_sample_position(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 template <DXIL::Op opcode>
 static inline bool emit_sample_instruction_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)

@@ -51,7 +51,7 @@ static spv::Id get_clip_distance_access_chain(Converter::Impl &impl, const llvm:
 	auto *col_const = llvm::dyn_cast<llvm::ConstantInt>(col);
 
 	auto stride = storage == spv::StorageClassOutput ? impl.execution_mode_meta.stage_output_clip_distance_stride :
-	                                                   impl.execution_mode_meta.stage_input_clip_distance_stride;
+	              impl.execution_mode_meta.stage_input_clip_distance_stride;
 
 	if (stride == 1)
 	{
@@ -90,7 +90,7 @@ static bool emit_store_clip_distance(Converter::Impl &impl, const llvm::CallInst
 
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 	Operation *store_op = impl.allocate(spv::OpStore);
-	store_op->add_ids({ ptr_id, store_value });
+	store_op->add_ids({ptr_id, store_value});
 	impl.add(store_op);
 	return true;
 }
@@ -124,7 +124,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			}
 
 			Operation *sub_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
-			sub_op->add_ids({ impl.get_id_for_value(instruction), base_instance_id });
+			sub_op->add_ids({impl.get_id_for_value(instruction), base_instance_id});
 			impl.add(sub_op);
 			impl.value_map[instruction] = sub_op->id;
 			builder.addCapability(spv::CapabilityDrawParameters);
@@ -133,10 +133,10 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 		{
 			Operation *cast_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
 			cast_op->add_ids({
-			    impl.get_id_for_value(instruction),
-			    builder.makeUintConstant(~0u),
-			    builder.makeUintConstant(0),
-			});
+					                 impl.get_id_for_value(instruction),
+					                 builder.makeUintConstant(~0u),
+					                 builder.makeUintConstant(0),
+			                 });
 			impl.add(cast_op);
 			impl.value_map[instruction] = cast_op->id;
 		}
@@ -204,8 +204,8 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	{
 		// Need to deal with signed vs unsigned here.
 		Operation *op =
-		    impl.allocate(spv::OpAccessChain,
-		                  builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
+				impl.allocate(spv::OpAccessChain,
+				              builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
 		ptr_id = op->id;
 
 		op->add_id(var_id);
@@ -241,7 +241,7 @@ static spv::Id build_attribute_offset(spv::Id id, Converter::Impl &impl)
 	auto &builder = impl.builder();
 	{
 		Operation *op = impl.allocate(spv::OpBitFieldSExtract, builder.makeUintType(32));
-		op->add_ids({ id, builder.makeUintConstant(0), builder.makeUintConstant(4) });
+		op->add_ids({id, builder.makeUintConstant(0), builder.makeUintConstant(4)});
 		id = op->id;
 		impl.add(op);
 	}
@@ -255,7 +255,7 @@ static spv::Id build_attribute_offset(spv::Id id, Converter::Impl &impl)
 
 	{
 		Operation *op = impl.allocate(spv::OpFMul, builder.makeFloatType(32));
-		op->add_ids({ id, builder.makeFloatConstant(1.0f / 16.0f) });
+		op->add_ids({id, builder.makeFloatConstant(1.0f / 16.0f)});
 		id = op->id;
 		impl.add(op);
 	}
@@ -280,10 +280,10 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 	{
 		// Need to deal with signed vs unsigned here.
 		Operation *op =
-		    impl.allocate(spv::OpAccessChain,
-		                  builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
+				impl.allocate(spv::OpAccessChain,
+				              builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
 
-		op->add_ids({ var_id, impl.get_id_for_value(instruction->getOperand(3), 32) });
+		op->add_ids({var_id, impl.get_id_for_value(instruction->getOperand(3), 32)});
 		impl.add(op);
 		ptr_id = op->id;
 	}
@@ -329,10 +329,10 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 	// Need to deal with signed vs unsigned here.
 	Operation *op = impl.allocate(spv::OpExtInst, instruction, impl.get_type_id(meta.component_type, 1, 1));
 	op->add_ids({
-	    impl.glsl_std450_ext,
-	    opcode,
-	    ptr_id,
-	});
+			            impl.glsl_std450_ext,
+			            opcode,
+			            ptr_id,
+	            });
 
 	if (aux_id)
 		op->add_id(aux_id);
@@ -389,7 +389,8 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (num_cols > 1 || row_index || is_control_point_output)
 	{
 		Operation *op = impl.allocate(
-		    spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+				spv::OpAccessChain,
+				builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
 		ptr_id = op->id;
 
 		op->add_id(var_id);
@@ -435,7 +436,7 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
 	Operation *op = impl.allocate(spv::OpStore);
-	op->add_ids({ ptr_id, impl.fixup_store_sign(meta.component_type, 1, store_value) });
+	op->add_ids({ptr_id, impl.fixup_store_sign(meta.component_type, 1, store_value)});
 	impl.add(op);
 	return true;
 }
@@ -470,7 +471,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			is_non_uniform = non_uniform != 0;
 
 			type_id = builder.getContainedTypeId(type_id);
-			Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
+			Operation *op = impl.allocate(spv::OpAccessChain,
+			                              builder.makePointer(spv::StorageClassUniformConstant, type_id));
 			op->add_id(image_id);
 			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
 			impl.add(op);
@@ -521,7 +523,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			is_non_uniform = non_uniform != 0;
 
 			type_id = builder.getContainedTypeId(type_id);
-			Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
+			Operation *op = impl.allocate(spv::OpAccessChain,
+			                              builder.makePointer(spv::StorageClassUniformConstant, type_id));
 			op->add_id(image_id);
 			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
 			impl.add(op);
@@ -567,7 +570,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 				return false;
 
 			type_id = builder.getContainedTypeId(type_id);
-			Operation *op = impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(spv::StorageClassUniform, type_id));
+			Operation *op = impl.allocate(spv::OpAccessChain, instruction,
+			                              builder.makePointer(spv::StorageClassUniform, type_id));
 			op->add_id(base_cbv_id);
 			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
 			impl.add(op);
@@ -623,7 +627,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			}
 
 			type_id = builder.getContainedTypeId(type_id);
-			Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
+			Operation *op = impl.allocate(spv::OpAccessChain,
+			                              builder.makePointer(spv::StorageClassUniformConstant, type_id));
 			op->add_id(sampler_id);
 			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
 			impl.add(op);
@@ -632,7 +637,7 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
 		op->add_id(sampler_id);
-		impl.handle_to_resource_meta[op->id] = { DXIL::ResourceKind::Sampler, DXIL::ComponentType::Invalid, 0u };
+		impl.handle_to_resource_meta[op->id] = {DXIL::ResourceKind::Sampler, DXIL::ComponentType::Invalid, 0u};
 		impl.id_to_type[op->id] = type_id;
 		impl.add(op);
 		break;
@@ -761,5 +766,4 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 		return true;
 	}
 }
-
 } // namespace dxil_spv
