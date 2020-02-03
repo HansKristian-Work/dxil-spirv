@@ -7,10 +7,12 @@ which implements D3D12 on top of Vulkan.
 
 ### Dependencies
 
-LLVM is currently required to be installed. DXIL is straight up LLVM IR in disguise.
-dxil-spirv has been tested against LLVM 9, but almost any LLVM version after 3.7 is expected to work.
+Check out submodules first with `git submodule update --init`.
+No external dependencies apart from the submodules are required to build.
 
-Also check out submodules first with `git submodule update --init`.
+A notable submodule here is LLVM which is included to be able to parse DXIL (LLVM bitcode).
+This might be avoided in the future if a custom BC parser and traversal API is written.
+Only the core subset of LLVM is required to build, so build times are quite short compared to "full" LLVM builds.
 
 ### Build
 
@@ -49,6 +51,33 @@ else()
 	message("Did not find DXIL2SPIRV :( Disabling DXIL support.")
 endif()
 ```
+
+## Testing
+
+The primary method of testing dxil-spirv and avoiding regressions is through a reference shader suite.
+
+### Build DXC
+
+First, build DXC. To keep output consistent, we must use a fixed version of DXC.
+Currently, this only works on Linux, the Windows build of DXC does not seem to support CMake properly.
+
+```
+./checkout_dxc.sh
+./build_dxc.sh
+```
+
+The test suite accepts an arbitrary path to DXC, so if you have a standalone binary somewhere, that can work as well.
+
+### Run test suite
+
+When adding new tests, place the HLSL test in `shaders/` somewhere and run:
+
+```
+./test_shaders.py shaders --dxc external/dxc-build/bin/dxc --dxil-spirv cmake-build-debug/dxil-spirv
+```
+
+If there is any mismatch, the test script will complain. If there are legitimate changes to be made,
+add `--update` to the command. The updated files should now be committed alongside the dxil-spirv change.
 
 ## License
 
