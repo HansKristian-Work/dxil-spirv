@@ -21,9 +21,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 99)
 project(dxil-spirv LANGUAGES CXX C)
 
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+add_subdirectory(third_party EXCLUDE_FROM_ALL)
 
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
     set(DXIL_SPV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -fno-exceptions)
@@ -98,8 +96,7 @@ target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter PRIVATE dxil-debug)
 target_compile_options(dxil-converter PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
-llvm_map_components_to_libnames(llvm_libs Core Support IRReader)
-target_link_libraries(dxil-converter PRIVATE ${llvm_libs})
+target_link_libraries(dxil-converter PRIVATE 3rdparty::llvm)
 target_link_libraries(dxil-converter PUBLIC spirv-module)
 
 add_library(dxil-spirv-c-shared SHARED
@@ -108,7 +105,7 @@ target_include_directories(dxil-spirv-c-shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include/dxil-spirv>)
-target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter)
+target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter 3rdparty::llvm)
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 set_target_properties(dxil-spirv-c-shared PROPERTIES
         PUBLIC_HEADERS dxil_spirv_c.h)

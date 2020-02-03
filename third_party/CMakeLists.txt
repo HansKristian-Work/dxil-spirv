@@ -1,0 +1,40 @@
+message(STATUS "Building LLVM from submodule.")
+
+# Disable everything we can.
+set(LLVM_TARGETS_TO_BUILD "" CACHE INTERNAL "")
+set(LLVM_BUILD_RUNTIME OFF)
+set(LLVM_BUILD_TOOLS OFF)
+set(LLVM_INCLUDE_BENCHMARKS OFF)
+set(LLVM_INCLUDE_DOCS OFF)
+set(LLVM_INCLUDE_EXAMPLES OFF)
+set(LLVM_INCLUDE_TESTS OFF)
+set(LLVM_INCLUDE_TOOLS OFF)
+set(LLVM_INCLUDE_UTILS OFF)
+set(LLVM_ENABLE_OCAMLDOC OFF)
+set(LLVM_ENABLE_BINDINGS OFF)
+set(LLVM_ENABLE_THREADS OFF)
+set(LLVM_ENABLE_LIBPFM OFF)
+set(LLVM_ENABLE_TERMINFO OFF)
+set(LLVM_ENABLE_WARNINGS OFF)
+set(LLVM_ENABLE_PEDANTIC OFF)
+set(LLVM_POLLY_LINK_INTO_TOOLS OFF)
+set(LLVM_POLLY_BUILD OFF)
+set(WITH_POLLY OFF)
+set(LLVM_ENABLE_Z3_SOLVER OFF)
+
+# Need to build out-of-tree.
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/llvm ${CMAKE_CURRENT_BINARY_DIR}/llvm_build EXCLUDE_FROM_ALL)
+
+set(LLVM_DIR "${CMAKE_CURRENT_BINARY_DIR}/llvm_build/lib/cmake/llvm/")
+
+find_package(LLVM CONFIG)
+if (NOT LLVM_FOUND)
+	message(FATAL_ERROR "Could not build LLVM from the submodule. Run `git submodule update --init` first.")
+endif()
+
+llvm_map_components_to_libnames(llvm_libs Core IRReader Support)
+add_library(3rdparty_llvm INTERFACE)
+target_link_libraries(3rdparty_llvm INTERFACE ${llvm_libs})
+target_include_directories(3rdparty_llvm INTERFACE ${LLVM_INCLUDE_DIRS})
+target_compile_definitions(3rdparty_llvm INTERFACE ${LLVM_DEFINITIONS})
+add_library(3rdparty::llvm ALIAS 3rdparty_llvm)
