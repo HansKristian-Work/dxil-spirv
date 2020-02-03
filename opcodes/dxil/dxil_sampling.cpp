@@ -512,7 +512,7 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
-	spv::Id coords[3] = {};
+	spv::Id coords[4] = {};
 	spv::Id offsets[2] = {};
 	uint32_t image_flags = 0;
 
