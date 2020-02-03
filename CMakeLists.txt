@@ -21,6 +21,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 99)
 project(dxil-spirv LANGUAGES CXX C)
 
+option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
 
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
@@ -28,33 +29,6 @@ if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
 elseif (MSVC)
     set(DXIL_SPV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
-
-add_subdirectory(third_party/spirv-headers EXCLUDE_FROM_ALL)
-set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers" CACHE STRING "SPIRV-Headers path" FORCE)
-
-option(DXIL_SPIRV_CLI "Enable CLI support." ON)
-
-if (DXIL_SPIRV_CLI)
-    add_subdirectory(third_party/SPIRV-Tools EXCLUDE_FROM_ALL)
-    add_subdirectory(third_party/SPIRV-Cross EXCLUDE_FROM_ALL)
-endif()
-
-add_library(dxil-spirv-headers INTERFACE)
-target_include_directories(dxil-spirv-headers INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/spirv-headers/include/spirv/unified1)
-
-add_library(glslang-spirv-builder STATIC
-        third_party/glslang-spirv/spvIR.h
-        third_party/glslang-spirv/Logger.cpp
-        third_party/glslang-spirv/Logger.h
-        third_party/glslang-spirv/InReadableOrder.cpp
-        third_party/glslang-spirv/SpvBuilder.h
-        third_party/glslang-spirv/SpvBuilder.cpp)
-set_target_properties(glslang-spirv-builder PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-target_include_directories(glslang-spirv-builder PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glslang-spirv)
-target_link_libraries(glslang-spirv-builder PUBLIC dxil-spirv-headers)
 
 add_library(spirv-module STATIC
         ir.hpp ir.cpp
@@ -96,7 +70,7 @@ target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter PRIVATE dxil-debug)
 target_compile_options(dxil-converter PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
-target_link_libraries(dxil-converter PRIVATE 3rdparty::llvm)
+target_link_libraries(dxil-converter PRIVATE third_party::llvm)
 target_link_libraries(dxil-converter PUBLIC spirv-module)
 
 add_library(dxil-spirv-c-shared SHARED
@@ -105,7 +79,7 @@ target_include_directories(dxil-spirv-c-shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include/dxil-spirv>)
-target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter 3rdparty::llvm)
+target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter third_party::llvm)
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 set_target_properties(dxil-spirv-c-shared PROPERTIES
         PUBLIC_HEADERS dxil_spirv_c.h)
