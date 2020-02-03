@@ -349,7 +349,7 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 	Operation *op = impl.allocate(spv::OpExtInst, instruction, impl.get_type_id(meta.component_type, 1, 1));
 	op->add_ids({
 	    impl.glsl_std450_ext,
-	    opcode,
+	    static_cast<spv::Id>(opcode),
 	    ptr_id,
 	});
 

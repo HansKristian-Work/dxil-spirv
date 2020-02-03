@@ -216,6 +216,10 @@ static dxil_spv_bool remap_vertex_input(void *userdata, const dxil_spv_d3d_verte
 	return DXIL_SPV_TRUE;
 }
 
+#ifdef _MSC_VER
+#define strcasecmp _stricmp
+#endif
+
 static dxil_spv_bool remap_stream_output(void *userdata, const dxil_spv_d3d_stream_output *d3d_output,
                                          dxil_spv_vulkan_stream_output *vk_output)
 {

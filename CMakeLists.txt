@@ -81,6 +81,7 @@ target_include_directories(dxil-spirv-c-shared
         $<INSTALL_INTERFACE:include/dxil-spirv>)
 target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter third_party::llvm)
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
+target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
 set_target_properties(dxil-spirv-c-shared PROPERTIES
         PUBLIC_HEADERS dxil_spirv_c.h)
 
