@@ -39,6 +39,7 @@ struct dxil_spv_parsed_blob_s
 {
 	LLVMBCParser bc;
 	std::string disasm;
+	std::vector<uint8_t> dxil_blob;
 };
 
 struct Remapper : ResourceRemappingInterface
@@ -274,7 +275,9 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 		return DXIL_SPV_ERROR_PARSER;
 	}
 
-	if (!parsed->bc.parse(parser.get_bitcode_data(), parser.get_bitcode_size()))
+	parsed->dxil_blob = std::move(parser.get_blob());
+
+	if (!parsed->bc.parse(parsed->dxil_blob.data(), parsed->dxil_blob.size()))
 	{
 		delete parsed;
 		return DXIL_SPV_ERROR_PARSER;
@@ -306,8 +309,8 @@ void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob)
 	module.print(llvm::errs(), nullptr);
 }
 
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob,
-                                                                             const char **str)
+dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob,
+                                                         const char **str)
 {
 	blob->disasm.clear();
 
@@ -315,6 +318,16 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxi
 	llvm::raw_string_ostream ostr(blob->disasm);
 	module->print(ostr, nullptr);
 	*str = blob->disasm.c_str();
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_parsed_blob_get_raw_ir(dxil_spv_parsed_blob blob, const void **data, size_t *size)
+{
+	if (blob->dxil_blob.empty())
+		return DXIL_SPV_ERROR_GENERIC;
+
+	*data = blob->dxil_blob.data();
+	*size = blob->dxil_blob.size();
 	return DXIL_SPV_SUCCESS;
 }
 

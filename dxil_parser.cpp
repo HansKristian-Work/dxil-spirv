@@ -24,14 +24,9 @@
 
 namespace dxil_spv
 {
-const void *DXILContainerParser::get_bitcode_data() const
+std::vector<uint8_t> &DXILContainerParser::get_blob()
 {
-	return dxil_blob.data();
-}
-
-size_t DXILContainerParser::get_bitcode_size() const
-{
-	return dxil_blob.size();
+	return dxil_blob;
 }
 
 bool DXILContainerParser::parse_dxil(MemoryStream &stream)

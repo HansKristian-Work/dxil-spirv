@@ -100,8 +100,11 @@ if (DXIL_SPIRV_CLI)
     target_compile_options(cli-parser PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
     add_executable(dxil-spirv dxil_spirv.cpp)
+    add_executable(dxil-extract dxil_extract.cpp)
     target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools spirv-cross-c dxil-debug)
     target_compile_options(dxil-spirv PRIVATE ${DXIL_SPV_CXX_FLAGS})
+    target_link_libraries(dxil-extract PRIVATE dxil-spirv-c-shared cli-parser)
+    target_compile_options(dxil-extract PRIVATE ${DXIL_SPV_CXX_FLAGS})
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 0)
@@ -120,6 +123,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dxil-spirv-c-shared.pc DESTINATION ${C
 
 if (DXIL_SPIRV_CLI)
     install(TARGETS dxil-spirv RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS dxil-extract RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/dxil_spirv_c.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv)
 install(TARGETS dxil-spirv-c-shared

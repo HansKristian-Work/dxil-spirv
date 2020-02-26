@@ -498,12 +498,17 @@ int main(int argc, char **argv)
 		else
 		{
 			FILE *file = fopen(args.output_path.c_str(), "wb");
-			if (fwrite(compiled.data, 1, compiled.size, file) != compiled.size)
+			if (file)
 			{
-				LOGE("Failed to write SPIR-V.\n");
-				return EXIT_FAILURE;
+				if (fwrite(compiled.data, 1, compiled.size, file) != compiled.size)
+				{
+					LOGE("Failed to write SPIR-V.\n");
+					return EXIT_FAILURE;
+				}
+				fclose(file);
 			}
-			fclose(file);
+			else
+				LOGE("Failed to open %s.\n", args.output_path.c_str());
 		}
 	}
 
