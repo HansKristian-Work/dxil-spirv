@@ -24,6 +24,8 @@ project(dxil-spirv LANGUAGES CXX C)
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
 
+include(GNUInstallDirs)
+
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
     set(DXIL_SPV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -fno-exceptions)
 elseif (MSVC)
@@ -78,7 +80,7 @@ add_library(dxil-spirv-c-shared SHARED
 target_include_directories(dxil-spirv-c-shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<INSTALL_INTERFACE:include/dxil-spirv>)
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv>)
 target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter third_party::llvm)
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
@@ -110,23 +112,23 @@ set_target_properties(dxil-spirv-c-shared PROPERTIES
         VERSION ${DXIL_SPV_VERSION}
         SOVERSION ${DXIL_SPV_VERSION_MAJOR})
 
-set(DXIL_SPV_INSTALL_LIB_DIR ${CMAKE_INSTALL_PREFIX}/lib)
-set(DXIL_SPV_INSTALL_INC_DIR ${CMAKE_INSTALL_PREFIX}/include/dxil-spirv)
+set(DXIL_SPV_INSTALL_LIB_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+set(DXIL_SPV_INSTALL_INC_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pkg-config/dxil-spirv-c-shared.pc.in
                ${CMAKE_CURRENT_BINARY_DIR}/dxil-spirv-c-shared.pc @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dxil-spirv-c-shared.pc DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pkgconfig)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dxil-spirv-c-shared.pc DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)
 
 if (DXIL_SPIRV_CLI)
-    install(TARGETS dxil-spirv RUNTIME DESTINATION bin)
+    install(TARGETS dxil-spirv RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/dxil_spirv_c.h DESTINATION include/dxil-spirv)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/dxil_spirv_c.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv)
 install(TARGETS dxil-spirv-c-shared
         EXPORT dxil_spirv_c_sharedConfig
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        PUBLIC_HEADER DESTINATION include/dxil-spirv)
-install(EXPORT dxil_spirv_c_sharedConfig DESTINATION share/dxil_spirv_c_shared/cmake)
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv)
+install(EXPORT dxil_spirv_c_sharedConfig DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dxil_spirv_c_shared/cmake)
 
 #add_executable(structurize-test structurize_test.cpp)
 #target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools spirv-cross-glsl dxil-debug)
