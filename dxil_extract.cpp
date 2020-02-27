@@ -19,7 +19,7 @@
 #include "dxil_spirv_c.h"
 #include "cli_parser.hpp"
 #include "logging.hpp"
-#include "llvm_decoder.h"
+#include "module.hpp"
 #include "dxil_bytecode.h"
 #include <vector>
 #include <stdio.h>
@@ -123,6 +123,11 @@ int main(int argc, char **argv)
 		DXIL::Program program(static_cast<const uint8_t *>(ir_data), ir_size);
 		auto disasm = program.GetDisassembly();
 		printf("%s\n", disasm.c_str());
+	}
+
+	{
+		LLVMBC::LLVMContext ctx;
+		auto *module = LLVMBC::parseIR(ctx, ir_data, ir_size);
 	}
 
 	if (output.empty())

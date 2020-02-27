@@ -21,6 +21,9 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 99)
 project(dxil-spirv LANGUAGES CXX C)
 
+add_library(dxil-debug INTERFACE)
+target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
+
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
 add_subdirectory(bc EXCLUDE_FROM_ALL)
@@ -40,9 +43,6 @@ set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC glslang-spirv-builder dxil-spirv-headers)
 target_compile_options(spirv-module PRIVATE ${DXIL_SPV_CXX_FLAGS})
-
-add_library(dxil-debug INTERFACE)
-target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
 
 add_library(dxil-converter STATIC
         memory_stream.hpp memory_stream.cpp
@@ -104,7 +104,7 @@ if (DXIL_SPIRV_CLI)
     add_executable(dxil-extract dxil_extract.cpp)
     target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools spirv-cross-c dxil-debug)
     target_compile_options(dxil-spirv PRIVATE ${DXIL_SPV_CXX_FLAGS})
-    target_link_libraries(dxil-extract PRIVATE dxil-spirv-c-shared cli-parser bc)
+    target_link_libraries(dxil-extract PRIVATE dxil-spirv-c-shared cli-parser bc llvm-bc)
     target_compile_options(dxil-extract PRIVATE ${DXIL_SPV_CXX_FLAGS})
 endif()
 
