@@ -23,6 +23,7 @@ project(dxil-spirv LANGUAGES CXX C)
 
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
+add_subdirectory(bc EXCLUDE_FROM_ALL)
 
 include(GNUInstallDirs)
 
@@ -103,7 +104,7 @@ if (DXIL_SPIRV_CLI)
     add_executable(dxil-extract dxil_extract.cpp)
     target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools spirv-cross-c dxil-debug)
     target_compile_options(dxil-spirv PRIVATE ${DXIL_SPV_CXX_FLAGS})
-    target_link_libraries(dxil-extract PRIVATE dxil-spirv-c-shared cli-parser)
+    target_link_libraries(dxil-extract PRIVATE dxil-spirv-c-shared cli-parser bc)
     target_compile_options(dxil-extract PRIVATE ${DXIL_SPV_CXX_FLAGS})
 endif()
 
