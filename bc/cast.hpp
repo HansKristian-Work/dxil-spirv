@@ -18,48 +18,11 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <type_traits>
-#include <utility>
-#include <exception>
-#include <vector>
-#include <unordered_map>
-
-// A reasonably small LLVM C++ API lookalike.
-
-#define llvm LLVMBC
-#define HAVE_LLVMBC
-
 namespace LLVMBC
 {
-class Function;
-class LLVMContext;
-class Type;
-class Instruction;
-class Function;
-class BasicBlock;
-
-class Module
+template <typename T, typename U>
+T *cast(U *u)
 {
-public:
-	explicit Module(LLVMContext &context);
-	LLVMContext &getContext();
-
-	void add_function_name(uint64_t id, const std::string &name);
-	void add_function_implementation(Function *func);
-	void add_type(Type *type);
-	Type *get_type(uint32_t index);
-
-private:
-	LLVMContext &context;
-	std::vector<Function *> functions;
-	std::vector<Type *> types;
-
-	std::unordered_map<uint64_t, std::string> value_symtab;
-};
-
-
-
-
-Module *parseIR(LLVMContext &context, const void *data, size_t size);
+	return static_cast<T *>(u);
+}
 }

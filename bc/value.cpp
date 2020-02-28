@@ -16,50 +16,48 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#pragma once
-
-#include <stddef.h>
-#include <type_traits>
-#include <utility>
-#include <exception>
-#include <vector>
-#include <unordered_map>
-
-// A reasonably small LLVM C++ API lookalike.
-
-#define llvm LLVMBC
-#define HAVE_LLVMBC
+#include "value.hpp"
+#include "type.hpp"
+#include "context.hpp"
 
 namespace LLVMBC
 {
-class Function;
-class LLVMContext;
-class Type;
-class Instruction;
-class Function;
-class BasicBlock;
-
-class Module
+Constant::Constant(Type *type_)
+	: type(type_)
 {
-public:
-	explicit Module(LLVMContext &context);
-	LLVMContext &getContext();
+}
 
-	void add_function_name(uint64_t id, const std::string &name);
-	void add_function_implementation(Function *func);
-	void add_type(Type *type);
-	Type *get_type(uint32_t index);
+ConstantInt *ConstantInt::get(Type *type, uint64_t value)
+{
+	auto &context = type->getContext();
+	return context.construct<ConstantInt>(type, value);
+}
 
-private:
-	LLVMContext &context;
-	std::vector<Function *> functions;
-	std::vector<Type *> types;
+ConstantFP *ConstantFP::get(Type *type, uint64_t value)
+{
+	auto &context = type->getContext();
+	return context.construct<ConstantFP>(type, value);
+}
 
-	std::unordered_map<uint64_t, std::string> value_symtab;
-};
+ConstantInt::ConstantInt(Type *type_, uint64_t value_)
+	: Constant(type_), value(value_)
+{
+}
 
+ConstantFP::ConstantFP(Type *type_, uint64_t value)
+	: Constant(type_)
+{
+	u.u64 = value;
+}
 
+UndefValue::UndefValue(Type *type)
+	: Constant(type)
+{
+}
 
-
-Module *parseIR(LLVMContext &context, const void *data, size_t size);
+UndefValue *UndefValue::get(Type *type)
+{
+	auto &context = type->getContext();
+	return context.construct<UndefValue>(type);
+}
 }

@@ -18,48 +18,55 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <type_traits>
-#include <utility>
-#include <exception>
-#include <vector>
-#include <unordered_map>
-
-// A reasonably small LLVM C++ API lookalike.
-
-#define llvm LLVMBC
-#define HAVE_LLVMBC
+#include <stdint.h>
 
 namespace LLVMBC
 {
-class Function;
-class LLVMContext;
 class Type;
-class Instruction;
-class Function;
-class BasicBlock;
 
-class Module
+class Value
 {
 public:
-	explicit Module(LLVMContext &context);
-	LLVMContext &getContext();
-
-	void add_function_name(uint64_t id, const std::string &name);
-	void add_function_implementation(Function *func);
-	void add_type(Type *type);
-	Type *get_type(uint32_t index);
-
-private:
-	LLVMContext &context;
-	std::vector<Function *> functions;
-	std::vector<Type *> types;
-
-	std::unordered_map<uint64_t, std::string> value_symtab;
 };
 
+class Constant : public Value
+{
+public:
+	explicit Constant(Type *type);
 
+protected:
+	Type *type;
+};
 
+class ConstantInt : public Constant
+{
+public:
+	static ConstantInt *get(Type *type, uint64_t value);
+	ConstantInt(Type *type, uint64_t value);
 
-Module *parseIR(LLVMContext &context, const void *data, size_t size);
+private:
+	uint64_t value;
+};
+
+class ConstantFP : public Constant
+{
+public:
+	static ConstantFP *get(Type *type, uint64_t bits);
+	ConstantFP(Type *type, uint64_t bits);
+
+private:
+	union
+	{
+		float f32;
+		double f64;
+		uint64_t u64;
+	} u;
+};
+
+class UndefValue : public Constant
+{
+public:
+	UndefValue(Type *type);
+	static UndefValue *get(Type *type);
+};
 }

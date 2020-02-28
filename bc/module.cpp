@@ -17,9 +17,13 @@
  */
 
 #include "module.hpp"
+#include "type.hpp"
 #include "logging.hpp"
+#include "context.hpp"
+#include "function.hpp"
+#include "value.hpp"
+
 #include "llvm_decoder.h"
-#include <stdlib.h>
 
 namespace llvm
 {
@@ -189,29 +193,264 @@ enum class TypeRecord : uint32_t
 	TOKEN = 22,
 };
 
-LLVMContext::LLVMContext()
+struct FunctionParseContext
 {
-}
+	Function *function = nullptr;
+	Module *module = nullptr;
+	LLVMContext *context = nullptr;
+	BasicBlock *current_bb = nullptr;
+	std::vector<BasicBlock *> basic_blocks;
+	std::vector<Value *> values;
+	Type *constant_type = nullptr;
 
-LLVMContext::~LLVMContext()
-{
-	for (size_t i = typed_allocations.size(); i; i--)
-		typed_allocations[i - 1]->run();
-	for (size_t i = raw_allocations.size(); i; i--)
-		free(raw_allocations[i - 1]);
-}
+	void parse_child_block(const BlockOrRecord &entry);
+	void parse_record(const BlockOrRecord &entry);
+	void parse_constants_record(const BlockOrRecord &entry);
+	Type *get_constant_type();
 
-void *LLVMContext::allocate(size_t size, size_t /*align*/)
-{
-	// TODO: Chain allocation.
-	void *ptr = malloc(size);
-	raw_allocations.push_back(ptr);
-	return ptr;
-}
+	bool use_relative_id = true;
+};
 
 static bool is_known(uint32_t id, KnownBlocks block)
 {
 	return id == uint32_t(block);
+}
+
+Type *FunctionParseContext::get_constant_type()
+{
+	if (constant_type)
+		return constant_type;
+	else
+		return Type::getInt32Ty(*context);
+}
+
+void FunctionParseContext::parse_constants_record(const BlockOrRecord &entry)
+{
+	if (entry.IsBlock())
+		return;
+
+	switch (ConstantsRecord(entry.id))
+	{
+	case ConstantsRecord::SETTYPE:
+		LOGI("Setting constant type index %u.\n", unsigned(entry.ops[0]));
+		constant_type = module->get_type(entry.ops[0]);
+		break;
+
+	case ConstantsRecord::CONST_NULL:
+		LOGW("CONST_NULL unimplemented.\n");
+		values.push_back(nullptr);
+		break;
+
+	case ConstantsRecord::UNDEF:
+	{
+		auto *type = get_constant_type();
+		LOGI("Adding undef as ID %u.\n", unsigned(values.size()));
+		values.push_back(UndefValue::get(type));
+		break;
+	}
+
+	case ConstantsRecord::INTEGER:
+	{
+		LOGI("Adding constant integer as ID %u.\n", unsigned(values.size()));
+		auto *type = get_constant_type();
+		assert(type->isIntegerTy());
+		ConstantInt *value = ConstantInt::get(type, entry.ops[0]);
+		values.push_back(value);
+		break;
+	}
+
+	case ConstantsRecord::WIDE_INTEGER:
+		LOGW("WIDE_INTEGER unimplemented.\n");
+		values.push_back(nullptr);
+		break;
+
+	case ConstantsRecord::FLOAT:
+	{
+		LOGI("Adding constant float as ID %u.\n", unsigned(values.size()));
+		auto *type = get_constant_type();
+		assert(type->isFloatingPointTy());
+		ConstantFP *value = ConstantFP::get(type, entry.ops[0]);
+		values.push_back(value);
+		break;
+	}
+
+	case ConstantsRecord::AGGREGATE:
+		LOGW("AGGREGATE unimplemented.\n");
+		values.push_back(nullptr);
+		break;
+
+	case ConstantsRecord::STRING:
+		LOGW("STRING unimplemented.\n");
+		values.push_back(nullptr);
+		break;
+
+	case ConstantsRecord::DATA:
+		LOGW("DATA unimplemented.\n");
+		values.push_back(nullptr);
+		break;
+
+	default:
+		LOGW("UNKNOWN unimplemented.\n");
+		values.push_back(nullptr);
+		break;
+	}
+}
+
+void FunctionParseContext::parse_child_block(const BlockOrRecord &entry)
+{
+	switch (KnownBlocks(entry.id))
+	{
+	case KnownBlocks::CONSTANTS_BLOCK:
+	{
+		constant_type = nullptr;
+		for (auto &child : entry.children)
+			parse_constants_record(child);
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
+void FunctionParseContext::parse_record(const BlockOrRecord &entry)
+{
+	switch (FunctionRecord(entry.id))
+	{
+	case FunctionRecord::DECLAREBLOCKS:
+	{
+		basic_blocks.resize(entry.ops[0]);
+		for (auto &bb : basic_blocks)
+			bb = context->construct<BasicBlock>(*context);
+		current_bb = basic_blocks.front();
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
+static void parse_function(Module *module, const BlockOrRecord &entry)
+{
+	FunctionParseContext context;
+	auto *func = module->getContext().construct<Function>(*module);
+	context.function = func;
+	context.module = module;
+	context.context = &module->getContext();
+
+	for (auto &child : entry.children)
+	{
+		if (child.IsBlock())
+			context.parse_child_block(child);
+		else
+			context.parse_record(child);
+	}
+
+	module->add_function_implementation(func);
+}
+
+static void parse_type(Module *module, const BlockOrRecord &child)
+{
+	auto &context = module->getContext();
+
+	Type *type = nullptr;
+	switch (TypeRecord(child.id))
+	{
+	case TypeRecord::NUMENTRY:
+		return;
+
+	case TypeRecord::VOID:
+	{
+		type = Type::getVoidTy(context);
+		LOGI("Type: VOID\n");
+		break;
+	}
+
+	case TypeRecord::HALF:
+		type = Type::getHalfTy(context);
+		LOGI("Type: HALF\n");
+		break;
+
+	case TypeRecord::FLOAT:
+		type = Type::getFloatTy(context);
+		LOGI("Type: FLOAT\n");
+		break;
+
+	case TypeRecord::DOUBLE:
+		type = Type::getDoubleTy(context);
+		LOGI("Type: DOUBLE\n");
+		break;
+
+	case TypeRecord::POINTER:
+		type = PointerType::get(module->get_type(child.ops[0]), child.ops[1]);
+		LOGI("Type: POINTER\n");
+		break;
+
+	case TypeRecord::ARRAY:
+		type = ArrayType::get(module->get_type(child.ops[1]), child.ops[0]);
+		LOGI("Type: ARRAY\n");
+		break;
+
+	case TypeRecord::INTEGER:
+		switch (child.ops[0])
+		{
+		case 8:
+			type = Type::getInt8Ty(context);
+			LOGI("Type: INT8\n");
+			break;
+
+		case 16:
+			type = Type::getInt16Ty(context);
+			LOGI("Type: INT16\n");
+			break;
+
+		case 32:
+			type = Type::getInt32Ty(context);
+			LOGI("Type: INT32\n");
+			break;
+
+		case 64:
+			type = Type::getInt64Ty(context);
+			LOGI("Type: INT64\n");
+			break;
+		}
+		break;
+
+	case TypeRecord::STRUCT_NAMED:
+	case TypeRecord::STRUCT_ANON:
+	{
+		std::vector<Type *> members;
+		members.reserve(child.ops.size());
+		for (auto &op : child.ops)
+			members.push_back(module->get_type(op));
+		type = StructType::get(std::move(members));
+		LOGI("Type: STRUCT\n");
+		break;
+	}
+
+	case TypeRecord::FUNCTION:
+	{
+		auto *type = context.construct<FunctionType>(context);
+		type->set_return_type(module->get_type(child.ops[1]));
+		for (size_t i = 2; i < child.ops.size(); i++)
+			type->add_argument_type(module->get_type(child.ops[i]));
+		module->add_type(type);
+		LOGI("Type: FUNCTION\n");
+		return;
+	}
+
+	default:
+		break;
+	}
+
+	module->add_type(type);
+}
+
+static void parse_types(Module *module, const BlockOrRecord &entry)
+{
+	for (auto &child : entry.children)
+		parse_type(module, child);
 }
 
 static void parse_value_symtab(Module *module, const BlockOrRecord &entry)
@@ -222,89 +461,6 @@ static void parse_value_symtab(Module *module, const BlockOrRecord &entry)
 		module->add_function_name(symtab.ops[0], name);
 		LOGI("Function %u is \"%s\"\n", unsigned(symtab.ops[0]), name.c_str());
 	}
-}
-
-static void parse_function(Module *module, const BlockOrRecord &entry)
-{
-
-}
-
-static void parse_type(Module *module, const BlockOrRecord &child)
-{
-	auto &context = module->getContext();
-	TypeID id = TypeID::Unknown;
-
-	switch (TypeRecord(child.id))
-	{
-	case TypeRecord::VOID:
-		id = TypeID::Void;
-		break;
-
-	case TypeRecord::HALF:
-		id = TypeID::Half;
-		break;
-
-	case TypeRecord::FLOAT:
-		id = TypeID::Float;
-		break;
-
-	case TypeRecord::DOUBLE:
-		id = TypeID::Double;
-		break;
-
-	case TypeRecord::POINTER:
-	{
-		auto *type = context.construct<PointerType>(*module, module->get_type(child.ops[0]), child.ops[1]);
-		module->add_type(type);
-		return;
-	}
-
-	case TypeRecord::ARRAY:
-	{
-		auto *type = context.construct<ArrayType>(*module, module->get_type(child.ops[1]), child.ops[0]);
-		module->add_type(type);
-		return;
-	}
-
-	case TypeRecord::INTEGER:
-	{
-		auto *type = context.construct<IntegerType>(*module, child.ops[0]);
-		module->add_type(type);
-		return;
-	}
-
-	case TypeRecord::STRUCT_NAMED:
-	case TypeRecord::STRUCT_ANON:
-	{
-		auto *type = context.construct<StructType>(*module);
-		for (size_t i = 1; i < child.ops.size(); i++)
-			type->add_member_type(module->get_type(child.ops[i]));
-		module->add_type(type);
-		return;
-	}
-
-	case TypeRecord::FUNCTION:
-	{
-		auto *type = context.construct<FunctionType>(*module);
-		type->set_return_type(module->get_type(child.ops[1]));
-		for (size_t i = 2; i < child.ops.size(); i++)
-			type->add_argument_type(module->get_type(child.ops[i]));
-		module->add_type(type);
-		return;
-	}
-
-	default:
-		break;
-	}
-
-	auto *type = context.construct<Type>(*module, id);
-	module->add_type(type);
-}
-
-static void parse_types(Module *module, const BlockOrRecord &entry)
-{
-	for (auto &child : entry.children)
-		parse_type(module, child);
 }
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size)
@@ -326,9 +482,9 @@ Module *parseIR(LLVMContext &context, const void *data, size_t size)
 	{
 		if (child.IsBlock() && is_known(child.id, KnownBlocks::VALUE_SYMTAB_BLOCK))
 			parse_value_symtab(module, child);
-		if (child.IsBlock() && is_known(child.id, KnownBlocks::FUNCTION_BLOCK))
+		else if (child.IsBlock() && is_known(child.id, KnownBlocks::FUNCTION_BLOCK))
 			parse_function(module, child);
-		if (child.IsBlock() && is_known(child.id, KnownBlocks::TYPE_BLOCK))
+		else if (child.IsBlock() && is_known(child.id, KnownBlocks::TYPE_BLOCK))
 			parse_types(module, child);
 	}
 
@@ -351,59 +507,18 @@ void Module::add_function_name(uint64_t id, const std::string &name)
 	value_symtab[id] = name;
 }
 
+void Module::add_function_implementation(Function *func)
+{
+	functions.push_back(func);
+}
+
 LLVMContext &Module::getContext()
 {
 	return context;
 }
 
 Module::Module(LLVMContext &context_)
-	: context(context_)
+		: context(context_)
 {
 }
-
-void StructType::add_member_type(Type *type)
-{
-	member_types.push_back(type);
-}
-
-void FunctionType::add_argument_type(Type *argument_type)
-{
-	argument_types.push_back(argument_type);
-}
-
-void FunctionType::set_return_type(Type *return_type_)
-{
-	return_type = return_type_;
-}
-
-PointerType::PointerType(Module &module, Type *type, uint32_t addr_space)
-	: Type(module, TypeID::Pointer), contained_type(type), address_space(addr_space)
-{
-}
-
-ArrayType::ArrayType(Module &module, Type *type, uint32_t elements_)
-	: Type(module, TypeID::Array), contained_type(type), elements(elements_)
-{
-}
-
-StructType::StructType(Module &module)
-	: Type(module, TypeID::Struct)
-{
-}
-
-FunctionType::FunctionType(LLVMBC::Module &module)
-	: Type(module, TypeID::Function)
-{
-}
-
-IntegerType::IntegerType(Module &module, uint32_t width_)
-	: Type(module, TypeID::Int), width(width_)
-{
-}
-
-Type::Type(Module &module_, TypeID type_id_)
-	: module(module_), type_id(type_id_)
-{
-}
-
 }

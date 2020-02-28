@@ -16,50 +16,29 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#pragma once
-
-#include <stddef.h>
-#include <type_traits>
-#include <utility>
-#include <exception>
-#include <vector>
-#include <unordered_map>
-
-// A reasonably small LLVM C++ API lookalike.
-
-#define llvm LLVMBC
-#define HAVE_LLVMBC
+#include "context.hpp"
+#include <stdlib.h>
 
 namespace LLVMBC
 {
-class Function;
-class LLVMContext;
-class Type;
-class Instruction;
-class Function;
-class BasicBlock;
-
-class Module
+LLVMContext::LLVMContext()
 {
-public:
-	explicit Module(LLVMContext &context);
-	LLVMContext &getContext();
-
-	void add_function_name(uint64_t id, const std::string &name);
-	void add_function_implementation(Function *func);
-	void add_type(Type *type);
-	Type *get_type(uint32_t index);
-
-private:
-	LLVMContext &context;
-	std::vector<Function *> functions;
-	std::vector<Type *> types;
-
-	std::unordered_map<uint64_t, std::string> value_symtab;
-};
-
-
-
-
-Module *parseIR(LLVMContext &context, const void *data, size_t size);
 }
+
+LLVMContext::~LLVMContext()
+{
+	for (size_t i = typed_allocations.size(); i; i--)
+		typed_allocations[i - 1]->run();
+	for (size_t i = raw_allocations.size(); i; i--)
+		::free(raw_allocations[i - 1]);
+}
+
+void *LLVMContext::allocate(size_t size, size_t /*align*/)
+{
+	// TODO: Chain allocation.
+	void *ptr = ::malloc(size);
+	raw_allocations.push_back(ptr);
+	return ptr;
+}
+}
+
