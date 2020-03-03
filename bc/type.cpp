@@ -191,7 +191,7 @@ Type *Type::getIntTy(LLVMContext &context, uint32_t width)
 		if (type->getTypeID() == TypeID::Int && cast<IntegerType>(type)->getBitWidth() == width)
 			return type;
 
-	auto *type = context.construct<IntegerType>(context, 32);
+	auto *type = context.construct<IntegerType>(context, width);
 	cache.push_back(type);
 	return type;
 }

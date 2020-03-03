@@ -467,14 +467,13 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			(void)fmf;
 		}
 
+		FunctionType *function_type = nullptr;
 		if (CCInfo & CALL_EXPLICIT_TYPE_BIT)
-		{
-			// Just ignore explicit type, it must match the prototype anyways?
-			index++;
-		}
+			function_type = cast<FunctionType>(module->get_type(entry.ops[index++]));
 
 		auto *callee = cast<Function>(get_value(entry.ops[index++]));
-		auto *function_type = callee->getFunctionType();
+		if (!function_type)
+			function_type = callee->getFunctionType();
 
 		unsigned num_params = function_type->getNumParams();
 		if (entry.ops.size() != index + num_params)
