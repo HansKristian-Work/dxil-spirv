@@ -19,30 +19,55 @@
 #pragma once
 
 #include <stdint.h>
+#include <vector>
 
 namespace LLVMBC
 {
 class Type;
 
+enum class ValueKind
+{
+	Function,
+	ConstantInt,
+	ConstantFP,
+	Undef,
+	UnaryOperator,
+	BinaryOperator,
+	Return,
+	Call
+};
+
 class Value
 {
 public:
+	explicit Value(Type *type, ValueKind kind);
+	Type *getType() const;
+
+	ValueKind get_value_kind() const;
+	void set_tween_id(uint64_t id);
+	uint64_t get_tween_id() const;
+
+protected:
+	Type *type;
+	ValueKind kind;
+	uint64_t tween_id = 0;
 };
 
 class Constant : public Value
 {
 public:
-	explicit Constant(Type *type);
-
-protected:
-	Type *type;
+	Constant(Type *type, ValueKind kind);
 };
 
 class ConstantInt : public Constant
 {
 public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantInt; }
 	static ConstantInt *get(Type *type, uint64_t value);
 	ConstantInt(Type *type, uint64_t value);
+
+	uint64_t get_zext() const;
+	int64_t get_sext() const;
 
 private:
 	uint64_t value;
@@ -51,8 +76,11 @@ private:
 class ConstantFP : public Constant
 {
 public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantFP; }
 	static ConstantFP *get(Type *type, uint64_t bits);
 	ConstantFP(Type *type, uint64_t bits);
+
+	double get_double() const;
 
 private:
 	union
@@ -66,7 +94,8 @@ private:
 class UndefValue : public Constant
 {
 public:
-	UndefValue(Type *type);
+	static constexpr ValueKind get_value_kind() { return ValueKind::Undef; }
+	explicit UndefValue(Type *type);
 	static UndefValue *get(Type *type);
 };
 }

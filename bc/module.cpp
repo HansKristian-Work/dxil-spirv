@@ -22,10 +22,13 @@
 #include "context.hpp"
 #include "function.hpp"
 #include "value.hpp"
+#include "instruction.hpp"
+#include "cast.hpp"
+#include <algorithm>
 
 #include "llvm_decoder.h"
 
-namespace llvm
+namespace LLVMBC
 {
 enum class KnownBlocks : uint32_t
 {
@@ -193,7 +196,39 @@ enum class TypeRecord : uint32_t
 	TOKEN = 22,
 };
 
-struct FunctionParseContext
+enum class UnaryOp : uint32_t
+{
+	FNEG = 0
+};
+
+enum class BinOp : uint32_t
+{
+	ADD = 0,
+	SUB = 1,
+	MUL = 2,
+	UDIV = 3,
+	SDIV = 4,
+	UREM = 5,
+	SREM = 6,
+	SHL = 7,
+	LSHR = 8,
+	ASHR = 9,
+	AND = 10,
+	OR = 11,
+	XOR = 12
+};
+
+enum CallFlagBits
+{
+	CALL_TAIL_BIT = 1 << 0,
+	CALL_CCONV_BIT = 1 << 1,
+	CALL_MUSTTAIL_BIT = 1 << 14,
+	CALL_EXPLICIT_TYPE_BIT = 1 << 15,
+	CALL_NOTAIL_BIT = 1 << 16,
+	CALL_FMF_BIT = 1 << 17
+};
+
+struct ModuleParseContext
 {
 	Function *function = nullptr;
 	Module *module = nullptr;
@@ -201,22 +236,50 @@ struct FunctionParseContext
 	BasicBlock *current_bb = nullptr;
 	std::vector<BasicBlock *> basic_blocks;
 	std::vector<Value *> values;
+	std::vector<Function *> functions_with_bodies;
 	Type *constant_type = nullptr;
 
-	void parse_child_block(const BlockOrRecord &entry);
+	void parse_function_child_block(const BlockOrRecord &entry);
 	void parse_record(const BlockOrRecord &entry);
 	void parse_constants_record(const BlockOrRecord &entry);
+	void parse_constants_block(const BlockOrRecord &entry);
 	Type *get_constant_type();
+	void parse_function_body(const BlockOrRecord &entry);
+	void parse_types(const BlockOrRecord &entry);
+	void parse_value_symtab(const BlockOrRecord &entry);
+	void parse_function_record(const BlockOrRecord &entry);
+	void parse_version_record(const BlockOrRecord &entry);
+	void add_instruction(Instruction *inst);
+
+	Value *get_value(uint64_t op) const;
 
 	bool use_relative_id = true;
+	bool use_strtab = false;
+	bool seen_first_function_body = false;
 };
 
-static bool is_known(uint32_t id, KnownBlocks block)
+Value *ModuleParseContext::get_value(uint64_t op) const
 {
-	return id == uint32_t(block);
+	if (use_relative_id)
+		op = values.size() - op;
+
+	if (op >= values.size())
+	{
+		LOGE("Forward reference?\n");
+		return nullptr;
+	}
+	return values[op];
 }
 
-Type *FunctionParseContext::get_constant_type()
+void ModuleParseContext::add_instruction(Instruction *inst)
+{
+	inst->set_tween_id(values.size());
+	current_bb->add_instruction(inst);
+	if (inst->get_value_kind() != ValueKind::Return)
+		values.push_back(inst);
+}
+
+Type *ModuleParseContext::get_constant_type()
 {
 	if (constant_type)
 		return constant_type;
@@ -224,7 +287,7 @@ Type *FunctionParseContext::get_constant_type()
 		return Type::getInt32Ty(*context);
 }
 
-void FunctionParseContext::parse_constants_record(const BlockOrRecord &entry)
+void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 {
 	if (entry.IsBlock())
 		return;
@@ -237,9 +300,18 @@ void FunctionParseContext::parse_constants_record(const BlockOrRecord &entry)
 		break;
 
 	case ConstantsRecord::CONST_NULL:
-		LOGW("CONST_NULL unimplemented.\n");
-		values.push_back(nullptr);
+	{
+		Value *value = nullptr;
+		if (constant_type->isIntegerTy())
+			value = ConstantInt::get(constant_type, 0);
+		else if (constant_type->isFloatingPointTy())
+			value = ConstantFP::get(constant_type, 0);
+
+		if (!value)
+			LOGE("Unknown type for CONST_NULL.\n");
+		values.push_back(value);
 		break;
+	}
 
 	case ConstantsRecord::UNDEF:
 	{
@@ -254,7 +326,14 @@ void FunctionParseContext::parse_constants_record(const BlockOrRecord &entry)
 		LOGI("Adding constant integer as ID %u.\n", unsigned(values.size()));
 		auto *type = get_constant_type();
 		assert(type->isIntegerTy());
-		ConstantInt *value = ConstantInt::get(type, entry.ops[0]);
+
+		uint64_t literal = entry.ops[0];
+		bool sign = (literal & 1) != 0;
+		literal >>= 1;
+		if (sign)
+			literal = literal ? -int64_t(literal) : (1ull << 63u);
+
+		ConstantInt *value = ConstantInt::get(type, literal);
 		values.push_back(value);
 		break;
 	}
@@ -296,13 +375,19 @@ void FunctionParseContext::parse_constants_record(const BlockOrRecord &entry)
 	}
 }
 
-void FunctionParseContext::parse_child_block(const BlockOrRecord &entry)
+void ModuleParseContext::parse_constants_block(const BlockOrRecord &entry)
+{
+	constant_type = nullptr;
+	for (auto &child : entry.children)
+		parse_constants_record(child);
+}
+
+void ModuleParseContext::parse_function_child_block(const BlockOrRecord &entry)
 {
 	switch (KnownBlocks(entry.id))
 	{
 	case KnownBlocks::CONSTANTS_BLOCK:
 	{
-		constant_type = nullptr;
 		for (auto &child : entry.children)
 			parse_constants_record(child);
 		break;
@@ -313,7 +398,52 @@ void FunctionParseContext::parse_child_block(const BlockOrRecord &entry)
 	}
 }
 
-void FunctionParseContext::parse_record(const BlockOrRecord &entry)
+static UnaryOperation translate_uop(UnaryOp op, Type *type)
+{
+	bool is_fp = type->isFloatingPointTy();
+	if (op == UnaryOp::FNEG && is_fp)
+		return UnaryOperation::FNeg;
+	else
+		return UnaryOperation::Invalid;
+}
+
+static BinaryOperation translate_binop(BinOp op, Type *type)
+{
+	bool is_fp = type->isFloatingPointTy();
+	switch (op)
+	{
+	case BinOp::ADD:
+		return is_fp ? BinaryOperation::FAdd : BinaryOperation::Add;
+	case BinOp::SUB:
+		return is_fp ? BinaryOperation::FSub : BinaryOperation::Sub;
+	case BinOp::MUL:
+		return is_fp ? BinaryOperation::FMul : BinaryOperation::Mul;
+	case BinOp::UDIV:
+		return is_fp ? BinaryOperation::Invalid : BinaryOperation::UDiv;
+	case BinOp::SDIV:
+		return is_fp ? BinaryOperation::FDiv : BinaryOperation::SDiv;
+	case BinOp::UREM:
+		return is_fp ? BinaryOperation::Invalid : BinaryOperation::URem;
+	case BinOp::SREM:
+		return is_fp ? BinaryOperation::FRem : BinaryOperation::SRem;
+	case BinOp::SHL:
+		return is_fp ? BinaryOperation::Invalid : BinaryOperation::Shl;
+	case BinOp::LSHR:
+		return is_fp ? BinaryOperation::Invalid : BinaryOperation::LShr;
+	case BinOp::ASHR:
+		return is_fp ? BinaryOperation::Invalid : BinaryOperation::AShr;
+	case BinOp::AND:
+		return is_fp ? BinaryOperation::Invalid : BinaryOperation::And;
+	case BinOp::OR:
+		return is_fp ? BinaryOperation::Invalid : BinaryOperation::Or;
+	case BinOp::XOR:
+		return is_fp ? BinaryOperation::Invalid : BinaryOperation::Xor;
+	default:
+		return BinaryOperation::Invalid;
+	}
+}
+
+void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 {
 	switch (FunctionRecord(entry.id))
 	{
@@ -326,28 +456,107 @@ void FunctionParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_CALL:
+	{
+		unsigned index = 1;
+		auto CCInfo = entry.ops[index++];
+
+		if (CCInfo & CALL_FMF_BIT)
+		{
+			auto fmf = entry.ops[index++];
+			(void)fmf;
+		}
+
+		if (CCInfo & CALL_EXPLICIT_TYPE_BIT)
+		{
+			// Just ignore explicit type, it must match the prototype anyways?
+			index++;
+		}
+
+		auto *callee = cast<Function>(get_value(entry.ops[index++]));
+		auto *function_type = callee->getFunctionType();
+
+		unsigned num_params = function_type->getNumParams();
+		if (entry.ops.size() != index + num_params)
+		{
+			LOGE("Number of params does not match record.\n");
+			return;
+		}
+
+		std::vector<Value *> params;
+		params.reserve(num_params);
+
+		for (unsigned i = 0; i < num_params; i++)
+		{
+			Value *arg = get_value(entry.ops[index + i]);
+			params.push_back(arg);
+		}
+
+		auto *value = context->construct<CallInst>(function_type, cast<Function>(callee), std::move(params));
+		add_instruction(value);
+		break;
+	}
+
+	case FunctionRecord::INST_RET:
+	{
+		auto *ret = context->construct<ReturnInst>(nullptr);
+		add_instruction(ret);
+		break;
+	}
+
+	case FunctionRecord::INST_UNOP:
+	{
+		auto *val = get_value(entry.ops[0]);
+		auto op = UnaryOp(entry.ops[1]);
+		auto *value = context->construct<UnaryOperator>(translate_uop(op, val->getType()), val);
+		add_instruction(value);
+		break;
+	}
+
+	case FunctionRecord::INST_BINOP:
+	{
+		auto *lhs = get_value(entry.ops[0]);
+		auto *rhs = get_value(entry.ops[1]);
+		auto op = BinOp(entry.ops[2]);
+		auto *value = context->construct<BinaryOperator>(lhs, rhs, translate_binop(op, lhs->getType()));
+		add_instruction(value);
+		break;
+	}
+
 	default:
 		break;
 	}
 }
 
-static void parse_function(Module *module, const BlockOrRecord &entry)
+void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 {
-	FunctionParseContext context;
-	auto *func = module->getContext().construct<Function>(*module);
-	context.function = func;
-	context.module = module;
-	context.context = &module->getContext();
+	// I think we are supposed to process functions in same order as the module declared them?
+	if (!seen_first_function_body)
+	{
+		std::reverse(functions_with_bodies.begin(), functions_with_bodies.end());
+		seen_first_function_body = true;
+	}
+
+	if (functions_with_bodies.empty())
+	{
+		LOGE("No more functions to process?\n");
+		return;
+	}
+
+	function = functions_with_bodies.back();
+	functions_with_bodies.pop_back();
 
 	for (auto &child : entry.children)
 	{
 		if (child.IsBlock())
-			context.parse_child_block(child);
+			parse_function_child_block(child);
 		else
-			context.parse_record(child);
+			parse_record(child);
 	}
 
-	module->add_function_implementation(func);
+	function->set_basic_blocks(std::move(basic_blocks));
+	basic_blocks = {};
+	module->add_function_implementation(function);
 }
 
 static void parse_type(Module *module, const BlockOrRecord &child)
@@ -431,11 +640,16 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 
 	case TypeRecord::FUNCTION:
 	{
-		auto *type = context.construct<FunctionType>(context);
-		type->set_return_type(module->get_type(child.ops[1]));
+		std::vector<Type *> argument_types;
+		argument_types.reserve(child.ops.size());
 		for (size_t i = 2; i < child.ops.size(); i++)
-			type->add_argument_type(module->get_type(child.ops[i]));
-		module->add_type(type);
+			argument_types.push_back(module->get_type(child.ops[i]));
+
+		auto *func_type = context.construct<FunctionType>(context,
+		                                                  module->get_type(child.ops[1]),
+		                                                  std::move(argument_types));
+
+		module->add_type(func_type);
 		LOGI("Type: FUNCTION\n");
 		return;
 	}
@@ -447,20 +661,98 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 	module->add_type(type);
 }
 
-static void parse_types(Module *module, const BlockOrRecord &entry)
+void ModuleParseContext::parse_types(const BlockOrRecord &entry)
 {
 	for (auto &child : entry.children)
 		parse_type(module, child);
 }
 
-static void parse_value_symtab(Module *module, const BlockOrRecord &entry)
+void ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 {
 	for (auto &symtab : entry.children)
 	{
 		auto name = symtab.getString(1);
-		module->add_function_name(symtab.ops[0], name);
-		LOGI("Function %u is \"%s\"\n", unsigned(symtab.ops[0]), name.c_str());
+		module->add_value_name(symtab.ops[0], name);
+		LOGI("Value %u is \"%s\"\n", unsigned(symtab.ops[0]), name.c_str());
 	}
+}
+
+void ModuleParseContext::parse_function_record(const BlockOrRecord &entry)
+{
+	if (use_strtab)
+	{
+		LOGE("Unknown module code 2 which uses strtab.\n");
+		return;
+	}
+
+	auto *type = module->get_type(entry.ops[0]);
+	// Calling convention is [1], not relevant.
+	bool is_proto = entry.ops[2];
+	// Lots of other irrelevant arguments ...
+
+	auto id = values.size();
+	auto *func = context->construct<Function>(cast<FunctionType>(type), id, *module);
+	values.push_back(func);
+
+	if (!is_proto)
+		functions_with_bodies.push_back(func);
+}
+
+void ModuleParseContext::parse_version_record(const BlockOrRecord &entry)
+{
+	unsigned version = entry.ops[0];
+	use_relative_id = version >= 1;
+	use_strtab = version >= 2;
+}
+Type *Module::get_type(uint64_t index)
+{
+	assert(index < types.size());
+	return types[index];
+}
+
+void Module::add_type(Type *type)
+{
+	types.push_back(type);
+}
+
+void Module::add_value_name(uint64_t id, const std::string &name)
+{
+	value_symtab[id] = name;
+}
+
+void Module::add_function_implementation(Function *func)
+{
+	functions.push_back(func);
+}
+
+static const std::string empty_string;
+const std::string &Module::get_value_name(uint64_t id) const
+{
+	auto itr = value_symtab.find(id);
+	if (itr != value_symtab.end())
+		return itr->second;
+	else
+		return empty_string;
+}
+
+LLVMContext &Module::getContext()
+{
+	return context;
+}
+
+Module::Module(LLVMContext &context_)
+		: context(context_)
+{
+}
+
+std::vector<Function *>::const_iterator Module::begin() const
+{
+	return functions.begin();
+}
+
+std::vector<Function *>::const_iterator Module::end() const
+{
+	return functions.end();
 }
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size)
@@ -478,47 +770,54 @@ Module *parseIR(LLVMContext &context, const void *data, size_t size)
 
 	auto *module = context.construct<Module>(context);
 
+	ModuleParseContext parse_context;
+	parse_context.module = module;
+	parse_context.context = &module->getContext();
+
 	for (auto &child : toplevel.children)
 	{
-		if (child.IsBlock() && is_known(child.id, KnownBlocks::VALUE_SYMTAB_BLOCK))
-			parse_value_symtab(module, child);
-		else if (child.IsBlock() && is_known(child.id, KnownBlocks::FUNCTION_BLOCK))
-			parse_function(module, child);
-		else if (child.IsBlock() && is_known(child.id, KnownBlocks::TYPE_BLOCK))
-			parse_types(module, child);
+		if (child.IsBlock())
+		{
+			switch (KnownBlocks(child.id))
+			{
+			case KnownBlocks::VALUE_SYMTAB_BLOCK:
+				parse_context.parse_value_symtab(child);
+				break;
+
+			case KnownBlocks::FUNCTION_BLOCK:
+				parse_context.parse_function_body(child);
+				break;
+
+			case KnownBlocks::TYPE_BLOCK:
+				parse_context.parse_types(child);
+				break;
+
+			case KnownBlocks::CONSTANTS_BLOCK:
+				parse_context.parse_constants_block(child);
+				break;
+
+			default:
+				break;
+			}
+		}
+		else
+		{
+			switch (ModuleRecord(child.id))
+			{
+			case ModuleRecord::VERSION:
+				parse_context.parse_version_record(child);
+				break;
+
+			case ModuleRecord::FUNCTION:
+				parse_context.parse_function_record(child);
+				break;
+
+			default:
+				break;
+			}
+		}
 	}
 
 	return module;
-}
-
-Type *Module::get_type(uint32_t index)
-{
-	assert(index < types.size());
-	return types[index];
-}
-
-void Module::add_type(Type *type)
-{
-	types.push_back(type);
-}
-
-void Module::add_function_name(uint64_t id, const std::string &name)
-{
-	value_symtab[id] = name;
-}
-
-void Module::add_function_implementation(Function *func)
-{
-	functions.push_back(func);
-}
-
-LLVMContext &Module::getContext()
-{
-	return context;
-}
-
-Module::Module(LLVMContext &context_)
-		: context(context_)
-{
 }
 }

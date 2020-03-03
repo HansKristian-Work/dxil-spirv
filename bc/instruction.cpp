@@ -17,8 +17,70 @@
  */
 
 #include "instruction.hpp"
+#include "cast.hpp"
+#include <assert.h>
 
 namespace LLVMBC
 {
+Instruction::Instruction(Type *type, ValueKind kind)
+	: Value(type, kind)
+{
+}
 
+BinaryOperator::BinaryOperator(Value *LHS_, Value *RHS_, BinaryOperation op_)
+	: Instruction(LHS_->getType(), ValueKind::BinaryOperator), LHS(LHS_), RHS(RHS_), op(op_)
+{
+}
+
+BinaryOperation BinaryOperator::getOpcode() const
+{
+	return op;
+}
+
+Value *BinaryOperator::getOperand(unsigned N) const
+{
+	if (N == 0)
+		return LHS;
+	else if (N == 1)
+		return RHS;
+	else
+		return nullptr;
+}
+
+UnaryOperator::UnaryOperator(UnaryOperation uop, Value *value_)
+	: Instruction(value->getType(), ValueKind::UnaryOperator), value(value_)
+{
+}
+
+ReturnInst::ReturnInst(Value *value_)
+	: Instruction(value_ ? value_->getType() : nullptr, ValueKind::Return), value(value_)
+{
+}
+
+CallInst::CallInst(FunctionType *function_type_, Function *callee_, std::vector<Value *> params_)
+	: Instruction(function_type_->getReturnType(), ValueKind::Call),
+	  function_type(function_type_), callee(callee_), params(std::move(params_))
+{
+}
+
+unsigned CallInst::getNumOperands() const
+{
+	return unsigned(params.size());
+}
+
+Value *CallInst::getOperand(unsigned N) const
+{
+	assert(N < params.size());
+	return params[N];
+}
+
+Function *CallInst::getCalledFunction() const
+{
+	return callee;
+}
+
+Value *ReturnInst::getReturnValue() const
+{
+	return value;
+}
 }

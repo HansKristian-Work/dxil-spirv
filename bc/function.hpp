@@ -19,30 +19,47 @@
 #pragma once
 
 #include <vector>
+#include <string>
+#include "value.hpp"
 
 namespace LLVMBC
 {
 class LLVMContext;
 class Instruction;
 class Module;
+class FunctionType;
 
 class BasicBlock
 {
 public:
 	explicit BasicBlock(LLVMContext &context);
 
+	void add_instruction(Instruction *inst);
+
+	std::vector<Instruction *>::const_iterator begin() const;
+	std::vector<Instruction *>::const_iterator end() const;
+
 private:
 	LLVMContext &context;
 	std::vector<Instruction *> instructions;
 };
 
-class Function
+class Function : public Value
 {
 public:
-	explicit Function(Module &module);
+	static constexpr ValueKind get_value_kind() { return ValueKind::Function; }
+	explicit Function(FunctionType *function_type, uint64_t value_id, Module &module);
+	const std::string &getName() const;
+
+	void set_basic_blocks(std::vector<BasicBlock *> basic_blocks);
+	std::vector<BasicBlock *>::const_iterator begin() const;
+	std::vector<BasicBlock *>::const_iterator end() const;
+	FunctionType *getFunctionType() const;
 
 private:
 	Module &module;
+	uint64_t value_id;
+	FunctionType *function_type;
 	std::vector<BasicBlock *> basic_blocks;
 };
 }

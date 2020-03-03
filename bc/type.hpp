@@ -71,6 +71,7 @@ protected:
 class PointerType : public Type
 {
 public:
+	static constexpr TypeID get_type_id() { return TypeID::Pointer; }
 	PointerType(Type *type, unsigned addr_space);
 	static PointerType *get(Type *pointee, unsigned addr_space);
 
@@ -85,6 +86,7 @@ private:
 class ArrayType : public Type
 {
 public:
+	static constexpr TypeID get_type_id() { return TypeID::Array; }
 	ArrayType(Type *type, uint64_t elements);
 	static ArrayType *get(Type *element, uint64_t size);
 
@@ -97,6 +99,7 @@ private:
 class IntegerType : public Type
 {
 public:
+	static constexpr TypeID get_type_id() { return TypeID::Int; }
 	IntegerType(LLVMContext &context, uint32_t width);
 	uint32_t getBitWidth() const;
 
@@ -107,6 +110,7 @@ private:
 class StructType : public Type
 {
 public:
+	static constexpr TypeID get_type_id() { return TypeID::Struct; }
 	StructType(LLVMContext &context, std::vector<Type *> member_types);
 	static StructType *get(std::vector<Type *> member_types);
 
@@ -120,9 +124,11 @@ private:
 class FunctionType : public Type
 {
 public:
-	FunctionType(LLVMContext &context);
-	void set_return_type(Type *return_type);
-	void add_argument_type(Type *argument_type);
+	static constexpr TypeID get_type_id() { return TypeID::Function; }
+	FunctionType(LLVMContext &context, Type *return_type, std::vector<Type *> argument_types);
+	unsigned getNumParams() const;
+	Type *getParamType(unsigned index) const;
+	Type *getReturnType() const;
 
 private:
 	Type *return_type = nullptr;

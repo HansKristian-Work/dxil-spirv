@@ -23,16 +23,6 @@
 
 namespace LLVMBC
 {
-void FunctionType::add_argument_type(Type *argument_type)
-{
-	argument_types.push_back(argument_type);
-}
-
-void FunctionType::set_return_type(Type *return_type_)
-{
-	return_type = return_type_;
-}
-
 PointerType::PointerType(Type *type, uint32_t addr_space)
 		: Type(type->getContext(), TypeID::Pointer), contained_type(type), address_space(addr_space)
 {
@@ -94,13 +84,13 @@ ArrayType *ArrayType::get(Type *element, uint64_t size)
 uint64_t Type::getArrayNumElements() const
 {
 	assert(type_id == TypeID::Array);
-	return cast<const ArrayType>(this)->elements;
+	return cast<ArrayType>(this)->elements;
 }
 
 Type *Type::getArrayElementType() const
 {
 	assert(type_id == TypeID::Array);
-	return cast<const ArrayType>(this)->contained_type;
+	return cast<ArrayType>(this)->contained_type;
 }
 
 StructType::StructType(LLVMContext &context, std::vector<Type *> member_types_)
@@ -153,13 +143,29 @@ StructType *StructType::get(std::vector<Type *> member_types)
 	return type;
 }
 
-FunctionType::FunctionType(LLVMContext &context)
-		: Type(context, TypeID::Function)
+FunctionType::FunctionType(LLVMContext &context, Type *return_type_, std::vector<Type *> argument_types_)
+	: Type(context, TypeID::Function), return_type(return_type_), argument_types(std::move(argument_types_))
 {
 }
 
+unsigned FunctionType::getNumParams() const
+{
+	return unsigned(argument_types.size());
+}
+
+Type *FunctionType::getParamType(unsigned index) const
+{
+	assert(index < argument_types.size());
+	return argument_types[index];
+}
+
+Type *FunctionType::getReturnType() const
+{
+	return return_type;
+}
+
 IntegerType::IntegerType(LLVMContext &context, uint32_t width_)
-		: Type(context, TypeID::Int), width(width_)
+	: Type(context, TypeID::Int), width(width_)
 {
 }
 
@@ -169,7 +175,7 @@ uint32_t IntegerType::getBitWidth() const
 }
 
 Type::Type(LLVMContext &context_, TypeID type_id_)
-		: context(context_), type_id(type_id_)
+	: context(context_), type_id(type_id_)
 {
 }
 

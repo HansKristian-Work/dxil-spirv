@@ -18,11 +18,90 @@
 
 #pragma once
 
+#include <exception>
+#include "logging.hpp"
+#include "type.hpp"
+#include "value.hpp"
+
 namespace LLVMBC
 {
-template <typename T, typename U>
-T *cast(U *u)
+template <typename T>
+T *cast(Type *type)
 {
-	return static_cast<T *>(u);
+	if (type->getTypeID() != T::get_type_id())
+	{
+		LOGE("Invalid type ID in cast<T>.\n");
+		std::terminate();
+	}
+	return static_cast<T *>(type);
+}
+
+template <typename T>
+const T *cast(const Type *type)
+{
+	if (type->getTypeID() != T::get_type_id())
+	{
+		LOGE("Invalid type ID in cast<T>.\n");
+		std::terminate();
+	}
+	return static_cast<const T *>(type);
+}
+
+template <typename T>
+T *dyn_cast(Type *type)
+{
+	if (type->getTypeID() != T::get_type_id())
+		return nullptr;
+	else
+		return static_cast<T *>(type);
+}
+
+template <typename T>
+const T *dyn_cast(const Type *type)
+{
+	if (type->getTypeID() != T::get_type_id())
+		return nullptr;
+	else
+		return static_cast<const T *>(type);
+}
+
+template <typename T>
+T *cast(Value *value)
+{
+	if (value->get_value_kind() != T::get_value_kind())
+	{
+		LOGE("Invalid type ID in cast<T>.\n");
+		std::terminate();
+	}
+	return static_cast<T *>(value);
+}
+
+template <typename T>
+const T *cast(const Value *value)
+{
+	if (value->get_value_kind() != T::get_value_kind())
+	{
+		LOGE("Invalid type ID in cast<T>.\n");
+		std::terminate();
+	}
+	return static_cast<const T *>(value);
+}
+
+template <typename T>
+T *dyn_cast(Value *value)
+{
+	if (value->get_value_kind() != T::get_value_kind())
+		return nullptr;
+	else
+		return static_cast<T *>(value);
+}
+
+template <typename T>
+const T *dyn_cast(const Value *value)
+{
+	if (value->get_value_kind() != T::get_value_kind())
+		return nullptr;
+	else
+		return static_cast<const T *>(value);
 }
 }

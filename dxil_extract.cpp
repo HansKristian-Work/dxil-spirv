@@ -129,6 +129,8 @@ int main(int argc, char **argv)
 	{
 		LLVMBC::LLVMContext ctx;
 		auto *module = LLVMBC::parseIR(ctx, ir_data, ir_size);
+		auto disasm = LLVMBC::disassemble(*module);
+		fprintf(stderr, "LLVMBC:\n%s\n", disasm.c_str());
 	}
 
 	if (output.empty())
