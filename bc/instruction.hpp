@@ -24,11 +24,54 @@ namespace LLVMBC
 {
 class FunctionType;
 class Function;
+class BasicBlock;
 
 class Instruction : public Value
 {
 public:
 	Instruction(Type *type, ValueKind kind);
+
+	enum Predicate
+	{
+		FCMP_FALSE = 0,
+		FCMP_OEQ = 1,
+		FCMP_OGT = 2,
+		FCMP_OGE = 3,
+		FCMP_OLT = 4,
+		FCMP_OLE = 5,
+		FCMP_ONE = 6,
+		FCMP_ORD = 7,
+		FCMP_UNO = 8,
+		FCMP_UEQ = 9,
+		FCMP_UGT = 10,
+		FCMP_UGE = 11,
+		FCMP_ULT = 12,
+		FCMP_ULE = 13,
+		FCMP_UNE = 14,
+		FCMP_TRUE = 15,
+
+		ICMP_EQ = 32,
+		ICMP_NE = 33,
+		ICMP_UGT = 34,
+		ICMP_UGE = 35,
+		ICMP_ULT = 36,
+		ICMP_ULE = 37,
+		ICMP_SGT = 38,
+		ICMP_SGE = 39,
+		ICMP_SLT = 40,
+		ICMP_SLE = 41
+	};
+
+	bool isTerminator() const;
+
+	Value *getOperand(unsigned index) const;
+	unsigned getNumOperands() const;
+
+protected:
+	void set_terminator();
+	bool is_terminator = false;
+	void set_operands(std::vector<Value *> op);
+	std::vector<Value *> operands;
 };
 
 enum class UnaryOperation
@@ -78,13 +121,9 @@ public:
 	CallInst(FunctionType *function_type, Function *callee, std::vector<Value *> params);
 	Function *getCalledFunction() const;
 
-	unsigned getNumOperands() const;
-	Value *getOperand(unsigned N) const;
-
 private:
 	Type *function_type;
 	Function *callee;
-	std::vector<Value *> params;
 };
 
 class UnaryOperator : public Instruction
@@ -94,7 +133,6 @@ public:
 	UnaryOperator(UnaryOperation uop, Value *value);
 
 private:
-	Value *value;
 	UnaryOperation op;
 };
 
@@ -105,10 +143,70 @@ public:
 	BinaryOperator(Value *LHS, Value *RHS, BinaryOperation op);
 	BinaryOperation getOpcode() const;
 
-	Value *getOperand(unsigned N) const;
+private:
+	BinaryOperation op;
+};
+
+class CmpInst : public Instruction
+{
+public:
+	CmpInst(ValueKind kind, Predicate pred, Value *LHS, Value *RHS);
+	Predicate getPredicate() const;
 
 private:
-	Value *LHS, *RHS;
-	BinaryOperation op;
+	Predicate pred;
+};
+
+class FCmpInst : public CmpInst
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::FCmp; }
+	FCmpInst(Predicate pred, Value *LHS, Value *RHS);
+};
+
+class ICmpInst : public CmpInst
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::ICmp; }
+	ICmpInst(Predicate pred, Value *LHS, Value *RHS);
+};
+
+class BranchInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Branch; }
+	BranchInst(BasicBlock *true_block, BasicBlock *false_block, Value *cond);
+	explicit BranchInst(BasicBlock *true_block);
+
+	bool isConditional() const;
+	Value *getCondition() const;
+	BasicBlock *getTrueBlock() const;
+	BasicBlock *getFalseBlock() const;
+
+private:
+	BasicBlock *true_block;
+	BasicBlock *false_block = nullptr;
+	Value *cond = nullptr;
+};
+
+class PHINode : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::PHI; }
+	PHINode(Type *type, size_t num_edges);
+
+	unsigned getNumIncomingValues() const;
+	Value *getIncomingValue(unsigned index) const;
+	BasicBlock *getIncomingBlock(unsigned index) const;
+
+	void add_incoming(Value *value, BasicBlock *bb);
+
+private:
+	struct Incoming
+	{
+		Value *value;
+		BasicBlock *bb;
+	};
+	std::vector<Incoming> incoming;
 };
 }

@@ -27,9 +27,41 @@ Instruction::Instruction(Type *type, ValueKind kind)
 {
 }
 
-BinaryOperator::BinaryOperator(Value *LHS_, Value *RHS_, BinaryOperation op_)
-	: Instruction(LHS_->getType(), ValueKind::BinaryOperator), LHS(LHS_), RHS(RHS_), op(op_)
+void Instruction::set_operands(std::vector<Value *> op)
 {
+	operands = std::move(op);
+}
+
+unsigned Instruction::getNumOperands() const
+{
+	return operands.size();
+}
+
+Value *Instruction::getOperand(unsigned index) const
+{
+	if (index >= operands.size())
+	{
+		LOGE("Operand index is out of range.\n");
+		return nullptr;
+	}
+
+	return operands[index];
+}
+
+bool Instruction::isTerminator() const
+{
+	return is_terminator;
+}
+
+void Instruction::set_terminator()
+{
+	is_terminator = true;
+}
+
+BinaryOperator::BinaryOperator(Value *LHS, Value *RHS, BinaryOperation op_)
+	: Instruction(LHS->getType(), ValueKind::BinaryOperator), op(op_)
+{
+	set_operands({ LHS, RHS });
 }
 
 BinaryOperation BinaryOperator::getOpcode() const
@@ -37,41 +69,23 @@ BinaryOperation BinaryOperator::getOpcode() const
 	return op;
 }
 
-Value *BinaryOperator::getOperand(unsigned N) const
+UnaryOperator::UnaryOperator(UnaryOperation uop, Value *value)
+	: Instruction(value->getType(), ValueKind::UnaryOperator)
 {
-	if (N == 0)
-		return LHS;
-	else if (N == 1)
-		return RHS;
-	else
-		return nullptr;
-}
-
-UnaryOperator::UnaryOperator(UnaryOperation uop, Value *value_)
-	: Instruction(value->getType(), ValueKind::UnaryOperator), value(value_)
-{
+	set_operands({ value });
 }
 
 ReturnInst::ReturnInst(Value *value_)
 	: Instruction(value_ ? value_->getType() : nullptr, ValueKind::Return), value(value_)
 {
+	set_terminator();
 }
 
-CallInst::CallInst(FunctionType *function_type_, Function *callee_, std::vector<Value *> params_)
+CallInst::CallInst(FunctionType *function_type_, Function *callee_, std::vector<Value *> params)
 	: Instruction(function_type_->getReturnType(), ValueKind::Call),
-	  function_type(function_type_), callee(callee_), params(std::move(params_))
+	  function_type(function_type_), callee(callee_)
 {
-}
-
-unsigned CallInst::getNumOperands() const
-{
-	return unsigned(params.size());
-}
-
-Value *CallInst::getOperand(unsigned N) const
-{
-	assert(N < params.size());
-	return params[N];
+	set_operands(std::move(params));
 }
 
 Function *CallInst::getCalledFunction() const
@@ -82,5 +96,90 @@ Function *CallInst::getCalledFunction() const
 Value *ReturnInst::getReturnValue() const
 {
 	return value;
+}
+
+CmpInst::CmpInst(ValueKind kind, Predicate pred_, Value *LHS, Value *RHS)
+	: Instruction(Type::getInt1Ty(LHS->getType()->getContext()), kind), pred(pred_)
+{
+	set_operands({ LHS, RHS });
+}
+
+Instruction::Predicate CmpInst::getPredicate() const
+{
+	return pred;
+}
+
+FCmpInst::FCmpInst(Predicate pred_, Value *LHS, Value *RHS)
+	: CmpInst(ValueKind::FCmp, pred_, LHS, RHS)
+{
+	set_operands({ LHS, RHS });
+}
+
+ICmpInst::ICmpInst(Predicate pred_, Value *LHS, Value *RHS)
+	: CmpInst(ValueKind::ICmp, pred_, LHS, RHS)
+{
+	set_operands({ LHS, RHS });
+}
+
+BranchInst::BranchInst(BasicBlock *true_block_, BasicBlock *false_block_, Value *cond_)
+	: Instruction(nullptr, ValueKind::Branch), true_block(true_block_), false_block(false_block_), cond(cond_)
+{
+	set_terminator();
+}
+
+BranchInst::BranchInst(BasicBlock *true_block_)
+	: Instruction(nullptr, ValueKind::Branch), true_block(true_block_)
+{
+	set_terminator();
+}
+
+bool BranchInst::isConditional() const
+{
+	return cond != nullptr;
+}
+
+Value *BranchInst::getCondition() const
+{
+	return cond;
+}
+
+BasicBlock *BranchInst::getTrueBlock() const
+{
+	return true_block;
+}
+
+BasicBlock *BranchInst::getFalseBlock() const
+{
+	return false_block;
+}
+
+PHINode::PHINode(Type *type, size_t num_edges)
+	: Instruction(type, ValueKind::PHI)
+{
+	incoming.reserve(num_edges);
+}
+
+void PHINode::add_incoming(Value *value, BasicBlock *bb)
+{
+	incoming.push_back({ value, bb });
+}
+
+unsigned PHINode::getNumIncomingValues() const
+{
+	return unsigned(incoming.size());
+}
+
+BasicBlock *PHINode::getIncomingBlock(unsigned index) const
+{
+	if (index >= incoming.size())
+		return nullptr;
+	return incoming[index].bb;
+}
+
+Value *PHINode::getIncomingValue(unsigned index) const
+{
+	if (index >= incoming.size())
+		return nullptr;
+	return incoming[index].value;
 }
 }

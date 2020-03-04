@@ -36,7 +36,9 @@ enum class TypeID
 	Pointer,
 	Array,
 	Struct,
-	Function
+	Function,
+	Label,
+	Metadata
 };
 
 class Type
@@ -50,10 +52,13 @@ public:
 	static Type *getHalfTy(LLVMContext &context);
 	static Type *getFloatTy(LLVMContext &context);
 	static Type *getDoubleTy(LLVMContext &context);
+	static Type *getInt1Ty(LLVMContext &context);
 	static Type *getInt8Ty(LLVMContext &context);
 	static Type *getInt16Ty(LLVMContext &context);
 	static Type *getInt32Ty(LLVMContext &context);
 	static Type *getInt64Ty(LLVMContext &context);
+	static Type *getLabelTy(LLVMContext &context);
+	static Type *getMetadataTy(LLVMContext &context);
 
 	bool isIntegerTy() const;
 	bool isFloatingPointTy() const;

@@ -55,7 +55,7 @@ std::vector<BasicBlock *>::const_iterator Function::end() const
 }
 
 BasicBlock::BasicBlock(LLVMContext &context_)
-	: context(context_)
+	: Value(Type::getLabelTy(context_), ValueKind::BasicBlock), context(context_)
 {
 }
 

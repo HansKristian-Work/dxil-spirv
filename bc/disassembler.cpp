@@ -43,14 +43,20 @@ struct StreamState
 
 	StreamState &append(const std::string &str);
 	StreamState &append(Value *value, bool decl = false);
+	StreamState &append(Instruction *value);
 	StreamState &append(Function *value, bool decl = false);
 	StreamState &append(BinaryOperator *value, bool decl = false);
 	StreamState &append(UnaryOperator *value, bool decl = false);
 	StreamState &append(CallInst *value, bool decl = false);
+	StreamState &append(BranchInst *value, bool decl = false);
 	StreamState &append(ReturnInst *value, bool decl = false);
 	StreamState &append(UndefValue *value, bool decl = false);
 	StreamState &append(ConstantInt *value, bool decl = false);
 	StreamState &append(ConstantFP *value, bool decl = false);
+	StreamState &append(BasicBlock *bb, bool decl = false);
+	StreamState &append(FCmpInst *value, bool decl = false);
+	StreamState &append(ICmpInst *value, bool decl = false);
+	StreamState &append(PHINode *value, bool decl = false);
 
 	StreamState &append(float v);
 	StreamState &append(double v);
@@ -58,6 +64,7 @@ struct StreamState
 	StreamState &append(const char *str);
 
 	StreamState &newline();
+	StreamState &newline_noindent();
 	void begin_scope();
 	void end_scope();
 
@@ -135,14 +142,14 @@ StreamState &StreamState::append(bool v)
 StreamState &StreamState::append(float v)
 {
 	char buf[1024];
-	sprintf(buf, "%.800g", v);
+	sprintf(buf, "%e", v);
 	return append(buf);
 }
 
 StreamState &StreamState::append(double v)
 {
 	char buf[1024];
-	sprintf(buf, "%.800g", v);
+	sprintf(buf, "%e", v);
 	return append(buf);
 }
 
@@ -151,6 +158,12 @@ StreamState &StreamState::newline()
 	stream << "\n";
 	for (unsigned i = 0; i < indent; i++)
 		stream << "  ";
+	return *this;
+}
+
+StreamState &StreamState::newline_noindent()
+{
+	stream << "\n";
 	return *this;
 }
 
@@ -228,13 +241,7 @@ StreamState &StreamState::append(Function *func, bool decl)
 		{
 			begin_scope();
 			for (auto *bb : *func)
-			{
-				for (auto *inst : *bb)
-				{
-					newline();
-					append(static_cast<Value *>(inst), true);
-				}
-			}
+				append(bb, true);
 			end_scope();
 		}
 	}
@@ -244,7 +251,7 @@ StreamState &StreamState::append(Function *func, bool decl)
 	return *this;
 }
 
-static const char *binop_string(BinaryOperation op)
+static const char *to_string(BinaryOperation op)
 {
 	switch (op)
 	{
@@ -273,18 +280,114 @@ static const char *binop_string(BinaryOperation op)
 	assert(0);
 }
 
+static const char *to_string(Instruction::Predicate pred)
+{
+	switch (pred)
+	{
+#define PRED(op, str) case Instruction::FCMP_##op: return str
+	PRED(FALSE, "false");
+	PRED(OEQ, "oeq");
+	PRED(OGT, "ogt");
+	PRED(OGE, "oge");
+	PRED(OLT, "olt");
+	PRED(OLE, "ole");
+	PRED(ONE, "one");
+	PRED(ORD, "ord");
+	PRED(UNO, "uno");
+	PRED(UEQ, "ueq");
+	PRED(UGT, "ugt");
+	PRED(UGE, "uge");
+	PRED(ULT, "ult");
+	PRED(ULE, "ule");
+	PRED(UNE, "une");
+	PRED(TRUE, "true");
+#undef PRED
+#define PRED(op, str) case Instruction::ICMP_##op: return str
+	PRED(EQ, "eq");
+	PRED(NE, "ne");
+	PRED(UGT, "ugt");
+	PRED(UGE, "uge");
+	PRED(ULT, "ult");
+	PRED(ULE, "ule");
+	PRED(SGT, "sgt");
+	PRED(SGE, "sge");
+	PRED(SLT, "slt");
+	PRED(SLE, "sle");
+	}
+#undef PRED
+	assert(0);
+}
+
 StreamState &StreamState::append(BinaryOperator *binop, bool decl)
 {
 	if (decl)
 	{
-		append("%", binop->get_tween_id(), " = ", binop_string(binop->getOpcode()), " ", binop->getType(),
+		append("%", binop->get_tween_id(), " = ", to_string(binop->getOpcode()), " ", binop->getType(),
 		       " ", binop->getOperand(0), ", ", binop->getOperand(1));
 	}
 	else
 	{
-		append(binop->getType(), " %", binop->get_tween_id());
+		append("%", binop->get_tween_id());
 	}
 
+	return *this;
+}
+
+StreamState &StreamState::append(BasicBlock *bb, bool decl)
+{
+	if (decl)
+	{
+		newline_noindent();
+		newline_noindent();
+		append(bb->get_tween_id(), ":");
+		for (auto *inst : *bb)
+		{
+			newline();
+			append(inst);
+		}
+	}
+	else
+	{
+		append("label %", bb->get_tween_id());
+	}
+	return *this;
+}
+
+StreamState &StreamState::append(FCmpInst *value, bool decl)
+{
+	if (decl)
+	{
+		append("%", value->get_tween_id(), " = fcmp ", to_string(value->getPredicate()),
+		       " ", value->getOperand(0), ", ", value->getOperand(1));
+	}
+	else
+	{
+		append("%", value->get_tween_id());
+	}
+	return *this;
+}
+
+StreamState &StreamState::append(ICmpInst *value, bool decl)
+{
+	if (decl)
+	{
+		append("%", value->get_tween_id(), " = icmp ", to_string(value->getPredicate()),
+		       " ", value->getOperand(0), ", ", value->getOperand(1));
+	}
+	else
+	{
+		append("%", value->get_tween_id());
+	}
+	return *this;
+}
+
+StreamState &StreamState::append(BranchInst *br, bool)
+{
+	append("br ");
+	if (br->getCondition())
+		append(br->getCondition(), ", ", br->getTrueBlock(), ", ", br->getFalseBlock());
+	else
+		append(br->getTrueBlock());
 	return *this;
 }
 
@@ -303,9 +406,31 @@ StreamState &StreamState::append(CallInst *call, bool decl)
 	}
 	else
 	{
-		append(call->getType(), " %", call->get_tween_id());
+		append("%", call->get_tween_id());
 	}
 
+	return *this;
+}
+
+StreamState &StreamState::append(PHINode *phi, bool decl)
+{
+	if (decl)
+	{
+		append("%", phi->get_tween_id(), " = phi ", phi->getType(), " ");
+		unsigned count = phi->getNumIncomingValues();
+		for (unsigned i = 0; i < count; i++)
+		{
+			Value *value = phi->getIncomingValue(i);
+			BasicBlock *bb = phi->getIncomingBlock(i);
+			append("[ ", value, ", ", bb, " ]");
+			if (i + 1 < count)
+				append(", ");
+		}
+	}
+	else
+	{
+		append("%", phi->get_tween_id());
+	}
 	return *this;
 }
 
@@ -321,12 +446,17 @@ StreamState &StreamState::append(UndefValue *undef, bool decl)
 
 StreamState &StreamState::append(ConstantFP *value, bool decl)
 {
-	return append(value->getType(), " ", value->get_double());
+	return append(value->get_double());
 }
 
 StreamState &StreamState::append(ConstantInt *value, bool decl)
 {
 	return append(value->getType(), " ", value->get_sext());
+}
+
+StreamState &StreamState::append(Instruction *inst)
+{
+	return append(static_cast<Value *>(inst), true);
 }
 
 StreamState &StreamState::append(Value *value, bool decl)
@@ -341,6 +471,12 @@ StreamState &StreamState::append(Value *value, bool decl)
 	//	return append(cast<UnaryOperator>(value), decl);
 	case ValueKind::Call:
 		return append(cast<CallInst>(value), decl);
+	case ValueKind::Branch:
+		return append(cast<BranchInst>(value), decl);
+	case ValueKind::FCmp:
+		return append(cast<FCmpInst>(value), decl);
+	case ValueKind::ICmp:
+		return append(cast<ICmpInst>(value), decl);
 	case ValueKind::Return:
 		return append(cast<ReturnInst>(value), decl);
 	case ValueKind::Undef:
@@ -349,10 +485,18 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<ConstantInt>(value), decl);
 	case ValueKind::ConstantFP:
 		return append(cast<ConstantFP>(value), decl);
+	case ValueKind::BasicBlock:
+		return append(cast<BasicBlock>(value), decl);
+	case ValueKind::PHI:
+		return append(cast<PHINode>(value), decl);
 	}
 
 	LOGE("Unknown ValueKind %u.\n", unsigned(value->get_value_kind()));
-	return *this;
+
+	if (decl)
+		return append("%", value->get_tween_id(), " = unimplemented");
+	else
+		return append("%", value->get_tween_id());
 }
 
 std::string disassemble(Module &module)

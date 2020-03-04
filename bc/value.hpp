@@ -33,8 +33,14 @@ enum class ValueKind
 	Undef,
 	UnaryOperator,
 	BinaryOperator,
+	Call,
+	FCmp,
+	ICmp,
+	BasicBlock,
+	PHI,
+
 	Return,
-	Call
+	Branch
 };
 
 class Value

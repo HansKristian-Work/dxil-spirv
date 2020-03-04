@@ -228,12 +228,20 @@ enum CallFlagBits
 	CALL_FMF_BIT = 1 << 17
 };
 
+static int64_t decode_sign_rotated_value(uint64_t v)
+{
+	bool sign = (v & 1) != 0;
+	v >>= 1;
+	if (sign)
+		v = v ? -int64_t(v) : (1ull << 63u);
+	return int64_t(v);
+}
+
 struct ModuleParseContext
 {
 	Function *function = nullptr;
 	Module *module = nullptr;
 	LLVMContext *context = nullptr;
-	BasicBlock *current_bb = nullptr;
 	std::vector<BasicBlock *> basic_blocks;
 	std::vector<Value *> values;
 	std::vector<Function *> functions_with_bodies;
@@ -251,12 +259,38 @@ struct ModuleParseContext
 	void parse_version_record(const BlockOrRecord &entry);
 	void add_instruction(Instruction *inst);
 
+	void finish_basic_block();
+	BasicBlock *get_basic_block(unsigned index) const;
+	BasicBlock *current_bb = nullptr;
+	unsigned basic_block_index = 0;
+
 	Value *get_value(uint64_t op) const;
+	Value *get_value_signed(uint64_t op) const;
 
 	bool use_relative_id = true;
 	bool use_strtab = false;
 	bool seen_first_function_body = false;
 };
+
+void ModuleParseContext::finish_basic_block()
+{
+	basic_block_index++;
+	if (basic_block_index >= basic_blocks.size())
+		current_bb = nullptr;
+	else
+		current_bb = basic_blocks[basic_block_index];
+}
+
+BasicBlock *ModuleParseContext::get_basic_block(unsigned index) const
+{
+	if (index >= basic_blocks.size())
+	{
+		LOGE("Basic block index is out of bounds!\n");
+		return nullptr;
+	}
+
+	return basic_blocks[index];
+}
 
 Value *ModuleParseContext::get_value(uint64_t op) const
 {
@@ -271,12 +305,38 @@ Value *ModuleParseContext::get_value(uint64_t op) const
 	return values[op];
 }
 
+Value *ModuleParseContext::get_value_signed(uint64_t op) const
+{
+	int64_t signed_op = decode_sign_rotated_value(op);
+	if (use_relative_id)
+		signed_op = values.size() - signed_op;
+	op = signed_op;
+
+	if (op >= values.size())
+	{
+		LOGE("Forward reference?\n");
+		return nullptr;
+	}
+	return values[op];
+}
+
 void ModuleParseContext::add_instruction(Instruction *inst)
 {
-	inst->set_tween_id(values.size());
-	current_bb->add_instruction(inst);
-	if (inst->get_value_kind() != ValueKind::Return)
+	if (current_bb)
+		current_bb->add_instruction(inst);
+	else
+	{
+		LOGE("No basic block is currently set!\n");
+		return;
+	}
+
+	if (inst->isTerminator())
+		finish_basic_block();
+	else
+	{
+		inst->set_tween_id(values.size());
 		values.push_back(inst);
+	}
 }
 
 Type *ModuleParseContext::get_constant_type()
@@ -328,12 +388,8 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		assert(type->isIntegerTy());
 
 		uint64_t literal = entry.ops[0];
-		bool sign = (literal & 1) != 0;
-		literal >>= 1;
-		if (sign)
-			literal = literal ? -int64_t(literal) : (1ull << 63u);
-
-		ConstantInt *value = ConstantInt::get(type, literal);
+		int64_t signed_literal = decode_sign_rotated_value(literal);
+		ConstantInt *value = ConstantInt::get(type, signed_literal);
 		values.push_back(value);
 		break;
 	}
@@ -512,6 +568,44 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_CMP:
+	case FunctionRecord::INST_CMP2:
+	{
+		auto *lhs = get_value(entry.ops[0]);
+		auto *rhs = get_value(entry.ops[1]);
+		auto pred = Instruction::Predicate(entry.ops[2]);
+
+		Instruction *value = nullptr;
+		if (lhs->getType()->isFloatingPointTy())
+			value = context->construct<FCmpInst>(pred, lhs, rhs);
+		else
+			value = context->construct<ICmpInst>(pred, lhs, rhs);
+		add_instruction(value);
+		break;
+	}
+
+	case FunctionRecord::INST_PHI:
+	{
+		auto *type = module->get_type(entry.ops[0]);
+		size_t num_args = (entry.ops.size() - 1) / 2;
+
+		auto *phi_node = context->construct<PHINode>(type, num_args);
+
+		for (size_t i = 0; i < num_args; i++)
+		{
+			Value *value = nullptr;
+			if (use_relative_id)
+				value = get_value_signed(entry.ops[2 * i + 1]);
+			else
+				value = get_value(entry.ops[2 * i + 1]);
+
+			BasicBlock *bb = get_basic_block(entry.ops[2 * i + 2]);
+			phi_node->add_incoming(value, bb);
+		}
+		add_instruction(phi_node);
+		break;
+	}
+
 	case FunctionRecord::INST_BINOP:
 	{
 		auto *lhs = get_value(entry.ops[0]);
@@ -522,7 +616,27 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_BR:
+	{
+		auto *true_block = get_basic_block(entry.ops[0]);
+		if (entry.ops.size() == 1)
+		{
+			auto *value = context->construct<BranchInst>(true_block);
+			add_instruction(value);
+		}
+		else
+		{
+			auto *false_block = get_basic_block(entry.ops[1]);
+			auto *cond = get_value(entry.ops[2]);
+			auto *value = context->construct<BranchInst>(true_block, false_block, cond);
+			add_instruction(value);
+		}
+		break;
+	}
+
 	default:
+		LOGE("Unhandled instruction!\n");
+		add_instruction(nullptr);
 		break;
 	}
 }
@@ -552,6 +666,10 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 		else
 			parse_record(child);
 	}
+
+	auto tween_id = values.size();
+	for (auto *bb : basic_blocks)
+		bb->set_tween_id(tween_id++);
 
 	function->set_basic_blocks(std::move(basic_blocks));
 	basic_blocks = {};
@@ -603,6 +721,11 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 	case TypeRecord::INTEGER:
 		switch (child.ops[0])
 		{
+		case 1:
+			type = Type::getInt1Ty(context);
+			LOGI("Type: INT1\n");
+			break;
+
 		case 8:
 			type = Type::getInt8Ty(context);
 			LOGI("Type: INT8\n");
@@ -625,6 +748,9 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 		}
 		break;
 
+	case TypeRecord::STRUCT_NAME:
+		return;
+
 	case TypeRecord::STRUCT_NAMED:
 	case TypeRecord::STRUCT_ANON:
 	{
@@ -644,16 +770,30 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 		for (size_t i = 2; i < child.ops.size(); i++)
 			argument_types.push_back(module->get_type(child.ops[i]));
 
-		auto *func_type = context.construct<FunctionType>(context,
-		                                                  module->get_type(child.ops[1]),
-		                                                  std::move(argument_types));
+		type = context.construct<FunctionType>(context,
+		                                       module->get_type(child.ops[1]),
+		                                       std::move(argument_types));
 
-		module->add_type(func_type);
 		LOGI("Type: FUNCTION\n");
-		return;
+		break;
+	}
+
+	case TypeRecord::LABEL:
+	{
+		type = Type::getLabelTy(context);
+		LOGI("Type: LABEL\n");
+		break;
+	}
+
+	case TypeRecord::METADATA:
+	{
+		type = Type::getMetadataTy(context);
+		LOGI("Type: METADATA\n");
+		break;
 	}
 
 	default:
+		LOGE("Unknown type!\n");
 		break;
 	}
 
@@ -689,8 +829,12 @@ void ModuleParseContext::parse_function_record(const BlockOrRecord &entry)
 	bool is_proto = entry.ops[2];
 	// Lots of other irrelevant arguments ...
 
+	auto *func_type = dyn_cast<FunctionType>(type);
+	if (!func_type)
+		func_type = cast<FunctionType>(cast<PointerType>(type)->getElementType());
+
 	auto id = values.size();
-	auto *func = context->construct<Function>(cast<FunctionType>(type), id, *module);
+	auto *func = context->construct<Function>(func_type, id, *module);
 	values.push_back(func);
 
 	if (!is_proto)

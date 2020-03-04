@@ -126,15 +126,15 @@ int main(int argc, char **argv)
 		printf("%s\n", disasm.c_str());
 	}
 
-	{
-		LLVMBC::LLVMContext ctx;
-		auto *module = LLVMBC::parseIR(ctx, ir_data, ir_size);
-		auto disasm = LLVMBC::disassemble(*module);
-		fprintf(stderr, "LLVMBC:\n%s\n", disasm.c_str());
-	}
-
 	if (output.empty())
 	{
+		{
+			LLVMBC::LLVMContext ctx;
+			auto *module = LLVMBC::parseIR(ctx, ir_data, ir_size);
+			auto disasm = LLVMBC::disassemble(*module);
+			fprintf(stderr, "LLVMBC:\n%s\n", disasm.c_str());
+		}
+
 		dxil_spv_parsed_blob_dump_llvm_ir(blob);
 		dxil_spv_parsed_blob_free(blob);
 		return EXIT_SUCCESS;

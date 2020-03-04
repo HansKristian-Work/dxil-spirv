@@ -213,19 +213,34 @@ Type *Type::getVoidTy(LLVMContext &context)
 	return getTy(context, TypeID::Void);
 }
 
-Type *Type::getHalfTy(LLVMBC::LLVMContext &context)
+Type *Type::getHalfTy(LLVMContext &context)
 {
 	return getTy(context, TypeID::Half);
 }
 
-Type *Type::getFloatTy(LLVMBC::LLVMContext &context)
+Type *Type::getFloatTy(LLVMContext &context)
 {
 	return getTy(context, TypeID::Float);
 }
 
-Type *Type::getDoubleTy(LLVMBC::LLVMContext &context)
+Type *Type::getDoubleTy(LLVMContext &context)
 {
 	return getTy(context, TypeID::Double);
+}
+
+Type *Type::getLabelTy(LLVMContext &context)
+{
+	return getTy(context, TypeID::Label);
+}
+
+Type *Type::getMetadataTy(LLVMContext &context)
+{
+	return getTy(context, TypeID::Metadata);
+}
+
+Type *Type::getInt1Ty(LLVMContext &context)
+{
+	return getIntTy(context, 1);
 }
 
 Type *Type::getInt8Ty(LLVMContext &context)

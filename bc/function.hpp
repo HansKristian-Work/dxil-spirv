@@ -29,9 +29,10 @@ class Instruction;
 class Module;
 class FunctionType;
 
-class BasicBlock
+class BasicBlock : public Value
 {
 public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::BasicBlock; }
 	explicit BasicBlock(LLVMContext &context);
 
 	void add_instruction(Instruction *inst);
