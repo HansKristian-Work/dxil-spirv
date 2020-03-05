@@ -742,6 +742,40 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_EXTRACTVAL:
+	{
+		unsigned num_args = entry.ops.size();
+		std::vector<unsigned> indices;
+		indices.reserve(entry.ops.size() - 1);
+		Value *aggregate = get_value(entry.ops[0]);
+
+		Type *type = aggregate->getType();
+		for (unsigned i = 1; i < num_args; i++)
+		{
+			auto index = unsigned(entry.ops[i]);
+			if (type->getTypeID() == TypeID::Struct)
+			{
+				if (index >= cast<StructType>(type)->getNumElements())
+				{
+					LOGE("Struct element index out of range.\n");
+					return;
+				}
+				type = cast<StructType>(type)->getElementType(index);
+			}
+			else if (type->getTypeID() == TypeID::Array)
+			{
+				type = type->getArrayElementType();
+			}
+
+			// DXIL does not support vectors, so we're not supposed to index into them any further.
+			indices.push_back(index);
+		}
+
+		auto *value = context->construct<ExtractValueInst>(type, aggregate, std::move(indices));
+		add_instruction(value);
+		break;
+	}
+
 	case FunctionRecord::INST_BR:
 	{
 		auto *true_block = get_basic_block(entry.ops[0]);
@@ -890,11 +924,19 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 	case TypeRecord::STRUCT_ANON:
 	{
 		std::vector<Type *> members;
-		members.reserve(child.ops.size());
-		for (auto &op : child.ops)
-			members.push_back(module->get_type(op));
+		unsigned num_members = child.ops.size() - 1;
+		members.reserve(num_members);
+		for (unsigned i = 0; i < num_members; i++)
+			members.push_back(module->get_type(child.ops[i + 1]));
 		type = StructType::get(std::move(members));
 		LOGI("Type: STRUCT\n");
+		break;
+	}
+
+	case TypeRecord::VECTOR:
+	{
+		type = VectorType::get(child.ops[0], module->get_type(child.ops[1]));
+		LOGI("Type: VECTOR\n");
 		break;
 	}
 

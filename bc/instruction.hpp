@@ -185,6 +185,19 @@ public:
 	SelectInst(Value *true_value, Value *false_value, Value *cond);
 };
 
+class ExtractValueInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::ExtractValue; }
+	ExtractValueInst(Type *type, Value *aggregate, std::vector<unsigned> indices);
+	Value *getAggregateOperand() const;
+	unsigned getNumIndices() const;
+	const unsigned *getIndices() const;
+
+private:
+	std::vector<unsigned> indices;
+};
+
 class CmpInst : public Instruction
 {
 public:

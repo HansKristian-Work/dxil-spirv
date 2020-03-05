@@ -134,6 +134,27 @@ SelectInst::SelectInst(Value *true_value, Value *false_value, Value *cond)
 	set_operands({ cond, true_value, false_value });
 }
 
+ExtractValueInst::ExtractValueInst(Type *type, Value *aggregate, std::vector<unsigned> indices_)
+	: Instruction(type, ValueKind::ExtractValue), indices(std::move(indices_))
+{
+	set_operands({ aggregate });
+}
+
+Value *ExtractValueInst::getAggregateOperand() const
+{
+	return operands[0];
+}
+
+unsigned ExtractValueInst::getNumIndices() const
+{
+	return indices.size();
+}
+
+const unsigned *ExtractValueInst::getIndices() const
+{
+	return indices.data();
+}
+
 Instruction::CastOps CastInst::getOpcode() const
 {
 	return op;

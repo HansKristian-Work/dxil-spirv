@@ -81,6 +81,40 @@ ArrayType *ArrayType::get(Type *element, uint64_t size)
 	return type;
 }
 
+VectorType::VectorType(LLVMBC::LLVMContext &context, unsigned vector_size_, LLVMBC::Type *type)
+	: Type(context, TypeID::Vector), element_type(type), vector_size(vector_size_)
+{
+}
+
+unsigned VectorType::getVectorSize() const
+{
+	return vector_size;
+}
+
+Type *VectorType::getElementType() const
+{
+	return element_type;
+}
+
+VectorType *VectorType::get(unsigned vector_size, Type *element)
+{
+	auto &context = element->getContext();
+	auto &cache = context.get_type_cache();
+	for (auto *type : cache)
+	{
+		if (type->getTypeID() == TypeID::Vector)
+		{
+			auto *vector_type = cast<VectorType>(type);
+			if (vector_type->getVectorSize() == vector_size && vector_type->getElementType() == element)
+				return vector_type;
+		}
+	}
+
+	auto *type = context.construct<VectorType>(context, vector_size, element);
+	cache.push_back(type);
+	return type;
+}
+
 uint64_t Type::getArrayNumElements() const
 {
 	assert(type_id == TypeID::Array);

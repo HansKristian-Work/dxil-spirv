@@ -59,6 +59,7 @@ struct StreamState
 	StreamState &append(PHINode *value, bool decl = false);
 	StreamState &append(CastInst *value, bool decl = false);
 	StreamState &append(SelectInst *value, bool decl = false);
+	StreamState &append(ExtractValueInst *value, bool decl = false);
 
 	StreamState &append(float v);
 	StreamState &append(double v);
@@ -494,6 +495,26 @@ StreamState &StreamState::append(SelectInst *cast, bool decl)
 	return *this;
 }
 
+StreamState &StreamState::append(ExtractValueInst *ext, bool decl)
+{
+	if (decl)
+	{
+		append("%", ext->get_tween_id(), " = ", "extractvalue ",
+		       ext->getType(), " ", ext->getAggregateOperand());
+		for (unsigned i = 0; i < ext->getNumIndices(); i++)
+		{
+			append(", ");
+			append(ext->getIndices()[i]);
+		}
+	}
+	else
+	{
+		append("%", ext->get_tween_id());
+	}
+
+	return *this;
+}
+
 StreamState &StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
@@ -575,6 +596,8 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<CastInst>(value), decl);
 	case ValueKind::Select:
 		return append(cast<SelectInst>(value), decl);
+	case ValueKind::ExtractValue:
+		return append(cast<ExtractValueInst>(value), decl);
 	}
 
 	LOGE("Unknown ValueKind %u.\n", unsigned(value->get_value_kind()));

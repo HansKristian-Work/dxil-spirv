@@ -40,6 +40,7 @@ enum class ValueKind
 	PHI,
 	Cast,
 	Select,
+	ExtractValue,
 
 	Return,
 	Branch,

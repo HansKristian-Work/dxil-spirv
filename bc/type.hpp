@@ -38,6 +38,7 @@ enum class TypeID
 	Struct,
 	Function,
 	Label,
+	Vector,
 	Metadata
 };
 
@@ -124,6 +125,21 @@ public:
 
 private:
 	std::vector<Type *> member_types;
+};
+
+class VectorType : public Type
+{
+public:
+	static constexpr TypeID get_type_id() { return TypeID::Vector; }
+	VectorType(LLVMContext &context, unsigned vector_size, Type *type);
+	static VectorType *get(unsigned vector_size, Type *type);
+
+	unsigned getVectorSize() const;
+	Type *getElementType() const;
+
+private:
+	Type *element_type;
+	unsigned vector_size;
 };
 
 class FunctionType : public Type
