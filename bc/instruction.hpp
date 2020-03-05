@@ -67,6 +67,8 @@ public:
 	Value *getOperand(unsigned index) const;
 	unsigned getNumOperands() const;
 
+	void resolve_proxy_values();
+
 protected:
 	void set_terminator();
 	bool is_terminator = false;
@@ -200,6 +202,7 @@ public:
 	BasicBlock *getIncomingBlock(unsigned index) const;
 
 	void add_incoming(Value *value, BasicBlock *bb);
+	void resolve_proxy_values_incoming();
 
 private:
 	struct Incoming

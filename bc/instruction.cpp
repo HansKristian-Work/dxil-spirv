@@ -58,6 +58,19 @@ void Instruction::set_terminator()
 	is_terminator = true;
 }
 
+void Instruction::resolve_proxy_values()
+{
+	for (auto &op : operands)
+		while (op && op->get_value_kind() == ValueKind::Proxy)
+			op = cast<ValueProxy>(op)->get_proxy_value();
+
+	if (get_value_kind() == ValueKind::PHI)
+	{
+		auto *phi = cast<PHINode>(this);
+		phi->resolve_proxy_values_incoming();
+	}
+}
+
 BinaryOperator::BinaryOperator(Value *LHS, Value *RHS, BinaryOperation op_)
 	: Instruction(LHS->getType(), ValueKind::BinaryOperator), op(op_)
 {
@@ -181,5 +194,12 @@ Value *PHINode::getIncomingValue(unsigned index) const
 	if (index >= incoming.size())
 		return nullptr;
 	return incoming[index].value;
+}
+
+void PHINode::resolve_proxy_values_incoming()
+{
+	for (auto &node : incoming)
+		while (node.value && node.value->get_value_kind() == ValueKind::Proxy)
+			node.value = cast<ValueProxy>(node.value)->get_proxy_value();
 }
 }

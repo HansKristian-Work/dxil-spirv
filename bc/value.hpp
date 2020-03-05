@@ -40,7 +40,8 @@ enum class ValueKind
 	PHI,
 
 	Return,
-	Branch
+	Branch,
+	Proxy
 };
 
 class Value

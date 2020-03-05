@@ -264,13 +264,50 @@ struct ModuleParseContext
 	BasicBlock *current_bb = nullptr;
 	unsigned basic_block_index = 0;
 
-	Value *get_value(uint64_t op) const;
-	Value *get_value_signed(uint64_t op) const;
+	Value *get_value(uint64_t op, Type *expected_type = nullptr);
+	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
+
+	std::vector<ValueProxy *> pending_forward_references;
+	void resolve_forward_references();
+
+	uint64_t tween_id = 1;
 
 	bool use_relative_id = true;
 	bool use_strtab = false;
 	bool seen_first_function_body = false;
 };
+
+ValueProxy::ValueProxy(Type *type, ModuleParseContext &context_, uint64_t id_)
+	: Value(type, ValueKind::Proxy), context(context_), id(id_)
+{
+}
+
+void ValueProxy::resolve()
+{
+	if (proxy)
+		return;
+
+	if (id >= context.values.size())
+	{
+		LOGE("Value proxy is out of range.\n");
+		return;
+	}
+
+	proxy = context.values[id];
+	while (proxy && proxy->get_value_kind() == ValueKind::Proxy)
+	{
+		cast<ValueProxy>(proxy)->resolve();
+		proxy = cast<ValueProxy>(proxy)->get_proxy_value();
+	}
+
+	if (!proxy)
+		LOGE("Failed to resolve proxy value.\n");
+}
+
+Value *ValueProxy::get_proxy_value() const
+{
+	return proxy;
+}
 
 void ModuleParseContext::finish_basic_block()
 {
@@ -278,7 +315,10 @@ void ModuleParseContext::finish_basic_block()
 	if (basic_block_index >= basic_blocks.size())
 		current_bb = nullptr;
 	else
+	{
 		current_bb = basic_blocks[basic_block_index];
+		current_bb->set_tween_id(tween_id++);
+	}
 }
 
 BasicBlock *ModuleParseContext::get_basic_block(unsigned index) const
@@ -292,20 +332,27 @@ BasicBlock *ModuleParseContext::get_basic_block(unsigned index) const
 	return basic_blocks[index];
 }
 
-Value *ModuleParseContext::get_value(uint64_t op) const
+Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type)
 {
 	if (use_relative_id)
 		op = values.size() - op;
 
 	if (op >= values.size())
 	{
-		LOGE("Forward reference?\n");
-		return nullptr;
+		if (!expected_type)
+		{
+			LOGE("Must have an expected type for forward references!\n");
+			return nullptr;
+		}
+		auto *proxy = context->construct<ValueProxy>(expected_type, *this, op);
+		pending_forward_references.push_back(proxy);
+		return proxy;
 	}
-	return values[op];
+	else
+		return values[op];
 }
 
-Value *ModuleParseContext::get_value_signed(uint64_t op) const
+Value *ModuleParseContext::get_value_signed(uint64_t op, Type *expected_type)
 {
 	int64_t signed_op = decode_sign_rotated_value(op);
 	if (use_relative_id)
@@ -314,10 +361,17 @@ Value *ModuleParseContext::get_value_signed(uint64_t op) const
 
 	if (op >= values.size())
 	{
-		LOGE("Forward reference?\n");
-		return nullptr;
+		if (!expected_type)
+		{
+			LOGE("Must have an expected type for forward references!\n");
+			return nullptr;
+		}
+		auto *proxy = context->construct<ValueProxy>(expected_type, *this, op);
+		pending_forward_references.push_back(proxy);
+		return proxy;
 	}
-	return values[op];
+	else
+		return values[op];
 }
 
 void ModuleParseContext::add_instruction(Instruction *inst)
@@ -334,7 +388,7 @@ void ModuleParseContext::add_instruction(Instruction *inst)
 		finish_basic_block();
 	else
 	{
-		inst->set_tween_id(values.size());
+		inst->set_tween_id(tween_id++);
 		values.push_back(inst);
 	}
 }
@@ -595,9 +649,9 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		{
 			Value *value = nullptr;
 			if (use_relative_id)
-				value = get_value_signed(entry.ops[2 * i + 1]);
+				value = get_value_signed(entry.ops[2 * i + 1], type);
 			else
-				value = get_value(entry.ops[2 * i + 1]);
+				value = get_value(entry.ops[2 * i + 1], type);
 
 			BasicBlock *bb = get_basic_block(entry.ops[2 * i + 2]);
 			phi_node->add_incoming(value, bb);
@@ -641,6 +695,17 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	}
 }
 
+void ModuleParseContext::resolve_forward_references()
+{
+	for (auto *ref : pending_forward_references)
+		ref->resolve();
+	pending_forward_references.clear();
+
+	for (auto *bb : basic_blocks)
+		for (auto *inst : *bb)
+			inst->resolve_proxy_values();
+}
+
 void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 {
 	// I think we are supposed to process functions in same order as the module declared them?
@@ -667,9 +732,7 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 			parse_record(child);
 	}
 
-	auto tween_id = values.size();
-	for (auto *bb : basic_blocks)
-		bb->set_tween_id(tween_id++);
+	resolve_forward_references();
 
 	function->set_basic_blocks(std::move(basic_blocks));
 	basic_blocks = {};

@@ -25,6 +25,8 @@
 
 namespace LLVMBC
 {
+class ModuleParseContext;
+
 template <typename T>
 T *cast(Type *type)
 {
@@ -65,9 +67,33 @@ const T *dyn_cast(const Type *type)
 		return static_cast<const T *>(type);
 }
 
+class ValueProxy : public Value
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Proxy; }
+	ValueProxy(Type *type, ModuleParseContext &context, uint64_t id);
+
+	Value *get_proxy_value() const;
+	void resolve();
+
+private:
+	uint64_t id;
+	ModuleParseContext &context;
+	Value *proxy = nullptr;
+};
+
+namespace Internal
+{
+inline Value *resolve_proxy(Value *value);
+inline const Value *resolve_proxy(const Value *value);
+}
+
 template <typename T>
 T *cast(Value *value)
 {
+	if (T::get_value_kind() != ValueKind::Proxy)
+		value = Internal::resolve_proxy(value);
+
 	if (value->get_value_kind() != T::get_value_kind())
 	{
 		LOGE("Invalid type ID in cast<T>.\n");
@@ -79,6 +105,9 @@ T *cast(Value *value)
 template <typename T>
 const T *cast(const Value *value)
 {
+	if (T::get_value_kind() != ValueKind::Proxy)
+		value = Internal::resolve_proxy(value);
+
 	if (value->get_value_kind() != T::get_value_kind())
 	{
 		LOGE("Invalid type ID in cast<T>.\n");
@@ -90,6 +119,9 @@ const T *cast(const Value *value)
 template <typename T>
 T *dyn_cast(Value *value)
 {
+	if (T::get_value_kind() != ValueKind::Proxy)
+		value = Internal::resolve_proxy(value);
+
 	if (value->get_value_kind() != T::get_value_kind())
 		return nullptr;
 	else
@@ -99,9 +131,30 @@ T *dyn_cast(Value *value)
 template <typename T>
 const T *dyn_cast(const Value *value)
 {
+	if (T::get_value_kind() != ValueKind::Proxy)
+		value = Internal::resolve_proxy(value);
+
 	if (value->get_value_kind() != T::get_value_kind())
 		return nullptr;
 	else
 		return static_cast<const T *>(value);
 }
+
+namespace Internal
+{
+inline Value *resolve_proxy(Value *value)
+{
+	while (value && value->get_value_kind() == ValueKind::Proxy)
+		value = cast<ValueProxy>(value)->get_proxy_value();
+	return value;
+}
+
+inline const Value *resolve_proxy(const Value *value)
+{
+	while (value && value->get_value_kind() == ValueKind::Proxy)
+		value = cast<ValueProxy>(value)->get_proxy_value();
+	return value;
+}
+}
+
 }
