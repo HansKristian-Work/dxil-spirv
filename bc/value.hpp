@@ -38,6 +38,7 @@ enum class ValueKind
 	ICmp,
 	BasicBlock,
 	PHI,
+	Cast,
 
 	Return,
 	Branch,

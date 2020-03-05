@@ -62,6 +62,23 @@ public:
 		ICMP_SLE = 41
 	};
 
+	enum CastOps
+	{
+		Trunc = 100,
+		ZExt,
+		SExt,
+		FPToUI,
+		FPToSI,
+		UIToFP,
+		SIToFP,
+		FPTrunc,
+		FPExt,
+		PtrToInt,
+		IntToPtr,
+		BitCast,
+		AddrSpaceCast
+	};
+
 	bool isTerminator() const;
 
 	Value *getOperand(unsigned index) const;
@@ -133,6 +150,7 @@ class UnaryOperator : public Instruction
 public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::UnaryOperator; }
 	UnaryOperator(UnaryOperation uop, Value *value);
+	UnaryOperation getOpcode() const;
 
 private:
 	UnaryOperation op;
@@ -147,6 +165,17 @@ public:
 
 private:
 	BinaryOperation op;
+};
+
+class CastInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Cast; }
+	CastInst(Type *type, Value *value, Instruction::CastOps op);
+	Instruction::CastOps getOpcode() const;
+
+private:
+	Instruction::CastOps op;
 };
 
 class CmpInst : public Instruction

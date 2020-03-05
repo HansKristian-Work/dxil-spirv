@@ -46,7 +46,7 @@ struct StreamState
 	StreamState &append(Instruction *value);
 	StreamState &append(Function *value, bool decl = false);
 	StreamState &append(BinaryOperator *value, bool decl = false);
-	StreamState &append(UnaryOperator *value, bool decl = false);
+	StreamState &append(UnaryOperator *uop, bool decl = false);
 	StreamState &append(CallInst *value, bool decl = false);
 	StreamState &append(BranchInst *value, bool decl = false);
 	StreamState &append(ReturnInst *value, bool decl = false);
@@ -57,6 +57,7 @@ struct StreamState
 	StreamState &append(FCmpInst *value, bool decl = false);
 	StreamState &append(ICmpInst *value, bool decl = false);
 	StreamState &append(PHINode *value, bool decl = false);
+	StreamState &append(CastInst *value, bool decl = false);
 
 	StreamState &append(float v);
 	StreamState &append(double v);
@@ -280,6 +281,17 @@ static const char *to_string(BinaryOperation op)
 	assert(0);
 }
 
+static const char *to_string(UnaryOperation op)
+{
+	switch (op)
+	{
+	case UnaryOperation::FNeg:
+		return "fneg";
+	default:
+		return "invalid";
+	}
+}
+
 static const char *to_string(Instruction::Predicate pred)
 {
 	switch (pred)
@@ -318,6 +330,29 @@ static const char *to_string(Instruction::Predicate pred)
 	assert(0);
 }
 
+static const char *to_string(Instruction::CastOps op)
+{
+	switch (op)
+	{
+#define CAST(op, str) case Instruction::op: return str
+	CAST(Trunc, "trunc");
+	CAST(ZExt, "zext");
+	CAST(SExt, "sext");
+	CAST(FPToUI, "fptoui");
+	CAST(FPToSI, "fptosi");
+	CAST(UIToFP, "uitofp");
+	CAST(SIToFP, "sitofp");
+	CAST(FPTrunc, "fptrunc");
+	CAST(FPExt, "fpext");
+	CAST(PtrToInt, "ptrtoint");
+	CAST(IntToPtr, "inttoptr");
+	CAST(BitCast, "bitcast");
+	CAST(AddrSpaceCast, "addrspacecast");
+	}
+#undef CAST
+	assert(0);
+}
+
 StreamState &StreamState::append(BinaryOperator *binop, bool decl)
 {
 	if (decl)
@@ -328,6 +363,21 @@ StreamState &StreamState::append(BinaryOperator *binop, bool decl)
 	else
 	{
 		append("%", binop->get_tween_id());
+	}
+
+	return *this;
+}
+
+StreamState &StreamState::append(UnaryOperator *uop, bool decl)
+{
+	if (decl)
+	{
+		append("%", uop->get_tween_id(), " = ", to_string(uop->getOpcode()), " ", uop->getType(),
+		       " ", uop->getOperand(0), ", ", uop->getOperand(1));
+	}
+	else
+	{
+		append("%", uop->get_tween_id());
 	}
 
 	return *this;
@@ -412,6 +462,20 @@ StreamState &StreamState::append(CallInst *call, bool decl)
 	return *this;
 }
 
+StreamState &StreamState::append(CastInst *cast, bool decl)
+{
+	if (decl)
+	{
+		append("%", cast->get_tween_id(), " = ", to_string(cast->getOpcode()), " ", cast->getOperand(0), " to ", cast->getType());
+	}
+	else
+	{
+		append("%", cast->get_tween_id());
+	}
+
+	return *this;
+}
+
 StreamState &StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
@@ -467,8 +531,8 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<Function>(value), decl);
 	case ValueKind::BinaryOperator:
 		return append(cast<BinaryOperator>(value), decl);
-	//case ValueKind::UnaryOperator:
-	//	return append(cast<UnaryOperator>(value), decl);
+	case ValueKind::UnaryOperator:
+		return append(cast<UnaryOperator>(value), decl);
 	case ValueKind::Call:
 		return append(cast<CallInst>(value), decl);
 	case ValueKind::Branch:
@@ -489,6 +553,8 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<BasicBlock>(value), decl);
 	case ValueKind::PHI:
 		return append(cast<PHINode>(value), decl);
+	case ValueKind::Cast:
+		return append(cast<CastInst>(value), decl);
 	}
 
 	LOGE("Unknown ValueKind %u.\n", unsigned(value->get_value_kind()));

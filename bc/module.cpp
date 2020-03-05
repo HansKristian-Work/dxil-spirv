@@ -218,6 +218,23 @@ enum class BinOp : uint32_t
 	XOR = 12
 };
 
+enum class CastOp : uint32_t
+{
+	TRUNC = 0,
+	ZEXT = 1,
+	SEXT = 2,
+	FPTOUI = 3,
+	FPTOSI = 4,
+	UITOFP = 5,
+	SITOFP = 6,
+	FPTRUNC = 7,
+	FPEXT = 8,
+	PTRTOINT = 9,
+	INTTOPTR = 10,
+	BITCAST = 11,
+	ADDSPACECAST = 12
+};
+
 enum CallFlagBits
 {
 	CALL_TAIL_BIT = 1 << 0,
@@ -553,6 +570,40 @@ static BinaryOperation translate_binop(BinOp op, Type *type)
 	}
 }
 
+static Instruction::CastOps translate_castop(CastOp op)
+{
+	switch (op)
+	{
+	case CastOp::TRUNC:
+		return Instruction::Trunc;
+	case CastOp::ZEXT:
+		return Instruction::ZExt;
+	case CastOp::SEXT:
+		return Instruction::SExt;
+	case CastOp::FPTOUI:
+		return Instruction::FPToUI;
+	case CastOp::FPTOSI:
+		return Instruction::FPToSI;
+	case CastOp::UITOFP:
+		return Instruction::UIToFP;
+	case CastOp::SITOFP:
+		return Instruction::SIToFP;
+	case CastOp::FPTRUNC:
+		return Instruction::FPTrunc;
+	case CastOp::FPEXT:
+		return Instruction::FPExt;
+	case CastOp::PTRTOINT:
+		return Instruction::PtrToInt;
+	case CastOp::INTTOPTR:
+		return Instruction::IntToPtr;
+	case CastOp::BITCAST:
+		return Instruction::BitCast;
+	case CastOp::ADDSPACECAST:
+		return Instruction::AddrSpaceCast;
+	}
+	assert(0);
+}
+
 void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 {
 	switch (FunctionRecord(entry.id))
@@ -666,6 +717,16 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		auto *rhs = get_value(entry.ops[1]);
 		auto op = BinOp(entry.ops[2]);
 		auto *value = context->construct<BinaryOperator>(lhs, rhs, translate_binop(op, lhs->getType()));
+		add_instruction(value);
+		break;
+	}
+
+	case FunctionRecord::INST_CAST:
+	{
+		auto *input_value = get_value(entry.ops[0]);
+		auto *type = module->get_type(entry.ops[1]);
+		auto op = Instruction::CastOps(translate_castop(CastOp(entry.ops[2])));
+		auto *value = context->construct<CastInst>(type, input_value, op);
 		add_instruction(value);
 		break;
 	}

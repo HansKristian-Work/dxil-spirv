@@ -88,6 +88,11 @@ UnaryOperator::UnaryOperator(UnaryOperation uop, Value *value)
 	set_operands({ value });
 }
 
+UnaryOperation UnaryOperator::getOpcode() const
+{
+	return op;
+}
+
 ReturnInst::ReturnInst(Value *value_)
 	: Instruction(value_ ? value_->getType() : nullptr, ValueKind::Return), value(value_)
 {
@@ -115,6 +120,17 @@ CmpInst::CmpInst(ValueKind kind, Predicate pred_, Value *LHS, Value *RHS)
 	: Instruction(Type::getInt1Ty(LHS->getType()->getContext()), kind), pred(pred_)
 {
 	set_operands({ LHS, RHS });
+}
+
+CastInst::CastInst(Type *type, Value *value, Instruction::CastOps op_)
+	: Instruction(type, ValueKind::Cast), op(op_)
+{
+	set_operands({ value });
+}
+
+Instruction::CastOps CastInst::getOpcode() const
+{
+	return op;
 }
 
 Instruction::Predicate CmpInst::getPredicate() const
