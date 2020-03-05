@@ -128,6 +128,12 @@ CastInst::CastInst(Type *type, Value *value, Instruction::CastOps op_)
 	set_operands({ value });
 }
 
+SelectInst::SelectInst(Value *true_value, Value *false_value, Value *cond)
+	: Instruction(true_value->getType(), ValueKind::Select)
+{
+	set_operands({ cond, true_value, false_value });
+}
+
 Instruction::CastOps CastInst::getOpcode() const
 {
 	return op;

@@ -58,6 +58,7 @@ struct StreamState
 	StreamState &append(ICmpInst *value, bool decl = false);
 	StreamState &append(PHINode *value, bool decl = false);
 	StreamState &append(CastInst *value, bool decl = false);
+	StreamState &append(SelectInst *value, bool decl = false);
 
 	StreamState &append(float v);
 	StreamState &append(double v);
@@ -476,6 +477,23 @@ StreamState &StreamState::append(CastInst *cast, bool decl)
 	return *this;
 }
 
+StreamState &StreamState::append(SelectInst *cast, bool decl)
+{
+	if (decl)
+	{
+		append("%", cast->get_tween_id(), " = ", "select ",
+		       cast->getOperand(0), ", ",
+		       cast->getOperand(1), ", ",
+		       cast->getOperand(2));
+	}
+	else
+	{
+		append("%", cast->get_tween_id());
+	}
+
+	return *this;
+}
+
 StreamState &StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
@@ -555,6 +573,8 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<PHINode>(value), decl);
 	case ValueKind::Cast:
 		return append(cast<CastInst>(value), decl);
+	case ValueKind::Select:
+		return append(cast<SelectInst>(value), decl);
 	}
 
 	LOGE("Unknown ValueKind %u.\n", unsigned(value->get_value_kind()));

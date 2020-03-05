@@ -39,6 +39,7 @@ enum class ValueKind
 	BasicBlock,
 	PHI,
 	Cast,
+	Select,
 
 	Return,
 	Branch,

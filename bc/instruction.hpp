@@ -178,6 +178,13 @@ private:
 	Instruction::CastOps op;
 };
 
+class SelectInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Select; }
+	SelectInst(Value *true_value, Value *false_value, Value *cond);
+};
+
 class CmpInst : public Instruction
 {
 public:

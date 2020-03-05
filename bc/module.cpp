@@ -731,6 +731,17 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_SELECT:
+	case FunctionRecord::INST_VSELECT:
+	{
+		auto *true_value = get_value(entry.ops[0]);
+		auto *false_value = get_value(entry.ops[1]);
+		auto *cond_value = get_value(entry.ops[2]);
+		auto *value = context->construct<SelectInst>(true_value, false_value, cond_value);
+		add_instruction(value);
+		break;
+	}
+
 	case FunctionRecord::INST_BR:
 	{
 		auto *true_block = get_basic_block(entry.ops[0]);
