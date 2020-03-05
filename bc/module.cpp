@@ -794,6 +794,18 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_ALLOCA:
+	{
+		auto *allocated_type = module->get_type(entry.ops[0]);
+		auto *type = module->get_type(entry.ops[1]);
+		auto *size = get_value(entry.ops[2]);
+		auto *ptr_type = PointerType::get(allocated_type, 0);
+
+		auto *value = context->construct<AllocaInst>(ptr_type, type, size);
+		add_instruction(value);
+		break;
+	}
+
 	default:
 		LOGE("Unhandled instruction!\n");
 		add_instruction(nullptr);

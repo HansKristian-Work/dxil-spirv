@@ -198,6 +198,18 @@ private:
 	std::vector<unsigned> indices;
 };
 
+class AllocaInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Alloca; }
+	AllocaInst(Type *pointer_type, Type *element_type, Value *size);
+	Value *getArraySize() const;
+
+private:
+	Type *element_type;
+	Value *array_size;
+};
+
 class CmpInst : public Instruction
 {
 public:

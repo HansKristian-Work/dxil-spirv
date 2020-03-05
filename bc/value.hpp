@@ -41,6 +41,7 @@ enum class ValueKind
 	Cast,
 	Select,
 	ExtractValue,
+	Alloca,
 
 	Return,
 	Branch,

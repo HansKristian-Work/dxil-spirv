@@ -225,6 +225,16 @@ unsigned PHINode::getNumIncomingValues() const
 	return unsigned(incoming.size());
 }
 
+AllocaInst::AllocaInst(Type *pointer_type, Type *element_type_, Value *size)
+	: Instruction(pointer_type, ValueKind::Alloca), element_type(element_type_), array_size(size)
+{
+}
+
+Value *AllocaInst::getArraySize() const
+{
+	return array_size;
+}
+
 BasicBlock *PHINode::getIncomingBlock(unsigned index) const
 {
 	if (index >= incoming.size())
