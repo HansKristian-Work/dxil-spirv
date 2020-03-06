@@ -64,6 +64,7 @@ struct StreamState
 	StreamState &append(GetElementPtrInst *value, bool decl = false);
 	StreamState &append(LoadInst *value, bool decl = false);
 	StreamState &append(StoreInst *value, bool decl = false);
+	StreamState &append(AtomicRMWInst *value, bool decl = false);
 
 	StreamState &append(float v);
 	StreamState &append(double v);
@@ -119,7 +120,10 @@ StreamState &StreamState::append(StructType *type)
 
 StreamState &StreamState::append(PointerType *type)
 {
-	return append(type->getElementType(), "*");
+	if (type->getAddressSpace() != 0)
+		return append(type->getElementType(), " addrspace(", type->getAddressSpace(), ")*");
+	else
+		return append(type->getElementType(), "*");
 }
 
 StreamState &StreamState::append(ArrayType *type)
@@ -359,6 +363,29 @@ static const char *to_string(Instruction::CastOps op)
 	assert(0);
 }
 
+static const char *to_string(AtomicRMWInst::BinOp op)
+{
+	switch (op)
+	{
+#define RMW(op, str) case AtomicRMWInst::BinOp::op: return str
+	RMW(Add, "add");
+	RMW(Sub, "sub");
+	RMW(Xchg, "xchg");
+	RMW(And, "and");
+	RMW(Xor, "xor");
+	RMW(Or, "or");
+	RMW(Nand, "nand");
+	RMW(Max, "max");
+	RMW(Min, "min");
+	RMW(UMax, "umax");
+	RMW(UMin, "umin");
+	RMW(FAdd, "fadd");
+	RMW(FSub, "fsub");
+	}
+#undef RMW
+	assert(0);
+}
+
 StreamState &StreamState::append(BinaryOperator *binop, bool decl)
 {
 	if (decl)
@@ -572,6 +599,18 @@ StreamState &StreamState::append(StoreInst *ptr, bool decl)
 	return *this;
 }
 
+StreamState &StreamState::append(AtomicRMWInst *atomic_op, bool decl)
+{
+	if (decl)
+	{
+		append("%", atomic_op->get_tween_id(), " = atomicrmw ", to_string(atomic_op->getOpcode()), " ",
+		       atomic_op->getPointerOperand(), ", ", atomic_op->getValueOperand());
+	}
+	else
+		append("%", atomic_op->get_tween_id());
+	return *this;
+}
+
 StreamState &StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
@@ -663,6 +702,8 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<LoadInst>(value), decl);
 	case ValueKind::Store:
 		return append(cast<StoreInst>(value), decl);
+	case ValueKind::AtomicRMW:
+		return append(cast<AtomicRMWInst>(value), decl);
 	}
 
 	LOGE("Unknown ValueKind %u.\n", unsigned(value->get_value_kind()));

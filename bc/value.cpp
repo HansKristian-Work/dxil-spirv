@@ -131,4 +131,29 @@ UndefValue *UndefValue::get(Type *type)
 	auto &context = type->getContext();
 	return context.construct<UndefValue>(type);
 }
+
+GlobalVariable::GlobalVariable(Type *type, bool is_const_)
+	: Value(type, ValueKind::Global), is_const(is_const_)
+{
+}
+
+bool GlobalVariable::hasInitializer() const
+{
+	return initializer != nullptr;
+}
+
+Value *GlobalVariable::getInitializer() const
+{
+	return initializer;
+}
+
+void GlobalVariable::set_initializer(Value *value)
+{
+	initializer = value;
+}
+
+bool GlobalVariable::isConstant() const
+{
+	return is_const;
+}
 }

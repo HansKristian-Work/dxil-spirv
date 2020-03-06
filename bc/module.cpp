@@ -53,6 +53,7 @@ enum class ModuleRecord : uint32_t
 	VERSION = 1,
 	TRIPLE = 2,
 	DATALAYOUT = 3,
+	GLOBAL_VARIABLE = 7,
 	FUNCTION = 8,
 };
 
@@ -218,6 +219,23 @@ enum class BinOp : uint32_t
 	XOR = 12
 };
 
+enum class AtomicBinOp : uint32_t
+{
+	RMW_XCHG = 0,
+	RMW_ADD = 1,
+	RMW_SUB = 2,
+	RMW_AND = 3,
+	RMW_NAND = 4,
+	RMW_OR = 5,
+	RMW_XOR = 6,
+	RMW_MAX = 7,
+	RMW_MIN = 8,
+	RMW_UMAX = 9,
+	RMW_UMIN = 10,
+	RMW_FADD = 11,
+	RMW_FSUB = 12
+};
+
 enum class CastOp : uint32_t
 {
 	TRUNC = 0,
@@ -273,8 +291,10 @@ struct ModuleParseContext
 	void parse_types(const BlockOrRecord &entry);
 	void parse_value_symtab(const BlockOrRecord &entry);
 	void parse_function_record(const BlockOrRecord &entry);
+	void parse_global_variable_record(const BlockOrRecord &entry);
 	void parse_version_record(const BlockOrRecord &entry);
 	void add_instruction(Instruction *inst);
+	void add_value(Value *value);
 
 	void finish_basic_block();
 	BasicBlock *get_basic_block(unsigned index) const;
@@ -285,7 +305,9 @@ struct ModuleParseContext
 	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
 
 	std::vector<ValueProxy *> pending_forward_references;
+	std::vector<std::pair<GlobalVariable *, uint64_t>> global_initializations;
 	void resolve_forward_references();
+	void resolve_global_initializations();
 
 	uint64_t tween_id = 1;
 
@@ -403,10 +425,16 @@ void ModuleParseContext::add_instruction(Instruction *inst)
 
 	if (inst->isTerminator())
 		finish_basic_block();
-	else if (inst->getType()->getTypeID() != TypeID::Void)
+	else
+		add_value(inst);
+}
+
+void ModuleParseContext::add_value(Value *value)
+{
+	if (value->getType()->getTypeID() != TypeID::Void)
 	{
-		inst->set_tween_id(tween_id++);
-		values.push_back(inst);
+		value->set_tween_id(tween_id++);
+		values.push_back(value);
 	}
 }
 
@@ -570,6 +598,41 @@ static BinaryOperation translate_binop(BinOp op, Type *type)
 	}
 }
 
+static AtomicRMWInst::BinOp translate_atomic_binop(AtomicBinOp op)
+{
+	switch (op)
+	{
+	case AtomicBinOp::RMW_XCHG:
+		return AtomicRMWInst::BinOp::Xchg;
+	case AtomicBinOp::RMW_ADD:
+		return AtomicRMWInst::BinOp::Add;
+	case AtomicBinOp::RMW_SUB:
+		return AtomicRMWInst::BinOp::Sub;
+	case AtomicBinOp::RMW_AND:
+		return AtomicRMWInst::BinOp::And;
+	case AtomicBinOp::RMW_NAND:
+		return AtomicRMWInst::BinOp::Nand;
+	case AtomicBinOp::RMW_OR:
+		return AtomicRMWInst::BinOp::Or;
+	case AtomicBinOp::RMW_XOR:
+		return AtomicRMWInst::BinOp::Xor;
+	case AtomicBinOp::RMW_MAX:
+		return AtomicRMWInst::BinOp::Max;
+	case AtomicBinOp::RMW_MIN:
+		return AtomicRMWInst::BinOp::Min;
+	case AtomicBinOp::RMW_UMAX:
+		return AtomicRMWInst::BinOp::UMax;
+	case AtomicBinOp::RMW_UMIN:
+		return AtomicRMWInst::BinOp::UMin;
+	case AtomicBinOp::RMW_FADD:
+		return AtomicRMWInst::BinOp::FAdd;
+	case AtomicBinOp::RMW_FSUB:
+		return AtomicRMWInst::BinOp::FSub;
+	default:
+		return AtomicRMWInst::BinOp::Invalid;
+	}
+}
+
 static Instruction::CastOps translate_castop(CastOp op)
 {
 	switch (op)
@@ -717,6 +780,16 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		auto *rhs = get_value(entry.ops[1]);
 		auto op = BinOp(entry.ops[2]);
 		auto *value = context->construct<BinaryOperator>(lhs, rhs, translate_binop(op, lhs->getType()));
+		add_instruction(value);
+		break;
+	}
+
+	case FunctionRecord::INST_ATOMICRMW:
+	{
+		auto *ptr = get_value(entry.ops[0]);
+		auto *val = get_value(entry.ops[1]);
+		AtomicRMWInst::BinOp op = translate_atomic_binop(AtomicBinOp(entry.ops[2]));
+		auto *value = context->construct<AtomicRMWInst>(val->getType(), ptr, val, op);
 		add_instruction(value);
 		break;
 	}
@@ -878,6 +951,11 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_CMPXCHG:
+	{
+		break;
+	}
+
 	default:
 		LOGE("Unhandled instruction!\n");
 		add_instruction(nullptr);
@@ -894,6 +972,13 @@ void ModuleParseContext::resolve_forward_references()
 	for (auto *bb : basic_blocks)
 		for (auto *inst : *bb)
 			inst->resolve_proxy_values();
+}
+
+void ModuleParseContext::resolve_global_initializations()
+{
+	for (auto &ref : global_initializations)
+		ref.first->set_initializer(get_value(ref.second));
+	global_initializations.clear();
 }
 
 void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
@@ -923,6 +1008,7 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	}
 
 	resolve_forward_references();
+	resolve_global_initializations();
 
 	function->set_basic_blocks(std::move(basic_blocks));
 	basic_blocks = {};
@@ -1077,6 +1163,35 @@ void ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 	}
 }
 
+void ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry)
+{
+	if (use_strtab)
+	{
+		LOGE("Unknown module code 2 which uses strtab.\n");
+		return;
+	}
+
+	auto *type = module->get_type(entry.ops[0]);
+	bool is_const = (entry.ops[1] & 1) != 0;
+	bool explicit_type = (entry.ops[1] & 2) != 0;
+	unsigned address_space = 0;
+	if (explicit_type)
+		address_space = entry.ops[1] >> 2;
+	else
+	{
+		address_space = cast<PointerType>(type)->getAddressSpace();
+		type = cast<PointerType>(type)->getElementType();
+	}
+
+	auto *value = context->construct<GlobalVariable>(PointerType::get(type, address_space), is_const);
+	module->add_global_variable(value);
+	add_value(value);
+
+	uint64_t init_id = entry.ops[2];
+	if (init_id != 0)
+		global_initializations.push_back({ value, init_id - 1 });
+}
+
 void ModuleParseContext::parse_function_record(const BlockOrRecord &entry)
 {
 	if (use_strtab)
@@ -1129,6 +1244,11 @@ void Module::add_function_implementation(Function *func)
 	functions.push_back(func);
 }
 
+void Module::add_global_variable(GlobalVariable *variable)
+{
+	globals.push_back(variable);
+}
+
 static const std::string empty_string;
 const std::string &Module::get_value_name(uint64_t id) const
 {
@@ -1157,6 +1277,16 @@ std::vector<Function *>::const_iterator Module::begin() const
 std::vector<Function *>::const_iterator Module::end() const
 {
 	return functions.end();
+}
+
+std::vector<GlobalVariable *>::const_iterator Module::global_begin() const
+{
+	return globals.begin();
+}
+
+std::vector<GlobalVariable *>::const_iterator Module::global_end() const
+{
+	return globals.end();
 }
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size)
@@ -1214,6 +1344,10 @@ Module *parseIR(LLVMContext &context, const void *data, size_t size)
 
 			case ModuleRecord::FUNCTION:
 				parse_context.parse_function_record(child);
+				break;
+
+			case ModuleRecord::GLOBAL_VARIABLE:
+				parse_context.parse_global_variable_record(child);
 				break;
 
 			default:

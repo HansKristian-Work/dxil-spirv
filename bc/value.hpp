@@ -45,10 +45,11 @@ enum class ValueKind
 	GetElementPtr,
 	Load,
 	Store,
-
+	AtomicRMW,
 	Return,
 	Branch,
-	Proxy
+	Proxy,
+	Global
 };
 
 class Value
@@ -111,5 +112,19 @@ public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Undef; }
 	explicit UndefValue(Type *type);
 	static UndefValue *get(Type *type);
+};
+
+class GlobalVariable : public Value
+{
+public:
+	explicit GlobalVariable(Type *type, bool is_const);
+	void set_initializer(Value *value);
+	Value *getInitializer() const;
+	bool hasInitializer() const;
+	bool isConstant() const;
+
+private:
+	Value *initializer = nullptr;
+	bool is_const;
 };
 }

@@ -283,4 +283,24 @@ void PHINode::resolve_proxy_values_incoming()
 		while (node.value && node.value->get_value_kind() == ValueKind::Proxy)
 			node.value = cast<ValueProxy>(node.value)->get_proxy_value();
 }
+
+AtomicRMWInst::AtomicRMWInst(Type *type, Value *ptr_, Value *value_, BinOp op_)
+	: Instruction(type, ValueKind::AtomicRMW), ptr(ptr_), value(value_), op(op_)
+{
+}
+
+Value *AtomicRMWInst::getPointerOperand() const
+{
+	return ptr;
+}
+
+Value *AtomicRMWInst::getValueOperand() const
+{
+	return value;
+}
+
+AtomicRMWInst::BinOp AtomicRMWInst::getOpcode() const
+{
+	return op;
+}
 }

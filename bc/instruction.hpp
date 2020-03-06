@@ -299,4 +299,37 @@ private:
 	};
 	std::vector<Incoming> incoming;
 };
+
+class AtomicRMWInst : public Instruction
+{
+public:
+	enum class BinOp
+	{
+		Invalid,
+		Xchg,
+		Add,
+		Sub,
+		And,
+		Nand,
+		Or,
+		Xor,
+		Max,
+		Min,
+		UMax,
+		UMin,
+		FAdd, // wat
+		FSub
+	};
+	static constexpr ValueKind get_value_kind() { return ValueKind::AtomicRMW; }
+	AtomicRMWInst(Type *type, Value *ptr, Value *value, BinOp op);
+
+	Value *getPointerOperand() const;
+	Value *getValueOperand() const;
+	BinOp getOpcode() const;
+
+private:
+	Value *ptr;
+	Value *value;
+	BinOp op;
+};
 }
