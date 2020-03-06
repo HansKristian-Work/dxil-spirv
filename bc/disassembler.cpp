@@ -52,6 +52,7 @@ struct StreamState
 	StreamState &append(BranchInst *value, bool decl = false);
 	StreamState &append(ReturnInst *value, bool decl = false);
 	StreamState &append(UndefValue *value, bool decl = false);
+	StreamState &append(Constant *value, bool decl = false);
 	StreamState &append(ConstantInt *value, bool decl = false);
 	StreamState &append(ConstantFP *value, bool decl = false);
 	StreamState &append(BasicBlock *bb, bool decl = false);
@@ -66,6 +67,8 @@ struct StreamState
 	StreamState &append(LoadInst *value, bool decl = false);
 	StreamState &append(StoreInst *value, bool decl = false);
 	StreamState &append(AtomicRMWInst *value, bool decl = false);
+	StreamState &append(ConstantAggregateZero *zero, bool decl = false);
+	StreamState &append(ConstantDataArray *data, bool decl = false);
 
 	StreamState &append(float v);
 	StreamState &append(double v);
@@ -267,7 +270,11 @@ StreamState &StreamState::append(GlobalVariable *var, bool decl)
 {
 	if (decl)
 	{
-		append("@", var->get_tween_id(), " = global ", var->getType()->getPointerElementType());
+		append("@", var->get_tween_id(), " = ");
+		append(var->isConstant() ? "constant" : "global", " ");
+		append(var->getType()->getPointerElementType());
+		if (var->hasInitializer())
+			append(" ", var->getInitializer());
 		newline();
 	}
 	else
@@ -628,6 +635,25 @@ StreamState &StreamState::append(AtomicRMWInst *atomic_op, bool decl)
 	return *this;
 }
 
+StreamState &StreamState::append(ConstantAggregateZero *zero, bool)
+{
+	append("[zeroinitialized]");
+	return *this;
+}
+
+StreamState &StreamState::append(ConstantDataArray *arr, bool)
+{
+	append("[");
+	for (unsigned i = 0; i < arr->getNumElements(); i++)
+	{
+		append(arr->getElementAsConstant(i));
+		if (i + 1 < arr->getNumElements())
+			append(", ");
+	}
+	append("]");
+	return *this;
+}
+
 StreamState &StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
@@ -668,6 +694,11 @@ StreamState &StreamState::append(ConstantFP *value, bool decl)
 StreamState &StreamState::append(ConstantInt *value, bool decl)
 {
 	return append(value->getType(), " ", value->get_sext());
+}
+
+StreamState &StreamState::append(Constant *value, bool decl)
+{
+	return append(static_cast<Value *>(value), decl);
 }
 
 StreamState &StreamState::append(Instruction *inst)
@@ -723,6 +754,10 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<AtomicRMWInst>(value), decl);
 	case ValueKind::Global:
 		return append(cast<GlobalVariable>(value), decl);
+	case ValueKind::ConstantAggregateZero:
+		return append(cast<ConstantAggregateZero>(value), decl);
+	case ValueKind::ConstantDataArray:
+		return append(cast<ConstantDataArray>(value), decl);
 	default:
 		break;
 	}

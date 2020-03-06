@@ -519,9 +519,36 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		break;
 
 	case ConstantsRecord::DATA:
-		LOGW("DATA unimplemented.\n");
-		values.push_back(nullptr);
+	{
+		Type *element_type = nullptr;
+		if (isa<ArrayType>(get_constant_type()))
+			element_type = get_constant_type()->getArrayElementType();
+		else if (isa<VectorType>(get_constant_type()))
+			element_type = cast<VectorType>(get_constant_type())->getElementType();
+		else
+		{
+			LOGE("Unknown DATA type.\n");
+			values.push_back(nullptr);
+			break;
+		}
+
+		bool is_fp = element_type->isFloatingPointTy();
+		std::vector<Constant *> constants;
+		constants.reserve(entry.ops.size());
+		if (is_fp)
+		{
+			for (auto &op : entry.ops)
+				constants.push_back(ConstantFP::get(element_type, op));
+		}
+		else
+		{
+			for (auto &op : entry.ops)
+				constants.push_back(ConstantInt::get(element_type, op));
+		}
+		auto *value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
+		values.push_back(value);
 		break;
+	}
 
 	default:
 		LOGW("UNKNOWN unimplemented.\n");

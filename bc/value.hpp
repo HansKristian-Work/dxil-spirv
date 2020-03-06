@@ -30,6 +30,8 @@ enum class ValueKind
 	Function,
 	ConstantInt,
 	ConstantFP,
+	ConstantAggregateZero,
+	ConstantDataArray,
 	Undef,
 	UnaryOperator,
 	BinaryOperator,
@@ -104,6 +106,26 @@ private:
 		double f64;
 		uint64_t u64;
 	} u;
+};
+
+class ConstantAggregateZero : public Constant
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantAggregateZero; }
+	explicit ConstantAggregateZero(Type *type);
+};
+
+class ConstantDataArray : public Constant
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantDataArray; }
+	ConstantDataArray(Type *type, std::vector<Constant *> elements);
+
+	unsigned getNumElements() const;
+	Constant *getElementAsConstant(unsigned index) const;
+
+private:
+	std::vector<Constant *> elements;
 };
 
 class UndefValue : public Constant

@@ -132,6 +132,26 @@ UndefValue *UndefValue::get(Type *type)
 	return context.construct<UndefValue>(type);
 }
 
+ConstantAggregateZero::ConstantAggregateZero(Type *type)
+	: Constant(type, ValueKind::ConstantAggregateZero)
+{
+}
+
+ConstantDataArray::ConstantDataArray(Type *type, std::vector<Constant *> elements_)
+	: Constant(type, ValueKind::ConstantDataArray), elements(std::move(elements_))
+{
+}
+
+unsigned ConstantDataArray::getNumElements() const
+{
+	return elements.size();
+}
+
+Constant *ConstantDataArray::getElementAsConstant(unsigned index) const
+{
+	return elements[index];
+}
+
 GlobalVariable::GlobalVariable(Type *type, bool is_const_)
 	: Value(type, ValueKind::Global), is_const(is_const_)
 {
