@@ -60,6 +60,10 @@ struct StreamState
 	StreamState &append(CastInst *value, bool decl = false);
 	StreamState &append(SelectInst *value, bool decl = false);
 	StreamState &append(ExtractValueInst *value, bool decl = false);
+	StreamState &append(AllocaInst *value, bool decl = false);
+	StreamState &append(GetElementPtrInst *value, bool decl = false);
+	StreamState &append(LoadInst *value, bool decl = false);
+	StreamState &append(StoreInst *value, bool decl = false);
 
 	StreamState &append(float v);
 	StreamState &append(double v);
@@ -120,7 +124,7 @@ StreamState &StreamState::append(PointerType *type)
 
 StreamState &StreamState::append(ArrayType *type)
 {
-	return append(type->getArrayElementType(), "[", type->getArrayNumElements(), "]");
+	return append("[", type->getArrayNumElements(), " x ", type->getArrayElementType(), "]");
 }
 
 StreamState &StreamState::append(FunctionType *type)
@@ -515,6 +519,59 @@ StreamState &StreamState::append(ExtractValueInst *ext, bool decl)
 	return *this;
 }
 
+StreamState &StreamState::append(AllocaInst *alloca, bool decl)
+{
+	if (decl)
+	{
+		append("%", alloca->get_tween_id(), " = alloca ", cast<PointerType>(alloca->getType())->getElementType());
+	}
+	else
+	{
+		append("%", alloca->get_tween_id());
+	}
+
+	return *this;
+}
+
+StreamState &StreamState::append(GetElementPtrInst *ptr, bool decl)
+{
+	if (decl)
+	{
+		append("%", ptr->get_tween_id(), " = getelementptr ", ptr->isInBounds() ? "inbounds " : "", ptr->getType());
+		for (unsigned i = 0; i < ptr->getNumOperands(); i++)
+		{
+			append(", ");
+			append(ptr->getOperand(i));
+		}
+	}
+	else
+	{
+		append("%", ptr->get_tween_id());
+	}
+
+	return *this;
+}
+
+StreamState &StreamState::append(LoadInst *ptr, bool decl)
+{
+	if (decl)
+		append("%", ptr->get_tween_id(), " = load ", ptr->getType(), " ", ptr->getPointerOperand());
+	else
+		append("%", ptr->get_tween_id());
+
+	return *this;
+}
+
+StreamState &StreamState::append(StoreInst *ptr, bool decl)
+{
+	if (decl)
+		append("store ", ptr->getOperand(0), ", ", ptr->getOperand(1));
+	else
+		append("%", ptr->get_tween_id());
+
+	return *this;
+}
+
 StreamState &StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
@@ -598,6 +655,14 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<SelectInst>(value), decl);
 	case ValueKind::ExtractValue:
 		return append(cast<ExtractValueInst>(value), decl);
+	case ValueKind::Alloca:
+		return append(cast<AllocaInst>(value), decl);
+	case ValueKind::GetElementPtr:
+		return append(cast<GetElementPtrInst>(value), decl);
+	case ValueKind::Load:
+		return append(cast<LoadInst>(value), decl);
+	case ValueKind::Store:
+		return append(cast<StoreInst>(value), decl);
 	}
 
 	LOGE("Unknown ValueKind %u.\n", unsigned(value->get_value_kind()));
