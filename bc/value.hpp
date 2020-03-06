@@ -42,6 +42,9 @@ enum class ValueKind
 	Select,
 	ExtractValue,
 	Alloca,
+	GetElementPtr,
+	Load,
+	Store,
 
 	Return,
 	Branch,

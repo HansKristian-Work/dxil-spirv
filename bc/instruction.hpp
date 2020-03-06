@@ -210,6 +210,32 @@ private:
 	Value *array_size;
 };
 
+class GetElementPtrInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::GetElementPtr; }
+	GetElementPtrInst(Type *pointer_type, std::vector<Value *> arguments, bool inbounds);
+	bool isInBounds() const;
+
+private:
+	bool inbounds;
+};
+
+class LoadInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Load; }
+	LoadInst(Type *type, Value *ptr);
+	Value *getPointerOperand() const;
+};
+
+class StoreInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Store; }
+	StoreInst(Value *ptr, Value *value);
+};
+
 class CmpInst : public Instruction
 {
 public:

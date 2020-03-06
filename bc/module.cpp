@@ -403,7 +403,7 @@ void ModuleParseContext::add_instruction(Instruction *inst)
 
 	if (inst->isTerminator())
 		finish_basic_block();
-	else
+	else if (inst->getType()->getTypeID() != TypeID::Void)
 	{
 		inst->set_tween_id(tween_id++);
 		values.push_back(inst);
@@ -802,6 +802,78 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		auto *ptr_type = PointerType::get(allocated_type, 0);
 
 		auto *value = context->construct<AllocaInst>(ptr_type, type, size);
+		add_instruction(value);
+		break;
+	}
+
+	case FunctionRecord::INST_GEP:
+	{
+		bool inbounds = entry.ops[0] != 0;
+		auto *type = module->get_type(entry.ops[1]);
+		unsigned count = entry.ops.size() - 2;
+		std::vector<Value *> args;
+		args.reserve(count);
+		for (unsigned i = 0; i < count; i++)
+			args.push_back(get_value(entry.ops[i + 2]));
+
+		for (unsigned i = 1; i < args.size(); i++)
+		{
+			auto *arg = args[i];
+			if (type->getTypeID() == TypeID::Struct)
+			{
+				auto *const_int = dyn_cast<ConstantInt>(arg);
+				if (!const_int)
+				{
+					LOGE("Indexing into a struct without a constant integer.\n");
+					return;
+				}
+
+				unsigned index = const_int->get_zext();
+				if (index >= cast<StructType>(type)->getNumElements())
+				{
+					LOGE("Struct element index out of range.\n");
+					return;
+				}
+				type = cast<StructType>(type)->getElementType(index);
+			}
+			else if (type->getTypeID() == TypeID::Array)
+			{
+				type = type->getArrayElementType();
+			}
+		}
+
+		type = PointerType::get(type, cast<PointerType>(args[0]->getType())->getAddressSpace());
+
+		auto *value = context->construct<GetElementPtrInst>(type, std::move(args), inbounds);
+		add_instruction(value);
+		break;
+	}
+
+	case FunctionRecord::INST_LOAD:
+	{
+		auto *ptr = get_value(entry.ops[0]);
+		if (!isa<PointerType>(ptr->getType()))
+		{
+			LOGE("Loading from something that is not a pointer.\n");
+			return;
+		}
+
+		Type *loaded_type = nullptr;
+		if (entry.ops.size() == 4)
+			loaded_type = module->get_type(entry.ops[1]);
+		else
+			loaded_type = cast<PointerType>(ptr->getType())->getElementType();
+
+		auto *value = context->construct<LoadInst>(loaded_type, ptr);
+		add_instruction(value);
+		break;
+	}
+
+	case FunctionRecord::INST_STORE:
+	{
+		auto *ptr = get_value(entry.ops[0]);
+		auto *v = get_value(entry.ops[1]);
+		auto *value = context->construct<StoreInst>(ptr, v);
 		add_instruction(value);
 		break;
 	}

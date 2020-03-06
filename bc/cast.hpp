@@ -28,7 +28,7 @@ namespace LLVMBC
 class ModuleParseContext;
 
 template <typename T>
-T *cast(Type *type)
+inline T *cast(Type *type)
 {
 	if (type->getTypeID() != T::get_type_id())
 	{
@@ -39,7 +39,7 @@ T *cast(Type *type)
 }
 
 template <typename T>
-const T *cast(const Type *type)
+inline const T *cast(const Type *type)
 {
 	if (type->getTypeID() != T::get_type_id())
 	{
@@ -50,7 +50,7 @@ const T *cast(const Type *type)
 }
 
 template <typename T>
-T *dyn_cast(Type *type)
+inline T *dyn_cast(Type *type)
 {
 	if (type->getTypeID() != T::get_type_id())
 		return nullptr;
@@ -59,12 +59,18 @@ T *dyn_cast(Type *type)
 }
 
 template <typename T>
-const T *dyn_cast(const Type *type)
+inline const T *dyn_cast(const Type *type)
 {
 	if (type->getTypeID() != T::get_type_id())
 		return nullptr;
 	else
 		return static_cast<const T *>(type);
+}
+
+template <typename T>
+inline bool isa(const Type *type)
+{
+	return type->getTypeID() == T::get_type_id();
 }
 
 class ValueProxy : public Value
@@ -89,7 +95,7 @@ inline const Value *resolve_proxy(const Value *value);
 }
 
 template <typename T>
-T *cast(Value *value)
+inline T *cast(Value *value)
 {
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
@@ -103,7 +109,7 @@ T *cast(Value *value)
 }
 
 template <typename T>
-const T *cast(const Value *value)
+inline const T *cast(const Value *value)
 {
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
@@ -117,7 +123,7 @@ const T *cast(const Value *value)
 }
 
 template <typename T>
-T *dyn_cast(Value *value)
+inline T *dyn_cast(Value *value)
 {
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
@@ -129,7 +135,7 @@ T *dyn_cast(Value *value)
 }
 
 template <typename T>
-const T *dyn_cast(const Value *value)
+inline const T *dyn_cast(const Value *value)
 {
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
@@ -138,6 +144,15 @@ const T *dyn_cast(const Value *value)
 		return nullptr;
 	else
 		return static_cast<const T *>(value);
+}
+
+template <typename T>
+inline bool isa(const Value *value)
+{
+	if (T::get_value_kind() != ValueKind::Proxy)
+		value = Internal::resolve_proxy(value);
+
+	return value->get_value_kind() == T::get_value_kind();
 }
 
 namespace Internal

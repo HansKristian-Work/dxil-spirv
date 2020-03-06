@@ -235,6 +235,34 @@ Value *AllocaInst::getArraySize() const
 	return array_size;
 }
 
+GetElementPtrInst::GetElementPtrInst(Type *pointer_type, std::vector<Value *> indices, bool inbounds_)
+	: Instruction(pointer_type, ValueKind::GetElementPtr), inbounds(inbounds_)
+{
+	set_operands(std::move(indices));
+}
+
+bool GetElementPtrInst::isInBounds() const
+{
+	return inbounds;
+}
+
+LoadInst::LoadInst(Type *type, Value *ptr)
+	: Instruction(type, ValueKind::Load)
+{
+	set_operands({ ptr });
+}
+
+Value *LoadInst::getPointerOperand() const
+{
+	return getOperand(0);
+}
+
+StoreInst::StoreInst(Value *ptr, Value *value)
+	: Instruction(Type::getVoidTy(ptr->getType()->getContext()), ValueKind::Store)
+{
+	set_operands({ value, ptr });
+}
+
 BasicBlock *PHINode::getIncomingBlock(unsigned index) const
 {
 	if (index >= incoming.size())
