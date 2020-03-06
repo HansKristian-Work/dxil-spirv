@@ -117,6 +117,7 @@ public:
 class GlobalVariable : public Value
 {
 public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Global; }
 	explicit GlobalVariable(Type *type, bool is_const);
 	void set_initializer(Value *value);
 	Value *getInitializer() const;

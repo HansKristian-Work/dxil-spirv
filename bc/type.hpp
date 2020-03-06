@@ -66,6 +66,7 @@ public:
 
 	uint64_t getArrayNumElements() const;
 	Type *getArrayElementType() const;
+	Type *getPointerElementType() const;
 
 protected:
 	LLVMContext &context;

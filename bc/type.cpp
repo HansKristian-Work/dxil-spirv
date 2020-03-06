@@ -127,6 +127,12 @@ Type *Type::getArrayElementType() const
 	return cast<ArrayType>(this)->contained_type;
 }
 
+Type *Type::getPointerElementType() const
+{
+	assert(type_id == TypeID::Pointer);
+	return cast<PointerType>(this)->getElementType();
+}
+
 StructType::StructType(LLVMContext &context, std::vector<Type *> member_types_)
 		: Type(context, TypeID::Struct), member_types(std::move(member_types_))
 {

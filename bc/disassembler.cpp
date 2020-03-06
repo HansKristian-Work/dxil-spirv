@@ -43,6 +43,7 @@ struct StreamState
 
 	StreamState &append(const std::string &str);
 	StreamState &append(Value *value, bool decl = false);
+	StreamState &append(GlobalVariable *value, bool decl = false);
 	StreamState &append(Instruction *value);
 	StreamState &append(Function *value, bool decl = false);
 	StreamState &append(BinaryOperator *value, bool decl = false);
@@ -262,6 +263,20 @@ StreamState &StreamState::append(Function *func, bool decl)
 	return *this;
 }
 
+StreamState &StreamState::append(GlobalVariable *var, bool decl)
+{
+	if (decl)
+	{
+		append("@", var->get_tween_id(), " = global ", var->getType()->getPointerElementType());
+		newline();
+	}
+	else
+	{
+		append("@", var->get_tween_id());
+	}
+	return *this;
+}
+
 static const char *to_string(BinaryOperation op)
 {
 	switch (op)
@@ -478,7 +493,9 @@ StreamState &StreamState::append(CallInst *call, bool decl)
 {
 	if (decl)
 	{
-		append("%", call->get_tween_id(), " = ", "call ", call->getType(), " @", call->getCalledFunction()->getName(), "(");
+		if (call->getType()->getTypeID() != TypeID::Void)
+			append("%", call->get_tween_id(), " = ");
+		append("call ", call->getType(), " @", call->getCalledFunction()->getName(), "(");
 		for (unsigned i = 0; i < call->getNumOperands(); i++)
 		{
 			append(call->getOperand(i));
@@ -704,6 +721,10 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<StoreInst>(value), decl);
 	case ValueKind::AtomicRMW:
 		return append(cast<AtomicRMWInst>(value), decl);
+	case ValueKind::Global:
+		return append(cast<GlobalVariable>(value), decl);
+	default:
+		break;
 	}
 
 	LOGE("Unknown ValueKind %u.\n", unsigned(value->get_value_kind()));
@@ -717,8 +738,15 @@ StreamState &StreamState::append(Value *value, bool decl)
 std::string disassemble(Module &module)
 {
 	StreamState state;
+
+	for (auto itr = module.global_begin(); itr != module.global_end(); ++itr)
+		state.append(*itr, true);
+
 	for (auto *func : module)
+	{
+		state.newline();
 		state.append(func, true);
+	}
 	return state.stream.str();
 }
 }
