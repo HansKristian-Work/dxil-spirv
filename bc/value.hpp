@@ -48,6 +48,7 @@ enum class ValueKind
 	Load,
 	Store,
 	AtomicRMW,
+	AtomicCmpXchg,
 	Return,
 	Branch,
 	Switch,

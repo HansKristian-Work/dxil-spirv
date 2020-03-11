@@ -68,6 +68,7 @@ struct StreamState
 	void append(LoadInst *value, bool decl = false);
 	void append(StoreInst *value, bool decl = false);
 	void append(AtomicRMWInst *value, bool decl = false);
+	void append(AtomicCmpXchgInst *xchg, bool decl = false);
 	void append(ConstantAggregateZero *zero, bool decl = false);
 	void append(ConstantDataArray *data, bool decl = false);
 
@@ -260,8 +261,13 @@ void StreamState::append(GlobalVariable *var, bool decl)
 	if (decl)
 	{
 		append("@", var->get_tween_id(), " = ");
-		append(var->isConstant() ? "constant" : "global", " ");
+
+		if (cast<PointerType>(var->getType())->getAddressSpace() != 0)
+			append("groupshared ");
+		else
+			append(var->isConstant() ? "constant" : "global", " ");
 		append(var->getType()->getPointerElementType());
+
 		if (var->hasInitializer())
 			append(" ", var->getInitializer());
 		newline();
@@ -604,10 +610,22 @@ void StreamState::append(AtomicRMWInst *atomic_op, bool decl)
 	if (decl)
 	{
 		append("%", atomic_op->get_tween_id(), " = atomicrmw ", to_string(atomic_op->getOpcode()), " ",
+		       atomic_op->getType(), " ",
 		       atomic_op->getPointerOperand(), ", ", atomic_op->getValueOperand());
 	}
 	else
 		append("%", atomic_op->get_tween_id());
+}
+
+void StreamState::append(AtomicCmpXchgInst *xchg, bool decl)
+{
+	if (decl)
+	{
+		append("%", xchg->get_tween_id(), " = cmpxchg ", xchg->getType(), " ",
+		       xchg->getPointerOperand(), ", ", xchg->getCompareOperand(), ", ", xchg->getNewValOperand());
+	}
+	else
+		append("%", xchg->get_tween_id());
 }
 
 void StreamState::append(ConstantAggregateZero *zero, bool)
@@ -727,6 +745,8 @@ void StreamState::append(Value *value, bool decl)
 		return append(cast<StoreInst>(value), decl);
 	case ValueKind::AtomicRMW:
 		return append(cast<AtomicRMWInst>(value), decl);
+	case ValueKind::AtomicCmpXchg:
+		return append(cast<AtomicCmpXchgInst>(value), decl);
 	case ValueKind::Global:
 		return append(cast<GlobalVariable>(value), decl);
 	case ValueKind::ConstantAggregateZero:

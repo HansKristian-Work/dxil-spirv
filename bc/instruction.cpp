@@ -346,4 +346,25 @@ AtomicRMWInst::BinOp AtomicRMWInst::getOpcode() const
 {
 	return op;
 }
+
+AtomicCmpXchgInst::AtomicCmpXchgInst(Value *ptr_, Value *cmp_, Value *new_value_)
+	: Instruction(StructType::get({ new_value_->getType(), Type::getInt1Ty(new_value_->getType()->getContext()) }),
+	  ValueKind::AtomicCmpXchg), ptr(ptr_), new_value(new_value_), cmp_value(cmp_)
+{
+}
+
+Value *AtomicCmpXchgInst::getPointerOperand() const
+{
+	return ptr;
+}
+
+Value *AtomicCmpXchgInst::getCompareOperand() const
+{
+	return cmp_value;
+}
+
+Value *AtomicCmpXchgInst::getNewValOperand() const
+{
+	return new_value;
+}
 }

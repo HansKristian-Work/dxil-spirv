@@ -360,4 +360,20 @@ private:
 	Value *value;
 	BinOp op;
 };
+
+class AtomicCmpXchgInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::AtomicCmpXchg; }
+	AtomicCmpXchgInst(Value *ptr, Value *cmp, Value *new_value);
+
+	Value *getPointerOperand() const;
+	Value *getNewValOperand() const;
+	Value *getCompareOperand() const;
+
+private:
+	Value *ptr;
+	Value *new_value;
+	Value *cmp_value;
+};
 }

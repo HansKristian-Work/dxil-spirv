@@ -821,6 +821,16 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_CMPXCHG:
+	{
+		auto *ptr = get_value(entry.ops[0]);
+		auto *cmp = get_value(entry.ops[1]);
+		auto *new_value = get_value(entry.ops[2]);
+		auto *value = context->construct<AtomicCmpXchgInst>(ptr, cmp, new_value);
+		add_instruction(value);
+		break;
+	}
+
 	case FunctionRecord::INST_CAST:
 	{
 		auto *input_value = get_value(entry.ops[0]);
@@ -998,11 +1008,6 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		auto *v = get_value(entry.ops[1]);
 		auto *value = context->construct<StoreInst>(ptr, v);
 		add_instruction(value);
-		break;
-	}
-
-	case FunctionRecord::INST_CMPXCHG:
-	{
 		break;
 	}
 
