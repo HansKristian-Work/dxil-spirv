@@ -278,6 +278,34 @@ private:
 	Value *cond = nullptr;
 };
 
+class SwitchInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::Switch; }
+	SwitchInst(Value *cond, BasicBlock *default_block, unsigned num_cases);
+	void addCase(Value *case_value, BasicBlock *bb);
+
+	struct Case
+	{
+		Value *value;
+		BasicBlock *bb;
+
+		BasicBlock *getCaseSuccessor() const;
+		ConstantInt *getCaseValue() const;
+	};
+
+	std::vector<Case>::const_iterator case_begin() const;
+	std::vector<Case>::const_iterator case_end() const;
+
+	Value *getCondition() const;
+	BasicBlock *getDefaultDest() const;
+
+private:
+	Value *cond;
+	BasicBlock *default_block;
+	std::vector<Case> cases;
+};
+
 class PHINode : public Instruction
 {
 public:

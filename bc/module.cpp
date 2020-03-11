@@ -301,7 +301,7 @@ struct ModuleParseContext
 	BasicBlock *current_bb = nullptr;
 	unsigned basic_block_index = 0;
 
-	Value *get_value(uint64_t op, Type *expected_type = nullptr);
+	Value *get_value(uint64_t op, Type *expected_type = nullptr, bool force_absolute = false);
 	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
 
 	std::vector<ValueProxy *> pending_forward_references;
@@ -371,9 +371,9 @@ BasicBlock *ModuleParseContext::get_basic_block(unsigned index) const
 	return basic_blocks[index];
 }
 
-Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type)
+Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type, bool force_absolute)
 {
-	if (use_relative_id)
+	if (!force_absolute && use_relative_id)
 		op = values.size() - op;
 
 	if (op >= values.size())
@@ -891,6 +891,29 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			auto *value = context->construct<BranchInst>(true_block, false_block, cond);
 			add_instruction(value);
 		}
+		break;
+	}
+
+	case FunctionRecord::INST_SWITCH:
+	{
+		auto *type = module->get_type(entry.ops[0]);
+		auto *cond = get_value(entry.ops[1]);
+		auto *default_block = get_basic_block(entry.ops[2]);
+		unsigned num_cases = (entry.ops.size() - 3) / 2;
+		auto *inst = context->construct<SwitchInst>(cond, default_block, num_cases);
+		for (unsigned i = 0; i < num_cases; i++)
+		{
+			// For some reason, case values are encoded in absolute terms.
+			auto *case_value = get_value(entry.ops[3 + 2 * i], type, true);
+			BasicBlock *bb = get_basic_block(entry.ops[4 + 2 * i]);
+			if (!case_value || !bb)
+			{
+				LOGE("Invalid switch record.\n");
+				return;
+			}
+			inst->addCase(case_value, bb);
+		}
+		add_instruction(inst);
 		break;
 	}
 

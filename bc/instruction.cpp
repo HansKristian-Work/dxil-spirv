@@ -209,6 +209,49 @@ BasicBlock *BranchInst::getFalseBlock() const
 	return false_block;
 }
 
+SwitchInst::SwitchInst(Value *cond_, BasicBlock *default_block_, unsigned num_cases)
+	: Instruction(Type::getVoidTy(cond_->getType()->getContext()), ValueKind::Switch),
+	  cond(cond_), default_block(default_block_)
+{
+	set_terminator();
+	cases.reserve(num_cases);
+}
+
+void SwitchInst::addCase(Value *case_value, BasicBlock *bb)
+{
+	cases.push_back({ case_value, bb });
+}
+
+std::vector<SwitchInst::Case>::const_iterator SwitchInst::case_begin() const
+{
+	return cases.begin();
+}
+
+std::vector<SwitchInst::Case>::const_iterator SwitchInst::case_end() const
+{
+	return cases.end();
+}
+
+BasicBlock *SwitchInst::getDefaultDest() const
+{
+	return default_block;
+}
+
+Value *SwitchInst::getCondition() const
+{
+	return cond;
+}
+
+ConstantInt *SwitchInst::Case::getCaseValue() const
+{
+	return cast<ConstantInt>(value);
+}
+
+BasicBlock *SwitchInst::Case::getCaseSuccessor() const
+{
+	return bb;
+}
+
 PHINode::PHINode(Type *type, size_t num_edges)
 	: Instruction(type, ValueKind::PHI)
 {

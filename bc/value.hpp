@@ -50,6 +50,7 @@ enum class ValueKind
 	AtomicRMW,
 	Return,
 	Branch,
+	Switch,
 	Proxy,
 	Global
 };

@@ -50,6 +50,7 @@ struct StreamState
 	StreamState &append(UnaryOperator *uop, bool decl = false);
 	StreamState &append(CallInst *value, bool decl = false);
 	StreamState &append(BranchInst *value, bool decl = false);
+	StreamState &append(SwitchInst *branch, bool decl = false);
 	StreamState &append(ReturnInst *value, bool decl = false);
 	StreamState &append(UndefValue *value, bool decl = false);
 	StreamState &append(Constant *value, bool decl = false);
@@ -496,6 +497,20 @@ StreamState &StreamState::append(BranchInst *br, bool)
 	return *this;
 }
 
+StreamState &StreamState::append(SwitchInst *branch, bool)
+{
+	append("switch ", branch->getCondition(), ", ", branch->getDefaultDest());
+	begin_scope();
+	for (auto itr = branch->case_begin(); itr != branch->case_end(); ++itr)
+	{
+		newline();
+		append(itr->getCaseValue(), ", ", itr->getCaseSuccessor());
+	}
+	end_scope();
+
+	return *this;
+}
+
 StreamState &StreamState::append(CallInst *call, bool decl)
 {
 	if (decl)
@@ -678,7 +693,10 @@ StreamState &StreamState::append(PHINode *phi, bool decl)
 
 StreamState &StreamState::append(ReturnInst *value, bool)
 {
-	return append("ret");
+	if (value->getReturnValue())
+		return append("ret ", value);
+	else
+		return append("ret void");
 }
 
 StreamState &StreamState::append(UndefValue *undef, bool decl)
@@ -758,6 +776,8 @@ StreamState &StreamState::append(Value *value, bool decl)
 		return append(cast<ConstantAggregateZero>(value), decl);
 	case ValueKind::ConstantDataArray:
 		return append(cast<ConstantDataArray>(value), decl);
+	case ValueKind::Switch:
+		return append(cast<SwitchInst>(value), decl);
 	default:
 		break;
 	}
