@@ -75,17 +75,6 @@ private:
 
 	std::vector<BlockContext *> blockStack;
 	std::unordered_map<uint32_t, BlockInfo *> blockInfo;
-
-	unsigned indentation = 0;
-	void begin_scope(const char *tag);
-	void end_scope();
-
-	template <typename... T>
-	void log(T&&... t);
-	template <typename T, typename... Ts>
-	static void log_inner(std::ostringstream &str, T &&t, Ts&&... ts);
-	template <typename T>
-	static void log_inner(std::ostringstream &str, T&& t);
 };
 
 };    // namespace LLVMBC

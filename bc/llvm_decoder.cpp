@@ -83,45 +83,6 @@ enum class BlockInfoRecord
 
 #define MAKE_FOURCC(a, b, c, d) (((a) << 0) | ((b) << 8) | ((c) << 16) | ((d) << 24))
 
-void BitcodeReader::begin_scope(const char *tag)
-{
-	for (unsigned i = 0; i < indentation; i++)
-		printf("    ");
-	printf("%s\n", tag);
-	indentation++;
-}
-
-void BitcodeReader::end_scope()
-{
-	indentation--;
-	for (unsigned i = 0; i < indentation; i++)
-		printf("    ");
-	printf("END\n");
-}
-
-template <typename T, typename... Ts>
-void BitcodeReader::log_inner(std::ostringstream &str, T &&t, Ts&&... ts)
-{
-	str << std::forward<T>(t);
-	log_inner(str, std::forward<Ts>(ts)...);
-}
-
-template <typename T>
-void BitcodeReader::log_inner(std::ostringstream &str, T &&t)
-{
-	str << std::forward<T>(t);
-}
-
-template <typename... T>
-void BitcodeReader::log(T&&... t)
-{
-	std::ostringstream str;
-	log_inner(str, std::forward<T>(t)...);
-	for (unsigned i = 0; i < indentation; i++)
-		printf("    ");
-	printf("%s\n", str.str().c_str());
-}
-
 BitcodeReader::BitcodeReader(const uint8_t *bitcode, size_t length) : b(bitcode, length)
 {
 	uint32_t magic = b.Read<uint32_t>();
@@ -143,7 +104,6 @@ BlockOrRecord BitcodeReader::ReadToplevelBlock()
 	uint32_t abbrevID = b.fixed<uint32_t>(abbrevSize());
 	assert(abbrevID == ENTER_SUBBLOCK);
 
-	begin_scope("ENTER_SUBBLOCK");
 	ReadBlockContents(ret);
 
 	return ret;
@@ -157,15 +117,12 @@ bool BitcodeReader::AtEndOfStream()
 void BitcodeReader::ReadBlockContents(BlockOrRecord &block)
 {
 	block.id = b.vbr<uint32_t>(8);
-	log("ID = ", block.id);
 
 	auto abbrev_size = b.vbr<size_t>(4);
-	log("Abbrev Size = ", abbrev_size);
 	blockStack.push_back(new BlockContext(abbrev_size));
 
 	b.align32bits();
 	block.blockDwordLength = b.Read<uint32_t>();
-	log("Block words = ", block.blockDwordLength);
 
 	// used for blockinfo only
 	BlockInfo *curBlockInfo = NULL;
@@ -178,12 +135,10 @@ void BitcodeReader::ReadBlockContents(BlockOrRecord &block)
 
 		if(abbrevID == END_BLOCK)
 		{
-			end_scope();
 			b.align32bits();
 		}
 		else if(abbrevID == ENTER_SUBBLOCK)
 		{
-			begin_scope("ENTER_SUBBLOCK");
 			BlockOrRecord sub;
 
 			ReadBlockContents(sub);
@@ -236,18 +191,13 @@ void BitcodeReader::ReadBlockContents(BlockOrRecord &block)
 		}
 		else if(abbrevID == UNABBREV_RECORD)
 		{
-			begin_scope("RECORD");
-
 			BlockOrRecord r;
 			r.id = b.vbr<uint32_t>(6);
-			log("ID = ", r.id);
 			uint32_t numops = b.vbr<uint32_t>(6);
-			log("Num ops = ", numops);
 			r.ops.resize(numops);
 			for(uint32_t i = 0; i < numops; i++)
 			{
 				r.ops[i] = b.vbr<uint64_t>(6);
-				log("Op #", i, " = ", r.ops[i]);
 			}
 
 			if(block.id == 0)    // BLOCKINFO is block 0
@@ -286,14 +236,10 @@ void BitcodeReader::ReadBlockContents(BlockOrRecord &block)
 				}
 			}
 
-			end_scope();
-
 			block.children.push_back(r);
 		}
 		else
 		{
-			begin_scope("INVOKE");
-			//log("Abbrev ID = ", abbrevID);
 			const AbbrevDesc &a = getAbbrev(block.id, abbrevID);
 
 			BlockOrRecord r;
@@ -302,7 +248,6 @@ void BitcodeReader::ReadBlockContents(BlockOrRecord &block)
 			assert(!a.params.empty());
 
 			r.id = (uint32_t)decodeAbbrevParam(a.params[0]);
-			log("ID = ", r.id);
 
 			// process the rest of the operands - since some might be arrays we don't know until we
 			// process it how many ops the record will end up with but it will be at least one per
@@ -310,7 +255,6 @@ void BitcodeReader::ReadBlockContents(BlockOrRecord &block)
 			r.ops.reserve(a.params.size() - 1);
 			for(size_t i = 1; i < a.params.size(); i++)
 			{
-				begin_scope("PARAM");
 				const AbbrevParam &param = a.params[i];
 
 				if(param.encoding == AbbrevEncoding::Array)
@@ -320,37 +264,29 @@ void BitcodeReader::ReadBlockContents(BlockOrRecord &block)
 					const AbbrevParam &elType = a.params[i + 1];
 
 					size_t arrayLen = b.vbr<size_t>(6);
-					log("ARRAY [", arrayLen, "]");
 
 					for(size_t el = 0; el < arrayLen; el++)
 					{
 						r.ops.push_back(decodeAbbrevParam(elType));
-						log("[", el, "] = ", r.ops.back());
 					}
 
-					end_scope();
 					break;
 				}
 				else if(param.encoding == AbbrevEncoding::Blob)
 				{
-					log("BLOB");
 					// blob must be the last value
 					assert(i == a.params.size() - 1);
 					b.ReadBlob(r.blob, r.blobLength);
 
-					end_scope();
 					break;
 				}
 				else
 				{
 					r.ops.push_back(decodeAbbrevParam(param));
-					log("Value = ", r.ops.back());
-					end_scope();
 				}
 			}
 
 			block.children.push_back(r);
-			end_scope();
 		}
 		//end_scope();
 	} while(abbrevID != END_BLOCK);

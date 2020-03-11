@@ -281,11 +281,14 @@ struct ModuleParseContext
 	std::vector<Value *> values;
 	std::vector<Function *> functions_with_bodies;
 	Type *constant_type = nullptr;
+	std::string current_metadata_name;
 
 	void parse_function_child_block(const BlockOrRecord &entry);
 	void parse_record(const BlockOrRecord &entry);
 	void parse_constants_record(const BlockOrRecord &entry);
 	void parse_constants_block(const BlockOrRecord &entry);
+	void parse_metadata_block(const BlockOrRecord &entry);
+	void parse_metadata_record(const BlockOrRecord &entry);
 	Type *get_constant_type();
 	void parse_function_body(const BlockOrRecord &entry);
 	void parse_types(const BlockOrRecord &entry);
@@ -562,6 +565,35 @@ void ModuleParseContext::parse_constants_block(const BlockOrRecord &entry)
 	constant_type = nullptr;
 	for (auto &child : entry.children)
 		parse_constants_record(child);
+}
+
+void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry)
+{
+	switch (MetaDataRecord(entry.id))
+	{
+	case MetaDataRecord::NAME:
+	{
+		current_metadata_name = entry.getString();
+		break;
+	}
+
+	case MetaDataRecord::NAMED_NODE:
+	{
+		LOGI("Named metadata: %s\n", current_metadata_name.c_str());
+		for (auto &op : entry.ops)
+			LOGI("    Op: !%u\n", unsigned(op));
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
+void ModuleParseContext::parse_metadata_block(const BlockOrRecord &entry)
+{
+	for (auto &child : entry.children)
+		parse_metadata_record(child);
 }
 
 void ModuleParseContext::parse_function_child_block(const BlockOrRecord &entry)
@@ -1383,6 +1415,10 @@ Module *parseIR(LLVMContext &context, const void *data, size_t size)
 
 			case KnownBlocks::CONSTANTS_BLOCK:
 				parse_context.parse_constants_block(child);
+				break;
+
+			case KnownBlocks::METADATA_BLOCK:
+				parse_context.parse_metadata_block(child);
 				break;
 
 			default:
