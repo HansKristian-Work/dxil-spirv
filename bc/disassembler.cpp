@@ -34,83 +34,81 @@ struct StreamState
 	std::ostringstream stream;
 	unsigned indent = 0;
 
-	StreamState &append(Type *type);
-	StreamState &append(IntegerType *type);
-	StreamState &append(PointerType *type);
-	StreamState &append(ArrayType *type);
-	StreamState &append(StructType *type);
-	StreamState &append(FunctionType *type);
+	void append(Type *type);
+	void append(IntegerType *type);
+	void append(PointerType *type);
+	void append(ArrayType *type);
+	void append(StructType *type);
+	void append(FunctionType *type);
 
-	StreamState &append(const std::string &str);
-	StreamState &append(Value *value, bool decl = false);
-	StreamState &append(GlobalVariable *value, bool decl = false);
-	StreamState &append(Instruction *value);
-	StreamState &append(Function *value, bool decl = false);
-	StreamState &append(BinaryOperator *value, bool decl = false);
-	StreamState &append(UnaryOperator *uop, bool decl = false);
-	StreamState &append(CallInst *value, bool decl = false);
-	StreamState &append(BranchInst *value, bool decl = false);
-	StreamState &append(SwitchInst *branch, bool decl = false);
-	StreamState &append(ReturnInst *value, bool decl = false);
-	StreamState &append(UndefValue *value, bool decl = false);
-	StreamState &append(Constant *value, bool decl = false);
-	StreamState &append(ConstantInt *value, bool decl = false);
-	StreamState &append(ConstantFP *value, bool decl = false);
-	StreamState &append(BasicBlock *bb, bool decl = false);
-	StreamState &append(FCmpInst *value, bool decl = false);
-	StreamState &append(ICmpInst *value, bool decl = false);
-	StreamState &append(PHINode *value, bool decl = false);
-	StreamState &append(CastInst *value, bool decl = false);
-	StreamState &append(SelectInst *value, bool decl = false);
-	StreamState &append(ExtractValueInst *value, bool decl = false);
-	StreamState &append(AllocaInst *value, bool decl = false);
-	StreamState &append(GetElementPtrInst *value, bool decl = false);
-	StreamState &append(LoadInst *value, bool decl = false);
-	StreamState &append(StoreInst *value, bool decl = false);
-	StreamState &append(AtomicRMWInst *value, bool decl = false);
-	StreamState &append(ConstantAggregateZero *zero, bool decl = false);
-	StreamState &append(ConstantDataArray *data, bool decl = false);
+	void append(const std::string &str);
+	void append(Value *value, bool decl = false);
+	void append(GlobalVariable *value, bool decl = false);
+	void append(Instruction *value);
+	void append(Function *value, bool decl = false);
+	void append(BinaryOperator *value, bool decl = false);
+	void append(UnaryOperator *uop, bool decl = false);
+	void append(CallInst *value, bool decl = false);
+	void append(BranchInst *value, bool decl = false);
+	void append(SwitchInst *branch, bool decl = false);
+	void append(ReturnInst *value, bool decl = false);
+	void append(UndefValue *value, bool decl = false);
+	void append(Constant *value, bool decl = false);
+	void append(ConstantInt *value, bool decl = false);
+	void append(ConstantFP *value, bool decl = false);
+	void append(BasicBlock *bb, bool decl = false);
+	void append(FCmpInst *value, bool decl = false);
+	void append(ICmpInst *value, bool decl = false);
+	void append(PHINode *value, bool decl = false);
+	void append(CastInst *value, bool decl = false);
+	void append(SelectInst *value, bool decl = false);
+	void append(ExtractValueInst *value, bool decl = false);
+	void append(AllocaInst *value, bool decl = false);
+	void append(GetElementPtrInst *value, bool decl = false);
+	void append(LoadInst *value, bool decl = false);
+	void append(StoreInst *value, bool decl = false);
+	void append(AtomicRMWInst *value, bool decl = false);
+	void append(ConstantAggregateZero *zero, bool decl = false);
+	void append(ConstantDataArray *data, bool decl = false);
 
-	StreamState &append(float v);
-	StreamState &append(double v);
-	StreamState &append(bool v);
-	StreamState &append(const char *str);
+	void append(float v);
+	void append(double v);
+	void append(bool v);
+	void append(const char *str);
 
-	StreamState &newline();
-	StreamState &newline_noindent();
+	void newline();
+	void newline_noindent();
 	void begin_scope();
 	void end_scope();
 
 	template <typename T, typename... Ts>
-	StreamState &append(T &&t, Ts &&... ts)
+	void append(T &&t, Ts &&... ts)
 	{
 		append(std::forward<T>(t));
 		append(std::forward<Ts>(ts)...);
-		return *this;
 	}
 
 	// Only want this overload to trigger on various integer types.
 	template <typename T>
-	typename std::enable_if<std::is_integral<T>::value, StreamState &>::type append(T value)
+	typename std::enable_if<std::is_integral<T>::value, void>::type append(T value)
 	{
 		stream << value;
-		return *this;
 	}
 
 	// Need this to avoid the generic template to be deduced.
 	template <size_t N>
-	StreamState &append(char (&str)[N])
+	void append(char (&str)[N])
 	{
 		return append(static_cast<const char *>(str));
 	}
 };
 
-StreamState &StreamState::append(IntegerType *type)
+void StreamState::append(IntegerType *type)
 {
-	return append("i", type->getBitWidth());
+	append("i", type->getBitWidth());
 }
 
-StreamState &StreamState::append(StructType *type)
+void StreamState::append(StructType *type)
 {
 	append("{ ");
 	for (unsigned i = 0; i < type->getNumElements(); i++)
@@ -120,23 +118,22 @@ StreamState &StreamState::append(StructType *type)
 			append(", ");
 	}
 	append(" }");
-	return *this;
 }
 
-StreamState &StreamState::append(PointerType *type)
+void StreamState::append(PointerType *type)
 {
 	if (type->getAddressSpace() != 0)
-		return append(type->getElementType(), " addrspace(", type->getAddressSpace(), ")*");
+		append(type->getElementType(), " addrspace(", type->getAddressSpace(), ")*");
 	else
-		return append(type->getElementType(), "*");
+		append(type->getElementType(), "*");
 }
 
-StreamState &StreamState::append(ArrayType *type)
+void StreamState::append(ArrayType *type)
 {
-	return append("[", type->getArrayNumElements(), " x ", type->getArrayElementType(), "]");
+	append("[", type->getArrayNumElements(), " x ", type->getArrayElementType(), "]");
 }
 
-StreamState &StreamState::append(FunctionType *type)
+void StreamState::append(FunctionType *type)
 {
 	append("(", type->getReturnType(), " (*) (");
 	for (unsigned i = 0; i < type->getNumParams(); i++)
@@ -146,53 +143,47 @@ StreamState &StreamState::append(FunctionType *type)
 			append(", ");
 	}
 	append("))");
-	return *this;
 }
 
-StreamState &StreamState::append(bool v)
+void StreamState::append(bool v)
 {
 	stream << (v ? "true" : "false");
-	return *this;
 }
 
-StreamState &StreamState::append(float v)
+void StreamState::append(float v)
 {
 	char buf[1024];
 	sprintf(buf, "%e", v);
-	return append(buf);
+	append(buf);
 }
 
-StreamState &StreamState::append(double v)
+void StreamState::append(double v)
 {
 	char buf[1024];
 	sprintf(buf, "%e", v);
-	return append(buf);
+	append(buf);
 }
 
-StreamState &StreamState::newline()
+void StreamState::newline()
 {
 	stream << "\n";
 	for (unsigned i = 0; i < indent; i++)
 		stream << "  ";
-	return *this;
 }
 
-StreamState &StreamState::newline_noindent()
+void StreamState::newline_noindent()
 {
 	stream << "\n";
-	return *this;
 }
 
-StreamState &StreamState::append(const char *str)
+void StreamState::append(const char *str)
 {
 	stream << str;
-	return *this;
 }
 
-StreamState &StreamState::append(const std::string &str)
+void StreamState::append(const std::string &str)
 {
 	stream << str;
-	return *this;
 }
 
 void StreamState::begin_scope()
@@ -209,7 +200,7 @@ void StreamState::end_scope()
 	append("}");
 }
 
-StreamState &StreamState::append(Type *type)
+void StreamState::append(Type *type)
 {
 	switch (type->getTypeID())
 	{
@@ -236,10 +227,9 @@ StreamState &StreamState::append(Type *type)
 	}
 
 	LOGE("Unknown Type %u.\n", unsigned(type->getTypeID()));
-	return *this;
 }
 
-StreamState &StreamState::append(Function *func, bool decl)
+void StreamState::append(Function *func, bool decl)
 {
 	if (decl)
 	{
@@ -263,11 +253,9 @@ StreamState &StreamState::append(Function *func, bool decl)
 	}
 	else
 		append("@", func->getName());
-
-	return *this;
 }
 
-StreamState &StreamState::append(GlobalVariable *var, bool decl)
+void StreamState::append(GlobalVariable *var, bool decl)
 {
 	if (decl)
 	{
@@ -282,7 +270,6 @@ StreamState &StreamState::append(GlobalVariable *var, bool decl)
 	{
 		append("@", var->get_tween_id());
 	}
-	return *this;
 }
 
 static const char *to_string(BinaryOperation op)
@@ -409,7 +396,7 @@ static const char *to_string(AtomicRMWInst::BinOp op)
 	assert(0);
 }
 
-StreamState &StreamState::append(BinaryOperator *binop, bool decl)
+void StreamState::append(BinaryOperator *binop, bool decl)
 {
 	if (decl)
 	{
@@ -420,11 +407,9 @@ StreamState &StreamState::append(BinaryOperator *binop, bool decl)
 	{
 		append("%", binop->get_tween_id());
 	}
-
-	return *this;
 }
 
-StreamState &StreamState::append(UnaryOperator *uop, bool decl)
+void StreamState::append(UnaryOperator *uop, bool decl)
 {
 	if (decl)
 	{
@@ -435,11 +420,9 @@ StreamState &StreamState::append(UnaryOperator *uop, bool decl)
 	{
 		append("%", uop->get_tween_id());
 	}
-
-	return *this;
 }
 
-StreamState &StreamState::append(BasicBlock *bb, bool decl)
+void StreamState::append(BasicBlock *bb, bool decl)
 {
 	if (decl)
 	{
@@ -456,10 +439,9 @@ StreamState &StreamState::append(BasicBlock *bb, bool decl)
 	{
 		append("label %", bb->get_tween_id());
 	}
-	return *this;
 }
 
-StreamState &StreamState::append(FCmpInst *value, bool decl)
+void StreamState::append(FCmpInst *value, bool decl)
 {
 	if (decl)
 	{
@@ -470,10 +452,9 @@ StreamState &StreamState::append(FCmpInst *value, bool decl)
 	{
 		append("%", value->get_tween_id());
 	}
-	return *this;
 }
 
-StreamState &StreamState::append(ICmpInst *value, bool decl)
+void StreamState::append(ICmpInst *value, bool decl)
 {
 	if (decl)
 	{
@@ -484,20 +465,18 @@ StreamState &StreamState::append(ICmpInst *value, bool decl)
 	{
 		append("%", value->get_tween_id());
 	}
-	return *this;
 }
 
-StreamState &StreamState::append(BranchInst *br, bool)
+void StreamState::append(BranchInst *br, bool)
 {
 	append("br ");
 	if (br->getCondition())
 		append(br->getCondition(), ", ", br->getTrueBlock(), ", ", br->getFalseBlock());
 	else
 		append(br->getTrueBlock());
-	return *this;
 }
 
-StreamState &StreamState::append(SwitchInst *branch, bool)
+void StreamState::append(SwitchInst *branch, bool)
 {
 	append("switch ", branch->getCondition(), ", ", branch->getDefaultDest());
 	begin_scope();
@@ -507,11 +486,9 @@ StreamState &StreamState::append(SwitchInst *branch, bool)
 		append(itr->getCaseValue(), ", ", itr->getCaseSuccessor());
 	}
 	end_scope();
-
-	return *this;
 }
 
-StreamState &StreamState::append(CallInst *call, bool decl)
+void StreamState::append(CallInst *call, bool decl)
 {
 	if (decl)
 	{
@@ -530,11 +507,9 @@ StreamState &StreamState::append(CallInst *call, bool decl)
 	{
 		append("%", call->get_tween_id());
 	}
-
-	return *this;
 }
 
-StreamState &StreamState::append(CastInst *cast, bool decl)
+void StreamState::append(CastInst *cast, bool decl)
 {
 	if (decl)
 	{
@@ -544,11 +519,9 @@ StreamState &StreamState::append(CastInst *cast, bool decl)
 	{
 		append("%", cast->get_tween_id());
 	}
-
-	return *this;
 }
 
-StreamState &StreamState::append(SelectInst *cast, bool decl)
+void StreamState::append(SelectInst *cast, bool decl)
 {
 	if (decl)
 	{
@@ -561,11 +534,9 @@ StreamState &StreamState::append(SelectInst *cast, bool decl)
 	{
 		append("%", cast->get_tween_id());
 	}
-
-	return *this;
 }
 
-StreamState &StreamState::append(ExtractValueInst *ext, bool decl)
+void StreamState::append(ExtractValueInst *ext, bool decl)
 {
 	if (decl)
 	{
@@ -581,11 +552,9 @@ StreamState &StreamState::append(ExtractValueInst *ext, bool decl)
 	{
 		append("%", ext->get_tween_id());
 	}
-
-	return *this;
 }
 
-StreamState &StreamState::append(AllocaInst *alloca, bool decl)
+void StreamState::append(AllocaInst *alloca, bool decl)
 {
 	if (decl)
 	{
@@ -595,11 +564,9 @@ StreamState &StreamState::append(AllocaInst *alloca, bool decl)
 	{
 		append("%", alloca->get_tween_id());
 	}
-
-	return *this;
 }
 
-StreamState &StreamState::append(GetElementPtrInst *ptr, bool decl)
+void StreamState::append(GetElementPtrInst *ptr, bool decl)
 {
 	if (decl)
 	{
@@ -614,31 +581,25 @@ StreamState &StreamState::append(GetElementPtrInst *ptr, bool decl)
 	{
 		append("%", ptr->get_tween_id());
 	}
-
-	return *this;
 }
 
-StreamState &StreamState::append(LoadInst *ptr, bool decl)
+void StreamState::append(LoadInst *ptr, bool decl)
 {
 	if (decl)
 		append("%", ptr->get_tween_id(), " = load ", ptr->getType(), " ", ptr->getPointerOperand());
 	else
 		append("%", ptr->get_tween_id());
-
-	return *this;
 }
 
-StreamState &StreamState::append(StoreInst *ptr, bool decl)
+void StreamState::append(StoreInst *ptr, bool decl)
 {
 	if (decl)
 		append("store ", ptr->getOperand(0), ", ", ptr->getOperand(1));
 	else
 		append("%", ptr->get_tween_id());
-
-	return *this;
 }
 
-StreamState &StreamState::append(AtomicRMWInst *atomic_op, bool decl)
+void StreamState::append(AtomicRMWInst *atomic_op, bool decl)
 {
 	if (decl)
 	{
@@ -647,16 +608,14 @@ StreamState &StreamState::append(AtomicRMWInst *atomic_op, bool decl)
 	}
 	else
 		append("%", atomic_op->get_tween_id());
-	return *this;
 }
 
-StreamState &StreamState::append(ConstantAggregateZero *zero, bool)
+void StreamState::append(ConstantAggregateZero *zero, bool)
 {
 	append("[zeroinitialized]");
-	return *this;
 }
 
-StreamState &StreamState::append(ConstantDataArray *arr, bool)
+void StreamState::append(ConstantDataArray *arr, bool)
 {
 	append("[");
 	for (unsigned i = 0; i < arr->getNumElements(); i++)
@@ -666,10 +625,9 @@ StreamState &StreamState::append(ConstantDataArray *arr, bool)
 			append(", ");
 	}
 	append("]");
-	return *this;
 }
 
-StreamState &StreamState::append(PHINode *phi, bool decl)
+void StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
 	{
@@ -688,43 +646,42 @@ StreamState &StreamState::append(PHINode *phi, bool decl)
 	{
 		append("%", phi->get_tween_id());
 	}
-	return *this;
 }
 
-StreamState &StreamState::append(ReturnInst *value, bool)
+void StreamState::append(ReturnInst *value, bool)
 {
 	if (value->getReturnValue())
-		return append("ret ", value);
+		append("ret ", value);
 	else
-		return append("ret void");
+		append("ret void");
 }
 
-StreamState &StreamState::append(UndefValue *undef, bool decl)
+void StreamState::append(UndefValue *undef, bool decl)
 {
-	return append(undef->getType(), " undef");
+	append(undef->getType(), " undef");
 }
 
-StreamState &StreamState::append(ConstantFP *value, bool decl)
+void StreamState::append(ConstantFP *value, bool decl)
 {
-	return append(value->get_double());
+	append(value->get_double());
 }
 
-StreamState &StreamState::append(ConstantInt *value, bool decl)
+void StreamState::append(ConstantInt *value, bool decl)
 {
-	return append(value->getType(), " ", value->get_sext());
+	append(value->getType(), " ", value->get_sext());
 }
 
-StreamState &StreamState::append(Constant *value, bool decl)
+void StreamState::append(Constant *value, bool decl)
 {
-	return append(static_cast<Value *>(value), decl);
+	append(static_cast<Value *>(value), decl);
 }
 
-StreamState &StreamState::append(Instruction *inst)
+void StreamState::append(Instruction *inst)
 {
-	return append(static_cast<Value *>(inst), true);
+	append(static_cast<Value *>(inst), true);
 }
 
-StreamState &StreamState::append(Value *value, bool decl)
+void StreamState::append(Value *value, bool decl)
 {
 	switch (value->get_value_kind())
 	{
@@ -785,9 +742,9 @@ StreamState &StreamState::append(Value *value, bool decl)
 	LOGE("Unknown ValueKind %u.\n", unsigned(value->get_value_kind()));
 
 	if (decl)
-		return append("%", value->get_tween_id(), " = unimplemented");
+		append("%", value->get_tween_id(), " = unimplemented");
 	else
-		return append("%", value->get_tween_id());
+		append("%", value->get_tween_id());
 }
 
 std::string disassemble(Module &module)
