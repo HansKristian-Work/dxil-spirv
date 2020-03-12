@@ -24,6 +24,7 @@
 #include "value.hpp"
 #include "instruction.hpp"
 #include "cast.hpp"
+#include "metadata.hpp"
 #include <algorithm>
 
 #include "llvm_decoder.h"
@@ -281,6 +282,7 @@ struct ModuleParseContext
 	std::vector<Value *> values;
 	std::vector<Type *> types;
 	std::vector<Function *> functions_with_bodies;
+	std::unordered_map<uint64_t, MDOperand *> metadata;
 	Type *constant_type = nullptr;
 	std::string current_metadata_name;
 
@@ -310,6 +312,7 @@ struct ModuleParseContext
 
 	Value *get_value(uint64_t op, Type *expected_type = nullptr, bool force_absolute = false);
 	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
+	MDOperand *get_metadata(uint64_t index) const;
 
 	std::vector<ValueProxy *> pending_forward_references;
 	std::vector<std::pair<GlobalVariable *, uint64_t>> global_initializations;
@@ -396,6 +399,15 @@ Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type, bool forc
 	}
 	else
 		return values[op];
+}
+
+MDOperand *ModuleParseContext::get_metadata(uint64_t index) const
+{
+	auto itr = metadata.find(index);
+	if (itr != metadata.end())
+		return itr->second;
+	else
+		return nullptr;
 }
 
 Value *ModuleParseContext::get_value_signed(uint64_t op, Type *expected_type)
@@ -593,35 +605,60 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 
 	case MetaDataRecord::NAMED_NODE:
 	{
+		std::vector<MDNode *> ops;
+		ops.reserve(entry.ops.size());
 		LOGI("Named node: %s\n", current_metadata_name.c_str());
 		for (auto &op : entry.ops)
+		{
 			LOGI("    Op: !%u\n", unsigned(op));
+			auto *md = get_metadata(op);
+			auto *node = dyn_cast<MDNode>(md);
+			ops.push_back(node);
+		}
+
+		auto *node = context->construct<NamedMDNode>(module, current_metadata_name, std::move(ops));
+		module->add_named_metadata(current_metadata_name, node);
+		metadata[index] = node;
 		break;
 	}
 
 	case MetaDataRecord::NODE:
 	{
+		std::vector<MDOperand *> ops;
+		ops.reserve(entry.ops.size());
 		LOGI("Node: !%u\n", index);
 		for (auto &op : entry.ops)
+		{
+			// For some reason, here metadata is indexed with -1?
 			LOGI("    Op: !%u\n", unsigned(op) - 1);
-		break;
-	}
+			auto *md = get_metadata(op - 1);
+			ops.push_back(md);
+		}
 
-	case MetaDataRecord::KIND:
-	{
-		LOGI("Kind.\n");
+		auto *node = context->construct<MDNode>(module, std::move(ops));
+		metadata[index] = node;
 		break;
 	}
 
 	case MetaDataRecord::STRING_OLD:
 	{
+		auto *node = context->construct<MDString>(module, entry.getString());
 		LOGI("!%u = \"%s\"\n", index, entry.getString().c_str());
+		metadata[index] = node;
 		break;
 	}
 
 	case MetaDataRecord::VALUE:
 	{
+		auto *value = get_value(entry.ops[1], nullptr, true);
+		if (!value)
+		{
+			LOGE("Null value!\n");
+			return;
+		}
+		auto *node = context->construct<ConstantAsMetadata>(module, value);
 		LOGI("!%u = { type = %u, value = %u }\n", index, unsigned(entry.ops[0]), unsigned(entry.ops[1]));
+		metadata[index] = node;
 		break;
 	}
 
@@ -1376,6 +1413,20 @@ void Module::add_global_variable(GlobalVariable *variable)
 	globals.push_back(variable);
 }
 
+void Module::add_named_metadata(const std::string &name, NamedMDNode *node)
+{
+	named_metadata[name] = node;
+}
+
+NamedMDNode *Module::getNamedMetadata(const std::string &name) const
+{
+	auto itr = named_metadata.find(name);
+	if (itr != named_metadata.end())
+		return itr->second;
+	else
+		return nullptr;
+}
+
 static const std::string empty_string;
 const std::string &Module::get_value_name(uint64_t id) const
 {
@@ -1414,6 +1465,16 @@ std::vector<GlobalVariable *>::const_iterator Module::global_begin() const
 std::vector<GlobalVariable *>::const_iterator Module::global_end() const
 {
 	return globals.end();
+}
+
+std::unordered_map<std::string, NamedMDNode *>::const_iterator Module::named_metadata_begin() const
+{
+	return named_metadata.begin();
+}
+
+std::unordered_map<std::string, NamedMDNode *>::const_iterator Module::named_metadata_end() const
+{
+	return named_metadata.end();
 }
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size)

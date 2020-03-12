@@ -23,6 +23,7 @@
 #include "cast.hpp"
 #include "instruction.hpp"
 #include "function.hpp"
+#include "metadata.hpp"
 #include <sstream>
 #include <type_traits>
 #include <assert.h>
@@ -71,6 +72,10 @@ struct StreamState
 	void append(AtomicCmpXchgInst *xchg, bool decl = false);
 	void append(ConstantAggregateZero *zero, bool decl = false);
 	void append(ConstantDataArray *data, bool decl = false);
+
+	void append(MDOperand *md);
+	void append(NamedMDNode *md);
+	void append(MDNode *md);
 
 	void append(float v);
 	void append(double v);
@@ -699,6 +704,59 @@ void StreamState::append(Instruction *inst)
 	append(static_cast<Value *>(inst), true);
 }
 
+void StreamState::append(MDNode *md)
+{
+	if (md)
+	{
+		append("!{");
+		for (unsigned i = 0; i < md->getNumOperands(); i++)
+		{
+			append(md->getOperand(i));
+			if (i + 1 < md->getNumOperands())
+				append(", ");
+		}
+		append("}");
+	}
+	else
+		append("null");
+}
+
+void StreamState::append(NamedMDNode *md)
+{
+	append("!", md->getName(), " = !{");
+	for (unsigned i = 0; i < md->getNumOperands(); i++)
+	{
+		append(md->getOperand(i));
+		if (i + 1 < md->getNumOperands())
+			append(", ");
+	}
+
+	append("}");
+}
+
+void StreamState::append(MDOperand *md)
+{
+	if (md)
+	{
+		switch (md->get_metadata_kind())
+		{
+		case MetadataKind::NamedNode:
+			return append(cast<NamedMDNode>(md));
+		case MetadataKind::Node:
+			return append(cast<MDNode>(md));
+		case MetadataKind::Constant:
+			return append(cast<ConstantAsMetadata>(md)->getValue());
+		case MetadataKind::String:
+			return append("\"", cast<MDString>(md)->getString(), "\"");
+		default:
+			LOGE("Unknown MetadataKind %u.\n", unsigned(md->get_metadata_kind()));
+			break;
+		}
+	}
+	else
+		append("null");
+}
+
 void StreamState::append(Value *value, bool decl)
 {
 	switch (value->get_value_kind())
@@ -779,6 +837,16 @@ std::string disassemble(Module &module)
 		state.newline();
 		state.append(func, true);
 	}
+
+	state.newline();
+	state.newline();
+
+	for (auto itr = module.named_metadata_begin(); itr != module.named_metadata_end(); ++itr)
+	{
+		state.newline();
+		state.append(itr->second);
+	}
+
 	return state.stream.str();
 }
 }

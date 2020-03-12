@@ -22,6 +22,7 @@
 #include "logging.hpp"
 #include "type.hpp"
 #include "value.hpp"
+#include "metadata.hpp"
 
 namespace LLVMBC
 {
@@ -170,6 +171,52 @@ inline const Value *resolve_proxy(const Value *value)
 		value = cast<ValueProxy>(value)->get_proxy_value();
 	return value;
 }
+}
+
+template <typename T>
+inline T *cast(MDOperand *md)
+{
+	if (md->get_metadata_kind() != T::get_metadata_kind())
+	{
+		LOGE("Invalid type ID in cast<T>.\n");
+		std::terminate();
+	}
+	return static_cast<T *>(md);
+}
+
+template <typename T>
+inline const T *cast(const MDOperand *md)
+{
+	if (md->get_metadata_kind() != T::get_metadata_kind())
+	{
+		LOGE("Invalid type ID in cast<T>.\n");
+		std::terminate();
+	}
+	return static_cast<const T *>(md);
+}
+
+template <typename T>
+inline T *dyn_cast(MDOperand *md)
+{
+	if (md->get_metadata_kind() != T::get_metadata_kind())
+		return nullptr;
+	else
+		return static_cast<T *>(md);
+}
+
+template <typename T>
+inline const T *dyn_cast(const MDOperand *md)
+{
+	if (md->get_metadata_kind() != T::get_metadata_kind())
+		return nullptr;
+	else
+		return static_cast<const T *>(md);
+}
+
+template <typename T>
+inline bool isa(const MDOperand *md)
+{
+	return md->get_metadata_kind() == T::get_metadata_kind();
 }
 
 }
