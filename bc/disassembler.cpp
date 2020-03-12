@@ -686,12 +686,12 @@ void StreamState::append(UndefValue *undef, bool decl)
 
 void StreamState::append(ConstantFP *value, bool decl)
 {
-	append(value->get_double());
+	append(value->getValueAPF().convertToDouble());
 }
 
 void StreamState::append(ConstantInt *value, bool decl)
 {
-	append(value->getType(), " ", value->get_sext());
+	append(value->getType(), " ", value->getUniqueInteger().getSExtValue());
 }
 
 void StreamState::append(Constant *value, bool decl)

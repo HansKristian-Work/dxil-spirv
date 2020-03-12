@@ -565,7 +565,7 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 				constants.push_back(ConstantFP::get(element_type, op));
 
 			for (auto &c : constants)
-				LOGI("  FP: %f\n", cast<ConstantFP>(c)->get_double());
+				LOGI("  FP: %f\n", cast<ConstantFP>(c)->getValueAPF().convertToDouble());
 		}
 		else
 		{
@@ -573,7 +573,7 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 				constants.push_back(ConstantInt::get(element_type, op));
 
 			for (auto &c : constants)
-				LOGI("  Int: %lld\n", static_cast<long long>(cast<ConstantInt>(c)->get_sext()));
+				LOGI("  Int: %lld\n", static_cast<long long>(cast<ConstantInt>(c)->getUniqueInteger().getSExtValue()));
 		}
 		auto *value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
 		values.push_back(value);
@@ -1074,7 +1074,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 					return;
 				}
 
-				unsigned index = const_int->get_zext();
+				unsigned index = const_int->getUniqueInteger().getZExtValue();
 				if (index >= cast<StructType>(type)->getNumElements())
 				{
 					LOGE("Struct element index out of range.\n");

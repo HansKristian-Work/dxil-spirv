@@ -60,9 +60,25 @@ ConstantInt *ConstantInt::get(Type *type, uint64_t value)
 	return context.construct<ConstantInt>(type, value);
 }
 
-int64_t ConstantInt::get_sext() const
+const APInt &ConstantInt::getUniqueInteger() const
 {
-	switch (cast<IntegerType>(getType())->getBitWidth())
+	return apint;
+}
+
+APInt::APInt(Type *type_, uint64_t value_)
+	: type(type_), value(value_)
+{
+}
+
+APFloat::APFloat(Type *type_, uint64_t value)
+	: type(type_)
+{
+	u.u64 = value;
+}
+
+int64_t APInt::getSExtValue() const
+{
+	switch (cast<IntegerType>(type)->getBitWidth())
 	{
 	case 1: return (value & 1) != 0 ? -1 : 0;
 	case 8: return int8_t(value);
@@ -75,9 +91,9 @@ int64_t ConstantInt::get_sext() const
 	}
 }
 
-uint64_t ConstantInt::get_zext() const
+uint64_t APInt::getZExtValue() const
 {
-	switch (cast<IntegerType>(getType())->getBitWidth())
+	switch (cast<IntegerType>(type)->getBitWidth())
 	{
 	case 1: return value & 1;
 	case 8: return uint8_t(value);
@@ -96,23 +112,41 @@ ConstantFP *ConstantFP::get(Type *type, uint64_t value)
 	return context.construct<ConstantFP>(type, value);
 }
 
-ConstantInt::ConstantInt(Type *type, uint64_t value_)
-	: Constant(type, ValueKind::ConstantInt), value(value_)
+ConstantInt::ConstantInt(Type *type, uint64_t value)
+	: Constant(type, ValueKind::ConstantInt), apint(type, value)
 {
 }
 
 ConstantFP::ConstantFP(Type *type, uint64_t value)
-	: Constant(type, ValueKind::ConstantFP)
+	: Constant(type, ValueKind::ConstantFP), apfloat(type, value)
 {
-	u.u64 = value;
 }
 
-double ConstantFP::get_double() const
+const APFloat &ConstantFP::getValueAPF() const
 {
-	switch (getType()->getTypeID())
+	return apfloat;
+}
+
+float APFloat::convertToFloat() const
+{
+	switch (type->getTypeID())
 	{
 	case TypeID::Float:
 		return u.f32;
+	case TypeID::Double:
+		return float(u.f64);
+	default:
+		LOGE("Unknown FP type.\n");
+		return 0.0f;
+	}
+}
+
+double APFloat::convertToDouble() const
+{
+	switch (type->getTypeID())
+	{
+	case TypeID::Float:
+		return double(u.f32);
 	case TypeID::Double:
 		return u.f64;
 	default:

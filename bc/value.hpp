@@ -78,6 +78,36 @@ public:
 	Constant(Type *type, ValueKind kind);
 };
 
+class APInt
+{
+public:
+	APInt(Type *type, uint64_t value);
+	uint64_t getZExtValue() const;
+	int64_t getSExtValue() const;
+
+private:
+	Type *type;
+	uint64_t value;
+};
+
+class APFloat
+{
+public:
+	APFloat(Type *type, uint64_t value);
+
+	float convertToFloat() const;
+	double convertToDouble() const;
+
+private:
+	Type *type;
+	union
+	{
+		float f32;
+		double f64;
+		uint64_t u64;
+	} u;
+};
+
 class ConstantInt : public Constant
 {
 public:
@@ -85,11 +115,10 @@ public:
 	static ConstantInt *get(Type *type, uint64_t value);
 	ConstantInt(Type *type, uint64_t value);
 
-	uint64_t get_zext() const;
-	int64_t get_sext() const;
+	const APInt &getUniqueInteger() const;
 
 private:
-	uint64_t value;
+	APInt apint;
 };
 
 class ConstantFP : public Constant
@@ -99,15 +128,10 @@ public:
 	static ConstantFP *get(Type *type, uint64_t bits);
 	ConstantFP(Type *type, uint64_t bits);
 
-	double get_double() const;
+	const APFloat &getValueAPF() const;
 
 private:
-	union
-	{
-		float f32;
-		double f64;
-		uint64_t u64;
-	} u;
+	APFloat apfloat;
 };
 
 class ConstantAggregateZero : public Constant
