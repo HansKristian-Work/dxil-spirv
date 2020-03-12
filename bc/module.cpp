@@ -320,6 +320,7 @@ struct ModuleParseContext
 	void resolve_global_initializations();
 
 	uint64_t tween_id = 1;
+	uint64_t metadata_tween_id = 1;
 
 	bool use_relative_id = true;
 	bool use_strtab = false;
@@ -636,6 +637,8 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 		}
 
 		auto *node = context->construct<MDNode>(module, std::move(ops));
+		node->set_tween_id(metadata_tween_id++);
+		module->add_unnamed_metadata(node);
 		metadata[index] = node;
 		break;
 	}
@@ -1418,6 +1421,11 @@ void Module::add_named_metadata(const std::string &name, NamedMDNode *node)
 	named_metadata[name] = node;
 }
 
+void Module::add_unnamed_metadata(MDNode *node)
+{
+	unnamed_metadata.push_back(node);
+}
+
 NamedMDNode *Module::getNamedMetadata(const std::string &name) const
 {
 	auto itr = named_metadata.find(name);
@@ -1475,6 +1483,16 @@ std::unordered_map<std::string, NamedMDNode *>::const_iterator Module::named_met
 std::unordered_map<std::string, NamedMDNode *>::const_iterator Module::named_metadata_end() const
 {
 	return named_metadata.end();
+}
+
+std::vector<MDNode *>::const_iterator Module::unnamed_metadata_begin() const
+{
+	return unnamed_metadata.begin();
+}
+
+std::vector<MDNode *>::const_iterator Module::unnamed_metadata_end() const
+{
+	return unnamed_metadata.end();
 }
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size)

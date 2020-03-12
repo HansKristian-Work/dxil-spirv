@@ -75,7 +75,7 @@ struct StreamState
 
 	void append(MDOperand *md);
 	void append(NamedMDNode *md);
-	void append(MDNode *md);
+	void append(MDNode *md, bool decl);
 
 	void append(float v);
 	void append(double v);
@@ -704,18 +704,23 @@ void StreamState::append(Instruction *inst)
 	append(static_cast<Value *>(inst), true);
 }
 
-void StreamState::append(MDNode *md)
+void StreamState::append(MDNode *md, bool decl)
 {
 	if (md)
 	{
-		append("!{");
-		for (unsigned i = 0; i < md->getNumOperands(); i++)
+		if (decl)
 		{
-			append(md->getOperand(i));
-			if (i + 1 < md->getNumOperands())
-				append(", ");
+			append("!", md->get_tween_id(), " = !{");
+			for (unsigned i = 0; i < md->getNumOperands(); i++)
+			{
+				append(md->getOperand(i));
+				if (i + 1 < md->getNumOperands())
+					append(", ");
+			}
+			append("}");
 		}
-		append("}");
+		else
+			append("!", md->get_tween_id());
 	}
 	else
 		append("null");
@@ -726,7 +731,7 @@ void StreamState::append(NamedMDNode *md)
 	append("!", md->getName(), " = !{");
 	for (unsigned i = 0; i < md->getNumOperands(); i++)
 	{
-		append(md->getOperand(i));
+		append(md->getOperand(i), false);
 		if (i + 1 < md->getNumOperands())
 			append(", ");
 	}
@@ -743,7 +748,7 @@ void StreamState::append(MDOperand *md)
 		case MetadataKind::NamedNode:
 			return append(cast<NamedMDNode>(md));
 		case MetadataKind::Node:
-			return append(cast<MDNode>(md));
+			return append(cast<MDNode>(md), false);
 		case MetadataKind::Constant:
 			return append(cast<ConstantAsMetadata>(md)->getValue());
 		case MetadataKind::String:
@@ -839,12 +844,19 @@ std::string disassemble(Module &module)
 	}
 
 	state.newline();
-	state.newline();
 
 	for (auto itr = module.named_metadata_begin(); itr != module.named_metadata_end(); ++itr)
 	{
 		state.newline();
 		state.append(itr->second);
+	}
+
+	state.newline();
+
+	for (auto itr = module.unnamed_metadata_begin(); itr != module.unnamed_metadata_end(); ++itr)
+	{
+		state.newline();
+		state.append(*itr, true);
 	}
 
 	return state.stream.str();

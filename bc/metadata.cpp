@@ -55,6 +55,16 @@ MDOperand *MDNode::getOperand(unsigned index) const
 	return operands[index];
 }
 
+uint64_t MDNode::get_tween_id() const
+{
+	return tween;
+}
+
+void MDNode::set_tween_id(uint64_t id)
+{
+	tween = id;
+}
+
 NamedMDNode::NamedMDNode(Module *module, std::string name_, std::vector<MDNode *> operands_)
 	: MDOperand(module, MetadataKind::NamedNode), name(std::move(name_)), operands(std::move(operands_))
 {

@@ -40,6 +40,7 @@ class Function;
 class BasicBlock;
 class GlobalVariable;
 class NamedMDNode;
+class MDNode;
 
 class Module
 {
@@ -53,6 +54,7 @@ public:
 	void add_function_implementation(Function *func);
 	void add_global_variable(GlobalVariable *variable);
 	void add_named_metadata(const std::string &name, NamedMDNode *node);
+	void add_unnamed_metadata(MDNode *node);
 	const std::string &get_value_name(uint64_t id) const;
 
 	std::vector<Function *>::const_iterator begin() const;
@@ -64,12 +66,16 @@ public:
 	std::unordered_map<std::string, NamedMDNode *>::const_iterator named_metadata_begin() const;
 	std::unordered_map<std::string, NamedMDNode *>::const_iterator named_metadata_end() const;
 
+	std::vector<MDNode *>::const_iterator unnamed_metadata_begin() const;
+	std::vector<MDNode *>::const_iterator unnamed_metadata_end() const;
+
 private:
 	LLVMContext &context;
 	std::vector<Function *> functions;
 	std::vector<GlobalVariable *> globals;
 	std::unordered_map<uint64_t, std::string> value_symtab;
 	std::unordered_map<std::string, NamedMDNode *> named_metadata;
+	std::vector<MDNode *> unnamed_metadata;
 };
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size);

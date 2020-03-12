@@ -56,8 +56,12 @@ public:
 	MDOperand *getOperand(unsigned index) const;
 	unsigned getNumOperands() const;
 
+	void set_tween_id(uint64_t id);
+	uint64_t get_tween_id() const;
+
 private:
 	std::vector<MDOperand *> operands;
+	uint64_t tween = 0;
 };
 
 class NamedMDNode : public MDOperand
