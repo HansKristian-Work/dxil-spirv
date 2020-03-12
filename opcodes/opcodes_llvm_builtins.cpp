@@ -512,7 +512,7 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 	op->add_ids({
 	    impl.get_id_for_value(instruction->getPointerOperand()),
 	    builder.makeUintConstant(spv::ScopeWorkgroup),
-	    builder.makeUintConstant(spv::MemorySemanticsAcquireReleaseMask),
+	    builder.makeUintConstant(0),
 	    impl.get_id_for_value(instruction->getValOperand()),
 	});
 

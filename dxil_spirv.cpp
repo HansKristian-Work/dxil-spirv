@@ -451,6 +451,7 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 
+#if 0
 		if (!llvm_asm_string.empty())
 		{
 			glsl += "\n#if 0\n";
@@ -458,6 +459,7 @@ int main(int argc, char **argv)
 			glsl += llvm_asm_string;
 			glsl += "#endif";
 		}
+#endif
 
 		if (!spirv_asm_string.empty())
 		{

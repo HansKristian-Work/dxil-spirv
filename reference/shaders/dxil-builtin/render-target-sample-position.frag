@@ -14,57 +14,6 @@ void main()
 
 
 #if 0
-// LLVM disassembly
-target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
-target triple = "dxil-ms-dx"
-
-%dx.types.SamplePos = type { float, float }
-
-define void @main() {
-  %1 = call i32 @dx.op.sampleIndex.i32(i32 90)
-  %2 = call %dx.types.SamplePos @dx.op.renderTargetGetSamplePosition(i32 76, i32 %1)
-  %3 = extractvalue %dx.types.SamplePos %2, 0
-  %4 = extractvalue %dx.types.SamplePos %2, 1
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %3)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %4)
-  ret void
-}
-
-; Function Attrs: nounwind readnone
-declare i32 @dx.op.sampleIndex.i32(i32) #0
-
-; Function Attrs: nounwind
-declare void @dx.op.storeOutput.f32(i32, i32, i32, i8, float) #1
-
-; Function Attrs: nounwind readonly
-declare %dx.types.SamplePos @dx.op.renderTargetGetSamplePosition(i32, i32) #2
-
-attributes #0 = { nounwind readnone }
-attributes #1 = { nounwind }
-attributes #2 = { nounwind readonly }
-
-!llvm.ident = !{!0}
-!dx.version = !{!1}
-!dx.valver = !{!2}
-!dx.shaderModel = !{!3}
-!dx.viewIdState = !{!4}
-!dx.entryPoints = !{!5}
-
-!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
-!1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 5}
-!3 = !{!"ps", i32 6, i32 0}
-!4 = !{[2 x i32] [i32 0, i32 2]}
-!5 = !{void ()* @main, !"main", !6, null, null}
-!6 = !{!7, !10, null}
-!7 = !{!8}
-!8 = !{i32 0, !"SV_SampleIndex", i8 5, i8 12, !9, i8 1, i32 1, i8 1, i32 -1, i8 -1, null}
-!9 = !{i32 0}
-!10 = !{!11}
-!11 = !{i32 0, !"SV_Target", i8 9, i8 16, !9, i8 0, i32 1, i8 2, i32 0, i8 0, !12}
-!12 = !{i32 3, i32 3}
-#endif
-#if 0
 // SPIR-V disassembly
 ; SPIR-V
 ; Version: 1.3
