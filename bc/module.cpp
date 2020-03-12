@@ -279,6 +279,7 @@ struct ModuleParseContext
 	LLVMContext *context = nullptr;
 	std::vector<BasicBlock *> basic_blocks;
 	std::vector<Value *> values;
+	std::vector<Type *> types;
 	std::vector<Function *> functions_with_bodies;
 	Type *constant_type = nullptr;
 	std::string current_metadata_name;
@@ -288,7 +289,7 @@ struct ModuleParseContext
 	void parse_constants_record(const BlockOrRecord &entry);
 	void parse_constants_block(const BlockOrRecord &entry);
 	void parse_metadata_block(const BlockOrRecord &entry);
-	void parse_metadata_record(const BlockOrRecord &entry);
+	void parse_metadata_record(const BlockOrRecord &entry, unsigned index);
 	Type *get_constant_type();
 	void parse_function_body(const BlockOrRecord &entry);
 	void parse_types(const BlockOrRecord &entry);
@@ -296,9 +297,12 @@ struct ModuleParseContext
 	void parse_function_record(const BlockOrRecord &entry);
 	void parse_global_variable_record(const BlockOrRecord &entry);
 	void parse_version_record(const BlockOrRecord &entry);
+	void parse_type(const BlockOrRecord &entry);
 	void add_instruction(Instruction *inst);
 	void add_value(Value *value);
 
+	void add_type(Type *type);
+	Type *get_type(uint64_t index);
 	void finish_basic_block();
 	BasicBlock *get_basic_block(unsigned index) const;
 	BasicBlock *current_bb = nullptr;
@@ -458,7 +462,7 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 	{
 	case ConstantsRecord::SETTYPE:
 		LOGI("Setting constant type index %u.\n", unsigned(entry.ops[0]));
-		constant_type = module->get_type(entry.ops[0]);
+		constant_type = get_type(entry.ops[0]);
 		break;
 
 	case ConstantsRecord::CONST_NULL:
@@ -468,6 +472,8 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			value = ConstantInt::get(constant_type, 0);
 		else if (constant_type->isFloatingPointTy())
 			value = ConstantFP::get(constant_type, 0);
+
+		LOGI("Adding zero value as ID %u.\n", unsigned(values.size()));
 
 		if (!value)
 			LOGE("Unknown type for CONST_NULL.\n");
@@ -535,6 +541,8 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			break;
 		}
 
+		LOGI("Adding array value as ID %u.\n", unsigned(values.size()));
+
 		bool is_fp = element_type->isFloatingPointTy();
 		std::vector<Constant *> constants;
 		constants.reserve(entry.ops.size());
@@ -542,11 +550,17 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		{
 			for (auto &op : entry.ops)
 				constants.push_back(ConstantFP::get(element_type, op));
+
+			for (auto &c : constants)
+				LOGI("  FP: %f\n", cast<ConstantFP>(c)->get_double());
 		}
 		else
 		{
 			for (auto &op : entry.ops)
 				constants.push_back(ConstantInt::get(element_type, op));
+
+			for (auto &c : constants)
+				LOGI("  Int: %lld\n", static_cast<long long>(cast<ConstantInt>(c)->get_sext()));
 		}
 		auto *value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
 		values.push_back(value);
@@ -567,7 +581,7 @@ void ModuleParseContext::parse_constants_block(const BlockOrRecord &entry)
 		parse_constants_record(child);
 }
 
-void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry)
+void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsigned index)
 {
 	switch (MetaDataRecord(entry.id))
 	{
@@ -579,9 +593,35 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry)
 
 	case MetaDataRecord::NAMED_NODE:
 	{
-		LOGI("Named metadata: %s\n", current_metadata_name.c_str());
+		LOGI("Named node: %s\n", current_metadata_name.c_str());
 		for (auto &op : entry.ops)
 			LOGI("    Op: !%u\n", unsigned(op));
+		break;
+	}
+
+	case MetaDataRecord::NODE:
+	{
+		LOGI("Node: !%u\n", index);
+		for (auto &op : entry.ops)
+			LOGI("    Op: !%u\n", unsigned(op) - 1);
+		break;
+	}
+
+	case MetaDataRecord::KIND:
+	{
+		LOGI("Kind.\n");
+		break;
+	}
+
+	case MetaDataRecord::STRING_OLD:
+	{
+		LOGI("!%u = \"%s\"\n", index, entry.getString().c_str());
+		break;
+	}
+
+	case MetaDataRecord::VALUE:
+	{
+		LOGI("!%u = { type = %u, value = %u }\n", index, unsigned(entry.ops[0]), unsigned(entry.ops[1]));
 		break;
 	}
 
@@ -592,8 +632,9 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry)
 
 void ModuleParseContext::parse_metadata_block(const BlockOrRecord &entry)
 {
+	unsigned index = 0;
 	for (auto &child : entry.children)
-		parse_metadata_record(child);
+		parse_metadata_record(child, index++);
 }
 
 void ModuleParseContext::parse_function_child_block(const BlockOrRecord &entry)
@@ -752,7 +793,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 		FunctionType *function_type = nullptr;
 		if (CCInfo & CALL_EXPLICIT_TYPE_BIT)
-			function_type = cast<FunctionType>(module->get_type(entry.ops[index++]));
+			function_type = cast<FunctionType>(get_type(entry.ops[index++]));
 
 		auto *callee = cast<Function>(get_value(entry.ops[index++]));
 		if (!function_type)
@@ -813,7 +854,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_PHI:
 	{
-		auto *type = module->get_type(entry.ops[0]);
+		auto *type = get_type(entry.ops[0]);
 		size_t num_args = (entry.ops.size() - 1) / 2;
 
 		auto *phi_node = context->construct<PHINode>(type, num_args);
@@ -866,7 +907,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	case FunctionRecord::INST_CAST:
 	{
 		auto *input_value = get_value(entry.ops[0]);
-		auto *type = module->get_type(entry.ops[1]);
+		auto *type = get_type(entry.ops[1]);
 		auto op = Instruction::CastOps(translate_castop(CastOp(entry.ops[2])));
 		auto *value = context->construct<CastInst>(type, input_value, op);
 		add_instruction(value);
@@ -938,7 +979,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_SWITCH:
 	{
-		auto *type = module->get_type(entry.ops[0]);
+		auto *type = get_type(entry.ops[0]);
 		auto *cond = get_value(entry.ops[1]);
 		auto *default_block = get_basic_block(entry.ops[2]);
 		unsigned num_cases = (entry.ops.size() - 3) / 2;
@@ -961,8 +1002,8 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_ALLOCA:
 	{
-		auto *allocated_type = module->get_type(entry.ops[0]);
-		auto *type = module->get_type(entry.ops[1]);
+		auto *allocated_type = get_type(entry.ops[0]);
+		auto *type = get_type(entry.ops[1]);
 		auto *size = get_value(entry.ops[2]);
 		auto *ptr_type = PointerType::get(allocated_type, 0);
 
@@ -974,7 +1015,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	case FunctionRecord::INST_GEP:
 	{
 		bool inbounds = entry.ops[0] != 0;
-		auto *type = module->get_type(entry.ops[1]);
+		auto *type = get_type(entry.ops[1]);
 		unsigned count = entry.ops.size() - 2;
 		std::vector<Value *> args;
 		args.reserve(count);
@@ -1025,7 +1066,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 		Type *loaded_type = nullptr;
 		if (entry.ops.size() == 4)
-			loaded_type = module->get_type(entry.ops[1]);
+			loaded_type = get_type(entry.ops[1]);
 		else
 			loaded_type = cast<PointerType>(ptr->getType())->getElementType();
 
@@ -1102,10 +1143,8 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	module->add_function_implementation(function);
 }
 
-static void parse_type(Module *module, const BlockOrRecord &child)
+void ModuleParseContext::parse_type(const BlockOrRecord &child)
 {
-	auto &context = module->getContext();
-
 	Type *type = nullptr;
 	switch (TypeRecord(child.id))
 	{
@@ -1114,33 +1153,33 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 
 	case TypeRecord::VOID:
 	{
-		type = Type::getVoidTy(context);
+		type = Type::getVoidTy(*context);
 		LOGI("Type: VOID\n");
 		break;
 	}
 
 	case TypeRecord::HALF:
-		type = Type::getHalfTy(context);
+		type = Type::getHalfTy(*context);
 		LOGI("Type: HALF\n");
 		break;
 
 	case TypeRecord::FLOAT:
-		type = Type::getFloatTy(context);
+		type = Type::getFloatTy(*context);
 		LOGI("Type: FLOAT\n");
 		break;
 
 	case TypeRecord::DOUBLE:
-		type = Type::getDoubleTy(context);
+		type = Type::getDoubleTy(*context);
 		LOGI("Type: DOUBLE\n");
 		break;
 
 	case TypeRecord::POINTER:
-		type = PointerType::get(module->get_type(child.ops[0]), child.ops[1]);
+		type = PointerType::get(get_type(child.ops[0]), child.ops[1]);
 		LOGI("Type: POINTER\n");
 		break;
 
 	case TypeRecord::ARRAY:
-		type = ArrayType::get(module->get_type(child.ops[1]), child.ops[0]);
+		type = ArrayType::get(get_type(child.ops[1]), child.ops[0]);
 		LOGI("Type: ARRAY\n");
 		break;
 
@@ -1148,27 +1187,27 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 		switch (child.ops[0])
 		{
 		case 1:
-			type = Type::getInt1Ty(context);
+			type = Type::getInt1Ty(*context);
 			LOGI("Type: INT1\n");
 			break;
 
 		case 8:
-			type = Type::getInt8Ty(context);
+			type = Type::getInt8Ty(*context);
 			LOGI("Type: INT8\n");
 			break;
 
 		case 16:
-			type = Type::getInt16Ty(context);
+			type = Type::getInt16Ty(*context);
 			LOGI("Type: INT16\n");
 			break;
 
 		case 32:
-			type = Type::getInt32Ty(context);
+			type = Type::getInt32Ty(*context);
 			LOGI("Type: INT32\n");
 			break;
 
 		case 64:
-			type = Type::getInt64Ty(context);
+			type = Type::getInt64Ty(*context);
 			LOGI("Type: INT64\n");
 			break;
 		}
@@ -1184,7 +1223,7 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 		unsigned num_members = child.ops.size() - 1;
 		members.reserve(num_members);
 		for (unsigned i = 0; i < num_members; i++)
-			members.push_back(module->get_type(child.ops[i + 1]));
+			members.push_back(get_type(child.ops[i + 1]));
 		type = StructType::get(std::move(members));
 		LOGI("Type: STRUCT\n");
 		break;
@@ -1192,7 +1231,7 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 
 	case TypeRecord::VECTOR:
 	{
-		type = VectorType::get(child.ops[0], module->get_type(child.ops[1]));
+		type = VectorType::get(child.ops[0], get_type(child.ops[1]));
 		LOGI("Type: VECTOR\n");
 		break;
 	}
@@ -1202,11 +1241,11 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 		std::vector<Type *> argument_types;
 		argument_types.reserve(child.ops.size());
 		for (size_t i = 2; i < child.ops.size(); i++)
-			argument_types.push_back(module->get_type(child.ops[i]));
+			argument_types.push_back(get_type(child.ops[i]));
 
-		type = context.construct<FunctionType>(context,
-		                                       module->get_type(child.ops[1]),
-		                                       std::move(argument_types));
+		type = context->construct<FunctionType>(*context,
+		                                        get_type(child.ops[1]),
+		                                        std::move(argument_types));
 
 		LOGI("Type: FUNCTION\n");
 		break;
@@ -1214,14 +1253,14 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 
 	case TypeRecord::LABEL:
 	{
-		type = Type::getLabelTy(context);
+		type = Type::getLabelTy(*context);
 		LOGI("Type: LABEL\n");
 		break;
 	}
 
 	case TypeRecord::METADATA:
 	{
-		type = Type::getMetadataTy(context);
+		type = Type::getMetadataTy(*context);
 		LOGI("Type: METADATA\n");
 		break;
 	}
@@ -1231,13 +1270,13 @@ static void parse_type(Module *module, const BlockOrRecord &child)
 		break;
 	}
 
-	module->add_type(type);
+	add_type(type);
 }
 
 void ModuleParseContext::parse_types(const BlockOrRecord &entry)
 {
 	for (auto &child : entry.children)
-		parse_type(module, child);
+		parse_type(child);
 }
 
 void ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
@@ -1258,7 +1297,7 @@ void ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry
 		return;
 	}
 
-	auto *type = module->get_type(entry.ops[0]);
+	auto *type = get_type(entry.ops[0]);
 	bool is_const = (entry.ops[1] & 1) != 0;
 	bool explicit_type = (entry.ops[1] & 2) != 0;
 	unsigned address_space = 0;
@@ -1287,7 +1326,7 @@ void ModuleParseContext::parse_function_record(const BlockOrRecord &entry)
 		return;
 	}
 
-	auto *type = module->get_type(entry.ops[0]);
+	auto *type = get_type(entry.ops[0]);
 	// Calling convention is [1], not relevant.
 	bool is_proto = entry.ops[2];
 	// Lots of other irrelevant arguments ...
@@ -1310,13 +1349,14 @@ void ModuleParseContext::parse_version_record(const BlockOrRecord &entry)
 	use_relative_id = version >= 1;
 	use_strtab = version >= 2;
 }
-Type *Module::get_type(uint64_t index)
+
+Type *ModuleParseContext::get_type(uint64_t index)
 {
 	assert(index < types.size());
 	return types[index];
 }
 
-void Module::add_type(Type *type)
+void ModuleParseContext::add_type(Type *type)
 {
 	types.push_back(type);
 }

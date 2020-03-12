@@ -49,8 +49,6 @@ public:
 	void add_value_name(uint64_t id, const std::string &name);
 	void add_function_implementation(Function *func);
 	void add_global_variable(GlobalVariable *variable);
-	void add_type(Type *type);
-	Type *get_type(uint64_t index);
 	const std::string &get_value_name(uint64_t id) const;
 
 	std::vector<Function *>::const_iterator begin() const;
@@ -62,7 +60,6 @@ public:
 private:
 	LLVMContext &context;
 	std::vector<Function *> functions;
-	std::vector<Type *> types;
 	std::vector<GlobalVariable *> globals;
 	std::unordered_map<uint64_t, std::string> value_symtab;
 };
