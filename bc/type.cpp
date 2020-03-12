@@ -24,8 +24,9 @@
 namespace LLVMBC
 {
 PointerType::PointerType(Type *type, uint32_t addr_space)
-		: Type(type->getContext(), TypeID::Pointer), contained_type(type), address_space(addr_space)
+		: Type(type->getContext(), TypeID::PointerTyID), contained_type(type)
 {
+	address_space = addr_space;
 }
 
 PointerType *PointerType::get(Type *pointee, unsigned addr_space)
@@ -34,7 +35,7 @@ PointerType *PointerType::get(Type *pointee, unsigned addr_space)
 	auto &cache = context.get_type_cache();
 	for (auto *type : cache)
 	{
-		if (type->getTypeID() == TypeID::Pointer)
+		if (type->getTypeID() == TypeID::PointerTyID)
 		{
 			auto *pointer_type = cast<PointerType>(type);
 			if (pointer_type->getAddressSpace() == addr_space && pointer_type->getElementType() == pointee)
@@ -47,7 +48,7 @@ PointerType *PointerType::get(Type *pointee, unsigned addr_space)
 	return type;
 }
 
-unsigned PointerType::getAddressSpace() const
+unsigned Type::getAddressSpace() const
 {
 	return address_space;
 }
@@ -58,7 +59,7 @@ Type *PointerType::getElementType() const
 }
 
 ArrayType::ArrayType(Type *type, uint64_t elements_)
-		: Type(type->getContext(), TypeID::Array), contained_type(type), elements(elements_)
+		: Type(type->getContext(), TypeID::ArrayTyID), contained_type(type), elements(elements_)
 {
 }
 
@@ -68,7 +69,7 @@ ArrayType *ArrayType::get(Type *element, uint64_t size)
 	auto &cache = context.get_type_cache();
 	for (auto *type : cache)
 	{
-		if (type->getTypeID() == TypeID::Array)
+		if (type->getTypeID() == TypeID::ArrayTyID)
 		{
 			auto *array_type = cast<ArrayType>(type);
 			if (array_type->getArrayNumElements() == size && array_type->getArrayElementType() == element)
@@ -82,7 +83,7 @@ ArrayType *ArrayType::get(Type *element, uint64_t size)
 }
 
 VectorType::VectorType(LLVMBC::LLVMContext &context, unsigned vector_size_, LLVMBC::Type *type)
-	: Type(context, TypeID::Vector), element_type(type), vector_size(vector_size_)
+	: Type(context, TypeID::VectorTyID), element_type(type), vector_size(vector_size_)
 {
 }
 
@@ -102,7 +103,7 @@ VectorType *VectorType::get(unsigned vector_size, Type *element)
 	auto &cache = context.get_type_cache();
 	for (auto *type : cache)
 	{
-		if (type->getTypeID() == TypeID::Vector)
+		if (type->getTypeID() == TypeID::VectorTyID)
 		{
 			auto *vector_type = cast<VectorType>(type);
 			if (vector_type->getVectorSize() == vector_size && vector_type->getElementType() == element)
@@ -117,24 +118,42 @@ VectorType *VectorType::get(unsigned vector_size, Type *element)
 
 uint64_t Type::getArrayNumElements() const
 {
-	assert(type_id == TypeID::Array);
+	assert(type_id == TypeID::ArrayTyID);
 	return cast<ArrayType>(this)->elements;
 }
 
 Type *Type::getArrayElementType() const
 {
-	assert(type_id == TypeID::Array);
+	assert(type_id == TypeID::ArrayTyID);
 	return cast<ArrayType>(this)->contained_type;
+}
+
+Type *Type::getStructElementType(unsigned index) const
+{
+	assert(type_id == TypeID::StructTyID);
+	return cast<StructType>(this)->getElementType(index);
+}
+
+unsigned Type::getStructNumElements() const
+{
+	assert(type_id == TypeID::StructTyID);
+	return cast<StructType>(this)->getNumElements();
+}
+
+unsigned Type::getIntegerBitWidth() const
+{
+	assert(type_id == TypeID::IntegerTyID);
+	return cast<IntegerType>(this)->getBitWidth();
 }
 
 Type *Type::getPointerElementType() const
 {
-	assert(type_id == TypeID::Pointer);
+	assert(type_id == TypeID::PointerTyID);
 	return cast<PointerType>(this)->getElementType();
 }
 
 StructType::StructType(LLVMContext &context, std::vector<Type *> member_types_)
-		: Type(context, TypeID::Struct), member_types(std::move(member_types_))
+		: Type(context, TypeID::StructTyID), member_types(std::move(member_types_))
 {
 }
 
@@ -156,7 +175,7 @@ StructType *StructType::get(std::vector<Type *> member_types)
 	auto &cache = context.get_type_cache();
 	for (auto *type : cache)
 	{
-		if (type->getTypeID() == TypeID::Struct)
+		if (type->getTypeID() == TypeID::StructTyID)
 		{
 			auto *struct_type = cast<StructType>(type);
 			if (struct_type->getNumElements() == member_types.size())
@@ -184,7 +203,7 @@ StructType *StructType::get(std::vector<Type *> member_types)
 }
 
 FunctionType::FunctionType(LLVMContext &context, Type *return_type_, std::vector<Type *> argument_types_)
-	: Type(context, TypeID::Function), return_type(return_type_), argument_types(std::move(argument_types_))
+	: Type(context, TypeID::FunctionTyID), return_type(return_type_), argument_types(std::move(argument_types_))
 {
 }
 
@@ -205,7 +224,7 @@ Type *FunctionType::getReturnType() const
 }
 
 IntegerType::IntegerType(LLVMContext &context, uint32_t width_)
-	: Type(context, TypeID::Int), width(width_)
+	: Type(context, TypeID::IntegerTyID), width(width_)
 {
 }
 
@@ -219,7 +238,7 @@ Type::Type(LLVMContext &context_, TypeID type_id_)
 {
 }
 
-TypeID Type::getTypeID() const
+Type::TypeID Type::getTypeID() const
 {
 	return type_id;
 }
@@ -228,7 +247,7 @@ Type *Type::getIntTy(LLVMContext &context, uint32_t width)
 {
 	auto &cache = context.get_type_cache();
 	for (auto *type : cache)
-		if (type->getTypeID() == TypeID::Int && cast<IntegerType>(type)->getBitWidth() == width)
+		if (type->getTypeID() == TypeID::IntegerTyID && cast<IntegerType>(type)->getBitWidth() == width)
 			return type;
 
 	auto *type = context.construct<IntegerType>(context, width);
@@ -250,32 +269,32 @@ Type *Type::getTy(LLVMContext &context, TypeID id)
 
 Type *Type::getVoidTy(LLVMContext &context)
 {
-	return getTy(context, TypeID::Void);
+	return getTy(context, TypeID::VoidTyID);
 }
 
 Type *Type::getHalfTy(LLVMContext &context)
 {
-	return getTy(context, TypeID::Half);
+	return getTy(context, TypeID::HalfTyID);
 }
 
 Type *Type::getFloatTy(LLVMContext &context)
 {
-	return getTy(context, TypeID::Float);
+	return getTy(context, TypeID::FloatTyID);
 }
 
 Type *Type::getDoubleTy(LLVMContext &context)
 {
-	return getTy(context, TypeID::Double);
+	return getTy(context, TypeID::DoubleTyID);
 }
 
 Type *Type::getLabelTy(LLVMContext &context)
 {
-	return getTy(context, TypeID::Label);
+	return getTy(context, TypeID::LabelTyID);
 }
 
 Type *Type::getMetadataTy(LLVMContext &context)
 {
-	return getTy(context, TypeID::Metadata);
+	return getTy(context, TypeID::MetadataTyID);
 }
 
 Type *Type::getInt1Ty(LLVMContext &context)
@@ -305,14 +324,14 @@ Type *Type::getInt64Ty(LLVMContext &context)
 
 bool Type::isIntegerTy() const
 {
-	return type_id == TypeID::Int;
+	return type_id == TypeID::IntegerTyID;
 }
 
 bool Type::isFloatingPointTy() const
 {
-	return type_id == TypeID::Half ||
-	       type_id == TypeID::Float ||
-	       type_id == TypeID::Double;
+	return type_id == TypeID::HalfTyID ||
+	       type_id == TypeID::FloatTyID ||
+	       type_id == TypeID::DoubleTyID;
 }
 
 LLVMContext &Type::getContext()

@@ -28,7 +28,6 @@
 // A reasonably small LLVM C++ API lookalike.
 
 #define llvm LLVMBC
-#define HAVE_LLVMBC
 
 namespace LLVMBC
 {

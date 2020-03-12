@@ -60,7 +60,7 @@ ConstantInt *ConstantInt::get(Type *type, uint64_t value)
 	return context.construct<ConstantInt>(type, value);
 }
 
-const APInt &ConstantInt::getUniqueInteger() const
+const APInt &Constant::getUniqueInteger() const
 {
 	return apint;
 }
@@ -122,7 +122,7 @@ ConstantFP::ConstantFP(Type *type, uint64_t value)
 {
 }
 
-const APFloat &ConstantFP::getValueAPF() const
+const APFloat &Constant::getValueAPF() const
 {
 	return apfloat;
 }
@@ -131,9 +131,9 @@ float APFloat::convertToFloat() const
 {
 	switch (type->getTypeID())
 	{
-	case TypeID::Float:
+	case Type::TypeID::FloatTyID:
 		return u.f32;
-	case TypeID::Double:
+	case Type::TypeID::DoubleTyID:
 		return float(u.f64);
 	default:
 		LOGE("Unknown FP type.\n");
@@ -145,9 +145,9 @@ double APFloat::convertToDouble() const
 {
 	switch (type->getTypeID())
 	{
-	case TypeID::Float:
+	case Type::TypeID::FloatTyID:
 		return double(u.f32);
-	case TypeID::Double:
+	case Type::TypeID::DoubleTyID:
 		return u.f64;
 	default:
 		LOGE("Unknown FP type.\n");

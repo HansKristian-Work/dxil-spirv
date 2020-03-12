@@ -16,4 +16,6 @@ add_library(llvm-bc STATIC
         metadata.hpp metadata.cpp
         disassembler.cpp)
 target_compile_options(llvm-bc PRIVATE ${DXIL_SPV_CXX_FLAGS})
+target_compile_definitions(llvm-bc PUBLIC HAVE_LLVMBC)
 target_link_libraries(llvm-bc PRIVATE bc dxil-debug)
+target_include_directories(llvm-bc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

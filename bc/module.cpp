@@ -451,7 +451,7 @@ void ModuleParseContext::add_instruction(Instruction *inst)
 
 void ModuleParseContext::add_value(Value *value)
 {
-	if (value->getType()->getTypeID() != TypeID::Void)
+	if (value->getType()->getTypeID() != Type::TypeID::VoidTyID)
 	{
 		value->set_tween_id(tween_id++);
 		values.push_back(value);
@@ -659,7 +659,14 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 			LOGE("Null value!\n");
 			return;
 		}
-		auto *node = context->construct<ConstantAsMetadata>(module, value);
+
+		if (value->get_value_kind() != ValueKind::ConstantInt && value->get_value_kind() != ValueKind::ConstantFP)
+		{
+			LOGE("Not a constant!\n");
+			return;
+		}
+
+		auto *node = context->construct<ConstantAsMetadata>(module, static_cast<Constant *>(value));
 		LOGI("!%u = { type = %u, value = %u }\n", index, unsigned(entry.ops[0]), unsigned(entry.ops[1]));
 		metadata[index] = node;
 		break;
@@ -693,48 +700,48 @@ void ModuleParseContext::parse_function_child_block(const BlockOrRecord &entry)
 	}
 }
 
-static UnaryOperation translate_uop(UnaryOp op, Type *type)
+static UnaryOperator::UnaryOps translate_uop(UnaryOp op, Type *type)
 {
 	bool is_fp = type->isFloatingPointTy();
 	if (op == UnaryOp::FNEG && is_fp)
-		return UnaryOperation::FNeg;
+		return UnaryOperator::UnaryOps::FNeg;
 	else
-		return UnaryOperation::Invalid;
+		return UnaryOperator::UnaryOps::Invalid;
 }
 
-static BinaryOperation translate_binop(BinOp op, Type *type)
+static BinaryOperator::BinaryOps translate_binop(BinOp op, Type *type)
 {
 	bool is_fp = type->isFloatingPointTy();
 	switch (op)
 	{
 	case BinOp::ADD:
-		return is_fp ? BinaryOperation::FAdd : BinaryOperation::Add;
+		return is_fp ? BinaryOperator::BinaryOps::FAdd : BinaryOperator::BinaryOps::Add;
 	case BinOp::SUB:
-		return is_fp ? BinaryOperation::FSub : BinaryOperation::Sub;
+		return is_fp ? BinaryOperator::BinaryOps::FSub : BinaryOperator::BinaryOps::Sub;
 	case BinOp::MUL:
-		return is_fp ? BinaryOperation::FMul : BinaryOperation::Mul;
+		return is_fp ? BinaryOperator::BinaryOps::FMul : BinaryOperator::BinaryOps::Mul;
 	case BinOp::UDIV:
-		return is_fp ? BinaryOperation::Invalid : BinaryOperation::UDiv;
+		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::UDiv;
 	case BinOp::SDIV:
-		return is_fp ? BinaryOperation::FDiv : BinaryOperation::SDiv;
+		return is_fp ? BinaryOperator::BinaryOps::FDiv : BinaryOperator::BinaryOps::SDiv;
 	case BinOp::UREM:
-		return is_fp ? BinaryOperation::Invalid : BinaryOperation::URem;
+		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::URem;
 	case BinOp::SREM:
-		return is_fp ? BinaryOperation::FRem : BinaryOperation::SRem;
+		return is_fp ? BinaryOperator::BinaryOps::FRem : BinaryOperator::BinaryOps::SRem;
 	case BinOp::SHL:
-		return is_fp ? BinaryOperation::Invalid : BinaryOperation::Shl;
+		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::Shl;
 	case BinOp::LSHR:
-		return is_fp ? BinaryOperation::Invalid : BinaryOperation::LShr;
+		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::LShr;
 	case BinOp::ASHR:
-		return is_fp ? BinaryOperation::Invalid : BinaryOperation::AShr;
+		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::AShr;
 	case BinOp::AND:
-		return is_fp ? BinaryOperation::Invalid : BinaryOperation::And;
+		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::And;
 	case BinOp::OR:
-		return is_fp ? BinaryOperation::Invalid : BinaryOperation::Or;
+		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::Or;
 	case BinOp::XOR:
-		return is_fp ? BinaryOperation::Invalid : BinaryOperation::Xor;
+		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::Xor;
 	default:
-		return BinaryOperation::Invalid;
+		return BinaryOperator::BinaryOps::Invalid;
 	}
 }
 
@@ -976,7 +983,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		for (unsigned i = 1; i < num_args; i++)
 		{
 			auto index = unsigned(entry.ops[i]);
-			if (type->getTypeID() == TypeID::Struct)
+			if (type->getTypeID() == Type::TypeID::StructTyID)
 			{
 				if (index >= cast<StructType>(type)->getNumElements())
 				{
@@ -985,7 +992,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 				}
 				type = cast<StructType>(type)->getElementType(index);
 			}
-			else if (type->getTypeID() == TypeID::Array)
+			else if (type->getTypeID() == Type::TypeID::ArrayTyID)
 			{
 				type = type->getArrayElementType();
 			}
@@ -1065,7 +1072,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		for (unsigned i = 1; i < args.size(); i++)
 		{
 			auto *arg = args[i];
-			if (type->getTypeID() == TypeID::Struct)
+			if (type->getTypeID() == Type::TypeID::StructTyID)
 			{
 				auto *const_int = dyn_cast<ConstantInt>(arg);
 				if (!const_int)
@@ -1082,7 +1089,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 				}
 				type = cast<StructType>(type)->getElementType(index);
 			}
-			else if (type->getTypeID() == TypeID::Array)
+			else if (type->getTypeID() == Type::TypeID::ArrayTyID)
 			{
 				type = type->getArrayElementType();
 			}

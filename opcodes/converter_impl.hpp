@@ -24,9 +24,17 @@
 #include "scratch_pool.hpp"
 
 #include "GLSL.std.450.h"
+
+#ifdef HAVE_LLVMBC
+#include "module.hpp"
+#include "value.hpp"
+#include "instruction.hpp"
+#else
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Instructions.h>
+#endif
+
 #include <stdlib.h>
 
 namespace dxil_spv

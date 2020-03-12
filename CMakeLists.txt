@@ -25,6 +25,7 @@ add_library(dxil-debug INTERFACE)
 target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
 
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
+option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
 add_subdirectory(bc EXCLUDE_FROM_ALL)
 
@@ -73,7 +74,12 @@ target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter PRIVATE dxil-debug)
 target_compile_options(dxil-converter PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
-target_link_libraries(dxil-converter PRIVATE third_party::llvm)
+if (DXIL_SPIRV_NATIVE_LLVM)
+    target_link_libraries(dxil-converter PRIVATE third_party::llvm)
+else()
+    target_link_libraries(dxil-converter PRIVATE llvm-bc)
+endif()
+
 target_link_libraries(dxil-converter PUBLIC spirv-module)
 
 add_library(dxil-spirv-c-shared SHARED
@@ -82,7 +88,14 @@ target_include_directories(dxil-spirv-c-shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv>)
-target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter third_party::llvm)
+target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter)
+
+if (DXIL_SPIRV_NATIVE_LLVM)
+    target_link_libraries(dxil-spirv-c-shared PRIVATE third_party::llvm)
+else()
+    target_link_libraries(dxil-spirv-c-shared PRIVATE llvm-bc)
+endif()
+
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
 set_target_properties(dxil-spirv-c-shared PROPERTIES

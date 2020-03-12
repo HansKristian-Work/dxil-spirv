@@ -410,7 +410,7 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 		return false;
 
 	spv::Id var_id =
-	    impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id, instruction->getName().data());
+	    impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id /*, instruction->getName().data()*/);
 	impl.value_map[instruction] = var_id;
 	return true;
 }

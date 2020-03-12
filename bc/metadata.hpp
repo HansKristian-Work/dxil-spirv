@@ -25,6 +25,7 @@ namespace LLVMBC
 {
 class Value;
 class Module;
+class Constant;
 
 enum class MetadataKind
 {
@@ -83,11 +84,11 @@ class ConstantAsMetadata : public MDOperand
 {
 public:
 	static constexpr MetadataKind get_metadata_kind() { return MetadataKind::Constant; }
-	ConstantAsMetadata(Module *module, Value *value);
-	Value *getValue() const;
+	ConstantAsMetadata(Module *module, Constant *value);
+	Constant *getValue() const;
 
 private:
-	Value *value;
+	Constant *value;
 };
 
 class MDString : public MDOperand

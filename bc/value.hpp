@@ -72,40 +72,51 @@ protected:
 	uint64_t tween_id = 0;
 };
 
-class Constant : public Value
-{
-public:
-	Constant(Type *type, ValueKind kind);
-};
-
 class APInt
 {
 public:
+	APInt() = default;
 	APInt(Type *type, uint64_t value);
 	uint64_t getZExtValue() const;
 	int64_t getSExtValue() const;
 
 private:
-	Type *type;
-	uint64_t value;
+	Type *type = nullptr;
+	uint64_t value = 0;
 };
 
 class APFloat
 {
 public:
+	APFloat() = default;
 	APFloat(Type *type, uint64_t value);
 
 	float convertToFloat() const;
 	double convertToDouble() const;
 
 private:
-	Type *type;
+	Type *type = nullptr;
 	union
 	{
 		float f32;
 		double f64;
 		uint64_t u64;
-	} u;
+	} u = {};
+};
+
+class Constant : public Value
+{
+public:
+	Constant(Type *type, ValueKind kind);
+
+	void set_integer(const APInt &apint);
+	void set_float(const APFloat &apfloat);
+	const APFloat &getValueAPF() const;
+	const APInt &getUniqueInteger() const;
+
+private:
+	APInt apint;
+	APFloat apfloat;
 };
 
 class ConstantInt : public Constant
@@ -114,8 +125,6 @@ public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantInt; }
 	static ConstantInt *get(Type *type, uint64_t value);
 	ConstantInt(Type *type, uint64_t value);
-
-	const APInt &getUniqueInteger() const;
 
 private:
 	APInt apint;
@@ -127,8 +136,6 @@ public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantFP; }
 	static ConstantFP *get(Type *type, uint64_t bits);
 	ConstantFP(Type *type, uint64_t bits);
-
-	const APFloat &getValueAPF() const;
 
 private:
 	APFloat apfloat;

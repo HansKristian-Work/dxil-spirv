@@ -71,24 +71,24 @@ void Instruction::resolve_proxy_values()
 	}
 }
 
-BinaryOperator::BinaryOperator(Value *LHS, Value *RHS, BinaryOperation op_)
+BinaryOperator::BinaryOperator(Value *LHS, Value *RHS, BinaryOps op_)
 	: Instruction(LHS->getType(), ValueKind::BinaryOperator), op(op_)
 {
 	set_operands({ LHS, RHS });
 }
 
-BinaryOperation BinaryOperator::getOpcode() const
+BinaryOperator::BinaryOps BinaryOperator::getOpcode() const
 {
 	return op;
 }
 
-UnaryOperator::UnaryOperator(UnaryOperation uop, Value *value)
+UnaryOperator::UnaryOperator(UnaryOps uop, Value *value)
 	: Instruction(value->getType(), ValueKind::UnaryOperator)
 {
 	set_operands({ value });
 }
 
-UnaryOperation UnaryOperator::getOpcode() const
+UnaryOperator::UnaryOps UnaryOperator::getOpcode() const
 {
 	return op;
 }
@@ -337,12 +337,12 @@ Value *AtomicRMWInst::getPointerOperand() const
 	return ptr;
 }
 
-Value *AtomicRMWInst::getValueOperand() const
+Value *AtomicRMWInst::getValOperand() const
 {
 	return value;
 }
 
-AtomicRMWInst::BinOp AtomicRMWInst::getOpcode() const
+AtomicRMWInst::BinOp AtomicRMWInst::getOperation() const
 {
 	return op;
 }

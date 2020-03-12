@@ -210,26 +210,28 @@ void StreamState::append(Type *type)
 {
 	switch (type->getTypeID())
 	{
-	case TypeID::Int:
+	case Type::TypeID::IntegerTyID:
 		return append(cast<IntegerType>(type));
-	case TypeID::Pointer:
+	case Type::TypeID::PointerTyID:
 		return append(cast<PointerType>(type));
-	case TypeID::Struct:
+	case Type::TypeID::StructTyID:
 		return append(cast<StructType>(type));
-	case TypeID::Array:
+	case Type::TypeID::ArrayTyID:
 		return append(cast<ArrayType>(type));
-	case TypeID::Function:
+	case Type::TypeID::FunctionTyID:
 		return append(cast<FunctionType>(type));
-	case TypeID::Half:
+	case Type::TypeID::HalfTyID:
 		return append("half");
-	case TypeID::Float:
+	case Type::TypeID::FloatTyID:
 		return append("float");
-	case TypeID::Double:
+	case Type::TypeID::DoubleTyID:
 		return append("double");
-	case TypeID::Unknown:
+	case Type::TypeID::Unknown:
 		return append("unknown");
-	case TypeID::Void:
+	case Type::TypeID::VoidTyID:
 		return append("void");
+	default:
+		break;
 	}
 
 	LOGE("Unknown Type %u.\n", unsigned(type->getTypeID()));
@@ -283,11 +285,11 @@ void StreamState::append(GlobalVariable *var, bool decl)
 	}
 }
 
-static const char *to_string(BinaryOperation op)
+static const char *to_string(BinaryOperator::BinaryOps op)
 {
 	switch (op)
 	{
-#define BINOP(op, str) case BinaryOperation::op: return str
+#define BINOP(op, str) case BinaryOperator::BinaryOps::op: return str
 	BINOP(Invalid, "invalid");
 	BINOP(Add, "add");
 	BINOP(FAdd, "fadd");
@@ -312,11 +314,11 @@ static const char *to_string(BinaryOperation op)
 	assert(0);
 }
 
-static const char *to_string(UnaryOperation op)
+static const char *to_string(UnaryOperator::UnaryOps op)
 {
 	switch (op)
 	{
-	case UnaryOperation::FNeg:
+	case UnaryOperator::UnaryOps::FNeg:
 		return "fneg";
 	default:
 		return "invalid";
@@ -503,7 +505,7 @@ void StreamState::append(CallInst *call, bool decl)
 {
 	if (decl)
 	{
-		if (call->getType()->getTypeID() != TypeID::Void)
+		if (call->getType()->getTypeID() != Type::TypeID::VoidTyID)
 			append("%", call->get_tween_id(), " = ");
 		append("call ", call->getType(), " @", call->getCalledFunction()->getName(), "(");
 		for (unsigned i = 0; i < call->getNumOperands(); i++)
@@ -614,9 +616,9 @@ void StreamState::append(AtomicRMWInst *atomic_op, bool decl)
 {
 	if (decl)
 	{
-		append("%", atomic_op->get_tween_id(), " = atomicrmw ", to_string(atomic_op->getOpcode()), " ",
+		append("%", atomic_op->get_tween_id(), " = atomicrmw ", to_string(atomic_op->getOperation()), " ",
 		       atomic_op->getType(), " ",
-		       atomic_op->getPointerOperand(), ", ", atomic_op->getValueOperand());
+		       atomic_op->getPointerOperand(), ", ", atomic_op->getValOperand());
 	}
 	else
 		append("%", atomic_op->get_tween_id());

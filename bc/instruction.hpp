@@ -19,12 +19,14 @@
 #pragma once
 
 #include "value.hpp"
+#include <string>
 
 namespace LLVMBC
 {
 class FunctionType;
 class Function;
 class BasicBlock;
+class MDNode;
 
 class Instruction : public Value
 {
@@ -93,35 +95,6 @@ protected:
 	std::vector<Value *> operands;
 };
 
-enum class UnaryOperation
-{
-	Invalid,
-	FNeg
-};
-
-enum class BinaryOperation
-{
-	Invalid,
-	Add,
-	FAdd,
-	Sub,
-	FSub,
-	Mul,
-	FMul,
-	UDiv,
-	SDiv,
-	FDiv,
-	URem,
-	SRem,
-	FRem,
-	Shl,
-	LShr,
-	AShr,
-	And,
-	Or,
-	Xor
-};
-
 class ReturnInst : public Instruction
 {
 public:
@@ -140,6 +113,8 @@ public:
 	CallInst(FunctionType *function_type, Function *callee, std::vector<Value *> params);
 	Function *getCalledFunction() const;
 
+	MDNode *getMetadata(const std::string &) const { return nullptr; }
+
 private:
 	Type *function_type;
 	Function *callee;
@@ -148,23 +123,52 @@ private:
 class UnaryOperator : public Instruction
 {
 public:
+	enum class UnaryOps
+	{
+		Invalid,
+		FNeg
+	};
+
 	static constexpr ValueKind get_value_kind() { return ValueKind::UnaryOperator; }
-	UnaryOperator(UnaryOperation uop, Value *value);
-	UnaryOperation getOpcode() const;
+	UnaryOperator(UnaryOps uop, Value *value);
+	UnaryOps getOpcode() const;
 
 private:
-	UnaryOperation op;
+	UnaryOps op;
 };
 
 class BinaryOperator : public Instruction
 {
 public:
+	enum class BinaryOps
+	{
+		Invalid,
+		Add,
+		FAdd,
+		Sub,
+		FSub,
+		Mul,
+		FMul,
+		UDiv,
+		SDiv,
+		FDiv,
+		URem,
+		SRem,
+		FRem,
+		Shl,
+		LShr,
+		AShr,
+		And,
+		Or,
+		Xor
+	};
+
 	static constexpr ValueKind get_value_kind() { return ValueKind::BinaryOperator; }
-	BinaryOperator(Value *LHS, Value *RHS, BinaryOperation op);
-	BinaryOperation getOpcode() const;
+	BinaryOperator(Value *LHS, Value *RHS, BinaryOps op);
+	BinaryOps getOpcode() const;
 
 private:
-	BinaryOperation op;
+	BinaryOps op;
 };
 
 class CastInst : public Instruction
@@ -352,8 +356,8 @@ public:
 	AtomicRMWInst(Type *type, Value *ptr, Value *value, BinOp op);
 
 	Value *getPointerOperand() const;
-	Value *getValueOperand() const;
-	BinOp getOpcode() const;
+	Value *getValOperand() const;
+	BinOp getOperation() const;
 
 private:
 	Value *ptr;

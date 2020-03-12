@@ -25,26 +25,26 @@ namespace LLVMBC
 {
 class LLVMContext;
 
-enum class TypeID
-{
-	Unknown,
-	Void,
-	Half,
-	Float,
-	Double,
-	Int,
-	Pointer,
-	Array,
-	Struct,
-	Function,
-	Label,
-	Vector,
-	Metadata
-};
-
 class Type
 {
 public:
+	enum class TypeID
+	{
+		Unknown,
+		VoidTyID,
+		HalfTyID,
+		FloatTyID,
+		DoubleTyID,
+		IntegerTyID,
+		PointerTyID,
+		ArrayTyID,
+		StructTyID,
+		FunctionTyID,
+		LabelTyID,
+		VectorTyID,
+		MetadataTyID
+	};
+
 	Type(LLVMContext &context, TypeID type_id);
 	LLVMContext &getContext();
 	TypeID getTypeID() const;
@@ -67,33 +67,36 @@ public:
 	uint64_t getArrayNumElements() const;
 	Type *getArrayElementType() const;
 	Type *getPointerElementType() const;
+	Type *getStructElementType(unsigned index) const;
+	unsigned getStructNumElements() const;
+	unsigned getIntegerBitWidth() const;
+	unsigned getAddressSpace() const;
 
 protected:
 	LLVMContext &context;
 	TypeID type_id;
 	static Type *getIntTy(LLVMContext &context, uint32_t width);
 	static Type *getTy(LLVMContext &context, TypeID id);
+	unsigned address_space = 0;
 };
 
 class PointerType : public Type
 {
 public:
-	static constexpr TypeID get_type_id() { return TypeID::Pointer; }
+	static constexpr TypeID get_type_id() { return TypeID::PointerTyID; }
 	PointerType(Type *type, unsigned addr_space);
 	static PointerType *get(Type *pointee, unsigned addr_space);
 
 	Type *getElementType() const;
-	unsigned getAddressSpace() const;
 
 private:
 	Type *contained_type = nullptr;
-	unsigned address_space = 0;
 };
 
 class ArrayType : public Type
 {
 public:
-	static constexpr TypeID get_type_id() { return TypeID::Array; }
+	static constexpr TypeID get_type_id() { return TypeID::ArrayTyID; }
 	ArrayType(Type *type, uint64_t elements);
 	static ArrayType *get(Type *element, uint64_t size);
 
@@ -106,7 +109,7 @@ private:
 class IntegerType : public Type
 {
 public:
-	static constexpr TypeID get_type_id() { return TypeID::Int; }
+	static constexpr TypeID get_type_id() { return TypeID::IntegerTyID; }
 	IntegerType(LLVMContext &context, uint32_t width);
 	uint32_t getBitWidth() const;
 
@@ -117,7 +120,7 @@ private:
 class StructType : public Type
 {
 public:
-	static constexpr TypeID get_type_id() { return TypeID::Struct; }
+	static constexpr TypeID get_type_id() { return TypeID::StructTyID; }
 	StructType(LLVMContext &context, std::vector<Type *> member_types);
 	static StructType *get(std::vector<Type *> member_types);
 
@@ -131,7 +134,7 @@ private:
 class VectorType : public Type
 {
 public:
-	static constexpr TypeID get_type_id() { return TypeID::Vector; }
+	static constexpr TypeID get_type_id() { return TypeID::VectorTyID; }
 	VectorType(LLVMContext &context, unsigned vector_size, Type *type);
 	static VectorType *get(unsigned vector_size, Type *type);
 
@@ -146,7 +149,7 @@ private:
 class FunctionType : public Type
 {
 public:
-	static constexpr TypeID get_type_id() { return TypeID::Function; }
+	static constexpr TypeID get_type_id() { return TypeID::FunctionTyID; }
 	FunctionType(LLVMContext &context, Type *return_type, std::vector<Type *> argument_types);
 	unsigned getNumParams() const;
 	Type *getParamType(unsigned index) const;

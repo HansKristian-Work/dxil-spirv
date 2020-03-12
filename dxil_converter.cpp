@@ -856,9 +856,9 @@ bool Converter::Impl::emit_patch_variables()
 	if (!node->getOperand(2))
 		return true;
 
-	auto &signature = node->getOperand(2);
+	auto *signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
-	auto &patch_variables = signature_node->getOperand(2);
+	auto *patch_variables = signature_node->getOperand(2);
 	if (!patch_variables)
 		return true;
 
@@ -937,9 +937,9 @@ bool Converter::Impl::emit_stage_output_variables()
 	if (!node->getOperand(2))
 		return true;
 
-	auto &signature = node->getOperand(2);
+	auto *signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
-	auto &outputs = signature_node->getOperand(1);
+	auto *outputs = signature_node->getOperand(1);
 	if (!outputs)
 		return true;
 

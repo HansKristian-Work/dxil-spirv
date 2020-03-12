@@ -18,8 +18,14 @@
 
 #pragma once
 
+#ifdef HAVE_LLVMBC
+#include "module.hpp"
+#else
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#endif
+
+#include <memory>
 #include <stddef.h>
 
 namespace dxil_spv

@@ -86,12 +86,12 @@ const std::string &NamedMDNode::getName() const
 	return name;
 }
 
-ConstantAsMetadata::ConstantAsMetadata(Module *module, Value *value_)
+ConstantAsMetadata::ConstantAsMetadata(Module *module, Constant *value_)
 	: MDOperand(module, MetadataKind::Constant), value(value_)
 {
 }
 
-Value *ConstantAsMetadata::getValue() const
+Constant *ConstantAsMetadata::getValue() const
 {
 	return value;
 }

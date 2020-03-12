@@ -17,8 +17,14 @@
  */
 
 #include "llvm_bitcode_parser.hpp"
+
+#ifdef HAVE_LLVMBC
+#include "module.hpp"
+#include "context.hpp"
+#else
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
+#endif
 
 namespace dxil_spv
 {
@@ -29,6 +35,11 @@ LLVMBCParser::LLVMBCParser()
 
 bool LLVMBCParser::parse(const void *data, size_t size)
 {
+#ifdef HAVE_LLVMBC
+	module.reset(llvm::parseIR(*context, data, size));
+	if (!module)
+		return false;
+#else
 	auto memory = llvm::WritableMemoryBuffer::getNewUninitMemBuffer(size);
 	memcpy(memory->getBufferStart(), data, size);
 
@@ -39,6 +50,7 @@ bool LLVMBCParser::parse(const void *data, size_t size)
 		error.print("DXIL", llvm::errs());
 		return false;
 	}
+#endif
 
 	return true;
 }
