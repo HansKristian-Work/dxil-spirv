@@ -17,10 +17,12 @@
  */
 
 #include "value.hpp"
+#include "instruction.hpp"
 #include "type.hpp"
 #include "context.hpp"
 #include "logging.hpp"
 #include "cast.hpp"
+#include <string.h>
 
 namespace LLVMBC
 {
@@ -49,6 +51,23 @@ ValueKind Value::get_value_kind() const
 	return kind;
 }
 
+bool Constant::is_base_of_value_kind(ValueKind kind)
+{
+	switch (kind)
+	{
+	case ValueKind::ConstantFP:
+	case ValueKind::ConstantInt:
+	case ValueKind::ConstantDataArray:
+	case ValueKind::ConstantAggregateZero:
+	case ValueKind::ConstantBase:
+	case ValueKind::Undef:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 Constant::Constant(Type *type, ValueKind kind)
 	: Value(type, kind)
 {
@@ -65,15 +84,24 @@ const APInt &Constant::getUniqueInteger() const
 	return apint;
 }
 
+void Constant::set_integer(const APInt &apint_)
+{
+	apint = apint_;
+}
+
+void Constant::set_float(const APFloat &apfloat_)
+{
+	apfloat = apfloat_;
+}
+
 APInt::APInt(Type *type_, uint64_t value_)
 	: type(type_), value(value_)
 {
 }
 
-APFloat::APFloat(Type *type_, uint64_t value)
-	: type(type_)
+APFloat::APFloat(Type *type_, uint64_t value_)
+	: type(type_), value(value_)
 {
-	u.u64 = value;
 }
 
 int64_t APInt::getSExtValue() const
@@ -113,13 +141,15 @@ ConstantFP *ConstantFP::get(Type *type, uint64_t value)
 }
 
 ConstantInt::ConstantInt(Type *type, uint64_t value)
-	: Constant(type, ValueKind::ConstantInt), apint(type, value)
+	: Constant(type, ValueKind::ConstantInt)
 {
+	set_integer(APInt(type, value));
 }
 
 ConstantFP::ConstantFP(Type *type, uint64_t value)
-	: Constant(type, ValueKind::ConstantFP), apfloat(type, value)
+	: Constant(type, ValueKind::ConstantFP)
 {
+	set_float(APFloat(type, value));
 }
 
 const APFloat &Constant::getValueAPF() const
@@ -132,10 +162,22 @@ float APFloat::convertToFloat() const
 	switch (type->getTypeID())
 	{
 	case Type::TypeID::FloatTyID:
-		return u.f32;
+	{
+		float f;
+		auto u = uint32_t(value);
+		static_assert(sizeof(f) == sizeof(u), "Float is not 32-bit.");
+		memcpy(&f, &u, sizeof(float));
+		return f;
+	}
 	case Type::TypeID::DoubleTyID:
-		return float(u.f64);
+	{
+		double f;
+		static_assert(sizeof(f) == sizeof(value), "Double is not 64-bit.");
+		memcpy(&f, &value, sizeof(double));
+		return float(f);
+	}
 	default:
+		// TODO: FP16 -> FP32 conversion.
 		LOGE("Unknown FP type.\n");
 		return 0.0f;
 	}
@@ -146,12 +188,24 @@ double APFloat::convertToDouble() const
 	switch (type->getTypeID())
 	{
 	case Type::TypeID::FloatTyID:
-		return double(u.f32);
+	{
+		float f;
+		auto u = uint32_t(value);
+		static_assert(sizeof(f) == sizeof(u), "Float is not 32-bit.");
+		memcpy(&f, &u, sizeof(float));
+		return double(f);
+	}
 	case Type::TypeID::DoubleTyID:
-		return u.f64;
+	{
+		double f;
+		static_assert(sizeof(f) == sizeof(value), "Double is not 64-bit.");
+		memcpy(&f, &value, sizeof(double));
+		return f;
+	}
 	default:
+		// TODO: FP16 -> FP32 conversion.
 		LOGE("Unknown FP type.\n");
-		return 0.0;
+		return 0.0f;
 	}
 }
 
@@ -196,12 +250,12 @@ bool GlobalVariable::hasInitializer() const
 	return initializer != nullptr;
 }
 
-Value *GlobalVariable::getInitializer() const
+Constant *GlobalVariable::getInitializer() const
 {
 	return initializer;
 }
 
-void GlobalVariable::set_initializer(Value *value)
+void GlobalVariable::set_initializer(Constant *value)
 {
 	initializer = value;
 }

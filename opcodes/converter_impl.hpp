@@ -29,6 +29,7 @@
 #include "module.hpp"
 #include "value.hpp"
 #include "instruction.hpp"
+#include "function.hpp"
 #else
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
@@ -36,6 +37,7 @@
 #endif
 
 #include <stdlib.h>
+#include <string.h>
 
 namespace dxil_spv
 {

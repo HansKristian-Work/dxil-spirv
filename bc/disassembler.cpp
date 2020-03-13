@@ -442,10 +442,10 @@ void StreamState::append(BasicBlock *bb, bool decl)
 		newline_noindent();
 		newline_noindent();
 		append(bb->get_tween_id(), ":");
-		for (auto *inst : *bb)
+		for (auto &inst : *bb)
 		{
 			newline();
-			append(inst);
+			append(&inst);
 		}
 	}
 	else
@@ -484,9 +484,9 @@ void StreamState::append(BranchInst *br, bool)
 {
 	append("br ");
 	if (br->getCondition())
-		append(br->getCondition(), ", ", br->getTrueBlock(), ", ", br->getFalseBlock());
+		append(br->getCondition(), ", ", br->getSuccessor(0), ", ", br->getSuccessor(1));
 	else
-		append(br->getTrueBlock());
+		append(br->getSuccessor(0));
 }
 
 void StreamState::append(SwitchInst *branch, bool)
@@ -837,7 +837,7 @@ std::string disassemble(Module &module)
 	StreamState state;
 
 	for (auto itr = module.global_begin(); itr != module.global_end(); ++itr)
-		state.append(*itr, true);
+		state.append(&*itr, true);
 
 	for (auto *func : module)
 	{

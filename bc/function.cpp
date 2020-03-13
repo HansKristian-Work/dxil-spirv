@@ -16,10 +16,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <algorithm>
 #include "function.hpp"
 #include "module.hpp"
 #include "context.hpp"
 #include "type.hpp"
+#include "instruction.hpp"
+#include <assert.h>
 
 namespace LLVMBC
 {
@@ -54,6 +57,11 @@ std::vector<BasicBlock *>::const_iterator Function::end() const
 	return basic_blocks.end();
 }
 
+BasicBlock &Function::getEntryBlock() const
+{
+	return *basic_blocks.front();
+}
+
 BasicBlock::BasicBlock(LLVMContext &context_)
 	: Value(Type::getLabelTy(context_), ValueKind::BasicBlock), context(context_)
 {
@@ -64,13 +72,37 @@ void BasicBlock::add_instruction(Instruction *inst)
 	instructions.push_back(inst);
 }
 
-std::vector<Instruction *>::const_iterator BasicBlock::begin() const
+Instruction *BasicBlock::getTerminator() const
+{
+	if (!instructions.empty() && instructions.back()->isTerminator())
+		return instructions.back();
+	else
+		return nullptr;
+}
+
+void BasicBlock::add_successor(BasicBlock *succ)
+{
+	if (std::find(succs.begin(), succs.end(), succ) == succs.end())
+		succs.push_back(succ);
+}
+
+IteratorAdaptor<Instruction, std::vector<Instruction *>::const_iterator> BasicBlock::begin() const
 {
 	return instructions.begin();
 }
 
-std::vector<Instruction *>::const_iterator BasicBlock::end() const
+IteratorAdaptor<Instruction, std::vector<Instruction *>::const_iterator> BasicBlock::end() const
 {
 	return instructions.end();
+}
+
+std::vector<BasicBlock *>::const_iterator BasicBlock::succ_begin() const
+{
+	return succs.begin();
+}
+
+std::vector<BasicBlock *>::const_iterator BasicBlock::succ_end() const
+{
+	return succs.end();
 }
 }

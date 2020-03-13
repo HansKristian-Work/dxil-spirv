@@ -102,6 +102,8 @@ public:
 	explicit ReturnInst(Value *value);
 	Value *getReturnValue() const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	Value *value;
 };
@@ -114,6 +116,8 @@ public:
 	Function *getCalledFunction() const;
 
 	MDNode *getMetadata(const std::string &) const { return nullptr; }
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
 	Type *function_type;
@@ -132,6 +136,8 @@ public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::UnaryOperator; }
 	UnaryOperator(UnaryOps uop, Value *value);
 	UnaryOps getOpcode() const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
 	UnaryOps op;
@@ -167,6 +173,8 @@ public:
 	BinaryOperator(Value *LHS, Value *RHS, BinaryOps op);
 	BinaryOps getOpcode() const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	BinaryOps op;
 };
@@ -178,6 +186,8 @@ public:
 	CastInst(Type *type, Value *value, Instruction::CastOps op);
 	Instruction::CastOps getOpcode() const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	Instruction::CastOps op;
 };
@@ -187,6 +197,8 @@ class SelectInst : public Instruction
 public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Select; }
 	SelectInst(Value *true_value, Value *false_value, Value *cond);
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class ExtractValueInst : public Instruction
@@ -198,6 +210,8 @@ public:
 	unsigned getNumIndices() const;
 	const unsigned *getIndices() const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	std::vector<unsigned> indices;
 };
@@ -208,6 +222,8 @@ public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Alloca; }
 	AllocaInst(Type *pointer_type, Type *element_type, Value *size);
 	Value *getArraySize() const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
 	Type *element_type;
@@ -221,6 +237,8 @@ public:
 	GetElementPtrInst(Type *pointer_type, std::vector<Value *> arguments, bool inbounds);
 	bool isInBounds() const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	bool inbounds;
 };
@@ -231,6 +249,8 @@ public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Load; }
 	LoadInst(Type *type, Value *ptr);
 	Value *getPointerOperand() const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class StoreInst : public Instruction
@@ -238,13 +258,18 @@ class StoreInst : public Instruction
 public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Store; }
 	StoreInst(Value *ptr, Value *value);
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class CmpInst : public Instruction
 {
 public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::CompareBase; }
 	CmpInst(ValueKind kind, Predicate pred, Value *LHS, Value *RHS);
 	Predicate getPredicate() const;
+
+	static bool is_base_of_value_kind(ValueKind kind);
 
 private:
 	Predicate pred;
@@ -255,6 +280,8 @@ class FCmpInst : public CmpInst
 public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::FCmp; }
 	FCmpInst(Predicate pred, Value *LHS, Value *RHS);
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class ICmpInst : public CmpInst
@@ -262,6 +289,8 @@ class ICmpInst : public CmpInst
 public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::ICmp; }
 	ICmpInst(Predicate pred, Value *LHS, Value *RHS);
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class BranchInst : public Instruction
@@ -273,12 +302,15 @@ public:
 
 	bool isConditional() const;
 	Value *getCondition() const;
-	BasicBlock *getTrueBlock() const;
-	BasicBlock *getFalseBlock() const;
+
+	unsigned getNumSuccessors() const;
+	BasicBlock *getSuccessor(unsigned index) const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	BasicBlock *true_block;
-	BasicBlock *false_block = nullptr;
+	BasicBlock *bbs[2] = {};
+	unsigned num_blocks = 0;
 	Value *cond = nullptr;
 };
 
@@ -304,6 +336,8 @@ public:
 	Value *getCondition() const;
 	BasicBlock *getDefaultDest() const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	Value *cond;
 	BasicBlock *default_block;
@@ -322,6 +356,8 @@ public:
 
 	void add_incoming(Value *value, BasicBlock *bb);
 	void resolve_proxy_values_incoming();
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
 	struct Incoming
@@ -359,6 +395,8 @@ public:
 	Value *getValOperand() const;
 	BinOp getOperation() const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	Value *ptr;
 	Value *value;
@@ -374,6 +412,8 @@ public:
 	Value *getPointerOperand() const;
 	Value *getNewValOperand() const;
 	Value *getCompareOperand() const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
 	Value *ptr;

@@ -33,6 +33,10 @@ LLVMBCParser::LLVMBCParser()
 	context.reset(new llvm::LLVMContext);
 }
 
+LLVMBCParser::~LLVMBCParser()
+{
+}
+
 bool LLVMBCParser::parse(const void *data, size_t size)
 {
 #ifdef HAVE_LLVMBC

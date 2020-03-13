@@ -165,6 +165,11 @@ Instruction::Predicate CmpInst::getPredicate() const
 	return pred;
 }
 
+bool CmpInst::is_base_of_value_kind(ValueKind kind)
+{
+	return kind == ValueKind::ICmp || kind == ValueKind::FCmp;
+}
+
 FCmpInst::FCmpInst(Predicate pred_, Value *LHS, Value *RHS)
 	: CmpInst(ValueKind::FCmp, pred_, LHS, RHS)
 {
@@ -177,16 +182,21 @@ ICmpInst::ICmpInst(Predicate pred_, Value *LHS, Value *RHS)
 	set_operands({ LHS, RHS });
 }
 
-BranchInst::BranchInst(BasicBlock *true_block_, BasicBlock *false_block_, Value *cond_)
-	: Instruction(nullptr, ValueKind::Branch), true_block(true_block_), false_block(false_block_), cond(cond_)
+BranchInst::BranchInst(BasicBlock *true_block, BasicBlock *false_block, Value *cond_)
+	: Instruction(nullptr, ValueKind::Branch), cond(cond_)
 {
 	set_terminator();
+	num_blocks = 2;
+	bbs[0] = true_block;
+	bbs[1] = false_block;
 }
 
-BranchInst::BranchInst(BasicBlock *true_block_)
-	: Instruction(nullptr, ValueKind::Branch), true_block(true_block_)
+BranchInst::BranchInst(BasicBlock *true_block)
+	: Instruction(nullptr, ValueKind::Branch)
 {
 	set_terminator();
+	num_blocks = 1;
+	bbs[0] = true_block;
 }
 
 bool BranchInst::isConditional() const
@@ -199,14 +209,15 @@ Value *BranchInst::getCondition() const
 	return cond;
 }
 
-BasicBlock *BranchInst::getTrueBlock() const
+BasicBlock *BranchInst::getSuccessor(unsigned index) const
 {
-	return true_block;
+	assert(index < num_blocks);
+	return bbs[index];
 }
 
-BasicBlock *BranchInst::getFalseBlock() const
+unsigned BranchInst::getNumSuccessors() const
 {
-	return false_block;
+	return num_blocks;
 }
 
 SwitchInst::SwitchInst(Value *cond_, BasicBlock *default_block_, unsigned num_cases)

@@ -25,6 +25,7 @@
 #include "instruction.hpp"
 #include "cast.hpp"
 #include "metadata.hpp"
+#include "cast.hpp"
 #include <algorithm>
 
 #include "llvm_decoder.h"
@@ -306,6 +307,7 @@ struct ModuleParseContext
 	void add_type(Type *type);
 	Type *get_type(uint64_t index);
 	void finish_basic_block();
+	void add_successor(BasicBlock *bb);
 	BasicBlock *get_basic_block(unsigned index) const;
 	BasicBlock *current_bb = nullptr;
 	unsigned basic_block_index = 0;
@@ -369,6 +371,14 @@ void ModuleParseContext::finish_basic_block()
 		current_bb = basic_blocks[basic_block_index];
 		current_bb->set_tween_id(tween_id++);
 	}
+}
+
+void ModuleParseContext::add_successor(BasicBlock *bb)
+{
+	if (!current_bb)
+		return;
+
+	current_bb->add_successor(bb);
 }
 
 BasicBlock *ModuleParseContext::get_basic_block(unsigned index) const
@@ -1009,6 +1019,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	case FunctionRecord::INST_BR:
 	{
 		auto *true_block = get_basic_block(entry.ops[0]);
+		add_successor(true_block);
 		if (entry.ops.size() == 1)
 		{
 			auto *value = context->construct<BranchInst>(true_block);
@@ -1017,6 +1028,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		else
 		{
 			auto *false_block = get_basic_block(entry.ops[1]);
+			add_successor(false_block);
 			auto *cond = get_value(entry.ops[2]);
 			auto *value = context->construct<BranchInst>(true_block, false_block, cond);
 			add_instruction(value);
@@ -1029,6 +1041,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		auto *type = get_type(entry.ops[0]);
 		auto *cond = get_value(entry.ops[1]);
 		auto *default_block = get_basic_block(entry.ops[2]);
+		add_successor(default_block);
 		unsigned num_cases = (entry.ops.size() - 3) / 2;
 		auto *inst = context->construct<SwitchInst>(cond, default_block, num_cases);
 		for (unsigned i = 0; i < num_cases; i++)
@@ -1041,6 +1054,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 				LOGE("Invalid switch record.\n");
 				return;
 			}
+			add_successor(bb);
 			inst->addCase(case_value, bb);
 		}
 		add_instruction(inst);
@@ -1145,14 +1159,23 @@ void ModuleParseContext::resolve_forward_references()
 	pending_forward_references.clear();
 
 	for (auto *bb : basic_blocks)
-		for (auto *inst : *bb)
-			inst->resolve_proxy_values();
+		for (auto &inst : *bb)
+			inst.resolve_proxy_values();
 }
 
 void ModuleParseContext::resolve_global_initializations()
 {
 	for (auto &ref : global_initializations)
-		ref.first->set_initializer(get_value(ref.second));
+	{
+		Value *value = get_value(ref.second);
+		auto *constant_value = dyn_cast<Constant>(value);
+		if (!constant_value)
+		{
+			LOGE("Global initializer is not a constant!\n");
+			continue;
+		}
+		ref.first->set_initializer(constant_value);
+	}
 	global_initializations.clear();
 }
 
@@ -1433,6 +1456,18 @@ void Module::add_unnamed_metadata(MDNode *node)
 	unnamed_metadata.push_back(node);
 }
 
+Function *Module::getFunction(const std::string &name) const
+{
+	auto itr = std::find_if(functions.begin(), functions.end(), [&](const Function *func) {
+		return func->getName() == name;
+	});
+
+	if (itr != functions.end())
+		return *itr;
+	else
+		return nullptr;
+}
+
 NamedMDNode *Module::getNamedMetadata(const std::string &name) const
 {
 	auto itr = named_metadata.find(name);
@@ -1472,12 +1507,12 @@ std::vector<Function *>::const_iterator Module::end() const
 	return functions.end();
 }
 
-std::vector<GlobalVariable *>::const_iterator Module::global_begin() const
+IteratorAdaptor<GlobalVariable, std::vector<GlobalVariable *>::const_iterator> Module::global_begin() const
 {
 	return globals.begin();
 }
 
-std::vector<GlobalVariable *>::const_iterator Module::global_end() const
+IteratorAdaptor<GlobalVariable, std::vector<GlobalVariable *>::const_iterator> Module::global_end() const
 {
 	return globals.end();
 }

@@ -28,6 +28,7 @@ class Type;
 enum class ValueKind
 {
 	Function,
+	ConstantBase,
 	ConstantInt,
 	ConstantFP,
 	ConstantAggregateZero,
@@ -36,6 +37,7 @@ enum class ValueKind
 	UnaryOperator,
 	BinaryOperator,
 	Call,
+	CompareBase,
 	FCmp,
 	ICmp,
 	BasicBlock,
@@ -53,8 +55,10 @@ enum class ValueKind
 	Branch,
 	Switch,
 	Proxy,
-	Global
+	Global,
 };
+
+#define LLVMBC_DEFAULT_VALUE_KIND_IMPL static bool is_base_of_value_kind(ValueKind kind) { return get_value_kind() == kind; }
 
 class Value
 {
@@ -96,23 +100,21 @@ public:
 
 private:
 	Type *type = nullptr;
-	union
-	{
-		float f32;
-		double f64;
-		uint64_t u64;
-	} u = {};
+	uint64_t value = 0;
 };
 
 class Constant : public Value
 {
 public:
+	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantBase; }
 	Constant(Type *type, ValueKind kind);
 
 	void set_integer(const APInt &apint);
 	void set_float(const APFloat &apfloat);
 	const APFloat &getValueAPF() const;
 	const APInt &getUniqueInteger() const;
+
+	static bool is_base_of_value_kind(ValueKind kind);
 
 private:
 	APInt apint;
@@ -126,8 +128,7 @@ public:
 	static ConstantInt *get(Type *type, uint64_t value);
 	ConstantInt(Type *type, uint64_t value);
 
-private:
-	APInt apint;
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class ConstantFP : public Constant
@@ -137,8 +138,7 @@ public:
 	static ConstantFP *get(Type *type, uint64_t bits);
 	ConstantFP(Type *type, uint64_t bits);
 
-private:
-	APFloat apfloat;
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class ConstantAggregateZero : public Constant
@@ -146,6 +146,8 @@ class ConstantAggregateZero : public Constant
 public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantAggregateZero; }
 	explicit ConstantAggregateZero(Type *type);
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class ConstantDataArray : public Constant
@@ -157,6 +159,8 @@ public:
 	unsigned getNumElements() const;
 	Constant *getElementAsConstant(unsigned index) const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	std::vector<Constant *> elements;
 };
@@ -167,6 +171,8 @@ public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Undef; }
 	explicit UndefValue(Type *type);
 	static UndefValue *get(Type *type);
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
 class GlobalVariable : public Value
@@ -174,13 +180,15 @@ class GlobalVariable : public Value
 public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Global; }
 	explicit GlobalVariable(Type *type, bool is_const);
-	void set_initializer(Value *value);
-	Value *getInitializer() const;
+	void set_initializer(Constant *value);
+	Constant *getInitializer() const;
 	bool hasInitializer() const;
 	bool isConstant() const;
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
-	Value *initializer = nullptr;
+	Constant *initializer = nullptr;
 	bool is_const;
 };
 }

@@ -24,6 +24,7 @@
 #include <exception>
 #include <vector>
 #include <unordered_map>
+#include "iterator.hpp"
 
 // A reasonably small LLVM C++ API lookalike.
 
@@ -49,6 +50,8 @@ public:
 
 	NamedMDNode *getNamedMetadata(const std::string &name) const;
 
+	Function *getFunction(const std::string &name) const;
+
 	void add_value_name(uint64_t id, const std::string &name);
 	void add_function_implementation(Function *func);
 	void add_global_variable(GlobalVariable *variable);
@@ -59,8 +62,8 @@ public:
 	std::vector<Function *>::const_iterator begin() const;
 	std::vector<Function *>::const_iterator end() const;
 
-	std::vector<GlobalVariable *>::const_iterator global_begin() const;
-	std::vector<GlobalVariable *>::const_iterator global_end() const;
+	IteratorAdaptor<GlobalVariable, std::vector<GlobalVariable *>::const_iterator> global_begin() const;
+	IteratorAdaptor<GlobalVariable, std::vector<GlobalVariable *>::const_iterator> global_end() const;
 
 	std::unordered_map<std::string, NamedMDNode *>::const_iterator named_metadata_begin() const;
 	std::unordered_map<std::string, NamedMDNode *>::const_iterator named_metadata_end() const;

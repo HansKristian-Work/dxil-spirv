@@ -83,6 +83,8 @@ public:
 	Value *get_proxy_value() const;
 	void resolve();
 
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
 private:
 	uint64_t id;
 	ModuleParseContext &context;
@@ -101,12 +103,13 @@ inline T *cast(Value *value)
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
 
-	if (value->get_value_kind() != T::get_value_kind())
+	if (T::is_base_of_value_kind(value->get_value_kind()))
+		return static_cast<T *>(value);
+	else
 	{
 		LOGE("Invalid type ID in cast<T>.\n");
 		std::terminate();
 	}
-	return static_cast<T *>(value);
 }
 
 template <typename T>
@@ -115,12 +118,13 @@ inline const T *cast(const Value *value)
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
 
-	if (value->get_value_kind() != T::get_value_kind())
+	if (T::is_base_of_value_kind(value->get_value_kind()))
+		return static_cast<const T *>(value);
+	else
 	{
 		LOGE("Invalid type ID in cast<T>.\n");
 		std::terminate();
 	}
-	return static_cast<const T *>(value);
 }
 
 template <typename T>
@@ -129,10 +133,10 @@ inline T *dyn_cast(Value *value)
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
 
-	if (value->get_value_kind() != T::get_value_kind())
-		return nullptr;
-	else
+	if (T::is_base_of_value_kind(value->get_value_kind()))
 		return static_cast<T *>(value);
+	else
+		return nullptr;
 }
 
 template <typename T>
@@ -141,10 +145,10 @@ inline const T *dyn_cast(const Value *value)
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
 
-	if (value->get_value_kind() != T::get_value_kind())
-		return nullptr;
-	else
+	if (T::is_base_of_value_kind(value->get_value_kind()))
 		return static_cast<const T *>(value);
+	else
+		return nullptr;
 }
 
 template <typename T>
@@ -153,7 +157,7 @@ inline bool isa(const Value *value)
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
 
-	return value->get_value_kind() == T::get_value_kind();
+	return T::is_base_of_value_kind(value->get_value_kind());
 }
 
 namespace Internal
@@ -176,41 +180,43 @@ inline const Value *resolve_proxy(const Value *value)
 template <typename T>
 inline T *cast(MDOperand *md)
 {
-	if (md->get_metadata_kind() != T::get_metadata_kind())
+	if (md->get_metadata_kind() == T::get_metadata_kind())
+		return static_cast<T *>(md);
+	else
 	{
 		LOGE("Invalid type ID in cast<T>.\n");
 		std::terminate();
 	}
-	return static_cast<T *>(md);
 }
 
 template <typename T>
 inline const T *cast(const MDOperand *md)
 {
-	if (md->get_metadata_kind() != T::get_metadata_kind())
+	if (md->get_metadata_kind() == T::get_metadata_kind())
+		return static_cast<const T *>(md);
+	else
 	{
 		LOGE("Invalid type ID in cast<T>.\n");
 		std::terminate();
 	}
-	return static_cast<const T *>(md);
 }
 
 template <typename T>
 inline T *dyn_cast(MDOperand *md)
 {
-	if (md->get_metadata_kind() != T::get_metadata_kind())
-		return nullptr;
-	else
+	if (md->get_metadata_kind() == T::get_metadata_kind())
 		return static_cast<T *>(md);
+	else
+		return nullptr;
 }
 
 template <typename T>
 inline const T *dyn_cast(const MDOperand *md)
 {
-	if (md->get_metadata_kind() != T::get_metadata_kind())
-		return nullptr;
-	else
+	if (md->get_metadata_kind() == T::get_metadata_kind())
 		return static_cast<const T *>(md);
+	else
+		return nullptr;
 }
 
 template <typename T>
