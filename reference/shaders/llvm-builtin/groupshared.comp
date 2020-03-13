@@ -3,28 +3,28 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
-shared float _foos_3PAUFoo_A_0_v_1dim[256];
-shared float _foos_3PAUFoo_A_1_v_1dim[128];
+shared float _13[256];
+shared float _17[128];
 
 float _104;
 
 void main()
 {
     float _25 = float(gl_LocalInvocationIndex + 1u);
-    _foos_3PAUFoo_A_0_v_1dim[0u + ((0u + (gl_LocalInvocationIndex * 2u)) * 2u)] = float(gl_LocalInvocationIndex);
-    _foos_3PAUFoo_A_0_v_1dim[1u + ((0u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _25;
+    _13[0u + ((0u + (gl_LocalInvocationIndex * 2u)) * 2u)] = float(gl_LocalInvocationIndex);
+    _13[1u + ((0u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _25;
     float _40 = float(gl_LocalInvocationIndex + 2u);
-    _foos_3PAUFoo_A_0_v_1dim[0u + ((1u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _25;
-    _foos_3PAUFoo_A_0_v_1dim[1u + ((1u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _40;
-    _foos_3PAUFoo_A_1_v_1dim[0u + (gl_LocalInvocationIndex * 2u)] = _40;
-    _foos_3PAUFoo_A_1_v_1dim[1u + (gl_LocalInvocationIndex * 2u)] = float(gl_LocalInvocationIndex + 3u);
+    _13[0u + ((1u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _25;
+    _13[1u + ((1u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _40;
+    _17[0u + (gl_LocalInvocationIndex * 2u)] = _40;
+    _17[1u + (gl_LocalInvocationIndex * 2u)] = float(gl_LocalInvocationIndex + 3u);
     barrier();
     uint _61 = gl_LocalInvocationIndex ^ 1u;
     uint _74 = gl_LocalInvocationIndex ^ 2u;
     uint _89 = gl_LocalInvocationIndex ^ 4u;
     uint _101 = gl_LocalInvocationIndex * 2u;
-    imageStore(_8, int(_101), uvec4(floatBitsToUint((_foos_3PAUFoo_A_0_v_1dim[0u + ((1u + (_74 * 2u)) * 2u)] * _foos_3PAUFoo_A_0_v_1dim[0u + ((0u + (_61 * 2u)) * 2u)]) * _foos_3PAUFoo_A_1_v_1dim[0u + (_89 * 2u)])));
-    imageStore(_8, int(_101 + 1u), uvec4(floatBitsToUint((_foos_3PAUFoo_A_0_v_1dim[1u + ((1u + (_74 * 2u)) * 2u)] * _foos_3PAUFoo_A_0_v_1dim[1u + ((0u + (_61 * 2u)) * 2u)]) * _foos_3PAUFoo_A_1_v_1dim[1u + (_89 * 2u)])));
+    imageStore(_8, int(_101), uvec4(floatBitsToUint((_13[0u + ((1u + (_74 * 2u)) * 2u)] * _13[0u + ((0u + (_61 * 2u)) * 2u)]) * _17[0u + (_89 * 2u)])));
+    imageStore(_8, int(_101 + 1u), uvec4(floatBitsToUint((_13[1u + ((1u + (_74 * 2u)) * 2u)] * _13[1u + ((0u + (_61 * 2u)) * 2u)]) * _17[1u + (_89 * 2u)])));
 }
 
 
@@ -41,8 +41,6 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %20
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
-OpName %13 "?foos@@3PAUFoo@@A.0.v.1dim"
-OpName %17 "?foos@@3PAUFoo@@A.1.v.1dim"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %20 BuiltIn LocalInvocationIndex

@@ -29,7 +29,6 @@ OpName %3 "main"
 OpName %8 "SV_Position"
 OpName %11 "INDEX"
 OpName %13 "SV_Target"
-OpName %33 ""
 OpDecorate %8 BuiltIn FragCoord
 OpDecorate %11 Flat
 OpDecorate %11 Location 1

@@ -1,20 +1,20 @@
 #version 460
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-shared uint _array_3PAIA[64];
-shared uint _array_signed_3PAHA[64];
+shared uint _9[64];
+shared uint _10[64];
 
 void main()
 {
-    uint _20 = atomicAdd(_array_3PAIA[gl_GlobalInvocationID.x], 1u);
-    uint _23 = atomicAnd(_array_3PAIA[gl_GlobalInvocationID.x], 2u);
-    uint _24 = atomicExchange(_array_3PAIA[gl_GlobalInvocationID.x], 3u);
-    uint _26 = atomicMax(_array_3PAIA[gl_GlobalInvocationID.x], 4u);
-    uint _28 = atomicMin(_array_3PAIA[gl_GlobalInvocationID.x], 5u);
-    uint _30 = atomicOr(_array_3PAIA[gl_GlobalInvocationID.x], 6u);
-    uint _32 = atomicXor(_array_3PAIA[gl_GlobalInvocationID.x], 7u);
-    uint _35 = atomicMin(_array_signed_3PAHA[gl_GlobalInvocationID.x], 8u);
-    uint _37 = atomicMax(_array_signed_3PAHA[gl_GlobalInvocationID.x], 9u);
+    uint _20 = atomicAdd(_9[gl_GlobalInvocationID.x], 1u);
+    uint _23 = atomicAnd(_9[gl_GlobalInvocationID.x], 2u);
+    uint _24 = atomicExchange(_9[gl_GlobalInvocationID.x], 3u);
+    uint _26 = atomicMax(_9[gl_GlobalInvocationID.x], 4u);
+    uint _28 = atomicMin(_9[gl_GlobalInvocationID.x], 5u);
+    uint _30 = atomicOr(_9[gl_GlobalInvocationID.x], 6u);
+    uint _32 = atomicXor(_9[gl_GlobalInvocationID.x], 7u);
+    uint _35 = atomicMin(_10[gl_GlobalInvocationID.x], 8u);
+    uint _37 = atomicMax(_10[gl_GlobalInvocationID.x], 9u);
 }
 
 
@@ -30,8 +30,6 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %13
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
-OpName %9 "?array@@3PAIA"
-OpName %10 "?array_signed@@3PAHA"
 OpDecorate %13 BuiltIn GlobalInvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

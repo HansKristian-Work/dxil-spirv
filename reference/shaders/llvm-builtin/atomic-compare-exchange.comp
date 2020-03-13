@@ -9,13 +9,13 @@ struct CmpXchgResult
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
-shared uint _data_3PAIA[64];
+shared uint _12[64];
 
 uint _34;
 
 void main()
 {
-    uint _23 = atomicCompSwap(_data_3PAIA[gl_GlobalInvocationID.x], 20u, 30u);
+    uint _23 = atomicCompSwap(_12[gl_GlobalInvocationID.x], 20u, 30u);
     imageStore(_8, int((gl_GlobalInvocationID.x << 2u) >> 2u), uvec4(CmpXchgResult(_23, _23 == 20u)._m0));
 }
 
@@ -33,7 +33,6 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %16
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
-OpName %12 "?data@@3PAIA"
 OpName %29 "CmpXchgResult"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0

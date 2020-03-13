@@ -29,7 +29,6 @@ OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %7 "TEXCOORD"
 OpName %9 "SV_Target"
-OpName %14 ""
 OpDecorate %7 Flat
 OpDecorate %7 Location 0
 OpDecorate %9 Location 0

@@ -856,9 +856,9 @@ bool Converter::Impl::emit_patch_variables()
 	if (!node->getOperand(2))
 		return true;
 
-	auto *signature = node->getOperand(2);
+	auto &signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
-	auto *patch_variables = signature_node->getOperand(2);
+	auto &patch_variables = signature_node->getOperand(2);
 	if (!patch_variables)
 		return true;
 
@@ -937,9 +937,9 @@ bool Converter::Impl::emit_stage_output_variables()
 	if (!node->getOperand(2))
 		return true;
 
-	auto *signature = node->getOperand(2);
+	auto &signature = node->getOperand(2);
 	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
-	auto *outputs = signature_node->getOperand(1);
+	auto &outputs = signature_node->getOperand(1);
 	if (!outputs)
 		return true;
 
@@ -1345,7 +1345,7 @@ bool Converter::Impl::emit_global_variables()
 
 		spv::Id var_id = builder.createVariableWithInitializer(
 		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
-		    pointee_type_id, initializer_id, global.getName().data());
+		    pointee_type_id, initializer_id /*, global.getName().data()*/);
 		value_map[&global] = var_id;
 	}
 
@@ -1789,7 +1789,7 @@ bool Converter::Impl::emit_execution_modes_hull()
 			{
 				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
 
-				auto *patch_constant = llvm::cast<llvm::ValueAsMetadata>(arguments->getOperand(0));
+				auto *patch_constant = llvm::cast<llvm::ConstantAsMetadata>(arguments->getOperand(0));
 				auto *patch_constant_value = patch_constant->getValue();
 				execution_mode_meta.patch_constant_function = llvm::cast<llvm::Function>(patch_constant_value);
 
@@ -2090,7 +2090,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	bb_map[entry] = entry_meta.get();
 	auto *entry_node = pool.create_node();
 	bb_map[entry]->node = entry_node;
-	entry_node->name = entry->getName().data();
+	//entry_node->name = entry->getName().data();
 	entry_node->name += ".entry";
 	metas.push_back(std::move(entry_meta));
 
@@ -2119,10 +2119,14 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 					auto *succ_node = pool.create_node();
 					bb_map[succ]->node = succ_node;
 
+#if 0
 					if (succ->getName().empty())
 						succ_node->name = std::to_string(++fake_label_id);
 					else
 						succ_node->name = succ->getName().data();
+#else
+					succ_node->name = std::to_string(++fake_label_id);
+#endif
 
 					metas.push_back(std::move(succ_meta));
 				}
@@ -2183,10 +2187,6 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 			node->ir.terminator.type = Terminator::Type::Return;
 			if (inst->getReturnValue())
 				node->ir.terminator.return_value = get_id_for_value(inst->getReturnValue());
-		}
-		else if (llvm::isa<llvm::UnreachableInst>(instruction))
-		{
-			node->ir.terminator.type = Terminator::Type::Unreachable;
 		}
 		else
 		{

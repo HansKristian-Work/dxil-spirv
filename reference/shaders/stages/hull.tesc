@@ -69,8 +69,6 @@ OpName %19 "SV_InsideTessFactor"
 OpName %21 "PATCH"
 OpName %22 "hull_main"
 OpName %24 "patch_main"
-OpName %30 ""
-OpName %61 ""
 OpDecorate %10 Location 0
 OpDecorate %14 Location 0
 OpDecorate %15 BuiltIn TessLevelOuter
