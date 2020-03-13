@@ -16,70 +16,6 @@ void main()
 
 
 #if 0
-// LLVM disassembly
-target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
-target triple = "dxil-ms-dx"
-
-define void @main() {
-  %1 = call i32 @dx.op.loadInput.i32(i32 4, i32 0, i32 0, i8 0, i32 undef)
-  %2 = alloca [4 x i32], align 4
-  %3 = getelementptr inbounds [4 x i32], [4 x i32]* %2, i32 0, i32 0
-  store i32 1, i32* %3, align 4, !tbaa !13
-  %4 = getelementptr inbounds [4 x i32], [4 x i32]* %2, i32 0, i32 1
-  store i32 2, i32* %4, align 4, !tbaa !13
-  %5 = getelementptr inbounds [4 x i32], [4 x i32]* %2, i32 0, i32 2
-  store i32 3, i32* %5, align 4, !tbaa !13
-  %6 = getelementptr inbounds [4 x i32], [4 x i32]* %2, i32 0, i32 3
-  store i32 4, i32* %6, align 4, !tbaa !13
-  %7 = and i32 %1, 3
-  %8 = getelementptr inbounds [4 x i32], [4 x i32]* %2, i32 0, i32 %7
-  store i32 %1, i32* %8, align 4, !tbaa !13
-  %9 = load i32, i32* %3, align 4, !tbaa !13
-  %10 = load i32, i32* %4, align 4, !tbaa !13
-  %11 = add i32 %10, %9
-  %12 = load i32, i32* %5, align 4, !tbaa !13
-  %13 = add i32 %11, %12
-  %14 = load i32, i32* %6, align 4, !tbaa !13
-  %15 = add i32 %13, %14
-  call void @dx.op.storeOutput.i32(i32 5, i32 0, i32 0, i8 0, i32 %15)
-  ret void
-}
-
-; Function Attrs: nounwind readnone
-declare i32 @dx.op.loadInput.i32(i32, i32, i32, i8, i32) #0
-
-; Function Attrs: nounwind
-declare void @dx.op.storeOutput.i32(i32, i32, i32, i8, i32) #1
-
-attributes #0 = { nounwind readnone }
-attributes #1 = { nounwind }
-
-!llvm.ident = !{!0}
-!dx.version = !{!1}
-!dx.valver = !{!2}
-!dx.shaderModel = !{!3}
-!dx.viewIdState = !{!4}
-!dx.entryPoints = !{!5}
-
-!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
-!1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 5}
-!3 = !{!"ps", i32 6, i32 0}
-!4 = !{[3 x i32] [i32 1, i32 1, i32 1]}
-!5 = !{void ()* @main, !"main", !6, null, null}
-!6 = !{!7, !11, null}
-!7 = !{!8}
-!8 = !{i32 0, !"TEXCOORD", i8 5, i8 0, !9, i8 1, i32 1, i8 1, i32 0, i8 0, !10}
-!9 = !{i32 0}
-!10 = !{i32 3, i32 1}
-!11 = !{!12}
-!12 = !{i32 0, !"SV_Target", i8 5, i8 16, !9, i8 0, i32 1, i8 1, i32 0, i8 0, !10}
-!13 = !{!14, !14, i64 0}
-!14 = !{!"int", !15, i64 0}
-!15 = !{!"omnipotent char", !16, i64 0}
-!16 = !{!"Simple C/C++ TBAA"}
-#endif
-#if 0
 // SPIR-V disassembly
 ; SPIR-V
 ; Version: 1.3
@@ -93,7 +29,6 @@ OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %7 "TEXCOORD"
 OpName %9 "SV_Target"
-OpName %14 ""
 OpDecorate %7 Flat
 OpDecorate %7 Location 0
 OpDecorate %9 Location 0

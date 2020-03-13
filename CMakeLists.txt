@@ -21,8 +21,15 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 99)
 project(dxil-spirv LANGUAGES CXX C)
 
+add_library(dxil-debug INTERFACE)
+target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
+
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
+option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
+
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
+add_subdirectory(bc EXCLUDE_FROM_ALL)
+add_subdirectory(external EXCLUDE_FROM_ALL)
 
 include(GNUInstallDirs)
 
@@ -39,9 +46,6 @@ set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC glslang-spirv-builder dxil-spirv-headers)
 target_compile_options(spirv-module PRIVATE ${DXIL_SPV_CXX_FLAGS})
-
-add_library(dxil-debug INTERFACE)
-target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
 
 add_library(dxil-converter STATIC
         memory_stream.hpp memory_stream.cpp
@@ -71,8 +75,8 @@ set_target_properties(dxil-converter PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dxil-converter PRIVATE dxil-debug)
 target_compile_options(dxil-converter PRIVATE ${DXIL_SPV_CXX_FLAGS})
+target_link_libraries(dxil-converter PRIVATE external::llvm)
 
-target_link_libraries(dxil-converter PRIVATE third_party::llvm)
 target_link_libraries(dxil-converter PUBLIC spirv-module)
 
 add_library(dxil-spirv-c-shared SHARED
@@ -81,7 +85,8 @@ target_include_directories(dxil-spirv-c-shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv>)
-target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter third_party::llvm)
+target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter external::llvm)
+
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
 set_target_properties(dxil-spirv-c-shared PROPERTIES
@@ -103,7 +108,7 @@ if (DXIL_SPIRV_CLI)
     add_executable(dxil-extract dxil_extract.cpp)
     target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools spirv-cross-c dxil-debug)
     target_compile_options(dxil-spirv PRIVATE ${DXIL_SPV_CXX_FLAGS})
-    target_link_libraries(dxil-extract PRIVATE dxil-spirv-c-shared cli-parser)
+    target_link_libraries(dxil-extract PRIVATE dxil-spirv-c-shared cli-parser external::llvm)
     target_compile_options(dxil-extract PRIVATE ${DXIL_SPV_CXX_FLAGS})
 endif()
 

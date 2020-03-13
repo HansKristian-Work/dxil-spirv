@@ -383,15 +383,6 @@ int main(int argc, char **argv)
 	if (args.dump_module)
 		dxil_spv_parsed_blob_dump_llvm_ir(blob);
 
-	std::string llvm_asm_string;
-	if (args.glsl_embed_asm)
-	{
-		const char *str;
-		if (dxil_spv_parsed_blob_get_disassembled_ir(blob, &str) != DXIL_SPV_SUCCESS)
-			return EXIT_FAILURE;
-		llvm_asm_string = str;
-	}
-
 	dxil_spv_converter converter;
 	if (dxil_spv_create_converter(blob, &converter) != DXIL_SPV_SUCCESS)
 		return EXIT_FAILURE;
@@ -449,14 +440,6 @@ int main(int argc, char **argv)
 		{
 			LOGE("Failed to convert to GLSL.\n");
 			return EXIT_FAILURE;
-		}
-
-		if (!llvm_asm_string.empty())
-		{
-			glsl += "\n#if 0\n";
-			glsl += "// LLVM disassembly\n";
-			glsl += llvm_asm_string;
-			glsl += "#endif";
 		}
 
 		if (!spirv_asm_string.empty())

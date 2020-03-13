@@ -16,62 +16,6 @@ void main()
 
 
 #if 0
-// LLVM disassembly
-target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
-target triple = "dxil-ms-dx"
-
-%dx.types.Handle = type { i8* }
-%"class.RWStructuredBuffer<vector<float, 2> >" = type { <2 x float> }
-
-define void @main() {
-  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 1, i32 1, i1 false)
-  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)
-  %3 = call i32 @dx.op.bufferUpdateCounter(i32 70, %dx.types.Handle %2, i8 1)
-  %4 = call i32 @dx.op.bufferUpdateCounter(i32 70, %dx.types.Handle %1, i8 -1)
-  %5 = add i32 %4, %3
-  call void @dx.op.storeOutput.i32(i32 5, i32 0, i32 0, i8 0, i32 %5)
-  ret void
-}
-
-; Function Attrs: nounwind
-declare void @dx.op.storeOutput.i32(i32, i32, i32, i8, i32) #0
-
-; Function Attrs: nounwind
-declare i32 @dx.op.bufferUpdateCounter(i32, %dx.types.Handle, i8) #0
-
-; Function Attrs: nounwind readonly
-declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #1
-
-attributes #0 = { nounwind }
-attributes #1 = { nounwind readonly }
-
-!llvm.ident = !{!0}
-!dx.version = !{!1}
-!dx.valver = !{!2}
-!dx.shaderModel = !{!3}
-!dx.resources = !{!4}
-!dx.viewIdState = !{!9}
-!dx.entryPoints = !{!10}
-
-!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
-!1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 5}
-!3 = !{!"ps", i32 6, i32 0}
-!4 = !{null, !5, null, null}
-!5 = !{!6, !8}
-!6 = !{i32 0, %"class.RWStructuredBuffer<vector<float, 2> >"* undef, !"", i32 0, i32 0, i32 1, i32 12, i1 false, i1 true, i1 false, !7}
-!7 = !{i32 1, i32 8}
-!8 = !{i32 1, %"class.RWStructuredBuffer<vector<float, 2> >"* undef, !"", i32 0, i32 1, i32 1, i32 12, i1 false, i1 true, i1 false, !7}
-!9 = !{[2 x i32] [i32 0, i32 1]}
-!10 = !{void ()* @main, !"main", !11, !4, !16}
-!11 = !{null, !12, null}
-!12 = !{!13}
-!13 = !{i32 0, !"SV_Target", i8 5, i8 16, !14, i8 0, i32 1, i8 1, i32 0, i8 0, !15}
-!14 = !{i32 0}
-!15 = !{i32 3, i32 1}
-!16 = !{i32 0, i64 16}
-#endif
-#if 0
 // SPIR-V disassembly
 ; SPIR-V
 ; Version: 1.3

@@ -717,11 +717,11 @@ spv::Id Converter::Impl::get_id_for_value(const llvm::Value *value, unsigned for
 	return ret;
 }
 
-static std::string get_entry_point_name(const llvm::Module &module)
+static llvm::Function *get_entry_point_function(const llvm::Module &module)
 {
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	auto *node = ep_meta->getOperand(0);
-	return llvm::cast<llvm::MDString>(node->getOperand(1))->getString();
+	return llvm::dyn_cast<llvm::Function>(llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(0))->getValue());
 }
 
 static spv::ExecutionModel get_execution_model(const llvm::Module &module)
@@ -1345,7 +1345,7 @@ bool Converter::Impl::emit_global_variables()
 
 		spv::Id var_id = builder.createVariableWithInitializer(
 		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
-		    pointee_type_id, initializer_id, global.getName().data());
+		    pointee_type_id, initializer_id);
 		value_map[&global] = var_id;
 	}
 
@@ -1789,7 +1789,7 @@ bool Converter::Impl::emit_execution_modes_hull()
 			{
 				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
 
-				auto *patch_constant = llvm::cast<llvm::ValueAsMetadata>(arguments->getOperand(0));
+				auto *patch_constant = llvm::cast<llvm::ConstantAsMetadata>(arguments->getOperand(0));
 				auto *patch_constant_value = patch_constant->getValue();
 				execution_mode_meta.patch_constant_function = llvm::cast<llvm::Function>(patch_constant_value);
 
@@ -2090,7 +2090,6 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	bb_map[entry] = entry_meta.get();
 	auto *entry_node = pool.create_node();
 	bb_map[entry]->node = entry_node;
-	entry_node->name = entry->getName().data();
 	entry_node->name += ".entry";
 	metas.push_back(std::move(entry_meta));
 
@@ -2118,12 +2117,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 					bb_map[succ] = succ_meta.get();
 					auto *succ_node = pool.create_node();
 					bb_map[succ]->node = succ_node;
-
-					if (succ->getName().empty())
-						succ_node->name = std::to_string(++fake_label_id);
-					else
-						succ_node->name = succ->getName().data();
-
+					succ_node->name = std::to_string(++fake_label_id);
 					metas.push_back(std::move(succ_meta));
 				}
 
@@ -2184,10 +2178,6 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 			if (inst->getReturnValue())
 				node->ir.terminator.return_value = get_id_for_value(inst->getReturnValue());
 		}
-		else if (llvm::isa<llvm::UnreachableInst>(instruction))
-		{
-			node->ir.terminator.type = Terminator::Type::Unreachable;
-		}
 		else
 		{
 			LOGE("Unsupported terminator ...\n");
@@ -2220,7 +2210,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_global_variables())
 		return result;
 
-	llvm::Function *func = module->getFunction(get_entry_point_name(*module));
+	llvm::Function *func = get_entry_point_function(*module);
 	assert(func);
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
