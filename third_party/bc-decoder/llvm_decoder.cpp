@@ -28,328 +28,308 @@ namespace LLVMBC
 {
 enum class AbbrevEncoding : uint8_t
 {
-	Fixed = 1,
-	VBR = 2,
-	Array = 3,
-	Char6 = 4,
-	Blob = 5,
-	// the abbrev encoding is only 3 bits, so 8 is not representable, we can store whether or not
-	// we're a literal this way.
-	Literal = 8,
+  Fixed = 1,
+  VBR = 2,
+  Array = 3,
+  Char6 = 4,
+  Blob = 5,
+  // the abbrev encoding is only 3 bits, so 8 is not representable, we can store whether or not
+  // we're a literal this way.
+  Literal = 8,
 };
 
 struct AbbrevParam
 {
-	AbbrevEncoding encoding;
-	uint64_t value;    // this is also the bitwidth for Fixed/VBR
+  AbbrevEncoding encoding;
+  uint64_t value;    // this is also the bitwidth for Fixed/VBR
 };
 
 struct AbbrevDesc
 {
-	std::vector<AbbrevParam> params;
+  std::vector<AbbrevParam> params;
 };
 
 // the temporary context while pushing/popping blocks
 struct BlockContext
 {
-	BlockContext(size_t size = 2) : abbrevSize(size) {}
-	size_t abbrevSize;
-	std::vector<AbbrevDesc> abbrevs;
+  BlockContext(size_t size = 2) : abbrevSize(size) {}
+  size_t abbrevSize;
+  std::vector<AbbrevDesc> abbrevs;
 };
 
 // the permanent block info defined by BLOCKINFO
 struct BlockInfo
 {
-	// std::string blockname;
-	// std::vector<std::string> recordnames;
-	std::vector<AbbrevDesc> abbrevs;
+  // std::string blockname;
+  // std::vector<std::string> recordnames;
+  std::vector<AbbrevDesc> abbrevs;
 };
 
 enum AbbrevId
 {
-	END_BLOCK = 0,
-	ENTER_SUBBLOCK = 1,
-	DEFINE_ABBREV = 2,
-	UNABBREV_RECORD = 3,
-	APPLICATION_ABBREV = 4,
+  END_BLOCK = 0,
+  ENTER_SUBBLOCK = 1,
+  DEFINE_ABBREV = 2,
+  UNABBREV_RECORD = 3,
+  APPLICATION_ABBREV = 4,
 };
 
 enum class BlockInfoRecord
 {
-	SETBID = 1,
-	BLOCKNAME = 2,
-	SETRECORDNAME = 3,
+  SETBID = 1,
+  BLOCKNAME = 2,
+  SETRECORDNAME = 3,
 };
 
-#define MAKE_FOURCC(a, b, c, d) (((a) << 0) | ((b) << 8) | ((c) << 16) | ((d) << 24))
-
-BitcodeReader::BitcodeReader(const uint8_t *bitcode, size_t length) : b(bitcode, length)
+BitcodeReader::BitcodeReader(const byte *bitcode, size_t length) : b(bitcode, length)
 {
-	uint32_t magic = b.Read<uint32_t>();
+  uint32_t magic = b.Read<uint32_t>();
 
-	assert(magic == MAKE_FOURCC('B', 'C', 0xC0, 0xDE));
+  assert(magic == MAKE_FOURCC('B', 'C', 0xC0, 0xDE));
 }
 
 BitcodeReader::~BitcodeReader()
 {
-	for(auto it = blockInfo.begin(); it != blockInfo.end(); ++it)
-		delete it->second;
+  for(auto it = blockInfo.begin(); it != blockInfo.end(); ++it)
+    delete it->second;
 }
 
 BlockOrRecord BitcodeReader::ReadToplevelBlock()
 {
-	BlockOrRecord ret;
+  BlockOrRecord ret;
 
-	// should hit ENTER_SUBBLOCK first for top-level block
-	uint32_t abbrevID = b.fixed<uint32_t>(abbrevSize());
-	assert(abbrevID == ENTER_SUBBLOCK);
+  // should hit ENTER_SUBBLOCK first for top-level block
+  uint32_t abbrevID = b.fixed<uint32_t>(abbrevSize());
+  assert(abbrevID == ENTER_SUBBLOCK);
 
-	ReadBlockContents(ret);
+  ReadBlockContents(ret);
 
-	return ret;
+  return ret;
 }
 
 bool BitcodeReader::AtEndOfStream()
 {
-	return b.AtEndOfStream();
+  return b.AtEndOfStream();
 }
 
 void BitcodeReader::ReadBlockContents(BlockOrRecord &block)
 {
-	block.id = b.vbr<uint32_t>(8);
+  block.id = b.vbr<uint32_t>(8);
 
-	auto abbrev_size = b.vbr<size_t>(4);
-	blockStack.push_back(new BlockContext(abbrev_size));
+  blockStack.push_back(new BlockContext(b.vbr<size_t>(4)));
 
-	b.align32bits();
-	block.blockDwordLength = b.Read<uint32_t>();
+  b.align32bits();
+  block.blockDwordLength = b.Read<uint32_t>();
 
-	// used for blockinfo only
-	BlockInfo *curBlockInfo = NULL;
+  // used for blockinfo only
+  BlockInfo *curBlockInfo = NULL;
 
-	uint32_t abbrevID = ~0U;
-	do
-	{
-		//begin_scope("ELEMENT");
-		abbrevID = b.fixed<uint32_t>(abbrevSize());
+  uint32_t abbrevID = ~0U;
+  do
+  {
+    abbrevID = b.fixed<uint32_t>(abbrevSize());
 
-		if(abbrevID == END_BLOCK)
-		{
-			b.align32bits();
-		}
-		else if(abbrevID == ENTER_SUBBLOCK)
-		{
-			BlockOrRecord sub;
+    if(abbrevID == END_BLOCK)
+    {
+      b.align32bits();
+    }
+    else if(abbrevID == ENTER_SUBBLOCK)
+    {
+      BlockOrRecord sub;
 
-			ReadBlockContents(sub);
+      ReadBlockContents(sub);
 
-			block.children.push_back(sub);
-		}
-		else if(abbrevID == DEFINE_ABBREV)
-		{
-			AbbrevDesc a;
+      block.children.push_back(sub);
+    }
+    else if(abbrevID == DEFINE_ABBREV)
+    {
+      AbbrevDesc a;
 
-			//begin_scope("DEFINE_ABBREV");
-			uint32_t numops = b.vbr<uint32_t>(5);
-			//log("NumOps = ", numops);
+      uint32_t numops = b.vbr<uint32_t>(5);
 
-			a.params.resize(numops);
+      a.params.resize(numops);
 
-			for(uint32_t i = 0; i < numops; i++)
-			{
-				//begin_scope("Param");
-				AbbrevParam &param = a.params[i];
+      for(uint32_t i = 0; i < numops; i++)
+      {
+        AbbrevParam &param = a.params[i];
 
-				bool lit = b.fixed<bool>(1);
-				//log(lit ? "Literal" : "Non-literal");
+        bool lit = b.fixed<bool>(1);
 
-				if(lit)
-				{
-					param.encoding = AbbrevEncoding::Literal;
-					param.value = b.vbr<uint64_t>(8);
-					//log("Value = ", param.value);
-				}
-				else
-				{
-					param.encoding = b.fixed<AbbrevEncoding>(3);
-					//log("Encoding = ", unsigned(param.encoding));
+        if(lit)
+        {
+          param.encoding = AbbrevEncoding::Literal;
+          param.value = b.vbr<uint64_t>(8);
+        }
+        else
+        {
+          param.encoding = b.fixed<AbbrevEncoding>(3);
 
-					if(param.encoding == AbbrevEncoding::Fixed || param.encoding == AbbrevEncoding::VBR)
-					{
-						param.value = b.vbr<uint64_t>(5);
-						//log("Value = ", param.value);
-					}
-				}
-				//end_scope();
-			}
-			//end_scope();
+          if(param.encoding == AbbrevEncoding::Fixed || param.encoding == AbbrevEncoding::VBR)
+          {
+            param.value = b.vbr<uint64_t>(5);
+          }
+        }
+      }
 
-			if(curBlockInfo)
-				curBlockInfo->abbrevs.push_back(a);
-			else
-				blockStack.back()->abbrevs.push_back(a);
-		}
-		else if(abbrevID == UNABBREV_RECORD)
-		{
-			BlockOrRecord r;
-			r.id = b.vbr<uint32_t>(6);
-			uint32_t numops = b.vbr<uint32_t>(6);
-			r.ops.resize(numops);
-			for(uint32_t i = 0; i < numops; i++)
-			{
-				r.ops[i] = b.vbr<uint64_t>(6);
-			}
+      if(curBlockInfo)
+        curBlockInfo->abbrevs.push_back(a);
+      else
+        blockStack.back()->abbrevs.push_back(a);
+    }
+    else if(abbrevID == UNABBREV_RECORD)
+    {
+      BlockOrRecord r;
+      r.id = b.vbr<uint32_t>(6);
+      uint32_t numops = b.vbr<uint32_t>(6);
+      r.ops.resize(numops);
+      for(uint32_t i = 0; i < numops; i++)
+        r.ops[i] = b.vbr<uint64_t>(6);
 
-			if(block.id == 0)    // BLOCKINFO is block 0
-			{
-				switch(BlockInfoRecord(r.id))
-				{
-				case BlockInfoRecord::SETBID:
-				{
-					curBlockInfo = blockInfo[(uint32_t)r.ops[0]];
-					if(curBlockInfo == NULL)
-						curBlockInfo = blockInfo[(uint32_t)r.ops[0]] = new BlockInfo;
-					break;
-				}
-				case BlockInfoRecord::BLOCKNAME:
-				{
-					// skipped because this is so rarely used
-					/*
-					for(uint32_t i = 0; i < r.ops.size(); i++)
-					  curBlockInfo->blockname.push_back((char)r.ops[i]);
-					  */
-					break;
-				}
-				case BlockInfoRecord::SETRECORDNAME:
-				{
-					// skipped because this is so rarely used
-					/*
-					uint32_t record = (uint32_t)r.ops[0];
-					if(record >= curBlockInfo->recordnames.size())
-					  curBlockInfo->recordnames.resize(record + 1);
-					r.ops.erase(r.ops.begin());
-					for(uint32_t i = 0; i < r.ops.size(); i++)
-					  curBlockInfo->recordnames[record].push_back((char)r.ops[i]);
-					  */
-					break;
-				}
-				}
-			}
+      if(block.id == 0)    // BLOCKINFO is block 0
+      {
+        switch(BlockInfoRecord(r.id))
+        {
+          case BlockInfoRecord::SETBID:
+          {
+            curBlockInfo = blockInfo[(uint32_t)r.ops[0]];
+            if(curBlockInfo == NULL)
+              curBlockInfo = blockInfo[(uint32_t)r.ops[0]] = new BlockInfo;
+            break;
+          }
+          case BlockInfoRecord::BLOCKNAME:
+          {
+            // skipped because this is so rarely used
+            /*
+            for(uint32_t i = 0; i < r.ops.size(); i++)
+              curBlockInfo->blockname.push_back((char)r.ops[i]);
+              */
+            break;
+          }
+          case BlockInfoRecord::SETRECORDNAME:
+          {
+            // skipped because this is so rarely used
+            /*
+            uint32_t record = (uint32_t)r.ops[0];
+            if(record >= curBlockInfo->recordnames.size())
+              curBlockInfo->recordnames.resize(record + 1);
+            r.ops.erase(r.ops.begin());
+            for(uint32_t i = 0; i < r.ops.size(); i++)
+              curBlockInfo->recordnames[record].push_back((char)r.ops[i]);
+              */
+            break;
+          }
+        }
+      }
 
-			block.children.push_back(r);
-		}
-		else
-		{
-			const AbbrevDesc &a = getAbbrev(block.id, abbrevID);
+      block.children.push_back(r);
+    }
+    else
+    {
+      const AbbrevDesc &a = getAbbrev(block.id, abbrevID);
 
-			BlockOrRecord r;
+      BlockOrRecord r;
 
-			// should have at least one param for the code itself
-			assert(!a.params.empty());
+      // should have at least one param for the code itself
+      assert(!a.params.empty());
 
-			r.id = (uint32_t)decodeAbbrevParam(a.params[0]);
+      r.id = (uint32_t)decodeAbbrevParam(a.params[0]);
 
-			// process the rest of the operands - since some might be arrays we don't know until we
-			// process it how many ops the record will end up with but it will be at least one per
-			// parameter.
-			r.ops.reserve(a.params.size() - 1);
-			for(size_t i = 1; i < a.params.size(); i++)
-			{
-				const AbbrevParam &param = a.params[i];
+      // process the rest of the operands - since some might be arrays we don't know until we
+      // process it how many ops the record will end up with but it will be at least one per
+      // parameter.
+      r.ops.reserve(a.params.size() - 1);
+      for(size_t i = 1; i < a.params.size(); i++)
+      {
+        const AbbrevParam &param = a.params[i];
 
-				if(param.encoding == AbbrevEncoding::Array)
-				{
-					// must be another param to specify the value type, and it must be the last
-					assert(i + 1 == a.params.size() - 1);
-					const AbbrevParam &elType = a.params[i + 1];
+        if(param.encoding == AbbrevEncoding::Array)
+        {
+          // must be another param to specify the value type, and it must be the last
+          assert(i + 1 == a.params.size() - 1);
+          const AbbrevParam &elType = a.params[i + 1];
 
-					size_t arrayLen = b.vbr<size_t>(6);
+          size_t arrayLen = b.vbr<size_t>(6);
 
-					for(size_t el = 0; el < arrayLen; el++)
-					{
-						r.ops.push_back(decodeAbbrevParam(elType));
-					}
+          for(size_t el = 0; el < arrayLen; el++)
+            r.ops.push_back(decodeAbbrevParam(elType));
 
-					break;
-				}
-				else if(param.encoding == AbbrevEncoding::Blob)
-				{
-					// blob must be the last value
-					assert(i == a.params.size() - 1);
-					b.ReadBlob(r.blob, r.blobLength);
+          break;
+        }
+        else if(param.encoding == AbbrevEncoding::Blob)
+        {
+          // blob must be the last value
+          assert(i == a.params.size() - 1);
+          b.ReadBlob(r.blob, r.blobLength);
 
-					break;
-				}
-				else
-				{
-					r.ops.push_back(decodeAbbrevParam(param));
-				}
-			}
+          break;
+        }
+        else
+        {
+          r.ops.push_back(decodeAbbrevParam(param));
+        }
+      }
 
-			block.children.push_back(r);
-		}
-		//end_scope();
-	} while(abbrevID != END_BLOCK);
+      block.children.push_back(r);
+    }
+  } while(abbrevID != END_BLOCK);
 
-	delete blockStack.back();
-	blockStack.erase(blockStack.begin() + (blockStack.size() - 1));
+  delete blockStack.back();
+  blockStack.erase(blockStack.begin() + (blockStack.size() - 1));
 }
 
 uint64_t BitcodeReader::decodeAbbrevParam(const AbbrevParam &param)
 {
-	assert(param.encoding != AbbrevEncoding::Array && param.encoding != AbbrevEncoding::Blob);
+  assert(param.encoding != AbbrevEncoding::Array && param.encoding != AbbrevEncoding::Blob);
 
-	switch(param.encoding)
-	{
-	case AbbrevEncoding::Fixed: return b.fixed<uint64_t>((size_t)param.value);
-	case AbbrevEncoding::VBR: return b.vbr<uint64_t>((size_t)param.value);
-	case AbbrevEncoding::Char6: return b.c6();
-	case AbbrevEncoding::Literal: return param.value;
-	case AbbrevEncoding::Array:
-	case AbbrevEncoding::Blob: printf("Array and blob types must be decoded specially");
-	}
+  switch(param.encoding)
+  {
+    case AbbrevEncoding::Fixed: return b.fixed<uint64_t>((size_t)param.value);
+    case AbbrevEncoding::VBR: return b.vbr<uint64_t>((size_t)param.value);
+    case AbbrevEncoding::Char6: return b.c6();
+    case AbbrevEncoding::Literal: return param.value;
+  }
 
-	return 0;
+  return 0;
 }
 
 size_t BitcodeReader::abbrevSize() const
 {
-	if(blockStack.empty())
-		return 2;
-	return blockStack.back()->abbrevSize;
+  if(blockStack.empty())
+    return 2;
+  return blockStack.back()->abbrevSize;
 }
 
 const AbbrevDesc &BitcodeReader::getAbbrev(uint32_t blockId, uint32_t abbrevID)
 {
-	const BlockInfo *info = blockInfo[blockId];
+  const BlockInfo *info = blockInfo[blockId];
 
-	// IDs start at the first application specified ID. Rebase to that to get 0-base indices
-	assert(abbrevID >= APPLICATION_ABBREV);
-	abbrevID -= APPLICATION_ABBREV;
+  // IDs start at the first application specified ID. Rebase to that to get 0-base indices
+  assert(abbrevID >= APPLICATION_ABBREV);
+  abbrevID -= APPLICATION_ABBREV;
 
-	if(info)
-	{
-		// IDs are first assigned to those permanently from BLOCKINFO
-		if(abbrevID < info->abbrevs.size())
-			return info->abbrevs[abbrevID];
+  if(info)
+  {
+    // IDs are first assigned to those permanently from BLOCKINFO
+    if(abbrevID < info->abbrevs.size())
+      return info->abbrevs[abbrevID];
 
-		// block-local IDs start after the BLOCKINFO ones
-		abbrevID -= (uint32_t)info->abbrevs.size();
-	}
+    // block-local IDs start after the BLOCKINFO ones
+    abbrevID -= (uint32_t)info->abbrevs.size();
+  }
 
-	assert(!blockStack.empty());
-	assert(abbrevID < blockStack.back()->abbrevs.size());
+  assert(!blockStack.empty());
+  assert(abbrevID < blockStack.back()->abbrevs.size());
 
-	return blockStack.back()->abbrevs[abbrevID];
+  return blockStack.back()->abbrevs[abbrevID];
 }
 
 std::string BlockOrRecord::getString(size_t startOffset) const
 {
-	std::string ret;
-	ret.resize(ops.size() - startOffset);
-	for(size_t i = 0; i < ret.size(); i++)
-		ret[i] = (char)ops[i + startOffset];
-	return ret;
+  std::string ret;
+  ret.resize(ops.size() - startOffset);
+  for(size_t i = 0; i < ret.size(); i++)
+    ret[i] = (char)ops[i + startOffset];
+  return ret;
 }
 
 };    // namespace LLVMBC
@@ -360,9 +340,9 @@ std::string BlockOrRecord::getString(size_t startOffset) const
 
 TEST_CASE("Check LLVM bitreader", "[llvm]")
 {
-  SECTION("Check simple reading of uint8_ts")
+  SECTION("Check simple reading of bytes")
   {
-    uint8_t bits[] = {0x01, 0x02, 0x40, 0x80, 0xff};
+    byte bits[] = {0x01, 0x02, 0x40, 0x80, 0xff};
 
     LLVMBC::BitReader b(bits, sizeof(bits));
 
@@ -370,10 +350,10 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
     CHECK(b.ByteOffset() == 0);
     CHECK(b.BitOffset() == 0);
 
-    // ensure we can read it all out again in whole uint8_ts
+    // ensure we can read it all out again in whole bytes
     for(size_t i = 0; i < sizeof(bits); i++)
     {
-      uint8_t val = b.Read<uint8_t>();
+      byte val = b.Read<byte>();
       CHECK(val == bits[i]);
       if(i + 1 < sizeof(bits))
         CHECK(!b.AtEndOfStream());
@@ -386,8 +366,8 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
 
   SECTION("Check seeking within the stream")
   {
-    uint8_t bits[] = {0x01, 0x4f, 0x8c, 0xff};
-    uint8_t val;
+    byte bits[] = {0x01, 0x4f, 0x8c, 0xff};
+    byte val;
 
     LLVMBC::BitReader b(bits, sizeof(bits));
 
@@ -413,7 +393,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
     CHECK(b.ByteOffset() == 3);
     CHECK(b.BitOffset() == 29);
 
-    val = b.fixed<uint8_t>(3);
+    val = b.fixed<byte>(3);
 
     CHECK(val == 0x7);
     CHECK(b.AtEndOfStream());
@@ -429,7 +409,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
 
   SECTION("Check with empty bitstream")
   {
-    uint8_t bits[] = {0};
+    byte bits[] = {0};
 
     LLVMBC::BitReader b(bits, 0);
 
@@ -440,7 +420,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
 
   SECTION("Check out of bounds behaviour")
   {
-    uint8_t bits[] = {0x40, 0x80, 0xff};
+    byte bits[] = {0x40, 0x80, 0xff};
 
     LLVMBC::BitReader b(bits, sizeof(bits));
 
@@ -471,7 +451,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
 
     // we pad out with 0s so we don't read off the end of the stream when reading up to 4 32-bit
     // values
-    uint8_t bits[] = {
+    byte bits[] = {
         // dword 1
         0x96, 0xf0, 0xA5, 0x3C,
         // padding dword
@@ -588,7 +568,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
     {
       // just set as many bits as we can in one chunk, so all 1s except the MSB
 
-      uint8_t bits[] = {
+      byte bits[] = {
           // i_vbr0 (padding)
           0,
           // i_vbr1 (padding)
@@ -631,7 +611,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
       // set all bits that we can from two chunks - that means the first chunk is all 1s, the second
       // is all 1s except the leading 0
 
-      uint8_t bits[] = {
+      byte bits[] = {
           // i_vbr0 (padding)
           0, 0,
           // i_vbr1 (padding)
@@ -691,7 +671,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
     {
       // set an alternating 10 pattern from the top bit. Each group except the last has a leading 1
 
-      uint8_t bits[] = {
+      byte bits[] = {
           // i_vbr0 (padding)
           0, 0, 0, 0, 0,
           // i_vbr1 (padding)
@@ -751,13 +731,13 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
     {
       // we don't check every possible bit width since this is decoded the same as vbr except for a
       // post-check and shift. Instead we use vbr4 since it's convenient for hex literals
-      uint8_t bits[] = {
+      byte bits[] = {
           0x04,                // 0b 0100 = +2
           0x05,                // 0b 0101 = -2
           0xBA, 0x9E, 0x68,    // 0b 0110 1000 1001 1110 1011 1010 = +98765
           0xBB, 0x9E, 0x68,    // 0b 0110 1000 1001 1110 1011 1011 = -98765
           // INT64_MAX. 64-bits encoded in 3-bit groups is 22 groups, so 22 * 4-bit encoded groups
-          // is 88 bits, meaning 11 uint8_ts
+          // is 88 bits, meaning 11 bytes
           0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F,
           // INT64_MIN. Same as above but with the LSB set to 1
           0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F,
@@ -808,7 +788,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
 
   SECTION("Check char6 encoding")
   {
-    uint8_t bits[64] = {};
+    byte bits[64] = {};
     for(size_t i = 0; i < sizeof(bits); i++)
       bits[i] = i & 0xff;
 
@@ -816,7 +796,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
     const char string[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._";
 
     RDCCOMPILE_ASSERT(sizeof(string) - 1 == sizeof(bits),
-                      "bits uint8_t array and string should be same size.");
+                      "bits byte array and string should be same size.");
 
     LLVMBC::BitReader b(bits, sizeof(bits));
 
@@ -824,7 +804,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
     {
       char c = b.c6();
       // for simplicity we read padding too
-      uint8_t pad = b.fixed<uint8_t>(2);
+      byte pad = b.fixed<byte>(2);
 
       CHECK(c == string[i]);
       CHECK(pad == 0);
@@ -833,7 +813,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
 
   SECTION("Check 32-bit aligning")
   {
-    uint8_t bits[] = {
+    byte bits[] = {
         // first i_4 value
         0x04,
         // padding for alignment
@@ -901,9 +881,9 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
 
   SECTION("Check blob fetch")
   {
-    // size = 16 uint8_ts for encoded data and first blob, 70 uint8_ts for second blob, 2 uint8_ts trailing
+    // size = 16 bytes for encoded data and first blob, 70 bytes for second blob, 2 bytes trailing
     // padding
-    uint8_t bits[16 + 70 + 2] = {
+    byte bits[16 + 70 + 2] = {
         // first vbr_6 length
         0x06,
         // padding for alignment
@@ -918,7 +898,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
         // i_20 dummy to get us to the point where two vbr_6 chunks would be aligned
         // we choose a length of 70, which is 0b10 00110, then vbr_6 encoded it becomes
         // 0b000010 100110 which is 0xA6, over 12 bits. That leaves 4 bits in the upper part of
-        // the last uint8_t of the i_20, and the remaining 8 in the next uint8_t
+        // the last byte of the i_20, and the remaining 8 in the next byte
         0x5B, 0xC2, 0x64, 0x0A,
     };
 
@@ -928,7 +908,7 @@ TEST_CASE("Check LLVM bitreader", "[llvm]")
     CHECK(b.ByteOffset() == 0);
     CHECK(b.BitOffset() == 0);
 
-    const uint8_t *ptr = NULL;
+    const byte *ptr = NULL;
     size_t size = 0;
 
     b.ReadBlob(ptr, size);

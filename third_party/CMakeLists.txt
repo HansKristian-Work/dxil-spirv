@@ -23,3 +23,8 @@ target_include_directories(glslang-spirv-builder PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/glslang-spirv)
 target_link_libraries(glslang-spirv-builder PUBLIC dxil-spirv-headers)
 
+add_library(bc-decoder STATIC
+        bc-decoder/llvm_bitreader.h bc-decoder/llvm_decoder.cpp
+        bc-decoder/llvm_decoder.h)
+target_include_directories(bc-decoder PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/bc-decoder)
+set_target_properties(bc-decoder PROPERTIES POSITION_INDEPENDENT_CODE ON)

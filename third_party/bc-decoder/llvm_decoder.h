@@ -25,31 +25,31 @@
 #pragma once
 
 #include <unordered_map>
-#include <string>
 #include <vector>
-#include <sstream>
+#include <string>
 #include "llvm_bitreader.h"
+#include <stdint.h>
 
 namespace LLVMBC
 {
 struct BlockOrRecord
 {
-	uint32_t id;
-	uint32_t blockDwordLength = 0;    // 0 for records
+  uint32_t id;
+  uint32_t blockDwordLength = 0;    // 0 for records
 
-	bool IsBlock() const { return blockDwordLength > 0; }
-	bool IsRecord() const { return blockDwordLength == 0; }
-	// if a block, the child blocks/records
-	std::vector<BlockOrRecord> children;
+  bool IsBlock() const { return blockDwordLength > 0; }
+  bool IsRecord() const { return blockDwordLength == 0; }
+  // if a block, the child blocks/records
+  std::vector<BlockOrRecord> children;
 
-	std::string getString(size_t startOffset = 0) const;
+  std::string getString(size_t startOffset = 0) const;
 
-	// if a record, the ops
-	std::vector<uint64_t> ops;
-	// if this is an abbreviated record with a blob, this is the last operand
-	// this points into the overall byte storage, so the lifetime is limited.
-	const uint8_t *blob = NULL;
-	size_t blobLength = 0;
+  // if a record, the ops
+  std::vector<uint64_t> ops;
+  // if this is an abbreviated record with a blob, this is the last operand
+  // this points into the overall byte storage, so the lifetime is limited.
+  const byte *blob = NULL;
+  size_t blobLength = 0;
 };
 
 struct AbbrevParam;
@@ -60,21 +60,21 @@ struct BlockInfo;
 class BitcodeReader
 {
 public:
-	BitcodeReader(const uint8_t *bitcode, size_t length);
-	~BitcodeReader();
-	BlockOrRecord ReadToplevelBlock();
-	bool AtEndOfStream();
+  BitcodeReader(const byte *bitcode, size_t length);
+  ~BitcodeReader();
+  BlockOrRecord ReadToplevelBlock();
+  bool AtEndOfStream();
 
 private:
-	BitReader b;
+  BitReader b;
 
-	void ReadBlockContents(BlockOrRecord &block);
-	const AbbrevDesc &getAbbrev(uint32_t blockId, uint32_t abbrevID);
-	size_t abbrevSize() const;
-	uint64_t decodeAbbrevParam(const AbbrevParam &param);
+  void ReadBlockContents(BlockOrRecord &block);
+  const AbbrevDesc &getAbbrev(uint32_t blockId, uint32_t abbrevID);
+  size_t abbrevSize() const;
+  uint64_t decodeAbbrevParam(const AbbrevParam &param);
 
-	std::vector<BlockContext *> blockStack;
-	std::unordered_map<uint32_t, BlockInfo *> blockInfo;
+  std::vector<BlockContext *> blockStack;
+  std::unordered_map<uint32_t, BlockInfo *> blockInfo;
 };
 
 };    // namespace LLVMBC
