@@ -306,17 +306,29 @@ dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_pars
 void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob)
 {
 	auto &module = blob->bc.get_module();
+#ifdef HAVE_LLVMBC
+	std::string str;
+	if (llvm::disassemble(module, str))
+		fprintf(stderr, "%s\n", str.c_str());
+	else
+		fprintf(stderr, "Failed to disassemble LLVM IR!\n");
+#else
 	module.print(llvm::errs(), nullptr);
+#endif
 }
 
-dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob,
-                                                         const char **str)
+dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob, const char **str)
 {
 	blob->disasm.clear();
 
 	auto *module = &blob->bc.get_module();
+#ifdef HAVE_LLVMBC
+	if (!llvm::disassemble(*module, blob->disasm))
+		return DXIL_SPV_ERROR_GENERIC;
+#else
 	llvm::raw_string_ostream ostr(blob->disasm);
 	module->print(ostr, nullptr);
+#endif
 	*str = blob->disasm.c_str();
 	return DXIL_SPV_SUCCESS;
 }

@@ -16,12 +16,12 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "dxil_spirv_c.h"
 #include "cli_parser.hpp"
+#include "dxil_spirv_c.h"
 #include "logging.hpp"
-#include <vector>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <vector>
 
 using namespace dxil_spv;
 
@@ -72,7 +72,10 @@ int main(int argc, char **argv)
 	std::string input, output;
 
 	CLICallbacks cbs;
-	cbs.add("--help", [](CLIParser &parser) { print_help(); parser.end(); });
+	cbs.add("--help", [](CLIParser &parser) {
+		print_help();
+		parser.end();
+	});
 	cbs.add("--output", [&](CLIParser &parser) { output = parser.next_string(); });
 	cbs.default_handler = [&](const char *arg) { input = arg; };
 	CLIParser parser(std::move(cbs), argc - 1, argv + 1);

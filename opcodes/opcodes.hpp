@@ -21,7 +21,15 @@
 #include "dxil_converter.hpp"
 #include "ir.hpp"
 
+#ifdef HAVE_LLVMBC
+#include "cast.hpp"
+#include "instruction.hpp"
+#include "module.hpp"
+#include "value.hpp"
+#else
 #include <llvm/IR/Instructions.h>
+#endif
+
 #include <vector>
 
 namespace dxil_spv

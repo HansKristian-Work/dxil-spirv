@@ -10,9 +10,9 @@ which implements D3D12 on top of Vulkan.
 Check out submodules first with `git submodule update --init`.
 No external dependencies apart from the submodules are required to build.
 
-A notable submodule here is LLVM which is included to be able to parse DXIL (LLVM bitcode).
-This might be avoided in the future if a custom BC parser and traversal API is written.
-Only the core subset of LLVM is required to build, so build times are quite short compared to "full" LLVM builds.
+This project implements a "small" LLVM C++ API subset which acts as a drop-in replacement for the full LLVM.
+It is possible to build against the true LLVM C++ API if llvm is checked out in `external/llvm` and `-DDXIL_SPIRV_NATIVE_LLVM=ON` CMake option is used.
+See `checkout_llvm.sh` script.
 
 ### Build
 

@@ -25,9 +25,10 @@ add_library(dxil-debug INTERFACE)
 target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
 
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
-option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." ON)
+option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
 
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
+add_subdirectory(bc EXCLUDE_FROM_ALL)
 add_subdirectory(external EXCLUDE_FROM_ALL)
 
 include(GNUInstallDirs)

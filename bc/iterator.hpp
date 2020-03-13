@@ -18,29 +18,43 @@
 
 #pragma once
 
-#ifdef HAVE_LLVMBC
-#include "module.hpp"
-#else
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#endif
-
-#include <memory>
-#include <stddef.h>
-
-namespace dxil_spv
+namespace LLVMBC
 {
-class LLVMBCParser
+// An iterator adaptor which lets us receive reference types instead of pointer types.
+template <typename T, typename Iter>
+struct IteratorAdaptor
 {
-public:
-	LLVMBCParser();
-	~LLVMBCParser();
-	bool parse(const void *data, size_t size);
-	llvm::Module &get_module();
-	const llvm::Module &get_module() const;
+	IteratorAdaptor(Iter iter_)
+	    : iter(iter_)
+	{
+	}
 
-private:
-	struct Impl;
-	std::unique_ptr<Impl> impl;
+	T &operator*()
+	{
+		return **iter;
+	}
+
+	T *operator->()
+	{
+		return *iter;
+	}
+
+	IteratorAdaptor operator++()
+	{
+		++iter;
+		return *this;
+	}
+
+	bool operator==(const IteratorAdaptor &other) const
+	{
+		return iter == other.iter;
+	}
+
+	bool operator!=(const IteratorAdaptor &other) const
+	{
+		return !(*this == other);
+	}
+
+	Iter iter;
 };
-} // namespace dxil_spv
+} // namespace LLVMBC

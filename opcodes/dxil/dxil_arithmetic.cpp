@@ -91,7 +91,8 @@ bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, co
 	// This is actually CLZ, and not FindMSB.
 	Operation *msb_op = impl.allocate(spv::OpExtInst, impl.get_type_id(instruction->getType()));
 	{
-		msb_op->add_ids({ impl.glsl_std450_ext, static_cast<spv::Id>(opcode), impl.get_id_for_value(instruction->getOperand(1)) });
+		msb_op->add_ids(
+		    { impl.glsl_std450_ext, static_cast<spv::Id>(opcode), impl.get_id_for_value(instruction->getOperand(1)) });
 		impl.add(msb_op);
 	}
 
@@ -149,7 +150,8 @@ bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
-	op->add_ids({ impl.glsl_std450_ext, static_cast<spv::Id>(opcode), impl.get_id_for_value(instruction->getOperand(1)) });
+	op->add_ids(
+	    { impl.glsl_std450_ext, static_cast<spv::Id>(opcode), impl.get_id_for_value(instruction->getOperand(1)) });
 
 	impl.add(op);
 	return true;
