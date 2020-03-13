@@ -280,7 +280,9 @@ struct ModuleParseContext
 	Module *module = nullptr;
 	LLVMContext *context = nullptr;
 	std::vector<BasicBlock *> basic_blocks;
+
 	std::vector<Value *> values;
+
 	std::vector<Type *> types;
 	std::vector<Function *> functions_with_bodies;
 	std::unordered_map<uint64_t, MDOperand *> metadata;
