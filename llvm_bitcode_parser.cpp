@@ -28,9 +28,19 @@
 
 namespace dxil_spv
 {
+struct LLVMBCParser::Impl
+{
+	llvm::LLVMContext context;
+#ifdef HAVE_LLVMBC
+	llvm::Module *module = nullptr;
+#else
+	std::unique_ptr<llvm::Module> module;
+#endif
+};
+
 LLVMBCParser::LLVMBCParser()
 {
-	context.reset(new llvm::LLVMContext);
+	impl.reset(new Impl);
 }
 
 LLVMBCParser::~LLVMBCParser()
@@ -40,16 +50,16 @@ LLVMBCParser::~LLVMBCParser()
 bool LLVMBCParser::parse(const void *data, size_t size)
 {
 #ifdef HAVE_LLVMBC
-	module.reset(llvm::parseIR(*context, data, size));
-	if (!module)
+	impl->module = llvm::parseIR(impl->context, data, size);
+	if (!impl->module)
 		return false;
 #else
 	auto memory = llvm::WritableMemoryBuffer::getNewUninitMemBuffer(size);
 	memcpy(memory->getBufferStart(), data, size);
 
 	llvm::SMDiagnostic error;
-	module = llvm::parseIR(*memory, error, *context);
-	if (!module)
+	impl->module = llvm::parseIR(*memory, error, impl->context);
+	if (!impl->module)
 	{
 		error.print("DXIL", llvm::errs());
 		return false;
@@ -61,11 +71,11 @@ bool LLVMBCParser::parse(const void *data, size_t size)
 
 llvm::Module &LLVMBCParser::get_module()
 {
-	return *module;
+	return *impl->module;
 }
 
 const llvm::Module &LLVMBCParser::get_module() const
 {
-	return *module;
+	return *impl->module;
 }
 } // namespace dxil_spv

@@ -40,7 +40,7 @@ public:
 	const llvm::Module &get_module() const;
 
 private:
-	std::unique_ptr<llvm::LLVMContext> context;
-	std::unique_ptr<llvm::Module> module;
+	struct Impl;
+	std::unique_ptr<Impl> impl;
 };
 } // namespace dxil_spv
