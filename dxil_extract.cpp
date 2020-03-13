@@ -110,6 +110,13 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	if (output.empty())
+	{
+		dxil_spv_parsed_blob_dump_llvm_ir(blob);
+		dxil_spv_parsed_blob_free(blob);
+		return EXIT_SUCCESS;
+	}
+
 	if (!write_file(output.c_str(), ir_data, ir_size))
 	{
 		LOGE("Failed to write IR to %s.\n", output.c_str());
