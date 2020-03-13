@@ -517,7 +517,6 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 	switch (ConstantsRecord(entry.id))
 	{
 	case ConstantsRecord::SETTYPE:
-		LOGI("Setting constant type index %u.\n", unsigned(entry.ops[0]));
 		constant_type = get_type(entry.ops[0]);
 		break;
 
@@ -529,8 +528,6 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		else if (constant_type->isFloatingPointTy())
 			value = ConstantFP::get(constant_type, 0);
 
-		LOGI("Adding zero value as ID %u.\n", unsigned(values.size()));
-
 		if (!value)
 			LOGE("Unknown type for CONST_NULL.\n");
 		values.push_back(value);
@@ -540,14 +537,12 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 	case ConstantsRecord::UNDEF:
 	{
 		auto *type = get_constant_type();
-		LOGI("Adding undef as ID %u.\n", unsigned(values.size()));
 		values.push_back(UndefValue::get(type));
 		break;
 	}
 
 	case ConstantsRecord::INTEGER:
 	{
-		LOGI("Adding constant integer as ID %u.\n", unsigned(values.size()));
 		auto *type = get_constant_type();
 		assert(type->isIntegerTy());
 
@@ -565,7 +560,6 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 	case ConstantsRecord::FLOAT:
 	{
-		LOGI("Adding constant float as ID %u.\n", unsigned(values.size()));
 		auto *type = get_constant_type();
 		assert(type->isFloatingPointTy());
 		ConstantFP *value = ConstantFP::get(type, entry.ops[0]);
@@ -597,8 +591,6 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			break;
 		}
 
-		LOGI("Adding array value as ID %u.\n", unsigned(values.size()));
-
 		bool is_fp = element_type->isFloatingPointTy();
 		std::vector<Constant *> constants;
 		constants.reserve(entry.ops.size());
@@ -606,17 +598,11 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		{
 			for (auto &op : entry.ops)
 				constants.push_back(ConstantFP::get(element_type, op));
-
-			for (auto &c : constants)
-				LOGI("  FP: %f\n", cast<ConstantFP>(c)->getValueAPF().convertToDouble());
 		}
 		else
 		{
 			for (auto &op : entry.ops)
 				constants.push_back(ConstantInt::get(element_type, op));
-
-			for (auto &c : constants)
-				LOGI("  Int: %lld\n", static_cast<long long>(cast<ConstantInt>(c)->getUniqueInteger().getSExtValue()));
 		}
 		auto *value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
 		values.push_back(value);
@@ -688,10 +674,8 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 	{
 		std::vector<MDNode *> ops;
 		ops.reserve(entry.ops.size());
-		LOGI("Named node: %s\n", current_metadata_name.c_str());
 		for (auto &op : entry.ops)
 		{
-			LOGI("    Op: !%u\n", unsigned(op));
 			auto *md = get_metadata(op);
 			auto *node = dyn_cast<MDNode>(md);
 			ops.push_back(node);
@@ -707,11 +691,9 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 	{
 		std::vector<MDOperand *> ops;
 		ops.reserve(entry.ops.size());
-		LOGI("Node: !%u\n", index);
 		for (auto &op : entry.ops)
 		{
 			// For some reason, here metadata is indexed with -1?
-			LOGI("    Op: !%u\n", unsigned(op) - 1);
 			auto *md = get_metadata(op - 1);
 			ops.push_back(md);
 		}
@@ -726,7 +708,6 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 	case MetaDataRecord::STRING_OLD:
 	{
 		auto *node = context->construct<MDString>(module, entry.getString());
-		LOGI("!%u = \"%s\"\n", index, entry.getString().c_str());
 		metadata[index] = node;
 		break;
 	}
@@ -748,7 +729,6 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 		}
 
 		auto *node = context->construct<ConstantAsMetadata>(module, constant_value);
-		LOGI("!%u = { type = %u, value = %u }\n", index, unsigned(entry.ops[0]), unsigned(entry.ops[1]));
 		metadata[index] = node;
 		break;
 	}
@@ -1313,33 +1293,27 @@ void ModuleParseContext::parse_type(const BlockOrRecord &child)
 	case TypeRecord::VOID:
 	{
 		type = Type::getVoidTy(*context);
-		LOGI("Type: VOID\n");
 		break;
 	}
 
 	case TypeRecord::HALF:
 		type = Type::getHalfTy(*context);
-		LOGI("Type: HALF\n");
 		break;
 
 	case TypeRecord::FLOAT:
 		type = Type::getFloatTy(*context);
-		LOGI("Type: FLOAT\n");
 		break;
 
 	case TypeRecord::DOUBLE:
 		type = Type::getDoubleTy(*context);
-		LOGI("Type: DOUBLE\n");
 		break;
 
 	case TypeRecord::POINTER:
 		type = PointerType::get(get_type(child.ops[0]), child.ops[1]);
-		LOGI("Type: POINTER\n");
 		break;
 
 	case TypeRecord::ARRAY:
 		type = ArrayType::get(get_type(child.ops[1]), child.ops[0]);
-		LOGI("Type: ARRAY\n");
 		break;
 
 	case TypeRecord::INTEGER:
@@ -1347,27 +1321,22 @@ void ModuleParseContext::parse_type(const BlockOrRecord &child)
 		{
 		case 1:
 			type = Type::getInt1Ty(*context);
-			LOGI("Type: INT1\n");
 			break;
 
 		case 8:
 			type = Type::getInt8Ty(*context);
-			LOGI("Type: INT8\n");
 			break;
 
 		case 16:
 			type = Type::getInt16Ty(*context);
-			LOGI("Type: INT16\n");
 			break;
 
 		case 32:
 			type = Type::getInt32Ty(*context);
-			LOGI("Type: INT32\n");
 			break;
 
 		case 64:
 			type = Type::getInt64Ty(*context);
-			LOGI("Type: INT64\n");
 			break;
 		}
 		break;
@@ -1384,14 +1353,12 @@ void ModuleParseContext::parse_type(const BlockOrRecord &child)
 		for (unsigned i = 0; i < num_members; i++)
 			members.push_back(get_type(child.ops[i + 1]));
 		type = StructType::get(std::move(members));
-		LOGI("Type: STRUCT\n");
 		break;
 	}
 
 	case TypeRecord::VECTOR:
 	{
 		type = VectorType::get(child.ops[0], get_type(child.ops[1]));
-		LOGI("Type: VECTOR\n");
 		break;
 	}
 
@@ -1406,21 +1373,18 @@ void ModuleParseContext::parse_type(const BlockOrRecord &child)
 		                                        get_type(child.ops[1]),
 		                                        std::move(argument_types));
 
-		LOGI("Type: FUNCTION\n");
 		break;
 	}
 
 	case TypeRecord::LABEL:
 	{
 		type = Type::getLabelTy(*context);
-		LOGI("Type: LABEL\n");
 		break;
 	}
 
 	case TypeRecord::METADATA:
 	{
 		type = Type::getMetadataTy(*context);
-		LOGI("Type: METADATA\n");
 		break;
 	}
 
@@ -1448,7 +1412,6 @@ void ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 		{
 			auto name = symtab.getString(1);
 			module->add_value_name(symtab.ops[0], name);
-			LOGI("Value %u is \"%s\"\n", unsigned(symtab.ops[0]), name.c_str());
 			break;
 		}
 
