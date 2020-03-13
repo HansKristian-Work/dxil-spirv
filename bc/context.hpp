@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <exception>
+#include <stdint.h>
 
 namespace LLVMBC
 {
@@ -85,6 +86,12 @@ private:
 		}
 		T *ptr;
 	};
+
+	uintptr_t current_block = 0;
+	uintptr_t current_block_end = 0;
+
+	void *allocate_from_chain(uintptr_t size, uintptr_t align);
+	void allocate_new_chain(size_t size, size_t align);
 
 	std::vector<void *> raw_allocations;
 	std::vector<Deleter *> typed_allocations;
