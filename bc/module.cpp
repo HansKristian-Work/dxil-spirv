@@ -687,6 +687,7 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 		break;
 	}
 
+	case MetaDataRecord::DISTINCT_NODE:
 	case MetaDataRecord::NODE:
 	{
 		std::vector<MDOperand *> ops;
