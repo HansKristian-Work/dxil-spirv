@@ -7,6 +7,3 @@
 [submodule "third_party/SPIRV-Cross"]
 	path = third_party/SPIRV-Cross
 	url = git://github.com/KhronosGroup/SPIRV-Cross
-[submodule "third_party/llvm"]
-	path = third_party/llvm
-	url = git://github.com/llvm-mirror/llvm

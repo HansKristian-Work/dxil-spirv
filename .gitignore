@@ -2,4 +2,6 @@
 /cmake-build-release
 *.iml
 /.idea
-/external
+/external/dxc*
+/external/DirectXShaderCompiler
+/external/llvm
