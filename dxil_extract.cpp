@@ -102,13 +102,6 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (output.empty())
-	{
-		dxil_spv_parsed_blob_dump_llvm_ir(blob);
-		dxil_spv_parsed_blob_free(blob);
-		return EXIT_SUCCESS;
-	}
-
 	const void *ir_data;
 	size_t ir_size;
 	if (dxil_spv_parsed_blob_get_raw_ir(blob, &ir_data, &ir_size) != DXIL_SPV_SUCCESS)

@@ -1345,7 +1345,7 @@ bool Converter::Impl::emit_global_variables()
 
 		spv::Id var_id = builder.createVariableWithInitializer(
 		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
-		    pointee_type_id, initializer_id, global.getName().data());
+		    pointee_type_id, initializer_id);
 		value_map[&global] = var_id;
 	}
 
@@ -2090,7 +2090,6 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	bb_map[entry] = entry_meta.get();
 	auto *entry_node = pool.create_node();
 	bb_map[entry]->node = entry_node;
-	entry_node->name = entry->getName().data();
 	entry_node->name += ".entry";
 	metas.push_back(std::move(entry_meta));
 
@@ -2118,12 +2117,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 					bb_map[succ] = succ_meta.get();
 					auto *succ_node = pool.create_node();
 					bb_map[succ]->node = succ_node;
-
-					if (succ->getName().empty())
-						succ_node->name = std::to_string(++fake_label_id);
-					else
-						succ_node->name = succ->getName().data();
-
+					succ_node->name = std::to_string(++fake_label_id);
 					metas.push_back(std::move(succ_meta));
 				}
 

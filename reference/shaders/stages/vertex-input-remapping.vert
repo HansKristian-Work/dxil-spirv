@@ -13,62 +13,6 @@ void main()
 
 
 #if 0
-// LLVM disassembly
-target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
-target triple = "dxil-ms-dx"
-
-define void @main() {
-  %1 = call float @dx.op.loadInput.f32(i32 4, i32 1, i32 0, i8 0, i32 undef)
-  %2 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)
-  %3 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
-  %4 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
-  %5 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 undef)
-  %6 = fadd fast float %2, %1
-  %7 = fadd fast float %3, %1
-  %8 = fadd fast float %4, %1
-  %9 = fadd fast float %5, %1
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %6)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %7)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 2, float %8)
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 3, float %9)
-  ret void
-}
-
-; Function Attrs: nounwind readnone
-declare float @dx.op.loadInput.f32(i32, i32, i32, i8, i32) #0
-
-; Function Attrs: nounwind
-declare void @dx.op.storeOutput.f32(i32, i32, i32, i8, float) #1
-
-attributes #0 = { nounwind readnone }
-attributes #1 = { nounwind }
-
-!llvm.ident = !{!0}
-!dx.version = !{!1}
-!dx.valver = !{!2}
-!dx.shaderModel = !{!3}
-!dx.viewIdState = !{!4}
-!dx.entryPoints = !{!5}
-
-!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
-!1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 5}
-!3 = !{!"vs", i32 6, i32 0}
-!4 = !{[7 x i32] [i32 5, i32 4, i32 1, i32 2, i32 4, i32 8, i32 15]}
-!5 = !{void ()* @main, !"main", !6, null, null}
-!6 = !{!7, !14, null}
-!7 = !{!8, !11}
-!8 = !{i32 0, !"ATTR", i8 9, i8 0, !9, i8 0, i32 1, i8 4, i32 0, i8 0, !10}
-!9 = !{i32 2}
-!10 = !{i32 3, i32 15}
-!11 = !{i32 1, !"ATTR", i8 9, i8 0, !12, i8 0, i32 1, i8 1, i32 1, i8 0, !13}
-!12 = !{i32 4}
-!13 = !{i32 3, i32 1}
-!14 = !{!15}
-!15 = !{i32 0, !"SV_Position", i8 9, i8 3, !16, i8 4, i32 1, i8 4, i32 0, i8 0, !10}
-!16 = !{i32 0}
-#endif
-#if 0
 // SPIR-V disassembly
 ; SPIR-V
 ; Version: 1.3

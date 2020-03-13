@@ -15,71 +15,6 @@ void main()
 
 
 #if 0
-// LLVM disassembly
-target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
-target triple = "dxil-ms-dx"
-
-define void @main() {
-  %1 = call i32 @dx.op.loadInput.i32(i32 4, i32 1, i32 0, i8 0, i32 undef)
-  %2 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)
-  %3 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)
-  %4 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)
-  %5 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 undef)
-  %6 = alloca [4 x float], align 4
-  %7 = getelementptr inbounds [4 x float], [4 x float]* %6, i32 0, i32 0
-  store float %2, float* %7, align 4
-  %8 = getelementptr inbounds [4 x float], [4 x float]* %6, i32 0, i32 1
-  store float %3, float* %8, align 4
-  %9 = getelementptr inbounds [4 x float], [4 x float]* %6, i32 0, i32 2
-  store float %4, float* %9, align 4
-  %10 = getelementptr inbounds [4 x float], [4 x float]* %6, i32 0, i32 3
-  store float %5, float* %10, align 4
-  %11 = getelementptr [4 x float], [4 x float]* %6, i32 0, i32 %1
-  %12 = load float, float* %11, align 4, !tbaa !15
-  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %12)
-  ret void
-}
-
-; Function Attrs: nounwind readnone
-declare float @dx.op.loadInput.f32(i32, i32, i32, i8, i32) #0
-
-; Function Attrs: nounwind readnone
-declare i32 @dx.op.loadInput.i32(i32, i32, i32, i8, i32) #0
-
-; Function Attrs: nounwind
-declare void @dx.op.storeOutput.f32(i32, i32, i32, i8, float) #1
-
-attributes #0 = { nounwind readnone }
-attributes #1 = { nounwind }
-
-!llvm.ident = !{!0}
-!dx.version = !{!1}
-!dx.valver = !{!2}
-!dx.shaderModel = !{!3}
-!dx.viewIdState = !{!4}
-!dx.entryPoints = !{!5}
-
-!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
-!1 = !{i32 1, i32 0}
-!2 = !{i32 1, i32 5}
-!3 = !{!"ps", i32 6, i32 0}
-!4 = !{[7 x i32] [i32 5, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1]}
-!5 = !{void ()* @main, !"main", !6, null, null}
-!6 = !{!7, !13, null}
-!7 = !{!8, !11}
-!8 = !{i32 0, !"SV_Position", i8 9, i8 3, !9, i8 4, i32 1, i8 4, i32 0, i8 0, !10}
-!9 = !{i32 0}
-!10 = !{i32 3, i32 15}
-!11 = !{i32 1, !"INDEX", i8 5, i8 0, !9, i8 1, i32 1, i8 1, i32 1, i8 0, !12}
-!12 = !{i32 3, i32 1}
-!13 = !{!14}
-!14 = !{i32 0, !"SV_Target", i8 9, i8 16, !9, i8 0, i32 1, i8 1, i32 0, i8 0, !12}
-!15 = !{!16, !16, i64 0}
-!16 = !{!"float", !17, i64 0}
-!17 = !{!"omnipotent char", !18, i64 0}
-!18 = !{!"Simple C/C++ TBAA"}
-#endif
-#if 0
 // SPIR-V disassembly
 ; SPIR-V
 ; Version: 1.3
@@ -94,7 +29,6 @@ OpName %3 "main"
 OpName %8 "SV_Position"
 OpName %11 "INDEX"
 OpName %13 "SV_Target"
-OpName %33 ""
 OpDecorate %8 BuiltIn FragCoord
 OpDecorate %11 Flat
 OpDecorate %11 Location 1
