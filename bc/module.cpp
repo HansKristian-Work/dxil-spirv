@@ -1185,6 +1185,8 @@ void ModuleParseContext::resolve_global_initializations()
 
 void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 {
+	auto global_values = values;
+
 	// I think we are supposed to process functions in same order as the module declared them?
 	if (!seen_first_function_body)
 	{
@@ -1215,6 +1217,8 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	function->set_basic_blocks(std::move(basic_blocks));
 	basic_blocks = {};
 	module->add_function_implementation(function);
+
+	values = global_values;
 }
 
 void ModuleParseContext::parse_type(const BlockOrRecord &child)
