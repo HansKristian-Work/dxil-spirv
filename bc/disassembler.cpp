@@ -41,6 +41,7 @@ struct StreamState
 	void append(ArrayType *type);
 	void append(StructType *type);
 	void append(FunctionType *type);
+	void append(VectorType *type);
 
 	void append(const std::string &str);
 	void append(Value *value, bool decl = false);
@@ -151,6 +152,11 @@ void StreamState::append(FunctionType *type)
 	append("))");
 }
 
+void StreamState::append(VectorType *type)
+{
+	append(type->getElementType(), "x", type->getVectorSize());
+}
+
 void StreamState::append(bool v)
 {
 	stream << (v ? "true" : "false");
@@ -220,6 +226,8 @@ void StreamState::append(Type *type)
 		return append(cast<ArrayType>(type));
 	case Type::TypeID::FunctionTyID:
 		return append(cast<FunctionType>(type));
+	case Type::TypeID::VectorTyID:
+		return append(cast<VectorType>(type));
 	case Type::TypeID::HalfTyID:
 		return append("half");
 	case Type::TypeID::FloatTyID:
