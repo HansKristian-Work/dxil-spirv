@@ -1231,7 +1231,7 @@ void ModuleParseContext::resolve_global_initializations()
 {
 	for (auto &ref : global_initializations)
 	{
-		Value *value = get_value(ref.second);
+		Value *value = get_value(ref.second, nullptr, true);
 		auto *constant_value = dyn_cast<Constant>(value);
 		if (!constant_value)
 		{
