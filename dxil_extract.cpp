@@ -19,9 +19,6 @@
 #include "dxil_spirv_c.h"
 #include "cli_parser.hpp"
 #include "logging.hpp"
-#include "module.hpp"
-#include "context.hpp"
-#include "dxil_bytecode.h"
 #include <vector>
 #include <stdio.h>
 #include <stdint.h>
