@@ -58,7 +58,7 @@ void Instruction::set_terminator()
 	is_terminator = true;
 }
 
-void Instruction::resolve_proxy_values()
+bool Instruction::resolve_proxy_values()
 {
 	for (auto &op : operands)
 		while (op && op->get_value_kind() == ValueKind::Proxy)
@@ -67,8 +67,10 @@ void Instruction::resolve_proxy_values()
 	if (get_value_kind() == ValueKind::PHI)
 	{
 		auto *phi = cast<PHINode>(this);
-		phi->resolve_proxy_values_incoming();
+		if (!phi->resolve_proxy_values_incoming())
+			return false;
 	}
+	return true;
 }
 
 void Instruction::add_metadata(const std::string &str, MDNode *node)
@@ -355,11 +357,18 @@ Value *PHINode::getIncomingValue(unsigned index) const
 	return incoming[index].value;
 }
 
-void PHINode::resolve_proxy_values_incoming()
+bool PHINode::resolve_proxy_values_incoming()
 {
 	for (auto &node : incoming)
+	{
 		while (node.value && node.value->get_value_kind() == ValueKind::Proxy)
+		{
 			node.value = cast<ValueProxy>(node.value)->get_proxy_value();
+			if (!node.value)
+				return false;
+		}
+	}
+	return true;
 }
 
 AtomicRMWInst::AtomicRMWInst(Type *type, Value *ptr_, Value *value_, BinOp op_)

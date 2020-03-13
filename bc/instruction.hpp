@@ -67,7 +67,8 @@ public:
 
 	enum CastOps
 	{
-		Trunc = 100,
+		Invalid = 100,
+		Trunc,
 		ZExt,
 		SExt,
 		FPToUI,
@@ -87,7 +88,7 @@ public:
 	Value *getOperand(unsigned index) const;
 	unsigned getNumOperands() const;
 
-	void resolve_proxy_values();
+	bool resolve_proxy_values();
 
 	MDNode *getMetadata(const std::string &str) const;
 	void add_metadata(const std::string &str, MDNode *node);
@@ -361,7 +362,7 @@ public:
 	BasicBlock *getIncomingBlock(unsigned index) const;
 
 	void add_incoming(Value *value, BasicBlock *bb);
-	void resolve_proxy_values_incoming();
+	bool resolve_proxy_values_incoming();
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 

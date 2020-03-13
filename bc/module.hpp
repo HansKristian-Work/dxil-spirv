@@ -81,5 +81,5 @@ private:
 };
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size);
-std::string disassemble(Module &module);
+bool disassemble(Module &module, std::string &str);
 }

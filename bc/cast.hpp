@@ -87,7 +87,7 @@ public:
 	ValueProxy(Type *type, ModuleParseContext &context, uint64_t id);
 
 	Value *get_proxy_value() const;
-	void resolve();
+	bool resolve();
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 

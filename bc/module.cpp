@@ -291,28 +291,28 @@ struct ModuleParseContext
 	Type *constant_type = nullptr;
 	std::string current_metadata_name;
 
-	void parse_function_child_block(const BlockOrRecord &entry);
-	void parse_record(const BlockOrRecord &entry);
-	void parse_constants_record(const BlockOrRecord &entry);
-	void parse_constants_block(const BlockOrRecord &entry);
-	void parse_metadata_block(const BlockOrRecord &entry);
-	void parse_metadata_attachment_record(const BlockOrRecord &entry);
-	void parse_metadata_record(const BlockOrRecord &entry, unsigned index);
+	bool parse_function_child_block(const BlockOrRecord &entry);
+	bool parse_record(const BlockOrRecord &entry);
+	bool parse_constants_record(const BlockOrRecord &entry);
+	bool parse_constants_block(const BlockOrRecord &entry);
+	bool parse_metadata_block(const BlockOrRecord &entry);
+	bool parse_metadata_attachment_record(const BlockOrRecord &entry);
+	bool parse_metadata_record(const BlockOrRecord &entry, unsigned index);
 	Type *get_constant_type();
-	void parse_function_body(const BlockOrRecord &entry);
-	void parse_types(const BlockOrRecord &entry);
-	void parse_value_symtab(const BlockOrRecord &entry);
-	void parse_function_record(const BlockOrRecord &entry);
-	void parse_global_variable_record(const BlockOrRecord &entry);
-	void parse_version_record(const BlockOrRecord &entry);
-	void parse_type(const BlockOrRecord &entry);
-	void add_instruction(Instruction *inst);
-	void add_value(Value *value);
+	bool parse_function_body(const BlockOrRecord &entry);
+	bool parse_types(const BlockOrRecord &entry);
+	bool parse_value_symtab(const BlockOrRecord &entry);
+	bool parse_function_record(const BlockOrRecord &entry);
+	bool parse_global_variable_record(const BlockOrRecord &entry);
+	bool parse_version_record(const BlockOrRecord &entry);
+	bool parse_type(const BlockOrRecord &entry);
+	bool add_instruction(Instruction *inst);
+	bool add_value(Value *value);
 
-	void add_type(Type *type);
+	bool add_type(Type *type);
 	Type *get_type(uint64_t index);
-	void finish_basic_block();
-	void add_successor(BasicBlock *bb);
+	bool finish_basic_block();
+	bool add_successor(BasicBlock *bb);
 	BasicBlock *get_basic_block(unsigned index) const;
 	BasicBlock *current_bb = nullptr;
 	unsigned basic_block_index = 0;
@@ -326,8 +326,8 @@ struct ModuleParseContext
 
 	std::vector<ValueProxy *> pending_forward_references;
 	std::vector<std::pair<GlobalVariable *, uint64_t>> global_initializations;
-	void resolve_forward_references();
-	void resolve_global_initializations();
+	bool resolve_forward_references();
+	bool resolve_global_initializations();
 
 	uint64_t tween_id = 1;
 	uint64_t metadata_tween_id = 1;
@@ -342,15 +342,15 @@ ValueProxy::ValueProxy(Type *type, ModuleParseContext &context_, uint64_t id_)
 {
 }
 
-void ValueProxy::resolve()
+bool ValueProxy::resolve()
 {
 	if (proxy)
-		return;
+		return true;
 
 	if (id >= context.values.size())
 	{
 		LOGE("Value proxy is out of range.\n");
-		return;
+		return false;
 	}
 
 	proxy = context.values[id];
@@ -361,7 +361,11 @@ void ValueProxy::resolve()
 	}
 
 	if (!proxy)
+	{
 		LOGE("Failed to resolve proxy value.\n");
+		return false;
+	}
+	return true;
 }
 
 Value *ValueProxy::get_proxy_value() const
@@ -369,7 +373,7 @@ Value *ValueProxy::get_proxy_value() const
 	return proxy;
 }
 
-void ModuleParseContext::finish_basic_block()
+bool ModuleParseContext::finish_basic_block()
 {
 	basic_block_index++;
 	if (basic_block_index >= basic_blocks.size())
@@ -379,14 +383,20 @@ void ModuleParseContext::finish_basic_block()
 		current_bb = basic_blocks[basic_block_index];
 		current_bb->set_tween_id(tween_id++);
 	}
+
+	return true;
 }
 
-void ModuleParseContext::add_successor(BasicBlock *bb)
+bool ModuleParseContext::add_successor(BasicBlock *bb)
 {
 	if (!current_bb)
-		return;
+	{
+		LOGE("No basic block is active in add_successor().\n");
+		return false;
+	}
 
 	current_bb->add_successor(bb);
+	return true;
 }
 
 BasicBlock *ModuleParseContext::get_basic_block(unsigned index) const
@@ -474,7 +484,7 @@ Value *ModuleParseContext::get_value_signed(uint64_t op, Type *expected_type)
 		return values[op];
 }
 
-void ModuleParseContext::add_instruction(Instruction *inst)
+bool ModuleParseContext::add_instruction(Instruction *inst)
 {
 	instructions.push_back(inst);
 
@@ -483,22 +493,23 @@ void ModuleParseContext::add_instruction(Instruction *inst)
 	else
 	{
 		LOGE("No basic block is currently set!\n");
-		return;
+		return false;
 	}
 
 	if (inst->isTerminator())
-		finish_basic_block();
+		return finish_basic_block();
 	else
-		add_value(inst);
+		return add_value(inst);
 }
 
-void ModuleParseContext::add_value(Value *value)
+bool ModuleParseContext::add_value(Value *value)
 {
 	if (value->getType()->getTypeID() != Type::TypeID::VoidTyID)
 	{
 		value->set_tween_id(tween_id++);
 		values.push_back(value);
 	}
+	return true;
 }
 
 Type *ModuleParseContext::get_constant_type()
@@ -509,14 +520,16 @@ Type *ModuleParseContext::get_constant_type()
 		return Type::getInt32Ty(*context);
 }
 
-void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 {
 	if (entry.IsBlock())
-		return;
+		return true;
 
 	switch (ConstantsRecord(entry.id))
 	{
 	case ConstantsRecord::SETTYPE:
+		if (entry.ops.size() < 1)
+			return false;
 		constant_type = get_type(entry.ops[0]);
 		break;
 
@@ -529,7 +542,11 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			value = ConstantFP::get(constant_type, 0);
 
 		if (!value)
+		{
 			LOGE("Unknown type for CONST_NULL.\n");
+			return false;
+		}
+
 		values.push_back(value);
 		break;
 	}
@@ -543,8 +560,14 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 	case ConstantsRecord::INTEGER:
 	{
+		if (entry.ops.size() < 1)
+			return false;
 		auto *type = get_constant_type();
-		assert(type->isIntegerTy());
+		if (!type->isIntegerTy())
+		{
+			LOGE("Constant type is not integer.\n");
+			return false;
+		}
 
 		uint64_t literal = entry.ops[0];
 		int64_t signed_literal = decode_sign_rotated_value(literal);
@@ -554,28 +577,29 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 	}
 
 	case ConstantsRecord::WIDE_INTEGER:
-		LOGW("WIDE_INTEGER unimplemented.\n");
-		values.push_back(nullptr);
-		break;
+		LOGE("WIDE_INTEGER unimplemented.\n");
+		return false;
 
 	case ConstantsRecord::FLOAT:
 	{
 		auto *type = get_constant_type();
-		assert(type->isFloatingPointTy());
+		if (!type->isFloatingPointTy())
+		{
+			LOGE("Constant type is not FP.\n");
+			return false;
+		}
 		ConstantFP *value = ConstantFP::get(type, entry.ops[0]);
 		values.push_back(value);
 		break;
 	}
 
 	case ConstantsRecord::AGGREGATE:
-		LOGW("AGGREGATE unimplemented.\n");
-		values.push_back(nullptr);
-		break;
+		LOGE("AGGREGATE unimplemented.\n");
+		return false;
 
 	case ConstantsRecord::STRING:
-		LOGW("STRING unimplemented.\n");
-		values.push_back(nullptr);
-		break;
+		LOGE("STRING unimplemented.\n");
+		return false;
 
 	case ConstantsRecord::DATA:
 	{
@@ -587,11 +611,11 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		else
 		{
 			LOGE("Unknown DATA type.\n");
-			values.push_back(nullptr);
-			break;
+			return false;
 		}
 
 		bool is_fp = element_type->isFloatingPointTy();
+		bool is_int = element_type->isIntegerTy();
 		std::vector<Constant *> constants;
 		constants.reserve(entry.ops.size());
 		if (is_fp)
@@ -599,34 +623,46 @@ void ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			for (auto &op : entry.ops)
 				constants.push_back(ConstantFP::get(element_type, op));
 		}
-		else
+		else if (is_int)
 		{
 			for (auto &op : entry.ops)
 				constants.push_back(ConstantInt::get(element_type, op));
 		}
+		else
+		{
+			LOGE("Unknown DATA type.\n");
+			return false;
+		}
+
 		auto *value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
 		values.push_back(value);
 		break;
 	}
 
 	default:
-		LOGW("UNKNOWN unimplemented.\n");
-		values.push_back(nullptr);
-		break;
+		LOGE("UNKNOWN unimplemented.\n");
+		return false;
 	}
+
+	return true;
 }
 
-void ModuleParseContext::parse_constants_block(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_constants_block(const BlockOrRecord &entry)
 {
 	constant_type = nullptr;
 	for (auto &child : entry.children)
-		parse_constants_record(child);
+		if (!parse_constants_record(child))
+			return false;
+	return true;
 }
 
-void ModuleParseContext::parse_metadata_attachment_record(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_metadata_attachment_record(const BlockOrRecord &entry)
 {
 	if (MetaDataRecord(entry.id) != MetaDataRecord::ATTACHMENT)
-		return;
+		return true;
+
+	if (entry.ops.size() < 1)
+		return false;
 
 	size_t size = entry.ops.size();
 	size_t num_nodes = (size - 1) / 2;
@@ -635,7 +671,7 @@ void ModuleParseContext::parse_metadata_attachment_record(const BlockOrRecord &e
 	if (!inst)
 	{
 		LOGE("Invalid instruction.\n");
-		return;
+		return false;
 	}
 
 	for (size_t i = 0; i < num_nodes; i++)
@@ -647,20 +683,21 @@ void ModuleParseContext::parse_metadata_attachment_record(const BlockOrRecord &e
 		if (!kind)
 		{
 			LOGE("Invalid metadata kind.\n");
-			return;
+			return false;
 		}
 
 		if (!node)
 		{
 			LOGE("Invalid metadata attachment.\n");
-			return;
+			return false;
 		}
 
 		inst->add_metadata(kind, node);
 	}
+	return true;
 }
 
-void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsigned index)
+bool ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsigned index)
 {
 	switch (MetaDataRecord(entry.id))
 	{
@@ -715,18 +752,21 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 
 	case MetaDataRecord::VALUE:
 	{
+		if (entry.ops.size() < 2)
+			return false;
+
 		auto *value = get_value(entry.ops[1], nullptr, true);
 		if (!value)
 		{
 			LOGE("Null value!\n");
-			return;
+			return false;
 		}
 
 		auto *constant_value = dyn_cast<Constant>(value);
 		if (!constant_value)
 		{
 			LOGE("Not a constant!\n");
-			return;
+			return false;
 		}
 
 		auto *node = context->construct<ConstantAsMetadata>(module, constant_value);
@@ -736,6 +776,9 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 
 	case MetaDataRecord::KIND:
 	{
+		if (entry.ops.size() < 1)
+			return false;
+
 		metadata_kind_map[entry.ops[0]] = entry.getString(1);
 		break;
 	}
@@ -743,36 +786,44 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 	default:
 		break;
 	}
+
+	return true;
 }
 
-void ModuleParseContext::parse_metadata_block(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_metadata_block(const BlockOrRecord &entry)
 {
 	unsigned index = 0;
 	for (auto &child : entry.children)
-		parse_metadata_record(child, index++);
+		if (!parse_metadata_record(child, index++))
+			return false;
+	return true;
 }
 
-void ModuleParseContext::parse_function_child_block(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_function_child_block(const BlockOrRecord &entry)
 {
 	switch (KnownBlocks(entry.id))
 	{
 	case KnownBlocks::CONSTANTS_BLOCK:
 	{
 		for (auto &child : entry.children)
-			parse_constants_record(child);
+			if (!parse_constants_record(child))
+				return false;
 		break;
 	}
 
 	case KnownBlocks::METADATA_ATTACHMENT:
 	{
 		for (auto &child : entry.children)
-			parse_metadata_attachment_record(child);
+			if (!parse_metadata_attachment_record(child))
+				return false;
 		break;
 	}
 
 	default:
 		break;
 	}
+
+	return true;
 }
 
 static UnaryOperator::UnaryOps translate_uop(UnaryOp op, Type *type)
@@ -886,10 +937,10 @@ static Instruction::CastOps translate_castop(CastOp op)
 	case CastOp::ADDSPACECAST:
 		return Instruction::AddrSpaceCast;
 	}
-	assert(0);
+	return Instruction::CastOps::Invalid;
 }
 
-void ModuleParseContext::parse_record(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 {
 	switch (FunctionRecord(entry.id))
 	{
@@ -905,27 +956,44 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	case FunctionRecord::INST_CALL:
 	{
 		unsigned index = 1;
+
+		if (index >= entry.ops.size())
+			return false;
 		auto CCInfo = entry.ops[index++];
 
 		if (CCInfo & CALL_FMF_BIT)
 		{
+			if (index >= entry.ops.size())
+				return false;
 			auto fmf = entry.ops[index++];
 			(void)fmf;
 		}
 
 		FunctionType *function_type = nullptr;
 		if (CCInfo & CALL_EXPLICIT_TYPE_BIT)
+		{
+			if (index >= entry.ops.size())
+				return false;
 			function_type = cast<FunctionType>(get_type(entry.ops[index++]));
+		}
 
-		auto *callee = cast<Function>(get_value(entry.ops[index++]));
+		if (index >= entry.ops.size())
+			return false;
+		auto *callee = dyn_cast<Function>(get_value(entry.ops[index++]));
+		if (!callee)
+			return false;
+
 		if (!function_type)
 			function_type = callee->getFunctionType();
+
+		if (!function_type)
+			return false;
 
 		unsigned num_params = function_type->getNumParams();
 		if (entry.ops.size() != index + num_params)
 		{
 			LOGE("Number of params does not match record.\n");
-			return;
+			return false;
 		}
 
 		std::vector<Value *> params;
@@ -933,49 +1001,65 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 		for (unsigned i = 0; i < num_params; i++)
 		{
-			Value *arg = get_value(entry.ops[index + i]);
+			auto *arg = get_value(entry.ops[index + i]);
+			if (!arg)
+				return false;
 			params.push_back(arg);
 		}
 
-		auto *value = context->construct<CallInst>(function_type, cast<Function>(callee), std::move(params));
-		add_instruction(value);
+		auto *value = context->construct<CallInst>(function_type, callee, std::move(params));
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_RET:
 	{
 		auto *ret = context->construct<ReturnInst>(nullptr);
-		add_instruction(ret);
+		if (!add_instruction(ret))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_UNOP:
 	{
+		if (entry.ops.size() < 2)
+			return false;
 		auto *val = get_value(entry.ops[0]);
 		auto op = UnaryOp(entry.ops[1]);
 		auto *value = context->construct<UnaryOperator>(translate_uop(op, val->getType()), val);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_CMP:
 	case FunctionRecord::INST_CMP2:
 	{
+		if (entry.ops.size() < 3)
+			return false;
 		auto *lhs = get_value(entry.ops[0]);
 		auto *rhs = get_value(entry.ops[1]);
 		auto pred = Instruction::Predicate(entry.ops[2]);
+
+		if (!lhs || !rhs)
+			return false;
 
 		Instruction *value = nullptr;
 		if (lhs->getType()->isFloatingPointTy())
 			value = context->construct<FCmpInst>(pred, lhs, rhs);
 		else
 			value = context->construct<ICmpInst>(pred, lhs, rhs);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_PHI:
 	{
+		if (entry.ops.size() < 1)
+			return false;
+
 		auto *type = get_type(entry.ops[0]);
 		size_t num_args = (entry.ops.size() - 1) / 2;
 
@@ -990,69 +1074,102 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 				value = get_value(entry.ops[2 * i + 1], type);
 
 			BasicBlock *bb = get_basic_block(entry.ops[2 * i + 2]);
+			if (!value || !bb)
+				return false;
 			phi_node->add_incoming(value, bb);
 		}
-		add_instruction(phi_node);
+		if (!add_instruction(phi_node))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_BINOP:
 	{
+		if (entry.ops.size() < 3)
+			return false;
 		auto *lhs = get_value(entry.ops[0]);
 		auto *rhs = get_value(entry.ops[1]);
+		if (!lhs || !rhs)
+			return false;
 		auto op = BinOp(entry.ops[2]);
 		auto *value = context->construct<BinaryOperator>(lhs, rhs, translate_binop(op, lhs->getType()));
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_ATOMICRMW:
 	{
+		if (entry.ops.size() < 3)
+			return false;
 		auto *ptr = get_value(entry.ops[0]);
 		auto *val = get_value(entry.ops[1]);
+		if (!ptr || !val)
+			return false;
 		AtomicRMWInst::BinOp op = translate_atomic_binop(AtomicBinOp(entry.ops[2]));
 		auto *value = context->construct<AtomicRMWInst>(val->getType(), ptr, val, op);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_CMPXCHG:
 	{
+		if (entry.ops.size() < 3)
+			return false;
 		auto *ptr = get_value(entry.ops[0]);
 		auto *cmp = get_value(entry.ops[1]);
 		auto *new_value = get_value(entry.ops[2]);
+		if (!ptr || !cmp || !new_value)
+			return false;
 		auto *value = context->construct<AtomicCmpXchgInst>(ptr, cmp, new_value);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_CAST:
 	{
+		if (entry.ops.size() < 3)
+			return false;
 		auto *input_value = get_value(entry.ops[0]);
 		auto *type = get_type(entry.ops[1]);
+		if (!input_value || !type)
+			return false;
 		auto op = Instruction::CastOps(translate_castop(CastOp(entry.ops[2])));
 		auto *value = context->construct<CastInst>(type, input_value, op);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_SELECT:
 	case FunctionRecord::INST_VSELECT:
 	{
+		if (entry.ops.size() < 3)
+			return false;
 		auto *true_value = get_value(entry.ops[0]);
 		auto *false_value = get_value(entry.ops[1]);
 		auto *cond_value = get_value(entry.ops[2]);
+		if (!true_value || !false_value || !cond_value)
+			return false;
 		auto *value = context->construct<SelectInst>(true_value, false_value, cond_value);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_EXTRACTVAL:
 	{
+		if (entry.ops.size() < 1)
+			return false;
+
 		unsigned num_args = entry.ops.size();
 		std::vector<unsigned> indices;
 		indices.reserve(entry.ops.size() - 1);
 		Value *aggregate = get_value(entry.ops[0]);
+		if (!aggregate)
+			return false;
 
 		Type *type = aggregate->getType();
 		for (unsigned i = 1; i < num_args; i++)
@@ -1063,7 +1180,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 				if (index >= cast<StructType>(type)->getNumElements())
 				{
 					LOGE("Struct element index out of range.\n");
-					return;
+					return false;
 				}
 				type = cast<StructType>(type)->getElementType(index);
 			}
@@ -1071,42 +1188,68 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			{
 				type = type->getArrayElementType();
 			}
+			else
+				return false;
 
 			// DXIL does not support vectors, so we're not supposed to index into them any further.
 			indices.push_back(index);
 		}
 
 		auto *value = context->construct<ExtractValueInst>(type, aggregate, std::move(indices));
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_BR:
 	{
+		if (entry.ops.size() < 1)
+			return false;
+
 		auto *true_block = get_basic_block(entry.ops[0]);
-		add_successor(true_block);
+		if (!true_block)
+			return false;
+
+		if (!add_successor(true_block))
+			return false;
+
 		if (entry.ops.size() == 1)
 		{
 			auto *value = context->construct<BranchInst>(true_block);
-			add_instruction(value);
+			if (!add_instruction(value))
+				return false;
 		}
-		else
+		else if (entry.ops.size() == 3)
 		{
 			auto *false_block = get_basic_block(entry.ops[1]);
-			add_successor(false_block);
+			if (!false_block)
+				return false;
+			if (!add_successor(false_block))
+				return false;
 			auto *cond = get_value(entry.ops[2]);
 			auto *value = context->construct<BranchInst>(true_block, false_block, cond);
-			add_instruction(value);
+			if (!add_instruction(value))
+				return false;
 		}
+		else
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_SWITCH:
 	{
+		if (entry.ops.size() < 3)
+			return false;
+
 		auto *type = get_type(entry.ops[0]);
 		auto *cond = get_value(entry.ops[1]);
 		auto *default_block = get_basic_block(entry.ops[2]);
-		add_successor(default_block);
+
+		if (!type || !cond || !default_block)
+			return false;
+		if (!add_successor(default_block))
+			return false;
+
 		unsigned num_cases = (entry.ops.size() - 3) / 2;
 		auto *inst = context->construct<SwitchInst>(cond, default_block, num_cases);
 		for (unsigned i = 0; i < num_cases; i++)
@@ -1117,38 +1260,55 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			if (!case_value || !bb)
 			{
 				LOGE("Invalid switch record.\n");
-				return;
+				return false;
 			}
-			add_successor(bb);
+			if (!add_successor(bb))
+				return false;
 			inst->addCase(case_value, bb);
 		}
-		add_instruction(inst);
+		if (!add_instruction(inst))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_ALLOCA:
 	{
+		if (entry.ops.size() < 3)
+			return false;
 		auto *allocated_type = get_type(entry.ops[0]);
 		auto *type = get_type(entry.ops[1]);
 		auto *size = get_value(entry.ops[2], nullptr, true);
+
+		if (!allocated_type || !type || !size)
+			return false;
+
 		auto *ptr_type = PointerType::get(allocated_type, 0);
 
 		auto *value = context->construct<AllocaInst>(ptr_type, type, size);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_GEP:
 	{
+		if (entry.ops.size() < 3)
+			return false;
+
 		bool inbounds = entry.ops[0] != 0;
 		auto *type = get_type(entry.ops[1]);
 		unsigned count = entry.ops.size() - 2;
 		std::vector<Value *> args;
 		args.reserve(count);
 		for (unsigned i = 0; i < count; i++)
-			args.push_back(get_value(entry.ops[i + 2]));
+		{
+			auto *value = get_value(entry.ops[i + 2]);
+			if (!value)
+				return false;
+			args.push_back(value);
+		}
 
-		for (unsigned i = 1; i < args.size(); i++)
+		for (unsigned i = 2; i < args.size(); i++)
 		{
 			auto *arg = args[i];
 			if (type->getTypeID() == Type::TypeID::StructTyID)
@@ -1157,14 +1317,14 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 				if (!const_int)
 				{
 					LOGE("Indexing into a struct without a constant integer.\n");
-					return;
+					return false;
 				}
 
 				unsigned index = const_int->getUniqueInteger().getZExtValue();
 				if (index >= cast<StructType>(type)->getNumElements())
 				{
 					LOGE("Struct element index out of range.\n");
-					return;
+					return false;
 				}
 				type = cast<StructType>(type)->getElementType(index);
 			}
@@ -1172,22 +1332,28 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			{
 				type = type->getArrayElementType();
 			}
+			else
+				return false;
 		}
 
 		type = PointerType::get(type, cast<PointerType>(args[0]->getType())->getAddressSpace());
 
 		auto *value = context->construct<GetElementPtrInst>(type, std::move(args), inbounds);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	case FunctionRecord::INST_LOAD:
 	{
+		if (entry.ops.size() < 2)
+			return false;
+
 		auto *ptr = get_value(entry.ops[0]);
 		if (!isa<PointerType>(ptr->getType()))
 		{
 			LOGE("Loading from something that is not a pointer.\n");
-			return;
+			return false;
 		}
 
 		Type *loaded_type = nullptr;
@@ -1206,45 +1372,54 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		auto *ptr = get_value(entry.ops[0]);
 		auto *v = get_value(entry.ops[1]);
 		auto *value = context->construct<StoreInst>(ptr, v);
-		add_instruction(value);
+		if (!add_instruction(value))
+			return false;
 		break;
 	}
 
 	default:
 		LOGE("Unhandled instruction!\n");
-		add_instruction(nullptr);
-		break;
+		return false;
 	}
+
+	return true;
 }
 
-void ModuleParseContext::resolve_forward_references()
+bool ModuleParseContext::resolve_forward_references()
 {
 	for (auto *ref : pending_forward_references)
-		ref->resolve();
+		if (!ref->resolve())
+			return false;
 	pending_forward_references.clear();
 
 	for (auto *bb : basic_blocks)
 		for (auto &inst : *bb)
-			inst.resolve_proxy_values();
+			if (!inst.resolve_proxy_values())
+				return false;
+
+	return true;
 }
 
-void ModuleParseContext::resolve_global_initializations()
+bool ModuleParseContext::resolve_global_initializations()
 {
 	for (auto &ref : global_initializations)
 	{
 		Value *value = get_value(ref.second, nullptr, true);
+		if (!value)
+			return false;
 		auto *constant_value = dyn_cast<Constant>(value);
 		if (!constant_value)
 		{
 			LOGE("Global initializer is not a constant!\n");
-			continue;
+			return false;
 		}
 		ref.first->set_initializer(constant_value);
 	}
 	global_initializations.clear();
+	return true;
 }
 
-void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 {
 	auto global_values = values;
 
@@ -1258,7 +1433,7 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	if (functions_with_bodies.empty())
 	{
 		LOGE("No more functions to process?\n");
-		return;
+		return false;
 	}
 
 	function = functions_with_bodies.back();
@@ -1267,13 +1442,21 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	for (auto &child : entry.children)
 	{
 		if (child.IsBlock())
-			parse_function_child_block(child);
+		{
+			if (!parse_function_child_block(child))
+				return false;
+		}
 		else
-			parse_record(child);
+		{
+			if (!parse_record(child))
+				return false;
+		}
 	}
 
-	resolve_forward_references();
-	resolve_global_initializations();
+	if (!resolve_forward_references())
+		return false;
+	if (!resolve_global_initializations())
+		return false;
 
 	function->set_basic_blocks(std::move(basic_blocks));
 	basic_blocks = {};
@@ -1281,21 +1464,21 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 
 	values = global_values;
 	instructions.clear();
+	return true;
 }
 
-void ModuleParseContext::parse_type(const BlockOrRecord &child)
+bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 {
 	Type *type = nullptr;
 	switch (TypeRecord(child.id))
 	{
 	case TypeRecord::NUMENTRY:
-		return;
+	case TypeRecord::STRUCT_NAME:
+		return true;
 
 	case TypeRecord::VOID:
-	{
 		type = Type::getVoidTy(*context);
 		break;
-	}
 
 	case TypeRecord::HALF:
 		type = Type::getHalfTy(*context);
@@ -1310,14 +1493,33 @@ void ModuleParseContext::parse_type(const BlockOrRecord &child)
 		break;
 
 	case TypeRecord::POINTER:
-		type = PointerType::get(get_type(child.ops[0]), child.ops[1]);
+	{
+		if (child.ops.size() < 2)
+			return false;
+
+		auto *pointee_type = get_type(child.ops[0]);
+		if (!pointee_type)
+			return false;
+		type = PointerType::get(pointee_type, child.ops[1]);
 		break;
+	}
 
 	case TypeRecord::ARRAY:
-		type = ArrayType::get(get_type(child.ops[1]), child.ops[0]);
+	{
+		if (child.ops.size() < 2)
+			return false;
+
+		auto *elem_type = get_type(child.ops[1]);
+		if (!elem_type)
+			return false;
+		type = ArrayType::get(elem_type, child.ops[0]);
 		break;
+	}
 
 	case TypeRecord::INTEGER:
+		if (child.ops.size() < 1)
+			return false;
+
 		switch (child.ops[0])
 		{
 		case 1:
@@ -1339,15 +1541,19 @@ void ModuleParseContext::parse_type(const BlockOrRecord &child)
 		case 64:
 			type = Type::getInt64Ty(*context);
 			break;
+
+		default:
+			LOGE("Unexpected integer bitwidth %u.\n", unsigned(child.ops[0]));
+			return false;
 		}
 		break;
-
-	case TypeRecord::STRUCT_NAME:
-		return;
 
 	case TypeRecord::STRUCT_NAMED:
 	case TypeRecord::STRUCT_ANON:
 	{
+		if (child.ops.size() < 1)
+			return false;
+
 		std::vector<Type *> members;
 		unsigned num_members = child.ops.size() - 1;
 		members.reserve(num_members);
@@ -1359,21 +1565,32 @@ void ModuleParseContext::parse_type(const BlockOrRecord &child)
 
 	case TypeRecord::VECTOR:
 	{
-		type = VectorType::get(child.ops[0], get_type(child.ops[1]));
+		if (child.ops.size() < 2)
+			return false;
+
+		auto *elem_type = get_type(child.ops[1]);
+		if (!elem_type)
+			return false;
+		type = VectorType::get(child.ops[0], elem_type);
 		break;
 	}
 
 	case TypeRecord::FUNCTION:
 	{
+		if (child.ops.size() < 2)
+			return false;
 		std::vector<Type *> argument_types;
-		argument_types.reserve(child.ops.size());
+		argument_types.reserve(child.ops.size() - 2);
 		for (size_t i = 2; i < child.ops.size(); i++)
 			argument_types.push_back(get_type(child.ops[i]));
 
-		type = context->construct<FunctionType>(*context,
-		                                        get_type(child.ops[1]),
-		                                        std::move(argument_types));
+		auto *func_type = get_type(child.ops[1]);
+		if (!func_type)
+			return false;
 
+		type = context->construct<FunctionType>(*context,
+		                                        func_type,
+		                                        std::move(argument_types));
 		break;
 	}
 
@@ -1391,19 +1608,22 @@ void ModuleParseContext::parse_type(const BlockOrRecord &child)
 
 	default:
 		LOGE("Unknown type!\n");
-		break;
+		return false;
 	}
 
 	add_type(type);
+	return true;
 }
 
-void ModuleParseContext::parse_types(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_types(const BlockOrRecord &entry)
 {
 	for (auto &child : entry.children)
-		parse_type(child);
+		if (!parse_type(child))
+			return false;
+	return true;
 }
 
-void ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 {
 	for (auto &symtab : entry.children)
 	{
@@ -1411,6 +1631,9 @@ void ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 		{
 		case ValueSymtabRecord::ENTRY:
 		{
+			if (symtab.ops.size() < 1)
+				return false;
+
 			auto name = symtab.getString(1);
 			module->add_value_name(symtab.ops[0], name);
 			break;
@@ -1420,15 +1643,19 @@ void ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 			break;
 		}
 	}
+	return true;
 }
 
-void ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry)
 {
 	if (use_strtab)
 	{
 		LOGE("Unknown module code 2 which uses strtab.\n");
-		return;
+		return false;
 	}
+
+	if (entry.ops.size() < 3)
+		return false;
 
 	auto *type = get_type(entry.ops[0]);
 	bool is_const = (entry.ops[1] & 1) != 0;
@@ -1442,6 +1669,9 @@ void ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry
 		type = cast<PointerType>(type)->getElementType();
 	}
 
+	if (!type)
+		return false;
+
 	auto *value = context->construct<GlobalVariable>(PointerType::get(type, address_space), is_const);
 	module->add_global_variable(value);
 	add_value(value);
@@ -1449,17 +1679,25 @@ void ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry
 	uint64_t init_id = entry.ops[2];
 	if (init_id != 0)
 		global_initializations.push_back({ value, init_id - 1 });
+
+	return true;
 }
 
-void ModuleParseContext::parse_function_record(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_function_record(const BlockOrRecord &entry)
 {
 	if (use_strtab)
 	{
 		LOGE("Unknown module code 2 which uses strtab.\n");
-		return;
+		return false;
 	}
 
+	if (entry.ops.size() < 3)
+		return false;
+
 	auto *type = get_type(entry.ops[0]);
+	if (!type)
+		return false;
+
 	// Calling convention is [1], not relevant.
 	bool is_proto = entry.ops[2];
 	// Lots of other irrelevant arguments ...
@@ -1468,30 +1706,40 @@ void ModuleParseContext::parse_function_record(const BlockOrRecord &entry)
 	if (!func_type)
 		func_type = cast<FunctionType>(cast<PointerType>(type)->getElementType());
 
+	if (!func_type)
+		return false;
+
 	auto id = values.size();
 	auto *func = context->construct<Function>(func_type, id, *module);
 	values.push_back(func);
 
 	if (!is_proto)
 		functions_with_bodies.push_back(func);
+
+	return true;
 }
 
-void ModuleParseContext::parse_version_record(const BlockOrRecord &entry)
+bool ModuleParseContext::parse_version_record(const BlockOrRecord &entry)
 {
+	if (entry.ops.size() < 1)
+		return false;
 	unsigned version = entry.ops[0];
 	use_relative_id = version >= 1;
 	use_strtab = version >= 2;
+	return true;
 }
 
 Type *ModuleParseContext::get_type(uint64_t index)
 {
-	assert(index < types.size());
+	if (index >= types.size())
+		return nullptr;
 	return types[index];
 }
 
-void ModuleParseContext::add_type(Type *type)
+bool ModuleParseContext::add_type(Type *type)
 {
 	types.push_back(type);
+	return true;
 }
 
 void Module::add_value_name(uint64_t id, const std::string &name)
@@ -1556,7 +1804,7 @@ LLVMContext &Module::getContext()
 }
 
 Module::Module(LLVMContext &context_)
-		: context(context_)
+	: context(context_)
 {
 }
 
@@ -1626,23 +1874,28 @@ Module *parseIR(LLVMContext &context, const void *data, size_t size)
 			switch (KnownBlocks(child.id))
 			{
 			case KnownBlocks::VALUE_SYMTAB_BLOCK:
-				parse_context.parse_value_symtab(child);
+				if (!parse_context.parse_value_symtab(child))
+					return nullptr;
 				break;
 
 			case KnownBlocks::FUNCTION_BLOCK:
-				parse_context.parse_function_body(child);
+				if (!parse_context.parse_function_body(child))
+					return nullptr;
 				break;
 
 			case KnownBlocks::TYPE_BLOCK:
-				parse_context.parse_types(child);
+				if (!parse_context.parse_types(child))
+					return nullptr;
 				break;
 
 			case KnownBlocks::CONSTANTS_BLOCK:
-				parse_context.parse_constants_block(child);
+				if (!parse_context.parse_constants_block(child))
+					return nullptr;
 				break;
 
 			case KnownBlocks::METADATA_BLOCK:
-				parse_context.parse_metadata_block(child);
+				if (!parse_context.parse_metadata_block(child))
+					return nullptr;
 				break;
 
 			default:
@@ -1654,15 +1907,18 @@ Module *parseIR(LLVMContext &context, const void *data, size_t size)
 			switch (ModuleRecord(child.id))
 			{
 			case ModuleRecord::VERSION:
-				parse_context.parse_version_record(child);
+				if (!parse_context.parse_version_record(child))
+					return nullptr;
 				break;
 
 			case ModuleRecord::FUNCTION:
-				parse_context.parse_function_record(child);
+				if (!parse_context.parse_function_record(child))
+					return nullptr;
 				break;
 
 			case ModuleRecord::GLOBAL_VARIABLE:
-				parse_context.parse_global_variable_record(child);
+				if (!parse_context.parse_global_variable_record(child))
+					return nullptr;
 				break;
 
 			default:

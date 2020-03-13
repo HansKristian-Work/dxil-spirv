@@ -847,7 +847,7 @@ void StreamState::append(Value *value, bool decl)
 		append("%", value->get_tween_id());
 }
 
-std::string disassemble(Module &module)
+bool disassemble(Module &module, std::string &str)
 {
 	StreamState state;
 
@@ -858,6 +858,7 @@ std::string disassemble(Module &module)
 	{
 		state.newline();
 		state.append(func, true);
+		state.newline();
 	}
 
 	state.newline();
@@ -876,6 +877,7 @@ std::string disassemble(Module &module)
 		state.append(*itr, true);
 	}
 
-	return state.stream.str();
+	str = state.stream.str();
+	return true;
 }
 }
