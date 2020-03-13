@@ -71,6 +71,30 @@ void Instruction::resolve_proxy_values()
 	}
 }
 
+void Instruction::add_metadata(const std::string &str, MDNode *node)
+{
+	attachments[str] = node;
+}
+
+std::unordered_map<std::string, MDNode *>::const_iterator Instruction::metadata_begin() const
+{
+	return attachments.begin();
+}
+
+std::unordered_map<std::string, MDNode *>::const_iterator Instruction::metadata_end() const
+{
+	return attachments.end();
+}
+
+MDNode *Instruction::getMetadata(const std::string &str) const
+{
+	auto itr = attachments.find(str);
+	if (itr != attachments.end())
+		return itr->second;
+	else
+		return nullptr;
+}
+
 BinaryOperator::BinaryOperator(Value *LHS, Value *RHS, BinaryOps op_)
 	: Instruction(LHS->getType(), ValueKind::BinaryOperator), op(op_)
 {

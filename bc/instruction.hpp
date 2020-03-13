@@ -20,6 +20,7 @@
 
 #include "value.hpp"
 #include <string>
+#include <unordered_map>
 
 namespace LLVMBC
 {
@@ -88,11 +89,18 @@ public:
 
 	void resolve_proxy_values();
 
+	MDNode *getMetadata(const std::string &str) const;
+	void add_metadata(const std::string &str, MDNode *node);
+
+	std::unordered_map<std::string, MDNode *>::const_iterator metadata_begin() const;
+	std::unordered_map<std::string, MDNode *>::const_iterator metadata_end() const;
+
 protected:
 	void set_terminator();
 	bool is_terminator = false;
 	void set_operands(std::vector<Value *> op);
 	std::vector<Value *> operands;
+	std::unordered_map<std::string, MDNode *> attachments;
 };
 
 class ReturnInst : public Instruction
@@ -114,8 +122,6 @@ public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Call; }
 	CallInst(FunctionType *function_type, Function *callee, std::vector<Value *> params);
 	Function *getCalledFunction() const;
-
-	MDNode *getMetadata(const std::string &) const { return nullptr; }
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 

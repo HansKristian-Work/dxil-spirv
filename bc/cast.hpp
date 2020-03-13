@@ -53,6 +53,9 @@ inline const T *cast(const Type *type)
 template <typename T>
 inline T *dyn_cast(Type *type)
 {
+	if (!type)
+		return nullptr;
+
 	if (type->getTypeID() != T::get_type_id())
 		return nullptr;
 	else
@@ -62,6 +65,9 @@ inline T *dyn_cast(Type *type)
 template <typename T>
 inline const T *dyn_cast(const Type *type)
 {
+	if (!type)
+		return nullptr;
+
 	if (type->getTypeID() != T::get_type_id())
 		return nullptr;
 	else
@@ -130,6 +136,9 @@ inline const T *cast(const Value *value)
 template <typename T>
 inline T *dyn_cast(Value *value)
 {
+	if (!value)
+		return nullptr;
+
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
 
@@ -142,6 +151,9 @@ inline T *dyn_cast(Value *value)
 template <typename T>
 inline const T *dyn_cast(const Value *value)
 {
+	if (!value)
+		return nullptr;
+
 	if (T::get_value_kind() != ValueKind::Proxy)
 		value = Internal::resolve_proxy(value);
 
@@ -237,6 +249,9 @@ inline T *dyn_cast(MDOperand &md)
 template <typename T>
 inline T *dyn_cast(MDOperand *md)
 {
+	if (!md)
+		return nullptr;
+
 	if (md->get_metadata_kind() == T::get_metadata_kind())
 		return static_cast<T *>(md);
 	else
@@ -255,6 +270,9 @@ inline const T *dyn_cast(const MDOperand &md)
 template <typename T>
 inline const T *dyn_cast(const MDOperand *md)
 {
+	if (!md)
+		return nullptr;
+
 	if (md->get_metadata_kind() == T::get_metadata_kind())
 		return static_cast<const T *>(md);
 	else

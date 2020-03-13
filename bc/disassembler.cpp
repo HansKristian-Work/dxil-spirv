@@ -75,7 +75,7 @@ struct StreamState
 
 	void append(MDOperand *md);
 	void append(NamedMDNode *md);
-	void append(MDNode *md, bool decl);
+	void append(MDNode *md, bool decl = false);
 
 	void append(float v);
 	void append(double v);
@@ -515,6 +515,11 @@ void StreamState::append(CallInst *call, bool decl)
 				append(", ");
 		}
 		append(")");
+
+		for (auto itr = call->metadata_begin(); itr != call->metadata_end(); ++itr)
+		{
+			append(" !", itr->first, " ", itr->second);
+		}
 	}
 	else
 	{

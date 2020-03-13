@@ -282,10 +282,12 @@ struct ModuleParseContext
 	std::vector<BasicBlock *> basic_blocks;
 
 	std::vector<Value *> values;
+	std::vector<Instruction *> instructions;
 
 	std::vector<Type *> types;
 	std::vector<Function *> functions_with_bodies;
 	std::unordered_map<uint64_t, MDOperand *> metadata;
+	std::unordered_map<uint64_t, std::string> metadata_kind_map;
 	Type *constant_type = nullptr;
 	std::string current_metadata_name;
 
@@ -294,6 +296,7 @@ struct ModuleParseContext
 	void parse_constants_record(const BlockOrRecord &entry);
 	void parse_constants_block(const BlockOrRecord &entry);
 	void parse_metadata_block(const BlockOrRecord &entry);
+	void parse_metadata_attachment_record(const BlockOrRecord &entry);
 	void parse_metadata_record(const BlockOrRecord &entry, unsigned index);
 	Type *get_constant_type();
 	void parse_function_body(const BlockOrRecord &entry);
@@ -317,6 +320,9 @@ struct ModuleParseContext
 	Value *get_value(uint64_t op, Type *expected_type = nullptr, bool force_absolute = false);
 	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
 	MDOperand *get_metadata(uint64_t index) const;
+	const char *get_metadata_kind(uint64_t index) const;
+
+	Instruction *get_instruction(uint64_t index) const;
 
 	std::vector<ValueProxy *> pending_forward_references;
 	std::vector<std::pair<GlobalVariable *, uint64_t>> global_initializations;
@@ -414,6 +420,17 @@ Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type, bool forc
 		return values[op];
 }
 
+Instruction *ModuleParseContext::get_instruction(uint64_t index) const
+{
+	if (index >= instructions.size())
+	{
+		LOGE("Instruction index is out of range!\n");
+		return nullptr;
+	}
+
+	return instructions[index];
+}
+
 MDOperand *ModuleParseContext::get_metadata(uint64_t index) const
 {
 	auto itr = metadata.find(index);
@@ -424,6 +441,15 @@ MDOperand *ModuleParseContext::get_metadata(uint64_t index) const
 		// Need to return a null-node like this since MDOperand is used as a reference in the LLVM API for some reason.
 		return context->construct<MDOperand>(module);
 	}
+}
+
+const char *ModuleParseContext::get_metadata_kind(uint64_t index) const
+{
+	auto itr = metadata_kind_map.find(index);
+	if (itr != metadata_kind_map.end())
+		return itr->second.c_str();
+	else
+		return nullptr;
 }
 
 Value *ModuleParseContext::get_value_signed(uint64_t op, Type *expected_type)
@@ -450,6 +476,8 @@ Value *ModuleParseContext::get_value_signed(uint64_t op, Type *expected_type)
 
 void ModuleParseContext::add_instruction(Instruction *inst)
 {
+	instructions.push_back(inst);
+
 	if (current_bb)
 		current_bb->add_instruction(inst);
 	else
@@ -609,6 +637,43 @@ void ModuleParseContext::parse_constants_block(const BlockOrRecord &entry)
 		parse_constants_record(child);
 }
 
+void ModuleParseContext::parse_metadata_attachment_record(const BlockOrRecord &entry)
+{
+	if (MetaDataRecord(entry.id) != MetaDataRecord::ATTACHMENT)
+		return;
+
+	size_t size = entry.ops.size();
+	size_t num_nodes = (size - 1) / 2;
+	auto *inst = get_instruction(entry.ops[0]);
+
+	if (!inst)
+	{
+		LOGE("Invalid instruction.\n");
+		return;
+	}
+
+	for (size_t i = 0; i < num_nodes; i++)
+	{
+		auto *kind = get_metadata_kind(entry.ops[2 * i + 1]);
+		auto *operand = get_metadata(entry.ops[2 * i + 2]);
+		auto *node = dyn_cast<MDNode>(operand);
+
+		if (!kind)
+		{
+			LOGE("Invalid metadata kind.\n");
+			return;
+		}
+
+		if (!node)
+		{
+			LOGE("Invalid metadata attachment.\n");
+			return;
+		}
+
+		inst->add_metadata(kind, node);
+	}
+}
+
 void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsigned index)
 {
 	switch (MetaDataRecord(entry.id))
@@ -688,6 +753,12 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 		break;
 	}
 
+	case MetaDataRecord::KIND:
+	{
+		metadata_kind_map[entry.ops[0]] = entry.getString(1);
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -708,6 +779,13 @@ void ModuleParseContext::parse_function_child_block(const BlockOrRecord &entry)
 	{
 		for (auto &child : entry.children)
 			parse_constants_record(child);
+		break;
+	}
+
+	case KnownBlocks::METADATA_ATTACHMENT:
+	{
+		for (auto &child : entry.children)
+			parse_metadata_attachment_record(child);
 		break;
 	}
 
@@ -1221,6 +1299,7 @@ void ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	module->add_function_implementation(function);
 
 	values = global_values;
+	instructions.clear();
 }
 
 void ModuleParseContext::parse_type(const BlockOrRecord &child)
@@ -1363,9 +1442,19 @@ void ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 {
 	for (auto &symtab : entry.children)
 	{
-		auto name = symtab.getString(1);
-		module->add_value_name(symtab.ops[0], name);
-		LOGI("Value %u is \"%s\"\n", unsigned(symtab.ops[0]), name.c_str());
+		switch (ValueSymtabRecord(symtab.id))
+		{
+		case ValueSymtabRecord::ENTRY:
+		{
+			auto name = symtab.getString(1);
+			module->add_value_name(symtab.ops[0], name);
+			LOGI("Value %u is \"%s\"\n", unsigned(symtab.ops[0]), name.c_str());
+			break;
+		}
+
+		default:
+			break;
+		}
 	}
 }
 
