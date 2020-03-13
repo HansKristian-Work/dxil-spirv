@@ -1068,7 +1068,7 @@ void ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	{
 		auto *allocated_type = get_type(entry.ops[0]);
 		auto *type = get_type(entry.ops[1]);
-		auto *size = get_value(entry.ops[2]);
+		auto *size = get_value(entry.ops[2], nullptr, true);
 		auto *ptr_type = PointerType::get(allocated_type, 0);
 
 		auto *value = context->construct<AllocaInst>(ptr_type, type, size);

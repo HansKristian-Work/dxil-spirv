@@ -755,6 +755,8 @@ void StreamState::append(MDOperand *md)
 			return append(cast<ConstantAsMetadata>(md)->getValue());
 		case MetadataKind::String:
 			return append("\"", cast<MDString>(md)->getString(), "\"");
+		case MetadataKind::None:
+			return append("null");
 		default:
 			LOGE("Unknown MetadataKind %u.\n", unsigned(md->get_metadata_kind()));
 			break;
