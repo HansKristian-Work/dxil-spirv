@@ -113,28 +113,8 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-#if 0
-	{
-		LLVMBC::BitcodeReader reader(static_cast<const uint8_t *>(ir_data), ir_size);
-		auto block = reader.ReadToplevelBlock();
-	}
-#endif
-
-	{
-		DXIL::Program program(static_cast<const uint8_t *>(ir_data), ir_size);
-		auto disasm = program.GetDisassembly();
-		printf("%s\n", disasm.c_str());
-	}
-
 	if (output.empty())
 	{
-		{
-			LLVMBC::LLVMContext ctx;
-			auto *module = LLVMBC::parseIR(ctx, ir_data, ir_size);
-			auto disasm = LLVMBC::disassemble(*module);
-			fprintf(stderr, "LLVMBC:\n%s\n", disasm.c_str());
-		}
-
 		dxil_spv_parsed_blob_dump_llvm_ir(blob);
 		dxil_spv_parsed_blob_free(blob);
 		return EXIT_SUCCESS;
