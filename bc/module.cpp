@@ -418,7 +418,10 @@ MDOperand *ModuleParseContext::get_metadata(uint64_t index) const
 	if (itr != metadata.end())
 		return itr->second;
 	else
-		return nullptr;
+	{
+		// Need to return a null-node like this since MDOperand is used as a reference in the LLVM API for some reason.
+		return context->construct<MDOperand>(module);
+	}
 }
 
 Value *ModuleParseContext::get_value_signed(uint64_t op, Type *expected_type)

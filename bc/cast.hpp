@@ -178,10 +178,34 @@ inline const Value *resolve_proxy(const Value *value)
 }
 
 template <typename T>
+inline T *cast(MDOperand &md)
+{
+	if (md.get_metadata_kind() == T::get_metadata_kind())
+		return static_cast<T *>(&md);
+	else
+	{
+		LOGE("Invalid type ID in cast<T>.\n");
+		std::terminate();
+	}
+}
+
+template <typename T>
 inline T *cast(MDOperand *md)
 {
 	if (md->get_metadata_kind() == T::get_metadata_kind())
 		return static_cast<T *>(md);
+	else
+	{
+		LOGE("Invalid type ID in cast<T>.\n");
+		std::terminate();
+	}
+}
+
+template <typename T>
+inline const T *cast(const MDOperand &md)
+{
+	if (md.get_metadata_kind() == T::get_metadata_kind())
+		return static_cast<const T *>(&md);
 	else
 	{
 		LOGE("Invalid type ID in cast<T>.\n");
@@ -202,10 +226,28 @@ inline const T *cast(const MDOperand *md)
 }
 
 template <typename T>
+inline T *dyn_cast(MDOperand &md)
+{
+	if (md.get_metadata_kind() == T::get_metadata_kind())
+		return static_cast<T *>(&md);
+	else
+		return nullptr;
+}
+
+template <typename T>
 inline T *dyn_cast(MDOperand *md)
 {
 	if (md->get_metadata_kind() == T::get_metadata_kind())
 		return static_cast<T *>(md);
+	else
+		return nullptr;
+}
+
+template <typename T>
+inline const T *dyn_cast(const MDOperand &md)
+{
+	if (md.get_metadata_kind() == T::get_metadata_kind())
+		return static_cast<const T *>(&md);
 	else
 		return nullptr;
 }
@@ -217,6 +259,12 @@ inline const T *dyn_cast(const MDOperand *md)
 		return static_cast<const T *>(md);
 	else
 		return nullptr;
+}
+
+template <typename T>
+inline bool isa(const MDOperand &md)
+{
+	return md.get_metadata_kind() == T::get_metadata_kind();
 }
 
 template <typename T>

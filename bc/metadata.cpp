@@ -29,6 +29,11 @@ MDOperand::MDOperand(Module *parent_, MetadataKind kind_)
 {
 }
 
+MDOperand::MDOperand(Module *parent_)
+	: parent(parent_)
+{
+}
+
 Module *MDOperand::getParent() const
 {
 	return parent;
@@ -49,10 +54,10 @@ unsigned MDNode::getNumOperands() const
 	return unsigned(operands.size());
 }
 
-MDOperand *MDNode::getOperand(unsigned index) const
+MDOperand &MDNode::getOperand(unsigned index) const
 {
 	assert(index < operands.size());
-	return operands[index];
+	return *operands[index];
 }
 
 uint64_t MDNode::get_tween_id() const

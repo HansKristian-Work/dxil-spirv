@@ -32,20 +32,27 @@ enum class MetadataKind
 	NamedNode,
 	Node,
 	Constant,
-	String
+	String,
+	None
 };
 
 class MDOperand
 {
 public:
+	explicit MDOperand(Module *parent);
 	MDOperand(Module *parent, MetadataKind kind);
 	Module *getParent() const;
 
 	MetadataKind get_metadata_kind() const;
 
+	explicit operator bool() const
+	{
+		return kind != MetadataKind::None;
+	}
+
 private:
 	Module *parent;
-	MetadataKind kind;
+	MetadataKind kind = MetadataKind::None;
 };
 
 class MDNode : public MDOperand
@@ -54,7 +61,7 @@ public:
 	static constexpr MetadataKind get_metadata_kind() { return MetadataKind::Node; }
 	MDNode(Module *module, std::vector<MDOperand *> operands);
 
-	MDOperand *getOperand(unsigned index) const;
+	MDOperand &getOperand(unsigned index) const;
 	unsigned getNumOperands() const;
 
 	void set_tween_id(uint64_t id);

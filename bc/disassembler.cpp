@@ -715,7 +715,7 @@ void StreamState::append(MDNode *md, bool decl)
 			append("!", md->get_tween_id(), " = !{");
 			for (unsigned i = 0; i < md->getNumOperands(); i++)
 			{
-				append(md->getOperand(i));
+				append(&md->getOperand(i));
 				if (i + 1 < md->getNumOperands())
 					append(", ");
 			}
