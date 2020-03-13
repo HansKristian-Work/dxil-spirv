@@ -26,10 +26,10 @@
 #include "GLSL.std.450.h"
 
 #ifdef HAVE_LLVMBC
+#include "function.hpp"
+#include "instruction.hpp"
 #include "module.hpp"
 #include "value.hpp"
-#include "instruction.hpp"
-#include "function.hpp"
 #else
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>

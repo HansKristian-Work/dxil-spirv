@@ -58,7 +58,11 @@ enum class ValueKind
 	Global,
 };
 
-#define LLVMBC_DEFAULT_VALUE_KIND_IMPL static bool is_base_of_value_kind(ValueKind kind) { return get_value_kind() == kind; }
+#define LLVMBC_DEFAULT_VALUE_KIND_IMPL                \
+	static bool is_base_of_value_kind(ValueKind kind) \
+	{                                                 \
+		return get_value_kind() == kind;              \
+	}
 
 class Value
 {
@@ -106,7 +110,10 @@ private:
 class Constant : public Value
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantBase; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantBase;
+	}
 	Constant(Type *type, ValueKind kind);
 
 	void set_integer(const APInt &apint);
@@ -124,7 +131,10 @@ private:
 class ConstantInt : public Constant
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantInt; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantInt;
+	}
 	static ConstantInt *get(Type *type, uint64_t value);
 	ConstantInt(Type *type, uint64_t value);
 
@@ -134,7 +144,10 @@ public:
 class ConstantFP : public Constant
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantFP; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantFP;
+	}
 	static ConstantFP *get(Type *type, uint64_t bits);
 	ConstantFP(Type *type, uint64_t bits);
 
@@ -144,7 +157,10 @@ public:
 class ConstantAggregateZero : public Constant
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantAggregateZero; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantAggregateZero;
+	}
 	explicit ConstantAggregateZero(Type *type);
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
@@ -153,7 +169,10 @@ public:
 class ConstantDataArray : public Constant
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::ConstantDataArray; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantDataArray;
+	}
 	ConstantDataArray(Type *type, std::vector<Constant *> elements);
 
 	unsigned getNumElements() const;
@@ -168,7 +187,10 @@ private:
 class UndefValue : public Constant
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Undef; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Undef;
+	}
 	explicit UndefValue(Type *type);
 	static UndefValue *get(Type *type);
 
@@ -178,7 +200,10 @@ public:
 class GlobalVariable : public Value
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Global; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Global;
+	}
 	explicit GlobalVariable(Type *type, bool is_const);
 	void set_initializer(Constant *value);
 	Constant *getInitializer() const;
@@ -191,4 +216,4 @@ private:
 	Constant *initializer = nullptr;
 	bool is_const;
 };
-}
+} // namespace LLVMBC

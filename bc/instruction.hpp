@@ -107,7 +107,10 @@ protected:
 class ReturnInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Return; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Return;
+	}
 	explicit ReturnInst(Value *value);
 	Value *getReturnValue() const;
 
@@ -120,7 +123,10 @@ private:
 class CallInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Call; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Call;
+	}
 	CallInst(FunctionType *function_type, Function *callee, std::vector<Value *> params);
 	Function *getCalledFunction() const;
 
@@ -140,7 +146,10 @@ public:
 		FNeg
 	};
 
-	static constexpr ValueKind get_value_kind() { return ValueKind::UnaryOperator; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::UnaryOperator;
+	}
 	UnaryOperator(UnaryOps uop, Value *value);
 	UnaryOps getOpcode() const;
 
@@ -176,7 +185,10 @@ public:
 		Xor
 	};
 
-	static constexpr ValueKind get_value_kind() { return ValueKind::BinaryOperator; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::BinaryOperator;
+	}
 	BinaryOperator(Value *LHS, Value *RHS, BinaryOps op);
 	BinaryOps getOpcode() const;
 
@@ -189,7 +201,10 @@ private:
 class CastInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Cast; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Cast;
+	}
 	CastInst(Type *type, Value *value, Instruction::CastOps op);
 	Instruction::CastOps getOpcode() const;
 
@@ -202,7 +217,10 @@ private:
 class SelectInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Select; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Select;
+	}
 	SelectInst(Value *true_value, Value *false_value, Value *cond);
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
@@ -211,7 +229,10 @@ public:
 class ExtractValueInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::ExtractValue; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ExtractValue;
+	}
 	ExtractValueInst(Type *type, Value *aggregate, std::vector<unsigned> indices);
 	Value *getAggregateOperand() const;
 	unsigned getNumIndices() const;
@@ -226,7 +247,10 @@ private:
 class AllocaInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Alloca; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Alloca;
+	}
 	AllocaInst(Type *pointer_type, Type *element_type, Value *size);
 	Value *getArraySize() const;
 
@@ -240,7 +264,10 @@ private:
 class GetElementPtrInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::GetElementPtr; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::GetElementPtr;
+	}
 	GetElementPtrInst(Type *pointer_type, std::vector<Value *> arguments, bool inbounds);
 	bool isInBounds() const;
 
@@ -253,7 +280,10 @@ private:
 class LoadInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Load; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Load;
+	}
 	LoadInst(Type *type, Value *ptr);
 	Value *getPointerOperand() const;
 
@@ -263,7 +293,10 @@ public:
 class StoreInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Store; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Store;
+	}
 	StoreInst(Value *ptr, Value *value);
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
@@ -272,7 +305,10 @@ public:
 class CmpInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::CompareBase; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::CompareBase;
+	}
 	CmpInst(ValueKind kind, Predicate pred, Value *LHS, Value *RHS);
 	Predicate getPredicate() const;
 
@@ -285,7 +321,10 @@ private:
 class FCmpInst : public CmpInst
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::FCmp; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::FCmp;
+	}
 	FCmpInst(Predicate pred, Value *LHS, Value *RHS);
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
@@ -294,7 +333,10 @@ public:
 class ICmpInst : public CmpInst
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::ICmp; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ICmp;
+	}
 	ICmpInst(Predicate pred, Value *LHS, Value *RHS);
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
@@ -303,7 +345,10 @@ public:
 class BranchInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Branch; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Branch;
+	}
 	BranchInst(BasicBlock *true_block, BasicBlock *false_block, Value *cond);
 	explicit BranchInst(BasicBlock *true_block);
 
@@ -324,7 +369,10 @@ private:
 class SwitchInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Switch; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Switch;
+	}
 	SwitchInst(Value *cond, BasicBlock *default_block, unsigned num_cases);
 	void addCase(Value *case_value, BasicBlock *bb);
 
@@ -354,7 +402,10 @@ private:
 class PHINode : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::PHI; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::PHI;
+	}
 	PHINode(Type *type, size_t num_edges);
 
 	unsigned getNumIncomingValues() const;
@@ -395,7 +446,10 @@ public:
 		FAdd, // wat
 		FSub
 	};
-	static constexpr ValueKind get_value_kind() { return ValueKind::AtomicRMW; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::AtomicRMW;
+	}
 	AtomicRMWInst(Type *type, Value *ptr, Value *value, BinOp op);
 
 	Value *getPointerOperand() const;
@@ -413,7 +467,10 @@ private:
 class AtomicCmpXchgInst : public Instruction
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::AtomicCmpXchg; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::AtomicCmpXchg;
+	}
 	AtomicCmpXchgInst(Value *ptr, Value *cmp, Value *new_value);
 
 	Value *getPointerOperand() const;
@@ -427,4 +484,4 @@ private:
 	Value *new_value;
 	Value *cmp_value;
 };
-}
+} // namespace LLVMBC

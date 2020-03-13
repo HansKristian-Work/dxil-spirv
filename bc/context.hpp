@@ -18,9 +18,9 @@
 
 #pragma once
 
-#include <vector>
 #include <exception>
 #include <stdint.h>
+#include <vector>
 
 namespace LLVMBC
 {
@@ -35,12 +35,12 @@ public:
 	LLVMContext(const LLVMContext &) = delete;
 
 	template <typename T, typename... U>
-	T *construct(U&&... u)
+	T *construct(U &&... u)
 	{
 		T *mem = static_cast<T *>(allocate(sizeof(T), alignof(T)));
 		if (!mem)
 			std::terminate();
-		T *t = new(mem) T(std::forward<U>(u)...);
+		T *t = new (mem) T(std::forward<U>(u)...);
 
 		if (!std::is_trivially_destructible<T>::value)
 			append_typed_destructor(t);
@@ -48,7 +48,7 @@ public:
 	}
 
 	template <typename T, typename... U>
-	T *construct_n(size_t n, const U&... u)
+	T *construct_n(size_t n, const U &... u)
 	{
 		T *mem = static_cast<T *>(allocate(sizeof(T) * n, alignof(T)));
 		if (!mem)
@@ -56,7 +56,7 @@ public:
 
 		for (size_t i = 0; i < n; i++)
 		{
-			T *tmp = new(&mem[i]) T(u...);
+			T *tmp = new (&mem[i]) T(u...);
 			if (!std::is_trivially_destructible<T>::value)
 				append_typed_destructor(tmp);
 		}
@@ -79,7 +79,10 @@ private:
 	template <typename T>
 	struct TypedDeleter : Deleter
 	{
-		explicit TypedDeleter(T *ptr_) : ptr(ptr_) {}
+		explicit TypedDeleter(T *ptr_)
+		    : ptr(ptr_)
+		{
+		}
 		void run() override
 		{
 			ptr->~T();
@@ -98,12 +101,12 @@ private:
 	std::vector<Type *> type_cache;
 
 	template <typename T, typename... U>
-	T *construct_trivial(U&&... u)
+	T *construct_trivial(U &&... u)
 	{
 		T *mem = static_cast<T *>(allocate(sizeof(T), alignof(T)));
 		if (!mem)
 			std::terminate();
-		T *t = new(mem) T(std::forward<U>(u)...);
+		T *t = new (mem) T(std::forward<U>(u)...);
 		return t;
 	}
 
@@ -114,4 +117,4 @@ private:
 	}
 };
 
-}
+} // namespace LLVMBC

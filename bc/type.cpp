@@ -17,14 +17,15 @@
  */
 
 #include "type.hpp"
-#include "context.hpp"
 #include "cast.hpp"
+#include "context.hpp"
 #include <assert.h>
 
 namespace LLVMBC
 {
 PointerType::PointerType(Type *type, uint32_t addr_space)
-		: Type(type->getContext(), TypeID::PointerTyID), contained_type(type)
+    : Type(type->getContext(), TypeID::PointerTyID)
+    , contained_type(type)
 {
 	address_space = addr_space;
 }
@@ -59,7 +60,9 @@ Type *PointerType::getElementType() const
 }
 
 ArrayType::ArrayType(Type *type, uint64_t elements_)
-		: Type(type->getContext(), TypeID::ArrayTyID), contained_type(type), elements(elements_)
+    : Type(type->getContext(), TypeID::ArrayTyID)
+    , contained_type(type)
+    , elements(elements_)
 {
 }
 
@@ -83,7 +86,9 @@ ArrayType *ArrayType::get(Type *element, uint64_t size)
 }
 
 VectorType::VectorType(LLVMBC::LLVMContext &context, unsigned vector_size_, LLVMBC::Type *type)
-	: Type(context, TypeID::VectorTyID), element_type(type), vector_size(vector_size_)
+    : Type(context, TypeID::VectorTyID)
+    , element_type(type)
+    , vector_size(vector_size_)
 {
 }
 
@@ -153,7 +158,8 @@ Type *Type::getPointerElementType() const
 }
 
 StructType::StructType(LLVMContext &context, std::vector<Type *> member_types_)
-		: Type(context, TypeID::StructTyID), member_types(std::move(member_types_))
+    : Type(context, TypeID::StructTyID)
+    , member_types(std::move(member_types_))
 {
 }
 
@@ -203,7 +209,9 @@ StructType *StructType::get(std::vector<Type *> member_types)
 }
 
 FunctionType::FunctionType(LLVMContext &context, Type *return_type_, std::vector<Type *> argument_types_)
-	: Type(context, TypeID::FunctionTyID), return_type(return_type_), argument_types(std::move(argument_types_))
+    : Type(context, TypeID::FunctionTyID)
+    , return_type(return_type_)
+    , argument_types(std::move(argument_types_))
 {
 }
 
@@ -224,7 +232,8 @@ Type *FunctionType::getReturnType() const
 }
 
 IntegerType::IntegerType(LLVMContext &context, uint32_t width_)
-	: Type(context, TypeID::IntegerTyID), width(width_)
+    : Type(context, TypeID::IntegerTyID)
+    , width(width_)
 {
 }
 
@@ -234,7 +243,8 @@ uint32_t IntegerType::getBitWidth() const
 }
 
 Type::Type(LLVMContext &context_, TypeID type_id_)
-	: context(context_), type_id(type_id_)
+    : context(context_)
+    , type_id(type_id_)
 {
 }
 
@@ -329,13 +339,11 @@ bool Type::isIntegerTy() const
 
 bool Type::isFloatingPointTy() const
 {
-	return type_id == TypeID::HalfTyID ||
-	       type_id == TypeID::FloatTyID ||
-	       type_id == TypeID::DoubleTyID;
+	return type_id == TypeID::HalfTyID || type_id == TypeID::FloatTyID || type_id == TypeID::DoubleTyID;
 }
 
 LLVMContext &Type::getContext()
 {
 	return context;
 }
-}
+} // namespace LLVMBC

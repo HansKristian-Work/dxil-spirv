@@ -317,8 +317,7 @@ void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob)
 #endif
 }
 
-dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob,
-                                                         const char **str)
+dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxil_spv_parsed_blob blob, const char **str)
 {
 	blob->disasm.clear();
 

@@ -17,17 +17,18 @@
  */
 
 #include "value.hpp"
-#include "instruction.hpp"
-#include "type.hpp"
-#include "context.hpp"
-#include "logging.hpp"
 #include "cast.hpp"
+#include "context.hpp"
+#include "instruction.hpp"
+#include "logging.hpp"
+#include "type.hpp"
 #include <string.h>
 
 namespace LLVMBC
 {
 Value::Value(Type *type_, ValueKind kind_)
-	: type(type_), kind(kind_)
+    : type(type_)
+    , kind(kind_)
 {
 }
 
@@ -70,7 +71,7 @@ bool Constant::is_base_of_value_kind(ValueKind kind)
 }
 
 Constant::Constant(Type *type, ValueKind kind)
-	: Value(type, kind)
+    : Value(type, kind)
 {
 }
 
@@ -96,12 +97,14 @@ void Constant::set_float(const APFloat &apfloat_)
 }
 
 APInt::APInt(Type *type_, uint64_t value_)
-	: type(type_), value(value_)
+    : type(type_)
+    , value(value_)
 {
 }
 
 APFloat::APFloat(Type *type_, uint64_t value_)
-	: type(type_), value(value_)
+    : type(type_)
+    , value(value_)
 {
 }
 
@@ -109,11 +112,16 @@ int64_t APInt::getSExtValue() const
 {
 	switch (cast<IntegerType>(type)->getBitWidth())
 	{
-	case 1: return (value & 1) != 0 ? -1 : 0;
-	case 8: return int8_t(value);
-	case 16: return int16_t(value);
-	case 32: return int32_t(value);
-	case 64: return int64_t(value);
+	case 1:
+		return (value & 1) != 0 ? -1 : 0;
+	case 8:
+		return int8_t(value);
+	case 16:
+		return int16_t(value);
+	case 32:
+		return int32_t(value);
+	case 64:
+		return int64_t(value);
 	default:
 		LOGE("Unrecognized bitwidth.\n");
 		return 0;
@@ -124,11 +132,16 @@ uint64_t APInt::getZExtValue() const
 {
 	switch (cast<IntegerType>(type)->getBitWidth())
 	{
-	case 1: return value & 1;
-	case 8: return uint8_t(value);
-	case 16: return uint16_t(value);
-	case 32: return uint32_t(value);
-	case 64: return uint64_t(value);
+	case 1:
+		return value & 1;
+	case 8:
+		return uint8_t(value);
+	case 16:
+		return uint16_t(value);
+	case 32:
+		return uint32_t(value);
+	case 64:
+		return uint64_t(value);
 	default:
 		LOGE("Unrecognized bitwidth.\n");
 		return 0;
@@ -142,13 +155,13 @@ ConstantFP *ConstantFP::get(Type *type, uint64_t value)
 }
 
 ConstantInt::ConstantInt(Type *type, uint64_t value)
-	: Constant(type, ValueKind::ConstantInt)
+    : Constant(type, ValueKind::ConstantInt)
 {
 	set_integer(APInt(type, value));
 }
 
 ConstantFP::ConstantFP(Type *type, uint64_t value)
-	: Constant(type, ValueKind::ConstantFP)
+    : Constant(type, ValueKind::ConstantFP)
 {
 	set_float(APFloat(type, value));
 }
@@ -211,7 +224,7 @@ double APFloat::convertToDouble() const
 }
 
 UndefValue::UndefValue(Type *type)
-	: Constant(type, ValueKind::Undef)
+    : Constant(type, ValueKind::Undef)
 {
 }
 
@@ -222,12 +235,13 @@ UndefValue *UndefValue::get(Type *type)
 }
 
 ConstantAggregateZero::ConstantAggregateZero(Type *type)
-	: Constant(type, ValueKind::ConstantAggregateZero)
+    : Constant(type, ValueKind::ConstantAggregateZero)
 {
 }
 
 ConstantDataArray::ConstantDataArray(Type *type, std::vector<Constant *> elements_)
-	: Constant(type, ValueKind::ConstantDataArray), elements(std::move(elements_))
+    : Constant(type, ValueKind::ConstantDataArray)
+    , elements(std::move(elements_))
 {
 }
 
@@ -242,7 +256,8 @@ Constant *ConstantDataArray::getElementAsConstant(unsigned index) const
 }
 
 GlobalVariable::GlobalVariable(Type *type, bool is_const_)
-	: Value(type, ValueKind::Global), is_const(is_const_)
+    : Value(type, ValueKind::Global)
+    , is_const(is_const_)
 {
 }
 
@@ -265,4 +280,4 @@ bool GlobalVariable::isConstant() const
 {
 	return is_const;
 }
-}
+} // namespace LLVMBC

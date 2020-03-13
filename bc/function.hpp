@@ -18,10 +18,10 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
-#include "value.hpp"
 #include "iterator.hpp"
+#include "value.hpp"
+#include <string>
+#include <vector>
 
 namespace LLVMBC
 {
@@ -33,7 +33,10 @@ class FunctionType;
 class BasicBlock : public Value
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::BasicBlock; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::BasicBlock;
+	}
 	explicit BasicBlock(LLVMContext &context);
 
 	void add_instruction(Instruction *inst);
@@ -68,7 +71,10 @@ inline std::vector<BasicBlock *>::const_iterator succ_end(const BasicBlock *bb)
 class Function : public Constant
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Function; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Function;
+	}
 	explicit Function(FunctionType *function_type, uint64_t value_id, Module &module);
 	const std::string &getName() const;
 
@@ -87,4 +93,4 @@ private:
 	FunctionType *function_type;
 	std::vector<BasicBlock *> basic_blocks;
 };
-}
+} // namespace LLVMBC

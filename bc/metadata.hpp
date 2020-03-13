@@ -58,7 +58,10 @@ private:
 class MDNode : public MDOperand
 {
 public:
-	static constexpr MetadataKind get_metadata_kind() { return MetadataKind::Node; }
+	static constexpr MetadataKind get_metadata_kind()
+	{
+		return MetadataKind::Node;
+	}
 	MDNode(Module *module, std::vector<MDOperand *> operands);
 
 	MDOperand &getOperand(unsigned index) const;
@@ -75,7 +78,10 @@ private:
 class NamedMDNode : public MDOperand
 {
 public:
-	static constexpr MetadataKind get_metadata_kind() { return MetadataKind::NamedNode; }
+	static constexpr MetadataKind get_metadata_kind()
+	{
+		return MetadataKind::NamedNode;
+	}
 	NamedMDNode(Module *module, std::string name, std::vector<MDNode *> operands);
 	const std::string &getName() const;
 
@@ -90,7 +96,10 @@ private:
 class ConstantAsMetadata : public MDOperand
 {
 public:
-	static constexpr MetadataKind get_metadata_kind() { return MetadataKind::Constant; }
+	static constexpr MetadataKind get_metadata_kind()
+	{
+		return MetadataKind::Constant;
+	}
 	ConstantAsMetadata(Module *module, Constant *value);
 	Constant *getValue() const;
 
@@ -101,7 +110,10 @@ private:
 class MDString : public MDOperand
 {
 public:
-	static constexpr MetadataKind get_metadata_kind() { return MetadataKind::String; }
+	static constexpr MetadataKind get_metadata_kind()
+	{
+		return MetadataKind::String;
+	}
 	MDString(Module *module, std::string str);
 	const std::string &getString() const;
 
@@ -109,4 +121,4 @@ private:
 	std::string str;
 };
 
-}
+} // namespace LLVMBC

@@ -18,11 +18,11 @@
 
 #pragma once
 
-#include <exception>
 #include "logging.hpp"
+#include "metadata.hpp"
 #include "type.hpp"
 #include "value.hpp"
-#include "metadata.hpp"
+#include <exception>
 
 namespace LLVMBC
 {
@@ -83,7 +83,10 @@ inline bool isa(const Type *type)
 class ValueProxy : public Value
 {
 public:
-	static constexpr ValueKind get_value_kind() { return ValueKind::Proxy; }
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Proxy;
+	}
 	ValueProxy(Type *type, ModuleParseContext &context, uint64_t id);
 
 	Value *get_proxy_value() const;
@@ -101,7 +104,7 @@ namespace Internal
 {
 inline Value *resolve_proxy(Value *value);
 inline const Value *resolve_proxy(const Value *value);
-}
+} // namespace Internal
 
 template <typename T>
 inline T *cast(Value *value)
@@ -187,7 +190,7 @@ inline const Value *resolve_proxy(const Value *value)
 		value = cast<ValueProxy>(value)->get_proxy_value();
 	return value;
 }
-}
+} // namespace Internal
 
 template <typename T>
 inline T *cast(MDOperand &md)
@@ -291,4 +294,4 @@ inline bool isa(const MDOperand *md)
 	return md->get_metadata_kind() == T::get_metadata_kind();
 }
 
-}
+} // namespace LLVMBC

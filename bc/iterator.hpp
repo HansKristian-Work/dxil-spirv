@@ -21,11 +21,13 @@
 namespace LLVMBC
 {
 // An iterator adaptor which lets us receive reference types instead of pointer types.
-template<typename T, typename Iter>
+template <typename T, typename Iter>
 struct IteratorAdaptor
 {
-	IteratorAdaptor(Iter iter_) : iter(iter_)
-	{}
+	IteratorAdaptor(Iter iter_)
+	    : iter(iter_)
+	{
+	}
 
 	T &operator*()
 	{
@@ -55,4 +57,4 @@ struct IteratorAdaptor
 
 	Iter iter;
 };
-}
+} // namespace LLVMBC

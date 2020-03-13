@@ -19,8 +19,8 @@
 #include "llvm_bitcode_parser.hpp"
 
 #ifdef HAVE_LLVMBC
-#include "module.hpp"
 #include "context.hpp"
+#include "module.hpp"
 #else
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>

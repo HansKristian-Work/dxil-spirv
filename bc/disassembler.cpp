@@ -16,17 +16,17 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "module.hpp"
+#include "cast.hpp"
 #include "context.hpp"
+#include "function.hpp"
+#include "instruction.hpp"
+#include "metadata.hpp"
+#include "module.hpp"
 #include "type.hpp"
 #include "value.hpp"
-#include "cast.hpp"
-#include "instruction.hpp"
-#include "function.hpp"
-#include "metadata.hpp"
+#include <assert.h>
 #include <sstream>
 #include <type_traits>
-#include <assert.h>
 
 namespace LLVMBC
 {
@@ -297,26 +297,28 @@ static const char *to_string(BinaryOperator::BinaryOps op)
 {
 	switch (op)
 	{
-#define BINOP(op, str) case BinaryOperator::BinaryOps::op: return str
-	BINOP(Invalid, "invalid");
-	BINOP(Add, "add");
-	BINOP(FAdd, "fadd");
-	BINOP(Sub, "sub");
-	BINOP(FSub, "fsub");
-	BINOP(Mul, "mul");
-	BINOP(FMul, "fmul");
-	BINOP(UDiv, "udiv");
-	BINOP(SDiv, "sdiv");
-	BINOP(FDiv, "fdiv");
-	BINOP(URem, "urem");
-	BINOP(SRem, "srem");
-	BINOP(FRem, "frem");
-	BINOP(Shl, "shl");
-	BINOP(LShr, "lshr");
-	BINOP(AShr, "ashr");
-	BINOP(And, "and");
-	BINOP(Or, "or");
-	BINOP(Xor, "xor");
+#define BINOP(op, str)                  \
+	case BinaryOperator::BinaryOps::op: \
+		return str
+		BINOP(Invalid, "invalid");
+		BINOP(Add, "add");
+		BINOP(FAdd, "fadd");
+		BINOP(Sub, "sub");
+		BINOP(FSub, "fsub");
+		BINOP(Mul, "mul");
+		BINOP(FMul, "fmul");
+		BINOP(UDiv, "udiv");
+		BINOP(SDiv, "sdiv");
+		BINOP(FDiv, "fdiv");
+		BINOP(URem, "urem");
+		BINOP(SRem, "srem");
+		BINOP(FRem, "frem");
+		BINOP(Shl, "shl");
+		BINOP(LShr, "lshr");
+		BINOP(AShr, "ashr");
+		BINOP(And, "and");
+		BINOP(Or, "or");
+		BINOP(Xor, "xor");
 	}
 #undef BINOP
 	assert(0);
@@ -337,35 +339,39 @@ static const char *to_string(Instruction::Predicate pred)
 {
 	switch (pred)
 	{
-#define PRED(op, str) case Instruction::FCMP_##op: return str
-	PRED(FALSE, "false");
-	PRED(OEQ, "oeq");
-	PRED(OGT, "ogt");
-	PRED(OGE, "oge");
-	PRED(OLT, "olt");
-	PRED(OLE, "ole");
-	PRED(ONE, "one");
-	PRED(ORD, "ord");
-	PRED(UNO, "uno");
-	PRED(UEQ, "ueq");
-	PRED(UGT, "ugt");
-	PRED(UGE, "uge");
-	PRED(ULT, "ult");
-	PRED(ULE, "ule");
-	PRED(UNE, "une");
-	PRED(TRUE, "true");
+#define PRED(op, str)            \
+	case Instruction::FCMP_##op: \
+		return str
+		PRED(FALSE, "false");
+		PRED(OEQ, "oeq");
+		PRED(OGT, "ogt");
+		PRED(OGE, "oge");
+		PRED(OLT, "olt");
+		PRED(OLE, "ole");
+		PRED(ONE, "one");
+		PRED(ORD, "ord");
+		PRED(UNO, "uno");
+		PRED(UEQ, "ueq");
+		PRED(UGT, "ugt");
+		PRED(UGE, "uge");
+		PRED(ULT, "ult");
+		PRED(ULE, "ule");
+		PRED(UNE, "une");
+		PRED(TRUE, "true");
 #undef PRED
-#define PRED(op, str) case Instruction::ICMP_##op: return str
-	PRED(EQ, "eq");
-	PRED(NE, "ne");
-	PRED(UGT, "ugt");
-	PRED(UGE, "uge");
-	PRED(ULT, "ult");
-	PRED(ULE, "ule");
-	PRED(SGT, "sgt");
-	PRED(SGE, "sge");
-	PRED(SLT, "slt");
-	PRED(SLE, "sle");
+#define PRED(op, str)            \
+	case Instruction::ICMP_##op: \
+		return str
+		PRED(EQ, "eq");
+		PRED(NE, "ne");
+		PRED(UGT, "ugt");
+		PRED(UGE, "uge");
+		PRED(ULT, "ult");
+		PRED(ULE, "ule");
+		PRED(SGT, "sgt");
+		PRED(SGE, "sge");
+		PRED(SLT, "slt");
+		PRED(SLE, "sle");
 	}
 #undef PRED
 	assert(0);
@@ -375,20 +381,22 @@ static const char *to_string(Instruction::CastOps op)
 {
 	switch (op)
 	{
-#define CAST(op, str) case Instruction::op: return str
-	CAST(Trunc, "trunc");
-	CAST(ZExt, "zext");
-	CAST(SExt, "sext");
-	CAST(FPToUI, "fptoui");
-	CAST(FPToSI, "fptosi");
-	CAST(UIToFP, "uitofp");
-	CAST(SIToFP, "sitofp");
-	CAST(FPTrunc, "fptrunc");
-	CAST(FPExt, "fpext");
-	CAST(PtrToInt, "ptrtoint");
-	CAST(IntToPtr, "inttoptr");
-	CAST(BitCast, "bitcast");
-	CAST(AddrSpaceCast, "addrspacecast");
+#define CAST(op, str)     \
+	case Instruction::op: \
+		return str
+		CAST(Trunc, "trunc");
+		CAST(ZExt, "zext");
+		CAST(SExt, "sext");
+		CAST(FPToUI, "fptoui");
+		CAST(FPToSI, "fptosi");
+		CAST(UIToFP, "uitofp");
+		CAST(SIToFP, "sitofp");
+		CAST(FPTrunc, "fptrunc");
+		CAST(FPExt, "fpext");
+		CAST(PtrToInt, "ptrtoint");
+		CAST(IntToPtr, "inttoptr");
+		CAST(BitCast, "bitcast");
+		CAST(AddrSpaceCast, "addrspacecast");
 	}
 #undef CAST
 	assert(0);
@@ -398,20 +406,22 @@ static const char *to_string(AtomicRMWInst::BinOp op)
 {
 	switch (op)
 	{
-#define RMW(op, str) case AtomicRMWInst::BinOp::op: return str
-	RMW(Add, "add");
-	RMW(Sub, "sub");
-	RMW(Xchg, "xchg");
-	RMW(And, "and");
-	RMW(Xor, "xor");
-	RMW(Or, "or");
-	RMW(Nand, "nand");
-	RMW(Max, "max");
-	RMW(Min, "min");
-	RMW(UMax, "umax");
-	RMW(UMin, "umin");
-	RMW(FAdd, "fadd");
-	RMW(FSub, "fsub");
+#define RMW(op, str)               \
+	case AtomicRMWInst::BinOp::op: \
+		return str
+		RMW(Add, "add");
+		RMW(Sub, "sub");
+		RMW(Xchg, "xchg");
+		RMW(And, "and");
+		RMW(Xor, "xor");
+		RMW(Or, "or");
+		RMW(Nand, "nand");
+		RMW(Max, "max");
+		RMW(Min, "min");
+		RMW(UMax, "umax");
+		RMW(UMin, "umin");
+		RMW(FAdd, "fadd");
+		RMW(FSub, "fsub");
 	}
 #undef RMW
 	assert(0);
@@ -421,8 +431,8 @@ void StreamState::append(BinaryOperator *binop, bool decl)
 {
 	if (decl)
 	{
-		append("%", binop->get_tween_id(), " = ", to_string(binop->getOpcode()), " ", binop->getType(),
-		       " ", binop->getOperand(0), ", ", binop->getOperand(1));
+		append("%", binop->get_tween_id(), " = ", to_string(binop->getOpcode()), " ", binop->getType(), " ",
+		       binop->getOperand(0), ", ", binop->getOperand(1));
 	}
 	else
 	{
@@ -434,8 +444,8 @@ void StreamState::append(UnaryOperator *uop, bool decl)
 {
 	if (decl)
 	{
-		append("%", uop->get_tween_id(), " = ", to_string(uop->getOpcode()), " ", uop->getType(),
-		       " ", uop->getOperand(0), ", ", uop->getOperand(1));
+		append("%", uop->get_tween_id(), " = ", to_string(uop->getOpcode()), " ", uop->getType(), " ",
+		       uop->getOperand(0), ", ", uop->getOperand(1));
 	}
 	else
 	{
@@ -466,8 +476,8 @@ void StreamState::append(FCmpInst *value, bool decl)
 {
 	if (decl)
 	{
-		append("%", value->get_tween_id(), " = fcmp ", to_string(value->getPredicate()),
-		       " ", value->getOperand(0), ", ", value->getOperand(1));
+		append("%", value->get_tween_id(), " = fcmp ", to_string(value->getPredicate()), " ", value->getOperand(0),
+		       ", ", value->getOperand(1));
 	}
 	else
 	{
@@ -479,8 +489,8 @@ void StreamState::append(ICmpInst *value, bool decl)
 {
 	if (decl)
 	{
-		append("%", value->get_tween_id(), " = icmp ", to_string(value->getPredicate()),
-		       " ", value->getOperand(0), ", ", value->getOperand(1));
+		append("%", value->get_tween_id(), " = icmp ", to_string(value->getPredicate()), " ", value->getOperand(0),
+		       ", ", value->getOperand(1));
 	}
 	else
 	{
@@ -539,7 +549,8 @@ void StreamState::append(CastInst *cast, bool decl)
 {
 	if (decl)
 	{
-		append("%", cast->get_tween_id(), " = ", to_string(cast->getOpcode()), " ", cast->getOperand(0), " to ", cast->getType());
+		append("%", cast->get_tween_id(), " = ", to_string(cast->getOpcode()), " ", cast->getOperand(0), " to ",
+		       cast->getType());
 	}
 	else
 	{
@@ -551,9 +562,7 @@ void StreamState::append(SelectInst *cast, bool decl)
 {
 	if (decl)
 	{
-		append("%", cast->get_tween_id(), " = ", "select ",
-		       cast->getOperand(0), ", ",
-		       cast->getOperand(1), ", ",
+		append("%", cast->get_tween_id(), " = ", "select ", cast->getOperand(0), ", ", cast->getOperand(1), ", ",
 		       cast->getOperand(2));
 	}
 	else
@@ -566,8 +575,7 @@ void StreamState::append(ExtractValueInst *ext, bool decl)
 {
 	if (decl)
 	{
-		append("%", ext->get_tween_id(), " = ", "extractvalue ",
-		       ext->getType(), " ", ext->getAggregateOperand());
+		append("%", ext->get_tween_id(), " = ", "extractvalue ", ext->getType(), " ", ext->getAggregateOperand());
 		for (unsigned i = 0; i < ext->getNumIndices(); i++)
 		{
 			append(", ");
@@ -630,8 +638,7 @@ void StreamState::append(AtomicRMWInst *atomic_op, bool decl)
 	if (decl)
 	{
 		append("%", atomic_op->get_tween_id(), " = atomicrmw ", to_string(atomic_op->getOperation()), " ",
-		       atomic_op->getType(), " ",
-		       atomic_op->getPointerOperand(), ", ", atomic_op->getValOperand());
+		       atomic_op->getType(), " ", atomic_op->getPointerOperand(), ", ", atomic_op->getValOperand());
 	}
 	else
 		append("%", atomic_op->get_tween_id());
@@ -641,8 +648,8 @@ void StreamState::append(AtomicCmpXchgInst *xchg, bool decl)
 {
 	if (decl)
 	{
-		append("%", xchg->get_tween_id(), " = cmpxchg ", xchg->getType(), " ",
-		       xchg->getPointerOperand(), ", ", xchg->getCompareOperand(), ", ", xchg->getNewValOperand());
+		append("%", xchg->get_tween_id(), " = cmpxchg ", xchg->getType(), " ", xchg->getPointerOperand(), ", ",
+		       xchg->getCompareOperand(), ", ", xchg->getNewValOperand());
 	}
 	else
 		append("%", xchg->get_tween_id());
@@ -880,4 +887,4 @@ bool disassemble(Module &module, std::string &str)
 	str = state.stream.str();
 	return true;
 }
-}
+} // namespace LLVMBC

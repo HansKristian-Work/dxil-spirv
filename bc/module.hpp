@@ -18,13 +18,13 @@
 
 #pragma once
 
+#include "iterator.hpp"
+#include <exception>
 #include <stddef.h>
 #include <type_traits>
-#include <utility>
-#include <exception>
-#include <vector>
 #include <unordered_map>
-#include "iterator.hpp"
+#include <utility>
+#include <vector>
 
 // A reasonably small LLVM C++ API lookalike.
 
@@ -82,4 +82,4 @@ private:
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size);
 bool disassemble(Module &module, std::string &str);
-}
+} // namespace LLVMBC

@@ -23,7 +23,7 @@
 namespace LLVMBC
 {
 Instruction::Instruction(Type *type, ValueKind kind)
-	: Value(type, kind)
+    : Value(type, kind)
 {
 }
 
@@ -98,7 +98,8 @@ MDNode *Instruction::getMetadata(const std::string &str) const
 }
 
 BinaryOperator::BinaryOperator(Value *LHS, Value *RHS, BinaryOps op_)
-	: Instruction(LHS->getType(), ValueKind::BinaryOperator), op(op_)
+    : Instruction(LHS->getType(), ValueKind::BinaryOperator)
+    , op(op_)
 {
 	set_operands({ LHS, RHS });
 }
@@ -109,7 +110,7 @@ BinaryOperator::BinaryOps BinaryOperator::getOpcode() const
 }
 
 UnaryOperator::UnaryOperator(UnaryOps uop, Value *value)
-	: Instruction(value->getType(), ValueKind::UnaryOperator)
+    : Instruction(value->getType(), ValueKind::UnaryOperator)
 {
 	set_operands({ value });
 }
@@ -120,14 +121,16 @@ UnaryOperator::UnaryOps UnaryOperator::getOpcode() const
 }
 
 ReturnInst::ReturnInst(Value *value_)
-	: Instruction(value_ ? value_->getType() : nullptr, ValueKind::Return), value(value_)
+    : Instruction(value_ ? value_->getType() : nullptr, ValueKind::Return)
+    , value(value_)
 {
 	set_terminator();
 }
 
 CallInst::CallInst(FunctionType *function_type_, Function *callee_, std::vector<Value *> params)
-	: Instruction(function_type_->getReturnType(), ValueKind::Call),
-	  function_type(function_type_), callee(callee_)
+    : Instruction(function_type_->getReturnType(), ValueKind::Call)
+    , function_type(function_type_)
+    , callee(callee_)
 {
 	set_operands(std::move(params));
 }
@@ -143,25 +146,28 @@ Value *ReturnInst::getReturnValue() const
 }
 
 CmpInst::CmpInst(ValueKind kind, Predicate pred_, Value *LHS, Value *RHS)
-	: Instruction(Type::getInt1Ty(LHS->getType()->getContext()), kind), pred(pred_)
+    : Instruction(Type::getInt1Ty(LHS->getType()->getContext()), kind)
+    , pred(pred_)
 {
 	set_operands({ LHS, RHS });
 }
 
 CastInst::CastInst(Type *type, Value *value, Instruction::CastOps op_)
-	: Instruction(type, ValueKind::Cast), op(op_)
+    : Instruction(type, ValueKind::Cast)
+    , op(op_)
 {
 	set_operands({ value });
 }
 
 SelectInst::SelectInst(Value *true_value, Value *false_value, Value *cond)
-	: Instruction(true_value->getType(), ValueKind::Select)
+    : Instruction(true_value->getType(), ValueKind::Select)
 {
 	set_operands({ cond, true_value, false_value });
 }
 
 ExtractValueInst::ExtractValueInst(Type *type, Value *aggregate, std::vector<unsigned> indices_)
-	: Instruction(type, ValueKind::ExtractValue), indices(std::move(indices_))
+    : Instruction(type, ValueKind::ExtractValue)
+    , indices(std::move(indices_))
 {
 	set_operands({ aggregate });
 }
@@ -197,19 +203,20 @@ bool CmpInst::is_base_of_value_kind(ValueKind kind)
 }
 
 FCmpInst::FCmpInst(Predicate pred_, Value *LHS, Value *RHS)
-	: CmpInst(ValueKind::FCmp, pred_, LHS, RHS)
+    : CmpInst(ValueKind::FCmp, pred_, LHS, RHS)
 {
 	set_operands({ LHS, RHS });
 }
 
 ICmpInst::ICmpInst(Predicate pred_, Value *LHS, Value *RHS)
-	: CmpInst(ValueKind::ICmp, pred_, LHS, RHS)
+    : CmpInst(ValueKind::ICmp, pred_, LHS, RHS)
 {
 	set_operands({ LHS, RHS });
 }
 
 BranchInst::BranchInst(BasicBlock *true_block, BasicBlock *false_block, Value *cond_)
-	: Instruction(nullptr, ValueKind::Branch), cond(cond_)
+    : Instruction(nullptr, ValueKind::Branch)
+    , cond(cond_)
 {
 	set_terminator();
 	num_blocks = 2;
@@ -218,7 +225,7 @@ BranchInst::BranchInst(BasicBlock *true_block, BasicBlock *false_block, Value *c
 }
 
 BranchInst::BranchInst(BasicBlock *true_block)
-	: Instruction(nullptr, ValueKind::Branch)
+    : Instruction(nullptr, ValueKind::Branch)
 {
 	set_terminator();
 	num_blocks = 1;
@@ -247,8 +254,9 @@ unsigned BranchInst::getNumSuccessors() const
 }
 
 SwitchInst::SwitchInst(Value *cond_, BasicBlock *default_block_, unsigned num_cases)
-	: Instruction(Type::getVoidTy(cond_->getType()->getContext()), ValueKind::Switch),
-	  cond(cond_), default_block(default_block_)
+    : Instruction(Type::getVoidTy(cond_->getType()->getContext()), ValueKind::Switch)
+    , cond(cond_)
+    , default_block(default_block_)
 {
 	set_terminator();
 	cases.reserve(num_cases);
@@ -290,7 +298,7 @@ BasicBlock *SwitchInst::Case::getCaseSuccessor() const
 }
 
 PHINode::PHINode(Type *type, size_t num_edges)
-	: Instruction(type, ValueKind::PHI)
+    : Instruction(type, ValueKind::PHI)
 {
 	incoming.reserve(num_edges);
 }
@@ -306,7 +314,9 @@ unsigned PHINode::getNumIncomingValues() const
 }
 
 AllocaInst::AllocaInst(Type *pointer_type, Type *element_type_, Value *size)
-	: Instruction(pointer_type, ValueKind::Alloca), element_type(element_type_), array_size(size)
+    : Instruction(pointer_type, ValueKind::Alloca)
+    , element_type(element_type_)
+    , array_size(size)
 {
 }
 
@@ -316,7 +326,8 @@ Value *AllocaInst::getArraySize() const
 }
 
 GetElementPtrInst::GetElementPtrInst(Type *pointer_type, std::vector<Value *> indices, bool inbounds_)
-	: Instruction(pointer_type, ValueKind::GetElementPtr), inbounds(inbounds_)
+    : Instruction(pointer_type, ValueKind::GetElementPtr)
+    , inbounds(inbounds_)
 {
 	set_operands(std::move(indices));
 }
@@ -327,7 +338,7 @@ bool GetElementPtrInst::isInBounds() const
 }
 
 LoadInst::LoadInst(Type *type, Value *ptr)
-	: Instruction(type, ValueKind::Load)
+    : Instruction(type, ValueKind::Load)
 {
 	set_operands({ ptr });
 }
@@ -338,7 +349,7 @@ Value *LoadInst::getPointerOperand() const
 }
 
 StoreInst::StoreInst(Value *ptr, Value *value)
-	: Instruction(Type::getVoidTy(ptr->getType()->getContext()), ValueKind::Store)
+    : Instruction(Type::getVoidTy(ptr->getType()->getContext()), ValueKind::Store)
 {
 	set_operands({ value, ptr });
 }
@@ -372,7 +383,10 @@ bool PHINode::resolve_proxy_values_incoming()
 }
 
 AtomicRMWInst::AtomicRMWInst(Type *type, Value *ptr_, Value *value_, BinOp op_)
-	: Instruction(type, ValueKind::AtomicRMW), ptr(ptr_), value(value_), op(op_)
+    : Instruction(type, ValueKind::AtomicRMW)
+    , ptr(ptr_)
+    , value(value_)
+    , op(op_)
 {
 }
 
@@ -392,8 +406,11 @@ AtomicRMWInst::BinOp AtomicRMWInst::getOperation() const
 }
 
 AtomicCmpXchgInst::AtomicCmpXchgInst(Value *ptr_, Value *cmp_, Value *new_value_)
-	: Instruction(StructType::get({ new_value_->getType(), Type::getInt1Ty(new_value_->getType()->getContext()) }),
-	  ValueKind::AtomicCmpXchg), ptr(ptr_), new_value(new_value_), cmp_value(cmp_)
+    : Instruction(StructType::get({ new_value_->getType(), Type::getInt1Ty(new_value_->getType()->getContext()) }),
+                  ValueKind::AtomicCmpXchg)
+    , ptr(ptr_)
+    , new_value(new_value_)
+    , cmp_value(cmp_)
 {
 }
 
@@ -411,4 +428,4 @@ Value *AtomicCmpXchgInst::getNewValOperand() const
 {
 	return new_value;
 }
-}
+} // namespace LLVMBC

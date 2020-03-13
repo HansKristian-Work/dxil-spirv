@@ -80,5 +80,4 @@ void *LLVMContext::allocate(size_t size, size_t align)
 	}
 	return ptr;
 }
-}
-
+} // namespace LLVMBC

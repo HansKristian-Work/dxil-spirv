@@ -17,15 +17,14 @@
  */
 
 #include "module.hpp"
-#include "type.hpp"
-#include "logging.hpp"
+#include "cast.hpp"
 #include "context.hpp"
 #include "function.hpp"
-#include "value.hpp"
 #include "instruction.hpp"
-#include "cast.hpp"
+#include "logging.hpp"
 #include "metadata.hpp"
-#include "cast.hpp"
+#include "type.hpp"
+#include "value.hpp"
 #include <algorithm>
 
 #include "llvm_decoder.h"
@@ -338,7 +337,9 @@ struct ModuleParseContext
 };
 
 ValueProxy::ValueProxy(Type *type, ModuleParseContext &context_, uint64_t id_)
-	: Value(type, ValueKind::Proxy), context(context_), id(id_)
+    : Value(type, ValueKind::Proxy)
+    , context(context_)
+    , id(id_)
 {
 }
 
@@ -1588,9 +1589,7 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 		if (!func_type)
 			return false;
 
-		type = context->construct<FunctionType>(*context,
-		                                        func_type,
-		                                        std::move(argument_types));
+		type = context->construct<FunctionType>(*context, func_type, std::move(argument_types));
 		break;
 	}
 
@@ -1769,9 +1768,8 @@ void Module::add_unnamed_metadata(MDNode *node)
 
 Function *Module::getFunction(const std::string &name) const
 {
-	auto itr = std::find_if(functions.begin(), functions.end(), [&](const Function *func) {
-		return func->getName() == name;
-	});
+	auto itr =
+	    std::find_if(functions.begin(), functions.end(), [&](const Function *func) { return func->getName() == name; });
 
 	if (itr != functions.end())
 		return *itr;
@@ -1804,7 +1802,7 @@ LLVMContext &Module::getContext()
 }
 
 Module::Module(LLVMContext &context_)
-	: context(context_)
+    : context(context_)
 {
 }
 
@@ -1929,4 +1927,4 @@ Module *parseIR(LLVMContext &context, const void *data, size_t size)
 
 	return module;
 }
-}
+} // namespace LLVMBC

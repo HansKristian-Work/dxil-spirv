@@ -16,19 +16,21 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include <algorithm>
 #include "function.hpp"
-#include "module.hpp"
 #include "context.hpp"
-#include "type.hpp"
 #include "instruction.hpp"
+#include "module.hpp"
+#include "type.hpp"
+#include <algorithm>
 #include <assert.h>
 
 namespace LLVMBC
 {
 Function::Function(FunctionType *function_type_, uint64_t value_id_, Module &module_)
-	: Constant(function_type_, ValueKind::Function),
-	value_id(value_id_), module(module_), function_type(function_type_)
+    : Constant(function_type_, ValueKind::Function)
+    , value_id(value_id_)
+    , module(module_)
+    , function_type(function_type_)
 {
 }
 
@@ -63,7 +65,8 @@ BasicBlock &Function::getEntryBlock() const
 }
 
 BasicBlock::BasicBlock(LLVMContext &context_)
-	: Value(Type::getLabelTy(context_), ValueKind::BasicBlock), context(context_)
+    : Value(Type::getLabelTy(context_), ValueKind::BasicBlock)
+    , context(context_)
 {
 }
 
@@ -105,4 +108,4 @@ std::vector<BasicBlock *>::const_iterator BasicBlock::succ_end() const
 {
 	return succs.end();
 }
-}
+} // namespace LLVMBC

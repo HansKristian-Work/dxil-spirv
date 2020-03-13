@@ -19,18 +19,19 @@
 #include "metadata.hpp"
 #include "module.hpp"
 #include "value.hpp"
-#include <utility>
 #include <assert.h>
+#include <utility>
 
 namespace LLVMBC
 {
 MDOperand::MDOperand(Module *parent_, MetadataKind kind_)
-	: parent(parent_), kind(kind_)
+    : parent(parent_)
+    , kind(kind_)
 {
 }
 
 MDOperand::MDOperand(Module *parent_)
-	: parent(parent_)
+    : parent(parent_)
 {
 }
 
@@ -45,7 +46,8 @@ MetadataKind MDOperand::get_metadata_kind() const
 }
 
 MDNode::MDNode(Module *module, std::vector<MDOperand *> operands_)
-	: MDOperand(module, MetadataKind::Node), operands(std::move(operands_))
+    : MDOperand(module, MetadataKind::Node)
+    , operands(std::move(operands_))
 {
 }
 
@@ -71,7 +73,9 @@ void MDNode::set_tween_id(uint64_t id)
 }
 
 NamedMDNode::NamedMDNode(Module *module, std::string name_, std::vector<MDNode *> operands_)
-	: MDOperand(module, MetadataKind::NamedNode), name(std::move(name_)), operands(std::move(operands_))
+    : MDOperand(module, MetadataKind::NamedNode)
+    , name(std::move(name_))
+    , operands(std::move(operands_))
 {
 }
 
@@ -92,7 +96,8 @@ const std::string &NamedMDNode::getName() const
 }
 
 ConstantAsMetadata::ConstantAsMetadata(Module *module, Constant *value_)
-	: MDOperand(module, MetadataKind::Constant), value(value_)
+    : MDOperand(module, MetadataKind::Constant)
+    , value(value_)
 {
 }
 
@@ -102,7 +107,8 @@ Constant *ConstantAsMetadata::getValue() const
 }
 
 MDString::MDString(LLVMBC::Module *module, std::string str_)
-	: MDOperand(module, MetadataKind::String), str(std::move(str_))
+    : MDOperand(module, MetadataKind::String)
+    , str(std::move(str_))
 {
 }
 
@@ -111,4 +117,4 @@ const std::string &MDString::getString() const
 	return str;
 }
 
-}
+} // namespace LLVMBC

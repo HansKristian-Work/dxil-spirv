@@ -22,9 +22,9 @@
 #include "ir.hpp"
 
 #ifdef HAVE_LLVMBC
-#include "module.hpp"
-#include "instruction.hpp"
 #include "cast.hpp"
+#include "instruction.hpp"
+#include "module.hpp"
 #include "value.hpp"
 #else
 #include <llvm/IR/Instructions.h>
