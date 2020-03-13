@@ -65,7 +65,7 @@ inline std::vector<BasicBlock *>::const_iterator succ_end(const BasicBlock *bb)
 	return bb->succ_end();
 }
 
-class Function : public Value
+class Function : public Constant
 {
 public:
 	static constexpr ValueKind get_value_kind() { return ValueKind::Function; }

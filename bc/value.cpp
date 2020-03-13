@@ -61,6 +61,7 @@ bool Constant::is_base_of_value_kind(ValueKind kind)
 	case ValueKind::ConstantAggregateZero:
 	case ValueKind::ConstantBase:
 	case ValueKind::Undef:
+	case ValueKind::Function:
 		return true;
 
 	default:

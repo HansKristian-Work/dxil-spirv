@@ -27,7 +27,7 @@
 namespace LLVMBC
 {
 Function::Function(FunctionType *function_type_, uint64_t value_id_, Module &module_)
-	: Value(function_type_->getReturnType(), ValueKind::Function),
+	: Constant(function_type_, ValueKind::Function),
 	value_id(value_id_), module(module_), function_type(function_type_)
 {
 }

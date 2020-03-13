@@ -673,13 +673,14 @@ void ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 			return;
 		}
 
-		if (value->get_value_kind() != ValueKind::ConstantInt && value->get_value_kind() != ValueKind::ConstantFP)
+		auto *constant_value = dyn_cast<Constant>(value);
+		if (!constant_value)
 		{
 			LOGE("Not a constant!\n");
 			return;
 		}
 
-		auto *node = context->construct<ConstantAsMetadata>(module, static_cast<Constant *>(value));
+		auto *node = context->construct<ConstantAsMetadata>(module, constant_value);
 		LOGI("!%u = { type = %u, value = %u }\n", index, unsigned(entry.ops[0]), unsigned(entry.ops[1]));
 		metadata[index] = node;
 		break;
