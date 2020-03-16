@@ -7,7 +7,7 @@ cbuffer CBUFFER : register(b0)
 	uint index;
 };
 
-float3 main(float4 pos : SV_Position, nointerpolation uint dynamic_index : INDEX) : SV_Target
+float4 main(float4 pos : SV_Position, nointerpolation uint dynamic_index : INDEX) : SV_Target
 {
 	int offset = int(pos.x);
 	float4 result = uBuffer.Load(offset);
