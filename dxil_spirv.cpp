@@ -190,7 +190,7 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 	{
 		vk_binding->bindless.use_heap = DXIL_SPV_TRUE;
 		vk_binding->bindless.heap_root_offset = binding->register_index;
-		vk_binding->bindless.root_constant_word = kind_is_buffer(binding->kind);
+		vk_binding->bindless.root_constant_word = kind_is_buffer(binding->kind) ? 1 : 0;
 		vk_binding->set = kind_is_buffer(binding->kind) ? 1 : 0;
 		vk_binding->binding = 0;
 	}
@@ -237,7 +237,7 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 		vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
 		vk_binding->buffer_binding.bindless.heap_root_offset = binding->d3d_binding.register_index;
 		vk_binding->buffer_binding.bindless.root_constant_word = kind_is_buffer(binding->d3d_binding.kind) ? 4 : 3;
-		vk_binding->buffer_binding.binding = kind_is_buffer(binding->d3d_binding.kind) ? 4 : 3;
+		vk_binding->buffer_binding.set = kind_is_buffer(binding->d3d_binding.kind) ? 4 : 3;
 		vk_binding->buffer_binding.binding = 0;
 	}
 	else

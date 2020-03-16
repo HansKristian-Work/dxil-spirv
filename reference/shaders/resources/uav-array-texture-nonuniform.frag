@@ -44,7 +44,9 @@ OpDecorate %14 Binding 0
 OpDecorate %16 Flat
 OpDecorate %16 Location 0
 OpDecorate %19 Location 0
+OpDecorate %21 NonUniform
 OpDecorate %25 NonUniform
+OpDecorate %37 NonUniform
 OpDecorate %39 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

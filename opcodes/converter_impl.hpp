@@ -124,7 +124,7 @@ struct Converter::Impl
 	std::vector<ResourceReference> srv_index_to_reference;
 	std::vector<ResourceReference> sampler_index_to_reference;
 	std::vector<ResourceReference> cbv_index_to_reference;
-	std::vector<spv::Id> uav_index_to_id;
+	std::vector<ResourceReference> uav_index_to_reference;
 	std::vector<unsigned> cbv_push_constant_member;
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;
@@ -206,13 +206,14 @@ struct Converter::Impl
 	} options;
 
 	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component, DXIL::ResourceKind kind,
-	                                      uint32_t desc_set, uint32_t binding);
+	                                      uint32_t desc_set, uint32_t binding, spv::ImageFormat format = spv::ImageFormatUnknown);
 
 	struct BindlessResource
 	{
 		DXIL::ResourceType type;
 		DXIL::ComponentType component;
 		DXIL::ResourceKind kind;
+		spv::ImageFormat format;
 		uint32_t desc_set;
 		uint32_t binding;
 		uint32_t var_id;

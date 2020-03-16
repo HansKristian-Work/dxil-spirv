@@ -615,52 +615,43 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 	case DXIL::ResourceType::UAV:
 	{
-		spv::Id base_image_id = impl.uav_index_to_id[resource_range];
+		auto &reference = impl.uav_index_to_reference[resource_range];
+		spv::Id base_image_id = reference.var_id;
 		spv::Id image_id = base_image_id;
-		spv::Id type_id = builder.getDerefTypeId(image_id);
 
 		bool is_non_uniform = false;
+		spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction, is_non_uniform);
 
-		if (builder.isArrayType(type_id))
+		if (!loaded_id)
 		{
-			uint32_t non_uniform;
-			if (!get_constant_operand(instruction, 4, &non_uniform))
-				return false;
-			is_non_uniform = non_uniform != 0;
-
-			type_id = builder.getContainedTypeId(type_id);
-			Operation *op =
-			    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
-			op->add_id(image_id);
-			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
-			impl.add(op);
-			image_id = op->id;
+			LOGE("Failed to load UAV resource handle.\n");
+			return false;
 		}
 
-		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
-		op->add_id(image_id);
-		impl.id_to_type[op->id] = type_id;
-		auto &meta = impl.handle_to_resource_meta[op->id];
+		auto &meta = impl.handle_to_resource_meta[loaded_id];
 		meta = impl.handle_to_resource_meta[base_image_id];
 		meta.non_uniform = is_non_uniform;
 
+		// The base array variable does not know what the stride is, promote that state here.
+		if (reference.bindless)
+			meta.stride = reference.stride;
+
 		if (is_non_uniform)
 		{
+			spv::Id type_id = builder.getDerefTypeId(image_id);
+			type_id = builder.getContainedTypeId(type_id);
+
 			if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
 			{
-				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilityStorageTexelBufferArrayNonUniformIndexing);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 			else
 			{
-				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilityStorageImageArrayNonUniformIndexingEXT);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 		}
-
-		impl.add(op);
 		break;
 	}
 
@@ -688,6 +679,11 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			{
 				spv::Id offset_id =
 						build_bindless_heap_offset(impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+				if (!offset_id)
+				{
+					LOGE("Failed to load CBV bindless offset.\n");
+					return false;
+				}
 				op->add_id(offset_id);
 			}
 			else
@@ -718,7 +714,6 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 				impl.handle_to_root_member_offset[instruction] = member_offset;
 			}
 		}
-
 		break;
 	}
 

@@ -114,13 +114,14 @@ static bool image_dimension_is_multisampled(DXIL::ResourceKind kind)
 
 spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
                                                        DXIL::ComponentType component, DXIL::ResourceKind kind,
-                                                       uint32_t desc_set, uint32_t binding)
+                                                       uint32_t desc_set, uint32_t binding, spv::ImageFormat format)
 {
 	auto itr = std::find_if(bindless_resources.begin(), bindless_resources.end(), [&](const BindlessResource &resource) {
 		return resource.type == type &&
 		       resource.component == component &&
 		       resource.kind == kind &&
 		       resource.desc_set == desc_set &&
+		       resource.format == format &&
 		       resource.binding == binding;
 	});
 
@@ -134,6 +135,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 		resource.type = type;
 		resource.component = component;
 		resource.kind = kind;
+		resource.format = format;
 		resource.desc_set = desc_set;
 		resource.binding = binding;
 
@@ -148,6 +150,17 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 					builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
 					                        image_dimension_is_arrayed(kind),
 					                        image_dimension_is_multisampled(kind), 1, spv::ImageFormatUnknown);
+			type_id = builder().makeRuntimeArray(type_id);
+			break;
+		}
+
+		case DXIL::ResourceType::UAV:
+		{
+			spv::Id sampled_type_id = get_type_id(component, 1, 1);
+			type_id =
+					builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
+					                        image_dimension_is_arrayed(kind),
+					                        image_dimension_is_multisampled(kind), 2, format);
 			type_id = builder().makeRuntimeArray(type_id);
 			break;
 		}
@@ -205,7 +218,6 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		if (srv->getNumOperands() >= 9 && srv->getOperand(8))
 			tags = llvm::dyn_cast<llvm::MDNode>(srv->getOperand(8));
 
-		spv::Id sampled_type_id = 0;
 		DXIL::ComponentType component_type = DXIL::ComponentType::U32;
 		unsigned stride = 0;
 
@@ -222,23 +234,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
-		sampled_type_id = get_type_id(component_type, 1, 1);
-
-		spv::Id type_id =
-		    builder.makeImageType(sampled_type_id, image_dimension_from_resource_kind(resource_kind), false,
-		                          image_dimension_is_arrayed(resource_kind),
-		                          image_dimension_is_multisampled(resource_kind), 1, spv::ImageFormatUnknown);
-
 		if (range_size != 1)
 		{
 			if (range_size == ~0u)
 			{
-				type_id = builder.makeRuntimeArray(type_id);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 			}
-			else
-				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 
 			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
 			    resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
@@ -275,6 +277,21 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		}
 		else
 		{
+			auto sampled_type_id = get_type_id(component_type, 1, 1);
+
+			spv::Id type_id =
+					builder.makeImageType(sampled_type_id, image_dimension_from_resource_kind(resource_kind), false,
+					                      image_dimension_is_arrayed(resource_kind),
+					                      image_dimension_is_multisampled(resource_kind), 1, spv::ImageFormatUnknown);
+
+			if (range_size != 1)
+			{
+				if (range_size == ~0u)
+					type_id = builder.makeRuntimeArray(type_id);
+				else
+					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+			}
+
 			spv::Id var_id =
 					builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
@@ -312,7 +329,6 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		if (uav->getNumOperands() >= 11 && uav->getOperand(10))
 			tags = llvm::dyn_cast<llvm::MDNode>(uav->getOperand(10));
 
-		spv::Id element_type_id = 0;
 		unsigned stride = 0;
 		spv::ImageFormat format = spv::ImageFormatUnknown;
 
@@ -332,22 +348,13 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
-		element_type_id = get_type_id(component_type, 1, 1);
-
-		spv::Id type_id = builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind),
-		                                        false, image_dimension_is_arrayed(resource_kind),
-		                                        image_dimension_is_multisampled(resource_kind), 2, format);
-
 		if (range_size != 1)
 		{
 			if (range_size == ~0u)
 			{
-				type_id = builder.makeRuntimeArray(type_id);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 			}
-			else
-				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 
 			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
 			    resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
@@ -359,9 +366,6 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				builder.addCapability(spv::CapabilityStorageImageArrayDynamicIndexing);
 		}
 
-		spv::Id var_id =
-		    builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
-
 		D3DUAVBinding d3d_binding = {};
 		d3d_binding.counter = has_counter;
 		d3d_binding.binding = {
@@ -371,34 +375,68 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		if (resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
 
-		// Not supported yet.
+		uav_index_to_reference.resize(std::max(uav_index_to_reference.size(), size_t(index + 1)));
+
 		if (vulkan_binding.buffer_binding.bindless.use_heap)
-			return false;
-
-		builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
-		builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
-
-		if (globally_coherent)
-			builder.addDecoration(var_id, spv::DecorationCoherent);
-
-		uav_index_to_id.resize(std::max(uav_index_to_id.size(), size_t(index + 1)));
-		uav_index_to_id[index] = var_id;
-
-		spv::Id counter_var_id = 0;
-		if (has_counter)
 		{
-			counter_var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
-			                                        name.empty() ? nullptr : (name + "Counter").c_str());
-
-			// Not supported yet.
-			if (vulkan_binding.counter_binding.bindless.use_heap)
+			if (has_counter)
+			{
+				LOGE("Bindless UAVs with counters not supported.\n");
 				return false;
+			}
 
-			builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
-			                      vulkan_binding.counter_binding.descriptor_set);
-			builder.addDecoration(counter_var_id, spv::DecorationBinding, vulkan_binding.counter_binding.binding);
+			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::UAV, component_type, resource_kind,
+			                                               vulkan_binding.buffer_binding.descriptor_set,
+			                                               vulkan_binding.buffer_binding.binding);
+
+			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
+			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
+			if (range_size != 1)
+				heap_offset -= bind_register;
+
+			uav_index_to_reference[index] = { var_id, vulkan_binding.buffer_binding.bindless.root_constant_word,
+			                                  heap_offset, stride, true, range_size != 1 };
 		}
-		handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id, false };
+		else
+		{
+			auto element_type_id = get_type_id(component_type, 1, 1);
+
+			spv::Id type_id = builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind),
+			                                        false, image_dimension_is_arrayed(resource_kind),
+			                                        image_dimension_is_multisampled(resource_kind), 2, format);
+
+			if (range_size != 1)
+			{
+				if (range_size == ~0u)
+					type_id = builder.makeRuntimeArray(type_id);
+				else
+					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+			}
+
+			spv::Id var_id =
+					builder.createVariable(spv::StorageClassUniformConstant, type_id,
+					                       name.empty() ? nullptr : name.c_str());
+
+			uav_index_to_reference[index] = { var_id, 0, 0, stride, false, range_size != 1 };
+
+			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
+			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
+
+			if (globally_coherent)
+				builder.addDecoration(var_id, spv::DecorationCoherent);
+
+			spv::Id counter_var_id = 0;
+			if (has_counter)
+			{
+				counter_var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
+				                                        name.empty() ? nullptr : (name + "Counter").c_str());
+
+				builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
+				                      vulkan_binding.counter_binding.descriptor_set);
+				builder.addDecoration(counter_var_id, spv::DecorationBinding, vulkan_binding.counter_binding.binding);
+			}
+			handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id, false };
+		}
 	}
 
 	return true;
@@ -517,18 +555,13 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		unsigned bind_register = get_constant_metadata(sampler, 4);
 		unsigned range_size = get_constant_metadata(sampler, 5);
 
-		spv::Id type_id = builder.makeSamplerType();
-
 		if (range_size != 1)
 		{
 			if (range_size == ~0u)
 			{
-				type_id = builder.makeRuntimeArray(type_id);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 			}
-			else
-				type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 
 			// This capability also covers samplers.
 			builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
@@ -562,6 +595,16 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		}
 		else
 		{
+			spv::Id type_id = builder.makeSamplerType();
+
+			if (range_size != 1)
+			{
+				if (range_size == ~0u)
+					type_id = builder.makeRuntimeArray(type_id);
+				else
+					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+			}
+
 			spv::Id var_id =
 					builder.createVariable(spv::StorageClassUniformConstant, type_id,
 					                       name.empty() ? nullptr : name.c_str());
