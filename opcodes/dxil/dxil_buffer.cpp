@@ -277,6 +277,9 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
 	impl.add(counter_ptr_op);
 
+	if (meta.non_uniform)
+		builder.addDecoration(counter_ptr_op->id, spv::DecorationNonUniformEXT);
+
 	spv::Op opcode;
 
 	switch (binop)

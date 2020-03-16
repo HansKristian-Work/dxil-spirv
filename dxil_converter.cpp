@@ -387,7 +387,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::UAV, component_type, resource_kind,
 			                                               vulkan_binding.buffer_binding.descriptor_set,
-			                                               vulkan_binding.buffer_binding.binding);
+			                                               vulkan_binding.buffer_binding.binding, format);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
 			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;

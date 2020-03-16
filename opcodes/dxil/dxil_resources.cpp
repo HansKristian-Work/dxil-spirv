@@ -502,7 +502,7 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter
 
 static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_image_id,
                                           const Converter::Impl::ResourceReference &reference,
-                                          const llvm::CallInst *instruction, bool &is_non_uniform)
+                                          const llvm::CallInst *instruction, bool &is_non_uniform, spv::Id *ptr_id = nullptr)
 {
 	auto &builder = impl.builder();
 
@@ -545,6 +545,9 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 		impl.add(op);
 		image_id = op->id;
 	}
+
+	if (ptr_id)
+		*ptr_id = image_id;
 
 	Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
 	op->add_id(image_id);
@@ -620,7 +623,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 		spv::Id image_id = base_image_id;
 
 		bool is_non_uniform = false;
-		spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction, is_non_uniform);
+		spv::Id image_ptr_id = 0;
+		spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction, is_non_uniform, &image_ptr_id);
 
 		if (!loaded_id)
 		{
@@ -631,6 +635,9 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 		auto &meta = impl.handle_to_resource_meta[loaded_id];
 		meta = impl.handle_to_resource_meta[base_image_id];
 		meta.non_uniform = is_non_uniform;
+
+		// Image atomics requires the pointer to image and not OpTypeImage directly.
+		meta.var_id = image_ptr_id;
 
 		// The base array variable does not know what the stride is, promote that state here.
 		if (reference.bindless)
