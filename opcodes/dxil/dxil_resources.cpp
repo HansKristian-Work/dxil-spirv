@@ -707,44 +707,27 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 	case DXIL::ResourceType::Sampler:
 	{
-		spv::Id sampler_id = impl.sampler_index_to_id[resource_range];
-		spv::Id type_id = builder.getDerefTypeId(sampler_id);
+		auto &reference = impl.sampler_index_to_reference[resource_range];
+		spv::Id base_sampler_id = reference.var_id;
 
-		if (builder.isArrayType(type_id))
+		bool is_non_uniform = false;
+		spv::Id loaded_id = build_load_resource_handle(impl, base_sampler_id, reference, instruction, is_non_uniform);
+
+		if (!loaded_id)
 		{
-			uint32_t non_uniform;
-			if (!get_constant_operand(instruction, 4, &non_uniform))
-				return false;
-
-			if (non_uniform != 0)
-			{
-				// TODO: Verify if this is actually true.
-				LOGE("NonUniformResourceIndex on Sampler objects (apparently?) not supported by "
-				     "SPV_EXT_descriptor_indexing.\n");
-				return false;
-			}
-
-			if (!llvm::isa<llvm::ConstantInt>(instruction->getOperand(3)))
-			{
-				// TODO: Verify if this is actually true.
-				LOGE("Index to sampler array is not constant. This is (apparently?) not supported by Vulkan.\n");
-				return false;
-			}
-
-			type_id = builder.getContainedTypeId(type_id);
-			Operation *op =
-			    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
-			op->add_id(sampler_id);
-			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
-			impl.add(op);
-			sampler_id = op->id;
+			LOGE("Failed to load Sampler resource handle.\n");
+			return false;
 		}
 
-		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
-		op->add_id(sampler_id);
-		impl.handle_to_resource_meta[op->id] = { DXIL::ResourceKind::Sampler, DXIL::ComponentType::Invalid, 0u };
-		impl.id_to_type[op->id] = type_id;
-		impl.add(op);
+		auto &meta = impl.handle_to_resource_meta[loaded_id];
+		meta = impl.handle_to_resource_meta[base_sampler_id];
+		meta.non_uniform = is_non_uniform;
+
+		if (is_non_uniform)
+		{
+			builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
+			builder.addExtension("SPV_EXT_descriptor_indexing");
+		}
 		break;
 	}
 
