@@ -24,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 131
+; Bound: 124
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
@@ -99,11 +99,11 @@ OpDecorate %35 Location 0
 %76 = OpTypeSampledImage %18
 %82 = OpTypeSampledImage %21
 %88 = OpTypeSampledImage %24
-%126 = OpTypePointer Output %5
+%119 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %129
-%129 = OpLabel
+OpBranch %122
+%122 = OpLabel
 %36 = OpLoad %24 %26
 %37 = OpLoad %21 %23
 %38 = OpLoad %18 %20
@@ -150,42 +150,35 @@ OpBranch %129
 %90 = OpImageQueryLod %33 %89 %91
 %92 = OpCompositeExtract %5 %90 0
 %93 = OpFAdd %5 %87 %92
-%94 = OpSampledImage %55 %42 %43
-%95 = OpImageQueryLod %33 %94 %48
-%96 = OpCompositeExtract %5 %95 1
-%97 = OpSampledImage %59 %41 %43
-%98 = OpImageQueryLod %33 %97 %48
-%99 = OpCompositeExtract %5 %98 1
-%100 = OpFAdd %5 %99 %96
-%101 = OpSampledImage %64 %40 %43
-%103 = OpCompositeConstruct %33 %48 %51
-%102 = OpImageQueryLod %33 %101 %103
-%104 = OpCompositeExtract %5 %102 1
-%105 = OpFAdd %5 %100 %104
-%106 = OpSampledImage %70 %39 %43
-%108 = OpCompositeConstruct %33 %48 %51
-%107 = OpImageQueryLod %33 %106 %108
+%94 = OpImageQueryLod %33 %56 %48
+%95 = OpCompositeExtract %5 %94 1
+%96 = OpImageQueryLod %33 %60 %48
+%97 = OpCompositeExtract %5 %96 1
+%98 = OpFAdd %5 %97 %95
+%100 = OpCompositeConstruct %33 %48 %51
+%99 = OpImageQueryLod %33 %65 %100
+%101 = OpCompositeExtract %5 %99 1
+%102 = OpFAdd %5 %98 %101
+%104 = OpCompositeConstruct %33 %48 %51
+%103 = OpImageQueryLod %33 %71 %104
+%105 = OpCompositeExtract %5 %103 1
+%106 = OpFAdd %5 %102 %105
+%108 = OpCompositeConstruct %30 %48 %51 %54
+%107 = OpImageQueryLod %33 %77 %108
 %109 = OpCompositeExtract %5 %107 1
-%110 = OpFAdd %5 %105 %109
-%111 = OpSampledImage %76 %38 %43
-%113 = OpCompositeConstruct %30 %48 %51 %54
-%112 = OpImageQueryLod %33 %111 %113
-%114 = OpCompositeExtract %5 %112 1
-%115 = OpFAdd %5 %110 %114
-%116 = OpSampledImage %82 %37 %43
-%118 = OpCompositeConstruct %30 %48 %51 %54
-%117 = OpImageQueryLod %33 %116 %118
-%119 = OpCompositeExtract %5 %117 1
-%120 = OpFAdd %5 %115 %119
-%121 = OpSampledImage %88 %36 %43
-%123 = OpCompositeConstruct %30 %48 %51 %54
-%122 = OpImageQueryLod %33 %121 %123
-%124 = OpCompositeExtract %5 %122 1
-%125 = OpFAdd %5 %120 %124
-%127 = OpAccessChain %126 %35 %47
-OpStore %127 %93
-%128 = OpAccessChain %126 %35 %50
-OpStore %128 %125
+%110 = OpFAdd %5 %106 %109
+%112 = OpCompositeConstruct %30 %48 %51 %54
+%111 = OpImageQueryLod %33 %83 %112
+%113 = OpCompositeExtract %5 %111 1
+%114 = OpFAdd %5 %110 %113
+%116 = OpCompositeConstruct %30 %48 %51 %54
+%115 = OpImageQueryLod %33 %89 %116
+%117 = OpCompositeExtract %5 %115 1
+%118 = OpFAdd %5 %114 %117
+%120 = OpAccessChain %119 %35 %47
+OpStore %120 %93
+%121 = OpAccessChain %119 %35 %50
+OpStore %121 %118
 OpReturn
 OpFunctionEnd
 #endif

@@ -218,5 +218,14 @@ struct Converter::Impl
 		uint32_t var_id;
 	};
 	std::vector<BindlessResource> bindless_resources;
+
+	struct CombinedImageSampler
+	{
+		spv::Id image_id;
+		spv::Id sampler_id;
+		spv::Id combined_id;
+		bool non_uniform;
+	};
+	std::vector<CombinedImageSampler> combined_image_sampler_cache;
 };
 } // namespace dxil_spv

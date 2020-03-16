@@ -1597,6 +1597,16 @@ bool Converter::Impl::emit_stage_input_variables()
 
 spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_id, bool comparison)
 {
+	bool is_non_uniform = handle_to_resource_meta[image_id].non_uniform ||
+	                      handle_to_resource_meta[sampler_id].non_uniform;
+
+	auto itr = std::find_if(combined_image_sampler_cache.begin(), combined_image_sampler_cache.end(), [&](const CombinedImageSampler &combined) {
+		return combined.image_id == image_id && combined.sampler_id == sampler_id && combined.non_uniform == is_non_uniform;
+	});
+
+	if (itr != combined_image_sampler_cache.end())
+		return itr->combined_id;
+
 	auto &builder = spirv_module.get_builder();
 	spv::Id image_type_id = get_type_id(image_id);
 	spv::Dim dim = builder.getTypeDimensionality(image_type_id);
@@ -1611,10 +1621,10 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	op->add_ids({ image_id, sampler_id });
 	add(op);
 
-	bool is_non_uniform = handle_to_resource_meta[image_id].non_uniform || handle_to_resource_meta[sampler_id].non_uniform;
 	if (is_non_uniform)
 		builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 
+	combined_image_sampler_cache.push_back({ image_id, sampler_id, op->id, is_non_uniform });
 	return op->id;
 }
 
@@ -2226,6 +2236,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	for (auto *bb : visit_order)
 	{
 		CFGNode *node = bb_map[bb]->node;
+		combined_image_sampler_cache.clear();
 
 		// Scan opcodes.
 		for (auto &instruction : *bb)
