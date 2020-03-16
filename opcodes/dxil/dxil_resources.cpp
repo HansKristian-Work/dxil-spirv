@@ -550,6 +550,10 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 	op->add_id(image_id);
 	impl.id_to_type[op->id] = type_id;
 	impl.add(op);
+
+	if (is_non_uniform)
+		builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+
 	return op->id;
 }
 
@@ -597,13 +601,11 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 			if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
 			{
-				builder.addDecoration(loaded_id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 			else
 			{
-				builder.addDecoration(loaded_id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}

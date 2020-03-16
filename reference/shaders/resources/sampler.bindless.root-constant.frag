@@ -33,7 +33,7 @@ void main()
     vec4 _56 = textureOffset(sampler2D(_13[registers._m0], _17[registers._m2 + 3u]), vec2(UV.x, UV.y), ivec2(0));
     vec4 _71 = textureOffset(sampler2D(_13[registers._m0], _17[registers._m2 + 5u]), vec2(UV.x, UV.y), ivec2(0));
     vec4 _102 = textureOffset(sampler2D(_13[registers._m0], _17[registers._m2 + (uvec4(registers._m4, registers._m5, registers._m6, registers._m7).x + 4u)]), vec2(UV.x, UV.y), ivec2(0));
-    vec4 _120 = textureOffset(sampler2D(_13[registers._m0], _17[registers._m2 + (INDEX + 100u)]), vec2(UV.x, UV.y), ivec2(0));
+    vec4 _120 = textureOffset(sampler2D(_13[registers._m0], _17[nonuniformEXT(registers._m2 + (INDEX + 100u))]), vec2(UV.x, UV.y), ivec2(0));
     SV_Target.x = ((_71.x + _56.x) + _102.x) + _120.x;
     SV_Target.y = ((_71.y + _56.y) + _102.y) + _120.y;
     SV_Target.z = ((_71.z + _56.z) + _102.z) + _120.z;
@@ -88,6 +88,7 @@ OpDecorate %25 Flat
 OpDecorate %25 Location 1
 OpDecorate %28 Location 0
 OpDecorate %112 NonUniform
+OpDecorate %118 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
