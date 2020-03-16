@@ -26,7 +26,6 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
-OpCapability Image1D
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %23 %26
 OpExecutionMode %3 OriginUpperLeft
@@ -75,20 +74,20 @@ OpDecorate %26 Location 0
 %38 = OpConstant %34 1
 %41 = OpConstant %34 2
 %44 = OpConstant %34 3
-%46 = OpTypeImage %5 1D 1 0 0 2 Unknown
+%46 = OpTypeImage %5 1D 1 0 0 1 Unknown
 %47 = OpTypeSampledImage %46
 %49 = OpTypeInt 32 1
 %50 = OpConstant %49 1
-%54 = OpTypeImage %5 1D 1 1 0 2 Unknown
+%54 = OpTypeImage %5 1D 1 1 0 1 Unknown
 %55 = OpTypeSampledImage %54
 %57 = OpConstant %49 2
-%63 = OpTypeImage %5 2D 1 0 0 2 Unknown
+%63 = OpTypeImage %5 2D 1 0 0 1 Unknown
 %64 = OpTypeSampledImage %63
 %66 = OpConstant %49 -3
 %67 = OpConstant %49 -2
 %70 = OpTypeVector %49 2
 %71 = OpConstantComposite %70 %66 %67
-%75 = OpTypeImage %5 2D 1 1 0 2 Unknown
+%75 = OpTypeImage %5 2D 1 1 0 1 Unknown
 %76 = OpTypeSampledImage %75
 %78 = OpConstant %49 4
 %79 = OpConstant %49 5

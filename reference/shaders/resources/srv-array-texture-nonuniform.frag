@@ -10,12 +10,12 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    vec4 _36 = textureOffset(sampler2D(_9[nonuniformEXT(INDEX + 0u)], _17), vec2(0.5), ivec2(0));
-    vec4 _51 = textureOffset(sampler2D(_14[nonuniformEXT((INDEX ^ 1u) + 0u)], _17), vec2(0.5), ivec2(0));
-    SV_Target.x = _51.x + _36.x;
-    SV_Target.y = _51.y + _36.y;
-    SV_Target.z = _51.z + _36.z;
-    SV_Target.w = _51.w + _36.w;
+    vec4 _35 = textureOffset(sampler2D(_9[nonuniformEXT(INDEX + 0u)], _17), vec2(0.5), ivec2(0));
+    vec4 _50 = textureOffset(sampler2D(_14[nonuniformEXT((INDEX ^ 1u) + 0u)], _17), vec2(0.5), ivec2(0));
+    SV_Target.x = _50.x + _35.x;
+    SV_Target.y = _50.y + _35.y;
+    SV_Target.z = _50.z + _35.z;
+    SV_Target.w = _50.w + _35.w;
 }
 
 
@@ -24,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 70
+; Bound: 69
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledImageArrayDynamicIndexing
@@ -48,10 +48,10 @@ OpDecorate %19 Location 0
 OpDecorate %22 Location 0
 OpDecorate %25 NonUniform
 OpDecorate %29 NonUniform
-OpDecorate %32 NonUniform
-OpDecorate %47 NonUniform
+OpDecorate %31 NonUniform
+OpDecorate %46 NonUniform
+OpDecorate %48 NonUniform
 OpDecorate %49 NonUniform
-OpDecorate %50 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -74,57 +74,56 @@ OpDecorate %50 NonUniform
 %22 = OpVariable %21 Output
 %26 = OpConstant %10 0
 %27 = OpTypePointer UniformConstant %6
-%30 = OpTypeImage %5 2D 0 0 0 2 Unknown
-%31 = OpTypeSampledImage %30
-%33 = OpConstant %5 0.5
-%34 = OpTypeInt 32 1
-%35 = OpConstant %34 0
-%37 = OpTypeVector %5 2
-%39 = OpTypeVector %34 2
-%40 = OpConstantComposite %39 %35 %35
-%46 = OpConstant %10 1
-%61 = OpTypePointer Output %5
-%65 = OpConstant %10 2
-%67 = OpConstant %10 3
+%30 = OpTypeSampledImage %6
+%32 = OpConstant %5 0.5
+%33 = OpTypeInt 32 1
+%34 = OpConstant %33 0
+%36 = OpTypeVector %5 2
+%38 = OpTypeVector %33 2
+%39 = OpConstantComposite %38 %34 %34
+%45 = OpConstant %10 1
+%60 = OpTypePointer Output %5
+%64 = OpConstant %10 2
+%66 = OpConstant %10 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %68
-%68 = OpLabel
+OpBranch %67
+%67 = OpLabel
 %23 = OpLoad %15 %17
 %24 = OpLoad %10 %19
 %25 = OpIAdd %10 %24 %26
 %28 = OpAccessChain %27 %9 %25
 %29 = OpLoad %6 %28
-%32 = OpSampledImage %31 %29 %23
-%38 = OpCompositeConstruct %37 %33 %33
-%36 = OpImageSampleImplicitLod %20 %32 %38 ConstOffset %40
-%41 = OpCompositeExtract %5 %36 0
-%42 = OpCompositeExtract %5 %36 1
-%43 = OpCompositeExtract %5 %36 2
-%44 = OpCompositeExtract %5 %36 3
-%45 = OpBitwiseXor %10 %24 %46
-%47 = OpIAdd %10 %45 %26
-%48 = OpAccessChain %27 %14 %47
-%49 = OpLoad %6 %48
-%50 = OpSampledImage %31 %49 %23
-%52 = OpCompositeConstruct %37 %33 %33
-%51 = OpImageSampleImplicitLod %20 %50 %52 ConstOffset %40
-%53 = OpCompositeExtract %5 %51 0
-%54 = OpCompositeExtract %5 %51 1
-%55 = OpCompositeExtract %5 %51 2
-%56 = OpCompositeExtract %5 %51 3
+%31 = OpSampledImage %30 %29 %23
+%37 = OpCompositeConstruct %36 %32 %32
+%35 = OpImageSampleImplicitLod %20 %31 %37 ConstOffset %39
+%40 = OpCompositeExtract %5 %35 0
+%41 = OpCompositeExtract %5 %35 1
+%42 = OpCompositeExtract %5 %35 2
+%43 = OpCompositeExtract %5 %35 3
+%44 = OpBitwiseXor %10 %24 %45
+%46 = OpIAdd %10 %44 %26
+%47 = OpAccessChain %27 %14 %46
+%48 = OpLoad %6 %47
+%49 = OpSampledImage %30 %48 %23
+%51 = OpCompositeConstruct %36 %32 %32
+%50 = OpImageSampleImplicitLod %20 %49 %51 ConstOffset %39
+%52 = OpCompositeExtract %5 %50 0
+%53 = OpCompositeExtract %5 %50 1
+%54 = OpCompositeExtract %5 %50 2
+%55 = OpCompositeExtract %5 %50 3
+%56 = OpFAdd %5 %52 %40
 %57 = OpFAdd %5 %53 %41
 %58 = OpFAdd %5 %54 %42
 %59 = OpFAdd %5 %55 %43
-%60 = OpFAdd %5 %56 %44
-%62 = OpAccessChain %61 %22 %26
+%61 = OpAccessChain %60 %22 %26
+OpStore %61 %56
+%62 = OpAccessChain %60 %22 %45
 OpStore %62 %57
-%63 = OpAccessChain %61 %22 %46
+%63 = OpAccessChain %60 %22 %64
 OpStore %63 %58
-%64 = OpAccessChain %61 %22 %65
-OpStore %64 %59
-%66 = OpAccessChain %61 %22 %67
-OpStore %66 %60
+%65 = OpAccessChain %60 %22 %66
+OpStore %65 %59
 OpReturn
 OpFunctionEnd
 #endif

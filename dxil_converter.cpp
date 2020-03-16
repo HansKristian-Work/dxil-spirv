@@ -1605,7 +1605,7 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	spv::Id sampled_format = builder.getImageComponentType(image_type_id);
 
 	image_type_id =
-	    builder.makeImageType(sampled_format, dim, comparison, arrayed, multisampled, 2, spv::ImageFormatUnknown);
+	    builder.makeImageType(sampled_format, dim, comparison, arrayed, multisampled, 1, spv::ImageFormatUnknown);
 
 	Operation *op = allocate(spv::OpSampledImage, builder.makeSampledImageType(image_type_id));
 	op->add_ids({ image_id, sampler_id });

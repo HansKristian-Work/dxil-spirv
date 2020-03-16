@@ -28,9 +28,7 @@ void main()
 ; Bound: 110
 ; Schema: 0
 OpCapability Shader
-OpCapability ImageCubeArray
 OpCapability Sampled1D
-OpCapability Image1D
 OpCapability SampledCubeArray
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %29 %32
@@ -90,22 +88,22 @@ OpDecorate %32 Location 0
 %46 = OpConstant %42 1
 %49 = OpConstant %42 2
 %52 = OpConstant %42 3
-%54 = OpTypeImage %5 1D 1 0 0 2 Unknown
+%54 = OpTypeImage %5 1D 1 0 0 1 Unknown
 %55 = OpTypeSampledImage %54
 %57 = OpTypeInt 32 1
 %58 = OpConstant %57 0
-%62 = OpTypeImage %5 1D 1 1 0 2 Unknown
+%62 = OpTypeImage %5 1D 1 1 0 1 Unknown
 %63 = OpTypeSampledImage %62
-%70 = OpTypeImage %5 2D 1 0 0 2 Unknown
+%70 = OpTypeImage %5 2D 1 0 0 1 Unknown
 %71 = OpTypeSampledImage %70
 %75 = OpTypeVector %57 2
 %76 = OpConstantComposite %75 %58 %58
-%80 = OpTypeImage %5 2D 1 1 0 2 Unknown
+%80 = OpTypeImage %5 2D 1 1 0 1 Unknown
 %81 = OpTypeSampledImage %80
 %84 = OpTypeVector %5 3
-%89 = OpTypeImage %5 Cube 1 0 0 2 Unknown
+%89 = OpTypeImage %5 Cube 1 0 0 1 Unknown
 %90 = OpTypeSampledImage %89
-%97 = OpTypeImage %5 Cube 1 1 0 2 Unknown
+%97 = OpTypeImage %5 Cube 1 1 0 1 Unknown
 %98 = OpTypeSampledImage %97
 %105 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
