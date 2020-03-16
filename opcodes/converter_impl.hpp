@@ -111,11 +111,21 @@ struct Converter::Impl
 	static bool scan_cbvs(ResourceRemappingInterface *iface, const llvm::MDNode *cbvs, ShaderStage stage);
 	static bool scan_samplers(ResourceRemappingInterface *iface, const llvm::MDNode *samplers, ShaderStage stage);
 
-	std::vector<spv::Id> srv_index_to_id;
+	struct ResourceReference
+	{
+		spv::Id var_id;
+		uint32_t push_constant_member;
+		uint32_t base_offset;
+		unsigned stride;
+		bool bindless;
+		bool base_resource_is_array;
+	};
+
+	std::vector<ResourceReference> srv_index_to_reference;
 	std::vector<spv::Id> uav_index_to_id;
 	std::vector<spv::Id> cbv_index_to_id;
-	std::vector<unsigned> cbv_push_constant_member;
 	std::vector<spv::Id> sampler_index_to_id;
+	std::vector<unsigned> cbv_push_constant_member;
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;
 	unsigned root_constant_num_words = 0;
@@ -193,5 +203,19 @@ struct Converter::Impl
 		bool rasterizer_sample_count_spec_constant = true;
 		std::vector<unsigned> output_swizzles;
 	} options;
+
+	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component, DXIL::ResourceKind kind,
+	                                      uint32_t desc_set, uint32_t binding);
+
+	struct BindlessResource
+	{
+		DXIL::ResourceType type;
+		DXIL::ComponentType component;
+		DXIL::ResourceKind kind;
+		uint32_t desc_set;
+		uint32_t binding;
+		uint32_t var_id;
+	};
+	std::vector<BindlessResource> bindless_resources;
 };
 } // namespace dxil_spv

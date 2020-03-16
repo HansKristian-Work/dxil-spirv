@@ -1,9 +1,9 @@
 #version 460
 
 layout(set = 0, binding = 0, r32ui) uniform readonly writeonly uimageBuffer _8;
-layout(set = 1, binding = 0, r32ui) uniform uimageBuffer _9;
+layout(set = 7, binding = 0, r32ui) uniform uimageBuffer _9;
 layout(set = 0, binding = 1, r32ui) uniform readonly writeonly uimageBuffer _10;
-layout(set = 1, binding = 1, r32ui) uniform uimageBuffer _11;
+layout(set = 7, binding = 1, r32ui) uniform uimageBuffer _11;
 
 layout(location = 0) out uint SV_Target;
 
@@ -31,11 +31,11 @@ OpName %3 "main"
 OpName %13 "SV_Target"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
-OpDecorate %9 DescriptorSet 1
+OpDecorate %9 DescriptorSet 7
 OpDecorate %9 Binding 0
 OpDecorate %10 DescriptorSet 0
 OpDecorate %10 Binding 1
-OpDecorate %11 DescriptorSet 1
+OpDecorate %11 DescriptorSet 7
 OpDecorate %11 Binding 1
 OpDecorate %13 Location 0
 %1 = OpTypeVoid

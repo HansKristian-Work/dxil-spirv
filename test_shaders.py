@@ -107,6 +107,9 @@ def cross_compile_dxil(shader, args, paths):
         hlsl_cmd.append('1')
         hlsl_cmd.append('yxwz')
 
+    if '.bindless.' in shader:
+        hlsl_cmd.append('--bindless')
+
     if '.invalid.' not in shader:
         hlsl_cmd.append('--validate')
 

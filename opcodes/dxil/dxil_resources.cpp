@@ -460,6 +460,94 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
+static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
+                                          llvm::Value *dynamic_offset)
+{
+	auto &builder = impl.builder();
+	if (reference.push_constant_member >= impl.root_constant_num_words || impl.root_constant_id == 0)
+	{
+		LOGE("Descriptor table offset is out of push constant range.\n");
+		return 0;
+	}
+
+	auto *descriptor_table = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPushConstant, builder.makeUintType(32)));
+	descriptor_table->add_id(impl.root_constant_id);
+	descriptor_table->add_id(builder.makeUintConstant(reference.push_constant_member));
+	impl.add(descriptor_table);
+
+	auto *loaded_word = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	loaded_word->add_id(descriptor_table->id);
+	impl.add(loaded_word);
+
+	if (reference.base_offset != 0)
+	{
+		auto *heap_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		heap_offset->add_id(loaded_word->id);
+		heap_offset->add_id(builder.makeUintConstant(reference.base_offset));
+		impl.add(heap_offset);
+		loaded_word = heap_offset;
+	}
+
+	if (dynamic_offset)
+	{
+		auto *offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		offset->add_id(loaded_word->id);
+		offset->add_id(impl.get_id_for_value(dynamic_offset));
+		impl.add(offset);
+		loaded_word = offset;
+	}
+
+	return loaded_word->id;
+}
+
+static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_image_id,
+                                          const Converter::Impl::ResourceReference &reference,
+                                          const llvm::CallInst *instruction, bool &is_non_uniform)
+{
+	auto &builder = impl.builder();
+
+	spv::Id image_id = base_image_id;
+	spv::Id type_id = builder.getDerefTypeId(image_id);
+
+	is_non_uniform = false;
+
+	if (reference.base_resource_is_array || reference.bindless)
+	{
+		uint32_t non_uniform = 0;
+		if (reference.base_resource_is_array)
+		{
+			if (!get_constant_operand(instruction, 4, &non_uniform))
+				return 0;
+			is_non_uniform = non_uniform != 0;
+		}
+
+		type_id = builder.getContainedTypeId(type_id);
+		Operation *op = impl.allocate(spv::OpAccessChain,
+		                              builder.makePointer(spv::StorageClassUniformConstant, type_id));
+		op->add_id(image_id);
+
+		if (reference.bindless)
+		{
+			spv::Id offset_id = build_bindless_heap_offset(impl, reference,
+			                                               reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+			if (offset_id == 0)
+				return 0;
+			op->add_id(offset_id);
+		}
+		else
+			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+
+		impl.add(op);
+		image_id = op->id;
+	}
+
+	Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
+	op->add_id(image_id);
+	impl.id_to_type[op->id] = type_id;
+	impl.add(op);
+	return op->id;
+}
+
 bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -476,53 +564,45 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 	{
 	case DXIL::ResourceType::SRV:
 	{
-		spv::Id base_image_id = impl.srv_index_to_id[resource_range];
+		auto &reference = impl.srv_index_to_reference[resource_range];
+		spv::Id base_image_id = reference.var_id;
 		spv::Id image_id = base_image_id;
-		spv::Id type_id = builder.getDerefTypeId(image_id);
 
 		bool is_non_uniform = false;
+		spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction, is_non_uniform);
 
-		if (builder.isArrayType(type_id))
+		if (!loaded_id)
 		{
-			uint32_t non_uniform;
-			if (!get_constant_operand(instruction, 4, &non_uniform))
-				return false;
-			is_non_uniform = non_uniform != 0;
-
-			type_id = builder.getContainedTypeId(type_id);
-			Operation *op =
-			    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
-			op->add_id(image_id);
-			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
-			impl.add(op);
-			image_id = op->id;
+			LOGE("Failed to load SRV resource handle.\n");
+			return false;
 		}
 
-		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
-		op->add_id(image_id);
-		impl.id_to_type[op->id] = type_id;
-
-		auto &meta = impl.handle_to_resource_meta[op->id];
+		auto &meta = impl.handle_to_resource_meta[loaded_id];
 		meta = impl.handle_to_resource_meta[base_image_id];
 		meta.non_uniform = is_non_uniform;
 
+		// The base array variable does not know what the stride is, promote that state here.
+		if (reference.bindless)
+			meta.stride = reference.stride;
+
 		if (is_non_uniform)
 		{
+			spv::Id type_id = builder.getDerefTypeId(image_id);
+			type_id = builder.getContainedTypeId(type_id);
+
 			if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
 			{
-				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+				builder.addDecoration(loaded_id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 			else
 			{
-				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+				builder.addDecoration(loaded_id, spv::DecorationNonUniformEXT);
 				builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 		}
-
-		impl.add(op);
 		break;
 	}
 

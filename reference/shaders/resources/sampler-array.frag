@@ -26,6 +26,7 @@ void main()
 ; Bound: 64
 ; Schema: 0
 OpCapability Shader
+OpCapability SampledImageArrayDynamicIndexing
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
