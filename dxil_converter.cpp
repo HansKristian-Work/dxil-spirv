@@ -27,6 +27,7 @@
 #include "spirv_module.hpp"
 
 #include <utility>
+#include <opcodes/converter_impl.hpp>
 
 namespace dxil_spv
 {
@@ -716,7 +717,14 @@ void Converter::Impl::emit_root_constants(unsigned num_words)
 	for (unsigned i = 0; i < num_words; i++)
 		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, 4 * i);
 
-	root_constant_id = builder.createVariable(spv::StorageClassPushConstant, type_id, "registers");
+	if (options.inline_ubo_enable)
+	{
+		root_constant_id = builder.createVariable(spv::StorageClassUniform, type_id, "registers");
+		builder.addDecoration(root_constant_id, spv::DecorationDescriptorSet, options.inline_ubo_descriptor_set);
+		builder.addDecoration(root_constant_id, spv::DecorationBinding, options.inline_ubo_descriptor_binding);
+	}
+	else
+		root_constant_id = builder.createVariable(spv::StorageClassPushConstant, type_id, "registers");
 	root_constant_num_words = num_words;
 }
 
@@ -2465,6 +2473,16 @@ void Converter::Impl::add_capability(const OptionBase &cap)
 		auto &count = static_cast<const OptionRasterizerSampleCount &>(cap);
 		options.rasterizer_sample_count = count.count;
 		options.rasterizer_sample_count_spec_constant = count.spec_constant;
+		break;
+	}
+
+	case Option::RootConstantInlineUniformBlock:
+	{
+		auto &ubo = static_cast<const OptionRootConstantInlineUniformBlock &>(cap);
+		options.inline_ubo_descriptor_set = ubo.desc_set;
+		options.inline_ubo_descriptor_binding = ubo.binding;
+		options.inline_ubo_enable = ubo.enable;
+		break;
 	}
 
 	default:
@@ -2500,6 +2518,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::DualSourceBlending:
 	case Option::OutputSwizzle:
 	case Option::RasterizerSampleCount:
+	case Option::RootConstantInlineUniformBlock:
 		return true;
 
 	default:

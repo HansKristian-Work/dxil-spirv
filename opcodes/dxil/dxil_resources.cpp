@@ -470,7 +470,9 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter
 		return 0;
 	}
 
-	auto *descriptor_table = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPushConstant, builder.makeUintType(32)));
+	auto *descriptor_table = impl.allocate(spv::OpAccessChain,
+	                                       builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant,
+	                                                           builder.makeUintType(32)));
 	descriptor_table->add_id(impl.root_constant_id);
 	descriptor_table->add_id(builder.makeUintConstant(reference.push_constant_member));
 	impl.add(descriptor_table);
@@ -784,7 +786,8 @@ static bool emit_cbuffer_load_legacy_instruction_root_constant(Converter::Impl &
 		if (i < num_words)
 		{
 			auto *op = impl.allocate(spv::OpAccessChain,
-			                         builder.makePointer(spv::StorageClassPushConstant, builder.makeUintType(32)));
+			                         builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant,
+			                                             builder.makeUintType(32)));
 
 			op->add_id(impl.root_constant_id);
 			op->add_id(builder.makeUintConstant(member_index + i));

@@ -22,7 +22,6 @@
 #include "dxil_parser.hpp"
 #include "llvm_bitcode_parser.hpp"
 #include "node_pool.hpp"
-//#include "spirv_module.hpp"
 #include <memory>
 
 namespace spv
@@ -164,7 +163,8 @@ enum class Option : uint32_t
 	ShaderDemoteToHelper = 1,
 	DualSourceBlending = 2,
 	OutputSwizzle = 3,
-	RasterizerSampleCount = 4
+	RasterizerSampleCount = 4,
+	RootConstantInlineUniformBlock = 5
 };
 
 struct OptionBase
@@ -212,6 +212,17 @@ struct OptionRasterizerSampleCount : OptionBase
 	}
 	unsigned count = 0;
 	bool spec_constant = false;
+};
+
+struct OptionRootConstantInlineUniformBlock : OptionBase
+{
+	OptionRootConstantInlineUniformBlock()
+		: OptionBase(Option::RootConstantInlineUniformBlock)
+	{
+	}
+	unsigned desc_set = 0;
+	unsigned binding = 0;
+	bool enable = false;
 };
 
 class Converter

@@ -110,6 +110,11 @@ def cross_compile_dxil(shader, args, paths):
     if '.bindless.' in shader:
         hlsl_cmd.append('--bindless')
 
+    if '.inline-ubo.' in shader:
+        hlsl_cmd.append('--root-constant-inline-ubo')
+        hlsl_cmd.append('6')
+        hlsl_cmd.append('1')
+
     if '.invalid.' not in shader:
         hlsl_cmd.append('--validate')
 

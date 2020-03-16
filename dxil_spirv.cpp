@@ -121,6 +121,7 @@ static void print_help()
 	     "\t[--validate]\n"
 	     "\t[--glsl-embed-asm]\n"
 	     "\t[--root-constant space binding word_offset word_count]\n"
+	     "\t[--root-constant-inline-ubo set binding]\n"
 	     "\t[--vertex-input semantic location]\n"
 	     "\t[--stream-output semantic index offset stride buffer-index]\n"
 	     "\t[--enable-shader-demote]\n"
@@ -140,6 +141,10 @@ struct Arguments
 	bool shader_demote = false;
 	bool dual_source_blending = false;
 	std::vector<unsigned> swizzles;
+
+	unsigned root_constant_inline_ubo_desc_set = 0;
+	unsigned root_constant_inline_ubo_binding = 0;
+	bool root_constant_inline_ubo = false;
 };
 
 struct Remapper
@@ -150,6 +155,7 @@ struct Remapper
 		unsigned register_index;
 		unsigned word_offset;
 	};
+
 	std::vector<RootConstant> root_constants;
 	unsigned root_constant_word_count = 0;
 
@@ -452,6 +458,11 @@ int main(int argc, char **argv)
 			}
 		}
 	});
+	cbs.add("--root-constant-inline-ubo", [&](CLIParser &parser) {
+		args.root_constant_inline_ubo_desc_set = parser.next_uint();
+		args.root_constant_inline_ubo_binding = parser.next_uint();
+		args.root_constant_inline_ubo = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -514,6 +525,15 @@ int main(int argc, char **argv)
 		                                             args.swizzles.data(),
 		                                             unsigned(args.swizzles.size()) };
 	dxil_spv_converter_add_option(converter, &swizzle.base);
+
+	if (args.root_constant_inline_ubo)
+	{
+		const dxil_spv_option_root_constant_inline_uniform_block inline_block = { { DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK },
+		                                                                          args.root_constant_inline_ubo_desc_set, args.root_constant_inline_ubo_binding,
+		                                                                          DXIL_SPV_TRUE };
+
+		dxil_spv_converter_add_option(converter, &inline_block.base);
+	}
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
 	{

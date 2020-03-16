@@ -208,6 +208,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING = 2,
 	DXIL_SPV_OPTION_OUTPUT_SWIZZLE = 3,
 	DXIL_SPV_OPTION_RASTERIZER_SAMPLE_COUNT = 4,
+	DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK = 5,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -249,6 +250,14 @@ typedef struct dxil_spv_option_rasterizer_sample_count
 	unsigned sample_count;
 	dxil_spv_bool spec_constant;
 } dxil_spv_option_rasterizer_sample_count;
+
+typedef struct dxil_spv_option_root_constant_inline_uniform_block
+{
+	dxil_spv_option_base base;
+	unsigned desc_set;
+	unsigned binding;
+	dxil_spv_bool enable;
+} dxil_spv_option_root_constant_inline_uniform_block;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

@@ -203,6 +203,10 @@ struct Converter::Impl
 		unsigned rasterizer_sample_count = 0;
 		bool rasterizer_sample_count_spec_constant = true;
 		std::vector<unsigned> output_swizzles;
+
+		unsigned inline_ubo_descriptor_set = 0;
+		unsigned inline_ubo_descriptor_binding = 0;
+		bool inline_ubo_enable = false;
 	} options;
 
 	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component, DXIL::ResourceKind kind,

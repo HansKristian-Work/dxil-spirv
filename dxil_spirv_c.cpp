@@ -531,6 +531,17 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK:
+	{
+		OptionRootConstantInlineUniformBlock helper;
+		const auto *ubo = reinterpret_cast<const dxil_spv_option_root_constant_inline_uniform_block *>(option);
+		helper.desc_set = ubo->desc_set;
+		helper.binding = ubo->binding;
+		helper.enable = ubo->enable == DXIL_SPV_TRUE;
+		converter->converter.add_option(helper);
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
