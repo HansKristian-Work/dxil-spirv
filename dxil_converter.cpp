@@ -137,23 +137,37 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 		resource.desc_set = desc_set;
 		resource.binding = binding;
 
-		spv::Id sampled_type_id = get_type_id(component, 1, 1);
 		spv::Id type_id = 0;
 
 		switch (type)
 		{
 		case DXIL::ResourceType::SRV:
+		{
+			spv::Id sampled_type_id = get_type_id(component, 1, 1);
 			type_id =
 					builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
 					                        image_dimension_is_arrayed(kind),
 					                        image_dimension_is_multisampled(kind), 1, spv::ImageFormatUnknown);
 			type_id = builder().makeRuntimeArray(type_id);
 			break;
+		}
 
 		case DXIL::ResourceType::Sampler:
 			type_id = builder().makeSamplerType();
 			type_id = builder().makeRuntimeArray(type_id);
 			break;
+
+		case DXIL::ResourceType::CBV:
+		{
+			type_id = builder().makeVectorType(builder().makeFloatType(32), 4);
+			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(64 * 1024 / 16), 16);
+			builder().addDecoration(type_id, spv::DecorationArrayStride, 16);
+			type_id = builder().makeStructType({ type_id }, "BindlessCBV");
+			builder().addDecoration(type_id, spv::DecorationBlock);
+			builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+			type_id = builder().makeRuntimeArray(type_id);
+			break;
+		}
 
 		default:
 			return 0;
@@ -161,7 +175,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 
 		builder().addExtension("SPV_EXT_descriptor_indexing");
 		builder().addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
-		resource.var_id = builder().createVariable(spv::StorageClassUniformConstant, type_id);
+		resource.var_id = builder().createVariable(type == DXIL::ResourceType::CBV ? spv::StorageClassUniform : spv::StorageClassUniformConstant, type_id);
 		handle_to_resource_meta[resource.var_id] = { kind, component, 0, resource.var_id, 0u, false };
 
 		builder().addDecoration(resource.var_id, spv::DecorationDescriptorSet, desc_set);
@@ -265,7 +279,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 					builder.createVariable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.binding);
-			srv_index_to_reference[index] = { var_id, 0, 0, false, false, range_size != 1 };
+			srv_index_to_reference[index] = { var_id, 0, 0, 0, false, range_size != 1 };
 			handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, 0u, false };
 		}
 	}
@@ -416,8 +430,18 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		if (resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
 			return false;
 
-		cbv_index_to_id.resize(std::max(cbv_index_to_id.size(), size_t(index + 1)));
+		cbv_index_to_reference.resize(std::max(cbv_index_to_reference.size(), size_t(index + 1)));
 		cbv_push_constant_member.resize(std::max(cbv_push_constant_member.size(), size_t(index + 1)));
+
+		if (range_size != 1)
+		{
+			if (range_size == ~0u)
+			{
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+			}
+			builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
+		}
 
 		if (vulkan_binding.push_constant)
 		{
@@ -427,8 +451,22 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				return false;
 			}
 
-			cbv_index_to_id[index] = root_constant_id;
+			cbv_index_to_reference[index] = { root_constant_id, 0, 0, 0, false, false };
 			cbv_push_constant_member[index] = vulkan_binding.push.offset_in_words;
+		}
+		else if (vulkan_binding.buffer.bindless.use_heap)
+		{
+			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::CBV, DXIL::ComponentType::Invalid, DXIL::ResourceKind::CBuffer,
+			                                               vulkan_binding.buffer.descriptor_set,
+			                                               vulkan_binding.buffer.binding);
+
+			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
+			uint32_t heap_offset = vulkan_binding.buffer.bindless.heap_root_offset;
+			if (range_size != 1)
+				heap_offset -= bind_register;
+
+			cbv_index_to_reference[index] = { var_id, vulkan_binding.buffer.bindless.root_constant_word,
+			                                  heap_offset, 0, true, range_size != 1 };
 		}
 		else
 		{
@@ -447,15 +485,9 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			if (range_size != 1)
 			{
 				if (range_size == ~0u)
-				{
 					type_id = builder.makeRuntimeArray(type_id);
-					builder.addExtension("SPV_EXT_descriptor_indexing");
-					builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
-				}
 				else
 					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
-
-				builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
 			}
 
 			spv::Id var_id =
@@ -464,7 +496,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
 
-			cbv_index_to_id[index] = var_id;
+			cbv_index_to_reference[index] = { var_id, 0, 0, 0, false, range_size != 1 };
 		}
 	}
 

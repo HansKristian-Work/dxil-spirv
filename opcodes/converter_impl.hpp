@@ -123,8 +123,8 @@ struct Converter::Impl
 
 	std::vector<ResourceReference> srv_index_to_reference;
 	std::vector<ResourceReference> sampler_index_to_reference;
+	std::vector<ResourceReference> cbv_index_to_reference;
 	std::vector<spv::Id> uav_index_to_id;
-	std::vector<spv::Id> cbv_index_to_id;
 	std::vector<unsigned> cbv_push_constant_member;
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;

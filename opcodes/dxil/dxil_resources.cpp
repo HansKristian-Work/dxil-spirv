@@ -666,20 +666,35 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 	case DXIL::ResourceType::CBV:
 	{
-		spv::Id base_cbv_id = impl.cbv_index_to_id[resource_range];
+		auto &reference = impl.cbv_index_to_reference[resource_range];
+		spv::Id base_cbv_id = reference.var_id;
 		spv::Id type_id = builder.getDerefTypeId(base_cbv_id);
 
-		if (builder.isArrayType(type_id))
+		if (reference.base_resource_is_array || reference.bindless)
 		{
-			uint32_t non_uniform;
-			if (!get_constant_operand(instruction, 4, &non_uniform))
-				return false;
+			uint32_t non_uniform = 0;
+			if (reference.base_resource_is_array)
+			{
+				if (!get_constant_operand(instruction, 4, &non_uniform))
+					return false;
+			}
 
 			type_id = builder.getContainedTypeId(type_id);
 			Operation *op =
 			    impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(spv::StorageClassUniform, type_id));
 			op->add_id(base_cbv_id);
-			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+
+			if (reference.bindless)
+			{
+				spv::Id offset_id =
+						build_bindless_heap_offset(impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+				op->add_id(offset_id);
+			}
+			else
+			{
+				op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+			}
+
 			impl.add(op);
 			impl.handle_to_ptr_id[instruction] = op->id;
 
