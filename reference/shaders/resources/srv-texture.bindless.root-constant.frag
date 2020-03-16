@@ -34,10 +34,11 @@ void main()
     vec4 _44 = texelFetch(_13[registers._m0 + 3u], ivec2(uvec2(_40, _41)), int(0u));
     vec4 _72 = texelFetch(_13[registers._m0 + (uvec4(registers._m4, registers._m5, registers._m6, registers._m7).x + 4u)], ivec2(uvec2(_40, _41)), int(0u));
     vec4 _89 = texelFetch(_13[nonuniformEXT(registers._m0 + (INDEX + 100u))], ivec2(uvec2(_40, _41)), int(0u));
-    SV_Target.x = (_72.x + _44.x) + _89.x;
-    SV_Target.y = (_72.y + _44.y) + _89.y;
-    SV_Target.z = (_72.z + _44.z) + _89.z;
-    SV_Target.w = (_72.w + _44.w) + _89.w;
+    vec4 _105 = texelFetch(_13[registers._m0 + 101u], ivec2(uvec2(_40, _41)), int(0u));
+    SV_Target.x = ((_72.x + _44.x) + _89.x) + _105.x;
+    SV_Target.y = ((_72.y + _44.y) + _89.y) + _105.y;
+    SV_Target.z = ((_72.z + _44.z) + _89.z) + _105.z;
+    SV_Target.w = ((_72.w + _44.w) + _89.w) + _105.w;
 }
 
 
@@ -46,7 +47,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 107
+; Bound: 123
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledImageArrayDynamicIndexing
@@ -122,12 +123,13 @@ OpDecorate %88 NonUniform
 %61 = OpConstant %5 7
 %63 = OpTypeVector %5 4
 %83 = OpConstant %5 100
-%99 = OpTypePointer Output %9
-%103 = OpConstant %5 2
+%103 = OpConstant %5 101
+%115 = OpTypePointer Output %9
+%119 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %105
-%105 = OpLabel
+OpBranch %121
+%121 = OpLabel
 %27 = OpAccessChain %26 %8 %28
 %29 = OpLoad %5 %27
 %30 = OpIAdd %5 %29 %31
@@ -188,14 +190,29 @@ OpBranch %105
 %96 = OpFAdd %9 %79 %92
 %97 = OpFAdd %9 %80 %93
 %98 = OpFAdd %9 %81 %94
-%100 = OpAccessChain %99 %23 %28
-OpStore %100 %95
-%101 = OpAccessChain %99 %23 %38
-OpStore %101 %96
-%102 = OpAccessChain %99 %23 %103
-OpStore %102 %97
-%104 = OpAccessChain %99 %23 %31
-OpStore %104 %98
+%100 = OpAccessChain %26 %8 %28
+%101 = OpLoad %5 %100
+%102 = OpIAdd %5 %101 %103
+%99 = OpAccessChain %24 %13 %102
+%104 = OpLoad %10 %99
+%106 = OpCompositeConstruct %45 %40 %41
+%105 = OpImageFetch %17 %104 %106 Lod %28
+%107 = OpCompositeExtract %9 %105 0
+%108 = OpCompositeExtract %9 %105 1
+%109 = OpCompositeExtract %9 %105 2
+%110 = OpCompositeExtract %9 %105 3
+%111 = OpFAdd %9 %95 %107
+%112 = OpFAdd %9 %96 %108
+%113 = OpFAdd %9 %97 %109
+%114 = OpFAdd %9 %98 %110
+%116 = OpAccessChain %115 %23 %28
+OpStore %116 %111
+%117 = OpAccessChain %115 %23 %38
+OpStore %117 %112
+%118 = OpAccessChain %115 %23 %119
+OpStore %118 %113
+%120 = OpAccessChain %115 %23 %31
+OpStore %120 %114
 OpReturn
 OpFunctionEnd
 #endif

@@ -13,5 +13,6 @@ float4 main(float4 pos : SV_Position, nointerpolation uint dynamic_index : INDEX
 	float4 result = uTex.Load(coord);
 	result += uTexArray[index].Load(coord);
 	result += uTexBindless[NonUniformResourceIndex(dynamic_index)].Load(coord);
+	result += uTexBindless[1].Load(coord);
 	return result;
 }
