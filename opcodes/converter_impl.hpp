@@ -173,6 +173,7 @@ struct Converter::Impl
 
 	spv::Id build_sampled_image(spv::Id image_id, spv::Id sampler_id, bool comparison);
 	spv::Id build_vector(spv::Id element_type, spv::Id *elements, unsigned count);
+	spv::Id build_vector_type(spv::Id element_type, unsigned count);
 	spv::Id build_constant_vector(spv::Id element_type, spv::Id *elements, unsigned count);
 	spv::Id build_offset(spv::Id value, unsigned offset);
 	void fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);

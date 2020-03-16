@@ -133,24 +133,30 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			component_ids[i] = extracted_op->id;
 		}
 
+		// We expect that we will extract components from the resulting struct, so make a fake composite if we need to.
+		if (conservative_num_elements < 2)
+		{
+			for (unsigned i = conservative_num_elements; i < 2; i++)
+				component_ids[i] = builder.createUndefined(builder.makeUintType(32));
+			conservative_num_elements = 2;
+		}
+
 		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
 
-		Operation *construct_op = impl.allocate(spv::OpCompositeConstruct, instruction,
-		                                        builder.makeVectorType(extracted_id_type, conservative_num_elements));
-
-		for (unsigned i = 0; i < conservative_num_elements; i++)
-			construct_op->add_id(component_ids[i]);
-		impl.add(construct_op);
+		spv::Id constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
 
 		if (need_bitcast)
 		{
 			Operation *op = impl.allocate(spv::OpBitcast,
-			                              builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)),
+			                              impl.build_vector_type(impl.get_type_id(result_type->getStructElementType(0)),
 			                                                     conservative_num_elements));
-			op->add_id(construct_op->id);
+
+			op->add_id(constructed_id);
 			impl.add(op);
 			impl.value_map[instruction] = op->id;
 		}
+		else
+			impl.value_map[instruction] = constructed_id;
 	}
 	else
 	{

@@ -1601,6 +1601,15 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	return op->id;
 }
 
+spv::Id Converter::Impl::build_vector_type(spv::Id element_type, unsigned count)
+{
+	auto &builder = spirv_module.get_builder();
+	if (count == 1)
+		return element_type;
+	else
+		return builder.makeVectorType(element_type, count);
+}
+
 spv::Id Converter::Impl::build_vector(spv::Id element_type, spv::Id *elements, unsigned count)
 {
 	if (count == 1)
