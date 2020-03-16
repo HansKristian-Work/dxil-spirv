@@ -70,52 +70,52 @@ def cross_compile_dxil(shader, args, paths):
     dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader), '-Fo', dxil_path, shader]
     subprocess.check_call(dxil_cmd)
 
-    glsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', dxil_path, '--vertex-input', 'ATTR', '0']
+    hlsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', dxil_path, '--vertex-input', 'ATTR', '0']
     if '.root-constant.' in shader:
-        glsl_cmd.append('--root-constant')
-        glsl_cmd.append('0')
-        glsl_cmd.append('0')
-        glsl_cmd.append('4')
-        glsl_cmd.append('12')
+        hlsl_cmd.append('--root-constant')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('4')
+        hlsl_cmd.append('12')
     if '.stream-out.' in shader:
-        glsl_cmd.append('--stream-output')
-        glsl_cmd.append('SV_Position')
-        glsl_cmd.append('0')
-        glsl_cmd.append('16')
-        glsl_cmd.append('32')
-        glsl_cmd.append('1')
+        hlsl_cmd.append('--stream-output')
+        hlsl_cmd.append('SV_Position')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('16')
+        hlsl_cmd.append('32')
+        hlsl_cmd.append('1')
 
-        glsl_cmd.append('--stream-output')
-        glsl_cmd.append('StreamOut')
-        glsl_cmd.append('0')
-        glsl_cmd.append('0')
-        glsl_cmd.append('32')
-        glsl_cmd.append('0')
+        hlsl_cmd.append('--stream-output')
+        hlsl_cmd.append('StreamOut')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('32')
+        hlsl_cmd.append('0')
 
-        glsl_cmd.append('--stream-output')
-        glsl_cmd.append('StreamOut')
-        glsl_cmd.append('1')
-        glsl_cmd.append('0')
-        glsl_cmd.append('16')
-        glsl_cmd.append('1')
+        hlsl_cmd.append('--stream-output')
+        hlsl_cmd.append('StreamOut')
+        hlsl_cmd.append('1')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('16')
+        hlsl_cmd.append('1')
 
     if '.rt-swizzle.' in shader:
-        glsl_cmd.append('--output-rt-swizzle')
-        glsl_cmd.append('0')
-        glsl_cmd.append('wxyz')
-        glsl_cmd.append('--output-rt-swizzle')
-        glsl_cmd.append('1')
-        glsl_cmd.append('yxwz')
+        hlsl_cmd.append('--output-rt-swizzle')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('wxyz')
+        hlsl_cmd.append('--output-rt-swizzle')
+        hlsl_cmd.append('1')
+        hlsl_cmd.append('yxwz')
 
     if '.invalid.' not in shader:
-        glsl_cmd.append('--validate')
+        hlsl_cmd.append('--validate')
 
     if '.demote-to-helper.' in shader:
-        glsl_cmd.append('--enable-shader-demote')
+        hlsl_cmd.append('--enable-shader-demote')
     if '.dual-source-blending.' in shader:
-        glsl_cmd.append('--enable-dual-source-blending')
+        hlsl_cmd.append('--enable-dual-source-blending')
 
-    subprocess.check_call(glsl_cmd)
+    subprocess.check_call(hlsl_cmd)
     return (dxil_path, glsl_path)
 
 def make_unix_newline(buf):
