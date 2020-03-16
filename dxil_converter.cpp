@@ -1611,7 +1611,7 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	op->add_ids({ image_id, sampler_id });
 	add(op);
 
-	bool is_non_uniform = handle_to_resource_meta[image_id].non_uniform;
+	bool is_non_uniform = handle_to_resource_meta[image_id].non_uniform || handle_to_resource_meta[sampler_id].non_uniform;
 	if (is_non_uniform)
 		builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 
