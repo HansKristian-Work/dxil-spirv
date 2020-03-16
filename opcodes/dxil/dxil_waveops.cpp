@@ -155,7 +155,7 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 {
 	auto &builder = impl.builder();
 
-	spv::Op opcode;
+	spv::Op opcode = spv::OpNop;
 
 	uint32_t op_kind;
 	if (!get_constant_operand(instruction, 2, &op_kind))
@@ -232,7 +232,7 @@ bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::Ca
 {
 	auto &builder = impl.builder();
 
-	spv::Op opcode;
+	spv::Op opcode = spv::OpNop;
 
 	uint32_t op_kind;
 	if (!get_constant_operand(instruction, 2, &op_kind))
@@ -275,7 +275,7 @@ bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallIns
 {
 	auto &builder = impl.builder();
 
-	spv::Op opcode;
+	spv::Op opcode = spv::OpNop;
 
 	uint32_t op_kind;
 	if (!get_constant_operand(instruction, 2, &op_kind))

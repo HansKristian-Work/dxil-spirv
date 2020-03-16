@@ -321,7 +321,7 @@ static const char *to_string(BinaryOperator::BinaryOps op)
 		BINOP(Xor, "xor");
 	}
 #undef BINOP
-	assert(0);
+	return "???";
 }
 
 static const char *to_string(UnaryOperator::UnaryOps op)
@@ -374,7 +374,7 @@ static const char *to_string(Instruction::Predicate pred)
 		PRED(SLE, "sle");
 	}
 #undef PRED
-	assert(0);
+	return "???";
 }
 
 static const char *to_string(Instruction::CastOps op)
@@ -399,7 +399,7 @@ static const char *to_string(Instruction::CastOps op)
 		CAST(AddrSpaceCast, "addrspacecast");
 	}
 #undef CAST
-	assert(0);
+	return "???";
 }
 
 static const char *to_string(AtomicRMWInst::BinOp op)
@@ -424,7 +424,7 @@ static const char *to_string(AtomicRMWInst::BinOp op)
 		RMW(FSub, "fsub");
 	}
 #undef RMW
-	assert(0);
+	return "???";
 }
 
 void StreamState::append(BinaryOperator *binop, bool decl)

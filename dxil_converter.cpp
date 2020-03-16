@@ -219,7 +219,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		bool globally_coherent = get_constant_metadata(uav, 7) != 0;
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
-		bool is_rov = get_constant_metadata(uav, 9) != 0;
+		//bool is_rov = get_constant_metadata(uav, 9) != 0;
 		assert(!is_rov);
 
 		llvm::MDNode *tags = nullptr;
