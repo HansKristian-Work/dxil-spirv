@@ -542,6 +542,8 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			value = ConstantInt::get(type, 0);
 		else if (type->isFloatingPointTy())
 			value = ConstantFP::get(type, 0);
+		else if (isa<ArrayType>(type) || isa<StructType>(type))
+			value = context->construct<ConstantAggregateZero>(type);
 
 		if (!value)
 		{
