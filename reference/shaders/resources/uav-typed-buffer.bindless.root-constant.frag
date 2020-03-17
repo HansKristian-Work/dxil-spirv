@@ -21,9 +21,9 @@ layout(push_constant, std430) uniform RootConstants
     uint _m15;
 } registers;
 
-layout(set = 4, binding = 0) uniform readonly imageBuffer _13[];
-layout(set = 4, binding = 0) uniform readonly uimageBuffer _17[];
-layout(set = 4, binding = 0) uniform readonly iimageBuffer _22[];
+layout(set = 4, binding = 0, r32f) uniform readonly imageBuffer _13[];
+layout(set = 4, binding = 0, r32ui) uniform readonly uimageBuffer _17[];
+layout(set = 4, binding = 0, r32i) uniform readonly iimageBuffer _22[];
 
 layout(location = 1) flat in uint INDEX;
 layout(location = 0) out vec4 SV_Target;
@@ -50,7 +50,6 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpCapability StorageImageReadWithoutFormat
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
@@ -83,10 +82,13 @@ OpMemberDecorate %6 14 Offset 56
 OpMemberDecorate %6 15 Offset 60
 OpDecorate %13 DescriptorSet 4
 OpDecorate %13 Binding 0
+OpDecorate %13 NonWritable
 OpDecorate %17 DescriptorSet 4
 OpDecorate %17 Binding 0
+OpDecorate %17 NonWritable
 OpDecorate %22 DescriptorSet 4
 OpDecorate %22 Binding 0
+OpDecorate %22 NonWritable
 OpDecorate %25 BuiltIn FragCoord
 OpDecorate %27 Flat
 OpDecorate %27 Location 1
@@ -100,16 +102,16 @@ OpDecorate %91 NonUniform
 %7 = OpTypePointer PushConstant %6
 %8 = OpVariable %7 PushConstant
 %9 = OpTypeFloat 32
-%10 = OpTypeImage %9 Buffer 0 0 0 2 Unknown
+%10 = OpTypeImage %9 Buffer 0 0 0 2 R32f
 %11 = OpTypeRuntimeArray %10
 %12 = OpTypePointer UniformConstant %11
 %13 = OpVariable %12 UniformConstant
-%14 = OpTypeImage %5 Buffer 0 0 0 2 Unknown
+%14 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
 %15 = OpTypeRuntimeArray %14
 %16 = OpTypePointer UniformConstant %15
 %17 = OpVariable %16 UniformConstant
 %18 = OpTypeInt 32 1
-%19 = OpTypeImage %18 Buffer 0 0 0 2 Unknown
+%19 = OpTypeImage %18 Buffer 0 0 0 2 R32i
 %20 = OpTypeRuntimeArray %19
 %21 = OpTypePointer UniformConstant %20
 %22 = OpVariable %21 UniformConstant

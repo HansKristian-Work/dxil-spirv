@@ -118,20 +118,36 @@ OpDecorate %40 DescriptorSet 0
 OpDecorate %40 Binding 11
 OpDecorate %43 DescriptorSet 0
 OpDecorate %43 Binding 0
+OpDecorate %43 NonReadable
+OpDecorate %43 NonWritable
 OpDecorate %46 DescriptorSet 0
 OpDecorate %46 Binding 1
+OpDecorate %46 NonReadable
+OpDecorate %46 NonWritable
 OpDecorate %49 DescriptorSet 0
 OpDecorate %49 Binding 2
+OpDecorate %49 NonReadable
+OpDecorate %49 NonWritable
 OpDecorate %52 DescriptorSet 0
 OpDecorate %52 Binding 3
+OpDecorate %52 NonReadable
+OpDecorate %52 NonWritable
 OpDecorate %55 DescriptorSet 0
 OpDecorate %55 Binding 6
+OpDecorate %55 NonReadable
+OpDecorate %55 NonWritable
 OpDecorate %58 DescriptorSet 0
 OpDecorate %58 Binding 9
+OpDecorate %58 NonReadable
+OpDecorate %58 NonWritable
 OpDecorate %61 DescriptorSet 0
 OpDecorate %61 Binding 10
+OpDecorate %61 NonReadable
+OpDecorate %61 NonWritable
 OpDecorate %62 DescriptorSet 0
 OpDecorate %62 Binding 11
+OpDecorate %62 NonReadable
+OpDecorate %62 NonWritable
 OpDecorate %64 Flat
 OpDecorate %64 Location 0
 OpDecorate %66 Location 0

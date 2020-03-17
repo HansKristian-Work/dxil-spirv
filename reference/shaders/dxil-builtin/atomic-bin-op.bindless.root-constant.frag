@@ -21,7 +21,7 @@ layout(push_constant, std430) uniform RootConstants
     uint _m15;
 } registers;
 
-layout(set = 3, binding = 0) uniform uimage2D _12[];
+layout(set = 3, binding = 0, r32ui) uniform uimage2D _12[];
 
 layout(location = 0) flat in uint INDEX;
 layout(location = 0, component = 1) flat in uvec3 TEXCOORD;
@@ -89,7 +89,7 @@ OpDecorate %40 NonUniform
 %6 = OpTypeStruct %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5
 %7 = OpTypePointer PushConstant %6
 %8 = OpVariable %7 PushConstant
-%9 = OpTypeImage %5 2D 0 0 0 2 Unknown
+%9 = OpTypeImage %5 2D 0 0 0 2 R32ui
 %10 = OpTypeRuntimeArray %9
 %11 = OpTypePointer UniformConstant %10
 %12 = OpVariable %11 UniformConstant

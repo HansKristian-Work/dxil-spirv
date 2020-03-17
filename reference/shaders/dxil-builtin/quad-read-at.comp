@@ -40,8 +40,10 @@ OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
+OpDecorate %8 NonWritable
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 1
+OpDecorate %9 NonReadable
 OpDecorate %14 BuiltIn GlobalInvocationId
 OpDecorate %38 BuiltIn SubgroupLocalInvocationId
 %1 = OpTypeVoid

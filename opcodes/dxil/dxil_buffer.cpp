@@ -170,8 +170,9 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		impl.fixup_load_sign(meta.component_type, 4, instruction);
 	}
 
-	if (is_uav && is_typed)
-		builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
+	// TODO: Might have an option to rely on StorageImageReadWithoutFormat.
+	//if (is_uav && is_typed)
+	//	builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
 
 	return true;
 }

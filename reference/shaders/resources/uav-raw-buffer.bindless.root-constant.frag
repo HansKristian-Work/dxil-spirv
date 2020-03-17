@@ -84,6 +84,7 @@ OpMemberDecorate %6 14 Offset 56
 OpMemberDecorate %6 15 Offset 60
 OpDecorate %12 DescriptorSet 4
 OpDecorate %12 Binding 0
+OpDecorate %12 NonWritable
 OpDecorate %16 BuiltIn FragCoord
 OpDecorate %18 Flat
 OpDecorate %18 Location 1

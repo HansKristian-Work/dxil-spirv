@@ -89,6 +89,16 @@ struct Converter::Impl
 	bool emit_execution_modes_domain();
 	bool emit_execution_modes_pixel();
 
+	bool analyze_uav_access_patterns();
+	bool analyze_uav_access_patterns(const llvm::Function *function);
+	struct UAVAccessTracking
+	{
+		bool has_read = false;
+		bool has_written = false;
+	};
+	std::unordered_map<uint32_t, UAVAccessTracking> uav_access_tracking;
+	std::unordered_map<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
+
 	struct ExecutionModeMeta
 	{
 		unsigned stage_input_num_vertex = 0;
@@ -210,7 +220,8 @@ struct Converter::Impl
 	} options;
 
 	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component, DXIL::ResourceKind kind,
-	                                      uint32_t desc_set, uint32_t binding, spv::ImageFormat format = spv::ImageFormatUnknown);
+	                                      uint32_t desc_set, uint32_t binding, spv::ImageFormat format = spv::ImageFormatUnknown,
+	                                      bool has_uav_read = false, bool has_uav_written = false, bool uav_coherent = false);
 
 	struct BindlessResource
 	{
@@ -218,6 +229,9 @@ struct Converter::Impl
 		DXIL::ComponentType component;
 		DXIL::ResourceKind kind;
 		spv::ImageFormat format;
+		bool uav_read = false;
+		bool uav_written = false;
+		bool uav_coherent = false;
 		uint32_t desc_set;
 		uint32_t binding;
 		uint32_t var_id;

@@ -35,6 +35,7 @@ OpExecutionMode %3 LocalSize 7 8 9
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

@@ -1,7 +1,7 @@
 #version 460
 
 layout(set = 0, binding = 0) uniform isamplerBuffer _8;
-layout(set = 0, binding = 0) uniform readonly iimageBuffer _11;
+layout(set = 0, binding = 0, r32i) uniform readonly iimageBuffer _11;
 
 layout(location = 0) flat in uint TEXCOORD;
 layout(location = 0) out ivec2 SV_Target;
@@ -25,7 +25,6 @@ void main()
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
-OpCapability StorageImageReadWithoutFormat
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %14 %17
 OpExecutionMode %3 OriginUpperLeft
@@ -36,6 +35,7 @@ OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %11 DescriptorSet 0
 OpDecorate %11 Binding 0
+OpDecorate %11 NonWritable
 OpDecorate %14 Flat
 OpDecorate %14 Location 0
 OpDecorate %17 Location 0
@@ -45,7 +45,7 @@ OpDecorate %17 Location 0
 %6 = OpTypeImage %5 Buffer 0 0 0 1 Unknown
 %7 = OpTypePointer UniformConstant %6
 %8 = OpVariable %7 UniformConstant
-%9 = OpTypeImage %5 Buffer 0 0 0 2 Unknown
+%9 = OpTypeImage %5 Buffer 0 0 0 2 R32i
 %10 = OpTypePointer UniformConstant %9
 %11 = OpVariable %10 UniformConstant
 %12 = OpTypeInt 32 0

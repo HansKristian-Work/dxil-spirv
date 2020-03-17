@@ -38,6 +38,7 @@ OpName %11 "INDEX"
 OpName %15 "SV_Target"
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
+OpDecorate %9 NonWritable
 OpDecorate %11 Flat
 OpDecorate %11 Location 0
 OpDecorate %15 Location 0

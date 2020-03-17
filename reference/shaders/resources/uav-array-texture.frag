@@ -1,8 +1,8 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
 
-layout(set = 0, binding = 0) uniform readonly image2D _9[];
-layout(set = 1, binding = 0) uniform readonly image2D _14[100];
+layout(set = 0, binding = 0, r32f) uniform readonly image2D _9[];
+layout(set = 1, binding = 0, r32f) uniform readonly image2D _14[100];
 
 layout(location = 0) flat in uint INDEX;
 layout(location = 0) out vec4 SV_Target;
@@ -27,7 +27,6 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageArrayDynamicIndexing
-OpCapability StorageImageReadWithoutFormat
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
@@ -38,15 +37,17 @@ OpName %16 "INDEX"
 OpName %19 "SV_Target"
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
+OpDecorate %9 NonWritable
 OpDecorate %14 DescriptorSet 1
 OpDecorate %14 Binding 0
+OpDecorate %14 NonWritable
 OpDecorate %16 Flat
 OpDecorate %16 Location 0
 OpDecorate %19 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
-%6 = OpTypeImage %5 2D 0 0 0 2 Unknown
+%6 = OpTypeImage %5 2D 0 0 0 2 R32f
 %7 = OpTypeRuntimeArray %6
 %8 = OpTypePointer UniformConstant %7
 %9 = OpVariable %8 UniformConstant

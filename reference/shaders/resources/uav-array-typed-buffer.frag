@@ -1,7 +1,7 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
 
-layout(set = 0, binding = 0) uniform readonly imageBuffer _9[];
+layout(set = 0, binding = 0, r32f) uniform readonly imageBuffer _9[];
 
 layout(location = 0) flat in uint INDEX;
 layout(location = 0) out vec4 SV_Target;
@@ -25,7 +25,6 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpCapability StorageImageReadWithoutFormat
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
@@ -37,13 +36,14 @@ OpName %12 "INDEX"
 OpName %15 "SV_Target"
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
+OpDecorate %9 NonWritable
 OpDecorate %12 Flat
 OpDecorate %12 Location 0
 OpDecorate %15 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
-%6 = OpTypeImage %5 Buffer 0 0 0 2 Unknown
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32f
 %7 = OpTypeRuntimeArray %6
 %8 = OpTypePointer UniformConstant %7
 %9 = OpVariable %8 UniformConstant

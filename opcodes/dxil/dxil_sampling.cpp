@@ -364,7 +364,10 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 			op->add_id(mip_or_sample);
 	}
 	else
-		builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
+	{
+		// TODO: Might have an option to rely on StorageImageReadWithoutFormat.
+		//builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
+	}
 
 	impl.add(op);
 

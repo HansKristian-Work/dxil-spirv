@@ -38,16 +38,21 @@ OpName %3 "main"
 OpName %24 "TEXCOORD"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 1
+OpDecorate %8 NonReadable
 OpDecorate %11 DescriptorSet 0
 OpDecorate %11 Binding 2
+OpDecorate %11 NonReadable
 OpDecorate %11 Coherent
 OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 3
+OpDecorate %14 NonReadable
 OpDecorate %17 DescriptorSet 0
 OpDecorate %17 Binding 4
+OpDecorate %17 NonReadable
 OpDecorate %17 Coherent
 OpDecorate %20 DescriptorSet 0
 OpDecorate %20 Binding 5
+OpDecorate %20 NonReadable
 OpDecorate %24 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

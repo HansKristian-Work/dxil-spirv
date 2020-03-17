@@ -64,6 +64,7 @@ OpName %42 "frontier_phi_9.4.ladder"
 OpName %43 "frontier_phi_9.3.ladder"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
 OpDecorate %12 BuiltIn GlobalInvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

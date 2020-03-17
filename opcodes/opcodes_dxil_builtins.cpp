@@ -211,4 +211,75 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 
 	return global_dispatcher.builder_lut[opcode](impl, instruction);
 }
+
+bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	// The opcode is encoded as a constant integer.
+	uint32_t opcode;
+	if (!get_constant_operand(instruction, 0, &opcode))
+		return false;
+
+	switch (static_cast<DXIL::Op>(opcode))
+	{
+	case DXIL::Op::CreateHandle:
+	{
+		uint32_t resource_type_operand, resource_range;
+		if (!get_constant_operand(instruction, 1, &resource_type_operand))
+			return false;
+		if (!get_constant_operand(instruction, 2, &resource_range))
+			return false;
+
+		if (static_cast<DXIL::ResourceType>(resource_type_operand) == DXIL::ResourceType::UAV)
+		{
+			impl.llvm_value_to_uav_resource_index_map[instruction] = resource_range;
+			break;
+		}
+		break;
+	}
+
+	case DXIL::Op::BufferLoad:
+	case DXIL::Op::TextureLoad:
+	case DXIL::Op::RawBufferLoad:
+	{
+		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		{
+			auto &node = impl.uav_access_tracking[itr->second];
+			node.has_read = true;
+		}
+		break;
+	}
+
+	case DXIL::Op::AtomicCompareExchange:
+	case DXIL::Op::AtomicBinOp:
+	{
+		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		{
+			auto &node = impl.uav_access_tracking[itr->second];
+			node.has_read = true;
+			node.has_written = true;
+		}
+		break;
+	}
+
+	case DXIL::Op::BufferStore:
+	case DXIL::Op::TextureStore:
+	case DXIL::Op::RawBufferStore:
+	{
+		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		{
+			auto &node = impl.uav_access_tracking[itr->second];
+			node.has_written = true;
+		}
+		break;
+	}
+
+	default:
+		break;
+	}
+
+	return true;
+}
 } // namespace dxil_spv

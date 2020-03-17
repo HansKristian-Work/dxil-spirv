@@ -44,12 +44,16 @@ OpName %16 "INDEX"
 OpName %19 "DATA"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
 OpDecorate %12 DescriptorSet 0
 OpDecorate %12 Binding 1
+OpDecorate %12 NonReadable
 OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 2
+OpDecorate %13 NonReadable
 OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 3
+OpDecorate %14 NonReadable
 OpDecorate %16 Flat
 OpDecorate %16 Location 0
 OpDecorate %19 Flat

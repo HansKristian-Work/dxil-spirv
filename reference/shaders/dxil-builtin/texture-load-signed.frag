@@ -8,11 +8,11 @@ layout(set = 0, binding = 4) uniform itexture2DArray _17;
 layout(set = 0, binding = 5) uniform itexture3D _20;
 layout(set = 0, binding = 6) uniform itexture2DMS _23;
 layout(set = 0, binding = 7) uniform itexture2DMSArray _26;
-layout(set = 0, binding = 1) uniform readonly iimage1D _29;
-layout(set = 0, binding = 2) uniform readonly iimage1DArray _32;
-layout(set = 0, binding = 3) uniform readonly iimage2D _35;
-layout(set = 0, binding = 4) uniform readonly iimage2DArray _38;
-layout(set = 0, binding = 5) uniform readonly iimage3D _41;
+layout(set = 0, binding = 1, r32i) uniform readonly iimage1D _29;
+layout(set = 0, binding = 2, r32i) uniform readonly iimage1DArray _32;
+layout(set = 0, binding = 3, r32i) uniform readonly iimage2D _35;
+layout(set = 0, binding = 4, r32i) uniform readonly iimage2DArray _38;
+layout(set = 0, binding = 5, r32i) uniform readonly iimage3D _41;
 
 layout(location = 0) flat in uvec4 TEXCOORD;
 layout(location = 0) out ivec2 SV_Target;
@@ -46,7 +46,6 @@ void main()
 OpCapability Shader
 OpCapability Sampled1D
 OpCapability Image1D
-OpCapability StorageImageReadWithoutFormat
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %45 %48
 OpExecutionMode %3 OriginUpperLeft
@@ -69,14 +68,19 @@ OpDecorate %26 DescriptorSet 0
 OpDecorate %26 Binding 7
 OpDecorate %29 DescriptorSet 0
 OpDecorate %29 Binding 1
+OpDecorate %29 NonWritable
 OpDecorate %32 DescriptorSet 0
 OpDecorate %32 Binding 2
+OpDecorate %32 NonWritable
 OpDecorate %35 DescriptorSet 0
 OpDecorate %35 Binding 3
+OpDecorate %35 NonWritable
 OpDecorate %38 DescriptorSet 0
 OpDecorate %38 Binding 4
+OpDecorate %38 NonWritable
 OpDecorate %41 DescriptorSet 0
 OpDecorate %41 Binding 5
+OpDecorate %41 NonWritable
 OpDecorate %45 Flat
 OpDecorate %45 Location 0
 OpDecorate %48 Location 0
@@ -104,19 +108,19 @@ OpDecorate %48 Location 0
 %24 = OpTypeImage %5 2D 0 1 1 1 Unknown
 %25 = OpTypePointer UniformConstant %24
 %26 = OpVariable %25 UniformConstant
-%27 = OpTypeImage %5 1D 0 0 0 2 Unknown
+%27 = OpTypeImage %5 1D 0 0 0 2 R32i
 %28 = OpTypePointer UniformConstant %27
 %29 = OpVariable %28 UniformConstant
-%30 = OpTypeImage %5 1D 0 1 0 2 Unknown
+%30 = OpTypeImage %5 1D 0 1 0 2 R32i
 %31 = OpTypePointer UniformConstant %30
 %32 = OpVariable %31 UniformConstant
-%33 = OpTypeImage %5 2D 0 0 0 2 Unknown
+%33 = OpTypeImage %5 2D 0 0 0 2 R32i
 %34 = OpTypePointer UniformConstant %33
 %35 = OpVariable %34 UniformConstant
-%36 = OpTypeImage %5 2D 0 1 0 2 Unknown
+%36 = OpTypeImage %5 2D 0 1 0 2 R32i
 %37 = OpTypePointer UniformConstant %36
 %38 = OpVariable %37 UniformConstant
-%39 = OpTypeImage %5 3D 0 0 0 2 Unknown
+%39 = OpTypeImage %5 3D 0 0 0 2 R32i
 %40 = OpTypePointer UniformConstant %39
 %41 = OpVariable %40 UniformConstant
 %42 = OpTypeInt 32 0

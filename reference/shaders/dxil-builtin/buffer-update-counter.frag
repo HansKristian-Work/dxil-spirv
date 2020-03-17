@@ -31,10 +31,14 @@ OpName %3 "main"
 OpName %13 "SV_Target"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %8 NonWritable
 OpDecorate %9 DescriptorSet 7
 OpDecorate %9 Binding 0
 OpDecorate %10 DescriptorSet 0
 OpDecorate %10 Binding 1
+OpDecorate %10 NonReadable
+OpDecorate %10 NonWritable
 OpDecorate %11 DescriptorSet 7
 OpDecorate %11 Binding 1
 OpDecorate %13 Location 0

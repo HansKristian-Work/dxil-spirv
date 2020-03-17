@@ -30,6 +30,7 @@ OpName %11 "INDEX"
 OpName %14 "DATA"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
 OpDecorate %11 Flat
 OpDecorate %11 Location 0
 OpDecorate %14 Flat

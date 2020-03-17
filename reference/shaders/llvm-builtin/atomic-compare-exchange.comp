@@ -36,6 +36,7 @@ OpName %3 "main"
 OpName %29 "CmpXchgResult"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
 OpDecorate %16 BuiltIn GlobalInvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

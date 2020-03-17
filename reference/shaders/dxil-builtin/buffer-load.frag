@@ -4,7 +4,7 @@ layout(set = 0, binding = 0) uniform samplerBuffer _8;
 layout(set = 0, binding = 1) uniform usamplerBuffer _12;
 layout(set = 0, binding = 2) uniform usamplerBuffer _13;
 layout(set = 0, binding = 3) uniform usamplerBuffer _14;
-layout(set = 0, binding = 0) uniform readonly imageBuffer _17;
+layout(set = 0, binding = 0, r32f) uniform readonly imageBuffer _17;
 layout(set = 0, binding = 1, r32ui) uniform readonly uimageBuffer _20;
 layout(set = 0, binding = 2, r32ui) uniform readonly uimageBuffer _21;
 layout(set = 0, binding = 3, r32ui) uniform readonly uimageBuffer _22;
@@ -44,7 +44,6 @@ void main()
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
-OpCapability StorageImageReadWithoutFormat
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %24 %27
 OpExecutionMode %3 OriginUpperLeft
@@ -61,12 +60,16 @@ OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 3
 OpDecorate %17 DescriptorSet 0
 OpDecorate %17 Binding 0
+OpDecorate %17 NonWritable
 OpDecorate %20 DescriptorSet 0
 OpDecorate %20 Binding 1
+OpDecorate %20 NonWritable
 OpDecorate %21 DescriptorSet 0
 OpDecorate %21 Binding 2
+OpDecorate %21 NonWritable
 OpDecorate %22 DescriptorSet 0
 OpDecorate %22 Binding 3
+OpDecorate %22 NonWritable
 OpDecorate %24 Flat
 OpDecorate %24 Location 0
 OpDecorate %27 Location 0
@@ -82,7 +85,7 @@ OpDecorate %27 Location 0
 %12 = OpVariable %11 UniformConstant
 %13 = OpVariable %11 UniformConstant
 %14 = OpVariable %11 UniformConstant
-%15 = OpTypeImage %5 Buffer 0 0 0 2 Unknown
+%15 = OpTypeImage %5 Buffer 0 0 0 2 R32f
 %16 = OpTypePointer UniformConstant %15
 %17 = OpVariable %16 UniformConstant
 %18 = OpTypeImage %9 Buffer 0 0 0 2 R32ui

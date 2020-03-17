@@ -27,7 +27,6 @@
 #include "spirv_module.hpp"
 
 #include <utility>
-#include <opcodes/converter_impl.hpp>
 
 namespace dxil_spv
 {
@@ -115,7 +114,8 @@ static bool image_dimension_is_multisampled(DXIL::ResourceKind kind)
 
 spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
                                                        DXIL::ComponentType component, DXIL::ResourceKind kind,
-                                                       uint32_t desc_set, uint32_t binding, spv::ImageFormat format)
+                                                       uint32_t desc_set, uint32_t binding, spv::ImageFormat format,
+                                                       bool has_uav_read, bool has_uav_written, bool has_uav_coherent)
 {
 	auto itr = std::find_if(bindless_resources.begin(), bindless_resources.end(), [&](const BindlessResource &resource) {
 		return resource.type == type &&
@@ -123,7 +123,10 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 		       resource.kind == kind &&
 		       resource.desc_set == desc_set &&
 		       resource.format == format &&
-		       resource.binding == binding;
+		       resource.binding == binding &&
+		       resource.uav_read == has_uav_read &&
+		       resource.uav_written == has_uav_written &&
+		       resource.uav_coherent == has_uav_coherent;
 	});
 
 	if (itr != bindless_resources.end())
@@ -139,6 +142,9 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 		resource.format = format;
 		resource.desc_set = desc_set;
 		resource.binding = binding;
+		resource.uav_read = has_uav_read;
+		resource.uav_written = has_uav_written;
+		resource.uav_coherent = has_uav_coherent;
 
 		spv::Id type_id = 0;
 
@@ -194,6 +200,17 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 
 		builder().addDecoration(resource.var_id, spv::DecorationDescriptorSet, desc_set);
 		builder().addDecoration(resource.var_id, spv::DecorationBinding, binding);
+
+		if (type == DXIL::ResourceType::UAV)
+		{
+			if (!has_uav_read)
+				builder().addDecoration(resource.var_id, spv::DecorationNonReadable);
+			if (!has_uav_written)
+				builder().addDecoration(resource.var_id, spv::DecorationNonWritable);
+			if (has_uav_coherent)
+				builder().addDecoration(resource.var_id, spv::DecorationCoherent);
+		}
+
 		bindless_resources.push_back(resource);
 		return resource.var_id;
 	}
@@ -349,6 +366,34 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
+		auto &access_meta = uav_access_tracking[index];
+		if (resource_kind != DXIL::ResourceKind::RawBuffer && resource_kind != DXIL::ResourceKind::StructuredBuffer)
+		{
+			// For any typed resource, we need to check if the resource is being read. To avoid StorageReadWithoutFormat, we emit
+			// a format based on the component type. TODO: This might not be good enough for FL 12, but in FL 11, read UAVs
+			// must be R32_{FLOAT,UINT,INT}.
+			if (access_meta.has_read)
+			{
+				switch (component_type)
+				{
+				case DXIL::ComponentType::U32:
+					format = spv::ImageFormatR32ui;
+					break;
+
+				case DXIL::ComponentType::I32:
+					format = spv::ImageFormatR32i;
+					break;
+
+				case DXIL::ComponentType::F32:
+					format = spv::ImageFormatR32f;
+					break;
+
+				default:
+					break;
+				}
+			}
+		}
+
 		if (range_size != 1)
 		{
 			if (range_size == ~0u)
@@ -388,7 +433,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::UAV, component_type, resource_kind,
 			                                               vulkan_binding.buffer_binding.descriptor_set,
-			                                               vulkan_binding.buffer_binding.binding, format);
+			                                               vulkan_binding.buffer_binding.binding, format,
+			                                               access_meta.has_read, access_meta.has_written, globally_coherent);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
 			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
@@ -422,6 +468,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
+
+			if (!access_meta.has_read)
+				builder.addDecoration(var_id, spv::DecorationNonReadable);
+			if (!access_meta.has_written)
+				builder.addDecoration(var_id, spv::DecorationNonWritable);
 
 			if (globally_coherent)
 				builder.addDecoration(var_id, spv::DecorationCoherent);
@@ -2378,6 +2429,45 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	return entry_node;
 }
 
+bool Converter::Impl::analyze_uav_access_patterns(const llvm::Function *function)
+{
+	for (auto *bb : *function)
+	{
+		for (auto &inst : *bb)
+		{
+			auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst);
+			if (!call_inst)
+				continue;
+
+			auto *called_function = call_inst->getCalledFunction();
+			if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
+			{
+				if (!analyze_dxil_instruction(*this, call_inst))
+					return false;
+			}
+		}
+	}
+	return true;
+}
+
+bool Converter::Impl::analyze_uav_access_patterns()
+{
+	// Some things need to happen here. We try to figure out if a UAV is readonly or writeonly.
+	// If readonly typed UAV, we emit an image format which corresponds to r32f, r32i or r32ui as to not
+	// require StorageReadWithoutFormat capability. TODO: With FL 12, this might not be enough, but should be
+	// good enough for time being.
+
+	auto *module = &bitcode_parser.get_module();
+	if (!analyze_uav_access_patterns(get_entry_point_function(*module)))
+		return false;
+
+	if (execution_model == spv::ExecutionModelTessellationControl)
+		if (!analyze_uav_access_patterns(execution_mode_meta.patch_constant_function))
+			return false;
+
+	return true;
+}
+
 ConvertedFunction Converter::Impl::convert_entry_point()
 {
 	ConvertedFunction result = {};
@@ -2386,6 +2476,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	auto *module = &bitcode_parser.get_module();
 	spirv_module.emit_entry_point(get_execution_model(*module), "main");
+
+	if (!analyze_uav_access_patterns())
+		return result;
 
 	if (!emit_execution_modes())
 		return result;
