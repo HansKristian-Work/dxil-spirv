@@ -536,11 +536,12 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 	case ConstantsRecord::CONST_NULL:
 	{
+		auto *type = get_constant_type();
 		Value *value = nullptr;
-		if (constant_type->isIntegerTy())
-			value = ConstantInt::get(constant_type, 0);
-		else if (constant_type->isFloatingPointTy())
-			value = ConstantFP::get(constant_type, 0);
+		if (type->isIntegerTy())
+			value = ConstantInt::get(type, 0);
+		else if (type->isFloatingPointTy())
+			value = ConstantFP::get(type, 0);
 
 		if (!value)
 		{
@@ -583,6 +584,8 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 	case ConstantsRecord::FLOAT:
 	{
+		if (entry.ops.size() < 1)
+			return false;
 		auto *type = get_constant_type();
 		if (!type->isFloatingPointTy())
 		{
