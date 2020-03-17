@@ -947,7 +947,10 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	{
 	case FunctionRecord::DECLAREBLOCKS:
 	{
+		if (entry.ops.size() < 1)
+			return false;
 		basic_blocks.resize(entry.ops[0]);
+		basic_block_index = 0;
 		for (auto &bb : basic_blocks)
 			bb = context->construct<BasicBlock>(*context);
 		current_bb = basic_blocks.front();
@@ -1461,6 +1464,7 @@ bool ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 
 	function->set_basic_blocks(std::move(basic_blocks));
 	basic_blocks = {};
+	basic_block_index = 0;
 	module->add_function_implementation(function);
 
 	values = global_values;
