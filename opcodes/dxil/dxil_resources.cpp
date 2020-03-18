@@ -470,9 +470,10 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter
 		return 0;
 	}
 
-	auto *descriptor_table = impl.allocate(spv::OpAccessChain,
-	                                       builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant,
-	                                                           builder.makeUintType(32)));
+	auto *descriptor_table = impl.allocate(
+	    spv::OpAccessChain,
+	    builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant,
+	                        builder.makeUintType(32)));
 	descriptor_table->add_id(impl.root_constant_id);
 	descriptor_table->add_id(builder.makeUintConstant(reference.push_constant_member));
 	impl.add(descriptor_table);
@@ -504,7 +505,8 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter
 
 static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_image_id,
                                           const Converter::Impl::ResourceReference &reference,
-                                          const llvm::CallInst *instruction, bool &is_non_uniform, spv::Id *ptr_id = nullptr)
+                                          const llvm::CallInst *instruction, bool &is_non_uniform,
+                                          spv::Id *ptr_id = nullptr)
 {
 	auto &builder = impl.builder();
 
@@ -524,14 +526,14 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 		}
 
 		type_id = builder.getContainedTypeId(type_id);
-		Operation *op = impl.allocate(spv::OpAccessChain,
-		                              builder.makePointer(spv::StorageClassUniformConstant, type_id));
+		Operation *op =
+		    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
 		op->add_id(image_id);
 
 		if (reference.bindless)
 		{
-			spv::Id offset_id = build_bindless_heap_offset(impl, reference,
-			                                               reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+			spv::Id offset_id = build_bindless_heap_offset(
+			    impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
 
 			if (offset_id == 0)
 				return 0;
@@ -626,7 +628,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 		bool is_non_uniform = false;
 		spv::Id image_ptr_id = 0;
-		spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction, is_non_uniform, &image_ptr_id);
+		spv::Id loaded_id =
+		    build_load_resource_handle(impl, base_image_id, reference, instruction, is_non_uniform, &image_ptr_id);
 
 		if (!loaded_id)
 		{
@@ -683,14 +686,13 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			auto storage = ssbo ? spv::StorageClassStorageBuffer : spv::StorageClassUniform;
 
 			type_id = builder.getContainedTypeId(type_id);
-			Operation *op =
-			    impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(storage, type_id));
+			Operation *op = impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(storage, type_id));
 			op->add_id(base_cbv_id);
 
 			if (reference.bindless)
 			{
-				spv::Id offset_id =
-						build_bindless_heap_offset(impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+				spv::Id offset_id = build_bindless_heap_offset(
+				    impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
 				if (!offset_id)
 				{
 					LOGE("Failed to load CBV bindless offset.\n");
@@ -793,7 +795,8 @@ static bool emit_cbuffer_load_legacy_instruction_root_constant(Converter::Impl &
 		if (i < num_words)
 		{
 			auto *op = impl.allocate(spv::OpAccessChain,
-			                         builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant,
+			                         builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform :
+			                                                                              spv::StorageClassPushConstant,
 			                                             builder.makeUintType(32)));
 
 			op->add_id(impl.root_constant_id);
@@ -848,8 +851,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 		spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
 
 		Operation *access_chain_op = impl.allocate(
-		    spv::OpAccessChain,
-		    builder.makePointer(storage, builder.makeVectorType(builder.makeFloatType(32), 4)));
+		    spv::OpAccessChain, builder.makePointer(storage, builder.makeVectorType(builder.makeFloatType(32), 4)));
 		access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
 		impl.add(access_chain_op);
 

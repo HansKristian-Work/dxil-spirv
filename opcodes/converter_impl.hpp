@@ -221,9 +221,10 @@ struct Converter::Impl
 		bool bindless_cbv_ssbo_emulation = false;
 	} options;
 
-	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component, DXIL::ResourceKind kind,
-	                                      uint32_t desc_set, uint32_t binding, spv::ImageFormat format = spv::ImageFormatUnknown,
-	                                      bool has_uav_read = false, bool has_uav_written = false, bool uav_coherent = false);
+	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component,
+	                                      DXIL::ResourceKind kind, uint32_t desc_set, uint32_t binding,
+	                                      spv::ImageFormat format = spv::ImageFormatUnknown, bool has_uav_read = false,
+	                                      bool has_uav_written = false, bool uav_coherent = false);
 
 	struct BindlessResource
 	{

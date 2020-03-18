@@ -183,13 +183,11 @@ struct Remapper
 
 static bool kind_is_buffer(dxil_spv_resource_kind kind)
 {
-	return kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER ||
-	       kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
+	return kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER || kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
 	       kind == DXIL_SPV_RESOURCE_KIND_TYPED_BUFFER;
 }
 
-static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *binding,
-                               dxil_spv_vulkan_binding *vk_binding)
+static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_vulkan_binding *vk_binding)
 {
 	auto *remapper = static_cast<Remapper *>(userdata);
 	*vk_binding = {};
@@ -465,9 +463,7 @@ int main(int argc, char **argv)
 		args.root_constant_inline_ubo_binding = parser.next_uint();
 		args.root_constant_inline_ubo = true;
 	});
-	cbs.add("--bindless-cbv-as-ssbo", [&](CLIParser &) {
-		args.bindless_cbv_as_ssbo = true;
-	});
+	cbs.add("--bindless-cbv-as-ssbo", [&](CLIParser &) { args.bindless_cbv_as_ssbo = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -534,17 +530,18 @@ int main(int argc, char **argv)
 	if (args.root_constant_inline_ubo)
 	{
 		const dxil_spv_option_root_constant_inline_uniform_block inline_block = {
-				{ DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK },
-				args.root_constant_inline_ubo_desc_set, args.root_constant_inline_ubo_binding,
-				DXIL_SPV_TRUE };
+			{ DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK },
+			args.root_constant_inline_ubo_desc_set,
+			args.root_constant_inline_ubo_binding,
+			DXIL_SPV_TRUE
+		};
 		dxil_spv_converter_add_option(converter, &inline_block.base);
 	}
 
 	if (args.bindless_cbv_as_ssbo)
 	{
-		const dxil_spv_option_bindless_cbv_ssbo_emulation cbv = {
-				{ DXIL_SPV_OPTION_BINDLESS_CBV_SSBO_EMULATION },
-				DXIL_SPV_TRUE };
+		const dxil_spv_option_bindless_cbv_ssbo_emulation cbv = { { DXIL_SPV_OPTION_BINDLESS_CBV_SSBO_EMULATION },
+			                                                      DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &cbv.base);
 	}
 

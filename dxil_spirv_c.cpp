@@ -546,7 +546,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 	{
 		OptionBindlessCBVSSBOEmulation helper;
 		helper.enable =
-				reinterpret_cast<const dxil_spv_option_bindless_cbv_ssbo_emulation *>(option)->enable == DXIL_SPV_TRUE;
+		    reinterpret_cast<const dxil_spv_option_bindless_cbv_ssbo_emulation *>(option)->enable == DXIL_SPV_TRUE;
 		converter->converter.add_option(helper);
 		break;
 	}

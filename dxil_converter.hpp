@@ -218,7 +218,7 @@ struct OptionRasterizerSampleCount : OptionBase
 struct OptionRootConstantInlineUniformBlock : OptionBase
 {
 	OptionRootConstantInlineUniformBlock()
-		: OptionBase(Option::RootConstantInlineUniformBlock)
+	    : OptionBase(Option::RootConstantInlineUniformBlock)
 	{
 	}
 	unsigned desc_set = 0;
@@ -229,7 +229,7 @@ struct OptionRootConstantInlineUniformBlock : OptionBase
 struct OptionBindlessCBVSSBOEmulation : OptionBase
 {
 	OptionBindlessCBVSSBOEmulation()
-		: OptionBase(Option::BindlessCBVSSBOEmulation)
+	    : OptionBase(Option::BindlessCBVSSBOEmulation)
 	{
 	}
 	bool enable = false;

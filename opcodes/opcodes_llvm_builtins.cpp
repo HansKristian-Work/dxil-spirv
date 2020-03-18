@@ -409,8 +409,7 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	spv::Id var_id =
-	    impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id);
+	spv::Id var_id = impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id);
 	impl.value_map[instruction] = var_id;
 	return true;
 }
