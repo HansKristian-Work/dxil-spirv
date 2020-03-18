@@ -679,9 +679,12 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 					return false;
 			}
 
+			bool ssbo = reference.bindless && impl.options.bindless_cbv_ssbo_emulation;
+			auto storage = ssbo ? spv::StorageClassStorageBuffer : spv::StorageClassUniform;
+
 			type_id = builder.getContainedTypeId(type_id);
 			Operation *op =
-			    impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(spv::StorageClassUniform, type_id));
+			    impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(storage, type_id));
 			op->add_id(base_cbv_id);
 
 			if (reference.bindless)
@@ -706,10 +709,14 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			auto &meta = impl.handle_to_resource_meta[op->id];
 			meta = {};
 			meta.non_uniform = non_uniform != 0;
+			meta.storage = storage;
 
 			if (meta.non_uniform)
 			{
-				builder.addCapability(spv::CapabilityUniformBufferArrayNonUniformIndexingEXT);
+				if (ssbo)
+					builder.addCapability(spv::CapabilityStorageBufferArrayNonUniformIndexingEXT);
+				else
+					builder.addCapability(spv::CapabilityUniformBufferArrayNonUniformIndexingEXT);
 				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
@@ -836,12 +843,13 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 	{
 		auto itr = impl.handle_to_resource_meta.find(ptr_id);
 		bool non_uniform = itr != impl.handle_to_resource_meta.end() && itr->second.non_uniform;
+		auto storage = itr != impl.handle_to_resource_meta.end() ? itr->second.storage : spv::StorageClassUniform;
 
 		spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
 
 		Operation *access_chain_op = impl.allocate(
 		    spv::OpAccessChain,
-		    builder.makePointer(spv::StorageClassUniform, builder.makeVectorType(builder.makeFloatType(32), 4)));
+		    builder.makePointer(storage, builder.makeVectorType(builder.makeFloatType(32), 4)));
 		access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
 		impl.add(access_chain_op);
 

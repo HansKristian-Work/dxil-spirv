@@ -542,6 +542,15 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_BINDLESS_CBV_SSBO_EMULATION:
+	{
+		OptionBindlessCBVSSBOEmulation helper;
+		helper.enable =
+				reinterpret_cast<const dxil_spv_option_bindless_cbv_ssbo_emulation *>(option)->enable == DXIL_SPV_TRUE;
+		converter->converter.add_option(helper);
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

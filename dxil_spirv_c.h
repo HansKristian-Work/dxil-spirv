@@ -209,6 +209,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_OUTPUT_SWIZZLE = 3,
 	DXIL_SPV_OPTION_RASTERIZER_SAMPLE_COUNT = 4,
 	DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK = 5,
+	DXIL_SPV_OPTION_BINDLESS_CBV_SSBO_EMULATION = 6,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -258,6 +259,12 @@ typedef struct dxil_spv_option_root_constant_inline_uniform_block
 	unsigned binding;
 	dxil_spv_bool enable;
 } dxil_spv_option_root_constant_inline_uniform_block;
+
+typedef struct dxil_spv_option_bindless_cbv_ssbo_emulation
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool enable;
+} dxil_spv_option_bindless_cbv_ssbo_emulation;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

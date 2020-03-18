@@ -147,6 +147,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 		resource.uav_coherent = has_uav_coherent;
 
 		spv::Id type_id = 0;
+		auto storage = spv::StorageClassMax;
 
 		switch (type)
 		{
@@ -158,6 +159,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 					                        image_dimension_is_arrayed(kind),
 					                        image_dimension_is_multisampled(kind), 1, spv::ImageFormatUnknown);
 			type_id = builder().makeRuntimeArray(type_id);
+			storage = spv::StorageClassUniformConstant;
 			break;
 		}
 
@@ -169,12 +171,14 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 					                        image_dimension_is_arrayed(kind),
 					                        image_dimension_is_multisampled(kind), 2, format);
 			type_id = builder().makeRuntimeArray(type_id);
+			storage = spv::StorageClassUniformConstant;
 			break;
 		}
 
 		case DXIL::ResourceType::Sampler:
 			type_id = builder().makeSamplerType();
 			type_id = builder().makeRuntimeArray(type_id);
+			storage = spv::StorageClassUniformConstant;
 			break;
 
 		case DXIL::ResourceType::CBV:
@@ -184,8 +188,11 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 			builder().addDecoration(type_id, spv::DecorationArrayStride, 16);
 			type_id = builder().makeStructType({ type_id }, "BindlessCBV");
 			builder().addDecoration(type_id, spv::DecorationBlock);
+			if (options.bindless_cbv_ssbo_emulation)
+				builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
 			builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 			type_id = builder().makeRuntimeArray(type_id);
+			storage = options.bindless_cbv_ssbo_emulation ? spv::StorageClassStorageBuffer : spv::StorageClassUniform;
 			break;
 		}
 
@@ -195,8 +202,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type,
 
 		builder().addExtension("SPV_EXT_descriptor_indexing");
 		builder().addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
-		resource.var_id = builder().createVariable(type == DXIL::ResourceType::CBV ? spv::StorageClassUniform : spv::StorageClassUniformConstant, type_id);
-		handle_to_resource_meta[resource.var_id] = { kind, component, 0, resource.var_id, 0u, false };
+		resource.var_id = builder().createVariable(storage, type_id);
+		handle_to_resource_meta[resource.var_id] = { kind, component, 0, resource.var_id, 0u, storage, false };
 
 		builder().addDecoration(resource.var_id, spv::DecorationDescriptorSet, desc_set);
 		builder().addDecoration(resource.var_id, spv::DecorationBinding, binding);
@@ -315,7 +322,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.binding);
 			srv_index_to_reference[index] = { var_id, 0, 0, 0, false, range_size != 1 };
-			handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, 0u, false };
+			handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, 0u, spv::StorageClassUniformConstant, false };
 		}
 	}
 
@@ -487,7 +494,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				                      vulkan_binding.counter_binding.descriptor_set);
 				builder.addDecoration(counter_var_id, spv::DecorationBinding, vulkan_binding.counter_binding.binding);
 			}
-			handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id, false };
+			handle_to_resource_meta[var_id] = { resource_kind, component_type, stride, var_id, counter_var_id, spv::StorageClassUniformConstant, false };
 		}
 	}
 
@@ -530,7 +537,11 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 			}
-			builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
+
+			if (vulkan_binding.buffer.bindless.use_heap && options.bindless_cbv_ssbo_emulation)
+				builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
+			else
+				builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
 		}
 
 		if (vulkan_binding.push_constant)
@@ -2578,6 +2589,13 @@ void Converter::Impl::add_capability(const OptionBase &cap)
 		break;
 	}
 
+	case Option::BindlessCBVSSBOEmulation:
+	{
+		auto &bindless = static_cast<const OptionBindlessCBVSSBOEmulation &>(cap);
+		options.bindless_cbv_ssbo_emulation = bindless.enable;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -2612,6 +2630,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::OutputSwizzle:
 	case Option::RasterizerSampleCount:
 	case Option::RootConstantInlineUniformBlock:
+	case Option::BindlessCBVSSBOEmulation:
 		return true;
 
 	default:

@@ -127,6 +127,7 @@ static void print_help()
 	     "\t[--enable-shader-demote]\n"
 	     "\t[--enable-dual-source-blending]\n"
 	     "\t[--bindless]\n"
+	     "\t[--bindless-cbv-as-ssbo]\n"
 	     "\t[--output-rt-swizzle index xyzw]\n");
 }
 
@@ -145,6 +146,7 @@ struct Arguments
 	unsigned root_constant_inline_ubo_desc_set = 0;
 	unsigned root_constant_inline_ubo_binding = 0;
 	bool root_constant_inline_ubo = false;
+	bool bindless_cbv_as_ssbo = false;
 };
 
 struct Remapper
@@ -463,6 +465,9 @@ int main(int argc, char **argv)
 		args.root_constant_inline_ubo_binding = parser.next_uint();
 		args.root_constant_inline_ubo = true;
 	});
+	cbs.add("--bindless-cbv-as-ssbo", [&](CLIParser &) {
+		args.bindless_cbv_as_ssbo = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -528,11 +533,19 @@ int main(int argc, char **argv)
 
 	if (args.root_constant_inline_ubo)
 	{
-		const dxil_spv_option_root_constant_inline_uniform_block inline_block = { { DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK },
-		                                                                          args.root_constant_inline_ubo_desc_set, args.root_constant_inline_ubo_binding,
-		                                                                          DXIL_SPV_TRUE };
-
+		const dxil_spv_option_root_constant_inline_uniform_block inline_block = {
+				{ DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK },
+				args.root_constant_inline_ubo_desc_set, args.root_constant_inline_ubo_binding,
+				DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &inline_block.base);
+	}
+
+	if (args.bindless_cbv_as_ssbo)
+	{
+		const dxil_spv_option_bindless_cbv_ssbo_emulation cbv = {
+				{ DXIL_SPV_OPTION_BINDLESS_CBV_SSBO_EMULATION },
+				DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &cbv.base);
 	}
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)

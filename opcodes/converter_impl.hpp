@@ -148,6 +148,7 @@ struct Converter::Impl
 		unsigned stride;
 		spv::Id var_id;
 		spv::Id counter_var_id;
+		spv::StorageClass storage;
 		bool non_uniform;
 	};
 	std::unordered_map<spv::Id, ResourceMeta> handle_to_resource_meta;
@@ -217,6 +218,7 @@ struct Converter::Impl
 		unsigned inline_ubo_descriptor_set = 0;
 		unsigned inline_ubo_descriptor_binding = 0;
 		bool inline_ubo_enable = false;
+		bool bindless_cbv_ssbo_emulation = false;
 	} options;
 
 	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component, DXIL::ResourceKind kind,

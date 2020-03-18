@@ -115,6 +115,9 @@ def cross_compile_dxil(shader, args, paths):
         hlsl_cmd.append('6')
         hlsl_cmd.append('1')
 
+    if '.cbv-as-ssbo.' in shader:
+        hlsl_cmd.append('--bindless-cbv-as-ssbo')
+
     if '.invalid.' not in shader:
         hlsl_cmd.append('--validate')
 

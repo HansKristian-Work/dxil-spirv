@@ -164,7 +164,8 @@ enum class Option : uint32_t
 	DualSourceBlending = 2,
 	OutputSwizzle = 3,
 	RasterizerSampleCount = 4,
-	RootConstantInlineUniformBlock = 5
+	RootConstantInlineUniformBlock = 5,
+	BindlessCBVSSBOEmulation = 6
 };
 
 struct OptionBase
@@ -222,6 +223,15 @@ struct OptionRootConstantInlineUniformBlock : OptionBase
 	}
 	unsigned desc_set = 0;
 	unsigned binding = 0;
+	bool enable = false;
+};
+
+struct OptionBindlessCBVSSBOEmulation : OptionBase
+{
+	OptionBindlessCBVSSBOEmulation()
+		: OptionBase(Option::BindlessCBVSSBOEmulation)
+	{
+	}
 	bool enable = false;
 };
 
