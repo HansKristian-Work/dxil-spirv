@@ -179,11 +179,11 @@ enum class MetaDataRecord : uint32_t
 enum class TypeRecord : uint32_t
 {
 	NUMENTRY = 1,
-	VOID = 2,
+	VOID_TYPE = 2,
 	FLOAT = 3,
 	DOUBLE = 4,
 	LABEL = 5,
-	OPAQUE = 6,
+	OPAQUE_TYPE = 6,
 	INTEGER = 7,
 	POINTER = 8,
 	FUNCTION_OLD = 9,
@@ -312,7 +312,7 @@ struct ModuleParseContext
 	Type *get_type(uint64_t index);
 	bool finish_basic_block();
 	bool add_successor(BasicBlock *bb);
-	BasicBlock *get_basic_block(unsigned index) const;
+	BasicBlock *get_basic_block(uint64_t index) const;
 	BasicBlock *current_bb = nullptr;
 	unsigned basic_block_index = 0;
 
@@ -400,7 +400,7 @@ bool ModuleParseContext::add_successor(BasicBlock *bb)
 	return true;
 }
 
-BasicBlock *ModuleParseContext::get_basic_block(unsigned index) const
+BasicBlock *ModuleParseContext::get_basic_block(uint64_t index) const
 {
 	if (index >= basic_blocks.size())
 	{
@@ -1486,7 +1486,7 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 	case TypeRecord::STRUCT_NAME:
 		return true;
 
-	case TypeRecord::VOID:
+	case TypeRecord::VOID_TYPE:
 		type = Type::getVoidTy(*context);
 		break;
 

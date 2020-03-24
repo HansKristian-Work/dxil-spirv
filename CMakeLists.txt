@@ -27,17 +27,17 @@ target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debu
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
 
-add_subdirectory(third_party EXCLUDE_FROM_ALL)
-add_subdirectory(bc EXCLUDE_FROM_ALL)
-add_subdirectory(external EXCLUDE_FROM_ALL)
-
 include(GNUInstallDirs)
 
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
     set(DXIL_SPV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -fno-exceptions)
 elseif (MSVC)
-    set(DXIL_SPV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
+    set(DXIL_SPV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4244 /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
+
+add_subdirectory(third_party EXCLUDE_FROM_ALL)
+add_subdirectory(bc EXCLUDE_FROM_ALL)
+add_subdirectory(external EXCLUDE_FROM_ALL)
 
 add_library(spirv-module STATIC
         ir.hpp ir.cpp

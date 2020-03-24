@@ -26,7 +26,7 @@
 
 namespace LLVMBC
 {
-class ModuleParseContext;
+struct ModuleParseContext;
 
 template <typename T>
 inline T *cast(Type *type)
