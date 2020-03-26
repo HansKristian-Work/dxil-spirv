@@ -493,7 +493,7 @@ bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst 
 	op->add_id(image_id);
 	op->add_id(impl.build_vector(builder.makeUintType(32), coord, num_coords_full));
 
-	spv::Id store_id = impl.build_vector(builder.getTypeId(write_values[0]), write_values, 4);
+	spv::Id store_id = impl.build_vector(impl.get_type_id(instruction->getOperand(5)->getType()), write_values, 4);
 	store_id = impl.fixup_store_sign(meta.component_type, 4, store_id);
 	op->add_id(store_id);
 	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
