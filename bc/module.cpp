@@ -338,8 +338,8 @@ struct ModuleParseContext
 
 ValueProxy::ValueProxy(Type *type, ModuleParseContext &context_, uint64_t id_)
     : Value(type, ValueKind::Proxy)
-    , context(context_)
     , id(id_)
+    , context(context_)
 {
 }
 

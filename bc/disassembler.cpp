@@ -397,6 +397,8 @@ static const char *to_string(Instruction::CastOps op)
 		CAST(IntToPtr, "inttoptr");
 		CAST(BitCast, "bitcast");
 		CAST(AddrSpaceCast, "addrspacecast");
+	default:
+		break;
 	}
 #undef CAST
 	return "???";
@@ -422,6 +424,8 @@ static const char *to_string(AtomicRMWInst::BinOp op)
 		RMW(UMin, "umin");
 		RMW(FAdd, "fadd");
 		RMW(FSub, "fsub");
+	default:
+		break;
 	}
 #undef RMW
 	return "???";

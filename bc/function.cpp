@@ -28,8 +28,8 @@ namespace LLVMBC
 {
 Function::Function(FunctionType *function_type_, uint64_t value_id_, Module &module_)
     : Constant(function_type_, ValueKind::Function)
-    , value_id(value_id_)
     , module(module_)
+    , value_id(value_id_)
     , function_type(function_type_)
 {
 }
