@@ -551,6 +551,15 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER:
+	{
+		OptionPhysicalStorageBuffer helper;
+		helper.enable =
+		    reinterpret_cast<const dxil_spv_option_physical_storage_buffer *>(option)->enable == DXIL_SPV_TRUE;
+		converter->converter.add_option(helper);
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

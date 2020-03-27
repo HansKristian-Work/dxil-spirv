@@ -45,7 +45,7 @@ public:
 	uint32_t allocate_id();
 	uint32_t allocate_ids(uint32_t count);
 
-	void emit_entry_point(spv::ExecutionModel model, const char *name);
+	void emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage);
 	void emit_entry_point_function_body(CFGStructurizer &structurizer);
 	void emit_leaf_function_body(spv::Function *func, CFGStructurizer &structurizer);
 

@@ -98,6 +98,7 @@ struct Converter::Impl
 	};
 	std::unordered_map<uint32_t, UAVAccessTracking> uav_access_tracking;
 	std::unordered_map<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
+	std::unordered_set<const llvm::Value *> llvm_values_using_update_counter;
 
 	struct ExecutionModeMeta
 	{
@@ -135,6 +136,7 @@ struct Converter::Impl
 	std::vector<ResourceReference> sampler_index_to_reference;
 	std::vector<ResourceReference> cbv_index_to_reference;
 	std::vector<ResourceReference> uav_index_to_reference;
+	std::vector<ResourceReference> uav_index_to_counter;
 	std::vector<unsigned> cbv_push_constant_member;
 	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;
@@ -147,9 +149,11 @@ struct Converter::Impl
 		DXIL::ComponentType component_type;
 		unsigned stride;
 		spv::Id var_id;
-		spv::Id counter_var_id;
 		spv::StorageClass storage;
 		bool non_uniform;
+
+		spv::Id counter_var_id;
+		bool counter_is_physical_pointer;
 	};
 	std::unordered_map<spv::Id, ResourceMeta> handle_to_resource_meta;
 	std::unordered_map<spv::Id, spv::Id> id_to_type;
@@ -203,6 +207,7 @@ struct Converter::Impl
 	spv::Id cmpxchg_type = 0;
 	spv::Id texture_sample_pos_lut_id = 0;
 	spv::Id rasterizer_sample_count_id = 0;
+	spv::Id physical_counter_type = 0;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 
@@ -219,12 +224,14 @@ struct Converter::Impl
 		unsigned inline_ubo_descriptor_binding = 0;
 		bool inline_ubo_enable = false;
 		bool bindless_cbv_ssbo_emulation = false;
+		bool physical_storage_buffer = false;
 	} options;
 
 	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component,
 	                                      DXIL::ResourceKind kind, uint32_t desc_set, uint32_t binding,
 	                                      spv::ImageFormat format = spv::ImageFormatUnknown, bool has_uav_read = false,
-	                                      bool has_uav_written = false, bool uav_coherent = false);
+	                                      bool has_uav_written = false, bool uav_coherent = false,
+	                                      bool counters = false);
 
 	struct BindlessResource
 	{
@@ -235,6 +242,7 @@ struct Converter::Impl
 		bool uav_read = false;
 		bool uav_written = false;
 		bool uav_coherent = false;
+		bool counters = false;
 		uint32_t desc_set;
 		uint32_t binding;
 		uint32_t var_id;

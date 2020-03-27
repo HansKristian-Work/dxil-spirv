@@ -503,6 +503,29 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter
 	return loaded_word->id;
 }
 
+static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &counter,
+                                           const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	auto *chain_op = impl.allocate(spv::OpAccessChain,
+	                               builder.makePointer(spv::StorageClassStorageBuffer, impl.physical_counter_type));
+	chain_op->add_id(counter.var_id);
+	chain_op->add_id(builder.makeUintConstant(0));
+
+	spv::Id offset_id = build_bindless_heap_offset(
+	    impl, counter, counter.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+
+	chain_op->add_id(offset_id);
+	impl.add(chain_op);
+
+	auto *load_op = impl.allocate(spv::OpLoad, impl.physical_counter_type);
+	load_op->add_id(chain_op->id);
+	impl.add(load_op);
+
+	return load_op->id;
+}
+
 static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_image_id,
                                           const Converter::Impl::ResourceReference &reference,
                                           const llvm::CallInst *instruction, bool &is_non_uniform,
@@ -623,6 +646,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 	case DXIL::ResourceType::UAV:
 	{
 		auto &reference = impl.uav_index_to_reference[resource_range];
+		auto &counter_reference = impl.uav_index_to_counter[resource_range];
+
 		spv::Id base_image_id = reference.var_id;
 		spv::Id image_id = base_image_id;
 
@@ -662,6 +687,20 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			{
 				builder.addCapability(spv::CapabilityStorageImageArrayNonUniformIndexingEXT);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
+			}
+		}
+
+		if (impl.llvm_values_using_update_counter.count(instruction) != 0)
+		{
+			if (counter_reference.bindless)
+			{
+				meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction);
+				meta.counter_is_physical_pointer = true;
+			}
+			else
+			{
+				meta.counter_var_id = counter_reference.var_id;
+				meta.counter_is_physical_pointer = false;
 			}
 		}
 		break;

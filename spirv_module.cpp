@@ -38,7 +38,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Function *active_function = nullptr;
 	spv::Instruction *entry_point = nullptr;
 
-	void emit_entry_point(spv::ExecutionModel model, const char *name);
+	void emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage);
 	bool finalize_spirv(std::vector<uint32_t> &spirv);
 
 	void register_block(CFGNode *node) override;
@@ -171,10 +171,18 @@ spv::Block *SPIRVModule::Impl::get_spv_block(CFGNode *node)
 	return static_cast<spv::Block *>(node->userdata);
 }
 
-void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model, const char *name)
+void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage)
 {
 	builder.addCapability(spv::Capability::CapabilityShader);
-	builder.setMemoryModel(spv::AddressingModel::AddressingModelLogical, spv::MemoryModel::MemoryModelGLSL450);
+
+	if (physical_storage)
+	{
+		builder.setMemoryModel(spv::AddressingModel::AddressingModelPhysicalStorageBuffer64, spv::MemoryModelGLSL450);
+		builder.addCapability(spv::CapabilityPhysicalStorageBufferAddresses);
+		builder.addExtension("SPV_KHR_physical_storage_buffer");
+	}
+	else
+		builder.setMemoryModel(spv::AddressingModel::AddressingModelLogical, spv::MemoryModel::MemoryModelGLSL450);
 
 	entry_function = builder.makeEntryPoint("main");
 	entry_point = builder.addEntryPoint(model, entry_function, name);
@@ -232,9 +240,9 @@ SPIRVModule::SPIRVModule()
 	impl = std::make_unique<Impl>();
 }
 
-void SPIRVModule::emit_entry_point(spv::ExecutionModel model, const char *name)
+void SPIRVModule::emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage)
 {
-	impl->emit_entry_point(model, name);
+	impl->emit_entry_point(model, name, physical_storage);
 }
 
 bool SPIRVModule::Impl::finalize_spirv(std::vector<uint32_t> &spirv)

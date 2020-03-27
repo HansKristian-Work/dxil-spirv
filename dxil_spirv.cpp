@@ -255,9 +255,20 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 
 	if (binding->has_counter)
 	{
-		vk_binding->counter_binding.bindless.use_heap = DXIL_SPV_FALSE;
-		vk_binding->counter_binding.set = 7;
-		vk_binding->counter_binding.binding = binding->d3d_binding.resource_index;
+		if (remapper->bindless)
+		{
+			vk_binding->counter_binding.bindless.use_heap = DXIL_SPV_TRUE;
+			vk_binding->counter_binding.bindless.root_constant_word = 4;
+			vk_binding->counter_binding.bindless.heap_root_offset = binding->d3d_binding.register_index;
+			vk_binding->counter_binding.set = 7;
+			vk_binding->counter_binding.binding = 0;
+		}
+		else
+		{
+			vk_binding->counter_binding.bindless.use_heap = DXIL_SPV_FALSE;
+			vk_binding->counter_binding.set = 7;
+			vk_binding->counter_binding.binding = binding->d3d_binding.resource_index;
+		}
 	}
 	return DXIL_SPV_TRUE;
 }
@@ -543,6 +554,13 @@ int main(int argc, char **argv)
 		const dxil_spv_option_bindless_cbv_ssbo_emulation cbv = { { DXIL_SPV_OPTION_BINDLESS_CBV_SSBO_EMULATION },
 			                                                      DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &cbv.base);
+	}
+
+	if (remapper.bindless)
+	{
+		const dxil_spv_option_physical_storage_buffer phys = { { DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER },
+			                                                   DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &phys.base);
 	}
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)

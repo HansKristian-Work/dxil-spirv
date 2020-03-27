@@ -276,6 +276,12 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::BufferUpdateCounter:
+	{
+		impl.llvm_values_using_update_counter.insert(instruction->getOperand(1));
+		break;
+	}
+
 	default:
 		break;
 	}

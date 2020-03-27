@@ -115,14 +115,14 @@ static bool image_dimension_is_multisampled(DXIL::ResourceKind kind)
 spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component,
                                                        DXIL::ResourceKind kind, uint32_t desc_set, uint32_t binding,
                                                        spv::ImageFormat format, bool has_uav_read, bool has_uav_written,
-                                                       bool has_uav_coherent)
+                                                       bool has_uav_coherent, bool counters)
 {
 	auto itr =
 	    std::find_if(bindless_resources.begin(), bindless_resources.end(), [&](const BindlessResource &resource) {
 		    return resource.type == type && resource.component == component && resource.kind == kind &&
 		           resource.desc_set == desc_set && resource.format == format && resource.binding == binding &&
 		           resource.uav_read == has_uav_read && resource.uav_written == has_uav_written &&
-		           resource.uav_coherent == has_uav_coherent;
+		           resource.uav_coherent == has_uav_coherent && resource.counters == counters;
 	    });
 
 	if (itr != bindless_resources.end())
@@ -141,6 +141,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 		resource.uav_read = has_uav_read;
 		resource.uav_written = has_uav_written;
 		resource.uav_coherent = has_uav_coherent;
+		resource.counters = counters;
 
 		spv::Id type_id = 0;
 		auto storage = spv::StorageClassMax;
@@ -160,12 +161,36 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 
 		case DXIL::ResourceType::UAV:
 		{
-			spv::Id sampled_type_id = get_type_id(component, 1, 1);
-			type_id = builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
-			                                  image_dimension_is_arrayed(kind), image_dimension_is_multisampled(kind),
-			                                  2, format);
-			type_id = builder().makeRuntimeArray(type_id);
-			storage = spv::StorageClassUniformConstant;
+			if (counters)
+			{
+				if (!physical_counter_type)
+				{
+					spv::Id counter_type_id = builder().makeStructType({ builder().makeUintType(32) }, "AtomicCounter");
+					builder().addDecoration(counter_type_id, spv::DecorationBlock);
+					builder().addMemberDecoration(counter_type_id, 0, spv::DecorationOffset, 0);
+					physical_counter_type =
+					    builder().makePointer(spv::StorageClassPhysicalStorageBuffer, counter_type_id);
+				}
+
+				spv::Id runtime_array_type_id = builder().makeRuntimeArray(physical_counter_type);
+				builder().addDecoration(runtime_array_type_id, spv::DecorationArrayStride, sizeof(uint64_t));
+
+				type_id = builder().makeStructType({ runtime_array_type_id }, "AtomicCounters");
+				builder().addDecoration(type_id, spv::DecorationBlock);
+				builder().addMemberName(type_id, 0, "counters");
+				builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+				builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
+				storage = spv::StorageClassStorageBuffer;
+			}
+			else
+			{
+				spv::Id sampled_type_id = get_type_id(component, 1, 1);
+				type_id = builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
+				                                  image_dimension_is_arrayed(kind),
+				                                  image_dimension_is_multisampled(kind), 2, format);
+				type_id = builder().makeRuntimeArray(type_id);
+				storage = spv::StorageClassUniformConstant;
+			}
 			break;
 		}
 
@@ -197,12 +222,12 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 		builder().addExtension("SPV_EXT_descriptor_indexing");
 		builder().addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 		resource.var_id = builder().createVariable(storage, type_id);
-		handle_to_resource_meta[resource.var_id] = { kind, component, 0, resource.var_id, 0u, storage, false };
+		handle_to_resource_meta[resource.var_id] = { kind, component, 0, resource.var_id, storage, false, 0, false };
 
 		builder().addDecoration(resource.var_id, spv::DecorationDescriptorSet, desc_set);
 		builder().addDecoration(resource.var_id, spv::DecorationBinding, binding);
 
-		if (type == DXIL::ResourceType::UAV)
+		if (type == DXIL::ResourceType::UAV && !counters)
 		{
 			if (!has_uav_read)
 				builder().addDecoration(resource.var_id, spv::DecorationNonReadable);
@@ -210,6 +235,10 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 				builder().addDecoration(resource.var_id, spv::DecorationNonWritable);
 			if (has_uav_coherent)
 				builder().addDecoration(resource.var_id, spv::DecorationCoherent);
+		}
+		else if (counters)
+		{
+			builder().addDecoration(resource.var_id, spv::DecorationAliasedPointer);
 		}
 
 		bindless_resources.push_back(resource);
@@ -317,7 +346,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.binding);
 			srv_index_to_reference[index] = { var_id, 0, 0, 0, false, range_size != 1 };
 			handle_to_resource_meta[var_id] = {
-				resource_kind, component_type, stride, var_id, 0u, spv::StorageClassUniformConstant, false
+				resource_kind, component_type, stride, var_id, spv::StorageClassUniformConstant, false, 0, false,
 			};
 		}
 	}
@@ -425,15 +454,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			return false;
 
 		uav_index_to_reference.resize(std::max(uav_index_to_reference.size(), size_t(index + 1)));
+		uav_index_to_counter.resize(std::max(uav_index_to_counter.size(), size_t(index + 1)));
 
 		if (vulkan_binding.buffer_binding.bindless.use_heap)
 		{
-			if (has_counter)
-			{
-				LOGE("Bindless UAVs with counters not supported.\n");
-				return false;
-			}
-
 			spv::Id var_id = create_bindless_heap_variable(
 			    DXIL::ResourceType::UAV, component_type, resource_kind, vulkan_binding.buffer_binding.descriptor_set,
 			    vulkan_binding.buffer_binding.binding, format, access_meta.has_read, access_meta.has_written,
@@ -447,6 +471,43 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			uav_index_to_reference[index] = { var_id,      vulkan_binding.buffer_binding.bindless.root_constant_word,
 				                              heap_offset, stride,
 				                              true,        range_size != 1 };
+
+			if (has_counter)
+			{
+				if (vulkan_binding.counter_binding.bindless.use_heap)
+				{
+					spv::Id counter_var_id = create_bindless_heap_variable(
+					    DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::Invalid,
+					    vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
+					    spv::ImageFormatUnknown, false, false, false, true);
+
+					heap_offset = vulkan_binding.counter_binding.bindless.heap_root_offset;
+					if (range_size != 1)
+						heap_offset -= bind_register;
+
+					uav_index_to_counter[index] = {
+						counter_var_id, vulkan_binding.counter_binding.bindless.root_constant_word,
+						heap_offset,    4,
+						true,           range_size != 1
+					};
+				}
+				else
+				{
+					auto element_type_id = get_type_id(DXIL::ComponentType::U32, 1, 1);
+					spv::Id type_id = builder.makeImageType(element_type_id, spv::DimBuffer, false, false, false, 2,
+					                                        spv::ImageFormatR32ui);
+
+					spv::Id counter_var_id = builder.createVariable(
+					    spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : (name + "Counter").c_str());
+
+					builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
+					                      vulkan_binding.counter_binding.descriptor_set);
+					builder.addDecoration(counter_var_id, spv::DecorationBinding,
+					                      vulkan_binding.counter_binding.binding);
+
+					uav_index_to_counter[index] = { counter_var_id, 0, 0, 4, false, range_size != 1 };
+				}
+			}
 		}
 		else
 		{
@@ -483,16 +544,24 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			spv::Id counter_var_id = 0;
 			if (has_counter)
 			{
+				if (vulkan_binding.counter_binding.bindless.use_heap)
+				{
+					LOGE("Cannot use bindless UAV counters along with non-bindless UAVs.\n");
+					return false;
+				}
+
 				counter_var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
 				                                        name.empty() ? nullptr : (name + "Counter").c_str());
 
 				builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
 				                      vulkan_binding.counter_binding.descriptor_set);
 				builder.addDecoration(counter_var_id, spv::DecorationBinding, vulkan_binding.counter_binding.binding);
+
+				uav_index_to_counter[index] = { counter_var_id, 0, 0, 4, false, range_size != 1 };
 			}
-			handle_to_resource_meta[var_id] = { resource_kind, component_type, stride,
-				                                var_id,        counter_var_id, spv::StorageClassUniformConstant,
-				                                false };
+			handle_to_resource_meta[var_id] = {
+				resource_kind, component_type, stride, var_id, spv::StorageClassUniformConstant, false, 0, false
+			};
 		}
 	}
 
@@ -2487,7 +2556,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto &pool = *result.node_pool;
 
 	auto *module = &bitcode_parser.get_module();
-	spirv_module.emit_entry_point(get_execution_model(*module), "main");
+	spirv_module.emit_entry_point(get_execution_model(*module), "main", options.physical_storage_buffer);
 
 	if (!analyze_uav_access_patterns())
 		return result;
@@ -2597,6 +2666,13 @@ void Converter::Impl::add_capability(const OptionBase &cap)
 		break;
 	}
 
+	case Option::PhysicalStorageBuffer:
+	{
+		auto &psb = static_cast<const OptionPhysicalStorageBuffer &>(cap);
+		options.physical_storage_buffer = psb.enable;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -2632,6 +2708,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::RasterizerSampleCount:
 	case Option::RootConstantInlineUniformBlock:
 	case Option::BindlessCBVSSBOEmulation:
+	case Option::PhysicalStorageBuffer:
 		return true;
 
 	default:

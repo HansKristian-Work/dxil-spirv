@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
 
 layout(push_constant, std430) uniform RootConstants
@@ -55,8 +56,10 @@ OpCapability SampledBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability UniformTexelBufferArrayDynamicIndexing
 OpCapability UniformTexelBufferArrayNonUniformIndexing
+OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint Fragment %3 "main" %16 %18 %21
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

@@ -165,7 +165,8 @@ enum class Option : uint32_t
 	OutputSwizzle = 3,
 	RasterizerSampleCount = 4,
 	RootConstantInlineUniformBlock = 5,
-	BindlessCBVSSBOEmulation = 6
+	BindlessCBVSSBOEmulation = 6,
+	PhysicalStorageBuffer = 7
 };
 
 struct OptionBase
@@ -230,6 +231,15 @@ struct OptionBindlessCBVSSBOEmulation : OptionBase
 {
 	OptionBindlessCBVSSBOEmulation()
 	    : OptionBase(Option::BindlessCBVSSBOEmulation)
+	{
+	}
+	bool enable = false;
+};
+
+struct OptionPhysicalStorageBuffer : OptionBase
+{
+	OptionPhysicalStorageBuffer()
+	    : OptionBase(Option::PhysicalStorageBuffer)
 	{
 	}
 	bool enable = false;

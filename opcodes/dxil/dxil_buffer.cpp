@@ -400,9 +400,22 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	int direction = llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getSExtValue();
 
-	Operation *counter_ptr_op =
-	    impl.allocate(spv::OpImageTexelPointer, builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
-	counter_ptr_op->add_ids({ meta.counter_var_id, builder.makeUintConstant(0), builder.makeUintConstant(0) });
+	Operation *counter_ptr_op;
+
+	if (meta.counter_is_physical_pointer)
+	{
+		counter_ptr_op = impl.allocate(
+		    spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, builder.makeUintType(32)));
+		counter_ptr_op->add_id(meta.counter_var_id);
+		counter_ptr_op->add_id(builder.makeUintConstant(0));
+	}
+	else
+	{
+		counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
+		                               builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
+		counter_ptr_op->add_ids({ meta.counter_var_id, builder.makeUintConstant(0), builder.makeUintConstant(0) });
+	}
+
 	impl.add(counter_ptr_op);
 
 	Operation *op = impl.allocate(spv::OpAtomicIAdd, instruction);

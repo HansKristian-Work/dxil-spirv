@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
 
 layout(set = 5, binding = 0, std430) readonly buffer BindlessCBV
@@ -52,8 +53,10 @@ void main()
 OpCapability Shader
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability RuntimeDescriptorArray
+OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint Fragment %3 "main" %18 %20
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
