@@ -30,7 +30,7 @@ layout(location = 0) out uint SV_Target;
 
 void main()
 {
-    uint _41 = imageAtomicAdd(_12[registers._m3 + (INDEX + 2u)], ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 3u);
+    uint _41 = imageAtomicAdd(_12[nonuniformEXT(registers._m3 + (INDEX + 2u))], ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 3u);
     SV_Target = _41;
 }
 
