@@ -1420,9 +1420,9 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		if (entry.ops.size() < 3)
 			return false;
 		auto *vec = get_value(entry.ops[0]);
-		auto *index = get_value(entry.ops[1]);
-		auto *value = get_value(entry.ops[2]);
-		auto *new_value = context->construct<InsertElementInst>(vec, index, value);
+		auto *value = get_value(entry.ops[1]);
+		auto *index = get_value(entry.ops[2]);
+		auto *new_value = context->construct<InsertElementInst>(vec, value, index);
 		if (!add_instruction(new_value))
 			return false;
 		break;

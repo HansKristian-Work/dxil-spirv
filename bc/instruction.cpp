@@ -461,9 +461,9 @@ Value *ExtractElementInst::getIndexOperand()
 	return index;
 }
 
-InsertElementInst::InsertElementInst(Value *vec, Value *index, Value *value)
+InsertElementInst::InsertElementInst(Value *vec, Value *value, Value *index)
 	: Instruction(vec->getType(), ValueKind::InsertElement)
 {
-	set_operands({ vec, index, value });
+	set_operands({ vec, value, index });
 }
 } // namespace LLVMBC

@@ -527,7 +527,7 @@ public:
 	{
 		return ValueKind::InsertElement;
 	}
-	InsertElementInst(Value *vec, Value *index, Value *value);
+	InsertElementInst(Value *vec, Value *value, Value *index);
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 } // namespace LLVMBC
