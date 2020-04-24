@@ -27,6 +27,7 @@ class Type;
 
 enum class ValueKind
 {
+	Argument,
 	Function,
 	ConstantBase,
 	ConstantInt,
@@ -67,7 +68,7 @@ enum class ValueKind
 class Value
 {
 public:
-	explicit Value(Type *type, ValueKind kind);
+	Value(Type *type, ValueKind kind);
 	Type *getType() const;
 
 	ValueKind get_value_kind() const;
@@ -78,6 +79,23 @@ protected:
 	Type *type;
 	ValueKind kind;
 	uint64_t tween_id = 0;
+};
+
+class Argument : public Value
+{
+public:
+	Argument(Type *type, unsigned argument_number);
+	unsigned getArgNo() const;
+
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Argument;
+	}
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
+private:
+	unsigned argument_number;
 };
 
 class APInt

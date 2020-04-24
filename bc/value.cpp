@@ -52,6 +52,16 @@ ValueKind Value::get_value_kind() const
 	return kind;
 }
 
+Argument::Argument(Type *type, unsigned argument_number_)
+	: Value(type, ValueKind::Argument), argument_number(argument_number_)
+{
+}
+
+unsigned Argument::getArgNo() const
+{
+	return argument_number;
+}
+
 bool Constant::is_base_of_value_kind(ValueKind kind)
 {
 	switch (kind)

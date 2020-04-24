@@ -1448,6 +1448,13 @@ bool ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	function = functions_with_bodies.back();
 	functions_with_bodies.pop_back();
 
+	auto *func_type = function->getFunctionType();
+	for (unsigned i = 0; i < func_type->getNumParams(); i++)
+	{
+		auto *param_type = func_type->getParamType(i);
+		add_value(context->construct<Argument>(param_type, i));
+	}
+
 	for (auto &child : entry.children)
 	{
 		if (child.IsBlock())

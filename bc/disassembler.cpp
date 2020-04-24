@@ -47,6 +47,7 @@ struct StreamState
 	void append(Value *value, bool decl = false);
 	void append(GlobalVariable *value, bool decl = false);
 	void append(Instruction *value);
+	void append(Argument *value, bool decl = false);
 	void append(Function *value, bool decl = false);
 	void append(BinaryOperator *value, bool decl = false);
 	void append(UnaryOperator *uop, bool decl = false);
@@ -243,6 +244,11 @@ void StreamState::append(Type *type)
 	}
 
 	LOGE("Unknown Type %u.\n", unsigned(type->getTypeID()));
+}
+
+void StreamState::append(Argument *arg, bool decl)
+{
+	append("%arg", arg->getArgNo());
 }
 
 void StreamState::append(Function *func, bool decl)
@@ -794,6 +800,8 @@ void StreamState::append(Value *value, bool decl)
 {
 	switch (value->get_value_kind())
 	{
+	case ValueKind::Argument:
+		return append(cast<Argument>(value), decl);
 	case ValueKind::Function:
 		return append(cast<Function>(value), decl);
 	case ValueKind::BinaryOperator:
