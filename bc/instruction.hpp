@@ -501,4 +501,33 @@ public:
 private:
 	std::vector<int> shuffle_mask;
 };
+
+class ExtractElementInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ExtractElement;
+	}
+	ExtractElementInst(Value *vec, Value *offset);
+	Value *getVectorOperand();
+	Value *getIndexOperand();
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
+private:
+	Value *vec;
+	Value *index;
+};
+
+class InsertElementInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::InsertElement;
+	}
+	InsertElementInst(Value *vec, Value *index, Value *value);
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+};
 } // namespace LLVMBC

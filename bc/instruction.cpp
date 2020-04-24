@@ -444,4 +444,26 @@ int ShuffleVectorInst::getMaskValue(unsigned index) const
 	assert(index < shuffle_mask.size());
 	return shuffle_mask[index];
 }
+
+ExtractElementInst::ExtractElementInst(Value *vec_, Value *index_)
+	: Instruction(cast<VectorType>(vec_->getType())->getElementType(), ValueKind::ExtractElement),
+	  vec(vec_), index(index_)
+{
+}
+
+Value *ExtractElementInst::getVectorOperand()
+{
+	return vec;
+}
+
+Value *ExtractElementInst::getIndexOperand()
+{
+	return index;
+}
+
+InsertElementInst::InsertElementInst(Value *vec, Value *index, Value *value)
+	: Instruction(vec->getType(), ValueKind::InsertElement)
+{
+	set_operands({ vec, index, value });
+}
 } // namespace LLVMBC

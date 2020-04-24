@@ -1378,6 +1378,8 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_STORE:
 	{
+		if (entry.ops.size() < 2)
+			return false;
 		auto *ptr = get_value(entry.ops[0]);
 		auto *v = get_value(entry.ops[1]);
 		auto *value = context->construct<StoreInst>(ptr, v);
@@ -1388,6 +1390,8 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_SHUFFLEVEC:
 	{
+		if (entry.ops.size() < 3)
+			return false;
 		auto *a = get_value(entry.ops[0]);
 		auto *b = get_value(entry.ops[1]);
 		auto *shuf = get_value(entry.ops[2]);
@@ -1395,6 +1399,31 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		auto *vec_type = VectorType::get(cast<ConstantDataArray>(shuf)->getNumElements(), cast<VectorType>(a->getType())->getElementType());
 		auto *value = context->construct<ShuffleVectorInst>(vec_type, a, b, shuf);
 		if (!add_instruction(value))
+			return false;
+		break;
+	}
+
+	case FunctionRecord::INST_EXTRACTELT:
+	{
+		if (entry.ops.size() < 2)
+			return false;
+		auto *vec = get_value(entry.ops[0]);
+		auto *index = get_value(entry.ops[1]);
+		auto *value = context->construct<ExtractElementInst>(vec, index);
+		if (!add_instruction(value))
+			return false;
+		break;
+	}
+
+	case FunctionRecord::INST_INSERTELT:
+	{
+		if (entry.ops.size() < 3)
+			return false;
+		auto *vec = get_value(entry.ops[0]);
+		auto *index = get_value(entry.ops[1]);
+		auto *value = get_value(entry.ops[2]);
+		auto *new_value = context->construct<InsertElementInst>(vec, index, value);
+		if (!add_instruction(new_value))
 			return false;
 		break;
 	}

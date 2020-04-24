@@ -49,6 +49,8 @@ struct StreamState
 	void append(Instruction *value);
 	void append(Argument *value, bool decl = false);
 	void append(ShuffleVectorInst *shuf, bool decl = false);
+	void append(ExtractElementInst *extr, bool decl = false);
+	void append(InsertElementInst *inst, bool decl = false);
 	void append(Function *value, bool decl = false);
 	void append(BinaryOperator *value, bool decl = false);
 	void append(UnaryOperator *uop, bool decl = false);
@@ -251,7 +253,7 @@ void StreamState::append(ShuffleVectorInst *shuf, bool decl)
 {
 	if (decl)
 	{
-		append("shufflevector ", shuf->getType(), " ", shuf->getOperand(0), ", ", shuf->getOperand(1), " <");
+		append("%", shuf->get_tween_id(), " = shufflevector ", shuf->getType(), " ", shuf->getOperand(0), ", ", shuf->getOperand(1), " <");
 		auto *vec_type = cast<VectorType>(shuf->getType());
 		for (unsigned i = 0; i < vec_type->getVectorSize(); i++)
 		{
@@ -263,6 +265,28 @@ void StreamState::append(ShuffleVectorInst *shuf, bool decl)
 	}
 	else
 		append("%", shuf->get_tween_id());
+}
+
+void StreamState::append(ExtractElementInst *extr, bool decl)
+{
+	if (decl)
+	{
+		append("%", extr->get_tween_id(), " = extractelement ",
+		       extr->getType(), " ", extr->getVectorOperand(), ", ", extr->getIndexOperand());
+	}
+	else
+		append("%", extr->get_tween_id());
+}
+
+void StreamState::append(InsertElementInst *inst, bool decl)
+{
+	if (decl)
+	{
+		append("%", inst->get_tween_id(), " = insertelement ",
+		       inst->getOperand(0), ", ", inst->getOperand(1), ", ", inst->getOperand(2));
+	}
+	else
+		append("%", inst->get_tween_id());
 }
 
 void StreamState::append(Argument *arg, bool decl)
@@ -875,6 +899,10 @@ void StreamState::append(Value *value, bool decl)
 		return append(cast<SwitchInst>(value), decl);
 	case ValueKind::ShuffleVector:
 		return append(cast<ShuffleVectorInst>(value), decl);
+	case ValueKind::ExtractElement:
+		return append(cast<ExtractElementInst>(value), decl);
+	case ValueKind::InsertElement:
+		return append(cast<InsertElementInst>(value), decl);
 	default:
 		break;
 	}
