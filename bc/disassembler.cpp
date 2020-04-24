@@ -48,6 +48,7 @@ struct StreamState
 	void append(GlobalVariable *value, bool decl = false);
 	void append(Instruction *value);
 	void append(Argument *value, bool decl = false);
+	void append(ShuffleVectorInst *shuf, bool decl = false);
 	void append(Function *value, bool decl = false);
 	void append(BinaryOperator *value, bool decl = false);
 	void append(UnaryOperator *uop, bool decl = false);
@@ -244,6 +245,24 @@ void StreamState::append(Type *type)
 	}
 
 	LOGE("Unknown Type %u.\n", unsigned(type->getTypeID()));
+}
+
+void StreamState::append(ShuffleVectorInst *shuf, bool decl)
+{
+	if (decl)
+	{
+		append("shufflevector ", shuf->getType(), " ", shuf->getOperand(0), ", ", shuf->getOperand(1), " <");
+		auto *vec_type = cast<VectorType>(shuf->getType());
+		for (unsigned i = 0; i < vec_type->getVectorSize(); i++)
+		{
+			append(shuf->getMaskValue(i));
+			if (i + 1 < vec_type->getVectorSize())
+				append(", ");
+		}
+		append(">");
+	}
+	else
+		append("%", shuf->get_tween_id());
 }
 
 void StreamState::append(Argument *arg, bool decl)
@@ -854,6 +873,8 @@ void StreamState::append(Value *value, bool decl)
 		return append(cast<ConstantDataArray>(value), decl);
 	case ValueKind::Switch:
 		return append(cast<SwitchInst>(value), decl);
+	case ValueKind::ShuffleVector:
+		return append(cast<ShuffleVectorInst>(value), decl);
 	default:
 		break;
 	}

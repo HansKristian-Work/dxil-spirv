@@ -484,4 +484,21 @@ private:
 	Value *new_value;
 	Value *cmp_value;
 };
+
+class ShuffleVectorInst : public Instruction
+{
+public:
+	ShuffleVectorInst(Type *type, Value *a, Value *b, Value *shuf);
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ShuffleVector;
+	}
+
+	int getMaskValue(unsigned index) const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
+private:
+	std::vector<int> shuffle_mask;
+};
 } // namespace LLVMBC

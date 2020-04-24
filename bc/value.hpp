@@ -57,6 +57,7 @@ enum class ValueKind
 	Switch,
 	Proxy,
 	Global,
+	ShuffleVector
 };
 
 #define LLVMBC_DEFAULT_VALUE_KIND_IMPL                \

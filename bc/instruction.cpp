@@ -428,4 +428,20 @@ Value *AtomicCmpXchgInst::getNewValOperand() const
 {
 	return new_value;
 }
+
+ShuffleVectorInst::ShuffleVectorInst(Type *type, Value *a, Value *b, Value *shuf)
+	: Instruction(type, ValueKind::ShuffleVector)
+{
+	set_operands({ a, b });
+	auto *masks = cast<ConstantDataArray>(shuf);
+	shuffle_mask.reserve(masks->getNumElements());
+	for (unsigned i = 0; i < masks->getNumElements(); i++)
+		shuffle_mask.push_back(cast<ConstantInt>(masks->getElementAsConstant(i))->getUniqueInteger().getSExtValue());
+}
+
+int ShuffleVectorInst::getMaskValue(unsigned index) const
+{
+	assert(index < shuffle_mask.size());
+	return shuffle_mask[index];
+}
 } // namespace LLVMBC
