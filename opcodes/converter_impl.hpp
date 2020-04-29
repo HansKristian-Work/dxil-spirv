@@ -79,6 +79,7 @@ struct Converter::Impl
 	bool emit_stage_output_variables();
 	bool emit_patch_variables();
 	bool emit_global_variables();
+	bool emit_global_payloads();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
@@ -88,6 +89,7 @@ struct Converter::Impl
 	bool emit_execution_modes_hull();
 	bool emit_execution_modes_domain();
 	bool emit_execution_modes_pixel();
+	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
 
 	bool analyze_uav_access_patterns();
 	bool analyze_uav_access_patterns(const llvm::Function *function);
@@ -158,6 +160,7 @@ struct Converter::Impl
 	std::unordered_map<spv::Id, ResourceMeta> handle_to_resource_meta;
 	std::unordered_map<spv::Id, spv::Id> id_to_type;
 	std::unordered_map<const llvm::Value *, unsigned> handle_to_root_member_offset;
+	std::unordered_map<const llvm::Value *, spv::StorageClass> handle_to_storage_class;
 
 	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array = false);
 	spv::Id get_type_id(const llvm::Type *type);

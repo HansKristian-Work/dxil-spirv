@@ -1703,10 +1703,63 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	}
 }
 
+static bool execution_model_is_ray_tracing(spv::ExecutionModel model)
+{
+	switch (model)
+	{
+	case spv::ExecutionModelRayGenerationKHR:
+	case spv::ExecutionModelCallableKHR:
+	case spv::ExecutionModelIntersectionKHR:
+	case spv::ExecutionModelMissKHR:
+	case spv::ExecutionModelClosestHitKHR:
+	case spv::ExecutionModelAnyHitKHR:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+static bool execution_model_has_global_payload(spv::ExecutionModel model)
+{
+	return model != spv::ExecutionModelRayGenerationKHR && execution_model_is_ray_tracing(model);
+}
+
+bool Converter::Impl::emit_global_payloads()
+{
+	auto &builder = spirv_module.get_builder();
+	auto &module = bitcode_parser.get_module();
+	auto *func = get_entry_point_function(module);
+
+	// The first argument to a RT entry point is always a pointer to payload.
+	if (func->arg_end() - func->arg_begin() >= 1)
+	{
+		auto &arg = *func->arg_begin();
+		if (!llvm::isa<llvm::PointerType>(arg.getType()))
+			return false;
+		auto *elem_type = arg.getType()->getPointerElementType();
+
+		// This is a POD. We'll emit that as a block containing the payload type.
+		spv::Id payload_var = builder.createVariable(spv::StorageClassRayPayloadKHR, get_type_id(elem_type), "payload");
+
+		// In RayGeneration shaders, we'll need to declare multiple different payload types.
+		builder.addDecoration(payload_var, spv::DecorationLocation, 0);
+
+		handle_to_storage_class[&arg] = spv::StorageClassRayPayloadKHR;
+		value_map[&arg] = payload_var;
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_global_variables()
 {
 	auto &module = bitcode_parser.get_module();
 	auto &builder = spirv_module.get_builder();
+
+	if (execution_model_has_global_payload(execution_model))
+		if (!emit_global_payloads())
+			return false;
 
 	for (auto itr = module.global_begin(); itr != module.global_end(); ++itr)
 	{
@@ -2344,6 +2397,14 @@ bool Converter::Impl::emit_execution_modes_geometry()
 		return false;
 }
 
+bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model)
+{
+	auto &builder = spirv_module.get_builder();
+	builder.addCapability(spv::CapabilityRayTracingProvisionalKHR);
+	builder.addExtension("SPV_KHR_ray_tracing");
+	return true;
+}
+
 bool Converter::Impl::emit_execution_modes()
 {
 	auto &module = bitcode_parser.get_module();
@@ -2373,6 +2434,16 @@ bool Converter::Impl::emit_execution_modes()
 
 	case spv::ExecutionModelFragment:
 		if (!emit_execution_modes_pixel())
+			return false;
+		break;
+
+	case spv::ExecutionModelRayGenerationKHR:
+	case spv::ExecutionModelMissKHR:
+	case spv::ExecutionModelIntersectionKHR:
+	case spv::ExecutionModelAnyHitKHR:
+	case spv::ExecutionModelCallableKHR:
+	case spv::ExecutionModelClosestHitKHR:
+		if (!emit_execution_modes_ray_tracing(execution_model))
 			return false;
 		break;
 
