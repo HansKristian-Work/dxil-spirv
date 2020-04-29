@@ -1732,6 +1732,20 @@ static bool execution_model_has_incoming_payload(spv::ExecutionModel model)
 	return model != spv::ExecutionModelRayGenerationKHR && execution_model_is_ray_tracing(model);
 }
 
+static bool execution_model_has_hit_attribute(spv::ExecutionModel model)
+{
+	switch (model)
+	{
+	case spv::ExecutionModelAnyHitKHR:
+	case spv::ExecutionModelClosestHitKHR:
+	case spv::ExecutionModelIntersectionKHR:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 bool Converter::Impl::emit_incoming_ray_payload()
 {
 	auto &builder = spirv_module.get_builder();
@@ -1759,6 +1773,30 @@ bool Converter::Impl::emit_incoming_ray_payload()
 	return true;
 }
 
+bool Converter::Impl::emit_hit_attribute()
+{
+	auto &builder = spirv_module.get_builder();
+	auto &module = bitcode_parser.get_module();
+	auto *func = get_entry_point_function(module);
+
+	// The second argument to a RT entry point is always a pointer to hit attribute.
+	if (func->arg_end() - func->arg_begin() >= 2)
+	{
+		auto args = func->arg_begin();
+		++args;
+		auto &arg = *args;
+		if (!llvm::isa<llvm::PointerType>(arg.getType()))
+			return false;
+		auto *elem_type = arg.getType()->getPointerElementType();
+
+		spv::Id hit_attribute_var = builder.createVariable(spv::StorageClassHitAttributeKHR, get_type_id(elem_type), "hit");
+		handle_to_storage_class[&arg] = spv::StorageClassHitAttributeKHR;
+		value_map[&arg] = hit_attribute_var;
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_global_variables()
 {
 	auto &module = bitcode_parser.get_module();
@@ -1766,6 +1804,10 @@ bool Converter::Impl::emit_global_variables()
 
 	if (execution_model_has_incoming_payload(execution_model))
 		if (!emit_incoming_ray_payload())
+			return false;
+
+	if (execution_model_has_hit_attribute(execution_model))
+		if (!emit_hit_attribute())
 			return false;
 
 	for (auto itr = module.global_begin(); itr != module.global_end(); ++itr)
