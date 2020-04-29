@@ -1727,12 +1727,12 @@ static bool execution_model_is_ray_tracing(spv::ExecutionModel model)
 	}
 }
 
-static bool execution_model_has_global_payload(spv::ExecutionModel model)
+static bool execution_model_has_incoming_payload(spv::ExecutionModel model)
 {
 	return model != spv::ExecutionModelRayGenerationKHR && execution_model_is_ray_tracing(model);
 }
 
-bool Converter::Impl::emit_incoming_ray_payloads()
+bool Converter::Impl::emit_incoming_ray_payload()
 {
 	auto &builder = spirv_module.get_builder();
 	auto &module = bitcode_parser.get_module();
@@ -1764,8 +1764,8 @@ bool Converter::Impl::emit_global_variables()
 	auto &module = bitcode_parser.get_module();
 	auto &builder = spirv_module.get_builder();
 
-	if (execution_model_has_global_payload(execution_model))
-		if (!emit_incoming_ray_payloads())
+	if (execution_model_has_incoming_payload(execution_model))
+		if (!emit_incoming_ray_payload())
 			return false;
 
 	for (auto itr = module.global_begin(); itr != module.global_end(); ++itr)
