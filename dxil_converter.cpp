@@ -966,6 +966,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		}
 	}
 
+	case llvm::Type::TypeID::VectorTyID:
 	case llvm::Type::TypeID::ArrayTyID:
 	{
 		std::vector<spv::Id> constituents;
@@ -978,12 +979,17 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		else
 		{
 			auto *array = llvm::cast<llvm::ConstantDataArray>(constant);
-			constituents.reserve(array->getType()->getArrayNumElements());
+			if (llvm::isa<llvm::ArrayType>(constant->getType()))
+				constituents.reserve(array->getType()->getArrayNumElements());
+			else
+				constituents.reserve(llvm::cast<llvm::VectorType>(array->getType())->getVectorSize());
+
 			for (unsigned i = 0; i < array->getNumElements(); i++)
 			{
 				llvm::Constant *c = array->getElementAsConstant(i);
 				constituents.push_back(get_id_for_constant(c, 0));
 			}
+
 			return builder.makeCompositeConstant(type_id, constituents);
 		}
 	}
@@ -1154,6 +1160,22 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	case llvm::Type::TypeID::ArrayTyID:
 		return builder.makeArrayType(get_type_id(type->getArrayElementType()),
 		                             builder.makeUintConstant(type->getArrayNumElements(), false), 0);
+
+	case llvm::Type::TypeID::StructTyID:
+	{
+		auto *struct_type = llvm::cast<llvm::StructType>(type);
+		std::vector<spv::Id> member_types;
+		member_types.reserve(struct_type->getStructNumElements());
+		for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
+			member_types.push_back(get_type_id(struct_type->getStructElementType(i)));
+		return builder.makeStructType(member_types, "");
+	}
+
+	case llvm::Type::TypeID::VectorTyID:
+	{
+		auto *vec_type = llvm::cast<llvm::VectorType>(type);
+		return builder.makeVectorType(get_type_id(vec_type->getElementType()), vec_type->getVectorSize());
+	}
 
 	default:
 		return 0;
