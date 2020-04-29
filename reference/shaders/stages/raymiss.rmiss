@@ -1,0 +1,56 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+
+struct _7
+{
+    vec4 _m0;
+};
+
+layout(location = 0) rayPayloadInNV _7 payload;
+
+void main()
+{
+    payload._m0 = vec4(1.0, 2.0, 3.0, 4.0);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 21
+; Schema: 0
+OpCapability Shader
+OpCapability RayTracingProvisionalKHR
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint MissNV %3 "main"
+OpName %3 "main"
+OpName %7 ""
+OpName %9 "payload"
+OpDecorate %9 Location 0
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 4
+%7 = OpTypeStruct %6
+%8 = OpTypePointer IncomingRayPayloadNV %7
+%9 = OpVariable %8 IncomingRayPayloadNV
+%10 = OpTypePointer IncomingRayPayloadNV %6
+%12 = OpTypeInt 32 0
+%13 = OpConstant %12 0
+%14 = OpConstant %5 1
+%15 = OpConstant %5 2
+%16 = OpConstant %5 3
+%17 = OpConstant %5 4
+%18 = OpConstantComposite %6 %14 %15 %16 %17
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %19
+%19 = OpLabel
+%11 = OpInBoundsAccessChain %10 %9 %13
+OpStore %11 %18
+OpReturn
+OpFunctionEnd
+#endif

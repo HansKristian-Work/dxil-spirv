@@ -1732,7 +1732,7 @@ static bool execution_model_has_global_payload(spv::ExecutionModel model)
 	return model != spv::ExecutionModelRayGenerationKHR && execution_model_is_ray_tracing(model);
 }
 
-bool Converter::Impl::emit_global_payloads()
+bool Converter::Impl::emit_incoming_ray_payloads()
 {
 	auto &builder = spirv_module.get_builder();
 	auto &module = bitcode_parser.get_module();
@@ -1747,12 +1747,12 @@ bool Converter::Impl::emit_global_payloads()
 		auto *elem_type = arg.getType()->getPointerElementType();
 
 		// This is a POD. We'll emit that as a block containing the payload type.
-		spv::Id payload_var = builder.createVariable(spv::StorageClassRayPayloadKHR, get_type_id(elem_type), "payload");
+		spv::Id payload_var = builder.createVariable(spv::StorageClassIncomingRayPayloadKHR, get_type_id(elem_type), "payload");
 
 		// In RayGeneration shaders, we'll need to declare multiple different payload types.
 		builder.addDecoration(payload_var, spv::DecorationLocation, 0);
 
-		handle_to_storage_class[&arg] = spv::StorageClassRayPayloadKHR;
+		handle_to_storage_class[&arg] = spv::StorageClassIncomingRayPayloadKHR;
 		value_map[&arg] = payload_var;
 	}
 
@@ -1765,7 +1765,7 @@ bool Converter::Impl::emit_global_variables()
 	auto &builder = spirv_module.get_builder();
 
 	if (execution_model_has_global_payload(execution_model))
-		if (!emit_global_payloads())
+		if (!emit_incoming_ray_payloads())
 			return false;
 
 	for (auto itr = module.global_begin(); itr != module.global_end(); ++itr)

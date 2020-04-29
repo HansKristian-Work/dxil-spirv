@@ -79,7 +79,7 @@ struct Converter::Impl
 	bool emit_stage_output_variables();
 	bool emit_patch_variables();
 	bool emit_global_variables();
-	bool emit_global_payloads();
+	bool emit_incoming_ray_payloads();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;

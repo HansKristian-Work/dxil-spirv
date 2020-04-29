@@ -61,6 +61,18 @@ def get_sm(shader):
         return 'ds_6_0'
     elif ext == '.geom':
         return 'gs_6_0'
+    elif ext == '.rmiss':
+        return 'lib_6_3'
+    elif ext == '.rgen':
+        return 'lib_6_3'
+    elif ext == '.rhit':
+        return 'lib_6_3'
+    elif ext == '.rcall':
+        return 'lib_6_3'
+    elif ext == '.rany':
+        return 'lib_6_3'
+    elif ext == '.rclosest':
+        return 'lib_6_3'
     else:
         return ''
 
