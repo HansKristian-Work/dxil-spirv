@@ -1,0 +1,10 @@
+struct Payload
+{
+	float4 color;
+};
+
+[shader("closesthit")]
+void RayClosest(inout Payload payload, BuiltInTriangleIntersectionAttributes attr)
+{
+	payload.color = attr.barycentrics.xyxy;
+}
