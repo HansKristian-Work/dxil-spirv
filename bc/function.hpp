@@ -79,15 +79,15 @@ public:
 	const std::string &getName() const;
 
 	void set_basic_blocks(std::vector<BasicBlock *> basic_blocks);
-	std::vector<BasicBlock *>::const_iterator begin() const;
-	std::vector<BasicBlock *>::const_iterator end() const;
+	IteratorAdaptor<BasicBlock, std::vector<BasicBlock *>::const_iterator> begin() const;
+	IteratorAdaptor<BasicBlock, std::vector<BasicBlock *>::const_iterator> end() const;
 	FunctionType *getFunctionType() const;
 
 	BasicBlock &getEntryBlock() const;
 
 	void add_argument(Argument *arg);
-	std::vector<Argument *>::const_iterator arg_begin() const;
-	std::vector<Argument *>::const_iterator arg_end() const;
+	IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> arg_begin() const;
+	IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> arg_end() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 

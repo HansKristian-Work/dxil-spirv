@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <stddef.h>
+
 namespace LLVMBC
 {
 // An iterator adaptor which lets us receive reference types instead of pointer types.
@@ -53,6 +55,11 @@ struct IteratorAdaptor
 	bool operator!=(const IteratorAdaptor &other) const
 	{
 		return !(*this == other);
+	}
+
+	ptrdiff_t operator-(const IteratorAdaptor &other) const
+	{
+		return iter - other.iter;
 	}
 
 	Iter iter;

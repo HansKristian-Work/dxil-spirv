@@ -71,6 +71,7 @@ public:
 	unsigned getStructNumElements() const;
 	unsigned getIntegerBitWidth() const;
 	unsigned getAddressSpace() const;
+	unsigned getVectorNumElements() const;
 
 protected:
 	LLVMContext &context;

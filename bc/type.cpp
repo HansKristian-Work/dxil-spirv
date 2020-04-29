@@ -127,6 +127,12 @@ uint64_t Type::getArrayNumElements() const
 	return cast<ArrayType>(this)->elements;
 }
 
+unsigned Type::getVectorNumElements() const
+{
+	assert(type_id == TypeID::VectorTyID);
+	return cast<VectorType>(this)->getVectorSize();
+}
+
 Type *Type::getArrayElementType() const
 {
 	assert(type_id == TypeID::ArrayTyID);

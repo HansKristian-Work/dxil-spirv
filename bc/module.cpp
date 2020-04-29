@@ -609,11 +609,15 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 	case ConstantsRecord::DATA:
 	{
+		bool is_vector = false;
 		Type *element_type = nullptr;
 		if (isa<ArrayType>(get_constant_type()))
 			element_type = get_constant_type()->getArrayElementType();
 		else if (isa<VectorType>(get_constant_type()))
+		{
 			element_type = cast<VectorType>(get_constant_type())->getElementType();
+			is_vector = true;
+		}
 		else
 		{
 			LOGE("Unknown DATA type.\n");
@@ -640,7 +644,12 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			return false;
 		}
 
-		auto *value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
+		Value *value;
+		if (is_vector)
+			value = context->construct<ConstantDataVector>(get_constant_type(), std::move(constants));
+		else
+			value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
+
 		values.push_back(value);
 		break;
 	}

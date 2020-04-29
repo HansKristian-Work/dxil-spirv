@@ -49,12 +49,12 @@ FunctionType *Function::getFunctionType() const
 	return function_type;
 }
 
-std::vector<BasicBlock *>::const_iterator Function::begin() const
+IteratorAdaptor<BasicBlock, std::vector<BasicBlock *>::const_iterator> Function::begin() const
 {
 	return basic_blocks.begin();
 }
 
-std::vector<BasicBlock *>::const_iterator Function::end() const
+IteratorAdaptor<BasicBlock, std::vector<BasicBlock *>::const_iterator> Function::end() const
 {
 	return basic_blocks.end();
 }
@@ -69,12 +69,12 @@ void Function::add_argument(Argument *arg)
 	arguments.push_back(arg);
 }
 
-std::vector<Argument *>::const_iterator Function::arg_begin() const
+IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> Function::arg_begin() const
 {
 	return arguments.begin();
 }
 
-std::vector<Argument *>::const_iterator Function::arg_end() const
+IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> Function::arg_end() const
 {
 	return arguments.end();
 }

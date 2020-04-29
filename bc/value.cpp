@@ -69,6 +69,7 @@ bool Constant::is_base_of_value_kind(ValueKind kind)
 	case ValueKind::ConstantFP:
 	case ValueKind::ConstantInt:
 	case ValueKind::ConstantDataArray:
+	case ValueKind::ConstantDataVector:
 	case ValueKind::ConstantAggregateZero:
 	case ValueKind::ConstantBase:
 	case ValueKind::Undef:
@@ -261,6 +262,22 @@ unsigned ConstantDataArray::getNumElements() const
 }
 
 Constant *ConstantDataArray::getElementAsConstant(unsigned index) const
+{
+	return elements[index];
+}
+
+ConstantDataVector::ConstantDataVector(Type *type, std::vector<Constant *> elements_)
+	: Constant(type, ValueKind::ConstantDataVector)
+	, elements(std::move(elements_))
+{
+}
+
+unsigned ConstantDataVector::getNumElements() const
+{
+	return elements.size();
+}
+
+Constant *ConstantDataVector::getElementAsConstant(unsigned index) const
 {
 	return elements[index];
 }

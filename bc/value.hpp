@@ -34,6 +34,7 @@ enum class ValueKind
 	ConstantFP,
 	ConstantAggregateZero,
 	ConstantDataArray,
+	ConstantDataVector,
 	Undef,
 	UnaryOperator,
 	BinaryOperator,
@@ -195,6 +196,24 @@ public:
 		return ValueKind::ConstantDataArray;
 	}
 	ConstantDataArray(Type *type, std::vector<Constant *> elements);
+
+	unsigned getNumElements() const;
+	Constant *getElementAsConstant(unsigned index) const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
+private:
+	std::vector<Constant *> elements;
+};
+
+class ConstantDataVector : public Constant
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantDataVector;
+	}
+	ConstantDataVector(Type *type, std::vector<Constant *> elements);
 
 	unsigned getNumElements() const;
 	Constant *getElementAsConstant(unsigned index) const;

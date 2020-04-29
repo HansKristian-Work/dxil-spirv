@@ -978,16 +978,23 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		}
 		else
 		{
-			auto *array = llvm::cast<llvm::ConstantDataArray>(constant);
-			if (llvm::isa<llvm::ArrayType>(constant->getType()))
-				constituents.reserve(array->getType()->getArrayNumElements());
-			else
-				constituents.reserve(llvm::cast<llvm::VectorType>(array->getType())->getVectorSize());
-
-			for (unsigned i = 0; i < array->getNumElements(); i++)
+			if (auto *array = llvm::dyn_cast<llvm::ConstantDataArray>(constant))
 			{
-				llvm::Constant *c = array->getElementAsConstant(i);
-				constituents.push_back(get_id_for_constant(c, 0));
+				constituents.reserve(array->getType()->getArrayNumElements());
+				for (unsigned i = 0; i < array->getNumElements(); i++)
+				{
+					llvm::Constant *c = array->getElementAsConstant(i);
+					constituents.push_back(get_id_for_constant(c, 0));
+				}
+			}
+			else if (auto *vec = llvm::dyn_cast<llvm::ConstantDataVector>(constant))
+			{
+				constituents.reserve(vec->getType()->getVectorNumElements());
+				for (unsigned i = 0; i < vec->getNumElements(); i++)
+				{
+					llvm::Constant *c = vec->getElementAsConstant(i);
+					constituents.push_back(get_id_for_constant(c, 0));
+				}
 			}
 
 			return builder.makeCompositeConstant(type_id, constituents);
@@ -1044,10 +1051,10 @@ static llvm::MDNode *get_entry_point_meta(const llvm::Module &module)
 static llvm::Function *get_entry_point_function(const llvm::Module &module)
 {
 	auto *node = get_entry_point_meta(module);
-	const llvm::MDOperand *func_node = nullptr;
+	if (!node)
+		return nullptr;
 
-	if (node)
-		func_node = &node->getOperand(0);
+	auto &func_node = node->getOperand(0);
 
 	if (func_node)
 		return llvm::dyn_cast<llvm::Function>(llvm::cast<llvm::ConstantAsMetadata>(func_node)->getValue());
@@ -1055,7 +1062,7 @@ static llvm::Function *get_entry_point_function(const llvm::Module &module)
 		return nullptr;
 }
 
-static llvm::MDOperand *get_shader_property_tag(const llvm::Module &module, DXIL::ShaderPropertyTag tag)
+static const llvm::MDOperand *get_shader_property_tag(const llvm::Module &module, DXIL::ShaderPropertyTag tag)
 {
 	auto *func_meta = get_entry_point_meta(module);
 	if (func_meta && func_meta->getNumOperands() >= 5 && func_meta->getOperand(4))
@@ -1078,7 +1085,7 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module)
 			return spv::ExecutionModelMax;
 
 		auto shader_kind = static_cast<DXIL::ShaderKind>(
-		    llvm::cast<llvm::ConstantAsMetadata>(tag)->getValue()->getUniqueInteger().getZExtValue());
+		    llvm::cast<llvm::ConstantAsMetadata>(*tag)->getValue()->getUniqueInteger().getZExtValue());
 		switch (shader_kind)
 		{
 		case DXIL::ShaderKind::Pixel:
@@ -1174,7 +1181,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	case llvm::Type::TypeID::VectorTyID:
 	{
 		auto *vec_type = llvm::cast<llvm::VectorType>(type);
-		return builder.makeVectorType(get_type_id(vec_type->getElementType()), vec_type->getVectorSize());
+		return builder.makeVectorType(get_type_id(vec_type->getElementType()), vec_type->getVectorNumElements());
 	}
 
 	default:
@@ -2149,7 +2156,7 @@ bool Converter::Impl::emit_execution_modes_compute()
 	auto *num_threads_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::NumThreads);
 	if (num_threads_node)
 	{
-		auto *num_threads = llvm::cast<llvm::MDNode>(num_threads_node);
+		auto *num_threads = llvm::cast<llvm::MDNode>(*num_threads_node);
 		unsigned threads[3];
 		for (unsigned dim = 0; dim < 3; dim++)
 			threads[dim] = get_constant_metadata(num_threads, dim);
@@ -2170,7 +2177,7 @@ bool Converter::Impl::emit_execution_modes_pixel()
 	auto *flags_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::ShaderFlags);
 	if (flags_node)
 	{
-		auto flags = llvm::cast<llvm::ConstantAsMetadata>(flags_node)->getValue()->getUniqueInteger().getZExtValue();
+		auto flags = llvm::cast<llvm::ConstantAsMetadata>(*flags_node)->getValue()->getUniqueInteger().getZExtValue();
 		if (flags & DXIL::ShaderFlagEarlyDepthStencil)
 			builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeEarlyFragmentTests);
 	}
@@ -2187,7 +2194,7 @@ bool Converter::Impl::emit_execution_modes_domain()
 	auto *ds_state_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::DSState);
 	if (ds_state_node)
 	{
-		auto *arguments = llvm::cast<llvm::MDNode>(ds_state_node);
+		auto *arguments = llvm::cast<llvm::MDNode>(*ds_state_node);
 		auto domain = static_cast<DXIL::TessellatorDomain>(get_constant_metadata(arguments, 0));
 		auto *func = spirv_module.get_entry_function();
 
@@ -2227,7 +2234,7 @@ bool Converter::Impl::emit_execution_modes_hull()
 
 	if (hs_state_node)
 	{
-		auto *arguments = llvm::cast<llvm::MDNode>(hs_state_node);
+		auto *arguments = llvm::cast<llvm::MDNode>(*hs_state_node);
 
 		auto *patch_constant = llvm::cast<llvm::ConstantAsMetadata>(arguments->getOperand(0));
 		auto *patch_constant_value = patch_constant->getValue();
@@ -2326,7 +2333,7 @@ bool Converter::Impl::emit_execution_modes_geometry()
 
 	if (gs_state_node)
 	{
-		auto *arguments = llvm::cast<llvm::MDNode>(gs_state_node);
+		auto *arguments = llvm::cast<llvm::MDNode>(*gs_state_node);
 
 		auto input_primitive = static_cast<DXIL::InputPrimitive>(get_constant_metadata(arguments, 0));
 		unsigned max_vertex_count = get_constant_metadata(arguments, 1);
@@ -2637,9 +2644,9 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 
 bool Converter::Impl::analyze_uav_access_patterns(const llvm::Function *function)
 {
-	for (auto *bb : *function)
+	for (auto &bb : *function)
 	{
-		for (auto &inst : *bb)
+		for (auto &inst : bb)
 		{
 			auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst);
 			if (!call_inst)

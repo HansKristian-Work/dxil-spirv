@@ -77,6 +77,7 @@ struct StreamState
 	void append(AtomicCmpXchgInst *xchg, bool decl = false);
 	void append(ConstantAggregateZero *zero, bool decl = false);
 	void append(ConstantDataArray *data, bool decl = false);
+	void append(ConstantDataVector *vec, bool decl = false);
 
 	void append(MDOperand *md);
 	void append(NamedMDNode *md);
@@ -311,8 +312,8 @@ void StreamState::append(Function *func, bool decl)
 		if (func->begin() != func->end())
 		{
 			begin_scope();
-			for (auto *bb : *func)
-				append(bb, true);
+			for (auto &bb : *func)
+				append(&bb, true);
 			end_scope();
 		}
 	}
@@ -725,6 +726,18 @@ void StreamState::append(ConstantDataArray *arr, bool)
 	append("]");
 }
 
+void StreamState::append(ConstantDataVector *vec, bool)
+{
+	append("<");
+	for (unsigned i = 0; i < vec->getNumElements(); i++)
+	{
+		append(vec->getElementAsConstant(i));
+		if (i + 1 < vec->getNumElements())
+			append(", ");
+	}
+	append(">");
+}
+
 void StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
@@ -895,6 +908,8 @@ void StreamState::append(Value *value, bool decl)
 		return append(cast<ConstantAggregateZero>(value), decl);
 	case ValueKind::ConstantDataArray:
 		return append(cast<ConstantDataArray>(value), decl);
+	case ValueKind::ConstantDataVector:
+		return append(cast<ConstantDataVector>(value), decl);
 	case ValueKind::Switch:
 		return append(cast<SwitchInst>(value), decl);
 	case ValueKind::ShuffleVector:
