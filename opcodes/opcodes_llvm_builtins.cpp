@@ -524,4 +524,17 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 	impl.add(op);
 	return true;
 }
+
+bool emit_shufflevector_instruction(Converter::Impl &impl, const llvm::ShuffleVectorInst *inst)
+{
+	Operation *op = impl.allocate(spv::OpVectorShuffle, inst);
+	op->add_ids({ impl.get_id_for_value(inst->getOperand(0)), impl.get_id_for_value(inst->getOperand(1)) });
+
+	unsigned num_outputs = inst->getType()->getVectorNumElements();
+	for (unsigned i = 0; i < num_outputs; i++)
+		op->add_literal(inst->getMaskValue(i));
+
+	impl.add(op);
+	return true;
+}
 } // namespace dxil_spv

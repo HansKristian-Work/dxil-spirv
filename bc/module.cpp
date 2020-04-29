@@ -1405,7 +1405,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		auto *b = get_value(entry.ops[1]);
 		auto *shuf = get_value(entry.ops[2]);
 
-		auto *vec_type = VectorType::get(cast<ConstantDataArray>(shuf)->getNumElements(), cast<VectorType>(a->getType())->getElementType());
+		auto *vec_type = VectorType::get(cast<ConstantDataVector>(shuf)->getNumElements(), cast<VectorType>(a->getType())->getElementType());
 		auto *value = context->construct<ShuffleVectorInst>(vec_type, a, b, shuf);
 		if (!add_instruction(value))
 			return false;
