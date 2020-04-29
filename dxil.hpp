@@ -535,4 +535,24 @@ enum class SignedOpKind : uint8_t
 	Signed = 0,
 	Unsigned = 1
 };
+
+enum class ShaderKind
+{
+	Pixel = 0,
+	Vertex,
+	Geometry,
+	Hull,
+	Domain,
+	Compute,
+	Library,
+	RayGeneration,
+	Intersection,
+	AnyHit,
+	ClosestHit,
+	Miss,
+	Callable,
+	Mesh,
+	Amplification,
+	Invalid
+};
 } // namespace DXIL

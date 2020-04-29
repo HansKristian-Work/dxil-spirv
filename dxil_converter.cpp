@@ -1017,32 +1017,113 @@ spv::Id Converter::Impl::get_id_for_value(const llvm::Value *value, unsigned for
 	return ret;
 }
 
-static llvm::Function *get_entry_point_function(const llvm::Module &module)
+static llvm::MDNode *get_entry_point_meta(const llvm::Module &module)
 {
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
-	return llvm::dyn_cast<llvm::Function>(llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(0))->getValue());
+	unsigned num_entry_points = ep_meta->getNumOperands();
+	for (unsigned i = 0; i < num_entry_points; i++)
+	{
+		auto *node = ep_meta->getOperand(i);
+		if (node)
+		{
+			auto &func_node = node->getOperand(0);
+			if (func_node)
+				return node;
+		}
+	}
+
+	return nullptr;
+}
+
+static llvm::Function *get_entry_point_function(const llvm::Module &module)
+{
+	auto *node = get_entry_point_meta(module);
+	const llvm::MDOperand *func_node = nullptr;
+
+	if (node)
+		func_node = &node->getOperand(0);
+
+	if (func_node)
+		return llvm::dyn_cast<llvm::Function>(llvm::cast<llvm::ConstantAsMetadata>(func_node)->getValue());
+	else
+		return nullptr;
+}
+
+static llvm::MDOperand *get_shader_property_tag(const llvm::Module &module, DXIL::ShaderPropertyTag tag)
+{
+	auto *func_meta = get_entry_point_meta(module);
+	if (func_meta && func_meta->getNumOperands() >= 5 && func_meta->getOperand(4))
+	{
+		auto *tag_values = llvm::dyn_cast<llvm::MDNode>(func_meta->getOperand(4));
+		unsigned num_pairs = tag_values->getNumOperands() / 2;
+		for (unsigned i = 0; i < num_pairs; i++)
+			if (tag == static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i)))
+				return &tag_values->getOperand(2 * i + 1);
+	}
+
+	return nullptr;
 }
 
 static spv::ExecutionModel get_execution_model(const llvm::Module &module)
 {
-	auto *shader_model = module.getNamedMetadata("dx.shaderModel");
-	auto *shader_model_node = shader_model->getOperand(0);
-	auto model = llvm::cast<llvm::MDString>(shader_model_node->getOperand(0))->getString();
-	if (model == "vs")
-		return spv::ExecutionModelVertex;
-	else if (model == "ps")
-		return spv::ExecutionModelFragment;
-	else if (model == "hs")
-		return spv::ExecutionModelTessellationControl;
-	else if (model == "ds")
-		return spv::ExecutionModelTessellationEvaluation;
-	else if (model == "gs")
-		return spv::ExecutionModelGeometry;
-	else if (model == "cs")
-		return spv::ExecutionModelGLCompute;
+	if (auto *tag = get_shader_property_tag(module, DXIL::ShaderPropertyTag::ShaderKind))
+	{
+		if (!tag)
+			return spv::ExecutionModelMax;
+
+		auto shader_kind = static_cast<DXIL::ShaderKind>(
+		    llvm::cast<llvm::ConstantAsMetadata>(tag)->getValue()->getUniqueInteger().getZExtValue());
+		switch (shader_kind)
+		{
+		case DXIL::ShaderKind::Pixel:
+			return spv::ExecutionModelFragment;
+		case DXIL::ShaderKind::Vertex:
+			return spv::ExecutionModelVertex;
+		case DXIL::ShaderKind::Hull:
+			return spv::ExecutionModelTessellationControl;
+		case DXIL::ShaderKind::Domain:
+			return spv::ExecutionModelTessellationEvaluation;
+		case DXIL::ShaderKind::Geometry:
+			return spv::ExecutionModelGeometry;
+		case DXIL::ShaderKind::Compute:
+			return spv::ExecutionModelGLCompute;
+		case DXIL::ShaderKind::RayGeneration:
+			return spv::ExecutionModelRayGenerationKHR;
+		case DXIL::ShaderKind::Miss:
+			return spv::ExecutionModelMissKHR;
+		case DXIL::ShaderKind::ClosestHit:
+			return spv::ExecutionModelClosestHitKHR;
+		case DXIL::ShaderKind::Callable:
+			return spv::ExecutionModelCallableKHR;
+		case DXIL::ShaderKind::AnyHit:
+			return spv::ExecutionModelAnyHitKHR;
+		case DXIL::ShaderKind::Intersection:
+			return spv::ExecutionModelIntersectionKHR;
+		default:
+			break;
+		}
+	}
 	else
-		return spv::ExecutionModelMax;
+	{
+		// Non-RT shaders tend to rely on having the shader model set in the shaderModel meta node.
+		auto *shader_model = module.getNamedMetadata("dx.shaderModel");
+		auto *shader_model_node = shader_model->getOperand(0);
+		auto model = llvm::cast<llvm::MDString>(shader_model_node->getOperand(0))->getString();
+		if (model == "vs")
+			return spv::ExecutionModelVertex;
+		else if (model == "ps")
+			return spv::ExecutionModelFragment;
+		else if (model == "hs")
+			return spv::ExecutionModelTessellationControl;
+		else if (model == "ds")
+			return spv::ExecutionModelTessellationEvaluation;
+		else if (model == "gs")
+			return spv::ExecutionModelGeometry;
+		else if (model == "cs")
+			return spv::ExecutionModelGLCompute;
+	}
+
+	return spv::ExecutionModelMax;
 }
 
 spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
@@ -1988,28 +2069,18 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 bool Converter::Impl::emit_execution_modes_compute()
 {
 	auto &module = bitcode_parser.get_module();
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
 	auto &builder = spirv_module.get_builder();
 
-	if (node->getOperand(4))
+	auto *num_threads_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::NumThreads);
+	if (num_threads_node)
 	{
-		auto *tag_values = llvm::cast<llvm::MDNode>(node->getOperand(4));
-		unsigned num_pairs = tag_values->getNumOperands() / 2;
-		for (unsigned i = 0; i < num_pairs; i++)
-		{
-			auto tag = static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i));
-			if (tag == DXIL::ShaderPropertyTag::NumThreads)
-			{
-				auto *num_threads = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
-				unsigned threads[3];
-				for (unsigned dim = 0; dim < 3; dim++)
-					threads[dim] = get_constant_metadata(num_threads, dim);
+		auto *num_threads = llvm::cast<llvm::MDNode>(num_threads_node);
+		unsigned threads[3];
+		for (unsigned dim = 0; dim < 3; dim++)
+			threads[dim] = get_constant_metadata(num_threads, dim);
 
-				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize, threads[0],
-				                         threads[1], threads[2]);
-			}
-		}
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize, threads[0], threads[1],
+		                         threads[2]);
 		return true;
 	}
 	else
@@ -2019,72 +2090,53 @@ bool Converter::Impl::emit_execution_modes_compute()
 bool Converter::Impl::emit_execution_modes_pixel()
 {
 	auto &module = bitcode_parser.get_module();
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
 	auto &builder = spirv_module.get_builder();
 
-	if (node->getOperand(4))
+	auto *flags_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::ShaderFlags);
+	if (flags_node)
 	{
-		auto *tag_values = llvm::cast<llvm::MDNode>(node->getOperand(4));
-		unsigned num_pairs = tag_values->getNumOperands() / 2;
-		for (unsigned i = 0; i < num_pairs; i++)
-		{
-			auto tag = static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i));
-			if (tag == DXIL::ShaderPropertyTag::ShaderFlags)
-			{
-				auto flags = get_constant_metadata<uint64_t>(tag_values, 2 * i + 1);
-				if (flags & DXIL::ShaderFlagEarlyDepthStencil)
-					builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeEarlyFragmentTests);
-			}
-		}
+		auto flags = llvm::cast<llvm::ConstantAsMetadata>(flags_node)->getValue()->getUniqueInteger().getZExtValue();
+		if (flags & DXIL::ShaderFlagEarlyDepthStencil)
+			builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeEarlyFragmentTests);
 	}
+
 	return true;
 }
 
 bool Converter::Impl::emit_execution_modes_domain()
 {
 	auto &module = bitcode_parser.get_module();
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityTessellation);
 
-	if (node->getOperand(4))
+	auto *ds_state_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::DSState);
+	if (ds_state_node)
 	{
-		auto *tag_values = llvm::cast<llvm::MDNode>(node->getOperand(4));
-		unsigned num_pairs = tag_values->getNumOperands() / 2;
-		for (unsigned i = 0; i < num_pairs; i++)
+		auto *arguments = llvm::cast<llvm::MDNode>(ds_state_node);
+		auto domain = static_cast<DXIL::TessellatorDomain>(get_constant_metadata(arguments, 0));
+		auto *func = spirv_module.get_entry_function();
+
+		switch (domain)
 		{
-			auto tag = static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i));
-			if (tag == DXIL::ShaderPropertyTag::DSState)
-			{
-				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
-				auto domain = static_cast<DXIL::TessellatorDomain>(get_constant_metadata(arguments, 0));
-				auto *func = spirv_module.get_entry_function();
+		case DXIL::TessellatorDomain::IsoLine:
+			builder.addExecutionMode(func, spv::ExecutionModeIsolines);
+			break;
 
-				switch (domain)
-				{
-				case DXIL::TessellatorDomain::IsoLine:
-					builder.addExecutionMode(func, spv::ExecutionModeIsolines);
-					break;
+		case DXIL::TessellatorDomain::Tri:
+			builder.addExecutionMode(func, spv::ExecutionModeTriangles);
+			break;
 
-				case DXIL::TessellatorDomain::Tri:
-					builder.addExecutionMode(func, spv::ExecutionModeTriangles);
-					break;
+		case DXIL::TessellatorDomain::Quad:
+			builder.addExecutionMode(func, spv::ExecutionModeQuads);
+			break;
 
-				case DXIL::TessellatorDomain::Quad:
-					builder.addExecutionMode(func, spv::ExecutionModeQuads);
-					break;
-
-				default:
-					LOGE("Unknown tessellator domain!\n");
-					return false;
-				}
-
-				unsigned input_control_points = get_constant_metadata(arguments, 1);
-				execution_mode_meta.stage_input_num_vertex = input_control_points;
-			}
+		default:
+			LOGE("Unknown tessellator domain!\n");
+			return false;
 		}
+
+		unsigned input_control_points = get_constant_metadata(arguments, 1);
+		execution_mode_meta.stage_input_num_vertex = input_control_points;
 		return true;
 	}
 	else
@@ -2094,106 +2146,96 @@ bool Converter::Impl::emit_execution_modes_domain()
 bool Converter::Impl::emit_execution_modes_hull()
 {
 	auto &module = bitcode_parser.get_module();
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityTessellation);
+	auto *hs_state_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::HSState);
 
-	if (node->getOperand(4))
+	if (hs_state_node)
 	{
-		auto *tag_values = llvm::cast<llvm::MDNode>(node->getOperand(4));
-		unsigned num_pairs = tag_values->getNumOperands() / 2;
-		for (unsigned i = 0; i < num_pairs; i++)
+		auto *arguments = llvm::cast<llvm::MDNode>(hs_state_node);
+
+		auto *patch_constant = llvm::cast<llvm::ConstantAsMetadata>(arguments->getOperand(0));
+		auto *patch_constant_value = patch_constant->getValue();
+		execution_mode_meta.patch_constant_function = llvm::cast<llvm::Function>(patch_constant_value);
+
+		unsigned input_control_points = get_constant_metadata(arguments, 1);
+		unsigned output_control_points = get_constant_metadata(arguments, 2);
+		auto domain = static_cast<DXIL::TessellatorDomain>(get_constant_metadata(arguments, 3));
+		auto partitioning = static_cast<DXIL::TessellatorPartitioning>(get_constant_metadata(arguments, 4));
+		auto primitive = static_cast<DXIL::TessellatorOutputPrimitive>(get_constant_metadata(arguments, 5));
+
+		auto *func = spirv_module.get_entry_function();
+
+		switch (domain)
 		{
-			auto tag = static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i));
-			if (tag == DXIL::ShaderPropertyTag::HSState)
-			{
-				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
+		case DXIL::TessellatorDomain::IsoLine:
+			builder.addExecutionMode(func, spv::ExecutionModeIsolines);
+			break;
 
-				auto *patch_constant = llvm::cast<llvm::ConstantAsMetadata>(arguments->getOperand(0));
-				auto *patch_constant_value = patch_constant->getValue();
-				execution_mode_meta.patch_constant_function = llvm::cast<llvm::Function>(patch_constant_value);
+		case DXIL::TessellatorDomain::Tri:
+			builder.addExecutionMode(func, spv::ExecutionModeTriangles);
+			break;
 
-				unsigned input_control_points = get_constant_metadata(arguments, 1);
-				unsigned output_control_points = get_constant_metadata(arguments, 2);
-				auto domain = static_cast<DXIL::TessellatorDomain>(get_constant_metadata(arguments, 3));
-				auto partitioning = static_cast<DXIL::TessellatorPartitioning>(get_constant_metadata(arguments, 4));
-				auto primitive = static_cast<DXIL::TessellatorOutputPrimitive>(get_constant_metadata(arguments, 5));
+		case DXIL::TessellatorDomain::Quad:
+			builder.addExecutionMode(func, spv::ExecutionModeQuads);
+			break;
 
-				auto *func = spirv_module.get_entry_function();
-
-				switch (domain)
-				{
-				case DXIL::TessellatorDomain::IsoLine:
-					builder.addExecutionMode(func, spv::ExecutionModeIsolines);
-					break;
-
-				case DXIL::TessellatorDomain::Tri:
-					builder.addExecutionMode(func, spv::ExecutionModeTriangles);
-					break;
-
-				case DXIL::TessellatorDomain::Quad:
-					builder.addExecutionMode(func, spv::ExecutionModeQuads);
-					break;
-
-				default:
-					LOGE("Unknown tessellator domain!\n");
-					return false;
-				}
-
-				switch (partitioning)
-				{
-				case DXIL::TessellatorPartitioning::Integer:
-					builder.addExecutionMode(func, spv::ExecutionModeSpacingEqual);
-					break;
-
-				case DXIL::TessellatorPartitioning::Pow2:
-					LOGE("Emulating Pow2 spacing as Integer.\n");
-					builder.addExecutionMode(func, spv::ExecutionModeSpacingEqual);
-					break;
-
-				case DXIL::TessellatorPartitioning::FractionalEven:
-					builder.addExecutionMode(func, spv::ExecutionModeSpacingFractionalEven);
-					break;
-
-				case DXIL::TessellatorPartitioning::FractionalOdd:
-					builder.addExecutionMode(func, spv::ExecutionModeSpacingFractionalOdd);
-					break;
-
-				default:
-					LOGE("Unknown tessellator partitioning.\n");
-					return false;
-				}
-
-				switch (primitive)
-				{
-				case DXIL::TessellatorOutputPrimitive::TriangleCCW:
-					builder.addExecutionMode(func, spv::ExecutionModeVertexOrderCcw);
-					break;
-
-				case DXIL::TessellatorOutputPrimitive::TriangleCW:
-					builder.addExecutionMode(func, spv::ExecutionModeVertexOrderCw);
-					break;
-
-				case DXIL::TessellatorOutputPrimitive::Point:
-					builder.addExecutionMode(func, spv::ExecutionModePointMode);
-					// TODO: Do we have to specify CCW/CW in point mode?
-					break;
-
-				case DXIL::TessellatorOutputPrimitive::Line:
-					break;
-
-				default:
-					LOGE("Unknown tessellator primitive.\n");
-					return false;
-				}
-
-				builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, output_control_points);
-
-				execution_mode_meta.stage_input_num_vertex = input_control_points;
-				execution_mode_meta.stage_output_num_vertex = output_control_points;
-			}
+		default:
+			LOGE("Unknown tessellator domain!\n");
+			return false;
 		}
+
+		switch (partitioning)
+		{
+		case DXIL::TessellatorPartitioning::Integer:
+			builder.addExecutionMode(func, spv::ExecutionModeSpacingEqual);
+			break;
+
+		case DXIL::TessellatorPartitioning::Pow2:
+			LOGE("Emulating Pow2 spacing as Integer.\n");
+			builder.addExecutionMode(func, spv::ExecutionModeSpacingEqual);
+			break;
+
+		case DXIL::TessellatorPartitioning::FractionalEven:
+			builder.addExecutionMode(func, spv::ExecutionModeSpacingFractionalEven);
+			break;
+
+		case DXIL::TessellatorPartitioning::FractionalOdd:
+			builder.addExecutionMode(func, spv::ExecutionModeSpacingFractionalOdd);
+			break;
+
+		default:
+			LOGE("Unknown tessellator partitioning.\n");
+			return false;
+		}
+
+		switch (primitive)
+		{
+		case DXIL::TessellatorOutputPrimitive::TriangleCCW:
+			builder.addExecutionMode(func, spv::ExecutionModeVertexOrderCcw);
+			break;
+
+		case DXIL::TessellatorOutputPrimitive::TriangleCW:
+			builder.addExecutionMode(func, spv::ExecutionModeVertexOrderCw);
+			break;
+
+		case DXIL::TessellatorOutputPrimitive::Point:
+			builder.addExecutionMode(func, spv::ExecutionModePointMode);
+			// TODO: Do we have to specify CCW/CW in point mode?
+			break;
+
+		case DXIL::TessellatorOutputPrimitive::Line:
+			break;
+
+		default:
+			LOGE("Unknown tessellator primitive.\n");
+			return false;
+		}
+
+		builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, output_control_points);
+
+		execution_mode_meta.stage_input_num_vertex = input_control_points;
+		execution_mode_meta.stage_output_num_vertex = output_control_points;
 		return true;
 	}
 	else
@@ -2203,86 +2245,76 @@ bool Converter::Impl::emit_execution_modes_hull()
 bool Converter::Impl::emit_execution_modes_geometry()
 {
 	auto &module = bitcode_parser.get_module();
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityGeometry);
+	auto *gs_state_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::GSState);
 
-	if (node->getOperand(4))
+	if (gs_state_node)
 	{
-		auto *tag_values = llvm::cast<llvm::MDNode>(node->getOperand(4));
-		unsigned num_pairs = tag_values->getNumOperands() / 2;
-		for (unsigned i = 0; i < num_pairs; i++)
+		auto *arguments = llvm::cast<llvm::MDNode>(gs_state_node);
+
+		auto input_primitive = static_cast<DXIL::InputPrimitive>(get_constant_metadata(arguments, 0));
+		unsigned max_vertex_count = get_constant_metadata(arguments, 1);
+
+		auto *func = spirv_module.get_entry_function();
+
+		auto topology = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, 3));
+		unsigned gs_instances = get_constant_metadata(arguments, 4);
+
+		execution_mode_meta.gs_stream_active_mask = get_constant_metadata(arguments, 2);
+
+		builder.addExecutionMode(func, spv::ExecutionModeInvocations, gs_instances);
+		builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
+
+		switch (input_primitive)
 		{
-			auto tag = static_cast<DXIL::ShaderPropertyTag>(get_constant_metadata(tag_values, 2 * i));
-			if (tag == DXIL::ShaderPropertyTag::GSState)
-			{
-				auto *arguments = llvm::cast<llvm::MDNode>(tag_values->getOperand(2 * i + 1));
+		case DXIL::InputPrimitive::Point:
+			builder.addExecutionMode(func, spv::ExecutionModeInputPoints);
+			execution_mode_meta.stage_input_num_vertex = 1;
+			break;
 
-				auto input_primitive = static_cast<DXIL::InputPrimitive>(get_constant_metadata(arguments, 0));
-				unsigned max_vertex_count = get_constant_metadata(arguments, 1);
+		case DXIL::InputPrimitive::Line:
+			builder.addExecutionMode(func, spv::ExecutionModeInputLines);
+			execution_mode_meta.stage_input_num_vertex = 2;
+			break;
 
-				auto *func = spirv_module.get_entry_function();
+		case DXIL::InputPrimitive::LineWithAdjacency:
+			builder.addExecutionMode(func, spv::ExecutionModeInputLinesAdjacency);
+			execution_mode_meta.stage_input_num_vertex = 4;
+			break;
 
-				auto topology = static_cast<DXIL::PrimitiveTopology>(get_constant_metadata(arguments, 3));
-				unsigned gs_instances = get_constant_metadata(arguments, 4);
+		case DXIL::InputPrimitive::Triangle:
+			builder.addExecutionMode(func, spv::ExecutionModeTriangles);
+			execution_mode_meta.stage_input_num_vertex = 3;
+			break;
 
-				execution_mode_meta.gs_stream_active_mask = get_constant_metadata(arguments, 2);
+		case DXIL::InputPrimitive::TriangleWithAdjaceny:
+			builder.addExecutionMode(func, spv::ExecutionModeInputTrianglesAdjacency);
+			execution_mode_meta.stage_input_num_vertex = 6;
+			break;
 
-				builder.addExecutionMode(func, spv::ExecutionModeInvocations, gs_instances);
-				builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
+		default:
+			LOGE("Unexpected input primitive (%u).\n", unsigned(input_primitive));
+			return false;
+		}
 
-				switch (input_primitive)
-				{
-				case DXIL::InputPrimitive::Point:
-					builder.addExecutionMode(func, spv::ExecutionModeInputPoints);
-					execution_mode_meta.stage_input_num_vertex = 1;
-					break;
+		switch (topology)
+		{
+		case DXIL::PrimitiveTopology::PointList:
+			builder.addExecutionMode(func, spv::ExecutionModeOutputPoints);
+			break;
 
-				case DXIL::InputPrimitive::Line:
-					builder.addExecutionMode(func, spv::ExecutionModeInputLines);
-					execution_mode_meta.stage_input_num_vertex = 2;
-					break;
+		case DXIL::PrimitiveTopology::LineStrip:
+			builder.addExecutionMode(func, spv::ExecutionModeOutputLineStrip);
+			break;
 
-				case DXIL::InputPrimitive::LineWithAdjacency:
-					builder.addExecutionMode(func, spv::ExecutionModeInputLinesAdjacency);
-					execution_mode_meta.stage_input_num_vertex = 4;
-					break;
+		case DXIL::PrimitiveTopology::TriangleStrip:
+			builder.addExecutionMode(func, spv::ExecutionModeOutputTriangleStrip);
+			break;
 
-				case DXIL::InputPrimitive::Triangle:
-					builder.addExecutionMode(func, spv::ExecutionModeTriangles);
-					execution_mode_meta.stage_input_num_vertex = 3;
-					break;
-
-				case DXIL::InputPrimitive::TriangleWithAdjaceny:
-					builder.addExecutionMode(func, spv::ExecutionModeInputTrianglesAdjacency);
-					execution_mode_meta.stage_input_num_vertex = 6;
-					break;
-
-				default:
-					LOGE("Unexpected input primitive (%u).\n", unsigned(input_primitive));
-					return false;
-				}
-
-				switch (topology)
-				{
-				case DXIL::PrimitiveTopology::PointList:
-					builder.addExecutionMode(func, spv::ExecutionModeOutputPoints);
-					break;
-
-				case DXIL::PrimitiveTopology::LineStrip:
-					builder.addExecutionMode(func, spv::ExecutionModeOutputLineStrip);
-					break;
-
-				case DXIL::PrimitiveTopology::TriangleStrip:
-					builder.addExecutionMode(func, spv::ExecutionModeOutputTriangleStrip);
-					break;
-
-				default:
-					LOGE("Unexpected output primitive topology (%u).\n", unsigned(topology));
-					return false;
-				}
-			}
+		default:
+			LOGE("Unexpected output primitive topology (%u).\n", unsigned(topology));
+			return false;
 		}
 		return true;
 	}
