@@ -64,6 +64,21 @@ BasicBlock &Function::getEntryBlock() const
 	return *basic_blocks.front();
 }
 
+void Function::add_argument(Argument *arg)
+{
+	arguments.push_back(arg);
+}
+
+std::vector<Argument *>::const_iterator Function::arg_begin() const
+{
+	return arguments.begin();
+}
+
+std::vector<Argument *>::const_iterator Function::arg_end() const
+{
+	return arguments.end();
+}
+
 BasicBlock::BasicBlock(LLVMContext &context_)
     : Value(Type::getLabelTy(context_), ValueKind::BasicBlock)
     , context(context_)

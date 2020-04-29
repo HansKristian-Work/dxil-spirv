@@ -85,6 +85,10 @@ public:
 
 	BasicBlock &getEntryBlock() const;
 
+	void add_argument(Argument *arg);
+	std::vector<Argument *>::const_iterator arg_begin() const;
+	std::vector<Argument *>::const_iterator arg_end() const;
+
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
@@ -92,5 +96,6 @@ private:
 	uint64_t value_id;
 	FunctionType *function_type;
 	std::vector<BasicBlock *> basic_blocks;
+	std::vector<Argument *> arguments;
 };
 } // namespace LLVMBC

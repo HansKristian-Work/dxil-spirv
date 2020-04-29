@@ -1494,7 +1494,9 @@ bool ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	for (unsigned i = 0; i < func_type->getNumParams(); i++)
 	{
 		auto *param_type = func_type->getParamType(i);
-		add_value(context->construct<Argument>(param_type, i));
+		auto *arg = context->construct<Argument>(param_type, i);
+		function->add_argument(arg);
+		add_value(arg);
 	}
 
 	for (auto &child : entry.children)
