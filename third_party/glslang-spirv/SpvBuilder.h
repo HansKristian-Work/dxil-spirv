@@ -124,6 +124,7 @@ public:
     Id makeRuntimeArray(Id element);
     Id makeFunctionType(Id returnType, const std::vector<Id>& paramTypes);
     Id makeImageType(Id sampledType, Dim, bool depth, bool arrayed, bool ms, unsigned sampled, ImageFormat format);
+    Id makeAccelerationStructureType();
     Id makeSamplerType();
     Id makeSampledImageType(Id imageType);
 
@@ -641,6 +642,7 @@ protected:
      // not output, internally used for quick & dirty canonical (unique) creation
     std::vector<Instruction*> groupedConstants[OpConstant];  // all types appear before OpConstant
     std::vector<Instruction*> groupedTypes[OpConstant];
+    Instruction *acceleration_structure_type = nullptr;
 
     // stack of switches
     std::stack<Block*> switchMerges;

@@ -150,6 +150,21 @@ Id Builder::makeSamplerType()
     return type->getResultId();
 }
 
+Id Builder::makeAccelerationStructureType()
+{
+    Instruction* type;
+    if (!acceleration_structure_type)
+    {
+        type = new Instruction(getUniqueId(), NoType, OpTypeAccelerationStructureKHR);
+        acceleration_structure_type = type;
+        constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
+        module.mapInstruction(type);
+    } else
+        type = acceleration_structure_type;
+
+    return type->getResultId();
+}
+
 Id Builder::makePointer(StorageClass storageClass, Id pointee)
 {
     // try to find it
