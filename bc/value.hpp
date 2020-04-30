@@ -237,7 +237,7 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 
-class GlobalVariable : public Value
+class GlobalVariable : public Constant
 {
 public:
 	static constexpr ValueKind get_value_kind()

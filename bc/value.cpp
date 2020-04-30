@@ -74,6 +74,7 @@ bool Constant::is_base_of_value_kind(ValueKind kind)
 	case ValueKind::ConstantBase:
 	case ValueKind::Undef:
 	case ValueKind::Function:
+	case ValueKind::Global:
 		return true;
 
 	default:
@@ -283,7 +284,7 @@ Constant *ConstantDataVector::getElementAsConstant(unsigned index) const
 }
 
 GlobalVariable::GlobalVariable(Type *type, bool is_const_)
-    : Value(type, ValueKind::Global)
+    : Constant(type, ValueKind::Global)
     , is_const(is_const_)
 {
 }
