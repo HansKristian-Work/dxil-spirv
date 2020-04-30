@@ -537,4 +537,23 @@ bool emit_shufflevector_instruction(Converter::Impl &impl, const llvm::ShuffleVe
 	impl.add(op);
 	return true;
 }
+
+bool emit_extractelement_instruction(Converter::Impl &impl, const llvm::ExtractElementInst *inst)
+{
+	if (auto *constant_int = llvm::dyn_cast<llvm::ConstantInt>(inst->getIndexOperand()))
+	{
+		Operation *op = impl.allocate(spv::OpCompositeExtract, inst);
+		op->add_id(impl.get_id_for_value(inst->getVectorOperand()));
+		op->add_literal(uint32_t(constant_int->getUniqueInteger().getZExtValue()));
+		impl.add(op);
+	}
+	else
+	{
+		Operation *op = impl.allocate(spv::OpVectorExtractDynamic, inst);
+		op->add_id(impl.get_id_for_value(inst->getVectorOperand()));
+		op->add_id(impl.get_id_for_value(inst->getIndexOperand()));
+		impl.add(op);
+	}
+	return true;
+}
 } // namespace dxil_spv

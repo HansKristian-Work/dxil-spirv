@@ -35,4 +35,5 @@ bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *inst
 bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction);
 bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgInst *instruction);
 bool emit_shufflevector_instruction(Converter::Impl &impl, const llvm::ShuffleVectorInst *instruction);
+bool emit_extractelement_instruction(Converter::Impl &impl, const llvm::ExtractElementInst *instruction);
 } // namespace dxil_spv

@@ -510,8 +510,8 @@ public:
 		return ValueKind::ExtractElement;
 	}
 	ExtractElementInst(Value *vec, Value *offset);
-	Value *getVectorOperand();
-	Value *getIndexOperand();
+	Value *getVectorOperand() const;
+	Value *getIndexOperand() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 

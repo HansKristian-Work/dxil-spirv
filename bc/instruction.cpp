@@ -451,12 +451,12 @@ ExtractElementInst::ExtractElementInst(Value *vec_, Value *index_)
 {
 }
 
-Value *ExtractElementInst::getVectorOperand()
+Value *ExtractElementInst::getVectorOperand() const
 {
 	return vec;
 }
 
-Value *ExtractElementInst::getIndexOperand()
+Value *ExtractElementInst::getIndexOperand() const
 {
 	return index;
 }
