@@ -528,7 +528,9 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 
 static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_image_id,
                                           const Converter::Impl::ResourceReference &reference,
-                                          const llvm::CallInst *instruction, bool &is_non_uniform,
+                                          const llvm::CallInst *instruction,
+                                          llvm::Value *instruction_offset_value, bool instruction_is_non_uniform,
+                                          bool &is_non_uniform,
                                           spv::Id *ptr_id = nullptr)
 {
 	auto &builder = impl.builder();
@@ -540,13 +542,8 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 
 	if (reference.base_resource_is_array || reference.bindless)
 	{
-		uint32_t non_uniform = 0;
 		if (reference.base_resource_is_array)
-		{
-			if (!get_constant_operand(instruction, 4, &non_uniform))
-				return 0;
-			is_non_uniform = non_uniform != 0;
-		}
+			is_non_uniform = instruction_is_non_uniform;
 
 		type_id = builder.getContainedTypeId(type_id);
 		Operation *op =
@@ -556,18 +553,18 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 		if (reference.bindless)
 		{
 			spv::Id offset_id = build_bindless_heap_offset(
-			    impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+			    impl, reference, reference.base_resource_is_array ? instruction_offset_value : nullptr);
 
 			if (offset_id == 0)
 				return 0;
 			op->add_id(offset_id);
 		}
 		else
-			op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+			op->add_id(impl.get_id_for_value(instruction_offset_value));
 
 		// Some compilers require the index to be marked as NonUniformEXT, even if it not required by Vulkan spec.
 		if (is_non_uniform)
-			builder.addDecoration(impl.get_id_for_value(instruction->getOperand(3)), spv::DecorationNonUniformEXT);
+			builder.addDecoration(impl.get_id_for_value(instruction_offset_value), spv::DecorationNonUniformEXT);
 
 		impl.add(op);
 		image_id = op->id;
@@ -587,18 +584,11 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 	return op->id;
 }
 
-bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *instruction,
+                               DXIL::ResourceType resource_type, unsigned resource_range,
+                               llvm::Value *instruction_offset, bool non_uniform)
 {
 	auto &builder = impl.builder();
-	uint32_t resource_type_operand, resource_range;
-
-	if (!get_constant_operand(instruction, 1, &resource_type_operand))
-		return false;
-	if (!get_constant_operand(instruction, 2, &resource_range))
-		return false;
-
-	auto resource_type = static_cast<DXIL::ResourceType>(resource_type_operand);
-
 	switch (resource_type)
 	{
 	case DXIL::ResourceType::SRV:
@@ -608,7 +598,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 		spv::Id image_id = base_image_id;
 
 		bool is_non_uniform = false;
-		spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction, is_non_uniform);
+		spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction,
+		                                               instruction_offset, non_uniform, is_non_uniform);
 
 		if (!loaded_id)
 		{
@@ -654,7 +645,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 		bool is_non_uniform = false;
 		spv::Id image_ptr_id = 0;
 		spv::Id loaded_id =
-		    build_load_resource_handle(impl, base_image_id, reference, instruction, is_non_uniform, &image_ptr_id);
+			build_load_resource_handle(impl, base_image_id, reference, instruction,
+			                           instruction_offset, non_uniform, is_non_uniform, &image_ptr_id);
 
 		if (!loaded_id)
 		{
@@ -731,7 +723,7 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 			if (reference.bindless)
 			{
 				spv::Id offset_id = build_bindless_heap_offset(
-				    impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+					impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
 				if (!offset_id)
 				{
 					LOGE("Failed to load CBV bindless offset.\n");
@@ -780,7 +772,8 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 		spv::Id base_sampler_id = reference.var_id;
 
 		bool is_non_uniform = false;
-		spv::Id loaded_id = build_load_resource_handle(impl, base_sampler_id, reference, instruction, is_non_uniform);
+		spv::Id loaded_id = build_load_resource_handle(impl, base_sampler_id, reference, instruction,
+		                                               instruction_offset, non_uniform, is_non_uniform);
 
 		if (!loaded_id)
 		{
@@ -805,6 +798,32 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 	}
 
 	return true;
+}
+
+bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getOperand(1));
+	if (itr == impl.llvm_global_variable_to_resource_mapping.end())
+		return false;
+
+	return emit_create_handle(impl, instruction, itr->second.type, itr->second.meta_index, itr->second.offset, true);
+}
+
+bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	uint32_t resource_type_operand, resource_range;
+
+	if (!get_constant_operand(instruction, 1, &resource_type_operand))
+		return false;
+	if (!get_constant_operand(instruction, 2, &resource_range))
+		return false;
+
+	uint32_t non_uniform = 0;
+	get_constant_operand(instruction, 4, &non_uniform);
+
+	auto resource_type = static_cast<DXIL::ResourceType>(resource_type_operand);
+	return emit_create_handle(impl, instruction, resource_type, resource_range,
+	                          instruction->getOperand(3), non_uniform != 0);
 }
 
 static bool emit_cbuffer_load_legacy_instruction_root_constant(Converter::Impl &impl, const llvm::CallInst *instruction)

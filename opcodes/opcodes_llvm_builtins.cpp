@@ -203,17 +203,19 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 
 	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(0));
-	spv::StorageClass storage_class = builder.getStorageClass(ptr_id);
 	spv::Id type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
 
 	auto storage_class_itr = impl.handle_to_storage_class.find(instruction->getOperand(0));
+	spv::StorageClass storage_class;
 	if (storage_class_itr != impl.handle_to_storage_class.end())
 		storage_class = storage_class_itr->second;
+	else
+		storage_class = builder.getStorageClass(ptr_id);
+
 	type_id = builder.makePointer(storage_class, type_id);
 
 	Operation *op = impl.allocate(instruction->isInBounds() ? spv::OpInBoundsAccessChain : spv::OpAccessChain,
 	                              instruction, type_id);
-
 
 	op->add_id(ptr_id);
 
@@ -243,10 +245,19 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 
 bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
-	Operation *op = impl.allocate(spv::OpLoad, instruction);
-	op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
+	auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getPointerOperand());
 
-	impl.add(op);
+	// If we are trying to load a resource in RT, this does not translate in SPIR-V, defer this to createHandleForLib.
+	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
+	{
+		impl.llvm_global_variable_to_resource_mapping[instruction] = itr->second;
+	}
+	else
+	{
+		Operation *op = impl.allocate(spv::OpLoad, instruction);
+		op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
+		impl.add(op);
+	}
 	return true;
 }
 
@@ -415,8 +426,19 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	spv::Id var_id = impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id);
-	impl.value_map[instruction] = var_id;
+	auto payload_itr = impl.llvm_values_to_payload_location.find(instruction);
+	if (payload_itr != impl.llvm_values_to_payload_location.end())
+	{
+		spv::Id var_id = impl.builder().createVariable(spv::StorageClassRayPayloadKHR, pointee_type_id);
+		impl.handle_to_storage_class[instruction] = spv::StorageClassRayPayloadKHR;
+		impl.value_map[instruction] = var_id;
+		impl.builder().addDecoration(var_id, spv::DecorationLocation, payload_itr->second);
+	}
+	else
+	{
+		spv::Id var_id = impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id);
+		impl.value_map[instruction] = var_id;
+	}
 	return true;
 }
 

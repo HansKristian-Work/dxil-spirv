@@ -29,6 +29,7 @@
 #include "opcodes/dxil/dxil_sampling.hpp"
 #include "opcodes/dxil/dxil_tessellation.hpp"
 #include "opcodes/dxil/dxil_waveops.hpp"
+#include "opcodes/dxil/dxil_ray_tracing.hpp"
 
 namespace dxil_spv
 {
@@ -43,6 +44,7 @@ struct DXILDispatcher
 		OP(LoadInput) = emit_load_input_instruction;
 		OP(StoreOutput) = emit_store_output_instruction;
 		OP(CreateHandle) = emit_create_handle_instruction;
+		OP(CreateHandleForLib) = emit_create_handle_for_lib_instruction;
 		OP(CBufferLoadLegacy) = emit_cbuffer_load_legacy_instruction;
 		OP(EvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset>;
 		OP(EvalSampleIndex) = emit_interpolate_dispatch<GLSLstd450InterpolateAtSample>;
@@ -180,6 +182,9 @@ struct DXILDispatcher
 		OP(WaveMultiPrefixOp) = emit_wave_multi_prefix_op_instruction;
 		OP(QuadOp) = emit_wave_quad_op_instruction;
 		OP(QuadReadLaneAt) = emit_wave_quad_read_lane_at_instruction;
+
+		// dxil_ray_tracing.cpp
+		OP(TraceRay) = emit_trace_ray_instruction;
 	}
 
 #undef OP
@@ -279,6 +284,14 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::BufferUpdateCounter:
 	{
 		impl.llvm_values_using_update_counter.insert(instruction->getOperand(1));
+		break;
+	}
+
+	case DXIL::Op::TraceRay:
+	{
+		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
+		auto *payload = instruction->getOperand(instruction->getNumOperands() - 1);
+		impl.llvm_values_to_payload_location[payload] = impl.payload_location_counter++;
 		break;
 	}
 

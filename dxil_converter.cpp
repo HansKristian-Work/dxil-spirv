@@ -150,11 +150,18 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 		{
 		case DXIL::ResourceType::SRV:
 		{
-			spv::Id sampled_type_id = get_type_id(component, 1, 1);
-			type_id = builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
-			                                  image_dimension_is_arrayed(kind), image_dimension_is_multisampled(kind),
-			                                  1, spv::ImageFormatUnknown);
-			type_id = builder().makeRuntimeArray(type_id);
+			if (kind == DXIL::ResourceKind::RTAccelerationStructure)
+			{
+				type_id = builder().makeAccelerationStructureType();
+			}
+			else
+			{
+				spv::Id sampled_type_id = get_type_id(component, 1, 1);
+				type_id = builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
+				                                  image_dimension_is_arrayed(kind),
+				                                  image_dimension_is_multisampled(kind), 1, spv::ImageFormatUnknown);
+				type_id = builder().makeRuntimeArray(type_id);
+			}
 			storage = spv::StorageClassUniformConstant;
 			break;
 		}
@@ -246,6 +253,19 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 	}
 }
 
+void Converter::Impl::register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index)
+{
+	// In RT shaders, apps will load dummy structs from global variables.
+	// Here we get the chance to redirect them towards the resource meta declaration.
+	if (operand)
+	{
+		auto *value = llvm::cast<llvm::ConstantAsMetadata>(operand)->getValue();
+		auto *global_variable = llvm::dyn_cast<llvm::GlobalVariable>(value);
+		if (global_variable)
+			llvm_global_variable_to_resource_mapping[global_variable] = { type, index, nullptr };
+	}
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 {
 	auto &builder = spirv_module.get_builder();
@@ -259,6 +279,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
+
+		register_resource_meta_reference(srv->getOperand(1), DXIL::ResourceType::SRV, index);
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
 
@@ -327,10 +349,19 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		{
 			auto sampled_type_id = get_type_id(component_type, 1, 1);
 
-			spv::Id type_id =
-			    builder.makeImageType(sampled_type_id, image_dimension_from_resource_kind(resource_kind), false,
-			                          image_dimension_is_arrayed(resource_kind),
-			                          image_dimension_is_multisampled(resource_kind), 1, spv::ImageFormatUnknown);
+			spv::Id type_id;
+
+			if (resource_kind == DXIL::ResourceKind::RTAccelerationStructure)
+			{
+				type_id = builder.makeAccelerationStructureType();
+			}
+			else
+			{
+				type_id =
+				    builder.makeImageType(sampled_type_id, image_dimension_from_resource_kind(resource_kind), false,
+				                          image_dimension_is_arrayed(resource_kind),
+				                          image_dimension_is_multisampled(resource_kind), 1, spv::ImageFormatUnknown);
+			}
 
 			if (range_size != 1)
 			{
@@ -367,6 +398,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		unsigned bind_space = get_constant_metadata(uav, 3);
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
+
+		register_resource_meta_reference(uav->getOperand(1), DXIL::ResourceType::UAV, index);
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
 
@@ -583,6 +616,8 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
+		register_resource_meta_reference(cbv->getOperand(1), DXIL::ResourceType::CBV, index);
+
 		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
 			                       DXIL::ResourceKind::CBuffer,
 			                       index,
@@ -685,6 +720,8 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		unsigned bind_space = get_constant_metadata(sampler, 3);
 		unsigned bind_register = get_constant_metadata(sampler, 4);
 		unsigned range_size = get_constant_metadata(sampler, 5);
+
+		register_resource_meta_reference(sampler->getOperand(1), DXIL::ResourceType::Sampler, index);
 
 		if (range_size != 1)
 		{
@@ -2688,7 +2725,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	return entry_node;
 }
 
-bool Converter::Impl::analyze_uav_access_patterns(const llvm::Function *function)
+bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 {
 	for (auto &bb : *function)
 	{
@@ -2709,7 +2746,7 @@ bool Converter::Impl::analyze_uav_access_patterns(const llvm::Function *function
 	return true;
 }
 
-bool Converter::Impl::analyze_uav_access_patterns()
+bool Converter::Impl::analyze_instructions()
 {
 	// Some things need to happen here. We try to figure out if a UAV is readonly or writeonly.
 	// If readonly typed UAV, we emit an image format which corresponds to r32f, r32i or r32ui as to not
@@ -2717,11 +2754,11 @@ bool Converter::Impl::analyze_uav_access_patterns()
 	// good enough for time being.
 
 	auto *module = &bitcode_parser.get_module();
-	if (!analyze_uav_access_patterns(get_entry_point_function(*module)))
+	if (!analyze_instructions(get_entry_point_function(*module)))
 		return false;
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
-		if (!analyze_uav_access_patterns(execution_mode_meta.patch_constant_function))
+		if (!analyze_instructions(execution_mode_meta.patch_constant_function))
 			return false;
 
 	return true;
@@ -2736,7 +2773,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto *module = &bitcode_parser.get_module();
 	spirv_module.emit_entry_point(get_execution_model(*module), "main", options.physical_storage_buffer);
 
-	if (!analyze_uav_access_patterns())
+	if (!analyze_instructions())
 		return result;
 
 	if (!emit_execution_modes())

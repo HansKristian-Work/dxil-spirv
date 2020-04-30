@@ -27,6 +27,7 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 

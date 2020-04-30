@@ -30,6 +30,7 @@
 #include "instruction.hpp"
 #include "module.hpp"
 #include "value.hpp"
+#include "metadata.hpp"
 #else
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
@@ -92,8 +93,8 @@ struct Converter::Impl
 	bool emit_execution_modes_pixel();
 	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
 
-	bool analyze_uav_access_patterns();
-	bool analyze_uav_access_patterns(const llvm::Function *function);
+	bool analyze_instructions();
+	bool analyze_instructions(const llvm::Function *function);
 	struct UAVAccessTracking
 	{
 		bool has_read = false;
@@ -102,6 +103,16 @@ struct Converter::Impl
 	std::unordered_map<uint32_t, UAVAccessTracking> uav_access_tracking;
 	std::unordered_map<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
 	std::unordered_set<const llvm::Value *> llvm_values_using_update_counter;
+	std::unordered_map<const llvm::Value *, uint32_t> llvm_values_to_payload_location;
+	uint32_t payload_location_counter = 0;
+
+	struct ResourceMetaReference
+	{
+		DXIL::ResourceType type;
+		unsigned meta_index;
+		llvm::Value *offset;
+	};
+	std::unordered_map<const llvm::Value *, ResourceMetaReference> llvm_global_variable_to_resource_mapping;
 
 	struct ExecutionModeMeta
 	{
@@ -118,6 +129,7 @@ struct Converter::Impl
 	bool emit_uavs(const llvm::MDNode *uavs);
 	bool emit_cbvs(const llvm::MDNode *cbvs);
 	bool emit_samplers(const llvm::MDNode *samplers);
+	void register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index);
 	void emit_root_constants(unsigned num_words);
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &parser);
 	static bool scan_srvs(ResourceRemappingInterface *iface, const llvm::MDNode *srvs, ShaderStage stage);
