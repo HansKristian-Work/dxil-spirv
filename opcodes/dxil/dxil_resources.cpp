@@ -460,8 +460,56 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
-static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
-                                          llvm::Value *dynamic_offset)
+static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
+                                                        llvm::Value *dynamic_offset)
+{
+	auto &builder = impl.builder();
+
+	auto *descriptor_table = impl.allocate(
+		spv::OpAccessChain,
+		builder.makePointer(spv::StorageClassShaderRecordBufferKHR, builder.makeUintType(32)));
+	descriptor_table->add_id(impl.shader_record_buffer_id);
+	descriptor_table->add_id(builder.makeUintConstant(reference.local_root_signature_entry));
+	descriptor_table->add_id(builder.makeUintConstant(0));
+	impl.add(descriptor_table);
+
+	auto *loaded_word = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	loaded_word->add_id(descriptor_table->id);
+	impl.add(loaded_word);
+
+	auto *shifted_word = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+	shifted_word->add_id(loaded_word->id);
+
+	// Need to translate fake GPU VA to index.
+	unsigned shamt = impl.local_root_signature[reference.local_root_signature_entry].table.type == ResourceClass::Sampler ?
+	    impl.options.sbt_descriptor_size_sampler_log2 : impl.options.sbt_descriptor_size_srv_uav_cbv_log2;
+	shifted_word->add_id(builder.makeUintConstant(shamt));
+	impl.add(shifted_word);
+	loaded_word = shifted_word;
+
+	if (reference.base_offset != 0)
+	{
+		auto *heap_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		heap_offset->add_id(loaded_word->id);
+		heap_offset->add_id(builder.makeUintConstant(reference.base_offset));
+		impl.add(heap_offset);
+		loaded_word = heap_offset;
+	}
+
+	if (dynamic_offset)
+	{
+		auto *offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		offset->add_id(loaded_word->id);
+		offset->add_id(impl.get_id_for_value(dynamic_offset));
+		impl.add(offset);
+		loaded_word = offset;
+	}
+
+	return loaded_word->id;
+}
+
+static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
+                                                        llvm::Value *dynamic_offset)
 {
 	auto &builder = impl.builder();
 	if (reference.push_constant_member >= impl.root_constant_num_words || impl.root_constant_id == 0)
@@ -471,9 +519,9 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter
 	}
 
 	auto *descriptor_table = impl.allocate(
-	    spv::OpAccessChain,
-	    builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant,
-	                        builder.makeUintType(32)));
+		spv::OpAccessChain,
+		builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant,
+		                    builder.makeUintType(32)));
 	descriptor_table->add_id(impl.root_constant_id);
 	descriptor_table->add_id(builder.makeUintConstant(reference.push_constant_member));
 	impl.add(descriptor_table);
@@ -501,6 +549,15 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter
 	}
 
 	return loaded_word->id;
+}
+
+static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
+                                          llvm::Value *dynamic_offset)
+{
+	if (reference.local_root_signature_entry >= 0)
+		return build_bindless_heap_offset_shader_record(impl, reference, dynamic_offset);
+	else
+		return build_bindless_heap_offset_push_constant(impl, reference, dynamic_offset);
 }
 
 static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &counter,
@@ -544,6 +601,8 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 	{
 		if (reference.base_resource_is_array)
 			is_non_uniform = instruction_is_non_uniform;
+		else if (reference.local_root_signature_entry >= 0)
+			is_non_uniform = true;
 
 		type_id = builder.getContainedTypeId(type_id);
 		Operation *op =
@@ -563,7 +622,7 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 			op->add_id(impl.get_id_for_value(instruction_offset_value));
 
 		// Some compilers require the index to be marked as NonUniformEXT, even if it not required by Vulkan spec.
-		if (is_non_uniform)
+		if (is_non_uniform && instruction_offset_value)
 			builder.addDecoration(impl.get_id_for_value(instruction_offset_value), spv::DecorationNonUniformEXT);
 
 		impl.add(op);

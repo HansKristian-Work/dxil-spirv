@@ -66,6 +66,8 @@ void Converter::add_local_root_descriptor_table(ResourceClass type,
 	LocalRootSignatureEntry entry = {};
 	entry.type = LocalRootSignatureType::Table;
 	entry.table.type = type;
+	entry.register_space = register_space;
+	entry.register_index = register_index;
 	entry.table.num_descriptors_in_range = num_descriptors_in_range;
 	entry.table.offset_in_heap = offset_in_heap;
 	impl->local_root_signature.push_back(entry);
@@ -354,16 +356,57 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
 		}
 
+		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::SRV, bind_space, bind_register);
+		bool need_resource_remapping = local_root_signature_entry < 0 ||
+		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
+
 		D3DBinding d3d_binding = {
 			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size
 		};
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
-		if (resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
+		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
 			return false;
 
 		srv_index_to_reference.resize(std::max(srv_index_to_reference.size(), size_t(index + 1)));
 
-		if (vulkan_binding.bindless.use_heap)
+		if (local_root_signature_entry >= 0)
+		{
+			auto &entry = local_root_signature[local_root_signature_entry];
+			if (entry.type == LocalRootSignatureType::Table)
+			{
+				if (!vulkan_binding.bindless.use_heap)
+				{
+					LOGE("Table SBT entries must be bindless.\n");
+					return false;
+				}
+				spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::SRV, component_type, resource_kind,
+				                                               vulkan_binding.descriptor_set, vulkan_binding.binding);
+
+				uint32_t heap_offset = entry.table.offset_in_heap;
+				heap_offset += bind_register - entry.register_index;
+
+				srv_index_to_reference[index] = { var_id,      0,
+				                                  heap_offset, stride,
+				                                  true,        range_size != 1,
+				                                  local_root_signature_entry };
+			}
+			else
+			{
+				if (resource_kind != DXIL::ResourceKind::RawBuffer &&
+				    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+				{
+					LOGE("SRV SBT root descriptors must be raw buffers or structures buffers.\n");
+					return false;
+				}
+				srv_index_to_reference[index] = { shader_record_buffer_id, 0,
+				                                  0, stride,
+				                                  false,        range_size != 1,
+				                                  local_root_signature_entry };
+			}
+
+			// Otherwise, we simply refer to the SBT directly to obtain a pointer.
+		}
+		else if (vulkan_binding.bindless.use_heap)
 		{
 			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::SRV, component_type, resource_kind,
 			                                               vulkan_binding.descriptor_set, vulkan_binding.binding);
@@ -1008,6 +1051,46 @@ bool Converter::Impl::emit_shader_record_buffer()
 	return true;
 }
 
+static bool local_root_signature_matches(const LocalRootSignatureEntry &entry,
+                                         ResourceClass resource_class,
+                                         uint32_t space, uint32_t binding)
+{
+	switch (entry.type)
+	{
+	case LocalRootSignatureType::Constants:
+		return resource_class == ResourceClass::CBV &&
+		       entry.register_space == space &&
+		       entry.register_index == binding;
+
+	case LocalRootSignatureType::Descriptor:
+		return entry.descriptor.type == resource_class &&
+		       entry.register_space == space &&
+		       entry.register_index == binding;
+
+	case LocalRootSignatureType::Table:
+		return entry.table.type == resource_class &&
+		       entry.register_space == space &&
+		       entry.register_index <= binding &&
+		       ((entry.table.num_descriptors_in_range == ~0u) ||
+		        ((binding - entry.register_index) < entry.table.num_descriptors_in_range));
+
+	default:
+		return false;
+	}
+}
+
+int Converter::Impl::get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding) const
+{
+	auto itr = std::find_if(local_root_signature.begin(), local_root_signature.end(), [&](const LocalRootSignatureEntry &entry) {
+		return local_root_signature_matches(entry, resource_class, space, binding);
+	});
+
+	if (itr != local_root_signature.end())
+		return int(itr - local_root_signature.begin());
+	else
+		return -1;
+}
+
 bool Converter::Impl::emit_resources()
 {
 	unsigned num_root_constant_words = 0;
@@ -1016,6 +1099,10 @@ bool Converter::Impl::emit_resources()
 
 	if (num_root_constant_words != 0)
 		emit_root_constants(num_root_constant_words);
+
+	if (execution_model_is_ray_tracing(execution_model))
+		if (!emit_shader_record_buffer())
+			return false;
 
 	auto &module = bitcode_parser.get_module();
 	auto *resource_meta = module.getNamedMetadata("dx.resources");
@@ -1035,10 +1122,6 @@ bool Converter::Impl::emit_resources()
 			return false;
 	if (metas->getOperand(3))
 		if (!emit_samplers(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(3))))
-			return false;
-
-	if (execution_model_is_ray_tracing(execution_model))
-		if (!emit_shader_record_buffer())
 			return false;
 
 	return true;
@@ -1168,6 +1251,8 @@ spv::Id Converter::Impl::get_id_for_undef(const llvm::UndefValue *undef)
 
 spv::Id Converter::Impl::get_id_for_value(const llvm::Value *value, unsigned forced_width)
 {
+	assert(value);
+
 	auto itr = value_map.find(value);
 	if (itr != value_map.end())
 		return itr->second;

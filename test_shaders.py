@@ -121,6 +121,8 @@ def cross_compile_dxil(shader, args, paths):
 
     if '.bindless.' in shader:
         hlsl_cmd.append('--bindless')
+    if '.local-root-signature.' in shader:
+        hlsl_cmd.append('--local-root-signature')
 
     if '.inline-ubo.' in shader:
         hlsl_cmd.append('--root-constant-inline-ubo')

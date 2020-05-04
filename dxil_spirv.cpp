@@ -532,10 +532,14 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_SRV, 15, 2);
 		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_UAV, 15, 2);
 		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_CBV, 15, 2);
-		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_SRV, 15, 3, ~0u, 0);
-		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_UAV, 15, 3, ~0u, 1);
-		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_CBV, 15, 3, ~0u, 2);
-		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_SAMPLER, 15, 3, ~0u, 3);
+		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_SRV, 15, 3, ~0u, 10);
+		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_UAV, 15, 3, ~0u, 11);
+		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_CBV, 15, 3, ~0u, 12);
+		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_SAMPLER, 15, 3, ~0u, 13);
+
+		dxil_spv_option_sbt_descriptor_size_log2 desc_size =
+			{ { DXIL_SPV_OPTION_SBT_DESCRIPTOR_SIZE_LOG2 }, 6, 5 };
+		dxil_spv_converter_add_option(converter, &desc_size.base);
 	}
 
 	if (args.shader_demote)

@@ -175,15 +175,17 @@ struct Converter::Impl
 	static bool scan_samplers(ResourceRemappingInterface *iface, const llvm::MDNode *samplers, ShaderStage stage);
 
 	std::vector<LocalRootSignatureEntry> local_root_signature;
+	int get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding) const;
 
 	struct ResourceReference
 	{
-		spv::Id var_id;
-		uint32_t push_constant_member;
-		uint32_t base_offset;
-		unsigned stride;
-		bool bindless;
-		bool base_resource_is_array;
+		spv::Id var_id = 0;
+		uint32_t push_constant_member = 0;
+		uint32_t base_offset = 0;
+		unsigned stride = 0;
+		bool bindless = false;
+		bool base_resource_is_array = false;
+		int local_root_signature_entry = -1;
 	};
 
 	std::vector<ResourceReference> srv_index_to_reference;
