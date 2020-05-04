@@ -578,4 +578,23 @@ bool emit_extractelement_instruction(Converter::Impl &impl, const llvm::ExtractE
 	}
 	return true;
 }
+
+bool emit_insertelement_instruction(Converter::Impl &impl, const llvm::InsertElementInst *inst)
+{
+	auto *vec = inst->getOperand(0);
+	auto *value = inst->getOperand(1);
+	auto *index = inst->getOperand(2);
+
+	if (!llvm::isa<llvm::ConstantInt>(index))
+	{
+		LOGE("Index to insertelement must be a constant.\n");
+		return false;
+	}
+	Operation *op = impl.allocate(spv::OpCompositeInsert, inst);
+	op->add_id(impl.get_id_for_value(value));
+	op->add_id(impl.get_id_for_value(vec));
+	op->add_literal(uint32_t(llvm::cast<llvm::ConstantInt>(index)->getUniqueInteger().getZExtValue()));
+	impl.add(op);
+	return true;
+}
 } // namespace dxil_spv

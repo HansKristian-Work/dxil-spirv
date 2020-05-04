@@ -2224,6 +2224,8 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		return emit_shufflevector_instruction(*this, shufflevec_inst);
 	else if (auto *extractelement_inst = llvm::dyn_cast<llvm::ExtractElementInst>(&instruction))
 		return emit_extractelement_instruction(*this, extractelement_inst);
+	else if (auto *insertelement_inst = llvm::dyn_cast<llvm::InsertElementInst>(&instruction))
+		return emit_insertelement_instruction(*this, insertelement_inst);
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
 		return emit_phi_instruction(block, *phi_inst);
 
