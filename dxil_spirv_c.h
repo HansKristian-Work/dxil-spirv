@@ -133,6 +133,15 @@ typedef enum dxil_spv_resource_kind
 	DXIL_SPV_RESOURCE_KIND_INT_MAX = 0x7fffffff
 } dxil_spv_resource_kind;
 
+typedef enum dxil_spv_resource_class
+{
+	DXIL_SPV_RESOURCE_CLASS_SRV = 0,
+	DXIL_SPV_RESOURCE_CLASS_UAV = 1,
+	DXIL_SPV_RESOURCE_CLASS_CBV = 2,
+	DXIL_SPV_RESOURCE_CLASS_SAMPLER = 3,
+	DXIL_SPV_RESOURCE_CLASS_INT_MAX = 0x7fffffff
+} dxil_spv_resource_class;
+
 typedef struct dxil_spv_d3d_binding
 {
 	dxil_spv_shader_stage stage;
@@ -211,6 +220,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_ROOT_CONSTANT_INLINE_UNIFORM_BLOCK = 5,
 	DXIL_SPV_OPTION_BINDLESS_CBV_SSBO_EMULATION = 6,
 	DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER = 7,
+	DXIL_SPV_OPTION_SBT_DESCRIPTOR_SIZE_LOG2 = 8,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -272,6 +282,13 @@ typedef struct dxil_spv_option_physical_storage_buffer
 	dxil_spv_option_base base;
 	dxil_spv_bool enable;
 } dxil_spv_option_physical_storage_buffer;
+
+typedef struct dxil_spv_option_sbt_descriptor_size_log2
+{
+	dxil_spv_option_base base;
+	unsigned size_log2_srv_uav_cbv;
+	unsigned size_log2_sampler;
+} dxil_spv_option_sbt_descriptor_size_log2;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
@@ -341,6 +358,26 @@ DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_cbv_remapper(
 		dxil_spv_converter converter,
 		dxil_spv_cbv_remapper_cb remapper,
 		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_local_root_constants(
+	dxil_spv_converter converter,
+	unsigned register_space,
+	unsigned register_index,
+	unsigned num_words);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_local_root_descriptor(
+	dxil_spv_converter converter,
+	dxil_spv_resource_class resource_class,
+	unsigned register_space,
+	unsigned register_index);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_local_root_descriptor_table(
+	dxil_spv_converter converter,
+	dxil_spv_resource_class resource_class,
+	unsigned register_space,
+	unsigned register_index,
+	unsigned num_descriptors_in_range,
+	unsigned offset_in_heap);
 
 /* After setting up converter, runs the converted to SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter);

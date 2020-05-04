@@ -127,6 +127,7 @@ static void print_help()
 	     "\t[--enable-shader-demote]\n"
 	     "\t[--enable-dual-source-blending]\n"
 	     "\t[--bindless]\n"
+	     "\t[--local-root-signature]\n"
 	     "\t[--bindless-cbv-as-ssbo]\n"
 	     "\t[--output-rt-swizzle index xyzw]\n");
 }
@@ -364,6 +365,7 @@ int main(int argc, char **argv)
 {
 	Arguments args;
 	Remapper remapper;
+	bool local_root_signature = false;
 
 	// Begin with identity swizzles.
 	args.swizzles.resize(8, 0 | (1 << 2) | (2 << 4) | (3 << 6));
@@ -406,6 +408,9 @@ int main(int argc, char **argv)
 	cbs.add("--bindless", [&](CLIParser &) {
 		remapper.bindless = true;
 		remapper.root_constant_word_count = std::max(remapper.root_constant_word_count, 8u);
+	});
+	cbs.add("--local-root-signature", [&](CLIParser &) {
+		local_root_signature = true;
 	});
 	cbs.add("--output-rt-swizzle", [&](CLIParser &parser) {
 		unsigned index = parser.next_uint();
@@ -519,6 +524,19 @@ int main(int argc, char **argv)
 	dxil_spv_converter_set_vertex_input_remapper(converter, remap_vertex_input, &remapper);
 	dxil_spv_converter_set_stream_output_remapper(converter, remap_stream_output, &remapper);
 	dxil_spv_converter_set_root_constant_word_count(converter, remapper.root_constant_word_count);
+
+	if (local_root_signature)
+	{
+		dxil_spv_converter_add_local_root_constants(converter, 15, 0, 5);
+		dxil_spv_converter_add_local_root_constants(converter, 15, 1, 6);
+		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_SRV, 15, 2);
+		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_UAV, 15, 2);
+		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_CBV, 15, 2);
+		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_SRV, 15, 3, ~0u, 0);
+		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_UAV, 15, 3, ~0u, 1);
+		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_CBV, 15, 3, ~0u, 2);
+		dxil_spv_converter_add_local_root_descriptor_table(converter, DXIL_SPV_RESOURCE_CLASS_SAMPLER, 15, 3, ~0u, 3);
+	}
 
 	if (args.shader_demote)
 	{

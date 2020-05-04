@@ -166,7 +166,16 @@ enum class Option : uint32_t
 	RasterizerSampleCount = 4,
 	RootConstantInlineUniformBlock = 5,
 	BindlessCBVSSBOEmulation = 6,
-	PhysicalStorageBuffer = 7
+	PhysicalStorageBuffer = 7,
+	SBTDescriptorSizeLog2 = 8
+};
+
+enum class ResourceClass : uint32_t
+{
+	SRV = 0,
+	UAV = 1,
+	CBV = 2,
+	Sampler = 3
 };
 
 struct OptionBase
@@ -245,6 +254,16 @@ struct OptionPhysicalStorageBuffer : OptionBase
 	bool enable = false;
 };
 
+struct OptionSBTDescriptorSizeLog2 : OptionBase
+{
+	OptionSBTDescriptorSizeLog2()
+		: OptionBase(Option::SBTDescriptorSizeLog2)
+	{
+	}
+	unsigned size_log2_srv_uav_cbv = 0;
+	unsigned size_log2_sampler = 0;
+};
+
 class Converter
 {
 public:
@@ -258,6 +277,19 @@ public:
 
 	void add_option(const OptionBase &cap);
 	static bool recognizes_option(Option cap);
+
+	// These are declared separately since we need to declare a concrete physical buffer layout
+	// for local root signature elements which depends on the entire local root signature.
+	// It would get somewhat awkward to shoehorn this into the resource "pull" API for normal resources.
+
+	void add_local_root_constants(uint32_t register_space, uint32_t register_index, uint32_t num_words);
+	void add_local_root_descriptor(ResourceClass type, uint32_t register_space, uint32_t register_index);
+
+	// Local root descriptor tables are special. They must be constructed in such a way that
+	// the MSB 32 bits can be ignored and the LSB 32 bits are encoded as Index << SBTDescriptorSizeLog2.
+	// Thus, we translate GPU VA to index by a simple shift on the lower 32-bit value.
+	void add_local_root_descriptor_table(ResourceClass type, uint32_t register_space, uint32_t register_index,
+	                                     uint32_t num_descriptors_in_range, uint32_t offset_in_heap);
 
 	struct Impl;
 

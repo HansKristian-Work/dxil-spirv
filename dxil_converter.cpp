@@ -39,6 +39,38 @@ Converter::~Converter()
 {
 }
 
+void Converter::add_local_root_constants(uint32_t register_space, uint32_t register_index, uint32_t num_words)
+{
+	LocalRootSignatureEntry entry = {};
+	entry.type = LocalRootSignatureType::Constants;
+	entry.constants.num_words = num_words;
+	entry.register_space = register_space;
+	entry.register_index = register_index;
+	impl->local_root_signature.push_back(entry);
+}
+
+void Converter::add_local_root_descriptor(ResourceClass type, uint32_t register_space, uint32_t register_index)
+{
+	LocalRootSignatureEntry entry = {};
+	entry.type = LocalRootSignatureType::Descriptor;
+	entry.descriptor.type = type;
+	entry.register_space = register_space;
+	entry.register_index = register_index;
+	impl->local_root_signature.push_back(entry);
+}
+
+void Converter::add_local_root_descriptor_table(ResourceClass type,
+                                                uint32_t register_space, uint32_t register_index,
+                                                uint32_t num_descriptors_in_range, uint32_t offset_in_heap)
+{
+	LocalRootSignatureEntry entry = {};
+	entry.type = LocalRootSignatureType::Table;
+	entry.table.type = type;
+	entry.table.num_descriptors_in_range = num_descriptors_in_range;
+	entry.table.offset_in_heap = offset_in_heap;
+	impl->local_root_signature.push_back(entry);
+}
+
 ConvertedFunction Converter::convert_entry_point()
 {
 	return impl->convert_entry_point();
@@ -895,6 +927,87 @@ void Converter::Impl::emit_root_constants(unsigned num_words)
 	root_constant_num_words = num_words;
 }
 
+static bool execution_model_is_ray_tracing(spv::ExecutionModel model)
+{
+	switch (model)
+	{
+	case spv::ExecutionModelRayGenerationKHR:
+	case spv::ExecutionModelCallableKHR:
+	case spv::ExecutionModelIntersectionKHR:
+	case spv::ExecutionModelMissKHR:
+	case spv::ExecutionModelClosestHitKHR:
+	case spv::ExecutionModelAnyHitKHR:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+bool Converter::Impl::emit_shader_record_buffer()
+{
+	if (local_root_signature.empty())
+		return true;
+
+	auto &builder = spirv_module.get_builder();
+
+	spv::Id type_id;
+	std::vector<spv::Id> member_types;
+	std::vector<uint32_t> offsets;
+	member_types.reserve(local_root_signature.size());
+	offsets.reserve(local_root_signature.size());
+
+	uint32_t current_offset = 0;
+	for (auto &elem : local_root_signature)
+	{
+		switch (elem.type)
+		{
+		case LocalRootSignatureType::Constants:
+		{
+			spv::Id array_type_id =
+				builder.makeArrayType(builder.makeUintType(32),
+				                      builder.makeUintConstant(elem.constants.num_words), 4);
+			builder.addDecoration(array_type_id, spv::DecorationArrayStride, 4);
+			member_types.push_back(array_type_id);
+			offsets.push_back(current_offset);
+			current_offset += 4 * elem.constants.num_words;
+			break;
+		}
+
+		case LocalRootSignatureType::Descriptor:
+		{
+			// A 64-bit integer which we will bitcast to a physical storage buffer later.
+			member_types.push_back(builder.makeUintType(64));
+			current_offset = (current_offset + 7) & ~7;
+			offsets.push_back(current_offset);
+			current_offset += 8;
+			break;
+		}
+
+		case LocalRootSignatureType::Table:
+		{
+			member_types.push_back(builder.makeVectorType(builder.makeUintType(32), 2));
+			current_offset = (current_offset + 7) & ~7;
+			offsets.push_back(current_offset);
+			current_offset += 8;
+			break;
+		}
+
+		default:
+			return false;
+		}
+	}
+
+	type_id = builder.makeStructType(member_types, "SBTBlock");
+	builder.addDecoration(type_id, spv::DecorationBlock);
+
+	for (size_t i = 0; i < local_root_signature.size(); i++)
+		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, offsets[i]);
+
+	shader_record_buffer_id = builder.createVariable(spv::StorageClassShaderRecordBufferKHR, type_id, "SBT");
+	return true;
+}
+
 bool Converter::Impl::emit_resources()
 {
 	unsigned num_root_constant_words = 0;
@@ -922,6 +1035,10 @@ bool Converter::Impl::emit_resources()
 			return false;
 	if (metas->getOperand(3))
 		if (!emit_samplers(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(3))))
+			return false;
+
+	if (execution_model_is_ray_tracing(execution_model))
+		if (!emit_shader_record_buffer())
 			return false;
 
 	return true;
@@ -1746,23 +1863,6 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
-	}
-}
-
-static bool execution_model_is_ray_tracing(spv::ExecutionModel model)
-{
-	switch (model)
-	{
-	case spv::ExecutionModelRayGenerationKHR:
-	case spv::ExecutionModelCallableKHR:
-	case spv::ExecutionModelIntersectionKHR:
-	case spv::ExecutionModelMissKHR:
-	case spv::ExecutionModelClosestHitKHR:
-	case spv::ExecutionModelAnyHitKHR:
-		return true;
-
-	default:
-		return false;
 	}
 }
 
@@ -2859,7 +2959,7 @@ spv::Builder &Converter::Impl::builder()
 	return spirv_module.get_builder();
 }
 
-void Converter::Impl::add_capability(const OptionBase &cap)
+void Converter::Impl::set_option(const OptionBase &cap)
 {
 	switch (cap.type)
 	{
@@ -2911,6 +3011,14 @@ void Converter::Impl::add_capability(const OptionBase &cap)
 		break;
 	}
 
+	case Option::SBTDescriptorSizeLog2:
+	{
+		auto &sbt = static_cast<const OptionSBTDescriptorSizeLog2 &>(cap);
+		options.sbt_descriptor_size_srv_uav_cbv_log2 = sbt.size_log2_srv_uav_cbv;
+		options.sbt_descriptor_size_sampler_log2 = sbt.size_log2_sampler;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -2933,7 +3041,7 @@ void Converter::scan_resources(ResourceRemappingInterface *iface, const LLVMBCPa
 
 void Converter::add_option(const OptionBase &cap)
 {
-	impl->add_capability(cap);
+	impl->set_option(cap);
 }
 
 bool Converter::recognizes_option(Option cap)
@@ -2947,6 +3055,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::RootConstantInlineUniformBlock:
 	case Option::BindlessCBVSSBOEmulation:
 	case Option::PhysicalStorageBuffer:
+	case Option::SBTDescriptorSizeLog2:
 		return true;
 
 	default:

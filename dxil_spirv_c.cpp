@@ -560,9 +560,46 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_SBT_DESCRIPTOR_SIZE_LOG2:
+	{
+		OptionSBTDescriptorSizeLog2 helper;
+		helper.size_log2_srv_uav_cbv = reinterpret_cast<const dxil_spv_option_sbt_descriptor_size_log2 *>(option)->size_log2_srv_uav_cbv;
+		helper.size_log2_sampler = reinterpret_cast<const dxil_spv_option_sbt_descriptor_size_log2 *>(option)->size_log2_sampler;
+		converter->converter.add_option(helper);
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
 
 	return DXIL_SPV_SUCCESS;
+}
+
+void dxil_spv_converter_add_local_root_constants(dxil_spv_converter converter,
+                                                 unsigned register_space,
+                                                 unsigned register_index,
+                                                 unsigned num_words)
+{
+	converter->converter.add_local_root_constants(register_space, register_index, num_words);
+}
+
+void dxil_spv_converter_add_local_root_descriptor(dxil_spv_converter converter,
+                                                  dxil_spv_resource_class resource_class,
+                                                  unsigned register_space,
+                                                  unsigned register_index)
+{
+	converter->converter.add_local_root_descriptor(ResourceClass(resource_class), register_space, register_index);
+}
+
+void dxil_spv_converter_add_local_root_descriptor_table(dxil_spv_converter converter,
+                                                        dxil_spv_resource_class resource_class,
+                                                        unsigned register_space,
+                                                        unsigned register_index,
+                                                        unsigned num_descriptors_in_range,
+                                                        unsigned offset_in_heap)
+{
+	converter->converter.add_local_root_descriptor_table(ResourceClass(resource_class),
+	                                                     register_space, register_index,
+	                                                     num_descriptors_in_range, offset_in_heap);
 }

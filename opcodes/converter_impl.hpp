@@ -42,6 +42,42 @@
 
 namespace dxil_spv
 {
+enum class LocalRootSignatureType
+{
+	Constants,
+	Descriptor,
+	Table
+};
+
+struct LocalRootSignatureConstants
+{
+	uint32_t num_words;
+};
+
+struct LocalRootSignatureDescriptor
+{
+	ResourceClass type;
+};
+
+struct LocalRootSignatureTable
+{
+	ResourceClass type;
+	uint32_t num_descriptors_in_range;
+	uint32_t offset_in_heap;
+};
+
+struct LocalRootSignatureEntry
+{
+	LocalRootSignatureType type;
+	uint32_t register_space;
+	uint32_t register_index;
+	union
+	{
+		LocalRootSignatureConstants constants;
+		LocalRootSignatureDescriptor descriptor;
+		LocalRootSignatureTable table;
+	};
+};
 
 struct Converter::Impl
 {
@@ -129,6 +165,7 @@ struct Converter::Impl
 	bool emit_uavs(const llvm::MDNode *uavs);
 	bool emit_cbvs(const llvm::MDNode *cbvs);
 	bool emit_samplers(const llvm::MDNode *samplers);
+	bool emit_shader_record_buffer();
 	void register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index);
 	void emit_root_constants(unsigned num_words);
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &parser);
@@ -136,6 +173,8 @@ struct Converter::Impl
 	static bool scan_uavs(ResourceRemappingInterface *iface, const llvm::MDNode *uavs, ShaderStage stage);
 	static bool scan_cbvs(ResourceRemappingInterface *iface, const llvm::MDNode *cbvs, ShaderStage stage);
 	static bool scan_samplers(ResourceRemappingInterface *iface, const llvm::MDNode *samplers, ShaderStage stage);
+
+	std::vector<LocalRootSignatureEntry> local_root_signature;
 
 	struct ResourceReference
 	{
@@ -224,10 +263,11 @@ struct Converter::Impl
 	spv::Id texture_sample_pos_lut_id = 0;
 	spv::Id rasterizer_sample_count_id = 0;
 	spv::Id physical_counter_type = 0;
+	spv::Id shader_record_buffer_id = 0;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 
-	void add_capability(const OptionBase &cap);
+	void set_option(const OptionBase &cap);
 	struct
 	{
 		bool shader_demote = false;
@@ -241,6 +281,9 @@ struct Converter::Impl
 		bool inline_ubo_enable = false;
 		bool bindless_cbv_ssbo_emulation = false;
 		bool physical_storage_buffer = false;
+
+		unsigned sbt_descriptor_size_srv_uav_cbv_log2 = 0;
+		unsigned sbt_descriptor_size_sampler_log2 = 0;
 	} options;
 
 	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component,
