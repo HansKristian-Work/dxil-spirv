@@ -242,6 +242,17 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::CreateHandleForLib:
+	{
+		auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getOperand(1));
+		if (itr == impl.llvm_global_variable_to_resource_mapping.end())
+			return false;
+
+		if (itr->second.type == DXIL::ResourceType::UAV)
+			impl.llvm_value_to_uav_resource_index_map[instruction] = itr->second.meta_index;
+		break;
+	}
+
 	case DXIL::Op::BufferLoad:
 	case DXIL::Op::TextureLoad:
 	case DXIL::Op::RawBufferLoad:

@@ -625,4 +625,22 @@ bool emit_insertelement_instruction(Converter::Impl &impl, const llvm::InsertEle
 	impl.add(op);
 	return true;
 }
+
+bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *inst)
+{
+	auto itr = impl.llvm_global_variable_to_resource_mapping.find(inst->getOperand(0));
+	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
+		impl.llvm_global_variable_to_resource_mapping[inst] = itr->second;
+
+	return true;
+}
+
+bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
+{
+	auto itr = impl.llvm_global_variable_to_resource_mapping.find(inst->getPointerOperand());
+	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
+		impl.llvm_global_variable_to_resource_mapping[inst] = itr->second;
+
+	return true;
+}
 } // namespace dxil_spv

@@ -160,6 +160,8 @@ struct Converter::Impl
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
 
+	bool emit_resources_global_mapping();
+	bool emit_resources_global_mapping(DXIL::ResourceType type, const llvm::MDNode *node);
 	bool emit_resources();
 	bool emit_srvs(const llvm::MDNode *srvs);
 	bool emit_uavs(const llvm::MDNode *uavs);

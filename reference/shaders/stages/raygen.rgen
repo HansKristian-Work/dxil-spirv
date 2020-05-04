@@ -56,7 +56,6 @@ OpDecorate %8 Binding 30
 OpDecorate %12 DescriptorSet 20
 OpDecorate %12 Binding 10
 OpDecorate %12 NonReadable
-OpDecorate %12 NonWritable
 OpDecorate %15 Location 1
 OpDecorate %19 Location 0
 %1 = OpTypeVoid

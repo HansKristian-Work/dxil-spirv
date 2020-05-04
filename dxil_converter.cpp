@@ -300,6 +300,18 @@ void Converter::Impl::register_resource_meta_reference(const llvm::MDOperand &op
 	}
 }
 
+bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, const LLVMBC::MDNode *node)
+{
+	unsigned num_resources = node->getNumOperands();
+	for (unsigned i = 0; i < num_resources; i++)
+	{
+		auto *resource = llvm::cast<llvm::MDNode>(node->getOperand(i));
+		unsigned index = get_constant_metadata(resource, 0);
+		register_resource_meta_reference(resource->getOperand(1), type, index);
+	}
+	return true;
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 {
 	auto &builder = spirv_module.get_builder();
@@ -313,8 +325,6 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
-
-		register_resource_meta_reference(srv->getOperand(1), DXIL::ResourceType::SRV, index);
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
 
@@ -392,6 +402,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			}
 			else
 			{
+				// Otherwise, we simply refer to the SBT directly to obtain a pointer.
 				if (resource_kind != DXIL::ResourceKind::RawBuffer &&
 				    resource_kind != DXIL::ResourceKind::StructuredBuffer)
 				{
@@ -403,8 +414,6 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				                                  false,        range_size != 1,
 				                                  local_root_signature_entry };
 			}
-
-			// Otherwise, we simply refer to the SBT directly to obtain a pointer.
 		}
 		else if (vulkan_binding.bindless.use_heap)
 		{
@@ -473,8 +482,6 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		unsigned bind_space = get_constant_metadata(uav, 3);
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
-
-		register_resource_meta_reference(uav->getOperand(1), DXIL::ResourceType::UAV, index);
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
 
@@ -552,19 +559,87 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				builder.addCapability(spv::CapabilityStorageImageArrayDynamicIndexing);
 		}
 
+		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::UAV, bind_space, bind_register);
+		bool need_resource_remapping = local_root_signature_entry < 0 ||
+		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
+
 		D3DUAVBinding d3d_binding = {};
 		d3d_binding.counter = has_counter;
 		d3d_binding.binding = {
 			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size
 		};
 		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register } };
-		if (resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
+		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
 
 		uav_index_to_reference.resize(std::max(uav_index_to_reference.size(), size_t(index + 1)));
 		uav_index_to_counter.resize(std::max(uav_index_to_counter.size(), size_t(index + 1)));
 
-		if (vulkan_binding.buffer_binding.bindless.use_heap)
+		if (local_root_signature_entry >= 0)
+		{
+			auto &entry = local_root_signature[local_root_signature_entry];
+			if (entry.type == LocalRootSignatureType::Table)
+			{
+				if (!vulkan_binding.buffer_binding.bindless.use_heap)
+				{
+					LOGE("Table SBT entries must be bindless.\n");
+					return false;
+				}
+				spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::UAV,
+				                                               component_type, resource_kind,
+				                                               vulkan_binding.buffer_binding.descriptor_set,
+				                                               vulkan_binding.buffer_binding.binding,
+				                                               format, access_meta.has_read, access_meta.has_written,
+				                                               globally_coherent);
+
+				uint32_t heap_offset = entry.table.offset_in_heap;
+				heap_offset += bind_register - entry.register_index;
+
+				uav_index_to_reference[index] = { var_id,      0,
+				                                  heap_offset, stride,
+				                                  true,        range_size != 1,
+				                                  local_root_signature_entry };
+
+				if (has_counter)
+				{
+					if (!vulkan_binding.counter_binding.bindless.use_heap)
+					{
+						LOGE("Table SBT entries must be bindless.\n");
+						return false;
+					}
+
+					spv::Id counter_var_id = create_bindless_heap_variable(
+						DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::Invalid,
+						vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
+						spv::ImageFormatUnknown, false, false, false, true);
+
+					heap_offset = entry.table.offset_in_heap;
+					heap_offset += bind_register - entry.register_index;
+
+					uav_index_to_counter[index] = {
+						counter_var_id, 0,
+						heap_offset,    4,
+						true,           range_size != 1,
+						local_root_signature_entry,
+					};
+				}
+			}
+			else
+			{
+				// Otherwise, we simply refer to the SBT directly to obtain a pointer.
+				if (resource_kind != DXIL::ResourceKind::RawBuffer &&
+				    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+				{
+					LOGE("UAV SBT root descriptors must be raw buffers or structures buffers.\n");
+					return false;
+				}
+				uav_index_to_reference[index] = { shader_record_buffer_id, 0,
+				                                  0, stride,
+				                                  false,        range_size != 1,
+				                                  local_root_signature_entry };
+			}
+		}
+		else if (vulkan_binding.buffer_binding.bindless.use_heap)
 		{
 			spv::Id var_id = create_bindless_heap_variable(
 			    DXIL::ResourceType::UAV, component_type, resource_kind, vulkan_binding.buffer_binding.descriptor_set,
@@ -691,8 +766,6 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
-		register_resource_meta_reference(cbv->getOperand(1), DXIL::ResourceType::CBV, index);
-
 		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
 			                       DXIL::ResourceKind::CBuffer,
 			                       index,
@@ -795,8 +868,6 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		unsigned bind_space = get_constant_metadata(sampler, 3);
 		unsigned bind_register = get_constant_metadata(sampler, 4);
 		unsigned range_size = get_constant_metadata(sampler, 5);
-
-		register_resource_meta_reference(sampler->getOperand(1), DXIL::ResourceType::Sampler, index);
 
 		if (range_size != 1)
 		{
@@ -1089,6 +1160,31 @@ int Converter::Impl::get_local_root_signature_entry(ResourceClass resource_class
 		return int(itr - local_root_signature.begin());
 	else
 		return -1;
+}
+
+bool Converter::Impl::emit_resources_global_mapping()
+{
+	auto &module = bitcode_parser.get_module();
+	auto *resource_meta = module.getNamedMetadata("dx.resources");
+	if (!resource_meta)
+		return true;
+
+	auto *metas = resource_meta->getOperand(0);
+
+	if (metas->getOperand(0))
+		if (!emit_resources_global_mapping(DXIL::ResourceType::SRV, llvm::dyn_cast<llvm::MDNode>(metas->getOperand(0))))
+			return false;
+	if (metas->getOperand(1))
+		if (!emit_resources_global_mapping(DXIL::ResourceType::UAV, llvm::dyn_cast<llvm::MDNode>(metas->getOperand(1))))
+			return false;
+	if (metas->getOperand(2))
+		if (!emit_resources_global_mapping(DXIL::ResourceType::CBV, llvm::dyn_cast<llvm::MDNode>(metas->getOperand(2))))
+			return false;
+	if (metas->getOperand(3))
+		if (!emit_resources_global_mapping(DXIL::ResourceType::Sampler, llvm::dyn_cast<llvm::MDNode>(metas->getOperand(3))))
+			return false;
+
+	return true;
 }
 
 bool Converter::Impl::emit_resources()
@@ -2939,15 +3035,24 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 	{
 		for (auto &inst : bb)
 		{
-			auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst);
-			if (!call_inst)
-				continue;
-
-			auto *called_function = call_inst->getCalledFunction();
-			if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
+			if (auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst))
 			{
-				if (!analyze_dxil_instruction(*this, call_inst))
+				if (!analyze_load_instruction(*this, load_inst))
 					return false;
+			}
+			else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst))
+			{
+				if (!analyze_getelementptr_instruction(*this, getelementptr_inst))
+					return false;
+			}
+			else if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))
+			{
+				auto *called_function = call_inst->getCalledFunction();
+				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
+				{
+					if (!analyze_dxil_instruction(*this, call_inst))
+						return false;
+				}
 			}
 		}
 	}
@@ -2980,6 +3085,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	auto *module = &bitcode_parser.get_module();
 	spirv_module.emit_entry_point(get_execution_model(*module), "main", options.physical_storage_buffer);
+
+	if (!emit_resources_global_mapping())
+		return result;
 
 	if (!analyze_instructions())
 		return result;

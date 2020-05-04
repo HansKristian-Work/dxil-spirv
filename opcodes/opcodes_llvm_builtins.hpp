@@ -37,4 +37,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 bool emit_shufflevector_instruction(Converter::Impl &impl, const llvm::ShuffleVectorInst *instruction);
 bool emit_extractelement_instruction(Converter::Impl &impl, const llvm::ExtractElementInst *instruction);
 bool emit_insertelement_instruction(Converter::Impl &impl, const llvm::InsertElementInst *instruction);
+
+bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction);
+bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction);
 } // namespace dxil_spv
