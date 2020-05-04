@@ -196,10 +196,38 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 	return true;
 }
 
+static bool emit_getelementptr_resource(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction,
+                                        const Converter::Impl::ResourceMetaReference &meta)
+{
+	auto *elem_index = instruction->getOperand(1);
+
+	// This one must be constant 0, ignore it.
+	if (!llvm::isa<llvm::ConstantInt>(elem_index))
+	{
+		LOGE("First GetElementPtr operand is not constant 0.\n");
+		return false;
+	}
+
+	if (instruction->getNumOperands() != 3)
+	{
+		LOGE("Number of operands to getelementptr for a resource handle is unexpected.\n");
+		return false;
+	}
+
+	auto indexed_meta = meta;
+	indexed_meta.offset = instruction->getOperand(2);
+	impl.llvm_global_variable_to_resource_mapping[instruction] = indexed_meta;
+	return true;
+}
+
 bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
 {
 	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
 	// For now, just assert that the first index is constant 0, in which case PtrAccessChain == AccessChain.
+
+	auto global_itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getOperand(0));
+	if (global_itr != impl.llvm_global_variable_to_resource_mapping.end())
+		return emit_getelementptr_resource(impl, instruction, global_itr->second);
 
 	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(0));

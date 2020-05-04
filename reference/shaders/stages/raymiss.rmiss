@@ -1,5 +1,6 @@
 #version 460
 #extension GL_NV_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
 
 struct _7
 {
@@ -22,7 +23,17 @@ void main()
 ; Bound: 21
 ; Schema: 0
 OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
 OpCapability RayTracingProvisionalKHR
+OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
 OpEntryPoint MissNV %3 "main"

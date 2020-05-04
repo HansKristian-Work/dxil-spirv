@@ -1,34 +1,25 @@
 #version 460
 #extension GL_NV_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
 
-struct _14
-{
-    uint _m0;
-};
-
-struct _16
-{
-    vec4 _m0;
-};
-
-struct _17
+struct _13
 {
     float _m0;
 };
 
-struct _20
+struct _17
 {
     vec4 _m0;
 };
 
 layout(set = 40, binding = 30) uniform accelerationStructureNV AS;
 layout(set = 20, binding = 10) uniform writeonly image2D IMG;
-layout(location = 1) rayPayloadNV _17 _19;
-layout(location = 0) rayPayloadNV _20 _22;
+layout(location = 1) rayPayloadNV _13 _15;
+layout(location = 0) rayPayloadNV _17 _19;
 
 void main()
 {
-    imageStore(IMG, ivec2(uvec2(0u)), vec4(_19._m0 + _22._m0.x, _19._m0 + _22._m0.y, _19._m0 + _22._m0.z, _19._m0 + _22._m0.w));
+    imageStore(IMG, ivec2(uvec2(0u)), vec4(_15._m0 + _19._m0.x, _15._m0 + _19._m0.y, _15._m0 + _19._m0.z, _15._m0 + _19._m0.w));
 }
 
 
@@ -37,29 +28,37 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 46
+; Bound: 44
 ; Schema: 0
 OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
 OpCapability StorageImageWriteWithoutFormat
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
 OpCapability RayTracingProvisionalKHR
+OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
 OpEntryPoint RayGenerationNV %3 "main"
 OpName %3 "main"
 OpName %8 "AS"
 OpName %12 "IMG"
-OpName %14 ""
-OpName %16 ""
+OpName %13 ""
 OpName %17 ""
-OpName %20 ""
 OpDecorate %8 DescriptorSet 40
 OpDecorate %8 Binding 30
 OpDecorate %12 DescriptorSet 20
 OpDecorate %12 Binding 10
 OpDecorate %12 NonReadable
 OpDecorate %12 NonWritable
-OpDecorate %19 Location 1
-OpDecorate %22 Location 0
+OpDecorate %15 Location 1
+OpDecorate %19 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 1
@@ -70,42 +69,40 @@ OpDecorate %22 Location 0
 %10 = OpTypeImage %9 2D 0 0 0 2 Unknown
 %11 = OpTypePointer UniformConstant %10
 %12 = OpVariable %11 UniformConstant
-%13 = OpTypeInt 32 0
-%14 = OpTypeStruct %13
-%15 = OpTypeVector %9 4
-%16 = OpTypeStruct %15
-%17 = OpTypeStruct %9
+%13 = OpTypeStruct %9
+%14 = OpTypePointer RayPayloadNV %13
+%15 = OpVariable %14 RayPayloadNV
+%16 = OpTypeVector %9 4
+%17 = OpTypeStruct %16
 %18 = OpTypePointer RayPayloadNV %17
 %19 = OpVariable %18 RayPayloadNV
-%20 = OpTypeStruct %15
-%21 = OpTypePointer RayPayloadNV %20
-%22 = OpVariable %21 RayPayloadNV
-%24 = OpTypePointer RayPayloadNV %15
-%26 = OpConstant %13 0
-%33 = OpTypePointer RayPayloadNV %9
-%41 = OpTypeVector %13 2
+%21 = OpTypePointer RayPayloadNV %16
+%23 = OpTypeInt 32 0
+%24 = OpConstant %23 0
+%31 = OpTypePointer RayPayloadNV %9
+%39 = OpTypeVector %23 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %44
-%44 = OpLabel
-%23 = OpLoad %6 %8
-%25 = OpInBoundsAccessChain %24 %22 %26
-%27 = OpLoad %15 %25
-%28 = OpCompositeExtract %9 %27 0
-%29 = OpCompositeExtract %9 %27 1
-%30 = OpCompositeExtract %9 %27 2
-%31 = OpCompositeExtract %9 %27 3
-%32 = OpLoad %6 %8
-%34 = OpInBoundsAccessChain %33 %19 %26
-%35 = OpLoad %9 %34
-%36 = OpFAdd %9 %35 %28
-%37 = OpFAdd %9 %35 %29
-%38 = OpFAdd %9 %35 %30
-%39 = OpFAdd %9 %35 %31
-%40 = OpLoad %10 %12
-%42 = OpCompositeConstruct %41 %26 %26
-%43 = OpCompositeConstruct %15 %36 %37 %38 %39
-OpImageWrite %40 %42 %43
+OpBranch %42
+%42 = OpLabel
+%20 = OpLoad %6 %8
+%22 = OpInBoundsAccessChain %21 %19 %24
+%25 = OpLoad %16 %22
+%26 = OpCompositeExtract %9 %25 0
+%27 = OpCompositeExtract %9 %25 1
+%28 = OpCompositeExtract %9 %25 2
+%29 = OpCompositeExtract %9 %25 3
+%30 = OpLoad %6 %8
+%32 = OpInBoundsAccessChain %31 %15 %24
+%33 = OpLoad %9 %32
+%34 = OpFAdd %9 %33 %26
+%35 = OpFAdd %9 %33 %27
+%36 = OpFAdd %9 %33 %28
+%37 = OpFAdd %9 %33 %29
+%38 = OpLoad %10 %12
+%40 = OpCompositeConstruct %39 %24 %24
+%41 = OpCompositeConstruct %16 %34 %35 %36 %37
+OpImageWrite %38 %40 %41
 OpReturn
 OpFunctionEnd
 #endif

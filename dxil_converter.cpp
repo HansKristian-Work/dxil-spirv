@@ -1202,6 +1202,8 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	}
 
 	case llvm::Type::TypeID::ArrayTyID:
+		if (type->getArrayNumElements() == 0)
+			return 0;
 		return builder.makeArrayType(get_type_id(type->getArrayElementType()),
 		                             builder.makeUintConstant(type->getArrayNumElements(), false), 0);
 
@@ -1851,7 +1853,16 @@ bool Converter::Impl::emit_global_variables()
 	{
 		llvm::GlobalVariable &global = *itr;
 
+		// Workaround strange DXIL codegen where a resource is declared as an external constant.
+		if (global.getType()->getPointerElementType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+			continue;
+
 		spv::Id pointee_type_id = get_type_id(global.getType()->getPointerElementType());
+
+		// Happens for some global variables in DXR for some reason, benign.
+		if (pointee_type_id == 0)
+			continue;
+
 		auto address_space = static_cast<DXIL::AddressSpace>(global.getType()->getAddressSpace());
 		spv::Id initializer_id = 0;
 
@@ -1860,10 +1871,6 @@ bool Converter::Impl::emit_global_variables()
 			initializer = global.getInitializer();
 		if (initializer && llvm::isa<llvm::UndefValue>(initializer))
 			initializer = nullptr;
-
-		// Workaround strange DXIL codegen where a resource is declared as an external constant.
-		if (global.getType()->getPointerElementType()->getTypeID() == llvm::Type::TypeID::StructTyID)
-			continue;
 
 		if (address_space == DXIL::AddressSpace::GroupShared)
 		{
@@ -2494,6 +2501,20 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityRayTracingProvisionalKHR);
 	builder.addExtension("SPV_KHR_ray_tracing");
+	builder.addExtension("SPV_EXT_descriptor_indexing");
+
+	// For DXR, we'll need full bindless.
+	builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+
+	builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
+	builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexing);
+	builder.addCapability(spv::CapabilityStorageImageArrayDynamicIndexing);
+	builder.addCapability(spv::CapabilityStorageImageArrayNonUniformIndexing);
+	builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
+	builder.addCapability(spv::CapabilityStorageBufferArrayNonUniformIndexing);
+	builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
+	builder.addCapability(spv::CapabilityUniformBufferArrayNonUniformIndexing);
+
 	return true;
 }
 
