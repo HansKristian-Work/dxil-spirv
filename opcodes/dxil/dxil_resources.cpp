@@ -833,7 +833,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				access_chain->add_id(builder.makeUintConstant(reference.local_root_signature_entry));
 				impl.add(access_chain);
 
-				auto *load_ptr = impl.allocate(spv::OpLoad, builder.makeUintType(64));
+				auto *load_ptr = impl.allocate(spv::OpLoad, instruction, builder.makeUintType(64));
 				load_ptr->add_id(access_chain->id);
 				impl.add(load_ptr);
 				auto &meta = impl.handle_to_resource_meta[load_ptr->id];
@@ -932,7 +932,37 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 static bool emit_cbuffer_load_legacy_physical_pointer(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	return false;
+	auto &builder = impl.builder();
+
+	spv::Id member_index = impl.get_id_for_value(instruction->getOperand(2));
+
+	auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+	mul_op->add_id(member_index);
+	mul_op->add_id(builder.makeUintConstant(16));
+	impl.add(mul_op);
+
+	auto *upcast_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
+	upcast_op->add_id(mul_op->id);
+	impl.add(upcast_op);
+
+	auto *add_base_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
+	add_base_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	add_base_op->add_id(upcast_op->id);
+	impl.add(add_base_op);
+
+	auto *result_type = instruction->getType();
+	spv::Id type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+	auto *ptr_bitcast = impl.allocate(spv::OpBitcast, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id));
+	ptr_bitcast->add_id(add_base_op->id);
+	impl.add(ptr_bitcast);
+
+	auto *load_op = impl.allocate(spv::OpLoad, instruction, type_id);
+	load_op->add_id(ptr_bitcast->id);
+	load_op->add_literal(spv::MemoryAccessAlignedMask);
+	load_op->add_literal(16);
+	impl.add(load_op);
+
+	return true;
 }
 
 static bool emit_cbuffer_load_legacy_from_uints(Converter::Impl &impl, const llvm::CallInst *instruction,

@@ -10,6 +10,7 @@ ConstantBuffer<CBVData> SBTCBV : register(b3, space15);
 ConstantBuffer<CBVData> SBTCBVs[] : register(b4, space15);
 
 ConstantBuffer<CBVData> SBTRootConstant : register(b0, space15);
+ConstantBuffer<CBVData> SBTRootDescriptor : register(b2, space15);
 
 struct Payload
 {
@@ -28,4 +29,5 @@ void RayMiss(inout Payload payload)
 	payload.color += SBTCBVs[payload.index].v;
 	payload.color += SBTRootConstant.v;
 	payload.color += SBTRootConstant.w;
+	payload.color += SBTRootDescriptor.w;
 }
