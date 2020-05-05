@@ -1105,6 +1105,7 @@ bool Converter::Impl::emit_shader_record_buffer()
 	std::vector<uint32_t> offsets;
 	member_types.reserve(local_root_signature.size());
 	offsets.reserve(local_root_signature.size());
+	shader_record_buffer_types.reserve(local_root_signature.size());
 
 	uint32_t current_offset = 0;
 	for (auto &elem : local_root_signature)
@@ -1113,32 +1114,37 @@ bool Converter::Impl::emit_shader_record_buffer()
 		{
 		case LocalRootSignatureType::Constants:
 		{
-			spv::Id array_type_id =
+			spv::Id member_type_id =
 				builder.makeArrayType(builder.makeUintType(32),
 				                      builder.makeUintConstant(elem.constants.num_words), 4);
-			builder.addDecoration(array_type_id, spv::DecorationArrayStride, 4);
-			member_types.push_back(array_type_id);
+			builder.addDecoration(member_type_id, spv::DecorationArrayStride, 4);
+			member_types.push_back(member_type_id);
 			offsets.push_back(current_offset);
 			current_offset += 4 * elem.constants.num_words;
+			shader_record_buffer_types.push_back(member_type_id);
 			break;
 		}
 
 		case LocalRootSignatureType::Descriptor:
 		{
 			// A 64-bit integer which we will bitcast to a physical storage buffer later.
-			member_types.push_back(builder.makeUintType(64));
+			spv::Id member_type_id = builder.makeUintType(64);
+			member_types.push_back(member_type_id);
 			current_offset = (current_offset + 7) & ~7;
 			offsets.push_back(current_offset);
 			current_offset += 8;
+			shader_record_buffer_types.push_back(member_type_id);
 			break;
 		}
 
 		case LocalRootSignatureType::Table:
 		{
-			member_types.push_back(builder.makeVectorType(builder.makeUintType(32), 2));
+			spv::Id member_type_id = builder.makeVectorType(builder.makeUintType(32), 2);
+			member_types.push_back(member_type_id);
 			current_offset = (current_offset + 7) & ~7;
 			offsets.push_back(current_offset);
 			current_offset += 8;
+			shader_record_buffer_types.push_back(member_type_id);
 			break;
 		}
 

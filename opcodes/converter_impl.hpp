@@ -268,6 +268,7 @@ struct Converter::Impl
 	spv::Id rasterizer_sample_count_id = 0;
 	spv::Id physical_counter_type = 0;
 	spv::Id shader_record_buffer_id = 0;
+	std::vector<spv::Id> shader_record_buffer_types;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 
