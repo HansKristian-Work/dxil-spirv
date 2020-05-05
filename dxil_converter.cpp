@@ -300,7 +300,7 @@ void Converter::Impl::register_resource_meta_reference(const llvm::MDOperand &op
 	}
 }
 
-bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, const LLVMBC::MDNode *node)
+bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, const llvm::MDNode *node)
 {
 	unsigned num_resources = node->getNumOperands();
 	for (unsigned i = 0; i < num_resources; i++)
@@ -766,6 +766,10 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
+		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::CBV, bind_space, bind_register);
+		bool need_resource_remapping = local_root_signature_entry < 0 ||
+		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
+
 		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
 			                       DXIL::ResourceKind::CBuffer,
 			                       index,
@@ -774,7 +778,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			                       range_size };
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
-		if (resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
+		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
 			return false;
 
 		cbv_index_to_reference.resize(std::max(cbv_index_to_reference.size(), size_t(index + 1)));
@@ -794,7 +798,38 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
 		}
 
-		if (vulkan_binding.push_constant)
+		if (local_root_signature_entry >= 0)
+		{
+			auto &entry = local_root_signature[local_root_signature_entry];
+			if (entry.type == LocalRootSignatureType::Table)
+			{
+				if (!vulkan_binding.buffer.bindless.use_heap)
+				{
+					LOGE("Table SBT entries must be bindless.\n");
+					return false;
+				}
+
+				spv::Id var_id = create_bindless_heap_variable(
+					DXIL::ResourceType::CBV, DXIL::ComponentType::Invalid, DXIL::ResourceKind::CBuffer,
+					vulkan_binding.buffer.descriptor_set, vulkan_binding.buffer.binding);
+
+				uint32_t heap_offset = entry.table.offset_in_heap;
+				heap_offset += bind_register - entry.register_index;
+
+				cbv_index_to_reference[index] = { var_id,      0,
+				                                  heap_offset, 0,
+				                                  true,        range_size != 1,
+				                                  local_root_signature_entry };
+			}
+			else
+			{
+				cbv_index_to_reference[index] = { shader_record_buffer_id,      0,
+				                                  0, 0,
+				                                  false,        range_size != 1,
+				                                  local_root_signature_entry };
+			}
+		}
+		else if (vulkan_binding.push_constant)
 		{
 			if (root_constant_id == 0)
 			{
@@ -2134,9 +2169,16 @@ bool Converter::Impl::emit_global_variables()
 	{
 		llvm::GlobalVariable &global = *itr;
 
-		// Workaround strange DXIL codegen where a resource is declared as an external constant.
-		if (global.getType()->getPointerElementType()->getTypeID() == llvm::Type::TypeID::StructTyID)
-			continue;
+		{
+			auto *elem_type = global.getType()->getPointerElementType();
+			while (elem_type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+				elem_type = elem_type->getArrayElementType();
+
+			// Workaround strange DXIL codegen where a resource is declared as an external constant.
+			// There should be a better way to detect these types.
+			if (elem_type->getTypeID() == llvm::Type::TypeID::StructTyID)
+				continue;
+		}
 
 		spv::Id pointee_type_id = get_type_id(global.getType()->getPointerElementType());
 

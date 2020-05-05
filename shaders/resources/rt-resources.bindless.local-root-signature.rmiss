@@ -3,7 +3,11 @@ Texture2D<float4> TexUnsized[] : register(t0, space1);
 
 Texture2D<float4> TexSBT[] : register(t10, space15);
 RWTexture2D<float4> UAVTexSBT[] : register(u10, space15);
-RWStructuredBuffer<float4> RWSB : register(u9, space15);
+
+struct CBVData { float4 v; };
+
+ConstantBuffer<CBVData> SBTCBV : register(b3, space15);
+ConstantBuffer<CBVData> SBTCBVs[] : register(b4, space15);
 
 struct Payload
 {
@@ -18,4 +22,6 @@ void RayMiss(inout Payload payload)
 	payload.color += TexUnsized[payload.index].Load(int3(0, 0, 0));
 	payload.color += TexSBT[payload.index].Load(int3(0, 0, 0));
 	payload.color += UAVTexSBT[payload.index].Load(int2(0, 0));
+	payload.color += SBTCBV.v;
+	payload.color += SBTCBVs[payload.index].v;
 }

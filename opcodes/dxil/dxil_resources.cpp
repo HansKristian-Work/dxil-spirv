@@ -766,7 +766,11 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		if (reference.base_resource_is_array || reference.bindless)
 		{
 			uint32_t non_uniform = 0;
-			if (reference.base_resource_is_array)
+			if (reference.local_root_signature_entry >= 0)
+			{
+				non_uniform = 1;
+			}
+			else if (reference.base_resource_is_array)
 			{
 				if (!get_constant_operand(instruction, 4, &non_uniform))
 					return false;
@@ -782,7 +786,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			if (reference.bindless)
 			{
 				spv::Id offset_id = build_bindless_heap_offset(
-					impl, reference, reference.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+					impl, reference, reference.base_resource_is_array ? instruction_offset : nullptr);
 				if (!offset_id)
 				{
 					LOGE("Failed to load CBV bindless offset.\n");
@@ -792,7 +796,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			}
 			else
 			{
-				op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+				op->add_id(impl.get_id_for_value(instruction_offset));
 			}
 
 			impl.add(op);
