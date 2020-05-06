@@ -643,6 +643,33 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 	return op->id;
 }
 
+static spv::Id build_shader_record_access_chain(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                unsigned local_root_signature_entry)
+{
+	auto &builder = impl.builder();
+
+	spv::Id array_type_id = impl.shader_record_buffer_types[local_root_signature_entry];
+	spv::Id ptr_array_type_id = builder.makePointer(spv::StorageClassShaderRecordBufferKHR, array_type_id);
+	auto *access_chain = impl.allocate(spv::OpAccessChain, ptr_array_type_id);
+	access_chain->add_id(impl.shader_record_buffer_id);
+	access_chain->add_id(builder.makeUintConstant(local_root_signature_entry));
+	impl.add(access_chain);
+
+	return access_chain->id;
+}
+
+static spv::Id build_shader_record_load_physical_pointer(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                         unsigned local_root_signature_entry)
+{
+	auto &builder = impl.builder();
+
+	spv::Id ptr_id = build_shader_record_access_chain(impl, instruction, local_root_signature_entry);
+	auto *load_ptr = impl.allocate(spv::OpLoad, builder.makeUintType(64));
+	load_ptr->add_id(ptr_id);
+	impl.add(load_ptr);
+	return load_ptr->id;
+}
+
 static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *instruction,
                                DXIL::ResourceType resource_type, unsigned resource_range,
                                llvm::Value *instruction_offset, bool non_uniform)
@@ -825,37 +852,24 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			if (local_entry.type == LocalRootSignatureType::Descriptor)
 			{
-				auto *access_chain = impl.allocate(spv::OpAccessChain,
-				                                   builder.makePointer(spv::StorageClassShaderRecordBufferKHR,
-				                                                       builder.makeUintType(64)));
-
-				access_chain->add_id(reference.var_id);
-				access_chain->add_id(builder.makeUintConstant(reference.local_root_signature_entry));
-				impl.add(access_chain);
-
-				auto *load_ptr = impl.allocate(spv::OpLoad, instruction, builder.makeUintType(64));
-				load_ptr->add_id(access_chain->id);
-				impl.add(load_ptr);
-				auto &meta = impl.handle_to_resource_meta[load_ptr->id];
+				spv::Id id = build_shader_record_load_physical_pointer(impl, instruction, reference.local_root_signature_entry);
+				auto &meta = impl.handle_to_resource_meta[id];
 				meta = {};
 				meta.storage = spv::StorageClassPhysicalStorageBuffer;
-				impl.handle_to_ptr_id[instruction] = load_ptr->id;
+				impl.handle_to_ptr_id[instruction] = id;
+				impl.value_map[instruction] = id;
 			}
 			else
 			{
 				// Access chain into the desired member once.
-				spv::Id array_type_id = impl.shader_record_buffer_types[reference.local_root_signature_entry];
-				spv::Id ptr_array_type_id = builder.makePointer(spv::StorageClassShaderRecordBufferKHR, array_type_id);
-				auto *access_chain = impl.allocate(spv::OpAccessChain, instruction, ptr_array_type_id);
-				access_chain->add_id(reference.var_id);
-				access_chain->add_id(builder.makeUintConstant(reference.local_root_signature_entry));
-				impl.add(access_chain);
+				spv::Id id = build_shader_record_access_chain(impl, instruction, reference.local_root_signature_entry);
 
-				auto &meta = impl.handle_to_resource_meta[access_chain->id];
+				auto &meta = impl.handle_to_resource_meta[id];
 				meta = {};
 				meta.storage = spv::StorageClassShaderRecordBufferKHR;
 				impl.handle_to_root_member_offset[instruction] = reference.local_root_signature_entry;
-				impl.handle_to_ptr_id[instruction] = access_chain->id;
+				impl.handle_to_ptr_id[instruction] = id;
+				impl.value_map[instruction] = id;
 			}
 		}
 		else
