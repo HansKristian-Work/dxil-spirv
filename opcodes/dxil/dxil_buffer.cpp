@@ -17,6 +17,7 @@
  */
 
 #include "dxil_buffer.hpp"
+#include "dxil_common.hpp"
 #include "dxil_sampling.hpp"
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
@@ -173,6 +174,125 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	// TODO: Might have an option to rely on StorageImageReadWithoutFormat.
 	//if (is_uav && is_typed)
 	//	builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
+
+	return true;
+}
+
+bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[ptr_id];
+
+	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
+	{
+		// If we're attempting a raw load from a non-physical pointer, it gets spicy.
+		// Since we're using texel buffers for this case, we might not be able to implement it correctly.
+		if (auto *alignment = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(5)))
+		{
+			if (alignment->getUniqueInteger().getZExtValue() < 4)
+			{
+				LOGE("Requested an alignment of < 4 bytes in RawBufferLoad with descriptor. This is unimplementable.\n");
+				return false;
+			}
+		}
+		else
+			return false;
+
+		auto *ret_component = instruction->getType()->getStructElementType(0);
+		if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
+			!(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID && ret_component->getIntegerBitWidth() == 32))
+		{
+			LOGE("RawBufferLoad on descriptors is only supported for 32-bits currently.\n");
+			return false;
+		}
+
+		// Ignore the mask. We'll read too much, but robustness should take care of any OOB.
+		return emit_buffer_load_instruction(impl, instruction);
+	}
+
+	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2));
+	spv::Id element_offset = 0;
+	if (meta.stride != 0)
+		element_offset = impl.get_id_for_value(instruction->getOperand(3));
+
+	Operation *u64_offset_op;
+	if (meta.stride)
+	{
+		auto *stride_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		stride_op->add_id(index_id);
+		stride_op->add_id(builder.makeUintConstant(meta.stride));
+		impl.add(stride_op);
+
+		auto *offset_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		offset_op->add_id(stride_op->id);
+		offset_op->add_id(element_offset);
+		impl.add(offset_op);
+
+		u64_offset_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
+		u64_offset_op->add_id(offset_op->id);
+	}
+	else
+	{
+		u64_offset_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
+		u64_offset_op->add_id(index_id);
+	}
+
+	impl.add(u64_offset_op);
+
+	auto *ptr_compute_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
+	ptr_compute_op->add_id(ptr_id);
+	ptr_compute_op->add_id(u64_offset_op->id);
+	impl.add(ptr_compute_op);
+
+	uint32_t mask = 0;
+	if (!get_constant_operand(instruction, 4, &mask))
+		return false;
+
+	uint32_t alignment = 0;
+	if (!get_constant_operand(instruction, 5, &alignment))
+		return false;
+
+	unsigned vecsize = 0;
+	if (mask == 1)
+		vecsize = 1;
+	else if (mask == 3)
+		vecsize = 2;
+	else if (mask == 7)
+		vecsize = 3;
+	else if (mask == 15)
+		vecsize = 4;
+	else
+	{
+		LOGE("Unexpected mask for RawBufferLoad = %u.\n", mask);
+		return false;
+	}
+
+	spv::Id type_id = impl.get_type_id(instruction->getType()->getStructElementType(0));
+	if (vecsize > 1)
+		type_id = builder.makeVectorType(type_id, vecsize);
+	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id);
+
+	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+	ptr_bitcast_op->add_id(ptr_compute_op->id);
+	impl.add(ptr_bitcast_op);
+
+	auto *load_op = impl.allocate(spv::OpLoad, instruction, type_id);
+	load_op->add_id(ptr_bitcast_op->id);
+	load_op->add_literal(spv::MemoryAccessAlignedMask);
+	load_op->add_literal(alignment);
+	impl.add(load_op);
+
+	if (vecsize == 1)
+	{
+		// Need to present a composite to caller, swizzle in an OpUndef.
+		spv::Id vec_type_id = builder.makeVectorType(type_id, 2);
+		auto *composite_op = impl.allocate(spv::OpCompositeConstruct, vec_type_id);
+		composite_op->add_id(load_op->id);
+		composite_op->add_id(builder.createUndefined(type_id));
+		impl.add(composite_op);
+		impl.value_map[instruction] = composite_op->id;
+	}
 
 	return true;
 }

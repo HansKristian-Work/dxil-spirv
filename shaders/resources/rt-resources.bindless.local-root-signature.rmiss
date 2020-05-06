@@ -15,6 +15,9 @@ ConstantBuffer<CBVData> SBTRootDescriptor : register(b2, space15);
 SamplerState Samp : register(s3, space15);
 SamplerState Samps[] : register(s4, space15);
 
+StructuredBuffer<float4> StrBuf : register(t1, space15);
+ByteAddressBuffer BABuf : register(t2, space15);
+
 struct Payload
 {
 	float4 color;
@@ -36,4 +39,9 @@ void RayMiss(inout Payload payload)
 
 	payload.color += Tex[payload.index & 1].SampleLevel(Samp, 0.5.xx, 0.0);
 	payload.color += TexUnsized[payload.index].SampleLevel(Samps[payload.index ^ 1], 0.5.xx, 0.0);
+	payload.color += StrBuf[payload.index];
+	payload.color += asfloat(BABuf.Load(4 * payload.index)).xxxx;
+	payload.color += asfloat(BABuf.Load2(8 * payload.index)).xyxy;
+	payload.color += asfloat(BABuf.Load3(12 * payload.index)).xyzz;
+	payload.color += asfloat(BABuf.Load4(16 * payload.index));
 }

@@ -670,6 +670,12 @@ static spv::Id build_shader_record_load_physical_pointer(Converter::Impl &impl, 
 	return load_ptr->id;
 }
 
+static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
+{
+	return reference.local_root_signature_entry >= 0 &&
+	       impl.local_root_signature[reference.local_root_signature_entry].type == LocalRootSignatureType::Descriptor;
+}
+
 static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *instruction,
                                DXIL::ResourceType resource_type, unsigned resource_range,
                                llvm::Value *instruction_offset, bool non_uniform)
@@ -680,41 +686,60 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 	case DXIL::ResourceType::SRV:
 	{
 		auto &reference = impl.srv_index_to_reference[resource_range];
-		spv::Id base_image_id = reference.var_id;
-		spv::Id image_id = base_image_id;
 
-		bool is_non_uniform = false;
-		spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction,
-		                                               instruction_offset, non_uniform, is_non_uniform);
-
-		if (!loaded_id)
+		if (resource_is_physical_pointer(impl, reference))
 		{
-			LOGE("Failed to load SRV resource handle.\n");
-			return false;
-		}
-
-		auto &meta = impl.handle_to_resource_meta[loaded_id];
-		meta = impl.handle_to_resource_meta[base_image_id];
-		meta.non_uniform = is_non_uniform;
-
-		// The base array variable does not know what the stride is, promote that state here.
-		if (reference.bindless)
-			meta.stride = reference.stride;
-
-		if (is_non_uniform)
-		{
-			spv::Id type_id = builder.getDerefTypeId(image_id);
-			type_id = builder.getContainedTypeId(type_id);
-
-			if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
+			if (instruction_offset)
 			{
-				builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
-				builder.addExtension("SPV_EXT_descriptor_indexing");
+				LOGE("Cannot use indexing on root descriptors.\n");
+				return false;
 			}
-			else
+
+			spv::Id ptr_id = build_shader_record_load_physical_pointer(impl, instruction, reference.local_root_signature_entry);
+			impl.value_map[instruction] = ptr_id;
+			auto &meta = impl.handle_to_resource_meta[ptr_id];
+			meta = {};
+			meta.stride = reference.stride;
+			meta.storage = spv::StorageClassPhysicalStorageBuffer;
+		}
+		else
+		{
+			spv::Id base_image_id = reference.var_id;
+			spv::Id image_id = base_image_id;
+
+			bool is_non_uniform = false;
+			spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction,
+			                                               instruction_offset, non_uniform, is_non_uniform);
+
+			if (!loaded_id)
 			{
-				builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
-				builder.addExtension("SPV_EXT_descriptor_indexing");
+				LOGE("Failed to load SRV resource handle.\n");
+				return false;
+			}
+
+			auto &meta = impl.handle_to_resource_meta[loaded_id];
+			meta = impl.handle_to_resource_meta[base_image_id];
+			meta.non_uniform = is_non_uniform;
+
+			// The base array variable does not know what the stride is, promote that state here.
+			if (reference.bindless)
+				meta.stride = reference.stride;
+
+			if (is_non_uniform)
+			{
+				spv::Id type_id = builder.getDerefTypeId(image_id);
+				type_id = builder.getContainedTypeId(type_id);
+
+				if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
+				{
+					builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
+					builder.addExtension("SPV_EXT_descriptor_indexing");
+				}
+				else
+				{
+					builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
+					builder.addExtension("SPV_EXT_descriptor_indexing");
+				}
 			}
 		}
 		break;

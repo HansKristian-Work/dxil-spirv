@@ -529,6 +529,8 @@ int main(int argc, char **argv)
 	{
 		dxil_spv_converter_add_local_root_constants(converter, 15, 0, 5);
 		dxil_spv_converter_add_local_root_constants(converter, 15, 1, 6);
+		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_SRV, 15, 1);
+		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_UAV, 15, 1);
 		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_SRV, 15, 2);
 		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_UAV, 15, 2);
 		dxil_spv_converter_add_local_root_descriptor(converter, DXIL_SPV_RESOURCE_CLASS_CBV, 15, 2);
