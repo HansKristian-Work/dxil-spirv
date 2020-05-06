@@ -748,62 +748,81 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 	case DXIL::ResourceType::UAV:
 	{
 		auto &reference = impl.uav_index_to_reference[resource_range];
-		auto &counter_reference = impl.uav_index_to_counter[resource_range];
 
-		spv::Id base_image_id = reference.var_id;
-		spv::Id image_id = base_image_id;
-
-		bool is_non_uniform = false;
-		spv::Id image_ptr_id = 0;
-		spv::Id loaded_id =
-			build_load_resource_handle(impl, base_image_id, reference, instruction,
-			                           instruction_offset, non_uniform, is_non_uniform, &image_ptr_id);
-
-		if (!loaded_id)
+		if (resource_is_physical_pointer(impl, reference))
 		{
-			LOGE("Failed to load UAV resource handle.\n");
-			return false;
-		}
+			if (instruction_offset)
+			{
+				LOGE("Cannot use indexing on root descriptors.\n");
+				return false;
+			}
 
-		auto &meta = impl.handle_to_resource_meta[loaded_id];
-		meta = impl.handle_to_resource_meta[base_image_id];
-		meta.non_uniform = is_non_uniform;
-
-		// Image atomics requires the pointer to image and not OpTypeImage directly.
-		meta.var_id = image_ptr_id;
-
-		// The base array variable does not know what the stride is, promote that state here.
-		if (reference.bindless)
+			spv::Id ptr_id = build_shader_record_load_physical_pointer(impl, instruction, reference.local_root_signature_entry);
+			impl.value_map[instruction] = ptr_id;
+			auto &meta = impl.handle_to_resource_meta[ptr_id];
+			meta = {};
 			meta.stride = reference.stride;
-
-		if (is_non_uniform)
-		{
-			spv::Id type_id = builder.getDerefTypeId(image_id);
-			type_id = builder.getContainedTypeId(type_id);
-
-			if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
-			{
-				builder.addCapability(spv::CapabilityStorageTexelBufferArrayNonUniformIndexing);
-				builder.addExtension("SPV_EXT_descriptor_indexing");
-			}
-			else
-			{
-				builder.addCapability(spv::CapabilityStorageImageArrayNonUniformIndexingEXT);
-				builder.addExtension("SPV_EXT_descriptor_indexing");
-			}
+			meta.storage = spv::StorageClassPhysicalStorageBuffer;
 		}
-
-		if (impl.llvm_values_using_update_counter.count(instruction) != 0)
+		else
 		{
-			if (counter_reference.bindless)
+			auto &counter_reference = impl.uav_index_to_counter[resource_range];
+
+			spv::Id base_image_id = reference.var_id;
+			spv::Id image_id = base_image_id;
+
+			bool is_non_uniform = false;
+			spv::Id image_ptr_id = 0;
+			spv::Id loaded_id =
+			    build_load_resource_handle(impl, base_image_id, reference, instruction, instruction_offset, non_uniform,
+			                               is_non_uniform, &image_ptr_id);
+
+			if (!loaded_id)
 			{
-				meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction);
-				meta.counter_is_physical_pointer = true;
+				LOGE("Failed to load UAV resource handle.\n");
+				return false;
 			}
-			else
+
+			auto &meta = impl.handle_to_resource_meta[loaded_id];
+			meta = impl.handle_to_resource_meta[base_image_id];
+			meta.non_uniform = is_non_uniform;
+
+			// Image atomics requires the pointer to image and not OpTypeImage directly.
+			meta.var_id = image_ptr_id;
+
+			// The base array variable does not know what the stride is, promote that state here.
+			if (reference.bindless)
+				meta.stride = reference.stride;
+
+			if (is_non_uniform)
 			{
-				meta.counter_var_id = counter_reference.var_id;
-				meta.counter_is_physical_pointer = false;
+				spv::Id type_id = builder.getDerefTypeId(image_id);
+				type_id = builder.getContainedTypeId(type_id);
+
+				if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
+				{
+					builder.addCapability(spv::CapabilityStorageTexelBufferArrayNonUniformIndexing);
+					builder.addExtension("SPV_EXT_descriptor_indexing");
+				}
+				else
+				{
+					builder.addCapability(spv::CapabilityStorageImageArrayNonUniformIndexingEXT);
+					builder.addExtension("SPV_EXT_descriptor_indexing");
+				}
+			}
+
+			if (impl.llvm_values_using_update_counter.count(instruction) != 0)
+			{
+				if (counter_reference.bindless)
+				{
+					meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction);
+					meta.counter_is_physical_pointer = true;
+				}
+				else
+				{
+					meta.counter_var_id = counter_reference.var_id;
+					meta.counter_is_physical_pointer = false;
+				}
 			}
 		}
 		break;

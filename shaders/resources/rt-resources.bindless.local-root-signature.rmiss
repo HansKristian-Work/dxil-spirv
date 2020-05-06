@@ -18,6 +18,9 @@ SamplerState Samps[] : register(s4, space15);
 StructuredBuffer<float4> StrBuf : register(t1, space15);
 ByteAddressBuffer BABuf : register(t2, space15);
 
+RWStructuredBuffer<float> RWStrBuf : register(u1, space15);
+RWByteAddressBuffer RWBABuf : register(u2, space15);
+
 struct Payload
 {
 	float4 color;
@@ -44,4 +47,7 @@ void RayMiss(inout Payload payload)
 	payload.color += asfloat(BABuf.Load2(8 * payload.index)).xyxy;
 	payload.color += asfloat(BABuf.Load3(12 * payload.index)).xyzz;
 	payload.color += asfloat(BABuf.Load4(16 * payload.index));
+
+	payload.color += RWStrBuf[payload.index];
+	payload.color += asfloat(RWBABuf.Load(4 * payload.index));
 }
