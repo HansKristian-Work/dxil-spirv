@@ -71,6 +71,7 @@ struct DXILDispatcher
 		OP(BufferLoad) = emit_buffer_load_instruction;
 		OP(RawBufferLoad) = emit_raw_buffer_load_instruction;
 		OP(BufferStore) = emit_buffer_store_instruction;
+		OP(RawBufferStore) = emit_raw_buffer_store_instruction;
 		OP(BufferUpdateCounter) = emit_buffer_update_counter_instruction;
 		OP(AtomicBinOp) = emit_atomic_binop_instruction;
 		OP(AtomicCompareExchange) = emit_atomic_cmpxchg_instruction;

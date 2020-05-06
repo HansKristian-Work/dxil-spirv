@@ -82,40 +82,49 @@ uint _291;
 float _358;
 uint _372;
 vec4 _380;
+float _389;
 
 void main()
 {
     uint _54 = (SBT._m9.x >> 6u) + 12u;
-    vec4 _70 = texelFetch(_22[nonuniformEXT(registers._m0 + (payload._m1 & 1u))], ivec2(uvec2(0u)), int(0u));
-    vec4 _83 = texelFetch(_22[nonuniformEXT(registers._m0 + payload._m1)], ivec2(uvec2(0u)), int(0u));
-    vec4 _102 = texelFetch(_22[nonuniformEXT(((SBT._m7.x >> 6u) + 17u) + payload._m1)], ivec2(uvec2(0u)), int(0u));
-    vec4 _122 = imageLoad(_26[nonuniformEXT(((SBT._m8.x >> 6u) + 18u) + payload._m1)], ivec2(uvec2(0u)));
-    uint _149 = ((SBT._m9.x >> 6u) + 13u) + payload._m1;
+    uint _59 = payload._m1;
+    vec4 _70 = texelFetch(_22[nonuniformEXT(registers._m0 + (_59 & 1u))], ivec2(uvec2(0u)), int(0u));
+    vec4 _83 = texelFetch(_22[nonuniformEXT(registers._m0 + _59)], ivec2(uvec2(0u)), int(0u));
+    vec4 _102 = texelFetch(_22[nonuniformEXT(((SBT._m7.x >> 6u) + 17u) + _59)], ivec2(uvec2(0u)), int(0u));
+    vec4 _122 = imageLoad(_26[nonuniformEXT(((SBT._m8.x >> 6u) + 18u) + _59)], ivec2(uvec2(0u)));
+    uint _149 = ((SBT._m9.x >> 6u) + 13u) + _59;
     vec4 _172 = uintBitsToFloat(uvec4(SBT._m0[0u], SBT._m0[1u], SBT._m0[2u], SBT._m0[3u]));
     vec4 _185 = uintBitsToFloat(uvec4(SBT._m0[4u], 0u, 0u, 0u));
     vec4Pointer _199 = vec4Pointer(SBT._m6 + uint64_t(1u * 16u));
-    vec4 _228 = textureLodOffset(sampler2D(_22[nonuniformEXT(registers._m0 + (payload._m1 & 1u))], _37[nonuniformEXT((SBT._m10.x >> 5u) + 13u)]), vec2(0.5), 0.0, ivec2(0));
-    vec4 _256 = textureLodOffset(sampler2D(_22[nonuniformEXT(registers._m0 + payload._m1)], _37[nonuniformEXT(((SBT._m10.x >> 5u) + 14u) + (payload._m1 ^ 1u))]), vec2(0.5), 0.0, ivec2(0));
-    vec4Pointer _272 = vec4Pointer(SBT._m2 + uint64_t((payload._m1 * 16u) + 0u));
-    float _293 = uintBitsToFloat(uvec2(uintPointer(SBT._m4 + uint64_t(payload._m1 << 2u)).value, _291).x);
-    uvec2Pointer _302 = uvec2Pointer(SBT._m4 + uint64_t(payload._m1 << 3u));
+    uint _209 = payload._m1;
+    vec4 _228 = textureLodOffset(sampler2D(_22[nonuniformEXT(registers._m0 + (_209 & 1u))], _37[nonuniformEXT((SBT._m10.x >> 5u) + 13u)]), vec2(0.5), 0.0, ivec2(0));
+    vec4 _256 = textureLodOffset(sampler2D(_22[nonuniformEXT(registers._m0 + _209)], _37[nonuniformEXT(((SBT._m10.x >> 5u) + 14u) + (_209 ^ 1u))]), vec2(0.5), 0.0, ivec2(0));
+    vec4Pointer _272 = vec4Pointer(SBT._m2 + uint64_t((_209 * 16u) + 0u));
+    float _293 = uintBitsToFloat(uvec2(uintPointer(SBT._m4 + uint64_t(_209 << 2u)).value, _291).x);
+    uvec2Pointer _302 = uvec2Pointer(SBT._m4 + uint64_t(_209 << 3u));
     float _306 = uintBitsToFloat(_302.value.x);
     float _307 = uintBitsToFloat(_302.value.y);
-    uvec3Pointer _317 = uvec3Pointer(SBT._m4 + uint64_t(payload._m1 * 12u));
+    uvec3Pointer _317 = uvec3Pointer(SBT._m4 + uint64_t(_209 * 12u));
     float _324 = uintBitsToFloat(_317.value.z);
-    uvec4Pointer _334 = uvec4Pointer(SBT._m4 + uint64_t(payload._m1 << 4u));
-    vec2 _357 = vec2(floatPointer(SBT._m3 + uint64_t((payload._m1 * 4u) + 0u)).value, _358);
+    uint _329 = payload._m1;
+    uvec4Pointer _334 = uvec4Pointer(SBT._m4 + uint64_t(_329 << 4u));
+    vec2 _357 = vec2(floatPointer(SBT._m3 + uint64_t((_329 * 4u) + 0u)).value, _358);
     float _359 = _357.x;
-    float _374 = uintBitsToFloat(uvec2(uintPointer(SBT._m5 + uint64_t(payload._m1 << 2u)).value, _372).x);
+    uint _364 = _329 << 2u;
+    float _374 = uintBitsToFloat(uvec2(uintPointer(SBT._m5 + uint64_t(_364)).value, _372).x);
+    float _375 = ((((((((((((((((_70.x + _83.x) + _102.x) + _122.x) + _33[nonuniformEXT(_54)]._m0[0u].x) + _33[nonuniformEXT(_149)]._m0[0u].x) + _172.x) + _185.x) + _199.value.x) + _228.x) + _256.x) + _272.value.x) + _293) + _306) + uintBitsToFloat(_317.value.x)) + uintBitsToFloat(_334.value.x)) + _359) + _374;
+    float _376 = ((((((((((((((((_70.y + _83.y) + _102.y) + _122.y) + _33[nonuniformEXT(_54)]._m0[0u].y) + _33[nonuniformEXT(_149)]._m0[0u].y) + _172.y) + _185.y) + _199.value.y) + _228.y) + _256.y) + _272.value.y) + _293) + _307) + uintBitsToFloat(_317.value.y)) + uintBitsToFloat(_334.value.y)) + _359) + _374;
     vec4 _379 = _380;
-    _379.x = ((((((((((((((((_70.x + _83.x) + _102.x) + _122.x) + _33[nonuniformEXT(_54)]._m0[0u].x) + _33[nonuniformEXT(_149)]._m0[0u].x) + _172.x) + _185.x) + _199.value.x) + _228.x) + _256.x) + _272.value.x) + _293) + _306) + uintBitsToFloat(_317.value.x)) + uintBitsToFloat(_334.value.x)) + _359) + _374;
+    _379.x = _375;
     vec4 _381 = _379;
-    _381.y = ((((((((((((((((_70.y + _83.y) + _102.y) + _122.y) + _33[nonuniformEXT(_54)]._m0[0u].y) + _33[nonuniformEXT(_149)]._m0[0u].y) + _172.y) + _185.y) + _199.value.y) + _228.y) + _256.y) + _272.value.y) + _293) + _307) + uintBitsToFloat(_317.value.y)) + uintBitsToFloat(_334.value.y)) + _359) + _374;
+    _381.y = _376;
     vec4 _382 = _381;
     _382.z = ((((((((((((((((_70.z + _83.z) + _102.z) + _122.z) + _33[nonuniformEXT(_54)]._m0[0u].z) + _33[nonuniformEXT(_149)]._m0[0u].z) + _172.z) + _185.z) + _199.value.z) + _228.z) + _256.z) + _272.value.z) + _293) + _306) + _324) + uintBitsToFloat(_334.value.z)) + _359) + _374;
     vec4 _383 = _382;
     _383.w = ((((((((((((((((_70.w + _83.w) + _102.w) + _122.w) + _33[nonuniformEXT(_54)]._m0[0u].w) + _33[nonuniformEXT(_149)]._m0[0u].w) + _172.w) + _185.w) + _199.value.w) + _228.w) + _256.w) + _272.value.w) + _293) + _307) + _324) + uintBitsToFloat(_334.value.w)) + _359) + _374;
     payload._m0 = _383;
+    floatPointer(SBT._m3 + uint64_t((_329 * 4u) + 0u)).value = _375;
+    floatPointer(SBT._m5 + uint64_t(_364)).value = _376;
 }
 
 
@@ -124,7 +133,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 386
+; Bound: 397
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -283,20 +292,21 @@ OpDecorate %255 NonUniform
 %231 = OpTypeVector %68 2
 %232 = OpConstantComposite %231 %69 %69
 %252 = OpConstant %5 14
-%287 = OpTypePointer PhysicalStorageBuffer %5
-%301 = OpTypePointer PhysicalStorageBuffer %14
-%315 = OpTypeVector %5 3
-%316 = OpTypePointer PhysicalStorageBuffer %315
-%333 = OpTypePointer PhysicalStorageBuffer %170
-%354 = OpTypePointer PhysicalStorageBuffer %18
+%285 = OpTypePointer PhysicalStorageBuffer %5
+%299 = OpTypePointer PhysicalStorageBuffer %14
+%313 = OpTypeVector %5 3
+%314 = OpTypePointer PhysicalStorageBuffer %313
+%331 = OpTypePointer PhysicalStorageBuffer %170
+%350 = OpTypePointer PhysicalStorageBuffer %18
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %291 = OpUndef %5
 %358 = OpUndef %18
 %372 = OpUndef %5
 %380 = OpUndef %27
-OpBranch %384
-%384 = OpLabel
+%389 = OpUndef %18
+OpBranch %395
+%395 = OpLabel
 %42 = OpAccessChain %41 %17 %11
 %43 = OpLoad %13 %42
 %45 = OpAccessChain %44 %17 %46
@@ -505,9 +515,9 @@ OpBranch %384
 %282 = OpShiftLeftLogical %5 %209 %165
 %283 = OpAccessChain %41 %17 %182
 %284 = OpLoad %13 %283
-%285 = OpUConvert %13 %282
-%286 = OpIAdd %13 %284 %285
-%288 = OpBitcast %287 %286
+%286 = OpUConvert %13 %282
+%287 = OpIAdd %13 %284 %286
+%288 = OpBitcast %285 %287
 %289 = OpLoad %5 %288 Aligned 4
 %290 = OpCompositeConstruct %14 %289 %291
 %292 = OpCompositeExtract %5 %290 0
@@ -517,9 +527,9 @@ OpBranch %384
 %296 = OpFAdd %18 %280 %293
 %297 = OpFAdd %18 %281 %293
 %298 = OpShiftLeftLogical %5 %209 %168
-%299 = OpUConvert %13 %298
-%300 = OpIAdd %13 %284 %299
-%302 = OpBitcast %301 %300
+%300 = OpUConvert %13 %298
+%301 = OpIAdd %13 %284 %300
+%302 = OpBitcast %299 %301
 %303 = OpLoad %14 %302 Aligned 4
 %304 = OpCompositeExtract %5 %303 0
 %305 = OpCompositeExtract %5 %303 1
@@ -530,10 +540,10 @@ OpBranch %384
 %310 = OpFAdd %18 %296 %306
 %311 = OpFAdd %18 %297 %307
 %312 = OpIMul %5 %209 %55
-%313 = OpUConvert %13 %312
-%314 = OpIAdd %13 %284 %313
-%317 = OpBitcast %316 %314
-%318 = OpLoad %315 %317 Aligned 4
+%315 = OpUConvert %13 %312
+%316 = OpIAdd %13 %284 %315
+%317 = OpBitcast %314 %316
+%318 = OpLoad %313 %317 Aligned 4
 %319 = OpCompositeExtract %5 %318 0
 %320 = OpCompositeExtract %5 %318 1
 %321 = OpCompositeExtract %5 %318 2
@@ -546,9 +556,9 @@ OpBranch %384
 %328 = OpFAdd %18 %311 %324
 %329 = OpLoad %5 %57
 %330 = OpShiftLeftLogical %5 %329 %182
-%331 = OpUConvert %13 %330
-%332 = OpIAdd %13 %284 %331
-%334 = OpBitcast %333 %332
+%332 = OpUConvert %13 %330
+%333 = OpIAdd %13 %284 %332
+%334 = OpBitcast %331 %333
 %335 = OpLoad %170 %334 Aligned 4
 %336 = OpCompositeExtract %5 %335 0
 %337 = OpCompositeExtract %5 %335 1
@@ -564,11 +574,11 @@ OpBranch %384
 %347 = OpFAdd %18 %328 %343
 %348 = OpAccessChain %41 %17 %168
 %349 = OpLoad %13 %348
-%350 = OpIMul %5 %329 %182
-%351 = OpIAdd %5 %350 %46
-%352 = OpUConvert %13 %351
-%353 = OpIAdd %13 %349 %352
-%355 = OpBitcast %354 %353
+%351 = OpIMul %5 %329 %182
+%352 = OpIAdd %5 %351 %46
+%353 = OpUConvert %13 %352
+%354 = OpIAdd %13 %349 %353
+%355 = OpBitcast %350 %354
 %356 = OpLoad %18 %355 Aligned 4
 %357 = OpCompositeConstruct %229 %356 %358
 %359 = OpCompositeExtract %18 %357 0
@@ -581,7 +591,7 @@ OpBranch %384
 %366 = OpLoad %13 %365
 %367 = OpUConvert %13 %364
 %368 = OpIAdd %13 %366 %367
-%369 = OpBitcast %287 %368
+%369 = OpBitcast %285 %368
 %370 = OpLoad %5 %369 Aligned 4
 %371 = OpCompositeConstruct %14 %370 %372
 %373 = OpCompositeExtract %5 %371 0
@@ -595,6 +605,18 @@ OpBranch %384
 %382 = OpCompositeInsert %27 %377 %381 2
 %383 = OpCompositeInsert %27 %378 %382 3
 OpStore %77 %383
+%384 = OpIMul %5 %329 %182
+%385 = OpIAdd %5 %384 %46
+%386 = OpUConvert %13 %385
+%387 = OpIAdd %13 %349 %386
+%388 = OpBitcast %350 %387
+OpStore %388 %375 Aligned 4
+%390 = OpAccessChain %41 %17 %9
+%391 = OpLoad %13 %390
+%392 = OpUConvert %13 %364
+%393 = OpIAdd %13 %391 %392
+%394 = OpBitcast %350 %393
+OpStore %394 %376 Aligned 4
 OpReturn
 OpFunctionEnd
 #endif

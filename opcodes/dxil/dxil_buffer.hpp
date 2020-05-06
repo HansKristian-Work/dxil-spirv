@@ -33,6 +33,7 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);

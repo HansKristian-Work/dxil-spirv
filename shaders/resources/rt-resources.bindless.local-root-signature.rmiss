@@ -50,4 +50,7 @@ void RayMiss(inout Payload payload)
 
 	payload.color += RWStrBuf[payload.index];
 	payload.color += asfloat(RWBABuf.Load(4 * payload.index));
+
+	RWStrBuf[payload.index] = payload.color.x;
+	RWBABuf.Store(4 * payload.index, payload.color.y);
 }

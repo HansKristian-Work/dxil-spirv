@@ -178,38 +178,11 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	return true;
 }
 
-bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[ptr_id];
-
-	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
-	{
-		// If we're attempting a raw load from a non-physical pointer, it gets spicy.
-		// Since we're using texel buffers for this case, we might not be able to implement it correctly.
-		if (auto *alignment = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(5)))
-		{
-			if (alignment->getUniqueInteger().getZExtValue() < 4)
-			{
-				LOGE("Requested an alignment of < 4 bytes in RawBufferLoad with descriptor. This is unimplementable.\n");
-				return false;
-			}
-		}
-		else
-			return false;
-
-		auto *ret_component = instruction->getType()->getStructElementType(0);
-		if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
-			!(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID && ret_component->getIntegerBitWidth() == 32))
-		{
-			LOGE("RawBufferLoad on descriptors is only supported for 32-bits currently.\n");
-			return false;
-		}
-
-		// Ignore the mask. We'll read too much, but robustness should take care of any OOB.
-		return emit_buffer_load_instruction(impl, instruction);
-	}
 
 	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2));
 	spv::Id element_offset = 0;
@@ -245,6 +218,15 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 	ptr_compute_op->add_id(u64_offset_op->id);
 	impl.add(ptr_compute_op);
 
+	return ptr_compute_op->id;
+}
+
+bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[ptr_id];
+
 	uint32_t mask = 0;
 	if (!get_constant_operand(instruction, 4, &mask))
 		return false;
@@ -252,6 +234,28 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 	uint32_t alignment = 0;
 	if (!get_constant_operand(instruction, 5, &alignment))
 		return false;
+
+	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
+	{
+		// If we're attempting a raw load from a non-physical pointer, it gets spicy.
+		// Since we're using texel buffers for this case, we might not be able to implement it correctly.
+		if (alignment < 4)
+		{
+			LOGE("Requested an alignment of < 4 bytes in RawBufferLoad with descriptor. This is unimplementable.\n");
+			return false;
+		}
+
+		auto *ret_component = instruction->getType()->getStructElementType(0);
+		if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
+			!(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID && ret_component->getIntegerBitWidth() == 32))
+		{
+			LOGE("RawBufferLoad on descriptors is only supported for 32-bits currently.\n");
+			return false;
+		}
+
+		// Ignore the mask. We'll read too much, but robustness should take care of any OOB.
+		return emit_buffer_load_instruction(impl, instruction);
+	}
 
 	unsigned vecsize = 0;
 	if (mask == 1)
@@ -273,8 +277,10 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 		type_id = builder.makeVectorType(type_id, vecsize);
 	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id);
 
+	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
+
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
-	ptr_bitcast_op->add_id(ptr_compute_op->id);
+	ptr_bitcast_op->add_id(u64_ptr_id);
 	impl.add(ptr_bitcast_op);
 
 	auto *load_op = impl.allocate(spv::OpLoad, instruction, type_id);
@@ -359,6 +365,82 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	if (is_typed)
 		builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
+
+	return true;
+}
+
+bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[ptr_id];
+
+	uint32_t mask = 0;
+	if (!get_constant_operand(instruction, 8, &mask))
+		return false;
+
+	uint32_t alignment = 0;
+	if (!get_constant_operand(instruction, 9, &alignment))
+		return false;
+
+	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
+	{
+		// If we're attempting a raw load from a non-physical pointer, it gets spicy.
+		// Since we're using texel buffers for this case, we might not be able to implement it correctly.
+		if (alignment < 4)
+		{
+			LOGE("Requested an alignment of < 4 bytes in RawBufferLoad with descriptor. This is unimplementable.\n");
+			return false;
+		}
+
+		auto *store_type = instruction->getOperand(4)->getType();
+		if (store_type->getTypeID() != llvm::Type::TypeID::FloatTyID &&
+		    !(store_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && store_type->getIntegerBitWidth() == 32))
+		{
+			LOGE("RawBufferStore on descriptors is only supported for 32-bits currently.\n");
+			return false;
+		}
+
+		return emit_buffer_store_instruction(impl, instruction);
+	}
+
+	unsigned vecsize = 0;
+	if (mask == 1)
+		vecsize = 1;
+	else if (mask == 3)
+		vecsize = 2;
+	else if (mask == 7)
+		vecsize = 3;
+	else if (mask == 15)
+		vecsize = 4;
+	else
+	{
+		LOGE("Unexpected mask for RawBufferStore = %u.\n", mask);
+		return false;
+	}
+
+	spv::Id type_id = impl.get_type_id(instruction->getOperand(4)->getType());
+	spv::Id vec_type_id = type_id;
+	if (vecsize > 1)
+		vec_type_id = builder.makeVectorType(type_id, vecsize);
+	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id);
+
+	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
+
+	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+	ptr_bitcast_op->add_id(u64_ptr_id);
+	impl.add(ptr_bitcast_op);
+
+	spv::Id elems[4] = {};
+	for (unsigned i = 0; i < 4; i++)
+		elems[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+
+	auto *store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(ptr_bitcast_op->id);
+	store_op->add_id(impl.build_vector(type_id, elems, vecsize));
+	store_op->add_literal(spv::MemoryAccessAlignedMask);
+	store_op->add_literal(alignment);
+	impl.add(store_op);
 
 	return true;
 }
