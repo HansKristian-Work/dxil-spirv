@@ -916,6 +916,10 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
 		}
 
+		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::Sampler, bind_space, bind_register);
+		bool need_resource_remapping = local_root_signature_entry < 0 ||
+		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
+
 		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
 			                       DXIL::ResourceKind::Sampler,
 			                       index,
@@ -923,12 +927,32 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			                       bind_register,
 			                       range_size };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
-		if (resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
+		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
 			return false;
 
 		sampler_index_to_reference.resize(std::max(sampler_index_to_reference.size(), size_t(index + 1)));
 
-		if (vulkan_binding.bindless.use_heap)
+		if (local_root_signature_entry >= 0)
+		{
+			auto &entry = local_root_signature[local_root_signature_entry];
+			// Samplers can only live in table entries.
+			if (!vulkan_binding.bindless.use_heap)
+			{
+				LOGE("Table SBT entries must be bindless.\n");
+				return false;
+			}
+			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::Sampler, DXIL::ComponentType::Invalid,
+			                                               DXIL::ResourceKind::Sampler, vulkan_binding.descriptor_set,
+			                                               vulkan_binding.binding);
+
+			uint32_t heap_offset = entry.table.offset_in_heap;
+			heap_offset += bind_register - entry.register_index;
+
+			sampler_index_to_reference[index] = { var_id,      0,
+			                                      heap_offset, 0,
+			                                      true,        range_size != 1, local_root_signature_entry };
+		}
+		else if (vulkan_binding.bindless.use_heap)
 		{
 			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::Sampler, DXIL::ComponentType::Invalid,
 			                                               DXIL::ResourceKind::Sampler, vulkan_binding.descriptor_set,
