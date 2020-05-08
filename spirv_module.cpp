@@ -105,6 +105,9 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInLaunchSizeKHR:
 		return builder.makeVectorType(builder.makeUintType(32), 3);
 
+	case spv::BuiltInObjectRayOriginKHR:
+		return builder.makeVectorType(builder.makeFloatType(32), 3);
+
 	default:
 		return 0;
 	}
