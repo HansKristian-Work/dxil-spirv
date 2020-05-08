@@ -116,6 +116,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 		return builder.makeFloatType(32);
 
 	case spv::BuiltInWorldToObjectKHR:
+	case spv::BuiltInObjectToWorldKHR:
 		return builder.makeMatrixType(builder.makeFloatType(32), 4, 3);
 
 	default:

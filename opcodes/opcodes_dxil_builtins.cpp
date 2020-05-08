@@ -196,6 +196,7 @@ struct DXILDispatcher
 		OP(RayTMin) = emit_ray_t_min_instruction;
 		OP(RayTCurrent) = emit_ray_t_current_instruction;
 		OP(WorldToObject) = emit_world_to_object_instruction;
+		OP(ObjectToWorld) = emit_object_to_world_instruction;
 	}
 
 #undef OP

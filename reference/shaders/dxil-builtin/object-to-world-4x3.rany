@@ -1,0 +1,135 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct _7
+{
+    vec3 _m0;
+};
+
+struct _11
+{
+    vec2 _m0;
+};
+
+layout(location = 0) rayPayloadInNV _7 payload;
+hitAttributeNV _11 hit;
+
+vec3 _59;
+
+void main()
+{
+    vec3 _58 = _59;
+    _58.x = fma(payload._m0.z, gl_ObjectToWorldNV[2u].x, fma(payload._m0.y, gl_ObjectToWorldNV[1u].x, payload._m0.x * gl_ObjectToWorldNV[0u].x)) + gl_ObjectToWorldNV[3u].x;
+    vec3 _64 = _58;
+    _64.y = fma(payload._m0.z, gl_ObjectToWorldNV[2u].y, fma(payload._m0.y, gl_ObjectToWorldNV[1u].y, payload._m0.x * gl_ObjectToWorldNV[0u].y)) + gl_ObjectToWorldNV[3u].y;
+    vec3 _69 = _64;
+    _69.z = fma(payload._m0.z, gl_ObjectToWorldNV[2u].z, fma(payload._m0.y, gl_ObjectToWorldNV[1u].z, payload._m0.x * gl_ObjectToWorldNV[0u].z)) + gl_ObjectToWorldNV[3u].z;
+    payload._m0 = _69;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 72
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability RayTracingProvisionalKHR
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+%54 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint AnyHitNV %3 "main" %16
+OpName %3 "main"
+OpName %7 ""
+OpName %9 "payload"
+OpName %11 ""
+OpName %13 "hit"
+OpDecorate %9 Location 0
+OpDecorate %16 BuiltIn ObjectToWorldNV
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 3
+%7 = OpTypeStruct %6
+%8 = OpTypePointer IncomingRayPayloadNV %7
+%9 = OpVariable %8 IncomingRayPayloadNV
+%10 = OpTypeVector %5 2
+%11 = OpTypeStruct %10
+%12 = OpTypePointer HitAttributeNV %11
+%13 = OpVariable %12 HitAttributeNV
+%14 = OpTypeMatrix %6 4
+%15 = OpTypePointer Input %14
+%16 = OpVariable %15 Input
+%17 = OpTypePointer Input %5
+%19 = OpTypeInt 32 0
+%20 = OpConstant %19 0
+%23 = OpConstant %19 1
+%26 = OpConstant %19 2
+%41 = OpConstant %19 3
+%47 = OpTypePointer IncomingRayPayloadNV %6
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%59 = OpUndef %6
+OpBranch %70
+%70 = OpLabel
+%18 = OpAccessChain %17 %16 %20 %20
+%21 = OpLoad %5 %18
+%22 = OpAccessChain %17 %16 %20 %23
+%24 = OpLoad %5 %22
+%25 = OpAccessChain %17 %16 %20 %26
+%27 = OpLoad %5 %25
+%28 = OpAccessChain %17 %16 %23 %20
+%29 = OpLoad %5 %28
+%30 = OpAccessChain %17 %16 %23 %23
+%31 = OpLoad %5 %30
+%32 = OpAccessChain %17 %16 %23 %26
+%33 = OpLoad %5 %32
+%34 = OpAccessChain %17 %16 %26 %20
+%35 = OpLoad %5 %34
+%36 = OpAccessChain %17 %16 %26 %23
+%37 = OpLoad %5 %36
+%38 = OpAccessChain %17 %16 %26 %26
+%39 = OpLoad %5 %38
+%40 = OpAccessChain %17 %16 %41 %20
+%42 = OpLoad %5 %40
+%43 = OpAccessChain %17 %16 %41 %23
+%44 = OpLoad %5 %43
+%45 = OpAccessChain %17 %16 %41 %26
+%46 = OpLoad %5 %45
+%48 = OpInBoundsAccessChain %47 %9 %20
+%49 = OpLoad %6 %48
+%50 = OpCompositeExtract %5 %49 0
+%51 = OpCompositeExtract %5 %49 1
+%52 = OpCompositeExtract %5 %49 2
+%53 = OpFMul %5 %50 %21
+%55 = OpExtInst %5 %54 Fma %51 %29 %53
+%56 = OpExtInst %5 %54 Fma %52 %35 %55
+%57 = OpFAdd %5 %56 %42
+%58 = OpCompositeInsert %6 %57 %59 0
+%60 = OpFMul %5 %50 %24
+%61 = OpExtInst %5 %54 Fma %51 %31 %60
+%62 = OpExtInst %5 %54 Fma %52 %37 %61
+%63 = OpFAdd %5 %62 %44
+%64 = OpCompositeInsert %6 %63 %58 1
+%65 = OpFMul %5 %50 %27
+%66 = OpExtInst %5 %54 Fma %51 %33 %65
+%67 = OpExtInst %5 %54 Fma %52 %39 %66
+%68 = OpFAdd %5 %67 %46
+%69 = OpCompositeInsert %6 %68 %64 2
+OpStore %48 %69
+OpReturn
+OpFunctionEnd
+#endif

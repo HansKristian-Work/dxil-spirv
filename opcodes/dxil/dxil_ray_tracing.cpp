@@ -100,10 +100,10 @@ bool emit_ray_t_current_instruction(Converter::Impl &impl, const llvm::CallInst 
 	return true;
 }
 
-bool emit_world_to_object_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+static bool emit_ray_tracing_matrix_load(Converter::Impl &impl, const llvm::CallInst *inst, spv::BuiltIn builtin)
 {
 	auto &builder = impl.builder();
-	spv::Id matrix_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInWorldToObjectKHR);
+	spv::Id matrix_id = impl.spirv_module.get_builtin_shader_input(builtin);
 	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassInput, builder.makeFloatType(32)));
 	chain_op->add_id(matrix_id);
 
@@ -117,5 +117,15 @@ bool emit_world_to_object_instruction(Converter::Impl &impl, const llvm::CallIns
 	load_op->add_id(chain_op->id);
 	impl.add(load_op);
 	return true;
+}
+
+bool emit_world_to_object_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	return emit_ray_tracing_matrix_load(impl, inst, spv::BuiltInWorldToObjectKHR);
+}
+
+bool emit_object_to_world_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	return emit_ray_tracing_matrix_load(impl, inst, spv::BuiltInObjectToWorldKHR);
 }
 }
