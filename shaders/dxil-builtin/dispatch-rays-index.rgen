@@ -1,0 +1,7 @@
+RWTexture2D<uint3> UTex : register(u0);
+
+[shader("raygeneration")]
+void RayGen()
+{
+	UTex[DispatchRaysIndex().xy] = uint3(1, 2, 3);
+}

@@ -101,6 +101,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInGlobalInvocationId:
 	case spv::BuiltInLocalInvocationId:
 	case spv::BuiltInWorkgroupId:
+	case spv::BuiltInLaunchIdKHR:
 		return builder.makeVectorType(builder.makeUintType(32), 3);
 
 	default:

@@ -1,0 +1,72 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+layout(set = 0, binding = 0) uniform writeonly uimage2D UTex;
+
+void main()
+{
+    imageStore(UTex, ivec2(uvec2(gl_LaunchIDNV.x, gl_LaunchIDNV.y)), uvec4(1u, 2u, 3u, 1u));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 28
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability StorageImageWriteWithoutFormat
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability RayTracingProvisionalKHR
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint RayGenerationNV %3 "main" %11
+OpName %3 "main"
+OpName %8 "UTex"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %11 BuiltIn LaunchIdNV
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 2D 0 0 0 2 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeVector %5 3
+%10 = OpTypePointer Input %9
+%11 = OpVariable %10 Input
+%12 = OpTypePointer Input %5
+%14 = OpConstant %5 0
+%17 = OpConstant %5 1
+%20 = OpConstant %5 2
+%21 = OpConstant %5 3
+%22 = OpTypeVector %5 2
+%24 = OpTypeVector %5 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %26
+%26 = OpLabel
+%13 = OpAccessChain %12 %11 %14
+%15 = OpLoad %5 %13
+%16 = OpAccessChain %12 %11 %17
+%18 = OpLoad %5 %16
+%19 = OpLoad %6 %8
+%23 = OpCompositeConstruct %22 %15 %18
+%25 = OpCompositeConstruct %24 %17 %20 %21 %17
+OpImageWrite %19 %23 %25
+OpReturn
+OpFunctionEnd
+#endif

@@ -23,4 +23,5 @@
 namespace dxil_spv
 {
 bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_dispatch_rays_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv
