@@ -1,0 +1,90 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct _7
+{
+    vec3 _m0;
+};
+
+struct _11
+{
+    vec2 _m0;
+};
+
+layout(location = 0) rayPayloadInNV _7 payload;
+hitAttributeNV _11 hit;
+
+vec3 _18;
+
+void main()
+{
+    vec3 _17 = _18;
+    _17.x = gl_RayTminNV;
+    vec3 _19 = _17;
+    _19.y = gl_RayTminNV;
+    vec3 _20 = _19;
+    _20.z = gl_RayTminNV;
+    payload._m0 = _20;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 27
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability RayTracingProvisionalKHR
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint AnyHitNV %3 "main" %15
+OpName %3 "main"
+OpName %7 ""
+OpName %9 "payload"
+OpName %11 ""
+OpName %13 "hit"
+OpDecorate %9 Location 0
+OpDecorate %15 BuiltIn RayTminNV
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 3
+%7 = OpTypeStruct %6
+%8 = OpTypePointer IncomingRayPayloadNV %7
+%9 = OpVariable %8 IncomingRayPayloadNV
+%10 = OpTypeVector %5 2
+%11 = OpTypeStruct %10
+%12 = OpTypePointer HitAttributeNV %11
+%13 = OpVariable %12 HitAttributeNV
+%14 = OpTypePointer Input %5
+%15 = OpVariable %14 Input
+%21 = OpTypePointer IncomingRayPayloadNV %6
+%23 = OpTypeInt 32 0
+%24 = OpConstant %23 0
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%18 = OpUndef %6
+OpBranch %25
+%25 = OpLabel
+%16 = OpLoad %5 %15
+%17 = OpCompositeInsert %6 %16 %18 0
+%19 = OpCompositeInsert %6 %16 %17 1
+%20 = OpCompositeInsert %6 %16 %19 2
+%22 = OpInBoundsAccessChain %21 %9 %24
+OpStore %22 %20
+OpReturn
+OpFunctionEnd
+#endif

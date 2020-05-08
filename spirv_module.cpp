@@ -111,6 +111,10 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInWorldRayDirectionKHR:
 		return builder.makeVectorType(builder.makeFloatType(32), 3);
 
+	case spv::BuiltInRayTminKHR:
+	case spv::BuiltInRayTmaxKHR:
+		return builder.makeFloatType(32);
+
 	default:
 		return 0;
 	}

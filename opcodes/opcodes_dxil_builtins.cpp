@@ -193,6 +193,8 @@ struct DXILDispatcher
 		OP(WorldRayOrigin) = emit_world_ray_origin_instruction;
 		OP(ObjectRayDirection) = emit_object_ray_direction_instruction;
 		OP(WorldRayDirection) = emit_world_ray_direction_instruction;
+		OP(RayTMin) = emit_ray_t_min_instruction;
+		OP(RayTCurrent) = emit_ray_t_current_instruction;
 	}
 
 #undef OP

@@ -81,4 +81,22 @@ bool emit_world_ray_direction_instruction(Converter::Impl &impl, const llvm::Cal
 	return emit_ray_tracing_builtin_load_instruction(impl, inst, spv::BuiltInWorldRayDirectionKHR,
 	                                                 impl.builder().makeFloatType(32));
 }
+
+bool emit_ray_t_min_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	spv::Id id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInRayTminKHR);
+	auto *op = impl.allocate(spv::OpLoad, inst);
+	op->add_id(id);
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_t_current_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	spv::Id id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInRayTmaxKHR);
+	auto *op = impl.allocate(spv::OpLoad, inst);
+	op->add_id(id);
+	impl.add(op);
+	return true;
+}
 }
