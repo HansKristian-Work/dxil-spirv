@@ -137,4 +137,13 @@ bool emit_ray_tracing_instance_id_instruction(Converter::Impl &impl, const llvm:
 	impl.add(op);
 	return true;
 }
+
+bool emit_ray_tracing_instance_index_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	spv::Id index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInstanceId);
+	auto *op = impl.allocate(spv::OpLoad, inst);
+	op->add_id(index_id);
+	impl.add(op);
+	return true;
+}
 }

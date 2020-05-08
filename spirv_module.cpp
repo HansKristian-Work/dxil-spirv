@@ -120,6 +120,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 		return builder.makeMatrixType(builder.makeFloatType(32), 4, 3);
 
 	case spv::BuiltInInstanceCustomIndexKHR:
+	case spv::BuiltInInstanceId:
 		return builder.makeUintType(32);
 
 	default:

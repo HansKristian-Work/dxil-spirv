@@ -198,6 +198,7 @@ struct DXILDispatcher
 		OP(WorldToObject) = emit_world_to_object_instruction;
 		OP(ObjectToWorld) = emit_object_to_world_instruction;
 		OP(InstanceID) = emit_ray_tracing_instance_id_instruction;
+		OP(InstanceIndex) = emit_ray_tracing_instance_index_instruction;
 	}
 
 #undef OP

@@ -34,4 +34,5 @@ bool emit_ray_t_current_instruction(Converter::Impl &impl, const llvm::CallInst 
 bool emit_world_to_object_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_object_to_world_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_ray_tracing_instance_id_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_ray_tracing_instance_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv
