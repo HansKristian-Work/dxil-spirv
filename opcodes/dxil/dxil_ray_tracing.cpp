@@ -129,39 +129,32 @@ bool emit_object_to_world_instruction(Converter::Impl &impl, const llvm::CallIns
 	return emit_ray_tracing_matrix_load(impl, inst, spv::BuiltInObjectToWorldKHR);
 }
 
-bool emit_ray_tracing_instance_id_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+static bool emit_ray_tracing_load_uint(Converter::Impl &impl, const llvm::CallInst *inst, spv::BuiltIn builtin)
 {
-	spv::Id index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInstanceCustomIndexKHR);
+	spv::Id index_id = impl.spirv_module.get_builtin_shader_input(builtin);
 	auto *op = impl.allocate(spv::OpLoad, inst);
 	op->add_id(index_id);
 	impl.add(op);
 	return true;
+}
+
+bool emit_ray_tracing_instance_id_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInInstanceCustomIndexKHR);
 }
 
 bool emit_ray_tracing_instance_index_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	spv::Id index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInstanceId);
-	auto *op = impl.allocate(spv::OpLoad, inst);
-	op->add_id(index_id);
-	impl.add(op);
-	return true;
+	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInInstanceId);
 }
 
 bool emit_ray_tracing_geometry_index_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	spv::Id index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInRayGeometryIndexKHR);
-	auto *op = impl.allocate(spv::OpLoad, inst);
-	op->add_id(index_id);
-	impl.add(op);
-	return true;
+	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInRayGeometryIndexKHR);
 }
 
 bool emit_ray_tracing_primitive_index_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	spv::Id index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInPrimitiveId);
-	auto *op = impl.allocate(spv::OpLoad, inst);
-	op->add_id(index_id);
-	impl.add(op);
-	return true;
+	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInPrimitiveId);
 }
 }
