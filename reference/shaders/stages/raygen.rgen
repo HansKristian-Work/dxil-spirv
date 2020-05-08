@@ -19,6 +19,8 @@ layout(location = 0) rayPayloadNV _17 _19;
 
 void main()
 {
+    traceNV(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0u);
+    traceNV(AS, 0u, 1u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1u);
     imageStore(IMG, ivec2(uvec2(0u)), vec4(_15._m0 + _19._m0.x, _15._m0 + _19._m0.y, _15._m0 + _19._m0.z, _15._m0 + _19._m0.w));
 }
 
@@ -28,7 +30,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 44
+; Bound: 55
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -75,33 +77,46 @@ OpDecorate %19 Location 0
 %17 = OpTypeStruct %16
 %18 = OpTypePointer RayPayloadNV %17
 %19 = OpVariable %18 RayPayloadNV
-%21 = OpTypePointer RayPayloadNV %16
-%23 = OpTypeInt 32 0
-%24 = OpConstant %23 0
-%31 = OpTypePointer RayPayloadNV %9
-%39 = OpTypeVector %23 2
+%21 = OpTypeInt 32 0
+%22 = OpConstant %21 0
+%23 = OpConstant %9 1
+%24 = OpConstant %9 0
+%25 = OpConstant %9 2
+%26 = OpConstant %9 3
+%27 = OpConstant %9 4
+%28 = OpTypeVector %9 3
+%31 = OpTypePointer RayPayloadNV %16
+%39 = OpConstant %21 1
+%42 = OpTypePointer RayPayloadNV %9
+%50 = OpTypeVector %21 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %42
-%42 = OpLabel
+OpBranch %53
+%53 = OpLabel
 %20 = OpLoad %6 %8
-%22 = OpInBoundsAccessChain %21 %19 %24
-%25 = OpLoad %16 %22
-%26 = OpCompositeExtract %9 %25 0
-%27 = OpCompositeExtract %9 %25 1
-%28 = OpCompositeExtract %9 %25 2
-%29 = OpCompositeExtract %9 %25 3
-%30 = OpLoad %6 %8
-%32 = OpInBoundsAccessChain %31 %15 %24
-%33 = OpLoad %9 %32
-%34 = OpFAdd %9 %33 %26
-%35 = OpFAdd %9 %33 %27
-%36 = OpFAdd %9 %33 %28
-%37 = OpFAdd %9 %33 %29
-%38 = OpLoad %10 %12
-%40 = OpCompositeConstruct %39 %24 %24
-%41 = OpCompositeConstruct %16 %34 %35 %36 %37
-OpImageWrite %38 %40 %41
+%29 = OpCompositeConstruct %28 %23 %25 %26
+%30 = OpCompositeConstruct %28 %24 %24 %23
+OpTraceNV %20 %22 %22 %22 %22 %22 %29 %23 %30 %27 %22
+%32 = OpInBoundsAccessChain %31 %19 %22
+%33 = OpLoad %16 %32
+%34 = OpCompositeExtract %9 %33 0
+%35 = OpCompositeExtract %9 %33 1
+%36 = OpCompositeExtract %9 %33 2
+%37 = OpCompositeExtract %9 %33 3
+%38 = OpLoad %6 %8
+%40 = OpCompositeConstruct %28 %23 %25 %26
+%41 = OpCompositeConstruct %28 %24 %24 %23
+OpTraceNV %38 %22 %39 %22 %22 %22 %40 %23 %41 %27 %39
+%43 = OpInBoundsAccessChain %42 %15 %22
+%44 = OpLoad %9 %43
+%45 = OpFAdd %9 %44 %34
+%46 = OpFAdd %9 %44 %35
+%47 = OpFAdd %9 %44 %36
+%48 = OpFAdd %9 %44 %37
+%49 = OpLoad %10 %12
+%51 = OpCompositeConstruct %50 %22 %22
+%52 = OpCompositeConstruct %16 %45 %46 %47 %48
+OpImageWrite %49 %51 %52
 OpReturn
 OpFunctionEnd
 #endif

@@ -23,9 +23,55 @@
 
 namespace dxil_spv
 {
-bool emit_trace_ray_instruction(Converter::Impl &, const llvm::CallInst *)
+bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	// TODO. Dummy here to test RayGen resource declaration for now.
+	auto &builder = impl.builder();
+	spv::Id acceleration_structure = impl.get_id_for_value(inst->getOperand(1));
+	spv::Id ray_flags = impl.get_id_for_value(inst->getOperand(2));
+	spv::Id instance_inclusion_mask = impl.get_id_for_value(inst->getOperand(3));
+	spv::Id ray_contribution_to_hit_group = impl.get_id_for_value(inst->getOperand(4));
+	spv::Id multiplier_for_geometry = impl.get_id_for_value(inst->getOperand(5));
+	spv::Id miss_shader_index = impl.get_id_for_value(inst->getOperand(6));
+
+	spv::Id ray_origin[3];
+	spv::Id ray_dir[3];
+
+	for (unsigned i = 0; i < 3; i++)
+	{
+		ray_origin[i] = impl.get_id_for_value(inst->getOperand(7 + i));
+		ray_dir[i] = impl.get_id_for_value(inst->getOperand(11 + i));
+	}
+
+	spv::Id tmin = impl.get_id_for_value(inst->getOperand(10));
+	spv::Id tmax = impl.get_id_for_value(inst->getOperand(14));
+
+	spv::Id ray_origin_vec = impl.build_vector(builder.makeFloatType(32), ray_origin, 3);
+	spv::Id ray_dir_vec = impl.build_vector(builder.makeFloatType(32), ray_dir, 3);
+
+	auto location_itr = impl.llvm_values_to_payload_location.find(inst->getOperand(15));
+	if (location_itr == impl.llvm_values_to_payload_location.end())
+	{
+		LOGE("No payload location associated with pointer.\n");
+		return false;
+	}
+	spv::Id payload_location = builder.makeUintConstant(location_itr->second);
+
+	auto *op = impl.allocate(spv::OpTraceRayKHR);
+	op->add_ids({
+	    acceleration_structure,
+	    ray_flags,
+	    instance_inclusion_mask,
+	    ray_contribution_to_hit_group,
+	    multiplier_for_geometry,
+	    miss_shader_index,
+	    ray_origin_vec,
+	    tmin,
+	    ray_dir_vec,
+	    tmax,
+	    payload_location
+	});
+	impl.add(op);
+
 	return true;
 }
 
