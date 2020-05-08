@@ -69,4 +69,16 @@ bool emit_world_ray_origin_instruction(Converter::Impl &impl, const llvm::CallIn
 	return emit_ray_tracing_builtin_load_instruction(impl, inst, spv::BuiltInWorldRayOriginKHR,
 	                                                 impl.builder().makeFloatType(32));
 }
+
+bool emit_object_ray_direction_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	return emit_ray_tracing_builtin_load_instruction(impl, inst, spv::BuiltInObjectRayDirectionKHR,
+	                                                 impl.builder().makeFloatType(32));
+}
+
+bool emit_world_ray_direction_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	return emit_ray_tracing_builtin_load_instruction(impl, inst, spv::BuiltInWorldRayDirectionKHR,
+	                                                 impl.builder().makeFloatType(32));
+}
 }

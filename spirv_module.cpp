@@ -107,6 +107,8 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 
 	case spv::BuiltInObjectRayOriginKHR:
 	case spv::BuiltInWorldRayOriginKHR:
+	case spv::BuiltInObjectRayDirectionKHR:
+	case spv::BuiltInWorldRayDirectionKHR:
 		return builder.makeVectorType(builder.makeFloatType(32), 3);
 
 	default:

@@ -191,6 +191,8 @@ struct DXILDispatcher
 		OP(DispatchRaysDimensions) = emit_dispatch_rays_dimensions_instruction;
 		OP(ObjectRayOrigin) = emit_object_ray_origin_instruction;
 		OP(WorldRayOrigin) = emit_world_ray_origin_instruction;
+		OP(ObjectRayDirection) = emit_object_ray_direction_instruction;
+		OP(WorldRayDirection) = emit_world_ray_direction_instruction;
 	}
 
 #undef OP

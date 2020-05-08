@@ -1,0 +1,98 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct _7
+{
+    vec3 _m0;
+};
+
+struct _11
+{
+    vec2 _m0;
+};
+
+layout(location = 0) rayPayloadInNV _7 payload;
+hitAttributeNV _11 hit;
+
+vec3 _22;
+
+void main()
+{
+    vec3 _21 = _22;
+    _21.x = gl_WorldRayDirectionNV.x;
+    vec3 _26 = _21;
+    _26.y = gl_WorldRayDirectionNV.y;
+    vec3 _30 = _26;
+    _30.z = gl_WorldRayDirectionNV.z;
+    payload._m0 = _30;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 35
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability RayTracingProvisionalKHR
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint AnyHitNV %3 "main" %15
+OpName %3 "main"
+OpName %7 ""
+OpName %9 "payload"
+OpName %11 ""
+OpName %13 "hit"
+OpDecorate %9 Location 0
+OpDecorate %15 BuiltIn WorldRayDirectionNV
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 3
+%7 = OpTypeStruct %6
+%8 = OpTypePointer IncomingRayPayloadNV %7
+%9 = OpVariable %8 IncomingRayPayloadNV
+%10 = OpTypeVector %5 2
+%11 = OpTypeStruct %10
+%12 = OpTypePointer HitAttributeNV %11
+%13 = OpVariable %12 HitAttributeNV
+%14 = OpTypePointer Input %6
+%15 = OpVariable %14 Input
+%16 = OpTypePointer Input %5
+%18 = OpTypeInt 32 0
+%19 = OpConstant %18 0
+%24 = OpConstant %18 1
+%28 = OpConstant %18 2
+%31 = OpTypePointer IncomingRayPayloadNV %6
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%22 = OpUndef %6
+OpBranch %33
+%33 = OpLabel
+%17 = OpAccessChain %16 %15 %19
+%20 = OpLoad %5 %17
+%21 = OpCompositeInsert %6 %20 %22 0
+%23 = OpAccessChain %16 %15 %24
+%25 = OpLoad %5 %23
+%26 = OpCompositeInsert %6 %25 %21 1
+%27 = OpAccessChain %16 %15 %28
+%29 = OpLoad %5 %27
+%30 = OpCompositeInsert %6 %29 %26 2
+%32 = OpInBoundsAccessChain %31 %9 %19
+OpStore %32 %30
+OpReturn
+OpFunctionEnd
+#endif
