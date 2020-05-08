@@ -123,6 +123,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInInstanceId:
 	case spv::BuiltInRayGeometryIndexKHR:
 	case spv::BuiltInIncomingRayFlagsKHR:
+	case spv::BuiltInHitKindKHR:
 		return builder.makeUintType(32);
 
 	default:

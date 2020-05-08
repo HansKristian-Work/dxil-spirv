@@ -162,4 +162,9 @@ bool emit_ray_tracing_ray_flags_instruction(Converter::Impl &impl, const llvm::C
 {
 	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInIncomingRayFlagsKHR);
 }
+
+bool emit_ray_tracing_hit_kind_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInHitKindKHR);
+}
 }
