@@ -26,4 +26,5 @@ bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 bool emit_dispatch_rays_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dispatch_rays_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_object_ray_origin_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_world_ray_origin_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv
