@@ -99,4 +99,23 @@ bool emit_ray_t_current_instruction(Converter::Impl &impl, const llvm::CallInst 
 	impl.add(op);
 	return true;
 }
+
+bool emit_world_to_object_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto &builder = impl.builder();
+	spv::Id matrix_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInWorldToObjectKHR);
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassInput, builder.makeFloatType(32)));
+	chain_op->add_id(matrix_id);
+
+	// Transpose here.
+	chain_op->add_id(impl.get_id_for_value(inst->getOperand(2), 32));
+	chain_op->add_id(impl.get_id_for_value(inst->getOperand(1)));
+
+	impl.add(chain_op);
+
+	auto *load_op = impl.allocate(spv::OpLoad, inst);
+	load_op->add_id(chain_op->id);
+	impl.add(load_op);
+	return true;
+}
 }

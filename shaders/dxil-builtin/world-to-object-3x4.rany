@@ -1,0 +1,10 @@
+struct Payload
+{
+	float3 orig;
+};
+
+[shader("anyhit")]
+void RayHit(inout Payload payload, BuiltInTriangleIntersectionAttributes attr)
+{
+	payload.orig = mul(WorldToObject3x4(), float4(payload.orig, 1.0));
+}

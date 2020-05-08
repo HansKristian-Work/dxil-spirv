@@ -115,6 +115,9 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInRayTmaxKHR:
 		return builder.makeFloatType(32);
 
+	case spv::BuiltInWorldToObjectKHR:
+		return builder.makeMatrixType(builder.makeFloatType(32), 4, 3);
+
 	default:
 		return 0;
 	}
