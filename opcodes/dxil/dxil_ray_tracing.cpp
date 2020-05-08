@@ -128,4 +128,13 @@ bool emit_object_to_world_instruction(Converter::Impl &impl, const llvm::CallIns
 {
 	return emit_ray_tracing_matrix_load(impl, inst, spv::BuiltInObjectToWorldKHR);
 }
+
+bool emit_ray_tracing_instance_id_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	spv::Id index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInstanceCustomIndexKHR);
+	auto *op = impl.allocate(spv::OpLoad, inst);
+	op->add_id(index_id);
+	impl.add(op);
+	return true;
+}
 }
