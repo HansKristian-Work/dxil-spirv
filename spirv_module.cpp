@@ -121,6 +121,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 
 	case spv::BuiltInInstanceCustomIndexKHR:
 	case spv::BuiltInInstanceId:
+	case spv::BuiltInRayGeometryIndexKHR:
 		return builder.makeUintType(32);
 
 	default:
