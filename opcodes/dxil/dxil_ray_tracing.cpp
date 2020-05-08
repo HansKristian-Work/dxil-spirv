@@ -155,4 +155,13 @@ bool emit_ray_tracing_geometry_index_instruction(Converter::Impl &impl, const ll
 	impl.add(op);
 	return true;
 }
+
+bool emit_ray_tracing_primitive_index_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	spv::Id index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInPrimitiveId);
+	auto *op = impl.allocate(spv::OpLoad, inst);
+	op->add_id(index_id);
+	impl.add(op);
+	return true;
+}
 }

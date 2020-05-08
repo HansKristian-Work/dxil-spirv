@@ -200,6 +200,7 @@ struct DXILDispatcher
 		OP(InstanceID) = emit_ray_tracing_instance_id_instruction;
 		OP(InstanceIndex) = emit_ray_tracing_instance_index_instruction;
 		OP(RayQuery_GeometryIndex) = emit_ray_tracing_geometry_index_instruction;
+		OP(PrimitiveIndex) = emit_ray_tracing_primitive_index_instruction;
 	}
 
 #undef OP

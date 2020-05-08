@@ -1,0 +1,10 @@
+struct Payload
+{
+	uint index;
+};
+
+[shader("anyhit")]
+void RayHit(inout Payload payload, BuiltInTriangleIntersectionAttributes attr)
+{
+	payload.index = PrimitiveIndex();
+}
