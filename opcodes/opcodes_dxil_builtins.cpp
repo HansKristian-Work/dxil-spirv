@@ -188,6 +188,7 @@ struct DXILDispatcher
 		// dxil_ray_tracing.cpp
 		OP(TraceRay) = emit_trace_ray_instruction;
 		OP(DispatchRaysIndex) = emit_dispatch_rays_index_instruction;
+		OP(DispatchRaysDimensions) = emit_dispatch_rays_dimensions_instruction;
 	}
 
 #undef OP
