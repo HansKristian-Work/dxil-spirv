@@ -351,7 +351,9 @@ CFGNode *CFGNode::get_outer_selection_dominator()
 	assert(immediate_dominator);
 	auto *node = immediate_dominator;
 
-	while (node->succ.size() == 1 && node->ir.terminator.type != Terminator::Type::Switch)
+	// We need to find an immediate dominator which we do not post-dominate.
+	// That first idom is considered the outer selection header.
+	while (node->ir.terminator.type != Terminator::Type::Switch && post_dominates(node))
 	{
 		if (node->pred.empty())
 			break;
@@ -360,8 +362,11 @@ CFGNode *CFGNode::get_outer_selection_dominator()
 		while (std::find(node->headers.begin(), node->headers.end(), node->immediate_dominator) != node->headers.end())
 			node = node->immediate_dominator;
 
-		assert(node->immediate_dominator);
-		node = node->immediate_dominator;
+		if (post_dominates(node))
+		{
+			assert(node->immediate_dominator);
+			node = node->immediate_dominator;
+		}
 	}
 
 	return node;
