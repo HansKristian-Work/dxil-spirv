@@ -317,6 +317,7 @@ struct ModuleParseContext
 	unsigned basic_block_index = 0;
 
 	Value *get_value(uint64_t op, Type *expected_type = nullptr, bool force_absolute = false);
+	std::pair<Value *, Type *> get_value_and_type(const std::vector<uint64_t> &ops, unsigned &index);
 	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
 	MDOperand *get_metadata(uint64_t index) const;
 	const char *get_metadata_kind(uint64_t index) const;
@@ -414,7 +415,7 @@ BasicBlock *ModuleParseContext::get_basic_block(uint64_t index) const
 Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type, bool force_absolute)
 {
 	if (!force_absolute && use_relative_id)
-		op = values.size() - op;
+		op = uint32_t(values.size() - op);
 
 	if (op >= values.size())
 	{
@@ -429,6 +430,33 @@ Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type, bool forc
 	}
 	else
 		return values[op];
+}
+
+std::pair<Value *, Type *> ModuleParseContext::get_value_and_type(const std::vector<uint64_t> &ops, unsigned &index)
+{
+	if (index >= ops.size())
+		return {};
+
+	uint64_t op = ops[index++];
+	if (use_relative_id)
+		op = uint32_t(values.size() - op);
+
+	if (op < values.size())
+	{
+		// Normal reference.
+		return { values[op], values[op]->getType() };
+	}
+	else
+	{
+		// Forward reference, the type is encoded in the next element.
+		if (index >= ops.size())
+			return {};
+
+		auto *type = get_type(ops[index++]);
+		auto *proxy = context->construct<ValueProxy>(type, *this, op);
+		pending_forward_references.push_back(proxy);
+		return { proxy, type };
+	}
 }
 
 Instruction *ModuleParseContext::get_instruction(uint64_t index) const
@@ -997,6 +1025,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 		if (index >= entry.ops.size())
 			return false;
+
 		auto *callee = dyn_cast<Function>(get_value(entry.ops[index++]));
 		if (!callee)
 			return false;
@@ -1019,7 +1048,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 		for (unsigned i = 0; i < num_params; i++)
 		{
-			auto *arg = get_value(entry.ops[index + i]);
+			auto *arg = get_value(entry.ops[index + i], function_type->getParamType(i));
 			if (!arg)
 				return false;
 			params.push_back(arg);
@@ -1041,11 +1070,12 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_UNOP:
 	{
-		if (entry.ops.size() < 2)
+		unsigned index = 0;
+		auto val = get_value_and_type(entry.ops, index);
+		if (!val.first || index + 1 > entry.ops.size())
 			return false;
-		auto *val = get_value(entry.ops[0]);
-		auto op = UnaryOp(entry.ops[1]);
-		auto *value = context->construct<UnaryOperator>(translate_uop(op, val->getType()), val);
+		auto op = UnaryOp(entry.ops[index++]);
+		auto *value = context->construct<UnaryOperator>(translate_uop(op, val.second), val.first);
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1054,20 +1084,21 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	case FunctionRecord::INST_CMP:
 	case FunctionRecord::INST_CMP2:
 	{
-		if (entry.ops.size() < 3)
+		unsigned index = 0;
+		auto lhs = get_value_and_type(entry.ops, index);
+		if (!lhs.first || index + 2 > entry.ops.size())
 			return false;
-		auto *lhs = get_value(entry.ops[0]);
-		auto *rhs = get_value(entry.ops[1]);
-		auto pred = Instruction::Predicate(entry.ops[2]);
+		auto *rhs = get_value(entry.ops[index++], lhs.second);
+		auto pred = Instruction::Predicate(entry.ops[index++]);
 
-		if (!lhs || !rhs)
+		if (!rhs)
 			return false;
 
 		Instruction *value = nullptr;
-		if (lhs->getType()->isFloatingPointTy())
-			value = context->construct<FCmpInst>(pred, lhs, rhs);
+		if (lhs.second->isFloatingPointTy())
+			value = context->construct<FCmpInst>(pred, lhs.first, rhs);
 		else
-			value = context->construct<ICmpInst>(pred, lhs, rhs);
+			value = context->construct<ICmpInst>(pred, lhs.first, rhs);
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1103,14 +1134,15 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_BINOP:
 	{
-		if (entry.ops.size() < 3)
+		unsigned index = 0;
+		auto lhs = get_value_and_type(entry.ops, index);
+		if (!lhs.first || index + 2 > entry.ops.size())
 			return false;
-		auto *lhs = get_value(entry.ops[0]);
-		auto *rhs = get_value(entry.ops[1]);
-		if (!lhs || !rhs)
+		auto *rhs = get_value(entry.ops[index++], lhs.second);
+		if (!lhs.first || !rhs)
 			return false;
-		auto op = BinOp(entry.ops[2]);
-		auto *value = context->construct<BinaryOperator>(lhs, rhs, translate_binop(op, lhs->getType()));
+		auto op = BinOp(entry.ops[index++]);
+		auto *value = context->construct<BinaryOperator>(lhs.first, rhs, translate_binop(op, lhs.second));
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1148,14 +1180,15 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_CAST:
 	{
-		if (entry.ops.size() < 3)
+		unsigned index = 0;
+		auto input_value = get_value_and_type(entry.ops, index);
+		if (!input_value.first || index + 2 > entry.ops.size())
 			return false;
-		auto *input_value = get_value(entry.ops[0]);
-		auto *type = get_type(entry.ops[1]);
-		if (!input_value || !type)
+		auto *type = get_type(entry.ops[index++]);
+		if (!type)
 			return false;
-		auto op = Instruction::CastOps(translate_castop(CastOp(entry.ops[2])));
-		auto *value = context->construct<CastInst>(type, input_value, op);
+		auto op = Instruction::CastOps(translate_castop(CastOp(entry.ops[index++])));
+		auto *value = context->construct<CastInst>(type, input_value.first, op);
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1164,14 +1197,15 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	case FunctionRecord::INST_SELECT:
 	case FunctionRecord::INST_VSELECT:
 	{
-		if (entry.ops.size() < 3)
+		unsigned index = 0;
+		auto true_value = get_value_and_type(entry.ops, index);
+		if (!true_value.first || index + 2 > entry.ops.size())
 			return false;
-		auto *true_value = get_value(entry.ops[0]);
-		auto *false_value = get_value(entry.ops[1]);
-		auto *cond_value = get_value(entry.ops[2]);
-		if (!true_value || !false_value || !cond_value)
+		auto *false_value = get_value(entry.ops[index++], true_value.second);
+		auto *cond_value = get_value(entry.ops[index++], Type::getInt1Ty(*context));
+		if (!false_value || !cond_value)
 			return false;
-		auto *value = context->construct<SelectInst>(true_value, false_value, cond_value);
+		auto *value = context->construct<SelectInst>(true_value.first, false_value, cond_value);
 		if (!add_instruction(value))
 			return false;
 		break;
