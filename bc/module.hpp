@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <string>
 
 // A reasonably small LLVM C++ API lookalike.
 
