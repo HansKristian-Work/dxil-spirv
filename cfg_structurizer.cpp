@@ -1449,7 +1449,7 @@ void CFGStructurizer::find_loops()
 			}
 		}
 
-		if (dominated_exit.empty() && non_dominated_exit.empty())
+		if (dominated_exit.empty() && inner_dominated_exit.empty() && non_dominated_exit.empty())
 		{
 			// There can be zero loop exits, i.e. infinite loop. This means we have no merge block.
 			// We will invent a merge block to satisfy SPIR-V validator, and declare it as unreachable.
