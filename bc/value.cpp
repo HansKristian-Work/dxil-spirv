@@ -209,6 +209,30 @@ float APFloat::convertToFloat() const
 	}
 }
 
+APInt APFloat::bitcastToAPInt() const
+{
+	Type *int_type = nullptr;
+	switch (type->getTypeID())
+	{
+	case Type::TypeID::HalfTyID:
+		int_type = Type::getInt16Ty(type->getContext());
+		break;
+
+	case Type::TypeID::FloatTyID:
+		int_type = Type::getInt32Ty(type->getContext());
+		break;
+
+	case Type::TypeID::DoubleTyID:
+		int_type = Type::getInt64Ty(type->getContext());
+		break;
+
+	default:
+		break;
+	}
+
+	return { int_type, value };
+}
+
 double APFloat::convertToDouble() const
 {
 	switch (type->getTypeID())

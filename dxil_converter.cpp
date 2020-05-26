@@ -1339,6 +1339,12 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 
 	switch (constant->getType()->getTypeID())
 	{
+	case llvm::Type::TypeID::HalfTyID:
+	{
+		auto *fp = llvm::cast<llvm::ConstantFP>(constant);
+		return builder.makeFloat16Constant(fp->getValueAPF().bitcastToAPInt().getZExtValue() & 0xffffu);
+	}
+
 	case llvm::Type::TypeID::FloatTyID:
 	{
 		auto *fp = llvm::cast<llvm::ConstantFP>(constant);
@@ -1358,6 +1364,9 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		{
 		case 1:
 			return builder.makeBoolConstant(constant->getUniqueInteger().getZExtValue() != 0);
+
+		case 16:
+			return builder.makeUint16Constant(constant->getUniqueInteger().getZExtValue());
 
 		case 32:
 			return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue());
@@ -1692,6 +1701,18 @@ bool Converter::Impl::emit_patch_variables()
 		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(patch, 2));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(patch, 3));
 
+		switch (element_type)
+		{
+		case DXIL::ComponentType::F16:
+		case DXIL::ComponentType::I16:
+		case DXIL::ComponentType::U16:
+			builder.addCapability(spv::CapabilityStorageInputOutput16);
+			break;
+
+		default:
+			break;
+		}
+
 		unsigned semantic_index = 0;
 		if (patch->getOperand(4))
 			semantic_index = get_constant_metadata(llvm::cast<llvm::MDNode>(patch->getOperand(4)), 0);
@@ -1772,6 +1793,18 @@ bool Converter::Impl::emit_stage_output_variables()
 		auto semantic_name = get_string_metadata(output, 1);
 		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
+
+		switch (element_type)
+		{
+		case DXIL::ComponentType::F16:
+		case DXIL::ComponentType::I16:
+		case DXIL::ComponentType::U16:
+			builder.addCapability(spv::CapabilityStorageInputOutput16);
+			break;
+
+		default:
+			break;
+		}
 
 		unsigned semantic_index = 0;
 		if (output->getOperand(4))
@@ -2290,6 +2323,18 @@ bool Converter::Impl::emit_stage_input_variables()
 		auto semantic_name = get_string_metadata(input, 1);
 		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(input, 2));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(input, 3));
+
+		switch (element_type)
+		{
+		case DXIL::ComponentType::F16:
+		case DXIL::ComponentType::I16:
+		case DXIL::ComponentType::U16:
+			builder.addCapability(spv::CapabilityStorageInputOutput16);
+			break;
+
+		default:
+			break;
+		}
 
 		unsigned semantic_index = 0;
 		if (input->getOperand(4))

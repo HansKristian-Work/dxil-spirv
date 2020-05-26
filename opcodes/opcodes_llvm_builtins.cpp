@@ -178,6 +178,11 @@ bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastIns
 
 	switch (instruction->getType()->getIntegerBitWidth())
 	{
+	case 16:
+		const_0 = builder.makeUint16Constant(0);
+		const_1 = builder.makeUint16Constant(is_signed ? (~0u) : 1u);
+		break;
+
 	case 32:
 		const_0 = builder.makeUintConstant(0);
 		const_1 = builder.makeUintConstant(is_signed ? (~0u) : 1u);

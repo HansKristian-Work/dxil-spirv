@@ -50,17 +50,17 @@ def create_temporary(suff = ''):
 def get_sm(shader):
     _, ext = os.path.splitext(shader)
     if ext == '.vert':
-        return 'vs_6_0'
+        return 'vs_6_2'
     elif ext == '.frag':
-        return 'ps_6_0'
+        return 'ps_6_2'
     elif ext == '.comp':
-        return 'cs_6_0'
+        return 'cs_6_2'
     elif ext == '.tesc':
-        return 'hs_6_0'
+        return 'hs_6_2'
     elif ext == '.tese':
-        return 'ds_6_0'
+        return 'ds_6_2'
     elif ext == '.geom':
-        return 'gs_6_0'
+        return 'gs_6_2'
     elif ext == '.rmiss':
         return 'lib_6_5'
     elif ext == '.rgen':
@@ -79,7 +79,7 @@ def get_sm(shader):
 def cross_compile_dxil(shader, args, paths):
     dxil_path = create_temporary()
     glsl_path = create_temporary(os.path.basename(shader))
-    dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader), '-Fo', dxil_path, shader]
+    dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader), '-Fo', dxil_path, shader, '-enable-16bit-types']
     subprocess.check_call(dxil_cmd)
 
     hlsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', dxil_path, '--vertex-input', 'ATTR', '0']

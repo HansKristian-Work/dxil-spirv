@@ -46,10 +46,6 @@
 
 #include "SpvBuilder.h"
 
-#ifdef AMD_EXTENSIONS
-    #include "hex_float.h"
-#endif
-
 #ifndef _WIN32
     #include <cstdio>
 #endif
@@ -843,16 +839,12 @@ Id Builder::makeDoubleConstant(double d, bool specConstant)
 }
 
 #ifdef AMD_EXTENSIONS
-Id Builder::makeFloat16Constant(float f16, bool specConstant)
+Id Builder::makeFloat16Constant(uint16_t f16, bool specConstant)
 {
     Op opcode = specConstant ? OpSpecConstant : OpConstant;
     Id typeId = makeFloatType(16);
 
-    spvutils::HexFloat<spvutils::FloatProxy<float>> fVal(f16);
-    spvutils::HexFloat<spvutils::FloatProxy<spvutils::Float16>> f16Val(0);
-    fVal.castTo(f16Val, spvutils::kRoundToZero);
-
-    unsigned value = f16Val.value().getAsFloat().get_value();
+    unsigned value = f16;
 
     // See if we already made it. Applies only to regular constants, because specialization constants
     // must remain distinct for the purpose of applying a SpecId decoration.

@@ -18,6 +18,7 @@ add_library(glslang-spirv-builder STATIC
         glslang-spirv/SpvBuilder.h
         glslang-spirv/SpvBuilder.cpp)
 set_target_properties(glslang-spirv-builder PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(glslang-spirv-builder PUBLIC AMD_EXTENSIONS)
 
 target_include_directories(glslang-spirv-builder PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/glslang-spirv)

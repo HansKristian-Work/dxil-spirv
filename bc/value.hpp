@@ -124,6 +124,8 @@ public:
 	float convertToFloat() const;
 	double convertToDouble() const;
 
+	APInt bitcastToAPInt() const;
+
 private:
 	Type *type = nullptr;
 	uint64_t value = 0;
