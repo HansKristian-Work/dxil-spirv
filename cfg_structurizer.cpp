@@ -1427,6 +1427,10 @@ void CFGStructurizer::find_loops()
 			}
 		}
 
+		// If the only merge candidates we have are inner dominated, treat them as true dominated exits.
+		if (dominated_exit.empty() && !inner_dominated_exit.empty())
+			std::swap(dominated_exit, inner_dominated_exit);
+
 		// If we only have one direct exit, consider it our merge block.
 		// Pick either Merge or Escape.
 		if (direct_exits.size() == 1 && dominated_exit.empty() && non_dominated_exit.empty())
