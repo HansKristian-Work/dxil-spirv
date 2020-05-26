@@ -171,9 +171,32 @@ bool emit_saturate_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
+	spv::Id constant_0, constant_1;
+
+	switch (instruction->getType()->getTypeID())
+	{
+	case llvm::Type::TypeID::HalfTyID:
+		constant_0 = builder.makeFloat16Constant(0);
+		constant_1 = builder.makeFloat16Constant(0x3c00);
+		break;
+
+	case llvm::Type::TypeID::FloatTyID:
+		constant_0 = builder.makeFloatConstant(0.0f);
+		constant_1 = builder.makeFloatConstant(1.0f);
+		break;
+
+	case llvm::Type::TypeID::DoubleTyID:
+		constant_0 = builder.makeDoubleConstant(0.0);
+		constant_1 = builder.makeDoubleConstant(1.0);
+		break;
+
+	default:
+		return false;
+	}
+
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_ids({ impl.glsl_std450_ext, GLSLstd450NClamp, impl.get_id_for_value(instruction->getOperand(1)),
-	              builder.makeFloatConstant(0.0f), builder.makeFloatConstant(1.0f) });
+	              constant_0, constant_1 });
 
 	impl.add(op);
 	return true;

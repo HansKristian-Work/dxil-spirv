@@ -34,15 +34,15 @@ OpDecorate %9 Location 0
 %7 = OpVariable %6 Input
 %8 = OpTypePointer Output %5
 %9 = OpVariable %8 Output
-%13 = OpConstant %5 0
-%14 = OpConstant %5 1
+%12 = OpConstant %5 0
+%13 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %15
 %15 = OpLabel
 %10 = OpLoad %5 %7
-%12 = OpExtInst %5 %11 NClamp %10 %13 %14
-OpStore %9 %12
+%14 = OpExtInst %5 %11 NClamp %10 %12 %13
+OpStore %9 %14
 OpReturn
 OpFunctionEnd
 #endif
