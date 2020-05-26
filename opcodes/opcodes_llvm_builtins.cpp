@@ -90,7 +90,31 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 
 	case llvm::BinaryOperator::BinaryOps::Xor:
 		if (instruction->getType()->getIntegerBitWidth() == 1)
+		{
+			// Logical not in LLVM IR is encoded as XOR i1 against true.
+			spv::Id not_id = 0;
+			if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(0)))
+			{
+				if (c->getUniqueInteger().getZExtValue() != 0)
+					not_id = impl.get_id_for_value(instruction->getOperand(1));
+			}
+			else if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1)))
+			{
+				if (c->getUniqueInteger().getZExtValue() != 0)
+					not_id = impl.get_id_for_value(instruction->getOperand(0));
+			}
+
+			if (not_id)
+			{
+				opcode = spv::OpLogicalNot;
+				auto *op = impl.allocate(opcode, instruction);
+				op->add_id(not_id);
+				impl.add(op);
+				return true;
+			}
+
 			opcode = spv::OpLogicalNotEqual;
+		}
 		else
 			opcode = spv::OpBitwiseXor;
 		break;
@@ -146,9 +170,34 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 	return true;
 }
 
+bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, bool is_signed)
+{
+	auto &builder = impl.builder();
+	spv::Id const_0;
+	spv::Id const_1;
+
+	switch (instruction->getType()->getIntegerBitWidth())
+	{
+	case 32:
+		const_0 = builder.makeUintConstant(0);
+		const_1 = builder.makeUintConstant(is_signed ? (~0u) : 1u);
+		break;
+
+	default:
+		return false;
+	}
+
+	Operation *op = impl.allocate(spv::OpSelect, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+	op->add_ids({ const_1, const_0 });
+	impl.add(op);
+	return true;
+}
+
 bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
 {
 	spv::Op opcode;
+
 	switch (instruction->getOpcode())
 	{
 	case llvm::CastInst::CastOps::BitCast:
@@ -156,11 +205,18 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 		break;
 
 	case llvm::CastInst::CastOps::SExt:
+		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+			return emit_boolean_convert_instruction(impl, instruction, true);
 		opcode = spv::OpSConvert;
 		break;
 
-	case llvm::CastInst::CastOps::Trunc:
 	case llvm::CastInst::CastOps::ZExt:
+		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+			return emit_boolean_convert_instruction(impl, instruction, false);
+		opcode = spv::OpUConvert;
+		break;
+
+	case llvm::CastInst::CastOps::Trunc:
 		opcode = spv::OpUConvert;
 		break;
 

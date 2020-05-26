@@ -1356,6 +1356,9 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		unsigned integer_width = forced_width ? forced_width : constant->getType()->getIntegerBitWidth();
 		switch (integer_width)
 		{
+		case 1:
+			return builder.makeBoolConstant(constant->getUniqueInteger().getZExtValue() != 0);
+
 		case 32:
 			return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue());
 
