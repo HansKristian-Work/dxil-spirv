@@ -190,7 +190,7 @@ bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastIns
 
 	case llvm::Type::TypeID::DoubleTyID:
 		const_0 = builder.makeDoubleConstant(0.0);
-		const_1 = builder.makeDoubleConstant(is_signed ? -1.0f : 1.0);
+		const_1 = builder.makeDoubleConstant(is_signed ? -1.0 : 1.0);
 		break;
 
 	case llvm::Type::TypeID::IntegerTyID:
