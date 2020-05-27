@@ -1611,7 +1611,8 @@ spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned 
 	switch (element_type)
 	{
 	case DXIL::ComponentType::I1:
-		component_type = builder.makeBoolType();
+		// Cannot have bools in I/O interfaces, these are emitted as 32-bit integers.
+		component_type = builder.makeUintType(32);
 		break;
 
 	case DXIL::ComponentType::I16:

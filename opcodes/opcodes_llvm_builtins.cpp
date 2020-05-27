@@ -176,16 +176,39 @@ bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastIns
 	spv::Id const_0;
 	spv::Id const_1;
 
-	switch (instruction->getType()->getIntegerBitWidth())
+	switch (instruction->getType()->getTypeID())
 	{
-	case 16:
-		const_0 = builder.makeUint16Constant(0);
-		const_1 = builder.makeUint16Constant(is_signed ? (~0u) : 1u);
+	case llvm::Type::TypeID::HalfTyID:
+		const_0 = builder.makeFloat16Constant(0);
+		const_1 = builder.makeFloat16Constant(0x3c00u | (is_signed ? 0x8000u : 0u));
 		break;
 
-	case 32:
-		const_0 = builder.makeUintConstant(0);
-		const_1 = builder.makeUintConstant(is_signed ? (~0u) : 1u);
+	case llvm::Type::TypeID::FloatTyID:
+		const_0 = builder.makeFloatConstant(0.0f);
+		const_1 = builder.makeFloatConstant(is_signed ? -1.0f : 1.0f);
+		break;
+
+	case llvm::Type::TypeID::DoubleTyID:
+		const_0 = builder.makeDoubleConstant(0.0);
+		const_1 = builder.makeDoubleConstant(is_signed ? -1.0f : 1.0);
+		break;
+
+	case llvm::Type::TypeID::IntegerTyID:
+		switch (instruction->getType()->getIntegerBitWidth())
+		{
+		case 16:
+			const_0 = builder.makeUint16Constant(0);
+			const_1 = builder.makeUint16Constant(is_signed ? (~0u) : 1u);
+			break;
+
+		case 32:
+			const_0 = builder.makeUintConstant(0);
+			const_1 = builder.makeUintConstant(is_signed ? (~0u) : 1u);
+			break;
+
+		default:
+			return false;
+		}
 		break;
 
 	default:
@@ -239,10 +262,14 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 		break;
 
 	case llvm::CastInst::CastOps::SIToFP:
+		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+			return emit_boolean_convert_instruction(impl, instruction, true);
 		opcode = spv::OpConvertSToF;
 		break;
 
 	case llvm::CastInst::CastOps::UIToFP:
+		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+			return emit_boolean_convert_instruction(impl, instruction, false);
 		opcode = spv::OpConvertUToF;
 		break;
 
