@@ -104,6 +104,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto access = build_buffer_access(impl, instruction);
 	auto *result_type = instruction->getType();
 
+	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+
 	if (!is_typed)
 	{
 		// Unroll 4 loads. Ideally, we'd probably use physical_storage_buffer here, but unfortunately we have no indication
@@ -161,14 +163,32 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	}
 	else
 	{
-		Operation *op = impl.allocate(is_uav ? spv::OpImageRead : spv::OpImageFetch, instruction,
-		                              impl.get_type_id(meta.component_type, 1, 4));
+		spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+		spv::Id sample_type;
+
+		if (sparse)
+			sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
+		else
+			sample_type = texel_type;
+
+		spv::Op opcode;
+		if (is_uav)
+			opcode = sparse ? spv::OpImageSparseRead : spv::OpImageRead;
+		else
+			opcode = sparse ? spv::OpImageSparseFetch : spv::OpImageFetch;
+
+		Operation *op = impl.allocate(opcode, instruction, sample_type);
 
 		op->add_ids({ image_id, access.index_id });
 		impl.add(op);
 
-		// Deal with loads from signed resources.
-		impl.fixup_load_sign(meta.component_type, 4, instruction);
+		if (sparse)
+			impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+		else
+		{
+			// Deal with loads from signed resources.
+			impl.fixup_load_sign(meta.component_type, 4, instruction);
+		}
 	}
 
 	// TODO: Might have an option to rely on StorageImageReadWithoutFormat.
