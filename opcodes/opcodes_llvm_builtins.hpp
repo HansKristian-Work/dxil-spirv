@@ -40,4 +40,5 @@ bool emit_insertelement_instruction(Converter::Impl &impl, const llvm::InsertEle
 
 bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction);
 bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction);
+bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
 } // namespace dxil_spv

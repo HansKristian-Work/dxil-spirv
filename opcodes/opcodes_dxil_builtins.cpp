@@ -66,6 +66,7 @@ struct DXILDispatcher
 		OP(Texture2DMSGetSamplePosition) = emit_get_sample_position_dispatch<true>;
 		OP(RenderTargetGetSamplePosition) = emit_get_sample_position_dispatch<false>;
 		OP(RenderTargetGetSampleCount) = emit_get_render_target_sample_count;
+		OP(CheckAccessFullyMapped) = emit_check_access_fully_mapped_instruction;
 
 		// dxil_buffer.hpp
 		OP(BufferLoad) = emit_buffer_load_instruction;
@@ -271,10 +272,23 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::Sample:
+	case DXIL::Op::SampleBias:
+	case DXIL::Op::SampleLevel:
+	case DXIL::Op::SampleCmp:
+	case DXIL::Op::SampleCmpLevelZero:
+	case DXIL::Op::SampleGrad:
+	case DXIL::Op::TextureGather:
+	case DXIL::Op::TextureGatherCmp:
+		impl.llvm_values_potential_sparse_feedback.insert(instruction);
+		break;
+
 	case DXIL::Op::BufferLoad:
 	case DXIL::Op::TextureLoad:
 	case DXIL::Op::RawBufferLoad:
 	{
+		// In DXIL, whether or not an opcode is sparse depends on if the 4th argument is statically used by SSA ...
+		impl.llvm_values_potential_sparse_feedback.insert(instruction);
 		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
 		{

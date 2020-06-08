@@ -140,6 +140,8 @@ struct Converter::Impl
 	std::unordered_map<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
 	std::unordered_set<const llvm::Value *> llvm_values_using_update_counter;
 	std::unordered_map<const llvm::Value *, uint32_t> llvm_values_to_payload_location;
+	std::unordered_set<const llvm::Value *> llvm_values_potential_sparse_feedback;
+	std::unordered_set<const llvm::Value *> llvm_value_is_sparse_feedback;
 	uint32_t payload_location_counter = 0;
 
 	struct ResourceMetaReference
@@ -251,6 +253,7 @@ struct Converter::Impl
 	spv::Id build_constant_vector(spv::Id element_type, spv::Id *elements, unsigned count);
 	spv::Id build_offset(spv::Id value, unsigned offset);
 	void fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
+	void repack_sparse_feedback(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
 	spv::Id fixup_store_sign(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 
 	std::vector<Operation *> *current_block = nullptr;
@@ -271,6 +274,15 @@ struct Converter::Impl
 	std::vector<spv::Id> shader_record_buffer_types;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
+
+	struct StructTypeEntry
+	{
+		spv::Id id;
+		std::string name;
+		std::vector<spv::Id> subtypes;
+	};
+	std::vector<StructTypeEntry> cached_struct_types;
+	spv::Id get_struct_type(const std::vector<spv::Id> &type_ids, const char *name = nullptr);
 
 	void set_option(const OptionBase &cap);
 	struct

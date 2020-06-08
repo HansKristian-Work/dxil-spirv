@@ -138,6 +138,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	spv::Id aux_argument = 0;
 	unsigned aux_argument_index = opcode == DXIL::Op::SampleCmp ? 11 : 10;
+	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
 
 	if (opcode == DXIL::Op::Sample || opcode == DXIL::Op::SampleCmp)
 	{
@@ -158,29 +159,36 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	switch (opcode)
 	{
 	case DXIL::Op::SampleLevel:
-		spv_op = spv::OpImageSampleExplicitLod;
+		spv_op = sparse ? spv::OpImageSparseSampleExplicitLod : spv::OpImageSampleExplicitLod;
 		break;
 
 	case DXIL::Op::Sample:
 	case DXIL::Op::SampleBias:
-		spv_op = spv::OpImageSampleImplicitLod;
+		spv_op = sparse ? spv::OpImageSparseSampleImplicitLod : spv::OpImageSampleImplicitLod;
 		break;
 
 	case DXIL::Op::SampleCmp:
-		spv_op = spv::OpImageSampleDrefImplicitLod;
+		spv_op = sparse ? spv::OpImageSparseSampleDrefImplicitLod : spv::OpImageSampleDrefImplicitLod;
 		break;
 
 	case DXIL::Op::SampleCmpLevelZero:
-		spv_op = spv::OpImageSampleDrefExplicitLod;
+		spv_op = sparse ? spv::OpImageSparseSampleDrefExplicitLod : spv::OpImageSampleDrefExplicitLod;
 		break;
 
 	default:
 		return false;
 	}
 
+	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4);
+	spv::Id sample_type;
+
+	if (sparse)
+		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
+	else
+		sample_type = texel_type;
+
 	// Comparison sampling only returns a scalar, so we'll need to splat out result.
-	Operation *op =
-	    impl.allocate(spv_op, instruction, impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4));
+	Operation *op = impl.allocate(spv_op, instruction, sample_type);
 
 	op->add_id(combined_image_sampler_id);
 	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
@@ -201,17 +209,25 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	impl.add(op);
 
-	if (comparison_sampling)
+	if (sparse)
+	{
+		// Repack return arguments from { i32, Tx4 } into { T, T, T, T, i32 } which DXIL expects.
+		impl.repack_sparse_feedback(meta.component_type, comparison_sampling ? 1 : 4, instruction);
+	}
+	else if (comparison_sampling)
 	{
 		Operation *splat_op =
-		    impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeFloatType(32), 4));
+			impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeFloatType(32), 4));
 		splat_op->add_ids({ op->id, op->id, op->id, op->id });
 		impl.add(splat_op);
 		impl.value_map[instruction] = splat_op->id;
 	}
-
-	// Deal with signed component types.
-	impl.fixup_load_sign(meta.component_type, 4, instruction);
+	else
+	{
+		// Deal with signed component types.
+		// Sparse feedback repack also deals with it.
+		impl.fixup_load_sign(meta.component_type, 4, instruction);
+	}
 
 	return true;
 }
@@ -267,8 +283,19 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		builder.addCapability(spv::CapabilityMinLod);
 	}
 
+	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+
+	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+	spv::Id sample_type;
+
+	if (sparse)
+		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
+	else
+		sample_type = texel_type;
+
 	Operation *op =
-	    impl.allocate(spv::OpImageSampleExplicitLod, instruction, impl.get_type_id(meta.component_type, 1, 4));
+		impl.allocate(sparse ? spv::OpImageSparseSampleExplicitLod : spv::OpImageSampleExplicitLod,
+		              instruction, sample_type);
 
 	op->add_ids({
 	    combined_image_sampler_id,
@@ -288,8 +315,13 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	impl.add(op);
 
-	// Deal with signed component types.
-	impl.fixup_load_sign(meta.component_type, 4, instruction);
+	if (sparse)
+		impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+	else
+	{
+		// Deal with signed component types.
+		impl.fixup_load_sign(meta.component_type, 4, instruction);
+	}
 	return true;
 }
 
@@ -550,8 +582,22 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 	else
 		aux_id = impl.get_id_for_value(instruction->getOperand(9));
 
-	Operation *op = impl.allocate(compare ? spv::OpImageDrefGather : spv::OpImageGather, instruction,
-	                              impl.get_type_id(meta.component_type, 1, 4));
+	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+	spv::Id sample_type;
+
+	if (sparse)
+		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
+	else
+		sample_type = texel_type;
+
+	spv::Op opcode;
+	if (compare)
+		opcode = sparse ? spv::OpImageSparseDrefGather : spv::OpImageDrefGather;
+	else
+		opcode = sparse ? spv::OpImageSparseGather : spv::OpImageGather;
+
+	Operation *op = impl.allocate(opcode, instruction, sample_type);
 
 	op->add_ids({ combined_image_sampler_id, coord_id, aux_id });
 
@@ -562,7 +608,11 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 	}
 
 	impl.add(op);
-	impl.fixup_load_sign(meta.component_type, 4, instruction);
+
+	if (sparse)
+		impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+	else
+		impl.fixup_load_sign(meta.component_type, 4, instruction);
 	return true;
 }
 
@@ -682,6 +732,16 @@ static spv::Id build_rasterizer_sample_count(Converter::Impl &impl)
 bool emit_get_render_target_sample_count(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	impl.value_map[instruction] = build_rasterizer_sample_count(impl);
+	return true;
+}
+
+bool emit_check_access_fully_mapped_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilitySparseResidency);
+	auto *op = impl.allocate(spv::OpImageSparseTexelsResident, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
 	return true;
 }
 
