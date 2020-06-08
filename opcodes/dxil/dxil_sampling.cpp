@@ -136,23 +136,26 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	if (opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero)
 		dref_id = impl.get_id_for_value(instruction->getOperand(10));
 
-	spv::Id aux_argument = 0;
-	unsigned aux_argument_index = opcode == DXIL::Op::SampleCmp ? 11 : 10;
+	spv::Id bias_level_argument = 0;
+	spv::Id min_lod_argument = 0;
+	const unsigned bias_level_argument_index = 10;
+	const unsigned min_lod_argument_index = opcode == DXIL::Op::Sample ? 10 : 11;
 	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
 
-	if (opcode == DXIL::Op::Sample || opcode == DXIL::Op::SampleCmp)
+	if (opcode == DXIL::Op::Sample || opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleBias)
 	{
-		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(aux_argument_index)))
+		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(min_lod_argument_index)))
 		{
-			aux_argument = impl.get_id_for_value(instruction->getOperand(aux_argument_index));
+			min_lod_argument = impl.get_id_for_value(instruction->getOperand(min_lod_argument_index));
 			image_ops |= spv::ImageOperandsMinLodMask;
 			builder.addCapability(spv::CapabilityMinLod);
 		}
 	}
-	else if (opcode != DXIL::Op::SampleCmpLevelZero)
-		aux_argument = impl.get_id_for_value(instruction->getOperand(aux_argument_index));
+
+	if (opcode == DXIL::Op::SampleBias || opcode == DXIL::Op::SampleLevel)
+		bias_level_argument = impl.get_id_for_value(instruction->getOperand(bias_level_argument_index));
 	else
-		aux_argument = builder.makeFloatConstant(0.0f);
+		bias_level_argument = builder.makeFloatConstant(0.0f);
 
 	spv::Op spv_op;
 
@@ -199,13 +202,13 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	op->add_literal(image_ops);
 
 	if (image_ops & (spv::ImageOperandsBiasMask | spv::ImageOperandsLodMask))
-		op->add_id(aux_argument);
+		op->add_id(bias_level_argument);
 
 	if (image_ops & spv::ImageOperandsConstOffsetMask)
 		op->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
 
 	if (image_ops & spv::ImageOperandsMinLodMask)
-		op->add_id(aux_argument);
+		op->add_id(min_lod_argument);
 
 	impl.add(op);
 
