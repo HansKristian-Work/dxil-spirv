@@ -8,12 +8,12 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    vec4 _32 = textureOffset(sampler2D(_8, _11), vec2(UV.x, UV.y), ivec2(0));
-    vec4 _43 = textureOffset(sampler2D(_8, _11), vec2(UV.x + 0.100000001490116119384765625, UV.y + 0.100000001490116119384765625), ivec2(0));
-    SV_Target.x = _43.x + _32.x;
-    SV_Target.y = _43.y + _32.y;
-    SV_Target.z = _43.z + _32.z;
-    SV_Target.w = _43.w + _32.w;
+    vec4 _33 = textureOffset(sampler2D(_8, _11), vec2(UV.x, UV.y), ivec2(0));
+    vec4 _44 = textureOffset(sampler2D(_8, _11), vec2(UV.x + 0.100000001490116119384765625, UV.y + 0.100000001490116119384765625), ivec2(0));
+    SV_Target.x = _44.x + _33.x;
+    SV_Target.y = _44.y + _33.y;
+    SV_Target.z = _44.z + _33.z;
+    SV_Target.w = _44.w + _33.w;
 }
 
 
@@ -22,7 +22,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 62
+; Bound: 63
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -59,16 +59,17 @@ OpDecorate %17 Location 0
 %28 = OpTypeSampledImage %6
 %30 = OpTypeInt 32 1
 %31 = OpConstant %30 0
-%34 = OpTypeVector %30 2
-%35 = OpConstantComposite %34 %31 %31
-%41 = OpConstant %5 0.100000001
-%53 = OpTypePointer Output %5
-%57 = OpConstant %22 2
-%59 = OpConstant %22 3
+%32 = OpConstant %5 0
+%35 = OpTypeVector %30 2
+%36 = OpConstantComposite %35 %31 %31
+%42 = OpConstant %5 0.100000001
+%54 = OpTypePointer Output %5
+%58 = OpConstant %22 2
+%60 = OpConstant %22 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %60
-%60 = OpLabel
+OpBranch %61
+%61 = OpLabel
 %18 = OpLoad %6 %8
 %19 = OpLoad %9 %11
 %21 = OpAccessChain %20 %14 %23
@@ -76,32 +77,32 @@ OpBranch %60
 %25 = OpAccessChain %20 %14 %26
 %27 = OpLoad %5 %25
 %29 = OpSampledImage %28 %18 %19
-%33 = OpCompositeConstruct %12 %24 %27
-%32 = OpImageSampleImplicitLod %15 %29 %33 ConstOffset %35
-%36 = OpCompositeExtract %5 %32 0
-%37 = OpCompositeExtract %5 %32 1
-%38 = OpCompositeExtract %5 %32 2
-%39 = OpCompositeExtract %5 %32 3
-%40 = OpFAdd %5 %24 %41
-%42 = OpFAdd %5 %27 %41
-%44 = OpCompositeConstruct %12 %40 %42
-%43 = OpImageSampleImplicitLod %15 %29 %44 ConstOffset %35
-%45 = OpCompositeExtract %5 %43 0
-%46 = OpCompositeExtract %5 %43 1
-%47 = OpCompositeExtract %5 %43 2
-%48 = OpCompositeExtract %5 %43 3
-%49 = OpFAdd %5 %45 %36
+%34 = OpCompositeConstruct %12 %24 %27
+%33 = OpImageSampleImplicitLod %15 %29 %34 ConstOffset %36
+%37 = OpCompositeExtract %5 %33 0
+%38 = OpCompositeExtract %5 %33 1
+%39 = OpCompositeExtract %5 %33 2
+%40 = OpCompositeExtract %5 %33 3
+%41 = OpFAdd %5 %24 %42
+%43 = OpFAdd %5 %27 %42
+%45 = OpCompositeConstruct %12 %41 %43
+%44 = OpImageSampleImplicitLod %15 %29 %45 ConstOffset %36
+%46 = OpCompositeExtract %5 %44 0
+%47 = OpCompositeExtract %5 %44 1
+%48 = OpCompositeExtract %5 %44 2
+%49 = OpCompositeExtract %5 %44 3
 %50 = OpFAdd %5 %46 %37
 %51 = OpFAdd %5 %47 %38
 %52 = OpFAdd %5 %48 %39
-%54 = OpAccessChain %53 %17 %23
-OpStore %54 %49
-%55 = OpAccessChain %53 %17 %26
+%53 = OpFAdd %5 %49 %40
+%55 = OpAccessChain %54 %17 %23
 OpStore %55 %50
-%56 = OpAccessChain %53 %17 %57
+%56 = OpAccessChain %54 %17 %26
 OpStore %56 %51
-%58 = OpAccessChain %53 %17 %59
-OpStore %58 %52
+%57 = OpAccessChain %54 %17 %58
+OpStore %57 %52
+%59 = OpAccessChain %54 %17 %60
+OpStore %59 %53
 OpReturn
 OpFunctionEnd
 #endif

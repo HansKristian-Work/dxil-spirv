@@ -592,7 +592,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 	if (!impl.cmpxchg_type)
 		impl.cmpxchg_type =
-		    builder.makeStructType({ builder.makeUintType(32), builder.makeBoolType() }, "CmpXchgResult");
+		    impl.get_struct_type({ builder.makeUintType(32), builder.makeBoolType() }, "CmpXchgResult");
 
 	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
 	op->add_ids({ atomic_op->id, cmp_op->id });
@@ -729,6 +729,20 @@ bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
 		impl.llvm_global_variable_to_resource_mapping[inst] = itr->second;
 
+	return true;
+}
+
+bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *inst)
+{
+	if (impl.llvm_values_potential_sparse_feedback.count(inst->getAggregateOperand()) == 0)
+		return true;
+
+	// If we extract the 4th argument of a resource load instruction, we know the instruction is sparse feedback.
+	if (inst->getNumIndices() == 1 && inst->getIndices()[0] == 4)
+	{
+		impl.builder().addCapability(spv::CapabilitySparseResidency);
+		impl.llvm_value_is_sparse_feedback.insert(inst->getAggregateOperand());
+	}
 	return true;
 }
 } // namespace dxil_spv

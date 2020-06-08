@@ -17,7 +17,7 @@ hitAttributeNV _11 hit;
 
 void main()
 {
-    payload._m0 = gl_InstanceCustomIndexNV;
+    payload._m0 = uint(gl_InstanceCustomIndexNV);
 }
 
 

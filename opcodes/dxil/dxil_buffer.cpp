@@ -104,6 +104,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto access = build_buffer_access(impl, instruction);
 	auto *result_type = instruction->getType();
 
+	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+
 	if (!is_typed)
 	{
 		// Unroll 4 loads. Ideally, we'd probably use physical_storage_buffer here, but unfortunately we have no indication
@@ -119,23 +121,52 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 		spv::Id extracted_id_type = builder.makeUintType(32);
 		spv::Id loaded_id_type = builder.makeVectorType(extracted_id_type, 4);
+		spv::Id sparse_code_id = 0;
+		spv::Id sparse_loaded_id_type = 0;
+		if (sparse)
+			sparse_loaded_id_type = impl.get_struct_type({ extracted_id_type, loaded_id_type }, "SparseTexel");
 
 		for (unsigned i = 0; i < conservative_num_elements; i++)
 		{
-			Operation *loaded_op = impl.allocate(is_uav ? spv::OpImageRead : spv::OpImageFetch, loaded_id_type);
+			// There is no sane way to combine sparse feedback code, since it's completely opaque to application.
+			// We could hypothetically return a vector of status code and deal with it magically, but let's not go there ...
+			spv::Op opcode;
+			if (is_uav)
+				opcode = (sparse && i == 0) ? spv::OpImageSparseRead : spv::OpImageRead;
+			else
+				opcode = (sparse && i == 0) ? spv::OpImageSparseFetch : spv::OpImageFetch;
+
+			Operation *loaded_op = impl.allocate(opcode, (sparse && i == 0) ? sparse_loaded_id_type : loaded_id_type);
 			loaded_op->add_ids({ image_id, impl.build_offset(access.index_id, i) });
 			impl.add(loaded_op);
 
-			Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-			extracted_op->add_id(loaded_op->id);
-			extracted_op->add_literal(0);
-			impl.add(extracted_op);
+			if (sparse && i == 0)
+			{
+				auto *code_extract_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+				code_extract_op->add_id(loaded_op->id);
+				code_extract_op->add_literal(0);
+				impl.add(code_extract_op);
+				sparse_code_id = code_extract_op->id;
 
-			component_ids[i] = extracted_op->id;
+				Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+				extracted_op->add_id(loaded_op->id);
+				extracted_op->add_literal(1);
+				extracted_op->add_literal(0);
+				impl.add(extracted_op);
+				component_ids[i] = extracted_op->id;
+			}
+			else
+			{
+				Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+				extracted_op->add_id(loaded_op->id);
+				extracted_op->add_literal(0);
+				impl.add(extracted_op);
+				component_ids[i] = extracted_op->id;
+			}
 		}
 
 		// We expect that we will extract components from the resulting struct, so make a fake composite if we need to.
-		if (conservative_num_elements < 2)
+		if (conservative_num_elements < 2 && !sparse)
 		{
 			for (unsigned i = conservative_num_elements; i < 2; i++)
 				component_ids[i] = builder.createUndefined(builder.makeUintType(32));
@@ -144,31 +175,75 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
 
-		spv::Id constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
-
-		if (need_bitcast)
+		if (sparse)
 		{
-			Operation *op = impl.allocate(spv::OpBitcast,
-			                              impl.build_vector_type(impl.get_type_id(result_type->getStructElementType(0)),
-			                                                     conservative_num_elements));
+			Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction);
 
-			op->add_id(constructed_id);
+			if (need_bitcast)
+			{
+				for (unsigned i = 0; i < conservative_num_elements; i++)
+				{
+					auto *bitcast_op =
+					    impl.allocate(spv::OpBitcast, impl.get_type_id(result_type->getStructElementType(0)));
+					bitcast_op->add_id(component_ids[i]);
+					impl.add(bitcast_op);
+					component_ids[i] = bitcast_op->id;
+				}
+			}
+
+			for (unsigned i = 0; i < conservative_num_elements; i++)
+				op->add_id(component_ids[i]);
+			for (unsigned i = conservative_num_elements; i < 4; i++)
+				op->add_id(builder.createUndefined(impl.get_type_id(result_type->getStructElementType(0))));
+			op->add_id(sparse_code_id);
 			impl.add(op);
-			impl.value_map[instruction] = op->id;
 		}
 		else
-			impl.value_map[instruction] = constructed_id;
+		{
+			spv::Id constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
+
+			if (need_bitcast)
+			{
+				Operation *op = impl.allocate(
+					spv::OpBitcast, impl.build_vector_type(impl.get_type_id(result_type->getStructElementType(0)),
+					                                       conservative_num_elements));
+
+				op->add_id(constructed_id);
+				impl.add(op);
+				impl.value_map[instruction] = op->id;
+			}
+			else
+				impl.value_map[instruction] = constructed_id;
+		}
 	}
 	else
 	{
-		Operation *op = impl.allocate(is_uav ? spv::OpImageRead : spv::OpImageFetch, instruction,
-		                              impl.get_type_id(meta.component_type, 1, 4));
+		spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+		spv::Id sample_type;
+
+		if (sparse)
+			sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
+		else
+			sample_type = texel_type;
+
+		spv::Op opcode;
+		if (is_uav)
+			opcode = sparse ? spv::OpImageSparseRead : spv::OpImageRead;
+		else
+			opcode = sparse ? spv::OpImageSparseFetch : spv::OpImageFetch;
+
+		Operation *op = impl.allocate(opcode, instruction, sample_type);
 
 		op->add_ids({ image_id, access.index_id });
 		impl.add(op);
 
-		// Deal with loads from signed resources.
-		impl.fixup_load_sign(meta.component_type, 4, instruction);
+		if (sparse)
+			impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+		else
+		{
+			// Deal with loads from signed resources.
+			impl.fixup_load_sign(meta.component_type, 4, instruction);
+		}
 	}
 
 	// TODO: Might have an option to rely on StorageImageReadWithoutFormat.

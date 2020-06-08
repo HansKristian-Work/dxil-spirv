@@ -206,7 +206,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 			{
 				if (!physical_counter_type)
 				{
-					spv::Id counter_type_id = builder().makeStructType({ builder().makeUintType(32) }, "AtomicCounter");
+					spv::Id counter_type_id = get_struct_type({ builder().makeUintType(32) }, "AtomicCounter");
 					builder().addDecoration(counter_type_id, spv::DecorationBlock);
 					builder().addMemberDecoration(counter_type_id, 0, spv::DecorationOffset, 0);
 					physical_counter_type =
@@ -216,7 +216,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 				spv::Id runtime_array_type_id = builder().makeRuntimeArray(physical_counter_type);
 				builder().addDecoration(runtime_array_type_id, spv::DecorationArrayStride, sizeof(uint64_t));
 
-				type_id = builder().makeStructType({ runtime_array_type_id }, "AtomicCounters");
+				type_id = get_struct_type({ runtime_array_type_id }, "AtomicCounters");
 				builder().addDecoration(type_id, spv::DecorationBlock);
 				builder().addMemberName(type_id, 0, "counters");
 				builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
@@ -246,7 +246,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 			type_id = builder().makeVectorType(builder().makeFloatType(32), 4);
 			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(64 * 1024 / 16), 16);
 			builder().addDecoration(type_id, spv::DecorationArrayStride, 16);
-			type_id = builder().makeStructType({ type_id }, "BindlessCBV");
+			type_id = get_struct_type({ type_id }, "BindlessCBV");
 			builder().addDecoration(type_id, spv::DecorationBlock);
 			if (options.bindless_cbv_ssbo_emulation)
 				builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
@@ -865,7 +865,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 
 			builder.addDecoration(member_array_type, spv::DecorationArrayStride, 16);
 
-			spv::Id type_id = builder.makeStructType({ member_array_type }, name.c_str());
+			spv::Id type_id = get_struct_type({ member_array_type }, name.c_str());
 			builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 			builder.addDecoration(type_id, spv::DecorationBlock);
 
@@ -1084,7 +1084,7 @@ void Converter::Impl::emit_root_constants(unsigned num_words)
 	for (auto &memb : members)
 		memb = builder.makeUintType(32);
 
-	spv::Id type_id = builder.makeStructType(members, "RootConstants");
+	spv::Id type_id = get_struct_type(members, "RootConstants");
 	builder.addDecoration(type_id, spv::DecorationBlock);
 	for (unsigned i = 0; i < num_words; i++)
 		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, 4 * i);
@@ -1177,7 +1177,7 @@ bool Converter::Impl::emit_shader_record_buffer()
 		}
 	}
 
-	type_id = builder.makeStructType(member_types, "SBTBlock");
+	type_id = get_struct_type(member_types, "SBTBlock");
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
 	for (size_t i = 0; i < local_root_signature.size(); i++)
@@ -1589,7 +1589,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 		member_types.reserve(struct_type->getStructNumElements());
 		for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
 			member_types.push_back(get_type_id(struct_type->getStructElementType(i)));
-		return builder.makeStructType(member_types, "");
+		return get_struct_type(member_types, "");
 	}
 
 	case llvm::Type::TypeID::VectorTyID:
@@ -1601,6 +1601,35 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	default:
 		return 0;
 	}
+}
+
+spv::Id Converter::Impl::get_struct_type(const std::vector<spv::Id> &type_ids, const char *name)
+{
+	auto itr = std::find_if(cached_struct_types.begin(), cached_struct_types.end(), [&](const StructTypeEntry &entry) -> bool {
+		if (type_ids.size() != entry.subtypes.size())
+			return false;
+		if ((!name && !entry.name.empty()) || (entry.name != name))
+			return false;
+
+		for (unsigned i = 0; i < type_ids.size(); i++)
+			if (type_ids[i] != entry.subtypes[i])
+				return false;
+
+		return true;
+	});
+
+	if (itr == cached_struct_types.end())
+	{
+		StructTypeEntry entry;
+		entry.subtypes = type_ids;
+		entry.name = name ? name : "";
+		entry.id = builder().makeStructType(type_ids, name);
+		spv::Id id = entry.id;
+		cached_struct_types.push_back(std::move(entry));
+		return id;
+	}
+	else
+		return itr->id;
 }
 
 spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array)
@@ -2541,6 +2570,56 @@ spv::Id Converter::Impl::build_offset(spv::Id value, unsigned offset)
 	return op->id;
 }
 
+void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type, unsigned num_components, const llvm::Value *value)
+{
+	auto *code_id = allocate(spv::OpCompositeExtract, builder().makeUintType(32));
+	code_id->add_id(get_id_for_value(value));
+	code_id->add_literal(0);
+	add(code_id);
+
+	auto *texel_id = allocate(spv::OpCompositeExtract, get_type_id(component_type, 1, num_components));
+	texel_id->add_id(get_id_for_value(value));
+	texel_id->add_literal(1);
+	add(texel_id);
+
+	if (component_type == DXIL::ComponentType::I32)
+	{
+		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, num_components));
+		op->add_id(texel_id->id);
+		add(op);
+		texel_id = op;
+		component_type = DXIL::ComponentType::U32;
+	}
+
+	spv::Id components[5];
+
+	if (num_components > 1)
+	{
+		for (unsigned i = 0; i < num_components; i++)
+		{
+			auto *extract_op = allocate(spv::OpCompositeExtract, get_type_id(component_type, 1, 1));
+			extract_op->add_id(texel_id->id);
+			extract_op->add_literal(i);
+			add(extract_op);
+			components[i] = extract_op->id;
+		}
+	}
+	else
+	{
+		for (auto &comp : components)
+			comp = texel_id->id;
+		num_components = 4;
+	}
+
+	components[num_components] = code_id->id;
+
+	auto *repack_op = allocate(spv::OpCompositeConstruct, get_type_id(value->getType()));
+	for (auto &comp : components)
+		repack_op->add_id(comp);
+	add(repack_op);
+	value_map[value] = repack_op->id;
+}
+
 void Converter::Impl::fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
 {
 	if (component_type == DXIL::ComponentType::I32)
@@ -3164,6 +3243,11 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 			else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst))
 			{
 				if (!analyze_getelementptr_instruction(*this, getelementptr_inst))
+					return false;
+			}
+			else if (auto *extractvalue_inst = llvm::dyn_cast<llvm::ExtractValueInst>(&inst))
+			{
+				if (!analyze_extractvalue_instruction(*this, extractvalue_inst))
 					return false;
 			}
 			else if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))
