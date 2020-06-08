@@ -376,8 +376,22 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 			offsets[i] = builder.makeIntConstant(0);
 	}
 
-	Operation *op = impl.allocate(is_uav ? spv::OpImageRead : spv::OpImageFetch, instruction,
-	                              impl.get_type_id(meta.component_type, 1, 4));
+	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+	spv::Id sample_type;
+
+	if (sparse)
+		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
+	else
+		sample_type = texel_type;
+
+	spv::Op opcode;
+	if (is_uav)
+		opcode = sparse ? spv::OpImageSparseRead : spv::OpImageRead;
+	else
+		opcode = sparse ? spv::OpImageSparseFetch : spv::OpImageFetch;
+
+	Operation *op = impl.allocate(opcode, instruction, sample_type);
 
 	op->add_ids({ image_id, impl.build_vector(builder.makeUintType(32), coord, num_coords_full) });
 	op->add_literal(image_ops);
@@ -403,8 +417,13 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	impl.add(op);
 
-	// Deal with signed component types.
-	impl.fixup_load_sign(meta.component_type, 4, instruction);
+	if (sparse)
+		impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+	else
+	{
+		// Deal with signed component types.
+		impl.fixup_load_sign(meta.component_type, 4, instruction);
+	}
 	return true;
 }
 
