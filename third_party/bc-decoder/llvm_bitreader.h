@@ -110,9 +110,11 @@ public:
       shift += uint64_t(groupBitSize - 1);
     } while(scratch & hibit);
 
+#ifndef NDEBUG
     // check for overflow of the return type
     const uint64_t mask = ((1ULL << (sizeof(T) * 8 - 1)) - 1) << 1 | 1;
     assert((ret & mask) == ret);
+#endif
 
     return T(ret);
   }
