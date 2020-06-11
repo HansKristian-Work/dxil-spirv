@@ -30,7 +30,7 @@ option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
 include(GNUInstallDirs)
 
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
-    set(DXIL_SPV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -fno-exceptions)
+    set(DXIL_SPV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -ffast-math -Wno-unused-parameter -fno-exceptions -fvisibility=hidden)
 elseif (MSVC)
     set(DXIL_SPV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4244 /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
@@ -93,7 +93,8 @@ target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
 set_target_properties(dxil-spirv-c-shared PROPERTIES
         PUBLIC_HEADERS dxil_spirv_c.h)
 
-if (NOT MSVC)
+# If we're linking in full LLVM statically, ensure we don't export all LLVM symbols.
+if (NOT MSVC AND DXIL_SPIRV_NATIVE_LLVM)
     set_target_properties(dxil-spirv-c-shared PROPERTIES LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/link.T")
 endif()
 
