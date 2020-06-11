@@ -24,8 +24,6 @@
 #include "spirv_module.hpp"
 #include <new>
 
-#include "spirv-tools/libspirv.hpp"
-
 using namespace dxil_spv;
 
 void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch)

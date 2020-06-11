@@ -86,7 +86,7 @@ target_include_directories(dxil-spirv-c-shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv>)
-target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug SPIRV-Tools dxil-converter external::llvm)
+target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug dxil-converter external::llvm)
 
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
