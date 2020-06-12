@@ -36,6 +36,7 @@ class CFGNodePool;
 class BlockEmissionInterface
 {
 public:
+	virtual ~BlockEmissionInterface() = default;
 	virtual void emit_basic_block(CFGNode *node) = 0;
 	virtual void register_block(CFGNode *node) = 0;
 };

@@ -133,7 +133,6 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	Type *function_type;
 	Function *callee;
 };
 
@@ -257,7 +256,6 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	Type *element_type;
 	Value *array_size;
 };
 

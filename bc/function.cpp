@@ -81,7 +81,6 @@ IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> Functio
 
 BasicBlock::BasicBlock(LLVMContext &context_)
     : Value(Type::getLabelTy(context_), ValueKind::BasicBlock)
-    , context(context_)
 {
 }
 

@@ -129,7 +129,6 @@ ReturnInst::ReturnInst(Value *value_)
 
 CallInst::CallInst(FunctionType *function_type_, Function *callee_, std::vector<Value *> params)
     : Instruction(function_type_->getReturnType(), ValueKind::Call)
-    , function_type(function_type_)
     , callee(callee_)
 {
 	set_operands(std::move(params));
@@ -315,7 +314,6 @@ unsigned PHINode::getNumIncomingValues() const
 
 AllocaInst::AllocaInst(Type *pointer_type, Type *element_type_, Value *size)
     : Instruction(pointer_type, ValueKind::Alloca)
-    , element_type(element_type_)
     , array_size(size)
 {
 }

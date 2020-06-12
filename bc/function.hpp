@@ -53,7 +53,6 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	LLVMContext &context;
 	std::vector<Instruction *> instructions;
 	std::vector<BasicBlock *> succs;
 };

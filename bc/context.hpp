@@ -73,6 +73,7 @@ private:
 
 	struct Deleter
 	{
+		virtual ~Deleter() = default;
 		virtual void run() = 0;
 	};
 
