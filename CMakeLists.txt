@@ -80,8 +80,7 @@ target_link_libraries(dxil-converter PRIVATE external::llvm)
 
 target_link_libraries(dxil-converter PUBLIC spirv-module)
 
-add_library(dxil-spirv-c-shared SHARED
-        dxil_spirv_c.h dxil_spirv_c.cpp)
+add_library(dxil-spirv-c-shared SHARED dxil_spirv_c.h dxil_spirv_c.cpp)
 target_include_directories(dxil-spirv-c-shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -90,13 +89,23 @@ target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug dxil-converter exte
 
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
-set_target_properties(dxil-spirv-c-shared PROPERTIES
-        PUBLIC_HEADERS dxil_spirv_c.h)
+set_target_properties(dxil-spirv-c-shared PROPERTIES PUBLIC_HEADERS dxil_spirv_c.h)
 
 # If we're linking in full LLVM statically, ensure we don't export all LLVM symbols.
 if (NOT MSVC AND DXIL_SPIRV_NATIVE_LLVM)
     set_target_properties(dxil-spirv-c-shared PROPERTIES LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/link.T")
 endif()
+
+add_library(dxil-spirv-c-static STATIC dxil_spirv_c.h dxil_spirv_c.cpp)
+target_include_directories(dxil-spirv-c-static
+        PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv>)
+target_link_libraries(dxil-spirv-c-static PRIVATE dxil-debug dxil-converter external::llvm)
+
+target_compile_options(dxil-spirv-c-static PRIVATE ${DXIL_SPV_CXX_FLAGS})
+set_target_properties(dxil-spirv-c-static PROPERTIES PUBLIC_HEADERS dxil_spirv_c.h)
+set_target_properties(dxil-spirv-c-static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if (DXIL_SPIRV_CLI)
     add_library(cli-parser STATIC
