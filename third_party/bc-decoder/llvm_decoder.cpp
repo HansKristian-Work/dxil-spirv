@@ -85,7 +85,7 @@ BitcodeReader::BitcodeReader(const byte *bitcode, size_t length) : b(bitcode, le
 {
   uint32_t magic = b.Read<uint32_t>();
 
-  assert(magic == MAKE_FOURCC('B', 'C', 0xC0, 0xDE));
+  assert(magic == uint32_t(MAKE_FOURCC('B', 'C', 0xC0, 0xDE)));
 }
 
 BitcodeReader::~BitcodeReader()
@@ -287,6 +287,10 @@ uint64_t BitcodeReader::decodeAbbrevParam(const AbbrevParam &param)
     case AbbrevEncoding::VBR: return b.vbr<uint64_t>((size_t)param.value);
     case AbbrevEncoding::Char6: return b.c6();
     case AbbrevEncoding::Literal: return param.value;
+  
+    case AbbrevEncoding::Array:
+    case AbbrevEncoding::Blob:
+      return 0;
   }
 
   return 0;
