@@ -6,6 +6,7 @@ dxil_spirv_warning_level = '2' # Equivelant of -Wall -Wextra
 
 add_project_arguments('-DAMD_EXTENSIONS',          language : 'cpp')
 add_project_arguments('-DHAVE_LLVMBC',             language : 'cpp')
+add_project_arguments('-DNOMINMAX',                language : 'cpp')
 
 dxil_spirv_include_dirs = include_directories([
   'bc',
