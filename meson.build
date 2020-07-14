@@ -22,7 +22,10 @@ add_project_arguments(dxil_spirv_compiler.get_supported_arguments([
     '-ffast-math',
     '-Wno-unused-parameter',
     '-fno-exceptions',
-    '-fvisibility=hidden']),
+    '-fvisibility=hidden',
+    '/wd4267',   # Narrowing conversions
+    '/wd4244',   # Narrowing conversions
+    '/wd4996']), # Secure no warnings
   language : 'cpp')
 
 dxil_spirv_src = [
