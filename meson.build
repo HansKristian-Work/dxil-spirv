@@ -1,4 +1,4 @@
-project('dxil-spirv', ['cpp'], version : '0.0', meson_version : '>= 0.51')
+project('dxil-spirv', ['cpp'], version : '0.0', meson_version : '>= 0.49')
 
 dxil_spirv_compiler      = meson.get_compiler('cpp')
 dxil_spirv_cpp_std       = 'c++14'
