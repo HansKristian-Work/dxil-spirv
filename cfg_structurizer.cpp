@@ -1625,7 +1625,16 @@ void CFGStructurizer::find_loops()
 			CFGNode *merge = CFGStructurizer::find_common_post_dominator(std::move(merges));
 
 			CFGNode *dominated_merge = nullptr;
-			if (merge && !node->dominates(merge) && dominated_exit.size() > 1)
+
+			// Try to find the sensible target first.
+			// If one of our merge blocks is the successor of the continue block,
+			// this is a prime candidate for a ladder block.
+			if (node->pred_back_edge && node->pred_back_edge->succ.size() == 1 &&
+			    std::find(dominated_exit.begin(), dominated_exit.end(), node->pred_back_edge->succ.front()) != dominated_exit.end())
+			{
+				dominated_merge = node->pred_back_edge->succ.front();
+			}
+			else if (merge && !node->dominates(merge) && dominated_exit.size() > 1)
 			{
 				// Now, we might have Merge blocks which end up escaping out of the loop construct.
 				// We might have to remove candidates which end up being break blocks after all.
