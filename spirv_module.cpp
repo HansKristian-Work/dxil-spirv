@@ -358,7 +358,19 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	switch (ir.merge_info.merge_type)
 	{
 	case MergeType::Selection:
-		builder.createSelectionMerge(get_spv_block(ir.merge_info.merge_block), 0);
+		if (ir.merge_info.merge_block)
+		{
+			builder.createSelectionMerge(get_spv_block(ir.merge_info.merge_block), 0);
+		}
+		else
+		{
+			auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
+			active_function->addBlock(unreachable_bb);
+			builder.setBuildPoint(unreachable_bb);
+			builder.createUnreachable();
+			builder.setBuildPoint(bb);
+			builder.createSelectionMerge(unreachable_bb, 0);
+		}
 		break;
 
 	case MergeType::Loop:
