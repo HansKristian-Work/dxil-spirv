@@ -114,5 +114,6 @@ private:
 	std::unordered_map<uint32_t, CFGNode *> value_id_to_block;
 
 	void log_cfg(const char *tag) const;
+	void log_cfg_graphviz(const char *path) const;
 };
 } // namespace dxil_spv

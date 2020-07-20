@@ -35,6 +35,73 @@ CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule
 {
 }
 
+void CFGStructurizer::log_cfg_graphviz(const char *path) const
+{
+	FILE *file = fopen(path, "w");
+	if (!file)
+	{
+		LOGE("Failed to open graphviz dump path: %s\n", path);
+		return;
+	}
+
+	std::unordered_map<const CFGNode *, uint32_t> node_to_id;
+	uint32_t accum_id = 0;
+
+	const auto get_node_id = [&](const CFGNode *node) -> uint32_t {
+		auto itr = node_to_id.find(node);
+		if (itr == node_to_id.end())
+		{
+			node_to_id[node] = ++accum_id;
+			fprintf(file, "%u [label=\"%s\"];\n", accum_id, node->name.c_str());
+			return accum_id;
+		}
+		else
+			return itr->second;
+	};
+
+	fprintf(file, "digraph {\n");
+	for (auto index = post_visit_order.size(); index; index--)
+	{
+		auto *node = post_visit_order[index - 1];
+		switch (node->ir.terminator.type)
+		{
+		case Terminator::Type::Branch:
+			fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(node->ir.terminator.direct_block));
+			break;
+
+		case Terminator::Type::Condition:
+			fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(node->ir.terminator.true_block));
+			fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(node->ir.terminator.false_block));
+			break;
+
+		case Terminator::Type::Switch:
+			for (auto &c : node->ir.terminator.cases)
+				fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(c.node));
+			fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(node->ir.terminator.default_node));
+			break;
+
+		default:
+			break;
+		}
+
+		if (node->merge == MergeType::Loop)
+		{
+			if (node->pred_back_edge)
+				fprintf(file, "%u -> %u [style=\"dotted\"];\n", get_node_id(node), get_node_id(node->pred_back_edge));
+			if (node->loop_merge_block)
+				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->loop_merge_block));
+		}
+		else if (node->merge == MergeType::Selection)
+		{
+			if (node->selection_merge_block)
+				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->selection_merge_block));
+		}
+	}
+
+	fprintf(file, "}\n");
+	fclose(file);
+}
+
 void CFGStructurizer::log_cfg(const char *tag) const
 {
 	LOGI("\n======== %s =========\n", tag);
