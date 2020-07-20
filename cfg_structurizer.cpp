@@ -1520,6 +1520,7 @@ void CFGStructurizer::find_loops()
 		merge_tracer.trace_from_parent(node);
 
 		std::vector<CFGNode *> direct_exits;
+		std::vector<CFGNode *> inner_direct_exits;
 		std::vector<CFGNode *> dominated_exit;
 		std::vector<CFGNode *> inner_dominated_exit;
 		std::vector<CFGNode *> non_dominated_exit;
@@ -1535,6 +1536,7 @@ void CFGStructurizer::find_loops()
 
 			case LoopExitType::InnerLoopExit:
 				// It's not an exit for us, but the inner loop.
+				inner_direct_exits.push_back(loop_exit);
 				break;
 
 			case LoopExitType::Merge:
@@ -1560,6 +1562,8 @@ void CFGStructurizer::find_loops()
 		// If the only merge candidates we have are inner dominated, treat them as true dominated exits.
 		if (dominated_exit.empty() && !inner_dominated_exit.empty())
 			std::swap(dominated_exit, inner_dominated_exit);
+		if (direct_exits.empty())
+			direct_exits = std::move(inner_direct_exits);
 
 		// If we only have one direct exit, consider it our merge block.
 		// Pick either Merge or Escape.
