@@ -1606,7 +1606,7 @@ void CFGStructurizer::find_loops()
 			CFGNode *merge = CFGStructurizer::find_common_post_dominator(std::move(merges));
 
 			CFGNode *dominated_merge = nullptr;
-			if (dominated_exit.size() > 1)
+			if (merge && !node->dominates(merge) && dominated_exit.size() > 1)
 			{
 				// Now, we might have Merge blocks which end up escaping out of the loop construct.
 				// We might have to remove candidates which end up being break blocks after all.
@@ -1797,6 +1797,13 @@ void CFGStructurizer::split_merge_blocks()
 						}
 						else
 							LOGE("No loop merge block?\n");
+
+						// This can happen in some scenarios, fixup the branch to be a direct one instead.
+						if (ladder->ir.terminator.true_block == ladder->ir.terminator.false_block)
+						{
+							ladder->ir.terminator.direct_block = ladder->ir.terminator.true_block;
+							ladder->ir.terminator.type = Terminator::Type::Branch;
+						}
 					}
 					else if (loop_ladder->succ.size() == 1 && loop_ladder->succ.front() == node)
 					{
