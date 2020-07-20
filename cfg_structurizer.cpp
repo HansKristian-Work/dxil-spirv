@@ -898,12 +898,21 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
 					bool a_path_is_break = control_flow_is_escaping(node, node->succ[0], merge);
 					bool b_path_is_break = control_flow_is_escaping(node, node->succ[1], merge);
+
 					if (a_path_is_break && b_path_is_break)
 					{
-						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
-						node->merge = MergeType::Selection;
-						node->selection_merge_block = nullptr;
-						//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
+						// If either path branches to the other,
+						// we should be able to merge to the node which has not committed to the break path yet.
+						if (node->succ[1]->can_backtrace_to(node->succ[0]))
+							merge_to_succ(node, 0);
+						else if (node->succ[0]->can_backtrace_to(node->succ[1]))
+							merge_to_succ(node, 1);
+						else
+						{
+							node->merge = MergeType::Selection;
+							node->selection_merge_block = nullptr;
+							//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
+						}
 					}
 					else if (b_path_is_break)
 						merge_to_succ(node, 0);
