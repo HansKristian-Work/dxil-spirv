@@ -362,12 +362,12 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		break;
 
 	case MergeType::Loop:
-		if (ir.merge_info.continue_block)
+		if (ir.merge_info.merge_block && ir.merge_info.continue_block)
 		{
 			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block),
 			                        get_spv_block(ir.merge_info.continue_block), 0);
 		}
-		else
+		else if (ir.merge_info.merge_block)
 		{
 			auto *continue_bb = new spv::Block(builder.getUniqueId(), *active_function);
 			active_function->addBlock(continue_bb);
