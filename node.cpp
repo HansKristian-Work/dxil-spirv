@@ -105,6 +105,15 @@ bool CFGNode::can_loop_merge_to(const CFGNode *other) const
 	return true;
 }
 
+bool CFGNode::can_backtrace_to(const CFGNode *parent) const
+{
+	for (auto *p : pred)
+		if (p == parent || p->can_backtrace_to(parent))
+			return true;
+
+	return false;
+}
+
 const CFGNode *CFGNode::get_innermost_loop_header_for(const CFGNode *other) const
 {
 	while (this != other)

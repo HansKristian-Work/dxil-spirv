@@ -342,8 +342,20 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	std::unordered_set<const CFGNode *> cfg_subset;
 	cfg_subset.insert(node.block);
 	const auto walk_op = [&](const CFGNode *n) -> bool {
-		if (cfg_subset.count(n) || node.block->dominates(n))
+		if (node.block->dominates(n))
+		{
+			// If there is a path to the node's back edge, we need to link up the Phi nodes there.
+			bool can_reach_continue_block = node.block->pred_back_edge &&
+			                                n != node.block->pred_back_edge &&
+			                                node.block->pred_back_edge->can_backtrace_to(n);
+			if (!can_reach_continue_block)
+				return false;
+		}
+
+		if (cfg_subset.count(n))
+		{
 			return false;
+		}
 		else
 		{
 			cfg_subset.insert(n);
