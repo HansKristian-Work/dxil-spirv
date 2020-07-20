@@ -20,6 +20,7 @@
 
 #include <exception>
 #include <stdint.h>
+#include <stddef.h>
 #include <vector>
 
 namespace LLVMBC
