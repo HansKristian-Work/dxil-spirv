@@ -105,7 +105,7 @@ bool CFGNode::can_loop_merge_to(const CFGNode *other) const
 	return true;
 }
 
-bool CFGNode::is_innermost_loop_header_for(const CFGNode *other) const
+const CFGNode *CFGNode::get_innermost_loop_header_for(const CFGNode *other) const
 {
 	while (this != other)
 	{
@@ -121,7 +121,12 @@ bool CFGNode::is_innermost_loop_header_for(const CFGNode *other) const
 		other = other->immediate_dominator;
 	}
 
-	return this == other;
+	return other;
+}
+
+bool CFGNode::is_innermost_loop_header_for(const CFGNode *other) const
+{
+	return this == get_innermost_loop_header_for(other);
 }
 
 bool CFGNode::branchless_path_to(const CFGNode *to) const

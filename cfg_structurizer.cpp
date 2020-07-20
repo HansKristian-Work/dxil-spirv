@@ -1236,7 +1236,9 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode &header, const CFGNode &node) const
 {
 	// If there exists an inner loop which dominates this exit, we treat it as an inner loop exit.
-	bool is_innermost_loop_header = header.is_innermost_loop_header_for(&node);
+	const CFGNode *innermost_loop_header = header.get_innermost_loop_header_for(&node);
+	bool is_innermost_loop_header = &header == innermost_loop_header;
+
 	if (header.dominates(&node) && node.dominates_all_reachable_exits())
 	{
 		if (is_innermost_loop_header)
@@ -1256,7 +1258,22 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 			return LoopExitType::Merge;
 		}
 		else
-			return LoopExitType::InnerLoopMerge;
+		{
+			// Try to detect if this is a degenerate inner loop merge.
+			// If the inner loop header is the only way to exit the loop construct,
+			// the loop exit block is a false exit.
+			// This is the case if the candidate must pass through the back edge, and the back edge can only branch to header.
+			// In this case, the loop will not be visible through back-propagation, but it is definitely part of the loop construct.
+
+			if (!innermost_loop_header->pred_back_edge || innermost_loop_header->pred_back_edge->ir.terminator.type != Terminator::Type::Branch)
+				return LoopExitType::InnerLoopMerge;
+
+			auto *post = find_common_post_dominator({ const_cast<CFGNode *>(&node), innermost_loop_header->pred_back_edge });
+			if (post == innermost_loop_header->pred_back_edge)
+				return LoopExitType::InnerLoopFalsePositive;
+			else
+				return LoopExitType::InnerLoopMerge;
+		}
 	}
 	else
 		return LoopExitType::Escape;
@@ -1511,6 +1528,12 @@ void CFGStructurizer::find_loops()
 
 			case LoopExitType::InnerLoopMerge:
 				inner_dominated_exit.push_back(loop_exit);
+				break;
+
+			case LoopExitType::InnerLoopFalsePositive:
+				// In this case, the inner loop can only exit at the loop header,
+				// and thus post-dominance analysis will always fail.
+				// Ignore this case as it's a false exit.
 				break;
 
 			case LoopExitType::Escape:

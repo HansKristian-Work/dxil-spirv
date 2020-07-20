@@ -84,7 +84,8 @@ private:
 		Merge,
 		Escape,
 		InnerLoopExit,
-		InnerLoopMerge
+		InnerLoopMerge,
+		InnerLoopFalsePositive
 	};
 	LoopExitType get_loop_exit_type(const CFGNode &header, const CFGNode &node) const;
 	CFGNode *create_helper_pred_block(CFGNode *node);

@@ -68,6 +68,7 @@ private:
 	bool dominates(const CFGNode *other) const;
 	bool can_loop_merge_to(const CFGNode *other) const;
 	bool is_innermost_loop_header_for(const CFGNode *other) const;
+	const CFGNode *get_innermost_loop_header_for(const CFGNode *other) const;
 	bool branchless_path_to(const CFGNode *to) const;
 	bool post_dominates(const CFGNode *other) const;
 	bool dominates_all_reachable_exits() const;
