@@ -164,8 +164,17 @@ void CFGStructurizer::log_cfg(const char *tag) const
 
 bool CFGStructurizer::run()
 {
+	std::string graphviz_path;
+	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
+		graphviz_path = env;
+
 	recompute_cfg();
 	//log_cfg("Input state");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_input = graphviz_path + ".input";
+		log_cfg_graphviz(graphviz_input.c_str());
+	}
 
 	create_continue_block_ladders();
 
@@ -173,6 +182,11 @@ bool CFGStructurizer::run()
 	recompute_cfg();
 
 	//log_cfg("Split merge scopes");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".split";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
 
 	//LOGI("=== Structurize pass ===\n");
 	structurize(0);
@@ -180,14 +194,25 @@ bool CFGStructurizer::run()
 	recompute_cfg();
 
 	//log_cfg("Structurize pass 0");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_struct = graphviz_path + ".struct";
+		log_cfg_graphviz(graphviz_struct.c_str());
+	}
 
 	//LOGI("=== Structurize pass ===\n");
 	structurize(1);
 
-	insert_phi();
-
 	//validate_structured();
 	//log_cfg("Final");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_final = graphviz_path + ".final";
+		log_cfg_graphviz(graphviz_final.c_str());
+	}
+
+	insert_phi();
+
 	return true;
 }
 
