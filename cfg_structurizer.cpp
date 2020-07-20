@@ -1175,6 +1175,17 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 			}
 		}
 
+		// Try to detect if this is a breaking construct.
+		// We should not merge any execution when inside a breaking construct.
+		auto *loop_header = entry_block->get_innermost_loop_header_for(node);
+		bool is_breaking_construct = false;
+
+		if (loop_header && loop_header != entry_block &&
+		    control_flow_is_escaping(loop_header, node, loop_header->loop_merge_block))
+		{
+			is_breaking_construct = true;
+		}
+
 		for (auto *header : node->headers)
 		{
 			// If we have a loop header already associated with this block, treat that as our idom.
@@ -1185,7 +1196,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 		if (idom->merge == MergeType::None || idom->merge == MergeType::Selection)
 		{
 			// We just found a switch block which we have already handled.
-			if (idom->ir.terminator.type == Terminator::Type::Switch)
+			if (idom->ir.terminator.type == Terminator::Type::Switch || is_breaking_construct)
 				continue;
 
 			// If the idom is already a selection construct, this must mean
@@ -1232,11 +1243,16 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				auto *selection_idom = create_helper_succ_block(idom);
 				// If we split the loop header into the loop header -> selection merge header,
 				// then we can merge into a continue block for example.
-				selection_idom->merge = MergeType::Selection;
-				selection_idom->selection_merge_block = node;
-				node->add_unique_header(selection_idom);
-				//LOGI("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(selection_idom),
-				//     selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
+				if (!is_breaking_construct)
+				{
+					// Do not actually merge to this block if we're in a breaking construct, but we might need to
+					// create a succ block so we can clean up the selection merge later.
+					selection_idom->merge = MergeType::Selection;
+					selection_idom->selection_merge_block = node;
+					node->add_unique_header(selection_idom);
+					//LOGI("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(selection_idom),
+					//     selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
+				}
 			}
 		}
 		else
