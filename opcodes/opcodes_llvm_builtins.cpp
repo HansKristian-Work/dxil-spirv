@@ -278,9 +278,35 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 		return false;
 	}
 
-	Operation *op = impl.allocate(opcode, instruction);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
-	impl.add(op);
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::PointerTyID)
+	{
+		// I have observed this code in the wild
+		// %blah = bitcast float* %foo to i32*
+		// on function local memory.
+		// I have no idea if this is legal DXIL.
+		// Fake this by copying the object instead without any cast, and resolve the bitcast in OpLoad/OpStore instead.
+		auto *pointer_type = llvm::cast<llvm::PointerType>(instruction->getOperand(0)->getType());
+		auto *pointee_type = pointer_type->getPointerElementType();
+		auto addr_space = static_cast<DXIL::AddressSpace>(pointer_type->getAddressSpace());
+		spv::Id value_type = impl.get_type_id(pointee_type);
+
+		spv::Id type_id = impl.builder().makePointer(addr_space == DXIL::AddressSpace::GroupShared ?
+		                                             spv::StorageClassWorkgroup :
+		                                             spv::StorageClassFunction,
+		                                             value_type);
+		Operation *op = impl.allocate(spv::OpCopyObject, instruction, type_id);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+
+		// Remember that we will need to bitcast on load or store to the real underlying type.
+		impl.llvm_value_actual_type[instruction] = value_type;
+		impl.add(op);
+	}
+	else
+	{
+		Operation *op = impl.allocate(opcode, instruction);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		impl.add(op);
+	}
 	return true;
 }
 
@@ -362,11 +388,22 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
 	auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getPointerOperand());
+	auto type_itr = impl.llvm_value_actual_type.find(instruction->getPointerOperand());
 
 	// If we are trying to load a resource in RT, this does not translate in SPIR-V, defer this to createHandleForLib.
 	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
 	{
 		impl.llvm_global_variable_to_resource_mapping[instruction] = itr->second;
+	}
+	else if (type_itr != impl.llvm_value_actual_type.end())
+	{
+		Operation *load_op = impl.allocate(spv::OpLoad, type_itr->second);
+		load_op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
+		impl.add(load_op);
+
+		Operation *cast_op = impl.allocate(spv::OpBitcast, instruction);
+		cast_op->add_id(load_op->id);
+		impl.add(cast_op);
 	}
 	else
 	{
@@ -380,8 +417,22 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instruction)
 {
 	Operation *op = impl.allocate(spv::OpStore);
-	op->add_ids(
-	    { impl.get_id_for_value(instruction->getOperand(1)), impl.get_id_for_value(instruction->getOperand(0)) });
+
+	auto itr = impl.llvm_value_actual_type.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_actual_type.end())
+	{
+		Operation *cast_op = impl.allocate(spv::OpBitcast, itr->second);
+		cast_op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		impl.add(cast_op);
+
+		op->add_ids(
+			{ impl.get_id_for_value(instruction->getOperand(1)), cast_op->id });
+	}
+	else
+	{
+		op->add_ids(
+		    { impl.get_id_for_value(instruction->getOperand(1)), impl.get_id_for_value(instruction->getOperand(0)) });
+	}
 
 	impl.add(op);
 	return true;
