@@ -2615,6 +2615,12 @@ void Builder::createConditionalBranch(Id condition, Block* thenBlock, Block* els
     elseBlock->addPredecessor(buildPoint);
 }
 
+void Builder::createUnreachable()
+{
+    Instruction* merge = new Instruction(OpUnreachable);
+    buildPoint->addInstruction(std::unique_ptr<Instruction>(merge));
+}
+
 // OpSource
 // [OpSourceContinued]
 // ...
