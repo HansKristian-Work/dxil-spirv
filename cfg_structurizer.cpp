@@ -262,11 +262,13 @@ void CFGStructurizer::insert_phi()
 	// This can happen when introducing ladder blocks or similar.
 	for (auto *node : post_visit_order)
 	{
+		unsigned phi_index = 0;
 		for (auto &phi : node->ir.phi)
 		{
-			phi_nodes.push_back({ node, &phi });
+			phi_nodes.push_back({ node, phi_index });
 			if (phi.id)
 				value_id_to_block[phi.id] = node;
+			phi_index++;
 		}
 
 		for (auto *op : node->ir.operations)
@@ -310,7 +312,7 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 	// We want to move any incoming block to where the ID was created.
 	// This avoids some problematic cases of crossing edges when using ladders.
 
-	for (auto &incoming : node.phi->incoming)
+	for (auto &incoming : node.block->ir.phi[node.phi_index].incoming)
 	{
 		auto itr = value_id_to_block.find(incoming.id);
 		if (itr == end(value_id_to_block))
@@ -363,7 +365,8 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		}
 	};
 
-	auto &incoming_values = node.phi->incoming;
+	auto &phi = node.block->ir.phi[node.phi_index];
+	auto &incoming_values = phi.incoming;
 	for (auto &incoming : incoming_values)
 		incoming.block->walk_cfg_from(walk_op);
 
@@ -431,12 +434,12 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				auto itr = find_incoming_value(frontier->pred.front(), incoming_values);
 				assert(itr != incoming_values.end());
 
-				auto *op = module.allocate_op(spv::OpCopyObject, node.phi->id, node.phi->type_id);
+				auto *op = module.allocate_op(spv::OpCopyObject, phi.id, phi.type_id);
 				op->add_id(itr->id);
 				frontier->pred.front()->ir.operations.push_back(op);
 
 				// Ignore this one when emitting PHIs later.
-				node.phi->id = 0;
+				phi.id = 0;
 			}
 			else
 			{
@@ -478,7 +481,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		// Remove old inputs.
 		PHI frontier_phi;
 		frontier_phi.id = module.allocate_id();
-		frontier_phi.type_id = node.phi->type_id;
+		frontier_phi.type_id = phi.type_id;
 		module.get_builder().addName(frontier_phi.id, (std::string("frontier_phi_") + frontier->name).c_str());
 
 		assert(!frontier->pred_back_edge);
@@ -516,7 +519,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			{
 				// If there is no incoming value, we need to hallucinate an undefined value.
 				IncomingValue value = {};
-				value.id = module.get_builder().createUndefined(node.phi->type_id);
+				value.id = module.get_builder().createUndefined(phi.type_id);
 				value.block = input;
 				frontier_phi.incoming.push_back(value);
 			}
@@ -601,7 +604,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				merge_phi.id = module.allocate_id();
 				merge_phi.type_id = module.get_builder().makeBoolType();
 
-				Operation *op = module.allocate_op(spv::OpSelect, module.allocate_id(), node.phi->type_id);
+				Operation *op = module.allocate_op(spv::OpSelect, module.allocate_id(), phi.type_id);
 				op->add_ids({ merge_phi.id, dominated_incoming->id, frontier_phi.id });
 				dominated_incoming->block->ir.operations.push_back(op);
 				dominated_incoming->id = op->id;

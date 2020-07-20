@@ -104,7 +104,7 @@ private:
 	struct PHINode
 	{
 		CFGNode *block;
-		PHI *phi;
+		unsigned phi_index;
 	};
 	std::vector<PHINode> phi_nodes;
 	void insert_phi();
