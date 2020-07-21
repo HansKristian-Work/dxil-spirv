@@ -1745,8 +1745,19 @@ void CFGStructurizer::split_merge_blocks()
 		// we will need to split the block. In SPIR-V, a merge block can only be the merge target for one construct.
 		// However, we can set up a chain of merges where inner scope breaks to outer scope with a dummy basic block.
 		// The outer scope comes before the inner scope merge.
+
+		// We cannot fully trust a sort on post-visit order, since if we have two split blocks here,
+		// they will have the same post-visit order until we recompute them.
+		// FIXME: Should probably be smarter about this ...
 		std::sort(node->headers.begin(), node->headers.end(),
-		          [](const CFGNode *a, const CFGNode *b) -> bool { return a->dominates(b); });
+		          [](const CFGNode *a, const CFGNode *b) -> bool {
+			          if (a->dominates(b))
+				          return true;
+			          else if (b->dominates(a))
+				          return false;
+			          else
+				          return a->visit_order > b->visit_order;
+		          });
 
 		// Verify that scopes are actually nested.
 		// This means header[N] must dominate header[M] where N < M.
