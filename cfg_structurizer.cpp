@@ -51,8 +51,16 @@ void CFGStructurizer::log_cfg_graphviz(const char *path) const
 		auto itr = node_to_id.find(node);
 		if (itr == node_to_id.end())
 		{
+			const char *shape = nullptr;
+			if (node->merge == MergeType::Loop)
+				shape = "circle";
+			else if (node->merge == MergeType::Selection)
+				shape = "triangle";
+			else
+				shape = "box";
+
 			node_to_id[node] = ++accum_id;
-			fprintf(file, "%u [label=\"%s\"];\n", accum_id, node->name.c_str());
+			fprintf(file, "%u [label=\"%s\", shape=\"%s\"];\n", accum_id, node->name.c_str(), shape);
 			return accum_id;
 		}
 		else
