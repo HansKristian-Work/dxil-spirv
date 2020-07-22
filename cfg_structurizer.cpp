@@ -1467,6 +1467,8 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 
 	std::swap(succ_node->succ, node->succ);
 	// Do not swap back edges, only forward edges.
+
+	succ_node->immediate_post_dominator = node->immediate_post_dominator;
 	node->immediate_post_dominator = succ_node;
 
 	succ_node->ir.terminator = node->ir.terminator;

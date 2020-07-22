@@ -153,28 +153,17 @@ bool CFGNode::branchless_path_to(const CFGNode *to) const
 
 bool CFGNode::post_dominates(const CFGNode *start_node) const
 {
-	// Crude algorithm, try to traverse from start_node, and if we can find an exit without entering this,
-	// we do not post-dominate.
-	// Creating a post-dominator tree might be viable?
+	while (start_node != this)
+	{
+		// Reached exit node.
+		if (start_node == start_node->immediate_post_dominator)
+			break;
 
-	// Terminated at this.
-	if (start_node == this)
-		return true;
+		assert(start_node->immediate_post_dominator);
+		start_node = start_node->immediate_post_dominator;
+	}
 
-	// Found exit.
-	if (start_node->succ.empty())
-		return false;
-
-	// If post-visit order is lower, post-dominance is impossible.
-	// As we traverse, post visit order will monotonically decrease.
-	if (start_node->forward_post_visit_order < forward_post_visit_order)
-		return false;
-
-	for (auto *node : start_node->succ)
-		if (!post_dominates(node))
-			return false;
-
-	return true;
+	return this == start_node;
 }
 
 bool CFGNode::dominates_all_reachable_exits(const CFGNode &header) const
