@@ -352,9 +352,12 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	//LOGI("\n=== INSERT PHI FOR %s ===\n", node.block->name.c_str());
 
 	// First, figure out which subset of the CFG we need to work on.
-	std::unordered_set<const CFGNode *> cfg_subset;
+	std::unordered_set<const CFGNode *> cfg_subset, cfg_block_subset;
 	cfg_subset.insert(node.block);
 	const auto walk_op = [&](const CFGNode *n) -> bool {
+		if (cfg_block_subset.count(n))
+			return false;
+
 		// Don't walk past the node we're trying to merge PHI into.
 		if (node.block == n)
 			return false;
@@ -366,14 +369,20 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			                                n != node.block->pred_back_edge &&
 			                                node.block->pred_back_edge->can_backtrace_to(n);
 			if (!can_reach_continue_block)
+			{
+				cfg_block_subset.insert(n);
 				return false;
+			}
 		}
 		else
 		{
 			// Only bother following a CFG if we can backtrace to it, otherwise, it has no business being part of the
 			// dominance frontier.
 			if (!node.block->can_backtrace_to(n))
+			{
+				cfg_block_subset.insert(n);
 				return false;
+			}
 		}
 
 		if (cfg_subset.count(n))
