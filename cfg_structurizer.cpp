@@ -368,6 +368,13 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			if (!can_reach_continue_block)
 				return false;
 		}
+		else
+		{
+			// Only bother following a CFG if we can backtrace to it, otherwise, it has no business being part of the
+			// dominance frontier.
+			if (!node.block->can_backtrace_to(n))
+				return false;
+		}
 
 		if (cfg_subset.count(n))
 		{
