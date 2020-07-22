@@ -1088,8 +1088,9 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 
 void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_to)
 {
-	// Don't rewrite loops.
-	if (header->pred_back_edge)
+	// Don't rewrite loops here (since this is likely a loop merge block),
+	// unless we're rewriting header -> continue scenario.
+	if (header->pred_back_edge && !ladder_to->dominates(header->pred_back_edge))
 		return;
 
 	// Don't rewrite switch blocks either.
