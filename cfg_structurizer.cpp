@@ -1027,10 +1027,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					{
 						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
 						node->merge = MergeType::Selection;
-						auto *dummy_merge = pool.create_node();
-						dummy_merge->ir.terminator.type = Terminator::Type::Unreachable;
-						node->selection_merge_block = dummy_merge;
-						dummy_merge->name = node->name + ".unreachable";
+						node->selection_merge_block = nullptr;
 						//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
 					}
 					else if (b_path_is_break)
