@@ -43,7 +43,7 @@ private:
 	friend struct LoopBacktracer;
 	friend struct LoopMergeTracer;
 
-	uint32_t visit_order = 0;
+	uint32_t post_visit_order = 0;
 	bool visited = false;
 	bool traversing = false;
 	bool freeze_structured_analysis = false;

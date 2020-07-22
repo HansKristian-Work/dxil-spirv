@@ -54,7 +54,7 @@ private:
 	CFGNodePool &pool;
 	SPIRVModule &module;
 
-	std::vector<CFGNode *> post_visit_order;
+	std::vector<CFGNode *> forward_visit_order;
 	std::unordered_set<const CFGNode *> reachable_nodes;
 	void visit(CFGNode &entry);
 	void build_immediate_dominators(CFGNode &entry);

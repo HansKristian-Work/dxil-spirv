@@ -167,7 +167,7 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 
 	// If post-visit order is lower, post-dominance is impossible.
 	// As we traverse, post visit order will monotonically decrease.
-	if (start_node->visit_order < visit_order)
+	if (start_node->post_visit_order < post_visit_order)
 		return false;
 
 	for (auto *node : start_node->succ)
@@ -233,7 +233,7 @@ CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 			b->recompute_immediate_dominator();
 		}
 
-		if (a->visit_order < b->visit_order)
+		if (a->post_visit_order < b->post_visit_order)
 		{
 			// Awkward case which can happen when nodes are unreachable in the CFG.
 			// Can occur with the dummy blocks we create.
@@ -285,7 +285,7 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 	add_branch(to_next);
 
 	// Branch targets have changed, so recompute immediate dominators.
-	if (to_prev->visit_order > to_next->visit_order)
+	if (to_prev->post_visit_order > to_next->post_visit_order)
 	{
 		to_prev->recompute_immediate_dominator();
 		to_next->recompute_immediate_dominator();
