@@ -662,6 +662,8 @@ void CFGStructurizer::insert_phi(PHINode &node)
 void CFGStructurizer::compute_dominance_frontier()
 {
 	for (auto *node : forward_post_visit_order)
+		node->dominance_frontier.clear();
+	for (auto *node : forward_post_visit_order)
 		recompute_dominance_frontier(node);
 }
 
@@ -2135,28 +2137,28 @@ void CFGStructurizer::structurize(unsigned pass)
 
 void CFGStructurizer::recompute_dominance_frontier(CFGNode *node)
 {
-	std::unordered_set<const CFGNode *> traversed;
-	node->dominance_frontier.clear();
-	recompute_dominance_frontier(node, node, traversed);
-}
-
-void CFGStructurizer::recompute_dominance_frontier(CFGNode *header, const CFGNode *node,
-                                                   std::unordered_set<const CFGNode *> traversed)
-{
-	// Not very efficient, but it'll do for now ...
-	if (traversed.count(node))
-		return;
-	traversed.insert(node);
-
 	for (auto *succ : node->succ)
 	{
-		if (header->dominates(succ))
-			recompute_dominance_frontier(header, succ, traversed);
-		else
+		if (succ->immediate_dominator != node &&
+		    std::find(node->dominance_frontier.begin(),
+		              node->dominance_frontier.end(),
+		              succ) == node->dominance_frontier.end())
 		{
-			auto &frontier = header->dominance_frontier;
-			if (std::find(frontier.begin(), frontier.end(), succ) == frontier.end())
-				header->dominance_frontier.push_back(succ);
+			node->dominance_frontier.push_back(succ);
+		}
+
+		if (auto *idom = node->immediate_dominator)
+		{
+			for (auto *frontier_node : node->dominance_frontier)
+			{
+				if (!idom->dominates(frontier_node) &&
+				    std::find(idom->dominance_frontier.begin(),
+				              idom->dominance_frontier.end(),
+				              frontier_node) == idom->dominance_frontier.end())
+				{
+					idom->dominance_frontier.push_back(frontier_node);
+				}
+			}
 		}
 	}
 }

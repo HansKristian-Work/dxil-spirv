@@ -104,8 +104,6 @@ private:
 	void compute_dominance_frontier();
 	void create_continue_block_ladders();
 	static void recompute_dominance_frontier(CFGNode *node);
-	static void recompute_dominance_frontier(CFGNode *header, const CFGNode *node,
-	                                         std::unordered_set<const CFGNode *> traversed);
 	static void merge_to_succ(CFGNode *node, unsigned index);
 	void retarget_pred_from(CFGNode *new_node, CFGNode *old_succ);
 	void retarget_succ_from(CFGNode *new_node, CFGNode *old_pred);
