@@ -51,13 +51,21 @@ public:
 
 private:
 	CFGNode *entry_block;
+	CFGNode *exit_block;
 	CFGNodePool &pool;
 	SPIRVModule &module;
 
-	std::vector<CFGNode *> forward_visit_order;
+	// For dominance analysis.
+	std::vector<CFGNode *> forward_post_visit_order;
+	// For post-dominance analysis.
+	std::vector<CFGNode *> backward_post_visit_order;
+
 	std::unordered_set<const CFGNode *> reachable_nodes;
 	void visit(CFGNode &entry);
-	void build_immediate_dominators(CFGNode &entry);
+	void backwards_visit();
+	void backwards_visit(CFGNode &entry);
+	void build_immediate_dominators();
+	void build_immediate_post_dominators();
 	void structurize(unsigned pass);
 	void find_loops();
 	void split_merge_scopes();
@@ -99,6 +107,7 @@ private:
 	static void recompute_dominance_frontier(CFGNode *header, const CFGNode *node,
 	                                         std::unordered_set<const CFGNode *> traversed);
 	static void merge_to_succ(CFGNode *node, unsigned index);
+	void retarget_pred_from(CFGNode *new_node, CFGNode *old_succ);
 	void retarget_succ_from(CFGNode *new_node, CFGNode *old_pred);
 
 	struct PHINode

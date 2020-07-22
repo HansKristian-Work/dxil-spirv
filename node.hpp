@@ -43,7 +43,8 @@ private:
 	friend struct LoopBacktracer;
 	friend struct LoopMergeTracer;
 
-	uint32_t post_visit_order = 0;
+	uint32_t forward_post_visit_order = 0;
+	uint32_t backward_post_visit_order = 0;
 	bool visited = false;
 	bool traversing = false;
 	bool freeze_structured_analysis = false;
@@ -55,6 +56,7 @@ private:
 	std::vector<CFGNode *> headers;
 
 	CFGNode *immediate_dominator = nullptr;
+	CFGNode *immediate_post_dominator = nullptr;
 	std::vector<CFGNode *> succ;
 	std::vector<CFGNode *> pred;
 	CFGNode *pred_back_edge = nullptr;
@@ -73,6 +75,7 @@ private:
 	bool post_dominates(const CFGNode *other) const;
 	bool dominates_all_reachable_exits() const;
 	static CFGNode *find_common_dominator(CFGNode *a, CFGNode *b);
+	static CFGNode *find_common_post_dominator(CFGNode *a, CFGNode *b);
 	CFGNode *get_immediate_dominator_loop_header();
 	bool exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block, const CFGNode *stop_block) const;
 	bool can_backtrace_to(const CFGNode *parent) const;
@@ -86,8 +89,8 @@ private:
 	template <typename Op>
 	void walk_cfg_from(const Op &op) const;
 
-	void retarget_pred_from(CFGNode *node);
 	void recompute_immediate_dominator();
+	void recompute_immediate_post_dominator();
 
 	template <typename Op>
 	void traverse_dominated_blocks(const Op &op);

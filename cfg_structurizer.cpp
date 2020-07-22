@@ -33,6 +33,8 @@ CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule
     , pool(pool_)
     , module(module_)
 {
+	exit_block = pool.create_node();
+	exit_block->name = "EXIT";
 }
 
 void CFGStructurizer::log_cfg_graphviz(const char *path) const
@@ -68,9 +70,9 @@ void CFGStructurizer::log_cfg_graphviz(const char *path) const
 	};
 
 	fprintf(file, "digraph {\n");
-	for (auto index = forward_visit_order.size(); index; index--)
+	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
-		auto *node = forward_visit_order[index - 1];
+		auto *node = forward_post_visit_order[index - 1];
 		switch (node->ir.terminator.type)
 		{
 		case Terminator::Type::Branch:
@@ -113,9 +115,9 @@ void CFGStructurizer::log_cfg_graphviz(const char *path) const
 void CFGStructurizer::log_cfg(const char *tag) const
 {
 	LOGI("\n======== %s =========\n", tag);
-	for (auto index = forward_visit_order.size(); index; index--)
+	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
-		auto *node = forward_visit_order[index - 1];
+		auto *node = forward_post_visit_order[index - 1];
 
 		LOGI("%s:\n", node->name.c_str());
 		switch (node->ir.terminator.type)
@@ -234,7 +236,7 @@ void CFGStructurizer::create_continue_block_ladders()
 	// It does not seem to be legal to merge directly to continue blocks.
 	// To make it possible to merge execution, we need to create a ladder block which we can merge to.
 	bool need_recompute_cfg = false;
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		if (node->succ_back_edge && node->succ_back_edge != node)
 		{
@@ -252,11 +254,12 @@ void CFGStructurizer::prune_dead_preds()
 {
 	// We do not want to see unreachable preds.
 	// Having a pred means we need to map it to an incoming value when dealing with PHI.
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		auto itr = std::remove_if(node->pred.begin(), node->pred.end(),
 		                          [&](const CFGNode *node) { return reachable_nodes.count(node) == 0; });
-		node->pred.erase(itr, node->pred.end());
+		if (itr != node->pred.end())
+			node->pred.erase(itr, node->pred.end());
 	}
 }
 
@@ -268,7 +271,7 @@ void CFGStructurizer::insert_phi()
 	// Build a map of value ID -> creating block.
 	// This allows us to detect if a value is consumed in a situation where the declaration does not dominate use.
 	// This can happen when introducing ladder blocks or similar.
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		unsigned phi_index = 0;
 		for (auto &phi : node->ir.phi)
@@ -286,7 +289,7 @@ void CFGStructurizer::insert_phi()
 
 	// Resolve phi-nodes top-down since PHI nodes may depend on other PHI nodes.
 	std::sort(phi_nodes.begin(), phi_nodes.end(),
-	          [](const PHINode &a, const PHINode &b) { return a.block->post_visit_order > b.block->post_visit_order; });
+	          [](const PHINode &a, const PHINode &b) { return a.block->forward_post_visit_order > b.block->forward_post_visit_order; });
 
 	for (auto &phi_node : phi_nodes)
 	{
@@ -307,7 +310,7 @@ std::vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
 		auto *block = itr->block;
 		if (block->dominates(frontier_pred))
 		{
-			if (candidate == incoming.end() || block->post_visit_order < candidate->block->post_visit_order)
+			if (candidate == incoming.end() || block->forward_post_visit_order < candidate->block->forward_post_visit_order)
 				candidate = itr;
 		}
 	}
@@ -352,6 +355,10 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	std::unordered_set<const CFGNode *> cfg_subset;
 	cfg_subset.insert(node.block);
 	const auto walk_op = [&](const CFGNode *n) -> bool {
+		// Don't walk past the node we're trying to merge PHI into.
+		if (node.block == n)
+			return false;
+
 		if (node.block->dominates(n))
 		{
 			// If there is a path to the node's back edge, we need to link up the Phi nodes there.
@@ -418,7 +425,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				{
 					if (cfg_subset.count(candidate_frontier))
 					{
-						if (frontier == nullptr || candidate_frontier->post_visit_order > frontier->post_visit_order)
+						if (frontier == nullptr || candidate_frontier->forward_post_visit_order > frontier->forward_post_visit_order)
 						{
 							// Pick the earliest frontier in the CFG.
 							// We want to merge top to bottom.
@@ -638,27 +645,38 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 void CFGStructurizer::compute_dominance_frontier()
 {
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 		recompute_dominance_frontier(node);
 }
 
-void CFGStructurizer::build_immediate_dominators(CFGNode &entry)
+void CFGStructurizer::build_immediate_dominators()
 {
-	for (auto i = forward_visit_order.size(); i; i--)
+	for (auto i = forward_post_visit_order.size(); i; i--)
 	{
-		auto *block = forward_visit_order[i - 1];
+		auto *block = forward_post_visit_order[i - 1];
 		block->recompute_immediate_dominator();
+	}
+}
+
+void CFGStructurizer::build_immediate_post_dominators()
+{
+	for (auto i = backward_post_visit_order.size(); i; i--)
+	{
+		auto *block = backward_post_visit_order[i - 1];
+		block->recompute_immediate_post_dominator();
 	}
 }
 
 void CFGStructurizer::reset_traversal()
 {
 	reachable_nodes.clear();
-	forward_visit_order.clear();
+	forward_post_visit_order.clear();
+	backward_post_visit_order.clear();
 	pool.for_each_node([](CFGNode &node) {
 		node.visited = false;
 		node.traversing = false;
 		node.immediate_dominator = nullptr;
+		node.immediate_post_dominator = nullptr;
 
 		if (!node.freeze_structured_analysis)
 		{
@@ -676,6 +694,41 @@ void CFGStructurizer::reset_traversal()
 		node.succ_back_edge = nullptr;
 		node.pred_back_edge = nullptr;
 	});
+}
+
+void CFGStructurizer::backwards_visit()
+{
+	std::vector<CFGNode *> leaf_nodes;
+
+	// Traverse from leaf nodes, back through their preds instead.
+	// Clear out some state set by forward visit earlier.
+	for (auto *node : forward_post_visit_order)
+	{
+		node->visited = false;
+		node->traversing = false;
+		if (node->succ.empty())
+			leaf_nodes.push_back(node);
+	}
+
+	for (auto *leaf : leaf_nodes)
+		backwards_visit(*leaf);
+
+	exit_block->backward_post_visit_order = backward_post_visit_order.size();
+	exit_block->immediate_post_dominator = exit_block;
+	for (auto *leaf : leaf_nodes)
+		leaf->immediate_post_dominator = exit_block;
+}
+
+void CFGStructurizer::backwards_visit(CFGNode &entry)
+{
+	entry.visited = true;
+
+	for (auto *pred : entry.pred)
+		if (!pred->visited)
+			backwards_visit(*pred);
+
+	entry.backward_post_visit_order = backward_post_visit_order.size();
+	backward_post_visit_order.push_back(&entry);
 }
 
 void CFGStructurizer::visit(CFGNode &entry)
@@ -719,8 +772,8 @@ void CFGStructurizer::visit(CFGNode &entry)
 	}
 
 	entry.traversing = false;
-	entry.post_visit_order = forward_visit_order.size();
-	forward_visit_order.push_back(&entry);
+	entry.forward_post_visit_order = forward_post_visit_order.size();
+	forward_post_visit_order.push_back(&entry);
 }
 
 struct LoopBacktracer
@@ -809,7 +862,7 @@ std::vector<CFGNode *> CFGStructurizer::isolate_structured_sorted(const CFGNode 
 		sorted.push_back(node);
 
 	std::sort(sorted.begin(), sorted.end(),
-	          [](const CFGNode *a, const CFGNode *b) { return a->post_visit_order > b->post_visit_order; });
+	          [](const CFGNode *a, const CFGNode *b) { return a->forward_post_visit_order > b->forward_post_visit_order; });
 	return sorted;
 }
 
@@ -844,7 +897,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 	// This is common case for ladder blocks where we need to merge to the "true" merge block.
 	// The selection header has two succs, but the merge block might only have one pred block,
 	// which means it was not considered a merge candidate earlier in find_selection_merges().
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		if (node->succ.size() != 2)
 			continue;
@@ -1071,7 +1124,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 
 void CFGStructurizer::split_merge_scopes()
 {
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		// Setup a preliminary merge scope so we know when to stop traversal.
 		// We don't care about traversing inner scopes, out starting from merge block as well.
@@ -1090,7 +1143,7 @@ void CFGStructurizer::split_merge_scopes()
 		node->headers.push_back(idom);
 	}
 
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		if (node->num_forward_preds() <= 1)
 			continue;
@@ -1125,15 +1178,18 @@ void CFGStructurizer::recompute_cfg()
 {
 	reset_traversal();
 	visit(*entry_block);
-	build_immediate_dominators(*entry_block);
+	build_immediate_dominators();
 	prune_dead_preds();
+
+	backwards_visit();
+	build_immediate_post_dominators();
 }
 
 void CFGStructurizer::find_switch_blocks()
 {
-	for (auto index = forward_visit_order.size(); index; index--)
+	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
-		auto *node = forward_visit_order[index - 1];
+		auto *node = forward_post_visit_order[index - 1];
 		if (node->ir.terminator.type != Terminator::Type::Switch)
 			continue;
 
@@ -1164,7 +1220,7 @@ void CFGStructurizer::find_switch_blocks()
 
 void CFGStructurizer::find_selection_merges(unsigned pass)
 {
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		if (node->num_forward_preds() <= 1)
 			continue;
@@ -1206,7 +1262,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 		for (auto *header : node->headers)
 		{
 			// If we have a loop header already associated with this block, treat that as our idom.
-			if (header->post_visit_order > idom->post_visit_order)
+			if (header->forward_post_visit_order > idom->forward_post_visit_order)
 				idom = header;
 		}
 
@@ -1333,14 +1389,16 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 	pred_node->name = node->name + ".pred";
 
 	// Fixup visit order later.
-	pred_node->post_visit_order = node->post_visit_order;
+	pred_node->forward_post_visit_order = node->forward_post_visit_order;
+	pred_node->backward_post_visit_order = node->backward_post_visit_order;
 
 	std::swap(pred_node->pred, node->pred);
 
 	pred_node->immediate_dominator = node->immediate_dominator;
+	pred_node->immediate_post_dominator = node;
 	node->immediate_dominator = pred_node;
 
-	pred_node->retarget_pred_from(node);
+	retarget_pred_from(pred_node, node);
 
 	pred_node->add_branch(node);
 
@@ -1353,6 +1411,36 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 	return pred_node;
 }
 
+void CFGStructurizer::retarget_pred_from(CFGNode *new_node, CFGNode *old_succ)
+{
+	for (auto *p : new_node->pred)
+	{
+		for (auto &s : p->succ)
+			if (s == old_succ)
+				s = new_node;
+
+		auto &p_term = p->ir.terminator;
+		if (p_term.direct_block == old_succ)
+			p_term.direct_block = new_node;
+		if (p_term.true_block == old_succ)
+			p_term.true_block = new_node;
+		if (p_term.false_block == old_succ)
+			p_term.false_block = new_node;
+		if (p_term.default_node == old_succ)
+			p_term.default_node = new_node;
+		for (auto &c : p_term.cases)
+			if (c.node == old_succ)
+				c.node = new_node;
+	}
+
+	// Do not swap back edges.
+
+	// Retarget immediate post dominators.
+	for (auto *n : forward_post_visit_order)
+		if (n->immediate_post_dominator == old_succ)
+			n->immediate_post_dominator = new_node;
+}
+
 void CFGStructurizer::retarget_succ_from(CFGNode *new_node, CFGNode *old_pred)
 {
 	for (auto *s : new_node->succ)
@@ -1360,7 +1448,7 @@ void CFGStructurizer::retarget_succ_from(CFGNode *new_node, CFGNode *old_pred)
 			if (p == old_pred)
 				p = new_node;
 
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 		if (node->immediate_dominator == old_pred)
 			node->immediate_dominator = new_node;
 	new_node->immediate_dominator = old_pred;
@@ -1374,10 +1462,12 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 	succ_node->name = node->name + ".succ";
 
 	// Fixup visit order later.
-	succ_node->post_visit_order = node->post_visit_order;
+	succ_node->forward_post_visit_order = node->forward_post_visit_order;
+	succ_node->backward_post_visit_order = node->backward_post_visit_order;
 
 	std::swap(succ_node->succ, node->succ);
 	// Do not swap back edges, only forward edges.
+	node->immediate_post_dominator = succ_node;
 
 	succ_node->ir.terminator = node->ir.terminator;
 	node->ir.terminator.type = Terminator::Type::Branch;
@@ -1407,7 +1497,7 @@ CFGNode *CFGStructurizer::find_common_dominated_merge_block(CFGNode *header)
 	{
 		// Sort candidates by post visit order.
 		std::sort(candidates.begin(), candidates.end(), [](const CFGNode *a, const CFGNode *b) {
-			return a->forward_visit_order > b->forward_visit_order;
+			return a->forward_post_visit_order > b->forward_post_visit_order;
 		});
 
 		// Now we look at the lowest post-visit order.
@@ -1450,7 +1540,7 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_exits(const CF
 	{
 		// Sort candidates by post visit order.
 		std::sort(candidates.begin(), candidates.end(),
-		          [](const CFGNode *a, const CFGNode *b) { return a->post_visit_order > b->post_visit_order; });
+		          [](const CFGNode *a, const CFGNode *b) { return a->forward_post_visit_order > b->forward_post_visit_order; });
 
 		for (auto *succ : candidates.front()->succ)
 			add_unique_next_node(succ);
@@ -1484,7 +1574,7 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(std::vec
 	{
 		// Sort candidates by post visit order.
 		std::sort(candidates.begin(), candidates.end(),
-		          [](const CFGNode *a, const CFGNode *b) { return a->post_visit_order > b->post_visit_order; });
+		          [](const CFGNode *a, const CFGNode *b) { return a->forward_post_visit_order > b->forward_post_visit_order; });
 
 		// We reached exit without merging execution, there is no common post dominator.
 		if (candidates.front()->succ.empty())
@@ -1507,11 +1597,11 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(std::vec
 
 void CFGStructurizer::find_loops()
 {
-	for (auto index = forward_visit_order.size(); index; index--)
+	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
 		// Visit in reverse order so we resolve outer loops first,
 		// this lets us detect ladder-breaking loops.
-		auto *node = forward_visit_order[index - 1];
+		auto *node = forward_post_visit_order[index - 1];
 
 		if (node->freeze_structured_analysis)
 		{
@@ -1736,7 +1826,7 @@ void CFGStructurizer::find_loops()
 
 void CFGStructurizer::split_merge_blocks()
 {
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		if (node->headers.size() <= 1)
 			continue;
@@ -1756,7 +1846,7 @@ void CFGStructurizer::split_merge_blocks()
 			          else if (b->dominates(a))
 				          return false;
 			          else
-				          return a->post_visit_order > b->post_visit_order;
+				          return a->forward_post_visit_order > b->forward_post_visit_order;
 		          });
 
 		// Verify that scopes are actually nested.
@@ -2045,7 +2135,7 @@ void CFGStructurizer::recompute_dominance_frontier(CFGNode *header, const CFGNod
 
 void CFGStructurizer::validate_structured()
 {
-	for (auto *node : forward_visit_order)
+	for (auto *node : forward_post_visit_order)
 	{
 		if (node->headers.size() > 1)
 		{
@@ -2087,16 +2177,16 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 {
 	// Make sure all blocks are known to the backend before we emit code.
 	// Prefer that IDs grow the further down the function we go.
-	for (auto itr = forward_visit_order.rbegin(); itr != forward_visit_order.rend(); ++itr)
+	for (auto itr = forward_post_visit_order.rbegin(); itr != forward_post_visit_order.rend(); ++itr)
 	{
 		(*itr)->id = 0;
 		iface.register_block(*itr);
 	}
 
 	// Need to emit blocks such that dominating blocks come before dominated blocks.
-	for (auto index = forward_visit_order.size(); index; index--)
+	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
-		auto *block = forward_visit_order[index - 1];
+		auto *block = forward_post_visit_order[index - 1];
 
 		auto &merge = block->ir.merge_info;
 

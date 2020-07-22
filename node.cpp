@@ -167,7 +167,7 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 
 	// If post-visit order is lower, post-dominance is impossible.
 	// As we traverse, post visit order will monotonically decrease.
-	if (start_node->post_visit_order < post_visit_order)
+	if (start_node->forward_post_visit_order < forward_post_visit_order)
 		return false;
 
 	for (auto *node : start_node->succ)
@@ -193,6 +193,7 @@ bool CFGNode::dominates_all_reachable_exits() const
 {
 	return dominates_all_reachable_exits(*this);
 }
+
 bool CFGNode::exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block, const CFGNode *stop_block) const
 {
 	bool found_path = false;
@@ -210,6 +211,35 @@ bool CFGNode::exists_path_in_cfg_without_intermediate_node(const CFGNode *end_bl
 		return node != stop_block;
 	});
 	return found_path;
+}
+
+CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
+{
+	assert(a);
+	assert(b);
+
+	while (a != b)
+	{
+		if (!a->immediate_post_dominator)
+		{
+			for (auto *p : a->succ)
+				p->recompute_immediate_post_dominator();
+			a->recompute_immediate_post_dominator();
+		}
+
+		if (!b->immediate_post_dominator)
+		{
+			for (auto *p : b->succ)
+				p->recompute_immediate_post_dominator();
+			b->recompute_immediate_post_dominator();
+		}
+
+		if (a->backward_post_visit_order < b->backward_post_visit_order)
+			a = a->immediate_post_dominator;
+		else
+			b = b->immediate_post_dominator;
+	}
+	return const_cast<CFGNode *>(a);
 }
 
 CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
@@ -233,7 +263,7 @@ CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 			b->recompute_immediate_dominator();
 		}
 
-		if (a->post_visit_order < b->post_visit_order)
+		if (a->forward_post_visit_order < b->forward_post_visit_order)
 		{
 			// Awkward case which can happen when nodes are unreachable in the CFG.
 			// Can occur with the dummy blocks we create.
@@ -285,7 +315,7 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 	add_branch(to_next);
 
 	// Branch targets have changed, so recompute immediate dominators.
-	if (to_prev->post_visit_order > to_next->post_visit_order)
+	if (to_prev->forward_post_visit_order > to_next->forward_post_visit_order)
 	{
 		to_prev->recompute_immediate_dominator();
 		to_next->recompute_immediate_dominator();
@@ -295,6 +325,10 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 		to_next->recompute_immediate_dominator();
 		to_prev->recompute_immediate_dominator();
 	}
+
+	// ... and post dominator for ourself.
+	// I am not sure if it's technically possible that we have to recompute the entire post domination graph now?
+	recompute_immediate_post_dominator();
 
 	if (ir.terminator.direct_block == to_prev)
 		ir.terminator.direct_block = to_next;
@@ -314,31 +348,6 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNod
 	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *) { return true; });
 }
 
-void CFGNode::retarget_pred_from(CFGNode *old_succ)
-{
-	for (auto *p : pred)
-	{
-		for (auto &s : p->succ)
-			if (s == old_succ)
-				s = this;
-
-		auto &p_term = p->ir.terminator;
-		if (p_term.direct_block == old_succ)
-			p_term.direct_block = this;
-		if (p_term.true_block == old_succ)
-			p_term.true_block = this;
-		if (p_term.false_block == old_succ)
-			p_term.false_block = this;
-		if (p_term.default_node == old_succ)
-			p_term.default_node = this;
-		for (auto &c : p_term.cases)
-			if (c.node == old_succ)
-				c.node = this;
-	}
-
-	// Do not swap back edges.
-}
-
 void CFGNode::recompute_immediate_dominator()
 {
 	if (pred.empty())
@@ -356,6 +365,22 @@ void CFGNode::recompute_immediate_dominator()
 				immediate_dominator = CFGNode::find_common_dominator(immediate_dominator, edge);
 			else
 				immediate_dominator = edge;
+		}
+	}
+}
+
+void CFGNode::recompute_immediate_post_dominator()
+{
+	if (!succ.empty())
+	{
+		// For non-leaf blocks only. The immediate post dominator is already set up to be the exit node in leaf nodes.
+		immediate_post_dominator = nullptr;
+		for (auto *edge : succ)
+		{
+			if (immediate_post_dominator)
+				immediate_post_dominator = CFGNode::find_common_post_dominator(immediate_post_dominator, edge);
+			else
+				immediate_post_dominator = edge;
 		}
 	}
 }
