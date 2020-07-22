@@ -73,10 +73,10 @@ private:
 	void fixup_broken_selection_merges(unsigned pass);
 	void find_switch_blocks();
 	void split_merge_blocks();
-	static CFGNode *find_common_post_dominator(std::vector<CFGNode *> candidates);
+	static CFGNode *find_common_post_dominator(const std::vector<CFGNode *> &candidates);
 	static CFGNode *find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates,
 	                                                              const CFGNode *break_node);
-	static CFGNode *find_common_post_dominator_with_ignored_exits(const CFGNode *header);
+	//static CFGNode *find_common_post_dominator_with_ignored_exits(const CFGNode *header);
 	static bool control_flow_is_escaping(const CFGNode *header, const CFGNode *node, const CFGNode *merge);
 	static std::vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
 	static void isolate_structured(std::unordered_set<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);

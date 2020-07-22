@@ -1518,11 +1518,20 @@ CFGNode *CFGStructurizer::find_common_dominated_merge_block(CFGNode *header)
 }
 #endif
 
-CFGNode *CFGStructurizer::find_common_post_dominator(std::vector<CFGNode *> candidates)
+CFGNode *CFGStructurizer::find_common_post_dominator(const std::vector<CFGNode *> &candidates)
 {
-	return find_common_post_dominator_with_ignored_break(std::move(candidates), nullptr);
+	if (candidates.empty())
+		return nullptr;
+	else if (candidates.size() == 1)
+		return candidates.front();
+
+	CFGNode *common_post = CFGNode::find_common_post_dominator(candidates[0], candidates[1]);
+	for (size_t i = 2; i < candidates.size(); i++)
+		common_post = CFGNode::find_common_post_dominator(common_post, candidates[i]);
+	return common_post != common_post->immediate_post_dominator ? common_post : nullptr;
 }
 
+#if 0
 CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_exits(const CFGNode *header)
 {
 	std::vector<CFGNode *> candidates;
@@ -1558,6 +1567,7 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_exits(const CF
 	else
 		return candidates.front();
 }
+#endif
 
 CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates,
                                                                         const CFGNode *ignored_node)
@@ -1747,7 +1757,7 @@ void CFGStructurizer::find_loops()
 			merges.insert(merges.end(), inner_dominated_exit.begin(), inner_dominated_exit.end());
 			merges.insert(merges.end(), dominated_exit.begin(), dominated_exit.end());
 			merges.insert(merges.end(), non_dominated_exit.begin(), non_dominated_exit.end());
-			CFGNode *merge = CFGStructurizer::find_common_post_dominator(std::move(merges));
+			CFGNode *merge = CFGStructurizer::find_common_post_dominator(merges);
 
 			CFGNode *dominated_merge = nullptr;
 
@@ -1769,11 +1779,11 @@ void CFGStructurizer::find_loops()
 					if (!control_flow_is_escaping(node, exit, merge))
 						non_breaking_exits.push_back(exit);
 
-				dominated_merge = CFGStructurizer::find_common_post_dominator(std::move(non_breaking_exits));
+				dominated_merge = CFGStructurizer::find_common_post_dominator(non_breaking_exits);
 			}
 			else
 			{
-				dominated_merge = CFGStructurizer::find_common_post_dominator(std::move(dominated_exit));
+				dominated_merge = CFGStructurizer::find_common_post_dominator(dominated_exit);
 			}
 
 			if (!dominated_merge)
