@@ -116,6 +116,8 @@ private:
 	void retarget_pred_from(CFGNode *new_node, CFGNode *old_succ);
 	void retarget_succ_from(CFGNode *new_node, CFGNode *old_pred);
 
+	CFGNode *get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node, CFGNode *must_reach) const;
+
 	struct PHINode
 	{
 		CFGNode *block;

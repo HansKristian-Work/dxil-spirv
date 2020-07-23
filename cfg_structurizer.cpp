@@ -1130,8 +1130,8 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 			nodes.insert(node);
 			if (node->succ.size() >= 2)
 			{
-				auto *outer_header = node->get_outer_selection_dominator();
-				if (outer_header == header)
+				auto *outer_header = get_post_dominance_frontier_with_cfg_subset_that_reaches(node, ladder_to);
+				if (outer_header && outer_header->post_dominates(header))
 					construct.insert(node);
 			}
 			return true;
@@ -1150,10 +1150,14 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		ladder->add_branch(ladder_to);
 		ladder->ir.terminator.type = Terminator::Type::Branch;
 		ladder->ir.terminator.direct_block = ladder_to;
+		ladder->immediate_post_dominator = ladder_to;
+		ladder->dominance_frontier.push_back(ladder_to);
 
 		// Stop rewriting once we hit a merge block.
 		inner_block->traverse_dominated_blocks_and_rewrite_branch(
 		    ladder_to, ladder, [inner_block](CFGNode *node) { return inner_block->selection_merge_block != node; });
+
+		ladder->recompute_immediate_dominator();
 		rewrite_selection_breaks(inner_block, ladder);
 	}
 }
@@ -2186,6 +2190,72 @@ void CFGStructurizer::structurize(unsigned pass)
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)
 		split_merge_blocks();
+}
+
+CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node, CFGNode *must_reach) const
+{
+	std::unordered_set<CFGNode *> promoted_post_dominators;
+	promoted_post_dominators.insert(node);
+	auto frontiers = node->post_dominance_frontier;
+
+	assert(query_reachability(*node, *must_reach));
+
+	if (frontiers.empty())
+		return nullptr;
+
+	for (;;)
+	{
+		if (frontiers.size() > 1)
+		{
+			std::sort(frontiers.begin(), frontiers.end(), [](const CFGNode *a, const CFGNode *b) {
+				return a->backward_post_visit_order < b->backward_post_visit_order;
+			});
+			frontiers.erase(std::unique(frontiers.begin(), frontiers.end()), frontiers.end());
+		}
+		auto &frontier = frontiers.back();
+
+		// For a frontier to be discounted, we look at all successors and check
+		// if there no node in promoted_post_dominators that post-dominate the successor, that path cannot reach must_reach.
+		// If a post dominance frontier satisfies this rule, it is promoted to be considered an alias of node.
+
+		bool all_succs_must_go_via_node = true;
+		for (auto *succ : frontier->succ)
+		{
+			bool promote = true;
+			if (query_reachability(*succ, *must_reach))
+			{
+				promote = false;
+				for (auto *pdom : promoted_post_dominators)
+				{
+					if (pdom->post_dominates(succ))
+					{
+						promote = true;
+						break;
+					}
+				}
+			}
+
+			if (!promote)
+			{
+				all_succs_must_go_via_node = false;
+				break;
+			}
+		}
+
+		if (!all_succs_must_go_via_node)
+		{
+			return frontier;
+		}
+		else
+		{
+			promoted_post_dominators.insert(frontier);
+			frontiers.pop_back();
+			for (auto *pdoms : frontier->post_dominance_frontier)
+				frontiers.push_back(pdoms);
+		}
+	}
+
+	return frontiers.front();
 }
 
 void CFGStructurizer::recompute_post_dominance_frontier(CFGNode *node)
