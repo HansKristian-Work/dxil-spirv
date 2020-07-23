@@ -117,8 +117,7 @@ private:
 	void retarget_succ_from(CFGNode *new_node, CFGNode *old_pred);
 
 	CFGNode *get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node, CFGNode *must_reach) const;
-	bool exists_path_in_cfg_without_intermediate_node(const CFGNode *start_block, const CFGNode *end_block,
-	                                                  const CFGNode *stop_block) const;
+	bool exists_path_in_cfg_without_intermediate_node(CFGNode *start_block, CFGNode *end_block, CFGNode *stop_block) const;
 
 	struct PHINode
 	{

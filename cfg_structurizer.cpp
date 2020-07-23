@@ -2192,24 +2192,23 @@ void CFGStructurizer::structurize(unsigned pass)
 		split_merge_blocks();
 }
 
-bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(const CFGNode *start_block, const CFGNode *end_block,
-                                                                   const CFGNode *stop_block) const
+bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(CFGNode *start_block,
+                                                                   CFGNode *end_block,
+                                                                   CFGNode *stop_block) const
 {
-	bool found_path = false;
-	std::unordered_set<const CFGNode *> visited;
-	start_block->walk_cfg_from([&](const CFGNode *node) -> bool {
-		if (found_path)
-			return false;
-		if (visited.count(node))
-			return false;
-		visited.insert(node);
-
-		if (node == end_block)
-			found_path = true;
-
-		return node != stop_block;
-	});
-	return found_path;
+	if (query_reachability(*start_block, *end_block) &&
+	    query_reachability(*start_block, *stop_block) &&
+	    query_reachability(*stop_block, *end_block))
+	{
+		auto *frontier = get_post_dominance_frontier_with_cfg_subset_that_reaches(stop_block, end_block);
+		bool ret = frontier && query_reachability(*start_block, *frontier);
+		return ret;
+	}
+	else
+	{
+		bool ret = query_reachability(*start_block, *end_block);
+		return ret;
+	}
 }
 
 CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node, CFGNode *must_reach) const
@@ -2223,7 +2222,7 @@ CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reach
 	if (frontiers.empty())
 		return nullptr;
 
-	for (;;)
+	while (!frontiers.empty())
 	{
 		if (frontiers.size() > 1)
 		{
@@ -2275,7 +2274,7 @@ CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reach
 		}
 	}
 
-	return frontiers.front();
+	return frontiers.empty() ? nullptr : frontiers.front();
 }
 
 void CFGStructurizer::recompute_post_dominance_frontier(CFGNode *node)
