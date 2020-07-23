@@ -183,25 +183,6 @@ bool CFGNode::dominates_all_reachable_exits() const
 	return dominates_all_reachable_exits(*this);
 }
 
-bool CFGNode::exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block, const CFGNode *stop_block) const
-{
-	bool found_path = false;
-	std::unordered_set<const CFGNode *> visited;
-	walk_cfg_from([&](const CFGNode *node) -> bool {
-		if (found_path)
-			return false;
-		if (visited.count(node))
-			return false;
-		visited.insert(node);
-
-		if (node == end_block)
-			found_path = true;
-
-		return node != stop_block;
-	});
-	return found_path;
-}
-
 CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
 {
 	assert(a);

@@ -536,7 +536,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				// Do we remove the incoming value now or not?
 				// If all paths from incoming value must go through frontier, we can remove it,
 				// otherwise, we might still need to use the incoming value somewhere else.
-				bool exists_path = incoming_block->exists_path_in_cfg_without_intermediate_node(node.block, frontier);
+				bool exists_path = exists_path_in_cfg_without_intermediate_node(incoming_block, node.block, frontier);
 				if (exists_path)
 				{
 					//LOGI("   ... keeping input in %s\n", incoming_block->name.c_str());
@@ -564,7 +564,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		for (auto &incoming : incoming_values)
 		{
 			if (frontier->dominates(incoming.block) &&
-			    !frontier->exists_path_in_cfg_without_intermediate_node(node.block, incoming.block))
+			    !exists_path_in_cfg_without_intermediate_node(frontier, node.block, incoming.block))
 			{
 				// There should be only one block the frontier can dominate.
 				// The candidate block must also post-dominate the frontier on the CFG subset which terminates at node.block,
@@ -2190,6 +2190,26 @@ void CFGStructurizer::structurize(unsigned pass)
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)
 		split_merge_blocks();
+}
+
+bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(const CFGNode *start_block, const CFGNode *end_block,
+                                                                   const CFGNode *stop_block) const
+{
+	bool found_path = false;
+	std::unordered_set<const CFGNode *> visited;
+	start_block->walk_cfg_from([&](const CFGNode *node) -> bool {
+		if (found_path)
+			return false;
+		if (visited.count(node))
+			return false;
+		visited.insert(node);
+
+		if (node == end_block)
+			found_path = true;
+
+		return node != stop_block;
+	});
+	return found_path;
 }
 
 CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node, CFGNode *must_reach) const
