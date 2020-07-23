@@ -726,7 +726,11 @@ void CFGStructurizer::backwards_visit()
 	{
 		node->visited = false;
 		node->traversing = false;
-		if (node->succ.empty())
+
+		// For loops which can only exit from their header block,
+		// certain loops will be unreachable when doing a backwards traversal.
+		// We'll visit them explicitly while walking the CFG.
+		if (node->succ.empty() && !node->succ_back_edge)
 			leaf_nodes.push_back(node);
 	}
 
@@ -744,8 +748,15 @@ void CFGStructurizer::backwards_visit(CFGNode &entry)
 	entry.visited = true;
 
 	for (auto *pred : entry.pred)
+	{
 		if (!pred->visited)
 			backwards_visit(*pred);
+
+		// If we don't explicitly poke into the continue block, the whole loop would be unreachable in a backwards traversal.
+		// Pretend that the continue block has an edge out to any succ of the header block.
+		if (pred->pred_back_edge && pred->pred_back_edge->succ.empty() && !pred->pred_back_edge->visited)
+			backwards_visit(*pred->pred_back_edge);
+	}
 
 	entry.backward_post_visit_order = backward_post_visit_order.size();
 	backward_post_visit_order.push_back(&entry);

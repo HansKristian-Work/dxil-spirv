@@ -360,7 +360,7 @@ void CFGNode::recompute_immediate_dominator()
 
 void CFGNode::recompute_immediate_post_dominator()
 {
-	if (!succ.empty())
+	if (!succ.empty() || succ_back_edge)
 	{
 		// For non-leaf blocks only. The immediate post dominator is already set up to be the exit node in leaf nodes.
 		immediate_post_dominator = nullptr;
@@ -371,6 +371,11 @@ void CFGNode::recompute_immediate_post_dominator()
 			else
 				immediate_post_dominator = edge;
 		}
+
+		// The post dominator of a continue block like this is the post dominator of the header, since it's the only
+		// way to continue executing.
+		if (succ.empty() && succ_back_edge)
+			immediate_post_dominator = succ_back_edge->immediate_post_dominator;
 	}
 }
 
