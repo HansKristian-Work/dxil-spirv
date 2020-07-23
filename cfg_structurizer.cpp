@@ -265,7 +265,6 @@ void CFGStructurizer::prune_dead_preds()
 
 void CFGStructurizer::insert_phi()
 {
-	compute_dominance_frontier();
 	prune_dead_preds();
 
 	// Build a map of value ID -> creating block.
@@ -667,6 +666,14 @@ void CFGStructurizer::compute_dominance_frontier()
 		node->dominance_frontier.clear();
 	for (auto *node : forward_post_visit_order)
 		recompute_dominance_frontier(node);
+}
+
+void CFGStructurizer::compute_post_dominance_frontier()
+{
+	for (auto *node : backward_post_visit_order)
+		node->post_dominance_frontier.clear();
+	for (auto *node : backward_post_visit_order)
+		recompute_post_dominance_frontier(node);
 }
 
 void CFGStructurizer::build_immediate_dominators()
@@ -1243,6 +1250,9 @@ void CFGStructurizer::recompute_cfg()
 	backwards_visit();
 	build_immediate_post_dominators();
 	build_reachability();
+
+	compute_dominance_frontier();
+	compute_post_dominance_frontier();
 }
 
 void CFGStructurizer::find_switch_blocks()
@@ -2175,6 +2185,34 @@ void CFGStructurizer::structurize(unsigned pass)
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)
 		split_merge_blocks();
+}
+
+void CFGStructurizer::recompute_post_dominance_frontier(CFGNode *node)
+{
+	for (auto *pred : node->pred)
+	{
+		if (pred->immediate_post_dominator != node &&
+		    std::find(node->post_dominance_frontier.begin(),
+		              node->post_dominance_frontier.end(),
+		              pred) == node->post_dominance_frontier.end())
+		{
+			node->post_dominance_frontier.push_back(pred);
+		}
+
+		if (auto *ipdom = node->immediate_post_dominator)
+		{
+			for (auto *frontier_node : node->post_dominance_frontier)
+			{
+				if (!ipdom->post_dominates(frontier_node) &&
+				    std::find(ipdom->post_dominance_frontier.begin(),
+				              ipdom->post_dominance_frontier.end(),
+				              frontier_node) == ipdom->post_dominance_frontier.end())
+				{
+					ipdom->post_dominance_frontier.push_back(frontier_node);
+				}
+			}
+		}
+	}
 }
 
 void CFGStructurizer::recompute_dominance_frontier(CFGNode *node)

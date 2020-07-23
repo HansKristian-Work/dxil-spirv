@@ -108,8 +108,10 @@ private:
 	void validate_structured();
 	void recompute_cfg();
 	void compute_dominance_frontier();
+	void compute_post_dominance_frontier();
 	void create_continue_block_ladders();
 	static void recompute_dominance_frontier(CFGNode *node);
+	static void recompute_post_dominance_frontier(CFGNode *node);
 	static void merge_to_succ(CFGNode *node, unsigned index);
 	void retarget_pred_from(CFGNode *new_node, CFGNode *old_succ);
 	void retarget_succ_from(CFGNode *new_node, CFGNode *old_pred);

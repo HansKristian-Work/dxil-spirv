@@ -98,6 +98,7 @@ private:
 	CFGNode *get_outer_header_dominator();
 
 	std::vector<CFGNode *> dominance_frontier;
+	std::vector<CFGNode *> post_dominance_frontier;
 
 private:
 	bool dominates_all_reachable_exits(const CFGNode &header) const;
