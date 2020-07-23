@@ -60,12 +60,18 @@ private:
 	// For post-dominance analysis.
 	std::vector<CFGNode *> backward_post_visit_order;
 
+	std::vector<uint32_t> reachability_bitset;
+	unsigned reachability_stride = 0;
+
 	std::unordered_set<const CFGNode *> reachable_nodes;
 	void visit(CFGNode &entry);
 	void backwards_visit();
 	void backwards_visit(CFGNode &entry);
 	void build_immediate_dominators();
 	void build_immediate_post_dominators();
+	void build_reachability();
+	void visit_reachability(const CFGNode &node);
+	bool query_reachability(const CFGNode &from, const CFGNode &to) const;
 	void structurize(unsigned pass);
 	void find_loops();
 	void split_merge_scopes();

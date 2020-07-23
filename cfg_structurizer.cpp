@@ -1203,6 +1203,36 @@ void CFGStructurizer::split_merge_scopes()
 	recompute_cfg();
 }
 
+bool CFGStructurizer::query_reachability(const CFGNode &from, const CFGNode &to) const
+{
+	const uint32_t *src_reachability = &reachability_bitset[from.forward_post_visit_order * reachability_stride];
+	return (src_reachability[to.forward_post_visit_order / 32] & (1u << (to.forward_post_visit_order & 31u))) != 0;
+}
+
+void CFGStructurizer::visit_reachability(const CFGNode &node)
+{
+	for (auto *succ : node.succ)
+	{
+		// Inherit reachability from all successors.
+		uint32_t *dst_reachability = &reachability_bitset[node.forward_post_visit_order * reachability_stride];
+		const uint32_t *src_reachability = &reachability_bitset[succ->forward_post_visit_order * reachability_stride];
+		for (unsigned i = 0; i < reachability_stride; i++)
+			dst_reachability[i] |= src_reachability[i];
+
+		// We can reach ourselves.
+		dst_reachability[node.forward_post_visit_order / 32] |= 1u << (node.forward_post_visit_order & 31u);
+	}
+}
+
+void CFGStructurizer::build_reachability()
+{
+	reachability_stride = (forward_post_visit_order.size() + 31) / 32;
+	reachability_bitset.clear();
+	reachability_bitset.resize(reachability_stride * forward_post_visit_order.size());
+	for (auto *node : forward_post_visit_order)
+		visit_reachability(*node);
+}
+
 void CFGStructurizer::recompute_cfg()
 {
 	reset_traversal();
@@ -1212,6 +1242,7 @@ void CFGStructurizer::recompute_cfg()
 
 	backwards_visit();
 	build_immediate_post_dominators();
+	build_reachability();
 }
 
 void CFGStructurizer::find_switch_blocks()
