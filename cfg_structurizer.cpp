@@ -1218,17 +1218,18 @@ bool CFGStructurizer::query_reachability(const CFGNode &from, const CFGNode &to)
 
 void CFGStructurizer::visit_reachability(const CFGNode &node)
 {
+	uint32_t *dst_reachability = &reachability_bitset[node.forward_post_visit_order * reachability_stride];
+
 	for (auto *succ : node.succ)
 	{
 		// Inherit reachability from all successors.
-		uint32_t *dst_reachability = &reachability_bitset[node.forward_post_visit_order * reachability_stride];
 		const uint32_t *src_reachability = &reachability_bitset[succ->forward_post_visit_order * reachability_stride];
 		for (unsigned i = 0; i < reachability_stride; i++)
 			dst_reachability[i] |= src_reachability[i];
-
-		// We can reach ourselves.
-		dst_reachability[node.forward_post_visit_order / 32] |= 1u << (node.forward_post_visit_order & 31u);
 	}
+
+	// We can reach ourselves.
+	dst_reachability[node.forward_post_visit_order / 32] |= 1u << (node.forward_post_visit_order & 31u);
 }
 
 void CFGStructurizer::build_reachability()
