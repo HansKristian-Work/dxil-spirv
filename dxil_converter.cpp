@@ -2297,7 +2297,7 @@ bool Converter::Impl::emit_global_variables()
 			{
 				// FIXME: Is this even legal DXIL?
 				LOGW("Global variable address space cannot have initializer! Ignoring ...\n");
-				//return false;
+				initializer = nullptr;
 			}
 		}
 		else
