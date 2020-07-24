@@ -172,6 +172,92 @@ void CFGStructurizer::log_cfg(const char *tag) const
 	LOGI("\n=====================\n");
 }
 
+void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
+{
+	assert(node->succ.size() == 1);
+	auto *succ = node->succ.front();
+
+	for (auto *pred : node->pred)
+	{
+		auto *break_node = pool.create_node();
+		break_node->name = node->name + ".break." + pred->name;
+		break_node->ir.terminator.type = Terminator::Type::Branch;
+		break_node->ir.terminator.direct_block = succ;
+		break_node->add_branch(succ);
+		pred->retarget_branch(node, break_node);
+
+		for (auto &phi : node->ir.phi)
+			for (auto &incoming : phi.incoming)
+				if (incoming.block == pred)
+					incoming.block = break_node;
+	}
+
+	for (auto &phi : succ->ir.phi)
+	{
+		auto incoming_itr = std::find_if(phi.incoming.begin(), phi.incoming.end(), [&](const IncomingValue &incoming) {
+			return incoming.block == node;
+		});
+		assert(incoming_itr != phi.incoming.end());
+		spv::Id incoming_from_node = incoming_itr->id;
+		phi.incoming.erase(incoming_itr);
+
+		auto outgoing_itr = std::find_if(node->ir.phi.begin(), node->ir.phi.end(), [&](const PHI &phi) {
+			return phi.id == incoming_from_node;
+		});
+		assert(outgoing_itr != node->ir.phi.end());
+		phi.incoming.insert(phi.incoming.end(), outgoing_itr->incoming.begin(), outgoing_itr->incoming.end());
+	}
+}
+
+void CFGStructurizer::cleanup_breaking_phi_constructs()
+{
+	bool did_work = false;
+
+	// There might be cases where we have a common break block from different scopes which only serves to PHI together some values
+	// before actually breaking, and passing that PHI node on to the actual break block.
+	// This causes problems because this looks very much like a merge, but it is actually not and forces validation errors.
+
+	const auto node_has_phi_inputs_from = [](const CFGNode *from, const CFGNode *to) -> bool {
+		for (auto &phi : to->ir.phi)
+			for (auto &incoming : phi.incoming)
+				if (incoming.block == from)
+					return true;
+		return false;
+	};
+
+	for (size_t i = forward_post_visit_order.size(); i; i--)
+	{
+		auto *node = forward_post_visit_order[i - 1];
+
+		// Only bother with blocks which don't do anything useful work.
+		// The only opcodes they should have are PHI nodes and a direct branch.
+		if (!node->ir.operations.empty())
+			continue;
+		if (node->ir.phi.empty())
+			continue;
+		if (node->pred.size() <= 1)
+			continue;
+		if (node->ir.terminator.type != Terminator::Type::Branch)
+			continue;
+
+		// Anything related to loop/continue blocks, we don't bother with.
+		if (node->succ_back_edge || node->pred_back_edge)
+			continue;
+
+		for (auto &succ : node->succ)
+		{
+			if (!node->dominates(succ) && node_has_phi_inputs_from(node, succ))
+			{
+				eliminate_node_link_preds_to_succ(node);
+				did_work = true;
+			}
+		}
+	}
+
+	if (did_work)
+		recompute_cfg();
+}
+
 bool CFGStructurizer::run()
 {
 	std::string graphviz_path;
@@ -179,6 +265,8 @@ bool CFGStructurizer::run()
 		graphviz_path = env;
 
 	recompute_cfg();
+	cleanup_breaking_phi_constructs();
+
 	//log_cfg("Input state");
 	if (!graphviz_path.empty())
 	{

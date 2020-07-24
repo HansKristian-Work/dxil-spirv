@@ -10,7 +10,7 @@ void main()
     uint _20;
     if (!(gl_GlobalInvocationID.z == 0u))
     {
-        uint _21;
+        uint frontier_phi_4_break_5;
         uint _26 = 0u;
         uint _28 = 0u;
         uint _46;
@@ -20,7 +20,7 @@ void main()
             _46 = uvec4(imageLoad(_8, int(_31)).x, imageLoad(_8, int(_31 + 1u)).x, imageLoad(_8, int(_31 + 2u)).x, imageLoad(_8, int(_31 + 3u)).x).x;
             if (_46 == 30u)
             {
-                _21 = _26;
+                frontier_phi_4_break_5 = _26;
                 break;
             }
             else
@@ -35,12 +35,12 @@ void main()
                 }
                 else
                 {
-                    _21 = _27;
+                    frontier_phi_4_break_5 = _27;
                     break;
                 }
             }
         }
-        _20 = _21;
+        _20 = frontier_phi_4_break_5;
     }
     else
     {
@@ -55,7 +55,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 58
+; Bound: 60
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -63,6 +63,7 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
+OpName %50 "frontier_phi_4.break.5"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -86,19 +87,19 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %23 = OpUndef %5
-OpBranch %50
-%50 = OpLabel
+OpBranch %51
+%51 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %18 = OpIEqual %17 %16 %19
-OpSelectionMerge %56 None
-OpBranchConditional %18 %56 %51
-%51 = OpLabel
-OpBranch %52
+OpSelectionMerge %58 None
+OpBranchConditional %18 %58 %52
 %52 = OpLabel
-%26 = OpPhi %5 %19 %51 %27 %54
-%28 = OpPhi %5 %19 %51 %29 %54
+OpBranch %53
+%53 = OpLabel
+%26 = OpPhi %5 %19 %52 %27 %55
+%28 = OpPhi %5 %19 %52 %29 %55
 %30 = OpShiftLeftLogical %5 %28 %15
 %31 = OpShiftRightLogical %5 %30 %15
 %32 = OpImageRead %24 %9 %31
@@ -115,20 +116,22 @@ OpBranch %52
 %45 = OpCompositeConstruct %24 %33 %37 %40 %44
 %46 = OpCompositeExtract %5 %45 0
 %47 = OpIEqual %17 %46 %48
-OpLoopMerge %55 %54 None
-OpBranchConditional %47 %55 %53
-%53 = OpLabel
-OpBranch %54
+OpLoopMerge %57 %55 None
+OpBranchConditional %47 %56 %54
+%56 = OpLabel
+OpBranch %57
 %54 = OpLabel
+OpBranch %55
+%55 = OpLabel
 %27 = OpIAdd %5 %46 %26
 %29 = OpIAdd %5 %28 %36
 %49 = OpULessThan %17 %29 %16
-OpBranchConditional %49 %52 %55
-%55 = OpLabel
-%21 = OpPhi %5 %26 %52 %27 %54
-OpBranch %56
-%56 = OpLabel
-%20 = OpPhi %5 %19 %50 %21 %55
+OpBranchConditional %49 %53 %57
+%57 = OpLabel
+%50 = OpPhi %5 %27 %55 %26 %56
+OpBranch %58
+%58 = OpLabel
+%20 = OpPhi %5 %19 %51 %50 %57
 %22 = OpShiftRightLogical %5 %19 %15
 %25 = OpCompositeConstruct %24 %20 %20 %20 %20
 OpImageWrite %9 %22 %25

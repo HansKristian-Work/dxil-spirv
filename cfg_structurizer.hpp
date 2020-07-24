@@ -128,6 +128,8 @@ private:
 	void insert_phi();
 	void insert_phi(PHINode &node);
 	void fixup_phi(PHINode &node);
+	void cleanup_breaking_phi_constructs();
+	void eliminate_node_link_preds_to_succ(CFGNode *node);
 	void prune_dead_preds();
 
 	std::unordered_map<uint32_t, CFGNode *> value_id_to_block;
