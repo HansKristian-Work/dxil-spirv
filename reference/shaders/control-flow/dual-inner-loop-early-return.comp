@@ -43,20 +43,23 @@ void main()
                         frontier_phi_7_pred_pred_1 = 70u;
                         break;
                     }
-                    uint _26 = _29 + 1u;
-                    uint _28 = _27 + 1u;
-                    if (int(_28) < int(20u))
-                    {
-                        _27 = _28;
-                        _29 = _26;
-                        continue;
-                    }
                     else
                     {
-                        ladder_phi_7_pred = false;
-                        frontier_phi_7_pred_pred = _26;
-                        frontier_phi_7_pred_pred_1 = _51;
-                        break;
+                        uint _26 = _29 + 1u;
+                        uint _28 = _27 + 1u;
+                        if (int(_28) < int(20u))
+                        {
+                            _27 = _28;
+                            _29 = _26;
+                            continue;
+                        }
+                        else
+                        {
+                            ladder_phi_7_pred = false;
+                            frontier_phi_7_pred_pred = _26;
+                            frontier_phi_7_pred_pred_1 = _51;
+                            break;
+                        }
                     }
                 }
             }
@@ -95,7 +98,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 70
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -165,12 +168,14 @@ OpBranchConditional %31 %60 %56
 OpBranch %61
 %56 = OpLabel
 %36 = OpULessThan %30 %22 %32
-OpSelectionMerge %57 None
+OpSelectionMerge %68 None
 OpBranchConditional %36 %59 %57
 %59 = OpLabel
 OpBranch %61
 %57 = OpLabel
 OpBranch %58
+%68 = OpLabel
+OpUnreachable
 %58 = OpLabel
 %26 = OpIAdd %5 %29 %18
 %28 = OpIAdd %5 %27 %18

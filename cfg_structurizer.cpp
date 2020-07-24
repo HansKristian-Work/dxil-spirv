@@ -1002,29 +1002,21 @@ std::vector<CFGNode *> CFGStructurizer::isolate_structured_sorted(const CFGNode 
 	return sorted;
 }
 
-bool CFGStructurizer::control_flow_is_escaping(const CFGNode *header, const CFGNode *node, const CFGNode *merge)
+bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNode *merge)
 {
 	if (node == merge)
 		return false;
 
-	// Any loop exits from continue block is not considered a break.
-	if (node->succ_back_edge)
-		return false;
+	// If control flow is not escaping, then there must exist a dominance frontier node A,
+	// where merge strictly post-dominates A.
+	// This means that control flow can merge somewhere before we hit the merge block.
 
-	// If header dominates a block, which branches out to some merge block, where header does not dominate merge,
-	// we have a "breaking" construct.
-	for (auto *succ : node->succ)
-	{
-		if (succ == merge)
-			return true;
-		else if (header->dominates(succ))
-		{
-			if (control_flow_is_escaping(header, succ, merge))
-				return true;
-		}
-	}
+	assert(merge->post_dominates(node));
+	for (auto *frontier : node->dominance_frontier)
+		if (merge != frontier && merge->post_dominates(frontier))
+			return false;
 
-	return false;
+	return true;
 }
 
 void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
@@ -1093,8 +1085,8 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				{
 					// Here we have a likely case where one block is doing a clean "break" out of a loop, and
 					// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
-					bool a_path_is_break = control_flow_is_escaping(node, node->succ[0], merge);
-					bool b_path_is_break = control_flow_is_escaping(node, node->succ[1], merge);
+					bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
+					bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
 
 					if (a_path_is_break && b_path_is_break)
 					{
@@ -1137,8 +1129,8 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// Another case is when one path is "breaking" out to a continue block which we don't dominate.
 					// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
 
-					bool a_path_is_break = control_flow_is_escaping(node, node->succ[0], merge);
-					bool b_path_is_break = control_flow_is_escaping(node, node->succ[1], merge);
+					bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
+					bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
 					if (a_path_is_break && b_path_is_break)
 					{
 						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
@@ -1421,17 +1413,6 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 			}
 		}
 
-		// Try to detect if this is a breaking construct.
-		// We should not merge any execution when inside a breaking construct.
-		auto *loop_header = entry_block->get_innermost_loop_header_for(node);
-		bool is_breaking_construct = false;
-
-		if (loop_header && loop_header != entry_block &&
-		    control_flow_is_escaping(loop_header, node, loop_header->loop_merge_block))
-		{
-			is_breaking_construct = true;
-		}
-
 		for (auto *header : node->headers)
 		{
 			// If we have a loop header already associated with this block, treat that as our idom.
@@ -1442,7 +1423,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 		if (idom->merge == MergeType::None || idom->merge == MergeType::Selection)
 		{
 			// We just found a switch block which we have already handled.
-			if (idom->ir.terminator.type == Terminator::Type::Switch || is_breaking_construct)
+			if (idom->ir.terminator.type == Terminator::Type::Switch)
 				continue;
 
 			// If the idom is already a selection construct, this must mean
@@ -1489,16 +1470,11 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				auto *selection_idom = create_helper_succ_block(idom);
 				// If we split the loop header into the loop header -> selection merge header,
 				// then we can merge into a continue block for example.
-				if (!is_breaking_construct)
-				{
-					// Do not actually merge to this block if we're in a breaking construct, but we might need to
-					// create a succ block so we can clean up the selection merge later.
-					selection_idom->merge = MergeType::Selection;
-					selection_idom->selection_merge_block = node;
-					node->add_unique_header(selection_idom);
-					//LOGI("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(selection_idom),
-					//     selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
-				}
+				selection_idom->merge = MergeType::Selection;
+				selection_idom->selection_merge_block = node;
+				node->add_unique_header(selection_idom);
+				//LOGI("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(selection_idom),
+				//     selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
 			}
 		}
 		else
@@ -1949,7 +1925,7 @@ void CFGStructurizer::find_loops()
 				std::vector<CFGNode *> non_breaking_exits;
 				non_breaking_exits.reserve(dominated_exit.size());
 				for (auto *exit : dominated_exit)
-					if (!control_flow_is_escaping(node, exit, merge))
+					if (!control_flow_is_escaping(exit, merge))
 						non_breaking_exits.push_back(exit);
 
 				dominated_merge = CFGStructurizer::find_common_post_dominator(non_breaking_exits);
