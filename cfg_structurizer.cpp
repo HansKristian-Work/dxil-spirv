@@ -177,13 +177,16 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 	assert(node->succ.size() == 1);
 	auto *succ = node->succ.front();
 
-	for (auto *pred : node->pred)
+	auto pred_copy = node->pred;
+	for (auto *pred : pred_copy)
 	{
 		auto *break_node = pool.create_node();
 		break_node->name = node->name + ".break." + pred->name;
 		break_node->ir.terminator.type = Terminator::Type::Branch;
 		break_node->ir.terminator.direct_block = succ;
 		break_node->add_branch(succ);
+		break_node->immediate_post_dominator = succ;
+		break_node->immediate_dominator = pred;
 		pred->retarget_branch(node, break_node);
 
 		for (auto &phi : node->ir.phi)
@@ -191,6 +194,7 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 				if (incoming.block == pred)
 					incoming.block = break_node;
 	}
+	assert(node->pred.empty());
 
 	for (auto &phi : succ->ir.phi)
 	{
