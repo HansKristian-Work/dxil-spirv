@@ -269,13 +269,19 @@ bool CFGStructurizer::run()
 		graphviz_path = env;
 
 	recompute_cfg();
-	cleanup_breaking_phi_constructs();
 
 	//log_cfg("Input state");
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_input = graphviz_path + ".input";
 		log_cfg_graphviz(graphviz_input.c_str());
+	}
+
+	cleanup_breaking_phi_constructs();
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".phi-split";
+		log_cfg_graphviz(graphviz_split.c_str());
 	}
 
 	create_continue_block_ladders();
