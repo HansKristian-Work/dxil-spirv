@@ -142,6 +142,7 @@ struct Converter::Impl
 	std::unordered_map<const llvm::Value *, uint32_t> llvm_values_to_payload_location;
 	std::unordered_set<const llvm::Value *> llvm_values_potential_sparse_feedback;
 	std::unordered_set<const llvm::Value *> llvm_value_is_sparse_feedback;
+	std::unordered_map<const llvm::Value *, spv::Id> llvm_value_actual_type;
 	uint32_t payload_location_counter = 0;
 
 	struct ResourceMetaReference

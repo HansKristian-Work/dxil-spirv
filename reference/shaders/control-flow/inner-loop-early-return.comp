@@ -1,0 +1,174 @@
+#version 460
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+
+uint _33;
+uint _42;
+
+void main()
+{
+    uint _20;
+    uint _30;
+    for (;;)
+    {
+        _20 = 0u;
+        uint _22;
+        bool ladder_phi_7;
+        uint frontier_phi_6_pred_pred;
+        for (;;)
+        {
+            _22 = 0u;
+            bool ladder_phi_6_pred;
+            for (;;)
+            {
+                if (gl_GlobalInvocationID.z < 10u)
+                {
+                    ladder_phi_6_pred = true;
+                    frontier_phi_6_pred_pred = 70u;
+                    break;
+                }
+                else
+                {
+                    uint _23 = _22 + 1u;
+                    if (int(_23) < int(20u))
+                    {
+                        _22 = _23;
+                        continue;
+                    }
+                    else
+                    {
+                        ladder_phi_6_pred = false;
+                        frontier_phi_6_pred_pred = _42;
+                        break;
+                    }
+                }
+            }
+            if (ladder_phi_6_pred)
+            {
+                ladder_phi_7 = true;
+                break;
+            }
+            uint _21 = _20 + 1u;
+            if (int(_21) < int(10u))
+            {
+                _20 = _21;
+                continue;
+            }
+            else
+            {
+                ladder_phi_7 = false;
+                break;
+            }
+        }
+        if (ladder_phi_7)
+        {
+            _30 = frontier_phi_6_pred_pred;
+            break;
+        }
+        _30 = 80u;
+        break;
+    }
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(_30));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 58
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %37 "ladder_phi_6.pred"
+OpName %40 "ladder_phi_7"
+OpName %41 "frontier_phi_6.pred.pred"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%18 = OpConstant %5 2
+%24 = OpTypeBool
+%26 = OpConstant %5 10
+%27 = OpConstant %5 1
+%29 = OpConstant %5 20
+%31 = OpConstant %5 70
+%32 = OpConstant %5 80
+%34 = OpTypeVector %5 4
+%38 = OpConstantFalse %24
+%39 = OpConstantTrue %24
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%33 = OpUndef %5
+%42 = OpUndef %5
+OpBranch %43
+%43 = OpLabel
+%9 = OpLoad %6 %8
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%17 = OpAccessChain %13 %12 %18
+%19 = OpLoad %5 %17
+OpBranch %44
+%44 = OpLabel
+OpLoopMerge %55 %56 None
+OpBranch %45
+%45 = OpLabel
+%20 = OpPhi %5 %15 %44 %21 %52
+OpLoopMerge %53 %52 None
+OpBranch %46
+%46 = OpLabel
+%22 = OpPhi %5 %15 %45 %23 %48
+%25 = OpULessThan %24 %19 %26
+OpLoopMerge %50 %48 None
+OpBranchConditional %25 %49 %47
+%49 = OpLabel
+OpBranch %50
+%47 = OpLabel
+OpBranch %48
+%48 = OpLabel
+%23 = OpIAdd %5 %22 %27
+%28 = OpSLessThan %24 %23 %29
+OpBranchConditional %28 %46 %50
+%50 = OpLabel
+%37 = OpPhi %24 %38 %48 %39 %49
+%41 = OpPhi %5 %42 %48 %31 %49
+OpSelectionMerge %51 None
+OpBranchConditional %37 %53 %51
+%51 = OpLabel
+OpBranch %52
+%52 = OpLabel
+%21 = OpIAdd %5 %20 %27
+%36 = OpSLessThan %24 %21 %26
+OpBranchConditional %36 %45 %53
+%53 = OpLabel
+%40 = OpPhi %24 %38 %52 %39 %50
+OpSelectionMerge %54 None
+OpBranchConditional %40 %55 %54
+%54 = OpLabel
+OpBranch %55
+%56 = OpLabel
+OpBranch %44
+%55 = OpLabel
+%30 = OpPhi %5 %32 %54 %41 %53
+%35 = OpCompositeConstruct %34 %30 %30 %30 %30
+OpImageWrite %9 %16 %35
+OpReturn
+OpFunctionEnd
+#endif

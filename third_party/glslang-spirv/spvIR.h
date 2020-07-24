@@ -207,6 +207,7 @@ public:
         case OpKill:
         case OpReturn:
         case OpReturnValue:
+        case OpUnreachable:
             return true;
         default:
             return false;

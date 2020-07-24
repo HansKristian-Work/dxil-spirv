@@ -105,7 +105,16 @@ bool CFGNode::can_loop_merge_to(const CFGNode *other) const
 	return true;
 }
 
-bool CFGNode::is_innermost_loop_header_for(const CFGNode *other) const
+bool CFGNode::can_backtrace_to(const CFGNode *parent) const
+{
+	for (auto *p : pred)
+		if (p == parent || p->can_backtrace_to(parent))
+			return true;
+
+	return false;
+}
+
+const CFGNode *CFGNode::get_innermost_loop_header_for(const CFGNode *other) const
 {
 	while (this != other)
 	{
@@ -121,7 +130,12 @@ bool CFGNode::is_innermost_loop_header_for(const CFGNode *other) const
 		other = other->immediate_dominator;
 	}
 
-	return this == other;
+	return other;
+}
+
+bool CFGNode::is_innermost_loop_header_for(const CFGNode *other) const
+{
+	return this == get_innermost_loop_header_for(other);
 }
 
 bool CFGNode::branchless_path_to(const CFGNode *to) const
@@ -139,28 +153,17 @@ bool CFGNode::branchless_path_to(const CFGNode *to) const
 
 bool CFGNode::post_dominates(const CFGNode *start_node) const
 {
-	// Crude algorithm, try to traverse from start_node, and if we can find an exit without entering this,
-	// we do not post-dominate.
-	// Creating a post-dominator tree might be viable?
+	while (start_node != this)
+	{
+		// Reached exit node.
+		if (start_node == start_node->immediate_post_dominator)
+			break;
 
-	// Terminated at this.
-	if (start_node == this)
-		return true;
+		assert(start_node->immediate_post_dominator);
+		start_node = start_node->immediate_post_dominator;
+	}
 
-	// Found exit.
-	if (start_node->succ.empty())
-		return false;
-
-	// If post-visit order is lower, post-dominance is impossible.
-	// As we traverse, post visit order will monotonically decrease.
-	if (start_node->visit_order < visit_order)
-		return false;
-
-	for (auto *node : start_node->succ)
-		if (!post_dominates(node))
-			return false;
-
-	return true;
+	return this == start_node;
 }
 
 bool CFGNode::dominates_all_reachable_exits(const CFGNode &header) const
@@ -179,23 +182,34 @@ bool CFGNode::dominates_all_reachable_exits() const
 {
 	return dominates_all_reachable_exits(*this);
 }
-bool CFGNode::exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block, const CFGNode *stop_block) const
+
+CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
 {
-	bool found_path = false;
-	std::unordered_set<const CFGNode *> visited;
-	walk_cfg_from([&](const CFGNode *node) -> bool {
-		if (found_path)
-			return false;
-		if (visited.count(node))
-			return false;
-		visited.insert(node);
+	assert(a);
+	assert(b);
 
-		if (node == end_block)
-			found_path = true;
+	while (a != b)
+	{
+		if (!a->immediate_post_dominator)
+		{
+			for (auto *p : a->succ)
+				p->recompute_immediate_post_dominator();
+			a->recompute_immediate_post_dominator();
+		}
 
-		return node != stop_block;
-	});
-	return found_path;
+		if (!b->immediate_post_dominator)
+		{
+			for (auto *p : b->succ)
+				p->recompute_immediate_post_dominator();
+			b->recompute_immediate_post_dominator();
+		}
+
+		if (a->backward_post_visit_order < b->backward_post_visit_order)
+			a = a->immediate_post_dominator;
+		else
+			b = b->immediate_post_dominator;
+	}
+	return const_cast<CFGNode *>(a);
 }
 
 CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
@@ -219,7 +233,7 @@ CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 			b->recompute_immediate_dominator();
 		}
 
-		if (a->visit_order < b->visit_order)
+		if (a->forward_post_visit_order < b->forward_post_visit_order)
 		{
 			// Awkward case which can happen when nodes are unreachable in the CFG.
 			// Can occur with the dummy blocks we create.
@@ -271,7 +285,7 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 	add_branch(to_next);
 
 	// Branch targets have changed, so recompute immediate dominators.
-	if (to_prev->visit_order > to_next->visit_order)
+	if (to_prev->forward_post_visit_order > to_next->forward_post_visit_order)
 	{
 		to_prev->recompute_immediate_dominator();
 		to_next->recompute_immediate_dominator();
@@ -281,6 +295,10 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 		to_next->recompute_immediate_dominator();
 		to_prev->recompute_immediate_dominator();
 	}
+
+	// ... and post dominator for ourself.
+	// I am not sure if it's technically possible that we have to recompute the entire post domination graph now?
+	recompute_immediate_post_dominator();
 
 	if (ir.terminator.direct_block == to_prev)
 		ir.terminator.direct_block = to_next;
@@ -298,31 +316,6 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to)
 {
 	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *) { return true; });
-}
-
-void CFGNode::retarget_pred_from(CFGNode *old_succ)
-{
-	for (auto *p : pred)
-	{
-		for (auto &s : p->succ)
-			if (s == old_succ)
-				s = this;
-
-		auto &p_term = p->ir.terminator;
-		if (p_term.direct_block == old_succ)
-			p_term.direct_block = this;
-		if (p_term.true_block == old_succ)
-			p_term.true_block = this;
-		if (p_term.false_block == old_succ)
-			p_term.false_block = this;
-		if (p_term.default_node == old_succ)
-			p_term.default_node = this;
-		for (auto &c : p_term.cases)
-			if (c.node == old_succ)
-				c.node = this;
-	}
-
-	// Do not swap back edges.
 }
 
 void CFGNode::recompute_immediate_dominator()
@@ -343,6 +336,27 @@ void CFGNode::recompute_immediate_dominator()
 			else
 				immediate_dominator = edge;
 		}
+	}
+}
+
+void CFGNode::recompute_immediate_post_dominator()
+{
+	if (!succ.empty() || succ_back_edge)
+	{
+		// For non-leaf blocks only. The immediate post dominator is already set up to be the exit node in leaf nodes.
+		immediate_post_dominator = nullptr;
+		for (auto *edge : succ)
+		{
+			if (immediate_post_dominator)
+				immediate_post_dominator = CFGNode::find_common_post_dominator(immediate_post_dominator, edge);
+			else
+				immediate_post_dominator = edge;
+		}
+
+		// The post dominator of a continue block like this is the post dominator of the header, since it's the only
+		// way to continue executing.
+		if (succ.empty() && succ_back_edge)
+			immediate_post_dominator = succ_back_edge->immediate_post_dominator;
 	}
 }
 

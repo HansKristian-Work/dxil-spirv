@@ -43,7 +43,8 @@ private:
 	friend struct LoopBacktracer;
 	friend struct LoopMergeTracer;
 
-	uint32_t visit_order = 0;
+	uint32_t forward_post_visit_order = 0;
+	uint32_t backward_post_visit_order = 0;
 	bool visited = false;
 	bool traversing = false;
 	bool freeze_structured_analysis = false;
@@ -55,6 +56,7 @@ private:
 	std::vector<CFGNode *> headers;
 
 	CFGNode *immediate_dominator = nullptr;
+	CFGNode *immediate_post_dominator = nullptr;
 	std::vector<CFGNode *> succ;
 	std::vector<CFGNode *> pred;
 	CFGNode *pred_back_edge = nullptr;
@@ -68,12 +70,14 @@ private:
 	bool dominates(const CFGNode *other) const;
 	bool can_loop_merge_to(const CFGNode *other) const;
 	bool is_innermost_loop_header_for(const CFGNode *other) const;
+	const CFGNode *get_innermost_loop_header_for(const CFGNode *other) const;
 	bool branchless_path_to(const CFGNode *to) const;
 	bool post_dominates(const CFGNode *other) const;
 	bool dominates_all_reachable_exits() const;
 	static CFGNode *find_common_dominator(CFGNode *a, CFGNode *b);
+	static CFGNode *find_common_post_dominator(CFGNode *a, CFGNode *b);
 	CFGNode *get_immediate_dominator_loop_header();
-	bool exists_path_in_cfg_without_intermediate_node(const CFGNode *end_block, const CFGNode *stop_block) const;
+	bool can_backtrace_to(const CFGNode *parent) const;
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to);
@@ -84,8 +88,8 @@ private:
 	template <typename Op>
 	void walk_cfg_from(const Op &op) const;
 
-	void retarget_pred_from(CFGNode *node);
 	void recompute_immediate_dominator();
+	void recompute_immediate_post_dominator();
 
 	template <typename Op>
 	void traverse_dominated_blocks(const Op &op);
@@ -93,6 +97,7 @@ private:
 	CFGNode *get_outer_header_dominator();
 
 	std::vector<CFGNode *> dominance_frontier;
+	std::vector<CFGNode *> post_dominance_frontier;
 
 private:
 	bool dominates_all_reachable_exits(const CFGNode &header) const;
