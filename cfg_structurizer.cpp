@@ -2134,6 +2134,20 @@ void CFGStructurizer::split_merge_blocks()
 			}
 			else if (node->headers[i]->merge == MergeType::Selection)
 			{
+				// A selection header might not dominate the other headers. This can happen if
+				// An inner break block happens to exit, but it cannot function as a proper header.
+				// In this case, we simply must promote the outer scope as a loop merge rather than
+				// trying to be clever about it.
+				bool dominates_all_headers = true;
+				for (size_t j = i + 1; j < node->headers.size(); j++)
+				{
+					if (!node->headers[i]->dominates(node->headers[j]))
+					{
+						dominates_all_headers = false;
+						break;
+					}
+				}
+
 				if (target_header)
 				{
 					// Breaks out to outer available scope.
@@ -2149,6 +2163,20 @@ void CFGStructurizer::split_merge_blocks()
 				else if (full_break_target)
 				{
 					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
+				}
+				else if (!dominates_all_headers)
+				{
+					// The outer scope *must* now become a loop, no matter what.
+					// We cannot rely on a traversal to rewrite breaking constructs in the entire loop,
+					// so "everything" must essentially become a break instead.
+					full_break_target = node;
+					assert(node->headers[0]->merge == MergeType::Selection);
+					node->headers[0]->merge = MergeType::Loop;
+					node->headers[0]->freeze_structured_analysis = true;
+
+					assert(node->headers[0]->selection_merge_block == node);
+					node->headers[0]->loop_merge_block = node->headers[0]->selection_merge_block;
+					node->headers[0]->selection_merge_block = nullptr;
 				}
 				else
 				{
