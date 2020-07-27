@@ -1232,6 +1232,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 
 	for (auto *inner_block : construct)
 	{
+		//LOGI("Header: %s, Inner: %s.\n", header->name.c_str(), inner_block->name.c_str());
 		auto *ladder = pool.create_node();
 		ladder->name = ladder_to->name + "." + inner_block->name + ".ladder";
 		//LOGI("Walking dominated blocks of %s, rewrite branches %s -> %s.\n", inner_block->name.c_str(),
@@ -1252,6 +1253,37 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		ladder->recompute_immediate_dominator();
 		rewrite_selection_breaks(inner_block, ladder);
 	}
+}
+
+bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge)
+{
+	if (!merge->post_dominates(header))
+		return false;
+
+	// If there are other blocks which need merging, and that idom is the header,
+	// then header is some kind of exit block.
+	bool found_inner_merge_target = false;
+
+	std::unordered_set<CFGNode *> traversed;
+
+	header->traverse_dominated_blocks([&](CFGNode *node) {
+		if (node == merge)
+			return false;
+		if (traversed.count(node))
+			return false;
+		traversed.insert(node);
+
+		if (node->num_forward_preds() <= 1)
+			return true;
+		auto *idom = node->immediate_dominator;
+		if (idom == header)
+		{
+			found_inner_merge_target = true;
+			return false;
+		}
+		return true;
+	});
+	return found_inner_merge_target;
 }
 
 void CFGStructurizer::split_merge_scopes()
@@ -1287,6 +1319,12 @@ void CFGStructurizer::split_merge_scopes()
 		// The idom is the natural header block.
 		auto *idom = node->immediate_dominator;
 		assert(idom->succ.size() >= 2);
+
+		// If we find a construct which is a typical entry <-> exit scenario, do not attempt to rewrite
+		// any branches. The real merge block might be contained inside this construct, and this block merely
+		// serves as the exit merge point. It should generally turn into a loop merge later.
+		if (header_and_merge_block_have_entry_exit_relationship(idom, node))
+			continue;
 
 		// Now we want to deal with cases where we are using this selection merge block as "goto" target for inner selection constructs.
 		// Using a loop header might be possible,
