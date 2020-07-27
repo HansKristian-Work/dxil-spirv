@@ -2248,20 +2248,6 @@ void CFGStructurizer::split_merge_blocks()
 			}
 			else if (node->headers[i]->merge == MergeType::Selection)
 			{
-				// A selection header might not dominate the other headers. This can happen if
-				// An inner break block happens to exit, but it cannot function as a proper header.
-				// In this case, we simply must promote the outer scope as a loop merge rather than
-				// trying to be clever about it.
-				bool dominates_all_headers = true;
-				for (size_t j = i + 1; j < node->headers.size(); j++)
-				{
-					if (!node->headers[i]->dominates(node->headers[j]))
-					{
-						dominates_all_headers = false;
-						break;
-					}
-				}
-
 				if (target_header)
 				{
 					// Breaks out to outer available scope.
@@ -2278,7 +2264,7 @@ void CFGStructurizer::split_merge_blocks()
 				{
 					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
 				}
-				else if (!dominates_all_headers)
+				else
 				{
 					// The outer scope *must* now become a loop, no matter what.
 					// We cannot rely on a traversal to rewrite breaking constructs in the entire loop,
@@ -2291,31 +2277,6 @@ void CFGStructurizer::split_merge_blocks()
 					assert(node->headers[0]->selection_merge_block == node);
 					node->headers[0]->loop_merge_block = node->headers[0]->selection_merge_block;
 					node->headers[0]->selection_merge_block = nullptr;
-				}
-				else
-				{
-					// Selection merge to this dummy instead.
-					auto *new_selection_merge = create_helper_pred_block(node);
-
-					// Inherit the headers.
-					new_selection_merge->headers = node->headers;
-
-					// This is now our fallback loop break target.
-					full_break_target = node;
-
-					auto *loop = create_helper_pred_block(node->headers[0]);
-
-					// Reassign header node.
-					assert(node->headers[0]->merge == MergeType::Selection);
-					node->headers[0]->selection_merge_block = new_selection_merge;
-					node->headers[0] = loop;
-
-					loop->merge = MergeType::Loop;
-					loop->loop_merge_block = node;
-					loop->freeze_structured_analysis = true;
-
-					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
-					node = new_selection_merge;
 				}
 			}
 			else
