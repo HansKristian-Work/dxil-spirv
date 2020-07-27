@@ -76,11 +76,15 @@ def get_sm(shader):
     else:
         return ''
 
-def cross_compile_dxil(shader, args, paths):
-    dxil_path = create_temporary()
+def cross_compile_dxil(shader, args, paths, is_asm):
     glsl_path = create_temporary(os.path.basename(shader))
-    dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader), '-Fo', dxil_path, shader, '-enable-16bit-types']
-    subprocess.check_call(dxil_cmd)
+
+    if not is_asm:
+        dxil_path = create_temporary()
+        dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader), '-Fo', dxil_path, shader, '-enable-16bit-types']
+        subprocess.check_call(dxil_cmd)
+    else:
+        dxil_path = shader
 
     hlsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', dxil_path, '--vertex-input', 'ATTR', '0']
     if '.root-constant.' in shader:
@@ -141,7 +145,10 @@ def cross_compile_dxil(shader, args, paths):
         hlsl_cmd.append('--enable-dual-source-blending')
 
     subprocess.check_call(hlsl_cmd)
-    return (dxil_path, glsl_path)
+    if is_asm:
+        return glsl_path
+    else:
+        return (dxil_path, glsl_path)
 
 def make_unix_newline(buf):
     decoded = codecs.decode(buf, 'utf-8')
@@ -205,10 +212,14 @@ def test_shader(shader, args, paths):
     joined_path = os.path.join(shader[0], shader[1])
 
     print('Testing shader:', joined_path)
-    dxil, glsl = cross_compile_dxil(joined_path, args, paths)
 
-    regression_check(shader, glsl, args)
-    remove_file(dxil)
+    if joined_path.endswith('.dxil'):
+        glsl = cross_compile_dxil(joined_path, args, paths, True)
+        regression_check(shader, glsl, args)
+    else:
+        dxil, glsl = cross_compile_dxil(joined_path, args, paths, False)
+        regression_check(shader, glsl, args)
+        remove_file(dxil)
 
 def test_shader_file(relpath, args):
     paths = Paths(args.dxc, args.dxil_spirv)
