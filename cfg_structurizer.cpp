@@ -1214,11 +1214,14 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		// Inner loop headers are not candidates for a rewrite. They are split in split_merge_blocks.
 		// Similar with switch blocks.
 		// Also, we need to stop traversing when we hit the target block ladder_to.
-		if (node != ladder_to && nodes.count(node) == 0 && !node->pred_back_edge &&
-		    node->ir.terminator.type != Terminator::Type::Switch)
+		if (node != ladder_to && nodes.count(node) == 0)
 		{
 			nodes.insert(node);
-			if (node->succ.size() >= 2)
+
+			bool branch_is_loop_or_switch = node->pred_back_edge ||
+			                                node->ir.terminator.type == Terminator::Type::Switch;
+
+			if (node->succ.size() >= 2 && !branch_is_loop_or_switch)
 			{
 				auto *outer_header = get_post_dominance_frontier_with_cfg_subset_that_reaches(node, ladder_to);
 				if (outer_header == header)
@@ -1242,6 +1245,8 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		ladder->ir.terminator.direct_block = ladder_to;
 		ladder->immediate_post_dominator = ladder_to;
 		ladder->dominance_frontier.push_back(ladder_to);
+		ladder->forward_post_visit_order = ladder_to->forward_post_visit_order;
+		ladder->backward_post_visit_order = ladder_to->backward_post_visit_order;
 
 		// Stop rewriting once we hit a merge block.
 		inner_block->traverse_dominated_blocks_and_rewrite_branch(
