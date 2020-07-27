@@ -1158,10 +1158,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// Both paths lead to exit. Do we even need to merge here?
 					// In worst case we can always merge to an unreachable node in the CFG.
 					node->merge = MergeType::Selection;
-					auto *dummy_merge = pool.create_node();
-					dummy_merge->ir.terminator.type = Terminator::Type::Unreachable;
-					node->selection_merge_block = dummy_merge;
-					dummy_merge->name = node->name + ".unreachable";
+					node->selection_merge_block = nullptr;
 				}
 			}
 		}
