@@ -1,0 +1,37 @@
+RWStructuredBuffer<uint> RW : register(u0);
+
+uint run_foo(uint3 id)
+{
+	[branch]
+	if (id.x & 1)
+	{
+		[branch]
+		if (id.x & 2)
+		{
+			RW[2] = 20;
+			return 60;
+		}
+
+		[branch]
+		if (id.x & 4)
+		{
+			return 30;
+		}
+		else if (id.x & 8)
+		{
+			return 40;
+		}
+		else if (id.x & 16)
+		{
+			return 50;
+		}
+	}
+	return 0;
+}
+
+[numthreads(1, 1, 1)]
+void main(uint3 id : SV_DispatchThreadID)
+{
+	uint foo = run_foo(id);
+	RW[0] = foo;
+}

@@ -1158,10 +1158,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// Both paths lead to exit. Do we even need to merge here?
 					// In worst case we can always merge to an unreachable node in the CFG.
 					node->merge = MergeType::Selection;
-					auto *dummy_merge = pool.create_node();
-					dummy_merge->ir.terminator.type = Terminator::Type::Unreachable;
-					node->selection_merge_block = dummy_merge;
-					dummy_merge->name = node->name + ".unreachable";
+					node->selection_merge_block = nullptr;
 				}
 			}
 		}
@@ -1214,14 +1211,17 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		// Inner loop headers are not candidates for a rewrite. They are split in split_merge_blocks.
 		// Similar with switch blocks.
 		// Also, we need to stop traversing when we hit the target block ladder_to.
-		if (node != ladder_to && nodes.count(node) == 0 && !node->pred_back_edge &&
-		    node->ir.terminator.type != Terminator::Type::Switch)
+		if (node != ladder_to && nodes.count(node) == 0)
 		{
 			nodes.insert(node);
-			if (node->succ.size() >= 2)
+
+			bool branch_is_loop_or_switch = node->pred_back_edge ||
+			                                node->ir.terminator.type == Terminator::Type::Switch;
+
+			if (node->succ.size() >= 2 && !branch_is_loop_or_switch)
 			{
 				auto *outer_header = get_post_dominance_frontier_with_cfg_subset_that_reaches(node, ladder_to);
-				if (outer_header && outer_header->post_dominates(header))
+				if (outer_header == header)
 					construct.insert(node);
 			}
 			return true;
@@ -1232,6 +1232,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 
 	for (auto *inner_block : construct)
 	{
+		//LOGI("Header: %s, Inner: %s.\n", header->name.c_str(), inner_block->name.c_str());
 		auto *ladder = pool.create_node();
 		ladder->name = ladder_to->name + "." + inner_block->name + ".ladder";
 		//LOGI("Walking dominated blocks of %s, rewrite branches %s -> %s.\n", inner_block->name.c_str(),
@@ -1242,6 +1243,8 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		ladder->ir.terminator.direct_block = ladder_to;
 		ladder->immediate_post_dominator = ladder_to;
 		ladder->dominance_frontier.push_back(ladder_to);
+		ladder->forward_post_visit_order = ladder_to->forward_post_visit_order;
+		ladder->backward_post_visit_order = ladder_to->backward_post_visit_order;
 
 		// Stop rewriting once we hit a merge block.
 		inner_block->traverse_dominated_blocks_and_rewrite_branch(
@@ -1250,6 +1253,37 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		ladder->recompute_immediate_dominator();
 		rewrite_selection_breaks(inner_block, ladder);
 	}
+}
+
+bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge)
+{
+	if (!merge->post_dominates(header))
+		return false;
+
+	// If there are other blocks which need merging, and that idom is the header,
+	// then header is some kind of exit block.
+	bool found_inner_merge_target = false;
+
+	std::unordered_set<CFGNode *> traversed;
+
+	header->traverse_dominated_blocks([&](CFGNode *node) {
+		if (node == merge)
+			return false;
+		if (traversed.count(node))
+			return false;
+		traversed.insert(node);
+
+		if (node->num_forward_preds() <= 1)
+			return true;
+		auto *idom = node->immediate_dominator;
+		if (idom == header)
+		{
+			found_inner_merge_target = true;
+			return false;
+		}
+		return true;
+	});
+	return found_inner_merge_target;
 }
 
 void CFGStructurizer::split_merge_scopes()
@@ -1285,6 +1319,12 @@ void CFGStructurizer::split_merge_scopes()
 		// The idom is the natural header block.
 		auto *idom = node->immediate_dominator;
 		assert(idom->succ.size() >= 2);
+
+		// If we find a construct which is a typical entry <-> exit scenario, do not attempt to rewrite
+		// any branches. The real merge block might be contained inside this construct, and this block merely
+		// serves as the exit merge point. It should generally turn into a loop merge later.
+		if (header_and_merge_block_have_entry_exit_relationship(idom, node))
+			continue;
 
 		// Now we want to deal with cases where we are using this selection merge block as "goto" target for inner selection constructs.
 		// Using a loop header might be possible,
@@ -2010,6 +2050,8 @@ void CFGStructurizer::split_merge_blocks()
 				          return a->forward_post_visit_order > b->forward_post_visit_order;
 		          });
 
+		// This is not really an error in some cases.
+#if 0
 		// Verify that scopes are actually nested.
 		// This means header[N] must dominate header[M] where N < M.
 		for (size_t i = 1; i < node->headers.size(); i++)
@@ -2017,6 +2059,7 @@ void CFGStructurizer::split_merge_blocks()
 			if (!node->headers[i - 1]->dominates(node->headers[i]))
 				LOGE("Scopes are not nested.\n");
 		}
+#endif
 
 		if (node->headers[0]->loop_ladder_block)
 		{
@@ -2208,20 +2251,6 @@ void CFGStructurizer::split_merge_blocks()
 			}
 			else if (node->headers[i]->merge == MergeType::Selection)
 			{
-				// A selection header might not dominate the other headers. This can happen if
-				// An inner break block happens to exit, but it cannot function as a proper header.
-				// In this case, we simply must promote the outer scope as a loop merge rather than
-				// trying to be clever about it.
-				bool dominates_all_headers = true;
-				for (size_t j = i + 1; j < node->headers.size(); j++)
-				{
-					if (!node->headers[i]->dominates(node->headers[j]))
-					{
-						dominates_all_headers = false;
-						break;
-					}
-				}
-
 				if (target_header)
 				{
 					// Breaks out to outer available scope.
@@ -2238,7 +2267,7 @@ void CFGStructurizer::split_merge_blocks()
 				{
 					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
 				}
-				else if (!dominates_all_headers)
+				else
 				{
 					// The outer scope *must* now become a loop, no matter what.
 					// We cannot rely on a traversal to rewrite breaking constructs in the entire loop,
@@ -2251,31 +2280,6 @@ void CFGStructurizer::split_merge_blocks()
 					assert(node->headers[0]->selection_merge_block == node);
 					node->headers[0]->loop_merge_block = node->headers[0]->selection_merge_block;
 					node->headers[0]->selection_merge_block = nullptr;
-				}
-				else
-				{
-					// Selection merge to this dummy instead.
-					auto *new_selection_merge = create_helper_pred_block(node);
-
-					// Inherit the headers.
-					new_selection_merge->headers = node->headers;
-
-					// This is now our fallback loop break target.
-					full_break_target = node;
-
-					auto *loop = create_helper_pred_block(node->headers[0]);
-
-					// Reassign header node.
-					assert(node->headers[0]->merge == MergeType::Selection);
-					node->headers[0]->selection_merge_block = new_selection_merge;
-					node->headers[0] = loop;
-
-					loop->merge = MergeType::Loop;
-					loop->loop_merge_block = node;
-					loop->freeze_structured_analysis = true;
-
-					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
-					node = new_selection_merge;
 				}
 			}
 			else

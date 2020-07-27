@@ -1,0 +1,145 @@
+#version 460
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+
+uint _29;
+
+void main()
+{
+    uint _24;
+    uint _16;
+    bool _20;
+    for (;;)
+    {
+        _16 = gl_GlobalInvocationID.x;
+        _20 = (_16 & 1u) == 0u;
+        if (!_20)
+        {
+            if (!((_16 & 2u) == 0u))
+            {
+                imageStore(_8, int(2u), uvec4(20u));
+                _24 = 60u;
+                break;
+            }
+            if (!((_16 & 4u) == 0u))
+            {
+                _24 = 30u;
+                break;
+            }
+            if (!((_16 & 8u) == 0u))
+            {
+                _24 = 40u;
+                break;
+            }
+            if (!((_16 & 16u) == 0u))
+            {
+                _24 = 50u;
+                break;
+            }
+        }
+        _24 = 0u;
+        break;
+    }
+    imageStore(_8, int(0u), uvec4(_24));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 58
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%18 = OpConstant %5 1
+%19 = OpTypeBool
+%22 = OpConstant %5 2
+%25 = OpConstant %5 60
+%26 = OpConstant %5 30
+%27 = OpConstant %5 40
+%28 = OpConstant %5 50
+%30 = OpTypeVector %5 4
+%33 = OpConstant %5 4
+%35 = OpConstant %5 20
+%38 = OpConstant %5 8
+%41 = OpConstant %5 16
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%29 = OpUndef %5
+OpBranch %43
+%43 = OpLabel
+%9 = OpLoad %6 %8
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%17 = OpBitwiseAnd %5 %16 %18
+%20 = OpIEqual %19 %17 %15
+OpLoopMerge %55 %56 None
+OpBranch %44
+%44 = OpLabel
+OpSelectionMerge %54 None
+OpBranchConditional %20 %54 %45
+%45 = OpLabel
+%21 = OpBitwiseAnd %5 %16 %22
+%23 = OpIEqual %19 %21 %15
+OpSelectionMerge %47 None
+OpBranchConditional %23 %47 %46
+%46 = OpLabel
+%36 = OpCompositeConstruct %30 %35 %35 %35 %35
+OpImageWrite %9 %22 %36
+OpBranch %55
+%47 = OpLabel
+%32 = OpBitwiseAnd %5 %16 %33
+%34 = OpIEqual %19 %32 %15
+OpSelectionMerge %48 None
+OpBranchConditional %34 %48 %55
+%48 = OpLabel
+%37 = OpBitwiseAnd %5 %16 %38
+%39 = OpIEqual %19 %37 %15
+OpSelectionMerge %49 None
+OpBranchConditional %39 %49 %55
+%49 = OpLabel
+%40 = OpBitwiseAnd %5 %16 %41
+%42 = OpIEqual %19 %40 %15
+OpSelectionMerge %50 None
+OpBranchConditional %42 %50 %55
+%50 = OpLabel
+OpBranch %51
+%51 = OpLabel
+OpBranch %52
+%52 = OpLabel
+OpBranch %53
+%53 = OpLabel
+OpBranch %54
+%54 = OpLabel
+OpBranch %55
+%56 = OpLabel
+OpBranch %43
+%55 = OpLabel
+%24 = OpPhi %5 %15 %54 %26 %47 %25 %46 %27 %48 %28 %49
+%31 = OpCompositeConstruct %30 %24 %24 %24 %24
+OpImageWrite %9 %15 %31
+OpReturn
+OpFunctionEnd
+#endif
