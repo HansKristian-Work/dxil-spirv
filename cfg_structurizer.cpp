@@ -1221,7 +1221,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 			if (node->succ.size() >= 2)
 			{
 				auto *outer_header = get_post_dominance_frontier_with_cfg_subset_that_reaches(node, ladder_to);
-				if (outer_header && outer_header->post_dominates(header))
+				if (outer_header == header)
 					construct.insert(node);
 			}
 			return true;
