@@ -2050,6 +2050,8 @@ void CFGStructurizer::split_merge_blocks()
 				          return a->forward_post_visit_order > b->forward_post_visit_order;
 		          });
 
+		// This is not really an error in some cases.
+#if 0
 		// Verify that scopes are actually nested.
 		// This means header[N] must dominate header[M] where N < M.
 		for (size_t i = 1; i < node->headers.size(); i++)
@@ -2057,6 +2059,7 @@ void CFGStructurizer::split_merge_blocks()
 			if (!node->headers[i - 1]->dominates(node->headers[i]))
 				LOGE("Scopes are not nested.\n");
 		}
+#endif
 
 		if (node->headers[0]->loop_ladder_block)
 		{
