@@ -125,6 +125,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
 
     if '.bindless.' in shader:
         hlsl_cmd.append('--bindless')
+    if '.nobda.' in shader:
+        hlsl_cmd.append('--no-bda')
     if '.local-root-signature.' in shader:
         hlsl_cmd.append('--local-root-signature')
 
