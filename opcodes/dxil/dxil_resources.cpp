@@ -583,12 +583,12 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 	return load_op->id;
 }
 
-static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_image_id,
-                                          const Converter::Impl::ResourceReference &reference,
-                                          const llvm::CallInst *instruction,
-                                          llvm::Value *instruction_offset_value, bool instruction_is_non_uniform,
-                                          bool &is_non_uniform,
-                                          spv::Id *ptr_id = nullptr)
+static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_image_id,
+                                       const Converter::Impl::ResourceReference &reference,
+                                       const llvm::CallInst *instruction,
+                                       llvm::Value *instruction_offset_value, bool instruction_is_non_uniform,
+                                       bool &is_non_uniform,
+                                       spv::Id *ptr_id, spv::Id *value_id)
 {
 	auto &builder = impl.builder();
 
@@ -615,7 +615,7 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 			    impl, reference, reference.base_resource_is_array ? instruction_offset_value : nullptr);
 
 			if (offset_id == 0)
-				return 0;
+				return false;
 			op->add_id(offset_id);
 		}
 		else
@@ -632,15 +632,18 @@ static spv::Id build_load_resource_handle(Converter::Impl &impl, spv::Id base_im
 	if (ptr_id)
 		*ptr_id = image_id;
 
-	Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
-	op->add_id(image_id);
-	impl.id_to_type[op->id] = type_id;
-	impl.add(op);
+	if (value_id)
+	{
+		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
+		op->add_id(image_id);
+		impl.id_to_type[op->id] = type_id;
+		impl.add(op);
+		if (is_non_uniform)
+			builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+		*value_id = op->id;
+	}
 
-	if (is_non_uniform)
-		builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
-
-	return op->id;
+	return true;
 }
 
 static spv::Id build_shader_record_access_chain(Converter::Impl &impl, const llvm::CallInst *instruction,
@@ -708,10 +711,10 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id image_id = base_image_id;
 
 			bool is_non_uniform = false;
-			spv::Id loaded_id = build_load_resource_handle(impl, base_image_id, reference, instruction,
-			                                               instruction_offset, non_uniform, is_non_uniform);
-
-			if (!loaded_id)
+			spv::Id loaded_id = 0;
+			if (!build_load_resource_handle(impl, base_image_id, reference, instruction,
+			                                instruction_offset, non_uniform, is_non_uniform,
+			                                nullptr, &loaded_id))
 			{
 				LOGE("Failed to load SRV resource handle.\n");
 				return false;
@@ -773,11 +776,9 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			bool is_non_uniform = false;
 			spv::Id image_ptr_id = 0;
-			spv::Id loaded_id =
-			    build_load_resource_handle(impl, base_image_id, reference, instruction, instruction_offset, non_uniform,
-			                               is_non_uniform, &image_ptr_id);
-
-			if (!loaded_id)
+			spv::Id loaded_id = 0;
+			if (!build_load_resource_handle(impl, base_image_id, reference, instruction, instruction_offset, non_uniform,
+			                                is_non_uniform, &image_ptr_id, &loaded_id))
 			{
 				LOGE("Failed to load UAV resource handle.\n");
 				return false;
@@ -815,8 +816,21 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			{
 				if (counter_reference.bindless)
 				{
-					meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction);
-					meta.counter_is_physical_pointer = true;
+					if (impl.options.physical_storage_buffer)
+					{
+						meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction);
+						meta.counter_is_physical_pointer = true;
+					}
+					else
+					{
+						if (!build_load_resource_handle(impl, counter_reference.var_id, reference, instruction, instruction_offset, non_uniform,
+						                                is_non_uniform, &meta.counter_var_id, nullptr))
+						{
+							LOGE("Failed to load UAV counter pointer.\n");
+							return false;
+						}
+						meta.counter_is_physical_pointer = false;
+					}
 				}
 				else
 				{
@@ -934,10 +948,9 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		spv::Id base_sampler_id = reference.var_id;
 
 		bool is_non_uniform = false;
-		spv::Id loaded_id = build_load_resource_handle(impl, base_sampler_id, reference, instruction,
-		                                               instruction_offset, non_uniform, is_non_uniform);
-
-		if (!loaded_id)
+		spv::Id loaded_id = 0;
+		if (!build_load_resource_handle(impl, base_sampler_id, reference, instruction,
+		                                instruction_offset, non_uniform, is_non_uniform, nullptr, &loaded_id))
 		{
 			LOGE("Failed to load Sampler resource handle.\n");
 			return false;

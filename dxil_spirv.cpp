@@ -127,6 +127,7 @@ static void print_help()
 	     "\t[--enable-shader-demote]\n"
 	     "\t[--enable-dual-source-blending]\n"
 	     "\t[--bindless]\n"
+	     "\t[--no-bda]\n"
 	     "\t[--local-root-signature]\n"
 	     "\t[--bindless-cbv-as-ssbo]\n"
 	     "\t[--output-rt-swizzle index xyzw]\n");
@@ -180,6 +181,7 @@ struct Remapper
 	};
 	std::vector<StreamOutput> stream_outputs;
 	bool bindless = false;
+	bool bda = true;
 };
 
 static bool kind_is_buffer(dxil_spv_resource_kind kind)
@@ -409,6 +411,9 @@ int main(int argc, char **argv)
 		remapper.bindless = true;
 		remapper.root_constant_word_count = std::max(remapper.root_constant_word_count, 8u);
 	});
+	cbs.add("--no-bda", [&](CLIParser &) {
+		remapper.bda = false;
+	});
 	cbs.add("--local-root-signature", [&](CLIParser &) {
 		local_root_signature = true;
 	});
@@ -583,7 +588,7 @@ int main(int argc, char **argv)
 	if (remapper.bindless)
 	{
 		const dxil_spv_option_physical_storage_buffer phys = { { DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER },
-			                                                   DXIL_SPV_TRUE };
+			                                                   remapper.bda ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &phys.base);
 	}
 

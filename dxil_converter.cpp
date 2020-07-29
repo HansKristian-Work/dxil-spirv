@@ -608,19 +608,30 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 						return false;
 					}
 
-					spv::Id counter_var_id = create_bindless_heap_variable(
-						DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::Invalid,
-						vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
-						spv::ImageFormatUnknown, false, false, false, true);
-
 					heap_offset = entry.table.offset_in_heap;
 					heap_offset += bind_register - entry.register_index;
+					spv::Id counter_var_id;
+
+					if (options.physical_storage_buffer)
+					{
+						counter_var_id = create_bindless_heap_variable(
+						    DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::Invalid,
+						    vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
+						    spv::ImageFormatUnknown, false, false, false, true);
+					}
+					else
+					{
+						counter_var_id = create_bindless_heap_variable(
+							DXIL::ResourceType::UAV,
+							DXIL::ComponentType::U32, DXIL::ResourceKind::RawBuffer,
+							vulkan_binding.counter_binding.descriptor_set,
+							vulkan_binding.counter_binding.binding,
+							spv::ImageFormatR32ui, true, true,
+							globally_coherent);
+					}
 
 					uav_index_to_counter[index] = {
-						counter_var_id, 0,
-						heap_offset,    4,
-						true,           range_size != 1,
-						local_root_signature_entry,
+						counter_var_id, 0, heap_offset, 4, true, range_size != 1, local_root_signature_entry,
 					};
 				}
 			}
@@ -659,10 +670,22 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			{
 				if (vulkan_binding.counter_binding.bindless.use_heap)
 				{
-					spv::Id counter_var_id = create_bindless_heap_variable(
-					    DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::Invalid,
-					    vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
-					    spv::ImageFormatUnknown, false, false, false, true);
+					spv::Id counter_var_id;
+
+					if (options.physical_storage_buffer)
+					{
+						counter_var_id = create_bindless_heap_variable(
+							DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::Invalid,
+							vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
+							spv::ImageFormatUnknown, false, false, false, true);
+					}
+					else
+					{
+						counter_var_id = create_bindless_heap_variable(
+							DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::RawBuffer,
+							vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
+							spv::ImageFormatR32ui, true, true, globally_coherent, false);
+					}
 
 					heap_offset = vulkan_binding.counter_binding.bindless.heap_root_offset;
 					if (range_size != 1)
