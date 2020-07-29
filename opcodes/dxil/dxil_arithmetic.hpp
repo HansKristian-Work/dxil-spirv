@@ -45,6 +45,8 @@ bool emit_split_double_instruction(Converter::Impl &impl, const llvm::CallInst *
 bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
+bool emit_bitcast_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
 template <GLSLstd450 opcode>
 static inline bool emit_find_high_bit_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {

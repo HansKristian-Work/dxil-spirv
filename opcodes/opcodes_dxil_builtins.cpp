@@ -136,6 +136,12 @@ struct DXILDispatcher
 		OP(SplitDouble) = emit_split_double_instruction;
 		OP(LegacyF16ToF32) = emit_legacy_f16_to_f32_instruction;
 		OP(LegacyF32ToF16) = emit_legacy_f32_to_f16_instruction;
+		OP(BitcastF16toI16) = emit_bitcast_instruction;
+		OP(BitcastI16toF16) = emit_bitcast_instruction;
+		OP(BitcastF32toI32) = emit_bitcast_instruction;
+		OP(BitcastI32toF32) = emit_bitcast_instruction;
+		OP(BitcastF64toI64) = emit_bitcast_instruction;
+		OP(BitcastI64toF64) = emit_bitcast_instruction;
 
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;

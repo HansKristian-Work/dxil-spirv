@@ -327,4 +327,12 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 	return true;
 }
 
+bool emit_bitcast_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto *op = impl.allocate(spv::OpBitcast, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
+	return true;
+}
+
 } // namespace dxil_spv
