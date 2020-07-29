@@ -5,3 +5,5 @@
 /external/dxc*
 /external/DirectXShaderCompiler
 /external/llvm
+/shaders-dxil
+/reference/shaders-dxil

@@ -691,6 +691,9 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 		counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
 		                               builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
 		counter_ptr_op->add_ids({ meta.counter_var_id, builder.makeUintConstant(0), builder.makeUintConstant(0) });
+
+		if (meta.non_uniform)
+			builder.addDecoration(counter_ptr_op->id, spv::DecorationNonUniformEXT);
 	}
 
 	impl.add(counter_ptr_op);
