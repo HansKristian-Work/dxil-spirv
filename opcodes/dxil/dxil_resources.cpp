@@ -609,21 +609,24 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_image
 		    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
 		op->add_id(image_id);
 
+		spv::Id offset_id;
+
 		if (reference.bindless)
 		{
-			spv::Id offset_id = build_bindless_heap_offset(
+			offset_id = build_bindless_heap_offset(
 			    impl, reference, reference.base_resource_is_array ? instruction_offset_value : nullptr);
 
 			if (offset_id == 0)
 				return false;
-			op->add_id(offset_id);
 		}
 		else
-			op->add_id(impl.get_id_for_value(instruction_offset_value));
+			offset_id = impl.get_id_for_value(instruction_offset_value);
+
+		op->add_id(offset_id);
 
 		// Some compilers require the index to be marked as NonUniformEXT, even if it not required by Vulkan spec.
 		if (is_non_uniform && instruction_offset_value)
-			builder.addDecoration(impl.get_id_for_value(instruction_offset_value), spv::DecorationNonUniformEXT);
+			builder.addDecoration(offset_id, spv::DecorationNonUniformEXT);
 
 		impl.add(op);
 		image_id = op->id;

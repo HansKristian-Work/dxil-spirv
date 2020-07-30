@@ -77,13 +77,13 @@ OpDecorate %12 NonWritable
 OpDecorate %15 DescriptorSet 7
 OpDecorate %15 Binding 0
 OpDecorate %18 BuiltIn GlobalInvocationId
-OpDecorate %23 NonUniform
+OpDecorate %31 NonUniform
 OpDecorate %32 NonUniform
-OpDecorate %23 NonUniform
+OpDecorate %36 NonUniform
 OpDecorate %38 NonUniform
-OpDecorate %42 NonUniform
+OpDecorate %46 NonUniform
 OpDecorate %47 NonUniform
-OpDecorate %42 NonUniform
+OpDecorate %51 NonUniform
 OpDecorate %52 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

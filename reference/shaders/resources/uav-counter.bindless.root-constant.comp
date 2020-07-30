@@ -100,9 +100,9 @@ OpDecorate %18 DescriptorSet 7
 OpDecorate %18 Binding 0
 OpDecorate %18 AliasedPointer
 OpDecorate %21 BuiltIn GlobalInvocationId
-OpDecorate %26 NonUniform
+OpDecorate %34 NonUniform
 OpDecorate %35 NonUniform
-OpDecorate %47 NonUniform
+OpDecorate %51 NonUniform
 OpDecorate %52 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

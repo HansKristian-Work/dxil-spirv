@@ -83,7 +83,7 @@ OpDecorate %17 Flat
 OpDecorate %17 Location 0
 OpDecorate %17 Component 1
 OpDecorate %19 Location 0
-OpDecorate %27 NonUniform
+OpDecorate %35 NonUniform
 OpDecorate %36 NonUniform
 OpDecorate %40 NonUniform
 %1 = OpTypeVoid

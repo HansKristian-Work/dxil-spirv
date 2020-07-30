@@ -198,24 +198,24 @@ OpDecorate %37 DescriptorSet 2
 OpDecorate %37 Binding 0
 OpDecorate %40 Location 0
 OpDecorate %48 NonUniform
-OpDecorate %60 NonUniform
+OpDecorate %66 NonUniform
 OpDecorate %67 NonUniform
-OpDecorate %59 NonUniform
+OpDecorate %81 NonUniform
 OpDecorate %82 NonUniform
-OpDecorate %59 NonUniform
+OpDecorate %100 NonUniform
 OpDecorate %101 NonUniform
-OpDecorate %59 NonUniform
+OpDecorate %120 NonUniform
 OpDecorate %121 NonUniform
 OpDecorate %133 NonUniform
 OpDecorate %143 NonUniform
 OpDecorate %150 NonUniform
-OpDecorate %210 NonUniform
+OpDecorate %214 NonUniform
 OpDecorate %215 NonUniform
 OpDecorate %223 NonUniform
 OpDecorate %225 NonUniform
-OpDecorate %209 NonUniform
+OpDecorate %245 NonUniform
 OpDecorate %246 NonUniform
-OpDecorate %241 NonUniform
+OpDecorate %253 NonUniform
 OpDecorate %254 NonUniform
 OpDecorate %255 NonUniform
 %1 = OpTypeVoid

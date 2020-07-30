@@ -91,7 +91,7 @@ OpDecorate %16 BuiltIn FragCoord
 OpDecorate %18 Flat
 OpDecorate %18 Location 1
 OpDecorate %20 Location 0
-OpDecorate %79 NonUniform
+OpDecorate %84 NonUniform
 OpDecorate %85 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

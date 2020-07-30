@@ -85,11 +85,11 @@ OpMemberDecorate %6 7 Offset 28
 OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 0
 OpDecorate %17 Location 0
-OpDecorate %22 NonUniform
+OpDecorate %29 NonUniform
 OpDecorate %30 NonUniform
-OpDecorate %21 NonUniform
+OpDecorate %45 NonUniform
 OpDecorate %46 NonUniform
-OpDecorate %21 NonUniform
+OpDecorate %60 NonUniform
 OpDecorate %61 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
