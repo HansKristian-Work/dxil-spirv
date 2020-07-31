@@ -268,14 +268,16 @@ bool CFGStructurizer::run()
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 		graphviz_path = env;
 
-	recompute_cfg();
-
 	//log_cfg("Input state");
 	if (!graphviz_path.empty())
 	{
+		reset_traversal();
+		visit(*entry_block);
 		auto graphviz_input = graphviz_path + ".input";
 		log_cfg_graphviz(graphviz_input.c_str());
 	}
+
+	recompute_cfg();
 
 	cleanup_breaking_phi_constructs();
 	if (!graphviz_path.empty())
