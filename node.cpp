@@ -356,7 +356,11 @@ void CFGNode::recompute_immediate_post_dominator()
 		// The post dominator of a continue block like this is the post dominator of the header, since it's the only
 		// way to continue executing.
 		if (succ.empty() && succ_back_edge)
+		{
+			if (!succ_back_edge->immediate_post_dominator)
+				succ_back_edge->recompute_immediate_post_dominator();
 			immediate_post_dominator = succ_back_edge->immediate_post_dominator;
+		}
 	}
 }
 
