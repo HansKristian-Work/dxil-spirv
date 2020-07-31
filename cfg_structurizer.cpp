@@ -1255,6 +1255,8 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		if (node != ladder_to && nodes.count(node) == 0)
 		{
 			nodes.insert(node);
+			if (!query_reachability(*node, *ladder_to))
+				return false;
 
 			bool branch_is_loop_or_switch = node->pred_back_edge ||
 			                                node->ir.terminator.type == Terminator::Type::Switch;
