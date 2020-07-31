@@ -801,9 +801,12 @@ void CFGStructurizer::reset_traversal()
 	backward_post_visit_order.clear();
 	pool.for_each_node([](CFGNode &node) {
 		node.visited = false;
+		node.backward_visited = false;
 		node.traversing = false;
 		node.immediate_dominator = nullptr;
 		node.immediate_post_dominator = nullptr;
+		node.fake_pred.clear();
+		node.fake_succ.clear();
 
 		if (!node.freeze_structured_analysis)
 		{
@@ -823,6 +826,59 @@ void CFGStructurizer::reset_traversal()
 	});
 }
 
+struct LoopBacktracer
+{
+	void trace_to_parent(CFGNode *header, CFGNode *block);
+	std::unordered_set<CFGNode *> traced_blocks;
+};
+
+struct LoopMergeTracer
+{
+	explicit LoopMergeTracer(const LoopBacktracer &backtracer_)
+		: backtracer(backtracer_)
+	{
+	}
+
+	void trace_from_parent(CFGNode *header);
+	const LoopBacktracer &backtracer;
+	std::unordered_set<CFGNode *> loop_exits;
+	std::unordered_set<CFGNode *> traced_blocks;
+};
+
+void LoopBacktracer::trace_to_parent(CFGNode *header, CFGNode *block)
+{
+	if (block == header)
+	{
+		traced_blocks.insert(block);
+		return;
+	}
+
+	if (traced_blocks.count(block) == 0)
+	{
+		traced_blocks.insert(block);
+		for (auto *p : block->pred)
+			trace_to_parent(header, p);
+	}
+}
+
+void LoopMergeTracer::trace_from_parent(CFGNode *header)
+{
+	if (backtracer.traced_blocks.count(header) == 0)
+	{
+		loop_exits.insert(header);
+		return;
+	}
+
+	for (auto *succ : header->succ)
+	{
+		if (traced_blocks.count(succ) == 0)
+		{
+			trace_from_parent(succ);
+			traced_blocks.insert(succ);
+		}
+	}
+}
+
 void CFGStructurizer::backwards_visit()
 {
 	std::vector<CFGNode *> leaf_nodes;
@@ -831,12 +887,12 @@ void CFGStructurizer::backwards_visit()
 	// Clear out some state set by forward visit earlier.
 	for (auto *node : forward_post_visit_order)
 	{
-		node->visited = false;
+		node->backward_visited = false;
 		node->traversing = false;
 
 		// For loops which can only exit from their header block,
 		// certain loops will be unreachable when doing a backwards traversal.
-		// We'll visit them explicitly while walking the CFG.
+		// We'll visit them explicitly later.
 		if (node->succ.empty() && !node->succ_back_edge)
 			leaf_nodes.push_back(node);
 	}
@@ -844,26 +900,62 @@ void CFGStructurizer::backwards_visit()
 	for (auto *leaf : leaf_nodes)
 		backwards_visit(*leaf);
 
+	// It might be case that some continue blocks are not reachable through backwards traversal.
+	// This effectively means that our flipped CFG is not reducible, which is rather annoying.
+	// To work around this, we fake some branches from the continue block out to other blocks.
+	// This way, we ensure that every forward-reachable block is reachable in a backwards traversal as well.
+	// The algorithm works where given the innermost loop header A, a block B (A dom B) and continue block C,
+	// For successors of B, we will observe some successors which can reach C ({E}), and some successors which can not reach C.
+	// C will add fake successor edges to {E}.
+	bool need_revisit = false;
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->pred_back_edge)
+		{
+			if (!node->pred_back_edge->backward_visited)
+			{
+				LoopBacktracer tracer;
+				tracer.trace_to_parent(node, node->pred_back_edge);
+				LoopMergeTracer merge_tracer(tracer);
+				merge_tracer.trace_from_parent(node);
+				for (auto *f : merge_tracer.loop_exits)
+					node->pred_back_edge->add_fake_branch(f);
+				need_revisit = true;
+			}
+		}
+	}
+
+	if (need_revisit)
+	{
+		for (auto *node : forward_post_visit_order)
+		{
+			node->backward_visited = false;
+			node->traversing = false;
+			node->backward_post_visit_order = 0;
+		}
+
+		for (auto *leaf : leaf_nodes)
+			backwards_visit(*leaf);
+	}
+
 	exit_block->backward_post_visit_order = backward_post_visit_order.size();
 	exit_block->immediate_post_dominator = exit_block;
+	exit_block->backward_visited = true;
 	for (auto *leaf : leaf_nodes)
 		leaf->immediate_post_dominator = exit_block;
 }
 
 void CFGStructurizer::backwards_visit(CFGNode &entry)
 {
-	entry.visited = true;
+	entry.backward_visited = true;
 
 	for (auto *pred : entry.pred)
-	{
-		if (!pred->visited)
+		if (!pred->backward_visited)
 			backwards_visit(*pred);
 
-		// If we don't explicitly poke into the continue block, the whole loop would be unreachable in a backwards traversal.
-		// Pretend that the continue block has an edge out to any succ of the header block.
-		if (pred->pred_back_edge && pred->pred_back_edge->succ.empty() && !pred->pred_back_edge->visited)
-			backwards_visit(*pred->pred_back_edge);
-	}
+	for (auto *pred : entry.fake_pred)
+		if (!pred->backward_visited)
+			backwards_visit(*pred);
 
 	entry.backward_post_visit_order = backward_post_visit_order.size();
 	backward_post_visit_order.push_back(&entry);
@@ -912,59 +1004,6 @@ void CFGStructurizer::visit(CFGNode &entry)
 	entry.traversing = false;
 	entry.forward_post_visit_order = forward_post_visit_order.size();
 	forward_post_visit_order.push_back(&entry);
-}
-
-struct LoopBacktracer
-{
-	void trace_to_parent(CFGNode *header, CFGNode *block);
-	std::unordered_set<CFGNode *> traced_blocks;
-};
-
-struct LoopMergeTracer
-{
-	explicit LoopMergeTracer(const LoopBacktracer &backtracer_)
-	    : backtracer(backtracer_)
-	{
-	}
-
-	void trace_from_parent(CFGNode *header);
-	const LoopBacktracer &backtracer;
-	std::unordered_set<CFGNode *> loop_exits;
-	std::unordered_set<CFGNode *> traced_blocks;
-};
-
-void LoopBacktracer::trace_to_parent(CFGNode *header, CFGNode *block)
-{
-	if (block == header)
-	{
-		traced_blocks.insert(block);
-		return;
-	}
-
-	if (traced_blocks.count(block) == 0)
-	{
-		traced_blocks.insert(block);
-		for (auto *p : block->pred)
-			trace_to_parent(header, p);
-	}
-}
-
-void LoopMergeTracer::trace_from_parent(CFGNode *header)
-{
-	if (backtracer.traced_blocks.count(header) == 0)
-	{
-		loop_exits.insert(header);
-		return;
-	}
-
-	for (auto *succ : header->succ)
-	{
-		if (traced_blocks.count(succ) == 0)
-		{
-			trace_from_parent(succ);
-			traced_blocks.insert(succ);
-		}
-	}
 }
 
 void CFGStructurizer::merge_to_succ(CFGNode *node, unsigned index)
@@ -1385,10 +1424,10 @@ void CFGStructurizer::recompute_cfg()
 	visit(*entry_block);
 	build_immediate_dominators();
 	prune_dead_preds();
+	build_reachability();
 
 	backwards_visit();
 	build_immediate_post_dominators();
-	build_reachability();
 
 	compute_dominance_frontier();
 	compute_post_dominance_frontier();

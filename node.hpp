@@ -35,6 +35,7 @@ public:
 	IRBlock ir;
 
 	void add_branch(CFGNode *to);
+	void add_fake_branch(CFGNode *to);
 
 private:
 	CFGNode() = default;
@@ -46,6 +47,7 @@ private:
 	uint32_t forward_post_visit_order = 0;
 	uint32_t backward_post_visit_order = 0;
 	bool visited = false;
+	bool backward_visited = false;
 	bool traversing = false;
 	bool freeze_structured_analysis = false;
 
@@ -59,11 +61,22 @@ private:
 	CFGNode *immediate_post_dominator = nullptr;
 	std::vector<CFGNode *> succ;
 	std::vector<CFGNode *> pred;
+
+	// Fake successors and predecessors which only serve to make the flipped CFG reducible.
+	// This makes post-domination analysis not strictly correct in all cases, but it is
+	// fine for the purposes we need post-domination analysis for.
+	// If a continue block is not reachable in the flipped CFG, we will
+	// add fake successors from the continue block.
+	std::vector<CFGNode *> fake_succ;
+	std::vector<CFGNode *> fake_pred;
+
 	CFGNode *pred_back_edge = nullptr;
 	CFGNode *succ_back_edge = nullptr;
 
 	void add_unique_succ(CFGNode *node);
 	void add_unique_pred(CFGNode *node);
+	void add_unique_fake_succ(CFGNode *node);
+	void add_unique_fake_pred(CFGNode *node);
 	void add_unique_header(CFGNode *node);
 	unsigned num_forward_preds() const;
 	bool has_pred_back_edges() const;

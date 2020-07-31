@@ -31,6 +31,13 @@ void CFGNode::add_unique_pred(CFGNode *node)
 		pred.push_back(node);
 }
 
+void CFGNode::add_unique_fake_pred(CFGNode *node)
+{
+	auto itr = std::find(fake_pred.begin(), fake_pred.end(), node);
+	if (itr == fake_pred.end())
+		fake_pred.push_back(node);
+}
+
 void CFGNode::add_unique_header(CFGNode *node)
 {
 	auto itr = std::find(headers.begin(), headers.end(), node);
@@ -44,11 +51,24 @@ void CFGNode::add_branch(CFGNode *to)
 	to->add_unique_pred(this);
 }
 
+void CFGNode::add_fake_branch(CFGNode *to)
+{
+	add_unique_fake_succ(to);
+	to->add_unique_fake_pred(this);
+}
+
 void CFGNode::add_unique_succ(CFGNode *node)
 {
 	auto itr = std::find(succ.begin(), succ.end(), node);
 	if (itr == succ.end())
 		succ.push_back(node);
+}
+
+void CFGNode::add_unique_fake_succ(CFGNode *node)
+{
+	auto itr = std::find(fake_succ.begin(), fake_succ.end(), node);
+	if (itr == fake_succ.end())
+		fake_succ.push_back(node);
 }
 
 unsigned CFGNode::num_forward_preds() const
@@ -341,7 +361,7 @@ void CFGNode::recompute_immediate_dominator()
 
 void CFGNode::recompute_immediate_post_dominator()
 {
-	if (!succ.empty() || succ_back_edge)
+	if (!succ.empty() || !fake_succ.empty())
 	{
 		// For non-leaf blocks only. The immediate post dominator is already set up to be the exit node in leaf nodes.
 		immediate_post_dominator = nullptr;
@@ -353,13 +373,12 @@ void CFGNode::recompute_immediate_post_dominator()
 				immediate_post_dominator = edge;
 		}
 
-		// The post dominator of a continue block like this is the post dominator of the header, since it's the only
-		// way to continue executing.
-		if (succ.empty() && succ_back_edge)
+		for (auto *edge : fake_succ)
 		{
-			if (!succ_back_edge->immediate_post_dominator)
-				succ_back_edge->recompute_immediate_post_dominator();
-			immediate_post_dominator = succ_back_edge->immediate_post_dominator;
+			if (immediate_post_dominator)
+				immediate_post_dominator = CFGNode::find_common_post_dominator(immediate_post_dominator, edge);
+			else
+				immediate_post_dominator = edge;
 		}
 	}
 }
