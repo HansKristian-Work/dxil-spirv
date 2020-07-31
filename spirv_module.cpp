@@ -301,6 +301,14 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 	builder.setBuildPoint(bb);
 
+	spv::Block *fake_incoming_block = nullptr;
+	if (node->ir.merge_info.merge_type == MergeType::Loop &&
+	    node->ir.merge_info.merge_block &&
+	    !node->ir.merge_info.continue_block)
+	{
+		fake_incoming_block = new spv::Block(builder.getUniqueId(), *active_function);
+	}
+
 	// Emit phi nodes.
 	for (auto &phi : ir.phi)
 	{
@@ -313,6 +321,15 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			phi_op->addIdOperand(incoming.id);
 			phi_op->addIdOperand(incoming.block->id);
 		}
+
+		if (fake_incoming_block)
+		{
+			builder.setBuildPoint(fake_incoming_block);
+			phi_op->addIdOperand(builder.createUndefined(phi.type_id));
+			builder.setBuildPoint(bb);
+			phi_op->addIdOperand(fake_incoming_block->getId());
+		}
+
 		bb->addInstruction(std::move(phi_op));
 	}
 
@@ -381,7 +398,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else if (ir.merge_info.merge_block)
 		{
-			auto *continue_bb = new spv::Block(builder.getUniqueId(), *active_function);
+			auto *continue_bb = fake_incoming_block;
 			active_function->addBlock(continue_bb);
 			builder.setBuildPoint(continue_bb);
 			builder.createBranch(get_spv_block(node));
