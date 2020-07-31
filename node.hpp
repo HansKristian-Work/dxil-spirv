@@ -104,6 +104,9 @@ private:
 	template <typename Op>
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op);
 	template <typename Op>
+	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op,
+	                                                  std::unordered_set<const CFGNode *> &visitation_cache);
+	template <typename Op>
 	void traverse_dominated_blocks(const CFGNode &header, const Op &op);
 };
 
@@ -122,10 +125,13 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNod
 {
 	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, op);
 }
+
 template <typename Op>
-void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to,
-                                                           const Op &op)
+void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op,
+                                                           std::unordered_set<const CFGNode *> &visitation_cache)
 {
+	visitation_cache.insert(this);
+
 	if (from == to)
 		return;
 
@@ -142,8 +148,19 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header
 				retarget_branch(from, to);
 		}
 		else if (header.dominates(node) && node != to) // Do not traverse beyond the new branch target.
-			node->traverse_dominated_blocks_and_rewrite_branch(header, from, to, op);
+		{
+			if (!visitation_cache.count(node))
+				node->traverse_dominated_blocks_and_rewrite_branch(header, from, to, op, visitation_cache);
+		}
 	}
+}
+
+template <typename Op>
+void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to,
+                                                           const Op &op)
+{
+	std::unordered_set<const CFGNode *> visitation_cache;
+	traverse_dominated_blocks_and_rewrite_branch(header, from, to, op, visitation_cache);
 }
 
 template <typename Op>

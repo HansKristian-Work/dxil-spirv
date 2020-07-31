@@ -315,7 +315,7 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to)
 {
-	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *) { return true; });
+	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *node) -> bool { return true; });
 }
 
 void CFGNode::recompute_immediate_dominator()

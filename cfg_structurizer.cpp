@@ -1250,7 +1250,9 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 
 		// Stop rewriting once we hit a merge block.
 		inner_block->traverse_dominated_blocks_and_rewrite_branch(
-		    ladder_to, ladder, [inner_block](CFGNode *node) { return inner_block->selection_merge_block != node; });
+		    ladder_to, ladder, [inner_block](CFGNode *node) -> bool {
+			    return inner_block->selection_merge_block != node;
+		    });
 
 		ladder->recompute_immediate_dominator();
 		rewrite_selection_breaks(inner_block, ladder);
