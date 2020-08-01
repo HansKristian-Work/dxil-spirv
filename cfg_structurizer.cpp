@@ -208,9 +208,23 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 		auto outgoing_itr = std::find_if(node->ir.phi.begin(), node->ir.phi.end(), [&](const PHI &phi) {
 			return phi.id == incoming_from_node;
 		});
-		assert(outgoing_itr != node->ir.phi.end());
-		phi.incoming.insert(phi.incoming.end(), outgoing_itr->incoming.begin(), outgoing_itr->incoming.end());
+
+		if (outgoing_itr != node->ir.phi.end())
+		{
+			phi.incoming.insert(phi.incoming.end(), outgoing_itr->incoming.begin(), outgoing_itr->incoming.end());
+			node->ir.phi.erase(outgoing_itr);
+		}
+		else
+		{
+			// A plain value is passed down to succ, most likely a constant which lives at global scope.
+			// We know this block does not generate this ID, so it must be either a value generated at global scope
+			// (constant), or a value created by a block which dominates this node,
+			// which also means it dominates all preds to this node.
+			for (auto *pred : pred_copy)
+				phi.incoming.push_back({ pred, incoming_from_node });
+		}
 	}
+	assert(node->ir.phi.empty());
 }
 
 void CFGStructurizer::cleanup_breaking_phi_constructs()
