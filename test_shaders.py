@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #
-# Copyright 2019 Hans-Kristian Arntzen for Valve Corporation
+# Copyright 2019-2020 Hans-Kristian Arntzen for Valve Corporation
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
