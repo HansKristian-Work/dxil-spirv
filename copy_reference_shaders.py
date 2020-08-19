@@ -27,8 +27,14 @@ import hashlib
 def hashstr(path):
     with open(path, 'rb') as f:
         bytes = f.read()
-        if len(bytes) == 0:
+        if len(bytes) < 4:
+            print('Skipping file', path, 'due to size < 4.')
             return None
+
+        if bytes[0:4] != b'DXBC':
+            print('Skipping broken file', path)
+            return None
+
         result = hashlib.sha1(bytes).hexdigest()
     return result
 
