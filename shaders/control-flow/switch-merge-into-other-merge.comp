@@ -1,0 +1,39 @@
+RWStructuredBuffer<uint> RW : register(u0);
+
+[numthreads(1, 1, 1)]
+void main(uint3 thr : SV_DispatchThreadID)
+{
+	uint ret = 0;
+	[loop]
+	for (uint i = 0; i < thr.y; i++)
+	{
+		[branch]
+		if (RW[100] > 20)
+		{
+			ret = (ret * 3 + 4);
+			RW[50] += ret * 80;
+		}
+
+		[branch]
+		switch (thr.x)
+		{
+		case 0:
+			RW[0] += ret;
+			break;
+
+		case 1:
+			RW[40] += 2 * ret;
+			break;
+
+		case 5:
+			RW[60] += 3 * ret;
+			break;
+
+		default:
+			RW[100] += 4 * ret;
+			break;
+		}
+		break;
+	}
+	RW[1] = ret;
+}

@@ -1449,8 +1449,9 @@ void CFGStructurizer::recompute_cfg()
 	compute_post_dominance_frontier();
 }
 
-void CFGStructurizer::find_switch_blocks()
+void CFGStructurizer::find_switch_blocks(unsigned pass)
 {
+	bool modified_cfg = false;
 	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
 		auto *node = forward_post_visit_order[index - 1];
@@ -1458,6 +1459,29 @@ void CFGStructurizer::find_switch_blocks()
 			continue;
 
 		auto *merge = find_common_post_dominator(node->succ);
+
+		// We cannot rewrite the CFG in pass 1 safely, this should have happened in pass 0.
+		if (pass == 0 && !node->dominates(merge))
+		{
+			// We did not rewrite switch blocks w.r.t. selection breaks.
+			// We might be in a situation where the switch block is trying to merge to a block which is already being merged to.
+			// Create a ladder which the switch block could merge to.
+			auto *ladder = pool.create_node();
+			ladder->name = merge->name + ".switch-merge";
+			ladder->add_branch(merge);
+			ladder->ir.terminator.type = Terminator::Type::Branch;
+			ladder->ir.terminator.direct_block = merge;
+			ladder->immediate_post_dominator = merge;
+			ladder->immediate_dominator = merge->immediate_dominator;
+			ladder->dominance_frontier.push_back(merge);
+			ladder->forward_post_visit_order = merge->forward_post_visit_order;
+			ladder->backward_post_visit_order = merge->backward_post_visit_order;
+			node->traverse_dominated_blocks_and_rewrite_branch(merge, ladder);
+
+			merge = find_common_post_dominator(node->succ);
+			modified_cfg = true;
+		}
+
 		if (node->dominates(merge))
 		{
 			//LOGI("Switch merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node), node->name.c_str(),
@@ -1480,6 +1504,9 @@ void CFGStructurizer::find_switch_blocks()
 			}
 		}
 	}
+
+	if (modified_cfg)
+		recompute_cfg();
 }
 
 void CFGStructurizer::find_selection_merges(unsigned pass)
@@ -2350,7 +2377,7 @@ void CFGStructurizer::split_merge_blocks()
 void CFGStructurizer::structurize(unsigned pass)
 {
 	find_loops();
-	find_switch_blocks();
+	find_switch_blocks(pass);
 	find_selection_merges(pass);
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)
