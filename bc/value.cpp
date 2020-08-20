@@ -75,6 +75,7 @@ bool Constant::is_base_of_value_kind(ValueKind kind)
 	case ValueKind::Undef:
 	case ValueKind::Function:
 	case ValueKind::Global:
+	case ValueKind::ConstantExpr:
 		return true;
 
 	default:
@@ -305,6 +306,28 @@ unsigned ConstantDataVector::getNumElements() const
 Constant *ConstantDataVector::getElementAsConstant(unsigned index) const
 {
 	return elements[index];
+}
+
+ConstantExpr::ConstantExpr(unsigned opcode_, Type *type, std::vector<Value *> elements_)
+	: Constant(type, ValueKind::ConstantExpr)
+	, opcode(opcode_)
+	, elements(std::move(elements_))
+{
+}
+
+unsigned ConstantExpr::getOpcode() const
+{
+	return opcode;
+}
+
+Constant *ConstantExpr::getOperand(unsigned int N) const
+{
+	return cast<Constant>(elements[N]);
+}
+
+unsigned ConstantExpr::getNumOperands() const
+{
+	return unsigned(elements.size());
 }
 
 GlobalVariable::GlobalVariable(Type *type, bool is_const_)

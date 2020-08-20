@@ -83,6 +83,11 @@ public:
 		AddrSpaceCast
 	};
 
+	enum ConstExprOps
+	{
+		GetElementPtr = 200
+	};
+
 	bool isTerminator() const;
 
 	Value *getOperand(unsigned index) const;
