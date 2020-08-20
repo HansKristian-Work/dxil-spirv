@@ -78,7 +78,7 @@ private:
 	void find_selection_merges(unsigned pass);
 	static bool header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge);
 	void fixup_broken_selection_merges(unsigned pass);
-	void find_switch_blocks(unsigned pass);
+	bool find_switch_blocks(unsigned pass);
 	void split_merge_blocks();
 	static CFGNode *find_common_post_dominator(const std::vector<CFGNode *> &candidates);
 	static CFGNode *find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates,

@@ -1449,7 +1449,7 @@ void CFGStructurizer::recompute_cfg()
 	compute_post_dominance_frontier();
 }
 
-void CFGStructurizer::find_switch_blocks(unsigned pass)
+bool CFGStructurizer::find_switch_blocks(unsigned pass)
 {
 	bool modified_cfg = false;
 	for (auto index = forward_post_visit_order.size(); index; index--)
@@ -1512,8 +1512,7 @@ void CFGStructurizer::find_switch_blocks(unsigned pass)
 		}
 	}
 
-	if (modified_cfg)
-		recompute_cfg();
+	return modified_cfg;
 }
 
 void CFGStructurizer::find_selection_merges(unsigned pass)
@@ -2383,8 +2382,17 @@ void CFGStructurizer::split_merge_blocks()
 
 void CFGStructurizer::structurize(unsigned pass)
 {
+	if (find_switch_blocks(pass))
+	{
+		recompute_cfg();
+		if (find_switch_blocks(pass))
+		{
+			LOGE("Fatal, detected infinite loop.\n");
+			abort();
+		}
+	}
+
 	find_loops();
-	find_switch_blocks(pass);
 	find_selection_merges(pass);
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)
