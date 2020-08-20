@@ -796,4 +796,40 @@ bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Extract
 	}
 	return true;
 }
+
+bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instruction)
+{
+	if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))
+		return emit_binary_instruction(impl, binary_inst);
+	else if (auto *unary_inst = llvm::dyn_cast<llvm::UnaryOperator>(&instruction))
+		return emit_unary_instruction(impl, unary_inst);
+	else if (auto *cast_inst = llvm::dyn_cast<llvm::CastInst>(&instruction))
+		return emit_cast_instruction(impl, cast_inst);
+	else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&instruction))
+		return emit_getelementptr_instruction(impl, getelementptr_inst);
+	else if (auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(&instruction))
+		return emit_load_instruction(impl, load_inst);
+	else if (auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(&instruction))
+		return emit_store_instruction(impl, store_inst);
+	else if (auto *compare_inst = llvm::dyn_cast<llvm::CmpInst>(&instruction))
+		return emit_compare_instruction(impl, compare_inst);
+	else if (auto *extract_inst = llvm::dyn_cast<llvm::ExtractValueInst>(&instruction))
+		return emit_extract_value_instruction(impl, extract_inst);
+	else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&instruction))
+		return emit_alloca_instruction(impl, alloca_inst);
+	else if (auto *select_inst = llvm::dyn_cast<llvm::SelectInst>(&instruction))
+		return emit_select_instruction(impl, select_inst);
+	else if (auto *atomic_inst = llvm::dyn_cast<llvm::AtomicRMWInst>(&instruction))
+		return emit_atomicrmw_instruction(impl, atomic_inst);
+	else if (auto *cmpxchg_inst = llvm::dyn_cast<llvm::AtomicCmpXchgInst>(&instruction))
+		return emit_cmpxchg_instruction(impl, cmpxchg_inst);
+	else if (auto *shufflevec_inst = llvm::dyn_cast<llvm::ShuffleVectorInst>(&instruction))
+		return emit_shufflevector_instruction(impl, shufflevec_inst);
+	else if (auto *extractelement_inst = llvm::dyn_cast<llvm::ExtractElementInst>(&instruction))
+		return emit_extractelement_instruction(impl, extractelement_inst);
+	else if (auto *insertelement_inst = llvm::dyn_cast<llvm::InsertElementInst>(&instruction))
+		return emit_insertelement_instruction(impl, insertelement_inst);
+	else
+		return false;
+}
 } // namespace dxil_spv

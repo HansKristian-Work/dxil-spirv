@@ -2708,38 +2708,10 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 			return false;
 		}
 	}
-	else if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))
-		return emit_binary_instruction(*this, binary_inst);
-	else if (auto *unary_inst = llvm::dyn_cast<llvm::UnaryOperator>(&instruction))
-		return emit_unary_instruction(*this, unary_inst);
-	else if (auto *cast_inst = llvm::dyn_cast<llvm::CastInst>(&instruction))
-		return emit_cast_instruction(*this, cast_inst);
-	else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&instruction))
-		return emit_getelementptr_instruction(*this, getelementptr_inst);
-	else if (auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(&instruction))
-		return emit_load_instruction(*this, load_inst);
-	else if (auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(&instruction))
-		return emit_store_instruction(*this, store_inst);
-	else if (auto *compare_inst = llvm::dyn_cast<llvm::CmpInst>(&instruction))
-		return emit_compare_instruction(*this, compare_inst);
-	else if (auto *extract_inst = llvm::dyn_cast<llvm::ExtractValueInst>(&instruction))
-		return emit_extract_value_instruction(*this, extract_inst);
-	else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&instruction))
-		return emit_alloca_instruction(*this, alloca_inst);
-	else if (auto *select_inst = llvm::dyn_cast<llvm::SelectInst>(&instruction))
-		return emit_select_instruction(*this, select_inst);
-	else if (auto *atomic_inst = llvm::dyn_cast<llvm::AtomicRMWInst>(&instruction))
-		return emit_atomicrmw_instruction(*this, atomic_inst);
-	else if (auto *cmpxchg_inst = llvm::dyn_cast<llvm::AtomicCmpXchgInst>(&instruction))
-		return emit_cmpxchg_instruction(*this, cmpxchg_inst);
-	else if (auto *shufflevec_inst = llvm::dyn_cast<llvm::ShuffleVectorInst>(&instruction))
-		return emit_shufflevector_instruction(*this, shufflevec_inst);
-	else if (auto *extractelement_inst = llvm::dyn_cast<llvm::ExtractElementInst>(&instruction))
-		return emit_extractelement_instruction(*this, extractelement_inst);
-	else if (auto *insertelement_inst = llvm::dyn_cast<llvm::InsertElementInst>(&instruction))
-		return emit_insertelement_instruction(*this, insertelement_inst);
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
 		return emit_phi_instruction(block, *phi_inst);
+	else
+		return emit_llvm_instruction(*this, instruction);
 
 	current_block = nullptr;
 	return false;
