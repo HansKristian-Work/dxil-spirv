@@ -334,6 +334,64 @@ static bool emit_getelementptr_resource(Converter::Impl &impl, const llvm::GetEl
 	return true;
 }
 
+static uint32_t build_constant_getelementptr(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
+{
+	auto &builder = impl.builder();
+	spv::Id ptr_id = impl.get_id_for_value(cexpr->getOperand(0));
+	spv::Id type_id = impl.get_type_id(cexpr->getType()->getPointerElementType());
+	auto storage_class_itr = impl.handle_to_storage_class.find(cexpr->getOperand(0));
+	spv::StorageClass storage_class;
+	if (storage_class_itr != impl.handle_to_storage_class.end())
+		storage_class = storage_class_itr->second;
+	else
+		storage_class = builder.getStorageClass(ptr_id);
+
+	type_id = builder.makePointer(storage_class, type_id);
+
+	Operation *op = impl.allocate(spv::OpAccessChain, type_id);
+
+	op->add_id(ptr_id);
+
+	auto *elem_index = cexpr->getOperand(1);
+
+	// This one must be constant 0, ignore it.
+	if (!llvm::isa<llvm::ConstantInt>(elem_index))
+	{
+		LOGE("First GetElementPtr operand is not constant 0.\n");
+		return 0;
+	}
+
+	if (llvm::cast<llvm::ConstantInt>(elem_index)->getUniqueInteger().getZExtValue() != 0)
+	{
+		LOGE("First GetElementPtr operand is not constant 0.\n");
+		return 0;
+	}
+
+	unsigned num_operands = cexpr->getNumOperands();
+	for (uint32_t i = 2; i < num_operands; i++)
+		op->add_id(impl.get_id_for_value(cexpr->getOperand(i)));
+
+	impl.add(op);
+	return op->id;
+}
+
+static uint32_t build_constant_expression(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
+{
+	switch (cexpr->getOpcode())
+	{
+	case llvm::Instruction::GetElementPtr:
+		return build_constant_getelementptr(impl, cexpr);
+
+	default:
+	{
+		LOGE("Unknown constant-expr.\n");
+		break;
+	}
+	}
+
+	return false;
+}
+
 bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
 {
 	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
@@ -408,7 +466,18 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	else
 	{
 		Operation *op = impl.allocate(spv::OpLoad, instruction);
-		op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
+
+		auto *ptr = instruction->getPointerOperand();
+		if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(ptr))
+		{
+			if (spv::Id id = build_constant_expression(impl, cexpr))
+				op->add_id(id);
+			else
+				return false;
+		}
+		else
+			op->add_id(impl.get_id_for_value(ptr));
+
 		impl.add(op);
 	}
 	return true;
@@ -418,21 +487,27 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 {
 	Operation *op = impl.allocate(spv::OpStore);
 
+	auto *ptr = instruction->getOperand(1);
+	if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(ptr))
+	{
+		if (spv::Id id = build_constant_expression(impl, cexpr))
+			op->add_id(id);
+		else
+			return false;
+	}
+	else
+		op->add_id(impl.get_id_for_value(ptr));
+
 	auto itr = impl.llvm_value_actual_type.find(instruction->getOperand(1));
 	if (itr != impl.llvm_value_actual_type.end())
 	{
 		Operation *cast_op = impl.allocate(spv::OpBitcast, itr->second);
 		cast_op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 		impl.add(cast_op);
-
-		op->add_ids(
-			{ impl.get_id_for_value(instruction->getOperand(1)), cast_op->id });
+		op->add_id(cast_op->id);
 	}
 	else
-	{
-		op->add_ids(
-		    { impl.get_id_for_value(instruction->getOperand(1)), impl.get_id_for_value(instruction->getOperand(0)) });
-	}
+		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 
 	impl.add(op);
 	return true;
@@ -628,8 +703,19 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 	auto &builder = impl.builder();
 
 	Operation *atomic_op = impl.allocate(spv::OpAtomicCompareExchange, builder.makeUintType(32));
-	atomic_op->add_ids({ impl.get_id_for_value(instruction->getPointerOperand()),
-	                     builder.makeUintConstant(spv::ScopeWorkgroup),
+
+	auto *ptr = instruction->getPointerOperand();
+	if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(ptr))
+	{
+		if (spv::Id id = build_constant_expression(impl, cexpr))
+			atomic_op->add_id(id);
+		else
+			return false;
+	}
+	else
+		atomic_op->add_id(impl.get_id_for_value(ptr));
+
+	atomic_op->add_ids({ builder.makeUintConstant(spv::ScopeWorkgroup),
 	                     builder.makeUintConstant(0), // Relaxed
 	                     builder.makeUintConstant(0), // Relaxed
 	                     impl.get_id_for_value(instruction->getNewValOperand()),
@@ -703,8 +789,19 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 	}
 
 	Operation *op = impl.allocate(opcode, instruction);
+
+	auto *ptr = instruction->getPointerOperand();
+	if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(ptr))
+	{
+		if (spv::Id id = build_constant_expression(impl, cexpr))
+			op->add_id(id);
+		else
+			return false;
+	}
+	else
+		op->add_id(impl.get_id_for_value(ptr));
+
 	op->add_ids({
-	    impl.get_id_for_value(instruction->getPointerOperand()),
 	    builder.makeUintConstant(spv::ScopeWorkgroup),
 	    builder.makeUintConstant(0),
 	    impl.get_id_for_value(instruction->getValOperand()),
