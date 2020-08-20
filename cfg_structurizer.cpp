@@ -1503,6 +1503,13 @@ void CFGStructurizer::find_switch_blocks(unsigned pass)
 				merge->add_unique_header(node);
 			}
 		}
+
+		// A switch header might also be a loop header. Create a helper succ block for this case.
+		if (pass == 0 && node->pred_back_edge)
+		{
+			node = create_helper_succ_block(node);
+			modified_cfg = true;
+		}
 	}
 
 	if (modified_cfg)
