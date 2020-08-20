@@ -68,7 +68,10 @@ enum class ConstantsRecord : uint32_t
 	FLOAT = 6,
 	AGGREGATE = 7,
 	STRING = 8,
+	GEP = 12,
+	INBOUNDS_GEP = 20,
 	DATA = 22,
+	GEP_WITH_INRANGE_INDEX = 24
 };
 
 enum class FunctionRecord : uint32_t
@@ -549,6 +552,39 @@ Type *ModuleParseContext::get_constant_type()
 		return Type::getInt32Ty(*context);
 }
 
+static Type *resolve_gep_element_type(Type *type, const std::vector<Value *> &args)
+{
+	for (unsigned i = 2; i < args.size(); i++)
+	{
+		auto *arg = args[i];
+		if (type->getTypeID() == Type::TypeID::StructTyID)
+		{
+			auto *const_int = dyn_cast<ConstantInt>(arg);
+			if (!const_int)
+			{
+				LOGE("Indexing into a struct without a constant integer.\n");
+				return nullptr;
+			}
+
+			unsigned index = const_int->getUniqueInteger().getZExtValue();
+			if (index >= cast<StructType>(type)->getNumElements())
+			{
+				LOGE("Struct element index out of range.\n");
+				return nullptr;
+			}
+			type = cast<StructType>(type)->getElementType(index);
+		}
+		else if (type->getTypeID() == Type::TypeID::ArrayTyID)
+		{
+			type = type->getArrayElementType();
+		}
+		else
+			return nullptr;
+	}
+
+	return type;
+}
+
 bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 {
 	if (entry.IsBlock())
@@ -678,6 +714,48 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		else
 			value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
 
+		values.push_back(value);
+		break;
+	}
+
+	case ConstantsRecord::GEP:
+	case ConstantsRecord::INBOUNDS_GEP:
+	case ConstantsRecord::GEP_WITH_INRANGE_INDEX:
+	{
+		if (entry.ops.size() < 2)
+			return false;
+		Type *pointee_type = nullptr;
+		unsigned index = 0;
+		if (ConstantsRecord(entry.id) == ConstantsRecord::GEP_WITH_INRANGE_INDEX ||
+			(entry.ops.size() & 1))
+		{
+			pointee_type = get_type(entry.ops[index++]);
+		}
+
+		if (ConstantsRecord(entry.id) == ConstantsRecord::GEP_WITH_INRANGE_INDEX)
+			index++;
+
+		std::vector<Value *> elements;
+		elements.reserve(entry.ops.size() / 2);
+		while (index < entry.ops.size())
+		{
+			auto *type = get_type(entry.ops[index++]);
+			auto *value = get_value(entry.ops[index++], type, true);
+			elements.push_back(cast<Constant>(value));
+		}
+
+		if (elements.size() < 2)
+			return false;
+
+		if (!pointee_type)
+			pointee_type = elements[0]->getType()->getPointerElementType();
+
+		pointee_type = resolve_gep_element_type(pointee_type, elements);
+		if (!pointee_type)
+			return false;
+		pointee_type = PointerType::get(pointee_type, cast<PointerType>(elements[0]->getType())->getAddressSpace());
+
+		auto *value = context->construct<ConstantExpr>(Instruction::GetElementPtr, pointee_type, std::move(elements));
 		values.push_back(value);
 		break;
 	}
@@ -1360,34 +1438,9 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			args.push_back(value);
 		}
 
-		for (unsigned i = 2; i < args.size(); i++)
-		{
-			auto *arg = args[i];
-			if (type->getTypeID() == Type::TypeID::StructTyID)
-			{
-				auto *const_int = dyn_cast<ConstantInt>(arg);
-				if (!const_int)
-				{
-					LOGE("Indexing into a struct without a constant integer.\n");
-					return false;
-				}
-
-				unsigned index = const_int->getUniqueInteger().getZExtValue();
-				if (index >= cast<StructType>(type)->getNumElements())
-				{
-					LOGE("Struct element index out of range.\n");
-					return false;
-				}
-				type = cast<StructType>(type)->getElementType(index);
-			}
-			else if (type->getTypeID() == Type::TypeID::ArrayTyID)
-			{
-				type = type->getArrayElementType();
-			}
-			else
-				return false;
-		}
-
+		type = resolve_gep_element_type(type, args);
+		if (!type)
+			return false;
 		type = PointerType::get(type, cast<PointerType>(args[0]->getType())->getAddressSpace());
 
 		auto *value = context->construct<GetElementPtrInst>(type, std::move(args), inbounds);

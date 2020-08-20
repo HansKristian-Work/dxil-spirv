@@ -35,6 +35,7 @@ enum class ValueKind
 	ConstantAggregateZero,
 	ConstantDataArray,
 	ConstantDataVector,
+	ConstantExpr,
 	Undef,
 	UnaryOperator,
 	BinaryOperator,
@@ -224,6 +225,26 @@ public:
 
 private:
 	std::vector<Constant *> elements;
+};
+
+class ConstantExpr : public Constant
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantExpr;
+	}
+	ConstantExpr(unsigned opcode, Type *type, std::vector<Value *> elements);
+
+	unsigned getOpcode() const;
+	unsigned getNumOperands() const;
+	Constant *getOperand(unsigned N) const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
+private:
+	unsigned opcode;
+	std::vector<Value *> elements;
 };
 
 class UndefValue : public Constant
