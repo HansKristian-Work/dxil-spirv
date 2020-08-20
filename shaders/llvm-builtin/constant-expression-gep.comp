@@ -1,0 +1,19 @@
+groupshared uint foo[4];
+RWStructuredBuffer<uint> RW : register(u0);
+
+[numthreads(4, 1, 1)]
+void main(uint3 thr : SV_DispatchThreadID)
+{
+	foo[0] = thr.x;
+	foo[1] = thr.y;
+	foo[2] = thr.z;
+	foo[3] = 10;
+
+	uint v;
+	GroupMemoryBarrierWithGroupSync();
+	InterlockedAdd(foo[3], 10, v);
+	InterlockedCompareExchange(foo[2], 10, v, v);
+	
+	RW[thr.x] = foo[thr.y & 3];
+	RW[thr.z] = foo[1] + v;
+}
