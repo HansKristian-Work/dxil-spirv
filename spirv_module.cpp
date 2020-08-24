@@ -49,8 +49,12 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	void enable_shader_discard(bool supports_demote);
 	void build_discard_call_early();
+	void build_discard_call_early_cond(spv::Id cond);
+	void build_demote_call_cond(spv::Id cond);
 	void build_discard_call_exit();
 	spv::Function *discard_function = nullptr;
+	spv::Function *discard_function_cond = nullptr;
+	spv::Function *demote_function_cond = nullptr;
 	spv::Id discard_state_var_id = 0;
 
 	struct
@@ -232,6 +236,60 @@ void SPIRVModule::Impl::build_discard_call_early()
 	builder.createStore(builder.makeBoolConstant(true), discard_state_var_id);
 }
 
+void SPIRVModule::Impl::build_demote_call_cond(spv::Id cond)
+{
+	auto *current_build_point = builder.getBuildPoint();
+
+	if (!demote_function_cond)
+	{
+		spv::Block *entry = nullptr;
+		demote_function_cond =
+			builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "demote_cond",
+		                              { builder.makeBoolType() }, {}, &entry);
+
+		auto *true_block = new spv::Block(builder.getUniqueId(), *demote_function_cond);
+		auto *false_block = new spv::Block(builder.getUniqueId(), *demote_function_cond);
+		builder.setBuildPoint(entry);
+		builder.createSelectionMerge(false_block, 0);
+		builder.createConditionalBranch(demote_function_cond->getParamId(0), true_block, false_block);
+		true_block->addInstruction(std::make_unique<spv::Instruction>(spv::OpDemoteToHelperInvocationEXT));
+		builder.setBuildPoint(true_block);
+		builder.createBranch(false_block);
+		builder.setBuildPoint(false_block);
+		builder.makeReturn(false);
+	}
+
+	builder.setBuildPoint(current_build_point);
+	builder.createFunctionCall(demote_function_cond, { cond });
+}
+
+void SPIRVModule::Impl::build_discard_call_early_cond(spv::Id cond)
+{
+	auto *current_build_point = builder.getBuildPoint();
+
+	if (!discard_function_cond)
+	{
+		spv::Block *entry = nullptr;
+		discard_function_cond =
+			builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "discard_cond",
+			                          { builder.makeBoolType() }, {}, &entry);
+
+		auto *true_block = new spv::Block(builder.getUniqueId(), *discard_function_cond);
+		auto *false_block = new spv::Block(builder.getUniqueId(), *discard_function_cond);
+		builder.setBuildPoint(entry);
+		builder.createSelectionMerge(false_block, 0);
+		builder.createConditionalBranch(discard_function_cond->getParamId(0), true_block, false_block);
+		builder.setBuildPoint(true_block);
+		builder.createStore(builder.makeBoolConstant(true), discard_state_var_id);
+		builder.createBranch(false_block);
+		builder.setBuildPoint(false_block);
+		builder.makeReturn(false);
+	}
+
+	builder.setBuildPoint(current_build_point);
+	builder.createFunctionCall(discard_function_cond, { cond });
+}
+
 void SPIRVModule::Impl::build_discard_call_exit()
 {
 	auto *current_build_point = builder.getBuildPoint();
@@ -338,7 +396,16 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	{
 		if (op->op == spv::OpDemoteToHelperInvocationEXT && !caps.supports_demote)
 		{
-			build_discard_call_early();
+			if (op->num_arguments)
+				build_discard_call_early_cond(op->arguments[0]);
+			else
+				build_discard_call_early();
+		}
+		else if (op->op == spv::OpDemoteToHelperInvocationEXT && op->num_arguments)
+		{
+			builder.addExtension("SPV_EXT_demote_to_helper_invocation");
+			builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
+			build_demote_call_cond(op->arguments[0]);
 		}
 		else
 		{

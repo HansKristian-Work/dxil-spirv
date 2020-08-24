@@ -24,7 +24,19 @@ namespace dxil_spv
 {
 bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto *cond = instruction->getOperand(1);
+	bool has_condition = false;
+	if (const auto *constant_int = llvm::dyn_cast<llvm::ConstantInt>(cond))
+	{
+		if (!constant_int->getUniqueInteger().getZExtValue())
+			return true;
+	}
+	else
+		has_condition = true;
+
 	Operation *op = impl.allocate(spv::OpDemoteToHelperInvocationEXT);
+	if (has_condition)
+		op->add_id(impl.get_id_for_value(cond));
 	impl.add(op);
 	impl.spirv_module.enable_shader_discard(impl.options.shader_demote);
 	return true;
