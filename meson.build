@@ -11,6 +11,7 @@ add_project_arguments('-DNOMINMAX',                language : 'cpp')
 dxil_spirv_include_dirs = include_directories([
   'bc',
   'debug',
+  'util',
   'third_party/bc-decoder',
   'third_party/glslang-spirv',
   'third_party/spirv-headers/include/spirv/unified1',
@@ -77,6 +78,9 @@ dxil_spirv_src = [
   'opcodes/dxil/dxil_ray_tracing.cpp',
   'opcodes/opcodes_llvm_builtins.cpp',
   'opcodes/opcodes_dxil_builtins.cpp',
+
+  # dxil-utils
+  'util/thread_local_allocator.cpp',
 ]
 
 dxil_spirv_lib = static_library('dxil-spirv', dxil_spirv_src,
