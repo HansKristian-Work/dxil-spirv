@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include "thread_local_allocator.hpp"
 #include "dxil_spirv_c.h"
 #include "dxil_converter.hpp"
 #include "dxil_parser.hpp"
@@ -600,4 +601,19 @@ void dxil_spv_converter_add_local_root_descriptor_table(dxil_spv_converter conve
 	converter->converter.add_local_root_descriptor_table(ResourceClass(resource_class),
 	                                                     register_space, register_index,
 	                                                     num_descriptors_in_range, offset_in_heap);
+}
+
+void dxil_spv_begin_thread_allocator_context(void)
+{
+	begin_thread_allocator_context();
+}
+
+void dxil_spv_end_thread_allocator_context(void)
+{
+	end_thread_allocator_context();
+}
+
+void dxil_spv_reset_thread_allocator_context(void)
+{
+	reset_thread_allocator_context();
 }

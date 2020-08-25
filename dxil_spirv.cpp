@@ -368,6 +368,7 @@ int main(int argc, char **argv)
 	Arguments args;
 	Remapper remapper;
 	bool local_root_signature = false;
+	dxil_spv_begin_thread_allocator_context();
 
 	// Begin with identity swizzles.
 	args.swizzles.resize(8, 0 | (1 << 2) | (2 << 4) | (3 << 6));
@@ -679,5 +680,6 @@ int main(int argc, char **argv)
 
 	dxil_spv_converter_free(converter);
 	dxil_spv_parsed_blob_free(blob);
+	dxil_spv_end_thread_allocator_context();
 	return EXIT_SUCCESS;
 }

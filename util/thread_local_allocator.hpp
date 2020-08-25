@@ -23,10 +23,13 @@
 #include <unordered_map>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 
 namespace dxil_spv
 {
-extern unsigned alloc_count;
+void *allocate_in_thread(std::size_t size);
+void free_in_thread(void *ptr);
+
 template <typename T>
 class ThreadLocalAllocator
 {
@@ -37,16 +40,14 @@ public:
 	template <typename U>
 	ThreadLocalAllocator(const ThreadLocalAllocator<U> &) noexcept {}
 
-	value_type *allocate(std::size_t n)
+	value_type *allocate(size_t n)
 	{
-		alloc_count++;
-		fprintf(stderr, "Count = %u\n", alloc_count);
-		return static_cast<T *>(::malloc(sizeof(T) * n));
+		return static_cast<value_type *>(allocate_in_thread(sizeof(T) * n));
 	}
 
 	void deallocate(value_type *p, std::size_t)
 	{
-		::free(p);
+		free_in_thread(p);
 	}
 
 	using is_always_equal = std::true_type;

@@ -38,6 +38,7 @@ endif()
 add_library(dxil-utils STATIC util/thread_local_allocator.hpp util/thread_local_allocator.cpp)
 target_include_directories(dxil-utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/util)
 target_compile_options(dxil-utils PRIVATE ${DXIL_SPV_CXX_FLAGS})
+set_target_properties(dxil-utils PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
 add_subdirectory(bc EXCLUDE_FROM_ALL)
