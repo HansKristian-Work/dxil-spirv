@@ -16,23 +16,23 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#pragma once
-
 #include "thread_local_allocator.hpp"
-#include "dxil_converter.hpp"
-#include "ir.hpp"
-
-#ifdef HAVE_LLVMBC
-#include "cast.hpp"
-#include "instruction.hpp"
-#include "module.hpp"
-#include "value.hpp"
-#else
-#include <llvm/IR/Instructions.h>
-#endif
-
-#include <vector>
 
 namespace dxil_spv
 {
+unsigned alloc_count;
+void begin_thread_allocator_context()
+{
+
+}
+
+void end_thread_allocator_context()
+{
+
+}
+
+void reset_thread_allocator_context()
+{
+
+}
 }

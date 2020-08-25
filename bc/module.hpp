@@ -18,13 +18,12 @@
 
 #pragma once
 
+#include "data_structures.hpp"
 #include "iterator.hpp"
 #include <exception>
 #include <stddef.h>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 #include <string>
 
 // A reasonably small LLVM C++ API lookalike.
@@ -60,25 +59,25 @@ public:
 	void add_unnamed_metadata(MDNode *node);
 	const std::string &get_value_name(uint64_t id) const;
 
-	std::vector<Function *>::const_iterator begin() const;
-	std::vector<Function *>::const_iterator end() const;
+	Vector<Function *>::const_iterator begin() const;
+	Vector<Function *>::const_iterator end() const;
 
-	IteratorAdaptor<GlobalVariable, std::vector<GlobalVariable *>::const_iterator> global_begin() const;
-	IteratorAdaptor<GlobalVariable, std::vector<GlobalVariable *>::const_iterator> global_end() const;
+	IteratorAdaptor<GlobalVariable, Vector<GlobalVariable *>::const_iterator> global_begin() const;
+	IteratorAdaptor<GlobalVariable, Vector<GlobalVariable *>::const_iterator> global_end() const;
 
-	std::unordered_map<std::string, NamedMDNode *>::const_iterator named_metadata_begin() const;
-	std::unordered_map<std::string, NamedMDNode *>::const_iterator named_metadata_end() const;
+	UnorderedMap<std::string, NamedMDNode *>::const_iterator named_metadata_begin() const;
+	UnorderedMap<std::string, NamedMDNode *>::const_iterator named_metadata_end() const;
 
-	std::vector<MDNode *>::const_iterator unnamed_metadata_begin() const;
-	std::vector<MDNode *>::const_iterator unnamed_metadata_end() const;
+	Vector<MDNode *>::const_iterator unnamed_metadata_begin() const;
+	Vector<MDNode *>::const_iterator unnamed_metadata_end() const;
 
 private:
 	LLVMContext &context;
-	std::vector<Function *> functions;
-	std::vector<GlobalVariable *> globals;
-	std::unordered_map<uint64_t, std::string> value_symtab;
-	std::unordered_map<std::string, NamedMDNode *> named_metadata;
-	std::vector<MDNode *> unnamed_metadata;
+	Vector<Function *> functions;
+	Vector<GlobalVariable *> globals;
+	UnorderedMap<uint64_t, std::string> value_symtab;
+	UnorderedMap<std::string, NamedMDNode *> named_metadata;
+	Vector<MDNode *> unnamed_metadata;
 };
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size);

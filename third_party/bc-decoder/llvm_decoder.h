@@ -24,8 +24,7 @@
 
 #pragma once
 
-#include <unordered_map>
-#include <vector>
+#include "thread_local_allocator.hpp"
 #include <string>
 #include "llvm_bitreader.h"
 #include <stdint.h>
@@ -40,12 +39,12 @@ struct BlockOrRecord
   bool IsBlock() const { return blockDwordLength > 0; }
   bool IsRecord() const { return blockDwordLength == 0; }
   // if a block, the child blocks/records
-  std::vector<BlockOrRecord> children;
+  dxil_spv::Vector<BlockOrRecord> children;
 
   std::string getString(size_t startOffset = 0) const;
 
   // if a record, the ops
-  std::vector<uint64_t> ops;
+  dxil_spv::Vector<uint64_t> ops;
   // if this is an abbreviated record with a blob, this is the last operand
   // this points into the overall byte storage, so the lifetime is limited.
   const byte *blob = NULL;
@@ -73,8 +72,8 @@ private:
   size_t abbrevSize() const;
   uint64_t decodeAbbrevParam(const AbbrevParam &param);
 
-  std::vector<BlockContext *> blockStack;
-  std::unordered_map<uint32_t, BlockInfo *> blockInfo;
+  dxil_spv::Vector<BlockContext *> blockStack;
+  dxil_spv::UnorderedMap<uint32_t, BlockInfo *> blockInfo;
 };
 
 };    // namespace LLVMBC

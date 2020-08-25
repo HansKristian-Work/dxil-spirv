@@ -41,7 +41,6 @@
 #include <cassert>
 #include <cstdlib>
 
-#include <unordered_set>
 #include <algorithm>
 
 #include "SpvBuilder.h"
@@ -253,7 +252,7 @@ Id Builder::makeFloatType(int width)
 // See makeStructResultType() for non-decorated structs
 // needed as the result of some instructions, which does
 // check for duplicates.
-Id Builder::makeStructType(const std::vector<Id>& members, const char* name)
+Id Builder::makeStructType(const dxil_spv::Vector<Id>& members, const char* name)
 {
     // Don't look for previous one, because in the general case,
     // structs can be duplicated except for decorations.
@@ -287,7 +286,7 @@ Id Builder::makeStructResultType(Id type0, Id type1)
     }
 
     // not found, make it
-    std::vector<spv::Id> members;
+    dxil_spv::Vector<spv::Id> members;
     members.push_back(type0);
     members.push_back(type1);
 
@@ -380,7 +379,7 @@ Id Builder::makeRuntimeArray(Id element)
     return type->getResultId();
 }
 
-Id Builder::makeFunctionType(Id returnType, const std::vector<Id>& paramTypes)
+Id Builder::makeFunctionType(Id returnType, const dxil_spv::Vector<Id>& paramTypes)
 {
     // try to find it
     Instruction* type;
@@ -864,7 +863,7 @@ Id Builder::makeFloat16Constant(uint16_t f16, bool specConstant)
 }
 #endif
 
-Id Builder::findCompositeConstant(Op typeClass, const std::vector<Id>& comps) const
+Id Builder::findCompositeConstant(Op typeClass, const dxil_spv::Vector<Id>& comps) const
 {
     Instruction* constant = 0;
     bool found = false;
@@ -893,7 +892,7 @@ Id Builder::findCompositeConstant(Op typeClass, const std::vector<Id>& comps) co
 }
 
 // Comments in header
-Id Builder::makeCompositeConstant(Id typeId, const std::vector<Id>& members, bool specConstant)
+Id Builder::makeCompositeConstant(Id typeId, const dxil_spv::Vector<Id>& members, bool specConstant)
 {
     Op opcode = specConstant ? OpSpecConstantComposite : OpConstantComposite;
     assert(typeId);
@@ -1004,8 +1003,8 @@ Function* Builder::makeEntryPoint(const char* entryPoint)
     assert(! entryPointFunction);
 
     Block* entry;
-    std::vector<Id> params;
-    std::vector<std::vector<Decoration>> decorations;
+    dxil_spv::Vector<Id> params;
+    dxil_spv::Vector<dxil_spv::Vector<Decoration>> decorations;
 
     entryPointFunction = makeFunctionEntry(NoPrecision, makeVoidType(), entryPoint, params, decorations, &entry);
 
@@ -1014,7 +1013,7 @@ Function* Builder::makeEntryPoint(const char* entryPoint)
 
 // Comments in header
 Function* Builder::makeFunctionEntry(Decoration precision, Id returnType, const char* name,
-                                     const std::vector<Id>& paramTypes, const std::vector<std::vector<Decoration>>& decorations, Block **entry)
+                                     const dxil_spv::Vector<Id>& paramTypes, const dxil_spv::Vector<dxil_spv::Vector<Decoration>>& decorations, Block **entry)
 {
     // Make the function and initial instructions in it
     Id typeId = makeFunctionType(returnType, paramTypes);
@@ -1141,7 +1140,7 @@ Id Builder::createLoad(Id lValue)
 }
 
 // Comments in header
-Id Builder::createAccessChain(StorageClass storageClass, Id base, const std::vector<Id>& offsets)
+Id Builder::createAccessChain(StorageClass storageClass, Id base, const dxil_spv::Vector<Id>& offsets)
 {
     // Figure out the final resulting type.
     spv::Id typeId = getTypeId(base);
@@ -1182,7 +1181,7 @@ Id Builder::createCompositeExtract(Id composite, Id typeId, unsigned index)
     // Generate code for spec constants if in spec constant operation
     // generation mode.
     if (generatingOpCodeForSpecConst) {
-        return createSpecConstantOp(OpCompositeExtract, typeId, std::vector<Id>(1, composite), std::vector<Id>(1, index));
+        return createSpecConstantOp(OpCompositeExtract, typeId, dxil_spv::Vector<Id>(1, composite), dxil_spv::Vector<Id>(1, index));
     }
     Instruction* extract = new Instruction(getUniqueId(), typeId, OpCompositeExtract);
     extract->addIdOperand(composite);
@@ -1192,12 +1191,12 @@ Id Builder::createCompositeExtract(Id composite, Id typeId, unsigned index)
     return extract->getResultId();
 }
 
-Id Builder::createCompositeExtract(Id composite, Id typeId, const std::vector<unsigned>& indexes)
+Id Builder::createCompositeExtract(Id composite, Id typeId, const dxil_spv::Vector<unsigned>& indexes)
 {
     // Generate code for spec constants if in spec constant operation
     // generation mode.
     if (generatingOpCodeForSpecConst) {
-        return createSpecConstantOp(OpCompositeExtract, typeId, std::vector<Id>(1, composite), indexes);
+        return createSpecConstantOp(OpCompositeExtract, typeId, dxil_spv::Vector<Id>(1, composite), indexes);
     }
     Instruction* extract = new Instruction(getUniqueId(), typeId, OpCompositeExtract);
     extract->addIdOperand(composite);
@@ -1219,7 +1218,7 @@ Id Builder::createCompositeInsert(Id object, Id composite, Id typeId, unsigned i
     return insert->getResultId();
 }
 
-Id Builder::createCompositeInsert(Id object, Id composite, Id typeId, const std::vector<unsigned>& indexes)
+Id Builder::createCompositeInsert(Id object, Id composite, Id typeId, const dxil_spv::Vector<unsigned>& indexes)
 {
     Instruction* insert = new Instruction(getUniqueId(), typeId, OpCompositeInsert);
     insert->addIdOperand(object);
@@ -1268,7 +1267,7 @@ void Builder::createNoResultOp(Op opCode, Id operand)
 }
 
 // An opcode that has one operand, no result id, and no type
-void Builder::createNoResultOp(Op opCode, const std::vector<Id>& operands)
+void Builder::createNoResultOp(Op opCode, const dxil_spv::Vector<Id>& operands)
 {
     Instruction* op = new Instruction(opCode);
     for (auto it = operands.cbegin(); it != operands.cend(); ++it)
@@ -1299,7 +1298,7 @@ Id Builder::createUnaryOp(Op opCode, Id typeId, Id operand)
     // Generate code for spec constants if in spec constant operation
     // generation mode.
     if (generatingOpCodeForSpecConst) {
-        return createSpecConstantOp(opCode, typeId, std::vector<Id>(1, operand), std::vector<Id>());
+        return createSpecConstantOp(opCode, typeId, dxil_spv::Vector<Id>(1, operand), dxil_spv::Vector<Id>());
     }
     Instruction* op = new Instruction(getUniqueId(), typeId, opCode);
     op->addIdOperand(operand);
@@ -1313,9 +1312,9 @@ Id Builder::createBinOp(Op opCode, Id typeId, Id left, Id right)
     // Generate code for spec constants if in spec constant operation
     // generation mode.
     if (generatingOpCodeForSpecConst) {
-        std::vector<Id> operands(2);
+        dxil_spv::Vector<Id> operands(2);
         operands[0] = left; operands[1] = right;
-        return createSpecConstantOp(opCode, typeId, operands, std::vector<Id>());
+        return createSpecConstantOp(opCode, typeId, operands, dxil_spv::Vector<Id>());
     }
     Instruction* op = new Instruction(getUniqueId(), typeId, opCode);
     op->addIdOperand(left);
@@ -1330,12 +1329,12 @@ Id Builder::createTriOp(Op opCode, Id typeId, Id op1, Id op2, Id op3)
     // Generate code for spec constants if in spec constant operation
     // generation mode.
     if (generatingOpCodeForSpecConst) {
-        std::vector<Id> operands(3);
+        dxil_spv::Vector<Id> operands(3);
         operands[0] = op1;
         operands[1] = op2;
         operands[2] = op3;
         return createSpecConstantOp(
-            opCode, typeId, operands, std::vector<Id>());
+            opCode, typeId, operands, dxil_spv::Vector<Id>());
     }
     Instruction* op = new Instruction(getUniqueId(), typeId, opCode);
     op->addIdOperand(op1);
@@ -1346,7 +1345,7 @@ Id Builder::createTriOp(Op opCode, Id typeId, Id op1, Id op2, Id op3)
     return op->getResultId();
 }
 
-Id Builder::createOp(Op opCode, Id typeId, const std::vector<Id>& operands)
+Id Builder::createOp(Op opCode, Id typeId, const dxil_spv::Vector<Id>& operands)
 {
     Instruction* op = new Instruction(getUniqueId(), typeId, opCode);
     for (auto it = operands.cbegin(); it != operands.cend(); ++it)
@@ -1356,7 +1355,7 @@ Id Builder::createOp(Op opCode, Id typeId, const std::vector<Id>& operands)
     return op->getResultId();
 }
 
-Id Builder::createSpecConstantOp(Op opCode, Id typeId, const std::vector<Id>& operands, const std::vector<unsigned>& literals)
+Id Builder::createSpecConstantOp(Op opCode, Id typeId, const dxil_spv::Vector<Id>& operands, const dxil_spv::Vector<unsigned>& literals)
 {
     Instruction* op = new Instruction(getUniqueId(), typeId, OpSpecConstantOp);
     op->addImmediateOperand((unsigned) opCode);
@@ -1370,7 +1369,7 @@ Id Builder::createSpecConstantOp(Op opCode, Id typeId, const std::vector<Id>& op
     return op->getResultId();
 }
 
-Id Builder::createFunctionCall(spv::Function* function, const std::vector<spv::Id>& args)
+Id Builder::createFunctionCall(spv::Function* function, const dxil_spv::Vector<spv::Id>& args)
 {
     Instruction* op = new Instruction(getUniqueId(), function->getReturnType(), OpFunctionCall);
     op->addIdOperand(function->getId());
@@ -1382,13 +1381,13 @@ Id Builder::createFunctionCall(spv::Function* function, const std::vector<spv::I
 }
 
 // Comments in header
-Id Builder::createRvalueSwizzle(Decoration precision, Id typeId, Id source, const std::vector<unsigned>& channels)
+Id Builder::createRvalueSwizzle(Decoration precision, Id typeId, Id source, const dxil_spv::Vector<unsigned>& channels)
 {
     if (channels.size() == 1)
         return setPrecision(createCompositeExtract(source, typeId, channels.front()), precision);
 
     if (generatingOpCodeForSpecConst) {
-        std::vector<Id> operands(2);
+        dxil_spv::Vector<Id> operands(2);
         operands[0] = operands[1] = source;
         return setPrecision(createSpecConstantOp(OpVectorShuffle, typeId, operands, channels), precision);
     }
@@ -1404,7 +1403,7 @@ Id Builder::createRvalueSwizzle(Decoration precision, Id typeId, Id source, cons
 }
 
 // Comments in header
-Id Builder::createLvalueSwizzle(Id typeId, Id target, Id source, const std::vector<unsigned>& channels)
+Id Builder::createLvalueSwizzle(Id typeId, Id target, Id source, const dxil_spv::Vector<unsigned>& channels)
 {
     if (channels.size() == 1 && getNumComponents(source) == 1)
         return createCompositeInsert(source, target, typeId, channels.front());
@@ -1468,7 +1467,7 @@ Id Builder::smearScalar(Decoration precision, Id scalar, Id vectorType)
 
     Instruction* smear = nullptr;
     if (generatingOpCodeForSpecConst) {
-        auto members = std::vector<spv::Id>(numComponents, scalar);
+        auto members = dxil_spv::Vector<spv::Id>(numComponents, scalar);
         // Sometime even in spec-constant-op mode, the temporary vector created by
         // promoting a scalar might not be a spec constant. This should depend on
         // the scalar.
@@ -1490,7 +1489,7 @@ Id Builder::smearScalar(Decoration precision, Id scalar, Id vectorType)
 }
 
 // Comments in header
-Id Builder::createBuiltinCall(Id resultType, Id builtins, int entryPoint, const std::vector<Id>& args)
+Id Builder::createBuiltinCall(Id resultType, Id builtins, int entryPoint, const dxil_spv::Vector<Id>& args)
 {
     Instruction* inst = new Instruction(getUniqueId(), resultType, OpExtInst);
     inst->addIdOperand(builtins);
@@ -1822,7 +1821,7 @@ Id Builder::createCompositeCompare(Decoration precision, Id value1, Id value2, b
 
     // Compare each pair of constituents
     for (int constituent = 0; constituent < numConstituents; ++constituent) {
-        std::vector<unsigned> indexes(1, constituent);
+        dxil_spv::Vector<unsigned> indexes(1, constituent);
         Id constituentType1 = getContainedTypeId(getTypeId(value1), constituent);
         Id constituentType2 = getContainedTypeId(getTypeId(value2), constituent);
         Id constituent1 = createCompositeExtract(value1, constituentType1, indexes);
@@ -1840,7 +1839,7 @@ Id Builder::createCompositeCompare(Decoration precision, Id value1, Id value2, b
 }
 
 // OpCompositeConstruct
-Id Builder::createCompositeConstruct(Id typeId, const std::vector<Id>& constituents)
+Id Builder::createCompositeConstruct(Id typeId, const dxil_spv::Vector<Id>& constituents)
 {
     assert(isAggregateType(typeId) || (getNumTypeConstituents(typeId) > 1 && getNumTypeConstituents(typeId) == (int)constituents.size()));
 
@@ -1867,7 +1866,7 @@ Id Builder::createCompositeConstruct(Id typeId, const std::vector<Id>& constitue
 }
 
 // Vector or scalar constructor
-Id Builder::createConstructor(Decoration precision, const std::vector<Id>& sources, Id resultTypeId)
+Id Builder::createConstructor(Decoration precision, const dxil_spv::Vector<Id>& sources, Id resultTypeId)
 {
     Id result = NoResult;
     unsigned int numTargetComponents = getNumTypeComponents(resultTypeId);
@@ -1879,7 +1878,7 @@ Id Builder::createConstructor(Decoration precision, const std::vector<Id>& sourc
         return smearScalar(precision, sources[0], resultTypeId);
 
     // accumulate the arguments for OpCompositeConstruct
-    std::vector<Id> constituents;
+    dxil_spv::Vector<Id> constituents;
     Id scalarTypeId = getScalarTypeId(resultTypeId);
 
     // lambda to store the result of visiting an argument component
@@ -1899,7 +1898,7 @@ Id Builder::createConstructor(Decoration precision, const std::vector<Id>& sourc
             sourcesToUse = numTargetComponents - targetComponent;
 
         for (unsigned int s = 0; s < sourcesToUse; ++s) {
-            std::vector<unsigned> swiz;
+            dxil_spv::Vector<unsigned> swiz;
             swiz.push_back(s);
             latchResult(createRvalueSwizzle(precision, scalarTypeId, sourceArg, swiz));
         }
@@ -1919,7 +1918,7 @@ Id Builder::createConstructor(Decoration precision, const std::vector<Id>& sourc
                 row = 0;
                 col++;
             }
-            std::vector<Id> indexes;
+            dxil_spv::Vector<Id> indexes;
             indexes.push_back(col);
             indexes.push_back(row);
             latchResult(createCompositeExtract(sourceArg, scalarTypeId, indexes));
@@ -1951,7 +1950,7 @@ Id Builder::createConstructor(Decoration precision, const std::vector<Id>& sourc
 }
 
 // Comments in header
-Id Builder::createMatrixConstructor(Decoration precision, const std::vector<Id>& sources, Id resultTypeId)
+Id Builder::createMatrixConstructor(Decoration precision, const dxil_spv::Vector<Id>& sources, Id resultTypeId)
 {
     Id componentTypeId = getScalarTypeId(resultTypeId);
     int numCols = getTypeNumColumns(resultTypeId);
@@ -1990,7 +1989,7 @@ Id Builder::createMatrixConstructor(Decoration precision, const std::vector<Id>&
         int minCols = std::min(numCols, getNumColumns(matrix));
         int minRows = std::min(numRows, getNumRows(matrix));
         for (int col = 0; col < minCols; ++col) {
-            std::vector<unsigned> indexes;
+            dxil_spv::Vector<unsigned> indexes;
             indexes.push_back(col);
             for (int row = 0; row < minRows; ++row) {
                 indexes.push_back(row);
@@ -2025,9 +2024,9 @@ Id Builder::createMatrixConstructor(Decoration precision, const std::vector<Id>&
 
     // make the column vectors
     Id columnTypeId = getContainedTypeId(resultTypeId);
-    std::vector<Id> matrixColumns;
+    dxil_spv::Vector<Id> matrixColumns;
     for (int col = 0; col < numCols; ++col) {
-        std::vector<Id> vectorComponents;
+        dxil_spv::Vector<Id> vectorComponents;
         for (int row = 0; row < numRows; ++row)
             vectorComponents.push_back(ids[col][row]);
         Id column = createCompositeConstruct(columnTypeId, vectorComponents);
@@ -2096,9 +2095,9 @@ void Builder::If::makeEndIf()
 }
 
 // Comments in header
-void Builder::makeSwitch(Id selector, unsigned int control, int numSegments, const std::vector<int>& caseValues,
-                         const std::vector<int>& valueIndexToSegment, int defaultSegment,
-                         std::vector<Block*>& segmentBlocks)
+void Builder::makeSwitch(Id selector, unsigned int control, int numSegments, const dxil_spv::Vector<int>& caseValues,
+                         const dxil_spv::Vector<int>& valueIndexToSegment, int defaultSegment,
+                         dxil_spv::Vector<Block*>& segmentBlocks)
 {
     Function& function = buildPoint->getParent();
 
@@ -2137,7 +2136,7 @@ void Builder::addSwitchBreak()
 }
 
 // Comments in header
-void Builder::nextSwitchSegment(std::vector<Block*>& segmentBlock, int nextSegment)
+void Builder::nextSwitchSegment(dxil_spv::Vector<Block*>& segmentBlock, int nextSegment)
 {
     int lastSegment = nextSegment - 1;
     if (lastSegment >= 0) {
@@ -2151,7 +2150,7 @@ void Builder::nextSwitchSegment(std::vector<Block*>& segmentBlock, int nextSegme
 }
 
 // Comments in header
-void Builder::endSwitch(std::vector<Block*>& /*segmentBlock*/)
+void Builder::endSwitch(dxil_spv::Vector<Block*>& /*segmentBlock*/)
 {
     // Close out previous segment by jumping, if necessary, to next segment
     if (! buildPoint->isTerminated())
@@ -2217,7 +2216,7 @@ void Builder::clearAccessChain()
 }
 
 // Comments in header
-void Builder::accessChainPushSwizzle(std::vector<unsigned>& swizzle, Id preSwizzleBaseType)
+void Builder::accessChainPushSwizzle(dxil_spv::Vector<unsigned>& swizzle, Id preSwizzleBaseType)
 {
     // swizzles can be stacked in GLSL, but simplified to a single
     // one here; the base type doesn't change
@@ -2226,7 +2225,7 @@ void Builder::accessChainPushSwizzle(std::vector<unsigned>& swizzle, Id preSwizz
 
     // if needed, propagate the swizzle for the current access chain
     if (accessChain.swizzle.size()) {
-        std::vector<unsigned> oldSwizzle = accessChain.swizzle;
+        dxil_spv::Vector<unsigned> oldSwizzle = accessChain.swizzle;
         accessChain.swizzle.resize(0);
         for (unsigned int i = 0; i < swizzle.size(); ++i) {
             assert(swizzle[i] < oldSwizzle.size());
@@ -2279,7 +2278,7 @@ Id Builder::accessChainLoad(Decoration precision, Id resultType)
             Id swizzleBase = accessChain.preSwizzleBaseType != NoType ? accessChain.preSwizzleBaseType : resultType;
 
             // if all the accesses are constants, we can use OpCompositeExtract
-            std::vector<unsigned> indexes;
+            dxil_spv::Vector<unsigned> indexes;
             bool constant = true;
             for (int i = 0; i < (int)accessChain.indexChain.size(); ++i) {
                 if (isConstantScalar(accessChain.indexChain[i]))
@@ -2388,23 +2387,23 @@ Id Builder::accessChainGetInferredType()
 
 // comment in header
 void Builder::eliminateDeadDecorations() {
-    std::unordered_set<const Block*> reachable_blocks;
-    std::unordered_set<Id> unreachable_definitions;
+    dxil_spv::UnorderedSet<const Block*> reachable_blocks;
+    dxil_spv::UnorderedSet<Id> unreachable_definitions;
     // Collect IDs defined in unreachable blocks. For each function, label the
     // reachable blocks first. Then for each unreachable block, collect the
     // result IDs of the instructions in it.
-    for (std::vector<Function*>::const_iterator fi = module.getFunctions().cbegin();
+    for (dxil_spv::Vector<Function*>::const_iterator fi = module.getFunctions().cbegin();
         fi != module.getFunctions().cend(); fi++) {
         Function* f = *fi;
         Block* entry = f->getEntryBlock();
         inReadableOrder(entry, [&reachable_blocks](const Block* b) {
             reachable_blocks.insert(b);
         });
-        for (std::vector<Block*>::const_iterator bi = f->getBlocks().cbegin();
+        for (dxil_spv::Vector<Block*>::const_iterator bi = f->getBlocks().cbegin();
             bi != f->getBlocks().cend(); bi++) {
             Block* b = *bi;
             if (!reachable_blocks.count(b)) {
-                for (std::vector<std::unique_ptr<Instruction> >::const_iterator
+                for (dxil_spv::Vector<std::unique_ptr<Instruction> >::const_iterator
                          ii = b->getInstructions().cbegin();
                     ii != b->getInstructions().cend(); ii++) {
                     Instruction* i = ii->get();
@@ -2422,7 +2421,7 @@ void Builder::eliminateDeadDecorations() {
         decorations.end());
 }
 
-void Builder::dump(std::vector<unsigned int>& out) const
+void Builder::dump(dxil_spv::Vector<unsigned int>& out) const
 {
     // Header, before first instructions:
     out.push_back(MagicNumber);
@@ -2624,7 +2623,7 @@ void Builder::createUnreachable()
 // OpSource
 // [OpSourceContinued]
 // ...
-void Builder::dumpSourceInstructions(std::vector<unsigned int>& out) const
+void Builder::dumpSourceInstructions(dxil_spv::Vector<unsigned int>& out) const
 {
     const int maxWordCount = 0xFFFF;
     const int opSourceWordCount = 4;
@@ -2663,14 +2662,14 @@ void Builder::dumpSourceInstructions(std::vector<unsigned int>& out) const
     }
 }
 
-void Builder::dumpInstructions(std::vector<unsigned int>& out, const std::vector<std::unique_ptr<Instruction> >& instructions) const
+void Builder::dumpInstructions(dxil_spv::Vector<unsigned int>& out, const dxil_spv::Vector<std::unique_ptr<Instruction> >& instructions) const
 {
     for (int i = 0; i < (int)instructions.size(); ++i) {
         instructions[i]->dump(out);
     }
 }
 
-void Builder::dumpModuleProcesses(std::vector<unsigned int>& out) const
+void Builder::dumpModuleProcesses(dxil_spv::Vector<unsigned int>& out) const
 {
     for (int i = 0; i < (int)moduleProcesses.size(); ++i) {
         // TODO: switch this out for the 1.1 headers

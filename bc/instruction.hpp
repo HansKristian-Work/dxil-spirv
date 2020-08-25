@@ -20,7 +20,6 @@
 
 #include "value.hpp"
 #include <string>
-#include <unordered_map>
 
 namespace LLVMBC
 {
@@ -98,15 +97,15 @@ public:
 	MDNode *getMetadata(const std::string &str) const;
 	void add_metadata(const std::string &str, MDNode *node);
 
-	std::unordered_map<std::string, MDNode *>::const_iterator metadata_begin() const;
-	std::unordered_map<std::string, MDNode *>::const_iterator metadata_end() const;
+	UnorderedMap<std::string, MDNode *>::const_iterator metadata_begin() const;
+	UnorderedMap<std::string, MDNode *>::const_iterator metadata_end() const;
 
 protected:
 	void set_terminator();
 	bool is_terminator = false;
-	void set_operands(std::vector<Value *> op);
-	std::vector<Value *> operands;
-	std::unordered_map<std::string, MDNode *> attachments;
+	void set_operands(Vector<Value *> op);
+	Vector<Value *> operands;
+	UnorderedMap<std::string, MDNode *> attachments;
 };
 
 class ReturnInst : public Instruction
@@ -132,7 +131,7 @@ public:
 	{
 		return ValueKind::Call;
 	}
-	CallInst(FunctionType *function_type, Function *callee, std::vector<Value *> params);
+	CallInst(FunctionType *function_type, Function *callee, Vector<Value *> params);
 	Function *getCalledFunction() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
@@ -237,7 +236,7 @@ public:
 	{
 		return ValueKind::ExtractValue;
 	}
-	ExtractValueInst(Type *type, Value *aggregate, std::vector<unsigned> indices);
+	ExtractValueInst(Type *type, Value *aggregate, Vector<unsigned> indices);
 	Value *getAggregateOperand() const;
 	unsigned getNumIndices() const;
 	const unsigned *getIndices() const;
@@ -245,7 +244,7 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	std::vector<unsigned> indices;
+	Vector<unsigned> indices;
 };
 
 class AllocaInst : public Instruction
@@ -271,7 +270,7 @@ public:
 	{
 		return ValueKind::GetElementPtr;
 	}
-	GetElementPtrInst(Type *pointer_type, std::vector<Value *> arguments, bool inbounds);
+	GetElementPtrInst(Type *pointer_type, Vector<Value *> arguments, bool inbounds);
 	bool isInBounds() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
@@ -388,8 +387,8 @@ public:
 		ConstantInt *getCaseValue() const;
 	};
 
-	std::vector<Case>::const_iterator case_begin() const;
-	std::vector<Case>::const_iterator case_end() const;
+	Vector<Case>::const_iterator case_begin() const;
+	Vector<Case>::const_iterator case_end() const;
 
 	Value *getCondition() const;
 	BasicBlock *getDefaultDest() const;
@@ -399,7 +398,7 @@ public:
 private:
 	Value *cond;
 	BasicBlock *default_block;
-	std::vector<Case> cases;
+	Vector<Case> cases;
 };
 
 class PHINode : public Instruction
@@ -426,7 +425,7 @@ private:
 		Value *value;
 		BasicBlock *bb;
 	};
-	std::vector<Incoming> incoming;
+	Vector<Incoming> incoming;
 };
 
 class AtomicRMWInst : public Instruction
@@ -502,7 +501,7 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	std::vector<int> shuffle_mask;
+	Vector<int> shuffle_mask;
 };
 
 class ExtractElementInst : public Instruction

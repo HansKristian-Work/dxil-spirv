@@ -37,7 +37,7 @@ struct dxil_spv_parsed_blob_s
 {
 	LLVMBCParser bc;
 	std::string disasm;
-	std::vector<uint8_t> dxil_blob;
+	Vector<uint8_t> dxil_blob;
 };
 
 struct Remapper : ResourceRemappingInterface
@@ -256,7 +256,7 @@ struct dxil_spv_converter_s
 	}
 	SPIRVModule module;
 	Converter converter;
-	std::vector<uint32_t> spirv;
+	Vector<uint32_t> spirv;
 	Remapper remapper;
 };
 

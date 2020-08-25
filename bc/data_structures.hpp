@@ -19,20 +19,13 @@
 #pragma once
 
 #include "thread_local_allocator.hpp"
-#include "dxil_converter.hpp"
-#include "ir.hpp"
 
-#ifdef HAVE_LLVMBC
-#include "cast.hpp"
-#include "instruction.hpp"
-#include "module.hpp"
-#include "value.hpp"
-#else
-#include <llvm/IR/Instructions.h>
-#endif
-
-#include <vector>
-
-namespace dxil_spv
+namespace LLVMBC
 {
+template <typename T>
+using Vector = dxil_spv::Vector<T>;
+template <typename T>
+using UnorderedSet = dxil_spv::UnorderedSet<T>;
+template <typename Key, typename Value>
+using UnorderedMap = dxil_spv::UnorderedMap<Key, Value>;
 }

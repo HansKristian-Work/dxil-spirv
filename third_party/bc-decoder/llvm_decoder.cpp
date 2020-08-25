@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  ******************************************************************************/
 
+#include "thread_local_allocator.hpp"
 #include "llvm_decoder.h"
 
 namespace LLVMBC
@@ -46,7 +47,7 @@ struct AbbrevParam
 
 struct AbbrevDesc
 {
-  std::vector<AbbrevParam> params;
+  dxil_spv::Vector<AbbrevParam> params;
 };
 
 // the temporary context while pushing/popping blocks
@@ -54,15 +55,15 @@ struct BlockContext
 {
   BlockContext(size_t size = 2) : abbrevSize(size) {}
   size_t abbrevSize;
-  std::vector<AbbrevDesc> abbrevs;
+  dxil_spv::Vector<AbbrevDesc> abbrevs;
 };
 
 // the permanent block info defined by BLOCKINFO
 struct BlockInfo
 {
   // std::string blockname;
-  // std::vector<std::string> recordnames;
-  std::vector<AbbrevDesc> abbrevs;
+  // dxil_spirv::Vector<std::string> recordnames;
+  dxil_spv::Vector<AbbrevDesc> abbrevs;
 };
 
 enum AbbrevId

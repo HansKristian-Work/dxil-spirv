@@ -18,13 +18,11 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include "ir.hpp"
 #include <memory>
 #include <stdint.h>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 namespace dxil_spv
 {
@@ -56,14 +54,14 @@ private:
 	SPIRVModule &module;
 
 	// For dominance analysis.
-	std::vector<CFGNode *> forward_post_visit_order;
+	Vector<CFGNode *> forward_post_visit_order;
 	// For post-dominance analysis.
-	std::vector<CFGNode *> backward_post_visit_order;
+	Vector<CFGNode *> backward_post_visit_order;
 
-	std::vector<uint32_t> reachability_bitset;
+	Vector<uint32_t> reachability_bitset;
 	unsigned reachability_stride = 0;
 
-	std::unordered_set<const CFGNode *> reachable_nodes;
+	UnorderedSet<const CFGNode *> reachable_nodes;
 	void visit(CFGNode &entry);
 	void backwards_visit();
 	void backwards_visit(CFGNode &entry);
@@ -80,16 +78,16 @@ private:
 	void fixup_broken_selection_merges(unsigned pass);
 	bool find_switch_blocks(unsigned pass);
 	void split_merge_blocks();
-	static CFGNode *find_common_post_dominator(const std::vector<CFGNode *> &candidates);
-	static CFGNode *find_common_post_dominator_with_ignored_break(std::vector<CFGNode *> candidates,
+	static CFGNode *find_common_post_dominator(const Vector<CFGNode *> &candidates);
+	static CFGNode *find_common_post_dominator_with_ignored_break(Vector<CFGNode *> candidates,
 	                                                              const CFGNode *break_node);
 	//static CFGNode *find_common_post_dominator_with_ignored_exits(const CFGNode *header);
 	static bool control_flow_is_escaping(const CFGNode *node, const CFGNode *merge);
-	static std::vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
-	static void isolate_structured(std::unordered_set<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
+	static Vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
+	static void isolate_structured(UnorderedSet<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
 
-	static std::vector<IncomingValue>::const_iterator find_incoming_value(const CFGNode *frontier_pred,
-	                                                                      const std::vector<IncomingValue> &incoming);
+	static Vector<IncomingValue>::const_iterator find_incoming_value(const CFGNode *frontier_pred,
+	                                                                      const Vector<IncomingValue> &incoming);
 
 	void rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_to);
 
@@ -125,7 +123,7 @@ private:
 		CFGNode *block;
 		unsigned phi_index;
 	};
-	std::vector<PHINode> phi_nodes;
+	Vector<PHINode> phi_nodes;
 	void insert_phi();
 	void insert_phi(PHINode &node);
 	void fixup_phi(PHINode &node);
@@ -133,7 +131,7 @@ private:
 	void eliminate_node_link_preds_to_succ(CFGNode *node);
 	void prune_dead_preds();
 
-	std::unordered_map<uint32_t, CFGNode *> value_id_to_block;
+	UnorderedMap<uint32_t, CFGNode *> value_id_to_block;
 
 	void log_cfg(const char *tag) const;
 	void log_cfg_graphviz(const char *path) const;

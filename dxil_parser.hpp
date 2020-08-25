@@ -18,10 +18,10 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include "dxil.hpp"
 #include <stddef.h>
 #include <stdint.h>
-#include <vector>
 
 namespace dxil_spv
 {
@@ -31,14 +31,14 @@ class DXILContainerParser
 {
 public:
 	bool parse_container(const void *data, size_t size);
-	std::vector<uint8_t> &get_blob();
+	Vector<uint8_t> &get_blob();
 
 private:
-	std::vector<uint8_t> dxil_blob;
-	std::vector<DXIL::IOElement> input_elements;
-	std::vector<DXIL::IOElement> output_elements;
+	Vector<uint8_t> dxil_blob;
+	Vector<DXIL::IOElement> input_elements;
+	Vector<DXIL::IOElement> output_elements;
 
 	bool parse_dxil(MemoryStream &stream);
-	bool parse_iosg1(MemoryStream &stream, std::vector<DXIL::IOElement> &elements);
+	bool parse_iosg1(MemoryStream &stream, Vector<DXIL::IOElement> &elements);
 };
 } // namespace dxil_spv

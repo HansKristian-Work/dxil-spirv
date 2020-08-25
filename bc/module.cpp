@@ -281,15 +281,15 @@ struct ModuleParseContext
 	Function *function = nullptr;
 	Module *module = nullptr;
 	LLVMContext *context = nullptr;
-	std::vector<BasicBlock *> basic_blocks;
+	Vector<BasicBlock *> basic_blocks;
 
-	std::vector<Value *> values;
-	std::vector<Instruction *> instructions;
+	Vector<Value *> values;
+	Vector<Instruction *> instructions;
 
-	std::vector<Type *> types;
-	std::vector<Function *> functions_with_bodies;
-	std::unordered_map<uint64_t, MDOperand *> metadata;
-	std::unordered_map<uint64_t, std::string> metadata_kind_map;
+	Vector<Type *> types;
+	Vector<Function *> functions_with_bodies;
+	UnorderedMap<uint64_t, MDOperand *> metadata;
+	UnorderedMap<uint64_t, std::string> metadata_kind_map;
 	Type *constant_type = nullptr;
 	std::string current_metadata_name;
 
@@ -320,15 +320,15 @@ struct ModuleParseContext
 	unsigned basic_block_index = 0;
 
 	Value *get_value(uint64_t op, Type *expected_type = nullptr, bool force_absolute = false);
-	std::pair<Value *, Type *> get_value_and_type(const std::vector<uint64_t> &ops, unsigned &index);
+	std::pair<Value *, Type *> get_value_and_type(const Vector<uint64_t> &ops, unsigned &index);
 	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
 	MDOperand *get_metadata(uint64_t index) const;
 	const char *get_metadata_kind(uint64_t index) const;
 
 	Instruction *get_instruction(uint64_t index) const;
 
-	std::vector<ValueProxy *> pending_forward_references;
-	std::vector<std::pair<GlobalVariable *, uint64_t>> global_initializations;
+	Vector<ValueProxy *> pending_forward_references;
+	Vector<std::pair<GlobalVariable *, uint64_t>> global_initializations;
 	bool resolve_forward_references();
 	bool resolve_global_initializations();
 
@@ -435,7 +435,7 @@ Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type, bool forc
 		return values[op];
 }
 
-std::pair<Value *, Type *> ModuleParseContext::get_value_and_type(const std::vector<uint64_t> &ops, unsigned &index)
+std::pair<Value *, Type *> ModuleParseContext::get_value_and_type(const Vector<uint64_t> &ops, unsigned &index)
 {
 	if (index >= ops.size())
 		return {};
@@ -552,7 +552,7 @@ Type *ModuleParseContext::get_constant_type()
 		return Type::getInt32Ty(*context);
 }
 
-static Type *resolve_gep_element_type(Type *type, const std::vector<Value *> &args)
+static Type *resolve_gep_element_type(Type *type, const Vector<Value *> &args)
 {
 	for (unsigned i = 2; i < args.size(); i++)
 	{
@@ -690,7 +690,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 		bool is_fp = element_type->isFloatingPointTy();
 		bool is_int = element_type->isIntegerTy();
-		std::vector<Constant *> constants;
+		Vector<Constant *> constants;
 		constants.reserve(entry.ops.size());
 		if (is_fp)
 		{
@@ -735,7 +735,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		if (ConstantsRecord(entry.id) == ConstantsRecord::GEP_WITH_INRANGE_INDEX)
 			index++;
 
-		std::vector<Value *> elements;
+		Vector<Value *> elements;
 		elements.reserve(entry.ops.size() / 2);
 		while (index < entry.ops.size())
 		{
@@ -830,7 +830,7 @@ bool ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 
 	case MetaDataRecord::NAMED_NODE:
 	{
-		std::vector<MDNode *> ops;
+		Vector<MDNode *> ops;
 		ops.reserve(entry.ops.size());
 		for (auto &op : entry.ops)
 		{
@@ -848,7 +848,7 @@ bool ModuleParseContext::parse_metadata_record(const BlockOrRecord &entry, unsig
 	case MetaDataRecord::DISTINCT_NODE:
 	case MetaDataRecord::NODE:
 	{
-		std::vector<MDOperand *> ops;
+		Vector<MDOperand *> ops;
 		ops.reserve(entry.ops.size());
 		for (auto &op : entry.ops)
 		{
@@ -1121,7 +1121,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			return false;
 		}
 
-		std::vector<Value *> params;
+		Vector<Value *> params;
 		params.reserve(num_params);
 
 		for (unsigned i = 0; i < num_params; i++)
@@ -1295,7 +1295,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			return false;
 
 		unsigned num_args = entry.ops.size();
-		std::vector<unsigned> indices;
+		Vector<unsigned> indices;
 		indices.reserve(entry.ops.size() - 1);
 		Value *aggregate = get_value(entry.ops[0]);
 		if (!aggregate)
@@ -1428,7 +1428,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		bool inbounds = entry.ops[0] != 0;
 		auto *type = get_type(entry.ops[1]);
 		unsigned count = entry.ops.size() - 2;
-		std::vector<Value *> args;
+		Vector<Value *> args;
 		args.reserve(count);
 		for (unsigned i = 0; i < count; i++)
 		{
@@ -1711,7 +1711,7 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 		if (child.ops.size() < 1)
 			return false;
 
-		std::vector<Type *> members;
+		Vector<Type *> members;
 		unsigned num_members = child.ops.size() - 1;
 		members.reserve(num_members);
 		for (unsigned i = 0; i < num_members; i++)
@@ -1736,7 +1736,7 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 	{
 		if (child.ops.size() < 2)
 			return false;
-		std::vector<Type *> argument_types;
+		Vector<Type *> argument_types;
 		argument_types.reserve(child.ops.size() - 2);
 		for (size_t i = 2; i < child.ops.size(); i++)
 			argument_types.push_back(get_type(child.ops[i]));
@@ -1962,42 +1962,42 @@ Module::Module(LLVMContext &context_)
 {
 }
 
-std::vector<Function *>::const_iterator Module::begin() const
+Vector<Function *>::const_iterator Module::begin() const
 {
 	return functions.begin();
 }
 
-std::vector<Function *>::const_iterator Module::end() const
+Vector<Function *>::const_iterator Module::end() const
 {
 	return functions.end();
 }
 
-IteratorAdaptor<GlobalVariable, std::vector<GlobalVariable *>::const_iterator> Module::global_begin() const
+IteratorAdaptor<GlobalVariable, Vector<GlobalVariable *>::const_iterator> Module::global_begin() const
 {
 	return globals.begin();
 }
 
-IteratorAdaptor<GlobalVariable, std::vector<GlobalVariable *>::const_iterator> Module::global_end() const
+IteratorAdaptor<GlobalVariable, Vector<GlobalVariable *>::const_iterator> Module::global_end() const
 {
 	return globals.end();
 }
 
-std::unordered_map<std::string, NamedMDNode *>::const_iterator Module::named_metadata_begin() const
+UnorderedMap<std::string, NamedMDNode *>::const_iterator Module::named_metadata_begin() const
 {
 	return named_metadata.begin();
 }
 
-std::unordered_map<std::string, NamedMDNode *>::const_iterator Module::named_metadata_end() const
+UnorderedMap<std::string, NamedMDNode *>::const_iterator Module::named_metadata_end() const
 {
 	return named_metadata.end();
 }
 
-std::vector<MDNode *>::const_iterator Module::unnamed_metadata_begin() const
+Vector<MDNode *>::const_iterator Module::unnamed_metadata_begin() const
 {
 	return unnamed_metadata.begin();
 }
 
-std::vector<MDNode *>::const_iterator Module::unnamed_metadata_end() const
+Vector<MDNode *>::const_iterator Module::unnamed_metadata_end() const
 {
 	return unnamed_metadata.end();
 }

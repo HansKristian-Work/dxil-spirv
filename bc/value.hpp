@@ -18,8 +18,8 @@
 
 #pragma once
 
+#include "data_structures.hpp"
 #include <stdint.h>
-#include <vector>
 
 namespace LLVMBC
 {
@@ -198,7 +198,7 @@ public:
 	{
 		return ValueKind::ConstantDataArray;
 	}
-	ConstantDataArray(Type *type, std::vector<Constant *> elements);
+	ConstantDataArray(Type *type, Vector<Constant *> elements);
 
 	unsigned getNumElements() const;
 	Constant *getElementAsConstant(unsigned index) const;
@@ -206,7 +206,7 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	std::vector<Constant *> elements;
+	Vector<Constant *> elements;
 };
 
 class ConstantDataVector : public Constant
@@ -216,7 +216,7 @@ public:
 	{
 		return ValueKind::ConstantDataVector;
 	}
-	ConstantDataVector(Type *type, std::vector<Constant *> elements);
+	ConstantDataVector(Type *type, Vector<Constant *> elements);
 
 	unsigned getNumElements() const;
 	Constant *getElementAsConstant(unsigned index) const;
@@ -224,7 +224,7 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	std::vector<Constant *> elements;
+	Vector<Constant *> elements;
 };
 
 class ConstantExpr : public Constant
@@ -234,7 +234,7 @@ public:
 	{
 		return ValueKind::ConstantExpr;
 	}
-	ConstantExpr(unsigned opcode, Type *type, std::vector<Value *> elements);
+	ConstantExpr(unsigned opcode, Type *type, Vector<Value *> elements);
 
 	unsigned getOpcode() const;
 	unsigned getNumOperands() const;
@@ -244,7 +244,7 @@ public:
 
 private:
 	unsigned opcode;
-	std::vector<Value *> elements;
+	Vector<Value *> elements;
 };
 
 class UndefValue : public Constant

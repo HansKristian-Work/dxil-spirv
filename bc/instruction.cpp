@@ -27,7 +27,7 @@ Instruction::Instruction(Type *type, ValueKind kind)
 {
 }
 
-void Instruction::set_operands(std::vector<Value *> op)
+void Instruction::set_operands(Vector<Value *> op)
 {
 	operands = std::move(op);
 }
@@ -78,12 +78,12 @@ void Instruction::add_metadata(const std::string &str, MDNode *node)
 	attachments[str] = node;
 }
 
-std::unordered_map<std::string, MDNode *>::const_iterator Instruction::metadata_begin() const
+UnorderedMap<std::string, MDNode *>::const_iterator Instruction::metadata_begin() const
 {
 	return attachments.begin();
 }
 
-std::unordered_map<std::string, MDNode *>::const_iterator Instruction::metadata_end() const
+UnorderedMap<std::string, MDNode *>::const_iterator Instruction::metadata_end() const
 {
 	return attachments.end();
 }
@@ -127,7 +127,7 @@ ReturnInst::ReturnInst(Value *value_)
 	set_terminator();
 }
 
-CallInst::CallInst(FunctionType *function_type_, Function *callee_, std::vector<Value *> params)
+CallInst::CallInst(FunctionType *function_type_, Function *callee_, Vector<Value *> params)
     : Instruction(function_type_->getReturnType(), ValueKind::Call)
     , callee(callee_)
 {
@@ -164,7 +164,7 @@ SelectInst::SelectInst(Value *true_value, Value *false_value, Value *cond)
 	set_operands({ cond, true_value, false_value });
 }
 
-ExtractValueInst::ExtractValueInst(Type *type, Value *aggregate, std::vector<unsigned> indices_)
+ExtractValueInst::ExtractValueInst(Type *type, Value *aggregate, Vector<unsigned> indices_)
     : Instruction(type, ValueKind::ExtractValue)
     , indices(std::move(indices_))
 {
@@ -266,12 +266,12 @@ void SwitchInst::addCase(Value *case_value, BasicBlock *bb)
 	cases.push_back({ case_value, bb });
 }
 
-std::vector<SwitchInst::Case>::const_iterator SwitchInst::case_begin() const
+Vector<SwitchInst::Case>::const_iterator SwitchInst::case_begin() const
 {
 	return cases.begin();
 }
 
-std::vector<SwitchInst::Case>::const_iterator SwitchInst::case_end() const
+Vector<SwitchInst::Case>::const_iterator SwitchInst::case_end() const
 {
 	return cases.end();
 }
@@ -323,7 +323,7 @@ Value *AllocaInst::getArraySize() const
 	return array_size;
 }
 
-GetElementPtrInst::GetElementPtrInst(Type *pointer_type, std::vector<Value *> indices, bool inbounds_)
+GetElementPtrInst::GetElementPtrInst(Type *pointer_type, Vector<Value *> indices, bool inbounds_)
     : Instruction(pointer_type, ValueKind::GetElementPtr)
     , inbounds(inbounds_)
 {

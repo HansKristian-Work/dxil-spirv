@@ -21,7 +21,6 @@
 #include "iterator.hpp"
 #include "value.hpp"
 #include <string>
-#include <vector>
 
 namespace LLVMBC
 {
@@ -42,27 +41,27 @@ public:
 	void add_instruction(Instruction *inst);
 	Instruction *getTerminator() const;
 
-	IteratorAdaptor<Instruction, std::vector<Instruction *>::const_iterator> begin() const;
-	IteratorAdaptor<Instruction, std::vector<Instruction *>::const_iterator> end() const;
+	IteratorAdaptor<Instruction, Vector<Instruction *>::const_iterator> begin() const;
+	IteratorAdaptor<Instruction, Vector<Instruction *>::const_iterator> end() const;
 
 	void add_successor(BasicBlock *succ);
 
-	std::vector<BasicBlock *>::const_iterator succ_begin() const;
-	std::vector<BasicBlock *>::const_iterator succ_end() const;
+	Vector<BasicBlock *>::const_iterator succ_begin() const;
+	Vector<BasicBlock *>::const_iterator succ_end() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	std::vector<Instruction *> instructions;
-	std::vector<BasicBlock *> succs;
+	Vector<Instruction *> instructions;
+	Vector<BasicBlock *> succs;
 };
 
-inline std::vector<BasicBlock *>::const_iterator succ_begin(const BasicBlock *bb)
+inline Vector<BasicBlock *>::const_iterator succ_begin(const BasicBlock *bb)
 {
 	return bb->succ_begin();
 }
 
-inline std::vector<BasicBlock *>::const_iterator succ_end(const BasicBlock *bb)
+inline Vector<BasicBlock *>::const_iterator succ_end(const BasicBlock *bb)
 {
 	return bb->succ_end();
 }
@@ -77,16 +76,16 @@ public:
 	explicit Function(FunctionType *function_type, uint64_t value_id, Module &module);
 	const std::string &getName() const;
 
-	void set_basic_blocks(std::vector<BasicBlock *> basic_blocks);
-	IteratorAdaptor<BasicBlock, std::vector<BasicBlock *>::const_iterator> begin() const;
-	IteratorAdaptor<BasicBlock, std::vector<BasicBlock *>::const_iterator> end() const;
+	void set_basic_blocks(Vector<BasicBlock *> basic_blocks);
+	IteratorAdaptor<BasicBlock, Vector<BasicBlock *>::const_iterator> begin() const;
+	IteratorAdaptor<BasicBlock, Vector<BasicBlock *>::const_iterator> end() const;
 	FunctionType *getFunctionType() const;
 
 	BasicBlock &getEntryBlock() const;
 
 	void add_argument(Argument *arg);
-	IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> arg_begin() const;
-	IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> arg_end() const;
+	IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> arg_begin() const;
+	IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> arg_end() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
@@ -94,7 +93,7 @@ private:
 	Module &module;
 	uint64_t value_id;
 	FunctionType *function_type;
-	std::vector<BasicBlock *> basic_blocks;
-	std::vector<Argument *> arguments;
+	Vector<BasicBlock *> basic_blocks;
+	Vector<Argument *> arguments;
 };
 } // namespace LLVMBC

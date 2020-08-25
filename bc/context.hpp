@@ -18,10 +18,10 @@
 
 #pragma once
 
+#include "data_structures.hpp"
 #include <exception>
 #include <stdint.h>
 #include <stddef.h>
-#include <vector>
 
 namespace LLVMBC
 {
@@ -64,7 +64,7 @@ public:
 		return mem;
 	}
 
-	std::vector<Type *> &get_type_cache()
+	Vector<Type *> &get_type_cache()
 	{
 		return type_cache;
 	}
@@ -98,9 +98,9 @@ private:
 	void *allocate_from_chain(uintptr_t size, uintptr_t align);
 	void allocate_new_chain(size_t size, size_t align);
 
-	std::vector<void *> raw_allocations;
-	std::vector<Deleter *> typed_allocations;
-	std::vector<Type *> type_cache;
+	Vector<void *> raw_allocations;
+	Vector<Deleter *> typed_allocations;
+	Vector<Type *> type_cache;
 
 	template <typename T, typename... U>
 	T *construct_trivial(U &&... u)

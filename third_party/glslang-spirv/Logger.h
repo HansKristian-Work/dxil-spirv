@@ -35,8 +35,8 @@
 #ifndef GLSLANG_SPIRV_LOGGER_H
 #define GLSLANG_SPIRV_LOGGER_H
 
+#include "thread_local_allocator.hpp"
 #include <string>
-#include <vector>
 
 namespace spv {
 
@@ -63,10 +63,10 @@ public:
 private:
     SpvBuildLogger(const SpvBuildLogger&);
 
-    std::vector<std::string> tbdFeatures;
-    std::vector<std::string> missingFeatures;
-    std::vector<std::string> warnings;
-    std::vector<std::string> errors;
+    dxil_spv::Vector<std::string> tbdFeatures;
+    dxil_spv::Vector<std::string> missingFeatures;
+    dxil_spv::Vector<std::string> warnings;
+    dxil_spv::Vector<std::string> errors;
 };
 
 } // end spv namespace

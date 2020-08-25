@@ -18,8 +18,8 @@
 
 #pragma once
 
+#include "data_structures.hpp"
 #include <string>
-#include <vector>
 
 namespace LLVMBC
 {
@@ -62,7 +62,7 @@ public:
 	{
 		return MetadataKind::Node;
 	}
-	MDNode(Module *module, std::vector<MDOperand *> operands);
+	MDNode(Module *module, Vector<MDOperand *> operands);
 
 	MDOperand &getOperand(unsigned index) const;
 	unsigned getNumOperands() const;
@@ -71,7 +71,7 @@ public:
 	uint64_t get_tween_id() const;
 
 private:
-	std::vector<MDOperand *> operands;
+	Vector<MDOperand *> operands;
 	uint64_t tween = 0;
 };
 
@@ -82,7 +82,7 @@ public:
 	{
 		return MetadataKind::NamedNode;
 	}
-	NamedMDNode(Module *module, std::string name, std::vector<MDNode *> operands);
+	NamedMDNode(Module *module, std::string name, Vector<MDNode *> operands);
 	const std::string &getName() const;
 
 	MDNode *getOperand(unsigned index) const;
@@ -90,7 +90,7 @@ public:
 
 private:
 	std::string name;
-	std::vector<MDNode *> operands;
+	Vector<MDNode *> operands;
 };
 
 class ConstantAsMetadata : public MDOperand

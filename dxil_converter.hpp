@@ -40,7 +40,7 @@ struct ConvertedFunction
 		CFGNode *entry;
 		spv::Function *func;
 	};
-	std::vector<LeafFunction> leaf_functions;
+	Vector<LeafFunction> leaf_functions;
 	std::unique_ptr<CFGNodePool> node_pool;
 };
 

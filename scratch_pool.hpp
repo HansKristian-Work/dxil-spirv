@@ -75,6 +75,6 @@ private:
 	};
 	Block current = {};
 	size_t next_allocate_size = 64;
-	std::vector<std::unique_ptr<T, MallocDeleter>> blocks;
+	Vector<std::unique_ptr<T, MallocDeleter>> blocks;
 };
 } // namespace dxil_spv

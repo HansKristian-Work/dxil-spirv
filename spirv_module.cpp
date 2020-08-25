@@ -20,7 +20,6 @@
 #include "SpvBuilder.h"
 #include "node.hpp"
 #include "scratch_pool.hpp"
-#include <unordered_map>
 
 namespace dxil_spv
 {
@@ -39,7 +38,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Instruction *entry_point = nullptr;
 
 	void emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage);
-	bool finalize_spirv(std::vector<uint32_t> &spirv);
+	bool finalize_spirv(Vector<uint32_t> &spirv);
 
 	void register_block(CFGNode *node) override;
 	void emit_basic_block(CFGNode *node) override;
@@ -68,10 +67,10 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;
 	void register_builtin_shader_output(spv::Id id, spv::BuiltIn builtin);
 	bool query_builtin_shader_output(spv::Id id, spv::BuiltIn *builtin) const;
-	std::unordered_map<spv::BuiltIn, spv::Id> builtins_input;
-	std::unordered_map<spv::Id, spv::BuiltIn> id_to_builtin_input;
-	std::unordered_map<spv::BuiltIn, spv::Id> builtins_output;
-	std::unordered_map<spv::Id, spv::BuiltIn> id_to_builtin_output;
+	UnorderedMap<spv::BuiltIn, spv::Id> builtins_input;
+	UnorderedMap<spv::Id, spv::BuiltIn> id_to_builtin_input;
+	UnorderedMap<spv::BuiltIn, spv::Id> builtins_output;
+	UnorderedMap<spv::Id, spv::BuiltIn> id_to_builtin_output;
 
 	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
 	ScratchPool<Operation> operation_pool;
@@ -326,7 +325,7 @@ void SPIRVModule::emit_entry_point(spv::ExecutionModel model, const char *name, 
 	impl->emit_entry_point(model, name, physical_storage);
 }
 
-bool SPIRVModule::Impl::finalize_spirv(std::vector<uint32_t> &spirv)
+bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv)
 {
 	builder.dump(spirv);
 	if (spirv.size() >= 2)
@@ -538,7 +537,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	}
 }
 
-bool SPIRVModule::finalize_spirv(std::vector<uint32_t> &spirv)
+bool SPIRVModule::finalize_spirv(Vector<uint32_t> &spirv)
 {
 	return impl->finalize_spirv(spirv);
 }

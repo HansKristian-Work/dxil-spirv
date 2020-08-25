@@ -718,7 +718,7 @@ static void build_sample_position_lut(Converter::Impl &impl)
 		spv::Id vec2_type = builder.makeVectorType(builder.makeFloatType(32), 2);
 
 		constexpr size_t num_pos = sizeof(standard_sample_positions) / sizeof(standard_sample_positions[0]);
-		std::vector<spv::Id> constituents(num_pos);
+		Vector<spv::Id> constituents(num_pos);
 		for (size_t i = 0; i < num_pos; i++)
 		{
 			spv::Id elems[2];

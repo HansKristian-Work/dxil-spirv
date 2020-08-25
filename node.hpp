@@ -18,11 +18,10 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include "ir.hpp"
 #include <stdint.h>
 #include <string>
-#include <unordered_set>
-#include <vector>
 
 namespace dxil_spv
 {
@@ -55,20 +54,20 @@ private:
 	CFGNode *loop_merge_block = nullptr;
 	CFGNode *loop_ladder_block = nullptr;
 	CFGNode *selection_merge_block = nullptr;
-	std::vector<CFGNode *> headers;
+	Vector<CFGNode *> headers;
 
 	CFGNode *immediate_dominator = nullptr;
 	CFGNode *immediate_post_dominator = nullptr;
-	std::vector<CFGNode *> succ;
-	std::vector<CFGNode *> pred;
+	Vector<CFGNode *> succ;
+	Vector<CFGNode *> pred;
 
 	// Fake successors and predecessors which only serve to make the flipped CFG reducible.
 	// This makes post-domination analysis not strictly correct in all cases, but it is
 	// fine for the purposes we need post-domination analysis for.
 	// If a continue block is not reachable in the flipped CFG, we will
 	// add fake successors from the continue block.
-	std::vector<CFGNode *> fake_succ;
-	std::vector<CFGNode *> fake_pred;
+	Vector<CFGNode *> fake_succ;
+	Vector<CFGNode *> fake_pred;
 
 	CFGNode *pred_back_edge = nullptr;
 	CFGNode *succ_back_edge = nullptr;
@@ -109,8 +108,8 @@ private:
 	CFGNode *get_outer_selection_dominator();
 	CFGNode *get_outer_header_dominator();
 
-	std::vector<CFGNode *> dominance_frontier;
-	std::vector<CFGNode *> post_dominance_frontier;
+	Vector<CFGNode *> dominance_frontier;
+	Vector<CFGNode *> post_dominance_frontier;
 
 private:
 	bool dominates_all_reachable_exits(const CFGNode &header) const;
@@ -118,7 +117,7 @@ private:
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op);
 	template <typename Op>
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op,
-	                                                  std::unordered_set<const CFGNode *> &visitation_cache);
+	                                                  UnorderedSet<const CFGNode *> &visitation_cache);
 	template <typename Op>
 	void traverse_dominated_blocks(const CFGNode &header, const Op &op);
 };
@@ -141,7 +140,7 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNod
 
 template <typename Op>
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op,
-                                                           std::unordered_set<const CFGNode *> &visitation_cache)
+                                                           UnorderedSet<const CFGNode *> &visitation_cache)
 {
 	visitation_cache.insert(this);
 
@@ -172,7 +171,7 @@ template <typename Op>
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to,
                                                            const Op &op)
 {
-	std::unordered_set<const CFGNode *> visitation_cache;
+	UnorderedSet<const CFGNode *> visitation_cache;
 	traverse_dominated_blocks_and_rewrite_branch(header, from, to, op, visitation_cache);
 }
 

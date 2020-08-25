@@ -18,8 +18,8 @@
 
 #pragma once
 
+#include "data_structures.hpp"
 #include <stdint.h>
-#include <vector>
 
 namespace LLVMBC
 {
@@ -134,14 +134,14 @@ public:
 	{
 		return TypeID::StructTyID;
 	}
-	StructType(LLVMContext &context, std::vector<Type *> member_types);
-	static StructType *get(std::vector<Type *> member_types);
+	StructType(LLVMContext &context, Vector<Type *> member_types);
+	static StructType *get(Vector<Type *> member_types);
 
 	unsigned getNumElements() const;
 	Type *getElementType(unsigned N) const;
 
 private:
-	std::vector<Type *> member_types;
+	Vector<Type *> member_types;
 };
 
 class VectorType : public Type
@@ -169,13 +169,13 @@ public:
 	{
 		return TypeID::FunctionTyID;
 	}
-	FunctionType(LLVMContext &context, Type *return_type, std::vector<Type *> argument_types);
+	FunctionType(LLVMContext &context, Type *return_type, Vector<Type *> argument_types);
 	unsigned getNumParams() const;
 	Type *getParamType(unsigned index) const;
 	Type *getReturnType() const;
 
 private:
 	Type *return_type = nullptr;
-	std::vector<Type *> argument_types;
+	Vector<Type *> argument_types;
 };
 } // namespace LLVMBC

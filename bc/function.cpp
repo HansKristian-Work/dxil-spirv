@@ -39,7 +39,7 @@ const std::string &Function::getName() const
 	return module.get_value_name(value_id);
 }
 
-void Function::set_basic_blocks(std::vector<BasicBlock *> basic_blocks_)
+void Function::set_basic_blocks(Vector<BasicBlock *> basic_blocks_)
 {
 	basic_blocks = std::move(basic_blocks_);
 }
@@ -49,12 +49,12 @@ FunctionType *Function::getFunctionType() const
 	return function_type;
 }
 
-IteratorAdaptor<BasicBlock, std::vector<BasicBlock *>::const_iterator> Function::begin() const
+IteratorAdaptor<BasicBlock, Vector<BasicBlock *>::const_iterator> Function::begin() const
 {
 	return basic_blocks.begin();
 }
 
-IteratorAdaptor<BasicBlock, std::vector<BasicBlock *>::const_iterator> Function::end() const
+IteratorAdaptor<BasicBlock, Vector<BasicBlock *>::const_iterator> Function::end() const
 {
 	return basic_blocks.end();
 }
@@ -69,12 +69,12 @@ void Function::add_argument(Argument *arg)
 	arguments.push_back(arg);
 }
 
-IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> Function::arg_begin() const
+IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> Function::arg_begin() const
 {
 	return arguments.begin();
 }
 
-IteratorAdaptor<const Argument, std::vector<Argument *>::const_iterator> Function::arg_end() const
+IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> Function::arg_end() const
 {
 	return arguments.end();
 }
@@ -103,22 +103,22 @@ void BasicBlock::add_successor(BasicBlock *succ)
 		succs.push_back(succ);
 }
 
-IteratorAdaptor<Instruction, std::vector<Instruction *>::const_iterator> BasicBlock::begin() const
+IteratorAdaptor<Instruction, Vector<Instruction *>::const_iterator> BasicBlock::begin() const
 {
 	return instructions.begin();
 }
 
-IteratorAdaptor<Instruction, std::vector<Instruction *>::const_iterator> BasicBlock::end() const
+IteratorAdaptor<Instruction, Vector<Instruction *>::const_iterator> BasicBlock::end() const
 {
 	return instructions.end();
 }
 
-std::vector<BasicBlock *>::const_iterator BasicBlock::succ_begin() const
+Vector<BasicBlock *>::const_iterator BasicBlock::succ_begin() const
 {
 	return succs.begin();
 }
 
-std::vector<BasicBlock *>::const_iterator BasicBlock::succ_end() const
+Vector<BasicBlock *>::const_iterator BasicBlock::succ_end() const
 {
 	return succs.end();
 }

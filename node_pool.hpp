@@ -18,8 +18,8 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include <memory>
-#include <vector>
 
 namespace dxil_spv
 {
@@ -41,6 +41,6 @@ public:
 	}
 
 private:
-	std::vector<std::unique_ptr<CFGNode>> nodes;
+	Vector<std::unique_ptr<CFGNode>> nodes;
 };
 } // namespace dxil_spv
