@@ -616,12 +616,12 @@ protected:
     std::string sourceText;
     int currentLine;
     bool emitOpLines;
-    std::set<std::string> extensions;
+    dxil_spv::Set<std::string> extensions;
     dxil_spv::Vector<const char*> sourceExtensions;
     dxil_spv::Vector<const char*> moduleProcesses;
     AddressingModel addressModel;
     MemoryModel memoryModel;
-    std::set<spv::Capability> capabilities;
+    dxil_spv::Set<spv::Capability> capabilities;
     int builderNumber;
     Module module;
     Block* buildPoint;

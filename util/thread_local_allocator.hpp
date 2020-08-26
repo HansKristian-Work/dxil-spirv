@@ -21,6 +21,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <set>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -70,6 +71,9 @@ using Vector = std::vector<T, ThreadLocalAllocator<T>>;
 
 template <typename T>
 using UnorderedSet = std::unordered_set<T, std::hash<T>, std::equal_to<T>, ThreadLocalAllocator<T>>;
+
+template <typename T>
+using Set = std::set<T, std::less<T>, ThreadLocalAllocator<T>>;
 
 template <typename Key, typename Value, typename Hash = std::hash<Key>>
 using UnorderedMap = std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>, ThreadLocalAllocator<std::pair<const Key, Value>>>;
