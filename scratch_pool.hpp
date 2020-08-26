@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
+
 namespace dxil_spv
 {
 template <typename T>
@@ -43,7 +45,7 @@ public:
 
 		Block new_block = {};
 		new_block.size = next_allocate_size;
-		new_block.base = static_cast<T *>(malloc(sizeof(T) * next_allocate_size));
+		new_block.base = static_cast<T *>(allocate_in_thread(sizeof(T) * next_allocate_size));
 		if (!new_block.base)
 		{
 			// If we fail to allocate this little memory, we are hosed anyways.
@@ -63,7 +65,7 @@ private:
 	{
 		void operator()(void *ptr) noexcept
 		{
-			::free(ptr);
+			free_in_thread(ptr);
 		}
 	};
 
