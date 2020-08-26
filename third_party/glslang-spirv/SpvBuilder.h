@@ -50,9 +50,7 @@
 #include "spvIR.h"
 
 #include <algorithm>
-#include <map>
 #include <memory>
-#include <set>
 #include <sstream>
 #include <stack>
 
