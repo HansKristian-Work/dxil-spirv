@@ -107,7 +107,7 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 	if (container_header.container_size_in_bytes > size)
 		return false;
 
-	std::vector<uint32_t> parts(container_header.part_count);
+	Vector<uint32_t> parts(container_header.part_count);
 	for (uint32_t i = 0; i < container_header.part_count; i++)
 	{
 		if (!stream.read(parts[i]))
