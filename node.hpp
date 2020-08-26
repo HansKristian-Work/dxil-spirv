@@ -36,6 +36,8 @@ public:
 	void add_branch(CFGNode *to);
 	void add_fake_branch(CFGNode *to);
 
+	DXIL_SPV_OVERRIDE_NEW_DELETE
+
 private:
 	CFGNode() = default;
 	friend class CFGNodePool;

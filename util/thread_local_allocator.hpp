@@ -82,3 +82,9 @@ void begin_thread_allocator_context();
 void end_thread_allocator_context();
 void reset_thread_allocator_context();
 }
+
+#define DXIL_SPV_OVERRIDE_NEW_DELETE \
+	void *operator new(size_t size) { return ::dxil_spv::allocate_in_thread(size); } \
+	void operator delete(void *ptr) { ::dxil_spv::free_in_thread(ptr); } \
+	void *operator new[](size_t size) { return ::dxil_spv::allocate_in_thread(size); } \
+	void operator delete[](void *ptr) { ::dxil_spv::free_in_thread(ptr); }

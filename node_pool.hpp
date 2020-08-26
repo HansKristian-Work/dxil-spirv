@@ -28,6 +28,8 @@ struct CFGNode;
 class CFGNodePool
 {
 public:
+	DXIL_SPV_OVERRIDE_NEW_DELETE
+
 	CFGNodePool();
 	~CFGNodePool();
 

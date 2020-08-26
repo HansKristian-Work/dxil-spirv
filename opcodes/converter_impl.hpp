@@ -82,6 +82,8 @@ struct LocalRootSignatureEntry
 
 struct Converter::Impl
 {
+	DXIL_SPV_OVERRIDE_NEW_DELETE
+
 	Impl(LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
 	    : bitcode_parser(bitcode_parser_)
 	    , spirv_module(module_)
@@ -100,6 +102,8 @@ struct Converter::Impl
 
 		llvm::BasicBlock *bb;
 		CFGNode *node = nullptr;
+
+		DXIL_SPV_OVERRIDE_NEW_DELETE
 	};
 	Vector<std::unique_ptr<BlockMeta>> metas;
 	UnorderedMap<llvm::BasicBlock *, BlockMeta *> bb_map;

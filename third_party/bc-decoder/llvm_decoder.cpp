@@ -53,6 +53,7 @@ struct AbbrevDesc
 // the temporary context while pushing/popping blocks
 struct BlockContext
 {
+  DXIL_SPV_OVERRIDE_NEW_DELETE
   BlockContext(size_t size = 2) : abbrevSize(size) {}
   size_t abbrevSize;
   dxil_spv::Vector<AbbrevDesc> abbrevs;

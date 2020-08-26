@@ -151,6 +151,8 @@ public:
             out.push_back(operands[op]);
     }
 
+    DXIL_SPV_OVERRIDE_NEW_DELETE
+
 protected:
     Instruction(const Instruction&);
     Id resultId;
@@ -222,6 +224,8 @@ public:
         for (int i = 1; i < (int)instructions.size(); ++i)
             instructions[i]->dump(out);
     }
+
+    DXIL_SPV_OVERRIDE_NEW_DELETE
 
 protected:
     Block(const Block&);
@@ -298,6 +302,8 @@ public:
         end.dump(out);
     }
 
+    DXIL_SPV_OVERRIDE_NEW_DELETE
+
 protected:
     Function(const Function&);
     Function& operator=(Function&);
@@ -346,6 +352,8 @@ public:
         for (int f = 0; f < (int)functions.size(); ++f)
             functions[f]->dump(out);
     }
+
+    DXIL_SPV_OVERRIDE_NEW_DELETE
 
 protected:
     Module(const Module&);
