@@ -73,22 +73,22 @@ bool Instruction::resolve_proxy_values()
 	return true;
 }
 
-void Instruction::add_metadata(const std::string &str, MDNode *node)
+void Instruction::add_metadata(const String &str, MDNode *node)
 {
 	attachments[str] = node;
 }
 
-UnorderedMap<std::string, MDNode *>::const_iterator Instruction::metadata_begin() const
+UnorderedMap<String, MDNode *>::const_iterator Instruction::metadata_begin() const
 {
 	return attachments.begin();
 }
 
-UnorderedMap<std::string, MDNode *>::const_iterator Instruction::metadata_end() const
+UnorderedMap<String, MDNode *>::const_iterator Instruction::metadata_end() const
 {
 	return attachments.end();
 }
 
-MDNode *Instruction::getMetadata(const std::string &str) const
+MDNode *Instruction::getMetadata(const String &str) const
 {
 	auto itr = attachments.find(str);
 	if (itr != attachments.end())

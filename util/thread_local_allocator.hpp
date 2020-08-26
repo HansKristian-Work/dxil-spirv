@@ -22,7 +22,11 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <set>
+#include <string>
+#include <sstream>
+#include <functional>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stddef.h>
 
@@ -75,12 +79,38 @@ using UnorderedSet = std::unordered_set<T, std::hash<T>, std::equal_to<T>, Threa
 template <typename T>
 using Set = std::set<T, std::less<T>, ThreadLocalAllocator<T>>;
 
+using String = std::basic_string<char, std::char_traits<char>, ThreadLocalAllocator<char>>;
+using StringStream = std::basic_ostringstream<char, std::char_traits<char>, ThreadLocalAllocator<char>>;
+
 template <typename Key, typename Value, typename Hash = std::hash<Key>>
 using UnorderedMap = std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>, ThreadLocalAllocator<std::pair<const Key, Value>>>;
 
 void begin_thread_allocator_context();
 void end_thread_allocator_context();
 void reset_thread_allocator_context();
+
+template <typename T>
+static inline String to_string(T&& t)
+{
+	auto v = std::to_string(std::forward<T>(t));
+	String ret(v.begin(), v.end());
+	return ret;
+}
+}
+
+namespace std
+{
+template <>
+struct hash<dxil_spv::String>
+{
+	size_t operator()(const dxil_spv::String &str) const
+	{
+		uint64_t h = 0xcbf29ce484222325ull;
+		for (auto c : str)
+			h = (h * 0x100000001b3ull) ^ uint8_t(c);
+		return size_t(h);
+	}
+};
 }
 
 #define DXIL_SPV_OVERRIDE_NEW_DELETE \

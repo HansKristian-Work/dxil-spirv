@@ -289,9 +289,9 @@ struct ModuleParseContext
 	Vector<Type *> types;
 	Vector<Function *> functions_with_bodies;
 	UnorderedMap<uint64_t, MDOperand *> metadata;
-	UnorderedMap<uint64_t, std::string> metadata_kind_map;
+	UnorderedMap<uint64_t, String> metadata_kind_map;
 	Type *constant_type = nullptr;
-	std::string current_metadata_name;
+	String current_metadata_name;
 
 	bool parse_function_child_block(const BlockOrRecord &entry);
 	bool parse_record(const BlockOrRecord &entry);
@@ -1897,7 +1897,7 @@ bool ModuleParseContext::add_type(Type *type)
 	return true;
 }
 
-void Module::add_value_name(uint64_t id, const std::string &name)
+void Module::add_value_name(uint64_t id, const String &name)
 {
 	value_symtab[id] = name;
 }
@@ -1912,7 +1912,7 @@ void Module::add_global_variable(GlobalVariable *variable)
 	globals.push_back(variable);
 }
 
-void Module::add_named_metadata(const std::string &name, NamedMDNode *node)
+void Module::add_named_metadata(const String &name, NamedMDNode *node)
 {
 	named_metadata[name] = node;
 }
@@ -1922,7 +1922,7 @@ void Module::add_unnamed_metadata(MDNode *node)
 	unnamed_metadata.push_back(node);
 }
 
-Function *Module::getFunction(const std::string &name) const
+Function *Module::getFunction(const String &name) const
 {
 	auto itr =
 	    std::find_if(functions.begin(), functions.end(), [&](const Function *func) { return func->getName() == name; });
@@ -1933,7 +1933,7 @@ Function *Module::getFunction(const std::string &name) const
 		return nullptr;
 }
 
-NamedMDNode *Module::getNamedMetadata(const std::string &name) const
+NamedMDNode *Module::getNamedMetadata(const String &name) const
 {
 	auto itr = named_metadata.find(name);
 	if (itr != named_metadata.end())
@@ -1942,8 +1942,8 @@ NamedMDNode *Module::getNamedMetadata(const std::string &name) const
 		return nullptr;
 }
 
-static const std::string empty_string;
-const std::string &Module::get_value_name(uint64_t id) const
+static const String empty_string;
+const String &Module::get_value_name(uint64_t id) const
 {
 	auto itr = value_symtab.find(id);
 	if (itr != value_symtab.end())
@@ -1982,12 +1982,12 @@ IteratorAdaptor<GlobalVariable, Vector<GlobalVariable *>::const_iterator> Module
 	return globals.end();
 }
 
-UnorderedMap<std::string, NamedMDNode *>::const_iterator Module::named_metadata_begin() const
+UnorderedMap<String, NamedMDNode *>::const_iterator Module::named_metadata_begin() const
 {
 	return named_metadata.begin();
 }
 
-UnorderedMap<std::string, NamedMDNode *>::const_iterator Module::named_metadata_end() const
+UnorderedMap<String, NamedMDNode *>::const_iterator Module::named_metadata_end() const
 {
 	return named_metadata.end();
 }

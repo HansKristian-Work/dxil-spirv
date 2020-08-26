@@ -34,7 +34,7 @@ Function::Function(FunctionType *function_type_, uint64_t value_id_, Module &mod
 {
 }
 
-const std::string &Function::getName() const
+const String &Function::getName() const
 {
 	return module.get_value_name(value_id);
 }

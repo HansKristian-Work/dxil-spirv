@@ -25,7 +25,6 @@
 #pragma once
 
 #include "thread_local_allocator.hpp"
-#include <string>
 #include "llvm_bitreader.h"
 #include <stdint.h>
 
@@ -41,7 +40,7 @@ struct BlockOrRecord
   // if a block, the child blocks/records
   dxil_spv::Vector<BlockOrRecord> children;
 
-  std::string getString(size_t startOffset = 0) const;
+  dxil_spv::String getString(size_t startOffset = 0) const;
 
   // if a record, the ops
   dxil_spv::Vector<uint64_t> ops;

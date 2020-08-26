@@ -18,9 +18,9 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include <stddef.h>
 #include <stdint.h>
-#include <string>
 
 namespace DXIL
 {
@@ -54,7 +54,7 @@ struct ProgramHeader
 
 struct IOElement
 {
-	std::string semantic_name;
+	dxil_spv::String semantic_name;
 	uint32_t stream_index;
 	uint32_t semantic_index;
 	uint32_t system_value_semantic;

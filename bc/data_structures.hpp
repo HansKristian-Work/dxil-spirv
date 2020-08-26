@@ -28,4 +28,6 @@ template <typename T>
 using UnorderedSet = dxil_spv::UnorderedSet<T>;
 template <typename Key, typename Value>
 using UnorderedMap = dxil_spv::UnorderedMap<Key, Value>;
+using String = dxil_spv::String;
+using StringStream = dxil_spv::StringStream;
 }

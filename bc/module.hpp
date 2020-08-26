@@ -24,7 +24,6 @@
 #include <stddef.h>
 #include <type_traits>
 #include <utility>
-#include <string>
 
 // A reasonably small LLVM C++ API lookalike.
 
@@ -48,16 +47,16 @@ public:
 	explicit Module(LLVMContext &context);
 	LLVMContext &getContext();
 
-	NamedMDNode *getNamedMetadata(const std::string &name) const;
+	NamedMDNode *getNamedMetadata(const String &name) const;
 
-	Function *getFunction(const std::string &name) const;
+	Function *getFunction(const String &name) const;
 
-	void add_value_name(uint64_t id, const std::string &name);
+	void add_value_name(uint64_t id, const String &name);
 	void add_function_implementation(Function *func);
 	void add_global_variable(GlobalVariable *variable);
-	void add_named_metadata(const std::string &name, NamedMDNode *node);
+	void add_named_metadata(const String &name, NamedMDNode *node);
 	void add_unnamed_metadata(MDNode *node);
-	const std::string &get_value_name(uint64_t id) const;
+	const String &get_value_name(uint64_t id) const;
 
 	Vector<Function *>::const_iterator begin() const;
 	Vector<Function *>::const_iterator end() const;
@@ -65,8 +64,8 @@ public:
 	IteratorAdaptor<GlobalVariable, Vector<GlobalVariable *>::const_iterator> global_begin() const;
 	IteratorAdaptor<GlobalVariable, Vector<GlobalVariable *>::const_iterator> global_end() const;
 
-	UnorderedMap<std::string, NamedMDNode *>::const_iterator named_metadata_begin() const;
-	UnorderedMap<std::string, NamedMDNode *>::const_iterator named_metadata_end() const;
+	UnorderedMap<String, NamedMDNode *>::const_iterator named_metadata_begin() const;
+	UnorderedMap<String, NamedMDNode *>::const_iterator named_metadata_end() const;
 
 	Vector<MDNode *>::const_iterator unnamed_metadata_begin() const;
 	Vector<MDNode *>::const_iterator unnamed_metadata_end() const;
@@ -75,11 +74,11 @@ private:
 	LLVMContext &context;
 	Vector<Function *> functions;
 	Vector<GlobalVariable *> globals;
-	UnorderedMap<uint64_t, std::string> value_symtab;
-	UnorderedMap<std::string, NamedMDNode *> named_metadata;
+	UnorderedMap<uint64_t, String> value_symtab;
+	UnorderedMap<String, NamedMDNode *> named_metadata;
 	Vector<MDNode *> unnamed_metadata;
 };
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size);
-bool disassemble(Module &module, std::string &str);
+bool disassemble(Module &module, String &str);
 } // namespace LLVMBC

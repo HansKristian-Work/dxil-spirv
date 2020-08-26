@@ -19,7 +19,6 @@
 #pragma once
 
 #include "value.hpp"
-#include <string>
 
 namespace LLVMBC
 {
@@ -94,18 +93,18 @@ public:
 
 	bool resolve_proxy_values();
 
-	MDNode *getMetadata(const std::string &str) const;
-	void add_metadata(const std::string &str, MDNode *node);
+	MDNode *getMetadata(const String &str) const;
+	void add_metadata(const String &str, MDNode *node);
 
-	UnorderedMap<std::string, MDNode *>::const_iterator metadata_begin() const;
-	UnorderedMap<std::string, MDNode *>::const_iterator metadata_end() const;
+	UnorderedMap<String, MDNode *>::const_iterator metadata_begin() const;
+	UnorderedMap<String, MDNode *>::const_iterator metadata_end() const;
 
 protected:
 	void set_terminator();
 	bool is_terminator = false;
 	void set_operands(Vector<Value *> op);
 	Vector<Value *> operands;
-	UnorderedMap<std::string, MDNode *> attachments;
+	UnorderedMap<String, MDNode *> attachments;
 };
 
 class ReturnInst : public Instruction

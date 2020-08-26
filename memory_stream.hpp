@@ -18,9 +18,9 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include <stddef.h>
 #include <stdint.h>
-#include <string>
 
 namespace dxil_spv
 {
@@ -38,7 +38,7 @@ public:
 	}
 
 	bool read(void *buffer, size_t size);
-	bool read_string(std::string &str);
+	bool read_string(String &str);
 	bool seek(size_t offset);
 	bool skip(size_t count);
 

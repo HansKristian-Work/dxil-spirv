@@ -2640,7 +2640,7 @@ void Builder::dumpSourceInstructions(dxil_spv::Vector<unsigned int>& out) const
             // Source operand
             if (sourceText.size() > 0) {
                 int nextByte = 0;
-                std::string subString;
+                dxil_spv::String subString;
                 while ((int)sourceText.size() - nextByte > 0) {
                     subString = sourceText.substr(nextByte, nonNullBytesPerInstruction);
                     if (nextByte == 0) {

@@ -70,16 +70,16 @@ public:
         source = lang;
         sourceVersion = version;
     }
-    void setSourceFile(const std::string& file)
+    void setSourceFile(const dxil_spv::String& file)
     {
         Instruction* fileString = new Instruction(getUniqueId(), NoType, OpString);
         fileString->addStringOperand(file.c_str());
         sourceFileStringId = fileString->getResultId();
         strings.push_back(std::unique_ptr<Instruction>(fileString));
     }
-    void setSourceText(const std::string& text) { sourceText = text; }
+    void setSourceText(const dxil_spv::String& text) { sourceText = text; }
     void addSourceExtension(const char* ext) { sourceExtensions.push_back(ext); }
-    void addModuleProcessed(const std::string& p) { moduleProcesses.push_back(p.c_str()); }
+    void addModuleProcessed(const dxil_spv::String& p) { moduleProcesses.push_back(p.c_str()); }
     void setEmitOpLines() { emitOpLines = true; }
     void addExtension(const char* ext) { extensions.insert(ext); }
     Id import(const char*);
@@ -611,10 +611,10 @@ protected:
     SourceLanguage source;
     int sourceVersion;
     spv::Id sourceFileStringId;
-    std::string sourceText;
+    dxil_spv::String sourceText;
     int currentLine;
     bool emitOpLines;
-    dxil_spv::Set<std::string> extensions;
+    dxil_spv::Set<dxil_spv::String> extensions;
     dxil_spv::Vector<const char*> sourceExtensions;
     dxil_spv::Vector<const char*> moduleProcesses;
     AddressingModel addressModel;

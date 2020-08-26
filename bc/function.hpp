@@ -20,7 +20,6 @@
 
 #include "iterator.hpp"
 #include "value.hpp"
-#include <string>
 
 namespace LLVMBC
 {
@@ -74,7 +73,7 @@ public:
 		return ValueKind::Function;
 	}
 	explicit Function(FunctionType *function_type, uint64_t value_id, Module &module);
-	const std::string &getName() const;
+	const String &getName() const;
 
 	void set_basic_blocks(Vector<BasicBlock *> basic_blocks);
 	IteratorAdaptor<BasicBlock, Vector<BasicBlock *>::const_iterator> begin() const;

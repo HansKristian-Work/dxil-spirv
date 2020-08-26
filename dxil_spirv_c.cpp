@@ -37,7 +37,11 @@ void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch)
 struct dxil_spv_parsed_blob_s
 {
 	LLVMBCParser bc;
+#ifdef HAVE_LLVMBC
+	String disasm;
+#else
 	std::string disasm;
+#endif
 	Vector<uint8_t> dxil_blob;
 };
 
@@ -306,7 +310,7 @@ void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob)
 {
 	auto &module = blob->bc.get_module();
 #ifdef HAVE_LLVMBC
-	std::string str;
+	String str;
 	if (llvm::disassemble(module, str))
 		fprintf(stderr, "%s\n", str.c_str());
 	else

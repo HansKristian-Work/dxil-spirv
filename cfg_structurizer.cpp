@@ -277,7 +277,7 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 
 bool CFGStructurizer::run()
 {
-	std::string graphviz_path;
+	String graphviz_path;
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 		graphviz_path = env;
 
@@ -627,7 +627,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		PHI frontier_phi;
 		frontier_phi.id = module.allocate_id();
 		frontier_phi.type_id = phi.type_id;
-		module.get_builder().addName(frontier_phi.id, (std::string("frontier_phi_") + frontier->name).c_str());
+		module.get_builder().addName(frontier_phi.id, (String("frontier_phi_") + frontier->name).c_str());
 
 		assert(!frontier->pred_back_edge);
 		for (auto *input : frontier->pred)
@@ -755,7 +755,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				dominated_incoming->id = op->id;
 
 				module.get_builder().addName(merge_phi.id,
-				                             (std::string("merged_phi_") + dominated_incoming->block->name).c_str());
+				                             (String("merged_phi_") + dominated_incoming->block->name).c_str());
 				frontier->ir.phi.push_back(std::move(merge_phi));
 			}
 		}
@@ -2229,7 +2229,7 @@ void CFGStructurizer::split_merge_blocks()
 						PHI phi;
 						phi.id = ladder->ir.terminator.conditional_id;
 						phi.type_id = module.get_builder().makeBoolType();
-						module.get_builder().addName(phi.id, (std::string("ladder_phi_") + loop_ladder->name).c_str());
+						module.get_builder().addName(phi.id, (String("ladder_phi_") + loop_ladder->name).c_str());
 
 						for (auto *pred : ladder->pred)
 						{
@@ -2297,7 +2297,7 @@ void CFGStructurizer::split_merge_blocks()
 							phi.id = ladder_pre->ir.terminator.conditional_id;
 							phi.type_id = module.get_builder().makeBoolType();
 							module.get_builder().addName(phi.id,
-							                             (std::string("ladder_phi_") + loop_ladder->name).c_str());
+							                             (String("ladder_phi_") + loop_ladder->name).c_str());
 							for (auto *pred : ladder_pre->pred)
 							{
 								IncomingValue incoming = {};

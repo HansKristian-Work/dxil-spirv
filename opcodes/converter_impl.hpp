@@ -284,7 +284,7 @@ struct Converter::Impl
 	struct StructTypeEntry
 	{
 		spv::Id id;
-		std::string name;
+		String name;
 		Vector<spv::Id> subtypes;
 	};
 	Vector<StructTypeEntry> cached_struct_types;

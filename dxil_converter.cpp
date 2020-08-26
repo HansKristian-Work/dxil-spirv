@@ -85,9 +85,15 @@ static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
 	    llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
 }
 
-static std::string get_string_metadata(const llvm::MDNode *node, unsigned index)
+static dxil_spv::String get_string_metadata(const llvm::MDNode *node, unsigned index)
 {
+#ifdef HAVE_LLVMBC
 	return llvm::cast<llvm::MDString>(node->getOperand(index))->getString();
+#else
+	std::string tmp = llvm::cast<llvm::MDString>(node->getOperand(index))->getString();
+	String str(tmp.begin(), tmp.end());
+	return str;
+#endif
 }
 
 static spv::Dim image_dimension_from_resource_kind(DXIL::ResourceKind kind)
@@ -1787,7 +1793,7 @@ bool Converter::Impl::emit_patch_variables()
 		if (semantic_index != 0)
 		{
 			variable_name += "_";
-			variable_name += std::to_string(semantic_index);
+			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
 		spv::Id variable_id = builder.createVariable(storage, type_id, variable_name.c_str());
@@ -1914,7 +1920,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		if (semantic_index != 0)
 		{
 			variable_name += "_";
-			variable_name += std::to_string(semantic_index);
+			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, variable_name.c_str());
@@ -2447,7 +2453,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (semantic_index != 0)
 		{
 			variable_name += "_";
-			variable_name += std::to_string(semantic_index);
+			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, variable_name.c_str());
@@ -3153,7 +3159,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 					bb_map[succ] = succ_meta.get();
 					auto *succ_node = pool.create_node();
 					bb_map[succ]->node = succ_node;
-					succ_node->name = std::to_string(++fake_label_id);
+					succ_node->name = dxil_spv::to_string(++fake_label_id);
 					metas.push_back(std::move(succ_meta));
 				}
 

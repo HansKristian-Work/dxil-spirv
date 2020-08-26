@@ -21,14 +21,13 @@
 #include "thread_local_allocator.hpp"
 #include "ir.hpp"
 #include <stdint.h>
-#include <string>
 
 namespace dxil_spv
 {
 struct CFGNode
 {
 public:
-	std::string name;
+	String name;
 	uint32_t id = 0;
 	void *userdata = nullptr;
 	IRBlock ir;

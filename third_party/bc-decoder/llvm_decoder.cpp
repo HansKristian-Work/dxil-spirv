@@ -62,8 +62,8 @@ struct BlockContext
 // the permanent block info defined by BLOCKINFO
 struct BlockInfo
 {
-  // std::string blockname;
-  // dxil_spirv::Vector<std::string> recordnames;
+  // dxil_spv::String blockname;
+  // dxil_spirv::Vector<dxil_spv::String> recordnames;
   dxil_spv::Vector<AbbrevDesc> abbrevs;
 };
 
@@ -329,9 +329,9 @@ const AbbrevDesc &BitcodeReader::getAbbrev(uint32_t blockId, uint32_t abbrevID)
   return blockStack.back()->abbrevs[abbrevID];
 }
 
-std::string BlockOrRecord::getString(size_t startOffset) const
+dxil_spv::String BlockOrRecord::getString(size_t startOffset) const
 {
-  std::string ret;
+  dxil_spv::String ret;
   ret.resize(ops.size() - startOffset);
   for(size_t i = 0; i < ret.size(); i++)
     ret[i] = (char)ops[i + startOffset];

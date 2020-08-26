@@ -22,7 +22,6 @@
 #include "ir.hpp"
 #include <memory>
 #include <stdint.h>
-#include <string>
 
 namespace dxil_spv
 {

@@ -19,7 +19,6 @@
 #pragma once
 
 #include "data_structures.hpp"
-#include <string>
 
 namespace LLVMBC
 {
@@ -82,14 +81,14 @@ public:
 	{
 		return MetadataKind::NamedNode;
 	}
-	NamedMDNode(Module *module, std::string name, Vector<MDNode *> operands);
-	const std::string &getName() const;
+	NamedMDNode(Module *module, String name, Vector<MDNode *> operands);
+	const String &getName() const;
 
 	MDNode *getOperand(unsigned index) const;
 	unsigned getNumOperands() const;
 
 private:
-	std::string name;
+	String name;
 	Vector<MDNode *> operands;
 };
 
@@ -114,11 +113,11 @@ public:
 	{
 		return MetadataKind::String;
 	}
-	MDString(Module *module, std::string str);
-	const std::string &getString() const;
+	MDString(Module *module, String str);
+	const String &getString() const;
 
 private:
-	std::string str;
+	String str;
 };
 
 } // namespace LLVMBC
