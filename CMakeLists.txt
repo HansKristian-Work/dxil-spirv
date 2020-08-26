@@ -35,6 +35,11 @@ elseif (MSVC)
     set(DXIL_SPV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4244 /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
 
+add_library(dxil-utils STATIC util/thread_local_allocator.hpp util/thread_local_allocator.cpp)
+target_include_directories(dxil-utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/util)
+target_compile_options(dxil-utils PRIVATE ${DXIL_SPV_CXX_FLAGS})
+set_target_properties(dxil-utils PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
 add_subdirectory(bc EXCLUDE_FROM_ALL)
 add_subdirectory(external EXCLUDE_FROM_ALL)
@@ -45,6 +50,7 @@ add_library(spirv-module STATIC
 set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC glslang-spirv-builder dxil-spirv-headers)
+target_link_libraries(spirv-module PRIVATE dxil-utils)
 target_compile_options(spirv-module PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
 add_library(dxil-converter STATIC
@@ -74,9 +80,8 @@ add_library(dxil-converter STATIC
         opcodes/opcodes_dxil_builtins.hpp opcodes/opcodes_dxil_builtins.cpp)
 set_target_properties(dxil-converter PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(dxil-converter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(dxil-converter PRIVATE dxil-debug)
 target_compile_options(dxil-converter PRIVATE ${DXIL_SPV_CXX_FLAGS})
-target_link_libraries(dxil-converter PRIVATE external::llvm)
+target_link_libraries(dxil-converter PRIVATE dxil-debug external::llvm dxil-utils)
 
 target_link_libraries(dxil-converter PUBLIC spirv-module)
 
@@ -85,7 +90,7 @@ target_include_directories(dxil-spirv-c-shared
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv>)
-target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug dxil-converter external::llvm)
+target_link_libraries(dxil-spirv-c-shared PRIVATE dxil-debug dxil-converter external::llvm dxil-utils)
 
 target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
@@ -101,7 +106,7 @@ target_include_directories(dxil-spirv-c-static
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv>)
-target_link_libraries(dxil-spirv-c-static PRIVATE dxil-debug dxil-converter external::llvm)
+target_link_libraries(dxil-spirv-c-static PRIVATE dxil-debug dxil-converter external::llvm dxil-utils)
 
 target_compile_options(dxil-spirv-c-static PRIVATE ${DXIL_SPV_CXX_FLAGS})
 set_target_properties(dxil-spirv-c-static PROPERTIES PUBLIC_HEADERS dxil_spirv_c.h)
@@ -124,7 +129,7 @@ if (DXIL_SPIRV_CLI)
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 0)
-set(DXIL_SPV_VERSION_MINOR 0)
+set(DXIL_SPV_VERSION_MINOR 1)
 set(DXIL_SPV_VERSION_PATCH 0)
 set(DXIL_SPV_VERSION ${DXIL_SPV_VERSION_MAJOR}.${DXIL_SPV_VERSION_MINOR}.${DXIL_SPV_VERSION_PATCH})
 set_target_properties(dxil-spirv-c-shared PROPERTIES

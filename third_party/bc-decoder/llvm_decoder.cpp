@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  ******************************************************************************/
 
+#include "thread_local_allocator.hpp"
 #include "llvm_decoder.h"
 
 namespace LLVMBC
@@ -46,23 +47,24 @@ struct AbbrevParam
 
 struct AbbrevDesc
 {
-  std::vector<AbbrevParam> params;
+  dxil_spv::Vector<AbbrevParam> params;
 };
 
 // the temporary context while pushing/popping blocks
 struct BlockContext
 {
+  DXIL_SPV_OVERRIDE_NEW_DELETE
   BlockContext(size_t size = 2) : abbrevSize(size) {}
   size_t abbrevSize;
-  std::vector<AbbrevDesc> abbrevs;
+  dxil_spv::Vector<AbbrevDesc> abbrevs;
 };
 
 // the permanent block info defined by BLOCKINFO
 struct BlockInfo
 {
-  // std::string blockname;
-  // std::vector<std::string> recordnames;
-  std::vector<AbbrevDesc> abbrevs;
+  // dxil_spv::String blockname;
+  // dxil_spirv::Vector<dxil_spv::String> recordnames;
+  dxil_spv::Vector<AbbrevDesc> abbrevs;
 };
 
 enum AbbrevId
@@ -327,9 +329,9 @@ const AbbrevDesc &BitcodeReader::getAbbrev(uint32_t blockId, uint32_t abbrevID)
   return blockStack.back()->abbrevs[abbrevID];
 }
 
-std::string BlockOrRecord::getString(size_t startOffset) const
+dxil_spv::String BlockOrRecord::getString(size_t startOffset) const
 {
-  std::string ret;
+  dxil_spv::String ret;
   ret.resize(ops.size() - startOffset);
   for(size_t i = 0; i < ret.size(); i++)
     ret[i] = (char)ops[i + startOffset];

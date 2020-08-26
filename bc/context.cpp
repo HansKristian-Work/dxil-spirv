@@ -30,7 +30,7 @@ LLVMContext::~LLVMContext()
 	for (size_t i = typed_allocations.size(); i; i--)
 		typed_allocations[i - 1]->run();
 	for (size_t i = raw_allocations.size(); i; i--)
-		::free(raw_allocations[i - 1]);
+		dxil_spv::free_in_thread(raw_allocations[i - 1]);
 }
 
 void *LLVMContext::allocate_from_chain(uintptr_t size, uintptr_t align)
@@ -56,7 +56,7 @@ void LLVMContext::allocate_new_chain(size_t size, size_t align)
 	if (min_size < 64 * 1024)
 		min_size = 64 * 1024;
 
-	void *ptr = ::malloc(min_size);
+	void *ptr = dxil_spv::allocate_in_thread(min_size);
 	if (ptr)
 	{
 		raw_allocations.push_back(ptr);

@@ -18,8 +18,7 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
+#include "data_structures.hpp"
 
 namespace LLVMBC
 {
@@ -62,7 +61,7 @@ public:
 	{
 		return MetadataKind::Node;
 	}
-	MDNode(Module *module, std::vector<MDOperand *> operands);
+	MDNode(Module *module, Vector<MDOperand *> operands);
 
 	MDOperand &getOperand(unsigned index) const;
 	unsigned getNumOperands() const;
@@ -71,7 +70,7 @@ public:
 	uint64_t get_tween_id() const;
 
 private:
-	std::vector<MDOperand *> operands;
+	Vector<MDOperand *> operands;
 	uint64_t tween = 0;
 };
 
@@ -82,15 +81,15 @@ public:
 	{
 		return MetadataKind::NamedNode;
 	}
-	NamedMDNode(Module *module, std::string name, std::vector<MDNode *> operands);
-	const std::string &getName() const;
+	NamedMDNode(Module *module, String name, Vector<MDNode *> operands);
+	const String &getName() const;
 
 	MDNode *getOperand(unsigned index) const;
 	unsigned getNumOperands() const;
 
 private:
-	std::string name;
-	std::vector<MDNode *> operands;
+	String name;
+	Vector<MDNode *> operands;
 };
 
 class ConstantAsMetadata : public MDOperand
@@ -114,11 +113,11 @@ public:
 	{
 		return MetadataKind::String;
 	}
-	MDString(Module *module, std::string str);
-	const std::string &getString() const;
+	MDString(Module *module, String str);
+	const String &getString() const;
 
 private:
-	std::string str;
+	String str;
 };
 
 } // namespace LLVMBC

@@ -35,8 +35,7 @@
 #ifndef GLSLANG_SPIRV_LOGGER_H
 #define GLSLANG_SPIRV_LOGGER_H
 
-#include <string>
-#include <vector>
+#include "thread_local_allocator.hpp"
 
 namespace spv {
 
@@ -47,26 +46,26 @@ public:
     SpvBuildLogger() {}
 
     // Registers a TBD functionality.
-    void tbdFunctionality(const std::string& f);
+    void tbdFunctionality(const dxil_spv::String& f);
     // Registers a missing functionality.
-    void missingFunctionality(const std::string& f);
+    void missingFunctionality(const dxil_spv::String& f);
 
     // Logs a warning.
-    void warning(const std::string& w) { warnings.push_back(w); }
+    void warning(const dxil_spv::String& w) { warnings.push_back(w); }
     // Logs an error.
-    void error(const std::string& e) { errors.push_back(e); }
+    void error(const dxil_spv::String& e) { errors.push_back(e); }
 
     // Returns all messages accumulated in the order of:
     // TBD functionalities, missing functionalities, warnings, errors.
-    std::string getAllMessages() const;
+    dxil_spv::String getAllMessages() const;
 
 private:
     SpvBuildLogger(const SpvBuildLogger&);
 
-    std::vector<std::string> tbdFeatures;
-    std::vector<std::string> missingFeatures;
-    std::vector<std::string> warnings;
-    std::vector<std::string> errors;
+    dxil_spv::Vector<dxil_spv::String> tbdFeatures;
+    dxil_spv::Vector<dxil_spv::String> missingFeatures;
+    dxil_spv::Vector<dxil_spv::String> warnings;
+    dxil_spv::Vector<dxil_spv::String> errors;
 };
 
 } // end spv namespace

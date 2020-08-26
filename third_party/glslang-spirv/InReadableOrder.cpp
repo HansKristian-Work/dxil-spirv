@@ -51,7 +51,7 @@
 #include "spvIR.h"
 
 #include <cassert>
-#include <unordered_set>
+#include "thread_local_allocator.hpp"
 
 using spv::Block;
 using spv::Id;
@@ -103,7 +103,7 @@ public:
 private:
     std::function<void(Block*)> callback_;
     // Whether a block has already been visited or is being delayed.
-    std::unordered_set<Block *> visited_, delayed_;
+    dxil_spv::UnorderedSet<Block *> visited_, delayed_;
 };
 }
 

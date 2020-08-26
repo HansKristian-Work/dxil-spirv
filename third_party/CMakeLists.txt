@@ -22,6 +22,7 @@ target_compile_definitions(glslang-spirv-builder PUBLIC AMD_EXTENSIONS)
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
     target_compile_options(glslang-spirv-builder PRIVATE -fvisibility=hidden)
 endif()
+target_link_libraries(glslang-spirv-builder PRIVATE dxil-utils)
 
 target_include_directories(glslang-spirv-builder PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/glslang-spirv)
@@ -35,3 +36,4 @@ set_target_properties(bc-decoder PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
     target_compile_options(bc-decoder PRIVATE -fvisibility=hidden)
 endif()
+target_link_libraries(bc-decoder PRIVATE dxil-utils)

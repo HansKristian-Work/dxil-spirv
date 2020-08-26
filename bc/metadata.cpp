@@ -45,7 +45,7 @@ MetadataKind MDOperand::get_metadata_kind() const
 	return kind;
 }
 
-MDNode::MDNode(Module *module, std::vector<MDOperand *> operands_)
+MDNode::MDNode(Module *module, Vector<MDOperand *> operands_)
     : MDOperand(module, MetadataKind::Node)
     , operands(std::move(operands_))
 {
@@ -72,7 +72,7 @@ void MDNode::set_tween_id(uint64_t id)
 	tween = id;
 }
 
-NamedMDNode::NamedMDNode(Module *module, std::string name_, std::vector<MDNode *> operands_)
+NamedMDNode::NamedMDNode(Module *module, String name_, Vector<MDNode *> operands_)
     : MDOperand(module, MetadataKind::NamedNode)
     , name(std::move(name_))
     , operands(std::move(operands_))
@@ -90,7 +90,7 @@ MDNode *NamedMDNode::getOperand(unsigned index) const
 	return operands[index];
 }
 
-const std::string &NamedMDNode::getName() const
+const String &NamedMDNode::getName() const
 {
 	return name;
 }
@@ -106,13 +106,13 @@ Constant *ConstantAsMetadata::getValue() const
 	return value;
 }
 
-MDString::MDString(LLVMBC::Module *module, std::string str_)
+MDString::MDString(LLVMBC::Module *module, String str_)
     : MDOperand(module, MetadataKind::String)
     , str(std::move(str_))
 {
 }
 
-const std::string &MDString::getString() const
+const String &MDString::getString() const
 {
 	return str;
 }

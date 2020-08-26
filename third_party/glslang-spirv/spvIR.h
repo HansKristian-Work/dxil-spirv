@@ -47,13 +47,13 @@
 #define spvIR_H
 
 #include "spirv.hpp"
+#include "thread_local_allocator.hpp"
 
 #include <algorithm>
 #include <cassert>
 #include <functional>
 #include <iostream>
 #include <memory>
-#include <vector>
 
 namespace spv {
 
@@ -129,7 +129,7 @@ public:
     unsigned int getImmediateOperand(int op) const { return operands[op]; }
 
     // Write out the binary form.
-    void dump(std::vector<unsigned int>& out) const
+    void dump(dxil_spv::Vector<unsigned int>& out) const
     {
         // Compute the wordCount
         unsigned int wordCount = 1;
@@ -151,12 +151,14 @@ public:
             out.push_back(operands[op]);
     }
 
+    DXIL_SPV_OVERRIDE_NEW_DELETE
+
 protected:
     Instruction(const Instruction&);
     Id resultId;
     Id typeId;
     Op opCode;
-    std::vector<Id> operands;
+    dxil_spv::Vector<Id> operands;
     Block* block;
 };
 
@@ -177,9 +179,9 @@ public:
     void addInstruction(std::unique_ptr<Instruction> inst);
     void addPredecessor(Block* pred) { predecessors.push_back(pred); pred->successors.push_back(this);}
     void addLocalVariable(std::unique_ptr<Instruction> inst) { localVariables.push_back(std::move(inst)); }
-    const std::vector<Block*>& getPredecessors() const { return predecessors; }
-    const std::vector<Block*>& getSuccessors() const { return successors; }
-    const std::vector<std::unique_ptr<Instruction> >& getInstructions() const {
+    const dxil_spv::Vector<Block*>& getPredecessors() const { return predecessors; }
+    const dxil_spv::Vector<Block*>& getSuccessors() const { return successors; }
+    const dxil_spv::Vector<std::unique_ptr<Instruction> >& getInstructions() const {
         return instructions;
     }
     void setUnreachable() { unreachable = true; }
@@ -214,7 +216,7 @@ public:
         }
     }
 
-    void dump(std::vector<unsigned int>& out) const
+    void dump(dxil_spv::Vector<unsigned int>& out) const
     {
         instructions[0]->dump(out);
         for (int i = 0; i < (int)localVariables.size(); ++i)
@@ -223,6 +225,8 @@ public:
             instructions[i]->dump(out);
     }
 
+    DXIL_SPV_OVERRIDE_NEW_DELETE
+
 protected:
     Block(const Block&);
     Block& operator=(Block&);
@@ -230,9 +234,9 @@ protected:
     // To enforce keeping parent and ownership in sync:
     friend Function;
 
-    std::vector<std::unique_ptr<Instruction> > instructions;
-    std::vector<Block*> predecessors, successors;
-    std::vector<std::unique_ptr<Instruction> > localVariables;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > instructions;
+    dxil_spv::Vector<Block*> predecessors, successors;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > localVariables;
     Function& parent;
 
     // track whether this block is known to be uncreachable (not necessarily
@@ -276,14 +280,14 @@ public:
     Module& getParent() const { return parent; }
     Block* getEntryBlock() const { return blocks.front(); }
     Block* getLastBlock() const { return blocks.back(); }
-    const std::vector<Block*>& getBlocks() const { return blocks; }
+    const dxil_spv::Vector<Block*>& getBlocks() const { return blocks; }
     void addLocalVariable(std::unique_ptr<Instruction> inst);
     Id getReturnType() const { return functionInstruction.getTypeId(); }
 
     void setImplicitThis() { implicitThis = true; }
     bool hasImplicitThis() const { return implicitThis; }
 
-    void dump(std::vector<unsigned int>& out) const
+    void dump(dxil_spv::Vector<unsigned int>& out) const
     {
         // OpFunction
         functionInstruction.dump(out);
@@ -298,14 +302,16 @@ public:
         end.dump(out);
     }
 
+    DXIL_SPV_OVERRIDE_NEW_DELETE
+
 protected:
     Function(const Function&);
     Function& operator=(Function&);
 
     Module& parent;
     Instruction functionInstruction;
-    std::vector<Instruction*> parameterInstructions;
-    std::vector<Block*> blocks;
+    dxil_spv::Vector<Instruction*> parameterInstructions;
+    dxil_spv::Vector<Block*> blocks;
     bool implicitThis;  // true if this is a member function expecting to be passed a 'this' as the first argument
 };
 
@@ -333,7 +339,7 @@ public:
     }
 
     Instruction* getInstruction(Id id) const { return idToInstruction[id]; }
-    const std::vector<Function*>& getFunctions() const { return functions; }
+    const dxil_spv::Vector<Function*>& getFunctions() const { return functions; }
     spv::Id getTypeId(Id resultId) const { return idToInstruction[resultId]->getTypeId(); }
     StorageClass getStorageClass(Id typeId) const
     {
@@ -341,18 +347,20 @@ public:
         return (StorageClass)idToInstruction[typeId]->getImmediateOperand(0);
     }
 
-    void dump(std::vector<unsigned int>& out) const
+    void dump(dxil_spv::Vector<unsigned int>& out) const
     {
         for (int f = 0; f < (int)functions.size(); ++f)
             functions[f]->dump(out);
     }
 
+    DXIL_SPV_OVERRIDE_NEW_DELETE
+
 protected:
     Module(const Module&);
-    std::vector<Function*> functions;
+    dxil_spv::Vector<Function*> functions;
 
     // map from result id to instruction having that result id
-    std::vector<Instruction*> idToInstruction;
+    dxil_spv::Vector<Instruction*> idToInstruction;
 
     // map from a result id to its type id
 };

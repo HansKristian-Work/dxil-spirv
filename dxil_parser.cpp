@@ -24,7 +24,7 @@
 
 namespace dxil_spv
 {
-std::vector<uint8_t> &DXILContainerParser::get_blob()
+Vector<uint8_t> &DXILContainerParser::get_blob()
 {
 	return dxil_blob;
 }
@@ -50,7 +50,7 @@ bool DXILContainerParser::parse_dxil(MemoryStream &stream)
 	return true;
 }
 
-bool DXILContainerParser::parse_iosg1(MemoryStream &stream, std::vector<DXIL::IOElement> &elements)
+bool DXILContainerParser::parse_iosg1(MemoryStream &stream, Vector<DXIL::IOElement> &elements)
 {
 	uint32_t element_count;
 	if (!stream.read(element_count))
@@ -107,7 +107,7 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 	if (container_header.container_size_in_bytes > size)
 		return false;
 
-	std::vector<uint32_t> parts(container_header.part_count);
+	Vector<uint32_t> parts(container_header.part_count);
 	for (uint32_t i = 0; i < container_header.part_count; i++)
 	{
 		if (!stream.read(parts[i]))

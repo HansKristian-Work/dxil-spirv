@@ -40,20 +40,20 @@
 
 namespace spv {
 
-void SpvBuildLogger::tbdFunctionality(const std::string& f)
+void SpvBuildLogger::tbdFunctionality(const dxil_spv::String& f)
 {
     if (std::find(std::begin(tbdFeatures), std::end(tbdFeatures), f) == std::end(tbdFeatures))
         tbdFeatures.push_back(f);
 }
 
-void SpvBuildLogger::missingFunctionality(const std::string& f)
+void SpvBuildLogger::missingFunctionality(const dxil_spv::String& f)
 {
     if (std::find(std::begin(missingFeatures), std::end(missingFeatures), f) == std::end(missingFeatures))
         missingFeatures.push_back(f);
 }
 
-std::string SpvBuildLogger::getAllMessages() const {
-    std::ostringstream messages;
+dxil_spv::String SpvBuildLogger::getAllMessages() const {
+    dxil_spv::StringStream messages;
     for (auto it = tbdFeatures.cbegin(); it != tbdFeatures.cend(); ++it)
         messages << "TBD functionality: " << *it << "\n";
     for (auto it = missingFeatures.cbegin(); it != missingFeatures.cend(); ++it)

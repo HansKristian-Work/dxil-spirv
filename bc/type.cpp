@@ -163,7 +163,7 @@ Type *Type::getPointerElementType() const
 	return cast<PointerType>(this)->getElementType();
 }
 
-StructType::StructType(LLVMContext &context, std::vector<Type *> member_types_)
+StructType::StructType(LLVMContext &context, Vector<Type *> member_types_)
     : Type(context, TypeID::StructTyID)
     , member_types(std::move(member_types_))
 {
@@ -180,7 +180,7 @@ Type *StructType::getElementType(unsigned N) const
 	return member_types[N];
 }
 
-StructType *StructType::get(std::vector<Type *> member_types)
+StructType *StructType::get(Vector<Type *> member_types)
 {
 	assert(!member_types.empty());
 	auto &context = member_types.front()->getContext();
@@ -214,7 +214,7 @@ StructType *StructType::get(std::vector<Type *> member_types)
 	return type;
 }
 
-FunctionType::FunctionType(LLVMContext &context, Type *return_type_, std::vector<Type *> argument_types_)
+FunctionType::FunctionType(LLVMContext &context, Type *return_type_, Vector<Type *> argument_types_)
     : Type(context, TypeID::FunctionTyID)
     , return_type(return_type_)
     , argument_types(std::move(argument_types_))

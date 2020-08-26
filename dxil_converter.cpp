@@ -85,9 +85,15 @@ static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
 	    llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
 }
 
-static std::string get_string_metadata(const llvm::MDNode *node, unsigned index)
+static dxil_spv::String get_string_metadata(const llvm::MDNode *node, unsigned index)
 {
+#ifdef HAVE_LLVMBC
 	return llvm::cast<llvm::MDString>(node->getOperand(index))->getString();
+#else
+	std::string tmp = llvm::cast<llvm::MDString>(node->getOperand(index))->getString();
+	String str(tmp.begin(), tmp.end());
+	return str;
+#endif
 }
 
 static spv::Dim image_dimension_from_resource_kind(DXIL::ResourceKind kind)
@@ -1103,7 +1109,7 @@ void Converter::Impl::emit_root_constants(unsigned num_words)
 	auto &builder = spirv_module.get_builder();
 
 	// Root constants cannot be dynamically indexed in DXIL, so emit them as members.
-	std::vector<spv::Id> members(num_words);
+	Vector<spv::Id> members(num_words);
 	for (auto &memb : members)
 		memb = builder.makeUintType(32);
 
@@ -1148,8 +1154,8 @@ bool Converter::Impl::emit_shader_record_buffer()
 	auto &builder = spirv_module.get_builder();
 
 	spv::Id type_id;
-	std::vector<spv::Id> member_types;
-	std::vector<uint32_t> offsets;
+	Vector<spv::Id> member_types;
+	Vector<uint32_t> offsets;
 	member_types.reserve(local_root_signature.size());
 	offsets.reserve(local_root_signature.size());
 	shader_record_buffer_types.reserve(local_root_signature.size());
@@ -1402,7 +1408,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 	case llvm::Type::TypeID::VectorTyID:
 	case llvm::Type::TypeID::ArrayTyID:
 	{
-		std::vector<spv::Id> constituents;
+		Vector<spv::Id> constituents;
 		spv::Id type_id = get_type_id(constant->getType());
 
 		if (llvm::isa<llvm::ConstantAggregateZero>(constant))
@@ -1608,7 +1614,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	case llvm::Type::TypeID::StructTyID:
 	{
 		auto *struct_type = llvm::cast<llvm::StructType>(type);
-		std::vector<spv::Id> member_types;
+		Vector<spv::Id> member_types;
 		member_types.reserve(struct_type->getStructNumElements());
 		for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
 			member_types.push_back(get_type_id(struct_type->getStructElementType(i)));
@@ -1626,7 +1632,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	}
 }
 
-spv::Id Converter::Impl::get_struct_type(const std::vector<spv::Id> &type_ids, const char *name)
+spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, const char *name)
 {
 	auto itr = std::find_if(cached_struct_types.begin(), cached_struct_types.end(), [&](const StructTypeEntry &entry) -> bool {
 		if (type_ids.size() != entry.subtypes.size())
@@ -1787,7 +1793,7 @@ bool Converter::Impl::emit_patch_variables()
 		if (semantic_index != 0)
 		{
 			variable_name += "_";
-			variable_name += std::to_string(semantic_index);
+			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
 		spv::Id variable_id = builder.createVariable(storage, type_id, variable_name.c_str());
@@ -1914,7 +1920,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		if (semantic_index != 0)
 		{
 			variable_name += "_";
-			variable_name += std::to_string(semantic_index);
+			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, variable_name.c_str());
@@ -2447,7 +2453,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (semantic_index != 0)
 		{
 			variable_name += "_";
-			variable_name += std::to_string(semantic_index);
+			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
 		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, variable_name.c_str());
@@ -3045,7 +3051,7 @@ bool Converter::Impl::emit_execution_modes()
 }
 
 CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &pool,
-                                          std::vector<ConvertedFunction::LeafFunction> &leaves)
+                                          Vector<ConvertedFunction::LeafFunction> &leaves)
 {
 	// Just make sure there is an entry block already created.
 	spv::Block *hull_entry, *patch_entry;
@@ -3129,10 +3135,10 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	entry_node->name += ".entry";
 	metas.push_back(std::move(entry_meta));
 
-	std::vector<llvm::BasicBlock *> to_process;
-	std::vector<llvm::BasicBlock *> processing;
+	Vector<llvm::BasicBlock *> to_process;
+	Vector<llvm::BasicBlock *> processing;
 	to_process.push_back(entry);
-	std::vector<llvm::BasicBlock *> visit_order;
+	Vector<llvm::BasicBlock *> visit_order;
 
 	unsigned fake_label_id = 0;
 
@@ -3153,7 +3159,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 					bb_map[succ] = succ_meta.get();
 					auto *succ_node = pool.create_node();
 					bb_map[succ]->node = succ_node;
-					succ_node->name = std::to_string(++fake_label_id);
+					succ_node->name = dxil_spv::to_string(++fake_label_id);
 					metas.push_back(std::move(succ_meta));
 				}
 

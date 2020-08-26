@@ -42,7 +42,7 @@ bool MemoryStream::read(void *buffer, size_t size)
 	return true;
 }
 
-bool MemoryStream::read_string(std::string &str)
+bool MemoryStream::read_string(String &str)
 {
 	str.clear();
 

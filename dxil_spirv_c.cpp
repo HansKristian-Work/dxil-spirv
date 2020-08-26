@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include "thread_local_allocator.hpp"
 #include "dxil_spirv_c.h"
 #include "dxil_converter.hpp"
 #include "dxil_parser.hpp"
@@ -36,8 +37,12 @@ void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch)
 struct dxil_spv_parsed_blob_s
 {
 	LLVMBCParser bc;
+#ifdef HAVE_LLVMBC
+	String disasm;
+#else
 	std::string disasm;
-	std::vector<uint8_t> dxil_blob;
+#endif
+	Vector<uint8_t> dxil_blob;
 };
 
 struct Remapper : ResourceRemappingInterface
@@ -256,7 +261,7 @@ struct dxil_spv_converter_s
 	}
 	SPIRVModule module;
 	Converter converter;
-	std::vector<uint32_t> spirv;
+	Vector<uint32_t> spirv;
 	Remapper remapper;
 };
 
@@ -305,7 +310,7 @@ void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob)
 {
 	auto &module = blob->bc.get_module();
 #ifdef HAVE_LLVMBC
-	std::string str;
+	String str;
 	if (llvm::disassemble(module, str))
 		fprintf(stderr, "%s\n", str.c_str());
 	else
@@ -600,4 +605,19 @@ void dxil_spv_converter_add_local_root_descriptor_table(dxil_spv_converter conve
 	converter->converter.add_local_root_descriptor_table(ResourceClass(resource_class),
 	                                                     register_space, register_index,
 	                                                     num_descriptors_in_range, offset_in_heap);
+}
+
+void dxil_spv_begin_thread_allocator_context(void)
+{
+	begin_thread_allocator_context();
+}
+
+void dxil_spv_end_thread_allocator_context(void)
+{
+	end_thread_allocator_context();
+}
+
+void dxil_spv_reset_thread_allocator_context(void)
+{
+	reset_thread_allocator_context();
 }

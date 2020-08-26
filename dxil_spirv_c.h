@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 0
-#define DXIL_SPV_API_VERSION_MINOR 0
+#define DXIL_SPV_API_VERSION_MINOR 1
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #if !defined(DXIL_SPV_PUBLIC_API)
@@ -392,6 +392,14 @@ DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_supports_option(dxil_spv_op
  * Baseline assumed feature set is Vulkan 1.1 / SPIR-V 1.3. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter,
                                                                   const dxil_spv_option_base *option);
+
+/* Use an optimized allocation scheme.
+ * Call begin before allocating any dxil_spv objects,
+ * and end after all dxil_spv created by this thread is destroyed.
+ * Reset is an optimized variant of end() -> begin(). Useful if compiling multiple shaders one after another. */
+DXIL_SPV_PUBLIC_API void dxil_spv_begin_thread_allocator_context(void);
+DXIL_SPV_PUBLIC_API void dxil_spv_end_thread_allocator_context(void);
+DXIL_SPV_PUBLIC_API void dxil_spv_reset_thread_allocator_context(void);
 
 /* Converter API */
 

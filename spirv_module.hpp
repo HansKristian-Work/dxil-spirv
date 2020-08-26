@@ -18,10 +18,10 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include "cfg_structurizer.hpp"
 #include "ir.hpp"
 #include <memory>
-#include <vector>
 
 namespace spv
 {
@@ -40,7 +40,7 @@ class SPIRVModule
 public:
 	SPIRVModule();
 	~SPIRVModule();
-	bool finalize_spirv(std::vector<uint32_t> &spirv);
+	bool finalize_spirv(Vector<uint32_t> &spirv);
 
 	uint32_t allocate_id();
 	uint32_t allocate_ids(uint32_t count);

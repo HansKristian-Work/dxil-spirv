@@ -50,11 +50,11 @@
 #include "spvIR.h"
 
 #include <algorithm>
-#include <map>
 #include <memory>
-#include <set>
 #include <sstream>
 #include <stack>
+
+#include "thread_local_allocator.hpp"
 
 namespace spv {
 
@@ -70,16 +70,16 @@ public:
         source = lang;
         sourceVersion = version;
     }
-    void setSourceFile(const std::string& file)
+    void setSourceFile(const dxil_spv::String& file)
     {
         Instruction* fileString = new Instruction(getUniqueId(), NoType, OpString);
         fileString->addStringOperand(file.c_str());
         sourceFileStringId = fileString->getResultId();
         strings.push_back(std::unique_ptr<Instruction>(fileString));
     }
-    void setSourceText(const std::string& text) { sourceText = text; }
+    void setSourceText(const dxil_spv::String& text) { sourceText = text; }
     void addSourceExtension(const char* ext) { sourceExtensions.push_back(ext); }
-    void addModuleProcessed(const std::string& p) { moduleProcesses.push_back(p.c_str()); }
+    void addModuleProcessed(const dxil_spv::String& p) { moduleProcesses.push_back(p.c_str()); }
     void setEmitOpLines() { emitOpLines = true; }
     void addExtension(const char* ext) { extensions.insert(ext); }
     Id import(const char*);
@@ -116,13 +116,13 @@ public:
     Id makeIntType(int width) { return makeIntegerType(width, true); }
     Id makeUintType(int width) { return makeIntegerType(width, false); }
     Id makeFloatType(int width);
-    Id makeStructType(const std::vector<Id>& members, const char*);
+    Id makeStructType(const dxil_spv::Vector<Id>& members, const char*);
     Id makeStructResultType(Id type0, Id type1);
     Id makeVectorType(Id component, int size);
     Id makeMatrixType(Id component, int cols, int rows);
     Id makeArrayType(Id element, Id sizeId, int stride);  // 0 stride means no stride decoration
     Id makeRuntimeArray(Id element);
-    Id makeFunctionType(Id returnType, const std::vector<Id>& paramTypes);
+    Id makeFunctionType(Id returnType, const dxil_spv::Vector<Id>& paramTypes);
     Id makeImageType(Id sampledType, Dim, bool depth, bool arrayed, bool ms, unsigned sampled, ImageFormat format);
     Id makeAccelerationStructureType();
     Id makeSamplerType();
@@ -246,7 +246,7 @@ public:
     Id makeNullConstant(Id type);
 
     // Turn the array of constants into a proper spv constant of the requested type.
-    Id makeCompositeConstant(Id type, const std::vector<Id>& comps, bool specConst = false);
+    Id makeCompositeConstant(Id type, const dxil_spv::Vector<Id>& comps, bool specConst = false);
 
     // Methods for adding information outside the CFG.
     Instruction* addEntryPoint(ExecutionModel, Function*, const char* name);
@@ -267,8 +267,8 @@ public:
     // Make a shader-style function, and create its entry block if entry is non-zero.
     // Return the function, pass back the entry.
     // The returned pointer is only valid for the lifetime of this builder.
-    Function* makeFunctionEntry(Decoration precision, Id returnType, const char* name, const std::vector<Id>& paramTypes,
-                                const std::vector<std::vector<Decoration>>& precisions, Block **entry = 0);
+    Function* makeFunctionEntry(Decoration precision, Id returnType, const char* name, const dxil_spv::Vector<Id>& paramTypes,
+                                const dxil_spv::Vector<dxil_spv::Vector<Decoration>>& precisions, Block **entry = 0);
 
     // Create a return. An 'implicit' return is one not appearing in the source
     // code.  In the case of an implicit return, no post-return block is inserted.
@@ -294,41 +294,41 @@ public:
     Id createLoad(Id lValue);
 
     // Create an OpAccessChain instruction
-    Id createAccessChain(StorageClass, Id base, const std::vector<Id>& offsets);
+    Id createAccessChain(StorageClass, Id base, const dxil_spv::Vector<Id>& offsets);
 
     // Create an OpArrayLength instruction
     Id createArrayLength(Id base, unsigned int member);
 
     // Create an OpCompositeExtract instruction
     Id createCompositeExtract(Id composite, Id typeId, unsigned index);
-    Id createCompositeExtract(Id composite, Id typeId, const std::vector<unsigned>& indexes);
+    Id createCompositeExtract(Id composite, Id typeId, const dxil_spv::Vector<unsigned>& indexes);
     Id createCompositeInsert(Id object, Id composite, Id typeId, unsigned index);
-    Id createCompositeInsert(Id object, Id composite, Id typeId, const std::vector<unsigned>& indexes);
+    Id createCompositeInsert(Id object, Id composite, Id typeId, const dxil_spv::Vector<unsigned>& indexes);
 
     Id createVectorExtractDynamic(Id vector, Id typeId, Id componentIndex);
     Id createVectorInsertDynamic(Id vector, Id typeId, Id component, Id componentIndex);
 
     void createNoResultOp(Op);
     void createNoResultOp(Op, Id operand);
-    void createNoResultOp(Op, const std::vector<Id>& operands);
+    void createNoResultOp(Op, const dxil_spv::Vector<Id>& operands);
     void createControlBarrier(Scope execution, Scope memory, MemorySemanticsMask);
     void createMemoryBarrier(unsigned executionScope, unsigned memorySemantics);
     Id createUnaryOp(Op, Id typeId, Id operand);
     Id createBinOp(Op, Id typeId, Id operand1, Id operand2);
     Id createTriOp(Op, Id typeId, Id operand1, Id operand2, Id operand3);
-    Id createOp(Op, Id typeId, const std::vector<Id>& operands);
-    Id createFunctionCall(spv::Function*, const std::vector<spv::Id>&);
-    Id createSpecConstantOp(Op, Id typeId, const std::vector<spv::Id>& operands, const std::vector<unsigned>& literals);
+    Id createOp(Op, Id typeId, const dxil_spv::Vector<Id>& operands);
+    Id createFunctionCall(spv::Function*, const dxil_spv::Vector<spv::Id>&);
+    Id createSpecConstantOp(Op, Id typeId, const dxil_spv::Vector<spv::Id>& operands, const dxil_spv::Vector<unsigned>& literals);
 
     // Take an rvalue (source) and a set of channels to extract from it to
     // make a new rvalue, which is returned.
-    Id createRvalueSwizzle(Decoration precision, Id typeId, Id source, const std::vector<unsigned>& channels);
+    Id createRvalueSwizzle(Decoration precision, Id typeId, Id source, const dxil_spv::Vector<unsigned>& channels);
 
     // Take a copy of an lvalue (target) and a source of components, and set the
     // source components into the lvalue where the 'channels' say to put them.
     // An updated version of the target is returned.
     // (No true lvalue or stores are used.)
-    Id createLvalueSwizzle(Id typeId, Id target, Id source, const std::vector<unsigned>& channels);
+    Id createLvalueSwizzle(Id typeId, Id target, Id source, const dxil_spv::Vector<unsigned>& channels);
 
     // If both the id and precision are valid, the id
     // gets tagged with the requested precision.
@@ -361,7 +361,7 @@ public:
     Id smearScalar(Decoration precision, Id scalarVal, Id vectorType);
 
     // Create a call to a built-in function.
-    Id createBuiltinCall(Id resultType, Id builtins, int entryPoint, const std::vector<Id>& args);
+    Id createBuiltinCall(Id resultType, Id builtins, int entryPoint, const dxil_spv::Vector<Id>& args);
 
     // List of parameters used to create a texture operation
     struct TextureParameters {
@@ -396,13 +396,13 @@ public:
     Id createCompositeCompare(Decoration precision, Id, Id, bool /* true if for equal, false if for not-equal */);
 
     // OpCompositeConstruct
-    Id createCompositeConstruct(Id typeId, const std::vector<Id>& constituents);
+    Id createCompositeConstruct(Id typeId, const dxil_spv::Vector<Id>& constituents);
 
     // vector or scalar constructor
-    Id createConstructor(Decoration precision, const std::vector<Id>& sources, Id resultTypeId);
+    Id createConstructor(Decoration precision, const dxil_spv::Vector<Id>& sources, Id resultTypeId);
 
     // matrix constructor
-    Id createMatrixConstructor(Decoration precision, const std::vector<Id>& sources, Id constructee);
+    Id createMatrixConstructor(Decoration precision, const dxil_spv::Vector<Id>& sources, Id constructee);
 
     // Helper to use for building nested control flow with if-then-else.
     class If {
@@ -439,17 +439,17 @@ public:
     // Returns the right set of basic blocks to start each code segment with, so that the caller's
     // recursion stack can hold the memory for it.
     //
-    void makeSwitch(Id condition, unsigned int control, int numSegments, const std::vector<int>& caseValues,
-                    const std::vector<int>& valueToSegment, int defaultSegment, std::vector<Block*>& segmentBB); // return argument
+    void makeSwitch(Id condition, unsigned int control, int numSegments, const dxil_spv::Vector<int>& caseValues,
+                    const dxil_spv::Vector<int>& valueToSegment, int defaultSegment, dxil_spv::Vector<Block*>& segmentBB); // return argument
 
     // Add a branch to the innermost switch's merge block.
     void addSwitchBreak();
 
     // Move to the next code segment, passing in the return argument in makeSwitch()
-    void nextSwitchSegment(std::vector<Block*>& segmentBB, int segment);
+    void nextSwitchSegment(dxil_spv::Vector<Block*>& segmentBB, int segment);
 
     // Finish off the innermost switch.
-    void endSwitch(std::vector<Block*>& segmentBB);
+    void endSwitch(dxil_spv::Vector<Block*>& segmentBB);
 
     struct LoopBlocks {
         LoopBlocks(Block& head, Block& body, Block& merge, Block& continue_target) :
@@ -511,9 +511,9 @@ public:
 
     struct AccessChain {
         Id base;                       // for l-values, pointer to the base object, for r-values, the base object
-        std::vector<Id> indexChain;
+        dxil_spv::Vector<Id> indexChain;
         Id instr;                      // cache the instruction that generates this access chain
-        std::vector<unsigned> swizzle; // each std::vector element selects the next GLSL component number
+        dxil_spv::Vector<unsigned> swizzle; // each dxil_spv::Vector element selects the next GLSL component number
         Id component;                  // a dynamic component index, can coexist with a swizzle, done after the swizzle, NoResult if not present
         Id preSwizzleBaseType;         // dereferenced type, before swizzle or component is applied; NoType unless a swizzle or component is present
         bool isRValue;                 // true if 'base' is an r-value, otherwise, base is an l-value
@@ -552,7 +552,7 @@ public:
     }
 
     // push new swizzle onto the end of any existing swizzle, merging into a single swizzle
-    void accessChainPushSwizzle(std::vector<unsigned>& swizzle, Id preSwizzleBaseType);
+    void accessChainPushSwizzle(dxil_spv::Vector<unsigned>& swizzle, Id preSwizzleBaseType);
 
     // push a variable component selection onto the access chain; supporting only one, so unsided
     void accessChainPushComponent(Id component, Id preSwizzleBaseType)
@@ -578,7 +578,7 @@ public:
     // Remove OpDecorate instructions whose operands are defined in unreachable
     // blocks.
     void eliminateDeadDecorations();
-    void dump(std::vector<unsigned int>&) const;
+    void dump(dxil_spv::Vector<unsigned int>&) const;
 
     void createBranch(Block* block);
     void createConditionalBranch(Id condition, Block* thenBlock, Block* elseBlock);
@@ -599,27 +599,27 @@ protected:
     Id makeInt64Constant(Id typeId, unsigned long long value, bool specConstant);
     Id findScalarConstant(Op typeClass, Op opcode, Id typeId, unsigned value) const;
     Id findScalarConstant(Op typeClass, Op opcode, Id typeId, unsigned v1, unsigned v2) const;
-    Id findCompositeConstant(Op typeClass, const std::vector<Id>& comps) const;
+    Id findCompositeConstant(Op typeClass, const dxil_spv::Vector<Id>& comps) const;
     Id collapseAccessChain();
     void transferAccessChainSwizzle(bool dynamic);
     void simplifyAccessChainSwizzle();
     void createAndSetNoPredecessorBlock(const char*);
-    void dumpSourceInstructions(std::vector<unsigned int>&) const;
-    void dumpInstructions(std::vector<unsigned int>&, const std::vector<std::unique_ptr<Instruction> >&) const;
-    void dumpModuleProcesses(std::vector<unsigned int>&) const;
+    void dumpSourceInstructions(dxil_spv::Vector<unsigned int>&) const;
+    void dumpInstructions(dxil_spv::Vector<unsigned int>&, const dxil_spv::Vector<std::unique_ptr<Instruction> >&) const;
+    void dumpModuleProcesses(dxil_spv::Vector<unsigned int>&) const;
 
     SourceLanguage source;
     int sourceVersion;
     spv::Id sourceFileStringId;
-    std::string sourceText;
+    dxil_spv::String sourceText;
     int currentLine;
     bool emitOpLines;
-    std::set<std::string> extensions;
-    std::vector<const char*> sourceExtensions;
-    std::vector<const char*> moduleProcesses;
+    dxil_spv::Set<dxil_spv::String> extensions;
+    dxil_spv::Vector<const char*> sourceExtensions;
+    dxil_spv::Vector<const char*> moduleProcesses;
     AddressingModel addressModel;
     MemoryModel memoryModel;
-    std::set<spv::Capability> capabilities;
+    dxil_spv::Set<spv::Capability> capabilities;
     int builderNumber;
     Module module;
     Block* buildPoint;
@@ -629,20 +629,20 @@ protected:
     AccessChain accessChain;
 
     // special blocks of instructions for output
-    std::vector<std::unique_ptr<Instruction> > strings;
-    std::vector<std::unique_ptr<Instruction> > imports;
-    std::vector<std::unique_ptr<Instruction> > entryPoints;
-    std::vector<std::unique_ptr<Instruction> > executionModes;
-    std::vector<std::unique_ptr<Instruction> > names;
-    std::vector<std::unique_ptr<Instruction> > lines;
-    std::vector<std::unique_ptr<Instruction> > decorations;
-    std::vector<std::unique_ptr<Instruction> > constantsTypesGlobals;
-    std::vector<std::unique_ptr<Instruction> > externals;
-    std::vector<std::unique_ptr<Function> > functions;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > strings;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > imports;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > entryPoints;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > executionModes;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > names;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > lines;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > decorations;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > constantsTypesGlobals;
+    dxil_spv::Vector<std::unique_ptr<Instruction> > externals;
+    dxil_spv::Vector<std::unique_ptr<Function> > functions;
 
      // not output, internally used for quick & dirty canonical (unique) creation
-    std::vector<Instruction*> groupedConstants[OpConstant];  // all types appear before OpConstant
-    std::vector<Instruction*> groupedTypes[OpConstant];
+    dxil_spv::Vector<Instruction*> groupedConstants[OpConstant];  // all types appear before OpConstant
+    dxil_spv::Vector<Instruction*> groupedTypes[OpConstant];
     Instruction *acceleration_structure_type = nullptr;
 
     // stack of switches

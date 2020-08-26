@@ -18,11 +18,11 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include "spirv.hpp"
 #include <assert.h>
 #include <initializer_list>
 #include <stdint.h>
-#include <vector>
 
 // A simple IR representation which allows the CFGStructurizer to do some simple rewrites of blocks,
 // PHI nodes in particular.
@@ -54,7 +54,7 @@ struct PHI
 {
 	uint32_t id = 0;
 	uint32_t type_id = 0;
-	std::vector<IncomingValue> incoming;
+	Vector<IncomingValue> incoming;
 };
 
 struct IDArgument
@@ -164,15 +164,15 @@ struct Terminator
 		CFGNode *node;
 		uint32_t value;
 	};
-	std::vector<Case> cases;
+	Vector<Case> cases;
 	CFGNode *default_node = nullptr;
 	uint32_t return_value = 0;
 };
 
 struct IRBlock
 {
-	std::vector<PHI> phi;
-	std::vector<Operation *> operations;
+	Vector<PHI> phi;
+	Vector<Operation *> operations;
 	MergeInfo merge_info;
 	Terminator terminator;
 };

@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "thread_local_allocator.hpp"
 #include "SpvBuilder.h"
 #include "cfg_structurizer.hpp"
 #include "dxil_converter.hpp"
@@ -81,6 +82,8 @@ struct LocalRootSignatureEntry
 
 struct Converter::Impl
 {
+	DXIL_SPV_OVERRIDE_NEW_DELETE
+
 	Impl(LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
 	    : bitcode_parser(bitcode_parser_)
 	    , spirv_module(module_)
@@ -99,15 +102,17 @@ struct Converter::Impl
 
 		llvm::BasicBlock *bb;
 		CFGNode *node = nullptr;
+
+		DXIL_SPV_OVERRIDE_NEW_DELETE
 	};
-	std::vector<std::unique_ptr<BlockMeta>> metas;
-	std::unordered_map<llvm::BasicBlock *, BlockMeta *> bb_map;
-	std::unordered_map<const llvm::Value *, spv::Id> value_map;
+	Vector<std::unique_ptr<BlockMeta>> metas;
+	UnorderedMap<llvm::BasicBlock *, BlockMeta *> bb_map;
+	UnorderedMap<const llvm::Value *, spv::Id> value_map;
 
 	ConvertedFunction convert_entry_point();
 	CFGNode *convert_function(llvm::Function *func, CFGNodePool &pool);
 	CFGNode *build_hull_main(llvm::Function *func, CFGNodePool &pool,
-	                         std::vector<ConvertedFunction::LeafFunction> &leaves);
+	                         Vector<ConvertedFunction::LeafFunction> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
@@ -136,13 +141,13 @@ struct Converter::Impl
 		bool has_read = false;
 		bool has_written = false;
 	};
-	std::unordered_map<uint32_t, UAVAccessTracking> uav_access_tracking;
-	std::unordered_map<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
-	std::unordered_set<const llvm::Value *> llvm_values_using_update_counter;
-	std::unordered_map<const llvm::Value *, uint32_t> llvm_values_to_payload_location;
-	std::unordered_set<const llvm::Value *> llvm_values_potential_sparse_feedback;
-	std::unordered_set<const llvm::Value *> llvm_value_is_sparse_feedback;
-	std::unordered_map<const llvm::Value *, spv::Id> llvm_value_actual_type;
+	UnorderedMap<uint32_t, UAVAccessTracking> uav_access_tracking;
+	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
+	UnorderedSet<const llvm::Value *> llvm_values_using_update_counter;
+	UnorderedMap<const llvm::Value *, uint32_t> llvm_values_to_payload_location;
+	UnorderedSet<const llvm::Value *> llvm_values_potential_sparse_feedback;
+	UnorderedSet<const llvm::Value *> llvm_value_is_sparse_feedback;
+	UnorderedMap<const llvm::Value *, spv::Id> llvm_value_actual_type;
 	uint32_t payload_location_counter = 0;
 
 	struct ResourceMetaReference
@@ -151,7 +156,7 @@ struct Converter::Impl
 		unsigned meta_index;
 		llvm::Value *offset;
 	};
-	std::unordered_map<const llvm::Value *, ResourceMetaReference> llvm_global_variable_to_resource_mapping;
+	UnorderedMap<const llvm::Value *, ResourceMetaReference> llvm_global_variable_to_resource_mapping;
 
 	struct ExecutionModeMeta
 	{
@@ -179,7 +184,7 @@ struct Converter::Impl
 	static bool scan_cbvs(ResourceRemappingInterface *iface, const llvm::MDNode *cbvs, ShaderStage stage);
 	static bool scan_samplers(ResourceRemappingInterface *iface, const llvm::MDNode *samplers, ShaderStage stage);
 
-	std::vector<LocalRootSignatureEntry> local_root_signature;
+	Vector<LocalRootSignatureEntry> local_root_signature;
 	int get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding) const;
 
 	struct ResourceReference
@@ -193,13 +198,13 @@ struct Converter::Impl
 		int local_root_signature_entry = -1;
 	};
 
-	std::vector<ResourceReference> srv_index_to_reference;
-	std::vector<ResourceReference> sampler_index_to_reference;
-	std::vector<ResourceReference> cbv_index_to_reference;
-	std::vector<ResourceReference> uav_index_to_reference;
-	std::vector<ResourceReference> uav_index_to_counter;
-	std::vector<unsigned> cbv_push_constant_member;
-	std::unordered_map<const llvm::Value *, spv::Id> handle_to_ptr_id;
+	Vector<ResourceReference> srv_index_to_reference;
+	Vector<ResourceReference> sampler_index_to_reference;
+	Vector<ResourceReference> cbv_index_to_reference;
+	Vector<ResourceReference> uav_index_to_reference;
+	Vector<ResourceReference> uav_index_to_counter;
+	Vector<unsigned> cbv_push_constant_member;
+	UnorderedMap<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;
 	unsigned root_constant_num_words = 0;
 	unsigned patch_location_offset = 0;
@@ -216,10 +221,10 @@ struct Converter::Impl
 		spv::Id counter_var_id;
 		bool counter_is_physical_pointer;
 	};
-	std::unordered_map<spv::Id, ResourceMeta> handle_to_resource_meta;
-	std::unordered_map<spv::Id, spv::Id> id_to_type;
-	std::unordered_map<const llvm::Value *, unsigned> handle_to_root_member_offset;
-	std::unordered_map<const llvm::Value *, spv::StorageClass> handle_to_storage_class;
+	UnorderedMap<spv::Id, ResourceMeta> handle_to_resource_meta;
+	UnorderedMap<spv::Id, spv::Id> id_to_type;
+	UnorderedMap<const llvm::Value *, unsigned> handle_to_root_member_offset;
+	UnorderedMap<const llvm::Value *, spv::StorageClass> handle_to_storage_class;
 
 	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array = false);
 	spv::Id get_type_id(const llvm::Type *type);
@@ -238,11 +243,11 @@ struct Converter::Impl
 		unsigned row_stride;
 		spv::BuiltIn builtin;
 	};
-	std::unordered_map<uint32_t, ElementMeta> input_elements_meta;
-	std::unordered_map<uint32_t, ElementMeta> output_elements_meta;
-	std::unordered_map<uint32_t, ElementMeta> patch_elements_meta;
-	std::unordered_map<uint32_t, ClipCullMeta> input_clip_cull_meta;
-	std::unordered_map<uint32_t, ClipCullMeta> output_clip_cull_meta;
+	UnorderedMap<uint32_t, ElementMeta> input_elements_meta;
+	UnorderedMap<uint32_t, ElementMeta> output_elements_meta;
+	UnorderedMap<uint32_t, ElementMeta> patch_elements_meta;
+	UnorderedMap<uint32_t, ClipCullMeta> input_clip_cull_meta;
+	UnorderedMap<uint32_t, ClipCullMeta> output_clip_cull_meta;
 	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage);
 
 	bool emit_instruction(CFGNode *block, const llvm::Instruction &instruction);
@@ -257,7 +262,7 @@ struct Converter::Impl
 	void repack_sparse_feedback(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
 	spv::Id fixup_store_sign(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 
-	std::vector<Operation *> *current_block = nullptr;
+	Vector<Operation *> *current_block = nullptr;
 	void add(Operation *op);
 	Operation *allocate(spv::Op op);
 	Operation *allocate(spv::Op op, const llvm::Value *value);
@@ -272,18 +277,18 @@ struct Converter::Impl
 	spv::Id rasterizer_sample_count_id = 0;
 	spv::Id physical_counter_type = 0;
 	spv::Id shader_record_buffer_id = 0;
-	std::vector<spv::Id> shader_record_buffer_types;
+	Vector<spv::Id> shader_record_buffer_types;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 
 	struct StructTypeEntry
 	{
 		spv::Id id;
-		std::string name;
-		std::vector<spv::Id> subtypes;
+		String name;
+		Vector<spv::Id> subtypes;
 	};
-	std::vector<StructTypeEntry> cached_struct_types;
-	spv::Id get_struct_type(const std::vector<spv::Id> &type_ids, const char *name = nullptr);
+	Vector<StructTypeEntry> cached_struct_types;
+	spv::Id get_struct_type(const Vector<spv::Id> &type_ids, const char *name = nullptr);
 
 	void set_option(const OptionBase &cap);
 	struct
@@ -292,7 +297,7 @@ struct Converter::Impl
 		bool dual_source_blending = false;
 		unsigned rasterizer_sample_count = 0;
 		bool rasterizer_sample_count_spec_constant = true;
-		std::vector<unsigned> output_swizzles;
+		Vector<unsigned> output_swizzles;
 
 		unsigned inline_ubo_descriptor_set = 0;
 		unsigned inline_ubo_descriptor_binding = 0;
@@ -324,7 +329,7 @@ struct Converter::Impl
 		uint32_t binding;
 		uint32_t var_id;
 	};
-	std::vector<BindlessResource> bindless_resources;
+	Vector<BindlessResource> bindless_resources;
 
 	struct CombinedImageSampler
 	{
@@ -333,6 +338,6 @@ struct Converter::Impl
 		spv::Id combined_id;
 		bool non_uniform;
 	};
-	std::vector<CombinedImageSampler> combined_image_sampler_cache;
+	Vector<CombinedImageSampler> combined_image_sampler_cache;
 };
 } // namespace dxil_spv

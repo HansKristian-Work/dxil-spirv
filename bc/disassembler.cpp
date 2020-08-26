@@ -32,7 +32,7 @@ namespace LLVMBC
 {
 struct StreamState
 {
-	std::ostringstream stream;
+	StringStream stream;
 	unsigned indent = 0;
 
 	void append(Type *type);
@@ -43,7 +43,7 @@ struct StreamState
 	void append(FunctionType *type);
 	void append(VectorType *type);
 
-	void append(const std::string &str);
+	void append(const String &str);
 	void append(Value *value, bool decl = false);
 	void append(GlobalVariable *value, bool decl = false);
 	void append(Instruction *value);
@@ -198,7 +198,7 @@ void StreamState::append(const char *str)
 	stream << str;
 }
 
-void StreamState::append(const std::string &str)
+void StreamState::append(const String &str)
 {
 	stream << str;
 }
@@ -930,7 +930,7 @@ void StreamState::append(Value *value, bool decl)
 		append("%", value->get_tween_id());
 }
 
-bool disassemble(Module &module, std::string &str)
+bool disassemble(Module &module, String &str)
 {
 	StreamState state;
 
