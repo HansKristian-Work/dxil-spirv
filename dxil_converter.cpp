@@ -2734,7 +2734,10 @@ bool Converter::Impl::emit_execution_modes_compute()
 		auto *num_threads = llvm::cast<llvm::MDNode>(*num_threads_node);
 		unsigned threads[3];
 		for (unsigned dim = 0; dim < 3; dim++)
+		{
 			threads[dim] = get_constant_metadata(num_threads, dim);
+			execution_mode_meta.workgroup_threads[dim] = threads[dim];
+		}
 
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize, threads[0], threads[1],
 		                         threads[2]);

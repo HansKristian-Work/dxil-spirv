@@ -77,6 +77,22 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// Awkward NVIDIA workaround. If loading LocalInvocationId, check if we can return constant 0.
+	// This is key to avoid some particular shader compiler bugs.
+	if (builtin == spv::BuiltInLocalInvocationId)
+	{
+		if (const auto *index = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1)))
+		{
+			unsigned dim = index->getUniqueInteger().getZExtValue();
+			if (dim < 3 && impl.execution_mode_meta.workgroup_threads[dim] == 1)
+			{
+				spv::Id const_zero = impl.builder().makeUintConstant(0);
+				impl.value_map[instruction] = const_zero;
+				return true;
+			}
+		}
+	}
+
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
 
 	if (builtin != spv::BuiltInLocalInvocationIndex)
