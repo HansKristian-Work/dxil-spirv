@@ -164,6 +164,7 @@ struct Converter::Impl
 		unsigned stage_output_num_vertex = 0;
 		unsigned gs_stream_active_mask = 0;
 		llvm::Function *patch_constant_function = nullptr;
+		unsigned workgroup_threads[3] = {};
 	} execution_mode_meta;
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
