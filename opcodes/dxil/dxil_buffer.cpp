@@ -31,7 +31,6 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
-	unsigned num_components = 4;
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
@@ -53,8 +52,6 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 			                               .getZExtValue());
 			has_constant_offset = true;
 		}
-
-		num_components = std::min(4u, (meta.stride - constant_offset) / 4);
 
 		if (meta.stride != 4)
 		{
@@ -89,7 +86,7 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 		}
 	}
 
-	return { index_id, num_components };
+	return { index_id };
 }
 
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -120,7 +117,11 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		// how many components we need to load here, and the number of components we load is not necessarily constant,
 		// so we cannot reliably encode this information in the SRV.
 		// The best we can do is to infer it from stride if we can.
-		unsigned conservative_num_elements = std::min(access.num_components, std::min(4u, access_meta.components));
+		//unsigned conservative_num_elements = std::min(access.num_components, std::min(4u, access_meta.components));
+		unsigned conservative_num_elements = 0;
+		for (unsigned i = 0; i < 4; i++)
+			if ((access_meta.access_mask & (1u << i)) != 0)
+				conservative_num_elements = i + 1;
 
 		spv::Id component_ids[4] = {};
 
