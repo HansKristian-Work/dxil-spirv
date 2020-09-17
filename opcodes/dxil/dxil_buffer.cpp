@@ -94,6 +94,10 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// Elide dead loads.
+	if (!impl.composite_is_accessed(instruction))
+		return true;
+
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
@@ -104,18 +108,19 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto access = build_buffer_access(impl, instruction);
 	auto *result_type = instruction->getType();
 
-	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+	// Sparse information is stored in the 5th component.
+	auto &access_meta = impl.llvm_composite_meta[instruction];
+	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
+	if (sparse)
+		builder.addCapability(spv::CapabilitySparseResidency);
 
 	if (!is_typed)
 	{
-		// Unroll 4 loads. Ideally, we'd probably use physical_storage_buffer here, but unfortunately we have no indication
+		// Unroll up to 4 loads. Ideally, we'd probably use physical_storage_buffer here, but unfortunately we have no indication
 		// how many components we need to load here, and the number of components we load is not necessarily constant,
 		// so we cannot reliably encode this information in the SRV.
 		// The best we can do is to infer it from stride if we can.
-
-		// For raw buffers, we have no stride information, so assume we need to load 4 components.
-		// Hopefully compiler can eliminate loads which are never used ...
-		unsigned conservative_num_elements = access.num_components;
+		unsigned conservative_num_elements = std::min(access.num_components, std::min(4u, access_meta.components));
 
 		spv::Id component_ids[4] = {};
 
@@ -126,51 +131,51 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		if (sparse)
 			sparse_loaded_id_type = impl.get_struct_type({ extracted_id_type, loaded_id_type }, "SparseTexel");
 
+		bool first_load = true;
 		for (unsigned i = 0; i < conservative_num_elements; i++)
 		{
-			// There is no sane way to combine sparse feedback code, since it's completely opaque to application.
-			// We could hypothetically return a vector of status code and deal with it magically, but let's not go there ...
-			spv::Op opcode;
-			if (is_uav)
-				opcode = (sparse && i == 0) ? spv::OpImageSparseRead : spv::OpImageRead;
-			else
-				opcode = (sparse && i == 0) ? spv::OpImageSparseFetch : spv::OpImageFetch;
-
-			Operation *loaded_op = impl.allocate(opcode, (sparse && i == 0) ? sparse_loaded_id_type : loaded_id_type);
-			loaded_op->add_ids({ image_id, impl.build_offset(access.index_id, i) });
-			impl.add(loaded_op);
-
-			if (sparse && i == 0)
+			if (access_meta.access_mask & (1u << i))
 			{
-				auto *code_extract_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-				code_extract_op->add_id(loaded_op->id);
-				code_extract_op->add_literal(0);
-				impl.add(code_extract_op);
-				sparse_code_id = code_extract_op->id;
+				// There is no sane way to combine sparse feedback code, since it's completely opaque to application.
+				// We could hypothetically return a vector of status code and deal with it magically, but let's not go there ...
+				spv::Op opcode;
+				if (is_uav)
+					opcode = (sparse && first_load) ? spv::OpImageSparseRead : spv::OpImageRead;
+				else
+					opcode = (sparse && first_load) ? spv::OpImageSparseFetch : spv::OpImageFetch;
 
-				Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-				extracted_op->add_id(loaded_op->id);
-				extracted_op->add_literal(1);
-				extracted_op->add_literal(0);
-				impl.add(extracted_op);
-				component_ids[i] = extracted_op->id;
+				Operation *loaded_op =
+				    impl.allocate(opcode, (sparse && first_load) ? sparse_loaded_id_type : loaded_id_type);
+				loaded_op->add_ids({ image_id, impl.build_offset(access.index_id, i) });
+				impl.add(loaded_op);
+
+				if (sparse && first_load)
+				{
+					auto *code_extract_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+					code_extract_op->add_id(loaded_op->id);
+					code_extract_op->add_literal(0);
+					impl.add(code_extract_op);
+					sparse_code_id = code_extract_op->id;
+
+					Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+					extracted_op->add_id(loaded_op->id);
+					extracted_op->add_literal(1);
+					extracted_op->add_literal(0);
+					impl.add(extracted_op);
+					component_ids[i] = extracted_op->id;
+				}
+				else
+				{
+					Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+					extracted_op->add_id(loaded_op->id);
+					extracted_op->add_literal(0);
+					impl.add(extracted_op);
+					component_ids[i] = extracted_op->id;
+				}
+				first_load = false;
 			}
 			else
-			{
-				Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-				extracted_op->add_id(loaded_op->id);
-				extracted_op->add_literal(0);
-				impl.add(extracted_op);
-				component_ids[i] = extracted_op->id;
-			}
-		}
-
-		// We expect that we will extract components from the resulting struct, so make a fake composite if we need to.
-		if (conservative_num_elements < 2 && !sparse)
-		{
-			for (unsigned i = conservative_num_elements; i < 2; i++)
 				component_ids[i] = builder.createUndefined(builder.makeUintType(32));
-			conservative_num_elements = 2;
 		}
 
 		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
@@ -215,6 +220,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			else
 				impl.value_map[instruction] = constructed_id;
 		}
+
+		access_meta.forced_composite = false;
 	}
 	else
 	{
@@ -298,6 +305,9 @@ static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl
 
 bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (!impl.composite_is_accessed(instruction))
+		return true;
+
 	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[ptr_id];
@@ -365,15 +375,7 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 	impl.add(load_op);
 
 	if (vecsize == 1)
-	{
-		// Need to present a composite to caller, swizzle in an OpUndef.
-		spv::Id vec_type_id = builder.makeVectorType(type_id, 2);
-		auto *composite_op = impl.allocate(spv::OpCompositeConstruct, vec_type_id);
-		composite_op->add_id(load_op->id);
-		composite_op->add_id(builder.createUndefined(type_id));
-		impl.add(composite_op);
-		impl.value_map[instruction] = composite_op->id;
-	}
+		impl.llvm_composite_meta[instruction].forced_composite = false;
 
 	return true;
 }

@@ -636,13 +636,25 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 
 bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction)
 {
-	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
+	auto itr = impl.llvm_composite_meta.find(instruction->getAggregateOperand());
+	assert(itr != impl.llvm_composite_meta.end());
 
-	op->add_id(impl.get_id_for_value(instruction->getAggregateOperand()));
-	for (unsigned i = 0; i < instruction->getNumIndices(); i++)
-		op->add_literal(instruction->getIndices()[i]);
+	if (itr->second.components == 1 && !itr->second.forced_composite)
+	{
+		// Forward the ID. The composite was originally emitted as a scalar.
+		impl.value_map[instruction] = impl.get_id_for_value(instruction->getAggregateOperand());
+	}
+	else
+	{
+		Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
 
-	impl.add(op);
+		op->add_id(impl.get_id_for_value(instruction->getAggregateOperand()));
+		for (unsigned i = 0; i < instruction->getNumIndices(); i++)
+			op->add_literal(instruction->getIndices()[i]);
+
+		impl.add(op);
+	}
+
 	return true;
 }
 
@@ -734,6 +746,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
 	op->add_ids({ atomic_op->id, cmp_op->id });
 	impl.add(op);
+
 	return true;
 }
 
@@ -882,14 +895,14 @@ bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *inst)
 {
-	if (impl.llvm_values_potential_sparse_feedback.count(inst->getAggregateOperand()) == 0)
-		return true;
-
-	// If we extract the 4th argument of a resource load instruction, we know the instruction is sparse feedback.
-	if (inst->getNumIndices() == 1 && inst->getIndices()[0] == 4)
+	if (inst->getNumIndices() == 1 &&
+	    inst->getAggregateOperand()->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
 	{
-		impl.builder().addCapability(spv::CapabilitySparseResidency);
-		impl.llvm_value_is_sparse_feedback.insert(inst->getAggregateOperand());
+		auto &meta = impl.llvm_composite_meta[inst->getAggregateOperand()];
+		unsigned index = inst->getIndices()[0];
+		meta.access_mask |= 1u << index;
+		if (index >= meta.components)
+			meta.components = index + 1;
 	}
 	return true;
 }
