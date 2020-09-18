@@ -461,34 +461,47 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
-
-	uint32_t num_coords = 0;
-	if (!get_image_dimensions_query_size(impl, builder, image_id, &num_coords))
-		return false;
-
-	bool is_uav = builder.isStorageImageType(image_type_id);
-	bool has_samples = builder.isMultisampledImageType(image_type_id);
-	bool has_lod = !is_uav && builder.getTypeDimensionality(image_type_id) != spv::DimBuffer && !has_samples;
-	auto &access_meta = impl.llvm_composite_meta[instruction];
-
-	spv::Id dim_type_id = builder.makeUintType(32);
-	if (num_coords > 1)
-		dim_type_id = builder.makeVectorType(dim_type_id, num_coords);
+	auto &meta = impl.handle_to_resource_meta[image_id];
 
 	Operation *dimensions_op = nullptr;
+	auto &access_meta = impl.llvm_composite_meta[instruction];
+	uint32_t num_coords = 0;
+	bool has_samples = false;
+	bool has_lod = false;
 
-	if ((access_meta.access_mask & 7) != 0)
+	if (meta.storage == spv::StorageClassStorageBuffer)
 	{
-		dimensions_op = impl.allocate(has_lod ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize, dim_type_id);
+		dimensions_op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
 		dimensions_op->add_id(image_id);
-		if (has_lod)
-			dimensions_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		dimensions_op->add_literal(0);
 		impl.add(dimensions_op);
+		num_coords = 1;
 	}
 	else
-		num_coords = 0;
+	{
+		if (!get_image_dimensions_query_size(impl, builder, image_id, &num_coords))
+			return false;
 
-	auto &meta = impl.handle_to_resource_meta[image_id];
+		bool is_uav = builder.isStorageImageType(image_type_id);
+		has_samples = builder.isMultisampledImageType(image_type_id);
+		has_lod = !is_uav && builder.getTypeDimensionality(image_type_id) != spv::DimBuffer && !has_samples;
+
+		spv::Id dim_type_id = builder.makeUintType(32);
+		if (num_coords > 1)
+			dim_type_id = builder.makeVectorType(dim_type_id, num_coords);
+
+		if ((access_meta.access_mask & 7) != 0)
+		{
+			dimensions_op = impl.allocate(has_lod ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize, dim_type_id);
+			dimensions_op->add_id(image_id);
+			if (has_lod)
+				dimensions_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+			impl.add(dimensions_op);
+		}
+		else
+			num_coords = 0;
+	}
+
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		Operation *byte_size_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
