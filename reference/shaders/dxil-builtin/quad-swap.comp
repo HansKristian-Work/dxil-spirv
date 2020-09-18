@@ -7,18 +7,13 @@ layout(set = 0, binding = 1, r32ui) uniform writeonly uimageBuffer _9;
 
 void main()
 {
-    uint _21 = (gl_GlobalInvocationID.x << 2u) >> 2u;
-    uvec4 _23 = imageLoad(_8, int(_21));
-    uvec4 _25 = imageLoad(_8, int(_21 + 1u));
-    uvec4 _29 = imageLoad(_8, int(_21 + 2u));
-    uvec4 _32 = imageLoad(_8, int(_21 + 3u));
-    uvec4 _36 = uvec4(_23.x, _25.x, _29.x, _32.x);
-    uint _37 = _36.x;
-    uint _43 = (gl_GlobalInvocationID.x << 4u) >> 2u;
-    imageStore(_9, int(_43), uvec4(_37));
-    imageStore(_9, int(_43 + 1u), uvec4(subgroupShuffleXor(_37, 1u)));
-    imageStore(_9, int(_43 + 2u), uvec4(subgroupShuffleXor(_37, 2u)));
-    imageStore(_9, int(_43 + 3u), uvec4(subgroupShuffleXor(_37, 3u)));
+    uvec4 _23 = imageLoad(_8, int((gl_GlobalInvocationID.x << 2u) >> 2u));
+    uint _24 = _23.x;
+    uint _32 = (gl_GlobalInvocationID.x << 4u) >> 2u;
+    imageStore(_9, int(_32), uvec4(_24));
+    imageStore(_9, int(_32 + 1u), uvec4(subgroupShuffleXor(_24, 1u)));
+    imageStore(_9, int(_32 + 2u), uvec4(subgroupShuffleXor(_24, 2u)));
+    imageStore(_9, int(_32 + 3u), uvec4(subgroupShuffleXor(_24, 3u)));
 }
 
 
@@ -27,7 +22,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 53
+; Bound: 42
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -57,13 +52,13 @@ OpDecorate %14 BuiltIn GlobalInvocationId
 %17 = OpConstant %5 0
 %20 = OpConstant %5 2
 %22 = OpTypeVector %5 4
+%26 = OpConstant %5 3
 %27 = OpConstant %5 1
-%34 = OpConstant %5 3
-%42 = OpConstant %5 4
+%31 = OpConstant %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %51
-%51 = OpLabel
+OpBranch %40
+%40 = OpLabel
 %10 = OpLoad %6 %9
 %11 = OpLoad %6 %8
 %16 = OpAccessChain %15 %14 %17
@@ -72,33 +67,22 @@ OpBranch %51
 %21 = OpShiftRightLogical %5 %19 %20
 %23 = OpImageRead %22 %11 %21
 %24 = OpCompositeExtract %5 %23 0
-%26 = OpIAdd %5 %21 %27
-%25 = OpImageRead %22 %11 %26
-%28 = OpCompositeExtract %5 %25 0
-%30 = OpIAdd %5 %21 %20
-%29 = OpImageRead %22 %11 %30
-%31 = OpCompositeExtract %5 %29 0
-%33 = OpIAdd %5 %21 %34
-%32 = OpImageRead %22 %11 %33
-%35 = OpCompositeExtract %5 %32 0
-%36 = OpCompositeConstruct %22 %24 %28 %31 %35
-%37 = OpCompositeExtract %5 %36 0
-%38 = OpGroupNonUniformShuffleXor %5 %34 %37 %27
-%39 = OpGroupNonUniformShuffleXor %5 %34 %37 %20
-%40 = OpGroupNonUniformShuffleXor %5 %34 %37 %34
-%41 = OpShiftLeftLogical %5 %18 %42
-%43 = OpShiftRightLogical %5 %41 %20
-%44 = OpCompositeConstruct %22 %37 %37 %37 %37
-OpImageWrite %10 %43 %44
-%45 = OpCompositeConstruct %22 %38 %38 %38 %38
-%46 = OpIAdd %5 %43 %27
-OpImageWrite %10 %46 %45
-%47 = OpCompositeConstruct %22 %39 %39 %39 %39
-%48 = OpIAdd %5 %43 %20
-OpImageWrite %10 %48 %47
-%49 = OpCompositeConstruct %22 %40 %40 %40 %40
-%50 = OpIAdd %5 %43 %34
-OpImageWrite %10 %50 %49
+%25 = OpGroupNonUniformShuffleXor %5 %26 %24 %27
+%28 = OpGroupNonUniformShuffleXor %5 %26 %24 %20
+%29 = OpGroupNonUniformShuffleXor %5 %26 %24 %26
+%30 = OpShiftLeftLogical %5 %18 %31
+%32 = OpShiftRightLogical %5 %30 %20
+%33 = OpCompositeConstruct %22 %24 %24 %24 %24
+OpImageWrite %10 %32 %33
+%34 = OpCompositeConstruct %22 %25 %25 %25 %25
+%35 = OpIAdd %5 %32 %27
+OpImageWrite %10 %35 %34
+%36 = OpCompositeConstruct %22 %28 %28 %28 %28
+%37 = OpIAdd %5 %32 %20
+OpImageWrite %10 %37 %36
+%38 = OpCompositeConstruct %22 %29 %29 %29 %29
+%39 = OpIAdd %5 %32 %26
+OpImageWrite %10 %39 %38
 OpReturn
 OpFunctionEnd
 #endif

@@ -24,7 +24,6 @@ namespace dxil_spv
 struct BufferAccessInfo
 {
 	spv::Id index_id;
-	unsigned num_components;
 };
 
 BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction,

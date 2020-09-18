@@ -145,10 +145,23 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
 	UnorderedSet<const llvm::Value *> llvm_values_using_update_counter;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_values_to_payload_location;
-	UnorderedSet<const llvm::Value *> llvm_values_potential_sparse_feedback;
-	UnorderedSet<const llvm::Value *> llvm_value_is_sparse_feedback;
 	UnorderedMap<const llvm::Value *, spv::Id> llvm_value_actual_type;
+
+	struct CompositeMeta
+	{
+		// Keeps track of which elements of a struct composite type are statically accessed.
+		// This is required to eliminate dead loads when we're unrolling and also needed to keep
+		// track of if opcodes should use sparse residency or not.
+		unsigned access_mask = 0;
+		// Effectively findMSB(access_mask) + 1
+		unsigned components = 0;
+		// If true, the composite was loaded as a vector, i.e. typed buffer or texture read.
+		bool forced_composite = true;
+	};
+	UnorderedMap<const llvm::Value *, CompositeMeta> llvm_composite_meta;
 	uint32_t payload_location_counter = 0;
+
+	bool composite_is_accessed(const llvm::Value *composite) const;
 
 	struct ResourceMetaReference
 	{

@@ -13,20 +13,18 @@ void main()
         uint frontier_phi_6;
         uint _27 = 0u;
         uint _28 = 0u;
-        uint _46;
+        uint _33;
         for (;;)
         {
-            uint _31 = (_28 << 2u) >> 2u;
-            _46 = uvec4(imageLoad(_8, int(_31)).x, imageLoad(_8, int(_31 + 1u)).x, imageLoad(_8, int(_31 + 2u)).x, imageLoad(_8, int(_31 + 3u)).x).x;
-            if (_46 == 30u)
+            _33 = imageLoad(_8, int((_28 << 2u) >> 2u)).x;
+            if (_33 == 30u)
             {
-                uint _50 = 100u >> 2u;
-                frontier_phi_6 = uvec4(imageLoad(_8, int(_50)).x, imageLoad(_8, int(_50 + 1u)).x, imageLoad(_8, int(_50 + 2u)).x, imageLoad(_8, int(_50 + 3u)).x).x + _27;
+                frontier_phi_6 = imageLoad(_8, int(100u >> 2u)).x + _27;
                 break;
             }
             else
             {
-                uint _22 = _46 + _27;
+                uint _22 = _33 + _27;
                 uint _29 = _28 + 1u;
                 if (_29 < gl_GlobalInvocationID.z)
                 {
@@ -56,7 +54,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 75
+; Bound: 52
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -64,7 +62,7 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %65 "frontier_phi_6"
+OpName %42 "frontier_phi_6"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -82,73 +80,50 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %17 = OpTypeBool
 %19 = OpConstant %5 0
 %25 = OpTypeVector %5 4
-%36 = OpConstant %5 1
-%43 = OpConstant %5 3
-%48 = OpConstant %5 30
-%49 = OpConstant %5 100
+%35 = OpConstant %5 30
+%36 = OpConstant %5 100
+%40 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %24 = OpUndef %5
-OpBranch %66
-%66 = OpLabel
+OpBranch %43
+%43 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %18 = OpIEqual %17 %16 %19
-OpSelectionMerge %73 None
-OpBranchConditional %18 %73 %67
-%67 = OpLabel
-OpBranch %68
-%68 = OpLabel
-%27 = OpPhi %5 %19 %67 %22 %70
-%28 = OpPhi %5 %19 %67 %29 %70
+OpSelectionMerge %50 None
+OpBranchConditional %18 %50 %44
+%44 = OpLabel
+OpBranch %45
+%45 = OpLabel
+%27 = OpPhi %5 %19 %44 %22 %47
+%28 = OpPhi %5 %19 %44 %29 %47
 %30 = OpShiftLeftLogical %5 %28 %15
 %31 = OpShiftRightLogical %5 %30 %15
 %32 = OpImageRead %25 %9 %31
 %33 = OpCompositeExtract %5 %32 0
-%35 = OpIAdd %5 %31 %36
-%34 = OpImageRead %25 %9 %35
-%37 = OpCompositeExtract %5 %34 0
-%39 = OpIAdd %5 %31 %15
-%38 = OpImageRead %25 %9 %39
-%40 = OpCompositeExtract %5 %38 0
-%42 = OpIAdd %5 %31 %43
-%41 = OpImageRead %25 %9 %42
-%44 = OpCompositeExtract %5 %41 0
-%45 = OpCompositeConstruct %25 %33 %37 %40 %44
-%46 = OpCompositeExtract %5 %45 0
-%47 = OpIEqual %17 %46 %48
-OpLoopMerge %72 %70 None
-OpBranchConditional %47 %71 %69
-%71 = OpLabel
-%50 = OpShiftRightLogical %5 %49 %15
-%51 = OpImageRead %25 %9 %50
-%52 = OpCompositeExtract %5 %51 0
-%54 = OpIAdd %5 %50 %36
-%53 = OpImageRead %25 %9 %54
-%55 = OpCompositeExtract %5 %53 0
-%57 = OpIAdd %5 %50 %15
-%56 = OpImageRead %25 %9 %57
-%58 = OpCompositeExtract %5 %56 0
-%60 = OpIAdd %5 %50 %43
-%59 = OpImageRead %25 %9 %60
-%61 = OpCompositeExtract %5 %59 0
-%62 = OpCompositeConstruct %25 %52 %55 %58 %61
-%63 = OpCompositeExtract %5 %62 0
-%21 = OpIAdd %5 %63 %27
-OpBranch %72
-%69 = OpLabel
-OpBranch %70
-%70 = OpLabel
-%22 = OpIAdd %5 %46 %27
-%29 = OpIAdd %5 %28 %36
-%64 = OpULessThan %17 %29 %16
-OpBranchConditional %64 %68 %72
-%72 = OpLabel
-%65 = OpPhi %5 %22 %70 %21 %71
-OpBranch %73
-%73 = OpLabel
-%20 = OpPhi %5 %19 %66 %65 %72
+%34 = OpIEqual %17 %33 %35
+OpLoopMerge %49 %47 None
+OpBranchConditional %34 %48 %46
+%48 = OpLabel
+%37 = OpShiftRightLogical %5 %36 %15
+%38 = OpImageRead %25 %9 %37
+%39 = OpCompositeExtract %5 %38 0
+%21 = OpIAdd %5 %39 %27
+OpBranch %49
+%46 = OpLabel
+OpBranch %47
+%47 = OpLabel
+%22 = OpIAdd %5 %33 %27
+%29 = OpIAdd %5 %28 %40
+%41 = OpULessThan %17 %29 %16
+OpBranchConditional %41 %45 %49
+%49 = OpLabel
+%42 = OpPhi %5 %22 %47 %21 %48
+OpBranch %50
+%50 = OpLabel
+%20 = OpPhi %5 %19 %43 %42 %49
 %23 = OpShiftRightLogical %5 %19 %15
 %26 = OpCompositeConstruct %25 %20 %20 %20 %20
 OpImageWrite %9 %23 %26

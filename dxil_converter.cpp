@@ -3269,6 +3269,11 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 	return true;
 }
 
+bool Converter::Impl::composite_is_accessed(const llvm::Value *composite) const
+{
+	return llvm_composite_meta.find(composite) != llvm_composite_meta.end();
+}
+
 bool Converter::Impl::analyze_instructions()
 {
 	// Some things need to happen here. We try to figure out if a UAV is readonly or writeonly.

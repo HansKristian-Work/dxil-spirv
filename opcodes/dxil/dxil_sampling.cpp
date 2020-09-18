@@ -91,6 +91,11 @@ bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num
 bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	bool comparison_sampling = opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero;
+
+	// Elide dead loads.
+	if (!comparison_sampling && !impl.composite_is_accessed(instruction))
+		return true;
+
 	auto &builder = impl.builder();
 
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -140,7 +145,11 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	spv::Id min_lod_argument = 0;
 	const unsigned bias_level_argument_index = 10;
 	const unsigned min_lod_argument_index = opcode == DXIL::Op::Sample ? 10 : 11;
-	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+
+	auto &access_meta = impl.llvm_composite_meta[instruction];
+	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
+	if (sparse)
+		builder.addCapability(spv::CapabilitySparseResidency);
 
 	if (opcode == DXIL::Op::Sample || opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleBias)
 	{
@@ -237,6 +246,10 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// Elide dead loads.
+	if (!impl.composite_is_accessed(instruction))
+		return true;
+
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
@@ -286,7 +299,10 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		builder.addCapability(spv::CapabilityMinLod);
 	}
 
-	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+	auto &access_meta = impl.llvm_composite_meta[instruction];
+	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
+	if (sparse)
+		builder.addCapability(spv::CapabilitySparseResidency);
 
 	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
 	spv::Id sample_type;
@@ -330,6 +346,10 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// Elide dead loads.
+	if (!impl.composite_is_accessed(instruction))
+		return true;
+
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
@@ -379,7 +399,10 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 			offsets[i] = builder.makeIntConstant(0);
 	}
 
-	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+	auto &access_meta = impl.llvm_composite_meta[instruction];
+	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
+	if (sparse)
+		builder.addCapability(spv::CapabilitySparseResidency);
 	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
 	spv::Id sample_type;
 
@@ -432,6 +455,9 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (!impl.composite_is_accessed(instruction))
+		return true;
+
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
@@ -443,16 +469,24 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	bool is_uav = builder.isStorageImageType(image_type_id);
 	bool has_samples = builder.isMultisampledImageType(image_type_id);
 	bool has_lod = !is_uav && builder.getTypeDimensionality(image_type_id) != spv::DimBuffer && !has_samples;
+	auto &access_meta = impl.llvm_composite_meta[instruction];
 
 	spv::Id dim_type_id = builder.makeUintType(32);
 	if (num_coords > 1)
 		dim_type_id = builder.makeVectorType(dim_type_id, num_coords);
 
-	Operation *dimensions_op = impl.allocate(has_lod ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize, dim_type_id);
-	dimensions_op->add_id(image_id);
-	if (has_lod)
-		dimensions_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
-	impl.add(dimensions_op);
+	Operation *dimensions_op = nullptr;
+
+	if ((access_meta.access_mask & 7) != 0)
+	{
+		dimensions_op = impl.allocate(has_lod ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize, dim_type_id);
+		dimensions_op->add_id(image_id);
+		if (has_lod)
+			dimensions_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		impl.add(dimensions_op);
+	}
+	else
+		num_coords = 0;
 
 	auto &meta = impl.handle_to_resource_meta[image_id];
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
@@ -471,33 +505,31 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	}
 
 	Operation *aux_op = nullptr;
-	if (has_lod)
+	if ((access_meta.access_mask & (1u << 3)) != 0)
 	{
-		aux_op = impl.allocate(spv::OpImageQueryLevels, builder.makeUintType(32));
-		aux_op->add_id(image_id);
-		impl.add(aux_op);
-	}
-	else if (has_samples)
-	{
-		aux_op = impl.allocate(spv::OpImageQuerySamples, builder.makeUintType(32));
-		aux_op->add_id(image_id);
-		impl.add(aux_op);
+		if (has_lod)
+		{
+			aux_op = impl.allocate(spv::OpImageQueryLevels, builder.makeUintType(32));
+			aux_op->add_id(image_id);
+			impl.add(aux_op);
+		}
+		else if (has_samples)
+		{
+			aux_op = impl.allocate(spv::OpImageQuerySamples, builder.makeUintType(32));
+			aux_op->add_id(image_id);
+			impl.add(aux_op);
+		}
 	}
 
-	if (!has_lod && !has_samples)
+	assert(aux_op || dimensions_op);
+
+	if (!aux_op && dimensions_op)
 	{
 		if (num_coords == 1)
-		{
-			// Must create a composite for good measure as calling code expects to extract component.
-			Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction,
-			                              builder.makeVectorType(builder.makeUintType(32), 2));
-			op->add_ids({ dimensions_op->id, builder.createUndefined(builder.makeUintType(32)) });
-			impl.add(op);
-		}
-		else
-			impl.value_map[instruction] = dimensions_op->id;
+			access_meta.forced_composite = false;
+		impl.value_map[instruction] = dimensions_op->id;
 	}
-	else
+	else if (dimensions_op)
 	{
 		Operation *op =
 		    impl.allocate(spv::OpCompositeConstruct, instruction, builder.makeVectorType(builder.makeUintType(32), 4));
@@ -510,6 +542,15 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		op->add_id(aux_op->id);
 
 		impl.add(op);
+	}
+	else
+	{
+		// Redirect any extract from this scalar to be preserved as-is.
+		// Pretend this is a scalar even if Levels/Samples query is supposed to live in W.
+		access_meta.forced_composite = false;
+		access_meta.access_mask = 1;
+		access_meta.components = 1;
+		impl.value_map[instruction] = aux_op->id;
 	}
 
 	builder.addCapability(spv::CapabilityImageQuery);
@@ -558,6 +599,10 @@ bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// Elide dead loads.
+	if (!impl.composite_is_accessed(instruction))
+		return true;
+
 	auto &builder = impl.builder();
 
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -604,7 +649,11 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 	else
 		aux_id = impl.get_id_for_value(instruction->getOperand(9));
 
-	bool sparse = impl.llvm_value_is_sparse_feedback.count(instruction) != 0;
+	auto &access_meta = impl.llvm_composite_meta[instruction];
+	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
+	if (sparse)
+		builder.addCapability(spv::CapabilitySparseResidency);
+
 	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
 	spv::Id sample_type;
 
