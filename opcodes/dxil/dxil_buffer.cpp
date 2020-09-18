@@ -686,29 +686,43 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	spv::Id coords[3] = {};
 
 	uint32_t num_coords_full = 0, num_coords = 0;
-	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
-		return false;
-
-	if (num_coords_full > 3)
-		return false;
 
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		auto access = build_buffer_access(impl, instruction);
 		coords[0] = access.index_id;
+		num_coords = 1;
+		num_coords_full = 1;
 	}
 	else
 	{
+		if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
+			return false;
+
+		if (num_coords_full > 3)
+			return false;
+
 		for (uint32_t i = 0; i < num_coords_full; i++)
 			coords[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
 	}
 
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
-	Operation *counter_ptr_op =
-	    impl.allocate(spv::OpImageTexelPointer,
-	                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
-	counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
+	Operation *counter_ptr_op = nullptr;
+	if (meta.storage == spv::StorageClassStorageBuffer)
+	{
+		counter_ptr_op =
+			impl.allocate(spv::OpAccessChain,
+			              builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+		counter_ptr_op->add_ids({ meta.var_id, builder.makeUintConstant(0), coord });
+	}
+	else
+	{
+		counter_ptr_op =
+		    impl.allocate(spv::OpImageTexelPointer,
+		                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
+		counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
+	}
 	impl.add(counter_ptr_op);
 
 	Operation *op =
