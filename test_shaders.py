@@ -145,6 +145,9 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd.append('--enable-shader-demote')
     if '.dual-source-blending.' in shader:
         hlsl_cmd.append('--enable-dual-source-blending')
+    if '.ssbo.' in shader:
+        hlsl_cmd.append('--ssbo-uav')
+        hlsl_cmd.append('--ssbo-srv')
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

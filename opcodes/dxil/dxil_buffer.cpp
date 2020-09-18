@@ -98,8 +98,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
-	bool is_uav = builder.isStorageImageType(image_type_id);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
+
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
 	auto access = build_buffer_access(impl, instruction);
@@ -124,90 +124,135 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 				conservative_num_elements = i + 1;
 
 		spv::Id component_ids[4] = {};
-
 		spv::Id extracted_id_type = builder.makeUintType(32);
-		spv::Id loaded_id_type = builder.makeVectorType(extracted_id_type, 4);
-		spv::Id sparse_code_id = 0;
-		spv::Id sparse_loaded_id_type = 0;
-		if (sparse)
-			sparse_loaded_id_type = impl.get_struct_type({ extracted_id_type, loaded_id_type }, "SparseTexel");
-
-		bool first_load = true;
-		for (unsigned i = 0; i < conservative_num_elements; i++)
-		{
-			if (access_meta.access_mask & (1u << i))
-			{
-				// There is no sane way to combine sparse feedback code, since it's completely opaque to application.
-				// We could hypothetically return a vector of status code and deal with it magically, but let's not go there ...
-				spv::Op opcode;
-				if (is_uav)
-					opcode = (sparse && first_load) ? spv::OpImageSparseRead : spv::OpImageRead;
-				else
-					opcode = (sparse && first_load) ? spv::OpImageSparseFetch : spv::OpImageFetch;
-
-				Operation *loaded_op =
-				    impl.allocate(opcode, (sparse && first_load) ? sparse_loaded_id_type : loaded_id_type);
-				loaded_op->add_ids({ image_id, impl.build_offset(access.index_id, i) });
-				impl.add(loaded_op);
-
-				if (sparse && first_load)
-				{
-					auto *code_extract_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-					code_extract_op->add_id(loaded_op->id);
-					code_extract_op->add_literal(0);
-					impl.add(code_extract_op);
-					sparse_code_id = code_extract_op->id;
-
-					Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-					extracted_op->add_id(loaded_op->id);
-					extracted_op->add_literal(1);
-					extracted_op->add_literal(0);
-					impl.add(extracted_op);
-					component_ids[i] = extracted_op->id;
-				}
-				else
-				{
-					Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-					extracted_op->add_id(loaded_op->id);
-					extracted_op->add_literal(0);
-					impl.add(extracted_op);
-					component_ids[i] = extracted_op->id;
-				}
-				first_load = false;
-			}
-			else
-				component_ids[i] = builder.createUndefined(builder.makeUintType(32));
-		}
-
+		spv::Id constructed_id = 0;
+		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
 		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
 
-		if (sparse)
+		if (ssbo && sparse)
 		{
-			Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction);
+			LOGE("Cannot use SSBOs and sparse feedback. >:(\n");
+			return false;
+		}
 
-			if (need_bitcast)
+		if (ssbo)
+		{
+			// TODO: Use proper aligned loads and stores. Wouldn't that be nice? :v
+			// Hopefully compiler can figure it out ...
+
+			spv::Id ptr_type = builder.makePointer(spv::StorageClassStorageBuffer, extracted_id_type);
+			for (unsigned i = 0; i < conservative_num_elements; i++)
 			{
-				for (unsigned i = 0; i < conservative_num_elements; i++)
+				if (access_meta.access_mask & (1u << i))
 				{
-					auto *bitcast_op =
-					    impl.allocate(spv::OpBitcast, impl.get_type_id(result_type->getStructElementType(0)));
-					bitcast_op->add_id(component_ids[i]);
-					impl.add(bitcast_op);
-					component_ids[i] = bitcast_op->id;
+					auto *chain_op = impl.allocate(spv::OpAccessChain, ptr_type);
+					chain_op->add_id(image_id);
+					chain_op->add_id(builder.makeUintConstant(0));
+					chain_op->add_id(impl.build_offset(access.index_id, i));
+					impl.add(chain_op);
+
+					if (meta.non_uniform)
+						builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
+
+					auto *load_op = impl.allocate(spv::OpLoad, extracted_id_type);
+					load_op->add_id(chain_op->id);
+					impl.add(load_op);
+					component_ids[i] = load_op->id;
 				}
+				else
+					component_ids[i] = builder.createUndefined(extracted_id_type);
 			}
 
-			for (unsigned i = 0; i < conservative_num_elements; i++)
-				op->add_id(component_ids[i]);
-			for (unsigned i = conservative_num_elements; i < 4; i++)
-				op->add_id(builder.createUndefined(impl.get_type_id(result_type->getStructElementType(0))));
-			op->add_id(sparse_code_id);
-			impl.add(op);
+			constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
 		}
 		else
 		{
-			spv::Id constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
+			bool is_uav = builder.isStorageImageType(image_type_id);
 
+			spv::Id loaded_id_type = builder.makeVectorType(extracted_id_type, 4);
+			spv::Id sparse_code_id = 0;
+			spv::Id sparse_loaded_id_type = 0;
+			if (sparse)
+				sparse_loaded_id_type = impl.get_struct_type({ extracted_id_type, loaded_id_type }, "SparseTexel");
+
+			bool first_load = true;
+			for (unsigned i = 0; i < conservative_num_elements; i++)
+			{
+				if (access_meta.access_mask & (1u << i))
+				{
+					// There is no sane way to combine sparse feedback code, since it's completely opaque to application.
+					// We could hypothetically return a vector of status code and deal with it magically, but let's not go there ...
+					spv::Op opcode;
+					if (is_uav)
+						opcode = (sparse && first_load) ? spv::OpImageSparseRead : spv::OpImageRead;
+					else
+						opcode = (sparse && first_load) ? spv::OpImageSparseFetch : spv::OpImageFetch;
+
+					Operation *loaded_op =
+					    impl.allocate(opcode, (sparse && first_load) ? sparse_loaded_id_type : loaded_id_type);
+					loaded_op->add_ids({ image_id, impl.build_offset(access.index_id, i) });
+					impl.add(loaded_op);
+
+					if (sparse && first_load)
+					{
+						auto *code_extract_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+						code_extract_op->add_id(loaded_op->id);
+						code_extract_op->add_literal(0);
+						impl.add(code_extract_op);
+						sparse_code_id = code_extract_op->id;
+
+						Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+						extracted_op->add_id(loaded_op->id);
+						extracted_op->add_literal(1);
+						extracted_op->add_literal(0);
+						impl.add(extracted_op);
+						component_ids[i] = extracted_op->id;
+					}
+					else
+					{
+						Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+						extracted_op->add_id(loaded_op->id);
+						extracted_op->add_literal(0);
+						impl.add(extracted_op);
+						component_ids[i] = extracted_op->id;
+					}
+					first_load = false;
+				}
+				else
+					component_ids[i] = builder.createUndefined(builder.makeUintType(32));
+			}
+
+			if (sparse)
+			{
+				Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction);
+
+				if (need_bitcast)
+				{
+					for (unsigned i = 0; i < conservative_num_elements; i++)
+					{
+						auto *bitcast_op =
+						    impl.allocate(spv::OpBitcast, impl.get_type_id(result_type->getStructElementType(0)));
+						bitcast_op->add_id(component_ids[i]);
+						impl.add(bitcast_op);
+						component_ids[i] = bitcast_op->id;
+					}
+				}
+
+				for (unsigned i = 0; i < conservative_num_elements; i++)
+					op->add_id(component_ids[i]);
+				for (unsigned i = conservative_num_elements; i < 4; i++)
+					op->add_id(builder.createUndefined(impl.get_type_id(result_type->getStructElementType(0))));
+				op->add_id(sparse_code_id);
+				impl.add(op);
+			}
+			else
+			{
+				constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
+			}
+		}
+
+		if (!sparse)
+		{
 			if (need_bitcast)
 			{
 				Operation *op = impl.allocate(
@@ -226,6 +271,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	}
 	else
 	{
+		bool is_uav = builder.isStorageImageType(image_type_id);
 		spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
 		spv::Id sample_type;
 

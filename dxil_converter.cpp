@@ -551,24 +551,6 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			}
 		}
 
-		if (range_size != 1)
-		{
-			if (range_size == ~0u)
-			{
-				builder.addExtension("SPV_EXT_descriptor_indexing");
-				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
-			}
-
-			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
-			    resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
-			{
-				builder.addExtension("SPV_EXT_descriptor_indexing");
-				builder.addCapability(spv::CapabilityStorageTexelBufferArrayDynamicIndexingEXT);
-			}
-			else
-				builder.addCapability(spv::CapabilityStorageImageArrayDynamicIndexing);
-		}
-
 		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::UAV, bind_space, bind_register);
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
@@ -584,6 +566,37 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		uav_index_to_reference.resize(std::max(uav_index_to_reference.size(), size_t(index + 1)));
 		uav_index_to_counter.resize(std::max(uav_index_to_counter.size(), size_t(index + 1)));
+
+		if (range_size != 1)
+		{
+			if (range_size == ~0u)
+			{
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+			}
+
+			if (has_counter)
+			{
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityStorageTexelBufferArrayDynamicIndexingEXT);
+			}
+
+			if ((resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			     resource_kind == DXIL::ResourceKind::RawBuffer) &&
+			    vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
+			}
+			else if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			         resource_kind == DXIL::ResourceKind::RawBuffer ||
+			         resource_kind == DXIL::ResourceKind::TypedBuffer)
+			{
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityStorageTexelBufferArrayDynamicIndexingEXT);
+			}
+			else
+				builder.addCapability(spv::CapabilityStorageImageArrayDynamicIndexing);
+		}
 
 		if (local_root_signature_entry >= 0)
 		{
@@ -727,22 +740,60 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		}
 		else
 		{
-			auto element_type_id = get_type_id(component_type, 1, 1);
+			spv::Id var_id;
+			spv::StorageClass storage;
 
-			spv::Id type_id = builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind),
-			                                        false, image_dimension_is_arrayed(resource_kind),
-			                                        image_dimension_is_multisampled(resource_kind), 2, format);
-
-			if (range_size != 1)
+			if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
 			{
-				if (range_size == ~0u)
-					type_id = builder.makeRuntimeArray(type_id);
-				else
-					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
-			}
+				// TODO: Consider implementing aliased buffers which all refer to the same buffer,
+				// but which can exploit alignment per-instruction.
+				// This is impractical, since BufferLoad/Store in DXIL does not have alignment (4 bytes is assumed),
+				// so just unroll.
+				// To make good use of this, we'll need apps to use SM 6.2 RawBufferLoad/Store, which does have explicit alignment.
+				// We'll likely need to mess around with Aligned decoration as well, which might have other effects ...
 
-			spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
-			                                        name.empty() ? nullptr : name.c_str());
+				spv::Id uint_type = builder.makeUintType(32);
+				spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
+				builder.addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				spv::Id block_type_id = get_struct_type({ uint_array_type }, "SSBO");
+				builder.addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+				builder.addDecoration(block_type_id, spv::DecorationBlock);
+
+				spv::Id type_id = block_type_id;
+				if (range_size != 1)
+				{
+					if (range_size == ~0u)
+						type_id = builder.makeRuntimeArray(type_id);
+					else
+						type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+				}
+
+				storage = spv::StorageClassStorageBuffer;
+				var_id = builder.createVariable(storage, type_id,
+				                                name.empty() ? nullptr : name.c_str());
+			}
+			else
+			{
+				// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
+				auto element_type_id = get_type_id(component_type, 1, 1);
+
+				spv::Id type_id =
+				    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
+				                          image_dimension_is_arrayed(resource_kind),
+				                          image_dimension_is_multisampled(resource_kind), 2, format);
+
+				if (range_size != 1)
+				{
+					if (range_size == ~0u)
+						type_id = builder.makeRuntimeArray(type_id);
+					else
+						type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+				}
+
+				storage = spv::StorageClassUniformConstant;
+				var_id = builder.createVariable(storage, type_id,
+				                                name.empty() ? nullptr : name.c_str());
+			}
 
 			uav_index_to_reference[index] = { var_id, 0, 0, stride, false, range_size != 1 };
 
@@ -766,6 +817,14 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					return false;
 				}
 
+				// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
+				auto element_type_id = get_type_id(DXIL::ComponentType::U32, 1, 1);
+
+				spv::Id type_id =
+					builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
+					                      image_dimension_is_arrayed(resource_kind),
+					                      image_dimension_is_multisampled(resource_kind), 2, format);
+
 				counter_var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
 				                                        name.empty() ? nullptr : (name + "Counter").c_str());
 
@@ -776,7 +835,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				uav_index_to_counter[index] = { counter_var_id, 0, 0, 4, false, range_size != 1 };
 			}
 			handle_to_resource_meta[var_id] = {
-				resource_kind, component_type, stride, var_id, spv::StorageClassUniformConstant, false, 0, false
+				resource_kind, component_type, stride, var_id, storage, false, 0, false
 			};
 		}
 	}
