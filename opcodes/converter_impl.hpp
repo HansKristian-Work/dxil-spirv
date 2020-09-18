@@ -323,24 +323,26 @@ struct Converter::Impl
 		unsigned sbt_descriptor_size_sampler_log2 = 0;
 	} options;
 
-	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component,
-	                                      DXIL::ResourceKind kind, uint32_t desc_set, uint32_t binding,
-	                                      spv::ImageFormat format = spv::ImageFormatUnknown, bool has_uav_read = false,
-	                                      bool has_uav_written = false, bool uav_coherent = false,
-	                                      bool counters = false);
-
-	struct BindlessResource
+	struct BindlessInfo
 	{
 		DXIL::ResourceType type;
 		DXIL::ComponentType component;
 		DXIL::ResourceKind kind;
 		spv::ImageFormat format;
-		bool uav_read = false;
-		bool uav_written = false;
-		bool uav_coherent = false;
-		bool counters = false;
+		VulkanDescriptorType descriptor_type;
+		bool uav_read;
+		bool uav_written;
+		bool uav_coherent;
+		bool counters;
 		uint32_t desc_set;
 		uint32_t binding;
+	};
+
+	spv::Id create_bindless_heap_variable(const BindlessInfo &info);
+
+	struct BindlessResource
+	{
+		BindlessInfo info;
 		uint32_t var_id;
 	};
 	Vector<BindlessResource> bindless_resources;
