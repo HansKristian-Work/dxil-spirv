@@ -224,6 +224,17 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
 				storage = spv::StorageClassStorageBuffer;
 			}
+			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				spv::Id uint_type = builder().makeUintType(32);
+				spv::Id uint_array_type = builder().makeRuntimeArray(uint_type);
+				builder().addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				spv::Id block_type_id = get_struct_type({ uint_array_type }, "SSBO");
+				builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+				builder().addDecoration(block_type_id, spv::DecorationBlock);
+				type_id = builder().makeRuntimeArray(block_type_id);
+				storage = spv::StorageClassStorageBuffer;
+			}
 			else
 			{
 				spv::Id sampled_type_id = get_type_id(info.component, 1, 1);
@@ -382,6 +393,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 		srv_index_to_reference.resize(std::max(srv_index_to_reference.size(), size_t(index + 1)));
 
+		BindlessInfo bindless_info = {};
+		bindless_info.type = DXIL::ResourceType::SRV;
+		bindless_info.component = component_type;
+		bindless_info.kind = resource_kind;
+		bindless_info.desc_set = vulkan_binding.descriptor_set;
+		bindless_info.binding = vulkan_binding.binding;
+
 		if (local_root_signature_entry >= 0)
 		{
 			auto &entry = local_root_signature[local_root_signature_entry];
@@ -393,13 +411,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 					return false;
 				}
 
-				BindlessInfo info = {};
-				info.type = DXIL::ResourceType::SRV;
-				info.component = component_type;
-				info.kind = resource_kind;
-				info.desc_set = vulkan_binding.descriptor_set;
-				info.binding = vulkan_binding.binding;
-				spv::Id var_id = create_bindless_heap_variable(info);
+				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
@@ -426,13 +438,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		}
 		else if (vulkan_binding.bindless.use_heap)
 		{
-			BindlessInfo info = {};
-			info.type = DXIL::ResourceType::SRV;
-			info.component = component_type;
-			info.kind = resource_kind;
-			info.desc_set = vulkan_binding.descriptor_set;
-			info.binding = vulkan_binding.binding;
-			spv::Id var_id = create_bindless_heap_variable(info);
+			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
 			uint32_t heap_offset = vulkan_binding.bindless.heap_root_offset;
@@ -604,6 +610,41 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				builder.addCapability(spv::CapabilityStorageImageArrayDynamicIndexing);
 		}
 
+		BindlessInfo bindless_info = {};
+		bindless_info.type = DXIL::ResourceType::UAV;
+		bindless_info.component = component_type;
+		bindless_info.kind = resource_kind;
+		bindless_info.desc_set = vulkan_binding.buffer_binding.descriptor_set;
+		bindless_info.binding = vulkan_binding.buffer_binding.binding;
+		bindless_info.format = format;
+		bindless_info.uav_read = access_meta.has_read;
+		bindless_info.uav_written = access_meta.has_written;
+		bindless_info.uav_coherent = globally_coherent;
+		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
+
+		BindlessInfo counter_info = {};
+		if (options.physical_storage_buffer)
+		{
+			counter_info.type = DXIL::ResourceType::UAV;
+			counter_info.component = DXIL::ComponentType::U32;
+			counter_info.kind = DXIL::ResourceKind::Invalid;
+			counter_info.desc_set = vulkan_binding.counter_binding.descriptor_set;
+			counter_info.binding = vulkan_binding.counter_binding.binding;
+			counter_info.counters = true;
+		}
+		else
+		{
+			counter_info.type = DXIL::ResourceType::UAV;
+			counter_info.component = DXIL::ComponentType::U32;
+			counter_info.kind = DXIL::ResourceKind::RawBuffer;
+			counter_info.desc_set = vulkan_binding.counter_binding.descriptor_set;
+			counter_info.binding = vulkan_binding.counter_binding.binding;
+			counter_info.uav_read = true;
+			counter_info.uav_written = true;
+			counter_info.uav_coherent = globally_coherent;
+			counter_info.format = spv::ImageFormatR32ui;
+		}
+
 		if (local_root_signature_entry >= 0)
 		{
 			auto &entry = local_root_signature[local_root_signature_entry];
@@ -615,17 +656,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					return false;
 				}
 
-				BindlessInfo info = {};
-				info.type = DXIL::ResourceType::UAV;
-				info.component = component_type;
-				info.kind = resource_kind;
-				info.desc_set = vulkan_binding.buffer_binding.descriptor_set;
-				info.binding = vulkan_binding.buffer_binding.binding;
-				info.format = format;
-				info.uav_read = access_meta.has_read;
-				info.uav_written = access_meta.has_written;
-				info.uav_coherent = globally_coherent;
-				spv::Id var_id = create_bindless_heap_variable(info);
+				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
@@ -645,33 +676,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 					heap_offset = entry.table.offset_in_heap;
 					heap_offset += bind_register - entry.register_index;
-					spv::Id counter_var_id;
-
-					if (options.physical_storage_buffer)
-					{
-						info = {};
-						info.type = DXIL::ResourceType::UAV;
-						info.component = DXIL::ComponentType::U32;
-						info.kind = DXIL::ResourceKind::Invalid;
-						info.desc_set = vulkan_binding.counter_binding.descriptor_set;
-						info.binding = vulkan_binding.counter_binding.binding;
-						info.counters = true;
-						counter_var_id = create_bindless_heap_variable(info);
-					}
-					else
-					{
-						info = {};
-						info.type = DXIL::ResourceType::UAV;
-						info.component = DXIL::ComponentType::U32;
-						info.kind = DXIL::ResourceKind::RawBuffer;
-						info.desc_set = vulkan_binding.counter_binding.descriptor_set;
-						info.binding = vulkan_binding.counter_binding.binding;
-						info.uav_read = true;
-						info.uav_written = true;
-						info.uav_coherent = globally_coherent;
-						info.format = spv::ImageFormatR32ui;
-						counter_var_id = create_bindless_heap_variable(info);
-					}
+					spv::Id counter_var_id = create_bindless_heap_variable(counter_info);
 
 					uav_index_to_counter[index] = {
 						counter_var_id, 0, heap_offset, 4, true, range_size != 1, local_root_signature_entry,
@@ -695,17 +700,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		}
 		else if (vulkan_binding.buffer_binding.bindless.use_heap)
 		{
-			BindlessInfo info = {};
-			info.type = DXIL::ResourceType::UAV;
-			info.component = component_type;
-			info.kind = resource_kind;
-			info.desc_set = vulkan_binding.buffer_binding.descriptor_set;
-			info.binding = vulkan_binding.buffer_binding.binding;
-			info.format = format;
-			info.uav_read = access_meta.has_read;
-			info.uav_written = access_meta.has_written;
-			info.uav_coherent = globally_coherent;
-			spv::Id var_id = create_bindless_heap_variable(info);
+			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
 			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
@@ -720,33 +715,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			{
 				if (vulkan_binding.counter_binding.bindless.use_heap)
 				{
-					spv::Id counter_var_id;
-
-					if (options.physical_storage_buffer)
-					{
-						info = {};
-						info.type = DXIL::ResourceType::UAV;
-						info.component = DXIL::ComponentType::U32;
-						info.kind = DXIL::ResourceKind::Invalid;
-						info.desc_set = vulkan_binding.counter_binding.descriptor_set;
-						info.binding = vulkan_binding.counter_binding.binding;
-						info.counters = true;
-						counter_var_id = create_bindless_heap_variable(info);
-					}
-					else
-					{
-						info = {};
-						info.type = DXIL::ResourceType::UAV;
-						info.component = DXIL::ComponentType::U32;
-						info.kind = DXIL::ResourceKind::RawBuffer;
-						info.desc_set = vulkan_binding.counter_binding.descriptor_set;
-						info.binding = vulkan_binding.counter_binding.binding;
-						info.uav_read = true;
-						info.uav_written = true;
-						info.uav_coherent = globally_coherent;
-						info.format = spv::ImageFormatR32ui;
-						counter_var_id = create_bindless_heap_variable(info);
-					}
+					spv::Id counter_var_id = create_bindless_heap_variable(counter_info);
 
 					heap_offset = vulkan_binding.counter_binding.bindless.heap_root_offset;
 					if (range_size != 1)
