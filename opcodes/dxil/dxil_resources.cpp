@@ -752,16 +752,13 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				spv::Id type_id = builder.getDerefTypeId(image_id);
 				type_id = builder.getContainedTypeId(type_id);
 
-				if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
-				{
+				if (meta.storage == spv::StorageClassStorageBuffer)
+					builder.addCapability(spv::CapabilityStorageBufferArrayNonUniformIndexing);
+				else if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
 					builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
-					builder.addExtension("SPV_EXT_descriptor_indexing");
-				}
 				else
-				{
 					builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
-					builder.addExtension("SPV_EXT_descriptor_indexing");
-				}
+				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 		}
 		break;

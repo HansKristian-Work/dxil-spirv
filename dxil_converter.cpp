@@ -188,6 +188,18 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			if (info.kind == DXIL::ResourceKind::RTAccelerationStructure)
 			{
 				type_id = builder().makeAccelerationStructureType();
+				storage = spv::StorageClassUniformConstant;
+			}
+			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				spv::Id uint_type = builder().makeUintType(32);
+				spv::Id uint_array_type = builder().makeRuntimeArray(uint_type);
+				builder().addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				spv::Id block_type_id = get_struct_type({ uint_array_type }, "SSBO");
+				builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+				builder().addDecoration(block_type_id, spv::DecorationBlock);
+				type_id = builder().makeRuntimeArray(block_type_id);
+				storage = spv::StorageClassStorageBuffer;
 			}
 			else
 			{
@@ -196,8 +208,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				                                  image_dimension_is_arrayed(info.kind),
 				                                  image_dimension_is_multisampled(info.kind), 1, spv::ImageFormatUnknown);
 				type_id = builder().makeRuntimeArray(type_id);
+				storage = spv::StorageClassUniformConstant;
 			}
-			storage = spv::StorageClassUniformConstant;
 			break;
 		}
 
@@ -293,6 +305,11 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		{
 			builder().addDecoration(resource.var_id, spv::DecorationAliasedPointer);
 		}
+		else if (info.type == DXIL::ResourceType::SRV && info.descriptor_type == VulkanDescriptorType::SSBO)
+		{
+			builder().addDecoration(resource.var_id, spv::DecorationNonWritable);
+			builder().addDecoration(resource.var_id, spv::DecorationRestrict);
+		}
 
 		bindless_resources.push_back(resource);
 		return resource.var_id;
@@ -362,24 +379,6 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : stride;
 
-		if (range_size != 1)
-		{
-			if (range_size == ~0u)
-			{
-				builder.addExtension("SPV_EXT_descriptor_indexing");
-				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
-			}
-
-			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
-			    resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
-			{
-				builder.addExtension("SPV_EXT_descriptor_indexing");
-				builder.addCapability(spv::CapabilityUniformTexelBufferArrayDynamicIndexingEXT);
-			}
-			else
-				builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
-		}
-
 		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::SRV, bind_space, bind_register);
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
@@ -391,6 +390,30 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
 			return false;
 
+		if (range_size != 1)
+		{
+			if (range_size == ~0u)
+			{
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+			}
+
+			if ((resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			     resource_kind == DXIL::ResourceKind::RawBuffer) &&
+			    vulkan_binding.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
+			}
+			else if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			         resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
+			{
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityUniformTexelBufferArrayDynamicIndexingEXT);
+			}
+			else
+				builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
+		}
+
 		srv_index_to_reference.resize(std::max(srv_index_to_reference.size(), size_t(index + 1)));
 
 		BindlessInfo bindless_info = {};
@@ -399,6 +422,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		bindless_info.kind = resource_kind;
 		bindless_info.desc_set = vulkan_binding.descriptor_set;
 		bindless_info.binding = vulkan_binding.binding;
+		bindless_info.descriptor_type = vulkan_binding.descriptor_type;
 
 		if (local_root_signature_entry >= 0)
 		{
@@ -454,10 +478,30 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			auto sampled_type_id = get_type_id(component_type, 1, 1);
 
 			spv::Id type_id;
+			auto storage = spv::StorageClassUniformConstant;
 
 			if (resource_kind == DXIL::ResourceKind::RTAccelerationStructure)
 			{
 				type_id = builder.makeAccelerationStructureType();
+			}
+			else if (vulkan_binding.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				// TODO: Consider implementing aliased buffers which all refer to the same buffer,
+				// but which can exploit alignment per-instruction.
+				// This is impractical, since BufferLoad/Store in DXIL does not have alignment (4 bytes is assumed),
+				// so just unroll.
+				// To make good use of this, we'll need apps to use SM 6.2 RawBufferLoad/Store, which does have explicit alignment.
+				// We'll likely need to mess around with Aligned decoration as well, which might have other effects ...
+
+				spv::Id uint_type = builder.makeUintType(32);
+				spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
+				builder.addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				spv::Id block_type_id = get_struct_type({ uint_array_type }, "SSBO");
+				builder.addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+				builder.addDecoration(block_type_id, spv::DecorationBlock);
+
+				type_id = block_type_id;
+				storage = spv::StorageClassStorageBuffer;
 			}
 			else
 			{
@@ -475,13 +519,19 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 			}
 
-			spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
+			spv::Id var_id = builder.createVariable(storage, type_id,
 			                                        name.empty() ? nullptr : name.c_str());
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.binding);
+			if (vulkan_binding.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				// Make it crystal clear this is a read-only SSBO which cannot observe changed from other SSBO writes.
+				builder.addDecoration(var_id, spv::DecorationNonWritable);
+				builder.addDecoration(var_id, spv::DecorationRestrict);
+			}
 			srv_index_to_reference[index] = { var_id, 0, 0, 0, false, range_size != 1 };
 			handle_to_resource_meta[var_id] = {
-				resource_kind, component_type, stride, var_id, spv::StorageClassUniformConstant, false, 0, false,
+				resource_kind, component_type, stride, var_id, storage, false, 0, false,
 			};
 		}
 	}
