@@ -70,6 +70,17 @@ struct D3DBinding
 
 	// -1 -> unsized, 1 means non-arrayed resource.
 	unsigned range_size;
+
+	// For raw buffers, this is equal to 16, for structured buffers this is equal to the stride of the elements.
+	// Otherwise, 0.
+	unsigned alignment;
+};
+
+enum class VulkanDescriptorType : unsigned
+{
+	Identity = 0,
+	SSBO = 1,
+	TexelBuffer = 2
 };
 
 struct VulkanBinding
@@ -87,6 +98,8 @@ struct VulkanBinding
 		// HEAP[shader_index + heap_offset + registers.u32s[push_constant_member]].
 		bool use_heap;
 	} bindless;
+
+	VulkanDescriptorType descriptor_type;
 };
 
 struct D3DUAVBinding

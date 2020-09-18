@@ -354,6 +354,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
+		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : stride;
+
 		if (range_size != 1)
 		{
 			if (range_size == ~0u)
@@ -377,7 +379,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
 		D3DBinding d3d_binding = {
-			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size
+			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment,
 		};
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
@@ -519,6 +521,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
+		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : stride;
+
 		auto &access_meta = uav_access_tracking[index];
 		if (resource_kind != DXIL::ResourceKind::RawBuffer && resource_kind != DXIL::ResourceKind::StructuredBuffer)
 		{
@@ -572,7 +576,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		D3DUAVBinding d3d_binding = {};
 		d3d_binding.counter = has_counter;
 		d3d_binding.binding = {
-			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size
+			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment
 		};
 		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register } };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
@@ -804,7 +808,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			                       index,
 			                       bind_space,
 			                       bind_register,
-			                       range_size };
+			                       range_size, 0 };
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
@@ -954,7 +958,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			                       index,
 			                       bind_space,
 			                       bind_register,
-			                       range_size };
+			                       range_size, 0 };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
 			return false;

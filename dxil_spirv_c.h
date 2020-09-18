@@ -27,8 +27,8 @@
 extern "C" {
 #endif
 
-#define DXIL_SPV_API_VERSION_MAJOR 0
-#define DXIL_SPV_API_VERSION_MINOR 1
+#define DXIL_SPV_API_VERSION_MAJOR 1
+#define DXIL_SPV_API_VERSION_MINOR 0
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #if !defined(DXIL_SPV_PUBLIC_API)
@@ -142,6 +142,17 @@ typedef enum dxil_spv_resource_class
 	DXIL_SPV_RESOURCE_CLASS_INT_MAX = 0x7fffffff
 } dxil_spv_resource_class;
 
+typedef enum dxil_spv_vulkan_descriptor_type
+{
+	/* Use the descriptor type we expect, textures, typed buffers,
+	 * CBV or samplers only have one target type. */
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_IDENTITY = 0,
+	/* For untyped buffer types, we can select whether to use an SSBO implementation or texel buffer one. */
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO = 1,
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_TEXEL_BUFFER = 2,
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INT_MAX = 0x7fffffff
+} dxil_spv_vulkan_descriptor_type;
+
 typedef struct dxil_spv_d3d_binding
 {
 	dxil_spv_shader_stage stage;
@@ -150,6 +161,10 @@ typedef struct dxil_spv_d3d_binding
 	unsigned register_space;
 	unsigned register_index;
 	unsigned range_size;
+	/* For raw buffers, this is equal to 16, for structured buffers this is equal to the stride of the elements.
+	 * This can be used by the implementation to select an appropriate descriptor type.
+	 * Otherwise, 0. */
+	unsigned alignment;
 } dxil_spv_d3d_binding;
 
 typedef struct dxil_spv_vulkan_binding
@@ -162,6 +177,7 @@ typedef struct dxil_spv_vulkan_binding
 		unsigned heap_root_offset;
 		dxil_spv_bool use_heap;
 	} bindless;
+	dxil_spv_vulkan_descriptor_type descriptor_type;
 } dxil_spv_vulkan_binding;
 
 /* Remaps UAVs to desired binding points. */
