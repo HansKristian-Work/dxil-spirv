@@ -24,24 +24,146 @@
 
 namespace dxil_spv
 {
+static spv::Id build_index_divider_fallback(Converter::Impl &impl, const llvm::Value *offset, unsigned addr_shift_log2)
+{
+	auto &builder = impl.builder();
+	Operation *op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+	op->add_ids({ impl.get_id_for_value(offset), builder.makeUintConstant(addr_shift_log2) });
+	impl.add(op);
+	return op->id;
+}
+
+static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset, unsigned addr_shift_log2)
+{
+	auto &builder = impl.builder();
+	// Attempt to do trivial constant folding to make output a little more sensible to read.
+	// Try to find an expression for offset which is "constant0 * offset + constant1",
+	// where constant0 and constant1 are aligned with addr_shift_log2.
+
+	const llvm::ConstantInt *scale = nullptr;
+	const llvm::Value *index = nullptr;
+	const llvm::ConstantInt *bias = nullptr;
+	bool scale_log2 = false;
+
+	if (const auto *const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset))
+		return builder.makeUintConstant(uint32_t(const_addr->getUniqueInteger().getZExtValue()) >> addr_shift_log2);
+
+	if (!llvm::isa<llvm::BinaryOperator>(offset))
+		return build_index_divider_fallback(impl, offset, addr_shift_log2);
+
+	index = offset;
+
+	while (!scale && llvm::isa<llvm::BinaryOperator>(index))
+	{
+		auto *binop = llvm::cast<llvm::BinaryOperator>(index);
+		auto *lhs = binop->getOperand(0);
+		auto *rhs = binop->getOperand(1);
+		if (!bias && binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add)
+		{
+			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
+			{
+				bias = const_lhs;
+				index = rhs;
+			}
+			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
+			{
+				bias = const_rhs;
+				index = lhs;
+			}
+			else
+				break;
+		}
+		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Mul ||
+		         binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl)
+		{
+			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
+			{
+				scale = const_lhs;
+				index = rhs;
+			}
+			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
+			{
+				scale = const_rhs;
+				index = lhs;
+			}
+			else
+				break;
+
+			scale_log2 = binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl;
+		}
+		else
+			break;
+	}
+
+	// Couldn't split the expression, fallback.
+	if (!scale && !bias)
+		return build_index_divider_fallback(impl, offset, addr_shift_log2);
+
+	unsigned scale_factor = 1;
+	if (scale)
+		scale_factor = scale->getUniqueInteger().getZExtValue();
+	if (scale_log2)
+		scale_factor = 1u << scale_factor;
+
+	int bias_factor = 0;
+	if (bias)
+		bias_factor = bias->getUniqueInteger().getSExtValue();
+
+	// Both scale and bias must align for there to be meaning to this transform.
+	if (((scale_factor | bias_factor) & ((1u << addr_shift_log2) - 1u)) != 0)
+		return build_index_divider_fallback(impl, offset, addr_shift_log2);
+
+	scale_factor >>= addr_shift_log2;
+	bias_factor >>= int(addr_shift_log2);
+
+	spv::Op bias_opcode = bias_factor > 0 ? spv::OpIAdd : spv::OpISub;
+	if (bias_opcode == spv::OpISub)
+		bias_factor = -bias_factor;
+
+	spv::Id scaled_id;
+	if (scale_factor != 1)
+	{
+		Operation *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		scale_op->add_id(impl.get_id_for_value(index));
+		scale_op->add_id(builder.makeUintConstant(scale_factor));
+		impl.add(scale_op);
+		scaled_id = scale_op->id;
+	}
+	else
+		scaled_id = impl.get_id_for_value(index);
+
+	spv::Id bias_id;
+	if (bias_factor != 0)
+	{
+		Operation *bias_op = impl.allocate(bias_opcode, builder.makeUintType(32));
+		bias_op->add_id(scaled_id);
+		bias_op->add_id(builder.makeUintConstant(bias_factor));
+		impl.add(bias_op);
+		bias_id = bias_op->id;
+	}
+	else
+		bias_id = scaled_id;
+
+	return bias_id;
+}
+
 BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
-	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
+	spv::Id index_id = 0;
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		// For raw buffers, the index is in bytes. Since we only consider bytes, shift by 4.
-		Operation *op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
-		op->add_ids({ index_id, builder.makeUintConstant(2) });
-		index_id = op->id;
-		impl.add(op);
+		// For raw buffers, the index is in bytes. Since we only consider uint32_t buffers, divide by 4.
+		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset), 2);
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
+		index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
+
 		unsigned constant_offset = 0;
 		spv::Id offset_id = impl.get_id_for_value(instruction->getOperand(3 + operand_offset));
 		bool has_constant_offset = false;
@@ -85,6 +207,8 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 			impl.add(op);
 		}
 	}
+	else
+		index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
 
 	return { index_id };
 }

@@ -43,10 +43,9 @@ void main()
 {
     vec4 _46 = texelFetch(_8, int(TEXCOORD));
     vec4 _49 = imageLoad(_24, int(TEXCOORD));
-    uint _54 = TEXCOORD << 3u;
-    uint _56 = _54 >> 2u;
+    uint _56 = TEXCOORD * 2u;
     uvec2 _67 = uvec2(_13._m0[_56], _13._m0[_56 + 1u]);
-    uint _74 = _54 >> 2u;
+    uint _74 = TEXCOORD * 2u;
     uvec2 _80 = uvec2(_28._m0[_74], _28._m0[_74 + 1u]);
     uint _87 = TEXCOORD * 2u;
     vec2 _94 = uintBitsToFloat(uvec2(_17._m0[_87], _17._m0[_87 + 1u]));
@@ -199,7 +198,7 @@ OpBranch %147
 %52 = OpFAdd %5 %50 %47
 %53 = OpFAdd %5 %51 %48
 %54 = OpShiftLeftLogical %9 %44 %55
-%56 = OpShiftRightLogical %9 %54 %57
+%56 = OpIMul %9 %44 %57
 %59 = OpAccessChain %58 %13 %60 %56
 %61 = OpLoad %9 %59
 %63 = OpIAdd %9 %56 %64
@@ -212,7 +211,7 @@ OpBranch %147
 %71 = OpBitcast %5 %69
 %72 = OpFAdd %5 %52 %70
 %73 = OpFAdd %5 %53 %71
-%74 = OpShiftRightLogical %9 %54 %57
+%74 = OpIMul %9 %44 %57
 %75 = OpAccessChain %58 %28 %60 %74
 %76 = OpLoad %9 %75
 %78 = OpIAdd %9 %74 %64

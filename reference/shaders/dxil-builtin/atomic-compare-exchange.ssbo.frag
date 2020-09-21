@@ -34,8 +34,8 @@ void main()
     int _92 = imageAtomicCompSwap(_27, int(TEXCOORD.x), int(20u), int(30u));
     int _99 = imageAtomicCompSwap(_30, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(20u), int(30u));
     uint _110 = atomicCompSwap(_34._m0[(TEXCOORD.x * 4u) + 2u], 20u, 30u);
-    uint _115 = atomicCompSwap(_38._m0[(TEXCOORD.x << 2u) >> 2u], 20u, 30u);
-    SV_Target = (((((((((_70 + _64) + _74) + _78) + _82) + _85) + _88) + uint(_92)) + uint(_99)) + _110) + _115;
+    uint _114 = atomicCompSwap(_38._m0[TEXCOORD.x], 20u, 30u);
+    SV_Target = (((((((((_70 + _64) + _74) + _78) + _82) + _85) + _88) + uint(_92)) + uint(_99)) + _110) + _114;
 }
 
 
@@ -44,7 +44,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 119
+; Bound: 118
 ; Schema: 0
 OpCapability Shader
 OpCapability Image1D
@@ -141,8 +141,8 @@ OpDecorate %43 Location 0
 %108 = OpTypePointer StorageBuffer %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %117
-%117 = OpLabel
+OpBranch %116
+%116 = OpLabel
 %44 = OpLoad %28 %30
 %45 = OpLoad %25 %27
 %46 = OpLoad %21 %23
@@ -200,11 +200,10 @@ OpBranch %117
 %110 = OpAtomicCompareExchange %5 %109 %57 %54 %54 %66 %65
 %111 = OpIAdd %5 %103 %110
 %112 = OpShiftLeftLogical %5 %55 %60
-%113 = OpShiftRightLogical %5 %112 %60
-%114 = OpAccessChain %108 %38 %54 %113
-%115 = OpAtomicCompareExchange %5 %114 %57 %54 %54 %66 %65
-%116 = OpIAdd %5 %111 %115
-OpStore %43 %116
+%113 = OpAccessChain %108 %38 %54 %55
+%114 = OpAtomicCompareExchange %5 %113 %57 %54 %54 %66 %65
+%115 = OpIAdd %5 %111 %114
+OpStore %43 %115
 OpReturn
 OpFunctionEnd
 #endif

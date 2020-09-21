@@ -9,7 +9,7 @@ layout(location = 0) out vec4 SV_Target;
 void main()
 {
     uint _19 = INDEX + 0u;
-    uint _24 = (INDEX << 4u) >> 2u;
+    uint _24 = INDEX * 4u;
     uvec4 _40 = uvec4(texelFetch(_9[nonuniformEXT(_19)], int(_24)).x, texelFetch(_9[nonuniformEXT(_19)], int(_24 + 1u)).x, texelFetch(_9[nonuniformEXT(_19)], int(_24 + 2u)).x, texelFetch(_9[nonuniformEXT(_19)], int(_24 + 3u)).x);
     SV_Target.x = uintBitsToFloat(_40.x);
     SV_Target.y = uintBitsToFloat(_40.y);
@@ -60,9 +60,9 @@ OpDecorate %23 NonUniform
 %18 = OpConstant %5 4
 %20 = OpConstant %5 0
 %21 = OpTypePointer UniformConstant %6
-%25 = OpConstant %5 2
-%26 = OpTypeVector %5 4
-%31 = OpConstant %5 1
+%25 = OpTypeVector %5 4
+%30 = OpConstant %5 1
+%34 = OpConstant %5 2
 %38 = OpConstant %5 3
 %49 = OpTypePointer Output %12
 %3 = OpFunction %1 None %2
@@ -74,19 +74,19 @@ OpBranch %54
 %19 = OpIAdd %5 %16 %20
 %22 = OpAccessChain %21 %9 %19
 %23 = OpLoad %6 %22
-%24 = OpShiftRightLogical %5 %17 %25
-%27 = OpImageFetch %26 %23 %24
-%28 = OpCompositeExtract %5 %27 0
-%30 = OpIAdd %5 %24 %31
-%29 = OpImageFetch %26 %23 %30
-%32 = OpCompositeExtract %5 %29 0
-%34 = OpIAdd %5 %24 %25
-%33 = OpImageFetch %26 %23 %34
-%35 = OpCompositeExtract %5 %33 0
+%24 = OpIMul %5 %16 %18
+%26 = OpImageFetch %25 %23 %24
+%27 = OpCompositeExtract %5 %26 0
+%29 = OpIAdd %5 %24 %30
+%28 = OpImageFetch %25 %23 %29
+%31 = OpCompositeExtract %5 %28 0
+%33 = OpIAdd %5 %24 %34
+%32 = OpImageFetch %25 %23 %33
+%35 = OpCompositeExtract %5 %32 0
 %37 = OpIAdd %5 %24 %38
-%36 = OpImageFetch %26 %23 %37
+%36 = OpImageFetch %25 %23 %37
 %39 = OpCompositeExtract %5 %36 0
-%40 = OpCompositeConstruct %26 %28 %32 %35 %39
+%40 = OpCompositeConstruct %25 %27 %31 %35 %39
 %41 = OpCompositeExtract %5 %40 0
 %42 = OpCompositeExtract %5 %40 1
 %43 = OpCompositeExtract %5 %40 2
@@ -97,9 +97,9 @@ OpBranch %54
 %48 = OpBitcast %12 %44
 %50 = OpAccessChain %49 %15 %20
 OpStore %50 %45
-%51 = OpAccessChain %49 %15 %31
+%51 = OpAccessChain %49 %15 %30
 OpStore %51 %46
-%52 = OpAccessChain %49 %15 %25
+%52 = OpAccessChain %49 %15 %34
 OpStore %52 %47
 %53 = OpAccessChain %49 %15 %38
 OpStore %53 %48

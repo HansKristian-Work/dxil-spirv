@@ -23,7 +23,7 @@ layout(location = 0, component = 1) flat in vec2 DATA;
 void main()
 {
     imageStore(_8, int(INDEX), vec4(DATA.x, DATA.y, DATA.x, DATA.x));
-    uint _42 = (INDEX << 3u) >> 2u;
+    uint _42 = INDEX * 2u;
     _13._m0[_42] = floatBitsToUint(DATA.x);
     _13._m0[_42 + 1u] = floatBitsToUint(DATA.y);
     uint _48 = INDEX * 2u;
@@ -128,7 +128,7 @@ OpImageWrite %27 %35 %37
 %38 = OpBitcast %9 %31
 %39 = OpBitcast %9 %34
 %40 = OpShiftLeftLogical %9 %35 %41
-%42 = OpShiftRightLogical %9 %40 %43
+%42 = OpIMul %9 %35 %43
 %45 = OpAccessChain %44 %13 %30 %42
 OpStore %45 %38
 %47 = OpIAdd %9 %42 %33

@@ -9,7 +9,7 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 void main()
 {
     uint _27 = (gl_SubgroupSize + 4294967295u) & gl_GlobalInvocationID.x;
-    uint _41 = (gl_GlobalInvocationID.x * 12u) >> 2u;
+    uint _41 = gl_GlobalInvocationID.x * 3u;
     imageStore(_8, int(_41), uvec4(subgroupBroadcast(gl_GlobalInvocationID.x, 11u) + subgroupShuffle(gl_GlobalInvocationID.x, _27)));
     imageStore(_8, int(_41 + 1u), uvec4(subgroupBroadcast(gl_GlobalInvocationID.y, 11u) + subgroupShuffle(gl_GlobalInvocationID.y, _27)));
     imageStore(_8, int(_41 + 2u), uvec4(subgroupBroadcast(gl_GlobalInvocationID.z, 11u) + subgroupShuffle(gl_GlobalInvocationID.z, _27)));
@@ -80,7 +80,7 @@ OpBranch %48
 %37 = OpIAdd %5 %34 %30
 %38 = OpIAdd %5 %35 %31
 %39 = OpIMul %5 %16 %40
-%41 = OpShiftRightLogical %5 %39 %21
+%41 = OpIMul %5 %16 %29
 %43 = OpCompositeConstruct %42 %36 %36 %36 %36
 OpImageWrite %9 %41 %43
 %44 = OpCompositeConstruct %42 %37 %37 %37 %37

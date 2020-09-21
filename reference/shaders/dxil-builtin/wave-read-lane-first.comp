@@ -6,7 +6,7 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
 void main()
 {
-    uint _29 = (gl_GlobalInvocationID.x * 12u) >> 2u;
+    uint _29 = gl_GlobalInvocationID.x * 3u;
     imageStore(_8, int(_29), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.x)));
     imageStore(_8, int(_29 + 1u), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.y)));
     imageStore(_8, int(_29 + 2u), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.z)));
@@ -62,7 +62,7 @@ OpBranch %36
 %25 = OpGroupNonUniformBroadcastFirst %5 %24 %19
 %26 = OpGroupNonUniformBroadcastFirst %5 %24 %22
 %27 = OpIMul %5 %16 %28
-%29 = OpShiftRightLogical %5 %27 %21
+%29 = OpIMul %5 %16 %24
 %31 = OpCompositeConstruct %30 %23 %23 %23 %23
 OpImageWrite %9 %29 %31
 %32 = OpCompositeConstruct %30 %25 %25 %25 %25

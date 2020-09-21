@@ -9,15 +9,14 @@ layout(set = 0, binding = 2, r32ui) uniform writeonly uimageBuffer _10;
 
 void main()
 {
-    uint _28 = gl_GlobalInvocationID.x << 3u;
-    imageStore(_8, int(_28 >> 2u), uvec4(subgroupBallotExclusiveBitCount(subgroupBallot(gl_GlobalInvocationID.x < 100u))));
-    imageStore(_8, int(_28 >> 2u), uvec4(subgroupExclusiveAdd(gl_GlobalInvocationID.x)));
-    uint _36 = _28 | 4u;
+    imageStore(_8, int(gl_GlobalInvocationID.x * 2u), uvec4(subgroupBallotExclusiveBitCount(subgroupBallot(gl_GlobalInvocationID.x < 100u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x * 2u), uvec4(subgroupExclusiveAdd(gl_GlobalInvocationID.x)));
+    uint _36 = (gl_GlobalInvocationID.x << 3u) | 4u;
     imageStore(_8, int(_36 >> 2u), uvec4(subgroupExclusiveMul(gl_GlobalInvocationID.x)));
-    imageStore(_9, int(_28 >> 2u), uvec4(subgroupExclusiveAdd(gl_GlobalInvocationID.x)));
+    imageStore(_9, int(gl_GlobalInvocationID.x * 2u), uvec4(subgroupExclusiveAdd(gl_GlobalInvocationID.x)));
     imageStore(_9, int(_36 >> 2u), uvec4(subgroupExclusiveMul(gl_GlobalInvocationID.x)));
     float _47 = float(gl_GlobalInvocationID.x);
-    imageStore(_10, int(_28 >> 2u), uvec4(uint(subgroupExclusiveAdd(_47))));
+    imageStore(_10, int(gl_GlobalInvocationID.x * 2u), uvec4(uint(subgroupExclusiveAdd(_47))));
     imageStore(_10, int(_36 >> 2u), uvec4(uint(subgroupExclusiveMul(_47))));
 }
 
@@ -80,11 +79,11 @@ OpBranch %56
 %25 = OpGroupNonUniformBallot %24 %26 %22
 %27 = OpGroupNonUniformBallotBitCount %5 %26 ExclusiveScan %25
 %28 = OpShiftLeftLogical %5 %20 %26
-%29 = OpShiftRightLogical %5 %28 %30
+%29 = OpIMul %5 %20 %30
 %31 = OpCompositeConstruct %24 %27 %27 %27 %27
 OpImageWrite %13 %29 %31
 %32 = OpGroupNonUniformIAdd %5 %26 ExclusiveScan %20
-%33 = OpShiftRightLogical %5 %28 %30
+%33 = OpIMul %5 %20 %30
 %34 = OpCompositeConstruct %24 %32 %32 %32 %32
 OpImageWrite %13 %33 %34
 %35 = OpGroupNonUniformIMul %5 %26 ExclusiveScan %20
@@ -93,7 +92,7 @@ OpImageWrite %13 %33 %34
 %39 = OpCompositeConstruct %24 %35 %35 %35 %35
 OpImageWrite %13 %38 %39
 %40 = OpGroupNonUniformIAdd %5 %26 ExclusiveScan %20
-%41 = OpShiftRightLogical %5 %28 %30
+%41 = OpIMul %5 %20 %30
 %42 = OpCompositeConstruct %24 %40 %40 %40 %40
 OpImageWrite %12 %41 %42
 %43 = OpGroupNonUniformIMul %5 %26 ExclusiveScan %20
@@ -103,7 +102,7 @@ OpImageWrite %12 %44 %45
 %47 = OpConvertUToF %46 %20
 %48 = OpGroupNonUniformFAdd %46 %26 ExclusiveScan %47
 %49 = OpConvertFToU %5 %48
-%50 = OpShiftRightLogical %5 %28 %30
+%50 = OpIMul %5 %20 %30
 %51 = OpCompositeConstruct %24 %49 %49 %49 %49
 OpImageWrite %11 %50 %51
 %52 = OpGroupNonUniformFMul %46 %26 ExclusiveScan %47

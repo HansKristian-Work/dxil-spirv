@@ -9,79 +9,80 @@ void main()
     if (!(gl_GlobalInvocationID.x == 0u))
     {
         uint _26;
-        uint _30 = 0u;
-        uint _32 = 0u;
-        bool _33;
+        uint _29 = 0u;
+        uint _31 = 0u;
+        bool _32;
         for (;;)
         {
-            _33 = gl_GlobalInvocationID.y == 0u;
+            _32 = gl_GlobalInvocationID.y == 0u;
             uint frontier_phi_4_pred;
-            if (!_33)
+            if (!_32)
             {
-                uint _34;
-                uint _36 = 0u;
-                uint _38 = _32;
-                bool _39;
+                uint _33;
+                uint _35 = 0u;
+                uint _37 = _31;
+                bool _38;
                 for (;;)
                 {
-                    _39 = gl_GlobalInvocationID.z == 0u;
+                    _38 = gl_GlobalInvocationID.z == 0u;
                     uint frontier_phi_8_pred;
-                    if (!_39)
+                    if (!_38)
                     {
+                        uint _41;
                         uint _42;
-                        uint _43;
-                        _42 = _38;
-                        _43 = 0u;
-                        uint _40;
+                        _41 = _37;
+                        _42 = 0u;
+                        uint _39;
                         for (;;)
                         {
-                            _40 = imageLoad(_8, int((((_36 ^ _30) ^ _43) << 2u) >> 2u)).x + _42;
-                            uint _44 = _43 + 1u;
-                            if (_44 == gl_GlobalInvocationID.z)
+                            uint _45 = (_35 ^ _29) ^ _42;
+                            _39 = imageLoad(_8, int(_45)).x + _41;
+                            uint _43 = _42 + 1u;
+                            if (_43 == gl_GlobalInvocationID.z)
                             {
                                 break;
                             }
                             else
                             {
-                                _42 = _40;
-                                _43 = _44;
+                                _41 = _39;
+                                _42 = _43;
                             }
                         }
-                        frontier_phi_8_pred = _40;
+                        frontier_phi_8_pred = _39;
                     }
                     else
                     {
-                        frontier_phi_8_pred = _38;
+                        frontier_phi_8_pred = _37;
                     }
-                    _34 = frontier_phi_8_pred;
-                    uint _37 = _36 + 1u;
-                    if (_37 == gl_GlobalInvocationID.y)
+                    _33 = frontier_phi_8_pred;
+                    uint _36 = _35 + 1u;
+                    if (_36 == gl_GlobalInvocationID.y)
                     {
                         break;
                     }
                     else
                     {
-                        _36 = _37;
-                        _38 = _34;
+                        _35 = _36;
+                        _37 = _33;
                         continue;
                     }
                 }
-                frontier_phi_4_pred = _34;
+                frontier_phi_4_pred = _33;
             }
             else
             {
-                frontier_phi_4_pred = _32;
+                frontier_phi_4_pred = _31;
             }
             _26 = frontier_phi_4_pred;
-            uint _31 = _30 + 1u;
-            if (_31 == gl_GlobalInvocationID.x)
+            uint _30 = _29 + 1u;
+            if (_30 == gl_GlobalInvocationID.x)
             {
                 break;
             }
             else
             {
-                _30 = _31;
-                _32 = _26;
+                _29 = _30;
+                _31 = _26;
                 continue;
             }
         }
@@ -91,7 +92,7 @@ void main()
     {
         _25 = 0u;
     }
-    imageStore(_8, int(0u >> 2u), uvec4(_25));
+    imageStore(_8, int(0u), uvec4(_25));
 }
 
 
@@ -100,7 +101,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 72
+; Bound: 70
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -108,8 +109,8 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %52 "frontier_phi_8.pred"
-OpName %53 "frontier_phi_4.pred"
+OpName %50 "frontier_phi_8.pred"
+OpName %51 "frontier_phi_4.pred"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -127,11 +128,11 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %18 = OpConstant %5 1
 %21 = OpConstant %5 2
 %23 = OpTypeBool
-%28 = OpTypeVector %5 4
+%27 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %54
-%54 = OpLabel
+OpBranch %52
+%52 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
@@ -140,73 +141,71 @@ OpBranch %54
 %20 = OpAccessChain %13 %12 %21
 %22 = OpLoad %5 %20
 %24 = OpIEqual %23 %16 %15
-OpSelectionMerge %70 None
-OpBranchConditional %24 %70 %55
+OpSelectionMerge %68 None
+OpBranchConditional %24 %68 %53
+%53 = OpLabel
+OpBranch %54
+%54 = OpLabel
+%29 = OpPhi %5 %15 %53 %30 %66
+%31 = OpPhi %5 %15 %53 %26 %66
+%32 = OpIEqual %23 %19 %15
+OpLoopMerge %67 %66 None
+OpBranch %55
 %55 = OpLabel
-OpBranch %56
+OpSelectionMerge %65 None
+OpBranchConditional %32 %65 %56
 %56 = OpLabel
-%30 = OpPhi %5 %15 %55 %31 %68
-%32 = OpPhi %5 %15 %55 %26 %68
-%33 = OpIEqual %23 %19 %15
-OpLoopMerge %69 %68 None
 OpBranch %57
 %57 = OpLabel
-OpSelectionMerge %67 None
-OpBranchConditional %33 %67 %58
+%35 = OpPhi %5 %15 %56 %36 %63
+%37 = OpPhi %5 %31 %56 %33 %63
+%38 = OpIEqual %23 %22 %15
+OpLoopMerge %64 %63 None
+OpBranch %58
 %58 = OpLabel
-OpBranch %59
+OpSelectionMerge %62 None
+OpBranchConditional %38 %62 %59
 %59 = OpLabel
-%36 = OpPhi %5 %15 %58 %37 %65
-%38 = OpPhi %5 %32 %58 %34 %65
-%39 = OpIEqual %23 %22 %15
-OpLoopMerge %66 %65 None
 OpBranch %60
 %60 = OpLabel
-OpSelectionMerge %64 None
-OpBranchConditional %39 %64 %61
+%41 = OpPhi %5 %37 %59 %39 %60
+%42 = OpPhi %5 %15 %59 %43 %60
+%44 = OpBitwiseXor %5 %35 %29
+%45 = OpBitwiseXor %5 %44 %42
+%46 = OpShiftLeftLogical %5 %45 %21
+%47 = OpImageRead %27 %9 %45
+%48 = OpCompositeExtract %5 %47 0
+%39 = OpIAdd %5 %48 %41
+%43 = OpIAdd %5 %42 %18
+%49 = OpIEqual %23 %43 %22
+OpLoopMerge %61 %60 None
+OpBranchConditional %49 %61 %60
 %61 = OpLabel
 OpBranch %62
 %62 = OpLabel
-%42 = OpPhi %5 %38 %61 %40 %62
-%43 = OpPhi %5 %15 %61 %44 %62
-%45 = OpBitwiseXor %5 %36 %30
-%46 = OpBitwiseXor %5 %45 %43
-%47 = OpShiftLeftLogical %5 %46 %21
-%48 = OpShiftRightLogical %5 %47 %21
-%49 = OpImageRead %28 %9 %48
-%50 = OpCompositeExtract %5 %49 0
-%40 = OpIAdd %5 %50 %42
-%44 = OpIAdd %5 %43 %18
-%51 = OpIEqual %23 %44 %22
-OpLoopMerge %63 %62 None
-OpBranchConditional %51 %63 %62
+%50 = OpPhi %5 %37 %58 %39 %61
+%33 = OpCopyObject %5 %50
+OpBranch %63
 %63 = OpLabel
-OpBranch %64
+%36 = OpIAdd %5 %35 %18
+%40 = OpIEqual %23 %36 %19
+OpBranchConditional %40 %64 %57
 %64 = OpLabel
-%52 = OpPhi %5 %38 %60 %40 %63
-%34 = OpCopyObject %5 %52
 OpBranch %65
 %65 = OpLabel
-%37 = OpIAdd %5 %36 %18
-%41 = OpIEqual %23 %37 %19
-OpBranchConditional %41 %66 %59
+%51 = OpPhi %5 %31 %55 %33 %64
+%26 = OpCopyObject %5 %51
+OpBranch %66
 %66 = OpLabel
-OpBranch %67
+%30 = OpIAdd %5 %29 %18
+%34 = OpIEqual %23 %30 %16
+OpBranchConditional %34 %67 %54
 %67 = OpLabel
-%53 = OpPhi %5 %32 %57 %34 %66
-%26 = OpCopyObject %5 %53
 OpBranch %68
 %68 = OpLabel
-%31 = OpIAdd %5 %30 %18
-%35 = OpIEqual %23 %31 %16
-OpBranchConditional %35 %69 %56
-%69 = OpLabel
-OpBranch %70
-%70 = OpLabel
-%25 = OpPhi %5 %15 %54 %26 %69
-%27 = OpShiftRightLogical %5 %15 %21
-%29 = OpCompositeConstruct %28 %25 %25 %25 %25
-OpImageWrite %9 %27 %29
+%25 = OpPhi %5 %15 %52 %26 %67
+%28 = OpCompositeConstruct %27 %25 %25 %25 %25
+OpImageWrite %9 %15 %28
 OpReturn
 OpFunctionEnd
 #endif

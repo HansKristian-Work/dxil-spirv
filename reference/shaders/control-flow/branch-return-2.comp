@@ -37,27 +37,27 @@ void main()
                     break;
                 }
                 uint frontier_phi_4_2_ladder_5_ladder;
-                uint _43;
-                bool _44;
+                uint _42;
+                bool _43;
                 for (;;)
                 {
-                    _43 = _16 + 10u;
-                    _44 = _16 == 0u;
-                    uint _47;
-                    if (_44)
+                    _42 = _16 + 10u;
+                    _43 = _16 == 0u;
+                    uint _46;
+                    if (_43)
                     {
                         if (_22 == 30u)
                         {
-                            frontier_phi_4_2_ladder_5_ladder = _43 * 30u;
+                            frontier_phi_4_2_ladder_5_ladder = _42 * 30u;
                             break;
                         }
-                        _47 = _43;
+                        _46 = _42;
                     }
                     else
                     {
-                        _47 = 0u;
+                        _46 = 0u;
                     }
-                    frontier_phi_4_2_ladder_5_ladder = _47 + _43;
+                    frontier_phi_4_2_ladder_5_ladder = _46 + _42;
                     break;
                 }
                 frontier_phi_4_2_ladder = frontier_phi_4_2_ladder_5_ladder;
@@ -71,7 +71,7 @@ void main()
         _37 = _31 + _16;
         break;
     }
-    imageStore(_8, int(0u >> 2u), uvec4(_37));
+    imageStore(_8, int(0u), uvec4(_37));
 }
 
 
@@ -80,7 +80,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 73
+; Bound: 72
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -88,8 +88,8 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %48 "frontier_phi_4.2.ladder.5.ladder"
-OpName %49 "frontier_phi_4.2.ladder"
+OpName %47 "frontier_phi_4.2.ladder.5.ladder"
+OpName %48 "frontier_phi_4.2.ladder"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
@@ -112,13 +112,13 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %27 = OpConstant %5 40
 %29 = OpConstant %5 20
 %36 = OpConstant %5 50
-%40 = OpTypeVector %5 4
-%42 = OpConstant %5 24
-%46 = OpConstant %5 30
+%39 = OpTypeVector %5 4
+%41 = OpConstant %5 24
+%45 = OpConstant %5 30
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %50
-%50 = OpLabel
+OpBranch %49
+%49 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
@@ -127,75 +127,74 @@ OpBranch %50
 %20 = OpAccessChain %13 %12 %21
 %22 = OpLoad %5 %20
 %24 = OpIEqual %23 %16 %25
-OpLoopMerge %69 %70 None
-OpBranch %51
-%51 = OpLabel
-OpSelectionMerge %67 None
-OpBranchConditional %24 %65 %52
-%65 = OpLabel
-%26 = OpIEqual %23 %22 %27
+OpLoopMerge %68 %69 None
+OpBranch %50
+%50 = OpLabel
 OpSelectionMerge %66 None
-OpBranchConditional %26 %68 %66
-%68 = OpLabel
-%30 = OpIMul %5 %19 %25
-OpBranch %69
-%66 = OpLabel
-OpBranch %67
-%52 = OpLabel
-%28 = OpIEqual %23 %19 %29
-OpSelectionMerge %63 None
-OpBranchConditional %28 %53 %63
-%53 = OpLabel
-%35 = OpIEqual %23 %22 %36
-OpSelectionMerge %54 None
-OpBranchConditional %35 %64 %54
+OpBranchConditional %24 %64 %51
 %64 = OpLabel
-%38 = OpIMul %5 %16 %42
-OpBranch %69
+%26 = OpIEqual %23 %22 %27
+OpSelectionMerge %65 None
+OpBranchConditional %26 %67 %65
+%67 = OpLabel
+%30 = OpIMul %5 %19 %25
+OpBranch %68
+%65 = OpLabel
+OpBranch %66
+%51 = OpLabel
+%28 = OpIEqual %23 %19 %29
+OpSelectionMerge %62 None
+OpBranchConditional %28 %52 %62
+%52 = OpLabel
+%35 = OpIEqual %23 %22 %36
+OpSelectionMerge %53 None
+OpBranchConditional %35 %63 %53
+%63 = OpLabel
+%38 = OpIMul %5 %16 %41
+OpBranch %68
+%53 = OpLabel
+%42 = OpIAdd %5 %16 %25
+%43 = OpIEqual %23 %16 %15
+OpLoopMerge %61 %70 None
+OpBranch %54
 %54 = OpLabel
-%43 = OpIAdd %5 %16 %25
-%44 = OpIEqual %23 %16 %15
-OpLoopMerge %62 %71 None
-OpBranch %55
-%55 = OpLabel
-OpSelectionMerge %58 None
-OpBranchConditional %44 %56 %58
-%56 = OpLabel
-%45 = OpIEqual %23 %22 %46
 OpSelectionMerge %57 None
-OpBranchConditional %45 %59 %57
+OpBranchConditional %43 %55 %57
+%55 = OpLabel
+%44 = OpIEqual %23 %22 %45
+OpSelectionMerge %56 None
+OpBranchConditional %44 %58 %56
+%58 = OpLabel
+%32 = OpIMul %5 %42 %45
+OpBranch %59
 %59 = OpLabel
-%32 = OpIMul %5 %43 %46
 OpBranch %60
 %60 = OpLabel
 OpBranch %61
-%61 = OpLabel
-OpBranch %62
+%56 = OpLabel
+OpBranch %57
 %57 = OpLabel
-OpBranch %58
-%58 = OpLabel
-%47 = OpPhi %5 %15 %55 %43 %57
-%33 = OpIAdd %5 %47 %43
-OpBranch %62
-%71 = OpLabel
-OpBranch %54
-%62 = OpLabel
-%48 = OpPhi %5 %32 %61 %33 %58
-OpBranch %63
-%63 = OpLabel
-%49 = OpPhi %5 %15 %52 %48 %62
-OpBranch %67
-%67 = OpLabel
-%31 = OpPhi %5 %49 %63 %29 %66
-%34 = OpIAdd %5 %31 %16
-OpBranch %69
+%46 = OpPhi %5 %15 %54 %42 %56
+%33 = OpIAdd %5 %46 %42
+OpBranch %61
 %70 = OpLabel
-OpBranch %50
+OpBranch %53
+%61 = OpLabel
+%47 = OpPhi %5 %32 %60 %33 %57
+OpBranch %62
+%62 = OpLabel
+%48 = OpPhi %5 %15 %51 %47 %61
+OpBranch %66
+%66 = OpLabel
+%31 = OpPhi %5 %48 %62 %29 %65
+%34 = OpIAdd %5 %31 %16
+OpBranch %68
 %69 = OpLabel
-%37 = OpPhi %5 %30 %68 %34 %67 %38 %64
-%39 = OpShiftRightLogical %5 %15 %21
-%41 = OpCompositeConstruct %40 %37 %37 %37 %37
-OpImageWrite %9 %39 %41
+OpBranch %49
+%68 = OpLabel
+%37 = OpPhi %5 %30 %67 %34 %66 %38 %63
+%40 = OpCompositeConstruct %39 %37 %37 %37 %37
+OpImageWrite %9 %15 %40
 OpReturn
 OpFunctionEnd
 #endif

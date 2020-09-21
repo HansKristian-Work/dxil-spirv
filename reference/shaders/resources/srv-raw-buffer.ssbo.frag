@@ -26,14 +26,14 @@ layout(location = 0) out uvec2 SV_Target;
 
 void main()
 {
-    uint _41 = uint(int(gl_FragCoord.x)) << 3u;
-    uint _43 = _41 >> 2u;
+    uint _40 = uint(int(gl_FragCoord.x));
+    uint _43 = _40 * 2u;
     uvec2 _51 = uvec2(_9._m0[_43], _9._m0[_43 + 1u]);
     uint _60 = floatBitsToUint(_27._m0[0u]).x + 4u;
-    uint _64 = _41 >> 2u;
+    uint _64 = _40 * 2u;
     uvec2 _70 = uvec2(_15[_60]._m0[_64], _15[_60]._m0[_64 + 1u]);
     uint _75 = INDEX + 100u;
-    uint _79 = _41 >> 2u;
+    uint _79 = _40 * 2u;
     uvec2 _85 = uvec2(_20[nonuniformEXT(_75)]._m0[_79], _20[nonuniformEXT(_75)]._m0[_79 + 1u]);
     SV_Target.x = (_70.x + _51.x) + _85.x;
     SV_Target.y = (_70.y + _51.y) + _85.y;
@@ -150,7 +150,7 @@ OpBranch %93
 %39 = OpLoad %22 %37
 %40 = OpConvertFToS %5 %39
 %41 = OpShiftLeftLogical %5 %40 %42
-%43 = OpShiftRightLogical %5 %41 %44
+%43 = OpIMul %5 %40 %44
 %46 = OpAccessChain %45 %9 %38 %43
 %47 = OpLoad %5 %46
 %49 = OpIAdd %5 %43 %21
@@ -165,7 +165,7 @@ OpBranch %93
 %59 = OpCompositeExtract %5 %58 0
 %60 = OpIAdd %5 %59 %61
 %63 = OpAccessChain %62 %15 %60
-%64 = OpShiftRightLogical %5 %41 %44
+%64 = OpIMul %5 %40 %44
 %65 = OpAccessChain %45 %63 %38 %64
 %66 = OpLoad %5 %65
 %68 = OpIAdd %5 %64 %21
@@ -178,7 +178,7 @@ OpBranch %93
 %74 = OpIAdd %5 %72 %53
 %75 = OpIAdd %5 %35 %76
 %78 = OpAccessChain %77 %20 %75
-%79 = OpShiftRightLogical %5 %41 %44
+%79 = OpIMul %5 %40 %44
 %80 = OpAccessChain %45 %78 %38 %79
 %81 = OpLoad %5 %80
 %83 = OpIAdd %5 %79 %21

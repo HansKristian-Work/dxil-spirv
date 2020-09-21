@@ -33,14 +33,14 @@ layout(location = 0) out uvec2 SV_Target;
 void main()
 {
     uint _29 = registers._m1 + 3u;
-    uint _37 = uint(int(gl_FragCoord.x)) << 3u;
-    uint _38 = _37 >> 2u;
+    uint _36 = uint(int(gl_FragCoord.x));
+    uint _38 = _36 * 2u;
     uvec2 _46 = uvec2(_13[_29]._m0[_38], _13[_29]._m0[_38 + 1u]);
     uint _68 = registers._m1 + (uvec4(registers._m4, registers._m5, registers._m6, registers._m7).x + 4u);
-    uint _69 = _37 >> 2u;
+    uint _69 = _36 * 2u;
     uvec2 _75 = uvec2(_13[_68]._m0[_69], _13[_68]._m0[_69 + 1u]);
     uint _85 = registers._m1 + (INDEX + 100u);
-    uint _86 = _37 >> 2u;
+    uint _86 = _36 * 2u;
     uvec2 _92 = uvec2(_13[nonuniformEXT(_85)]._m0[_86], _13[nonuniformEXT(_85)]._m0[_86 + 1u]);
     SV_Target.x = (_75.x + _46.x) + _92.x;
     SV_Target.y = (_75.y + _46.y) + _92.y;
@@ -151,7 +151,7 @@ OpBranch %100
 %35 = OpLoad %14 %33
 %36 = OpConvertFToS %5 %35
 %37 = OpShiftLeftLogical %5 %36 %30
-%38 = OpShiftRightLogical %5 %37 %39
+%38 = OpIMul %5 %36 %39
 %41 = OpAccessChain %40 %24 %34 %38
 %42 = OpLoad %5 %41
 %44 = OpIAdd %5 %38 %27
@@ -175,7 +175,7 @@ OpBranch %100
 %67 = OpLoad %5 %66
 %68 = OpIAdd %5 %67 %64
 %65 = OpAccessChain %23 %13 %68
-%69 = OpShiftRightLogical %5 %37 %39
+%69 = OpIMul %5 %36 %39
 %70 = OpAccessChain %40 %65 %34 %69
 %71 = OpLoad %5 %70
 %73 = OpIAdd %5 %69 %27
@@ -191,7 +191,7 @@ OpBranch %100
 %84 = OpLoad %5 %83
 %85 = OpIAdd %5 %84 %80
 %82 = OpAccessChain %23 %13 %85
-%86 = OpShiftRightLogical %5 %37 %39
+%86 = OpIMul %5 %36 %39
 %87 = OpAccessChain %40 %82 %34 %86
 %88 = OpLoad %5 %87
 %90 = OpIAdd %5 %86 %27
