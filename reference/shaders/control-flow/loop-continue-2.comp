@@ -3,9 +3,8 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 
-uint _26;
-uint _61;
-uint _65;
+uint _60;
+uint _64;
 
 void main()
 {
@@ -13,49 +12,49 @@ void main()
     if (!(gl_GlobalInvocationID.x == 0u))
     {
         uint _23;
-        uint _46;
+        uint _45;
+        uint _28 = 0u;
         uint _29 = 0u;
-        uint _30 = 0u;
-        bool _36;
+        bool _35;
         for (;;)
         {
-            _36 = imageLoad(_8, int((_30 << 2u) >> 2u)).x == 40u;
+            _35 = imageLoad(_8, int((_29 << 2u) >> 2u)).x == 40u;
             uint frontier_phi_6_pred;
             uint frontier_phi_6_pred_1;
             for (;;)
             {
-                uint _53;
+                uint _52;
                 uint frontier_phi_8;
                 uint frontier_phi_8_1;
-                if (_36)
+                if (_35)
                 {
-                    if (_30 == 10u)
+                    if (_29 == 10u)
                     {
-                        frontier_phi_6_pred = _29;
+                        frontier_phi_6_pred = _28;
                         frontier_phi_6_pred_1 = gl_GlobalInvocationID.y;
                         break;
                     }
-                    _53 = imageLoad(_8, int((_30 << 4u) >> 2u)).x;
-                    frontier_phi_8 = _29;
+                    _52 = imageLoad(_8, int((_29 << 4u) >> 2u)).x;
+                    frontier_phi_8 = _28;
                     frontier_phi_8_1 = gl_GlobalInvocationID.y;
                 }
                 else
                 {
-                    _53 = imageLoad(_8, int((_30 * 12u) >> 2u)).x;
-                    frontier_phi_8 = _61;
-                    frontier_phi_8_1 = _65;
+                    _52 = imageLoad(_8, int((_29 * 12u) >> 2u)).x;
+                    frontier_phi_8 = _60;
+                    frontier_phi_8_1 = _64;
                 }
-                frontier_phi_6_pred = (_53 + _29) + imageLoad(_8, int((_30 << 3u) >> 2u)).x;
+                frontier_phi_6_pred = (_52 + _28) + imageLoad(_8, int((_29 << 3u) >> 2u)).x;
                 frontier_phi_6_pred_1 = 1u;
                 break;
             }
             _23 = frontier_phi_6_pred;
-            _46 = frontier_phi_6_pred_1;
-            uint _31 = _46 + _30;
-            if (_31 < gl_GlobalInvocationID.x)
+            _45 = frontier_phi_6_pred_1;
+            uint _30 = _45 + _29;
+            if (_30 < gl_GlobalInvocationID.x)
             {
-                _29 = _23;
-                _30 = _31;
+                _28 = _23;
+                _29 = _30;
                 continue;
             }
             else
@@ -78,7 +77,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 82
+; Bound: 81
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -86,10 +85,10 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %60 "frontier_phi_8"
-OpName %63 "frontier_phi_6.pred"
-OpName %64 "frontier_phi_8"
-OpName %66 "frontier_phi_6.pred"
+OpName %59 "frontier_phi_8"
+OpName %62 "frontier_phi_6.pred"
+OpName %63 "frontier_phi_8"
+OpName %65 "frontier_phi_6.pred"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -107,92 +106,91 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %18 = OpConstant %5 1
 %20 = OpTypeBool
 %25 = OpConstant %5 2
-%27 = OpTypeVector %5 4
-%37 = OpConstant %5 40
-%39 = OpConstant %5 10
-%41 = OpConstant %5 12
-%49 = OpConstant %5 4
-%56 = OpConstant %5 3
-%62 = OpConstantTrue %20
+%26 = OpTypeVector %5 4
+%36 = OpConstant %5 40
+%38 = OpConstant %5 10
+%40 = OpConstant %5 12
+%48 = OpConstant %5 4
+%55 = OpConstant %5 3
+%61 = OpConstantTrue %20
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%26 = OpUndef %5
-%61 = OpUndef %5
-%65 = OpUndef %5
-OpBranch %67
-%67 = OpLabel
+%60 = OpUndef %5
+%64 = OpUndef %5
+OpBranch %66
+%66 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %17 = OpAccessChain %13 %12 %18
 %19 = OpLoad %5 %17
 %21 = OpIEqual %20 %16 %15
-OpSelectionMerge %79 None
-OpBranchConditional %21 %79 %68
+OpSelectionMerge %78 None
+OpBranchConditional %21 %78 %67
+%67 = OpLabel
+OpBranch %68
 %68 = OpLabel
+%28 = OpPhi %5 %15 %67 %23 %76
+%29 = OpPhi %5 %15 %67 %30 %76
+%31 = OpShiftLeftLogical %5 %29 %25
+%32 = OpShiftRightLogical %5 %31 %25
+%33 = OpImageRead %26 %9 %32
+%34 = OpCompositeExtract %5 %33 0
+%35 = OpIEqual %20 %34 %36
+OpLoopMerge %77 %76 None
 OpBranch %69
 %69 = OpLabel
-%29 = OpPhi %5 %15 %68 %23 %77
-%30 = OpPhi %5 %15 %68 %31 %77
-%32 = OpShiftLeftLogical %5 %30 %25
-%33 = OpShiftRightLogical %5 %32 %25
-%34 = OpImageRead %27 %9 %33
-%35 = OpCompositeExtract %5 %34 0
-%36 = OpIEqual %20 %35 %37
-OpLoopMerge %78 %77 None
+OpLoopMerge %75 %79 None
 OpBranch %70
 %70 = OpLabel
-OpLoopMerge %76 %80 None
-OpBranch %71
-%71 = OpLabel
-OpSelectionMerge %75 None
-OpBranchConditional %36 %73 %72
-%73 = OpLabel
-%38 = OpIEqual %20 %30 %39
 OpSelectionMerge %74 None
-OpBranchConditional %38 %76 %74
-%74 = OpLabel
-%48 = OpShiftLeftLogical %5 %30 %49
-%50 = OpShiftRightLogical %5 %48 %25
-%51 = OpImageRead %27 %9 %50
-%52 = OpCompositeExtract %5 %51 0
-OpBranch %75
+OpBranchConditional %35 %72 %71
 %72 = OpLabel
-%40 = OpIMul %5 %30 %41
-%42 = OpShiftRightLogical %5 %40 %25
-%43 = OpImageRead %27 %9 %42
-%44 = OpCompositeExtract %5 %43 0
+%37 = OpIEqual %20 %29 %38
+OpSelectionMerge %73 None
+OpBranchConditional %37 %75 %73
+%73 = OpLabel
+%47 = OpShiftLeftLogical %5 %29 %48
+%49 = OpShiftRightLogical %5 %47 %25
+%50 = OpImageRead %26 %9 %49
+%51 = OpCompositeExtract %5 %50 0
+OpBranch %74
+%71 = OpLabel
+%39 = OpIMul %5 %29 %40
+%41 = OpShiftRightLogical %5 %39 %25
+%42 = OpImageRead %26 %9 %41
+%43 = OpCompositeExtract %5 %42 0
+OpBranch %74
+%74 = OpLabel
+%52 = OpPhi %5 %43 %71 %51 %73
+%59 = OpPhi %5 %60 %71 %28 %73
+%63 = OpPhi %5 %64 %71 %19 %73
+%53 = OpIAdd %5 %52 %28
+%54 = OpShiftLeftLogical %5 %29 %55
+%56 = OpShiftRightLogical %5 %54 %25
+%57 = OpImageRead %26 %9 %56
+%58 = OpCompositeExtract %5 %57 0
+%44 = OpIAdd %5 %53 %58
 OpBranch %75
-%75 = OpLabel
-%53 = OpPhi %5 %44 %72 %52 %74
-%60 = OpPhi %5 %61 %72 %29 %74
-%64 = OpPhi %5 %65 %72 %19 %74
-%54 = OpIAdd %5 %53 %29
-%55 = OpShiftLeftLogical %5 %30 %56
-%57 = OpShiftRightLogical %5 %55 %25
-%58 = OpImageRead %27 %9 %57
-%59 = OpCompositeExtract %5 %58 0
-%45 = OpIAdd %5 %54 %59
-OpBranch %76
-%80 = OpLabel
-OpBranch %70
-%76 = OpLabel
-%63 = OpPhi %5 %29 %73 %45 %75
-%66 = OpPhi %5 %19 %73 %18 %75
-%23 = OpCopyObject %5 %63
-%46 = OpCopyObject %5 %66
-OpBranch %77
-%77 = OpLabel
-%31 = OpIAdd %5 %46 %30
-%47 = OpULessThan %20 %31 %16
-OpBranchConditional %47 %69 %78
-%78 = OpLabel
-OpBranch %79
 %79 = OpLabel
-%22 = OpPhi %5 %15 %67 %23 %78
+OpBranch %69
+%75 = OpLabel
+%62 = OpPhi %5 %28 %72 %44 %74
+%65 = OpPhi %5 %19 %72 %18 %74
+%23 = OpCopyObject %5 %62
+%45 = OpCopyObject %5 %65
+OpBranch %76
+%76 = OpLabel
+%30 = OpIAdd %5 %45 %29
+%46 = OpULessThan %20 %30 %16
+OpBranchConditional %46 %68 %77
+%77 = OpLabel
+OpBranch %78
+%78 = OpLabel
+%22 = OpPhi %5 %15 %66 %23 %77
 %24 = OpShiftRightLogical %5 %15 %25
-%28 = OpCompositeConstruct %27 %22 %22 %22 %22
-OpImageWrite %9 %24 %28
+%27 = OpCompositeConstruct %26 %22 %22 %22 %22
+OpImageWrite %9 %24 %27
 OpReturn
 OpFunctionEnd
 #endif

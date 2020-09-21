@@ -6,8 +6,6 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
-uint _42;
-
 void main()
 {
     uint _27 = (gl_SubgroupSize + 4294967295u) & gl_GlobalInvocationID.x;
@@ -23,7 +21,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 51
+; Bound: 50
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -57,12 +55,11 @@ OpDecorate %23 BuiltIn SubgroupSize
 %29 = OpConstant %5 3
 %33 = OpConstant %5 11
 %40 = OpConstant %5 12
-%43 = OpTypeVector %5 4
+%42 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%42 = OpUndef %5
-OpBranch %49
-%49 = OpLabel
+OpBranch %48
+%48 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
@@ -84,14 +81,14 @@ OpBranch %49
 %38 = OpIAdd %5 %35 %31
 %39 = OpIMul %5 %16 %40
 %41 = OpShiftRightLogical %5 %39 %21
-%44 = OpCompositeConstruct %43 %36 %36 %36 %36
-OpImageWrite %9 %41 %44
-%45 = OpCompositeConstruct %43 %37 %37 %37 %37
-%46 = OpIAdd %5 %41 %18
-OpImageWrite %9 %46 %45
-%47 = OpCompositeConstruct %43 %38 %38 %38 %38
-%48 = OpIAdd %5 %41 %21
-OpImageWrite %9 %48 %47
+%43 = OpCompositeConstruct %42 %36 %36 %36 %36
+OpImageWrite %9 %41 %43
+%44 = OpCompositeConstruct %42 %37 %37 %37 %37
+%45 = OpIAdd %5 %41 %18
+OpImageWrite %9 %45 %44
+%46 = OpCompositeConstruct %42 %38 %38 %38 %38
+%47 = OpIAdd %5 %41 %21
+OpImageWrite %9 %47 %46
 OpReturn
 OpFunctionEnd
 #endif

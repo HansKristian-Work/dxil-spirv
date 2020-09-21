@@ -20,21 +20,18 @@ layout(set = 0, binding = 0) uniform writeonly imageBuffer _8;
 layout(location = 0) flat in uint INDEX;
 layout(location = 0, component = 1) flat in vec2 DATA;
 
-uint _44;
-float _52;
-
 void main()
 {
     imageStore(_8, int(INDEX), vec4(DATA.x, DATA.y, DATA.x, DATA.x));
     uint _42 = (INDEX << 3u) >> 2u;
     _13._m0[_42] = floatBitsToUint(DATA.x);
     _13._m0[_42 + 1u] = floatBitsToUint(DATA.y);
-    uint _49 = INDEX * 2u;
-    _17._m0[_49] = floatBitsToUint(DATA.x);
-    _17._m0[_49 + 1u] = floatBitsToUint(DATA.y);
-    uint _59 = (INDEX * 5u) + 3u;
-    _21._m0[_59] = floatBitsToUint(DATA.x);
-    _21._m0[_59 + 1u] = floatBitsToUint(DATA.y);
+    uint _48 = INDEX * 2u;
+    _17._m0[_48] = floatBitsToUint(DATA.x);
+    _17._m0[_48 + 1u] = floatBitsToUint(DATA.y);
+    uint _57 = (INDEX * 5u) + 3u;
+    _21._m0[_57] = floatBitsToUint(DATA.x);
+    _21._m0[_57 + 1u] = floatBitsToUint(DATA.y);
 }
 
 
@@ -43,7 +40,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 67
+; Bound: 65
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -113,15 +110,13 @@ OpDecorate %26 Component 1
 %36 = OpTypeVector %5 4
 %41 = OpConstant %9 3
 %43 = OpConstant %9 2
-%45 = OpTypePointer StorageBuffer %9
-%56 = OpConstant %9 12
-%58 = OpConstant %9 5
+%44 = OpTypePointer StorageBuffer %9
+%54 = OpConstant %9 12
+%56 = OpConstant %9 5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%44 = OpUndef %9
-%52 = OpUndef %5
-OpBranch %65
-%65 = OpLabel
+OpBranch %63
+%63 = OpLabel
 %27 = OpLoad %6 %8
 %29 = OpAccessChain %28 %26 %30
 %31 = OpLoad %5 %29
@@ -134,28 +129,28 @@ OpImageWrite %27 %35 %37
 %39 = OpBitcast %9 %34
 %40 = OpShiftLeftLogical %9 %35 %41
 %42 = OpShiftRightLogical %9 %40 %43
-%46 = OpAccessChain %45 %13 %30 %42
-OpStore %46 %38
-%48 = OpIAdd %9 %42 %33
-%47 = OpAccessChain %45 %13 %30 %48
-OpStore %47 %39
-%49 = OpIMul %9 %35 %43
-%50 = OpBitcast %9 %31
-%51 = OpBitcast %9 %34
-%53 = OpAccessChain %45 %17 %30 %49
-OpStore %53 %50
-%55 = OpIAdd %9 %49 %33
-%54 = OpAccessChain %45 %17 %30 %55
-OpStore %54 %51
-%57 = OpIMul %9 %35 %58
-%59 = OpIAdd %9 %57 %41
-%60 = OpBitcast %9 %31
-%61 = OpBitcast %9 %34
-%62 = OpAccessChain %45 %21 %30 %59
-OpStore %62 %60
-%64 = OpIAdd %9 %59 %33
-%63 = OpAccessChain %45 %21 %30 %64
-OpStore %63 %61
+%45 = OpAccessChain %44 %13 %30 %42
+OpStore %45 %38
+%47 = OpIAdd %9 %42 %33
+%46 = OpAccessChain %44 %13 %30 %47
+OpStore %46 %39
+%48 = OpIMul %9 %35 %43
+%49 = OpBitcast %9 %31
+%50 = OpBitcast %9 %34
+%51 = OpAccessChain %44 %17 %30 %48
+OpStore %51 %49
+%53 = OpIAdd %9 %48 %33
+%52 = OpAccessChain %44 %17 %30 %53
+OpStore %52 %50
+%55 = OpIMul %9 %35 %56
+%57 = OpIAdd %9 %55 %41
+%58 = OpBitcast %9 %31
+%59 = OpBitcast %9 %34
+%60 = OpAccessChain %44 %21 %30 %57
+OpStore %60 %58
+%62 = OpIAdd %9 %57 %33
+%61 = OpAccessChain %44 %21 %30 %62
+OpStore %61 %59
 OpReturn
 OpFunctionEnd
 #endif

@@ -4,8 +4,6 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
-uint _16;
-
 void main()
 {
     imageStore(_8, int(0u >> 2u), uvec4(gl_SubgroupInvocationID));
@@ -17,7 +15,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 21
+; Bound: 20
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -40,17 +38,16 @@ OpDecorate %11 BuiltIn SubgroupLocalInvocationId
 %11 = OpVariable %10 Input
 %13 = OpConstant %5 0
 %15 = OpConstant %5 2
-%17 = OpTypeVector %5 4
+%16 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%16 = OpUndef %5
-OpBranch %19
-%19 = OpLabel
+OpBranch %18
+%18 = OpLabel
 %9 = OpLoad %6 %8
 %12 = OpLoad %5 %11
 %14 = OpShiftRightLogical %5 %13 %15
-%18 = OpCompositeConstruct %17 %12 %12 %12 %12
-OpImageWrite %9 %14 %18
+%17 = OpCompositeConstruct %16 %12 %12 %12 %12
+OpImageWrite %9 %14 %17
 OpReturn
 OpFunctionEnd
 #endif

@@ -440,9 +440,9 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	for (unsigned i = 0; i < 4; i++)
 	{
-		store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
 		if ((mask & (1u << i)) != 0)
 		{
+			store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
 			if (!is_typed)
 			{
 				if (instruction->getOperand(4 + i)->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
