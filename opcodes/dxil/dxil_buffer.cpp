@@ -441,14 +441,17 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	for (unsigned i = 0; i < 4; i++)
 	{
 		store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
-		if (!is_typed && (mask & (1u << i)))
+		if ((mask & (1u << i)) != 0)
 		{
-			if (instruction->getOperand(4 + i)->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+			if (!is_typed)
 			{
-				Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
-				op->add_id(store_values[i]);
-				store_values[i] = op->id;
-				impl.add(op);
+				if (instruction->getOperand(4 + i)->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+				{
+					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+					op->add_id(store_values[i]);
+					store_values[i] = op->id;
+					impl.add(op);
+				}
 			}
 		}
 	}
@@ -464,6 +467,29 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		      impl.fixup_store_sign(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
 
 		impl.add(op);
+	}
+	else if (meta.storage == spv::StorageClassStorageBuffer)
+	{
+		for (unsigned i = 0; i < 4; i++)
+		{
+			if (mask & (1u << i))
+			{
+				Operation *chain_op = impl.allocate(spv::OpAccessChain,
+				                                    builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+				chain_op->add_id(image_id);
+				chain_op->add_id(builder.makeUintConstant(0));
+				chain_op->add_id(impl.build_offset(access.index_id, i));
+				impl.add(chain_op);
+
+				if (meta.non_uniform)
+					builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
+
+				Operation *store_op = impl.allocate(spv::OpStore);
+				store_op->add_id(chain_op->id);
+				store_op->add_id(store_values[i]);
+				impl.add(store_op);
+			}
+		}
 	}
 	else
 	{
