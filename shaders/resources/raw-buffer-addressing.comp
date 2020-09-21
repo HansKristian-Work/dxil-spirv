@@ -1,0 +1,40 @@
+RWByteAddressBuffer RWBuf : register(u0);
+
+[numthreads(1, 1, 1)]
+void main(uint id : SV_DispatchThreadID)
+{
+	// Should not be folded.
+	RWBuf.Store(1 * id, 1.0);
+	RWBuf.Store(2 * id, 2.0);
+	RWBuf.Store(3 * id, 3.0);
+
+	// Should be folded.
+	RWBuf.Store(4 * id, 4.0);
+	RWBuf.Store(8 * id, 5.0);
+	RWBuf.Store(12 * id, 6.0);
+	RWBuf.Store(id << 2, 7.0);
+	RWBuf.Store(id << 3, 8.0);
+	RWBuf.Store(id << 4, 9.0);
+
+	// Should not be folded.
+	RWBuf.Store(12 * id + 1, 10.0);
+	RWBuf.Store(12 * id + 2, 11.0);
+	RWBuf.Store(12 * id + 3, 12.0);
+
+	// Should be folded.
+	RWBuf.Store(12 * id + 4, 13.0);
+	RWBuf.Store(12 * id + 8, 14.0);
+	RWBuf.Store(12 * id - 4, 15.0);
+	RWBuf.Store(12 * id - 8, 16.0);
+
+	// Should not be folded.
+	RWBuf.Store(id + 4, 17.0);
+	RWBuf.Store(id + 8, 18.0);
+	RWBuf.Store(id - 4, 19.0);
+	RWBuf.Store(id - 8, 20.0);
+
+	RWBuf.Store(id + 5, 17.0);
+	RWBuf.Store(id + 9, 18.0);
+	RWBuf.Store(id - 5, 19.0);
+	RWBuf.Store(id - 9, 20.0);
+}

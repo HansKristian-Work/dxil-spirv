@@ -109,16 +109,16 @@ static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *off
 	if (bias)
 		bias_factor = bias->getUniqueInteger().getSExtValue();
 
+	spv::Op bias_opcode = bias_factor > 0 ? spv::OpIAdd : spv::OpISub;
+	if (bias_opcode == spv::OpISub)
+		bias_factor = -bias_factor;
+
 	// Both scale and bias must align for there to be meaning to this transform.
-	if (((scale_factor | bias_factor) & ((1u << addr_shift_log2) - 1u)) != 0)
+	if (((scale_factor | unsigned(bias_factor)) & ((1u << addr_shift_log2) - 1u)) != 0)
 		return build_index_divider_fallback(impl, offset, addr_shift_log2);
 
 	scale_factor >>= addr_shift_log2;
 	bias_factor >>= int(addr_shift_log2);
-
-	spv::Op bias_opcode = bias_factor > 0 ? spv::OpIAdd : spv::OpISub;
-	if (bias_opcode == spv::OpISub)
-		bias_factor = -bias_factor;
 
 	spv::Id scaled_id;
 	if (scale_factor != 1)
