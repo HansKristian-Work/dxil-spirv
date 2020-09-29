@@ -19,10 +19,9 @@ void main()
 {
     vec4 _38 = texelFetch(_8, int(TEXCOORD));
     vec4 _41 = imageLoad(_17, int(TEXCOORD));
-    uint _46 = TEXCOORD << 3u;
-    uint _48 = _46 >> 2u;
+    uint _48 = TEXCOORD * 2u;
     uvec2 _58 = uvec2(texelFetch(_12, int(_48)).x, texelFetch(_12, int(_48 + 1u)).x);
-    uint _65 = _46 >> 2u;
+    uint _65 = TEXCOORD * 2u;
     uvec2 _71 = uvec2(imageLoad(_20, int(_65)).x, imageLoad(_20, int(_65 + 1u)).x);
     uint _79 = TEXCOORD * 2u;
     vec2 _86 = uintBitsToFloat(uvec2(texelFetch(_13, int(_79)).x, texelFetch(_13, int(_79 + 1u)).x));
@@ -137,7 +136,7 @@ OpBranch %139
 %44 = OpFAdd %5 %42 %39
 %45 = OpFAdd %5 %43 %40
 %46 = OpShiftLeftLogical %9 %36 %47
-%48 = OpShiftRightLogical %9 %46 %49
+%48 = OpIMul %9 %36 %49
 %51 = OpImageFetch %50 %34 %48
 %52 = OpCompositeExtract %9 %51 0
 %54 = OpIAdd %9 %48 %55
@@ -150,7 +149,7 @@ OpBranch %139
 %62 = OpBitcast %5 %60
 %63 = OpFAdd %5 %44 %61
 %64 = OpFAdd %5 %45 %62
-%65 = OpShiftRightLogical %9 %46 %49
+%65 = OpIMul %9 %36 %49
 %66 = OpImageRead %50 %30 %65
 %67 = OpCompositeExtract %9 %66 0
 %69 = OpIAdd %9 %65 %55

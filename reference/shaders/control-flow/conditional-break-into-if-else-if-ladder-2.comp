@@ -3,8 +3,6 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
-uint _29;
-
 void main()
 {
     uint _24;
@@ -49,7 +47,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 55
+; Bound: 54
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -79,45 +77,46 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %26 = OpConstant %5 30
 %27 = OpConstant %5 40
 %28 = OpConstant %5 50
-%30 = OpTypeVector %5 4
-%33 = OpConstant %5 4
-%36 = OpConstant %5 8
-%39 = OpConstant %5 16
+%29 = OpTypeVector %5 4
+%32 = OpConstant %5 4
+%35 = OpConstant %5 8
+%38 = OpConstant %5 16
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%29 = OpUndef %5
-OpBranch %41
-%41 = OpLabel
+OpBranch %40
+%40 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %17 = OpBitwiseAnd %5 %16 %18
 %20 = OpIEqual %19 %17 %15
-OpLoopMerge %52 %53 None
-OpBranch %42
+OpLoopMerge %51 %52 None
+OpBranch %41
+%41 = OpLabel
+OpSelectionMerge %50 None
+OpBranchConditional %20 %50 %42
 %42 = OpLabel
-OpSelectionMerge %51 None
-OpBranchConditional %20 %51 %43
-%43 = OpLabel
 %21 = OpBitwiseAnd %5 %16 %22
 %23 = OpIEqual %19 %21 %15
+OpSelectionMerge %43 None
+OpBranchConditional %23 %43 %51
+%43 = OpLabel
+%31 = OpBitwiseAnd %5 %16 %32
+%33 = OpIEqual %19 %31 %15
 OpSelectionMerge %44 None
-OpBranchConditional %23 %44 %52
+OpBranchConditional %33 %44 %51
 %44 = OpLabel
-%32 = OpBitwiseAnd %5 %16 %33
-%34 = OpIEqual %19 %32 %15
+%34 = OpBitwiseAnd %5 %16 %35
+%36 = OpIEqual %19 %34 %15
 OpSelectionMerge %45 None
-OpBranchConditional %34 %45 %52
+OpBranchConditional %36 %45 %51
 %45 = OpLabel
-%35 = OpBitwiseAnd %5 %16 %36
-%37 = OpIEqual %19 %35 %15
+%37 = OpBitwiseAnd %5 %16 %38
+%39 = OpIEqual %19 %37 %15
 OpSelectionMerge %46 None
-OpBranchConditional %37 %46 %52
+OpBranchConditional %39 %46 %51
 %46 = OpLabel
-%38 = OpBitwiseAnd %5 %16 %39
-%40 = OpIEqual %19 %38 %15
-OpSelectionMerge %47 None
-OpBranchConditional %40 %47 %52
+OpBranch %47
 %47 = OpLabel
 OpBranch %48
 %48 = OpLabel
@@ -126,14 +125,12 @@ OpBranch %49
 OpBranch %50
 %50 = OpLabel
 OpBranch %51
-%51 = OpLabel
-OpBranch %52
-%53 = OpLabel
-OpBranch %41
 %52 = OpLabel
-%24 = OpPhi %5 %15 %51 %25 %43 %26 %44 %27 %45 %28 %46
-%31 = OpCompositeConstruct %30 %24 %24 %24 %24
-OpImageWrite %9 %15 %31
+OpBranch %40
+%51 = OpLabel
+%24 = OpPhi %5 %15 %50 %25 %42 %26 %43 %27 %44 %28 %45
+%30 = OpCompositeConstruct %29 %24 %24 %24 %24
+OpImageWrite %9 %15 %30
 OpReturn
 OpFunctionEnd
 #endif

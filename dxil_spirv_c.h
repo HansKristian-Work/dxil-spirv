@@ -27,8 +27,8 @@
 extern "C" {
 #endif
 
-#define DXIL_SPV_API_VERSION_MAJOR 0
-#define DXIL_SPV_API_VERSION_MINOR 1
+#define DXIL_SPV_API_VERSION_MAJOR 1
+#define DXIL_SPV_API_VERSION_MINOR 0
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #if !defined(DXIL_SPV_PUBLIC_API)
@@ -142,6 +142,17 @@ typedef enum dxil_spv_resource_class
 	DXIL_SPV_RESOURCE_CLASS_INT_MAX = 0x7fffffff
 } dxil_spv_resource_class;
 
+typedef enum dxil_spv_vulkan_descriptor_type
+{
+	/* Use the descriptor type we expect, textures, typed buffers,
+	 * CBV or samplers only have one target type. */
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_IDENTITY = 0,
+	/* For untyped buffer types, we can select whether to use an SSBO implementation or texel buffer one. */
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO = 1,
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_TEXEL_BUFFER = 2,
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INT_MAX = 0x7fffffff
+} dxil_spv_vulkan_descriptor_type;
+
 typedef struct dxil_spv_d3d_binding
 {
 	dxil_spv_shader_stage stage;
@@ -150,6 +161,10 @@ typedef struct dxil_spv_d3d_binding
 	unsigned register_space;
 	unsigned register_index;
 	unsigned range_size;
+	/* For raw buffers, this is equal to 16, for structured buffers this is equal to the stride of the elements.
+	 * This can be used by the implementation to select an appropriate descriptor type.
+	 * Otherwise, 0. */
+	unsigned alignment;
 } dxil_spv_d3d_binding;
 
 typedef struct dxil_spv_vulkan_binding
@@ -162,6 +177,7 @@ typedef struct dxil_spv_vulkan_binding
 		unsigned heap_root_offset;
 		dxil_spv_bool use_heap;
 	} bindless;
+	dxil_spv_vulkan_descriptor_type descriptor_type;
 } dxil_spv_vulkan_binding;
 
 /* Remaps UAVs to desired binding points. */
@@ -171,10 +187,17 @@ typedef struct dxil_spv_uav_d3d_binding
 	dxil_spv_bool has_counter;
 } dxil_spv_uav_d3d_binding;
 
+typedef struct dxil_spv_srv_vulkan_binding
+{
+	dxil_spv_vulkan_binding buffer_binding;
+	dxil_spv_vulkan_binding offset_binding;
+} dxil_spv_srv_vulkan_binding;
+
 typedef struct dxil_spv_uav_vulkan_binding
 {
 	dxil_spv_vulkan_binding buffer_binding;
 	dxil_spv_vulkan_binding counter_binding;
+	dxil_spv_vulkan_binding offset_binding;
 } dxil_spv_uav_vulkan_binding;
 
 typedef struct dxil_spv_push_constant_mapping
@@ -198,14 +221,15 @@ typedef struct dxil_spv_compiled_spirv
 	size_t size;
 } dxil_spv_compiled_spirv;
 
-/* Remaps SRVs and Samplers to desired binding points. */
-typedef dxil_spv_bool (*dxil_spv_srv_sampler_remapper_cb)(void *userdata,
-                                                          const dxil_spv_d3d_binding *d3d_binding,
-                                                          dxil_spv_vulkan_binding *vulkan_binding);
+typedef dxil_spv_bool (*dxil_spv_srv_remapper_cb)(void *userdata,
+                                                  const dxil_spv_d3d_binding *d3d_binding,
+                                                  dxil_spv_srv_vulkan_binding *vulkan_binding);
+typedef dxil_spv_bool (*dxil_spv_sampler_remapper_cb)(void *userdata,
+                                                      const dxil_spv_d3d_binding *d3d_binding,
+                                                      dxil_spv_vulkan_binding *vulkan_binding);
 typedef dxil_spv_bool (*dxil_spv_uav_remapper_cb)(void *userdata,
                                                   const dxil_spv_uav_d3d_binding *d3d_uav_binding,
                                                   dxil_spv_uav_vulkan_binding *vulkan_uav_binding);
-
 typedef dxil_spv_bool (*dxil_spv_cbv_remapper_cb)(void *userdata,
                                                   const dxil_spv_d3d_binding *d3d_uav_binding,
                                                   dxil_spv_cbv_vulkan_binding *vulkan_uav_binding);
@@ -221,6 +245,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_BINDLESS_CBV_SSBO_EMULATION = 6,
 	DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER = 7,
 	DXIL_SPV_OPTION_SBT_DESCRIPTOR_SIZE_LOG2 = 8,
+	DXIL_SPV_OPTION_SSBO_ALIGNMENT = 9,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -290,6 +315,12 @@ typedef struct dxil_spv_option_sbt_descriptor_size_log2
 	unsigned size_log2_sampler;
 } dxil_spv_option_sbt_descriptor_size_log2;
 
+typedef struct dxil_spv_option_ssbo_alignment
+{
+	dxil_spv_option_base base;
+	unsigned alignment;
+} dxil_spv_option_ssbo_alignment;
+
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
 
@@ -312,8 +343,8 @@ DXIL_SPV_PUBLIC_API dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(
 
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_scan_resources(
 		dxil_spv_parsed_blob blob,
-		dxil_spv_srv_sampler_remapper_cb srv_remapper,
-		dxil_spv_srv_sampler_remapper_cb sampler_remapper,
+		dxil_spv_srv_remapper_cb srv_remapper,
+		dxil_spv_sampler_remapper_cb sampler_remapper,
 		dxil_spv_cbv_remapper_cb cbv_remapper,
 		dxil_spv_uav_remapper_cb uav_remapper,
 		void *userdata);
@@ -338,12 +369,12 @@ DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_stream_output_remapper(
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_srv_remapper(
 		dxil_spv_converter converter,
-		dxil_spv_srv_sampler_remapper_cb remapper,
+		dxil_spv_srv_remapper_cb remapper,
 		void *userdata);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_sampler_remapper(
 		dxil_spv_converter converter,
-		dxil_spv_srv_sampler_remapper_cb remapper,
+		dxil_spv_sampler_remapper_cb remapper,
 		void *userdata);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_root_constant_word_count(dxil_spv_converter converter,

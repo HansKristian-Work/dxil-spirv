@@ -24,24 +24,147 @@
 
 namespace dxil_spv
 {
-BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset)
+static spv::Id build_index_divider_fallback(Converter::Impl &impl, const llvm::Value *offset, unsigned addr_shift_log2)
+{
+	auto &builder = impl.builder();
+	Operation *op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+	op->add_ids({ impl.get_id_for_value(offset), builder.makeUintConstant(addr_shift_log2) });
+	impl.add(op);
+	return op->id;
+}
+
+static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset, unsigned addr_shift_log2)
+{
+	auto &builder = impl.builder();
+	// Attempt to do trivial constant folding to make output a little more sensible to read.
+	// Try to find an expression for offset which is "constant0 * offset + constant1",
+	// where constant0 and constant1 are aligned with addr_shift_log2.
+
+	const llvm::ConstantInt *scale = nullptr;
+	const llvm::Value *index = nullptr;
+	const llvm::ConstantInt *bias = nullptr;
+	bool scale_log2 = false;
+
+	if (const auto *const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset))
+		return builder.makeUintConstant(uint32_t(const_addr->getUniqueInteger().getZExtValue()) >> addr_shift_log2);
+
+	if (!llvm::isa<llvm::BinaryOperator>(offset))
+		return build_index_divider_fallback(impl, offset, addr_shift_log2);
+
+	index = offset;
+
+	while (!scale && llvm::isa<llvm::BinaryOperator>(index))
+	{
+		auto *binop = llvm::cast<llvm::BinaryOperator>(index);
+		auto *lhs = binop->getOperand(0);
+		auto *rhs = binop->getOperand(1);
+		if (!bias && binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add)
+		{
+			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
+			{
+				bias = const_lhs;
+				index = rhs;
+			}
+			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
+			{
+				bias = const_rhs;
+				index = lhs;
+			}
+			else
+				break;
+		}
+		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Mul ||
+		         binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl)
+		{
+			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
+			{
+				scale = const_lhs;
+				index = rhs;
+			}
+			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
+			{
+				scale = const_rhs;
+				index = lhs;
+			}
+			else
+				break;
+
+			scale_log2 = binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl;
+		}
+		else
+			break;
+	}
+
+	// Couldn't split the expression, fallback.
+	if (!scale && !bias)
+		return build_index_divider_fallback(impl, offset, addr_shift_log2);
+
+	unsigned scale_factor = 1;
+	if (scale)
+		scale_factor = scale->getUniqueInteger().getZExtValue();
+	if (scale_log2)
+		scale_factor = 1u << scale_factor;
+
+	int bias_factor = 0;
+	if (bias)
+		bias_factor = bias->getUniqueInteger().getSExtValue();
+
+	spv::Op bias_opcode = bias_factor > 0 ? spv::OpIAdd : spv::OpISub;
+	if (bias_opcode == spv::OpISub)
+		bias_factor = -bias_factor;
+
+	// Both scale and bias must align for there to be meaning to this transform.
+	if (((scale_factor | unsigned(bias_factor)) & ((1u << addr_shift_log2) - 1u)) != 0)
+		return build_index_divider_fallback(impl, offset, addr_shift_log2);
+
+	scale_factor >>= addr_shift_log2;
+	bias_factor >>= int(addr_shift_log2);
+
+	spv::Id scaled_id;
+	if (scale_factor != 1)
+	{
+		Operation *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		scale_op->add_id(impl.get_id_for_value(index));
+		scale_op->add_id(builder.makeUintConstant(scale_factor));
+		impl.add(scale_op);
+		scaled_id = scale_op->id;
+	}
+	else
+		scaled_id = impl.get_id_for_value(index);
+
+	spv::Id bias_id;
+	if (bias_factor != 0)
+	{
+		Operation *bias_op = impl.allocate(bias_opcode, builder.makeUintType(32));
+		bias_op->add_id(scaled_id);
+		bias_op->add_id(builder.makeUintConstant(bias_factor));
+		impl.add(bias_op);
+		bias_id = bias_op->id;
+	}
+	else
+		bias_id = scaled_id;
+
+	return bias_id;
+}
+
+BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset,
+                                     spv::Id index_offset_id)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
-	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
+	spv::Id index_id = 0;
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		// For raw buffers, the index is in bytes. Since we only consider bytes, shift by 4.
-		Operation *op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
-		op->add_ids({ index_id, builder.makeUintConstant(2) });
-		index_id = op->id;
-		impl.add(op);
+		// For raw buffers, the index is in bytes. Since we only consider uint32_t buffers, divide by 4.
+		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset), 2);
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
+		index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
+
 		unsigned constant_offset = 0;
 		spv::Id offset_id = impl.get_id_for_value(instruction->getOperand(3 + operand_offset));
 		bool has_constant_offset = false;
@@ -85,6 +208,16 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 			impl.add(op);
 		}
 	}
+	else
+		index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
+
+	if (index_offset_id)
+	{
+		Operation *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add_op->add_ids({ index_id, index_offset_id });
+		impl.add(add_op);
+		index_id = add_op->id;
+	}
 
 	return { index_id };
 }
@@ -98,11 +231,11 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
-	bool is_uav = builder.isStorageImageType(image_type_id);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
+
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
-	auto access = build_buffer_access(impl, instruction);
+	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
 	auto *result_type = instruction->getType();
 
 	// Sparse information is stored in the 5th component.
@@ -124,90 +257,135 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 				conservative_num_elements = i + 1;
 
 		spv::Id component_ids[4] = {};
-
 		spv::Id extracted_id_type = builder.makeUintType(32);
-		spv::Id loaded_id_type = builder.makeVectorType(extracted_id_type, 4);
-		spv::Id sparse_code_id = 0;
-		spv::Id sparse_loaded_id_type = 0;
-		if (sparse)
-			sparse_loaded_id_type = impl.get_struct_type({ extracted_id_type, loaded_id_type }, "SparseTexel");
-
-		bool first_load = true;
-		for (unsigned i = 0; i < conservative_num_elements; i++)
-		{
-			if (access_meta.access_mask & (1u << i))
-			{
-				// There is no sane way to combine sparse feedback code, since it's completely opaque to application.
-				// We could hypothetically return a vector of status code and deal with it magically, but let's not go there ...
-				spv::Op opcode;
-				if (is_uav)
-					opcode = (sparse && first_load) ? spv::OpImageSparseRead : spv::OpImageRead;
-				else
-					opcode = (sparse && first_load) ? spv::OpImageSparseFetch : spv::OpImageFetch;
-
-				Operation *loaded_op =
-				    impl.allocate(opcode, (sparse && first_load) ? sparse_loaded_id_type : loaded_id_type);
-				loaded_op->add_ids({ image_id, impl.build_offset(access.index_id, i) });
-				impl.add(loaded_op);
-
-				if (sparse && first_load)
-				{
-					auto *code_extract_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-					code_extract_op->add_id(loaded_op->id);
-					code_extract_op->add_literal(0);
-					impl.add(code_extract_op);
-					sparse_code_id = code_extract_op->id;
-
-					Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-					extracted_op->add_id(loaded_op->id);
-					extracted_op->add_literal(1);
-					extracted_op->add_literal(0);
-					impl.add(extracted_op);
-					component_ids[i] = extracted_op->id;
-				}
-				else
-				{
-					Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
-					extracted_op->add_id(loaded_op->id);
-					extracted_op->add_literal(0);
-					impl.add(extracted_op);
-					component_ids[i] = extracted_op->id;
-				}
-				first_load = false;
-			}
-			else
-				component_ids[i] = builder.createUndefined(builder.makeUintType(32));
-		}
-
+		spv::Id constructed_id = 0;
+		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
 		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
 
-		if (sparse)
+		if (ssbo && sparse)
 		{
-			Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction);
+			LOGE("Cannot use SSBOs and sparse feedback. >:(\n");
+			return false;
+		}
 
-			if (need_bitcast)
+		if (ssbo)
+		{
+			// TODO: Use proper aligned loads and stores. Wouldn't that be nice? :v
+			// Hopefully compiler can figure it out ...
+
+			spv::Id ptr_type = builder.makePointer(spv::StorageClassStorageBuffer, extracted_id_type);
+			for (unsigned i = 0; i < conservative_num_elements; i++)
 			{
-				for (unsigned i = 0; i < conservative_num_elements; i++)
+				if (access_meta.access_mask & (1u << i))
 				{
-					auto *bitcast_op =
-					    impl.allocate(spv::OpBitcast, impl.get_type_id(result_type->getStructElementType(0)));
-					bitcast_op->add_id(component_ids[i]);
-					impl.add(bitcast_op);
-					component_ids[i] = bitcast_op->id;
+					auto *chain_op = impl.allocate(spv::OpAccessChain, ptr_type);
+					chain_op->add_id(image_id);
+					chain_op->add_id(builder.makeUintConstant(0));
+					chain_op->add_id(impl.build_offset(access.index_id, i));
+					impl.add(chain_op);
+
+					if (meta.non_uniform)
+						builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
+
+					auto *load_op = impl.allocate(spv::OpLoad, extracted_id_type);
+					load_op->add_id(chain_op->id);
+					impl.add(load_op);
+					component_ids[i] = load_op->id;
 				}
+				else
+					component_ids[i] = builder.createUndefined(extracted_id_type);
 			}
 
-			for (unsigned i = 0; i < conservative_num_elements; i++)
-				op->add_id(component_ids[i]);
-			for (unsigned i = conservative_num_elements; i < 4; i++)
-				op->add_id(builder.createUndefined(impl.get_type_id(result_type->getStructElementType(0))));
-			op->add_id(sparse_code_id);
-			impl.add(op);
+			constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
 		}
 		else
 		{
-			spv::Id constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
+			bool is_uav = builder.isStorageImageType(image_type_id);
 
+			spv::Id loaded_id_type = builder.makeVectorType(extracted_id_type, 4);
+			spv::Id sparse_code_id = 0;
+			spv::Id sparse_loaded_id_type = 0;
+			if (sparse)
+				sparse_loaded_id_type = impl.get_struct_type({ extracted_id_type, loaded_id_type }, "SparseTexel");
+
+			bool first_load = true;
+			for (unsigned i = 0; i < conservative_num_elements; i++)
+			{
+				if (access_meta.access_mask & (1u << i))
+				{
+					// There is no sane way to combine sparse feedback code, since it's completely opaque to application.
+					// We could hypothetically return a vector of status code and deal with it magically, but let's not go there ...
+					spv::Op opcode;
+					if (is_uav)
+						opcode = (sparse && first_load) ? spv::OpImageSparseRead : spv::OpImageRead;
+					else
+						opcode = (sparse && first_load) ? spv::OpImageSparseFetch : spv::OpImageFetch;
+
+					Operation *loaded_op =
+					    impl.allocate(opcode, (sparse && first_load) ? sparse_loaded_id_type : loaded_id_type);
+					loaded_op->add_ids({ image_id, impl.build_offset(access.index_id, i) });
+					impl.add(loaded_op);
+
+					if (sparse && first_load)
+					{
+						auto *code_extract_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+						code_extract_op->add_id(loaded_op->id);
+						code_extract_op->add_literal(0);
+						impl.add(code_extract_op);
+						sparse_code_id = code_extract_op->id;
+
+						Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+						extracted_op->add_id(loaded_op->id);
+						extracted_op->add_literal(1);
+						extracted_op->add_literal(0);
+						impl.add(extracted_op);
+						component_ids[i] = extracted_op->id;
+					}
+					else
+					{
+						Operation *extracted_op = impl.allocate(spv::OpCompositeExtract, extracted_id_type);
+						extracted_op->add_id(loaded_op->id);
+						extracted_op->add_literal(0);
+						impl.add(extracted_op);
+						component_ids[i] = extracted_op->id;
+					}
+					first_load = false;
+				}
+				else
+					component_ids[i] = builder.createUndefined(builder.makeUintType(32));
+			}
+
+			if (sparse)
+			{
+				Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction);
+
+				if (need_bitcast)
+				{
+					for (unsigned i = 0; i < conservative_num_elements; i++)
+					{
+						auto *bitcast_op =
+						    impl.allocate(spv::OpBitcast, impl.get_type_id(result_type->getStructElementType(0)));
+						bitcast_op->add_id(component_ids[i]);
+						impl.add(bitcast_op);
+						component_ids[i] = bitcast_op->id;
+					}
+				}
+
+				for (unsigned i = 0; i < conservative_num_elements; i++)
+					op->add_id(component_ids[i]);
+				for (unsigned i = conservative_num_elements; i < 4; i++)
+					op->add_id(builder.createUndefined(impl.get_type_id(result_type->getStructElementType(0))));
+				op->add_id(sparse_code_id);
+				impl.add(op);
+			}
+			else
+			{
+				constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
+			}
+		}
+
+		if (!sparse)
+		{
 			if (need_bitcast)
 			{
 				Operation *op = impl.allocate(
@@ -226,6 +404,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	}
 	else
 	{
+		bool is_uav = builder.isStorageImageType(image_type_id);
 		spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
 		spv::Id sample_type;
 
@@ -386,7 +565,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
-	auto access = build_buffer_access(impl, instruction);
+	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
 
 	spv::Id store_values[4] = {};
 	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
@@ -394,15 +573,18 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	for (unsigned i = 0; i < 4; i++)
 	{
-		store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
-		if (!is_typed && (mask & (1u << i)))
+		if ((mask & (1u << i)) != 0)
 		{
-			if (instruction->getOperand(4 + i)->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+			store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+			if (!is_typed)
 			{
-				Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
-				op->add_id(store_values[i]);
-				store_values[i] = op->id;
-				impl.add(op);
+				if (instruction->getOperand(4 + i)->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+				{
+					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+					op->add_id(store_values[i]);
+					store_values[i] = op->id;
+					impl.add(op);
+				}
 			}
 		}
 	}
@@ -418,6 +600,29 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		      impl.fixup_store_sign(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
 
 		impl.add(op);
+	}
+	else if (meta.storage == spv::StorageClassStorageBuffer)
+	{
+		for (unsigned i = 0; i < 4; i++)
+		{
+			if (mask & (1u << i))
+			{
+				Operation *chain_op = impl.allocate(spv::OpAccessChain,
+				                                    builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+				chain_op->add_id(image_id);
+				chain_op->add_id(builder.makeUintConstant(0));
+				chain_op->add_id(impl.build_offset(access.index_id, i));
+				impl.add(chain_op);
+
+				if (meta.non_uniform)
+					builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
+
+				Operation *store_op = impl.allocate(spv::OpStore);
+				store_op->add_id(chain_op->id);
+				store_op->add_id(store_values[i]);
+				impl.add(store_op);
+			}
+		}
 	}
 	else
 	{
@@ -534,28 +739,42 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id coords[3] = {};
 
 	uint32_t num_coords_full = 0, num_coords = 0;
-	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
-		return false;
-
-	if (num_coords_full > 3)
-		return false;
 
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction, 1);
+		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id);
 		coords[0] = access.index_id;
+		num_coords = 1;
+		num_coords_full = 1;
 	}
 	else
 	{
+		if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
+			return false;
+
+		if (num_coords_full > 3)
+			return false;
+
 		for (uint32_t i = 0; i < num_coords_full; i++)
 			coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
 	}
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
-	Operation *counter_ptr_op =
-	    impl.allocate(spv::OpImageTexelPointer,
-	                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
-	counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
+	Operation *counter_ptr_op = nullptr;
+	if (meta.storage == spv::StorageClassStorageBuffer)
+	{
+		counter_ptr_op =
+			impl.allocate(spv::OpAccessChain,
+			              builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+		counter_ptr_op->add_ids({ meta.var_id, builder.makeUintConstant(0), coord });
+	}
+	else
+	{
+		counter_ptr_op =
+		    impl.allocate(spv::OpImageTexelPointer,
+		                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
+		counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
+	}
 	impl.add(counter_ptr_op);
 
 	if (meta.non_uniform)
@@ -626,29 +845,43 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	spv::Id coords[3] = {};
 
 	uint32_t num_coords_full = 0, num_coords = 0;
-	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
-		return false;
-
-	if (num_coords_full > 3)
-		return false;
 
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction);
+		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
 		coords[0] = access.index_id;
+		num_coords = 1;
+		num_coords_full = 1;
 	}
 	else
 	{
+		if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
+			return false;
+
+		if (num_coords_full > 3)
+			return false;
+
 		for (uint32_t i = 0; i < num_coords_full; i++)
 			coords[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
 	}
 
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
-	Operation *counter_ptr_op =
-	    impl.allocate(spv::OpImageTexelPointer,
-	                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
-	counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
+	Operation *counter_ptr_op = nullptr;
+	if (meta.storage == spv::StorageClassStorageBuffer)
+	{
+		counter_ptr_op =
+			impl.allocate(spv::OpAccessChain,
+			              builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+		counter_ptr_op->add_ids({ meta.var_id, builder.makeUintConstant(0), coord });
+	}
+	else
+	{
+		counter_ptr_op =
+		    impl.allocate(spv::OpImageTexelPointer,
+		                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
+		counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
+	}
 	impl.add(counter_ptr_op);
 
 	Operation *op =

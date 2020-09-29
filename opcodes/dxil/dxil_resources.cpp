@@ -583,17 +583,22 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 	return load_op->id;
 }
 
-static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_image_id,
+static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resource_id,
                                        const Converter::Impl::ResourceReference &reference,
                                        const llvm::CallInst *instruction,
                                        llvm::Value *instruction_offset_value, bool instruction_is_non_uniform,
                                        bool &is_non_uniform,
-                                       spv::Id *ptr_id, spv::Id *value_id)
+                                       spv::Id *ptr_id, spv::Id *value_id, spv::Id *bindless_offset_id)
 {
 	auto &builder = impl.builder();
 
-	spv::Id image_id = base_image_id;
-	spv::Id type_id = builder.getDerefTypeId(image_id);
+	spv::Id resource_id = base_resource_id;
+	spv::Id type_id = builder.getDerefTypeId(resource_id);
+
+	auto meta_itr = impl.handle_to_resource_meta.find(base_resource_id);
+	auto storage = spv::StorageClassUniformConstant;
+	if (meta_itr != impl.handle_to_resource_meta.end())
+		storage = meta_itr->second.storage;
 
 	is_non_uniform = false;
 
@@ -606,8 +611,8 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_image
 
 		type_id = builder.getContainedTypeId(type_id);
 		Operation *op =
-		    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassUniformConstant, type_id));
-		op->add_id(image_id);
+		    impl.allocate(spv::OpAccessChain, builder.makePointer(storage, type_id));
+		op->add_id(resource_id);
 
 		spv::Id offset_id;
 
@@ -618,9 +623,16 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_image
 
 			if (offset_id == 0)
 				return false;
+
+			if (bindless_offset_id)
+				*bindless_offset_id = offset_id;
 		}
 		else
+		{
 			offset_id = impl.get_id_for_value(instruction_offset_value);
+			if (bindless_offset_id)
+				*bindless_offset_id = 0;
+		}
 
 		op->add_id(offset_id);
 
@@ -629,21 +641,32 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_image
 			builder.addDecoration(offset_id, spv::DecorationNonUniformEXT);
 
 		impl.add(op);
-		image_id = op->id;
+		resource_id = op->id;
 	}
 
 	if (ptr_id)
-		*ptr_id = image_id;
+		*ptr_id = resource_id;
 
 	if (value_id)
 	{
-		Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
-		op->add_id(image_id);
-		impl.id_to_type[op->id] = type_id;
-		impl.add(op);
-		if (is_non_uniform)
-			builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
-		*value_id = op->id;
+		if (storage == spv::StorageClassUniformConstant)
+		{
+			Operation *op = impl.allocate(spv::OpLoad, instruction, type_id);
+			op->add_id(resource_id);
+			impl.id_to_type[op->id] = type_id;
+			impl.add(op);
+			if (is_non_uniform)
+				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+			*value_id = op->id;
+		}
+		else
+		{
+			*value_id = resource_id;
+			impl.value_map[instruction] = resource_id;
+			// Not technically needed, but to be safe against weird compilers ...
+			if (is_non_uniform)
+				builder.addDecoration(resource_id, spv::DecorationNonUniformEXT);
+		}
 	}
 
 	return true;
@@ -682,6 +705,44 @@ static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter:
 	       impl.local_root_signature[reference.local_root_signature_entry].type == LocalRootSignatureType::Descriptor;
 }
 
+static spv::Id build_load_ssbo_offset(Converter::Impl &impl, Converter::Impl::ResourceReference &reference,
+                                      spv::Id offset_ssbo_id, spv::Id bindless_offset_id, bool non_uniform)
+{
+	auto &builder = impl.builder();
+
+	if (!non_uniform)
+	{
+		// Allow scalar load of the offset if possible.
+		Operation *scalar_op = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, builder.makeUintType(32));
+		scalar_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		scalar_op->add_id(bindless_offset_id);
+		impl.add(scalar_op);
+		bindless_offset_id = scalar_op->id;
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	}
+
+	Operation *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer,
+	                                                                            builder.makeUintType(32)));
+	chain_op->add_id(offset_ssbo_id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	chain_op->add_id(bindless_offset_id);
+	impl.add(chain_op);
+
+	Operation *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	load_op->add_id(chain_op->id);
+	impl.add(load_op);
+
+	spv::Id offset_id = load_op->id;
+
+	Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+	shift_op->add_id(offset_id);
+	shift_op->add_id(builder.makeUintConstant(2));
+	impl.add(shift_op);
+
+	offset_id = shift_op->id;
+	return offset_id;
+}
+
 static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *instruction,
                                DXIL::ResourceType resource_type, unsigned resource_range,
                                llvm::Value *instruction_offset, bool non_uniform)
@@ -715,17 +776,24 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			bool is_non_uniform = false;
 			spv::Id loaded_id = 0;
+			spv::Id offset_id = 0;
 			if (!build_load_resource_handle(impl, base_image_id, reference, instruction,
 			                                instruction_offset, non_uniform, is_non_uniform,
-			                                nullptr, &loaded_id))
+			                                nullptr, &loaded_id, &offset_id))
 			{
 				LOGE("Failed to load SRV resource handle.\n");
 				return false;
 			}
 
+			if (impl.srv_index_to_offset[resource_range])
+				offset_id = build_load_ssbo_offset(impl, reference, impl.srv_index_to_offset[resource_range], offset_id, non_uniform);
+			else
+				offset_id = 0;
+
 			auto &meta = impl.handle_to_resource_meta[loaded_id];
 			meta = impl.handle_to_resource_meta[base_image_id];
 			meta.non_uniform = is_non_uniform;
+			meta.index_offset_id = offset_id;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -736,16 +804,13 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				spv::Id type_id = builder.getDerefTypeId(image_id);
 				type_id = builder.getContainedTypeId(type_id);
 
-				if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
-				{
+				if (meta.storage == spv::StorageClassStorageBuffer)
+					builder.addCapability(spv::CapabilityStorageBufferArrayNonUniformIndexing);
+				else if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
 					builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
-					builder.addExtension("SPV_EXT_descriptor_indexing");
-				}
 				else
-				{
 					builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
-					builder.addExtension("SPV_EXT_descriptor_indexing");
-				}
+				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 		}
 		break;
@@ -772,27 +837,32 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		}
 		else
 		{
-			auto &counter_reference = impl.uav_index_to_counter[resource_range];
-
-			spv::Id base_image_id = reference.var_id;
-			spv::Id image_id = base_image_id;
+			spv::Id base_resource_id = reference.var_id;
+			spv::Id resource_id = base_resource_id;
 
 			bool is_non_uniform = false;
-			spv::Id image_ptr_id = 0;
+			spv::Id resource_ptr_id = 0;
 			spv::Id loaded_id = 0;
-			if (!build_load_resource_handle(impl, base_image_id, reference, instruction, instruction_offset, non_uniform,
-			                                is_non_uniform, &image_ptr_id, &loaded_id))
+			spv::Id offset_id = 0;
+			if (!build_load_resource_handle(impl, base_resource_id, reference, instruction, instruction_offset, non_uniform,
+			                                is_non_uniform, &resource_ptr_id, &loaded_id, &offset_id))
 			{
 				LOGE("Failed to load UAV resource handle.\n");
 				return false;
 			}
 
+			if (impl.uav_index_to_offset[resource_range])
+				offset_id = build_load_ssbo_offset(impl, reference, impl.uav_index_to_offset[resource_range], offset_id, non_uniform);
+			else
+				offset_id = 0;
+
 			auto &meta = impl.handle_to_resource_meta[loaded_id];
-			meta = impl.handle_to_resource_meta[base_image_id];
+			meta = impl.handle_to_resource_meta[base_resource_id];
 			meta.non_uniform = is_non_uniform;
+			meta.index_offset_id = offset_id;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
-			meta.var_id = image_ptr_id;
+			meta.var_id = resource_ptr_id;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -800,23 +870,22 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			if (is_non_uniform)
 			{
-				spv::Id type_id = builder.getDerefTypeId(image_id);
+				spv::Id type_id = builder.getDerefTypeId(resource_id);
 				type_id = builder.getContainedTypeId(type_id);
 
-				if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
-				{
+				if (meta.storage == spv::StorageClassStorageBuffer)
+					builder.addCapability(spv::CapabilityStorageBufferArrayNonUniformIndexing);
+				else if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
 					builder.addCapability(spv::CapabilityStorageTexelBufferArrayNonUniformIndexing);
-					builder.addExtension("SPV_EXT_descriptor_indexing");
-				}
 				else
-				{
-					builder.addCapability(spv::CapabilityStorageImageArrayNonUniformIndexingEXT);
-					builder.addExtension("SPV_EXT_descriptor_indexing");
-				}
+					builder.addCapability(spv::CapabilityStorageImageArrayNonUniformIndexing);
+				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 
 			if (impl.llvm_values_using_update_counter.count(instruction) != 0)
 			{
+				auto &counter_reference = impl.uav_index_to_counter[resource_range];
+
 				if (counter_reference.bindless)
 				{
 					if (impl.options.physical_storage_buffer)
@@ -827,7 +896,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 					else
 					{
 						if (!build_load_resource_handle(impl, counter_reference.var_id, reference, instruction, instruction_offset, non_uniform,
-						                                is_non_uniform, &meta.counter_var_id, nullptr))
+						                                is_non_uniform, &meta.counter_var_id, nullptr, nullptr))
 						{
 							LOGE("Failed to load UAV counter pointer.\n");
 							return false;
@@ -953,7 +1022,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		bool is_non_uniform = false;
 		spv::Id loaded_id = 0;
 		if (!build_load_resource_handle(impl, base_sampler_id, reference, instruction,
-		                                instruction_offset, non_uniform, is_non_uniform, nullptr, &loaded_id))
+		                                instruction_offset, non_uniform, is_non_uniform, nullptr, &loaded_id, nullptr))
 		{
 			LOGE("Failed to load Sampler resource handle.\n");
 			return false;

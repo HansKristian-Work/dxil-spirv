@@ -152,18 +152,23 @@ static bool image_dimension_is_multisampled(DXIL::ResourceKind kind)
 	}
 }
 
-spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component,
-                                                       DXIL::ResourceKind kind, uint32_t desc_set, uint32_t binding,
-                                                       spv::ImageFormat format, bool has_uav_read, bool has_uav_written,
-                                                       bool has_uav_coherent, bool counters)
+spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 {
-	auto itr =
-	    std::find_if(bindless_resources.begin(), bindless_resources.end(), [&](const BindlessResource &resource) {
-		    return resource.type == type && resource.component == component && resource.kind == kind &&
-		           resource.desc_set == desc_set && resource.format == format && resource.binding == binding &&
-		           resource.uav_read == has_uav_read && resource.uav_written == has_uav_written &&
-		           resource.uav_coherent == has_uav_coherent && resource.counters == counters;
-	    });
+	auto itr = std::find_if(bindless_resources.begin(), bindless_resources.end(), [&](const BindlessResource &resource) {
+		return
+		    resource.info.type == info.type &&
+			resource.info.component == info.component &&
+			resource.info.kind == info.kind &&
+			resource.info.desc_set == info.desc_set &&
+			resource.info.format == info.format &&
+			resource.info.binding == info.binding &&
+			resource.info.uav_read == info.uav_read &&
+			resource.info.uav_written == info.uav_written &&
+			resource.info.uav_coherent == info.uav_coherent &&
+			resource.info.counters == info.counters &&
+			resource.info.offsets == info.offsets &&
+			resource.info.descriptor_type == info.descriptor_type;
+	});
 
 	if (itr != bindless_resources.end())
 	{
@@ -172,43 +177,49 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 	else
 	{
 		BindlessResource resource = {};
-		resource.type = type;
-		resource.component = component;
-		resource.kind = kind;
-		resource.format = format;
-		resource.desc_set = desc_set;
-		resource.binding = binding;
-		resource.uav_read = has_uav_read;
-		resource.uav_written = has_uav_written;
-		resource.uav_coherent = has_uav_coherent;
-		resource.counters = counters;
+		resource.info = info;
 
 		spv::Id type_id = 0;
 		auto storage = spv::StorageClassMax;
 
-		switch (type)
+		switch (info.type)
 		{
 		case DXIL::ResourceType::SRV:
 		{
-			if (kind == DXIL::ResourceKind::RTAccelerationStructure)
+			if (info.kind == DXIL::ResourceKind::RTAccelerationStructure)
 			{
 				type_id = builder().makeAccelerationStructureType();
+				storage = spv::StorageClassUniformConstant;
+			}
+			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				spv::Id uint_type = builder().makeUintType(32);
+				spv::Id uint_array_type = builder().makeRuntimeArray(uint_type);
+				builder().addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				spv::Id block_type_id = get_struct_type({ uint_array_type }, info.offsets ? "SSBO_Offsets" : "SSBO");
+				builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+				builder().addDecoration(block_type_id, spv::DecorationBlock);
+				if (info.offsets)
+					type_id = block_type_id;
+				else
+					type_id = builder().makeRuntimeArray(block_type_id);
+				storage = spv::StorageClassStorageBuffer;
 			}
 			else
 			{
-				spv::Id sampled_type_id = get_type_id(component, 1, 1);
-				type_id = builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
-				                                  image_dimension_is_arrayed(kind),
-				                                  image_dimension_is_multisampled(kind), 1, spv::ImageFormatUnknown);
+				spv::Id sampled_type_id = get_type_id(info.component, 1, 1);
+				type_id = builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(info.kind), false,
+				                                  image_dimension_is_arrayed(info.kind),
+				                                  image_dimension_is_multisampled(info.kind), 1, spv::ImageFormatUnknown);
 				type_id = builder().makeRuntimeArray(type_id);
+				storage = spv::StorageClassUniformConstant;
 			}
-			storage = spv::StorageClassUniformConstant;
 			break;
 		}
 
 		case DXIL::ResourceType::UAV:
 		{
-			if (counters)
+			if (info.counters)
 			{
 				if (!physical_counter_type)
 				{
@@ -229,12 +240,23 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 				builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
 				storage = spv::StorageClassStorageBuffer;
 			}
+			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				spv::Id uint_type = builder().makeUintType(32);
+				spv::Id uint_array_type = builder().makeRuntimeArray(uint_type);
+				builder().addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				spv::Id block_type_id = get_struct_type({ uint_array_type }, "SSBO");
+				builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+				builder().addDecoration(block_type_id, spv::DecorationBlock);
+				type_id = builder().makeRuntimeArray(block_type_id);
+				storage = spv::StorageClassStorageBuffer;
+			}
 			else
 			{
-				spv::Id sampled_type_id = get_type_id(component, 1, 1);
-				type_id = builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(kind), false,
-				                                  image_dimension_is_arrayed(kind),
-				                                  image_dimension_is_multisampled(kind), 2, format);
+				spv::Id sampled_type_id = get_type_id(info.component, 1, 1);
+				type_id = builder().makeImageType(sampled_type_id, image_dimension_from_resource_kind(info.kind), false,
+				                                  image_dimension_is_arrayed(info.kind),
+				                                  image_dimension_is_multisampled(info.kind), 2, info.format);
 				type_id = builder().makeRuntimeArray(type_id);
 				storage = spv::StorageClassUniformConstant;
 			}
@@ -269,23 +291,28 @@ spv::Id Converter::Impl::create_bindless_heap_variable(DXIL::ResourceType type, 
 		builder().addExtension("SPV_EXT_descriptor_indexing");
 		builder().addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 		resource.var_id = builder().createVariable(storage, type_id);
-		handle_to_resource_meta[resource.var_id] = { kind, component, 0, resource.var_id, storage, false, 0, false };
+		handle_to_resource_meta[resource.var_id] = { info.kind, info.component, 0, resource.var_id, storage, false, 0, false, 0, };
 
-		builder().addDecoration(resource.var_id, spv::DecorationDescriptorSet, desc_set);
-		builder().addDecoration(resource.var_id, spv::DecorationBinding, binding);
+		builder().addDecoration(resource.var_id, spv::DecorationDescriptorSet, info.desc_set);
+		builder().addDecoration(resource.var_id, spv::DecorationBinding, info.binding);
 
-		if (type == DXIL::ResourceType::UAV && !counters)
+		if (info.type == DXIL::ResourceType::UAV && !info.counters)
 		{
-			if (!has_uav_read)
+			if (!info.uav_read)
 				builder().addDecoration(resource.var_id, spv::DecorationNonReadable);
-			if (!has_uav_written)
+			if (!info.uav_written)
 				builder().addDecoration(resource.var_id, spv::DecorationNonWritable);
-			if (has_uav_coherent)
+			if (info.uav_coherent)
 				builder().addDecoration(resource.var_id, spv::DecorationCoherent);
 		}
-		else if (counters)
+		else if (info.counters)
 		{
 			builder().addDecoration(resource.var_id, spv::DecorationAliasedPointer);
+		}
+		else if (info.type == DXIL::ResourceType::SRV && info.descriptor_type == VulkanDescriptorType::SSBO)
+		{
+			builder().addDecoration(resource.var_id, spv::DecorationNonWritable);
+			builder().addDecoration(resource.var_id, spv::DecorationRestrict);
 		}
 
 		bindless_resources.push_back(resource);
@@ -354,6 +381,19 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
+		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : stride;
+
+		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::SRV, bind_space, bind_register);
+		bool need_resource_remapping = local_root_signature_entry < 0 ||
+		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
+
+		D3DBinding d3d_binding = {
+			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment,
+		};
+		VulkanSRVBinding vulkan_binding = { { bind_space, bind_register }, {} };
+		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
+			return false;
+
 		if (range_size != 1)
 		{
 			if (range_size == ~0u)
@@ -362,8 +402,14 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 			}
 
-			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
-			    resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
+			if ((resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			     resource_kind == DXIL::ResourceKind::RawBuffer) &&
+			    vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
+			}
+			else if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			         resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
 			{
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityUniformTexelBufferArrayDynamicIndexingEXT);
@@ -372,31 +418,33 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
 		}
 
-		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::SRV, bind_space, bind_register);
-		bool need_resource_remapping = local_root_signature_entry < 0 ||
-		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
+		srv_index_to_reference.resize(std::max(srv_index_to_reference.size(), size_t(index + 1)));
+		srv_index_to_offset.resize(std::max(srv_index_to_offset.size(), size_t(index + 1)));
 
-		D3DBinding d3d_binding = {
-			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size
-		};
-		VulkanBinding vulkan_binding = { bind_space, bind_register };
-		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
+		if (!get_ssbo_offset_buffer_id(srv_index_to_offset[index], vulkan_binding.buffer_binding,
+		                               vulkan_binding.offset_binding, resource_kind, alignment))
 			return false;
 
-		srv_index_to_reference.resize(std::max(srv_index_to_reference.size(), size_t(index + 1)));
+		BindlessInfo bindless_info = {};
+		bindless_info.type = DXIL::ResourceType::SRV;
+		bindless_info.component = component_type;
+		bindless_info.kind = resource_kind;
+		bindless_info.desc_set = vulkan_binding.buffer_binding.descriptor_set;
+		bindless_info.binding = vulkan_binding.buffer_binding.binding;
+		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
 
 		if (local_root_signature_entry >= 0)
 		{
 			auto &entry = local_root_signature[local_root_signature_entry];
 			if (entry.type == LocalRootSignatureType::Table)
 			{
-				if (!vulkan_binding.bindless.use_heap)
+				if (!vulkan_binding.buffer_binding.bindless.use_heap)
 				{
 					LOGE("Table SBT entries must be bindless.\n");
 					return false;
 				}
-				spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::SRV, component_type, resource_kind,
-				                                               vulkan_binding.descriptor_set, vulkan_binding.binding);
+
+				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
@@ -421,17 +469,16 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				                                  local_root_signature_entry };
 			}
 		}
-		else if (vulkan_binding.bindless.use_heap)
+		else if (vulkan_binding.buffer_binding.bindless.use_heap)
 		{
-			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::SRV, component_type, resource_kind,
-			                                               vulkan_binding.descriptor_set, vulkan_binding.binding);
+			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
-			uint32_t heap_offset = vulkan_binding.bindless.heap_root_offset;
+			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
 			if (range_size != 1)
 				heap_offset -= bind_register;
 
-			srv_index_to_reference[index] = { var_id,      vulkan_binding.bindless.root_constant_word,
+			srv_index_to_reference[index] = { var_id,      vulkan_binding.buffer_binding.bindless.root_constant_word,
 				                              heap_offset, stride,
 				                              true,        range_size != 1 };
 		}
@@ -440,10 +487,30 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			auto sampled_type_id = get_type_id(component_type, 1, 1);
 
 			spv::Id type_id;
+			auto storage = spv::StorageClassUniformConstant;
 
 			if (resource_kind == DXIL::ResourceKind::RTAccelerationStructure)
 			{
 				type_id = builder.makeAccelerationStructureType();
+			}
+			else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				// TODO: Consider implementing aliased buffers which all refer to the same buffer,
+				// but which can exploit alignment per-instruction.
+				// This is impractical, since BufferLoad/Store in DXIL does not have alignment (4 bytes is assumed),
+				// so just unroll.
+				// To make good use of this, we'll need apps to use SM 6.2 RawBufferLoad/Store, which does have explicit alignment.
+				// We'll likely need to mess around with Aliased decoration as well, which might have other effects ...
+
+				spv::Id uint_type = builder.makeUintType(32);
+				spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
+				builder.addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				spv::Id block_type_id = get_struct_type({ uint_array_type }, "SSBO");
+				builder.addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+				builder.addDecoration(block_type_id, spv::DecorationBlock);
+
+				type_id = block_type_id;
+				storage = spv::StorageClassStorageBuffer;
 			}
 			else
 			{
@@ -461,14 +528,60 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 			}
 
-			spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
+			spv::Id var_id = builder.createVariable(storage, type_id,
 			                                        name.empty() ? nullptr : name.c_str());
-			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
-			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.binding);
+			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
+			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
+			if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				// Make it crystal clear this is a read-only SSBO which cannot observe changed from other SSBO writes.
+				builder.addDecoration(var_id, spv::DecorationNonWritable);
+				builder.addDecoration(var_id, spv::DecorationRestrict);
+			}
 			srv_index_to_reference[index] = { var_id, 0, 0, 0, false, range_size != 1 };
 			handle_to_resource_meta[var_id] = {
-				resource_kind, component_type, stride, var_id, spv::StorageClassUniformConstant, false, 0, false,
+				resource_kind, component_type, stride, var_id, storage, false, 0, false, 0,
 			};
+		}
+	}
+
+	return true;
+}
+
+bool Converter::Impl::get_ssbo_offset_buffer_id(spv::Id &buffer_id,
+                                                const VulkanBinding &buffer_binding,
+                                                const VulkanBinding &offset_binding,
+                                                DXIL::ResourceKind kind, unsigned alignment)
+{
+	buffer_id = 0;
+
+	// If we're emitting an SSBO where we expect small alignment, we'll need to carry forward an "offset".
+	if (buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
+	{
+		if ((kind == DXIL::ResourceKind::StructuredBuffer ||
+		     kind == DXIL::ResourceKind::RawBuffer) && (alignment & (options.ssbo_alignment - 1)) != 0)
+		{
+			if (!buffer_binding.bindless.use_heap)
+			{
+				LOGE("SSBO offset is only supported for bindless SSBOs.\n");
+				return false;
+			}
+
+			if (offset_binding.bindless.use_heap)
+			{
+				LOGE("SSBO offset buffer must be a bindless buffer.\n");
+				return false;
+			}
+
+			BindlessInfo bindless_info = {};
+			bindless_info.descriptor_type = VulkanDescriptorType::SSBO;
+			bindless_info.type = DXIL::ResourceType::SRV;
+			bindless_info.offsets = true;
+			bindless_info.desc_set = offset_binding.descriptor_set;
+			bindless_info.binding = offset_binding.binding;
+			bindless_info.component = DXIL::ComponentType::U32;
+			bindless_info.kind = DXIL::ResourceKind::RawBuffer;
+			buffer_id = create_bindless_heap_variable(bindless_info);
 		}
 	}
 
@@ -519,6 +632,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
+		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : stride;
+
 		auto &access_meta = uav_access_tracking[index];
 		if (resource_kind != DXIL::ResourceKind::RawBuffer && resource_kind != DXIL::ResourceKind::StructuredBuffer)
 		{
@@ -547,6 +662,27 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			}
 		}
 
+		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::UAV, bind_space, bind_register);
+		bool need_resource_remapping = local_root_signature_entry < 0 ||
+		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
+
+		D3DUAVBinding d3d_binding = {};
+		d3d_binding.counter = has_counter;
+		d3d_binding.binding = {
+			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment
+		};
+		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register }, {} };
+		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
+			return false;
+
+		uav_index_to_reference.resize(std::max(uav_index_to_reference.size(), size_t(index + 1)));
+		uav_index_to_counter.resize(std::max(uav_index_to_counter.size(), size_t(index + 1)));
+		uav_index_to_offset.resize(std::max(uav_index_to_offset.size(), size_t(index + 1)));
+
+		if (!get_ssbo_offset_buffer_id(uav_index_to_offset[index], vulkan_binding.buffer_binding,
+		                               vulkan_binding.offset_binding, resource_kind, alignment))
+			return false;
+
 		if (range_size != 1)
 		{
 			if (range_size == ~0u)
@@ -555,8 +691,21 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 			}
 
-			if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
-			    resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
+			if (has_counter)
+			{
+				builder.addExtension("SPV_EXT_descriptor_indexing");
+				builder.addCapability(spv::CapabilityStorageTexelBufferArrayDynamicIndexingEXT);
+			}
+
+			if ((resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			     resource_kind == DXIL::ResourceKind::RawBuffer) &&
+			    vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
+			{
+				builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
+			}
+			else if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			         resource_kind == DXIL::ResourceKind::RawBuffer ||
+			         resource_kind == DXIL::ResourceKind::TypedBuffer)
 			{
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityStorageTexelBufferArrayDynamicIndexingEXT);
@@ -565,21 +714,40 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				builder.addCapability(spv::CapabilityStorageImageArrayDynamicIndexing);
 		}
 
-		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::UAV, bind_space, bind_register);
-		bool need_resource_remapping = local_root_signature_entry < 0 ||
-		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
+		BindlessInfo bindless_info = {};
+		bindless_info.type = DXIL::ResourceType::UAV;
+		bindless_info.component = component_type;
+		bindless_info.kind = resource_kind;
+		bindless_info.desc_set = vulkan_binding.buffer_binding.descriptor_set;
+		bindless_info.binding = vulkan_binding.buffer_binding.binding;
+		bindless_info.format = format;
+		bindless_info.uav_read = access_meta.has_read;
+		bindless_info.uav_written = access_meta.has_written;
+		bindless_info.uav_coherent = globally_coherent;
+		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
 
-		D3DUAVBinding d3d_binding = {};
-		d3d_binding.counter = has_counter;
-		d3d_binding.binding = {
-			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size
-		};
-		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register } };
-		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
-			return false;
-
-		uav_index_to_reference.resize(std::max(uav_index_to_reference.size(), size_t(index + 1)));
-		uav_index_to_counter.resize(std::max(uav_index_to_counter.size(), size_t(index + 1)));
+		BindlessInfo counter_info = {};
+		if (options.physical_storage_buffer)
+		{
+			counter_info.type = DXIL::ResourceType::UAV;
+			counter_info.component = DXIL::ComponentType::U32;
+			counter_info.kind = DXIL::ResourceKind::Invalid;
+			counter_info.desc_set = vulkan_binding.counter_binding.descriptor_set;
+			counter_info.binding = vulkan_binding.counter_binding.binding;
+			counter_info.counters = true;
+		}
+		else
+		{
+			counter_info.type = DXIL::ResourceType::UAV;
+			counter_info.component = DXIL::ComponentType::U32;
+			counter_info.kind = DXIL::ResourceKind::RawBuffer;
+			counter_info.desc_set = vulkan_binding.counter_binding.descriptor_set;
+			counter_info.binding = vulkan_binding.counter_binding.binding;
+			counter_info.uav_read = true;
+			counter_info.uav_written = true;
+			counter_info.uav_coherent = globally_coherent;
+			counter_info.format = spv::ImageFormatR32ui;
+		}
 
 		if (local_root_signature_entry >= 0)
 		{
@@ -591,12 +759,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					LOGE("Table SBT entries must be bindless.\n");
 					return false;
 				}
-				spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::UAV,
-				                                               component_type, resource_kind,
-				                                               vulkan_binding.buffer_binding.descriptor_set,
-				                                               vulkan_binding.buffer_binding.binding,
-				                                               format, access_meta.has_read, access_meta.has_written,
-				                                               globally_coherent);
+
+				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
@@ -616,25 +780,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 					heap_offset = entry.table.offset_in_heap;
 					heap_offset += bind_register - entry.register_index;
-					spv::Id counter_var_id;
-
-					if (options.physical_storage_buffer)
-					{
-						counter_var_id = create_bindless_heap_variable(
-						    DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::Invalid,
-						    vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
-						    spv::ImageFormatUnknown, false, false, false, true);
-					}
-					else
-					{
-						counter_var_id = create_bindless_heap_variable(
-							DXIL::ResourceType::UAV,
-							DXIL::ComponentType::U32, DXIL::ResourceKind::RawBuffer,
-							vulkan_binding.counter_binding.descriptor_set,
-							vulkan_binding.counter_binding.binding,
-							spv::ImageFormatR32ui, true, true,
-							globally_coherent);
-					}
+					spv::Id counter_var_id = create_bindless_heap_variable(counter_info);
 
 					uav_index_to_counter[index] = {
 						counter_var_id, 0, heap_offset, 4, true, range_size != 1, local_root_signature_entry,
@@ -658,10 +804,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		}
 		else if (vulkan_binding.buffer_binding.bindless.use_heap)
 		{
-			spv::Id var_id = create_bindless_heap_variable(
-			    DXIL::ResourceType::UAV, component_type, resource_kind, vulkan_binding.buffer_binding.descriptor_set,
-			    vulkan_binding.buffer_binding.binding, format, access_meta.has_read, access_meta.has_written,
-			    globally_coherent);
+			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
 			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
@@ -676,22 +819,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			{
 				if (vulkan_binding.counter_binding.bindless.use_heap)
 				{
-					spv::Id counter_var_id;
-
-					if (options.physical_storage_buffer)
-					{
-						counter_var_id = create_bindless_heap_variable(
-							DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::Invalid,
-							vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
-							spv::ImageFormatUnknown, false, false, false, true);
-					}
-					else
-					{
-						counter_var_id = create_bindless_heap_variable(
-							DXIL::ResourceType::UAV, DXIL::ComponentType::U32, DXIL::ResourceKind::RawBuffer,
-							vulkan_binding.counter_binding.descriptor_set, vulkan_binding.counter_binding.binding,
-							spv::ImageFormatR32ui, true, true, globally_coherent, false);
-					}
+					spv::Id counter_var_id = create_bindless_heap_variable(counter_info);
 
 					heap_offset = vulkan_binding.counter_binding.bindless.heap_root_offset;
 					if (range_size != 1)
@@ -723,22 +851,60 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		}
 		else
 		{
-			auto element_type_id = get_type_id(component_type, 1, 1);
+			spv::Id var_id;
+			spv::StorageClass storage;
 
-			spv::Id type_id = builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind),
-			                                        false, image_dimension_is_arrayed(resource_kind),
-			                                        image_dimension_is_multisampled(resource_kind), 2, format);
-
-			if (range_size != 1)
+			if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
 			{
-				if (range_size == ~0u)
-					type_id = builder.makeRuntimeArray(type_id);
-				else
-					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
-			}
+				// TODO: Consider implementing aliased buffers which all refer to the same buffer,
+				// but which can exploit alignment per-instruction.
+				// This is impractical, since BufferLoad/Store in DXIL does not have alignment (4 bytes is assumed),
+				// so just unroll.
+				// To make good use of this, we'll need apps to use SM 6.2 RawBufferLoad/Store, which does have explicit alignment.
+				// We'll likely need to mess around with Aliased decoration as well, which might have other effects ...
 
-			spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
-			                                        name.empty() ? nullptr : name.c_str());
+				spv::Id uint_type = builder.makeUintType(32);
+				spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
+				builder.addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				spv::Id block_type_id = get_struct_type({ uint_array_type }, "SSBO");
+				builder.addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+				builder.addDecoration(block_type_id, spv::DecorationBlock);
+
+				spv::Id type_id = block_type_id;
+				if (range_size != 1)
+				{
+					if (range_size == ~0u)
+						type_id = builder.makeRuntimeArray(type_id);
+					else
+						type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+				}
+
+				storage = spv::StorageClassStorageBuffer;
+				var_id = builder.createVariable(storage, type_id,
+				                                name.empty() ? nullptr : name.c_str());
+			}
+			else
+			{
+				// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
+				auto element_type_id = get_type_id(component_type, 1, 1);
+
+				spv::Id type_id =
+				    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
+				                          image_dimension_is_arrayed(resource_kind),
+				                          image_dimension_is_multisampled(resource_kind), 2, format);
+
+				if (range_size != 1)
+				{
+					if (range_size == ~0u)
+						type_id = builder.makeRuntimeArray(type_id);
+					else
+						type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+				}
+
+				storage = spv::StorageClassUniformConstant;
+				var_id = builder.createVariable(storage, type_id,
+				                                name.empty() ? nullptr : name.c_str());
+			}
 
 			uav_index_to_reference[index] = { var_id, 0, 0, stride, false, range_size != 1 };
 
@@ -762,6 +928,14 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					return false;
 				}
 
+				// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
+				auto element_type_id = get_type_id(DXIL::ComponentType::U32, 1, 1);
+
+				spv::Id type_id =
+					builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
+					                      image_dimension_is_arrayed(resource_kind),
+					                      image_dimension_is_multisampled(resource_kind), 2, format);
+
 				counter_var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
 				                                        name.empty() ? nullptr : (name + "Counter").c_str());
 
@@ -772,7 +946,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				uav_index_to_counter[index] = { counter_var_id, 0, 0, 4, false, range_size != 1 };
 			}
 			handle_to_resource_meta[var_id] = {
-				resource_kind, component_type, stride, var_id, spv::StorageClassUniformConstant, false, 0, false
+				resource_kind, component_type, stride, var_id, storage, false, 0, false, 0,
 			};
 		}
 	}
@@ -804,7 +978,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			                       index,
 			                       bind_space,
 			                       bind_register,
-			                       range_size };
+			                       range_size, 0 };
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
@@ -827,6 +1001,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
 		}
 
+		BindlessInfo bindless_info = {};
+		bindless_info.type = DXIL::ResourceType::CBV;
+		bindless_info.kind = DXIL::ResourceKind::CBuffer;
+		bindless_info.desc_set = vulkan_binding.buffer.descriptor_set;
+		bindless_info.binding = vulkan_binding.buffer.binding;
+
 		if (local_root_signature_entry >= 0)
 		{
 			auto &entry = local_root_signature[local_root_signature_entry];
@@ -838,9 +1018,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 					return false;
 				}
 
-				spv::Id var_id = create_bindless_heap_variable(
-					DXIL::ResourceType::CBV, DXIL::ComponentType::Invalid, DXIL::ResourceKind::CBuffer,
-					vulkan_binding.buffer.descriptor_set, vulkan_binding.buffer.binding);
+				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
@@ -871,9 +1049,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		}
 		else if (vulkan_binding.buffer.bindless.use_heap)
 		{
-			spv::Id var_id = create_bindless_heap_variable(
-			    DXIL::ResourceType::CBV, DXIL::ComponentType::Invalid, DXIL::ResourceKind::CBuffer,
-			    vulkan_binding.buffer.descriptor_set, vulkan_binding.buffer.binding);
+			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
 			uint32_t heap_offset = vulkan_binding.buffer.bindless.heap_root_offset;
@@ -954,12 +1130,18 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			                       index,
 			                       bind_space,
 			                       bind_register,
-			                       range_size };
+			                       range_size, 0 };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
 			return false;
 
 		sampler_index_to_reference.resize(std::max(sampler_index_to_reference.size(), size_t(index + 1)));
+
+		BindlessInfo bindless_info = {};
+		bindless_info.type = DXIL::ResourceType::Sampler;
+		bindless_info.kind = DXIL::ResourceKind::Sampler;
+		bindless_info.desc_set = vulkan_binding.descriptor_set;
+		bindless_info.binding = vulkan_binding.binding;
 
 		if (local_root_signature_entry >= 0)
 		{
@@ -970,9 +1152,8 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 				LOGE("Table SBT entries must be bindless.\n");
 				return false;
 			}
-			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::Sampler, DXIL::ComponentType::Invalid,
-			                                               DXIL::ResourceKind::Sampler, vulkan_binding.descriptor_set,
-			                                               vulkan_binding.binding);
+
+			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			uint32_t heap_offset = entry.table.offset_in_heap;
 			heap_offset += bind_register - entry.register_index;
@@ -983,9 +1164,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 		}
 		else if (vulkan_binding.bindless.use_heap)
 		{
-			spv::Id var_id = create_bindless_heap_variable(DXIL::ResourceType::Sampler, DXIL::ComponentType::Invalid,
-			                                               DXIL::ResourceKind::Sampler, vulkan_binding.descriptor_set,
-			                                               vulkan_binding.binding);
+			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
 			uint32_t heap_offset = vulkan_binding.bindless.heap_root_offset;
@@ -1033,7 +1212,7 @@ bool Converter::Impl::scan_srvs(ResourceRemappingInterface *iface, const llvm::M
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
 
 		D3DBinding d3d_binding = { stage, resource_kind, index, bind_space, bind_register, range_size };
-		VulkanBinding vulkan_binding = {};
+		VulkanSRVBinding vulkan_binding = {};
 		if (iface && !iface->remap_srv(d3d_binding, vulkan_binding))
 			return false;
 	}
@@ -3427,6 +3606,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::SSBOAlignment:
+	{
+		auto &align = static_cast<const OptionSSBOAlignment &>(cap);
+		options.ssbo_alignment = align.alignment;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -3464,6 +3650,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::BindlessCBVSSBOEmulation:
 	case Option::PhysicalStorageBuffer:
 	case Option::SBTDescriptorSizeLog2:
+	case Option::SSBOAlignment:
 		return true;
 
 	default:

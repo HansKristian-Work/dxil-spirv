@@ -197,6 +197,8 @@ struct Converter::Impl
 	static bool scan_uavs(ResourceRemappingInterface *iface, const llvm::MDNode *uavs, ShaderStage stage);
 	static bool scan_cbvs(ResourceRemappingInterface *iface, const llvm::MDNode *cbvs, ShaderStage stage);
 	static bool scan_samplers(ResourceRemappingInterface *iface, const llvm::MDNode *samplers, ShaderStage stage);
+	bool get_ssbo_offset_buffer_id(spv::Id &buffer_id, const VulkanBinding &buffer_binding, const VulkanBinding &offset_binding,
+	                               DXIL::ResourceKind kind, unsigned alignment);
 
 	Vector<LocalRootSignatureEntry> local_root_signature;
 	int get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding) const;
@@ -213,10 +215,12 @@ struct Converter::Impl
 	};
 
 	Vector<ResourceReference> srv_index_to_reference;
+	Vector<spv::Id> srv_index_to_offset;
 	Vector<ResourceReference> sampler_index_to_reference;
 	Vector<ResourceReference> cbv_index_to_reference;
 	Vector<ResourceReference> uav_index_to_reference;
 	Vector<ResourceReference> uav_index_to_counter;
+	Vector<spv::Id> uav_index_to_offset;
 	Vector<unsigned> cbv_push_constant_member;
 	UnorderedMap<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;
@@ -234,6 +238,8 @@ struct Converter::Impl
 
 		spv::Id counter_var_id;
 		bool counter_is_physical_pointer;
+
+		spv::Id index_offset_id;
 	};
 	UnorderedMap<spv::Id, ResourceMeta> handle_to_resource_meta;
 	UnorderedMap<spv::Id, spv::Id> id_to_type;
@@ -321,26 +327,30 @@ struct Converter::Impl
 
 		unsigned sbt_descriptor_size_srv_uav_cbv_log2 = 0;
 		unsigned sbt_descriptor_size_sampler_log2 = 0;
+		unsigned ssbo_alignment = 16;
 	} options;
 
-	spv::Id create_bindless_heap_variable(DXIL::ResourceType type, DXIL::ComponentType component,
-	                                      DXIL::ResourceKind kind, uint32_t desc_set, uint32_t binding,
-	                                      spv::ImageFormat format = spv::ImageFormatUnknown, bool has_uav_read = false,
-	                                      bool has_uav_written = false, bool uav_coherent = false,
-	                                      bool counters = false);
-
-	struct BindlessResource
+	struct BindlessInfo
 	{
 		DXIL::ResourceType type;
 		DXIL::ComponentType component;
 		DXIL::ResourceKind kind;
 		spv::ImageFormat format;
-		bool uav_read = false;
-		bool uav_written = false;
-		bool uav_coherent = false;
-		bool counters = false;
+		VulkanDescriptorType descriptor_type;
+		bool uav_read;
+		bool uav_written;
+		bool uav_coherent;
+		bool counters;
+		bool offsets;
 		uint32_t desc_set;
 		uint32_t binding;
+	};
+
+	spv::Id create_bindless_heap_variable(const BindlessInfo &info);
+
+	struct BindlessResource
+	{
+		BindlessInfo info;
 		uint32_t var_id;
 	};
 	Vector<BindlessResource> bindless_resources;

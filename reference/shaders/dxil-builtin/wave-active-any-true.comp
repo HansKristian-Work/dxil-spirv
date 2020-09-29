@@ -4,13 +4,11 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
-uint _26;
-
 void main()
 {
     if (subgroupAny(gl_GlobalInvocationID.x < 100u))
     {
-        imageStore(_8, int((gl_GlobalInvocationID.x << 2u) >> 2u), uvec4(1u));
+        imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(1u));
     }
 }
 
@@ -20,7 +18,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 33
+; Bound: 31
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -48,27 +46,25 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %19 = OpConstant %5 100
 %21 = OpConstant %5 3
 %23 = OpConstant %5 2
-%25 = OpConstant %5 1
-%27 = OpTypeVector %5 4
+%24 = OpConstant %5 1
+%25 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%26 = OpUndef %5
-OpBranch %29
-%29 = OpLabel
+OpBranch %27
+%27 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %18 = OpULessThan %17 %16 %19
 %20 = OpGroupNonUniformAny %17 %21 %18
-OpSelectionMerge %31 None
-OpBranchConditional %20 %30 %31
-%30 = OpLabel
+OpSelectionMerge %29 None
+OpBranchConditional %20 %28 %29
+%28 = OpLabel
 %22 = OpShiftLeftLogical %5 %16 %23
-%24 = OpShiftRightLogical %5 %22 %23
-%28 = OpCompositeConstruct %27 %25 %25 %25 %25
-OpImageWrite %9 %24 %28
-OpBranch %31
-%31 = OpLabel
+%26 = OpCompositeConstruct %25 %24 %24 %24 %24
+OpImageWrite %9 %16 %26
+OpBranch %29
+%29 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

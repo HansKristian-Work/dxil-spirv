@@ -44,15 +44,14 @@ float _109;
 
 void main()
 {
-    uint _25 = TEXCOORD << 3u;
-    uint _27 = _25 >> 2u;
+    uint _27 = TEXCOORD * 2u;
     uint _124;
     uvec4 _125;
     _124 = sparseTexelFetchARB(_8, int(_27), _125);
     SparseTexel _31 = SparseTexel(_124, _125);
     _38 _39 = _38(_31._m1.x, texelFetch(_8, int(_27 + 1u)).x, _40, _41, _31._m0);
     float _49 = float(sparseTexelsResidentARB(int(_39._m4)));
-    uint _54 = _25 >> 2u;
+    uint _54 = TEXCOORD * 2u;
     uint _126;
     uvec4 _127;
     _126 = sparseImageLoadARB(_12, int(_54), _127);
@@ -158,7 +157,7 @@ OpBranch %122
 %23 = OpLoad %6 %8
 %24 = OpLoad %5 %15
 %25 = OpShiftLeftLogical %5 %24 %26
-%27 = OpShiftRightLogical %5 %25 %28
+%27 = OpIMul %5 %24 %28
 %31 = OpImageSparseFetch %30 %23 %27
 %32 = OpCompositeExtract %5 %31 0
 %33 = OpCompositeExtract %5 %31 1 0
@@ -175,7 +174,7 @@ OpBranch %122
 %49 = OpSelect %16 %46 %50 %51
 %52 = OpFAdd %16 %47 %49
 %53 = OpFAdd %16 %48 %49
-%54 = OpShiftRightLogical %5 %25 %28
+%54 = OpIMul %5 %24 %28
 %55 = OpImageSparseRead %30 %21 %54
 %56 = OpCompositeExtract %5 %55 0
 %57 = OpCompositeExtract %5 %55 1 0

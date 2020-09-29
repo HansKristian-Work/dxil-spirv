@@ -3,20 +3,18 @@ layout(local_size_x = 7, local_size_y = 8, local_size_z = 9) in;
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
-uint _14;
-
 void main()
 {
-    imageStore(_8, int(0u >> 2u), uvec4(5u));
+    imageStore(_8, int(0u), uvec4(5u));
     memoryBarrierShared();
-    imageStore(_8, int(0u >> 2u), uvec4(10u));
+    imageStore(_8, int(0u), uvec4(10u));
     memoryBarrier();
-    imageStore(_8, int(0u >> 2u), uvec4(15u));
+    imageStore(_8, int(0u), uvec4(15u));
     barrier();
-    imageStore(_8, int(0u >> 2u), uvec4(20u));
+    imageStore(_8, int(0u), uvec4(20u));
     memoryBarrier();
     barrier();
-    imageStore(_8, int(0u >> 2u), uvec4(30u));
+    imageStore(_8, int(0u), uvec4(30u));
 }
 
 
@@ -25,7 +23,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 34
+; Bound: 28
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -43,41 +41,35 @@ OpDecorate %8 NonReadable
 %7 = OpTypePointer UniformConstant %6
 %8 = OpVariable %7 UniformConstant
 %10 = OpConstant %5 0
-%12 = OpConstant %5 2
-%13 = OpConstant %5 5
-%15 = OpTypeVector %5 4
-%17 = OpConstant %5 264
-%19 = OpConstant %5 10
-%21 = OpConstant %5 1
-%22 = OpConstant %5 2376
-%24 = OpConstant %5 15
-%27 = OpConstant %5 20
-%30 = OpConstant %5 30
+%11 = OpConstant %5 5
+%12 = OpTypeVector %5 4
+%14 = OpConstant %5 2
+%15 = OpConstant %5 264
+%16 = OpConstant %5 10
+%18 = OpConstant %5 1
+%19 = OpConstant %5 2376
+%20 = OpConstant %5 15
+%22 = OpConstant %5 20
+%24 = OpConstant %5 30
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%14 = OpUndef %5
-OpBranch %32
-%32 = OpLabel
+OpBranch %26
+%26 = OpLabel
 %9 = OpLoad %6 %8
-%11 = OpShiftRightLogical %5 %10 %12
-%16 = OpCompositeConstruct %15 %13 %13 %13 %13
-OpImageWrite %9 %11 %16
-OpMemoryBarrier %12 %17
-%18 = OpShiftRightLogical %5 %10 %12
-%20 = OpCompositeConstruct %15 %19 %19 %19 %19
-OpImageWrite %9 %18 %20
-OpMemoryBarrier %21 %22
-%23 = OpShiftRightLogical %5 %10 %12
-%25 = OpCompositeConstruct %15 %24 %24 %24 %24
-OpImageWrite %9 %23 %25
-OpControlBarrier %12 %12 %17
-%26 = OpShiftRightLogical %5 %10 %12
-%28 = OpCompositeConstruct %15 %27 %27 %27 %27
-OpImageWrite %9 %26 %28
-OpControlBarrier %12 %21 %22
-%29 = OpShiftRightLogical %5 %10 %12
-%31 = OpCompositeConstruct %15 %30 %30 %30 %30
-OpImageWrite %9 %29 %31
+%13 = OpCompositeConstruct %12 %11 %11 %11 %11
+OpImageWrite %9 %10 %13
+OpMemoryBarrier %14 %15
+%17 = OpCompositeConstruct %12 %16 %16 %16 %16
+OpImageWrite %9 %10 %17
+OpMemoryBarrier %18 %19
+%21 = OpCompositeConstruct %12 %20 %20 %20 %20
+OpImageWrite %9 %10 %21
+OpControlBarrier %14 %14 %15
+%23 = OpCompositeConstruct %12 %22 %22 %22 %22
+OpImageWrite %9 %10 %23
+OpControlBarrier %14 %18 %19
+%25 = OpCompositeConstruct %12 %24 %24 %24 %24
+OpImageWrite %9 %10 %25
 OpReturn
 OpFunctionEnd
 #endif

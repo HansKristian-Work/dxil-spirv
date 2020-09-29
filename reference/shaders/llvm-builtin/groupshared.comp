@@ -6,8 +6,6 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 shared float _13[256];
 shared float _17[128];
 
-float _104;
-
 void main()
 {
     float _25 = float(gl_LocalInvocationIndex + 1u);
@@ -33,7 +31,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 111
+; Bound: 110
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -69,12 +67,11 @@ OpDecorate %20 BuiltIn LocalInvocationIndex
 %52 = OpConstant %5 3
 %60 = OpConstant %5 264
 %90 = OpConstant %5 4
-%105 = OpTypeVector %5 4
+%104 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%104 = OpUndef %10
-OpBranch %109
-%109 = OpLabel
+OpBranch %108
+%108 = OpLabel
 %18 = OpLoad %6 %8
 %21 = OpLoad %5 %20
 %22 = OpConvertUToF %10 %21
@@ -159,11 +156,11 @@ OpControlBarrier %27 %27 %60
 %101 = OpIMul %5 %21 %27
 %102 = OpBitcast %5 %99
 %103 = OpBitcast %5 %100
-%106 = OpCompositeConstruct %105 %102 %102 %102 %102
-OpImageWrite %18 %101 %106
-%107 = OpCompositeConstruct %105 %103 %103 %103 %103
-%108 = OpIAdd %5 %101 %24
-OpImageWrite %18 %108 %107
+%105 = OpCompositeConstruct %104 %102 %102 %102 %102
+OpImageWrite %18 %101 %105
+%106 = OpCompositeConstruct %104 %103 %103 %103 %103
+%107 = OpIAdd %5 %101 %24
+OpImageWrite %18 %107 %106
 OpReturn
 OpFunctionEnd
 #endif

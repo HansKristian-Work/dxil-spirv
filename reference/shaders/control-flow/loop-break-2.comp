@@ -3,33 +3,31 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 
-uint _24;
-
 void main()
 {
     uint _20;
     if (!(gl_GlobalInvocationID.z == 0u))
     {
         uint frontier_phi_6;
-        uint _27 = 0u;
-        uint _28 = 0u;
-        uint _33;
+        uint _25 = 0u;
+        uint _26 = 0u;
+        uint _30;
         for (;;)
         {
-            _33 = imageLoad(_8, int((_28 << 2u) >> 2u)).x;
-            if (_33 == 30u)
+            _30 = imageLoad(_8, int(_26)).x;
+            if (_30 == 30u)
             {
-                frontier_phi_6 = imageLoad(_8, int(100u >> 2u)).x + _27;
+                frontier_phi_6 = imageLoad(_8, int(25u)).x + _25;
                 break;
             }
             else
             {
-                uint _22 = _33 + _27;
-                uint _29 = _28 + 1u;
-                if (_29 < gl_GlobalInvocationID.z)
+                uint _22 = _30 + _25;
+                uint _27 = _26 + 1u;
+                if (_27 < gl_GlobalInvocationID.z)
                 {
-                    _27 = _22;
-                    _28 = _29;
+                    _25 = _22;
+                    _26 = _27;
                     continue;
                 }
                 else
@@ -45,7 +43,7 @@ void main()
     {
         _20 = 0u;
     }
-    imageStore(_8, int(0u >> 2u), uvec4(_20));
+    imageStore(_8, int(0u), uvec4(_20));
 }
 
 
@@ -54,7 +52,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 52
+; Bound: 48
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -62,7 +60,7 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %42 "frontier_phi_6"
+OpName %38 "frontier_phi_6"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -79,54 +77,50 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %15 = OpConstant %5 2
 %17 = OpTypeBool
 %19 = OpConstant %5 0
-%25 = OpTypeVector %5 4
-%35 = OpConstant %5 30
-%36 = OpConstant %5 100
-%40 = OpConstant %5 1
+%23 = OpTypeVector %5 4
+%32 = OpConstant %5 30
+%33 = OpConstant %5 25
+%36 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%24 = OpUndef %5
-OpBranch %43
-%43 = OpLabel
+OpBranch %39
+%39 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %18 = OpIEqual %17 %16 %19
-OpSelectionMerge %50 None
-OpBranchConditional %18 %50 %44
+OpSelectionMerge %46 None
+OpBranchConditional %18 %46 %40
+%40 = OpLabel
+OpBranch %41
+%41 = OpLabel
+%25 = OpPhi %5 %19 %40 %22 %43
+%26 = OpPhi %5 %19 %40 %27 %43
+%28 = OpShiftLeftLogical %5 %26 %15
+%29 = OpImageRead %23 %9 %26
+%30 = OpCompositeExtract %5 %29 0
+%31 = OpIEqual %17 %30 %32
+OpLoopMerge %45 %43 None
+OpBranchConditional %31 %44 %42
 %44 = OpLabel
+%34 = OpImageRead %23 %9 %33
+%35 = OpCompositeExtract %5 %34 0
+%21 = OpIAdd %5 %35 %25
 OpBranch %45
+%42 = OpLabel
+OpBranch %43
+%43 = OpLabel
+%22 = OpIAdd %5 %30 %25
+%27 = OpIAdd %5 %26 %36
+%37 = OpULessThan %17 %27 %16
+OpBranchConditional %37 %41 %45
 %45 = OpLabel
-%27 = OpPhi %5 %19 %44 %22 %47
-%28 = OpPhi %5 %19 %44 %29 %47
-%30 = OpShiftLeftLogical %5 %28 %15
-%31 = OpShiftRightLogical %5 %30 %15
-%32 = OpImageRead %25 %9 %31
-%33 = OpCompositeExtract %5 %32 0
-%34 = OpIEqual %17 %33 %35
-OpLoopMerge %49 %47 None
-OpBranchConditional %34 %48 %46
-%48 = OpLabel
-%37 = OpShiftRightLogical %5 %36 %15
-%38 = OpImageRead %25 %9 %37
-%39 = OpCompositeExtract %5 %38 0
-%21 = OpIAdd %5 %39 %27
-OpBranch %49
+%38 = OpPhi %5 %22 %43 %21 %44
+OpBranch %46
 %46 = OpLabel
-OpBranch %47
-%47 = OpLabel
-%22 = OpIAdd %5 %33 %27
-%29 = OpIAdd %5 %28 %40
-%41 = OpULessThan %17 %29 %16
-OpBranchConditional %41 %45 %49
-%49 = OpLabel
-%42 = OpPhi %5 %22 %47 %21 %48
-OpBranch %50
-%50 = OpLabel
-%20 = OpPhi %5 %19 %43 %42 %49
-%23 = OpShiftRightLogical %5 %19 %15
-%26 = OpCompositeConstruct %25 %20 %20 %20 %20
-OpImageWrite %9 %23 %26
+%20 = OpPhi %5 %19 %39 %38 %45
+%24 = OpCompositeConstruct %23 %20 %20 %20 %20
+OpImageWrite %9 %19 %24
 OpReturn
 OpFunctionEnd
 #endif
