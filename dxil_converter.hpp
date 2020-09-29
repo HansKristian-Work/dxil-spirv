@@ -108,10 +108,17 @@ struct D3DUAVBinding
 	bool counter;
 };
 
+struct VulkanSRVBinding
+{
+	VulkanBinding buffer_binding;
+	VulkanBinding offset_binding;
+};
+
 struct VulkanUAVBinding
 {
 	VulkanBinding buffer_binding;
 	VulkanBinding counter_binding;
+	VulkanBinding offset_binding;
 };
 
 struct VulkanPushConstantBinding
@@ -161,7 +168,7 @@ class ResourceRemappingInterface
 {
 public:
 	virtual ~ResourceRemappingInterface() = default;
-	virtual bool remap_srv(const D3DBinding &d3d_binding, VulkanBinding &vulkan_binding) = 0;
+	virtual bool remap_srv(const D3DBinding &d3d_binding, VulkanSRVBinding &vulkan_binding) = 0;
 	virtual bool remap_sampler(const D3DBinding &d3d_binding, VulkanBinding &vulkan_binding) = 0;
 	virtual bool remap_uav(const D3DUAVBinding &d3d_binding, VulkanUAVBinding &vulkan_binding) = 0;
 	virtual bool remap_cbv(const D3DBinding &d3d_binding, VulkanCBVBinding &vulkan_binding) = 0;
@@ -180,7 +187,8 @@ enum class Option : uint32_t
 	RootConstantInlineUniformBlock = 5,
 	BindlessCBVSSBOEmulation = 6,
 	PhysicalStorageBuffer = 7,
-	SBTDescriptorSizeLog2 = 8
+	SBTDescriptorSizeLog2 = 8,
+	SSBOAlignment = 9
 };
 
 enum class ResourceClass : uint32_t
@@ -275,6 +283,15 @@ struct OptionSBTDescriptorSizeLog2 : OptionBase
 	}
 	unsigned size_log2_srv_uav_cbv = 0;
 	unsigned size_log2_sampler = 0;
+};
+
+struct OptionSSBOAlignment : OptionBase
+{
+	OptionSSBOAlignment()
+		: OptionBase(Option::SSBOAlignment)
+	{
+	}
+	unsigned alignment = 1;
 };
 
 class Converter

@@ -57,7 +57,7 @@ struct Remapper : ResourceRemappingInterface
 		vk_binding.descriptor_type = static_cast<VulkanDescriptorType>(c_vk_binding.descriptor_type);
 	}
 
-	bool remap_srv(const D3DBinding &binding, VulkanBinding &vk_binding) override
+	bool remap_srv(const D3DBinding &binding, VulkanSRVBinding &vk_binding) override
 	{
 		if (srv_remapper)
 		{
@@ -69,10 +69,11 @@ struct Remapper : ResourceRemappingInterface
 				                                     binding.range_size,
 				                                     binding.alignment };
 
-			dxil_spv_vulkan_binding c_vk_binding = {};
+			dxil_spv_srv_vulkan_binding c_vk_binding = {};
 			if (srv_remapper(srv_userdata, &c_binding, &c_vk_binding) == DXIL_SPV_TRUE)
 			{
-				copy_buffer_binding(vk_binding, c_vk_binding);
+				copy_buffer_binding(vk_binding.buffer_binding, c_vk_binding.buffer_binding);
+				copy_buffer_binding(vk_binding.offset_binding, c_vk_binding.offset_binding);
 				return true;
 			}
 			else
@@ -80,10 +81,11 @@ struct Remapper : ResourceRemappingInterface
 		}
 		else
 		{
-			vk_binding.bindless.use_heap = false;
-			vk_binding.descriptor_set = binding.register_space;
-			vk_binding.binding = binding.register_index;
-			vk_binding.descriptor_type = VulkanDescriptorType::Identity;
+			vk_binding.buffer_binding.bindless.use_heap = false;
+			vk_binding.buffer_binding.descriptor_set = binding.register_space;
+			vk_binding.buffer_binding.binding = binding.register_index;
+			vk_binding.buffer_binding.descriptor_type = VulkanDescriptorType::Identity;
+			vk_binding.offset_binding = {};
 			return true;
 		}
 	}
@@ -136,6 +138,7 @@ struct Remapper : ResourceRemappingInterface
 			{
 				copy_buffer_binding(vk_binding.buffer_binding, c_vk_binding.buffer_binding);
 				copy_buffer_binding(vk_binding.counter_binding, c_vk_binding.counter_binding);
+				copy_buffer_binding(vk_binding.offset_binding, c_vk_binding.offset_binding);
 				return true;
 			}
 			else
@@ -151,6 +154,7 @@ struct Remapper : ResourceRemappingInterface
 			vk_binding.counter_binding.binding = binding.binding.register_index;
 			vk_binding.buffer_binding.descriptor_type = VulkanDescriptorType::Identity;
 			vk_binding.counter_binding.descriptor_type = VulkanDescriptorType::Identity;
+			vk_binding.offset_binding = {};
 			return true;
 		}
 	}
@@ -242,10 +246,10 @@ struct Remapper : ResourceRemappingInterface
 		return root_constant_word_count;
 	}
 
-	dxil_spv_srv_sampler_remapper_cb srv_remapper = nullptr;
+	dxil_spv_srv_remapper_cb srv_remapper = nullptr;
 	void *srv_userdata = nullptr;
 
-	dxil_spv_srv_sampler_remapper_cb sampler_remapper = nullptr;
+	dxil_spv_sampler_remapper_cb sampler_remapper = nullptr;
 	void *sampler_userdata = nullptr;
 
 	dxil_spv_uav_remapper_cb uav_remapper = nullptr;
@@ -362,8 +366,8 @@ dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob
 }
 
 dxil_spv_result dxil_spv_parsed_blob_scan_resources(dxil_spv_parsed_blob blob,
-                                                    dxil_spv_srv_sampler_remapper_cb srv_remapper,
-                                                    dxil_spv_srv_sampler_remapper_cb sampler_remapper,
+                                                    dxil_spv_srv_remapper_cb srv_remapper,
+                                                    dxil_spv_sampler_remapper_cb sampler_remapper,
                                                     dxil_spv_cbv_remapper_cb cbv_remapper,
                                                     dxil_spv_uav_remapper_cb uav_remapper, void *userdata)
 {
@@ -448,14 +452,14 @@ dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_spv_converter convert
 	return DXIL_SPV_SUCCESS;
 }
 
-void dxil_spv_converter_set_srv_remapper(dxil_spv_converter converter, dxil_spv_srv_sampler_remapper_cb remapper,
+void dxil_spv_converter_set_srv_remapper(dxil_spv_converter converter, dxil_spv_srv_remapper_cb remapper,
                                          void *userdata)
 {
 	converter->remapper.srv_remapper = remapper;
 	converter->remapper.srv_userdata = userdata;
 }
 
-void dxil_spv_converter_set_sampler_remapper(dxil_spv_converter converter, dxil_spv_srv_sampler_remapper_cb remapper,
+void dxil_spv_converter_set_sampler_remapper(dxil_spv_converter converter, dxil_spv_sampler_remapper_cb remapper,
                                              void *userdata)
 {
 	converter->remapper.sampler_remapper = remapper;
@@ -578,6 +582,14 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		OptionSBTDescriptorSizeLog2 helper;
 		helper.size_log2_srv_uav_cbv = reinterpret_cast<const dxil_spv_option_sbt_descriptor_size_log2 *>(option)->size_log2_srv_uav_cbv;
 		helper.size_log2_sampler = reinterpret_cast<const dxil_spv_option_sbt_descriptor_size_log2 *>(option)->size_log2_sampler;
+		converter->converter.add_option(helper);
+		break;
+	}
+
+	case DXIL_SPV_OPTION_SSBO_ALIGNMENT:
+	{
+		OptionSSBOAlignment helper;
+		helper.alignment = reinterpret_cast<const dxil_spv_option_ssbo_alignment *>(option)->alignment;
 		converter->converter.add_option(helper);
 		break;
 	}

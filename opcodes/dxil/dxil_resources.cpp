@@ -588,7 +588,7 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
                                        const llvm::CallInst *instruction,
                                        llvm::Value *instruction_offset_value, bool instruction_is_non_uniform,
                                        bool &is_non_uniform,
-                                       spv::Id *ptr_id, spv::Id *value_id)
+                                       spv::Id *ptr_id, spv::Id *value_id, spv::Id *bindless_offset_id)
 {
 	auto &builder = impl.builder();
 
@@ -623,9 +623,16 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 
 			if (offset_id == 0)
 				return false;
+
+			if (bindless_offset_id)
+				*bindless_offset_id = offset_id;
 		}
 		else
+		{
 			offset_id = impl.get_id_for_value(instruction_offset_value);
+			if (bindless_offset_id)
+				*bindless_offset_id = 0;
+		}
 
 		op->add_id(offset_id);
 
@@ -698,6 +705,44 @@ static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter:
 	       impl.local_root_signature[reference.local_root_signature_entry].type == LocalRootSignatureType::Descriptor;
 }
 
+static spv::Id build_load_ssbo_offset(Converter::Impl &impl, Converter::Impl::ResourceReference &reference,
+                                      spv::Id offset_ssbo_id, spv::Id bindless_offset_id, bool non_uniform)
+{
+	auto &builder = impl.builder();
+
+	if (!non_uniform)
+	{
+		// Allow scalar load of the offset if possible.
+		Operation *scalar_op = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, builder.makeUintType(32));
+		scalar_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		scalar_op->add_id(bindless_offset_id);
+		impl.add(scalar_op);
+		bindless_offset_id = scalar_op->id;
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	}
+
+	Operation *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer,
+	                                                                            builder.makeUintType(32)));
+	chain_op->add_id(offset_ssbo_id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	chain_op->add_id(bindless_offset_id);
+	impl.add(chain_op);
+
+	Operation *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	load_op->add_id(chain_op->id);
+	impl.add(load_op);
+
+	spv::Id offset_id = load_op->id;
+
+	Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+	shift_op->add_id(offset_id);
+	shift_op->add_id(builder.makeUintConstant(2));
+	impl.add(shift_op);
+
+	offset_id = shift_op->id;
+	return offset_id;
+}
+
 static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *instruction,
                                DXIL::ResourceType resource_type, unsigned resource_range,
                                llvm::Value *instruction_offset, bool non_uniform)
@@ -731,17 +776,24 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			bool is_non_uniform = false;
 			spv::Id loaded_id = 0;
+			spv::Id offset_id = 0;
 			if (!build_load_resource_handle(impl, base_image_id, reference, instruction,
 			                                instruction_offset, non_uniform, is_non_uniform,
-			                                nullptr, &loaded_id))
+			                                nullptr, &loaded_id, &offset_id))
 			{
 				LOGE("Failed to load SRV resource handle.\n");
 				return false;
 			}
 
+			if (impl.srv_index_to_offset[resource_range])
+				offset_id = build_load_ssbo_offset(impl, reference, impl.srv_index_to_offset[resource_range], offset_id, non_uniform);
+			else
+				offset_id = 0;
+
 			auto &meta = impl.handle_to_resource_meta[loaded_id];
 			meta = impl.handle_to_resource_meta[base_image_id];
 			meta.non_uniform = is_non_uniform;
+			meta.index_offset_id = offset_id;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -791,16 +843,23 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			bool is_non_uniform = false;
 			spv::Id resource_ptr_id = 0;
 			spv::Id loaded_id = 0;
+			spv::Id offset_id = 0;
 			if (!build_load_resource_handle(impl, base_resource_id, reference, instruction, instruction_offset, non_uniform,
-			                                is_non_uniform, &resource_ptr_id, &loaded_id))
+			                                is_non_uniform, &resource_ptr_id, &loaded_id, &offset_id))
 			{
 				LOGE("Failed to load UAV resource handle.\n");
 				return false;
 			}
 
+			if (impl.uav_index_to_offset[resource_range])
+				offset_id = build_load_ssbo_offset(impl, reference, impl.uav_index_to_offset[resource_range], offset_id, non_uniform);
+			else
+				offset_id = 0;
+
 			auto &meta = impl.handle_to_resource_meta[loaded_id];
 			meta = impl.handle_to_resource_meta[base_resource_id];
 			meta.non_uniform = is_non_uniform;
+			meta.index_offset_id = offset_id;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
 			meta.var_id = resource_ptr_id;
@@ -837,7 +896,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 					else
 					{
 						if (!build_load_resource_handle(impl, counter_reference.var_id, reference, instruction, instruction_offset, non_uniform,
-						                                is_non_uniform, &meta.counter_var_id, nullptr))
+						                                is_non_uniform, &meta.counter_var_id, nullptr, nullptr))
 						{
 							LOGE("Failed to load UAV counter pointer.\n");
 							return false;
@@ -963,7 +1022,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		bool is_non_uniform = false;
 		spv::Id loaded_id = 0;
 		if (!build_load_resource_handle(impl, base_sampler_id, reference, instruction,
-		                                instruction_offset, non_uniform, is_non_uniform, nullptr, &loaded_id))
+		                                instruction_offset, non_uniform, is_non_uniform, nullptr, &loaded_id, nullptr))
 		{
 			LOGE("Failed to load Sampler resource handle.\n");
 			return false;

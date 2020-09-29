@@ -147,7 +147,8 @@ static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *off
 	return bias_id;
 }
 
-BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset)
+BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset,
+                                     spv::Id index_offset_id)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -210,6 +211,14 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 	else
 		index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
 
+	if (index_offset_id)
+	{
+		Operation *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add_op->add_ids({ index_id, index_offset_id });
+		impl.add(add_op);
+		index_id = add_op->id;
+	}
+
 	return { index_id };
 }
 
@@ -226,7 +235,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
-	auto access = build_buffer_access(impl, instruction);
+	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
 	auto *result_type = instruction->getType();
 
 	// Sparse information is stored in the 5th component.
@@ -556,7 +565,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
-	auto access = build_buffer_access(impl, instruction);
+	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
 
 	spv::Id store_values[4] = {};
 	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
@@ -733,7 +742,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction, 1);
+		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id);
 		coords[0] = access.index_id;
 		num_coords = 1;
 		num_coords_full = 1;
@@ -839,7 +848,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction);
+		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
 		coords[0] = access.index_id;
 		num_coords = 1;
 		num_coords_full = 1;

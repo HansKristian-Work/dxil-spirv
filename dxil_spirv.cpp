@@ -132,6 +132,7 @@ static void print_help()
 	     "\t[--bindless-cbv-as-ssbo]\n"
 	     "\t[--ssbo-uav]\n"
 	     "\t[--ssbo-srv]\n"
+	     "\t[--ssbo-alignment <align>]\n"
 	     "\t[--output-rt-swizzle index xyzw]\n");
 }
 
@@ -151,6 +152,8 @@ struct Arguments
 	unsigned root_constant_inline_ubo_binding = 0;
 	bool root_constant_inline_ubo = false;
 	bool bindless_cbv_as_ssbo = false;
+
+	unsigned ssbo_alignment = 1;
 };
 
 struct Remapper
@@ -195,24 +198,24 @@ static bool kind_is_buffer(dxil_spv_resource_kind kind)
 	       kind == DXIL_SPV_RESOURCE_KIND_TYPED_BUFFER;
 }
 
-static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_vulkan_binding *vk_binding)
+static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_srv_vulkan_binding *vk_binding)
 {
 	auto *remapper = static_cast<Remapper *>(userdata);
 	*vk_binding = {};
 
 	if (remapper->bindless)
 	{
-		vk_binding->bindless.use_heap = DXIL_SPV_TRUE;
-		vk_binding->bindless.heap_root_offset = binding->register_index;
-		vk_binding->bindless.root_constant_word = kind_is_buffer(binding->kind) ? 1 : 0;
-		vk_binding->set = kind_is_buffer(binding->kind) ? 1 : 0;
-		vk_binding->binding = 0;
+		vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
+		vk_binding->buffer_binding.bindless.heap_root_offset = binding->register_index;
+		vk_binding->buffer_binding.bindless.root_constant_word = kind_is_buffer(binding->kind) ? 1 : 0;
+		vk_binding->buffer_binding.set = kind_is_buffer(binding->kind) ? 1 : 0;
+		vk_binding->buffer_binding.binding = 0;
 	}
 	else
 	{
-		vk_binding->bindless.use_heap = DXIL_SPV_FALSE;
-		vk_binding->set = binding->register_space;
-		vk_binding->binding = binding->register_index;
+		vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_FALSE;
+		vk_binding->buffer_binding.set = binding->register_space;
+		vk_binding->buffer_binding.binding = binding->register_index;
 	}
 
 	if (remapper->ssbo_srv)
@@ -220,7 +223,9 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 		if (binding->kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
 		    binding->kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
 		{
-			vk_binding->descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+			vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+			vk_binding->offset_binding.set = 15;
+			vk_binding->offset_binding.binding = 0;
 		}
 	}
 
@@ -277,6 +282,8 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 		    binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
 		{
 			vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+			vk_binding->offset_binding.set = 15;
+			vk_binding->offset_binding.binding = 0;
 		}
 	}
 
@@ -512,6 +519,7 @@ int main(int argc, char **argv)
 	cbs.add("--bindless-cbv-as-ssbo", [&](CLIParser &) { args.bindless_cbv_as_ssbo = true; });
 	cbs.add("--ssbo-uav", [&](CLIParser &) { remapper.ssbo_uav = true; });
 	cbs.add("--ssbo-srv", [&](CLIParser &) { remapper.ssbo_srv = true; });
+	cbs.add("--ssbo-alignment", [&](CLIParser &parser) { args.ssbo_alignment = parser.next_uint(); });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -617,6 +625,11 @@ int main(int argc, char **argv)
 		const dxil_spv_option_physical_storage_buffer phys = { { DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER },
 			                                                   remapper.bda ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &phys.base);
+	}
+
+	{
+		dxil_spv_option_ssbo_alignment align = { { DXIL_SPV_OPTION_SSBO_ALIGNMENT }, args.ssbo_alignment };
+		dxil_spv_converter_add_option(converter, &align.base);
 	}
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
