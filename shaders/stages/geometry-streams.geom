@@ -13,11 +13,13 @@ struct Outputs0
 struct Outputs1
 {
 	float4 b : B;
+	float4 d[2] : D;
 };
 
 struct Outputs2
 {
 	float4 c : C;
+	float4 e : E;
 };
 
 [maxvertexcount(3)]
@@ -30,9 +32,12 @@ void main(point Inputs input[1], inout PointStream<Outputs0> o0, inout PointStre
 
 	Outputs1 res1;
 	res1.b = input[0].a + 1.0;
+	res1.d[0] = 1.0.xxxx;
+	res1.d[1] = 3.0.xxxx;
 	o1.Append(res1);
 
 	Outputs2 res2;
 	res2.c = input[0].a + 2.0;
+	res2.e = res2.c + 1.0;
 	o2.Append(res2);
 }

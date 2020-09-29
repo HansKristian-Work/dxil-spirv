@@ -439,6 +439,12 @@ enum class ShaderPropertyTag : uint8_t
 	ASState = 10
 };
 
+enum class GSStageOutTags : uint32_t
+{
+	Stream = 0,
+	Invalid
+};
+
 enum class BarrierMode : uint8_t
 {
 	Invalid = 0,

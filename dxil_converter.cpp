@@ -2001,6 +2001,46 @@ bool Converter::Impl::emit_patch_variables()
 	return true;
 }
 
+static unsigned get_geometry_shader_stream_index(const llvm::MDNode *node)
+{
+	if (node->getNumOperands() >= 11 && node->getOperand(10))
+	{
+		auto *attr = llvm::dyn_cast<llvm::MDNode>(node->getOperand(10));
+		if (!attr)
+			return 0;
+
+		unsigned num_pairs = attr->getNumOperands() / 2;
+		for (unsigned i = 0; i < num_pairs; i++)
+		{
+			if (static_cast<DXIL::GSStageOutTags>(get_constant_metadata(attr, 2 * i + 0)) == DXIL::GSStageOutTags::Stream)
+				return get_constant_metadata(attr, 2 * i + 1);
+		}
+	}
+	return 0;
+}
+
+static void build_geometry_stream_row_offsets(unsigned offsets[4], const llvm::MDNode *outputs_node)
+{
+	unsigned row_count_for_geometry_stream[4] = {};
+	for (unsigned i = 0; i < outputs_node->getNumOperands(); i++)
+	{
+		auto *output = llvm::cast<llvm::MDNode>(outputs_node->getOperand(i));
+		unsigned geometry_stream = get_geometry_shader_stream_index(output);
+		if (geometry_stream < 4)
+		{
+			auto start_row = get_constant_metadata(output, 8);
+			auto rows = get_constant_metadata(output, 6);
+			auto end_rows = rows + start_row;
+			if (end_rows > row_count_for_geometry_stream[geometry_stream])
+				row_count_for_geometry_stream[geometry_stream] = end_rows;
+		}
+	}
+
+	for (unsigned row = 0; row < 4; row++)
+		for (unsigned i = 0; i < row; i++)
+			offsets[row] += row_count_for_geometry_stream[i];
+}
+
 bool Converter::Impl::emit_stage_output_variables()
 {
 	auto &module = bitcode_parser.get_module();
@@ -2023,6 +2063,12 @@ bool Converter::Impl::emit_stage_output_variables()
 
 	unsigned clip_distance_count = 0;
 	unsigned cull_distance_count = 0;
+
+	// If we have multiple geometry streams, need to hallucinate locations.
+	// This is okay since we're not going to support multi-stream rasterization anyways.
+	unsigned start_row_for_geometry_stream[4] = {};
+	if (execution_model == spv::ExecutionModelGeometry)
+		build_geometry_stream_row_offsets(start_row_for_geometry_stream, outputs_node);
 
 	for (unsigned i = 0; i < outputs_node->getNumOperands(); i++)
 	{
@@ -2125,6 +2171,17 @@ bool Converter::Impl::emit_stage_output_variables()
 			}
 		}
 
+		unsigned geometry_stream = 0;
+		if (execution_model == spv::ExecutionModelGeometry)
+		{
+			geometry_stream = get_geometry_shader_stream_index(output);
+			if (geometry_stream != 0)
+			{
+				builder.addCapability(spv::CapabilityGeometryStreams);
+				builder.addDecoration(variable_id, spv::DecorationStream, geometry_stream);
+			}
+		}
+
 		if (system_value == DXIL::Semantic::Target)
 		{
 			if (options.dual_source_blending)
@@ -2168,7 +2225,11 @@ bool Converter::Impl::emit_stage_output_variables()
 				emit_interpolation_decorations(variable_id, interpolation);
 			}
 
-			builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
+			unsigned effective_start_row = start_row;
+			if (execution_model == spv::ExecutionModelGeometry && geometry_stream < 4)
+				effective_start_row += start_row_for_geometry_stream[geometry_stream];
+
+			builder.addDecoration(variable_id, spv::DecorationLocation, effective_start_row);
 			if (start_col != 0)
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
