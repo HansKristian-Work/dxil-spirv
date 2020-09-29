@@ -500,7 +500,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				// This is impractical, since BufferLoad/Store in DXIL does not have alignment (4 bytes is assumed),
 				// so just unroll.
 				// To make good use of this, we'll need apps to use SM 6.2 RawBufferLoad/Store, which does have explicit alignment.
-				// We'll likely need to mess around with Aligned decoration as well, which might have other effects ...
+				// We'll likely need to mess around with Aliased decoration as well, which might have other effects ...
 
 				spv::Id uint_type = builder.makeUintType(32);
 				spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
@@ -861,7 +861,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				// This is impractical, since BufferLoad/Store in DXIL does not have alignment (4 bytes is assumed),
 				// so just unroll.
 				// To make good use of this, we'll need apps to use SM 6.2 RawBufferLoad/Store, which does have explicit alignment.
-				// We'll likely need to mess around with Aligned decoration as well, which might have other effects ...
+				// We'll likely need to mess around with Aliased decoration as well, which might have other effects ...
 
 				spv::Id uint_type = builder.makeUintType(32);
 				spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
