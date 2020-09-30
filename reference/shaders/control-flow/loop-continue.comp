@@ -8,7 +8,11 @@ uint _55;
 void main()
 {
     uint _19;
-    if (!(gl_GlobalInvocationID.x == 0u))
+    if (gl_GlobalInvocationID.x == 0u)
+    {
+        _19 = 0u;
+    }
+    else
     {
         uint _20;
         uint _23 = 0u;
@@ -54,10 +58,6 @@ void main()
             }
         }
         _19 = _20;
-    }
-    else
-    {
-        _19 = 0u;
     }
     imageStore(_8, int(0u), uvec4(_19));
 }

@@ -6,7 +6,11 @@ layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 void main()
 {
     uint _25;
-    if (!(gl_GlobalInvocationID.x == 0u))
+    if (gl_GlobalInvocationID.x == 0u)
+    {
+        _25 = 0u;
+    }
+    else
     {
         uint _29;
         _29 = 0u;
@@ -17,7 +21,11 @@ void main()
         {
             _32 = gl_GlobalInvocationID.y == 0u;
             uint frontier_phi_4_pred;
-            if (!_32)
+            if (_32)
+            {
+                frontier_phi_4_pred = _31;
+            }
+            else
             {
                 uint _36;
                 _36 = 0u;
@@ -34,7 +42,11 @@ void main()
                     else
                     {
                         uint frontier_phi_10_pred;
-                        if (!(gl_GlobalInvocationID.z == 0u))
+                        if (gl_GlobalInvocationID.z == 0u)
+                        {
+                            frontier_phi_10_pred = _38;
+                        }
+                        else
                         {
                             uint frontier_phi_16;
                             uint _53 = _38;
@@ -66,10 +78,6 @@ void main()
                             }
                             frontier_phi_10_pred = frontier_phi_16;
                         }
-                        else
-                        {
-                            frontier_phi_10_pred = _38;
-                        }
                         _34 = frontier_phi_10_pred;
                         uint _37 = _36 + 1u;
                         if (_37 < gl_GlobalInvocationID.y)
@@ -87,10 +95,6 @@ void main()
                 }
                 frontier_phi_4_pred = frontier_phi_12;
             }
-            else
-            {
-                frontier_phi_4_pred = _31;
-            }
             _26 = frontier_phi_4_pred;
             uint _30 = _29 + 1u;
             if (_30 == gl_GlobalInvocationID.x)
@@ -105,10 +109,6 @@ void main()
             }
         }
         _25 = _26;
-    }
-    else
-    {
-        _25 = 0u;
     }
     imageStore(_8, int(0u), uvec4(_25));
 }

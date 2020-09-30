@@ -6,7 +6,11 @@ layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 void main()
 {
     uint _23;
-    if (!(gl_GlobalInvocationID.y == 0u))
+    if (gl_GlobalInvocationID.y == 0u)
+    {
+        _23 = 0u;
+    }
+    else
     {
         uint _27;
         _27 = 0u;
@@ -17,7 +21,11 @@ void main()
         {
             _30 = gl_GlobalInvocationID.z == 0u;
             uint frontier_phi_4_pred;
-            if (!_30)
+            if (_30)
+            {
+                frontier_phi_4_pred = _29;
+            }
+            else
             {
                 uint frontier_phi_10;
                 uint _34 = _29;
@@ -49,10 +57,6 @@ void main()
                 }
                 frontier_phi_4_pred = frontier_phi_10;
             }
-            else
-            {
-                frontier_phi_4_pred = _29;
-            }
             _24 = frontier_phi_4_pred;
             uint _28 = _27 + 1u;
             if (_28 == gl_GlobalInvocationID.y)
@@ -67,10 +71,6 @@ void main()
             }
         }
         _23 = _24;
-    }
-    else
-    {
-        _23 = 0u;
     }
     imageStore(_8, int(0u), uvec4(_23));
 }

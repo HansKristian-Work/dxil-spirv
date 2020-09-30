@@ -6,7 +6,11 @@ layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 void main()
 {
     uint _22;
-    if (!(gl_GlobalInvocationID.x == 0u))
+    if (gl_GlobalInvocationID.x == 0u)
+    {
+        _22 = 0u;
+    }
+    else
     {
         uint _23;
         uint _28;
@@ -54,10 +58,6 @@ void main()
             }
         }
         _22 = _23;
-    }
-    else
-    {
-        _22 = 0u;
     }
     imageStore(_8, int(0u), uvec4(_22));
 }

@@ -6,13 +6,13 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 void main()
 {
     uint _23;
-    if (!(gl_GlobalInvocationID.x == 10u))
+    if (gl_GlobalInvocationID.x == 10u)
     {
-        _23 = 50u;
+        _23 = 40u;
     }
     else
     {
-        _23 = 40u;
+        _23 = 50u;
     }
     uint _36;
     if (gl_GlobalInvocationID.x == 20u)

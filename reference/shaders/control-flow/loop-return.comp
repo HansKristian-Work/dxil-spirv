@@ -9,7 +9,11 @@ void main()
     if (gl_GlobalInvocationID.x < 100u)
     {
         uint frontier_phi_3_1_ladder;
-        if (!(gl_GlobalInvocationID.x == 0u))
+        if (gl_GlobalInvocationID.x == 0u)
+        {
+            frontier_phi_3_1_ladder = 0u;
+        }
+        else
         {
             uint _35;
             _35 = 0u;
@@ -22,7 +26,12 @@ void main()
                 _38 = gl_GlobalInvocationID.y == 0u;
                 uint frontier_phi_8_pred;
                 uint frontier_phi_8_pred_1;
-                if (!_38)
+                if (_38)
+                {
+                    frontier_phi_8_pred = _37;
+                    frontier_phi_8_pred_1 = 0u;
+                }
+                else
                 {
                     bool ladder_phi_20;
                     uint frontier_phi_20_pred;
@@ -66,11 +75,6 @@ void main()
                     frontier_phi_8_pred = frontier_phi_20_pred;
                     frontier_phi_8_pred_1 = frontier_phi_20_pred_1;
                 }
-                else
-                {
-                    frontier_phi_8_pred = _37;
-                    frontier_phi_8_pred_1 = 0u;
-                }
                 _31 = frontier_phi_8_pred;
                 uint _36 = _35 + 1u;
                 if (_36 < gl_GlobalInvocationID.x)
@@ -87,16 +91,16 @@ void main()
             }
             frontier_phi_3_1_ladder = frontier_phi_12;
         }
-        else
-        {
-            frontier_phi_3_1_ladder = 0u;
-        }
         _28 = frontier_phi_3_1_ladder;
     }
     else
     {
         uint frontier_phi_3_2_ladder;
-        if (!(gl_GlobalInvocationID.z == 0u))
+        if (gl_GlobalInvocationID.z == 0u)
+        {
+            frontier_phi_3_2_ladder = 0u;
+        }
+        else
         {
             uint _39;
             _39 = 0u;
@@ -109,7 +113,12 @@ void main()
                 _42 = gl_GlobalInvocationID.y == 0u;
                 uint frontier_phi_10_pred;
                 uint frontier_phi_10_pred_1;
-                if (!_42)
+                if (_42)
+                {
+                    frontier_phi_10_pred = _41;
+                    frontier_phi_10_pred_1 = 0u;
+                }
+                else
                 {
                     bool ladder_phi_21;
                     uint frontier_phi_21_pred;
@@ -153,11 +162,6 @@ void main()
                     frontier_phi_10_pred = frontier_phi_21_pred;
                     frontier_phi_10_pred_1 = frontier_phi_21_pred_1;
                 }
-                else
-                {
-                    frontier_phi_10_pred = _41;
-                    frontier_phi_10_pred_1 = 0u;
-                }
                 _32 = frontier_phi_10_pred;
                 uint _40 = _39 + 1u;
                 if (_40 < gl_GlobalInvocationID.z)
@@ -173,10 +177,6 @@ void main()
                 }
             }
             frontier_phi_3_2_ladder = frontier_phi_14;
-        }
-        else
-        {
-            frontier_phi_3_2_ladder = 0u;
         }
         _28 = frontier_phi_3_2_ladder;
     }

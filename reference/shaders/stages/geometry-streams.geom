@@ -4,10 +4,10 @@ layout(max_vertices = 3, points) out;
 
 layout(location = 0) in vec4 TEXCOORD[1];
 layout(location = 0) out vec4 A;
-layout(location = 2) out vec4 B;
-layout(location = 3) out vec4 D[2];
-layout(location = 5) out vec4 C;
-layout(location = 6) out vec4 E;
+layout(location = 2, stream = 1) out vec4 B;
+layout(location = 3, stream = 1) out vec4 D[2];
+layout(location = 5, stream = 2) out vec4 C;
+layout(location = 6, stream = 2) out vec4 E;
 
 void main()
 {

@@ -6,7 +6,11 @@ layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 void main()
 {
     uint _22;
-    if (!(gl_GlobalInvocationID.y == 0u))
+    if (gl_GlobalInvocationID.y == 0u)
+    {
+        _22 = 0u;
+    }
+    else
     {
         uint _23;
         if (imageLoad(_8, int(100u)).x > 20u)
@@ -47,10 +51,6 @@ void main()
             }
         }
         _22 = frontier_phi_1_switch_merge;
-    }
-    else
-    {
-        _22 = 0u;
     }
     imageStore(_8, int(1u), uvec4(_22));
 }
