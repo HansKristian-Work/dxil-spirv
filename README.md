@@ -1,22 +1,22 @@
 # dxil-spirv
 
-This project aims to provide translation of DXIL (SM 6.x) shaders to SPIR-V which can be used in the vkd3d project,
-which implements D3D12 on top of Vulkan.
+The aim of this project is to provide a translation of DXIL (SM 6.x) sunshades into SPIR-V, which can be used in the vkd3d project,
+which implements D3D12 at the top of Vulcan.
 
-## Building
+## Construction
 
-### Dependencies
+### Addictions
 
-Check out submodules first with `git submodule update --init`.
-No external dependencies apart from the submodules are required to build.
+First, look at the submodules with `git submodule update --init`.
+No external dependencies need to be built for submodules.
 
-This project implements a "small" LLVM C++ API subset which acts as a drop-in replacement for the full LLVM.
-It is possible to build against the true LLVM C++ API if llvm is checked out in `external/llvm` and `-DDXIL_SPIRV_NATIVE_LLVM=ON` CMake option is used.
-See `checkout_llvm.sh` script.
+This project implements a “small” subset of the LLVM C ++ API that acts as an alternate option for the entire LLVM.
+Depending on the real LLVM C ++ API, it can be built if llvm is logged out in `external/llvm` and the `-DDXIL_SPIRV_NATIVE_LLVM=ON` CMake option is used.
+See the `checkout_llvm.sh` script.
 
 ### Build
 
-Standard CMake build.
+Standard construction CMake.
 
 ```
 mkdir build
@@ -26,9 +26,9 @@ make
 make install
 ```
 
-## Linking against dxil-spirv
+## Link to dxil-spirv
 
-Only the C API is installed and is expected to be kept ABI/API stable when it releases.
+Only API C is installed and the ABI / API is expected to remain stable when released.
 
 ### pkg-config
 
@@ -54,30 +54,30 @@ endif()
 
 ## Testing
 
-The primary method of testing dxil-spirv and avoiding regressions is through a reference shader suite.
+The primary method of testing dxil-spirves and avoiding regressions is through a reference set of sunshades.
 
 ### Build DXC
 
-First, build DXC. To keep output consistent, we must use a fixed version of DXC.
-Currently, this only works on Linux, the Windows build of DXC does not seem to support CMake properly.
+Build the DXC first. For the result to be the same, we need to use a fixed version of DXC.
+Currently this only works in Linux, the DXC system structure for Windows does not support CMake properly.
 
 ```
 ./checkout_dxc.sh
 ./build_dxc.sh
 ```
 
-The test suite accepts an arbitrary path to DXC, so if you have a standalone binary somewhere, that can work as well.
+The test package accepts any path to DXC, so if you have a standalone binary program somewhere, this can work as well.
 
 ### Run test suite
 
-When adding new tests, place the HLSL test in `shaders/` somewhere and run:
+When adding new tests, place the HLSL test somewhere in the `umbrellas/` and run:
 
 ```
-./test_shaders.py shaders --dxc external/dxc-build/bin/dxc --dxil-spirv cmake-build-debug/dxil-spirv
+./test_shaders.py umbrellas --dxc external/dxc-build/bin/dxc --dxil-spirv cmake-build-debug/dxil-spirv
 ```
 
-If there is any mismatch, the test script will complain. If there are legitimate changes to be made,
-add `--update` to the command. The updated files should now be committed alongside the dxil-spirv change.
+If a discrepancy occurs, the test script will appeal. If legal changes need to be made,
+add `--update` to the command. Updated files should now be edited along with the dxil-spirv change.
 
 ## License
 
