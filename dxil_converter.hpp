@@ -188,7 +188,8 @@ enum class Option : uint32_t
 	BindlessCBVSSBOEmulation = 6,
 	PhysicalStorageBuffer = 7,
 	SBTDescriptorSizeLog2 = 8,
-	SSBOAlignment = 9
+	SSBOAlignment = 9,
+	TypedUAVReadWithoutFormat = 10
 };
 
 enum class ResourceClass : uint32_t
@@ -292,6 +293,15 @@ struct OptionSSBOAlignment : OptionBase
 	{
 	}
 	unsigned alignment = 1;
+};
+
+struct OptionTypedUAVReadWithoutFormat : OptionBase
+{
+	OptionTypedUAVReadWithoutFormat()
+		: OptionBase(Option::TypedUAVReadWithoutFormat)
+	{
+	}
+	bool supported = false;
 };
 
 class Converter

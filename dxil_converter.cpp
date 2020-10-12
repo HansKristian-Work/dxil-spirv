@@ -637,27 +637,34 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		auto &access_meta = uav_access_tracking[index];
 		if (resource_kind != DXIL::ResourceKind::RawBuffer && resource_kind != DXIL::ResourceKind::StructuredBuffer)
 		{
-			// For any typed resource, we need to check if the resource is being read. To avoid StorageReadWithoutFormat, we emit
-			// a format based on the component type. TODO: This might not be good enough for FL 12, but in FL 11, read UAVs
-			// must be R32_{FLOAT,UINT,INT}.
+			// For any typed resource, we need to check if the resource is being read.
+			// To avoid StorageReadWithoutFormat, we emit a format based on the component type.
 			if (access_meta.has_read)
 			{
-				switch (component_type)
+				if (options.typed_uav_read_without_format && !access_meta.has_atomic)
 				{
-				case DXIL::ComponentType::U32:
-					format = spv::ImageFormatR32ui;
-					break;
+					builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
+					format = spv::ImageFormatUnknown;
+				}
+				else
+				{
+					switch (component_type)
+					{
+					case DXIL::ComponentType::U32:
+						format = spv::ImageFormatR32ui;
+						break;
 
-				case DXIL::ComponentType::I32:
-					format = spv::ImageFormatR32i;
-					break;
+					case DXIL::ComponentType::I32:
+						format = spv::ImageFormatR32i;
+						break;
 
-				case DXIL::ComponentType::F32:
-					format = spv::ImageFormatR32f;
-					break;
+					case DXIL::ComponentType::F32:
+						format = spv::ImageFormatR32f;
+						break;
 
-				default:
-					break;
+					default:
+						break;
+					}
 				}
 			}
 		}
@@ -3674,6 +3681,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::TypedUAVReadWithoutFormat:
+	{
+		auto &uav = static_cast<const OptionTypedUAVReadWithoutFormat &>(cap);
+		options.typed_uav_read_without_format = uav.supported;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -3712,6 +3726,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::PhysicalStorageBuffer:
 	case Option::SBTDescriptorSizeLog2:
 	case Option::SSBOAlignment:
+	case Option::TypedUAVReadWithoutFormat:
 		return true;
 
 	default:

@@ -301,6 +301,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			auto &node = impl.uav_access_tracking[itr->second];
 			node.has_read = true;
 			node.has_written = true;
+			node.has_atomic = true;
 		}
 		break;
 	}

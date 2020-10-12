@@ -433,10 +433,6 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		}
 	}
 
-	// TODO: Might have an option to rely on StorageImageReadWithoutFormat.
-	//if (is_uav && is_typed)
-	//	builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
-
 	return true;
 }
 

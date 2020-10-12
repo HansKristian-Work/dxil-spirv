@@ -133,6 +133,7 @@ static void print_help()
 	     "\t[--ssbo-uav]\n"
 	     "\t[--ssbo-srv]\n"
 	     "\t[--ssbo-alignment <align>]\n"
+	     "\t[--typed-uav-read-without-format]\n"
 	     "\t[--output-rt-swizzle index xyzw]\n");
 }
 
@@ -152,6 +153,7 @@ struct Arguments
 	unsigned root_constant_inline_ubo_binding = 0;
 	bool root_constant_inline_ubo = false;
 	bool bindless_cbv_as_ssbo = false;
+	bool typed_uav_read_without_format = false;
 
 	unsigned ssbo_alignment = 1;
 };
@@ -520,6 +522,7 @@ int main(int argc, char **argv)
 	cbs.add("--ssbo-uav", [&](CLIParser &) { remapper.ssbo_uav = true; });
 	cbs.add("--ssbo-srv", [&](CLIParser &) { remapper.ssbo_srv = true; });
 	cbs.add("--ssbo-alignment", [&](CLIParser &parser) { args.ssbo_alignment = parser.next_uint(); });
+	cbs.add("--typed-uav-read-without-format", [&](CLIParser &) { args.typed_uav_read_without_format = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -630,6 +633,12 @@ int main(int argc, char **argv)
 	{
 		dxil_spv_option_ssbo_alignment align = { { DXIL_SPV_OPTION_SSBO_ALIGNMENT }, args.ssbo_alignment };
 		dxil_spv_converter_add_option(converter, &align.base);
+	}
+
+	{
+		dxil_spv_option_typed_uav_read_without_format support = { { DXIL_SPV_OPTION_TYPED_UAV_READ_WITHOUT_FORMAT },
+		                                                          args.typed_uav_read_without_format };
+		dxil_spv_converter_add_option(converter, &support.base);
 	}
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)

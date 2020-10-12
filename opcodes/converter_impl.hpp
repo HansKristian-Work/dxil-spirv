@@ -140,6 +140,7 @@ struct Converter::Impl
 	{
 		bool has_read = false;
 		bool has_written = false;
+		bool has_atomic = false;
 	};
 	UnorderedMap<uint32_t, UAVAccessTracking> uav_access_tracking;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
@@ -328,6 +329,7 @@ struct Converter::Impl
 		unsigned sbt_descriptor_size_srv_uav_cbv_log2 = 0;
 		unsigned sbt_descriptor_size_sampler_log2 = 0;
 		unsigned ssbo_alignment = 16;
+		bool typed_uav_read_without_format = false;
 	} options;
 
 	struct BindlessInfo

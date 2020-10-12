@@ -246,6 +246,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER = 7,
 	DXIL_SPV_OPTION_SBT_DESCRIPTOR_SIZE_LOG2 = 8,
 	DXIL_SPV_OPTION_SSBO_ALIGNMENT = 9,
+	DXIL_SPV_OPTION_TYPED_UAV_READ_WITHOUT_FORMAT = 10,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -320,6 +321,12 @@ typedef struct dxil_spv_option_ssbo_alignment
 	dxil_spv_option_base base;
 	unsigned alignment;
 } dxil_spv_option_ssbo_alignment;
+
+typedef struct dxil_spv_option_typed_uav_read_without_format
+{
+	dxil_spv_option_base base;
+	bool supported;
+} dxil_spv_option_typed_uav_read_without_format;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

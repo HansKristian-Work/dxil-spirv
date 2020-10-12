@@ -1,0 +1,17 @@
+RWTexture2D<float4> Img : register(u0);
+RWBuffer<float4> Buf : register(u1);
+RWBuffer<uint> BufAtomic : register(u2);
+
+[numthreads(1, 1, 1)]
+void main(uint2 thr : SV_DispatchThreadID)
+{
+	float4 v = Img[thr];
+	v += 2.0;
+	Img[thr] = v;
+
+	v = Buf[thr.x];
+	v += 3.0;
+	Buf[thr.x] = v;
+
+	InterlockedAdd(BufAtomic[thr.y], 10u);
+}

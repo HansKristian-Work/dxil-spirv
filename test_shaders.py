@@ -151,6 +151,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
     if '.ssbo-align.' in shader:
         hlsl_cmd.append('--ssbo-alignment')
         hlsl_cmd.append('64')
+    if '.typed-uav-without-format.' in shader:
+        hlsl_cmd.append('--typed-uav-read-without-format')
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:
