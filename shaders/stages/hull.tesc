@@ -15,6 +15,11 @@ struct PatchConstant
 	float patch : PATCH;
 };
 
+cbuffer Cbuf : register(b0)
+{
+	float global_constant;
+};
+
 [domain("quad")]
 [partitioning("integer")]
 [outputtopology("triangle_cw")]
@@ -52,6 +57,6 @@ PatchConstant main_patch(OutputPatch<HSControlPoint, 4> op, InputPatch<VSControl
 	pc.outer[1] = ip[1].value;
 	pc.outer[2] = ip[2].value;
 	pc.outer[3] = ip[0].value + op[0].value;
-	pc.patch = v[3];
+	pc.patch = v[3] + global_constant;
 	return pc;
 }

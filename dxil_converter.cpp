@@ -3551,11 +3551,12 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_resources_global_mapping())
 		return result;
 
+	if (!emit_execution_modes())
+		return result;
+
 	if (!analyze_instructions())
 		return result;
 
-	if (!emit_execution_modes())
-		return result;
 	if (!emit_resources())
 		return result;
 	if (!emit_stage_input_variables())
