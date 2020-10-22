@@ -3541,11 +3541,29 @@ bool Converter::Impl::analyze_instructions()
 
 ConvertedFunction Converter::Impl::convert_entry_point()
 {
+	auto *module = &bitcode_parser.get_module();
+
+	if (!options.shader_source_file.empty())
+	{
+		auto &builder = spirv_module.get_builder();
+		auto *shader_model = module->getNamedMetadata("dx.shaderModel");
+		if (shader_model)
+		{
+			auto *shader_model_node = shader_model->getOperand(0);
+			if (shader_model_node)
+			{
+				uint32_t major = get_constant_metadata(shader_model_node, 1);
+				uint32_t minor = get_constant_metadata(shader_model_node, 2);
+				builder.setSource(spv::SourceLanguageHLSL, major * 100 + minor);
+				builder.setSourceFile(options.shader_source_file);
+			}
+		}
+	}
+
 	ConvertedFunction result = {};
 	result.node_pool = std::make_unique<CFGNodePool>();
 	auto &pool = *result.node_pool;
 
-	auto *module = &bitcode_parser.get_module();
 	spirv_module.emit_entry_point(get_execution_model(*module), "main", options.physical_storage_buffer);
 
 	if (!emit_resources_global_mapping())
@@ -3689,6 +3707,16 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::ShaderSourceFile:
+	{
+		auto &file = static_cast<const OptionShaderSourceFile &>(cap);
+		if (file.name)
+			options.shader_source_file = file.name;
+		else
+			options.shader_source_file.clear();
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -3728,6 +3756,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::SBTDescriptorSizeLog2:
 	case Option::SSBOAlignment:
 	case Option::TypedUAVReadWithoutFormat:
+	case Option::ShaderSourceFile:
 		return true;
 
 	default:

@@ -319,6 +319,7 @@ struct Converter::Impl
 		unsigned rasterizer_sample_count = 0;
 		bool rasterizer_sample_count_spec_constant = true;
 		Vector<unsigned> output_swizzles;
+		String shader_source_file;
 
 		unsigned inline_ubo_descriptor_set = 0;
 		unsigned inline_ubo_descriptor_binding = 0;

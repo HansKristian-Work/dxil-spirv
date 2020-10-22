@@ -189,7 +189,8 @@ enum class Option : uint32_t
 	PhysicalStorageBuffer = 7,
 	SBTDescriptorSizeLog2 = 8,
 	SSBOAlignment = 9,
-	TypedUAVReadWithoutFormat = 10
+	TypedUAVReadWithoutFormat = 10,
+	ShaderSourceFile = 11
 };
 
 enum class ResourceClass : uint32_t
@@ -302,6 +303,15 @@ struct OptionTypedUAVReadWithoutFormat : OptionBase
 	{
 	}
 	bool supported = false;
+};
+
+struct OptionShaderSourceFile : OptionBase
+{
+	OptionShaderSourceFile()
+		: OptionBase(Option::ShaderSourceFile)
+	{
+	}
+	const char *name = nullptr;
 };
 
 class Converter
