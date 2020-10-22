@@ -3554,7 +3554,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 			{
 				uint32_t major = get_constant_metadata(shader_model_node, 1);
 				uint32_t minor = get_constant_metadata(shader_model_node, 2);
-				builder.setSource(spv::SourceLanguageHLSL, major * 100 + minor);
+				builder.setSource(spv::SourceLanguageUnknown, major * 100 + minor);
 				builder.setSourceFile(options.shader_source_file);
 			}
 		}
