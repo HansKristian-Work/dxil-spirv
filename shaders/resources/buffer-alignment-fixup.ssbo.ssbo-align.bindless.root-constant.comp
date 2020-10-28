@@ -8,6 +8,8 @@ RWByteAddressBuffer RWBufs[] : register(u1, space2);
 StructuredBuffer<float2> RStrs[] : register(t2, space3);
 ByteAddressBuffer RBufs[] : register(t3, space4);
 
+RWStructuredBuffer<uint2> RWStrUint2 : register(u0, space5);
+
 [numthreads(64, 1, 1)]
 void main(uint thread : SV_DispatchThreadID, uint wg : SV_GroupID)
 {
@@ -22,4 +24,11 @@ void main(uint thread : SV_DispatchThreadID, uint wg : SV_GroupID)
 
 	RWBufs[wg].Store4(16 * thread, RBufs[wg].Load4(16 * thread));
 	RWBufs[NonUniformResourceIndex(thread)].Store4(16 * thread, RBufs[NonUniformResourceIndex(thread)].Load4(16 * thread));
+
+	uint val;
+	InterlockedAdd(RWStrUint2[thread].y, 1, val);
+
+	uint count, stride;
+	RWStr.GetDimensions(count, stride);
+	InterlockedAdd(RWStrUint2[thread].x, count);
 }

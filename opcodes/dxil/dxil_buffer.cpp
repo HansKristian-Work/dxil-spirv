@@ -213,10 +213,36 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 
 	if (index_offset_id)
 	{
+		Operation *extract_offset = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+		extract_offset->add_id(index_offset_id);
+		extract_offset->add_literal(0);
+		impl.add(extract_offset);
+
+		Operation *extract_len = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+		extract_len->add_id(index_offset_id);
+		extract_len->add_literal(1);
+		impl.add(extract_len);
+
 		Operation *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		add_op->add_ids({ index_id, index_offset_id });
+		add_op->add_ids({ index_id, extract_offset->id });
 		impl.add(add_op);
-		index_id = add_op->id;
+
+		Operation *compare_op = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+		compare_op->add_ids({ index_id, extract_len->id });
+		impl.add(compare_op);
+
+		// If we have an offset ID, it also means we cannot rely on accurate robustness.
+		// To handle this, we will range check and fabricate an invalid index, which is guaranteed to trip OOB.
+		// This avoids us having to inject branches.
+		// Choose 0x3ffffffc since it is the largest index (for 32-bit) that won't overflow 4GB offset (will break some drivers),
+		// and we potentially need to write 4 elements.
+		// If the allocation in question was really 4GB, then we will never trigger OOB check anyways.
+
+		Operation *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+		select_op->add_ids({ compare_op->id, add_op->id, builder.makeUintConstant(0x3ffffffc) });
+		impl.add(select_op);
+
+		index_id = select_op->id;
 	}
 
 	return { index_id };

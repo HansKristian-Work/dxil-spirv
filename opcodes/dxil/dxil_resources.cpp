@@ -721,22 +721,30 @@ static spv::Id build_load_ssbo_offset(Converter::Impl &impl, Converter::Impl::Re
 		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
 	}
 
-	Operation *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer,
-	                                                                            builder.makeUintType(32)));
+	spv::Id vec_type = builder.makeVectorType(builder.makeUintType(32), 2);
+
+	Operation *chain_op = impl.allocate(spv::OpAccessChain,
+	                                    builder.makePointer(spv::StorageClassStorageBuffer,
+	                                                        vec_type));
 	chain_op->add_id(offset_ssbo_id);
 	chain_op->add_id(builder.makeUintConstant(0));
 	chain_op->add_id(bindless_offset_id);
 	impl.add(chain_op);
 
-	Operation *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	Operation *load_op = impl.allocate(spv::OpLoad, vec_type);
 	load_op->add_id(chain_op->id);
 	impl.add(load_op);
 
 	spv::Id offset_id = load_op->id;
 
-	Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+	Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, vec_type);
 	shift_op->add_id(offset_id);
-	shift_op->add_id(builder.makeUintConstant(2));
+
+	spv::Id const_2[2];
+	const_2[0] = const_2[1] = builder.makeUintConstant(2);
+	spv::Id const_vec = impl.build_constant_vector(builder.makeUintType(32), const_2, 2);
+
+	shift_op->add_id(const_vec);
 	impl.add(shift_op);
 
 	offset_id = shift_op->id;

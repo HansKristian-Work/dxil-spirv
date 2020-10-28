@@ -194,8 +194,10 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
 			{
 				spv::Id uint_type = builder().makeUintType(32);
+				if (info.offsets)
+					uint_type = builder().makeVectorType(uint_type, 2);
 				spv::Id uint_array_type = builder().makeRuntimeArray(uint_type);
-				builder().addDecoration(uint_array_type, spv::DecorationArrayStride, sizeof(uint32_t));
+				builder().addDecoration(uint_array_type, spv::DecorationArrayStride, (info.offsets ? 2 : 1) * sizeof(uint32_t));
 				spv::Id block_type_id = get_struct_type({ uint_array_type }, info.offsets ? "SSBO_Offsets" : "SSBO");
 				builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
 				builder().addDecoration(block_type_id, spv::DecorationBlock);

@@ -471,9 +471,18 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	if (meta.storage == spv::StorageClassStorageBuffer)
 	{
-		dimensions_op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
-		dimensions_op->add_id(image_id);
-		dimensions_op->add_literal(0);
+		if (meta.index_offset_id)
+		{
+			dimensions_op = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+			dimensions_op->add_id(meta.index_offset_id);
+			dimensions_op->add_literal(1);
+		}
+		else
+		{
+			dimensions_op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
+			dimensions_op->add_id(image_id);
+			dimensions_op->add_literal(0);
+		}
 		impl.add(dimensions_op);
 		num_coords = 1;
 	}
