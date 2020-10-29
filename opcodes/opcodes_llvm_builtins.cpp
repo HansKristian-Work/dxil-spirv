@@ -620,6 +620,42 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 		opcode = spv::OpUGreaterThanEqual;
 		break;
 
+	case llvm::CmpInst::Predicate::FCMP_UNO:
+	{
+		Operation *first_op = impl.allocate(spv::OpIsNan, impl.builder().makeBoolType());
+		first_op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		impl.add(first_op);
+
+		Operation *second_op = impl.allocate(spv::OpIsNan, impl.builder().makeBoolType());
+		second_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(second_op);
+
+		Operation *op = impl.allocate(spv::OpLogicalOr, instruction);
+		op->add_ids({ first_op->id, second_op->id });
+		impl.add(op);
+		return true;
+	}
+
+	case llvm::CmpInst::Predicate::FCMP_ORD:
+	{
+		Operation *first_op = impl.allocate(spv::OpIsNan, impl.builder().makeBoolType());
+		first_op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		impl.add(first_op);
+
+		Operation *second_op = impl.allocate(spv::OpIsNan, impl.builder().makeBoolType());
+		second_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(second_op);
+
+		Operation *unordered_op = impl.allocate(spv::OpLogicalOr, impl.builder().makeBoolType());
+		unordered_op->add_ids({ first_op->id, second_op->id });
+		impl.add(unordered_op);
+
+		Operation *op = impl.allocate(spv::OpLogicalNot, instruction);
+		op->add_id(unordered_op->id);
+		impl.add(op);
+		return true;
+	}
+
 	default:
 		LOGE("Unknown CmpInst predicate.\n");
 		return false;
