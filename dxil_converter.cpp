@@ -555,6 +555,7 @@ bool Converter::Impl::get_ssbo_offset_buffer_id(spv::Id &buffer_id,
                                                 const VulkanBinding &offset_binding,
                                                 DXIL::ResourceKind kind, unsigned alignment)
 {
+	bool use_offsets = false;
 	buffer_id = 0;
 
 	// If we're emitting an SSBO where we expect small alignment, we'll need to carry forward an "offset".
@@ -575,16 +576,28 @@ bool Converter::Impl::get_ssbo_offset_buffer_id(spv::Id &buffer_id,
 				return false;
 			}
 
-			BindlessInfo bindless_info = {};
-			bindless_info.descriptor_type = VulkanDescriptorType::SSBO;
-			bindless_info.type = DXIL::ResourceType::SRV;
-			bindless_info.offsets = true;
-			bindless_info.desc_set = offset_binding.descriptor_set;
-			bindless_info.binding = offset_binding.binding;
-			bindless_info.component = DXIL::ComponentType::U32;
-			bindless_info.kind = DXIL::ResourceKind::RawBuffer;
-			buffer_id = create_bindless_heap_variable(bindless_info);
+			use_offsets = true;
+
 		}
+	}
+	else if (kind == DXIL::ResourceKind::TypedBuffer &&
+	         options.bindless_typed_buffer_offsets &&
+	         buffer_binding.bindless.use_heap)
+	{
+		use_offsets = true;
+	}
+
+	if (use_offsets)
+	{
+		BindlessInfo bindless_info = {};
+		bindless_info.descriptor_type = VulkanDescriptorType::SSBO;
+		bindless_info.type = DXIL::ResourceType::SRV;
+		bindless_info.offsets = true;
+		bindless_info.desc_set = offset_binding.descriptor_set;
+		bindless_info.binding = offset_binding.binding;
+		bindless_info.component = DXIL::ComponentType::U32;
+		bindless_info.kind = DXIL::ResourceKind::RawBuffer;
+		buffer_id = create_bindless_heap_variable(bindless_info);
 	}
 
 	return true;
@@ -3719,6 +3732,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::BindlessTypedBufferOffsets:
+	{
+		auto &off = static_cast<const OptionBindlessTypedBufferOffsets &>(cap);
+		options.bindless_typed_buffer_offsets = off.enable;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -3759,6 +3779,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::SSBOAlignment:
 	case Option::TypedUAVReadWithoutFormat:
 	case Option::ShaderSourceFile:
+	case Option::BindlessTypedBufferOffsets:
 		return true;
 
 	default:

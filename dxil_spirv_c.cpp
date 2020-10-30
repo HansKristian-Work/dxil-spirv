@@ -610,6 +610,14 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_BINDLESS_TYPED_BUFFER_OFFSETS:
+	{
+		OptionBindlessTypedBufferOffsets helper;
+		helper.enable = reinterpret_cast<const dxil_spv_option_bindless_typed_buffer_offsets *>(option)->enable;
+		converter->converter.add_option(helper);
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

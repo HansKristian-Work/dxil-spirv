@@ -190,7 +190,8 @@ enum class Option : uint32_t
 	SBTDescriptorSizeLog2 = 8,
 	SSBOAlignment = 9,
 	TypedUAVReadWithoutFormat = 10,
-	ShaderSourceFile = 11
+	ShaderSourceFile = 11,
+	BindlessTypedBufferOffsets = 12
 };
 
 enum class ResourceClass : uint32_t
@@ -312,6 +313,15 @@ struct OptionShaderSourceFile : OptionBase
 	{
 	}
 	const char *name = nullptr;
+};
+
+struct OptionBindlessTypedBufferOffsets : OptionBase
+{
+	OptionBindlessTypedBufferOffsets()
+		: OptionBase(Option::BindlessTypedBufferOffsets)
+	{
+	}
+	bool enable = false;
 };
 
 class Converter

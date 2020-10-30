@@ -331,6 +331,7 @@ struct Converter::Impl
 		unsigned sbt_descriptor_size_sampler_log2 = 0;
 		unsigned ssbo_alignment = 16;
 		bool typed_uav_read_without_format = false;
+		bool bindless_typed_buffer_offsets = false;
 	} options;
 
 	struct BindlessInfo

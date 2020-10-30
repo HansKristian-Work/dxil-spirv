@@ -153,6 +153,9 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd.append('64')
     if '.typed-uav-without-format.' in shader:
         hlsl_cmd.append('--typed-uav-read-without-format')
+    if '.typed-buffer-offset.' in shader:
+        hlsl_cmd.append('--bindless')
+        hlsl_cmd.append('--bindless-typed-buffer-offsets')
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

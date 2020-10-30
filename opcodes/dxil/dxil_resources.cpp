@@ -705,8 +705,9 @@ static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter:
 	       impl.local_root_signature[reference.local_root_signature_entry].type == LocalRootSignatureType::Descriptor;
 }
 
-static spv::Id build_load_ssbo_offset(Converter::Impl &impl, Converter::Impl::ResourceReference &reference,
-                                      spv::Id offset_ssbo_id, spv::Id bindless_offset_id, bool non_uniform)
+static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::ResourceReference &reference,
+                                        DXIL::ResourceKind kind,
+                                        spv::Id offset_ssbo_id, spv::Id bindless_offset_id, bool non_uniform)
 {
 	auto &builder = impl.builder();
 
@@ -737,17 +738,21 @@ static spv::Id build_load_ssbo_offset(Converter::Impl &impl, Converter::Impl::Re
 
 	spv::Id offset_id = load_op->id;
 
-	Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, vec_type);
-	shift_op->add_id(offset_id);
+	if (kind != DXIL::ResourceKind::TypedBuffer)
+	{
+		Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, vec_type);
+		shift_op->add_id(offset_id);
 
-	spv::Id const_2[2];
-	const_2[0] = const_2[1] = builder.makeUintConstant(2);
-	spv::Id const_vec = impl.build_constant_vector(builder.makeUintType(32), const_2, 2);
+		spv::Id const_2[2];
+		const_2[0] = const_2[1] = builder.makeUintConstant(2);
+		spv::Id const_vec = impl.build_constant_vector(builder.makeUintType(32), const_2, 2);
 
-	shift_op->add_id(const_vec);
-	impl.add(shift_op);
+		shift_op->add_id(const_vec);
+		impl.add(shift_op);
 
-	offset_id = shift_op->id;
+		offset_id = shift_op->id;
+	}
+
 	return offset_id;
 }
 
@@ -793,13 +798,16 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				return false;
 			}
 
+			auto &incoming_meta = impl.handle_to_resource_meta[base_image_id];
+
 			if (impl.srv_index_to_offset[resource_range])
-				offset_id = build_load_ssbo_offset(impl, reference, impl.srv_index_to_offset[resource_range], offset_id, non_uniform);
+				offset_id = build_load_buffer_offset(impl, reference, incoming_meta.kind,
+				                                     impl.srv_index_to_offset[resource_range], offset_id, non_uniform);
 			else
 				offset_id = 0;
 
 			auto &meta = impl.handle_to_resource_meta[loaded_id];
-			meta = impl.handle_to_resource_meta[base_image_id];
+			meta = incoming_meta;
 			meta.non_uniform = is_non_uniform;
 			meta.index_offset_id = offset_id;
 
@@ -859,13 +867,16 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				return false;
 			}
 
+			auto &incoming_meta = impl.handle_to_resource_meta[base_resource_id];
+
 			if (impl.uav_index_to_offset[resource_range])
-				offset_id = build_load_ssbo_offset(impl, reference, impl.uav_index_to_offset[resource_range], offset_id, non_uniform);
+				offset_id = build_load_buffer_offset(impl, reference, incoming_meta.kind,
+				                                     impl.uav_index_to_offset[resource_range], offset_id, non_uniform);
 			else
 				offset_id = 0;
 
 			auto &meta = impl.handle_to_resource_meta[loaded_id];
-			meta = impl.handle_to_resource_meta[base_resource_id];
+			meta = incoming_meta;
 			meta.non_uniform = is_non_uniform;
 			meta.index_offset_id = offset_id;
 

@@ -237,9 +237,12 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 		// Choose 0x3ffffffc since it is the largest index (for 32-bit) that won't overflow 4GB offset (will break some drivers),
 		// and we potentially need to write 4 elements.
 		// If the allocation in question was really 4GB, then we will never trigger OOB check anyways.
+		// For typed buffers, there is no address computation in the shader, so we should be able to do UINT_MAX.
 
 		Operation *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
-		select_op->add_ids({ compare_op->id, add_op->id, builder.makeUintConstant(0x3ffffffc) });
+
+		const uint32_t oob_index = meta.kind == DXIL::ResourceKind::TypedBuffer ? 0xffffffffu : 0x3ffffffcu;
+		select_op->add_ids({ compare_op->id, add_op->id, builder.makeUintConstant(oob_index) });
 		impl.add(select_op);
 
 		index_id = select_op->id;
@@ -762,7 +765,8 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	uint32_t num_coords_full = 0, num_coords = 0;
 
-	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
+	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
+	    meta.kind == DXIL::ResourceKind::TypedBuffer)
 	{
 		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id);
 		coords[0] = access.index_id;
@@ -868,7 +872,8 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	uint32_t num_coords_full = 0, num_coords = 0;
 
-	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
+	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
+	    meta.kind == DXIL::ResourceKind::TypedBuffer)
 	{
 		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
 		coords[0] = access.index_id;

@@ -486,6 +486,14 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		impl.add(dimensions_op);
 		num_coords = 1;
 	}
+	else if (meta.index_offset_id)
+	{
+		dimensions_op = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+		dimensions_op->add_id(meta.index_offset_id);
+		dimensions_op->add_literal(1);
+		impl.add(dimensions_op);
+		num_coords = 1;
+	}
 	else
 	{
 		if (!get_image_dimensions_query_size(impl, builder, image_id, &num_coords))
