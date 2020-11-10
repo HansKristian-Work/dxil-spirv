@@ -786,8 +786,22 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		{
 			spv::Id base_image_id = reference.var_id;
 			spv::Id image_id = base_image_id;
-
+			spv::Id loaded_id_16bit = 0;
 			bool is_non_uniform = false;
+
+			// Load 16-bit resource first so value map matches 32-bit meta.
+			if (reference.var_id_16bit)
+			{
+				// Need to also create a 16-bit access chain.
+				if (!build_load_resource_handle(impl, reference.var_id_16bit, reference, instruction,
+				                                instruction_offset, non_uniform, is_non_uniform,
+				                                nullptr, &loaded_id_16bit, nullptr))
+				{
+					LOGE("Failed to load SRV resource handle.\n");
+					return false;
+				}
+			}
+
 			spv::Id loaded_id = 0;
 			spv::Id offset_id = 0;
 			if (!build_load_resource_handle(impl, base_image_id, reference, instruction,
@@ -810,6 +824,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta = incoming_meta;
 			meta.non_uniform = is_non_uniform;
 			meta.index_offset_id = offset_id;
+			meta.var_id_16bit = loaded_id_16bit;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -860,6 +875,20 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id resource_ptr_id = 0;
 			spv::Id loaded_id = 0;
 			spv::Id offset_id = 0;
+			spv::Id loaded_id_16bit = 0;
+
+			if (reference.var_id_16bit)
+			{
+				// Need to also create a 16-bit access chain.
+				if (!build_load_resource_handle(impl, reference.var_id_16bit, reference, instruction,
+				                                instruction_offset, non_uniform, is_non_uniform,
+				                                nullptr, &loaded_id_16bit, nullptr))
+				{
+					LOGE("Failed to load SRV resource handle.\n");
+					return false;
+				}
+			}
+
 			if (!build_load_resource_handle(impl, base_resource_id, reference, instruction, instruction_offset, non_uniform,
 			                                is_non_uniform, &resource_ptr_id, &loaded_id, &offset_id))
 			{
@@ -879,6 +908,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta = incoming_meta;
 			meta.non_uniform = is_non_uniform;
 			meta.index_offset_id = offset_id;
+			meta.var_id_16bit = loaded_id_16bit;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
 			meta.var_id = resource_ptr_id;

@@ -147,8 +147,15 @@ static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *off
 	return bias_id;
 }
 
-BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset,
-                                     spv::Id index_offset_id)
+static bool type_is_16bit(const llvm::Type *data_type)
+{
+	return data_type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
+	       (data_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+	        data_type->getIntegerBitWidth() == 16);
+}
+
+static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset,
+                                            spv::Id index_offset_id, const llvm::Type *data_type)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -156,10 +163,15 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 
 	spv::Id index_id = 0;
 
+	// Only 16-bit and 32-bit memory access is supported in DXIL.
+	unsigned addr_shift_log2 = 2;
+	if (data_type && type_is_16bit(data_type))
+		addr_shift_log2 = 1;
+
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		// For raw buffers, the index is in bytes. Since we only consider uint32_t buffers, divide by 4.
-		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset), 2);
+		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset), addr_shift_log2);
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
@@ -176,10 +188,10 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 			has_constant_offset = true;
 		}
 
-		if (meta.stride != 4)
+		if (meta.stride != (1u << addr_shift_log2))
 		{
 			Operation *op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-			op->add_ids({ index_id, builder.makeUintConstant(meta.stride / 4) });
+			op->add_ids({ index_id, builder.makeUintConstant(meta.stride >> addr_shift_log2) });
 			index_id = op->id;
 			impl.add(op);
 		}
@@ -189,7 +201,7 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 			if (constant_offset != 0)
 			{
 				Operation *op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-				op->add_ids({ index_id, builder.makeUintConstant(constant_offset / 4) });
+				op->add_ids({ index_id, builder.makeUintConstant(constant_offset >> addr_shift_log2) });
 				index_id = op->id;
 				impl.add(op);
 			}
@@ -198,7 +210,7 @@ BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst
 		{
 			// Dynamically offset into the structured element.
 			Operation *op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
-			op->add_ids({ offset_id, builder.makeUintConstant(2) });
+			op->add_ids({ offset_id, builder.makeUintConstant(addr_shift_log2) });
 			offset_id = op->id;
 			impl.add(op);
 
@@ -262,10 +274,15 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
+	auto *result_type = instruction->getType();
+	unsigned bits = type_is_16bit(result_type->getStructElementType(0)) ? 16 : 32;
+	if (bits == 16)
+		image_id = meta.var_id_16bit;
+
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
-	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
-	auto *result_type = instruction->getType();
+	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
+	                                  result_type->getStructElementType(0));
 
 	// Sparse information is stored in the 5th component.
 	auto &access_meta = impl.llvm_composite_meta[instruction];
@@ -286,7 +303,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 				conservative_num_elements = i + 1;
 
 		spv::Id component_ids[4] = {};
-		spv::Id extracted_id_type = builder.makeUintType(32);
+		spv::Id extracted_id_type = builder.makeUintType(bits);
 		spv::Id constructed_id = 0;
 		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
 		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
@@ -527,23 +544,25 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
-#if 0
-		// If we're attempting a raw load from a non-physical pointer, it gets spicy.
-		// Since we're using texel buffers for this case, we might not be able to implement it correctly.
-		if (alignment < 4)
+		if (meta.var_id_16bit == 0)
 		{
-			LOGE("Requested an alignment of < 4 bytes in RawBufferLoad with descriptor. This is unimplementable.\n");
-			return false;
-		}
+			// If we're attempting a raw load from a non-physical pointer, it gets spicy.
+			// Since we're using texel buffers for this case, we might not be able to implement it correctly.
+			if (alignment < 4)
+			{
+				LOGE("Requested an alignment of < 4 bytes in RawBufferLoad with texel buffer. This is unimplementable.\n");
+				return false;
+			}
 
-		auto *ret_component = instruction->getType()->getStructElementType(0);
-		if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
-			!(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID && ret_component->getIntegerBitWidth() == 32))
-		{
-			LOGE("RawBufferLoad on descriptors is only supported for 32-bits currently.\n");
-			return false;
+			auto *ret_component = instruction->getType()->getStructElementType(0);
+			if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
+			    !(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+			      ret_component->getIntegerBitWidth() == 32))
+			{
+				LOGE("16-bit RawBufferLoad on descriptors is only supported for SSBOs.\n");
+				return false;
+			}
 		}
-#endif
 
 		// Ignore the mask. We'll read too much, but robustness should take care of any OOB.
 		return emit_buffer_load_instruction(impl, instruction);
@@ -592,7 +611,12 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
-	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
+	unsigned bits = type_is_16bit(instruction->getOperand(4)->getType()) ? 16 : 32;
+	if (bits == 16)
+		image_id = meta.var_id_16bit;
+
+	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
+	                                  instruction->getOperand(4)->getType());
 
 	spv::Id store_values[4] = {};
 	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
@@ -607,7 +631,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 			{
 				if (instruction->getOperand(4 + i)->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 				{
-					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(bits));
 					op->add_id(store_values[i]);
 					store_values[i] = op->id;
 					impl.add(op);
@@ -635,7 +659,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 			if (mask & (1u << i))
 			{
 				Operation *chain_op = impl.allocate(spv::OpAccessChain,
-				                                    builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+				                                    builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(bits)));
 				chain_op->add_id(image_id);
 				chain_op->add_id(builder.makeUintConstant(0));
 				chain_op->add_id(impl.build_offset(access.index_id, i));
@@ -695,23 +719,24 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
-#if 0
-		// If we're attempting a raw load from a non-physical pointer, it gets spicy.
-		// Since we're using texel buffers for this case, we might not be able to implement it correctly.
-		if (alignment < 4)
+		if (meta.var_id_16bit == 0)
 		{
-			LOGE("Requested an alignment of < 4 bytes in RawBufferLoad with descriptor. This is unimplementable.\n");
-			return false;
-		}
+			// If we're attempting a raw load from a non-physical pointer, it gets spicy.
+			// Since we're using texel buffers for this case, we might not be able to implement it correctly.
+			if (alignment < 4)
+			{
+				LOGE("Requested an alignment of < 4 bytes in RawBufferStore with texel buffer. This is unimplementable.\n");
+				return false;
+			}
 
-		auto *store_type = instruction->getOperand(4)->getType();
-		if (store_type->getTypeID() != llvm::Type::TypeID::FloatTyID &&
-		    !(store_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && store_type->getIntegerBitWidth() == 32))
-		{
-			LOGE("RawBufferStore on descriptors is only supported for 32-bits currently.\n");
-			return false;
+			auto *store_type = instruction->getOperand(4)->getType();
+			if (store_type->getTypeID() != llvm::Type::TypeID::FloatTyID &&
+			    !(store_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && store_type->getIntegerBitWidth() == 32))
+			{
+				LOGE("16-bit RawBufferStore on descriptors is only supported for SSBOs.\n");
+				return false;
+			}
 		}
-#endif
 
 		return emit_buffer_store_instruction(impl, instruction);
 	}
@@ -772,7 +797,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id);
+		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id, nullptr);
 		coords[0] = access.index_id;
 		num_coords = 1;
 		num_coords_full = 1;
@@ -879,7 +904,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id);
+		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id, nullptr);
 		coords[0] = access.index_id;
 		num_coords = 1;
 		num_coords_full = 1;

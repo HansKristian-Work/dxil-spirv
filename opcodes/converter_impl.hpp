@@ -238,6 +238,7 @@ struct Converter::Impl
 		DXIL::ComponentType component_type;
 		unsigned stride;
 		spv::Id var_id;
+		spv::Id var_id_16bit;
 		spv::StorageClass storage;
 		bool non_uniform;
 
