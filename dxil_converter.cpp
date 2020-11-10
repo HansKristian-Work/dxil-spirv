@@ -1899,14 +1899,20 @@ spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned 
 		break;
 
 	case DXIL::ComponentType::F16:
+	case DXIL::ComponentType::UNormF16:
+	case DXIL::ComponentType::SNormF16:
 		component_type = builder.makeFloatType(16);
 		break;
 
 	case DXIL::ComponentType::F32:
+	case DXIL::ComponentType::UNormF32:
+	case DXIL::ComponentType::SNormF32:
 		component_type = builder.makeFloatType(32);
 		break;
 
 	case DXIL::ComponentType::F64:
+	case DXIL::ComponentType::UNormF64:
+	case DXIL::ComponentType::SNormF64:
 		component_type = builder.makeFloatType(64);
 		break;
 
