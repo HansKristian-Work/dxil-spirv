@@ -170,7 +170,35 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 	return true;
 }
 
-bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, bool is_signed)
+static bool emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
+{
+	auto &builder = impl.builder();
+	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+
+	switch (instruction->getOperand(0)->getType()->getIntegerBitWidth())
+	{
+	case 16:
+		op->add_id(builder.makeUint16Constant(0));
+		break;
+
+	case 32:
+		op->add_id(builder.makeUintConstant(0));
+		break;
+
+	case 64:
+		op->add_id(builder.makeUint64Constant(0));
+		break;
+
+	default:
+		return false;
+	}
+
+	impl.add(op);
+	return true;
+}
+
+static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, bool is_signed)
 {
 	auto &builder = impl.builder();
 	spv::Id const_0;
@@ -245,6 +273,8 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 		break;
 
 	case llvm::CastInst::CastOps::Trunc:
+		if (instruction->getType()->getIntegerBitWidth() == 1)
+			return emit_boolean_trunc_instruction(impl, instruction);
 		opcode = spv::OpUConvert;
 		break;
 
@@ -581,11 +611,17 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 	}
 
 	case llvm::CmpInst::Predicate::ICMP_EQ:
-		opcode = spv::OpIEqual;
+		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+			opcode = spv::OpLogicalEqual;
+		else
+			opcode = spv::OpIEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_NE:
-		opcode = spv::OpINotEqual;
+		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+			opcode = spv::OpLogicalNotEqual;
+		else
+			opcode = spv::OpINotEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_SLT:
