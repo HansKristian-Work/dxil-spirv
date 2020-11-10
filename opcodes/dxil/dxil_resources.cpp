@@ -738,7 +738,8 @@ static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::
 
 	spv::Id offset_id = load_op->id;
 
-	if (kind != DXIL::ResourceKind::TypedBuffer)
+	// Shift the offset buffer once if we can get away with it.
+	if (kind != DXIL::ResourceKind::TypedBuffer && reference.var_id_16bit == 0)
 	{
 		Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, vec_type);
 		shift_op->add_id(offset_id);

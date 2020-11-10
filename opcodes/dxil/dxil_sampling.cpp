@@ -480,7 +480,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		else
 		{
 			dimensions_op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
-			dimensions_op->add_id(image_id);
+			dimensions_op->add_id(meta.var_id_16bit ? meta.var_id_16bit : image_id);
 			dimensions_op->add_literal(0);
 		}
 		impl.add(dimensions_op);
@@ -529,7 +529,24 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
 		Operation *elem_count_op = impl.allocate(spv::OpUDiv, builder.makeUintType(32));
-		elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / 4) });
+
+		if (meta.index_offset_id != 0)
+		{
+			// If the offset buffer is pre-shifted, shift the divider as well.
+			if (meta.var_id_16bit == 0)
+				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / 4) });
+			else
+				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride) });
+		}
+		else
+		{
+			// If we have a 16-bit buffer, we should use that as the basis for size computation.
+			if (meta.var_id_16bit != 0)
+				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / 2) });
+			else
+				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / 4) });
+		}
+
 		impl.add(elem_count_op);
 		dimensions_op = elem_count_op;
 	}

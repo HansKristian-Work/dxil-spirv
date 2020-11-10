@@ -225,6 +225,23 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 
 	if (index_offset_id)
 	{
+		// Need to shift the offset buffer last minute instead.
+		if (meta.var_id_16bit != 0)
+		{
+			spv::Id vec_type = builder.makeVectorType(builder.makeUintType(32), 2);
+			Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, vec_type);
+			shift_op->add_id(index_offset_id);
+
+			spv::Id shamt[2];
+			shamt[0] = shamt[1] = builder.makeUintConstant(addr_shift_log2);
+			spv::Id const_vec = impl.build_constant_vector(builder.makeUintType(32), shamt, 2);
+
+			shift_op->add_id(const_vec);
+			impl.add(shift_op);
+
+			index_offset_id = shift_op->id;
+		}
+
 		Operation *extract_offset = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
 		extract_offset->add_id(index_offset_id);
 		extract_offset->add_literal(0);
@@ -253,7 +270,8 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 
 		Operation *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
 
-		const uint32_t oob_index = meta.kind == DXIL::ResourceKind::TypedBuffer ? 0xffffffffu : 0x3ffffffcu;
+		const uint32_t oob_index = meta.kind == DXIL::ResourceKind::TypedBuffer ?
+		                           0xffffffffu : ((0xffffffffu >> addr_shift_log2) - 3u);
 		select_op->add_ids({ compare_op->id, add_op->id, builder.makeUintConstant(oob_index) });
 		impl.add(select_op);
 
