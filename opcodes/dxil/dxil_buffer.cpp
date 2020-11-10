@@ -527,6 +527,7 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
+#if 0
 		// If we're attempting a raw load from a non-physical pointer, it gets spicy.
 		// Since we're using texel buffers for this case, we might not be able to implement it correctly.
 		if (alignment < 4)
@@ -542,6 +543,7 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 			LOGE("RawBufferLoad on descriptors is only supported for 32-bits currently.\n");
 			return false;
 		}
+#endif
 
 		// Ignore the mask. We'll read too much, but robustness should take care of any OOB.
 		return emit_buffer_load_instruction(impl, instruction);
@@ -693,6 +695,7 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
+#if 0
 		// If we're attempting a raw load from a non-physical pointer, it gets spicy.
 		// Since we're using texel buffers for this case, we might not be able to implement it correctly.
 		if (alignment < 4)
@@ -708,6 +711,7 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 			LOGE("RawBufferStore on descriptors is only supported for 32-bits currently.\n");
 			return false;
 		}
+#endif
 
 		return emit_buffer_store_instruction(impl, instruction);
 	}
