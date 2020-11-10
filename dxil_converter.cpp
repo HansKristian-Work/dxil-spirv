@@ -1601,6 +1601,9 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		case 32:
 			return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue());
 
+		case 64:
+			return builder.makeUint64Constant(constant->getUniqueInteger().getZExtValue());
+
 		default:
 			return 0;
 		}
