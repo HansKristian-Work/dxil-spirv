@@ -90,7 +90,6 @@ void Emitter::emit_basic_block(CFGNode *node)
 	}
 }
 
-#if 0
 static void print_spirv_assembly(const Vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
@@ -100,7 +99,6 @@ static void print_spirv_assembly(const Vector<uint32_t> &code)
 	else
 		LOGE("\nSPIR-V:\n%s\n", str.c_str());
 }
-#endif
 
 static void print_glsl(const Vector<uint32_t> &code)
 {
@@ -304,6 +302,6 @@ int main(int argc, char **argv)
 	emitter.module.finalize_spirv(code);
 
 	print_glsl(code);
-	//print_spirv_assembly(code);
+	print_spirv_assembly(code);
 	validate_spirv(code);
 }
