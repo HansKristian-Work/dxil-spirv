@@ -351,6 +351,7 @@ struct Converter::Impl
 		bool uav_coherent;
 		bool counters;
 		bool offsets;
+		bool aliased;
 		uint32_t desc_set;
 		uint32_t binding;
 	};

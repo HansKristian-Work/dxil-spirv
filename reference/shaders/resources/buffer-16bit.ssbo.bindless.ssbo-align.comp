@@ -291,33 +291,39 @@ OpMemberDecorate %15 0 Offset 0
 OpDecorate %15 Block
 OpDecorate %18 DescriptorSet 4
 OpDecorate %18 Binding 0
+OpDecorate %18 Aliased
 OpDecorate %20 ArrayStride 2
 OpMemberDecorate %21 0 Offset 0
 OpDecorate %21 Block
 OpDecorate %24 DescriptorSet 4
 OpDecorate %24 Binding 0
+OpDecorate %24 Aliased
 OpDecorate %25 ArrayStride 4
 OpMemberDecorate %26 0 Offset 0
 OpDecorate %26 Block
 OpDecorate %29 DescriptorSet 4
 OpDecorate %29 Binding 0
+OpDecorate %29 Aliased
 OpDecorate %30 ArrayStride 2
 OpMemberDecorate %31 0 Offset 0
 OpDecorate %31 Block
 OpDecorate %34 DescriptorSet 4
 OpDecorate %34 Binding 0
+OpDecorate %34 Aliased
 OpDecorate %35 ArrayStride 4
 OpMemberDecorate %36 0 Offset 0
 OpDecorate %36 Block
 OpDecorate %39 DescriptorSet 4
 OpDecorate %39 Binding 0
 OpDecorate %39 NonReadable
+OpDecorate %39 Aliased
 OpDecorate %40 ArrayStride 2
 OpMemberDecorate %41 0 Offset 0
 OpDecorate %41 Block
 OpDecorate %44 DescriptorSet 4
 OpDecorate %44 Binding 0
 OpDecorate %44 NonReadable
+OpDecorate %44 Aliased
 OpDecorate %137 BuiltIn GlobalInvocationId
 OpDecorate %589 NonUniform
 OpDecorate %586 NonUniform

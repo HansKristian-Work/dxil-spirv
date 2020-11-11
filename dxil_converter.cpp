@@ -191,6 +191,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			resource.info.uav_read == info.uav_read &&
 			resource.info.uav_written == info.uav_written &&
 			resource.info.uav_coherent == info.uav_coherent &&
+			resource.info.aliased == info.aliased &&
 			resource.info.counters == info.counters &&
 			resource.info.offsets == info.offsets &&
 			resource.info.descriptor_type == info.descriptor_type;
@@ -374,6 +375,10 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			builder().addDecoration(resource.var_id, spv::DecorationNonWritable);
 			builder().addDecoration(resource.var_id, spv::DecorationRestrict);
 		}
+
+		// The default in Vulkan environment is Restrict.
+		if (info.aliased && info.type == DXIL::ResourceType::UAV)
+			builder().addDecoration(resource.var_id, spv::DecorationAliased);
 
 		bindless_resources.push_back(resource);
 		return resource.var_id;
@@ -861,6 +866,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		bindless_info.uav_written = access_meta.has_written;
 		bindless_info.uav_coherent = globally_coherent;
 		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
+
+		// If we emit two SSBOs which both access the same buffer, we must emit Aliased decoration to be safe.
+		bindless_info.aliased = access_meta.raw_access_16bit;
 
 		BindlessInfo counter_info = {};
 		if (options.physical_storage_buffer)
