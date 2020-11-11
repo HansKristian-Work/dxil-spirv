@@ -250,6 +250,8 @@ OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
 OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 0
+OpDecorate %9 Aliased
+OpDecorate %14 Aliased
 OpDecorate %15 ArrayStride 4
 OpMemberDecorate %16 0 Offset 0
 OpDecorate %16 Block
@@ -260,6 +262,8 @@ OpDecorate %18 DescriptorSet 0
 OpDecorate %18 Binding 1
 OpDecorate %22 DescriptorSet 0
 OpDecorate %22 Binding 1
+OpDecorate %18 Aliased
+OpDecorate %22 Aliased
 OpDecorate %23 ArrayStride 4
 OpMemberDecorate %24 0 Offset 0
 OpDecorate %24 Block
@@ -270,6 +274,8 @@ OpDecorate %26 DescriptorSet 0
 OpDecorate %26 Binding 2
 OpDecorate %30 DescriptorSet 0
 OpDecorate %30 Binding 2
+OpDecorate %26 Aliased
+OpDecorate %30 Aliased
 OpDecorate %31 ArrayStride 4
 OpMemberDecorate %32 0 Offset 0
 OpDecorate %32 Block
@@ -280,6 +286,8 @@ OpDecorate %34 DescriptorSet 0
 OpDecorate %34 Binding 3
 OpDecorate %38 DescriptorSet 0
 OpDecorate %38 Binding 3
+OpDecorate %34 Aliased
+OpDecorate %38 Aliased
 OpDecorate %39 ArrayStride 4
 OpMemberDecorate %40 0 Offset 0
 OpDecorate %40 Block
@@ -290,6 +298,8 @@ OpDecorate %42 DescriptorSet 0
 OpDecorate %42 Binding 4
 OpDecorate %46 DescriptorSet 0
 OpDecorate %46 Binding 4
+OpDecorate %42 Aliased
+OpDecorate %46 Aliased
 OpDecorate %47 ArrayStride 4
 OpMemberDecorate %48 0 Offset 0
 OpDecorate %48 Block
@@ -302,6 +312,8 @@ OpDecorate %50 NonReadable
 OpDecorate %54 DescriptorSet 0
 OpDecorate %54 Binding 5
 OpDecorate %54 NonReadable
+OpDecorate %50 Aliased
+OpDecorate %54 Aliased
 OpDecorate %55 ArrayStride 4
 OpMemberDecorate %56 0 Offset 0
 OpDecorate %56 Block
@@ -314,6 +326,8 @@ OpDecorate %58 NonReadable
 OpDecorate %62 DescriptorSet 0
 OpDecorate %62 Binding 6
 OpDecorate %62 NonReadable
+OpDecorate %58 Aliased
+OpDecorate %62 Aliased
 OpDecorate %63 ArrayStride 4
 OpMemberDecorate %64 0 Offset 0
 OpDecorate %64 Block
@@ -324,6 +338,8 @@ OpDecorate %67 DescriptorSet 1
 OpDecorate %67 Binding 0
 OpDecorate %72 DescriptorSet 1
 OpDecorate %72 Binding 0
+OpDecorate %67 Aliased
+OpDecorate %72 Aliased
 OpDecorate %75 BuiltIn GlobalInvocationId
 OpDecorate %374 NonUniform
 OpDecorate %376 NonUniform

@@ -1097,6 +1097,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					builder.addDecoration(var_id_16bit, spv::DecorationNonWritable);
 				if (globally_coherent)
 					builder.addDecoration(var_id_16bit, spv::DecorationCoherent);
+
+				builder.addDecoration(var_id, spv::DecorationAliased);
+				builder.addDecoration(var_id_16bit, spv::DecorationAliased);
 			}
 
 			spv::Id counter_var_id = 0;
