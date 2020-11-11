@@ -48,7 +48,7 @@ if (dxil_spirv_c_shared_FOUND)
 	target_compile_definitions(vkd3d-shader PRIVATE HAVE_DXIL_SPV)
 	target_sources(vkd3d-shader PRIVATE vkd3d/libs/vkd3d-shader/dxil.c)
 else()
-	message("Did not find DXIL2SPIRV :( Disabling DXIL support.")
+	message("Did not find dxil-spirv :( Disabling DXIL support.")
 endif()
 ```
 
