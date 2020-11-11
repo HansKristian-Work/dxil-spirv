@@ -1565,12 +1565,24 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 			{
 				if (pass == 0)
 				{
-					idom->merge = MergeType::Loop;
 					assert(idom->selection_merge_block);
-					idom->loop_merge_block = idom->selection_merge_block;
-					idom->selection_merge_block = nullptr;
-					idom->freeze_structured_analysis = true;
-					idom = create_helper_succ_block(idom);
+
+					// If we turn the outer selection construct into a loop,
+					// we remove the possibility to break further out (without adding ladders like we do for loops).
+					// To make this work, we must ensure that the new merge block is post-dominated
+					// by the loop construct merge block.
+					if (idom->selection_merge_block->post_dominates(node))
+					{
+						idom->merge = MergeType::Loop;
+						idom->loop_merge_block = idom->selection_merge_block;
+						idom->selection_merge_block = nullptr;
+						idom->freeze_structured_analysis = true;
+						idom = create_helper_succ_block(idom);
+					}
+					else
+					{
+						LOGE("Cannot turn outer selection construct into a loop.\n");
+					}
 				}
 				else
 					LOGE("Mismatch headers in pass 1 ... ?\n");
