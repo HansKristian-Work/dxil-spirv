@@ -155,7 +155,10 @@ install(TARGETS dxil-spirv-c-shared
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv)
 install(EXPORT dxil_spirv_c_sharedConfig DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dxil_spirv_c_shared/cmake)
 
-#add_executable(structurize-test structurize_test.cpp)
-#target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools spirv-cross-glsl dxil-debug)
-#target_compile_options(structurize-test PRIVATE ${DXIL_SPV_CXX_FLAGS})
+option(DXIL_SPV_MISC_CLI "Enable misc CLI apps." OFF)
 
+if (DXIL_SPV_MISC_CLI)
+    add_executable(structurize-test misc/structurize_test.cpp)
+    target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools spirv-cross-c dxil-debug dxil-utils)
+    target_compile_options(structurize-test PRIVATE ${DXIL_SPV_CXX_FLAGS})
+endif()
