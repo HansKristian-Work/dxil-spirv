@@ -242,6 +242,17 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	return global_dispatcher.builder_lut[opcode](impl, instruction);
 }
 
+static void update_access_tracking_from_type(Converter::Impl::AccessTracking &tracking,
+                                             const llvm::Type *type)
+{
+	if (type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
+	    (type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+	     type->getIntegerBitWidth() == 16))
+	{
+		tracking.raw_access_16bit = true;
+	}
+}
+
 bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// The opcode is encoded as a constant integer.
@@ -260,10 +271,9 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			return false;
 
 		if (static_cast<DXIL::ResourceType>(resource_type_operand) == DXIL::ResourceType::UAV)
-		{
 			impl.llvm_value_to_uav_resource_index_map[instruction] = resource_range;
-			break;
-		}
+		else if (static_cast<DXIL::ResourceType>(resource_type_operand) == DXIL::ResourceType::SRV)
+			impl.llvm_value_to_srv_resource_index_map[instruction] = resource_range;
 		break;
 	}
 
@@ -275,6 +285,8 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 		if (itr->second.type == DXIL::ResourceType::UAV)
 			impl.llvm_value_to_uav_resource_index_map[instruction] = itr->second.meta_index;
+		else if (itr->second.type == DXIL::ResourceType::SRV)
+			impl.llvm_value_to_srv_resource_index_map[instruction] = itr->second.meta_index;
 		break;
 	}
 
@@ -288,7 +300,17 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		{
 			auto &node = impl.uav_access_tracking[itr->second];
 			node.has_read = true;
+			update_access_tracking_from_type(node, instruction->getType()->getStructElementType(0));
 		}
+
+		itr = impl.llvm_value_to_srv_resource_index_map.find(instruction->getOperand(1));
+		if (itr != impl.llvm_value_to_srv_resource_index_map.end())
+		{
+			auto &node = impl.srv_access_tracking[itr->second];
+			node.has_read = true;
+			update_access_tracking_from_type(node, instruction->getType()->getStructElementType(0));
+		}
+
 		break;
 	}
 
@@ -315,6 +337,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		{
 			auto &node = impl.uav_access_tracking[itr->second];
 			node.has_written = true;
+			update_access_tracking_from_type(node, instruction->getOperand(4)->getType());
 		}
 		break;
 	}

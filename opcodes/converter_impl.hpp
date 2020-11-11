@@ -136,13 +136,16 @@ struct Converter::Impl
 
 	bool analyze_instructions();
 	bool analyze_instructions(const llvm::Function *function);
-	struct UAVAccessTracking
+	struct AccessTracking
 	{
 		bool has_read = false;
 		bool has_written = false;
 		bool has_atomic = false;
+		bool raw_access_16bit = false;
 	};
-	UnorderedMap<uint32_t, UAVAccessTracking> uav_access_tracking;
+	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
+	UnorderedMap<uint32_t, AccessTracking> uav_access_tracking;
+	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_srv_resource_index_map;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
 	UnorderedSet<const llvm::Value *> llvm_values_using_update_counter;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_values_to_payload_location;
@@ -207,6 +210,7 @@ struct Converter::Impl
 	struct ResourceReference
 	{
 		spv::Id var_id = 0;
+		spv::Id var_id_16bit = 0;
 		uint32_t push_constant_member = 0;
 		uint32_t base_offset = 0;
 		unsigned stride = 0;
@@ -234,6 +238,7 @@ struct Converter::Impl
 		DXIL::ComponentType component_type;
 		unsigned stride;
 		spv::Id var_id;
+		spv::Id var_id_16bit;
 		spv::StorageClass storage;
 		bool non_uniform;
 
@@ -346,6 +351,7 @@ struct Converter::Impl
 		bool uav_coherent;
 		bool counters;
 		bool offsets;
+		bool aliased;
 		uint32_t desc_set;
 		uint32_t binding;
 	};

@@ -26,9 +26,6 @@ struct BufferAccessInfo
 	spv::Id index_id;
 };
 
-BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                     unsigned operand_offset, spv::Id index_offset_id);
-
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);

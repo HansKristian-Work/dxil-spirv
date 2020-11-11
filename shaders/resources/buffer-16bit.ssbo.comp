@@ -1,0 +1,60 @@
+RWStructuredBuffer<half> HalfBuf : register(u0);
+RWStructuredBuffer<uint16_t2> Half2Buf : register(u1);
+RWStructuredBuffer<half3> Half3Buf : register(u2);
+RWStructuredBuffer<uint16_t4> Half4Buf : register(u3);
+
+RWByteAddressBuffer RWBuf : register(u4);
+RWByteAddressBuffer RWBuf2 : register(u5);
+RWByteAddressBuffer RWBuf3 : register(u6);
+
+RWByteAddressBuffer RWBuf4[] : register(u0, space1);
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	HalfBuf[thr] += half(1.0);
+	Half2Buf[thr] += uint16_t(2);
+	Half3Buf[thr] += half(3.0);
+	Half4Buf[thr] += uint16_t(4.0);
+
+	float4 result = 0.0.xxxx;
+
+	result += RWBuf.Load<half>(2 * thr);
+	result += RWBuf.Load<half2>(4 * thr).xxyy;
+	result += RWBuf.Load<half3>(6 * thr).xyzx;
+	result += RWBuf.Load<half4>(8 * thr);
+
+	result += RWBuf.Load<uint16_t>(2 * thr);
+	result += RWBuf.Load<uint16_t2>(4 * thr).xxyy;
+	result += RWBuf.Load<uint16_t3>(6 * thr).xyzx;
+	result += RWBuf.Load<uint16_t4>(8 * thr);
+
+	RWBuf2.Store<half>(2 * thr, half(1.0));
+	RWBuf2.Store<half2>(4 * thr, half2(2.0, 4.0));
+	RWBuf2.Store<half3>(6 * thr, half3(4.0, 5.0, 6.0));
+	RWBuf2.Store<half4>(8 * thr, half4(7.0, 8.0, 9.0, 10.0));
+
+	RWBuf3.Store<uint16_t>(2 * thr, uint16_t(1));
+	RWBuf3.Store<uint16_t2>(4 * thr, uint16_t2(2, 4));
+	RWBuf3.Store<uint16_t3>(6 * thr, uint16_t3(4, 5, 6));
+	RWBuf3.Store<uint16_t4>(8 * thr, uint16_t4(7, 8, 9, 10));
+
+	result += RWBuf.Load<float>(4 * thr);
+	result += RWBuf4[NonUniformResourceIndex(thr)].Load<half>(4 * thr);
+	RWBuf4[NonUniformResourceIndex(thr)].Store<half2>(8 * thr, half2(result.xy));
+
+	uint count, stride;
+	HalfBuf.GetDimensions(count, stride);
+	result.x += count;
+	result.y += stride;
+
+	Half4Buf.GetDimensions(count, stride);
+	result.z += count;
+	result.w += stride;
+
+	RWBuf2.GetDimensions(count);
+	result.x += count;
+
+	RWBuf.Store4(16 * thr, result);
+
+}
