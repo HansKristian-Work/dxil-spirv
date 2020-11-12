@@ -821,18 +821,7 @@ void CFGStructurizer::reset_traversal()
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 
-		if (node.freeze_structured_analysis)
-		{
-			// If we froze structured analysis with ladder blocks,
-			// we have to promote the ladder block to the true merge block.
-			// The current merge block is a "dummy".
-			if (node.loop_ladder_block)
-			{
-				node.loop_merge_block = node.loop_ladder_block;
-				node.loop_ladder_block = nullptr;
-			}
-		}
-		else
+		if (!node.freeze_structured_analysis)
 		{
 			node.headers.clear();
 			node.merge = MergeType::None;
@@ -2223,6 +2212,8 @@ void CFGStructurizer::split_merge_blocks()
 			if (node->headers[i]->merge == MergeType::Loop)
 			{
 				auto *loop_ladder = node->headers[i]->loop_ladder_block;
+				CFGNode *new_ladder_block = nullptr;
+
 				if (!loop_ladder)
 				{
 					// We don't have a ladder, because the loop merged to an outer scope, so we need to fake a ladder.
@@ -2252,6 +2243,7 @@ void CFGStructurizer::split_merge_blocks()
 						// Otherwise we branch to the existing merge block and continue as normal.
 						// We'll also need to rewrite a lot of Phi nodes this way as well.
 						auto *ladder = create_helper_pred_block(loop_ladder);
+						new_ladder_block = ladder;
 
 						// Merge to ladder instead.
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
@@ -2306,6 +2298,7 @@ void CFGStructurizer::split_merge_blocks()
 							// This block will likely become a frontier node when merging PHI instead.
 							// This is a common case when breaking out of a simple for loop.
 							node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, loop_ladder);
+							new_ladder_block = loop_ladder;
 						}
 						else
 						{
@@ -2326,6 +2319,7 @@ void CFGStructurizer::split_merge_blocks()
 
 							// Merge to ladder instead.
 							node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder_pre);
+							new_ladder_block = ladder_pre;
 
 							PHI phi;
 							phi.id = ladder_pre->ir.terminator.conditional_id;
@@ -2346,6 +2340,7 @@ void CFGStructurizer::split_merge_blocks()
 					else if (full_break_target)
 					{
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
+						new_ladder_block = nullptr;
 					}
 					else
 					{
@@ -2371,7 +2366,18 @@ void CFGStructurizer::split_merge_blocks()
 
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
 						node = new_selection_merge;
+						new_ladder_block = nullptr;
 					}
+				}
+
+				// We won't analyze this again, so make sure header knows
+				// about the new merge block.
+				if (node->headers[i]->freeze_structured_analysis)
+				{
+					if (new_ladder_block)
+						node->headers[i]->loop_ladder_block = new_ladder_block;
+					node->headers[i]->loop_merge_block = node->headers[i]->loop_ladder_block;
+					node->headers[i]->loop_ladder_block = nullptr;
 				}
 			}
 			else if (node->headers[i]->merge == MergeType::Selection)
