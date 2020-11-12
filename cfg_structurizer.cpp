@@ -2276,7 +2276,9 @@ void CFGStructurizer::split_merge_blocks()
 						loop->loop_merge_block = node;
 						loop->freeze_structured_analysis = true;
 
-						//node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
+						// After the loop ladder, make sure we always branch to the break target.
+						loop_ladder->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
+
 						node = new_selection_merge;
 					}
 				}
