@@ -422,7 +422,7 @@ Vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
 		auto *block = itr->block;
 		if (block->dominates(frontier_pred))
 		{
-			if (candidate == incoming.end() || block->forward_post_visit_order < candidate->block->forward_post_visit_order)
+			if (candidate == incoming.end() || (block->forward_post_visit_order < candidate->block->forward_post_visit_order))
 				candidate = itr;
 		}
 	}
@@ -635,7 +635,8 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			auto itr = find_incoming_value(input, incoming_values);
 			if (itr != incoming_values.end())
 			{
-				auto *incoming_block = itr->block;
+				//auto *incoming_block = itr->block;
+				//LOGI("   ... found incoming block %s for input %s.\n", incoming_block->name.c_str(), input->name.c_str());
 
 				//LOGI(" ... For pred %s (%p), found incoming value from %s (%p)\n", input->name.c_str(),
 				//     static_cast<const void *>(input), incoming_block->name.c_str(),
@@ -645,23 +646,10 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				value.id = itr->id;
 				value.block = input;
 				frontier_phi.incoming.push_back(value);
-
-				// Do we remove the incoming value now or not?
-				// If all paths from incoming value must go through frontier, we can remove it,
-				// otherwise, we might still need to use the incoming value somewhere else.
-				bool exists_path = exists_path_in_cfg_without_intermediate_node(incoming_block, node.block, frontier);
-				if (exists_path)
-				{
-					//LOGI("   ... keeping input in %s\n", incoming_block->name.c_str());
-				}
-				else
-				{
-					//LOGI("   ... removing input in %s\n", incoming_block->name.c_str());
-					incoming_values.erase(itr);
-				}
 			}
 			else
 			{
+				//LOGI("   ... creating undefined input for %s\n", input->name.c_str());
 				// If there is no incoming value, we need to hallucinate an undefined value.
 				IncomingValue value = {};
 				value.id = module.get_builder().createUndefined(phi.type_id);
@@ -669,6 +657,31 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				frontier_phi.incoming.push_back(value);
 			}
 		}
+
+		// Do we remove the incoming value now or not?
+		// If all paths from incoming value must go through frontier, we can remove it,
+		// otherwise, we might still need to use the incoming value somewhere else.
+		size_t num_alive_incoming_values = incoming_values.size();
+		for (size_t i = 0; i < num_alive_incoming_values; )
+		{
+			auto *incoming_block = incoming_values[i].block;
+			if (!exists_path_in_cfg_without_intermediate_node(incoming_block, node.block, frontier))
+			{
+				//LOGI("     ... removing input in %s\n", incoming_block->name.c_str());
+				if (i != num_alive_incoming_values - 1)
+					std::swap(incoming_values[num_alive_incoming_values - 1], incoming_values[i]);
+				num_alive_incoming_values--;
+			}
+			else
+			{
+				//LOGI("     ... keeping input in %s\n", incoming_block->name.c_str());
+				i++;
+			}
+		}
+
+		// Need to clean up exhausted incoming values after the loop,
+		// since an incoming value can be used multiple times before a frontier PHI is resolved.
+		incoming_values.erase(incoming_values.begin() + num_alive_incoming_values, incoming_values.end());
 
 		// We've handled this node now, remove it from consideration w.r.t. frontiers.
 		cfg_subset.erase(frontier);
@@ -709,7 +722,6 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				auto itr = find_incoming_value(input, incoming_values);
 				if (itr != incoming_values.end())
 				{
-
 					// If the input does not dominate the frontier, this might be a case of cross-edge PHI merge.
 					// However, if we still have an incoming value which dominates the input block, ignore.
 					// This is considered a normal path and we will merge the actual result in a later iteration, because
