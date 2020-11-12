@@ -821,7 +821,18 @@ void CFGStructurizer::reset_traversal()
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 
-		if (!node.freeze_structured_analysis)
+		if (node.freeze_structured_analysis)
+		{
+			// If we froze structured analysis with ladder blocks,
+			// we have to promote the ladder block to the true merge block.
+			// The current merge block is a "dummy".
+			if (node.loop_ladder_block)
+			{
+				node.loop_merge_block = node.loop_ladder_block;
+				node.loop_ladder_block = nullptr;
+			}
+		}
+		else
 		{
 			node.headers.clear();
 			node.merge = MergeType::None;
@@ -1571,18 +1582,23 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 					// we remove the possibility to break further out (without adding ladders like we do for loops).
 					// To make this work, we must ensure that the new merge block is post-dominated
 					// by the loop construct merge block.
-					if (idom->selection_merge_block->post_dominates(node))
+					idom->loop_merge_block = CFGNode::find_common_post_dominator(idom->selection_merge_block, node);
+
+					if (!idom->loop_merge_block || idom->selection_merge_block->post_dominates(node))
 					{
-						idom->merge = MergeType::Loop;
 						idom->loop_merge_block = idom->selection_merge_block;
-						idom->selection_merge_block = nullptr;
-						idom->freeze_structured_analysis = true;
-						idom = create_helper_succ_block(idom);
 					}
 					else
 					{
-						LOGE("Cannot turn outer selection construct into a loop.\n");
+						// Make sure we split merge scopes. Pretend we have a true loop.
+						idom->loop_ladder_block = idom->selection_merge_block;
+						idom->loop_merge_block->add_unique_header(idom);
 					}
+
+					idom->merge = MergeType::Loop;
+					idom->selection_merge_block = nullptr;
+					idom->freeze_structured_analysis = true;
+					idom = create_helper_succ_block(idom);
 				}
 				else
 					LOGE("Mismatch headers in pass 1 ... ?\n");
