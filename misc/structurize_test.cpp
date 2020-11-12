@@ -234,6 +234,19 @@ int main(int argc, char **argv)
 		}
 	};
 
+	const auto add_sideeffect = [&](const char *block) {
+		auto *b = get(block);
+		auto &builder = emitter.module.get_builder();
+		spv::Id var_id = builder.createVariable(spv::StorageClassFunction, builder.makeUintType(32));
+
+		auto *op = emitter.module.allocate_op(spv::OpStore);
+		op->add_id(var_id);
+		op->add_id(builder.makeUintConstant(0));
+		b->ir.operations.push_back(op);
+	};
+
+	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main", false);
+
 	FILE *file = fopen(argv[1], "r");
 	if (!file)
 	{
@@ -281,6 +294,15 @@ int main(int argc, char **argv)
 				src_blocks.push_back(itr->c_str());
 			add_phi(tokens[1].c_str(), src_blocks);
 		}
+		else if (tokens.front() == "sideeffect")
+		{
+			if (tokens.size() != 2)
+			{
+				LOGE("sideeffects token needs 2 elements.\n");
+				continue;;
+			}
+			add_sideeffect(tokens[1].c_str());
+		}
 		else
 		{
 			LOGE("Unknown token %s.\n", tokens.front().c_str());
@@ -296,7 +318,6 @@ int main(int argc, char **argv)
 		node.id = 0;
 	});
 
-	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main", false);
 	emitter.module.emit_entry_point_function_body(traverser);
 	Vector<uint32_t> code;
 	emitter.module.finalize_spirv(code);
