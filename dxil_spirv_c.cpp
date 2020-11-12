@@ -51,9 +51,9 @@ struct Remapper : ResourceRemappingInterface
 	{
 		vk_binding.descriptor_set = c_vk_binding.set;
 		vk_binding.binding = c_vk_binding.binding;
+		vk_binding.root_constant_index = c_vk_binding.root_constant_index;
 		vk_binding.bindless.use_heap = bool(c_vk_binding.bindless.use_heap);
 		vk_binding.bindless.heap_root_offset = c_vk_binding.bindless.heap_root_offset;
-		vk_binding.bindless.root_constant_word = c_vk_binding.bindless.root_constant_word;
 		vk_binding.descriptor_type = static_cast<VulkanDescriptorType>(c_vk_binding.descriptor_type);
 	}
 
@@ -246,6 +246,11 @@ struct Remapper : ResourceRemappingInterface
 		return root_constant_word_count;
 	}
 
+	unsigned get_root_descriptor_count() override
+	{
+		return root_descriptor_count;
+	}
+
 	dxil_spv_srv_remapper_cb srv_remapper = nullptr;
 	void *srv_userdata = nullptr;
 
@@ -265,6 +270,7 @@ struct Remapper : ResourceRemappingInterface
 	void *output_userdata = nullptr;
 
 	unsigned root_constant_word_count = 0;
+	unsigned root_descriptor_count = 0;
 };
 
 struct dxil_spv_converter_s
@@ -469,6 +475,11 @@ void dxil_spv_converter_set_sampler_remapper(dxil_spv_converter converter, dxil_
 void dxil_spv_converter_set_root_constant_word_count(dxil_spv_converter converter, unsigned num_words)
 {
 	converter->remapper.root_constant_word_count = num_words;
+}
+
+void dxil_spv_converter_set_root_descriptor_count(dxil_spv_converter converter, unsigned count)
+{
+	converter->remapper.root_descriptor_count = count;
 }
 
 void dxil_spv_converter_set_uav_remapper(dxil_spv_converter converter, dxil_spv_uav_remapper_cb remapper,

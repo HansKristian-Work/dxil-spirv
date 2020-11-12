@@ -157,6 +157,11 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd.append('--bindless')
         hlsl_cmd.append('--bindless-typed-buffer-offsets')
 
+    if '.root-descriptor.' in shader:
+        hlsl_cmd.append('--root-descriptor cbv 0 0')
+        hlsl_cmd.append('--root-descriptor srv 0 0')
+        hlsl_cmd.append('--root-descriptor uav 0 0')
+
     subprocess.check_call(hlsl_cmd)
     if is_asm:
         return glsl_path

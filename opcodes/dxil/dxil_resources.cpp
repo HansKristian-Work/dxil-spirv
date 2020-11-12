@@ -672,8 +672,7 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 	return true;
 }
 
-static spv::Id build_shader_record_access_chain(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                unsigned local_root_signature_entry)
+static spv::Id build_shader_record_access_chain(Converter::Impl &impl, unsigned local_root_signature_entry)
 {
 	auto &builder = impl.builder();
 
@@ -687,12 +686,31 @@ static spv::Id build_shader_record_access_chain(Converter::Impl &impl, const llv
 	return access_chain->id;
 }
 
-static spv::Id build_shader_record_load_physical_pointer(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                         unsigned local_root_signature_entry)
+static spv::Id build_root_descriptor_access_chain(Converter::Impl &impl, unsigned member_index)
 {
 	auto &builder = impl.builder();
 
-	spv::Id ptr_id = build_shader_record_access_chain(impl, instruction, local_root_signature_entry);
+	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPushConstant, builder.makeUintType(64));
+	auto *access_chain = impl.allocate(spv::OpAccessChain, ptr_type_id);
+	access_chain->add_id(impl.root_constant_id);
+	access_chain->add_id(builder.makeUintConstant(member_index));
+	impl.add(access_chain);
+
+	return access_chain->id;
+}
+
+static spv::Id build_root_descriptor_load_physical_pointer(Converter::Impl &impl,
+                                                           const Converter::Impl::ResourceReference &reference)
+{
+	auto &builder = impl.builder();
+	int local_root_signature_entry = reference.local_root_signature_entry;
+
+	spv::Id ptr_id;
+	if (local_root_signature_entry >= 0)
+		ptr_id = build_shader_record_access_chain(impl, local_root_signature_entry);
+	else
+		ptr_id = build_root_descriptor_access_chain(impl, reference.push_constant_member);
+
 	auto *load_ptr = impl.allocate(spv::OpLoad, builder.makeUintType(64));
 	load_ptr->add_id(ptr_id);
 	impl.add(load_ptr);
@@ -701,8 +719,10 @@ static spv::Id build_shader_record_load_physical_pointer(Converter::Impl &impl, 
 
 static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
 {
-	return reference.local_root_signature_entry >= 0 &&
-	       impl.local_root_signature[reference.local_root_signature_entry].type == LocalRootSignatureType::Descriptor;
+	if (reference.local_root_signature_entry >= 0)
+		return impl.local_root_signature[reference.local_root_signature_entry].type == LocalRootSignatureType::Descriptor;
+	else
+		return reference.root_descriptor;
 }
 
 static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::ResourceReference &reference,
@@ -772,11 +792,15 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		{
 			if (instruction_offset)
 			{
-				LOGE("Cannot use indexing on root descriptors.\n");
-				return false;
+				uint32_t index = 0;
+				if (!get_constant_operand(instruction, 3, &index) || index != 0)
+				{
+					LOGE("Cannot use indexing on root descriptors.\n");
+					return false;
+				}
 			}
 
-			spv::Id ptr_id = build_shader_record_load_physical_pointer(impl, instruction, reference.local_root_signature_entry);
+			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
 			impl.value_map[instruction] = ptr_id;
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
@@ -856,11 +880,15 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		{
 			if (instruction_offset)
 			{
-				LOGE("Cannot use indexing on root descriptors.\n");
-				return false;
+				uint32_t index = 0;
+				if (!get_constant_operand(instruction, 3, &index) || index != 0)
+				{
+					LOGE("Cannot use indexing on root descriptors.\n");
+					return false;
+				}
 			}
 
-			spv::Id ptr_id = build_shader_record_load_physical_pointer(impl, instruction, reference.local_root_signature_entry);
+			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
 			impl.value_map[instruction] = ptr_id;
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
@@ -970,7 +998,26 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		spv::Id base_cbv_id = reference.var_id;
 		spv::Id type_id = builder.getDerefTypeId(base_cbv_id);
 
-		if (reference.base_resource_is_array || reference.bindless)
+		if (resource_is_physical_pointer(impl, reference))
+		{
+			if (instruction_offset)
+			{
+				uint32_t index = 0;
+				if (!get_constant_operand(instruction, 3, &index) || index != 0)
+				{
+					LOGE("Cannot use indexing on root descriptors.\n");
+					return false;
+				}
+			}
+
+			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
+			impl.value_map[instruction] = ptr_id;
+			auto &meta = impl.handle_to_resource_meta[ptr_id];
+			meta = {};
+			meta.stride = reference.stride;
+			meta.storage = spv::StorageClassPhysicalStorageBuffer;
+		}
+		else if (reference.base_resource_is_array || reference.bindless)
 		{
 			uint32_t non_uniform = 0;
 			if (reference.local_root_signature_entry >= 0)
@@ -1032,7 +1079,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			if (local_entry.type == LocalRootSignatureType::Descriptor)
 			{
-				spv::Id id = build_shader_record_load_physical_pointer(impl, instruction, reference.local_root_signature_entry);
+				spv::Id id = build_root_descriptor_load_physical_pointer(impl, reference);
 				auto &meta = impl.handle_to_resource_meta[id];
 				meta = {};
 				meta.storage = spv::StorageClassPhysicalStorageBuffer;
@@ -1042,7 +1089,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			else
 			{
 				// Access chain into the desired member once.
-				spv::Id id = build_shader_record_access_chain(impl, instruction, reference.local_root_signature_entry);
+				spv::Id id = build_shader_record_access_chain(impl, reference.local_root_signature_entry);
 
 				auto &meta = impl.handle_to_resource_meta[id];
 				meta = {};
@@ -1057,7 +1104,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			impl.handle_to_ptr_id[instruction] = base_cbv_id;
 			if (base_cbv_id == impl.root_constant_id)
 			{
-				unsigned member_offset = impl.cbv_push_constant_member[resource_range];
+				unsigned member_offset = reference.push_constant_member;
 				impl.handle_to_root_member_offset[instruction] = member_offset;
 			}
 		}
