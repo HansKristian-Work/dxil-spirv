@@ -2231,9 +2231,47 @@ void CFGStructurizer::split_merge_blocks()
 						loop_ladder = node->headers[i]->loop_ladder_block;
 				}
 
+				if (loop_ladder && !target_header && !full_break_target)
+				{
+					// A loop ladder needs to break out somewhere. If we don't have a candidate
+					// place to break out to, we will need to create one for the outer scope.
+					// This is the purpose of the full_break_target fallback.
+
+					bool ladder_to_merge_is_trivial = loop_ladder->succ.size() == 1 &&
+					                                  loop_ladder->succ.front() == node;
+
+					// We have to break somewhere, turn the outer selection construct into
+					// a loop.
+					if (!ladder_to_merge_is_trivial)
+					{
+						// Selection merge to this dummy instead.
+						auto *new_selection_merge = create_helper_pred_block(node);
+
+						// Inherit the headers.
+						new_selection_merge->headers = node->headers;
+
+						// This is now our fallback loop break target.
+						full_break_target = node;
+
+						auto *loop = create_helper_pred_block(node->headers[0]);
+
+						// Reassign header node.
+						assert(node->headers[0]->merge == MergeType::Selection);
+						node->headers[0]->selection_merge_block = new_selection_merge;
+						node->headers[0] = loop;
+
+						loop->merge = MergeType::Loop;
+						loop->loop_merge_block = node;
+						loop->freeze_structured_analysis = true;
+
+						//node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
+						node = new_selection_merge;
+					}
+				}
+
 				if (loop_ladder)
 				{
-					if (target_header)
+					if (target_header || full_break_target)
 					{
 						// If we have a ladder block, there exists a merge candidate which the loop header dominates.
 						// We create a ladder block before the merge block, which becomes the true merge block.
@@ -2268,15 +2306,20 @@ void CFGStructurizer::split_merge_blocks()
 						ladder->ir.phi.push_back(std::move(phi));
 
 						// Ladder breaks out to outer scope.
-						if (target_header->loop_ladder_block)
+						if (target_header && target_header->loop_ladder_block)
 						{
 							ladder->ir.terminator.true_block = target_header->loop_ladder_block;
 							ladder->add_branch(target_header->loop_ladder_block);
 						}
-						else if (target_header->loop_merge_block)
+						else if (target_header && target_header->loop_merge_block)
 						{
 							ladder->ir.terminator.true_block = target_header->loop_merge_block;
 							ladder->add_branch(target_header->loop_merge_block);
+						}
+						else if (full_break_target)
+						{
+							ladder->ir.terminator.true_block = full_break_target;
+							ladder->add_branch(full_break_target);
 						}
 						else
 							LOGE("No loop merge block?\n");
@@ -2288,8 +2331,10 @@ void CFGStructurizer::split_merge_blocks()
 							ladder->ir.terminator.type = Terminator::Type::Branch;
 						}
 					}
-					else if (loop_ladder->succ.size() == 1 && loop_ladder->succ.front() == node)
+					else
 					{
+						// Here, loop_ladder -> final merge is a trivial, direct branch.
+
 						if (loop_ladder->ir.operations.empty())
 						{
 							// Simplest common case.
@@ -2298,7 +2343,6 @@ void CFGStructurizer::split_merge_blocks()
 							// This block will likely become a frontier node when merging PHI instead.
 							// This is a common case when breaking out of a simple for loop.
 							node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, loop_ladder);
-							new_ladder_block = loop_ladder;
 						}
 						else
 						{
@@ -2336,37 +2380,6 @@ void CFGStructurizer::split_merge_blocks()
 							}
 							ladder_pre->ir.phi.push_back(std::move(phi));
 						}
-					}
-					else if (full_break_target)
-					{
-						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
-						new_ladder_block = nullptr;
-					}
-					else
-					{
-						// Selection merge to this dummy instead.
-						auto *new_selection_merge = create_helper_pred_block(node);
-
-						// Inherit the headers.
-						new_selection_merge->headers = node->headers;
-
-						// This is now our fallback loop break target.
-						full_break_target = node;
-
-						auto *loop = create_helper_pred_block(node->headers[0]);
-
-						// Reassign header node.
-						assert(node->headers[0]->merge == MergeType::Selection);
-						node->headers[0]->selection_merge_block = new_selection_merge;
-						node->headers[0] = loop;
-
-						loop->merge = MergeType::Loop;
-						loop->loop_merge_block = node;
-						loop->freeze_structured_analysis = true;
-
-						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
-						node = new_selection_merge;
-						new_ladder_block = nullptr;
 					}
 				}
 
