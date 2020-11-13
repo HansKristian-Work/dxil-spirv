@@ -692,7 +692,7 @@ static spv::Id build_root_descriptor_access_chain(Converter::Impl &impl, unsigne
 {
 	auto &builder = impl.builder();
 
-	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPushConstant, builder.makeUintType(64));
+	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPushConstant, builder.makeVectorType(builder.makeUintType(32), 2));
 	auto *access_chain = impl.allocate(spv::OpAccessChain, ptr_type_id);
 	access_chain->add_id(impl.root_constant_id);
 	access_chain->add_id(builder.makeUintConstant(member_index));
@@ -713,7 +713,7 @@ static spv::Id build_root_descriptor_load_physical_pointer(Converter::Impl &impl
 	else
 		ptr_id = build_root_descriptor_access_chain(impl, reference.push_constant_member);
 
-	auto *load_ptr = impl.allocate(spv::OpLoad, builder.makeUintType(64));
+	auto *load_ptr = impl.allocate(spv::OpLoad, builder.makeVectorType(builder.makeUintType(32), 2));
 	load_ptr->add_id(ptr_id);
 	impl.add(load_ptr);
 	return load_ptr->id;
@@ -1154,14 +1154,7 @@ static bool emit_cbuffer_load_legacy_physical_pointer(Converter::Impl &impl, con
 	mul_op->add_id(builder.makeUintConstant(16));
 	impl.add(mul_op);
 
-	auto *upcast_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
-	upcast_op->add_id(mul_op->id);
-	impl.add(upcast_op);
-
-	auto *add_base_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
-	add_base_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-	add_base_op->add_id(upcast_op->id);
-	impl.add(add_base_op);
+	spv::Id addr_vec = emit_u32x2_u32_add(impl, impl.get_id_for_value(instruction->getOperand(1)), mul_op->id);
 
 	auto *result_type = instruction->getType();
 	spv::Id vec_type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
@@ -1170,7 +1163,7 @@ static bool emit_cbuffer_load_legacy_physical_pointer(Converter::Impl &impl, con
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, ptr_meta);
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
-	ptr_bitcast_op->add_id(add_base_op->id);
+	ptr_bitcast_op->add_id(addr_vec);
 	impl.add(ptr_bitcast_op);
 
 	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id));

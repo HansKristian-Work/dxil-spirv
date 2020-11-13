@@ -1657,8 +1657,9 @@ void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num
 	// Root constants cannot be dynamically indexed in DXIL, so emit them as members.
 	Vector<spv::Id> members(num_constant_words + num_descriptors);
 
+	// Emit root descriptors as u32x2 to work around missing SGPR promotion on RADV.
 	for (unsigned i = 0; i < num_descriptors; i++)
-		members[i] = builder.makeUintType(64);
+		members[i] = builder.makeVectorType(builder.makeUintType(32), 2);
 	for (unsigned i = 0; i < num_constant_words; i++)
 		members[i + num_descriptors] = builder.makeUintType(32);
 
@@ -1739,7 +1740,8 @@ bool Converter::Impl::emit_shader_record_buffer()
 		case LocalRootSignatureType::Descriptor:
 		{
 			// A 64-bit integer which we will bitcast to a physical storage buffer later.
-			spv::Id member_type_id = builder.makeUintType(64);
+			// Emit it as u32x2 as otherwise we don't get SGPR promotion on ACO as of right now.
+			spv::Id member_type_id = builder.makeVectorType(builder.makeUintType(32), 2);
 			member_types.push_back(member_type_id);
 			current_offset = (current_offset + 7) & ~7;
 			offsets.push_back(current_offset);
@@ -2218,7 +2220,7 @@ spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, const 
 		StructTypeEntry entry;
 		entry.subtypes = type_ids;
 		entry.name = name ? name : "";
-		entry.id = builder().makeStructType(type_ids, name);
+		entry.id = builder().makeStructType(type_ids, entry.name.c_str());
 		spv::Id id = entry.id;
 		cached_struct_types.push_back(std::move(entry));
 		return id;

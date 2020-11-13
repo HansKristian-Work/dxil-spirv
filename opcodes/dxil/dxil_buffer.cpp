@@ -292,7 +292,7 @@ static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl
 	if (meta.stride != 0)
 		element_offset = impl.get_id_for_value(instruction->getOperand(3));
 
-	Operation *u64_offset_op;
+	spv::Id byte_offset_id = 0;
 	if (meta.stride)
 	{
 		auto *stride_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
@@ -305,23 +305,14 @@ static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl
 		offset_op->add_id(element_offset);
 		impl.add(offset_op);
 
-		u64_offset_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
-		u64_offset_op->add_id(offset_op->id);
+		byte_offset_id = offset_op->id;
 	}
 	else
 	{
-		u64_offset_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
-		u64_offset_op->add_id(index_id);
+		byte_offset_id = index_id;
 	}
 
-	impl.add(u64_offset_op);
-
-	auto *ptr_compute_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
-	ptr_compute_op->add_id(ptr_id);
-	ptr_compute_op->add_id(u64_offset_op->id);
-	impl.add(ptr_compute_op);
-
-	return ptr_compute_op->id;
+	return emit_u32x2_u32_add(impl, ptr_id, byte_offset_id);
 }
 
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
