@@ -97,6 +97,11 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd.append('0')
         hlsl_cmd.append('4')
         hlsl_cmd.append('12')
+        hlsl_cmd.append('--root-constant')
+        hlsl_cmd.append('1')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('16')
     if '.stream-out.' in shader:
         hlsl_cmd.append('--stream-output')
         hlsl_cmd.append('SV_Position')

@@ -1385,7 +1385,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 
 			auto &ref = cbv_index_to_reference[index];
 			ref.var_id = root_constant_id;
-			ref.push_constant_member = vulkan_binding.push.offset_in_words;
+			ref.push_constant_member = vulkan_binding.push.offset_in_words + root_descriptor_count;
 		}
 		else if (vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -1670,7 +1670,7 @@ void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num
 
 	for (unsigned i = 0; i < num_constant_words; i++)
 	{
-		builder.addMemberDecoration(type_id, i, spv::DecorationOffset,
+		builder.addMemberDecoration(type_id, i + num_descriptors, spv::DecorationOffset,
 		                            sizeof(uint64_t) * num_descriptors + sizeof(uint32_t) * i);
 	}
 

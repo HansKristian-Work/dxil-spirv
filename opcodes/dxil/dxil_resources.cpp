@@ -1194,7 +1194,10 @@ static bool emit_cbuffer_load_legacy_from_uints(Converter::Impl &impl, const llv
 
 	auto *constant_int = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2));
 	if (!constant_int)
+	{
+		LOGE("Cannot dynamically index into root constants.\n");
 		return false;
+	}
 
 	unsigned member_index = 4 * unsigned(constant_int->getUniqueInteger().getZExtValue());
 	member_index += index_offset;
@@ -1264,7 +1267,7 @@ static bool emit_cbuffer_load_legacy_root_constant(Converter::Impl &impl, const 
 	                                           impl.root_constant_id,
 	                                           spv::StorageClassPushConstant,
 	                                           impl.handle_to_root_member_offset[instruction->getOperand(1)],
-	                                           impl.root_constant_num_words);
+	                                           impl.root_constant_num_words + impl.root_descriptor_count);
 }
 
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
