@@ -512,7 +512,9 @@ static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, c
                                                         llvm::Value *dynamic_offset)
 {
 	auto &builder = impl.builder();
-	if (reference.push_constant_member >= impl.root_constant_num_words || impl.root_constant_id == 0)
+	if (reference.push_constant_member >= (impl.root_constant_num_words + impl.root_descriptor_count) ||
+	    reference.push_constant_member < impl.root_descriptor_count ||
+	    impl.root_constant_id == 0)
 	{
 		LOGE("Descriptor table offset is out of push constant range.\n");
 		return 0;
