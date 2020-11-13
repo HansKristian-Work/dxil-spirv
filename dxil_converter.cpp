@@ -410,6 +410,81 @@ bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, con
 	return true;
 }
 
+spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, const PhysicalPointerMeta &meta)
+{
+	auto itr = std::find_if(physical_pointer_entries.begin(), physical_pointer_entries.end(), [&](const PhysicalPointerEntry &entry) {
+		return entry.meta.coherent == meta.coherent &&
+			entry.meta.nonreadable == meta.nonreadable &&
+			entry.meta.nonwritable == meta.nonwritable &&
+			entry.base_type_id == base_type_id;
+	});
+
+	if (itr != physical_pointer_entries.end())
+		return itr->ptr_type_id;
+
+	int vecsize = builder().getNumTypeComponents(base_type_id);
+	int width = builder().getScalarTypeWidth(base_type_id);
+
+	spv::Op op = builder().getTypeClass(base_type_id);
+	if (op == spv::OpTypeVector)
+		op = builder().getTypeClass(builder().getScalarTypeId(base_type_id));
+
+	String type = "PhysicalPointer";
+	switch (op)
+	{
+	case spv::OpTypeFloat:
+		if (width == 16)
+			type += "Half";
+		else if (width == 32)
+			type += "Float";
+		else if (width == 64)
+			type += "Double";
+		break;
+
+	case spv::OpTypeInt:
+		if (width == 16)
+			type += "Ushort";
+		else if (width == 32)
+			type += "Uint";
+		else if (width == 64)
+			type += "Uint64";
+		break;
+
+	default:
+		break;
+	}
+
+	if (vecsize > 1)
+		type += std::to_string(vecsize).c_str();
+
+	if (meta.nonwritable)
+		type += "NonWrite";
+	if (meta.nonreadable)
+		type += "NonRead";
+	if (meta.coherent)
+		type += "Coherent";
+
+	spv::Id block_type_id = builder().makeStructType({ base_type_id }, type.c_str());
+	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberName(block_type_id, 0, "value");
+	builder().addDecoration(block_type_id, spv::DecorationBlock);
+
+	if (meta.nonwritable)
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
+	if (meta.nonreadable)
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
+	if (meta.coherent)
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationCoherent);
+
+	spv::Id ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, block_type_id);
+	PhysicalPointerEntry new_entry = {};
+	new_entry.ptr_type_id = ptr_type_id;
+	new_entry.base_type_id = base_type_id;
+	new_entry.meta = meta;
+	physical_pointer_entries.push_back(new_entry);
+	return ptr_type_id;
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 {
 	auto &builder = spirv_module.get_builder();
@@ -991,6 +1066,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.base_resource_is_array = range_size != 1;
+			ref.coherent = globally_coherent;
 			ref.stride = stride;
 		}
 		else if (vulkan_binding.buffer_binding.bindless.use_heap)
@@ -1017,6 +1093,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.base_offset = heap_offset;
 			ref.stride = stride;
 			ref.bindless = true;
+			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
 
 			if (has_counter)
@@ -1110,6 +1187,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.var_id = var_id;
 			ref.var_id_16bit = var_id_16bit;
 			ref.stride = stride;
+			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);

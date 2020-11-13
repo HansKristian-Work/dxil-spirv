@@ -806,6 +806,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta = {};
 			meta.stride = reference.stride;
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
+			meta.physical_pointer_meta.nonwritable = true;
 		}
 		else
 		{
@@ -894,6 +895,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta = {};
 			meta.stride = reference.stride;
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
+			meta.physical_pointer_meta.coherent = reference.coherent;
 		}
 		else
 		{
@@ -1011,11 +1013,12 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			}
 
 			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
-			impl.value_map[instruction] = ptr_id;
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
 			meta.stride = reference.stride;
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
+			meta.physical_pointer_meta.nonwritable = true;
+			impl.value_map[instruction] = ptr_id;
 		}
 		else if (reference.base_resource_is_array || reference.bindless)
 		{
@@ -1054,7 +1057,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			}
 
 			impl.add(op);
-			impl.handle_to_ptr_id[instruction] = op->id;
+			impl.value_map[instruction] = op->id;
 
 			auto &meta = impl.handle_to_resource_meta[op->id];
 			meta = {};
@@ -1083,7 +1086,6 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				auto &meta = impl.handle_to_resource_meta[id];
 				meta = {};
 				meta.storage = spv::StorageClassPhysicalStorageBuffer;
-				impl.handle_to_ptr_id[instruction] = id;
 				impl.value_map[instruction] = id;
 			}
 			else
@@ -1095,13 +1097,12 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				meta = {};
 				meta.storage = spv::StorageClassShaderRecordBufferKHR;
 				impl.handle_to_root_member_offset[instruction] = reference.local_root_signature_entry;
-				impl.handle_to_ptr_id[instruction] = id;
 				impl.value_map[instruction] = id;
 			}
 		}
 		else
 		{
-			impl.handle_to_ptr_id[instruction] = base_cbv_id;
+			impl.value_map[instruction] = base_cbv_id;
 			if (base_cbv_id == impl.root_constant_id)
 			{
 				unsigned member_offset = reference.push_constant_member;
@@ -1191,13 +1192,22 @@ static bool emit_cbuffer_load_legacy_physical_pointer(Converter::Impl &impl, con
 	impl.add(add_base_op);
 
 	auto *result_type = instruction->getType();
-	spv::Id type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
-	auto *ptr_bitcast = impl.allocate(spv::OpBitcast, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id));
-	ptr_bitcast->add_id(add_base_op->id);
-	impl.add(ptr_bitcast);
+	spv::Id vec_type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+	Converter::Impl::PhysicalPointerMeta ptr_meta = {};
+	ptr_meta.nonwritable = true;
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, ptr_meta);
 
-	auto *load_op = impl.allocate(spv::OpLoad, instruction, type_id);
-	load_op->add_id(ptr_bitcast->id);
+	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+	ptr_bitcast_op->add_id(add_base_op->id);
+	impl.add(ptr_bitcast_op);
+
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id));
+	chain_op->add_id(ptr_bitcast_op->id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	impl.add(chain_op);
+
+	auto *load_op = impl.allocate(spv::OpLoad, instruction, vec_type_id);
+	load_op->add_id(chain_op->id);
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
 	load_op->add_literal(16);
 	impl.add(load_op);
@@ -1273,7 +1283,7 @@ static bool emit_cbuffer_load_legacy_shader_record(Converter::Impl &impl, const 
 {
 	auto &entry = impl.local_root_signature[local_root_signature_entry];
 	return emit_cbuffer_load_legacy_from_uints(impl, instruction,
-	                                           impl.handle_to_ptr_id[instruction->getOperand(1)],
+	                                           impl.get_id_for_value(instruction->getOperand(1)),
 	                                           spv::StorageClassShaderRecordBufferKHR,
 	                                           0, entry.constants.num_words);
 }
@@ -1293,7 +1303,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 
 	// This function returns a struct, but ignore that, and just return a vec4 for now.
 	// extractvalue is used to pull out components and that works for vectors as well.
-	spv::Id ptr_id = impl.handle_to_ptr_id[instruction->getOperand(1)];
+	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 	if (!ptr_id)
 		return false;
 

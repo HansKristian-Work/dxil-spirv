@@ -325,6 +325,7 @@ static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl
 }
 
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                  const Converter::Impl::PhysicalPointerMeta &ptr_meta,
                                                   uint32_t mask = 0, uint32_t alignment = 0)
 {
 	auto &builder = impl.builder();
@@ -352,7 +353,7 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	spv::Id type_id = impl.get_type_id(instruction->getType()->getStructElementType(0));
 	if (vecsize > 1)
 		type_id = builder.makeVectorType(type_id, vecsize);
-	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id);
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(type_id, ptr_meta);
 
 	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
@@ -360,8 +361,13 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	ptr_bitcast_op->add_id(u64_ptr_id);
 	impl.add(ptr_bitcast_op);
 
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id));
+	chain_op->add_id(ptr_bitcast_op->id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	impl.add(chain_op);
+
 	auto *load_op = impl.allocate(spv::OpLoad, instruction, type_id);
-	load_op->add_id(ptr_bitcast_op->id);
+	load_op->add_id(chain_op->id);
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
 	load_op->add_literal(alignment);
 	impl.add(load_op);
@@ -403,7 +409,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		mask |= mask >> 1u;
 		mask |= mask >> 2u;
 
-		return emit_physical_buffer_load_instruction(impl, instruction, mask, 4);
+		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, mask, 4);
 	}
 
 	auto *result_type = instruction->getType();
@@ -613,6 +619,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 }
 
 static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                   const Converter::Impl::PhysicalPointerMeta &ptr_meta,
                                                    uint32_t alignment = 0)
 {
 	auto &builder = impl.builder();
@@ -643,7 +650,7 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	spv::Id vec_type_id = type_id;
 	if (vecsize > 1)
 		vec_type_id = builder.makeVectorType(type_id, vecsize);
-	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id);
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, ptr_meta);
 
 	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
@@ -651,12 +658,17 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	ptr_bitcast_op->add_id(u64_ptr_id);
 	impl.add(ptr_bitcast_op);
 
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id));
+	chain_op->add_id(ptr_bitcast_op->id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	impl.add(chain_op);
+
 	spv::Id elems[4] = {};
 	for (unsigned i = 0; i < 4; i++)
 		elems[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
 
 	auto *store_op = impl.allocate(spv::OpStore);
-	store_op->add_id(ptr_bitcast_op->id);
+	store_op->add_id(chain_op->id);
 	store_op->add_id(impl.build_vector(type_id, elems, vecsize));
 	store_op->add_literal(spv::MemoryAccessAlignedMask);
 	store_op->add_literal(alignment);
@@ -703,7 +715,7 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 		return emit_buffer_load_instruction(impl, instruction);
 	}
 	else
-		return emit_physical_buffer_load_instruction(impl, instruction);
+		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta);
 }
 
 bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -717,7 +729,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		// We don't more about alignment in SM 5.1 BufferStore.
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
-		return emit_physical_buffer_store_instruction(impl, instruction, 4);
+		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, 4);
 	}
 
 	unsigned bits = type_is_16bit(instruction->getOperand(4)->getType()) ? 16 : 32;
@@ -845,7 +857,7 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 		return emit_buffer_store_instruction(impl, instruction);
 	}
 	else
-		return emit_physical_buffer_store_instruction(impl, instruction);
+		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta);
 }
 
 bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
