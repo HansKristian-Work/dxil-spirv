@@ -27,8 +27,8 @@
 extern "C" {
 #endif
 
-#define DXIL_SPV_API_VERSION_MAJOR 1
-#define DXIL_SPV_API_VERSION_MINOR 2
+#define DXIL_SPV_API_VERSION_MAJOR 2
+#define DXIL_SPV_API_VERSION_MINOR 0
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #if !defined(DXIL_SPV_PUBLIC_API)
@@ -150,6 +150,7 @@ typedef enum dxil_spv_vulkan_descriptor_type
 	/* For untyped buffer types, we can select whether to use an SSBO implementation or texel buffer one. */
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO = 1,
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_TEXEL_BUFFER = 2,
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_BUFFER_DEVICE_ADDRESS = 3,
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INT_MAX = 0x7fffffff
 } dxil_spv_vulkan_descriptor_type;
 
@@ -171,9 +172,13 @@ typedef struct dxil_spv_vulkan_binding
 {
 	unsigned set;
 	unsigned binding;
+
+	/* For bindless, refers to the Nth root constant.
+	 * For buffer device address, refers to the Nth root descriptor. */
+	unsigned root_constant_index;
+
 	struct
 	{
-		unsigned root_constant_word;
 		unsigned heap_root_offset;
 		dxil_spv_bool use_heap;
 	} bindless;
@@ -400,6 +405,9 @@ DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_sampler_remapper(
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_root_constant_word_count(dxil_spv_converter converter,
                                                                          unsigned num_words);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_root_descriptor_count(dxil_spv_converter converter,
+                                                                      unsigned count);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_uav_remapper(
 		dxil_spv_converter converter,

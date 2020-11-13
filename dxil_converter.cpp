@@ -410,6 +410,81 @@ bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, con
 	return true;
 }
 
+spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, const PhysicalPointerMeta &meta)
+{
+	auto itr = std::find_if(physical_pointer_entries.begin(), physical_pointer_entries.end(), [&](const PhysicalPointerEntry &entry) {
+		return entry.meta.coherent == meta.coherent &&
+			entry.meta.nonreadable == meta.nonreadable &&
+			entry.meta.nonwritable == meta.nonwritable &&
+			entry.base_type_id == base_type_id;
+	});
+
+	if (itr != physical_pointer_entries.end())
+		return itr->ptr_type_id;
+
+	int vecsize = builder().getNumTypeComponents(base_type_id);
+	int width = builder().getScalarTypeWidth(base_type_id);
+
+	spv::Op op = builder().getTypeClass(base_type_id);
+	if (op == spv::OpTypeVector)
+		op = builder().getTypeClass(builder().getScalarTypeId(base_type_id));
+
+	String type = "PhysicalPointer";
+	switch (op)
+	{
+	case spv::OpTypeFloat:
+		if (width == 16)
+			type += "Half";
+		else if (width == 32)
+			type += "Float";
+		else if (width == 64)
+			type += "Double";
+		break;
+
+	case spv::OpTypeInt:
+		if (width == 16)
+			type += "Ushort";
+		else if (width == 32)
+			type += "Uint";
+		else if (width == 64)
+			type += "Uint64";
+		break;
+
+	default:
+		break;
+	}
+
+	if (vecsize > 1)
+		type += std::to_string(vecsize).c_str();
+
+	if (meta.nonwritable)
+		type += "NonWrite";
+	if (meta.nonreadable)
+		type += "NonRead";
+	if (meta.coherent)
+		type += "Coherent";
+
+	spv::Id block_type_id = builder().makeStructType({ base_type_id }, type.c_str());
+	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberName(block_type_id, 0, "value");
+	builder().addDecoration(block_type_id, spv::DecorationBlock);
+
+	if (meta.nonwritable)
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
+	if (meta.nonreadable)
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
+	if (meta.coherent)
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationCoherent);
+
+	spv::Id ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, block_type_id);
+	PhysicalPointerEntry new_entry = {};
+	new_entry.ptr_type_id = ptr_type_id;
+	new_entry.base_type_id = base_type_id;
+	new_entry.meta = meta;
+	physical_pointer_entries.push_back(new_entry);
+	return ptr_type_id;
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 {
 	auto &builder = spirv_module.get_builder();
@@ -460,9 +535,11 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			return false;
 
 		auto &access_meta = srv_access_tracking[index];
-		if (access_meta.raw_access_16bit && vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO)
+		if (access_meta.raw_access_16bit &&
+		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
+		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 		{
-			LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO.\n");
+			LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
 			return false;
 		}
 
@@ -535,15 +612,41 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				if (resource_kind != DXIL::ResourceKind::RawBuffer &&
 				    resource_kind != DXIL::ResourceKind::StructuredBuffer)
 				{
-					LOGE("SRV SBT root descriptors must be raw buffers or structures buffers.\n");
+					LOGE("SRV SBT root descriptors must be raw buffers or structured buffers.\n");
 					return false;
 				}
 
 				auto &ref = srv_index_to_reference[index];
 				ref.var_id = shader_record_buffer_id;
-				ref.base_resource_is_array = range_size != 1;
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
+
+				if (range_size != 1)
+				{
+					LOGE("Cannot use descriptor array for root descriptors.\n");
+					return false;
+				}
+			}
+		}
+		else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
+		{
+			if (resource_kind != DXIL::ResourceKind::RawBuffer &&
+			    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+			{
+				LOGE("BDA root descriptors must be raw buffers or structured buffers.\n");
+				return false;
+			}
+
+			auto &ref = srv_index_to_reference[index];
+			ref.var_id = root_constant_id;
+			ref.root_descriptor = true;
+			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
+			ref.stride = stride;
+
+			if (range_size != 1)
+			{
+				LOGE("Cannot use descriptor array for root descriptors.\n");
+				return false;
 			}
 		}
 		else if (vulkan_binding.buffer_binding.bindless.use_heap)
@@ -566,7 +669,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			auto &ref = srv_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.var_id_16bit = var_id_16bit;
-			ref.push_constant_member = vulkan_binding.buffer_binding.bindless.root_constant_word;
+			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index + root_descriptor_count;
 			ref.base_offset = heap_offset;
 			ref.stride = stride;
 			ref.bindless = true;
@@ -810,9 +913,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
 
-		if (access_meta.raw_access_16bit && vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO)
+		if (access_meta.raw_access_16bit &&
+		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
+		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 		{
-			LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO.\n");
+			LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
 			return false;
 		}
 
@@ -953,8 +1058,35 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				auto &ref = uav_index_to_reference[index];
 				ref.var_id = shader_record_buffer_id;
 				ref.stride = stride;
-				ref.base_resource_is_array = range_size != 1;
 				ref.local_root_signature_entry = local_root_signature_entry;
+
+				if (range_size != 1)
+				{
+					LOGE("Cannot use descriptor array for root descriptors.\n");
+					return false;
+				}
+			}
+		}
+		else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
+		{
+			if (resource_kind != DXIL::ResourceKind::RawBuffer &&
+			    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+			{
+				LOGE("BDA root descriptors must be raw buffers or structured buffers.\n");
+				return false;
+			}
+
+			auto &ref = uav_index_to_reference[index];
+			ref.var_id = root_constant_id;
+			ref.root_descriptor = true;
+			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
+			ref.coherent = globally_coherent;
+			ref.stride = stride;
+
+			if (range_size != 1)
+			{
+				LOGE("Cannot use descriptor array for root descriptors.\n");
+				return false;
 			}
 		}
 		else if (vulkan_binding.buffer_binding.bindless.use_heap)
@@ -977,10 +1109,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			auto &ref = uav_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.var_id_16bit = var_id_16bit;
-			ref.push_constant_member = vulkan_binding.buffer_binding.bindless.root_constant_word;
+			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index + root_descriptor_count;
 			ref.base_offset = heap_offset;
 			ref.stride = stride;
 			ref.bindless = true;
+			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
 
 			if (has_counter)
@@ -995,7 +1128,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 					auto &counter_ref = uav_index_to_counter[index];
 					counter_ref.var_id = counter_var_id;
-					counter_ref.push_constant_member = vulkan_binding.counter_binding.bindless.root_constant_word;
+					counter_ref.push_constant_member = vulkan_binding.counter_binding.root_constant_index + root_descriptor_count;
 					counter_ref.base_offset = heap_offset;
 					counter_ref.stride = 4;
 					counter_ref.bindless = true;
@@ -1074,6 +1207,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.var_id = var_id;
 			ref.var_id_16bit = var_id_16bit;
 			ref.stride = stride;
+			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
@@ -1184,7 +1318,6 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			return false;
 
 		cbv_index_to_reference.resize(std::max(cbv_index_to_reference.size(), size_t(index + 1)));
-		cbv_push_constant_member.resize(std::max(cbv_push_constant_member.size(), size_t(index + 1)));
 
 		if (range_size != 1)
 		{
@@ -1234,7 +1367,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				auto &ref = cbv_index_to_reference[index];
 				ref.var_id = shader_record_buffer_id;
 				ref.local_root_signature_entry = local_root_signature_entry;
-				ref.base_resource_is_array = range_size != 1;
+
+				if (range_size != 1)
+				{
+					LOGE("Cannot use descriptor array for root descriptors.\n");
+					return false;
+				}
 			}
 		}
 		else if (vulkan_binding.push_constant)
@@ -1247,7 +1385,20 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 
 			auto &ref = cbv_index_to_reference[index];
 			ref.var_id = root_constant_id;
-			cbv_push_constant_member[index] = vulkan_binding.push.offset_in_words;
+			ref.push_constant_member = vulkan_binding.push.offset_in_words + root_descriptor_count;
+		}
+		else if (vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
+		{
+			auto &ref = cbv_index_to_reference[index];
+			ref.var_id = root_constant_id;
+			ref.root_descriptor = true;
+			ref.push_constant_member = vulkan_binding.buffer.root_constant_index;
+
+			if (range_size != 1)
+			{
+				LOGE("Cannot use descriptor array for root descriptors.\n");
+				return false;
+			}
 		}
 		else if (vulkan_binding.buffer.bindless.use_heap)
 		{
@@ -1260,7 +1411,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 
 			auto &ref = cbv_index_to_reference[index];
 			ref.var_id = var_id;
-			ref.push_constant_member = vulkan_binding.buffer.bindless.root_constant_word;
+			ref.push_constant_member = vulkan_binding.buffer.root_constant_index + root_descriptor_count;
 			ref.base_offset = heap_offset;
 			ref.base_resource_is_array = range_size != 1;
 			ref.bindless = true;
@@ -1383,7 +1534,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 
 			auto &ref = sampler_index_to_reference[index];
 			ref.var_id = var_id;
-			ref.push_constant_member = vulkan_binding.bindless.root_constant_word;
+			ref.push_constant_member = vulkan_binding.root_constant_index + root_descriptor_count;
 			ref.base_offset = heap_offset;
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
@@ -1499,19 +1650,30 @@ bool Converter::Impl::scan_uavs(ResourceRemappingInterface *iface, const llvm::M
 	return true;
 }
 
-void Converter::Impl::emit_root_constants(unsigned num_words)
+void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num_constant_words)
 {
 	auto &builder = spirv_module.get_builder();
 
 	// Root constants cannot be dynamically indexed in DXIL, so emit them as members.
-	Vector<spv::Id> members(num_words);
-	for (auto &memb : members)
-		memb = builder.makeUintType(32);
+	Vector<spv::Id> members(num_constant_words + num_descriptors);
+
+	// Emit root descriptors as u32x2 to work around missing SGPR promotion on RADV.
+	for (unsigned i = 0; i < num_descriptors; i++)
+		members[i] = builder.makeVectorType(builder.makeUintType(32), 2);
+	for (unsigned i = 0; i < num_constant_words; i++)
+		members[i + num_descriptors] = builder.makeUintType(32);
 
 	spv::Id type_id = get_struct_type(members, "RootConstants");
 	builder.addDecoration(type_id, spv::DecorationBlock);
-	for (unsigned i = 0; i < num_words; i++)
-		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, 4 * i);
+
+	for (unsigned i = 0; i < num_descriptors; i++)
+		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, sizeof(uint64_t) * i);
+
+	for (unsigned i = 0; i < num_constant_words; i++)
+	{
+		builder.addMemberDecoration(type_id, i + num_descriptors, spv::DecorationOffset,
+		                            sizeof(uint64_t) * num_descriptors + sizeof(uint32_t) * i);
+	}
 
 	if (options.inline_ubo_enable)
 	{
@@ -1521,7 +1683,9 @@ void Converter::Impl::emit_root_constants(unsigned num_words)
 	}
 	else
 		root_constant_id = builder.createVariable(spv::StorageClassPushConstant, type_id, "registers");
-	root_constant_num_words = num_words;
+
+	root_descriptor_count = num_descriptors;
+	root_constant_num_words = num_constant_words;
 }
 
 static bool execution_model_is_ray_tracing(spv::ExecutionModel model)
@@ -1576,7 +1740,8 @@ bool Converter::Impl::emit_shader_record_buffer()
 		case LocalRootSignatureType::Descriptor:
 		{
 			// A 64-bit integer which we will bitcast to a physical storage buffer later.
-			spv::Id member_type_id = builder.makeUintType(64);
+			// Emit it as u32x2 as otherwise we don't get SGPR promotion on ACO as of right now.
+			spv::Id member_type_id = builder.makeVectorType(builder.makeUintType(32), 2);
 			member_types.push_back(member_type_id);
 			current_offset = (current_offset + 7) & ~7;
 			offsets.push_back(current_offset);
@@ -1678,12 +1843,17 @@ bool Converter::Impl::emit_resources_global_mapping()
 
 bool Converter::Impl::emit_resources()
 {
+	unsigned num_root_descriptors = 0;
 	unsigned num_root_constant_words = 0;
-	if (resource_mapping_iface)
-		num_root_constant_words = resource_mapping_iface->get_root_constant_word_count();
 
-	if (num_root_constant_words != 0)
-		emit_root_constants(num_root_constant_words);
+	if (resource_mapping_iface)
+	{
+		num_root_descriptors = resource_mapping_iface->get_root_descriptor_count();
+		num_root_constant_words = resource_mapping_iface->get_root_constant_word_count();
+	}
+
+	if (num_root_constant_words != 0 || num_root_descriptors != 0)
+		emit_root_constants(num_root_descriptors, num_root_constant_words);
 
 	if (execution_model_is_ray_tracing(execution_model))
 		if (!emit_shader_record_buffer())
@@ -2050,7 +2220,7 @@ spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, const 
 		StructTypeEntry entry;
 		entry.subtypes = type_ids;
 		entry.name = name ? name : "";
-		entry.id = builder().makeStructType(type_ids, name);
+		entry.id = builder().makeStructType(type_ids, entry.name.c_str());
 		spv::Id id = entry.id;
 		cached_struct_types.push_back(std::move(entry));
 		return id;

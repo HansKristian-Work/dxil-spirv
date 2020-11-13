@@ -47,20 +47,21 @@ def create_temporary(suff = ''):
     os.close(f)
     return path
 
-def get_sm(shader):
+def get_sm(shader, force_60):
+    minor_version = '_0' if force_60 else '_2'
     _, ext = os.path.splitext(shader)
     if ext == '.vert':
-        return 'vs_6_2'
+        return 'vs_6' + minor_version
     elif ext == '.frag':
-        return 'ps_6_2'
+        return 'ps_6' + minor_version
     elif ext == '.comp':
-        return 'cs_6_2'
+        return 'cs_6' + minor_version
     elif ext == '.tesc':
-        return 'hs_6_2'
+        return 'hs_6' + minor_version
     elif ext == '.tese':
-        return 'ds_6_2'
+        return 'ds_6' + minor_version
     elif ext == '.geom':
-        return 'gs_6_2'
+        return 'gs_6' + minor_version
     elif ext == '.rmiss':
         return 'lib_6_5'
     elif ext == '.rgen':
@@ -78,10 +79,13 @@ def get_sm(shader):
 
 def cross_compile_dxil(shader, args, paths, is_asm):
     glsl_path = create_temporary(os.path.basename(shader))
+    force_60 = '.sm60.' in shader
 
     if not is_asm:
         dxil_path = create_temporary()
-        dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader), '-Fo', dxil_path, shader, '-enable-16bit-types']
+        dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader, force_60), '-Fo', dxil_path, shader]
+        if not force_60:
+            dxil_cmd.append('-enable-16bit-types')
         subprocess.check_call(dxil_cmd)
     else:
         dxil_path = shader
@@ -93,6 +97,11 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd.append('0')
         hlsl_cmd.append('4')
         hlsl_cmd.append('12')
+        hlsl_cmd.append('--root-constant')
+        hlsl_cmd.append('1')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('0')
+        hlsl_cmd.append('16')
     if '.stream-out.' in shader:
         hlsl_cmd.append('--stream-output')
         hlsl_cmd.append('SV_Position')
@@ -156,6 +165,12 @@ def cross_compile_dxil(shader, args, paths, is_asm):
     if '.typed-buffer-offset.' in shader:
         hlsl_cmd.append('--bindless')
         hlsl_cmd.append('--bindless-typed-buffer-offsets')
+
+    if '.root-descriptor.' in shader:
+        hlsl_cmd += ['--root-descriptor', 'cbv', '0', '0']
+        hlsl_cmd += ['--root-descriptor', 'srv', '0', '0']
+        hlsl_cmd += ['--root-descriptor', 'uav', '0', '0']
+        hlsl_cmd += ['--root-descriptor', 'uav', '0', '1']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

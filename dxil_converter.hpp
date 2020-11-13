@@ -80,7 +80,8 @@ enum class VulkanDescriptorType : unsigned
 {
 	Identity = 0,
 	SSBO = 1,
-	TexelBuffer = 2
+	TexelBuffer = 2,
+	BufferDeviceAddress = 3
 };
 
 struct VulkanBinding
@@ -88,9 +89,12 @@ struct VulkanBinding
 	unsigned descriptor_set;
 	unsigned binding;
 
+	// For bindless, refers to the Nth root constant.
+	// For buffer device address, refers to the Nth root descriptor.
+	unsigned root_constant_index;
+
 	struct
 	{
-		unsigned root_constant_word;
 		unsigned heap_root_offset;
 
 		// If true, the resource is accessed directly from a descriptor heap in way which emulates D3D12 closely.
@@ -175,6 +179,7 @@ public:
 	virtual bool remap_vertex_input(const D3DVertexInput &d3d_input, VulkanVertexInput &vulkan_location) = 0;
 	virtual bool remap_stream_output(const D3DStreamOutput &d3d_output, VulkanStreamOutput &vulkan_output) = 0;
 	virtual unsigned get_root_constant_word_count() = 0;
+	virtual unsigned get_root_descriptor_count() = 0;
 };
 
 enum class Option : uint32_t

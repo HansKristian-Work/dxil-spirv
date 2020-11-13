@@ -135,7 +135,8 @@ static void print_help()
 	     "\t[--ssbo-alignment <align>]\n"
 	     "\t[--typed-uav-read-without-format]\n"
 	     "\t[--bindless-typed-buffer-offsets]\n"
-	     "\t[--output-rt-swizzle index xyzw]\n");
+	     "\t[--output-rt-swizzle index xyzw]\n"
+	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n");
 }
 
 struct Arguments
@@ -169,8 +170,17 @@ struct Remapper
 		unsigned word_offset;
 	};
 
+	struct RootDescriptor
+	{
+		dxil_spv_resource_class resource_class;
+		uint32_t space;
+		uint32_t register_index;
+	};
+
 	std::vector<RootConstant> root_constants;
 	unsigned root_constant_word_count = 0;
+
+	std::vector<RootDescriptor> root_descriptors;
 
 	struct VertexInput
 	{
@@ -202,34 +212,60 @@ static bool kind_is_buffer(dxil_spv_resource_kind kind)
 	       kind == DXIL_SPV_RESOURCE_KIND_TYPED_BUFFER;
 }
 
+static int32_t find_root_descriptor_index(const Remapper *remapper, const dxil_spv_d3d_binding *binding,
+                                          dxil_spv_resource_class resource_class)
+{
+	auto itr = std::find_if(remapper->root_descriptors.begin(), remapper->root_descriptors.end(),
+	                        [&](const Remapper::RootDescriptor &desc)
+	                        {
+	                          return desc.resource_class == resource_class &&
+	                                 desc.space == binding->register_space &&
+	                                 desc.register_index == binding->register_index;
+	                        });
+
+	if (itr != remapper->root_descriptors.end())
+		return int32_t(itr - remapper->root_descriptors.begin());
+	else
+		return -1;
+}
+
 static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_srv_vulkan_binding *vk_binding)
 {
 	auto *remapper = static_cast<Remapper *>(userdata);
 	*vk_binding = {};
 
-	if (remapper->bindless)
+	int32_t desc_index = find_root_descriptor_index(remapper, binding, DXIL_SPV_RESOURCE_CLASS_SRV);
+	if (desc_index >= 0)
 	{
-		vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
-		vk_binding->buffer_binding.bindless.heap_root_offset = binding->register_index;
-		vk_binding->buffer_binding.bindless.root_constant_word = kind_is_buffer(binding->kind) ? 1 : 0;
-		vk_binding->buffer_binding.set = kind_is_buffer(binding->kind) ? 1 : 0;
-		vk_binding->buffer_binding.binding = 0;
+		vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_BUFFER_DEVICE_ADDRESS;
+		vk_binding->buffer_binding.root_constant_index = uint32_t(desc_index);
 	}
 	else
 	{
-		vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_FALSE;
-		vk_binding->buffer_binding.set = binding->register_space;
-		vk_binding->buffer_binding.binding = binding->register_index;
-	}
-
-	if (remapper->ssbo_srv)
-	{
-		if (binding->kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
-		    binding->kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
+		if (remapper->bindless)
 		{
-			vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
-			vk_binding->offset_binding.set = 15;
-			vk_binding->offset_binding.binding = 0;
+			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
+			vk_binding->buffer_binding.bindless.heap_root_offset = binding->register_index;
+			vk_binding->buffer_binding.root_constant_index = kind_is_buffer(binding->kind) ? 1 : 0;
+			vk_binding->buffer_binding.set = kind_is_buffer(binding->kind) ? 1 : 0;
+			vk_binding->buffer_binding.binding = 0;
+		}
+		else
+		{
+			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_FALSE;
+			vk_binding->buffer_binding.set = binding->register_space;
+			vk_binding->buffer_binding.binding = binding->register_index;
+		}
+
+		if (remapper->ssbo_srv)
+		{
+			if (binding->kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
+			    binding->kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
+			{
+				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+				vk_binding->offset_binding.set = 15;
+				vk_binding->offset_binding.binding = 0;
+			}
 		}
 	}
 
@@ -246,7 +282,7 @@ static dxil_spv_bool remap_sampler(void *userdata, const dxil_spv_d3d_binding *b
 	{
 		vk_binding->bindless.use_heap = DXIL_SPV_TRUE;
 		vk_binding->bindless.heap_root_offset = binding->register_index;
-		vk_binding->bindless.root_constant_word = 2;
+		vk_binding->root_constant_index = 2;
 		vk_binding->set = 2;
 		vk_binding->binding = 0;
 	}
@@ -265,49 +301,59 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 	auto *remapper = static_cast<Remapper *>(userdata);
 	*vk_binding = {};
 
-	if (remapper->bindless)
+	int32_t desc_index = find_root_descriptor_index(remapper, &binding->d3d_binding, DXIL_SPV_RESOURCE_CLASS_UAV);
+	if (desc_index >= 0)
 	{
-		vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
-		vk_binding->buffer_binding.bindless.heap_root_offset = binding->d3d_binding.register_index;
-		vk_binding->buffer_binding.bindless.root_constant_word = kind_is_buffer(binding->d3d_binding.kind) ? 4 : 3;
-		vk_binding->buffer_binding.set = kind_is_buffer(binding->d3d_binding.kind) ? 4 : 3;
-		vk_binding->buffer_binding.binding = 0;
+		vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_BUFFER_DEVICE_ADDRESS;
+		vk_binding->buffer_binding.root_constant_index = uint32_t(desc_index);
 	}
 	else
 	{
-		vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_FALSE;
-		vk_binding->buffer_binding.set = binding->d3d_binding.register_space;
-		vk_binding->buffer_binding.binding = binding->d3d_binding.register_index;
-	}
-
-	if (remapper->ssbo_uav)
-	{
-		if (binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
-		    binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
-		{
-			vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
-			vk_binding->offset_binding.set = 15;
-			vk_binding->offset_binding.binding = 0;
-		}
-	}
-
-	if (binding->has_counter)
-	{
 		if (remapper->bindless)
 		{
-			vk_binding->counter_binding.bindless.use_heap = DXIL_SPV_TRUE;
-			vk_binding->counter_binding.bindless.root_constant_word = 4;
-			vk_binding->counter_binding.bindless.heap_root_offset = binding->d3d_binding.register_index;
-			vk_binding->counter_binding.set = 7;
-			vk_binding->counter_binding.binding = 0;
+			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
+			vk_binding->buffer_binding.bindless.heap_root_offset = binding->d3d_binding.register_index;
+			vk_binding->buffer_binding.root_constant_index = kind_is_buffer(binding->d3d_binding.kind) ? 4 : 3;
+			vk_binding->buffer_binding.set = kind_is_buffer(binding->d3d_binding.kind) ? 4 : 3;
+			vk_binding->buffer_binding.binding = 0;
 		}
 		else
 		{
-			vk_binding->counter_binding.bindless.use_heap = DXIL_SPV_FALSE;
-			vk_binding->counter_binding.set = 7;
-			vk_binding->counter_binding.binding = binding->d3d_binding.resource_index;
+			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_FALSE;
+			vk_binding->buffer_binding.set = binding->d3d_binding.register_space;
+			vk_binding->buffer_binding.binding = binding->d3d_binding.register_index;
+		}
+
+		if (remapper->ssbo_uav)
+		{
+			if (binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
+			    binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
+			{
+				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+				vk_binding->offset_binding.set = 15;
+				vk_binding->offset_binding.binding = 0;
+			}
+		}
+
+		if (binding->has_counter)
+		{
+			if (remapper->bindless)
+			{
+				vk_binding->counter_binding.bindless.use_heap = DXIL_SPV_TRUE;
+				vk_binding->counter_binding.root_constant_index = 4;
+				vk_binding->counter_binding.bindless.heap_root_offset = binding->d3d_binding.register_index;
+				vk_binding->counter_binding.set = 7;
+				vk_binding->counter_binding.binding = 0;
+			}
+			else
+			{
+				vk_binding->counter_binding.bindless.use_heap = DXIL_SPV_FALSE;
+				vk_binding->counter_binding.set = 7;
+				vk_binding->counter_binding.binding = binding->d3d_binding.resource_index;
+			}
 		}
 	}
+
 	return DXIL_SPV_TRUE;
 }
 
@@ -317,34 +363,45 @@ static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *bindi
 	auto *remapper = static_cast<Remapper *>(userdata);
 	*vk_binding = {};
 
-	auto itr = std::find_if(
-	    remapper->root_constants.begin(), remapper->root_constants.end(), [&](const Remapper::RootConstant &root) {
-		    return root.register_space == binding->register_space && root.register_index == binding->register_index;
-	    });
-
-	if (itr != remapper->root_constants.end())
+	int32_t desc_index = find_root_descriptor_index(remapper, binding, DXIL_SPV_RESOURCE_CLASS_CBV);
+	if (desc_index >= 0)
 	{
-		vk_binding->push_constant = DXIL_SPV_TRUE;
-		vk_binding->vulkan.push_constant.offset_in_words = itr->word_offset;
+		vk_binding->push_constant = DXIL_SPV_FALSE;
+		vk_binding->vulkan.uniform_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_BUFFER_DEVICE_ADDRESS;
+		vk_binding->vulkan.uniform_binding.root_constant_index = uint32_t(desc_index);
 	}
 	else
 	{
-		if (remapper->bindless)
+		auto itr = std::find_if(
+		    remapper->root_constants.begin(), remapper->root_constants.end(), [&](const Remapper::RootConstant &root) {
+			    return root.register_space == binding->register_space && root.register_index == binding->register_index;
+		    });
+
+		if (itr != remapper->root_constants.end())
 		{
-			vk_binding->vulkan.uniform_binding.bindless.use_heap = DXIL_SPV_TRUE;
-			vk_binding->vulkan.uniform_binding.bindless.heap_root_offset = binding->register_index;
-			vk_binding->vulkan.uniform_binding.bindless.root_constant_word = 5;
-			vk_binding->vulkan.uniform_binding.set = 5;
-			vk_binding->vulkan.uniform_binding.binding = 0;
+			vk_binding->push_constant = DXIL_SPV_TRUE;
+			vk_binding->vulkan.push_constant.offset_in_words = itr->word_offset;
 		}
 		else
 		{
+			if (remapper->bindless)
+			{
+				vk_binding->vulkan.uniform_binding.bindless.use_heap = DXIL_SPV_TRUE;
+				vk_binding->vulkan.uniform_binding.bindless.heap_root_offset = binding->register_index;
+				vk_binding->vulkan.uniform_binding.root_constant_index = 5;
+				vk_binding->vulkan.uniform_binding.set = 5;
+				vk_binding->vulkan.uniform_binding.binding = 0;
+			}
+			else
+			{
 
-			vk_binding->vulkan.uniform_binding.bindless.use_heap = DXIL_SPV_FALSE;
-			vk_binding->vulkan.uniform_binding.set = binding->register_space;
-			vk_binding->vulkan.uniform_binding.binding = binding->register_index;
+				vk_binding->vulkan.uniform_binding.bindless.use_heap = DXIL_SPV_FALSE;
+				vk_binding->vulkan.uniform_binding.set = binding->register_space;
+				vk_binding->vulkan.uniform_binding.binding = binding->register_index;
+			}
 		}
 	}
+
 	return DXIL_SPV_TRUE;
 }
 
@@ -452,6 +509,25 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--local-root-signature", [&](CLIParser &) {
 		local_root_signature = true;
+	});
+	cbs.add("--root-descriptor", [&](CLIParser &parser) {
+		const char *tag = parser.next_string();
+		uint32_t space = parser.next_uint();
+		uint32_t register_index = parser.next_uint();
+		dxil_spv_resource_class resource_class;
+		if (!strcmp(tag, "cbv"))
+			resource_class = DXIL_SPV_RESOURCE_CLASS_CBV;
+		else if (!strcmp(tag, "uav"))
+			resource_class = DXIL_SPV_RESOURCE_CLASS_UAV;
+		else if (!strcmp(tag, "srv"))
+			resource_class = DXIL_SPV_RESOURCE_CLASS_SRV;
+		else
+		{
+			LOGE("Invalid resource class %s, ignoring.\n", tag);
+			return;
+		}
+
+		remapper.root_descriptors.push_back({ resource_class, space, register_index });
 	});
 	cbs.add("--output-rt-swizzle", [&](CLIParser &parser) {
 		unsigned index = parser.next_uint();
@@ -570,6 +646,7 @@ int main(int argc, char **argv)
 	dxil_spv_converter_set_vertex_input_remapper(converter, remap_vertex_input, &remapper);
 	dxil_spv_converter_set_stream_output_remapper(converter, remap_stream_output, &remapper);
 	dxil_spv_converter_set_root_constant_word_count(converter, remapper.root_constant_word_count);
+	dxil_spv_converter_set_root_descriptor_count(converter, remapper.root_descriptors.size());
 
 	if (local_root_signature)
 	{
@@ -626,7 +703,7 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &cbv.base);
 	}
 
-	if (remapper.bindless)
+	if (remapper.bindless || !remapper.root_descriptors.empty())
 	{
 		const dxil_spv_option_physical_storage_buffer phys = { { DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER },
 			                                                   remapper.bda ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };

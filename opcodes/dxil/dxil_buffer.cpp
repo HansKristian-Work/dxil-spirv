@@ -281,6 +281,94 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	return { index_id };
 }
 
+static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[ptr_id];
+
+	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2));
+	spv::Id element_offset = 0;
+	if (meta.stride != 0)
+		element_offset = impl.get_id_for_value(instruction->getOperand(3));
+
+	spv::Id byte_offset_id = 0;
+	if (meta.stride)
+	{
+		auto *stride_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		stride_op->add_id(index_id);
+		stride_op->add_id(builder.makeUintConstant(meta.stride));
+		impl.add(stride_op);
+
+		auto *offset_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		offset_op->add_id(stride_op->id);
+		offset_op->add_id(element_offset);
+		impl.add(offset_op);
+
+		byte_offset_id = offset_op->id;
+	}
+	else
+	{
+		byte_offset_id = index_id;
+	}
+
+	return emit_u32x2_u32_add(impl, ptr_id, byte_offset_id);
+}
+
+static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                  const Converter::Impl::PhysicalPointerMeta &ptr_meta,
+                                                  uint32_t mask = 0, uint32_t alignment = 0)
+{
+	auto &builder = impl.builder();
+
+	if (mask == 0 && !get_constant_operand(instruction, 4, &mask))
+		return false;
+	if (alignment == 0 && !get_constant_operand(instruction, 5, &alignment))
+		return false;
+
+	unsigned vecsize = 0;
+	if (mask == 1)
+		vecsize = 1;
+	else if (mask == 3)
+		vecsize = 2;
+	else if (mask == 7)
+		vecsize = 3;
+	else if (mask == 15)
+		vecsize = 4;
+	else
+	{
+		LOGE("Unexpected mask for RawBufferLoad = %u.\n", mask);
+		return false;
+	}
+
+	spv::Id type_id = impl.get_type_id(instruction->getType()->getStructElementType(0));
+	if (vecsize > 1)
+		type_id = builder.makeVectorType(type_id, vecsize);
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(type_id, ptr_meta);
+
+	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
+
+	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+	ptr_bitcast_op->add_id(u64_ptr_id);
+	impl.add(ptr_bitcast_op);
+
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id));
+	chain_op->add_id(ptr_bitcast_op->id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	impl.add(chain_op);
+
+	auto *load_op = impl.allocate(spv::OpLoad, instruction, type_id);
+	load_op->add_id(chain_op->id);
+	load_op->add_literal(spv::MemoryAccessAlignedMask);
+	load_op->add_literal(alignment);
+	impl.add(load_op);
+
+	if (vecsize == 1)
+		impl.llvm_composite_meta[instruction].forced_composite = false;
+
+	return true;
+}
+
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// Elide dead loads.
@@ -291,6 +379,29 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
+
+	auto &access_meta = impl.llvm_composite_meta[instruction];
+	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
+
+	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+	{
+		if (sparse)
+		{
+			LOGE("Cannot use BDA and sparse feedback. >:(\n");
+			return false;
+		}
+
+		// We don't more about alignment in SM 5.1 BufferStore.
+		// We know the type must be 32-bit however ...
+		// Might be possible to do some fancy analysis to deduce a better alignment.
+
+		// Leave no gaps in the access mask.
+		uint32_t mask = access_meta.access_mask & 0xf;
+		mask |= mask >> 1u;
+		mask |= mask >> 2u;
+
+		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, mask, 4);
+	}
 
 	auto *result_type = instruction->getType();
 	unsigned bits = type_is_16bit(result_type->getStructElementType(0)) ? 16 : 32;
@@ -303,8 +414,6 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	                                  result_type->getStructElementType(0));
 
 	// Sparse information is stored in the 5th component.
-	auto &access_meta = impl.llvm_composite_meta[instruction];
-	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
 	if (sparse)
 		builder.addCapability(spv::CapabilitySparseResidency);
 
@@ -500,47 +609,63 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	return true;
 }
 
-static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl &impl, const llvm::CallInst *instruction)
+static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                   const Converter::Impl::PhysicalPointerMeta &ptr_meta,
+                                                   uint32_t alignment = 0)
 {
 	auto &builder = impl.builder();
-	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
-	const auto &meta = impl.handle_to_resource_meta[ptr_id];
 
-	spv::Id index_id = impl.get_id_for_value(instruction->getOperand(2));
-	spv::Id element_offset = 0;
-	if (meta.stride != 0)
-		element_offset = impl.get_id_for_value(instruction->getOperand(3));
+	uint32_t mask = 0;
+	if (!get_constant_operand(instruction, 8, &mask))
+		return false;
 
-	Operation *u64_offset_op;
-	if (meta.stride)
-	{
-		auto *stride_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-		stride_op->add_id(index_id);
-		stride_op->add_id(builder.makeUintConstant(meta.stride));
-		impl.add(stride_op);
+	if (alignment == 0 && !get_constant_operand(instruction, 9, &alignment))
+		return false;
 
-		auto *offset_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		offset_op->add_id(stride_op->id);
-		offset_op->add_id(element_offset);
-		impl.add(offset_op);
-
-		u64_offset_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
-		u64_offset_op->add_id(offset_op->id);
-	}
+	unsigned vecsize = 0;
+	if (mask == 1)
+		vecsize = 1;
+	else if (mask == 3)
+		vecsize = 2;
+	else if (mask == 7)
+		vecsize = 3;
+	else if (mask == 15)
+		vecsize = 4;
 	else
 	{
-		u64_offset_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
-		u64_offset_op->add_id(index_id);
+		LOGE("Unexpected mask for RawBufferStore = %u.\n", mask);
+		return false;
 	}
 
-	impl.add(u64_offset_op);
+	spv::Id type_id = impl.get_type_id(instruction->getOperand(4)->getType());
+	spv::Id vec_type_id = type_id;
+	if (vecsize > 1)
+		vec_type_id = builder.makeVectorType(type_id, vecsize);
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, ptr_meta);
 
-	auto *ptr_compute_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
-	ptr_compute_op->add_id(ptr_id);
-	ptr_compute_op->add_id(u64_offset_op->id);
-	impl.add(ptr_compute_op);
+	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
-	return ptr_compute_op->id;
+	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+	ptr_bitcast_op->add_id(u64_ptr_id);
+	impl.add(ptr_bitcast_op);
+
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id));
+	chain_op->add_id(ptr_bitcast_op->id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	impl.add(chain_op);
+
+	spv::Id elems[4] = {};
+	for (unsigned i = 0; i < 4; i++)
+		elems[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+
+	auto *store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(chain_op->id);
+	store_op->add_id(impl.build_vector(type_id, elems, vecsize));
+	store_op->add_literal(spv::MemoryAccessAlignedMask);
+	store_op->add_literal(alignment);
+	impl.add(store_op);
+
+	return true;
 }
 
 bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -548,20 +673,15 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 	if (!impl.composite_is_accessed(instruction))
 		return true;
 
-	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[ptr_id];
 
-	uint32_t mask = 0;
-	if (!get_constant_operand(instruction, 4, &mask))
-		return false;
-
-	uint32_t alignment = 0;
-	if (!get_constant_operand(instruction, 5, &alignment))
-		return false;
-
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
+		uint32_t alignment = 0;
+		if (!get_constant_operand(instruction, 5, &alignment))
+			return false;
+
 		if (meta.var_id_16bit == 0)
 		{
 			// If we're attempting a raw load from a non-physical pointer, it gets spicy.
@@ -585,43 +705,8 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 		// Ignore the mask. We'll read too much, but robustness should take care of any OOB.
 		return emit_buffer_load_instruction(impl, instruction);
 	}
-
-	unsigned vecsize = 0;
-	if (mask == 1)
-		vecsize = 1;
-	else if (mask == 3)
-		vecsize = 2;
-	else if (mask == 7)
-		vecsize = 3;
-	else if (mask == 15)
-		vecsize = 4;
 	else
-	{
-		LOGE("Unexpected mask for RawBufferLoad = %u.\n", mask);
-		return false;
-	}
-
-	spv::Id type_id = impl.get_type_id(instruction->getType()->getStructElementType(0));
-	if (vecsize > 1)
-		type_id = builder.makeVectorType(type_id, vecsize);
-	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id);
-
-	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
-
-	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
-	ptr_bitcast_op->add_id(u64_ptr_id);
-	impl.add(ptr_bitcast_op);
-
-	auto *load_op = impl.allocate(spv::OpLoad, instruction, type_id);
-	load_op->add_id(ptr_bitcast_op->id);
-	load_op->add_literal(spv::MemoryAccessAlignedMask);
-	load_op->add_literal(alignment);
-	impl.add(load_op);
-
-	if (vecsize == 1)
-		impl.llvm_composite_meta[instruction].forced_composite = false;
-
-	return true;
+		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta);
 }
 
 bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -629,6 +714,15 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
+
+	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+	{
+		// We don't more about alignment in SM 5.1 BufferStore.
+		// We know the type must be 32-bit however ...
+		// Might be possible to do some fancy analysis to deduce a better alignment.
+		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, 4);
+	}
+
 	unsigned bits = type_is_16bit(instruction->getOperand(4)->getType()) ? 16 : 32;
 	if (bits == 16)
 		image_id = meta.var_id_16bit;
@@ -723,20 +817,15 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[ptr_id];
 
-	uint32_t mask = 0;
-	if (!get_constant_operand(instruction, 8, &mask))
-		return false;
-
-	uint32_t alignment = 0;
-	if (!get_constant_operand(instruction, 9, &alignment))
-		return false;
-
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
+		uint32_t alignment = 0;
+		if (!get_constant_operand(instruction, 9, &alignment))
+			return false;
+
 		if (meta.var_id_16bit == 0)
 		{
 			// If we're attempting a raw load from a non-physical pointer, it gets spicy.
@@ -758,46 +847,8 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 
 		return emit_buffer_store_instruction(impl, instruction);
 	}
-
-	unsigned vecsize = 0;
-	if (mask == 1)
-		vecsize = 1;
-	else if (mask == 3)
-		vecsize = 2;
-	else if (mask == 7)
-		vecsize = 3;
-	else if (mask == 15)
-		vecsize = 4;
 	else
-	{
-		LOGE("Unexpected mask for RawBufferStore = %u.\n", mask);
-		return false;
-	}
-
-	spv::Id type_id = impl.get_type_id(instruction->getOperand(4)->getType());
-	spv::Id vec_type_id = type_id;
-	if (vecsize > 1)
-		vec_type_id = builder.makeVectorType(type_id, vecsize);
-	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id);
-
-	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
-
-	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
-	ptr_bitcast_op->add_id(u64_ptr_id);
-	impl.add(ptr_bitcast_op);
-
-	spv::Id elems[4] = {};
-	for (unsigned i = 0; i < 4; i++)
-		elems[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
-
-	auto *store_op = impl.allocate(spv::OpStore);
-	store_op->add_id(ptr_bitcast_op->id);
-	store_op->add_id(impl.build_vector(type_id, elems, vecsize));
-	store_op->add_literal(spv::MemoryAccessAlignedMask);
-	store_op->add_literal(alignment);
-	impl.add(store_op);
-
-	return true;
+		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta);
 }
 
 bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)

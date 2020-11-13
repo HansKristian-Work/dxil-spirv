@@ -195,7 +195,7 @@ struct Converter::Impl
 	bool emit_samplers(const llvm::MDNode *samplers);
 	bool emit_shader_record_buffer();
 	void register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index);
-	void emit_root_constants(unsigned num_words);
+	void emit_root_constants(unsigned num_descriptors, unsigned num_constant_words);
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &parser);
 	static bool scan_srvs(ResourceRemappingInterface *iface, const llvm::MDNode *srvs, ShaderStage stage);
 	static bool scan_uavs(ResourceRemappingInterface *iface, const llvm::MDNode *uavs, ShaderStage stage);
@@ -216,6 +216,8 @@ struct Converter::Impl
 		unsigned stride = 0;
 		bool bindless = false;
 		bool base_resource_is_array = false;
+		bool root_descriptor = false;
+		bool coherent = false;
 		int local_root_signature_entry = -1;
 	};
 
@@ -226,11 +228,17 @@ struct Converter::Impl
 	Vector<ResourceReference> uav_index_to_reference;
 	Vector<ResourceReference> uav_index_to_counter;
 	Vector<spv::Id> uav_index_to_offset;
-	Vector<unsigned> cbv_push_constant_member;
-	UnorderedMap<const llvm::Value *, spv::Id> handle_to_ptr_id;
 	spv::Id root_constant_id = 0;
+	unsigned root_descriptor_count = 0;
 	unsigned root_constant_num_words = 0;
 	unsigned patch_location_offset = 0;
+
+	struct PhysicalPointerMeta
+	{
+		bool nonwritable;
+		bool nonreadable;
+		bool coherent;
+	};
 
 	struct ResourceMeta
 	{
@@ -244,7 +252,7 @@ struct Converter::Impl
 
 		spv::Id counter_var_id;
 		bool counter_is_physical_pointer;
-
+		PhysicalPointerMeta physical_pointer_meta;
 		spv::Id index_offset_id;
 	};
 	UnorderedMap<spv::Id, ResourceMeta> handle_to_resource_meta;
@@ -373,5 +381,14 @@ struct Converter::Impl
 		bool non_uniform;
 	};
 	Vector<CombinedImageSampler> combined_image_sampler_cache;
+
+	struct PhysicalPointerEntry
+	{
+		spv::Id ptr_type_id;
+		spv::Id base_type_id;
+		PhysicalPointerMeta meta;
+	};
+	Vector<PhysicalPointerEntry> physical_pointer_entries;
+	spv::Id get_physical_pointer_block_type(spv::Id base_type_id, const PhysicalPointerMeta &meta);
 };
 } // namespace dxil_spv
