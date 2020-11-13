@@ -1,0 +1,270 @@
+#version 460
+#extension GL_ARB_gpu_shader_int64 : require
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_buffer_reference : require
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(buffer_reference) buffer PhysicalPointerFloat4NonWrite;
+layout(buffer_reference) buffer PhysicalPointerFloat4Coherent;
+layout(buffer_reference) buffer PhysicalPointerHalf;
+layout(buffer_reference) buffer PhysicalPointerHalf2;
+layout(buffer_reference) buffer PhysicalPointerHalf3;
+layout(buffer_reference) buffer PhysicalPointerHalf4;
+layout(buffer_reference) buffer PhysicalPointerUint2;
+layout(buffer_reference, std430) buffer PhysicalPointerFloat4NonWrite
+{
+    vec4 value;
+};
+
+layout(buffer_reference, std430) buffer PhysicalPointerFloat4Coherent
+{
+    vec4 value;
+};
+
+layout(buffer_reference, std430) buffer PhysicalPointerHalf
+{
+    float16_t value;
+};
+
+layout(buffer_reference, std430) buffer PhysicalPointerHalf2
+{
+    f16vec2 value;
+};
+
+layout(buffer_reference, std430) buffer PhysicalPointerHalf3
+{
+    f16vec3 value;
+};
+
+layout(buffer_reference, std430) buffer PhysicalPointerHalf4
+{
+    f16vec4 value;
+};
+
+layout(buffer_reference, std430) buffer PhysicalPointerUint2
+{
+    uvec2 value;
+};
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uint64_t _m0;
+    uint64_t _m1;
+    uint64_t _m2;
+    uint64_t _m3;
+} registers;
+
+float16_t _79;
+uint _124;
+
+void main()
+{
+    PhysicalPointerFloat4NonWrite _38 = PhysicalPointerFloat4NonWrite(registers._m1 + uint64_t((gl_GlobalInvocationID.x * 16u) + 0u));
+    PhysicalPointerFloat4NonWrite _49 = PhysicalPointerFloat4NonWrite(registers._m0 + uint64_t(gl_GlobalInvocationID.x * 16u));
+    PhysicalPointerFloat4Coherent(registers._m2 + uint64_t((gl_GlobalInvocationID.x * 16u) + 0u)).value = vec4(_49.value.x + _38.value.x, _49.value.y + _38.value.y, _49.value.z + _38.value.z, _49.value.w + _38.value.w);
+    PhysicalPointerHalf(registers._m3 + uint64_t(gl_GlobalInvocationID.x << 1u)).value = float16_t(1.0);
+    PhysicalPointerHalf2(registers._m3 + uint64_t(gl_GlobalInvocationID.x << 2u)).value = f16vec2(float16_t(1.0), float16_t(2.0));
+    PhysicalPointerHalf3(registers._m3 + uint64_t(gl_GlobalInvocationID.x * 6u)).value = f16vec3(float16_t(1.0), float16_t(2.0), float16_t(3.0));
+    uint _103 = gl_GlobalInvocationID.x << 3u;
+    PhysicalPointerHalf4(registers._m3 + uint64_t(_103)).value = f16vec4(float16_t(1.0), float16_t(2.0), float16_t(3.0), float16_t(4.0));
+    PhysicalPointerUint2(registers._m3 + uint64_t(_103)).value = uvec2(4u, 5u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 128
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability Int64
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint GLCompute %3 "main" %25
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %6 "RootConstants"
+OpName %8 "registers"
+OpName %31 "PhysicalPointerFloat4NonWrite"
+OpMemberName %31 0 "value"
+OpName %60 "PhysicalPointerFloat4Coherent"
+OpMemberName %60 0 "value"
+OpName %71 "PhysicalPointerHalf"
+OpMemberName %71 0 "value"
+OpName %82 "PhysicalPointerHalf2"
+OpMemberName %82 0 "value"
+OpName %94 "PhysicalPointerHalf3"
+OpMemberName %94 0 "value"
+OpName %105 "PhysicalPointerHalf4"
+OpMemberName %105 0 "value"
+OpName %115 "PhysicalPointerUint2"
+OpMemberName %115 0 "value"
+OpDecorate %6 Block
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 8
+OpMemberDecorate %6 2 Offset 16
+OpMemberDecorate %6 3 Offset 24
+OpDecorate %25 BuiltIn GlobalInvocationId
+OpMemberDecorate %31 0 Offset 0
+OpDecorate %31 Block
+OpMemberDecorate %31 0 NonWritable
+OpMemberDecorate %60 0 Offset 0
+OpDecorate %60 Block
+OpMemberDecorate %60 0 Coherent
+OpMemberDecorate %71 0 Offset 0
+OpDecorate %71 Block
+OpMemberDecorate %82 0 Offset 0
+OpDecorate %82 Block
+OpMemberDecorate %94 0 Offset 0
+OpDecorate %94 Block
+OpMemberDecorate %105 0 Offset 0
+OpDecorate %105 Block
+OpMemberDecorate %115 0 Offset 0
+OpDecorate %115 Block
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 64 0
+%6 = OpTypeStruct %5 %5 %5 %5
+%7 = OpTypePointer PushConstant %6
+%8 = OpVariable %7 PushConstant
+%9 = OpTypePointer PushConstant %5
+%11 = OpTypeInt 32 0
+%12 = OpConstant %11 3
+%15 = OpConstant %11 2
+%18 = OpConstant %11 1
+%21 = OpConstant %11 0
+%23 = OpTypeVector %11 3
+%24 = OpTypePointer Input %23
+%25 = OpVariable %24 Input
+%26 = OpTypePointer Input %11
+%29 = OpTypeFloat 32
+%30 = OpTypeVector %29 4
+%31 = OpTypeStruct %30
+%32 = OpTypePointer PhysicalStorageBuffer %31
+%34 = OpConstant %11 16
+%39 = OpTypePointer PhysicalStorageBuffer %30
+%60 = OpTypeStruct %30
+%61 = OpTypePointer PhysicalStorageBuffer %60
+%70 = OpTypeFloat 16
+%71 = OpTypeStruct %70
+%72 = OpTypePointer PhysicalStorageBuffer %71
+%76 = OpTypePointer PhysicalStorageBuffer %70
+%78 = OpConstant %70 0x1p+0
+%81 = OpTypeVector %70 2
+%82 = OpTypeStruct %81
+%83 = OpTypePointer PhysicalStorageBuffer %82
+%87 = OpTypePointer PhysicalStorageBuffer %81
+%89 = OpConstant %70 0x1p+1
+%92 = OpConstant %11 6
+%93 = OpTypeVector %70 3
+%94 = OpTypeStruct %93
+%95 = OpTypePointer PhysicalStorageBuffer %94
+%99 = OpTypePointer PhysicalStorageBuffer %93
+%101 = OpConstant %70 0x1.8p+1
+%104 = OpTypeVector %70 4
+%105 = OpTypeStruct %104
+%106 = OpTypePointer PhysicalStorageBuffer %105
+%110 = OpTypePointer PhysicalStorageBuffer %104
+%112 = OpConstant %70 0x1p+2
+%114 = OpTypeVector %11 2
+%115 = OpTypeStruct %114
+%116 = OpTypePointer PhysicalStorageBuffer %115
+%120 = OpTypePointer PhysicalStorageBuffer %114
+%122 = OpConstant %11 4
+%123 = OpConstant %11 5
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%79 = OpUndef %70
+%124 = OpUndef %11
+OpBranch %126
+%126 = OpLabel
+%10 = OpAccessChain %9 %8 %12
+%13 = OpLoad %5 %10
+%14 = OpAccessChain %9 %8 %15
+%16 = OpLoad %5 %14
+%17 = OpAccessChain %9 %8 %18
+%19 = OpLoad %5 %17
+%20 = OpAccessChain %9 %8 %21
+%22 = OpLoad %5 %20
+%27 = OpAccessChain %26 %25 %21
+%28 = OpLoad %11 %27
+%33 = OpIMul %11 %28 %34
+%35 = OpIAdd %11 %33 %21
+%36 = OpUConvert %5 %35
+%37 = OpIAdd %5 %19 %36
+%38 = OpBitcast %32 %37
+%40 = OpAccessChain %39 %38 %21
+%41 = OpLoad %30 %40 Aligned 4
+%42 = OpCompositeExtract %29 %41 0
+%43 = OpCompositeExtract %29 %41 1
+%44 = OpCompositeExtract %29 %41 2
+%45 = OpCompositeExtract %29 %41 3
+%46 = OpIMul %11 %28 %34
+%47 = OpUConvert %5 %46
+%48 = OpIAdd %5 %22 %47
+%49 = OpBitcast %32 %48
+%50 = OpAccessChain %39 %49 %21
+%51 = OpLoad %30 %50 Aligned 16
+%52 = OpCompositeExtract %29 %51 0
+%53 = OpCompositeExtract %29 %51 1
+%54 = OpCompositeExtract %29 %51 2
+%55 = OpCompositeExtract %29 %51 3
+%56 = OpFAdd %29 %52 %42
+%57 = OpFAdd %29 %53 %43
+%58 = OpFAdd %29 %54 %44
+%59 = OpFAdd %29 %55 %45
+%62 = OpIMul %11 %28 %34
+%63 = OpIAdd %11 %62 %21
+%64 = OpUConvert %5 %63
+%65 = OpIAdd %5 %16 %64
+%66 = OpBitcast %61 %65
+%67 = OpAccessChain %39 %66 %21
+%68 = OpCompositeConstruct %30 %56 %57 %58 %59
+OpStore %67 %68 Aligned 4
+%69 = OpShiftLeftLogical %11 %28 %18
+%73 = OpUConvert %5 %69
+%74 = OpIAdd %5 %13 %73
+%75 = OpBitcast %72 %74
+%77 = OpAccessChain %76 %75 %21
+OpStore %77 %78 Aligned 2
+%80 = OpShiftLeftLogical %11 %28 %15
+%84 = OpUConvert %5 %80
+%85 = OpIAdd %5 %13 %84
+%86 = OpBitcast %83 %85
+%88 = OpAccessChain %87 %86 %21
+%90 = OpCompositeConstruct %81 %78 %89
+OpStore %88 %90 Aligned 2
+%91 = OpIMul %11 %28 %92
+%96 = OpUConvert %5 %91
+%97 = OpIAdd %5 %13 %96
+%98 = OpBitcast %95 %97
+%100 = OpAccessChain %99 %98 %21
+%102 = OpCompositeConstruct %93 %78 %89 %101
+OpStore %100 %102 Aligned 2
+%103 = OpShiftLeftLogical %11 %28 %12
+%107 = OpUConvert %5 %103
+%108 = OpIAdd %5 %13 %107
+%109 = OpBitcast %106 %108
+%111 = OpAccessChain %110 %109 %21
+%113 = OpCompositeConstruct %104 %78 %89 %101 %112
+OpStore %111 %113 Aligned 2
+%117 = OpUConvert %5 %103
+%118 = OpIAdd %5 %13 %117
+%119 = OpBitcast %116 %118
+%121 = OpAccessChain %120 %119 %21
+%125 = OpCompositeConstruct %114 %122 %123
+OpStore %121 %125 Aligned 4
+OpReturn
+OpFunctionEnd
+#endif

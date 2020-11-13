@@ -1,0 +1,13 @@
+globallycoherent RWStructuredBuffer<float4> RWBuf : register(u0);
+StructuredBuffer<float4> Buf : register(t0);
+
+cbuffer CBV : register(b0)
+{
+	float4 v[16];
+};
+
+[numthreads(1, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	RWBuf[thr] = Buf[thr] + v[thr];
+}

@@ -1,0 +1,137 @@
+#version 460
+#extension GL_ARB_gpu_shader_int64 : require
+#extension GL_EXT_buffer_reference : require
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(buffer_reference) buffer PhysicalPointerFloat4NonWrite;
+layout(buffer_reference) buffer PhysicalPointerFloat4Coherent;
+layout(buffer_reference, std430) buffer PhysicalPointerFloat4NonWrite
+{
+    vec4 value;
+};
+
+layout(buffer_reference, std430) buffer PhysicalPointerFloat4Coherent
+{
+    vec4 value;
+};
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uint64_t _m0;
+    uint64_t _m1;
+    uint64_t _m2;
+    uint64_t _m3;
+} registers;
+
+void main()
+{
+    PhysicalPointerFloat4NonWrite _35 = PhysicalPointerFloat4NonWrite(registers._m1 + uint64_t((gl_GlobalInvocationID.x * 16u) + 0u));
+    PhysicalPointerFloat4NonWrite _46 = PhysicalPointerFloat4NonWrite(registers._m0 + uint64_t(gl_GlobalInvocationID.x * 16u));
+    PhysicalPointerFloat4Coherent(registers._m2 + uint64_t((gl_GlobalInvocationID.x * 16u) + 0u)).value = vec4(_46.value.x + _35.value.x, _46.value.y + _35.value.y, _46.value.z + _35.value.z, _46.value.w + _35.value.w);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 68
+; Schema: 0
+OpCapability Shader
+OpCapability Int64
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint GLCompute %3 "main" %22
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %6 "RootConstants"
+OpName %8 "registers"
+OpName %28 "PhysicalPointerFloat4NonWrite"
+OpMemberName %28 0 "value"
+OpName %57 "PhysicalPointerFloat4Coherent"
+OpMemberName %57 0 "value"
+OpDecorate %6 Block
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 8
+OpMemberDecorate %6 2 Offset 16
+OpMemberDecorate %6 3 Offset 24
+OpDecorate %22 BuiltIn GlobalInvocationId
+OpMemberDecorate %28 0 Offset 0
+OpDecorate %28 Block
+OpMemberDecorate %28 0 NonWritable
+OpMemberDecorate %57 0 Offset 0
+OpDecorate %57 Block
+OpMemberDecorate %57 0 Coherent
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 64 0
+%6 = OpTypeStruct %5 %5 %5 %5
+%7 = OpTypePointer PushConstant %6
+%8 = OpVariable %7 PushConstant
+%9 = OpTypePointer PushConstant %5
+%11 = OpTypeInt 32 0
+%12 = OpConstant %11 2
+%15 = OpConstant %11 1
+%18 = OpConstant %11 0
+%20 = OpTypeVector %11 3
+%21 = OpTypePointer Input %20
+%22 = OpVariable %21 Input
+%23 = OpTypePointer Input %11
+%26 = OpTypeFloat 32
+%27 = OpTypeVector %26 4
+%28 = OpTypeStruct %27
+%29 = OpTypePointer PhysicalStorageBuffer %28
+%31 = OpConstant %11 16
+%36 = OpTypePointer PhysicalStorageBuffer %27
+%57 = OpTypeStruct %27
+%58 = OpTypePointer PhysicalStorageBuffer %57
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %66
+%66 = OpLabel
+%10 = OpAccessChain %9 %8 %12
+%13 = OpLoad %5 %10
+%14 = OpAccessChain %9 %8 %15
+%16 = OpLoad %5 %14
+%17 = OpAccessChain %9 %8 %18
+%19 = OpLoad %5 %17
+%24 = OpAccessChain %23 %22 %18
+%25 = OpLoad %11 %24
+%30 = OpIMul %11 %25 %31
+%32 = OpIAdd %11 %30 %18
+%33 = OpUConvert %5 %32
+%34 = OpIAdd %5 %16 %33
+%35 = OpBitcast %29 %34
+%37 = OpAccessChain %36 %35 %18
+%38 = OpLoad %27 %37 Aligned 4
+%39 = OpCompositeExtract %26 %38 0
+%40 = OpCompositeExtract %26 %38 1
+%41 = OpCompositeExtract %26 %38 2
+%42 = OpCompositeExtract %26 %38 3
+%43 = OpIMul %11 %25 %31
+%44 = OpUConvert %5 %43
+%45 = OpIAdd %5 %19 %44
+%46 = OpBitcast %29 %45
+%47 = OpAccessChain %36 %46 %18
+%48 = OpLoad %27 %47 Aligned 16
+%49 = OpCompositeExtract %26 %48 0
+%50 = OpCompositeExtract %26 %48 1
+%51 = OpCompositeExtract %26 %48 2
+%52 = OpCompositeExtract %26 %48 3
+%53 = OpFAdd %26 %49 %39
+%54 = OpFAdd %26 %50 %40
+%55 = OpFAdd %26 %51 %41
+%56 = OpFAdd %26 %52 %42
+%59 = OpIMul %11 %25 %31
+%60 = OpIAdd %11 %59 %18
+%61 = OpUConvert %5 %60
+%62 = OpIAdd %5 %13 %61
+%63 = OpBitcast %58 %62
+%64 = OpAccessChain %36 %63 %18
+%65 = OpCompositeConstruct %27 %53 %54 %55 %56
+OpStore %64 %65 Aligned 4
+OpReturn
+OpFunctionEnd
+#endif
