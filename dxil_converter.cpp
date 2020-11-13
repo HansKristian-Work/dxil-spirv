@@ -618,9 +618,14 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 				auto &ref = srv_index_to_reference[index];
 				ref.var_id = shader_record_buffer_id;
-				ref.base_resource_is_array = range_size != 1;
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
+
+				if (range_size != 1)
+				{
+					LOGE("Cannot use descriptor array for root descriptors.\n");
+					return false;
+				}
 			}
 		}
 		else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
@@ -636,8 +641,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			ref.var_id = root_constant_id;
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
-			ref.base_resource_is_array = range_size != 1;
 			ref.stride = stride;
+
+			if (range_size != 1)
+			{
+				LOGE("Cannot use descriptor array for root descriptors.\n");
+				return false;
+			}
 		}
 		else if (vulkan_binding.buffer_binding.bindless.use_heap)
 		{
@@ -1048,8 +1058,13 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				auto &ref = uav_index_to_reference[index];
 				ref.var_id = shader_record_buffer_id;
 				ref.stride = stride;
-				ref.base_resource_is_array = range_size != 1;
 				ref.local_root_signature_entry = local_root_signature_entry;
+
+				if (range_size != 1)
+				{
+					LOGE("Cannot use descriptor array for root descriptors.\n");
+					return false;
+				}
 			}
 		}
 		else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
@@ -1065,9 +1080,14 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.var_id = root_constant_id;
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
-			ref.base_resource_is_array = range_size != 1;
 			ref.coherent = globally_coherent;
 			ref.stride = stride;
+
+			if (range_size != 1)
+			{
+				LOGE("Cannot use descriptor array for root descriptors.\n");
+				return false;
+			}
 		}
 		else if (vulkan_binding.buffer_binding.bindless.use_heap)
 		{
@@ -1347,7 +1367,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				auto &ref = cbv_index_to_reference[index];
 				ref.var_id = shader_record_buffer_id;
 				ref.local_root_signature_entry = local_root_signature_entry;
-				ref.base_resource_is_array = range_size != 1;
+
+				if (range_size != 1)
+				{
+					LOGE("Cannot use descriptor array for root descriptors.\n");
+					return false;
+				}
 			}
 		}
 		else if (vulkan_binding.push_constant)
@@ -1368,7 +1393,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			ref.var_id = root_constant_id;
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer.root_constant_index;
-			ref.base_resource_is_array = range_size != 1;
+
+			if (range_size != 1)
+			{
+				LOGE("Cannot use descriptor array for root descriptors.\n");
+				return false;
+			}
 		}
 		else if (vulkan_binding.buffer.bindless.use_heap)
 		{

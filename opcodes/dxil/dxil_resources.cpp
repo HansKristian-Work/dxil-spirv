@@ -790,16 +790,6 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 		if (resource_is_physical_pointer(impl, reference))
 		{
-			if (instruction_offset)
-			{
-				uint32_t index = 0;
-				if (!get_constant_operand(instruction, 3, &index) || index != 0)
-				{
-					LOGE("Cannot use indexing on root descriptors.\n");
-					return false;
-				}
-			}
-
 			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
 			impl.value_map[instruction] = ptr_id;
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
@@ -879,16 +869,6 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 		if (resource_is_physical_pointer(impl, reference))
 		{
-			if (instruction_offset)
-			{
-				uint32_t index = 0;
-				if (!get_constant_operand(instruction, 3, &index) || index != 0)
-				{
-					LOGE("Cannot use indexing on root descriptors.\n");
-					return false;
-				}
-			}
-
 			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
 			impl.value_map[instruction] = ptr_id;
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
@@ -1002,16 +982,6 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 		if (resource_is_physical_pointer(impl, reference))
 		{
-			if (instruction_offset)
-			{
-				uint32_t index = 0;
-				if (!get_constant_operand(instruction, 3, &index) || index != 0)
-				{
-					LOGE("Cannot use indexing on root descriptors.\n");
-					return false;
-				}
-			}
-
 			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
