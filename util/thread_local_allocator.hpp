@@ -73,8 +73,8 @@ static inline bool operator!=(const ThreadLocalAllocator<A> &, const ThreadLocal
 template <typename T>
 using Vector = std::vector<T, ThreadLocalAllocator<T>>;
 
-template <typename T>
-using UnorderedSet = std::unordered_set<T, std::hash<T>, std::equal_to<T>, ThreadLocalAllocator<T>>;
+template <typename T, typename Hash = std::hash<T>>
+using UnorderedSet = std::unordered_set<T, Hash, std::equal_to<T>, ThreadLocalAllocator<T>>;
 
 template <typename T>
 using Set = std::set<T, std::less<T>, ThreadLocalAllocator<T>>;
@@ -83,7 +83,7 @@ using String = std::basic_string<char, std::char_traits<char>, ThreadLocalAlloca
 using StringStream = std::basic_ostringstream<char, std::char_traits<char>, ThreadLocalAllocator<char>>;
 
 template <typename Key, typename Value, typename Hash = std::hash<Key>>
-using UnorderedMap = std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>, ThreadLocalAllocator<std::pair<const Key, Value>>>;
+using UnorderedMap = std::unordered_map<Key, Value, Hash, std::equal_to<Key>, ThreadLocalAllocator<std::pair<const Key, Value>>>;
 
 void begin_thread_allocator_context();
 void end_thread_allocator_context();

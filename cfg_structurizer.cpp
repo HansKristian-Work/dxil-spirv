@@ -376,9 +376,164 @@ void CFGStructurizer::prune_dead_preds()
 	}
 }
 
+static void rewrite_consumed_ids(IRBlock &ir, spv::Id from, spv::Id to)
+{
+	for (auto *op : ir.operations)
+	{
+		for (unsigned i = 0; i < op->num_arguments; i++)
+		{
+			if ((op->literal_mask & (1u << i)) == 0)
+				if (op->arguments[i] == from)
+					op->arguments[i] = to;
+		}
+	}
+
+	if (ir.terminator.conditional_id == from)
+		ir.terminator.conditional_id = to;
+	if (ir.terminator.return_value == from)
+		ir.terminator.return_value = to;
+}
+
+static void rewrite_incoming_ids(IRBlock &ir, spv::Id from, spv::Id to)
+{
+	for (auto &phi : ir.phi)
+		for (auto &incoming : phi.incoming)
+			if (incoming.id == from)
+				incoming.id = to;
+}
+
+void CFGStructurizer::fixup_broken_value_dominance()
+{
+	struct Origin
+	{
+		CFGNode *node;
+		spv::Id type_id;
+	};
+
+	UnorderedMap<spv::Id, Origin> origin;
+	UnorderedMap<spv::Id, Vector<CFGNode *>> id_to_non_local_consumers;
+	UnorderedMap<CFGNode *, Vector<CFGNode *>> phi_dependees;
+
+	// First, scan through all blocks and figure out which block creates an ID.
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto *op : node->ir.operations)
+			if (op->id)
+				origin[op->id] = { node, op->type_id };
+		for (auto &phi : node->ir.phi)
+			origin[phi.id] = { node, phi.type_id };
+	}
+
+	const auto sort_unique_node_vector = [](Vector<CFGNode *> &nodes) {
+		// Fixup nodes in order.
+		std::sort(nodes.begin(), nodes.end(), [](const CFGNode *a, const CFGNode *b) -> bool {
+			return a->forward_post_visit_order > b->forward_post_visit_order;
+		});
+		nodes.erase(std::unique(nodes.begin(), nodes.end()), nodes.end());
+	};
+
+	const auto mark_node_value_access = [&](CFGNode *node, CFGNode *phi_node, spv::Id id) {
+		auto origin_itr = origin.find(id);
+		if (origin_itr == origin.end())
+			return false;
+
+		auto *origin_node = origin_itr->second.node;
+		if (!origin_node->dominates(node))
+		{
+			// We have a problem. Mark that we need to rewrite a certain variable.
+			id_to_non_local_consumers[id].push_back(node);
+			if (phi_node)
+				phi_dependees[node].push_back(phi_node);
+		}
+
+		return true;
+	};
+
+	// Now, scan through all blocks and figure out which values are consumed in different blocks.
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto *op : node->ir.operations)
+		{
+			auto literal_mask = op->literal_mask;
+			for (unsigned i = 0; i < op->num_arguments; i++)
+				if (((1u << i) & literal_mask) == 0)
+					mark_node_value_access(node, nullptr, op->arguments[i]);
+		}
+
+		// If a PHI node uses a value in the incoming block,
+		// we have to remember to rewrite the PHI node itself to reflect the updated incoming ID.
+		for (auto &phi : node->ir.phi)
+			for (auto &incoming : phi.incoming)
+				mark_node_value_access(incoming.block, node, incoming.id);
+
+		if (node->ir.terminator.conditional_id != 0)
+			mark_node_value_access(node, nullptr, node->ir.terminator.conditional_id);
+		if (node->ir.terminator.return_value != 0)
+			mark_node_value_access(node, nullptr, node->ir.terminator.return_value);
+	}
+
+	// Resolve these broken PHIs by using OpVariable. It is the simplest solution, and this is a very rare case to begin with.
+	struct Rewrite
+	{
+		spv::Id id;
+		const Vector<CFGNode *> *consumers;
+	};
+	Vector<Rewrite> rewrites;
+	rewrites.reserve(id_to_non_local_consumers.size());
+
+	for (auto &pair : id_to_non_local_consumers)
+	{
+		sort_unique_node_vector(pair.second);
+		rewrites.push_back({ pair.first, &pair.second });
+	}
+
+	// Ensure ordering so that output remains stable.
+	std::sort(rewrites.begin(), rewrites.end(), [](const Rewrite &a, const Rewrite &b) {
+		return a.id < b.id;
+	});
+
+	auto &builder = module.get_builder();
+	for (auto &rewrite : rewrites)
+	{
+		auto &orig = origin[rewrite.id];
+		spv::Id alloca_var_id = builder.createVariable(spv::StorageClassFunction, orig.type_id);
+
+		auto *store_op = module.allocate_op(spv::OpStore);
+		store_op->add_id(alloca_var_id);
+		store_op->add_id(rewrite.id);
+		orig.node->ir.operations.push_back(store_op);
+
+		// For every non-local node which consumes ID, we load from the alloca'd variable instead.
+		// Rewrite all ID references to point to the loaded value.
+		for (auto *consumer : *rewrite.consumers)
+		{
+			spv::Id loaded_id = module.allocate_id();
+			auto *load_op = module.allocate_op(spv::OpLoad, loaded_id, orig.type_id);
+			load_op->add_id(alloca_var_id);
+
+			rewrite_consumed_ids(consumer->ir, rewrite.id, loaded_id);
+
+			auto phi_iter = phi_dependees.find(consumer);
+			if (phi_iter != phi_dependees.end())
+			{
+				sort_unique_node_vector(phi_iter->second);
+				for (auto *phi : phi_iter->second)
+					rewrite_incoming_ids(phi->ir, rewrite.id, loaded_id);
+			}
+
+			consumer->ir.operations.insert(consumer->ir.operations.begin(), load_op);
+		}
+	}
+}
+
 void CFGStructurizer::insert_phi()
 {
 	prune_dead_preds();
+
+	// It is possible that an SSA value was created in a block, and consumed in another.
+	// With CFG rewriting branches, it is possible that dominance relationship no longer holds
+	// and we must insert new dummy IDs to resolve this.
+	fixup_broken_value_dominance();
 
 	// Build a map of value ID -> creating block.
 	// This allows us to detect if a value is consumed in a situation where the declaration does not dominate use.

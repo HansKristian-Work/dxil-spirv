@@ -347,11 +347,9 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 
 	// Need to deal with signed vs unsigned here.
 	Operation *op = impl.allocate(spv::OpExtInst, instruction, impl.get_type_id(meta.component_type, 1, 1));
-	op->add_ids({
-	    impl.glsl_std450_ext,
-	    static_cast<spv::Id>(opcode),
-	    ptr_id,
-	});
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(opcode);
+	op->add_id(ptr_id);
 
 	if (aux_id)
 		op->add_id(aux_id);
