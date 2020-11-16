@@ -2964,14 +2964,6 @@ bool Converter::Impl::emit_global_variables()
 				initializer = nullptr;
 			}
 		}
-		else
-		{
-			if (!global.isConstant())
-			{
-				LOGE("Declaring LUT, but it must be constant.\n");
-				return false;
-			}
-		}
 
 		if (initializer)
 			initializer_id = get_id_for_constant(initializer, 0);
