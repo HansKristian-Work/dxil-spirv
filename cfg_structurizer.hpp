@@ -130,6 +130,8 @@ private:
 	void eliminate_node_link_preds_to_succ(CFGNode *node);
 	void prune_dead_preds();
 
+	void fixup_broken_value_dominance();
+
 	UnorderedMap<uint32_t, CFGNode *> value_id_to_block;
 
 	void log_cfg(const char *tag) const;
