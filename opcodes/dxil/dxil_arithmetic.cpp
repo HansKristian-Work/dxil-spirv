@@ -43,9 +43,9 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(GLSLstd450Fma);
 	op->add_ids({
-	    impl.glsl_std450_ext,
-	    GLSLstd450Fma,
 	    impl.get_id_for_value(instruction->getOperand(1)),
 	    impl.get_id_for_value(instruction->getOperand(2)),
 	    impl.get_id_for_value(instruction->getOperand(3)),
@@ -91,8 +91,9 @@ bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, co
 	// This is actually CLZ, and not FindMSB.
 	Operation *msb_op = impl.allocate(spv::OpExtInst, impl.get_type_id(instruction->getType()));
 	{
-		msb_op->add_ids(
-		    { impl.glsl_std450_ext, static_cast<spv::Id>(opcode), impl.get_id_for_value(instruction->getOperand(1)) });
+		msb_op->add_id(impl.glsl_std450_ext);
+		msb_op->add_literal(opcode);
+		msb_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 		impl.add(msb_op);
 	}
 
@@ -121,8 +122,12 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
-	op->add_ids({ impl.glsl_std450_ext, static_cast<spv::Id>(opcode), impl.get_id_for_value(instruction->getOperand(1)),
-	              impl.get_id_for_value(instruction->getOperand(2)) });
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(opcode);
+	op->add_ids({
+		            impl.get_id_for_value(instruction->getOperand(1)),
+		            impl.get_id_for_value(instruction->getOperand(2))
+	            });
 
 	impl.add(op);
 	return true;
@@ -135,7 +140,9 @@ bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &im
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
-	op->add_ids({ impl.glsl_std450_ext, static_cast<spv::Id>(opcode), impl.get_id_for_value(instruction->getOperand(1)),
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(opcode);
+	op->add_ids({ impl.get_id_for_value(instruction->getOperand(1)),
 	              impl.get_id_for_value(instruction->getOperand(2)),
 	              impl.get_id_for_value(instruction->getOperand(3)) });
 
@@ -150,8 +157,9 @@ bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
-	op->add_ids(
-	    { impl.glsl_std450_ext, static_cast<spv::Id>(opcode), impl.get_id_for_value(instruction->getOperand(1)) });
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(opcode);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 
 	impl.add(op);
 	return true;
@@ -195,7 +203,9 @@ bool emit_saturate_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	}
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
-	op->add_ids({ impl.glsl_std450_ext, GLSLstd450NClamp, impl.get_id_for_value(instruction->getOperand(1)),
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(GLSLstd450NClamp);
+	op->add_ids({ impl.get_id_for_value(instruction->getOperand(1)),
 	              constant_0, constant_1 });
 
 	impl.add(op);
@@ -267,7 +277,7 @@ bool emit_make_double_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
-	op->add_id(GLSLstd450PackDouble2x32);
+	op->add_literal(GLSLstd450PackDouble2x32);
 
 	spv::Id inputs[2];
 	for (unsigned i = 0; i < 2; i++)
@@ -286,7 +296,7 @@ bool emit_split_double_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction, builder.makeVectorType(builder.makeUintType(32), 2));
 	op->add_id(impl.glsl_std450_ext);
-	op->add_id(GLSLstd450UnpackDouble2x32);
+	op->add_literal(GLSLstd450UnpackDouble2x32);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	impl.add(op);
 	return true;
@@ -300,7 +310,7 @@ bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallI
 
 	Operation *unpack_op = impl.allocate(spv::OpExtInst, builder.makeVectorType(builder.makeFloatType(32), 2));
 	unpack_op->add_id(impl.glsl_std450_ext);
-	unpack_op->add_id(GLSLstd450UnpackHalf2x16);
+	unpack_op->add_literal(GLSLstd450UnpackHalf2x16);
 	unpack_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	impl.add(unpack_op);
 
@@ -319,7 +329,7 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
-	op->add_id(GLSLstd450PackHalf2x16);
+	op->add_literal(GLSLstd450PackHalf2x16);
 
 	spv::Id inputs[2] = { impl.get_id_for_value(instruction->getOperand(1)), builder.makeFloatConstant(0.0f) };
 	op->add_id(impl.build_vector(builder.makeFloatType(32), inputs, 2));
