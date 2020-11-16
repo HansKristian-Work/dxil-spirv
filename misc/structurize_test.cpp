@@ -20,15 +20,17 @@
 #include "node.hpp"
 #include "node_pool.hpp"
 #include "spirv_module.hpp"
+#include "SpvBuilder.h"
 #include <stdio.h>
+#include <string.h>
 #include <string>
 #include <unordered_map>
 
 #include "logging.hpp"
 #include "spirv-tools/libspirv.hpp"
-#include "spirv_glsl.hpp"
+#include "spirv_cross_c.h"
 
-using namespace DXIL2SPIRV;
+using namespace dxil_spv;
 
 struct Emitter : BlockEmissionInterface
 {
@@ -52,11 +54,11 @@ void Emitter::emit_basic_block(CFGNode *node)
 	switch (info.merge_type)
 	{
 	case MergeType::Selection:
-		LOGE("    SelectionMerge -> %s\n", info.merge_block->name.c_str());
+		LOGE("    SelectionMerge -> %s\n", info.merge_block ? info.merge_block->name.c_str() : "Unreachable");
 		break;
 
 	case MergeType::Loop:
-		LOGE("    LoopMerge -> %s, Continue <- %s\n", info.merge_block->name.c_str(),
+		LOGE("    LoopMerge -> %s, Continue <- %s\n", info.merge_block ? info.merge_block->name.c_str() : "Unreachable",
 		     info.continue_block ? info.continue_block->name.c_str() : "Unreachable");
 		break;
 
@@ -88,8 +90,7 @@ void Emitter::emit_basic_block(CFGNode *node)
 	}
 }
 
-#if 0
-static void print_spirv_assembly(const std::vector<uint32_t> &code)
+static void print_spirv_assembly(const Vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
 	std::string str;
@@ -98,45 +99,88 @@ static void print_spirv_assembly(const std::vector<uint32_t> &code)
 	else
 		LOGE("\nSPIR-V:\n%s\n", str.c_str());
 }
-#endif
 
-static void validate_spirv(const std::vector<uint32_t> &code)
+static void print_glsl(const Vector<uint32_t> &code)
+{
+	spvc_context context;
+	if (spvc_context_create(&context) != SPVC_SUCCESS)
+		return;
+
+	spvc_parsed_ir ir;
+	if (spvc_context_parse_spirv(context, code.data(), code.size(), &ir) != SPVC_SUCCESS)
+		goto cleanup;
+
+	spvc_compiler compiler;
+	if (spvc_context_create_compiler(context, SPVC_BACKEND_GLSL, ir, SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) !=
+	    SPVC_SUCCESS)
+		goto cleanup;
+
+	spvc_compiler_options opts;
+	if (spvc_compiler_create_compiler_options(compiler, &opts) != SPVC_SUCCESS)
+		goto cleanup;
+
+	spvc_compiler_options_set_bool(opts, SPVC_COMPILER_OPTION_GLSL_ES, SPVC_FALSE);
+	spvc_compiler_options_set_uint(opts, SPVC_COMPILER_OPTION_GLSL_VERSION, 460);
+	spvc_compiler_options_set_bool(opts, SPVC_COMPILER_OPTION_GLSL_VULKAN_SEMANTICS, SPVC_TRUE);
+	spvc_compiler_install_compiler_options(compiler, opts);
+
+	const char *source;
+	if (spvc_compiler_compile(compiler, &source) != SPVC_SUCCESS)
+		goto cleanup;
+
+	LOGI("==== GLSL ====\n");
+	fputs(source, stderr);
+	LOGI("====\n");
+
+cleanup:
+	spvc_context_destroy(context);
+}
+
+static void validate_spirv(const Vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("Message: %s\n", message);
 	});
-	if (!tools.Validate(code))
+	if (!tools.Validate(code.data(), code.size()))
 		LOGE("Validation error.\n");
 	else
 		LOGE("Validated successfully!\n");
 }
 
-static void print_glsl(const std::vector<uint32_t> &code)
+static Vector<String> tokenize(char *line_buffer)
 {
-	try
-	{
-		spirv_cross::CompilerGLSL compiler(code);
-		auto opts = compiler.get_common_options();
-		opts.es = false;
-		opts.version = 460;
-		compiler.set_common_options(opts);
-		auto str = compiler.compile();
-		LOGE("\n=== GLSL ===\n%s\n", str.c_str());
-	}
-	catch (const std::exception &e)
-	{
-		LOGE("Failed to decompile to GLSL: %s.\n", e.what());
-	}
+	Vector<String> tokens;
+
+	char *saveptr;
+	char *first = strtok_r(line_buffer, " ", &saveptr);
+	if (first)
+		tokens.push_back(first);
+	else
+		return tokens;
+	while (char *token = strtok_r(nullptr, " ", &saveptr))
+		tokens.push_back(token);
+
+	for (auto &token : tokens)
+		while (!token.empty() && token.back() == '\n')
+			token.pop_back();
+
+	return tokens;
 }
 
-int main()
+int main(int argc, char **argv)
 {
-	std::unordered_map<std::string, CFGNode *> block_metas;
+	if (argc != 2)
+	{
+		fprintf(stderr, "Usage: structurize-test <input test>\n");
+		return EXIT_FAILURE;
+	}
+
+	std::unordered_map<String, CFGNode *> block_metas;
 	Emitter emitter;
 	CFGNodePool pool;
 
-	const auto get = [&](const std::string &name) -> CFGNode * {
+	const auto get = [&](const String &name) -> CFGNode * {
 		auto itr = block_metas.find(name);
 		if (itr == block_metas.end())
 		{
@@ -172,7 +216,7 @@ int main()
 		emitter.module.get_builder().addName(f->ir.terminator.conditional_id, (std::string(from) + "_sel").c_str());
 	};
 
-	const auto add_phi = [&](const char *phi, const std::vector<const char *> &from_nodes) {
+	const auto add_phi = [&](const char *phi, const Vector<const char *> &from_nodes) {
 		auto *p = get(phi);
 		p->ir.phi.emplace_back();
 		auto &phi_node = p->ir.phi.back();
@@ -190,179 +234,80 @@ int main()
 		}
 	};
 
-#if 1
-	add_selection("entry", "l0", "exit");
-	add_selection("l0", "l0", "exit");
-#elif 0
-	add_selection("entry", "b0", "exit");
-	{
-		add_selection("b0", "b1", "b2");
-		{
-			add_branch("b1", "exit");
-		}
-		{
-			add_branch("b2", "exit");
-		}
-	}
-#elif 0
-	add_selection("entry", "l0", "exit");
-	{
-		add_selection("l0", "l0.true", "m0");
-		{
-			add_branch("l0.true", "m0");
-		}
-		add_branch("m0", "l1");
-		add_selection("l1", "l1.true", "m1");
-		{
-			add_branch("l1.true", "m1");
-		}
-		add_branch("m1", "exit");
-	}
-#elif 0
-	add_selection("entry", "l0", "exit");
-	{
-		add_selection("l0", "b0", "merge");
-		{
-			add_selection("b0", "c1", "b1");
-			add_selection("b1", "b2", "c1.p");
-			{
-				add_branch("b2", "c1");
-			}
-			{
-				//add_branch("b3", "c1.p");
-			}
-			add_branch("c1.p", "c1");
-		}
-		add_selection("c1", "l0", "merge");
-		add_branch("merge", "exit");
-	}
-#elif 0
-	add_selection("entry", "switch", "exit");
-	add_switch("switch", { "case0", "case1", "default", "merge" });
-	add_selection("case0", "exit", "merge");
-	add_branch("case1", "merge");
-	add_branch("default", "merge");
-	add_branch("merge", "exit");
-#elif 0
-	add_selection("entry", "b0", "b1");
-	{
-		add_selection("b0", "b0.true", "b0.false");
-		{
-			add_branch("b0.true", "exit");
-		}
-		{
-			add_branch("b0.false", "exit");
-		}
-		add_selection("b1", "b1.true", "b1.false");
-		{
-			add_branch("b1.true", "exit");
-		}
-		{
-			add_branch("b1.false", "exit");
-		}
-	}
-#elif 0
-	add_selection("entry", "b0", "exit");
-	{
-		add_selection("b0", "l0", "exit");
-		{
-			add_selection("l0", "l1", "c0");
-			{
-				add_branch("l1", "l1.cond");
-				add_selection("l1.cond", "exit", "c1");
-				add_selection("c1", "l1", "m1");
-				add_branch("m1", "c0");
-			}
-			add_selection("c0", "l0", "l0.exit");
-			add_branch("l0.exit", "exit");
-		}
-	}
-#elif 0
-	add_selection("entry", "b0", "entry.exit");
-	{
-		add_selection("b0", "b1", "entry.exit");
-		{
-			add_selection("b1", "exit", "entry.exit");
-		}
-	}
-	add_branch("entry.exit", "exit");
-#elif 0
-	add_selection("b0", "l0", "b0.exit");
-	{
-		add_selection("l0", "l1", "c0");
-		{
-			add_branch("l1", "l1.cond");
-			add_selection("l1.cond", "l1.exit", "c1");
-			{
-				add_branch("l1.exit", "m1");
-			}
-			add_selection("c1", "l1", "m1");
-			add_branch("m1", "c0");
-		}
-		add_selection("c0", "l0", "l0.exit");
-		add_branch("l0.exit", "b0.exit");
-	}
-#elif 1
-	add_branch("entry", "b0");
-	add_selection("b0", "l0", "b0.exit");
-	{
-		add_selection("l0", "l1", "c0");
-		{
-			add_branch("l1", "l1.cond");
-			add_selection("l1.cond", "b0.exit", "c1");
-			add_selection("c1", "l1", "m1");
-			add_branch("m1", "c0");
-		}
-		add_selection("c0", "l0", "l0.exit");
-		add_branch("l0.exit", "b0.exit");
-	}
-#elif 1
-	add_selection("a0", "b0", "exit");
-	add_selection("b0", "b0.true", "b0.false");
-	{
-		add_selection("b0.true", "b1.true", "b1.false");
-		{
-			// Break out of selection construct.
-			add_branch("b1.true", "exit");
-		}
-		{
-			add_branch("b1.false", "b1.merge");
-		}
-		add_branch("b1.merge", "b0.merge");
-	}
-	{
-		add_selection("b0.false", "b2.true", "b2.false");
-		{
-			add_branch("b2.true", "b2.merge");
-		}
-		{
-			add_branch("b2.false", "b2.merge");
-		}
-		add_branch("b2.merge", "b0.merge");
-	}
-	add_branch("b0.merge", "exit");
-#elif 0
-	add_selection("b0", "body", "b0.exit");
-	add_branch("body", "b0.exit");
-#else
-	add_selection("b0", "l0", "b0.exit");
-	{
-		add_selection("l0", "b1", "b0.exit");
-		{
-			add_selection("b1", "a", "b");
-			{
-				add_branch("a", "c0");
-			}
-			{
-				add_branch("b", "c0");
-			}
-		}
-		add_selection("c0", "l0", "l0.exit");
-		add_branch("l0.exit", "b0.exit");
-	}
-#endif
+	const auto add_sideeffect = [&](const char *block) {
+		auto *b = get(block);
+		auto &builder = emitter.module.get_builder();
+		spv::Id var_id = builder.createVariable(spv::StorageClassFunction, builder.makeUintType(32));
 
-	//add_phi("b0.exit", { "b0", "l1.cond", "l0.exit" });
+		auto *op = emitter.module.allocate_op(spv::OpStore);
+		op->add_id(var_id);
+		op->add_id(builder.makeUintConstant(0));
+		b->ir.operations.push_back(op);
+	};
+
+	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main", false);
+
+	FILE *file = fopen(argv[1], "r");
+	if (!file)
+	{
+		fprintf(stderr, "Failed to open input file: %s.\n", argv[1]);
+		return EXIT_FAILURE;
+	}
+
+	char line_buffer[1024];
+	while (fgets(line_buffer, sizeof(line_buffer), file))
+	{
+		auto tokens = tokenize(line_buffer);
+		if (tokens.empty())
+			continue;
+
+		if (tokens.front() == "b")
+		{
+			if (tokens.size() != 3)
+			{
+				LOGE("b token needs 3 elements.\n");
+				continue;
+			}
+
+			add_branch(tokens[1].c_str(), tokens[2].c_str());
+		}
+		else if (tokens.front() == "c")
+		{
+			if (tokens.size() != 4)
+			{
+				LOGE("c token needs 4 elements.\n");
+				continue;
+			}
+
+			add_selection(tokens[1].c_str(), tokens[2].c_str(), tokens[3].c_str());
+		}
+		else if (tokens.front() == "phi")
+		{
+			if (tokens.size() < 3)
+			{
+				LOGE("phi token needs at least 3 elements.\n");
+				continue;
+			}
+
+			Vector<const char *> src_blocks;
+			for (auto itr = tokens.begin() + 2; itr != tokens.end(); ++itr)
+				src_blocks.push_back(itr->c_str());
+			add_phi(tokens[1].c_str(), src_blocks);
+		}
+		else if (tokens.front() == "sideeffect")
+		{
+			if (tokens.size() != 2)
+			{
+				LOGE("sideeffects token needs 2 elements.\n");
+				continue;;
+			}
+			add_sideeffect(tokens[1].c_str());
+		}
+		else
+		{
+			LOGE("Unknown token %s.\n", tokens.front().c_str());
+		}
+	}
 
 	CFGStructurizer traverser(get("entry"), pool, emitter.module);
 	traverser.run();
@@ -373,12 +318,11 @@ int main()
 		node.id = 0;
 	});
 
-	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main");
 	emitter.module.emit_entry_point_function_body(traverser);
-	std::vector<uint32_t> code;
+	Vector<uint32_t> code;
 	emitter.module.finalize_spirv(code);
 
-	//print_spirv_assembly(code);
 	print_glsl(code);
+	print_spirv_assembly(code);
 	validate_spirv(code);
 }
