@@ -771,14 +771,20 @@ bool Converter::Impl::get_ssbo_offset_buffer_id(spv::Id &buffer_id,
                                                 const VulkanBinding &offset_binding,
                                                 DXIL::ResourceKind kind, unsigned alignment)
 {
-	bool use_offsets = false;
 	buffer_id = 0;
+
+	bool is_buffer_type = kind == DXIL::ResourceKind::StructuredBuffer ||
+	                      kind == DXIL::ResourceKind::RawBuffer ||
+	                      kind == DXIL::ResourceKind::TypedBuffer;
+	if (!is_buffer_type)
+		return true;
+
+	bool use_offsets = false;
 
 	// If we're emitting an SSBO where we expect small alignment, we'll need to carry forward an "offset".
 	if (buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
 	{
-		if ((kind == DXIL::ResourceKind::StructuredBuffer ||
-		     kind == DXIL::ResourceKind::RawBuffer) && (alignment & (options.ssbo_alignment - 1)) != 0)
+		if (kind != DXIL::ResourceKind::TypedBuffer && (alignment & (options.ssbo_alignment - 1)) != 0)
 		{
 			if (!buffer_binding.bindless.use_heap)
 			{
@@ -793,12 +799,9 @@ bool Converter::Impl::get_ssbo_offset_buffer_id(spv::Id &buffer_id,
 			}
 
 			use_offsets = true;
-
 		}
 	}
-	else if (kind == DXIL::ResourceKind::TypedBuffer &&
-	         options.bindless_typed_buffer_offsets &&
-	         buffer_binding.bindless.use_heap)
+	else if (options.bindless_typed_buffer_offsets && buffer_binding.bindless.use_heap)
 	{
 		use_offsets = true;
 	}
