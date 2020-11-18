@@ -30,7 +30,7 @@
 #if defined(_MSC_VER)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#define LOGE(...)                                                  \
+#define LOGE_INNER(...)                                            \
 	do                                                             \
 	{                                                              \
 		fprintf(stderr, "[ERROR]: " __VA_ARGS__);                  \
@@ -40,7 +40,7 @@
 		OutputDebugStringA(buffer);                                \
 	} while (false)
 
-#define LOGW(...)                                                 \
+#define LOGW_INNER(...)                                           \
 	do                                                            \
 	{                                                             \
 		fprintf(stderr, "[WARN]: " __VA_ARGS__);                  \
@@ -50,7 +50,7 @@
 		OutputDebugStringA(buffer);                               \
 	} while (false)
 
-#define LOGI(...)                                                 \
+#define LOGI_INNER(...)                                           \
 	do                                                            \
 	{                                                             \
 		fprintf(stderr, "[INFO]: " __VA_ARGS__);                  \
@@ -61,28 +61,84 @@
 	} while (false)
 #elif defined(ANDROID)
 #include <android/log.h>
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "dxil-spirv", __VA_ARGS__)
-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, "dxil-spirv", __VA_ARGS__)
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "dxil-spirv", __VA_ARGS__)
+#define LOGE_INNER(...) __android_log_print(ANDROID_LOG_ERROR, "dxil-spirv", __VA_ARGS__)
+#define LOGW_INNER(...) __android_log_print(ANDROID_LOG_WARN, "dxil-spirv", __VA_ARGS__)
+#define LOGI_INNER(...) __android_log_print(ANDROID_LOG_INFO, "dxil-spirv", __VA_ARGS__)
 #else
-#define LOGE(...)                                 \
+#define LOGE_INNER(...)                           \
 	do                                            \
 	{                                             \
 		fprintf(stderr, "[ERROR]: " __VA_ARGS__); \
 		fflush(stderr);                           \
 	} while (false)
 
-#define LOGW(...)                                \
+#define LOGW_INNER(...)                          \
 	do                                           \
 	{                                            \
 		fprintf(stderr, "[WARN]: " __VA_ARGS__); \
 		fflush(stderr);                          \
 	} while (false)
 
-#define LOGI(...)                                \
+#define LOGI_INNER(...)                          \
 	do                                           \
 	{                                            \
 		fprintf(stderr, "[INFO]: " __VA_ARGS__); \
 		fflush(stderr);                          \
 	} while (false)
 #endif
+
+namespace dxil_spv
+{
+enum class LogLevel : uint32_t
+{
+	Debug = 0,
+	Warn = 1,
+	Error = 2
+};
+using LoggingCallback = void (*)(void *, LogLevel, const char *);
+
+void set_thread_log_callback(LoggingCallback callback, void *userdata);
+LoggingCallback get_thread_log_callback();
+void *get_thread_log_callback_userdata();
+}
+
+#define LOGI(...) do {                                                                           \
+	if (auto *cb = ::dxil_spv::get_thread_log_callback())                                        \
+	{                                                                                            \
+		char buffer[4096];                                                                       \
+		snprintf(buffer, sizeof(buffer), __VA_ARGS__);                                           \
+		cb(::dxil_spv::get_thread_log_callback_userdata(), ::dxil_spv::LogLevel::Debug, buffer); \
+	}                                                                                            \
+	else                                                                                         \
+	{                                                                                            \
+        LOGI_INNER(__VA_ARGS__);                                                                 \
+	}                                                                                            \
+} while(0)
+
+#define LOGW(...) do {                                                                           \
+	if (auto *cb = ::dxil_spv::get_thread_log_callback())                                        \
+	{                                                                                            \
+		char buffer[4096];                                                                       \
+		snprintf(buffer, sizeof(buffer), __VA_ARGS__);                                           \
+		cb(::dxil_spv::get_thread_log_callback_userdata(), ::dxil_spv::LogLevel::Warn, buffer);  \
+	}                                                                                            \
+	else                                                                                         \
+	{                                                                                            \
+        LOGW_INNER(__VA_ARGS__);                                                                 \
+	}                                                                                            \
+} while(0)
+
+#define LOGE(...) do {                                                                           \
+	if (auto *cb = ::dxil_spv::get_thread_log_callback())                                        \
+	{                                                                                            \
+		char buffer[4096];                                                                       \
+		snprintf(buffer, sizeof(buffer), __VA_ARGS__);                                           \
+		cb(::dxil_spv::get_thread_log_callback_userdata(), ::dxil_spv::LogLevel::Error, buffer); \
+	}                                                                                            \
+	else                                                                                         \
+	{                                                                                            \
+        LOGE_INNER(__VA_ARGS__);                                                                 \
+	}                                                                                            \
+} while(0)
+
+

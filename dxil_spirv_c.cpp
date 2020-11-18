@@ -678,3 +678,16 @@ void dxil_spv_reset_thread_allocator_context(void)
 {
 	reset_thread_allocator_context();
 }
+
+static thread_local dxil_spv_log_cb c_callback_wrapper;
+static void c_callback_wrapper_trampoline(void *userdata, dxil_spv::LogLevel level, const char *msg)
+{
+	if (c_callback_wrapper)
+		c_callback_wrapper(userdata, dxil_spv_log_level(level), msg);
+}
+
+void dxil_spv_set_thread_log_callback(dxil_spv_log_cb callback, void *userdata)
+{
+	c_callback_wrapper = callback;
+	dxil_spv::set_thread_log_callback(c_callback_wrapper_trampoline, userdata);
+}

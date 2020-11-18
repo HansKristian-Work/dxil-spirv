@@ -21,8 +21,9 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 99)
 project(dxil-spirv LANGUAGES CXX C)
 
-add_library(dxil-debug INTERFACE)
-target_include_directories(dxil-debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/debug)
+add_library(dxil-debug STATIC debug/logging.hpp debug/logging.cpp)
+target_include_directories(dxil-debug PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/debug)
+set_target_properties(dxil-debug PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
@@ -129,7 +130,7 @@ if (DXIL_SPIRV_CLI)
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 2)
-set(DXIL_SPV_VERSION_MINOR 0)
+set(DXIL_SPV_VERSION_MINOR 1)
 set(DXIL_SPV_VERSION_PATCH 0)
 set(DXIL_SPV_VERSION ${DXIL_SPV_VERSION_MAJOR}.${DXIL_SPV_VERSION_MINOR}.${DXIL_SPV_VERSION_PATCH})
 set_target_properties(dxil-spirv-c-shared PROPERTIES
