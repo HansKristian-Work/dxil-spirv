@@ -1,0 +1,35 @@
+RWStructuredBuffer<float4> RWBuf : register(u0);
+StructuredBuffer<float4> Buf : register(t1);
+RWByteAddressBuffer RWAtomic : register(u2);
+
+RWStructuredBuffer<float4> RWBufs[] : register(u0, space1);
+StructuredBuffer<float4> Bufs[] : register(t0, space2);
+RWByteAddressBuffer RWAtomics[] : register(u0, space3);
+
+[numthreads(1, 1, 1)]
+void main(uint3 thr : SV_DispatchThreadID)
+{
+	RWBuf[thr.x + 1024] = RWBuf[thr.x + 4];
+	RWBuf[thr.x + 2048] = Buf[thr.x + 2];
+
+	uint val;
+	RWAtomic.InterlockedAdd(4 * thr.x, 40, val);
+
+	RWAtomic.InterlockedCompareExchange(4 * thr.y, 40, 50, val);
+
+	uint count;
+	RWBuf.GetDimensions(val, count);
+	RWBuf[0] = val;
+
+	Buf.GetDimensions(val, count);
+	RWBuf[1] = val;
+
+	RWBufs[NonUniformResourceIndex(thr.z)][thr.x + 1024] = RWBufs[NonUniformResourceIndex(thr.z)][thr.x + 4];
+	RWBufs[NonUniformResourceIndex(thr.z)][thr.x + 2048] = Bufs[NonUniformResourceIndex(thr.z)][thr.x + 4];
+	RWAtomics[NonUniformResourceIndex(thr.z)].InterlockedAdd(4 * thr.y, 40, val);
+	RWAtomics[NonUniformResourceIndex(thr.z)].InterlockedCompareExchange(4 * thr.y, 40, 70, val);
+	RWBufs[NonUniformResourceIndex(thr.z)].GetDimensions(val, count);
+	RWBuf[2] = val;
+	Bufs[NonUniformResourceIndex(thr.z)].GetDimensions(val, count);
+	RWBuf[3] = val;
+}

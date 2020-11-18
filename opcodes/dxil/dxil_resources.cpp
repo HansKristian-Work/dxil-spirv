@@ -726,7 +726,7 @@ static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter:
 }
 
 static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::ResourceReference &reference,
-                                        DXIL::ResourceKind kind,
+                                        Converter::Impl::ResourceMeta &meta,
                                         spv::Id offset_ssbo_id, spv::Id bindless_offset_id, bool non_uniform)
 {
 	auto &builder = impl.builder();
@@ -759,7 +759,9 @@ static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::
 	spv::Id offset_id = load_op->id;
 
 	// Shift the offset buffer once if we can get away with it.
-	if (kind != DXIL::ResourceKind::TypedBuffer && reference.var_id_16bit == 0)
+	if (meta.storage != spv::StorageClassUniformConstant &&
+	    meta.kind != DXIL::ResourceKind::TypedBuffer &&
+	    reference.var_id_16bit == 0)
 	{
 		Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, vec_type);
 		shift_op->add_id(offset_id);
@@ -831,7 +833,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			auto &incoming_meta = impl.handle_to_resource_meta[base_image_id];
 
 			if (impl.srv_index_to_offset[resource_range])
-				offset_id = build_load_buffer_offset(impl, reference, incoming_meta.kind,
+				offset_id = build_load_buffer_offset(impl, reference, incoming_meta,
 				                                     impl.srv_index_to_offset[resource_range], offset_id, non_uniform);
 			else
 				offset_id = 0;
@@ -910,7 +912,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			auto &incoming_meta = impl.handle_to_resource_meta[base_resource_id];
 
 			if (impl.uav_index_to_offset[resource_range])
-				offset_id = build_load_buffer_offset(impl, reference, incoming_meta.kind,
+				offset_id = build_load_buffer_offset(impl, reference, incoming_meta,
 				                                     impl.uav_index_to_offset[resource_range], offset_id, non_uniform);
 			else
 				offset_id = 0;

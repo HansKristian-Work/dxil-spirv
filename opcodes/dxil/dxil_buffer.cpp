@@ -170,7 +170,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		// For raw buffers, the index is in bytes. Since we only consider uint32_t buffers, divide by 4.
+		// For raw buffers, the index is in bytes.
 		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset), addr_shift_log2);
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
