@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 0
+#define DXIL_SPV_API_VERSION_MINOR 1
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #if !defined(DXIL_SPV_PUBLIC_API)
@@ -239,6 +239,16 @@ typedef dxil_spv_bool (*dxil_spv_cbv_remapper_cb)(void *userdata,
                                                   const dxil_spv_d3d_binding *d3d_uav_binding,
                                                   dxil_spv_cbv_vulkan_binding *vulkan_uav_binding);
 
+typedef enum dxil_spv_log_level
+{
+	DXIL_SPV_LOG_LEVEL_DEBUG,
+	DXIL_SPV_LOG_LEVEL_WARN,
+	DXIL_SPV_LOG_LEVEL_ERROR,
+	DXIL_SPV_LOG_LEVEL_INT_MAX = 0x7fffffff
+} dxil_spv_log_level;
+
+typedef void (*dxil_spv_log_cb)(void *userdata, dxil_spv_log_level, const char *);
+
 typedef enum dxil_spv_option
 {
 	DXIL_SPV_OPTION_INVALID = 0,
@@ -378,7 +388,11 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_scan_resources(
 DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob);
 /* Parsing API */
 
+/* Sets per thread global state. */
+DXIL_SPV_PUBLIC_API void dxil_spv_set_thread_log_callback(dxil_spv_log_cb callback, void *userdata);
+
 /* Converter API */
+
 typedef struct dxil_spv_converter_s *dxil_spv_converter;
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_converter *converter);
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);

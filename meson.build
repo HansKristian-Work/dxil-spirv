@@ -81,6 +81,9 @@ dxil_spirv_src = [
 
   # dxil-utils
   'util/thread_local_allocator.cpp',
+
+  # debug
+  'debug/logging.cpp',
 ]
 
 dxil_spirv_lib = static_library('dxil-spirv', dxil_spirv_src,
