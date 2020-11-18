@@ -28,95 +28,92 @@ layout(set = 4, binding = 0, r32ui) uniform uimageBuffer _24[];
 void main()
 {
     uint _31 = registers._m4 + 2u;
-    uvec2 _40 = _13._m0[subgroupBroadcastFirst(_31)] >> uvec2(2u);
-    uvec2 _49 = _13._m0[subgroupBroadcastFirst(registers._m4)] >> uvec2(2u);
-    uint _55 = registers._m1 + 1u;
-    uvec2 _60 = _13._m0[subgroupBroadcastFirst(_55)] >> uvec2(2u);
-    uint _71 = gl_GlobalInvocationID.x + 4u;
-    uint _72 = _71 * 4u;
-    uint _78 = (_72 < _49.y) ? (_72 + _49.x) : 1073741820u;
-    uvec4 _81 = imageLoad(_21[registers._m4], int(_78));
-    uvec4 _83 = imageLoad(_21[registers._m4], int(_78 + 1u));
-    uvec4 _86 = imageLoad(_21[registers._m4], int(_78 + 2u));
-    uvec4 _89 = imageLoad(_21[registers._m4], int(_78 + 3u));
-    vec4 _95 = uintBitsToFloat(uvec4(_81.x, _83.x, _86.x, _89.x));
-    uint _100 = gl_GlobalInvocationID.x + 1024u;
-    uint _102 = _100 * 4u;
-    uint _107 = (_102 < _49.y) ? (_102 + _49.x) : 1073741820u;
-    imageStore(_21[registers._m4], int(_107), uvec4(floatBitsToUint(_95.x)));
-    imageStore(_21[registers._m4], int(_107 + 1u), uvec4(floatBitsToUint(_95.y)));
-    imageStore(_21[registers._m4], int(_107 + 2u), uvec4(floatBitsToUint(_95.z)));
-    imageStore(_21[registers._m4], int(_107 + 3u), uvec4(floatBitsToUint(_95.w)));
-    uint _120 = (gl_GlobalInvocationID.x + 2u) * 4u;
-    uint _125 = (_120 < _60.y) ? (_120 + _60.x) : 1073741820u;
-    vec4 _138 = uintBitsToFloat(uvec4(texelFetch(_17[_55], int(_125)).x, texelFetch(_17[_55], int(_125 + 1u)).x, texelFetch(_17[_55], int(_125 + 2u)).x, texelFetch(_17[_55], int(_125 + 3u)).x));
-    uint _143 = gl_GlobalInvocationID.x + 2048u;
-    uint _145 = _143 * 4u;
-    uint _150 = (_145 < _49.y) ? (_145 + _49.x) : 1073741820u;
-    imageStore(_21[registers._m4], int(_150), uvec4(floatBitsToUint(_138.x)));
-    imageStore(_21[registers._m4], int(_150 + 1u), uvec4(floatBitsToUint(_138.y)));
-    imageStore(_21[registers._m4], int(_150 + 2u), uvec4(floatBitsToUint(_138.z)));
-    imageStore(_21[registers._m4], int(_150 + 3u), uvec4(floatBitsToUint(_138.w)));
-    uint _170 = imageAtomicAdd(_24[_31], int((gl_GlobalInvocationID.x < _40.y) ? (gl_GlobalInvocationID.x + _40.x) : 1073741820u), 40u);
-    uint _179 = imageAtomicCompSwap(_24[_31], int((gl_GlobalInvocationID.y < _40.y) ? (gl_GlobalInvocationID.y + _40.x) : 1073741820u), 40u, 50u);
-    float _183 = float(_49.y / 4u);
-    uint _184 = 0u * 4u;
-    uint _189 = (_184 < _49.y) ? (_184 + _49.x) : 1073741820u;
-    imageStore(_21[registers._m4], int(_189), uvec4(floatBitsToUint(_183)));
-    imageStore(_21[registers._m4], int(_189 + 1u), uvec4(floatBitsToUint(_183)));
-    imageStore(_21[registers._m4], int(_189 + 2u), uvec4(floatBitsToUint(_183)));
-    imageStore(_21[registers._m4], int(_189 + 3u), uvec4(floatBitsToUint(_183)));
-    float _203 = float(_60.y / 4u);
-    uint _204 = 1u * 4u;
-    uint _209 = (_204 < _49.y) ? (_204 + _49.x) : 1073741820u;
-    imageStore(_21[registers._m4], int(_209), uvec4(floatBitsToUint(_203)));
-    imageStore(_21[registers._m4], int(_209 + 1u), uvec4(floatBitsToUint(_203)));
-    imageStore(_21[registers._m4], int(_209 + 2u), uvec4(floatBitsToUint(_203)));
-    imageStore(_21[registers._m4], int(_209 + 3u), uvec4(floatBitsToUint(_203)));
-    uint _225 = registers._m4 + (gl_GlobalInvocationID.z + 0u);
-    uvec2 _229 = _13._m0[_225] >> uvec2(2u);
-    uint _230 = _71 * 4u;
-    uint _235 = (_230 < _229.y) ? (_230 + _229.x) : 1073741820u;
-    uvec4 _236 = imageLoad(_21[nonuniformEXT(_225)], int(_235));
-    uvec4 _238 = imageLoad(_21[nonuniformEXT(_225)], int(_235 + 1u));
-    uvec4 _241 = imageLoad(_21[nonuniformEXT(_225)], int(_235 + 2u));
-    uvec4 _244 = imageLoad(_21[nonuniformEXT(_225)], int(_235 + 3u));
-    vec4 _248 = uintBitsToFloat(uvec4(_236.x, _238.x, _241.x, _244.x));
-    uint _253 = _100 * 4u;
-    uint _258 = (_253 < _229.y) ? (_253 + _229.x) : 1073741820u;
-    imageStore(_21[nonuniformEXT(_225)], int(_258), uvec4(floatBitsToUint(_248.x)));
-    imageStore(_21[nonuniformEXT(_225)], int(_258 + 1u), uvec4(floatBitsToUint(_248.y)));
-    imageStore(_21[nonuniformEXT(_225)], int(_258 + 2u), uvec4(floatBitsToUint(_248.z)));
-    imageStore(_21[nonuniformEXT(_225)], int(_258 + 3u), uvec4(floatBitsToUint(_248.w)));
-    uint _274 = registers._m1 + (gl_GlobalInvocationID.z + 0u);
-    uvec2 _278 = _13._m0[_274] >> uvec2(2u);
-    uint _279 = _71 * 4u;
-    uint _284 = (_279 < _278.y) ? (_279 + _278.x) : 1073741820u;
-    vec4 _297 = uintBitsToFloat(uvec4(texelFetch(_17[nonuniformEXT(_274)], int(_284)).x, texelFetch(_17[nonuniformEXT(_274)], int(_284 + 1u)).x, texelFetch(_17[nonuniformEXT(_274)], int(_284 + 2u)).x, texelFetch(_17[nonuniformEXT(_274)], int(_284 + 3u)).x));
-    uint _302 = _143 * 4u;
-    uint _307 = (_302 < _229.y) ? (_302 + _229.x) : 1073741820u;
-    imageStore(_21[nonuniformEXT(_225)], int(_307), uvec4(floatBitsToUint(_297.x)));
-    imageStore(_21[nonuniformEXT(_225)], int(_307 + 1u), uvec4(floatBitsToUint(_297.y)));
-    imageStore(_21[nonuniformEXT(_225)], int(_307 + 2u), uvec4(floatBitsToUint(_297.z)));
-    imageStore(_21[nonuniformEXT(_225)], int(_307 + 3u), uvec4(floatBitsToUint(_297.w)));
-    uint _323 = registers._m4 + (gl_GlobalInvocationID.z + 0u);
-    uvec2 _327 = _13._m0[_323] >> uvec2(2u);
-    uint _334 = imageAtomicAdd(_24[nonuniformEXT(_323)], int((gl_GlobalInvocationID.y < _327.y) ? (gl_GlobalInvocationID.y + _327.x) : 1073741820u), 40u);
-    uint _341 = imageAtomicCompSwap(_24[nonuniformEXT(_323)], int((gl_GlobalInvocationID.y < _327.y) ? (gl_GlobalInvocationID.y + _327.x) : 1073741820u), 40u, 70u);
-    float _345 = float(_229.y / 4u);
-    uint _346 = 2u * 4u;
-    uint _351 = (_346 < _49.y) ? (_346 + _49.x) : 1073741820u;
-    imageStore(_21[registers._m4], int(_351), uvec4(floatBitsToUint(_345)));
-    imageStore(_21[registers._m4], int(_351 + 1u), uvec4(floatBitsToUint(_345)));
-    imageStore(_21[registers._m4], int(_351 + 2u), uvec4(floatBitsToUint(_345)));
-    imageStore(_21[registers._m4], int(_351 + 3u), uvec4(floatBitsToUint(_345)));
-    float _365 = float(_278.y / 4u);
-    uint _366 = 3u * 4u;
-    uint _371 = (_366 < _49.y) ? (_366 + _49.x) : 1073741820u;
-    imageStore(_21[registers._m4], int(_371), uvec4(floatBitsToUint(_365)));
-    imageStore(_21[registers._m4], int(_371 + 1u), uvec4(floatBitsToUint(_365)));
-    imageStore(_21[registers._m4], int(_371 + 2u), uvec4(floatBitsToUint(_365)));
-    imageStore(_21[registers._m4], int(_371 + 3u), uvec4(floatBitsToUint(_365)));
+    uint _34 = subgroupBroadcastFirst(_31);
+    uint _44 = subgroupBroadcastFirst(registers._m4);
+    uint _52 = registers._m1 + 1u;
+    uint _54 = subgroupBroadcastFirst(_52);
+    uint _67 = gl_GlobalInvocationID.x + 4u;
+    uint _68 = _67 * 4u;
+    uint _74 = (_68 < _13._m0[_44].y) ? (_68 + _13._m0[_44].x) : 1073741820u;
+    uvec4 _77 = imageLoad(_21[registers._m4], int(_74));
+    uvec4 _79 = imageLoad(_21[registers._m4], int(_74 + 1u));
+    uvec4 _82 = imageLoad(_21[registers._m4], int(_74 + 2u));
+    uvec4 _85 = imageLoad(_21[registers._m4], int(_74 + 3u));
+    vec4 _91 = uintBitsToFloat(uvec4(_77.x, _79.x, _82.x, _85.x));
+    uint _96 = gl_GlobalInvocationID.x + 1024u;
+    uint _98 = _96 * 4u;
+    uint _103 = (_98 < _13._m0[_44].y) ? (_98 + _13._m0[_44].x) : 1073741820u;
+    imageStore(_21[registers._m4], int(_103), uvec4(floatBitsToUint(_91.x)));
+    imageStore(_21[registers._m4], int(_103 + 1u), uvec4(floatBitsToUint(_91.y)));
+    imageStore(_21[registers._m4], int(_103 + 2u), uvec4(floatBitsToUint(_91.z)));
+    imageStore(_21[registers._m4], int(_103 + 3u), uvec4(floatBitsToUint(_91.w)));
+    uint _116 = (gl_GlobalInvocationID.x + 2u) * 4u;
+    uint _121 = (_116 < _13._m0[_54].y) ? (_116 + _13._m0[_54].x) : 1073741820u;
+    vec4 _134 = uintBitsToFloat(uvec4(texelFetch(_17[_52], int(_121)).x, texelFetch(_17[_52], int(_121 + 1u)).x, texelFetch(_17[_52], int(_121 + 2u)).x, texelFetch(_17[_52], int(_121 + 3u)).x));
+    uint _139 = gl_GlobalInvocationID.x + 2048u;
+    uint _141 = _139 * 4u;
+    uint _146 = (_141 < _13._m0[_44].y) ? (_141 + _13._m0[_44].x) : 1073741820u;
+    imageStore(_21[registers._m4], int(_146), uvec4(floatBitsToUint(_134.x)));
+    imageStore(_21[registers._m4], int(_146 + 1u), uvec4(floatBitsToUint(_134.y)));
+    imageStore(_21[registers._m4], int(_146 + 2u), uvec4(floatBitsToUint(_134.z)));
+    imageStore(_21[registers._m4], int(_146 + 3u), uvec4(floatBitsToUint(_134.w)));
+    uint _166 = imageAtomicAdd(_24[_31], int((gl_GlobalInvocationID.x < _13._m0[_34].y) ? (gl_GlobalInvocationID.x + _13._m0[_34].x) : 1073741820u), 40u);
+    uint _175 = imageAtomicCompSwap(_24[_31], int((gl_GlobalInvocationID.y < _13._m0[_34].y) ? (gl_GlobalInvocationID.y + _13._m0[_34].x) : 1073741820u), 40u, 50u);
+    float _179 = float(_13._m0[_44].y / 4u);
+    uint _180 = 0u * 4u;
+    uint _185 = (_180 < _13._m0[_44].y) ? (_180 + _13._m0[_44].x) : 1073741820u;
+    imageStore(_21[registers._m4], int(_185), uvec4(floatBitsToUint(_179)));
+    imageStore(_21[registers._m4], int(_185 + 1u), uvec4(floatBitsToUint(_179)));
+    imageStore(_21[registers._m4], int(_185 + 2u), uvec4(floatBitsToUint(_179)));
+    imageStore(_21[registers._m4], int(_185 + 3u), uvec4(floatBitsToUint(_179)));
+    float _199 = float(_13._m0[_54].y / 4u);
+    uint _200 = 1u * 4u;
+    uint _205 = (_200 < _13._m0[_44].y) ? (_200 + _13._m0[_44].x) : 1073741820u;
+    imageStore(_21[registers._m4], int(_205), uvec4(floatBitsToUint(_199)));
+    imageStore(_21[registers._m4], int(_205 + 1u), uvec4(floatBitsToUint(_199)));
+    imageStore(_21[registers._m4], int(_205 + 2u), uvec4(floatBitsToUint(_199)));
+    imageStore(_21[registers._m4], int(_205 + 3u), uvec4(floatBitsToUint(_199)));
+    uint _221 = registers._m4 + (gl_GlobalInvocationID.z + 0u);
+    uint _225 = _67 * 4u;
+    uint _230 = (_225 < _13._m0[_221].y) ? (_225 + _13._m0[_221].x) : 1073741820u;
+    uvec4 _231 = imageLoad(_21[nonuniformEXT(_221)], int(_230));
+    uvec4 _233 = imageLoad(_21[nonuniformEXT(_221)], int(_230 + 1u));
+    uvec4 _236 = imageLoad(_21[nonuniformEXT(_221)], int(_230 + 2u));
+    uvec4 _239 = imageLoad(_21[nonuniformEXT(_221)], int(_230 + 3u));
+    vec4 _243 = uintBitsToFloat(uvec4(_231.x, _233.x, _236.x, _239.x));
+    uint _248 = _96 * 4u;
+    uint _253 = (_248 < _13._m0[_221].y) ? (_248 + _13._m0[_221].x) : 1073741820u;
+    imageStore(_21[nonuniformEXT(_221)], int(_253), uvec4(floatBitsToUint(_243.x)));
+    imageStore(_21[nonuniformEXT(_221)], int(_253 + 1u), uvec4(floatBitsToUint(_243.y)));
+    imageStore(_21[nonuniformEXT(_221)], int(_253 + 2u), uvec4(floatBitsToUint(_243.z)));
+    imageStore(_21[nonuniformEXT(_221)], int(_253 + 3u), uvec4(floatBitsToUint(_243.w)));
+    uint _269 = registers._m1 + (gl_GlobalInvocationID.z + 0u);
+    uint _273 = _67 * 4u;
+    uint _278 = (_273 < _13._m0[_269].y) ? (_273 + _13._m0[_269].x) : 1073741820u;
+    vec4 _291 = uintBitsToFloat(uvec4(texelFetch(_17[nonuniformEXT(_269)], int(_278)).x, texelFetch(_17[nonuniformEXT(_269)], int(_278 + 1u)).x, texelFetch(_17[nonuniformEXT(_269)], int(_278 + 2u)).x, texelFetch(_17[nonuniformEXT(_269)], int(_278 + 3u)).x));
+    uint _296 = _139 * 4u;
+    uint _301 = (_296 < _13._m0[_221].y) ? (_296 + _13._m0[_221].x) : 1073741820u;
+    imageStore(_21[nonuniformEXT(_221)], int(_301), uvec4(floatBitsToUint(_291.x)));
+    imageStore(_21[nonuniformEXT(_221)], int(_301 + 1u), uvec4(floatBitsToUint(_291.y)));
+    imageStore(_21[nonuniformEXT(_221)], int(_301 + 2u), uvec4(floatBitsToUint(_291.z)));
+    imageStore(_21[nonuniformEXT(_221)], int(_301 + 3u), uvec4(floatBitsToUint(_291.w)));
+    uint _317 = registers._m4 + (gl_GlobalInvocationID.z + 0u);
+    uint _327 = imageAtomicAdd(_24[nonuniformEXT(_317], int((gl_GlobalInvocationID.y < _13._m0[_317].y) ? (gl_GlobalInvocationID.y + _13._m0[_317)].x) : 1073741820u), 40u);
+    uint _334 = imageAtomicCompSwap(_24[nonuniformEXT(_317], int((gl_GlobalInvocationID.y < _13._m0[_317].y) ? (gl_GlobalInvocationID.y + _13._m0[_317)].x) : 1073741820u), 40u, 70u);
+    float _338 = float(_13._m0[_221].y / 4u);
+    uint _339 = 2u * 4u;
+    uint _344 = (_339 < _13._m0[_44].y) ? (_339 + _13._m0[_44].x) : 1073741820u;
+    imageStore(_21[registers._m4], int(_344), uvec4(floatBitsToUint(_338)));
+    imageStore(_21[registers._m4], int(_344 + 1u), uvec4(floatBitsToUint(_338)));
+    imageStore(_21[registers._m4], int(_344 + 2u), uvec4(floatBitsToUint(_338)));
+    imageStore(_21[registers._m4], int(_344 + 3u), uvec4(floatBitsToUint(_338)));
+    float _358 = float(_13._m0[_269].y / 4u);
+    uint _359 = 3u * 4u;
+    uint _364 = (_359 < _13._m0[_44].y) ? (_359 + _13._m0[_44].x) : 1073741820u;
+    imageStore(_21[registers._m4], int(_364), uvec4(floatBitsToUint(_358)));
+    imageStore(_21[registers._m4], int(_364 + 1u), uvec4(floatBitsToUint(_358)));
+    imageStore(_21[registers._m4], int(_364 + 2u), uvec4(floatBitsToUint(_358)));
+    imageStore(_21[registers._m4], int(_364 + 3u), uvec4(floatBitsToUint(_358)));
 }
 
 
@@ -125,7 +122,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 385
+; Bound: 378
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
@@ -141,7 +138,7 @@ OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint GLCompute %3 "main" %63
+OpEntryPoint GLCompute %3 "main" %59
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -169,14 +166,14 @@ OpDecorate %21 DescriptorSet 4
 OpDecorate %21 Binding 0
 OpDecorate %24 DescriptorSet 4
 OpDecorate %24 Binding 0
-OpDecorate %63 BuiltIn GlobalInvocationId
-OpDecorate %225 NonUniform
-OpDecorate %226 NonUniform
-OpDecorate %274 NonUniform
-OpDecorate %275 NonUniform
-OpDecorate %323 NonUniform
-OpDecorate %324 NonUniform
-OpDecorate %333 NonUniform
+OpDecorate %59 BuiltIn GlobalInvocationId
+OpDecorate %221 NonUniform
+OpDecorate %222 NonUniform
+OpDecorate %269 NonUniform
+OpDecorate %270 NonUniform
+OpDecorate %317 NonUniform
+OpDecorate %318 NonUniform
+OpDecorate %326 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -206,28 +203,27 @@ OpDecorate %333 NonUniform
 %35 = OpConstant %5 3
 %36 = OpTypePointer StorageBuffer %9
 %38 = OpConstant %5 0
-%41 = OpConstantComposite %9 %32 %32
-%50 = OpTypePointer UniformConstant %14
-%53 = OpConstant %5 1
-%61 = OpTypeVector %5 3
-%62 = OpTypePointer Input %61
-%63 = OpVariable %62 Input
-%64 = OpTypePointer Input %5
-%76 = OpTypeBool
-%79 = OpConstant %5 1073741820
-%80 = OpTypeVector %5 4
-%93 = OpTypeFloat 32
-%94 = OpTypeVector %93 4
-%101 = OpConstant %5 1024
-%144 = OpConstant %5 2048
-%168 = OpTypePointer Image %5
-%171 = OpConstant %5 40
-%180 = OpConstant %5 50
-%342 = OpConstant %5 70
+%47 = OpTypePointer UniformConstant %14
+%50 = OpConstant %5 1
+%57 = OpTypeVector %5 3
+%58 = OpTypePointer Input %57
+%59 = OpVariable %58 Input
+%60 = OpTypePointer Input %5
+%72 = OpTypeBool
+%75 = OpConstant %5 1073741820
+%76 = OpTypeVector %5 4
+%89 = OpTypeFloat 32
+%90 = OpTypeVector %89 4
+%97 = OpConstant %5 1024
+%140 = OpConstant %5 2048
+%164 = OpTypePointer Image %5
+%167 = OpConstant %5 40
+%176 = OpConstant %5 50
+%335 = OpConstant %5 70
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %383
-%383 = OpLabel
+OpBranch %376
+%376 = OpLabel
 %28 = OpAccessChain %27 %8 %29
 %30 = OpLoad %5 %28
 %31 = OpIAdd %5 %30 %32
@@ -236,363 +232,357 @@ OpBranch %383
 %34 = OpGroupNonUniformBroadcastFirst %5 %35 %31
 %37 = OpAccessChain %36 %13 %38 %34
 %39 = OpLoad %9 %37
-%40 = OpShiftRightLogical %9 %39 %41
-%43 = OpAccessChain %27 %8 %29
-%44 = OpLoad %5 %43
-%42 = OpAccessChain %25 %21 %44
-%45 = OpLoad %18 %42
-%46 = OpGroupNonUniformBroadcastFirst %5 %35 %44
-%47 = OpAccessChain %36 %13 %38 %46
-%48 = OpLoad %9 %47
-%49 = OpShiftRightLogical %9 %48 %41
-%52 = OpAccessChain %27 %8 %53
-%54 = OpLoad %5 %52
-%55 = OpIAdd %5 %54 %53
-%51 = OpAccessChain %50 %17 %55
-%56 = OpLoad %14 %51
-%57 = OpGroupNonUniformBroadcastFirst %5 %35 %55
-%58 = OpAccessChain %36 %13 %38 %57
-%59 = OpLoad %9 %58
-%60 = OpShiftRightLogical %9 %59 %41
-%65 = OpAccessChain %64 %63 %38
+%41 = OpAccessChain %27 %8 %29
+%42 = OpLoad %5 %41
+%40 = OpAccessChain %25 %21 %42
+%43 = OpLoad %18 %40
+%44 = OpGroupNonUniformBroadcastFirst %5 %35 %42
+%45 = OpAccessChain %36 %13 %38 %44
+%46 = OpLoad %9 %45
+%49 = OpAccessChain %27 %8 %50
+%51 = OpLoad %5 %49
+%52 = OpIAdd %5 %51 %50
+%48 = OpAccessChain %47 %17 %52
+%53 = OpLoad %14 %48
+%54 = OpGroupNonUniformBroadcastFirst %5 %35 %52
+%55 = OpAccessChain %36 %13 %38 %54
+%56 = OpLoad %9 %55
+%61 = OpAccessChain %60 %59 %38
+%62 = OpLoad %5 %61
+%63 = OpAccessChain %60 %59 %50
+%64 = OpLoad %5 %63
+%65 = OpAccessChain %60 %59 %32
 %66 = OpLoad %5 %65
-%67 = OpAccessChain %64 %63 %53
-%68 = OpLoad %5 %67
-%69 = OpAccessChain %64 %63 %32
-%70 = OpLoad %5 %69
-%71 = OpIAdd %5 %66 %29
-%72 = OpIMul %5 %71 %29
-%73 = OpCompositeExtract %5 %49 0
-%74 = OpCompositeExtract %5 %49 1
-%75 = OpIAdd %5 %72 %73
-%77 = OpULessThan %76 %72 %74
-%78 = OpSelect %5 %77 %75 %79
-%81 = OpImageRead %80 %45 %78
-%82 = OpCompositeExtract %5 %81 0
-%84 = OpIAdd %5 %78 %53
-%83 = OpImageRead %80 %45 %84
-%85 = OpCompositeExtract %5 %83 0
-%87 = OpIAdd %5 %78 %32
-%86 = OpImageRead %80 %45 %87
-%88 = OpCompositeExtract %5 %86 0
-%90 = OpIAdd %5 %78 %35
-%89 = OpImageRead %80 %45 %90
-%91 = OpCompositeExtract %5 %89 0
-%92 = OpCompositeConstruct %80 %82 %85 %88 %91
-%95 = OpBitcast %94 %92
-%96 = OpCompositeExtract %93 %95 0
-%97 = OpCompositeExtract %93 %95 1
-%98 = OpCompositeExtract %93 %95 2
-%99 = OpCompositeExtract %93 %95 3
-%100 = OpIAdd %5 %66 %101
-%102 = OpIMul %5 %100 %29
-%103 = OpCompositeExtract %5 %49 0
-%104 = OpCompositeExtract %5 %49 1
-%105 = OpIAdd %5 %102 %103
-%106 = OpULessThan %76 %102 %104
-%107 = OpSelect %5 %106 %105 %79
-%108 = OpBitcast %5 %96
-%109 = OpBitcast %5 %97
-%110 = OpBitcast %5 %98
-%111 = OpBitcast %5 %99
-%112 = OpCompositeConstruct %80 %108 %108 %108 %108
-OpImageWrite %45 %107 %112
-%113 = OpCompositeConstruct %80 %109 %109 %109 %109
-%114 = OpIAdd %5 %107 %53
-OpImageWrite %45 %114 %113
-%115 = OpCompositeConstruct %80 %110 %110 %110 %110
-%116 = OpIAdd %5 %107 %32
-OpImageWrite %45 %116 %115
-%117 = OpCompositeConstruct %80 %111 %111 %111 %111
-%118 = OpIAdd %5 %107 %35
-OpImageWrite %45 %118 %117
-%119 = OpIAdd %5 %66 %32
-%120 = OpIMul %5 %119 %29
-%121 = OpCompositeExtract %5 %60 0
-%122 = OpCompositeExtract %5 %60 1
-%123 = OpIAdd %5 %120 %121
-%124 = OpULessThan %76 %120 %122
-%125 = OpSelect %5 %124 %123 %79
-%126 = OpImageFetch %80 %56 %125
-%127 = OpCompositeExtract %5 %126 0
-%129 = OpIAdd %5 %125 %53
-%128 = OpImageFetch %80 %56 %129
-%130 = OpCompositeExtract %5 %128 0
-%132 = OpIAdd %5 %125 %32
-%131 = OpImageFetch %80 %56 %132
-%133 = OpCompositeExtract %5 %131 0
-%135 = OpIAdd %5 %125 %35
-%134 = OpImageFetch %80 %56 %135
-%136 = OpCompositeExtract %5 %134 0
-%137 = OpCompositeConstruct %80 %127 %130 %133 %136
-%138 = OpBitcast %94 %137
-%139 = OpCompositeExtract %93 %138 0
-%140 = OpCompositeExtract %93 %138 1
-%141 = OpCompositeExtract %93 %138 2
-%142 = OpCompositeExtract %93 %138 3
-%143 = OpIAdd %5 %66 %144
-%145 = OpIMul %5 %143 %29
-%146 = OpCompositeExtract %5 %49 0
-%147 = OpCompositeExtract %5 %49 1
-%148 = OpIAdd %5 %145 %146
-%149 = OpULessThan %76 %145 %147
-%150 = OpSelect %5 %149 %148 %79
-%151 = OpBitcast %5 %139
-%152 = OpBitcast %5 %140
-%153 = OpBitcast %5 %141
-%154 = OpBitcast %5 %142
-%155 = OpCompositeConstruct %80 %151 %151 %151 %151
-OpImageWrite %45 %150 %155
-%156 = OpCompositeConstruct %80 %152 %152 %152 %152
-%157 = OpIAdd %5 %150 %53
-OpImageWrite %45 %157 %156
-%158 = OpCompositeConstruct %80 %153 %153 %153 %153
-%159 = OpIAdd %5 %150 %32
-OpImageWrite %45 %159 %158
-%160 = OpCompositeConstruct %80 %154 %154 %154 %154
-%161 = OpIAdd %5 %150 %35
-OpImageWrite %45 %161 %160
-%162 = OpShiftLeftLogical %5 %66 %32
-%163 = OpCompositeExtract %5 %40 0
-%164 = OpCompositeExtract %5 %40 1
-%165 = OpIAdd %5 %66 %163
-%166 = OpULessThan %76 %66 %164
-%167 = OpSelect %5 %166 %165 %79
-%169 = OpImageTexelPointer %168 %26 %167 %38
-%170 = OpAtomicIAdd %5 %169 %53 %38 %171
-%172 = OpShiftLeftLogical %5 %68 %32
-%173 = OpCompositeExtract %5 %40 0
-%174 = OpCompositeExtract %5 %40 1
-%175 = OpIAdd %5 %68 %173
-%176 = OpULessThan %76 %68 %174
-%177 = OpSelect %5 %176 %175 %79
-%178 = OpImageTexelPointer %168 %26 %177 %38
-%179 = OpAtomicCompareExchange %5 %178 %53 %38 %38 %180 %171
-%181 = OpCompositeExtract %5 %49 1
-%182 = OpUDiv %5 %181 %29
-%183 = OpConvertUToF %93 %182
-%184 = OpIMul %5 %38 %29
-%185 = OpCompositeExtract %5 %49 0
-%186 = OpCompositeExtract %5 %49 1
-%187 = OpIAdd %5 %184 %185
-%188 = OpULessThan %76 %184 %186
-%189 = OpSelect %5 %188 %187 %79
-%190 = OpBitcast %5 %183
-%191 = OpBitcast %5 %183
-%192 = OpBitcast %5 %183
-%193 = OpBitcast %5 %183
-%194 = OpCompositeConstruct %80 %190 %190 %190 %190
-OpImageWrite %45 %189 %194
-%195 = OpCompositeConstruct %80 %191 %191 %191 %191
-%196 = OpIAdd %5 %189 %53
-OpImageWrite %45 %196 %195
-%197 = OpCompositeConstruct %80 %192 %192 %192 %192
-%198 = OpIAdd %5 %189 %32
-OpImageWrite %45 %198 %197
-%199 = OpCompositeConstruct %80 %193 %193 %193 %193
-%200 = OpIAdd %5 %189 %35
-OpImageWrite %45 %200 %199
-%201 = OpCompositeExtract %5 %60 1
-%202 = OpUDiv %5 %201 %29
-%203 = OpConvertUToF %93 %202
-%204 = OpIMul %5 %53 %29
-%205 = OpCompositeExtract %5 %49 0
-%206 = OpCompositeExtract %5 %49 1
-%207 = OpIAdd %5 %204 %205
-%208 = OpULessThan %76 %204 %206
-%209 = OpSelect %5 %208 %207 %79
-%210 = OpBitcast %5 %203
-%211 = OpBitcast %5 %203
-%212 = OpBitcast %5 %203
-%213 = OpBitcast %5 %203
-%214 = OpCompositeConstruct %80 %210 %210 %210 %210
-OpImageWrite %45 %209 %214
-%215 = OpCompositeConstruct %80 %211 %211 %211 %211
-%216 = OpIAdd %5 %209 %53
-OpImageWrite %45 %216 %215
-%217 = OpCompositeConstruct %80 %212 %212 %212 %212
-%218 = OpIAdd %5 %209 %32
-OpImageWrite %45 %218 %217
-%219 = OpCompositeConstruct %80 %213 %213 %213 %213
-%220 = OpIAdd %5 %209 %35
-OpImageWrite %45 %220 %219
-%221 = OpIAdd %5 %70 %38
-%223 = OpAccessChain %27 %8 %29
-%224 = OpLoad %5 %223
-%225 = OpIAdd %5 %224 %221
-%222 = OpAccessChain %25 %21 %225
-%226 = OpLoad %18 %222
-%227 = OpAccessChain %36 %13 %38 %225
-%228 = OpLoad %9 %227
-%229 = OpShiftRightLogical %9 %228 %41
-%230 = OpIMul %5 %71 %29
-%231 = OpCompositeExtract %5 %229 0
-%232 = OpCompositeExtract %5 %229 1
-%233 = OpIAdd %5 %230 %231
-%234 = OpULessThan %76 %230 %232
-%235 = OpSelect %5 %234 %233 %79
-%236 = OpImageRead %80 %226 %235
-%237 = OpCompositeExtract %5 %236 0
-%239 = OpIAdd %5 %235 %53
-%238 = OpImageRead %80 %226 %239
-%240 = OpCompositeExtract %5 %238 0
-%242 = OpIAdd %5 %235 %32
-%241 = OpImageRead %80 %226 %242
-%243 = OpCompositeExtract %5 %241 0
-%245 = OpIAdd %5 %235 %35
-%244 = OpImageRead %80 %226 %245
-%246 = OpCompositeExtract %5 %244 0
-%247 = OpCompositeConstruct %80 %237 %240 %243 %246
-%248 = OpBitcast %94 %247
-%249 = OpCompositeExtract %93 %248 0
-%250 = OpCompositeExtract %93 %248 1
-%251 = OpCompositeExtract %93 %248 2
-%252 = OpCompositeExtract %93 %248 3
-%253 = OpIMul %5 %100 %29
-%254 = OpCompositeExtract %5 %229 0
-%255 = OpCompositeExtract %5 %229 1
-%256 = OpIAdd %5 %253 %254
-%257 = OpULessThan %76 %253 %255
-%258 = OpSelect %5 %257 %256 %79
-%259 = OpBitcast %5 %249
-%260 = OpBitcast %5 %250
-%261 = OpBitcast %5 %251
-%262 = OpBitcast %5 %252
-%263 = OpCompositeConstruct %80 %259 %259 %259 %259
-OpImageWrite %226 %258 %263
-%264 = OpCompositeConstruct %80 %260 %260 %260 %260
-%265 = OpIAdd %5 %258 %53
-OpImageWrite %226 %265 %264
-%266 = OpCompositeConstruct %80 %261 %261 %261 %261
-%267 = OpIAdd %5 %258 %32
-OpImageWrite %226 %267 %266
-%268 = OpCompositeConstruct %80 %262 %262 %262 %262
-%269 = OpIAdd %5 %258 %35
-OpImageWrite %226 %269 %268
-%270 = OpIAdd %5 %70 %38
-%272 = OpAccessChain %27 %8 %53
-%273 = OpLoad %5 %272
-%274 = OpIAdd %5 %273 %270
-%271 = OpAccessChain %50 %17 %274
-%275 = OpLoad %14 %271
-%276 = OpAccessChain %36 %13 %38 %274
-%277 = OpLoad %9 %276
-%278 = OpShiftRightLogical %9 %277 %41
-%279 = OpIMul %5 %71 %29
-%280 = OpCompositeExtract %5 %278 0
-%281 = OpCompositeExtract %5 %278 1
-%282 = OpIAdd %5 %279 %280
-%283 = OpULessThan %76 %279 %281
-%284 = OpSelect %5 %283 %282 %79
-%285 = OpImageFetch %80 %275 %284
-%286 = OpCompositeExtract %5 %285 0
-%288 = OpIAdd %5 %284 %53
-%287 = OpImageFetch %80 %275 %288
+%67 = OpIAdd %5 %62 %29
+%68 = OpIMul %5 %67 %29
+%69 = OpCompositeExtract %5 %46 0
+%70 = OpCompositeExtract %5 %46 1
+%71 = OpIAdd %5 %68 %69
+%73 = OpULessThan %72 %68 %70
+%74 = OpSelect %5 %73 %71 %75
+%77 = OpImageRead %76 %43 %74
+%78 = OpCompositeExtract %5 %77 0
+%80 = OpIAdd %5 %74 %50
+%79 = OpImageRead %76 %43 %80
+%81 = OpCompositeExtract %5 %79 0
+%83 = OpIAdd %5 %74 %32
+%82 = OpImageRead %76 %43 %83
+%84 = OpCompositeExtract %5 %82 0
+%86 = OpIAdd %5 %74 %35
+%85 = OpImageRead %76 %43 %86
+%87 = OpCompositeExtract %5 %85 0
+%88 = OpCompositeConstruct %76 %78 %81 %84 %87
+%91 = OpBitcast %90 %88
+%92 = OpCompositeExtract %89 %91 0
+%93 = OpCompositeExtract %89 %91 1
+%94 = OpCompositeExtract %89 %91 2
+%95 = OpCompositeExtract %89 %91 3
+%96 = OpIAdd %5 %62 %97
+%98 = OpIMul %5 %96 %29
+%99 = OpCompositeExtract %5 %46 0
+%100 = OpCompositeExtract %5 %46 1
+%101 = OpIAdd %5 %98 %99
+%102 = OpULessThan %72 %98 %100
+%103 = OpSelect %5 %102 %101 %75
+%104 = OpBitcast %5 %92
+%105 = OpBitcast %5 %93
+%106 = OpBitcast %5 %94
+%107 = OpBitcast %5 %95
+%108 = OpCompositeConstruct %76 %104 %104 %104 %104
+OpImageWrite %43 %103 %108
+%109 = OpCompositeConstruct %76 %105 %105 %105 %105
+%110 = OpIAdd %5 %103 %50
+OpImageWrite %43 %110 %109
+%111 = OpCompositeConstruct %76 %106 %106 %106 %106
+%112 = OpIAdd %5 %103 %32
+OpImageWrite %43 %112 %111
+%113 = OpCompositeConstruct %76 %107 %107 %107 %107
+%114 = OpIAdd %5 %103 %35
+OpImageWrite %43 %114 %113
+%115 = OpIAdd %5 %62 %32
+%116 = OpIMul %5 %115 %29
+%117 = OpCompositeExtract %5 %56 0
+%118 = OpCompositeExtract %5 %56 1
+%119 = OpIAdd %5 %116 %117
+%120 = OpULessThan %72 %116 %118
+%121 = OpSelect %5 %120 %119 %75
+%122 = OpImageFetch %76 %53 %121
+%123 = OpCompositeExtract %5 %122 0
+%125 = OpIAdd %5 %121 %50
+%124 = OpImageFetch %76 %53 %125
+%126 = OpCompositeExtract %5 %124 0
+%128 = OpIAdd %5 %121 %32
+%127 = OpImageFetch %76 %53 %128
+%129 = OpCompositeExtract %5 %127 0
+%131 = OpIAdd %5 %121 %35
+%130 = OpImageFetch %76 %53 %131
+%132 = OpCompositeExtract %5 %130 0
+%133 = OpCompositeConstruct %76 %123 %126 %129 %132
+%134 = OpBitcast %90 %133
+%135 = OpCompositeExtract %89 %134 0
+%136 = OpCompositeExtract %89 %134 1
+%137 = OpCompositeExtract %89 %134 2
+%138 = OpCompositeExtract %89 %134 3
+%139 = OpIAdd %5 %62 %140
+%141 = OpIMul %5 %139 %29
+%142 = OpCompositeExtract %5 %46 0
+%143 = OpCompositeExtract %5 %46 1
+%144 = OpIAdd %5 %141 %142
+%145 = OpULessThan %72 %141 %143
+%146 = OpSelect %5 %145 %144 %75
+%147 = OpBitcast %5 %135
+%148 = OpBitcast %5 %136
+%149 = OpBitcast %5 %137
+%150 = OpBitcast %5 %138
+%151 = OpCompositeConstruct %76 %147 %147 %147 %147
+OpImageWrite %43 %146 %151
+%152 = OpCompositeConstruct %76 %148 %148 %148 %148
+%153 = OpIAdd %5 %146 %50
+OpImageWrite %43 %153 %152
+%154 = OpCompositeConstruct %76 %149 %149 %149 %149
+%155 = OpIAdd %5 %146 %32
+OpImageWrite %43 %155 %154
+%156 = OpCompositeConstruct %76 %150 %150 %150 %150
+%157 = OpIAdd %5 %146 %35
+OpImageWrite %43 %157 %156
+%158 = OpShiftLeftLogical %5 %62 %32
+%159 = OpCompositeExtract %5 %39 0
+%160 = OpCompositeExtract %5 %39 1
+%161 = OpIAdd %5 %62 %159
+%162 = OpULessThan %72 %62 %160
+%163 = OpSelect %5 %162 %161 %75
+%165 = OpImageTexelPointer %164 %26 %163 %38
+%166 = OpAtomicIAdd %5 %165 %50 %38 %167
+%168 = OpShiftLeftLogical %5 %64 %32
+%169 = OpCompositeExtract %5 %39 0
+%170 = OpCompositeExtract %5 %39 1
+%171 = OpIAdd %5 %64 %169
+%172 = OpULessThan %72 %64 %170
+%173 = OpSelect %5 %172 %171 %75
+%174 = OpImageTexelPointer %164 %26 %173 %38
+%175 = OpAtomicCompareExchange %5 %174 %50 %38 %38 %176 %167
+%177 = OpCompositeExtract %5 %46 1
+%178 = OpUDiv %5 %177 %29
+%179 = OpConvertUToF %89 %178
+%180 = OpIMul %5 %38 %29
+%181 = OpCompositeExtract %5 %46 0
+%182 = OpCompositeExtract %5 %46 1
+%183 = OpIAdd %5 %180 %181
+%184 = OpULessThan %72 %180 %182
+%185 = OpSelect %5 %184 %183 %75
+%186 = OpBitcast %5 %179
+%187 = OpBitcast %5 %179
+%188 = OpBitcast %5 %179
+%189 = OpBitcast %5 %179
+%190 = OpCompositeConstruct %76 %186 %186 %186 %186
+OpImageWrite %43 %185 %190
+%191 = OpCompositeConstruct %76 %187 %187 %187 %187
+%192 = OpIAdd %5 %185 %50
+OpImageWrite %43 %192 %191
+%193 = OpCompositeConstruct %76 %188 %188 %188 %188
+%194 = OpIAdd %5 %185 %32
+OpImageWrite %43 %194 %193
+%195 = OpCompositeConstruct %76 %189 %189 %189 %189
+%196 = OpIAdd %5 %185 %35
+OpImageWrite %43 %196 %195
+%197 = OpCompositeExtract %5 %56 1
+%198 = OpUDiv %5 %197 %29
+%199 = OpConvertUToF %89 %198
+%200 = OpIMul %5 %50 %29
+%201 = OpCompositeExtract %5 %46 0
+%202 = OpCompositeExtract %5 %46 1
+%203 = OpIAdd %5 %200 %201
+%204 = OpULessThan %72 %200 %202
+%205 = OpSelect %5 %204 %203 %75
+%206 = OpBitcast %5 %199
+%207 = OpBitcast %5 %199
+%208 = OpBitcast %5 %199
+%209 = OpBitcast %5 %199
+%210 = OpCompositeConstruct %76 %206 %206 %206 %206
+OpImageWrite %43 %205 %210
+%211 = OpCompositeConstruct %76 %207 %207 %207 %207
+%212 = OpIAdd %5 %205 %50
+OpImageWrite %43 %212 %211
+%213 = OpCompositeConstruct %76 %208 %208 %208 %208
+%214 = OpIAdd %5 %205 %32
+OpImageWrite %43 %214 %213
+%215 = OpCompositeConstruct %76 %209 %209 %209 %209
+%216 = OpIAdd %5 %205 %35
+OpImageWrite %43 %216 %215
+%217 = OpIAdd %5 %66 %38
+%219 = OpAccessChain %27 %8 %29
+%220 = OpLoad %5 %219
+%221 = OpIAdd %5 %220 %217
+%218 = OpAccessChain %25 %21 %221
+%222 = OpLoad %18 %218
+%223 = OpAccessChain %36 %13 %38 %221
+%224 = OpLoad %9 %223
+%225 = OpIMul %5 %67 %29
+%226 = OpCompositeExtract %5 %224 0
+%227 = OpCompositeExtract %5 %224 1
+%228 = OpIAdd %5 %225 %226
+%229 = OpULessThan %72 %225 %227
+%230 = OpSelect %5 %229 %228 %75
+%231 = OpImageRead %76 %222 %230
+%232 = OpCompositeExtract %5 %231 0
+%234 = OpIAdd %5 %230 %50
+%233 = OpImageRead %76 %222 %234
+%235 = OpCompositeExtract %5 %233 0
+%237 = OpIAdd %5 %230 %32
+%236 = OpImageRead %76 %222 %237
+%238 = OpCompositeExtract %5 %236 0
+%240 = OpIAdd %5 %230 %35
+%239 = OpImageRead %76 %222 %240
+%241 = OpCompositeExtract %5 %239 0
+%242 = OpCompositeConstruct %76 %232 %235 %238 %241
+%243 = OpBitcast %90 %242
+%244 = OpCompositeExtract %89 %243 0
+%245 = OpCompositeExtract %89 %243 1
+%246 = OpCompositeExtract %89 %243 2
+%247 = OpCompositeExtract %89 %243 3
+%248 = OpIMul %5 %96 %29
+%249 = OpCompositeExtract %5 %224 0
+%250 = OpCompositeExtract %5 %224 1
+%251 = OpIAdd %5 %248 %249
+%252 = OpULessThan %72 %248 %250
+%253 = OpSelect %5 %252 %251 %75
+%254 = OpBitcast %5 %244
+%255 = OpBitcast %5 %245
+%256 = OpBitcast %5 %246
+%257 = OpBitcast %5 %247
+%258 = OpCompositeConstruct %76 %254 %254 %254 %254
+OpImageWrite %222 %253 %258
+%259 = OpCompositeConstruct %76 %255 %255 %255 %255
+%260 = OpIAdd %5 %253 %50
+OpImageWrite %222 %260 %259
+%261 = OpCompositeConstruct %76 %256 %256 %256 %256
+%262 = OpIAdd %5 %253 %32
+OpImageWrite %222 %262 %261
+%263 = OpCompositeConstruct %76 %257 %257 %257 %257
+%264 = OpIAdd %5 %253 %35
+OpImageWrite %222 %264 %263
+%265 = OpIAdd %5 %66 %38
+%267 = OpAccessChain %27 %8 %50
+%268 = OpLoad %5 %267
+%269 = OpIAdd %5 %268 %265
+%266 = OpAccessChain %47 %17 %269
+%270 = OpLoad %14 %266
+%271 = OpAccessChain %36 %13 %38 %269
+%272 = OpLoad %9 %271
+%273 = OpIMul %5 %67 %29
+%274 = OpCompositeExtract %5 %272 0
+%275 = OpCompositeExtract %5 %272 1
+%276 = OpIAdd %5 %273 %274
+%277 = OpULessThan %72 %273 %275
+%278 = OpSelect %5 %277 %276 %75
+%279 = OpImageFetch %76 %270 %278
+%280 = OpCompositeExtract %5 %279 0
+%282 = OpIAdd %5 %278 %50
+%281 = OpImageFetch %76 %270 %282
+%283 = OpCompositeExtract %5 %281 0
+%285 = OpIAdd %5 %278 %32
+%284 = OpImageFetch %76 %270 %285
+%286 = OpCompositeExtract %5 %284 0
+%288 = OpIAdd %5 %278 %35
+%287 = OpImageFetch %76 %270 %288
 %289 = OpCompositeExtract %5 %287 0
-%291 = OpIAdd %5 %284 %32
-%290 = OpImageFetch %80 %275 %291
-%292 = OpCompositeExtract %5 %290 0
-%294 = OpIAdd %5 %284 %35
-%293 = OpImageFetch %80 %275 %294
-%295 = OpCompositeExtract %5 %293 0
-%296 = OpCompositeConstruct %80 %286 %289 %292 %295
-%297 = OpBitcast %94 %296
-%298 = OpCompositeExtract %93 %297 0
-%299 = OpCompositeExtract %93 %297 1
-%300 = OpCompositeExtract %93 %297 2
-%301 = OpCompositeExtract %93 %297 3
-%302 = OpIMul %5 %143 %29
-%303 = OpCompositeExtract %5 %229 0
-%304 = OpCompositeExtract %5 %229 1
-%305 = OpIAdd %5 %302 %303
-%306 = OpULessThan %76 %302 %304
-%307 = OpSelect %5 %306 %305 %79
-%308 = OpBitcast %5 %298
-%309 = OpBitcast %5 %299
-%310 = OpBitcast %5 %300
-%311 = OpBitcast %5 %301
-%312 = OpCompositeConstruct %80 %308 %308 %308 %308
-OpImageWrite %226 %307 %312
-%313 = OpCompositeConstruct %80 %309 %309 %309 %309
-%314 = OpIAdd %5 %307 %53
-OpImageWrite %226 %314 %313
-%315 = OpCompositeConstruct %80 %310 %310 %310 %310
-%316 = OpIAdd %5 %307 %32
-OpImageWrite %226 %316 %315
-%317 = OpCompositeConstruct %80 %311 %311 %311 %311
-%318 = OpIAdd %5 %307 %35
-OpImageWrite %226 %318 %317
-%319 = OpIAdd %5 %70 %38
-%321 = OpAccessChain %27 %8 %29
-%322 = OpLoad %5 %321
-%323 = OpIAdd %5 %322 %319
-%320 = OpAccessChain %25 %24 %323
-%324 = OpLoad %18 %320
-%325 = OpAccessChain %36 %13 %38 %323
-%326 = OpLoad %9 %325
-%327 = OpShiftRightLogical %9 %326 %41
-%328 = OpCompositeExtract %5 %327 0
-%329 = OpCompositeExtract %5 %327 1
-%330 = OpIAdd %5 %68 %328
-%331 = OpULessThan %76 %68 %329
-%332 = OpSelect %5 %331 %330 %79
-%333 = OpImageTexelPointer %168 %320 %332 %38
-%334 = OpAtomicIAdd %5 %333 %53 %38 %171
-%335 = OpCompositeExtract %5 %327 0
-%336 = OpCompositeExtract %5 %327 1
-%337 = OpIAdd %5 %68 %335
-%338 = OpULessThan %76 %68 %336
-%339 = OpSelect %5 %338 %337 %79
-%340 = OpImageTexelPointer %168 %320 %339 %38
-%341 = OpAtomicCompareExchange %5 %340 %53 %38 %38 %342 %171
-%343 = OpCompositeExtract %5 %229 1
-%344 = OpUDiv %5 %343 %29
-%345 = OpConvertUToF %93 %344
-%346 = OpIMul %5 %32 %29
-%347 = OpCompositeExtract %5 %49 0
-%348 = OpCompositeExtract %5 %49 1
-%349 = OpIAdd %5 %346 %347
-%350 = OpULessThan %76 %346 %348
-%351 = OpSelect %5 %350 %349 %79
-%352 = OpBitcast %5 %345
-%353 = OpBitcast %5 %345
-%354 = OpBitcast %5 %345
-%355 = OpBitcast %5 %345
-%356 = OpCompositeConstruct %80 %352 %352 %352 %352
-OpImageWrite %45 %351 %356
-%357 = OpCompositeConstruct %80 %353 %353 %353 %353
-%358 = OpIAdd %5 %351 %53
-OpImageWrite %45 %358 %357
-%359 = OpCompositeConstruct %80 %354 %354 %354 %354
-%360 = OpIAdd %5 %351 %32
-OpImageWrite %45 %360 %359
-%361 = OpCompositeConstruct %80 %355 %355 %355 %355
-%362 = OpIAdd %5 %351 %35
-OpImageWrite %45 %362 %361
-%363 = OpCompositeExtract %5 %278 1
-%364 = OpUDiv %5 %363 %29
-%365 = OpConvertUToF %93 %364
-%366 = OpIMul %5 %35 %29
-%367 = OpCompositeExtract %5 %49 0
-%368 = OpCompositeExtract %5 %49 1
-%369 = OpIAdd %5 %366 %367
-%370 = OpULessThan %76 %366 %368
-%371 = OpSelect %5 %370 %369 %79
-%372 = OpBitcast %5 %365
-%373 = OpBitcast %5 %365
-%374 = OpBitcast %5 %365
-%375 = OpBitcast %5 %365
-%376 = OpCompositeConstruct %80 %372 %372 %372 %372
-OpImageWrite %45 %371 %376
-%377 = OpCompositeConstruct %80 %373 %373 %373 %373
-%378 = OpIAdd %5 %371 %53
-OpImageWrite %45 %378 %377
-%379 = OpCompositeConstruct %80 %374 %374 %374 %374
-%380 = OpIAdd %5 %371 %32
-OpImageWrite %45 %380 %379
-%381 = OpCompositeConstruct %80 %375 %375 %375 %375
-%382 = OpIAdd %5 %371 %35
-OpImageWrite %45 %382 %381
+%290 = OpCompositeConstruct %76 %280 %283 %286 %289
+%291 = OpBitcast %90 %290
+%292 = OpCompositeExtract %89 %291 0
+%293 = OpCompositeExtract %89 %291 1
+%294 = OpCompositeExtract %89 %291 2
+%295 = OpCompositeExtract %89 %291 3
+%296 = OpIMul %5 %139 %29
+%297 = OpCompositeExtract %5 %224 0
+%298 = OpCompositeExtract %5 %224 1
+%299 = OpIAdd %5 %296 %297
+%300 = OpULessThan %72 %296 %298
+%301 = OpSelect %5 %300 %299 %75
+%302 = OpBitcast %5 %292
+%303 = OpBitcast %5 %293
+%304 = OpBitcast %5 %294
+%305 = OpBitcast %5 %295
+%306 = OpCompositeConstruct %76 %302 %302 %302 %302
+OpImageWrite %222 %301 %306
+%307 = OpCompositeConstruct %76 %303 %303 %303 %303
+%308 = OpIAdd %5 %301 %50
+OpImageWrite %222 %308 %307
+%309 = OpCompositeConstruct %76 %304 %304 %304 %304
+%310 = OpIAdd %5 %301 %32
+OpImageWrite %222 %310 %309
+%311 = OpCompositeConstruct %76 %305 %305 %305 %305
+%312 = OpIAdd %5 %301 %35
+OpImageWrite %222 %312 %311
+%313 = OpIAdd %5 %66 %38
+%315 = OpAccessChain %27 %8 %29
+%316 = OpLoad %5 %315
+%317 = OpIAdd %5 %316 %313
+%314 = OpAccessChain %25 %24 %317
+%318 = OpLoad %18 %314
+%319 = OpAccessChain %36 %13 %38 %317
+%320 = OpLoad %9 %319
+%321 = OpCompositeExtract %5 %320 0
+%322 = OpCompositeExtract %5 %320 1
+%323 = OpIAdd %5 %64 %321
+%324 = OpULessThan %72 %64 %322
+%325 = OpSelect %5 %324 %323 %75
+%326 = OpImageTexelPointer %164 %314 %325 %38
+%327 = OpAtomicIAdd %5 %326 %50 %38 %167
+%328 = OpCompositeExtract %5 %320 0
+%329 = OpCompositeExtract %5 %320 1
+%330 = OpIAdd %5 %64 %328
+%331 = OpULessThan %72 %64 %329
+%332 = OpSelect %5 %331 %330 %75
+%333 = OpImageTexelPointer %164 %314 %332 %38
+%334 = OpAtomicCompareExchange %5 %333 %50 %38 %38 %335 %167
+%336 = OpCompositeExtract %5 %224 1
+%337 = OpUDiv %5 %336 %29
+%338 = OpConvertUToF %89 %337
+%339 = OpIMul %5 %32 %29
+%340 = OpCompositeExtract %5 %46 0
+%341 = OpCompositeExtract %5 %46 1
+%342 = OpIAdd %5 %339 %340
+%343 = OpULessThan %72 %339 %341
+%344 = OpSelect %5 %343 %342 %75
+%345 = OpBitcast %5 %338
+%346 = OpBitcast %5 %338
+%347 = OpBitcast %5 %338
+%348 = OpBitcast %5 %338
+%349 = OpCompositeConstruct %76 %345 %345 %345 %345
+OpImageWrite %43 %344 %349
+%350 = OpCompositeConstruct %76 %346 %346 %346 %346
+%351 = OpIAdd %5 %344 %50
+OpImageWrite %43 %351 %350
+%352 = OpCompositeConstruct %76 %347 %347 %347 %347
+%353 = OpIAdd %5 %344 %32
+OpImageWrite %43 %353 %352
+%354 = OpCompositeConstruct %76 %348 %348 %348 %348
+%355 = OpIAdd %5 %344 %35
+OpImageWrite %43 %355 %354
+%356 = OpCompositeExtract %5 %272 1
+%357 = OpUDiv %5 %356 %29
+%358 = OpConvertUToF %89 %357
+%359 = OpIMul %5 %35 %29
+%360 = OpCompositeExtract %5 %46 0
+%361 = OpCompositeExtract %5 %46 1
+%362 = OpIAdd %5 %359 %360
+%363 = OpULessThan %72 %359 %361
+%364 = OpSelect %5 %363 %362 %75
+%365 = OpBitcast %5 %358
+%366 = OpBitcast %5 %358
+%367 = OpBitcast %5 %358
+%368 = OpBitcast %5 %358
+%369 = OpCompositeConstruct %76 %365 %365 %365 %365
+OpImageWrite %43 %364 %369
+%370 = OpCompositeConstruct %76 %366 %366 %366 %366
+%371 = OpIAdd %5 %364 %50
+OpImageWrite %43 %371 %370
+%372 = OpCompositeConstruct %76 %367 %367 %367 %367
+%373 = OpIAdd %5 %364 %32
+OpImageWrite %43 %373 %372
+%374 = OpCompositeConstruct %76 %368 %368 %368 %368
+%375 = OpIAdd %5 %364 %35
+OpImageWrite %43 %375 %374
 OpReturn
 OpFunctionEnd
 #endif
