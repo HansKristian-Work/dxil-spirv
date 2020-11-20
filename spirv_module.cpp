@@ -129,6 +129,9 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInHitKindKHR:
 		return builder.makeUintType(32);
 
+	case spv::BuiltInHelperInvocation:
+		return builder.makeBoolType();
+
 	default:
 		return 0;
 	}
@@ -393,7 +396,35 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	// Emit opcodes.
 	for (auto *op : ir.operations)
 	{
-		if (op->op == spv::OpDemoteToHelperInvocationEXT && !caps.supports_demote)
+		if (op->op == spv::OpIsHelperInvocationEXT && !caps.supports_demote)
+		{
+			spv::Id helper_var_id = get_builtin_shader_input(spv::BuiltInHelperInvocation);
+
+			if (discard_state_var_id)
+			{
+				auto is_helper = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpLoad);
+				is_helper->addIdOperand(helper_var_id);
+				spv::Id is_helper_id = is_helper->getResultId();
+				bb->addInstruction(std::move(is_helper));
+
+				auto loaded_var = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpLoad);
+				loaded_var->addIdOperand(discard_state_var_id);
+				spv::Id is_discard_id = loaded_var->getResultId();
+				bb->addInstruction(std::move(loaded_var));
+
+				auto or_inst = std::make_unique<spv::Instruction>(op->id, op->type_id, spv::OpLogicalOr);
+				or_inst->addIdOperand(is_helper_id);
+				or_inst->addIdOperand(is_discard_id);
+				bb->addInstruction(std::move(or_inst));
+			}
+			else
+			{
+				auto is_helper = std::make_unique<spv::Instruction>(op->id, op->type_id, spv::OpLoad);
+				is_helper->addIdOperand(helper_var_id);
+				bb->addInstruction(std::move(is_helper));
+			}
+		}
+		else if (op->op == spv::OpDemoteToHelperInvocationEXT && !caps.supports_demote)
 		{
 			if (op->num_arguments)
 				build_discard_call_early_cond(op->arguments[0]);
@@ -408,7 +439,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else
 		{
-			if (op->op == spv::OpDemoteToHelperInvocationEXT)
+			if (op->op == spv::OpDemoteToHelperInvocationEXT || op->op == spv::OpIsHelperInvocationEXT)
 			{
 				builder.addExtension("SPV_EXT_demote_to_helper_invocation");
 				builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
