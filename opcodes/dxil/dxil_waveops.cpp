@@ -59,10 +59,32 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	auto *op =
-	    impl.allocate(spv::OpGroupNonUniformBallot, instruction, builder.makeVectorType(builder.makeUintType(32), 4));
+	spv::Id bool_value;
+
+	if (impl.execution_model == spv::ExecutionModelFragment)
+	{
+		auto *is_helper = impl.allocate(spv::OpIsHelperInvocationEXT, builder.makeBoolType());
+		impl.add(is_helper);
+
+		auto *is_active = impl.allocate(spv::OpLogicalNot, builder.makeBoolType());
+		is_active->add_id(is_helper->id);
+		impl.add(is_active);
+
+		auto *is_active_ballot = impl.allocate(spv::OpLogicalAnd, builder.makeBoolType());
+		is_active_ballot->add_ids({ impl.get_id_for_value(instruction->getOperand(1)), is_active->id });
+		impl.add(is_active_ballot);
+
+		bool_value = is_active_ballot->id;
+	}
+	else
+	{
+		bool_value = impl.get_id_for_value(instruction->getOperand(1));
+	}
+
+	auto *op = impl.allocate(spv::OpGroupNonUniformBallot, instruction,
+	                         builder.makeVectorType(builder.makeUintType(32), 4));
 	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	op->add_id(bool_value);
 
 	impl.add(op);
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
