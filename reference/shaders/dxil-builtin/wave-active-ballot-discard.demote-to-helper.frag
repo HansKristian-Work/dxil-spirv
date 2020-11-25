@@ -11,12 +11,11 @@ void main()
     {
         demote;
     }
-    bool _17 = helperInvocationEXT();
-    uvec4 _20 = subgroupBallot((INDEX < 100u) && (!_17));
-    SV_Target.x = _20.x;
-    SV_Target.y = _20.y;
-    SV_Target.z = _20.z;
-    SV_Target.w = _20.w;
+    uvec4 _17 = subgroupBallot(INDEX < 100u);
+    SV_Target.x = _17.x;
+    SV_Target.y = _17.y;
+    SV_Target.z = _17.z;
+    SV_Target.w = _17.w;
 }
 
 
@@ -25,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 38
+; Bound: 35
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
@@ -51,40 +50,37 @@ OpDecorate %10 Location 0
 %12 = OpTypeBool
 %14 = OpConstant %5 40
 %16 = OpConstant %5 100
-%21 = OpConstant %5 3
-%26 = OpTypePointer Output %5
-%28 = OpConstant %5 0
-%30 = OpConstant %5 1
-%32 = OpConstant %5 2
+%18 = OpConstant %5 3
+%23 = OpTypePointer Output %5
+%25 = OpConstant %5 0
+%27 = OpConstant %5 1
+%29 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %34
-%34 = OpLabel
+OpBranch %31
+%31 = OpLabel
 %11 = OpLoad %5 %7
 %13 = OpIEqual %12 %11 %14
-OpSelectionMerge %36 None
-OpBranchConditional %13 %35 %36
-%35 = OpLabel
+OpSelectionMerge %33 None
+OpBranchConditional %13 %32 %33
+%32 = OpLabel
 OpDemoteToHelperInvocationEXT
-OpBranch %36
-%36 = OpLabel
+OpBranch %33
+%33 = OpLabel
 %15 = OpULessThan %12 %11 %16
-%17 = OpIsHelperInvocationEXT %12
-%18 = OpLogicalNot %12 %17
-%19 = OpLogicalAnd %12 %15 %18
-%20 = OpGroupNonUniformBallot %8 %21 %19
-%22 = OpCompositeExtract %5 %20 0
-%23 = OpCompositeExtract %5 %20 1
-%24 = OpCompositeExtract %5 %20 2
-%25 = OpCompositeExtract %5 %20 3
-%27 = OpAccessChain %26 %10 %28
-OpStore %27 %22
-%29 = OpAccessChain %26 %10 %30
-OpStore %29 %23
-%31 = OpAccessChain %26 %10 %32
-OpStore %31 %24
-%33 = OpAccessChain %26 %10 %21
-OpStore %33 %25
+%17 = OpGroupNonUniformBallot %8 %18 %15
+%19 = OpCompositeExtract %5 %17 0
+%20 = OpCompositeExtract %5 %17 1
+%21 = OpCompositeExtract %5 %17 2
+%22 = OpCompositeExtract %5 %17 3
+%24 = OpAccessChain %23 %10 %25
+OpStore %24 %19
+%26 = OpAccessChain %23 %10 %27
+OpStore %26 %20
+%28 = OpAccessChain %23 %10 %29
+OpStore %28 %21
+%30 = OpAccessChain %23 %10 %18
+OpStore %30 %22
 OpReturn
 OpFunctionEnd
 #endif

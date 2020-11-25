@@ -61,6 +61,9 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto &builder = impl.builder();
 	spv::Id bool_value;
 
+	// Disable this path for now. It appears to cause GPU hangs in some very weird cases.
+	// Near-impossible to debug, and it should be safer to not mess with lanes here anyways.
+#if 0
 	if (impl.execution_model == spv::ExecutionModelFragment)
 	{
 		auto *is_helper = impl.allocate(spv::OpIsHelperInvocationEXT, builder.makeBoolType());
@@ -77,6 +80,7 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		bool_value = is_active_ballot->id;
 	}
 	else
+#endif
 	{
 		bool_value = impl.get_id_for_value(instruction->getOperand(1));
 	}
