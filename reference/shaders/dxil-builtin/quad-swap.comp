@@ -1,5 +1,5 @@
 #version 460
-#extension GL_KHR_shader_subgroup_shuffle : require
+#extension GL_KHR_shader_subgroup_quad : require
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32ui) uniform readonly uimageBuffer _8;
@@ -11,9 +11,9 @@ void main()
     uint _23 = _22.x;
     uint _31 = gl_GlobalInvocationID.x * 4u;
     imageStore(_9, int(_31), uvec4(_23));
-    imageStore(_9, int(_31 + 1u), uvec4(subgroupShuffleXor(_23, 1u)));
-    imageStore(_9, int(_31 + 2u), uvec4(subgroupShuffleXor(_23, 2u)));
-    imageStore(_9, int(_31 + 3u), uvec4(subgroupShuffleXor(_23, 3u)));
+    imageStore(_9, int(_31 + 1u), uvec4(subgroupQuadSwapHorizontal(_23)));
+    imageStore(_9, int(_31 + 2u), uvec4(subgroupQuadSwapVertical(_23)));
+    imageStore(_9, int(_31 + 3u), uvec4(subgroupQuadSwapDiagonal(_23)));
 }
 
 
@@ -26,7 +26,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpCapability GroupNonUniformShuffle
+OpCapability GroupNonUniformQuad
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %14
 OpExecutionMode %3 LocalSize 64 1 1
@@ -53,7 +53,7 @@ OpDecorate %14 BuiltIn GlobalInvocationId
 %20 = OpConstant %5 2
 %21 = OpTypeVector %5 4
 %25 = OpConstant %5 3
-%26 = OpConstant %5 1
+%27 = OpConstant %5 1
 %30 = OpConstant %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
@@ -66,17 +66,17 @@ OpBranch %39
 %19 = OpShiftLeftLogical %5 %18 %20
 %22 = OpImageRead %21 %11 %18
 %23 = OpCompositeExtract %5 %22 0
-%24 = OpGroupNonUniformShuffleXor %5 %25 %23 %26
-%27 = OpGroupNonUniformShuffleXor %5 %25 %23 %20
-%28 = OpGroupNonUniformShuffleXor %5 %25 %23 %25
+%24 = OpGroupNonUniformQuadSwap %5 %25 %23 %17
+%26 = OpGroupNonUniformQuadSwap %5 %25 %23 %27
+%28 = OpGroupNonUniformQuadSwap %5 %25 %23 %20
 %29 = OpShiftLeftLogical %5 %18 %30
 %31 = OpIMul %5 %18 %30
 %32 = OpCompositeConstruct %21 %23 %23 %23 %23
 OpImageWrite %10 %31 %32
 %33 = OpCompositeConstruct %21 %24 %24 %24 %24
-%34 = OpIAdd %5 %31 %26
+%34 = OpIAdd %5 %31 %27
 OpImageWrite %10 %34 %33
-%35 = OpCompositeConstruct %21 %27 %27 %27 %27
+%35 = OpCompositeConstruct %21 %26 %26 %26 %26
 %36 = OpIAdd %5 %31 %20
 OpImageWrite %10 %36 %35
 %37 = OpCompositeConstruct %21 %28 %28 %28 %28

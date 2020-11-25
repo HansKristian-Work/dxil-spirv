@@ -1,4 +1,5 @@
 #version 460
+#extension GL_KHR_shader_subgroup_quad : require
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_KHR_shader_subgroup_shuffle : require
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -10,9 +11,9 @@ void main()
 {
     uvec4 _22 = imageLoad(_8, int(gl_GlobalInvocationID.x));
     uint _23 = _22.x;
-    uint _38 = gl_GlobalInvocationID.x * 2u;
-    imageStore(_9, int(_38), uvec4(subgroupShuffle(_23, (gl_SubgroupInvocationID & 4294967292u) + 1u)));
-    imageStore(_9, int(_38 + 1u), uvec4(subgroupShuffle(_23, (gl_SubgroupInvocationID & 4294967292u) + (_23 & 3u))));
+    uint _35 = gl_GlobalInvocationID.x * 2u;
+    imageStore(_9, int(_35), uvec4(subgroupQuadBroadcast(_23, 1u)));
+    imageStore(_9, int(_35 + 1u), uvec4(subgroupShuffle(_23, (gl_SubgroupInvocationID & 4294967292u) + (_23 & 3u))));
 }
 
 
@@ -21,14 +22,15 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 44
+; Bound: 41
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniform
 OpCapability GroupNonUniformShuffle
+OpCapability GroupNonUniformQuad
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %14 %24
+OpEntryPoint GLCompute %3 "main" %14 %28
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
@@ -38,7 +40,7 @@ OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 1
 OpDecorate %9 NonReadable
 OpDecorate %14 BuiltIn GlobalInvocationId
-OpDecorate %24 BuiltIn SubgroupLocalInvocationId
+OpDecorate %28 BuiltIn SubgroupLocalInvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -53,14 +55,14 @@ OpDecorate %24 BuiltIn SubgroupLocalInvocationId
 %17 = OpConstant %5 0
 %20 = OpConstant %5 2
 %21 = OpTypeVector %5 4
-%24 = OpVariable %15 Input
-%27 = OpConstant %5 4294967292
-%29 = OpConstant %5 1
-%31 = OpConstant %5 3
+%25 = OpConstant %5 3
+%26 = OpConstant %5 1
+%28 = OpVariable %15 Input
+%31 = OpConstant %5 4294967292
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %42
-%42 = OpLabel
+OpBranch %39
+%39 = OpLabel
 %10 = OpLoad %6 %9
 %11 = OpLoad %6 %8
 %16 = OpAccessChain %15 %14 %17
@@ -68,22 +70,19 @@ OpBranch %42
 %19 = OpShiftLeftLogical %5 %18 %20
 %22 = OpImageRead %21 %11 %18
 %23 = OpCompositeExtract %5 %22 0
-%25 = OpLoad %5 %24
-%26 = OpBitwiseAnd %5 %25 %27
-%28 = OpIAdd %5 %26 %29
-%30 = OpGroupNonUniformShuffle %5 %31 %23 %28
-%32 = OpBitwiseAnd %5 %23 %31
-%33 = OpLoad %5 %24
-%34 = OpBitwiseAnd %5 %33 %27
-%35 = OpIAdd %5 %34 %32
-%36 = OpGroupNonUniformShuffle %5 %31 %23 %35
-%37 = OpShiftLeftLogical %5 %18 %31
-%38 = OpIMul %5 %18 %20
-%39 = OpCompositeConstruct %21 %30 %30 %30 %30
-OpImageWrite %10 %38 %39
-%40 = OpCompositeConstruct %21 %36 %36 %36 %36
-%41 = OpIAdd %5 %38 %29
-OpImageWrite %10 %41 %40
+%24 = OpGroupNonUniformQuadBroadcast %5 %25 %23 %26
+%27 = OpBitwiseAnd %5 %23 %25
+%29 = OpLoad %5 %28
+%30 = OpBitwiseAnd %5 %29 %31
+%32 = OpIAdd %5 %30 %27
+%33 = OpGroupNonUniformShuffle %5 %25 %23 %32
+%34 = OpShiftLeftLogical %5 %18 %25
+%35 = OpIMul %5 %18 %20
+%36 = OpCompositeConstruct %21 %24 %24 %24 %24
+OpImageWrite %10 %35 %36
+%37 = OpCompositeConstruct %21 %33 %33 %33 %33
+%38 = OpIAdd %5 %35 %26
+OpImageWrite %10 %38 %37
 OpReturn
 OpFunctionEnd
 #endif

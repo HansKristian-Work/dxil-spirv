@@ -328,6 +328,12 @@ bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallIns
 	return true;
 }
 
+static bool execution_model_can_quad_op(spv::ExecutionModel model)
+{
+	return model == spv::ExecutionModelFragment ||
+	       model == spv::ExecutionModelGLCompute;
+}
+
 bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -338,7 +344,7 @@ bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *
 		return false;
 
 	Operation *op;
-	if (impl.execution_model == spv::ExecutionModelFragment)
+	if (execution_model_can_quad_op(impl.execution_model))
 	{
 		op = impl.allocate(spv::OpGroupNonUniformQuadSwap, instruction);
 		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
@@ -369,7 +375,7 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 	auto *lane = instruction->getOperand(2);
 
 	Operation *op;
-	if (impl.execution_model == spv::ExecutionModelFragment && llvm::isa<llvm::ConstantInt>(lane))
+	if (execution_model_can_quad_op(impl.execution_model) && llvm::isa<llvm::ConstantInt>(lane))
 	{
 		op = impl.allocate(spv::OpGroupNonUniformQuadBroadcast, instruction);
 		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
