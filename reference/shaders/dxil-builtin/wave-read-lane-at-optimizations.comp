@@ -1,0 +1,186 @@
+#version 460
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_quad : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
+
+void main()
+{
+    uvec4 _18 = imageLoad(_8, int(gl_GlobalInvocationID.x));
+    float _21 = uintBitsToFloat(_18.x);
+    uint _24 = gl_SubgroupInvocationID & 4294967292u;
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 0u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 1u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 2u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 3u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupShuffle(_21, (gl_SubgroupInvocationID + 4u) & 4294967292u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 0u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 1u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 2u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 3u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupShuffle(_21, (gl_SubgroupInvocationID & 4294967288u) | 4u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 0u))));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.x)).x) + subgroupQuadBroadcast(_21, 3u))));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 124
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability GroupNonUniform
+OpCapability GroupNonUniformShuffle
+OpCapability GroupNonUniformQuad
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12 %22
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+OpDecorate %22 BuiltIn SubgroupLocalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%17 = OpTypeVector %5 4
+%20 = OpTypeFloat 32
+%22 = OpVariable %13 Input
+%25 = OpConstant %5 4294967292
+%27 = OpConstant %5 3
+%35 = OpConstant %5 1
+%44 = OpConstant %5 2
+%61 = OpConstant %5 4
+%99 = OpConstant %5 4294967288
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %122
+%122 = OpLabel
+%9 = OpLoad %6 %8
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%18 = OpImageRead %17 %9 %16
+%19 = OpCompositeExtract %5 %18 0
+%21 = OpBitcast %20 %19
+%23 = OpLoad %5 %22
+%24 = OpBitwiseAnd %5 %23 %25
+%26 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %15
+%28 = OpImageRead %17 %9 %16
+%29 = OpCompositeExtract %5 %28 0
+%30 = OpBitcast %20 %29
+%31 = OpFAdd %20 %30 %26
+%32 = OpBitcast %5 %31
+%33 = OpCompositeConstruct %17 %32 %32 %32 %32
+OpImageWrite %9 %16 %33
+%34 = OpBitwiseOr %5 %24 %35
+%36 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %35
+%37 = OpImageRead %17 %9 %16
+%38 = OpCompositeExtract %5 %37 0
+%39 = OpBitcast %20 %38
+%40 = OpFAdd %20 %39 %36
+%41 = OpBitcast %5 %40
+%42 = OpCompositeConstruct %17 %41 %41 %41 %41
+OpImageWrite %9 %16 %42
+%43 = OpBitwiseOr %5 %24 %44
+%45 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %44
+%46 = OpImageRead %17 %9 %16
+%47 = OpCompositeExtract %5 %46 0
+%48 = OpBitcast %20 %47
+%49 = OpFAdd %20 %48 %45
+%50 = OpBitcast %5 %49
+%51 = OpCompositeConstruct %17 %50 %50 %50 %50
+OpImageWrite %9 %16 %51
+%52 = OpBitwiseOr %5 %23 %27
+%53 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %27
+%54 = OpImageRead %17 %9 %16
+%55 = OpCompositeExtract %5 %54 0
+%56 = OpBitcast %20 %55
+%57 = OpFAdd %20 %56 %53
+%58 = OpBitcast %5 %57
+%59 = OpCompositeConstruct %17 %58 %58 %58 %58
+OpImageWrite %9 %16 %59
+%60 = OpIAdd %5 %23 %61
+%62 = OpBitwiseAnd %5 %60 %25
+%63 = OpGroupNonUniformShuffle %20 %27 %21 %62
+%64 = OpImageRead %17 %9 %16
+%65 = OpCompositeExtract %5 %64 0
+%66 = OpBitcast %20 %65
+%67 = OpFAdd %20 %66 %63
+%68 = OpBitcast %5 %67
+%69 = OpCompositeConstruct %17 %68 %68 %68 %68
+OpImageWrite %9 %16 %69
+%70 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %15
+%71 = OpImageRead %17 %9 %16
+%72 = OpCompositeExtract %5 %71 0
+%73 = OpBitcast %20 %72
+%74 = OpFAdd %20 %73 %70
+%75 = OpBitcast %5 %74
+%76 = OpCompositeConstruct %17 %75 %75 %75 %75
+OpImageWrite %9 %16 %76
+%77 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %35
+%78 = OpImageRead %17 %9 %16
+%79 = OpCompositeExtract %5 %78 0
+%80 = OpBitcast %20 %79
+%81 = OpFAdd %20 %80 %77
+%82 = OpBitcast %5 %81
+%83 = OpCompositeConstruct %17 %82 %82 %82 %82
+OpImageWrite %9 %16 %83
+%84 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %44
+%85 = OpImageRead %17 %9 %16
+%86 = OpCompositeExtract %5 %85 0
+%87 = OpBitcast %20 %86
+%88 = OpFAdd %20 %87 %84
+%89 = OpBitcast %5 %88
+%90 = OpCompositeConstruct %17 %89 %89 %89 %89
+OpImageWrite %9 %16 %90
+%91 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %27
+%92 = OpImageRead %17 %9 %16
+%93 = OpCompositeExtract %5 %92 0
+%94 = OpBitcast %20 %93
+%95 = OpFAdd %20 %94 %91
+%96 = OpBitcast %5 %95
+%97 = OpCompositeConstruct %17 %96 %96 %96 %96
+OpImageWrite %9 %16 %97
+%98 = OpBitwiseAnd %5 %23 %99
+%100 = OpBitwiseOr %5 %98 %61
+%101 = OpGroupNonUniformShuffle %20 %27 %21 %100
+%102 = OpImageRead %17 %9 %16
+%103 = OpCompositeExtract %5 %102 0
+%104 = OpBitcast %20 %103
+%105 = OpFAdd %20 %104 %101
+%106 = OpBitcast %5 %105
+%107 = OpCompositeConstruct %17 %106 %106 %106 %106
+OpImageWrite %9 %16 %107
+%108 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %15
+%109 = OpImageRead %17 %9 %16
+%110 = OpCompositeExtract %5 %109 0
+%111 = OpBitcast %20 %110
+%112 = OpFAdd %20 %111 %108
+%113 = OpBitcast %5 %112
+%114 = OpCompositeConstruct %17 %113 %113 %113 %113
+OpImageWrite %9 %16 %114
+%115 = OpGroupNonUniformQuadBroadcast %20 %27 %21 %27
+%116 = OpImageRead %17 %9 %16
+%117 = OpCompositeExtract %5 %116 0
+%118 = OpBitcast %20 %117
+%119 = OpFAdd %20 %118 %115
+%120 = OpBitcast %5 %119
+%121 = OpCompositeConstruct %17 %120 %120 %120 %120
+OpImageWrite %9 %16 %121
+OpReturn
+OpFunctionEnd
+#endif

@@ -1,0 +1,29 @@
+RWStructuredBuffer<float> F : register(u0);
+
+uint get_quad_shuffle_add(uint index)
+{
+	return (WaveGetLaneIndex() & ~3) + index;
+}
+
+uint get_quad_shuffle_or(uint index)
+{
+	return (WaveGetLaneIndex() & ~3) | index;
+}
+
+[numthreads(64, 1, 1)]
+void main(uint2 thr : SV_DispatchThreadID)
+{
+	float v = F[thr.x];
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_add(0));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_add(1));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_add(2));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_add(3));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_add(4));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_or(0));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_or(1));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_or(2));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_or(3));
+	F[thr.x] += WaveReadLaneAt(v, get_quad_shuffle_or(4));
+	F[thr.x] += WaveReadLaneAt(v, WaveGetLaneIndex() & ~3);
+	F[thr.x] += WaveReadLaneAt(v, WaveGetLaneIndex() | 3);
+}

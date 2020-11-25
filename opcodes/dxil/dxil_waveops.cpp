@@ -103,6 +103,96 @@ bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::Ca
 	return true;
 }
 
+static bool execution_model_can_quad_op(spv::ExecutionModel model)
+{
+	return model == spv::ExecutionModelFragment ||
+	       model == spv::ExecutionModelGLCompute;
+}
+
+static bool value_is_wave_lane(const llvm::Value *value)
+{
+	auto *dxil_op = llvm::dyn_cast<llvm::CallInst>(value);
+	if (!dxil_op)
+		return false;
+	if (strncmp(dxil_op->getCalledFunction()->getName().data(), "dx.op", 5) != 0)
+		return false;
+
+	uint32_t op;
+	if (!get_constant_operand(dxil_op, 0, &op))
+		return false;
+
+	return DXIL::Op(op) == DXIL::Op::WaveGetLaneIndex;
+}
+
+static bool get_constant_int(const llvm::Value *value, uint32_t *const_value)
+{
+	if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(value))
+	{
+		*const_value = uint32_t(c->getUniqueInteger().getZExtValue());
+		return true;
+	}
+	else
+		return false;
+}
+
+static bool get_constant_quad_lane(const llvm::Value *lane, uint32_t *quad_lane)
+{
+	// Cases to consider:
+	// - (gl_SubgroupInvocationID & ~3u) | C, where C is [0, 1, 2, 3].
+	// - (gl_SubgroupInvocationID & ~3u) + C, where C is [0, 1, 2, 3].
+	// - (gl_SubgroupInvocationID & ~3u) -> C = 0
+	// - (gl_SubgroupInvocationID | 3u) -> C = 3
+	auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(lane);
+	if (!binop)
+		return false;
+
+	auto *lhs = binop->getOperand(0);
+	auto *rhs = binop->getOperand(1);
+	bool lhs_is_wave_lane = value_is_wave_lane(lhs);
+	bool rhs_is_wave_lane = value_is_wave_lane(rhs);
+	uint32_t secondary_quad_lane = 0;
+
+	if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Or)
+	{
+		if ((get_constant_int(lhs, quad_lane) && rhs_is_wave_lane) ||
+		    (lhs_is_wave_lane && get_constant_int(rhs, quad_lane)))
+		{
+			// Case 3
+			return *quad_lane == 3;
+		}
+		else if ((get_constant_int(lhs, quad_lane) && get_constant_quad_lane(rhs, &secondary_quad_lane)) ||
+		         (get_constant_quad_lane(lhs, &secondary_quad_lane) && get_constant_int(rhs, quad_lane)))
+		{
+			// Case 0
+			return *quad_lane < 4 && secondary_quad_lane == 0;
+		}
+	}
+	else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::And)
+	{
+		if ((get_constant_int(lhs, quad_lane) && rhs_is_wave_lane) ||
+		    (lhs_is_wave_lane && get_constant_int(rhs, quad_lane)))
+		{
+			// Case 2
+			if (*quad_lane == ~3u)
+			{
+				*quad_lane = 0;
+				return true;
+			}
+		}
+	}
+	else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add)
+	{
+		if ((get_constant_int(lhs, quad_lane) && get_constant_quad_lane(rhs, &secondary_quad_lane)) ||
+		    (get_constant_quad_lane(lhs, &secondary_quad_lane) && get_constant_int(rhs, quad_lane)))
+		{
+			// Case 0
+			return *quad_lane < 4 && secondary_quad_lane == 0;
+		}
+	}
+
+	return false;
+}
+
 bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -120,11 +210,27 @@ bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallI
 	}
 	else
 	{
-		op = impl.allocate(spv::OpGroupNonUniformShuffle, instruction);
-		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-		op->add_id(impl.get_id_for_value(lane));
-		builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
+		// Some games seem to use WaveReadLaneAt where it should have used QuadReadLaneAt.
+		// This generates a flurry of ds_permute instructions, where it could have used implicit quad shuffle instead.
+		// Rather than emitting a ton of shuffles, try to optimize the statements back to a quad broadcast.
+
+		uint32_t quad_lane = 0;
+		if (execution_model_can_quad_op(impl.execution_model) && get_constant_quad_lane(lane, &quad_lane))
+		{
+			op = impl.allocate(spv::OpGroupNonUniformQuadBroadcast, instruction);
+			op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+			op->add_id(builder.makeUintConstant(quad_lane));
+			builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+		}
+		else
+		{
+			op = impl.allocate(spv::OpGroupNonUniformShuffle, instruction);
+			op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+			op->add_id(impl.get_id_for_value(lane));
+			builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
+		}
 	}
 
 	impl.add(op);
@@ -338,7 +444,7 @@ bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *
 		return false;
 
 	Operation *op;
-	if (impl.execution_model == spv::ExecutionModelFragment)
+	if (execution_model_can_quad_op(impl.execution_model))
 	{
 		op = impl.allocate(spv::OpGroupNonUniformQuadSwap, instruction);
 		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
@@ -369,7 +475,7 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 	auto *lane = instruction->getOperand(2);
 
 	Operation *op;
-	if (impl.execution_model == spv::ExecutionModelFragment && llvm::isa<llvm::ConstantInt>(lane))
+	if (execution_model_can_quad_op(impl.execution_model) && llvm::isa<llvm::ConstantInt>(lane))
 	{
 		op = impl.allocate(spv::OpGroupNonUniformQuadBroadcast, instruction);
 		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
