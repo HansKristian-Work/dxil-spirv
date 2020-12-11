@@ -1,0 +1,38 @@
+RWStructuredBuffer<float2> RWStr : register(u0);
+RWByteAddressBuffer RWBuf : register(u1);
+StructuredBuffer<float2> RStr : register(t0);
+ByteAddressBuffer RBuf : register(t1);
+
+RWStructuredBuffer<float2> RWStrs[] : register(u0, space1);
+RWByteAddressBuffer RWBufs[] : register(u1, space2);
+StructuredBuffer<float2> RStrs[] : register(t2, space3);
+ByteAddressBuffer RBufs[] : register(t3, space4);
+
+RWStructuredBuffer<uint2> RWStrUint2 : register(u0, space5);
+
+RWBuffer<uint4> RWTyped : register(u0, space6);
+
+[numthreads(64, 1, 1)]
+void main(uint thread : SV_DispatchThreadID, uint wg : SV_GroupID)
+{
+	RWStr[thread] = RStr[thread];
+	RWBuf.Store4(thread * 16, RBuf.Load4(thread * 16));
+
+	RWStr[thread] = RStr[thread];
+	RWBuf.Store4(thread * 16, RBuf.Load4(thread * 16));
+
+	RWStrs[wg][thread] = RStrs[wg][thread];
+	RWStrs[NonUniformResourceIndex(thread)][thread] = RStrs[NonUniformResourceIndex(thread)][thread];
+
+	RWBufs[wg].Store4(16 * thread, RBufs[wg].Load4(16 * thread));
+	RWBufs[NonUniformResourceIndex(thread)].Store4(16 * thread, RBufs[NonUniformResourceIndex(thread)].Load4(16 * thread));
+
+	uint val;
+	InterlockedAdd(RWStrUint2[thread].y, 1, val);
+
+	uint count, stride;
+	RWStr.GetDimensions(count, stride);
+	InterlockedAdd(RWStrUint2[thread].x, count);
+
+	RWTyped[thread] = uint4(0, 1, 2, 3) + 4 * thread;
+}
