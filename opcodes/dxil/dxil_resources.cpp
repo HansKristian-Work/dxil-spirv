@@ -742,6 +742,29 @@ static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::
 		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
 	}
 
+	bool untyped_buffer = meta.storage != spv::StorageClassUniformConstant &&
+	                      meta.kind != DXIL::ResourceKind::TypedBuffer;
+	unsigned layout_offset = untyped_buffer ? impl.options.offset_buffer_layout.untyped_offset :
+	                         impl.options.offset_buffer_layout.typed_offset;
+
+	if (impl.options.offset_buffer_layout.stride != 1)
+	{
+		Operation *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		scale_op->add_id(bindless_offset_id);
+		scale_op->add_id(builder.makeUintConstant(impl.options.offset_buffer_layout.stride));
+		impl.add(scale_op);
+		bindless_offset_id = scale_op->id;
+	}
+
+	if (layout_offset)
+	{
+		Operation *bias_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		bias_op->add_id(bindless_offset_id);
+		bias_op->add_id(builder.makeUintConstant(layout_offset));
+		impl.add(bias_op);
+		bindless_offset_id = bias_op->id;
+	}
+
 	spv::Id vec_type = builder.makeVectorType(builder.makeUintType(32), 2);
 
 	Operation *chain_op = impl.allocate(spv::OpAccessChain,
@@ -759,9 +782,7 @@ static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::
 	spv::Id offset_id = load_op->id;
 
 	// Shift the offset buffer once if we can get away with it.
-	if (meta.storage != spv::StorageClassUniformConstant &&
-	    meta.kind != DXIL::ResourceKind::TypedBuffer &&
-	    reference.var_id_16bit == 0)
+	if (untyped_buffer && reference.var_id_16bit == 0)
 	{
 		Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, vec_type);
 		shift_op->add_id(offset_id);

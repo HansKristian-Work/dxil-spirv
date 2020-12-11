@@ -4107,6 +4107,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::BindlessOffsetBufferLayout:
+	{
+		auto &off = static_cast<const OptionBindlessOffsetBufferLayout &>(cap);
+		options.offset_buffer_layout = { off.untyped_offset, off.typed_offset, off.stride };
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -4148,6 +4155,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::TypedUAVReadWithoutFormat:
 	case Option::ShaderSourceFile:
 	case Option::BindlessTypedBufferOffsets:
+	case Option::BindlessOffsetBufferLayout:
 		return true;
 
 	default:

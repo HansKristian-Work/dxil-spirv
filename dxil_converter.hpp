@@ -196,7 +196,8 @@ enum class Option : uint32_t
 	SSBOAlignment = 9,
 	TypedUAVReadWithoutFormat = 10,
 	ShaderSourceFile = 11,
-	BindlessTypedBufferOffsets = 12
+	BindlessTypedBufferOffsets = 12,
+	BindlessOffsetBufferLayout = 13
 };
 
 enum class ResourceClass : uint32_t
@@ -327,6 +328,18 @@ struct OptionBindlessTypedBufferOffsets : OptionBase
 	{
 	}
 	bool enable = false;
+};
+
+struct OptionBindlessOffsetBufferLayout : OptionBase
+{
+	OptionBindlessOffsetBufferLayout()
+		: OptionBase(Option::BindlessOffsetBufferLayout)
+	{
+	}
+
+	unsigned untyped_offset = 0;
+	unsigned typed_offset = 0;
+	unsigned stride = 1;
 };
 
 class Converter
