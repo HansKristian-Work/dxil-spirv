@@ -136,6 +136,7 @@ static void print_help()
 	     "\t[--typed-uav-read-without-format]\n"
 	     "\t[--bindless-typed-buffer-offsets]\n"
 	     "\t[--output-rt-swizzle index xyzw]\n"
+	     "\t[--bindless-offset-buffer-layout <untyped offset> <typed offset> <stride>]\n"
 	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n");
 }
 
@@ -159,6 +160,8 @@ struct Arguments
 	bool bindless_typed_buffer_offsets = false;
 
 	unsigned ssbo_alignment = 1;
+
+	dxil_spv_option_bindless_offset_buffer_layout offset_buffer_layout;
 };
 
 struct Remapper
@@ -462,6 +465,11 @@ int main(int argc, char **argv)
 	bool local_root_signature = false;
 	dxil_spv_begin_thread_allocator_context();
 
+	args.offset_buffer_layout.base.type = DXIL_SPV_OPTION_BINDLESS_OFFSET_BUFFER_LAYOUT;
+	args.offset_buffer_layout.untyped_offset = 0;
+	args.offset_buffer_layout.typed_offset = 0;
+	args.offset_buffer_layout.stride = 1;
+
 	// Begin with identity swizzles.
 	args.swizzles.resize(8, 0 | (1 << 2) | (2 << 4) | (3 << 6));
 
@@ -602,6 +610,11 @@ int main(int argc, char **argv)
 	cbs.add("--ssbo-alignment", [&](CLIParser &parser) { args.ssbo_alignment = parser.next_uint(); });
 	cbs.add("--typed-uav-read-without-format", [&](CLIParser &) { args.typed_uav_read_without_format = true; });
 	cbs.add("--bindless-typed-buffer-offsets", [&](CLIParser &) { args.bindless_typed_buffer_offsets = true; });
+	cbs.add("--bindless-offset-buffer-layout", [&](CLIParser &parser) {
+		args.offset_buffer_layout.untyped_offset = parser.next_uint();
+		args.offset_buffer_layout.typed_offset = parser.next_uint();
+		args.offset_buffer_layout.stride = parser.next_uint();
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -726,6 +739,8 @@ int main(int argc, char **argv)
 			                                                      args.bindless_typed_buffer_offsets ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &offsets.base);
 	}
+
+	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 
 	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
 	{

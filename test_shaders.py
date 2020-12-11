@@ -172,6 +172,9 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--root-descriptor', 'uav', '0', '0']
         hlsl_cmd += ['--root-descriptor', 'uav', '0', '1']
 
+    if '.offset-layout.' in shader:
+        hlsl_cmd += ['--bindless-offset-buffer-layout', '0', '1', '2']
+
     subprocess.check_call(hlsl_cmd)
     if is_asm:
         return glsl_path
