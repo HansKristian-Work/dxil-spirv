@@ -23,27 +23,27 @@ layout(buffer_reference) buffer PhysicalPointerUint3NonWrite;
 layout(buffer_reference) buffer PhysicalPointerUint4NonWrite;
 layout(buffer_reference) buffer PhysicalPointerFloat;
 layout(buffer_reference) buffer PhysicalPointerUint;
-layout(buffer_reference, std430) buffer PhysicalPointerFloat4NonWrite
+layout(buffer_reference, std430) readonly buffer PhysicalPointerFloat4NonWrite
 {
     vec4 value;
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerUintNonWrite
+layout(buffer_reference, std430) readonly buffer PhysicalPointerUintNonWrite
 {
     uint value;
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerUint2NonWrite
+layout(buffer_reference, std430) readonly buffer PhysicalPointerUint2NonWrite
 {
     uvec2 value;
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerUint3NonWrite
+layout(buffer_reference, std430) readonly buffer PhysicalPointerUint3NonWrite
 {
     uvec3 value;
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerUint4NonWrite
+layout(buffer_reference, std430) readonly buffer PhysicalPointerUint4NonWrite
 {
     uvec4 value;
 };
@@ -112,8 +112,8 @@ void main()
     AddCarry _198;
     _198._m0 = uaddCarry(SBT._m6.x, 1u * 16u, _198._m1);
     PhysicalPointerFloat4NonWrite _205 = PhysicalPointerFloat4NonWrite(uvec2(_198._m0, SBT._m6.y + _198._m1));
-    vec4 _236 = textureLodOffset(sampler2D(_21[nonuniformEXT(registers._m0 + (payload._m1 & 1u))], _36[nonuniformEXT((SBT._m10.x >> 5u) + 13u)]), vec2(0.5), 0.0, ivec2(0));
-    vec4 _264 = textureLodOffset(sampler2D(_21[nonuniformEXT(registers._m0 + payload._m1)], _36[nonuniformEXT(((SBT._m10.x >> 5u) + 14u) + (payload._m1 ^ 1u))]), vec2(0.5), 0.0, ivec2(0));
+    vec4 _236 = textureLodOffset(nonuniformEXT(sampler2D(_21[nonuniformEXT(registers._m0 + (payload._m1 & 1u))], _36[nonuniformEXT((SBT._m10.x >> 5u) + 13u)])), vec2(0.5), 0.0, ivec2(0));
+    vec4 _264 = textureLodOffset(nonuniformEXT(sampler2D(_21[nonuniformEXT(registers._m0 + payload._m1)], _36[nonuniformEXT(((SBT._m10.x >> 5u) + 14u) + (payload._m1 ^ 1u))])), vec2(0.5), 0.0, ivec2(0));
     AddCarry _280;
     _280._m0 = uaddCarry(SBT._m2.x, (payload._m1 * 16u) + 0u, _280._m1);
     PhysicalPointerFloat4NonWrite _285 = PhysicalPointerFloat4NonWrite(uvec2(_280._m0, SBT._m2.y + _280._m1));

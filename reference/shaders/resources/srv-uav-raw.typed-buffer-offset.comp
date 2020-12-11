@@ -98,8 +98,8 @@ void main()
     imageStore(_21[nonuniformEXT(_221)], int(_301 + 2u), uvec4(floatBitsToUint(_291.z)));
     imageStore(_21[nonuniformEXT(_221)], int(_301 + 3u), uvec4(floatBitsToUint(_291.w)));
     uint _317 = registers._m4 + (gl_GlobalInvocationID.z + 0u);
-    uint _327 = imageAtomicAdd(_24[nonuniformEXT(_317], int((gl_GlobalInvocationID.y < _13._m0[_317].y) ? (gl_GlobalInvocationID.y + _13._m0[_317)].x) : 1073741820u), 40u);
-    uint _334 = imageAtomicCompSwap(_24[nonuniformEXT(_317], int((gl_GlobalInvocationID.y < _13._m0[_317].y) ? (gl_GlobalInvocationID.y + _13._m0[_317)].x) : 1073741820u), 40u, 70u);
+    uint _327 = imageAtomicAdd(_24[nonuniformEXT(_317)], int((gl_GlobalInvocationID.y < _13._m0[_317].y) ? (gl_GlobalInvocationID.y + _13._m0[_317].x) : 1073741820u), 40u);
+    uint _334 = imageAtomicCompSwap(_24[nonuniformEXT(_317)], int((gl_GlobalInvocationID.y < _13._m0[_317].y) ? (gl_GlobalInvocationID.y + _13._m0[_317].x) : 1073741820u), 40u, 70u);
     float _338 = float(_13._m0[_221].y / 4u);
     uint _339 = 2u * 4u;
     uint _344 = (_339 < _13._m0[_44].y) ? (_339 + _13._m0[_44].x) : 1073741820u;

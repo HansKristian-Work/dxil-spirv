@@ -47,8 +47,8 @@ void main()
     uint _172 = registers._m1 + (gl_GlobalInvocationID.z + 0u);
     imageStore(_22[nonuniformEXT(_148)], int((_103 < _13._m0[_148].y) ? (_103 + _13._m0[_148].x) : 4294967295u), vec4(texelFetch(_18[nonuniformEXT(_172)], int((_70 < _13._m0[_172].y) ? (_70 + _13._m0[_172].x) : 4294967295u))));
     uint _196 = registers._m4 + (gl_GlobalInvocationID.z + 0u);
-    uint _206 = imageAtomicAdd(_26[nonuniformEXT(_196], int((gl_GlobalInvocationID.y < _13._m0[_196].y) ? (gl_GlobalInvocationID.y + _13._m0[_196)].x) : 4294967295u), 40u);
-    uint _213 = imageAtomicCompSwap(_26[nonuniformEXT(_196], int((gl_GlobalInvocationID.y < _13._m0[_196].y) ? (gl_GlobalInvocationID.y + _13._m0[_196)].x) : 4294967295u), 40u, 70u);
+    uint _206 = imageAtomicAdd(_26[nonuniformEXT(_196)], int((gl_GlobalInvocationID.y < _13._m0[_196].y) ? (gl_GlobalInvocationID.y + _13._m0[_196].x) : 4294967295u), 40u);
+    uint _213 = imageAtomicCompSwap(_26[nonuniformEXT(_196)], int((gl_GlobalInvocationID.y < _13._m0[_196].y) ? (gl_GlobalInvocationID.y + _13._m0[_196].x) : 4294967295u), 40u, 70u);
     imageStore(_22[registers._m4], int((2u < _13._m0[_47].y) ? (2u + _13._m0[_47].x) : 4294967295u), vec4(float(_13._m0[_148].y)));
     imageStore(_22[registers._m4], int((3u < _13._m0[_47].y) ? (3u + _13._m0[_47].x) : 4294967295u), vec4(float(_13._m0[_172].y)));
 }

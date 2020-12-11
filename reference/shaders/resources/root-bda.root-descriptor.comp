@@ -23,12 +23,12 @@ layout(buffer_reference) buffer PhysicalPointerHalf2;
 layout(buffer_reference) buffer PhysicalPointerHalf3;
 layout(buffer_reference) buffer PhysicalPointerHalf4;
 layout(buffer_reference) buffer PhysicalPointerUint2;
-layout(buffer_reference, std430) buffer PhysicalPointerFloat4NonWrite
+layout(buffer_reference, std430) readonly buffer PhysicalPointerFloat4NonWrite
 {
     vec4 value;
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerFloat4Coherent
+layout(buffer_reference, std430) coherent buffer PhysicalPointerFloat4Coherent
 {
     vec4 value;
 };

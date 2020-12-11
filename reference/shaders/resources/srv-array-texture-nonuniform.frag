@@ -10,8 +10,8 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    vec4 _36 = textureOffset(sampler2D(_9[nonuniformEXT(INDEX + 0u)], _17), vec2(0.5), ivec2(0));
-    vec4 _51 = textureOffset(sampler2D(_14[nonuniformEXT((INDEX ^ 1u) + 0u)], _17), vec2(0.5), ivec2(0));
+    vec4 _36 = textureOffset(nonuniformEXT(sampler2D(_9[nonuniformEXT(INDEX + 0u)], _17)), vec2(0.5), ivec2(0));
+    vec4 _51 = textureOffset(nonuniformEXT(sampler2D(_14[nonuniformEXT((INDEX ^ 1u) + 0u)], _17)), vec2(0.5), ivec2(0));
     SV_Target.x = _51.x + _36.x;
     SV_Target.y = _51.y + _36.y;
     SV_Target.z = _51.z + _36.z;

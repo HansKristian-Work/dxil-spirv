@@ -11,7 +11,7 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    vec4 _51 = textureGather(sampler2D(_8, _20), vec2(TEXCOORD.x, TEXCOORD.y), 0u);
+    vec4 _51 = textureGather(sampler2D(_8, _20), vec2(TEXCOORD.x, TEXCOORD.y));
     vec4 _60 = textureGather(sampler2DArray(_11, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), 1u);
     vec4 _72 = textureGather(samplerCube(_14, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), 2u);
     vec4 _84 = textureGather(samplerCubeArray(_17, _20), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w), 3u);

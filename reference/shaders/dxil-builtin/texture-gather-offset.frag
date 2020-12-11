@@ -9,7 +9,7 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    vec4 _41 = textureGatherOffset(sampler2D(_8, _14), vec2(TEXCOORD.x, TEXCOORD.y), ivec2(1, 2), 0u);
+    vec4 _41 = textureGatherOffset(sampler2D(_8, _14), vec2(TEXCOORD.x, TEXCOORD.y), ivec2(1, 2));
     vec4 _54 = textureGatherOffset(sampler2DArray(_11, _14), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), ivec2(-2, -3), 1u);
     SV_Target.x = _54.x + _41.x;
     SV_Target.y = _54.y + _41.y;

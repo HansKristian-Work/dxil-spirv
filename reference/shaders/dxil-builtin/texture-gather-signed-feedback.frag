@@ -29,7 +29,7 @@ void main()
 {
     uint _172;
     ivec4 _173;
-    _172 = sparseTextureGatherOffsetARB(isampler2D(_8, _20), vec2(TEXCOORD.x, TEXCOORD.y), ivec2(0, 1), _173, 0u);
+    _172 = sparseTextureGatherOffsetARB(isampler2D(_8, _20), vec2(TEXCOORD.x, TEXCOORD.y), ivec2(0, 1), _173);
     SparseTexel _54 = SparseTexel(_172, _173);
     uvec4 _60 = uvec4(_54._m1);
     _65 _66 = _65(_60.x, _60.y, _60.z, _60.w, _54._m0);
