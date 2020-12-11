@@ -612,7 +612,7 @@ bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	spv::Id coord[3] = {};
 
-	unsigned num_coords_full, num_coords;
+	unsigned num_coords_full = 0, num_coords = 0;
 	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
