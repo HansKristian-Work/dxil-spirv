@@ -231,7 +231,7 @@ static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::
 
 		case 32:
 			const_0 = builder.makeUintConstant(0);
-			const_1 = builder.makeUintConstant(is_signed ? 0xffff : 1u);
+			const_1 = builder.makeUintConstant(is_signed ? 0xffffffffu : 1u);
 			break;
 
 		default:
