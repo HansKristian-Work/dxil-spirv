@@ -394,14 +394,6 @@ static void rewrite_consumed_ids(IRBlock &ir, spv::Id from, spv::Id to)
 		ir.terminator.return_value = to;
 }
 
-static void rewrite_incoming_ids(IRBlock &ir, spv::Id from, spv::Id to)
-{
-	for (auto &phi : ir.phi)
-		for (auto &incoming : phi.incoming)
-			if (incoming.id == from)
-				incoming.id = to;
-}
-
 void CFGStructurizer::fixup_broken_value_dominance()
 {
 	struct Origin
@@ -412,7 +404,6 @@ void CFGStructurizer::fixup_broken_value_dominance()
 
 	UnorderedMap<spv::Id, Origin> origin;
 	UnorderedMap<spv::Id, Vector<CFGNode *>> id_to_non_local_consumers;
-	UnorderedMap<CFGNode *, Vector<CFGNode *>> phi_dependees;
 
 	// First, scan through all blocks and figure out which block creates an ID.
 	for (auto *node : forward_post_visit_order)
@@ -432,21 +423,17 @@ void CFGStructurizer::fixup_broken_value_dominance()
 		nodes.erase(std::unique(nodes.begin(), nodes.end()), nodes.end());
 	};
 
-	const auto mark_node_value_access = [&](CFGNode *node, CFGNode *phi_node, spv::Id id) {
+	const auto mark_node_value_access = [&](CFGNode *node, spv::Id id) {
 		auto origin_itr = origin.find(id);
 		if (origin_itr == origin.end())
-			return false;
+			return;
 
 		auto *origin_node = origin_itr->second.node;
 		if (!origin_node->dominates(node))
 		{
 			// We have a problem. Mark that we need to rewrite a certain variable.
 			id_to_non_local_consumers[id].push_back(node);
-			if (phi_node)
-				phi_dependees[node].push_back(phi_node);
 		}
-
-		return true;
 	};
 
 	// Now, scan through all blocks and figure out which values are consumed in different blocks.
@@ -457,19 +444,16 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			auto literal_mask = op->literal_mask;
 			for (unsigned i = 0; i < op->num_arguments; i++)
 				if (((1u << i) & literal_mask) == 0)
-					mark_node_value_access(node, nullptr, op->arguments[i]);
+					mark_node_value_access(node, op->arguments[i]);
 		}
 
-		// If a PHI node uses a value in the incoming block,
-		// we have to remember to rewrite the PHI node itself to reflect the updated incoming ID.
-		for (auto &phi : node->ir.phi)
-			for (auto &incoming : phi.incoming)
-				mark_node_value_access(incoming.block, node, incoming.id);
+		// Incoming PHI values are handled elsewhere by modifying the incoming block to the creating block.
+		// Ignore these kinds of usage here.
 
 		if (node->ir.terminator.conditional_id != 0)
-			mark_node_value_access(node, nullptr, node->ir.terminator.conditional_id);
+			mark_node_value_access(node, node->ir.terminator.conditional_id);
 		if (node->ir.terminator.return_value != 0)
-			mark_node_value_access(node, nullptr, node->ir.terminator.return_value);
+			mark_node_value_access(node, node->ir.terminator.return_value);
 	}
 
 	// Resolve these broken PHIs by using OpVariable. It is the simplest solution, and this is a very rare case to begin with.
@@ -512,14 +496,6 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			load_op->add_id(alloca_var_id);
 
 			rewrite_consumed_ids(consumer->ir, rewrite.id, loaded_id);
-
-			auto phi_iter = phi_dependees.find(consumer);
-			if (phi_iter != phi_dependees.end())
-			{
-				sort_unique_node_vector(phi_iter->second);
-				for (auto *phi : phi_iter->second)
-					rewrite_incoming_ids(phi->ir, rewrite.id, loaded_id);
-			}
 
 			consumer->ir.operations.insert(consumer->ir.operations.begin(), load_op);
 		}
