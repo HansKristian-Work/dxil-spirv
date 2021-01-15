@@ -85,7 +85,7 @@ dxil-spirv is currently licensed as LGPLv2, to match vkd3d.
 
 ```
 /*
- * Copyright 2019-2020 Hans-Kristian Arntzen for Valve Corporation
+ * Copyright 2019-2021 Hans-Kristian Arntzen for Valve Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
