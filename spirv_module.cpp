@@ -82,6 +82,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	ScratchPool<Operation> operation_pool;
 
 	bool spirv_requires_14() const;
+	bool builtin_requires_volatile(spv::BuiltIn builtin) const;
+	bool execution_model_is_ray_tracing() const;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -181,6 +183,30 @@ bool SPIRVModule::Impl::query_builtin_shader_output(spv::Id id, spv::BuiltIn *bu
 		return false;
 }
 
+bool SPIRVModule::Impl::builtin_requires_volatile(spv::BuiltIn builtin) const
+{
+	if (!execution_model_is_ray_tracing())
+		return false;
+
+	switch (builtin)
+	{
+	case spv::BuiltInSubgroupId:
+	case spv::BuiltInSubgroupLocalInvocationId:
+	case spv::BuiltInSubgroupEqMask:
+	case spv::BuiltInSubgroupLtMask:
+	case spv::BuiltInSubgroupLeMask:
+	case spv::BuiltInSubgroupGtMask:
+	case spv::BuiltInSubgroupGeMask:
+		return true;
+
+	case spv::BuiltInRayTmaxKHR:
+		return execution_model == spv::ExecutionModelIntersectionKHR;
+
+	default:
+		return false;
+	}
+}
+
 spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 {
 	auto itr = builtins_input.find(builtin);
@@ -189,6 +215,8 @@ spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 
 	spv::Id var_id = create_variable(spv::StorageClassInput, get_type_for_builtin(builtin), nullptr);
 	builder.addDecoration(var_id, spv::DecorationBuiltIn, builtin);
+	if (builtin_requires_volatile(builtin))
+		builder.addDecoration(var_id, spv::DecorationVolatile);
 	register_builtin_shader_input(var_id, builtin);
 	return var_id;
 }
@@ -336,7 +364,7 @@ void SPIRVModule::emit_entry_point(spv::ExecutionModel model, const char *name, 
 	impl->emit_entry_point(model, name, physical_storage);
 }
 
-bool SPIRVModule::Impl::spirv_requires_14() const
+bool SPIRVModule::Impl::execution_model_is_ray_tracing() const
 {
 	switch (execution_model)
 	{
@@ -351,6 +379,11 @@ bool SPIRVModule::Impl::spirv_requires_14() const
 	default:
 		return false;
 	}
+}
+
+bool SPIRVModule::Impl::spirv_requires_14() const
+{
+	return execution_model_is_ray_tracing();
 }
 
 bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv) const

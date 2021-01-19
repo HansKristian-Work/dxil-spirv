@@ -158,6 +158,25 @@ static bool emit_ray_tracing_matrix_load(Converter::Impl &impl, const llvm::Call
 	return true;
 }
 
+bool emit_ray_tracing_report_hit(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	// We only have one global HitAttributeKHR per shader, so we'll need to copy from argument into that.
+	auto *load_op = impl.allocate(spv::OpLoad, impl.get_type_id(impl.llvm_hit_attribute_output_type->getPointerElementType()));
+	load_op->add_id(impl.get_id_for_value(inst->getOperand(3)));
+	impl.add(load_op);
+
+	auto *store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(impl.llvm_hit_attribute_output_value);
+	store_op->add_id(load_op->id);
+	impl.add(store_op);
+
+	auto *op = impl.allocate(spv::OpReportIntersectionKHR, inst);
+	op->add_id(impl.get_id_for_value(inst->getOperand(1)));
+	op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+	impl.add(op);
+	return true;
+}
+
 bool emit_world_to_object_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	return emit_ray_tracing_matrix_load(impl, inst, spv::BuiltInWorldToObjectKHR);

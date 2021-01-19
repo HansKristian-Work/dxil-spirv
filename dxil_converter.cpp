@@ -2899,6 +2899,12 @@ bool Converter::Impl::emit_hit_attribute()
 		handle_to_storage_class[&arg] = spv::StorageClassHitAttributeKHR;
 		value_map[&arg] = hit_attribute_var;
 	}
+	else if (execution_model == spv::ExecutionModelIntersectionKHR && llvm_hit_attribute_output_type)
+	{
+		auto *elem_type = llvm_hit_attribute_output_type->getPointerElementType();
+		llvm_hit_attribute_output_value = create_variable(spv::StorageClassHitAttributeKHR,
+		                                                  get_type_id(elem_type), "hit");
+	}
 
 	return true;
 }

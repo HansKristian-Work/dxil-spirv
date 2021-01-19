@@ -64,6 +64,8 @@ def get_sm(shader, force_60):
         return 'gs_6' + minor_version
     elif ext == '.rmiss':
         return 'lib_6_5'
+    elif ext == '.rint':
+        return 'lib_6_5'
     elif ext == '.rgen':
         return 'lib_6_5'
     elif ext == '.rhit':

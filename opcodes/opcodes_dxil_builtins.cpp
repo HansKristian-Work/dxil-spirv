@@ -210,6 +210,7 @@ struct DXILDispatcher
 		OP(PrimitiveIndex) = emit_ray_tracing_primitive_index_instruction;
 		OP(RayFlags) = emit_ray_tracing_ray_flags_instruction;
 		OP(HitKind) = emit_ray_tracing_hit_kind_instruction;
+		OP(ReportHit) = emit_ray_tracing_report_hit;
 	}
 
 #undef OP
@@ -353,6 +354,19 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		auto *payload = instruction->getOperand(15);
 		impl.llvm_payload_values.insert(payload);
+		break;
+	}
+
+	case DXIL::Op::ReportHit:
+	{
+		auto *payload = instruction->getOperand(3);
+		auto *type = payload->getType();
+		if (impl.llvm_hit_attribute_output_type && impl.llvm_hit_attribute_output_type != type)
+		{
+			LOGE("Hit attribute types must match.\n");
+			return false;
+		}
+		impl.llvm_hit_attribute_output_type = type;
 		break;
 	}
 
