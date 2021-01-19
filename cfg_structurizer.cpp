@@ -476,11 +476,10 @@ void CFGStructurizer::fixup_broken_value_dominance()
 		return a.id < b.id;
 	});
 
-	auto &builder = module.get_builder();
 	for (auto &rewrite : rewrites)
 	{
 		auto &orig = origin[rewrite.id];
-		spv::Id alloca_var_id = builder.createVariable(spv::StorageClassFunction, orig.type_id);
+		spv::Id alloca_var_id = module.create_variable(spv::StorageClassFunction, orig.type_id);
 
 		auto *store_op = module.allocate_op(spv::OpStore);
 		store_op->add_id(alloca_var_id);

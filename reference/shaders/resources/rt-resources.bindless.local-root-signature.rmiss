@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
@@ -58,7 +58,7 @@ layout(buffer_reference, std430) buffer PhysicalPointerUint
     uint value;
 };
 
-layout(shaderRecordNV, std430) buffer SBTBlock
+layout(shaderRecordEXT, std430) buffer SBTBlock
 {
     uint _m0[5];
     uint _m1[6];
@@ -93,7 +93,7 @@ layout(push_constant, std430) uniform RootConstants
 layout(set = 0, binding = 0) uniform texture2D _21[];
 layout(set = 3, binding = 0, r32f) uniform readonly image2D _25[];
 layout(set = 2, binding = 0) uniform sampler _36[];
-layout(location = 0) rayPayloadInNV _37 payload;
+rayPayloadInEXT _37 payload;
 
 vec4 _433;
 float _448;
@@ -163,7 +163,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
 ; Bound: 462
 ; Schema: 0
@@ -172,18 +172,18 @@ OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
 OpCapability PhysicalStorageBufferAddresses
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint MissNV %3 "main"
+OpEntryPoint MissNV %3 "main" %8 %16 %21 %25 %32 %36 %39
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -242,7 +242,6 @@ OpDecorate %32 DescriptorSet 5
 OpDecorate %32 Binding 0
 OpDecorate %36 DescriptorSet 2
 OpDecorate %36 Binding 0
-OpDecorate %39 Location 0
 OpDecorate %47 NonUniform
 OpDecorate %65 NonUniform
 OpDecorate %66 NonUniform

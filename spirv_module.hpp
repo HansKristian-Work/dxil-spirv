@@ -40,7 +40,7 @@ class SPIRVModule
 public:
 	SPIRVModule();
 	~SPIRVModule();
-	bool finalize_spirv(Vector<uint32_t> &spirv);
+	bool finalize_spirv(Vector<uint32_t> &spirv) const;
 
 	uint32_t allocate_id();
 	uint32_t allocate_ids(uint32_t count);
@@ -65,6 +65,10 @@ public:
 	Operation *allocate_op();
 	Operation *allocate_op(spv::Op op);
 	Operation *allocate_op(spv::Op op, spv::Id id, spv::Id type_id);
+
+	spv::Id create_variable(spv::StorageClass storage, spv::Id type, const char *name = nullptr);
+	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type, spv::Id initializer,
+	                                         const char *name = nullptr);
 
 private:
 	struct Impl;

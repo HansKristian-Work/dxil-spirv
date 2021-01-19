@@ -352,7 +352,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	{
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		auto *payload = instruction->getOperand(15);
-		impl.llvm_values_to_payload_location[payload] = impl.payload_location_counter++;
+		impl.llvm_payload_values.insert(payload);
 		break;
 	}
 

@@ -19,6 +19,7 @@
 #include "opcodes_llvm_builtins.hpp"
 #include "converter_impl.hpp"
 #include "logging.hpp"
+#include "spirv_module.hpp"
 
 namespace dxil_spv
 {
@@ -752,17 +753,15 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	auto payload_itr = impl.llvm_values_to_payload_location.find(instruction);
-	if (payload_itr != impl.llvm_values_to_payload_location.end())
+	if (impl.llvm_payload_values.count(instruction))
 	{
-		spv::Id var_id = impl.builder().createVariable(spv::StorageClassRayPayloadKHR, pointee_type_id);
+		spv::Id var_id = impl.create_variable(spv::StorageClassRayPayloadKHR, pointee_type_id);
 		impl.handle_to_storage_class[instruction] = spv::StorageClassRayPayloadKHR;
 		impl.value_map[instruction] = var_id;
-		impl.builder().addDecoration(var_id, spv::DecorationLocation, payload_itr->second);
 	}
 	else
 	{
-		spv::Id var_id = impl.builder().createVariable(spv::StorageClassFunction, pointee_type_id);
+		spv::Id var_id = impl.create_variable(spv::StorageClassFunction, pointee_type_id);
 		impl.value_map[instruction] = var_id;
 	}
 	return true;

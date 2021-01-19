@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
 
@@ -11,7 +11,7 @@ struct _16
 
 layout(set = 0, binding = 0) uniform texture2D Tex[2];
 layout(set = 1, binding = 0) uniform texture2D TexUnsized[];
-layout(location = 0) rayPayloadInNV _16 payload;
+rayPayloadInEXT _16 payload;
 
 vec4 _52;
 
@@ -34,7 +34,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
 ; Bound: 58
 ; Schema: 0
@@ -43,16 +43,16 @@ OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint MissNV %3 "main"
+OpEntryPoint MissNV %3 "main" %11 %14 %18
 OpName %3 "main"
 OpName %11 "Tex"
 OpName %14 "TexUnsized"
@@ -62,7 +62,6 @@ OpDecorate %11 DescriptorSet 0
 OpDecorate %11 Binding 0
 OpDecorate %14 DescriptorSet 1
 OpDecorate %14 Binding 0
-OpDecorate %18 Location 0
 OpDecorate %23 NonUniform
 OpDecorate %26 NonUniform
 OpDecorate %22 NonUniform

@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : require
 
 struct _7
@@ -7,7 +7,7 @@ struct _7
     vec4 _m0;
 };
 
-layout(location = 0) rayPayloadInNV _7 payload;
+rayPayloadInEXT _7 payload;
 
 void main()
 {
@@ -18,7 +18,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
 ; Bound: 21
 ; Schema: 0
@@ -27,20 +27,19 @@ OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint MissNV %3 "main"
+OpEntryPoint MissNV %3 "main" %9
 OpName %3 "main"
 OpName %7 ""
 OpName %9 "payload"
-OpDecorate %9 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

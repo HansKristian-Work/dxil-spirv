@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
@@ -23,7 +23,7 @@ layout(push_constant, std430) uniform RootConstants
 } registers;
 
 layout(set = 0, binding = 0) uniform texture2D _13[];
-layout(location = 0) rayPayloadInNV _15 payload;
+rayPayloadInEXT _15 payload;
 
 vec4 _73;
 
@@ -47,7 +47,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
 ; Bound: 79
 ; Schema: 0
@@ -56,18 +56,18 @@ OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
 OpCapability PhysicalStorageBufferAddresses
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint MissNV %3 "main"
+OpEntryPoint MissNV %3 "main" %8 %13 %17
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -84,7 +84,6 @@ OpMemberDecorate %6 6 Offset 24
 OpMemberDecorate %6 7 Offset 28
 OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 0
-OpDecorate %17 Location 0
 OpDecorate %29 NonUniform
 OpDecorate %30 NonUniform
 OpDecorate %45 NonUniform

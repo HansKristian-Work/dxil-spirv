@@ -49,14 +49,6 @@ bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	spv::Id ray_origin_vec = impl.build_vector(builder.makeFloatType(32), ray_origin, 3);
 	spv::Id ray_dir_vec = impl.build_vector(builder.makeFloatType(32), ray_dir, 3);
 
-	auto location_itr = impl.llvm_values_to_payload_location.find(inst->getOperand(15));
-	if (location_itr == impl.llvm_values_to_payload_location.end())
-	{
-		LOGE("No payload location associated with pointer.\n");
-		return false;
-	}
-	spv::Id payload_location = builder.makeUintConstant(location_itr->second);
-
 	auto *op = impl.allocate(spv::OpTraceRayKHR);
 	op->add_ids({
 	    acceleration_structure,
@@ -69,7 +61,7 @@ bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	    tmin,
 	    ray_dir_vec,
 	    tmax,
-	    payload_location
+	    impl.get_id_for_value(inst->getOperand(15))
 	});
 	impl.add(op);
 

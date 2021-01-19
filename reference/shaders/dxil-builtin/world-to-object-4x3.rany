@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : require
 
 struct _7
@@ -12,19 +12,19 @@ struct _11
     vec2 _m0;
 };
 
-layout(location = 0) rayPayloadInNV _7 payload;
-hitAttributeNV _11 hit;
+rayPayloadInEXT _7 payload;
+hitAttributeEXT _11 hit;
 
 vec3 _59;
 
 void main()
 {
     vec3 _58 = _59;
-    _58.x = fma(payload._m0.z, gl_WorldToObjectNV[2u].x, fma(payload._m0.y, gl_WorldToObjectNV[1u].x, payload._m0.x * gl_WorldToObjectNV[0u].x)) + gl_WorldToObjectNV[3u].x;
+    _58.x = fma(payload._m0.z, gl_WorldToObjectEXT[2u].x, fma(payload._m0.y, gl_WorldToObjectEXT[1u].x, payload._m0.x * gl_WorldToObjectEXT[0u].x)) + gl_WorldToObjectEXT[3u].x;
     vec3 _64 = _58;
-    _64.y = fma(payload._m0.z, gl_WorldToObjectNV[2u].y, fma(payload._m0.y, gl_WorldToObjectNV[1u].y, payload._m0.x * gl_WorldToObjectNV[0u].y)) + gl_WorldToObjectNV[3u].y;
+    _64.y = fma(payload._m0.z, gl_WorldToObjectEXT[2u].y, fma(payload._m0.y, gl_WorldToObjectEXT[1u].y, payload._m0.x * gl_WorldToObjectEXT[0u].y)) + gl_WorldToObjectEXT[3u].y;
     vec3 _69 = _64;
-    _69.z = fma(payload._m0.z, gl_WorldToObjectNV[2u].z, fma(payload._m0.y, gl_WorldToObjectNV[1u].z, payload._m0.x * gl_WorldToObjectNV[0u].z)) + gl_WorldToObjectNV[3u].z;
+    _69.z = fma(payload._m0.z, gl_WorldToObjectEXT[2u].z, fma(payload._m0.y, gl_WorldToObjectEXT[1u].z, payload._m0.x * gl_WorldToObjectEXT[0u].z)) + gl_WorldToObjectEXT[3u].z;
     payload._m0 = _69;
 }
 
@@ -32,7 +32,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
 ; Bound: 72
 ; Schema: 0
@@ -41,23 +41,22 @@ OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 %54 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
-OpEntryPoint AnyHitNV %3 "main" %16
+OpEntryPoint AnyHitNV %3 "main" %9 %13 %16
 OpName %3 "main"
 OpName %7 ""
 OpName %9 "payload"
 OpName %11 ""
 OpName %13 "hit"
-OpDecorate %9 Location 0
 OpDecorate %16 BuiltIn WorldToObjectNV
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
