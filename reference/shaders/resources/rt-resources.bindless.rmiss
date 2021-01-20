@@ -29,9 +29,9 @@ vec4 _75;
 
 void main()
 {
-    vec4 _33 = texelFetch(_13[nonuniformEXT(registers._m0 + (payload._m1 & 1u))], ivec2(uvec2(0u)), int(0u));
-    vec4 _47 = texelFetch(_13[nonuniformEXT(registers._m0 + payload._m1)], ivec2(uvec2(0u)), int(0u));
-    vec4 _64 = texelFetch(_13[nonuniformEXT((registers._m0 + 10u) + payload._m1)], ivec2(uvec2(0u)), int(0u));
+    vec4 _33 = texelFetch(_13[registers._m0 + (payload._m1 & 1u)], ivec2(uvec2(0u)), int(0u));
+    vec4 _47 = texelFetch(_13[registers._m0 + payload._m1], ivec2(uvec2(0u)), int(0u));
+    vec4 _64 = texelFetch(_13[(registers._m0 + 10u) + payload._m1], ivec2(uvec2(0u)), int(0u));
     vec4 _74 = _75;
     _74.x = (_33.x + _47.x) + _64.x;
     vec4 _76 = _74;
@@ -84,12 +84,6 @@ OpMemberDecorate %6 6 Offset 24
 OpMemberDecorate %6 7 Offset 28
 OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 0
-OpDecorate %29 NonUniform
-OpDecorate %30 NonUniform
-OpDecorate %45 NonUniform
-OpDecorate %46 NonUniform
-OpDecorate %62 NonUniform
-OpDecorate %63 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

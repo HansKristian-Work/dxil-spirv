@@ -75,8 +75,6 @@ OpMemberDecorate %6 6 Offset 24
 OpMemberDecorate %6 7 Offset 28
 OpDecorate %12 DescriptorSet 0
 OpDecorate %12 Binding 0
-OpDecorate %35 NonUniform
-OpDecorate %37 NonUniform
 OpDecorate %60 NonUniform
 OpDecorate %61 NonUniform
 %1 = OpTypeVoid

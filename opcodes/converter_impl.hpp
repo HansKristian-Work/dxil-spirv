@@ -173,6 +173,7 @@ struct Converter::Impl
 		DXIL::ResourceType type;
 		unsigned meta_index;
 		llvm::Value *offset;
+		bool non_uniform;
 	};
 	UnorderedMap<const llvm::Value *, ResourceMetaReference> llvm_global_variable_to_resource_mapping;
 

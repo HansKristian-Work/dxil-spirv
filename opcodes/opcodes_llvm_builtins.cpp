@@ -341,6 +341,16 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 	return true;
 }
 
+static bool elementptr_is_nonuniform(const llvm::GetElementPtrInst *inst)
+{
+	return inst->getMetadata("dx.nonuniform") != nullptr;
+}
+
+static bool elementptr_is_nonuniform(const llvm::ConstantExpr *)
+{
+	return false;
+}
+
 template <typename Inst>
 static bool emit_getelementptr_resource(Converter::Impl &impl, const Inst *instruction,
                                         const Converter::Impl::ResourceMetaReference &meta)
@@ -362,6 +372,7 @@ static bool emit_getelementptr_resource(Converter::Impl &impl, const Inst *instr
 
 	auto indexed_meta = meta;
 	indexed_meta.offset = instruction->getOperand(2);
+	indexed_meta.non_uniform = elementptr_is_nonuniform(instruction);
 	impl.llvm_global_variable_to_resource_mapping[instruction] = indexed_meta;
 	return true;
 }

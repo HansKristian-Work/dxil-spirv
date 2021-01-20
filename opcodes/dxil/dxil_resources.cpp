@@ -1177,7 +1177,8 @@ bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::C
 	if (itr == impl.llvm_global_variable_to_resource_mapping.end())
 		return false;
 
-	return emit_create_handle(impl, instruction, itr->second.type, itr->second.meta_index, itr->second.offset, true);
+	return emit_create_handle(impl, instruction, itr->second.type,
+	                          itr->second.meta_index, itr->second.offset, itr->second.non_uniform);
 }
 
 bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
