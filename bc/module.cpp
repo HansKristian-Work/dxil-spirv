@@ -1146,6 +1146,14 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_UNREACHABLE:
+	{
+		auto *ret = context->construct<UnreachableInst>();
+		if (!add_instruction(ret))
+			return false;
+		break;
+	}
+
 	case FunctionRecord::INST_UNOP:
 	{
 		unsigned index = 0;

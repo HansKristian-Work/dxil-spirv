@@ -211,6 +211,8 @@ struct DXILDispatcher
 		OP(RayFlags) = emit_ray_tracing_ray_flags_instruction;
 		OP(HitKind) = emit_ray_tracing_hit_kind_instruction;
 		OP(ReportHit) = emit_ray_tracing_report_hit;
+		OP(AcceptHitAndEndSearch) = emit_ray_tracing_accept_hit_and_end_search;
+		OP(IgnoreHit) = emit_ray_tracing_ignore_hit;
 	}
 
 #undef OP

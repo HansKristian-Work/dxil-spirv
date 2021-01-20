@@ -51,7 +51,7 @@ add_library(spirv-module STATIC
 set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC glslang-spirv-builder dxil-spirv-headers)
-target_link_libraries(spirv-module PRIVATE dxil-utils)
+target_link_libraries(spirv-module PRIVATE dxil-utils dxil-debug)
 target_compile_options(spirv-module PRIVATE ${DXIL_SPV_CXX_FLAGS})
 
 add_library(dxil-converter STATIC

@@ -127,6 +127,12 @@ ReturnInst::ReturnInst(Value *value_)
 	set_terminator();
 }
 
+UnreachableInst::UnreachableInst()
+	: Instruction(nullptr, ValueKind::Unreachable)
+{
+	set_terminator();
+}
+
 CallInst::CallInst(FunctionType *function_type_, Function *callee_, Vector<Value *> params)
     : Instruction(function_type_->getReturnType(), ValueKind::Call)
     , callee(callee_)

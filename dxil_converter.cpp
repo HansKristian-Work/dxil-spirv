@@ -3843,6 +3843,10 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 			if (inst->getReturnValue())
 				node->ir.terminator.return_value = get_id_for_value(inst->getReturnValue());
 		}
+		else if (llvm::isa<llvm::UnreachableInst>(instruction))
+		{
+			node->ir.terminator.type = Terminator::Type::Unreachable;
+		}
 		else
 		{
 			LOGE("Unsupported terminator ...\n");

@@ -123,6 +123,18 @@ private:
 	Value *value;
 };
 
+class UnreachableInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::Unreachable;
+	}
+
+	UnreachableInst();
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+};
+
 class CallInst : public Instruction
 {
 public:

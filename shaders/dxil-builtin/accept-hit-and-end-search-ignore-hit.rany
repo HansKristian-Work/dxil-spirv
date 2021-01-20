@@ -1,0 +1,23 @@
+struct Payload
+{
+	float p;
+};
+
+struct Hit
+{
+	float2 attr;
+};
+
+[shader("anyhit")]
+void RayAny(inout Payload payload, in Hit attr)
+{
+	if (attr.attr.x > 10.0)
+	{
+		payload.p = 10.0;
+		AcceptHitAndEndSearch();
+	}
+	else
+	{
+		IgnoreHit();
+	}
+}

@@ -177,6 +177,20 @@ bool emit_ray_tracing_report_hit(Converter::Impl &impl, const llvm::CallInst *in
 	return true;
 }
 
+bool emit_ray_tracing_accept_hit_and_end_search(Converter::Impl &impl, const llvm::CallInst *)
+{
+	auto *op = impl.allocate(spv::OpTerminateRayKHR);
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *)
+{
+	auto *op = impl.allocate(spv::OpIgnoreIntersectionKHR);
+	impl.add(op);
+	return true;
+}
+
 bool emit_world_to_object_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	return emit_ray_tracing_matrix_load(impl, inst, spv::BuiltInWorldToObjectKHR);

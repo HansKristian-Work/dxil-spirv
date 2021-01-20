@@ -20,6 +20,7 @@
 #include "SpvBuilder.h"
 #include "node.hpp"
 #include "scratch_pool.hpp"
+#include "logging.hpp"
 
 namespace dxil_spv
 {
@@ -38,7 +39,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Instruction *entry_point = nullptr;
 
 	void emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage);
-	bool finalize_spirv(Vector<uint32_t> &spirv) const;
+	bool finalize_spirv(Vector<uint32_t> &spirv);
 
 	void register_block(CFGNode *node) override;
 	void emit_basic_block(CFGNode *node) override;
@@ -84,6 +85,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	bool spirv_requires_14() const;
 	bool builtin_requires_volatile(spv::BuiltIn builtin) const;
 	bool execution_model_is_ray_tracing() const;
+	bool mark_error = false;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -386,8 +388,9 @@ bool SPIRVModule::Impl::spirv_requires_14() const
 	return execution_model_is_ray_tracing();
 }
 
-bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv) const
+bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv)
 {
+	mark_error = false;
 	builder.dump(spirv);
 	if (spirv.size() >= 2)
 	{
@@ -395,7 +398,7 @@ bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv) const
 		static const uint32_t Version_1_4 = 0x00010400;
 		spirv[1] = spirv_requires_14() ? Version_1_4 : Version_1_3;
 	}
-	return true;
+	return !mark_error;
 }
 
 void SPIRVModule::Impl::register_block(CFGNode *node)
@@ -452,9 +455,14 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		bb->addInstruction(std::move(phi_op));
 	}
 
+	bool implicit_terminator = false;
+
 	// Emit opcodes.
 	for (auto *op : ir.operations)
 	{
+		if (implicit_terminator)
+			break;
+
 		if (op->op == spv::OpIsHelperInvocationEXT && !caps.supports_demote)
 		{
 			spv::Id helper_var_id = get_builtin_shader_input(spv::BuiltInHelperInvocation);
@@ -503,6 +511,12 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				builder.addExtension("SPV_EXT_demote_to_helper_invocation");
 				builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
 			}
+			else if (op->op == spv::OpTerminateRayKHR || op->op == spv::OpIgnoreIntersectionKHR)
+			{
+				// In DXIL, these must be by unreachable.
+				// There is no [[noreturn]] qualifier used for these intrinsics apparently.
+				implicit_terminator = true;
+			}
 
 			std::unique_ptr<spv::Instruction> inst;
 			if (op->id != 0)
@@ -525,6 +539,24 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			}
 			bb->addInstruction(std::move(inst));
 		}
+	}
+
+	if (implicit_terminator)
+	{
+		if (ir.merge_info.merge_type != MergeType::None)
+		{
+			LOGE("Basic block has implicit terminator, but attempts to merge execution?\n");
+			mark_error = true;
+			return;
+		}
+		else if (ir.terminator.type != Terminator::Type::Unreachable)
+		{
+			LOGE("Implicitly terminated blocks must terminate with Unreachable.\n");
+			mark_error = true;
+			return;
+		}
+
+		return;
 	}
 
 	// Emit structured merge information.
@@ -573,8 +605,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	{
 	case Terminator::Type::Unreachable:
 	{
-		auto unreachable_op = std::make_unique<spv::Instruction>(spv::OpUnreachable);
-		bb->addInstruction(std::move(unreachable_op));
+		builder.createUnreachable();
 		break;
 	}
 
