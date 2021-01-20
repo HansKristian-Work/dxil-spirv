@@ -6,8 +6,6 @@ struct Payload
 RaytracingAccelerationStructure AS_Local : register(t1, space15);
 RaytracingAccelerationStructure AS_RootDesc : register(t0, space0);
 RaytracingAccelerationStructure AS_Plain : register(t1, space0);
-//RaytracingAccelerationStructure AS[] : register(t1, space1);
-//RaytracingAccelerationStructure AS_Counter[] : register(t2, space2);
 
 [shader("raygeneration")]
 void RayGen()
@@ -20,8 +18,6 @@ void RayGen()
 
 	Payload p;
 	p.color = float4(1, 2, 3, 4);
-	//TraceRay(AS[1], RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
-	//TraceRay(AS_Counter[2], RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
 	TraceRay(AS_Local, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
 	TraceRay(AS_RootDesc, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
 	TraceRay(AS_Plain, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);

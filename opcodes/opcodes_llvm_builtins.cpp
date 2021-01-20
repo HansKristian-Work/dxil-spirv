@@ -341,7 +341,8 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 	return true;
 }
 
-static bool emit_getelementptr_resource(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction,
+template <typename Inst>
+static bool emit_getelementptr_resource(Converter::Impl &impl, const Inst *instruction,
                                         const Converter::Impl::ResourceMetaReference &meta)
 {
 	auto *elem_index = instruction->getOperand(1);
@@ -430,7 +431,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 
 	auto global_itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getOperand(0));
 	if (global_itr != impl.llvm_global_variable_to_resource_mapping.end())
-		return emit_getelementptr_resource(impl, instruction, global_itr->second);
+		return true;
 
 	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(0));
@@ -482,7 +483,7 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	// If we are trying to load a resource in RT, this does not translate in SPIR-V, defer this to createHandleForLib.
 	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
 	{
-		impl.llvm_global_variable_to_resource_mapping[instruction] = itr->second;
+		return true;
 	}
 	else if (type_itr != impl.llvm_value_actual_type.end())
 	{
@@ -949,14 +950,31 @@ bool emit_insertelement_instruction(Converter::Impl &impl, const llvm::InsertEle
 bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *inst)
 {
 	auto itr = impl.llvm_global_variable_to_resource_mapping.find(inst->getOperand(0));
-	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
-		impl.llvm_global_variable_to_resource_mapping[inst] = itr->second;
+	if (itr != impl.llvm_global_variable_to_resource_mapping.end() &&
+	    !emit_getelementptr_resource(impl, inst, itr->second))
+	{
+		return false;
+	}
 
 	return true;
 }
 
 bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 {
+	if (auto *const_expr = llvm::dyn_cast<llvm::ConstantExpr>(inst->getPointerOperand()))
+	{
+		if (const_expr->getOpcode() == llvm::Instruction::GetElementPtr)
+		{
+			auto *ptr = const_expr->getOperand(0);
+			auto itr = impl.llvm_global_variable_to_resource_mapping.find(ptr);
+			if (itr != impl.llvm_global_variable_to_resource_mapping.end() &&
+			    !emit_getelementptr_resource(impl, const_expr, itr->second))
+			{
+				return false;
+			}
+		}
+	}
+
 	auto itr = impl.llvm_global_variable_to_resource_mapping.find(inst->getPointerOperand());
 	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
 		impl.llvm_global_variable_to_resource_mapping[inst] = itr->second;
