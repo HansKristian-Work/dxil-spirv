@@ -216,6 +216,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			if (info.kind == DXIL::ResourceKind::RTAccelerationStructure)
 			{
 				type_id = builder().makeAccelerationStructureType();
+				type_id = builder().makeRuntimeArray(type_id);
 				storage = spv::StorageClassUniformConstant;
 			}
 			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
