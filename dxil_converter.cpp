@@ -610,9 +610,10 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			{
 				// Otherwise, we simply refer to the SBT directly to obtain a pointer.
 				if (resource_kind != DXIL::ResourceKind::RawBuffer &&
-				    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+				    resource_kind != DXIL::ResourceKind::StructuredBuffer &&
+				    resource_kind != DXIL::ResourceKind::RTAccelerationStructure)
 				{
-					LOGE("SRV SBT root descriptors must be raw buffers or structured buffers.\n");
+					LOGE("SRV SBT root descriptors must be raw buffers, structured buffers or RTAS.\n");
 					return false;
 				}
 
@@ -620,6 +621,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				ref.var_id = shader_record_buffer_id;
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
+
+				shader_record_buffer_kinds[local_root_signature_entry] = resource_kind;
 
 				if (range_size != 1)
 				{
@@ -631,9 +634,10 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
 		{
 			if (resource_kind != DXIL::ResourceKind::RawBuffer &&
-			    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+			    resource_kind != DXIL::ResourceKind::StructuredBuffer &&
+			    resource_kind != DXIL::ResourceKind::RTAccelerationStructure)
 			{
-				LOGE("BDA root descriptors must be raw buffers or structured buffers.\n");
+				LOGE("BDA root descriptors must be raw buffers, structured buffers or RTAS.\n");
 				return false;
 			}
 
@@ -642,6 +646,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.stride = stride;
+
+			root_descriptor_kinds[ref.push_constant_member] = resource_kind;
 
 			if (range_size != 1)
 			{
@@ -1063,6 +1069,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
 
+				shader_record_buffer_kinds[local_root_signature_entry] = resource_kind;
+
 				if (range_size != 1)
 				{
 					LOGE("Cannot use descriptor array for root descriptors.\n");
@@ -1085,6 +1093,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.coherent = globally_coherent;
 			ref.stride = stride;
+
+			root_descriptor_kinds[ref.push_constant_member] = resource_kind;
 
 			if (range_size != 1)
 			{
@@ -1371,6 +1381,8 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				ref.var_id = shader_record_buffer_id;
 				ref.local_root_signature_entry = local_root_signature_entry;
 
+				shader_record_buffer_kinds[local_root_signature_entry] = DXIL::ResourceKind::CBuffer;
+
 				if (range_size != 1)
 				{
 					LOGE("Cannot use descriptor array for root descriptors.\n");
@@ -1396,6 +1408,8 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			ref.var_id = root_constant_id;
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer.root_constant_index;
+
+			root_descriptor_kinds[ref.push_constant_member] = DXIL::ResourceKind::CBuffer;
 
 			if (range_size != 1)
 			{
@@ -1719,6 +1733,7 @@ bool Converter::Impl::emit_shader_record_buffer()
 	member_types.reserve(local_root_signature.size());
 	offsets.reserve(local_root_signature.size());
 	shader_record_buffer_types.reserve(local_root_signature.size());
+	shader_record_buffer_kinds.resize(local_root_signature.size());
 
 	uint32_t current_offset = 0;
 	for (auto &elem : local_root_signature)
@@ -1852,6 +1867,8 @@ bool Converter::Impl::emit_resources()
 		num_root_descriptors = resource_mapping_iface->get_root_descriptor_count();
 		num_root_constant_words = resource_mapping_iface->get_root_constant_word_count();
 	}
+
+	root_descriptor_kinds.resize(num_root_descriptors);
 
 	if (num_root_constant_words != 0 || num_root_descriptors != 0)
 		emit_root_constants(num_root_descriptors, num_root_constant_words);

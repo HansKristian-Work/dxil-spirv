@@ -317,6 +317,9 @@ struct Converter::Impl
 	spv::Id shader_record_buffer_id = 0;
 	Vector<spv::Id> shader_record_buffer_types;
 
+	Vector<DXIL::ResourceKind> root_descriptor_kinds;
+	Vector<DXIL::ResourceKind> shader_record_buffer_kinds;
+
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 
 	struct StructTypeEntry

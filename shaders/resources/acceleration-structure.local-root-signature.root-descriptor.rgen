@@ -1,0 +1,29 @@
+struct Payload
+{
+	float4 color;
+};
+
+RaytracingAccelerationStructure AS_Local : register(t1, space15);
+RaytracingAccelerationStructure AS_RootDesc : register(t0, space0);
+RaytracingAccelerationStructure AS_Plain : register(t1, space0);
+//RaytracingAccelerationStructure AS[] : register(t1, space1);
+//RaytracingAccelerationStructure AS_Counter[] : register(t2, space2);
+
+[shader("raygeneration")]
+void RayGen()
+{
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.Direction = float3(0, 0, 1);
+	ray.TMin = 1.0;
+	ray.TMax = 4.0;
+
+	Payload p;
+	p.color = float4(1, 2, 3, 4);
+	//TraceRay(AS[1], RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
+	//TraceRay(AS_Counter[2], RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
+	TraceRay(AS_Local, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
+	TraceRay(AS_RootDesc, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
+	TraceRay(AS_Plain, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
+}
+

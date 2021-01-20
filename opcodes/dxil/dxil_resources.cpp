@@ -717,6 +717,23 @@ static spv::Id build_root_descriptor_load_physical_pointer(Converter::Impl &impl
 	return load_ptr->id;
 }
 
+static bool resource_is_physical_rtas(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
+{
+	if (reference.local_root_signature_entry >= 0)
+	{
+		return impl.local_root_signature[reference.local_root_signature_entry].type ==
+		           LocalRootSignatureType::Descriptor &&
+		       impl.shader_record_buffer_kinds[reference.local_root_signature_entry] ==
+		           DXIL::ResourceKind::RTAccelerationStructure;
+	}
+	else
+	{
+		return reference.root_descriptor &&
+		       impl.root_descriptor_kinds[reference.push_constant_member] ==
+		       DXIL::ResourceKind::RTAccelerationStructure;
+	}
+}
+
 static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
 {
 	if (reference.local_root_signature_entry >= 0)
@@ -811,7 +828,20 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 	{
 		auto &reference = impl.srv_index_to_reference[resource_range];
 
-		if (resource_is_physical_pointer(impl, reference))
+		if (resource_is_physical_rtas(impl, reference))
+		{
+			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
+			auto *op = impl.allocate(spv::OpConvertUToAccelerationStructureKHR, builder.makeAccelerationStructureType());
+			op->add_id(ptr_id);
+			impl.add(op);
+			ptr_id = op->id;
+
+			impl.value_map[instruction] = ptr_id;
+			auto &meta = impl.handle_to_resource_meta[ptr_id];
+			meta = {};
+			meta.storage = spv::StorageClassUniformConstant;
+		}
+		else if (resource_is_physical_pointer(impl, reference))
 		{
 			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
 			impl.value_map[instruction] = ptr_id;
