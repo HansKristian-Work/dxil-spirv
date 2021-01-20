@@ -2326,8 +2326,7 @@ spv::Id Converter::Impl::get_type_id(spv::Id id) const
 bool Converter::Impl::emit_patch_variables()
 {
 	auto &module = bitcode_parser.get_module();
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
+	auto *node = get_entry_point_meta(module);
 
 	if (!node->getOperand(2))
 		return true;
@@ -2458,9 +2457,7 @@ bool Converter::Impl::emit_stage_output_variables()
 {
 	auto &module = bitcode_parser.get_module();
 
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
-
+	auto *node = get_entry_point_meta(module);
 	if (!node->getOperand(2))
 		return true;
 
@@ -2995,8 +2992,7 @@ bool Converter::Impl::emit_stage_input_variables()
 {
 	auto &module = bitcode_parser.get_module();
 
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
+	auto *node = get_entry_point_meta(module);
 	if (!node->getOperand(2))
 		return true;
 
