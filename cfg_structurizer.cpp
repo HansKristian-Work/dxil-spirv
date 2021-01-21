@@ -1428,7 +1428,15 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 			return false;
 	});
 
+	Vector<CFGNode *> sorted_construct;
+	sorted_construct.reserve(construct.size());
 	for (auto *inner_block : construct)
+		sorted_construct.push_back(inner_block);
+	std::sort(sorted_construct.begin(), sorted_construct.end(), [](const CFGNode *a, const CFGNode *b) {
+		return a->forward_post_visit_order > b->forward_post_visit_order;
+	});
+
+	for (auto *inner_block : sorted_construct)
 	{
 		//LOGI("Header: %s, Inner: %s.\n", header->name.c_str(), inner_block->name.c_str());
 		auto *ladder = pool.create_node();

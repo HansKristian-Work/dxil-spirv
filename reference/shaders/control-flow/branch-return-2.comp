@@ -80,7 +80,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 72
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -127,35 +127,35 @@ OpBranch %49
 %20 = OpAccessChain %13 %12 %21
 %22 = OpLoad %5 %20
 %24 = OpIEqual %23 %16 %25
-OpLoopMerge %68 %69 None
+OpLoopMerge %67 %68 None
 OpBranch %50
 %50 = OpLabel
-OpSelectionMerge %66 None
-OpBranchConditional %24 %64 %51
-%64 = OpLabel
-%26 = OpIEqual %23 %22 %27
 OpSelectionMerge %65 None
-OpBranchConditional %26 %67 %65
-%67 = OpLabel
+OpBranchConditional %24 %63 %51
+%63 = OpLabel
+%26 = OpIEqual %23 %22 %27
+OpSelectionMerge %64 None
+OpBranchConditional %26 %66 %64
+%66 = OpLabel
 %30 = OpIMul %5 %19 %25
-OpBranch %68
-%65 = OpLabel
-OpBranch %66
+OpBranch %67
+%64 = OpLabel
+OpBranch %65
 %51 = OpLabel
 %28 = OpIEqual %23 %19 %29
-OpSelectionMerge %62 None
-OpBranchConditional %28 %52 %62
+OpSelectionMerge %61 None
+OpBranchConditional %28 %52 %61
 %52 = OpLabel
 %35 = OpIEqual %23 %22 %36
 OpSelectionMerge %53 None
-OpBranchConditional %35 %63 %53
-%63 = OpLabel
+OpBranchConditional %35 %62 %53
+%62 = OpLabel
 %38 = OpIMul %5 %16 %41
-OpBranch %68
+OpBranch %67
 %53 = OpLabel
 %42 = OpIAdd %5 %16 %25
 %43 = OpIEqual %23 %16 %15
-OpLoopMerge %61 %70 None
+OpLoopMerge %59 %69 None
 OpBranch %54
 %54 = OpLabel
 OpSelectionMerge %57 None
@@ -167,32 +167,30 @@ OpBranchConditional %44 %58 %56
 %58 = OpLabel
 %32 = OpIMul %5 %42 %45
 OpBranch %59
-%59 = OpLabel
-OpBranch %60
-%60 = OpLabel
-OpBranch %61
 %56 = OpLabel
 OpBranch %57
 %57 = OpLabel
 %46 = OpPhi %5 %15 %54 %42 %56
 %33 = OpIAdd %5 %46 %42
-OpBranch %61
-%70 = OpLabel
-OpBranch %53
-%61 = OpLabel
-%47 = OpPhi %5 %32 %60 %33 %57
-OpBranch %62
-%62 = OpLabel
-%48 = OpPhi %5 %15 %51 %47 %61
-OpBranch %66
-%66 = OpLabel
-%31 = OpPhi %5 %48 %62 %29 %65
-%34 = OpIAdd %5 %31 %16
-OpBranch %68
+OpBranch %59
 %69 = OpLabel
-OpBranch %49
+OpBranch %53
+%59 = OpLabel
+%47 = OpPhi %5 %32 %58 %33 %57
+OpBranch %60
+%60 = OpLabel
+OpBranch %61
+%61 = OpLabel
+%48 = OpPhi %5 %15 %51 %47 %60
+OpBranch %65
+%65 = OpLabel
+%31 = OpPhi %5 %48 %61 %29 %64
+%34 = OpIAdd %5 %31 %16
+OpBranch %67
 %68 = OpLabel
-%37 = OpPhi %5 %30 %67 %34 %66 %38 %63
+OpBranch %49
+%67 = OpLabel
+%37 = OpPhi %5 %30 %66 %34 %65 %38 %62
 %40 = OpCompositeConstruct %39 %37 %37 %37 %37
 OpImageWrite %9 %15 %40
 OpReturn
