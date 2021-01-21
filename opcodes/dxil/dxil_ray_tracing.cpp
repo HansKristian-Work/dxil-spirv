@@ -191,6 +191,15 @@ bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *)
 	return true;
 }
 
+bool emit_ray_tracing_call_shader(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto *op = impl.allocate(spv::OpExecuteCallableKHR);
+	op->add_id(impl.get_id_for_value(inst->getOperand(1)));
+	op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+	impl.add(op);
+	return true;
+}
+
 bool emit_world_to_object_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	return emit_ray_tracing_matrix_load(impl, inst, spv::BuiltInWorldToObjectKHR);

@@ -1,0 +1,134 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct _10
+{
+    vec4 _m0;
+};
+
+layout(set = 0, binding = 0) uniform writeonly image2D IMG;
+layout(location = 0) callableDataEXT _10 _12;
+layout(location = 1) callableDataEXT _10 _13;
+layout(location = 2) callableDataEXT _10 _14;
+layout(location = 3) callableDataEXT _10 _15;
+
+void main()
+{
+    executeCallableEXT(0u, 3);
+    executeCallableEXT(1u, 2);
+    executeCallableEXT(2u, 1);
+    executeCallableEXT(3u, 0);
+    imageStore(IMG, ivec2(uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y)), vec4(((_14._m0.x + _15._m0.x) + _13._m0.x) + _12._m0.x, ((_14._m0.y + _15._m0.y) + _13._m0.y) + _12._m0.y, ((_14._m0.z + _15._m0.z) + _13._m0.z) + _12._m0.z, ((_14._m0.w + _15._m0.w) + _13._m0.w) + _12._m0.w));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 72
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability StorageImageWriteWithoutFormat
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint RayGenerationNV %3 "main" %8 %12 %13 %14 %15 %60
+OpName %3 "main"
+OpName %8 "IMG"
+OpName %10 ""
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %60 BuiltIn LaunchIdNV
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeImage %5 2D 0 0 0 2 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeVector %5 4
+%10 = OpTypeStruct %9
+%11 = OpTypePointer CallableDataNV %10
+%12 = OpVariable %11 CallableDataNV
+%13 = OpVariable %11 CallableDataNV
+%14 = OpVariable %11 CallableDataNV
+%15 = OpVariable %11 CallableDataNV
+%16 = OpTypeInt 32 0
+%17 = OpConstant %16 0
+%18 = OpTypePointer CallableDataNV %9
+%25 = OpConstant %16 1
+%32 = OpConstant %16 2
+%39 = OpConstant %16 3
+%58 = OpTypeVector %16 3
+%59 = OpTypePointer Input %58
+%60 = OpVariable %59 Input
+%61 = OpTypePointer Input %16
+%67 = OpTypeVector %16 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %70
+%70 = OpLabel
+OpExecuteCallableKHR %17 %15
+%19 = OpInBoundsAccessChain %18 %15 %17
+%20 = OpLoad %9 %19
+%21 = OpCompositeExtract %5 %20 0
+%22 = OpCompositeExtract %5 %20 1
+%23 = OpCompositeExtract %5 %20 2
+%24 = OpCompositeExtract %5 %20 3
+OpExecuteCallableKHR %25 %14
+%26 = OpInBoundsAccessChain %18 %14 %17
+%27 = OpLoad %9 %26
+%28 = OpCompositeExtract %5 %27 0
+%29 = OpCompositeExtract %5 %27 1
+%30 = OpCompositeExtract %5 %27 2
+%31 = OpCompositeExtract %5 %27 3
+OpExecuteCallableKHR %32 %13
+%33 = OpInBoundsAccessChain %18 %13 %17
+%34 = OpLoad %9 %33
+%35 = OpCompositeExtract %5 %34 0
+%36 = OpCompositeExtract %5 %34 1
+%37 = OpCompositeExtract %5 %34 2
+%38 = OpCompositeExtract %5 %34 3
+OpExecuteCallableKHR %39 %12
+%40 = OpInBoundsAccessChain %18 %12 %17
+%41 = OpLoad %9 %40
+%42 = OpCompositeExtract %5 %41 0
+%43 = OpCompositeExtract %5 %41 1
+%44 = OpCompositeExtract %5 %41 2
+%45 = OpCompositeExtract %5 %41 3
+%46 = OpFAdd %5 %28 %21
+%47 = OpFAdd %5 %29 %22
+%48 = OpFAdd %5 %30 %23
+%49 = OpFAdd %5 %31 %24
+%50 = OpFAdd %5 %46 %35
+%51 = OpFAdd %5 %47 %36
+%52 = OpFAdd %5 %48 %37
+%53 = OpFAdd %5 %49 %38
+%54 = OpFAdd %5 %50 %42
+%55 = OpFAdd %5 %51 %43
+%56 = OpFAdd %5 %52 %44
+%57 = OpFAdd %5 %53 %45
+%62 = OpAccessChain %61 %60 %17
+%63 = OpLoad %16 %62
+%64 = OpAccessChain %61 %60 %25
+%65 = OpLoad %16 %64
+%66 = OpLoad %6 %8
+%68 = OpCompositeConstruct %67 %63 %65
+%69 = OpCompositeConstruct %9 %54 %55 %56 %57
+OpImageWrite %66 %68 %69
+OpReturn
+OpFunctionEnd
+#endif

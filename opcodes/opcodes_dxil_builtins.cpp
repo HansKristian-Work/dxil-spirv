@@ -213,6 +213,7 @@ struct DXILDispatcher
 		OP(ReportHit) = emit_ray_tracing_report_hit;
 		OP(AcceptHitAndEndSearch) = emit_ray_tracing_accept_hit_and_end_search;
 		OP(IgnoreHit) = emit_ray_tracing_ignore_hit;
+		OP(CallShader) = emit_ray_tracing_call_shader;
 	}
 
 #undef OP
@@ -355,7 +356,15 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	{
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		auto *payload = instruction->getOperand(15);
-		impl.llvm_payload_values.insert(payload);
+		impl.llvm_outgoing_payload_values.insert(payload);
+		break;
+	}
+
+	case DXIL::Op::CallShader:
+	{
+		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
+		auto *payload = instruction->getOperand(2);
+		impl.llvm_outgoing_callable_values.insert(payload);
 		break;
 	}
 

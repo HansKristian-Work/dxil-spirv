@@ -765,10 +765,16 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	if (impl.llvm_payload_values.count(instruction))
+	if (impl.llvm_outgoing_payload_values.count(instruction))
 	{
 		spv::Id var_id = impl.create_variable(spv::StorageClassRayPayloadKHR, pointee_type_id);
 		impl.handle_to_storage_class[instruction] = spv::StorageClassRayPayloadKHR;
+		impl.value_map[instruction] = var_id;
+	}
+	else if (impl.llvm_outgoing_callable_values.count(instruction))
+	{
+		spv::Id var_id = impl.create_variable(spv::StorageClassCallableDataKHR, pointee_type_id);
+		impl.handle_to_storage_class[instruction] = spv::StorageClassCallableDataKHR;
 		impl.value_map[instruction] = var_id;
 	}
 	else

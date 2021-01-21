@@ -1,0 +1,36 @@
+struct Payload0
+{
+	float4 color;
+};
+
+struct Payload1
+{
+	float4 color;
+};
+
+struct Payload2
+{
+	float4 color;
+};
+
+struct Payload3
+{
+	float4 color;
+};
+
+RWTexture2D<float4> IMG : register(u0);
+
+[shader("raygeneration")]
+void RayGen()
+{
+	Payload0 p0;
+	Payload1 p1;
+	Payload2 p2;
+	Payload3 p3;
+	CallShader(0, p0);
+	CallShader(1, p1);
+	CallShader(2, p2);
+	CallShader(3, p3);
+
+	IMG[DispatchRaysIndex().xy] = p0.color + p1.color + p2.color + p3.color;
+}

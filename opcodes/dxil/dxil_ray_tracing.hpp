@@ -42,4 +42,5 @@ bool emit_ray_tracing_hit_kind_instruction(Converter::Impl &impl, const llvm::Ca
 bool emit_ray_tracing_report_hit(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_ray_tracing_accept_hit_and_end_search(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_ray_tracing_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv
