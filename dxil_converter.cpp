@@ -215,8 +215,17 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		{
 			if (info.kind == DXIL::ResourceKind::RTAccelerationStructure)
 			{
-				type_id = builder().makeAccelerationStructureType();
-				storage = spv::StorageClassUniformConstant;
+				if (info.descriptor_type == VulkanDescriptorType::SSBO)
+				{
+					type_id = build_ssbo_runtime_array_type(*this, 32, 2, 1, "RTASHeap");
+					storage = spv::StorageClassStorageBuffer;
+				}
+				else
+				{
+					type_id = builder().makeAccelerationStructureType();
+					type_id = builder().makeRuntimeArray(type_id);
+					storage = spv::StorageClassUniformConstant;
+				}
 			}
 			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
 			{
@@ -345,7 +354,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 
 		builder().addExtension("SPV_EXT_descriptor_indexing");
 		builder().addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
-		resource.var_id = builder().createVariable(storage, type_id);
+		resource.var_id = create_variable(storage, type_id);
 
 		auto &meta = handle_to_resource_meta[resource.var_id];
 		meta = {};
@@ -383,6 +392,21 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		bindless_resources.push_back(resource);
 		return resource.var_id;
 	}
+}
+
+static bool resource_meta_is_global_lib_variable(const llvm::MDOperand *operand)
+{
+	if (!operand)
+		return false;
+
+	auto *resource = llvm::dyn_cast<llvm::MDNode>(operand);
+	if (!resource)
+		return false;
+
+	if (const auto *variable = llvm::dyn_cast<llvm::ConstantAsMetadata>(resource->getOperand(1)))
+		return llvm::isa<llvm::GlobalVariable>(variable->getValue());
+	else
+		return false;
 }
 
 void Converter::Impl::register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index)
@@ -494,6 +518,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 	{
 		auto *srv = llvm::cast<llvm::MDNode>(srvs->getOperand(i));
 		unsigned index = get_constant_metadata(srv, 0);
+		bool is_global_lib_variable = resource_meta_is_global_lib_variable(srv);
 		auto name = get_string_metadata(srv, 2);
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
@@ -543,7 +568,11 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			return false;
 		}
 
-		if (range_size != 1)
+		bool rtas_bindless_ssbo = resource_kind == DXIL::ResourceKind::RTAccelerationStructure &&
+		                          vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO &&
+		                          vulkan_binding.buffer_binding.bindless.use_heap;
+
+		if (range_size != 1 && !rtas_bindless_ssbo)
 		{
 			if (range_size == ~0u)
 			{
@@ -598,6 +627,12 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
 
+				if (!is_global_lib_variable)
+				{
+					LOGE("Local root signature requires global lib variables.\n");
+					return false;
+				}
+
 				auto &ref = srv_index_to_reference[index];
 				ref.var_id = var_id;
 				ref.base_offset = heap_offset;
@@ -605,14 +640,16 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				ref.stride = stride;
 				ref.bindless = true;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = resource_kind;
 			}
 			else
 			{
 				// Otherwise, we simply refer to the SBT directly to obtain a pointer.
 				if (resource_kind != DXIL::ResourceKind::RawBuffer &&
-				    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+				    resource_kind != DXIL::ResourceKind::StructuredBuffer &&
+				    resource_kind != DXIL::ResourceKind::RTAccelerationStructure)
 				{
-					LOGE("SRV SBT root descriptors must be raw buffers or structured buffers.\n");
+					LOGE("SRV SBT root descriptors must be raw buffers, structured buffers or RTAS.\n");
 					return false;
 				}
 
@@ -620,6 +657,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				ref.var_id = shader_record_buffer_id;
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = resource_kind;
 
 				if (range_size != 1)
 				{
@@ -631,9 +669,10 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
 		{
 			if (resource_kind != DXIL::ResourceKind::RawBuffer &&
-			    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+			    resource_kind != DXIL::ResourceKind::StructuredBuffer &&
+			    resource_kind != DXIL::ResourceKind::RTAccelerationStructure)
 			{
-				LOGE("BDA root descriptors must be raw buffers or structured buffers.\n");
+				LOGE("BDA root descriptors must be raw buffers, structured buffers or RTAS.\n");
 				return false;
 			}
 
@@ -642,6 +681,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.stride = stride;
+			ref.resource_kind = resource_kind;
 
 			if (range_size != 1)
 			{
@@ -662,8 +702,10 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			}
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
+			// The exception is with lib_* where we access resources by variable, not through
+			// createResource() >_____<.
 			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
-			if (range_size != 1)
+			if (range_size != 1 && !is_global_lib_variable)
 				heap_offset -= bind_register;
 
 			auto &ref = srv_index_to_reference[index];
@@ -674,6 +716,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			ref.stride = stride;
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = resource_kind;
 		}
 		else
 		{
@@ -716,11 +759,11 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				}
 			}
 
-			spv::Id var_id = builder.createVariable(storage, type_id,
-			                                        name.empty() ? nullptr : name.c_str());
+			spv::Id var_id = create_variable(storage, type_id,
+			                                 name.empty() ? nullptr : name.c_str());
 			spv::Id var_id_16bit = 0;
 			if (type_id_16bit)
-				var_id_16bit = builder.createVariable(storage, type_id_16bit, name.empty() ? nullptr : name.c_str());
+				var_id_16bit = create_variable(storage, type_id_16bit, name.empty() ? nullptr : name.c_str());
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
@@ -744,6 +787,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			ref.var_id_16bit = var_id_16bit;
 			ref.base_resource_is_array = range_size != 1;
 			ref.stride = stride;
+			ref.resource_kind = resource_kind;
 
 			auto &meta = handle_to_resource_meta[var_id];
 			meta = {};
@@ -831,6 +875,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 	{
 		auto *uav = llvm::cast<llvm::MDNode>(uavs->getOperand(i));
 		unsigned index = get_constant_metadata(uav, 0);
+		bool is_global_lib_variable = resource_meta_is_global_lib_variable(uav);
 		auto name = get_string_metadata(uav, 2);
 		unsigned bind_space = get_constant_metadata(uav, 3);
 		unsigned bind_register = get_constant_metadata(uav, 4);
@@ -1018,6 +1063,12 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
 
+				if (!is_global_lib_variable)
+				{
+					LOGE("Local root signature requires global lib variables.\n");
+					return false;
+				}
+
 				auto &ref = uav_index_to_reference[index];
 				ref.var_id = var_id;
 				ref.var_id_16bit = var_id_16bit;
@@ -1026,6 +1077,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				ref.bindless = true;
 				ref.base_resource_is_array = range_size != 1;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = resource_kind;
 
 				if (has_counter)
 				{
@@ -1062,6 +1114,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				ref.var_id = shader_record_buffer_id;
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = resource_kind;
 
 				if (range_size != 1)
 				{
@@ -1085,6 +1138,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.coherent = globally_coherent;
 			ref.stride = stride;
+			ref.resource_kind = resource_kind;
 
 			if (range_size != 1)
 			{
@@ -1105,8 +1159,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			}
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
+			// The exception is with lib_* where we access resources by variable, not through
+			// createResource() >_____<.
 			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
-			if (range_size != 1)
+			if (range_size != 1 && !is_global_lib_variable)
 				heap_offset -= bind_register;
 
 			auto &ref = uav_index_to_reference[index];
@@ -1118,6 +1174,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.bindless = true;
 			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = resource_kind;
 
 			if (has_counter)
 			{
@@ -1126,7 +1183,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					spv::Id counter_var_id = create_bindless_heap_variable(counter_info);
 
 					heap_offset = vulkan_binding.counter_binding.bindless.heap_root_offset;
-					if (range_size != 1)
+					if (range_size != 1 && !is_global_lib_variable)
 						heap_offset -= bind_register;
 
 					auto &counter_ref = uav_index_to_counter[index];
@@ -1143,8 +1200,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					spv::Id type_id = builder.makeImageType(element_type_id, spv::DimBuffer, false, false, false, 2,
 					                                        spv::ImageFormatR32ui);
 
-					spv::Id counter_var_id = builder.createVariable(
-					    spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : (name + "Counter").c_str());
+					spv::Id counter_var_id = create_variable(spv::StorageClassUniformConstant,
+					                                         type_id, name.empty() ? nullptr : (name + "Counter").c_str());
 
 					builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
 					                      vulkan_binding.counter_binding.descriptor_set);
@@ -1175,12 +1232,12 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 				spv::Id type_id = build_ssbo_runtime_array_type(*this, 32, 1, range_size, "SSBO");
 				storage = spv::StorageClassStorageBuffer;
-				var_id = builder.createVariable(storage, type_id, name.empty() ? nullptr : name.c_str());
+				var_id = create_variable(storage, type_id, name.empty() ? nullptr : name.c_str());
 
 				if (access_meta.raw_access_16bit)
 				{
 					spv::Id type_id_16bit = build_ssbo_runtime_array_type(*this, 16, 1, range_size, "SSBO_16bit");
-					var_id_16bit = builder.createVariable(storage, type_id_16bit, name.empty() ? nullptr : name.c_str());
+					var_id_16bit = create_variable(storage, type_id_16bit, name.empty() ? nullptr : name.c_str());
 				}
 			}
 			else
@@ -1202,8 +1259,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				}
 
 				storage = spv::StorageClassUniformConstant;
-				var_id = builder.createVariable(storage, type_id,
-				                                name.empty() ? nullptr : name.c_str());
+				var_id = create_variable(storage, type_id,
+				                         name.empty() ? nullptr : name.c_str());
 			}
 
 			auto &ref = uav_index_to_reference[index];
@@ -1212,6 +1269,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.stride = stride;
 			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = resource_kind;
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
@@ -1256,8 +1314,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					                      image_dimension_is_arrayed(resource_kind),
 					                      image_dimension_is_multisampled(resource_kind), 2, format);
 
-				counter_var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
-				                                        name.empty() ? nullptr : (name + "Counter").c_str());
+				counter_var_id = create_variable(spv::StorageClassUniformConstant, type_id,
+				                                 name.empty() ? nullptr : (name + "Counter").c_str());
 
 				builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
 				                      vulkan_binding.counter_binding.descriptor_set);
@@ -1299,6 +1357,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 	{
 		auto *cbv = llvm::cast<llvm::MDNode>(cbvs->getOperand(i));
 		unsigned index = get_constant_metadata(cbv, 0);
+		bool is_global_lib_variable = resource_meta_is_global_lib_variable(cbv);
 		auto name = get_string_metadata(cbv, 2);
 		unsigned bind_space = get_constant_metadata(cbv, 3);
 		unsigned bind_register = get_constant_metadata(cbv, 4);
@@ -1358,18 +1417,26 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
 
+				if (!is_global_lib_variable)
+				{
+					LOGE("Local root signature requires global lib variables.\n");
+					return false;
+				}
+
 				auto &ref = cbv_index_to_reference[index];
 				ref.var_id = var_id;
 				ref.base_offset = heap_offset;
 				ref.base_resource_is_array = range_size != 1;
 				ref.bindless = true;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = DXIL::ResourceKind::CBuffer;
 			}
 			else
 			{
 				auto &ref = cbv_index_to_reference[index];
 				ref.var_id = shader_record_buffer_id;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
 				if (range_size != 1)
 				{
@@ -1389,6 +1456,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			auto &ref = cbv_index_to_reference[index];
 			ref.var_id = root_constant_id;
 			ref.push_constant_member = vulkan_binding.push.offset_in_words + root_descriptor_count;
+			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 		}
 		else if (vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -1396,6 +1464,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			ref.var_id = root_constant_id;
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer.root_constant_index;
+			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
 			if (range_size != 1)
 			{
@@ -1408,8 +1477,10 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
+			// The exception is with lib_* where we access resources by variable, not through
+			// createResource() >_____<.
 			uint32_t heap_offset = vulkan_binding.buffer.bindless.heap_root_offset;
-			if (range_size != 1)
+			if (range_size != 1 && !is_global_lib_variable)
 				heap_offset -= bind_register;
 
 			auto &ref = cbv_index_to_reference[index];
@@ -1418,6 +1489,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			ref.base_offset = heap_offset;
 			ref.base_resource_is_array = range_size != 1;
 			ref.bindless = true;
+			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 		}
 		else
 		{
@@ -1441,8 +1513,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 			}
 
-			spv::Id var_id =
-			    builder.createVariable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
+			spv::Id var_id = create_variable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
@@ -1450,6 +1521,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			auto &ref = cbv_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 		}
 	}
 
@@ -1465,6 +1537,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 	{
 		auto *sampler = llvm::cast<llvm::MDNode>(samplers->getOperand(i));
 		unsigned index = get_constant_metadata(sampler, 0);
+		bool is_global_lib_variable = resource_meta_is_global_lib_variable(sampler);
 		auto name = get_string_metadata(sampler, 2);
 		unsigned bind_space = get_constant_metadata(sampler, 3);
 		unsigned bind_register = get_constant_metadata(sampler, 4);
@@ -1519,20 +1592,29 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			uint32_t heap_offset = entry.table.offset_in_heap;
 			heap_offset += bind_register - entry.register_index;
 
+			if (!is_global_lib_variable)
+			{
+				LOGE("Local root signature requires global lib variables.\n");
+				return false;
+			}
+
 			auto &ref = sampler_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.base_offset = heap_offset;
 			ref.bindless = true;
 			ref.local_root_signature_entry = local_root_signature_entry;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = DXIL::ResourceKind::Sampler;
 		}
 		else if (vulkan_binding.bindless.use_heap)
 		{
 			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
+			// The exception is with lib_* where we access resources by variable, not through
+			// createResource() >_____<.
 			uint32_t heap_offset = vulkan_binding.bindless.heap_root_offset;
-			if (range_size != 1)
+			if (range_size != 1 && !is_global_lib_variable)
 				heap_offset -= bind_register;
 
 			auto &ref = sampler_index_to_reference[index];
@@ -1541,6 +1623,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			ref.base_offset = heap_offset;
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = DXIL::ResourceKind::Sampler;
 		}
 		else
 		{
@@ -1554,8 +1637,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 			}
 
-			spv::Id var_id = builder.createVariable(spv::StorageClassUniformConstant, type_id,
-			                                        name.empty() ? nullptr : name.c_str());
+			spv::Id var_id = create_variable(spv::StorageClassUniformConstant, type_id, name.empty() ? nullptr : name.c_str());
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.binding);
@@ -1563,6 +1645,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			auto &ref = sampler_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = DXIL::ResourceKind::Sampler;
 		}
 	}
 
@@ -1680,12 +1763,12 @@ void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num
 
 	if (options.inline_ubo_enable)
 	{
-		root_constant_id = builder.createVariable(spv::StorageClassUniform, type_id, "registers");
+		root_constant_id = create_variable(spv::StorageClassUniform, type_id, "registers");
 		builder.addDecoration(root_constant_id, spv::DecorationDescriptorSet, options.inline_ubo_descriptor_set);
 		builder.addDecoration(root_constant_id, spv::DecorationBinding, options.inline_ubo_descriptor_binding);
 	}
 	else
-		root_constant_id = builder.createVariable(spv::StorageClassPushConstant, type_id, "registers");
+		root_constant_id = create_variable(spv::StorageClassPushConstant, type_id, "registers");
 
 	root_descriptor_count = num_descriptors;
 	root_constant_num_words = num_constant_words;
@@ -1775,7 +1858,7 @@ bool Converter::Impl::emit_shader_record_buffer()
 	for (size_t i = 0; i < local_root_signature.size(); i++)
 		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, offsets[i]);
 
-	shader_record_buffer_id = builder.createVariable(spv::StorageClassShaderRecordBufferKHR, type_id, "SBT");
+	shader_record_buffer_id = create_variable(spv::StorageClassShaderRecordBufferKHR, type_id, "SBT");
 	return true;
 }
 
@@ -2310,8 +2393,7 @@ spv::Id Converter::Impl::get_type_id(spv::Id id) const
 bool Converter::Impl::emit_patch_variables()
 {
 	auto &module = bitcode_parser.get_module();
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
+	auto *node = get_entry_point_meta(module);
 
 	if (!node->getOperand(2))
 		return true;
@@ -2373,7 +2455,7 @@ bool Converter::Impl::emit_patch_variables()
 			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
-		spv::Id variable_id = builder.createVariable(storage, type_id, variable_name.c_str());
+		spv::Id variable_id = create_variable(storage, type_id, variable_name.c_str());
 		patch_elements_meta[element_id] = { variable_id, element_type, 0 };
 
 		if (system_value != DXIL::Semantic::User)
@@ -2393,7 +2475,6 @@ bool Converter::Impl::emit_patch_variables()
 		}
 
 		builder.addDecoration(variable_id, spv::DecorationPatch);
-		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 
 	return true;
@@ -2443,9 +2524,7 @@ bool Converter::Impl::emit_stage_output_variables()
 {
 	auto &module = bitcode_parser.get_module();
 
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
-
+	auto *node = get_entry_point_meta(module);
 	if (!node->getOperand(2))
 		return true;
 
@@ -2546,7 +2625,7 @@ bool Converter::Impl::emit_stage_output_variables()
 			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
-		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id, variable_name.c_str());
+		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, element_type, 0 };
 
 		if (execution_model == spv::ExecutionModelVertex || execution_model == spv::ExecutionModelGeometry ||
@@ -2631,8 +2710,6 @@ bool Converter::Impl::emit_stage_output_variables()
 			if (start_col != 0)
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
-
-		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 
 	if (clip_distance_count)
@@ -2644,10 +2721,9 @@ bool Converter::Impl::emit_stage_output_variables()
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
 		}
 
-		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id);
+		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id);
 		emit_builtin_decoration(variable_id, DXIL::Semantic::ClipDistance, spv::StorageClassOutput);
 		spirv_module.register_builtin_shader_output(variable_id, spv::BuiltInClipDistance);
-		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 
 	if (cull_distance_count)
@@ -2659,10 +2735,9 @@ bool Converter::Impl::emit_stage_output_variables()
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
 		}
 
-		spv::Id variable_id = builder.createVariable(spv::StorageClassOutput, type_id);
+		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id);
 		emit_builtin_decoration(variable_id, DXIL::Semantic::CullDistance, spv::StorageClassOutput);
 		spirv_module.register_builtin_shader_output(variable_id, spv::BuiltInCullDistance);
-		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 
 	return true;
@@ -2864,9 +2939,8 @@ static bool execution_model_has_hit_attribute(spv::ExecutionModel model)
 	}
 }
 
-bool Converter::Impl::emit_incoming_ray_payload()
+bool Converter::Impl::emit_incoming_payload()
 {
-	auto &builder = spirv_module.get_builder();
 	auto &module = bitcode_parser.get_module();
 	auto *func = get_entry_point_function(module);
 
@@ -2878,13 +2952,15 @@ bool Converter::Impl::emit_incoming_ray_payload()
 			return false;
 		auto *elem_type = arg.getType()->getPointerElementType();
 
+		spv::StorageClass storage;
+		if (execution_model == spv::ExecutionModelCallableKHR)
+			storage = spv::StorageClassIncomingCallableDataKHR;
+		else
+			storage = spv::StorageClassIncomingRayPayloadKHR;
+
 		// This is a POD. We'll emit that as a block containing the payload type.
-		spv::Id payload_var = builder.createVariable(spv::StorageClassIncomingRayPayloadKHR, get_type_id(elem_type), "payload");
-
-		// In RayGeneration shaders, we'll need to declare multiple different payload types.
-		builder.addDecoration(payload_var, spv::DecorationLocation, 0);
-
-		handle_to_storage_class[&arg] = spv::StorageClassIncomingRayPayloadKHR;
+		spv::Id payload_var = create_variable(storage, get_type_id(elem_type), "payload");
+		handle_to_storage_class[&arg] = storage;
 		value_map[&arg] = payload_var;
 	}
 
@@ -2893,7 +2969,6 @@ bool Converter::Impl::emit_incoming_ray_payload()
 
 bool Converter::Impl::emit_hit_attribute()
 {
-	auto &builder = spirv_module.get_builder();
 	auto &module = bitcode_parser.get_module();
 	auto *func = get_entry_point_function(module);
 
@@ -2907,9 +2982,15 @@ bool Converter::Impl::emit_hit_attribute()
 			return false;
 		auto *elem_type = arg.getType()->getPointerElementType();
 
-		spv::Id hit_attribute_var = builder.createVariable(spv::StorageClassHitAttributeKHR, get_type_id(elem_type), "hit");
+		spv::Id hit_attribute_var = create_variable(spv::StorageClassHitAttributeKHR, get_type_id(elem_type), "hit");
 		handle_to_storage_class[&arg] = spv::StorageClassHitAttributeKHR;
 		value_map[&arg] = hit_attribute_var;
+	}
+	else if (execution_model == spv::ExecutionModelIntersectionKHR && llvm_hit_attribute_output_type)
+	{
+		auto *elem_type = llvm_hit_attribute_output_type->getPointerElementType();
+		llvm_hit_attribute_output_value = create_variable(spv::StorageClassHitAttributeKHR,
+		                                                  get_type_id(elem_type), "hit");
 	}
 
 	return true;
@@ -2918,10 +2999,9 @@ bool Converter::Impl::emit_hit_attribute()
 bool Converter::Impl::emit_global_variables()
 {
 	auto &module = bitcode_parser.get_module();
-	auto &builder = spirv_module.get_builder();
 
 	if (execution_model_has_incoming_payload(execution_model))
-		if (!emit_incoming_ray_payload())
+		if (!emit_incoming_payload())
 			return false;
 
 	if (execution_model_has_hit_attribute(execution_model))
@@ -2971,7 +3051,7 @@ bool Converter::Impl::emit_global_variables()
 		if (initializer)
 			initializer_id = get_id_for_constant(initializer, 0);
 
-		spv::Id var_id = builder.createVariableWithInitializer(
+		spv::Id var_id = create_variable_with_initializer(
 		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
 		    pointee_type_id, initializer_id);
 		value_map[&global] = var_id;
@@ -2984,8 +3064,7 @@ bool Converter::Impl::emit_stage_input_variables()
 {
 	auto &module = bitcode_parser.get_module();
 
-	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
-	auto *node = ep_meta->getOperand(0);
+	auto *node = get_entry_point_meta(module);
 	if (!node->getOperand(2))
 		return true;
 
@@ -3086,7 +3165,7 @@ bool Converter::Impl::emit_stage_input_variables()
 			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
-		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id, variable_name.c_str());
+		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
 		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type), 0 };
 
 		if (system_value != DXIL::Semantic::User)
@@ -3111,8 +3190,6 @@ bool Converter::Impl::emit_stage_input_variables()
 			if (execution_model != spv::ExecutionModelVertex && start_col != 0)
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
-
-		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 
 	if (clip_distance_count)
@@ -3124,10 +3201,9 @@ bool Converter::Impl::emit_stage_input_variables()
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex, false), 0);
 		}
 
-		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id);
+		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id);
 		emit_builtin_decoration(variable_id, DXIL::Semantic::ClipDistance, spv::StorageClassInput);
 		spirv_module.register_builtin_shader_input(variable_id, spv::BuiltInClipDistance);
-		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 
 	if (cull_distance_count)
@@ -3139,10 +3215,9 @@ bool Converter::Impl::emit_stage_input_variables()
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex, false), 0);
 		}
 
-		spv::Id variable_id = builder.createVariable(spv::StorageClassInput, type_id);
+		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id);
 		emit_builtin_decoration(variable_id, DXIL::Semantic::CullDistance, spv::StorageClassInput);
 		spirv_module.register_builtin_shader_input(variable_id, spv::BuiltInCullDistance);
-		spirv_module.get_entry_point()->addIdOperand(variable_id);
 	}
 
 	return true;
@@ -3615,7 +3690,7 @@ bool Converter::Impl::emit_execution_modes_geometry()
 bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model)
 {
 	auto &builder = spirv_module.get_builder();
-	builder.addCapability(spv::CapabilityRayTracingProvisionalKHR);
+	builder.addCapability(spv::CapabilityRayTracingKHR);
 	builder.addExtension("SPV_KHR_ray_tracing");
 	builder.addExtension("SPV_EXT_descriptor_indexing");
 
@@ -3854,6 +3929,10 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 			if (inst->getReturnValue())
 				node->ir.terminator.return_value = get_id_for_value(inst->getReturnValue());
 		}
+		else if (llvm::isa<llvm::UnreachableInst>(instruction))
+		{
+			node->ir.terminator.type = Terminator::Type::Unreachable;
+		}
 		else
 		{
 			LOGE("Unsupported terminator ...\n");
@@ -4016,6 +4095,17 @@ spv::Builder &Converter::Impl::builder()
 	return spirv_module.get_builder();
 }
 
+spv::Id Converter::Impl::create_variable(spv::StorageClass storage, spv::Id type_id, const char *name)
+{
+	return spirv_module.create_variable(storage, type_id, name);
+}
+
+spv::Id Converter::Impl::create_variable_with_initializer(spv::StorageClass storage, spv::Id type_id,
+                                                          spv::Id initializer, const char *name)
+{
+	return spirv_module.create_variable_with_initializer(storage, type_id, initializer, name);
+}
+
 void Converter::Impl::set_option(const OptionBase &cap)
 {
 	switch (cap.type)
@@ -4162,5 +4252,4 @@ bool Converter::recognizes_option(Option cap)
 		return false;
 	}
 }
-
 } // namespace dxil_spv

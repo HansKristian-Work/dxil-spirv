@@ -4,20 +4,28 @@
 
 struct _6
 {
-    uint _m0;
+    float _m0;
 };
 
-struct _11
+struct _10
 {
     vec2 _m0;
 };
 
 rayPayloadInEXT _6 payload;
-hitAttributeEXT _11 hit;
+hitAttributeEXT _10 hit;
 
 void main()
 {
-    payload._m0 = uint(gl_InstanceCustomIndexEXT);
+    if (hit._m0.x > 10.0)
+    {
+        payload._m0 = 10.0;
+        terminateRayEXT;
+    }
+    else
+    {
+        ignoreIntersectionEXT;
+    }
 }
 
 
@@ -26,7 +34,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 22
+; Bound: 28
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -42,35 +50,45 @@ OpCapability StorageImageArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint AnyHitNV %3 "main" %8 %13 %15
+OpEntryPoint AnyHitNV %3 "main" %8 %12
 OpName %3 "main"
 OpName %6 ""
 OpName %8 "payload"
-OpName %11 ""
-OpName %13 "hit"
-OpDecorate %15 BuiltIn InstanceCustomIndexNV
+OpName %10 ""
+OpName %12 "hit"
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
+%5 = OpTypeFloat 32
 %6 = OpTypeStruct %5
 %7 = OpTypePointer IncomingRayPayloadNV %6
 %8 = OpVariable %7 IncomingRayPayloadNV
-%9 = OpTypeFloat 32
-%10 = OpTypeVector %9 2
-%11 = OpTypeStruct %10
-%12 = OpTypePointer HitAttributeNV %11
-%13 = OpVariable %12 HitAttributeNV
-%14 = OpTypePointer Input %5
-%15 = OpVariable %14 Input
-%17 = OpTypePointer IncomingRayPayloadNV %5
-%19 = OpConstant %5 0
+%9 = OpTypeVector %5 2
+%10 = OpTypeStruct %9
+%11 = OpTypePointer HitAttributeNV %10
+%12 = OpVariable %11 HitAttributeNV
+%13 = OpTypePointer HitAttributeNV %9
+%15 = OpTypeInt 32 0
+%16 = OpConstant %15 0
+%19 = OpTypeBool
+%21 = OpConstant %5 10
+%22 = OpTypePointer IncomingRayPayloadNV %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %20
-%20 = OpLabel
-%16 = OpLoad %5 %15
-%18 = OpInBoundsAccessChain %17 %8 %19
-OpStore %18 %16
-OpReturn
+OpBranch %24
+%24 = OpLabel
+%14 = OpInBoundsAccessChain %13 %12 %16
+%17 = OpLoad %9 %14
+%18 = OpCompositeExtract %5 %17 0
+%20 = OpFOrdGreaterThan %19 %18 %21
+OpSelectionMerge %27 None
+OpBranchConditional %20 %26 %25
+%26 = OpLabel
+%23 = OpInBoundsAccessChain %22 %8 %16
+OpStore %23 %21
+OpTerminateRayKHR
+%25 = OpLabel
+OpIgnoreIntersectionKHR
+%27 = OpLabel
+OpUnreachable
 OpFunctionEnd
 #endif

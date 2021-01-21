@@ -1,0 +1,10 @@
+struct Payload
+{
+	float p;
+};
+
+[shader("callable")]
+void main(inout Payload p)
+{
+	CallShader(0, p);
+}

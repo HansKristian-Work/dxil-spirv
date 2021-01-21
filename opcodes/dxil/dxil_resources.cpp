@@ -459,7 +459,7 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 }
 
 static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
-                                                        llvm::Value *dynamic_offset)
+                                                        const llvm::Value *dynamic_offset)
 {
 	auto &builder = impl.builder();
 
@@ -507,7 +507,7 @@ static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, c
 }
 
 static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
-                                                        llvm::Value *dynamic_offset)
+                                                        const llvm::Value *dynamic_offset)
 {
 	auto &builder = impl.builder();
 	if (reference.push_constant_member >= (impl.root_constant_num_words + impl.root_descriptor_count) ||
@@ -552,7 +552,7 @@ static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, c
 }
 
 static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
-                                          llvm::Value *dynamic_offset)
+                                          const llvm::Value *dynamic_offset)
 {
 	if (reference.local_root_signature_entry >= 0)
 		return build_bindless_heap_offset_shader_record(impl, reference, dynamic_offset);
@@ -717,6 +717,66 @@ static spv::Id build_root_descriptor_load_physical_pointer(Converter::Impl &impl
 	return load_ptr->id;
 }
 
+static spv::Id build_load_physical_rtas(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
+                                        const llvm::Value *offset, bool non_uniform)
+{
+	auto &builder = impl.builder();
+	spv::Id ptr_id;
+
+	if (builder.getStorageClass(reference.var_id) == spv::StorageClassStorageBuffer)
+	{
+		spv::Id offset_id =
+		    build_bindless_heap_offset(impl, reference, reference.base_resource_is_array ? offset : nullptr);
+
+		if (!non_uniform)
+		{
+			builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+			auto *broadcast_op = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, builder.makeUintType(32));
+			broadcast_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			broadcast_op->add_id(offset_id);
+			impl.add(broadcast_op);
+			offset_id = broadcast_op->id;
+		}
+
+		spv::Id uvec2_type = builder.makeVectorType(builder.makeUintType(32), 2);
+		auto *chain_op =
+		    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, uvec2_type));
+		chain_op->add_id(reference.var_id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		chain_op->add_id(offset_id);
+		impl.add(chain_op);
+
+		auto *load_op = impl.allocate(spv::OpLoad, uvec2_type);
+		load_op->add_id(chain_op->id);
+		impl.add(load_op);
+		ptr_id = load_op->id;
+	}
+	else
+	{
+		ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
+	}
+
+	auto *convert_op = impl.allocate(spv::OpConvertUToAccelerationStructureKHR, builder.makeAccelerationStructureType());
+	convert_op->add_id(ptr_id);
+	impl.add(convert_op);
+	return convert_op->id;
+}
+
+static bool resource_is_physical_rtas(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
+{
+	if (reference.resource_kind != DXIL::ResourceKind::RTAccelerationStructure)
+		return false;
+
+	bool physical_pointer_heap = impl.builder().getStorageClass(reference.var_id) == spv::StorageClassStorageBuffer;
+	if (physical_pointer_heap)
+		return true;
+
+	if (reference.local_root_signature_entry >= 0)
+		return impl.local_root_signature[reference.local_root_signature_entry].type == LocalRootSignatureType::Descriptor;
+	else
+		return reference.root_descriptor;
+}
+
 static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
 {
 	if (reference.local_root_signature_entry >= 0)
@@ -811,7 +871,15 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 	{
 		auto &reference = impl.srv_index_to_reference[resource_range];
 
-		if (resource_is_physical_pointer(impl, reference))
+		if (resource_is_physical_rtas(impl, reference))
+		{
+			spv::Id ptr_id = build_load_physical_rtas(impl, reference, instruction_offset, non_uniform);
+			impl.value_map[instruction] = ptr_id;
+			auto &meta = impl.handle_to_resource_meta[ptr_id];
+			meta = {};
+			meta.storage = spv::StorageClassGeneric;
+		}
+		else if (resource_is_physical_pointer(impl, reference))
 		{
 			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
 			impl.value_map[instruction] = ptr_id;
@@ -874,12 +942,15 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				spv::Id type_id = builder.getDerefTypeId(image_id);
 				type_id = builder.getContainedTypeId(type_id);
 
-				if (meta.storage == spv::StorageClassStorageBuffer)
-					builder.addCapability(spv::CapabilityStorageBufferArrayNonUniformIndexing);
-				else if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
-					builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
-				else
-					builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
+				if (builder.getTypeClass(type_id) != spv::OpTypeAccelerationStructureKHR)
+				{
+					if (meta.storage == spv::StorageClassStorageBuffer)
+						builder.addCapability(spv::CapabilityStorageBufferArrayNonUniformIndexing);
+					else if (builder.getTypeDimensionality(type_id) == spv::DimBuffer)
+						builder.addCapability(spv::CapabilityUniformTexelBufferArrayNonUniformIndexing);
+					else
+						builder.addCapability(spv::CapabilitySampledImageArrayNonUniformIndexingEXT);
+				}
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 			}
 		}
@@ -1144,7 +1215,8 @@ bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::C
 	if (itr == impl.llvm_global_variable_to_resource_mapping.end())
 		return false;
 
-	return emit_create_handle(impl, instruction, itr->second.type, itr->second.meta_index, itr->second.offset, true);
+	return emit_create_handle(impl, instruction, itr->second.type,
+	                          itr->second.meta_index, itr->second.offset, itr->second.non_uniform);
 }
 
 bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)

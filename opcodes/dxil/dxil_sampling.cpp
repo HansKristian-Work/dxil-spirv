@@ -825,7 +825,7 @@ static void build_sample_position_lut(Converter::Impl &impl)
 
 		spv::Id array_type = builder.makeArrayType(vec2_type, builder.makeUintConstant(num_pos), 0);
 		spv::Id lut_id = builder.makeCompositeConstant(array_type, constituents);
-		impl.texture_sample_pos_lut_id = builder.createVariableWithInitializer(spv::StorageClassPrivate, array_type,
+		impl.texture_sample_pos_lut_id = impl.create_variable_with_initializer(spv::StorageClassPrivate, array_type,
 		                                                                       lut_id, "Texture2DMSSamplePositionLUT");
 	}
 }

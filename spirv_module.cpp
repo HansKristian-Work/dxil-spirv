@@ -20,6 +20,7 @@
 #include "SpvBuilder.h"
 #include "node.hpp"
 #include "scratch_pool.hpp"
+#include "logging.hpp"
 
 namespace dxil_spv
 {
@@ -55,6 +56,12 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
 	spv::Id discard_state_var_id = 0;
+	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
+
+	spv::Id create_variable(spv::StorageClass storage, spv::Id type, const char *name);
+	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type,
+	                                         spv::Id initializer, const char *name);
+	void register_active_variable(spv::StorageClass storage, spv::Id id);
 
 	struct
 	{
@@ -74,6 +81,11 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
 	ScratchPool<Operation> operation_pool;
+
+	bool spirv_requires_14() const;
+	bool builtin_requires_volatile(spv::BuiltIn builtin) const;
+	bool execution_model_is_ray_tracing() const;
+	bool mark_error = false;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -173,15 +185,40 @@ bool SPIRVModule::Impl::query_builtin_shader_output(spv::Id id, spv::BuiltIn *bu
 		return false;
 }
 
+bool SPIRVModule::Impl::builtin_requires_volatile(spv::BuiltIn builtin) const
+{
+	if (!execution_model_is_ray_tracing())
+		return false;
+
+	switch (builtin)
+	{
+	case spv::BuiltInSubgroupId:
+	case spv::BuiltInSubgroupLocalInvocationId:
+	case spv::BuiltInSubgroupEqMask:
+	case spv::BuiltInSubgroupLtMask:
+	case spv::BuiltInSubgroupLeMask:
+	case spv::BuiltInSubgroupGtMask:
+	case spv::BuiltInSubgroupGeMask:
+		return true;
+
+	case spv::BuiltInRayTmaxKHR:
+		return execution_model == spv::ExecutionModelIntersectionKHR;
+
+	default:
+		return false;
+	}
+}
+
 spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 {
 	auto itr = builtins_input.find(builtin);
 	if (itr != builtins_input.end())
 		return itr->second;
 
-	spv::Id var_id = builder.createVariable(spv::StorageClassInput, get_type_for_builtin(builtin));
+	spv::Id var_id = create_variable(spv::StorageClassInput, get_type_for_builtin(builtin), nullptr);
 	builder.addDecoration(var_id, spv::DecorationBuiltIn, builtin);
-	entry_point->addIdOperand(var_id);
+	if (builtin_requires_volatile(builtin))
+		builder.addDecoration(var_id, spv::DecorationVolatile);
 	register_builtin_shader_input(var_id, builtin);
 	return var_id;
 }
@@ -202,6 +239,7 @@ spv::Block *SPIRVModule::Impl::get_spv_block(CFGNode *node)
 
 void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage)
 {
+	execution_model = model;
 	builder.addCapability(spv::Capability::CapabilityShader);
 
 	if (physical_storage)
@@ -226,7 +264,7 @@ void SPIRVModule::Impl::enable_shader_discard(bool supports_demote)
 	{
 		auto *current_build_point = builder.getBuildPoint();
 		discard_state_var_id =
-		    builder.createVariable(spv::StorageClassPrivate, builder.makeBoolType(), "discard_state");
+		    create_variable(spv::StorageClassPrivate, builder.makeBoolType(), "discard_state");
 		builder.setBuildPoint(entry_function->getEntryBlock());
 		builder.createStore(builder.makeBoolConstant(false), discard_state_var_id);
 		builder.setBuildPoint(current_build_point);
@@ -328,15 +366,39 @@ void SPIRVModule::emit_entry_point(spv::ExecutionModel model, const char *name, 
 	impl->emit_entry_point(model, name, physical_storage);
 }
 
+bool SPIRVModule::Impl::execution_model_is_ray_tracing() const
+{
+	switch (execution_model)
+	{
+	case spv::ExecutionModelRayGenerationKHR:
+	case spv::ExecutionModelAnyHitKHR:
+	case spv::ExecutionModelIntersectionKHR:
+	case spv::ExecutionModelMissKHR:
+	case spv::ExecutionModelClosestHitKHR:
+	case spv::ExecutionModelCallableKHR:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+bool SPIRVModule::Impl::spirv_requires_14() const
+{
+	return execution_model_is_ray_tracing();
+}
+
 bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv)
 {
+	mark_error = false;
 	builder.dump(spirv);
 	if (spirv.size() >= 2)
 	{
-		static const unsigned int Version_1_3 = 0x00010300;
-		spirv[1] = Version_1_3;
+		static const uint32_t Version_1_3 = 0x00010300;
+		static const uint32_t Version_1_4 = 0x00010400;
+		spirv[1] = spirv_requires_14() ? Version_1_4 : Version_1_3;
 	}
-	return true;
+	return !mark_error;
 }
 
 void SPIRVModule::Impl::register_block(CFGNode *node)
@@ -393,9 +455,14 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		bb->addInstruction(std::move(phi_op));
 	}
 
+	bool implicit_terminator = false;
+
 	// Emit opcodes.
 	for (auto *op : ir.operations)
 	{
+		if (implicit_terminator)
+			break;
+
 		if (op->op == spv::OpIsHelperInvocationEXT && !caps.supports_demote)
 		{
 			spv::Id helper_var_id = get_builtin_shader_input(spv::BuiltInHelperInvocation);
@@ -444,6 +511,12 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				builder.addExtension("SPV_EXT_demote_to_helper_invocation");
 				builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
 			}
+			else if (op->op == spv::OpTerminateRayKHR || op->op == spv::OpIgnoreIntersectionKHR)
+			{
+				// In DXIL, these must be by unreachable.
+				// There is no [[noreturn]] qualifier used for these intrinsics apparently.
+				implicit_terminator = true;
+			}
 
 			std::unique_ptr<spv::Instruction> inst;
 			if (op->id != 0)
@@ -466,6 +539,24 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			}
 			bb->addInstruction(std::move(inst));
 		}
+	}
+
+	if (implicit_terminator)
+	{
+		if (ir.merge_info.merge_type != MergeType::None)
+		{
+			LOGE("Basic block has implicit terminator, but attempts to merge execution?\n");
+			mark_error = true;
+			return;
+		}
+		else if (ir.terminator.type != Terminator::Type::Unreachable)
+		{
+			LOGE("Implicitly terminated blocks must terminate with Unreachable.\n");
+			mark_error = true;
+			return;
+		}
+
+		return;
 	}
 
 	// Emit structured merge information.
@@ -514,8 +605,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	{
 	case Terminator::Type::Unreachable:
 	{
-		auto unreachable_op = std::make_unique<spv::Instruction>(spv::OpUnreachable);
-		bb->addInstruction(std::move(unreachable_op));
+		builder.createUnreachable();
 		break;
 	}
 
@@ -568,7 +658,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	}
 }
 
-bool SPIRVModule::finalize_spirv(Vector<uint32_t> &spirv)
+bool SPIRVModule::finalize_spirv(Vector<uint32_t> &spirv) const
 {
 	return impl->finalize_spirv(spirv);
 }
@@ -595,6 +685,34 @@ void SPIRVModule::Impl::emit_leaf_function_body(spv::Function *func, CFGStructur
 		builder.leaveFunction();
 	}
 	active_function = nullptr;
+}
+
+void SPIRVModule::Impl::register_active_variable(spv::StorageClass storage, spv::Id id)
+{
+	bool register_entry_point;
+	// In SPIR-V 1.4, any global variable is part of the interface.
+	if (spirv_requires_14())
+		register_entry_point = storage != spv::StorageClassFunction;
+	else
+		register_entry_point = storage == spv::StorageClassOutput || storage == spv::StorageClassInput;
+
+	if (register_entry_point)
+		entry_point->addIdOperand(id);
+}
+
+spv::Id SPIRVModule::Impl::create_variable(spv::StorageClass storage, spv::Id type, const char *name)
+{
+	spv::Id id = builder.createVariable(storage, type, name);
+	register_active_variable(storage, id);
+	return id;
+}
+
+spv::Id SPIRVModule::Impl::create_variable_with_initializer(spv::StorageClass storage, spv::Id type,
+                                                            spv::Id initializer, const char *name)
+{
+	spv::Id id = builder.createVariableWithInitializer(storage, type, initializer, name);
+	register_active_variable(storage, id);
+	return id;
 }
 
 void SPIRVModule::emit_entry_point_function_body(CFGStructurizer &structurizer)
@@ -680,6 +798,17 @@ Operation *SPIRVModule::allocate_op(spv::Op op)
 Operation *SPIRVModule::allocate_op(spv::Op op, spv::Id id, spv::Id type_id)
 {
 	return impl->operation_pool.allocate(op, id, type_id);
+}
+
+spv::Id SPIRVModule::create_variable(spv::StorageClass storage, spv::Id type, const char *name)
+{
+	return impl->create_variable(storage, type, name);
+}
+
+spv::Id SPIRVModule::create_variable_with_initializer(spv::StorageClass storage, spv::Id type,
+                                                      spv::Id initializer, const char *name)
+{
+	return impl->create_variable_with_initializer(storage, type, initializer, name);
 }
 
 SPIRVModule::~SPIRVModule()

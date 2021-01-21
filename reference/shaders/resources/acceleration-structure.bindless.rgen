@@ -1,0 +1,153 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct _15
+{
+    vec4 _m0;
+};
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uint _m0;
+    uint _m1;
+    uint _m2;
+    uint _m3;
+    uint _m4;
+    uint _m5;
+    uint _m6;
+    uint _m7;
+} registers;
+
+layout(set = 0, binding = 0) uniform accelerationStructureEXT _12[];
+layout(location = 0) rayPayloadEXT _15 _17;
+layout(location = 1) rayPayloadEXT _15 _18;
+layout(location = 2) rayPayloadEXT _15 _19;
+
+void main()
+{
+    _19._m0 = vec4(1.0, 2.0, 3.0, 4.0);
+    traceRayEXT(_12[(registers._m0 + 100u) + 10u], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 2);
+    _18._m0 = _19._m0;
+    traceRayEXT(_12[registers._m0 + 3u], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    _17._m0 = _18._m0;
+    traceRayEXT(_12[(registers._m0 + 100u) + uint(int(_18._m0.w))], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 66
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint RayGenerationNV %3 "main" %8 %12 %17 %18 %19
+OpName %3 "main"
+OpName %6 "RootConstants"
+OpName %8 "registers"
+OpName %15 ""
+OpDecorate %6 Block
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 4
+OpMemberDecorate %6 2 Offset 8
+OpMemberDecorate %6 3 Offset 12
+OpMemberDecorate %6 4 Offset 16
+OpMemberDecorate %6 5 Offset 20
+OpMemberDecorate %6 6 Offset 24
+OpMemberDecorate %6 7 Offset 28
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 0
+OpDecorate %60 NonUniform
+OpDecorate %61 NonUniform
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeStruct %5 %5 %5 %5 %5 %5 %5 %5
+%7 = OpTypePointer PushConstant %6
+%8 = OpVariable %7 PushConstant
+%9 = OpTypeAccelerationStructureKHR
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeFloat 32
+%14 = OpTypeVector %13 4
+%15 = OpTypeStruct %14
+%16 = OpTypePointer RayPayloadNV %15
+%17 = OpVariable %16 RayPayloadNV
+%18 = OpVariable %16 RayPayloadNV
+%19 = OpVariable %16 RayPayloadNV
+%20 = OpTypePointer RayPayloadNV %14
+%22 = OpConstant %5 0
+%23 = OpConstant %13 1
+%24 = OpConstant %13 2
+%25 = OpConstant %13 3
+%26 = OpConstant %13 4
+%27 = OpConstantComposite %14 %23 %24 %25 %26
+%28 = OpTypePointer UniformConstant %9
+%30 = OpTypePointer PushConstant %5
+%34 = OpConstant %5 100
+%36 = OpConstant %5 10
+%38 = OpConstant %13 0
+%39 = OpTypeVector %13 3
+%48 = OpConstant %5 3
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %64
+%64 = OpLabel
+%21 = OpInBoundsAccessChain %20 %19 %22
+OpStore %21 %27
+%31 = OpAccessChain %30 %8 %22
+%32 = OpLoad %5 %31
+%33 = OpIAdd %5 %32 %34
+%35 = OpIAdd %5 %33 %36
+%29 = OpAccessChain %28 %12 %35
+%37 = OpLoad %9 %29
+%40 = OpCompositeConstruct %39 %23 %24 %25
+%41 = OpCompositeConstruct %39 %38 %38 %23
+OpTraceRayKHR %37 %22 %22 %22 %22 %22 %40 %23 %41 %26 %19
+%42 = OpLoad %14 %21
+%43 = OpInBoundsAccessChain %20 %18 %22
+OpStore %43 %42
+%45 = OpAccessChain %30 %8 %22
+%46 = OpLoad %5 %45
+%47 = OpIAdd %5 %46 %48
+%44 = OpAccessChain %28 %12 %47
+%49 = OpLoad %9 %44
+%50 = OpCompositeConstruct %39 %23 %24 %25
+%51 = OpCompositeConstruct %39 %38 %38 %23
+OpTraceRayKHR %49 %22 %22 %22 %22 %22 %50 %23 %51 %26 %18
+%52 = OpLoad %14 %43
+%53 = OpInBoundsAccessChain %20 %17 %22
+OpStore %53 %52
+%54 = OpCompositeExtract %13 %52 3
+%55 = OpConvertFToS %5 %54
+%57 = OpAccessChain %30 %8 %22
+%58 = OpLoad %5 %57
+%59 = OpIAdd %5 %58 %34
+%60 = OpIAdd %5 %59 %55
+%56 = OpAccessChain %28 %12 %60
+%61 = OpLoad %9 %56
+%62 = OpCompositeConstruct %39 %23 %24 %25
+%63 = OpCompositeConstruct %39 %38 %38 %23
+OpTraceRayKHR %61 %22 %22 %22 %22 %22 %62 %23 %63 %26 %17
+OpReturn
+OpFunctionEnd
+#endif

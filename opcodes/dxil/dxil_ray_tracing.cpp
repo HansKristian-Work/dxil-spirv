@@ -49,14 +49,6 @@ bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	spv::Id ray_origin_vec = impl.build_vector(builder.makeFloatType(32), ray_origin, 3);
 	spv::Id ray_dir_vec = impl.build_vector(builder.makeFloatType(32), ray_dir, 3);
 
-	auto location_itr = impl.llvm_values_to_payload_location.find(inst->getOperand(15));
-	if (location_itr == impl.llvm_values_to_payload_location.end())
-	{
-		LOGE("No payload location associated with pointer.\n");
-		return false;
-	}
-	spv::Id payload_location = builder.makeUintConstant(location_itr->second);
-
 	auto *op = impl.allocate(spv::OpTraceRayKHR);
 	op->add_ids({
 	    acceleration_structure,
@@ -69,7 +61,7 @@ bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	    tmin,
 	    ray_dir_vec,
 	    tmax,
-	    payload_location
+	    impl.get_id_for_value(inst->getOperand(15))
 	});
 	impl.add(op);
 
@@ -163,6 +155,48 @@ static bool emit_ray_tracing_matrix_load(Converter::Impl &impl, const llvm::Call
 	auto *load_op = impl.allocate(spv::OpLoad, inst);
 	load_op->add_id(chain_op->id);
 	impl.add(load_op);
+	return true;
+}
+
+bool emit_ray_tracing_report_hit(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	// We only have one global HitAttributeKHR per shader, so we'll need to copy from argument into that.
+	auto *load_op = impl.allocate(spv::OpLoad, impl.get_type_id(impl.llvm_hit_attribute_output_type->getPointerElementType()));
+	load_op->add_id(impl.get_id_for_value(inst->getOperand(3)));
+	impl.add(load_op);
+
+	auto *store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(impl.llvm_hit_attribute_output_value);
+	store_op->add_id(load_op->id);
+	impl.add(store_op);
+
+	auto *op = impl.allocate(spv::OpReportIntersectionKHR, inst);
+	op->add_id(impl.get_id_for_value(inst->getOperand(1)));
+	op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_tracing_accept_hit_and_end_search(Converter::Impl &impl, const llvm::CallInst *)
+{
+	auto *op = impl.allocate(spv::OpTerminateRayKHR);
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *)
+{
+	auto *op = impl.allocate(spv::OpIgnoreIntersectionKHR);
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_tracing_call_shader(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto *op = impl.allocate(spv::OpExecuteCallableKHR);
+	op->add_id(impl.get_id_for_value(inst->getOperand(1)));
+	op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+	impl.add(op);
 	return true;
 }
 

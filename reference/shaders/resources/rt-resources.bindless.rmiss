@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
@@ -23,51 +23,51 @@ layout(push_constant, std430) uniform RootConstants
 } registers;
 
 layout(set = 0, binding = 0) uniform texture2D _13[];
-layout(location = 0) rayPayloadInNV _15 payload;
+rayPayloadInEXT _15 payload;
 
-vec4 _73;
+vec4 _75;
 
 void main()
 {
-    vec4 _33 = texelFetch(_13[nonuniformEXT(registers._m0 + (payload._m1 & 1u))], ivec2(uvec2(0u)), int(0u));
-    vec4 _47 = texelFetch(_13[nonuniformEXT(registers._m0 + payload._m1)], ivec2(uvec2(0u)), int(0u));
-    vec4 _62 = texelFetch(_13[nonuniformEXT(registers._m0 + payload._m1)], ivec2(uvec2(0u)), int(0u));
-    vec4 _72 = _73;
-    _72.x = (_33.x + _47.x) + _62.x;
-    vec4 _74 = _72;
-    _74.y = (_33.y + _47.y) + _62.y;
-    vec4 _75 = _74;
-    _75.z = (_33.z + _47.z) + _62.z;
-    vec4 _76 = _75;
-    _76.w = (_33.w + _47.w) + _62.w;
-    payload._m0 = _76;
+    vec4 _33 = texelFetch(_13[registers._m0 + (payload._m1 & 1u)], ivec2(uvec2(0u)), int(0u));
+    vec4 _47 = texelFetch(_13[registers._m0 + payload._m1], ivec2(uvec2(0u)), int(0u));
+    vec4 _64 = texelFetch(_13[(registers._m0 + 10u) + payload._m1], ivec2(uvec2(0u)), int(0u));
+    vec4 _74 = _75;
+    _74.x = (_33.x + _47.x) + _64.x;
+    vec4 _76 = _74;
+    _76.y = (_33.y + _47.y) + _64.y;
+    vec4 _77 = _76;
+    _77.z = (_33.z + _47.z) + _64.z;
+    vec4 _78 = _77;
+    _78.w = (_33.w + _47.w) + _64.w;
+    payload._m0 = _78;
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 79
+; Bound: 81
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
 OpCapability PhysicalStorageBufferAddresses
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint MissNV %3 "main"
+OpEntryPoint MissNV %3 "main" %8 %13 %17
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -84,13 +84,6 @@ OpMemberDecorate %6 6 Offset 24
 OpMemberDecorate %6 7 Offset 28
 OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 0
-OpDecorate %17 Location 0
-OpDecorate %29 NonUniform
-OpDecorate %30 NonUniform
-OpDecorate %45 NonUniform
-OpDecorate %46 NonUniform
-OpDecorate %60 NonUniform
-OpDecorate %61 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -115,11 +108,12 @@ OpDecorate %61 NonUniform
 %32 = OpConstant %31 0
 %34 = OpTypeVector %5 2
 %40 = OpTypePointer IncomingRayPayloadNV %14
+%61 = OpConstant %5 10
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%73 = OpUndef %14
-OpBranch %77
-%77 = OpLabel
+%75 = OpUndef %14
+OpBranch %79
+%79 = OpLabel
 %19 = OpInBoundsAccessChain %18 %17 %20
 %21 = OpLoad %5 %19
 %22 = OpBitwiseAnd %5 %21 %20
@@ -152,24 +146,25 @@ OpBranch %77
 %56 = OpFAdd %9 %39 %52
 %58 = OpAccessChain %25 %8 %27
 %59 = OpLoad %5 %58
-%60 = OpIAdd %5 %59 %21
-%57 = OpAccessChain %23 %13 %60
-%61 = OpLoad %10 %57
-%63 = OpCompositeConstruct %34 %27 %27
-%62 = OpImageFetch %14 %61 %63 Lod %27
-%64 = OpCompositeExtract %9 %62 0
-%65 = OpCompositeExtract %9 %62 1
-%66 = OpCompositeExtract %9 %62 2
-%67 = OpCompositeExtract %9 %62 3
-%68 = OpFAdd %9 %53 %64
-%69 = OpFAdd %9 %54 %65
-%70 = OpFAdd %9 %55 %66
-%71 = OpFAdd %9 %56 %67
-%72 = OpCompositeInsert %14 %68 %73 0
-%74 = OpCompositeInsert %14 %69 %72 1
-%75 = OpCompositeInsert %14 %70 %74 2
-%76 = OpCompositeInsert %14 %71 %75 3
-OpStore %41 %76
+%60 = OpIAdd %5 %59 %61
+%62 = OpIAdd %5 %60 %21
+%57 = OpAccessChain %23 %13 %62
+%63 = OpLoad %10 %57
+%65 = OpCompositeConstruct %34 %27 %27
+%64 = OpImageFetch %14 %63 %65 Lod %27
+%66 = OpCompositeExtract %9 %64 0
+%67 = OpCompositeExtract %9 %64 1
+%68 = OpCompositeExtract %9 %64 2
+%69 = OpCompositeExtract %9 %64 3
+%70 = OpFAdd %9 %53 %66
+%71 = OpFAdd %9 %54 %67
+%72 = OpFAdd %9 %55 %68
+%73 = OpFAdd %9 %56 %69
+%74 = OpCompositeInsert %14 %70 %75 0
+%76 = OpCompositeInsert %14 %71 %74 1
+%77 = OpCompositeInsert %14 %72 %76 2
+%78 = OpCompositeInsert %14 %73 %77 3
+OpStore %41 %78
 OpReturn
 OpFunctionEnd
 #endif

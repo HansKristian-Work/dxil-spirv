@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : require
 
 struct _7
@@ -12,19 +12,19 @@ struct _11
     vec2 _m0;
 };
 
-layout(location = 0) rayPayloadInNV _7 payload;
-hitAttributeNV _11 hit;
+rayPayloadInEXT _7 payload;
+hitAttributeEXT _11 hit;
 
 vec3 _22;
 
 void main()
 {
     vec3 _21 = _22;
-    _21.x = gl_WorldRayOriginNV.x;
+    _21.x = gl_WorldRayOriginEXT.x;
     vec3 _26 = _21;
-    _26.y = gl_WorldRayOriginNV.y;
+    _26.y = gl_WorldRayOriginEXT.y;
     vec3 _30 = _26;
-    _30.z = gl_WorldRayOriginNV.z;
+    _30.z = gl_WorldRayOriginEXT.z;
     payload._m0 = _30;
 }
 
@@ -32,7 +32,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
 ; Bound: 35
 ; Schema: 0
@@ -41,22 +41,21 @@ OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint AnyHitNV %3 "main" %15
+OpEntryPoint AnyHitNV %3 "main" %9 %13 %15
 OpName %3 "main"
 OpName %7 ""
 OpName %9 "payload"
 OpName %11 ""
 OpName %13 "hit"
-OpDecorate %9 Location 0
 OpDecorate %15 BuiltIn WorldRayOriginNV
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

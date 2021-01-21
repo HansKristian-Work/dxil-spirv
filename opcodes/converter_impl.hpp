@@ -121,7 +121,7 @@ struct Converter::Impl
 	bool emit_stage_output_variables();
 	bool emit_patch_variables();
 	bool emit_global_variables();
-	bool emit_incoming_ray_payload();
+	bool emit_incoming_payload();
 	bool emit_hit_attribute();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 
@@ -148,8 +148,11 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_srv_resource_index_map;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
 	UnorderedSet<const llvm::Value *> llvm_values_using_update_counter;
-	UnorderedMap<const llvm::Value *, uint32_t> llvm_values_to_payload_location;
 	UnorderedMap<const llvm::Value *, spv::Id> llvm_value_actual_type;
+
+	// DXIL has no storage class concept for hit/callable/payload types.
+	const llvm::Type *llvm_hit_attribute_output_type = nullptr;
+	spv::Id llvm_hit_attribute_output_value = 0;
 
 	struct CompositeMeta
 	{
@@ -163,7 +166,6 @@ struct Converter::Impl
 		bool forced_composite = true;
 	};
 	UnorderedMap<const llvm::Value *, CompositeMeta> llvm_composite_meta;
-	uint32_t payload_location_counter = 0;
 
 	bool composite_is_accessed(const llvm::Value *composite) const;
 
@@ -172,6 +174,7 @@ struct Converter::Impl
 		DXIL::ResourceType type;
 		unsigned meta_index;
 		llvm::Value *offset;
+		bool non_uniform;
 	};
 	UnorderedMap<const llvm::Value *, ResourceMetaReference> llvm_global_variable_to_resource_mapping;
 
@@ -218,6 +221,7 @@ struct Converter::Impl
 		bool base_resource_is_array = false;
 		bool root_descriptor = false;
 		bool coherent = false;
+		DXIL::ResourceKind resource_kind = DXIL::ResourceKind::Invalid;
 		int local_root_signature_entry = -1;
 	};
 
@@ -304,6 +308,9 @@ struct Converter::Impl
 	Operation *allocate(spv::Op op, const llvm::Value *value, spv::Id type_id);
 	Operation *allocate(spv::Op op, spv::Id id, spv::Id type_id);
 	spv::Builder &builder();
+	spv::Id create_variable(spv::StorageClass storage, spv::Id type_id, const char *name = nullptr);
+	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type_id,
+	                                         spv::Id initializer, const char *name = nullptr);
 
 	spv::Id glsl_std450_ext = 0;
 	spv::Id cmpxchg_type = 0;

@@ -34,7 +34,7 @@ using namespace dxil_spv;
 
 static std::string convert_to_asm(const void *code, size_t size)
 {
-	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1_SPIRV_1_4);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
@@ -48,7 +48,7 @@ static std::string convert_to_asm(const void *code, size_t size)
 
 static bool validate_spirv(const void *code, size_t size)
 {
-	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1_SPIRV_1_4);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
@@ -132,6 +132,7 @@ static void print_help()
 	     "\t[--bindless-cbv-as-ssbo]\n"
 	     "\t[--ssbo-uav]\n"
 	     "\t[--ssbo-srv]\n"
+	     "\t[--ssbo-rtas]\n"
 	     "\t[--ssbo-alignment <align>]\n"
 	     "\t[--typed-uav-read-without-format]\n"
 	     "\t[--bindless-typed-buffer-offsets]\n"
@@ -207,6 +208,7 @@ struct Remapper
 
 	bool ssbo_uav = false;
 	bool ssbo_srv = false;
+	bool ssbo_rtas = false;
 };
 
 static bool kind_is_buffer(dxil_spv_resource_kind kind)
@@ -260,6 +262,11 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 			vk_binding->buffer_binding.binding = binding->register_index;
 		}
 
+		if (binding->kind == DXIL_SPV_RESOURCE_KIND_RT_ACCELERATION_STRUCTURE)
+		{
+			if (remapper->bindless && remapper->ssbo_rtas)
+				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+		}
 		if (remapper->ssbo_srv)
 		{
 			if (binding->kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
@@ -607,6 +614,7 @@ int main(int argc, char **argv)
 	cbs.add("--bindless-cbv-as-ssbo", [&](CLIParser &) { args.bindless_cbv_as_ssbo = true; });
 	cbs.add("--ssbo-uav", [&](CLIParser &) { remapper.ssbo_uav = true; });
 	cbs.add("--ssbo-srv", [&](CLIParser &) { remapper.ssbo_srv = true; });
+	cbs.add("--ssbo-rtas", [&](CLIParser &) { remapper.ssbo_rtas = true; });
 	cbs.add("--ssbo-alignment", [&](CLIParser &parser) { args.ssbo_alignment = parser.next_uint(); });
 	cbs.add("--typed-uav-read-without-format", [&](CLIParser &) { args.typed_uav_read_without_format = true; });
 	cbs.add("--bindless-typed-buffer-offsets", [&](CLIParser &) { args.bindless_typed_buffer_offsets = true; });

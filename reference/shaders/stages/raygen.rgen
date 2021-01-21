@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : require
 
 struct _13
@@ -12,15 +12,15 @@ struct _17
     vec4 _m0;
 };
 
-layout(set = 40, binding = 30) uniform accelerationStructureNV AS;
+layout(set = 40, binding = 30) uniform accelerationStructureEXT AS;
 layout(set = 20, binding = 10) uniform writeonly image2D IMG;
-layout(location = 1) rayPayloadNV _13 _15;
-layout(location = 0) rayPayloadNV _17 _19;
+layout(location = 0) rayPayloadEXT _13 _15;
+layout(location = 1) rayPayloadEXT _17 _19;
 
 void main()
 {
-    traceNV(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0u);
-    traceNV(AS, 0u, 1u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1u);
+    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    traceRayEXT(AS, 0u, 1u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
     imageStore(IMG, ivec2(uvec2(0u)), vec4(_15._m0 + _19._m0.x, _15._m0 + _19._m0.y, _15._m0 + _19._m0.z, _15._m0 + _19._m0.w));
 }
 
@@ -28,7 +28,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
 ; Bound: 55
 ; Schema: 0
@@ -38,16 +38,16 @@ OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
 OpCapability StorageImageWriteWithoutFormat
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint RayGenerationNV %3 "main"
+OpEntryPoint RayGenerationNV %3 "main" %8 %12 %15 %19
 OpName %3 "main"
 OpName %8 "AS"
 OpName %12 "IMG"
@@ -58,8 +58,6 @@ OpDecorate %8 Binding 30
 OpDecorate %12 DescriptorSet 20
 OpDecorate %12 Binding 10
 OpDecorate %12 NonReadable
-OpDecorate %15 Location 1
-OpDecorate %19 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 1
@@ -96,7 +94,7 @@ OpBranch %53
 %20 = OpLoad %6 %8
 %29 = OpCompositeConstruct %28 %23 %25 %26
 %30 = OpCompositeConstruct %28 %24 %24 %23
-OpTraceNV %20 %22 %22 %22 %22 %22 %29 %23 %30 %27 %22
+OpTraceRayKHR %20 %22 %22 %22 %22 %22 %29 %23 %30 %27 %19
 %32 = OpInBoundsAccessChain %31 %19 %22
 %33 = OpLoad %16 %32
 %34 = OpCompositeExtract %9 %33 0
@@ -106,7 +104,7 @@ OpTraceNV %20 %22 %22 %22 %22 %22 %29 %23 %30 %27 %22
 %38 = OpLoad %6 %8
 %40 = OpCompositeConstruct %28 %23 %25 %26
 %41 = OpCompositeConstruct %28 %24 %24 %23
-OpTraceNV %38 %22 %39 %22 %22 %22 %40 %23 %41 %27 %39
+OpTraceRayKHR %38 %22 %39 %22 %22 %22 %40 %23 %41 %27 %15
 %43 = OpInBoundsAccessChain %42 %15 %22
 %44 = OpLoad %9 %43
 %45 = OpFAdd %9 %44 %34

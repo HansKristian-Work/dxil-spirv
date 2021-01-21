@@ -1,0 +1,16 @@
+struct Payload
+{
+	float p;
+};
+
+[shader("intersection")]
+void RayIntersect()
+{
+	Payload p;
+	Payload p2;
+	p.p = RayTCurrent();
+	p2.p = RayTMin();
+
+	ReportHit(4.0, 100, p);
+	ReportHit(3.0, 50, p2);
+}

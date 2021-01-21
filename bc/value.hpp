@@ -55,6 +55,7 @@ enum class ValueKind
 	AtomicRMW,
 	AtomicCmpXchg,
 	Return,
+	Unreachable,
 	Branch,
 	Switch,
 	Proxy,

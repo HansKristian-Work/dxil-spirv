@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NV_ray_tracing : require
+#extension GL_EXT_ray_tracing : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
@@ -58,7 +58,7 @@ layout(buffer_reference, std430) buffer PhysicalPointerUint
     uint value;
 };
 
-layout(shaderRecordNV, std430) buffer SBTBlock
+layout(shaderRecordEXT, std430) buffer SBTBlock
 {
     uint _m0[5];
     uint _m1[6];
@@ -93,7 +93,7 @@ layout(push_constant, std430) uniform RootConstants
 layout(set = 0, binding = 0) uniform texture2D _21[];
 layout(set = 3, binding = 0, r32f) uniform readonly image2D _25[];
 layout(set = 2, binding = 0) uniform sampler _36[];
-layout(location = 0) rayPayloadInNV _37 payload;
+rayPayloadInEXT _37 payload;
 
 vec4 _433;
 float _448;
@@ -102,18 +102,18 @@ void main()
 {
     uint _53 = (SBT._m9.x >> 6u) + 12u;
     uint _58 = payload._m1;
-    vec4 _69 = texelFetch(_21[nonuniformEXT(registers._m0 + (_58 & 1u))], ivec2(uvec2(0u)), int(0u));
-    vec4 _82 = texelFetch(_21[nonuniformEXT(registers._m0 + _58)], ivec2(uvec2(0u)), int(0u));
-    vec4 _101 = texelFetch(_21[nonuniformEXT(((SBT._m7.x >> 6u) + 17u) + _58)], ivec2(uvec2(0u)), int(0u));
-    vec4 _121 = imageLoad(_25[nonuniformEXT(((SBT._m8.x >> 6u) + 18u) + _58)], ivec2(uvec2(0u)));
+    vec4 _69 = texelFetch(_21[registers._m0 + (_58 & 1u)], ivec2(uvec2(0u)), int(0u));
+    vec4 _82 = texelFetch(_21[registers._m0 + _58], ivec2(uvec2(0u)), int(0u));
+    vec4 _101 = texelFetch(_21[((SBT._m7.x >> 6u) + 17u) + _58], ivec2(uvec2(0u)), int(0u));
+    vec4 _121 = imageLoad(_25[((SBT._m8.x >> 6u) + 18u) + _58], ivec2(uvec2(0u)));
     uint _148 = ((SBT._m9.x >> 6u) + 13u) + _58;
     vec4 _171 = uintBitsToFloat(uvec4(SBT._m0[0u], SBT._m0[1u], SBT._m0[2u], SBT._m0[3u]));
     vec4 _184 = uintBitsToFloat(uvec4(SBT._m0[4u], 0u, 0u, 0u));
     AddCarry _198;
     _198._m0 = uaddCarry(SBT._m6.x, 1u * 16u, _198._m1);
     PhysicalPointerFloat4NonWrite _205 = PhysicalPointerFloat4NonWrite(uvec2(_198._m0, SBT._m6.y + _198._m1));
-    vec4 _236 = textureLodOffset(nonuniformEXT(sampler2D(_21[nonuniformEXT(registers._m0 + (payload._m1 & 1u))], _36[nonuniformEXT((SBT._m10.x >> 5u) + 13u)])), vec2(0.5), 0.0, ivec2(0));
-    vec4 _264 = textureLodOffset(nonuniformEXT(sampler2D(_21[nonuniformEXT(registers._m0 + payload._m1)], _36[nonuniformEXT(((SBT._m10.x >> 5u) + 14u) + (payload._m1 ^ 1u))])), vec2(0.5), 0.0, ivec2(0));
+    vec4 _236 = textureLodOffset(nonuniformEXT(sampler2D(_21[registers._m0 + (payload._m1 & 1u)], _36[nonuniformEXT((SBT._m10.x >> 5u) + 13u)])), vec2(0.5), 0.0, ivec2(0));
+    vec4 _264 = textureLodOffset(sampler2D(_21[registers._m0 + payload._m1], _36[((SBT._m10.x >> 5u) + 14u) + (payload._m1 ^ 1u)]), vec2(0.5), 0.0, ivec2(0));
     AddCarry _280;
     _280._m0 = uaddCarry(SBT._m2.x, (payload._m1 * 16u) + 0u, _280._m1);
     PhysicalPointerFloat4NonWrite _285 = PhysicalPointerFloat4NonWrite(uvec2(_280._m0, SBT._m2.y + _280._m1));
@@ -163,7 +163,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.4
 ; Generator: Unknown(30017); 21022
 ; Bound: 462
 ; Schema: 0
@@ -172,18 +172,18 @@ OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
 OpCapability PhysicalStorageBufferAddresses
-OpCapability RayTracingProvisionalKHR
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint MissNV %3 "main"
+OpEntryPoint MissNV %3 "main" %8 %16 %21 %25 %32 %36 %39
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -242,31 +242,15 @@ OpDecorate %32 DescriptorSet 5
 OpDecorate %32 Binding 0
 OpDecorate %36 DescriptorSet 2
 OpDecorate %36 Binding 0
-OpDecorate %39 Location 0
 OpDecorate %47 NonUniform
-OpDecorate %65 NonUniform
-OpDecorate %66 NonUniform
-OpDecorate %80 NonUniform
-OpDecorate %81 NonUniform
-OpDecorate %99 NonUniform
-OpDecorate %100 NonUniform
-OpDecorate %119 NonUniform
-OpDecorate %120 NonUniform
 OpDecorate %132 NonUniform
 OpDecorate %142 NonUniform
 OpDecorate %149 NonUniform
 OpMemberDecorate %203 0 Offset 0
 OpDecorate %203 Block
 OpMemberDecorate %203 0 NonWritable
-OpDecorate %222 NonUniform
-OpDecorate %223 NonUniform
 OpDecorate %231 NonUniform
 OpDecorate %233 NonUniform
-OpDecorate %253 NonUniform
-OpDecorate %254 NonUniform
-OpDecorate %261 NonUniform
-OpDecorate %262 NonUniform
-OpDecorate %263 NonUniform
 OpMemberDecorate %299 0 Offset 0
 OpDecorate %299 Block
 OpMemberDecorate %299 0 NonWritable
