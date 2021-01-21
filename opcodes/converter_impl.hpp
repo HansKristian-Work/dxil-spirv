@@ -151,8 +151,6 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, spv::Id> llvm_value_actual_type;
 
 	// DXIL has no storage class concept for hit/callable/payload types.
-	UnorderedSet<const llvm::Value *> llvm_outgoing_payload_values;
-	UnorderedSet<const llvm::Value *> llvm_outgoing_callable_values;
 	const llvm::Type *llvm_hit_attribute_output_type = nullptr;
 	spv::Id llvm_hit_attribute_output_value = 0;
 
