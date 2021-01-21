@@ -1,0 +1,10 @@
+struct Payload
+{
+	float p;
+};
+
+[shader("callable")]
+void RayCallable(inout Payload p)
+{
+	p.p = 1.0;
+}

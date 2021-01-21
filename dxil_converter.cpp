@@ -2899,7 +2899,7 @@ static bool execution_model_has_hit_attribute(spv::ExecutionModel model)
 	}
 }
 
-bool Converter::Impl::emit_incoming_ray_payload()
+bool Converter::Impl::emit_incoming_payload()
 {
 	auto &module = bitcode_parser.get_module();
 	auto *func = get_entry_point_function(module);
@@ -2912,10 +2912,15 @@ bool Converter::Impl::emit_incoming_ray_payload()
 			return false;
 		auto *elem_type = arg.getType()->getPointerElementType();
 
-		// This is a POD. We'll emit that as a block containing the payload type.
-		spv::Id payload_var = create_variable(spv::StorageClassIncomingRayPayloadKHR, get_type_id(elem_type), "payload");
+		spv::StorageClass storage;
+		if (execution_model == spv::ExecutionModelCallableKHR)
+			storage = spv::StorageClassIncomingCallableDataKHR;
+		else
+			storage = spv::StorageClassIncomingRayPayloadKHR;
 
-		handle_to_storage_class[&arg] = spv::StorageClassIncomingRayPayloadKHR;
+		// This is a POD. We'll emit that as a block containing the payload type.
+		spv::Id payload_var = create_variable(storage, get_type_id(elem_type), "payload");
+		handle_to_storage_class[&arg] = storage;
 		value_map[&arg] = payload_var;
 	}
 
@@ -2956,7 +2961,7 @@ bool Converter::Impl::emit_global_variables()
 	auto &module = bitcode_parser.get_module();
 
 	if (execution_model_has_incoming_payload(execution_model))
-		if (!emit_incoming_ray_payload())
+		if (!emit_incoming_payload())
 			return false;
 
 	if (execution_model_has_hit_attribute(execution_model))
