@@ -215,9 +215,17 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		{
 			if (info.kind == DXIL::ResourceKind::RTAccelerationStructure)
 			{
-				type_id = builder().makeAccelerationStructureType();
-				type_id = builder().makeRuntimeArray(type_id);
-				storage = spv::StorageClassUniformConstant;
+				if (info.descriptor_type == VulkanDescriptorType::SSBO)
+				{
+					type_id = build_ssbo_runtime_array_type(*this, 32, 2, 1, "RTASHeap");
+					storage = spv::StorageClassStorageBuffer;
+				}
+				else
+				{
+					type_id = builder().makeAccelerationStructureType();
+					type_id = builder().makeRuntimeArray(type_id);
+					storage = spv::StorageClassUniformConstant;
+				}
 			}
 			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
 			{
@@ -560,7 +568,11 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			return false;
 		}
 
-		if (range_size != 1)
+		bool rtas_bindless_ssbo = resource_kind == DXIL::ResourceKind::RTAccelerationStructure &&
+		                          vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO &&
+		                          vulkan_binding.buffer_binding.bindless.use_heap;
+
+		if (range_size != 1 && !rtas_bindless_ssbo)
 		{
 			if (range_size == ~0u)
 			{
@@ -628,6 +640,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				ref.stride = stride;
 				ref.bindless = true;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = resource_kind;
 			}
 			else
 			{
@@ -644,8 +657,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				ref.var_id = shader_record_buffer_id;
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
-
-				shader_record_buffer_kinds[local_root_signature_entry] = resource_kind;
+				ref.resource_kind = resource_kind;
 
 				if (range_size != 1)
 				{
@@ -669,8 +681,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.stride = stride;
-
-			root_descriptor_kinds[ref.push_constant_member] = resource_kind;
+			ref.resource_kind = resource_kind;
 
 			if (range_size != 1)
 			{
@@ -705,6 +716,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			ref.stride = stride;
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = resource_kind;
 		}
 		else
 		{
@@ -775,6 +787,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			ref.var_id_16bit = var_id_16bit;
 			ref.base_resource_is_array = range_size != 1;
 			ref.stride = stride;
+			ref.resource_kind = resource_kind;
 
 			auto &meta = handle_to_resource_meta[var_id];
 			meta = {};
@@ -1064,6 +1077,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				ref.bindless = true;
 				ref.base_resource_is_array = range_size != 1;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = resource_kind;
 
 				if (has_counter)
 				{
@@ -1100,8 +1114,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				ref.var_id = shader_record_buffer_id;
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
-
-				shader_record_buffer_kinds[local_root_signature_entry] = resource_kind;
+				ref.resource_kind = resource_kind;
 
 				if (range_size != 1)
 				{
@@ -1125,8 +1138,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.coherent = globally_coherent;
 			ref.stride = stride;
-
-			root_descriptor_kinds[ref.push_constant_member] = resource_kind;
+			ref.resource_kind = resource_kind;
 
 			if (range_size != 1)
 			{
@@ -1162,6 +1174,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.bindless = true;
 			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = resource_kind;
 
 			if (has_counter)
 			{
@@ -1256,6 +1269,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			ref.stride = stride;
 			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = resource_kind;
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
@@ -1415,14 +1429,14 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				ref.base_resource_is_array = range_size != 1;
 				ref.bindless = true;
 				ref.local_root_signature_entry = local_root_signature_entry;
+				ref.resource_kind = DXIL::ResourceKind::CBuffer;
 			}
 			else
 			{
 				auto &ref = cbv_index_to_reference[index];
 				ref.var_id = shader_record_buffer_id;
 				ref.local_root_signature_entry = local_root_signature_entry;
-
-				shader_record_buffer_kinds[local_root_signature_entry] = DXIL::ResourceKind::CBuffer;
+				ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
 				if (range_size != 1)
 				{
@@ -1442,6 +1456,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			auto &ref = cbv_index_to_reference[index];
 			ref.var_id = root_constant_id;
 			ref.push_constant_member = vulkan_binding.push.offset_in_words + root_descriptor_count;
+			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 		}
 		else if (vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -1449,8 +1464,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			ref.var_id = root_constant_id;
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer.root_constant_index;
-
-			root_descriptor_kinds[ref.push_constant_member] = DXIL::ResourceKind::CBuffer;
+			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
 			if (range_size != 1)
 			{
@@ -1475,6 +1489,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			ref.base_offset = heap_offset;
 			ref.base_resource_is_array = range_size != 1;
 			ref.bindless = true;
+			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 		}
 		else
 		{
@@ -1506,6 +1521,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			auto &ref = cbv_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 		}
 	}
 
@@ -1588,6 +1604,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			ref.bindless = true;
 			ref.local_root_signature_entry = local_root_signature_entry;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = DXIL::ResourceKind::Sampler;
 		}
 		else if (vulkan_binding.bindless.use_heap)
 		{
@@ -1606,6 +1623,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			ref.base_offset = heap_offset;
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = DXIL::ResourceKind::Sampler;
 		}
 		else
 		{
@@ -1627,6 +1645,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			auto &ref = sampler_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.base_resource_is_array = range_size != 1;
+			ref.resource_kind = DXIL::ResourceKind::Sampler;
 		}
 	}
 
@@ -1785,7 +1804,6 @@ bool Converter::Impl::emit_shader_record_buffer()
 	member_types.reserve(local_root_signature.size());
 	offsets.reserve(local_root_signature.size());
 	shader_record_buffer_types.reserve(local_root_signature.size());
-	shader_record_buffer_kinds.resize(local_root_signature.size());
 
 	uint32_t current_offset = 0;
 	for (auto &elem : local_root_signature)
@@ -1919,8 +1937,6 @@ bool Converter::Impl::emit_resources()
 		num_root_descriptors = resource_mapping_iface->get_root_descriptor_count();
 		num_root_constant_words = resource_mapping_iface->get_root_constant_word_count();
 	}
-
-	root_descriptor_kinds.resize(num_root_descriptors);
 
 	if (num_root_constant_words != 0 || num_root_descriptors != 0)
 		emit_root_constants(num_root_descriptors, num_root_constant_words);

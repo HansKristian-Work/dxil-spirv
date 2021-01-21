@@ -221,6 +221,7 @@ struct Converter::Impl
 		bool base_resource_is_array = false;
 		bool root_descriptor = false;
 		bool coherent = false;
+		DXIL::ResourceKind resource_kind = DXIL::ResourceKind::Invalid;
 		int local_root_signature_entry = -1;
 	};
 
@@ -318,9 +319,6 @@ struct Converter::Impl
 	spv::Id physical_counter_type = 0;
 	spv::Id shader_record_buffer_id = 0;
 	Vector<spv::Id> shader_record_buffer_types;
-
-	Vector<DXIL::ResourceKind> root_descriptor_kinds;
-	Vector<DXIL::ResourceKind> shader_record_buffer_kinds;
 
 	ResourceRemappingInterface *resource_mapping_iface = nullptr;
 

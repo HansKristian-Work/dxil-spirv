@@ -459,7 +459,7 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 }
 
 static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
-                                                        llvm::Value *dynamic_offset)
+                                                        const llvm::Value *dynamic_offset)
 {
 	auto &builder = impl.builder();
 
@@ -507,7 +507,7 @@ static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, c
 }
 
 static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
-                                                        llvm::Value *dynamic_offset)
+                                                        const llvm::Value *dynamic_offset)
 {
 	auto &builder = impl.builder();
 	if (reference.push_constant_member >= (impl.root_constant_num_words + impl.root_descriptor_count) ||
@@ -552,7 +552,7 @@ static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, c
 }
 
 static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
-                                          llvm::Value *dynamic_offset)
+                                          const llvm::Value *dynamic_offset)
 {
 	if (reference.local_root_signature_entry >= 0)
 		return build_bindless_heap_offset_shader_record(impl, reference, dynamic_offset);
@@ -717,21 +717,64 @@ static spv::Id build_root_descriptor_load_physical_pointer(Converter::Impl &impl
 	return load_ptr->id;
 }
 
-static bool resource_is_physical_rtas(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
+static spv::Id build_load_physical_rtas(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
+                                        const llvm::Value *offset, bool non_uniform)
 {
-	if (reference.local_root_signature_entry >= 0)
+	auto &builder = impl.builder();
+	spv::Id ptr_id;
+
+	if (builder.getStorageClass(reference.var_id) == spv::StorageClassStorageBuffer)
 	{
-		return impl.local_root_signature[reference.local_root_signature_entry].type ==
-		           LocalRootSignatureType::Descriptor &&
-		       impl.shader_record_buffer_kinds[reference.local_root_signature_entry] ==
-		           DXIL::ResourceKind::RTAccelerationStructure;
+		spv::Id offset_id =
+		    build_bindless_heap_offset(impl, reference, reference.base_resource_is_array ? offset : nullptr);
+
+		if (!non_uniform)
+		{
+			builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+			auto *broadcast_op = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, builder.makeUintType(32));
+			broadcast_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			broadcast_op->add_id(offset_id);
+			impl.add(broadcast_op);
+			offset_id = broadcast_op->id;
+		}
+
+		spv::Id uvec2_type = builder.makeVectorType(builder.makeUintType(32), 2);
+		auto *chain_op =
+		    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, uvec2_type));
+		chain_op->add_id(reference.var_id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		chain_op->add_id(offset_id);
+		impl.add(chain_op);
+
+		auto *load_op = impl.allocate(spv::OpLoad, uvec2_type);
+		load_op->add_id(chain_op->id);
+		impl.add(load_op);
+		ptr_id = load_op->id;
 	}
 	else
 	{
-		return reference.root_descriptor &&
-		       impl.root_descriptor_kinds[reference.push_constant_member] ==
-		       DXIL::ResourceKind::RTAccelerationStructure;
+		ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
 	}
+
+	auto *convert_op = impl.allocate(spv::OpConvertUToAccelerationStructureKHR, builder.makeAccelerationStructureType());
+	convert_op->add_id(ptr_id);
+	impl.add(convert_op);
+	return convert_op->id;
+}
+
+static bool resource_is_physical_rtas(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
+{
+	if (reference.resource_kind != DXIL::ResourceKind::RTAccelerationStructure)
+		return false;
+
+	bool physical_pointer_heap = impl.builder().getStorageClass(reference.var_id) == spv::StorageClassStorageBuffer;
+	if (physical_pointer_heap)
+		return true;
+
+	if (reference.local_root_signature_entry >= 0)
+		return impl.local_root_signature[reference.local_root_signature_entry].type == LocalRootSignatureType::Descriptor;
+	else
+		return reference.root_descriptor;
 }
 
 static bool resource_is_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference)
@@ -830,16 +873,11 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 		if (resource_is_physical_rtas(impl, reference))
 		{
-			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
-			auto *op = impl.allocate(spv::OpConvertUToAccelerationStructureKHR, builder.makeAccelerationStructureType());
-			op->add_id(ptr_id);
-			impl.add(op);
-			ptr_id = op->id;
-
+			spv::Id ptr_id = build_load_physical_rtas(impl, reference, instruction_offset, non_uniform);
 			impl.value_map[instruction] = ptr_id;
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
-			meta.storage = spv::StorageClassUniformConstant;
+			meta.storage = spv::StorageClassGeneric;
 		}
 		else if (resource_is_physical_pointer(impl, reference))
 		{

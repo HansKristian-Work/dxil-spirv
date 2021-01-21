@@ -1,0 +1,230 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_KHR_shader_subgroup_ballot : require
+
+struct _23
+{
+    vec4 _m0;
+};
+
+layout(shaderRecordEXT, std430) buffer SBTBlock
+{
+    uint _m0[5];
+    uint _m1[6];
+    uvec2 _m2;
+    uvec2 _m3;
+    uvec2 _m4;
+    uvec2 _m5;
+    uvec2 _m6;
+    uvec2 _m7;
+    uvec2 _m8;
+    uvec2 _m9;
+    uvec2 _m10;
+} SBT;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer RTASHeap
+{
+    uvec2 _m0[];
+} _20;
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uint _m0;
+    uint _m1;
+    uint _m2;
+    uint _m3;
+    uint _m4;
+    uint _m5;
+    uint _m6;
+    uint _m7;
+} registers;
+
+layout(location = 0) rayPayloadEXT _23 _25;
+layout(location = 1) rayPayloadEXT _23 _26;
+layout(location = 2) rayPayloadEXT _23 _27;
+layout(location = 3) rayPayloadEXT _23 _28;
+
+void main()
+{
+    _28._m0 = vec4(1.0, 2.0, 3.0, 4.0);
+    traceRayEXT(accelerationStructureEXT(_20._m0[subgroupBroadcastFirst((registers._m0 + 100u) + 10u)]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 3);
+    _27._m0 = _28._m0;
+    traceRayEXT(accelerationStructureEXT(_20._m0[subgroupBroadcastFirst(registers._m0 + 3u)]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 2);
+    _26._m0 = _27._m0;
+    traceRayEXT(accelerationStructureEXT(_20._m0[(registers._m0 + 100u) + uint(int(_27._m0.w))]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    _25._m0 = _26._m0;
+    traceRayEXT(accelerationStructureEXT(_20._m0[subgroupBroadcastFirst(((SBT._m7.x >> 6u) + 10u) + 200u)]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 97
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability GroupNonUniformBallot
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint RayGenerationNV %3 "main" %8 %16 %20 %25 %26 %27 %28
+OpName %3 "main"
+OpName %6 "RootConstants"
+OpName %8 "registers"
+OpName %14 "SBTBlock"
+OpName %16 "SBT"
+OpName %18 "RTASHeap"
+OpName %23 ""
+OpDecorate %6 Block
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 4
+OpMemberDecorate %6 2 Offset 8
+OpMemberDecorate %6 3 Offset 12
+OpMemberDecorate %6 4 Offset 16
+OpMemberDecorate %6 5 Offset 20
+OpMemberDecorate %6 6 Offset 24
+OpMemberDecorate %6 7 Offset 28
+OpDecorate %10 ArrayStride 4
+OpDecorate %12 ArrayStride 4
+OpDecorate %14 Block
+OpMemberDecorate %14 0 Offset 0
+OpMemberDecorate %14 1 Offset 20
+OpMemberDecorate %14 2 Offset 48
+OpMemberDecorate %14 3 Offset 56
+OpMemberDecorate %14 4 Offset 64
+OpMemberDecorate %14 5 Offset 72
+OpMemberDecorate %14 6 Offset 80
+OpMemberDecorate %14 7 Offset 88
+OpMemberDecorate %14 8 Offset 96
+OpMemberDecorate %14 9 Offset 104
+OpMemberDecorate %14 10 Offset 112
+OpDecorate %17 ArrayStride 8
+OpMemberDecorate %18 0 Offset 0
+OpDecorate %18 Block
+OpDecorate %20 DescriptorSet 0
+OpDecorate %20 Binding 0
+OpDecorate %20 NonWritable
+OpDecorate %20 Restrict
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeStruct %5 %5 %5 %5 %5 %5 %5 %5
+%7 = OpTypePointer PushConstant %6
+%8 = OpVariable %7 PushConstant
+%9 = OpConstant %5 5
+%10 = OpTypeArray %5 %9
+%11 = OpConstant %5 6
+%12 = OpTypeArray %5 %11
+%13 = OpTypeVector %5 2
+%14 = OpTypeStruct %10 %12 %13 %13 %13 %13 %13 %13 %13 %13 %13
+%15 = OpTypePointer ShaderRecordBufferNV %14
+%16 = OpVariable %15 ShaderRecordBufferNV
+%17 = OpTypeRuntimeArray %13
+%18 = OpTypeStruct %17
+%19 = OpTypePointer StorageBuffer %18
+%20 = OpVariable %19 StorageBuffer
+%21 = OpTypeFloat 32
+%22 = OpTypeVector %21 4
+%23 = OpTypeStruct %22
+%24 = OpTypePointer RayPayloadNV %23
+%25 = OpVariable %24 RayPayloadNV
+%26 = OpVariable %24 RayPayloadNV
+%27 = OpVariable %24 RayPayloadNV
+%28 = OpVariable %24 RayPayloadNV
+%29 = OpTypePointer RayPayloadNV %22
+%31 = OpConstant %5 0
+%32 = OpConstant %21 1
+%33 = OpConstant %21 2
+%34 = OpConstant %21 3
+%35 = OpConstant %21 4
+%36 = OpConstantComposite %22 %32 %33 %34 %35
+%37 = OpTypePointer PushConstant %5
+%41 = OpConstant %5 100
+%43 = OpConstant %5 10
+%45 = OpConstant %5 3
+%46 = OpTypePointer StorageBuffer %13
+%49 = OpTypeAccelerationStructureKHR
+%51 = OpConstant %21 0
+%52 = OpTypeVector %21 3
+%81 = OpTypePointer ShaderRecordBufferNV %5
+%83 = OpConstant %5 7
+%88 = OpConstant %5 200
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %95
+%95 = OpLabel
+%30 = OpInBoundsAccessChain %29 %28 %31
+OpStore %30 %36
+%38 = OpAccessChain %37 %8 %31
+%39 = OpLoad %5 %38
+%40 = OpIAdd %5 %39 %41
+%42 = OpIAdd %5 %40 %43
+%44 = OpGroupNonUniformBroadcastFirst %5 %45 %42
+%47 = OpAccessChain %46 %20 %31 %44
+%48 = OpLoad %13 %47
+%50 = OpConvertUToAccelerationStructureKHR %49 %48
+%53 = OpCompositeConstruct %52 %32 %33 %34
+%54 = OpCompositeConstruct %52 %51 %51 %32
+OpTraceRayKHR %50 %31 %31 %31 %31 %31 %53 %32 %54 %35 %28
+%55 = OpLoad %22 %30
+%56 = OpInBoundsAccessChain %29 %27 %31
+OpStore %56 %55
+%57 = OpAccessChain %37 %8 %31
+%58 = OpLoad %5 %57
+%59 = OpIAdd %5 %58 %45
+%60 = OpGroupNonUniformBroadcastFirst %5 %45 %59
+%61 = OpAccessChain %46 %20 %31 %60
+%62 = OpLoad %13 %61
+%63 = OpConvertUToAccelerationStructureKHR %49 %62
+%64 = OpCompositeConstruct %52 %32 %33 %34
+%65 = OpCompositeConstruct %52 %51 %51 %32
+OpTraceRayKHR %63 %31 %31 %31 %31 %31 %64 %32 %65 %35 %27
+%66 = OpLoad %22 %56
+%67 = OpInBoundsAccessChain %29 %26 %31
+OpStore %67 %66
+%68 = OpCompositeExtract %21 %66 3
+%69 = OpConvertFToS %5 %68
+%70 = OpAccessChain %37 %8 %31
+%71 = OpLoad %5 %70
+%72 = OpIAdd %5 %71 %41
+%73 = OpIAdd %5 %72 %69
+%74 = OpAccessChain %46 %20 %31 %73
+%75 = OpLoad %13 %74
+%76 = OpConvertUToAccelerationStructureKHR %49 %75
+%77 = OpCompositeConstruct %52 %32 %33 %34
+%78 = OpCompositeConstruct %52 %51 %51 %32
+OpTraceRayKHR %76 %31 %31 %31 %31 %31 %77 %32 %78 %35 %26
+%79 = OpLoad %22 %67
+%80 = OpInBoundsAccessChain %29 %25 %31
+OpStore %80 %79
+%82 = OpAccessChain %81 %16 %83 %31
+%84 = OpLoad %5 %82
+%85 = OpShiftRightLogical %5 %84 %11
+%86 = OpIAdd %5 %85 %43
+%87 = OpIAdd %5 %86 %88
+%89 = OpGroupNonUniformBroadcastFirst %5 %45 %87
+%90 = OpAccessChain %46 %20 %31 %89
+%91 = OpLoad %13 %90
+%92 = OpConvertUToAccelerationStructureKHR %49 %91
+%93 = OpCompositeConstruct %52 %32 %33 %34
+%94 = OpCompositeConstruct %52 %51 %51 %32
+OpTraceRayKHR %92 %31 %31 %31 %31 %31 %93 %32 %94 %35 %25
+OpReturn
+OpFunctionEnd
+#endif
