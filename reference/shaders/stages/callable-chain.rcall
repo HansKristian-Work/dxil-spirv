@@ -1,0 +1,71 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct _6
+{
+    float _m0;
+};
+
+callableDataInEXT _6 payload;
+layout(location = 0) callableDataEXT _6 _10;
+
+void main()
+{
+    _10._m0 = payload._m0;
+    executeCallableEXT(0u, 0);
+    payload._m0 = _10._m0;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 21
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint CallableNV %3 "main" %8 %10
+OpName %3 "main"
+OpName %6 ""
+OpName %8 "payload"
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeStruct %5
+%7 = OpTypePointer IncomingCallableDataNV %6
+%8 = OpVariable %7 IncomingCallableDataNV
+%9 = OpTypePointer CallableDataNV %6
+%10 = OpVariable %9 CallableDataNV
+%11 = OpTypePointer IncomingCallableDataNV %5
+%13 = OpTypeInt 32 0
+%14 = OpConstant %13 0
+%16 = OpTypePointer CallableDataNV %5
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %19
+%19 = OpLabel
+%12 = OpInBoundsAccessChain %11 %8 %14
+%15 = OpLoad %5 %12
+%17 = OpInBoundsAccessChain %16 %10 %14
+OpStore %17 %15
+OpExecuteCallableKHR %14 %10
+%18 = OpLoad %5 %17
+OpStore %12 %18
+OpReturn
+OpFunctionEnd
+#endif
