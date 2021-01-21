@@ -615,6 +615,12 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
 
+				if (!is_global_lib_variable)
+				{
+					LOGE("Local root signature requires global lib variables.\n");
+					return false;
+				}
+
 				auto &ref = srv_index_to_reference[index];
 				ref.var_id = var_id;
 				ref.base_offset = heap_offset;
@@ -1044,6 +1050,12 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
 
+				if (!is_global_lib_variable)
+				{
+					LOGE("Local root signature requires global lib variables.\n");
+					return false;
+				}
+
 				auto &ref = uav_index_to_reference[index];
 				ref.var_id = var_id;
 				ref.var_id_16bit = var_id_16bit;
@@ -1391,6 +1403,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				uint32_t heap_offset = entry.table.offset_in_heap;
 				heap_offset += bind_register - entry.register_index;
 
+				if (!is_global_lib_variable)
+				{
+					LOGE("Local root signature requires global lib variables.\n");
+					return false;
+				}
+
 				auto &ref = cbv_index_to_reference[index];
 				ref.var_id = var_id;
 				ref.base_offset = heap_offset;
@@ -1557,6 +1575,12 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 
 			uint32_t heap_offset = entry.table.offset_in_heap;
 			heap_offset += bind_register - entry.register_index;
+
+			if (!is_global_lib_variable)
+			{
+				LOGE("Local root signature requires global lib variables.\n");
+				return false;
+			}
 
 			auto &ref = sampler_index_to_reference[index];
 			ref.var_id = var_id;
