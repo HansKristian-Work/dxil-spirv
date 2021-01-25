@@ -2008,6 +2008,18 @@ ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_m
 		return ShaderStage::Pixel;
 	case spv::ExecutionModelGLCompute:
 		return ShaderStage::Compute;
+	case spv::ExecutionModelIntersectionKHR:
+		return ShaderStage::Intersection;
+	case spv::ExecutionModelClosestHitKHR:
+		return ShaderStage::ClosestHit;
+	case spv::ExecutionModelMissKHR:
+		return ShaderStage::Miss;
+	case spv::ExecutionModelAnyHitKHR:
+		return ShaderStage::AnyHit;
+	case spv::ExecutionModelRayGenerationKHR:
+		return ShaderStage::RayGeneration;
+	case spv::ExecutionModelCallableKHR:
+		return ShaderStage::Callable;
 	default:
 		return ShaderStage::Unknown;
 	}
@@ -2125,7 +2137,7 @@ spv::Id Converter::Impl::get_id_for_value(const llvm::Value *value, unsigned for
 	return ret;
 }
 
-static llvm::MDNode *get_entry_point_meta(const llvm::Module &module)
+static llvm::MDNode *get_entry_point_meta(const llvm::Module &module, const char *entry)
 {
 	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
 	unsigned num_entry_points = ep_meta->getNumOperands();
@@ -2136,16 +2148,80 @@ static llvm::MDNode *get_entry_point_meta(const llvm::Module &module)
 		{
 			auto &func_node = node->getOperand(0);
 			if (func_node)
-				return node;
+				if (!entry || (Converter::entry_point_matches(get_string_metadata(node, 1), entry)))
+					return node;
 		}
 	}
 
 	return nullptr;
 }
 
-static llvm::Function *get_entry_point_function(const llvm::Module &module)
+Vector<String> Converter::get_entry_points(const LLVMBCParser &parser)
 {
-	auto *node = get_entry_point_meta(module);
+	Vector<String> result;
+	auto &module = parser.get_module();
+	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
+
+	unsigned num_entry_points = ep_meta->getNumOperands();
+	result.reserve(num_entry_points);
+
+	for (unsigned i = 0; i < num_entry_points; i++)
+	{
+		auto *node = ep_meta->getOperand(i);
+		if (node)
+		{
+			auto &func_node = node->getOperand(0);
+			if (func_node)
+				result.push_back(get_string_metadata(node, 1));
+		}
+	}
+
+	return result;
+}
+
+static bool is_identifier(char c)
+{
+	// We don't control the locale, so to be safe ...
+	const auto is_lower = [](char c) -> bool { return c >= 'a' && c <= 'z'; };
+	const auto is_upper = [](char c) -> bool { return c >= 'A' && c <= 'Z'; };
+	return is_lower(c) || is_upper(c) || c == '_';
+}
+
+static bool is_mangled_entry_point(const char *user)
+{
+	// The mangling algorithm is intentionally left undefined in spec.
+	// However, we'll just try to detect any non-identifier characters.
+	while (*user != '\0')
+	{
+		if (!is_identifier(*user))
+			return true;
+		user++;
+	}
+	return false;
+}
+
+static String demangle_entry_point(const String &entry)
+{
+	// Demangling appears to work if we find first identifier character and delimit string to first non-identifier char.
+	// This is undocumented, so just have to guess. :(
+	auto itr = std::find_if(entry.begin(), entry.end(), [](char c) { return is_identifier(c); });
+	if (itr == entry.end())
+		return "";
+
+	auto end_itr = std::find_if(itr, entry.end(), [](char c) { return !is_identifier(c); });
+	return String(itr, end_itr);
+}
+
+bool Converter::entry_point_matches(const String &mangled, const char *user)
+{
+	if (is_mangled_entry_point(user))
+		return mangled == user;
+	else
+		return demangle_entry_point(mangled) == user;
+}
+
+static llvm::Function *get_entry_point_function(llvm::MDNode *node)
+{
 	if (!node)
 		return nullptr;
 
@@ -2157,9 +2233,8 @@ static llvm::Function *get_entry_point_function(const llvm::Module &module)
 		return nullptr;
 }
 
-static const llvm::MDOperand *get_shader_property_tag(const llvm::Module &module, DXIL::ShaderPropertyTag tag)
+static const llvm::MDOperand *get_shader_property_tag(llvm::MDNode *func_meta, DXIL::ShaderPropertyTag tag)
 {
-	auto *func_meta = get_entry_point_meta(module);
 	if (func_meta && func_meta->getNumOperands() >= 5 && func_meta->getOperand(4))
 	{
 		auto *tag_values = llvm::dyn_cast<llvm::MDNode>(func_meta->getOperand(4));
@@ -2172,9 +2247,9 @@ static const llvm::MDOperand *get_shader_property_tag(const llvm::Module &module
 	return nullptr;
 }
 
-static spv::ExecutionModel get_execution_model(const llvm::Module &module)
+static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm::MDNode *entry_point_meta)
 {
-	if (auto *tag = get_shader_property_tag(module, DXIL::ShaderPropertyTag::ShaderKind))
+	if (auto *tag = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ShaderKind))
 	{
 		if (!tag)
 			return spv::ExecutionModelMax;
@@ -2392,8 +2467,7 @@ spv::Id Converter::Impl::get_type_id(spv::Id id) const
 
 bool Converter::Impl::emit_patch_variables()
 {
-	auto &module = bitcode_parser.get_module();
-	auto *node = get_entry_point_meta(module);
+	auto *node = entry_point_meta;
 
 	if (!node->getOperand(2))
 		return true;
@@ -2522,9 +2596,7 @@ static void build_geometry_stream_row_offsets(unsigned offsets[4], const llvm::M
 
 bool Converter::Impl::emit_stage_output_variables()
 {
-	auto &module = bitcode_parser.get_module();
-
-	auto *node = get_entry_point_meta(module);
+	auto *node = entry_point_meta;
 	if (!node->getOperand(2))
 		return true;
 
@@ -2941,8 +3013,7 @@ static bool execution_model_has_hit_attribute(spv::ExecutionModel model)
 
 bool Converter::Impl::emit_incoming_payload()
 {
-	auto &module = bitcode_parser.get_module();
-	auto *func = get_entry_point_function(module);
+	auto *func = get_entry_point_function(entry_point_meta);
 
 	// The first argument to a RT entry point is always a pointer to payload.
 	if (func->arg_end() - func->arg_begin() >= 1)
@@ -2969,8 +3040,7 @@ bool Converter::Impl::emit_incoming_payload()
 
 bool Converter::Impl::emit_hit_attribute()
 {
-	auto &module = bitcode_parser.get_module();
-	auto *func = get_entry_point_function(module);
+	auto *func = get_entry_point_function(entry_point_meta);
 
 	// The second argument to a RT entry point is always a pointer to hit attribute.
 	if (func->arg_end() - func->arg_begin() >= 2)
@@ -3062,9 +3132,7 @@ bool Converter::Impl::emit_global_variables()
 
 bool Converter::Impl::emit_stage_input_variables()
 {
-	auto &module = bitcode_parser.get_module();
-
-	auto *node = get_entry_point_meta(module);
+	auto *node = entry_point_meta;
 	if (!node->getOperand(2))
 		return true;
 
@@ -3430,10 +3498,9 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 
 bool Converter::Impl::emit_execution_modes_compute()
 {
-	auto &module = bitcode_parser.get_module();
 	auto &builder = spirv_module.get_builder();
 
-	auto *num_threads_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::NumThreads);
+	auto *num_threads_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NumThreads);
 	if (num_threads_node)
 	{
 		auto *num_threads = llvm::cast<llvm::MDNode>(*num_threads_node);
@@ -3454,10 +3521,9 @@ bool Converter::Impl::emit_execution_modes_compute()
 
 bool Converter::Impl::emit_execution_modes_pixel()
 {
-	auto &module = bitcode_parser.get_module();
 	auto &builder = spirv_module.get_builder();
 
-	auto *flags_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::ShaderFlags);
+	auto *flags_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ShaderFlags);
 	if (flags_node)
 	{
 		auto flags = llvm::cast<llvm::ConstantAsMetadata>(*flags_node)->getValue()->getUniqueInteger().getZExtValue();
@@ -3470,11 +3536,10 @@ bool Converter::Impl::emit_execution_modes_pixel()
 
 bool Converter::Impl::emit_execution_modes_domain()
 {
-	auto &module = bitcode_parser.get_module();
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityTessellation);
 
-	auto *ds_state_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::DSState);
+	auto *ds_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::DSState);
 	if (ds_state_node)
 	{
 		auto *arguments = llvm::cast<llvm::MDNode>(*ds_state_node);
@@ -3510,10 +3575,9 @@ bool Converter::Impl::emit_execution_modes_domain()
 
 bool Converter::Impl::emit_execution_modes_hull()
 {
-	auto &module = bitcode_parser.get_module();
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityTessellation);
-	auto *hs_state_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::HSState);
+	auto *hs_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::HSState);
 
 	if (hs_state_node)
 	{
@@ -3609,10 +3673,9 @@ bool Converter::Impl::emit_execution_modes_hull()
 
 bool Converter::Impl::emit_execution_modes_geometry()
 {
-	auto &module = bitcode_parser.get_module();
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityGeometry);
-	auto *gs_state_node = get_shader_property_tag(module, DXIL::ShaderPropertyTag::GSState);
+	auto *gs_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::GSState);
 
 	if (gs_state_node)
 	{
@@ -3712,7 +3775,7 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 bool Converter::Impl::emit_execution_modes()
 {
 	auto &module = bitcode_parser.get_module();
-	execution_model = get_execution_model(module);
+	execution_model = get_execution_model(module, entry_point_meta);
 
 	switch (execution_model)
 	{
@@ -3989,9 +4052,7 @@ bool Converter::Impl::analyze_instructions()
 	// If readonly typed UAV, we emit an image format which corresponds to r32f, r32i or r32ui as to not
 	// require StorageReadWithoutFormat capability. TODO: With FL 12, this might not be enough, but should be
 	// good enough for time being.
-
-	auto *module = &bitcode_parser.get_module();
-	if (!analyze_instructions(get_entry_point_function(*module)))
+	if (!analyze_instructions(get_entry_point_function(entry_point_meta)))
 		return false;
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
@@ -4003,12 +4064,23 @@ bool Converter::Impl::analyze_instructions()
 
 ConvertedFunction Converter::Impl::convert_entry_point()
 {
-	auto *module = &bitcode_parser.get_module();
+	ConvertedFunction result = {};
+
+	auto &module = bitcode_parser.get_module();
+	entry_point_meta = get_entry_point_meta(module, options.entry_point.empty() ? nullptr : options.entry_point.c_str());
+	if (!entry_point_meta)
+	{
+		if (!options.entry_point.empty())
+			LOGE("Could not find entry point \"%s\".\n", options.entry_point.c_str());
+		else
+			LOGE("Could not find any entry point.\n");
+		return result;
+	}
 
 	if (!options.shader_source_file.empty())
 	{
 		auto &builder = spirv_module.get_builder();
-		auto *shader_model = module->getNamedMetadata("dx.shaderModel");
+		auto *shader_model = module.getNamedMetadata("dx.shaderModel");
 		if (shader_model)
 		{
 			auto *shader_model_node = shader_model->getOperand(0);
@@ -4022,11 +4094,10 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		}
 	}
 
-	ConvertedFunction result = {};
 	result.node_pool = std::make_unique<CFGNodePool>();
 	auto &pool = *result.node_pool;
 
-	spirv_module.emit_entry_point(get_execution_model(*module), "main", options.physical_storage_buffer);
+	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", options.physical_storage_buffer);
 
 	if (!emit_resources_global_mapping())
 		return result;
@@ -4048,7 +4119,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_global_variables())
 		return result;
 
-	llvm::Function *func = get_entry_point_function(*module);
+	llvm::Function *func = get_entry_point_function(entry_point_meta);
 	assert(func);
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
@@ -4214,9 +4285,10 @@ void Converter::set_resource_remapping_interface(ResourceRemappingInterface *ifa
 	impl->resource_mapping_iface = iface;
 }
 
-ShaderStage Converter::get_shader_stage(const LLVMBCParser &bitcode_parser)
+ShaderStage Converter::get_shader_stage(const LLVMBCParser &bitcode_parser, const char *entry)
 {
-	return Impl::get_remapping_stage(get_execution_model(bitcode_parser.get_module()));
+	auto &module = bitcode_parser.get_module();
+	return Impl::get_remapping_stage(get_execution_model(module, get_entry_point_meta(module, entry)));
 }
 
 void Converter::scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser)
@@ -4251,5 +4323,10 @@ bool Converter::recognizes_option(Option cap)
 	default:
 		return false;
 	}
+}
+
+void Converter::set_entry_point(const char *entry)
+{
+	impl->options.entry_point = entry;
 }
 } // namespace dxil_spv

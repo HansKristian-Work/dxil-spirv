@@ -189,6 +189,7 @@ struct Converter::Impl
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
 
+	llvm::MDNode *entry_point_meta = nullptr;
 	bool emit_resources_global_mapping();
 	bool emit_resources_global_mapping(DXIL::ResourceType type, const llvm::MDNode *node);
 	bool emit_resources();
@@ -340,6 +341,7 @@ struct Converter::Impl
 		bool rasterizer_sample_count_spec_constant = true;
 		Vector<unsigned> output_swizzles;
 		String shader_source_file;
+		String entry_point;
 
 		unsigned inline_ubo_descriptor_set = 0;
 		unsigned inline_ubo_descriptor_binding = 0;

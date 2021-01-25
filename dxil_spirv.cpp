@@ -119,6 +119,7 @@ static void print_help()
 	     "\t[--output <path>]\n"
 	     "\t[--glsl]\n"
 	     "\t[--validate]\n"
+	     "\t[--entry name]\n"
 	     "\t[--glsl-embed-asm]\n"
 	     "\t[--root-constant space binding word_offset word_count]\n"
 	     "\t[--root-constant-inline-ubo set binding]\n"
@@ -145,6 +146,7 @@ struct Arguments
 {
 	std::string input_path;
 	std::string output_path;
+	std::string entry_point;
 	bool dump_module = false;
 	bool glsl = false;
 	bool validate = false;
@@ -623,6 +625,7 @@ int main(int argc, char **argv)
 		args.offset_buffer_layout.typed_offset = parser.next_uint();
 		args.offset_buffer_layout.stride = parser.next_uint();
 	});
+	cbs.add("--entry", [&](CLIParser &parser) { args.entry_point = parser.next_string(); });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -658,6 +661,9 @@ int main(int argc, char **argv)
 	dxil_spv_converter converter;
 	if (dxil_spv_create_converter(blob, &converter) != DXIL_SPV_SUCCESS)
 		return EXIT_FAILURE;
+
+	if (!args.entry_point.empty())
+		dxil_spv_converter_set_entry_point(converter, args.entry_point.c_str());
 
 	dxil_spv_converter_set_srv_remapper(converter, remap_srv, &remapper);
 	dxil_spv_converter_set_sampler_remapper(converter, remap_sampler, &remapper);

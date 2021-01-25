@@ -43,6 +43,7 @@ struct dxil_spv_parsed_blob_s
 	std::string disasm;
 #endif
 	Vector<uint8_t> dxil_blob;
+	Vector<String> entry_points;
 };
 
 struct Remapper : ResourceRemappingInterface
@@ -322,6 +323,7 @@ dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_pars
 		return DXIL_SPV_ERROR_PARSER;
 	}
 
+	parsed->entry_points = Converter::get_entry_points(parsed->bc);
 	*blob = parsed;
 	return DXIL_SPV_SUCCESS;
 }
@@ -371,6 +373,27 @@ dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob
 	return static_cast<dxil_spv_shader_stage>(Converter::get_shader_stage(blob->bc));
 }
 
+dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage_for_entry(dxil_spv_parsed_blob blob, const char *entry)
+{
+	return static_cast<dxil_spv_shader_stage>(Converter::get_shader_stage(blob->bc, entry));
+}
+
+dxil_spv_result dxil_spv_parsed_blob_get_num_entry_points(dxil_spv_parsed_blob blob, unsigned *count)
+{
+	*count = unsigned(blob->entry_points.size());
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_parsed_blob_get_entry_point_name(dxil_spv_parsed_blob blob,
+                                                          unsigned index,
+                                                          const char **mangled_entry)
+{
+	if (index >= blob->entry_points.size())
+		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+	*mangled_entry = blob->entry_points[index].c_str();
+	return DXIL_SPV_SUCCESS;
+}
+
 dxil_spv_result dxil_spv_parsed_blob_scan_resources(dxil_spv_parsed_blob blob,
                                                     dxil_spv_srv_remapper_cb srv_remapper,
                                                     dxil_spv_sampler_remapper_cb sampler_remapper,
@@ -410,6 +433,11 @@ dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_co
 void dxil_spv_converter_free(dxil_spv_converter converter)
 {
 	delete converter;
+}
+
+void dxil_spv_converter_set_entry_point(dxil_spv_converter converter, const char *entry_point)
+{
+	converter->converter.set_entry_point(entry_point);
 }
 
 dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)

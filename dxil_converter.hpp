@@ -52,7 +52,13 @@ enum class ShaderStage : unsigned
 	Domain = 3,
 	Geometry = 4,
 	Pixel = 5,
-	Compute = 6
+	Compute = 6,
+	Intersection = 7,
+	ClosestHit = 8,
+	Miss = 9,
+	AnyHit = 10,
+	RayGeneration = 11,
+	Callable = 12
 };
 
 struct D3DBinding
@@ -350,8 +356,12 @@ public:
 	ConvertedFunction convert_entry_point();
 	void set_resource_remapping_interface(ResourceRemappingInterface *iface);
 
-	static ShaderStage get_shader_stage(const LLVMBCParser &bitcode_parser);
+	static ShaderStage get_shader_stage(const LLVMBCParser &bitcode_parser, const char *entry = nullptr);
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser);
+
+	static Vector<String> get_entry_points(const LLVMBCParser &parser);
+	static bool entry_point_matches(const String &mangled, const char *user);
+	void set_entry_point(const char *entry);
 
 	void add_option(const OptionBase &cap);
 	static bool recognizes_option(Option cap);

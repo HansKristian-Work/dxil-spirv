@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 2
+#define DXIL_SPV_API_VERSION_MINOR 3
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #if !defined(DXIL_SPV_PUBLIC_API)
@@ -60,6 +60,7 @@ typedef enum dxil_spv_result
 	DXIL_SPV_ERROR_UNSUPPORTED_FEATURE = -3,
 	DXIL_SPV_ERROR_PARSER = -4,
 	DXIL_SPV_ERROR_FAILED_VALIDATION = -5,
+	DXIL_SPV_ERROR_INVALID_ARGUMENT = -6,
 	DXIL_SPV_RESULT_INT_MAX = 0x7fffffff
 } dxil_spv_result;
 
@@ -72,6 +73,12 @@ typedef enum dxil_spv_shader_stage
 	DXIL_SPV_STAGE_GEOMETRY = 4,
 	DXIL_SPV_STAGE_PIXEL = 5,
 	DXIL_SPV_STAGE_COMPUTE = 6,
+	DXIL_SPV_STAGE_INTERSECTION = 7,
+	DXIL_SPV_STAGE_CLOSEST_HIT = 8,
+	DXIL_SPV_STAGE_MISS = 9,
+	DXIL_SPV_STAGE_ANY_HIT = 10,
+	DXIL_SPV_STAGE_RAY_GENERATION = 11,
+	DXIL_SPV_STAGE_CALLABLE = 12,
 	DXIL_SPV_STAGE_INT_MAX = 0x7fffffff
 } dxil_spv_shader_stage;
 
@@ -385,6 +392,12 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_disassembled_ir(dxi
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_raw_ir(dxil_spv_parsed_blob blob, const void **data, size_t *size);
 
 DXIL_SPV_PUBLIC_API dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob blob);
+DXIL_SPV_PUBLIC_API dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage_for_entry(dxil_spv_parsed_blob blob, const char *entry);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_num_entry_points(dxil_spv_parsed_blob blob, unsigned *count);
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_name(dxil_spv_parsed_blob blob,
+                                                                              unsigned index,
+                                                                              const char **mangled_entry);
 
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_scan_resources(
 		dxil_spv_parsed_blob blob,
@@ -405,6 +418,8 @@ DXIL_SPV_PUBLIC_API void dxil_spv_set_thread_log_callback(dxil_spv_log_cb callba
 typedef struct dxil_spv_converter_s *dxil_spv_converter;
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_converter *converter);
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_entry_point(dxil_spv_converter converter, const char *entry_point);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_vertex_input_remapper(
 		dxil_spv_converter converter,
