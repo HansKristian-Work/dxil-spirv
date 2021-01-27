@@ -578,6 +578,10 @@ static Type *resolve_gep_element_type(Type *type, const Vector<Value *> &args)
 		{
 			type = type->getArrayElementType();
 		}
+		else if (type->getTypeID() == Type::TypeID::VectorTyID)
+		{
+			type = cast<VectorType>(type)->getElementType();
+		}
 		else
 			return nullptr;
 	}
@@ -606,7 +610,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			value = ConstantInt::get(type, 0);
 		else if (type->isFloatingPointTy())
 			value = ConstantFP::get(type, 0);
-		else if (isa<ArrayType>(type) || isa<StructType>(type))
+		else if (isa<ArrayType>(type) || isa<StructType>(type) || isa<VectorType>(type))
 			value = context->construct<ConstantAggregateZero>(type);
 
 		if (!value)
@@ -1325,6 +1329,10 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			else if (type->getTypeID() == Type::TypeID::ArrayTyID)
 			{
 				type = type->getArrayElementType();
+			}
+			else if (type->getTypeID() == Type::TypeID::VectorTyID)
+			{
+				type = cast<VectorType>(type)->getElementType();
 			}
 			else
 				return false;
