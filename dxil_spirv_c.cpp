@@ -307,6 +307,7 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 		return DXIL_SPV_ERROR_PARSER;
 	}
 
+	parsed->entry_points = Converter::get_entry_points(parsed->bc);
 	*blob = parsed;
 	return DXIL_SPV_SUCCESS;
 }
