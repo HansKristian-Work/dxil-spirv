@@ -394,12 +394,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 	}
 }
 
-static bool resource_meta_is_global_lib_variable(const llvm::MDOperand *operand)
+static bool resource_meta_is_global_lib_variable(const llvm::MDNode *resource)
 {
-	if (!operand)
-		return false;
-
-	auto *resource = llvm::dyn_cast<llvm::MDNode>(operand);
 	if (!resource)
 		return false;
 
