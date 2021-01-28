@@ -44,8 +44,8 @@ void Converter::add_local_root_constants(uint32_t register_space, uint32_t regis
 	LocalRootSignatureEntry entry = {};
 	entry.type = LocalRootSignatureType::Constants;
 	entry.constants.num_words = num_words;
-	entry.register_space = register_space;
-	entry.register_index = register_index;
+	entry.constants.register_space = register_space;
+	entry.constants.register_index = register_index;
 	impl->local_root_signature.push_back(entry);
 }
 
@@ -54,23 +54,22 @@ void Converter::add_local_root_descriptor(ResourceClass type, uint32_t register_
 	LocalRootSignatureEntry entry = {};
 	entry.type = LocalRootSignatureType::Descriptor;
 	entry.descriptor.type = type;
-	entry.register_space = register_space;
-	entry.register_index = register_index;
+	entry.descriptor.register_space = register_space;
+	entry.descriptor.register_index = register_index;
 	impl->local_root_signature.push_back(entry);
 }
 
-void Converter::add_local_root_descriptor_table(ResourceClass type,
-                                                uint32_t register_space, uint32_t register_index,
-                                                uint32_t num_descriptors_in_range, uint32_t offset_in_heap)
+void Converter::add_local_root_descriptor_table(Vector<DescriptorTableEntry> entries)
 {
 	LocalRootSignatureEntry entry = {};
 	entry.type = LocalRootSignatureType::Table;
-	entry.table.type = type;
-	entry.register_space = register_space;
-	entry.register_index = register_index;
-	entry.table.num_descriptors_in_range = num_descriptors_in_range;
-	entry.table.offset_in_heap = offset_in_heap;
-	impl->local_root_signature.push_back(entry);
+	entry.table_entries = std::move(entries);
+	impl->local_root_signature.push_back(std::move(entry));
+}
+
+void Converter::add_local_root_descriptor_table(const DescriptorTableEntry *entries, size_t count)
+{
+	add_local_root_descriptor_table({ entries, entries + count });
 }
 
 ConvertedFunction Converter::convert_entry_point()
@@ -544,7 +543,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -stride);
 
-		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::SRV, bind_space, bind_register);
+		DescriptorTableEntry local_table_entry = {};
+		int local_root_signature_entry = get_local_root_signature_entry(
+			ResourceClass::SRV, bind_space, bind_register, local_table_entry);
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
@@ -620,8 +621,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
-				uint32_t heap_offset = entry.table.offset_in_heap;
-				heap_offset += bind_register - entry.register_index;
+				uint32_t heap_offset = local_table_entry.offset_in_heap;
+				heap_offset += bind_register - local_table_entry.register_index;
 
 				if (!is_global_lib_variable)
 				{
@@ -944,7 +945,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			}
 		}
 
-		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::UAV, bind_space, bind_register);
+		DescriptorTableEntry local_table_entry = {};
+		int local_root_signature_entry = get_local_root_signature_entry(
+		    ResourceClass::UAV, bind_space, bind_register, local_table_entry);
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
@@ -1056,8 +1059,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 				spv::Id var_id_16bit = 0;
 
-				uint32_t heap_offset = entry.table.offset_in_heap;
-				heap_offset += bind_register - entry.register_index;
+				uint32_t heap_offset = local_table_entry.offset_in_heap;
+				heap_offset += bind_register - local_table_entry.register_index;
 
 				if (!is_global_lib_variable)
 				{
@@ -1083,8 +1086,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 						return false;
 					}
 
-					heap_offset = entry.table.offset_in_heap;
-					heap_offset += bind_register - entry.register_index;
+					heap_offset = local_table_entry.offset_in_heap;
+					heap_offset += bind_register - local_table_entry.register_index;
 					spv::Id counter_var_id = create_bindless_heap_variable(counter_info);
 
 					auto &counter_ref = uav_index_to_counter[index];
@@ -1360,7 +1363,9 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
-		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::CBV, bind_space, bind_register);
+		DescriptorTableEntry local_table_entry = {};
+		int local_root_signature_entry = get_local_root_signature_entry(
+		    ResourceClass::CBV, bind_space, bind_register, local_table_entry);
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
@@ -1410,8 +1415,8 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 
 				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
-				uint32_t heap_offset = entry.table.offset_in_heap;
-				heap_offset += bind_register - entry.register_index;
+				uint32_t heap_offset = local_table_entry.offset_in_heap;
+				heap_offset += bind_register - local_table_entry.register_index;
 
 				if (!is_global_lib_variable)
 				{
@@ -1551,7 +1556,9 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			builder.addCapability(spv::CapabilitySampledImageArrayDynamicIndexing);
 		}
 
-		int local_root_signature_entry = get_local_root_signature_entry(ResourceClass::Sampler, bind_space, bind_register);
+		DescriptorTableEntry local_table_entry = {};
+		int local_root_signature_entry = get_local_root_signature_entry(
+			ResourceClass::Sampler, bind_space, bind_register, local_table_entry);
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
@@ -1575,7 +1582,6 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 
 		if (local_root_signature_entry >= 0)
 		{
-			auto &entry = local_root_signature[local_root_signature_entry];
 			// Samplers can only live in table entries.
 			if (!vulkan_binding.bindless.use_heap)
 			{
@@ -1585,8 +1591,8 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 
 			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 
-			uint32_t heap_offset = entry.table.offset_in_heap;
-			heap_offset += bind_register - entry.register_index;
+			uint32_t heap_offset = local_table_entry.offset_in_heap;
+			heap_offset += bind_register - local_table_entry.register_index;
 
 			if (!is_global_lib_variable)
 			{
@@ -1860,36 +1866,45 @@ bool Converter::Impl::emit_shader_record_buffer()
 
 static bool local_root_signature_matches(const LocalRootSignatureEntry &entry,
                                          ResourceClass resource_class,
-                                         uint32_t space, uint32_t binding)
+                                         uint32_t space, uint32_t binding,
+                                         DescriptorTableEntry &local_table_entry)
 {
 	switch (entry.type)
 	{
 	case LocalRootSignatureType::Constants:
 		return resource_class == ResourceClass::CBV &&
-		       entry.register_space == space &&
-		       entry.register_index == binding;
+		       entry.constants.register_space == space &&
+		       entry.constants.register_index == binding;
 
 	case LocalRootSignatureType::Descriptor:
 		return entry.descriptor.type == resource_class &&
-		       entry.register_space == space &&
-		       entry.register_index == binding;
+		       entry.descriptor.register_space == space &&
+		       entry.descriptor.register_index == binding;
 
 	case LocalRootSignatureType::Table:
-		return entry.table.type == resource_class &&
-		       entry.register_space == space &&
-		       entry.register_index <= binding &&
-		       ((entry.table.num_descriptors_in_range == ~0u) ||
-		        ((binding - entry.register_index) < entry.table.num_descriptors_in_range));
+		for (auto &table_entry : entry.table_entries)
+		{
+			if (table_entry.type == resource_class && table_entry.register_space == space &&
+			    table_entry.register_index <= binding &&
+			    ((table_entry.num_descriptors_in_range == ~0u) ||
+			     ((binding - table_entry.register_index) < table_entry.num_descriptors_in_range)))
+			{
+				local_table_entry = table_entry;
+				return true;
+			}
+		}
+		return false;
 
 	default:
 		return false;
 	}
 }
 
-int Converter::Impl::get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding) const
+int Converter::Impl::get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding,
+                                                    DescriptorTableEntry &local_table_entry) const
 {
 	auto itr = std::find_if(local_root_signature.begin(), local_root_signature.end(), [&](const LocalRootSignatureEntry &entry) {
-		return local_root_signature_matches(entry, resource_class, space, binding);
+		return local_root_signature_matches(entry, resource_class, space, binding, local_table_entry);
 	});
 
 	if (itr != local_root_signature.end())

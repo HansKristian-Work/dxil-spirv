@@ -52,32 +52,27 @@ enum class LocalRootSignatureType
 
 struct LocalRootSignatureConstants
 {
+	uint32_t register_space;
+	uint32_t register_index;
 	uint32_t num_words;
 };
 
 struct LocalRootSignatureDescriptor
 {
 	ResourceClass type;
-};
-
-struct LocalRootSignatureTable
-{
-	ResourceClass type;
-	uint32_t num_descriptors_in_range;
-	uint32_t offset_in_heap;
+	uint32_t register_space;
+	uint32_t register_index;
 };
 
 struct LocalRootSignatureEntry
 {
 	LocalRootSignatureType type;
-	uint32_t register_space;
-	uint32_t register_index;
 	union
 	{
 		LocalRootSignatureConstants constants;
 		LocalRootSignatureDescriptor descriptor;
-		LocalRootSignatureTable table;
 	};
+	Vector<DescriptorTableEntry> table_entries;
 };
 
 struct Converter::Impl
@@ -209,7 +204,8 @@ struct Converter::Impl
 	                               DXIL::ResourceKind kind, unsigned alignment);
 
 	Vector<LocalRootSignatureEntry> local_root_signature;
-	int get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding) const;
+	int get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding,
+	                                   DescriptorTableEntry &local_table_entry) const;
 
 	struct ResourceReference
 	{

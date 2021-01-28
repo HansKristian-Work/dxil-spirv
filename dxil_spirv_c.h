@@ -477,6 +477,13 @@ DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_local_root_descriptor_table(
 	unsigned num_descriptors_in_range,
 	unsigned offset_in_heap);
 
+/* For multiple table entries per local root parameter, call begin, at least one add_local, and then end
+ * will commit that local root parameter. */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_begin_local_root_descriptor_table(
+	dxil_spv_converter converter);
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
+	dxil_spv_converter converter);
+
 /* After setting up converter, runs the converted to SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter);
 

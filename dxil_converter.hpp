@@ -348,6 +348,15 @@ struct OptionBindlessOffsetBufferLayout : OptionBase
 	unsigned stride = 1;
 };
 
+struct DescriptorTableEntry
+{
+	ResourceClass type;
+	uint32_t register_space;
+	uint32_t register_index;
+	uint32_t num_descriptors_in_range;
+	uint32_t offset_in_heap;
+};
+
 class Converter
 {
 public:
@@ -376,8 +385,8 @@ public:
 	// Local root descriptor tables are special. They must be constructed in such a way that
 	// the MSB 32 bits can be ignored and the LSB 32 bits are encoded as Index << SBTDescriptorSizeLog2.
 	// Thus, we translate GPU VA to index by a simple shift on the lower 32-bit value.
-	void add_local_root_descriptor_table(ResourceClass type, uint32_t register_space, uint32_t register_index,
-	                                     uint32_t num_descriptors_in_range, uint32_t offset_in_heap);
+	void add_local_root_descriptor_table(Vector<DescriptorTableEntry> entries);
+	void add_local_root_descriptor_table(const DescriptorTableEntry *entries, size_t count);
 
 	struct Impl;
 

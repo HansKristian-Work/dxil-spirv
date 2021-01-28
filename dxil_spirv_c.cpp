@@ -284,6 +284,9 @@ struct dxil_spv_converter_s
 	Converter converter;
 	Vector<uint32_t> spirv;
 	Remapper remapper;
+
+	Vector<DescriptorTableEntry> local_entries;
+	bool active_table = false;
 };
 
 dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
@@ -699,9 +702,37 @@ void dxil_spv_converter_add_local_root_descriptor_table(dxil_spv_converter conve
                                                         unsigned num_descriptors_in_range,
                                                         unsigned offset_in_heap)
 {
-	converter->converter.add_local_root_descriptor_table(ResourceClass(resource_class),
-	                                                     register_space, register_index,
-	                                                     num_descriptors_in_range, offset_in_heap);
+	DescriptorTableEntry entry = {};
+	entry.type = ResourceClass(resource_class);
+	entry.register_space = register_space;
+	entry.register_index = register_index;
+	entry.num_descriptors_in_range = num_descriptors_in_range;
+	entry.offset_in_heap = offset_in_heap;
+
+	if (converter->active_table)
+		converter->local_entries.push_back(entry);
+	else
+		converter->converter.add_local_root_descriptor_table(&entry, 1);
+}
+
+dxil_spv_result dxil_spv_converter_begin_local_root_descriptor_table(
+	dxil_spv_converter converter)
+{
+	if (converter->active_table)
+		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+	converter->local_entries = {};
+	converter->active_table = true;
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
+	dxil_spv_converter converter)
+{
+	if (!converter->active_table || converter->local_entries.empty())
+		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+	converter->converter.add_local_root_descriptor_table(std::move(converter->local_entries));
+	converter->active_table = false;
+	return DXIL_SPV_SUCCESS;
 }
 
 void dxil_spv_begin_thread_allocator_context(void)

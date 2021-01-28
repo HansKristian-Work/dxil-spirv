@@ -479,7 +479,7 @@ static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, c
 	shifted_word->add_id(loaded_word->id);
 
 	// Need to translate fake GPU VA to index.
-	unsigned shamt = impl.local_root_signature[reference.local_root_signature_entry].table.type == ResourceClass::Sampler ?
+	unsigned shamt = reference.resource_kind == DXIL::ResourceKind::Sampler ?
 	    impl.options.sbt_descriptor_size_sampler_log2 : impl.options.sbt_descriptor_size_srv_uav_cbv_log2;
 	shifted_word->add_id(builder.makeUintConstant(shamt));
 	impl.add(shifted_word);
