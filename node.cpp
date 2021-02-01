@@ -221,9 +221,15 @@ CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
 		}
 
 		if (a->backward_post_visit_order < b->backward_post_visit_order)
+		{
+			assert(a->immediate_post_dominator);
 			a = a->immediate_post_dominator;
+		}
 		else
+		{
+			assert(b->immediate_post_dominator);
 			b = b->immediate_post_dominator;
+		}
 	}
 	return const_cast<CFGNode *>(a);
 }

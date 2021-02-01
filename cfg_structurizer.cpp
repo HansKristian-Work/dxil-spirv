@@ -2369,11 +2369,16 @@ void CFGStructurizer::split_merge_blocks()
 					// We don't have a ladder, because the loop merged to an outer scope, so we need to fake a ladder.
 					auto *ladder = pool.create_node();
 					ladder->name = node->name + ".merge";
-					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
-					node->headers[i]->loop_ladder_block = ladder;
 					ladder->add_branch(node);
 					ladder->ir.terminator.type = Terminator::Type::Branch;
 					ladder->ir.terminator.direct_block = node;
+					ladder->immediate_post_dominator = node;
+					ladder->forward_post_visit_order = node->forward_post_visit_order;
+					ladder->backward_post_visit_order = node->backward_post_visit_order;
+
+					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
+					node->headers[i]->loop_ladder_block = ladder;
+					ladder->recompute_immediate_dominator();
 
 					// If this is the second outermost scope, we don't need to deal with ladders.
 					// ladder is a dummy branch straight out to the outer merge point.
