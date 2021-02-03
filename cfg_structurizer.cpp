@@ -226,6 +226,15 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 	assert(node->ir.phi.empty());
 }
 
+static bool node_has_phi_inputs_from(const CFGNode *from, const CFGNode *to)
+{
+	for (auto &phi : to->ir.phi)
+		for (auto &incoming : phi.incoming)
+			if (incoming.block == from)
+				return true;
+	return false;
+}
+
 void CFGStructurizer::cleanup_breaking_phi_constructs()
 {
 	bool did_work = false;
@@ -233,14 +242,6 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 	// There might be cases where we have a common break block from different scopes which only serves to PHI together some values
 	// before actually breaking, and passing that PHI node on to the actual break block.
 	// This causes problems because this looks very much like a merge, but it is actually not and forces validation errors.
-
-	const auto node_has_phi_inputs_from = [](const CFGNode *from, const CFGNode *to) -> bool {
-		for (auto &phi : to->ir.phi)
-			for (auto &incoming : phi.incoming)
-				if (incoming.block == from)
-					return true;
-		return false;
-	};
 
 	for (size_t i = forward_post_visit_order.size(); i; i--)
 	{
@@ -316,6 +317,15 @@ bool CFGStructurizer::run()
 
 	recompute_cfg();
 
+	eliminate_degenerate_blocks();
+
+	//log_cfg("Split merge scopes");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".eliminate";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+
 	//log_cfg("Structurize pass 0");
 	if (!graphviz_path.empty())
 	{
@@ -360,6 +370,61 @@ void CFGStructurizer::create_continue_block_ladders()
 	}
 
 	if (need_recompute_cfg)
+		recompute_cfg();
+}
+
+void CFGStructurizer::eliminate_degenerate_blocks()
+{
+	// After we create ladder blocks, we will likely end up with a lot of blocks which don't do much.
+	// We might also have created merge scenarios which should *not* merge, i.e. cleanup_breaking_phi_constructs(),
+	// except we caused it ourselves.
+
+	// Eliminate bottom-up. First eliminate B, in A -> B -> C, where B contributes nothing.
+	bool did_work = false;
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.operations.empty() &&
+		    node->ir.phi.empty() &&
+		    !node->pred_back_edge &&
+		    !node->succ_back_edge &&
+		    node->succ.size() == 1 &&
+		    node->ir.terminator.type == Terminator::Type::Branch &&
+			node->merge == MergeType::None &&
+			!node_has_phi_inputs_from(node, node->succ.front()))
+		{
+			// If any pred is a continue block, this block is also load-bearing, since it can be used as a merge block.
+			if (std::find_if(node->pred.begin(), node->pred.end(),
+			                 [](const CFGNode *n) {
+			                   return n->succ_back_edge != nullptr;
+			                 }) != node->pred.end())
+			{
+				continue;
+			}
+
+			if (node->pred.size() == 1 && node->post_dominates(node->pred.front()))
+			{
+				// Trivial case.
+				did_work = true;
+				node->pred.front()->retarget_branch(node, node->succ.front());
+			}
+			else if (node->pred.size() >= 2 && !node->dominates(node->succ.front()))
+			{
+				// If we have two or more preds, we have to be really careful.
+				// This block could be load-bearing from a structurization standpoint.
+				// If this node in on a breaking path, it is fine to eliminate the block.
+				auto *merge = CFGStructurizer::find_common_post_dominator(node->pred);
+				if (merge == node->succ.front())
+				{
+					did_work = true;
+					auto tmp_pred = node->pred;
+					for (auto *pred : tmp_pred)
+						pred->retarget_branch(node, node->succ.front());
+				}
+			}
+		}
+	}
+
+	if (did_work)
 		recompute_cfg();
 }
 

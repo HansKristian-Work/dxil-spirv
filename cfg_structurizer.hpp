@@ -72,6 +72,7 @@ private:
 	void structurize(unsigned pass);
 	void find_loops();
 	void split_merge_scopes();
+	void eliminate_degenerate_blocks();
 	void find_selection_merges(unsigned pass);
 	static bool header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge);
 	void fixup_broken_selection_merges(unsigned pass);
