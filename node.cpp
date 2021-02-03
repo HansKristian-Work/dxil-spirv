@@ -121,13 +121,23 @@ bool CFGNode::can_loop_merge_to(const CFGNode *other) const
 	return true;
 }
 
-bool CFGNode::can_backtrace_to(const CFGNode *parent) const
+bool CFGNode::can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const
 {
+	if (node_cache.count(this))
+		return false;
+	node_cache.insert(this);
+
 	for (auto *p : pred)
-		if (p == parent || p->can_backtrace_to(parent))
+		if (p == parent || p->can_backtrace_to(parent, node_cache))
 			return true;
 
 	return false;
+}
+
+bool CFGNode::can_backtrace_to(const CFGNode *parent) const
+{
+	UnorderedSet<const CFGNode *> node_cache;
+	return can_backtrace_to(parent, node_cache);
 }
 
 const CFGNode *CFGNode::get_innermost_loop_header_for(const CFGNode *other) const
