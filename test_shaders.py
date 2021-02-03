@@ -92,7 +92,12 @@ def cross_compile_dxil(shader, args, paths, is_asm):
     else:
         dxil_path = shader
 
-    hlsl_cmd = [paths.dxil_spirv, '--output', glsl_path, '--glsl-embed-asm', '--glsl', dxil_path, '--vertex-input', 'ATTR', '0']
+    hlsl_cmd = [paths.dxil_spirv, '--output', glsl_path, dxil_path, '--vertex-input', 'ATTR', '0']
+    if '.noglsl' not in shader:
+        hlsl_cmd += ['--glsl-embed-asm', '--glsl']
+    else:
+        hlsl_cmd += ['--asm']
+
     if '.root-constant.' in shader:
         hlsl_cmd.append('--root-constant')
         hlsl_cmd.append('0')
