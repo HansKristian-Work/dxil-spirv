@@ -118,6 +118,7 @@ static void print_help()
 	LOGE("Usage: dxil-spirv <input path>\n"
 	     "\t[--output <path>]\n"
 	     "\t[--glsl]\n"
+	     "\t[--asm]\n"
 	     "\t[--validate]\n"
 	     "\t[--entry name]\n"
 	     "\t[--glsl-embed-asm]\n"
@@ -149,6 +150,7 @@ struct Arguments
 	std::string entry_point;
 	bool dump_module = false;
 	bool glsl = false;
+	bool emit_asm = false;
 	bool validate = false;
 	bool glsl_embed_asm = false;
 	bool shader_demote = false;
@@ -490,6 +492,7 @@ int main(int argc, char **argv)
 	cbs.add("--dump-module", [&](CLIParser &) { args.dump_module = true; });
 	cbs.add("--glsl-embed-asm", [&](CLIParser &) { args.glsl_embed_asm = true; });
 	cbs.add("--glsl", [&](CLIParser &) { args.glsl = true; });
+	cbs.add("--asm", [&](CLIParser &) { args.emit_asm = true; });
 	cbs.add("--validate", [&](CLIParser &) { args.validate = true; });
 	cbs.add("--output", [&](CLIParser &parser) { args.output_path = parser.next_string(); });
 	cbs.add("--root-constant", [&](CLIParser &parser) {
@@ -776,7 +779,7 @@ int main(int argc, char **argv)
 	}
 
 	std::string spirv_asm_string;
-	if (args.glsl_embed_asm)
+	if (args.glsl_embed_asm || args.emit_asm)
 		spirv_asm_string = convert_to_asm(compiled.data, compiled.size);
 
 	if (args.glsl)
@@ -809,6 +812,24 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 			fprintf(file, "%s\n", glsl.c_str());
+			fclose(file);
+		}
+	}
+	else if (args.emit_asm)
+	{
+		if (args.output_path.empty())
+		{
+			printf("%s\n", spirv_asm_string.c_str());
+		}
+		else
+		{
+			FILE *file = fopen(args.output_path.c_str(), "w");
+			if (!file)
+			{
+				LOGE("Failed to open %s for writing.\n", args.output_path.c_str());
+				return EXIT_FAILURE;
+			}
+			fprintf(file, "%s\n", spirv_asm_string.c_str());
 			fclose(file);
 		}
 	}
