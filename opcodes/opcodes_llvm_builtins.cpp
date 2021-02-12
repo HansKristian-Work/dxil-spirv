@@ -727,7 +727,14 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 	if (itr->second.components == 1 && !itr->second.forced_composite)
 	{
 		// Forward the ID. The composite was originally emitted as a scalar.
-		impl.value_map[instruction] = impl.get_id_for_value(instruction->getAggregateOperand());
+		// It is possible that this value was used a PHI input early, which would have used the stale ID value.
+		// Remember to rewrite PHI incoming values in this case.
+		auto value_itr = impl.value_map.find(instruction);
+		spv::Id rewrite_id = impl.get_id_for_value(instruction->getAggregateOperand());
+		if (value_itr != impl.value_map.end() && value_itr->second != rewrite_id)
+			impl.phi_incoming_rewrite[value_itr->second] = rewrite_id;
+
+		impl.value_map[instruction] = rewrite_id;
 	}
 	else
 	{

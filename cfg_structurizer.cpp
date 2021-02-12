@@ -226,6 +226,15 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 	assert(node->ir.phi.empty());
 }
 
+static bool node_has_phi_inputs_from(const CFGNode *from, const CFGNode *to)
+{
+	for (auto &phi : to->ir.phi)
+		for (auto &incoming : phi.incoming)
+			if (incoming.block == from)
+				return true;
+	return false;
+}
+
 void CFGStructurizer::cleanup_breaking_phi_constructs()
 {
 	bool did_work = false;
@@ -233,14 +242,6 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 	// There might be cases where we have a common break block from different scopes which only serves to PHI together some values
 	// before actually breaking, and passing that PHI node on to the actual break block.
 	// This causes problems because this looks very much like a merge, but it is actually not and forces validation errors.
-
-	const auto node_has_phi_inputs_from = [](const CFGNode *from, const CFGNode *to) -> bool {
-		for (auto &phi : to->ir.phi)
-			for (auto &incoming : phi.incoming)
-				if (incoming.block == from)
-					return true;
-		return false;
-	};
 
 	for (size_t i = forward_post_visit_order.size(); i; i--)
 	{
@@ -313,14 +314,24 @@ bool CFGStructurizer::run()
 
 	//LOGI("=== Structurize pass ===\n");
 	structurize(0);
+	update_structured_loop_merge_targets();
 
 	recompute_cfg();
 
 	//log_cfg("Structurize pass 0");
 	if (!graphviz_path.empty())
 	{
-		auto graphviz_struct = graphviz_path + ".struct";
-		log_cfg_graphviz(graphviz_struct.c_str());
+		auto graphviz_final = graphviz_path + ".struct0";
+		log_cfg_graphviz(graphviz_final.c_str());
+	}
+
+	eliminate_degenerate_blocks();
+
+	//log_cfg("Split merge scopes");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".eliminate";
+		log_cfg_graphviz(graphviz_split.c_str());
 	}
 
 	//LOGI("=== Structurize pass ===\n");
@@ -363,6 +374,91 @@ void CFGStructurizer::create_continue_block_ladders()
 		recompute_cfg();
 }
 
+void CFGStructurizer::update_structured_loop_merge_targets()
+{
+	structured_loop_merge_targets.clear();
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->loop_merge_block)
+			structured_loop_merge_targets.insert(node->loop_merge_block);
+		if (node->loop_ladder_block)
+			structured_loop_merge_targets.insert(node->loop_ladder_block);
+	}
+}
+
+void CFGStructurizer::eliminate_degenerate_blocks()
+{
+	// After we create ladder blocks, we will likely end up with a lot of blocks which don't do much.
+	// We might also have created merge scenarios which should *not* merge, i.e. cleanup_breaking_phi_constructs(),
+	// except we caused it ourselves.
+
+	// Eliminate bottom-up. First eliminate B, in A -> B -> C, where B contributes nothing.
+	bool did_work = false;
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.operations.empty() &&
+		    node->ir.phi.empty() &&
+		    !node->pred_back_edge &&
+		    !node->succ_back_edge &&
+		    node->succ.size() == 1 &&
+		    node->ir.terminator.type == Terminator::Type::Branch &&
+		    node->merge == MergeType::None &&
+		    // Loop merge targets are sacred, and must not be removed.
+		    structured_loop_merge_targets.count(node) == 0 &&
+		    !node_has_phi_inputs_from(node, node->succ.front()))
+		{
+			// If any pred is a continue block, this block is also load-bearing, since it can be used as a merge block.
+			if (std::find_if(node->pred.begin(), node->pred.end(),
+			                 [](const CFGNode *n) {
+			                   return n->succ_back_edge != nullptr;
+			                 }) != node->pred.end())
+			{
+				continue;
+			}
+
+			// If succ uses this block as an incoming block, we should keep the block around.
+			// We're only really interested in eliminating degenerate ladder blocks,
+			// which generally do not deal with PHI.
+			auto *succ = node->succ.front();
+			if (std::find_if(succ->ir.phi.begin(), succ->ir.phi.end(),
+			                 [node](const PHI &phi) {
+			                   return std::find_if(phi.incoming.begin(), phi.incoming.end(),
+			                                       [node](const IncomingValue &incoming) {
+				                                     return incoming.block == node;
+			                                       }) != phi.incoming.end();
+			                 }) != succ->ir.phi.end())
+			{
+				continue;
+			}
+
+			if (node->pred.size() == 1 && node->post_dominates(node->pred.front()))
+			{
+				// Trivial case.
+				did_work = true;
+				auto *pred = node->pred.front();
+				pred->retarget_branch(node, succ);
+			}
+			else if (node->pred.size() >= 2 && !node->dominates(node->succ.front()))
+			{
+				// If we have two or more preds, we have to be really careful.
+				// This block could be load-bearing from a structurization standpoint.
+				// If this node in on a breaking path, it is fine to eliminate the block.
+				auto *merge = CFGStructurizer::find_common_post_dominator(node->pred);
+				if (merge == node->succ.front())
+				{
+					did_work = true;
+					auto tmp_pred = node->pred;
+					for (auto *pred : tmp_pred)
+						pred->retarget_branch(node, node->succ.front());
+				}
+			}
+		}
+	}
+
+	if (did_work)
+		recompute_cfg();
+}
+
 void CFGStructurizer::prune_dead_preds()
 {
 	// We do not want to see unreachable preds.
@@ -371,8 +467,7 @@ void CFGStructurizer::prune_dead_preds()
 	{
 		auto itr = std::remove_if(node->pred.begin(), node->pred.end(),
 		                          [&](const CFGNode *node) { return reachable_nodes.count(node) == 0; });
-		if (itr != node->pred.end())
-			node->pred.erase(itr, node->pred.end());
+		node->pred.erase(itr, node->pred.end());
 	}
 }
 
@@ -1390,8 +1485,10 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_to)
 {
 	// Don't rewrite loops here (since this is likely a loop merge block),
-	// unless we're rewriting header -> continue scenario.
-	if (header->pred_back_edge && !ladder_to->dominates(header->pred_back_edge))
+	// unless we're rewriting header -> inner construct scenario.
+	// Check if the ladder_to block has a path to continue block.
+	// If it does, it is part of the loop construct, and cannot be a loop merge block.
+	if (header->pred_back_edge && !header->pred_back_edge->can_backtrace_to(ladder_to))
 		return;
 
 	// Don't rewrite switch blocks either.
@@ -1587,8 +1684,9 @@ void CFGStructurizer::recompute_cfg()
 {
 	reset_traversal();
 	visit(*entry_block);
-	build_immediate_dominators();
+	// Need to prune dead preds before computing dominance.
 	prune_dead_preds();
+	build_immediate_dominators();
 	build_reachability();
 
 	backwards_visit();
@@ -2196,7 +2294,25 @@ void CFGStructurizer::find_loops()
 		{
 			// Single-escape merge.
 			// It is unique, but we need workarounds later.
-			node->loop_merge_block = non_dominated_exit.front();
+			auto *merge_block = non_dominated_exit.front();
+
+			// We can make the non-dominated exit dominated by
+			// adding a ladder block in-between. This allows us to merge the loop cleanly
+			// before breaking out.
+
+			auto *ladder = pool.create_node();
+			ladder->name = node->name + ".merge";
+			ladder->add_branch(merge_block);
+			ladder->ir.terminator.type = Terminator::Type::Branch;
+			ladder->ir.terminator.direct_block = merge_block;
+			ladder->immediate_post_dominator = merge_block;
+			ladder->forward_post_visit_order = merge_block->forward_post_visit_order;
+			ladder->backward_post_visit_order = merge_block->backward_post_visit_order;
+
+			node->traverse_dominated_blocks_and_rewrite_branch(merge_block, ladder);
+			node->loop_ladder_block = nullptr;
+			node->loop_merge_block = ladder;
+			ladder->recompute_immediate_dominator();
 
 			const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
 			//LOGI("Loop with ladder merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node), node->name.c_str(),
@@ -2367,6 +2483,7 @@ void CFGStructurizer::split_merge_blocks()
 				if (!loop_ladder)
 				{
 					// We don't have a ladder, because the loop merged to an outer scope, so we need to fake a ladder.
+					// If we hit this case, we did not hit the simpler case in find_loops().
 					auto *ladder = pool.create_node();
 					ladder->name = node->name + ".merge";
 					ladder->add_branch(node);

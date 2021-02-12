@@ -61,6 +61,7 @@ private:
 	unsigned reachability_stride = 0;
 
 	UnorderedSet<const CFGNode *> reachable_nodes;
+	UnorderedSet<const CFGNode *> structured_loop_merge_targets;
 	void visit(CFGNode &entry);
 	void backwards_visit();
 	void backwards_visit(CFGNode &entry);
@@ -72,6 +73,8 @@ private:
 	void structurize(unsigned pass);
 	void find_loops();
 	void split_merge_scopes();
+	void eliminate_degenerate_blocks();
+	void update_structured_loop_merge_targets();
 	void find_selection_merges(unsigned pass);
 	static bool header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge);
 	void fixup_broken_selection_merges(unsigned pass);

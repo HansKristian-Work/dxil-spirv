@@ -91,6 +91,7 @@ private:
 	static CFGNode *find_common_post_dominator(CFGNode *a, CFGNode *b);
 	CFGNode *get_immediate_dominator_loop_header();
 	bool can_backtrace_to(const CFGNode *parent) const;
+	bool can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to);

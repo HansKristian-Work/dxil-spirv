@@ -103,6 +103,7 @@ struct Converter::Impl
 	Vector<std::unique_ptr<BlockMeta>> metas;
 	UnorderedMap<llvm::BasicBlock *, BlockMeta *> bb_map;
 	UnorderedMap<const llvm::Value *, spv::Id> value_map;
+	UnorderedMap<spv::Id, spv::Id> phi_incoming_rewrite;
 
 	ConvertedFunction convert_entry_point();
 	CFGNode *convert_function(llvm::Function *func, CFGNodePool &pool);
