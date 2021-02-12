@@ -439,8 +439,7 @@ void CFGStructurizer::prune_dead_preds()
 	{
 		auto itr = std::remove_if(node->pred.begin(), node->pred.end(),
 		                          [&](const CFGNode *node) { return reachable_nodes.count(node) == 0; });
-		if (itr != node->pred.end())
-			node->pred.erase(itr, node->pred.end());
+		node->pred.erase(itr, node->pred.end());
 	}
 }
 
@@ -1657,8 +1656,9 @@ void CFGStructurizer::recompute_cfg()
 {
 	reset_traversal();
 	visit(*entry_block);
-	build_immediate_dominators();
+	// Need to prune dead preds before computing dominance.
 	prune_dead_preds();
+	build_immediate_dominators();
 	build_reachability();
 
 	backwards_visit();
