@@ -402,12 +402,26 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				continue;
 			}
 
+			// If succ uses this block as an incoming block, we should keep the block around.
+			// We're only really interested in eliminating degenerate ladder blocks,
+			// which generally do not deal with PHI.
+			auto *succ = node->succ.front();
+			if (std::find_if(succ->ir.phi.begin(), succ->ir.phi.end(),
+			                 [node](const PHI &phi) {
+			                   return std::find_if(phi.incoming.begin(), phi.incoming.end(),
+			                                       [node](const IncomingValue &incoming) {
+				                                     return incoming.block == node;
+			                                       }) != phi.incoming.end();
+			                 }) != succ->ir.phi.end())
+			{
+				continue;
+			}
+
 			if (node->pred.size() == 1 && node->post_dominates(node->pred.front()))
 			{
 				// Trivial case.
 				did_work = true;
 				auto *pred = node->pred.front();
-				auto *succ = node->succ.front();
 				pred->retarget_branch(node, succ);
 			}
 			else if (node->pred.size() >= 2 && !node->dominates(node->succ.front()))
