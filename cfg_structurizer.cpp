@@ -314,6 +314,7 @@ bool CFGStructurizer::run()
 
 	//LOGI("=== Structurize pass ===\n");
 	structurize(0);
+	update_structured_loop_merge_targets();
 
 	recompute_cfg();
 
@@ -373,6 +374,18 @@ void CFGStructurizer::create_continue_block_ladders()
 		recompute_cfg();
 }
 
+void CFGStructurizer::update_structured_loop_merge_targets()
+{
+	structured_loop_merge_targets.clear();
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->loop_merge_block)
+			structured_loop_merge_targets.insert(node->loop_merge_block);
+		if (node->loop_ladder_block)
+			structured_loop_merge_targets.insert(node->loop_ladder_block);
+	}
+}
+
 void CFGStructurizer::eliminate_degenerate_blocks()
 {
 	// After we create ladder blocks, we will likely end up with a lot of blocks which don't do much.
@@ -390,7 +403,8 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 		    node->succ.size() == 1 &&
 		    node->ir.terminator.type == Terminator::Type::Branch &&
 		    node->merge == MergeType::None &&
-		    node->headers.empty() &&
+		    // Loop merge targets are sacred, and must not be removed.
+		    structured_loop_merge_targets.count(node) == 0 &&
 		    !node_has_phi_inputs_from(node, node->succ.front()))
 		{
 			// If any pred is a continue block, this block is also load-bearing, since it can be used as a merge block.
