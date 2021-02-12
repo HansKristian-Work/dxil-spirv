@@ -317,6 +317,13 @@ bool CFGStructurizer::run()
 
 	recompute_cfg();
 
+	//log_cfg("Structurize pass 0");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_final = graphviz_path + ".struct0";
+		log_cfg_graphviz(graphviz_final.c_str());
+	}
+
 	eliminate_degenerate_blocks();
 
 	//log_cfg("Split merge scopes");
@@ -324,13 +331,6 @@ bool CFGStructurizer::run()
 	{
 		auto graphviz_split = graphviz_path + ".eliminate";
 		log_cfg_graphviz(graphviz_split.c_str());
-	}
-
-	//log_cfg("Structurize pass 0");
-	if (!graphviz_path.empty())
-	{
-		auto graphviz_struct = graphviz_path + ".struct";
-		log_cfg_graphviz(graphviz_struct.c_str());
 	}
 
 	//LOGI("=== Structurize pass ===\n");
