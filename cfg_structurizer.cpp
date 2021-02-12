@@ -389,8 +389,9 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 		    !node->succ_back_edge &&
 		    node->succ.size() == 1 &&
 		    node->ir.terminator.type == Terminator::Type::Branch &&
-			node->merge == MergeType::None &&
-			!node_has_phi_inputs_from(node, node->succ.front()))
+		    node->merge == MergeType::None &&
+		    node->headers.empty() &&
+		    !node_has_phi_inputs_from(node, node->succ.front()))
 		{
 			// If any pred is a continue block, this block is also load-bearing, since it can be used as a merge block.
 			if (std::find_if(node->pred.begin(), node->pred.end(),
