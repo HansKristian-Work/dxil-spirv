@@ -4014,6 +4014,24 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		}
 	}
 
+	// Rewrite PHI incoming values if we have to.
+	if (!phi_incoming_rewrite.empty())
+	{
+		for (auto *bb : visit_order)
+		{
+			CFGNode *node = bb_map[bb]->node;
+			for (auto &phi : node->ir.phi)
+			{
+				for (auto &incoming : phi.incoming)
+				{
+					auto itr = phi_incoming_rewrite.find(incoming.id);
+					if (itr != phi_incoming_rewrite.end())
+						incoming.id = itr->second;
+				}
+			}
+		}
+	}
+
 	return entry_node;
 }
 
