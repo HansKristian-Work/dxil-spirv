@@ -406,7 +406,9 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 			{
 				// Trivial case.
 				did_work = true;
-				node->pred.front()->retarget_branch(node, node->succ.front());
+				auto *pred = node->pred.front();
+				auto *succ = node->succ.front();
+				pred->retarget_branch(node, succ);
 			}
 			else if (node->pred.size() >= 2 && !node->dominates(node->succ.front()))
 			{

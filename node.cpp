@@ -314,7 +314,14 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 
 	// Modify succ in place so we don't invalidate iterator in traverse_dominated_blocks_and_rewrite_branch.
 	*std::find(succ.begin(), succ.end(), to_prev) = to_next;
-	add_branch(to_next);
+
+	auto replace_itr = std::find(to_next->pred.begin(), to_next->pred.end(), to_prev);
+	// If to_prev now becomes unreachable, just replace pred in-place to avoid a stale pred.
+	// The stale pred will be cleaned up later when recomputing CFG.
+	if (to_prev->pred.empty() && !to_prev->pred_back_edge && replace_itr != to_next->pred.end())
+		*replace_itr = this;
+	else
+		to_next->add_unique_pred(this);
 
 	// Branch targets have changed, so recompute immediate dominators.
 	if (to_prev->forward_post_visit_order > to_next->forward_post_visit_order)
