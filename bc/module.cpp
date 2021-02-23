@@ -321,6 +321,7 @@ struct ModuleParseContext
 
 	Value *get_value(uint64_t op, Type *expected_type = nullptr, bool force_absolute = false);
 	std::pair<Value *, Type *> get_value_and_type(const Vector<uint64_t> &ops, unsigned &index);
+	Value *get_value(const Vector<uint64_t> &ops, unsigned &index, Type *expected_type);
 	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
 	MDOperand *get_metadata(uint64_t index) const;
 	const char *get_metadata_kind(uint64_t index) const;
@@ -432,7 +433,21 @@ Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type, bool forc
 		return proxy;
 	}
 	else
+	{
+		if (expected_type && expected_type != values[op]->getType())
+		{
+			LOGE("Type mismatch.\n");
+			return nullptr;
+		}
 		return values[op];
+	}
+}
+
+Value *ModuleParseContext::get_value(const Vector<uint64_t> &ops, unsigned &index, Type *expected_type)
+{
+	if (index >= ops.size())
+		return nullptr;
+	return get_value(ops[index++], expected_type);
 }
 
 std::pair<Value *, Type *> ModuleParseContext::get_value_and_type(const Vector<uint64_t> &ops, unsigned &index)
@@ -1162,7 +1177,9 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	{
 		unsigned index = 0;
 		auto val = get_value_and_type(entry.ops, index);
-		if (!val.first || index + 1 > entry.ops.size())
+		if (!val.first)
+			return false;
+		if (index == entry.ops.size())
 			return false;
 		auto op = UnaryOp(entry.ops[index++]);
 		auto *value = context->construct<UnaryOperator>(translate_uop(op, val.second), val.first);
@@ -1176,9 +1193,11 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	{
 		unsigned index = 0;
 		auto lhs = get_value_and_type(entry.ops, index);
-		if (!lhs.first || index + 2 > entry.ops.size())
+		if (!lhs.first)
 			return false;
-		auto *rhs = get_value(entry.ops[index++], lhs.second);
+		auto *rhs = get_value(entry.ops, index, lhs.second);
+		if (index == entry.ops.size())
+			return false;
 		auto pred = Instruction::Predicate(entry.ops[index++]);
 
 		if (!rhs)
@@ -1226,10 +1245,12 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 	{
 		unsigned index = 0;
 		auto lhs = get_value_and_type(entry.ops, index);
-		if (!lhs.first || index + 2 > entry.ops.size())
+		if (!lhs.first)
 			return false;
-		auto *rhs = get_value(entry.ops[index++], lhs.second);
+		auto *rhs = get_value(entry.ops, index, lhs.second);
 		if (!lhs.first || !rhs)
+			return false;
+		if (index == entry.ops.size())
 			return false;
 		auto op = BinOp(entry.ops[index++]);
 		auto *value = context->construct<BinaryOperator>(lhs.first, rhs, translate_binop(op, lhs.second));
@@ -1240,14 +1261,17 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_ATOMICRMW:
 	{
-		if (entry.ops.size() < 3)
+		unsigned index = 0;
+		auto ptr = get_value_and_type(entry.ops, index);
+		if (!ptr.first || !isa<PointerType>(ptr.second))
 			return false;
-		auto *ptr = get_value(entry.ops[0]);
-		auto *val = get_value(entry.ops[1]);
-		if (!ptr || !val)
+		auto *val = get_value(entry.ops, index, ptr.second->getPointerElementType());
+		if (!val)
 			return false;
-		AtomicRMWInst::BinOp op = translate_atomic_binop(AtomicBinOp(entry.ops[2]));
-		auto *value = context->construct<AtomicRMWInst>(val->getType(), ptr, val, op);
+		if (index == entry.ops.size())
+			return false;
+		AtomicRMWInst::BinOp op = translate_atomic_binop(AtomicBinOp(entry.ops[index++]));
+		auto *value = context->construct<AtomicRMWInst>(val->getType(), ptr.first, val, op);
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1255,14 +1279,13 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_CMPXCHG:
 	{
-		if (entry.ops.size() < 3)
+		unsigned index = 0;
+		auto ptr = get_value_and_type(entry.ops, index);
+		auto cmp = get_value_and_type(entry.ops, index);
+		if (!ptr.first || !cmp.first || !isa<PointerType>(ptr.second))
 			return false;
-		auto *ptr = get_value(entry.ops[0]);
-		auto *cmp = get_value(entry.ops[1]);
-		auto *new_value = get_value(entry.ops[2]);
-		if (!ptr || !cmp || !new_value)
-			return false;
-		auto *value = context->construct<AtomicCmpXchgInst>(ptr, cmp, new_value);
+		auto *new_value = get_value(entry.ops, index, cmp.second);
+		auto *value = context->construct<AtomicCmpXchgInst>(ptr.first, cmp.first, new_value);
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1303,28 +1326,30 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_EXTRACTVAL:
 	{
-		if (entry.ops.size() < 1)
+		unsigned index = 0;
+		auto aggregate = get_value_and_type(entry.ops, index);
+		if (!aggregate.first)
 			return false;
 
-		unsigned num_args = entry.ops.size();
+		if (index == entry.ops.size())
+			return false;
+
 		Vector<unsigned> indices;
-		indices.reserve(entry.ops.size() - 1);
-		Value *aggregate = get_value(entry.ops[0]);
-		if (!aggregate)
-			return false;
+		indices.reserve(entry.ops.size() - index);
+		unsigned num_args = entry.ops.size();
 
-		Type *type = aggregate->getType();
-		for (unsigned i = 1; i < num_args; i++)
+		Type *type = aggregate.second;
+		for (; index < num_args; index++)
 		{
-			auto index = unsigned(entry.ops[i]);
+			auto element = unsigned(entry.ops[index]);
 			if (type->getTypeID() == Type::TypeID::StructTyID)
 			{
-				if (index >= cast<StructType>(type)->getNumElements())
+				if (element >= cast<StructType>(type)->getNumElements())
 				{
 					LOGE("Struct element index out of range.\n");
 					return false;
 				}
-				type = cast<StructType>(type)->getElementType(index);
+				type = cast<StructType>(type)->getElementType(element);
 			}
 			else if (type->getTypeID() == Type::TypeID::ArrayTyID)
 			{
@@ -1338,10 +1363,10 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 				return false;
 
 			// DXIL does not support vectors, so we're not supposed to index into them any further.
-			indices.push_back(index);
+			indices.push_back(element);
 		}
 
-		auto *value = context->construct<ExtractValueInst>(type, aggregate, std::move(indices));
+		auto *value = context->construct<ExtractValueInst>(type, aggregate.first, std::move(indices));
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1467,34 +1492,36 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_LOAD:
 	{
-		if (entry.ops.size() < 2)
+		unsigned index = 0;
+		auto ptr = get_value_and_type(entry.ops, index);
+		if (index + 2 != entry.ops.size() && index + 3 != entry.ops.size())
 			return false;
 
-		auto *ptr = get_value(entry.ops[0]);
-		if (!isa<PointerType>(ptr->getType()))
+		if (!ptr.first || !isa<PointerType>(ptr.second))
 		{
 			LOGE("Loading from something that is not a pointer.\n");
 			return false;
 		}
 
 		Type *loaded_type = nullptr;
-		if (entry.ops.size() == 4)
-			loaded_type = get_type(entry.ops[1]);
+		if (index + 3 == entry.ops.size())
+			loaded_type = get_type(entry.ops[index++]);
 		else
-			loaded_type = cast<PointerType>(ptr->getType())->getElementType();
+			loaded_type = cast<PointerType>(ptr.second)->getElementType();
 
-		auto *value = context->construct<LoadInst>(loaded_type, ptr);
+		auto *value = context->construct<LoadInst>(loaded_type, ptr.first);
 		add_instruction(value);
 		break;
 	}
 
 	case FunctionRecord::INST_STORE:
 	{
-		if (entry.ops.size() < 2)
+		unsigned index = 0;
+		auto ptr = get_value_and_type(entry.ops, index);
+		auto val = get_value_and_type(entry.ops, index);
+		if (!ptr.first || !val.first || index + 2 != entry.ops.size())
 			return false;
-		auto *ptr = get_value(entry.ops[0]);
-		auto *v = get_value(entry.ops[1]);
-		auto *value = context->construct<StoreInst>(ptr, v);
+		auto *value = context->construct<StoreInst>(ptr.first, val.first);
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1502,14 +1529,16 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_SHUFFLEVEC:
 	{
-		if (entry.ops.size() < 3)
+		unsigned index = 0;
+		auto a = get_value_and_type(entry.ops, index);
+		auto *b = get_value(entry.ops, index, a.second);
+		auto shuf = get_value_and_type(entry.ops, index);
+		if (!a.first || !b || !shuf.first || !isa<VectorType>(a.second))
 			return false;
-		auto *a = get_value(entry.ops[0]);
-		auto *b = get_value(entry.ops[1]);
-		auto *shuf = get_value(entry.ops[2]);
 
-		auto *vec_type = VectorType::get(cast<ConstantDataVector>(shuf)->getNumElements(), cast<VectorType>(a->getType())->getElementType());
-		auto *value = context->construct<ShuffleVectorInst>(vec_type, a, b, shuf);
+		auto *vec_type = VectorType::get(cast<ConstantDataVector>(shuf.first)->getNumElements(),
+		                                 cast<VectorType>(a.second)->getElementType());
+		auto *value = context->construct<ShuffleVectorInst>(vec_type, a.first, b, shuf.first);
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1517,11 +1546,15 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_EXTRACTELT:
 	{
-		if (entry.ops.size() < 2)
+		unsigned index = 0;
+		auto vec = get_value_and_type(entry.ops, index);
+		if (!vec.first || !isa<VectorType>(vec.second))
 			return false;
-		auto *vec = get_value(entry.ops[0]);
-		auto *index = get_value(entry.ops[1]);
-		auto *value = context->construct<ExtractElementInst>(vec, index);
+		auto element_index = get_value_and_type(entry.ops, index);
+		if (!element_index.first)
+			return false;
+
+		auto *value = context->construct<ExtractElementInst>(vec.first, element_index.first);
 		if (!add_instruction(value))
 			return false;
 		break;
@@ -1529,12 +1562,15 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_INSERTELT:
 	{
-		if (entry.ops.size() < 3)
+		unsigned index = 0;
+		auto vec = get_value_and_type(entry.ops, index);
+		if (!vec.first || !isa<VectorType>(vec.second))
 			return false;
-		auto *vec = get_value(entry.ops[0]);
-		auto *value = get_value(entry.ops[1]);
-		auto *index = get_value(entry.ops[2]);
-		auto *new_value = context->construct<InsertElementInst>(vec, value, index);
+		auto *value = get_value(entry.ops, index, cast<VectorType>(vec.second)->getElementType());
+		auto element_index = get_value_and_type(entry.ops, index);
+		if (!value || !element_index.first)
+			return false;
+		auto *new_value = context->construct<InsertElementInst>(vec.first, value, element_index.first);
 		if (!add_instruction(new_value))
 			return false;
 		break;
