@@ -1397,7 +1397,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 				return false;
 			if (!add_successor(false_block))
 				return false;
-			auto *cond = get_value(entry.ops[2]);
+			auto *cond = get_value(entry.ops[2], Type::getInt1Ty(*context));
 			auto *value = context->construct<BranchInst>(true_block, false_block, cond);
 			if (!add_instruction(value))
 				return false;
