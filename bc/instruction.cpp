@@ -45,7 +45,7 @@ Value *Instruction::getOperand(unsigned index) const
 		return nullptr;
 	}
 
-	return operands[index];
+	return Internal::resolve_proxy(operands[index]);
 }
 
 bool Instruction::isTerminator() const
@@ -147,7 +147,7 @@ Function *CallInst::getCalledFunction() const
 
 Value *ReturnInst::getReturnValue() const
 {
-	return value;
+	return Internal::resolve_proxy(value);
 }
 
 CmpInst::CmpInst(ValueKind kind, Predicate pred_, Value *LHS, Value *RHS)
@@ -179,7 +179,7 @@ ExtractValueInst::ExtractValueInst(Type *type, Value *aggregate, Vector<unsigned
 
 Value *ExtractValueInst::getAggregateOperand() const
 {
-	return operands[0];
+	return Internal::resolve_proxy(operands[0]);
 }
 
 unsigned ExtractValueInst::getNumIndices() const
@@ -244,7 +244,7 @@ bool BranchInst::isConditional() const
 
 Value *BranchInst::getCondition() const
 {
-	return cond;
+	return Internal::resolve_proxy(cond);
 }
 
 BasicBlock *BranchInst::getSuccessor(unsigned index) const
@@ -289,7 +289,7 @@ BasicBlock *SwitchInst::getDefaultDest() const
 
 Value *SwitchInst::getCondition() const
 {
-	return cond;
+	return Internal::resolve_proxy(cond);
 }
 
 ConstantInt *SwitchInst::Case::getCaseValue() const
@@ -326,7 +326,7 @@ AllocaInst::AllocaInst(Type *pointer_type, Type *element_type_, Value *size)
 
 Value *AllocaInst::getArraySize() const
 {
-	return array_size;
+	return Internal::resolve_proxy(array_size);
 }
 
 GetElementPtrInst::GetElementPtrInst(Type *pointer_type, Vector<Value *> indices, bool inbounds_)
@@ -369,7 +369,7 @@ Value *PHINode::getIncomingValue(unsigned index) const
 {
 	if (index >= incoming.size())
 		return nullptr;
-	return incoming[index].value;
+	return Internal::resolve_proxy(incoming[index].value);
 }
 
 bool PHINode::resolve_proxy_values_incoming()
@@ -396,12 +396,12 @@ AtomicRMWInst::AtomicRMWInst(Type *type, Value *ptr_, Value *value_, BinOp op_)
 
 Value *AtomicRMWInst::getPointerOperand() const
 {
-	return ptr;
+	return Internal::resolve_proxy(ptr);
 }
 
 Value *AtomicRMWInst::getValOperand() const
 {
-	return value;
+	return Internal::resolve_proxy(value);
 }
 
 AtomicRMWInst::BinOp AtomicRMWInst::getOperation() const
@@ -420,17 +420,17 @@ AtomicCmpXchgInst::AtomicCmpXchgInst(Value *ptr_, Value *cmp_, Value *new_value_
 
 Value *AtomicCmpXchgInst::getPointerOperand() const
 {
-	return ptr;
+	return Internal::resolve_proxy(ptr);
 }
 
 Value *AtomicCmpXchgInst::getCompareOperand() const
 {
-	return cmp_value;
+	return Internal::resolve_proxy(cmp_value);
 }
 
 Value *AtomicCmpXchgInst::getNewValOperand() const
 {
-	return new_value;
+	return Internal::resolve_proxy(new_value);
 }
 
 ShuffleVectorInst::ShuffleVectorInst(Type *type, Value *a, Value *b, Value *shuf)
@@ -457,12 +457,12 @@ ExtractElementInst::ExtractElementInst(Value *vec_, Value *index_)
 
 Value *ExtractElementInst::getVectorOperand() const
 {
-	return vec;
+	return Internal::resolve_proxy(vec);
 }
 
 Value *ExtractElementInst::getIndexOperand() const
 {
-	return index;
+	return Internal::resolve_proxy(index);
 }
 
 InsertElementInst::InsertElementInst(Value *vec, Value *value, Value *index)
