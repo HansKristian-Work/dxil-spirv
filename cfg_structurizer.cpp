@@ -290,6 +290,8 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 			continue;
 		if (node->pred.size() <= 1)
 			continue;
+		if (node->succ.size() != 1)
+			continue;
 		if (node->ir.terminator.type != Terminator::Type::Branch)
 			continue;
 
@@ -297,13 +299,26 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 		if (node->succ_back_edge || node->pred_back_edge)
 			continue;
 
-		for (auto &succ : node->succ)
+		// This is a merge block candidate for a loop, don't split.
+		// It will only confuse things where we'll need to re-merge the split blocks anyways.
+		bool is_merge_block_candidate = false;
+		for (auto *pred : node->pred)
 		{
-			if (!node->dominates(succ) && node_has_phi_inputs_from(node, succ))
+			if (pred->succ_back_edge)
 			{
-				eliminate_node_link_preds_to_succ(node);
-				did_work = true;
+				is_merge_block_candidate = true;
+				continue;
 			}
+		}
+
+		if (is_merge_block_candidate)
+			continue;
+
+		auto *succ = node->succ.front();
+		if (!node->dominates(succ) && node_has_phi_inputs_from(node, succ))
+		{
+			eliminate_node_link_preds_to_succ(node);
+			did_work = true;
 		}
 	}
 
