@@ -171,10 +171,36 @@ void CFGStructurizer::log_cfg(const char *tag) const
 	LOGI("\n=====================\n");
 }
 
+// #define PHI_DEBUG
+#ifdef PHI_DEBUG
+static void validate_phi(const PHI &phi)
+{
+	auto incomings = phi.incoming;
+	std::sort(incomings.begin(), incomings.end(), [](const IncomingValue &a, const IncomingValue &b) {
+		return a.block < b.block;
+	});
+	auto itr = std::unique(incomings.begin(), incomings.end(), [](const IncomingValue &a, const IncomingValue &b) {
+		return a.block == b.block;
+	});
+	if (itr != incomings.end())
+		abort();
+}
+
+static void validate_phi(const Vector<PHI> &phis)
+{
+	for (auto &phi : phis)
+		validate_phi(phi);
+}
+#else
+#define validate_phi(phi) ((void)0)
+#endif
+
 void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 {
 	assert(node->succ.size() == 1);
 	auto *succ = node->succ.front();
+
+	validate_phi(succ->ir.phi);
 
 	Vector<CFGNode *> break_nodes;
 	auto pred_copy = node->pred;
@@ -219,6 +245,7 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 			// incoming block instead.
 			phi.incoming.insert(phi.incoming.end(), outgoing_itr->incoming.begin(), outgoing_itr->incoming.end());
 			node->ir.phi.erase(outgoing_itr);
+			validate_phi(succ->ir.phi);
 		}
 		else
 		{
@@ -228,6 +255,7 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 			// which also means it dominates all preds to this node.
 			for (auto *break_pred : break_nodes)
 				phi.incoming.push_back({ break_pred, incoming_from_node });
+			validate_phi(succ->ir.phi);
 		}
 	}
 	assert(node->ir.phi.empty());
@@ -262,6 +290,8 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 			continue;
 		if (node->pred.size() <= 1)
 			continue;
+		if (node->succ.size() != 1)
+			continue;
 		if (node->ir.terminator.type != Terminator::Type::Branch)
 			continue;
 
@@ -269,13 +299,26 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 		if (node->succ_back_edge || node->pred_back_edge)
 			continue;
 
-		for (auto &succ : node->succ)
+		// This is a merge block candidate for a loop, don't split.
+		// It will only confuse things where we'll need to re-merge the split blocks anyways.
+		bool is_merge_block_candidate = false;
+		for (auto *pred : node->pred)
 		{
-			if (!node->dominates(succ) && node_has_phi_inputs_from(node, succ))
+			if (pred->succ_back_edge)
 			{
-				eliminate_node_link_preds_to_succ(node);
-				did_work = true;
+				is_merge_block_candidate = true;
+				continue;
 			}
+		}
+
+		if (is_merge_block_candidate)
+			continue;
+
+		auto *succ = node->succ.front();
+		if (!node->dominates(succ) && node_has_phi_inputs_from(node, succ))
+		{
+			eliminate_node_link_preds_to_succ(node);
+			did_work = true;
 		}
 	}
 
@@ -678,9 +721,12 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 
 		if (!itr->second->dominates(incoming.block))
 		{
-			//LOGI("For node %s, move incoming node %s to %s.\n", node.block->name.c_str(), incoming.block->name.c_str(),
-			//     itr->second->name.c_str());
+#ifdef PHI_DEBUG
+			LOGI("For node %s, move incoming node %s to %s.\n", node.block->name.c_str(), incoming.block->name.c_str(),
+			     itr->second->name.c_str());
+#endif
 			incoming.block = itr->second;
+			validate_phi(node.block->ir.phi[node.phi_index]);
 		}
 	}
 }
@@ -693,7 +739,9 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	// In order to fix this we need to follow control flow from these values and insert phi nodes as necessary to link up
 	// a set of values where dominance frontiers are shared.
 
-	//LOGI("\n=== INSERT PHI FOR %s ===\n", node.block->name.c_str());
+#ifdef PHI_DEBUG
+	LOGI("\n=== INSERT PHI FOR %s ===\n", node.block->name.c_str());
+#endif
 
 	// First, figure out which subset of the CFG we need to work on.
 	UnorderedSet<const CFGNode *> cfg_subset, cfg_block_subset;
@@ -747,7 +795,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	for (auto &incoming : incoming_values)
 		incoming.block->walk_cfg_from(walk_op);
 
-#if 0
+#ifdef PHI_DEBUG
 	LOGI("\n=== CFG subset ===\n");
 	for (auto *subset_node : cfg_subset)
 		LOGI("  %s\n", subset_node->name.c_str());
@@ -756,10 +804,12 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 	for (;;)
 	{
-		//LOGI("\n=== PHI iteration ===\n");
+#ifdef PHI_DEBUG
+		LOGI("\n=== PHI iteration ===\n");
 
-		//for (auto &incoming : incoming_values)
-		//	LOGI("  Incoming value from %s\n", incoming.block->name.c_str());
+		for (auto &incoming : incoming_values)
+			LOGI("  Incoming value from %s\n", incoming.block->name.c_str());
+#endif
 
 		// Inside the CFG subset, find a dominance frontiers where we merge PHIs this iteration.
 		CFGNode *frontier = node.block;
@@ -853,7 +903,9 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		// A candidate dominance frontier is a place where we might want to place a PHI node in order to merge values.
 		// For a successful iteration, we need to find at least one candidate where we can merge PHI.
 
-		//LOGI("Testing dominance frontier %s ...\n", frontier->name.c_str());
+#ifdef PHI_DEBUG
+		LOGI("Testing dominance frontier %s ...\n", frontier->name.c_str());
+#endif
 
 		// Remove old inputs.
 		PHI frontier_phi;
@@ -867,12 +919,13 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			auto itr = find_incoming_value(input, incoming_values);
 			if (itr != incoming_values.end())
 			{
-				//auto *incoming_block = itr->block;
-				//LOGI("   ... found incoming block %s for input %s.\n", incoming_block->name.c_str(), input->name.c_str());
-
-				//LOGI(" ... For pred %s (%p), found incoming value from %s (%p)\n", input->name.c_str(),
-				//     static_cast<const void *>(input), incoming_block->name.c_str(),
-				//     static_cast<const void *>(incoming_block));
+#ifdef PHI_DEBUG
+				auto *incoming_block = itr->block;
+				LOGI("   ... found incoming block %s for input %s.\n", incoming_block->name.c_str(), input->name.c_str());
+				LOGI(" ... For pred %s (%p), found incoming value from %s (%p)\n", input->name.c_str(),
+				     static_cast<const void *>(input), incoming_block->name.c_str(),
+				     static_cast<const void *>(incoming_block));
+#endif
 
 				IncomingValue value = {};
 				value.id = itr->id;
@@ -881,7 +934,9 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			}
 			else
 			{
-				//LOGI("   ... creating undefined input for %s\n", input->name.c_str());
+#ifdef PHI_DEBUG
+				LOGI("   ... creating undefined input for %s\n", input->name.c_str());
+#endif
 				// If there is no incoming value, we need to hallucinate an undefined value.
 				IncomingValue value = {};
 				value.id = module.get_builder().createUndefined(phi.type_id);
@@ -899,14 +954,18 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			auto *incoming_block = incoming_values[i].block;
 			if (!exists_path_in_cfg_without_intermediate_node(incoming_block, node.block, frontier))
 			{
-				//LOGI("     ... removing input in %s\n", incoming_block->name.c_str());
+#ifdef PHI_DEBUG
+				LOGI("     ... removing input in %s\n", incoming_block->name.c_str());
+#endif
 				if (i != num_alive_incoming_values - 1)
 					std::swap(incoming_values[num_alive_incoming_values - 1], incoming_values[i]);
 				num_alive_incoming_values--;
 			}
 			else
 			{
-				//LOGI("     ... keeping input in %s\n", incoming_block->name.c_str());
+#ifdef PHI_DEBUG
+				LOGI("     ... keeping input in %s\n", incoming_block->name.c_str());
+#endif
 				i++;
 			}
 		}
@@ -1012,7 +1071,9 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			incoming_values.push_back(new_incoming);
 		}
 
-		//LOGI("=========================\n");
+#ifdef PHI_DEBUG
+		LOGI("=========================\n");
+#endif
 		frontier->ir.phi.push_back(std::move(frontier_phi));
 	}
 }
