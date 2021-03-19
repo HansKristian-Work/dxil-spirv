@@ -220,7 +220,9 @@ struct OptionBase
 	    : type(cap)
 	{
 	}
+
 	Option type;
+	DXIL_SPV_OVERRIDE_NEW_DELETE
 };
 
 struct OptionShaderDemoteToHelper : OptionBase
@@ -324,7 +326,7 @@ struct OptionShaderSourceFile : OptionBase
 		: OptionBase(Option::ShaderSourceFile)
 	{
 	}
-	const char *name = nullptr;
+	String name;
 };
 
 struct OptionBindlessTypedBufferOffsets : OptionBase

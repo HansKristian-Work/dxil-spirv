@@ -4283,7 +4283,7 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	case Option::ShaderSourceFile:
 	{
 		auto &file = static_cast<const OptionShaderSourceFile &>(cap);
-		if (file.name)
+		if (!file.name.empty())
 			options.shader_source_file = file.name;
 		else
 			options.shader_source_file.clear();

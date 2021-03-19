@@ -274,16 +274,50 @@ struct Remapper : ResourceRemappingInterface
 	unsigned root_descriptor_count = 0;
 };
 
+enum class LocalRootParameterType
+{
+	Constants,
+	Descriptor,
+	Table
+};
+
+struct LocalConstants
+{
+	unsigned register_space;
+	unsigned register_index;
+	unsigned num_words;
+};
+
+struct LocalDescriptor
+{
+	ResourceClass resource_class;
+	unsigned register_space;
+	unsigned register_index;
+};
+
+struct LocalRootParameter
+{
+	LocalRootParameterType type;
+	LocalConstants local_constants;
+	LocalDescriptor local_descriptor;
+	Vector<DescriptorTableEntry> table_entries;
+};
+
 struct dxil_spv_converter_s
 {
-	explicit dxil_spv_converter_s(LLVMBCParser &bc_parser)
-	    : converter(bc_parser, module)
+	explicit dxil_spv_converter_s(LLVMBCParser &bc_parser_)
+		: bc_parser(bc_parser_)
 	{
 	}
-	SPIRVModule module;
-	Converter converter;
+
+	LLVMBCParser &bc_parser;
 	Vector<uint32_t> spirv;
+	String entry_point;
 	Remapper remapper;
+
+	Vector<LocalRootParameter> local_root_parameters;
+
+	Vector<std::unique_ptr<OptionBase>> options;
 
 	Vector<DescriptorTableEntry> local_entries;
 	bool active_table = false;
@@ -429,7 +463,6 @@ dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_co
 	if (!conv)
 		return DXIL_SPV_ERROR_OUT_OF_MEMORY;
 
-	conv->converter.set_resource_remapping_interface(&conv->remapper);
 	*converter = conv;
 	return DXIL_SPV_SUCCESS;
 }
@@ -441,12 +474,47 @@ void dxil_spv_converter_free(dxil_spv_converter converter)
 
 void dxil_spv_converter_set_entry_point(dxil_spv_converter converter, const char *entry_point)
 {
-	converter->converter.set_entry_point(entry_point);
+	if (entry_point)
+		converter->entry_point = entry_point;
+	else
+		converter->entry_point.clear();
 }
 
 dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 {
-	auto entry_point = converter->converter.convert_entry_point();
+	SPIRVModule module;
+	Converter dxil_converter(converter->bc_parser, module);
+
+	if (!converter->entry_point.empty())
+		dxil_converter.set_entry_point(converter->entry_point.c_str());
+	dxil_converter.set_resource_remapping_interface(&converter->remapper);
+	for (auto &opt : converter->options)
+		dxil_converter.add_option(*opt);
+
+	for (auto &local_param : converter->local_root_parameters)
+	{
+		switch (local_param.type)
+		{
+		case LocalRootParameterType::Constants:
+			dxil_converter.add_local_root_constants(local_param.local_constants.register_space,
+			                                        local_param.local_constants.register_index,
+			                                        local_param.local_constants.num_words);
+			break;
+
+		case LocalRootParameterType::Descriptor:
+			dxil_converter.add_local_root_descriptor(local_param.local_descriptor.resource_class,
+			                                         local_param.local_descriptor.register_space,
+			                                         local_param.local_descriptor.register_index);
+			break;
+
+		case LocalRootParameterType::Table:
+			dxil_converter.add_local_root_descriptor_table(local_param.table_entries);
+			break;
+		}
+	}
+
+	auto entry_point = dxil_converter.convert_entry_point();
+
 	if (entry_point.entry == nullptr)
 	{
 		LOGE("Failed to convert function.\n");
@@ -454,9 +522,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	}
 
 	{
-		dxil_spv::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, converter->module);
+		dxil_spv::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, module);
 		structurizer.run();
-		converter->module.emit_entry_point_function_body(structurizer);
+		module.emit_entry_point_function_body(structurizer);
 	}
 
 	for (auto &leaf : entry_point.leaf_functions)
@@ -466,12 +534,12 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 			LOGE("Leaf function is nullptr!\n");
 			return DXIL_SPV_ERROR_GENERIC;
 		}
-		dxil_spv::CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, converter->module);
+		dxil_spv::CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, module);
 		structurizer.run();
-		converter->module.emit_leaf_function_body(leaf.func, structurizer);
+		module.emit_leaf_function_body(leaf.func, structurizer);
 	}
 
-	if (!converter->module.finalize_spirv(converter->spirv))
+	if (!module.finalize_spirv(converter->spirv))
 	{
 		LOGE("Failed to finalize SPIR-V.\n");
 		return DXIL_SPV_ERROR_GENERIC;
@@ -548,6 +616,12 @@ dxil_spv_bool dxil_spv_converter_supports_option(dxil_spv_option cap)
 	return Converter::recognizes_option(static_cast<Option>(cap)) ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 }
 
+template <typename T>
+static std::unique_ptr<T> duplicate(const T &value)
+{
+	return std::unique_ptr<T>(new T(value));
+}
+
 dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, const dxil_spv_option_base *option)
 {
 	if (!dxil_spv_converter_supports_option(option->type))
@@ -559,7 +633,8 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 	{
 		OptionShaderDemoteToHelper helper;
 		helper.supported = bool(reinterpret_cast<const dxil_spv_option_shader_demote_to_helper *>(option)->supported);
-		converter->converter.add_option(helper);
+
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -567,7 +642,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 	{
 		OptionDualSourceBlending helper;
 		helper.enabled = bool(reinterpret_cast<const dxil_spv_option_dual_source_blending *>(option)->enabled);
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -577,7 +652,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		const auto *input = reinterpret_cast<const dxil_spv_option_output_swizzle *>(option);
 		helper.swizzles = input->swizzles;
 		helper.swizzle_count = input->swizzle_count;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -587,7 +662,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		const auto *count = reinterpret_cast<const dxil_spv_option_rasterizer_sample_count *>(option);
 		helper.count = count->sample_count;
 		helper.spec_constant = bool(count->spec_constant);
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -598,7 +673,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		helper.desc_set = ubo->desc_set;
 		helper.binding = ubo->binding;
 		helper.enable = ubo->enable == DXIL_SPV_TRUE;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -607,7 +682,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		OptionBindlessCBVSSBOEmulation helper;
 		helper.enable =
 		    reinterpret_cast<const dxil_spv_option_bindless_cbv_ssbo_emulation *>(option)->enable == DXIL_SPV_TRUE;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -616,7 +691,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		OptionPhysicalStorageBuffer helper;
 		helper.enable =
 		    reinterpret_cast<const dxil_spv_option_physical_storage_buffer *>(option)->enable == DXIL_SPV_TRUE;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -625,7 +700,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		OptionSBTDescriptorSizeLog2 helper;
 		helper.size_log2_srv_uav_cbv = reinterpret_cast<const dxil_spv_option_sbt_descriptor_size_log2 *>(option)->size_log2_srv_uav_cbv;
 		helper.size_log2_sampler = reinterpret_cast<const dxil_spv_option_sbt_descriptor_size_log2 *>(option)->size_log2_sampler;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -633,7 +708,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 	{
 		OptionSSBOAlignment helper;
 		helper.alignment = reinterpret_cast<const dxil_spv_option_ssbo_alignment *>(option)->alignment;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -641,15 +716,17 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 	{
 		OptionTypedUAVReadWithoutFormat helper;
 		helper.supported = reinterpret_cast<const dxil_spv_option_typed_uav_read_without_format *>(option)->supported == DXIL_SPV_TRUE;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
 	case DXIL_SPV_OPTION_SHADER_SOURCE_FILE:
 	{
 		OptionShaderSourceFile helper;
-		helper.name = reinterpret_cast<const dxil_spv_option_shader_source_file *>(option)->name;
-		converter->converter.add_option(helper);
+		const char *name = reinterpret_cast<const dxil_spv_option_shader_source_file *>(option)->name;
+		if (name)
+			helper.name = name;
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -657,7 +734,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 	{
 		OptionBindlessTypedBufferOffsets helper;
 		helper.enable = reinterpret_cast<const dxil_spv_option_bindless_typed_buffer_offsets *>(option)->enable;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -668,7 +745,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		helper.untyped_offset = opt->untyped_offset;
 		helper.typed_offset = opt->typed_offset;
 		helper.stride = opt->stride;
-		converter->converter.add_option(helper);
+		converter->options.emplace_back(duplicate(helper));
 		break;
 	}
 
@@ -684,7 +761,10 @@ void dxil_spv_converter_add_local_root_constants(dxil_spv_converter converter,
                                                  unsigned register_index,
                                                  unsigned num_words)
 {
-	converter->converter.add_local_root_constants(register_space, register_index, num_words);
+	LocalRootParameter param = {};
+	param.type = LocalRootParameterType::Constants;
+	param.local_constants = { register_space, register_index, num_words };
+	converter->local_root_parameters.push_back(std::move(param));
 }
 
 void dxil_spv_converter_add_local_root_descriptor(dxil_spv_converter converter,
@@ -692,7 +772,10 @@ void dxil_spv_converter_add_local_root_descriptor(dxil_spv_converter converter,
                                                   unsigned register_space,
                                                   unsigned register_index)
 {
-	converter->converter.add_local_root_descriptor(ResourceClass(resource_class), register_space, register_index);
+	LocalRootParameter param = {};
+	param.type = LocalRootParameterType::Descriptor;
+	param.local_descriptor = { ResourceClass(resource_class), register_space, register_index };
+	converter->local_root_parameters.push_back(std::move(param));
 }
 
 void dxil_spv_converter_add_local_root_descriptor_table(dxil_spv_converter converter,
@@ -712,7 +795,12 @@ void dxil_spv_converter_add_local_root_descriptor_table(dxil_spv_converter conve
 	if (converter->active_table)
 		converter->local_entries.push_back(entry);
 	else
-		converter->converter.add_local_root_descriptor_table(&entry, 1);
+	{
+		LocalRootParameter param = {};
+		param.type = LocalRootParameterType::Table;
+		param.table_entries = { entry };
+		converter->local_root_parameters.push_back(std::move(param));
+	}
 }
 
 dxil_spv_result dxil_spv_converter_begin_local_root_descriptor_table(
@@ -720,6 +808,7 @@ dxil_spv_result dxil_spv_converter_begin_local_root_descriptor_table(
 {
 	if (converter->active_table)
 		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+
 	converter->local_entries = {};
 	converter->active_table = true;
 	return DXIL_SPV_SUCCESS;
@@ -730,7 +819,12 @@ dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 {
 	if (!converter->active_table || converter->local_entries.empty())
 		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
-	converter->converter.add_local_root_descriptor_table(std::move(converter->local_entries));
+
+	LocalRootParameter param = {};
+	param.type = LocalRootParameterType::Table;
+	std::swap(param.table_entries, converter->local_entries);
+	converter->local_root_parameters.push_back(std::move(param));
+
 	converter->active_table = false;
 	return DXIL_SPV_SUCCESS;
 }

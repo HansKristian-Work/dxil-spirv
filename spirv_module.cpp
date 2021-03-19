@@ -390,6 +390,8 @@ bool SPIRVModule::Impl::spirv_requires_14() const
 
 bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv)
 {
+	spirv.clear();
+
 	mark_error = false;
 	builder.dump(spirv);
 	if (spirv.size() >= 2)

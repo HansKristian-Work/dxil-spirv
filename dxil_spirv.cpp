@@ -121,7 +121,7 @@ static void print_help()
 	     "\t[--asm]\n"
 	     "\t[--validate]\n"
 	     "\t[--entry name]\n"
-	     "\t[--glsl-embed-asm]\n"
+	     "\t[--debug-all-entry-points]\n"
 	     "\t[--root-constant space binding word_offset word_count]\n"
 	     "\t[--root-constant-inline-ubo set binding]\n"
 	     "\t[--vertex-input semantic location]\n"
@@ -152,9 +152,9 @@ struct Arguments
 	bool glsl = false;
 	bool emit_asm = false;
 	bool validate = false;
-	bool glsl_embed_asm = false;
 	bool shader_demote = false;
 	bool dual_source_blending = false;
+	bool debug_all_entry_points = false;
 	std::vector<unsigned> swizzles;
 
 	unsigned root_constant_inline_ubo_desc_set = 0;
@@ -490,7 +490,6 @@ int main(int argc, char **argv)
 		parser.end();
 	});
 	cbs.add("--dump-module", [&](CLIParser &) { args.dump_module = true; });
-	cbs.add("--glsl-embed-asm", [&](CLIParser &) { args.glsl_embed_asm = true; });
 	cbs.add("--glsl", [&](CLIParser &) { args.glsl = true; });
 	cbs.add("--asm", [&](CLIParser &) { args.emit_asm = true; });
 	cbs.add("--validate", [&](CLIParser &) { args.validate = true; });
@@ -629,6 +628,7 @@ int main(int argc, char **argv)
 		args.offset_buffer_layout.stride = parser.next_uint();
 	});
 	cbs.add("--entry", [&](CLIParser &parser) { args.entry_point = parser.next_string(); });
+	cbs.add("--debug-all-entry-points", [&](CLIParser &parser) { args.debug_all_entry_points = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -664,9 +664,6 @@ int main(int argc, char **argv)
 	dxil_spv_converter converter;
 	if (dxil_spv_create_converter(blob, &converter) != DXIL_SPV_SUCCESS)
 		return EXIT_FAILURE;
-
-	if (!args.entry_point.empty())
-		dxil_spv_converter_set_entry_point(converter, args.entry_point.c_str());
 
 	dxil_spv_converter_set_srv_remapper(converter, remap_srv, &remapper);
 	dxil_spv_converter_set_sampler_remapper(converter, remap_sampler, &remapper);
@@ -759,94 +756,101 @@ int main(int argc, char **argv)
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 
-	if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
-	{
-		LOGE("Failed to convert DXIL to SPIR-V.\n");
-		return EXIT_FAILURE;
-	}
+	unsigned num_entry_points = 1;
+	if (args.debug_all_entry_points)
+		dxil_spv_parsed_blob_get_num_entry_points(blob, &num_entry_points);
 
-	dxil_spv_compiled_spirv compiled;
-	if (dxil_spv_converter_get_compiled_spirv(converter, &compiled) != DXIL_SPV_SUCCESS)
-		return EXIT_FAILURE;
+	std::string final_output;
 
-	if (args.validate)
+	for (unsigned entry_point = 0; entry_point < num_entry_points; entry_point++)
 	{
-		if (!validate_spirv(compiled.data, compiled.size))
+		const char *mangled_entry = nullptr;
+		if (args.debug_all_entry_points)
 		{
-			LOGE("Failed to validate SPIR-V.\n");
-			return EXIT_FAILURE;
+			dxil_spv_parsed_blob_get_entry_point_name(blob, entry_point, &mangled_entry);
+			dxil_spv_converter_set_entry_point(converter, mangled_entry);
 		}
-	}
+		else if (!args.entry_point.empty())
+			dxil_spv_converter_set_entry_point(converter, args.entry_point.c_str());
 
-	std::string spirv_asm_string;
-	if (args.glsl_embed_asm || args.emit_asm)
-		spirv_asm_string = convert_to_asm(compiled.data, compiled.size);
-
-	if (args.glsl)
-	{
-		auto glsl = convert_to_glsl(compiled.data, compiled.size);
-		if (glsl.empty())
+		if (dxil_spv_converter_run(converter) != DXIL_SPV_SUCCESS)
 		{
-			LOGE("Failed to convert to GLSL.\n");
+			LOGE("Failed to convert DXIL to SPIR-V.\n");
 			return EXIT_FAILURE;
 		}
 
-		if (!spirv_asm_string.empty())
+		dxil_spv_compiled_spirv compiled;
+		if (dxil_spv_converter_get_compiled_spirv(converter, &compiled) != DXIL_SPV_SUCCESS)
+			return EXIT_FAILURE;
+
+		if (args.validate)
 		{
-			glsl += "\n#if 0\n";
-			glsl += "// SPIR-V disassembly\n";
-			glsl += spirv_asm_string;
-			glsl += "#endif";
+			if (!validate_spirv(compiled.data, compiled.size))
+			{
+				LOGE("Failed to validate SPIR-V.\n");
+				return EXIT_FAILURE;
+			}
 		}
 
-		if (args.output_path.empty())
+		std::string spirv_asm_string;
+
+		if (args.emit_asm || (!args.glsl && args.output_path.empty()))
 		{
-			printf("%s\n", glsl.c_str());
+			if (mangled_entry && !args.glsl)
+			{
+				spirv_asm_string += "// ========== ";
+				spirv_asm_string += mangled_entry;
+				spirv_asm_string += " ==========\n";
+			}
+			spirv_asm_string += convert_to_asm(compiled.data, compiled.size);
+			if (mangled_entry && !args.glsl)
+				spirv_asm_string += "// ==================\n";
+		}
+
+		if (args.glsl)
+		{
+			auto compiled_glsl = convert_to_glsl(compiled.data, compiled.size);
+
+			if (compiled_glsl.empty())
+			{
+				LOGE("Failed to convert to GLSL.\n");
+				return EXIT_FAILURE;
+			}
+
+			if (!spirv_asm_string.empty())
+			{
+				compiled_glsl += "\n#if 0\n";
+				compiled_glsl += "// SPIR-V disassembly\n";
+				compiled_glsl += spirv_asm_string;
+				compiled_glsl += "#endif";
+			}
+
+			std::string output;
+			if (mangled_entry)
+			{
+				output += "// ========= ";
+				output += mangled_entry;
+				output += " =========\n";
+				output += compiled_glsl;
+				output += "\n// =================\n";
+			}
+			else
+				output = std::move(compiled_glsl);
+
+			final_output += output;
+		}
+		else if (args.emit_asm || args.output_path.empty())
+		{
+			final_output += spirv_asm_string;
 		}
 		else
 		{
-			FILE *file = fopen(args.output_path.c_str(), "w");
-			if (!file)
+			if (mangled_entry)
 			{
-				LOGE("Failed to open %s for writing.\n", args.output_path.c_str());
+				LOGE("Cannot emit binary output when using debug-all-entry-points.\n");
 				return EXIT_FAILURE;
 			}
-			fprintf(file, "%s\n", glsl.c_str());
-			fclose(file);
-		}
-	}
-	else if (args.emit_asm)
-	{
-		if (args.output_path.empty())
-		{
-			printf("%s\n", spirv_asm_string.c_str());
-		}
-		else
-		{
-			FILE *file = fopen(args.output_path.c_str(), "w");
-			if (!file)
-			{
-				LOGE("Failed to open %s for writing.\n", args.output_path.c_str());
-				return EXIT_FAILURE;
-			}
-			fprintf(file, "%s\n", spirv_asm_string.c_str());
-			fclose(file);
-		}
-	}
-	else
-	{
-		if (args.output_path.empty())
-		{
-			auto assembly = convert_to_asm(compiled.data, compiled.size);
-			if (assembly.empty())
-			{
-				LOGE("Failed to convert to SPIR-V asm.\n");
-				return EXIT_FAILURE;
-			}
-			printf("%s\n", assembly.c_str());
-		}
-		else
-		{
+
 			FILE *file = fopen(args.output_path.c_str(), "wb");
 			if (file)
 			{
@@ -860,6 +864,22 @@ int main(int argc, char **argv)
 			else
 				LOGE("Failed to open %s.\n", args.output_path.c_str());
 		}
+	}
+
+	if (args.output_path.empty())
+	{
+		printf("%s\n", final_output.c_str());
+	}
+	else if (!final_output.empty())
+	{
+		FILE *file = fopen(args.output_path.c_str(), "w");
+		if (!file)
+		{
+			LOGE("Failed to open %s for writing.\n", args.output_path.c_str());
+			return EXIT_FAILURE;
+		}
+		fprintf(file, "%s\n", final_output.c_str());
+		fclose(file);
 	}
 
 	dxil_spv_converter_free(converter);

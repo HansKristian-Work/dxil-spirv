@@ -94,7 +94,7 @@ def cross_compile_dxil(shader, args, paths, is_asm):
 
     hlsl_cmd = [paths.dxil_spirv, '--output', glsl_path, dxil_path, '--vertex-input', 'ATTR', '0']
     if '.noglsl' not in shader:
-        hlsl_cmd += ['--glsl-embed-asm', '--glsl']
+        hlsl_cmd += ['--asm', '--glsl']
     else:
         hlsl_cmd += ['--asm']
 
@@ -183,6 +183,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
 
     if '.offset-layout.' in shader:
         hlsl_cmd += ['--bindless-offset-buffer-layout', '0', '1', '2']
+    if '.lib.' in shader:
+        hlsl_cmd += ['--debug-all-entry-points']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:
