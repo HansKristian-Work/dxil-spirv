@@ -199,7 +199,7 @@ public:
 	{
 		return ValueKind::ConstantDataArray;
 	}
-	ConstantDataArray(Type *type, Vector<Constant *> elements);
+	ConstantDataArray(Type *type, Vector<Value *> elements);
 
 	unsigned getNumElements() const;
 	Constant *getElementAsConstant(unsigned index) const;
@@ -207,7 +207,7 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	Vector<Constant *> elements;
+	Vector<Value *> elements;
 };
 
 class ConstantDataVector : public Constant
@@ -217,7 +217,7 @@ public:
 	{
 		return ValueKind::ConstantDataVector;
 	}
-	ConstantDataVector(Type *type, Vector<Constant *> elements);
+	ConstantDataVector(Type *type, Vector<Value *> elements);
 
 	unsigned getNumElements() const;
 	Constant *getElementAsConstant(unsigned index) const;
@@ -225,7 +225,7 @@ public:
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
-	Vector<Constant *> elements;
+	Vector<Value *> elements;
 };
 
 class ConstantExpr : public Constant
