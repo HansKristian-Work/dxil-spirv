@@ -8,8 +8,8 @@
 #endif
 #extension GL_EXT_shader_16bit_storage : require
 
-layout(location = 0) in vec4 V;
-layout(location = 0) out vec4 SV_Target;
+layout(location = 0) in mediump vec4 V;
+layout(location = 0) out mediump vec4 SV_Target;
 
 void main()
 {
@@ -44,7 +44,9 @@ OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "V"
 OpName %10 "SV_Target"
+OpDecorate %8 RelaxedPrecision
 OpDecorate %8 Location 0
+OpDecorate %10 RelaxedPrecision
 OpDecorate %10 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

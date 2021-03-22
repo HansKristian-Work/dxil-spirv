@@ -9,12 +9,12 @@
 #error No extension available for FP16.
 #endif
 
-layout(location = 0) in vec2 A;
-layout(location = 1) flat in ivec2 B;
-layout(location = 1, component = 2) flat in uint C;
-layout(location = 0) out vec2 SV_Target;
-layout(location = 1) out ivec2 SV_Target_1;
-layout(location = 2) out uint SV_Target_2;
+layout(location = 0) in mediump vec2 A;
+layout(location = 1) flat in mediump ivec2 B;
+layout(location = 1, component = 2) flat in mediump uint C;
+layout(location = 0) out mediump vec2 SV_Target;
+layout(location = 1) out mediump ivec2 SV_Target_1;
+layout(location = 2) out mediump uint SV_Target_2;
 
 void main()
 {
@@ -46,14 +46,20 @@ OpName %15 "C"
 OpName %17 "SV_Target"
 OpName %19 "SV_Target_1"
 OpName %21 "SV_Target_2"
+OpDecorate %8 RelaxedPrecision
 OpDecorate %8 Location 0
+OpDecorate %12 RelaxedPrecision
 OpDecorate %12 Flat
 OpDecorate %12 Location 1
+OpDecorate %15 RelaxedPrecision
 OpDecorate %15 Flat
 OpDecorate %15 Location 1
 OpDecorate %15 Component 2
+OpDecorate %17 RelaxedPrecision
 OpDecorate %17 Location 0
+OpDecorate %19 RelaxedPrecision
 OpDecorate %19 Location 1
+OpDecorate %21 RelaxedPrecision
 OpDecorate %21 Location 2
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

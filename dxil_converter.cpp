@@ -2700,6 +2700,14 @@ bool Converter::Impl::emit_stage_output_variables()
 		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
 
+		if (effective_element_type != actual_element_type &&
+		    (actual_element_type == DXIL::ComponentType::F16 ||
+		     actual_element_type == DXIL::ComponentType::I16 ||
+		     actual_element_type == DXIL::ComponentType::U16))
+		{
+			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
+		}
+
 		if (execution_model == spv::ExecutionModelVertex || execution_model == spv::ExecutionModelGeometry ||
 		    execution_model == spv::ExecutionModelTessellationEvaluation)
 		{
@@ -3224,6 +3232,14 @@ bool Converter::Impl::emit_stage_input_variables()
 
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
 		input_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
+
+		if (effective_element_type != actual_element_type &&
+		    (actual_element_type == DXIL::ComponentType::F16 ||
+		     actual_element_type == DXIL::ComponentType::I16 ||
+		     actual_element_type == DXIL::ComponentType::U16))
+		{
+			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
+		}
 
 		if (system_value != DXIL::Semantic::User)
 		{
