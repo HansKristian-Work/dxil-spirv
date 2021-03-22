@@ -2635,20 +2635,9 @@ bool Converter::Impl::emit_stage_output_variables()
 		auto *output = llvm::cast<llvm::MDNode>(outputs_node->getOperand(i));
 		auto element_id = get_constant_metadata(output, 0);
 		auto semantic_name = get_string_metadata(output, 1);
-		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2));
+		auto actual_element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2));
+		auto effective_element_type = get_effective_input_output_type(actual_element_type);
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
-
-		switch (element_type)
-		{
-		case DXIL::ComponentType::F16:
-		case DXIL::ComponentType::I16:
-		case DXIL::ComponentType::U16:
-			builder.addCapability(spv::CapabilityStorageInputOutput16);
-			break;
-
-		default:
-			break;
-		}
 
 		unsigned semantic_index = 0;
 		if (output->getOperand(4))
@@ -2664,7 +2653,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		if (execution_model == spv::ExecutionModelTessellationControl)
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
-		spv::Id type_id = get_type_id(element_type, rows, cols);
+		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
 
 		// For HS <-> DS, ignore system values.
 		if (execution_model == spv::ExecutionModelTessellationControl)
@@ -2672,7 +2661,7 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		if (system_value == DXIL::Semantic::Position)
 		{
-			type_id = get_type_id(element_type, rows, 4);
+			type_id = get_type_id(effective_element_type, rows, 4);
 		}
 		else if (system_value == DXIL::Semantic::Coverage)
 		{
@@ -2682,7 +2671,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			output_clip_cull_meta[element_id] = { clip_distance_count, cols, spv::BuiltInClipDistance };
-			output_elements_meta[element_id] = { 0, element_type, 0 };
+			output_elements_meta[element_id] = { 0, actual_element_type, 0 };
 			clip_distance_count += rows * cols;
 			continue;
 		}
@@ -2690,7 +2679,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			output_clip_cull_meta[element_id] = { cull_distance_count, cols, spv::BuiltInCullDistance };
-			output_elements_meta[element_id] = { 0, element_type, 0 };
+			output_elements_meta[element_id] = { 0, actual_element_type, 0 };
 			cull_distance_count += rows * cols;
 			continue;
 		}
@@ -2709,7 +2698,15 @@ bool Converter::Impl::emit_stage_output_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
-		output_elements_meta[element_id] = { variable_id, element_type, 0 };
+		output_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
+
+		if (effective_element_type != actual_element_type &&
+		    (actual_element_type == DXIL::ComponentType::F16 ||
+		     actual_element_type == DXIL::ComponentType::I16 ||
+		     actual_element_type == DXIL::ComponentType::U16))
+		{
+			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
+		}
 
 		if (execution_model == spv::ExecutionModelVertex || execution_model == spv::ExecutionModelGeometry ||
 		    execution_model == spv::ExecutionModelTessellationEvaluation)
@@ -3169,20 +3166,9 @@ bool Converter::Impl::emit_stage_input_variables()
 		auto *input = llvm::cast<llvm::MDNode>(inputs_node->getOperand(i));
 		auto element_id = get_constant_metadata(input, 0);
 		auto semantic_name = get_string_metadata(input, 1);
-		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(input, 2));
+		auto actual_element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(input, 2));
+		auto effective_element_type = get_effective_input_output_type(actual_element_type);
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(input, 3));
-
-		switch (element_type)
-		{
-		case DXIL::ComponentType::F16:
-		case DXIL::ComponentType::I16:
-		case DXIL::ComponentType::U16:
-			builder.addCapability(spv::CapabilityStorageInputOutput16);
-			break;
-
-		default:
-			break;
-		}
 
 		unsigned semantic_index = 0;
 		if (input->getOperand(4))
@@ -3202,10 +3188,10 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (execution_model == spv::ExecutionModelTessellationEvaluation)
 			system_value = DXIL::Semantic::User;
 
-		spv::Id type_id = get_type_id(element_type, rows, cols);
+		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
 		if (system_value == DXIL::Semantic::Position)
 		{
-			type_id = get_type_id(element_type, rows, 4);
+			type_id = get_type_id(effective_element_type, rows, 4);
 		}
 		else if (system_value == DXIL::Semantic::IsFrontFace)
 		{
@@ -3216,7 +3202,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			input_clip_cull_meta[element_id] = { clip_distance_count, cols, spv::BuiltInClipDistance };
-			input_elements_meta[element_id] = { 0, element_type, 0 };
+			input_elements_meta[element_id] = { 0, actual_element_type, 0 };
 			clip_distance_count += rows * cols;
 			continue;
 		}
@@ -3224,7 +3210,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			input_clip_cull_meta[element_id] = { cull_distance_count, cols, spv::BuiltInCullDistance };
-			input_elements_meta[element_id] = { 0, element_type, 0 };
+			input_elements_meta[element_id] = { 0, actual_element_type, 0 };
 			cull_distance_count += rows * cols;
 			continue;
 		}
@@ -3245,7 +3231,15 @@ bool Converter::Impl::emit_stage_input_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
-		input_elements_meta[element_id] = { variable_id, static_cast<DXIL::ComponentType>(element_type), 0 };
+		input_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
+
+		if (effective_element_type != actual_element_type &&
+		    (actual_element_type == DXIL::ComponentType::F16 ||
+		     actual_element_type == DXIL::ComponentType::I16 ||
+		     actual_element_type == DXIL::ComponentType::U16))
+		{
+			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
+		}
 
 		if (system_value != DXIL::Semantic::User)
 		{
@@ -3434,22 +3428,121 @@ void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type,
 	value_map[value] = repack_op->id;
 }
 
-void Converter::Impl::fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
+void Converter::Impl::fixup_load_type_io(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
 {
-	if (component_type == DXIL::ComponentType::I32)
+	if (component_type == DXIL::ComponentType::I32 ||
+	    (component_type == DXIL::ComponentType::I16 && options.storage_16bit_input_output))
 	{
-		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, components));
+		DXIL::ComponentType uint_type = component_type == DXIL::ComponentType::I32 ?
+		                                DXIL::ComponentType::U32 : DXIL::ComponentType::U16;
+		Operation *op = allocate(spv::OpBitcast, get_type_id(uint_type, 1, components));
+		op->add_id(get_id_for_value(value));
+		add(op);
+		value_map[value] = op->id;
+	}
+	else if ((component_type == DXIL::ComponentType::F16 ||
+	          component_type == DXIL::ComponentType::I16 ||
+	          component_type == DXIL::ComponentType::U16) &&
+	         !options.storage_16bit_input_output)
+	{
+		spv::Op op;
+
+		switch (component_type)
+		{
+		case DXIL::ComponentType::F16:
+			op = spv::OpFConvert;
+			break;
+
+		case DXIL::ComponentType::I16:
+			op = spv::OpSConvert;
+			component_type = DXIL::ComponentType::U16;
+			break;
+
+		case DXIL::ComponentType::U16:
+			op = spv::OpUConvert;
+			break;
+
+		default:
+			return;
+		}
+
+		Operation *narrow_op = allocate(op, get_type_id(component_type, 1, components));
+		narrow_op->add_id(get_id_for_value(value));
+		add(narrow_op);
+		value_map[value] = narrow_op->id;
+	}
+}
+
+void Converter::Impl::fixup_load_type_buffer(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
+{
+	if (component_type == DXIL::ComponentType::I32 || component_type == DXIL::ComponentType::I16)
+	{
+		DXIL::ComponentType uint_type = component_type == DXIL::ComponentType::I32 ?
+		                                DXIL::ComponentType::U32 : DXIL::ComponentType::U16;
+		Operation *op = allocate(spv::OpBitcast, get_type_id(uint_type, 1, components));
 		op->add_id(get_id_for_value(value));
 		add(op);
 		value_map[value] = op->id;
 	}
 }
 
-spv::Id Converter::Impl::fixup_store_sign(DXIL::ComponentType component_type, unsigned components, spv::Id value)
+spv::Id Converter::Impl::fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value)
 {
-	if (component_type == DXIL::ComponentType::I32)
+	if (component_type == DXIL::ComponentType::I32 ||
+	    (component_type == DXIL::ComponentType::I16 && options.storage_16bit_input_output))
 	{
-		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::I32, 1, components));
+		DXIL::ComponentType int_type = component_type == DXIL::ComponentType::I32 ?
+		                               DXIL::ComponentType::I32 : DXIL::ComponentType::I16;
+		Operation *op = allocate(spv::OpBitcast, get_type_id(int_type, 1, components));
+		op->add_id(value);
+		add(op);
+		return op->id;
+	}
+	else if ((component_type == DXIL::ComponentType::F16 ||
+	          component_type == DXIL::ComponentType::I16 ||
+	          component_type == DXIL::ComponentType::U16) &&
+	         !options.storage_16bit_input_output)
+	{
+		DXIL::ComponentType target_type;
+		spv::Op op;
+
+		switch (component_type)
+		{
+		case DXIL::ComponentType::F16:
+			target_type = DXIL::ComponentType::F32;
+			op = spv::OpFConvert;
+			break;
+
+		case DXIL::ComponentType::I16:
+			target_type = DXIL::ComponentType::I32;
+			op = spv::OpSConvert;
+			break;
+
+		case DXIL::ComponentType::U16:
+			target_type = DXIL::ComponentType::U32;
+			op = spv::OpUConvert;
+			break;
+
+		default:
+			return value;
+		}
+
+		Operation *expand_op = allocate(op, get_type_id(target_type, 1, components));
+		expand_op->add_id(value);
+		add(expand_op);
+		return expand_op->id;
+	}
+	else
+		return value;
+}
+
+spv::Id Converter::Impl::fixup_store_type_buffer(DXIL::ComponentType component_type, unsigned components, spv::Id value)
+{
+	if (component_type == DXIL::ComponentType::I32 || component_type == DXIL::ComponentType::I16)
+	{
+		DXIL::ComponentType uint_type = component_type == DXIL::ComponentType::I32 ?
+		                                DXIL::ComponentType::I32 : DXIL::ComponentType::I16;
+		Operation *op = allocate(spv::OpBitcast, get_type_id(uint_type, 1, components));
 		op->add_id(value);
 		add(op);
 		return op->id;
@@ -4206,6 +4299,49 @@ spv::Id Converter::Impl::create_variable_with_initializer(spv::StorageClass stor
 	return spirv_module.create_variable_with_initializer(storage, type_id, initializer, name);
 }
 
+DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::ComponentType type)
+{
+	if (options.storage_16bit_input_output)
+	{
+		switch (type)
+		{
+		case DXIL::ComponentType::F16:
+		case DXIL::ComponentType::I16:
+		case DXIL::ComponentType::U16:
+			builder().addCapability(spv::CapabilityStorageInputOutput16);
+			break;
+
+		default:
+			break;
+		}
+	}
+	else
+	{
+		// Expand/contract on load/store.
+		// The only reasonable way this can break is if application relies on
+		// lower precision in interpolation, but I don't think you can rely on that
+		// kind of implementation detail ...
+		switch (type)
+		{
+		case DXIL::ComponentType::F16:
+			return DXIL::ComponentType::F32;
+		case DXIL::ComponentType::I16:
+			return DXIL::ComponentType::I32;
+		case DXIL::ComponentType::U16:
+			return DXIL::ComponentType::U32;
+		default:
+			break;
+		}
+	}
+
+	return type;
+}
+
+spv::Id Converter::Impl::get_effective_input_output_type_id(DXIL::ComponentType type)
+{
+	return get_type_id(get_effective_input_output_type(type), 1, 1);
+}
+
 void Converter::Impl::set_option(const OptionBase &cap)
 {
 	switch (cap.type)
@@ -4283,7 +4419,7 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	case Option::ShaderSourceFile:
 	{
 		auto &file = static_cast<const OptionShaderSourceFile &>(cap);
-		if (file.name)
+		if (!file.name.empty())
 			options.shader_source_file = file.name;
 		else
 			options.shader_source_file.clear();
@@ -4301,6 +4437,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &off = static_cast<const OptionBindlessOffsetBufferLayout &>(cap);
 		options.offset_buffer_layout = { off.untyped_offset, off.typed_offset, off.stride };
+		break;
+	}
+
+	case Option::StorageInputOutput16:
+	{
+		auto &storage = static_cast<const OptionStorageInputOutput16 &>(cap);
+		options.storage_16bit_input_output = storage.supported;
 		break;
 	}
 
@@ -4347,6 +4490,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::ShaderSourceFile:
 	case Option::BindlessTypedBufferOffsets:
 	case Option::BindlessOffsetBufferLayout:
+	case Option::StorageInputOutput16:
 		return true;
 
 	default:

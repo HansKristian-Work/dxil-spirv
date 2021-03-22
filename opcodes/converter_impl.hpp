@@ -294,9 +294,11 @@ struct Converter::Impl
 	spv::Id build_vector_type(spv::Id element_type, unsigned count);
 	spv::Id build_constant_vector(spv::Id element_type, spv::Id *elements, unsigned count);
 	spv::Id build_offset(spv::Id value, unsigned offset);
-	void fixup_load_sign(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
+	void fixup_load_type_io(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
+	void fixup_load_type_buffer(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
 	void repack_sparse_feedback(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
-	spv::Id fixup_store_sign(DXIL::ComponentType component_type, unsigned components, spv::Id value);
+	spv::Id fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value);
+	spv::Id fixup_store_type_buffer(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 
 	Vector<Operation *> *current_block = nullptr;
 	void add(Operation *op);
@@ -351,6 +353,7 @@ struct Converter::Impl
 		unsigned ssbo_alignment = 16;
 		bool typed_uav_read_without_format = false;
 		bool bindless_typed_buffer_offsets = false;
+		bool storage_16bit_input_output = false;
 
 		struct
 		{
@@ -403,5 +406,8 @@ struct Converter::Impl
 	};
 	Vector<PhysicalPointerEntry> physical_pointer_entries;
 	spv::Id get_physical_pointer_block_type(spv::Id base_type_id, const PhysicalPointerMeta &meta);
+
+	DXIL::ComponentType get_effective_input_output_type(DXIL::ComponentType type);
+	spv::Id get_effective_input_output_type_id(DXIL::ComponentType type);
 };
 } // namespace dxil_spv

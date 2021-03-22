@@ -63,7 +63,7 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
 	Operation *op = impl.allocate(spv::OpStore);
-	op->add_ids({ ptr_id, impl.fixup_store_sign(meta.component_type, 1, store_value) });
+	op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });
 	impl.add(op);
 	return true;
 }
@@ -110,7 +110,7 @@ bool emit_load_output_control_point_instruction(Converter::Impl &impl, const llv
 	impl.add(op);
 
 	// Need to bitcast after we load.
-	impl.fixup_load_sign(meta.component_type, 1, instruction);
+	impl.fixup_load_type_io(meta.component_type, 1, instruction);
 	return true;
 }
 
@@ -189,7 +189,7 @@ bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::Cal
 	op->add_id(ptr_id);
 	impl.add(op);
 
-	impl.fixup_load_sign(meta.component_type, 1, instruction);
+	impl.fixup_load_type_io(meta.component_type, 1, instruction);
 	return true;
 }
 } // namespace dxil_spv

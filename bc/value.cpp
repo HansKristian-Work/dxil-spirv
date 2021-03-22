@@ -276,7 +276,7 @@ ConstantAggregateZero::ConstantAggregateZero(Type *type)
 {
 }
 
-ConstantDataArray::ConstantDataArray(Type *type, Vector<Constant *> elements_)
+ConstantDataArray::ConstantDataArray(Type *type, Vector<Value *> elements_)
     : Constant(type, ValueKind::ConstantDataArray)
     , elements(std::move(elements_))
 {
@@ -289,10 +289,10 @@ unsigned ConstantDataArray::getNumElements() const
 
 Constant *ConstantDataArray::getElementAsConstant(unsigned index) const
 {
-	return elements[index];
+	return cast<Constant>(elements[index]);
 }
 
-ConstantDataVector::ConstantDataVector(Type *type, Vector<Constant *> elements_)
+ConstantDataVector::ConstantDataVector(Type *type, Vector<Value *> elements_)
 	: Constant(type, ValueKind::ConstantDataVector)
 	, elements(std::move(elements_))
 {
@@ -305,7 +305,7 @@ unsigned ConstantDataVector::getNumElements() const
 
 Constant *ConstantDataVector::getElementAsConstant(unsigned index) const
 {
-	return elements[index];
+	return cast<Constant>(elements[index]);
 }
 
 ConstantExpr::ConstantExpr(unsigned opcode_, Type *type, Vector<Value *> elements_)

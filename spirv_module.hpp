@@ -70,6 +70,8 @@ public:
 	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type, spv::Id initializer,
 	                                         const char *name = nullptr);
 
+	DXIL_SPV_OVERRIDE_NEW_DELETE
+
 private:
 	struct Impl;
 	std::unique_ptr<Impl> impl;

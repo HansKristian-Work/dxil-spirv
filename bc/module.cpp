@@ -683,8 +683,36 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 	}
 
 	case ConstantsRecord::AGGREGATE:
-		LOGE("AGGREGATE unimplemented.\n");
-		return false;
+	{
+		bool is_vector = isa<VectorType>(get_constant_type());
+		bool is_array = isa<ArrayType>(get_constant_type());
+
+		if (!is_vector && !is_array)
+		{
+			LOGE("Unsupported type for AGGREGATE.\n");
+			return false;
+		}
+
+		Type *element_type;
+		if (is_array)
+			element_type = get_constant_type()->getArrayElementType();
+		else
+			element_type = cast<VectorType>(get_constant_type())->getElementType();
+
+		Vector<Value *> constants;
+		constants.reserve(entry.ops.size());
+
+		for (auto &op : entry.ops)
+			constants.push_back(get_value(op, element_type, true));
+
+		Value *value;
+		if (is_vector)
+			value = context->construct<ConstantDataVector>(get_constant_type(), std::move(constants));
+		else
+			value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
+		values.push_back(value);
+		break;
+	}
 
 	case ConstantsRecord::STRING:
 		LOGE("STRING unimplemented.\n");
@@ -709,7 +737,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 		bool is_fp = element_type->isFloatingPointTy();
 		bool is_int = element_type->isIntegerTy();
-		Vector<Constant *> constants;
+		Vector<Value *> constants;
 		constants.reserve(entry.ops.size());
 		if (is_fp)
 		{
@@ -760,7 +788,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		{
 			auto *type = get_type(entry.ops[index++]);
 			auto *value = get_value(entry.ops[index++], type, true);
-			elements.push_back(cast<Constant>(value));
+			elements.push_back(value);
 		}
 
 		if (elements.size() < 2)

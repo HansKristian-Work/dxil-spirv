@@ -180,7 +180,7 @@ static spv::Id get_builtin_load_type(Converter::Impl &impl, const Converter::Imp
 	if (impl.spirv_module.query_builtin_shader_input(meta.id, &builtin) && builtin == spv::BuiltInFrontFacing)
 		return impl.builder().makeBoolType();
 	else
-		return impl.get_type_id(meta.component_type, 1, 1);
+		return impl.get_effective_input_output_type_id(meta.component_type);
 }
 
 bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -223,8 +223,9 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	{
 		// Need to deal with signed vs unsigned here.
 		Operation *op =
-		    impl.allocate(spv::OpAccessChain,
-		                  builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
+			impl.allocate(spv::OpAccessChain,
+			              builder.makePointer(spv::StorageClassInput,
+			                                  impl.get_effective_input_output_type_id(meta.component_type)));
 		ptr_id = op->id;
 
 		op->add_id(var_id);
@@ -251,7 +252,7 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	fixup_builtin_load(impl, var_id, instruction);
 
 	// Need to bitcast after we load.
-	impl.fixup_load_sign(meta.component_type, 1, instruction);
+	impl.fixup_load_type_io(meta.component_type, 1, instruction);
 	return true;
 }
 
@@ -299,8 +300,9 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 	{
 		// Need to deal with signed vs unsigned here.
 		Operation *op =
-		    impl.allocate(spv::OpAccessChain,
-		                  builder.makePointer(spv::StorageClassInput, impl.get_type_id(meta.component_type, 1, 1)));
+			impl.allocate(spv::OpAccessChain,
+			              builder.makePointer(spv::StorageClassInput,
+			                                  impl.get_effective_input_output_type_id(meta.component_type)));
 
 		op->add_ids({ var_id, impl.get_id_for_value(instruction->getOperand(3), 32) });
 		impl.add(op);
@@ -346,7 +348,8 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 		aux_id = impl.get_id_for_value(instruction->getOperand(4));
 
 	// Need to deal with signed vs unsigned here.
-	Operation *op = impl.allocate(spv::OpExtInst, instruction, impl.get_type_id(meta.component_type, 1, 1));
+	Operation *op = impl.allocate(spv::OpExtInst, instruction,
+	                              impl.get_effective_input_output_type_id(meta.component_type));
 	op->add_id(impl.glsl_std450_ext);
 	op->add_literal(opcode);
 	op->add_id(ptr_id);
@@ -357,7 +360,7 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 	impl.add(op);
 
 	// Need to bitcast after we load.
-	impl.fixup_load_sign(meta.component_type, 1, instruction);
+	impl.fixup_load_type_io(meta.component_type, 1, instruction);
 	builder.addCapability(spv::CapabilityInterpolationFunction);
 	return true;
 }
@@ -453,7 +456,7 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
 	Operation *op = impl.allocate(spv::OpStore);
-	op->add_ids({ ptr_id, impl.fixup_store_sign(meta.component_type, 1, store_value) });
+	op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });
 	impl.add(op);
 	return true;
 }

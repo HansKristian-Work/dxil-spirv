@@ -238,7 +238,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	{
 		// Deal with signed component types.
 		// Sparse feedback repack also deals with it.
-		impl.fixup_load_sign(meta.component_type, 4, instruction);
+		impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
 	}
 
 	return true;
@@ -339,7 +339,7 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	else
 	{
 		// Deal with signed component types.
-		impl.fixup_load_sign(meta.component_type, 4, instruction);
+		impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
 	}
 	return true;
 }
@@ -448,7 +448,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	else
 	{
 		// Deal with signed component types.
-		impl.fixup_load_sign(meta.component_type, 4, instruction);
+		impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
 	}
 	return true;
 }
@@ -636,7 +636,7 @@ bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst 
 	op->add_id(impl.build_vector(builder.makeUintType(32), coord, num_coords_full));
 
 	spv::Id store_id = impl.build_vector(impl.get_type_id(instruction->getOperand(5)->getType()), write_values, 4);
-	store_id = impl.fixup_store_sign(meta.component_type, 4, store_id);
+	store_id = impl.fixup_store_type_buffer(meta.component_type, 4, store_id);
 	op->add_id(store_id);
 	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
 
@@ -730,7 +730,7 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 	if (sparse)
 		impl.repack_sparse_feedback(meta.component_type, 4, instruction);
 	else
-		impl.fixup_load_sign(meta.component_type, 4, instruction);
+		impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
 	return true;
 }
 
