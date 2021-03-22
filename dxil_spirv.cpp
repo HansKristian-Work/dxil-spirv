@@ -140,6 +140,7 @@ static void print_help()
 	     "\t[--bindless-typed-buffer-offsets]\n"
 	     "\t[--output-rt-swizzle index xyzw]\n"
 	     "\t[--bindless-offset-buffer-layout <untyped offset> <typed offset> <stride>]\n"
+	     "\t[--storage-input-output-16bit]\n"
 	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n");
 }
 
@@ -155,6 +156,7 @@ struct Arguments
 	bool shader_demote = false;
 	bool dual_source_blending = false;
 	bool debug_all_entry_points = false;
+	bool storage_input_output_16bit = false;
 	std::vector<unsigned> swizzles;
 
 	unsigned root_constant_inline_ubo_desc_set = 0;
@@ -629,6 +631,7 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--entry", [&](CLIParser &parser) { args.entry_point = parser.next_string(); });
 	cbs.add("--debug-all-entry-points", [&](CLIParser &parser) { args.debug_all_entry_points = true; });
+	cbs.add("--storage-input-output-16bit", [&](CLIParser &parser) { args.storage_input_output_16bit = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -752,6 +755,12 @@ int main(int argc, char **argv)
 		dxil_spv_option_bindless_typed_buffer_offsets offsets = { { DXIL_SPV_OPTION_BINDLESS_TYPED_BUFFER_OFFSETS },
 			                                                      args.bindless_typed_buffer_offsets ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &offsets.base);
+	}
+
+	{
+		dxil_spv_option_storage_input_output_16bit storage = { { DXIL_SPV_OPTION_STORAGE_INPUT_OUTPUT_16BIT },
+		                                                       args.storage_input_output_16bit ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		dxil_spv_converter_add_option(converter, &storage.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

@@ -602,7 +602,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		else
 		{
 			// Deal with loads from signed resources.
-			impl.fixup_load_sign(meta.component_type, 4, instruction);
+			impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
 		}
 	}
 
@@ -760,7 +760,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		Operation *op = impl.allocate(spv::OpImageWrite);
 		op->add_ids(
 		    { image_id, access.index_id,
-		      impl.fixup_store_sign(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
+		      impl.fixup_store_type_buffer(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
 
 		impl.add(op);
 	}
@@ -953,11 +953,11 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	    counter_ptr_op->id,
 	    builder.makeUintConstant(spv::ScopeDevice),
 	    builder.makeUintConstant(0), // Relaxed
-	    impl.fixup_store_sign(meta.component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
+	    impl.fixup_store_type_buffer(meta.component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
 	});
 
 	impl.add(op);
-	impl.fixup_load_sign(meta.component_type, 1, instruction);
+	impl.fixup_load_type_buffer(meta.component_type, 1, instruction);
 	return true;
 }
 
@@ -1014,8 +1014,8 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	spv::Id comparison_id = impl.get_id_for_value(instruction->getOperand(5));
 	spv::Id new_value_id = impl.get_id_for_value(instruction->getOperand(6));
-	comparison_id = impl.fixup_store_sign(meta.component_type, 1, comparison_id);
-	new_value_id = impl.fixup_store_sign(meta.component_type, 1, new_value_id);
+	comparison_id = impl.fixup_store_type_buffer(meta.component_type, 1, comparison_id);
+	new_value_id = impl.fixup_store_type_buffer(meta.component_type, 1, new_value_id);
 
 	op->add_ids({
 	    counter_ptr_op->id,
@@ -1027,7 +1027,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	});
 
 	impl.add(op);
-	impl.fixup_load_sign(meta.component_type, 1, instruction);
+	impl.fixup_load_type_buffer(meta.component_type, 1, instruction);
 	return true;
 }
 

@@ -185,6 +185,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--bindless-offset-buffer-layout', '0', '1', '2']
     if '.lib.' in shader:
         hlsl_cmd += ['--debug-all-entry-points']
+    if '.16bit-io.' in shader:
+        hlsl_cmd += ['--storage-input-output-16bit']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

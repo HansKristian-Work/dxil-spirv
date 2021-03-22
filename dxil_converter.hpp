@@ -203,7 +203,8 @@ enum class Option : uint32_t
 	TypedUAVReadWithoutFormat = 10,
 	ShaderSourceFile = 11,
 	BindlessTypedBufferOffsets = 12,
-	BindlessOffsetBufferLayout = 13
+	BindlessOffsetBufferLayout = 13,
+	StorageInputOutput16 = 14,
 };
 
 enum class ResourceClass : uint32_t
@@ -348,6 +349,16 @@ struct OptionBindlessOffsetBufferLayout : OptionBase
 	unsigned untyped_offset = 0;
 	unsigned typed_offset = 0;
 	unsigned stride = 1;
+};
+
+struct OptionStorageInputOutput16 : OptionBase
+{
+	OptionStorageInputOutput16()
+		: OptionBase(Option::StorageInputOutput16)
+	{
+	}
+
+	bool supported = true;
 };
 
 struct DescriptorTableEntry
