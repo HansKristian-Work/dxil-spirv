@@ -99,6 +99,8 @@ private:
 	template <typename Op>
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to, const Op &op);
 
+	void fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to);
+
 	template <typename Op>
 	void walk_cfg_from(const Op &op) const;
 

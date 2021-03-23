@@ -2012,6 +2012,9 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 	pred_node->backward_post_visit_order = node->backward_post_visit_order;
 
 	std::swap(pred_node->pred, node->pred);
+	for (auto *header : node->headers)
+		header->fixup_merge_info_after_branch_rewrite(node, pred_node);
+	node->headers.clear();
 
 	pred_node->immediate_dominator = node->immediate_dominator;
 	pred_node->immediate_post_dominator = node;
@@ -2593,18 +2596,15 @@ void CFGStructurizer::split_merge_blocks()
 						// Selection merge to this dummy instead.
 						auto *new_selection_merge = create_helper_pred_block(node);
 
-						// Inherit the headers.
-						new_selection_merge->headers = node->headers;
-
 						// This is now our fallback loop break target.
 						full_break_target = node;
 
-						auto *loop = create_helper_pred_block(node->headers[0]);
+						auto *loop = create_helper_pred_block(new_selection_merge->headers[0]);
 
 						// Reassign header node.
-						assert(node->headers[0]->merge == MergeType::Selection);
-						node->headers[0]->selection_merge_block = new_selection_merge;
-						node->headers[0] = loop;
+						assert(new_selection_merge->headers[0]->merge == MergeType::Selection);
+						new_selection_merge->headers[0]->selection_merge_block = new_selection_merge;
+						new_selection_merge->headers[0] = loop;
 
 						loop->merge = MergeType::Loop;
 						loop->loop_merge_block = node;

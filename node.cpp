@@ -352,9 +352,27 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 			c.node = to_next;
 }
 
+void CFGNode::fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to)
+{
+	// If we end up re-seating merge sites, make sure we add it to headers in the target block, since we might have
+	// to keep splitting merge scopes in innermost scopes.
+	if (std::find(from->headers.begin(), from->headers.end(), this) != from->headers.end())
+	{
+		if (std::find(to->headers.begin(), to->headers.end(), this) == to->headers.end())
+			to->headers.push_back(this);
+		if (selection_merge_block == from)
+			selection_merge_block = to;
+		if (loop_merge_block == from)
+			loop_merge_block = to;
+		if (loop_ladder_block == from)
+			loop_ladder_block = to;
+	}
+}
+
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to)
 {
 	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *node) -> bool { return true; });
+	fixup_merge_info_after_branch_rewrite(from, to);
 }
 
 void CFGNode::recompute_immediate_dominator()
