@@ -262,6 +262,8 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, unsigned> handle_to_root_member_offset;
 	UnorderedMap<const llvm::Value *, spv::StorageClass> handle_to_storage_class;
 
+	spv::StorageClass get_effective_storage_class(const llvm::Value *value, spv::StorageClass fallback) const;
+
 	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array = false);
 	spv::Id get_type_id(const llvm::Type *type);
 	spv::Id get_type_id(spv::Id id) const;
