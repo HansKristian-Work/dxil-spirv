@@ -171,7 +171,7 @@ void CFGStructurizer::log_cfg(const char *tag) const
 	LOGI("\n=====================\n");
 }
 
-// #define PHI_DEBUG
+//#define PHI_DEBUG
 #ifdef PHI_DEBUG
 static void validate_phi(const PHI &phi)
 {
@@ -876,10 +876,13 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				for (auto *input : frontier->pred)
 				{
 					auto itr = find_incoming_value(input, incoming_values);
-					assert(itr != incoming_values.end());
 
 					IncomingValue value = {};
-					value.id = itr->id;
+					if (itr != incoming_values.end())
+						value.id = itr->id;
+					else
+						value.id = module.get_builder().createUndefined(phi.type_id);
+
 					value.block = input;
 					final_incoming.push_back(value);
 				}
@@ -887,10 +890,13 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				if (frontier->pred_back_edge)
 				{
 					auto itr = find_incoming_value(frontier->pred_back_edge, incoming_values);
-					assert(itr != incoming_values.end());
 
 					IncomingValue value = {};
-					value.id = itr->id;
+					if (itr != incoming_values.end())
+						value.id = itr->id;
+					else
+						value.id = module.get_builder().createUndefined(phi.type_id);
+
 					value.block = frontier->pred_back_edge;
 					final_incoming.push_back(value);
 				}
@@ -2006,6 +2012,9 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 	pred_node->backward_post_visit_order = node->backward_post_visit_order;
 
 	std::swap(pred_node->pred, node->pred);
+	for (auto *header : node->headers)
+		header->fixup_merge_info_after_branch_rewrite(node, pred_node);
+	node->headers.clear();
 
 	pred_node->immediate_dominator = node->immediate_dominator;
 	pred_node->immediate_post_dominator = node;
@@ -2587,18 +2596,15 @@ void CFGStructurizer::split_merge_blocks()
 						// Selection merge to this dummy instead.
 						auto *new_selection_merge = create_helper_pred_block(node);
 
-						// Inherit the headers.
-						new_selection_merge->headers = node->headers;
-
 						// This is now our fallback loop break target.
 						full_break_target = node;
 
-						auto *loop = create_helper_pred_block(node->headers[0]);
+						auto *loop = create_helper_pred_block(new_selection_merge->headers[0]);
 
 						// Reassign header node.
-						assert(node->headers[0]->merge == MergeType::Selection);
-						node->headers[0]->selection_merge_block = new_selection_merge;
-						node->headers[0] = loop;
+						assert(new_selection_merge->headers[0]->merge == MergeType::Selection);
+						new_selection_merge->headers[0]->selection_merge_block = new_selection_merge;
+						new_selection_merge->headers[0] = loop;
 
 						loop->merge = MergeType::Loop;
 						loop->loop_merge_block = node;
@@ -2740,12 +2746,14 @@ void CFGStructurizer::split_merge_blocks()
 				if (target_header)
 				{
 					// Breaks out to outer available scope.
+					CFGNode *rewrite_to = nullptr;
 					if (target_header->loop_ladder_block)
-						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(
-						    node, target_header->loop_ladder_block);
+						rewrite_to = target_header->loop_ladder_block;
 					else if (target_header->loop_merge_block)
-						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node,
-						                                                               target_header->loop_merge_block);
+						rewrite_to = target_header->loop_merge_block;
+
+					if (rewrite_to)
+						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, rewrite_to);
 					else
 						LOGE("No loop merge block?\n");
 				}

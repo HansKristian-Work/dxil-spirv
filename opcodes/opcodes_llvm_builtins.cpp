@@ -318,18 +318,22 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 		// Fake this by copying the object instead without any cast, and resolve the bitcast in OpLoad/OpStore instead.
 		auto *pointer_type = llvm::cast<llvm::PointerType>(instruction->getOperand(0)->getType());
 		auto *pointee_type = pointer_type->getPointerElementType();
-		auto addr_space = static_cast<DXIL::AddressSpace>(pointer_type->getAddressSpace());
 		spv::Id value_type = impl.get_type_id(pointee_type);
 
-		spv::Id type_id = impl.builder().makePointer(addr_space == DXIL::AddressSpace::GroupShared ?
-		                                             spv::StorageClassWorkgroup :
-		                                             spv::StorageClassFunction,
-		                                             value_type);
+		spv::StorageClass fallback_storage;
+		if (static_cast<DXIL::AddressSpace>(pointer_type->getAddressSpace()) == DXIL::AddressSpace::GroupShared)
+			fallback_storage = spv::StorageClassWorkgroup;
+		else
+			fallback_storage = spv::StorageClassFunction;
+
+		spv::StorageClass storage = impl.get_effective_storage_class(instruction->getOperand(0), fallback_storage);
+		spv::Id type_id = impl.builder().makePointer(storage, value_type);
 		Operation *op = impl.allocate(spv::OpCopyObject, instruction, type_id);
 		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 
 		// Remember that we will need to bitcast on load or store to the real underlying type.
 		impl.llvm_value_actual_type[instruction] = value_type;
+		impl.handle_to_storage_class[instruction] = storage;
 		impl.add(op);
 	}
 	else
@@ -382,14 +386,9 @@ static uint32_t build_constant_getelementptr(Converter::Impl &impl, const llvm::
 	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(cexpr->getOperand(0));
 	spv::Id type_id = impl.get_type_id(cexpr->getType()->getPointerElementType());
-	auto storage_class_itr = impl.handle_to_storage_class.find(cexpr->getOperand(0));
-	spv::StorageClass storage_class;
-	if (storage_class_itr != impl.handle_to_storage_class.end())
-		storage_class = storage_class_itr->second;
-	else
-		storage_class = builder.getStorageClass(ptr_id);
 
-	type_id = builder.makePointer(storage_class, type_id);
+	auto storage = impl.get_effective_storage_class(cexpr->getOperand(0), builder.getStorageClass(ptr_id));
+	type_id = builder.makePointer(storage, type_id);
 
 	Operation *op = impl.allocate(spv::OpAccessChain, type_id);
 
@@ -448,14 +447,8 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(0));
 	spv::Id type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
 
-	auto storage_class_itr = impl.handle_to_storage_class.find(instruction->getOperand(0));
-	spv::StorageClass storage_class;
-	if (storage_class_itr != impl.handle_to_storage_class.end())
-		storage_class = storage_class_itr->second;
-	else
-		storage_class = builder.getStorageClass(ptr_id);
-
-	type_id = builder.makePointer(storage_class, type_id);
+	auto storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
+	type_id = builder.makePointer(storage, type_id);
 
 	Operation *op = impl.allocate(instruction->isInBounds() ? spv::OpInBoundsAccessChain : spv::OpAccessChain,
 	                              instruction, type_id);
@@ -481,7 +474,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	for (uint32_t i = 2; i < num_operands; i++)
 		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 
-	impl.handle_to_storage_class[instruction] = storage_class;
+	impl.handle_to_storage_class[instruction] = storage;
 	impl.add(op);
 	return true;
 }
@@ -772,13 +765,10 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	spv::StorageClass storage = spv::StorageClassFunction;
-	auto itr = impl.handle_to_storage_class.find(instruction);
-	if (itr != impl.handle_to_storage_class.end())
-		storage = itr->second;
-
+	auto storage = impl.get_effective_storage_class(instruction, spv::StorageClassFunction);
 	spv::Id var_id = impl.create_variable(storage, pointee_type_id);
 	impl.value_map[instruction] = var_id;
+	impl.handle_to_storage_class[instruction] = storage;
 	return true;
 }
 

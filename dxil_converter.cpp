@@ -4299,6 +4299,15 @@ spv::Id Converter::Impl::create_variable_with_initializer(spv::StorageClass stor
 	return spirv_module.create_variable_with_initializer(storage, type_id, initializer, name);
 }
 
+spv::StorageClass Converter::Impl::get_effective_storage_class(const llvm::Value *value, spv::StorageClass fallback) const
+{
+	auto itr = handle_to_storage_class.find(value);
+	if (itr != handle_to_storage_class.end())
+		return itr->second;
+	else
+		return fallback;
+}
+
 DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::ComponentType type)
 {
 	if (options.storage_16bit_input_output)
