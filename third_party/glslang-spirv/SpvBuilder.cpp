@@ -2592,34 +2592,31 @@ void Builder::dumpSourceInstructions(dxil_spv::Vector<unsigned int>& out) const
     const int opSourceWordCount = 4;
     const int nonNullBytesPerInstruction = 4 * (maxWordCount - opSourceWordCount) - 1;
 
-    if (source != SourceLanguageUnknown) {
+    if (sourceFileStringId != NoResult) {
         // OpSource Language Version File Source
         Instruction sourceInst(NoResult, NoType, OpSource);
         sourceInst.addImmediateOperand(source);
         sourceInst.addImmediateOperand(sourceVersion);
         // File operand
-        if (sourceFileStringId != NoResult) {
-            sourceInst.addIdOperand(sourceFileStringId);
-            // Source operand
-            if (sourceText.size() > 0) {
-                int nextByte = 0;
-                dxil_spv::String subString;
-                while ((int)sourceText.size() - nextByte > 0) {
-                    subString = sourceText.substr(nextByte, nonNullBytesPerInstruction);
-                    if (nextByte == 0) {
-                        // OpSource
-                        sourceInst.addStringOperand(subString.c_str());
-                        sourceInst.dump(out);
-                    } else {
-                        // OpSourcContinued
-                        Instruction sourceContinuedInst(OpSourceContinued);
-                        sourceContinuedInst.addStringOperand(subString.c_str());
-                        sourceContinuedInst.dump(out);
-                    }
-                    nextByte += nonNullBytesPerInstruction;
+        sourceInst.addIdOperand(sourceFileStringId);
+        // Source operand
+        if (sourceText.size() > 0) {
+            int nextByte = 0;
+            dxil_spv::String subString;
+            while ((int)sourceText.size() - nextByte > 0) {
+                subString = sourceText.substr(nextByte, nonNullBytesPerInstruction);
+                if (nextByte == 0) {
+                    // OpSource
+                    sourceInst.addStringOperand(subString.c_str());
+                    sourceInst.dump(out);
+                } else {
+                    // OpSourcContinued
+                    Instruction sourceContinuedInst(OpSourceContinued);
+                    sourceContinuedInst.addStringOperand(subString.c_str());
+                    sourceContinuedInst.dump(out);
                 }
-            } else
-                sourceInst.dump(out);
+                nextByte += nonNullBytesPerInstruction;
+            }
         } else
             sourceInst.dump(out);
     }

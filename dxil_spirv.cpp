@@ -122,6 +122,7 @@ static void print_help()
 	     "\t[--validate]\n"
 	     "\t[--entry name]\n"
 	     "\t[--debug-all-entry-points]\n"
+	     "\t[--emit-source-name]\n"
 	     "\t[--root-constant space binding word_offset word_count]\n"
 	     "\t[--root-constant-inline-ubo set binding]\n"
 	     "\t[--vertex-input semantic location]\n"
@@ -157,6 +158,7 @@ struct Arguments
 	bool dual_source_blending = false;
 	bool debug_all_entry_points = false;
 	bool storage_input_output_16bit = false;
+	bool emit_source_name = false;
 	std::vector<unsigned> swizzles;
 
 	unsigned root_constant_inline_ubo_desc_set = 0;
@@ -630,8 +632,9 @@ int main(int argc, char **argv)
 		args.offset_buffer_layout.stride = parser.next_uint();
 	});
 	cbs.add("--entry", [&](CLIParser &parser) { args.entry_point = parser.next_string(); });
-	cbs.add("--debug-all-entry-points", [&](CLIParser &parser) { args.debug_all_entry_points = true; });
-	cbs.add("--storage-input-output-16bit", [&](CLIParser &parser) { args.storage_input_output_16bit = true; });
+	cbs.add("--debug-all-entry-points", [&](CLIParser &) { args.debug_all_entry_points = true; });
+	cbs.add("--storage-input-output-16bit", [&](CLIParser &) { args.storage_input_output_16bit = true; });
+	cbs.add("--emit-source-name", [&](CLIParser &) { args.emit_source_name = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -761,6 +764,13 @@ int main(int argc, char **argv)
 		dxil_spv_option_storage_input_output_16bit storage = { { DXIL_SPV_OPTION_STORAGE_INPUT_OUTPUT_16BIT },
 		                                                       args.storage_input_output_16bit ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &storage.base);
+	}
+
+	if (args.emit_source_name)
+	{
+		dxil_spv_option_shader_source_file source = { { DXIL_SPV_OPTION_SHADER_SOURCE_FILE },
+		                                              args.input_path.c_str() };
+		dxil_spv_converter_add_option(converter, &source.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
