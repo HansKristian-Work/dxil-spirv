@@ -145,6 +145,7 @@ static void print_help()
 	     "\t[--validate]\n"
 	     "\t[--entry name]\n"
 	     "\t[--debug-all-entry-points]\n"
+	     "\t[--emit-source-name]\n"
 	     "\t[--root-constant space binding word_offset word_count]\n"
 	     "\t[--root-constant-inline-ubo set binding]\n"
 	     "\t[--vertex-input semantic location]\n"
@@ -233,6 +234,7 @@ struct Arguments
 	bool dual_source_blending = false;
 	bool debug_all_entry_points = false;
 	bool storage_input_output_16bit = false;
+	bool emit_source_name = false;
 	std::vector<unsigned> swizzles;
 
 	unsigned root_constant_inline_ubo_desc_set = 0;
@@ -954,6 +956,7 @@ int main(int argc, char **argv)
 		args.ssbo_32bit_wrapping = true;
 	});
 	cbs.add("--legacy-structurizer", [&](CLIParser &) { args.legacy_structurizer = true; });
+	cbs.add("--emit-source-name", [&](CLIParser &) { args.emit_source_name = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1382,6 +1385,13 @@ int main(int argc, char **argv)
 
 	for (auto &meta : args.meta_descriptors)
 		dxil_spv_converter_set_meta_descriptor(converter, meta.meta, meta.kind, meta.desc_set, meta.desc_binding);
+
+	if (args.emit_source_name)
+	{
+		dxil_spv_option_shader_source_file source = { { DXIL_SPV_OPTION_SHADER_SOURCE_FILE },
+		                                              args.input_path.c_str() };
+		dxil_spv_converter_add_option(converter, &source.base);
+	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 
