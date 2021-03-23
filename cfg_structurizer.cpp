@@ -171,7 +171,7 @@ void CFGStructurizer::log_cfg(const char *tag) const
 	LOGI("\n=====================\n");
 }
 
-// #define PHI_DEBUG
+//#define PHI_DEBUG
 #ifdef PHI_DEBUG
 static void validate_phi(const PHI &phi)
 {
@@ -876,10 +876,13 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				for (auto *input : frontier->pred)
 				{
 					auto itr = find_incoming_value(input, incoming_values);
-					assert(itr != incoming_values.end());
 
 					IncomingValue value = {};
-					value.id = itr->id;
+					if (itr != incoming_values.end())
+						value.id = itr->id;
+					else
+						value.id = module.get_builder().createUndefined(phi.type_id);
+
 					value.block = input;
 					final_incoming.push_back(value);
 				}
@@ -887,10 +890,13 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				if (frontier->pred_back_edge)
 				{
 					auto itr = find_incoming_value(frontier->pred_back_edge, incoming_values);
-					assert(itr != incoming_values.end());
 
 					IncomingValue value = {};
-					value.id = itr->id;
+					if (itr != incoming_values.end())
+						value.id = itr->id;
+					else
+						value.id = module.get_builder().createUndefined(phi.type_id);
+
 					value.block = frontier->pred_back_edge;
 					final_incoming.push_back(value);
 				}
