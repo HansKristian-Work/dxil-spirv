@@ -2746,12 +2746,14 @@ void CFGStructurizer::split_merge_blocks()
 				if (target_header)
 				{
 					// Breaks out to outer available scope.
+					CFGNode *rewrite_to = nullptr;
 					if (target_header->loop_ladder_block)
-						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(
-						    node, target_header->loop_ladder_block);
+						rewrite_to = target_header->loop_ladder_block;
 					else if (target_header->loop_merge_block)
-						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node,
-						                                                               target_header->loop_merge_block);
+						rewrite_to = target_header->loop_merge_block;
+
+					if (rewrite_to)
+						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, rewrite_to);
 					else
 						LOGE("No loop merge block?\n");
 				}
