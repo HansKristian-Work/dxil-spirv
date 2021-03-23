@@ -82,12 +82,12 @@ OpBranch %24
 %20 = OpFOrdGreaterThan %19 %18 %21
 OpSelectionMerge %27 None
 OpBranchConditional %20 %26 %25
+%25 = OpLabel
+OpIgnoreIntersectionKHR
 %26 = OpLabel
 %23 = OpInBoundsAccessChain %22 %8 %16
 OpStore %23 %21
 OpTerminateRayKHR
-%25 = OpLabel
-OpIgnoreIntersectionKHR
 %27 = OpLabel
 OpUnreachable
 OpFunctionEnd

@@ -51,7 +51,7 @@
 
 namespace spv {
 
-Builder::Builder(unsigned int magicNumber, SpvBuildLogger* buildLogger) :
+Builder::Builder(unsigned int magicNumber) :
     source(SourceLanguageUnknown),
     sourceVersion(0),
     sourceFileStringId(NoResult),
@@ -63,8 +63,7 @@ Builder::Builder(unsigned int magicNumber, SpvBuildLogger* buildLogger) :
     buildPoint(0),
     uniqueId(0),
     entryPointFunction(0),
-    generatingOpCodeForSpecConst(false),
-    logger(buildLogger)
+    generatingOpCodeForSpecConst(false)
 {
     clearAccessChain();
 }
@@ -2383,42 +2382,6 @@ Id Builder::accessChainGetInferredType()
         type = getContainedTypeId(type);
 
     return type;
-}
-
-// comment in header
-void Builder::eliminateDeadDecorations() {
-    dxil_spv::UnorderedSet<const Block*> reachable_blocks;
-    dxil_spv::UnorderedSet<Id> unreachable_definitions;
-    // Collect IDs defined in unreachable blocks. For each function, label the
-    // reachable blocks first. Then for each unreachable block, collect the
-    // result IDs of the instructions in it.
-    for (dxil_spv::Vector<Function*>::const_iterator fi = module.getFunctions().cbegin();
-        fi != module.getFunctions().cend(); fi++) {
-        Function* f = *fi;
-        Block* entry = f->getEntryBlock();
-        inReadableOrder(entry, [&reachable_blocks](const Block* b) {
-            reachable_blocks.insert(b);
-        });
-        for (dxil_spv::Vector<Block*>::const_iterator bi = f->getBlocks().cbegin();
-            bi != f->getBlocks().cend(); bi++) {
-            Block* b = *bi;
-            if (!reachable_blocks.count(b)) {
-                for (dxil_spv::Vector<std::unique_ptr<Instruction> >::const_iterator
-                         ii = b->getInstructions().cbegin();
-                    ii != b->getInstructions().cend(); ii++) {
-                    Instruction* i = ii->get();
-                    unreachable_definitions.insert(i->getResultId());
-                }
-            }
-        }
-    }
-    decorations.erase(std::remove_if(decorations.begin(), decorations.end(),
-        [&unreachable_definitions](std::unique_ptr<Instruction>& I) -> bool {
-            Instruction* inst = I.get();
-            Id decoration_id = inst->getIdOperand(0);
-            return unreachable_definitions.count(decoration_id) != 0;
-        }),
-        decorations.end());
 }
 
 void Builder::dump(dxil_spv::Vector<unsigned int>& out) const

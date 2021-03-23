@@ -31,7 +31,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 66
+; Bound: 63
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
@@ -95,8 +95,8 @@ OpReturn
 OpFunctionEnd
 %25 = OpFunction %1 None %2
 %26 = OpLabel
-OpBranch %62
-%62 = OpLabel
+OpBranch %61
+%61 = OpLabel
 %30 = OpAccessChain %29 %10 %31
 %32 = OpLoad %5 %30
 %33 = OpAccessChain %29 %10 %11
@@ -112,8 +112,8 @@ OpReturn
 OpFunctionEnd
 %27 = OpFunction %1 None %2
 %28 = OpLabel
-OpBranch %64
-%64 = OpLabel
+OpBranch %62
+%62 = OpLabel
 %43 = OpAccessChain %23 %14 %31
 %44 = OpLoad %5 %43
 %45 = OpAccessChain %23 %22 %31

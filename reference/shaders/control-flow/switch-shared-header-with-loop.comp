@@ -54,7 +54,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 55
+; Bound: 54
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -103,17 +103,11 @@ OpBranch %45
 %45 = OpLabel
 OpSelectionMerge %50 None
 OpSwitch %16 %49 0 %48 1 %47 5 %46
-%49 = OpLabel
-%27 = OpImageRead %22 %9 %26
-%28 = OpCompositeExtract %5 %27 0
-%29 = OpCompositeConstruct %22 %28 %28 %28 %28
-OpImageWrite %9 %26 %29
-OpBranch %50
-%48 = OpLabel
-%30 = OpImageRead %22 %9 %15
-%31 = OpCompositeExtract %5 %30 0
-%32 = OpCompositeConstruct %22 %31 %31 %31 %31
-OpImageWrite %9 %15 %32
+%46 = OpLabel
+%38 = OpImageRead %22 %9 %37
+%39 = OpCompositeExtract %5 %38 0
+%40 = OpCompositeConstruct %22 %39 %39 %39 %39
+OpImageWrite %9 %37 %40
 OpBranch %50
 %47 = OpLabel
 %34 = OpImageRead %22 %9 %33
@@ -121,11 +115,17 @@ OpBranch %50
 %36 = OpCompositeConstruct %22 %35 %35 %35 %35
 OpImageWrite %9 %33 %36
 OpBranch %50
-%46 = OpLabel
-%38 = OpImageRead %22 %9 %37
-%39 = OpCompositeExtract %5 %38 0
-%40 = OpCompositeConstruct %22 %39 %39 %39 %39
-OpImageWrite %9 %37 %40
+%48 = OpLabel
+%30 = OpImageRead %22 %9 %15
+%31 = OpCompositeExtract %5 %30 0
+%32 = OpCompositeConstruct %22 %31 %31 %31 %31
+OpImageWrite %9 %15 %32
+OpBranch %50
+%49 = OpLabel
+%27 = OpImageRead %22 %9 %26
+%28 = OpCompositeExtract %5 %27 0
+%29 = OpCompositeConstruct %22 %28 %28 %28 %28
+OpImageWrite %9 %26 %29
 OpBranch %50
 %50 = OpLabel
 OpBranch %51

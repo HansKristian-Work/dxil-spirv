@@ -12,9 +12,6 @@ endif()
 
 add_library(glslang-spirv-builder STATIC
         glslang-spirv/spvIR.h
-        glslang-spirv/Logger.cpp
-        glslang-spirv/Logger.h
-        glslang-spirv/InReadableOrder.cpp
         glslang-spirv/SpvBuilder.h
         glslang-spirv/SpvBuilder.cpp)
 set_target_properties(glslang-spirv-builder PROPERTIES POSITION_INDEPENDENT_CODE ON)

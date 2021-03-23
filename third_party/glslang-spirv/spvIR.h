@@ -245,11 +245,6 @@ protected:
     bool unreachable;
 };
 
-// Traverses the control-flow graph rooted at root in an order suited for
-// readable code generation.  Invokes callback at every node in the traversal
-// order.
-void inReadableOrder(Block* root, std::function<void(Block*)> callback);
-
 //
 // SPIR-V IR Function.
 //
@@ -296,8 +291,11 @@ public:
         for (int p = 0; p < (int)parameterInstructions.size(); ++p)
             parameterInstructions[p]->dump(out);
 
-        // Blocks
-        inReadableOrder(blocks[0], [&out](const Block* b) { b->dump(out); });
+        // dxil-spirv already emits in correct order,
+        // so don't try to reorder.
+        for (auto *block : blocks)
+            block->dump(out);
+
         Instruction end(0, 0, OpFunctionEnd);
         end.dump(out);
     }

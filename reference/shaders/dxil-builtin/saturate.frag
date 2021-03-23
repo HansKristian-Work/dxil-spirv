@@ -5,8 +5,8 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    float _17 = isnan(0.0) ? A : (isnan(A) ? 0.0 : max(A, 0.0));
-    SV_Target = isnan(1.0) ? _17 : (isnan(_17) ? 1.0 : min(_17, 1.0));
+    float _16 = isnan(0.0) ? A : (isnan(A) ? 0.0 : max(A, 0.0));
+    SV_Target = isnan(1.0) ? _16 : (isnan(_16) ? 1.0 : min(_16, 1.0));
 }
 
 
@@ -15,7 +15,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 17
+; Bound: 16
 ; Schema: 0
 OpCapability Shader
 %11 = OpExtInstImport "GLSL.std.450"

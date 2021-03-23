@@ -48,7 +48,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 54
+; Bound: 53
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -125,12 +125,12 @@ OpBranchConditional %41 %49 %51
 OpBranch %50
 %50 = OpLabel
 OpBranch %51
-%52 = OpLabel
-OpBranch %42
 %51 = OpLabel
 %24 = OpPhi %5 %15 %50 %26 %46 %25 %45 %27 %47 %28 %48
 %30 = OpCompositeConstruct %29 %24 %24 %24 %24
 OpImageWrite %9 %15 %30
 OpReturn
+%52 = OpLabel
+OpBranch %42
 OpFunctionEnd
 #endif

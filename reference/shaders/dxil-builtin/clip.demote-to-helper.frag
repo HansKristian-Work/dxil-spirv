@@ -23,7 +23,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 36
+; Bound: 34
 ; Schema: 0
 OpCapability Shader
 OpCapability DemoteToHelperInvocationEXT
@@ -60,10 +60,10 @@ OpBranch %25
 %16 = OpLoad %5 %14
 %17 = OpFAdd %5 %13 %18
 %20 = OpFOrdLessThan %19 %17 %21
-%33 = OpFunctionCall %1 %28 %20
+%32 = OpFunctionCall %1 %28 %20
 %22 = OpFAdd %5 %16 %23
 %24 = OpFOrdLessThan %19 %22 %21
-%34 = OpFunctionCall %1 %28 %24
+%33 = OpFunctionCall %1 %28 %24
 OpReturn
 OpFunctionEnd
 %28 = OpFunction %1 None %26

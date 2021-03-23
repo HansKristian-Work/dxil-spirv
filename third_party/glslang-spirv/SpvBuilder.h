@@ -45,7 +45,7 @@
 #ifndef SpvBuilder_H
 #define SpvBuilder_H
 
-#include "Logger.h"
+//#include "Logger.h"
 #include "spirv.hpp"
 #include "spvIR.h"
 
@@ -60,7 +60,7 @@ namespace spv {
 
 class Builder {
 public:
-    Builder(unsigned int userNumber, SpvBuildLogger* logger);
+    explicit Builder(unsigned int userNumber);
     virtual ~Builder();
 
     static const int maxMatrixSize = 4;
@@ -575,9 +575,6 @@ public:
     // based on the type of the base and the chain of dereferences.
     Id accessChainGetInferredType();
 
-    // Remove OpDecorate instructions whose operands are defined in unreachable
-    // blocks.
-    void eliminateDeadDecorations();
     void dump(dxil_spv::Vector<unsigned int>&) const;
 
     void createBranch(Block* block);
@@ -650,9 +647,6 @@ protected:
 
     // Our loop stack.
     std::stack<LoopBlocks> loops;
-
-    // The stream for outputting warnings and errors.
-    SpvBuildLogger* logger;
 };  // end Builder class
 
 };  // end spv namespace

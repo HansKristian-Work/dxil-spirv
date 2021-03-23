@@ -28,11 +28,10 @@ constexpr uint32_t GENERATOR = 1967215134;
 struct SPIRVModule::Impl : BlockEmissionInterface
 {
 	Impl()
-	    : builder(GENERATOR, &build_logger)
+	    : builder(GENERATOR)
 	{
 	}
 
-	spv::SpvBuildLogger build_logger;
 	spv::Builder builder;
 	spv::Function *entry_function = nullptr;
 	spv::Function *active_function = nullptr;
@@ -296,7 +295,9 @@ void SPIRVModule::Impl::build_demote_call_cond(spv::Id cond)
 		builder.setBuildPoint(true_block);
 		builder.createBranch(false_block);
 		builder.setBuildPoint(false_block);
-		builder.makeReturn(false);
+		builder.makeReturn(true);
+		demote_function_cond->addBlock(true_block);
+		demote_function_cond->addBlock(false_block);
 	}
 
 	builder.setBuildPoint(current_build_point);
@@ -323,7 +324,9 @@ void SPIRVModule::Impl::build_discard_call_early_cond(spv::Id cond)
 		builder.createStore(builder.makeBoolConstant(true), discard_state_var_id);
 		builder.createBranch(false_block);
 		builder.setBuildPoint(false_block);
-		builder.makeReturn(false);
+		builder.makeReturn(true);
+		discard_function_cond->addBlock(true_block);
+		discard_function_cond->addBlock(false_block);
 	}
 
 	builder.setBuildPoint(current_build_point);
@@ -349,7 +352,9 @@ void SPIRVModule::Impl::build_discard_call_exit()
 		builder.createConditionalBranch(loaded_state, true_block, false_block);
 		true_block->addInstruction(std::make_unique<spv::Instruction>(spv::OpKill));
 		builder.setBuildPoint(false_block);
-		builder.makeReturn(false);
+		builder.makeReturn(true);
+		discard_function->addBlock(true_block);
+		discard_function->addBlock(false_block);
 	}
 
 	builder.setBuildPoint(current_build_point);
@@ -651,7 +656,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	{
 		if (discard_state_var_id)
 			build_discard_call_exit();
-		builder.makeReturn(false, ir.terminator.return_value);
+		builder.makeReturn(true, ir.terminator.return_value);
 		break;
 	}
 

@@ -45,31 +45,31 @@ float _109;
 void main()
 {
     uint _27 = TEXCOORD * 2u;
-    uint _124;
-    uvec4 _125;
-    _124 = sparseTexelFetchARB(_8, int(_27), _125);
-    SparseTexel _31 = SparseTexel(_124, _125);
+    uint _123;
+    uvec4 _124;
+    _123 = sparseTexelFetchARB(_8, int(_27), _124);
+    SparseTexel _31 = SparseTexel(_123, _124);
     _38 _39 = _38(_31._m1.x, texelFetch(_8, int(_27 + 1u)).x, _40, _41, _31._m0);
     float _49 = float(sparseTexelsResidentARB(int(_39._m4)));
     uint _54 = TEXCOORD * 2u;
-    uint _126;
-    uvec4 _127;
-    _126 = sparseImageLoadARB(_12, int(_54), _127);
-    SparseTexel _55 = SparseTexel(_126, _127);
+    uint _125;
+    uvec4 _126;
+    _125 = sparseImageLoadARB(_12, int(_54), _126);
+    SparseTexel _55 = SparseTexel(_125, _126);
     _38 _61 = _38(_55._m1.x, imageLoad(_12, int(_54 + 1u)).x, _62, _63, _55._m0);
     float _72 = float(sparseTexelsResidentARB(int(_61._m4)));
     uint _76 = TEXCOORD * 2u;
-    uint _128;
-    uvec4 _129;
-    _128 = sparseTexelFetchARB(_9, int(_76), _129);
-    SparseTexel _77 = SparseTexel(_128, _129);
+    uint _127;
+    uvec4 _128;
+    _127 = sparseTexelFetchARB(_9, int(_76), _128);
+    SparseTexel _77 = SparseTexel(_127, _128);
     _83 _84 = _83(uintBitsToFloat(_77._m1.x), uintBitsToFloat(texelFetch(_9, int(_76 + 1u)).x), _87, _88, _77._m0);
     float _95 = float(sparseTexelsResidentARB(int(_84._m4)));
     uint _98 = TEXCOORD * 2u;
-    uint _130;
-    uvec4 _131;
-    _130 = sparseImageLoadARB(_13, int(_98), _131);
-    SparseTexel _99 = SparseTexel(_130, _131);
+    uint _129;
+    uvec4 _130;
+    _129 = sparseImageLoadARB(_13, int(_98), _130);
+    SparseTexel _99 = SparseTexel(_129, _130);
     _83 _105 = _83(uintBitsToFloat(_99._m1.x), uintBitsToFloat(imageLoad(_13, int(_98 + 1u)).x), _108, _109, _99._m0);
     float _116 = float(sparseTexelsResidentARB(int(_105._m4)));
     SV_Target.x = ((((((uintBitsToFloat(_39._m0) + _49) + uintBitsToFloat(_61._m0)) + _72) + _84._m0) + _95) + _105._m0) + _116;
@@ -82,7 +82,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 124
+; Bound: 123
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency

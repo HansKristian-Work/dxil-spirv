@@ -34,7 +34,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 46
+; Bound: 44
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
@@ -96,7 +96,7 @@ OpStore %29 %23
 OpStore %31 %24
 %33 = OpAccessChain %26 %10 %21
 OpStore %33 %25
-%44 = OpFunctionCall %1 %38
+%43 = OpFunctionCall %1 %38
 OpReturn
 OpFunctionEnd
 %38 = OpFunction %1 None %2

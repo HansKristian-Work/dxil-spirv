@@ -48,7 +48,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 120
+; Bound: 119
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledImageArrayDynamicIndexing

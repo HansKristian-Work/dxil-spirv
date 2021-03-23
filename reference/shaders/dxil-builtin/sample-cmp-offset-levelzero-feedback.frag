@@ -27,28 +27,28 @@ layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    uint _121;
-    float _122;
-    _121 = sparseTextureLodOffsetARB(sampler1DShadow(_8, _20), vec2(TEXCOORD.x, TEXCOORD.w), 0.0, 1, _122);
-    SparseTexel _53 = SparseTexel(_121, _122);
+    uint _120;
+    float _121;
+    _120 = sparseTextureLodOffsetARB(sampler1DShadow(_8, _20), vec2(TEXCOORD.x, TEXCOORD.w), 0.0, 1, _121);
+    SparseTexel _53 = SparseTexel(_120, _121);
     float _55 = _53._m1;
     _56 _57 = _56(_55, _55, _55, _55, _53._m0);
-    uint _123;
-    float _124;
-    _123 = sparseTextureLodOffsetARB(sampler1DArrayShadow(_11, _20), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0, 2, _124);
-    SparseTexel _69 = SparseTexel(_123, _124);
+    uint _122;
+    float _123;
+    _122 = sparseTextureLodOffsetARB(sampler1DArrayShadow(_11, _20), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0, 2, _123);
+    SparseTexel _69 = SparseTexel(_122, _123);
     float _72 = _69._m1;
     _56 _73 = _56(_72, _72, _72, _72, _69._m0);
-    uint _125;
-    float _126;
-    _125 = sparseTextureLodOffsetARB(sampler2DShadow(_14, _20), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0, ivec2(-3, -2), _126);
-    SparseTexel _85 = SparseTexel(_125, _126);
+    uint _124;
+    float _125;
+    _124 = sparseTextureLodOffsetARB(sampler2DShadow(_14, _20), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0, ivec2(-3, -2), _125);
+    SparseTexel _85 = SparseTexel(_124, _125);
     float _90 = _85._m1;
     _56 _91 = _56(_90, _90, _90, _90, _85._m0);
-    uint _127;
-    float _128;
-    _127 = sparseTextureGradOffsetARB(sampler2DArrayShadow(_17, _20), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), vec2(0.0), vec2(0.0), ivec2(4, 5), _128);
-    SparseTexel _103 = SparseTexel(_127, _128);
+    uint _126;
+    float _127;
+    _126 = sparseTextureGradOffsetARB(sampler2DArrayShadow(_17, _20), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), vec2(0.0), vec2(0.0), ivec2(4, 5), _127);
+    SparseTexel _103 = SparseTexel(_126, _127);
     float _108 = _103._m1;
     _56 _109 = _56(_108, _108, _108, _108, _103._m0);
     float _115 = ((((((float(sparseTexelsResidentARB(int(_57._m4))) + _57._m0) + _73._m0) + float(sparseTexelsResidentARB(int(_73._m4)))) + _91._m0) + float(sparseTexelsResidentARB(int(_91._m4)))) + _109._m0) + float(sparseTexelsResidentARB(int(_109._m4)));
@@ -62,7 +62,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 121
+; Bound: 120
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency

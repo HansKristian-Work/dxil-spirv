@@ -2978,10 +2978,11 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 {
 	// Make sure all blocks are known to the backend before we emit code.
 	// Prefer that IDs grow the further down the function we go.
-	for (auto itr = forward_post_visit_order.rbegin(); itr != forward_post_visit_order.rend(); ++itr)
+	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
-		(*itr)->id = 0;
-		iface.register_block(*itr);
+		auto *block = forward_post_visit_order[index - 1];
+		block->id = 0;
+		iface.register_block(block);
 	}
 
 	// Need to emit blocks such that dominating blocks come before dominated blocks.

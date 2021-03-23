@@ -24,17 +24,17 @@ layout(location = 0) out ivec2 SV_Target;
 
 void main()
 {
-    uint _69;
-    ivec4 _70;
-    _69 = sparseTexelFetchARB(_8, int(TEXCOORD), _70);
-    SparseTexel _23 = SparseTexel(_69, _70);
+    uint _68;
+    ivec4 _69;
+    _68 = sparseTexelFetchARB(_8, int(TEXCOORD), _69);
+    SparseTexel _23 = SparseTexel(_68, _69);
     uvec4 _27 = uvec4(_23._m1);
     _32 _33 = _32(_27.x, _27.y, _27.z, _27.w, _23._m0);
     uint _41 = uint(sparseTexelsResidentARB(int(_33._m4)));
-    uint _71;
-    ivec4 _72;
-    _71 = sparseImageLoadARB(_11, int(TEXCOORD), _72);
-    SparseTexel _44 = SparseTexel(_71, _72);
+    uint _70;
+    ivec4 _71;
+    _70 = sparseImageLoadARB(_11, int(TEXCOORD), _71);
+    SparseTexel _44 = SparseTexel(_70, _71);
     uvec4 _47 = uvec4(_44._m1);
     _32 _52 = _32(_47.x, _47.y, _47.z, _47.w, _44._m0);
     uint _59 = uint(sparseTexelsResidentARB(int(_52._m4)));
@@ -48,7 +48,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 68
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency

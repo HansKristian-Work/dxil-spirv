@@ -33,7 +33,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 47
+; Bound: 44
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -43,7 +43,7 @@ OpName %3 "main"
 OpName %8 "TEXCOORD"
 OpName %23 "discard_state"
 OpName %31 "discard_cond"
-OpName %39 "discard_exit"
+OpName %38 "discard_exit"
 OpDecorate %8 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -75,11 +75,11 @@ OpBranch %28
 %16 = OpLoad %5 %14
 %17 = OpFAdd %5 %13 %18
 %20 = OpFOrdLessThan %19 %17 %21
-%37 = OpFunctionCall %1 %31 %20
+%36 = OpFunctionCall %1 %31 %20
 %25 = OpFAdd %5 %16 %26
 %27 = OpFOrdLessThan %19 %25 %21
-%38 = OpFunctionCall %1 %31 %27
-%45 = OpFunctionCall %1 %39
+%37 = OpFunctionCall %1 %31 %27
+%43 = OpFunctionCall %1 %38
 OpReturn
 OpFunctionEnd
 %31 = OpFunction %1 None %29
@@ -93,14 +93,14 @@ OpBranch %34
 %34 = OpLabel
 OpReturn
 OpFunctionEnd
-%39 = OpFunction %1 None %2
+%38 = OpFunction %1 None %2
+%39 = OpLabel
+%42 = OpLoad %19 %23
+OpSelectionMerge %41 None
+OpBranchConditional %42 %40 %41
 %40 = OpLabel
-%43 = OpLoad %19 %23
-OpSelectionMerge %42 None
-OpBranchConditional %43 %41 %42
-%41 = OpLabel
 OpKill
-%42 = OpLabel
+%41 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

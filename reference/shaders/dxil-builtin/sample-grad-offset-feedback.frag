@@ -29,40 +29,40 @@ layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    uint _177;
-    vec4 _178;
-    _177 = sparseTextureGradOffsetClampARB(sampler1D(_8, _23), TEXCOORD.x, TEXCOORD.z, TEXCOORD.w, 1, 0.0, _178);
-    SparseTexel _56 = SparseTexel(_177, _178);
+    uint _176;
+    vec4 _177;
+    _176 = sparseTextureGradOffsetClampARB(sampler1D(_8, _23), TEXCOORD.x, TEXCOORD.z, TEXCOORD.w, 1, 0.0, _177);
+    SparseTexel _56 = SparseTexel(_176, _177);
     vec4 _58 = _56._m1;
     _63 _64 = _63(_58.x, _58.y, _58.z, _58.w, _56._m0);
     float _70 = float(sparseTexelsResidentARB(int(_64._m4)));
-    uint _179;
-    vec4 _180;
-    _179 = sparseTextureGradOffsetClampARB(sampler1DArray(_11, _23), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.z, TEXCOORD.y, 2, 0.0, _180);
-    SparseTexel _77 = SparseTexel(_179, _180);
+    uint _178;
+    vec4 _179;
+    _178 = sparseTextureGradOffsetClampARB(sampler1DArray(_11, _23), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.z, TEXCOORD.y, 2, 0.0, _179);
+    SparseTexel _77 = SparseTexel(_178, _179);
     vec4 _80 = _77._m1;
     _63 _85 = _63(_80.x, _80.y, _80.z, _80.w, _77._m0);
     float _86 = _85._m0;
     float _91 = float(sparseTexelsResidentARB(int(_85._m4)));
-    uint _181;
-    vec4 _182;
-    _181 = sparseTextureGradOffsetClampARB(sampler2D(_14, _23), vec2(TEXCOORD.x, TEXCOORD.y), vec2(TEXCOORD.z), vec2(TEXCOORD.w), ivec2(-3, -4), 0.0, _182);
-    SparseTexel _98 = SparseTexel(_181, _182);
+    uint _180;
+    vec4 _181;
+    _180 = sparseTextureGradOffsetClampARB(sampler2D(_14, _23), vec2(TEXCOORD.x, TEXCOORD.y), vec2(TEXCOORD.z), vec2(TEXCOORD.w), ivec2(-3, -4), 0.0, _181);
+    SparseTexel _98 = SparseTexel(_180, _181);
     vec4 _105 = _98._m1;
     _63 _110 = _63(_105.x, _105.y, _105.z, _105.w, _98._m0);
     float _117 = float(sparseTexelsResidentARB(int(_110._m4)));
-    uint _183;
-    vec4 _184;
-    _183 = sparseTextureGradOffsetClampARB(sampler2DArray(_17, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), vec2(TEXCOORD.z), vec2(TEXCOORD.w), ivec2(4, -5), 0.0, _184);
-    SparseTexel _124 = SparseTexel(_183, _184);
+    uint _182;
+    vec4 _183;
+    _182 = sparseTextureGradOffsetClampARB(sampler2DArray(_17, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), vec2(TEXCOORD.z), vec2(TEXCOORD.w), ivec2(4, -5), 0.0, _183);
+    SparseTexel _124 = SparseTexel(_182, _183);
     vec4 _131 = _124._m1;
     _63 _136 = _63(_131.x, _131.y, _131.z, _131.w, _124._m0);
     float _137 = _136._m0;
     float _142 = float(sparseTexelsResidentARB(int(_136._m4)));
-    uint _185;
-    vec4 _186;
-    _185 = sparseTextureGradOffsetClampARB(sampler3D(_20, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), vec3(TEXCOORD.z), vec3(TEXCOORD.w), ivec3(5, 6, 7), 0.0, _186);
-    SparseTexel _150 = SparseTexel(_185, _186);
+    uint _184;
+    vec4 _185;
+    _184 = sparseTextureGradOffsetClampARB(sampler3D(_20, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), vec3(TEXCOORD.z), vec3(TEXCOORD.w), ivec3(5, 6, 7), 0.0, _185);
+    SparseTexel _150 = SparseTexel(_184, _185);
     vec4 _157 = _150._m1;
     _63 _162 = _63(_157.x, _157.y, _157.z, _157.w, _150._m0);
     float _169 = float(sparseTexelsResidentARB(int(_162._m4)));
@@ -76,7 +76,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 177
+; Bound: 176
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency

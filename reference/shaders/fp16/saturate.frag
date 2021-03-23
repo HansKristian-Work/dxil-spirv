@@ -17,14 +17,14 @@ void main()
     float16_t _21 = float16_t(V.y);
     float16_t _25 = float16_t(V.z);
     float16_t _29 = float16_t(V.w);
-    float16_t _48 = isnan(float16_t(0.0)) ? _17 : (isnan(_17) ? float16_t(0.0) : max(_17, float16_t(0.0)));
-    float16_t _59 = isnan(float16_t(0.0)) ? _21 : (isnan(_21) ? float16_t(0.0) : max(_21, float16_t(0.0)));
-    float16_t _70 = isnan(float16_t(0.0)) ? _25 : (isnan(_25) ? float16_t(0.0) : max(_25, float16_t(0.0)));
-    float16_t _81 = isnan(float16_t(0.0)) ? _29 : (isnan(_29) ? float16_t(0.0) : max(_29, float16_t(0.0)));
-    SV_Target.x = float(isnan(float16_t(1.0)) ? _48 : (isnan(_48) ? float16_t(1.0) : min(_48, float16_t(1.0))));
-    SV_Target.y = float(isnan(float16_t(1.0)) ? _59 : (isnan(_59) ? float16_t(1.0) : min(_59, float16_t(1.0))));
-    SV_Target.z = float(isnan(float16_t(1.0)) ? _70 : (isnan(_70) ? float16_t(1.0) : min(_70, float16_t(1.0))));
-    SV_Target.w = float(isnan(float16_t(1.0)) ? _81 : (isnan(_81) ? float16_t(1.0) : min(_81, float16_t(1.0))));
+    float16_t _47 = isnan(float16_t(0.0)) ? _17 : (isnan(_17) ? float16_t(0.0) : max(_17, float16_t(0.0)));
+    float16_t _58 = isnan(float16_t(0.0)) ? _21 : (isnan(_21) ? float16_t(0.0) : max(_21, float16_t(0.0)));
+    float16_t _69 = isnan(float16_t(0.0)) ? _25 : (isnan(_25) ? float16_t(0.0) : max(_25, float16_t(0.0)));
+    float16_t _80 = isnan(float16_t(0.0)) ? _29 : (isnan(_29) ? float16_t(0.0) : max(_29, float16_t(0.0)));
+    SV_Target.x = float(isnan(float16_t(1.0)) ? _47 : (isnan(_47) ? float16_t(1.0) : min(_47, float16_t(1.0))));
+    SV_Target.y = float(isnan(float16_t(1.0)) ? _58 : (isnan(_58) ? float16_t(1.0) : min(_58, float16_t(1.0))));
+    SV_Target.z = float(isnan(float16_t(1.0)) ? _69 : (isnan(_69) ? float16_t(1.0) : min(_69, float16_t(1.0))));
+    SV_Target.w = float(isnan(float16_t(1.0)) ? _80 : (isnan(_80) ? float16_t(1.0) : min(_80, float16_t(1.0))));
 }
 
 
@@ -33,7 +33,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 48
+; Bound: 47
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16

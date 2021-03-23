@@ -55,7 +55,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 193
+; Bound: 192
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D

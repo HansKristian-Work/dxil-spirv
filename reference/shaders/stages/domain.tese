@@ -20,7 +20,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 67
+; Bound: 66
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation

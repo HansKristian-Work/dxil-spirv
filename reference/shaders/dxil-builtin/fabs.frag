@@ -14,7 +14,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 15
+; Bound: 14
 ; Schema: 0
 OpCapability Shader
 %11 = OpExtInstImport "GLSL.std.450"
