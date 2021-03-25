@@ -78,4 +78,24 @@ bool emit_coverage_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	impl.add(load_op);
 	return true;
 }
+
+bool emit_inner_coverage_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInFullyCoveredEXT);
+
+	builder.addCapability(spv::CapabilityFragmentFullyCoveredEXT);
+	builder.addExtension("SPV_EXT_fragment_fully_covered");
+
+	Operation *load_op = impl.allocate(spv::OpLoad, builder.makeBoolType());
+	load_op->add_id(var_id);
+	impl.add(load_op);
+
+	auto *select_op = impl.allocate(spv::OpSelect, instruction);
+	select_op->add_id(load_op->id);
+	select_op->add_id(builder.makeUintConstant(1));
+	select_op->add_id(builder.makeUintConstant(0));
+	impl.add(select_op);
+	return true;
+}
 } // namespace dxil_spv

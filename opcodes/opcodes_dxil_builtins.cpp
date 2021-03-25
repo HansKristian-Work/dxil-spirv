@@ -158,6 +158,7 @@ struct DXILDispatcher
 		OP(DerivFineY) = emit_derivative_dispatch<spv::OpDPdyFine>;
 		OP(SampleIndex) = emit_sample_index_instruction;
 		OP(Coverage) = emit_coverage_instruction;
+		OP(InnerCoverage) = emit_inner_coverage_instruction;
 
 		// dxil_geometry.hpp
 		OP(EmitStream) = emit_stream_instruction;

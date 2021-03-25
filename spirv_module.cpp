@@ -144,6 +144,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 		return builder.makeUintType(32);
 
 	case spv::BuiltInHelperInvocation:
+	case spv::BuiltInFullyCoveredEXT:
 		return builder.makeBoolType();
 
 	default:
