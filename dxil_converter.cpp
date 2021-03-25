@@ -2994,6 +2994,21 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addCapability(spv::CapabilityGeometry);
 		break;
 
+	case DXIL::Semantic::ShadingRate:
+		if (storage == spv::StorageClassOutput)
+		{
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPrimitiveShadingRateKHR);
+			spirv_module.register_builtin_shader_output(id, spv::BuiltInPrimitiveShadingRateKHR);
+		}
+		else
+		{
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInShadingRateKHR);
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInShadingRateKHR);
+		}
+		builder.addExtension("SPV_KHR_fragment_shading_rate");
+		builder.addCapability(spv::CapabilityFragmentShadingRateKHR);
+		break;
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
@@ -3214,8 +3229,11 @@ bool Converter::Impl::emit_stage_input_variables()
 			cull_distance_count += rows * cols;
 			continue;
 		}
-		else if (system_value == DXIL::Semantic::PrimitiveID)
+		else if (system_value == DXIL::Semantic::PrimitiveID ||
+				 system_value == DXIL::Semantic::ShadingRate)
+		{
 			arrayed_input = false;
+		}
 
 		if (arrayed_input)
 		{
