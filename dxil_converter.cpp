@@ -3230,7 +3230,7 @@ bool Converter::Impl::emit_stage_input_variables()
 			continue;
 		}
 		else if (system_value == DXIL::Semantic::PrimitiveID ||
-				 system_value == DXIL::Semantic::ShadingRate)
+		         system_value == DXIL::Semantic::ShadingRate)
 		{
 			arrayed_input = false;
 		}
