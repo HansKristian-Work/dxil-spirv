@@ -321,7 +321,7 @@ struct ModuleParseContext
 
 	Value *get_value(uint64_t op, Type *expected_type = nullptr, bool force_absolute = false);
 	std::pair<Value *, Type *> get_value_and_type(const Vector<uint64_t> &ops, unsigned &index);
-	Value *get_value(const Vector<uint64_t> &ops, unsigned &index, Type *expected_type);
+	Value *get_value(const Vector<uint64_t> &ops, unsigned &index, Type *expected_type = nullptr);
 	Value *get_value_signed(uint64_t op, Type *expected_type = nullptr);
 	MDOperand *get_metadata(uint64_t index) const;
 	const char *get_metadata_kind(uint64_t index) const;
@@ -447,7 +447,34 @@ Value *ModuleParseContext::get_value(const Vector<uint64_t> &ops, unsigned &inde
 {
 	if (index >= ops.size())
 		return nullptr;
-	return get_value(ops[index++], expected_type);
+
+	uint64_t op = ops[index++];
+	if (use_relative_id)
+		op = uint32_t(values.size() - op);
+
+	if (op < values.size())
+	{
+		// Normal reference.
+		return get_value(op, expected_type, true);
+	}
+	else
+	{
+		// Forward reference, the type is encoded in the next element.
+		if (index >= ops.size())
+		{
+			LOGE("Expected a type operand for forward references!\n");
+			return nullptr;
+		}
+
+		auto *type = get_type(ops[index++]);
+		if (expected_type && expected_type != type)
+		{
+			LOGE("Type mismatch.\n");
+			return nullptr;
+		}
+
+		return get_value(op, type, true);
+	}
 }
 
 std::pair<Value *, Type *> ModuleParseContext::get_value_and_type(const Vector<uint64_t> &ops, unsigned &index)
@@ -1496,12 +1523,12 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 		bool inbounds = entry.ops[0] != 0;
 		auto *type = get_type(entry.ops[1]);
-		unsigned count = entry.ops.size() - 2;
+		unsigned count = entry.ops.size();
 		Vector<Value *> args;
 		args.reserve(count);
-		for (unsigned i = 0; i < count; i++)
+		for (unsigned i = 2; i < count;)
 		{
-			auto *value = get_value(entry.ops[i + 2]);
+			auto *value = get_value(entry.ops, i);
 			if (!value)
 				return false;
 			args.push_back(value);
