@@ -1912,7 +1912,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 					idom = create_helper_succ_block(idom);
 				}
 				else
-					LOGE("Mismatch headers in pass 1 ... ?\n");
+					LOGW("Mismatch headers in pass 1 ... ?\n");
 			}
 
 			idom->merge = MergeType::Selection;
@@ -2434,18 +2434,18 @@ void CFGStructurizer::find_loops()
 
 			if (!dominated_merge)
 			{
-				LOGE("There is no candidate for ladder merging.\n");
+				LOGW("There is no candidate for ladder merging.\n");
 			}
 
 			if (dominated_merge && !node->dominates(dominated_merge))
 			{
-				LOGE("We don't dominate the merge target ...\n");
+				LOGW("We don't dominate the merge target ...\n");
 				dominated_merge = nullptr;
 			}
 
 			if (!merge)
 			{
-				LOGE("Failed to find a common merge point ...\n");
+				LOGW("Failed to find a common merge point ...\n");
 			}
 			else
 			{
@@ -2506,22 +2506,6 @@ void CFGStructurizer::split_merge_blocks()
 			          else
 				          return a->forward_post_visit_order > b->forward_post_visit_order;
 		          });
-
-		// This is not really an error in some cases.
-#if 0
-		// Verify that scopes are actually nested.
-		// This means header[N] must dominate header[M] where N < M.
-		for (size_t i = 1; i < node->headers.size(); i++)
-		{
-			if (!node->headers[i - 1]->dominates(node->headers[i]))
-				LOGE("Scopes are not nested.\n");
-		}
-#endif
-
-		if (node->headers[0]->loop_ladder_block)
-		{
-			LOGE("Outer loop header needs ladder break.\n");
-		}
 
 		//LOGI("Splitting merge blocks for %s\n", node->name.c_str());
 
@@ -2670,7 +2654,7 @@ void CFGStructurizer::split_merge_blocks()
 							ladder->add_branch(full_break_target);
 						}
 						else
-							LOGE("No loop merge block?\n");
+							LOGW("No loop merge block?\n");
 
 						// This can happen in some scenarios, fixup the branch to be a direct one instead.
 						if (ladder->ir.terminator.true_block == ladder->ir.terminator.false_block)
@@ -2755,7 +2739,7 @@ void CFGStructurizer::split_merge_blocks()
 					if (rewrite_to)
 						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, rewrite_to);
 					else
-						LOGE("No loop merge block?\n");
+						LOGW("No loop merge block?\n");
 				}
 				else if (full_break_target)
 				{
