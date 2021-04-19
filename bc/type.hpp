@@ -58,6 +58,7 @@ public:
 	static Type *getInt16Ty(LLVMContext &context);
 	static Type *getInt32Ty(LLVMContext &context);
 	static Type *getInt64Ty(LLVMContext &context);
+	static Type *getIntTy(LLVMContext &context, uint32_t width);
 	static Type *getLabelTy(LLVMContext &context);
 	static Type *getMetadataTy(LLVMContext &context);
 
@@ -76,7 +77,6 @@ public:
 protected:
 	LLVMContext &context;
 	TypeID type_id;
-	static Type *getIntTy(LLVMContext &context, uint32_t width);
 	static Type *getTy(LLVMContext &context, TypeID id);
 	unsigned address_space = 0;
 };

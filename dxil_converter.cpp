@@ -2063,21 +2063,28 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 	case llvm::Type::TypeID::IntegerTyID:
 	{
 		unsigned integer_width = forced_width ? forced_width : constant->getType()->getIntegerBitWidth();
-		switch (integer_width)
+		if (integer_width <= 64)
 		{
-		case 1:
-			return builder.makeBoolConstant(constant->getUniqueInteger().getZExtValue() != 0);
-
-		case 16:
-			return builder.makeUint16Constant(constant->getUniqueInteger().getZExtValue());
-
-		case 32:
-			return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue());
-
-		case 64:
-			return builder.makeUint64Constant(constant->getUniqueInteger().getZExtValue());
-
-		default:
+			if (integer_width > 32)
+			{
+				return builder.makeUint64Constant(constant->getUniqueInteger().getZExtValue(), integer_width);
+			}
+			else if (integer_width > 16)
+			{
+				return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue(), integer_width);
+			}
+			else if (integer_width > 1)
+			{
+				return builder.makeUint16Constant(constant->getUniqueInteger().getZExtValue(), integer_width);
+			}
+			else
+			{
+				return builder.makeBoolConstant(constant->getUniqueInteger().getZExtValue() != 0);
+			}
+		}
+		else
+		{
+			LOGE("Unexpected integer bit width %u\n", integer_width);
 			return 0;
 		}
 	}

@@ -177,21 +177,25 @@ static bool emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm::Ca
 	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 
-	switch (instruction->getOperand(0)->getType()->getIntegerBitWidth())
+	unsigned integer_width = instruction->getOperand(0)->getType()->getIntegerBitWidth();
+	if (integer_width > 1 && integer_width <= 64)
 	{
-	case 16:
-		op->add_id(builder.makeUint16Constant(0));
-		break;
-
-	case 32:
-		op->add_id(builder.makeUintConstant(0));
-		break;
-
-	case 64:
-		op->add_id(builder.makeUint64Constant(0));
-		break;
-
-	default:
+		if (integer_width > 32)
+		{
+			op->add_id(builder.makeUint64Constant(0, integer_width));
+		}
+		else if (integer_width > 16)
+		{
+			op->add_id(builder.makeUintConstant(0, integer_width));
+		}
+		else
+		{
+			op->add_id(builder.makeUint16Constant(0, integer_width));
+		}
+	}
+	else
+	{
+		LOGE("Unexpected integer bit width %u\n", integer_width);
 		return false;
 	}
 
@@ -223,21 +227,32 @@ static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::
 		break;
 
 	case llvm::Type::TypeID::IntegerTyID:
-		switch (instruction->getType()->getIntegerBitWidth())
+	{
+		unsigned integer_width = instruction->getType()->getIntegerBitWidth();
+		if (integer_width > 1 && integer_width <= 64)
 		{
-		case 16:
-			const_0 = builder.makeUint16Constant(0);
-			const_1 = builder.makeUint16Constant(is_signed ? 0xffff : 1u);
-			break;
-
-		case 32:
-			const_0 = builder.makeUintConstant(0);
-			const_1 = builder.makeUintConstant(is_signed ? 0xffffffffu : 1u);
-			break;
-
-		default:
+			if (integer_width > 32)
+			{
+				const_0 = builder.makeUint64Constant(0, integer_width);
+				const_1 = builder.makeUint64Constant(is_signed ? 0xffffffffffffffffull : 1ull, integer_width);
+			}
+			else if (integer_width > 16)
+			{
+				const_0 = builder.makeUintConstant(0, integer_width);
+				const_1 = builder.makeUintConstant(is_signed ? 0xffffffffu : 1u, integer_width);
+			}
+			else
+			{
+				const_0 = builder.makeUint16Constant(0, integer_width);
+				const_1 = builder.makeUint16Constant(is_signed ? 0xffff : 1u, integer_width);
+			}
+		}
+		else
+		{
+			LOGE("Unexpected integer bit width %u\n", integer_width);
 			return false;
 		}
+	}
 		break;
 
 	default:

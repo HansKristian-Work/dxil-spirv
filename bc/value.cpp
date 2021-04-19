@@ -123,41 +123,67 @@ APFloat::APFloat(Type *type_, uint64_t value_)
 
 int64_t APInt::getSExtValue() const
 {
-	switch (cast<IntegerType>(type)->getBitWidth())
+	unsigned integer_width = cast<IntegerType>(type)->getBitWidth();
+	if (integer_width <= 64)
 	{
-	case 1:
-		return (value & 1) != 0 ? -1 : 0;
-	case 8:
-		return int8_t(value);
-	case 16:
-		return int16_t(value);
-	case 32:
-		return int32_t(value);
-	case 64:
-		return int64_t(value);
-	default:
-		LOGE("Unrecognized bitwidth.\n");
-		return 0;
+		if (integer_width > 32)
+		{
+			return int64_t(value);
+		}
+		else if (integer_width > 16)
+		{
+			return int32_t(value);
+		}
+		else if (integer_width > 8)
+		{
+			return int16_t(value);
+		}
+		else if (integer_width > 1)
+		{
+			return int8_t(value);
+		}
+		else
+		{
+			return (value & 1) != 0 ? -1 : 0;
+		}
+	}
+	else
+	{
+		LOGE("Unexpected integer bit width %u\n", integer_width);
+		return false;
 	}
 }
 
 uint64_t APInt::getZExtValue() const
 {
-	switch (cast<IntegerType>(type)->getBitWidth())
+	unsigned integer_width = cast<IntegerType>(type)->getBitWidth();
+	if (integer_width <= 64)
 	{
-	case 1:
-		return value & 1;
-	case 8:
-		return uint8_t(value);
-	case 16:
-		return uint16_t(value);
-	case 32:
-		return uint32_t(value);
-	case 64:
-		return uint64_t(value);
-	default:
-		LOGE("Unrecognized bitwidth.\n");
-		return 0;
+		if (integer_width > 32)
+		{
+			return uint64_t(value);
+		}
+		else if (integer_width > 16)
+		{
+			return uint32_t(value);
+		}
+		else if (integer_width > 8)
+		{
+			return uint16_t(value);
+		}
+		else if (integer_width > 1)
+		{
+			return uint8_t(value);
+		}
+		else
+		{
+			return value & 1;
+		}
+	}
+	else
+	{
+		LOGE("Unexpected integer bit width %u\n", integer_width);
+		return false;
 	}
 }
 

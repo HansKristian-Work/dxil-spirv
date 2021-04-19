@@ -1781,35 +1781,20 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 	}
 
 	case TypeRecord::INTEGER:
+	{
 		if (child.ops.size() < 1)
 			return false;
 
-		switch (child.ops[0])
+		if (child.ops[0] <= 64)
 		{
-		case 1:
-			type = Type::getInt1Ty(*context);
-			break;
-
-		case 8:
-			type = Type::getInt8Ty(*context);
-			break;
-
-		case 16:
-			type = Type::getInt16Ty(*context);
-			break;
-
-		case 32:
-			type = Type::getInt32Ty(*context);
-			break;
-
-		case 64:
-			type = Type::getInt64Ty(*context);
-			break;
-
-		default:
-			LOGE("Unexpected integer bitwidth %u.\n", unsigned(child.ops[0]));
+			type = Type::getIntTy(*context, child.ops[0]);
+		}
+		else
+		{
+			LOGE("Unexpected integer bit width %llu\n", child.ops[0]);
 			return false;
 		}
+	}
 		break;
 
 	case TypeRecord::STRUCT_NAMED:

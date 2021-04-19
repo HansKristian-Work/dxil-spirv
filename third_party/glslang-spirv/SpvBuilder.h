@@ -230,13 +230,25 @@ public:
 
     // For making new constants (will return old constant if the requested one was already made).
     Id makeBoolConstant(bool b, bool specConstant = false);
-    Id makeIntConstant(int i, bool specConstant = false)         { return makeIntConstant(makeIntType(32),  (unsigned)i, specConstant); }
-    Id makeUintConstant(unsigned u, bool specConstant = false)   { return makeIntConstant(makeUintType(32),           u, specConstant); }
-    Id makeInt64Constant(long long i, bool specConstant = false)            { return makeInt64Constant(makeIntType(64),  (unsigned long long)i, specConstant); }
-    Id makeUint64Constant(unsigned long long u, bool specConstant = false)  { return makeInt64Constant(makeUintType(64),                     u, specConstant); }
+    Id makeIntConstant(int i, unsigned width, bool specConstant = false)    { return makeIntConstant(makeIntType(width),  (unsigned)i, specConstant); }
+    Id makeIntConstant(int i, bool specConstant)                            { return makeIntConstant(i, 32, specConstant); }
+    Id makeIntConstant(int i)                                               { return makeIntConstant(i, 32, false); }
+    Id makeUintConstant(unsigned u, unsigned width, bool specConstant = false)  { return makeIntConstant(makeUintType(width), u, specConstant); }
+    Id makeUintConstant(unsigned u, bool specConstant)                          { return makeUintConstant(u, 32, specConstant); }
+    Id makeUintConstant(unsigned u)                                             { return makeUintConstant(u, 32, false); }
+    Id makeInt64Constant(long long i, unsigned width = 64, bool specConstant = false)   { return makeInt64Constant(makeIntType(width),  (unsigned long long)i, specConstant); }
+    Id makeInt64Constant(long long i, bool specConstant)                                { return makeInt64Constant(i, 64, specConstant); }
+    Id makeInt64Constant(long long i)                                                   { return makeInt64Constant(i, 64, false); }
+    Id makeUint64Constant(unsigned long long u, unsigned width = 64, bool specConstant = false) { return makeInt64Constant(makeUintType(width), u, specConstant); }
+    Id makeUint64Constant(unsigned long long u, bool specConstant)                              { return makeUint64Constant(u, 64, specConstant); }
+    Id makeUint64Constant(unsigned long long u)                                                 { return makeUint64Constant(u, 64, false); }
 #ifdef AMD_EXTENSIONS
-    Id makeInt16Constant(short i, bool specConstant = false)        { return makeIntConstant(makeIntType(16),      (unsigned)((unsigned short)i), specConstant); }
-    Id makeUint16Constant(unsigned short u, bool specConstant = false)  { return makeIntConstant(makeUintType(16), (unsigned)u, specConstant); }
+    Id makeInt16Constant(short i, unsigned width = 16, bool specConstant = false)   { return makeIntConstant(makeIntType(width), (unsigned)((unsigned short)i), specConstant); }
+    Id makeInt16Constant(short i, bool specConstant)                                { return makeInt16Constant(i, 16, specConstant); }
+    Id makeInt16Constant(short i)                                                   { return makeInt16Constant(i, 16, false); }
+    Id makeUint16Constant(unsigned short u, unsigned width = 16, bool specConstant = false) { return makeIntConstant(makeUintType(width), (unsigned)u, specConstant); }
+    Id makeUint16Constant(unsigned short u, bool specConstant)                              { return makeUint16Constant(u, 16, specConstant); }
+    Id makeUint16Constant(unsigned short u)                                                 { return makeUint16Constant(u, 16, false); }
 #endif
     Id makeFloatConstant(float f, bool specConstant = false);
     Id makeDoubleConstant(double d, bool specConstant = false);
