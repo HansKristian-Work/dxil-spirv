@@ -919,7 +919,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		frontier_phi.type_id = phi.type_id;
 		module.get_builder().addName(frontier_phi.id, (String("frontier_phi_") + frontier->name).c_str());
 
-		assert(!frontier->pred_back_edge);
+		//assert(!frontier->pred_back_edge);
 		for (auto *input : frontier->pred)
 		{
 			auto itr = find_incoming_value(input, incoming_values);
