@@ -448,8 +448,10 @@ enum class GSStageOutTags : uint32_t
 enum class BarrierMode : uint8_t
 {
 	Invalid = 0,
+	DeviceMemoryBarrier = 2,
 	GroupMemoryBarrier = 8,
 	AllMemoryBarrier = 10,
+	DeviceMemoryBarrierWithGroupSync = 3,
 	GroupMemoryBarrierWithGroupSync = 9,
 	AllMemoryBarrierWithGroupSync = 11
 };
