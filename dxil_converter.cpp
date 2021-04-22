@@ -541,7 +541,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
-		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -stride);
+		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
 
 		DescriptorTableEntry local_table_entry = {};
 		int local_root_signature_entry = get_local_root_signature_entry(
@@ -908,7 +908,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				stride = get_constant_metadata(tags, 1);
 		}
 
-		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -stride);
+		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
 
 		auto &access_meta = uav_access_tracking[index];
 		if (resource_kind != DXIL::ResourceKind::RawBuffer && resource_kind != DXIL::ResourceKind::StructuredBuffer)
