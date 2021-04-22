@@ -1009,6 +1009,9 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	}
 	impl.add(counter_ptr_op);
 
+	if (meta.non_uniform)
+		builder.addDecoration(counter_ptr_op->id, spv::DecorationNonUniformEXT);
+
 	Operation *op =
 	    impl.allocate(spv::OpAtomicCompareExchange, instruction, impl.get_type_id(meta.component_type, 1, 1));
 
