@@ -8,13 +8,13 @@ struct _11
 };
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT AS;
-rayPayloadInEXT _11 payload;
-layout(location = 0) rayPayloadEXT _11 _15;
+layout(location = 0) rayPayloadInEXT _11 payload;
+layout(location = 1) rayPayloadEXT _11 _15;
 
 void main()
 {
     _15._m0 = payload._m0;
-    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
     payload._m0 = _15._m0;
 }
 

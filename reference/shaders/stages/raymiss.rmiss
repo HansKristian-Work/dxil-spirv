@@ -7,7 +7,7 @@ struct _7
     vec4 _m0;
 };
 
-rayPayloadInEXT _7 payload;
+layout(location = 0) rayPayloadInEXT _7 payload;
 
 void main()
 {

@@ -7,7 +7,7 @@ struct _6
     float _m0;
 };
 
-callableDataInEXT _6 payload;
+layout(location = 0) callableDataInEXT _6 payload;
 
 void main()
 {

@@ -23,7 +23,7 @@ layout(push_constant, std430) uniform RootConstants
 } registers;
 
 layout(set = 0, binding = 0) uniform texture2D _13[];
-rayPayloadInEXT _15 payload;
+layout(location = 0) rayPayloadInEXT _15 payload;
 
 vec4 _75;
 

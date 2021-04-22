@@ -12,7 +12,7 @@ struct _11
     vec2 _m0;
 };
 
-rayPayloadInEXT _7 payload;
+layout(location = 0) rayPayloadInEXT _7 payload;
 hitAttributeEXT _11 hit;
 
 vec3 _59;

@@ -34,7 +34,7 @@ void main()
     vec4 _53 = textureOffset(sampler2D(_13[registers._m0], _17[registers._m2 + 3u]), vec2(UV.x, UV.y), ivec2(0));
     vec4 _68 = textureOffset(sampler2D(_13[registers._m0], _17[registers._m2 + 5u]), vec2(UV.x, UV.y), ivec2(0));
     vec4 _99 = textureOffset(sampler2D(_13[registers._m0], _17[registers._m2 + (uvec4(registers._m4, registers._m5, registers._m6, registers._m7).x + 4u)]), vec2(UV.x, UV.y), ivec2(0));
-    vec4 _117 = textureOffset(nonuniformEXT(sampler2D(_13[registers._m0], _17[nonuniformEXT(registers._m2 + (INDEX + 100u))])), vec2(UV.x, UV.y), ivec2(0));
+    vec4 _117 = textureOffset(nonuniformEXT(sampler2D(_13[registers._m0], _17[registers._m2 + (INDEX + 100u)])), vec2(UV.x, UV.y), ivec2(0));
     SV_Target.x = ((_68.x + _53.x) + _99.x) + _117.x;
     SV_Target.y = ((_68.y + _53.y) + _99.y) + _117.y;
     SV_Target.z = ((_68.z + _53.z) + _99.z) + _117.z;

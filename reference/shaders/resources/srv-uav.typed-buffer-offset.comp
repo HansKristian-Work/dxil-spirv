@@ -112,6 +112,7 @@ OpDecorate %173 NonUniform
 OpDecorate %196 NonUniform
 OpDecorate %197 NonUniform
 OpDecorate %205 NonUniform
+OpDecorate %212 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

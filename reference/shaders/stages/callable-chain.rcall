@@ -7,13 +7,13 @@ struct _6
     float _m0;
 };
 
-callableDataInEXT _6 payload;
-layout(location = 0) callableDataEXT _6 _10;
+layout(location = 0) callableDataInEXT _6 payload;
+layout(location = 1) callableDataEXT _6 _10;
 
 void main()
 {
     _10._m0 = payload._m0;
-    executeCallableEXT(0u, 0);
+    executeCallableEXT(0u, 1);
     payload._m0 = _10._m0;
 }
 

@@ -11,7 +11,7 @@ struct _16
 
 layout(set = 0, binding = 0) uniform texture2D Tex[2];
 layout(set = 1, binding = 0) uniform texture2D TexUnsized[];
-rayPayloadInEXT _16 payload;
+layout(location = 0) rayPayloadInEXT _16 payload;
 
 vec4 _52;
 

@@ -8,7 +8,7 @@ void main()
     SV_Target.y = 1.0;
     SV_Target.z = 1.0;
     SV_Target.w = 1.0;
-    gl_SampleMask[0u] = gl_SampleMaskIn[0u] & 3u;
+    gl_SampleMask[0u] = int(uint(gl_SampleMaskIn[0u]) & 3u);
 }
 
 

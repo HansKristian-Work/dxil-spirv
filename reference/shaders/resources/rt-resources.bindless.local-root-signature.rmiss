@@ -93,7 +93,7 @@ layout(push_constant, std430) uniform RootConstants
 layout(set = 0, binding = 0) uniform texture2D _21[];
 layout(set = 3, binding = 0, r32f) uniform readonly image2D _25[];
 layout(set = 2, binding = 0) uniform sampler _36[];
-rayPayloadInEXT _37 payload;
+layout(location = 0) rayPayloadInEXT _37 payload;
 
 vec4 _433;
 float _448;
@@ -112,7 +112,7 @@ void main()
     AddCarry _198;
     _198._m0 = uaddCarry(SBT._m6.x, 1u * 16u, _198._m1);
     PhysicalPointerFloat4NonWrite _205 = PhysicalPointerFloat4NonWrite(uvec2(_198._m0, SBT._m6.y + _198._m1));
-    vec4 _236 = textureLodOffset(nonuniformEXT(sampler2D(_21[registers._m0 + (payload._m1 & 1u)], _36[nonuniformEXT((SBT._m10.x >> 5u) + 13u)])), vec2(0.5), 0.0, ivec2(0));
+    vec4 _236 = textureLodOffset(nonuniformEXT(sampler2D(_21[registers._m0 + (payload._m1 & 1u)], _36[(SBT._m10.x >> 5u) + 13u])), vec2(0.5), 0.0, ivec2(0));
     vec4 _264 = textureLodOffset(sampler2D(_21[registers._m0 + payload._m1], _36[((SBT._m10.x >> 5u) + 14u) + (payload._m1 ^ 1u)]), vec2(0.5), 0.0, ivec2(0));
     AddCarry _280;
     _280._m0 = uaddCarry(SBT._m2.x, (payload._m1 * 16u) + 0u, _280._m1);

@@ -4,7 +4,7 @@ layout(location = 0) out uint SV_Target;
 
 void main()
 {
-    SV_Target = gl_SampleMaskIn[0u];
+    SV_Target = uint(gl_SampleMaskIn[0u]);
 }
 
 
