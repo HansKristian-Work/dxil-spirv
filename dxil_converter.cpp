@@ -2063,7 +2063,8 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 	case llvm::Type::TypeID::IntegerTyID:
 	{
 		unsigned integer_width = forced_width ? forced_width : constant->getType()->getIntegerBitWidth();
-		switch (integer_width)
+		int physical_width = physical_integer_bit_width(integer_width);
+		switch (physical_width)
 		{
 		case 1:
 			return builder.makeBoolConstant(constant->getUniqueInteger().getZExtValue() != 0);
@@ -2336,7 +2337,10 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 		if (type->getIntegerBitWidth() == 1)
 			return builder.makeBoolType();
 		else
-			return builder.makeIntegerType(type->getIntegerBitWidth(), false);
+		{
+			auto width = physical_integer_bit_width(type->getIntegerBitWidth());
+			return builder.makeIntegerType(width, false);
+		}
 
 	case llvm::Type::TypeID::PointerTyID:
 	{

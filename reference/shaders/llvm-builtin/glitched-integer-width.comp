@@ -1,0 +1,122 @@
+#version 460
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std140) uniform _13_15
+{
+    vec4 _m0[1];
+} _15;
+
+layout(set = 0, binding = 0) uniform writeonly image2DArray _8;
+
+void main()
+{
+    uint _24;
+    bool _27;
+    for (;;)
+    {
+        _24 = floatBitsToUint(_15._m0[0u]).x + 4294967295u;
+        _27 = _24 < 11u;
+        if (_27)
+        {
+            if (bitfieldExtract((bitfieldExtract(440u, int(0u), int(11u)) >> bitfieldExtract(bitfieldExtract(_24, int(0u), int(11u)), int(0u), int(11u))) & 1u, int(0u), int(11u)) == bitfieldExtract(0u, int(0u), int(11u)))
+            {
+                imageStore(_8, ivec3(uvec3(1u)), vec4(1.0));
+                break;
+            }
+        }
+        imageStore(_8, ivec3(uvec3(1u)), vec4(0.0));
+        break;
+    }
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 54
+; Schema: 0
+OpCapability Shader
+OpCapability StorageImageWriteWithoutFormat
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main"
+OpExecutionMode %3 LocalSize 8 8 1
+OpName %3 "main"
+OpName %13 ""
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %12 ArrayStride 16
+OpMemberDecorate %13 0 Offset 0
+OpDecorate %13 Block
+OpDecorate %15 DescriptorSet 0
+OpDecorate %15 Binding 0
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeImage %5 2D 0 1 0 2 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeInt 32 0
+%10 = OpConstant %9 1
+%11 = OpTypeVector %5 4
+%12 = OpTypeArray %11 %10
+%13 = OpTypeStruct %12
+%14 = OpTypePointer Uniform %13
+%15 = OpVariable %14 Uniform
+%17 = OpConstant %9 0
+%18 = OpTypePointer Uniform %11
+%21 = OpTypeVector %9 4
+%25 = OpConstant %9 4294967295
+%26 = OpTypeBool
+%28 = OpConstant %9 11
+%31 = OpConstant %9 440
+%38 = OpConstant %5 0
+%39 = OpTypeVector %9 3
+%42 = OpConstant %5 1
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %45
+%45 = OpLabel
+%16 = OpLoad %6 %8
+%19 = OpAccessChain %18 %15 %17 %17
+%20 = OpLoad %11 %19
+%22 = OpBitcast %21 %20
+%23 = OpCompositeExtract %9 %22 0
+%24 = OpIAdd %9 %23 %25
+%27 = OpULessThan %26 %24 %28
+OpLoopMerge %51 %52 None
+OpBranch %46
+%46 = OpLabel
+OpSelectionMerge %49 None
+OpBranchConditional %27 %47 %49
+%47 = OpLabel
+%29 = OpBitFieldUExtract %9 %24 %17 %28
+%32 = OpBitFieldUExtract %9 %31 %17 %28
+%33 = OpBitFieldUExtract %9 %29 %17 %28
+%30 = OpShiftRightLogical %9 %32 %33
+%34 = OpBitwiseAnd %9 %30 %10
+%36 = OpBitFieldUExtract %9 %34 %17 %28
+%37 = OpBitFieldUExtract %9 %17 %17 %28
+%35 = OpIEqual %26 %36 %37
+OpSelectionMerge %48 None
+OpBranchConditional %35 %50 %48
+%50 = OpLabel
+%43 = OpCompositeConstruct %39 %10 %10 %10
+%44 = OpCompositeConstruct %11 %42 %42 %42 %42
+OpImageWrite %16 %43 %44
+OpBranch %51
+%48 = OpLabel
+OpBranch %49
+%49 = OpLabel
+%40 = OpCompositeConstruct %39 %10 %10 %10
+%41 = OpCompositeConstruct %11 %38 %38 %38 %38
+OpImageWrite %16 %40 %41
+OpBranch %51
+%52 = OpLabel
+OpBranch %45
+%51 = OpLabel
+OpReturn
+OpFunctionEnd
+#endif

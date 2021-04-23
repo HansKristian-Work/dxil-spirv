@@ -1,0 +1,44 @@
+cbuffer buffer1 : register (b0) 
+{ 
+    uint cbSwitch;
+}; 
+
+struct struct1 
+{ 
+    float4 value1; 
+}; 
+
+cbuffer buffer2 : register (b1) 
+{ 
+    struct1 g_struct1; 
+} 
+
+RWTexture2DArray<float3> out1 : register(u0); 
+
+[numthreads(8, 8, 1)] 
+void main() 
+{ 
+    const float3 variable1 = float3(1.0f, 1.0f, 1.0f);
+    
+    bool variable3 = true; 
+    switch (cbSwitch) 
+    { 
+	case 1:
+	case 2:
+	case 3:
+	case 7:
+	case 10:
+	case 11:
+        variable3 = false; 
+        break; 
+    } 
+    
+    if (variable3) 
+    {
+        out1[variable1] = float3(0, 0, 0);
+    } 
+    else
+    {
+        out1[variable1] = float3(1, 1, 1);
+    }
+}
