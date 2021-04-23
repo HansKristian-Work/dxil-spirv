@@ -1496,15 +1496,15 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 		bool inbounds = entry.ops[0] != 0;
 		auto *type = get_type(entry.ops[1]);
-		unsigned count = entry.ops.size() - 2;
+		unsigned count = entry.ops.size();
 		Vector<Value *> args;
 		args.reserve(count);
-		for (unsigned i = 0; i < count; i++)
+		for (unsigned i = 2; i < count;)
 		{
-			auto *value = get_value(entry.ops[i + 2]);
-			if (!value)
+			auto value = get_value_and_type(entry.ops, i);
+			if (!value.first)
 				return false;
-			args.push_back(value);
+			args.push_back(value.first);
 		}
 
 		type = resolve_gep_element_type(type, args);
