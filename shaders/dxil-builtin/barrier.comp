@@ -12,4 +12,7 @@ void main()
 	Buf.Store(0, 20u);
 	AllMemoryBarrierWithGroupSync();
 	Buf.Store(0, 30u);
+	DeviceMemoryBarrier();
+	Buf.Store(0, 40u);
+	DeviceMemoryBarrierWithGroupSync();
 }

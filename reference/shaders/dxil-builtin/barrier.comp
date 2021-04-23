@@ -15,6 +15,12 @@ void main()
     memoryBarrier();
     barrier();
     imageStore(_8, int(0u), uvec4(30u));
+    memoryBarrierBuffer();
+    memoryBarrierImage();
+    imageStore(_8, int(0u), uvec4(40u));
+    memoryBarrierBuffer();
+    memoryBarrierImage();
+    barrier();
 }
 
 
@@ -23,7 +29,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 28
+; Bound: 31
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -51,10 +57,12 @@ OpDecorate %8 NonReadable
 %20 = OpConstant %5 15
 %22 = OpConstant %5 20
 %24 = OpConstant %5 30
+%26 = OpConstant %5 2120
+%27 = OpConstant %5 40
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %26
-%26 = OpLabel
+OpBranch %29
+%29 = OpLabel
 %9 = OpLoad %6 %8
 %13 = OpCompositeConstruct %12 %11 %11 %11 %11
 OpImageWrite %9 %10 %13
@@ -70,6 +78,10 @@ OpImageWrite %9 %10 %23
 OpControlBarrier %14 %18 %19
 %25 = OpCompositeConstruct %12 %24 %24 %24 %24
 OpImageWrite %9 %10 %25
+OpMemoryBarrier %18 %26
+%28 = OpCompositeConstruct %12 %27 %27 %27 %27
+OpImageWrite %9 %10 %28
+OpControlBarrier %14 %18 %26
 OpReturn
 OpFunctionEnd
 #endif
