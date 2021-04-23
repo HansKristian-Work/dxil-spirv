@@ -43,4 +43,6 @@ bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetEle
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
 
 bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instruction);
+
+unsigned physical_integer_bit_width(unsigned width);
 } // namespace dxil_spv

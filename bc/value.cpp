@@ -123,42 +123,22 @@ APFloat::APFloat(Type *type_, uint64_t value_)
 
 int64_t APInt::getSExtValue() const
 {
-	switch (cast<IntegerType>(type)->getBitWidth())
-	{
-	case 1:
-		return (value & 1) != 0 ? -1 : 0;
-	case 8:
-		return int8_t(value);
-	case 16:
-		return int16_t(value);
-	case 32:
-		return int32_t(value);
-	case 64:
+	auto width = cast<IntegerType>(type)->getBitWidth();
+	if (width == 64)
 		return int64_t(value);
-	default:
-		LOGE("Unrecognized bitwidth.\n");
-		return 0;
-	}
+	auto mask = (1ull << width) - 1;
+	bool sign_bit = ((value >> (width - 1)) & 1) != 0;
+	uint64_t extended = sign_bit ? ~mask : 0ull;
+	return int64_t((value & mask) | extended);
 }
 
 uint64_t APInt::getZExtValue() const
 {
-	switch (cast<IntegerType>(type)->getBitWidth())
-	{
-	case 1:
-		return value & 1;
-	case 8:
-		return uint8_t(value);
-	case 16:
-		return uint16_t(value);
-	case 32:
-		return uint32_t(value);
-	case 64:
-		return uint64_t(value);
-	default:
-		LOGE("Unrecognized bitwidth.\n");
-		return 0;
-	}
+	auto width = cast<IntegerType>(type)->getBitWidth();
+	if (width == 64)
+		return value;
+	auto mask = (1ull << width) - 1u;
+	return value & mask;
 }
 
 ConstantFP *ConstantFP::get(Type *type, uint64_t value)

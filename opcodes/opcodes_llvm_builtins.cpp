@@ -23,9 +23,63 @@
 
 namespace dxil_spv
 {
+unsigned physical_integer_bit_width(unsigned width)
+{
+	switch (width)
+	{
+	case 1:
+	case 8:
+	case 16:
+	case 32:
+	case 64:
+		return width;
+
+	default:
+		return width <= 32 ? 32 : 64;
+	}
+}
+
+static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm::Value *value,
+                                              unsigned bits, bool is_signed)
+{
+	spv::Id id = impl.get_id_for_value(value);
+	if (value->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+		return id;
+
+	auto logical_bits = value->getType()->getIntegerBitWidth();
+	auto physical_bits = physical_integer_bit_width(logical_bits);
+
+	if (bits == 0)
+		bits = logical_bits;
+	if (bits == physical_bits)
+		return id;
+
+	auto &builder = impl.builder();
+	auto *mask_op = impl.allocate(is_signed ? spv::OpBitFieldSExtract : spv::OpBitFieldUExtract,
+	                              impl.get_type_id(value->getType()));
+	mask_op->add_id(id);
+	mask_op->add_id(builder.makeUintConstant(0));
+	mask_op->add_id(builder.makeUintConstant(bits));
+	impl.add(mask_op);
+	return mask_op->id;
+}
+
+static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm::Value *value, bool is_signed)
+{
+	spv::Id id = impl.get_id_for_value(value);
+	if (value->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+		return id;
+
+	auto logical_bits = value->getType()->getIntegerBitWidth();
+	return build_naturally_extended_value(impl, value, logical_bits, is_signed);
+}
+
 bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
 {
+	bool signed_input = false;
+	bool is_width_sensitive = false;
 	spv::Op opcode;
+
 	switch (instruction->getOpcode())
 	{
 	case llvm::BinaryOperator::BinaryOps::FAdd:
@@ -58,10 +112,13 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 
 	case llvm::BinaryOperator::BinaryOps::SDiv:
 		opcode = spv::OpSDiv;
+		signed_input = true;
+		is_width_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::UDiv:
 		opcode = spv::OpUDiv;
+		is_width_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Shl:
@@ -70,14 +127,19 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 
 	case llvm::BinaryOperator::BinaryOps::LShr:
 		opcode = spv::OpShiftRightLogical;
+		is_width_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::AShr:
 		opcode = spv::OpShiftRightArithmetic;
+		signed_input = true;
+		is_width_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::SRem:
 		opcode = spv::OpSRem;
+		signed_input = true;
+		is_width_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FRem:
@@ -87,6 +149,7 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 	case llvm::BinaryOperator::BinaryOps::URem:
 		// Is this correct? There is no URem.
 		opcode = spv::OpUMod;
+		is_width_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Xor:
@@ -141,8 +204,17 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 
 	Operation *op = impl.allocate(opcode, instruction);
 
-	uint32_t id0 = impl.get_id_for_value(instruction->getOperand(0));
-	uint32_t id1 = impl.get_id_for_value(instruction->getOperand(1));
+	uint32_t id0, id1;
+	if (is_width_sensitive)
+	{
+		id0 = build_naturally_extended_value(impl, instruction->getOperand(0), signed_input);
+		id1 = build_naturally_extended_value(impl, instruction->getOperand(1), signed_input);
+	}
+	else
+	{
+		id0 = impl.get_id_for_value(instruction->getOperand(0));
+		id1 = impl.get_id_for_value(instruction->getOperand(1));
+	}
 	op->add_ids({ id0, id1 });
 
 	impl.add(op);
@@ -175,9 +247,11 @@ static bool emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm::Ca
 {
 	auto &builder = impl.builder();
 	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+	op->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), false));
 
-	switch (instruction->getOperand(0)->getType()->getIntegerBitWidth())
+	unsigned physical_width = physical_integer_bit_width(instruction->getOperand(0)->getType()->getIntegerBitWidth());
+
+	switch (physical_width)
 	{
 	case 16:
 		op->add_id(builder.makeUint16Constant(0));
@@ -223,7 +297,7 @@ static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::
 		break;
 
 	case llvm::Type::TypeID::IntegerTyID:
-		switch (instruction->getType()->getIntegerBitWidth())
+		switch (physical_integer_bit_width(instruction->getType()->getIntegerBitWidth()))
 		{
 		case 16:
 			const_0 = builder.makeUint16Constant(0);
@@ -233,6 +307,11 @@ static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::
 		case 32:
 			const_0 = builder.makeUintConstant(0);
 			const_1 = builder.makeUintConstant(is_signed ? 0xffffffffu : 1u);
+			break;
+
+		case 64:
+			const_0 = builder.makeUint64Constant(0ull);
+			const_1 = builder.makeUint64Constant(is_signed ? ~0ull : 1ull);
 			break;
 
 		default:
@@ -251,9 +330,39 @@ static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::
 	return true;
 }
 
+static bool emit_masked_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, spv::Op opcode)
+{
+	auto logical_output_bits = instruction->getType()->getIntegerBitWidth();
+	auto logical_input_bits = instruction->getOperand(0)->getType()->getIntegerBitWidth();
+	auto physical_output_bits = physical_integer_bit_width(logical_output_bits);
+	auto physical_input_bits = physical_integer_bit_width(logical_input_bits);
+	auto logical_bits = (std::min)(logical_output_bits, logical_input_bits);
+
+	if (physical_output_bits == physical_input_bits)
+	{
+		// We cannot use a cast operation in SPIR-V here, just extend the value to physical size and roll with it.
+		spv::Id extended_id = build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits,
+		                                                     opcode == spv::OpSConvert);
+		impl.value_map[instruction] = extended_id;
+		return true;
+	}
+	else if (physical_input_bits != logical_input_bits)
+	{
+		// Before extending, we must properly sign-extend.
+		auto *mask_op = impl.allocate(opcode, instruction);
+		mask_op->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits,
+		                                               opcode == spv::OpSConvert));
+		impl.add(mask_op);
+		return true;
+	}
+
+	return false;
+}
+
 bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
 {
 	spv::Op opcode;
+	bool signed_input = false;
 
 	switch (instruction->getOpcode())
 	{
@@ -265,18 +374,25 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, true);
 		opcode = spv::OpSConvert;
+		signed_input = true;
+		if (emit_masked_cast_instruction(impl, instruction, opcode))
+			return true;
 		break;
 
 	case llvm::CastInst::CastOps::ZExt:
 		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, false);
 		opcode = spv::OpUConvert;
+		if (emit_masked_cast_instruction(impl, instruction, opcode))
+		    return true;
 		break;
 
 	case llvm::CastInst::CastOps::Trunc:
 		if (instruction->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_trunc_instruction(impl, instruction);
 		opcode = spv::OpUConvert;
+		if (emit_masked_cast_instruction(impl, instruction, opcode))
+			return true;
 		break;
 
 	case llvm::CastInst::CastOps::FPTrunc:
@@ -296,6 +412,7 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, true);
 		opcode = spv::OpConvertSToF;
+		signed_input = true;
 		break;
 
 	case llvm::CastInst::CastOps::UIToFP:
@@ -339,7 +456,7 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 	else
 	{
 		Operation *op = impl.allocate(opcode, instruction);
-		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		op->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), signed_input));
 		impl.add(op);
 	}
 	return true;
@@ -551,7 +668,9 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 
 bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instruction)
 {
+	bool signed_input = false;
 	spv::Op opcode;
+
 	switch (instruction->getPredicate())
 	{
 	case llvm::CmpInst::Predicate::FCMP_OEQ:
@@ -632,18 +751,22 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 
 	case llvm::CmpInst::Predicate::ICMP_SLT:
 		opcode = spv::OpSLessThan;
+		signed_input = true;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_SLE:
 		opcode = spv::OpSLessThanEqual;
+		signed_input = true;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_SGT:
 		opcode = spv::OpSGreaterThan;
+		signed_input = true;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_SGE:
 		opcode = spv::OpSGreaterThanEqual;
+		signed_input = true;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_ULT:
@@ -704,8 +827,9 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 	}
 
 	Operation *op = impl.allocate(opcode, instruction);
-	uint32_t id0 = impl.get_id_for_value(instruction->getOperand(0));
-	uint32_t id1 = impl.get_id_for_value(instruction->getOperand(1));
+
+	uint32_t id0 = build_naturally_extended_value(impl, instruction->getOperand(0), signed_input);
+	uint32_t id1 = build_naturally_extended_value(impl, instruction->getOperand(1), signed_input);
 	op->add_ids({ id0, id1 });
 
 	impl.add(op);
