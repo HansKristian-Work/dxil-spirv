@@ -116,7 +116,7 @@ private:
 	Vector<CFGNode *> post_dominance_frontier;
 
 private:
-	bool dominates_all_reachable_exits(std::unordered_set<const CFGNode *>& completed, const CFGNode &header) const;
+	bool dominates_all_reachable_exits(UnorderedSet<const CFGNode *>& completed, const CFGNode &header) const;
 	template <typename Op>
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op);
 	template <typename Op>
