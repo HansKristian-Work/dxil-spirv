@@ -35,6 +35,15 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	switch (static_cast<DXIL::BarrierMode>(operation))
 	{
+	case DXIL::BarrierMode::DeviceMemoryBarrierWithGroupSync:
+		op = impl.allocate(spv::OpControlBarrier);
+		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(
+			builder.makeUintConstant(spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask |
+		                             spv::MemorySemanticsAcquireReleaseMask));
+		break;
+
 	case DXIL::BarrierMode::GroupMemoryBarrierWithGroupSync:
 		op = impl.allocate(spv::OpControlBarrier);
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
@@ -50,6 +59,14 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		op->add_id(
 		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsImageMemoryMask |
 		                             spv::MemorySemanticsUniformMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+		break;
+
+	case DXIL::BarrierMode::DeviceMemoryBarrier:
+		op = impl.allocate(spv::OpMemoryBarrier);
+		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(
+			builder.makeUintConstant(spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask |
+		                             spv::MemorySemanticsAcquireReleaseMask));
 		break;
 
 	case DXIL::BarrierMode::GroupMemoryBarrier:
