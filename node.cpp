@@ -192,21 +192,27 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 	return this == start_node;
 }
 
-bool CFGNode::dominates_all_reachable_exits(const CFGNode &header) const
+bool CFGNode::dominates_all_reachable_exits(std::unordered_set<const CFGNode *> &completed, const CFGNode &header) const
 {
-	if (succ_back_edge)
-		return false;
-
-	for (auto *node : succ)
-		if (!header.dominates(node) || !node->dominates_all_reachable_exits(header))
+	if (completed.find(this) == completed.end())
+	{
+		if (succ_back_edge)
 			return false;
+
+		for (auto *node : succ)
+			if (!header.dominates(node) || !node->dominates_all_reachable_exits(completed, header))
+				return false;
+
+		completed.insert(this);
+	}
 
 	return true;
 }
 
 bool CFGNode::dominates_all_reachable_exits() const
 {
-	return dominates_all_reachable_exits(*this);
+	std::unordered_set<const CFGNode *> completed;
+	return dominates_all_reachable_exits(completed, *this);
 }
 
 CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
