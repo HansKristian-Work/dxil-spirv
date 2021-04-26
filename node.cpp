@@ -136,6 +136,10 @@ bool CFGNode::can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode
 
 bool CFGNode::can_backtrace_to(const CFGNode *parent) const
 {
+	// If parent can branch to this, then post_order(parent) must be greater than post_order(this).
+	if (parent->forward_post_visit_order < forward_post_visit_order)
+		return false;
+
 	UnorderedSet<const CFGNode *> node_cache;
 	return can_backtrace_to(parent, node_cache);
 }

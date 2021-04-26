@@ -2508,6 +2508,8 @@ void CFGStructurizer::split_merge_blocks()
 		          });
 
 		//LOGI("Splitting merge blocks for %s\n", node->name.c_str());
+		//for (auto *header : node->headers)
+		//	LOGI("  Header: %s.\n", header->name.c_str());
 
 		CFGNode *full_break_target = nullptr;
 
@@ -2531,8 +2533,21 @@ void CFGStructurizer::split_merge_blocks()
 			{
 				if (node->headers[j - 1]->merge == MergeType::Loop)
 				{
-					target_header = node->headers[j - 1];
-					break;
+					// We might have two loops, each at equal scopes.
+					// In order to break out to an outer loop, we must verify that the loops actually nest.
+					// We must not introduce any backwards branches here.
+					auto *candidate_header = node->headers[j - 1];
+					CFGNode *candidate_merge = nullptr;
+					if (candidate_header->loop_ladder_block)
+						candidate_merge = candidate_header->loop_ladder_block;
+					else if (candidate_header->loop_merge_block)
+						candidate_merge = candidate_header->loop_merge_block;
+
+					if (candidate_merge && !candidate_merge->dominates(node->headers[i]))
+					{
+						target_header = candidate_header;
+						break;
+					}
 				}
 			}
 
