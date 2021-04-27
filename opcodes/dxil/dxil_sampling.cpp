@@ -88,8 +88,9 @@ bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num
 	return true;
 }
 
-static void get_texel_offsets(Converter::Impl &impl, const llvm::CallInst *instruction, uint32_t &image_flags,
-                              unsigned base_operand, unsigned num_coords, spv::Id *offsets)
+static bool get_texel_offsets(Converter::Impl &impl, const llvm::CallInst *instruction, uint32_t &image_flags,
+                              unsigned base_operand, unsigned num_coords, spv::Id *offsets,
+                              bool allow_non_const_offsets)
 {
 	auto &builder = impl.builder();
 
@@ -109,6 +110,8 @@ static void get_texel_offsets(Converter::Impl &impl, const llvm::CallInst *instr
 			}
 			else
 			{
+				if (!allow_non_const_offsets)
+					return false;
 				builder.addCapability(spv::CapabilityImageGatherExtended);
 				is_const_offset = false;
 				has_non_zero_offset = true;
@@ -119,7 +122,12 @@ static void get_texel_offsets(Converter::Impl &impl, const llvm::CallInst *instr
 
 	// Don't bother emitting offset if they are all 0.
 	if (!has_non_zero_offset)
-		return;
+		return true;
+
+	if (is_const_offset)
+		image_flags |= spv::ImageOperandsConstOffsetMask;
+	else
+		image_flags |= spv::ImageOperandsOffsetMask;
 
 	for (unsigned i = 0; i < num_coords; i++)
 	{
@@ -129,18 +137,22 @@ static void get_texel_offsets(Converter::Impl &impl, const llvm::CallInst *instr
 			if (is_const_offset)
 			{
 				auto *constant_arg = llvm::dyn_cast<llvm::ConstantInt>(operand);
-				image_flags |= spv::ImageOperandsConstOffsetMask;
 				offsets[i] = builder.makeIntConstant(int(constant_arg->getUniqueInteger().getSExtValue()));
 			}
 			else
 			{
-				image_flags |= spv::ImageOperandsOffsetMask;
-				offsets[i] = impl.get_id_for_value(operand);
+				// Makes sure when we build the array, it's the correct element type.
+				auto *cast_op = impl.allocate(spv::OpBitcast, builder.makeIntegerType(32, true));
+				impl.add(cast_op);
+				cast_op->add_id(impl.get_id_for_value(operand));
+				offsets[i] = cast_op->id;
 			}
 		}
 		else
 			offsets[i] = builder.makeIntConstant(0);
 	}
+
+	return true;
 }
 
 bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -174,7 +186,8 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		image_ops |= spv::ImageOperandsBiasMask;
 
 	spv::Id offsets[3] = {};
-	get_texel_offsets(impl, instruction, image_ops, 7, num_coords, offsets);
+	if (!get_texel_offsets(impl, instruction, image_ops, 7, num_coords, offsets, false))
+		return false;
 
 	spv::Id dref_id = 0;
 
@@ -253,9 +266,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	if (image_ops & (spv::ImageOperandsBiasMask | spv::ImageOperandsLodMask))
 		op->add_id(bias_level_argument);
 
-	if (image_ops & spv::ImageOperandsOffsetMask)
-		op->add_id(impl.build_vector(builder.makeIntegerType(32, true), offsets, num_coords));
-	else if (image_ops & spv::ImageOperandsConstOffsetMask)
+	if (image_ops & spv::ImageOperandsConstOffsetMask)
 		op->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
 
 	if (image_ops & spv::ImageOperandsMinLodMask)
@@ -309,7 +320,8 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		coord[i] = impl.get_id_for_value(instruction->getOperand(i + 3));
 
 	spv::Id offsets[3] = {};
-	get_texel_offsets(impl, instruction, image_ops, 7, num_coords, offsets);
+	if (!get_texel_offsets(impl, instruction, image_ops, 7, num_coords, offsets, false))
+		return false;
 
 	spv::Id grad_x[3] = {};
 	spv::Id grad_y[3] = {};
@@ -355,9 +367,7 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		op->add_id(impl.build_vector(builder.makeFloatType(32), grad_y, num_coords));
 	}
 
-	if (image_ops & spv::ImageOperandsOffsetMask)
-		op->add_id(impl.build_vector(builder.makeIntegerType(32, true), offsets, num_coords));
-	else if (image_ops & spv::ImageOperandsConstOffsetMask)
+	if (image_ops & spv::ImageOperandsConstOffsetMask)
 		op->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
 
 	if (image_ops & spv::ImageOperandsMinLodMask)
@@ -413,7 +423,8 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 		coord[i] = impl.get_id_for_value(instruction->getOperand(i + 3));
 
 	spv::Id offsets[3] = {};
-	get_texel_offsets(impl, instruction, image_ops, 6, num_coords, offsets);
+	if (!get_texel_offsets(impl, instruction, image_ops, 6, num_coords, offsets, false))
+		return false;
 
 	auto &access_meta = impl.llvm_composite_meta[instruction];
 	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
@@ -443,9 +454,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 		if (image_ops & spv::ImageOperandsLodMask)
 			op->add_id(mip_or_sample);
 
-		if (image_ops & spv::ImageOperandsOffsetMask)
-			op->add_id(impl.build_vector(builder.makeIntegerType(32, true), offsets, num_coords));
-		else if (image_ops & spv::ImageOperandsConstOffsetMask)
+		if (image_ops & spv::ImageOperandsConstOffsetMask)
 			op->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
 
 		if (image_ops & spv::ImageOperandsSampleMask)
@@ -685,8 +694,8 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
 	spv::Id coord_id = impl.build_vector(builder.makeFloatType(32), coords, num_coords_full);
 
-	if (num_coords == 2)
-		get_texel_offsets(impl, instruction, image_flags, 7, num_coords, offsets);
+	if (num_coords == 2 && !get_texel_offsets(impl, instruction, image_flags, 7, num_coords, offsets, true))
+		return false;
 
 	spv::Id aux_id;
 	if (compare)
