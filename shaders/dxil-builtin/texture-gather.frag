@@ -5,7 +5,7 @@ TextureCubeArray<float4> TexCubeArray : register(t7);
 
 SamplerState Samp : register(s1);
 
-float4 main(float4 UV : TEXCOORD) : SV_Target
+float4 main(float4 UV : TEXCOORD, nointerpolation int2 off : OFF) : SV_Target
 {
 	float4 res = 0.0.xxxx;
 
@@ -13,6 +13,8 @@ float4 main(float4 UV : TEXCOORD) : SV_Target
 	res += Tex2DArray.GatherGreen(Samp, UV.xyz);
 	res += TexCube.GatherBlue(Samp, UV.xyz);
 	res += TexCubeArray.GatherAlpha(Samp, UV);
+
+	res += Tex2D.Gather(Samp, UV.xy, off);
 
 	return res;
 }
