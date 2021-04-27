@@ -19,20 +19,20 @@ layout(location = 0) out ivec2 SV_Target;
 
 void main()
 {
-    uvec4 _77 = uvec4(texelFetch(_8, int(TEXCOORD.x), int(TEXCOORD.y)));
-    uvec4 _83 = uvec4(texelFetch(_11, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z)));
-    uvec4 _90 = uvec4(texelFetch(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z)));
-    uvec4 _98 = uvec4(texelFetch(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w)));
-    uvec4 _105 = uvec4(texelFetch(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w)));
-    uvec4 _112 = uvec4(texelFetch(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), TEXCOORD.z));
-    uvec4 _119 = uvec4(texelFetch(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), TEXCOORD.w));
-    uvec4 _125 = uvec4(imageLoad(_29, int(TEXCOORD.x)));
-    uvec4 _132 = uvec4(imageLoad(_32, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y))));
-    uvec4 _139 = uvec4(imageLoad(_35, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y))));
-    uvec4 _146 = uvec4(imageLoad(_38, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z))));
-    uvec4 _153 = uvec4(imageLoad(_41, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z))));
-    SV_Target.x = int(((((((((((_83.x + _77.x) + _90.x) + _98.x) + _105.x) + _112.x) + _119.x) + _125.x) + _132.x) + _139.x) + _146.x) + _153.x);
-    SV_Target.y = int(((((((((((_83.y + _77.y) + _90.y) + _98.y) + _105.y) + _112.y) + _119.y) + _125.y) + _132.y) + _139.y) + _146.y) + _153.y);
+    uvec4 _76 = uvec4(texelFetch(_8, int(TEXCOORD.x), int(TEXCOORD.y)));
+    uvec4 _82 = uvec4(texelFetch(_11, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z)));
+    uvec4 _89 = uvec4(texelFetch(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z)));
+    uvec4 _97 = uvec4(texelFetch(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w)));
+    uvec4 _104 = uvec4(texelFetch(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w)));
+    uvec4 _111 = uvec4(texelFetch(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), TEXCOORD.z));
+    uvec4 _118 = uvec4(texelFetch(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), TEXCOORD.w));
+    uvec4 _124 = uvec4(imageLoad(_29, int(TEXCOORD.x)));
+    uvec4 _131 = uvec4(imageLoad(_32, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y))));
+    uvec4 _138 = uvec4(imageLoad(_35, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y))));
+    uvec4 _145 = uvec4(imageLoad(_38, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z))));
+    uvec4 _152 = uvec4(imageLoad(_41, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z))));
+    SV_Target.x = int(((((((((((_82.x + _76.x) + _89.x) + _97.x) + _104.x) + _111.x) + _118.x) + _124.x) + _131.x) + _138.x) + _145.x) + _152.x);
+    SV_Target.y = int(((((((((((_82.y + _76.y) + _89.y) + _97.y) + _104.y) + _111.y) + _118.y) + _124.y) + _131.y) + _138.y) + _145.y) + _152.y);
 }
 
 
@@ -41,7 +41,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 165
+; Bound: 164
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
@@ -135,15 +135,14 @@ OpDecorate %48 Location 0
 %66 = OpConstant %42 1
 %69 = OpConstant %42 2
 %72 = OpConstant %42 3
-%74 = OpConstant %5 0
-%75 = OpTypeVector %5 4
-%81 = OpTypeVector %42 2
-%96 = OpTypeVector %42 3
-%158 = OpTypePointer Output %5
+%74 = OpTypeVector %5 4
+%80 = OpTypeVector %42 2
+%95 = OpTypeVector %42 3
+%157 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %163
-%163 = OpLabel
+OpBranch %162
+%162 = OpLabel
 %49 = OpLoad %39 %41
 %50 = OpLoad %36 %38
 %51 = OpLoad %33 %35
@@ -164,92 +163,92 @@ OpBranch %163
 %70 = OpLoad %42 %68
 %71 = OpAccessChain %61 %45 %72
 %73 = OpLoad %42 %71
-%76 = OpImageFetch %75 %60 %64 Lod %67
-%77 = OpBitcast %43 %76
-%78 = OpCompositeExtract %42 %77 0
-%79 = OpCompositeExtract %42 %77 1
-%82 = OpCompositeConstruct %81 %64 %67
-%80 = OpImageFetch %75 %59 %82 Lod %70
-%83 = OpBitcast %43 %80
-%84 = OpCompositeExtract %42 %83 0
-%85 = OpCompositeExtract %42 %83 1
+%75 = OpImageFetch %74 %60 %64 Lod %67
+%76 = OpBitcast %43 %75
+%77 = OpCompositeExtract %42 %76 0
+%78 = OpCompositeExtract %42 %76 1
+%81 = OpCompositeConstruct %80 %64 %67
+%79 = OpImageFetch %74 %59 %81 Lod %70
+%82 = OpBitcast %43 %79
+%83 = OpCompositeExtract %42 %82 0
+%84 = OpCompositeExtract %42 %82 1
+%85 = OpIAdd %42 %83 %77
 %86 = OpIAdd %42 %84 %78
-%87 = OpIAdd %42 %85 %79
-%89 = OpCompositeConstruct %81 %64 %67
-%88 = OpImageFetch %75 %58 %89 Lod %70
-%90 = OpBitcast %43 %88
-%91 = OpCompositeExtract %42 %90 0
-%92 = OpCompositeExtract %42 %90 1
+%88 = OpCompositeConstruct %80 %64 %67
+%87 = OpImageFetch %74 %58 %88 Lod %70
+%89 = OpBitcast %43 %87
+%90 = OpCompositeExtract %42 %89 0
+%91 = OpCompositeExtract %42 %89 1
+%92 = OpIAdd %42 %85 %90
 %93 = OpIAdd %42 %86 %91
-%94 = OpIAdd %42 %87 %92
-%97 = OpCompositeConstruct %96 %64 %67 %70
-%95 = OpImageFetch %75 %57 %97 Lod %73
-%98 = OpBitcast %43 %95
-%99 = OpCompositeExtract %42 %98 0
-%100 = OpCompositeExtract %42 %98 1
+%96 = OpCompositeConstruct %95 %64 %67 %70
+%94 = OpImageFetch %74 %57 %96 Lod %73
+%97 = OpBitcast %43 %94
+%98 = OpCompositeExtract %42 %97 0
+%99 = OpCompositeExtract %42 %97 1
+%100 = OpIAdd %42 %92 %98
 %101 = OpIAdd %42 %93 %99
-%102 = OpIAdd %42 %94 %100
-%104 = OpCompositeConstruct %96 %64 %67 %70
-%103 = OpImageFetch %75 %56 %104 Lod %73
-%105 = OpBitcast %43 %103
-%106 = OpCompositeExtract %42 %105 0
-%107 = OpCompositeExtract %42 %105 1
+%103 = OpCompositeConstruct %95 %64 %67 %70
+%102 = OpImageFetch %74 %56 %103 Lod %73
+%104 = OpBitcast %43 %102
+%105 = OpCompositeExtract %42 %104 0
+%106 = OpCompositeExtract %42 %104 1
+%107 = OpIAdd %42 %100 %105
 %108 = OpIAdd %42 %101 %106
-%109 = OpIAdd %42 %102 %107
-%111 = OpCompositeConstruct %81 %64 %67
-%110 = OpImageFetch %75 %55 %111 Sample %70
-%112 = OpBitcast %43 %110
-%113 = OpCompositeExtract %42 %112 0
-%114 = OpCompositeExtract %42 %112 1
+%110 = OpCompositeConstruct %80 %64 %67
+%109 = OpImageFetch %74 %55 %110 Sample %70
+%111 = OpBitcast %43 %109
+%112 = OpCompositeExtract %42 %111 0
+%113 = OpCompositeExtract %42 %111 1
+%114 = OpIAdd %42 %107 %112
 %115 = OpIAdd %42 %108 %113
-%116 = OpIAdd %42 %109 %114
-%118 = OpCompositeConstruct %96 %64 %67 %70
-%117 = OpImageFetch %75 %54 %118 Sample %73
-%119 = OpBitcast %43 %117
-%120 = OpCompositeExtract %42 %119 0
-%121 = OpCompositeExtract %42 %119 1
+%117 = OpCompositeConstruct %95 %64 %67 %70
+%116 = OpImageFetch %74 %54 %117 Sample %73
+%118 = OpBitcast %43 %116
+%119 = OpCompositeExtract %42 %118 0
+%120 = OpCompositeExtract %42 %118 1
+%121 = OpIAdd %42 %114 %119
 %122 = OpIAdd %42 %115 %120
-%123 = OpIAdd %42 %116 %121
-%124 = OpImageRead %75 %53 %64 None
-%125 = OpBitcast %43 %124
-%126 = OpCompositeExtract %42 %125 0
-%127 = OpCompositeExtract %42 %125 1
+%123 = OpImageRead %74 %53 %64 None
+%124 = OpBitcast %43 %123
+%125 = OpCompositeExtract %42 %124 0
+%126 = OpCompositeExtract %42 %124 1
+%127 = OpIAdd %42 %121 %125
 %128 = OpIAdd %42 %122 %126
-%129 = OpIAdd %42 %123 %127
-%131 = OpCompositeConstruct %81 %64 %67
-%130 = OpImageRead %75 %52 %131 None
-%132 = OpBitcast %43 %130
-%133 = OpCompositeExtract %42 %132 0
-%134 = OpCompositeExtract %42 %132 1
+%130 = OpCompositeConstruct %80 %64 %67
+%129 = OpImageRead %74 %52 %130 None
+%131 = OpBitcast %43 %129
+%132 = OpCompositeExtract %42 %131 0
+%133 = OpCompositeExtract %42 %131 1
+%134 = OpIAdd %42 %127 %132
 %135 = OpIAdd %42 %128 %133
-%136 = OpIAdd %42 %129 %134
-%138 = OpCompositeConstruct %81 %64 %67
-%137 = OpImageRead %75 %51 %138 None
-%139 = OpBitcast %43 %137
-%140 = OpCompositeExtract %42 %139 0
-%141 = OpCompositeExtract %42 %139 1
+%137 = OpCompositeConstruct %80 %64 %67
+%136 = OpImageRead %74 %51 %137 None
+%138 = OpBitcast %43 %136
+%139 = OpCompositeExtract %42 %138 0
+%140 = OpCompositeExtract %42 %138 1
+%141 = OpIAdd %42 %134 %139
 %142 = OpIAdd %42 %135 %140
-%143 = OpIAdd %42 %136 %141
-%145 = OpCompositeConstruct %96 %64 %67 %70
-%144 = OpImageRead %75 %50 %145 None
-%146 = OpBitcast %43 %144
-%147 = OpCompositeExtract %42 %146 0
-%148 = OpCompositeExtract %42 %146 1
+%144 = OpCompositeConstruct %95 %64 %67 %70
+%143 = OpImageRead %74 %50 %144 None
+%145 = OpBitcast %43 %143
+%146 = OpCompositeExtract %42 %145 0
+%147 = OpCompositeExtract %42 %145 1
+%148 = OpIAdd %42 %141 %146
 %149 = OpIAdd %42 %142 %147
-%150 = OpIAdd %42 %143 %148
-%152 = OpCompositeConstruct %96 %64 %67 %70
-%151 = OpImageRead %75 %49 %152 None
-%153 = OpBitcast %43 %151
-%154 = OpCompositeExtract %42 %153 0
-%155 = OpCompositeExtract %42 %153 1
+%151 = OpCompositeConstruct %95 %64 %67 %70
+%150 = OpImageRead %74 %49 %151 None
+%152 = OpBitcast %43 %150
+%153 = OpCompositeExtract %42 %152 0
+%154 = OpCompositeExtract %42 %152 1
+%155 = OpIAdd %42 %148 %153
 %156 = OpIAdd %42 %149 %154
-%157 = OpIAdd %42 %150 %155
-%159 = OpAccessChain %158 %48 %63
-%160 = OpBitcast %5 %156
-OpStore %159 %160
-%161 = OpAccessChain %158 %48 %66
-%162 = OpBitcast %5 %157
-OpStore %161 %162
+%158 = OpAccessChain %157 %48 %63
+%159 = OpBitcast %5 %155
+OpStore %158 %159
+%160 = OpAccessChain %157 %48 %66
+%161 = OpBitcast %5 %156
+OpStore %160 %161
 OpReturn
 OpFunctionEnd
 #endif
