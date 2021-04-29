@@ -76,6 +76,7 @@ public:
 	                                         const char *name = nullptr);
 
 	spv::Id get_helper_call_id(HelperCall call);
+	void set_shader_hash(uint64_t hash);
 
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 

@@ -234,6 +234,7 @@ struct Converter::Impl
 	unsigned root_descriptor_count = 0;
 	unsigned root_constant_num_words = 0;
 	unsigned patch_location_offset = 0;
+	unsigned descriptor_qa_counter = 0;
 
 	struct PhysicalPointerMeta
 	{

@@ -566,6 +566,7 @@ static spv::Id build_descriptor_qa_check(Converter::Impl &impl, spv::Id offset_i
 	call_op->add_id(impl.spirv_module.get_helper_call_id(HelperCall::DescriptorQACheck));
 	call_op->add_id(offset_id);
 	call_op->add_id(builder.makeUintConstant(uint32_t(resource_kind)));
+	call_op->add_id(builder.makeUintConstant(++impl.descriptor_qa_counter));
 	impl.add(call_op);
 	return call_op->id;
 }

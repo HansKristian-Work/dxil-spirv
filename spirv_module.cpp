@@ -94,6 +94,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id descriptor_qa_report_fault_id = 0;
 	spv::Id descriptor_qa_heap_buffer_id = 0;
 	spv::Id descriptor_qa_global_buffer_id = 0;
+
+	uint64_t shader_hash = 0;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -409,15 +411,21 @@ static spv::Id build_descriptor_qa_heap_buffer_type(spv::Builder &builder)
 enum class DescriptorQAGlobalMembers
 {
 	FailedShaderHash = 0,
-	NumCookies,
 	FailedOffset,
 	FailedHeap,
 	FailedCookie,
-	FailedAtomic,
+	FaultAtomic,
 	FailedInstruction,
-	FailedType,
-	FailKind,
+	FailedDescriptorType,
+	FaultType,
 	LiveStatusTable
+};
+
+enum class DescriptorQAFaultType
+{
+	IndexOutOfRange = 0,
+	InvalidType,
+	ResourceDestroyed
 };
 
 static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
@@ -425,14 +433,13 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	Vector<spv::Id> member_types;
 	// DescriptorHeapQAGlobalData {
 	//  uvec2 failed_shader_hash;
-	//  uint num_cookies;
 	//  uint failed_offset;
 	//  uint failed_heap;
 	//  uint failed_cookie;
 	//  uint fault_atomic;
 	//  uint failed_instruction;
 	//  uint failed_type;
-	//  uint fail_kind;
+	//  uint fault_type;
 	//  uint live_status_table[];
 	// }
 	spv::Id u32_type = builder.makeUintType(32);
@@ -441,7 +448,6 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	builder.addDecoration(u32_arr_type, spv::DecorationArrayStride, 4);
 
 	member_types.push_back(uvec2_type);
-	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
@@ -459,15 +465,14 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	};
 
 	set_info(DescriptorQAGlobalMembers::FailedShaderHash, 0, "failed_shader_hash");
-	set_info(DescriptorQAGlobalMembers::NumCookies, 8, "num_cookies");
-	set_info(DescriptorQAGlobalMembers::FailedOffset, 12, "failed_offset");
-	set_info(DescriptorQAGlobalMembers::FailedHeap, 16, "failed_heap");
-	set_info(DescriptorQAGlobalMembers::FailedCookie, 20, "failed_cookie");
-	set_info(DescriptorQAGlobalMembers::FailedAtomic, 24, "failed_atomic");
-	set_info(DescriptorQAGlobalMembers::FailedInstruction, 28, "failed_instruction");
-	set_info(DescriptorQAGlobalMembers::FailedType, 32, "failed_type");
-	set_info(DescriptorQAGlobalMembers::FailKind, 36, "fail_kind");
-	set_info(DescriptorQAGlobalMembers::LiveStatusTable, 40, "live_status_table");
+	set_info(DescriptorQAGlobalMembers::FailedOffset, 8, "failed_offset");
+	set_info(DescriptorQAGlobalMembers::FailedHeap, 12, "failed_heap");
+	set_info(DescriptorQAGlobalMembers::FailedCookie, 16, "failed_cookie");
+	set_info(DescriptorQAGlobalMembers::FaultAtomic, 20, "fault_atomic");
+	set_info(DescriptorQAGlobalMembers::FailedInstruction, 24, "failed_instruction");
+	set_info(DescriptorQAGlobalMembers::FailedDescriptorType, 28, "failed_descriptor_type");
+	set_info(DescriptorQAGlobalMembers::FaultType, 32, "fault_type");
+	set_info(DescriptorQAGlobalMembers::LiveStatusTable, 36, "live_status_table");
 
 	builder.addDecoration(id, spv::DecorationBlock);
 
@@ -488,6 +493,21 @@ static spv::Id build_ssbo_load(spv::Builder &builder, spv::Id value_type, spv::I
 	builder.getBuildPoint()->addInstruction(std::move(chain));
 	builder.getBuildPoint()->addInstruction(std::move(load));
 	return result_id;
+}
+
+static void build_ssbo_store(spv::Builder &builder, spv::Id value_type, spv::Id ssbo_id, uint32_t member, spv::Id value_id)
+{
+	spv::Id ptr_id = builder.makePointer(spv::StorageClassStorageBuffer, value_type);
+	auto chain = std::make_unique<spv::Instruction>(builder.getUniqueId(), ptr_id, spv::OpAccessChain);
+	chain->addIdOperand(ssbo_id);
+	chain->addIdOperand(builder.makeUintConstant(member));
+
+	auto store = std::make_unique<spv::Instruction>(spv::OpStore);
+	store->addIdOperand(chain->getResultId());
+	store->addIdOperand(value_id);
+
+	builder.getBuildPoint()->addInstruction(std::move(chain));
+	builder.getBuildPoint()->addInstruction(std::move(store));
 }
 
 static spv::Id build_ssbo_load_array(spv::Builder &builder, spv::Id value_type, spv::Id ssbo_id, uint32_t member,
@@ -589,13 +609,23 @@ void SPIRVModule::Impl::build_descriptor_qa_fault_report()
 	auto *current_build_point = builder.getBuildPoint();
 
 	spv::Block *entry = nullptr;
-	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
-	                                       "descriptor_qa_report_fault",
-	                                       { builder.makeUintType(32), builder.makeUintType(32) },
-	                                       {}, &entry);
 
-	builder.addName(func->getParamId(0), "heap_offset");
-	builder.addName(func->getParamId(1), "cookie");
+	Vector<spv::Id> param_types(6, builder.makeUintType(32));
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+	                                       "descriptor_qa_report_fault", param_types, {}, &entry);
+
+	spv::Id fault_type_id = func->getParamId(0);
+	spv::Id heap_offset_id = func->getParamId(1);
+	spv::Id cookie_id = func->getParamId(2);
+	spv::Id heap_id = func->getParamId(3);
+	spv::Id descriptor_type_id = func->getParamId(4);
+	spv::Id instruction_id = func->getParamId(5);
+	builder.addName(fault_type_id, "fault_type");
+	builder.addName(heap_offset_id, "heap_offset");
+	builder.addName(cookie_id, "cookie");
+	builder.addName(heap_id, "heap_index");
+	builder.addName(descriptor_type_id, "descriptor_type");
+	builder.addName(instruction_id, "instruction");
 
 	spv::Id u32_type = builder.makeUintType(32);
 	spv::Id u32_ptr_type = builder.makePointer(spv::StorageClassStorageBuffer, u32_type);
@@ -613,11 +643,44 @@ void SPIRVModule::Impl::build_descriptor_qa_fault_report()
 	auto check = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpIEqual);
 	check->addIdOperand(exchange->getResultId());
 	check->addIdOperand(builder.makeUintConstant(0));
+	spv::Id check_id = check->getResultId();
+
+	auto *true_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *false_block = new spv::Block(builder.getUniqueId(), *func);
 
 	builder.setBuildPoint(entry);
 	entry->addInstruction(std::move(chain));
 	entry->addInstruction(std::move(exchange));
 	entry->addInstruction(std::move(check));
+	builder.createSelectionMerge(false_block, 0);
+	builder.createConditionalBranch(check_id, true_block, false_block);
+	builder.setBuildPoint(true_block);
+	{
+		build_ssbo_store(builder, u32_type, descriptor_qa_global_buffer_id,
+		                 uint32_t(DescriptorQAGlobalMembers::FailedCookie), cookie_id);
+		build_ssbo_store(builder, u32_type, descriptor_qa_global_buffer_id,
+		                 uint32_t(DescriptorQAGlobalMembers::FailedOffset), heap_offset_id);
+		build_ssbo_store(builder, u32_type, descriptor_qa_global_buffer_id,
+		                 uint32_t(DescriptorQAGlobalMembers::FaultType), fault_type_id);
+		build_ssbo_store(builder, u32_type, descriptor_qa_global_buffer_id,
+		                 uint32_t(DescriptorQAGlobalMembers::FailedHeap), heap_id);
+		build_ssbo_store(builder, u32_type, descriptor_qa_global_buffer_id,
+		                 uint32_t(DescriptorQAGlobalMembers::FailedDescriptorType), descriptor_type_id);
+		build_ssbo_store(builder, u32_type, descriptor_qa_global_buffer_id,
+		                 uint32_t(DescriptorQAGlobalMembers::FailedInstruction), instruction_id);
+
+		spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
+
+		Vector<spv::Id> comps;
+		comps.push_back(builder.makeUintConstant(uint32_t(shader_hash)));
+		comps.push_back(builder.makeUintConstant(uint32_t(shader_hash >> 32u)));
+		spv::Id hash_id = builder.makeCompositeConstant(uvec2_type, comps);
+		build_ssbo_store(builder, uvec2_type, descriptor_qa_global_buffer_id,
+		                 uint32_t(DescriptorQAGlobalMembers::FailedShaderHash), hash_id);
+
+		builder.createBranch(false_block);
+	}
+	builder.setBuildPoint(false_block);
 	builder.makeReturn(false);
 
 	builder.setBuildPoint(current_build_point);
@@ -642,20 +705,30 @@ void SPIRVModule::Impl::build_descriptor_qa_check()
 
 	auto *current_build_point = builder.getBuildPoint();
 	spv::Block *entry = nullptr;
+
+	Vector<spv::Id> param_types(3, builder.makeUintType(32));
 	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeUintType(32),
 	                                       "descriptor_qa_check",
-	                                       { builder.makeUintType(32), builder.makeUintType(32) },
-	                                       {}, &entry);
+	                                       param_types, {}, &entry);
 	builder.setBuildPoint(entry);
 
 	spv::Id offset_id = func->getParamId(0);
-	spv::Id type_id = func->getParamId(1);
+	spv::Id descriptor_type_id = func->getParamId(1);
+	spv::Id instruction_id = func->getParamId(2);
 
 	builder.addName(offset_id, "heap_offset");
-	builder.addName(type_id, "descriptor_type_id");
+	builder.addName(descriptor_type_id, "descriptor_type_id");
+	builder.addName(instruction_id, "instruction");
 
-	spv::Id descriptor_count_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id, 0);
-	spv::Id heap_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id, 1);
+	spv::Id descriptor_count_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id,
+	                                              uint32_t(DescriptorQAHeapMembers::DescriptorCount));
+
+	spv::Id fallback_offset_id = build_binary_op(builder, builder.makeUintType(32), spv::OpIAdd,
+	                                             descriptor_count_id,
+	                                             descriptor_type_id);
+
+	spv::Id heap_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id,
+	                                  uint32_t(DescriptorQAHeapMembers::HeapIndex));
 	spv::Id cookie_descriptor_info = build_ssbo_load_array(builder, builder.makeVectorType(builder.makeUintType(32), 2),
 	                                                       heap_buffer_id,
 	                                                       uint32_t(DescriptorQAHeapMembers::CookiesDescriptorInfo),
@@ -667,15 +740,28 @@ void SPIRVModule::Impl::build_descriptor_qa_check()
 	build_cookie_descriptor_info_split(builder, cookie_descriptor_info, cookie_id,
 	                                   cookie_shifted_id, cookie_mask_id, descriptor_info_id);
 
-	spv::Id num_cookies_id = build_ssbo_load(builder, builder.makeUintType(32), global_buffer_id, 1);
 	spv::Id live_status_id = build_ssbo_load_array(builder, builder.makeUintType(32),
 	                                               global_buffer_id,
 	                                               uint32_t(DescriptorQAGlobalMembers::LiveStatusTable),
 	                                               cookie_shifted_id);
 	spv::Id live_status_cond_id = build_live_check(builder, live_status_id, cookie_mask_id);
+	spv::Id type_cond_id = build_live_check(builder, descriptor_info_id, descriptor_type_id);
 
 	spv::Id out_of_range_id = build_binary_op(builder, builder.makeBoolType(), spv::OpUGreaterThanEqual,
 	                                          offset_id, descriptor_count_id);
+
+	const auto emit_fault = [&](DescriptorQAFaultType type) {
+		auto call = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeVoidType(), spv::OpFunctionCall);
+		call->addIdOperand(descriptor_qa_report_fault_id);
+		call->addIdOperand(builder.makeUintConstant(uint32_t(type)));
+		call->addIdOperand(offset_id);
+		call->addIdOperand(cookie_id);
+		call->addIdOperand(heap_id);
+		call->addIdOperand(descriptor_type_id);
+		call->addIdOperand(instruction_id);
+		builder.getBuildPoint()->addInstruction(std::move(call));
+		builder.makeReturn(false, fallback_offset_id);
+	};
 
 	// First check: descriptor index is in range of heap.
 	auto *out_of_range_block = new spv::Block(builder.getUniqueId(), *func);
@@ -684,19 +770,33 @@ void SPIRVModule::Impl::build_descriptor_qa_check()
 	builder.createConditionalBranch(out_of_range_id, out_of_range_block, in_range_block);
 	{
 		builder.setBuildPoint(out_of_range_block);
-		auto call = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeVoidType(), spv::OpFunctionCall);
-		call->addIdOperand(descriptor_qa_report_fault_id);
-		call->addIdOperand(offset_id);
-		call->addIdOperand(cookie_id);
-		auto ret = std::make_unique<spv::Instruction>(spv::OpReturnValue);
-		ret->addIdOperand(descriptor_count_id);
-		out_of_range_block->addInstruction(std::move(call));
-		out_of_range_block->addInstruction(std::move(ret));
+		emit_fault(DescriptorQAFaultType::IndexOutOfRange);
 	}
-
 	builder.setBuildPoint(in_range_block);
-	spv::Id return_value = descriptor_info_id;
-	builder.makeReturn(false, return_value);
+
+	// Second: Check if type matches.
+	auto *wrong_type_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *correct_type_block = new spv::Block(builder.getUniqueId(), *func);
+	builder.createSelectionMerge(correct_type_block, 0);
+	builder.createConditionalBranch(type_cond_id, correct_type_block, wrong_type_block);
+	{
+		builder.setBuildPoint(wrong_type_block);
+		emit_fault(DescriptorQAFaultType::InvalidType);
+	}
+	builder.setBuildPoint(correct_type_block);
+
+	// Third: Check if cookie is alive.
+	auto *dead_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *alive_block = new spv::Block(builder.getUniqueId(), *func);
+	builder.createSelectionMerge(alive_block, 0);
+	builder.createConditionalBranch(live_status_cond_id, alive_block, dead_block);
+	{
+		builder.setBuildPoint(dead_block);
+		emit_fault(DescriptorQAFaultType::ResourceDestroyed);
+	}
+	builder.setBuildPoint(alive_block);
+
+	builder.makeReturn(false, offset_id);
 
 	builder.setBuildPoint(current_build_point);
 	descriptor_qa_helper_call_id = func->getId();
@@ -1174,6 +1274,11 @@ spv::Id SPIRVModule::create_variable_with_initializer(spv::StorageClass storage,
 spv::Id SPIRVModule::get_helper_call_id(HelperCall call)
 {
 	return impl->get_helper_call_id(call);
+}
+
+void SPIRVModule::set_shader_hash(uint64_t hash)
+{
+	impl->shader_hash = hash;
 }
 
 SPIRVModule::~SPIRVModule()
