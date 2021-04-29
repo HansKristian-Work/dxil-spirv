@@ -52,6 +52,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void build_discard_call_early_cond(spv::Id cond);
 	void build_demote_call_cond(spv::Id cond);
 	void build_discard_call_exit();
+	void build_descriptor_qa_check();
+	void build_descriptor_qa_fault_report();
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -86,6 +88,12 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	bool builtin_requires_volatile(spv::BuiltIn builtin) const;
 	bool execution_model_is_ray_tracing() const;
 	bool mark_error = false;
+
+	spv::Id get_helper_call_id(HelperCall call);
+	spv::Id descriptor_qa_helper_call_id = 0;
+	spv::Id descriptor_qa_report_fault_id = 0;
+	spv::Id descriptor_qa_heap_buffer_id = 0;
+	spv::Id descriptor_qa_global_buffer_id = 0;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -357,6 +365,313 @@ void SPIRVModule::Impl::build_discard_call_exit()
 
 	builder.setBuildPoint(current_build_point);
 	builder.createFunctionCall(discard_function, {});
+}
+
+static spv::Id build_descriptor_qa_heap_buffer_type(spv::Builder &builder)
+{
+	Vector<spv::Id> member_types;
+	// DescriptorHeapQAData {
+	//  uint descriptor_count;
+	//  uint heap_id;
+	//  uvec2 cookies_descriptor_info[];
+	// }
+	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
+	spv::Id uvec2_arr_type = builder.makeRuntimeArray(uvec2_type);
+	builder.addDecoration(uvec2_arr_type, spv::DecorationArrayStride, 8);
+
+	member_types.push_back(u32_type);
+	member_types.push_back(u32_type);
+	member_types.push_back(uvec2_arr_type);
+
+	spv::Id id = builder.makeStructType(member_types, "DescriptorHeapQAData");
+	builder.addMemberDecoration(id, 0, spv::DecorationOffset, 0);
+	builder.addMemberName(id, 0, "descriptor_count");
+	builder.addMemberDecoration(id, 1, spv::DecorationOffset, 4);
+	builder.addMemberName(id, 1, "heap_id");
+	builder.addMemberDecoration(id, 2, spv::DecorationOffset, 8);
+	builder.addMemberName(id, 2, "cookies_descriptor_info");
+	builder.addDecoration(id, spv::DecorationBlock);
+	return id;
+}
+
+static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
+{
+	Vector<spv::Id> member_types;
+	// DescriptorHeapQAGlobalData {
+	//  uvec2 failed_shader_hash;
+	//  uint num_cookies;
+	//  uint failed_cookie;
+	//  uint fault_atomic;
+	//  uint failed_instruction;
+	//  uint failed_type;
+	//  uint fail_kind;
+	//  uint live_status_table[];
+	// }
+	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
+	spv::Id u32_arr_type = builder.makeRuntimeArray(u32_type);
+	builder.addDecoration(u32_arr_type, spv::DecorationArrayStride, 4);
+
+	member_types.push_back(uvec2_type);
+	member_types.push_back(u32_type);
+	member_types.push_back(u32_type);
+	member_types.push_back(u32_type);
+	member_types.push_back(u32_type);
+	member_types.push_back(u32_type);
+	member_types.push_back(u32_type);
+	member_types.push_back(u32_arr_type);
+
+	spv::Id id = builder.makeStructType(member_types, "DescriptorHeapGlobalQAData");
+	builder.addMemberDecoration(id, 0, spv::DecorationOffset, 0);
+	builder.addMemberName(id, 0, "failed_shader_hash");
+	builder.addMemberDecoration(id, 1, spv::DecorationOffset, 8);
+	builder.addMemberName(id, 1, "num_cookies");
+	builder.addMemberDecoration(id, 2, spv::DecorationOffset, 12);
+	builder.addMemberName(id, 2, "failed_cookie");
+	builder.addMemberDecoration(id, 3, spv::DecorationOffset, 16);
+	builder.addMemberName(id, 3, "fault_atomic");
+	builder.addMemberDecoration(id, 4, spv::DecorationOffset, 20);
+	builder.addMemberName(id, 4, "failed_instruction");
+	builder.addMemberDecoration(id, 5, spv::DecorationOffset, 24);
+	builder.addMemberName(id, 5, "failed_type");
+	builder.addMemberDecoration(id, 6, spv::DecorationOffset, 28);
+	builder.addMemberName(id, 6, "fail_kind");
+	builder.addMemberDecoration(id, 7, spv::DecorationOffset, 32);
+	builder.addMemberName(id, 7, "live_status_table");
+	builder.addDecoration(id, spv::DecorationBlock);
+	return id;
+}
+
+static spv::Id build_ssbo_load(spv::Builder &builder, spv::Id value_type, spv::Id ssbo_id, uint32_t member)
+{
+	spv::Id ptr_id = builder.makePointer(spv::StorageClassStorageBuffer, value_type);
+	auto chain = std::make_unique<spv::Instruction>(builder.getUniqueId(), ptr_id, spv::OpAccessChain);
+	chain->addIdOperand(ssbo_id);
+	chain->addIdOperand(builder.makeUintConstant(member));
+
+	auto load = std::make_unique<spv::Instruction>(builder.getUniqueId(), value_type, spv::OpLoad);
+	load->addIdOperand(chain->getResultId());
+	spv::Id result_id = load->getResultId();
+
+	builder.getBuildPoint()->addInstruction(std::move(chain));
+	builder.getBuildPoint()->addInstruction(std::move(load));
+	return result_id;
+}
+
+static spv::Id build_ssbo_load_array(spv::Builder &builder, spv::Id value_type, spv::Id ssbo_id, uint32_t member,
+                                     spv::Id offset)
+{
+	spv::Id ptr_id = builder.makePointer(spv::StorageClassStorageBuffer, value_type);
+	auto chain = std::make_unique<spv::Instruction>(builder.getUniqueId(), ptr_id, spv::OpAccessChain);
+	chain->addIdOperand(ssbo_id);
+	chain->addIdOperand(builder.makeUintConstant(member));
+	chain->addIdOperand(offset);
+
+	auto load = std::make_unique<spv::Instruction>(builder.getUniqueId(), value_type, spv::OpLoad);
+	load->addIdOperand(chain->getResultId());
+	spv::Id result_id = load->getResultId();
+
+	builder.getBuildPoint()->addInstruction(std::move(chain));
+	builder.getBuildPoint()->addInstruction(std::move(load));
+	return result_id;
+}
+
+static void build_cookie_descriptor_info_split(spv::Builder &builder, spv::Id composite_id,
+                                               spv::Id &cookie_id,
+                                               spv::Id &cookie_shifted_id,
+                                               spv::Id &cookie_masked_id,
+                                               spv::Id &descriptor_info_id)
+{
+	spv::Id u32_type = builder.makeUintType(32);
+
+	auto cookie = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpCompositeExtract);
+	cookie->addIdOperand(composite_id);
+	cookie->addImmediateOperand(0);
+
+	auto info = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpCompositeExtract);
+	info->addIdOperand(composite_id);
+	info->addImmediateOperand(1);
+
+	auto shifted = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftRightLogical);
+	shifted->addIdOperand(cookie->getResultId());
+	shifted->addIdOperand(builder.makeUintConstant(5));
+
+	auto masked = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+	masked->addIdOperand(cookie->getResultId());
+	masked->addIdOperand(builder.makeUintConstant(31));
+
+	cookie_id = cookie->getResultId();
+	descriptor_info_id = info->getResultId();
+	cookie_shifted_id = shifted->getResultId();
+	cookie_masked_id = masked->getResultId();
+	builder.getBuildPoint()->addInstruction(std::move(cookie));
+	builder.getBuildPoint()->addInstruction(std::move(shifted));
+	builder.getBuildPoint()->addInstruction(std::move(masked));
+	builder.getBuildPoint()->addInstruction(std::move(info));
+}
+
+static spv::Id build_live_check(spv::Builder &builder, spv::Id status_id, spv::Id bit_id)
+{
+	spv::Id u32_type = builder.makeUintType(32);
+
+	auto shift_up = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftLeftLogical);
+	shift_up->addIdOperand(builder.makeUintConstant(1));
+	shift_up->addIdOperand(bit_id);
+
+	auto mask = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+	mask->addIdOperand(status_id);
+	mask->addIdOperand(shift_up->getResultId());
+
+	auto cond = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpINotEqual);
+	cond->addIdOperand(mask->getResultId());
+	cond->addIdOperand(builder.makeUintConstant(0));
+	spv::Id res = cond->getResultId();
+
+	builder.getBuildPoint()->addInstruction(std::move(shift_up));
+	builder.getBuildPoint()->addInstruction(std::move(mask));
+	builder.getBuildPoint()->addInstruction(std::move(cond));
+	return res;
+}
+
+static spv::Id build_binary_op(spv::Builder &builder, spv::Id type, spv::Op opcode, spv::Id a, spv::Id b)
+{
+	auto op = std::make_unique<spv::Instruction>(builder.getUniqueId(), type, opcode);
+	op->addIdOperand(a);
+	op->addIdOperand(b);
+	spv::Id ret = op->getResultId();
+	builder.getBuildPoint()->addInstruction(std::move(op));
+	return ret;
+}
+
+void SPIRVModule::Impl::build_descriptor_qa_fault_report()
+{
+	if (descriptor_qa_report_fault_id)
+		return;
+
+	spv::Id global_buffer_type_id = build_descriptor_global_buffer_type(builder);
+	descriptor_qa_global_buffer_id = create_variable(spv::StorageClassStorageBuffer,
+	                                                 global_buffer_type_id, "QAGlobalData");
+	builder.addDecoration(descriptor_qa_global_buffer_id, spv::DecorationDescriptorSet, 9);
+	builder.addDecoration(descriptor_qa_global_buffer_id, spv::DecorationBinding, 11);
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+	                                       "descriptor_qa_report_fault",
+	                                       { builder.makeUintType(32), builder.makeUintType(32) },
+	                                       {}, &entry);
+
+	builder.addName(func->getParamId(0), "heap_offset");
+	builder.addName(func->getParamId(1), "cookie");
+
+	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id u32_ptr_type = builder.makePointer(spv::StorageClassStorageBuffer, u32_type);
+
+	auto chain = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_ptr_type, spv::OpAccessChain);
+	chain->addIdOperand(descriptor_qa_global_buffer_id);
+	chain->addIdOperand(builder.makeUintConstant(3));
+
+	auto exchange = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpAtomicExchange);
+	exchange->addIdOperand(chain->getResultId());
+	exchange->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	exchange->addIdOperand(builder.makeUintConstant(0));
+	exchange->addIdOperand(builder.makeUintConstant(1));
+
+	builder.setBuildPoint(entry);
+	entry->addInstruction(std::move(chain));
+	entry->addInstruction(std::move(exchange));
+	builder.makeReturn(false);
+
+	builder.setBuildPoint(current_build_point);
+	descriptor_qa_report_fault_id = func->getId();
+}
+
+void SPIRVModule::Impl::build_descriptor_qa_check()
+{
+	if (descriptor_qa_helper_call_id)
+		return;
+	build_descriptor_qa_fault_report();
+
+	spv::Id heap_buffer_type_id = build_descriptor_qa_heap_buffer_type(builder);
+	descriptor_qa_heap_buffer_id = create_variable(spv::StorageClassStorageBuffer,
+	                                               heap_buffer_type_id, "QAHeapData");
+	builder.addDecoration(descriptor_qa_heap_buffer_id, spv::DecorationDescriptorSet, 9);
+	builder.addDecoration(descriptor_qa_heap_buffer_id, spv::DecorationBinding, 10);
+	builder.addDecoration(descriptor_qa_heap_buffer_id, spv::DecorationNonWritable);
+
+	auto heap_buffer_id = descriptor_qa_heap_buffer_id;
+	auto global_buffer_id = descriptor_qa_global_buffer_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeUintType(32),
+	                                       "descriptor_qa_check",
+	                                       { builder.makeUintType(32), builder.makeUintType(32) },
+	                                       {}, &entry);
+	builder.setBuildPoint(entry);
+
+	spv::Id offset_id = func->getParamId(0);
+	spv::Id type_id = func->getParamId(1);
+
+	builder.addName(offset_id, "heap_offset");
+	builder.addName(type_id, "descriptor_type_id");
+
+	spv::Id descriptor_count_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id, 0);
+	spv::Id heap_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id, 1);
+	spv::Id cookie_descriptor_info = build_ssbo_load_array(builder, builder.makeVectorType(builder.makeUintType(32), 2),
+	                                                       heap_buffer_id, 2, offset_id);
+	spv::Id cookie_id;
+	spv::Id cookie_shifted_id;
+	spv::Id cookie_mask_id;
+	spv::Id descriptor_info_id;
+	build_cookie_descriptor_info_split(builder, cookie_descriptor_info, cookie_id,
+	                                   cookie_shifted_id, cookie_mask_id, descriptor_info_id);
+
+	spv::Id num_cookies_id = build_ssbo_load(builder, builder.makeUintType(32), global_buffer_id, 1);
+	spv::Id live_status_id = build_ssbo_load_array(builder, builder.makeUintType(32),
+	                                               global_buffer_id, 7, cookie_shifted_id);
+	spv::Id live_status_cond_id = build_live_check(builder, live_status_id, cookie_mask_id);
+
+	spv::Id out_of_range_id = build_binary_op(builder, builder.makeBoolType(), spv::OpUGreaterThanEqual,
+	                                          offset_id, descriptor_count_id);
+
+	// First check: descriptor index is in range of heap.
+	auto *out_of_range_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *in_range_block = new spv::Block(builder.getUniqueId(), *func);
+	builder.createSelectionMerge(in_range_block, 0);
+	builder.createConditionalBranch(out_of_range_id, out_of_range_block, in_range_block);
+	{
+		builder.setBuildPoint(out_of_range_block);
+		auto call = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeVoidType(), spv::OpFunctionCall);
+		call->addIdOperand(descriptor_qa_report_fault_id);
+		call->addIdOperand(offset_id);
+		call->addIdOperand(cookie_id);
+		auto ret = std::make_unique<spv::Instruction>(spv::OpReturnValue);
+		ret->addIdOperand(descriptor_count_id);
+		out_of_range_block->addInstruction(std::move(call));
+		out_of_range_block->addInstruction(std::move(ret));
+	}
+
+	builder.setBuildPoint(in_range_block);
+	spv::Id return_value = descriptor_info_id;
+	builder.makeReturn(false, return_value);
+
+	builder.setBuildPoint(current_build_point);
+	descriptor_qa_helper_call_id = func->getId();
+}
+
+spv::Id SPIRVModule::Impl::get_helper_call_id(HelperCall call)
+{
+	switch (call)
+	{
+	case HelperCall::DescriptorQACheck:
+		build_descriptor_qa_check();
+		return descriptor_qa_helper_call_id;
+	}
+
+	return 0;
 }
 
 SPIRVModule::SPIRVModule()
@@ -814,6 +1129,11 @@ spv::Id SPIRVModule::create_variable_with_initializer(spv::StorageClass storage,
                                                       spv::Id initializer, const char *name)
 {
 	return impl->create_variable_with_initializer(storage, type, initializer, name);
+}
+
+spv::Id SPIRVModule::get_helper_call_id(HelperCall call)
+{
+	return impl->get_helper_call_id(call);
 }
 
 SPIRVModule::~SPIRVModule()

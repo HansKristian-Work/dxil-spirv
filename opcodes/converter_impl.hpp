@@ -356,6 +356,7 @@ struct Converter::Impl
 		bool typed_uav_read_without_format = false;
 		bool bindless_typed_buffer_offsets = false;
 		bool storage_16bit_input_output = false;
+		bool descriptor_qa = true;
 
 		struct
 		{

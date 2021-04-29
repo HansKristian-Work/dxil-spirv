@@ -35,6 +35,11 @@ namespace dxil_spv
 struct CFGNode;
 class CFGNodePool;
 
+enum class HelperCall
+{
+	DescriptorQACheck
+};
+
 class SPIRVModule
 {
 public:
@@ -69,6 +74,8 @@ public:
 	spv::Id create_variable(spv::StorageClass storage, spv::Id type, const char *name = nullptr);
 	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type, spv::Id initializer,
 	                                         const char *name = nullptr);
+
+	spv::Id get_helper_call_id(HelperCall call);
 
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 
