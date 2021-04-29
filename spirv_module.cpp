@@ -17,6 +17,7 @@
  */
 
 #include "spirv_module.hpp"
+#include "descriptor_qa.hpp"
 #include "SpvBuilder.h"
 #include "node.hpp"
 #include "scratch_pool.hpp"
@@ -52,6 +53,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void build_discard_call_early_cond(spv::Id cond);
 	void build_demote_call_cond(spv::Id cond);
 	void build_discard_call_exit();
+	void build_descriptor_qa_check(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -86,6 +88,11 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	bool builtin_requires_volatile(spv::BuiltIn builtin) const;
 	bool execution_model_is_ray_tracing() const;
 	bool mark_error = false;
+
+	spv::Id get_helper_call_id(SPIRVModule &module, HelperCall call);
+	spv::Id descriptor_qa_helper_call_id = 0;
+
+	DescriptorQAInfo descriptor_qa_info;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -357,6 +364,24 @@ void SPIRVModule::Impl::build_discard_call_exit()
 
 	builder.setBuildPoint(current_build_point);
 	builder.createFunctionCall(discard_function, {});
+}
+
+void SPIRVModule::Impl::build_descriptor_qa_check(SPIRVModule &module)
+{
+	if (!descriptor_qa_helper_call_id)
+		descriptor_qa_helper_call_id = build_descriptor_qa_check_function(module);
+}
+
+spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall call)
+{
+	switch (call)
+	{
+	case HelperCall::DescriptorQACheck:
+		build_descriptor_qa_check(module);
+		return descriptor_qa_helper_call_id;
+	}
+
+	return 0;
 }
 
 SPIRVModule::SPIRVModule()
@@ -814,6 +839,21 @@ spv::Id SPIRVModule::create_variable_with_initializer(spv::StorageClass storage,
                                                       spv::Id initializer, const char *name)
 {
 	return impl->create_variable_with_initializer(storage, type, initializer, name);
+}
+
+spv::Id SPIRVModule::get_helper_call_id(HelperCall call)
+{
+	return impl->get_helper_call_id(*this, call);
+}
+
+void SPIRVModule::set_descriptor_qa_info(const DescriptorQAInfo &info)
+{
+	impl->descriptor_qa_info = info;
+}
+
+const DescriptorQAInfo &SPIRVModule::get_descriptor_qa_info() const
+{
+	return impl->descriptor_qa_info;
 }
 
 SPIRVModule::~SPIRVModule()

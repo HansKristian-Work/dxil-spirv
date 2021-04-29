@@ -23,6 +23,7 @@
 #include "cfg_structurizer.hpp"
 #include "dxil_converter.hpp"
 #include "scratch_pool.hpp"
+#include "descriptor_qa.hpp"
 
 #include "GLSL.std.450.h"
 
@@ -234,6 +235,7 @@ struct Converter::Impl
 	unsigned root_descriptor_count = 0;
 	unsigned root_constant_num_words = 0;
 	unsigned patch_location_offset = 0;
+	unsigned descriptor_qa_counter = 0;
 
 	struct PhysicalPointerMeta
 	{
@@ -374,6 +376,9 @@ struct Converter::Impl
 			unsigned typed_offset = 0;
 			unsigned stride = 1;
 		} offset_buffer_layout;
+
+		DescriptorQAInfo descriptor_qa;
+		bool descriptor_qa_enabled = false;
 	} options;
 
 	struct BindlessInfo

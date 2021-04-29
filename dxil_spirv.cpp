@@ -141,7 +141,8 @@ static void print_help()
 	     "\t[--output-rt-swizzle index xyzw]\n"
 	     "\t[--bindless-offset-buffer-layout <untyped offset> <typed offset> <stride>]\n"
 	     "\t[--storage-input-output-16bit]\n"
-	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n");
+	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n"
+	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n");
 }
 
 struct Arguments
@@ -167,6 +168,11 @@ struct Arguments
 	bool bindless_typed_buffer_offsets = false;
 
 	unsigned ssbo_alignment = 1;
+
+	bool descriptor_qa = false;
+	uint32_t descriptor_qa_set = 0;
+	uint32_t descriptor_qa_binding = 0;
+	uint64_t shader_hash = 0;
 
 	dxil_spv_option_bindless_offset_buffer_layout offset_buffer_layout;
 };
@@ -632,6 +638,12 @@ int main(int argc, char **argv)
 	cbs.add("--entry", [&](CLIParser &parser) { args.entry_point = parser.next_string(); });
 	cbs.add("--debug-all-entry-points", [&](CLIParser &parser) { args.debug_all_entry_points = true; });
 	cbs.add("--storage-input-output-16bit", [&](CLIParser &parser) { args.storage_input_output_16bit = true; });
+	cbs.add("--descriptor-qa", [&](CLIParser &parser) {
+		args.descriptor_qa = true;
+		args.descriptor_qa_set = parser.next_uint();
+		args.descriptor_qa_binding = parser.next_uint();
+		args.shader_hash = uint64_t(strtoull(parser.next_string(), nullptr, 16));
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -761,6 +773,16 @@ int main(int argc, char **argv)
 		dxil_spv_option_storage_input_output_16bit storage = { { DXIL_SPV_OPTION_STORAGE_INPUT_OUTPUT_16BIT },
 		                                                       args.storage_input_output_16bit ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &storage.base);
+	}
+
+	{
+		const dxil_spv_option_descriptor_qa qa = { { DXIL_SPV_OPTION_DESCRIPTOR_QA },
+		                                           args.descriptor_qa ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
+		                                           DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION,
+		                                           args.descriptor_qa_set, args.descriptor_qa_binding,
+		                                           args.descriptor_qa_set, args.descriptor_qa_binding + 1,
+		                                           args.shader_hash };
+		dxil_spv_converter_add_option(converter, &qa.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

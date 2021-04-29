@@ -4249,6 +4249,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	result.node_pool = std::make_unique<CFGNodePool>();
 	auto &pool = *result.node_pool;
 
+	spirv_module.set_descriptor_qa_info(options.descriptor_qa);
 	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", options.physical_storage_buffer);
 
 	if (!emit_resources_global_mapping())
@@ -4517,6 +4518,19 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::DescriptorQA:
+	{
+		auto &qa = static_cast<const OptionDescriptorQA &>(cap);
+		options.descriptor_qa_enabled = qa.enabled;
+		options.descriptor_qa.version = qa.version;
+		options.descriptor_qa.shader_hash = qa.shader_hash;
+		options.descriptor_qa.global_desc_set = qa.global_desc_set;
+		options.descriptor_qa.global_binding = qa.global_binding;
+		options.descriptor_qa.heap_desc_set = qa.heap_desc_set;
+		options.descriptor_qa.heap_binding = qa.heap_binding;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -4561,6 +4575,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::BindlessTypedBufferOffsets:
 	case Option::BindlessOffsetBufferLayout:
 	case Option::StorageInputOutput16:
+	case Option::DescriptorQA:
 		return true;
 
 	default:

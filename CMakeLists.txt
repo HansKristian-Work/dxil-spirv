@@ -47,6 +47,7 @@ add_subdirectory(external EXCLUDE_FROM_ALL)
 
 add_library(spirv-module STATIC
         ir.hpp ir.cpp
+        descriptor_qa.cpp descriptor_qa.hpp
         spirv_module.hpp spirv_module.cpp)
 set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

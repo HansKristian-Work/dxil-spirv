@@ -554,13 +554,44 @@ static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, c
 	return loaded_word->id;
 }
 
-static spv::Id build_bindless_heap_offset(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
+static spv::Id build_descriptor_qa_check(Converter::Impl &impl, spv::Id offset_id,
+                                         DescriptorQATypeFlags type)
+{
+	// Only implemented for CBV_SRV_UAV heap.
+	if (type == DESCRIPTOR_QA_TYPE_SAMPLER_BIT)
+		return offset_id;
+
+	if (impl.options.descriptor_qa.version != Version)
+	{
+		LOGE("Descriptor QA version is not %u.\n", Version);
+		return offset_id;
+	}
+
+	auto &builder = impl.builder();
+	auto *call_op = impl.allocate(spv::OpFunctionCall, builder.makeUintType(32));
+	call_op->add_id(impl.spirv_module.get_helper_call_id(HelperCall::DescriptorQACheck));
+	call_op->add_id(offset_id);
+	call_op->add_id(builder.makeUintConstant(type));
+	call_op->add_id(builder.makeUintConstant(++impl.descriptor_qa_counter));
+	impl.add(call_op);
+	return call_op->id;
+}
+
+static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
+                                          const Converter::Impl::ResourceReference &reference,
+                                          DescriptorQATypeFlags type,
                                           const llvm::Value *dynamic_offset)
 {
+	spv::Id offset_id;
 	if (reference.local_root_signature_entry >= 0)
-		return build_bindless_heap_offset_shader_record(impl, reference, dynamic_offset);
+		offset_id = build_bindless_heap_offset_shader_record(impl, reference, dynamic_offset);
 	else
-		return build_bindless_heap_offset_push_constant(impl, reference, dynamic_offset);
+		offset_id = build_bindless_heap_offset_push_constant(impl, reference, dynamic_offset);
+
+	if (impl.options.descriptor_qa_enabled)
+		offset_id = build_descriptor_qa_check(impl, offset_id, type);
+
+	return offset_id;
 }
 
 static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &counter,
@@ -574,7 +605,8 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 	chain_op->add_id(builder.makeUintConstant(0));
 
 	spv::Id offset_id = build_bindless_heap_offset(
-	    impl, counter, counter.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+		impl, counter, DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
+		counter.base_resource_is_array ? instruction->getOperand(3) : nullptr);
 
 	chain_op->add_id(offset_id);
 	impl.add(chain_op);
@@ -586,8 +618,19 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 	return load_op->id;
 }
 
+static spv::StorageClass get_resource_storage_class(Converter::Impl &impl, spv::Id base_resource_id)
+{
+	auto meta_itr = impl.handle_to_resource_meta.find(base_resource_id);
+	auto storage = spv::StorageClassUniformConstant;
+	if (meta_itr != impl.handle_to_resource_meta.end())
+		storage = meta_itr->second.storage;
+
+	return storage;
+}
+
 static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resource_id,
                                        const Converter::Impl::ResourceReference &reference,
+                                       DescriptorQATypeFlagBits descriptor_type,
                                        const llvm::CallInst *instruction,
                                        llvm::Value *instruction_offset_value, bool instruction_is_non_uniform,
                                        bool &is_non_uniform,
@@ -598,11 +641,7 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 	spv::Id resource_id = base_resource_id;
 	spv::Id type_id = builder.getDerefTypeId(resource_id);
 
-	auto meta_itr = impl.handle_to_resource_meta.find(base_resource_id);
-	auto storage = spv::StorageClassUniformConstant;
-	if (meta_itr != impl.handle_to_resource_meta.end())
-		storage = meta_itr->second.storage;
-
+	auto storage = get_resource_storage_class(impl, base_resource_id);
 	is_non_uniform = false;
 
 	if (reference.base_resource_is_array || reference.bindless)
@@ -622,7 +661,7 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 		if (reference.bindless)
 		{
 			offset_id = build_bindless_heap_offset(
-			    impl, reference, reference.base_resource_is_array ? instruction_offset_value : nullptr);
+			    impl, reference, descriptor_type, reference.base_resource_is_array ? instruction_offset_value : nullptr);
 
 			if (offset_id == 0)
 				return false;
@@ -728,8 +767,10 @@ static spv::Id build_load_physical_rtas(Converter::Impl &impl, const Converter::
 
 	if (builder.getStorageClass(reference.var_id) == spv::StorageClassStorageBuffer)
 	{
-		spv::Id offset_id =
-		    build_bindless_heap_offset(impl, reference, reference.base_resource_is_array ? offset : nullptr);
+		spv::Id offset_id = build_bindless_heap_offset(impl, reference,
+		                                               DESCRIPTOR_QA_TYPE_RT_ACCELERATION_STRUCTURE_BIT |
+		                                               DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
+		                                               reference.base_resource_is_array ? offset : nullptr);
 
 		if (!non_uniform)
 		{
@@ -863,6 +904,21 @@ static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::
 	return offset_id;
 }
 
+static bool resource_kind_is_buffer(DXIL::ResourceKind kind)
+{
+	switch (kind)
+	{
+	case DXIL::ResourceKind::RawBuffer:
+	case DXIL::ResourceKind::StructuredBuffer:
+	case DXIL::ResourceKind::TypedBuffer:
+	case DXIL::ResourceKind::CBuffer:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *instruction,
                                DXIL::ResourceType resource_type, unsigned resource_range,
                                llvm::Value *instruction_offset, bool non_uniform)
@@ -899,12 +955,23 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id loaded_id_16bit = 0;
 			bool is_non_uniform = false;
 
+			auto storage = get_resource_storage_class(impl, reference.var_id);
+			DescriptorQATypeFlagBits descriptor_type;
+			if (storage == spv::StorageClassStorageBuffer)
+				descriptor_type = DESCRIPTOR_QA_TYPE_STORAGE_BUFFER_BIT;
+			else if (resource_kind_is_buffer(reference.resource_kind))
+				descriptor_type = DESCRIPTOR_QA_TYPE_UNIFORM_TEXEL_BUFFER_BIT;
+			else if (reference.resource_kind == DXIL::ResourceKind::RTAccelerationStructure)
+				descriptor_type = DESCRIPTOR_QA_TYPE_RT_ACCELERATION_STRUCTURE_BIT;
+			else
+				descriptor_type = DESCRIPTOR_QA_TYPE_SAMPLED_IMAGE_BIT;
+
 			// Load 16-bit resource first so value map matches 32-bit meta.
 			if (reference.var_id_16bit)
 			{
 				// Need to also create a 16-bit access chain.
-				if (!build_load_resource_handle(impl, reference.var_id_16bit, reference, instruction,
-				                                instruction_offset, non_uniform, is_non_uniform,
+				if (!build_load_resource_handle(impl, reference.var_id_16bit, reference, descriptor_type,
+				                                instruction, instruction_offset, non_uniform, is_non_uniform,
 				                                nullptr, &loaded_id_16bit, nullptr))
 				{
 					LOGE("Failed to load SRV resource handle.\n");
@@ -914,7 +981,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			spv::Id loaded_id = 0;
 			spv::Id offset_id = 0;
-			if (!build_load_resource_handle(impl, base_image_id, reference, instruction,
+			if (!build_load_resource_handle(impl, base_image_id, reference, descriptor_type, instruction,
 			                                instruction_offset, non_uniform, is_non_uniform,
 			                                nullptr, &loaded_id, &offset_id))
 			{
@@ -985,10 +1052,19 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id offset_id = 0;
 			spv::Id loaded_id_16bit = 0;
 
+			auto storage = get_resource_storage_class(impl, reference.var_id);
+			DescriptorQATypeFlagBits descriptor_type;
+			if (storage == spv::StorageClassStorageBuffer)
+				descriptor_type = DESCRIPTOR_QA_TYPE_STORAGE_BUFFER_BIT;
+			else if (resource_kind_is_buffer(reference.resource_kind))
+				descriptor_type = DESCRIPTOR_QA_TYPE_STORAGE_TEXEL_BUFFER_BIT;
+			else
+				descriptor_type = DESCRIPTOR_QA_TYPE_STORAGE_IMAGE_BIT;
+
 			if (reference.var_id_16bit)
 			{
 				// Need to also create a 16-bit access chain.
-				if (!build_load_resource_handle(impl, reference.var_id_16bit, reference, instruction,
+				if (!build_load_resource_handle(impl, reference.var_id_16bit, reference, descriptor_type, instruction,
 				                                instruction_offset, non_uniform, is_non_uniform,
 				                                nullptr, &loaded_id_16bit, nullptr))
 				{
@@ -997,7 +1073,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				}
 			}
 
-			if (!build_load_resource_handle(impl, base_resource_id, reference, instruction, instruction_offset, non_uniform,
+			if (!build_load_resource_handle(impl, base_resource_id, reference, descriptor_type, instruction,
+			                                instruction_offset, non_uniform,
 			                                is_non_uniform, &resource_ptr_id, &loaded_id, &offset_id))
 			{
 				LOGE("Failed to load UAV resource handle.\n");
@@ -1052,7 +1129,9 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 					}
 					else
 					{
-						if (!build_load_resource_handle(impl, counter_reference.var_id, reference, instruction, instruction_offset, non_uniform,
+						if (!build_load_resource_handle(impl, counter_reference.var_id, reference,
+						                                DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
+						                                instruction, instruction_offset, non_uniform,
 						                                is_non_uniform, &meta.counter_var_id, nullptr, nullptr))
 						{
 							LOGE("Failed to load UAV counter pointer.\n");
@@ -1102,6 +1181,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			bool ssbo = reference.bindless && impl.options.bindless_cbv_ssbo_emulation;
 			auto storage = ssbo ? spv::StorageClassStorageBuffer : spv::StorageClassUniform;
+			auto desc_type = ssbo ? DESCRIPTOR_QA_TYPE_STORAGE_BUFFER_BIT : DESCRIPTOR_QA_TYPE_UNIFORM_BUFFER_BIT;
 
 			type_id = builder.getContainedTypeId(type_id);
 			Operation *op = impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(storage, type_id));
@@ -1109,8 +1189,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			if (reference.bindless)
 			{
-				spv::Id offset_id = build_bindless_heap_offset(
-					impl, reference, reference.base_resource_is_array ? instruction_offset : nullptr);
+				spv::Id offset_id = build_bindless_heap_offset(impl, reference, desc_type,
+				                                               reference.base_resource_is_array ? instruction_offset : nullptr);
 				if (!offset_id)
 				{
 					LOGE("Failed to load CBV bindless offset.\n");
@@ -1186,7 +1266,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 		bool is_non_uniform = false;
 		spv::Id loaded_id = 0;
-		if (!build_load_resource_handle(impl, base_sampler_id, reference, instruction,
+		if (!build_load_resource_handle(impl, base_sampler_id, reference, DESCRIPTOR_QA_TYPE_SAMPLER_BIT, instruction,
 		                                instruction_offset, non_uniform, is_non_uniform, nullptr, &loaded_id, nullptr))
 		{
 			LOGE("Failed to load Sampler resource handle.\n");
