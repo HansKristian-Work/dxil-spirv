@@ -367,6 +367,13 @@ void SPIRVModule::Impl::build_discard_call_exit()
 	builder.createFunctionCall(discard_function, {});
 }
 
+enum class DescriptorQAHeapMembers
+{
+	DescriptorCount = 0,
+	HeapIndex,
+	CookiesDescriptorInfo
+};
+
 static spv::Id build_descriptor_qa_heap_buffer_type(spv::Builder &builder)
 {
 	Vector<spv::Id> member_types;
@@ -385,15 +392,33 @@ static spv::Id build_descriptor_qa_heap_buffer_type(spv::Builder &builder)
 	member_types.push_back(uvec2_arr_type);
 
 	spv::Id id = builder.makeStructType(member_types, "DescriptorHeapQAData");
-	builder.addMemberDecoration(id, 0, spv::DecorationOffset, 0);
-	builder.addMemberName(id, 0, "descriptor_count");
-	builder.addMemberDecoration(id, 1, spv::DecorationOffset, 4);
-	builder.addMemberName(id, 1, "heap_id");
-	builder.addMemberDecoration(id, 2, spv::DecorationOffset, 8);
-	builder.addMemberName(id, 2, "cookies_descriptor_info");
+
+	const auto set_info = [&](DescriptorQAHeapMembers member, int offset, const char *name) {
+		builder.addMemberDecoration(id, int(member), spv::DecorationOffset, offset);
+		builder.addMemberName(id, int(member), name);
+	};
+
+	set_info(DescriptorQAHeapMembers::DescriptorCount, 0, "descriptor_count");
+	set_info(DescriptorQAHeapMembers::HeapIndex, 4, "heap_index");
+	set_info(DescriptorQAHeapMembers::CookiesDescriptorInfo, 8, "cookies_descriptor_info");
+
 	builder.addDecoration(id, spv::DecorationBlock);
 	return id;
 }
+
+enum class DescriptorQAGlobalMembers
+{
+	FailedShaderHash = 0,
+	NumCookies,
+	FailedOffset,
+	FailedHeap,
+	FailedCookie,
+	FailedAtomic,
+	FailedInstruction,
+	FailedType,
+	FailKind,
+	LiveStatusTable
+};
 
 static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 {
@@ -401,6 +426,8 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	// DescriptorHeapQAGlobalData {
 	//  uvec2 failed_shader_hash;
 	//  uint num_cookies;
+	//  uint failed_offset;
+	//  uint failed_heap;
 	//  uint failed_cookie;
 	//  uint fault_atomic;
 	//  uint failed_instruction;
@@ -420,26 +447,30 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
+	member_types.push_back(u32_type);
+	member_types.push_back(u32_type);
 	member_types.push_back(u32_arr_type);
 
 	spv::Id id = builder.makeStructType(member_types, "DescriptorHeapGlobalQAData");
-	builder.addMemberDecoration(id, 0, spv::DecorationOffset, 0);
-	builder.addMemberName(id, 0, "failed_shader_hash");
-	builder.addMemberDecoration(id, 1, spv::DecorationOffset, 8);
-	builder.addMemberName(id, 1, "num_cookies");
-	builder.addMemberDecoration(id, 2, spv::DecorationOffset, 12);
-	builder.addMemberName(id, 2, "failed_cookie");
-	builder.addMemberDecoration(id, 3, spv::DecorationOffset, 16);
-	builder.addMemberName(id, 3, "fault_atomic");
-	builder.addMemberDecoration(id, 4, spv::DecorationOffset, 20);
-	builder.addMemberName(id, 4, "failed_instruction");
-	builder.addMemberDecoration(id, 5, spv::DecorationOffset, 24);
-	builder.addMemberName(id, 5, "failed_type");
-	builder.addMemberDecoration(id, 6, spv::DecorationOffset, 28);
-	builder.addMemberName(id, 6, "fail_kind");
-	builder.addMemberDecoration(id, 7, spv::DecorationOffset, 32);
-	builder.addMemberName(id, 7, "live_status_table");
+
+	const auto set_info = [&](DescriptorQAGlobalMembers member, int offset, const char *name) {
+		builder.addMemberDecoration(id, int(member), spv::DecorationOffset, offset);
+		builder.addMemberName(id, int(member), name);
+	};
+
+	set_info(DescriptorQAGlobalMembers::FailedShaderHash, 0, "failed_shader_hash");
+	set_info(DescriptorQAGlobalMembers::NumCookies, 8, "num_cookies");
+	set_info(DescriptorQAGlobalMembers::FailedOffset, 12, "failed_offset");
+	set_info(DescriptorQAGlobalMembers::FailedHeap, 16, "failed_heap");
+	set_info(DescriptorQAGlobalMembers::FailedCookie, 20, "failed_cookie");
+	set_info(DescriptorQAGlobalMembers::FailedAtomic, 24, "failed_atomic");
+	set_info(DescriptorQAGlobalMembers::FailedInstruction, 28, "failed_instruction");
+	set_info(DescriptorQAGlobalMembers::FailedType, 32, "failed_type");
+	set_info(DescriptorQAGlobalMembers::FailKind, 36, "fail_kind");
+	set_info(DescriptorQAGlobalMembers::LiveStatusTable, 40, "live_status_table");
+
 	builder.addDecoration(id, spv::DecorationBlock);
+
 	return id;
 }
 
@@ -579,9 +610,14 @@ void SPIRVModule::Impl::build_descriptor_qa_fault_report()
 	exchange->addIdOperand(builder.makeUintConstant(0));
 	exchange->addIdOperand(builder.makeUintConstant(1));
 
+	auto check = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpIEqual);
+	check->addIdOperand(exchange->getResultId());
+	check->addIdOperand(builder.makeUintConstant(0));
+
 	builder.setBuildPoint(entry);
 	entry->addInstruction(std::move(chain));
 	entry->addInstruction(std::move(exchange));
+	entry->addInstruction(std::move(check));
 	builder.makeReturn(false);
 
 	builder.setBuildPoint(current_build_point);
@@ -621,7 +657,9 @@ void SPIRVModule::Impl::build_descriptor_qa_check()
 	spv::Id descriptor_count_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id, 0);
 	spv::Id heap_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id, 1);
 	spv::Id cookie_descriptor_info = build_ssbo_load_array(builder, builder.makeVectorType(builder.makeUintType(32), 2),
-	                                                       heap_buffer_id, 2, offset_id);
+	                                                       heap_buffer_id,
+	                                                       uint32_t(DescriptorQAHeapMembers::CookiesDescriptorInfo),
+	                                                       offset_id);
 	spv::Id cookie_id;
 	spv::Id cookie_shifted_id;
 	spv::Id cookie_mask_id;
@@ -631,7 +669,9 @@ void SPIRVModule::Impl::build_descriptor_qa_check()
 
 	spv::Id num_cookies_id = build_ssbo_load(builder, builder.makeUintType(32), global_buffer_id, 1);
 	spv::Id live_status_id = build_ssbo_load_array(builder, builder.makeUintType(32),
-	                                               global_buffer_id, 7, cookie_shifted_id);
+	                                               global_buffer_id,
+	                                               uint32_t(DescriptorQAGlobalMembers::LiveStatusTable),
+	                                               cookie_shifted_id);
 	spv::Id live_status_cond_id = build_live_check(builder, live_status_id, cookie_mask_id);
 
 	spv::Id out_of_range_id = build_binary_op(builder, builder.makeBoolType(), spv::OpUGreaterThanEqual,
