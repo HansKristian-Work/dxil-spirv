@@ -582,7 +582,7 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 	else
 		offset_id = build_bindless_heap_offset_push_constant(impl, reference, dynamic_offset);
 
-	if (impl.options.descriptor_qa)
+	if (impl.options.descriptor_qa_enabled)
 		offset_id = build_descriptor_qa_check(impl, offset_id, type, reference.resource_kind);
 
 	return offset_id;

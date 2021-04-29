@@ -21,6 +21,7 @@
 #include "thread_local_allocator.hpp"
 #include "cfg_structurizer.hpp"
 #include "ir.hpp"
+#include "descriptor_qa.hpp"
 #include <memory>
 
 namespace spv
@@ -76,7 +77,7 @@ public:
 	                                         const char *name = nullptr);
 
 	spv::Id get_helper_call_id(HelperCall call);
-	void set_shader_hash(uint64_t hash);
+	void set_descriptor_qa_info(const DescriptorQAInfo &info);
 
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 

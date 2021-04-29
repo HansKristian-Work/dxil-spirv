@@ -95,7 +95,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id descriptor_qa_heap_buffer_id = 0;
 	spv::Id descriptor_qa_global_buffer_id = 0;
 
-	uint64_t shader_hash = 0;
+	DescriptorQAInfo descriptor_qa_info;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
@@ -672,8 +672,8 @@ void SPIRVModule::Impl::build_descriptor_qa_fault_report()
 		spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
 
 		Vector<spv::Id> comps;
-		comps.push_back(builder.makeUintConstant(uint32_t(shader_hash)));
-		comps.push_back(builder.makeUintConstant(uint32_t(shader_hash >> 32u)));
+		comps.push_back(builder.makeUintConstant(uint32_t(descriptor_qa_info.shader_hash)));
+		comps.push_back(builder.makeUintConstant(uint32_t(descriptor_qa_info.shader_hash >> 32u)));
 		spv::Id hash_id = builder.makeCompositeConstant(uvec2_type, comps);
 		build_ssbo_store(builder, uvec2_type, descriptor_qa_global_buffer_id,
 		                 uint32_t(DescriptorQAGlobalMembers::FailedShaderHash), hash_id);
@@ -1276,9 +1276,9 @@ spv::Id SPIRVModule::get_helper_call_id(HelperCall call)
 	return impl->get_helper_call_id(call);
 }
 
-void SPIRVModule::set_shader_hash(uint64_t hash)
+void SPIRVModule::set_descriptor_qa_info(const DescriptorQAInfo &info)
 {
-	impl->shader_hash = hash;
+	impl->descriptor_qa_info = info;
 }
 
 SPIRVModule::~SPIRVModule()

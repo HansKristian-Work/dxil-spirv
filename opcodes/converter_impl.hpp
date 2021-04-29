@@ -23,6 +23,7 @@
 #include "cfg_structurizer.hpp"
 #include "dxil_converter.hpp"
 #include "scratch_pool.hpp"
+#include "descriptor_qa.hpp"
 
 #include "GLSL.std.450.h"
 
@@ -357,7 +358,6 @@ struct Converter::Impl
 		bool typed_uav_read_without_format = false;
 		bool bindless_typed_buffer_offsets = false;
 		bool storage_16bit_input_output = false;
-		bool descriptor_qa = true;
 
 		struct
 		{
@@ -365,6 +365,9 @@ struct Converter::Impl
 			unsigned typed_offset = 0;
 			unsigned stride = 1;
 		} offset_buffer_layout;
+
+		DescriptorQAInfo descriptor_qa;
+		bool descriptor_qa_enabled = false;
 	} options;
 
 	struct BindlessInfo
