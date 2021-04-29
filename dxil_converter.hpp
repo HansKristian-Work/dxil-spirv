@@ -369,7 +369,10 @@ struct OptionDescriptorQA : OptionBase
 	{
 	}
 
+	enum { DefaultVersion = 1 };
+
 	bool enabled = false;
+	uint32_t version = DefaultVersion;
 	uint32_t global_desc_set = 0;
 	uint32_t global_binding = 0;
 	uint32_t heap_desc_set = 0;

@@ -603,8 +603,10 @@ void SPIRVModule::Impl::build_descriptor_qa_fault_report()
 	spv::Id global_buffer_type_id = build_descriptor_global_buffer_type(builder);
 	descriptor_qa_global_buffer_id = create_variable(spv::StorageClassStorageBuffer,
 	                                                 global_buffer_type_id, "QAGlobalData");
-	builder.addDecoration(descriptor_qa_global_buffer_id, spv::DecorationDescriptorSet, 9);
-	builder.addDecoration(descriptor_qa_global_buffer_id, spv::DecorationBinding, 11);
+	builder.addDecoration(descriptor_qa_global_buffer_id, spv::DecorationDescriptorSet,
+	                      descriptor_qa_info.global_desc_set);
+	builder.addDecoration(descriptor_qa_global_buffer_id, spv::DecorationBinding,
+	                      descriptor_qa_info.global_binding);
 
 	auto *current_build_point = builder.getBuildPoint();
 
@@ -696,8 +698,10 @@ void SPIRVModule::Impl::build_descriptor_qa_check()
 	spv::Id heap_buffer_type_id = build_descriptor_qa_heap_buffer_type(builder);
 	descriptor_qa_heap_buffer_id = create_variable(spv::StorageClassStorageBuffer,
 	                                               heap_buffer_type_id, "QAHeapData");
-	builder.addDecoration(descriptor_qa_heap_buffer_id, spv::DecorationDescriptorSet, 9);
-	builder.addDecoration(descriptor_qa_heap_buffer_id, spv::DecorationBinding, 10);
+	builder.addDecoration(descriptor_qa_heap_buffer_id, spv::DecorationDescriptorSet,
+	                      descriptor_qa_info.heap_desc_set);
+	builder.addDecoration(descriptor_qa_heap_buffer_id, spv::DecorationBinding,
+	                      descriptor_qa_info.heap_binding);
 	builder.addDecoration(descriptor_qa_heap_buffer_id, spv::DecorationNonWritable);
 
 	auto heap_buffer_id = descriptor_qa_heap_buffer_id;

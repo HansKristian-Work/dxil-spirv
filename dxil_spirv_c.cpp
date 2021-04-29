@@ -758,6 +758,21 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_DESCRIPTOR_QA:
+	{
+		OptionDescriptorQA helper;
+		auto *qa = reinterpret_cast<const dxil_spv_option_descriptor_qa *>(option);
+		helper.enabled = qa->enabled == DXIL_SPV_TRUE;
+		helper.shader_hash = qa->shader_hash;
+		helper.global_desc_set = qa->global_desc_set;
+		helper.global_binding = qa->global_binding;
+		helper.heap_desc_set = qa->heap_desc_set;
+		helper.heap_binding = qa->heap_binding;
+		helper.version = qa->version;
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
