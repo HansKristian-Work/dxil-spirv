@@ -1,2 +1,2 @@
-shaders/* linguist-language=GLSL
-reference/* linguist-generated
+shaders/**/* linguist-language=GLSL
+reference/**/* linguist-generated
