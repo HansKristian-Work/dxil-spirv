@@ -411,5 +411,7 @@ struct Converter::Impl
 
 	DXIL::ComponentType get_effective_input_output_type(DXIL::ComponentType type);
 	spv::Id get_effective_input_output_type_id(DXIL::ComponentType type);
+
+	const llvm::ConstantExpr *current_constant_expr = nullptr;
 };
 } // namespace dxil_spv

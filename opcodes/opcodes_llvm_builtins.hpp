@@ -45,4 +45,6 @@ bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Extract
 bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instruction);
 
 unsigned physical_integer_bit_width(unsigned width);
+
+uint32_t build_constant_expression(Converter::Impl &impl, const llvm::ConstantExpr *cexpr);
 } // namespace dxil_spv
