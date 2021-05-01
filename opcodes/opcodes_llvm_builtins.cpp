@@ -273,7 +273,7 @@ static uint32_t emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm
 	return op->id;
 }
 
-static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, bool is_signed)
+static uint32_t emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, bool is_signed)
 {
 	auto &builder = impl.builder();
 	spv::Id const_0;
@@ -315,19 +315,19 @@ static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::
 			break;
 
 		default:
-			return false;
+			return 0;
 		}
 		break;
 
 	default:
-		return false;
+		return 0;
 	}
 
 	Operation *op = impl.allocate(spv::OpSelect, instruction);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 	op->add_ids({ const_1, const_0 });
 	impl.add(op);
-	return true;
+	return op->id;
 }
 
 static bool emit_masked_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, spv::Op opcode)
