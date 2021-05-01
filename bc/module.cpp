@@ -68,6 +68,7 @@ enum class ConstantsRecord : uint32_t
 	FLOAT = 6,
 	AGGREGATE = 7,
 	STRING = 8,
+	CE_CAST = 11,
 	GEP = 12,
 	INBOUNDS_GEP = 20,
 	DATA = 22,
@@ -751,6 +752,25 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 	case ConstantsRecord::STRING:
 		LOGE("STRING unimplemented.\n");
 		return false;
+
+	case ConstantsRecord::CE_CAST:
+	{
+		unsigned index = 0;
+
+		auto op = Instruction::CastOps(translate_castop(CastOp(entry.ops[index++])));
+		auto *type = get_type(entry.ops[index++]);
+		if (!type)
+			return false;
+
+		auto input_value = get_value_and_type(entry.ops, index);
+		if (!input_value.first)
+			return false;
+
+		auto elements = Vector<Value *> { input_value.first };
+		Value *value = context->construct<ConstantExpr>(op, type, elements);
+		values.push_back(value);
+		break;
+	}
 
 	case ConstantsRecord::DATA:
 	{
