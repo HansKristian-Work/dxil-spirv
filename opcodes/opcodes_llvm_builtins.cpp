@@ -243,7 +243,7 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 	return true;
 }
 
-static bool emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
+static uint32_t emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
 {
 	auto &builder = impl.builder();
 	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
@@ -266,11 +266,11 @@ static bool emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm::Ca
 		break;
 
 	default:
-		return false;
+		return 0;
 	}
 
 	impl.add(op);
-	return true;
+	return op->id;
 }
 
 static bool emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, bool is_signed)
