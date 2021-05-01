@@ -243,7 +243,8 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 	return true;
 }
 
-static uint32_t emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
+template <typename InstructionType>
+static uint32_t emit_boolean_trunc_instruction(Converter::Impl &impl, const InstructionType *instruction)
 {
 	auto &builder = impl.builder();
 	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
@@ -273,7 +274,8 @@ static uint32_t emit_boolean_trunc_instruction(Converter::Impl &impl, const llvm
 	return op->id;
 }
 
-static uint32_t emit_boolean_convert_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, bool is_signed)
+template <typename InstructionType>
+static uint32_t emit_boolean_convert_instruction(Converter::Impl &impl, const InstructionType *instruction, bool is_signed)
 {
 	auto &builder = impl.builder();
 	spv::Id const_0;
@@ -330,7 +332,8 @@ static uint32_t emit_boolean_convert_instruction(Converter::Impl &impl, const ll
 	return op->id;
 }
 
-static uint32_t emit_masked_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, spv::Op opcode)
+template <typename InstructionType>
+static uint32_t emit_masked_cast_instruction(Converter::Impl &impl, const InstructionType *instruction, spv::Op opcode)
 {
 	auto logical_output_bits = instruction->getType()->getIntegerBitWidth();
 	auto logical_input_bits = instruction->getOperand(0)->getType()->getIntegerBitWidth();
@@ -359,18 +362,19 @@ static uint32_t emit_masked_cast_instruction(Converter::Impl &impl, const llvm::
 	return 0;
 }
 
-static uint32_t emit_cast_instruction_impl(Converter::Impl &impl, const llvm::CastInst *instruction)
+template <typename InstructionType>
+static uint32_t emit_cast_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
 	spv::Op opcode;
 	bool signed_input = false;
 
 	switch (instruction->getOpcode())
 	{
-	case llvm::CastInst::CastOps::BitCast:
+	case llvm::Instruction::CastOps::BitCast:
 		opcode = spv::OpBitcast;
 		break;
 
-	case llvm::CastInst::CastOps::SExt:
+	case llvm::Instruction::CastOps::SExt:
 		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, true);
 		opcode = spv::OpSConvert;
@@ -379,7 +383,7 @@ static uint32_t emit_cast_instruction_impl(Converter::Impl &impl, const llvm::Ca
 			return id;
 		break;
 
-	case llvm::CastInst::CastOps::ZExt:
+	case llvm::Instruction::CastOps::ZExt:
 		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, false);
 		opcode = spv::OpUConvert;
@@ -387,7 +391,7 @@ static uint32_t emit_cast_instruction_impl(Converter::Impl &impl, const llvm::Ca
 		    return id;
 		break;
 
-	case llvm::CastInst::CastOps::Trunc:
+	case llvm::Instruction::CastOps::Trunc:
 		if (instruction->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_trunc_instruction(impl, instruction);
 		opcode = spv::OpUConvert;
@@ -395,27 +399,27 @@ static uint32_t emit_cast_instruction_impl(Converter::Impl &impl, const llvm::Ca
 			return id;
 		break;
 
-	case llvm::CastInst::CastOps::FPTrunc:
-	case llvm::CastInst::CastOps::FPExt:
+	case llvm::Instruction::CastOps::FPTrunc:
+	case llvm::Instruction::CastOps::FPExt:
 		opcode = spv::OpFConvert;
 		break;
 
-	case llvm::CastInst::CastOps::FPToUI:
+	case llvm::Instruction::CastOps::FPToUI:
 		opcode = spv::OpConvertFToU;
 		break;
 
-	case llvm::CastInst::CastOps::FPToSI:
+	case llvm::Instruction::CastOps::FPToSI:
 		opcode = spv::OpConvertFToS;
 		break;
 
-	case llvm::CastInst::CastOps::SIToFP:
+	case llvm::Instruction::CastOps::SIToFP:
 		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, true);
 		opcode = spv::OpConvertSToF;
 		signed_input = true;
 		break;
 
-	case llvm::CastInst::CastOps::UIToFP:
+	case llvm::Instruction::CastOps::UIToFP:
 		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, false);
 		opcode = spv::OpConvertUToF;
@@ -540,6 +544,11 @@ static uint32_t build_constant_getelementptr(Converter::Impl &impl, const llvm::
 	return op->id;
 }
 
+static uint32_t build_constant_cast(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
+{
+	return emit_cast_instruction_impl(impl, cexpr);
+}
+
 uint32_t build_constant_expression(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
 {
 	impl.current_constant_expr = cexpr;
@@ -548,6 +557,21 @@ uint32_t build_constant_expression(Converter::Impl &impl, const llvm::ConstantEx
 	{
 	case llvm::Instruction::GetElementPtr:
 		return build_constant_getelementptr(impl, cexpr);
+
+	case llvm::Instruction::Trunc:
+	case llvm::Instruction::ZExt:
+	case llvm::Instruction::SExt:
+	case llvm::Instruction::FPToUI:
+	case llvm::Instruction::FPToSI:
+	case llvm::Instruction::UIToFP:
+	case llvm::Instruction::SIToFP:
+	case llvm::Instruction::FPTrunc:
+	case llvm::Instruction::FPExt:
+	case llvm::Instruction::PtrToInt:
+	case llvm::Instruction::IntToPtr:
+	case llvm::Instruction::BitCast:
+	case llvm::Instruction::AddrSpaceCast:
+		return build_constant_cast(impl, cexpr);
 
 	default:
 	{
