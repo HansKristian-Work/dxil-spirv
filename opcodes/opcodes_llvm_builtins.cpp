@@ -330,7 +330,7 @@ static uint32_t emit_boolean_convert_instruction(Converter::Impl &impl, const ll
 	return op->id;
 }
 
-static bool emit_masked_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, spv::Op opcode)
+static uint32_t emit_masked_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction, spv::Op opcode)
 {
 	auto logical_output_bits = instruction->getType()->getIntegerBitWidth();
 	auto logical_input_bits = instruction->getOperand(0)->getType()->getIntegerBitWidth();
@@ -344,7 +344,7 @@ static bool emit_masked_cast_instruction(Converter::Impl &impl, const llvm::Cast
 		spv::Id extended_id = build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits,
 		                                                     opcode == spv::OpSConvert);
 		impl.value_map[instruction] = extended_id;
-		return true;
+		return extended_id;
 	}
 	else if (physical_input_bits != logical_input_bits)
 	{
@@ -353,10 +353,10 @@ static bool emit_masked_cast_instruction(Converter::Impl &impl, const llvm::Cast
 		mask_op->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits,
 		                                               opcode == spv::OpSConvert));
 		impl.add(mask_op);
-		return true;
+		return mask_op->id;
 	}
 
-	return false;
+	return 0;
 }
 
 bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
