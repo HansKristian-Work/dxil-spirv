@@ -604,6 +604,40 @@ static Type *resolve_gep_element_type(Type *type, const Vector<Value *> &args)
 	return type;
 }
 
+static Instruction::CastOps translate_castop(CastOp op)
+{
+	switch (op)
+	{
+	case CastOp::TRUNC:
+		return Instruction::Trunc;
+	case CastOp::ZEXT:
+		return Instruction::ZExt;
+	case CastOp::SEXT:
+		return Instruction::SExt;
+	case CastOp::FPTOUI:
+		return Instruction::FPToUI;
+	case CastOp::FPTOSI:
+		return Instruction::FPToSI;
+	case CastOp::UITOFP:
+		return Instruction::UIToFP;
+	case CastOp::SITOFP:
+		return Instruction::SIToFP;
+	case CastOp::FPTRUNC:
+		return Instruction::FPTrunc;
+	case CastOp::FPEXT:
+		return Instruction::FPExt;
+	case CastOp::PTRTOINT:
+		return Instruction::PtrToInt;
+	case CastOp::INTTOPTR:
+		return Instruction::IntToPtr;
+	case CastOp::BITCAST:
+		return Instruction::BitCast;
+	case CastOp::ADDSPACECAST:
+		return Instruction::AddrSpaceCast;
+	}
+	return Instruction::CastOps::Invalid;
+}
+
 bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 {
 	if (entry.IsBlock())
@@ -1072,40 +1106,6 @@ static AtomicRMWInst::BinOp translate_atomic_binop(AtomicBinOp op)
 	default:
 		return AtomicRMWInst::BinOp::Invalid;
 	}
-}
-
-static Instruction::CastOps translate_castop(CastOp op)
-{
-	switch (op)
-	{
-	case CastOp::TRUNC:
-		return Instruction::Trunc;
-	case CastOp::ZEXT:
-		return Instruction::ZExt;
-	case CastOp::SEXT:
-		return Instruction::SExt;
-	case CastOp::FPTOUI:
-		return Instruction::FPToUI;
-	case CastOp::FPTOSI:
-		return Instruction::FPToSI;
-	case CastOp::UITOFP:
-		return Instruction::UIToFP;
-	case CastOp::SITOFP:
-		return Instruction::SIToFP;
-	case CastOp::FPTRUNC:
-		return Instruction::FPTrunc;
-	case CastOp::FPEXT:
-		return Instruction::FPExt;
-	case CastOp::PTRTOINT:
-		return Instruction::PtrToInt;
-	case CastOp::INTTOPTR:
-		return Instruction::IntToPtr;
-	case CastOp::BITCAST:
-		return Instruction::BitCast;
-	case CastOp::ADDSPACECAST:
-		return Instruction::AddrSpaceCast;
-	}
-	return Instruction::CastOps::Invalid;
 }
 
 bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
