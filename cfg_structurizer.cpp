@@ -1672,8 +1672,11 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	sorted_construct.reserve(construct.size());
 	for (auto *inner_block : construct)
 		sorted_construct.push_back(inner_block);
+
+	// Emit inner constructs before outer constructs.
+	// This way we get natural nesting in case of certain if/else if ladders.
 	std::sort(sorted_construct.begin(), sorted_construct.end(), [](const CFGNode *a, const CFGNode *b) {
-		return a->forward_post_visit_order > b->forward_post_visit_order;
+		return a->forward_post_visit_order < b->forward_post_visit_order;
 	});
 
 	for (auto *inner_block : sorted_construct)
