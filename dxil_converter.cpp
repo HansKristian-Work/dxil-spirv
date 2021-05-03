@@ -4297,11 +4297,15 @@ Operation *Converter::Impl::allocate(spv::Op op, spv::Id type_id)
 
 Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value)
 {
+	// Constant expressions cannot have an associated opcode ID to them.
+	assert(!llvm::isa<llvm::ConstantExpr>(value));
 	return spirv_module.allocate_op(op, get_id_for_value(value), get_type_id(value->getType()));
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value, spv::Id type_id)
 {
+	// Constant expressions cannot have an associated opcode ID to them.
+	assert(!llvm::isa<llvm::ConstantExpr>(value));
 	return spirv_module.allocate_op(op, get_id_for_value(value), type_id);
 }
 

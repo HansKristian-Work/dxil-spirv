@@ -448,15 +448,24 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 			fallback_storage = spv::StorageClassFunction;
 
 		spv::StorageClass storage = impl.get_effective_storage_class(instruction->getOperand(0), fallback_storage);
-		spv::Id type_id = impl.builder().makePointer(storage, value_type);
-		Operation *op = impl.allocate(spv::OpCopyObject, instruction, type_id);
-		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+
+		spv::Id id = impl.get_id_for_value(instruction->getOperand(0));
+
+		// Shouldn't try to copy constant expressions.
+		// They are built on-demand either way, and we risk infinite recursion that way.
+		if (!llvm::isa<llvm::ConstantExpr>(instruction))
+		{
+			spv::Id type_id = impl.builder().makePointer(storage, value_type);
+			Operation *op = impl.allocate(spv::OpCopyObject, instruction, type_id);
+			op->add_id(id);
+			impl.add(op);
+			id = op->id;
+		}
 
 		// Remember that we will need to bitcast on load or store to the real underlying type.
 		impl.llvm_value_actual_type[instruction] = value_type;
 		impl.handle_to_storage_class[instruction] = storage;
-		impl.add(op);
-		return op->id;
+		return id;
 	}
 	else
 	{
