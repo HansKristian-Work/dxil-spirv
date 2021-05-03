@@ -34,11 +34,11 @@ void main(uint index : SV_DispatchThreadID)
 		BufI.Store(index * STRIDE, value);
 		value = WaveActiveProduct(iindex);
 		BufI.Store(index * STRIDE + 4, value);
-		value = WaveActiveBitAnd(iindex);
+		value = WaveActiveBitAnd(uint(iindex));
 		BufI.Store(index * STRIDE + 8, value);
-		value = WaveActiveBitOr(iindex);
+		value = WaveActiveBitOr(uint(iindex));
 		BufI.Store(index * STRIDE + 12, value);
-		value = WaveActiveBitXor(iindex);
+		value = WaveActiveBitXor(uint(iindex));
 		BufI.Store(index * STRIDE + 16, value);
 		value = WaveActiveMin(iindex);
 		BufI.Store(index * STRIDE + 20, value);
