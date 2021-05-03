@@ -261,8 +261,19 @@ struct Converter::Impl
 	UnorderedMap<spv::Id, spv::Id> id_to_type;
 	UnorderedMap<const llvm::Value *, unsigned> handle_to_root_member_offset;
 	UnorderedMap<const llvm::Value *, spv::StorageClass> handle_to_storage_class;
+	UnorderedSet<const llvm::Value *> needs_temp_storage_copy;
+
+	struct TempPayloadEntry
+	{
+		spv::Id type;
+		spv::StorageClass storage;
+		spv::Id id;
+	};
+	Vector<TempPayloadEntry> temp_payloads;
 
 	spv::StorageClass get_effective_storage_class(const llvm::Value *value, spv::StorageClass fallback) const;
+	bool get_needs_temp_storage_copy(const llvm::Value *value) const;
+	spv::Id get_temp_payload(spv::Id type, spv::StorageClass storage);
 
 	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array = false);
 	spv::Id get_type_id(const llvm::Type *type);
