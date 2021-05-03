@@ -355,6 +355,11 @@ bool CFGStructurizer::run()
 	split_merge_scopes();
 	recompute_cfg();
 
+	// We will have generated lots of ladder blocks
+	// which might cause issues with further analysis, so
+	// nuke them as required.
+	eliminate_degenerate_blocks();
+
 	//log_cfg("Split merge scopes");
 	if (!graphviz_path.empty())
 	{
@@ -375,6 +380,9 @@ bool CFGStructurizer::run()
 		log_cfg_graphviz(graphviz_final.c_str());
 	}
 
+	// We will have generated lots of ladder blocks
+	// which might cause issues with further analysis, so
+	// nuke them as required.
 	eliminate_degenerate_blocks();
 
 	//log_cfg("Split merge scopes");
@@ -459,9 +467,15 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 		{
 			// If any pred is a continue block, this block is also load-bearing, since it can be used as a merge block.
 			if (std::find_if(node->pred.begin(), node->pred.end(),
-			                 [](const CFGNode *n) {
-			                   return n->succ_back_edge != nullptr;
-			                 }) != node->pred.end())
+			                 [](const CFGNode *n) { return n->succ_back_edge != nullptr; }) != node->pred.end())
+			{
+				continue;
+			}
+
+			// If any succ is a continue block, this block is also load-bearing, since it can be used as a merge block
+			// (merge-to-continue ladder).
+			if (std::find_if(node->succ.begin(), node->succ.end(),
+			                 [](const CFGNode *n) { return n->succ_back_edge != nullptr; }) != node->succ.end())
 			{
 				continue;
 			}
@@ -1408,15 +1422,22 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 		bool merge_a_has_header = !node->succ[0]->headers.empty();
 		bool merge_b_has_header = !node->succ[1]->headers.empty();
 
+		int trivial_merge_index = -1;
+
+		// Only allow the obvious merge candidates in pass 1.
+		// In pass 0, we might have a clear merge candidate,
+		// but the other path might be an escaping edge, which needs to be considered.
 		if (dominates_a && !dominates_b && !merge_a_has_header)
 		{
 			// A is obvious candidate. B is a direct break/continue construct target most likely.
 			merge_to_succ(node, 0);
+			trivial_merge_index = 0;
 		}
 		else if (dominates_b && !dominates_a && !merge_b_has_header)
 		{
 			// B is obvious candidate. A is a direct break/continue construct target most likely.
 			merge_to_succ(node, 1);
+			trivial_merge_index = 1;
 		}
 		else if (dominates_a && dominates_b && !merge_a_has_header && merge_b_has_header)
 		{
@@ -1424,6 +1445,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			// and other path hits a ladder merge block.
 			// For do/while(false) style loop, the loop body may dominate the merge block.
 			merge_to_succ(node, 0);
+			trivial_merge_index = 0;
 		}
 		else if (dominates_a && dominates_b && !merge_b_has_header && merge_a_has_header)
 		{
@@ -1431,6 +1453,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			// and other path hits a ladder merge block.
 			// For do/while style loop, the loop body may dominate the merge block.
 			merge_to_succ(node, 1);
+			trivial_merge_index = 1;
 		}
 		else if (dominates_a && dominates_b && !merge_a_has_header && !merge_b_has_header)
 		{
@@ -1551,6 +1574,46 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			else
 			{
 				//LOGI("Cannot find a merge target for block %s ...\n", node->name.c_str());
+			}
+		}
+
+		if (trivial_merge_index >= 0 && pass == 0)
+		{
+			CFGNode *merge = CFGStructurizer::find_common_post_dominator(node->succ);
+			if (merge && !node->dominates(merge))
+			{
+				if (!merge->headers.empty())
+				{
+					// We might have a trivial merge, yet the other branch direction
+					// is a breaking construct. We will have to split some blocks.
+					merge->headers.push_back(node);
+				}
+
+				auto *current_candidate = node->succ[trivial_merge_index];
+				auto *other_candidate = node->succ[1 - trivial_merge_index];
+
+				bool current_escapes = control_flow_is_escaping(current_candidate, merge) || current_candidate == merge;
+				bool other_escapes = control_flow_is_escaping(other_candidate, merge) || other_candidate == merge;
+
+				// If we tried to merge in a direction which is a breaking construct,
+				// this means that the other path is actual desired break path.
+				if (current_escapes && !other_escapes)
+				{
+					auto *target_block = node->succ[1 - trivial_merge_index];
+					// We kinda want to merge the other way, but to do that, we need an interim block.
+					auto *ladder = pool.create_node();
+					ladder->name = node->name + "." + target_block->name + ".interim";
+					ladder->add_branch(target_block);
+					ladder->ir.terminator.type = Terminator::Type::Branch;
+					ladder->ir.terminator.direct_block = target_block;
+					ladder->immediate_dominator = node;
+					ladder->immediate_post_dominator = target_block;
+					ladder->dominance_frontier.push_back(target_block);
+					ladder->forward_post_visit_order = node->forward_post_visit_order;
+					ladder->backward_post_visit_order = node->backward_post_visit_order;
+					node->retarget_branch(target_block, ladder);
+					node->selection_merge_block = ladder;
+				}
 			}
 		}
 	}
