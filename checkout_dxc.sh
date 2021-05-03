@@ -1,6 +1,7 @@
 #!/bin/bash
 
-DXC_REV=d0e9147ab86c8cb29a5fd81bd758e44d440c332c
+# Commit before GatherCmp regression
+DXC_REV=19360a8fa63ee29925f59328c261c1c920402bfd
 
 if [ -z $PROTOCOL ]; then
 	PROTOCOL=git

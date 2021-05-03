@@ -10,22 +10,23 @@ layout(set = 0, binding = 0) uniform writeonly image2DArray _8;
 
 void main()
 {
-    uint _24;
-    bool _27;
-    for (;;)
+    uint _24 = floatBitsToUint(_15._m0[0u]).x + 4294967295u;
+    bool _38;
+    if (_24 < 11u)
     {
-        _24 = floatBitsToUint(_15._m0[0u]).x + 4294967295u;
-        _27 = _24 < 11u;
-        if (_27)
-        {
-            if (bitfieldExtract((bitfieldExtract(440u, int(0u), int(11u)) >> bitfieldExtract(bitfieldExtract(_24, int(0u), int(11u)), int(0u), int(11u))) & 1u, int(0u), int(11u)) == bitfieldExtract(0u, int(0u), int(11u)))
-            {
-                imageStore(_8, ivec3(uvec3(1u)), vec4(1.0));
-                break;
-            }
-        }
+        _38 = bitfieldExtract((bitfieldExtract(440u, int(0u), int(11u)) >> bitfieldExtract(bitfieldExtract(_24, int(0u), int(11u)), int(0u), int(11u))) & 1u, int(0u), int(11u)) != bitfieldExtract(0u, int(0u), int(11u));
+    }
+    else
+    {
+        _38 = true;
+    }
+    if (_38)
+    {
         imageStore(_8, ivec3(uvec3(1u)), vec4(0.0));
-        break;
+    }
+    else
+    {
+        imageStore(_8, ivec3(uvec3(1u)), vec4(1.0));
     }
 }
 
@@ -72,13 +73,14 @@ OpDecorate %15 Binding 0
 %26 = OpTypeBool
 %28 = OpConstant %9 11
 %31 = OpConstant %9 440
-%38 = OpConstant %5 0
-%39 = OpTypeVector %9 3
-%42 = OpConstant %5 1
+%39 = OpConstantTrue %26
+%40 = OpConstant %5 0
+%41 = OpTypeVector %9 3
+%44 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %45
-%45 = OpLabel
+OpBranch %47
+%47 = OpLabel
 %16 = OpLoad %6 %8
 %19 = OpAccessChain %18 %15 %17 %17
 %20 = OpLoad %11 %19
@@ -86,12 +88,9 @@ OpBranch %45
 %23 = OpCompositeExtract %9 %22 0
 %24 = OpIAdd %9 %23 %25
 %27 = OpULessThan %26 %24 %28
-OpLoopMerge %51 %52 None
-OpBranch %46
-%46 = OpLabel
 OpSelectionMerge %49 None
-OpBranchConditional %27 %47 %49
-%47 = OpLabel
+OpBranchConditional %27 %48 %49
+%48 = OpLabel
 %29 = OpBitFieldUExtract %9 %24 %17 %28
 %32 = OpBitFieldUExtract %9 %31 %17 %28
 %33 = OpBitFieldUExtract %9 %29 %17 %28
@@ -99,24 +98,23 @@ OpBranchConditional %27 %47 %49
 %34 = OpBitwiseAnd %9 %30 %10
 %36 = OpBitFieldUExtract %9 %34 %17 %28
 %37 = OpBitFieldUExtract %9 %17 %17 %28
-%35 = OpIEqual %26 %36 %37
-OpSelectionMerge %48 None
-OpBranchConditional %35 %50 %48
-%50 = OpLabel
-%43 = OpCompositeConstruct %39 %10 %10 %10
-%44 = OpCompositeConstruct %11 %42 %42 %42 %42
-OpImageWrite %16 %43 %44
-OpBranch %51
-%48 = OpLabel
+%35 = OpINotEqual %26 %36 %37
 OpBranch %49
 %49 = OpLabel
-%40 = OpCompositeConstruct %39 %10 %10 %10
-%41 = OpCompositeConstruct %11 %38 %38 %38 %38
-OpImageWrite %16 %40 %41
-OpBranch %51
-%52 = OpLabel
-OpBranch %45
+%38 = OpPhi %26 %39 %47 %35 %48
+OpSelectionMerge %52 None
+OpBranchConditional %38 %51 %50
 %51 = OpLabel
+%42 = OpCompositeConstruct %41 %10 %10 %10
+%43 = OpCompositeConstruct %11 %40 %40 %40 %40
+OpImageWrite %16 %42 %43
+OpBranch %52
+%50 = OpLabel
+%45 = OpCompositeConstruct %41 %10 %10 %10
+%46 = OpCompositeConstruct %11 %44 %44 %44 %44
+OpImageWrite %16 %45 %46
+OpBranch %52
+%52 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

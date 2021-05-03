@@ -15,11 +15,11 @@ layout(location = 3) callableDataEXT _10 _15;
 
 void main()
 {
-    executeCallableEXT(0u, 3);
-    executeCallableEXT(1u, 2);
-    executeCallableEXT(2u, 1);
-    executeCallableEXT(3u, 0);
-    imageStore(IMG, ivec2(uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y)), vec4(((_14._m0.x + _15._m0.x) + _13._m0.x) + _12._m0.x, ((_14._m0.y + _15._m0.y) + _13._m0.y) + _12._m0.y, ((_14._m0.z + _15._m0.z) + _13._m0.z) + _12._m0.z, ((_14._m0.w + _15._m0.w) + _13._m0.w) + _12._m0.w));
+    executeCallableEXT(0u, 0);
+    executeCallableEXT(1u, 1);
+    executeCallableEXT(2u, 2);
+    executeCallableEXT(3u, 3);
+    imageStore(IMG, ivec2(uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y)), vec4(((_13._m0.x + _12._m0.x) + _14._m0.x) + _15._m0.x, ((_13._m0.y + _12._m0.y) + _14._m0.y) + _15._m0.y, ((_13._m0.z + _12._m0.z) + _14._m0.z) + _15._m0.z, ((_13._m0.w + _12._m0.w) + _14._m0.w) + _15._m0.w));
 }
 
 
@@ -68,10 +68,10 @@ OpDecorate %60 BuiltIn LaunchIdNV
 %15 = OpVariable %11 CallableDataNV
 %16 = OpTypeInt 32 0
 %17 = OpConstant %16 0
-%18 = OpTypePointer CallableDataNV %9
-%25 = OpConstant %16 1
-%32 = OpConstant %16 2
-%39 = OpConstant %16 3
+%18 = OpConstant %16 1
+%19 = OpConstant %16 2
+%20 = OpConstant %16 3
+%21 = OpTypePointer CallableDataNV %9
 %58 = OpTypeVector %16 3
 %59 = OpTypePointer Input %58
 %60 = OpVariable %59 Input
@@ -81,53 +81,53 @@ OpDecorate %60 BuiltIn LaunchIdNV
 %4 = OpLabel
 OpBranch %70
 %70 = OpLabel
-OpExecuteCallableKHR %17 %15
-%19 = OpInBoundsAccessChain %18 %15 %17
-%20 = OpLoad %9 %19
-%21 = OpCompositeExtract %5 %20 0
-%22 = OpCompositeExtract %5 %20 1
-%23 = OpCompositeExtract %5 %20 2
-%24 = OpCompositeExtract %5 %20 3
-OpExecuteCallableKHR %25 %14
-%26 = OpInBoundsAccessChain %18 %14 %17
-%27 = OpLoad %9 %26
-%28 = OpCompositeExtract %5 %27 0
-%29 = OpCompositeExtract %5 %27 1
-%30 = OpCompositeExtract %5 %27 2
-%31 = OpCompositeExtract %5 %27 3
-OpExecuteCallableKHR %32 %13
-%33 = OpInBoundsAccessChain %18 %13 %17
-%34 = OpLoad %9 %33
-%35 = OpCompositeExtract %5 %34 0
-%36 = OpCompositeExtract %5 %34 1
-%37 = OpCompositeExtract %5 %34 2
-%38 = OpCompositeExtract %5 %34 3
-OpExecuteCallableKHR %39 %12
-%40 = OpInBoundsAccessChain %18 %12 %17
-%41 = OpLoad %9 %40
-%42 = OpCompositeExtract %5 %41 0
-%43 = OpCompositeExtract %5 %41 1
-%44 = OpCompositeExtract %5 %41 2
-%45 = OpCompositeExtract %5 %41 3
-%46 = OpFAdd %5 %28 %21
-%47 = OpFAdd %5 %29 %22
-%48 = OpFAdd %5 %30 %23
-%49 = OpFAdd %5 %31 %24
-%50 = OpFAdd %5 %46 %35
-%51 = OpFAdd %5 %47 %36
-%52 = OpFAdd %5 %48 %37
-%53 = OpFAdd %5 %49 %38
-%54 = OpFAdd %5 %50 %42
-%55 = OpFAdd %5 %51 %43
-%56 = OpFAdd %5 %52 %44
-%57 = OpFAdd %5 %53 %45
+OpExecuteCallableKHR %17 %12
+OpExecuteCallableKHR %18 %13
+OpExecuteCallableKHR %19 %14
+OpExecuteCallableKHR %20 %15
+%22 = OpInBoundsAccessChain %21 %12 %17
+%23 = OpLoad %9 %22
+%24 = OpCompositeExtract %5 %23 0
+%25 = OpCompositeExtract %5 %23 1
+%26 = OpCompositeExtract %5 %23 2
+%27 = OpCompositeExtract %5 %23 3
+%28 = OpInBoundsAccessChain %21 %13 %17
+%29 = OpLoad %9 %28
+%30 = OpCompositeExtract %5 %29 0
+%31 = OpFAdd %5 %30 %24
+%32 = OpCompositeExtract %5 %29 1
+%33 = OpFAdd %5 %32 %25
+%34 = OpCompositeExtract %5 %29 2
+%35 = OpFAdd %5 %34 %26
+%36 = OpCompositeExtract %5 %29 3
+%37 = OpFAdd %5 %36 %27
+%38 = OpInBoundsAccessChain %21 %14 %17
+%39 = OpLoad %9 %38
+%40 = OpCompositeExtract %5 %39 0
+%41 = OpFAdd %5 %31 %40
+%42 = OpCompositeExtract %5 %39 1
+%43 = OpFAdd %5 %33 %42
+%44 = OpCompositeExtract %5 %39 2
+%45 = OpFAdd %5 %35 %44
+%46 = OpCompositeExtract %5 %39 3
+%47 = OpFAdd %5 %37 %46
+%48 = OpInBoundsAccessChain %21 %15 %17
+%49 = OpLoad %9 %48
+%50 = OpCompositeExtract %5 %49 0
+%51 = OpFAdd %5 %41 %50
+%52 = OpCompositeExtract %5 %49 1
+%53 = OpFAdd %5 %43 %52
+%54 = OpCompositeExtract %5 %49 2
+%55 = OpFAdd %5 %45 %54
+%56 = OpCompositeExtract %5 %49 3
+%57 = OpFAdd %5 %47 %56
 %62 = OpAccessChain %61 %60 %17
 %63 = OpLoad %16 %62
-%64 = OpAccessChain %61 %60 %25
+%64 = OpAccessChain %61 %60 %18
 %65 = OpLoad %16 %64
 %66 = OpLoad %6 %8
 %68 = OpCompositeConstruct %67 %63 %65
-%69 = OpCompositeConstruct %9 %54 %55 %56 %57
+%69 = OpCompositeConstruct %9 %51 %53 %55 %57
 OpImageWrite %66 %68 %69
 OpReturn
 OpFunctionEnd

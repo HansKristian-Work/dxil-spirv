@@ -20,10 +20,10 @@ void main()
     uint _27 = INDEX + 0u;
     uint _38 = INDEX & 1u;
     uint _41 = (INDEX ^ 1u) + 0u;
-    SV_Target.x = _19[_41]._m0[_38].x + _13[_27]._m0[_25].x;
-    SV_Target.y = _19[_41]._m0[_38].y + _13[_27]._m0[_25].y;
-    SV_Target.z = _19[_41]._m0[_38].z + _13[_27]._m0[_25].z;
-    SV_Target.w = _19[_41]._m0[_38].w + _13[_27]._m0[_25].w;
+    SV_Target.x = _19[nonuniformEXT(_41)]._m0[_38].x + _13[nonuniformEXT(_27)]._m0[_25].x;
+    SV_Target.y = _19[nonuniformEXT(_41)]._m0[_38].y + _13[nonuniformEXT(_27)]._m0[_25].y;
+    SV_Target.z = _19[nonuniformEXT(_41)]._m0[_38].z + _13[nonuniformEXT(_27)]._m0[_25].z;
+    SV_Target.w = _19[nonuniformEXT(_41)]._m0[_38].w + _13[nonuniformEXT(_27)]._m0[_25].w;
 }
 
 
@@ -37,6 +37,7 @@ void main()
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
 OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %21 %23
@@ -59,6 +60,10 @@ OpDecorate %19 Binding 0
 OpDecorate %21 Flat
 OpDecorate %21 Location 0
 OpDecorate %23 Location 0
+OpDecorate %30 NonUniform
+OpDecorate %32 NonUniform
+OpDecorate %43 NonUniform
+OpDecorate %44 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

@@ -36,10 +36,10 @@ void main()
     uint _32 = registers._m5 + 5u;
     uint _70 = registers._m5 + (uvec4(registers._m4, registers._m5, registers._m6, registers._m7).x + 4u);
     uint _86 = registers._m5 + (INDEX + 100u);
-    SV_Target.x = ((_16[_32]._m0[0u].x + _16[_27]._m0[0u].x) + _16[_70]._m0[0u].x) + _16[_86]._m0[0u].x;
-    SV_Target.y = ((_16[_32]._m0[0u].y + _16[_27]._m0[0u].y) + _16[_70]._m0[0u].y) + _16[_86]._m0[0u].y;
-    SV_Target.z = ((_16[_32]._m0[0u].z + _16[_27]._m0[0u].z) + _16[_70]._m0[0u].z) + _16[_86]._m0[0u].z;
-    SV_Target.w = ((_16[_32]._m0[0u].w + _16[_27]._m0[0u].w) + _16[_70]._m0[0u].w) + _16[_86]._m0[0u].w;
+    SV_Target.x = ((_16[_32]._m0[0u].x + _16[_27]._m0[0u].x) + _16[_70]._m0[0u].x) + _16[nonuniformEXT(_86)]._m0[0u].x;
+    SV_Target.y = ((_16[_32]._m0[0u].y + _16[_27]._m0[0u].y) + _16[_70]._m0[0u].y) + _16[nonuniformEXT(_86)]._m0[0u].y;
+    SV_Target.z = ((_16[_32]._m0[0u].z + _16[_27]._m0[0u].z) + _16[_70]._m0[0u].z) + _16[nonuniformEXT(_86)]._m0[0u].z;
+    SV_Target.w = ((_16[_32]._m0[0u].w + _16[_27]._m0[0u].w) + _16[_70]._m0[0u].w) + _16[nonuniformEXT(_86)]._m0[0u].w;
 }
 
 
@@ -53,6 +53,7 @@ void main()
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
 OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
@@ -90,6 +91,8 @@ OpDecorate %16 Binding 0
 OpDecorate %18 Flat
 OpDecorate %18 Location 0
 OpDecorate %20 Location 0
+OpDecorate %83 NonUniform
+OpDecorate %87 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

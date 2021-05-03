@@ -60,10 +60,10 @@ OpDecorate %8 Binding 0
 %13 = OpVariable %12 IncomingRayPayloadNV
 %14 = OpTypePointer RayPayloadNV %11
 %15 = OpVariable %14 RayPayloadNV
-%16 = OpTypePointer IncomingRayPayloadNV %10
+%16 = OpTypePointer RayPayloadNV %10
 %18 = OpTypeInt 32 0
 %19 = OpConstant %18 0
-%21 = OpTypePointer RayPayloadNV %10
+%20 = OpTypePointer IncomingRayPayloadNV %10
 %24 = OpConstant %9 1
 %25 = OpConstant %9 0
 %26 = OpConstant %9 2
@@ -74,16 +74,16 @@ OpDecorate %8 Binding 0
 %4 = OpLabel
 OpBranch %33
 %33 = OpLabel
-%17 = OpInBoundsAccessChain %16 %13 %19
-%20 = OpLoad %10 %17
-%22 = OpInBoundsAccessChain %21 %15 %19
-OpStore %22 %20
+%17 = OpInBoundsAccessChain %16 %15 %19
+%21 = OpInBoundsAccessChain %20 %13 %19
+%22 = OpLoad %10 %21
+OpStore %17 %22
 %23 = OpLoad %6 %8
 %30 = OpCompositeConstruct %29 %24 %26 %27
 %31 = OpCompositeConstruct %29 %25 %25 %24
 OpTraceRayKHR %23 %19 %19 %19 %19 %19 %30 %24 %31 %28 %15
-%32 = OpLoad %10 %22
-OpStore %17 %32
+%32 = OpLoad %10 %17
+OpStore %21 %32
 OpReturn
 OpFunctionEnd
 #endif
