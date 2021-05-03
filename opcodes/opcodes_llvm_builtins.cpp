@@ -640,17 +640,20 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
 	auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getPointerOperand());
-	auto type_itr = impl.llvm_value_actual_type.find(instruction->getPointerOperand());
 
 	// If we are trying to load a resource in RT, this does not translate in SPIR-V, defer this to createHandleForLib.
 	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
-	{
 		return true;
-	}
-	else if (type_itr != impl.llvm_value_actual_type.end())
+
+	// We need to get the ID here as the constexpr chain could set our type.
+	spv::Id value_id = impl.get_id_for_value(instruction->getPointerOperand());
+
+	auto type_itr = impl.llvm_value_actual_type.find(instruction->getPointerOperand());
+
+	if (type_itr != impl.llvm_value_actual_type.end())
 	{
 		Operation *load_op = impl.allocate(spv::OpLoad, type_itr->second);
-		load_op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
+		load_op->add_id(value_id);
 		impl.add(load_op);
 
 		Operation *cast_op = impl.allocate(spv::OpBitcast, instruction);
@@ -661,7 +664,7 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	{
 		Operation *op = impl.allocate(spv::OpLoad, instruction);
 
-		op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
+		op->add_id(value_id);
 
 		impl.add(op);
 	}
@@ -672,6 +675,7 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 {
 	Operation *op = impl.allocate(spv::OpStore);
 
+	// We need to get the ID here as the constexpr chain could set our type.
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 
 	auto itr = impl.llvm_value_actual_type.find(instruction->getOperand(1));
