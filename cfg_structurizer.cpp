@@ -355,15 +355,21 @@ bool CFGStructurizer::run()
 	split_merge_scopes();
 	recompute_cfg();
 
+	//log_cfg("Split merge scopes");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".split";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+
 	// We will have generated lots of ladder blocks
 	// which might cause issues with further analysis, so
 	// nuke them as required.
 	eliminate_degenerate_blocks();
 
-	//log_cfg("Split merge scopes");
 	if (!graphviz_path.empty())
 	{
-		auto graphviz_split = graphviz_path + ".split";
+		auto graphviz_split = graphviz_path + ".eliminate0";
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
 
@@ -388,7 +394,7 @@ bool CFGStructurizer::run()
 	//log_cfg("Split merge scopes");
 	if (!graphviz_path.empty())
 	{
-		auto graphviz_split = graphviz_path + ".eliminate";
+		auto graphviz_split = graphviz_path + ".eliminate1";
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
 
