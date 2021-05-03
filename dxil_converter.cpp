@@ -2133,6 +2133,12 @@ spv::Id Converter::Impl::get_id_for_value(const llvm::Value *value, unsigned for
 {
 	assert(value);
 
+	// Constant expressions must be stamped out every place it is used,
+	// since it technically lives at global scope.
+	// Do not cache this value in the value map.
+	if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(value))
+		return build_constant_expression(*this, cexpr);
+
 	auto itr = value_map.find(value);
 	if (itr != value_map.end())
 		return itr->second;
@@ -4291,11 +4297,15 @@ Operation *Converter::Impl::allocate(spv::Op op, spv::Id type_id)
 
 Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value)
 {
+	// Constant expressions cannot have an associated opcode ID to them.
+	assert(!llvm::isa<llvm::ConstantExpr>(value));
 	return spirv_module.allocate_op(op, get_id_for_value(value), get_type_id(value->getType()));
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value, spv::Id type_id)
 {
+	// Constant expressions cannot have an associated opcode ID to them.
+	assert(!llvm::isa<llvm::ConstantExpr>(value));
 	return spirv_module.allocate_op(op, get_id_for_value(value), type_id);
 }
 
