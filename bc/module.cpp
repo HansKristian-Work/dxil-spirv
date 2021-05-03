@@ -758,9 +758,8 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		unsigned index = 0;
 
 		auto op = translate_castop(CastOp(entry.ops[index++]));
-		auto *type = get_type(entry.ops[index++]);
-		if (!type)
-			return false;
+
+		auto *type = get_constant_type();
 
 		auto input_value = get_value_and_type(entry.ops, index);
 		if (!input_value.first)
