@@ -757,7 +757,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 	{
 		unsigned index = 0;
 
-		auto op = Instruction::CastOps(translate_castop(CastOp(entry.ops[index++])));
+		auto op = translate_castop(CastOp(entry.ops[index++]));
 		auto *type = get_type(entry.ops[index++]);
 		if (!type)
 			return false;
@@ -766,8 +766,8 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		if (!input_value.first)
 			return false;
 
-		auto elements = Vector<Value *> { input_value.first };
-		Value *value = context->construct<ConstantExpr>(op, type, elements);
+		auto elements = Vector<Value *>{input_value.first};
+		Value *value = context->construct<ConstantExpr>(op, type, std::move(elements));
 		values.push_back(value);
 		break;
 	}

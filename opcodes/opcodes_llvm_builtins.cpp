@@ -244,7 +244,7 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 }
 
 template <typename InstructionType>
-static uint32_t emit_boolean_trunc_instruction(Converter::Impl &impl, const InstructionType *instruction)
+static spv::Id emit_boolean_trunc_instruction(Converter::Impl &impl, const InstructionType *instruction)
 {
 	auto &builder = impl.builder();
 	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
@@ -275,7 +275,7 @@ static uint32_t emit_boolean_trunc_instruction(Converter::Impl &impl, const Inst
 }
 
 template <typename InstructionType>
-static uint32_t emit_boolean_convert_instruction(Converter::Impl &impl, const InstructionType *instruction, bool is_signed)
+static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const InstructionType *instruction, bool is_signed)
 {
 	auto &builder = impl.builder();
 	spv::Id const_0;
@@ -333,7 +333,7 @@ static uint32_t emit_boolean_convert_instruction(Converter::Impl &impl, const In
 }
 
 template <typename InstructionType>
-static uint32_t emit_masked_cast_instruction(Converter::Impl &impl, const InstructionType *instruction, spv::Op opcode)
+static spv::Id emit_masked_cast_instruction(Converter::Impl &impl, const InstructionType *instruction, spv::Op opcode)
 {
 	auto logical_output_bits = instruction->getType()->getIntegerBitWidth();
 	auto logical_input_bits = instruction->getOperand(0)->getType()->getIntegerBitWidth();
@@ -363,7 +363,7 @@ static uint32_t emit_masked_cast_instruction(Converter::Impl &impl, const Instru
 }
 
 template <typename InstructionType>
-static uint32_t emit_cast_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
+static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
 	spv::Op opcode;
 	bool signed_input = false;
@@ -469,7 +469,7 @@ static uint32_t emit_cast_instruction_impl(Converter::Impl &impl, const Instruct
 
 bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
 {
-	return !!emit_cast_instruction_impl(impl, instruction);
+	return emit_cast_instruction_impl(impl, instruction) != 0;
 }
 
 static bool elementptr_is_nonuniform(const llvm::GetElementPtrInst *inst)
@@ -508,11 +508,13 @@ static bool emit_getelementptr_resource(Converter::Impl &impl, const Inst *instr
 	return true;
 }
 
-static uint32_t build_constant_getelementptr(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
+static spv::Id build_constant_getelementptr(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
 {
 	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(cexpr->getOperand(0));
-	spv::Id type_id = impl.get_type_id(cexpr->getType()->getPointerElementType());
+
+	auto *element_type = cexpr->getType()->getPointerElementType();
+	spv::Id type_id = impl.get_type_id(element_type);
 
 	auto storage = impl.get_effective_storage_class(cexpr->getOperand(0), builder.getStorageClass(ptr_id));
 	type_id = builder.makePointer(storage, type_id);
@@ -544,15 +546,13 @@ static uint32_t build_constant_getelementptr(Converter::Impl &impl, const llvm::
 	return op->id;
 }
 
-static uint32_t build_constant_cast(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
+static spv::Id build_constant_cast(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
 {
 	return emit_cast_instruction_impl(impl, cexpr);
 }
 
-uint32_t build_constant_expression(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
+spv::Id build_constant_expression(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
 {
-	impl.current_constant_expr = cexpr;
-
 	switch (cexpr->getOpcode())
 	{
 	case llvm::Instruction::GetElementPtr:
@@ -580,7 +580,7 @@ uint32_t build_constant_expression(Converter::Impl &impl, const llvm::ConstantEx
 	}
 	}
 
-	return false;
+	return 0;
 }
 
 bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
@@ -883,7 +883,14 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 
 bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction)
 {
-	spv::Id pointee_type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
+	auto *element_type = instruction->getType()->getPointerElementType();
+	if (llvm::isa<llvm::PointerType>(element_type))
+	{
+		LOGE("Cannot alloca elements of pointer type.\n");
+		return false;
+	}
+
+	spv::Id pointee_type_id = impl.get_type_id(element_type);
 
 	// DXC seems to allocate arrays on stack as 1 element of array type rather than N elements of basic non-array type.
 	// Should be possible to support both schemes if desirable, but this will do.
