@@ -33,16 +33,12 @@ layout(push_constant, std430) uniform RootConstants
 
 layout(set = 0, binding = 1) uniform accelerationStructureEXT AS_Plain;
 layout(location = 0) rayPayloadEXT _23 _25;
-layout(location = 1) rayPayloadEXT _23 _26;
-layout(location = 2) rayPayloadEXT _23 _27;
 
 void main()
 {
-    _27._m0 = vec4(1.0, 2.0, 3.0, 4.0);
-    traceRayEXT(accelerationStructureEXT(SBT._m2), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 2);
-    _26._m0 = _27._m0;
-    traceRayEXT(accelerationStructureEXT(registers._m1), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
-    _25._m0 = _26._m0;
+    _25._m0 = vec4(1.0, 2.0, 3.0, 4.0);
+    traceRayEXT(accelerationStructureEXT(SBT._m2), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    traceRayEXT(accelerationStructureEXT(registers._m1), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
     traceRayEXT(AS_Plain, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
 }
 
@@ -52,7 +48,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 55
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -70,7 +66,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %9 %16 %20 %25 %26 %27
+OpEntryPoint RayGenerationNV %3 "main" %9 %16 %20 %25
 OpName %3 "main"
 OpName %7 "RootConstants"
 OpName %9 "registers"
@@ -122,49 +118,41 @@ OpDecorate %20 Binding 1
 %23 = OpTypeStruct %22
 %24 = OpTypePointer RayPayloadNV %23
 %25 = OpVariable %24 RayPayloadNV
-%26 = OpVariable %24 RayPayloadNV
-%27 = OpVariable %24 RayPayloadNV
-%28 = OpTypePointer RayPayloadNV %22
-%30 = OpConstant %5 0
-%31 = OpConstant %21 1
-%32 = OpConstant %21 2
-%33 = OpConstant %21 3
-%34 = OpConstant %21 4
-%35 = OpConstantComposite %22 %31 %32 %33 %34
-%36 = OpTypePointer ShaderRecordBufferNV %6
-%38 = OpConstant %5 2
-%41 = OpConstant %21 0
-%42 = OpTypeVector %21 3
-%47 = OpTypePointer PushConstant %6
-%49 = OpConstant %5 1
+%26 = OpTypePointer RayPayloadNV %22
+%28 = OpConstant %5 0
+%29 = OpConstant %21 1
+%30 = OpConstant %21 2
+%31 = OpConstant %21 3
+%32 = OpConstant %21 4
+%33 = OpConstantComposite %22 %29 %30 %31 %32
+%34 = OpTypePointer ShaderRecordBufferNV %6
+%36 = OpConstant %5 2
+%39 = OpConstant %21 0
+%40 = OpTypeVector %21 3
+%43 = OpTypePointer PushConstant %6
+%45 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %59
-%59 = OpLabel
-%29 = OpInBoundsAccessChain %28 %27 %30
-OpStore %29 %35
-%37 = OpAccessChain %36 %16 %38
-%39 = OpLoad %6 %37
-%40 = OpConvertUToAccelerationStructureKHR %18 %39
-%43 = OpCompositeConstruct %42 %31 %32 %33
-%44 = OpCompositeConstruct %42 %41 %41 %31
-OpTraceRayKHR %40 %30 %30 %30 %30 %30 %43 %31 %44 %34 %27
-%45 = OpLoad %22 %29
-%46 = OpInBoundsAccessChain %28 %26 %30
-OpStore %46 %45
-%48 = OpAccessChain %47 %9 %49
-%50 = OpLoad %6 %48
-%51 = OpConvertUToAccelerationStructureKHR %18 %50
-%52 = OpCompositeConstruct %42 %31 %32 %33
-%53 = OpCompositeConstruct %42 %41 %41 %31
-OpTraceRayKHR %51 %30 %30 %30 %30 %30 %52 %31 %53 %34 %26
-%54 = OpLoad %22 %46
-%55 = OpInBoundsAccessChain %28 %25 %30
-OpStore %55 %54
-%56 = OpLoad %18 %20
-%57 = OpCompositeConstruct %42 %31 %32 %33
-%58 = OpCompositeConstruct %42 %41 %41 %31
-OpTraceRayKHR %56 %30 %30 %30 %30 %30 %57 %31 %58 %34 %25
+OpBranch %53
+%53 = OpLabel
+%27 = OpInBoundsAccessChain %26 %25 %28
+OpStore %27 %33
+%35 = OpAccessChain %34 %16 %36
+%37 = OpLoad %6 %35
+%38 = OpConvertUToAccelerationStructureKHR %18 %37
+%41 = OpCompositeConstruct %40 %29 %30 %31
+%42 = OpCompositeConstruct %40 %39 %39 %29
+OpTraceRayKHR %38 %28 %28 %28 %28 %28 %41 %29 %42 %32 %25
+%44 = OpAccessChain %43 %9 %45
+%46 = OpLoad %6 %44
+%47 = OpConvertUToAccelerationStructureKHR %18 %46
+%48 = OpCompositeConstruct %40 %29 %30 %31
+%49 = OpCompositeConstruct %40 %39 %39 %29
+OpTraceRayKHR %47 %28 %28 %28 %28 %28 %48 %29 %49 %32 %25
+%50 = OpLoad %18 %20
+%51 = OpCompositeConstruct %40 %29 %30 %31
+%52 = OpCompositeConstruct %40 %39 %39 %29
+OpTraceRayKHR %50 %28 %28 %28 %28 %28 %51 %29 %52 %32 %25
 OpReturn
 OpFunctionEnd
 #endif

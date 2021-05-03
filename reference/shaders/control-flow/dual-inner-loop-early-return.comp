@@ -128,8 +128,8 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %21 = OpConstant %5 2
 %30 = OpTypeBool
 %32 = OpConstant %5 10
-%34 = OpConstant %5 50
-%35 = OpConstant %5 70
+%34 = OpConstant %5 70
+%35 = OpConstant %5 50
 %38 = OpConstant %5 80
 %39 = OpTypeVector %5 4
 %42 = OpConstant %5 20
@@ -182,7 +182,7 @@ OpBranchConditional %41 %54 %60
 %60 = OpLabel
 %44 = OpPhi %30 %45 %57 %46 %58 %46 %59
 %48 = OpPhi %5 %26 %57 %19 %58 %19 %59
-%49 = OpPhi %5 %50 %57 %35 %58 %34 %59
+%49 = OpPhi %5 %50 %57 %34 %58 %35 %59
 OpSelectionMerge %61 None
 OpBranchConditional %44 %63 %61
 %61 = OpLabel

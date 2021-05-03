@@ -7,7 +7,7 @@ struct _14
     vec4 _m0;
 };
 
-struct _18
+struct _15
 {
     _14 _m0;
     _14 _m1;
@@ -15,28 +15,33 @@ struct _18
 
 layout(set = 40, binding = 30) uniform accelerationStructureEXT AS;
 layout(set = 20, binding = 10) uniform writeonly image2D IMG;
-layout(location = 0) callableDataEXT _14 _16;
-layout(location = 1) callableDataEXT _14 _17;
-layout(location = 2) callableDataEXT _18 _20;
-layout(location = 3) rayPayloadEXT _14 _22;
-layout(location = 4) rayPayloadEXT _14 _23;
-layout(location = 5) rayPayloadEXT _18 _25;
+layout(location = 0) rayPayloadEXT _15 _30;
+layout(location = 1) rayPayloadEXT _14 _39;
+layout(location = 2) callableDataEXT _15 _50;
+layout(location = 3) callableDataEXT _14 _54;
 
 void main()
 {
-    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 5);
-    _23._m0 = _25._m0._m0;
-    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 4);
-    _22._m0 = _25._m1._m0;
-    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 3);
-    _20._m0._m0 = _23._m0;
-    _20._m1._m0 = _22._m0;
+    _15 _17;
+    _30 = _17;
+    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    _17 = _30;
+    _39 = _17._m0;
+    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    _17._m0 = _39;
+    _39 = _17._m1;
+    traceRayEXT(AS, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    _17._m1 = _39;
+    _50 = _17;
     executeCallableEXT(0u, 2);
-    _17._m0 = _20._m0._m0;
-    executeCallableEXT(0u, 1);
-    _16._m0 = _20._m1._m0;
-    executeCallableEXT(0u, 0);
-    imageStore(IMG, ivec2(uvec2(0u)), vec4(_16._m0.x + _17._m0.x, _16._m0.y + _17._m0.y, _16._m0.z + _17._m0.z, _16._m0.w + _17._m0.w));
+    _17 = _50;
+    _54 = _17._m0;
+    executeCallableEXT(0u, 3);
+    _17._m0 = _54;
+    _54 = _17._m1;
+    executeCallableEXT(0u, 3);
+    _17._m1 = _54;
+    imageStore(IMG, ivec2(uvec2(0u)), vec4(_17._m1._m0.x + _17._m0._m0.x, _17._m1._m0.y + _17._m0._m0.y, _17._m1._m0.z + _17._m0._m0.z, _17._m1._m0.w + _17._m0._m0.w));
 }
 
 
@@ -45,7 +50,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 80
+; Bound: 82
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -62,12 +67,12 @@ OpCapability StorageImageArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %8 %12 %16 %17 %20 %22 %23 %25
+OpEntryPoint RayGenerationNV %3 "main" %8 %12 %30 %39 %50 %54
 OpName %3 "main"
 OpName %8 "AS"
 OpName %12 "IMG"
 OpName %14 ""
-OpName %18 ""
+OpName %15 ""
 OpDecorate %8 DescriptorSet 40
 OpDecorate %8 Binding 30
 OpDecorate %12 DescriptorSet 20
@@ -85,86 +90,94 @@ OpDecorate %12 NonReadable
 %12 = OpVariable %11 UniformConstant
 %13 = OpTypeVector %9 4
 %14 = OpTypeStruct %13
-%15 = OpTypePointer CallableDataNV %14
-%16 = OpVariable %15 CallableDataNV
-%17 = OpVariable %15 CallableDataNV
-%18 = OpTypeStruct %14 %14
-%19 = OpTypePointer CallableDataNV %18
-%20 = OpVariable %19 CallableDataNV
-%21 = OpTypePointer RayPayloadNV %14
-%22 = OpVariable %21 RayPayloadNV
-%23 = OpVariable %21 RayPayloadNV
-%24 = OpTypePointer RayPayloadNV %18
-%25 = OpVariable %24 RayPayloadNV
-%27 = OpTypeInt 32 0
-%28 = OpConstant %27 0
-%29 = OpConstant %9 1
-%30 = OpConstant %9 0
-%31 = OpConstant %9 2
-%32 = OpConstant %9 3
-%33 = OpConstant %9 4
-%34 = OpTypeVector %9 3
-%37 = OpTypePointer RayPayloadNV %13
-%41 = OpConstant %27 1
-%53 = OpTypePointer CallableDataNV %13
-%75 = OpTypeVector %27 2
+%15 = OpTypeStruct %14 %14
+%16 = OpTypePointer Function %15
+%19 = OpTypeInt 32 0
+%20 = OpConstant %19 0
+%21 = OpConstant %9 1
+%22 = OpConstant %9 0
+%23 = OpConstant %9 2
+%24 = OpConstant %9 3
+%25 = OpConstant %9 4
+%26 = OpTypeVector %9 3
+%29 = OpTypePointer RayPayloadNV %15
+%30 = OpVariable %29 RayPayloadNV
+%33 = OpTypePointer Function %14
+%38 = OpTypePointer RayPayloadNV %14
+%39 = OpVariable %38 RayPayloadNV
+%43 = OpConstant %19 1
+%49 = OpTypePointer CallableDataNV %15
+%50 = OpVariable %49 CallableDataNV
+%53 = OpTypePointer CallableDataNV %14
+%54 = OpVariable %53 CallableDataNV
+%59 = OpTypePointer Function %13
+%77 = OpTypeVector %19 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %78
-%78 = OpLabel
-%26 = OpLoad %6 %8
-%35 = OpCompositeConstruct %34 %29 %31 %32
-%36 = OpCompositeConstruct %34 %30 %30 %29
-OpTraceRayKHR %26 %28 %28 %28 %28 %28 %35 %29 %36 %33 %25
-%38 = OpInBoundsAccessChain %37 %25 %28 %28
-%39 = OpLoad %13 %38
-%40 = OpInBoundsAccessChain %37 %25 %41 %28
-%42 = OpLoad %13 %40
-%43 = OpInBoundsAccessChain %37 %23 %28
-OpStore %43 %39
+%17 = OpVariable %16 Function
+OpBranch %80
+%80 = OpLabel
+%18 = OpLoad %6 %8
+%27 = OpCompositeConstruct %26 %21 %23 %24
+%28 = OpCompositeConstruct %26 %22 %22 %21
+%31 = OpLoad %15 %17
+OpStore %30 %31
+OpTraceRayKHR %18 %20 %20 %20 %20 %20 %27 %21 %28 %25 %30
+%32 = OpLoad %15 %30
+OpStore %17 %32
+%34 = OpInBoundsAccessChain %33 %17 %20
+%35 = OpLoad %6 %8
+%36 = OpCompositeConstruct %26 %21 %23 %24
+%37 = OpCompositeConstruct %26 %22 %22 %21
+%40 = OpLoad %14 %34
+OpStore %39 %40
+OpTraceRayKHR %35 %20 %20 %20 %20 %20 %36 %21 %37 %25 %39
+%41 = OpLoad %14 %39
+OpStore %34 %41
+%42 = OpInBoundsAccessChain %33 %17 %43
 %44 = OpLoad %6 %8
-%45 = OpCompositeConstruct %34 %29 %31 %32
-%46 = OpCompositeConstruct %34 %30 %30 %29
-OpTraceRayKHR %44 %28 %28 %28 %28 %28 %45 %29 %46 %33 %23
-%47 = OpLoad %13 %43
-%48 = OpInBoundsAccessChain %37 %22 %28
-OpStore %48 %42
-%49 = OpLoad %6 %8
-%50 = OpCompositeConstruct %34 %29 %31 %32
-%51 = OpCompositeConstruct %34 %30 %30 %29
-OpTraceRayKHR %49 %28 %28 %28 %28 %28 %50 %29 %51 %33 %22
-%52 = OpLoad %13 %48
-%54 = OpInBoundsAccessChain %53 %20 %28 %28
-OpStore %54 %47
-%55 = OpInBoundsAccessChain %53 %20 %41 %28
-OpStore %55 %52
-OpExecuteCallableKHR %28 %20
-%56 = OpLoad %13 %54
-%57 = OpLoad %13 %55
-%58 = OpInBoundsAccessChain %53 %17 %28
-OpStore %58 %56
-OpExecuteCallableKHR %28 %17
-%59 = OpLoad %13 %58
-%60 = OpCompositeExtract %9 %59 0
-%61 = OpCompositeExtract %9 %59 1
-%62 = OpCompositeExtract %9 %59 2
-%63 = OpCompositeExtract %9 %59 3
-%64 = OpInBoundsAccessChain %53 %16 %28
-OpStore %64 %57
-OpExecuteCallableKHR %28 %16
-%65 = OpLoad %13 %64
-%66 = OpCompositeExtract %9 %65 0
-%67 = OpFAdd %9 %66 %60
-%68 = OpCompositeExtract %9 %65 1
-%69 = OpFAdd %9 %68 %61
-%70 = OpCompositeExtract %9 %65 2
-%71 = OpFAdd %9 %70 %62
-%72 = OpCompositeExtract %9 %65 3
-%73 = OpFAdd %9 %72 %63
-%74 = OpLoad %10 %12
-%76 = OpCompositeConstruct %75 %28 %28
-%77 = OpCompositeConstruct %13 %67 %69 %71 %73
-OpImageWrite %74 %76 %77
+%45 = OpCompositeConstruct %26 %21 %23 %24
+%46 = OpCompositeConstruct %26 %22 %22 %21
+%47 = OpLoad %14 %42
+OpStore %39 %47
+OpTraceRayKHR %44 %20 %20 %20 %20 %20 %45 %21 %46 %25 %39
+%48 = OpLoad %14 %39
+OpStore %42 %48
+%51 = OpLoad %15 %17
+OpStore %50 %51
+OpExecuteCallableKHR %20 %50
+%52 = OpLoad %15 %50
+OpStore %17 %52
+%55 = OpLoad %14 %34
+OpStore %54 %55
+OpExecuteCallableKHR %20 %54
+%56 = OpLoad %14 %54
+OpStore %34 %56
+%57 = OpLoad %14 %42
+OpStore %54 %57
+OpExecuteCallableKHR %20 %54
+%58 = OpLoad %14 %54
+OpStore %42 %58
+%60 = OpInBoundsAccessChain %59 %17 %20 %20
+%61 = OpLoad %13 %60
+%62 = OpCompositeExtract %9 %61 0
+%63 = OpCompositeExtract %9 %61 1
+%64 = OpCompositeExtract %9 %61 2
+%65 = OpCompositeExtract %9 %61 3
+%66 = OpInBoundsAccessChain %59 %17 %43 %20
+%67 = OpLoad %13 %66
+%68 = OpCompositeExtract %9 %67 0
+%69 = OpFAdd %9 %68 %62
+%70 = OpCompositeExtract %9 %67 1
+%71 = OpFAdd %9 %70 %63
+%72 = OpCompositeExtract %9 %67 2
+%73 = OpFAdd %9 %72 %64
+%74 = OpCompositeExtract %9 %67 3
+%75 = OpFAdd %9 %74 %65
+%76 = OpLoad %10 %12
+%78 = OpCompositeConstruct %77 %20 %20
+%79 = OpCompositeConstruct %13 %69 %71 %73 %75
+OpImageWrite %76 %78 %79
 OpReturn
 OpFunctionEnd
 #endif
