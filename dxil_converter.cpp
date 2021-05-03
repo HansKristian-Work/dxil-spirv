@@ -4340,6 +4340,33 @@ spv::StorageClass Converter::Impl::get_effective_storage_class(const llvm::Value
 		return fallback;
 }
 
+bool Converter::Impl::get_needs_temp_storage_copy(const llvm::Value *value) const
+{
+	// We always need a temp storage copy if this isn't
+	// directly the result of an alloca instruction.
+	if (!llvm::dyn_cast<llvm::AllocaInst>(value))
+		return true;
+
+	// We'll also need a temp storage copy if this
+	// alloca is directly referenced by
+	// a TraceRay AND a CallShader.
+	return needs_temp_storage_copy.count(value) != 0;
+}
+
+spv::Id Converter::Impl::get_temp_payload(spv::Id type, spv::StorageClass storage)
+{
+	for (const auto &temp_payload : temp_payloads)
+	{
+		if (temp_payload.type == type && temp_payload.storage == storage)
+			return temp_payload.id;
+	}
+
+	spv::Id var_id = create_variable(storage, type);
+
+	temp_payloads.push_back(TempPayloadEntry{ type, storage, var_id });
+	return var_id;
+}
+
 DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::ComponentType type)
 {
 	if (options.storage_16bit_input_output)

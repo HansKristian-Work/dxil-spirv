@@ -356,16 +356,40 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::TraceRay:
 	{
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
-		auto *payload = instruction->getOperand(15);
-		impl.handle_to_storage_class[payload] = spv::StorageClassRayPayloadKHR;
+		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(15)))
+		{
+			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
+			if (storage != spv::StorageClassFunction && storage != spv::StorageClassRayPayloadKHR)
+			{
+				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
+				if (!impl.get_needs_temp_storage_copy(alloca_inst))
+					impl.needs_temp_storage_copy.insert(alloca_inst);
+			}
+			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
+			{
+				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassRayPayloadKHR;
+			}
+		}
 		break;
 	}
 
 	case DXIL::Op::CallShader:
 	{
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
-		auto *payload = instruction->getOperand(2);
-		impl.handle_to_storage_class[payload] = spv::StorageClassCallableDataKHR;
+		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(2)))
+		{
+			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
+			if (storage != spv::StorageClassFunction && storage != spv::StorageClassCallableDataKHR)
+			{
+				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
+				if (!impl.get_needs_temp_storage_copy(alloca_inst))
+					impl.needs_temp_storage_copy.insert(alloca_inst);
+			}
+			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
+			{
+				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassCallableDataKHR;
+			}
+		}
 		break;
 	}
 

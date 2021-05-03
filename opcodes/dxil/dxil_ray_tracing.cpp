@@ -24,6 +24,46 @@
 
 namespace dxil_spv
 {
+static spv::Id emit_temp_storage_copy(Converter::Impl &impl, const llvm::Value *value, spv::StorageClass storage)
+{
+	// Make a new temporary variable for the ray payload/callable data.
+	auto *pointer_type = llvm::cast<llvm::PointerType>(value->getType());
+	auto *pointee_type = pointer_type->getPointerElementType();
+	spv::Id type_id = impl.get_type_id(pointee_type);
+	spv::Id var_id = impl.get_temp_payload(type_id, storage);
+
+	// Load the alloca'ed value
+	auto *load_op = impl.allocate(spv::OpLoad, type_id);
+	load_op->add_id(impl.get_id_for_value(value));
+	impl.add(load_op);
+
+	// Store the alloca'ed value to our data in the right storage type
+	auto *store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(var_id);
+	store_op->add_id(load_op->id);
+	impl.add(store_op);
+
+	return var_id;
+}
+
+static void emit_temp_storage_resolve(Converter::Impl &impl, const llvm::Value *real_value, spv::Id temp_storage)
+{
+	auto *pointer_type = llvm::cast<llvm::PointerType>(real_value->getType());
+	auto *pointee_type = pointer_type->getPointerElementType();
+	spv::Id type_id = impl.get_type_id(pointee_type);
+
+	// Load the result from the temp
+	auto *load_op = impl.allocate(spv::OpLoad, type_id);
+	load_op->add_id(temp_storage);
+	impl.add(load_op);
+
+	// Store the result in the alloca'ed value
+	auto *store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(impl.get_id_for_value(real_value));
+	store_op->add_id(load_op->id);
+	impl.add(store_op);
+}
+
 bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
@@ -49,6 +89,13 @@ bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	spv::Id ray_origin_vec = impl.build_vector(builder.makeFloatType(32), ray_origin, 3);
 	spv::Id ray_dir_vec = impl.build_vector(builder.makeFloatType(32), ray_dir, 3);
 
+	auto *ray_payload = inst->getOperand(15);
+
+	bool needs_temp_copy = impl.get_needs_temp_storage_copy(ray_payload);
+	spv::Id ray_payload_var_id = needs_temp_copy
+		? emit_temp_storage_copy(impl, ray_payload, spv::StorageClassRayPayloadKHR)
+		: impl.get_id_for_value(ray_payload);
+
 	auto *op = impl.allocate(spv::OpTraceRayKHR);
 	op->add_ids({
 	    acceleration_structure,
@@ -61,9 +108,13 @@ bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	    tmin,
 	    ray_dir_vec,
 	    tmax,
-	    impl.get_id_for_value(inst->getOperand(15))
+	    ray_payload_var_id
 	});
 	impl.add(op);
+
+	// In this instance, the ray_payload_var_id is our temp.
+	if (needs_temp_copy)
+		emit_temp_storage_resolve(impl, ray_payload, ray_payload_var_id);
 
 	return true;
 }
@@ -193,10 +244,22 @@ bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *)
 
 bool emit_ray_tracing_call_shader(Converter::Impl &impl, const llvm::CallInst *inst)
 {
+	auto *callable_data = inst->getOperand(2);
+
+	bool needs_temp_copy = impl.get_needs_temp_storage_copy(callable_data);
+	spv::Id callable_data_var_id = impl.get_needs_temp_storage_copy(callable_data)
+		? emit_temp_storage_copy(impl, callable_data, spv::StorageClassCallableDataKHR)
+		: impl.get_id_for_value(callable_data);
+
 	auto *op = impl.allocate(spv::OpExecuteCallableKHR);
 	op->add_id(impl.get_id_for_value(inst->getOperand(1)));
-	op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+	op->add_id(callable_data_var_id);
 	impl.add(op);
+
+	// In this instance, the callable_data_var_id is our temp.
+	if (needs_temp_copy)
+		emit_temp_storage_resolve(impl, callable_data, callable_data_var_id);
+
 	return true;
 }
 
