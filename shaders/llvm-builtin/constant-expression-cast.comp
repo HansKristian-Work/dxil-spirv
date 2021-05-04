@@ -1,0 +1,8 @@
+groupshared int foo[4];
+RWStructuredBuffer<float> RW : register(u0);
+
+[numthreads(4, 1, 1)]
+void main()
+{
+    RW[0] = ((float[4])(foo))[2];
+}

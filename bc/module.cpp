@@ -761,11 +761,12 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 		auto *type = get_constant_type();
 
-		auto input_value = get_value_and_type(entry.ops, index);
-		if (!input_value.first)
+		auto *input_value_type = get_type(entry.ops[index++]);
+		if (!input_value_type)
 			return false;
+		auto *input_value = get_value(entry.ops[index++], input_value_type, true);
 
-		auto elements = Vector<Value *>{input_value.first};
+		auto elements = Vector<Value *>{input_value};
 		Value *value = context->construct<ConstantExpr>(op, type, std::move(elements));
 		values.push_back(value);
 		break;
