@@ -132,7 +132,7 @@ OpBranch %46
 %40 = OpPhi %5 %15 %43 %22 %45
 OpBranch %50
 %50 = OpLabel
-%31 = OpPhi %5 %40 %46 %19 %49
+%31 = OpPhi %5 %19 %49 %40 %46
 %32 = OpIAdd %5 %31 %16
 OpBranch %52
 %53 = OpLabel

@@ -382,7 +382,7 @@ OpBranch %111
 %91 = OpPhi %5 %15 %97 %90 %110
 OpBranch %127
 %127 = OpLabel
-%28 = OpPhi %5 %91 %111 %95 %126
+%28 = OpPhi %5 %95 %126 %91 %111
 %34 = OpCompositeConstruct %33 %28 %28 %28 %28
 OpImageWrite %9 %15 %34
 OpReturn
