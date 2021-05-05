@@ -277,6 +277,8 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 	// There might be cases where we have a common break block from different scopes which only serves to PHI together some values
 	// before actually breaking, and passing that PHI node on to the actual break block.
 	// This causes problems because this looks very much like a merge, but it is actually not and forces validation errors.
+	// Another case is where the succ block takes PHI nodes from the breaking block only,
+	// which is relevant if only constants are somehow used in the PHI construct.
 
 	for (size_t i = forward_post_visit_order.size(); i; i--)
 	{
@@ -286,13 +288,20 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 		// The only opcodes they should have are PHI nodes and a direct branch.
 		if (!node->ir.operations.empty())
 			continue;
-		if (node->ir.phi.empty())
-			continue;
 		if (node->pred.size() <= 1)
 			continue;
 		if (node->succ.size() != 1)
 			continue;
 		if (node->ir.terminator.type != Terminator::Type::Branch)
+			continue;
+
+		auto *succ = node->succ.front();
+
+		// Checks if either the merge block or successor is sensitive to PHI somehow.
+		if (!node_has_phi_inputs_from(node, succ))
+			continue;
+
+		if (node->dominates(succ))
 			continue;
 
 		// Anything related to loop/continue blocks, we don't bother with.
@@ -314,12 +323,8 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 		if (is_merge_block_candidate)
 			continue;
 
-		auto *succ = node->succ.front();
-		if (!node->dominates(succ) && node_has_phi_inputs_from(node, succ))
-		{
-			eliminate_node_link_preds_to_succ(node);
-			did_work = true;
-		}
+		eliminate_node_link_preds_to_succ(node);
+		did_work = true;
 	}
 
 	if (did_work)
