@@ -1853,6 +1853,44 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 
 		auto *merge = find_common_post_dominator(node->succ);
 
+		if (pass == 0)
+		{
+			// Maintain the original switch block order if possible to avoid awkward churn in reference output.
+			uint64_t order = 0;
+			for (auto &c : node->ir.terminator.cases)
+			{
+				// We'll need to increment global order up to N times in the worst case.
+				// Use 64-bit here as a safeguard in case the module is using a ridiculous amount of case labels.
+				c.global_order = order * node->ir.terminator.cases.size();
+				order++;
+			}
+
+			// First, sort so that any fallthrough parent comes before fallthrough target.
+			std::sort(node->ir.terminator.cases.begin(), node->ir.terminator.cases.end(),
+			          [](const Terminator::Case &a, const Terminator::Case &b)
+			          { return a.node->forward_post_visit_order > b.node->forward_post_visit_order; });
+
+			// Look at all potential fallthrough candidates and reassign global order.
+			for (size_t i = 1, n = node->ir.terminator.cases.size(); i < n; i++)
+			{
+				for (size_t j = 0; j < i; j++)
+				{
+					auto &a = node->ir.terminator.cases[j];
+					auto &b = node->ir.terminator.cases[i];
+
+					// A case label might be the merge block candidate of the switch.
+					// Don't consider case fallthrough if b post-dominates the entire switch statement.
+					if (b.node != merge && a.node != b.node && b.node->can_backtrace_to(a.node))
+						b.global_order = a.global_order + 1;
+				}
+			}
+
+			// Sort again, but this time, by global order.
+			std::stable_sort(node->ir.terminator.cases.begin(), node->ir.terminator.cases.end(),
+			                 [](const Terminator::Case &a, const Terminator::Case &b)
+			                 { return a.global_order < b.global_order; });
+		}
+
 		// We cannot rewrite the CFG in pass 1 safely, this should have happened in pass 0.
 		if (pass == 0 && !node->dominates(merge))
 		{

@@ -161,8 +161,9 @@ struct Terminator
 
 	struct Case
 	{
-		CFGNode *node;
-		uint32_t value;
+		CFGNode *node = nullptr;
+		uint64_t global_order = 0;
+		uint32_t value = 0;
 	};
 	Vector<Case> cases;
 	CFGNode *default_node = nullptr;
