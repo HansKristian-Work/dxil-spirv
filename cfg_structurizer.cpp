@@ -2006,11 +2006,10 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 
 					// If we turn the outer selection construct into a loop,
 					// we remove the possibility to break further out (without adding ladders like we do for loops).
-					// To make this work, we must ensure that the new merge block is post-dominated
-					// by the loop construct merge block.
-					idom->loop_merge_block = CFGNode::find_common_post_dominator(idom->selection_merge_block, node);
+					// To make this work, we must ensure that the new merge block post-dominates the loop and selection merge.
+					auto *merge_candidate = CFGNode::find_common_post_dominator(idom->selection_merge_block, idom);
 
-					if (!idom->loop_merge_block || idom->selection_merge_block->post_dominates(node))
+					if (!merge_candidate || merge_candidate == idom->selection_merge_block)
 					{
 						idom->loop_merge_block = idom->selection_merge_block;
 					}
@@ -2018,8 +2017,10 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 					{
 						// Make sure we split merge scopes. Pretend we have a true loop.
 						idom->loop_ladder_block = idom->selection_merge_block;
-						idom->loop_merge_block->add_unique_header(idom);
+						idom->loop_merge_block = merge_candidate;
 					}
+
+					idom->loop_merge_block->add_unique_header(idom);
 
 					idom->merge = MergeType::Loop;
 					idom->selection_merge_block = nullptr;
