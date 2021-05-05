@@ -6,38 +6,50 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 void main()
 {
     uint _24;
-    uint _16;
-    bool _20;
-    for (;;)
+    if ((gl_GlobalInvocationID.x & 1u) == 0u)
     {
-        _16 = gl_GlobalInvocationID.x;
-        _20 = (_16 & 1u) == 0u;
-        if (!_20)
-        {
-            if (!((_16 & 2u) == 0u))
-            {
-                imageStore(_8, int(2u), uvec4(20u));
-                _24 = 60u;
-                break;
-            }
-            if (!((_16 & 4u) == 0u))
-            {
-                _24 = 30u;
-                break;
-            }
-            if (!((_16 & 8u) == 0u))
-            {
-                _24 = 40u;
-                break;
-            }
-            if (!((_16 & 16u) == 0u))
-            {
-                _24 = 50u;
-                break;
-            }
-        }
         _24 = 0u;
-        break;
+    }
+    else
+    {
+        uint frontier_phi_3_2_ladder;
+        if ((gl_GlobalInvocationID.x & 2u) == 0u)
+        {
+            uint frontier_phi_3_2_ladder_4_ladder;
+            if ((gl_GlobalInvocationID.x & 4u) == 0u)
+            {
+                uint frontier_phi_3_2_ladder_4_ladder_6_ladder;
+                if ((gl_GlobalInvocationID.x & 8u) == 0u)
+                {
+                    uint frontier_phi_3_2_ladder_4_ladder_6_ladder_7_ladder;
+                    if ((gl_GlobalInvocationID.x & 16u) == 0u)
+                    {
+                        frontier_phi_3_2_ladder_4_ladder_6_ladder_7_ladder = 0u;
+                    }
+                    else
+                    {
+                        frontier_phi_3_2_ladder_4_ladder_6_ladder_7_ladder = 50u;
+                    }
+                    frontier_phi_3_2_ladder_4_ladder_6_ladder = frontier_phi_3_2_ladder_4_ladder_6_ladder_7_ladder;
+                }
+                else
+                {
+                    frontier_phi_3_2_ladder_4_ladder_6_ladder = 40u;
+                }
+                frontier_phi_3_2_ladder_4_ladder = frontier_phi_3_2_ladder_4_ladder_6_ladder;
+            }
+            else
+            {
+                frontier_phi_3_2_ladder_4_ladder = 30u;
+            }
+            frontier_phi_3_2_ladder = frontier_phi_3_2_ladder_4_ladder;
+        }
+        else
+        {
+            imageStore(_8, int(2u), uvec4(20u));
+            frontier_phi_3_2_ladder = 60u;
+        }
+        _24 = frontier_phi_3_2_ladder;
     }
     imageStore(_8, int(0u), uvec4(_24));
 }
@@ -48,7 +60,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 54
+; Bound: 60
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -56,6 +68,10 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
+OpName %42 "frontier_phi_3.2.ladder.4.ladder.6.ladder.7.ladder"
+OpName %43 "frontier_phi_3.2.ladder.4.ladder.6.ladder"
+OpName %44 "frontier_phi_3.2.ladder.4.ladder"
+OpName %45 "frontier_phi_3.2.ladder"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
@@ -85,50 +101,57 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %40 = OpConstant %5 16
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %42
-%42 = OpLabel
+OpBranch %46
+%46 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %17 = OpBitwiseAnd %5 %16 %18
 %20 = OpIEqual %19 %17 %15
-OpLoopMerge %51 %52 None
-OpBranch %43
-%43 = OpLabel
-OpSelectionMerge %50 None
-OpBranchConditional %20 %50 %44
-%44 = OpLabel
+OpSelectionMerge %58 None
+OpBranchConditional %20 %57 %47
+%57 = OpLabel
+OpBranch %58
+%47 = OpLabel
 %21 = OpBitwiseAnd %5 %16 %22
 %23 = OpIEqual %19 %21 %15
-OpSelectionMerge %46 None
-OpBranchConditional %23 %46 %45
-%45 = OpLabel
-%35 = OpCompositeConstruct %29 %34 %34 %34 %34
-OpImageWrite %9 %22 %35
-OpBranch %51
-%46 = OpLabel
+OpSelectionMerge %56 None
+OpBranchConditional %23 %49 %48
+%49 = OpLabel
 %31 = OpBitwiseAnd %5 %16 %32
 %33 = OpIEqual %19 %31 %15
-OpSelectionMerge %47 None
-OpBranchConditional %33 %47 %51
-%47 = OpLabel
+OpSelectionMerge %55 None
+OpBranchConditional %33 %50 %55
+%50 = OpLabel
 %36 = OpBitwiseAnd %5 %16 %37
 %38 = OpIEqual %19 %36 %15
-OpSelectionMerge %48 None
-OpBranchConditional %38 %48 %51
-%48 = OpLabel
+OpSelectionMerge %54 None
+OpBranchConditional %38 %51 %54
+%51 = OpLabel
 %39 = OpBitwiseAnd %5 %16 %40
 %41 = OpIEqual %19 %39 %15
-OpSelectionMerge %49 None
-OpBranchConditional %41 %49 %51
-%49 = OpLabel
-OpBranch %50
-%50 = OpLabel
-OpBranch %51
+OpSelectionMerge %53 None
+OpBranchConditional %41 %52 %53
 %52 = OpLabel
-OpBranch %42
-%51 = OpLabel
-%24 = OpPhi %5 %15 %50 %26 %46 %25 %45 %27 %47 %28 %48
+OpBranch %53
+%53 = OpLabel
+%42 = OpPhi %5 %15 %52 %28 %51
+OpBranch %54
+%54 = OpLabel
+%43 = OpPhi %5 %27 %50 %42 %53
+OpBranch %55
+%55 = OpLabel
+%44 = OpPhi %5 %26 %49 %43 %54
+OpBranch %56
+%48 = OpLabel
+%35 = OpCompositeConstruct %29 %34 %34 %34 %34
+OpImageWrite %9 %22 %35
+OpBranch %56
+%56 = OpLabel
+%45 = OpPhi %5 %25 %48 %44 %55
+OpBranch %58
+%58 = OpLabel
+%24 = OpPhi %5 %15 %57 %45 %56
 %30 = OpCompositeConstruct %29 %24 %24 %24 %24
 OpImageWrite %9 %15 %30
 OpReturn

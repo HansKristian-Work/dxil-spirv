@@ -277,6 +277,8 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 	// There might be cases where we have a common break block from different scopes which only serves to PHI together some values
 	// before actually breaking, and passing that PHI node on to the actual break block.
 	// This causes problems because this looks very much like a merge, but it is actually not and forces validation errors.
+	// Another case is where the succ block takes PHI nodes from the breaking block only,
+	// which is relevant if only constants are somehow used in the PHI construct.
 
 	for (size_t i = forward_post_visit_order.size(); i; i--)
 	{
@@ -286,13 +288,20 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 		// The only opcodes they should have are PHI nodes and a direct branch.
 		if (!node->ir.operations.empty())
 			continue;
-		if (node->ir.phi.empty())
-			continue;
 		if (node->pred.size() <= 1)
 			continue;
 		if (node->succ.size() != 1)
 			continue;
 		if (node->ir.terminator.type != Terminator::Type::Branch)
+			continue;
+
+		auto *succ = node->succ.front();
+
+		// Checks if either the merge block or successor is sensitive to PHI somehow.
+		if (!node_has_phi_inputs_from(node, succ))
+			continue;
+
+		if (node->dominates(succ))
 			continue;
 
 		// Anything related to loop/continue blocks, we don't bother with.
@@ -314,12 +323,8 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 		if (is_merge_block_candidate)
 			continue;
 
-		auto *succ = node->succ.front();
-		if (!node->dominates(succ) && node_has_phi_inputs_from(node, succ))
-		{
-			eliminate_node_link_preds_to_succ(node);
-			did_work = true;
-		}
+		eliminate_node_link_preds_to_succ(node);
+		did_work = true;
 	}
 
 	if (did_work)
@@ -1853,6 +1858,44 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 
 		auto *merge = find_common_post_dominator(node->succ);
 
+		if (pass == 0)
+		{
+			// Maintain the original switch block order if possible to avoid awkward churn in reference output.
+			uint64_t order = 0;
+			for (auto &c : node->ir.terminator.cases)
+			{
+				// We'll need to increment global order up to N times in the worst case.
+				// Use 64-bit here as a safeguard in case the module is using a ridiculous amount of case labels.
+				c.global_order = order * node->ir.terminator.cases.size();
+				order++;
+			}
+
+			// First, sort so that any fallthrough parent comes before fallthrough target.
+			std::sort(node->ir.terminator.cases.begin(), node->ir.terminator.cases.end(),
+			          [](const Terminator::Case &a, const Terminator::Case &b)
+			          { return a.node->forward_post_visit_order > b.node->forward_post_visit_order; });
+
+			// Look at all potential fallthrough candidates and reassign global order.
+			for (size_t i = 1, n = node->ir.terminator.cases.size(); i < n; i++)
+			{
+				for (size_t j = 0; j < i; j++)
+				{
+					auto &a = node->ir.terminator.cases[j];
+					auto &b = node->ir.terminator.cases[i];
+
+					// A case label might be the merge block candidate of the switch.
+					// Don't consider case fallthrough if b post-dominates the entire switch statement.
+					if (b.node != merge && a.node != b.node && b.node->can_backtrace_to(a.node))
+						b.global_order = a.global_order + 1;
+				}
+			}
+
+			// Sort again, but this time, by global order.
+			std::stable_sort(node->ir.terminator.cases.begin(), node->ir.terminator.cases.end(),
+			                 [](const Terminator::Case &a, const Terminator::Case &b)
+			                 { return a.global_order < b.global_order; });
+		}
+
 		// We cannot rewrite the CFG in pass 1 safely, this should have happened in pass 0.
 		if (pass == 0 && !node->dominates(merge))
 		{
@@ -1963,11 +2006,10 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 
 					// If we turn the outer selection construct into a loop,
 					// we remove the possibility to break further out (without adding ladders like we do for loops).
-					// To make this work, we must ensure that the new merge block is post-dominated
-					// by the loop construct merge block.
-					idom->loop_merge_block = CFGNode::find_common_post_dominator(idom->selection_merge_block, node);
+					// To make this work, we must ensure that the new merge block post-dominates the loop and selection merge.
+					auto *merge_candidate = CFGNode::find_common_post_dominator(idom->selection_merge_block, idom);
 
-					if (!idom->loop_merge_block || idom->selection_merge_block->post_dominates(node))
+					if (!merge_candidate || merge_candidate == idom->selection_merge_block)
 					{
 						idom->loop_merge_block = idom->selection_merge_block;
 					}
@@ -1975,8 +2017,10 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 					{
 						// Make sure we split merge scopes. Pretend we have a true loop.
 						idom->loop_ladder_block = idom->selection_merge_block;
-						idom->loop_merge_block->add_unique_header(idom);
+						idom->loop_merge_block = merge_candidate;
 					}
+
+					idom->loop_merge_block->add_unique_header(idom);
 
 					idom->merge = MergeType::Loop;
 					idom->selection_merge_block = nullptr;
