@@ -14,12 +14,17 @@ shared uint _12[4];
 void main()
 {
     _12[0u] = gl_GlobalInvocationID.x;
+    memoryBarrierShared();
     _12[1u] = gl_GlobalInvocationID.y;
+    memoryBarrierShared();
     _12[2u] = gl_GlobalInvocationID.z;
+    memoryBarrierShared();
     _12[3u] = 10u;
     barrier();
     uint _35 = atomicAdd(_12[3u], 10u);
+    memoryBarrierShared();
     uint _37 = atomicCompSwap(_12[2u], 10u, _35);
+    memoryBarrierShared();
     imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(_12[gl_GlobalInvocationID.y & 3u]));
     imageStore(_8, int(gl_GlobalInvocationID.z), uvec4(_12[1u] + CmpXchgResult(_37, _37 == 10u)._m0));
 }
@@ -61,9 +66,9 @@ OpDecorate %16 BuiltIn GlobalInvocationId
 %22 = OpConstant %5 1
 %25 = OpConstant %5 2
 %27 = OpTypePointer Workgroup %5
-%32 = OpConstant %5 3
-%33 = OpConstant %5 10
-%34 = OpConstant %5 264
+%29 = OpConstant %5 264
+%33 = OpConstant %5 3
+%34 = OpConstant %5 10
 %39 = OpTypeBool
 %41 = OpTypeStruct %5 %39
 %47 = OpTypeVector %5 4
@@ -80,21 +85,27 @@ OpBranch %53
 %26 = OpLoad %5 %24
 %28 = OpAccessChain %27 %12 %19
 OpStore %28 %20
-%29 = OpAccessChain %27 %12 %22
-OpStore %29 %23
-%30 = OpAccessChain %27 %12 %25
-OpStore %30 %26
-%31 = OpAccessChain %27 %12 %32
-OpStore %31 %33
-OpControlBarrier %25 %25 %34
-%36 = OpAccessChain %27 %12 %32
-%35 = OpAtomicIAdd %5 %36 %25 %19 %33
+OpMemoryBarrier %25 %29
+%30 = OpAccessChain %27 %12 %22
+OpStore %30 %23
+OpMemoryBarrier %25 %29
+%31 = OpAccessChain %27 %12 %25
+OpStore %31 %26
+OpMemoryBarrier %25 %29
+%32 = OpAccessChain %27 %12 %33
+OpStore %32 %34
+OpMemoryBarrier %25 %29
+OpControlBarrier %25 %25 %29
+%36 = OpAccessChain %27 %12 %33
+%35 = OpAtomicIAdd %5 %36 %25 %19 %34
+OpMemoryBarrier %25 %29
 %38 = OpAccessChain %27 %12 %25
-%37 = OpAtomicCompareExchange %5 %38 %25 %19 %19 %35 %33
-%40 = OpIEqual %39 %37 %33
+%37 = OpAtomicCompareExchange %5 %38 %25 %19 %19 %35 %34
+%40 = OpIEqual %39 %37 %34
 %42 = OpCompositeConstruct %41 %37 %40
+OpMemoryBarrier %25 %29
 %43 = OpCompositeExtract %5 %42 0
-%44 = OpBitwiseAnd %5 %23 %32
+%44 = OpBitwiseAnd %5 %23 %33
 %45 = OpAccessChain %27 %12 %44
 %46 = OpLoad %5 %45
 %48 = OpCompositeConstruct %47 %46 %46 %46 %46

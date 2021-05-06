@@ -671,6 +671,16 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	return true;
 }
 
+static void emit_groupshared_barrier(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	auto *op = impl.allocate(spv::OpMemoryBarrier);
+	op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+	op->add_id(
+		builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+	impl.add(op);
+}
+
 bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instruction)
 {
 	Operation *op = impl.allocate(spv::OpStore);
@@ -690,6 +700,13 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 
 	impl.add(op);
+
+	if (DXIL::AddressSpace(instruction->getOperand(1)->getType()->getAddressSpace()) ==
+	    DXIL::AddressSpace::GroupShared)
+	{
+		emit_groupshared_barrier(impl);
+	}
+
 	return true;
 }
 
@@ -971,6 +988,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
 	op->add_ids({ atomic_op->id, cmp_op->id });
 	impl.add(op);
+	emit_groupshared_barrier(impl);
 
 	return true;
 }
@@ -1037,6 +1055,7 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 	});
 
 	impl.add(op);
+	emit_groupshared_barrier(impl);
 	return true;
 }
 

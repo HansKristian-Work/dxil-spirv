@@ -10,11 +10,16 @@ void main()
 {
     float _25 = float(gl_LocalInvocationIndex + 1u);
     _13[0u + ((0u + (gl_LocalInvocationIndex * 2u)) * 2u)] = float(gl_LocalInvocationIndex);
+    memoryBarrierShared();
     _13[1u + ((0u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _25;
-    float _40 = float(gl_LocalInvocationIndex + 2u);
+    memoryBarrierShared();
+    float _41 = float(gl_LocalInvocationIndex + 2u);
     _13[0u + ((1u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _25;
-    _13[1u + ((1u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _40;
-    _17[0u + (gl_LocalInvocationIndex * 2u)] = _40;
+    memoryBarrierShared();
+    _13[1u + ((1u + (gl_LocalInvocationIndex * 2u)) * 2u)] = _41;
+    memoryBarrierShared();
+    _17[0u + (gl_LocalInvocationIndex * 2u)] = _41;
+    memoryBarrierShared();
     _17[1u + (gl_LocalInvocationIndex * 2u)] = float(gl_LocalInvocationIndex + 3u);
     barrier();
     uint _61 = gl_LocalInvocationIndex ^ 1u;
@@ -64,8 +69,8 @@ OpDecorate %20 BuiltIn LocalInvocationIndex
 %27 = OpConstant %5 2
 %29 = OpConstant %5 0
 %32 = OpTypePointer Workgroup %10
-%52 = OpConstant %5 3
-%60 = OpConstant %5 264
+%34 = OpConstant %5 264
+%53 = OpConstant %5 3
 %90 = OpConstant %5 4
 %104 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
@@ -83,37 +88,43 @@ OpBranch %108
 %31 = OpIAdd %5 %29 %30
 %33 = OpAccessChain %32 %13 %31
 OpStore %33 %22
-%34 = OpIMul %5 %21 %27
-%35 = OpIAdd %5 %29 %34
-%36 = OpIMul %5 %35 %27
-%37 = OpIAdd %5 %24 %36
-%38 = OpAccessChain %32 %13 %37
-OpStore %38 %25
-%39 = OpIAdd %5 %21 %27
-%40 = OpConvertUToF %10 %39
-%41 = OpIMul %5 %21 %27
-%42 = OpIAdd %5 %24 %41
-%43 = OpIMul %5 %42 %27
-%44 = OpIAdd %5 %29 %43
-%45 = OpAccessChain %32 %13 %44
-OpStore %45 %25
-%46 = OpIMul %5 %21 %27
-%47 = OpIAdd %5 %24 %46
-%48 = OpIMul %5 %47 %27
-%49 = OpIAdd %5 %24 %48
-%50 = OpAccessChain %32 %13 %49
-OpStore %50 %40
-%51 = OpIAdd %5 %21 %52
-%53 = OpConvertUToF %10 %51
-%54 = OpIMul %5 %21 %27
-%55 = OpIAdd %5 %29 %54
-%56 = OpAccessChain %32 %17 %55
-OpStore %56 %40
-%57 = OpIMul %5 %21 %27
-%58 = OpIAdd %5 %24 %57
-%59 = OpAccessChain %32 %17 %58
-OpStore %59 %53
-OpControlBarrier %27 %27 %60
+OpMemoryBarrier %27 %34
+%35 = OpIMul %5 %21 %27
+%36 = OpIAdd %5 %29 %35
+%37 = OpIMul %5 %36 %27
+%38 = OpIAdd %5 %24 %37
+%39 = OpAccessChain %32 %13 %38
+OpStore %39 %25
+OpMemoryBarrier %27 %34
+%40 = OpIAdd %5 %21 %27
+%41 = OpConvertUToF %10 %40
+%42 = OpIMul %5 %21 %27
+%43 = OpIAdd %5 %24 %42
+%44 = OpIMul %5 %43 %27
+%45 = OpIAdd %5 %29 %44
+%46 = OpAccessChain %32 %13 %45
+OpStore %46 %25
+OpMemoryBarrier %27 %34
+%47 = OpIMul %5 %21 %27
+%48 = OpIAdd %5 %24 %47
+%49 = OpIMul %5 %48 %27
+%50 = OpIAdd %5 %24 %49
+%51 = OpAccessChain %32 %13 %50
+OpStore %51 %41
+OpMemoryBarrier %27 %34
+%52 = OpIAdd %5 %21 %53
+%54 = OpConvertUToF %10 %52
+%55 = OpIMul %5 %21 %27
+%56 = OpIAdd %5 %29 %55
+%57 = OpAccessChain %32 %17 %56
+OpStore %57 %41
+OpMemoryBarrier %27 %34
+%58 = OpIMul %5 %21 %27
+%59 = OpIAdd %5 %24 %58
+%60 = OpAccessChain %32 %17 %59
+OpStore %60 %54
+OpMemoryBarrier %27 %34
+OpControlBarrier %27 %27 %34
 %61 = OpBitwiseXor %5 %21 %24
 %62 = OpIMul %5 %61 %27
 %63 = OpIAdd %5 %29 %62
