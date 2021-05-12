@@ -939,7 +939,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 						break;
 
 					default:
-						break;
+						LOGE("Reading from UAV, but component type does not conform to U32, I32 or F32. "
+						     "typed_uav_read_without_format option must be enabled.\n");
+						return false;
 					}
 				}
 			}
