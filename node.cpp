@@ -240,7 +240,25 @@ CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
 			b->recompute_immediate_post_dominator();
 		}
 
-		if (a->backward_post_visit_order < b->backward_post_visit_order)
+		if (a->backward_post_visit_order == b->backward_post_visit_order)
+		{
+			// Should not normally happen, but when we insert ladder blocks,
+			// we might have assigned temporary visit orders which can alias with
+			// other nodes in some cases. Fixing this up requires a full traversal of the entire CFG,
+			// so as a fallback we can do direct reachability and domination analysis.
+			if (b->post_dominates(a))
+				return const_cast<CFGNode *>(b);
+			else if (a->post_dominates(b))
+				return const_cast<CFGNode *>(a);
+
+			// If there is no clear domination relationship, then we need to iterate both a and b.
+			// This is fine as we now know that neither a nor b can be the common node.
+			assert(a->immediate_post_dominator);
+			assert(b->immediate_post_dominator);
+			a = a->immediate_post_dominator;
+			b = b->immediate_post_dominator;
+		}
+		else if (a->backward_post_visit_order < b->backward_post_visit_order)
 		{
 			assert(a->immediate_post_dominator);
 			a = a->immediate_post_dominator;
@@ -275,7 +293,29 @@ CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 			b->recompute_immediate_dominator();
 		}
 
-		if (a->forward_post_visit_order < b->forward_post_visit_order)
+		if (a->forward_post_visit_order == b->forward_post_visit_order)
+		{
+			// Should not normally happen, but when we insert ladder blocks,
+			// we might have assigned temporary visit orders which can alias with
+			// other nodes in some cases. Fixing this up requires a full traversal of the entire CFG,
+			// so as a fallback we can do direct reachability and domination analysis.
+			if (b->dominates(a))
+				return const_cast<CFGNode *>(b);
+			else if (a->dominates(b))
+				return const_cast<CFGNode *>(a);
+
+			// If there is no clear domination relationship, then we need to iterate both a and b.
+			// This is fine as we now know that neither a nor b can be the common node.
+			assert(a->immediate_dominator);
+			assert(b->immediate_dominator);
+			if (a == a->immediate_dominator)
+				return b;
+			else if (b == b->immediate_dominator)
+				return a;
+			a = a->immediate_dominator;
+			b = b->immediate_dominator;
+		}
+		else if (a->forward_post_visit_order < b->forward_post_visit_order)
 		{
 			// Awkward case which can happen when nodes are unreachable in the CFG.
 			// Can occur with the dummy blocks we create.
