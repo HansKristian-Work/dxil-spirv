@@ -268,6 +268,12 @@ enum CallFlagBits
 	CALL_FMF_BIT = 1 << 17
 };
 
+enum FastMathFlagBits
+{
+	FAST_MATH_UNSAFE_ALGEBRA_BIT = 1 << 0,
+	FAST_MATH_ALLOW_CONTRACT_BIT = 1 << 5
+};
+
 static int64_t decode_sign_rotated_value(uint64_t v)
 {
 	bool sign = (v & 1) != 0;
@@ -1302,6 +1308,14 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			return false;
 		auto op = BinOp(entry.ops[index++]);
 		auto *value = context->construct<BinaryOperator>(lhs.first, rhs, translate_binop(op, lhs.second));
+		if (index < entry.ops.size())
+		{
+			// Only relevant for FP math, but we only look at fast math state for
+			// FP operations anyways.
+			auto fast_math_flags = entry.ops[index];
+			bool fast = (fast_math_flags & (FAST_MATH_UNSAFE_ALGEBRA_BIT | FAST_MATH_ALLOW_CONTRACT_BIT)) != 0;
+			value->set_fast_math(fast);
+		}
 		if (!add_instruction(value))
 			return false;
 		break;

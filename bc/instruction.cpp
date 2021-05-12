@@ -109,6 +109,16 @@ BinaryOperator::BinaryOps BinaryOperator::getOpcode() const
 	return op;
 }
 
+bool BinaryOperator::isFast() const
+{
+	return fast_math;
+}
+
+void BinaryOperator::set_fast_math(bool enabled)
+{
+	fast_math = enabled;
+}
+
 UnaryOperator::UnaryOperator(UnaryOps uop, Value *value)
     : Instruction(value->getType(), ValueKind::UnaryOperator)
 {

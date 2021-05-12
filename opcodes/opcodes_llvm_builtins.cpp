@@ -78,24 +78,29 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 {
 	bool signed_input = false;
 	bool is_width_sensitive = false;
+	bool is_precision_sensitive = false;
 	spv::Op opcode;
 
 	switch (instruction->getOpcode())
 	{
 	case llvm::BinaryOperator::BinaryOps::FAdd:
 		opcode = spv::OpFAdd;
+		is_precision_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FSub:
 		opcode = spv::OpFSub;
+		is_precision_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FMul:
 		opcode = spv::OpFMul;
+		is_precision_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FDiv:
 		opcode = spv::OpFDiv;
+		is_precision_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Add:
@@ -144,6 +149,7 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 
 	case llvm::BinaryOperator::BinaryOps::FRem:
 		opcode = spv::OpFRem;
+		is_precision_sensitive = true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::URem:
@@ -218,6 +224,8 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 	op->add_ids({ id0, id1 });
 
 	impl.add(op);
+	if (!instruction->isFast() && is_precision_sensitive)
+		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
 	return true;
 }
 

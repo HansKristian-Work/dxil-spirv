@@ -39,23 +39,42 @@ bool emit_imad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	if (!impl.glsl_std450_ext)
-		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
-	Operation *op = impl.allocate(spv::OpExtInst, instruction);
-	op->add_id(impl.glsl_std450_ext);
-	op->add_literal(GLSLstd450Fma);
-	op->add_ids({
-	    impl.get_id_for_value(instruction->getOperand(1)),
-	    impl.get_id_for_value(instruction->getOperand(2)),
-	    impl.get_id_for_value(instruction->getOperand(3)),
-	});
-
-	// Not sure about this one. Will have to figure it out when we start looking at tessellation or something ...
 	if (instruction->getMetadata("dx.precise") != nullptr)
-		builder.addDecoration(op->id, spv::DecorationNoContraction);
+	{
+		// DXIL docs says to split the expression explicitly.
+		// HLSL docs says it just has to be invariant.
+		// These conflict since we could have used NoContract FMA instead,
+		// but at least Big Navi splits fmac into mul + add when doing nocontract fma(), so ...
+		spv::Id type_id = impl.get_type_id(instruction->getType());
+		Operation *mul_op = impl.allocate(spv::OpFMul, type_id);
+		mul_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		mul_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		impl.add(mul_op);
+		builder.addDecoration(mul_op->id, spv::DecorationNoContraction);
 
-	impl.add(op);
+		Operation *add_op = impl.allocate(spv::OpFAdd, instruction);
+		add_op->add_id(mul_op->id);
+		add_op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+		impl.add(add_op);
+		builder.addDecoration(add_op->id, spv::DecorationNoContraction);
+	}
+	else
+	{
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+		Operation *op = impl.allocate(spv::OpExtInst, instruction);
+		op->add_id(impl.glsl_std450_ext);
+		op->add_literal(GLSLstd450Fma);
+		op->add_ids({
+		    impl.get_id_for_value(instruction->getOperand(1)),
+		    impl.get_id_for_value(instruction->getOperand(2)),
+		    impl.get_id_for_value(instruction->getOperand(3)),
+		});
+		impl.add(op);
+	}
+
 	return true;
 }
 
