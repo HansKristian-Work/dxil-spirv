@@ -124,6 +124,8 @@ private:
 	                                                  UnorderedSet<const CFGNode *> &visitation_cache);
 	template <typename Op>
 	void traverse_dominated_blocks(const CFGNode &header, const Op &op);
+
+	void retarget_fake_succ(CFGNode *from, CFGNode *to);
 };
 
 template <typename Op>
@@ -167,6 +169,19 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header
 		{
 			if (!visitation_cache.count(node))
 				node->traverse_dominated_blocks_and_rewrite_branch(header, from, to, op, visitation_cache);
+		}
+	}
+
+	// In case we are rewriting branches to a new merge block, we might
+	// change the immediate post dominator for continue blocks inside this loop construct.
+	// When analysing post dominance in these cases, we need to make sure that we merge to the new merge block,
+	// and not the old one. This avoids some redundant awkward loop constructs.
+	for (auto &fake_next : fake_succ)
+	{
+		if (fake_next == from)
+		{
+			retarget_fake_succ(from, to);
+			break;
 		}
 	}
 }

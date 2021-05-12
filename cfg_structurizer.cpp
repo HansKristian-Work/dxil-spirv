@@ -2187,8 +2187,14 @@ void CFGStructurizer::retarget_succ_from(CFGNode *new_node, CFGNode *old_pred)
 				p = new_node;
 
 	for (auto *node : forward_post_visit_order)
-		if (node->immediate_dominator == old_pred)
-			node->immediate_dominator = new_node;
+	{
+		if (node != old_pred)
+		{
+			// Don't override immediate dominator for entry block.
+			if (node->immediate_dominator == old_pred)
+				node->immediate_dominator = new_node;
+		}
+	}
 	new_node->immediate_dominator = old_pred;
 
 	// Do not swap back edges.
