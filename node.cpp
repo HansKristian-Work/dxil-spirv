@@ -86,12 +86,8 @@ bool CFGNode::dominates(const CFGNode *other) const
 	// Follow immediate dominator graph. Either we end up at this, or entry block.
 	while (this != other)
 	{
-		// Entry block case.
-		if (other->pred.empty())
+		if (!other->immediate_dominator || other == other->immediate_dominator)
 			break;
-
-		assert(other->immediate_dominator);
-		assert(other != other->immediate_dominator);
 		other = other->immediate_dominator;
 	}
 
@@ -186,10 +182,8 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 	while (start_node != this)
 	{
 		// Reached exit node.
-		if (start_node == start_node->immediate_post_dominator)
+		if (!start_node->immediate_post_dominator || start_node == start_node->immediate_post_dominator)
 			break;
-
-		assert(start_node->immediate_post_dominator);
 		start_node = start_node->immediate_post_dominator;
 	}
 
