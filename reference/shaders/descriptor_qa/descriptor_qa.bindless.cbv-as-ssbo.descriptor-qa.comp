@@ -63,7 +63,7 @@ layout(set = 3, binding = 0) uniform writeonly image2D _41[];
 
 void descriptor_qa_report_fault(uint fault_type, uint heap_offset, uint cookie, uint heap_index, uint descriptor_type, uint actual_descriptor_type, uint instruction)
 {
-    uint _76 = atomicExchange(QAGlobalData.fault_atomic, 1u);
+    uint _76 = atomicAdd(QAGlobalData.fault_atomic, 1u);
     if (_76 == 0u)
     {
         QAGlobalData.failed_cookie = cookie;
@@ -755,7 +755,7 @@ OpFunctionEnd
 %70 = OpFunctionParameter %5
 %72 = OpLabel
 %74 = OpAccessChain %73 %62 %75
-%76 = OpAtomicExchange %5 %74 %77 %78 %77
+%76 = OpAtomicIAdd %5 %74 %77 %78 %77
 %80 = OpIEqual %79 %76 %78
 OpSelectionMerge %82 None
 OpBranchConditional %80 %81 %82

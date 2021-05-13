@@ -64,7 +64,7 @@ layout(set = 2, binding = 0) uniform sampler _52[];
 
 void descriptor_qa_report_fault(uint fault_type, uint heap_offset, uint cookie, uint heap_index, uint descriptor_type, uint actual_descriptor_type, uint instruction)
 {
-    uint _80 = atomicExchange(QAGlobalData.fault_atomic, 1u);
+    uint _80 = atomicAdd(QAGlobalData.fault_atomic, 1u);
     if (_80 == 0u)
     {
         QAGlobalData.failed_cookie = cookie;
@@ -770,7 +770,7 @@ OpFunctionEnd
 %74 = OpFunctionParameter %5
 %76 = OpLabel
 %78 = OpAccessChain %77 %66 %79
-%80 = OpAtomicExchange %5 %78 %81 %82 %81
+%80 = OpAtomicIAdd %5 %78 %81 %82 %81
 %84 = OpIEqual %83 %80 %82
 OpSelectionMerge %86 None
 OpBranchConditional %84 %85 %86

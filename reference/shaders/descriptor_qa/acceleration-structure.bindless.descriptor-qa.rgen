@@ -46,7 +46,7 @@ layout(location = 0) rayPayloadEXT _15 _17;
 
 void descriptor_qa_report_fault(uint fault_type, uint heap_offset, uint cookie, uint heap_index, uint descriptor_type, uint actual_descriptor_type, uint instruction)
 {
-    uint _54 = atomicExchange(QAGlobalData.fault_atomic, 1u);
+    uint _54 = atomicAdd(QAGlobalData.fault_atomic, 1u);
     if (_54 == 0u)
     {
         QAGlobalData.failed_cookie = cookie;
@@ -286,7 +286,7 @@ OpFunctionEnd
 %48 = OpFunctionParameter %5
 %50 = OpLabel
 %52 = OpAccessChain %51 %40 %53
-%54 = OpAtomicExchange %5 %52 %55 %20 %55
+%54 = OpAtomicIAdd %5 %52 %55 %20 %55
 %57 = OpIEqual %56 %54 %20
 OpSelectionMerge %59 None
 OpBranchConditional %57 %58 %59

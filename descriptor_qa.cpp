@@ -279,14 +279,14 @@ static void build_descriptor_qa_fault_report(SPIRVModule &module, spv::Id &func_
 	chain->addIdOperand(descriptor_qa_global_buffer_id);
 	chain->addIdOperand(builder.makeUintConstant(uint32_t(DescriptorQAGlobalMembers::FaultAtomic)));
 
-	auto exchange = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpAtomicExchange);
-	exchange->addIdOperand(chain->getResultId());
-	exchange->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
-	exchange->addIdOperand(builder.makeUintConstant(0));
-	exchange->addIdOperand(builder.makeUintConstant(1));
+	auto increment = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpAtomicIAdd);
+	increment->addIdOperand(chain->getResultId());
+	increment->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	increment->addIdOperand(builder.makeUintConstant(0));
+	increment->addIdOperand(builder.makeUintConstant(1));
 
 	auto check = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpIEqual);
-	check->addIdOperand(exchange->getResultId());
+	check->addIdOperand(increment->getResultId());
 	check->addIdOperand(builder.makeUintConstant(0));
 	spv::Id check_id = check->getResultId();
 
@@ -295,7 +295,7 @@ static void build_descriptor_qa_fault_report(SPIRVModule &module, spv::Id &func_
 
 	builder.setBuildPoint(entry);
 	entry->addInstruction(std::move(chain));
-	entry->addInstruction(std::move(exchange));
+	entry->addInstruction(std::move(increment));
 	entry->addInstruction(std::move(check));
 	builder.createSelectionMerge(false_block, 0);
 	builder.createConditionalBranch(check_id, true_block, false_block);

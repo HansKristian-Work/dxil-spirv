@@ -44,7 +44,7 @@ bool discard_state;
 
 void descriptor_qa_report_fault(uint fault_type, uint heap_offset, uint cookie, uint heap_index, uint descriptor_type, uint actual_descriptor_type, uint instruction)
 {
-    uint _59 = atomicExchange(QAGlobalData.fault_atomic, 1u);
+    uint _59 = atomicAdd(QAGlobalData.fault_atomic, 1u);
     if (_59 == 0u)
     {
         QAGlobalData.failed_cookie = cookie;
@@ -309,7 +309,7 @@ OpFunctionEnd
 %53 = OpFunctionParameter %5
 %55 = OpLabel
 %57 = OpAccessChain %56 %45 %58
-%59 = OpAtomicExchange %5 %57 %24 %30 %24
+%59 = OpAtomicIAdd %5 %57 %24 %30 %24
 %60 = OpIEqual %32 %59 %30
 OpSelectionMerge %62 None
 OpBranchConditional %60 %61 %62

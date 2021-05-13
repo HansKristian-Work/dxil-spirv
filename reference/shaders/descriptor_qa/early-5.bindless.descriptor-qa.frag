@@ -44,7 +44,7 @@ layout(location = 0) out vec4 SV_Target;
 
 void descriptor_qa_report_fault(uint fault_type, uint heap_offset, uint cookie, uint heap_index, uint descriptor_type, uint actual_descriptor_type, uint instruction)
 {
-    uint _53 = atomicExchange(QAGlobalData.fault_atomic, 1u);
+    uint _53 = atomicAdd(QAGlobalData.fault_atomic, 1u);
     if (_53 == 0u)
     {
         QAGlobalData.failed_cookie = cookie;
@@ -302,7 +302,7 @@ OpFunctionEnd
 %47 = OpFunctionParameter %5
 %49 = OpLabel
 %51 = OpAccessChain %50 %39 %52
-%53 = OpAtomicExchange %5 %51 %54 %55 %54
+%53 = OpAtomicIAdd %5 %51 %54 %55 %54
 %57 = OpIEqual %56 %53 %55
 OpSelectionMerge %59 None
 OpBranchConditional %57 %58 %59
