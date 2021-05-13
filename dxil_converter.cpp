@@ -3653,17 +3653,59 @@ bool Converter::Impl::emit_execution_modes_compute()
 		return false;
 }
 
+static bool entry_point_modifies_sample_mask(const llvm::MDNode *node)
+{
+	if (!node->getOperand(2))
+		return false;
+	auto &signature = node->getOperand(2);
+	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
+	auto &outputs = signature_node->getOperand(1);
+	if (!outputs)
+		return false;
+
+	auto *outputs_node = llvm::dyn_cast<llvm::MDNode>(outputs);
+	for (unsigned i = 0; i < outputs_node->getNumOperands(); i++)
+	{
+		auto *output = llvm::cast<llvm::MDNode>(outputs_node->getOperand(i));
+		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
+		if (system_value == DXIL::Semantic::Depth ||
+		    system_value == DXIL::Semantic::StencilRef ||
+		    system_value == DXIL::Semantic::Coverage)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool Converter::Impl::emit_execution_modes_pixel()
 {
 	auto &builder = spirv_module.get_builder();
-
 	auto *flags_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ShaderFlags);
+	bool early_depth_stencil = false;
+
 	if (flags_node)
 	{
 		auto flags = llvm::cast<llvm::ConstantAsMetadata>(*flags_node)->getValue()->getUniqueInteger().getZExtValue();
 		if (flags & DXIL::ShaderFlagEarlyDepthStencil)
-			builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeEarlyFragmentTests);
+			early_depth_stencil = true;
 	}
+
+	if (options.descriptor_qa_enabled)
+	{
+		// If we have descriptor QA enabled, we will have side effects when running fragment shaders.
+		// This forces late-Z which can trigger some horrible performance issues.
+		// Make sure to enable early depth-stencil if nothing in the shader is early/late sensitive.
+		if (!entry_point_modifies_sample_mask(entry_point_meta) &&
+		    !shader_analysis.has_side_effects && !shader_analysis.discards)
+		{
+			early_depth_stencil = true;
+		}
+	}
+
+	if (early_depth_stencil)
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeEarlyFragmentTests);
 
 	return true;
 }
@@ -3720,6 +3762,8 @@ bool Converter::Impl::emit_execution_modes_hull()
 		auto *patch_constant = llvm::cast<llvm::ConstantAsMetadata>(arguments->getOperand(0));
 		auto *patch_constant_value = patch_constant->getValue();
 		execution_mode_meta.patch_constant_function = llvm::cast<llvm::Function>(patch_constant_value);
+		if (!analyze_instructions(execution_mode_meta.patch_constant_function))
+			return false;
 
 		unsigned input_control_points = get_constant_metadata(arguments, 1);
 		unsigned output_control_points = get_constant_metadata(arguments, 2);
@@ -3908,9 +3952,6 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 
 bool Converter::Impl::emit_execution_modes()
 {
-	auto &module = bitcode_parser.get_module();
-	execution_model = get_execution_model(module, entry_point_meta);
-
 	switch (execution_model)
 	{
 	case spv::ExecutionModelGLCompute:
@@ -4207,10 +4248,6 @@ bool Converter::Impl::analyze_instructions()
 	if (!analyze_instructions(get_entry_point_function(entry_point_meta)))
 		return false;
 
-	if (execution_model == spv::ExecutionModelTessellationControl)
-		if (!analyze_instructions(execution_mode_meta.patch_constant_function))
-			return false;
-
 	return true;
 }
 
@@ -4220,6 +4257,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	auto &module = bitcode_parser.get_module();
 	entry_point_meta = get_entry_point_meta(module, options.entry_point.empty() ? nullptr : options.entry_point.c_str());
+	execution_model = get_execution_model(module, entry_point_meta);
+
 	if (!entry_point_meta)
 	{
 		if (!options.entry_point.empty())
@@ -4254,11 +4293,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	if (!emit_resources_global_mapping())
 		return result;
-
-	if (!emit_execution_modes())
-		return result;
-
 	if (!analyze_instructions())
+		return result;
+	if (!emit_execution_modes())
 		return result;
 
 	if (!emit_resources())

@@ -427,5 +427,12 @@ struct Converter::Impl
 
 	DXIL::ComponentType get_effective_input_output_type(DXIL::ComponentType type);
 	spv::Id get_effective_input_output_type_id(DXIL::ComponentType type);
+
+	struct
+	{
+		// Only relevant for fragment shaders.
+		bool has_side_effects = false;
+		bool discards = false;
+	} shader_analysis;
 };
 } // namespace dxil_spv

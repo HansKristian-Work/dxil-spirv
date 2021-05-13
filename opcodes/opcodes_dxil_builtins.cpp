@@ -329,6 +329,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			node.has_read = true;
 			node.has_written = true;
 			node.has_atomic = true;
+			impl.shader_analysis.has_side_effects = true;
 		}
 		break;
 	}
@@ -343,6 +344,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			auto &node = impl.uav_access_tracking[itr->second];
 			node.has_written = true;
 			update_access_tracking_from_type(node, instruction->getOperand(4)->getType());
+			impl.shader_analysis.has_side_effects = true;
 		}
 		break;
 	}
@@ -350,6 +352,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::BufferUpdateCounter:
 	{
 		impl.llvm_values_using_update_counter.insert(instruction->getOperand(1));
+		impl.shader_analysis.has_side_effects = true;
 		break;
 	}
 
@@ -405,6 +408,10 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		impl.llvm_hit_attribute_output_type = type;
 		break;
 	}
+
+	case DXIL::Op::Discard:
+		impl.shader_analysis.discards = true;
+		break;
 
 	default:
 		break;
