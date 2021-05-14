@@ -258,12 +258,50 @@ static void update_access_tracking_from_type(Converter::Impl::AccessTracking &tr
 	}
 }
 
-bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+static void analyze_descriptor_handle_sink(Converter::Impl &impl,
+                                           const llvm::CallInst *instruction,
+                                           const llvm::BasicBlock *bb)
+{
+	// Even if we only use a resource in a branch in HLSL code, DXC might still unconditionally load
+	// the resource handle, which means descriptor QA checks might not be entirely accurate.
+	// To ensure we handle control flow correctly, sink instruction to BBs which actually use the
+	// resource handle.
+	unsigned count = instruction->getNumOperands();
+	for (unsigned i = 1; i < count; i++)
+	{
+		if (auto *call_op = llvm::dyn_cast<llvm::CallInst>(instruction->getOperand(i)))
+		{
+			auto itr = impl.resource_handle_to_block.find(call_op);
+			if (itr != impl.resource_handle_to_block.end())
+			{
+				auto *orig_bb = itr->second;
+				if (!impl.resource_handle_is_conservative.count(call_op) && orig_bb != bb)
+				{
+					impl.resource_handles_needing_sink.insert(call_op);
+					auto &sinks = impl.bb_to_sinks[bb];
+					if (std::find(sinks.begin(), sinks.end(), call_op) == sinks.end())
+						sinks.push_back(call_op);
+				}
+				else
+				{
+					// If we use the handle in the same block we created it,
+					// don't try to sink anything. One QA check is enough.
+					impl.resource_handle_is_conservative.insert(call_op);
+				}
+			}
+		}
+	}
+}
+
+bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb)
 {
 	// The opcode is encoded as a constant integer.
 	uint32_t opcode;
 	if (!get_constant_operand(instruction, 0, &opcode))
 		return false;
+
+	if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
+		analyze_descriptor_handle_sink(impl, instruction, bb);
 
 	switch (static_cast<DXIL::Op>(opcode))
 	{
@@ -279,6 +317,9 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			impl.llvm_value_to_uav_resource_index_map[instruction] = resource_range;
 		else if (static_cast<DXIL::ResourceType>(resource_type_operand) == DXIL::ResourceType::SRV)
 			impl.llvm_value_to_srv_resource_index_map[instruction] = resource_range;
+
+		if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
+			impl.resource_handle_to_block[instruction] = bb;
 		break;
 	}
 
@@ -292,6 +333,9 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			impl.llvm_value_to_uav_resource_index_map[instruction] = itr->second.meta_index;
 		else if (itr->second.type == DXIL::ResourceType::SRV)
 			impl.llvm_value_to_srv_resource_index_map[instruction] = itr->second.meta_index;
+
+		if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
+			impl.resource_handle_to_block[instruction] = bb;
 		break;
 	}
 

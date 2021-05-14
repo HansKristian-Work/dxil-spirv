@@ -1292,8 +1292,21 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 	return true;
 }
 
+static bool resource_handle_needs_sink(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return impl.options.descriptor_qa_enabled &&
+	       impl.options.descriptor_qa_sink_handles &&
+	       impl.resource_handles_needing_sink.count(instruction);
+}
+
 bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (resource_handle_needs_sink(impl, instruction))
+	{
+		impl.resource_handles_needing_sink.erase(impl.resource_handles_needing_sink.find(instruction));
+		return true;
+	}
+
 	auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getOperand(1));
 	if (itr == impl.llvm_global_variable_to_resource_mapping.end())
 		return false;
@@ -1304,6 +1317,12 @@ bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::C
 
 bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (resource_handle_needs_sink(impl, instruction))
+	{
+		impl.resource_handles_needing_sink.erase(impl.resource_handles_needing_sink.find(instruction));
+		return true;
+	}
+
 	uint32_t resource_type_operand, resource_range;
 
 	if (!get_constant_operand(instruction, 1, &resource_type_operand))

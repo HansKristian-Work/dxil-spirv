@@ -4117,8 +4117,26 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 
 	for (auto *bb : visit_order)
 	{
-		CFGNode *node = bb_map[bb]->node;
+		auto *meta = bb_map[bb];
+		CFGNode *node = meta->node;
 		combined_image_sampler_cache.clear();
+
+		auto sink_itr = bb_to_sinks.find(bb);
+		if (sink_itr != bb_to_sinks.end())
+		{
+			for (auto *instruction : sink_itr->second)
+			{
+				auto itr = value_map.find(instruction);
+				if (itr != value_map.end())
+					value_map.erase(itr);
+
+				if (!emit_instruction(node, *instruction))
+				{
+					LOGE("Failed to emit instruction.\n");
+					return {};
+				}
+			}
+		}
 
 		// Scan opcodes.
 		for (auto &instruction : *bb)
@@ -4225,7 +4243,7 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 				auto *called_function = call_inst->getCalledFunction();
 				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 				{
-					if (!analyze_dxil_instruction(*this, call_inst))
+					if (!analyze_dxil_instruction(*this, call_inst, &bb))
 						return false;
 				}
 			}
