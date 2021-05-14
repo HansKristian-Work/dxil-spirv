@@ -23,6 +23,7 @@
 #include "cfg_structurizer.hpp"
 #include "dxil_converter.hpp"
 #include "scratch_pool.hpp"
+#include "descriptor_qa.hpp"
 
 #include "GLSL.std.450.h"
 
@@ -101,7 +102,7 @@ struct Converter::Impl
 		DXIL_SPV_OVERRIDE_NEW_DELETE
 	};
 	Vector<std::unique_ptr<BlockMeta>> metas;
-	UnorderedMap<llvm::BasicBlock *, BlockMeta *> bb_map;
+	UnorderedMap<const llvm::BasicBlock *, BlockMeta *> bb_map;
 	UnorderedMap<const llvm::Value *, spv::Id> value_map;
 	UnorderedMap<spv::Id, spv::Id> phi_incoming_rewrite;
 
@@ -234,6 +235,7 @@ struct Converter::Impl
 	unsigned root_descriptor_count = 0;
 	unsigned root_constant_num_words = 0;
 	unsigned patch_location_offset = 0;
+	unsigned descriptor_qa_counter = 0;
 
 	struct PhysicalPointerMeta
 	{
@@ -374,6 +376,10 @@ struct Converter::Impl
 			unsigned typed_offset = 0;
 			unsigned stride = 1;
 		} offset_buffer_layout;
+
+		DescriptorQAInfo descriptor_qa;
+		bool descriptor_qa_enabled = false;
+		bool descriptor_qa_sink_handles = true;
 	} options;
 
 	struct BindlessInfo
@@ -422,5 +428,18 @@ struct Converter::Impl
 
 	DXIL::ComponentType get_effective_input_output_type(DXIL::ComponentType type);
 	spv::Id get_effective_input_output_type_id(DXIL::ComponentType type);
+
+	struct
+	{
+		// Only relevant for fragment shaders.
+		bool has_side_effects = false;
+		bool discards = false;
+	} shader_analysis;
+
+	// For descriptor QA, we need to rewrite how resource handles are emitted.
+	UnorderedMap<const llvm::CallInst *, const llvm::BasicBlock *> resource_handle_to_block;
+	UnorderedSet<const llvm::CallInst *> resource_handles_needing_sink;
+	UnorderedSet<const llvm::CallInst *> resource_handle_is_conservative;
+	UnorderedMap<const llvm::BasicBlock *, Vector<const llvm::Instruction *>> bb_to_sinks;
 };
 } // namespace dxil_spv

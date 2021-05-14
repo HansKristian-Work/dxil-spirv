@@ -205,6 +205,7 @@ enum class Option : uint32_t
 	BindlessTypedBufferOffsets = 12,
 	BindlessOffsetBufferLayout = 13,
 	StorageInputOutput16 = 14,
+	DescriptorQA = 15
 };
 
 enum class ResourceClass : uint32_t
@@ -359,6 +360,24 @@ struct OptionStorageInputOutput16 : OptionBase
 	}
 
 	bool supported = true;
+};
+
+struct OptionDescriptorQA : OptionBase
+{
+	OptionDescriptorQA()
+		: OptionBase(Option::DescriptorQA)
+	{
+	}
+
+	enum { DefaultVersion = 1 };
+
+	bool enabled = false;
+	uint32_t version = DefaultVersion;
+	uint32_t global_desc_set = 0;
+	uint32_t global_binding = 0;
+	uint32_t heap_desc_set = 0;
+	uint32_t heap_binding = 0;
+	uint64_t shader_hash = 0;
 };
 
 struct DescriptorTableEntry

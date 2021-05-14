@@ -21,6 +21,7 @@
 #include "thread_local_allocator.hpp"
 #include "cfg_structurizer.hpp"
 #include "ir.hpp"
+#include "descriptor_qa.hpp"
 #include <memory>
 
 namespace spv
@@ -34,6 +35,11 @@ namespace dxil_spv
 {
 struct CFGNode;
 class CFGNodePool;
+
+enum class HelperCall
+{
+	DescriptorQACheck
+};
 
 class SPIRVModule
 {
@@ -69,6 +75,10 @@ public:
 	spv::Id create_variable(spv::StorageClass storage, spv::Id type, const char *name = nullptr);
 	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type, spv::Id initializer,
 	                                         const char *name = nullptr);
+
+	spv::Id get_helper_call_id(HelperCall call);
+	void set_descriptor_qa_info(const DescriptorQAInfo &info);
+	const DescriptorQAInfo &get_descriptor_qa_info() const;
 
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 

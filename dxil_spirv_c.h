@@ -28,8 +28,10 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 4
+#define DXIL_SPV_API_VERSION_MINOR 5
 #define DXIL_SPV_API_VERSION_PATCH 0
+
+#define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
 
 #if !defined(DXIL_SPV_PUBLIC_API)
 #if defined(DXIL_SPV_EXPORT_SYMBOLS)
@@ -273,6 +275,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_BINDLESS_TYPED_BUFFER_OFFSETS = 12,
 	DXIL_SPV_OPTION_BINDLESS_OFFSET_BUFFER_LAYOUT = 13,
 	DXIL_SPV_OPTION_STORAGE_INPUT_OUTPUT_16BIT = 14,
+	DXIL_SPV_OPTION_DESCRIPTOR_QA = 15,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -379,6 +382,18 @@ typedef struct dxil_spv_option_storage_input_output_16bit
 	dxil_spv_option_base base;
 	dxil_spv_bool supported;
 } dxil_spv_option_storage_input_output_16bit;
+
+typedef struct dxil_spv_option_descriptor_qa
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool enabled;
+	unsigned version;
+	unsigned global_desc_set;
+	unsigned global_binding;
+	unsigned heap_desc_set;
+	unsigned heap_binding;
+	unsigned long long shader_hash;
+} dxil_spv_option_descriptor_qa;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

@@ -25,5 +25,5 @@ namespace dxil_spv
 using DXILOperationBuilder = bool (*)(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
-bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb);
 } // namespace dxil_spv
