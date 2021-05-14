@@ -4241,14 +4241,7 @@ bool Converter::Impl::composite_is_accessed(const llvm::Value *composite) const
 
 bool Converter::Impl::analyze_instructions()
 {
-	// Some things need to happen here. We try to figure out if a UAV is readonly or writeonly.
-	// If readonly typed UAV, we emit an image format which corresponds to r32f, r32i or r32ui as to not
-	// require StorageReadWithoutFormat capability. TODO: With FL 12, this might not be enough, but should be
-	// good enough for time being.
-	if (!analyze_instructions(get_entry_point_function(entry_point_meta)))
-		return false;
-
-	return true;
+	return analyze_instructions(get_entry_point_function(entry_point_meta));
 }
 
 ConvertedFunction Converter::Impl::convert_entry_point()
