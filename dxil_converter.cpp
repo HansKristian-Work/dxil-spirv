@@ -3669,6 +3669,8 @@ static bool entry_point_modifies_sample_mask(const llvm::MDNode *node)
 		auto *output = llvm::cast<llvm::MDNode>(outputs_node->getOperand(i));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
 		if (system_value == DXIL::Semantic::Depth ||
+		    system_value == DXIL::Semantic::DepthLessEqual ||
+		    system_value == DXIL::Semantic::DepthGreaterEqual ||
 		    system_value == DXIL::Semantic::StencilRef ||
 		    system_value == DXIL::Semantic::Coverage)
 		{
