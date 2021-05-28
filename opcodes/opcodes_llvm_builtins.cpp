@@ -74,6 +74,61 @@ static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm:
 	return build_naturally_extended_value(impl, value, logical_bits, is_signed);
 }
 
+static bool peephole_trivial_arithmetic_identity(Converter::Impl &impl,
+                                                 const llvm::BinaryOperator *instruction,
+                                                 llvm::BinaryOperator::BinaryOps inverse_operation,
+                                                 bool is_commutative)
+{
+	// Only peephole fast math.
+	if (!instruction->isFast())
+		return false;
+
+	// CP77 can trigger a scenario where we do (a / b) * b in fast math.
+	// When b is 0, we hit a singularity, but native drivers optimize this away.
+	auto *op0 = instruction->getOperand(0);
+	auto *op1 = instruction->getOperand(1);
+
+	// This is the case for mul/div or add/sub.
+	bool counter_op_is_commutative = !is_commutative;
+
+	// Current expression is op(op0, op1)
+	// Find pattern where we have one of 4 cases:
+	// - c = F(a, F^-1(c, a)) // F = fmul -> is_commutative
+	// - c = F(F^-1(c, b), b) // F = fmul -> is_commutative
+	// - c = F(F^-1(c, b), b) // F = fdiv -> !is_commutative
+	// - c = F(F^-1(b, c), b) // F = fdiv -> !is_commutative
+
+	const auto hoist_value = [&](llvm::BinaryOperator *binop, llvm::Value *inverse_value) -> bool {
+		auto *cancel_op0 = binop->getOperand(0);
+		auto *cancel_op1 = binop->getOperand(1);
+		if (counter_op_is_commutative && cancel_op0 == inverse_value)
+		{
+			// op0 is canceled by outer expression, so we're left with op1.
+			impl.value_map[instruction] = impl.get_id_for_value(cancel_op1);
+			return true;
+		}
+		else if (cancel_op1 == inverse_value)
+		{
+			// op1 is canceled by outer expression, so we're left with op0.
+			impl.value_map[instruction] = impl.get_id_for_value(cancel_op0);
+			return true;
+		}
+		else
+			return false;
+	};
+
+	if (auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(op0))
+		if (binop->isFast() && binop->getOpcode() == inverse_operation && hoist_value(binop, op1))
+			return true;
+
+	if (is_commutative)
+		if (auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(op1))
+			if (binop->isFast() && binop->getOpcode() == inverse_operation && hoist_value(binop, op0))
+				return true;
+
+	return false;
+}
+
 bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
 {
 	bool signed_input = false;
@@ -96,11 +151,15 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 	case llvm::BinaryOperator::BinaryOps::FMul:
 		opcode = spv::OpFMul;
 		is_precision_sensitive = true;
+		if (peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FDiv, true))
+			return true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FDiv:
 		opcode = spv::OpFDiv;
 		is_precision_sensitive = true;
+		if (peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FMul, false))
+			return true;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Add:

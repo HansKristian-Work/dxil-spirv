@@ -1,0 +1,19 @@
+RWStructuredBuffer<float> Results : register(u0);
+StructuredBuffer<float> Inputs : register(t0);
+
+[numthreads(1, 1, 1)]
+void main()
+{
+	float a = Inputs[0];
+	float b = Inputs[1];
+
+	Results[0] = (Inputs[2] * b) / b; // Should opt
+	Results[1] = (b * Inputs[3]) / b; // Should opt
+	Results[2] = b / (Inputs[4] * b); // Should not opt
+	Results[3] = b / (b * Inputs[5]); // Should not opt
+
+	Results[4] = (Inputs[6] / b) * b; // Should opt
+	Results[5] = b * (Inputs[7] / b); // Should opt
+	Results[6] = (b / Inputs[8]) * b; // Should not opt
+	Results[7] = b * (b / Inputs[9]); // Should not opt
+}
