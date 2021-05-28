@@ -6,6 +6,7 @@ target_include_directories(dxil-spirv-headers INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}/spirv-headers/include/spirv/unified1)
 
 if (DXIL_SPIRV_CLI)
+    set(SPIRV_WERROR OFF CACHE STRING "" FORCE)
     add_subdirectory(SPIRV-Tools EXCLUDE_FROM_ALL)
     add_subdirectory(SPIRV-Cross EXCLUDE_FROM_ALL)
 endif()
