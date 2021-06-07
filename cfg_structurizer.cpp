@@ -1802,6 +1802,9 @@ void CFGStructurizer::split_merge_scopes()
 
 bool CFGStructurizer::query_reachability(const CFGNode &from, const CFGNode &to) const
 {
+	if (&from == &to)
+		return true;
+
 	const uint32_t *src_reachability = &reachability_bitset[from.forward_post_visit_order * reachability_stride];
 	return (src_reachability[to.forward_post_visit_order / 32] & (1u << (to.forward_post_visit_order & 31u))) != 0;
 }
