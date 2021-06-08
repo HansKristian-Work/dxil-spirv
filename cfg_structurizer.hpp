@@ -117,7 +117,9 @@ private:
 	void retarget_pred_from(CFGNode *new_node, CFGNode *old_succ);
 	void retarget_succ_from(CFGNode *new_node, CFGNode *old_pred);
 
-	CFGNode *get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node, CFGNode *must_reach) const;
+	CFGNode *get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node,
+	                                                                  CFGNode *must_reach,
+	                                                                  CFGNode *must_reach_frontier) const;
 	bool exists_path_in_cfg_without_intermediate_node(CFGNode *start_block, CFGNode *end_block, CFGNode *stop_block) const;
 
 	struct PHINode
@@ -139,5 +141,8 @@ private:
 
 	void log_cfg(const char *tag) const;
 	void log_cfg_graphviz(const char *path) const;
+
+	static bool can_complete_phi_insertion(const PHI &phi, const CFGNode *end_node);
+	bool query_reachability_through_back_edges(const CFGNode &from, const CFGNode &to) const;
 };
 } // namespace dxil_spv

@@ -756,6 +756,36 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 	}
 }
 
+bool CFGStructurizer::can_complete_phi_insertion(const PHI &phi, const CFGNode *block)
+{
+	// If all incoming values have at least one pred block they dominate, we can merge the final PHI.
+	auto &incoming_values = phi.incoming;
+	for (auto &incoming : incoming_values)
+	{
+		auto itr = std::find_if(block->pred.begin(), block->pred.end(),
+		                        [&](const CFGNode *n) { return incoming.block->dominates(n); });
+
+		if (itr == block->pred.end() &&
+		    (!block->pred_back_edge || !incoming.block->dominates(block->pred_back_edge)))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool CFGStructurizer::query_reachability_through_back_edges(const CFGNode &from, const CFGNode &to) const
+{
+	if (to.dominates(&from))
+	{
+		// If we're dominated by end node, only way we can reach is through a back edge.
+		return to.pred_back_edge && query_reachability(from, *to.pred_back_edge);
+	}
+	else
+		return query_reachability(from, to);
+}
+
 void CFGStructurizer::insert_phi(PHINode &node)
 {
 	// We start off with N values defined in N blocks.
@@ -768,64 +798,10 @@ void CFGStructurizer::insert_phi(PHINode &node)
 	LOGI("\n=== INSERT PHI FOR %s ===\n", node.block->name.c_str());
 #endif
 
-	// First, figure out which subset of the CFG we need to work on.
-	UnorderedSet<const CFGNode *> cfg_subset, cfg_block_subset;
-	cfg_subset.insert(node.block);
-	const auto walk_op = [&](const CFGNode *n) -> bool {
-		if (cfg_block_subset.count(n))
-			return false;
-
-		// Don't walk past the node we're trying to merge PHI into.
-		if (node.block == n)
-			return false;
-
-		if (node.block->dominates(n))
-		{
-			// If there is a path to the node's back edge, we need to link up the Phi nodes there.
-			bool can_reach_continue_block = node.block->pred_back_edge &&
-			                                n != node.block->pred_back_edge &&
-			                                node.block->pred_back_edge->can_backtrace_to(n);
-			if (!can_reach_continue_block)
-			{
-				cfg_block_subset.insert(n);
-				return false;
-			}
-		}
-		else
-		{
-#if 0
-			// Only bother following a CFG if we can backtrace to it, otherwise, it has no business being part of the
-			// dominance frontier.
-			if (!node.block->can_backtrace_to(n))
-			{
-				cfg_block_subset.insert(n);
-				return false;
-			}
-#endif
-		}
-
-		if (cfg_subset.count(n))
-		{
-			return false;
-		}
-		else
-		{
-			cfg_subset.insert(n);
-			return true;
-		}
-	};
-
 	auto &phi = node.block->ir.phi[node.phi_index];
 	auto &incoming_values = phi.incoming;
-	for (auto &incoming : incoming_values)
-		incoming.block->walk_cfg_from(walk_op);
 
-#ifdef PHI_DEBUG
-	LOGI("\n=== CFG subset ===\n");
-	for (auto *subset_node : cfg_subset)
-		LOGI("  %s\n", subset_node->name.c_str());
-	LOGI("=================\n");
-#endif
+	UnorderedSet<const CFGNode *> placed_frontiers;
 
 	for (;;)
 	{
@@ -838,29 +814,20 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 		// Inside the CFG subset, find a dominance frontiers where we merge PHIs this iteration.
 		CFGNode *frontier = node.block;
-
-		// If all incoming values have at least one pred block they dominate, we can merge the final PHI.
-		for (auto &incoming : incoming_values)
+		if (!can_complete_phi_insertion(phi, node.block))
 		{
-			auto itr = std::find_if(node.block->pred.begin(), node.block->pred.end(),
-			                        [&](const CFGNode *n) { return incoming.block->dominates(n); });
+			frontier = nullptr;
 
-			if (itr == node.block->pred.end() &&
-			    (!node.block->pred_back_edge || !incoming.block->dominates(node.block->pred_back_edge)))
-			{
-				frontier = nullptr;
-				break;
-			}
-		}
-
-		if (!frontier)
-		{
 			// We need some intermediate merge, so find a frontier node to work on.
 			for (auto &incoming : incoming_values)
 			{
 				for (auto *candidate_frontier : incoming.block->dominance_frontier)
 				{
-					if (cfg_subset.count(candidate_frontier))
+					if (placed_frontiers.count(candidate_frontier))
+						continue;
+
+					// Only consider a frontier if we can reach node.block or its back edge from it.
+					if (query_reachability_through_back_edges(*candidate_frontier, *node.block))
 					{
 						if (frontier == nullptr || candidate_frontier->forward_post_visit_order > frontier->forward_post_visit_order)
 						{
@@ -871,6 +838,9 @@ void CFGStructurizer::insert_phi(PHINode &node)
 					}
 				}
 			}
+
+			if (frontier)
+				placed_frontiers.insert(frontier);
 		}
 
 		assert(frontier);
@@ -1004,9 +974,6 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		// Need to clean up exhausted incoming values after the loop,
 		// since an incoming value can be used multiple times before a frontier PHI is resolved.
 		incoming_values.erase(incoming_values.begin() + num_alive_incoming_values, incoming_values.end());
-
-		// We've handled this node now, remove it from consideration w.r.t. frontiers.
-		cfg_subset.erase(frontier);
 
 		IncomingValue *dominated_incoming = nullptr;
 		for (auto &incoming : incoming_values)
@@ -1663,7 +1630,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 
 			if (node->succ.size() >= 2 && !branch_is_loop_or_switch)
 			{
-				auto *outer_header = get_post_dominance_frontier_with_cfg_subset_that_reaches(node, ladder_to);
+				auto *outer_header = get_post_dominance_frontier_with_cfg_subset_that_reaches(node, ladder_to, nullptr);
 				if (outer_header == header)
 					construct.insert(node);
 			}
@@ -2933,9 +2900,9 @@ bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(CFGNode *star
 	    query_reachability(*start_block, *stop_block) &&
 	    query_reachability(*stop_block, *end_block))
 	{
-		auto *frontier = get_post_dominance_frontier_with_cfg_subset_that_reaches(stop_block, end_block);
-		bool ret = frontier && query_reachability(*start_block, *frontier);
-		return ret;
+		auto *frontier = get_post_dominance_frontier_with_cfg_subset_that_reaches(stop_block, end_block, start_block);
+		// We already know start_block reaches the frontier.
+		return frontier != nullptr;
 	}
 	else
 	{
@@ -2944,7 +2911,9 @@ bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(CFGNode *star
 	}
 }
 
-CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node, CFGNode *must_reach) const
+CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node,
+                                                                                   CFGNode *must_reach,
+                                                                                   CFGNode *must_reach_frontier) const
 {
 	UnorderedSet<CFGNode *> promoted_post_dominators;
 	promoted_post_dominators.insert(node);
@@ -2957,6 +2926,16 @@ CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reach
 
 	while (!frontiers.empty())
 	{
+		// We might not be interested in post-domination-frontiers that we cannot reach.
+		// Filter our search based on this.
+		if (must_reach_frontier)
+		{
+			auto itr = std::remove_if(frontiers.begin(), frontiers.end(), [&](CFGNode *candidate) {
+			    return !query_reachability(*must_reach_frontier, *candidate);
+			});
+			frontiers.erase(itr, frontiers.end());
+		}
+
 		if (frontiers.size() > 1)
 		{
 			std::sort(frontiers.begin(), frontiers.end(), [](const CFGNode *a, const CFGNode *b) {
@@ -2964,6 +2943,9 @@ CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reach
 			});
 			frontiers.erase(std::unique(frontiers.begin(), frontiers.end()), frontiers.end());
 		}
+		else if (frontiers.empty())
+			break;
+
 		auto &frontier = frontiers.back();
 
 		// For a frontier to be discounted, we look at all successors and check
