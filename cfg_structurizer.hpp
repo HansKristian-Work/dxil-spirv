@@ -89,7 +89,7 @@ private:
 	static void isolate_structured(UnorderedSet<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
 
 	static Vector<IncomingValue>::const_iterator find_incoming_value(const CFGNode *frontier_pred,
-	                                                                      const Vector<IncomingValue> &incoming);
+	                                                                 const Vector<IncomingValue> &incoming);
 
 	void rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_to);
 
@@ -117,10 +117,12 @@ private:
 	void retarget_pred_from(CFGNode *new_node, CFGNode *old_succ);
 	void retarget_succ_from(CFGNode *new_node, CFGNode *old_pred);
 
-	CFGNode *get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node,
-	                                                                  CFGNode *must_reach,
-	                                                                  CFGNode *must_reach_frontier) const;
-	bool exists_path_in_cfg_without_intermediate_node(CFGNode *start_block, CFGNode *end_block, CFGNode *stop_block) const;
+	CFGNode *get_post_dominance_frontier_with_cfg_subset_that_reaches(const CFGNode *node,
+	                                                                  const CFGNode *must_reach,
+	                                                                  const CFGNode *must_reach_frontier) const;
+	bool exists_path_in_cfg_without_intermediate_node(const CFGNode *start_block,
+	                                                  const CFGNode *end_block,
+	                                                  const CFGNode *stop_block) const;
 
 	struct PHINode
 	{
@@ -144,5 +146,8 @@ private:
 
 	static bool can_complete_phi_insertion(const PHI &phi, const CFGNode *end_node);
 	bool query_reachability_through_back_edges(const CFGNode &from, const CFGNode &to) const;
+	bool query_reachability_split_loop_header(const CFGNode &from, const CFGNode &to, const CFGNode &end_node) const;
+	bool phi_frontier_makes_forward_progress(const PHI &phi, const CFGNode *frontier,
+	                                         const CFGNode *end_node) const;
 };
 } // namespace dxil_spv

@@ -786,6 +786,50 @@ bool CFGStructurizer::query_reachability_through_back_edges(const CFGNode &from,
 		return query_reachability(from, to);
 }
 
+bool CFGStructurizer::query_reachability_split_loop_header(const CFGNode &from, const CFGNode &to, const CFGNode &end_node) const
+{
+	// A special query where from and to must lie on the same side of a loop header to be considered reachable.
+	if (!end_node.pred_back_edge)
+		return query_reachability(from, to);
+
+	bool from_reaches_header = query_reachability(from, end_node);
+	bool to_reaches_header = query_reachability(to, end_node);
+	if (from_reaches_header != to_reaches_header)
+		return false;
+
+	return query_reachability(from, to);
+}
+
+bool CFGStructurizer::phi_frontier_makes_forward_progress(const PHI &phi, const CFGNode *frontier,
+                                                          const CFGNode *end_node) const
+{
+	// Not all PHI frontiers are nodes we need to care about.
+	// There are two conditions we must meet to disregard a placement.
+	// - We do not remove any inputs as a result.
+	// - The frontier can reach another incoming value.
+	// In this situation, a frontier is completely meaningless.
+	auto &incoming = phi.incoming;
+
+	for (auto &incoming_value : incoming)
+	{
+		auto *incoming_block = incoming_value.block;
+		// We will remove an input, this is forward progress.
+		if (!exists_path_in_cfg_without_intermediate_node(incoming_block, end_node, frontier))
+			return true;
+	}
+
+	// Nothing is removed as a result, so check if the frontier can reach another incoming value.
+	// If end_node is a loop header, makes sure we only consider a node visible if they are both on the correct side of the
+	// loop header.
+	for (auto &incoming_value : incoming)
+		if (query_reachability_split_loop_header(*frontier, *incoming_value.block, *end_node))
+			return false;
+
+	// Assume we make forward progress. Either way, we will never look at a frontier twice,
+	// so this should be safe. The only real risk is that we add some redundant PHI nodes.
+	return true;
+}
+
 void CFGStructurizer::insert_phi(PHINode &node)
 {
 	// We start off with N values defined in N blocks.
@@ -825,6 +869,13 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				{
 					if (placed_frontiers.count(candidate_frontier))
 						continue;
+
+					if (!phi_frontier_makes_forward_progress(phi, candidate_frontier, node.block))
+					{
+						// Makes sure we don't redundantly test this again.
+						placed_frontiers.insert(candidate_frontier);
+						continue;
+					}
 
 					// Only consider a frontier if we can reach node.block or its back edge from it.
 					if (query_reachability_through_back_edges(*candidate_frontier, *node.block))
@@ -2892,9 +2943,9 @@ void CFGStructurizer::structurize(unsigned pass)
 		split_merge_blocks();
 }
 
-bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(CFGNode *start_block,
-                                                                   CFGNode *end_block,
-                                                                   CFGNode *stop_block) const
+bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(const CFGNode *start_block,
+                                                                   const CFGNode *end_block,
+                                                                   const CFGNode *stop_block) const
 {
 	if (query_reachability(*start_block, *end_block) &&
 	    query_reachability(*start_block, *stop_block) &&
@@ -2911,11 +2962,11 @@ bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(CFGNode *star
 	}
 }
 
-CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reaches(CFGNode *node,
-                                                                                   CFGNode *must_reach,
-                                                                                   CFGNode *must_reach_frontier) const
+CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reaches(const CFGNode *node,
+                                                                                   const CFGNode *must_reach,
+                                                                                   const CFGNode *must_reach_frontier) const
 {
-	UnorderedSet<CFGNode *> promoted_post_dominators;
+	UnorderedSet<const CFGNode *> promoted_post_dominators;
 	promoted_post_dominators.insert(node);
 	auto frontiers = node->post_dominance_frontier;
 
