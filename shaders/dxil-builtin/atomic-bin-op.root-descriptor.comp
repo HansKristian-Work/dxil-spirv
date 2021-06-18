@@ -1,0 +1,10 @@
+RWByteAddressBuffer Buf : register(u0);
+
+[numthreads(1, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	uint res;
+	Buf.InterlockedAdd(thr * 16, 1, res);
+	Buf.InterlockedAdd(thr * 16 + 4, 2, res);
+	Buf.InterlockedAdd(thr * 16 + 2, 3, res);
+}
