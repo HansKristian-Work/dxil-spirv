@@ -1678,6 +1678,21 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	UnorderedSet<CFGNode *> nodes;
 	UnorderedSet<CFGNode *> construct;
 
+	// Be careful about rewriting branches in continuing constructs.
+	CFGNode *inner_continue_block = nullptr;
+	CFGNode *inner_continue_succ = nullptr;
+	bool ladder_to_dominates_continue = false;
+	bool break_post_dominates_ladder_to = false;
+	auto *innermost_loop_header = entry_block->get_innermost_loop_header_for(header);
+	if (innermost_loop_header && innermost_loop_header->pred_back_edge)
+		inner_continue_block = innermost_loop_header->pred_back_edge;
+	if (inner_continue_block && inner_continue_block->succ.size() == 1)
+	{
+		inner_continue_succ = inner_continue_block->succ.front();
+		break_post_dominates_ladder_to = inner_continue_succ->post_dominates(ladder_to);
+		ladder_to_dominates_continue = ladder_to->dominates(inner_continue_block);
+	}
+
 	header->traverse_dominated_blocks([&](CFGNode *node) -> bool {
 		// Inner loop headers are not candidates for a rewrite. They are split in split_merge_blocks.
 		// Similar with switch blocks.
@@ -1690,6 +1705,13 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 
 			bool branch_is_loop_or_switch = node->pred_back_edge ||
 			                                node->ir.terminator.type == Terminator::Type::Switch;
+
+			// If our candidate scope splits a loop scope in half, ignore this candidate.
+			if (break_post_dominates_ladder_to && !ladder_to_dominates_continue &&
+			    node->dominates(inner_continue_block))
+			{
+				return false;
+			}
 
 			if (node->succ.size() >= 2 && !branch_is_loop_or_switch)
 			{
