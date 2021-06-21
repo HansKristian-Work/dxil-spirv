@@ -2980,7 +2980,14 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::RenderTargetArrayIndex:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInLayer);
 		if (storage == spv::StorageClassOutput)
+		{
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInLayer);
+			if (execution_model != spv::ExecutionModelGeometry)
+			{
+				builder.addExtension("SPV_EXT_shader_viewport_index_layer");
+				builder.addCapability(spv::CapabilityShaderViewportIndexLayerEXT);
+			}
+		}
 		else
 		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInLayer);
@@ -2993,7 +3000,14 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::ViewPortArrayIndex:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInViewportIndex);
 		if (storage == spv::StorageClassOutput)
+		{
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInViewportIndex);
+			if (execution_model != spv::ExecutionModelGeometry)
+			{
+				builder.addExtension("SPV_EXT_shader_viewport_index_layer");
+				builder.addCapability(spv::CapabilityShaderViewportIndexLayerEXT);
+			}
+		}
 		else
 		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInViewportIndex);
