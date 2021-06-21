@@ -382,8 +382,6 @@ bool CFGStructurizer::run()
 	structurize(0);
 	update_structured_loop_merge_targets();
 
-	recompute_cfg();
-
 	//log_cfg("Structurize pass 0");
 	if (!graphviz_path.empty())
 	{
@@ -445,7 +443,21 @@ void CFGStructurizer::create_continue_block_ladders()
 
 void CFGStructurizer::update_structured_loop_merge_targets()
 {
+	// First, we need to do this before recomputing the CFG, since we lose
+	// normal loop merge targets when recomputing.
 	structured_loop_merge_targets.clear();
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->loop_merge_block)
+			structured_loop_merge_targets.insert(node->loop_merge_block);
+		if (node->loop_ladder_block)
+			structured_loop_merge_targets.insert(node->loop_ladder_block);
+	}
+
+	recompute_cfg();
+
+	// Make sure we include merge blocks which are frozen merge targets in ladder blocks, which
+	// were not included in the post visit order yet.
 	for (auto *node : forward_post_visit_order)
 	{
 		if (node->loop_merge_block)
