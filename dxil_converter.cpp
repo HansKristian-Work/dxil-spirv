@@ -2940,6 +2940,14 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		spirv_module.register_builtin_shader_output(id, spv::BuiltInFragDepth);
 		break;
 
+	case DXIL::Semantic::StencilRef:
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragStencilRefEXT);
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeStencilRefReplacingEXT);
+		builder.addExtension("SPV_EXT_shader_stencil_export");
+		builder.addCapability(spv::CapabilityStencilExportEXT);
+		spirv_module.register_builtin_shader_output(id, spv::BuiltInFragStencilRefEXT);
+		break;
+
 	case DXIL::Semantic::DepthLessEqual:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFragDepth);
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDepthReplacing);
