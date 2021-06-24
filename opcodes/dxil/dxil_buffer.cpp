@@ -885,7 +885,24 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
 	Operation *counter_ptr_op = nullptr;
-	if (meta.storage == spv::StorageClassStorageBuffer)
+	DXIL::ComponentType component_type = DXIL::ComponentType::U32;
+	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+	{
+		spv::Id u32_type = builder.makeUintType(32);
+		auto physical_pointer_meta = meta.physical_pointer_meta;
+		physical_pointer_meta.stride = 4;
+		spv::Id ptr_type_id =
+		    impl.get_physical_pointer_block_type(u32_type, physical_pointer_meta);
+
+		auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+		ptr_bitcast_op->add_id(image_id);
+		impl.add(ptr_bitcast_op);
+
+		counter_ptr_op = impl.allocate(spv::OpAccessChain,
+		                               builder.makePointer(spv::StorageClassPhysicalStorageBuffer, u32_type));
+		counter_ptr_op->add_ids({ ptr_bitcast_op->id, builder.makeUintConstant(0), coord });
+	}
+	else if (meta.storage == spv::StorageClassStorageBuffer)
 	{
 		counter_ptr_op =
 			impl.allocate(spv::OpAccessChain,
@@ -898,6 +915,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 		    impl.allocate(spv::OpImageTexelPointer,
 		                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
 		counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
+		component_type = meta.component_type;
 	}
 	impl.add(counter_ptr_op);
 
@@ -948,16 +966,16 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 		return false;
 	}
 
-	Operation *op = impl.allocate(opcode, instruction, impl.get_type_id(meta.component_type, 1, 1));
+	Operation *op = impl.allocate(opcode, instruction, impl.get_type_id(component_type, 1, 1));
 	op->add_ids({
 	    counter_ptr_op->id,
 	    builder.makeUintConstant(spv::ScopeDevice),
 	    builder.makeUintConstant(0), // Relaxed
-	    impl.fixup_store_type_buffer(meta.component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
+	    impl.fixup_store_type_buffer(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
 	});
 
 	impl.add(op);
-	impl.fixup_load_type_buffer(meta.component_type, 1, instruction);
+	impl.fixup_load_type_buffer(component_type, 1, instruction);
 	return true;
 }
 
@@ -993,7 +1011,24 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
 	Operation *counter_ptr_op = nullptr;
-	if (meta.storage == spv::StorageClassStorageBuffer)
+	DXIL::ComponentType component_type = DXIL::ComponentType::U32;
+	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+	{
+		spv::Id u32_type = builder.makeUintType(32);
+		auto physical_pointer_meta = meta.physical_pointer_meta;
+		physical_pointer_meta.stride = 4;
+		spv::Id ptr_type_id =
+			impl.get_physical_pointer_block_type(u32_type, physical_pointer_meta);
+
+		auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+		ptr_bitcast_op->add_id(image_id);
+		impl.add(ptr_bitcast_op);
+
+		counter_ptr_op = impl.allocate(spv::OpAccessChain,
+		                               builder.makePointer(spv::StorageClassPhysicalStorageBuffer, u32_type));
+		counter_ptr_op->add_ids({ ptr_bitcast_op->id, builder.makeUintConstant(0), coord });
+	}
+	else if (meta.storage == spv::StorageClassStorageBuffer)
 	{
 		counter_ptr_op =
 			impl.allocate(spv::OpAccessChain,
@@ -1006,6 +1041,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 		    impl.allocate(spv::OpImageTexelPointer,
 		                  builder.makePointer(spv::StorageClassImage, impl.get_type_id(meta.component_type, 1, 1)));
 		counter_ptr_op->add_ids({ meta.var_id, coord, builder.makeUintConstant(0) });
+		component_type = meta.component_type;
 	}
 	impl.add(counter_ptr_op);
 
@@ -1013,12 +1049,12 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 		builder.addDecoration(counter_ptr_op->id, spv::DecorationNonUniformEXT);
 
 	Operation *op =
-	    impl.allocate(spv::OpAtomicCompareExchange, instruction, impl.get_type_id(meta.component_type, 1, 1));
+	    impl.allocate(spv::OpAtomicCompareExchange, instruction, impl.get_type_id(component_type, 1, 1));
 
 	spv::Id comparison_id = impl.get_id_for_value(instruction->getOperand(5));
 	spv::Id new_value_id = impl.get_id_for_value(instruction->getOperand(6));
-	comparison_id = impl.fixup_store_type_buffer(meta.component_type, 1, comparison_id);
-	new_value_id = impl.fixup_store_type_buffer(meta.component_type, 1, new_value_id);
+	comparison_id = impl.fixup_store_type_buffer(component_type, 1, comparison_id);
+	new_value_id = impl.fixup_store_type_buffer(component_type, 1, new_value_id);
 
 	op->add_ids({
 	    counter_ptr_op->id,
@@ -1030,7 +1066,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	});
 
 	impl.add(op);
-	impl.fixup_load_type_buffer(meta.component_type, 1, instruction);
+	impl.fixup_load_type_buffer(component_type, 1, instruction);
 	return true;
 }
 

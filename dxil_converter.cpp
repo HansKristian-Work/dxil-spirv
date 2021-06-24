@@ -433,9 +433,10 @@ spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, c
 {
 	auto itr = std::find_if(physical_pointer_entries.begin(), physical_pointer_entries.end(), [&](const PhysicalPointerEntry &entry) {
 		return entry.meta.coherent == meta.coherent &&
-			entry.meta.nonreadable == meta.nonreadable &&
-			entry.meta.nonwritable == meta.nonwritable &&
-			entry.base_type_id == base_type_id;
+		       entry.meta.nonreadable == meta.nonreadable &&
+		       entry.meta.nonwritable == meta.nonwritable &&
+		       entry.meta.stride == meta.stride &&
+		       entry.base_type_id == base_type_id;
 	});
 
 	if (itr != physical_pointer_entries.end())
@@ -483,7 +484,16 @@ spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, c
 	if (meta.coherent)
 		type += "Coherent";
 
-	spv::Id block_type_id = builder().makeStructType({ base_type_id }, type.c_str());
+	spv::Id type_id = base_type_id;
+
+	if (meta.stride > 0)
+	{
+		type_id = builder().makeRuntimeArray(type_id);
+		builder().addDecoration(type_id, spv::DecorationArrayStride, meta.stride);
+		type += "Array";
+	}
+
+	spv::Id block_type_id = builder().makeStructType({ type_id }, type.c_str());
 	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
 	builder().addMemberName(block_type_id, 0, "value");
 	builder().addDecoration(block_type_id, spv::DecorationBlock);

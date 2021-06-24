@@ -242,6 +242,7 @@ struct Converter::Impl
 		bool nonwritable;
 		bool nonreadable;
 		bool coherent;
+		uint8_t stride;
 	};
 
 	struct ResourceMeta

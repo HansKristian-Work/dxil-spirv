@@ -937,6 +937,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
 			meta.storage = spv::StorageClassGeneric;
+			meta.kind = DXIL::ResourceKind::RTAccelerationStructure;
 		}
 		else if (resource_is_physical_pointer(impl, reference))
 		{
@@ -947,6 +948,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.stride = reference.stride;
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
 			meta.physical_pointer_meta.nonwritable = true;
+			meta.kind = reference.resource_kind;
 		}
 		else
 		{
@@ -1040,6 +1042,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.stride = reference.stride;
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
 			meta.physical_pointer_meta.coherent = reference.coherent;
+			meta.kind = reference.resource_kind;
 		}
 		else
 		{
@@ -1164,6 +1167,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.stride = reference.stride;
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
 			meta.physical_pointer_meta.nonwritable = true;
+			meta.kind = reference.resource_kind;
 			impl.value_map[instruction] = ptr_id;
 		}
 		else if (reference.base_resource_is_array || reference.bindless)
@@ -1210,6 +1214,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta = {};
 			meta.non_uniform = non_uniform != 0;
 			meta.storage = storage;
+			meta.kind = DXIL::ResourceKind::CBuffer;
 
 			if (meta.non_uniform)
 			{
@@ -1233,6 +1238,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				auto &meta = impl.handle_to_resource_meta[id];
 				meta = {};
 				meta.storage = spv::StorageClassPhysicalStorageBuffer;
+				meta.kind = DXIL::ResourceKind::CBuffer;
 				impl.value_map[instruction] = id;
 			}
 			else
@@ -1243,6 +1249,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				auto &meta = impl.handle_to_resource_meta[id];
 				meta = {};
 				meta.storage = spv::StorageClassShaderRecordBufferKHR;
+				meta.kind = DXIL::ResourceKind::CBuffer;
 				impl.handle_to_root_member_offset[instruction] = reference.local_root_signature_entry;
 				impl.value_map[instruction] = id;
 			}
