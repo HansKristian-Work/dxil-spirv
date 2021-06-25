@@ -72,6 +72,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	spv::Id get_builtin_shader_output(spv::BuiltIn builtin);
+	bool has_builtin_shader_input(spv::BuiltIn builtin) const;
+	bool has_builtin_shader_output(spv::BuiltIn builtin) const;
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
 	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;
 	void register_builtin_shader_output(spv::Id id, spv::BuiltIn builtin);
@@ -217,6 +219,16 @@ bool SPIRVModule::Impl::builtin_requires_volatile(spv::BuiltIn builtin) const
 	default:
 		return false;
 	}
+}
+
+bool SPIRVModule::Impl::has_builtin_shader_input(spv::BuiltIn builtin) const
+{
+	return builtins_input.count(builtin) != 0;
+}
+
+bool SPIRVModule::Impl::has_builtin_shader_output(spv::BuiltIn builtin) const
+{
+	return builtins_output.count(builtin) != 0;
 }
 
 spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
@@ -793,6 +805,16 @@ spv::Id SPIRVModule::get_builtin_shader_input(spv::BuiltIn builtin)
 spv::Id SPIRVModule::get_builtin_shader_output(spv::BuiltIn builtin)
 {
 	return impl->get_builtin_shader_output(builtin);
+}
+
+bool SPIRVModule::has_builtin_shader_input(spv::BuiltIn builtin) const
+{
+	return impl->has_builtin_shader_input(builtin);
+}
+
+bool SPIRVModule::has_builtin_shader_output(spv::BuiltIn builtin) const
+{
+	return impl->has_builtin_shader_output(builtin);
 }
 
 void SPIRVModule::register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin)

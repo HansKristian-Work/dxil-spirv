@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 5
+#define DXIL_SPV_API_VERSION_MINOR 6
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -519,6 +519,10 @@ DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_supports_option(dxil_spv_op
  * Baseline assumed feature set is Vulkan 1.1 / SPIR-V 1.3. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter,
                                                                   const dxil_spv_option_base *option);
+
+/* After compilation. Queries if SubgroupSize builtin was emitted, which requires ALLOW_VARYING_SUBGROUP_SIZE
+ * in Vulkan. */
+DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_subgroup_size(dxil_spv_converter converter);
 
 /* Use an optimized allocation scheme.
  * Call begin before allocating any dxil_spv objects,

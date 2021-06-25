@@ -321,6 +321,7 @@ struct dxil_spv_converter_s
 
 	Vector<DescriptorTableEntry> local_entries;
 	bool active_table = false;
+	bool uses_subgroup_size = false;
 };
 
 dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
@@ -544,6 +545,8 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 		LOGE("Failed to finalize SPIR-V.\n");
 		return DXIL_SPV_ERROR_GENERIC;
 	}
+
+	converter->uses_subgroup_size = module.has_builtin_shader_input(spv::BuiltInSubgroupSize);
 
 	return DXIL_SPV_SUCCESS;
 }
@@ -851,6 +854,11 @@ dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 
 	converter->active_table = false;
 	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_bool dxil_spv_converter_uses_subgroup_size(dxil_spv_converter converter)
+{
+	return converter->uses_subgroup_size ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 }
 
 void dxil_spv_begin_thread_allocator_context(void)
