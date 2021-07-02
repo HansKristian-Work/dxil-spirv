@@ -322,6 +322,7 @@ struct dxil_spv_converter_s
 	Vector<DescriptorTableEntry> local_entries;
 	bool active_table = false;
 	bool uses_subgroup_size = false;
+	uint32_t workgroup_size[3] = {};
 };
 
 dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
@@ -547,6 +548,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	}
 
 	converter->uses_subgroup_size = module.has_builtin_shader_input(spv::BuiltInSubgroupSize);
+	dxil_converter.get_workgroup_dimensions(converter->workgroup_size[0],
+	                                        converter->workgroup_size[1],
+	                                        converter->workgroup_size[2]);
 
 	return DXIL_SPV_SUCCESS;
 }
@@ -859,6 +863,16 @@ dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 dxil_spv_bool dxil_spv_converter_uses_subgroup_size(dxil_spv_converter converter)
 {
 	return converter->uses_subgroup_size ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+}
+
+dxil_spv_result dxil_spv_converter_get_compute_workgroup_dimensions(
+	dxil_spv_converter converter,
+	unsigned *x, unsigned *y, unsigned *z)
+{
+	*x = converter->workgroup_size[0];
+	*y = converter->workgroup_size[1];
+	*z = converter->workgroup_size[2];
+	return DXIL_SPV_SUCCESS;
 }
 
 void dxil_spv_begin_thread_allocator_context(void)

@@ -420,6 +420,9 @@ public:
 	void add_local_root_descriptor_table(Vector<DescriptorTableEntry> entries);
 	void add_local_root_descriptor_table(const DescriptorTableEntry *entries, size_t count);
 
+	// After compilation, query CS workgroup size.
+	void get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const;
+
 	struct Impl;
 
 private:

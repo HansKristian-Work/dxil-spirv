@@ -72,6 +72,13 @@ void Converter::add_local_root_descriptor_table(const DescriptorTableEntry *entr
 	add_local_root_descriptor_table({ entries, entries + count });
 }
 
+void Converter::get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const
+{
+	x = impl->execution_mode_meta.workgroup_threads[0];
+	y = impl->execution_mode_meta.workgroup_threads[1];
+	z = impl->execution_mode_meta.workgroup_threads[2];
+}
+
 ConvertedFunction Converter::convert_entry_point()
 {
 	return impl->convert_entry_point();
