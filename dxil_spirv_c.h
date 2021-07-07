@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 7
+#define DXIL_SPV_API_VERSION_MINOR 8
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -529,6 +529,10 @@ DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_subgroup_size(dxil_spv
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_workgroup_dimensions(
 	dxil_spv_converter converter,
 	unsigned *x, unsigned *y, unsigned *z);
+
+/* After compilation, queries num vertices for HS. */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
+	dxil_spv_converter converter, unsigned *patch_vertices);
 
 /* Use an optimized allocation scheme.
  * Call begin before allocating any dxil_spv objects,

@@ -79,6 +79,11 @@ void Converter::get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) 
 	z = impl->execution_mode_meta.workgroup_threads[2];
 }
 
+uint32_t Converter::get_patch_vertex_count() const
+{
+	return impl->execution_mode_meta.stage_input_num_vertex;
+}
+
 ConvertedFunction Converter::convert_entry_point()
 {
 	return impl->convert_entry_point();

@@ -323,6 +323,7 @@ struct dxil_spv_converter_s
 	bool active_table = false;
 	bool uses_subgroup_size = false;
 	uint32_t workgroup_size[3] = {};
+	uint32_t patch_vertex_count = 0;
 };
 
 dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
@@ -551,6 +552,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	dxil_converter.get_workgroup_dimensions(converter->workgroup_size[0],
 	                                        converter->workgroup_size[1],
 	                                        converter->workgroup_size[2]);
+	converter->patch_vertex_count = dxil_converter.get_patch_vertex_count();
 
 	return DXIL_SPV_SUCCESS;
 }
@@ -872,6 +874,13 @@ dxil_spv_result dxil_spv_converter_get_compute_workgroup_dimensions(
 	*x = converter->workgroup_size[0];
 	*y = converter->workgroup_size[1];
 	*z = converter->workgroup_size[2];
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
+		dxil_spv_converter converter, unsigned *patch_vertices)
+{
+	*patch_vertices = converter->patch_vertex_count;
 	return DXIL_SPV_SUCCESS;
 }
 

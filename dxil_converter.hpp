@@ -422,6 +422,8 @@ public:
 
 	// After compilation, query CS workgroup size.
 	void get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const;
+	// After compilation, query expected patch size.
+	uint32_t get_patch_vertex_count() const;
 
 	struct Impl;
 
