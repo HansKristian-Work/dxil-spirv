@@ -50,6 +50,7 @@ private:
 	bool backward_visited = false;
 	bool traversing = false;
 	bool freeze_structured_analysis = false;
+	bool recomputing = false;
 
 	MergeType merge = MergeType::None;
 	CFGNode *loop_merge_block = nullptr;
