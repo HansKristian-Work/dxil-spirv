@@ -1237,6 +1237,14 @@ void LoopBacktracer::trace_to_parent(CFGNode *header, CFGNode *block)
 		traced_blocks.insert(block);
 		for (auto *p : block->pred)
 			trace_to_parent(header, p);
+
+		// A backtrace will not pick up continue blocks which only branch back to header,
+		// and thus they will be considered loop exists by mistake.
+		// Start traversing from the continue block to catch these nodes as well.
+		// If a loop header is part of an outer loop construct, the loop body must
+		// also be part of the loop construct.
+		if (block->pred_back_edge)
+			trace_to_parent(header, block->pred_back_edge);
 	}
 }
 
