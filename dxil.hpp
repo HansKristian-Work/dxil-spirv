@@ -154,7 +154,10 @@ enum class Semantic : uint8_t
 	ViewID,
 	Barycentrics,
 	ShadingRate,
-	CullPrimitive
+	CullPrimitive,
+
+	// Fake semantics to disambiguate semantics based on interpolation flags.
+	InternalBarycentricsNoPerspective = 255
 };
 
 enum class ResourceType : uint8_t

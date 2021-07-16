@@ -42,6 +42,8 @@ struct DXILDispatcher
 
 		// dxil_resources.hpp
 		OP(LoadInput) = emit_load_input_instruction;
+		// Basically exactly the same, where gsVertexAxis is replaced with vertexIndex.
+		OP(AttributeAtVertex) = emit_load_input_instruction;
 		OP(StoreOutput) = emit_store_output_instruction;
 		OP(CreateHandle) = emit_create_handle_instruction;
 		OP(CreateHandleForLib) = emit_create_handle_for_lib_instruction;
@@ -456,6 +458,16 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::Discard:
 		impl.shader_analysis.discards = true;
 		break;
+
+	case DXIL::Op::AttributeAtVertex:
+	{
+		// If this is used, promote a vertex input to PerVertex.
+		uint32_t input_sig_index = 0;
+		if (!get_constant_operand(instruction, 1, &input_sig_index))
+			return false;
+		impl.llvm_attribute_at_vertex_indices.insert(input_sig_index);
+		break;
+	}
 
 	default:
 		break;
