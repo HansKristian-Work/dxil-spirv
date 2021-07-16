@@ -121,6 +121,7 @@ struct Converter::Impl
 	bool emit_incoming_payload();
 	bool emit_hit_attribute();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
+	void emit_builtin_interpolation_decorations(spv::Id variable_id, DXIL::Semantic semantic, DXIL::InterpolationMode mode);
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 	bool emit_execution_modes();

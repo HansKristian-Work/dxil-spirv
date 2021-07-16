@@ -2857,6 +2857,34 @@ bool Converter::Impl::emit_stage_output_variables()
 	return true;
 }
 
+void Converter::Impl::emit_builtin_interpolation_decorations(spv::Id variable_id,
+                                                             DXIL::Semantic semantic,
+                                                             DXIL::InterpolationMode mode)
+{
+	switch (semantic)
+	{
+	case DXIL::Semantic::Barycentrics:
+	case DXIL::Semantic::InternalBarycentricsNoPerspective:
+		emit_interpolation_decorations(variable_id, mode);
+		break;
+
+	case DXIL::Semantic::Position:
+		// DXIL emits NoPerspective here, but seems weird to emit that since it's kinda implied.
+		// Normalize the interpolate mode first, then emit.
+		if (mode == DXIL::InterpolationMode::LinearNoperspective)
+			mode = DXIL::InterpolationMode::Linear;
+		else if (mode == DXIL::InterpolationMode::LinearNoperspectiveCentroid)
+			mode = DXIL::InterpolationMode::LinearCentroid;
+		else if (mode == DXIL::InterpolationMode::LinearNoperspectiveSample)
+			mode = DXIL::InterpolationMode::LinearSample;
+		emit_interpolation_decorations(variable_id, mode);
+		break;
+
+	default:
+		break;
+	}
+}
+
 void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode)
 {
 	auto &builder = spirv_module.get_builder();
@@ -2872,6 +2900,7 @@ void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::
 
 	case DXIL::InterpolationMode::LinearSample:
 		builder.addDecoration(variable_id, spv::DecorationSample);
+		builder.addCapability(spv::CapabilitySampleRateShading);
 		break;
 
 	case DXIL::InterpolationMode::LinearNoperspective:
@@ -2886,6 +2915,7 @@ void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::
 	case DXIL::InterpolationMode::LinearNoperspectiveSample:
 		builder.addDecoration(variable_id, spv::DecorationNoPerspective);
 		builder.addDecoration(variable_id, spv::DecorationSample);
+		builder.addCapability(spv::CapabilitySampleRateShading);
 		break;
 
 	default:
@@ -3370,6 +3400,8 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (system_value != DXIL::Semantic::User)
 		{
 			emit_builtin_decoration(variable_id, system_value, spv::StorageClassInput);
+			if (execution_model == spv::ExecutionModelFragment)
+				emit_builtin_interpolation_decorations(variable_id, system_value, interpolation);
 		}
 		else
 		{

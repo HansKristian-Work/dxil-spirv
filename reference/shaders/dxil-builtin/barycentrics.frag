@@ -41,6 +41,7 @@ OpDecorate %16 PerVertexNV
 OpDecorate %16 Location 1
 OpDecorate %19 BuiltIn BaryCoordNV
 OpDecorate %20 BuiltIn BaryCoordNoPerspNV
+OpDecorate %20 Centroid
 OpDecorate %22 Flat
 OpDecorate %22 Location 3
 OpDecorate %24 Location 0
