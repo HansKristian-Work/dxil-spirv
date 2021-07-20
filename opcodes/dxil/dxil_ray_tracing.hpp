@@ -43,4 +43,46 @@ bool emit_ray_tracing_report_hit(Converter::Impl &impl, const llvm::CallInst *in
 bool emit_ray_tracing_accept_hit_and_end_search(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_ray_tracing_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_ray_query_trace_ray_inline_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_ray_query_proceed_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_ray_query_abort_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool emit_ray_query_commit_non_opaque_triangle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_ray_query_commit_procedural_primitive_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_ray_query_candidate_procedural_primitive_non_opaque_instruction(Converter::Impl &impl,
+                                                                          const llvm::CallInst *instruction);
+
+bool emit_ray_query_intersection_type_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                  spv::RayQueryIntersection intersection);
+template <spv::RayQueryIntersection intersection>
+bool emit_ray_query_intersection_type_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_ray_query_intersection_type_instruction(impl, instruction, intersection);
+}
+
+bool emit_ray_query_system_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                             spv::Op op, uint32_t vecsize);
+template <spv::Op opcode, uint32_t vecsize>
+inline bool emit_ray_query_system_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_ray_query_system_value_instruction(impl, instruction, opcode, vecsize);
+}
+
+bool emit_ray_query_get_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                          spv::Op opcode, uint32_t vecsize, spv::RayQueryIntersection intersection);
+template <spv::Op opcode, uint32_t vecsize, spv::RayQueryIntersection intersection>
+inline bool emit_ray_query_get_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_ray_query_get_value_instruction(impl, instruction, opcode, vecsize, intersection);
+}
+
+bool emit_ray_query_get_matrix_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                 spv::Op opcode, spv::RayQueryIntersection intersection);
+template <spv::Op opcode, spv::RayQueryIntersection intersection>
+inline bool emit_ray_query_get_matrix_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_ray_query_get_matrix_value_instruction(impl, instruction, opcode, intersection);
+}
 } // namespace dxil_spv
