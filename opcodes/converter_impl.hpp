@@ -121,6 +121,7 @@ struct Converter::Impl
 	bool emit_incoming_payload();
 	bool emit_hit_attribute();
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
+	void emit_builtin_interpolation_decorations(spv::Id variable_id, DXIL::Semantic semantic, DXIL::InterpolationMode mode);
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 	bool emit_execution_modes();
@@ -146,6 +147,7 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
 	UnorderedSet<const llvm::Value *> llvm_values_using_update_counter;
 	UnorderedMap<const llvm::Value *, spv::Id> llvm_value_actual_type;
+	UnorderedSet<uint32_t> llvm_attribute_at_vertex_indices;
 
 	// DXIL has no storage class concept for hit/callable/payload types.
 	const llvm::Type *llvm_hit_attribute_output_type = nullptr;

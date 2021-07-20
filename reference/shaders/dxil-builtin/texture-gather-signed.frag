@@ -12,9 +12,9 @@ layout(location = 0) out ivec4 SV_Target;
 void main()
 {
     uvec4 _53 = uvec4(textureGather(isampler2D(_8, _20), vec2(TEXCOORD.x, TEXCOORD.y)));
-    uvec4 _63 = uvec4(textureGather(isampler2DArray(_11, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), 1u));
-    uvec4 _76 = uvec4(textureGather(isamplerCube(_14, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), 2u));
-    uvec4 _89 = uvec4(textureGather(isamplerCubeArray(_17, _20), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w), 3u));
+    uvec4 _63 = uvec4(textureGather(isampler2DArray(_11, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), int(1u)));
+    uvec4 _76 = uvec4(textureGather(isamplerCube(_14, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), int(2u)));
+    uvec4 _89 = uvec4(textureGather(isamplerCubeArray(_17, _20), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w), int(3u)));
     SV_Target.x = int(((_63.x + _53.x) + _76.x) + _89.x);
     SV_Target.y = int(((_63.y + _53.y) + _76.y) + _89.y);
     SV_Target.z = int(((_63.z + _53.z) + _76.z) + _89.z);

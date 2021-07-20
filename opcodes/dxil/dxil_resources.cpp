@@ -204,7 +204,8 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	bool array_index = false;
 	if (impl.execution_model == spv::ExecutionModelTessellationControl ||
 	    impl.execution_model == spv::ExecutionModelGeometry ||
-	    impl.execution_model == spv::ExecutionModelTessellationEvaluation)
+	    impl.execution_model == spv::ExecutionModelTessellationEvaluation ||
+	    impl.llvm_attribute_at_vertex_indices.count(input_element_index) != 0)
 	{
 		input_type_id = builder.getContainedTypeId(input_type_id);
 		array_index = true;
@@ -229,9 +230,19 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 		ptr_id = op->id;
 
 		op->add_id(var_id);
-		// Vertex array index for GS/DS/HS.
+		// Vertex array index for GS/DS/HS or barycentrics.
 		if (array_index)
-			op->add_id(impl.get_id_for_value(instruction->getOperand(4)));
+		{
+			auto *index = instruction->getOperand(4);
+			if (llvm::isa<llvm::UndefValue>(index))
+			{
+				// If we loadInput on a barycentric input, we get nointerpolation,
+				// i.e. flat, i.e. provoking vertex, i.e. vertex 0.
+				op->add_id(builder.makeUintConstant(0));
+			}
+			else
+				op->add_id(impl.get_id_for_value(index));
+		}
 		if (row_index)
 			op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
 		if (num_cols > 1)

@@ -2857,6 +2857,34 @@ bool Converter::Impl::emit_stage_output_variables()
 	return true;
 }
 
+void Converter::Impl::emit_builtin_interpolation_decorations(spv::Id variable_id,
+                                                             DXIL::Semantic semantic,
+                                                             DXIL::InterpolationMode mode)
+{
+	switch (semantic)
+	{
+	case DXIL::Semantic::Barycentrics:
+	case DXIL::Semantic::InternalBarycentricsNoPerspective:
+		emit_interpolation_decorations(variable_id, mode);
+		break;
+
+	case DXIL::Semantic::Position:
+		// DXIL emits NoPerspective here, but seems weird to emit that since it's kinda implied.
+		// Normalize the interpolate mode first, then emit.
+		if (mode == DXIL::InterpolationMode::LinearNoperspective)
+			mode = DXIL::InterpolationMode::Linear;
+		else if (mode == DXIL::InterpolationMode::LinearNoperspectiveCentroid)
+			mode = DXIL::InterpolationMode::LinearCentroid;
+		else if (mode == DXIL::InterpolationMode::LinearNoperspectiveSample)
+			mode = DXIL::InterpolationMode::LinearSample;
+		emit_interpolation_decorations(variable_id, mode);
+		break;
+
+	default:
+		break;
+	}
+}
+
 void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode)
 {
 	auto &builder = spirv_module.get_builder();
@@ -2872,6 +2900,7 @@ void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::
 
 	case DXIL::InterpolationMode::LinearSample:
 		builder.addDecoration(variable_id, spv::DecorationSample);
+		builder.addCapability(spv::CapabilitySampleRateShading);
 		break;
 
 	case DXIL::InterpolationMode::LinearNoperspective:
@@ -2886,6 +2915,7 @@ void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::
 	case DXIL::InterpolationMode::LinearNoperspectiveSample:
 		builder.addDecoration(variable_id, spv::DecorationNoPerspective);
 		builder.addDecoration(variable_id, spv::DecorationSample);
+		builder.addCapability(spv::CapabilitySampleRateShading);
 		break;
 
 	default:
@@ -3065,6 +3095,17 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addCapability(spv::CapabilityFragmentShadingRateKHR);
 		break;
 
+	case DXIL::Semantic::Barycentrics:
+	case DXIL::Semantic::InternalBarycentricsNoPerspective:
+	{
+		builder.addExtension("SPV_NV_fragment_shader_barycentric");
+		builder.addCapability(spv::CapabilityFragmentBarycentricNV);
+		auto builtin = semantic == DXIL::Semantic::Barycentrics ? spv::BuiltInBaryCoordNV : spv::BuiltInBaryCoordNoPerspNV;
+		builder.addDecoration(id, spv::DecorationBuiltIn, builtin);
+		spirv_module.register_builtin_shader_input(id, builtin);
+		break;
+	}
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
@@ -3209,6 +3250,33 @@ bool Converter::Impl::emit_global_variables()
 	return true;
 }
 
+static void adjust_system_value(DXIL::Semantic &semantic, DXIL::InterpolationMode &interpolation)
+{
+	if (semantic == DXIL::Semantic::Barycentrics)
+	{
+		switch (interpolation)
+		{
+		case DXIL::InterpolationMode::LinearNoperspective:
+			semantic = DXIL::Semantic::InternalBarycentricsNoPerspective;
+			interpolation = DXIL::InterpolationMode::Linear;
+			break;
+
+		case DXIL::InterpolationMode::LinearNoperspectiveCentroid:
+			semantic = DXIL::Semantic::InternalBarycentricsNoPerspective;
+			interpolation = DXIL::InterpolationMode::LinearCentroid;
+			break;
+
+		case DXIL::InterpolationMode::LinearNoperspectiveSample:
+			semantic = DXIL::Semantic::InternalBarycentricsNoPerspective;
+			interpolation = DXIL::InterpolationMode::LinearSample;
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
 bool Converter::Impl::emit_stage_input_variables()
 {
 	auto *node = entry_point_meta;
@@ -3246,6 +3314,8 @@ bool Converter::Impl::emit_stage_input_variables()
 			semantic_index = get_constant_metadata(llvm::cast<llvm::MDNode>(input->getOperand(4)), 0);
 
 		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(input, 5));
+		adjust_system_value(system_value, interpolation);
+
 		auto rows = get_constant_metadata(input, 6);
 		auto cols = get_constant_metadata(input, 7);
 
@@ -3291,10 +3361,19 @@ bool Converter::Impl::emit_stage_input_variables()
 			arrayed_input = false;
 		}
 
+		bool per_vertex = llvm_attribute_at_vertex_indices.count(element_id) != 0;
+
 		if (arrayed_input)
 		{
 			type_id =
 			    builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
+		}
+		else if (per_vertex)
+		{
+			// TODO: Does this change for barycentrics with lines?
+			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(3), 0);
+			// Default. We should emit PerVertex instead of flat. Linear here is the default, don't emit anything.
+			interpolation = DXIL::InterpolationMode::Linear;
 		}
 
 		auto variable_name = semantic_name;
@@ -3307,6 +3386,9 @@ bool Converter::Impl::emit_stage_input_variables()
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
 		input_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
 
+		if (per_vertex)
+			builder.addDecoration(variable_id, spv::DecorationPerVertexNV);
+
 		if (effective_element_type != actual_element_type &&
 		    (actual_element_type == DXIL::ComponentType::F16 ||
 		     actual_element_type == DXIL::ComponentType::I16 ||
@@ -3318,6 +3400,8 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (system_value != DXIL::Semantic::User)
 		{
 			emit_builtin_decoration(variable_id, system_value, spv::StorageClassInput);
+			if (execution_model == spv::ExecutionModelFragment)
+				emit_builtin_interpolation_decorations(variable_id, system_value, interpolation);
 		}
 		else
 		{
