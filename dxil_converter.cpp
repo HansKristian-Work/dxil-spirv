@@ -193,7 +193,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 {
 	auto itr = std::find_if(bindless_resources.begin(), bindless_resources.end(), [&](const BindlessResource &resource) {
 		return
-		    resource.info.type == info.type &&
+			resource.info.type == info.type &&
 			resource.info.component == info.component &&
 			resource.info.kind == info.kind &&
 			resource.info.desc_set == info.desc_set &&
@@ -202,6 +202,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			resource.info.uav_read == info.uav_read &&
 			resource.info.uav_written == info.uav_written &&
 			resource.info.uav_coherent == info.uav_coherent &&
+			resource.info.relaxed_precision == info.relaxed_precision &&
 			resource.info.aliased == info.aliased &&
 			resource.info.counters == info.counters &&
 			resource.info.offsets == info.offsets &&
@@ -262,7 +263,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				if (info.component != DXIL::ComponentType::U32 &&
 				    info.component != DXIL::ComponentType::I32 &&
 				    info.component != DXIL::ComponentType::F32 &&
-				    info.component != DXIL::ComponentType::UNormF32)
+				    info.component != DXIL::ComponentType::UNormF32 &&
+				    info.component != DXIL::ComponentType::SNormF32)
 				{
 					LOGE("Invalid component type for image.\n");
 					return 0;
@@ -322,7 +324,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				if (info.component != DXIL::ComponentType::U32 &&
 				    info.component != DXIL::ComponentType::I32 &&
 				    info.component != DXIL::ComponentType::F32 &&
-				    info.component != DXIL::ComponentType::UNormF32)
+				    info.component != DXIL::ComponentType::UNormF32 &&
+				    info.component != DXIL::ComponentType::SNormF32)
 				{
 					LOGE("Invalid component type for image.\n");
 					return 0;
@@ -376,6 +379,32 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 
 		builder().addDecoration(resource.var_id, spv::DecorationDescriptorSet, info.desc_set);
 		builder().addDecoration(resource.var_id, spv::DecorationBinding, info.binding);
+
+		if (info.relaxed_precision)
+		{
+			builder().addDecoration(resource.var_id, spv::DecorationRelaxedPrecision);
+
+			// Signal the intended component type.
+			switch (meta.component_type)
+			{
+			case DXIL::ComponentType::F32:
+			case DXIL::ComponentType::UNormF32:
+			case DXIL::ComponentType::SNormF32:
+				meta.component_type = DXIL::ComponentType::F16;
+				break;
+
+			case DXIL::ComponentType::I32:
+				meta.component_type = DXIL::ComponentType::I16;
+				break;
+
+			case DXIL::ComponentType::U32:
+				meta.component_type = DXIL::ComponentType::U16;
+				break;
+
+			default:
+				break;
+			}
+		}
 
 		if (info.type == DXIL::ResourceType::UAV && !info.counters)
 		{
@@ -526,6 +555,22 @@ spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, c
 	return ptr_type_id;
 }
 
+static bool component_type_is_16bit(DXIL::ComponentType type)
+{
+	switch (type)
+	{
+	case DXIL::ComponentType::F16:
+	case DXIL::ComponentType::UNormF16:
+	case DXIL::ComponentType::SNormF16:
+	case DXIL::ComponentType::I16:
+	case DXIL::ComponentType::U16:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 {
 	auto &builder = spirv_module.get_builder();
@@ -547,13 +592,16 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		if (srv->getNumOperands() >= 9 && srv->getOperand(8))
 			tags = llvm::dyn_cast<llvm::MDNode>(srv->getOperand(8));
 
-		DXIL::ComponentType component_type = DXIL::ComponentType::U32;
+		auto actual_component_type = DXIL::ComponentType::U32;
+		auto effective_component_type = actual_component_type;
+
 		unsigned stride = 0;
 
 		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
-			component_type = static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1));
+			actual_component_type = static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1));
+			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
 		else
 		{
@@ -579,7 +627,11 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			return false;
 
 		auto &access_meta = srv_access_tracking[index];
-		if (access_meta.raw_access_16bit &&
+		bool raw_access_16bit = (resource_kind == DXIL::ResourceKind::RawBuffer ||
+		                         resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
+		                        access_meta.access_16bit;
+
+		if (raw_access_16bit &&
 		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
 		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -624,11 +676,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 		BindlessInfo bindless_info = {};
 		bindless_info.type = DXIL::ResourceType::SRV;
-		bindless_info.component = component_type;
+		bindless_info.component = effective_component_type;
 		bindless_info.kind = resource_kind;
 		bindless_info.desc_set = vulkan_binding.buffer_binding.descriptor_set;
 		bindless_info.binding = vulkan_binding.buffer_binding.binding;
 		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
+		bindless_info.relaxed_precision = actual_component_type != effective_component_type &&
+		                                  component_type_is_16bit(actual_component_type);
 
 		if (local_root_signature_entry >= 0)
 		{
@@ -713,7 +767,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 			spv::Id var_id_16bit = 0;
 
-			if (access_meta.raw_access_16bit)
+			if (raw_access_16bit)
 			{
 				auto bindless_info_16bit = bindless_info;
 				bindless_info_16bit.component = DXIL::ComponentType::U16;
@@ -739,7 +793,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		}
 		else
 		{
-			auto sampled_type_id = get_type_id(component_type, 1, 1);
+			auto sampled_type_id = get_type_id(effective_component_type, 1, 1);
 
 			spv::Id type_id = 0;
 			spv::Id type_id_16bit = 0;
@@ -759,7 +813,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				// We'll likely need to mess around with Aliased decoration as well, which might have other effects ...
 
 				type_id = build_ssbo_runtime_array_type(*this, 32, 1, range_size, "SSBO");
-				if (access_meta.raw_access_16bit)
+				if (raw_access_16bit)
 					type_id_16bit = build_ssbo_runtime_array_type(*this, 16, 1, range_size, "SSBO_16bit");
 				storage = spv::StorageClassStorageBuffer;
 			}
@@ -783,6 +837,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			spv::Id var_id_16bit = 0;
 			if (type_id_16bit)
 				var_id_16bit = create_variable(storage, type_id_16bit, name.empty() ? nullptr : name.c_str());
+
+			if (actual_component_type != effective_component_type && component_type_is_16bit(actual_component_type))
+				builder.addDecoration(var_id, spv::DecorationRelaxedPrecision);
 
 			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
 			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
@@ -811,7 +868,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			auto &meta = handle_to_resource_meta[var_id];
 			meta = {};
 			meta.kind = resource_kind;
-			meta.component_type = component_type;
+			meta.component_type = actual_component_type;
 			meta.stride = stride;
 			meta.var_id = var_id;
 			meta.storage = storage;
@@ -914,12 +971,14 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		unsigned stride = 0;
 		spv::ImageFormat format = spv::ImageFormatUnknown;
 
-		DXIL::ComponentType component_type = DXIL::ComponentType::U32;
+		auto actual_component_type = DXIL::ComponentType::U32;
+		auto effective_component_type = actual_component_type;
 
 		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
-			component_type = static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1));
+			actual_component_type = static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1));
+			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
 		else
 		{
@@ -946,7 +1005,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				}
 				else
 				{
-					switch (component_type)
+					switch (actual_component_type)
 					{
 					case DXIL::ComponentType::U32:
 						format = spv::ImageFormatR32ui;
@@ -984,7 +1043,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
 
-		if (access_meta.raw_access_16bit &&
+		bool raw_access_16bit = (resource_kind == DXIL::ResourceKind::RawBuffer ||
+		                         resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
+		                        access_meta.access_16bit;
+
+		if (raw_access_16bit &&
 		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
 		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -1033,7 +1096,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		BindlessInfo bindless_info = {};
 		bindless_info.type = DXIL::ResourceType::UAV;
-		bindless_info.component = component_type;
+		bindless_info.component = effective_component_type;
 		bindless_info.kind = resource_kind;
 		bindless_info.desc_set = vulkan_binding.buffer_binding.descriptor_set;
 		bindless_info.binding = vulkan_binding.buffer_binding.binding;
@@ -1042,9 +1105,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		bindless_info.uav_written = access_meta.has_written;
 		bindless_info.uav_coherent = globally_coherent;
 		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
+		bindless_info.relaxed_precision = actual_component_type != effective_component_type &&
+		                                  component_type_is_16bit(actual_component_type);
 
 		// If we emit two SSBOs which both access the same buffer, we must emit Aliased decoration to be safe.
-		bindless_info.aliased = access_meta.raw_access_16bit;
+		bindless_info.aliased = raw_access_16bit;
 
 		BindlessInfo counter_info = {};
 		if (options.physical_storage_buffer)
@@ -1174,7 +1239,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 			spv::Id var_id_16bit = 0;
 
-			if (access_meta.raw_access_16bit)
+			if (raw_access_16bit)
 			{
 				auto bindless_info_16bit = bindless_info;
 				bindless_info_16bit.component = DXIL::ComponentType::U16;
@@ -1257,7 +1322,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				storage = spv::StorageClassStorageBuffer;
 				var_id = create_variable(storage, type_id, name.empty() ? nullptr : name.c_str());
 
-				if (access_meta.raw_access_16bit)
+				if (raw_access_16bit)
 				{
 					spv::Id type_id_16bit = build_ssbo_runtime_array_type(*this, 16, 1, range_size, "SSBO_16bit");
 					var_id_16bit = create_variable(storage, type_id_16bit, name.empty() ? nullptr : name.c_str());
@@ -1266,7 +1331,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			else
 			{
 				// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
-				auto element_type_id = get_type_id(component_type, 1, 1);
+				auto element_type_id = get_type_id(effective_component_type, 1, 1);
 
 				spv::Id type_id =
 				    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
@@ -1284,6 +1349,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				storage = spv::StorageClassUniformConstant;
 				var_id = create_variable(storage, type_id,
 				                         name.empty() ? nullptr : name.c_str());
+
+				if (actual_component_type != effective_component_type && component_type_is_16bit(actual_component_type))
+					builder.addDecoration(var_id, spv::DecorationRelaxedPrecision);
 			}
 
 			auto &ref = uav_index_to_reference[index];
@@ -1353,7 +1421,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			auto &meta = handle_to_resource_meta[var_id];
 			meta = {};
 			meta.kind = resource_kind;
-			meta.component_type = component_type;
+			meta.component_type = actual_component_type;
 			meta.stride = stride;
 			meta.var_id = var_id;
 			meta.storage = storage;
@@ -2538,17 +2606,8 @@ bool Converter::Impl::emit_patch_variables()
 		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(patch, 2));
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(patch, 3));
 
-		switch (element_type)
-		{
-		case DXIL::ComponentType::F16:
-		case DXIL::ComponentType::I16:
-		case DXIL::ComponentType::U16:
+		if (component_type_is_16bit(element_type))
 			builder.addCapability(spv::CapabilityStorageInputOutput16);
-			break;
-
-		default:
-			break;
-		}
 
 		unsigned semantic_index = 0;
 		if (patch->getOperand(4))
@@ -2734,13 +2793,8 @@ bool Converter::Impl::emit_stage_output_variables()
 		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
 
-		if (effective_element_type != actual_element_type &&
-		    (actual_element_type == DXIL::ComponentType::F16 ||
-		     actual_element_type == DXIL::ComponentType::I16 ||
-		     actual_element_type == DXIL::ComponentType::U16))
-		{
+		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))
 			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
-		}
 
 		if (execution_model == spv::ExecutionModelVertex || execution_model == spv::ExecutionModelGeometry ||
 		    execution_model == spv::ExecutionModelTessellationEvaluation)
@@ -3389,13 +3443,8 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (per_vertex)
 			builder.addDecoration(variable_id, spv::DecorationPerVertexNV);
 
-		if (effective_element_type != actual_element_type &&
-		    (actual_element_type == DXIL::ComponentType::F16 ||
-		     actual_element_type == DXIL::ComponentType::I16 ||
-		     actual_element_type == DXIL::ComponentType::U16))
-		{
+		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))
 			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
-		}
 
 		if (system_value != DXIL::Semantic::User)
 		{
@@ -3536,26 +3585,22 @@ spv::Id Converter::Impl::build_offset(spv::Id value, unsigned offset)
 	return op->id;
 }
 
-void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type, unsigned num_components, const llvm::Value *value)
+void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type, unsigned num_components, const llvm::Value *value,
+                                             const llvm::Type *target_type)
 {
 	auto *code_id = allocate(spv::OpCompositeExtract, builder().makeUintType(32));
 	code_id->add_id(get_id_for_value(value));
 	code_id->add_literal(0);
 	add(code_id);
 
-	auto *texel_id = allocate(spv::OpCompositeExtract, get_type_id(component_type, 1, num_components));
-	texel_id->add_id(get_id_for_value(value));
-	texel_id->add_literal(1);
-	add(texel_id);
+	auto effective_component_type = get_effective_typed_resource_type(component_type);
+	auto *texel = allocate(spv::OpCompositeExtract, get_type_id(effective_component_type, 1, num_components));
+	texel->add_id(get_id_for_value(value));
+	texel->add_literal(1);
+	add(texel);
 
-	if (component_type == DXIL::ComponentType::I32)
-	{
-		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, num_components));
-		op->add_id(texel_id->id);
-		add(op);
-		texel_id = op;
-		component_type = DXIL::ComponentType::U32;
-	}
+	spv::Id texel_id = texel->id;
+	fixup_load_type_typed(component_type, num_components, texel_id, target_type);
 
 	spv::Id components[5];
 
@@ -3564,7 +3609,7 @@ void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type,
 		for (unsigned i = 0; i < num_components; i++)
 		{
 			auto *extract_op = allocate(spv::OpCompositeExtract, get_type_id(component_type, 1, 1));
-			extract_op->add_id(texel_id->id);
+			extract_op->add_id(texel_id);
 			extract_op->add_literal(i);
 			add(extract_op);
 			components[i] = extract_op->id;
@@ -3573,7 +3618,7 @@ void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type,
 	else
 	{
 		for (auto &comp : components)
-			comp = texel_id->id;
+			comp = texel_id;
 		num_components = 4;
 	}
 
@@ -3598,16 +3643,15 @@ void Converter::Impl::fixup_load_type_io(DXIL::ComponentType component_type, uns
 		add(op);
 		value_map[value] = op->id;
 	}
-	else if ((component_type == DXIL::ComponentType::F16 ||
-	          component_type == DXIL::ComponentType::I16 ||
-	          component_type == DXIL::ComponentType::U16) &&
-	         !options.storage_16bit_input_output)
+	else if (component_type_is_16bit(component_type) && !options.storage_16bit_input_output)
 	{
 		spv::Op op;
 
 		switch (component_type)
 		{
 		case DXIL::ComponentType::F16:
+		case DXIL::ComponentType::UNormF16:
+		case DXIL::ComponentType::SNormF16:
 			op = spv::OpFConvert;
 			break;
 
@@ -3644,6 +3688,64 @@ void Converter::Impl::fixup_load_type_buffer(DXIL::ComponentType component_type,
 	}
 }
 
+void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType &component_type, unsigned components, spv::Id &value_id,
+                                            const llvm::Type *target_type)
+{
+	if (component_type == DXIL::ComponentType::I32)
+	{
+		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, components));
+		op->add_id(value_id);
+		add(op);
+		component_type = DXIL::ComponentType::U32;
+		value_id = op->id;
+	}
+	else if (component_type == DXIL::ComponentType::I16 || component_type == DXIL::ComponentType::U16)
+	{
+		if (target_type->getIntegerBitWidth() == 16)
+		{
+			auto opcode = component_type == DXIL::ComponentType::I16 ? spv::OpSConvert : spv::OpUConvert;
+			Operation *op = allocate(opcode, get_type_id(DXIL::ComponentType::U16, 1, components));
+			op->add_id(value_id);
+			add(op);
+			component_type = DXIL::ComponentType::U16;
+			value_id = op->id;
+		}
+		else if (target_type->getIntegerBitWidth() == 32 && component_type == DXIL::ComponentType::I16)
+		{
+			Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, components));
+			op->add_id(value_id);
+			add(op);
+			component_type = DXIL::ComponentType::U32;
+			value_id = op->id;
+		}
+	}
+	else if (component_type == DXIL::ComponentType::F16 ||
+	         component_type == DXIL::ComponentType::UNormF16 ||
+	         component_type == DXIL::ComponentType::SNormF16)
+	{
+		// Only convert if we actually want half here.
+		// Certain operations always return float even if the resource type is half for some silly reason.
+		if (target_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+		{
+			Operation *op = allocate(spv::OpFConvert, get_type_id(DXIL::ComponentType::F16, 1, components));
+			op->add_id(value_id);
+			add(op);
+			component_type = DXIL::ComponentType::F16;
+			value_id = op->id;
+		}
+	}
+}
+
+void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType component_type, unsigned components,
+                                            const LLVMBC::Value *value, const llvm::Type *target_type)
+{
+	spv::Id value_id = get_id_for_value(value);
+	spv::Id new_value_id = value_id;
+	fixup_load_type_typed(component_type, components, new_value_id, target_type);
+	if (new_value_id != value_id)
+		value_map[value] = new_value_id;
+}
+
 spv::Id Converter::Impl::fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value)
 {
 	if (component_type == DXIL::ComponentType::I32 ||
@@ -3656,10 +3758,7 @@ spv::Id Converter::Impl::fixup_store_type_io(DXIL::ComponentType component_type,
 		add(op);
 		return op->id;
 	}
-	else if ((component_type == DXIL::ComponentType::F16 ||
-	          component_type == DXIL::ComponentType::I16 ||
-	          component_type == DXIL::ComponentType::U16) &&
-	         !options.storage_16bit_input_output)
+	else if (component_type_is_16bit(component_type) && !options.storage_16bit_input_output)
 	{
 		DXIL::ComponentType target_type;
 		spv::Op op;
@@ -3667,6 +3766,8 @@ spv::Id Converter::Impl::fixup_store_type_io(DXIL::ComponentType component_type,
 		switch (component_type)
 		{
 		case DXIL::ComponentType::F16:
+		case DXIL::ComponentType::UNormF16:
+		case DXIL::ComponentType::SNormF16:
 			target_type = DXIL::ComponentType::F32;
 			op = spv::OpFConvert;
 			break;
@@ -3701,6 +3802,38 @@ spv::Id Converter::Impl::fixup_store_type_buffer(DXIL::ComponentType component_t
 		DXIL::ComponentType uint_type = component_type == DXIL::ComponentType::I32 ?
 		                                DXIL::ComponentType::I32 : DXIL::ComponentType::I16;
 		Operation *op = allocate(spv::OpBitcast, get_type_id(uint_type, 1, components));
+		op->add_id(value);
+		add(op);
+		return op->id;
+	}
+	else
+		return value;
+}
+
+spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value)
+{
+	auto effective_component_type = get_effective_typed_resource_type(component_type);
+
+	if (component_type == DXIL::ComponentType::I32)
+	{
+		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::I32, 1, components));
+		op->add_id(value);
+		add(op);
+		return op->id;
+	}
+	else if (component_type == DXIL::ComponentType::I16 || component_type == DXIL::ComponentType::U16)
+	{
+		auto opcode = component_type == DXIL::ComponentType::I16 ? spv::OpSConvert : spv::OpUConvert;
+		Operation *op = allocate(opcode, get_type_id(effective_component_type, 1, components));
+		op->add_id(value);
+		add(op);
+		return op->id;
+	}
+	else if (component_type == DXIL::ComponentType::F16 ||
+	         component_type == DXIL::ComponentType::UNormF16 ||
+	         component_type == DXIL::ComponentType::SNormF16)
+	{
+		Operation *op = allocate(spv::OpFConvert, get_type_id(effective_component_type, 1, components));
 		op->add_id(value);
 		add(op);
 		return op->id;
@@ -4548,6 +4681,26 @@ spv::Id Converter::Impl::get_temp_payload(spv::Id type, spv::StorageClass storag
 	return var_id;
 }
 
+DXIL::ComponentType Converter::Impl::get_effective_typed_resource_type(DXIL::ComponentType type)
+{
+	// Expand/contract on load/store.
+	// DXIL can emit half textures for example,
+	// but we need to contract or expand instead.
+	switch (type)
+	{
+	case DXIL::ComponentType::F16:
+	case DXIL::ComponentType::UNormF16:
+	case DXIL::ComponentType::SNormF16:
+		return DXIL::ComponentType::F32;
+	case DXIL::ComponentType::I16:
+		return DXIL::ComponentType::I32;
+	case DXIL::ComponentType::U16:
+		return DXIL::ComponentType::U32;
+	default:
+		return type;
+	}
+}
+
 DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::ComponentType type)
 {
 	if (options.storage_16bit_input_output)
@@ -4555,6 +4708,8 @@ DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::Compo
 		switch (type)
 		{
 		case DXIL::ComponentType::F16:
+		case DXIL::ComponentType::UNormF16:
+		case DXIL::ComponentType::SNormF16:
 		case DXIL::ComponentType::I16:
 		case DXIL::ComponentType::U16:
 			builder().addCapability(spv::CapabilityStorageInputOutput16);
@@ -4573,6 +4728,8 @@ DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::Compo
 		switch (type)
 		{
 		case DXIL::ComponentType::F16:
+		case DXIL::ComponentType::UNormF16:
+		case DXIL::ComponentType::SNormF16:
 			return DXIL::ComponentType::F32;
 		case DXIL::ComponentType::I16:
 			return DXIL::ComponentType::I32;

@@ -404,7 +404,9 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	}
 
 	auto *result_type = instruction->getType();
-	unsigned bits = type_is_16bit(result_type->getStructElementType(0)) ? 16 : 32;
+	auto *target_type = result_type->getStructElementType(0);
+	unsigned bits = meta.storage == spv::StorageClassStorageBuffer &&
+	                type_is_16bit(target_type) ? 16 : 32;
 	if (bits == 16)
 		image_id = meta.var_id_16bit;
 
@@ -578,7 +580,9 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	else
 	{
 		bool is_uav = builder.isStorageImageType(image_type_id);
-		spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+
+		auto effective_component_type = Converter::Impl::get_effective_typed_resource_type(meta.component_type);
+		spv::Id texel_type = impl.get_type_id(effective_component_type, 1, 4);
 		spv::Id sample_type;
 
 		if (sparse)
@@ -598,12 +602,9 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		impl.add(op);
 
 		if (sparse)
-			impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+			impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
 		else
-		{
-			// Deal with loads from signed resources.
-			impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
-		}
+			impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
 	}
 
 	return true;
@@ -723,7 +724,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, 4);
 	}
 
-	unsigned bits = type_is_16bit(instruction->getOperand(4)->getType()) ? 16 : 32;
+	unsigned bits = meta.storage == spv::StorageClassStorageBuffer &&
+	                type_is_16bit(instruction->getOperand(4)->getType()) ? 16 : 32;
 	if (bits == 16)
 		image_id = meta.var_id_16bit;
 
@@ -760,7 +762,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		Operation *op = impl.allocate(spv::OpImageWrite);
 		op->add_ids(
 		    { image_id, access.index_id,
-		      impl.fixup_store_type_buffer(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
+		      impl.fixup_store_type_typed(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
 
 		impl.add(op);
 	}
