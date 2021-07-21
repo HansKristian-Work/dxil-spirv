@@ -125,6 +125,7 @@ public:
     Id makeFunctionType(Id returnType, const dxil_spv::Vector<Id>& paramTypes);
     Id makeImageType(Id sampledType, Dim, bool depth, bool arrayed, bool ms, unsigned sampled, ImageFormat format);
     Id makeAccelerationStructureType();
+    Id makeRayQueryType();
     Id makeSamplerType();
     Id makeSampledImageType(Id imageType);
 
@@ -640,10 +641,11 @@ protected:
     dxil_spv::Vector<std::unique_ptr<Instruction> > externals;
     dxil_spv::Vector<std::unique_ptr<Function> > functions;
 
-     // not output, internally used for quick & dirty canonical (unique) creation
+    // not output, internally used for quick & dirty canonical (unique) creation
     dxil_spv::Vector<Instruction*> groupedConstants[OpConstant];  // all types appear before OpConstant
     dxil_spv::Vector<Instruction*> groupedTypes[OpConstant];
     Instruction *acceleration_structure_type = nullptr;
+    Instruction *ray_query_type = nullptr;
 
     // stack of switches
     std::stack<Block*> switchMerges;

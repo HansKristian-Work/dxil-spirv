@@ -48,7 +48,7 @@ def create_temporary(suff = ''):
     return path
 
 def get_sm(shader, force_60):
-    minor_version = '_0' if force_60 else '_4'
+    minor_version = '_0' if force_60 else '_5'
     _, ext = os.path.splitext(shader)
     if ext == '.vert':
         return 'vs_6' + minor_version

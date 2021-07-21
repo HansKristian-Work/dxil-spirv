@@ -217,6 +217,104 @@ struct DXILDispatcher
 		OP(AcceptHitAndEndSearch) = emit_ray_tracing_accept_hit_and_end_search;
 		OP(IgnoreHit) = emit_ray_tracing_ignore_hit;
 		OP(CallShader) = emit_ray_tracing_call_shader;
+
+		// Ray query
+		OP(AllocateRayQuery) = emit_allocate_ray_query;
+		OP(RayQuery_TraceRayInline) = emit_ray_query_trace_ray_inline_instruction;
+		OP(RayQuery_Proceed) = emit_ray_query_proceed_instruction;
+		OP(RayQuery_Abort) = emit_ray_query_abort_instruction;
+
+		// Global status
+		OP(RayQuery_CandidateType) = emit_ray_query_intersection_type_instruction<spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CommittedStatus) = emit_ray_query_intersection_type_instruction<spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+
+		// System variables
+		OP(RayQuery_RayFlags) = emit_ray_query_system_value_instruction<spv::OpRayQueryGetRayFlagsKHR, 1>;
+		OP(RayQuery_RayTMin) = emit_ray_query_system_value_instruction<spv::OpRayQueryGetRayTMinKHR, 1>;
+		OP(RayQuery_WorldRayDirection) = emit_ray_query_system_value_instruction<spv::OpRayQueryGetWorldRayDirectionKHR, 3>;
+		OP(RayQuery_WorldRayOrigin) = emit_ray_query_system_value_instruction<spv::OpRayQueryGetWorldRayOriginKHR, 3>;
+
+		// Candidates
+		OP(RayQuery_CommitNonOpaqueTriangleHit) = emit_ray_query_commit_non_opaque_triangle_instruction;
+		OP(RayQuery_CommitProceduralPrimitiveHit) = emit_ray_query_commit_procedural_primitive_instruction;
+		OP(RayQuery_CandidateProceduralPrimitiveNonOpaque) = emit_ray_query_candidate_procedural_primitive_non_opaque_instruction;
+
+		// Getters (candidate)
+		OP(RayQuery_CandidateTriangleRayT) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionTKHR, 1,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateInstanceIndex) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionInstanceIdKHR, 1,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateInstanceID) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionInstanceCustomIndexKHR, 1,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateGeometryIndex) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionGeometryIndexKHR, 1,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidatePrimitiveIndex) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionPrimitiveIndexKHR, 1,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateObjectRayOrigin) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionObjectRayOriginKHR, 3,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateObjectRayDirection) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionObjectRayDirectionKHR, 3,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateTriangleBarycentrics) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionBarycentricsKHR, 2,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateTriangleFrontFace) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionFrontFaceKHR, 1,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateInstanceContributionToHitGroupIndex) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetKHR, 1,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateWorldToObject3x4) =
+			emit_ray_query_get_matrix_value_instruction<spv::OpRayQueryGetIntersectionWorldToObjectKHR,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+		OP(RayQuery_CandidateObjectToWorld3x4) =
+			emit_ray_query_get_matrix_value_instruction<spv::OpRayQueryGetIntersectionObjectToWorldKHR,
+				spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR>;
+
+		// Getters (committed)
+		OP(RayQuery_CommittedRayT) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionTKHR, 1,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedInstanceIndex) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionInstanceIdKHR, 1,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedInstanceID) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionInstanceCustomIndexKHR, 1,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedGeometryIndex) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionGeometryIndexKHR, 1,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedPrimitiveIndex) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionPrimitiveIndexKHR, 1,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedObjectRayOrigin) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionObjectRayOriginKHR, 3,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedObjectRayDirection) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionObjectRayDirectionKHR, 3,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedTriangleBarycentrics) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionBarycentricsKHR, 2,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedTriangleFrontFace) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionFrontFaceKHR, 1,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedInstanceContributionToHitGroupIndex) =
+			emit_ray_query_get_value_instruction<spv::OpRayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetKHR, 1,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedWorldToObject3x4) =
+			emit_ray_query_get_matrix_value_instruction<spv::OpRayQueryGetIntersectionWorldToObjectKHR,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		OP(RayQuery_CommittedObjectToWorld3x4) =
+			emit_ray_query_get_matrix_value_instruction<spv::OpRayQueryGetIntersectionObjectToWorldKHR,
+				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
+		////////////
 	}
 
 #undef OP

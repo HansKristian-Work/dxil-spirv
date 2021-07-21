@@ -1,0 +1,105 @@
+RaytracingAccelerationStructure RTAS : register(t0);
+RWStructuredBuffer<uint> RWUint : register(u1);
+RWStructuredBuffer<float> RWFloat : register(u2);
+RWStructuredBuffer<float4> RWFloat4 : register(u3);
+RWStructuredBuffer<float3> RWFloat3 : register(u4);
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_GroupIndex)
+{
+	RayQuery<RAY_FLAG_CULL_NON_OPAQUE> q;
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.TMin = 4;
+	ray.Direction = float3(5, 6, 7);
+	ray.TMax = 8;
+	q.TraceRayInline(RTAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xaa, ray);
+
+	uint a = 0;
+	uint b = 0;
+	uint c = 0;
+
+	while (q.Proceed())
+	{
+		RWUint[64 * thr + 0] = q.CandidateInstanceIndex();
+		RWUint[64 * thr + 1] = q.CandidateInstanceID();
+		RWUint[64 * thr + 2] = q.CandidateGeometryIndex();
+		RWUint[64 * thr + 3] = q.CandidatePrimitiveIndex();
+		RWFloat[64 * thr + 4] = q.CandidateObjectRayOrigin().x;
+		RWFloat[64 * thr + 5] = q.CandidateObjectRayDirection().y;
+		RWUint[64 * thr + 16] = q.CandidateInstanceContributionToHitGroupIndex();
+
+		float4 row0 = q.CandidateWorldToObject3x4()[0];
+		float4 row1 = q.CandidateObjectToWorld3x4()[0];
+		RWFloat4[4 * thr + 0] = row0;
+		RWFloat4[4 * thr + 1] = row1;
+
+		float3 row2 = q.CandidateWorldToObject4x3()[0];
+		float3 row3 = q.CandidateObjectToWorld4x3()[0];
+		RWFloat3[4 * thr + 0] = row2;
+		RWFloat3[4 * thr + 1] = row3;
+
+		if (q.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+		{
+			a++;
+			RWFloat[64 * thr + 6] = q.CandidateTriangleRayT();
+			RWFloat[64 * thr + 7] = q.CandidateTriangleBarycentrics().y;
+			RWUint[64 * thr + 8] = q.CandidateTriangleFrontFace() ? 100 : 10;
+			q.CommitNonOpaqueTriangleHit();
+		}
+		else if (q.CandidateType() == CANDIDATE_PROCEDURAL_PRIMITIVE)
+		{
+			if (q.CandidateProceduralPrimitiveNonOpaque())
+				b++;
+			else
+				c++;
+			q.CommitProceduralPrimitiveHit(0.5);
+		}
+
+		if (a == 4)
+			q.Abort();
+	}
+
+	RWUint[64 * thr + 9] = q.RayFlags();
+	RWFloat[64 * thr + 10] = q.WorldRayOrigin().x;
+	RWFloat[64 * thr + 11] = q.WorldRayDirection().y;
+	RWFloat[64 * thr + 12] = q.RayTMin();
+
+	if (q.CommittedStatus())
+	{
+		RWUint[64 * thr + 32] = q.CommittedInstanceIndex();
+		RWUint[64 * thr + 33] = q.CommittedInstanceID();
+		RWUint[64 * thr + 34] = q.CommittedGeometryIndex();
+		RWUint[64 * thr + 35] = q.CommittedPrimitiveIndex();
+		RWFloat[64 * thr + 36] = q.CommittedObjectRayOrigin().x;
+		RWFloat[64 * thr + 37] = q.CommittedObjectRayDirection().y;
+		RWUint[64 * thr + 38] = q.CommittedInstanceContributionToHitGroupIndex();
+
+		float4 row0 = q.CommittedWorldToObject3x4()[0];
+		float4 row1 = q.CommittedObjectToWorld3x4()[0];
+		RWFloat4[4 * thr + 39] = row0;
+		RWFloat4[4 * thr + 40] = row1;
+
+		float3 row2 = q.CommittedWorldToObject4x3()[0];
+		float3 row3 = q.CommittedObjectToWorld4x3()[0];
+		RWFloat3[4 * thr + 41] = row2;
+		RWFloat3[4 * thr + 42] = row3;
+		RWFloat[64 * thr + 43] = q.CommittedRayT();
+	}
+
+	if (q.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
+	{
+		RWUint[64 * thr + 13] = a;
+		RWFloat[64 * thr + 44] = q.CommittedTriangleBarycentrics().y;
+		RWUint[64 * thr + 45] = q.CommittedTriangleFrontFace() ? 100 : 10;
+	}
+	else if (q.CommittedStatus() == COMMITTED_PROCEDURAL_PRIMITIVE_HIT)
+	{
+		RWUint[64 * thr + 14] = b;
+	}
+	else
+	{
+		RWUint[64 * thr + 15] = c;
+	}
+}
+

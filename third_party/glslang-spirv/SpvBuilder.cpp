@@ -160,6 +160,21 @@ Id Builder::makeAccelerationStructureType()
     return type->getResultId();
 }
 
+Id Builder::makeRayQueryType()
+{
+    Instruction* type;
+    if (!ray_query_type)
+    {
+        type = new Instruction(getUniqueId(), NoType, OpTypeRayQueryKHR);
+        ray_query_type = type;
+        constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
+        module.mapInstruction(type);
+    } else
+        type = ray_query_type;
+
+    return type->getResultId();
+}
+
 Id Builder::makePointer(StorageClass storageClass, Id pointee)
 {
     // try to find it

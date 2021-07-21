@@ -311,4 +311,281 @@ bool emit_ray_tracing_hit_kind_instruction(Converter::Impl &impl, const llvm::Ca
 {
 	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInHitKindKHR);
 }
+
+static void emit_ray_query_capabilities(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	builder.addExtension("SPV_KHR_ray_query");
+	builder.addCapability(spv::CapabilityRayQueryKHR);
+	builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
+}
+
+bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	// TODO: It seems like we can use full variable pointers with RayQuery in DXIL.
+	// To implement this, we will need some kind of global "bank" of ray query objects,
+	// and allocateRayQuery could assign indices into that global array.
+	// Until we actually see this happen in practice, we can just allocate RayQuery objects like this.
+	// The return type of allocateRayQuery appears to be i32, so this might be how it's intended to be done ...
+	auto &builder = impl.builder();
+	spv::Id var_id = impl.spirv_module.create_variable(spv::StorageClassPrivate, builder.makeRayQueryType());
+	impl.value_map[inst] = var_id;
+	impl.handle_to_storage_class[inst] = spv::StorageClassPrivate;
+	emit_ray_query_capabilities(impl);
+	return true;
+}
+
+static bool ray_query_operand_is_alloca(Converter::Impl &impl, const llvm::Value *operand)
+{
+	if (auto *alloca = llvm::dyn_cast<llvm::CallInst>(operand))
+	{
+		uint32_t op = 0;
+		if (!get_constant_operand(alloca, 0, &op))
+			return false;
+		if (strncmp(alloca->getCalledFunction()->getName().data(), "dx.op", 5) != 0)
+			return false;
+		if (DXIL::Op(op) != DXIL::Op::AllocateRayQuery)
+			return false;
+		return true;
+	}
+	else
+		return false;
+}
+
+static bool build_ray_query_object(Converter::Impl &impl, const llvm::Value *operand,
+                                   spv::Id &object_id, uint32_t *ray_query_flags = nullptr)
+{
+	// TODO: We can index into global pool.
+	auto *ray_object = llvm::cast<llvm::CallInst>(operand);
+	if (ray_query_flags && !get_constant_operand(ray_object, 1, ray_query_flags))
+		return false;
+
+	// For now, we must observe that the ray object came directly from an allocateRayObject.
+	if (!ray_query_operand_is_alloca(impl, operand))
+	{
+		LOGE("RayQuery object must come directly from allocateRayQuery for now.\n");
+		return false;
+	}
+
+	object_id = impl.get_id_for_value(ray_object);
+	return true;
+}
+
+bool emit_ray_query_trace_ray_inline_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	auto *init_op = impl.allocate(spv::OpRayQueryInitializeKHR);
+
+	spv::Id ray_object_id = 0;
+	uint32_t ray_query_flags = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id, &ray_query_flags))
+		return false;
+
+	init_op->add_id(ray_object_id);
+	init_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+
+	// The template type of the ray query object is embedded in the object itself, we must OR in the constant flags.
+	if (auto *const_flags = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(3)))
+	{
+		ray_query_flags |= const_flags->getUniqueInteger().getZExtValue();
+		init_op->add_id(builder.makeUintConstant(ray_query_flags));
+	}
+	else
+	{
+		auto *or_op = impl.allocate(spv::OpBitwiseOr, builder.makeUintType(32));
+		or_op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+		or_op->add_id(ray_query_flags);
+		impl.add(or_op);
+		init_op->add_id(or_op->id);
+	}
+
+	init_op->add_id(impl.get_id_for_value(instruction->getOperand(4)));
+
+	spv::Id origin[3], direction[3];
+	for (unsigned i = 0; i < 3; i++)
+	{
+		origin[i] = impl.get_id_for_value(instruction->getOperand(5 + i));
+		direction[i] = impl.get_id_for_value(instruction->getOperand(9 + i));
+	}
+	init_op->add_id(impl.build_vector(builder.makeFloatType(32), origin, 3));
+	init_op->add_id(impl.get_id_for_value(instruction->getOperand(8)));
+	init_op->add_id(impl.build_vector(builder.makeFloatType(32), direction, 3));
+	init_op->add_id(impl.get_id_for_value(instruction->getOperand(12)));
+
+	impl.add(init_op);
+
+	return true;
+}
+
+bool emit_ray_query_proceed_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(spv::OpRayQueryProceedKHR, instruction);
+	op->add_id(ray_object_id);
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_query_abort_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(spv::OpRayQueryTerminateKHR);
+	op->add_id(ray_object_id);
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_query_intersection_type_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                  spv::RayQueryIntersection intersection)
+{
+	auto &builder = impl.builder();
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(spv::OpRayQueryGetIntersectionTypeKHR, instruction);
+	op->add_id(ray_object_id);
+	op->add_id(builder.makeUintConstant(intersection));
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_query_system_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                             spv::Op opcode, uint32_t vecsize)
+{
+	auto &builder = impl.builder();
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	if (vecsize == 1)
+	{
+		auto *op = impl.allocate(opcode, instruction);
+		op->add_id(ray_object_id);
+		impl.add(op);
+	}
+	else
+	{
+		auto *op = impl.allocate(opcode, builder.makeVectorType(impl.get_type_id(instruction->getType()), vecsize));
+		op->add_id(ray_object_id);
+		impl.add(op);
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, instruction);
+		extract_op->add_id(op->id);
+
+		uint32_t index = 0;
+		if (!get_constant_operand(instruction, 2, &index))
+			return false;
+		extract_op->add_literal(index);
+		impl.add(extract_op);
+	}
+	return true;
+}
+
+bool emit_ray_query_get_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                          spv::Op opcode, uint32_t vecsize, spv::RayQueryIntersection intersection)
+{
+	auto &builder = impl.builder();
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	if (vecsize == 1)
+	{
+		auto *op = impl.allocate(opcode, instruction);
+		op->add_id(ray_object_id);
+		op->add_id(builder.makeUintConstant(intersection));
+		impl.add(op);
+	}
+	else
+	{
+		auto *op = impl.allocate(opcode, builder.makeVectorType(impl.get_type_id(instruction->getType()), vecsize));
+		op->add_id(ray_object_id);
+		op->add_id(builder.makeUintConstant(intersection));
+		impl.add(op);
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, instruction);
+		extract_op->add_id(op->id);
+
+		uint32_t index = 0;
+		if (!get_constant_operand(instruction, 2, &index))
+			return false;
+		extract_op->add_literal(index);
+		impl.add(extract_op);
+	}
+	return true;
+}
+
+bool emit_ray_query_get_matrix_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                 spv::Op opcode, spv::RayQueryIntersection intersection)
+{
+	auto &builder = impl.builder();
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(opcode, builder.makeMatrixType(impl.get_type_id(instruction->getType()), 4, 3));
+	op->add_id(ray_object_id);
+	op->add_id(builder.makeUintConstant(intersection));
+	impl.add(op);
+
+	auto *extract_op = impl.allocate(spv::OpCompositeExtract, instruction);
+	uint32_t row = 0, col = 0;
+	if (!get_constant_operand(instruction, 2, &row))
+		return false;
+	if (!get_constant_operand(instruction, 3, &col))
+		return false;
+	extract_op->add_id(op->id);
+	extract_op->add_literal(col);
+	extract_op->add_literal(row);
+	impl.add(extract_op);
+	return true;
+}
+
+bool emit_ray_query_commit_non_opaque_triangle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(spv::OpRayQueryConfirmIntersectionKHR);
+	op->add_id(ray_object_id);
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_query_commit_procedural_primitive_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(spv::OpRayQueryGenerateIntersectionKHR);
+	op->add_id(ray_object_id);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+	impl.add(op);
+	return true;
+}
+
+bool emit_ray_query_candidate_procedural_primitive_non_opaque_instruction(Converter::Impl &impl,
+                                                                          const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, instruction->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(spv::OpRayQueryGetIntersectionCandidateAABBOpaqueKHR, builder.makeBoolType());
+	op->add_id(ray_object_id);
+	impl.add(op);
+
+	auto *not_op = impl.allocate(spv::OpLogicalNot, instruction);
+	not_op->add_id(op->id);
+	impl.add(not_op);
+	return true;
+}
 }
