@@ -354,7 +354,7 @@ static void update_access_tracking_from_type(Converter::Impl::AccessTracking &tr
 	    (type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
 	     type->getIntegerBitWidth() == 16))
 	{
-		tracking.raw_access_16bit = true;
+		tracking.access_16bit = true;
 	}
 }
 

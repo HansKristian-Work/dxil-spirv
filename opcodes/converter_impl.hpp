@@ -139,7 +139,7 @@ struct Converter::Impl
 		bool has_read = false;
 		bool has_written = false;
 		bool has_atomic = false;
-		bool raw_access_16bit = false;
+		bool access_16bit = false;
 	};
 	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> uav_access_tracking;
@@ -314,9 +314,15 @@ struct Converter::Impl
 	spv::Id build_offset(spv::Id value, unsigned offset);
 	void fixup_load_type_io(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
 	void fixup_load_type_buffer(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
-	void repack_sparse_feedback(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
+	void fixup_load_type_typed(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value,
+	                           const llvm::Type *target_type);
+	void fixup_load_type_typed(DXIL::ComponentType &component_type, unsigned components, spv::Id &value_id,
+	                           const llvm::Type *target_type);
+	void repack_sparse_feedback(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value,
+	                            const llvm::Type *target_type);
 	spv::Id fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 	spv::Id fixup_store_type_buffer(DXIL::ComponentType component_type, unsigned components, spv::Id value);
+	spv::Id fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 
 	Vector<Operation *> *current_block = nullptr;
 	void add(Operation *op);
@@ -398,6 +404,7 @@ struct Converter::Impl
 		bool counters;
 		bool offsets;
 		bool aliased;
+		bool relaxed_precision;
 		uint32_t desc_set;
 		uint32_t binding;
 	};
@@ -430,6 +437,7 @@ struct Converter::Impl
 	spv::Id get_physical_pointer_block_type(spv::Id base_type_id, const PhysicalPointerMeta &meta);
 
 	DXIL::ComponentType get_effective_input_output_type(DXIL::ComponentType type);
+	static DXIL::ComponentType get_effective_typed_resource_type(DXIL::ComponentType type);
 	spv::Id get_effective_input_output_type_id(DXIL::ComponentType type);
 
 	struct

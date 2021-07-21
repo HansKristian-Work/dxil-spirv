@@ -244,7 +244,8 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		return false;
 	}
 
-	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, comparison_sampling ? 1 : 4);
+	auto effective_component_type = Converter::Impl::get_effective_typed_resource_type(meta.component_type);
+	spv::Id texel_type = impl.get_type_id(effective_component_type, 1, comparison_sampling ? 1 : 4);
 	spv::Id sample_type;
 
 	if (sparse)
@@ -274,24 +275,27 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	impl.add(op);
 
+	auto *target_type = instruction->getType()->getStructElementType(0);
+
 	if (sparse)
 	{
 		// Repack return arguments from { i32, Tx4 } into { T, T, T, T, i32 } which DXIL expects.
-		impl.repack_sparse_feedback(meta.component_type, comparison_sampling ? 1 : 4, instruction);
+		impl.repack_sparse_feedback(meta.component_type, comparison_sampling ? 1 : 4, instruction, target_type);
 	}
 	else if (comparison_sampling)
 	{
+		spv::Id loaded_id = op->id;
+		auto tmp = meta.component_type;
+		impl.fixup_load_type_typed(tmp, 1, loaded_id, target_type);
 		Operation *splat_op =
-			impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeFloatType(32), 4));
-		splat_op->add_ids({ op->id, op->id, op->id, op->id });
+			impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(impl.get_type_id(target_type), 4));
+		splat_op->add_ids({ loaded_id, loaded_id, loaded_id, loaded_id });
 		impl.add(splat_op);
 		impl.value_map[instruction] = splat_op->id;
 	}
 	else
 	{
-		// Deal with signed component types.
-		// Sparse feedback repack also deals with it.
-		impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
+		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
 	}
 
 	return true;
@@ -343,7 +347,8 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	if (sparse)
 		builder.addCapability(spv::CapabilitySparseResidency);
 
-	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+	auto effective_component_type = Converter::Impl::get_effective_typed_resource_type(meta.component_type);
+	spv::Id texel_type = impl.get_type_id(effective_component_type, 1, 4);
 	spv::Id sample_type;
 
 	if (sparse)
@@ -375,13 +380,12 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	impl.add(op);
 
+	auto *target_type = instruction->getType()->getStructElementType(0);
+
 	if (sparse)
-		impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+		impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
 	else
-	{
-		// Deal with signed component types.
-		impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
-	}
+		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
 	return true;
 }
 
@@ -430,7 +434,9 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
 	if (sparse)
 		builder.addCapability(spv::CapabilitySparseResidency);
-	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+
+	auto effective_component_type = Converter::Impl::get_effective_typed_resource_type(meta.component_type);
+	spv::Id texel_type = impl.get_type_id(effective_component_type, 1, 4);
 	spv::Id sample_type;
 
 	if (sparse)
@@ -463,13 +469,12 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	impl.add(op);
 
+	auto *target_type = instruction->getType()->getStructElementType(0);
+
 	if (sparse)
-		impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+		impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
 	else
-	{
-		// Deal with signed component types.
-		impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
-	}
+		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
 	return true;
 }
 
@@ -656,7 +661,7 @@ bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst 
 	op->add_id(impl.build_vector(builder.makeUintType(32), coord, num_coords_full));
 
 	spv::Id store_id = impl.build_vector(impl.get_type_id(instruction->getOperand(5)->getType()), write_values, 4);
-	store_id = impl.fixup_store_type_buffer(meta.component_type, 4, store_id);
+	store_id = impl.fixup_store_type_typed(meta.component_type, 4, store_id);
 	op->add_id(store_id);
 	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
 
@@ -706,7 +711,8 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 	if (sparse)
 		builder.addCapability(spv::CapabilitySparseResidency);
 
-	spv::Id texel_type = impl.get_type_id(meta.component_type, 1, 4);
+	auto effective_component_type = Converter::Impl::get_effective_typed_resource_type(meta.component_type);
+	spv::Id texel_type = impl.get_type_id(effective_component_type, 1, 4);
 	spv::Id sample_type;
 
 	if (sparse)
@@ -735,10 +741,12 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 
 	impl.add(op);
 
+	auto *target_type = instruction->getType()->getStructElementType(0);
+
 	if (sparse)
-		impl.repack_sparse_feedback(meta.component_type, 4, instruction);
+		impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
 	else
-		impl.fixup_load_type_buffer(meta.component_type, 4, instruction);
+		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
 	return true;
 }
 
