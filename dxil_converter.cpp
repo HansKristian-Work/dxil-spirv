@@ -84,6 +84,19 @@ uint32_t Converter::get_patch_vertex_count() const
 	return impl->execution_mode_meta.stage_input_num_vertex;
 }
 
+bool Converter::shader_requires_feature(ShaderFeature feature) const
+{
+	switch (feature)
+	{
+	case ShaderFeature::Native16BitOperations:
+		return impl->builder().hasCapability(spv::CapabilityFloat16) ||
+		       impl->builder().hasCapability(spv::CapabilityInt16);
+
+	default:
+		return false;
+	}
+}
+
 ConvertedFunction Converter::convert_entry_point()
 {
 	return impl->convert_entry_point();

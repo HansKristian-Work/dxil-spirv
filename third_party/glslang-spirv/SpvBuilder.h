@@ -90,6 +90,10 @@ public:
     }
 
     void addCapability(spv::Capability cap) { capabilities.insert(cap); }
+    bool hasCapability(spv::Capability cap) const
+    {
+        return capabilities.count(cap) != 0;
+    }
 
     // To get a new <id> for anything needing a new one.
     Id getUniqueId() { return ++uniqueId; }

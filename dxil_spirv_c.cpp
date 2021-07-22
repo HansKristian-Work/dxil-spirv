@@ -324,6 +324,7 @@ struct dxil_spv_converter_s
 	bool uses_subgroup_size = false;
 	uint32_t workgroup_size[3] = {};
 	uint32_t patch_vertex_count = 0;
+	bool shader_feature_used[unsigned(ShaderFeature::Count)] = {};
 };
 
 dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
@@ -553,6 +554,8 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	                                        converter->workgroup_size[1],
 	                                        converter->workgroup_size[2]);
 	converter->patch_vertex_count = dxil_converter.get_patch_vertex_count();
+	for (int i = 0; i < int(ShaderFeature::Count); i++)
+		converter->shader_feature_used[i] = dxil_converter.shader_requires_feature(ShaderFeature(i));
 
 	return DXIL_SPV_SUCCESS;
 }
@@ -882,6 +885,15 @@ dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
 {
 	*patch_vertices = converter->patch_vertex_count;
 	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_bool dxil_spv_converter_uses_shader_feature(
+		dxil_spv_converter converter, dxil_spv_shader_feature feature)
+{
+	if (feature < int(ShaderFeature::Count))
+		return converter->shader_feature_used[feature] ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+	else
+		return DXIL_SPV_FALSE;
 }
 
 void dxil_spv_begin_thread_allocator_context(void)

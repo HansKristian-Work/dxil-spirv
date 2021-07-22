@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 8
+#define DXIL_SPV_API_VERSION_MINOR 9
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -278,6 +278,12 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_DESCRIPTOR_QA = 15,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
+
+typedef enum dxil_spv_shader_feature
+{
+	DXIL_SPV_SHADER_FEATURE_NATIVE_16BIT_OPERATIONS = 0,
+	DXIL_SPV_SHADER_FEATURE_INT_MAX = 0x7fffffff
+} dxil_spv_shader_feature;
 
 typedef struct dxil_spv_option_base
 {
@@ -533,6 +539,11 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_workgroup_dim
 /* After compilation, queries num vertices for HS. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
 	dxil_spv_converter converter, unsigned *patch_vertices);
+
+/* After compilation, queries if shader feature is used.
+ * Designed to map closely to D3D12 feature checks. */
+DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_shader_feature(
+	dxil_spv_converter converter, dxil_spv_shader_feature feature);
 
 /* Use an optimized allocation scheme.
  * Call begin before allocating any dxil_spv objects,

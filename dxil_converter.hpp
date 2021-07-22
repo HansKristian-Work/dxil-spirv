@@ -389,6 +389,12 @@ struct DescriptorTableEntry
 	uint32_t offset_in_heap;
 };
 
+enum class ShaderFeature
+{
+	Native16BitOperations = 0,
+	Count
+};
+
 class Converter
 {
 public:
@@ -424,6 +430,8 @@ public:
 	void get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const;
 	// After compilation, query expected patch size.
 	uint32_t get_patch_vertex_count() const;
+
+	bool shader_requires_feature(ShaderFeature feature) const;
 
 	struct Impl;
 
