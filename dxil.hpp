@@ -514,7 +514,8 @@ enum class TessellatorPartitioning : uint8_t
 
 enum ShaderFlag
 {
-	ShaderFlagEarlyDepthStencil = 1 << 3
+	ShaderFlagEarlyDepthStencil = 1 << 3,
+	ShaderFlagNativeLowPrecision = 1 << 23
 };
 
 enum class WaveOpKind : uint8_t

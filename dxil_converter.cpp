@@ -176,6 +176,57 @@ static bool image_dimension_is_multisampled(DXIL::ResourceKind kind)
 	}
 }
 
+static DXIL::ComponentType convert_16bit_component_to_32bit(DXIL::ComponentType type)
+{
+	switch (type)
+	{
+	case DXIL::ComponentType::F16:
+		return DXIL::ComponentType::F32;
+	case DXIL::ComponentType::I16:
+		return DXIL::ComponentType::I32;
+	case DXIL::ComponentType::U16:
+		return DXIL::ComponentType::U32;
+	default:
+		return type;
+	}
+}
+
+static DXIL::ComponentType convert_component_to_unsigned(DXIL::ComponentType type)
+{
+	switch (type)
+	{
+	case DXIL::ComponentType::I16:
+		return DXIL::ComponentType::U16;
+	case DXIL::ComponentType::I32:
+		return DXIL::ComponentType::U32;
+	case DXIL::ComponentType::I64:
+		return DXIL::ComponentType::U64;
+	default:
+		return type;
+	}
+}
+
+static DXIL::ComponentType normalize_component_type(DXIL::ComponentType type)
+{
+	switch (type)
+	{
+	case DXIL::ComponentType::UNormF16:
+	case DXIL::ComponentType::SNormF16:
+		return DXIL::ComponentType::F16;
+
+	case DXIL::ComponentType::UNormF32:
+	case DXIL::ComponentType::SNormF32:
+		return DXIL::ComponentType::F32;
+
+	case DXIL::ComponentType::UNormF64:
+	case DXIL::ComponentType::SNormF64:
+		return DXIL::ComponentType::F64;
+
+	default:
+		return type;
+	}
+}
+
 static spv::Id build_ssbo_runtime_array_type(Converter::Impl &impl, unsigned bits, unsigned vecsize,
                                              unsigned range_size, const char *name)
 {
@@ -275,9 +326,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			{
 				if (info.component != DXIL::ComponentType::U32 &&
 				    info.component != DXIL::ComponentType::I32 &&
-				    info.component != DXIL::ComponentType::F32 &&
-				    info.component != DXIL::ComponentType::UNormF32 &&
-				    info.component != DXIL::ComponentType::SNormF32)
+				    info.component != DXIL::ComponentType::F32)
 				{
 					LOGE("Invalid component type for image.\n");
 					return 0;
@@ -336,9 +385,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			{
 				if (info.component != DXIL::ComponentType::U32 &&
 				    info.component != DXIL::ComponentType::I32 &&
-				    info.component != DXIL::ComponentType::F32 &&
-				    info.component != DXIL::ComponentType::UNormF32 &&
-				    info.component != DXIL::ComponentType::SNormF32)
+				    info.component != DXIL::ComponentType::F32)
 				{
 					LOGE("Invalid component type for image.\n");
 					return 0;
@@ -401,8 +448,6 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			switch (meta.component_type)
 			{
 			case DXIL::ComponentType::F32:
-			case DXIL::ComponentType::UNormF32:
-			case DXIL::ComponentType::SNormF32:
 				meta.component_type = DXIL::ComponentType::F16;
 				break;
 
@@ -573,8 +618,6 @@ static bool component_type_is_16bit(DXIL::ComponentType type)
 	switch (type)
 	{
 	case DXIL::ComponentType::F16:
-	case DXIL::ComponentType::UNormF16:
-	case DXIL::ComponentType::SNormF16:
 	case DXIL::ComponentType::I16:
 	case DXIL::ComponentType::U16:
 		return true;
@@ -613,7 +656,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
-			actual_component_type = static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1));
+			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)));
 			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
 		else
@@ -640,7 +683,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			return false;
 
 		auto &access_meta = srv_access_tracking[index];
-		bool raw_access_16bit = (resource_kind == DXIL::ResourceKind::RawBuffer ||
+		bool raw_access_16bit = execution_mode_meta.native_16bit_operations &&
+		                        (resource_kind == DXIL::ResourceKind::RawBuffer ||
 		                         resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
 		                        access_meta.access_16bit;
 
@@ -990,7 +1034,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
-			actual_component_type = static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1));
+			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)));
 			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
 		else
@@ -1056,7 +1100,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
 
-		bool raw_access_16bit = (resource_kind == DXIL::ResourceKind::RawBuffer ||
+		bool raw_access_16bit = execution_mode_meta.native_16bit_operations &&
+		                        (resource_kind == DXIL::ResourceKind::RawBuffer ||
 		                         resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
 		                        access_meta.access_16bit;
 
@@ -2150,7 +2195,10 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 	case llvm::Type::TypeID::HalfTyID:
 	{
 		auto *fp = llvm::cast<llvm::ConstantFP>(constant);
-		return builder.makeFloat16Constant(fp->getValueAPF().bitcastToAPInt().getZExtValue() & 0xffffu);
+		if (support_16bit_operations())
+			return builder.makeFloat16Constant(fp->getValueAPF().bitcastToAPInt().getZExtValue() & 0xffffu);
+		else
+			return builder.makeFloatConstant(fp->getValueAPF().convertToFloat());
 	}
 
 	case llvm::Type::TypeID::FloatTyID:
@@ -2175,7 +2223,21 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 			return builder.makeBoolConstant(constant->getUniqueInteger().getZExtValue() != 0);
 
 		case 16:
-			return builder.makeUint16Constant(constant->getUniqueInteger().getZExtValue());
+			if (support_16bit_operations())
+				return builder.makeUint16Constant(constant->getUniqueInteger().getZExtValue());
+			else
+			{
+				// Integers are sign-extended on use.
+				// We don't know if the literal is intended to be used as signed or unsigned.
+				// Need to get the raw underlying value that has not been masked.
+				// It seems that the literal is sign-extended to 64-bit, so
+				// we should be safe here.
+#ifdef HAVE_LLVMBC
+				return builder.makeUintConstant(constant->getUniqueInteger().get_raw_value());
+#else
+				return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue());
+#endif
+			}
 
 		case 32:
 			return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue());
@@ -2356,7 +2418,7 @@ static llvm::Function *get_entry_point_function(llvm::MDNode *node)
 		return nullptr;
 }
 
-static const llvm::MDOperand *get_shader_property_tag(llvm::MDNode *func_meta, DXIL::ShaderPropertyTag tag)
+static const llvm::MDOperand *get_shader_property_tag(const llvm::MDNode *func_meta, DXIL::ShaderPropertyTag tag)
 {
 	if (func_meta && func_meta->getNumOperands() >= 5 && func_meta->getOperand(4))
 	{
@@ -2438,7 +2500,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	switch (type->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
-		return builder.makeFloatType(16);
+		return builder.makeFloatType(support_16bit_operations() ? 16 : 32);
 	case llvm::Type::TypeID::FloatTyID:
 		return builder.makeFloatType(32);
 	case llvm::Type::TypeID::DoubleTyID:
@@ -2450,6 +2512,8 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 		else
 		{
 			auto width = physical_integer_bit_width(type->getIntegerBitWidth());
+			if (width == 16 && !support_16bit_operations())
+				width = 32;
 			return builder.makeIntegerType(width, false);
 		}
 
@@ -2553,20 +2617,14 @@ spv::Id Converter::Impl::get_type_id(DXIL::ComponentType element_type, unsigned 
 		break;
 
 	case DXIL::ComponentType::F16:
-	case DXIL::ComponentType::UNormF16:
-	case DXIL::ComponentType::SNormF16:
 		component_type = builder.makeFloatType(16);
 		break;
 
 	case DXIL::ComponentType::F32:
-	case DXIL::ComponentType::UNormF32:
-	case DXIL::ComponentType::SNormF32:
 		component_type = builder.makeFloatType(32);
 		break;
 
 	case DXIL::ComponentType::F64:
-	case DXIL::ComponentType::UNormF64:
-	case DXIL::ComponentType::SNormF64:
 		component_type = builder.makeFloatType(64);
 		break;
 
@@ -2616,11 +2674,9 @@ bool Converter::Impl::emit_patch_variables()
 		auto *patch = llvm::cast<llvm::MDNode>(patch_node->getOperand(i));
 		auto element_id = get_constant_metadata(patch, 0);
 		auto semantic_name = get_string_metadata(patch, 1);
-		auto element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(patch, 2));
+		auto actual_element_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(patch, 2)));
+		auto effective_element_type = get_effective_input_output_type(actual_element_type);
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(patch, 3));
-
-		if (component_type_is_16bit(element_type))
-			builder.addCapability(spv::CapabilityStorageInputOutput16);
 
 		unsigned semantic_index = 0;
 		if (patch->getOperand(4))
@@ -2637,7 +2693,7 @@ bool Converter::Impl::emit_patch_variables()
 		else if (system_value == DXIL::Semantic::InsideTessFactor)
 			rows = 2;
 
-		spv::Id type_id = get_type_id(element_type, rows, cols);
+		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
 
 		auto variable_name = semantic_name;
 		if (semantic_index != 0)
@@ -2647,7 +2703,7 @@ bool Converter::Impl::emit_patch_variables()
 		}
 
 		spv::Id variable_id = create_variable(storage, type_id, variable_name.c_str());
-		patch_elements_meta[element_id] = { variable_id, element_type, 0 };
+		patch_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
 
 		if (system_value != DXIL::Semantic::User)
 		{
@@ -2741,7 +2797,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		auto *output = llvm::cast<llvm::MDNode>(outputs_node->getOperand(i));
 		auto element_id = get_constant_metadata(output, 0);
 		auto semantic_name = get_string_metadata(output, 1);
-		auto actual_element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2));
+		auto actual_element_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(output, 2)));
 		auto effective_element_type = get_effective_input_output_type(actual_element_type);
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(output, 3));
 
@@ -3372,7 +3428,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		auto *input = llvm::cast<llvm::MDNode>(inputs_node->getOperand(i));
 		auto element_id = get_constant_metadata(input, 0);
 		auto semantic_name = get_string_metadata(input, 1);
-		auto actual_element_type = static_cast<DXIL::ComponentType>(get_constant_metadata(input, 2));
+		auto actual_element_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(input, 2)));
 		auto effective_element_type = get_effective_input_output_type(actual_element_type);
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(input, 3));
 
@@ -3644,113 +3700,130 @@ void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type,
 	value_map[value] = repack_op->id;
 }
 
-void Converter::Impl::fixup_load_type_io(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
+bool Converter::Impl::support_16bit_operations() const
 {
-	if (component_type == DXIL::ComponentType::I32 ||
-	    (component_type == DXIL::ComponentType::I16 && options.storage_16bit_input_output))
-	{
-		DXIL::ComponentType uint_type = component_type == DXIL::ComponentType::I32 ?
-		                                DXIL::ComponentType::U32 : DXIL::ComponentType::U16;
-		Operation *op = allocate(spv::OpBitcast, get_type_id(uint_type, 1, components));
-		op->add_id(get_id_for_value(value));
-		add(op);
-		value_map[value] = op->id;
-	}
-	else if (component_type_is_16bit(component_type) && !options.storage_16bit_input_output)
-	{
-		spv::Op op;
+	return execution_mode_meta.native_16bit_operations || options.min_precision_prefer_native_16bit;
+}
 
-		switch (component_type)
+spv::Id Converter::Impl::build_value_cast(spv::Id value_id,
+                                          DXIL::ComponentType input_type,
+                                          DXIL::ComponentType output_type,
+                                          unsigned components)
+{
+	// This path only hits for bitcasts or 16-bit <-> 32-bit casts.
+	bool output_16bit = component_type_is_16bit(output_type);
+	bool input_16bit = component_type_is_16bit(input_type);
+
+	spv::Op opcode = spv::OpBitcast;
+
+	if (output_16bit != input_16bit)
+	{
+		switch (input_type)
 		{
 		case DXIL::ComponentType::F16:
-		case DXIL::ComponentType::UNormF16:
-		case DXIL::ComponentType::SNormF16:
-			op = spv::OpFConvert;
+		case DXIL::ComponentType::F32:
+			opcode = spv::OpFConvert;
 			break;
 
 		case DXIL::ComponentType::I16:
-			op = spv::OpSConvert;
-			component_type = DXIL::ComponentType::U16;
+		case DXIL::ComponentType::I32:
+			opcode = spv::OpSConvert;
 			break;
 
 		case DXIL::ComponentType::U16:
-			op = spv::OpUConvert;
+		case DXIL::ComponentType::U32:
+			opcode = spv::OpUConvert;
 			break;
 
 		default:
-			return;
+			break;
 		}
 
-		Operation *narrow_op = allocate(op, get_type_id(component_type, 1, components));
-		narrow_op->add_id(get_id_for_value(value));
-		add(narrow_op);
-		value_map[value] = narrow_op->id;
+		// OpUConvert is not allowed on integer outputs.
+		// We also need SConvert if we're doing 16 -> I32,
+		// since what we actually want is I16 -> I32.
+		switch (output_type)
+		{
+		case DXIL::ComponentType::I16:
+		case DXIL::ComponentType::I32:
+			opcode = spv::OpSConvert;
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	Operation *op = allocate(opcode, get_type_id(output_type, 1, components));
+	op->add_id(value_id);
+	add(op);
+	return op->id;
+}
+
+void Converter::Impl::fixup_load_type_io(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
+{
+	auto output_component_type = component_type;
+	auto input_component_type = component_type;
+
+	if (component_type_is_16bit(input_component_type) && (!options.storage_16bit_input_output || !support_16bit_operations()))
+		input_component_type = convert_16bit_component_to_32bit(input_component_type);
+
+	if (component_type_is_16bit(output_component_type) && !support_16bit_operations())
+		output_component_type = convert_16bit_component_to_32bit(output_component_type);
+	output_component_type = convert_component_to_unsigned(output_component_type);
+
+	if (output_component_type != input_component_type)
+	{
+		value_map[value] = build_value_cast(get_id_for_value(value), input_component_type,
+		                                    output_component_type, components);
 	}
 }
 
-void Converter::Impl::fixup_load_type_buffer(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
+void Converter::Impl::fixup_load_type_atomic(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value)
 {
-	if (component_type == DXIL::ComponentType::I32 || component_type == DXIL::ComponentType::I16)
+	auto output_component_type = component_type;
+	auto input_component_type = component_type;
+
+	if (!support_16bit_operations())
 	{
-		DXIL::ComponentType uint_type = component_type == DXIL::ComponentType::I32 ?
-		                                DXIL::ComponentType::U32 : DXIL::ComponentType::U16;
-		Operation *op = allocate(spv::OpBitcast, get_type_id(uint_type, 1, components));
-		op->add_id(get_id_for_value(value));
-		add(op);
-		value_map[value] = op->id;
+		if (component_type_is_16bit(input_component_type))
+			input_component_type = convert_16bit_component_to_32bit(input_component_type);
+		if (component_type_is_16bit(output_component_type))
+			output_component_type = convert_16bit_component_to_32bit(output_component_type);
+	}
+	output_component_type = convert_component_to_unsigned(output_component_type);
+
+	if (output_component_type != input_component_type)
+	{
+		value_map[value] = build_value_cast(get_id_for_value(value), input_component_type,
+		                                    output_component_type, components);
 	}
 }
 
 void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType &component_type, unsigned components, spv::Id &value_id,
                                             const llvm::Type *target_type)
 {
-	if (component_type == DXIL::ComponentType::I32)
-	{
-		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, components));
-		op->add_id(value_id);
-		add(op);
-		component_type = DXIL::ComponentType::U32;
-		value_id = op->id;
-	}
-	else if (component_type == DXIL::ComponentType::I16 || component_type == DXIL::ComponentType::U16)
-	{
-		if (target_type->getIntegerBitWidth() == 16)
-		{
-			auto opcode = component_type == DXIL::ComponentType::I16 ? spv::OpSConvert : spv::OpUConvert;
-			Operation *op = allocate(opcode, get_type_id(DXIL::ComponentType::U16, 1, components));
-			op->add_id(value_id);
-			add(op);
-			component_type = DXIL::ComponentType::U16;
-			value_id = op->id;
-		}
-		else if (target_type->getIntegerBitWidth() == 32 && component_type == DXIL::ComponentType::I16)
-		{
-			Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::U32, 1, components));
-			op->add_id(value_id);
-			add(op);
-			component_type = DXIL::ComponentType::U32;
-			value_id = op->id;
-		}
-	}
-	else if (component_type == DXIL::ComponentType::F16 ||
-	         component_type == DXIL::ComponentType::UNormF16 ||
-	         component_type == DXIL::ComponentType::SNormF16)
+	auto output_component_type = component_type;
+	auto input_component_type = get_effective_typed_resource_type(component_type);
+
+	if (component_type_is_16bit(output_component_type) && !support_16bit_operations())
+		output_component_type = convert_16bit_component_to_32bit(output_component_type);
+	else if (target_type->getTypeID() == llvm::Type::TypeID::FloatTyID)
 	{
 		// Only convert if we actually want half here.
 		// Certain operations always return float even if the resource type is half for some silly reason.
-		if (target_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-		{
-			Operation *op = allocate(spv::OpFConvert, get_type_id(DXIL::ComponentType::F16, 1, components));
-			op->add_id(value_id);
-			add(op);
-			component_type = DXIL::ComponentType::F16;
-			value_id = op->id;
-		}
+		output_component_type = DXIL::ComponentType::F32;
 	}
+
+	output_component_type = convert_component_to_unsigned(output_component_type);
+
+	if (output_component_type != input_component_type)
+		value_id = build_value_cast(value_id, input_component_type, output_component_type, components);
+	component_type = output_component_type;
 }
 
 void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType component_type, unsigned components,
-                                            const LLVMBC::Value *value, const llvm::Type *target_type)
+                                            const llvm::Value *value, const llvm::Type *target_type)
 {
 	spv::Id value_id = get_id_for_value(value);
 	spv::Id new_value_id = value_id;
@@ -3761,98 +3834,52 @@ void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType component_type, 
 
 spv::Id Converter::Impl::fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value)
 {
-	if (component_type == DXIL::ComponentType::I32 ||
-	    (component_type == DXIL::ComponentType::I16 && options.storage_16bit_input_output))
-	{
-		DXIL::ComponentType int_type = component_type == DXIL::ComponentType::I32 ?
-		                               DXIL::ComponentType::I32 : DXIL::ComponentType::I16;
-		Operation *op = allocate(spv::OpBitcast, get_type_id(int_type, 1, components));
-		op->add_id(value);
-		add(op);
-		return op->id;
-	}
-	else if (component_type_is_16bit(component_type) && !options.storage_16bit_input_output)
-	{
-		DXIL::ComponentType target_type;
-		spv::Op op;
+	auto output_component_type = component_type;
+	auto input_component_type = component_type;
 
-		switch (component_type)
-		{
-		case DXIL::ComponentType::F16:
-		case DXIL::ComponentType::UNormF16:
-		case DXIL::ComponentType::SNormF16:
-			target_type = DXIL::ComponentType::F32;
-			op = spv::OpFConvert;
-			break;
+	if (component_type_is_16bit(output_component_type) && (!options.storage_16bit_input_output || !support_16bit_operations()))
+		output_component_type = convert_16bit_component_to_32bit(output_component_type);
 
-		case DXIL::ComponentType::I16:
-			target_type = DXIL::ComponentType::I32;
-			op = spv::OpSConvert;
-			break;
+	if (component_type_is_16bit(input_component_type) && !support_16bit_operations())
+		input_component_type = convert_16bit_component_to_32bit(input_component_type);
+	input_component_type = convert_component_to_unsigned(input_component_type);
 
-		case DXIL::ComponentType::U16:
-			target_type = DXIL::ComponentType::U32;
-			op = spv::OpUConvert;
-			break;
-
-		default:
-			return value;
-		}
-
-		Operation *expand_op = allocate(op, get_type_id(target_type, 1, components));
-		expand_op->add_id(value);
-		add(expand_op);
-		return expand_op->id;
-	}
-	else
-		return value;
+	if (output_component_type != input_component_type)
+		value = build_value_cast(value, input_component_type, output_component_type, components);
+	return value;
 }
 
-spv::Id Converter::Impl::fixup_store_type_buffer(DXIL::ComponentType component_type, unsigned components, spv::Id value)
+spv::Id Converter::Impl::fixup_store_type_atomic(DXIL::ComponentType component_type, unsigned components, spv::Id value)
 {
-	if (component_type == DXIL::ComponentType::I32 || component_type == DXIL::ComponentType::I16)
+	auto output_component_type = component_type;
+	auto input_component_type = component_type;
+
+	if (!support_16bit_operations())
 	{
-		DXIL::ComponentType uint_type = component_type == DXIL::ComponentType::I32 ?
-		                                DXIL::ComponentType::I32 : DXIL::ComponentType::I16;
-		Operation *op = allocate(spv::OpBitcast, get_type_id(uint_type, 1, components));
-		op->add_id(value);
-		add(op);
-		return op->id;
+		if (component_type_is_16bit(input_component_type))
+			input_component_type = convert_16bit_component_to_32bit(input_component_type);
+		if (component_type_is_16bit(output_component_type))
+			output_component_type = convert_16bit_component_to_32bit(output_component_type);
 	}
-	else
-		return value;
+	input_component_type = convert_component_to_unsigned(input_component_type);
+
+	if (output_component_type != input_component_type)
+		value = build_value_cast(value, input_component_type, output_component_type, components);
+	return value;
 }
 
 spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value)
 {
-	auto effective_component_type = get_effective_typed_resource_type(component_type);
+	auto output_component_type = get_effective_typed_resource_type(component_type);
+	auto input_component_type = component_type;
 
-	if (component_type == DXIL::ComponentType::I32)
-	{
-		Operation *op = allocate(spv::OpBitcast, get_type_id(DXIL::ComponentType::I32, 1, components));
-		op->add_id(value);
-		add(op);
-		return op->id;
-	}
-	else if (component_type == DXIL::ComponentType::I16 || component_type == DXIL::ComponentType::U16)
-	{
-		auto opcode = component_type == DXIL::ComponentType::I16 ? spv::OpSConvert : spv::OpUConvert;
-		Operation *op = allocate(opcode, get_type_id(effective_component_type, 1, components));
-		op->add_id(value);
-		add(op);
-		return op->id;
-	}
-	else if (component_type == DXIL::ComponentType::F16 ||
-	         component_type == DXIL::ComponentType::UNormF16 ||
-	         component_type == DXIL::ComponentType::SNormF16)
-	{
-		Operation *op = allocate(spv::OpFConvert, get_type_id(effective_component_type, 1, components));
-		op->add_id(value);
-		add(op);
-		return op->id;
-	}
-	else
-		return value;
+	if (component_type_is_16bit(input_component_type) && !support_16bit_operations())
+		input_component_type = convert_16bit_component_to_32bit(input_component_type);
+	input_component_type = convert_component_to_unsigned(input_component_type);
+
+	if (output_component_type != input_component_type)
+		value = build_value_cast(value, input_component_type, output_component_type, components);
+	return value;
 }
 
 bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction)
@@ -3955,18 +3982,23 @@ static bool entry_point_modifies_sample_mask(const llvm::MDNode *node)
 	return false;
 }
 
+static uint64_t get_shader_flags(const llvm::MDNode *entry_point_meta)
+{
+	auto *flags_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ShaderFlags);
+	if (flags_node)
+		return llvm::cast<llvm::ConstantAsMetadata>(*flags_node)->getValue()->getUniqueInteger().getZExtValue();
+	else
+		return 0;
+}
+
 bool Converter::Impl::emit_execution_modes_pixel()
 {
 	auto &builder = spirv_module.get_builder();
-	auto *flags_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ShaderFlags);
+	auto flags = get_shader_flags(entry_point_meta);
 	bool early_depth_stencil = false;
 
-	if (flags_node)
-	{
-		auto flags = llvm::cast<llvm::ConstantAsMetadata>(*flags_node)->getValue()->getUniqueInteger().getZExtValue();
-		if (flags & DXIL::ShaderFlagEarlyDepthStencil)
-			early_depth_stencil = true;
-	}
+	if (flags & DXIL::ShaderFlagEarlyDepthStencil)
+		early_depth_stencil = true;
 
 	if (options.descriptor_qa_enabled)
 	{
@@ -4268,6 +4300,9 @@ bool Converter::Impl::emit_execution_modes()
 	default:
 		break;
 	}
+
+	auto flags = get_shader_flags(entry_point_meta);
+	execution_mode_meta.native_16bit_operations = (flags & DXIL::ShaderFlagNativeLowPrecision) != 0;
 
 	return true;
 }
@@ -4699,38 +4734,15 @@ DXIL::ComponentType Converter::Impl::get_effective_typed_resource_type(DXIL::Com
 	// Expand/contract on load/store.
 	// DXIL can emit half textures for example,
 	// but we need to contract or expand instead.
-	switch (type)
-	{
-	case DXIL::ComponentType::F16:
-	case DXIL::ComponentType::UNormF16:
-	case DXIL::ComponentType::SNormF16:
-		return DXIL::ComponentType::F32;
-	case DXIL::ComponentType::I16:
-		return DXIL::ComponentType::I32;
-	case DXIL::ComponentType::U16:
-		return DXIL::ComponentType::U32;
-	default:
-		return type;
-	}
+	return convert_16bit_component_to_32bit(type);
 }
 
 DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::ComponentType type)
 {
-	if (options.storage_16bit_input_output)
+	if (options.storage_16bit_input_output && support_16bit_operations())
 	{
-		switch (type)
-		{
-		case DXIL::ComponentType::F16:
-		case DXIL::ComponentType::UNormF16:
-		case DXIL::ComponentType::SNormF16:
-		case DXIL::ComponentType::I16:
-		case DXIL::ComponentType::U16:
+		if (component_type_is_16bit(type))
 			builder().addCapability(spv::CapabilityStorageInputOutput16);
-			break;
-
-		default:
-			break;
-		}
 	}
 	else
 	{
@@ -4738,19 +4750,7 @@ DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::Compo
 		// The only reasonable way this can break is if application relies on
 		// lower precision in interpolation, but I don't think you can rely on that
 		// kind of implementation detail ...
-		switch (type)
-		{
-		case DXIL::ComponentType::F16:
-		case DXIL::ComponentType::UNormF16:
-		case DXIL::ComponentType::SNormF16:
-			return DXIL::ComponentType::F32;
-		case DXIL::ComponentType::I16:
-			return DXIL::ComponentType::I32;
-		case DXIL::ComponentType::U16:
-			return DXIL::ComponentType::U32;
-		default:
-			break;
-		}
+		type = convert_16bit_component_to_32bit(type);
 	}
 
 	return type;
@@ -4879,6 +4879,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::MinPrecisionNative16Bit:
+	{
+		auto &minprec = static_cast<const OptionMinPrecisionNative16Bit &>(cap);
+		options.min_precision_prefer_native_16bit = minprec.enabled;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -4924,6 +4931,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::BindlessOffsetBufferLayout:
 	case Option::StorageInputOutput16:
 	case Option::DescriptorQA:
+	case Option::MinPrecisionNative16Bit:
 		return true;
 
 	default:

@@ -184,6 +184,7 @@ struct Converter::Impl
 		unsigned gs_stream_active_mask = 0;
 		llvm::Function *patch_constant_function = nullptr;
 		unsigned workgroup_threads[3] = {};
+		bool native_16bit_operations = false;
 	} execution_mode_meta;
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
@@ -313,7 +314,7 @@ struct Converter::Impl
 	spv::Id build_constant_vector(spv::Id element_type, spv::Id *elements, unsigned count);
 	spv::Id build_offset(spv::Id value, unsigned offset);
 	void fixup_load_type_io(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
-	void fixup_load_type_buffer(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
+	void fixup_load_type_atomic(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
 	void fixup_load_type_typed(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value,
 	                           const llvm::Type *target_type);
 	void fixup_load_type_typed(DXIL::ComponentType &component_type, unsigned components, spv::Id &value_id,
@@ -321,8 +322,11 @@ struct Converter::Impl
 	void repack_sparse_feedback(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value,
 	                            const llvm::Type *target_type);
 	spv::Id fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value);
-	spv::Id fixup_store_type_buffer(DXIL::ComponentType component_type, unsigned components, spv::Id value);
+	spv::Id fixup_store_type_atomic(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 	spv::Id fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value);
+	spv::Id build_value_cast(spv::Id value_id, DXIL::ComponentType input_type, DXIL::ComponentType output_type,
+	                         unsigned components);
+	bool support_16bit_operations() const;
 
 	Vector<Operation *> *current_block = nullptr;
 	void add(Operation *op);
@@ -389,6 +393,7 @@ struct Converter::Impl
 		DescriptorQAInfo descriptor_qa;
 		bool descriptor_qa_enabled = false;
 		bool descriptor_qa_sink_handles = true;
+		bool min_precision_prefer_native_16bit = false;
 	} options;
 
 	struct BindlessInfo

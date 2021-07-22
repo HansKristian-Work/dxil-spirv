@@ -164,8 +164,9 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	spv::Id index_id = 0;
 
 	// Only 16-bit and 32-bit memory access is supported in DXIL.
+	// A 16-bit raw load is only actually 16-bit if native 16-bit operations are enabled.
 	unsigned addr_shift_log2 = 2;
-	if (data_type && type_is_16bit(data_type))
+	if (data_type && impl.execution_mode_meta.native_16bit_operations && type_is_16bit(data_type))
 		addr_shift_log2 = 1;
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
@@ -315,6 +316,30 @@ static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl
 	return emit_u32x2_u32_add(impl, ptr_id, byte_offset_id);
 }
 
+static void get_physical_load_store_cast_info(Converter::Impl &impl, const llvm::Type *element_type,
+                                              spv::Id &physical_type_id, spv::Op &value_cast_op)
+{
+	if (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
+	    impl.options.min_precision_prefer_native_16bit)
+	{
+		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+		{
+			physical_type_id = impl.get_type_id(DXIL::ComponentType::F32, 1, 1);
+			value_cast_op = spv::OpFConvert;
+		}
+		else
+		{
+			physical_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1, 1);
+			value_cast_op = spv::OpUConvert;
+		}
+	}
+	else
+	{
+		physical_type_id = impl.get_type_id(element_type);
+		value_cast_op = spv::OpNop;
+	}
+}
+
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                   const Converter::Impl::PhysicalPointerMeta &ptr_meta,
                                                   uint32_t mask = 0, uint32_t alignment = 0)
@@ -341,10 +366,14 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 		return false;
 	}
 
-	spv::Id type_id = impl.get_type_id(instruction->getType()->getStructElementType(0));
+	auto *element_type = instruction->getType()->getStructElementType(0);
+	spv::Id physical_type_id;
+	spv::Op value_cast_op;
+	get_physical_load_store_cast_info(impl, element_type, physical_type_id, value_cast_op);
+
 	if (vecsize > 1)
-		type_id = builder.makeVectorType(type_id, vecsize);
-	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(type_id, ptr_meta);
+		physical_type_id = builder.makeVectorType(physical_type_id, vecsize);
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(physical_type_id, ptr_meta);
 
 	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
@@ -352,16 +381,30 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	ptr_bitcast_op->add_id(u64_ptr_id);
 	impl.add(ptr_bitcast_op);
 
-	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id));
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, physical_type_id));
 	chain_op->add_id(ptr_bitcast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
 	impl.add(chain_op);
 
-	auto *load_op = impl.allocate(spv::OpLoad, instruction, type_id);
+	auto *load_op = impl.allocate(spv::OpLoad, physical_type_id);
 	load_op->add_id(chain_op->id);
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
 	load_op->add_literal(alignment);
 	impl.add(load_op);
+
+	spv::Id loaded_id = load_op->id;
+
+	if (value_cast_op != spv::OpNop)
+	{
+		spv::Id type_id = impl.get_type_id(element_type);
+		if (vecsize > 1)
+			type_id = builder.makeVectorType(type_id, vecsize);
+		auto *cast_op = impl.allocate(value_cast_op, type_id);
+		cast_op->add_id(loaded_id);
+		impl.add(cast_op);
+		loaded_id = cast_op->id;
+	}
+	impl.value_map[instruction] = loaded_id;
 
 	if (vecsize == 1)
 		impl.llvm_composite_meta[instruction].forced_composite = false;
@@ -405,7 +448,11 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	auto *result_type = instruction->getType();
 	auto *target_type = result_type->getStructElementType(0);
-	unsigned bits = meta.storage == spv::StorageClassStorageBuffer &&
+
+	// SSBO operations with min16* types are actually 32-bit.
+	// We only get native 16-bit load-store with native_16bit_operations.
+	unsigned bits = impl.execution_mode_meta.native_16bit_operations &&
+	                meta.storage == spv::StorageClassStorageBuffer &&
 	                type_is_16bit(target_type) ? 16 : 32;
 	if (bits == 16)
 		image_id = meta.var_id_16bit;
@@ -435,7 +482,11 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		spv::Id extracted_id_type = builder.makeUintType(bits);
 		spv::Id constructed_id = 0;
 		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
-		bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
+
+		auto *element_type = result_type->getStructElementType(0);
+		bool need_cast = (element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID) ||
+		                 (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
+		                  impl.options.min_precision_prefer_native_16bit);
 
 		if (ssbo && sparse)
 		{
@@ -534,12 +585,12 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			{
 				Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction);
 
-				if (need_bitcast)
+				if (need_cast)
 				{
 					for (unsigned i = 0; i < conservative_num_elements; i++)
 					{
 						auto *bitcast_op =
-						    impl.allocate(spv::OpBitcast, impl.get_type_id(result_type->getStructElementType(0)));
+						    impl.allocate(spv::OpBitcast, impl.get_type_id(element_type));
 						bitcast_op->add_id(component_ids[i]);
 						impl.add(bitcast_op);
 						component_ids[i] = bitcast_op->id;
@@ -549,7 +600,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 				for (unsigned i = 0; i < conservative_num_elements; i++)
 					op->add_id(component_ids[i]);
 				for (unsigned i = conservative_num_elements; i < 4; i++)
-					op->add_id(builder.createUndefined(impl.get_type_id(result_type->getStructElementType(0))));
+					op->add_id(builder.createUndefined(impl.get_type_id(element_type)));
 				op->add_id(sparse_code_id);
 				impl.add(op);
 			}
@@ -561,15 +612,50 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 		if (!sparse)
 		{
-			if (need_bitcast)
+			if (need_cast)
 			{
-				Operation *op = impl.allocate(
-					spv::OpBitcast, impl.build_vector_type(impl.get_type_id(result_type->getStructElementType(0)),
-					                                       conservative_num_elements));
+				spv::Id casted_id;
 
-				op->add_id(constructed_id);
-				impl.add(op);
-				impl.value_map[instruction] = op->id;
+				if (type_is_16bit(element_type) &&
+				    !impl.execution_mode_meta.native_16bit_operations &&
+				    impl.options.min_precision_prefer_native_16bit)
+				{
+					if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+					{
+						Operation *bitcast_op = impl.allocate(
+							spv::OpBitcast,
+							impl.get_type_id(DXIL::ComponentType::F32, 1, conservative_num_elements));
+						bitcast_op->add_id(constructed_id);
+						impl.add(bitcast_op);
+						casted_id = bitcast_op->id;
+
+						Operation *narrow_op = impl.allocate(
+							spv::OpFConvert,
+							impl.get_type_id(DXIL::ComponentType::F16, 1, conservative_num_elements));
+						narrow_op->add_id(casted_id);
+						impl.add(narrow_op);
+						casted_id = narrow_op->id;
+					}
+					else
+					{
+						Operation *narrow_op = impl.allocate(
+							spv::OpUConvert,
+							impl.get_type_id(DXIL::ComponentType::U16, 1, conservative_num_elements));
+						narrow_op->add_id(constructed_id);
+						impl.add(narrow_op);
+						casted_id = narrow_op->id;
+					}
+				}
+				else
+				{
+					Operation *op = impl.allocate(
+						spv::OpBitcast, impl.build_vector_type(impl.get_type_id(element_type), conservative_num_elements));
+					op->add_id(constructed_id);
+					impl.add(op);
+					casted_id = op->id;
+				}
+
+				impl.value_map[instruction] = casted_id;
 			}
 			else
 				impl.value_map[instruction] = constructed_id;
@@ -638,10 +724,14 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 		return false;
 	}
 
-	spv::Id type_id = impl.get_type_id(instruction->getOperand(4)->getType());
-	spv::Id vec_type_id = type_id;
+	auto *element_type = instruction->getOperand(4)->getType();
+	spv::Id physical_type_id;
+	spv::Op value_cast_op;
+	get_physical_load_store_cast_info(impl, element_type, physical_type_id, value_cast_op);
+
+	spv::Id vec_type_id = physical_type_id;
 	if (vecsize > 1)
-		vec_type_id = builder.makeVectorType(type_id, vecsize);
+		vec_type_id = builder.makeVectorType(physical_type_id, vecsize);
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, ptr_meta);
 
 	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
@@ -661,7 +751,17 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 
 	auto *store_op = impl.allocate(spv::OpStore);
 	store_op->add_id(chain_op->id);
-	store_op->add_id(impl.build_vector(type_id, elems, vecsize));
+
+	spv::Id vec_id = impl.build_vector(physical_type_id, elems, vecsize);
+	if (value_cast_op != spv::OpNop)
+	{
+		auto *op = impl.allocate(value_cast_op, vec_type_id);
+		op->add_id(vec_id);
+		impl.add(op);
+		vec_id = op->id;
+	}
+
+	store_op->add_id(vec_id);
 	store_op->add_literal(spv::MemoryAccessAlignedMask);
 	store_op->add_literal(alignment);
 	impl.add(store_op);
@@ -724,8 +824,13 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, 4);
 	}
 
-	unsigned bits = meta.storage == spv::StorageClassStorageBuffer &&
-	                type_is_16bit(instruction->getOperand(4)->getType()) ? 16 : 32;
+	auto *element_type = instruction->getOperand(4)->getType();
+
+	// SSBO operations with min16* types are actually 32-bit.
+	// We only get native 16-bit load-store with native_16bit_operations.
+	unsigned bits = impl.execution_mode_meta.native_16bit_operations &&
+	                meta.storage == spv::StorageClassStorageBuffer &&
+	                type_is_16bit(element_type) ? 16 : 32;
 	if (bits == 16)
 		image_id = meta.var_id_16bit;
 
@@ -743,7 +848,35 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 			store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
 			if (!is_typed)
 			{
-				if (instruction->getOperand(4 + i)->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+				// If we're storing to min16 types and we use native 16-bit in arithmetic,
+				// we have to expand to 32-bit before storing :(
+				// This will probably fall over with int vs uint, since we don't know how to sign-extend.
+				if (!impl.execution_mode_meta.native_16bit_operations &&
+				    impl.options.min_precision_prefer_native_16bit &&
+				    type_is_16bit(element_type))
+				{
+					if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+					{
+						Operation *op = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
+						op->add_id(store_values[i]);
+						store_values[i] = op->id;
+						impl.add(op);
+
+						Operation *bitcast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+						bitcast_op->add_id(store_values[i]);
+						impl.add(bitcast_op);
+						store_values[i] = bitcast_op->id;
+					}
+					else
+					{
+						// SConvert or UConvert, who knows. :)
+						Operation *op = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
+						op->add_id(store_values[i]);
+						store_values[i] = op->id;
+						impl.add(op);
+					}
+				}
+				else if (element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 				{
 					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(bits));
 					op->add_id(store_values[i]);
@@ -973,11 +1106,11 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	    counter_ptr_op->id,
 	    builder.makeUintConstant(spv::ScopeDevice),
 	    builder.makeUintConstant(0), // Relaxed
-	    impl.fixup_store_type_buffer(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
+	    impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
 	});
 
 	impl.add(op);
-	impl.fixup_load_type_buffer(component_type, 1, instruction);
+	impl.fixup_load_type_atomic(component_type, 1, instruction);
 	return true;
 }
 
@@ -1055,8 +1188,8 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	spv::Id comparison_id = impl.get_id_for_value(instruction->getOperand(5));
 	spv::Id new_value_id = impl.get_id_for_value(instruction->getOperand(6));
-	comparison_id = impl.fixup_store_type_buffer(component_type, 1, comparison_id);
-	new_value_id = impl.fixup_store_type_buffer(component_type, 1, new_value_id);
+	comparison_id = impl.fixup_store_type_atomic(component_type, 1, comparison_id);
+	new_value_id = impl.fixup_store_type_atomic(component_type, 1, new_value_id);
 
 	op->add_ids({
 	    counter_ptr_op->id,
@@ -1068,7 +1201,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	});
 
 	impl.add(op);
-	impl.fixup_load_type_buffer(component_type, 1, instruction);
+	impl.fixup_load_type_atomic(component_type, 1, instruction);
 	return true;
 }
 
