@@ -244,6 +244,7 @@ float APFloat::convertToFloat() const
 		return half_to_float(uint16_t(value));
 
 	default:
+		LOGE("Unknown FP type in APFloat::convertToFloat().\n");
 		return 0.0f;
 	}
 }
@@ -296,6 +297,7 @@ double APFloat::convertToDouble() const
 		return double(half_to_float(uint16_t(value)));
 
 	default:
+		LOGE("Unknown FP type in APFloat::convertToDouble().\n");
 		return 0.0f;
 	}
 }
