@@ -283,7 +283,7 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 	op->add_ids({ id0, id1 });
 
 	impl.add(op);
-	if (!instruction->isFast() && is_precision_sensitive)
+	if (is_precision_sensitive && !instruction->isFast())
 		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
 	return true;
 }
@@ -322,7 +322,10 @@ static spv::Id emit_boolean_trunc_instruction(Converter::Impl &impl, const Instr
 	switch (physical_width)
 	{
 	case 16:
-		op->add_id(builder.makeUint16Constant(0));
+		if (impl.support_16bit_operations())
+			op->add_id(builder.makeUint16Constant(0));
+		else
+			op->add_id(builder.makeUintConstant(0));
 		break;
 
 	case 32:
@@ -351,8 +354,16 @@ static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const Ins
 	switch (instruction->getType()->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
-		const_0 = builder.makeFloat16Constant(0);
-		const_1 = builder.makeFloat16Constant(0x3c00u | (is_signed ? 0x8000u : 0u));
+		if (impl.support_16bit_operations())
+		{
+			const_0 = builder.makeFloat16Constant(0);
+			const_1 = builder.makeFloat16Constant(0x3c00u | (is_signed ? 0x8000u : 0u));
+		}
+		else
+		{
+			const_0 = builder.makeFloatConstant(0.0f);
+			const_1 = builder.makeFloatConstant(is_signed ? -1.0f : 1.0f);
+		}
 		break;
 
 	case llvm::Type::TypeID::FloatTyID:
@@ -369,8 +380,16 @@ static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const Ins
 		switch (physical_integer_bit_width(instruction->getType()->getIntegerBitWidth()))
 		{
 		case 16:
-			const_0 = builder.makeUint16Constant(0);
-			const_1 = builder.makeUint16Constant(is_signed ? 0xffff : 1u);
+			if (impl.support_16bit_operations())
+			{
+				const_0 = builder.makeUint16Constant(0);
+				const_1 = builder.makeUint16Constant(is_signed ? 0xffff : 1u);
+			}
+			else
+			{
+				const_0 = builder.makeUintConstant(0);
+				const_1 = builder.makeUintConstant(is_signed ? 0xffffffffu : 1u);
+			}
 			break;
 
 		case 32:
@@ -429,11 +448,70 @@ static spv::Id emit_masked_cast_instruction(Converter::Impl &impl, const Instruc
 	return 0;
 }
 
+static unsigned get_effective_integer_width(Converter::Impl &impl, unsigned width)
+{
+	if (!impl.support_16bit_operations() && width == 16)
+		width = 32;
+	return width;
+}
+
+template <typename InstructionType>
+static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *instruction)
+{
+	// In case we extend min16int to int without native 16-bit ints, this is just a noop.
+	// I don't believe overflow is well defined for min-precision integers ...
+	// They certainly are not in Vulkan.
+	switch (instruction->getOpcode())
+	{
+	case llvm::Instruction::CastOps::SExt:
+	case llvm::Instruction::CastOps::ZExt:
+	case llvm::Instruction::CastOps::Trunc:
+		if (get_effective_integer_width(impl, instruction->getType()->getIntegerBitWidth()) ==
+		    get_effective_integer_width(impl, instruction->getOperand(0)->getType()->getIntegerBitWidth()))
+		{
+			return true;
+		}
+		break;
+
+	case llvm::Instruction::CastOps::FPExt:
+		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID &&
+		    instruction->getOperand(0)->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
+		    !impl.support_16bit_operations())
+		{
+			return true;
+		}
+		break;
+
+	case llvm::Instruction::CastOps::FPTrunc:
+	{
+		if (instruction->getOperand(0)->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID &&
+		    instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
+		    !impl.support_16bit_operations())
+		{
+			return true;
+		}
+		break;
+	}
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
 template <typename InstructionType>
 static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
 	spv::Op opcode;
 	bool signed_input = false;
+
+	if (value_cast_is_noop(impl, instruction))
+	{
+		spv::Id id = impl.get_id_for_value(instruction->getOperand(0));
+		impl.value_map[instruction] = id;
+		return id;
+	}
 
 	switch (instruction->getOpcode())
 	{

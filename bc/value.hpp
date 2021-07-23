@@ -112,6 +112,11 @@ public:
 	uint64_t getZExtValue() const;
 	int64_t getSExtValue() const;
 
+	// LLVMBC specific hack to make minprecision with signed ints work.
+	// We need a sign-extended value which fortunately the DXIL emits,
+	// but LLVM itself will mask off the bits for you.
+	uint64_t get_raw_value() const;
+
 private:
 	Type *type = nullptr;
 	uint64_t value = 0;

@@ -142,7 +142,8 @@ static void print_help()
 	     "\t[--bindless-offset-buffer-layout <untyped offset> <typed offset> <stride>]\n"
 	     "\t[--storage-input-output-16bit]\n"
 	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n"
-	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n");
+	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
+	     "\t[--min-precision-native-16bit]\n");
 }
 
 struct Arguments
@@ -166,6 +167,7 @@ struct Arguments
 	bool bindless_cbv_as_ssbo = false;
 	bool typed_uav_read_without_format = false;
 	bool bindless_typed_buffer_offsets = false;
+	bool min_precision_native_16bit = false;
 
 	unsigned ssbo_alignment = 1;
 
@@ -644,6 +646,7 @@ int main(int argc, char **argv)
 		args.descriptor_qa_binding = parser.next_uint();
 		args.shader_hash = uint64_t(strtoull(parser.next_string(), nullptr, 16));
 	});
+	cbs.add("--min-precision-native-16bit", [&](CLIParser &) { args.min_precision_native_16bit = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -783,6 +786,12 @@ int main(int argc, char **argv)
 		                                           args.descriptor_qa_set, args.descriptor_qa_binding + 1,
 		                                           args.shader_hash };
 		dxil_spv_converter_add_option(converter, &qa.base);
+	}
+
+	{
+		const dxil_spv_option_min_precision_native_16bit minprec = { { DXIL_SPV_OPTION_MIN_PRECISION_NATIVE_16BIT },
+		                                                             args.min_precision_native_16bit ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		dxil_spv_converter_add_option(converter, &minprec.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
