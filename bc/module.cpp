@@ -49,6 +49,17 @@ enum class KnownBlocks : uint32_t
 	TYPE_BLOCK = 17,
 };
 
+enum class AttributeRecord : uint32_t
+{
+	NONE = 0,
+	ALIGNMENT = 1,
+	BY_VAL = 3,
+	STACK_ALIGNMENT = 25,
+	DEREFERENCEABLE = 41,
+	DEREFERENCEABLE_OR_NULL = 42,
+	ALLOC_SIZE = 51
+};
+
 enum class ModuleRecord : uint32_t
 {
 	VERSION = 1,
@@ -180,6 +191,13 @@ enum class MetaDataRecord : uint32_t
 	COMMON_BLOCK = 44,
 };
 
+enum class AttributeCodes : uint32_t
+{
+	CodeEntryOld = 1,
+	CodeEntry = 2,
+	GroupCodeEntry = 3
+};
+
 enum class TypeRecord : uint32_t
 {
 	NUMENTRY = 1,
@@ -297,6 +315,8 @@ struct ModuleParseContext
 	Vector<Function *> functions_with_bodies;
 	UnorderedMap<uint64_t, MDOperand *> metadata;
 	UnorderedMap<uint64_t, String> metadata_kind_map;
+	Vector<Vector<std::pair<String, String>>> attribute_lists;
+	UnorderedMap<uint64_t, Vector<std::pair<String, String>>> attribute_groups;
 	Type *constant_type = nullptr;
 	String current_metadata_name;
 
@@ -305,6 +325,8 @@ struct ModuleParseContext
 	bool parse_constants_record(const BlockOrRecord &entry);
 	bool parse_constants_block(const BlockOrRecord &entry);
 	bool parse_metadata_block(const BlockOrRecord &entry);
+	bool parse_paramattr_block(const BlockOrRecord &entry);
+	bool parse_paramattr_group_block(const BlockOrRecord &entry);
 	bool parse_metadata_attachment_record(const BlockOrRecord &entry);
 	bool parse_metadata_record(const BlockOrRecord &entry, unsigned index);
 	Type *get_constant_type();
@@ -1024,6 +1046,124 @@ bool ModuleParseContext::parse_metadata_block(const BlockOrRecord &entry)
 	for (auto &child : entry.children)
 		if (!parse_metadata_record(child, index++))
 			return false;
+	return true;
+}
+
+bool ModuleParseContext::parse_paramattr_block(const BlockOrRecord &entry)
+{
+	for (auto &child : entry.children)
+	{
+		if (!child.IsRecord())
+			continue;
+
+		// Don't support the OLD variant unless we observe it in the wild.
+		// DXC doesn't generate it.
+		if (AttributeCodes(child.id) != AttributeCodes::CodeEntry)
+			return false;
+
+		Vector<std::pair<String, String>> pairs;
+		for (auto op : child.ops)
+		{
+			auto &grp = attribute_groups[op];
+			for (auto &elem : grp)
+				pairs.push_back(elem);
+		}
+		attribute_lists.push_back(std::move(pairs));
+	}
+	return true;
+}
+
+bool ModuleParseContext::parse_paramattr_group_block(const BlockOrRecord &entry)
+{
+	if (!attribute_groups.empty())
+	{
+		LOGE("Cannot use multiple group blocks.\n");
+		return false;
+	}
+
+	for (auto &child : entry.children)
+	{
+		if (!child.IsRecord())
+			continue;
+		if (AttributeCodes(child.id) != AttributeCodes::GroupCodeEntry)
+			continue;
+
+		if (child.ops.size() < 3)
+			return false;
+
+		uint64_t group_id = child.ops[0];
+		uint64_t index = child.ops[1];
+
+		if (index != ~0u) // Only care about attributes on function scope
+			continue;
+
+		auto &attr_group = attribute_groups[group_id];
+
+		size_t i = 2;
+		size_t count = child.ops.size();
+		while (i < count)
+		{
+			if (child.ops[i] == 0) // Enum attribute, skip 2 values
+			{
+				i += 2;
+			}
+			else if (child.ops[i] == 1) // Integer attribute, skip 2 or 3 values
+			{
+				i++;
+				if (i >= count)
+					return false;
+
+				switch (AttributeRecord(child.ops[i++]))
+				{
+				case AttributeRecord::ALIGNMENT:
+				case AttributeRecord::STACK_ALIGNMENT:
+				case AttributeRecord::ALLOC_SIZE:
+				case AttributeRecord::DEREFERENCEABLE:
+				case AttributeRecord::DEREFERENCEABLE_OR_NULL:
+					i++;
+					break;
+
+				default:
+					break;
+				}
+			}
+			else if (child.ops[i] == 3 || child.ops[i] == 4) // String attribute
+			{
+				bool has_value = child.ops[i++] == 4;
+				String kind, value;
+
+				while (child.ops[i] != 0 && i < count)
+					kind.push_back(char(child.ops[i++]));
+				if (child.ops[i] != 0)
+					return false;
+				i++;
+
+				if (has_value)
+				{
+					while (child.ops[i] != 0 && i < count)
+						value.push_back(char(child.ops[i++]));
+					if (child.ops[i] != 0)
+						return false;
+					i++;
+				}
+				attr_group.emplace_back(std::move(kind), std::move(value));
+			}
+			else if (child.ops[i] == 5 || child.ops[i] == 6) // Value attribute
+			{
+				bool has_type = child.ops[i++] == 6;
+				if (i >= count)
+					return false;
+				if (AttributeRecord(child.ops[i++]) == AttributeRecord::BY_VAL && has_type)
+					i++;
+			}
+			else
+				return false;
+		}
+
+		if (i > count)
+			return false;
+	}
+
 	return true;
 }
 
@@ -1961,6 +2101,10 @@ bool ModuleParseContext::parse_function_record(const BlockOrRecord &entry)
 
 	auto id = values.size();
 	auto *func = context->construct<Function>(func_type, id, *module);
+
+	if (entry.ops.size() >= 5 && entry.ops[4] != 0 && (entry.ops[4] - 1) < attribute_lists.size())
+		func->set_attributes(attribute_lists[entry.ops[4] - 1]);
+
 	values.push_back(func);
 
 	if (!is_proto)
@@ -2144,6 +2288,16 @@ Module *parseIR(LLVMContext &context, const void *data, size_t size)
 
 			case KnownBlocks::METADATA_BLOCK:
 				if (!parse_context.parse_metadata_block(child))
+					return nullptr;
+				break;
+
+			case KnownBlocks::PARAMATTR_BLOCK:
+				if (!parse_context.parse_paramattr_block(child))
+					return nullptr;
+				break;
+
+			case KnownBlocks::PARAMATTR_GROUP_BLOCK:
+				if (!parse_context.parse_paramattr_group_block(child))
 					return nullptr;
 				break;
 

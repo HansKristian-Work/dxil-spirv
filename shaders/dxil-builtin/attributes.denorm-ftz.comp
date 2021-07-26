@@ -1,0 +1,8 @@
+StructuredBuffer<float> A;
+RWStructuredBuffer<float> B;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	B[thr] = 2.0 * A[thr];
+}

@@ -69,6 +69,33 @@ void Function::add_argument(Argument *arg)
 	arguments.push_back(arg);
 }
 
+String Attribute::getValueAsString() const
+{
+	// LLVM implementation does this.
+	if (value)
+		return *value;
+	else
+		return {};
+}
+
+Attribute::Attribute(const String *value_)
+	: value(value_)
+{
+}
+
+Attribute Function::getFnAttribute(const char *attribute) const
+{
+	for (auto &attr : attributes)
+		if (attr.first == attribute)
+			return Attribute(&attr.second);
+	return Attribute(nullptr);
+}
+
+void Function::set_attributes(Vector<std::pair<String, String>> attributes_)
+{
+	attributes = std::move(attributes_);
+}
+
 IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> Function::arg_begin() const
 {
 	return arguments.begin();

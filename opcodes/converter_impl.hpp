@@ -131,6 +131,7 @@ struct Converter::Impl
 	bool emit_execution_modes_domain();
 	bool emit_execution_modes_pixel();
 	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
+	bool emit_execution_modes_fp_denorm();
 
 	bool analyze_instructions();
 	bool analyze_instructions(const llvm::Function *function);
