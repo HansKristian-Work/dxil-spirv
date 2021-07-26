@@ -372,4 +372,88 @@ bool emit_bitcast_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	return true;
 }
 
+static spv::Id build_bfe(Converter::Impl &impl, spv::Id value_id, unsigned offset, unsigned bits, bool sign_extend)
+{
+	auto &builder = impl.builder();
+	auto *op = impl.allocate(sign_extend ? spv::OpBitFieldSExtract : spv::OpBitFieldUExtract, builder.makeUintType(32));
+	op->add_id(value_id);
+	op->add_id(builder.makeUintConstant(offset));
+	op->add_id(builder.makeUintConstant(bits));
+	impl.add(op);
+	return op->id;
+}
+
+bool emit_i8_dot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool sign_extend)
+{
+	// Can be improved with a specific intrinsic to support this.
+	// This is mostly a thing for machine learning algorithms.
+	// Could potentially be improved a bit with Int8 stuff, but meh ...
+
+	auto &builder = impl.builder();
+	spv::Id acc = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id a = impl.get_id_for_value(instruction->getOperand(2));
+	spv::Id b = impl.get_id_for_value(instruction->getOperand(3));
+	for (unsigned i = 0; i < 4; i++)
+	{
+		spv::Id a_component = build_bfe(impl, a, 8 * i, 8, sign_extend);
+		spv::Id b_component = build_bfe(impl, b, 8 * i, 8, sign_extend);
+		auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		mul_op->add_id(a_component);
+		mul_op->add_id(b_component);
+		impl.add(mul_op);
+
+		auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add_op->add_id(acc);
+		add_op->add_id(mul_op->id);
+		acc = add_op->id;
+		impl.add(add_op);
+	}
+
+	impl.value_map[instruction] = acc;
+	return true;
+}
+
+bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id as[2], bs[2];
+	as[0] = impl.get_id_for_value(instruction->getOperand(2));
+	as[1] = impl.get_id_for_value(instruction->getOperand(3));
+	bs[0] = impl.get_id_for_value(instruction->getOperand(4));
+	bs[1] = impl.get_id_for_value(instruction->getOperand(5));
+
+	bool precise = instruction->getMetadata("dx.precise") != nullptr;
+
+	// Not well defined how exact this is supposed to be implemented and where we do fext.
+	// V_DOT2C_F32_F16 suggests acc += float(dot(a, b)));
+	// I assume this intrinsic is intended to map to this opcode so help the compiler out.
+	spv::Id half_type_id = builder.makeFloatType(16);
+	spv::Id float_type_id = builder.makeFloatType(32);
+	spv::Id a = impl.build_vector(half_type_id, as, 2);
+	spv::Id b = impl.build_vector(half_type_id, bs, 2);
+
+	auto *dot_op = impl.allocate(spv::OpDot, half_type_id);
+	dot_op->add_id(a);
+	dot_op->add_id(b);
+	impl.add(dot_op);
+
+	spv::Id acc_input = dot_op->id;
+	if (impl.support_16bit_operations())
+	{
+		auto *extend_op = impl.allocate(spv::OpFConvert, float_type_id);
+		extend_op->add_id(acc_input);
+		impl.add(extend_op);
+		acc_input = extend_op->id;
+	}
+
+	auto *acc_op = impl.allocate(spv::OpFAdd, instruction);
+	acc_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	acc_op->add_id(acc_input);
+	impl.add(acc_op);
+	if (precise)
+		builder.addDecoration(acc_op->id, spv::DecorationNoContraction);
+
+	return true;
+}
+
 } // namespace dxil_spv
