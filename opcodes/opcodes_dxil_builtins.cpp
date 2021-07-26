@@ -168,6 +168,7 @@ struct DXILDispatcher
 		OP(EmitThenCutStream) = emit_then_cut_stream_instruction;
 		OP(GSInstanceID) = emit_gs_instance_instruction;
 		OP(PrimitiveID) = emit_primitive_id_instruction;
+		OP(ViewID) = emit_view_id_instruction;
 
 		// dxil_tessellation.hpp
 		OP(StorePatchConstant) = emit_store_patch_constant_instruction;

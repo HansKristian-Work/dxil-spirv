@@ -117,6 +117,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInPrimitiveId:
 	case spv::BuiltInShadingRateKHR:
 	case spv::BuiltInPrimitiveShadingRateKHR:
+	case spv::BuiltInViewIndex:
 		return builder.makeUintType(32);
 
 	case spv::BuiltInSubgroupSize:
