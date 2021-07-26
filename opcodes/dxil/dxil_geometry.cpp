@@ -98,4 +98,15 @@ bool emit_primitive_id_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
+bool emit_view_id_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInViewIndex);
+	Operation *op = impl.allocate(spv::OpLoad, instruction);
+	op->add_id(var_id);
+	impl.add(op);
+	builder.addCapability(spv::CapabilityMultiView);
+	return true;
+}
+
 } // namespace dxil_spv
