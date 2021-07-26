@@ -65,6 +65,16 @@ inline Vector<BasicBlock *>::const_iterator succ_end(const BasicBlock *bb)
 	return bb->succ_end();
 }
 
+class Attribute
+{
+public:
+	explicit Attribute(const String *value);
+	String getValueAsString() const;
+
+private:
+	const String *value;
+};
+
 class Function : public Constant
 {
 public:
@@ -86,6 +96,10 @@ public:
 	IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> arg_begin() const;
 	IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> arg_end() const;
 
+	// Bare bones implementation, we only need it for fp32-denorm-mode attribute.
+	Attribute getFnAttribute(const char *attribute) const;
+	void set_attributes(Vector<std::pair<String, String>> attributes);
+
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
@@ -94,5 +108,6 @@ private:
 	FunctionType *function_type;
 	Vector<BasicBlock *> basic_blocks;
 	Vector<Argument *> arguments;
+	Vector<std::pair<String, String>> attributes;
 };
 } // namespace LLVMBC

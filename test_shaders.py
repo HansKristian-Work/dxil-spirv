@@ -88,6 +88,10 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader, force_60), '-Fo', dxil_path, shader]
         if not force_60:
             dxil_cmd.append('-enable-16bit-types')
+        if '.denorm-ftz.' in shader:
+            dxil_cmd += ['-denorm', 'ftz']
+        if '.denorm-preserve.' in shader:
+            dxil_cmd += ['-denorm', 'preserve']
         subprocess.check_call(dxil_cmd)
     else:
         dxil_path = shader

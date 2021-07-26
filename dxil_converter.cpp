@@ -4258,6 +4258,28 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 	return true;
 }
 
+bool Converter::Impl::emit_execution_modes_fp_denorm()
+{
+	// Check for SM 6.2 denorm handling. Only applies to FP32.
+	auto *func = get_entry_point_function(entry_point_meta);
+	auto attr = func->getFnAttribute("fp32-denorm-mode");
+	auto str = attr.getValueAsString();
+	if (str == "ftz")
+	{
+		builder().addExtension("SPV_KHR_float_controls");
+		builder().addCapability(spv::CapabilityDenormFlushToZero);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, 32);
+	}
+	else if (str == "preserve")
+	{
+		builder().addExtension("SPV_KHR_float_controls");
+		builder().addCapability(spv::CapabilityDenormPreserve);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 32);
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_execution_modes()
 {
 	switch (execution_model)
@@ -4303,6 +4325,9 @@ bool Converter::Impl::emit_execution_modes()
 
 	auto flags = get_shader_flags(entry_point_meta);
 	execution_mode_meta.native_16bit_operations = (flags & DXIL::ShaderFlagNativeLowPrecision) != 0;
+
+	if (!emit_execution_modes_fp_denorm())
+		return false;
 
 	return true;
 }
