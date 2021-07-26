@@ -129,6 +129,10 @@ struct DXILDispatcher
 		OP(IMad) = emit_imad_instruction;
 		OP(UMad) = emit_imad_instruction;
 
+		OP(Dot4AddI8Packed) = emit_i8_dot_instruction<true>;
+		OP(Dot4AddU8Packed) = emit_i8_dot_instruction<false>;
+		OP(Dot2AddHalf) = emit_dot2_add_half_instruction;
+
 		// FIXME: Untested. Not sure how to trick dxc to generate these.
 		OP(Ibfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract>;
 		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract>;

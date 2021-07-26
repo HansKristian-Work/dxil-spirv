@@ -89,4 +89,12 @@ static inline bool emit_bfe_dispatch(Converter::Impl &impl, const llvm::CallInst
 	return emit_bfe_instruction(opcode, impl, instruction);
 }
 
+bool emit_i8_dot_instruction(Converter::Impl &Impl, const llvm::CallInst *instruction, bool sign_extend);
+template <bool sign_extend>
+static inline bool emit_i8_dot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_i8_dot_instruction(impl, instruction, sign_extend);
+}
+
+bool emit_dot2_add_half_instruction(Converter::Impl &Impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv

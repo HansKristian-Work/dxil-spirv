@@ -1,0 +1,17 @@
+StructuredBuffer<uint> A;
+StructuredBuffer<uint> B;
+RWStructuredBuffer<uint> C;
+
+StructuredBuffer<half2> D;
+StructuredBuffer<half2> E;
+RWStructuredBuffer<float> F;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	C[thr] = dot4add_u8packed(A[thr], B[thr], C[thr]);
+	C[thr] = dot4add_i8packed(A[thr], B[thr], C[thr]);
+	F[thr] = dot2add(half(2.0) * D[thr], half(3.0) * E[thr], F[thr]);
+	precise float intermediate = dot2add(half(4.0) * D[thr], half(5.0) * E[thr], F[thr]);
+	F[thr] = intermediate;
+}
