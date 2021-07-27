@@ -40,5 +40,6 @@ private:
 
 	bool parse_dxil(MemoryStream &stream);
 	bool parse_iosg1(MemoryStream &stream, Vector<DXIL::IOElement> &elements);
+	bool parse_rdat(MemoryStream &stream);
 };
 } // namespace dxil_spv

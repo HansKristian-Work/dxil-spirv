@@ -88,6 +88,17 @@ enum class FourCC : uint32_t
 	ShaderHash = fourcc('H', 'A', 'S', 'H')
 };
 
+enum class RuntimeDataPartType : uint32_t
+{
+	Invalid = 0,
+	StringBuffer = 1,
+	IndexArrays = 2,
+	ResourceTable = 3,
+	FunctionTable = 4,
+	RawBytes = 5,
+	SubobjectTable = 6
+};
+
 enum class ComponentType : uint8_t
 {
 	Invalid = 0,
