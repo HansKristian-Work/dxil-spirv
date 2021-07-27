@@ -19,6 +19,7 @@
 #include "dxil_parser.hpp"
 #include "dxil.hpp"
 #include "memory_stream.hpp"
+#include "logging.hpp"
 #include <stdio.h>
 #include <vector>
 
@@ -89,6 +90,69 @@ bool DXILContainerParser::parse_iosg1(MemoryStream &stream, Vector<DXIL::IOEleme
 			return false;
 		if (!stream.seek(offset))
 			return false;
+	}
+
+	return true;
+}
+
+bool DXILContainerParser::parse_rdat(MemoryStream &stream)
+{
+	uint32_t version, part_count;
+	if (!stream.read(version))
+		return false;
+	if (!stream.read(part_count))
+		return false;
+
+	constexpr uint32_t RDAT_Version = 0x10;
+	if (version != RDAT_Version)
+		return false;
+
+	Vector<uint32_t> offsets(part_count);
+	for (uint32_t i = 0; i < part_count; i++)
+		if (!stream.read(offsets[i]))
+			return false;
+
+	for (uint32_t i = 0; i < part_count; i++)
+	{
+		if (offsets[i] + 2 * sizeof(uint32_t) > stream.get_size())
+			return false;
+
+		uint32_t part_size = i + 1 < part_count ?
+		                     (offsets[i + 1] - offsets[i]) :
+		                     uint32_t(stream.get_size() - offsets[i]);
+		auto substream = stream.create_substream(offsets[i], part_size);
+
+		DXIL::RuntimeDataPartType type;
+		if (!substream.read(type))
+			return false;
+		uint32_t subpart_length;
+		if (!substream.read(subpart_length))
+			return false;
+		if (subpart_length + 2 * sizeof(uint32_t) > substream.get_size())
+			return false;
+
+		switch (type)
+		{
+		case DXIL::RuntimeDataPartType::SubobjectTable:
+		{
+			// TODO: Report any findings of SubobjectTable with failure so we
+			// know where to look.
+			LOGE("TODO: RDAT SubobjectTable is not handled! RTPSO creation will likely fail.\n");
+			return false;
+#if 0
+			uint32_t record_count;
+			uint32_t record_stride;
+			if (!substream.read(record_count))
+				return false;
+			if (!substream.read(record_stride))
+				return false;
+			break;
+#endif
+		}
+
+		default:
+			break;
+		}
 	}
 
 	return true;
@@ -172,6 +236,14 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 
 		case DXIL::FourCC::ShaderHash:
 			break;
+
+		case DXIL::FourCC::RuntimeData:
+		{
+			auto substream = stream.create_substream(stream.get_offset(), part_header.part_size);
+			if (!parse_rdat(substream))
+				return false;
+			break;
+		}
 
 		default:
 			break;
