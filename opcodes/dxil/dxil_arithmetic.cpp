@@ -424,31 +424,53 @@ bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 	bool precise = instruction->getMetadata("dx.precise") != nullptr;
 
-	// Not well defined how exact this is supposed to be implemented and where we do fext.
-	// V_DOT2C_F32_F16 suggests acc += float(dot(a, b)));
-	// I assume this intrinsic is intended to map to this opcode so help the compiler out.
+	// V_DOT2C_F32_F16 is emitted on native drivers, and based on some reversing, the behavior is
+	// acc = (float(a.x * b.x) + float(a.y * b.y)) + acc
+	// - MUL in FP16
+	// - FEXT to FP32
+	// - FADD dot results
+	// - FADD to acc
 	spv::Id half_type_id = builder.makeFloatType(16);
 	spv::Id float_type_id = builder.makeFloatType(32);
 	spv::Id a = impl.build_vector(half_type_id, as, 2);
 	spv::Id b = impl.build_vector(half_type_id, bs, 2);
 
-	auto *dot_op = impl.allocate(spv::OpDot, half_type_id);
+	auto *dot_op = impl.allocate(spv::OpFMul, builder.makeVectorType(half_type_id, 2));
 	dot_op->add_id(a);
 	dot_op->add_id(b);
 	impl.add(dot_op);
+	if (precise)
+		builder.addDecoration(dot_op->id, spv::DecorationNoContraction);
 
-	spv::Id acc_input = dot_op->id;
+	spv::Id expanded_input = dot_op->id;
 	if (impl.support_16bit_operations())
 	{
-		auto *extend_op = impl.allocate(spv::OpFConvert, float_type_id);
-		extend_op->add_id(acc_input);
+		auto *extend_op = impl.allocate(spv::OpFConvert, builder.makeVectorType(float_type_id, 2));
+		extend_op->add_id(expanded_input);
 		impl.add(extend_op);
-		acc_input = extend_op->id;
+		expanded_input = extend_op->id;
 	}
+
+	spv::Id components[2];
+	for (unsigned i = 0; i < 2; i++)
+	{
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, float_type_id);
+		extract_op->add_id(expanded_input);
+		extract_op->add_literal(i);
+		impl.add(extract_op);
+		components[i] = extract_op->id;
+	}
+
+	auto *dot_sum = impl.allocate(spv::OpFAdd, float_type_id);
+	dot_sum->add_id(components[0]);
+	dot_sum->add_id(components[1]);
+	impl.add(dot_sum);
+	if (precise)
+		builder.addDecoration(dot_sum->id, spv::DecorationNoContraction);
 
 	auto *acc_op = impl.allocate(spv::OpFAdd, instruction);
 	acc_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-	acc_op->add_id(acc_input);
+	acc_op->add_id(dot_sum->id);
 	impl.add(acc_op);
 	if (precise)
 		builder.addDecoration(acc_op->id, spv::DecorationNoContraction);
