@@ -526,4 +526,51 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 	impl.add(op);
 	return true;
 }
+
+bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id type_id = impl.get_type_id(instruction->getOperand(1)->getType());
+	spv::Id value_id = impl.get_id_for_value(instruction->getOperand(1));
+
+	// It's not safe to use FOrdEqual since a loop with NaN will never compare equal to BroadcastFirst().
+	// Make sure we compare equal with uint.
+	spv::Op cast_op = spv::OpNop;
+	switch (instruction->getOperand(1)->getType()->getTypeID())
+	{
+	case llvm::Type::TypeID::HalfTyID:
+		type_id = builder.makeUintType(impl.support_16bit_operations() ? 16 : 32);
+		cast_op = spv::OpBitcast;
+		break;
+
+	case llvm::Type::TypeID::FloatTyID:
+		type_id = builder.makeUintType(32);
+		cast_op = spv::OpBitcast;
+		break;
+
+	case llvm::Type::TypeID::DoubleTyID:
+		type_id = builder.makeUintType(64);
+		cast_op = spv::OpBitcast;
+		break;
+
+	default:
+		break;
+	}
+
+	if (cast_op != spv::OpNop)
+	{
+		auto *bitcast_op = impl.allocate(cast_op, type_id);
+		bitcast_op->add_id(value_id);
+		value_id = bitcast_op->id;
+		impl.add(bitcast_op);
+	}
+
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::WaveMatch, type_id);
+	auto *call_op = impl.allocate(spv::OpFunctionCall, instruction, builder.makeVectorType(builder.makeUintType(32), 4));
+	call_op->add_id(call_id);
+	call_op->add_id(value_id);
+	impl.add(call_op);
+
+	return true;
+}
 } // namespace dxil_spv

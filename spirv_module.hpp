@@ -38,7 +38,8 @@ class CFGNodePool;
 
 enum class HelperCall
 {
-	DescriptorQACheck
+	DescriptorQACheck,
+	WaveMatch
 };
 
 class SPIRVModule
@@ -78,7 +79,7 @@ public:
 	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type, spv::Id initializer,
 	                                         const char *name = nullptr);
 
-	spv::Id get_helper_call_id(HelperCall call);
+	spv::Id get_helper_call_id(HelperCall call, spv::Id type_id = 0);
 	void set_descriptor_qa_info(const DescriptorQAInfo &info);
 	const DescriptorQAInfo &get_descriptor_qa_info() const;
 

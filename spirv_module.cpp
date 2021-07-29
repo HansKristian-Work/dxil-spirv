@@ -53,7 +53,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void build_discard_call_early_cond(spv::Id cond);
 	void build_demote_call_cond(spv::Id cond);
 	void build_discard_call_exit();
-	void build_descriptor_qa_check(SPIRVModule &module);
+	spv::Id build_descriptor_qa_check(SPIRVModule &module);
+	spv::Id build_wave_match(SPIRVModule &module, spv::Id type_id);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -91,8 +92,9 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	bool execution_model_is_ray_tracing() const;
 	bool mark_error = false;
 
-	spv::Id get_helper_call_id(SPIRVModule &module, HelperCall call);
+	spv::Id get_helper_call_id(SPIRVModule &module, HelperCall call, spv::Id type_id);
 	spv::Id descriptor_qa_helper_call_id = 0;
+	Vector<std::pair<spv::Id, spv::Id>> wave_match_call_ids;
 
 	DescriptorQAInfo descriptor_qa_info;
 };
@@ -379,19 +381,87 @@ void SPIRVModule::Impl::build_discard_call_exit()
 	builder.createFunctionCall(discard_function, {});
 }
 
-void SPIRVModule::Impl::build_descriptor_qa_check(SPIRVModule &module)
+spv::Id SPIRVModule::Impl::build_descriptor_qa_check(SPIRVModule &module)
 {
 	if (!descriptor_qa_helper_call_id)
 		descriptor_qa_helper_call_id = build_descriptor_qa_check_function(module);
+	return descriptor_qa_helper_call_id;
 }
 
-spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall call)
+spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id)
+{
+	for (auto &type : wave_match_call_ids)
+		if (type.first == type_id)
+			return type.second;
+
+	auto *current_build_point = builder.getBuildPoint();
+	builder.addCapability(spv::CapabilityGroupNonUniform);
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uvec4_type = builder.makeVectorType(uint_type, 4);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uvec4_type,
+	                                       "WaveMatch",
+	                                       { type_id }, {}, &entry);
+	spv::Id value_id = func->getParamId(0);
+
+	auto *header_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+
+	builder.setBuildPoint(entry);
+	builder.createBranch(header_block);
+
+	builder.setBuildPoint(header_block);
+	builder.createLoopMerge(merge_block, body_block, 0);
+	builder.createBranch(body_block);
+
+	auto broadcast_first = std::make_unique<spv::Instruction>(builder.getUniqueId(), type_id, spv::OpGroupNonUniformBroadcastFirst);
+	broadcast_first->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	broadcast_first->addIdOperand(value_id);
+
+	// We cannot scalarize floats safely due to NaNs. Caller will bitcast to uint first.
+	assert(builder.getTypeClass(type_id) != spv::OpTypeFloat);
+	spv::Op equal_op;
+	if (builder.getTypeClass(type_id) == spv::OpTypeBool)
+		equal_op = spv::OpLogicalEqual;
+	else
+		equal_op = spv::OpIEqual;
+
+	auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), equal_op);
+	compare->addIdOperand(value_id);
+	compare->addIdOperand(broadcast_first->getResultId());
+	spv::Id compare_id = compare->getResultId();
+
+	auto ballot = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBallot);
+	ballot->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	ballot->addIdOperand(compare->getResultId());
+	spv::Id ballot_id = ballot->getResultId();
+
+	builder.setBuildPoint(body_block);
+	body_block->addInstruction(std::move(broadcast_first));
+	body_block->addInstruction(std::move(compare));
+	body_block->addInstruction(std::move(ballot));
+	builder.createConditionalBranch(compare_id, merge_block, header_block);
+
+	builder.setBuildPoint(merge_block);
+	builder.makeReturn(false, ballot_id);
+	builder.setBuildPoint(current_build_point);
+
+	wave_match_call_ids.emplace_back(type_id, func->getId());
+	return func->getId();
+}
+
+spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall call, spv::Id type_id)
 {
 	switch (call)
 	{
 	case HelperCall::DescriptorQACheck:
-		build_descriptor_qa_check(module);
-		return descriptor_qa_helper_call_id;
+		return build_descriptor_qa_check(module);
+
+	case HelperCall::WaveMatch:
+		return build_wave_match(module, type_id);
 	}
 
 	return 0;
@@ -864,9 +934,9 @@ spv::Id SPIRVModule::create_variable_with_initializer(spv::StorageClass storage,
 	return impl->create_variable_with_initializer(storage, type, initializer, name);
 }
 
-spv::Id SPIRVModule::get_helper_call_id(HelperCall call)
+spv::Id SPIRVModule::get_helper_call_id(HelperCall call, spv::Id type_id)
 {
-	return impl->get_helper_call_id(*this, call);
+	return impl->get_helper_call_id(*this, call, type_id);
 }
 
 void SPIRVModule::set_descriptor_qa_info(const DescriptorQAInfo &info)
