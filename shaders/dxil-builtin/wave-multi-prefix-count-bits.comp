@@ -1,0 +1,9 @@
+StructuredBuffer<uint> RO;
+StructuredBuffer<uint4> ROMask;
+RWStructuredBuffer<uint> RW;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	RW[thr] = WaveMultiPrefixCountBits(RO[thr] != 10, ROMask[thr]);
+}
