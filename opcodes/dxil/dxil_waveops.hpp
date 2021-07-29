@@ -35,6 +35,7 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_wave_multi_prefix_count_bits_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);

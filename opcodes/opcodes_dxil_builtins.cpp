@@ -196,10 +196,11 @@ struct DXILDispatcher
 		OP(WaveActiveOp) = emit_wave_active_op_instruction;
 		OP(WaveActiveBit) = emit_wave_active_bit_instruction;
 		OP(WavePrefixOp) = emit_wave_prefix_op_instruction;
-		OP(WaveMultiPrefixOp) = emit_wave_multi_prefix_op_instruction;
 		OP(QuadOp) = emit_wave_quad_op_instruction;
 		OP(QuadReadLaneAt) = emit_wave_quad_read_lane_at_instruction;
 		OP(WaveMatch) = emit_wave_match_instruction;
+		OP(WaveMultiPrefixBitCount) = emit_wave_multi_prefix_count_bits_instruction;
+		OP(WaveMultiPrefixOp) = emit_wave_multi_prefix_op_instruction;
 
 		// dxil_ray_tracing.cpp
 		OP(TraceRay) = emit_trace_ray_instruction;

@@ -360,46 +360,73 @@ bool emit_wave_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	return true;
 }
 
+bool emit_wave_multi_prefix_count_bits_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::WaveMultiPrefixCountBits);
+
+	auto *op = impl.allocate(spv::OpFunctionCall, instruction);
+	op->add_id(call_id);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	spv::Id ballot[4];
+	for (unsigned i = 0; i < 4; i++)
+		ballot[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
+	op->add_id(impl.build_vector(builder.makeUintType(32), ballot, 4));
+	impl.add(op);
+
+	return true;
+}
+
 bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
-	spv::Op opcode = spv::OpNop;
-
 	uint32_t op_kind;
-	if (!get_constant_operand(instruction, 2, &op_kind))
+	if (!get_constant_operand(instruction, 6, &op_kind))
 		return false;
+
+	HelperCall helper_call;
+	bool fp = !instruction->getOperand(1)->getType()->isIntegerTy();
 
 	switch (static_cast<DXIL::WaveMultiPrefixOpKind>(op_kind))
 	{
 	case DXIL::WaveMultiPrefixOpKind::Sum:
-		opcode = select_opcode(instruction, spv::OpGroupNonUniformFAdd, spv::OpGroupNonUniformIAdd);
+		helper_call = fp ? HelperCall::WaveMultiPrefixFAdd : HelperCall::WaveMultiPrefixIAdd;
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::Product:
-		opcode = select_opcode(instruction, spv::OpGroupNonUniformFMul, spv::OpGroupNonUniformIMul);
+		helper_call = fp ? HelperCall::WaveMultiPrefixFMul : HelperCall::WaveMultiPrefixIMul;
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::And:
-		opcode = spv::OpGroupNonUniformBitwiseAnd;
+		helper_call = HelperCall::WaveMultiPrefixBitAnd;
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::Or:
-		opcode = spv::OpGroupNonUniformBitwiseOr;
+		helper_call = HelperCall::WaveMultiPrefixBitOr;
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::Xor:
-		opcode = spv::OpGroupNonUniformBitwiseXor;
+		helper_call = HelperCall::WaveMultiPrefixBitXor;
 		break;
+
+	default:
+		return false;
 	}
 
-	auto *op = impl.allocate(opcode, instruction);
-	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	op->add_literal(spv::GroupOperationExclusiveScan);
+	spv::Id type_id = impl.get_type_id(instruction->getOperand(1)->getType());
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(helper_call, type_id);
+
+	auto *op = impl.allocate(spv::OpFunctionCall, instruction);
+	op->add_id(call_id);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	spv::Id ballot[4];
+	for (unsigned i = 0; i < 4; i++)
+		ballot[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
+	op->add_id(impl.build_vector(builder.makeUintType(32), ballot, 4));
 	impl.add(op);
 
-	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
 	return true;
 }
 

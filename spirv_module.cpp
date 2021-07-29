@@ -55,6 +55,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void build_discard_call_exit();
 	spv::Id build_descriptor_qa_check(SPIRVModule &module);
 	spv::Id build_wave_match(SPIRVModule &module, spv::Id type_id);
+	spv::Id build_wave_multi_prefix_count_bits(SPIRVModule &module);
+	spv::Id build_wave_multi_prefix_op(SPIRVModule &module, spv::Op opcode, spv::Id type_id);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -94,7 +96,16 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	spv::Id get_helper_call_id(SPIRVModule &module, HelperCall call, spv::Id type_id);
 	spv::Id descriptor_qa_helper_call_id = 0;
+	spv::Id wave_multi_prefix_count_bits_id = 0;
 	Vector<std::pair<spv::Id, spv::Id>> wave_match_call_ids;
+
+	struct MultiPrefixOp
+	{
+		spv::Op opcode;
+		spv::Id type_id;
+		spv::Id func_id;
+	};
+	Vector<MultiPrefixOp> wave_multi_prefix_call_ids;
 
 	DescriptorQAInfo descriptor_qa_info;
 };
@@ -388,6 +399,222 @@ spv::Id SPIRVModule::Impl::build_descriptor_qa_check(SPIRVModule &module)
 	return descriptor_qa_helper_call_id;
 }
 
+static const char *opcode_to_multi_prefix_name(spv::Op opcode)
+{
+	switch (opcode)
+	{
+	case spv::OpGroupNonUniformFAdd:
+	case spv::OpGroupNonUniformIAdd:
+		return "WaveMultiPrefixSum";
+
+	case spv::OpGroupNonUniformFMul:
+	case spv::OpGroupNonUniformIMul:
+		return "WaveMultiPrefixProduct";
+
+	case spv::OpGroupNonUniformBitwiseAnd:
+		return "WaveMultiPrefixBitAnd";
+	case spv::OpGroupNonUniformBitwiseOr:
+		return "WaveMultiPrefixBitOr";
+	case spv::OpGroupNonUniformBitwiseXor:
+		return "WaveMultiPrefixBitXor";
+
+	default:
+		return "";
+	}
+}
+
+spv::Id SPIRVModule::Impl::build_wave_multi_prefix_op(SPIRVModule &module, spv::Op opcode, spv::Id type_id)
+{
+	for (auto &call : wave_multi_prefix_call_ids)
+		if (call.opcode == opcode && call.type_id == type_id)
+			return call.func_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uvec4_type = builder.makeVectorType(uint_type, 4);
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id bvec4_type = builder.makeVectorType(bool_type, 4);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, type_id,
+	                                       opcode_to_multi_prefix_name(opcode),
+	                                       { type_id, uvec4_type }, {}, &entry);
+	spv::Id value_id = func->getParamId(0);
+	spv::Id mask_id = func->getParamId(1);
+	spv::Id undef_value = builder.createUndefined(type_id);
+
+	auto *header_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *prefix_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *continue_block = new spv::Block(builder.getUniqueId(), *func);
+
+	builder.setBuildPoint(entry);
+	{
+		auto ballot_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBallot);
+		ballot_op->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		ballot_op->addIdOperand(builder.makeBoolConstant(true));
+		auto mask_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpBitwiseAnd);
+		mask_op->addIdOperand(ballot_op->getResultId());
+		mask_op->addIdOperand(mask_id);
+		mask_id = mask_op->getResultId();
+		entry->addInstruction(std::move(ballot_op));
+		entry->addInstruction(std::move(mask_op));
+		builder.createBranch(header_block);
+	}
+
+	builder.setBuildPoint(header_block);
+	{
+		builder.createLoopMerge(merge_block, body_block, 0);
+		builder.createBranch(body_block);
+	}
+
+	builder.setBuildPoint(body_block);
+	spv::Id compare_reduce_id;
+	{
+		auto broadcast_first = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBroadcastFirst);
+		broadcast_first->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		broadcast_first->addIdOperand(mask_id);
+
+		auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), bvec4_type, spv::OpIEqual);
+		compare->addIdOperand(mask_id);
+		compare->addIdOperand(broadcast_first->getResultId());
+
+		auto compare_reduce = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpAll);
+		compare_reduce->addIdOperand(compare->getResultId());
+		compare_reduce_id = compare_reduce->getResultId();
+
+		body_block->addInstruction(std::move(broadcast_first));
+		body_block->addInstruction(std::move(compare));
+		body_block->addInstruction(std::move(compare_reduce));
+		builder.createSelectionMerge(continue_block, 0);
+		builder.createConditionalBranch(compare_reduce_id, prefix_block, continue_block);
+	}
+
+	spv::Id result_id;
+	builder.setBuildPoint(prefix_block);
+	{
+		auto prefix_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), type_id, opcode);
+		prefix_op->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		prefix_op->addImmediateOperand(spv::GroupOperationExclusiveScan);
+		prefix_op->addIdOperand(value_id);
+		result_id = prefix_op->getResultId();
+		prefix_block->addInstruction(std::move(prefix_op));
+		builder.createBranch(continue_block);
+	}
+
+	builder.setBuildPoint(continue_block);
+	{
+		auto phi = std::make_unique<spv::Instruction>(builder.getUniqueId(), type_id, spv::OpPhi);
+		phi->addIdOperand(result_id);
+		phi->addIdOperand(prefix_block->getId());
+		phi->addIdOperand(undef_value);
+		phi->addIdOperand(body_block->getId());
+		result_id = phi->getResultId();
+		continue_block->addInstruction(std::move(phi));
+		builder.createConditionalBranch(compare_reduce_id, merge_block, header_block);
+	}
+
+	builder.setBuildPoint(merge_block);
+	builder.makeReturn(false, result_id);
+
+	builder.setBuildPoint(current_build_point);
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
+	wave_multi_prefix_call_ids.push_back({ opcode, type_id, func->getId() });
+	return func->getId();
+}
+
+spv::Id SPIRVModule::Impl::build_wave_multi_prefix_count_bits(SPIRVModule &module)
+{
+	if (wave_multi_prefix_count_bits_id)
+		return wave_multi_prefix_count_bits_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uvec4_type = builder.makeVectorType(uint_type, 4);
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id bvec4_type = builder.makeVectorType(bool_type, 4);
+
+	spv::Block *entry = nullptr;
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
+	                                       "WaveMultiPrefixCountBits",
+	                                       { bool_type, uvec4_type }, {}, &entry);
+	spv::Id value_id = func->getParamId(0);
+	spv::Id mask_id = func->getParamId(1);
+	auto *header_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+
+	builder.setBuildPoint(entry);
+	{
+		auto ballot_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBallot);
+		ballot_op->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		ballot_op->addIdOperand(builder.makeBoolConstant(true));
+		auto mask_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpBitwiseAnd);
+		mask_op->addIdOperand(ballot_op->getResultId());
+		mask_op->addIdOperand(mask_id);
+		mask_id = mask_op->getResultId();
+		entry->addInstruction(std::move(ballot_op));
+		entry->addInstruction(std::move(mask_op));
+		builder.createBranch(header_block);
+	}
+
+	builder.setBuildPoint(header_block);
+	{
+		builder.createLoopMerge(merge_block, body_block, 0);
+		builder.createBranch(body_block);
+	}
+
+	spv::Id result_id;
+	builder.setBuildPoint(body_block);
+	{
+		auto broadcast_first =
+		    std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBroadcastFirst);
+		broadcast_first->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		broadcast_first->addIdOperand(mask_id);
+
+		auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), bvec4_type, spv::OpIEqual);
+		compare->addIdOperand(mask_id);
+		compare->addIdOperand(broadcast_first->getResultId());
+
+		auto compare_reduce = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpAll);
+		compare_reduce->addIdOperand(compare->getResultId());
+		spv::Id compare_reduce_id = compare_reduce->getResultId();
+
+		auto prefix_input = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLogicalAnd);
+		prefix_input->addIdOperand(compare_reduce_id);
+		prefix_input->addIdOperand(value_id);
+
+		auto modified_ballot =
+		    std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBallot);
+		modified_ballot->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		modified_ballot->addIdOperand(prefix_input->getResultId());
+		auto count =
+		    std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpGroupNonUniformBallotBitCount);
+		count->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		count->addImmediateOperand(spv::GroupOperationExclusiveScan);
+		count->addIdOperand(modified_ballot->getResultId());
+		result_id = count->getResultId();
+
+		body_block->addInstruction(std::move(broadcast_first));
+		body_block->addInstruction(std::move(compare));
+		body_block->addInstruction(std::move(compare_reduce));
+		body_block->addInstruction(std::move(prefix_input));
+		body_block->addInstruction(std::move(modified_ballot));
+		body_block->addInstruction(std::move(count));
+		builder.createConditionalBranch(compare_reduce_id, merge_block, header_block);
+	}
+
+	builder.setBuildPoint(merge_block);
+	builder.makeReturn(false, result_id);
+	builder.setBuildPoint(current_build_point);
+
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
+	wave_multi_prefix_count_bits_id = func->getId();
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id)
 {
 	for (auto &type : wave_match_call_ids)
@@ -462,6 +689,27 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 
 	case HelperCall::WaveMatch:
 		return build_wave_match(module, type_id);
+
+	case HelperCall::WaveMultiPrefixCountBits:
+		return build_wave_multi_prefix_count_bits(module);
+
+	case HelperCall::WaveMultiPrefixFAdd:
+		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformFAdd, type_id);
+	case HelperCall::WaveMultiPrefixIAdd:
+		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformIAdd, type_id);
+	case HelperCall::WaveMultiPrefixFMul:
+		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformFMul, type_id);
+	case HelperCall::WaveMultiPrefixIMul:
+		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformIMul, type_id);
+	case HelperCall::WaveMultiPrefixBitOr:
+		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformBitwiseOr, type_id);
+	case HelperCall::WaveMultiPrefixBitAnd:
+		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformBitwiseAnd, type_id);
+	case HelperCall::WaveMultiPrefixBitXor:
+		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformBitwiseXor, type_id);
+
+	default:
+		break;
 	}
 
 	return 0;

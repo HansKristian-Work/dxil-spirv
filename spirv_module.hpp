@@ -39,7 +39,15 @@ class CFGNodePool;
 enum class HelperCall
 {
 	DescriptorQACheck,
-	WaveMatch
+	WaveMatch,
+	WaveMultiPrefixFAdd,
+	WaveMultiPrefixIAdd,
+	WaveMultiPrefixFMul,
+	WaveMultiPrefixIMul,
+	WaveMultiPrefixBitAnd,
+	WaveMultiPrefixBitOr,
+	WaveMultiPrefixBitXor,
+	WaveMultiPrefixCountBits
 };
 
 class SPIRVModule
