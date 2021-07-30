@@ -336,6 +336,7 @@ struct Converter::Impl
 	Operation *allocate(spv::Op op, spv::Id type_id);
 	Operation *allocate(spv::Op op, const llvm::Value *value, spv::Id type_id);
 	Operation *allocate(spv::Op op, spv::Id id, spv::Id type_id);
+	void rewrite_value(const llvm::Value *value, spv::Id id);
 	spv::Builder &builder();
 	spv::Id create_variable(spv::StorageClass storage, spv::Id type_id, const char *name = nullptr);
 	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type_id,

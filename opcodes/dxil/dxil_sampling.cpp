@@ -291,7 +291,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 			impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(impl.get_type_id(target_type), 4));
 		splat_op->add_ids({ loaded_id, loaded_id, loaded_id, loaded_id });
 		impl.add(splat_op);
-		impl.value_map[instruction] = splat_op->id;
+		impl.rewrite_value(instruction, splat_op->id);
 	}
 	else
 	{
@@ -599,7 +599,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	{
 		if (num_coords == 1)
 			access_meta.forced_composite = false;
-		impl.value_map[instruction] = dimensions_op->id;
+		impl.rewrite_value(instruction, dimensions_op->id);
 	}
 	else if (dimensions_op)
 	{
@@ -622,7 +622,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		access_meta.forced_composite = false;
 		access_meta.access_mask = 1;
 		access_meta.components = 1;
-		impl.value_map[instruction] = aux_op->id;
+		impl.rewrite_value(instruction, aux_op->id);
 	}
 
 	builder.addCapability(spv::CapabilityImageQuery);
@@ -865,7 +865,7 @@ static spv::Id build_rasterizer_sample_count(Converter::Impl &impl)
 
 bool emit_get_render_target_sample_count(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	impl.value_map[instruction] = build_rasterizer_sample_count(impl);
+	impl.rewrite_value(instruction, build_rasterizer_sample_count(impl));
 	return true;
 }
 

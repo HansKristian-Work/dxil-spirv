@@ -3275,7 +3275,7 @@ bool Converter::Impl::emit_incoming_payload()
 		// This is a POD. We'll emit that as a block containing the payload type.
 		spv::Id payload_var = create_variable(storage, get_type_id(elem_type), "payload");
 		handle_to_storage_class[&arg] = storage;
-		value_map[&arg] = payload_var;
+		rewrite_value(&arg, payload_var);
 	}
 
 	return true;
@@ -3297,7 +3297,7 @@ bool Converter::Impl::emit_hit_attribute()
 
 		spv::Id hit_attribute_var = create_variable(spv::StorageClassHitAttributeKHR, get_type_id(elem_type), "hit");
 		handle_to_storage_class[&arg] = spv::StorageClassHitAttributeKHR;
-		value_map[&arg] = hit_attribute_var;
+		rewrite_value(&arg, hit_attribute_var);
 	}
 	else if (execution_model == spv::ExecutionModelIntersectionKHR && llvm_hit_attribute_output_type)
 	{
@@ -3367,7 +3367,7 @@ bool Converter::Impl::emit_global_variables()
 		spv::Id var_id = create_variable_with_initializer(
 		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
 		    pointee_type_id, initializer_id);
-		value_map[&global] = var_id;
+		rewrite_value(&global, var_id);
 	}
 
 	return true;
@@ -3697,7 +3697,7 @@ void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type,
 	for (auto &comp : components)
 		repack_op->add_id(comp);
 	add(repack_op);
-	value_map[value] = repack_op->id;
+	rewrite_value(value, repack_op->id);
 }
 
 bool Converter::Impl::support_16bit_operations() const
@@ -3774,8 +3774,8 @@ void Converter::Impl::fixup_load_type_io(DXIL::ComponentType component_type, uns
 
 	if (output_component_type != input_component_type)
 	{
-		value_map[value] = build_value_cast(get_id_for_value(value), input_component_type,
-		                                    output_component_type, components);
+		rewrite_value(value, build_value_cast(get_id_for_value(value), input_component_type,
+		                                      output_component_type, components));
 	}
 }
 
@@ -3795,8 +3795,8 @@ void Converter::Impl::fixup_load_type_atomic(DXIL::ComponentType component_type,
 
 	if (output_component_type != input_component_type)
 	{
-		value_map[value] = build_value_cast(get_id_for_value(value), input_component_type,
-		                                    output_component_type, components);
+		rewrite_value(value, build_value_cast(get_id_for_value(value), input_component_type,
+		                                      output_component_type, components));
 	}
 }
 
@@ -3829,7 +3829,7 @@ void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType component_type, 
 	spv::Id new_value_id = value_id;
 	fixup_load_type_typed(component_type, components, new_value_id, target_type);
 	if (new_value_id != value_id)
-		value_map[value] = new_value_id;
+		rewrite_value(value, new_value_id);
 }
 
 spv::Id Converter::Impl::fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value)
@@ -4694,6 +4694,23 @@ Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value, spv::
 	// Constant expressions cannot have an associated opcode ID to them.
 	assert(!llvm::isa<llvm::ConstantExpr>(value));
 	return spirv_module.allocate_op(op, get_id_for_value(value), type_id);
+}
+
+void Converter::Impl::rewrite_value(const llvm::Value *value, spv::Id id)
+{
+	auto value_itr = value_map.find(value);
+	if (value_itr != value_map.end())
+	{
+		if (value_itr->second != id)
+		{
+			// If a PHI node previously accessed the value ID map, it will now refer to a dead
+			// ID. Remember to rewrite PHI incoming nodes as necessary.
+			phi_incoming_rewrite[value_itr->second] = id;
+			value_itr->second = id;
+		}
+	}
+	else
+		value_map[value] = id;
 }
 
 void Converter::Impl::add(Operation *op)

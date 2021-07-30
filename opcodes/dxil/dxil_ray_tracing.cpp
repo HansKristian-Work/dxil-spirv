@@ -329,7 +329,7 @@ bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *inst)
 	// The return type of allocateRayQuery appears to be i32, so this might be how it's intended to be done ...
 	auto &builder = impl.builder();
 	spv::Id var_id = impl.spirv_module.create_variable(spv::StorageClassPrivate, builder.makeRayQueryType());
-	impl.value_map[inst] = var_id;
+	impl.rewrite_value(inst, var_id);
 	impl.handle_to_storage_class[inst] = spv::StorageClassPrivate;
 	emit_ray_query_capabilities(impl);
 	return true;
