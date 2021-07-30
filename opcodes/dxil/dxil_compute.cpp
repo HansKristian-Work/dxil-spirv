@@ -104,7 +104,7 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl
 			if (dim < 3 && impl.execution_mode_meta.workgroup_threads[dim] == 1)
 			{
 				spv::Id const_zero = impl.builder().makeUintConstant(0);
-				impl.value_map[instruction] = const_zero;
+				impl.rewrite_value(instruction, const_zero);
 				return true;
 			}
 		}

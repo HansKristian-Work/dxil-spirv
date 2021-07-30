@@ -104,13 +104,13 @@ static bool peephole_trivial_arithmetic_identity(Converter::Impl &impl,
 		if (counter_op_is_commutative && cancel_op0 == inverse_value)
 		{
 			// op0 is canceled by outer expression, so we're left with op1.
-			impl.value_map[instruction] = impl.get_id_for_value(cancel_op1);
+			impl.rewrite_value(instruction, impl.get_id_for_value(cancel_op1));
 			return true;
 		}
 		else if (cancel_op1 == inverse_value)
 		{
 			// op1 is canceled by outer expression, so we're left with op0.
-			impl.value_map[instruction] = impl.get_id_for_value(cancel_op0);
+			impl.rewrite_value(instruction, impl.get_id_for_value(cancel_op0));
 			return true;
 		}
 		else
@@ -432,7 +432,7 @@ static spv::Id emit_masked_cast_instruction(Converter::Impl &impl, const Instruc
 		// We cannot use a cast operation in SPIR-V here, just extend the value to physical size and roll with it.
 		spv::Id extended_id = build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits,
 		                                                     opcode == spv::OpSConvert);
-		impl.value_map[instruction] = extended_id;
+		impl.rewrite_value(instruction, extended_id);
 		return extended_id;
 	}
 	else if (physical_input_bits != logical_input_bits)
@@ -509,7 +509,7 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	if (value_cast_is_noop(impl, instruction))
 	{
 		spv::Id id = impl.get_id_for_value(instruction->getOperand(0));
-		impl.value_map[instruction] = id;
+		impl.rewrite_value(instruction, id);
 		return id;
 	}
 
@@ -896,14 +896,14 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 	case llvm::CmpInst::Predicate::FCMP_FALSE:
 	{
 		// Why on earth is this a thing ...
-		impl.value_map[instruction] = impl.builder().makeBoolConstant(false);
+		impl.rewrite_value(instruction, impl.builder().makeBoolConstant(false));
 		return true;
 	}
 
 	case llvm::CmpInst::Predicate::FCMP_TRUE:
 	{
 		// Why on earth is this a thing ...
-		impl.value_map[instruction] = impl.builder().makeBoolConstant(true);
+		impl.rewrite_value(instruction, impl.builder().makeBoolConstant(true));
 		return true;
 	}
 
@@ -1016,14 +1016,8 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 	if (itr->second.components == 1 && !itr->second.forced_composite)
 	{
 		// Forward the ID. The composite was originally emitted as a scalar.
-		// It is possible that this value was used a PHI input early, which would have used the stale ID value.
-		// Remember to rewrite PHI incoming values in this case.
-		auto value_itr = impl.value_map.find(instruction);
 		spv::Id rewrite_id = impl.get_id_for_value(instruction->getAggregateOperand());
-		if (value_itr != impl.value_map.end() && value_itr->second != rewrite_id)
-			impl.phi_incoming_rewrite[value_itr->second] = rewrite_id;
-
-		impl.value_map[instruction] = rewrite_id;
+		impl.rewrite_value(instruction, rewrite_id);
 	}
 	else
 	{
@@ -1070,7 +1064,7 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 
 	auto storage = impl.get_effective_storage_class(instruction, spv::StorageClassFunction);
 	spv::Id var_id = impl.create_variable(storage, pointee_type_id);
-	impl.value_map[instruction] = var_id;
+	impl.rewrite_value(instruction, var_id);
 	impl.handle_to_storage_class[instruction] = storage;
 	return true;
 }

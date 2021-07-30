@@ -409,7 +409,7 @@ bool emit_i8_dot_instruction(Converter::Impl &impl, const llvm::CallInst *instru
 		impl.add(add_op);
 	}
 
-	impl.value_map[instruction] = acc;
+	impl.rewrite_value(instruction, acc);
 	return true;
 }
 

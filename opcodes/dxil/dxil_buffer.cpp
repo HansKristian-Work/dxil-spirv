@@ -404,7 +404,8 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 		impl.add(cast_op);
 		loaded_id = cast_op->id;
 	}
-	impl.value_map[instruction] = loaded_id;
+
+	impl.rewrite_value(instruction, loaded_id);
 
 	if (vecsize == 1)
 		impl.llvm_composite_meta[instruction].forced_composite = false;
@@ -655,10 +656,10 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 					casted_id = op->id;
 				}
 
-				impl.value_map[instruction] = casted_id;
+				impl.rewrite_value(instruction, casted_id);
 			}
 			else
-				impl.value_map[instruction] = constructed_id;
+				impl.rewrite_value(instruction, constructed_id);
 		}
 
 		access_meta.forced_composite = false;
@@ -1246,7 +1247,7 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 		op = impl.allocate(spv::OpISub, builder.makeUintType(32));
 		op->add_ids({ result_id, builder.makeUintConstant(1) });
 		impl.add(op);
-		impl.value_map[instruction] = op->id;
+		impl.rewrite_value(instruction, op->id);
 	}
 
 	return true;

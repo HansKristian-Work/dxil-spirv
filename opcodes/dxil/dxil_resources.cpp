@@ -144,7 +144,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			Operation *sub_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
 			sub_op->add_ids({ impl.get_id_for_value(instruction), base_id });
 			impl.add(sub_op);
-			impl.value_map[instruction] = sub_op->id;
+			impl.rewrite_value(instruction, sub_op->id);
 			builder.addCapability(spv::CapabilityDrawParameters);
 		}
 		else if (builtin == spv::BuiltInFrontFacing)
@@ -156,7 +156,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			    builder.makeUintConstant(0),
 			});
 			impl.add(cast_op);
-			impl.value_map[instruction] = cast_op->id;
+			impl.rewrite_value(instruction, cast_op->id);
 		}
 		else if (builtin == spv::BuiltInFragCoord)
 		{
@@ -168,7 +168,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 				op->add_id(builder.makeFloatConstant(1.0f));
 				op->add_id(impl.get_id_for_value(instruction));
 				impl.add(op);
-				impl.value_map[instruction] = op->id;
+				impl.rewrite_value(instruction, op->id);
 			}
 		}
 	}
@@ -715,7 +715,7 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 		else
 		{
 			*value_id = resource_id;
-			impl.value_map[instruction] = resource_id;
+			impl.rewrite_value(instruction, resource_id);
 			// Not technically needed, but to be safe against weird compilers ...
 			if (is_non_uniform)
 				builder.addDecoration(resource_id, spv::DecorationNonUniformEXT);
@@ -944,7 +944,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		if (resource_is_physical_rtas(impl, reference))
 		{
 			spv::Id ptr_id = build_load_physical_rtas(impl, reference, instruction_offset, non_uniform);
-			impl.value_map[instruction] = ptr_id;
+			impl.rewrite_value(instruction, ptr_id);
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
 			meta.storage = spv::StorageClassGeneric;
@@ -953,7 +953,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		else if (resource_is_physical_pointer(impl, reference))
 		{
 			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
-			impl.value_map[instruction] = ptr_id;
+			impl.rewrite_value(instruction, ptr_id);
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
 			meta.stride = reference.stride;
@@ -1047,7 +1047,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		if (resource_is_physical_pointer(impl, reference))
 		{
 			spv::Id ptr_id = build_root_descriptor_load_physical_pointer(impl, reference);
-			impl.value_map[instruction] = ptr_id;
+			impl.rewrite_value(instruction, ptr_id);
 			auto &meta = impl.handle_to_resource_meta[ptr_id];
 			meta = {};
 			meta.stride = reference.stride;
@@ -1179,7 +1179,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
 			meta.physical_pointer_meta.nonwritable = true;
 			meta.kind = reference.resource_kind;
-			impl.value_map[instruction] = ptr_id;
+			impl.rewrite_value(instruction, ptr_id);
 		}
 		else if (reference.base_resource_is_array || reference.bindless)
 		{
@@ -1219,7 +1219,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			}
 
 			impl.add(op);
-			impl.value_map[instruction] = op->id;
+			impl.rewrite_value(instruction, op->id);
 
 			auto &meta = impl.handle_to_resource_meta[op->id];
 			meta = {};
@@ -1250,7 +1250,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				meta = {};
 				meta.storage = spv::StorageClassPhysicalStorageBuffer;
 				meta.kind = DXIL::ResourceKind::CBuffer;
-				impl.value_map[instruction] = id;
+				impl.rewrite_value(instruction, id);
 			}
 			else
 			{
@@ -1262,12 +1262,12 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				meta.storage = spv::StorageClassShaderRecordBufferKHR;
 				meta.kind = DXIL::ResourceKind::CBuffer;
 				impl.handle_to_root_member_offset[instruction] = reference.local_root_signature_entry;
-				impl.value_map[instruction] = id;
+				impl.rewrite_value(instruction, id);
 			}
 		}
 		else
 		{
-			impl.value_map[instruction] = base_cbv_id;
+			impl.rewrite_value(instruction, base_cbv_id);
 			if (base_cbv_id == impl.root_constant_id)
 			{
 				unsigned member_offset = reference.push_constant_member;
@@ -1453,7 +1453,7 @@ static bool emit_cbuffer_load_legacy_from_uints(Converter::Impl &impl, const llv
 	}
 	else
 	{
-		impl.value_map[instruction] = id;
+		impl.rewrite_value(instruction, id);
 	}
 
 	return true;
@@ -1545,7 +1545,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
 			op->add_id(load_op->id);
 			impl.add(op);
-			impl.value_map[instruction] = op->id;
+			impl.rewrite_value(instruction, op->id);
 		}
 		return true;
 	}
