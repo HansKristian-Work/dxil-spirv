@@ -2667,6 +2667,65 @@ void CFGStructurizer::find_loops()
 	}
 }
 
+CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode *node, size_t header_index)
+{
+	CFGNode *target_header = nullptr;
+	for (size_t j = header_index; j; j--)
+	{
+		if (node->headers[j - 1]->merge == MergeType::Loop)
+		{
+			// We might have two loops, each at equal scopes.
+			// In order to break out to an outer loop, we must verify that the loops actually nest.
+			// We must not introduce any backwards branches here.
+			auto *candidate_header = node->headers[j - 1];
+			CFGNode *candidate_merge = nullptr;
+			if (candidate_header->loop_ladder_block)
+				candidate_merge = candidate_header->loop_ladder_block;
+			else if (candidate_header->loop_merge_block)
+				candidate_merge = candidate_header->loop_merge_block;
+
+			if (candidate_merge && !candidate_merge->dominates(node->headers[header_index]))
+			{
+				target_header = candidate_header;
+				break;
+			}
+		}
+	}
+
+	return target_header;
+}
+
+CFGNode *CFGStructurizer::get_or_create_ladder_block(CFGNode *node, size_t header_index)
+{
+	auto *header = node->headers[header_index];
+	auto *loop_ladder = header->loop_ladder_block;
+
+	if (!loop_ladder)
+	{
+		// We don't have a ladder, because the loop merged to an outer scope, so we need to fake a ladder.
+		// If we hit this case, we did not hit the simpler case in find_loops().
+		auto *ladder = pool.create_node();
+		ladder->name = node->name + ".merge";
+		ladder->add_branch(node);
+		ladder->ir.terminator.type = Terminator::Type::Branch;
+		ladder->ir.terminator.direct_block = node;
+		ladder->immediate_post_dominator = node;
+		ladder->forward_post_visit_order = node->forward_post_visit_order;
+		ladder->backward_post_visit_order = node->backward_post_visit_order;
+
+		header->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
+		header->loop_ladder_block = ladder;
+		ladder->recompute_immediate_dominator();
+
+		// If this is the second outermost scope, we don't need to deal with ladders.
+		// ladder is a dummy branch straight out to the outer merge point.
+		if (header_index > 1)
+			loop_ladder = header->loop_ladder_block;
+	}
+
+	return loop_ladder;
+}
+
 void CFGStructurizer::split_merge_blocks()
 {
 	for (auto *node : forward_post_visit_order)
@@ -2713,56 +2772,11 @@ void CFGStructurizer::split_merge_blocks()
 		for (size_t i = node->headers.size() - 1; i; i--)
 		{
 			// Find innermost loop header scope we can break to when resolving ladders.
-			CFGNode *target_header = nullptr;
-			for (size_t j = i; j; j--)
-			{
-				if (node->headers[j - 1]->merge == MergeType::Loop)
-				{
-					// We might have two loops, each at equal scopes.
-					// In order to break out to an outer loop, we must verify that the loops actually nest.
-					// We must not introduce any backwards branches here.
-					auto *candidate_header = node->headers[j - 1];
-					CFGNode *candidate_merge = nullptr;
-					if (candidate_header->loop_ladder_block)
-						candidate_merge = candidate_header->loop_ladder_block;
-					else if (candidate_header->loop_merge_block)
-						candidate_merge = candidate_header->loop_merge_block;
-
-					if (candidate_merge && !candidate_merge->dominates(node->headers[i]))
-					{
-						target_header = candidate_header;
-						break;
-					}
-				}
-			}
+			CFGNode *target_header = get_target_break_block_for_inner_header(node, i);
 
 			if (node->headers[i]->merge == MergeType::Loop)
 			{
-				auto *loop_ladder = node->headers[i]->loop_ladder_block;
-				CFGNode *new_ladder_block = nullptr;
-
-				if (!loop_ladder)
-				{
-					// We don't have a ladder, because the loop merged to an outer scope, so we need to fake a ladder.
-					// If we hit this case, we did not hit the simpler case in find_loops().
-					auto *ladder = pool.create_node();
-					ladder->name = node->name + ".merge";
-					ladder->add_branch(node);
-					ladder->ir.terminator.type = Terminator::Type::Branch;
-					ladder->ir.terminator.direct_block = node;
-					ladder->immediate_post_dominator = node;
-					ladder->forward_post_visit_order = node->forward_post_visit_order;
-					ladder->backward_post_visit_order = node->backward_post_visit_order;
-
-					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
-					node->headers[i]->loop_ladder_block = ladder;
-					ladder->recompute_immediate_dominator();
-
-					// If this is the second outermost scope, we don't need to deal with ladders.
-					// ladder is a dummy branch straight out to the outer merge point.
-					if (i > 1)
-						loop_ladder = node->headers[i]->loop_ladder_block;
-				}
+				auto *loop_ladder = get_or_create_ladder_block(node, i);
 
 				if (loop_ladder && !target_header && !full_break_target)
 				{
@@ -2801,6 +2815,7 @@ void CFGStructurizer::split_merge_blocks()
 					}
 				}
 
+				CFGNode *new_ladder_block = nullptr;
 				if (loop_ladder)
 				{
 					if (target_header || full_break_target)

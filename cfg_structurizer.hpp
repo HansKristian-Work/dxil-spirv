@@ -79,7 +79,11 @@ private:
 	static bool header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge);
 	void fixup_broken_selection_merges(unsigned pass);
 	bool find_switch_blocks(unsigned pass);
+
 	void split_merge_blocks();
+	static CFGNode *get_target_break_block_for_inner_header(const CFGNode *node, size_t header_index);
+	CFGNode *get_or_create_ladder_block(CFGNode *node, size_t header_index);
+
 	static CFGNode *find_common_post_dominator(const Vector<CFGNode *> &candidates);
 	static CFGNode *find_common_post_dominator_with_ignored_break(Vector<CFGNode *> candidates,
 	                                                              const CFGNode *break_node);
