@@ -2726,6 +2726,167 @@ CFGNode *CFGStructurizer::get_or_create_ladder_block(CFGNode *node, size_t heade
 	return loop_ladder;
 }
 
+CFGNode *CFGStructurizer::build_enclosing_break_target_for_loop_ladder(CFGNode *&node, CFGNode *loop_ladder)
+{
+	// A loop ladder needs to break out somewhere. If we don't have a candidate
+	// place to break out to, we will need to create one for the outer scope.
+	// This is the purpose of the full_break_target fallback.
+
+	bool ladder_to_merge_is_trivial = loop_ladder->succ.size() == 1 && loop_ladder->succ.front() == node;
+	CFGNode *full_break_target = nullptr;
+
+	// We have to break somewhere, turn the outer selection construct into
+	// a loop.
+	if (!ladder_to_merge_is_trivial)
+	{
+		// Selection merge to this dummy instead.
+		auto *new_selection_merge = create_helper_pred_block(node);
+
+		// This is now our fallback loop break target.
+		full_break_target = node;
+
+		auto *loop = create_helper_pred_block(new_selection_merge->headers[0]);
+
+		// Reassign header node.
+		assert(new_selection_merge->headers[0]->merge == MergeType::Selection);
+		new_selection_merge->headers[0]->selection_merge_block = new_selection_merge;
+		new_selection_merge->headers[0] = loop;
+
+		loop->merge = MergeType::Loop;
+		loop->loop_merge_block = node;
+		loop->freeze_structured_analysis = true;
+
+		// After the loop ladder, make sure we always branch to the break target.
+		loop_ladder->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
+
+		node = new_selection_merge;
+	}
+
+	return full_break_target;
+}
+
+CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode *node, CFGNode *header,
+                                                                        CFGNode *loop_ladder,
+                                                                        CFGNode *target_header,
+                                                                        CFGNode *full_break_target,
+                                                                        const UnorderedSet<const CFGNode *> &normal_preds)
+{
+	CFGNode *new_ladder_block = nullptr;
+
+	if (target_header || full_break_target)
+	{
+		// If we have a ladder block, there exists a merge candidate which the loop header dominates.
+		// We create a ladder block before the merge block, which becomes the true merge block.
+		// In this ladder block, we can detect with Phi nodes whether the break was "clean",
+		// or if we had an escape edge.
+		// If we have an escape edge, we can break to outer level, and continue the ladder that way.
+		// Otherwise we branch to the existing merge block and continue as normal.
+		// We'll also need to rewrite a lot of Phi nodes this way as well.
+		auto *ladder = create_helper_pred_block(loop_ladder);
+		new_ladder_block = ladder;
+
+		// Merge to ladder instead.
+		header->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
+
+		ladder->ir.terminator.type = Terminator::Type::Condition;
+		ladder->ir.terminator.conditional_id = module.allocate_id();
+		ladder->ir.terminator.false_block = loop_ladder;
+
+		PHI phi;
+		phi.id = ladder->ir.terminator.conditional_id;
+		phi.type_id = module.get_builder().makeBoolType();
+		module.get_builder().addName(phi.id, (String("ladder_phi_") + loop_ladder->name).c_str());
+
+		for (auto *pred : ladder->pred)
+		{
+			IncomingValue incoming = {};
+			incoming.block = pred;
+			bool is_breaking_pred = normal_preds.count(pred) == 0;
+			incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
+			phi.incoming.push_back(incoming);
+		}
+		ladder->ir.phi.push_back(std::move(phi));
+
+		// Ladder breaks out to outer scope.
+		if (target_header && target_header->loop_ladder_block)
+		{
+			ladder->ir.terminator.true_block = target_header->loop_ladder_block;
+			ladder->add_branch(target_header->loop_ladder_block);
+		}
+		else if (target_header && target_header->loop_merge_block)
+		{
+			ladder->ir.terminator.true_block = target_header->loop_merge_block;
+			ladder->add_branch(target_header->loop_merge_block);
+		}
+		else if (full_break_target)
+		{
+			ladder->ir.terminator.true_block = full_break_target;
+			ladder->add_branch(full_break_target);
+		}
+		else
+			LOGW("No loop merge block?\n");
+
+		// This can happen in some scenarios, fixup the branch to be a direct one instead.
+		if (ladder->ir.terminator.true_block == ladder->ir.terminator.false_block)
+		{
+			ladder->ir.terminator.direct_block = ladder->ir.terminator.true_block;
+			ladder->ir.terminator.type = Terminator::Type::Branch;
+		}
+	}
+	else
+	{
+		// Here, loop_ladder -> final merge is a trivial, direct branch.
+
+		if (loop_ladder->ir.operations.empty())
+		{
+			// Simplest common case.
+			// If the loop ladder just branches to outer scope, and this block does not perform
+			// any operations we can avoid messing around with ladder PHI variables and just execute the branch.
+			// This block will likely become a frontier node when merging PHI instead.
+			// This is a common case when breaking out of a simple for loop.
+			header->traverse_dominated_blocks_and_rewrite_branch(node, loop_ladder);
+		}
+		else
+		{
+			// We have a case where we're trivially breaking out of a selection construct,
+			// but the loop ladder block contains operations which we must not execute,
+			// since we were supposed to branch directly out to node.
+			// We cannot directly break out of a selection construct, so our ladder must be a bit more sophisticated.
+			// ladder-pre -> merge -> ladder-post -> selection merge
+			//      \-------------------/
+			auto *ladder_pre = create_helper_pred_block(loop_ladder);
+			auto *ladder_post = create_helper_succ_block(loop_ladder);
+			ladder_pre->add_branch(ladder_post);
+
+			ladder_pre->ir.terminator.type = Terminator::Type::Condition;
+			ladder_pre->ir.terminator.conditional_id = module.allocate_id();
+			ladder_pre->ir.terminator.true_block = ladder_post;
+			ladder_pre->ir.terminator.false_block = loop_ladder;
+
+			// Merge to ladder instead.
+			header->traverse_dominated_blocks_and_rewrite_branch(node, ladder_pre);
+			new_ladder_block = ladder_pre;
+
+			PHI phi;
+			phi.id = ladder_pre->ir.terminator.conditional_id;
+			phi.type_id = module.get_builder().makeBoolType();
+			module.get_builder().addName(phi.id,
+										 (String("ladder_phi_") + loop_ladder->name).c_str());
+			for (auto *pred : ladder_pre->pred)
+			{
+				IncomingValue incoming = {};
+				incoming.block = pred;
+				bool is_breaking_pred = normal_preds.count(pred) == 0;
+				incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
+				phi.incoming.push_back(incoming);
+			}
+			ladder_pre->ir.phi.push_back(std::move(phi));
+		}
+	}
+
+	return new_ladder_block;
+}
+
 void CFGStructurizer::split_merge_blocks()
 {
 	for (auto *node : forward_post_visit_order)
@@ -2778,156 +2939,19 @@ void CFGStructurizer::split_merge_blocks()
 			{
 				auto *loop_ladder = get_or_create_ladder_block(node, i);
 
+				// The loop ladder needs to break to somewhere.
+				// Either this is an outer loop scope, or we need to create a fake loop we can break out of if
+				// the break is non-trivial.
 				if (loop_ladder && !target_header && !full_break_target)
-				{
-					// A loop ladder needs to break out somewhere. If we don't have a candidate
-					// place to break out to, we will need to create one for the outer scope.
-					// This is the purpose of the full_break_target fallback.
-
-					bool ladder_to_merge_is_trivial = loop_ladder->succ.size() == 1 &&
-					                                  loop_ladder->succ.front() == node;
-
-					// We have to break somewhere, turn the outer selection construct into
-					// a loop.
-					if (!ladder_to_merge_is_trivial)
-					{
-						// Selection merge to this dummy instead.
-						auto *new_selection_merge = create_helper_pred_block(node);
-
-						// This is now our fallback loop break target.
-						full_break_target = node;
-
-						auto *loop = create_helper_pred_block(new_selection_merge->headers[0]);
-
-						// Reassign header node.
-						assert(new_selection_merge->headers[0]->merge == MergeType::Selection);
-						new_selection_merge->headers[0]->selection_merge_block = new_selection_merge;
-						new_selection_merge->headers[0] = loop;
-
-						loop->merge = MergeType::Loop;
-						loop->loop_merge_block = node;
-						loop->freeze_structured_analysis = true;
-
-						// After the loop ladder, make sure we always branch to the break target.
-						loop_ladder->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
-
-						node = new_selection_merge;
-					}
-				}
+					full_break_target = build_enclosing_break_target_for_loop_ladder(node, loop_ladder);
 
 				CFGNode *new_ladder_block = nullptr;
 				if (loop_ladder)
 				{
-					if (target_header || full_break_target)
-					{
-						// If we have a ladder block, there exists a merge candidate which the loop header dominates.
-						// We create a ladder block before the merge block, which becomes the true merge block.
-						// In this ladder block, we can detect with Phi nodes whether the break was "clean",
-						// or if we had an escape edge.
-						// If we have an escape edge, we can break to outer level, and continue the ladder that way.
-						// Otherwise we branch to the existing merge block and continue as normal.
-						// We'll also need to rewrite a lot of Phi nodes this way as well.
-						auto *ladder = create_helper_pred_block(loop_ladder);
-						new_ladder_block = ladder;
-
-						// Merge to ladder instead.
-						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
-
-						ladder->ir.terminator.type = Terminator::Type::Condition;
-						ladder->ir.terminator.conditional_id = module.allocate_id();
-						ladder->ir.terminator.false_block = loop_ladder;
-
-						PHI phi;
-						phi.id = ladder->ir.terminator.conditional_id;
-						phi.type_id = module.get_builder().makeBoolType();
-						module.get_builder().addName(phi.id, (String("ladder_phi_") + loop_ladder->name).c_str());
-
-						for (auto *pred : ladder->pred)
-						{
-							IncomingValue incoming = {};
-							incoming.block = pred;
-							bool is_breaking_pred = normal_preds[i].count(pred) == 0;
-							incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
-							phi.incoming.push_back(incoming);
-						}
-						ladder->ir.phi.push_back(std::move(phi));
-
-						// Ladder breaks out to outer scope.
-						if (target_header && target_header->loop_ladder_block)
-						{
-							ladder->ir.terminator.true_block = target_header->loop_ladder_block;
-							ladder->add_branch(target_header->loop_ladder_block);
-						}
-						else if (target_header && target_header->loop_merge_block)
-						{
-							ladder->ir.terminator.true_block = target_header->loop_merge_block;
-							ladder->add_branch(target_header->loop_merge_block);
-						}
-						else if (full_break_target)
-						{
-							ladder->ir.terminator.true_block = full_break_target;
-							ladder->add_branch(full_break_target);
-						}
-						else
-							LOGW("No loop merge block?\n");
-
-						// This can happen in some scenarios, fixup the branch to be a direct one instead.
-						if (ladder->ir.terminator.true_block == ladder->ir.terminator.false_block)
-						{
-							ladder->ir.terminator.direct_block = ladder->ir.terminator.true_block;
-							ladder->ir.terminator.type = Terminator::Type::Branch;
-						}
-					}
-					else
-					{
-						// Here, loop_ladder -> final merge is a trivial, direct branch.
-
-						if (loop_ladder->ir.operations.empty())
-						{
-							// Simplest common case.
-							// If the loop ladder just branches to outer scope, and this block does not perform
-							// any operations we can avoid messing around with ladder PHI variables and just execute the branch.
-							// This block will likely become a frontier node when merging PHI instead.
-							// This is a common case when breaking out of a simple for loop.
-							node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, loop_ladder);
-						}
-						else
-						{
-							// We have a case where we're trivially breaking out of a selection construct,
-							// but the loop ladder block contains operations which we must not execute,
-							// since we were supposed to branch directly out to node.
-							// We cannot directly break out of a selection construct, so our ladder must be a bit more sophisticated.
-							// ladder-pre -> merge -> ladder-post -> selection merge
-							//      \-------------------/
-							auto *ladder_pre = create_helper_pred_block(loop_ladder);
-							auto *ladder_post = create_helper_succ_block(loop_ladder);
-							ladder_pre->add_branch(ladder_post);
-
-							ladder_pre->ir.terminator.type = Terminator::Type::Condition;
-							ladder_pre->ir.terminator.conditional_id = module.allocate_id();
-							ladder_pre->ir.terminator.true_block = ladder_post;
-							ladder_pre->ir.terminator.false_block = loop_ladder;
-
-							// Merge to ladder instead.
-							node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, ladder_pre);
-							new_ladder_block = ladder_pre;
-
-							PHI phi;
-							phi.id = ladder_pre->ir.terminator.conditional_id;
-							phi.type_id = module.get_builder().makeBoolType();
-							module.get_builder().addName(phi.id,
-							                             (String("ladder_phi_") + loop_ladder->name).c_str());
-							for (auto *pred : ladder_pre->pred)
-							{
-								IncomingValue incoming = {};
-								incoming.block = pred;
-								bool is_breaking_pred = normal_preds[i].count(pred) == 0;
-								incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
-								phi.incoming.push_back(incoming);
-							}
-							ladder_pre->ir.phi.push_back(std::move(phi));
-						}
-					}
+					new_ladder_block = build_ladder_block_for_escaping_edge_handling(
+						node, node->headers[i], loop_ladder,
+						target_header, full_break_target,
+						normal_preds[i]);
 				}
 
 				// We won't analyze this again, so make sure header knows
