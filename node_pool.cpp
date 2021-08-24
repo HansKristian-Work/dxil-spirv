@@ -32,7 +32,7 @@ CFGNodePool::~CFGNodePool()
 
 CFGNode *CFGNodePool::create_node()
 {
-	auto node = std::unique_ptr<CFGNode>(new CFGNode);
+	auto node = std::unique_ptr<CFGNode>(new CFGNode(*this));
 	auto *ret = node.get();
 	nodes.push_back(std::move(node));
 	return ret;

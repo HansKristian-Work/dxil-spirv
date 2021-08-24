@@ -17,6 +17,7 @@
  */
 
 #include "node.hpp"
+#include "node_pool.hpp"
 #include "logging.hpp"
 
 #include <algorithm>
@@ -24,6 +25,11 @@
 
 namespace dxil_spv
 {
+CFGNode::CFGNode(CFGNodePool &pool_)
+	: pool(pool_)
+{
+}
+
 void CFGNode::add_unique_pred(CFGNode *node)
 {
 	auto itr = std::find(pred.begin(), pred.end(), node);
@@ -344,6 +350,21 @@ CFGNode *CFGNode::get_immediate_dominator_loop_header()
 	}
 
 	return node;
+}
+
+void CFGNode::retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next)
+{
+	auto *intermediate = pool.create_node();
+	intermediate->name = name + ".intermediate." + to_next->name;
+	intermediate->ir.terminator.type = Terminator::Type::Branch;
+	intermediate->ir.terminator.direct_block = to_next;
+	intermediate->add_branch(to_next);
+	intermediate->immediate_post_dominator = to_next;
+	intermediate->immediate_dominator = this;
+	intermediate->forward_post_visit_order = forward_post_visit_order;
+	intermediate->backward_post_visit_order = backward_post_visit_order;
+	retarget_branch(to_prev, intermediate);
+	to_next->recompute_immediate_dominator();
 }
 
 void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
