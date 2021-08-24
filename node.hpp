@@ -20,10 +20,14 @@
 
 #include "thread_local_allocator.hpp"
 #include "ir.hpp"
+
+#include <algorithm>
 #include <stdint.h>
 
 namespace dxil_spv
 {
+class CFGNodePool;
+
 struct CFGNode
 {
 public:
@@ -38,12 +42,13 @@ public:
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 
 private:
-	CFGNode() = default;
 	friend class CFGNodePool;
 	friend class CFGStructurizer;
 	friend struct LoopBacktracer;
 	friend struct LoopMergeTracer;
+	explicit CFGNode(CFGNodePool &pool);
 
+	CFGNodePool &pool;
 	uint32_t forward_post_visit_order = 0;
 	uint32_t backward_post_visit_order = 0;
 	bool visited = false;
@@ -94,6 +99,7 @@ private:
 	bool can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
+	void retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to);
 
 	template <typename Op>
@@ -163,7 +169,14 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header
 			// Don't introduce a cycle.
 			// We only retarget branches when we have "escape-like" edges.
 			if (!to->dominates(this))
-				retarget_branch(from, to);
+			{
+				// If we already have a branch to "to", need to branch there via an intermediate node.
+				// This way, we can distinguish between a normal branch and a rewritten branch.
+				if (std::find(succ.begin(), succ.end(), to) != succ.end())
+					retarget_branch_with_intermediate_node(from, to);
+				else
+					retarget_branch(from, to);
+			}
 		}
 		else if (header.dominates(node) && node != to) // Do not traverse beyond the new branch target.
 		{
