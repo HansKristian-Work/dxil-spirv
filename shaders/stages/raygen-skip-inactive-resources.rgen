@@ -1,0 +1,38 @@
+struct Payload
+{
+	float4 color;
+};
+
+struct Payload1
+{
+	float color;
+};
+
+RaytracingAccelerationStructure AS : register(t30, space40);
+RWTexture2D<float4> IMG : register(u10, space20);
+
+SamplerState S : register(s0);
+Texture2D<float4> T : register(t0);
+
+[shader("miss")]
+void RayMiss(inout Payload payload)
+{
+	payload.color = T.SampleLevel(S, 0.5.xx, 0.0);
+}
+
+[shader("raygeneration")]
+void RayGen()
+{
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.Direction = float3(0, 0, 1);
+	ray.TMin = 1.0;
+	ray.TMax = 4.0;
+
+	Payload payload0;
+	Payload1 payload1;
+	TraceRay(AS, RAY_FLAG_NONE, 0, 0, 0, 0, ray, payload0);
+	TraceRay(AS, RAY_FLAG_NONE, 1, 0, 0, 0, ray, payload1);
+
+	IMG[int2(0, 0)] = payload0.color + payload1.color;
+}

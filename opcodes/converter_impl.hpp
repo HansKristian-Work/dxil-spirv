@@ -174,9 +174,18 @@ struct Converter::Impl
 		DXIL::ResourceType type;
 		unsigned meta_index;
 		llvm::Value *offset;
+		const llvm::GlobalVariable *variable;
 		bool non_uniform;
 	};
 	UnorderedMap<const llvm::Value *, ResourceMetaReference> llvm_global_variable_to_resource_mapping;
+	UnorderedSet<const llvm::GlobalVariable *> llvm_active_global_resource_variables;
+
+	struct ResourceVariableMeta
+	{
+		bool is_lib_variable;
+		bool is_active;
+	};
+	ResourceVariableMeta get_resource_variable_meta(const llvm::MDNode *resource) const;
 
 	struct ExecutionModeMeta
 	{
