@@ -441,6 +441,8 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		else if (itr->second.type == DXIL::ResourceType::SRV)
 			impl.llvm_value_to_srv_resource_index_map[instruction] = itr->second.meta_index;
 
+		impl.llvm_active_global_resource_variables.insert(itr->second.variable);
+
 		if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
 			impl.resource_handle_to_block[instruction] = bb;
 		break;

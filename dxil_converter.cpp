@@ -492,15 +492,25 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 	}
 }
 
-static bool resource_meta_is_global_lib_variable(const llvm::MDNode *resource)
+Converter::Impl::ResourceVariableMeta Converter::Impl::get_resource_variable_meta(const llvm::MDNode *resource) const
 {
+	ResourceVariableMeta meta = {};
+
 	if (!resource)
-		return false;
+		return meta;
 
 	if (const auto *variable = llvm::dyn_cast<llvm::ConstantAsMetadata>(resource->getOperand(1)))
-		return llvm::isa<llvm::GlobalVariable>(variable->getValue());
-	else
-		return false;
+	{
+		if (const auto *var = llvm::dyn_cast<llvm::GlobalVariable>(variable->getValue()))
+		{
+			meta.is_lib_variable = true;
+			meta.is_active = llvm_active_global_resource_variables.count(var) != 0;
+			return meta;
+		}
+	}
+
+	meta.is_active = true;
+	return meta;
 }
 
 void Converter::Impl::register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index)
@@ -512,7 +522,7 @@ void Converter::Impl::register_resource_meta_reference(const llvm::MDOperand &op
 		auto *value = llvm::cast<llvm::ConstantAsMetadata>(operand)->getValue();
 		auto *global_variable = llvm::dyn_cast<llvm::GlobalVariable>(value);
 		if (global_variable)
-			llvm_global_variable_to_resource_mapping[global_variable] = { type, index, nullptr };
+			llvm_global_variable_to_resource_mapping[global_variable] = { type, index, nullptr, global_variable, false };
 	}
 }
 
@@ -635,8 +645,12 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 	for (unsigned i = 0; i < num_srvs; i++)
 	{
 		auto *srv = llvm::cast<llvm::MDNode>(srvs->getOperand(i));
+
+		auto var_meta = get_resource_variable_meta(srv);
+		if (!var_meta.is_active)
+			continue;
+
 		unsigned index = get_constant_metadata(srv, 0);
-		bool is_global_lib_variable = resource_meta_is_global_lib_variable(srv);
 		auto name = get_string_metadata(srv, 2);
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
@@ -757,7 +771,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				uint32_t heap_offset = local_table_entry.offset_in_heap;
 				heap_offset += bind_register - local_table_entry.register_index;
 
-				if (!is_global_lib_variable)
+				if (!var_meta.is_lib_variable)
 				{
 					LOGE("Local root signature requires global lib variables.\n");
 					return false;
@@ -835,7 +849,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			// The exception is with lib_* where we access resources by variable, not through
 			// createResource() >_____<.
 			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
-			if (range_size != 1 && !is_global_lib_variable)
+			if (range_size != 1 && !var_meta.is_lib_variable)
 				heap_offset -= bind_register;
 
 			auto &ref = srv_index_to_reference[index];
@@ -1007,8 +1021,12 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 	for (unsigned i = 0; i < num_uavs; i++)
 	{
 		auto *uav = llvm::cast<llvm::MDNode>(uavs->getOperand(i));
+
+		auto var_meta = get_resource_variable_meta(uav);
+		if (!var_meta.is_active)
+			continue;
+
 		unsigned index = get_constant_metadata(uav, 0);
-		bool is_global_lib_variable = resource_meta_is_global_lib_variable(uav);
 		auto name = get_string_metadata(uav, 2);
 		unsigned bind_space = get_constant_metadata(uav, 3);
 		unsigned bind_register = get_constant_metadata(uav, 4);
@@ -1209,7 +1227,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				uint32_t heap_offset = local_table_entry.offset_in_heap;
 				heap_offset += bind_register - local_table_entry.register_index;
 
-				if (!is_global_lib_variable)
+				if (!var_meta.is_lib_variable)
 				{
 					LOGE("Local root signature requires global lib variables.\n");
 					return false;
@@ -1308,7 +1326,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			// The exception is with lib_* where we access resources by variable, not through
 			// createResource() >_____<.
 			uint32_t heap_offset = vulkan_binding.buffer_binding.bindless.heap_root_offset;
-			if (range_size != 1 && !is_global_lib_variable)
+			if (range_size != 1 && !var_meta.is_lib_variable)
 				heap_offset -= bind_register;
 
 			auto &ref = uav_index_to_reference[index];
@@ -1329,7 +1347,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 					spv::Id counter_var_id = create_bindless_heap_variable(counter_info);
 
 					heap_offset = vulkan_binding.counter_binding.bindless.heap_root_offset;
-					if (range_size != 1 && !is_global_lib_variable)
+					if (range_size != 1 && !var_meta.is_lib_variable)
 						heap_offset -= bind_register;
 
 					auto &counter_ref = uav_index_to_counter[index];
@@ -1505,8 +1523,11 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 	for (unsigned i = 0; i < num_cbvs; i++)
 	{
 		auto *cbv = llvm::cast<llvm::MDNode>(cbvs->getOperand(i));
+		auto var_meta = get_resource_variable_meta(cbv);
+		if (!var_meta.is_active)
+			continue;
+
 		unsigned index = get_constant_metadata(cbv, 0);
-		bool is_global_lib_variable = resource_meta_is_global_lib_variable(cbv);
 		auto name = get_string_metadata(cbv, 2);
 		unsigned bind_space = get_constant_metadata(cbv, 3);
 		unsigned bind_register = get_constant_metadata(cbv, 4);
@@ -1568,7 +1589,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				uint32_t heap_offset = local_table_entry.offset_in_heap;
 				heap_offset += bind_register - local_table_entry.register_index;
 
-				if (!is_global_lib_variable)
+				if (!var_meta.is_lib_variable)
 				{
 					LOGE("Local root signature requires global lib variables.\n");
 					return false;
@@ -1631,7 +1652,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			// The exception is with lib_* where we access resources by variable, not through
 			// createResource() >_____<.
 			uint32_t heap_offset = vulkan_binding.buffer.bindless.heap_root_offset;
-			if (range_size != 1 && !is_global_lib_variable)
+			if (range_size != 1 && !var_meta.is_lib_variable)
 				heap_offset -= bind_register;
 
 			auto &ref = cbv_index_to_reference[index];
@@ -1687,8 +1708,12 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 	for (unsigned i = 0; i < num_samplers; i++)
 	{
 		auto *sampler = llvm::cast<llvm::MDNode>(samplers->getOperand(i));
+
+		auto var_meta = get_resource_variable_meta(sampler);
+		if (!var_meta.is_active)
+			continue;
+
 		unsigned index = get_constant_metadata(sampler, 0);
-		bool is_global_lib_variable = resource_meta_is_global_lib_variable(sampler);
 		auto name = get_string_metadata(sampler, 2);
 		unsigned bind_space = get_constant_metadata(sampler, 3);
 		unsigned bind_register = get_constant_metadata(sampler, 4);
@@ -1744,7 +1769,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			uint32_t heap_offset = local_table_entry.offset_in_heap;
 			heap_offset += bind_register - local_table_entry.register_index;
 
-			if (!is_global_lib_variable)
+			if (!var_meta.is_lib_variable)
 			{
 				LOGE("Local root signature requires global lib variables.\n");
 				return false;
@@ -1766,7 +1791,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			// The exception is with lib_* where we access resources by variable, not through
 			// createResource() >_____<.
 			uint32_t heap_offset = vulkan_binding.bindless.heap_root_offset;
-			if (range_size != 1 && !is_global_lib_variable)
+			if (range_size != 1 && !var_meta.is_lib_variable)
 				heap_offset -= bind_register;
 
 			auto &ref = sampler_index_to_reference[index];
