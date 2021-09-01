@@ -3097,6 +3097,7 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::SampleIndex:
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInSampleId);
 		spirv_module.register_builtin_shader_input(id, spv::BuiltInSampleId);
+		builder.addCapability(spv::CapabilitySampleRateShading);
 		break;
 
 	case DXIL::Semantic::VertexID:
