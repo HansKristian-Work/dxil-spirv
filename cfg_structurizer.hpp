@@ -94,7 +94,8 @@ private:
 	static CFGNode *find_common_post_dominator_with_ignored_break(Vector<CFGNode *> candidates,
 	                                                              const CFGNode *break_node);
 	//static CFGNode *find_common_post_dominator_with_ignored_exits(const CFGNode *header);
-	static bool control_flow_is_escaping(const CFGNode *node, const CFGNode *merge);
+	bool control_flow_is_escaping(const CFGNode *node, const CFGNode *merge) const;
+	bool block_is_load_bearing(const CFGNode *node, const CFGNode *merge) const;
 	static Vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
 	static void isolate_structured(UnorderedSet<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
 

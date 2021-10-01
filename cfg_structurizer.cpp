@@ -525,13 +525,14 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				auto *pred = node->pred.front();
 				pred->retarget_branch(node, succ);
 			}
-			else if (node->pred.size() >= 2 && !node->dominates(node->succ.front()))
+			else if (node->pred.size() >= 2 && !node->dominates(node->succ.front()) &&
+			         node->succ.front()->post_dominates(node))
 			{
 				// If we have two or more preds, we have to be really careful.
-				// This block could be load-bearing from a structurization standpoint.
-				// If this node in on a breaking path, it is fine to eliminate the block.
-				auto *merge = CFGStructurizer::find_common_post_dominator(node->pred);
-				if (merge == node->succ.front())
+				// If this node is on a breaking path, without being important for merging control flow,
+				// it is fine to eliminate the block.
+				if (control_flow_is_escaping(node, node->succ.front()) &&
+				    !block_is_load_bearing(node, node->succ.front()))
 				{
 					did_work = true;
 					auto tmp_pred = node->pred;
@@ -1430,21 +1431,79 @@ Vector<CFGNode *> CFGStructurizer::isolate_structured_sorted(const CFGNode *head
 	return sorted;
 }
 
-bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNode *merge)
+bool CFGStructurizer::block_is_load_bearing(const CFGNode *node, const CFGNode *merge) const
+{
+	return node->pred.size() >= 2 &&
+	       !exists_path_in_cfg_without_intermediate_node(node->immediate_dominator, merge, node);
+}
+
+bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNode *merge) const
 {
 	if (node == merge)
 		return false;
 
-	// If control flow is not escaping, then there must exist a dominance frontier node A,
-	// where merge strictly post-dominates A.
-	// This means that control flow can merge somewhere before we hit the merge block.
-
 	assert(merge->post_dominates(node));
-	for (auto *frontier : node->dominance_frontier)
-		if (merge != frontier && merge->post_dominates(frontier))
-			return false;
+	bool escaping_path = false;
 
-	return true;
+	// First, test the loop scenario.
+	// If we're inside a loop, we're a break construct if we can prove that:
+	// - node has a loop header which dominates it.
+	// - node cannot reach the continue block.
+	// - Continue block cannot reach node.
+	// - All post-domination frontiers can reach the continue block, meaning that at some point control flow
+	//   decided to break out of the loop construct.
+	auto *innermost_loop_header = entry_block->get_innermost_loop_header_for(node);
+	if (innermost_loop_header && innermost_loop_header->pred_back_edge)
+	{
+		bool dominates_merge = node->dominates(merge);
+		bool can_reach_continue = query_reachability(*node, *innermost_loop_header->pred_back_edge);
+		bool continue_can_reach = query_reachability(*innermost_loop_header->pred_back_edge, *node);
+		bool pdf_can_reach_continue = true;
+
+		for (auto *frontier : node->post_dominance_frontier)
+		{
+			bool header_dominates_frontier = innermost_loop_header->dominates(frontier);
+			bool fronter_is_inside_loop_construct =
+				query_reachability(*frontier, *innermost_loop_header->pred_back_edge);
+			if (!header_dominates_frontier || !fronter_is_inside_loop_construct)
+			{
+				pdf_can_reach_continue = false;
+				break;
+			}
+		}
+
+		if (!dominates_merge && !continue_can_reach && !can_reach_continue && pdf_can_reach_continue)
+			escaping_path = true;
+	}
+
+	if (!escaping_path)
+	{
+		// Try to test if our block is load bearing, in which case it cannot be considered a break block.
+		// If the only path from idom to merge goes through node, it must be considered load bearing,
+		// since removing break paths must not change reachability.
+		bool load_bearing_escape = block_is_load_bearing(node, merge);
+
+		if (!load_bearing_escape)
+		{
+			// If we cannot prove the escape through loop analysis, we might be able to deduce it from domination frontiers.
+			// If control flow is not escaping, then there must exist a dominance frontier node A,
+			// where merge strictly post-dominates A.
+			// This means that control flow can merge somewhere before we hit the merge block, and we consider that
+			// normal structured control flow.
+
+			escaping_path = true;
+			for (auto *frontier : node->dominance_frontier)
+			{
+				if (merge != frontier && merge->post_dominates(frontier))
+				{
+					escaping_path = false;
+					break;
+				}
+			}
+		}
+	}
+
+	return escaping_path;
 }
 
 void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
