@@ -258,6 +258,27 @@ bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm
 	return true;
 }
 
+static spv::Id clamp_bitfield_width(Converter::Impl &impl, spv::Id offset, spv::Id width)
+{
+	auto &builder = impl.builder();
+	// D3D has well-defined behavior when width + offset overflows in bitfield instructions.
+	// To get similar behavior, we just need to clamp width.
+	auto *max_width_op = impl.allocate(spv::OpISub, builder.makeUintType(32));
+	max_width_op->add_id(builder.makeUintConstant(32));
+	max_width_op->add_id(offset);
+	impl.add(max_width_op);
+
+	auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+	clamp_op->add_id(impl.glsl_std450_ext);
+	clamp_op->add_literal(GLSLstd450UMin);
+	clamp_op->add_id(width);
+	clamp_op->add_id(max_width_op->id);
+	impl.add(clamp_op);
+	return clamp_op->id;
+}
+
 static spv::Id mask_input(Converter::Impl &impl, const llvm::Value *value)
 {
 	Operation *op = impl.allocate(spv::OpBitwiseAnd, impl.get_type_id(value->getType()));
@@ -275,6 +296,7 @@ bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::Cal
 	// SPIR-V spec doesn't say anything about masking inputs, but Ibfe/Ubfe do, so ...
 	spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
 	spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
+	masked_width_id = clamp_bitfield_width(impl, masked_offset_id, masked_width_id);
 
 	Operation *op = impl.allocate(opcode, instruction);
 	op->add_ids({ impl.get_id_for_value(instruction->getOperand(3)), masked_offset_id, masked_width_id });
@@ -286,6 +308,8 @@ bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instructi
 {
 	spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
 	spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
+	masked_width_id = clamp_bitfield_width(impl, masked_offset_id, masked_width_id);
+
 	spv::Id src_id = impl.get_id_for_value(instruction->getOperand(3));
 	spv::Id dst_id = impl.get_id_for_value(instruction->getOperand(4));
 
