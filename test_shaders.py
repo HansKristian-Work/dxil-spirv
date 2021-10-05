@@ -166,6 +166,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
 
     if '.demote-to-helper.' in shader:
         hlsl_cmd.append('--enable-shader-demote')
+    if '.i8dot.' in shader:
+        hlsl_cmd.append('--enable-shader-i8-dot')
     if '.dual-source-blending.' in shader:
         hlsl_cmd.append('--enable-dual-source-blending')
     if ('.ssbo.' in shader) or is_asm:

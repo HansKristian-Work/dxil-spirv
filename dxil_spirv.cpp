@@ -127,6 +127,7 @@ static void print_help()
 	     "\t[--vertex-input semantic location]\n"
 	     "\t[--stream-output semantic index offset stride buffer-index]\n"
 	     "\t[--enable-shader-demote]\n"
+	     "\t[--enable-shader-i8-dot]\n"
 	     "\t[--enable-dual-source-blending]\n"
 	     "\t[--bindless]\n"
 	     "\t[--no-bda]\n"
@@ -157,6 +158,7 @@ struct Arguments
 	bool emit_asm = false;
 	bool validate = false;
 	bool shader_demote = false;
+	bool shader_i8_dot = false;
 	bool dual_source_blending = false;
 	bool debug_all_entry_points = false;
 	bool storage_input_output_16bit = false;
@@ -530,6 +532,7 @@ int main(int argc, char **argv)
 		remapper.stream_outputs.push_back({ std::string(sem), index, offset, stride, buffer_index });
 	});
 	cbs.add("--enable-shader-demote", [&](CLIParser &) { args.shader_demote = true; });
+	cbs.add("--enable-shader-i8-dot", [&](CLIParser &parser) { args.shader_i8_dot = true; });
 	cbs.add("--enable-dual-source-blending", [&](CLIParser &) { args.dual_source_blending = true; });
 	cbs.add("--bindless", [&](CLIParser &) {
 		remapper.bindless = true;
@@ -731,6 +734,13 @@ int main(int argc, char **argv)
 	{
 		const dxil_spv_option_shader_demote_to_helper helper = { { DXIL_SPV_OPTION_SHADER_DEMOTE_TO_HELPER },
 			                                                     DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &helper.base);
+	}
+
+	if (args.shader_i8_dot)
+	{
+		const dxil_spv_option_shader_i8_dot helper = { { DXIL_SPV_OPTION_SHADER_I8_DOT },
+		                                               DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &helper.base);
 	}
 

@@ -405,6 +405,7 @@ struct Converter::Impl
 		bool descriptor_qa_enabled = false;
 		bool descriptor_qa_sink_handles = true;
 		bool min_precision_prefer_native_16bit = false;
+		bool shader_i8_dot_enabled = false;
 	} options;
 
 	struct BindlessInfo
