@@ -143,7 +143,8 @@ static void print_help()
 	     "\t[--storage-input-output-16bit]\n"
 	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n"
 	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
-	     "\t[--min-precision-native-16bit]\n");
+	     "\t[--min-precision-native-16bit]\n"
+	     "\t[--raw-llvm]\n");
 }
 
 struct Arguments
@@ -168,6 +169,7 @@ struct Arguments
 	bool typed_uav_read_without_format = false;
 	bool bindless_typed_buffer_offsets = false;
 	bool min_precision_native_16bit = false;
+	bool raw_llvm = false;
 
 	unsigned ssbo_alignment = 1;
 
@@ -647,6 +649,7 @@ int main(int argc, char **argv)
 		args.shader_hash = uint64_t(strtoull(parser.next_string(), nullptr, 16));
 	});
 	cbs.add("--min-precision-native-16bit", [&](CLIParser &) { args.min_precision_native_16bit = true; });
+	cbs.add("--raw-llvm", [&](CLIParser &) { args.raw_llvm = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -670,10 +673,22 @@ int main(int argc, char **argv)
 	}
 
 	dxil_spv_parsed_blob blob;
-	if (dxil_spv_parse_dxil_blob(binary.data(), binary.size(), &blob) != DXIL_SPV_SUCCESS)
+
+	if (args.raw_llvm)
 	{
-		LOGE("Failed to parse blob.\n");
-		return EXIT_FAILURE;
+		if (dxil_spv_parse_dxil(binary.data(), binary.size(), &blob) != DXIL_SPV_SUCCESS)
+		{
+			LOGE("Failed to parse raw LLVM blob.\n");
+			return EXIT_FAILURE;
+		}
+	}
+	else
+	{
+		if (dxil_spv_parse_dxil_blob(binary.data(), binary.size(), &blob) != DXIL_SPV_SUCCESS)
+		{
+			LOGE("Failed to parse blob.\n");
+			return EXIT_FAILURE;
+		}
 	}
 
 	if (args.dump_module)
