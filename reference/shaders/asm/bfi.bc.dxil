@@ -1,0 +1,89 @@
+#version 460
+
+layout(set = 0, binding = 0, std140) uniform _10_12
+{
+    vec4 _m0[1];
+} _12;
+
+layout(location = 0) out uvec4 SV_Target;
+
+void main()
+{
+    uvec4 _20 = floatBitsToUint(_12._m0[0u]);
+    uint _27 = _20.y & 31u;
+    uint _32 = bitfieldInsert(_20.w, _20.z, int(_27), int(min((_20.x & 31u), (32u - _27))));
+    SV_Target.x = _32;
+    SV_Target.y = _32;
+    SV_Target.z = _32;
+    SV_Target.w = _32;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 42
+; Schema: 0
+OpCapability Shader
+%31 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint Fragment %3 "main" %15
+OpExecutionMode %3 OriginUpperLeft
+OpName %3 "main"
+OpName %10 ""
+OpName %15 "SV_Target"
+OpDecorate %9 ArrayStride 16
+OpMemberDecorate %10 0 Offset 0
+OpDecorate %10 Block
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 0
+OpDecorate %15 Location 0
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpConstant %5 1
+%7 = OpTypeFloat 32
+%8 = OpTypeVector %7 4
+%9 = OpTypeArray %8 %6
+%10 = OpTypeStruct %9
+%11 = OpTypePointer Uniform %10
+%12 = OpVariable %11 Uniform
+%13 = OpTypeVector %5 4
+%14 = OpTypePointer Output %13
+%15 = OpVariable %14 Output
+%16 = OpConstant %5 0
+%17 = OpTypePointer Uniform %8
+%26 = OpConstant %5 31
+%29 = OpConstant %5 32
+%33 = OpTypePointer Output %5
+%37 = OpConstant %5 2
+%39 = OpConstant %5 3
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %40
+%40 = OpLabel
+%18 = OpAccessChain %17 %12 %16 %16
+%19 = OpLoad %8 %18
+%20 = OpBitcast %13 %19
+%21 = OpCompositeExtract %5 %20 0
+%22 = OpCompositeExtract %5 %20 1
+%23 = OpCompositeExtract %5 %20 2
+%24 = OpCompositeExtract %5 %20 3
+%25 = OpBitwiseAnd %5 %21 %26
+%27 = OpBitwiseAnd %5 %22 %26
+%28 = OpISub %5 %29 %27
+%30 = OpExtInst %5 %31 UMin %25 %28
+%32 = OpBitFieldInsert %5 %24 %23 %27 %30
+%34 = OpAccessChain %33 %15 %16
+OpStore %34 %32
+%35 = OpAccessChain %33 %15 %6
+OpStore %35 %32
+%36 = OpAccessChain %33 %15 %37
+OpStore %36 %32
+%38 = OpAccessChain %33 %15 %39
+OpStore %38 %32
+OpReturn
+OpFunctionEnd
+#endif

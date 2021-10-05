@@ -102,6 +102,9 @@ def cross_compile_dxil(shader, args, paths, is_asm):
     else:
         hlsl_cmd += ['--asm']
 
+    if '.bc.' in shader:
+        hlsl_cmd += ['--raw-llvm']
+
     if '.root-constant.' in shader:
         hlsl_cmd.append('--root-constant')
         hlsl_cmd.append('0')
