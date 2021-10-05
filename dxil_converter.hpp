@@ -206,7 +206,8 @@ enum class Option : uint32_t
 	BindlessOffsetBufferLayout = 13,
 	StorageInputOutput16 = 14,
 	DescriptorQA = 15,
-	MinPrecisionNative16Bit = 16
+	MinPrecisionNative16Bit = 16,
+	ShaderI8Dot = 17
 };
 
 enum class ResourceClass : uint32_t
@@ -389,6 +390,16 @@ struct OptionMinPrecisionNative16Bit : OptionBase
 	}
 
 	bool enabled = false;
+};
+
+struct OptionShaderI8Dot : OptionBase
+{
+	OptionShaderI8Dot()
+		: OptionBase(Option::ShaderI8Dot)
+	{
+	}
+
+	bool supported = false;
 };
 
 struct DescriptorTableEntry

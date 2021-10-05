@@ -409,31 +409,50 @@ static spv::Id build_bfe(Converter::Impl &impl, spv::Id value_id, unsigned offse
 
 bool emit_i8_dot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool sign_extend)
 {
-	// Can be improved with a specific intrinsic to support this.
-	// This is mostly a thing for machine learning algorithms.
-	// Could potentially be improved a bit with Int8 stuff, but meh ...
-
 	auto &builder = impl.builder();
 	spv::Id acc = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id a = impl.get_id_for_value(instruction->getOperand(2));
 	spv::Id b = impl.get_id_for_value(instruction->getOperand(3));
-	for (unsigned i = 0; i < 4; i++)
-	{
-		spv::Id a_component = build_bfe(impl, a, 8 * i, 8, sign_extend);
-		spv::Id b_component = build_bfe(impl, b, 8 * i, 8, sign_extend);
-		auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-		mul_op->add_id(a_component);
-		mul_op->add_id(b_component);
-		impl.add(mul_op);
 
-		auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		add_op->add_id(acc);
-		add_op->add_id(mul_op->id);
-		acc = add_op->id;
-		impl.add(add_op);
+	if (impl.options.shader_i8_dot_enabled)
+	{
+		builder.addExtension("SPV_KHR_integer_dot_product");
+		builder.addCapability(spv::CapabilityDotProductKHR);
+		builder.addCapability(spv::CapabilityDotProductInput4x8BitPackedKHR);
+
+		// Not supposed to saturate.
+		auto *dot_op = impl.allocate(sign_extend ? spv::OpSDotKHR : spv::OpUDotKHR, builder.makeUintType(32));
+		dot_op->add_id(a);
+		dot_op->add_id(b);
+		dot_op->add_literal(spv::PackedVectorFormatPackedVectorFormat4x8BitKHR);
+		impl.add(dot_op);
+
+		auto *acc_op = impl.allocate(spv::OpIAdd, instruction);
+		acc_op->add_id(acc);
+		acc_op->add_id(dot_op->id);
+		impl.add(acc_op);
+	}
+	else
+	{
+		for (unsigned i = 0; i < 4; i++)
+		{
+			spv::Id a_component = build_bfe(impl, a, 8 * i, 8, sign_extend);
+			spv::Id b_component = build_bfe(impl, b, 8 * i, 8, sign_extend);
+			auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+			mul_op->add_id(a_component);
+			mul_op->add_id(b_component);
+			impl.add(mul_op);
+
+			auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+			add_op->add_id(acc);
+			add_op->add_id(mul_op->id);
+			acc = add_op->id;
+			impl.add(add_op);
+		}
+
+		impl.rewrite_value(instruction, acc);
 	}
 
-	impl.rewrite_value(instruction, acc);
 	return true;
 }
 

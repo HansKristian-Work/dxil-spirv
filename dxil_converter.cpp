@@ -4954,6 +4954,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::ShaderI8Dot:
+		options.shader_i8_dot_enabled = static_cast<const OptionShaderI8Dot &>(cap).supported;
+		break;
+
 	default:
 		break;
 	}
@@ -5000,6 +5004,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::StorageInputOutput16:
 	case Option::DescriptorQA:
 	case Option::MinPrecisionNative16Bit:
+	case Option::ShaderI8Dot:
 		return true;
 
 	default:

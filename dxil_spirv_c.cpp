@@ -794,6 +794,15 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_SHADER_I8_DOT:
+	{
+		OptionShaderI8Dot helper;
+		helper.supported = bool(reinterpret_cast<const dxil_spv_option_shader_i8_dot *>(option)->supported);
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
