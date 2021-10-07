@@ -702,7 +702,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		                         resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
 		                        access_meta.access_16bit;
 
-		if (raw_access_16bit &&
+		if (raw_access_16bit && need_resource_remapping &&
 		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
 		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -1123,7 +1123,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		                         resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
 		                        access_meta.access_16bit;
 
-		if (raw_access_16bit &&
+		if (raw_access_16bit && need_resource_remapping &&
 		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
 		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 		{
