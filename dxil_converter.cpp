@@ -2413,7 +2413,8 @@ static bool is_identifier(char c)
 	// We don't control the locale, so to be safe ...
 	const auto is_lower = [](char c) -> bool { return c >= 'a' && c <= 'z'; };
 	const auto is_upper = [](char c) -> bool { return c >= 'A' && c <= 'Z'; };
-	return is_lower(c) || is_upper(c) || c == '_';
+	const auto is_digit = [](char c) -> bool { return c >= '0' && c <= '9'; };
+	return is_lower(c) || is_upper(c) || c == '_' || is_digit(c);
 }
 
 static bool is_mangled_entry_point(const char *user)
