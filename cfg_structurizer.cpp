@@ -2110,6 +2110,44 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				idom = header;
 		}
 
+		if (pass == 0)
+		{
+			// Check that we're not merging ourselves into the aether.
+			// This is a scenario that can happen if we attempt to merge to a block which terminates the CFG
+			// (return or unreachable),
+			// but does not post-dominate the idom candidate,
+			// i.e. the selection construct needs to break to some other scope.
+			// If this happens, we won't be able to register a typical breaking scenario
+			// (since post-domination analysis won't help us),
+			// and we need to do some magic fixups.
+
+			auto *merge_candidate = CFGNode::find_common_post_dominator(idom, node);
+			bool post_dominator_is_exit_node =
+				merge_candidate && merge_candidate->immediate_post_dominator == merge_candidate;
+			bool merged_into_terminating_path = post_dominator_is_exit_node && node->dominates_all_reachable_exits();
+
+			// If our candidate idom post dominates the entry block, we consider this the main path of execution.
+			if (merged_into_terminating_path && idom->post_dominates(entry_block))
+				merged_into_terminating_path = false;
+
+			if (merged_into_terminating_path)
+			{
+				// Similar to loops, find the break target for this construct.
+				auto *break_target = find_break_target_for_selection_construct(idom, node);
+
+				// Have not observed any scenario where we won't have a dominated break target we can use.
+				if (break_target && idom->dominates(break_target) && break_target->headers.empty())
+				{
+					// Enclose this scope in a loop.
+					auto *helper_pred = create_helper_pred_block(idom);
+					helper_pred->merge = MergeType::Loop;
+					helper_pred->loop_merge_block = break_target;
+					helper_pred->freeze_structured_analysis = true;
+					break_target->headers.push_back(helper_pred);
+				}
+			}
+		}
+
 		if (idom->merge == MergeType::None || idom->merge == MergeType::Selection)
 		{
 			// We just found a switch block which we have already handled.
@@ -2347,43 +2385,6 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 	return succ_node;
 }
 
-#if 0
-CFGNode *CFGStructurizer::find_common_dominated_merge_block(CFGNode *header)
-{
-	auto candidates = header->succ;
-	Vector<CFGNode *> next_nodes;
-
-	const auto add_unique_next_node = [&](CFGNode *node) {
-		if (header->dominates(node))
-		{
-			if (std::find(next_nodes.begin(), next_nodes.end(), node) == next_nodes.end())
-				next_nodes.push_back(node);
-		}
-	};
-
-	while (candidates.size() > 1)
-	{
-		// Sort candidates by post visit order.
-		std::sort(candidates.begin(), candidates.end(), [](const CFGNode *a, const CFGNode *b) {
-			return a->forward_post_visit_order > b->forward_post_visit_order;
-		});
-
-		// Now we look at the lowest post-visit order.
-		// Before we traverse further, we need to make sure that all other blocks will actually reconvene with us somewhere.
-
-		for (auto *succ : candidates.front()->succ)
-			add_unique_next_node(succ);
-		for (auto itr = candidates.begin() + 1; itr != candidates.end(); ++itr)
-			add_unique_next_node(*itr);
-
-		candidates.clear();
-		std::swap(candidates, next_nodes);
-	}
-
-	return candidates.empty() ? nullptr : candidates.front();
-}
-#endif
-
 CFGNode *CFGStructurizer::find_common_post_dominator(const Vector<CFGNode *> &candidates)
 {
 	if (candidates.empty())
@@ -2397,43 +2398,40 @@ CFGNode *CFGStructurizer::find_common_post_dominator(const Vector<CFGNode *> &ca
 	return common_post != common_post->immediate_post_dominator ? common_post : nullptr;
 }
 
-#if 0
-CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_exits(const CFGNode *header)
+CFGNode *CFGStructurizer::find_break_target_for_selection_construct(CFGNode *idom, CFGNode *merge)
 {
+	Vector<CFGNode *> new_visit_queue;
+	UnorderedSet<CFGNode *> visited;
+	Vector<CFGNode *> visit_queue;
 	Vector<CFGNode *> candidates;
-	Vector<CFGNode *> next_nodes;
-	const auto add_unique_next_node = [&](CFGNode *node) {
-		if (std::find(next_nodes.begin(), next_nodes.end(), node) == next_nodes.end())
-			next_nodes.push_back(node);
-	};
 
-	// Ignore any exit paths.
-	for (auto *succ : header->succ)
-		if (!succ->dominates_all_reachable_exits())
-			add_unique_next_node(succ);
-	std::swap(next_nodes, candidates);
-
-	while (candidates.size() != 1)
+	visit_queue.push_back(idom);
+	do
 	{
-		// Sort candidates by post visit order.
-		std::sort(candidates.begin(), candidates.end(),
-		          [](const CFGNode *a, const CFGNode *b) { return a->forward_post_visit_order > b->forward_post_visit_order; });
+		for (auto *n : visit_queue)
+		{
+			if (visited.count(n))
+				continue;
+			visited.insert(n);
 
-		for (auto *succ : candidates.front()->succ)
-			add_unique_next_node(succ);
-		for (auto itr = candidates.begin() + 1; itr != candidates.end(); ++itr)
-			add_unique_next_node(*itr);
+			if (query_reachability(*n, *merge))
+			{
+				for (auto *succ : n->succ)
+					new_visit_queue.push_back(succ);
+			}
+			else
+				candidates.push_back(n);
+		}
 
-		candidates.clear();
-		std::swap(candidates, next_nodes);
-	}
+		visit_queue = new_visit_queue;
+		new_visit_queue.clear();
+	} while (!visit_queue.empty());
 
 	if (candidates.empty())
 		return nullptr;
 	else
-		return candidates.front();
+		return find_common_post_dominator(candidates);
 }
-#endif
 
 CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(Vector<CFGNode *> candidates,
                                                                         const CFGNode *ignored_node)
