@@ -2366,6 +2366,25 @@ static llvm::MDNode *get_entry_point_meta(const llvm::Module &module, const char
 	return nullptr;
 }
 
+static llvm::MDNode *get_null_entry_point_meta(const llvm::Module &module)
+{
+	// In DXR, a dummy entry point with null function pointer owns the shader flags for whatever reason ...
+	auto *ep_meta = module.getNamedMetadata("dx.entryPoints");
+	unsigned num_entry_points = ep_meta->getNumOperands();
+	for (unsigned i = 0; i < num_entry_points; i++)
+	{
+		auto *node = ep_meta->getOperand(i);
+		if (node)
+		{
+			auto &func_node = node->getOperand(0);
+			if (!func_node)
+				return node;
+		}
+	}
+
+	return nullptr;
+}
+
 Vector<String> Converter::get_entry_points(const LLVMBCParser &parser)
 {
 	Vector<String> result;
@@ -4308,6 +4327,8 @@ bool Converter::Impl::emit_execution_modes_fp_denorm()
 
 bool Converter::Impl::emit_execution_modes()
 {
+	auto *meta = entry_point_meta;
+
 	switch (execution_model)
 	{
 	case spv::ExecutionModelGLCompute:
@@ -4343,13 +4364,15 @@ bool Converter::Impl::emit_execution_modes()
 	case spv::ExecutionModelClosestHitKHR:
 		if (!emit_execution_modes_ray_tracing(execution_model))
 			return false;
+		if (auto *null_meta = get_null_entry_point_meta(bitcode_parser.get_module()))
+			meta = null_meta;
 		break;
 
 	default:
 		break;
 	}
 
-	auto flags = get_shader_flags(entry_point_meta);
+	auto flags = get_shader_flags(meta);
 	execution_mode_meta.native_16bit_operations = (flags & DXIL::ShaderFlagNativeLowPrecision) != 0;
 
 	if (!emit_execution_modes_fp_denorm())

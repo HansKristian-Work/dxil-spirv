@@ -1,0 +1,8 @@
+RaytracingAccelerationStructure AS : register(t0);
+RWStructuredBuffer<min16float> BUF : register(u0);
+
+[shader("raygeneration")]
+void RayGen()
+{
+	BUF[DispatchRaysIndex().x] = min16float(20.0);
+}
