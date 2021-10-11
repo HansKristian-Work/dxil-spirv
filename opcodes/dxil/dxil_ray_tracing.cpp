@@ -390,11 +390,15 @@ bool emit_ray_query_trace_ray_inline_instruction(Converter::Impl &impl, const ll
 		ray_query_flags |= const_flags->getUniqueInteger().getZExtValue();
 		init_op->add_id(builder.makeUintConstant(ray_query_flags));
 	}
+	else if (ray_query_flags == 0)
+	{
+		init_op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+	}
 	else
 	{
 		auto *or_op = impl.allocate(spv::OpBitwiseOr, builder.makeUintType(32));
 		or_op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
-		or_op->add_id(ray_query_flags);
+		or_op->add_id(builder.makeUintConstant(ray_query_flags));
 		impl.add(or_op);
 		init_op->add_id(or_op->id);
 	}
