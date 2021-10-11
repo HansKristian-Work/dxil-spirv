@@ -406,6 +406,7 @@ struct Converter::Impl
 		bool descriptor_qa_sink_handles = true;
 		bool min_precision_prefer_native_16bit = false;
 		bool shader_i8_dot_enabled = false;
+		bool ray_tracing_primitive_culling_enabled = false;
 	} options;
 
 	struct BindlessInfo
@@ -462,6 +463,7 @@ struct Converter::Impl
 		// Only relevant for fragment shaders.
 		bool has_side_effects = false;
 		bool discards = false;
+		bool can_require_primitive_culling = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

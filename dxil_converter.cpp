@@ -4286,6 +4286,8 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 {
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityRayTracingKHR);
+	if (options.ray_tracing_primitive_culling_enabled && shader_analysis.can_require_primitive_culling)
+		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
 	builder.addExtension("SPV_KHR_ray_tracing");
 	builder.addExtension("SPV_EXT_descriptor_indexing");
 
@@ -4982,6 +4984,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.shader_i8_dot_enabled = static_cast<const OptionShaderI8Dot &>(cap).supported;
 		break;
 
+	case Option::ShaderRayTracingPrimitiveCulling:
+		options.ray_tracing_primitive_culling_enabled =
+		    static_cast<const OptionShaderRayTracingPrimitiveCulling &>(cap).supported;
+		break;
+
 	default:
 		break;
 	}
@@ -5029,6 +5036,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::DescriptorQA:
 	case Option::MinPrecisionNative16Bit:
 	case Option::ShaderI8Dot:
+	case Option::ShaderRayTracingPrimitiveCulling:
 		return true;
 
 	default:

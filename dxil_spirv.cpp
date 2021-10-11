@@ -744,6 +744,13 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &helper.base);
 	}
 
+	{
+		const dxil_spv_option_shader_ray_tracing_primitive_culling helper =
+			{ { DXIL_SPV_OPTION_SHADER_RAY_TRACING_PRIMITIVE_CULLING },
+			  DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &helper.base);
+	}
+
 	if (args.dual_source_blending)
 	{
 		const dxil_spv_option_dual_source_blending helper = { { DXIL_SPV_OPTION_DUAL_SOURCE_BLENDING }, DXIL_SPV_TRUE };

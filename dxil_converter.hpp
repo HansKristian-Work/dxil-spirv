@@ -207,7 +207,8 @@ enum class Option : uint32_t
 	StorageInputOutput16 = 14,
 	DescriptorQA = 15,
 	MinPrecisionNative16Bit = 16,
-	ShaderI8Dot = 17
+	ShaderI8Dot = 17,
+	ShaderRayTracingPrimitiveCulling = 18
 };
 
 enum class ResourceClass : uint32_t
@@ -396,6 +397,16 @@ struct OptionShaderI8Dot : OptionBase
 {
 	OptionShaderI8Dot()
 		: OptionBase(Option::ShaderI8Dot)
+	{
+	}
+
+	bool supported = false;
+};
+
+struct OptionShaderRayTracingPrimitiveCulling : OptionBase
+{
+	OptionShaderRayTracingPrimitiveCulling()
+		: OptionBase(Option::ShaderRayTracingPrimitiveCulling)
 	{
 	}
 

@@ -526,6 +526,21 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassRayPayloadKHR;
 			}
 		}
+
+		if (const auto *flags_inst = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2)))
+		{
+			if ((flags_inst->getUniqueInteger().getZExtValue() & (spv::RayFlagsSkipTrianglesKHRMask |
+			                                                      spv::RayFlagsSkipAABBsKHRMask)) != 0)
+			{
+				impl.shader_analysis.can_require_primitive_culling = true;
+			}
+		}
+		else
+		{
+			// Non constant flags, so we must be conservative.
+			impl.shader_analysis.can_require_primitive_culling = true;
+		}
+
 		break;
 	}
 
