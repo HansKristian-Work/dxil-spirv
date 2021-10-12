@@ -145,7 +145,8 @@ static void print_help()
 	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n"
 	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
 	     "\t[--min-precision-native-16bit]\n"
-	     "\t[--raw-llvm]\n");
+	     "\t[--raw-llvm]\n"
+	     "\t[--invariant-position]\n");
 }
 
 struct Arguments
@@ -172,6 +173,7 @@ struct Arguments
 	bool bindless_typed_buffer_offsets = false;
 	bool min_precision_native_16bit = false;
 	bool raw_llvm = false;
+	bool invariant_position = false;
 
 	unsigned ssbo_alignment = 1;
 
@@ -653,6 +655,7 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--min-precision-native-16bit", [&](CLIParser &) { args.min_precision_native_16bit = true; });
 	cbs.add("--raw-llvm", [&](CLIParser &) { args.raw_llvm = true; });
+	cbs.add("--invariant-position", [&](CLIParser &) { args.invariant_position = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -824,6 +827,12 @@ int main(int argc, char **argv)
 		const dxil_spv_option_min_precision_native_16bit minprec = { { DXIL_SPV_OPTION_MIN_PRECISION_NATIVE_16BIT },
 		                                                             args.min_precision_native_16bit ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &minprec.base);
+	}
+
+	{
+		const dxil_spv_option_invariant_position invariant = { { DXIL_SPV_OPTION_INVARIANT_POSITION },
+		                                                       args.invariant_position ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		dxil_spv_converter_add_option(converter, &invariant.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

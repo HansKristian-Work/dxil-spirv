@@ -208,7 +208,8 @@ enum class Option : uint32_t
 	DescriptorQA = 15,
 	MinPrecisionNative16Bit = 16,
 	ShaderI8Dot = 17,
-	ShaderRayTracingPrimitiveCulling = 18
+	ShaderRayTracingPrimitiveCulling = 18,
+	InvariantPosition = 19
 };
 
 enum class ResourceClass : uint32_t
@@ -411,6 +412,16 @@ struct OptionShaderRayTracingPrimitiveCulling : OptionBase
 	}
 
 	bool supported = false;
+};
+
+struct OptionInvariantPosition : OptionBase
+{
+	OptionInvariantPosition()
+		: OptionBase(Option::InvariantPosition)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry

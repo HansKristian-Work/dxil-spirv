@@ -3111,6 +3111,8 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		{
 			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPosition);
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInPosition);
+			if (options.invariant_position)
+				builder.addDecoration(id, spv::DecorationInvariant);
 		}
 		break;
 
@@ -4989,6 +4991,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionShaderRayTracingPrimitiveCulling &>(cap).supported;
 		break;
 
+	case Option::InvariantPosition:
+		options.invariant_position = static_cast<const OptionInvariantPosition &>(cap).enabled;
+		break;
+
 	default:
 		break;
 	}
@@ -5037,6 +5043,7 @@ bool Converter::recognizes_option(Option cap)
 	case Option::MinPrecisionNative16Bit:
 	case Option::ShaderI8Dot:
 	case Option::ShaderRayTracingPrimitiveCulling:
+	case Option::InvariantPosition:
 		return true;
 
 	default:

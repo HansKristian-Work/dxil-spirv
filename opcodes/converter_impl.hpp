@@ -407,6 +407,7 @@ struct Converter::Impl
 		bool min_precision_prefer_native_16bit = false;
 		bool shader_i8_dot_enabled = false;
 		bool ray_tracing_primitive_culling_enabled = false;
+		bool invariant_position = false;
 	} options;
 
 	struct BindlessInfo
