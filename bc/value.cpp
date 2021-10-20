@@ -169,57 +169,6 @@ const APFloat &Constant::getValueAPF() const
 	return apfloat;
 }
 
-static inline float half_to_float(uint16_t u16_value)
-{
-	// Based on the GLM implementation.
-	int s = (u16_value >> 15) & 0x1;
-	int e = (u16_value >> 10) & 0x1f;
-	int m = (u16_value >> 0) & 0x3ff;
-
-	union {
-		float f32;
-		uint32_t u32;
-	} u;
-
-	if (e == 0)
-	{
-		if (m == 0)
-		{
-			u.u32 = uint32_t(s) << 31;
-			return u.f32;
-		}
-		else
-		{
-			while ((m & 0x400) == 0)
-			{
-				m <<= 1;
-				e--;
-			}
-
-			e++;
-			m &= ~0x400;
-		}
-	}
-	else if (e == 31)
-	{
-		if (m == 0)
-		{
-			u.u32 = (uint32_t(s) << 31) | 0x7f800000u;
-			return u.f32;
-		}
-		else
-		{
-			u.u32 = (uint32_t(s) << 31) | 0x7f800000u | (m << 13);
-			return u.f32;
-		}
-	}
-
-	e += 127 - 15;
-	m <<= 13;
-	u.u32 = (uint32_t(s) << 31) | (e << 23) | m;
-	return u.f32;
-}
-
 float APFloat::convertToFloat() const
 {
 	switch (type->getTypeID())
@@ -239,9 +188,6 @@ float APFloat::convertToFloat() const
 		memcpy(&f, &value, sizeof(double));
 		return float(f);
 	}
-
-	case Type::TypeID::HalfTyID:
-		return half_to_float(uint16_t(value));
 
 	default:
 		LOGE("Unknown FP type in APFloat::convertToFloat().\n");
@@ -292,9 +238,6 @@ double APFloat::convertToDouble() const
 		memcpy(&f, &value, sizeof(double));
 		return f;
 	}
-
-	case Type::TypeID::HalfTyID:
-		return double(half_to_float(uint16_t(value)));
 
 	default:
 		LOGE("Unknown FP type in APFloat::convertToDouble().\n");
