@@ -332,10 +332,16 @@ unsigned ConstantExpr::getNumOperands() const
 	return unsigned(elements.size());
 }
 
-GlobalVariable::GlobalVariable(Type *type, bool is_const_)
-    : Constant(type, ValueKind::Global)
-    , is_const(is_const_)
+GlobalVariable::GlobalVariable(Type *type, LinkageTypes linkage_, bool is_const_)
+	: Constant(type, ValueKind::Global)
+	, linkage(linkage_)
+	, is_const(is_const_)
 {
+}
+
+GlobalVariable::LinkageTypes GlobalVariable::getLinkage() const
+{
+	return linkage;
 }
 
 bool GlobalVariable::hasInitializer() const

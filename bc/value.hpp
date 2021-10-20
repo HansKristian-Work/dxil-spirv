@@ -292,16 +292,25 @@ public:
 	{
 		return ValueKind::Global;
 	}
-	explicit GlobalVariable(Type *type, bool is_const);
+
+	enum LinkageTypes
+	{
+		ExternalLinkage,
+		InternalLinkage
+	};
+
+	explicit GlobalVariable(Type *type, LinkageTypes linkage, bool is_const);
 	void set_initializer(Constant *value);
 	Constant *getInitializer() const;
 	bool hasInitializer() const;
 	bool isConstant() const;
+	LinkageTypes getLinkage() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
 	Constant *initializer = nullptr;
+	LinkageTypes linkage;
 	bool is_const;
 };
 } // namespace LLVMBC

@@ -2045,6 +2045,21 @@ bool ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 	return true;
 }
 
+static GlobalVariable::LinkageTypes decode_linkage(uint64_t v)
+{
+	switch (v)
+	{
+	case 0:
+	case 5:
+	case 6:
+	case 15:
+		return GlobalVariable::ExternalLinkage;
+
+	default:
+		return GlobalVariable::InternalLinkage;
+	}
+}
+
 bool ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry)
 {
 	if (use_strtab)
@@ -2053,7 +2068,7 @@ bool ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry
 		return false;
 	}
 
-	if (entry.ops.size() < 3)
+	if (entry.ops.size() < 4)
 		return false;
 
 	auto *type = get_type(entry.ops[0]);
@@ -2071,7 +2086,9 @@ bool ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry
 	if (!type)
 		return false;
 
-	auto *value = context->construct<GlobalVariable>(PointerType::get(type, address_space), is_const);
+	auto linkage = decode_linkage(entry.ops[3]);
+
+	auto *value = context->construct<GlobalVariable>(PointerType::get(type, address_space), linkage, is_const);
 	module->add_global_variable(value);
 	add_value(value);
 
