@@ -33,6 +33,7 @@ enum class ValueKind
 	ConstantInt,
 	ConstantFP,
 	ConstantAggregateZero,
+	ConstantAggregate,
 	ConstantDataArray,
 	ConstantDataVector,
 	ConstantExpr,
@@ -226,6 +227,24 @@ public:
 
 	unsigned getNumElements() const;
 	Constant *getElementAsConstant(unsigned index) const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
+private:
+	Vector<Value *> elements;
+};
+
+class ConstantAggregate : public Constant
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantAggregate;
+	}
+	ConstantAggregate(Type *type, Vector<Value *> elements);
+
+	unsigned getNumOperands() const;
+	Constant *getOperand(unsigned index) const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 

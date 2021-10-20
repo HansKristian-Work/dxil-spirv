@@ -2330,6 +2330,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 
 	case llvm::Type::TypeID::VectorTyID:
 	case llvm::Type::TypeID::ArrayTyID:
+	case llvm::Type::TypeID::StructTyID:
 	{
 		Vector<spv::Id> constituents;
 		spv::Id type_id = get_type_id(constant->getType());
@@ -2338,29 +2339,37 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		{
 			return builder.makeNullConstant(type_id);
 		}
-		else
+		else if (auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(constant))
 		{
-			if (auto *array = llvm::dyn_cast<llvm::ConstantDataArray>(constant))
+			constituents.reserve(agg->getNumOperands());
+			for (unsigned i = 0; i < agg->getNumOperands(); i++)
 			{
-				constituents.reserve(array->getType()->getArrayNumElements());
-				for (unsigned i = 0; i < array->getNumElements(); i++)
-				{
-					llvm::Constant *c = array->getElementAsConstant(i);
-					constituents.push_back(get_id_for_constant(c, 0));
-				}
+				llvm::Constant *c = agg->getOperand(i);
+				constituents.push_back(get_id_for_constant(c, 0));
 			}
-			else if (auto *vec = llvm::dyn_cast<llvm::ConstantDataVector>(constant))
-			{
-				constituents.reserve(vec->getType()->getVectorNumElements());
-				for (unsigned i = 0; i < vec->getNumElements(); i++)
-				{
-					llvm::Constant *c = vec->getElementAsConstant(i);
-					constituents.push_back(get_id_for_constant(c, 0));
-				}
-			}
-
-			return builder.makeCompositeConstant(type_id, constituents);
 		}
+		else if (auto *array = llvm::dyn_cast<llvm::ConstantDataArray>(constant))
+		{
+			constituents.reserve(array->getType()->getArrayNumElements());
+			for (unsigned i = 0; i < array->getNumElements(); i++)
+			{
+				llvm::Constant *c = array->getElementAsConstant(i);
+				constituents.push_back(get_id_for_constant(c, 0));
+			}
+		}
+		else if (auto *vec = llvm::dyn_cast<llvm::ConstantDataVector>(constant))
+		{
+			constituents.reserve(vec->getType()->getVectorNumElements());
+			for (unsigned i = 0; i < vec->getNumElements(); i++)
+			{
+				llvm::Constant *c = vec->getElementAsConstant(i);
+				constituents.push_back(get_id_for_constant(c, 0));
+			}
+		}
+		else
+			return 0;
+
+		return builder.makeCompositeConstant(type_id, constituents);
 	}
 
 	default:

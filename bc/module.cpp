@@ -747,32 +747,41 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 	case ConstantsRecord::AGGREGATE:
 	{
-		bool is_vector = isa<VectorType>(get_constant_type());
-		bool is_array = isa<ArrayType>(get_constant_type());
-
-		if (!is_vector && !is_array)
-		{
-			LOGE("Unsupported type for AGGREGATE.\n");
-			return false;
-		}
-
-		Type *element_type;
-		if (is_array)
-			element_type = get_constant_type()->getArrayElementType();
-		else
-			element_type = cast<VectorType>(get_constant_type())->getElementType();
-
 		Vector<Value *> constants;
+		Value *value;
 		constants.reserve(entry.ops.size());
 
-		for (auto &op : entry.ops)
-			constants.push_back(get_value(op, element_type, true));
+		if (auto *struct_type = dyn_cast<StructType>(get_constant_type()))
+		{
+			if (entry.ops.size() != struct_type->getStructNumElements())
+			{
+				LOGE("Mismatch in struct element counts.\n");
+				return false;
+			}
 
-		Value *value;
-		if (is_vector)
-			value = context->construct<ConstantDataVector>(get_constant_type(), std::move(constants));
+			for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
+				constants.push_back(get_value(entry.ops[i], struct_type->getStructElementType(i), true));
+			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
+		}
+		else if (isa<ArrayType>(get_constant_type()))
+		{
+			auto *element_type = get_constant_type()->getArrayElementType();
+			for (auto &op : entry.ops)
+				constants.push_back(get_value(op, element_type, true));
+			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
+		}
+		else if (isa<VectorType>(get_constant_type()))
+		{
+			auto *element_type = cast<VectorType>(get_constant_type())->getElementType();
+			for (auto &op : entry.ops)
+				constants.push_back(get_value(op, element_type, true));
+			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
+		}
 		else
-			value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
+		{
+			value = UndefValue::get(get_constant_type());
+		}
+
 		values.push_back(value);
 		break;
 	}
