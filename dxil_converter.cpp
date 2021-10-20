@@ -3435,15 +3435,15 @@ bool Converter::Impl::emit_global_variables()
 	{
 		llvm::GlobalVariable &global = *itr;
 
-		{
-			auto *elem_type = global.getType()->getPointerElementType();
-			while (elem_type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
-				elem_type = elem_type->getArrayElementType();
+		auto address_space = static_cast<DXIL::AddressSpace>(global.getType()->getAddressSpace());
 
-			// Workaround strange DXIL codegen where a resource is declared as an external constant.
-			// There should be a better way to detect these types.
-			if (elem_type->getTypeID() == llvm::Type::TypeID::StructTyID)
-				continue;
+		// Workarounds for DXR. RT resources tend to be declared with external linkage + structs.
+		// Groupshared is also declared with external linkage, even if that is bogus.
+		// Make sure we declare global internal struct LUTs at the very least ...
+		if (global.getLinkage() == llvm::GlobalVariable::ExternalLinkage &&
+		    address_space != DXIL::AddressSpace::GroupShared)
+		{
+			continue;
 		}
 
 		spv::Id pointee_type_id = get_type_id(global.getType()->getPointerElementType());
@@ -3452,7 +3452,6 @@ bool Converter::Impl::emit_global_variables()
 		if (pointee_type_id == 0)
 			continue;
 
-		auto address_space = static_cast<DXIL::AddressSpace>(global.getType()->getAddressSpace());
 		spv::Id initializer_id = 0;
 
 		llvm::Constant *initializer = nullptr;
