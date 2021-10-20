@@ -747,32 +747,41 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 
 	case ConstantsRecord::AGGREGATE:
 	{
-		bool is_vector = isa<VectorType>(get_constant_type());
-		bool is_array = isa<ArrayType>(get_constant_type());
-
-		if (!is_vector && !is_array)
-		{
-			LOGE("Unsupported type for AGGREGATE.\n");
-			return false;
-		}
-
-		Type *element_type;
-		if (is_array)
-			element_type = get_constant_type()->getArrayElementType();
-		else
-			element_type = cast<VectorType>(get_constant_type())->getElementType();
-
 		Vector<Value *> constants;
+		Value *value;
 		constants.reserve(entry.ops.size());
 
-		for (auto &op : entry.ops)
-			constants.push_back(get_value(op, element_type, true));
+		if (auto *struct_type = dyn_cast<StructType>(get_constant_type()))
+		{
+			if (entry.ops.size() != struct_type->getStructNumElements())
+			{
+				LOGE("Mismatch in struct element counts.\n");
+				return false;
+			}
 
-		Value *value;
-		if (is_vector)
-			value = context->construct<ConstantDataVector>(get_constant_type(), std::move(constants));
+			for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
+				constants.push_back(get_value(entry.ops[i], struct_type->getStructElementType(i), true));
+			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
+		}
+		else if (isa<ArrayType>(get_constant_type()))
+		{
+			auto *element_type = get_constant_type()->getArrayElementType();
+			for (auto &op : entry.ops)
+				constants.push_back(get_value(op, element_type, true));
+			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
+		}
+		else if (isa<VectorType>(get_constant_type()))
+		{
+			auto *element_type = cast<VectorType>(get_constant_type())->getElementType();
+			for (auto &op : entry.ops)
+				constants.push_back(get_value(op, element_type, true));
+			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
+		}
 		else
-			value = context->construct<ConstantDataArray>(get_constant_type(), std::move(constants));
+		{
+			value = UndefValue::get(get_constant_type());
+		}
+
 		values.push_back(value);
 		break;
 	}
@@ -2036,6 +2045,21 @@ bool ModuleParseContext::parse_value_symtab(const BlockOrRecord &entry)
 	return true;
 }
 
+static GlobalVariable::LinkageTypes decode_linkage(uint64_t v)
+{
+	switch (v)
+	{
+	case 0:
+	case 5:
+	case 6:
+	case 15:
+		return GlobalVariable::ExternalLinkage;
+
+	default:
+		return GlobalVariable::InternalLinkage;
+	}
+}
+
 bool ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry)
 {
 	if (use_strtab)
@@ -2044,7 +2068,7 @@ bool ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry
 		return false;
 	}
 
-	if (entry.ops.size() < 3)
+	if (entry.ops.size() < 4)
 		return false;
 
 	auto *type = get_type(entry.ops[0]);
@@ -2062,7 +2086,9 @@ bool ModuleParseContext::parse_global_variable_record(const BlockOrRecord &entry
 	if (!type)
 		return false;
 
-	auto *value = context->construct<GlobalVariable>(PointerType::get(type, address_space), is_const);
+	auto linkage = decode_linkage(entry.ops[3]);
+
+	auto *value = context->construct<GlobalVariable>(PointerType::get(type, address_space), linkage, is_const);
 	module->add_global_variable(value);
 	add_value(value);
 

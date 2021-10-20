@@ -2211,6 +2211,57 @@ ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_m
 	}
 }
 
+static inline float half_to_float(uint16_t u16_value)
+{
+	// Based on the GLM implementation.
+	int s = (u16_value >> 15) & 0x1;
+	int e = (u16_value >> 10) & 0x1f;
+	int m = (u16_value >> 0) & 0x3ff;
+
+	union {
+		float f32;
+		uint32_t u32;
+	} u;
+
+	if (e == 0)
+	{
+		if (m == 0)
+		{
+			u.u32 = uint32_t(s) << 31;
+			return u.f32;
+		}
+		else
+		{
+			while ((m & 0x400) == 0)
+			{
+				m <<= 1;
+				e--;
+			}
+
+			e++;
+			m &= ~0x400;
+		}
+	}
+	else if (e == 31)
+	{
+		if (m == 0)
+		{
+			u.u32 = (uint32_t(s) << 31) | 0x7f800000u;
+			return u.f32;
+		}
+		else
+		{
+			u.u32 = (uint32_t(s) << 31) | 0x7f800000u | (m << 13);
+			return u.f32;
+		}
+	}
+
+	e += 127 - 15;
+	m <<= 13;
+	u.u32 = (uint32_t(s) << 31) | (e << 23) | m;
+	return u.f32;
+}
+
 spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, unsigned forced_width)
 {
 	auto &builder = spirv_module.get_builder();
@@ -2220,10 +2271,12 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 	case llvm::Type::TypeID::HalfTyID:
 	{
 		auto *fp = llvm::cast<llvm::ConstantFP>(constant);
+		auto f16 = uint16_t(fp->getValueAPF().bitcastToAPInt().getZExtValue());
+
 		if (support_16bit_operations())
-			return builder.makeFloat16Constant(fp->getValueAPF().bitcastToAPInt().getZExtValue() & 0xffffu);
+			return builder.makeFloat16Constant(f16);
 		else
-			return builder.makeFloatConstant(fp->getValueAPF().convertToFloat());
+			return builder.makeFloatConstant(half_to_float(f16));
 	}
 
 	case llvm::Type::TypeID::FloatTyID:
@@ -2277,6 +2330,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 
 	case llvm::Type::TypeID::VectorTyID:
 	case llvm::Type::TypeID::ArrayTyID:
+	case llvm::Type::TypeID::StructTyID:
 	{
 		Vector<spv::Id> constituents;
 		spv::Id type_id = get_type_id(constant->getType());
@@ -2285,29 +2339,37 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		{
 			return builder.makeNullConstant(type_id);
 		}
-		else
+		else if (auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(constant))
 		{
-			if (auto *array = llvm::dyn_cast<llvm::ConstantDataArray>(constant))
+			constituents.reserve(agg->getNumOperands());
+			for (unsigned i = 0; i < agg->getNumOperands(); i++)
 			{
-				constituents.reserve(array->getType()->getArrayNumElements());
-				for (unsigned i = 0; i < array->getNumElements(); i++)
-				{
-					llvm::Constant *c = array->getElementAsConstant(i);
-					constituents.push_back(get_id_for_constant(c, 0));
-				}
+				llvm::Constant *c = agg->getOperand(i);
+				constituents.push_back(get_id_for_constant(c, 0));
 			}
-			else if (auto *vec = llvm::dyn_cast<llvm::ConstantDataVector>(constant))
-			{
-				constituents.reserve(vec->getType()->getVectorNumElements());
-				for (unsigned i = 0; i < vec->getNumElements(); i++)
-				{
-					llvm::Constant *c = vec->getElementAsConstant(i);
-					constituents.push_back(get_id_for_constant(c, 0));
-				}
-			}
-
-			return builder.makeCompositeConstant(type_id, constituents);
 		}
+		else if (auto *array = llvm::dyn_cast<llvm::ConstantDataArray>(constant))
+		{
+			constituents.reserve(array->getType()->getArrayNumElements());
+			for (unsigned i = 0; i < array->getNumElements(); i++)
+			{
+				llvm::Constant *c = array->getElementAsConstant(i);
+				constituents.push_back(get_id_for_constant(c, 0));
+			}
+		}
+		else if (auto *vec = llvm::dyn_cast<llvm::ConstantDataVector>(constant))
+		{
+			constituents.reserve(vec->getType()->getVectorNumElements());
+			for (unsigned i = 0; i < vec->getNumElements(); i++)
+			{
+				llvm::Constant *c = vec->getElementAsConstant(i);
+				constituents.push_back(get_id_for_constant(c, 0));
+			}
+		}
+		else
+			return 0;
+
+		return builder.makeCompositeConstant(type_id, constituents);
 	}
 
 	default:
@@ -3373,15 +3435,15 @@ bool Converter::Impl::emit_global_variables()
 	{
 		llvm::GlobalVariable &global = *itr;
 
-		{
-			auto *elem_type = global.getType()->getPointerElementType();
-			while (elem_type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
-				elem_type = elem_type->getArrayElementType();
+		auto address_space = static_cast<DXIL::AddressSpace>(global.getType()->getAddressSpace());
 
-			// Workaround strange DXIL codegen where a resource is declared as an external constant.
-			// There should be a better way to detect these types.
-			if (elem_type->getTypeID() == llvm::Type::TypeID::StructTyID)
-				continue;
+		// Workarounds for DXR. RT resources tend to be declared with external linkage + structs.
+		// Groupshared is also declared with external linkage, even if that is bogus.
+		// Make sure we declare global internal struct LUTs at the very least ...
+		if (global.getLinkage() == llvm::GlobalVariable::ExternalLinkage &&
+		    address_space != DXIL::AddressSpace::GroupShared)
+		{
+			continue;
 		}
 
 		spv::Id pointee_type_id = get_type_id(global.getType()->getPointerElementType());
@@ -3390,7 +3452,6 @@ bool Converter::Impl::emit_global_variables()
 		if (pointee_type_id == 0)
 			continue;
 
-		auto address_space = static_cast<DXIL::AddressSpace>(global.getType()->getAddressSpace());
 		spv::Id initializer_id = 0;
 
 		llvm::Constant *initializer = nullptr;

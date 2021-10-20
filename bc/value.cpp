@@ -70,6 +70,7 @@ bool Constant::is_base_of_value_kind(ValueKind kind)
 	case ValueKind::ConstantInt:
 	case ValueKind::ConstantDataArray:
 	case ValueKind::ConstantDataVector:
+	case ValueKind::ConstantAggregate:
 	case ValueKind::ConstantAggregateZero:
 	case ValueKind::ConstantBase:
 	case ValueKind::Undef:
@@ -169,57 +170,6 @@ const APFloat &Constant::getValueAPF() const
 	return apfloat;
 }
 
-static inline float half_to_float(uint16_t u16_value)
-{
-	// Based on the GLM implementation.
-	int s = (u16_value >> 15) & 0x1;
-	int e = (u16_value >> 10) & 0x1f;
-	int m = (u16_value >> 0) & 0x3ff;
-
-	union {
-		float f32;
-		uint32_t u32;
-	} u;
-
-	if (e == 0)
-	{
-		if (m == 0)
-		{
-			u.u32 = uint32_t(s) << 31;
-			return u.f32;
-		}
-		else
-		{
-			while ((m & 0x400) == 0)
-			{
-				m <<= 1;
-				e--;
-			}
-
-			e++;
-			m &= ~0x400;
-		}
-	}
-	else if (e == 31)
-	{
-		if (m == 0)
-		{
-			u.u32 = (uint32_t(s) << 31) | 0x7f800000u;
-			return u.f32;
-		}
-		else
-		{
-			u.u32 = (uint32_t(s) << 31) | 0x7f800000u | (m << 13);
-			return u.f32;
-		}
-	}
-
-	e += 127 - 15;
-	m <<= 13;
-	u.u32 = (uint32_t(s) << 31) | (e << 23) | m;
-	return u.f32;
-}
-
 float APFloat::convertToFloat() const
 {
 	switch (type->getTypeID())
@@ -239,9 +189,6 @@ float APFloat::convertToFloat() const
 		memcpy(&f, &value, sizeof(double));
 		return float(f);
 	}
-
-	case Type::TypeID::HalfTyID:
-		return half_to_float(uint16_t(value));
 
 	default:
 		LOGE("Unknown FP type in APFloat::convertToFloat().\n");
@@ -292,9 +239,6 @@ double APFloat::convertToDouble() const
 		memcpy(&f, &value, sizeof(double));
 		return f;
 	}
-
-	case Type::TypeID::HalfTyID:
-		return double(half_to_float(uint16_t(value)));
 
 	default:
 		LOGE("Unknown FP type in APFloat::convertToDouble().\n");
@@ -350,6 +294,22 @@ Constant *ConstantDataVector::getElementAsConstant(unsigned index) const
 	return cast<Constant>(elements[index]);
 }
 
+ConstantAggregate::ConstantAggregate(Type *type, Vector<Value *> elements_)
+	: Constant(type, ValueKind::ConstantAggregate)
+	, elements(std::move(elements_))
+{
+}
+
+unsigned ConstantAggregate::getNumOperands() const
+{
+	return elements.size();
+}
+
+Constant *ConstantAggregate::getOperand(unsigned index) const
+{
+	return cast<Constant>(elements[index]);
+}
+
 ConstantExpr::ConstantExpr(unsigned opcode_, Type *type, Vector<Value *> elements_)
 	: Constant(type, ValueKind::ConstantExpr)
 	, opcode(opcode_)
@@ -372,10 +332,16 @@ unsigned ConstantExpr::getNumOperands() const
 	return unsigned(elements.size());
 }
 
-GlobalVariable::GlobalVariable(Type *type, bool is_const_)
-    : Constant(type, ValueKind::Global)
-    , is_const(is_const_)
+GlobalVariable::GlobalVariable(Type *type, LinkageTypes linkage_, bool is_const_)
+	: Constant(type, ValueKind::Global)
+	, linkage(linkage_)
+	, is_const(is_const_)
 {
+}
+
+GlobalVariable::LinkageTypes GlobalVariable::getLinkage() const
+{
+	return linkage;
 }
 
 bool GlobalVariable::hasInitializer() const

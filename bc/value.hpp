@@ -33,6 +33,7 @@ enum class ValueKind
 	ConstantInt,
 	ConstantFP,
 	ConstantAggregateZero,
+	ConstantAggregate,
 	ConstantDataArray,
 	ConstantDataVector,
 	ConstantExpr,
@@ -233,6 +234,24 @@ private:
 	Vector<Value *> elements;
 };
 
+class ConstantAggregate : public Constant
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantAggregate;
+	}
+	ConstantAggregate(Type *type, Vector<Value *> elements);
+
+	unsigned getNumOperands() const;
+	Constant *getOperand(unsigned index) const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
+private:
+	Vector<Value *> elements;
+};
+
 class ConstantExpr : public Constant
 {
 public:
@@ -273,16 +292,25 @@ public:
 	{
 		return ValueKind::Global;
 	}
-	explicit GlobalVariable(Type *type, bool is_const);
+
+	enum LinkageTypes
+	{
+		ExternalLinkage,
+		InternalLinkage
+	};
+
+	explicit GlobalVariable(Type *type, LinkageTypes linkage, bool is_const);
 	void set_initializer(Constant *value);
 	Constant *getInitializer() const;
 	bool hasInitializer() const;
 	bool isConstant() const;
+	LinkageTypes getLinkage() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
 	Constant *initializer = nullptr;
+	LinkageTypes linkage;
 	bool is_const;
 };
 } // namespace LLVMBC
