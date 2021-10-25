@@ -1421,15 +1421,12 @@ bool get_annotate_handle_meta(Converter::Impl &impl, const llvm::CallInst *instr
 	if (!handle)
 		return false;
 
-	if (handle->getNumOperands() != 4)
-		return false;
-
 	uint32_t opcode;
 	if (!get_constant_operand(handle, 0, &opcode))
 		return false;
 
 	meta.resource_op = DXIL::Op(opcode);
-	uint32_t non_uniform_int;
+	uint32_t non_uniform_int = 0;
 
 	if (meta.resource_op == DXIL::Op::CreateHandleFromHeap)
 	{
@@ -1464,6 +1461,17 @@ bool get_annotate_handle_meta(Converter::Impl &impl, const llvm::CallInst *instr
 		}
 		else
 			return false;
+	}
+	else if (meta.resource_op == DXIL::Op::CreateHandleForLib)
+	{
+		auto itr = impl.llvm_global_variable_to_resource_mapping.find(handle->getOperand(1));
+		if (itr == impl.llvm_global_variable_to_resource_mapping.end())
+			return false;
+
+		meta.resource_type = itr->second.type;
+		meta.binding_index = itr->second.meta_index;
+		meta.offset = itr->second.offset;
+		non_uniform_int = uint32_t(itr->second.non_uniform);
 	}
 	else
 		return false;

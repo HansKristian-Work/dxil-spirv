@@ -520,6 +520,17 @@ void Converter::Impl::register_resource_meta_reference(const llvm::MDOperand &op
 	if (operand)
 	{
 		auto *value = llvm::cast<llvm::ConstantAsMetadata>(operand)->getValue();
+
+		// In lib_6_6, this is somehow a bitcasted pointer expression, sigh ...
+		// Drill deep until we actually find the original resource.
+		while (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(value))
+		{
+			if (cexpr->getOpcode() == llvm::Instruction::BitCast)
+				value = cexpr->getOperand(0);
+			else
+				break;
+		}
+
 		auto *global_variable = llvm::dyn_cast<llvm::GlobalVariable>(value);
 		if (global_variable)
 			llvm_global_variable_to_resource_mapping[global_variable] = { type, index, nullptr, global_variable, false };
@@ -4189,6 +4200,12 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 		{
 			return emit_dxil_instruction(*this, call_inst);
+		}
+		else if (strncmp(called_function->getName().data(), "llvm.", 5) == 0)
+		{
+			// lib_6_6 sometimes emits llvm.lifetime.begin/end for some bizarre reason.
+			// Just ignore ...
+			return true;
 		}
 		else
 		{

@@ -503,7 +503,8 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			else if (use.resource_kind != DXIL::ResourceKind::RawBuffer)
 				use.component_type = DXIL::ComponentType(params & 0xff);
 		}
-		else if (meta.resource_op == DXIL::Op::CreateHandleFromBinding)
+		else if (meta.resource_op == DXIL::Op::CreateHandleFromBinding ||
+		         meta.resource_op == DXIL::Op::CreateHandleForLib)
 		{
 			if (meta.resource_type == DXIL::ResourceType::UAV)
 				impl.llvm_value_to_uav_resource_index_map[instruction] = meta.binding_index;
