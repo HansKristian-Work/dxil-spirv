@@ -274,7 +274,9 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 	}
 	else
 	{
-		if (d3d_binding_is_global_heap(*binding))
+		bool is_global_heap = d3d_binding_is_global_heap(*binding);
+
+		if (is_global_heap)
 		{
 			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
 			vk_binding->buffer_binding.set = 0;
@@ -296,10 +298,8 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 		}
 
 		if (binding->kind == DXIL_SPV_RESOURCE_KIND_RT_ACCELERATION_STRUCTURE)
-		{
-			if (remapper->bindless && remapper->ssbo_rtas)
+			if ((remapper->bindless || is_global_heap) && remapper->ssbo_rtas)
 				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
-		}
 
 		if (remapper->ssbo_srv)
 		{
