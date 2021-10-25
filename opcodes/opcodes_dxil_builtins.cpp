@@ -51,6 +51,9 @@ struct DXILDispatcher
 		OP(EvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset>;
 		OP(EvalSampleIndex) = emit_interpolate_dispatch<GLSLstd450InterpolateAtSample>;
 		OP(EvalCentroid) = emit_interpolate_dispatch<GLSLstd450InterpolateAtCentroid>;
+		OP(AnnotateHandle) = emit_annotate_handle_instruction;
+		OP(CreateHandleFromHeap) = emit_create_handle_from_heap_instruction;
+		OP(CreateHandleFromBinding) = emit_create_handle_from_binding_instruction;
 
 		// dxil_sampling.hpp
 		OP(Sample) = emit_sample_instruction_dispatch<DXIL::Op::Sample>;
@@ -448,25 +451,100 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::AnnotateHandle:
+	{
+		AnnotateHandleMeta meta = {};
+		if (!get_annotate_handle_meta(impl, instruction, meta))
+			return false;
+
+		if (meta.resource_op == DXIL::Op::CreateHandleFromHeap)
+		{
+			// Annotating handle forms the real resource.
+			// CreateHandleFromHeap merely holds the index / nonuniform.
+			// For analysis purposes, this is irrelevant.
+			auto ordinal = unsigned(impl.llvm_annotate_handle_uses.size());
+			auto &use = impl.llvm_annotate_handle_uses[instruction];
+			use = {};
+			use.ordinal = ordinal;
+
+			auto *constant = llvm::dyn_cast<llvm::ConstantAggregate>(instruction->getOperand(2));
+			if (!constant || constant->getType()->getTypeID() != llvm::Type::TypeID::StructTyID ||
+			    constant->getNumOperands() != 2)
+			{
+				LOGE("AnnotateHandle takes a ConstantAggregate.\n");
+				return false;
+			}
+
+			uint32_t type = constant->getOperand(0)->getUniqueInteger().getZExtValue();
+			uint32_t params = constant->getOperand(1)->getUniqueInteger().getZExtValue();
+
+			// The encoding here is very ... peculiar.
+			constexpr uint32_t AnnotateUAVMask = 1u << 12;
+			constexpr uint32_t AnnotateGloballyCoherentMask = 1u << 14;
+			use.resource_kind = DXIL::ResourceKind(type & 0xff);
+			switch (use.resource_kind)
+			{
+			case DXIL::ResourceKind::CBuffer:
+				use.resource_type = DXIL::ResourceType::CBV;
+				break;
+
+			case DXIL::ResourceKind::Sampler:
+				use.resource_type = DXIL::ResourceType::Sampler;
+				break;
+
+			default:
+				use.resource_type = (type & AnnotateUAVMask) != 0 ? DXIL::ResourceType::UAV : DXIL::ResourceType::SRV;
+				use.coherent = (type & AnnotateGloballyCoherentMask) != 0;
+				break;
+			}
+
+			if (use.resource_kind == DXIL::ResourceKind::StructuredBuffer)
+				use.stride = params;
+			else if (use.resource_kind != DXIL::ResourceKind::RawBuffer)
+				use.component_type = DXIL::ComponentType(params & 0xff);
+		}
+		else if (meta.resource_op == DXIL::Op::CreateHandleFromBinding)
+		{
+			if (meta.resource_type == DXIL::ResourceType::UAV)
+				impl.llvm_value_to_uav_resource_index_map[instruction] = meta.binding_index;
+			else if (meta.resource_type == DXIL::ResourceType::SRV)
+				impl.llvm_value_to_srv_resource_index_map[instruction] = meta.binding_index;
+		}
+
+		if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
+			impl.resource_handle_to_block[instruction] = bb;
+		break;
+	}
+
 	case DXIL::Op::BufferLoad:
 	case DXIL::Op::TextureLoad:
 	case DXIL::Op::RawBufferLoad:
 	{
+		const auto update_node = [&](Converter::Impl::AccessTracking &node) {
+			node.has_read = true;
+			update_access_tracking_from_type(node, instruction->getType()->getStructElementType(0));
+		};
+
 		// In DXIL, whether or not an opcode is sparse depends on if the 4th argument is statically used by SSA ...
 		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
 		{
 			auto &node = impl.uav_access_tracking[itr->second];
-			node.has_read = true;
-			update_access_tracking_from_type(node, instruction->getType()->getStructElementType(0));
+			update_node(node);
 		}
 
 		itr = impl.llvm_value_to_srv_resource_index_map.find(instruction->getOperand(1));
 		if (itr != impl.llvm_value_to_srv_resource_index_map.end())
 		{
 			auto &node = impl.srv_access_tracking[itr->second];
-			node.has_read = true;
-			update_access_tracking_from_type(node, instruction->getType()->getStructElementType(0));
+			update_node(node);
+		}
+
+		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+		{
+			auto &node = annotate_itr->second.tracking;
+			update_node(node);
 		}
 
 		break;
@@ -475,15 +553,27 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::AtomicCompareExchange:
 	case DXIL::Op::AtomicBinOp:
 	{
-		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
-		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
-		{
-			auto &node = impl.uav_access_tracking[itr->second];
+		const auto update_node = [&](Converter::Impl::AccessTracking &node) {
 			node.has_read = true;
 			node.has_written = true;
 			node.has_atomic = true;
 			impl.shader_analysis.has_side_effects = true;
+		};
+
+		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		{
+			auto &node = impl.uav_access_tracking[itr->second];
+			update_node(node);
 		}
+
+		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+		{
+			auto &node = annotate_itr->second.tracking;
+			update_node(node);
+		}
+
 		break;
 	}
 
@@ -491,14 +581,26 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::TextureStore:
 	case DXIL::Op::RawBufferStore:
 	{
+		const auto update_node = [&](Converter::Impl::AccessTracking &node) {
+			node.has_written = true;
+			update_access_tracking_from_type(node, instruction->getOperand(4)->getType());
+			impl.shader_analysis.has_side_effects = true;
+		};
+
 		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
 		{
 			auto &node = impl.uav_access_tracking[itr->second];
-			node.has_written = true;
-			update_access_tracking_from_type(node, instruction->getOperand(4)->getType());
-			impl.shader_analysis.has_side_effects = true;
+			update_node(node);
 		}
+
+		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+		{
+			auto &node = annotate_itr->second.tracking;
+			update_node(node);
+		}
+
 		break;
 	}
 

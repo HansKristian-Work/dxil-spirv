@@ -307,10 +307,12 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 			    binding->kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
 			{
 				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
-				vk_binding->offset_binding.set = 15;
-				vk_binding->offset_binding.binding = 0;
 			}
 		}
+
+		// In case it's needed, place offset buffer here.
+		vk_binding->offset_binding.set = 15;
+		vk_binding->offset_binding.binding = 0;
 	}
 
 	return DXIL_SPV_TRUE;
@@ -388,10 +390,11 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 			    binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
 			{
 				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
-				vk_binding->offset_binding.set = 15;
-				vk_binding->offset_binding.binding = 0;
 			}
 		}
+
+		vk_binding->offset_binding.set = 15;
+		vk_binding->offset_binding.binding = 0;
 
 		if (binding->has_counter)
 		{

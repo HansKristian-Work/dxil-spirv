@@ -2125,6 +2125,157 @@ bool Converter::Impl::emit_resources_global_mapping()
 	return true;
 }
 
+bool Converter::Impl::emit_global_heaps()
+{
+	Vector<AnnotateHandleReference *> annotations;
+	for (auto &use : llvm_annotate_handle_uses)
+		annotations.push_back(&use.second);
+
+	// Ensure reproducible codegen since we iterate over an unordered map.
+	std::sort(annotations.begin(), annotations.end(),
+	          [](const AnnotateHandleReference *a, const AnnotateHandleReference *b) {
+	              return a->ordinal < b->ordinal;
+	          });
+
+	for (auto *annotation : annotations)
+	{
+		bool raw_access_16bit = execution_mode_meta.native_16bit_operations &&
+			(annotation->resource_kind == DXIL::ResourceKind::RawBuffer ||
+			annotation->resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
+			annotation->tracking.access_16bit;
+		BindlessInfo info = {};
+
+		auto actual_component_type = DXIL::ComponentType::U32;
+		info.format = spv::ImageFormatUnknown;
+		if (annotation->resource_kind != DXIL::ResourceKind::RawBuffer &&
+		    annotation->resource_kind != DXIL::ResourceKind::StructuredBuffer)
+		{
+			actual_component_type = normalize_component_type(annotation->component_type);
+		}
+		else if (annotation->resource_type == DXIL::ResourceType::UAV)
+		{
+			info.format = spv::ImageFormatR32ui;
+		}
+
+		auto effective_component_type = get_effective_typed_resource_type(actual_component_type);
+
+		info.type = annotation->resource_type;
+		info.component = effective_component_type;
+		info.kind = annotation->resource_kind;
+		info.relaxed_precision = actual_component_type != effective_component_type &&
+		                         component_type_is_16bit(actual_component_type);
+		info.aliased = raw_access_16bit;
+
+		if (info.type == DXIL::ResourceType::UAV)
+		{
+			info.uav_coherent = annotation->coherent;
+			info.uav_read = annotation->tracking.has_read;
+			info.uav_written = annotation->tracking.has_written;
+			if (!get_uav_image_format(annotation->resource_kind, actual_component_type,
+			                          annotation->tracking, info.format))
+			{
+				return false;
+			}
+		}
+
+		unsigned stride = annotation->stride;
+		unsigned alignment = info.kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
+		D3DBinding d3d_binding = {
+			get_remapping_stage(execution_model), info.kind, 0,
+			UINT32_MAX, UINT32_MAX, UINT32_MAX, alignment,
+		};
+		VulkanBinding vulkan_binding = {};
+
+		bool remap_success = false;
+		if (resource_mapping_iface)
+		{
+			switch (info.type)
+			{
+			case DXIL::ResourceType::SRV:
+			{
+				VulkanSRVBinding vulkan_srv_binding = {};
+				remap_success = resource_mapping_iface->remap_srv(d3d_binding, vulkan_srv_binding);
+				vulkan_binding = vulkan_srv_binding.buffer_binding;
+				if (!get_ssbo_offset_buffer_id(annotation->offset_buffer_id, vulkan_srv_binding.buffer_binding,
+				                               vulkan_srv_binding.offset_binding, annotation->resource_kind, alignment))
+				{
+					return false;
+				}
+				break;
+			}
+
+			case DXIL::ResourceType::UAV:
+			{
+				VulkanUAVBinding vulkan_uav_binding = {};
+				D3DUAVBinding d3d_uav_binding = {};
+				d3d_uav_binding.binding = d3d_binding;
+				// UAV counters appear to be banned in SM 6.6 heaps, nice!
+				remap_success = resource_mapping_iface->remap_uav(d3d_uav_binding, vulkan_uav_binding);
+				vulkan_binding = vulkan_uav_binding.buffer_binding;
+				if (!get_ssbo_offset_buffer_id(annotation->offset_buffer_id, vulkan_uav_binding.buffer_binding,
+											   vulkan_uav_binding.offset_binding, annotation->resource_kind, alignment))
+				{
+					return false;
+				}
+				break;
+			}
+
+			case DXIL::ResourceType::CBV:
+			{
+				VulkanCBVBinding vulkan_cbv_binding = {};
+				remap_success = resource_mapping_iface->remap_cbv(d3d_binding, vulkan_cbv_binding);
+				if (vulkan_cbv_binding.push_constant)
+				{
+					LOGE("Cannot use push constants for SM 6.6 bindless.\n");
+					return false;
+				}
+				vulkan_binding = vulkan_cbv_binding.buffer;
+				break;
+			}
+
+			case DXIL::ResourceType::Sampler:
+				remap_success = resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding);
+				break;
+			}
+		}
+
+		if (!remap_success)
+			return false;
+
+		if (!vulkan_binding.bindless.use_heap)
+		{
+			LOGE("SM 6.6 bindless references must be bindless.\n");
+			return false;
+		}
+
+		if (raw_access_16bit && vulkan_binding.descriptor_type != VulkanDescriptorType::SSBO)
+		{
+			LOGE("Bindless raw 16-bit load-store was used, which must be implemented with SSBO.\n");
+			return false;
+		}
+
+		info.desc_set = vulkan_binding.descriptor_set;
+		info.binding = vulkan_binding.binding;
+		info.descriptor_type = vulkan_binding.descriptor_type;
+
+		annotation->reference.var_id = create_bindless_heap_variable(info);
+		annotation->reference.bindless = true;
+		annotation->reference.base_resource_is_array = true;
+		annotation->reference.push_constant_member = UINT32_MAX;
+		annotation->reference.stride = annotation->stride;
+		annotation->reference.resource_kind = annotation->resource_kind;
+		annotation->reference.coherent = annotation->coherent;
+
+		if (raw_access_16bit)
+		{
+			info.component = DXIL::ComponentType::U16;
+			annotation->reference.var_id_16bit = create_bindless_heap_variable(info);
+		}
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_resources()
 {
 	unsigned num_root_descriptors = 0;
@@ -2142,6 +2293,8 @@ bool Converter::Impl::emit_resources()
 	if (execution_model_is_ray_tracing(execution_model))
 		if (!emit_shader_record_buffer())
 			return false;
+
+	emit_global_heaps();
 
 	auto &module = bitcode_parser.get_module();
 	auto *resource_meta = module.getNamedMetadata("dx.resources");
