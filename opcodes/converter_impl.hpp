@@ -458,6 +458,10 @@ struct Converter::Impl
 	DXIL::ComponentType get_effective_input_output_type(DXIL::ComponentType type);
 	static DXIL::ComponentType get_effective_typed_resource_type(DXIL::ComponentType type);
 	spv::Id get_effective_input_output_type_id(DXIL::ComponentType type);
+	bool get_uav_image_format(DXIL::ResourceKind resource_kind,
+	                          DXIL::ComponentType actual_component_type,
+	                          const AccessTracking &access_meta,
+	                          spv::ImageFormat &format);
 
 	struct
 	{

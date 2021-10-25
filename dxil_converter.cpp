@@ -1013,6 +1013,51 @@ bool Converter::Impl::get_ssbo_offset_buffer_id(spv::Id &buffer_id,
 	return true;
 }
 
+bool Converter::Impl::get_uav_image_format(DXIL::ResourceKind resource_kind,
+                                           DXIL::ComponentType actual_component_type,
+                                           const AccessTracking &access_meta,
+                                           spv::ImageFormat &format)
+{
+	if (resource_kind != DXIL::ResourceKind::RawBuffer &&
+	    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+	{
+		// For any typed resource, we need to check if the resource is being read.
+		// To avoid StorageReadWithoutFormat, we emit a format based on the component type.
+		if (access_meta.has_read)
+		{
+			if (options.typed_uav_read_without_format && !access_meta.has_atomic)
+			{
+				builder().addCapability(spv::CapabilityStorageImageReadWithoutFormat);
+				format = spv::ImageFormatUnknown;
+			}
+			else
+			{
+				switch (actual_component_type)
+				{
+				case DXIL::ComponentType::U32:
+					format = spv::ImageFormatR32ui;
+					break;
+
+				case DXIL::ComponentType::I32:
+					format = spv::ImageFormatR32i;
+					break;
+
+				case DXIL::ComponentType::F32:
+					format = spv::ImageFormatR32f;
+					break;
+
+				default:
+					LOGE("Reading from UAV, but component type does not conform to U32, I32 or F32. "
+					     "typed_uav_read_without_format option must be enabled.\n");
+					return false;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 {
 	auto &builder = spirv_module.get_builder();
@@ -1067,41 +1112,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
 
 		auto &access_meta = uav_access_tracking[index];
-		if (resource_kind != DXIL::ResourceKind::RawBuffer && resource_kind != DXIL::ResourceKind::StructuredBuffer)
-		{
-			// For any typed resource, we need to check if the resource is being read.
-			// To avoid StorageReadWithoutFormat, we emit a format based on the component type.
-			if (access_meta.has_read)
-			{
-				if (options.typed_uav_read_without_format && !access_meta.has_atomic)
-				{
-					builder.addCapability(spv::CapabilityStorageImageReadWithoutFormat);
-					format = spv::ImageFormatUnknown;
-				}
-				else
-				{
-					switch (actual_component_type)
-					{
-					case DXIL::ComponentType::U32:
-						format = spv::ImageFormatR32ui;
-						break;
-
-					case DXIL::ComponentType::I32:
-						format = spv::ImageFormatR32i;
-						break;
-
-					case DXIL::ComponentType::F32:
-						format = spv::ImageFormatR32f;
-						break;
-
-					default:
-						LOGE("Reading from UAV, but component type does not conform to U32, I32 or F32. "
-						     "typed_uav_read_without_format option must be enabled.\n");
-						return false;
-					}
-				}
-			}
-		}
+		if (!get_uav_image_format(resource_kind, actual_component_type, access_meta, format))
+			return false;
 
 		DescriptorTableEntry local_table_entry = {};
 		int local_root_signature_entry = get_local_root_signature_entry(
