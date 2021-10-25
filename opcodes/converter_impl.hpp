@@ -480,6 +480,9 @@ struct Converter::Impl
 	                          const AccessTracking &access_meta,
 	                          spv::ImageFormat &format);
 
+	uint32_t find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
+	                                 uint32_t binding_space, DXIL::ResourceType resource_type);
+
 	struct
 	{
 		// Only relevant for fragment shaders.

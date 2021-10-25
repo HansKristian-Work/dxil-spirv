@@ -2136,6 +2136,42 @@ bool Converter::Impl::emit_resources_global_mapping()
 	return true;
 }
 
+uint32_t Converter::Impl::find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
+                                                  uint32_t binding_space, DXIL::ResourceType resource_type)
+{
+	auto &module = bitcode_parser.get_module();
+	auto *resource_meta = module.getNamedMetadata("dx.resources");
+	if (!resource_meta)
+		return UINT32_MAX;
+
+	auto *metas = resource_meta->getOperand(0);
+	auto &resource_list = metas->getOperand(uint32_t(resource_type));
+	if (!resource_list)
+		return UINT32_MAX;
+
+	auto *entries = llvm::cast<llvm::MDNode>(resource_list);
+	unsigned num_entries = entries->getNumOperands();
+	for (unsigned i = 0; i < num_entries; i++)
+	{
+		auto *entry = llvm::cast<llvm::MDNode>(entries->getOperand(i));
+		uint32_t index = get_constant_metadata(entry, 0);
+		uint32_t bind_space = get_constant_metadata(entry, 3);
+		uint32_t bind_register = get_constant_metadata(entry, 4);
+		uint32_t range_size = get_constant_metadata(entry, 5);
+
+		if (binding_space != bind_space)
+			continue;
+
+		if (binding_range_lo >= bind_register &&
+		    (range_size == UINT32_MAX || (binding_range_hi < bind_register + range_size)))
+		{
+			return index;
+		}
+	}
+
+	return UINT32_MAX;
+}
+
 bool Converter::Impl::emit_global_heaps()
 {
 	Vector<AnnotateHandleReference *> annotations;

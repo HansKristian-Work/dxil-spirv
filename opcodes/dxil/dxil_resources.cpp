@@ -1450,14 +1450,24 @@ bool get_annotate_handle_meta(Converter::Impl &impl, const llvm::CallInst *instr
 		{
 			if (res_type->getNumOperands() != 4)
 				return false;
-			meta.binding_index = res_type->getOperand(2)->getUniqueInteger().getZExtValue();
+
+			uint32_t binding_range_lo = res_type->getOperand(0)->getUniqueInteger().getZExtValue();
+			uint32_t binding_range_hi = res_type->getOperand(1)->getUniqueInteger().getZExtValue();
+			uint32_t binding_space = res_type->getOperand(2)->getUniqueInteger().getZExtValue();
 			meta.resource_type = DXIL::ResourceType(res_type->getOperand(3)->getUniqueInteger().getZExtValue());
-			// Param 0/1 here just seem to re-declare the binding ranges? Ignore those, since it's declared in metadata.
+			meta.binding_index = impl.find_binding_meta_index(
+				binding_range_lo, binding_range_hi,
+				binding_space, meta.resource_type);
+
+			if (meta.binding_index == UINT32_MAX)
+				return false;
 		}
 		else if (llvm::isa<llvm::ConstantAggregateZero>(handle->getOperand(1)))
 		{
-			meta.binding_index = 0;
 			meta.resource_type = DXIL::ResourceType(0);
+			meta.binding_index = impl.find_binding_meta_index(0, 0, 0, meta.resource_type);
+			if (meta.binding_index == UINT32_MAX)
+				return false;
 		}
 		else
 			return false;
