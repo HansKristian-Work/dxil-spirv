@@ -254,6 +254,13 @@ static int32_t find_root_descriptor_index(const Remapper *remapper, const dxil_s
 		return -1;
 }
 
+static bool d3d_binding_is_global_heap(const dxil_spv_d3d_binding &binding)
+{
+	return binding.register_index == UINT32_MAX &&
+	       binding.register_space == UINT32_MAX &&
+	       binding.range_size == UINT32_MAX;
+}
+
 static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *binding, dxil_spv_srv_vulkan_binding *vk_binding)
 {
 	auto *remapper = static_cast<Remapper *>(userdata);
@@ -267,7 +274,13 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 	}
 	else
 	{
-		if (remapper->bindless)
+		if (d3d_binding_is_global_heap(*binding))
+		{
+			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
+			vk_binding->buffer_binding.set = 0;
+			vk_binding->buffer_binding.binding = 0;
+		}
+		else if (remapper->bindless)
 		{
 			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
 			vk_binding->buffer_binding.bindless.heap_root_offset = binding->register_index;
@@ -287,6 +300,7 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 			if (remapper->bindless && remapper->ssbo_rtas)
 				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
 		}
+
 		if (remapper->ssbo_srv)
 		{
 			if (binding->kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
@@ -308,7 +322,13 @@ static dxil_spv_bool remap_sampler(void *userdata, const dxil_spv_d3d_binding *b
 	auto *remapper = static_cast<Remapper *>(userdata);
 	*vk_binding = {};
 
-	if (remapper->bindless)
+	if (d3d_binding_is_global_heap(*binding))
+	{
+		vk_binding->bindless.use_heap = DXIL_SPV_TRUE;
+		vk_binding->set = 0;
+		vk_binding->binding = 0;
+	}
+	else if (remapper->bindless)
 	{
 		vk_binding->bindless.use_heap = DXIL_SPV_TRUE;
 		vk_binding->bindless.heap_root_offset = binding->register_index;
@@ -339,7 +359,15 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 	}
 	else
 	{
-		if (remapper->bindless)
+		bool binding_is_global_heap = d3d_binding_is_global_heap(binding->d3d_binding);
+
+		if (binding_is_global_heap)
+		{
+			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
+			vk_binding->buffer_binding.set = 0;
+			vk_binding->buffer_binding.binding = 0;
+		}
+		else if (remapper->bindless)
 		{
 			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_TRUE;
 			vk_binding->buffer_binding.bindless.heap_root_offset = binding->d3d_binding.register_index;
@@ -367,7 +395,7 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 
 		if (binding->has_counter)
 		{
-			if (remapper->bindless)
+			if (remapper->bindless || binding_is_global_heap)
 			{
 				vk_binding->counter_binding.bindless.use_heap = DXIL_SPV_TRUE;
 				vk_binding->counter_binding.root_constant_index = 4;
@@ -414,7 +442,13 @@ static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *bindi
 		}
 		else
 		{
-			if (remapper->bindless)
+			if (d3d_binding_is_global_heap(*binding))
+			{
+				vk_binding->vulkan.uniform_binding.bindless.use_heap = DXIL_SPV_TRUE;
+				vk_binding->vulkan.uniform_binding.set = 0;
+				vk_binding->vulkan.uniform_binding.binding = 0;
+			}
+			else if (remapper->bindless)
 			{
 				vk_binding->vulkan.uniform_binding.bindless.use_heap = DXIL_SPV_TRUE;
 				vk_binding->vulkan.uniform_binding.bindless.heap_root_offset = binding->register_index;
@@ -424,7 +458,6 @@ static dxil_spv_bool remap_cbv(void *userdata, const dxil_spv_d3d_binding *bindi
 			}
 			else
 			{
-
 				vk_binding->vulkan.uniform_binding.bindless.use_heap = DXIL_SPV_FALSE;
 				vk_binding->vulkan.uniform_binding.set = binding->register_space;
 				vk_binding->vulkan.uniform_binding.binding = binding->register_index;

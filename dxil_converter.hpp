@@ -71,6 +71,8 @@ struct D3DBinding
 	unsigned resource_index;
 
 	// : register(N, spaceM)
+	// If register(UINT32_MAX, UINT32_MAX) with range_size = UINT32_MAX is used, this is treated
+	// as a binding of the global descriptor heap.
 	unsigned register_space;
 	unsigned register_index;
 
