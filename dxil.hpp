@@ -421,6 +421,9 @@ enum class Op : unsigned
 	RayQuery_GeometryIndex = 213,
 	RayQuery_CandidateInstanceContributionToHitGroupIndex = 214,
 	RayQuery_CommittedInstanceContributionToHitGroupIndex = 215,
+	AnnotateHandle = 216,
+	CreateHandleFromBinding = 217,
+	CreateHandleFromHeap = 218,
 
 	Count
 };
