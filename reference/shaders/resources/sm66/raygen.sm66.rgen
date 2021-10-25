@@ -30,7 +30,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 58
+; Bound: 55
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -75,49 +75,46 @@ OpDecorate %12 NonReadable
 %17 = OpTypeStruct %9
 %18 = OpTypePointer RayPayloadNV %17
 %19 = OpVariable %18 RayPayloadNV
-%22 = OpTypeInt 32 0
-%23 = OpConstant %22 0
-%24 = OpConstant %9 1
-%25 = OpConstant %9 0
-%26 = OpConstant %9 2
-%27 = OpConstant %9 3
-%28 = OpConstant %9 4
-%29 = OpTypeVector %9 3
-%34 = OpConstant %22 1
-%37 = OpTypePointer RayPayloadNV %13
-%44 = OpTypePointer RayPayloadNV %9
-%53 = OpTypeVector %22 2
+%21 = OpTypeInt 32 0
+%22 = OpConstant %21 0
+%23 = OpConstant %9 1
+%24 = OpConstant %9 0
+%25 = OpConstant %9 2
+%26 = OpConstant %9 3
+%27 = OpConstant %9 4
+%28 = OpTypeVector %9 3
+%32 = OpConstant %21 1
+%35 = OpTypePointer RayPayloadNV %13
+%42 = OpTypePointer RayPayloadNV %9
+%50 = OpTypeVector %21 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %56
-%56 = OpLabel
+OpBranch %53
+%53 = OpLabel
 %20 = OpLoad %6 %8
-%21 = OpLoad %6 %8
-%30 = OpCompositeConstruct %29 %24 %26 %27
-%31 = OpCompositeConstruct %29 %25 %25 %24
-OpTraceRayKHR %21 %23 %23 %23 %23 %23 %30 %24 %31 %28 %16
-%32 = OpLoad %6 %8
-%33 = OpLoad %6 %8
-%35 = OpCompositeConstruct %29 %24 %26 %27
-%36 = OpCompositeConstruct %29 %25 %25 %24
-OpTraceRayKHR %33 %23 %34 %23 %23 %23 %35 %24 %36 %28 %19
-%38 = OpInBoundsAccessChain %37 %16 %23
-%39 = OpLoad %13 %38
-%40 = OpCompositeExtract %9 %39 0
-%41 = OpCompositeExtract %9 %39 1
-%42 = OpCompositeExtract %9 %39 2
-%43 = OpCompositeExtract %9 %39 3
-%45 = OpInBoundsAccessChain %44 %19 %23
-%46 = OpLoad %9 %45
-%47 = OpFAdd %9 %40 %46
-%48 = OpFAdd %9 %41 %46
-%49 = OpFAdd %9 %42 %46
-%50 = OpFAdd %9 %43 %46
-%51 = OpLoad %10 %12
-%52 = OpLoad %10 %12
-%54 = OpCompositeConstruct %53 %23 %23
-%55 = OpCompositeConstruct %13 %47 %48 %49 %50
-OpImageWrite %52 %54 %55
+%29 = OpCompositeConstruct %28 %23 %25 %26
+%30 = OpCompositeConstruct %28 %24 %24 %23
+OpTraceRayKHR %20 %22 %22 %22 %22 %22 %29 %23 %30 %27 %16
+%31 = OpLoad %6 %8
+%33 = OpCompositeConstruct %28 %23 %25 %26
+%34 = OpCompositeConstruct %28 %24 %24 %23
+OpTraceRayKHR %31 %22 %32 %22 %22 %22 %33 %23 %34 %27 %19
+%36 = OpInBoundsAccessChain %35 %16 %22
+%37 = OpLoad %13 %36
+%38 = OpCompositeExtract %9 %37 0
+%39 = OpCompositeExtract %9 %37 1
+%40 = OpCompositeExtract %9 %37 2
+%41 = OpCompositeExtract %9 %37 3
+%43 = OpInBoundsAccessChain %42 %19 %22
+%44 = OpLoad %9 %43
+%45 = OpFAdd %9 %38 %44
+%46 = OpFAdd %9 %39 %44
+%47 = OpFAdd %9 %40 %44
+%48 = OpFAdd %9 %41 %44
+%49 = OpLoad %10 %12
+%51 = OpCompositeConstruct %50 %22 %22
+%52 = OpCompositeConstruct %13 %45 %46 %47 %48
+OpImageWrite %49 %51 %52
 OpReturn
 OpFunctionEnd
 #endif

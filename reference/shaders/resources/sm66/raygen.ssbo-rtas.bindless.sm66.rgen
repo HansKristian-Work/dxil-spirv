@@ -48,7 +48,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 101
+; Bound: 82
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -123,21 +123,21 @@ OpDecorate %18 NonReadable
 %33 = OpConstant %5 3
 %34 = OpTypePointer StorageBuffer %9
 %37 = OpTypeAccelerationStructureKHR
-%46 = OpConstant %14 1
-%47 = OpConstant %14 0
-%48 = OpConstant %14 2
-%49 = OpConstant %14 3
-%50 = OpConstant %14 4
-%51 = OpTypeVector %14 3
-%68 = OpConstant %5 1
-%71 = OpTypePointer RayPayloadNV %19
-%78 = OpTypePointer RayPayloadNV %14
-%85 = OpTypePointer UniformConstant %15
-%90 = OpConstant %5 10
+%39 = OpConstant %14 1
+%40 = OpConstant %14 0
+%41 = OpConstant %14 2
+%42 = OpConstant %14 3
+%43 = OpConstant %14 4
+%44 = OpTypeVector %14 3
+%54 = OpConstant %5 1
+%57 = OpTypePointer RayPayloadNV %19
+%64 = OpTypePointer RayPayloadNV %14
+%71 = OpTypePointer UniformConstant %15
+%76 = OpConstant %5 10
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %99
-%99 = OpLabel
+OpBranch %80
+%80 = OpLabel
 %27 = OpAccessChain %26 %8 %28
 %29 = OpLoad %5 %27
 %30 = OpIAdd %5 %29 %31
@@ -145,58 +145,39 @@ OpBranch %99
 %35 = OpAccessChain %34 %13 %28 %32
 %36 = OpLoad %9 %35
 %38 = OpConvertUToAccelerationStructureKHR %37 %36
-%39 = OpAccessChain %26 %8 %28
-%40 = OpLoad %5 %39
-%41 = OpIAdd %5 %40 %31
-%42 = OpGroupNonUniformBroadcastFirst %5 %33 %41
-%43 = OpAccessChain %34 %13 %28 %42
-%44 = OpLoad %9 %43
-%45 = OpConvertUToAccelerationStructureKHR %37 %44
-%52 = OpCompositeConstruct %51 %46 %48 %49
-%53 = OpCompositeConstruct %51 %47 %47 %46
-OpTraceRayKHR %45 %28 %28 %28 %28 %28 %52 %46 %53 %50 %22
-%54 = OpAccessChain %26 %8 %28
-%55 = OpLoad %5 %54
-%56 = OpIAdd %5 %55 %31
-%57 = OpGroupNonUniformBroadcastFirst %5 %33 %56
-%58 = OpAccessChain %34 %13 %28 %57
-%59 = OpLoad %9 %58
-%60 = OpConvertUToAccelerationStructureKHR %37 %59
-%61 = OpAccessChain %26 %8 %28
-%62 = OpLoad %5 %61
-%63 = OpIAdd %5 %62 %31
-%64 = OpGroupNonUniformBroadcastFirst %5 %33 %63
-%65 = OpAccessChain %34 %13 %28 %64
-%66 = OpLoad %9 %65
-%67 = OpConvertUToAccelerationStructureKHR %37 %66
-%69 = OpCompositeConstruct %51 %46 %48 %49
-%70 = OpCompositeConstruct %51 %47 %47 %46
-OpTraceRayKHR %67 %28 %68 %28 %28 %28 %69 %46 %70 %50 %25
-%72 = OpInBoundsAccessChain %71 %22 %28
-%73 = OpLoad %19 %72
-%74 = OpCompositeExtract %14 %73 0
-%75 = OpCompositeExtract %14 %73 1
-%76 = OpCompositeExtract %14 %73 2
-%77 = OpCompositeExtract %14 %73 3
-%79 = OpInBoundsAccessChain %78 %25 %28
-%80 = OpLoad %14 %79
-%81 = OpFAdd %14 %74 %80
-%82 = OpFAdd %14 %75 %80
-%83 = OpFAdd %14 %76 %80
-%84 = OpFAdd %14 %77 %80
-%87 = OpAccessChain %26 %8 %33
-%88 = OpLoad %5 %87
-%89 = OpIAdd %5 %88 %90
-%86 = OpAccessChain %85 %18 %89
-%91 = OpLoad %15 %86
-%93 = OpAccessChain %26 %8 %33
-%94 = OpLoad %5 %93
-%95 = OpIAdd %5 %94 %90
-%92 = OpAccessChain %85 %18 %95
-%96 = OpLoad %15 %92
-%97 = OpCompositeConstruct %9 %28 %28
-%98 = OpCompositeConstruct %19 %81 %82 %83 %84
-OpImageWrite %96 %97 %98
+%45 = OpCompositeConstruct %44 %39 %41 %42
+%46 = OpCompositeConstruct %44 %40 %40 %39
+OpTraceRayKHR %38 %28 %28 %28 %28 %28 %45 %39 %46 %43 %22
+%47 = OpAccessChain %26 %8 %28
+%48 = OpLoad %5 %47
+%49 = OpIAdd %5 %48 %31
+%50 = OpGroupNonUniformBroadcastFirst %5 %33 %49
+%51 = OpAccessChain %34 %13 %28 %50
+%52 = OpLoad %9 %51
+%53 = OpConvertUToAccelerationStructureKHR %37 %52
+%55 = OpCompositeConstruct %44 %39 %41 %42
+%56 = OpCompositeConstruct %44 %40 %40 %39
+OpTraceRayKHR %53 %28 %54 %28 %28 %28 %55 %39 %56 %43 %25
+%58 = OpInBoundsAccessChain %57 %22 %28
+%59 = OpLoad %19 %58
+%60 = OpCompositeExtract %14 %59 0
+%61 = OpCompositeExtract %14 %59 1
+%62 = OpCompositeExtract %14 %59 2
+%63 = OpCompositeExtract %14 %59 3
+%65 = OpInBoundsAccessChain %64 %25 %28
+%66 = OpLoad %14 %65
+%67 = OpFAdd %14 %60 %66
+%68 = OpFAdd %14 %61 %66
+%69 = OpFAdd %14 %62 %66
+%70 = OpFAdd %14 %63 %66
+%73 = OpAccessChain %26 %8 %33
+%74 = OpLoad %5 %73
+%75 = OpIAdd %5 %74 %76
+%72 = OpAccessChain %71 %18 %75
+%77 = OpLoad %15 %72
+%78 = OpCompositeConstruct %9 %28 %28
+%79 = OpCompositeConstruct %19 %67 %68 %69 %70
+OpImageWrite %77 %78 %79
 OpReturn
 OpFunctionEnd
 #endif

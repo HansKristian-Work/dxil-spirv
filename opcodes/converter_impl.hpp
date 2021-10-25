@@ -253,6 +253,7 @@ struct Converter::Impl
 		spv::Id offset_buffer_id;
 	};
 	UnorderedMap<const llvm::Value *, AnnotateHandleReference> llvm_annotate_handle_uses;
+	UnorderedSet<const llvm::Value *> llvm_annotate_handle_lib_uses;
 
 	Vector<ResourceReference> srv_index_to_reference;
 	Vector<spv::Id> srv_index_to_offset;

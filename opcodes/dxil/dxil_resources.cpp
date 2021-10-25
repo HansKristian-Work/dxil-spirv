@@ -1365,6 +1365,10 @@ static bool resource_handle_needs_sink(Converter::Impl &impl, const llvm::CallIn
 
 bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// Defer creating any handles since annotateHandle is actually going to do it.
+	if (impl.llvm_annotate_handle_lib_uses.count(instruction))
+		return true;
+
 	if (resource_handle_needs_sink(impl, instruction))
 	{
 		impl.resource_handles_needing_sink.erase(impl.resource_handles_needing_sink.find(instruction));
@@ -1477,6 +1481,9 @@ bool get_annotate_handle_meta(Converter::Impl &impl, const llvm::CallInst *instr
 		auto itr = impl.llvm_global_variable_to_resource_mapping.find(handle->getOperand(1));
 		if (itr == impl.llvm_global_variable_to_resource_mapping.end())
 			return false;
+
+		// Marks that the CreateHandleForLib is a dummy and should not actually emit a resource handle.
+		impl.llvm_annotate_handle_lib_uses.insert(instruction->getOperand(1));
 
 		meta.resource_type = itr->second.type;
 		meta.binding_index = itr->second.meta_index;
