@@ -4,7 +4,7 @@
 #extension GL_KHR_shader_subgroup_ballot : require
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO_Offsets
+layout(set = 15, binding = 0, std430) restrict readonly buffer SSBO_Offsets
 {
     uvec2 _m0[];
 } _13;
@@ -94,7 +94,7 @@ OpMemberDecorate %6 7 Offset 28
 OpDecorate %10 ArrayStride 8
 OpMemberDecorate %11 0 Offset 0
 OpDecorate %11 Block
-OpDecorate %13 DescriptorSet 0
+OpDecorate %13 DescriptorSet 15
 OpDecorate %13 Binding 0
 OpDecorate %13 NonWritable
 OpDecorate %13 Restrict

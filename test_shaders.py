@@ -47,8 +47,9 @@ def create_temporary(suff = ''):
     os.close(f)
     return path
 
-def get_sm(shader, force_60):
-    minor_version = '_0' if force_60 else '_5'
+def get_sm(shader, version_minor):
+    minor_version = '_{}'.format(version_minor)
+    lib_version = 'lib_6_{}'.format(5 if version_minor <= 5 else 6)
     _, ext = os.path.splitext(shader)
     if ext == '.vert':
         return 'vs_6' + minor_version
@@ -63,30 +64,34 @@ def get_sm(shader, force_60):
     elif ext == '.geom':
         return 'gs_6' + minor_version
     elif ext == '.rmiss':
-        return 'lib_6_5'
+        return lib_version
     elif ext == '.rint':
-        return 'lib_6_5'
+        return lib_version
     elif ext == '.rgen':
-        return 'lib_6_5'
+        return lib_version
     elif ext == '.rhit':
-        return 'lib_6_5'
+        return lib_version
     elif ext == '.rcall':
-        return 'lib_6_5'
+        return lib_version
     elif ext == '.rany':
-        return 'lib_6_5'
+        return lib_version
     elif ext == '.rclosest':
-        return 'lib_6_5'
+        return lib_version
     else:
         return ''
 
 def cross_compile_dxil(shader, args, paths, is_asm):
     glsl_path = create_temporary(os.path.basename(shader))
-    force_60 = '.sm60.' in shader
+    version_minor = 5
+    if '.sm60.' in shader:
+        version_minor = 0
+    elif '.sm66.' in shader:
+        version_minor = 6
 
     if not is_asm:
         dxil_path = create_temporary()
-        dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader, force_60), '-Fo', dxil_path, shader]
-        if not force_60:
+        dxil_cmd = [paths.dxc, '-Qstrip_reflect', '-Qstrip_debug', '-Vd', '-T' + get_sm(shader, version_minor), '-Fo', dxil_path, shader]
+        if version_minor >= 2:
             dxil_cmd.append('-enable-16bit-types')
         if '.denorm-ftz.' in shader:
             dxil_cmd += ['-denorm', 'ftz']

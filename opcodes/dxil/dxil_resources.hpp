@@ -28,6 +28,9 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_create_handle_from_heap_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_create_handle_from_binding_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_annotate_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
@@ -36,4 +39,14 @@ static inline bool emit_interpolate_dispatch(Converter::Impl &impl, const llvm::
 {
 	return emit_interpolate_instruction(opcode, impl, instruction);
 }
+
+struct AnnotateHandleMeta
+{
+	DXIL::Op resource_op;
+	DXIL::ResourceType resource_type;
+	llvm::Value *offset;
+	uint32_t binding_index;
+	bool non_uniform;
+};
+bool get_annotate_handle_meta(Converter::Impl &impl, const llvm::CallInst *instruction, AnnotateHandleMeta &meta);
 } // namespace dxil_spv

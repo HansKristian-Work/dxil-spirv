@@ -621,8 +621,27 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	}
 }
 
+static bool cast_instruction_is_ignored(Converter::Impl &impl, const llvm::CastInst *instruction)
+{
+	// llvm.lifetime.begin takes i8*, but this pointer type is not allowed otherwise.
+	// We have to explicitly ignore this.
+	// Ignore any bitcast to i8*,
+	// it happens for lib_6_6 and is completely meaningless for us.
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::PointerTyID)
+	{
+		auto *result_type = instruction->getType()->getPointerElementType();
+		if (result_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && result_type->getIntegerBitWidth() == 8)
+			return true;
+	}
+
+	return false;
+}
+
 bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction)
 {
+	if (cast_instruction_is_ignored(impl, instruction))
+		return true;
+
 	return emit_cast_instruction_impl(impl, instruction) != 0;
 }
 

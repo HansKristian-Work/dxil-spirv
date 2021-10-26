@@ -203,6 +203,7 @@ struct Converter::Impl
 	bool emit_resources_global_mapping();
 	bool emit_resources_global_mapping(DXIL::ResourceType type, const llvm::MDNode *node);
 	bool emit_resources();
+	bool emit_global_heaps();
 	bool emit_srvs(const llvm::MDNode *srvs);
 	bool emit_uavs(const llvm::MDNode *uavs);
 	bool emit_cbvs(const llvm::MDNode *cbvs);
@@ -236,6 +237,23 @@ struct Converter::Impl
 		DXIL::ResourceKind resource_kind = DXIL::ResourceKind::Invalid;
 		int local_root_signature_entry = -1;
 	};
+
+	// Collects all unique calls to annotateHandle (SM 6.6),
+	// we use this to build the various bindless variables as necessary.
+	struct AnnotateHandleReference
+	{
+		unsigned ordinal; // Important for reproducible codegen later.
+		DXIL::ResourceKind resource_kind;
+		DXIL::ResourceType resource_type;
+		DXIL::ComponentType component_type;
+		AccessTracking tracking;
+		unsigned stride;
+		bool coherent;
+		ResourceReference reference;
+		spv::Id offset_buffer_id;
+	};
+	UnorderedMap<const llvm::Value *, AnnotateHandleReference> llvm_annotate_handle_uses;
+	UnorderedSet<const llvm::Value *> llvm_annotate_handle_lib_uses;
 
 	Vector<ResourceReference> srv_index_to_reference;
 	Vector<spv::Id> srv_index_to_offset;
@@ -458,6 +476,13 @@ struct Converter::Impl
 	DXIL::ComponentType get_effective_input_output_type(DXIL::ComponentType type);
 	static DXIL::ComponentType get_effective_typed_resource_type(DXIL::ComponentType type);
 	spv::Id get_effective_input_output_type_id(DXIL::ComponentType type);
+	bool get_uav_image_format(DXIL::ResourceKind resource_kind,
+	                          DXIL::ComponentType actual_component_type,
+	                          const AccessTracking &access_meta,
+	                          spv::ImageFormat &format);
+
+	uint32_t find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
+	                                 uint32_t binding_space, DXIL::ResourceType resource_type);
 
 	struct
 	{

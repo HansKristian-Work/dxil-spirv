@@ -596,8 +596,17 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 	spv::Id offset_id;
 	if (reference.local_root_signature_entry >= 0)
 		offset_id = build_bindless_heap_offset_shader_record(impl, reference, dynamic_offset);
-	else
+	else if (reference.push_constant_member != UINT32_MAX)
 		offset_id = build_bindless_heap_offset_push_constant(impl, reference, dynamic_offset);
+	else
+	{
+		if (reference.base_offset != 0)
+		{
+			LOGE("For SM 6.6 heaps, no constant offset can be applied.\n");
+			return 0;
+		}
+		offset_id = impl.get_id_for_value(dynamic_offset);
+	}
 
 	if (impl.options.descriptor_qa_enabled)
 		offset_id = build_descriptor_qa_check(impl, offset_id, type);
@@ -930,6 +939,43 @@ static bool resource_kind_is_buffer(DXIL::ResourceKind kind)
 	}
 }
 
+static Converter::Impl::ResourceReference &get_resource_reference(
+		Converter::Impl &impl, DXIL::ResourceType resource_type,
+		const llvm::CallInst *instruction, unsigned resource_range)
+{
+	if (resource_range == UINT32_MAX)
+	{
+		return impl.llvm_annotate_handle_uses[instruction].reference;
+	}
+	else
+	{
+		switch (resource_type)
+		{
+		default:
+		case DXIL::ResourceType::SRV:
+			return impl.srv_index_to_reference[resource_range];
+		case DXIL::ResourceType::UAV:
+			return impl.uav_index_to_reference[resource_range];
+		case DXIL::ResourceType::CBV:
+			return impl.cbv_index_to_reference[resource_range];
+		case DXIL::ResourceType::Sampler:
+			return impl.sampler_index_to_reference[resource_range];
+		}
+	}
+}
+
+static spv::Id get_offset_buffer_variable(
+		Converter::Impl &impl, DXIL::ResourceType resource_type,
+		const llvm::CallInst *instruction, unsigned resource_range)
+{
+	if (resource_range == UINT32_MAX)
+		return impl.llvm_annotate_handle_uses[instruction].offset_buffer_id;
+	else if (resource_type == DXIL::ResourceType::SRV)
+		return impl.srv_index_to_offset[resource_range];
+	else
+		return impl.uav_index_to_offset[resource_range];
+}
+
 static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *instruction,
                                DXIL::ResourceType resource_type, unsigned resource_range,
                                llvm::Value *instruction_offset, bool non_uniform)
@@ -939,7 +985,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 	{
 	case DXIL::ResourceType::SRV:
 	{
-		auto &reference = impl.srv_index_to_reference[resource_range];
+		auto &reference = get_resource_reference(impl, resource_type, instruction, resource_range);
 
 		if (resource_is_physical_rtas(impl, reference))
 		{
@@ -1004,9 +1050,12 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			auto &incoming_meta = impl.handle_to_resource_meta[base_image_id];
 
-			if (impl.srv_index_to_offset[resource_range])
+			spv::Id offset_buffer_id = get_offset_buffer_variable(impl, resource_type, instruction, resource_range);
+			if (offset_buffer_id)
+			{
 				offset_id = build_load_buffer_offset(impl, reference, incoming_meta,
-				                                     impl.srv_index_to_offset[resource_range], offset_id, non_uniform);
+				                                     offset_buffer_id, offset_id, non_uniform);
+			}
 			else
 				offset_id = 0;
 
@@ -1042,7 +1091,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 	case DXIL::ResourceType::UAV:
 	{
-		auto &reference = impl.uav_index_to_reference[resource_range];
+		auto &reference = get_resource_reference(impl, resource_type, instruction, resource_range);
 
 		if (resource_is_physical_pointer(impl, reference))
 		{
@@ -1097,9 +1146,12 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			auto &incoming_meta = impl.handle_to_resource_meta[base_resource_id];
 
-			if (impl.uav_index_to_offset[resource_range])
+			spv::Id offset_buffer_id = get_offset_buffer_variable(impl, resource_type, instruction, resource_range);
+			if (offset_buffer_id)
+			{
 				offset_id = build_load_buffer_offset(impl, reference, incoming_meta,
-				                                     impl.uav_index_to_offset[resource_range], offset_id, non_uniform);
+				                                     offset_buffer_id, offset_id, non_uniform);
+			}
 			else
 				offset_id = 0;
 
@@ -1166,7 +1218,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 	case DXIL::ResourceType::CBV:
 	{
-		auto &reference = impl.cbv_index_to_reference[resource_range];
+		auto &reference = get_resource_reference(impl, resource_type, instruction, resource_range);
 		spv::Id base_cbv_id = reference.var_id;
 		spv::Id type_id = builder.getDerefTypeId(base_cbv_id);
 
@@ -1183,16 +1235,10 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		}
 		else if (reference.base_resource_is_array || reference.bindless)
 		{
-			uint32_t non_uniform = 0;
 			if (reference.local_root_signature_entry >= 0)
-			{
-				non_uniform = 1;
-			}
-			else if (reference.base_resource_is_array)
-			{
-				if (!get_constant_operand(instruction, 4, &non_uniform))
-					return false;
-			}
+				non_uniform = true;
+			else if (!reference.base_resource_is_array)
+				non_uniform = false;
 
 			bool ssbo = reference.bindless && impl.options.bindless_cbv_ssbo_emulation;
 			auto storage = ssbo ? spv::StorageClassStorageBuffer : spv::StorageClassUniform;
@@ -1223,7 +1269,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			auto &meta = impl.handle_to_resource_meta[op->id];
 			meta = {};
-			meta.non_uniform = non_uniform != 0;
+			meta.non_uniform = non_uniform;
 			meta.storage = storage;
 			meta.kind = DXIL::ResourceKind::CBuffer;
 
@@ -1279,7 +1325,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 	case DXIL::ResourceType::Sampler:
 	{
-		auto &reference = impl.sampler_index_to_reference[resource_range];
+		auto &reference = get_resource_reference(impl, resource_type, instruction, resource_range);
 		spv::Id base_sampler_id = reference.var_id;
 
 		bool is_non_uniform = false;
@@ -1319,6 +1365,10 @@ static bool resource_handle_needs_sink(Converter::Impl &impl, const llvm::CallIn
 
 bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// Defer creating any handles since annotateHandle is actually going to do it.
+	if (impl.llvm_annotate_handle_lib_uses.count(instruction))
+		return true;
+
 	if (resource_handle_needs_sink(impl, instruction))
 	{
 		impl.resource_handles_needing_sink.erase(impl.resource_handles_needing_sink.find(instruction));
@@ -1354,6 +1404,113 @@ bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst 
 	auto resource_type = static_cast<DXIL::ResourceType>(resource_type_operand);
 	return emit_create_handle(impl, instruction, resource_type, resource_range,
 	                          instruction->getOperand(3), non_uniform != 0);
+}
+
+bool emit_create_handle_from_heap_instruction(Converter::Impl &, const llvm::CallInst *)
+{
+	// Do nothing here. We cannot emit code before annotateHandle.
+	return true;
+}
+
+bool emit_create_handle_from_binding_instruction(Converter::Impl &, const llvm::CallInst *)
+{
+	// Do nothing here. We cannot emit code before annotateHandle.
+	return true;
+}
+
+bool get_annotate_handle_meta(Converter::Impl &impl, const llvm::CallInst *instruction,
+                              AnnotateHandleMeta &meta)
+{
+	auto *handle = llvm::dyn_cast<llvm::CallInst>(instruction->getOperand(1));
+	if (!handle)
+		return false;
+
+	uint32_t opcode;
+	if (!get_constant_operand(handle, 0, &opcode))
+		return false;
+
+	meta.resource_op = DXIL::Op(opcode);
+	uint32_t non_uniform_int = 0;
+
+	if (meta.resource_op == DXIL::Op::CreateHandleFromHeap)
+	{
+		auto &annotation = impl.llvm_annotate_handle_uses[instruction];
+		meta.resource_type = annotation.resource_type;
+		meta.binding_index = UINT32_MAX; // Direct heap access.
+
+		meta.offset = handle->getOperand(1);
+
+		if (!get_constant_operand(handle, 3, &non_uniform_int))
+			return false;
+	}
+	else if (meta.resource_op == DXIL::Op::CreateHandleFromBinding)
+	{
+		meta.offset = handle->getOperand(2);
+
+		if (!get_constant_operand(handle, 3, &non_uniform_int))
+			return false;
+
+		if (auto *res_type = llvm::dyn_cast<llvm::ConstantAggregate>(handle->getOperand(1)))
+		{
+			if (res_type->getNumOperands() != 4)
+				return false;
+
+			uint32_t binding_range_lo = res_type->getOperand(0)->getUniqueInteger().getZExtValue();
+			uint32_t binding_range_hi = res_type->getOperand(1)->getUniqueInteger().getZExtValue();
+			uint32_t binding_space = res_type->getOperand(2)->getUniqueInteger().getZExtValue();
+			meta.resource_type = DXIL::ResourceType(res_type->getOperand(3)->getUniqueInteger().getZExtValue());
+			meta.binding_index = impl.find_binding_meta_index(
+				binding_range_lo, binding_range_hi,
+				binding_space, meta.resource_type);
+
+			if (meta.binding_index == UINT32_MAX)
+				return false;
+		}
+		else if (llvm::isa<llvm::ConstantAggregateZero>(handle->getOperand(1)))
+		{
+			meta.resource_type = DXIL::ResourceType(0);
+			meta.binding_index = impl.find_binding_meta_index(0, 0, 0, meta.resource_type);
+			if (meta.binding_index == UINT32_MAX)
+				return false;
+		}
+		else
+			return false;
+	}
+	else if (meta.resource_op == DXIL::Op::CreateHandleForLib)
+	{
+		auto itr = impl.llvm_global_variable_to_resource_mapping.find(handle->getOperand(1));
+		if (itr == impl.llvm_global_variable_to_resource_mapping.end())
+			return false;
+
+		// Marks that the CreateHandleForLib is a dummy and should not actually emit a resource handle.
+		impl.llvm_annotate_handle_lib_uses.insert(instruction->getOperand(1));
+
+		meta.resource_type = itr->second.type;
+		meta.binding_index = itr->second.meta_index;
+		meta.offset = itr->second.offset;
+		non_uniform_int = uint32_t(itr->second.non_uniform);
+	}
+	else
+		return false;
+
+	meta.non_uniform = non_uniform_int != 0;
+	return true;
+}
+
+bool emit_annotate_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	if (resource_handle_needs_sink(impl, instruction))
+	{
+		impl.resource_handles_needing_sink.erase(impl.resource_handles_needing_sink.find(instruction));
+		return true;
+	}
+
+	AnnotateHandleMeta meta = {};
+	if (!get_annotate_handle_meta(impl, instruction, meta))
+		return false;
+
+	return emit_create_handle(impl, instruction, meta.resource_type,
+	                          meta.binding_index, meta.offset, meta.non_uniform);
 }
 
 static bool emit_cbuffer_load_legacy_physical_pointer(Converter::Impl &impl, const llvm::CallInst *instruction)
