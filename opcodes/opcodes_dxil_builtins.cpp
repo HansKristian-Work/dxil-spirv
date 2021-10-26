@@ -694,6 +694,41 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::DerivCoarseX:
+	case DXIL::Op::DerivCoarseY:
+	case DXIL::Op::DerivFineX:
+	case DXIL::Op::DerivFineY:
+	case DXIL::Op::CalculateLOD:
+	case DXIL::Op::SampleBias:
+	case DXIL::Op::Sample:
+	case DXIL::Op::SampleCmp:
+		if (impl.execution_model == spv::ExecutionModelGLCompute)
+		{
+			// We're trying to do shader derivatives outside fragment, uh oh.
+			// Also, we need to map 4 lanes to invocation IDs.
+			// Either, we will set up a 1D mapping with ComputeDerivativeGroupLinearNV and run the code as-is,
+			// or we run with LinearNV, but rewrite the thread IDs to fake 2D grouping.
+			// We could rely on QuadNV here, but it's not widely supported.
+			impl.shader_analysis.require_compute_shader_derivatives = true;
+		}
+		break;
+
+	case DXIL::Op::QuadOp:
+	case DXIL::Op::QuadReadLaneAt:
+		if (impl.execution_model == spv::ExecutionModelGLCompute)
+		{
+			uint32_t sm_major = 0, sm_minor = 0;
+			Converter::Impl::get_shader_model(impl.bitcode_parser.get_module(), nullptr, &sm_major, &sm_minor);
+			if (sm_major * 1000 + sm_minor >= 6006)
+			{
+				// In SM 6.6, the semantics of quad ops in compute changes.
+				// They follow compute shader derivative rules,
+				// where they might be 1D or 2D based on workgroup size.
+				impl.shader_analysis.require_compute_shader_derivatives = true;
+			}
+		}
+		break;
+
 	default:
 		break;
 	}

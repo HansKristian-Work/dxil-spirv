@@ -2136,6 +2136,31 @@ bool Converter::Impl::emit_resources_global_mapping()
 	return true;
 }
 
+void Converter::Impl::get_shader_model(const llvm::Module &module, String *model, uint32_t *major, uint32_t *minor)
+{
+	auto *resource_meta = module.getNamedMetadata("dx.shaderModel");
+	if (!resource_meta)
+	{
+		if (major)
+			*major = 6;
+		if (minor)
+			*minor = 0;
+		if (model)
+			model->clear();
+	}
+	else
+	{
+		auto *meta = resource_meta->getOperand(0);
+
+		if (model)
+			*model = llvm::cast<llvm::MDString>(meta->getOperand(0))->getString();
+		if (major)
+			*major = get_constant_metadata(meta, 1);
+		if (minor)
+			*minor = get_constant_metadata(meta, 2);
+	}
+}
+
 uint32_t Converter::Impl::find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
                                                   uint32_t binding_space, DXIL::ResourceType resource_type)
 {
@@ -2793,9 +2818,9 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 	else
 	{
 		// Non-RT shaders tend to rely on having the shader model set in the shaderModel meta node.
-		auto *shader_model = module.getNamedMetadata("dx.shaderModel");
-		auto *shader_model_node = shader_model->getOperand(0);
-		auto model = llvm::cast<llvm::MDString>(shader_model_node->getOperand(0))->getString();
+		String model;
+		Converter::Impl::get_shader_model(module, &model, nullptr, nullptr);
+
 		if (model == "vs")
 			return spv::ExecutionModelVertex;
 		else if (model == "ps")
@@ -4268,13 +4293,36 @@ bool Converter::Impl::emit_execution_modes_compute()
 		auto *num_threads = llvm::cast<llvm::MDNode>(*num_threads_node);
 		unsigned threads[3];
 		for (unsigned dim = 0; dim < 3; dim++)
-		{
 			threads[dim] = get_constant_metadata(num_threads, dim);
-			execution_mode_meta.workgroup_threads[dim] = threads[dim];
+
+		if (shader_analysis.require_compute_shader_derivatives)
+		{
+			// For sanity, verify that dimensions align sufficiently.
+			// Spec says that product of workgroup size must align with 4.
+			unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
+			if (total_workgroup_threads % 4 == 0)
+			{
+				builder.addExtension("SPV_NV_compute_shader_derivatives");
+				builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearNV);
+				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupLinearNV);
+
+				// If the X and Y dimensions align with 2,
+				// we need to assume that any quad op works on a 2D dispatch.
+				execution_mode_meta.synthesize_2d_quad_dispatch = (threads[0] % 2 == 0) && (threads[1] % 2 == 0);
+				if (execution_mode_meta.synthesize_2d_quad_dispatch)
+				{
+					threads[0] *= 2;
+					threads[1] /= 2;
+				}
+			}
 		}
 
-		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize, threads[0], threads[1],
-		                         threads[2]);
+		for (unsigned dim = 0; dim < 3; dim++)
+			execution_mode_meta.workgroup_threads[dim] = threads[dim];
+
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
+		                         threads[0], threads[1], threads[2]);
+
 		return true;
 	}
 	else
@@ -4951,18 +4999,10 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!options.shader_source_file.empty())
 	{
 		auto &builder = spirv_module.get_builder();
-		auto *shader_model = module.getNamedMetadata("dx.shaderModel");
-		if (shader_model)
-		{
-			auto *shader_model_node = shader_model->getOperand(0);
-			if (shader_model_node)
-			{
-				uint32_t major = get_constant_metadata(shader_model_node, 1);
-				uint32_t minor = get_constant_metadata(shader_model_node, 2);
-				builder.setSource(spv::SourceLanguageUnknown, major * 100 + minor);
-				builder.setSourceFile(options.shader_source_file);
-			}
-		}
+		uint32_t sm_major = 0, sm_minor = 0;
+		get_shader_model(module, nullptr, &sm_major, &sm_minor);
+		builder.setSource(spv::SourceLanguageUnknown, sm_major * 100 + sm_minor);
+		builder.setSourceFile(options.shader_source_file);
 	}
 
 	result.node_pool = std::make_unique<CFGNodePool>();

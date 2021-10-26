@@ -1,0 +1,11 @@
+RWTexture3D<float4> RW;
+SamplerState S;
+Texture3D<float4> TEX;
+
+[numthreads(4, 4, 4)]
+void main(uint3 thr : SV_DispatchThreadID, uint3 gthr : SV_GroupThreadID)
+{
+	float3 uvw = (float3(thr) + 0.5) / 64.0;
+	float4 result = TEX.Sample(S, uvw);
+	RW[thr] = result;
+}
