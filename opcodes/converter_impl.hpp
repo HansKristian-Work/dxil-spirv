@@ -484,6 +484,8 @@ struct Converter::Impl
 	uint32_t find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
 	                                 uint32_t binding_space, DXIL::ResourceType resource_type);
 
+	static void get_shader_model(const llvm::Module &module, String *model, uint32_t *major, uint32_t *minor);
+
 	struct
 	{
 		// Only relevant for fragment shaders.
