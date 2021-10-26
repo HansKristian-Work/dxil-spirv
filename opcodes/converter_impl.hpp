@@ -195,6 +195,7 @@ struct Converter::Impl
 		llvm::Function *patch_constant_function = nullptr;
 		unsigned workgroup_threads[3] = {};
 		bool native_16bit_operations = false;
+		bool synthesize_2d_quad_dispatch = false;
 	} execution_mode_meta;
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
@@ -492,6 +493,7 @@ struct Converter::Impl
 		bool has_side_effects = false;
 		bool discards = false;
 		bool can_require_primitive_culling = false;
+		bool require_compute_shader_derivatives = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

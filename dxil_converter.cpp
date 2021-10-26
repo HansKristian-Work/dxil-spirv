@@ -4293,13 +4293,36 @@ bool Converter::Impl::emit_execution_modes_compute()
 		auto *num_threads = llvm::cast<llvm::MDNode>(*num_threads_node);
 		unsigned threads[3];
 		for (unsigned dim = 0; dim < 3; dim++)
-		{
 			threads[dim] = get_constant_metadata(num_threads, dim);
-			execution_mode_meta.workgroup_threads[dim] = threads[dim];
+
+		if (shader_analysis.require_compute_shader_derivatives)
+		{
+			// For sanity, verify that dimensions align sufficiently.
+			// Spec says that product of workgroup size must align with 4.
+			unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
+			if (total_workgroup_threads % 4 == 0)
+			{
+				builder.addExtension("SPV_NV_compute_shader_derivatives");
+				builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearNV);
+				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupLinearNV);
+
+				// If the X and Y dimensions align with 2,
+				// we need to assume that any quad op works on a 2D dispatch.
+				execution_mode_meta.synthesize_2d_quad_dispatch = (threads[0] % 2 == 0) && (threads[1] % 2 == 0);
+				if (execution_mode_meta.synthesize_2d_quad_dispatch)
+				{
+					threads[0] *= 2;
+					threads[1] /= 2;
+				}
+			}
 		}
 
-		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize, threads[0], threads[1],
-		                         threads[2]);
+		for (unsigned dim = 0; dim < 3; dim++)
+			execution_mode_meta.workgroup_threads[dim] = threads[dim];
+
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
+		                         threads[0], threads[1], threads[2]);
+
 		return true;
 	}
 	else
