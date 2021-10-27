@@ -1,0 +1,55 @@
+#version 460
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+
+void main()
+{
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(10.0)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 24
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %11
+OpExecutionMode %3 LocalSize 128 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %11 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeVector %5 3
+%10 = OpTypePointer Input %9
+%11 = OpVariable %10 Input
+%12 = OpTypePointer Input %5
+%14 = OpConstant %5 0
+%17 = OpTypeFloat 32
+%18 = OpConstant %17 10
+%20 = OpTypeVector %5 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %22
+%22 = OpLabel
+%13 = OpAccessChain %12 %11 %14
+%15 = OpLoad %5 %13
+%16 = OpLoad %6 %8
+%19 = OpBitcast %5 %18
+%21 = OpCompositeConstruct %20 %19 %19 %19 %19
+OpImageWrite %16 %15 %21
+OpReturn
+OpFunctionEnd
+#endif

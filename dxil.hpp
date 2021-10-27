@@ -455,7 +455,8 @@ enum class ShaderPropertyTag : uint8_t
 	RayAttribSizeTag = 7,
 	ShaderKind = 8,
 	MSState = 9,
-	ASState = 10
+	ASState = 10,
+	WaveSize = 11
 };
 
 enum class GSStageOutTags : uint32_t

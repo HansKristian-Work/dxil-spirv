@@ -1,0 +1,8 @@
+RWStructuredBuffer<float> RW : register(u0);
+
+[WaveSize(128)]
+[numthreads(128, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	RW[thr] = 10.0;
+}

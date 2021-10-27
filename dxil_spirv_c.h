@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 13
+#define DXIL_SPV_API_VERSION_MINOR 14
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -563,6 +563,11 @@ DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_subgroup_size(dxil_spv
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_workgroup_dimensions(
 	dxil_spv_converter converter,
 	unsigned *x, unsigned *y, unsigned *z);
+
+/* After compilation. Queries CS required wave size.
+ * If *wave_size is non-zero, maps to requiredSubgroupSize, otherwise, VARYING_SUBGROUP_SIZE. */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_required_wave_size(
+	dxil_spv_converter converter, unsigned *wave_size);
 
 /* After compilation, queries num vertices for HS. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
