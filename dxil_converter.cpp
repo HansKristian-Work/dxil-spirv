@@ -84,6 +84,11 @@ uint32_t Converter::get_patch_vertex_count() const
 	return impl->execution_mode_meta.stage_input_num_vertex;
 }
 
+uint32_t Converter::get_compute_required_wave_size() const
+{
+	return impl->execution_mode_meta.required_wave_size;
+}
+
 bool Converter::shader_requires_feature(ShaderFeature feature) const
 {
 	switch (feature)
@@ -4286,6 +4291,13 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 bool Converter::Impl::emit_execution_modes_compute()
 {
 	auto &builder = spirv_module.get_builder();
+
+	auto *wave_size_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::WaveSize);
+	if (wave_size_node)
+	{
+		auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_node);
+		execution_mode_meta.required_wave_size = get_constant_metadata(wave_size, 0);
+	}
 
 	auto *num_threads_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NumThreads);
 	if (num_threads_node)

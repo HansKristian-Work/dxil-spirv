@@ -476,6 +476,8 @@ public:
 	void get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const;
 	// After compilation, query expected patch size.
 	uint32_t get_patch_vertex_count() const;
+	// If non-zero, a CS must be compiled for a specific wave size.
+	uint32_t get_compute_required_wave_size() const;
 
 	bool shader_requires_feature(ShaderFeature feature) const;
 
