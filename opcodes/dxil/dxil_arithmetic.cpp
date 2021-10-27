@@ -17,6 +17,7 @@
  */
 
 #include "dxil_arithmetic.hpp"
+#include "dxil_common.hpp"
 #include "opcodes/converter_impl.hpp"
 
 namespace dxil_spv
@@ -517,6 +518,94 @@ bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst 
 	impl.add(acc_op);
 	if (precise)
 		builder.addDecoration(acc_op->id, spv::DecorationNoContraction);
+
+	return true;
+}
+
+bool emit_unpack4x8_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityInt8);
+
+	auto *bitcast_op = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(8), 4));
+	bitcast_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+	impl.add(bitcast_op);
+
+	uint32_t signed_expand;
+	if (!get_constant_operand(instruction, 1, &signed_expand))
+		return false;
+
+	auto *element_type = instruction->getType()->getStructElementType(0);
+	spv::Id result_type = builder.makeVectorType(impl.get_type_id(element_type), 4);
+
+	auto *expand_op = impl.allocate(signed_expand ? spv::OpSConvert : spv::OpUConvert,
+	                                instruction, result_type);
+	expand_op->add_id(bitcast_op->id);
+	impl.add(expand_op);
+
+	return true;
+}
+
+bool emit_pack4x8_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityInt8);
+
+	auto *element_type = instruction->getOperand(2)->getType();
+	spv::Id uint_type = impl.get_type_id(element_type);
+
+	uint32_t clamp_op_literal;
+	if (!get_constant_operand(instruction, 1, &clamp_op_literal))
+		return false;
+
+	spv::Id elements[4];
+	for (unsigned i = 0; i < 4; i++)
+		elements[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
+
+	spv::Id vec_id = impl.build_vector(uint_type, elements, 4);
+	if (clamp_op_literal != 0)
+	{
+		// Signed saturate with u8 range or s8 range.
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+		spv::Id lo_id, hi_id;
+		if (element_type->getIntegerBitWidth() == 16)
+		{
+			lo_id = builder.makeInt16Constant(clamp_op_literal == 1 ? 0 : -128);
+			hi_id = builder.makeInt16Constant(clamp_op_literal == 1 ? 255 : 127);
+		}
+		else
+		{
+			lo_id = builder.makeIntConstant(clamp_op_literal == 1 ? 0 : -128);
+			hi_id = builder.makeIntConstant(clamp_op_literal == 1 ? 255 : 127);
+		}
+
+		Vector<spv::Id> lo_ids = { lo_id, lo_id, lo_id, lo_id };
+		Vector<spv::Id> hi_ids = { hi_id, hi_id, hi_id, hi_id };
+
+		spv::Id int_type = builder.makeIntType(element_type->getIntegerBitWidth());
+		spv::Id int4_type = builder.makeVectorType(int_type, 4);
+		lo_id = builder.makeCompositeConstant(int4_type, lo_ids);
+		hi_id = builder.makeCompositeConstant(int4_type, hi_ids);
+
+		auto *clamp_op = impl.allocate(spv::OpExtInst, int4_type);
+		clamp_op->add_id(impl.glsl_std450_ext);
+		clamp_op->add_literal(GLSLstd450SClamp);
+		clamp_op->add_id(vec_id);
+		clamp_op->add_id(lo_id);
+		clamp_op->add_id(hi_id);
+		impl.add(clamp_op);
+		vec_id = clamp_op->id;
+	}
+
+	auto *narrow_op = impl.allocate(spv::OpUConvert, builder.makeVectorType(builder.makeUintType(8), 4));
+	narrow_op->add_id(vec_id);
+	impl.add(narrow_op);
+
+	auto *bitcast_op = impl.allocate(spv::OpBitcast, instruction);
+	bitcast_op->add_id(narrow_op->id);
+	impl.add(bitcast_op);
 
 	return true;
 }

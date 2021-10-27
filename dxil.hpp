@@ -424,6 +424,8 @@ enum class Op : unsigned
 	AnnotateHandle = 216,
 	CreateHandleFromBinding = 217,
 	CreateHandleFromHeap = 218,
+	Unpack4x8 = 219,
+	Pack4x8 = 220,
 
 	Count
 };

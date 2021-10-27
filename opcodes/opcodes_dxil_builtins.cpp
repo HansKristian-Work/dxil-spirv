@@ -136,7 +136,6 @@ struct DXILDispatcher
 		OP(Dot4AddU8Packed) = emit_i8_dot_instruction<false>;
 		OP(Dot2AddHalf) = emit_dot2_add_half_instruction;
 
-		// FIXME: Untested. Not sure how to trick dxc to generate these.
 		OP(Ibfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract>;
 		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract>;
 		OP(Bfi) = emit_bfi_instruction;
@@ -151,6 +150,8 @@ struct DXILDispatcher
 		OP(BitcastI32toF32) = emit_bitcast_instruction;
 		OP(BitcastF64toI64) = emit_bitcast_instruction;
 		OP(BitcastI64toF64) = emit_bitcast_instruction;
+		OP(Unpack4x8) = emit_unpack4x8_instruction;
+		OP(Pack4x8) = emit_pack4x8_instruction;
 
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;
