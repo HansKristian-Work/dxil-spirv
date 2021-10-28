@@ -22,6 +22,7 @@
 namespace dxil_spv
 {
 bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_is_helper_lane_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_sample_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 

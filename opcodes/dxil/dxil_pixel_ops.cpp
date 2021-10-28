@@ -98,4 +98,11 @@ bool emit_inner_coverage_instruction(Converter::Impl &impl, const llvm::CallInst
 	impl.add(select_op);
 	return true;
 }
+
+bool emit_is_helper_lane_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto *op = impl.allocate(spv::OpIsHelperInvocationEXT, instruction);
+	impl.add(op);
+	return true;
+}
 } // namespace dxil_spv
