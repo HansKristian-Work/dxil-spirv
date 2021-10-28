@@ -426,6 +426,7 @@ enum class Op : unsigned
 	CreateHandleFromHeap = 218,
 	Unpack4x8 = 219,
 	Pack4x8 = 220,
+	IsHelperLane = 221,
 
 	Count
 };

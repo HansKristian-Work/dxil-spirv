@@ -169,6 +169,7 @@ struct DXILDispatcher
 		OP(SampleIndex) = emit_sample_index_instruction;
 		OP(Coverage) = emit_coverage_instruction;
 		OP(InnerCoverage) = emit_inner_coverage_instruction;
+		OP(IsHelperLane) = emit_is_helper_lane_instruction;
 
 		// dxil_geometry.hpp
 		OP(EmitStream) = emit_stream_instruction;
