@@ -1,0 +1,19 @@
+RWStructuredBuffer<uint64_t> RW : register(u0);
+
+[numthreads(128, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	uint64_t thr64 = thr;
+
+	InterlockedAdd(RW[0], thr64);
+	InterlockedAnd(RW[1], thr64);
+	InterlockedOr(RW[2], thr64);
+	InterlockedXor(RW[3], thr64);
+	InterlockedMin(RW[4], thr64);
+	InterlockedMax(RW[5], thr64);
+
+	uint64_t out_value;
+	InterlockedExchange(RW[6], thr64, out_value);
+	InterlockedCompareStore(RW[7], 10, out_value);
+	InterlockedCompareExchange(RW[8], 20, thr64, out_value);
+}

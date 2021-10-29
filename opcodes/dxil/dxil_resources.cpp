@@ -906,7 +906,7 @@ static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::
 	spv::Id offset_id = load_op->id;
 
 	// Shift the offset buffer once if we can get away with it.
-	if (untyped_buffer && reference.var_id_16bit == 0)
+	if (untyped_buffer && !reference.aliased)
 	{
 		Operation *shift_op = impl.allocate(spv::OpShiftRightLogical, vec_type);
 		shift_op->add_id(offset_id);
@@ -1012,6 +1012,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id base_image_id = reference.var_id;
 			spv::Id image_id = base_image_id;
 			spv::Id loaded_id_16bit = 0;
+			spv::Id loaded_id_64bit = 0;
 			bool is_non_uniform = false;
 
 			auto storage = get_resource_storage_class(impl, reference.var_id);
@@ -1025,13 +1026,25 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			else
 				descriptor_type = DESCRIPTOR_QA_TYPE_SAMPLED_IMAGE_BIT;
 
-			// Load 16-bit resource first so value map matches 32-bit meta.
+			// Load aliased resources first so value map matches 32-bit meta.
 			if (reference.var_id_16bit)
 			{
 				// Need to also create a 16-bit access chain.
 				if (!build_load_resource_handle(impl, reference.var_id_16bit, reference, descriptor_type,
 				                                instruction, instruction_offset, non_uniform, is_non_uniform,
 				                                nullptr, &loaded_id_16bit, nullptr))
+				{
+					LOGE("Failed to load SRV resource handle.\n");
+					return false;
+				}
+			}
+
+			if (reference.var_id_64bit)
+			{
+				// Need to also create a 16-bit access chain.
+				if (!build_load_resource_handle(impl, reference.var_id_64bit, reference, descriptor_type,
+												instruction, instruction_offset, non_uniform, is_non_uniform,
+												nullptr, &loaded_id_64bit, nullptr))
 				{
 					LOGE("Failed to load SRV resource handle.\n");
 					return false;
@@ -1064,6 +1077,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.non_uniform = is_non_uniform;
 			meta.index_offset_id = offset_id;
 			meta.var_id_16bit = loaded_id_16bit;
+			meta.var_id_64bit = loaded_id_64bit;
+			meta.aliased = reference.aliased;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -1114,6 +1129,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id loaded_id = 0;
 			spv::Id offset_id = 0;
 			spv::Id loaded_id_16bit = 0;
+			spv::Id loaded_id_64bit = 0;
 
 			auto storage = get_resource_storage_class(impl, reference.var_id);
 			DescriptorQATypeFlagBits descriptor_type;
@@ -1131,7 +1147,19 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				                                instruction_offset, non_uniform, is_non_uniform,
 				                                nullptr, &loaded_id_16bit, nullptr))
 				{
-					LOGE("Failed to load SRV resource handle.\n");
+					LOGE("Failed to load UAV resource handle.\n");
+					return false;
+				}
+			}
+
+			if (reference.var_id_64bit)
+			{
+				// Need to also create a 64-bit access chain.
+				if (!build_load_resource_handle(impl, reference.var_id_64bit, reference, descriptor_type, instruction,
+				                                instruction_offset, non_uniform, is_non_uniform,
+				                                nullptr, &loaded_id_64bit, nullptr))
+				{
+					LOGE("Failed to load UAV resource handle.\n");
 					return false;
 				}
 			}
@@ -1160,6 +1188,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.non_uniform = is_non_uniform;
 			meta.index_offset_id = offset_id;
 			meta.var_id_16bit = loaded_id_16bit;
+			meta.var_id_64bit = loaded_id_64bit;
+			meta.aliased = reference.aliased;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
 			meta.var_id = resource_ptr_id;

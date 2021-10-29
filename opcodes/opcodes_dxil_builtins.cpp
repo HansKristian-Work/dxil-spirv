@@ -362,11 +362,16 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 static void update_access_tracking_from_type(Converter::Impl::AccessTracking &tracking,
                                              const llvm::Type *type)
 {
-	if (type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
-	    (type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
-	     type->getIntegerBitWidth() == 16))
-	{
+	if (type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 		tracking.access_16bit = true;
+	else if (type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
+		tracking.access_64bit = true;
+	else if (type->getTypeID() == llvm::Type::TypeID::IntegerTyID)
+	{
+		if (type->getIntegerBitWidth() == 16)
+			tracking.access_16bit = true;
+		else if (type->getIntegerBitWidth() == 64)
+			tracking.access_64bit = true;
 	}
 }
 
@@ -560,6 +565,9 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			node.has_read = true;
 			node.has_written = true;
 			node.has_atomic = true;
+			if (instruction->getType()->getIntegerBitWidth() == 64)
+				node.has_atomic_64bit = true;
+			update_access_tracking_from_type(node, instruction->getType());
 			impl.shader_analysis.has_side_effects = true;
 		};
 

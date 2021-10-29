@@ -1,0 +1,23 @@
+RWStructuredBuffer<uint64_t3> RW : register(u0);
+StructuredBuffer<uint64_t3> RO : register(t0);
+
+RWByteAddressBuffer RWBAB : register(u1);
+ByteAddressBuffer BAB : register(t1);
+
+[numthreads(128, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	uint64_t3 v0 = RO[2 * thr + 0];
+	uint64_t3 v1 = RO[2 * thr + 1];
+	RW[8 * thr + 0] = v0 + v1;
+	RW[8 * thr + 1] = v0 - v1;
+	RW[8 * thr + 2] = v0 * v1;
+	RW[8 * thr + 3] = v0 / v1;
+	RW[8 * thr + 4] = v0 << v1;
+	RW[8 * thr + 5] = v0 >> v1;
+	RW[8 * thr + 6] = int64_t3(v0) >> v1;
+	RW[8 * thr + 7] = v0 & v1;
+
+	v0.xy = BAB.Load<uint64_t2>(24 * thr);
+	RWBAB.Store<uint64_t3>(8 * thr, v0);
+}

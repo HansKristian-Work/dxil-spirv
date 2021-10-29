@@ -1,0 +1,38 @@
+groupshared int64_t v[4];
+RWByteAddressBuffer RWBAB : register(u0);
+
+[numthreads(128, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	if (thr < 4)
+	{
+		v[thr] = 0;
+	}
+
+	GroupMemoryBarrierWithGroupSync();
+
+	uint thr64 = thr;
+	uint wrapped = thr & 3;
+
+	InterlockedAdd(v[wrapped], thr64);
+	InterlockedAnd(v[wrapped], thr64);
+	InterlockedOr(v[wrapped], thr64);
+	InterlockedXor(v[wrapped], thr64);
+	InterlockedMin(v[wrapped], thr64);
+	InterlockedMax(v[wrapped], thr64);
+	InterlockedMin(v[wrapped], thr64);
+	InterlockedMax(v[wrapped], thr64);
+
+	uint64_t out_value;
+	InterlockedExchange(v[wrapped], thr64, out_value);
+	InterlockedCompareStore(v[wrapped], 10, out_value);
+	InterlockedCompareExchange(v[wrapped], 20, thr64, out_value);
+
+	InterlockedAdd(v[wrapped], thr64);
+	InterlockedAdd(v[wrapped], thr64);
+
+	GroupMemoryBarrierWithGroupSync();
+
+	if (thr < 4)
+		RWBAB.Store<uint64_t>(8 * thr, v[thr]);
+}

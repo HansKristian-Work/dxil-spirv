@@ -1,0 +1,18 @@
+[numthreads(128, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	RWStructuredBuffer<double3> RW = ResourceDescriptorHeap[0];
+	StructuredBuffer<double3> RO = ResourceDescriptorHeap[1];
+	RWByteAddressBuffer RWBAB = ResourceDescriptorHeap[2];
+	ByteAddressBuffer BAB = ResourceDescriptorHeap[3];
+
+	double3 v0 = RO[2 * thr + 0];
+	double3 v1 = RO[2 * thr + 1];
+	RW[4 * thr + 0] = v0 + v1;
+	RW[4 * thr + 1] = v0 - v1;
+	RW[4 * thr + 2] = v0 * v1;
+	RW[4 * thr + 3] = v0 / v1;
+
+	v0.xy = BAB.Load<double2>(24 * thr);
+	RWBAB.Store<double3>(8 * thr, v0);
+}

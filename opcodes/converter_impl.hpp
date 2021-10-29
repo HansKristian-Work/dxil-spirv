@@ -140,7 +140,10 @@ struct Converter::Impl
 		bool has_read = false;
 		bool has_written = false;
 		bool has_atomic = false;
+		bool has_atomic_64bit = false;
+		// TODO: Track vectors as well.
 		bool access_16bit = false;
+		bool access_64bit = false;
 	};
 	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> uav_access_tracking;
@@ -227,8 +230,12 @@ struct Converter::Impl
 
 	struct ResourceReference
 	{
+		// TODO: Refactor this into type and vector length alias groups.
 		spv::Id var_id = 0;
 		spv::Id var_id_16bit = 0;
+		spv::Id var_id_64bit = 0;
+		bool aliased = false;
+
 		uint32_t push_constant_member = 0;
 		uint32_t base_offset = 0;
 		unsigned stride = 0;
@@ -283,8 +290,13 @@ struct Converter::Impl
 		DXIL::ResourceKind kind;
 		DXIL::ComponentType component_type;
 		unsigned stride;
+
+		// TODO: Refactor this into type and vector length alias groups.
 		spv::Id var_id;
 		spv::Id var_id_16bit;
+		spv::Id var_id_64bit;
+		bool aliased;
+
 		spv::StorageClass storage;
 		bool non_uniform;
 
@@ -487,6 +499,16 @@ struct Converter::Impl
 	                                 uint32_t binding_space, DXIL::ResourceType resource_type);
 
 	static void get_shader_model(const llvm::Module &module, String *model, uint32_t *major, uint32_t *minor);
+
+	struct AliasedAccess
+	{
+		bool raw_access_16bit = false;
+		bool raw_access_64bit = false;
+		bool requires_alias_decoration = false;
+	};
+	bool analyze_aliased_access(DXIL::ResourceKind kind, const AccessTracking &tracking,
+	                            VulkanDescriptorType descriptor_type,
+	                            AliasedAccess &aliased_access) const;
 
 	struct
 	{
