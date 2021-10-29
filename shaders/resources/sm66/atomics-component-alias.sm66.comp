@@ -1,0 +1,15 @@
+Buffer<uint64_t> RO;
+RWBuffer<uint64_t> RW;
+
+Texture2D<uint64_t> ROTex;
+RWTexture2D<uint64_t> RWTex;
+
+[numthreads(128, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	RW[thr] = RO[thr];
+	InterlockedAdd(RW[thr + 1], RW[thr + 10]);
+
+	RWTex[int2(thr, thr)] = ROTex[int2(thr, thr)];
+	InterlockedAdd(RWTex[int2(thr + 1, thr + 2)], RWTex[int2(thr + 3, thr + 4)]);
+}

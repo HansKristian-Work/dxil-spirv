@@ -4303,20 +4303,59 @@ void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType &component_type,
 	auto output_component_type = component_type;
 	auto input_component_type = get_effective_typed_resource_type(component_type);
 
-	if (component_type_is_16bit(output_component_type) && !support_16bit_operations())
-		output_component_type = convert_16bit_component_to_32bit(output_component_type);
-	else if (target_type->getTypeID() == llvm::Type::TypeID::FloatTyID)
+	if (output_component_type == DXIL::ComponentType::U64 && target_type->getIntegerBitWidth() == 32)
 	{
-		// Only convert if we actually want half here.
-		// Certain operations always return float even if the resource type is half for some silly reason.
-		output_component_type = DXIL::ComponentType::F32;
+		// If the component type is U64 it's used for atomics, but load/store interface is still 32-bit.
+		// Bit-cast rather than value cast.
+		auto *bitcast_op = allocate(spv::OpCompositeExtract, builder().makeUintType(64));
+		bitcast_op->add_id(value_id);
+		bitcast_op->add_literal(0);
+		add(bitcast_op);
+
+		auto *u32_cast_op = allocate(spv::OpBitcast, builder().makeVectorType(builder().makeUintType(32), 2));
+		u32_cast_op->add_id(bitcast_op->id);
+		add(u32_cast_op);
+		output_component_type = DXIL::ComponentType::U32;
+
+		if (components > 2)
+		{
+			auto *composite_op =
+				allocate(spv::OpCompositeConstruct,
+				         builder().makeVectorType(builder().makeUintType(32), components));
+			composite_op->add_id(u32_cast_op->id);
+			for (unsigned i = 2; i < components; i++)
+				composite_op->add_id(builder().makeUintConstant(0));
+			add(composite_op);
+			value_id = composite_op->id;
+		}
+		else if (components == 1)
+		{
+			auto *extract_op = allocate(spv::OpCompositeExtract, builder().makeUintType(32));
+			extract_op->add_id(u32_cast_op->id);
+			extract_op->add_literal(0);
+			add(extract_op);
+			value_id = extract_op->id;
+		}
+		else
+			value_id = u32_cast_op->id;
 	}
+	else
+	{
+		if (component_type_is_16bit(output_component_type) && !support_16bit_operations())
+			output_component_type = convert_16bit_component_to_32bit(output_component_type);
+		else if (target_type->getTypeID() == llvm::Type::TypeID::FloatTyID)
+		{
+			// Only convert if we actually want half here.
+			// Certain operations always return float even if the resource type is half for some silly reason.
+			output_component_type = DXIL::ComponentType::F32;
+		}
 
-	output_component_type = convert_component_to_unsigned(output_component_type);
+		output_component_type = convert_component_to_unsigned(output_component_type);
 
-	if (output_component_type != input_component_type)
-		value_id = build_value_cast(value_id, input_component_type, output_component_type, components);
-	component_type = output_component_type;
+		if (output_component_type != input_component_type)
+			value_id = build_value_cast(value_id, input_component_type, output_component_type, components);
+		component_type = output_component_type;
+	}
 }
 
 void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType component_type, unsigned components,
@@ -4367,15 +4406,44 @@ spv::Id Converter::Impl::fixup_store_type_atomic(DXIL::ComponentType component_t
 
 spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value)
 {
-	auto output_component_type = get_effective_typed_resource_type(component_type);
-	auto input_component_type = component_type;
+	if (component_type == DXIL::ComponentType::U64)
+	{
+		// If the component type is U64 it's used for atomics, but load/store interface is still 32-bit.
+		// Bit-cast rather than value cast.
+		spv::Id u64_ids[4] = {};
+		for (unsigned i = 0; i < components / 2; i++)
+		{
+			auto *shuffle_op = allocate(spv::OpVectorShuffle, builder().makeVectorType(builder().makeUintType(32), 2));
+			shuffle_op->add_id(value);
+			shuffle_op->add_id(value);
+			shuffle_op->add_literal(2 * i + 0);
+			shuffle_op->add_literal(2 * i + 1);
+			add(shuffle_op);
 
-	if (component_type_is_16bit(input_component_type) && !support_16bit_operations())
-		input_component_type = convert_16bit_component_to_32bit(input_component_type);
-	input_component_type = convert_component_to_unsigned(input_component_type);
+			auto *cast_op = allocate(spv::OpBitcast, builder().makeUintType(64));
+			cast_op->add_id(shuffle_op->id);
+			add(cast_op);
+			u64_ids[i] = cast_op->id;
+		}
 
-	if (output_component_type != input_component_type)
-		value = build_value_cast(value, input_component_type, output_component_type, components);
+		for (unsigned i = components / 2; i < components; i++)
+			u64_ids[i] = builder().makeUint64Constant(0);
+
+		value = build_vector(builder().makeUintType(64), u64_ids, components);
+	}
+	else
+	{
+		auto output_component_type = get_effective_typed_resource_type(component_type);
+		auto input_component_type = component_type;
+
+		if (component_type_is_16bit(input_component_type) && !support_16bit_operations())
+			input_component_type = convert_16bit_component_to_32bit(input_component_type);
+		input_component_type = convert_component_to_unsigned(input_component_type);
+
+		if (output_component_type != input_component_type)
+			value = build_value_cast(value, input_component_type, output_component_type, components);
+	}
+
 	return value;
 }
 

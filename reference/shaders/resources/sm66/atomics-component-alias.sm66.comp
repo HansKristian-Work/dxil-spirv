@@ -1,0 +1,152 @@
+#version 460
+#extension GL_ARB_gpu_shader_int64 : require
+#extension GL_EXT_samplerless_texture_functions : require
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform usamplerBuffer _8;
+layout(set = 0, binding = 1) uniform utexture2D _11;
+layout(set = 0, binding = 0) uniform imageBuffer _15;
+layout(set = 0, binding = 1) uniform image2D _18;
+
+void main()
+{
+    uvec4 _32 = uvec4(texelFetch(_8, int(gl_GlobalInvocationID.x)).xyxy);
+    imageStore(_15, int(gl_GlobalInvocationID.x), u64vec4(packUint2x32(_32.xy), packUint2x32(_32.zw), 0ul, 0ul));
+    uvec4 _47 = uvec4(unpackUint2x32(imageLoad(_15, int(gl_GlobalInvocationID.x + 10u)).x), 0u, 0u);
+    uint _55 = gl_GlobalInvocationID.x + 1u;
+    uint64_t _59 = imageAtomicAdd(_15, int(_55), (uint64_t(_47.y) << 32ul) | uint64_t(_47.x));
+    uvec4 _67 = uvec4(texelFetch(_11, ivec2(uvec2(gl_GlobalInvocationID.x)), int(0u)).xyxy);
+    imageStore(_18, ivec2(uvec2(gl_GlobalInvocationID.x)), u64vec4(packUint2x32(_67.xy), packUint2x32(_67.zw), 0ul, 0ul));
+    uvec4 _82 = uvec4(unpackUint2x32(imageLoad(_18, ivec2(uvec2(gl_GlobalInvocationID.x + 3u, gl_GlobalInvocationID.x + 4u))).x), 0u, 0u);
+    uint64_t _93 = imageAtomicAdd(_18, ivec2(uvec2(_55, gl_GlobalInvocationID.x + 2u)), (uint64_t(_82.y) << 32ul) | uint64_t(_82.x));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 96
+; Schema: 0
+OpCapability Shader
+OpCapability Int64
+OpCapability Int64Atomics
+OpCapability SampledBuffer
+OpCapability ImageBuffer
+OpCapability StorageImageWriteWithoutFormat
+OpCapability Int64ImageEXT
+OpExtension "SPV_EXT_shader_image_int64"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %21
+OpExecutionMode %3 LocalSize 128 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 1
+OpDecorate %15 DescriptorSet 0
+OpDecorate %15 Binding 0
+OpDecorate %18 DescriptorSet 0
+OpDecorate %18 Binding 1
+OpDecorate %21 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 1 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 2D 0 0 0 1 Unknown
+%10 = OpTypePointer UniformConstant %9
+%11 = OpVariable %10 UniformConstant
+%12 = OpTypeInt 64 0
+%13 = OpTypeImage %12 Buffer 0 0 0 2 R64ui
+%14 = OpTypePointer UniformConstant %13
+%15 = OpVariable %14 UniformConstant
+%16 = OpTypeImage %12 2D 0 0 0 2 R64ui
+%17 = OpTypePointer UniformConstant %16
+%18 = OpVariable %17 UniformConstant
+%19 = OpTypeVector %5 3
+%20 = OpTypePointer Input %19
+%21 = OpVariable %20 Input
+%22 = OpTypePointer Input %5
+%24 = OpConstant %5 0
+%27 = OpTypeVector %5 4
+%33 = OpTypeVector %5 2
+%38 = OpConstant %12 0
+%39 = OpTypeVector %12 4
+%42 = OpConstant %5 10
+%53 = OpConstant %12 32
+%56 = OpConstant %5 1
+%57 = OpTypePointer Image %12
+%74 = OpConstant %5 3
+%76 = OpConstant %5 4
+%90 = OpConstant %5 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %94
+%94 = OpLabel
+%23 = OpAccessChain %22 %21 %24
+%25 = OpLoad %5 %23
+%26 = OpLoad %6 %8
+%28 = OpImageFetch %27 %26 %25
+%29 = OpCompositeExtract %5 %28 0
+%30 = OpCompositeExtract %5 %28 1
+%31 = OpLoad %13 %15
+%32 = OpCompositeConstruct %27 %29 %30 %29 %30
+%34 = OpVectorShuffle %33 %32 %32 0 1
+%35 = OpBitcast %12 %34
+%36 = OpVectorShuffle %33 %32 %32 2 3
+%37 = OpBitcast %12 %36
+%40 = OpCompositeConstruct %39 %35 %37 %38 %38
+OpImageWrite %31 %25 %40
+%41 = OpIAdd %5 %25 %42
+%43 = OpLoad %13 %15
+%44 = OpImageRead %39 %43 %41
+%45 = OpCompositeExtract %12 %44 0
+%46 = OpBitcast %33 %45
+%47 = OpCompositeConstruct %27 %46 %24 %24
+%48 = OpCompositeExtract %5 %47 0
+%49 = OpCompositeExtract %5 %47 1
+%50 = OpUConvert %12 %48
+%51 = OpUConvert %12 %49
+%52 = OpShiftLeftLogical %12 %51 %53
+%54 = OpBitwiseOr %12 %52 %50
+%55 = OpIAdd %5 %25 %56
+%58 = OpImageTexelPointer %57 %15 %55 %24
+%59 = OpAtomicIAdd %12 %58 %56 %24 %54
+%60 = OpLoad %9 %11
+%62 = OpCompositeConstruct %33 %25 %25
+%61 = OpImageFetch %27 %60 %62 Lod %24
+%63 = OpCompositeExtract %5 %61 0
+%64 = OpCompositeExtract %5 %61 1
+%65 = OpLoad %16 %18
+%66 = OpCompositeConstruct %33 %25 %25
+%67 = OpCompositeConstruct %27 %63 %64 %63 %64
+%68 = OpVectorShuffle %33 %67 %67 0 1
+%69 = OpBitcast %12 %68
+%70 = OpVectorShuffle %33 %67 %67 2 3
+%71 = OpBitcast %12 %70
+%72 = OpCompositeConstruct %39 %69 %71 %38 %38
+OpImageWrite %65 %66 %72
+%73 = OpIAdd %5 %25 %74
+%75 = OpIAdd %5 %25 %76
+%77 = OpLoad %16 %18
+%79 = OpCompositeConstruct %33 %73 %75
+%78 = OpImageRead %39 %77 %79 None
+%80 = OpCompositeExtract %12 %78 0
+%81 = OpBitcast %33 %80
+%82 = OpCompositeConstruct %27 %81 %24 %24
+%83 = OpCompositeExtract %5 %82 0
+%84 = OpCompositeExtract %5 %82 1
+%85 = OpUConvert %12 %83
+%86 = OpUConvert %12 %84
+%87 = OpShiftLeftLogical %12 %86 %53
+%88 = OpBitwiseOr %12 %87 %85
+%89 = OpIAdd %5 %25 %90
+%91 = OpCompositeConstruct %33 %55 %89
+%92 = OpImageTexelPointer %57 %18 %91 %24
+%93 = OpAtomicIAdd %12 %92 %56 %24 %88
+OpReturn
+OpFunctionEnd
+#endif
