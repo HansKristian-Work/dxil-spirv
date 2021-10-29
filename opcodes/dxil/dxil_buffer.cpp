@@ -1024,7 +1024,10 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id var_id;
 	if (bits == 64)
 	{
-		var_id = meta.var_id_64bit;
+		if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
+			var_id = meta.var_id_64bit;
+		else
+			var_id = meta.var_id;
 		builder.addCapability(spv::CapabilityInt64Atomics);
 	}
 	else
@@ -1158,7 +1161,10 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	spv::Id var_id;
 	if (bits == 64)
 	{
-		var_id = meta.var_id_64bit;
+		if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
+			var_id = meta.var_id_64bit;
+		else
+			var_id = meta.var_id;
 		builder.addCapability(spv::CapabilityInt64Atomics);
 	}
 	else

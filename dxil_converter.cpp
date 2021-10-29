@@ -394,7 +394,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			{
 				if (info.component != DXIL::ComponentType::U32 &&
 				    info.component != DXIL::ComponentType::I32 &&
-				    info.component != DXIL::ComponentType::F32)
+				    info.component != DXIL::ComponentType::F32 &&
+				    info.component != DXIL::ComponentType::U64)
 				{
 					LOGE("Invalid component type for image.\n");
 					return 0;
@@ -1147,8 +1148,14 @@ bool Converter::Impl::get_uav_image_format(DXIL::ResourceKind resource_kind,
 					format = spv::ImageFormatR32f;
 					break;
 
+				case DXIL::ComponentType::U64:
+					format = spv::ImageFormatR64ui;
+					builder().addExtension("SPV_EXT_shader_image_int64");
+					builder().addCapability(spv::CapabilityInt64ImageEXT);
+					break;
+
 				default:
-					LOGE("Reading from UAV, but component type does not conform to U32, I32 or F32. "
+					LOGE("Reading from UAV, but component type does not conform to U32, I32, F32 or U64. "
 					     "typed_uav_read_without_format option must be enabled.\n");
 					return false;
 				}
@@ -1195,10 +1202,18 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		auto actual_component_type = DXIL::ComponentType::U32;
 		auto effective_component_type = actual_component_type;
 
+		auto &access_meta = uav_access_tracking[index];
+
 		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
 			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)));
+			if (access_meta.has_atomic_64bit)
+			{
+				// The component type in DXIL is u32, even if the resource itself is u64 in meta reflection data ...
+				// This is also the case for signed components. Always use R64UI here.
+				actual_component_type = DXIL::ComponentType::U64;
+			}
 			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
 		else
@@ -1212,7 +1227,6 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
 
-		auto &access_meta = uav_access_tracking[index];
 		if (!get_uav_image_format(resource_kind, actual_component_type, access_meta, format))
 			return false;
 
@@ -2343,6 +2357,12 @@ bool Converter::Impl::emit_global_heaps()
 		    annotation->resource_kind != DXIL::ResourceKind::StructuredBuffer)
 		{
 			actual_component_type = normalize_component_type(annotation->component_type);
+			if (annotation->tracking.has_atomic_64bit)
+			{
+				// The component type in DXIL is u32, even if the resource itself is u64 in meta reflection data ...
+				// This is also the case for signed components. Always use R64UI here.
+				actual_component_type = DXIL::ComponentType::U64;
+			}
 		}
 		else if (annotation->resource_type == DXIL::ResourceType::UAV)
 		{

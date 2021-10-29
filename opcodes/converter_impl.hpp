@@ -140,6 +140,7 @@ struct Converter::Impl
 		bool has_read = false;
 		bool has_written = false;
 		bool has_atomic = false;
+		bool has_atomic_64bit = false;
 		// TODO: Track vectors as well.
 		bool access_16bit = false;
 		bool access_64bit = false;

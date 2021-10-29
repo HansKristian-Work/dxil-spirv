@@ -1,0 +1,136 @@
+#version 460
+#extension GL_ARB_gpu_shader_int64 : require
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform imageBuffer _8;
+layout(set = 0, binding = 1) uniform imageBuffer _9;
+layout(set = 0, binding = 2) uniform image2D _12;
+layout(set = 0, binding = 3) uniform image2D _13;
+
+void main()
+{
+    uint64_t _22 = uint64_t(gl_GlobalInvocationID.x);
+    uint64_t _26 = imageAtomicAdd(_8, int(0u), _22);
+    uint64_t _30 = imageAtomicAnd(_9, int(1u), _22);
+    uint64_t _34 = imageAtomicOr(_8, int(2u), _22);
+    uint64_t _38 = imageAtomicXor(_9, int(3u), _22);
+    uint64_t _42 = imageAtomicMin(_8, int(4u), _22);
+    uint64_t _46 = imageAtomicMax(_8, int(5u), _22);
+    uint64_t _50 = imageAtomicMin(_9, int(6u), _22);
+    uint64_t _54 = imageAtomicMax(_9, int(7u), _22);
+    uint64_t _58 = imageAtomicExchange(_9, int(8u), _22);
+    uint64_t _62 = imageAtomicCompSwap(_8, int(9u), 10ul, _58);
+    uint64_t _67 = imageAtomicCompSwap(_9, int(10u), 20ul, _22);
+    uint64_t _73 = imageAtomicAdd(_12, ivec2(uvec2(1u, 2u)), _22);
+    uint64_t _77 = imageAtomicAdd(_13, ivec2(uvec2(3u, 4u)), _22);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 80
+; Schema: 0
+OpCapability Shader
+OpCapability Int64
+OpCapability Int64Atomics
+OpCapability ImageBuffer
+OpCapability Int64ImageEXT
+OpExtension "SPV_EXT_shader_image_int64"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %17
+OpExecutionMode %3 LocalSize 128 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 1
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 2
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 3
+OpDecorate %17 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 64 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R64ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpVariable %7 UniformConstant
+%10 = OpTypeImage %5 2D 0 0 0 2 R64ui
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpVariable %11 UniformConstant
+%14 = OpTypeInt 32 0
+%15 = OpTypeVector %14 3
+%16 = OpTypePointer Input %15
+%17 = OpVariable %16 Input
+%18 = OpTypePointer Input %14
+%20 = OpConstant %14 0
+%24 = OpTypePointer Image %5
+%27 = OpConstant %14 1
+%32 = OpConstant %14 2
+%36 = OpConstant %14 3
+%40 = OpConstant %14 4
+%44 = OpConstant %14 5
+%48 = OpConstant %14 6
+%52 = OpConstant %14 7
+%56 = OpConstant %14 8
+%60 = OpConstant %14 9
+%63 = OpConstant %5 10
+%65 = OpConstant %14 10
+%68 = OpConstant %5 20
+%70 = OpTypeVector %14 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %78
+%78 = OpLabel
+%19 = OpAccessChain %18 %17 %20
+%21 = OpLoad %14 %19
+%22 = OpUConvert %5 %21
+%23 = OpLoad %6 %8
+%25 = OpImageTexelPointer %24 %8 %20 %20
+%26 = OpAtomicIAdd %5 %25 %27 %20 %22
+%28 = OpLoad %6 %9
+%29 = OpImageTexelPointer %24 %9 %27 %20
+%30 = OpAtomicAnd %5 %29 %27 %20 %22
+%31 = OpLoad %6 %8
+%33 = OpImageTexelPointer %24 %8 %32 %20
+%34 = OpAtomicOr %5 %33 %27 %20 %22
+%35 = OpLoad %6 %9
+%37 = OpImageTexelPointer %24 %9 %36 %20
+%38 = OpAtomicXor %5 %37 %27 %20 %22
+%39 = OpLoad %6 %8
+%41 = OpImageTexelPointer %24 %8 %40 %20
+%42 = OpAtomicUMin %5 %41 %27 %20 %22
+%43 = OpLoad %6 %8
+%45 = OpImageTexelPointer %24 %8 %44 %20
+%46 = OpAtomicUMax %5 %45 %27 %20 %22
+%47 = OpLoad %6 %9
+%49 = OpImageTexelPointer %24 %9 %48 %20
+%50 = OpAtomicSMin %5 %49 %27 %20 %22
+%51 = OpLoad %6 %9
+%53 = OpImageTexelPointer %24 %9 %52 %20
+%54 = OpAtomicSMax %5 %53 %27 %20 %22
+%55 = OpLoad %6 %9
+%57 = OpImageTexelPointer %24 %9 %56 %20
+%58 = OpAtomicExchange %5 %57 %27 %20 %22
+%59 = OpLoad %6 %8
+%61 = OpImageTexelPointer %24 %8 %60 %20
+%62 = OpAtomicCompareExchange %5 %61 %27 %20 %20 %58 %63
+%64 = OpLoad %6 %9
+%66 = OpImageTexelPointer %24 %9 %65 %20
+%67 = OpAtomicCompareExchange %5 %66 %27 %20 %20 %22 %68
+%69 = OpLoad %10 %12
+%71 = OpCompositeConstruct %70 %27 %32
+%72 = OpImageTexelPointer %24 %12 %71 %20
+%73 = OpAtomicIAdd %5 %72 %27 %20 %22
+%74 = OpLoad %10 %13
+%75 = OpCompositeConstruct %70 %36 %40
+%76 = OpImageTexelPointer %24 %13 %75 %20
+%77 = OpAtomicIAdd %5 %76 %27 %20 %22
+OpReturn
+OpFunctionEnd
+#endif

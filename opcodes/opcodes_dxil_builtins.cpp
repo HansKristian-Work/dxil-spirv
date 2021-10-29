@@ -565,6 +565,8 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			node.has_read = true;
 			node.has_written = true;
 			node.has_atomic = true;
+			if (instruction->getType()->getIntegerBitWidth() == 64)
+				node.has_atomic_64bit = true;
 			update_access_tracking_from_type(node, instruction->getType());
 			impl.shader_analysis.has_side_effects = true;
 		};
