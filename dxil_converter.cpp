@@ -315,6 +315,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 					bits = 16;
 				else if (info.component == DXIL::ComponentType::U32)
 					bits = 32;
+				else if (info.component == DXIL::ComponentType::U64)
+					bits = 64;
 				else
 				{
 					LOGE("Invalid component type for SSBO.\n");
@@ -377,6 +379,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 					bits = 16;
 				else if (info.component == DXIL::ComponentType::U32)
 					bits = 32;
+				else if (info.component == DXIL::ComponentType::U64)
+					bits = 64;
 				else
 				{
 					LOGE("Invalid component type for SSBO.\n");
@@ -653,6 +657,42 @@ static bool component_type_is_16bit(DXIL::ComponentType type)
 	}
 }
 
+bool Converter::Impl::analyze_aliased_access(DXIL::ResourceKind kind, const AccessTracking &tracking,
+                                             VulkanDescriptorType descriptor_type,
+                                             AliasedAccess &aliased_access) const
+{
+	if (kind == DXIL::ResourceKind::RawBuffer || kind == DXIL::ResourceKind::StructuredBuffer)
+	{
+		aliased_access.raw_access_16bit = execution_mode_meta.native_16bit_operations && tracking.access_16bit;
+		aliased_access.raw_access_64bit = tracking.access_64bit;
+
+		if (aliased_access.raw_access_16bit &&
+		    descriptor_type != VulkanDescriptorType::SSBO &&
+		    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
+		{
+			LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
+			return false;
+		}
+
+		if (aliased_access.raw_access_64bit &&
+		    descriptor_type != VulkanDescriptorType::SSBO &&
+		    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
+		{
+			LOGE("Raw 64-bit load-store was used, which must be implemented with SSBO or BDA.\n");
+			return false;
+		}
+
+		aliased_access.requires_alias_decoration = aliased_access.raw_access_16bit || aliased_access.raw_access_64bit;
+	}
+	else
+	{
+		// 64-bit will be relevant for typed 64-bit atomics.
+		aliased_access = {};
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 {
 	auto &builder = spirv_module.get_builder();
@@ -713,16 +753,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			return false;
 
 		auto &access_meta = srv_access_tracking[index];
-		bool raw_access_16bit = execution_mode_meta.native_16bit_operations &&
-		                        (resource_kind == DXIL::ResourceKind::RawBuffer ||
-		                         resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
-		                        access_meta.access_16bit;
 
-		if (raw_access_16bit && need_resource_remapping &&
-		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
-		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
+		AliasedAccess aliased_access;
+		if (!analyze_aliased_access(resource_kind, access_meta,
+		                            need_resource_remapping ?
+		                            vulkan_binding.buffer_binding.descriptor_type :
+		                            VulkanDescriptorType::BufferDeviceAddress, aliased_access))
 		{
-			LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
 			return false;
 		}
 
@@ -783,6 +820,22 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				}
 
 				spv::Id var_id = create_bindless_heap_variable(bindless_info);
+				spv::Id var_id_16bit = 0;
+				spv::Id var_id_64bit = 0;
+
+				if (aliased_access.raw_access_16bit)
+				{
+					auto bindless_info_16bit = bindless_info;
+					bindless_info_16bit.component = DXIL::ComponentType::U16;
+					var_id_16bit = create_bindless_heap_variable(bindless_info_16bit);
+				}
+
+				if (aliased_access.raw_access_64bit)
+				{
+					auto bindless_info_64bit = bindless_info;
+					bindless_info_64bit.component = DXIL::ComponentType::U64;
+					var_id_64bit = create_bindless_heap_variable(bindless_info_64bit);
+				}
 
 				uint32_t heap_offset = local_table_entry.offset_in_heap;
 				heap_offset += bind_register - local_table_entry.register_index;
@@ -795,6 +848,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 				auto &ref = srv_index_to_reference[index];
 				ref.var_id = var_id;
+				ref.var_id_16bit = var_id_16bit;
+				ref.var_id_64bit = var_id_64bit;
+				ref.aliased = aliased_access.requires_alias_decoration;
 				ref.base_offset = heap_offset;
 				ref.base_resource_is_array = range_size != 1;
 				ref.stride = stride;
@@ -853,12 +909,20 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		{
 			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 			spv::Id var_id_16bit = 0;
+			spv::Id var_id_64bit = 0;
 
-			if (raw_access_16bit)
+			if (aliased_access.raw_access_16bit)
 			{
 				auto bindless_info_16bit = bindless_info;
 				bindless_info_16bit.component = DXIL::ComponentType::U16;
 				var_id_16bit = create_bindless_heap_variable(bindless_info_16bit);
+			}
+
+			if (aliased_access.raw_access_64bit)
+			{
+				auto bindless_info_64bit = bindless_info;
+				bindless_info_64bit.component = DXIL::ComponentType::U64;
+				var_id_64bit = create_bindless_heap_variable(bindless_info_64bit);
 			}
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
@@ -871,6 +935,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			auto &ref = srv_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.var_id_16bit = var_id_16bit;
+			ref.var_id_64bit = var_id_64bit;
+			ref.aliased = aliased_access.requires_alias_decoration;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index + root_descriptor_count;
 			ref.base_offset = heap_offset;
 			ref.stride = stride;
@@ -884,6 +950,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 
 			spv::Id type_id = 0;
 			spv::Id type_id_16bit = 0;
+			spv::Id type_id_64bit = 0;
 			auto storage = spv::StorageClassUniformConstant;
 
 			if (resource_kind == DXIL::ResourceKind::RTAccelerationStructure)
@@ -900,8 +967,10 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				// We'll likely need to mess around with Aliased decoration as well, which might have other effects ...
 
 				type_id = build_ssbo_runtime_array_type(*this, 32, 1, range_size, "SSBO");
-				if (raw_access_16bit)
+				if (aliased_access.raw_access_16bit)
 					type_id_16bit = build_ssbo_runtime_array_type(*this, 16, 1, range_size, "SSBO_16bit");
+				if (aliased_access.raw_access_64bit)
+					type_id_64bit = build_ssbo_runtime_array_type(*this, 64, 1, range_size, "SSBO_64bit");
 				storage = spv::StorageClassStorageBuffer;
 			}
 			else
@@ -922,32 +991,40 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			spv::Id var_id = create_variable(storage, type_id,
 			                                 name.empty() ? nullptr : name.c_str());
 			spv::Id var_id_16bit = 0;
+			spv::Id var_id_64bit = 0;
 			if (type_id_16bit)
 				var_id_16bit = create_variable(storage, type_id_16bit, name.empty() ? nullptr : name.c_str());
+			if (type_id_64bit)
+				var_id_64bit = create_variable(storage, type_id_64bit, name.empty() ? nullptr : name.c_str());
 
 			if (actual_component_type != effective_component_type && component_type_is_16bit(actual_component_type))
 				builder.addDecoration(var_id, spv::DecorationRelaxedPrecision);
 
-			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
-			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
-			if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
-			{
-				// Make it crystal clear this is a read-only SSBO which cannot observe changed from other SSBO writes.
-				builder.addDecoration(var_id, spv::DecorationNonWritable);
-				builder.addDecoration(var_id, spv::DecorationRestrict);
-			}
+			const auto decorate_variable = [&](spv::Id id) {
+				builder.addDecoration(id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
+				builder.addDecoration(id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
+				if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
+				{
+					// Make it crystal clear this is a read-only SSBO which cannot observe changed from other SSBO writes.
+					// Do not emit Aliased here even for type aliases
+					// since we cannot observe writes from other descriptors anyways.
+					builder.addDecoration(id, spv::DecorationNonWritable);
+					builder.addDecoration(id, spv::DecorationRestrict);
+				}
+			};
 
+			if (var_id)
+				decorate_variable(var_id);
 			if (var_id_16bit)
-			{
-				builder.addDecoration(var_id_16bit, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
-				builder.addDecoration(var_id_16bit, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
-				builder.addDecoration(var_id_16bit, spv::DecorationNonWritable);
-				builder.addDecoration(var_id_16bit, spv::DecorationRestrict);
-			}
+				decorate_variable(var_id_16bit);
+			if (var_id_64bit)
+				decorate_variable(var_id_64bit);
 
 			auto &ref = srv_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.var_id_16bit = var_id_16bit;
+			ref.var_id_64bit = var_id_64bit;
+			ref.aliased = aliased_access.requires_alias_decoration;
 			ref.base_resource_is_array = range_size != 1;
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
@@ -966,6 +1043,14 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 				meta_16bit = meta;
 				meta_16bit.component_type = DXIL::ComponentType::U16;
 				meta_16bit.var_id = var_id_16bit;
+			}
+
+			if (var_id_64bit)
+			{
+				auto &meta_64bit = handle_to_resource_meta[var_id_64bit];
+				meta_64bit = meta;
+				meta_64bit.component_type = DXIL::ComponentType::U64;
+				meta_64bit.var_id = var_id_64bit;
 			}
 		}
 	}
@@ -1146,16 +1231,12 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 			return false;
 
-		bool raw_access_16bit = execution_mode_meta.native_16bit_operations &&
-		                        (resource_kind == DXIL::ResourceKind::RawBuffer ||
-		                         resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
-		                        access_meta.access_16bit;
-
-		if (raw_access_16bit && need_resource_remapping &&
-		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
-		    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
+		AliasedAccess aliased_access;
+		if (!analyze_aliased_access(resource_kind, access_meta,
+		                            need_resource_remapping ?
+		                            vulkan_binding.buffer_binding.descriptor_type :
+		                            VulkanDescriptorType::BufferDeviceAddress, aliased_access))
 		{
-			LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
 			return false;
 		}
 
@@ -1213,7 +1294,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		                                  component_type_is_16bit(actual_component_type);
 
 		// If we emit two SSBOs which both access the same buffer, we must emit Aliased decoration to be safe.
-		bindless_info.aliased = raw_access_16bit;
+		bindless_info.aliased = aliased_access.requires_alias_decoration;
 
 		BindlessInfo counter_info = {};
 		if (options.physical_storage_buffer)
@@ -1251,6 +1332,21 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 
 				spv::Id var_id = create_bindless_heap_variable(bindless_info);
 				spv::Id var_id_16bit = 0;
+				spv::Id var_id_64bit = 0;
+
+				if (aliased_access.raw_access_16bit)
+				{
+					auto bindless_info_16bit = bindless_info;
+					bindless_info_16bit.component = DXIL::ComponentType::U16;
+					var_id_16bit = create_bindless_heap_variable(bindless_info_16bit);
+				}
+
+				if (aliased_access.raw_access_64bit)
+				{
+					auto bindless_info_64bit = bindless_info;
+					bindless_info_64bit.component = DXIL::ComponentType::U64;
+					var_id_64bit = create_bindless_heap_variable(bindless_info_64bit);
+				}
 
 				uint32_t heap_offset = local_table_entry.offset_in_heap;
 				heap_offset += bind_register - local_table_entry.register_index;
@@ -1264,6 +1360,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				auto &ref = uav_index_to_reference[index];
 				ref.var_id = var_id;
 				ref.var_id_16bit = var_id_16bit;
+				ref.var_id_64bit = var_id_64bit;
+				ref.aliased = aliased_access.requires_alias_decoration;
 				ref.base_offset = heap_offset;
 				ref.stride = stride;
 				ref.bindless = true;
@@ -1342,12 +1440,20 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		{
 			spv::Id var_id = create_bindless_heap_variable(bindless_info);
 			spv::Id var_id_16bit = 0;
+			spv::Id var_id_64bit = 0;
 
-			if (raw_access_16bit)
+			if (aliased_access.raw_access_16bit)
 			{
 				auto bindless_info_16bit = bindless_info;
 				bindless_info_16bit.component = DXIL::ComponentType::U16;
 				var_id_16bit = create_bindless_heap_variable(bindless_info_16bit);
+			}
+
+			if (aliased_access.raw_access_64bit)
+			{
+				auto bindless_info_64bit = bindless_info;
+				bindless_info_64bit.component = DXIL::ComponentType::U64;
+				var_id_64bit = create_bindless_heap_variable(bindless_info_64bit);
 			}
 
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
@@ -1360,6 +1466,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			auto &ref = uav_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.var_id_16bit = var_id_16bit;
+			ref.var_id_64bit = var_id_64bit;
+			ref.aliased = aliased_access.requires_alias_decoration;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index + root_descriptor_count;
 			ref.base_offset = heap_offset;
 			ref.stride = stride;
@@ -1411,6 +1519,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 		{
 			spv::Id var_id = 0;
 			spv::Id var_id_16bit = 0;
+			spv::Id var_id_64bit = 0;
 			spv::StorageClass storage;
 
 			if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
@@ -1426,10 +1535,16 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				storage = spv::StorageClassStorageBuffer;
 				var_id = create_variable(storage, type_id, name.empty() ? nullptr : name.c_str());
 
-				if (raw_access_16bit)
+				if (aliased_access.raw_access_16bit)
 				{
 					spv::Id type_id_16bit = build_ssbo_runtime_array_type(*this, 16, 1, range_size, "SSBO_16bit");
 					var_id_16bit = create_variable(storage, type_id_16bit, name.empty() ? nullptr : name.c_str());
+				}
+
+				if (aliased_access.raw_access_64bit)
+				{
+					spv::Id type_id_64bit = build_ssbo_runtime_array_type(*this, 64, 1, range_size, "SSBO_64bit");
+					var_id_64bit = create_variable(storage, type_id_64bit, name.empty() ? nullptr : name.c_str());
 				}
 			}
 			else
@@ -1461,36 +1576,32 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			auto &ref = uav_index_to_reference[index];
 			ref.var_id = var_id;
 			ref.var_id_16bit = var_id_16bit;
+			ref.var_id_64bit = var_id_64bit;
+			ref.aliased = aliased_access.requires_alias_decoration;
 			ref.stride = stride;
 			ref.coherent = globally_coherent;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
 
-			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
-			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
-
-			if (!access_meta.has_read)
-				builder.addDecoration(var_id, spv::DecorationNonReadable);
-			if (!access_meta.has_written)
-				builder.addDecoration(var_id, spv::DecorationNonWritable);
-			if (globally_coherent)
-				builder.addDecoration(var_id, spv::DecorationCoherent);
-
-			if (var_id_16bit)
-			{
-				builder.addDecoration(var_id_16bit, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
-				builder.addDecoration(var_id_16bit, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
-
+			const auto decorate_variable = [&](spv::Id id) {
+				builder.addDecoration(id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
+				builder.addDecoration(id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
 				if (!access_meta.has_read)
-					builder.addDecoration(var_id_16bit, spv::DecorationNonReadable);
+					builder.addDecoration(id, spv::DecorationNonReadable);
 				if (!access_meta.has_written)
-					builder.addDecoration(var_id_16bit, spv::DecorationNonWritable);
+					builder.addDecoration(id, spv::DecorationNonWritable);
 				if (globally_coherent)
-					builder.addDecoration(var_id_16bit, spv::DecorationCoherent);
+					builder.addDecoration(id, spv::DecorationCoherent);
+				if (aliased_access.requires_alias_decoration)
+					builder.addDecoration(id, spv::DecorationAliased);
+			};
 
-				builder.addDecoration(var_id, spv::DecorationAliased);
-				builder.addDecoration(var_id_16bit, spv::DecorationAliased);
-			}
+			if (var_id)
+				decorate_variable(var_id);
+			if (var_id_16bit)
+				decorate_variable(var_id_16bit);
+			if (var_id_64bit)
+				decorate_variable(var_id_64bit);
 
 			spv::Id counter_var_id = 0;
 			if (has_counter)
@@ -1536,6 +1647,14 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				meta_16bit = meta;
 				meta_16bit.component_type = DXIL::ComponentType::U16;
 				meta_16bit.var_id = var_id_16bit;
+			}
+
+			if (var_id_64bit)
+			{
+				auto &meta_64bit = handle_to_resource_meta[var_id_64bit];
+				meta_64bit = meta;
+				meta_64bit.component_type = DXIL::ComponentType::U64;
+				meta_64bit.var_id = var_id_64bit;
 			}
 		}
 	}
@@ -2216,10 +2335,6 @@ bool Converter::Impl::emit_global_heaps()
 
 	for (auto *annotation : annotations)
 	{
-		bool raw_access_16bit = execution_mode_meta.native_16bit_operations &&
-			(annotation->resource_kind == DXIL::ResourceKind::RawBuffer ||
-			annotation->resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
-			annotation->tracking.access_16bit;
 		BindlessInfo info = {};
 
 		auto actual_component_type = DXIL::ComponentType::U32;
@@ -2241,7 +2356,6 @@ bool Converter::Impl::emit_global_heaps()
 		info.kind = annotation->resource_kind;
 		info.relaxed_precision = actual_component_type != effective_component_type &&
 		                         component_type_is_16bit(actual_component_type);
-		info.aliased = raw_access_16bit;
 
 		if (info.type == DXIL::ResourceType::UAV)
 		{
@@ -2325,15 +2439,19 @@ bool Converter::Impl::emit_global_heaps()
 			return false;
 		}
 
-		if (raw_access_16bit && vulkan_binding.descriptor_type != VulkanDescriptorType::SSBO)
+		AliasedAccess aliased_access;
+		if (!analyze_aliased_access(annotation->resource_kind,
+		                            annotation->tracking,
+		                            vulkan_binding.descriptor_type,
+		                            aliased_access))
 		{
-			LOGE("Bindless raw 16-bit load-store was used, which must be implemented with SSBO.\n");
 			return false;
 		}
 
 		info.desc_set = vulkan_binding.descriptor_set;
 		info.binding = vulkan_binding.binding;
 		info.descriptor_type = vulkan_binding.descriptor_type;
+		info.aliased = aliased_access.requires_alias_decoration;
 
 		annotation->reference.var_id = create_bindless_heap_variable(info);
 		annotation->reference.bindless = true;
@@ -2343,11 +2461,19 @@ bool Converter::Impl::emit_global_heaps()
 		annotation->reference.resource_kind = annotation->resource_kind;
 		annotation->reference.coherent = annotation->coherent;
 
-		if (raw_access_16bit)
+		if (aliased_access.raw_access_16bit)
 		{
 			info.component = DXIL::ComponentType::U16;
 			annotation->reference.var_id_16bit = create_bindless_heap_variable(info);
 		}
+
+		if (aliased_access.raw_access_64bit)
+		{
+			info.component = DXIL::ComponentType::U64;
+			annotation->reference.var_id_64bit = create_bindless_heap_variable(info);
+		}
+
+		annotation->reference.aliased = aliased_access.requires_alias_decoration;
 	}
 
 	return true;

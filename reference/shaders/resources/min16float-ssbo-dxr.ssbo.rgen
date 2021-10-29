@@ -65,10 +65,10 @@ OpDecorate %12 Block
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
 OpDecorate %9 NonReadable
+OpDecorate %9 Aliased
 OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 0
 OpDecorate %14 NonReadable
-OpDecorate %9 Aliased
 OpDecorate %14 Aliased
 OpDecorate %17 BuiltIn LaunchIdNV
 %1 = OpTypeVoid

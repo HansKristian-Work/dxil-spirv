@@ -121,9 +121,9 @@ OpMemberDecorate %20 0 Offset 0
 OpDecorate %20 Block
 OpDecorate %17 DescriptorSet 0
 OpDecorate %17 Binding 1
+OpDecorate %17 Aliased
 OpDecorate %22 DescriptorSet 0
 OpDecorate %22 Binding 1
-OpDecorate %17 Aliased
 OpDecorate %22 Aliased
 OpDecorate %25 BuiltIn GlobalInvocationId
 %1 = OpTypeVoid
