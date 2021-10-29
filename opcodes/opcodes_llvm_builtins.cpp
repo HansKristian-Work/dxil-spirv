@@ -1106,7 +1106,11 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 {
 	auto &builder = impl.builder();
 
-	Operation *atomic_op = impl.allocate(spv::OpAtomicCompareExchange, builder.makeUintType(32));
+	unsigned bits = instruction->getType()->getStructElementType(0)->getIntegerBitWidth();
+	if (bits == 64)
+		builder.addCapability(spv::CapabilityInt64Atomics);
+
+	Operation *atomic_op = impl.allocate(spv::OpAtomicCompareExchange, builder.makeUintType(bits));
 
 	atomic_op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
 
@@ -1124,7 +1128,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 	if (!impl.cmpxchg_type)
 		impl.cmpxchg_type =
-		    impl.get_struct_type({ builder.makeUintType(32), builder.makeBoolType() }, "CmpXchgResult");
+		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, "CmpXchgResult");
 
 	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
 	op->add_ids({ atomic_op->id, cmp_op->id });
@@ -1183,6 +1187,10 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 		LOGE("Unrecognized atomicrmw opcode: %u.\n", unsigned(instruction->getOperation()));
 		return false;
 	}
+
+	unsigned bits = instruction->getType()->getIntegerBitWidth();
+	if (bits == 64)
+		builder.addCapability(spv::CapabilityInt64Atomics);
 
 	Operation *op = impl.allocate(opcode, instruction);
 
