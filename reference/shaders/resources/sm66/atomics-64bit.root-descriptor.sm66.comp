@@ -1,0 +1,146 @@
+#version 460
+#extension GL_ARB_gpu_shader_int64 : require
+#extension GL_EXT_buffer_reference : require
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(buffer_reference) buffer PhysicalPointerUint64Array;
+layout(buffer_reference, std430) buffer PhysicalPointerUint64Array
+{
+    uint64_t value[];
+};
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uvec2 _m0;
+    uvec2 _m1;
+    uvec2 _m2;
+    uvec2 _m3;
+} registers;
+
+void main()
+{
+    uint64_t _18 = uint64_t(gl_GlobalInvocationID.x);
+    uint64_t _29 = atomicAdd(PhysicalPointerUint64Array(registers._m2).value[0u], _18);
+    uint64_t _35 = atomicAnd(PhysicalPointerUint64Array(registers._m2).value[1u], _18);
+    uint64_t _40 = atomicOr(PhysicalPointerUint64Array(registers._m2).value[2u], _18);
+    uint64_t _46 = atomicXor(PhysicalPointerUint64Array(registers._m2).value[3u], _18);
+    uint64_t _52 = atomicMin(PhysicalPointerUint64Array(registers._m2).value[4u], _18);
+    uint64_t _58 = atomicMax(PhysicalPointerUint64Array(registers._m2).value[5u], _18);
+    uint64_t _64 = atomicExchange(PhysicalPointerUint64Array(registers._m2).value[6u], _18);
+    uint64_t _70 = atomicCompSwap(PhysicalPointerUint64Array(registers._m2).value[7u], 10ul, _64);
+    uint64_t _77 = atomicCompSwap(PhysicalPointerUint64Array(registers._m2).value[8u], 20ul, _18);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 81
+; Schema: 0
+OpCapability Shader
+OpCapability Int64
+OpCapability Int64Atomics
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 128 1 1
+OpName %3 "main"
+OpName %7 "RootConstants"
+OpName %9 "registers"
+OpName %24 "PhysicalPointerUint64Array"
+OpMemberName %24 0 "value"
+OpDecorate %7 Block
+OpMemberDecorate %7 0 Offset 0
+OpMemberDecorate %7 1 Offset 8
+OpMemberDecorate %7 2 Offset 16
+OpMemberDecorate %7 3 Offset 24
+OpDecorate %12 BuiltIn GlobalInvocationId
+OpDecorate %23 ArrayStride 8
+OpMemberDecorate %24 0 Offset 0
+OpDecorate %24 Block
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeVector %5 2
+%7 = OpTypeStruct %6 %6 %6 %6
+%8 = OpTypePointer PushConstant %7
+%9 = OpVariable %8 PushConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%17 = OpTypeInt 64 0
+%19 = OpTypePointer PushConstant %6
+%21 = OpConstant %5 2
+%23 = OpTypeRuntimeArray %17
+%24 = OpTypeStruct %23
+%25 = OpTypePointer PhysicalStorageBuffer %24
+%27 = OpTypePointer PhysicalStorageBuffer %17
+%30 = OpConstant %5 1
+%43 = OpConstant %5 3
+%49 = OpConstant %5 4
+%55 = OpConstant %5 5
+%61 = OpConstant %5 6
+%67 = OpConstant %5 7
+%71 = OpConstant %17 10
+%74 = OpConstant %5 8
+%78 = OpConstant %17 20
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %79
+%79 = OpLabel
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%18 = OpUConvert %17 %16
+%20 = OpAccessChain %19 %9 %21
+%22 = OpLoad %6 %20
+%26 = OpBitcast %25 %22
+%28 = OpAccessChain %27 %26 %15 %15
+%29 = OpAtomicIAdd %17 %28 %30 %15 %18
+%31 = OpAccessChain %19 %9 %21
+%32 = OpLoad %6 %31
+%33 = OpBitcast %25 %32
+%34 = OpAccessChain %27 %33 %15 %30
+%35 = OpAtomicAnd %17 %34 %30 %15 %18
+%36 = OpAccessChain %19 %9 %21
+%37 = OpLoad %6 %36
+%38 = OpBitcast %25 %37
+%39 = OpAccessChain %27 %38 %15 %21
+%40 = OpAtomicOr %17 %39 %30 %15 %18
+%41 = OpAccessChain %19 %9 %21
+%42 = OpLoad %6 %41
+%44 = OpBitcast %25 %42
+%45 = OpAccessChain %27 %44 %15 %43
+%46 = OpAtomicXor %17 %45 %30 %15 %18
+%47 = OpAccessChain %19 %9 %21
+%48 = OpLoad %6 %47
+%50 = OpBitcast %25 %48
+%51 = OpAccessChain %27 %50 %15 %49
+%52 = OpAtomicUMin %17 %51 %30 %15 %18
+%53 = OpAccessChain %19 %9 %21
+%54 = OpLoad %6 %53
+%56 = OpBitcast %25 %54
+%57 = OpAccessChain %27 %56 %15 %55
+%58 = OpAtomicUMax %17 %57 %30 %15 %18
+%59 = OpAccessChain %19 %9 %21
+%60 = OpLoad %6 %59
+%62 = OpBitcast %25 %60
+%63 = OpAccessChain %27 %62 %15 %61
+%64 = OpAtomicExchange %17 %63 %30 %15 %18
+%65 = OpAccessChain %19 %9 %21
+%66 = OpLoad %6 %65
+%68 = OpBitcast %25 %66
+%69 = OpAccessChain %27 %68 %15 %67
+%70 = OpAtomicCompareExchange %17 %69 %30 %15 %15 %64 %71
+%72 = OpAccessChain %19 %9 %21
+%73 = OpLoad %6 %72
+%75 = OpBitcast %25 %73
+%76 = OpAccessChain %27 %75 %15 %74
+%77 = OpAtomicCompareExchange %17 %76 %30 %15 %15 %18 %78
+OpReturn
+OpFunctionEnd
+#endif
