@@ -2741,7 +2741,7 @@ CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode 
 			else if (candidate_header->loop_merge_block)
 				candidate_merge = candidate_header->loop_merge_block;
 
-			if (candidate_merge && !candidate_merge->dominates(node->headers[header_index]))
+			if (candidate_merge && !query_reachability(*candidate_merge, *node->headers[header_index]))
 			{
 				target_header = candidate_header;
 				break;
