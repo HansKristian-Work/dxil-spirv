@@ -1,9 +1,9 @@
 [submodule "third_party/spirv-headers"]
 	path = third_party/spirv-headers
-	url = git://github.com/KhronosGroup/SPIRV-Headers
+	url = https://github.com/KhronosGroup/SPIRV-Headers
 [submodule "third_party/SPIRV-Tools"]
 	path = third_party/SPIRV-Tools
-	url = git://github.com/KhronosGroup/SPIRV-Tools
+	url = https://github.com/KhronosGroup/SPIRV-Tools
 [submodule "third_party/SPIRV-Cross"]
 	path = third_party/SPIRV-Cross
-	url = git://github.com/KhronosGroup/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross
