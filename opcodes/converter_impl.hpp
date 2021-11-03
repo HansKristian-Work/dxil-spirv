@@ -142,8 +142,8 @@ struct Converter::Impl
 		bool has_atomic = false;
 		bool has_atomic_64bit = false;
 		// TODO: Track vectors as well.
-		bool access_16bit = false;
-		bool access_64bit = false;
+		bool raw_access_16bit = false;
+		bool raw_access_64bit = false;
 	};
 	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> uav_access_tracking;
@@ -497,6 +497,7 @@ struct Converter::Impl
 
 	uint32_t find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
 	                                 uint32_t binding_space, DXIL::ResourceType resource_type);
+	DXIL::ResourceKind get_resource_kind_from_meta(DXIL::ResourceType resource_type, unsigned meta_index);
 
 	static void get_shader_model(const llvm::Module &module, String *model, uint32_t *major, uint32_t *minor);
 
@@ -506,7 +507,7 @@ struct Converter::Impl
 		bool raw_access_64bit = false;
 		bool requires_alias_decoration = false;
 	};
-	bool analyze_aliased_access(DXIL::ResourceKind kind, const AccessTracking &tracking,
+	bool analyze_aliased_access(const AccessTracking &tracking,
 	                            VulkanDescriptorType descriptor_type,
 	                            AliasedAccess &aliased_access) const;
 

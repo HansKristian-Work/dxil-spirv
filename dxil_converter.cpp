@@ -658,38 +658,30 @@ static bool component_type_is_16bit(DXIL::ComponentType type)
 	}
 }
 
-bool Converter::Impl::analyze_aliased_access(DXIL::ResourceKind kind, const AccessTracking &tracking,
+bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
                                              VulkanDescriptorType descriptor_type,
                                              AliasedAccess &aliased_access) const
 {
-	if (kind == DXIL::ResourceKind::RawBuffer || kind == DXIL::ResourceKind::StructuredBuffer)
+	aliased_access.raw_access_16bit = execution_mode_meta.native_16bit_operations && tracking.raw_access_16bit;
+	aliased_access.raw_access_64bit = tracking.raw_access_64bit;
+
+	if (aliased_access.raw_access_16bit &&
+	    descriptor_type != VulkanDescriptorType::SSBO &&
+	    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 	{
-		aliased_access.raw_access_16bit = execution_mode_meta.native_16bit_operations && tracking.access_16bit;
-		aliased_access.raw_access_64bit = tracking.access_64bit;
-
-		if (aliased_access.raw_access_16bit &&
-		    descriptor_type != VulkanDescriptorType::SSBO &&
-		    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
-		{
-			LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
-			return false;
-		}
-
-		if (aliased_access.raw_access_64bit &&
-		    descriptor_type != VulkanDescriptorType::SSBO &&
-		    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
-		{
-			LOGE("Raw 64-bit load-store was used, which must be implemented with SSBO or BDA.\n");
-			return false;
-		}
-
-		aliased_access.requires_alias_decoration = aliased_access.raw_access_16bit || aliased_access.raw_access_64bit;
+		LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
+		return false;
 	}
-	else
+
+	if (aliased_access.raw_access_64bit &&
+	    descriptor_type != VulkanDescriptorType::SSBO &&
+	    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 	{
-		// 64-bit will be relevant for typed 64-bit atomics.
-		aliased_access = {};
+		LOGE("Raw 64-bit load-store was used, which must be implemented with SSBO or BDA.\n");
+		return false;
 	}
+
+	aliased_access.requires_alias_decoration = aliased_access.raw_access_16bit || aliased_access.raw_access_64bit;
 
 	return true;
 }
@@ -756,7 +748,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 		auto &access_meta = srv_access_tracking[index];
 
 		AliasedAccess aliased_access;
-		if (!analyze_aliased_access(resource_kind, access_meta,
+		if (!analyze_aliased_access(access_meta,
 		                            need_resource_remapping ?
 		                            vulkan_binding.buffer_binding.descriptor_type :
 		                            VulkanDescriptorType::BufferDeviceAddress, aliased_access))
@@ -1246,7 +1238,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			return false;
 
 		AliasedAccess aliased_access;
-		if (!analyze_aliased_access(resource_kind, access_meta,
+		if (!analyze_aliased_access(access_meta,
 		                            need_resource_remapping ?
 		                            vulkan_binding.buffer_binding.descriptor_type :
 		                            VulkanDescriptorType::BufferDeviceAddress, aliased_access))
@@ -2299,6 +2291,30 @@ void Converter::Impl::get_shader_model(const llvm::Module &module, String *model
 	}
 }
 
+DXIL::ResourceKind Converter::Impl::get_resource_kind_from_meta(DXIL::ResourceType resource_type, unsigned meta_index)
+{
+	auto &module = bitcode_parser.get_module();
+	auto *resource_meta = module.getNamedMetadata("dx.resources");
+	if (!resource_meta)
+		return DXIL::ResourceKind::Invalid;
+
+	auto *metas = resource_meta->getOperand(0);
+	auto &resource_list = metas->getOperand(uint32_t(resource_type));
+	if (!resource_list)
+		return DXIL::ResourceKind::Invalid;
+
+	auto *entries = llvm::cast<llvm::MDNode>(resource_list);
+	unsigned num_entries = entries->getNumOperands();
+	for (unsigned i = 0; i < num_entries; i++)
+	{
+		auto *entry = llvm::cast<llvm::MDNode>(entries->getOperand(i));
+		if (get_constant_metadata(entry, 0) == meta_index)
+			return DXIL::ResourceKind(get_constant_metadata(entry, 6));
+	}
+
+	return DXIL::ResourceKind::Invalid;
+}
+
 uint32_t Converter::Impl::find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
                                                   uint32_t binding_space, DXIL::ResourceType resource_type)
 {
@@ -2460,13 +2476,8 @@ bool Converter::Impl::emit_global_heaps()
 		}
 
 		AliasedAccess aliased_access;
-		if (!analyze_aliased_access(annotation->resource_kind,
-		                            annotation->tracking,
-		                            vulkan_binding.descriptor_type,
-		                            aliased_access))
-		{
+		if (!analyze_aliased_access(annotation->tracking, vulkan_binding.descriptor_type, aliased_access))
 			return false;
-		}
 
 		info.desc_set = vulkan_binding.descriptor_set;
 		info.binding = vulkan_binding.binding;
