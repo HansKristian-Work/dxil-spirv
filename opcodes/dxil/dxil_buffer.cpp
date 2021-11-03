@@ -33,118 +33,203 @@ static spv::Id build_index_divider_fallback(Converter::Impl &impl, const llvm::V
 	return op->id;
 }
 
-static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset, unsigned addr_shift_log2)
+bool extract_raw_buffer_access_split(const llvm::Value *byte_offset, uint32_t addr_shift_log2, unsigned vecsize,
+                                     RawBufferAccessSplit &split)
+{
+	unsigned element_size = (1u << addr_shift_log2) * vecsize;
+
+	// Base case first, a constant value.
+	if (const auto *const_addr = llvm::dyn_cast<llvm::ConstantInt>(byte_offset))
+	{
+		int64_t constant_offset = const_addr->getUniqueInteger().getSExtValue();
+
+		// Always pass scalar constant dividers through.
+		// Building a fallback divider helps nothing.
+		if (vecsize == 1 || constant_offset % int(element_size) == 0)
+		{
+			split = {};
+			split.bias = constant_offset / element_size;
+			return true;
+		}
+		else
+			return false;
+	}
+
+	if (!llvm::isa<llvm::BinaryOperator>(byte_offset))
+		return false;
+
+	const llvm::ConstantInt *scale = nullptr;
+	const llvm::ConstantInt *bias = nullptr;
+	bool scale_log2 = false;
+	bool bias_is_add = false;
+
+	while (!scale && llvm::isa<llvm::BinaryOperator>(byte_offset))
+	{
+		auto *binop = llvm::cast<llvm::BinaryOperator>(byte_offset);
+		auto *lhs = binop->getOperand(0);
+		auto *rhs = binop->getOperand(1);
+		if (!bias && (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add ||
+		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Or ||
+		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Xor))
+		{
+			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
+			{
+				bias = const_lhs;
+				byte_offset = rhs;
+			}
+			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
+			{
+				bias = const_rhs;
+				byte_offset = lhs;
+			}
+			else
+				break;
+
+			// DXC tends to be emit shift + or in some cases.
+			// We can turn this back into mul + add in most cases.
+			bias_is_add = binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add;
+		}
+		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl)
+		{
+			if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
+			{
+				scale = const_rhs;
+				byte_offset = lhs;
+			}
+			scale_log2 = true;
+		}
+		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Mul)
+		{
+			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
+			{
+				scale = const_lhs;
+				byte_offset = rhs;
+			}
+			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
+			{
+				scale = const_rhs;
+				byte_offset = lhs;
+			}
+			else
+				break;
+
+			scale_log2 = false;
+		}
+		else
+			break;
+	}
+
+	if (!scale && !bias)
+		return false;
+
+	uint64_t scale_factor = 1;
+	if (scale)
+		scale_factor = scale->getUniqueInteger().getZExtValue();
+	if (scale_log2)
+		scale_factor = 1ull << scale_factor;
+
+	int64_t bias_factor = 0;
+	if (bias)
+		bias_factor = bias->getUniqueInteger().getSExtValue();
+
+	// If there is no bit overlap between scale_factor and bias_factor
+	// then the bitwise OR is equivalent to add.
+	if (!bias_is_add && (scale_factor & bias_factor) != 0)
+		return false;
+
+	if (scale_factor % element_size == 0 && bias_factor % element_size == 0 && byte_offset)
+	{
+		split.scale = scale_factor / element_size;
+		split.bias = bias_factor / int(element_size);
+		split.dynamic_index = byte_offset;
+		return true;
+	}
+	else
+		return false;
+}
+
+bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Type *type,
+                                           const llvm::Value *byte_offset,
+                                           unsigned vecsize)
+{
+	// The rules for raw BAB vectorization are pretty simple.
+	// If the offset % element_size == 0, we can translate that load to a clean vectorized load-store.
+	// vec3 is the special case due to robustness, but robustness2 will generally have 16 byte alignment here,
+	// so it should be fine.
+	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, type);
+
+	RawBufferAccessSplit split = {};
+	// If we achieve a successful split, we can vectorize.
+	return extract_raw_buffer_access_split(byte_offset, addr_shift_log2, vecsize, split);
+}
+
+RawVecSize raw_access_byte_address_vectorize(
+    Converter::Impl &impl, const llvm::Type *type,
+    const llvm::Value *byte_offset, uint32_t mask)
+{
+	if (mask == 0xfu && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 4))
+		return RawVecSize::V4;
+	else if (mask == 0x7u && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 3))
+		return RawVecSize::V3;
+	else if (mask == 0x3u && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 2))
+		return RawVecSize::V2;
+	else
+		return RawVecSize::V1;
+}
+
+static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
+                                   unsigned addr_shift_log2, unsigned vecsize)
 {
 	auto &builder = impl.builder();
 	// Attempt to do trivial constant folding to make output a little more sensible to read.
 	// Try to find an expression for offset which is "constant0 * offset + constant1",
 	// where constant0 and constant1 are aligned with addr_shift_log2.
 
-	const llvm::ConstantInt *scale = nullptr;
-	const llvm::Value *index = nullptr;
-	const llvm::ConstantInt *bias = nullptr;
-	bool scale_log2 = false;
+	spv::Id index_id;
+	RawBufferAccessSplit split = {};
 
-	if (const auto *const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset))
-		return builder.makeUintConstant(uint32_t(const_addr->getUniqueInteger().getZExtValue()) >> addr_shift_log2);
-
-	if (!llvm::isa<llvm::BinaryOperator>(offset))
-		return build_index_divider_fallback(impl, offset, addr_shift_log2);
-
-	index = offset;
-
-	while (!scale && llvm::isa<llvm::BinaryOperator>(index))
+	if (extract_raw_buffer_access_split(offset, addr_shift_log2, vecsize, split))
 	{
-		auto *binop = llvm::cast<llvm::BinaryOperator>(index);
-		auto *lhs = binop->getOperand(0);
-		auto *rhs = binop->getOperand(1);
-		if (!bias && binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add)
-		{
-			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
-			{
-				bias = const_lhs;
-				index = rhs;
-			}
-			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
-			{
-				bias = const_rhs;
-				index = lhs;
-			}
-			else
-				break;
-		}
-		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Mul ||
-		         binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl)
-		{
-			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
-			{
-				scale = const_lhs;
-				index = rhs;
-			}
-			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
-			{
-				scale = const_rhs;
-				index = lhs;
-			}
-			else
-				break;
+		if (!split.dynamic_index)
+			return builder.makeUintConstant(split.bias);
 
-			scale_log2 = binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl;
+		spv::Op bias_opcode = split.bias > 0 ? spv::OpIAdd : spv::OpISub;
+		if (bias_opcode == spv::OpISub)
+			split.bias = -split.bias;
+
+		spv::Id scaled_id;
+		if (split.scale != 1)
+		{
+			Operation *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+			scale_op->add_id(impl.get_id_for_value(split.dynamic_index));
+			scale_op->add_id(builder.makeUintConstant(split.scale));
+			impl.add(scale_op);
+			scaled_id = scale_op->id;
 		}
 		else
-			break;
-	}
+			scaled_id = impl.get_id_for_value(split.dynamic_index);
 
-	// Couldn't split the expression, fallback.
-	if (!scale && !bias)
-		return build_index_divider_fallback(impl, offset, addr_shift_log2);
+		spv::Id bias_id;
+		if (split.bias != 0)
+		{
+			Operation *bias_op = impl.allocate(bias_opcode, builder.makeUintType(32));
+			bias_op->add_id(scaled_id);
+			bias_op->add_id(builder.makeUintConstant(split.bias));
+			impl.add(bias_op);
+			bias_id = bias_op->id;
+		}
+		else
+			bias_id = scaled_id;
 
-	unsigned scale_factor = 1;
-	if (scale)
-		scale_factor = scale->getUniqueInteger().getZExtValue();
-	if (scale_log2)
-		scale_factor = 1u << scale_factor;
-
-	int bias_factor = 0;
-	if (bias)
-		bias_factor = bias->getUniqueInteger().getSExtValue();
-
-	spv::Op bias_opcode = bias_factor > 0 ? spv::OpIAdd : spv::OpISub;
-	if (bias_opcode == spv::OpISub)
-		bias_factor = -bias_factor;
-
-	// Both scale and bias must align for there to be meaning to this transform.
-	if (((scale_factor | unsigned(bias_factor)) & ((1u << addr_shift_log2) - 1u)) != 0)
-		return build_index_divider_fallback(impl, offset, addr_shift_log2);
-
-	scale_factor >>= addr_shift_log2;
-	bias_factor >>= int(addr_shift_log2);
-
-	spv::Id scaled_id;
-	if (scale_factor != 1)
-	{
-		Operation *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-		scale_op->add_id(impl.get_id_for_value(index));
-		scale_op->add_id(builder.makeUintConstant(scale_factor));
-		impl.add(scale_op);
-		scaled_id = scale_op->id;
+		index_id = bias_id;
 	}
 	else
-		scaled_id = impl.get_id_for_value(index);
-
-	spv::Id bias_id;
-	if (bias_factor != 0)
 	{
-		Operation *bias_op = impl.allocate(bias_opcode, builder.makeUintType(32));
-		bias_op->add_id(scaled_id);
-		bias_op->add_id(builder.makeUintConstant(bias_factor));
-		impl.add(bias_op);
-		bias_id = bias_op->id;
+		assert(vecsize == 1);
+		index_id = build_index_divider_fallback(impl, offset, addr_shift_log2);
 	}
-	else
-		bias_id = scaled_id;
 
-	return bias_id;
+	return index_id;
 }
 
 static bool type_is_16bit(const llvm::Type *data_type)
@@ -161,7 +246,7 @@ static bool type_is_64bit(const llvm::Type *data_type)
 	        data_type->getIntegerBitWidth() == 64);
 }
 
-static unsigned raw_buffer_data_type_to_addr_shift_log2(Converter::Impl &impl, const llvm::Type *data_type)
+unsigned raw_buffer_data_type_to_addr_shift_log2(Converter::Impl &impl, const llvm::Type *data_type)
 {
 	// A 16-bit raw load is only actually 16-bit if native 16-bit operations are enabled.
 	if (impl.execution_mode_meta.native_16bit_operations && type_is_16bit(data_type))
@@ -183,6 +268,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	spv::Id index_id = 0;
+	RawVecSize raw_vecsize = RawVecSize::V1;
 	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, data_type);
 
 	// Ignore access mask for now.
@@ -191,7 +277,8 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		// For raw buffers, the index is in bytes.
-		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset), addr_shift_log2);
+		raw_vecsize = raw_access_byte_address_vectorize(impl, data_type, instruction->getOperand(2 + operand_offset), access_mask);
+		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset), addr_shift_log2, raw_vecsize_to_vecsize(raw_vecsize));
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
@@ -298,7 +385,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 		index_id = select_op->id;
 	}
 
-	return { index_id };
+	return { index_id, raw_vecsize };
 }
 
 static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -477,9 +564,16 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	// Leave no gaps in the access mask to aid vectorization.
 	// For reads, we can safely read components we not strictly need to read.
-	uint32_t smeared_access_mask = access_meta.access_mask & 0xfu;
-	smeared_access_mask |= smeared_access_mask >> 1u;
-	smeared_access_mask |= smeared_access_mask >> 2u;
+	uint32_t smeared_access_mask;
+
+	if (meta.storage != spv::StorageClassUniformConstant)
+	{
+		smeared_access_mask = access_meta.access_mask & 0xfu;
+		smeared_access_mask |= smeared_access_mask >> 1u;
+		smeared_access_mask |= smeared_access_mask >> 2u;
+	}
+	else
+		smeared_access_mask = 1;
 
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
@@ -500,16 +594,14 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto *result_type = instruction->getType();
 	auto *target_type = result_type->getStructElementType(0);
 
-	// SSBO operations with min16* types are actually 32-bit.
-	// We only get native 16-bit load-store with native_16bit_operations.
-	auto width = get_buffer_access_bits_per_component(impl, meta.storage, target_type);
-	image_id = get_buffer_alias_handle(impl, meta, image_id, width, RawVecSize::V1);
-
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
-
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
 	                                  result_type->getStructElementType(0),
 	                                  smeared_access_mask);
+
+	auto width = get_buffer_access_bits_per_component(impl, meta.storage, target_type);
+	image_id = get_buffer_alias_handle(impl, meta, image_id, width, access.raw_vec_size);
+	bool vectorized_load = access.raw_vec_size != RawVecSize::V1;
 
 	// Sparse information is stored in the 5th component.
 	if (sparse)
@@ -523,12 +615,23 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		// The best we can do is to infer it from stride if we can.
 		//unsigned conservative_num_elements = std::min(access.num_components, std::min(4u, access_meta.components));
 		unsigned conservative_num_elements = 0;
-		for (unsigned i = 0; i < 4; i++)
-			if ((access_meta.access_mask & (1u << i)) != 0)
-				conservative_num_elements = i + 1;
+		unsigned vecsize = raw_vecsize_to_vecsize(access.raw_vec_size);
+
+		if (vectorized_load)
+			conservative_num_elements = vecsize;
+		else
+		{
+			for (unsigned i = 0; i < 4; i++)
+				if ((access_meta.access_mask & (1u << i)) != 0)
+					conservative_num_elements = i + 1;
+		}
 
 		spv::Id component_ids[4] = {};
+
 		spv::Id extracted_id_type = builder.makeUintType(raw_width_to_bits(width));
+		if (vectorized_load)
+			extracted_id_type = builder.makeVectorType(extracted_id_type, vecsize);
+
 		spv::Id constructed_id = 0;
 		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
 
@@ -545,13 +648,10 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 		if (ssbo)
 		{
-			// TODO: Use proper aligned loads and stores. Wouldn't that be nice? :v
-			// Hopefully compiler can figure it out ...
-
 			spv::Id ptr_type = builder.makePointer(spv::StorageClassStorageBuffer, extracted_id_type);
-			for (unsigned i = 0; i < conservative_num_elements; i++)
+			for (unsigned i = 0; i < (vectorized_load ? 1 : conservative_num_elements); i++)
 			{
-				if (access_meta.access_mask & (1u << i))
+				if (vectorized_load || (access_meta.access_mask & (1u << i)) != 0)
 				{
 					auto *chain_op = impl.allocate(spv::OpAccessChain, ptr_type);
 					chain_op->add_id(image_id);
@@ -571,7 +671,10 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 					component_ids[i] = builder.createUndefined(extracted_id_type);
 			}
 
-			constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
+			if (vectorized_load)
+				constructed_id = component_ids[0];
+			else
+				constructed_id = impl.build_vector(extracted_id_type, component_ids, conservative_num_elements);
 		}
 		else
 		{
@@ -863,16 +966,17 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	// SSBO operations with min16* types are actually 32-bit.
 	// We only get native 16-bit load-store with native_16bit_operations.
-	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
-	image_id = get_buffer_alias_handle(impl, meta, image_id, width, RawVecSize::V1);
-
+	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
-
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
-	                                  instruction->getOperand(4)->getType(), mask);
+	                                  instruction->getOperand(4)->getType(),
+	                                  meta.storage != spv::StorageClassUniformConstant ? mask : 1u);
+
+	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
+	image_id = get_buffer_alias_handle(impl, meta, image_id, width, access.raw_vec_size);
+	bool vectorized_store = access.raw_vec_size != RawVecSize::V1;
 
 	spv::Id store_values[4] = {};
-	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
 	for (unsigned i = 0; i < 4; i++)
 	{
@@ -934,25 +1038,50 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 	else if (meta.storage == spv::StorageClassStorageBuffer)
 	{
-		for (unsigned i = 0; i < 4; i++)
+		if (vectorized_store)
 		{
-			if (mask & (1u << i))
+			spv::Id elem_type_id = builder.makeUintType(raw_width_to_bits(width));
+			unsigned vecsize = raw_vecsize_to_vecsize(access.raw_vec_size);
+			spv::Id vec_type_id = builder.makeVectorType(elem_type_id, vecsize);
+			spv::Id vector_value_id = impl.build_vector(elem_type_id, store_values, vecsize);
+			Operation *chain_op = impl.allocate(
+				spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, vec_type_id));
+
+			chain_op->add_id(image_id);
+			chain_op->add_id(builder.makeUintConstant(0));
+			chain_op->add_id(access.index_id);
+			impl.add(chain_op);
+
+			if (meta.non_uniform)
+				builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
+
+			Operation *store_op = impl.allocate(spv::OpStore);
+			store_op->add_id(chain_op->id);
+			store_op->add_id(vector_value_id);
+			impl.add(store_op);
+		}
+		else
+		{
+			for (unsigned i = 0; i < 4; i++)
 			{
-				Operation *chain_op = impl.allocate(spv::OpAccessChain,
-				                                    builder.makePointer(spv::StorageClassStorageBuffer,
-				                                                        builder.makeUintType(raw_width_to_bits(width))));
-				chain_op->add_id(image_id);
-				chain_op->add_id(builder.makeUintConstant(0));
-				chain_op->add_id(impl.build_offset(access.index_id, i));
-				impl.add(chain_op);
+				if (mask & (1u << i))
+				{
+					Operation *chain_op = impl.allocate(
+					    spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer,
+					                                            builder.makeUintType(raw_width_to_bits(width))));
+					chain_op->add_id(image_id);
+					chain_op->add_id(builder.makeUintConstant(0));
+					chain_op->add_id(impl.build_offset(access.index_id, i));
+					impl.add(chain_op);
 
-				if (meta.non_uniform)
-					builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
+					if (meta.non_uniform)
+						builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
 
-				Operation *store_op = impl.allocate(spv::OpStore);
-				store_op->add_id(chain_op->id);
-				store_op->add_id(store_values[i]);
-				impl.add(store_op);
+					Operation *store_op = impl.allocate(spv::OpStore);
+					store_op->add_id(chain_op->id);
+					store_op->add_id(store_values[i]);
+					impl.add(store_op);
+				}
 			}
 		}
 	}

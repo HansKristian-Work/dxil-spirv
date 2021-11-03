@@ -4948,10 +4948,33 @@ bool Converter::Impl::emit_execution_modes_fp_denorm()
 	return true;
 }
 
-bool Converter::Impl::emit_execution_modes()
+bool Converter::Impl::analyze_execution_modes_meta()
 {
 	auto *meta = entry_point_meta;
 
+	switch (execution_model)
+	{
+	case spv::ExecutionModelRayGenerationKHR:
+	case spv::ExecutionModelMissKHR:
+	case spv::ExecutionModelIntersectionKHR:
+	case spv::ExecutionModelAnyHitKHR:
+	case spv::ExecutionModelCallableKHR:
+	case spv::ExecutionModelClosestHitKHR:
+		if (auto *null_meta = get_null_entry_point_meta(bitcode_parser.get_module()))
+			meta = null_meta;
+		break;
+
+	default:
+		break;
+	}
+
+	auto flags = get_shader_flags(meta);
+	execution_mode_meta.native_16bit_operations = (flags & DXIL::ShaderFlagNativeLowPrecision) != 0;
+	return true;
+}
+
+bool Converter::Impl::emit_execution_modes()
+{
 	switch (execution_model)
 	{
 	case spv::ExecutionModelGLCompute:
@@ -4987,16 +5010,11 @@ bool Converter::Impl::emit_execution_modes()
 	case spv::ExecutionModelClosestHitKHR:
 		if (!emit_execution_modes_ray_tracing(execution_model))
 			return false;
-		if (auto *null_meta = get_null_entry_point_meta(bitcode_parser.get_module()))
-			meta = null_meta;
 		break;
 
 	default:
 		break;
 	}
-
-	auto flags = get_shader_flags(meta);
-	execution_mode_meta.native_16bit_operations = (flags & DXIL::ShaderFlagNativeLowPrecision) != 0;
 
 	if (!emit_execution_modes_fp_denorm())
 		return false;
@@ -5328,6 +5346,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	spirv_module.set_descriptor_qa_info(options.descriptor_qa);
 	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", options.physical_storage_buffer);
 
+	// Need to analyze some execution modes early which affect opcode analysis later.
+	if (!analyze_execution_modes_meta())
+		return result;
 	if (!emit_resources_global_mapping())
 		return result;
 	if (!analyze_instructions())

@@ -52,8 +52,9 @@ static bool validate_spirv(const void *code, size_t size)
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
-
-	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t));
+	spvtools::ValidatorOptions opts;
+	opts.SetScalarBlockLayout(true);
+	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), opts);
 }
 
 static std::string convert_to_glsl(const void *code, size_t size)

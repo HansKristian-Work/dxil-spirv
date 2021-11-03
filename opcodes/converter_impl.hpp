@@ -24,6 +24,7 @@
 #include "dxil_converter.hpp"
 #include "scratch_pool.hpp"
 #include "descriptor_qa.hpp"
+#include "opcodes.hpp"
 
 #include "GLSL.std.450.h"
 
@@ -75,9 +76,6 @@ struct LocalRootSignatureEntry
 	};
 	Vector<DescriptorTableEntry> table_entries;
 };
-
-enum class RawWidth { B16 = 0, B32, B64, Count };
-enum class RawVecSize { V1 = 0, V2, V3, V4, Count };
 
 static inline DXIL::ComponentType raw_width_to_component_type(RawWidth raw_width)
 {
@@ -167,6 +165,7 @@ struct Converter::Impl
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 	bool emit_execution_modes();
+	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
 	bool emit_execution_modes_geometry();
 	bool emit_execution_modes_hull();
