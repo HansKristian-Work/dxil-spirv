@@ -359,19 +359,23 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	return global_dispatcher.builder_lut[opcode](impl, instruction);
 }
 
-static void update_raw_access_tracking_from_type(Converter::Impl::AccessTracking &tracking,
-                                                 const llvm::Type *type)
+static void update_raw_access_tracking_from_scalar_type(Converter::Impl::AccessTracking &tracking,
+                                                        const llvm::Type *type)
 {
 	if (type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-		tracking.raw_access_16bit = true;
+		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B16)][unsigned(RawVecSize::V1)] = true;
+	else if (type->getTypeID() == llvm::Type::TypeID::FloatTyID)
+		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B32)][unsigned(RawVecSize::V1)] = true;
 	else if (type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
-		tracking.raw_access_64bit = true;
+		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B64)][unsigned(RawVecSize::V1)] = true;
 	else if (type->getTypeID() == llvm::Type::TypeID::IntegerTyID)
 	{
 		if (type->getIntegerBitWidth() == 16)
-			tracking.raw_access_16bit = true;
+			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B16)][unsigned(RawVecSize::V1)] = true;
+		else if (type->getIntegerBitWidth() == 32)
+			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B32)][unsigned(RawVecSize::V1)] = true;
 		else if (type->getIntegerBitWidth() == 64)
-			tracking.raw_access_64bit = true;
+			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B64)][unsigned(RawVecSize::V1)] = true;
 	}
 }
 
@@ -459,7 +463,7 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 		{
 			auto kind = get_resource_kind_from_buffer_op(impl, instruction);
 			if (kind == DXIL::ResourceKind::RawBuffer || kind == DXIL::ResourceKind::StructuredBuffer)
-				update_raw_access_tracking_from_type(*tracking, instruction->getType()->getStructElementType(0));
+				update_raw_access_tracking_from_scalar_type(*tracking, instruction->getType()->getStructElementType(0));
 		}
 	}
 }
@@ -486,7 +490,7 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 		{
 			auto kind = get_resource_kind_from_buffer_op(impl, instruction);
 			if (kind == DXIL::ResourceKind::RawBuffer || kind == DXIL::ResourceKind::StructuredBuffer)
-				update_raw_access_tracking_from_type(*tracking, instruction->getOperand(4)->getType());
+				update_raw_access_tracking_from_scalar_type(*tracking, instruction->getOperand(4)->getType());
 		}
 		impl.shader_analysis.has_side_effects = true;
 	}
@@ -514,7 +518,7 @@ static void analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 
 		auto kind = get_resource_kind_from_buffer_op(impl, instruction);
 		if (kind == DXIL::ResourceKind::RawBuffer || kind == DXIL::ResourceKind::StructuredBuffer)
-			update_raw_access_tracking_from_type(*tracking, instruction->getType());
+			update_raw_access_tracking_from_scalar_type(*tracking, instruction->getType());
 
 		impl.shader_analysis.has_side_effects = true;
 	}

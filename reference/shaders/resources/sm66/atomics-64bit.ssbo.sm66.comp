@@ -5,41 +5,31 @@ layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) buffer SSBO
 {
-    uint _m0[];
+    uint64_t _m0[];
 } _10[];
 
-layout(set = 0, binding = 0, std430) buffer _13_16
+layout(set = 0, binding = 0, std430) buffer _12_15
 {
     uint64_t _m0[];
-} _16[];
-
-layout(set = 0, binding = 0, std430) buffer _18_21
-{
-    uint _m0[];
-} _21[];
-
-layout(set = 0, binding = 0, std430) buffer _23_26
-{
-    uint64_t _m0[];
-} _26[];
+} _15[];
 
 void main()
 {
-    uint64_t _46 = uint64_t(gl_GlobalInvocationID.x);
-    uint64_t _49 = atomicAdd(_16[0u]._m0[0u], _46);
-    uint64_t _51 = atomicAnd(_16[0u]._m0[1u], _46);
-    uint64_t _53 = atomicOr(_16[0u]._m0[2u], _46);
-    uint64_t _56 = atomicXor(_16[0u]._m0[3u], _46);
-    uint64_t _59 = atomicMin(_16[0u]._m0[4u], _46);
-    uint64_t _62 = atomicMax(_16[0u]._m0[5u], _46);
-    uint64_t _65 = atomicMin(_16[1u]._m0[6u], _46);
-    uint64_t _68 = atomicMax(_16[1u]._m0[7u], _46);
-    uint64_t _71 = atomicExchange(_16[0u]._m0[8u], _46);
-    uint64_t _74 = atomicCompSwap(_16[0u]._m0[9u], 10ul, _71);
-    uint64_t _78 = atomicCompSwap(_16[0u]._m0[10u], 20ul, _46);
-    uint64_t _81 = atomicAdd(_26[2u]._m0[0u], _46);
-    uint64_t _83 = atomicAnd(_26[2u]._m0[1u], _46);
-    uint64_t _85 = atomicOr(_26[2u]._m0[2u], _46);
+    uint64_t _31 = uint64_t(gl_GlobalInvocationID.x);
+    uint64_t _34 = atomicAdd(_10[0u]._m0[0u], _31);
+    uint64_t _36 = atomicAnd(_10[0u]._m0[1u], _31);
+    uint64_t _38 = atomicOr(_10[0u]._m0[2u], _31);
+    uint64_t _41 = atomicXor(_10[0u]._m0[3u], _31);
+    uint64_t _44 = atomicMin(_10[0u]._m0[4u], _31);
+    uint64_t _47 = atomicMax(_10[0u]._m0[5u], _31);
+    uint64_t _50 = atomicMin(_10[1u]._m0[6u], _31);
+    uint64_t _53 = atomicMax(_10[1u]._m0[7u], _31);
+    uint64_t _56 = atomicExchange(_10[0u]._m0[8u], _31);
+    uint64_t _59 = atomicCompSwap(_10[0u]._m0[9u], 10ul, _56);
+    uint64_t _63 = atomicCompSwap(_10[0u]._m0[10u], 20ul, _31);
+    uint64_t _66 = atomicAdd(_15[2u]._m0[0u], _31);
+    uint64_t _68 = atomicAnd(_15[2u]._m0[1u], _31);
+    uint64_t _70 = atomicOr(_15[2u]._m0[2u], _31);
 }
 
 
@@ -48,7 +38,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 88
+; Bound: 73
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -56,125 +46,94 @@ OpCapability Int64Atomics
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %29
+OpEntryPoint GLCompute %3 "main" %19
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
 OpName %7 "SSBO"
-OpName %13 "SSBO"
-OpName %18 "SSBO"
-OpName %23 "SSBO"
-OpDecorate %6 ArrayStride 4
+OpName %12 "SSBO"
+OpDecorate %6 ArrayStride 8
 OpMemberDecorate %7 0 Offset 0
 OpDecorate %7 Block
 OpDecorate %10 DescriptorSet 0
 OpDecorate %10 Binding 0
-OpDecorate %10 Aliased
-OpDecorate %12 ArrayStride 8
-OpMemberDecorate %13 0 Offset 0
-OpDecorate %13 Block
-OpDecorate %16 DescriptorSet 0
-OpDecorate %16 Binding 0
-OpDecorate %16 Aliased
-OpDecorate %17 ArrayStride 4
-OpMemberDecorate %18 0 Offset 0
-OpDecorate %18 Block
-OpDecorate %21 DescriptorSet 0
-OpDecorate %21 Binding 0
-OpDecorate %21 Aliased
-OpDecorate %22 ArrayStride 8
-OpMemberDecorate %23 0 Offset 0
-OpDecorate %23 Block
-OpDecorate %26 DescriptorSet 0
-OpDecorate %26 Binding 0
-OpDecorate %26 Aliased
-OpDecorate %29 BuiltIn GlobalInvocationId
+OpDecorate %11 ArrayStride 8
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %15 DescriptorSet 0
+OpDecorate %15 Binding 0
+OpDecorate %19 BuiltIn GlobalInvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
+%5 = OpTypeInt 64 0
 %6 = OpTypeRuntimeArray %5
 %7 = OpTypeStruct %6
 %8 = OpTypeRuntimeArray %7
 %9 = OpTypePointer StorageBuffer %8
 %10 = OpVariable %9 StorageBuffer
-%11 = OpTypeInt 64 0
-%12 = OpTypeRuntimeArray %11
-%13 = OpTypeStruct %12
-%14 = OpTypeRuntimeArray %13
-%15 = OpTypePointer StorageBuffer %14
-%16 = OpVariable %15 StorageBuffer
-%17 = OpTypeRuntimeArray %5
-%18 = OpTypeStruct %17
-%19 = OpTypeRuntimeArray %18
-%20 = OpTypePointer StorageBuffer %19
-%21 = OpVariable %20 StorageBuffer
-%22 = OpTypeRuntimeArray %11
-%23 = OpTypeStruct %22
-%24 = OpTypeRuntimeArray %23
-%25 = OpTypePointer StorageBuffer %24
-%26 = OpVariable %25 StorageBuffer
-%27 = OpTypeVector %5 3
-%28 = OpTypePointer Input %27
-%29 = OpVariable %28 Input
-%30 = OpTypePointer Input %5
-%32 = OpConstant %5 0
-%34 = OpTypePointer StorageBuffer %13
-%36 = OpTypePointer StorageBuffer %7
-%39 = OpConstant %5 1
-%41 = OpTypePointer StorageBuffer %23
-%43 = OpConstant %5 2
-%44 = OpTypePointer StorageBuffer %18
-%47 = OpTypePointer StorageBuffer %11
-%54 = OpConstant %5 3
-%57 = OpConstant %5 4
-%60 = OpConstant %5 5
-%63 = OpConstant %5 6
-%66 = OpConstant %5 7
-%69 = OpConstant %5 8
-%72 = OpConstant %5 9
-%75 = OpConstant %11 10
-%76 = OpConstant %5 10
-%79 = OpConstant %11 20
+%11 = OpTypeRuntimeArray %5
+%12 = OpTypeStruct %11
+%13 = OpTypeRuntimeArray %12
+%14 = OpTypePointer StorageBuffer %13
+%15 = OpVariable %14 StorageBuffer
+%16 = OpTypeInt 32 0
+%17 = OpTypeVector %16 3
+%18 = OpTypePointer Input %17
+%19 = OpVariable %18 Input
+%20 = OpTypePointer Input %16
+%22 = OpConstant %16 0
+%24 = OpTypePointer StorageBuffer %7
+%27 = OpConstant %16 1
+%28 = OpTypePointer StorageBuffer %12
+%30 = OpConstant %16 2
+%32 = OpTypePointer StorageBuffer %5
+%39 = OpConstant %16 3
+%42 = OpConstant %16 4
+%45 = OpConstant %16 5
+%48 = OpConstant %16 6
+%51 = OpConstant %16 7
+%54 = OpConstant %16 8
+%57 = OpConstant %16 9
+%60 = OpConstant %5 10
+%61 = OpConstant %16 10
+%64 = OpConstant %5 20
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %86
-%86 = OpLabel
-%31 = OpAccessChain %30 %29 %32
-%33 = OpLoad %5 %31
-%35 = OpAccessChain %34 %16 %32
-%37 = OpAccessChain %36 %10 %32
-%38 = OpAccessChain %34 %16 %39
-%40 = OpAccessChain %36 %10 %39
-%42 = OpAccessChain %41 %26 %43
-%45 = OpAccessChain %44 %21 %43
-%46 = OpUConvert %11 %33
-%48 = OpAccessChain %47 %35 %32 %32
-%49 = OpAtomicIAdd %11 %48 %39 %32 %46
-%50 = OpAccessChain %47 %35 %32 %39
-%51 = OpAtomicAnd %11 %50 %39 %32 %46
-%52 = OpAccessChain %47 %35 %32 %43
-%53 = OpAtomicOr %11 %52 %39 %32 %46
-%55 = OpAccessChain %47 %35 %32 %54
-%56 = OpAtomicXor %11 %55 %39 %32 %46
-%58 = OpAccessChain %47 %35 %32 %57
-%59 = OpAtomicUMin %11 %58 %39 %32 %46
-%61 = OpAccessChain %47 %35 %32 %60
-%62 = OpAtomicUMax %11 %61 %39 %32 %46
-%64 = OpAccessChain %47 %38 %32 %63
-%65 = OpAtomicSMin %11 %64 %39 %32 %46
-%67 = OpAccessChain %47 %38 %32 %66
-%68 = OpAtomicSMax %11 %67 %39 %32 %46
-%70 = OpAccessChain %47 %35 %32 %69
-%71 = OpAtomicExchange %11 %70 %39 %32 %46
-%73 = OpAccessChain %47 %35 %32 %72
-%74 = OpAtomicCompareExchange %11 %73 %39 %32 %32 %71 %75
-%77 = OpAccessChain %47 %35 %32 %76
-%78 = OpAtomicCompareExchange %11 %77 %39 %32 %32 %46 %79
-%80 = OpAccessChain %47 %42 %32 %32
-%81 = OpAtomicIAdd %11 %80 %39 %32 %46
-%82 = OpAccessChain %47 %42 %32 %39
-%83 = OpAtomicAnd %11 %82 %39 %32 %46
-%84 = OpAccessChain %47 %42 %32 %43
-%85 = OpAtomicOr %11 %84 %39 %32 %46
+OpBranch %71
+%71 = OpLabel
+%21 = OpAccessChain %20 %19 %22
+%23 = OpLoad %16 %21
+%25 = OpAccessChain %24 %10 %22
+%26 = OpAccessChain %24 %10 %27
+%29 = OpAccessChain %28 %15 %30
+%31 = OpUConvert %5 %23
+%33 = OpAccessChain %32 %25 %22 %22
+%34 = OpAtomicIAdd %5 %33 %27 %22 %31
+%35 = OpAccessChain %32 %25 %22 %27
+%36 = OpAtomicAnd %5 %35 %27 %22 %31
+%37 = OpAccessChain %32 %25 %22 %30
+%38 = OpAtomicOr %5 %37 %27 %22 %31
+%40 = OpAccessChain %32 %25 %22 %39
+%41 = OpAtomicXor %5 %40 %27 %22 %31
+%43 = OpAccessChain %32 %25 %22 %42
+%44 = OpAtomicUMin %5 %43 %27 %22 %31
+%46 = OpAccessChain %32 %25 %22 %45
+%47 = OpAtomicUMax %5 %46 %27 %22 %31
+%49 = OpAccessChain %32 %26 %22 %48
+%50 = OpAtomicSMin %5 %49 %27 %22 %31
+%52 = OpAccessChain %32 %26 %22 %51
+%53 = OpAtomicSMax %5 %52 %27 %22 %31
+%55 = OpAccessChain %32 %25 %22 %54
+%56 = OpAtomicExchange %5 %55 %27 %22 %31
+%58 = OpAccessChain %32 %25 %22 %57
+%59 = OpAtomicCompareExchange %5 %58 %27 %22 %22 %56 %60
+%62 = OpAccessChain %32 %25 %22 %61
+%63 = OpAtomicCompareExchange %5 %62 %27 %22 %22 %31 %64
+%65 = OpAccessChain %32 %29 %22 %22
+%66 = OpAtomicIAdd %5 %65 %27 %22 %31
+%67 = OpAccessChain %32 %29 %22 %27
+%68 = OpAtomicAnd %5 %67 %27 %22 %31
+%69 = OpAccessChain %32 %29 %22 %30
+%70 = OpAtomicOr %5 %69 %27 %22 %31
 OpReturn
 OpFunctionEnd
 #endif

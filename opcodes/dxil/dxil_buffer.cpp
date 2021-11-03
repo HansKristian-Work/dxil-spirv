@@ -421,18 +421,33 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	return true;
 }
 
-static unsigned get_buffer_access_bits_per_component(
+static RawWidth get_buffer_access_bits_per_component(
 	Converter::Impl &impl, spv::StorageClass storage, const llvm::Type *element_type)
 {
 	if (impl.execution_mode_meta.native_16bit_operations && storage == spv::StorageClassStorageBuffer &&
 	    type_is_16bit(element_type))
 	{
-		return 16;
+		return RawWidth::B16;
 	}
 	else if (type_is_64bit(element_type))
-		return 64;
+		return RawWidth::B64;
 	else
-		return 32;
+		return RawWidth::B32;
+}
+
+static spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
+                                       spv::Id default_id, RawWidth width, RawVecSize vecsize)
+{
+	for (auto &alias : meta.var_alias_group)
+	{
+		if (alias.declaration.width == width && alias.declaration.vecsize == vecsize)
+		{
+			default_id = alias.var_id;
+			break;
+		}
+	}
+
+	return default_id;
 }
 
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -457,7 +472,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			return false;
 		}
 
-		// We don't more about alignment in SM 5.1 BufferStore.
+		// We don't know more about alignment in SM 5.1 BufferStore.
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
 
@@ -474,11 +489,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	// SSBO operations with min16* types are actually 32-bit.
 	// We only get native 16-bit load-store with native_16bit_operations.
-	unsigned bits = get_buffer_access_bits_per_component(impl, meta.storage, target_type);
-	if (bits == 16)
-		image_id = meta.var_id_16bit;
-	else if (bits == 64)
-		image_id = meta.var_id_64bit;
+	auto width = get_buffer_access_bits_per_component(impl, meta.storage, target_type);
+	image_id = get_buffer_alias_handle(impl, meta, image_id, width, RawVecSize::V1);
 
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
@@ -502,7 +514,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 				conservative_num_elements = i + 1;
 
 		spv::Id component_ids[4] = {};
-		spv::Id extracted_id_type = builder.makeUintType(bits);
+		spv::Id extracted_id_type = builder.makeUintType(raw_width_to_bits(width));
 		spv::Id constructed_id = 0;
 		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
 
@@ -802,28 +814,14 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
-		uint32_t alignment = 0;
-		if (!get_constant_operand(instruction, 5, &alignment))
-			return false;
-
-		if (!meta.aliased)
+		auto *ret_component = instruction->getType()->getStructElementType(0);
+		if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
+		    !(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+		      ret_component->getIntegerBitWidth() == 32) &&
+		    meta.storage != spv::StorageClassStorageBuffer)
 		{
-			// If we're attempting a raw load from a non-physical pointer, it gets spicy.
-			// Since we're using texel buffers for this case, we might not be able to implement it correctly.
-			if (alignment < 4)
-			{
-				LOGE("Requested an alignment of < 4 bytes in RawBufferLoad with texel buffer. This is unimplementable.\n");
-				return false;
-			}
-
-			auto *ret_component = instruction->getType()->getStructElementType(0);
-			if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
-			    !(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
-			      ret_component->getIntegerBitWidth() == 32))
-			{
-				LOGE("16 or 64-bit RawBufferLoad on descriptors is only supported for SSBOs.\n");
-				return false;
-			}
+			LOGE("16 or 64-bit RawBufferLoad on descriptors is only supported for SSBOs.\n");
+			return false;
 		}
 
 		// Ignore the mask. We'll read too much, but robustness should take care of any OOB.
@@ -851,11 +849,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	// SSBO operations with min16* types are actually 32-bit.
 	// We only get native 16-bit load-store with native_16bit_operations.
-	unsigned bits = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
-	if (bits == 16)
-		image_id = meta.var_id_16bit;
-	else if (bits == 64)
-		image_id = meta.var_id_64bit;
+	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
+	image_id = get_buffer_alias_handle(impl, meta, image_id, width, RawVecSize::V1);
 
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
 	                                  instruction->getOperand(4)->getType());
@@ -901,7 +896,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 				}
 				else if (element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 				{
-					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(bits));
+					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(raw_width_to_bits(width)));
 					op->add_id(store_values[i]);
 					store_values[i] = op->id;
 					impl.add(op);
@@ -929,7 +924,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 			if (mask & (1u << i))
 			{
 				Operation *chain_op = impl.allocate(spv::OpAccessChain,
-				                                    builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(bits)));
+				                                    builder.makePointer(spv::StorageClassStorageBuffer,
+				                                                        builder.makeUintType(raw_width_to_bits(width))));
 				chain_op->add_id(image_id);
 				chain_op->add_id(builder.makeUintConstant(0));
 				chain_op->add_id(impl.build_offset(access.index_id, i));
@@ -980,27 +976,13 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
-		uint32_t alignment = 0;
-		if (!get_constant_operand(instruction, 9, &alignment))
-			return false;
-
-		if (!meta.aliased)
+		auto *store_type = instruction->getOperand(4)->getType();
+		if (store_type->getTypeID() != llvm::Type::TypeID::FloatTyID &&
+		    !(store_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && store_type->getIntegerBitWidth() == 32) &&
+		    meta.storage != spv::StorageClassStorageBuffer)
 		{
-			// If we're attempting a raw load from a non-physical pointer, it gets spicy.
-			// Since we're using texel buffers for this case, we might not be able to implement it correctly.
-			if (alignment < 4)
-			{
-				LOGE("Requested an alignment of < 4 bytes in RawBufferStore with texel buffer. This is unimplementable.\n");
-				return false;
-			}
-
-			auto *store_type = instruction->getOperand(4)->getType();
-			if (store_type->getTypeID() != llvm::Type::TypeID::FloatTyID &&
-			    !(store_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && store_type->getIntegerBitWidth() == 32))
-			{
-				LOGE("16 or 64-bit RawBufferStore on descriptors is only supported for SSBOs.\n");
-				return false;
-			}
+			LOGE("16 or 64-bit RawBufferStore on descriptors is only supported for SSBOs.\n");
+			return false;
 		}
 
 		return emit_buffer_store_instruction(impl, instruction);
@@ -1020,18 +1002,10 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id coords[3] = {};
 	uint32_t num_coords_full = 0, num_coords = 0;
 
-	unsigned bits = get_buffer_access_bits_per_component(impl, meta.storage, instruction->getType());
-	spv::Id var_id;
-	if (bits == 64)
-	{
-		if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
-			var_id = meta.var_id_64bit;
-		else
-			var_id = meta.var_id;
+	auto width = get_buffer_access_bits_per_component(impl, meta.storage, instruction->getType());
+	if (width == RawWidth::B64)
 		builder.addCapability(spv::CapabilityInt64Atomics);
-	}
-	else
-		var_id = meta.var_id;
+	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, width, RawVecSize::V1);
 
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
@@ -1055,12 +1029,12 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
 	Operation *counter_ptr_op = nullptr;
-	DXIL::ComponentType component_type = bits == 64 ? DXIL::ComponentType::U64 : DXIL::ComponentType::U32;
+	DXIL::ComponentType component_type = raw_width_to_component_type(width);
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
-		spv::Id uint_type = builder.makeUintType(bits);
+		spv::Id uint_type = builder.makeUintType(raw_width_to_bits(width));
 		auto physical_pointer_meta = meta.physical_pointer_meta;
-		physical_pointer_meta.stride = bits / 8;
+		physical_pointer_meta.stride = raw_width_to_bits(width) / 8;
 		spv::Id ptr_type_id =
 		    impl.get_physical_pointer_block_type(uint_type, physical_pointer_meta);
 
@@ -1076,7 +1050,8 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	{
 		counter_ptr_op =
 			impl.allocate(spv::OpAccessChain,
-			              builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(bits)));
+			              builder.makePointer(spv::StorageClassStorageBuffer,
+			                                  builder.makeUintType(raw_width_to_bits(width))));
 		counter_ptr_op->add_ids({ var_id, builder.makeUintConstant(0), coord });
 	}
 	else
@@ -1157,18 +1132,10 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	spv::Id coords[3] = {};
 	uint32_t num_coords_full = 0, num_coords = 0;
 
-	unsigned bits = get_buffer_access_bits_per_component(impl, meta.storage, instruction->getType());
-	spv::Id var_id;
-	if (bits == 64)
-	{
-		if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer)
-			var_id = meta.var_id_64bit;
-		else
-			var_id = meta.var_id;
+	auto width = get_buffer_access_bits_per_component(impl, meta.storage, instruction->getType());
+	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, width, RawVecSize::V1);
+	if (width == RawWidth::B64)
 		builder.addCapability(spv::CapabilityInt64Atomics);
-	}
-	else
-		var_id = meta.var_id;
 
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
@@ -1193,12 +1160,12 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
 	Operation *counter_ptr_op = nullptr;
-	DXIL::ComponentType component_type = bits == 64 ? DXIL::ComponentType::U64 : DXIL::ComponentType::U32;
+	DXIL::ComponentType component_type = raw_width_to_component_type(width);
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
-		spv::Id uint_type = builder.makeUintType(bits);
+		spv::Id uint_type = builder.makeUintType(raw_width_to_bits(width));
 		auto physical_pointer_meta = meta.physical_pointer_meta;
-		physical_pointer_meta.stride = bits / 8;
+		physical_pointer_meta.stride = raw_width_to_bits(width) / 8;
 		spv::Id ptr_type_id =
 			impl.get_physical_pointer_block_type(uint_type, physical_pointer_meta);
 
@@ -1214,7 +1181,8 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	{
 		counter_ptr_op =
 			impl.allocate(spv::OpAccessChain,
-			              builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(bits)));
+			              builder.makePointer(spv::StorageClassStorageBuffer,
+			                                  builder.makeUintType(raw_width_to_bits(width))));
 		counter_ptr_op->add_ids({ var_id, builder.makeUintConstant(0), coord });
 	}
 	else
