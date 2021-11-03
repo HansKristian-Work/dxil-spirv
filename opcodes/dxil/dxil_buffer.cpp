@@ -161,21 +161,32 @@ static bool type_is_64bit(const llvm::Type *data_type)
 	        data_type->getIntegerBitWidth() == 64);
 }
 
-static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned operand_offset,
-                                            spv::Id index_offset_id, const llvm::Type *data_type)
+static unsigned raw_buffer_data_type_to_addr_shift_log2(Converter::Impl &impl, const llvm::Type *data_type)
+{
+	// A 16-bit raw load is only actually 16-bit if native 16-bit operations are enabled.
+	if (impl.execution_mode_meta.native_16bit_operations && type_is_16bit(data_type))
+		return 1;
+	else if (type_is_64bit(data_type))
+		return 3;
+	else
+		return 2;
+}
+
+static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                            unsigned operand_offset,
+                                            spv::Id index_offset_id,
+                                            const llvm::Type *data_type,
+                                            uint32_t access_mask)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	spv::Id index_id = 0;
+	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, data_type);
 
-	// A 16-bit raw load is only actually 16-bit if native 16-bit operations are enabled.
-	unsigned addr_shift_log2 = 2;
-	if (impl.execution_mode_meta.native_16bit_operations && type_is_16bit(data_type))
-		addr_shift_log2 = 1;
-	else if (type_is_64bit(data_type))
-		addr_shift_log2 = 3;
+	// Ignore access mask for now.
+	(void)access_mask;
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
@@ -464,6 +475,12 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto &access_meta = impl.llvm_composite_meta[instruction];
 	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
 
+	// Leave no gaps in the access mask to aid vectorization.
+	// For reads, we can safely read components we not strictly need to read.
+	uint32_t smeared_access_mask = access_meta.access_mask & 0xfu;
+	smeared_access_mask |= smeared_access_mask >> 1u;
+	smeared_access_mask |= smeared_access_mask >> 2u;
+
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
 		if (sparse)
@@ -476,12 +493,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
 
-		// Leave no gaps in the access mask.
-		uint32_t mask = access_meta.access_mask & 0xf;
-		mask |= mask >> 1u;
-		mask |= mask >> 2u;
-
-		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, mask, 4);
+		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta,
+		                                             smeared_access_mask, 4);
 	}
 
 	auto *result_type = instruction->getType();
@@ -495,7 +508,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
-	                                  result_type->getStructElementType(0));
+	                                  result_type->getStructElementType(0),
+	                                  smeared_access_mask);
 
 	// Sparse information is stored in the 5th component.
 	if (sparse)
@@ -852,11 +866,12 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
 	image_id = get_buffer_alias_handle(impl, meta, image_id, width, RawVecSize::V1);
 
+	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
-	                                  instruction->getOperand(4)->getType());
+	                                  instruction->getOperand(4)->getType(), mask);
 
 	spv::Id store_values[4] = {};
-	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 
 	for (unsigned i = 0; i < 4; i++)
@@ -1010,7 +1025,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id, instruction->getType());
+		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id, instruction->getType(), 1);
 		coords[0] = access.index_id;
 		num_coords = 1;
 		num_coords_full = 1;
@@ -1140,7 +1155,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id, instruction->getType());
+		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id, instruction->getType(), 1);
 		coords[0] = access.index_id;
 		num_coords = 1;
 		num_coords_full = 1;
