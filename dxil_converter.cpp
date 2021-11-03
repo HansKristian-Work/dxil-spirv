@@ -5162,6 +5162,15 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 
 bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 {
+	// Need to analyze this in two stages.
+	// In the first stage, we need to analyze:
+	// - Load/GetElementPtr to handle lib global variables
+	// - CreateHandle family to build LLVM access handles
+	// - ExtractValue to track which components are used for BufferLoad.
+	// In the second phase we analyze the buffer loads and stores and figure out
+	// alignments of the loads and stores. This lets us build up a list of SSBO declarations we need to
+	// optimally implement the loads and stores. We need to do this late, because we depend on results
+	// of ExtractValue analysis.
 	for (auto &bb : *function)
 	{
 		for (auto &inst : bb)
@@ -5186,12 +5195,29 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 				auto *called_function = call_inst->getCalledFunction();
 				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 				{
-					if (!analyze_dxil_instruction(*this, call_inst, &bb))
+					if (!analyze_dxil_resource_instruction(*this, call_inst, &bb))
 						return false;
 				}
 			}
 		}
 	}
+
+	for (auto &bb : *function)
+	{
+		for (auto &inst : bb)
+		{
+			if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))
+			{
+				auto *called_function = call_inst->getCalledFunction();
+				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
+				{
+					if (!analyze_dxil_buffer_access_instruction(*this, call_inst))
+						return false;
+				}
+			}
+		}
+	}
+
 	return true;
 }
 
