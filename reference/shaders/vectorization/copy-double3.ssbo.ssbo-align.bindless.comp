@@ -1,0 +1,208 @@
+#version 460
+#extension GL_ARB_gpu_shader_int64 : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_KHR_shader_subgroup_ballot : require
+layout(local_size_x = 2, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 15, binding = 0, std430) restrict readonly buffer SSBO_Offsets
+{
+    uvec2 _m0[];
+} _13;
+
+layout(set = 4, binding = 0, std430) readonly buffer SSBO
+{
+    uint64_t _m0[];
+} _19[];
+
+layout(set = 4, binding = 0, std430) writeonly buffer _21_24
+{
+    uint64_t _m0[];
+} _24[];
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uint _m0;
+    uint _m1;
+    uint _m2;
+    uint _m3;
+    uint _m4;
+    uint _m5;
+    uint _m6;
+    uint _m7;
+} registers;
+
+void main()
+{
+    uint _31 = registers._m4 + 1u;
+    uvec2 _39 = _13._m0[subgroupBroadcastFirst(_31)] >> uvec2(3u);
+    uvec2 _48 = _13._m0[subgroupBroadcastFirst(registers._m4)] >> uvec2(3u);
+    uint _55 = gl_GlobalInvocationID.x * 3u;
+    uint _61 = (_55 < _48.y) ? (_55 + _48.x) : 536870908u;
+    uint64_t _65 = _19[registers._m4]._m0[_61];
+    uint64_t _68 = _19[registers._m4]._m0[_61 + 1u];
+    uint64_t _72 = _19[registers._m4]._m0[_61 + 2u];
+    dvec3 _77 = uint64BitsToDouble(u64vec3(_65, _68, _72));
+    uint _81 = gl_GlobalInvocationID.x * 3u;
+    uint _86 = (_81 < _39.y) ? (_81 + _39.x) : 536870908u;
+    _24[_31]._m0[_86] = doubleBitsToUint64(_77.x);
+    _24[_31]._m0[_86 + 1u] = doubleBitsToUint64(_77.y);
+    _24[_31]._m0[_86 + 2u] = doubleBitsToUint64(_77.z);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 97
+; Schema: 0
+OpCapability Shader
+OpCapability Float64
+OpCapability Int64
+OpCapability GroupNonUniformBallot
+OpCapability RuntimeDescriptorArray
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint GLCompute %3 "main" %51
+OpExecutionMode %3 LocalSize 2 1 1
+OpName %3 "main"
+OpName %6 "RootConstants"
+OpName %8 "registers"
+OpName %11 "SSBO_Offsets"
+OpName %16 "SSBO"
+OpName %21 "SSBO"
+OpDecorate %6 Block
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 4
+OpMemberDecorate %6 2 Offset 8
+OpMemberDecorate %6 3 Offset 12
+OpMemberDecorate %6 4 Offset 16
+OpMemberDecorate %6 5 Offset 20
+OpMemberDecorate %6 6 Offset 24
+OpMemberDecorate %6 7 Offset 28
+OpDecorate %10 ArrayStride 8
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 15
+OpDecorate %13 Binding 0
+OpDecorate %13 NonWritable
+OpDecorate %13 Restrict
+OpDecorate %15 ArrayStride 8
+OpMemberDecorate %16 0 Offset 0
+OpDecorate %16 Block
+OpDecorate %19 DescriptorSet 4
+OpDecorate %19 Binding 0
+OpDecorate %19 NonWritable
+OpDecorate %20 ArrayStride 8
+OpMemberDecorate %21 0 Offset 0
+OpDecorate %21 Block
+OpDecorate %24 DescriptorSet 4
+OpDecorate %24 Binding 0
+OpDecorate %24 NonReadable
+OpDecorate %51 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeStruct %5 %5 %5 %5 %5 %5 %5 %5
+%7 = OpTypePointer PushConstant %6
+%8 = OpVariable %7 PushConstant
+%9 = OpTypeVector %5 2
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeInt 64 0
+%15 = OpTypeRuntimeArray %14
+%16 = OpTypeStruct %15
+%17 = OpTypeRuntimeArray %16
+%18 = OpTypePointer StorageBuffer %17
+%19 = OpVariable %18 StorageBuffer
+%20 = OpTypeRuntimeArray %14
+%21 = OpTypeStruct %20
+%22 = OpTypeRuntimeArray %21
+%23 = OpTypePointer StorageBuffer %22
+%24 = OpVariable %23 StorageBuffer
+%25 = OpTypePointer StorageBuffer %21
+%27 = OpTypePointer PushConstant %5
+%29 = OpConstant %5 4
+%32 = OpConstant %5 1
+%34 = OpConstant %5 3
+%35 = OpTypePointer StorageBuffer %9
+%37 = OpConstant %5 0
+%40 = OpConstantComposite %9 %34 %34
+%41 = OpTypePointer StorageBuffer %16
+%49 = OpTypeVector %5 3
+%50 = OpTypePointer Input %49
+%51 = OpVariable %50 Input
+%52 = OpTypePointer Input %5
+%59 = OpTypeBool
+%62 = OpConstant %5 536870908
+%63 = OpTypePointer StorageBuffer %14
+%71 = OpConstant %5 2
+%73 = OpTypeVector %14 3
+%75 = OpTypeFloat 64
+%76 = OpTypeVector %75 3
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %95
+%95 = OpLabel
+%28 = OpAccessChain %27 %8 %29
+%30 = OpLoad %5 %28
+%31 = OpIAdd %5 %30 %32
+%26 = OpAccessChain %25 %24 %31
+%33 = OpGroupNonUniformBroadcastFirst %5 %34 %31
+%36 = OpAccessChain %35 %13 %37 %33
+%38 = OpLoad %9 %36
+%39 = OpShiftRightLogical %9 %38 %40
+%43 = OpAccessChain %27 %8 %29
+%44 = OpLoad %5 %43
+%42 = OpAccessChain %41 %19 %44
+%45 = OpGroupNonUniformBroadcastFirst %5 %34 %44
+%46 = OpAccessChain %35 %13 %37 %45
+%47 = OpLoad %9 %46
+%48 = OpShiftRightLogical %9 %47 %40
+%53 = OpAccessChain %52 %51 %37
+%54 = OpLoad %5 %53
+%55 = OpIMul %5 %54 %34
+%56 = OpCompositeExtract %5 %48 0
+%57 = OpCompositeExtract %5 %48 1
+%58 = OpIAdd %5 %55 %56
+%60 = OpULessThan %59 %55 %57
+%61 = OpSelect %5 %60 %58 %62
+%64 = OpAccessChain %63 %42 %37 %61
+%65 = OpLoad %14 %64
+%67 = OpIAdd %5 %61 %32
+%66 = OpAccessChain %63 %42 %37 %67
+%68 = OpLoad %14 %66
+%70 = OpIAdd %5 %61 %71
+%69 = OpAccessChain %63 %42 %37 %70
+%72 = OpLoad %14 %69
+%74 = OpCompositeConstruct %73 %65 %68 %72
+%77 = OpBitcast %76 %74
+%78 = OpCompositeExtract %75 %77 0
+%79 = OpCompositeExtract %75 %77 1
+%80 = OpCompositeExtract %75 %77 2
+%81 = OpIMul %5 %54 %34
+%82 = OpCompositeExtract %5 %39 0
+%83 = OpCompositeExtract %5 %39 1
+%84 = OpIAdd %5 %81 %82
+%85 = OpULessThan %59 %81 %83
+%86 = OpSelect %5 %85 %84 %62
+%87 = OpBitcast %14 %78
+%88 = OpBitcast %14 %79
+%89 = OpBitcast %14 %80
+%90 = OpAccessChain %63 %26 %37 %86
+OpStore %90 %87
+%92 = OpIAdd %5 %86 %32
+%91 = OpAccessChain %63 %26 %37 %92
+OpStore %91 %88
+%94 = OpIAdd %5 %86 %71
+%93 = OpAccessChain %63 %26 %37 %94
+OpStore %93 %89
+OpReturn
+OpFunctionEnd
+#endif
