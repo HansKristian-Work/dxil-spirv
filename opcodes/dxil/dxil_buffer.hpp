@@ -43,8 +43,25 @@ struct RawBufferAccessSplit
 	int64_t bias;
 	const llvm::Value *dynamic_index;
 };
-bool extract_raw_buffer_access_split(const llvm::Value *byte_offset, uint32_t addr_shift_log2, unsigned vecsize,
+bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
+                                     uint32_t addr_shift_log2, unsigned vecsize,
                                      RawBufferAccessSplit &split);
+
 bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Type *type,
                                            const llvm::Value *byte_offset, unsigned vecsize);
+
+bool raw_access_structured_can_vectorize(Converter::Impl &impl, const llvm::Type *type,
+                                         const llvm::Value *index,
+                                         unsigned stride,
+                                         const llvm::Value *byte_offset,
+                                         unsigned vecsize);
+
+RawVecSize raw_access_byte_address_vectorize(Converter::Impl &impl, const llvm::Type *type,
+                                             const llvm::Value *byte_offset, uint32_t mask);
+
+RawVecSize raw_access_structured_vectorize(Converter::Impl &impl, const llvm::Type *type,
+                                           const llvm::Value *index,
+                                           unsigned stride,
+                                           const llvm::Value *byte_offset,
+                                           uint32_t mask);
 } // namespace dxil_spv

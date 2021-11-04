@@ -2343,17 +2343,18 @@ void Converter::Impl::get_shader_model(const llvm::Module &module, String *model
 	}
 }
 
-DXIL::ResourceKind Converter::Impl::get_resource_kind_from_meta(DXIL::ResourceType resource_type, unsigned meta_index)
+Converter::Impl::RawBufferMeta
+Converter::Impl::get_raw_buffer_meta(DXIL::ResourceType resource_type, unsigned meta_index)
 {
 	auto &module = bitcode_parser.get_module();
 	auto *resource_meta = module.getNamedMetadata("dx.resources");
 	if (!resource_meta)
-		return DXIL::ResourceKind::Invalid;
+		return { DXIL::ResourceKind::Invalid, 0 };
 
 	auto *metas = resource_meta->getOperand(0);
 	auto &resource_list = metas->getOperand(uint32_t(resource_type));
 	if (!resource_list)
-		return DXIL::ResourceKind::Invalid;
+		return { DXIL::ResourceKind::Invalid, 0 };
 
 	auto *entries = llvm::cast<llvm::MDNode>(resource_list);
 	unsigned num_entries = entries->getNumOperands();
@@ -2361,10 +2362,22 @@ DXIL::ResourceKind Converter::Impl::get_resource_kind_from_meta(DXIL::ResourceTy
 	{
 		auto *entry = llvm::cast<llvm::MDNode>(entries->getOperand(i));
 		if (get_constant_metadata(entry, 0) == meta_index)
-			return DXIL::ResourceKind(get_constant_metadata(entry, 6));
+		{
+			RawBufferMeta meta = {};
+			meta.kind = DXIL::ResourceKind(get_constant_metadata(entry, 6));
+
+			unsigned tag_index = resource_type == DXIL::ResourceType::SRV ? 8 : 10;
+
+			llvm::MDNode *tags = nullptr;
+			if (entry->getNumOperands() > tag_index && entry->getOperand(tag_index))
+				tags = llvm::dyn_cast<llvm::MDNode>(entry->getOperand(tag_index));
+			if (tags)
+				meta.stride = get_constant_metadata(tags, 1);
+			return meta;
+		}
 	}
 
-	return DXIL::ResourceKind::Invalid;
+	return { DXIL::ResourceKind::Invalid, 0 };
 }
 
 uint32_t Converter::Impl::find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,

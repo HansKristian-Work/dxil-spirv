@@ -17,9 +17,9 @@ void main()
     uint _44 = INDEX * 2u;
     imageStore(_13, int(_44), uvec4(floatBitsToUint(DATA.x)));
     imageStore(_13, int(_44 + 1u), uvec4(floatBitsToUint(DATA.y)));
-    uint _53 = (INDEX * 5u) + 3u;
-    imageStore(_14, int(_53), uvec4(floatBitsToUint(DATA.x)));
-    imageStore(_14, int(_53 + 1u), uvec4(floatBitsToUint(DATA.y)));
+    uint _52 = (INDEX * 5u) + 3u;
+    imageStore(_14, int(_52), uvec4(floatBitsToUint(DATA.x)));
+    imageStore(_14, int(_52 + 1u), uvec4(floatBitsToUint(DATA.y)));
 }
 
 
@@ -28,7 +28,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 60
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -80,12 +80,11 @@ OpDecorate %19 Component 1
 %37 = OpConstant %9 3
 %39 = OpConstant %9 2
 %40 = OpTypeVector %9 4
-%50 = OpConstant %9 12
-%52 = OpConstant %9 5
+%51 = OpConstant %9 5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %59
-%59 = OpLabel
+OpBranch %58
+%58 = OpLabel
 %20 = OpLoad %10 %14
 %21 = OpLoad %10 %13
 %22 = OpLoad %10 %12
@@ -114,15 +113,15 @@ OpImageWrite %21 %44 %47
 %48 = OpCompositeConstruct %40 %46 %46 %46 %46
 %49 = OpIAdd %9 %44 %29
 OpImageWrite %21 %49 %48
-%51 = OpIMul %9 %31 %52
-%53 = OpIAdd %9 %51 %37
-%54 = OpBitcast %9 %27
-%55 = OpBitcast %9 %30
+%50 = OpIMul %9 %31 %51
+%52 = OpIAdd %9 %50 %37
+%53 = OpBitcast %9 %27
+%54 = OpBitcast %9 %30
+%55 = OpCompositeConstruct %40 %53 %53 %53 %53
+OpImageWrite %20 %52 %55
 %56 = OpCompositeConstruct %40 %54 %54 %54 %54
-OpImageWrite %20 %53 %56
-%57 = OpCompositeConstruct %40 %55 %55 %55 %55
-%58 = OpIAdd %9 %53 %29
-OpImageWrite %20 %58 %57
+%57 = OpIAdd %9 %52 %29
+OpImageWrite %20 %57 %56
 OpReturn
 OpFunctionEnd
 #endif

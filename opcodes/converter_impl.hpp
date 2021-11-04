@@ -552,7 +552,13 @@ struct Converter::Impl
 
 	uint32_t find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
 	                                 uint32_t binding_space, DXIL::ResourceType resource_type);
-	DXIL::ResourceKind get_resource_kind_from_meta(DXIL::ResourceType resource_type, unsigned meta_index);
+
+	struct RawBufferMeta
+	{
+		DXIL::ResourceKind kind;
+		unsigned stride;
+	};
+	RawBufferMeta get_raw_buffer_meta(DXIL::ResourceType resource_type, unsigned meta_index);
 
 	static void get_shader_model(const llvm::Module &module, String *model, uint32_t *major, uint32_t *minor);
 

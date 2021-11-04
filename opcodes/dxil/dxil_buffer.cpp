@@ -33,15 +33,17 @@ static spv::Id build_index_divider_fallback(Converter::Impl &impl, const llvm::V
 	return op->id;
 }
 
-bool extract_raw_buffer_access_split(const llvm::Value *byte_offset, uint32_t addr_shift_log2, unsigned vecsize,
+bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
+                                     uint32_t addr_shift_log2, unsigned vecsize,
                                      RawBufferAccessSplit &split)
 {
 	unsigned element_size = (1u << addr_shift_log2) * vecsize;
 
 	// Base case first, a constant value.
-	if (const auto *const_addr = llvm::dyn_cast<llvm::ConstantInt>(byte_offset))
+	if (const auto *const_addr = llvm::dyn_cast<llvm::ConstantInt>(index))
 	{
 		int64_t constant_offset = const_addr->getUniqueInteger().getSExtValue();
+		constant_offset *= stride;
 
 		// Always pass scalar constant dividers through.
 		// Building a fallback divider helps nothing.
@@ -55,46 +57,48 @@ bool extract_raw_buffer_access_split(const llvm::Value *byte_offset, uint32_t ad
 			return false;
 	}
 
-	if (!llvm::isa<llvm::BinaryOperator>(byte_offset))
-		return false;
-
 	const llvm::ConstantInt *scale = nullptr;
 	const llvm::ConstantInt *bias = nullptr;
 	bool scale_log2 = false;
 	bool bias_is_add = false;
+	bool bias_negate = false;
 
-	while (!scale && llvm::isa<llvm::BinaryOperator>(byte_offset))
+	while (!scale && llvm::isa<llvm::BinaryOperator>(index))
 	{
-		auto *binop = llvm::cast<llvm::BinaryOperator>(byte_offset);
+		auto *binop = llvm::cast<llvm::BinaryOperator>(index);
 		auto *lhs = binop->getOperand(0);
 		auto *rhs = binop->getOperand(1);
 		if (!bias && (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add ||
+		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Sub ||
 		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Or ||
 		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Xor))
 		{
 			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
 			{
 				bias = const_lhs;
-				byte_offset = rhs;
+				index = rhs;
 			}
 			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
 			{
 				bias = const_rhs;
-				byte_offset = lhs;
+				index = lhs;
 			}
 			else
 				break;
 
 			// DXC tends to be emit shift + or in some cases.
 			// We can turn this back into mul + add in most cases.
-			bias_is_add = binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add;
+			bias_negate = binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Sub;
+			bias_is_add =
+				binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add ||
+			    bias_negate;
 		}
 		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl)
 		{
 			if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
 			{
 				scale = const_rhs;
-				byte_offset = lhs;
+				index = lhs;
 			}
 			scale_log2 = true;
 		}
@@ -103,12 +107,12 @@ bool extract_raw_buffer_access_split(const llvm::Value *byte_offset, uint32_t ad
 			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
 			{
 				scale = const_lhs;
-				byte_offset = rhs;
+				index = rhs;
 			}
 			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
 			{
 				scale = const_rhs;
-				byte_offset = lhs;
+				index = lhs;
 			}
 			else
 				break;
@@ -120,7 +124,18 @@ bool extract_raw_buffer_access_split(const llvm::Value *byte_offset, uint32_t ad
 	}
 
 	if (!scale && !bias)
-		return false;
+	{
+		// We cannot split anything, but we might be able to vectorize if the stride alone carries us.
+		if (stride % element_size == 0)
+		{
+			split = {};
+			split.scale = stride / element_size;
+			split.dynamic_index = index;
+			return true;
+		}
+		else
+			return false;
+	}
 
 	uint64_t scale_factor = 1;
 	if (scale)
@@ -131,17 +146,22 @@ bool extract_raw_buffer_access_split(const llvm::Value *byte_offset, uint32_t ad
 	int64_t bias_factor = 0;
 	if (bias)
 		bias_factor = bias->getUniqueInteger().getSExtValue();
+	if (bias_negate)
+		bias_factor = -bias_factor;
 
 	// If there is no bit overlap between scale_factor and bias_factor
 	// then the bitwise OR is equivalent to add.
 	if (!bias_is_add && (scale_factor & bias_factor) != 0)
 		return false;
 
-	if (scale_factor % element_size == 0 && bias_factor % element_size == 0 && byte_offset)
+	scale_factor *= stride;
+	bias_factor *= stride;
+
+	if (scale_factor % element_size == 0 && bias_factor % element_size == 0 && index)
 	{
 		split.scale = scale_factor / element_size;
 		split.bias = bias_factor / int(element_size);
-		split.dynamic_index = byte_offset;
+		split.dynamic_index = index;
 		return true;
 	}
 	else
@@ -160,11 +180,35 @@ bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Ty
 
 	RawBufferAccessSplit split = {};
 	// If we achieve a successful split, we can vectorize.
-	return extract_raw_buffer_access_split(byte_offset, addr_shift_log2, vecsize, split);
+	return extract_raw_buffer_access_split(byte_offset, 1, addr_shift_log2, vecsize, split);
+}
+
+bool raw_access_structured_can_vectorize(
+	Converter::Impl &impl, const llvm::Type *type,
+	const llvm::Value *index, const llvm::Value *byte_offset,
+	unsigned stride,
+	unsigned vecsize)
+{
+	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, type);
+	unsigned element_size = (1u << addr_shift_log2) * vecsize;
+	unsigned alignment = element_size & -int(element_size);
+
+	// A hypothetical offset buffer must be able to cleanly divide by element_size.
+	// If stride aligns properly, we know we will never need offset buffers.
+	if ((stride & (impl.options.ssbo_alignment - 1)) != 0)
+	{
+		// Mostly relevant for vec3 here, where the binding alignment is smaller than element size divider.
+		if (element_size > alignment)
+			return false;
+	}
+
+	RawBufferAccessSplit split = {};
+	return extract_raw_buffer_access_split(index, stride, addr_shift_log2, vecsize, split) &&
+	       extract_raw_buffer_access_split(byte_offset, 1, addr_shift_log2, vecsize, split);
 }
 
 RawVecSize raw_access_byte_address_vectorize(
-    Converter::Impl &impl, const llvm::Type *type,
+	Converter::Impl &impl, const llvm::Type *type,
     const llvm::Value *byte_offset, uint32_t mask)
 {
 	if (mask == 0xfu && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 4))
@@ -175,6 +219,51 @@ RawVecSize raw_access_byte_address_vectorize(
 		return RawVecSize::V2;
 	else
 		return RawVecSize::V1;
+}
+
+RawVecSize raw_access_structured_vectorize(
+	Converter::Impl &impl, const llvm::Type *type,
+	const llvm::Value *index,
+	unsigned stride,
+    const llvm::Value *byte_offset,
+	uint32_t mask)
+{
+	if (mask == 0xfu && raw_access_structured_can_vectorize(impl, type, index, byte_offset, stride, 4))
+		return RawVecSize::V4;
+	else if (mask == 0x7u && raw_access_structured_can_vectorize(impl, type, index, byte_offset, stride, 3))
+		return RawVecSize::V3;
+	else if (mask == 0x3u && raw_access_structured_can_vectorize(impl, type, index, byte_offset, stride, 2))
+		return RawVecSize::V2;
+	else
+		return RawVecSize::V1;
+}
+
+static spv::Id build_accumulate_offsets(Converter::Impl &impl, const spv::Id *ids, unsigned count)
+{
+	spv::Id accumulated_id = 0;
+	for (unsigned i = 0; i < count; i++)
+	{
+		if (!ids[i])
+			continue;
+
+		if (!accumulated_id)
+		{
+			accumulated_id = ids[i];
+		}
+		else
+		{
+			auto *add_op = impl.allocate(spv::OpIAdd, impl.builder().makeUintType(32));
+			add_op->add_id(accumulated_id);
+			add_op->add_id(ids[i]);
+			impl.add(add_op);
+			accumulated_id = add_op->id;
+		}
+	}
+
+	if (!accumulated_id)
+		accumulated_id = impl.builder().makeUintConstant(0);
+
+	return accumulated_id;
 }
 
 static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
@@ -188,7 +277,7 @@ static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *off
 	spv::Id index_id;
 	RawBufferAccessSplit split = {};
 
-	if (extract_raw_buffer_access_split(offset, addr_shift_log2, vecsize, split))
+	if (extract_raw_buffer_access_split(offset, 1, addr_shift_log2, vecsize, split))
 	{
 		if (!split.dynamic_index)
 			return builder.makeUintConstant(split.bias);
@@ -232,6 +321,81 @@ static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *off
 	return index_id;
 }
 
+static spv::Id build_structured_index(Converter::Impl &impl, const llvm::Value *index,
+                                      unsigned stride,
+                                      const llvm::Value *byte_offset,
+                                      unsigned addr_shift_log2,
+                                      unsigned vecsize)
+{
+	auto &builder = impl.builder();
+	RawBufferAccessSplit stride_split = {};
+	RawBufferAccessSplit byte_split = {};
+	if (extract_raw_buffer_access_split(index, stride, addr_shift_log2, vecsize, stride_split) &&
+	    extract_raw_buffer_access_split(byte_offset, 1, addr_shift_log2, vecsize, byte_split))
+	{
+		stride_split.bias += byte_split.bias;
+		byte_split.bias = 0;
+
+		spv::Id offsets_id[3] = {};
+
+		if (stride_split.dynamic_index)
+		{
+			if (stride_split.scale != 1)
+			{
+				auto *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+				scale_op->add_id(impl.get_id_for_value(stride_split.dynamic_index));
+				scale_op->add_id(builder.makeUintConstant(stride_split.scale));
+				impl.add(scale_op);
+				offsets_id[0] = scale_op->id;
+			}
+			else
+				offsets_id[0] = impl.get_id_for_value(stride_split.dynamic_index);
+		}
+
+		if (byte_split.dynamic_index)
+		{
+			if (byte_split.scale != 1)
+			{
+				auto *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+				scale_op->add_id(builder.makeUintConstant(byte_split.scale));
+				scale_op->add_id(impl.get_id_for_value(byte_split.dynamic_index));
+				impl.add(scale_op);
+				offsets_id[1] = scale_op->id;
+			}
+			else
+				offsets_id[1] = impl.get_id_for_value(byte_split.dynamic_index);
+		}
+
+		if (stride_split.bias)
+			offsets_id[2] = builder.makeUintConstant(stride_split.bias);
+
+		// byte_split bias is folded.
+
+		return build_accumulate_offsets(impl, offsets_id, 3);
+	}
+	else
+	{
+		assert(vecsize == 1);
+		spv::Id offsets_id[2] = {};
+
+		// Do it the conservative way.
+		if (stride != (1u << addr_shift_log2))
+		{
+			auto *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+			scale_op->add_id(impl.get_id_for_value(index));
+			scale_op->add_id(builder.makeUintConstant(stride / (1u << addr_shift_log2)));
+			impl.add(scale_op);
+			offsets_id[0] = scale_op->id;
+		}
+		else
+			offsets_id[0] = impl.get_id_for_value(index);
+
+		offsets_id[1] = build_index_divider(impl, byte_offset, addr_shift_log2, 1);
+
+		return build_accumulate_offsets(impl, offsets_id, 2);
+	}
+}
+
 static bool type_is_16bit(const llvm::Type *data_type)
 {
 	return data_type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
@@ -271,9 +435,6 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	RawVecSize raw_vecsize = RawVecSize::V1;
 	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, data_type);
 
-	// Ignore access mask for now.
-	(void)access_mask;
-
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		// For raw buffers, the index is in bytes.
@@ -282,56 +443,44 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
-		index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
+		raw_vecsize = raw_access_structured_vectorize(
+			impl, data_type,
+			instruction->getOperand(2 + operand_offset),
+		    meta.stride,
+			instruction->getOperand(3 + operand_offset),
+			access_mask);
 
-		unsigned constant_offset = 0;
-		spv::Id offset_id = impl.get_id_for_value(instruction->getOperand(3 + operand_offset));
-		bool has_constant_offset = false;
-		if (llvm::isa<llvm::ConstantInt>(instruction->getOperand(3 + operand_offset)))
-		{
-			constant_offset = unsigned(llvm::cast<llvm::ConstantInt>(instruction->getOperand(3 + operand_offset))
-			                               ->getUniqueInteger()
-			                               .getZExtValue());
-			has_constant_offset = true;
-		}
-
-		if (meta.stride != (1u << addr_shift_log2))
-		{
-			Operation *op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-			op->add_ids({ index_id, builder.makeUintConstant(meta.stride >> addr_shift_log2) });
-			index_id = op->id;
-			impl.add(op);
-		}
-
-		if (has_constant_offset)
-		{
-			if (constant_offset != 0)
-			{
-				Operation *op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-				op->add_ids({ index_id, builder.makeUintConstant(constant_offset >> addr_shift_log2) });
-				index_id = op->id;
-				impl.add(op);
-			}
-		}
-		else
-		{
-			// Dynamically offset into the structured element.
-			Operation *op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
-			op->add_ids({ offset_id, builder.makeUintConstant(addr_shift_log2) });
-			offset_id = op->id;
-			impl.add(op);
-
-			op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-			op->add_ids({ index_id, offset_id });
-			index_id = op->id;
-			impl.add(op);
-		}
+		index_id = build_structured_index(
+			impl,
+			instruction->getOperand(2 + operand_offset),
+			meta.stride,
+			instruction->getOperand(3 + operand_offset),
+			addr_shift_log2,
+			raw_vecsize_to_vecsize(raw_vecsize));
 	}
 	else
 		index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
 
 	if (index_offset_id)
 	{
+		unsigned vectorized_addr_shift_log2 = addr_shift_log2;
+
+		switch (raw_vecsize)
+		{
+		case RawVecSize::V2:
+			vectorized_addr_shift_log2 += 1;
+			break;
+
+		case RawVecSize::V4:
+			vectorized_addr_shift_log2 += 2;
+			break;
+
+		default:
+			// If we need offset buffers, we should never hit this case.
+			assert(raw_vecsize != RawVecSize::V3);
+			break;
+		}
+
 		// Need to shift the offset buffer last minute instead.
 		if (meta.aliased)
 		{
@@ -340,7 +489,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 			shift_op->add_id(index_offset_id);
 
 			spv::Id shamt[2];
-			shamt[0] = shamt[1] = builder.makeUintConstant(addr_shift_log2);
+			shamt[0] = shamt[1] = builder.makeUintConstant(vectorized_addr_shift_log2);
 			spv::Id const_vec = impl.build_constant_vector(builder.makeUintType(32), shamt, 2);
 
 			shift_op->add_id(const_vec);
@@ -377,8 +526,14 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 
 		Operation *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
 
-		const uint32_t oob_index = meta.kind == DXIL::ResourceKind::TypedBuffer ?
-		                           0xffffffffu : ((0xffffffffu >> addr_shift_log2) - 3u);
+		uint32_t oob_index;
+		if (meta.kind == DXIL::ResourceKind::TypedBuffer)
+			oob_index = 0xffffffffu;
+		else if (raw_vecsize != RawVecSize::V1)
+			oob_index = 0xffffffffu >> vectorized_addr_shift_log2;
+		else
+			oob_index = (0xffffffffu >> addr_shift_log2) - 3u;
+
 		select_op->add_ids({ compare_op->id, add_op->id, builder.makeUintConstant(oob_index) });
 		impl.add(select_op);
 

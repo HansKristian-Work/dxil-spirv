@@ -14,7 +14,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 21
+; Bound: 20
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -34,19 +34,18 @@ OpDecorate %11 BuiltIn LocalInvocationIndex
 %8 = OpVariable %7 UniformConstant
 %10 = OpTypePointer Input %5
 %11 = OpVariable %10 Input
-%13 = OpConstant %5 0
-%14 = OpTypeFloat 32
-%15 = OpConstant %14 10
-%17 = OpTypeVector %5 4
+%13 = OpTypeFloat 32
+%14 = OpConstant %13 10
+%16 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %19
-%19 = OpLabel
+OpBranch %18
+%18 = OpLabel
 %9 = OpLoad %6 %8
 %12 = OpLoad %5 %11
-%16 = OpBitcast %5 %15
-%18 = OpCompositeConstruct %17 %16 %16 %16 %16
-OpImageWrite %9 %12 %18
+%15 = OpBitcast %5 %14
+%17 = OpCompositeConstruct %16 %15 %15 %15 %15
+OpImageWrite %9 %12 %17
 OpReturn
 OpFunctionEnd
 #endif

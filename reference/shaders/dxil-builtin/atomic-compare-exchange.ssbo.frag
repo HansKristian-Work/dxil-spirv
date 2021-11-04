@@ -33,9 +33,9 @@ void main()
     uint _88 = imageAtomicCompSwap(_23, int(TEXCOORD.x), 20u, 30u);
     int _92 = imageAtomicCompSwap(_27, int(TEXCOORD.x), int(20u), int(30u));
     int _99 = imageAtomicCompSwap(_30, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(20u), int(30u));
-    uint _110 = atomicCompSwap(_34._m0[(TEXCOORD.x * 4u) + 2u], 20u, 30u);
-    uint _114 = atomicCompSwap(_38._m0[TEXCOORD.x], 20u, 30u);
-    SV_Target = (((((((((_70 + _64) + _74) + _78) + _82) + _85) + _88) + uint(_92)) + uint(_99)) + _110) + _114;
+    uint _109 = atomicCompSwap(_34._m0[(TEXCOORD.x * 4u) + 2u], 20u, 30u);
+    uint _113 = atomicCompSwap(_38._m0[TEXCOORD.x], 20u, 30u);
+    SV_Target = (((((((((_70 + _64) + _74) + _78) + _82) + _85) + _88) + uint(_92)) + uint(_99)) + _109) + _113;
 }
 
 
@@ -44,7 +44,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 118
+; Bound: 117
 ; Schema: 0
 OpCapability Shader
 OpCapability Image1D
@@ -136,13 +136,12 @@ OpDecorate %43 Location 0
 %66 = OpConstant %5 30
 %67 = OpTypeVector %5 2
 %90 = OpTypePointer Image %24
-%104 = OpConstant %5 8
-%106 = OpConstant %5 4
-%108 = OpTypePointer StorageBuffer %5
+%105 = OpConstant %5 4
+%107 = OpTypePointer StorageBuffer %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %116
-%116 = OpLabel
+OpBranch %115
+%115 = OpLabel
 %44 = OpLoad %28 %30
 %45 = OpLoad %25 %27
 %46 = OpLoad %21 %23
@@ -194,16 +193,16 @@ OpBranch %116
 %99 = OpAtomicCompareExchange %24 %98 %57 %54 %54 %101 %100
 %102 = OpBitcast %5 %99
 %103 = OpIAdd %5 %96 %102
-%105 = OpIMul %5 %55 %106
-%107 = OpIAdd %5 %105 %60
-%109 = OpAccessChain %108 %34 %54 %107
-%110 = OpAtomicCompareExchange %5 %109 %57 %54 %54 %66 %65
-%111 = OpIAdd %5 %103 %110
-%112 = OpShiftLeftLogical %5 %55 %60
-%113 = OpAccessChain %108 %38 %54 %55
-%114 = OpAtomicCompareExchange %5 %113 %57 %54 %54 %66 %65
-%115 = OpIAdd %5 %111 %114
-OpStore %43 %115
+%104 = OpIMul %5 %55 %105
+%106 = OpIAdd %5 %104 %60
+%108 = OpAccessChain %107 %34 %54 %106
+%109 = OpAtomicCompareExchange %5 %108 %57 %54 %54 %66 %65
+%110 = OpIAdd %5 %103 %109
+%111 = OpShiftLeftLogical %5 %55 %60
+%112 = OpAccessChain %107 %38 %54 %55
+%113 = OpAtomicCompareExchange %5 %112 %57 %54 %54 %66 %65
+%114 = OpIAdd %5 %110 %113
+OpStore %43 %114
 OpReturn
 OpFunctionEnd
 #endif
