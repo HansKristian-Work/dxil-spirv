@@ -211,7 +211,9 @@ enum class Option : uint32_t
 	MinPrecisionNative16Bit = 16,
 	ShaderI8Dot = 17,
 	ShaderRayTracingPrimitiveCulling = 18,
-	InvariantPosition = 19
+	InvariantPosition = 19,
+	ScalarBlockLayout = 20,
+	Count
 };
 
 enum class ResourceClass : uint32_t
@@ -424,6 +426,17 @@ struct OptionInvariantPosition : OptionBase
 	}
 
 	bool enabled = false;
+};
+
+struct OptionScalarBlockLayout : OptionBase
+{
+	OptionScalarBlockLayout()
+		: OptionBase(Option::ScalarBlockLayout)
+	{
+	}
+
+	bool supported = false;
+	bool supports_per_component_robustness = false;
 };
 
 struct DescriptorTableEntry

@@ -872,6 +872,12 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &invariant.base);
 	}
 
+	{
+		const dxil_spv_option_scalar_block_layout scalar = { { DXIL_SPV_OPTION_SCALAR_BLOCK_LAYOUT },
+			                                                 DXIL_SPV_TRUE, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &scalar.base);
+	}
+
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 
 	unsigned num_entry_points = 1;

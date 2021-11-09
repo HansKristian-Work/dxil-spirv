@@ -172,6 +172,13 @@ bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Ty
                                            const llvm::Value *byte_offset,
                                            unsigned vecsize)
 {
+	// vec3 vectorization requires scalar block layout always.
+	// For byte address buffers, robustness must be checked per component, and a vectorized vec3 load
+	// can straddle the boundary. If the hardware is known not to support per-component robustness correctly,
+	// avoid vectorizing this case.
+	if ((!impl.options.scalar_block_layout || !impl.options.supports_per_component_robustness) && vecsize == 3)
+		return false;
+
 	// The rules for raw BAB vectorization are pretty simple.
 	// If the offset % element_size == 0, we can translate that load to a clean vectorized load-store.
 	// vec3 is the special case due to robustness, but robustness2 will generally have 16 byte alignment here,
@@ -189,6 +196,10 @@ bool raw_access_structured_can_vectorize(
 	unsigned stride,
 	unsigned vecsize)
 {
+	// vec3 vectorization requires scalar block layout always.
+	if (!impl.options.scalar_block_layout && vecsize == 3)
+		return false;
+
 	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, type);
 	unsigned element_size = (1u << addr_shift_log2) * vecsize;
 	unsigned alignment = element_size & -int(element_size);

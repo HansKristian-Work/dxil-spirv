@@ -489,6 +489,8 @@ struct Converter::Impl
 		bool shader_i8_dot_enabled = false;
 		bool ray_tracing_primitive_culling_enabled = false;
 		bool invariant_position = false;
+		bool scalar_block_layout = false;
+		bool supports_per_component_robustness = false;
 	} options;
 
 	struct BindlessInfo

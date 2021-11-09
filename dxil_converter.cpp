@@ -5665,6 +5665,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.invariant_position = static_cast<const OptionInvariantPosition &>(cap).enabled;
 		break;
 
+	case Option::ScalarBlockLayout:
+		options.scalar_block_layout =
+		    static_cast<const OptionScalarBlockLayout &>(cap).supported;
+		options.supports_per_component_robustness =
+		    static_cast<const OptionScalarBlockLayout &>(cap).supports_per_component_robustness;
+		break;
+
 	default:
 		break;
 	}
@@ -5693,32 +5700,7 @@ void Converter::add_option(const OptionBase &cap)
 
 bool Converter::recognizes_option(Option cap)
 {
-	switch (cap)
-	{
-	case Option::ShaderDemoteToHelper:
-	case Option::DualSourceBlending:
-	case Option::OutputSwizzle:
-	case Option::RasterizerSampleCount:
-	case Option::RootConstantInlineUniformBlock:
-	case Option::BindlessCBVSSBOEmulation:
-	case Option::PhysicalStorageBuffer:
-	case Option::SBTDescriptorSizeLog2:
-	case Option::SSBOAlignment:
-	case Option::TypedUAVReadWithoutFormat:
-	case Option::ShaderSourceFile:
-	case Option::BindlessTypedBufferOffsets:
-	case Option::BindlessOffsetBufferLayout:
-	case Option::StorageInputOutput16:
-	case Option::DescriptorQA:
-	case Option::MinPrecisionNative16Bit:
-	case Option::ShaderI8Dot:
-	case Option::ShaderRayTracingPrimitiveCulling:
-	case Option::InvariantPosition:
-		return true;
-
-	default:
-		return false;
-	}
+	return unsigned(cap) < unsigned(Option::Count);
 }
 
 void Converter::set_entry_point(const char *entry)
