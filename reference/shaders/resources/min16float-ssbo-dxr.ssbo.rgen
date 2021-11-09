@@ -13,17 +13,12 @@
 
 layout(set = 0, binding = 0, std430) writeonly buffer SSBO
 {
-    uint _m0[];
-} BUF;
-
-layout(set = 0, binding = 0, std430) writeonly buffer SSBO_16bit
-{
     uint16_t _m0[];
-} BUF_1;
+} BUF;
 
 void main()
 {
-    BUF_1._m0[gl_LaunchIDEXT.x] = float16BitsToUint16(float16_t(20.0));
+    BUF._m0[gl_LaunchIDEXT.x] = float16BitsToUint16(float16_t(20.0));
 }
 
 
@@ -32,7 +27,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 29
+; Bound: 25
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -50,56 +45,42 @@ OpCapability StorageImageArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %9 %14 %17
+OpEntryPoint RayGenerationNV %3 "main" %9 %13
 OpName %3 "main"
 OpName %7 "SSBO"
 OpName %9 "BUF"
-OpName %12 "SSBO_16bit"
-OpName %14 "BUF"
-OpDecorate %6 ArrayStride 4
+OpDecorate %6 ArrayStride 2
 OpMemberDecorate %7 0 Offset 0
 OpDecorate %7 Block
-OpDecorate %11 ArrayStride 2
-OpMemberDecorate %12 0 Offset 0
-OpDecorate %12 Block
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
 OpDecorate %9 NonReadable
-OpDecorate %9 Aliased
-OpDecorate %14 DescriptorSet 0
-OpDecorate %14 Binding 0
-OpDecorate %14 NonReadable
-OpDecorate %14 Aliased
-OpDecorate %17 BuiltIn LaunchIdNV
+OpDecorate %13 BuiltIn LaunchIdNV
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
+%5 = OpTypeInt 16 0
 %6 = OpTypeRuntimeArray %5
 %7 = OpTypeStruct %6
 %8 = OpTypePointer StorageBuffer %7
 %9 = OpVariable %8 StorageBuffer
-%10 = OpTypeInt 16 0
-%11 = OpTypeRuntimeArray %10
-%12 = OpTypeStruct %11
-%13 = OpTypePointer StorageBuffer %12
-%14 = OpVariable %13 StorageBuffer
-%15 = OpTypeVector %5 3
-%16 = OpTypePointer Input %15
-%17 = OpVariable %16 Input
-%18 = OpTypePointer Input %5
-%20 = OpConstant %5 0
-%22 = OpTypeFloat 16
-%23 = OpConstant %22 0x1.4p+4
-%25 = OpTypePointer StorageBuffer %10
+%10 = OpTypeInt 32 0
+%11 = OpTypeVector %10 3
+%12 = OpTypePointer Input %11
+%13 = OpVariable %12 Input
+%14 = OpTypePointer Input %10
+%16 = OpConstant %10 0
+%18 = OpTypeFloat 16
+%19 = OpConstant %18 0x1.4p+4
+%21 = OpTypePointer StorageBuffer %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %27
-%27 = OpLabel
-%19 = OpAccessChain %18 %17 %20
-%21 = OpLoad %5 %19
-%24 = OpBitcast %10 %23
-%26 = OpAccessChain %25 %14 %20 %21
-OpStore %26 %24
+OpBranch %23
+%23 = OpLabel
+%15 = OpAccessChain %14 %13 %16
+%17 = OpLoad %10 %15
+%20 = OpBitcast %5 %19
+%22 = OpAccessChain %21 %9 %16 %17
+OpStore %22 %20
 OpReturn
 OpFunctionEnd
 #endif

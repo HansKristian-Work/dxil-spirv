@@ -52,8 +52,9 @@ static bool validate_spirv(const void *code, size_t size)
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
-
-	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t));
+	spvtools::ValidatorOptions opts;
+	opts.SetScalarBlockLayout(true);
+	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), opts);
 }
 
 static std::string convert_to_glsl(const void *code, size_t size)
@@ -869,6 +870,12 @@ int main(int argc, char **argv)
 		const dxil_spv_option_invariant_position invariant = { { DXIL_SPV_OPTION_INVARIANT_POSITION },
 		                                                       args.invariant_position ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &invariant.base);
+	}
+
+	{
+		const dxil_spv_option_scalar_block_layout scalar = { { DXIL_SPV_OPTION_SCALAR_BLOCK_LAYOUT },
+			                                                 DXIL_SPV_TRUE, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &scalar.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

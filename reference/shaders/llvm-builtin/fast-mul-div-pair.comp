@@ -6,19 +6,19 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _11;
 
 void main()
 {
-    float _20 = uintBitsToFloat(texelFetch(_8, int(1u)).x);
-    float _24 = uintBitsToFloat(texelFetch(_8, int(2u)).x);
-    imageStore(_11, int(0u), uvec4(floatBitsToUint(_24)));
+    float _19 = uintBitsToFloat(texelFetch(_8, int(1u)).x);
+    float _23 = uintBitsToFloat(texelFetch(_8, int(2u)).x);
+    imageStore(_11, int(0u), uvec4(floatBitsToUint(_23)));
     float _31 = uintBitsToFloat(texelFetch(_8, int(3u)).x);
     imageStore(_11, int(1u), uvec4(floatBitsToUint(_31)));
-    imageStore(_11, int(2u), uvec4(floatBitsToUint(_20 / (uintBitsToFloat(texelFetch(_8, int(4u)).x) * _20))));
-    imageStore(_11, int(3u), uvec4(floatBitsToUint(_20 / (uintBitsToFloat(texelFetch(_8, int(5u)).x) * _20))));
+    imageStore(_11, int(2u), uvec4(floatBitsToUint(_19 / (uintBitsToFloat(texelFetch(_8, int(4u)).x) * _19))));
+    imageStore(_11, int(3u), uvec4(floatBitsToUint(_19 / (uintBitsToFloat(texelFetch(_8, int(5u)).x) * _19))));
     float _54 = uintBitsToFloat(texelFetch(_8, int(6u)).x);
     imageStore(_11, int(4u), uvec4(floatBitsToUint(_54)));
     float _61 = uintBitsToFloat(texelFetch(_8, int(7u)).x);
     imageStore(_11, int(5u), uvec4(floatBitsToUint(_61)));
-    imageStore(_11, int(6u), uvec4(floatBitsToUint((_20 / uintBitsToFloat(texelFetch(_8, int(8u)).x)) * _20)));
-    imageStore(_11, int(7u), uvec4(floatBitsToUint((_20 / uintBitsToFloat(texelFetch(_8, int(9u)).x)) * _20)));
+    imageStore(_11, int(6u), uvec4(floatBitsToUint((_19 / uintBitsToFloat(texelFetch(_8, int(8u)).x)) * _19)));
+    imageStore(_11, int(7u), uvec4(floatBitsToUint((_19 / uintBitsToFloat(texelFetch(_8, int(9u)).x)) * _19)));
 }
 
 
@@ -51,10 +51,10 @@ OpDecorate %11 NonReadable
 %10 = OpTypePointer UniformConstant %9
 %11 = OpVariable %10 UniformConstant
 %14 = OpConstant %5 1
-%15 = OpConstant %5 0
-%16 = OpTypeVector %5 4
-%19 = OpTypeFloat 32
-%21 = OpConstant %5 2
+%15 = OpTypeVector %5 4
+%18 = OpTypeFloat 32
+%20 = OpConstant %5 2
+%25 = OpConstant %5 0
 %28 = OpConstant %5 3
 %35 = OpConstant %5 4
 %43 = OpConstant %5 5
@@ -68,68 +68,68 @@ OpBranch %81
 %81 = OpLabel
 %12 = OpLoad %9 %11
 %13 = OpLoad %6 %8
-%17 = OpImageFetch %16 %13 %14
-%18 = OpCompositeExtract %5 %17 0
-%20 = OpBitcast %19 %18
-%22 = OpImageFetch %16 %13 %21
-%23 = OpCompositeExtract %5 %22 0
-%24 = OpBitcast %19 %23
-%25 = OpFMul %19 %24 %20
-%26 = OpBitcast %5 %24
-%27 = OpCompositeConstruct %16 %26 %26 %26 %26
-OpImageWrite %12 %15 %27
-%29 = OpImageFetch %16 %13 %28
+%16 = OpImageFetch %15 %13 %14
+%17 = OpCompositeExtract %5 %16 0
+%19 = OpBitcast %18 %17
+%21 = OpImageFetch %15 %13 %20
+%22 = OpCompositeExtract %5 %21 0
+%23 = OpBitcast %18 %22
+%24 = OpFMul %18 %23 %19
+%26 = OpBitcast %5 %23
+%27 = OpCompositeConstruct %15 %26 %26 %26 %26
+OpImageWrite %12 %25 %27
+%29 = OpImageFetch %15 %13 %28
 %30 = OpCompositeExtract %5 %29 0
-%31 = OpBitcast %19 %30
-%32 = OpFMul %19 %31 %20
+%31 = OpBitcast %18 %30
+%32 = OpFMul %18 %31 %19
 %33 = OpBitcast %5 %31
-%34 = OpCompositeConstruct %16 %33 %33 %33 %33
+%34 = OpCompositeConstruct %15 %33 %33 %33 %33
 OpImageWrite %12 %14 %34
-%36 = OpImageFetch %16 %13 %35
+%36 = OpImageFetch %15 %13 %35
 %37 = OpCompositeExtract %5 %36 0
-%38 = OpBitcast %19 %37
-%39 = OpFMul %19 %38 %20
-%40 = OpFDiv %19 %20 %39
+%38 = OpBitcast %18 %37
+%39 = OpFMul %18 %38 %19
+%40 = OpFDiv %18 %19 %39
 %41 = OpBitcast %5 %40
-%42 = OpCompositeConstruct %16 %41 %41 %41 %41
-OpImageWrite %12 %21 %42
-%44 = OpImageFetch %16 %13 %43
+%42 = OpCompositeConstruct %15 %41 %41 %41 %41
+OpImageWrite %12 %20 %42
+%44 = OpImageFetch %15 %13 %43
 %45 = OpCompositeExtract %5 %44 0
-%46 = OpBitcast %19 %45
-%47 = OpFMul %19 %46 %20
-%48 = OpFDiv %19 %20 %47
+%46 = OpBitcast %18 %45
+%47 = OpFMul %18 %46 %19
+%48 = OpFDiv %18 %19 %47
 %49 = OpBitcast %5 %48
-%50 = OpCompositeConstruct %16 %49 %49 %49 %49
+%50 = OpCompositeConstruct %15 %49 %49 %49 %49
 OpImageWrite %12 %28 %50
-%52 = OpImageFetch %16 %13 %51
+%52 = OpImageFetch %15 %13 %51
 %53 = OpCompositeExtract %5 %52 0
-%54 = OpBitcast %19 %53
-%55 = OpFDiv %19 %54 %20
+%54 = OpBitcast %18 %53
+%55 = OpFDiv %18 %54 %19
 %56 = OpBitcast %5 %54
-%57 = OpCompositeConstruct %16 %56 %56 %56 %56
+%57 = OpCompositeConstruct %15 %56 %56 %56 %56
 OpImageWrite %12 %35 %57
-%59 = OpImageFetch %16 %13 %58
+%59 = OpImageFetch %15 %13 %58
 %60 = OpCompositeExtract %5 %59 0
-%61 = OpBitcast %19 %60
-%62 = OpFDiv %19 %61 %20
+%61 = OpBitcast %18 %60
+%62 = OpFDiv %18 %61 %19
 %63 = OpBitcast %5 %61
-%64 = OpCompositeConstruct %16 %63 %63 %63 %63
+%64 = OpCompositeConstruct %15 %63 %63 %63 %63
 OpImageWrite %12 %43 %64
-%66 = OpImageFetch %16 %13 %65
+%66 = OpImageFetch %15 %13 %65
 %67 = OpCompositeExtract %5 %66 0
-%68 = OpBitcast %19 %67
-%69 = OpFDiv %19 %20 %68
-%70 = OpFMul %19 %69 %20
+%68 = OpBitcast %18 %67
+%69 = OpFDiv %18 %19 %68
+%70 = OpFMul %18 %69 %19
 %71 = OpBitcast %5 %70
-%72 = OpCompositeConstruct %16 %71 %71 %71 %71
+%72 = OpCompositeConstruct %15 %71 %71 %71 %71
 OpImageWrite %12 %51 %72
-%74 = OpImageFetch %16 %13 %73
+%74 = OpImageFetch %15 %13 %73
 %75 = OpCompositeExtract %5 %74 0
-%76 = OpBitcast %19 %75
-%77 = OpFDiv %19 %20 %76
-%78 = OpFMul %19 %77 %20
+%76 = OpBitcast %18 %75
+%77 = OpFDiv %18 %19 %76
+%78 = OpFMul %18 %77 %19
 %79 = OpBitcast %5 %78
-%80 = OpCompositeConstruct %16 %79 %79 %79 %79
+%80 = OpCompositeConstruct %15 %79 %79 %79 %79
 OpImageWrite %12 %58 %80
 OpReturn
 OpFunctionEnd

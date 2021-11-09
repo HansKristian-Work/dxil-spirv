@@ -359,20 +359,54 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	return global_dispatcher.builder_lut[opcode](impl, instruction);
 }
 
-static void update_access_tracking_from_type(Converter::Impl::AccessTracking &tracking,
-                                             const llvm::Type *type)
+static void update_raw_access_tracking_from_vector_type(Converter::Impl::AccessTracking &tracking,
+                                                        const llvm::Type *type, RawVecSize vec_size)
 {
 	if (type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-		tracking.access_16bit = true;
+		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B16)][unsigned(vec_size)] = true;
+	else if (type->getTypeID() == llvm::Type::TypeID::FloatTyID)
+		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B32)][unsigned(vec_size)] = true;
 	else if (type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
-		tracking.access_64bit = true;
+		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B64)][unsigned(vec_size)] = true;
 	else if (type->getTypeID() == llvm::Type::TypeID::IntegerTyID)
 	{
 		if (type->getIntegerBitWidth() == 16)
-			tracking.access_16bit = true;
+			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B16)][unsigned(vec_size)] = true;
+		else if (type->getIntegerBitWidth() == 32)
+			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B32)][unsigned(vec_size)] = true;
 		else if (type->getIntegerBitWidth() == 64)
-			tracking.access_64bit = true;
+			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B64)][unsigned(vec_size)] = true;
 	}
+}
+
+static void update_raw_access_tracking_from_scalar_type(Converter::Impl::AccessTracking &tracking,
+                                                        const llvm::Type *type)
+{
+	update_raw_access_tracking_from_vector_type(tracking, type, RawVecSize::V1);
+}
+
+static void update_raw_access_tracking_for_byte_address(
+	Converter::Impl &impl,
+	Converter::Impl::AccessTracking &tracking,
+	const llvm::Type *type,
+	const llvm::Value *byte_offset,
+	uint32_t mask)
+{
+	auto vec = raw_access_byte_address_vectorize(impl, type, byte_offset, mask);
+	update_raw_access_tracking_from_vector_type(tracking, type, vec);
+}
+
+static void update_raw_access_tracking_for_structured(
+	Converter::Impl &impl,
+	Converter::Impl::AccessTracking &tracking,
+	const llvm::Type *type,
+	const llvm::Value *index,
+	unsigned stride,
+	const llvm::Value *byte_offset,
+	uint32_t mask)
+{
+	auto vec = raw_access_structured_vectorize(impl, type, index, stride, byte_offset, mask);
+	update_raw_access_tracking_from_vector_type(tracking, type, vec);
 }
 
 static void analyze_descriptor_handle_sink(Converter::Impl &impl,
@@ -410,7 +444,190 @@ static void analyze_descriptor_handle_sink(Converter::Impl &impl,
 	}
 }
 
-bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb)
+static Converter::Impl::RawBufferMeta
+get_resource_meta_from_buffer_op(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto itr = impl.llvm_value_to_srv_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_srv_resource_index_map.end())
+		return impl.get_raw_buffer_meta(DXIL::ResourceType::SRV, itr->second);
+
+	itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		return impl.get_raw_buffer_meta(DXIL::ResourceType::UAV, itr->second);
+
+	auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+	if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+		return { annotate_itr->second.resource_kind, annotate_itr->second.stride };
+
+	LOGE("No resource?\n");
+	return { DXIL::ResourceKind::Invalid, 0 };
+}
+
+static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode)
+{
+	Converter::Impl::AccessTracking *tracking = nullptr;
+
+	// In DXIL, whether or not an opcode is sparse depends on if the 4th argument is statically used by SSA ...
+	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		tracking = &impl.uav_access_tracking[itr->second];
+
+	if (!tracking)
+	{
+		itr = impl.llvm_value_to_srv_resource_index_map.find(instruction->getOperand(1));
+		if (itr != impl.llvm_value_to_srv_resource_index_map.end())
+			tracking = &impl.srv_access_tracking[itr->second];
+	}
+
+	if (!tracking)
+	{
+		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+			tracking = &annotate_itr->second.tracking;
+	}
+
+	if (tracking)
+	{
+		tracking->has_read = true;
+
+		if (opcode != DXIL::Op::TextureLoad)
+		{
+			auto meta = get_resource_meta_from_buffer_op(impl, instruction);
+
+			uint32_t access_mask = 0;
+			auto composite_itr = impl.llvm_composite_meta.find(instruction);
+			if (composite_itr != impl.llvm_composite_meta.end())
+				access_mask = composite_itr->second.access_mask & 0xfu;
+
+			// Smear read masks.
+			access_mask |= access_mask >> 1u;
+			access_mask |= access_mask >> 2u;
+
+			if (meta.kind == DXIL::ResourceKind::RawBuffer)
+			{
+				update_raw_access_tracking_for_byte_address(impl, *tracking,
+				                                            instruction->getType()->getStructElementType(0),
+				                                            instruction->getOperand(2), access_mask);
+			}
+			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+			{
+				update_raw_access_tracking_for_structured(impl, *tracking,
+				                                          instruction->getType()->getStructElementType(0),
+				                                          instruction->getOperand(2),
+				                                          meta.stride,
+				                                          instruction->getOperand(3),
+				                                          access_mask);
+			}
+		}
+	}
+}
+
+static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode)
+{
+	Converter::Impl::AccessTracking *tracking = nullptr;
+
+	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		tracking = &impl.uav_access_tracking[itr->second];
+
+	if (!tracking)
+	{
+		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+			tracking = &annotate_itr->second.tracking;
+	}
+
+	if (tracking)
+	{
+		tracking->has_written = true;
+		if (opcode != DXIL::Op::TextureStore)
+		{
+			auto meta = get_resource_meta_from_buffer_op(impl, instruction);
+
+			if (meta.kind == DXIL::ResourceKind::RawBuffer)
+			{
+				unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+				update_raw_access_tracking_for_byte_address(impl, *tracking,
+				                                            instruction->getOperand(4)->getType(),
+				                                            instruction->getOperand(2), mask);
+			}
+			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+			{
+				unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+				update_raw_access_tracking_for_structured(impl, *tracking,
+				                                          instruction->getOperand(4)->getType(),
+				                                          instruction->getOperand(2),
+				                                          meta.stride,
+				                                          instruction->getOperand(3),
+				                                          mask);
+			}
+		}
+		impl.shader_analysis.has_side_effects = true;
+	}
+}
+
+static void analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	Converter::Impl::AccessTracking *tracking = nullptr;
+
+	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		tracking = &impl.uav_access_tracking[itr->second];
+
+	auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+	if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+		tracking = &annotate_itr->second.tracking;
+
+	if (tracking)
+	{
+		tracking->has_read = true;
+		tracking->has_written = true;
+		tracking->has_atomic = true;
+		if (instruction->getType()->getIntegerBitWidth() == 64)
+			tracking->has_atomic_64bit = true;
+
+		auto meta = get_resource_meta_from_buffer_op(impl, instruction);
+		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
+			update_raw_access_tracking_from_scalar_type(*tracking, instruction->getType());
+
+		impl.shader_analysis.has_side_effects = true;
+	}
+}
+
+bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	// The opcode is encoded as a constant integer.
+	uint32_t opcode;
+	if (!get_constant_operand(instruction, 0, &opcode))
+		return false;
+
+	auto op = static_cast<DXIL::Op>(opcode);
+
+	switch (op)
+	{
+	case DXIL::Op::BufferLoad:
+	case DXIL::Op::RawBufferLoad:
+		analyze_dxil_buffer_load(impl, instruction, op);
+		break;
+
+	case DXIL::Op::AtomicCompareExchange:
+	case DXIL::Op::AtomicBinOp:
+		analyze_dxil_atomic_op(impl, instruction);
+		break;
+
+	case DXIL::Op::BufferStore:
+	case DXIL::Op::RawBufferStore:
+		analyze_dxil_buffer_store(impl, instruction, op);
+		break;
+
+	default:
+		break;
+	}
+
+	return true;
+}
+
+bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb)
 {
 	// The opcode is encoded as a constant integer.
 	uint32_t opcode;
@@ -420,7 +637,9 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
 		analyze_descriptor_handle_sink(impl, instruction, bb);
 
-	switch (static_cast<DXIL::Op>(opcode))
+	auto op = static_cast<DXIL::Op>(opcode);
+
+	switch (op)
 	{
 	case DXIL::Op::CreateHandle:
 	{
@@ -524,96 +743,13 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
-	case DXIL::Op::BufferLoad:
 	case DXIL::Op::TextureLoad:
-	case DXIL::Op::RawBufferLoad:
-	{
-		const auto update_node = [&](Converter::Impl::AccessTracking &node) {
-			node.has_read = true;
-			update_access_tracking_from_type(node, instruction->getType()->getStructElementType(0));
-		};
-
-		// In DXIL, whether or not an opcode is sparse depends on if the 4th argument is statically used by SSA ...
-		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
-		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
-		{
-			auto &node = impl.uav_access_tracking[itr->second];
-			update_node(node);
-		}
-
-		itr = impl.llvm_value_to_srv_resource_index_map.find(instruction->getOperand(1));
-		if (itr != impl.llvm_value_to_srv_resource_index_map.end())
-		{
-			auto &node = impl.srv_access_tracking[itr->second];
-			update_node(node);
-		}
-
-		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
-		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
-		{
-			auto &node = annotate_itr->second.tracking;
-			update_node(node);
-		}
-
+		analyze_dxil_buffer_load(impl, instruction, op);
 		break;
-	}
 
-	case DXIL::Op::AtomicCompareExchange:
-	case DXIL::Op::AtomicBinOp:
-	{
-		const auto update_node = [&](Converter::Impl::AccessTracking &node) {
-			node.has_read = true;
-			node.has_written = true;
-			node.has_atomic = true;
-			if (instruction->getType()->getIntegerBitWidth() == 64)
-				node.has_atomic_64bit = true;
-			update_access_tracking_from_type(node, instruction->getType());
-			impl.shader_analysis.has_side_effects = true;
-		};
-
-		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
-		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
-		{
-			auto &node = impl.uav_access_tracking[itr->second];
-			update_node(node);
-		}
-
-		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
-		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
-		{
-			auto &node = annotate_itr->second.tracking;
-			update_node(node);
-		}
-
-		break;
-	}
-
-	case DXIL::Op::BufferStore:
 	case DXIL::Op::TextureStore:
-	case DXIL::Op::RawBufferStore:
-	{
-		const auto update_node = [&](Converter::Impl::AccessTracking &node) {
-			node.has_written = true;
-			update_access_tracking_from_type(node, instruction->getOperand(4)->getType());
-			impl.shader_analysis.has_side_effects = true;
-		};
-
-		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
-		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
-		{
-			auto &node = impl.uav_access_tracking[itr->second];
-			update_node(node);
-		}
-
-		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
-		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
-		{
-			auto &node = annotate_itr->second.tracking;
-			update_node(node);
-		}
-
+		analyze_dxil_buffer_store(impl, instruction, op);
 		break;
-	}
 
 	case DXIL::Op::BufferUpdateCounter:
 	{

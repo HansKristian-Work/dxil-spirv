@@ -488,6 +488,8 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	spv::Id image_type_id = impl.get_type_id(image_id);
 	auto &meta = impl.handle_to_resource_meta[image_id];
 
+	uint32_t ssbo_element_size = 4;
+
 	Operation *dimensions_op = nullptr;
 	auto &access_meta = impl.llvm_composite_meta[instruction];
 	uint32_t num_coords = 0;
@@ -505,9 +507,13 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		else
 		{
 			dimensions_op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
-			dimensions_op->add_id(meta.var_id_16bit ? meta.var_id_16bit : image_id);
+			dimensions_op->add_id(image_id);
 			dimensions_op->add_literal(0);
 		}
+
+		ssbo_element_size = raw_vecsize_to_vecsize(meta.raw_component_vecsize) *
+		                    raw_component_type_to_bits(meta.component_type) / 8;
+
 		impl.add(dimensions_op);
 		num_coords = 1;
 	}
@@ -547,7 +553,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		Operation *byte_size_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-		byte_size_op->add_ids({ dimensions_op->id, builder.makeUintConstant(4) });
+		byte_size_op->add_ids({ dimensions_op->id, builder.makeUintConstant(ssbo_element_size) });
 		impl.add(byte_size_op);
 		dimensions_op = byte_size_op;
 	}
@@ -558,19 +564,13 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		if (meta.index_offset_id != 0)
 		{
 			// If the offset buffer is pre-shifted, shift the divider as well.
-			if (meta.var_id_16bit == 0)
-				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / 4) });
+			if (!meta.aliased)
+				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / ssbo_element_size) });
 			else
 				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride) });
 		}
 		else
-		{
-			// If we have a 16-bit buffer, we should use that as the basis for size computation.
-			if (meta.var_id_16bit != 0)
-				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / 2) });
-			else
-				elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / 4) });
-		}
+			elem_count_op->add_ids({ dimensions_op->id, builder.makeUintConstant(meta.stride / ssbo_element_size) });
 
 		impl.add(elem_count_op);
 		dimensions_op = elem_count_op;

@@ -70,8 +70,8 @@ OpDecorate %18 Location 0
 %16 = OpVariable %15 Input
 %17 = OpTypePointer Output %14
 %18 = OpVariable %17 Output
-%21 = OpConstant %5 0
-%22 = OpTypePointer StorageBuffer %5
+%21 = OpTypePointer StorageBuffer %5
+%23 = OpConstant %5 0
 %25 = OpTypeFloat 32
 %28 = OpConstant %5 1
 %35 = OpConstant %5 10
@@ -81,16 +81,16 @@ OpBranch %37
 %37 = OpLabel
 %19 = OpLoad %14 %16
 %20 = OpBitcast %5 %19
-%23 = OpAccessChain %22 %9 %21 %20
-%24 = OpLoad %5 %23
+%22 = OpAccessChain %21 %9 %23 %20
+%24 = OpLoad %5 %22
 %26 = OpBitcast %25 %24
 %27 = OpIAdd %5 %20 %28
-%29 = OpAccessChain %22 %9 %21 %27
+%29 = OpAccessChain %21 %9 %23 %27
 %30 = OpLoad %5 %29
 %31 = OpBitcast %25 %30
 %32 = OpFAdd %25 %31 %26
 %33 = OpBitcast %5 %32
-%34 = OpAccessChain %22 %13 %21 %20
+%34 = OpAccessChain %21 %13 %23 %20
 OpStore %34 %33
 %36 = OpBitcast %14 %35
 OpStore %18 %36

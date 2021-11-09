@@ -1,0 +1,10 @@
+RWStructuredBuffer<float4[4]> RO : register(u0);
+RWStructuredBuffer<float4[4]> RW : register(u1);
+
+[numthreads(2, 1, 1)]
+void main(uint thr : SV_DispatchThreadID, uint lid : SV_GroupIndex)
+{
+	RW[thr][lid + 0] = RO[thr][lid + 1];
+	RW[thr][lid + 1] = RO[thr][lid];
+	RW[thr][2 * lid + 1] = RO[thr][3 * lid - 1];
+}

@@ -35,4 +35,6 @@
 
 namespace dxil_spv
 {
+enum class RawWidth { B16 = 0, B32, B64, Count };
+enum class RawVecSize { V1 = 0, V2, V3, V4, Count };
 }

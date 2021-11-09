@@ -1,0 +1,32 @@
+RWByteAddressBuffer RO : register(u0);
+RWByteAddressBuffer RW : register(u1);
+
+[numthreads(2, 1, 1)]
+void main(uint thr : SV_DispatchThreadID, uint lid : SV_GroupIndex)
+{
+	uint addr = 96 * (thr + lid) + 96;
+	RW.Store<double4>(addr, RO.Load<double4>(addr));
+	RW.Store<double3>(addr, RO.Load<double3>(addr));
+	RW.Store<double2>(addr, RO.Load<double2>(addr));
+	RW.Store<double>(addr, RO.Load<double>(addr));
+
+	RW.Store<float4>(addr, RO.Load<float4>(addr));
+	RW.Store<float3>(addr, RO.Load<float3>(addr));
+	RW.Store<float2>(addr, RO.Load<float2>(addr));
+	RW.Store<float>(addr, RO.Load<float>(addr));
+
+	RW.Store<half4>(addr, RO.Load<half4>(addr));
+	RW.Store<half3>(addr, RO.Load<half3>(addr));
+	RW.Store<half2>(addr, RO.Load<half2>(addr));
+	RW.Store<half>(addr, RO.Load<half>(addr));
+
+	addr = 96 * 2;
+	RW.Store<double4>(addr, RO.Load<double4>(addr));
+	RW.Store<float4>(addr, RO.Load<float4>(addr));
+	RW.Store<half4>(addr, RO.Load<half4>(addr));
+
+	addr = 96 * 2 * thr;
+	RW.Store<double4>(addr, RO.Load<double4>(addr));
+	RW.Store<float4>(addr, RO.Load<float4>(addr));
+	RW.Store<half4>(addr, RO.Load<half4>(addr));
+}

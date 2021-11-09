@@ -118,8 +118,8 @@ OpDecorate %26 Location 0
 %25 = OpTypePointer Output %22
 %26 = OpVariable %25 Output
 %28 = OpTypeInt 16 0
-%31 = OpConstant %5 0
-%32 = OpTypePointer StorageBuffer %5
+%31 = OpTypePointer StorageBuffer %5
+%33 = OpConstant %5 0
 %35 = OpTypeFloat 32
 %37 = OpTypeFloat 16
 %40 = OpConstant %28 1
@@ -131,30 +131,30 @@ OpBranch %61
 %27 = OpLoad %22 %24
 %29 = OpSConvert %28 %27
 %30 = OpSConvert %5 %29
-%33 = OpAccessChain %32 %9 %31 %30
-%34 = OpLoad %5 %33
+%32 = OpAccessChain %31 %9 %33 %30
+%34 = OpLoad %5 %32
 %36 = OpBitcast %35 %34
 %38 = OpFConvert %37 %36
 %39 = OpIAdd %28 %29 %40
 %41 = OpSConvert %5 %39
-%42 = OpAccessChain %32 %9 %31 %41
+%42 = OpAccessChain %31 %9 %33 %41
 %43 = OpLoad %5 %42
 %44 = OpBitcast %35 %43
 %45 = OpFConvert %37 %44
 %46 = OpFAdd %37 %45 %38
 %47 = OpFConvert %35 %46
 %48 = OpBitcast %5 %47
-%49 = OpAccessChain %32 %17 %31 %30
+%49 = OpAccessChain %31 %17 %33 %30
 OpStore %49 %48
-%50 = OpAccessChain %32 %13 %31 %30
+%50 = OpAccessChain %31 %13 %33 %30
 %51 = OpLoad %5 %50
 %52 = OpUConvert %28 %51
-%53 = OpAccessChain %32 %13 %31 %41
+%53 = OpAccessChain %31 %13 %33 %41
 %54 = OpLoad %5 %53
 %55 = OpUConvert %28 %54
 %56 = OpIAdd %28 %55 %52
 %57 = OpUConvert %5 %56
-%58 = OpAccessChain %32 %21 %31 %30
+%58 = OpAccessChain %31 %21 %33 %30
 OpStore %58 %57
 %60 = OpBitcast %22 %59
 OpStore %26 %60

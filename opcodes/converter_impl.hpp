@@ -24,6 +24,7 @@
 #include "dxil_converter.hpp"
 #include "scratch_pool.hpp"
 #include "descriptor_qa.hpp"
+#include "opcodes.hpp"
 
 #include "GLSL.std.450.h"
 
@@ -76,6 +77,45 @@ struct LocalRootSignatureEntry
 	Vector<DescriptorTableEntry> table_entries;
 };
 
+static inline DXIL::ComponentType raw_width_to_component_type(RawWidth raw_width)
+{
+	switch (raw_width)
+	{
+	case RawWidth::B16:
+		return DXIL::ComponentType::U16;
+	case RawWidth::B64:
+		return DXIL::ComponentType::U64;
+	default:
+		return DXIL::ComponentType::U32;
+	}
+}
+
+static inline unsigned raw_vecsize_to_vecsize(RawVecSize raw_vecsize)
+{
+	return unsigned(raw_vecsize) + 1;
+}
+
+static inline unsigned raw_component_type_to_bits(DXIL::ComponentType type)
+{
+	switch (type)
+	{
+	case DXIL::ComponentType::U16:
+		return 16;
+	case DXIL::ComponentType::U32:
+		return 32;
+	case DXIL::ComponentType::U64:
+		return 64;
+	default:
+		assert(0 && "Invalid component type.");
+		return 0;
+	}
+}
+
+static inline unsigned raw_width_to_bits(RawWidth raw_width)
+{
+	return raw_component_type_to_bits(raw_width_to_component_type(raw_width));
+}
+
 struct Converter::Impl
 {
 	DXIL_SPV_OVERRIDE_NEW_DELETE
@@ -125,6 +165,7 @@ struct Converter::Impl
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 	bool emit_execution_modes();
+	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
 	bool emit_execution_modes_geometry();
 	bool emit_execution_modes_hull();
@@ -135,15 +176,20 @@ struct Converter::Impl
 
 	bool analyze_instructions();
 	bool analyze_instructions(const llvm::Function *function);
+
+	struct RawDeclaration
+	{
+		RawWidth width;
+		RawVecSize vecsize;
+	};
+
 	struct AccessTracking
 	{
 		bool has_read = false;
 		bool has_written = false;
 		bool has_atomic = false;
 		bool has_atomic_64bit = false;
-		// TODO: Track vectors as well.
-		bool access_16bit = false;
-		bool access_64bit = false;
+		bool raw_access_buffer_declarations[unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
 	};
 	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> uav_access_tracking;
@@ -228,12 +274,16 @@ struct Converter::Impl
 	int get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding,
 	                                   DescriptorTableEntry &local_table_entry) const;
 
+	struct RawDeclarationVariable
+	{
+		RawDeclaration declaration;
+		spv::Id var_id;
+	};
+
 	struct ResourceReference
 	{
-		// TODO: Refactor this into type and vector length alias groups.
 		spv::Id var_id = 0;
-		spv::Id var_id_16bit = 0;
-		spv::Id var_id_64bit = 0;
+		Vector<RawDeclarationVariable> var_alias_group;
 		bool aliased = false;
 
 		uint32_t push_constant_member = 0;
@@ -289,12 +339,11 @@ struct Converter::Impl
 	{
 		DXIL::ResourceKind kind;
 		DXIL::ComponentType component_type;
+		RawVecSize raw_component_vecsize;
 		unsigned stride;
 
-		// TODO: Refactor this into type and vector length alias groups.
 		spv::Id var_id;
-		spv::Id var_id_16bit;
-		spv::Id var_id_64bit;
+		Vector<RawDeclarationVariable> var_alias_group;
 		bool aliased;
 
 		spv::StorageClass storage;
@@ -440,12 +489,15 @@ struct Converter::Impl
 		bool shader_i8_dot_enabled = false;
 		bool ray_tracing_primitive_culling_enabled = false;
 		bool invariant_position = false;
+		bool scalar_block_layout = false;
+		bool supports_per_component_robustness = false;
 	} options;
 
 	struct BindlessInfo
 	{
 		DXIL::ResourceType type;
 		DXIL::ComponentType component;
+		RawVecSize raw_vecsize;
 		DXIL::ResourceKind kind;
 		spv::ImageFormat format;
 		VulkanDescriptorType descriptor_type;
@@ -461,6 +513,11 @@ struct Converter::Impl
 	};
 
 	spv::Id create_bindless_heap_variable(const BindlessInfo &info);
+	Vector<RawDeclarationVariable> create_bindless_heap_variable_alias_group(
+		const BindlessInfo &base_info, const Vector<RawDeclaration> &raw_decls);
+	Vector<RawDeclarationVariable> create_variable_alias_group(
+	    const Vector<RawDeclaration> &raw_decls, uint32_t range_size, const String &name);
+	spv::Id create_raw_ssbo_variable(const RawDeclaration &raw_decl, uint32_t range_size, const String &name);
 
 	struct BindlessResource
 	{
@@ -498,15 +555,24 @@ struct Converter::Impl
 	uint32_t find_binding_meta_index(uint32_t binding_range_lo, uint32_t binding_range_hi,
 	                                 uint32_t binding_space, DXIL::ResourceType resource_type);
 
+	struct RawBufferMeta
+	{
+		DXIL::ResourceKind kind;
+		unsigned stride;
+	};
+	RawBufferMeta get_raw_buffer_meta(DXIL::ResourceType resource_type, unsigned meta_index);
+
 	static void get_shader_model(const llvm::Module &module, String *model, uint32_t *major, uint32_t *minor);
 
 	struct AliasedAccess
 	{
-		bool raw_access_16bit = false;
-		bool raw_access_64bit = false;
+		Vector<RawDeclaration> raw_declarations;
 		bool requires_alias_decoration = false;
+		bool override_primary_component_types = false;
+		DXIL::ComponentType primary_component_type = DXIL::ComponentType::Invalid;
+		RawVecSize primary_raw_vecsize = RawVecSize::V1;
 	};
-	bool analyze_aliased_access(DXIL::ResourceKind kind, const AccessTracking &tracking,
+	bool analyze_aliased_access(const AccessTracking &tracking,
 	                            VulkanDescriptorType descriptor_type,
 	                            AliasedAccess &aliased_access) const;
 

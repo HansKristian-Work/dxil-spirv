@@ -1,0 +1,90 @@
+#version 460
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer SSBO
+{
+    uvec4 _m0[];
+} _10;
+
+layout(set = 0, binding = 1, std430) writeonly buffer _12_14
+{
+    uvec4 _m0[];
+} _14;
+
+void main()
+{
+    vec4 _27 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x]);
+    _14._m0[gl_GlobalInvocationID.x] = uvec4(floatBitsToUint(_27.x), floatBitsToUint(_27.y), floatBitsToUint(_27.z), floatBitsToUint(_27.w));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 40
+; Schema: 0
+OpCapability Shader
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %17
+OpExecutionMode %3 LocalSize 128 1 1
+OpName %3 "main"
+OpName %8 "SSBO"
+OpName %12 "SSBO"
+OpDecorate %7 ArrayStride 16
+OpMemberDecorate %8 0 Offset 0
+OpDecorate %8 Block
+OpDecorate %10 DescriptorSet 0
+OpDecorate %10 Binding 0
+OpDecorate %10 NonWritable
+OpDecorate %11 ArrayStride 16
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 1
+OpDecorate %14 NonReadable
+OpDecorate %17 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeVector %5 4
+%7 = OpTypeRuntimeArray %6
+%8 = OpTypeStruct %7
+%9 = OpTypePointer StorageBuffer %8
+%10 = OpVariable %9 StorageBuffer
+%11 = OpTypeRuntimeArray %6
+%12 = OpTypeStruct %11
+%13 = OpTypePointer StorageBuffer %12
+%14 = OpVariable %13 StorageBuffer
+%15 = OpTypeVector %5 3
+%16 = OpTypePointer Input %15
+%17 = OpVariable %16 Input
+%18 = OpTypePointer Input %5
+%20 = OpConstant %5 0
+%22 = OpTypePointer StorageBuffer %6
+%25 = OpTypeFloat 32
+%26 = OpTypeVector %25 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %38
+%38 = OpLabel
+%19 = OpAccessChain %18 %17 %20
+%21 = OpLoad %5 %19
+%23 = OpAccessChain %22 %10 %20 %21
+%24 = OpLoad %6 %23
+%27 = OpBitcast %26 %24
+%28 = OpCompositeExtract %25 %27 0
+%29 = OpCompositeExtract %25 %27 1
+%30 = OpCompositeExtract %25 %27 2
+%31 = OpCompositeExtract %25 %27 3
+%32 = OpBitcast %5 %28
+%33 = OpBitcast %5 %29
+%34 = OpBitcast %5 %30
+%35 = OpBitcast %5 %31
+%36 = OpCompositeConstruct %6 %32 %33 %34 %35
+%37 = OpAccessChain %22 %14 %20 %21
+OpStore %37 %36
+OpReturn
+OpFunctionEnd
+#endif

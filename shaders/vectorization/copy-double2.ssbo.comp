@@ -1,0 +1,8 @@
+RWStructuredBuffer<double2> RO : register(u0);
+RWStructuredBuffer<double2> RW : register(u1);
+
+[numthreads(2, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	RW[thr] = RO[thr];
+}
