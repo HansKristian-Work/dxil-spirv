@@ -100,6 +100,9 @@ bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
 				scale = const_rhs;
 				index = lhs;
 			}
+			else
+				break;
+
 			scale_log2 = true;
 		}
 		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Mul)
