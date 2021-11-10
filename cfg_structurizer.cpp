@@ -378,6 +378,17 @@ bool CFGStructurizer::run()
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
 
+	// Similar to cleanup_breaking_phi_constructs() in spirit,
+	// but here we are forced to duplicate code blocks to make it work.
+	duplicate_impossible_merge_constructs();
+
+	//log_cfg("Split impossible merges");
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".duplicate";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+
 	//LOGI("=== Structurize pass ===\n");
 	structurize(0);
 	update_structured_loop_merge_targets();
@@ -467,6 +478,127 @@ void CFGStructurizer::update_structured_loop_merge_targets()
 	}
 }
 
+static spv::Id get_remapped_id_for_duplicated_block(spv::Id id, const UnorderedMap<spv::Id, spv::Id> &remap)
+{
+	auto itr = remap.find(id);
+	if (itr != remap.end())
+		return itr->second;
+	else
+		return id;
+}
+
+Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, spv::Id> &id_remap)
+{
+	Operation *duplicated_op;
+	if (op->id)
+		duplicated_op = module.allocate_op(op->op, module.allocate_id(), op->type_id);
+	else
+		duplicated_op = module.allocate_op(op->op);
+
+	for (unsigned i = 0; i < op->num_arguments; i++)
+	{
+		if (op->literal_mask & (1u << i))
+			duplicated_op->add_literal(op->arguments[i]);
+		else
+			duplicated_op->add_id(get_remapped_id_for_duplicated_block(op->arguments[i], id_remap));
+	}
+
+	if (op->id)
+		id_remap[op->id] = duplicated_op->id;
+
+	return duplicated_op;
+}
+
+void CFGStructurizer::duplicate_node(CFGNode *node)
+{
+	Vector<UnorderedMap<spv::Id, spv::Id>> rewritten_ids;
+	assert(node->succ.size() == 1);
+	assert(node->pred.size() >= 2);
+
+	Vector<CFGNode *> break_blocks(node->pred.size());
+	rewritten_ids.resize(node->pred.size());
+	auto *succ = node->succ.front();
+
+	auto tmp_pred = node->pred;
+	for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
+	{
+		auto *pred = tmp_pred[i];
+		auto &remap = rewritten_ids[i];
+
+		// First, rewrite PHI inputs.
+		// Since we only have one pred now, we can resolve PHIs directly.
+		auto *block = pool.create_node();
+		block->name = node->name + ".dup." + pred->name;
+		block->ir.terminator.type = Terminator::Type::Branch;
+		block->ir.terminator.direct_block = succ;
+		block->immediate_post_dominator = succ;
+		block->immediate_dominator = pred;
+		pred->retarget_branch(node, block);
+		block->add_branch(succ);
+
+		for (auto &phi : node->ir.phi)
+		{
+			auto itr = find_incoming_value(pred, phi.incoming);
+			assert(itr != phi.incoming.end());
+			remap[phi.id] = itr->id;
+		}
+
+		for (auto *op : node->ir.operations)
+			block->ir.operations.push_back(duplicate_op(op, remap));
+
+		break_blocks[i] = block;
+	}
+
+	assert(node->pred.empty());
+
+	// Finally, look at succ. If it takes PHI inputs from node, we'll have to rewrite the PHIs.
+	// We know that node does not dominate succ,
+	// so succ cannot use any SSA variables node generated directly
+	// without using PHI nodes.
+	for (auto &phi : succ->ir.phi)
+	{
+		// Find incoming ID from the block we're splitting up.
+		auto incoming_itr = std::find_if(phi.incoming.begin(), phi.incoming.end(), [&](const IncomingValue &incoming) {
+			return incoming.block == node;
+		});
+		assert(incoming_itr != phi.incoming.end());
+		spv::Id incoming_from_node = incoming_itr->id;
+		phi.incoming.erase(incoming_itr);
+
+		for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
+		{
+			auto &remap = rewritten_ids[i];
+			phi.incoming.push_back({ break_blocks[i], get_remapped_id_for_duplicated_block(incoming_from_node, remap) });
+		}
+	}
+}
+
+void CFGStructurizer::duplicate_impossible_merge_constructs()
+{
+	Vector<CFGNode *> duplicate_queue;
+
+	for (size_t i = forward_post_visit_order.size(); i; i--)
+	{
+		auto *node = forward_post_visit_order[i - 1];
+
+		// Check for breaking merge blocks which were not considered degenerate.
+		// This can happen if we actually have code in the breaking construct ... (scary!)
+		// We'll have to split this block somehow.
+		// If the candidate has control dependent effects like barriers and such,
+		// this will likely break completely,
+		// but I don't see how that would work on native drivers either ...
+		if (merge_candidate_is_on_loop_breaking_path(node) && !node->ir.operations.empty())
+			duplicate_queue.push_back(node);
+	}
+
+	if (duplicate_queue.empty())
+		return;
+
+	for (auto *node : duplicate_queue)
+		duplicate_node(node);
+	recompute_cfg();
+}
+
 void CFGStructurizer::eliminate_degenerate_blocks()
 {
 	// After we create ladder blocks, we will likely end up with a lot of blocks which don't do much.
@@ -525,20 +657,15 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				auto *pred = node->pred.front();
 				pred->retarget_branch(node, succ);
 			}
-			else if (node->pred.size() >= 2 && !node->dominates(node->succ.front()) &&
-			         node->succ.front()->post_dominates(node))
+			else if (merge_candidate_is_on_breaking_path(node))
 			{
 				// If we have two or more preds, we have to be really careful.
 				// If this node is on a breaking path, without being important for merging control flow,
 				// it is fine to eliminate the block.
-				if (control_flow_is_escaping(node, node->succ.front()) &&
-				    !block_is_load_bearing(node, node->succ.front()))
-				{
-					did_work = true;
-					auto tmp_pred = node->pred;
-					for (auto *pred : tmp_pred)
-						pred->retarget_branch(node, node->succ.front());
-				}
+				did_work = true;
+				auto tmp_pred = node->pred;
+				for (auto *pred : tmp_pred)
+					pred->retarget_branch(node, node->succ.front());
 			}
 		}
 	}
@@ -1437,13 +1564,14 @@ bool CFGStructurizer::block_is_load_bearing(const CFGNode *node, const CFGNode *
 	       !exists_path_in_cfg_without_intermediate_node(node->immediate_dominator, merge, node);
 }
 
-bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNode *merge) const
+bool CFGStructurizer::control_flow_is_escaping_from_loop(const CFGNode *node, const CFGNode *merge) const
 {
+	bool escaping_path = false;
+
 	if (node == merge)
-		return false;
+		return escaping_path;
 
 	assert(merge->post_dominates(node));
-	bool escaping_path = false;
 
 	// First, test the loop scenario.
 	// If we're inside a loop, we're a break construct if we can prove that:
@@ -1476,30 +1604,36 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 			escaping_path = true;
 	}
 
-	if (!escaping_path)
+	return escaping_path;
+}
+
+bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNode *merge) const
+{
+	if (node == merge)
+		return false;
+
+	if (control_flow_is_escaping_from_loop(node, merge))
+		return true;
+
+	// Try to test if our block is load bearing, in which case it cannot be considered a break block.
+	// If the only path from idom to merge goes through node, it must be considered load bearing,
+	// since removing break paths must not change reachability.
+	if (block_is_load_bearing(node, merge))
+		return false;
+
+	// If we cannot prove the escape through loop analysis, we might be able to deduce it from domination frontiers.
+	// If control flow is not escaping, then there must exist a dominance frontier node A,
+	// where merge strictly post-dominates A.
+	// This means that control flow can merge somewhere before we hit the merge block, and we consider that
+	// normal structured control flow.
+
+	bool escaping_path = true;
+	for (auto *frontier : node->dominance_frontier)
 	{
-		// Try to test if our block is load bearing, in which case it cannot be considered a break block.
-		// If the only path from idom to merge goes through node, it must be considered load bearing,
-		// since removing break paths must not change reachability.
-		bool load_bearing_escape = block_is_load_bearing(node, merge);
-
-		if (!load_bearing_escape)
+		if (merge != frontier && merge->post_dominates(frontier))
 		{
-			// If we cannot prove the escape through loop analysis, we might be able to deduce it from domination frontiers.
-			// If control flow is not escaping, then there must exist a dominance frontier node A,
-			// where merge strictly post-dominates A.
-			// This means that control flow can merge somewhere before we hit the merge block, and we consider that
-			// normal structured control flow.
-
-			escaping_path = true;
-			for (auto *frontier : node->dominance_frontier)
-			{
-				if (merge != frontier && merge->post_dominates(frontier))
-				{
-					escaping_path = false;
-					break;
-				}
-			}
+			escaping_path = false;
+			break;
 		}
 	}
 
@@ -2071,6 +2205,24 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 	}
 
 	return modified_cfg;
+}
+
+bool CFGStructurizer::merge_candidate_is_on_loop_breaking_path(const CFGNode *node) const
+{
+	return node->pred.size() >= 2 && node->succ.size() == 1 &&
+	       !node->dominates(node->succ.front()) &&
+	       node->succ.front()->post_dominates(node) &&
+	       control_flow_is_escaping_from_loop(node, node->succ.front()) &&
+	       !block_is_load_bearing(node, node->succ.front());
+}
+
+bool CFGStructurizer::merge_candidate_is_on_breaking_path(const CFGNode *node) const
+{
+	return node->pred.size() >= 2 && node->succ.size() == 1 &&
+	       !node->dominates(node->succ.front()) &&
+	       node->succ.front()->post_dominates(node) &&
+	       control_flow_is_escaping(node, node->succ.front()) &&
+	       !block_is_load_bearing(node, node->succ.front());
 }
 
 void CFGStructurizer::find_selection_merges(unsigned pass)

@@ -74,6 +74,9 @@ private:
 	void find_loops();
 	void split_merge_scopes();
 	void eliminate_degenerate_blocks();
+	void duplicate_impossible_merge_constructs();
+	void duplicate_node(CFGNode *node);
+	Operation *duplicate_op(Operation *op, UnorderedMap<spv::Id, spv::Id> &id_remap);
 	void update_structured_loop_merge_targets();
 	void find_selection_merges(unsigned pass);
 	static bool header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge);
@@ -81,6 +84,8 @@ private:
 	bool find_switch_blocks(unsigned pass);
 
 	void split_merge_blocks();
+	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;
+	bool merge_candidate_is_on_loop_breaking_path(const CFGNode *node) const;
 	CFGNode *get_target_break_block_for_inner_header(const CFGNode *node, size_t header_index);
 	CFGNode *get_or_create_ladder_block(CFGNode *node, size_t header_index);
 	CFGNode *build_enclosing_break_target_for_loop_ladder(CFGNode *&node, CFGNode *loop_ladder);
@@ -95,6 +100,7 @@ private:
 	                                                              const CFGNode *break_node);
 	CFGNode *find_break_target_for_selection_construct(CFGNode *idom, CFGNode *merge);
 	bool control_flow_is_escaping(const CFGNode *node, const CFGNode *merge) const;
+	bool control_flow_is_escaping_from_loop(const CFGNode *node, const CFGNode *merge) const;
 	bool block_is_load_bearing(const CFGNode *node, const CFGNode *merge) const;
 	static Vector<CFGNode *> isolate_structured_sorted(const CFGNode *header, const CFGNode *merge);
 	static void isolate_structured(UnorderedSet<CFGNode *> &nodes, const CFGNode *header, const CFGNode *merge);
