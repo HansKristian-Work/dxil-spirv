@@ -354,10 +354,6 @@ def main():
         sys.stderr.write('Need shader folder.\n')
         sys.exit(1)
 
-    if args.parallel and args.update:
-        sys.stderr.write('Parallel execution is disabled when using the flags --update.\n')
-        args.parallel = False
-
     test_shaders(args)
     print('Tests completed!')
 

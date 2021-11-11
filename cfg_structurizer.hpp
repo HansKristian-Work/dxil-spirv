@@ -79,13 +79,15 @@ private:
 	Operation *duplicate_op(Operation *op, UnorderedMap<spv::Id, spv::Id> &id_remap);
 	void update_structured_loop_merge_targets();
 	void find_selection_merges(unsigned pass);
-	static bool header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge);
+	static bool header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge);
 	void fixup_broken_selection_merges(unsigned pass);
 	bool find_switch_blocks(unsigned pass);
 
 	void split_merge_blocks();
 	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;
 	bool merge_candidate_is_on_loop_breaking_path(const CFGNode *node) const;
+	bool continue_block_can_merge(CFGNode *node) const;
+	bool block_is_plain_continue(const CFGNode *node) const;
 	CFGNode *get_target_break_block_for_inner_header(const CFGNode *node, size_t header_index);
 	CFGNode *get_or_create_ladder_block(CFGNode *node, size_t header_index);
 	CFGNode *build_enclosing_break_target_for_loop_ladder(CFGNode *&node, CFGNode *loop_ladder);

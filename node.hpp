@@ -114,7 +114,7 @@ private:
 	void recompute_immediate_post_dominator();
 
 	template <typename Op>
-	void traverse_dominated_blocks(const Op &op);
+	void traverse_dominated_blocks(const Op &op) const;
 	CFGNode *get_outer_selection_dominator();
 	CFGNode *get_outer_header_dominator();
 
@@ -129,7 +129,7 @@ private:
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op,
 	                                                  UnorderedSet<const CFGNode *> &visitation_cache);
 	template <typename Op>
-	void traverse_dominated_blocks(const CFGNode &header, const Op &op);
+	void traverse_dominated_blocks(const CFGNode &header, const Op &op) const;
 
 	void retarget_fake_succ(CFGNode *from, CFGNode *to);
 };
@@ -208,7 +208,7 @@ void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header
 }
 
 template <typename Op>
-void CFGNode::traverse_dominated_blocks(const CFGNode &header, const Op &op)
+void CFGNode::traverse_dominated_blocks(const CFGNode &header, const Op &op) const
 {
 	for (auto *node : succ)
 	{
@@ -221,7 +221,7 @@ void CFGNode::traverse_dominated_blocks(const CFGNode &header, const Op &op)
 }
 
 template <typename Op>
-void CFGNode::traverse_dominated_blocks(const Op &op)
+void CFGNode::traverse_dominated_blocks(const Op &op) const
 {
 	traverse_dominated_blocks(*this, op);
 }
