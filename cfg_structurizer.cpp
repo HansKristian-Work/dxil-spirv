@@ -2164,6 +2164,72 @@ void CFGStructurizer::recompute_cfg()
 	compute_post_dominance_frontier();
 }
 
+CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator)
+{
+	// Maintain the original switch block order if possible to avoid awkward churn in reference output.
+	uint64_t order = 1;
+	for (auto &c : node->ir.terminator.cases)
+	{
+		// We'll need to decrement global order up to N times in the worst case.
+		// Use 64-bit here as a safeguard in case the module is using a ridiculous amount of case labels.
+		c.global_order = order * node->ir.terminator.cases.size();
+		order++;
+	}
+
+	// First, sort so that any fallthrough parent comes before fallthrough target.
+	std::sort(node->ir.terminator.cases.begin(), node->ir.terminator.cases.end(),
+			  [](const Terminator::Case &a, const Terminator::Case &b)
+			  { return a.node->forward_post_visit_order > b.node->forward_post_visit_order; });
+
+	// Look at all potential fallthrough candidates and reassign global order.
+	for (size_t i = 0, n = node->ir.terminator.cases.size(); i < n; i++)
+	{
+		for (size_t j = i + 1; j < n; j++)
+		{
+			auto &parent = node->ir.terminator.cases[i];
+			auto &child = node->ir.terminator.cases[j];
+
+			// A case label might be the merge block candidate of the switch.
+			// Don't consider case fallthrough if b post-dominates the entire switch statement.
+			if (child.node != post_dominator && parent.node != child.node && child.node->can_backtrace_to(parent.node))
+			{
+				parent.global_order = child.global_order - 1;
+				break;
+			}
+		}
+	}
+
+	// Sort again, but this time, by global order.
+	std::stable_sort(node->ir.terminator.cases.begin(), node->ir.terminator.cases.end(),
+					 [](const Terminator::Case &a, const Terminator::Case &b)
+					 { return a.global_order < b.global_order; });
+
+	// Detect impossible fallthrough scenarios. We can have A -> B -> C fallthrough, but not
+	// A -> C and B -> C. In this situation, we should see C as the actual switch merge block,
+	// and rewrite the switch to loop + switch.
+	// Detect this by having two entries with identical global order.
+
+	bool has_impossible_fallthrough = false;
+	uint64_t target_order = 0;
+
+	for (size_t i = 1, n = node->ir.terminator.cases.size(); i < n; i++)
+	{
+		if (node->ir.terminator.cases[i].global_order == node->ir.terminator.cases[i - 1].global_order)
+		{
+			target_order = node->ir.terminator.cases[i].global_order + 1;
+			has_impossible_fallthrough = true;
+			break;
+		}
+	}
+
+	if (has_impossible_fallthrough)
+		for (auto &c : node->ir.terminator.cases)
+			if (c.global_order == target_order)
+				return c.node;
+
+	return post_dominator;
+}
+
 bool CFGStructurizer::find_switch_blocks(unsigned pass)
 {
 	bool modified_cfg = false;
@@ -2174,44 +2240,50 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 			continue;
 
 		auto *merge = find_common_post_dominator(node->succ);
+		auto *natural_merge = find_natural_switch_merge_block(node, merge);
 
-		if (pass == 0)
+		if (node->freeze_structured_analysis && node->merge == MergeType::Selection)
 		{
-			// Maintain the original switch block order if possible to avoid awkward churn in reference output.
-			uint64_t order = 0;
-			for (auto &c : node->ir.terminator.cases)
-			{
-				// We'll need to increment global order up to N times in the worst case.
-				// Use 64-bit here as a safeguard in case the module is using a ridiculous amount of case labels.
-				c.global_order = order * node->ir.terminator.cases.size();
-				order++;
-			}
-
-			// First, sort so that any fallthrough parent comes before fallthrough target.
-			std::sort(node->ir.terminator.cases.begin(), node->ir.terminator.cases.end(),
-			          [](const Terminator::Case &a, const Terminator::Case &b)
-			          { return a.node->forward_post_visit_order > b.node->forward_post_visit_order; });
-
-			// Look at all potential fallthrough candidates and reassign global order.
-			for (size_t i = 1, n = node->ir.terminator.cases.size(); i < n; i++)
-			{
-				for (size_t j = 0; j < i; j++)
-				{
-					auto &a = node->ir.terminator.cases[j];
-					auto &b = node->ir.terminator.cases[i];
-
-					// A case label might be the merge block candidate of the switch.
-					// Don't consider case fallthrough if b post-dominates the entire switch statement.
-					if (b.node != merge && a.node != b.node && b.node->can_backtrace_to(a.node))
-						b.global_order = a.global_order + 1;
-				}
-			}
-
-			// Sort again, but this time, by global order.
-			std::stable_sort(node->ir.terminator.cases.begin(), node->ir.terminator.cases.end(),
-			                 [](const Terminator::Case &a, const Terminator::Case &b)
-			                 { return a.global_order < b.global_order; });
+			natural_merge = node->selection_merge_block;
 		}
+		else if (pass == 0)
+		{
+			// Need to rewrite the switch.
+			if (merge != natural_merge && merge && node->dominates(merge) && merge->headers.empty())
+			{
+				auto *switch_outer = create_helper_pred_block(node);
+				switch_outer->merge = MergeType::Loop;
+				switch_outer->loop_merge_block = merge;
+				switch_outer->freeze_structured_analysis = true;
+				merge->headers.push_back(switch_outer);
+
+				auto *dummy_case = pool.create_node();
+				dummy_case->name = natural_merge->name + ".pred";
+				dummy_case->immediate_dominator = node;
+				dummy_case->immediate_post_dominator = natural_merge;
+				dummy_case->forward_post_visit_order = node->forward_post_visit_order;
+				dummy_case->backward_post_visit_order = node->backward_post_visit_order;
+				dummy_case->ir.terminator.type = Terminator::Type::Branch;
+				dummy_case->ir.terminator.direct_block = natural_merge;
+				dummy_case->add_branch(natural_merge);
+				node->retarget_branch(natural_merge, dummy_case);
+
+				auto *dummy_break = pool.create_node();
+				dummy_break->name = node->name + ".break";
+				dummy_break->immediate_dominator = node;
+				dummy_break->immediate_post_dominator = merge;
+				dummy_break->forward_post_visit_order = node->forward_post_visit_order;
+				dummy_break->backward_post_visit_order = node->backward_post_visit_order;
+				dummy_break->ir.terminator.type = Terminator::Type::Branch;
+				dummy_break->ir.terminator.direct_block = merge;
+				dummy_break->add_branch(merge);
+				node->retarget_branch(merge, dummy_break);
+
+				node->freeze_structured_analysis = true;
+			}
+		}
+
+		merge = natural_merge;
 
 		// We cannot rewrite the CFG in pass 1 safely, this should have happened in pass 0.
 		if (pass == 0 && !node->dominates(merge))

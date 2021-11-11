@@ -82,6 +82,7 @@ private:
 	static bool header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge);
 	void fixup_broken_selection_merges(unsigned pass);
 	bool find_switch_blocks(unsigned pass);
+	static CFGNode *find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator);
 
 	void split_merge_blocks();
 	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;
