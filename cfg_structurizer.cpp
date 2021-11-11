@@ -1964,7 +1964,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	}
 }
 
-bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(CFGNode *header, CFGNode *merge)
+bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge)
 {
 	if (!merge->post_dominates(header))
 		return false;
@@ -1973,9 +1973,9 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(CFGNod
 	// then header is some kind of exit block.
 	bool found_inner_merge_target = false;
 
-	UnorderedSet<CFGNode *> traversed;
+	UnorderedSet<const CFGNode *> traversed;
 
-	header->traverse_dominated_blocks([&](CFGNode *node) {
+	header->traverse_dominated_blocks([&](const CFGNode *node) {
 		if (node == merge)
 			return false;
 		if (traversed.count(node))
