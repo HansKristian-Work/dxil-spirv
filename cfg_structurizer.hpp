@@ -86,6 +86,8 @@ private:
 	void split_merge_blocks();
 	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;
 	bool merge_candidate_is_on_loop_breaking_path(const CFGNode *node) const;
+	bool continue_block_can_merge(CFGNode *node) const;
+	bool block_is_plain_continue(const CFGNode *node) const;
 	CFGNode *get_target_break_block_for_inner_header(const CFGNode *node, size_t header_index);
 	CFGNode *get_or_create_ladder_block(CFGNode *node, size_t header_index);
 	CFGNode *build_enclosing_break_target_for_loop_ladder(CFGNode *&node, CFGNode *loop_ladder);

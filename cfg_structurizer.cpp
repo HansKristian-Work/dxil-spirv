@@ -433,14 +433,69 @@ CFGNode *CFGStructurizer::get_entry_block() const
 	return entry_block;
 }
 
+bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
+{
+	const CFGNode *pred_candidate = nullptr;
+	auto *header = node->succ_back_edge;
+
+	// This algorithm is very arbitrary and should be seen as a nasty heuristic which solves real shaders
+	// we see in the wild. It's probably safe to block continue merge in far more cases than this, but we
+	// want to be maximally convergent as often as we can.
+
+	for (auto *pred : node->pred)
+	{
+		// If we have a situation where a continue block has a pred which is itself a selection merge target, that
+		// block is the merge target where we follow maximum convergence.
+		// The candidate must be inside loop body and not the header itself.
+		// Neither continue block nor merge target have any dominance relationship.
+
+		if (pred->num_forward_preds() >= 2 && pred->succ.size() >= 2 &&
+		    header != pred && !pred->dominates(node) &&
+		    !node->post_dominates(pred))
+		{
+			// If execution does not merge up right at the natural break block,
+			// things will get very complicated.
+			// In practice, we can handle merges as long as the candidate just breaks out normally.
+			// If not, we have to introduce ladder breaking and this is (almost) impossible to get right.
+			auto *common_post_dominator = CFGNode::find_common_post_dominator(node, pred);
+			if (common_post_dominator &&
+			    std::find(node->succ.begin(), node->succ.end(), common_post_dominator) == node->succ.end())
+			{
+				pred_candidate = pred;
+				break;
+			}
+		}
+	}
+
+	// No obviously nasty case to handle, probably safe to let the algorithm do its thing ...
+	if (!pred_candidate)
+		return true;
+
+	// Need to find another escape edge which is neither header nor the candidate.
+	bool found_another_escape_edge = false;
+	for (auto *pred : node->pred)
+	{
+		if (pred != header && pred != pred_candidate && !pred->dominates(node))
+		{
+			found_another_escape_edge = true;
+			break;
+		}
+	}
+
+	// If we have yet another escape edge, we probably cannot merge to continue ...
+	return !found_another_escape_edge;
+}
+
 void CFGStructurizer::create_continue_block_ladders()
 {
 	// It does not seem to be legal to merge directly to continue blocks.
 	// To make it possible to merge execution, we need to create a ladder block which we can merge to.
+	// There are certain scenarios where it is impossible to merge to a continue block.
+	// In this case, we will abandom maximum convergence and use the continue block as a "break"-like target.
 	bool need_recompute_cfg = false;
 	for (auto *node : forward_post_visit_order)
 	{
-		if (node->succ_back_edge && node->succ_back_edge != node)
+		if (block_is_plain_continue(node) && continue_block_can_merge(node))
 		{
 			//LOGI("Creating helper pred block for continue block: %s\n", node->name.c_str());
 			create_helper_pred_block(node);
@@ -1640,6 +1695,11 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 	return escaping_path;
 }
 
+bool CFGStructurizer::block_is_plain_continue(const CFGNode *node) const
+{
+	return node->succ_back_edge != nullptr && node != node->succ_back_edge;
+}
+
 void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 {
 	// Here we deal with selection branches where one path breaks and one path merges.
@@ -1661,8 +1721,9 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 		bool dominates_a = node->dominates(node->succ[0]);
 		bool dominates_b = node->dominates(node->succ[1]);
 
-		bool merge_a_has_header = !node->succ[0]->headers.empty();
-		bool merge_b_has_header = !node->succ[1]->headers.empty();
+		// Continue blocks should also be considered to have a header already. Makes sure we don't merge to them.
+		bool merge_a_has_header = !node->succ[0]->headers.empty() || block_is_plain_continue(node->succ[0]);
+		bool merge_b_has_header = !node->succ[1]->headers.empty() || block_is_plain_continue(node->succ[1]);
 
 		int trivial_merge_index = -1;
 
@@ -2230,6 +2291,12 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 	for (auto *node : forward_post_visit_order)
 	{
 		if (node->num_forward_preds() <= 1)
+			continue;
+
+		// Never merge to continue block.
+		// We should never hit this path unless we explicitly
+		// avoided creating a continue ladder block earlier.
+		if (block_is_plain_continue(node))
 			continue;
 
 		// If there are 2 or more pred edges, try to merge execution.
