@@ -461,6 +461,7 @@ public:
             head(head), body(body), merge(merge), continue_target(continue_target) { }
         Block &head, &body, &merge, &continue_target;
         LoopBlocks& operator=(const LoopBlocks&) = delete;
+        LoopBlocks(const LoopBlocks&) = default;
     private:
         LoopBlocks();
     };
