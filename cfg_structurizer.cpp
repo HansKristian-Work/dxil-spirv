@@ -433,6 +433,14 @@ CFGNode *CFGStructurizer::get_entry_block() const
 	return entry_block;
 }
 
+static bool block_is_control_dependent(const CFGNode *node)
+{
+	for (auto *op : node->ir.operations)
+		if (SPIRVModule::opcode_is_control_dependent(op->op))
+			return true;
+	return false;
+}
+
 bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
 {
 	const CFGNode *pred_candidate = nullptr;
@@ -642,8 +650,12 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 		// If the candidate has control dependent effects like barriers and such,
 		// this will likely break completely,
 		// but I don't see how that would work on native drivers either ...
-		if (merge_candidate_is_on_loop_breaking_path(node) && !node->ir.operations.empty())
+		if (merge_candidate_is_on_loop_breaking_path(node) &&
+		    !node->ir.operations.empty() &&
+		    !block_is_control_dependent(node))
+		{
 			duplicate_queue.push_back(node);
+		}
 	}
 
 	if (duplicate_queue.empty())

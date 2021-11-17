@@ -1197,6 +1197,83 @@ const DescriptorQAInfo &SPIRVModule::get_descriptor_qa_info() const
 	return impl->descriptor_qa_info;
 }
 
+bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
+{
+	// An opcode is considered control dependent if it is affected by other invocations in the subgroup.
+	switch (opcode)
+	{
+		// Anything derivatives
+	case spv::OpDPdx:
+	case spv::OpDPdxCoarse:
+	case spv::OpDPdxFine:
+	case spv::OpDPdy:
+	case spv::OpDPdyCoarse:
+	case spv::OpDPdyFine:
+	case spv::OpFwidth:
+	case spv::OpFwidthCoarse:
+	case spv::OpFwidthFine:
+
+		// Anything implicit LOD
+	case spv::OpImageSampleImplicitLod:
+	case spv::OpImageSampleDrefImplicitLod:
+	case spv::OpImageSampleProjImplicitLod:
+	case spv::OpImageSampleProjDrefImplicitLod:
+	case spv::OpImageSparseSampleImplicitLod:
+	case spv::OpImageSparseSampleDrefImplicitLod:
+	case spv::OpImageSparseSampleProjImplicitLod:
+	case spv::OpImageSparseSampleProjDrefImplicitLod:
+	case spv::OpImageQueryLod:
+	case spv::OpImageDrefGather:
+	case spv::OpImageGather:
+	case spv::OpImageSparseDrefGather:
+	case spv::OpImageSparseGather:
+
+		// Anything subgroups
+	case spv::OpGroupNonUniformElect:
+	case spv::OpGroupNonUniformAll:
+	case spv::OpGroupNonUniformAny:
+	case spv::OpGroupNonUniformAllEqual:
+	case spv::OpGroupNonUniformBroadcast:
+	case spv::OpGroupNonUniformBroadcastFirst:
+	case spv::OpGroupNonUniformBallot:
+	case spv::OpGroupNonUniformInverseBallot:
+	case spv::OpGroupNonUniformBallotBitExtract:
+	case spv::OpGroupNonUniformBallotBitCount:
+	case spv::OpGroupNonUniformBallotFindLSB:
+	case spv::OpGroupNonUniformBallotFindMSB:
+	case spv::OpGroupNonUniformShuffle:
+	case spv::OpGroupNonUniformShuffleXor:
+	case spv::OpGroupNonUniformShuffleUp:
+	case spv::OpGroupNonUniformShuffleDown:
+	case spv::OpGroupNonUniformIAdd:
+	case spv::OpGroupNonUniformFAdd:
+	case spv::OpGroupNonUniformIMul:
+	case spv::OpGroupNonUniformFMul:
+	case spv::OpGroupNonUniformSMin:
+	case spv::OpGroupNonUniformUMin:
+	case spv::OpGroupNonUniformFMin:
+	case spv::OpGroupNonUniformSMax:
+	case spv::OpGroupNonUniformUMax:
+	case spv::OpGroupNonUniformFMax:
+	case spv::OpGroupNonUniformBitwiseAnd:
+	case spv::OpGroupNonUniformBitwiseOr:
+	case spv::OpGroupNonUniformBitwiseXor:
+	case spv::OpGroupNonUniformLogicalAnd:
+	case spv::OpGroupNonUniformLogicalOr:
+	case spv::OpGroupNonUniformLogicalXor:
+	case spv::OpGroupNonUniformQuadBroadcast:
+	case spv::OpGroupNonUniformQuadSwap:
+
+		// Control barriers
+	case spv::OpControlBarrier:
+
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 SPIRVModule::~SPIRVModule()
 {
 }
