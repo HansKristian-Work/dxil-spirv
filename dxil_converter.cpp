@@ -2335,7 +2335,14 @@ void Converter::Impl::get_shader_model(const llvm::Module &module, String *model
 		auto *meta = resource_meta->getOperand(0);
 
 		if (model)
-			*model = llvm::cast<llvm::MDString>(meta->getOperand(0))->getString();
+		{
+			auto str = llvm::cast<llvm::MDString>(meta->getOperand(0))->getString();
+#ifdef HAVE_LLVMBC
+			*model = std::move(str);
+#else
+			*model = String(str.begin(), str.end());
+#endif
+		}
 		if (major)
 			*major = get_constant_metadata(meta, 1);
 		if (minor)
