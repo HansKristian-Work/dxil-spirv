@@ -1960,7 +1960,7 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 		members.reserve(num_members);
 		for (unsigned i = 0; i < num_members; i++)
 			members.push_back(get_type(child.ops[i + 1]));
-		type = StructType::get(std::move(members));
+		type = StructType::get(*context, std::move(members));
 		break;
 	}
 
