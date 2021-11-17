@@ -1707,7 +1707,7 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 	return escaping_path;
 }
 
-bool CFGStructurizer::block_is_plain_continue(const CFGNode *node) const
+bool CFGStructurizer::block_is_plain_continue(const CFGNode *node)
 {
 	return node->succ_back_edge != nullptr && node != node->succ_back_edge;
 }
@@ -1783,8 +1783,8 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			if (merge)
 			{
 				bool dominates_merge = node->dominates(merge);
-				bool merges_to_continue = merge && merge->succ_back_edge;
-				if (dominates_merge && !merge->headers.empty())
+				bool merges_to_continue = block_is_plain_continue(merge);
+				if (!merges_to_continue && dominates_merge && !merge->headers.empty())
 				{
 					// Here we have a likely case where one block is doing a clean "break" out of a loop, and
 					// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
@@ -1895,7 +1895,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 		if (trivial_merge_index >= 0 && pass == 0)
 		{
 			CFGNode *merge = CFGStructurizer::find_common_post_dominator(node->succ);
-			if (merge && !node->dominates(merge))
+			if (merge && !node->dominates(merge) && !block_is_plain_continue(merge))
 			{
 				if (!merge->headers.empty())
 				{
@@ -2075,6 +2075,9 @@ void CFGStructurizer::split_merge_scopes()
 		// Setup a preliminary merge scope so we know when to stop traversal.
 		// We don't care about traversing inner scopes, out starting from merge block as well.
 		if (node->num_forward_preds() <= 1)
+			continue;
+
+		if (block_is_plain_continue(node))
 			continue;
 
 		// The idom is the natural header block.
@@ -2298,7 +2301,7 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		merge = natural_merge;
 
 		// We cannot rewrite the CFG in pass 1 safely, this should have happened in pass 0.
-		if (pass == 0 && !node->dominates(merge))
+		if (pass == 0 && (!node->dominates(merge) || block_is_plain_continue(merge)))
 		{
 			// We did not rewrite switch blocks w.r.t. selection breaks.
 			// We might be in a situation where the switch block is trying to merge to a block which is already being merged to.
@@ -3253,6 +3256,8 @@ void CFGStructurizer::split_merge_blocks()
 	{
 		if (node->headers.size() <= 1)
 			continue;
+
+		assert(!block_is_plain_continue(node));
 
 		// If this block was the merge target for more than one construct,
 		// we will need to split the block. In SPIR-V, a merge block can only be the merge target for one construct.
