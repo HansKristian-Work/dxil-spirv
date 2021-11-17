@@ -79,7 +79,7 @@ private:
 	Operation *duplicate_op(Operation *op, UnorderedMap<spv::Id, spv::Id> &id_remap);
 	void update_structured_loop_merge_targets();
 	void find_selection_merges(unsigned pass);
-	static bool header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge);
+	bool header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge) const;
 	void fixup_broken_selection_merges(unsigned pass);
 	bool find_switch_blocks(unsigned pass);
 	static CFGNode *find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator);
