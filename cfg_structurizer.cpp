@@ -2598,7 +2598,12 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 		header->fixup_merge_info_after_branch_rewrite(node, pred_node);
 	node->headers.clear();
 
-	pred_node->immediate_dominator = node->immediate_dominator;
+	// We're replacing entry block.
+	if (node == node->immediate_dominator)
+		pred_node->immediate_dominator = pred_node;
+	else
+		pred_node->immediate_dominator = node->immediate_dominator;
+
 	pred_node->immediate_post_dominator = node;
 	node->immediate_dominator = pred_node;
 
