@@ -2045,8 +2045,17 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const 
 	// If there are other blocks which need merging, and that idom is the header,
 	// then header is some kind of exit block.
 	bool found_inner_merge_target = false;
+	const CFGNode *potential_inner_merge_target = nullptr;
 
 	UnorderedSet<const CFGNode *> traversed;
+
+	const auto is_earlier = [](const CFGNode *candidate, const CFGNode *existing) {
+		return !existing || (candidate->forward_post_visit_order > existing->forward_post_visit_order);
+	};
+
+	const auto is_later = [](const CFGNode *candidate, const CFGNode *existing) {
+		return !existing || (candidate->forward_post_visit_order < existing->forward_post_visit_order);
+	};
 
 	header->traverse_dominated_blocks([&](const CFGNode *node) {
 		if (node == merge)
@@ -2055,17 +2064,105 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const 
 			return false;
 		traversed.insert(node);
 
+		// Don't analyze loops, this path is mostly for selections only.
+		if (node->pred_back_edge)
+			return false;
+
 		if (node->num_forward_preds() <= 1)
 			return true;
 		auto *idom = node->immediate_dominator;
+
 		if (idom == header)
 		{
 			found_inner_merge_target = true;
 			return false;
 		}
+		else if (is_later(node, potential_inner_merge_target) &&
+		         idom->immediate_post_dominator == merge &&
+		         !exists_path_in_cfg_without_intermediate_node(header, node, idom))
+		{
+			// Need to analyze this further to determine if it's one of those insane crossing merge cases ...
+			// Find the lowest post visit order if there are multiple candidates.
+			potential_inner_merge_target = node;
+		}
+
 		return true;
 	});
-	return found_inner_merge_target;
+
+	if (found_inner_merge_target)
+		return true;
+	if (!potential_inner_merge_target)
+		return false;
+
+	// Alternatively, try to find a situation where the natural merge is difficult to determine.
+	// In this scenario, selection constructs appear to be "breaking" in different directions.
+	// Any attempt to split scopes here will fail spectacularly.
+
+	const CFGNode *first_natural_breaks_to_outer = nullptr;
+	const CFGNode *first_natural_breaks_to_inner = nullptr;
+	const CFGNode *last_natural_breaks_to_outer = nullptr;
+	const CFGNode *last_natural_breaks_to_inner = nullptr;
+	traversed.clear();
+
+	header->traverse_dominated_blocks([&](const CFGNode *node) {
+		if (node == merge || node == potential_inner_merge_target)
+			return false;
+		if (!query_reachability(*node, *merge) || !query_reachability(*node, *potential_inner_merge_target))
+			return false;
+		if (traversed.count(node))
+			return false;
+		traversed.insert(node);
+
+		if (node->succ.size() < 2)
+			return true;
+
+		bool breaks_to_outer = std::find_if(node->succ.begin(), node->succ.end(), [&](const CFGNode *candidate) {
+			return merge->post_dominates(candidate);
+		}) != node->succ.end();
+
+		bool breaks_to_inner = std::find_if(node->succ.begin(), node->succ.end(), [&](const CFGNode *candidate) {
+			return potential_inner_merge_target->post_dominates(candidate);
+		}) != node->succ.end();
+
+		if (breaks_to_inner)
+			breaks_to_outer = false;
+
+		if (breaks_to_outer)
+		{
+			if (is_earlier(node, first_natural_breaks_to_outer))
+				first_natural_breaks_to_outer = node;
+			if (is_later(node, last_natural_breaks_to_outer))
+				last_natural_breaks_to_outer = node;
+		}
+
+		if (breaks_to_inner)
+		{
+			if (is_earlier(node, first_natural_breaks_to_inner))
+				first_natural_breaks_to_inner = node;
+			if (is_later(node, last_natural_breaks_to_inner))
+				last_natural_breaks_to_inner = node;
+		}
+
+		return true;
+	});
+
+	if (!first_natural_breaks_to_outer || !first_natural_breaks_to_inner ||
+	    !last_natural_breaks_to_outer || !last_natural_breaks_to_inner)
+	{
+		return false;
+	}
+
+	const auto is_ordered = [](const CFGNode *a, const CFGNode *b, const CFGNode *c) {
+		return a != b && a->dominates(b) && b != c && b->dominates(c);
+	};
+
+	// Crossing break scenario.
+	if (is_ordered(first_natural_breaks_to_inner, first_natural_breaks_to_outer, last_natural_breaks_to_inner))
+		return true;
+	else if (is_ordered(first_natural_breaks_to_outer, first_natural_breaks_to_inner, last_natural_breaks_to_outer))
+		return true;
+	else
+		return false;
 }
 
 void CFGStructurizer::split_merge_scopes()
