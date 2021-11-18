@@ -91,6 +91,8 @@ public:
 	void set_descriptor_qa_info(const DescriptorQAInfo &info);
 	const DescriptorQAInfo &get_descriptor_qa_info() const;
 
+	static bool opcode_is_control_dependent(spv::Op opcode);
+
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 
 private:

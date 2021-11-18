@@ -180,10 +180,8 @@ Type *StructType::getElementType(unsigned N) const
 	return member_types[N];
 }
 
-StructType *StructType::get(Vector<Type *> member_types)
+StructType *StructType::get(LLVMContext &context, Vector<Type *> member_types)
 {
-	assert(!member_types.empty());
-	auto &context = member_types.front()->getContext();
 	auto &cache = context.get_type_cache();
 	for (auto *type : cache)
 	{

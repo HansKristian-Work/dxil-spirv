@@ -433,6 +433,14 @@ CFGNode *CFGStructurizer::get_entry_block() const
 	return entry_block;
 }
 
+static bool block_is_control_dependent(const CFGNode *node)
+{
+	for (auto *op : node->ir.operations)
+		if (SPIRVModule::opcode_is_control_dependent(op->op))
+			return true;
+	return false;
+}
+
 bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
 {
 	const CFGNode *pred_candidate = nullptr;
@@ -642,8 +650,12 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 		// If the candidate has control dependent effects like barriers and such,
 		// this will likely break completely,
 		// but I don't see how that would work on native drivers either ...
-		if (merge_candidate_is_on_loop_breaking_path(node) && !node->ir.operations.empty())
+		if (merge_candidate_is_on_loop_breaking_path(node) &&
+		    !node->ir.operations.empty() &&
+		    !block_is_control_dependent(node))
+		{
 			duplicate_queue.push_back(node);
+		}
 	}
 
 	if (duplicate_queue.empty())
@@ -1695,7 +1707,7 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 	return escaping_path;
 }
 
-bool CFGStructurizer::block_is_plain_continue(const CFGNode *node) const
+bool CFGStructurizer::block_is_plain_continue(const CFGNode *node)
 {
 	return node->succ_back_edge != nullptr && node != node->succ_back_edge;
 }
@@ -1771,8 +1783,8 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			if (merge)
 			{
 				bool dominates_merge = node->dominates(merge);
-				bool merges_to_continue = merge && merge->succ_back_edge;
-				if (dominates_merge && !merge->headers.empty())
+				bool merges_to_continue = block_is_plain_continue(merge);
+				if (!merges_to_continue && dominates_merge && !merge->headers.empty())
 				{
 					// Here we have a likely case where one block is doing a clean "break" out of a loop, and
 					// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
@@ -1883,7 +1895,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 		if (trivial_merge_index >= 0 && pass == 0)
 		{
 			CFGNode *merge = CFGStructurizer::find_common_post_dominator(node->succ);
-			if (merge && !node->dominates(merge))
+			if (merge && !node->dominates(merge) && !block_is_plain_continue(merge))
 			{
 				if (!merge->headers.empty())
 				{
@@ -2025,7 +2037,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	}
 }
 
-bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge)
+bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge) const
 {
 	if (!merge->post_dominates(header))
 		return false;
@@ -2033,8 +2045,17 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const 
 	// If there are other blocks which need merging, and that idom is the header,
 	// then header is some kind of exit block.
 	bool found_inner_merge_target = false;
+	const CFGNode *potential_inner_merge_target = nullptr;
 
 	UnorderedSet<const CFGNode *> traversed;
+
+	const auto is_earlier = [](const CFGNode *candidate, const CFGNode *existing) {
+		return !existing || (candidate->forward_post_visit_order > existing->forward_post_visit_order);
+	};
+
+	const auto is_later = [](const CFGNode *candidate, const CFGNode *existing) {
+		return !existing || (candidate->forward_post_visit_order < existing->forward_post_visit_order);
+	};
 
 	header->traverse_dominated_blocks([&](const CFGNode *node) {
 		if (node == merge)
@@ -2043,17 +2064,105 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const 
 			return false;
 		traversed.insert(node);
 
+		// Don't analyze loops, this path is mostly for selections only.
+		if (node->pred_back_edge)
+			return false;
+
 		if (node->num_forward_preds() <= 1)
 			return true;
 		auto *idom = node->immediate_dominator;
+
 		if (idom == header)
 		{
 			found_inner_merge_target = true;
 			return false;
 		}
+		else if (is_later(node, potential_inner_merge_target) &&
+		         idom->immediate_post_dominator == merge &&
+		         !exists_path_in_cfg_without_intermediate_node(header, node, idom))
+		{
+			// Need to analyze this further to determine if it's one of those insane crossing merge cases ...
+			// Find the lowest post visit order if there are multiple candidates.
+			potential_inner_merge_target = node;
+		}
+
 		return true;
 	});
-	return found_inner_merge_target;
+
+	if (found_inner_merge_target)
+		return true;
+	if (!potential_inner_merge_target)
+		return false;
+
+	// Alternatively, try to find a situation where the natural merge is difficult to determine.
+	// In this scenario, selection constructs appear to be "breaking" in different directions.
+	// Any attempt to split scopes here will fail spectacularly.
+
+	const CFGNode *first_natural_breaks_to_outer = nullptr;
+	const CFGNode *first_natural_breaks_to_inner = nullptr;
+	const CFGNode *last_natural_breaks_to_outer = nullptr;
+	const CFGNode *last_natural_breaks_to_inner = nullptr;
+	traversed.clear();
+
+	header->traverse_dominated_blocks([&](const CFGNode *node) {
+		if (node == merge || node == potential_inner_merge_target)
+			return false;
+		if (!query_reachability(*node, *merge) || !query_reachability(*node, *potential_inner_merge_target))
+			return false;
+		if (traversed.count(node))
+			return false;
+		traversed.insert(node);
+
+		if (node->succ.size() < 2)
+			return true;
+
+		bool breaks_to_outer = std::find_if(node->succ.begin(), node->succ.end(), [&](const CFGNode *candidate) {
+			return merge->post_dominates(candidate);
+		}) != node->succ.end();
+
+		bool breaks_to_inner = std::find_if(node->succ.begin(), node->succ.end(), [&](const CFGNode *candidate) {
+			return potential_inner_merge_target->post_dominates(candidate);
+		}) != node->succ.end();
+
+		if (breaks_to_inner)
+			breaks_to_outer = false;
+
+		if (breaks_to_outer)
+		{
+			if (is_earlier(node, first_natural_breaks_to_outer))
+				first_natural_breaks_to_outer = node;
+			if (is_later(node, last_natural_breaks_to_outer))
+				last_natural_breaks_to_outer = node;
+		}
+
+		if (breaks_to_inner)
+		{
+			if (is_earlier(node, first_natural_breaks_to_inner))
+				first_natural_breaks_to_inner = node;
+			if (is_later(node, last_natural_breaks_to_inner))
+				last_natural_breaks_to_inner = node;
+		}
+
+		return true;
+	});
+
+	if (!first_natural_breaks_to_outer || !first_natural_breaks_to_inner ||
+	    !last_natural_breaks_to_outer || !last_natural_breaks_to_inner)
+	{
+		return false;
+	}
+
+	const auto is_ordered = [](const CFGNode *a, const CFGNode *b, const CFGNode *c) {
+		return a != b && a->dominates(b) && b != c && b->dominates(c);
+	};
+
+	// Crossing break scenario.
+	if (is_ordered(first_natural_breaks_to_inner, first_natural_breaks_to_outer, last_natural_breaks_to_inner))
+		return true;
+	else if (is_ordered(first_natural_breaks_to_outer, first_natural_breaks_to_inner, last_natural_breaks_to_outer))
+		return true;
+	else
+		return false;
 }
 
 void CFGStructurizer::split_merge_scopes()
@@ -2063,6 +2172,9 @@ void CFGStructurizer::split_merge_scopes()
 		// Setup a preliminary merge scope so we know when to stop traversal.
 		// We don't care about traversing inner scopes, out starting from merge block as well.
 		if (node->num_forward_preds() <= 1)
+			continue;
+
+		if (block_is_plain_continue(node))
 			continue;
 
 		// The idom is the natural header block.
@@ -2286,7 +2398,7 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		merge = natural_merge;
 
 		// We cannot rewrite the CFG in pass 1 safely, this should have happened in pass 0.
-		if (pass == 0 && !node->dominates(merge))
+		if (pass == 0 && (!node->dominates(merge) || block_is_plain_continue(merge)))
 		{
 			// We did not rewrite switch blocks w.r.t. selection breaks.
 			// We might be in a situation where the switch block is trying to merge to a block which is already being merged to.
@@ -2583,7 +2695,12 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 		header->fixup_merge_info_after_branch_rewrite(node, pred_node);
 	node->headers.clear();
 
-	pred_node->immediate_dominator = node->immediate_dominator;
+	// We're replacing entry block.
+	if (node == node->immediate_dominator)
+		pred_node->immediate_dominator = pred_node;
+	else
+		pred_node->immediate_dominator = node->immediate_dominator;
+
 	pred_node->immediate_post_dominator = node;
 	node->immediate_dominator = pred_node;
 
@@ -3241,6 +3358,8 @@ void CFGStructurizer::split_merge_blocks()
 	{
 		if (node->headers.size() <= 1)
 			continue;
+
+		assert(!block_is_plain_continue(node));
 
 		// If this block was the merge target for more than one construct,
 		// we will need to split the block. In SPIR-V, a merge block can only be the merge target for one construct.

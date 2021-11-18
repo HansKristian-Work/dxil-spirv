@@ -135,7 +135,7 @@ public:
 		return TypeID::StructTyID;
 	}
 	StructType(LLVMContext &context, Vector<Type *> member_types);
-	static StructType *get(Vector<Type *> member_types);
+	static StructType *get(LLVMContext &context, Vector<Type *> member_types);
 
 	unsigned getNumElements() const;
 	Type *getElementType(unsigned N) const;
