@@ -16,7 +16,11 @@ layout(location = 0) out int SV_Target;
 void main()
 {
     uint _20 = uint(A);
-    _13._m0[_20] = floatBitsToUint(uintBitsToFloat(_9._m0[_20 + 1u]) + uintBitsToFloat(_9._m0[_20]));
+    float _26 = uintBitsToFloat(_9._m0[_20]);
+    mediump float mp_copy_26 = _26;
+    float _31 = uintBitsToFloat(_9._m0[_20 + 1u]);
+    mediump float mp_copy_31 = _31;
+    _13._m0[_20] = floatBitsToUint(mp_copy_31 + mp_copy_26);
     SV_Target = int(10u);
 }
 
@@ -54,6 +58,7 @@ OpDecorate %16 RelaxedPrecision
 OpDecorate %16 Flat
 OpDecorate %16 Location 0
 OpDecorate %18 Location 0
+OpDecorate %32 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

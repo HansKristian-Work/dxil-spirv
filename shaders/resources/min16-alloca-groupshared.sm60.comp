@@ -1,0 +1,17 @@
+groupshared min16float bar[64];
+groupshared min16float4 bar4[64];
+
+RWStructuredBuffer<min16float4> O;
+static min16float4 Vec;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID, uint l : SV_GroupIndex)
+{
+	Vec = min16float4(0, 0, 0, 0);
+	bar[l] = min16float(l);
+	bar4[l] = min16float(l) + min16float4(1, 2, 3, 4);
+	GroupMemoryBarrierWithGroupSync();
+	Vec[l & 3] = bar[l ^ 5];
+	Vec[(l + 1) & 3] = bar[l ^ 4];
+	O[thr] = bar[l ^ 1] + bar4[l ^ 3] + Vec;
+}

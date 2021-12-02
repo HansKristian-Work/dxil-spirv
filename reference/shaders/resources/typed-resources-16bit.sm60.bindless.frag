@@ -51,14 +51,6 @@ void main()
     imageStore(_54[registers._m4 + 4u], int(_167), ivec4(uvec4(4294967276u)));
     imageStore(_58[registers._m4 + 5u], int(_167), uvec4(80u));
     mediump vec4 _191 = texture(sampler2D(_13[registers._m0], _62[registers._m2]), vec2(UV.x, UV.y));
-    mediump float _193 = _191.x;
-    float hp_copy_193 = _193;
-    mediump float _194 = _191.y;
-    float hp_copy_194 = _194;
-    mediump float _195 = _191.z;
-    float hp_copy_195 = _195;
-    mediump float _196 = _191.w;
-    float hp_copy_196 = _196;
     uvec4 _199 = uvec4(texelFetch(_18[_145], ivec2(uvec2(1u, 2u)), int(3u)));
     mediump uvec4 _205 = texelFetch(_22[_139], ivec2(uvec2(4u, 5u)), int(6u));
     mediump uint _207 = _205.x;
@@ -70,14 +62,14 @@ void main()
     mediump uint _210 = _205.w;
     uint hp_copy_210 = _210;
     mediump vec4 _212 = textureGather(sampler2D(_13[registers._m0], _62[registers._m2]), vec2(UV.x, UV.y));
-    mediump float _213 = _212.x;
-    float hp_copy_213 = _213;
-    mediump float _214 = _212.y;
-    float hp_copy_214 = _214;
-    mediump float _215 = _212.z;
-    float hp_copy_215 = _215;
-    mediump float _216 = _212.w;
-    float hp_copy_216 = _216;
+    mediump float _217 = _212.x + _191.x;
+    float hp_copy_217 = _217;
+    mediump float _218 = _212.y + _191.y;
+    float hp_copy_218 = _218;
+    mediump float _219 = _212.z + _191.z;
+    float hp_copy_219 = _219;
+    mediump float _220 = _212.w + _191.w;
+    float hp_copy_220 = _220;
     uvec4 _225 = uvec4(textureGather(isampler2D(_18[_145], _62[registers._m2]), vec2(UV.x, UV.y), int(1u)));
     mediump uvec4 _237 = textureGather(usampler2D(_22[_139], _62[registers._m2]), vec2(UV.x, UV.y), int(2u));
     mediump uint _238 = _237.x;
@@ -88,10 +80,18 @@ void main()
     uint hp_copy_240 = _240;
     mediump uint _241 = _237.w;
     uint hp_copy_241 = _241;
-    mediump vec4 _252 = vec4(texture(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5)));
-    mediump float _253 = _252.x;
+    mediump float _253 = vec4(texture(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5))).x;
+    float hp_copy_253 = _253;
     mediump vec4 _260 = vec4(textureLod(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5), 0.0));
     mediump float _261 = _260.x;
+    float _262 = _261 + (hp_copy_253 + hp_copy_217);
+    mediump float mp_copy_262 = _262;
+    float _263 = _261 + (hp_copy_253 + hp_copy_218);
+    mediump float mp_copy_263 = _263;
+    float _264 = _261 + (hp_copy_253 + hp_copy_219);
+    mediump float mp_copy_264 = _264;
+    float _265 = _261 + (hp_copy_253 + hp_copy_220);
+    mediump float mp_copy_265 = _265;
     vec2 _266 = vec2(UV.x, UV.y);
     mediump vec4 _267 = textureGather(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), _266, 0.5);
     mediump vec4 _276 = textureLod(sampler2D(_13[registers._m0], _62[registers._m2]), vec2(UV.x, UV.y), 0.0);
@@ -100,10 +100,10 @@ void main()
     mediump vec4 _311 = texelFetch(_26[registers._m1 + 3u], int(_167));
     uvec4 _321 = uvec4(texelFetch(_30[registers._m1 + 4u], int(_167)));
     mediump uvec4 _330 = texelFetch(_34[registers._m1 + 5u], int(_167));
-    SV_Target.x = ((((_267.x + (_261 + (_253 + (hp_copy_213 + hp_copy_193)))) + _276.x) + _289.x) + _301.x) + _311.x;
-    SV_Target.y = ((((_267.y + (_261 + (_253 + (hp_copy_214 + hp_copy_194)))) + _276.y) + _289.y) + _301.y) + _311.y;
-    SV_Target.z = ((((_267.z + (_261 + (_253 + (hp_copy_215 + hp_copy_195)))) + _276.z) + _289.z) + _301.z) + _311.z;
-    SV_Target.w = ((((_267.w + (_261 + (_253 + (hp_copy_216 + hp_copy_196)))) + _276.w) + _289.w) + _301.w) + _311.w;
+    SV_Target.x = ((((_267.x + mp_copy_262) + _276.x) + _289.x) + _301.x) + _311.x;
+    SV_Target.y = ((((_267.y + mp_copy_263) + _276.y) + _289.y) + _301.y) + _311.y;
+    SV_Target.z = ((((_267.z + mp_copy_264) + _276.z) + _289.z) + _301.z) + _311.z;
+    SV_Target.w = ((((_267.w + mp_copy_265) + _276.w) + _289.w) + _301.w) + _311.w;
     SV_Target_1.x = int((_225.x + _199.x) + _321.x);
     SV_Target_1.y = int((_225.y + _199.y) + _321.y);
     SV_Target_1.z = int((_225.z + _199.z) + _321.z);
@@ -200,6 +200,71 @@ OpDecorate %71 RelaxedPrecision
 OpDecorate %71 Location 1
 OpDecorate %74 RelaxedPrecision
 OpDecorate %74 Location 2
+OpDecorate %191 RelaxedPrecision
+OpDecorate %193 RelaxedPrecision
+OpDecorate %194 RelaxedPrecision
+OpDecorate %195 RelaxedPrecision
+OpDecorate %196 RelaxedPrecision
+OpDecorate %197 RelaxedPrecision
+OpDecorate %205 RelaxedPrecision
+OpDecorate %212 RelaxedPrecision
+OpDecorate %213 RelaxedPrecision
+OpDecorate %214 RelaxedPrecision
+OpDecorate %215 RelaxedPrecision
+OpDecorate %216 RelaxedPrecision
+OpDecorate %217 RelaxedPrecision
+OpDecorate %218 RelaxedPrecision
+OpDecorate %219 RelaxedPrecision
+OpDecorate %220 RelaxedPrecision
+OpDecorate %224 RelaxedPrecision
+OpDecorate %237 RelaxedPrecision
+OpDecorate %267 RelaxedPrecision
+OpDecorate %268 RelaxedPrecision
+OpDecorate %269 RelaxedPrecision
+OpDecorate %270 RelaxedPrecision
+OpDecorate %271 RelaxedPrecision
+OpDecorate %272 RelaxedPrecision
+OpDecorate %273 RelaxedPrecision
+OpDecorate %274 RelaxedPrecision
+OpDecorate %275 RelaxedPrecision
+OpDecorate %276 RelaxedPrecision
+OpDecorate %278 RelaxedPrecision
+OpDecorate %279 RelaxedPrecision
+OpDecorate %280 RelaxedPrecision
+OpDecorate %281 RelaxedPrecision
+OpDecorate %282 RelaxedPrecision
+OpDecorate %283 RelaxedPrecision
+OpDecorate %284 RelaxedPrecision
+OpDecorate %285 RelaxedPrecision
+OpDecorate %289 RelaxedPrecision
+OpDecorate %293 RelaxedPrecision
+OpDecorate %294 RelaxedPrecision
+OpDecorate %295 RelaxedPrecision
+OpDecorate %296 RelaxedPrecision
+OpDecorate %297 RelaxedPrecision
+OpDecorate %298 RelaxedPrecision
+OpDecorate %299 RelaxedPrecision
+OpDecorate %300 RelaxedPrecision
+OpDecorate %301 RelaxedPrecision
+OpDecorate %303 RelaxedPrecision
+OpDecorate %304 RelaxedPrecision
+OpDecorate %305 RelaxedPrecision
+OpDecorate %306 RelaxedPrecision
+OpDecorate %307 RelaxedPrecision
+OpDecorate %308 RelaxedPrecision
+OpDecorate %309 RelaxedPrecision
+OpDecorate %310 RelaxedPrecision
+OpDecorate %311 RelaxedPrecision
+OpDecorate %312 RelaxedPrecision
+OpDecorate %313 RelaxedPrecision
+OpDecorate %314 RelaxedPrecision
+OpDecorate %315 RelaxedPrecision
+OpDecorate %316 RelaxedPrecision
+OpDecorate %317 RelaxedPrecision
+OpDecorate %318 RelaxedPrecision
+OpDecorate %319 RelaxedPrecision
+OpDecorate %320 RelaxedPrecision
+OpDecorate %330 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

@@ -804,6 +804,9 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 		Operation *op = impl.allocate(opcode, instruction, sample_type);
 
+		if (!sparse)
+			impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+
 		op->add_ids({ image_id, access.index_id });
 		impl.add(op);
 

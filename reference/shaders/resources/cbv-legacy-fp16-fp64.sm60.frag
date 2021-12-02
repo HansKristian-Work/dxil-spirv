@@ -52,6 +52,14 @@ OpDecorate %12 Binding 0
 OpDecorate %18 DescriptorSet 0
 OpDecorate %18 Binding 0
 OpDecorate %20 Location 0
+OpDecorate %32 RelaxedPrecision
+OpDecorate %33 RelaxedPrecision
+OpDecorate %34 RelaxedPrecision
+OpDecorate %35 RelaxedPrecision
+OpDecorate %43 RelaxedPrecision
+OpDecorate %44 RelaxedPrecision
+OpDecorate %45 RelaxedPrecision
+OpDecorate %46 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

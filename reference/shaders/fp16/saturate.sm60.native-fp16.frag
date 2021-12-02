@@ -48,6 +48,10 @@ OpDecorate %8 RelaxedPrecision
 OpDecorate %8 Location 0
 OpDecorate %10 RelaxedPrecision
 OpDecorate %10 Location 0
+OpDecorate %33 RelaxedPrecision
+OpDecorate %34 RelaxedPrecision
+OpDecorate %35 RelaxedPrecision
+OpDecorate %36 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

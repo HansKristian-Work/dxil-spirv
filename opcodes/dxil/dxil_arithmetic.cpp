@@ -47,6 +47,7 @@ bool emit_imad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
+	spv::Id result_id;
 
 	if (instruction->getMetadata("dx.precise") != nullptr)
 	{
@@ -61,11 +62,15 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		impl.add(mul_op);
 		builder.addDecoration(mul_op->id, spv::DecorationNoContraction);
 
+		impl.decorate_relaxed_precision(instruction->getType(), mul_op->id, false);
+
 		Operation *add_op = impl.allocate(spv::OpFAdd, instruction);
 		add_op->add_id(mul_op->id);
 		add_op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
 		impl.add(add_op);
 		builder.addDecoration(add_op->id, spv::DecorationNoContraction);
+
+		result_id = add_op->id;
 	}
 	else
 	{
@@ -78,8 +83,11 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		for (unsigned i = 1; i < 4; i++)
 			op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 		impl.add(op);
+
+		result_id = op->id;
 	}
 
+	impl.decorate_relaxed_precision(instruction->getType(), result_id, false);
 	return true;
 }
 
@@ -152,6 +160,7 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 
 	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 	return true;
 }
 
@@ -169,6 +178,7 @@ bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &im
 		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 
 	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 	return true;
 }
 
@@ -184,6 +194,7 @@ bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 
 	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 	return true;
 }
 
@@ -192,6 +203,7 @@ bool emit_dxil_unary_instruction(spv::Op opcode, Converter::Impl &impl, const ll
 	Operation *op = impl.allocate(opcode, instruction);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 	return true;
 }
 
@@ -239,6 +251,7 @@ bool emit_saturate_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	              constant_0, constant_1 });
 
 	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 	return true;
 }
 
@@ -258,6 +271,7 @@ bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm
 
 	op->add_ids({ vec0, vec1 });
 	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 	return true;
 }
 
@@ -365,10 +379,18 @@ bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallI
 	unpack_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	impl.add(unpack_op);
 
+	// By construction, these are relaxed precision, but spams lots of unrelated shader changes,
+	// and doesn't make too much sense to add ...
+	//builder.addDecoration(unpack_op->id, spv::DecorationRelaxedPrecision);
+
 	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
 	op->add_id(unpack_op->id);
 	op->add_literal(0);
 	impl.add(op);
+
+	// By construction, these are relaxed precision, but spams lots of unrelated shader changes,
+	// and doesn't make too much sense to add ...
+	//builder.addDecoration(op->id, spv::DecorationRelaxedPrecision);
 
 	return true;
 }
@@ -406,6 +428,7 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 	spv::Id inputs[2] = { input_id, builder.makeFloatConstant(0.0f) };
 	op->add_id(impl.build_vector(builder.makeFloatType(32), inputs, 2));
 	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 	return true;
 }
 
@@ -538,6 +561,8 @@ bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst 
 	impl.add(acc_op);
 	if (precise)
 		builder.addDecoration(acc_op->id, spv::DecorationNoContraction);
+
+	// This opcode requires native FP16, so RelaxedPrecision is useless.
 
 	return true;
 }

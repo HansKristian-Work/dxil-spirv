@@ -1,0 +1,18 @@
+RWStructuredBuffer<min16float4> B;
+Texture2D<min16float4> T0;
+Texture2D<min16float4> T1;
+Texture2D<min16float4> T2;
+
+[numthreads(64, 1, 1)]
+void main(uint3 thr : SV_DispatchThreadID)
+{
+	min16float4 v;
+	if (thr.x < 20)
+		v = T0.Load(int3(thr));
+	else if (thr.y < 40)
+		v = T1.Load(int3(thr));
+	else
+		v = T2.Load(int3(thr));
+
+	B[thr.x] = v;
+}

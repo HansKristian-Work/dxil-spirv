@@ -5,22 +5,14 @@ layout(location = 0) out mediump vec4 SV_Target;
 
 void main()
 {
-    mediump float _15 = V.x;
-    float hp_copy_15 = _15;
-    mediump float _18 = V.y;
-    float hp_copy_18 = _18;
-    mediump float _21 = V.z;
-    float hp_copy_21 = _21;
-    mediump float _24 = V.w;
-    float hp_copy_24 = _24;
-    float _40 = isnan(0.0) ? hp_copy_15 : (isnan(hp_copy_15) ? 0.0 : max(hp_copy_15, 0.0));
-    float _52 = isnan(0.0) ? hp_copy_18 : (isnan(hp_copy_18) ? 0.0 : max(hp_copy_18, 0.0));
-    float _64 = isnan(0.0) ? hp_copy_21 : (isnan(hp_copy_21) ? 0.0 : max(hp_copy_21, 0.0));
-    float _76 = isnan(0.0) ? hp_copy_24 : (isnan(hp_copy_24) ? 0.0 : max(hp_copy_24, 0.0));
-    SV_Target.x = isnan(1.0) ? _40 : (isnan(_40) ? 1.0 : min(_40, 1.0));
-    SV_Target.y = isnan(1.0) ? _52 : (isnan(_52) ? 1.0 : min(_52, 1.0));
-    SV_Target.z = isnan(1.0) ? _64 : (isnan(_64) ? 1.0 : min(_64, 1.0));
-    SV_Target.w = isnan(1.0) ? _76 : (isnan(_76) ? 1.0 : min(_76, 1.0));
+    mediump float _39 = isnan(0.0) ? V.x : (isnan(V.x) ? 0.0 : max(V.x, 0.0));
+    mediump float _50 = isnan(0.0) ? V.y : (isnan(V.y) ? 0.0 : max(V.y, 0.0));
+    mediump float _61 = isnan(0.0) ? V.z : (isnan(V.z) ? 0.0 : max(V.z, 0.0));
+    mediump float _72 = isnan(0.0) ? V.w : (isnan(V.w) ? 0.0 : max(V.w, 0.0));
+    SV_Target.x = isnan(1.0) ? _39 : (isnan(_39) ? 1.0 : min(_39, 1.0));
+    SV_Target.y = isnan(1.0) ? _50 : (isnan(_50) ? 1.0 : min(_50, 1.0));
+    SV_Target.z = isnan(1.0) ? _61 : (isnan(_61) ? 1.0 : min(_61, 1.0));
+    SV_Target.w = isnan(1.0) ? _72 : (isnan(_72) ? 1.0 : min(_72, 1.0));
 }
 
 
@@ -43,6 +35,10 @@ OpDecorate %8 RelaxedPrecision
 OpDecorate %8 Location 0
 OpDecorate %10 RelaxedPrecision
 OpDecorate %10 Location 0
+OpDecorate %28 RelaxedPrecision
+OpDecorate %29 RelaxedPrecision
+OpDecorate %30 RelaxedPrecision
+OpDecorate %31 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

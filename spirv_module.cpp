@@ -822,6 +822,9 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			phi_op->addIdOperand(fake_loop_block->getId());
 		}
 
+		if (phi.relaxed)
+			builder.addDecoration(phi.id, spv::DecorationRelaxedPrecision);
+
 		bb->addInstruction(std::move(phi_op));
 	}
 

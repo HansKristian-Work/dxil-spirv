@@ -4116,6 +4116,8 @@ bool Converter::Impl::emit_global_variables()
 		spv::Id var_id = create_variable_with_initializer(
 		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
 		    pointee_type_id, initializer_id);
+
+		decorate_relaxed_precision(global.getType()->getPointerElementType(), var_id, false);
 		rewrite_value(&global, var_id);
 	}
 
@@ -4735,6 +4737,7 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 		PHI phi;
 		phi.id = get_id_for_value(&instruction);
 		phi.type_id = get_type_id(instruction.getType());
+		phi.relaxed = type_can_relax_precision(instruction.getType(), false);
 
 		for (unsigned i = 0; i < count; i++)
 		{
@@ -5736,6 +5739,29 @@ DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::Compo
 spv::Id Converter::Impl::get_effective_input_output_type_id(DXIL::ComponentType type)
 {
 	return get_type_id(get_effective_input_output_type(type), 1, 1);
+}
+
+bool Converter::Impl::type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const
+{
+	if (type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+		type = llvm::cast<llvm::ArrayType>(type)->getArrayElementType();
+	if (type->getTypeID() == llvm::Type::TypeID::VectorTyID)
+		type = llvm::cast<llvm::VectorType>(type)->getElementType();
+
+	return !execution_mode_meta.native_16bit_operations &&
+	       (type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
+	        (type->getTypeID() == llvm::Type::TypeID::IntegerTyID && type->getIntegerBitWidth() == 16 &&
+	         known_integer_sign));
+}
+
+void Converter::Impl::decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign)
+{
+	// Ignore RelaxedPrecision for integers since they are untyped in LLVM for the most part.
+	// For texture loading operations and similar, we load in the appropriate sign, so it's safe to use RelaxedPrecision,
+	// since RelaxedPrecision may sign-extend based on the OpTypeInt's signage.
+	// DXIL is kinda broken in this regard since min16int and min16uint lower to the same i16 type ... :(
+	if (type_can_relax_precision(type, known_integer_sign))
+		builder().addDecoration(id, spv::DecorationRelaxedPrecision);
 }
 
 void Converter::Impl::set_option(const OptionBase &cap)
