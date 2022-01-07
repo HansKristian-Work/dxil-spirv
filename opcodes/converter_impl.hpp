@@ -583,6 +583,7 @@ struct Converter::Impl
 		bool discards = false;
 		bool can_require_primitive_culling = false;
 		bool require_compute_shader_derivatives = false;
+		bool precise_f16_to_f32_observed = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

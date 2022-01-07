@@ -875,6 +875,12 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 		}
 		break;
 
+	case DXIL::Op::LegacyF16ToF32:
+		// Very specific check for HZD invariance. See f32_to_f16 code for details.
+		if (instruction->getMetadata("dx.precise") != nullptr)
+			impl.shader_analysis.precise_f16_to_f32_observed = true;
+		break;
+
 	default:
 		break;
 	}
