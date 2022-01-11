@@ -370,6 +370,7 @@ bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallI
 	op->add_id(unpack_op->id);
 	op->add_literal(0);
 	impl.add(op);
+
 	return true;
 }
 
@@ -379,11 +380,31 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
+	// According to D3D11 functional spec (and implementations), this is required to be RTZ.
+	// We have no obvious way of getting this behavior on a per-instruction basis,
+	// and it is too expensive/complicated to implement this behavior exactly.
+	// In practice, we have observed cases where this matters in HZD, but we don't really need RTZ, we just
+	// need invariance to be preserved for an FP16 write and the following unpack of that expression.
+	// QuantizeToFP16 ensures a baseline which works for the time being on the affected implementations.
+	// - Polaris / Vega: RTZ rounding can be optimized to RTE rounding with just plain packHalf, which breaks invariance.
+	// - NV: packHalf / unpackHalf pairs are optimized away, leaving full FP32 precision.
+	// Ideally we'd have a PackHalf variant which takes rounding mode / denorm mode to be correct, but alas ...
+	// Only do this hack when heuristics deduce it to be necessary.
+	spv::Id input_id = impl.get_id_for_value(instruction->getOperand(1));
+
+	if (impl.shader_analysis.precise_f16_to_f32_observed)
+	{
+		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, builder.makeFloatType(32));
+		quant_op->add_id(input_id);
+		impl.add(quant_op);
+		input_id = quant_op->id;
+	}
+
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
 	op->add_literal(GLSLstd450PackHalf2x16);
 
-	spv::Id inputs[2] = { impl.get_id_for_value(instruction->getOperand(1)), builder.makeFloatConstant(0.0f) };
+	spv::Id inputs[2] = { input_id, builder.makeFloatConstant(0.0f) };
 	op->add_id(impl.build_vector(builder.makeFloatType(32), inputs, 2));
 	impl.add(op);
 	return true;
