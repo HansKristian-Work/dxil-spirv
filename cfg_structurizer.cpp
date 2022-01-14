@@ -1021,7 +1021,9 @@ bool CFGStructurizer::phi_frontier_makes_forward_progress(const PHI &phi, const 
 	{
 		auto *incoming_block = incoming_value.block;
 		// We will remove an input, this is forward progress.
-		if (!exists_path_in_cfg_without_intermediate_node(incoming_block, end_node, frontier))
+		// Avoid checking the edge case where frontier candidate == incoming block.
+		// Removing an input only to place a new frontier there is nonsensical.
+		if (frontier != incoming_block && !exists_path_in_cfg_without_intermediate_node(incoming_block, end_node, frontier))
 			return true;
 	}
 
