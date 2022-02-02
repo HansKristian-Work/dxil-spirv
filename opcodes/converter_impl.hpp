@@ -180,6 +180,7 @@ struct Converter::Impl
 	bool emit_execution_modes_domain();
 	bool emit_execution_modes_pixel();
 	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
+	bool emit_execution_modes_mesh();
 	bool emit_execution_modes_fp_denorm();
 
 	bool analyze_instructions();
@@ -250,6 +251,7 @@ struct Converter::Impl
 	{
 		unsigned stage_input_num_vertex = 0;
 		unsigned stage_output_num_vertex = 0;
+		unsigned stage_output_num_primitive = 0;
 		unsigned gs_stream_active_mask = 0;
 		llvm::Function *patch_constant_function = nullptr;
 		unsigned workgroup_threads[3] = {};

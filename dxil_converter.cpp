@@ -5214,6 +5214,50 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 	return true;
 }
 
+bool Converter::Impl::emit_execution_modes_mesh()
+{
+	auto &builder = spirv_module.get_builder();
+	auto *func = spirv_module.get_entry_function();
+
+	builder.addExtension("SPV_EXT_mesh_shader");
+	builder.addCapability(spv::CapabilityMeshShadingEXT);
+
+	auto *ms_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::MSState);
+
+	if (ms_state_node) {
+		auto *arguments = llvm::cast<llvm::MDNode>(*ms_state_node);
+		unsigned max_vertex_count = get_constant_metadata(arguments, 1);
+		unsigned max_primitive_count = get_constant_metadata(arguments, 2);
+		auto topology = static_cast<DXIL::MeshOutputTopology>(get_constant_metadata(arguments, 3));
+
+		builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
+		builder.addExecutionMode(func, spv::ExecutionModeOutputPrimitivesEXT, max_primitive_count);
+
+		switch (topology)
+		{
+		case DXIL::MeshOutputTopology::Undefined:
+			break;
+
+		case DXIL::MeshOutputTopology::Line:
+			builder.addExecutionMode(func, spv::ExecutionModeOutputLinesEXT);
+			break;
+
+		case DXIL::MeshOutputTopology::Triangle:
+			builder.addExecutionMode(func, spv::ExecutionModeOutputTrianglesEXT);
+			break;
+
+		default:
+			LOGE("Unexpected mesh output topology (%u).\n", unsigned(topology));
+			return false;
+		}
+
+		execution_mode_meta.stage_output_num_vertex = max_vertex_count;
+		execution_mode_meta.stage_output_num_primitive = max_primitive_count;
+		return true;
+	} else
+		return false;
+}
+
 bool Converter::Impl::emit_execution_modes_fp_denorm()
 {
 	// Check for SM 6.2 denorm handling. Only applies to FP32.
@@ -5297,6 +5341,11 @@ bool Converter::Impl::emit_execution_modes()
 	case spv::ExecutionModelCallableKHR:
 	case spv::ExecutionModelClosestHitKHR:
 		if (!emit_execution_modes_ray_tracing(execution_model))
+			return false;
+		break;
+
+	case spv::ExecutionModelMeshEXT:
+		if (!emit_execution_modes_mesh())
 			return false;
 		break;
 
