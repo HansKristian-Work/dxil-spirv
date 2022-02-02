@@ -41,6 +41,49 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 	return true;
 }
 
+bool emit_store_vertex_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	uint32_t output_element_index;
+	if (!get_constant_operand(instruction, 1, &output_element_index))
+		return false;
+
+	const auto &meta = impl.output_elements_meta[output_element_index];
+
+	uint32_t var_id = meta.id;
+	uint32_t ptr_id;
+
+	spv::Id output_type_id = builder.getContainedTypeId(builder.getDerefTypeId(var_id));
+
+	bool row_index = false;
+	if (builder.isArrayType(output_type_id))
+	{
+		row_index = true;
+		output_type_id = builder.getContainedTypeId(output_type_id);
+	}
+	uint32_t num_cols = builder.getNumTypeComponents(output_type_id);
+
+	Operation *op = impl.allocate(
+			spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+	ptr_id = op->id;
+
+	op->add_id(var_id);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(5)));
+	if (row_index)
+		op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+	if (num_cols > 1)
+		op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
+
+	impl.add(op);
+
+	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
+
+	op = impl.allocate(spv::OpStore);
+	op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });
+	impl.add(op);
+	return true;
+}
+
 bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();

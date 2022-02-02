@@ -338,6 +338,7 @@ struct DXILDispatcher
 
 		// dxil_mesh.cpp
 		OP(SetMeshOutputCounts) = emit_set_mesh_output_counts_instruction;
+		OP(StoreVertexOutput) = emit_store_vertex_output_instruction;
 		OP(StorePrimitiveOutput) = emit_store_primitive_output_instruction;
 	}
 
