@@ -2890,6 +2890,10 @@ ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_m
 		return ShaderStage::RayGeneration;
 	case spv::ExecutionModelCallableKHR:
 		return ShaderStage::Callable;
+	case spv::ExecutionModelTaskEXT:
+		return ShaderStage::Amplification;
+	case spv::ExecutionModelMeshEXT:
+		return ShaderStage::Mesh;
 	default:
 		return ShaderStage::Unknown;
 	}
@@ -3246,6 +3250,10 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 			return spv::ExecutionModelGeometry;
 		case DXIL::ShaderKind::Compute:
 			return spv::ExecutionModelGLCompute;
+		case DXIL::ShaderKind::Amplification:
+			return spv::ExecutionModelTaskEXT;
+		case DXIL::ShaderKind::Mesh:
+			return spv::ExecutionModelMeshEXT;
 		case DXIL::ShaderKind::RayGeneration:
 			return spv::ExecutionModelRayGenerationKHR;
 		case DXIL::ShaderKind::Miss:
@@ -3280,6 +3288,10 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 			return spv::ExecutionModelGeometry;
 		else if (model == "cs")
 			return spv::ExecutionModelGLCompute;
+		else if (model == "as")
+			return spv::ExecutionModelTaskEXT;
+		else if (model == "ms")
+			return spv::ExecutionModelMeshEXT;
 	}
 
 	return spv::ExecutionModelMax;

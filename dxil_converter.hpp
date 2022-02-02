@@ -64,7 +64,9 @@ enum class ShaderStage : unsigned
 	Miss = 9,
 	AnyHit = 10,
 	RayGeneration = 11,
-	Callable = 12
+	Callable = 12,
+	Amplification = 13,
+	Mesh = 14,
 };
 
 struct D3DBinding

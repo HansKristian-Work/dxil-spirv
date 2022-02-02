@@ -88,6 +88,8 @@ typedef enum dxil_spv_shader_stage
 	DXIL_SPV_STAGE_ANY_HIT = 10,
 	DXIL_SPV_STAGE_RAY_GENERATION = 11,
 	DXIL_SPV_STAGE_CALLABLE = 12,
+	DXIL_SPV_STAGE_AMPLIFICATION = 13,
+	DXIL_SPV_STAGE_MESH = 14,
 	DXIL_SPV_STAGE_INT_MAX = 0x7fffffff
 } dxil_spv_shader_stage;
 
