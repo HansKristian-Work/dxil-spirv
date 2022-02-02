@@ -4864,52 +4864,11 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 
 bool Converter::Impl::emit_execution_modes_compute()
 {
-	auto &builder = spirv_module.get_builder();
-
-	auto *wave_size_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::WaveSize);
-	if (wave_size_node)
-	{
-		auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_node);
-		execution_mode_meta.required_wave_size = get_constant_metadata(wave_size, 0);
-	}
-
 	auto *num_threads_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NumThreads);
 	if (num_threads_node)
 	{
 		auto *num_threads = llvm::cast<llvm::MDNode>(*num_threads_node);
-		unsigned threads[3];
-		for (unsigned dim = 0; dim < 3; dim++)
-			threads[dim] = get_constant_metadata(num_threads, dim);
-
-		if (shader_analysis.require_compute_shader_derivatives)
-		{
-			// For sanity, verify that dimensions align sufficiently.
-			// Spec says that product of workgroup size must align with 4.
-			unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
-			if (total_workgroup_threads % 4 == 0)
-			{
-				builder.addExtension("SPV_NV_compute_shader_derivatives");
-				builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearNV);
-				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupLinearNV);
-
-				// If the X and Y dimensions align with 2,
-				// we need to assume that any quad op works on a 2D dispatch.
-				execution_mode_meta.synthesize_2d_quad_dispatch = (threads[0] % 2 == 0) && (threads[1] % 2 == 0);
-				if (execution_mode_meta.synthesize_2d_quad_dispatch)
-				{
-					threads[0] *= 2;
-					threads[1] /= 2;
-				}
-			}
-		}
-
-		for (unsigned dim = 0; dim < 3; dim++)
-			execution_mode_meta.workgroup_threads[dim] = threads[dim];
-
-		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
-		                         threads[0], threads[1], threads[2]);
-
-		return true;
+		return emit_execution_modes_thread_wave_properties(num_threads);
 	}
 	else
 		return false;
@@ -5221,6 +5180,58 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 	return true;
 }
 
+bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads)
+{
+	auto &builder = spirv_module.get_builder();
+
+	auto *wave_size_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::WaveSize);
+	if (wave_size_node)
+	{
+		auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_node);
+		execution_mode_meta.required_wave_size = get_constant_metadata(wave_size, 0);
+	}
+
+	unsigned threads[3];
+	for (unsigned dim = 0; dim < 3; dim++)
+		threads[dim] = get_constant_metadata(num_threads, dim);
+
+	if (shader_analysis.require_compute_shader_derivatives)
+	{
+		if (execution_model != spv::ExecutionModelGLCompute)
+		{
+			LOGE("Derivatives only supported in compute shaders.\n");
+			return false;
+		}
+
+		// For sanity, verify that dimensions align sufficiently.
+		// Spec says that product of workgroup size must align with 4.
+		unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
+		if (total_workgroup_threads % 4 == 0)
+		{
+			builder.addExtension("SPV_NV_compute_shader_derivatives");
+			builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearNV);
+			builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupLinearNV);
+
+			// If the X and Y dimensions align with 2,
+			// we need to assume that any quad op works on a 2D dispatch.
+			execution_mode_meta.synthesize_2d_quad_dispatch = (threads[0] % 2 == 0) && (threads[1] % 2 == 0);
+			if (execution_mode_meta.synthesize_2d_quad_dispatch)
+			{
+				threads[0] *= 2;
+				threads[1] /= 2;
+			}
+		}
+	}
+
+	for (unsigned dim = 0; dim < 3; dim++)
+		execution_mode_meta.workgroup_threads[dim] = threads[dim];
+
+	builder.addExecutionMode(spirv_module.get_entry_function(),
+			spv::ExecutionModeLocalSize, threads[0], threads[1], threads[2]);
+
+	return true;
+}
+
 bool Converter::Impl::emit_execution_modes_mesh()
 {
 	auto &builder = spirv_module.get_builder();
@@ -5260,7 +5271,9 @@ bool Converter::Impl::emit_execution_modes_mesh()
 
 		execution_mode_meta.stage_output_num_vertex = max_vertex_count;
 		execution_mode_meta.stage_output_num_primitive = max_primitive_count;
-		return true;
+
+		auto *num_threads = llvm::cast<llvm::MDNode>(arguments->getOperand(0));
+		return emit_execution_modes_thread_wave_properties(num_threads);
 	} else
 		return false;
 }
