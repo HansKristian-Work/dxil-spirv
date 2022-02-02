@@ -36,6 +36,7 @@
 #include "opcodes/dxil/dxil_tessellation.hpp"
 #include "opcodes/dxil/dxil_waveops.hpp"
 #include "opcodes/dxil/dxil_ray_tracing.hpp"
+#include "opcodes/dxil/dxil_mesh.hpp"
 
 namespace dxil_spv
 {
@@ -334,6 +335,9 @@ struct DXILDispatcher
 			emit_ray_query_get_matrix_value_instruction<spv::OpRayQueryGetIntersectionObjectToWorldKHR,
 				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
 		////////////
+
+		// dxil_mesh.cpp
+		OP(SetMeshOutputCounts) = emit_set_mesh_output_counts_instruction;
 	}
 
 #undef OP
