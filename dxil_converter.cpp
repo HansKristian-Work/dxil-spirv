@@ -3474,7 +3474,7 @@ bool Converter::Impl::emit_patch_variables()
 	auto &builder = spirv_module.get_builder();
 
 	spv::StorageClass storage =
-	    execution_model == spv::ExecutionModelTessellationControl ? spv::StorageClassOutput : spv::StorageClassInput;
+	    execution_model == spv::ExecutionModelTessellationEvaluation ? spv::StorageClassInput : spv::StorageClassOutput;
 
 	for (unsigned i = 0; i < patch_node->getNumOperands(); i++)
 	{
@@ -3502,6 +3502,12 @@ bool Converter::Impl::emit_patch_variables()
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
 
+		if (execution_model == spv::ExecutionModelMeshEXT)
+		{
+			type_id = builder.makeArrayType(
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
+		}
+
 		auto variable_name = semantic_name;
 		if (semantic_index != 0)
 		{
@@ -3528,7 +3534,8 @@ bool Converter::Impl::emit_patch_variables()
 				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
 		}
 
-		builder.addDecoration(variable_id, spv::DecorationPatch);
+		builder.addDecoration(variable_id, execution_model == spv::ExecutionModelMeshEXT
+				? spv::DecorationPerPrimitiveEXT : spv::DecorationPatch);
 	}
 
 	return true;
@@ -3619,7 +3626,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		auto start_row = get_constant_metadata(output, 8);
 		auto start_col = get_constant_metadata(output, 9);
 
-		if (execution_model == spv::ExecutionModelTessellationControl)
+		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
@@ -3653,7 +3660,7 @@ bool Converter::Impl::emit_stage_output_variables()
 			continue;
 		}
 
-		if (execution_model == spv::ExecutionModelTessellationControl)
+		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
@@ -3759,7 +3766,7 @@ bool Converter::Impl::emit_stage_output_variables()
 	if (clip_distance_count)
 	{
 		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, clip_distance_count, 1, true);
-		if (execution_model == spv::ExecutionModelTessellationControl)
+		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
@@ -3773,7 +3780,7 @@ bool Converter::Impl::emit_stage_output_variables()
 	if (cull_distance_count)
 	{
 		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, cull_distance_count, 1, true);
-		if (execution_model == spv::ExecutionModelTessellationControl)
+		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
