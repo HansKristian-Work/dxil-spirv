@@ -41,6 +41,33 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 	return true;
 }
 
+bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	unsigned index_dim = impl.execution_mode_meta.primitive_index_dimension;
+	spv::Id index_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1, index_dim);
+	spv::Id index_scalar_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1, 1);
+
+	spv::Id components[3];
+	for (unsigned i = 0; i < index_dim; i++)
+		components[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
+	spv::Id index_id = impl.build_vector(index_scalar_type_id, components, index_dim);
+
+	Operation *op = impl.allocate(spv::OpAccessChain,
+			builder.makePointer(spv::StorageClassOutput, index_type_id));
+	spv::Id ptr_id = op->id;
+
+	op->add_id(impl.primitive_index_array_id);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
+
+	op = impl.allocate(spv::OpStore);
+	op->add_ids({ ptr_id, index_id });
+	impl.add(op);
+	return true;
+}
+
 bool emit_store_vertex_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
