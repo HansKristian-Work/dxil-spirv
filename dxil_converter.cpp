@@ -3541,6 +3541,30 @@ bool Converter::Impl::emit_patch_variables()
 	return true;
 }
 
+bool Converter::Impl::emit_other_variables()
+{
+	auto &builder = spirv_module.get_builder();
+
+	if (execution_model == spv::ExecutionModelMeshEXT)
+	{
+		unsigned index_dim = execution_mode_meta.primitive_index_dimension;
+
+		if (index_dim)
+		{
+			spv::Id type_id = builder.makeArrayType(get_type_id(DXIL::ComponentType::U32, 1, index_dim),
+					builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
+			primitive_index_array_id = create_variable(spv::StorageClassOutput, type_id, "indices");
+
+			spv::BuiltIn builtin_id = index_dim == 3
+					? spv::BuiltInPrimitiveTriangleIndicesEXT : spv::BuiltInPrimitiveLineIndicesEXT;
+			builder.addDecoration(primitive_index_array_id, spv::DecorationBuiltIn, builtin_id);
+			spirv_module.register_builtin_shader_output(primitive_index_array_id, builtin_id);
+		}
+	}
+
+	return true;
+}
+
 static unsigned get_geometry_shader_stream_index(const llvm::MDNode *node)
 {
 	if (node->getNumOperands() >= 11 && node->getOperand(10))
@@ -5247,6 +5271,7 @@ bool Converter::Impl::emit_execution_modes_mesh()
 		unsigned max_vertex_count = get_constant_metadata(arguments, 1);
 		unsigned max_primitive_count = get_constant_metadata(arguments, 2);
 		auto topology = static_cast<DXIL::MeshOutputTopology>(get_constant_metadata(arguments, 3));
+		unsigned index_count;
 
 		builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
 		builder.addExecutionMode(func, spv::ExecutionModeOutputPrimitivesEXT, max_primitive_count);
@@ -5254,14 +5279,17 @@ bool Converter::Impl::emit_execution_modes_mesh()
 		switch (topology)
 		{
 		case DXIL::MeshOutputTopology::Undefined:
+			index_count = 0;
 			break;
 
 		case DXIL::MeshOutputTopology::Line:
 			builder.addExecutionMode(func, spv::ExecutionModeOutputLinesEXT);
+			index_count = 2;
 			break;
 
 		case DXIL::MeshOutputTopology::Triangle:
 			builder.addExecutionMode(func, spv::ExecutionModeOutputTrianglesEXT);
+			index_count = 3;
 			break;
 
 		default:
@@ -5271,6 +5299,7 @@ bool Converter::Impl::emit_execution_modes_mesh()
 
 		execution_mode_meta.stage_output_num_vertex = max_vertex_count;
 		execution_mode_meta.stage_output_num_primitive = max_primitive_count;
+		execution_mode_meta.primitive_index_dimension = index_count;
 
 		auto *num_threads = llvm::cast<llvm::MDNode>(arguments->getOperand(0));
 		return emit_execution_modes_thread_wave_properties(num_threads);
@@ -5725,6 +5754,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_stage_output_variables())
 		return result;
 	if (!emit_patch_variables())
+		return result;
+	if (!emit_other_variables())
 		return result;
 	if (!emit_global_variables())
 		return result;
