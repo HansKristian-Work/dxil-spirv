@@ -29,4 +29,5 @@
 namespace dxil_spv
 {
 bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv
