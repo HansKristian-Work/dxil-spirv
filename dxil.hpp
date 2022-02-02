@@ -554,6 +554,13 @@ enum class TessellatorPartitioning : uint8_t
 	FractionalEven = 4
 };
 
+enum class MeshOutputTopology
+{
+  Undefined = 0,
+  Line = 1,
+  Triangle = 2
+};
+
 enum ShaderFlag
 {
 	ShaderFlagEarlyDepthStencil = 1 << 3,
@@ -609,4 +616,5 @@ enum class ShaderKind
 	Amplification,
 	Invalid
 };
+
 } // namespace DXIL
