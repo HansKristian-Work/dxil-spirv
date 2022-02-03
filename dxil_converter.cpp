@@ -3529,9 +3529,24 @@ bool Converter::Impl::emit_patch_variables()
 			// The offset is deduced from the control point I/O signature.
 			// TODO: If it's possible to omit trailing CP members in domain shader, we will need to pass this offset
 			// into the compiler.
-			builder.addDecoration(variable_id, spv::DecorationLocation, start_row + patch_location_offset);
-			if (start_col != 0)
-				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
+			VulkanStageIO vk_io = { start_row + patch_location_offset, start_col, true };
+
+			if (resource_mapping_iface)
+			{
+				D3DStageIO d3d_io = { semantic_name.c_str(), semantic_index, start_row, rows };
+
+				if (execution_model == spv::ExecutionModelTessellationEvaluation)
+				{
+					if (!resource_mapping_iface->remap_stage_input(d3d_io, vk_io))
+						return false;
+				}
+				else if (!resource_mapping_iface->remap_stage_output(d3d_io, vk_io))
+					return false;
+			}
+
+			builder.addDecoration(variable_id, spv::DecorationLocation, vk_io.location);
+			if (vk_io.component != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, vk_io.component);
 		}
 
 		builder.addDecoration(variable_id, execution_model == spv::ExecutionModelMeshEXT
@@ -3772,18 +3787,27 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			if (execution_model == spv::ExecutionModelVertex ||
 			    execution_model == spv::ExecutionModelTessellationEvaluation ||
-			    execution_model == spv::ExecutionModelGeometry)
+			    execution_model == spv::ExecutionModelGeometry ||
+					execution_model == spv::ExecutionModelMeshEXT)
 			{
 				emit_interpolation_decorations(variable_id, interpolation);
 			}
 
-			unsigned effective_start_row = start_row;
-			if (execution_model == spv::ExecutionModelGeometry && geometry_stream < 4)
-				effective_start_row += start_row_for_geometry_stream[geometry_stream];
+			VulkanStageIO vk_output = { start_row, start_col };
 
-			builder.addDecoration(variable_id, spv::DecorationLocation, effective_start_row);
-			if (start_col != 0)
-				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
+			if (execution_model == spv::ExecutionModelGeometry && geometry_stream < 4)
+				vk_output.location += start_row_for_geometry_stream[geometry_stream];
+
+			if (resource_mapping_iface)
+			{
+				D3DStageIO d3d_output = { semantic_name.c_str(), semantic_index, start_row, rows };
+				if (!resource_mapping_iface->remap_stage_output(d3d_output, vk_output))
+					return false;
+			}
+
+			builder.addDecoration(variable_id, spv::DecorationLocation, vk_output.location);
+			if (vk_output.component != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, vk_output.component);
 		}
 	}
 
@@ -4381,18 +4405,29 @@ bool Converter::Impl::emit_stage_input_variables()
 			if (execution_model == spv::ExecutionModelFragment)
 				emit_interpolation_decorations(variable_id, interpolation);
 
-			VulkanVertexInput vk_input = { start_row };
-			if (execution_model == spv::ExecutionModelVertex && resource_mapping_iface)
+			VulkanStageIO vk_input = { start_row, start_col };
+
+			if (resource_mapping_iface)
 			{
-				D3DVertexInput d3d_input = { semantic_name.c_str(), semantic_index, start_row, rows };
-				if (!resource_mapping_iface->remap_vertex_input(d3d_input, vk_input))
+				D3DStageIO d3d_input = { semantic_name.c_str(), semantic_index, start_row, rows };
+
+				if (execution_model == spv::ExecutionModelVertex)
+				{
+					if (!resource_mapping_iface->remap_vertex_input(d3d_input, vk_input))
+						return false;
+				}
+
+				if (!resource_mapping_iface->remap_stage_input(d3d_input, vk_input))
 					return false;
 			}
 
 			builder.addDecoration(variable_id, spv::DecorationLocation, vk_input.location);
 
-			if (execution_model != spv::ExecutionModelVertex && start_col != 0)
-				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
+			if (execution_model != spv::ExecutionModelVertex && vk_input.component != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, vk_input.component);
+
+			if (execution_model == spv::ExecutionModelFragment && (vk_input.flags & STAGE_IO_PER_PRIMITIVE))
+				builder.addDecoration(variable_id, spv::DecorationPerPrimitiveEXT);
 		}
 	}
 

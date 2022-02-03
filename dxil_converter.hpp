@@ -158,7 +158,7 @@ struct VulkanCBVBinding
 	bool push_constant;
 };
 
-struct D3DVertexInput
+struct D3DStageIO
 {
 	const char *semantic;
 	unsigned semantic_index;
@@ -166,9 +166,19 @@ struct D3DVertexInput
 	unsigned rows;
 };
 
-struct VulkanVertexInput
+enum VulkanStageIoFlagBits
+{
+	STAGE_IO_NONE = 0u,
+	STAGE_IO_PER_PRIMITIVE = 0x1u,
+};
+
+using VulkanStageIoFlags = unsigned;
+
+struct VulkanStageIO
 {
 	unsigned location;
+	unsigned component;
+	VulkanStageIoFlags flags;
 };
 
 struct D3DStreamOutput
@@ -193,8 +203,10 @@ public:
 	virtual bool remap_sampler(const D3DBinding &d3d_binding, VulkanBinding &vulkan_binding) = 0;
 	virtual bool remap_uav(const D3DUAVBinding &d3d_binding, VulkanUAVBinding &vulkan_binding) = 0;
 	virtual bool remap_cbv(const D3DBinding &d3d_binding, VulkanCBVBinding &vulkan_binding) = 0;
-	virtual bool remap_vertex_input(const D3DVertexInput &d3d_input, VulkanVertexInput &vulkan_location) = 0;
+	virtual bool remap_vertex_input(const D3DStageIO &d3d_input, VulkanStageIO &vulkan_location) = 0;
 	virtual bool remap_stream_output(const D3DStreamOutput &d3d_output, VulkanStreamOutput &vulkan_output) = 0;
+	virtual bool remap_stage_input(const D3DStageIO &d3d_input, VulkanStageIO &vk_input) = 0;
+	virtual bool remap_stage_output(const D3DStageIO &d3d_output, VulkanStageIO &vk_output) = 0;
 	virtual unsigned get_root_constant_word_count() = 0;
 	virtual unsigned get_root_descriptor_count() = 0;
 };

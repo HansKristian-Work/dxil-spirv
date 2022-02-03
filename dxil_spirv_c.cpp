@@ -203,7 +203,7 @@ struct Remapper : ResourceRemappingInterface
 		}
 	}
 
-	bool remap_vertex_input(const D3DVertexInput &d3d_input, VulkanVertexInput &vk_input) override
+	bool remap_vertex_input(const D3DStageIO &d3d_input, VulkanStageIO &vk_input) override
 	{
 		dxil_spv_d3d_vertex_input c_input = { d3d_input.semantic, d3d_input.semantic_index, d3d_input.start_row,
 			                                  d3d_input.rows };
@@ -214,6 +214,7 @@ struct Remapper : ResourceRemappingInterface
 			if (input_remapper(input_userdata, &c_input, &c_vk_input) == DXIL_SPV_TRUE)
 			{
 				vk_input.location = c_vk_input.location;
+				vk_input.component = 0;
 				return true;
 			}
 			else
@@ -239,6 +240,52 @@ struct Remapper : ResourceRemappingInterface
 				vk_output.offset = c_vk_output.offset;
 				vk_output.stride = c_vk_output.stride;
 				vk_output.buffer_index = c_vk_output.buffer_index;
+				return true;
+			}
+			else
+				return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+
+	bool remap_stage_input(const D3DStageIO &d3d_input, VulkanStageIO &vk_input) override
+	{
+		dxil_spv_d3d_shader_stage_io c_input = { d3d_input.semantic, d3d_input.semantic_index };
+		dxil_spv_vulkan_shader_stage_io c_vk_input = { vk_input.location, vk_input.component, vk_input.flags };
+
+		if (stage_input_remapper)
+		{
+			if (stage_input_remapper(stage_input_userdata, &c_input, &c_vk_input) == DXIL_SPV_TRUE)
+			{
+				vk_input.location = c_vk_input.location;
+				vk_input.component = c_vk_input.component;
+				vk_input.flags = c_vk_input.flags;
+				return true;
+			}
+			else
+				return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+
+	bool remap_stage_output(const D3DStageIO &d3d_output, VulkanStageIO &vk_output) override
+	{
+		dxil_spv_d3d_shader_stage_io c_output = { d3d_output.semantic, d3d_output.semantic_index };
+		dxil_spv_vulkan_shader_stage_io c_vk_output = { vk_output.location, vk_output.component, vk_output.flags };
+
+		if (stage_output_remapper)
+		{
+			if (stage_output_remapper(stage_output_userdata, &c_output, &c_vk_output) == DXIL_SPV_TRUE)
+			{
+				vk_output.location = c_vk_output.location;
+				vk_output.component = c_vk_output.component;
+				vk_output.flags = c_vk_output.flags;
 				return true;
 			}
 			else
@@ -277,6 +324,12 @@ struct Remapper : ResourceRemappingInterface
 
 	dxil_spv_stream_output_remapper_cb output_remapper = nullptr;
 	void *output_userdata = nullptr;
+
+	dxil_spv_shader_stage_io_remapper_cb stage_input_remapper = nullptr;
+	void *stage_input_userdata = nullptr;
+
+	dxil_spv_shader_stage_io_remapper_cb stage_output_remapper = nullptr;
+	void *stage_output_userdata = nullptr;
 
 	unsigned root_constant_word_count = 0;
 	unsigned root_descriptor_count = 0;
@@ -656,6 +709,20 @@ void dxil_spv_converter_set_cbv_remapper(dxil_spv_converter converter, dxil_spv_
 {
 	converter->remapper.cbv_remapper = remapper;
 	converter->remapper.cbv_userdata = userdata;
+}
+
+void dxil_spv_converter_set_stage_input_remapper(dxil_spv_converter converter,
+                                              dxil_spv_shader_stage_io_remapper_cb remapper, void *userdata)
+{
+	converter->remapper.stage_input_remapper = remapper;
+	converter->remapper.stage_input_userdata = userdata;
+}
+
+void dxil_spv_converter_set_stage_output_remapper(dxil_spv_converter converter,
+                                              dxil_spv_shader_stage_io_remapper_cb remapper, void *userdata)
+{
+	converter->remapper.stage_output_remapper = remapper;
+	converter->remapper.stage_output_userdata = userdata;
 }
 
 void dxil_spv_converter_set_vertex_input_remapper(dxil_spv_converter converter,

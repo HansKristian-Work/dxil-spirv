@@ -126,6 +126,30 @@ typedef struct dxil_spv_vulkan_stream_output
 typedef dxil_spv_bool (*dxil_spv_stream_output_remapper_cb)(void *userdata, const dxil_spv_d3d_stream_output *d3d_output,
                                                             dxil_spv_vulkan_stream_output *vulkan_output);
 
+typedef struct dxil_spv_d3d_shader_stage_io
+{
+	const char *semantic;
+	unsigned semantic_index;
+	unsigned start_row;
+	unsigned rows;
+} dxil_spv_d3d_shader_stage_io;
+
+enum dxil_spv_vulkan_shader_stage_io_flags
+{
+	DXIL_SPV_SHADER_STAGE_IO_NONE = 0u,
+	DXIL_SPV_SHADER_STAGE_IO_PER_PRIMITIVE = 0x1u,
+};
+
+typedef struct dxil_spv_vulkan_shader_stage_io
+{
+	unsigned location;
+	unsigned component;
+	unsigned flags;
+} dxil_spv_vulkan_shader_stage_io;
+
+typedef dxil_spv_bool (*dxil_spv_shader_stage_io_remapper_cb)(void *userdata, const dxil_spv_d3d_shader_stage_io *d3d_input,
+                                                              dxil_spv_vulkan_shader_stage_io *vulkan_variable);
+
 /* Matches DXIL enum */
 typedef enum dxil_spv_resource_kind
 {
@@ -559,6 +583,16 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter_with_reflection(dx
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_entry_point(dxil_spv_converter converter, const char *entry_point);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_stage_input_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_shader_stage_io_remapper_cb remapper,
+		void *userdata);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_stage_output_remapper(
+		dxil_spv_converter converter,
+		dxil_spv_shader_stage_io_remapper_cb remapper,
+		void *userdata);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_vertex_input_remapper(
 		dxil_spv_converter converter,
