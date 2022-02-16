@@ -40,6 +40,7 @@ def convert_spirv(in_path, out_path, args, stage):
         if e.returncode > 0:
             # Ignore this. We kinda expect it.
             return
+        raise
 
 def convert_shaders(args):
     files = os.listdir(args.input)
