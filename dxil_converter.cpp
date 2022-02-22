@@ -3500,7 +3500,12 @@ bool Converter::Impl::emit_patch_variables()
 		else if (system_value == DXIL::Semantic::InsideTessFactor)
 			rows = 2;
 
-		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
+		spv::Id type_id;
+
+		if (system_value == DXIL::Semantic::CullPrimitive)
+			type_id = builder.makeBoolType();
+		else
+			type_id = get_type_id(effective_element_type, rows, cols);
 
 		if (execution_model == spv::ExecutionModelMeshEXT)
 		{
@@ -4097,6 +4102,15 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		               spv::BuiltInBaryCoordKHR : spv::BuiltInBaryCoordNoPerspKHR;
 		builder.addDecoration(id, spv::DecorationBuiltIn, builtin);
 		spirv_module.register_builtin_shader_input(id, builtin);
+		break;
+	}
+
+	case DXIL::Semantic::CullPrimitive:
+	{
+		builder.addExtension("SPV_EXT_mesh_shader");
+		builder.addCapability(spv::CapabilityMeshShadingEXT);
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInCullPrimitiveEXT);
+		spirv_module.register_builtin_shader_output(id, spv::BuiltInCullPrimitiveEXT);
 		break;
 	}
 

@@ -132,8 +132,23 @@ bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::
 	}
 	uint32_t num_cols = builder.getNumTypeComponents(output_type_id);
 
-	Operation *op = impl.allocate(
-			spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+	spv::Id store_value = impl.fixup_store_type_io(meta.component_type, 1,
+		impl.get_id_for_value(instruction->getOperand(4)));
+
+	Operation *op;
+	spv::BuiltIn builtin;
+	if (impl.spirv_module.query_builtin_shader_output(var_id, &builtin) && builtin == spv::BuiltInCullPrimitiveEXT)
+	{
+		// Special case where the output variable is bool, but the value we get is uint32
+		op = impl.allocate(spv::OpINotEqual, builder.makeBoolType());
+		op->add_id(store_value);
+		op->add_id(builder.makeUintConstant(0));
+		impl.add(op);
+		store_value = op->id;
+	}
+
+	op = impl.allocate(spv::OpAccessChain,
+			builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
 	ptr_id = op->id;
 	op->add_id(var_id);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(5)));
@@ -144,10 +159,8 @@ bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::
 
 	impl.add(op);
 
-	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
-
 	op = impl.allocate(spv::OpStore);
-	op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });
+	op->add_ids({ ptr_id, store_value });
 	impl.add(op);
 	return true;
 }
