@@ -5305,6 +5305,23 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 	return true;
 }
 
+bool Converter::Impl::emit_execution_modes_amplification()
+{
+	auto &builder = spirv_module.get_builder();
+
+	builder.addExtension("SPV_EXT_mesh_shader");
+	builder.addCapability(spv::CapabilityMeshShadingEXT);
+
+	auto *as_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ASState);
+
+	if (as_state_node) {
+		auto *arguments = llvm::cast<llvm::MDNode>(*as_state_node);
+		auto *num_threads = llvm::cast<llvm::MDNode>(arguments->getOperand(0));
+		return emit_execution_modes_thread_wave_properties(num_threads);
+	} else
+		return false;
+}
+
 bool Converter::Impl::emit_execution_modes_mesh()
 {
 	auto &builder = spirv_module.get_builder();
@@ -5439,6 +5456,11 @@ bool Converter::Impl::emit_execution_modes()
 	case spv::ExecutionModelCallableKHR:
 	case spv::ExecutionModelClosestHitKHR:
 		if (!emit_execution_modes_ray_tracing(execution_model))
+			return false;
+		break;
+
+	case spv::ExecutionModelTaskEXT:
+		if (!emit_execution_modes_amplification())
 			return false;
 		break;
 
