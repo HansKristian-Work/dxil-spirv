@@ -33,4 +33,5 @@ bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *
 bool emit_store_vertex_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_get_mesh_payload_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv

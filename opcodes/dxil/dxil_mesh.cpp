@@ -176,4 +176,14 @@ bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst 
 	return true;
 }
 
+bool emit_get_mesh_payload_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	// GetMeshPayload can only be called once per shader
+	spv::Id type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
+	spv::Id var_id = impl.create_variable(spv::StorageClassTaskPayloadWorkgroupEXT, type_id);
+
+	impl.rewrite_value(instruction, var_id);
+	return true;
+}
+
 } // namespace dxil_spv
