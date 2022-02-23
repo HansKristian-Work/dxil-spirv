@@ -4248,8 +4248,10 @@ bool Converter::Impl::emit_global_variables()
 		if (initializer)
 			initializer_id = get_id_for_constant(initializer, 0);
 
+    spv::StorageClass storage_class = address_space == DXIL::AddressSpace::GroupShared
+		    ? spv::StorageClassWorkgroup : spv::StorageClassPrivate;
 		spv::Id var_id = create_variable_with_initializer(
-		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
+		    get_effective_storage_class(&global, storage_class),
 		    pointee_type_id, initializer_id);
 
 		decorate_relaxed_precision(global.getType()->getPointerElementType(), var_id, false);

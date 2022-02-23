@@ -971,6 +971,10 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 			impl.shader_analysis.precise_f16_to_f32_observed = true;
 		break;
 
+	case DXIL::Op::DispatchMesh:
+		impl.handle_to_storage_class[instruction->getOperand(4)] = spv::StorageClassTaskPayloadWorkgroupEXT;
+		break;
+
 	default:
 		break;
 	}
