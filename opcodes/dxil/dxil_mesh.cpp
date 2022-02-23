@@ -165,4 +165,15 @@ bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::
 	return true;
 }
 
+bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	Operation *op = impl.allocate(spv::OpEmitMeshTasksEXT);
+
+	for (unsigned i = 1; i <= 4; i++)
+		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
+
+	impl.add(op);
+	return true;
+}
+
 } // namespace dxil_spv

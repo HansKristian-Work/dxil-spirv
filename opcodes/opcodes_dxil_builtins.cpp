@@ -341,6 +341,7 @@ struct DXILDispatcher
 		OP(EmitIndices) = emit_emit_indices_instruction;
 		OP(StoreVertexOutput) = emit_store_vertex_output_instruction;
 		OP(StorePrimitiveOutput) = emit_store_primitive_output_instruction;
+		OP(DispatchMesh) = emit_dispatch_mesh_instruction;
 	}
 
 #undef OP
