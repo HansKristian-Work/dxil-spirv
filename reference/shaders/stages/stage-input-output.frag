@@ -87,10 +87,10 @@ OpDecorate %21 Location 2
 %34 = OpTypePointer Input %5
 %37 = OpTypeFloat 16
 %43 = OpConstant %37 0x1p+3
-%45 = OpTypePointer Output %5
-%51 = OpConstant %23 65528
-%53 = OpTypePointer Output %9
-%59 = OpConstant %23 2
+%46 = OpConstant %23 65528
+%49 = OpConstant %23 2
+%50 = OpTypePointer Output %5
+%55 = OpTypePointer Output %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %61
@@ -111,22 +111,22 @@ OpBranch %61
 %41 = OpFConvert %37 %40
 %42 = OpFMul %37 %38 %43
 %44 = OpFMul %37 %41 %43
-%46 = OpAccessChain %45 %17 %27
-%47 = OpFConvert %5 %42
-OpStore %46 %47
-%48 = OpAccessChain %45 %17 %31
-%49 = OpFConvert %5 %44
-OpStore %48 %49
-%50 = OpIMul %23 %29 %51
-%52 = OpIMul %23 %33 %51
-%54 = OpAccessChain %53 %19 %27
-%55 = OpSConvert %9 %50
-OpStore %54 %55
-%56 = OpAccessChain %53 %19 %31
-%57 = OpSConvert %9 %52
+%45 = OpIMul %23 %29 %46
+%47 = OpIMul %23 %33 %46
+%48 = OpShiftLeftLogical %23 %24 %49
+%51 = OpAccessChain %50 %17 %27
+%52 = OpFConvert %5 %42
+OpStore %51 %52
+%53 = OpAccessChain %50 %17 %31
+%54 = OpFConvert %5 %44
+OpStore %53 %54
+%56 = OpAccessChain %55 %19 %27
+%57 = OpSConvert %9 %45
 OpStore %56 %57
-%58 = OpShiftLeftLogical %23 %24 %59
-%60 = OpUConvert %13 %58
+%58 = OpAccessChain %55 %19 %31
+%59 = OpSConvert %9 %47
+OpStore %58 %59
+%60 = OpUConvert %13 %48
 OpStore %21 %60
 OpReturn
 OpFunctionEnd

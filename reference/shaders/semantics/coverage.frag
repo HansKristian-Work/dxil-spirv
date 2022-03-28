@@ -44,10 +44,10 @@ OpDecorate %15 BuiltIn SampleMask
 %15 = OpVariable %14 Input
 %16 = OpTypePointer Input %9
 %18 = OpConstant %9 0
-%20 = OpTypePointer Output %5
-%22 = OpConstant %5 1
-%25 = OpConstant %9 2
-%27 = OpConstant %9 3
+%21 = OpConstant %9 3
+%22 = OpTypePointer Output %5
+%24 = OpConstant %5 1
+%27 = OpConstant %9 2
 %29 = OpTypePointer Output %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
@@ -55,17 +55,17 @@ OpBranch %31
 %31 = OpLabel
 %17 = OpAccessChain %16 %15 %18
 %19 = OpLoad %9 %17
-%21 = OpAccessChain %20 %8 %18
-OpStore %21 %22
-%23 = OpAccessChain %20 %8 %10
-OpStore %23 %22
-%24 = OpAccessChain %20 %8 %25
-OpStore %24 %22
-%26 = OpAccessChain %20 %8 %27
-OpStore %26 %22
-%28 = OpBitwiseAnd %9 %19 %27
+%20 = OpBitwiseAnd %9 %19 %21
+%23 = OpAccessChain %22 %8 %18
+OpStore %23 %24
+%25 = OpAccessChain %22 %8 %10
+OpStore %25 %24
+%26 = OpAccessChain %22 %8 %27
+OpStore %26 %24
+%28 = OpAccessChain %22 %8 %21
+OpStore %28 %24
 %30 = OpAccessChain %29 %13 %18
-OpStore %30 %28
+OpStore %30 %20
 OpReturn
 OpFunctionEnd
 #endif

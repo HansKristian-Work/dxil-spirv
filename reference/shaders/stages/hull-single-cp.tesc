@@ -12,10 +12,10 @@ void hull_main()
 
 void patch_main()
 {
-    gl_TessLevelInner[0u] = HSValue[0u];
     gl_TessLevelOuter[0u] = VSValue[0u];
     gl_TessLevelOuter[1u] = VSValue[1u];
     gl_TessLevelOuter[2u] = VSValue[2u];
+    gl_TessLevelInner[0u] = HSValue[0u];
     PATCH = VSValue[3u];
 }
 
@@ -84,7 +84,7 @@ OpDecorate %41 BuiltIn InvocationId
 %31 = OpConstant %6 0
 %40 = OpTypePointer Input %6
 %41 = OpVariable %40 Input
-%56 = OpConstant %6 3
+%52 = OpConstant %6 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %60
@@ -116,23 +116,23 @@ OpBranch %64
 %64 = OpLabel
 %43 = OpAccessChain %23 %14 %31
 %44 = OpLoad %5 %43
-%45 = OpAccessChain %23 %22 %31
-OpStore %45 %44
-%46 = OpAccessChain %29 %10 %31
-%47 = OpLoad %5 %46
-%48 = OpAccessChain %23 %18 %31
-OpStore %48 %47
-%49 = OpAccessChain %29 %10 %11
+%45 = OpAccessChain %29 %10 %31
+%46 = OpLoad %5 %45
+%47 = OpAccessChain %29 %10 %11
+%48 = OpLoad %5 %47
+%49 = OpAccessChain %29 %10 %19
 %50 = OpLoad %5 %49
-%51 = OpAccessChain %23 %18 %11
-OpStore %51 %50
-%52 = OpAccessChain %29 %10 %19
-%53 = OpLoad %5 %52
-%54 = OpAccessChain %23 %18 %19
-OpStore %54 %53
-%55 = OpAccessChain %29 %10 %56
-%57 = OpLoad %5 %55
-OpStore %24 %57
+%51 = OpAccessChain %29 %10 %52
+%53 = OpLoad %5 %51
+%54 = OpAccessChain %23 %18 %31
+OpStore %54 %46
+%55 = OpAccessChain %23 %18 %11
+OpStore %55 %48
+%56 = OpAccessChain %23 %18 %19
+OpStore %56 %50
+%57 = OpAccessChain %23 %22 %31
+OpStore %57 %44
+OpStore %24 %53
 OpReturn
 OpFunctionEnd
 #endif

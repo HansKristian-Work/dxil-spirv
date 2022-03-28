@@ -46,26 +46,26 @@ OpDecorate %13 BuiltIn FragStencilRefEXT
 %11 = OpTypeInt 32 0
 %12 = OpTypePointer Output %11
 %13 = OpVariable %12 Output
-%15 = OpTypePointer Output %5
-%17 = OpConstant %11 0
-%19 = OpConstant %11 1
-%21 = OpConstant %11 2
-%23 = OpConstant %11 3
+%16 = OpTypePointer Output %5
+%18 = OpConstant %11 0
+%20 = OpConstant %11 1
+%22 = OpConstant %11 2
+%24 = OpConstant %11 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %25
 %25 = OpLabel
 %14 = OpLoad %5 %7
-%16 = OpAccessChain %15 %10 %17
-OpStore %16 %14
-%18 = OpAccessChain %15 %10 %19
-OpStore %18 %14
-%20 = OpAccessChain %15 %10 %21
-OpStore %20 %14
-%22 = OpAccessChain %15 %10 %23
-OpStore %22 %14
-%24 = OpConvertFToU %11 %14
-OpStore %13 %24
+%15 = OpConvertFToU %11 %14
+%17 = OpAccessChain %16 %10 %18
+OpStore %17 %14
+%19 = OpAccessChain %16 %10 %20
+OpStore %19 %14
+%21 = OpAccessChain %16 %10 %22
+OpStore %21 %14
+%23 = OpAccessChain %16 %10 %24
+OpStore %23 %14
+OpStore %13 %15
 OpReturn
 OpFunctionEnd
 #endif

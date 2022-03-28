@@ -81,10 +81,10 @@ OpDecorate %21 Location 2
 %30 = OpConstant %25 1
 %33 = OpTypePointer Input %5
 %39 = OpConstant %5 0x1p+3
-%41 = OpTypePointer Output %5
-%45 = OpConstant %13 65528
-%47 = OpTypePointer Output %9
-%53 = OpConstant %13 2
+%42 = OpConstant %13 65528
+%45 = OpConstant %13 2
+%46 = OpTypePointer Output %5
+%49 = OpTypePointer Output %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %54
@@ -102,20 +102,20 @@ OpBranch %54
 %37 = OpLoad %5 %36
 %38 = OpFMul %5 %35 %39
 %40 = OpFMul %5 %37 %39
-%42 = OpAccessChain %41 %17 %26
-OpStore %42 %38
-%43 = OpAccessChain %41 %17 %30
-OpStore %43 %40
-%44 = OpIMul %13 %28 %45
-%46 = OpIMul %13 %32 %45
-%48 = OpAccessChain %47 %19 %26
-%49 = OpBitcast %9 %44
-OpStore %48 %49
-%50 = OpAccessChain %47 %19 %30
-%51 = OpBitcast %9 %46
+%41 = OpIMul %13 %28 %42
+%43 = OpIMul %13 %32 %42
+%44 = OpShiftLeftLogical %13 %22 %45
+%47 = OpAccessChain %46 %17 %26
+OpStore %47 %38
+%48 = OpAccessChain %46 %17 %30
+OpStore %48 %40
+%50 = OpAccessChain %49 %19 %26
+%51 = OpBitcast %9 %41
 OpStore %50 %51
-%52 = OpShiftLeftLogical %13 %22 %53
-OpStore %21 %52
+%52 = OpAccessChain %49 %19 %30
+%53 = OpBitcast %9 %43
+OpStore %52 %53
+OpStore %21 %44
 OpReturn
 OpFunctionEnd
 #endif
