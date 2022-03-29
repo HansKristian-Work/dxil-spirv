@@ -664,11 +664,15 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 	auto storage = get_resource_storage_class(impl, base_resource_id);
 	is_non_uniform = false;
 
+	// If we index based on SBT, we must assume non-uniform, even for resources
+	// which are not arrayed, since in theory, the dispatch can process different SBTs concurrently,
+	// perhaps even within same subgroup, so have to be defensive.
+	if (reference.local_root_signature_entry >= 0)
+		is_non_uniform = true;
+
 	if (reference.base_resource_is_array || reference.bindless)
 	{
-		if (reference.base_resource_is_array)
-			is_non_uniform = instruction_is_non_uniform;
-		else if (reference.local_root_signature_entry >= 0)
+		if (reference.base_resource_is_array && instruction_offset_value && instruction_is_non_uniform)
 			is_non_uniform = true;
 
 		type_id = builder.getContainedTypeId(type_id);
@@ -725,7 +729,10 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 		{
 			*value_id = resource_id;
 			impl.rewrite_value(instruction, resource_id);
-			// Not technically needed, but to be safe against weird compilers ...
+
+			// Generally, we want to add NonUniformEXT after access chain for UBO/SSBO,
+			// but there is a special case in non-uniform OpArrayLength, where we will use this pointer
+			// directly, so mark it as non-uniform here.
 			if (is_non_uniform)
 				builder.addDecoration(resource_id, spv::DecorationNonUniformEXT);
 		}
