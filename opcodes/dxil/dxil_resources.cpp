@@ -1251,8 +1251,13 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 	case DXIL::ResourceType::CBV:
 	{
 		auto &reference = get_resource_reference(impl, resource_type, instruction, resource_range);
-		spv::Id base_cbv_id = reference.var_id;
-		spv::Id type_id = builder.getDerefTypeId(base_cbv_id);
+		const LocalRootSignatureEntry *local_root_signature_entry = nullptr;
+		if (reference.local_root_signature_entry >= 0)
+			local_root_signature_entry = &impl.local_root_signature[reference.local_root_signature_entry];
+
+		// Special case root constants since these resources point directly to
+		// the push constant block or SBT and not to any concrete resource,
+		// so we cannot deduce storage classes properly.
 
 		if (resource_is_physical_pointer(impl, reference))
 		{
@@ -1265,91 +1270,80 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.kind = reference.resource_kind;
 			impl.rewrite_value(instruction, ptr_id);
 		}
-		else if (reference.base_resource_is_array || reference.bindless)
+		else if (reference.var_id != 0 && reference.var_id == impl.root_constant_id)
 		{
-			if (reference.local_root_signature_entry >= 0)
-				non_uniform = true;
-			else if (!reference.base_resource_is_array)
-				non_uniform = false;
+			// Point directly to root constants.
+			impl.rewrite_value(instruction, reference.var_id);
+			unsigned member_offset = reference.push_constant_member;
+			impl.handle_to_root_member_offset[instruction] = member_offset;
+		}
+		else if (local_root_signature_entry && local_root_signature_entry->type == LocalRootSignatureType::Constants)
+		{
+			// Access chain into the desired member once.
+			spv::Id id = build_shader_record_access_chain(impl, reference.local_root_signature_entry);
+
+			auto &meta = impl.handle_to_resource_meta[id];
+			meta = {};
+			meta.storage = spv::StorageClassShaderRecordBufferKHR;
+			meta.kind = DXIL::ResourceKind::CBuffer;
+			impl.handle_to_root_member_offset[instruction] = reference.local_root_signature_entry;
+			impl.rewrite_value(instruction, id);
+		}
+		else
+		{
+			bool is_non_uniform = false;
 
 			bool ssbo = reference.bindless && impl.options.bindless_cbv_ssbo_emulation;
 			auto storage = ssbo ? spv::StorageClassStorageBuffer : spv::StorageClassUniform;
-			auto desc_type = ssbo ? DESCRIPTOR_QA_TYPE_STORAGE_BUFFER_BIT : DESCRIPTOR_QA_TYPE_UNIFORM_BUFFER_BIT;
+			auto descriptor_type = ssbo ? DESCRIPTOR_QA_TYPE_STORAGE_BUFFER_BIT : DESCRIPTOR_QA_TYPE_UNIFORM_BUFFER_BIT;
 
-			type_id = builder.getContainedTypeId(type_id);
-			Operation *op = impl.allocate(spv::OpAccessChain, instruction, builder.makePointer(storage, type_id));
-			op->add_id(base_cbv_id);
+			Vector<Converter::Impl::RawDeclarationVariable> raw_declarations;
+			spv::Id loaded_id = 0;
+			spv::Id resource_id = 0;
+			raw_declarations.reserve(reference.var_alias_group.size());
 
-			if (reference.bindless)
+			if (reference.var_id)
 			{
-				spv::Id offset_id = build_bindless_heap_offset(impl, reference, desc_type,
-				                                               reference.base_resource_is_array ? instruction_offset : nullptr);
-				if (!offset_id)
+				resource_id = reference.var_id;
+				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type, instruction,
+												instruction_offset, non_uniform, is_non_uniform,
+												nullptr, &loaded_id, nullptr))
 				{
-					LOGE("Failed to load CBV bindless offset.\n");
+					LOGE("Failed to load CBV resource handle.\n");
 					return false;
 				}
-				op->add_id(offset_id);
 			}
-			else
+
+			for (auto &alias : reference.var_alias_group)
 			{
-				op->add_id(impl.get_id_for_value(instruction_offset));
+				resource_id = alias.var_id;
+				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
+												instruction, instruction_offset, non_uniform, is_non_uniform,
+												nullptr, &loaded_id, nullptr))
+				{
+					LOGE("Failed to load CBV resource handle.\n");
+					return false;
+				}
+
+				raw_declarations.push_back({ alias.declaration, loaded_id });
 			}
 
-			impl.add(op);
-			impl.rewrite_value(instruction, op->id);
+			auto &incoming_meta = impl.handle_to_resource_meta[resource_id];
 
-			auto &meta = impl.handle_to_resource_meta[op->id];
-			meta = {};
-			meta.non_uniform = non_uniform;
+			auto &meta = impl.handle_to_resource_meta[loaded_id];
+			meta = incoming_meta;
+			meta.non_uniform = is_non_uniform;
 			meta.storage = storage;
+			meta.var_alias_group = std::move(raw_declarations);
 			meta.kind = DXIL::ResourceKind::CBuffer;
 
-			if (meta.non_uniform)
+			if (is_non_uniform)
 			{
 				if (ssbo)
 					builder.addCapability(spv::CapabilityStorageBufferArrayNonUniformIndexingEXT);
 				else
 					builder.addCapability(spv::CapabilityUniformBufferArrayNonUniformIndexingEXT);
-				builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
 				builder.addExtension("SPV_EXT_descriptor_indexing");
-			}
-		}
-		else if (reference.local_root_signature_entry >= 0)
-		{
-			// Either we have root constants or a physical storage pointer here.
-			// CBufferLoad functions will deal with that. If we have a physical storage pointer, we can load it here.
-			auto &local_entry = impl.local_root_signature[reference.local_root_signature_entry];
-
-			if (local_entry.type == LocalRootSignatureType::Descriptor)
-			{
-				spv::Id id = build_root_descriptor_load_physical_pointer(impl, reference);
-				auto &meta = impl.handle_to_resource_meta[id];
-				meta = {};
-				meta.storage = spv::StorageClassPhysicalStorageBuffer;
-				meta.kind = DXIL::ResourceKind::CBuffer;
-				impl.rewrite_value(instruction, id);
-			}
-			else
-			{
-				// Access chain into the desired member once.
-				spv::Id id = build_shader_record_access_chain(impl, reference.local_root_signature_entry);
-
-				auto &meta = impl.handle_to_resource_meta[id];
-				meta = {};
-				meta.storage = spv::StorageClassShaderRecordBufferKHR;
-				meta.kind = DXIL::ResourceKind::CBuffer;
-				impl.handle_to_root_member_offset[instruction] = reference.local_root_signature_entry;
-				impl.rewrite_value(instruction, id);
-			}
-		}
-		else
-		{
-			impl.rewrite_value(instruction, base_cbv_id);
-			if (base_cbv_id == impl.root_constant_id)
-			{
-				unsigned member_offset = reference.push_constant_member;
-				impl.handle_to_root_member_offset[instruction] = member_offset;
 			}
 		}
 		break;
@@ -1545,47 +1539,69 @@ bool emit_annotate_handle_instruction(Converter::Impl &impl, const llvm::CallIns
 	                          meta.binding_index, meta.offset, meta.non_uniform);
 }
 
-static bool emit_cbuffer_load_legacy_physical_pointer(Converter::Impl &impl, const llvm::CallInst *instruction)
+static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
 	spv::Id member_index = impl.get_id_for_value(instruction->getOperand(2));
+	bool scalar_load = instruction->getType()->getTypeID() != llvm::Type::TypeID::StructTyID;
+	spv::Id byteaddr_id;
+	uint32_t alignment;
 
-	auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-	mul_op->add_id(member_index);
-	mul_op->add_id(builder.makeUintConstant(16));
-	impl.add(mul_op);
+	if (!scalar_load)
+	{
+		auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		mul_op->add_id(member_index);
+		mul_op->add_id(builder.makeUintConstant(16));
+		impl.add(mul_op);
+		byteaddr_id = mul_op->id;
+		alignment = 16;
+	}
+	else
+	{
+		byteaddr_id = member_index;
+		// DXIL emits the alignment, but we cannot trust it, DXC is completely buggy here and emits
+		// obviously bogus alignment values.
+		// Use scalar alignment.
+		alignment = get_type_scalar_alignment(instruction->getType());
+	}
 
-	spv::Id addr_vec = emit_u32x2_u32_add(impl, impl.get_id_for_value(instruction->getOperand(1)), mul_op->id);
+	spv::Id addr_vec = emit_u32x2_u32_add(impl, impl.get_id_for_value(instruction->getOperand(1)), byteaddr_id);
 
 	auto *result_type = instruction->getType();
-	spv::Id vec_type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+	spv::Id result_type_id;
+
+	if (scalar_load)
+		result_type_id = impl.get_type_id(result_type);
+	else
+		result_type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+
 	Converter::Impl::PhysicalPointerMeta ptr_meta = {};
 	ptr_meta.nonwritable = true;
-	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, ptr_meta);
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(result_type_id, ptr_meta);
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(addr_vec);
 	impl.add(ptr_bitcast_op);
 
-	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id));
+	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, result_type_id));
 	chain_op->add_id(ptr_bitcast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
 	impl.add(chain_op);
 
-	auto *load_op = impl.allocate(spv::OpLoad, instruction, vec_type_id);
+	auto *load_op = impl.allocate(spv::OpLoad, instruction, result_type_id);
 	load_op->add_id(chain_op->id);
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
-	load_op->add_literal(16);
+	load_op->add_literal(alignment);
 	impl.add(load_op);
 
 	return true;
 }
 
-static bool emit_cbuffer_load_legacy_from_uints(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                spv::Id base_ptr,
-                                                spv::StorageClass storage,
-                                                unsigned index_offset, unsigned num_elements)
+static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                         spv::Id base_ptr,
+                                         spv::StorageClass storage,
+                                         unsigned index_offset, unsigned num_elements)
 {
 	auto &builder = impl.builder();
 
@@ -1596,18 +1612,44 @@ static bool emit_cbuffer_load_legacy_from_uints(Converter::Impl &impl, const llv
 		return false;
 	}
 
-	unsigned member_index = 4 * unsigned(constant_int->getUniqueInteger().getZExtValue());
+	// CBufferLoad vs CBufferLoadLegacy
+	bool scalar_load = instruction->getType()->getTypeID() != llvm::Type::TypeID::StructTyID;
+	auto member_index = unsigned(constant_int->getUniqueInteger().getZExtValue());
+
+	// In scalar load, we index by byte offset. Ignore alignment, we read from registers.
+	if (scalar_load)
+	{
+		if (member_index % 4)
+		{
+			LOGE("Scalar CBufferLoad on root constant buffer is not aligned to 4 bytes.\n");
+			return false;
+		}
+		member_index /= 4;
+	}
+	else
+	{
+		// In legacy load, we index in terms of float4[]s.
+		member_index *= 4;
+	}
+
 	member_index += index_offset;
 
 	if (member_index >= num_elements)
+	{
+		LOGE("Root constant CBV is accessed out of bounds. (%u > %u).\n", member_index, num_elements);
 		return false;
+	}
 
-	unsigned num_words = std::min(4u, num_elements - member_index);
+	unsigned num_words = std::min(scalar_load ? 1u : 4u, num_elements - member_index);
 
 	auto *result_type = instruction->getType();
 
 	// Root constants are emitted as uints as they are typically used as indices.
-	bool need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
+	bool need_bitcast;
+	if (scalar_load)
+		need_bitcast = result_type->getTypeID() != llvm::Type::TypeID::IntegerTyID;
+	else
+		need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
 
 	spv::Id elements[4];
 	for (unsigned i = 0; i < 4; i++)
@@ -1632,10 +1674,21 @@ static bool emit_cbuffer_load_legacy_from_uints(Converter::Impl &impl, const llv
 			elements[i] = builder.makeUintConstant(0);
 	}
 
-	spv::Id id = impl.build_vector(builder.makeUintType(32), elements, 4);
+	spv::Id id;
+
+	if (scalar_load)
+		id = elements[0];
+	else
+		id = impl.build_vector(builder.makeUintType(32), elements, 4);
+
 	if (need_bitcast)
 	{
-		spv::Id type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+		spv::Id type_id;
+		if (scalar_load)
+			type_id = impl.get_type_id(result_type);
+		else
+			type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+
 		auto *op = impl.allocate(spv::OpBitcast, instruction, type_id);
 		op->add_id(id);
 		impl.add(op);
@@ -1648,23 +1701,130 @@ static bool emit_cbuffer_load_legacy_from_uints(Converter::Impl &impl, const llv
 	return true;
 }
 
-static bool emit_cbuffer_load_legacy_shader_record(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                   unsigned local_root_signature_entry)
+static bool emit_cbuffer_load_shader_record(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                            unsigned local_root_signature_entry)
 {
 	auto &entry = impl.local_root_signature[local_root_signature_entry];
-	return emit_cbuffer_load_legacy_from_uints(impl, instruction,
-	                                           impl.get_id_for_value(instruction->getOperand(1)),
-	                                           spv::StorageClassShaderRecordBufferKHR,
-	                                           0, entry.constants.num_words);
+	return emit_cbuffer_load_from_uints(impl, instruction,
+	                                    impl.get_id_for_value(instruction->getOperand(1)),
+	                                    spv::StorageClassShaderRecordBufferKHR,
+	                                    0, entry.constants.num_words);
 }
 
-static bool emit_cbuffer_load_legacy_root_constant(Converter::Impl &impl, const llvm::CallInst *instruction)
+static bool emit_cbuffer_load_root_constant(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	return emit_cbuffer_load_legacy_from_uints(impl, instruction,
-	                                           impl.root_constant_id,
-	                                           spv::StorageClassPushConstant,
-	                                           impl.handle_to_root_member_offset[instruction->getOperand(1)],
-	                                           impl.root_constant_num_words + impl.root_descriptor_count);
+	return emit_cbuffer_load_from_uints(impl, instruction,
+	                                    impl.root_constant_id,
+	                                    spv::StorageClassPushConstant,
+	                                    impl.handle_to_root_member_offset[instruction->getOperand(1)],
+	                                    impl.root_constant_num_words + impl.root_descriptor_count);
+}
+
+bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	// This always returns a scalar.
+	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
+	if (!ptr_id)
+		return false;
+
+	if (ptr_id == impl.root_constant_id)
+	{
+		auto type_id = instruction->getType()->getTypeID();
+		if (type_id == llvm::Type::TypeID::FloatTyID ||
+		    (type_id == llvm::Type::TypeID::IntegerTyID &&
+		     instruction->getType()->getIntegerBitWidth() == 32))
+		{
+			return emit_cbuffer_load_root_constant(impl, instruction);
+		}
+		else
+		{
+			LOGE("Must only use 32-bit cbuffer for root constants.\n");
+			return false;
+		}
+	}
+	else
+	{
+		auto &meta = impl.handle_to_resource_meta[ptr_id];
+
+		if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+		{
+			return emit_cbuffer_load_physical_pointer(impl, instruction);
+		}
+		else if (meta.storage == spv::StorageClassShaderRecordBufferKHR)
+		{
+			return emit_cbuffer_load_shader_record(impl, instruction,
+												   impl.handle_to_root_member_offset[instruction->getOperand(1)]);
+		}
+
+		unsigned addr_shift;
+		RawWidth raw_width;
+		switch (get_type_scalar_alignment(instruction->getType()))
+		{
+		case 2:
+			raw_width = RawWidth::B16;
+			addr_shift = 1;
+			break;
+
+		case 4:
+			raw_width = RawWidth::B32;
+			addr_shift = 2;
+			break;
+
+		case 8:
+			raw_width = RawWidth::B64;
+			addr_shift = 3;
+			break;
+
+		default:
+			return false;
+		}
+
+		unsigned raw_bits = raw_width_to_bits(raw_width);
+		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_width, RawVecSize::V1);
+
+		spv::Id array_index_id;
+		if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2)))
+		{
+			array_index_id = builder.makeUintConstant(c->getUniqueInteger().getZExtValue() >> addr_shift);
+		}
+		else
+		{
+			spv::Id byte_offset_id = impl.get_id_for_value(instruction->getOperand(2));
+			auto *shift_op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+			shift_op->add_id(byte_offset_id);
+			shift_op->add_id(builder.makeUintConstant(addr_shift));
+			impl.add(shift_op);
+			array_index_id = shift_op->id;
+		}
+
+		Operation *access_chain_op = impl.allocate(
+				spv::OpAccessChain, builder.makePointer(meta.storage, builder.makeFloatType(raw_bits)));
+		access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), array_index_id });
+		impl.add(access_chain_op);
+
+		if (meta.non_uniform)
+			builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
+
+		bool need_bitcast = false;
+		auto *result_type = instruction->getType();
+		if (result_type->getTypeID() == llvm::Type::TypeID::IntegerTyID)
+			need_bitcast = true;
+
+		Operation *load_op = impl.allocate(spv::OpLoad, instruction, builder.makeFloatType(raw_bits));
+		load_op->add_id(access_chain_op->id);
+		impl.add(load_op);
+
+		if (need_bitcast)
+		{
+			Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(raw_bits));
+			op->add_id(load_op->id);
+			impl.add(op);
+			impl.rewrite_value(instruction, op->id);
+		}
+		return true;
+	}
 }
 
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -1679,46 +1839,54 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 
 	if (ptr_id == impl.root_constant_id)
 	{
-		return emit_cbuffer_load_legacy_root_constant(impl, instruction);
+		return emit_cbuffer_load_root_constant(impl, instruction);
 	}
 	else
 	{
-		auto itr = impl.handle_to_resource_meta.find(ptr_id);
-		bool non_uniform = false;
-		spv::StorageClass storage = spv::StorageClassUniform;
+		auto &meta = impl.handle_to_resource_meta[ptr_id];
+		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, RawWidth::B32, RawVecSize::V4);
 
-		if (itr != impl.handle_to_resource_meta.end())
+		if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 		{
-			non_uniform = itr->second.non_uniform;
-			storage = itr->second.storage;
+			return emit_cbuffer_load_physical_pointer(impl, instruction);
 		}
-
-		if (storage == spv::StorageClassPhysicalStorageBuffer)
+		else if (meta.storage == spv::StorageClassShaderRecordBufferKHR)
 		{
-			return emit_cbuffer_load_legacy_physical_pointer(impl, instruction);
-		}
-		else if (storage == spv::StorageClassShaderRecordBufferKHR)
-		{
-			return emit_cbuffer_load_legacy_shader_record(impl, instruction,
-			                                              impl.handle_to_root_member_offset[instruction->getOperand(1)]);
+			return emit_cbuffer_load_shader_record(impl, instruction,
+			                                       impl.handle_to_root_member_offset[instruction->getOperand(1)]);
 		}
 
 		spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
 
 		Operation *access_chain_op = impl.allocate(
-		    spv::OpAccessChain, builder.makePointer(storage, builder.makeVectorType(builder.makeFloatType(32), 4)));
+		    spv::OpAccessChain, builder.makePointer(meta.storage, builder.makeVectorType(builder.makeFloatType(32), 4)));
 		access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
 		impl.add(access_chain_op);
 
-		if (non_uniform)
+		if (meta.non_uniform)
 			builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
 
-		bool need_bitcast = false;
 		auto *result_type = instruction->getType();
+
 		if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
+		{
+			LOGE("CBufferLoadLegacy: return type must be struct.\n");
 			return false;
+		}
+
+		if (get_type_scalar_alignment(result_type->getStructElementType(0)) != 4)
+		{
+			LOGE("CBufferLoadLegacy: element must be 32-bit.\n");
+			return false;
+		}
+
 		if (result_type->getStructNumElements() != 4)
+		{
+			LOGE("CBufferLoadLegacy: return type must be 4 elements.\n");
 			return false;
+		}
+
+		bool need_bitcast = false;
 		if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
 			need_bitcast = true;
 

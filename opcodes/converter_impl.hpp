@@ -516,10 +516,15 @@ struct Converter::Impl
 
 	spv::Id create_bindless_heap_variable(const BindlessInfo &info);
 	Vector<RawDeclarationVariable> create_bindless_heap_variable_alias_group(
-		const BindlessInfo &base_info, const Vector<RawDeclaration> &raw_decls);
-	Vector<RawDeclarationVariable> create_variable_alias_group(
-	    const Vector<RawDeclaration> &raw_decls, uint32_t range_size, const String &name);
+			const BindlessInfo &base_info, const Vector<RawDeclaration> &raw_decls);
+	Vector<RawDeclarationVariable> create_raw_ssbo_variable_alias_group(
+			const Vector<RawDeclaration> &raw_decls,
+			uint32_t range_size, const String &name);
+	Vector<RawDeclarationVariable> create_ubo_variable_alias_group(
+			const Vector<RawDeclaration> &raw_decls,
+			uint32_t range_size, const String &name, unsigned cbv_size);
 	spv::Id create_raw_ssbo_variable(const RawDeclaration &raw_decl, uint32_t range_size, const String &name);
+	spv::Id create_ubo_variable(const RawDeclaration &raw_decl, uint32_t range_size, const String &name, unsigned cbv_size);
 
 	struct BindlessResource
 	{

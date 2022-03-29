@@ -248,6 +248,7 @@ OpDecorate %98 NonUniform
 OpDecorate %117 NonUniform
 OpDecorate %118 NonUniform
 OpDecorate %130 NonUniform
+OpDecorate %146 NonUniform
 OpDecorate %140 NonUniform
 OpDecorate %147 NonUniform
 OpMemberDecorate %201 0 Offset 0
