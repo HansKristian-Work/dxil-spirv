@@ -2202,9 +2202,10 @@ bool Converter::Impl::emit_shader_record_buffer()
 		{
 		case LocalRootSignatureType::Constants:
 		{
+			spv::Id array_size_id = builder.makeUintConstant(elem.constants.num_words);
+			spv::Id u32_type = builder.makeUintType(32);
 			spv::Id member_type_id =
-				builder.makeArrayType(builder.makeUintType(32),
-				                      builder.makeUintConstant(elem.constants.num_words), 4);
+				builder.makeArrayType(u32_type, array_size_id, 4);
 			builder.addDecoration(member_type_id, spv::DecorationArrayStride, 4);
 			member_types.push_back(member_type_id);
 			offsets.push_back(current_offset);
@@ -3113,10 +3114,14 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	}
 
 	case llvm::Type::TypeID::ArrayTyID:
+	{
 		if (type->getArrayNumElements() == 0)
 			return 0;
-		return builder.makeArrayType(get_type_id(type->getArrayElementType()),
-		                             builder.makeUintConstant(type->getArrayNumElements(), false), 0);
+
+		spv::Id array_size_id = builder.makeUintConstant(type->getArrayNumElements());
+		spv::Id element_type_id = get_type_id(type->getArrayElementType());
+		return builder.makeArrayType(element_type_id, array_size_id, 0);
+	}
 
 	case llvm::Type::TypeID::StructTyID:
 	{
