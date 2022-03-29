@@ -89,7 +89,8 @@ enum class VulkanDescriptorType : unsigned
 	Identity = 0,
 	SSBO = 1,
 	TexelBuffer = 2,
-	BufferDeviceAddress = 3
+	BufferDeviceAddress = 3,
+	UBO = 4
 };
 
 struct VulkanBinding

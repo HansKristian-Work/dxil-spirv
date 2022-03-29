@@ -748,32 +748,51 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 
 	if (raw_access_16bit &&
 	    descriptor_type != VulkanDescriptorType::SSBO &&
+	    descriptor_type != VulkanDescriptorType::UBO &&
 	    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 	{
-		LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
+		LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO, UBO or BDA.\n");
 		return false;
 	}
 
 	if (raw_access_64bit &&
 	    descriptor_type != VulkanDescriptorType::SSBO &&
+	    descriptor_type != VulkanDescriptorType::UBO &&
 	    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 	{
-		LOGE("Raw 64-bit load-store was used, which must be implemented with SSBO or BDA.\n");
+		LOGE("Raw 64-bit load-store was used, which must be implemented with SSBO, UBO or BDA.\n");
 		return false;
 	}
 
-	// Only SSBO can be reclared with different types.
+	// Only SSBO and UBO can be reclared with different types.
 	// Typed descriptors are always scalar.
-	aliased_access.requires_alias_decoration = descriptor_type == VulkanDescriptorType::SSBO &&
+	aliased_access.requires_alias_decoration = (descriptor_type == VulkanDescriptorType::SSBO ||
+	                                            descriptor_type == VulkanDescriptorType::UBO) &&
 	                                           aliased_access.raw_declarations.size() > 1;
 
-	// If we only emit one 16-bit or 64-bit SSBO, we need to override the component type of that meta declaration.
-	aliased_access.override_primary_component_types = descriptor_type == VulkanDescriptorType::SSBO &&
+	// If we only emit one 16-bit or 64-bit SSBO/UBO, we need to override the component type of that meta declaration.
+	aliased_access.override_primary_component_types = (descriptor_type == VulkanDescriptorType::SSBO ||
+	                                                   descriptor_type == VulkanDescriptorType::UBO) &&
 	                                                  aliased_access.raw_declarations.size() == 1;
 
 	// If the SSBO is never actually accessed (UAV counters for example), fudge the default type.
 	if (descriptor_type == VulkanDescriptorType::SSBO && aliased_access.raw_declarations.empty())
 		aliased_access.raw_declarations.push_back({ RawWidth::B32, RawVecSize::V1 });
+
+	// If the CBV is never actually accessed, fudge the default legacy CBV type.
+	if (descriptor_type == VulkanDescriptorType::UBO && aliased_access.raw_declarations.empty())
+		aliased_access.raw_declarations.push_back({ RawWidth::B32, RawVecSize::V4 });
+
+	// Safeguard against unused variables where we never end up setting any primary component type.
+	if ((descriptor_type == VulkanDescriptorType::SSBO ||
+	     descriptor_type == VulkanDescriptorType::UBO) &&
+	    aliased_access.raw_declarations.size() == 1)
+	{
+		aliased_access.primary_component_type =
+				raw_width_to_component_type(aliased_access.raw_declarations.front().width);
+		aliased_access.primary_raw_vecsize = aliased_access.raw_declarations.front().vecsize;
+		aliased_access.override_primary_component_types = true;
+	}
 
 	return true;
 }
