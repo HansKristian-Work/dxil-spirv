@@ -27,12 +27,13 @@ bool emit_imad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	// FIXME: Do we need to deal with intermediate mul overflow here somehow?
 
 	Operation *mul = impl.allocate(spv::OpIMul, impl.get_type_id(instruction->getType()));
-	mul->add_ids(
-	    { impl.get_id_for_value(instruction->getOperand(1)), impl.get_id_for_value(instruction->getOperand(2)) });
+	mul->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	mul->add_id(impl.get_id_for_value(instruction->getOperand(2)));
 	impl.add(mul);
 
 	Operation *add = impl.allocate(spv::OpIAdd, instruction);
-	add->add_ids({ mul->id, impl.get_id_for_value(instruction->getOperand(3)) });
+	add->add_id(mul->id);
+	add->add_id(impl.get_id_for_value(instruction->getOperand(3)));
 	impl.add(add);
 	return true;
 }
@@ -68,11 +69,8 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		Operation *op = impl.allocate(spv::OpExtInst, instruction);
 		op->add_id(impl.glsl_std450_ext);
 		op->add_literal(GLSLstd450Fma);
-		op->add_ids({
-		    impl.get_id_for_value(instruction->getOperand(1)),
-		    impl.get_id_for_value(instruction->getOperand(2)),
-		    impl.get_id_for_value(instruction->getOperand(3)),
-		});
+		for (unsigned i = 1; i < 4; i++)
+			op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 		impl.add(op);
 	}
 
@@ -144,10 +142,8 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
 	op->add_literal(opcode);
-	op->add_ids({
-		            impl.get_id_for_value(instruction->getOperand(1)),
-		            impl.get_id_for_value(instruction->getOperand(2))
-	            });
+	for (unsigned i = 1; i < 3; i++)
+		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 
 	impl.add(op);
 	return true;
@@ -162,9 +158,9 @@ bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &im
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
 	op->add_literal(opcode);
-	op->add_ids({ impl.get_id_for_value(instruction->getOperand(1)),
-	              impl.get_id_for_value(instruction->getOperand(2)),
-	              impl.get_id_for_value(instruction->getOperand(3)) });
+
+	for (unsigned i = 1; i < 4; i++)
+		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 
 	impl.add(op);
 	return true;
@@ -283,11 +279,8 @@ static spv::Id clamp_bitfield_width(Converter::Impl &impl, spv::Id offset, spv::
 static spv::Id mask_input(Converter::Impl &impl, const llvm::Value *value)
 {
 	Operation *op = impl.allocate(spv::OpBitwiseAnd, impl.get_type_id(value->getType()));
-	op->add_ids({
-	    impl.get_id_for_value(value),
-	    impl.builder().makeUintConstant(31),
-	});
-
+	op->add_id(impl.get_id_for_value(value));
+	op->add_id(impl.builder().makeUintConstant(31));
 	impl.add(op);
 	return op->id;
 }

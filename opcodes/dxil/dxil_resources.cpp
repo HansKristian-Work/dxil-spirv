@@ -150,11 +150,9 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 		else if (builtin == spv::BuiltInFrontFacing)
 		{
 			Operation *cast_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
-			cast_op->add_ids({
-			    impl.get_id_for_value(instruction),
-			    builder.makeUintConstant(~0u),
-			    builder.makeUintConstant(0),
-			});
+			cast_op->add_id(impl.get_id_for_value(instruction));
+			cast_op->add_id(builder.makeUintConstant(~0u));
+			cast_op->add_id(builder.makeUintConstant(0));
 			impl.add(cast_op);
 			impl.rewrite_value(instruction, cast_op->id);
 		}
@@ -272,7 +270,9 @@ static spv::Id build_attribute_offset(spv::Id id, Converter::Impl &impl)
 	auto &builder = impl.builder();
 	{
 		Operation *op = impl.allocate(spv::OpBitFieldSExtract, builder.makeUintType(32));
-		op->add_ids({ id, builder.makeUintConstant(0), builder.makeUintConstant(4) });
+		op->add_id(id);
+		op->add_id(builder.makeUintConstant(0));
+		op->add_id(builder.makeUintConstant(4));
 		id = op->id;
 		impl.add(op);
 	}

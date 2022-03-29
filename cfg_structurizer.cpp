@@ -1311,7 +1311,9 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				merge_phi.type_id = module.get_builder().makeBoolType();
 
 				Operation *op = module.allocate_op(spv::OpSelect, module.allocate_id(), phi.type_id);
-				op->add_ids({ merge_phi.id, dominated_incoming->id, frontier_phi.id });
+				op->add_id(merge_phi.id);
+				op->add_id(dominated_incoming->id);
+				op->add_id(frontier_phi.id);
 				dominated_incoming->block->ir.operations.push_back(op);
 				dominated_incoming->id = op->id;
 

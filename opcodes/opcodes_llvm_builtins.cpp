@@ -1092,11 +1092,8 @@ bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *inst
 {
 	Operation *op = impl.allocate(spv::OpSelect, instruction);
 
-	op->add_ids({
-	    impl.get_id_for_value(instruction->getOperand(0)),
-	    impl.get_id_for_value(instruction->getOperand(1)),
-	    impl.get_id_for_value(instruction->getOperand(2)),
-	});
+	for (unsigned i = 0; i < 3; i++)
+		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 
 	impl.add(op);
 	return true;
@@ -1114,11 +1111,11 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 	atomic_op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
 
-	atomic_op->add_ids({ builder.makeUintConstant(spv::ScopeWorkgroup),
-	                     builder.makeUintConstant(0), // Relaxed
-	                     builder.makeUintConstant(0), // Relaxed
-	                     impl.get_id_for_value(instruction->getNewValOperand()),
-	                     impl.get_id_for_value(instruction->getCompareOperand()) });
+	atomic_op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+	atomic_op->add_id(builder.makeUintConstant(0));
+	atomic_op->add_id(builder.makeUintConstant(0));
+	atomic_op->add_id(impl.get_id_for_value(instruction->getNewValOperand()));
+	atomic_op->add_id(impl.get_id_for_value(instruction->getCompareOperand()));
 
 	impl.add(atomic_op);
 
@@ -1196,11 +1193,9 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 
 	op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
 
-	op->add_ids({
-	    builder.makeUintConstant(spv::ScopeWorkgroup),
-	    builder.makeUintConstant(0),
-	    impl.get_id_for_value(instruction->getValOperand()),
-	});
+	op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(impl.get_id_for_value(instruction->getValOperand()));
 
 	impl.add(op);
 	return true;
@@ -1209,7 +1204,9 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 bool emit_shufflevector_instruction(Converter::Impl &impl, const llvm::ShuffleVectorInst *inst)
 {
 	Operation *op = impl.allocate(spv::OpVectorShuffle, inst);
-	op->add_ids({ impl.get_id_for_value(inst->getOperand(0)), impl.get_id_for_value(inst->getOperand(1)) });
+
+	for (unsigned i = 0; i < 2; i++)
+		op->add_id(impl.get_id_for_value(inst->getOperand(i)));
 
 	unsigned num_outputs = inst->getType()->getVectorNumElements();
 	for (unsigned i = 0; i < num_outputs; i++)

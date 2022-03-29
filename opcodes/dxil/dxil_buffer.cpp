@@ -28,7 +28,8 @@ static spv::Id build_index_divider_fallback(Converter::Impl &impl, const llvm::V
 {
 	auto &builder = impl.builder();
 	Operation *op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
-	op->add_ids({ impl.get_id_for_value(offset), builder.makeUintConstant(addr_shift_log2) });
+	op->add_id(impl.get_id_for_value(offset));
+	op->add_id(builder.makeUintConstant(addr_shift_log2));
 	impl.add(op);
 	return op->id;
 }
@@ -1425,12 +1426,11 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 
 	Operation *op = impl.allocate(opcode, instruction, impl.get_type_id(component_type, 1, 1));
-	op->add_ids({
-	    counter_ptr_op->id,
-	    builder.makeUintConstant(spv::ScopeDevice),
-	    builder.makeUintConstant(0), // Relaxed
-	    impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
-	});
+
+	op->add_id(counter_ptr_op->id);
+	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))));
 
 	impl.add(op);
 	impl.fixup_load_type_atomic(component_type, 1, instruction);
@@ -1519,14 +1519,12 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	comparison_id = impl.fixup_store_type_atomic(component_type, 1, comparison_id);
 	new_value_id = impl.fixup_store_type_atomic(component_type, 1, new_value_id);
 
-	op->add_ids({
-	    counter_ptr_op->id,
-	    builder.makeUintConstant(spv::ScopeDevice),
-	    builder.makeUintConstant(0), // Relaxed
-	    builder.makeUintConstant(0), // Relaxed
-	    new_value_id,
-	    comparison_id,
-	});
+	op->add_id(counter_ptr_op->id);
+	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(new_value_id);
+	op->add_id(comparison_id);
 
 	impl.add(op);
 	impl.fixup_load_type_atomic(component_type, 1, instruction);
@@ -1553,7 +1551,10 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 	{
 		counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
 		                               builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
-		counter_ptr_op->add_ids({ meta.counter_var_id, builder.makeUintConstant(0), builder.makeUintConstant(0) });
+
+		counter_ptr_op->add_id(meta.counter_var_id);
+		counter_ptr_op->add_id(builder.makeUintConstant(0));
+		counter_ptr_op->add_id(builder.makeUintConstant(0));
 
 		if (meta.non_uniform)
 			builder.addDecoration(counter_ptr_op->id, spv::DecorationNonUniformEXT);
@@ -1562,9 +1563,11 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 	impl.add(counter_ptr_op);
 
 	Operation *op = impl.allocate(spv::OpAtomicIAdd, instruction);
-	op->add_ids({ counter_ptr_op->id, builder.makeUintConstant(spv::ScopeDevice),
-	              builder.makeUintConstant(0), // Relaxed.
-	              builder.makeUintConstant(direction) });
+
+	op->add_id(counter_ptr_op->id);
+	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(builder.makeUintConstant(direction));
 
 	impl.add(op);
 
