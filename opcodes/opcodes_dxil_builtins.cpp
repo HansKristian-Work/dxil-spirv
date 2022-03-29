@@ -356,7 +356,12 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		return false;
 	}
 
-	return global_dispatcher.builder_lut[opcode](impl, instruction);
+	if (!global_dispatcher.builder_lut[opcode](impl, instruction))
+	{
+		LOGE("Failed DXIL opcode %u.\n", opcode);
+		return false;
+	}
+	return true;
 }
 
 static void update_raw_access_tracking_from_vector_type(Converter::Impl::AccessTracking &tracking,
