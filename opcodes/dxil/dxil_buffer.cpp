@@ -703,21 +703,6 @@ static RawWidth get_buffer_access_bits_per_component(
 		return RawWidth::B32;
 }
 
-static spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
-                                       spv::Id default_id, RawWidth width, RawVecSize vecsize)
-{
-	for (auto &alias : meta.var_alias_group)
-	{
-		if (alias.declaration.width == width && alias.declaration.vecsize == vecsize)
-		{
-			default_id = alias.var_id;
-			break;
-		}
-	}
-
-	return default_id;
-}
-
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// Elide dead loads.

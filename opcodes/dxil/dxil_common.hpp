@@ -19,9 +19,14 @@
 #pragma once
 #include "SpvBuilder.h"
 #include "opcodes/opcodes.hpp"
+#include "opcodes/converter_impl.hpp"
 
 namespace dxil_spv
 {
 bool get_constant_operand(const llvm::CallInst *value, unsigned index, uint32_t *operand);
 spv::Id emit_u32x2_u32_add(Converter::Impl &impl, spv::Id u32x2_value, spv::Id u32_value);
+unsigned get_type_scalar_alignment(const llvm::Type *type);
+
+spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
+                                spv::Id default_id, RawWidth width, RawVecSize vecsize);
 }

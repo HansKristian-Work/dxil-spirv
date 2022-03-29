@@ -79,4 +79,37 @@ spv::Id emit_u32x2_u32_add(Converter::Impl &impl, spv::Id u32x2_value, spv::Id u
 	spv::Id addr_vec = impl.build_vector(uint_type, addr_elems, 2);
 	return addr_vec;
 }
+
+unsigned get_type_scalar_alignment(const llvm::Type *type)
+{
+	switch (type->getTypeID())
+	{
+	case llvm::Type::TypeID::IntegerTyID:
+		return type->getIntegerBitWidth() / 8;
+	case llvm::Type::TypeID::HalfTyID:
+		return 2;
+	case llvm::Type::TypeID::FloatTyID:
+		return 4;
+	case llvm::Type::TypeID::DoubleTyID:
+		return 8;
+	default:
+		LOGE("Invalid type for scalar alignment query.\n");
+		return 1;
+	}
+}
+
+spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
+                                spv::Id default_id, RawWidth width, RawVecSize vecsize)
+{
+	for (auto &alias : meta.var_alias_group)
+	{
+		if (alias.declaration.width == width && alias.declaration.vecsize == vecsize)
+		{
+			default_id = alias.var_id;
+			break;
+		}
+	}
+
+	return default_id;
+}
 } // namespace dxil_spv
