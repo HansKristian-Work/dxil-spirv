@@ -191,8 +191,10 @@ struct Converter::Impl
 		bool has_atomic_64bit = false;
 		bool raw_access_buffer_declarations[unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
 	};
+	UnorderedMap<uint32_t, AccessTracking> cbv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> uav_access_tracking;
+	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_cbv_resource_index_map;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_srv_resource_index_map;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
 	UnorderedSet<const llvm::Value *> llvm_values_using_update_counter;

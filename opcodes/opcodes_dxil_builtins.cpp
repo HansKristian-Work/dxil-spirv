@@ -468,6 +468,51 @@ get_resource_meta_from_buffer_op(Converter::Impl &impl, const llvm::CallInst *in
 	return { DXIL::ResourceKind::Invalid, 0 };
 }
 
+static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	Converter::Impl::AccessTracking *tracking = nullptr;
+	auto itr = impl.llvm_value_to_cbv_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_cbv_resource_index_map.end())
+		tracking = &impl.cbv_access_tracking[itr->second];
+
+	if (!tracking)
+	{
+		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+			tracking = &annotate_itr->second.tracking;
+	}
+
+	// We're only interested in tracking which scalar variants of CBV we need to emit.
+	if (tracking)
+	{
+		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+		{
+			// Legacy float4 model.
+			tracking->raw_access_buffer_declarations[int(RawWidth::B32)][int(RawVecSize::V4)] = true;
+		}
+		else
+		{
+			switch (get_type_scalar_alignment(instruction->getType()))
+			{
+			case 2:
+				tracking->raw_access_buffer_declarations[int(RawWidth::B16)][int(RawVecSize::V1)] = true;
+				break;
+
+			case 4:
+				tracking->raw_access_buffer_declarations[int(RawWidth::B32)][int(RawVecSize::V1)] = true;
+				break;
+
+			case 8:
+				tracking->raw_access_buffer_declarations[int(RawWidth::B64)][int(RawVecSize::V1)] = true;
+				break;
+
+			default:
+				break;
+			}
+		}
+	}
+}
+
 static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode)
 {
 	Converter::Impl::AccessTracking *tracking = nullptr;
@@ -658,6 +703,8 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 			impl.llvm_value_to_uav_resource_index_map[instruction] = resource_range;
 		else if (static_cast<DXIL::ResourceType>(resource_type_operand) == DXIL::ResourceType::SRV)
 			impl.llvm_value_to_srv_resource_index_map[instruction] = resource_range;
+		else if (static_cast<DXIL::ResourceType>(resource_type_operand) == DXIL::ResourceType::CBV)
+			impl.llvm_value_to_cbv_resource_index_map[instruction] = resource_range;
 
 		if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
 			impl.resource_handle_to_block[instruction] = bb;
@@ -674,6 +721,8 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 			impl.llvm_value_to_uav_resource_index_map[instruction] = itr->second.meta_index;
 		else if (itr->second.type == DXIL::ResourceType::SRV)
 			impl.llvm_value_to_srv_resource_index_map[instruction] = itr->second.meta_index;
+		else if (itr->second.type == DXIL::ResourceType::CBV)
+			impl.llvm_value_to_cbv_resource_index_map[instruction] = itr->second.meta_index;
 
 		impl.llvm_active_global_resource_variables.insert(itr->second.variable);
 
@@ -731,7 +780,8 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 
 			if (use.resource_kind == DXIL::ResourceKind::StructuredBuffer)
 				use.stride = params;
-			else if (use.resource_kind != DXIL::ResourceKind::RawBuffer)
+			else if (use.resource_kind != DXIL::ResourceKind::RawBuffer &&
+			         use.resource_kind != DXIL::ResourceKind::CBuffer)
 				use.component_type = DXIL::ComponentType(params & 0xff);
 		}
 		else if (meta.resource_op == DXIL::Op::CreateHandleFromBinding ||
@@ -741,6 +791,8 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 				impl.llvm_value_to_uav_resource_index_map[instruction] = meta.binding_index;
 			else if (meta.resource_type == DXIL::ResourceType::SRV)
 				impl.llvm_value_to_srv_resource_index_map[instruction] = meta.binding_index;
+			else if (meta.resource_type == DXIL::ResourceType::CBV)
+				impl.llvm_value_to_cbv_resource_index_map[instruction] = meta.binding_index;
 		}
 
 		if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
@@ -754,6 +806,11 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 
 	case DXIL::Op::TextureStore:
 		analyze_dxil_buffer_store(impl, instruction, op);
+		break;
+
+	case DXIL::Op::CBufferLoad:
+	case DXIL::Op::CBufferLoadLegacy:
+		analyze_dxil_cbuffer_load(impl, instruction);
 		break;
 
 	case DXIL::Op::BufferUpdateCounter:

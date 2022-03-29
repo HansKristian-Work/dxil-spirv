@@ -2469,7 +2469,8 @@ bool Converter::Impl::emit_global_heaps()
 
 		auto actual_component_type = DXIL::ComponentType::U32;
 		info.format = spv::ImageFormatUnknown;
-		if (annotation->resource_kind != DXIL::ResourceKind::RawBuffer &&
+		if (annotation->resource_type != DXIL::ResourceType::CBV &&
+		    annotation->resource_kind != DXIL::ResourceKind::RawBuffer &&
 		    annotation->resource_kind != DXIL::ResourceKind::StructuredBuffer)
 		{
 			actual_component_type = normalize_component_type(annotation->component_type);
@@ -2557,6 +2558,7 @@ bool Converter::Impl::emit_global_heaps()
 					return false;
 				}
 				vulkan_binding = vulkan_cbv_binding.buffer;
+				vulkan_binding.descriptor_type = VulkanDescriptorType::UBO;
 				break;
 			}
 
