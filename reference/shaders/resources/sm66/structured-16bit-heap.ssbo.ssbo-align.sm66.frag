@@ -112,6 +112,7 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability GroupNonUniformBallot
+OpCapability StorageBuffer16BitAccess
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450

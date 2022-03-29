@@ -286,6 +286,10 @@ spv::Id Converter::Impl::create_raw_ssbo_variable(const RawDeclaration &raw_decl
 	                                                raw_width_to_bits(raw_decl.width),
 	                                                raw_vecsize_to_vecsize(raw_decl.vecsize),
 	                                                range_size, "SSBO");
+
+	if (raw_decl.width == RawWidth::B16)
+		builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
+
 	return create_variable(spv::StorageClassStorageBuffer, type_id, name.empty() ? nullptr : name.c_str());
 }
 
@@ -371,6 +375,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 					type_id = build_ssbo_runtime_array_type(*this, bits, raw_vecsize_to_vecsize(info.raw_vecsize),
 					                                        ~0u, "SSBO");
 				storage = spv::StorageClassStorageBuffer;
+				if (bits == 16)
+					builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
 			}
 			else
 			{
@@ -433,6 +439,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				type_id = build_ssbo_runtime_array_type(*this, bits, raw_vecsize_to_vecsize(info.raw_vecsize),
 				                                        ~0u, "SSBO");
 				storage = spv::StorageClassStorageBuffer;
+				if (bits == 16)
+					builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
 			}
 			else
 			{

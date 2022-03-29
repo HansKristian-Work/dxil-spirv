@@ -183,6 +183,7 @@ OpCapability Float16
 OpCapability Float64
 OpCapability Int64
 OpCapability Int16
+OpCapability StorageBuffer16BitAccess
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %114 %119
 OpExecutionMode %3 LocalSize 2 1 1

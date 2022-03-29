@@ -6,6 +6,7 @@
 OpCapability Shader
 OpCapability Float16
 OpCapability Int16
+OpCapability StorageBuffer16BitAccess
 OpCapability DotProductInput4x8BitPackedKHR
 OpCapability DotProductKHR
 OpExtension "SPV_KHR_integer_dot_product"

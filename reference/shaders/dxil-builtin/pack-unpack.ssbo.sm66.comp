@@ -45,6 +45,7 @@ void main()
 OpCapability Shader
 OpCapability Int16
 OpCapability Int8
+OpCapability StorageBuffer16BitAccess
 %80 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %23
