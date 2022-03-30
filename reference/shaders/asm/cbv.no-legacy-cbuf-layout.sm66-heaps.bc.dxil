@@ -111,8 +111,8 @@ OpDecorate %29 Location 0
 %38 = OpConstant %6 2
 %39 = OpTypePointer Uniform %5
 %42 = OpTypePointer Uniform %13
-%45 = OpTypePointer Uniform %20
-%48 = OpTypeInt 64 0
+%45 = OpTypeInt 64 0
+%46 = OpTypePointer Uniform %20
 %54 = OpTypePointer Output %5
 %59 = OpConstant %6 3
 %3 = OpFunction %1 None %2
@@ -126,9 +126,9 @@ OpBranch %60
 %41 = OpLoad %5 %40
 %43 = OpAccessChain %42 %34 %32 %35
 %44 = OpLoad %13 %43
-%46 = OpAccessChain %45 %37 %32 %35
-%47 = OpLoad %20 %46
-%49 = OpBitcast %48 %47
+%47 = OpAccessChain %46 %37 %32 %35
+%48 = OpLoad %20 %47
+%49 = OpBitcast %45 %48
 %50 = OpFConvert %5 %44
 %51 = OpConvertUToF %5 %49
 %52 = OpFAdd %5 %41 %50

@@ -1848,6 +1848,11 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 												   impl.handle_to_root_member_offset[instruction->getOperand(1)]);
 		}
 
+		// Handle min16float where we want FP16 value, but FP32 physical.
+		spv::Op value_cast_op = spv::OpNop;
+		spv::Id physical_type_id = 0;
+		get_physical_load_store_cast_info(impl, instruction->getType(), physical_type_id, value_cast_op);
+
 		unsigned addr_shift;
 		RawWidth raw_width;
 		switch (get_type_scalar_alignment(impl, instruction->getType()))
@@ -1913,6 +1918,16 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 			impl.add(op);
 			impl.rewrite_value(instruction, op->id);
 		}
+
+		// Handle min16float4 value cast scenarios.
+		if (value_cast_op != spv::OpNop)
+		{
+			auto *cast_op = impl.allocate(value_cast_op, impl.get_type_id(instruction->getType()));
+			cast_op->add_id(impl.get_id_for_value(instruction));
+			impl.add(cast_op);
+			impl.rewrite_value(instruction, cast_op->id);
+		}
+
 		return true;
 	}
 }
