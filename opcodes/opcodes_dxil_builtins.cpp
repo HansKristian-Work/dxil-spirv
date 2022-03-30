@@ -483,17 +483,30 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			tracking = &annotate_itr->second.tracking;
 	}
 
-	// We're only interested in tracking which scalar variants of CBV we need to emit.
 	if (tracking)
 	{
 		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
 		{
-			// Legacy float4 model.
-			tracking->raw_access_buffer_declarations[int(RawWidth::B32)][int(RawVecSize::V4)] = true;
+			// Legacy float4 model. However, it seems like DXIL also supports f16x8, f32x4 and f64x2 ... :(
+			switch (get_type_scalar_alignment(impl, instruction->getType()->getStructElementType(0)))
+			{
+			case 2:
+			case 4:
+				// We'll bit-cast on-demand for f16x8.
+				tracking->raw_access_buffer_declarations[int(RawWidth::B32)][int(RawVecSize::V4)] = true;
+				break;
+
+			case 8:
+				tracking->raw_access_buffer_declarations[int(RawWidth::B64)][int(RawVecSize::V2)] = true;
+				break;
+
+			default:
+				break;
+			}
 		}
 		else
 		{
-			switch (get_type_scalar_alignment(instruction->getType()))
+			switch (get_type_scalar_alignment(impl, instruction->getType()))
 			{
 			case 2:
 				tracking->raw_access_buffer_declarations[int(RawWidth::B16)][int(RawVecSize::V1)] = true;

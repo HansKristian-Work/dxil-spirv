@@ -411,20 +411,6 @@ static spv::Id build_structured_index(Converter::Impl &impl, const llvm::Value *
 	}
 }
 
-static bool type_is_16bit(const llvm::Type *data_type)
-{
-	return data_type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
-	       (data_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
-	        data_type->getIntegerBitWidth() == 16);
-}
-
-static bool type_is_64bit(const llvm::Type *data_type)
-{
-	return data_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ||
-	       (data_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
-	        data_type->getIntegerBitWidth() == 64);
-}
-
 unsigned raw_buffer_data_type_to_addr_shift_log2(Converter::Impl &impl, const llvm::Type *data_type)
 {
 	// A 16-bit raw load is only actually 16-bit if native 16-bit operations are enabled.
@@ -590,30 +576,6 @@ static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl
 	}
 
 	return emit_u32x2_u32_add(impl, ptr_id, byte_offset_id);
-}
-
-static void get_physical_load_store_cast_info(Converter::Impl &impl, const llvm::Type *element_type,
-                                              spv::Id &physical_type_id, spv::Op &value_cast_op)
-{
-	if (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
-	    impl.options.min_precision_prefer_native_16bit)
-	{
-		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-		{
-			physical_type_id = impl.get_type_id(DXIL::ComponentType::F32, 1, 1);
-			value_cast_op = spv::OpFConvert;
-		}
-		else
-		{
-			physical_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1, 1);
-			value_cast_op = spv::OpUConvert;
-		}
-	}
-	else
-	{
-		physical_type_id = impl.get_type_id(element_type);
-		value_cast_op = spv::OpNop;
-	}
 }
 
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,

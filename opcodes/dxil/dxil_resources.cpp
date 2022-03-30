@@ -1539,14 +1539,65 @@ bool emit_annotate_handle_instruction(Converter::Impl &impl, const llvm::CallIns
 	                          meta.binding_index, meta.offset, meta.non_uniform);
 }
 
+static bool build_bitcast_32x4_to_16x8_composite(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                 spv::Id loaded_id)
+{
+	auto &builder = impl.builder();
+
+	Vector<spv::Id> member_types(8);
+	spv::Id type_id = impl.get_type_id(instruction->getType()->getStructElementType(0));
+	for (auto &type : member_types)
+		type = type_id;
+
+	spv::Id vec2_type_id = builder.makeVectorType(type_id, 2);
+
+	spv::Id u32_composites[4];
+	for (unsigned i = 0; i < 4; i++)
+	{
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, builder.makeFloatType(32));
+		extract_op->add_id(loaded_id);
+		extract_op->add_literal(i);
+		impl.add(extract_op);
+		u32_composites[i] = extract_op->id;
+	}
+
+	spv::Id u16_composites[8];
+	for (unsigned i = 0; i < 4; i++)
+	{
+		auto *bitcast_op = impl.allocate(spv::OpBitcast, vec2_type_id);
+		bitcast_op->add_id(u32_composites[i]);
+		impl.add(bitcast_op);
+
+		for (unsigned j = 0; j < 2; j++)
+		{
+			auto *extract = impl.allocate(spv::OpCompositeExtract, type_id);
+			extract->add_id(bitcast_op->id);
+			extract->add_literal(j);
+			impl.add(extract);
+			u16_composites[2 * i + j] = extract->id;
+		}
+	}
+
+	spv::Id struct_type_id = impl.get_struct_type(member_types, "CBVComposite16x8");
+	auto *composite = impl.allocate(spv::OpCompositeConstruct, struct_type_id);
+	for (auto &comp : u16_composites)
+		composite->add_id(comp);
+	impl.add(composite);
+	impl.rewrite_value(instruction, composite->id);
+	return true;
+}
+
 static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
 	spv::Id member_index = impl.get_id_for_value(instruction->getOperand(2));
 	bool scalar_load = instruction->getType()->getTypeID() != llvm::Type::TypeID::StructTyID;
+	unsigned scalar_alignment;
 	spv::Id byteaddr_id;
 	uint32_t alignment;
+
+	const llvm::Type *result_component_type;
 
 	if (!scalar_load)
 	{
@@ -1555,6 +1606,8 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 		mul_op->add_id(builder.makeUintConstant(16));
 		impl.add(mul_op);
 		byteaddr_id = mul_op->id;
+		result_component_type = instruction->getType()->getStructElementType(0);
+		scalar_alignment = get_type_scalar_alignment(impl, result_component_type);
 		alignment = 16;
 	}
 	else
@@ -1563,18 +1616,40 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 		// DXIL emits the alignment, but we cannot trust it, DXC is completely buggy here and emits
 		// obviously bogus alignment values.
 		// Use scalar alignment.
-		alignment = get_type_scalar_alignment(instruction->getType());
+		result_component_type = instruction->getType();
+		alignment = get_type_scalar_alignment(impl, instruction->getType());
+		scalar_alignment = alignment;
 	}
+
+	// Handle min16float where we want FP16 value, but FP32 physical.
+	spv::Op value_cast_op = spv::OpNop;
+	spv::Id physical_type_id = 0;
+	get_physical_load_store_cast_info(impl, result_component_type, physical_type_id, value_cast_op);
 
 	spv::Id addr_vec = emit_u32x2_u32_add(impl, impl.get_id_for_value(instruction->getOperand(1)), byteaddr_id);
 
 	auto *result_type = instruction->getType();
+	unsigned physical_vecsize;
 	spv::Id result_type_id;
 
 	if (scalar_load)
+	{
 		result_type_id = impl.get_type_id(result_type);
+		physical_vecsize = 1;
+	}
 	else
-		result_type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+	{
+		if (scalar_alignment != 2)
+		{
+			physical_vecsize = 16 / scalar_alignment;
+			result_type_id = builder.makeVectorType(physical_type_id, physical_vecsize);
+		}
+		else
+		{
+			result_type_id = builder.makeVectorType(builder.makeFloatType(32), 4);
+			physical_vecsize = 4;
+		}
+	}
 
 	Converter::Impl::PhysicalPointerMeta ptr_meta = {};
 	ptr_meta.nonwritable = true;
@@ -1594,6 +1669,20 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
 	load_op->add_literal(alignment);
 	impl.add(load_op);
+
+	// Handle f16x8 loads.
+	if (!scalar_load && scalar_alignment == 2)
+		return build_bitcast_32x4_to_16x8_composite(impl, instruction, load_op->id);
+	else if (value_cast_op != spv::OpNop)
+	{
+		spv::Id type_id = impl.get_type_id(result_component_type);
+		if (physical_vecsize != 1)
+			type_id = builder.makeVectorType(type_id, physical_vecsize);
+		auto *cast_op = impl.allocate(value_cast_op, type_id);
+		cast_op->add_id(impl.get_id_for_value(instruction));
+		impl.add(cast_op);
+		impl.rewrite_value(instruction, cast_op->id);
+	}
 
 	return true;
 }
@@ -1625,11 +1714,23 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 			return false;
 		}
 		member_index /= 4;
+
+		if (get_type_scalar_alignment(impl, instruction->getType()) != 4)
+		{
+			LOGE("Attempting to use root constant buffer with non-32bit type.\n");
+			return false;
+		}
 	}
 	else
 	{
 		// In legacy load, we index in terms of float4[]s.
 		member_index *= 4;
+
+		if (get_type_scalar_alignment(impl, instruction->getType()->getStructElementType(0)) != 4)
+		{
+			LOGE("Attempting to use root constant buffer with non-32bit type.\n");
+			return false;
+		}
 	}
 
 	member_index += index_offset;
@@ -1731,18 +1832,7 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	if (ptr_id == impl.root_constant_id)
 	{
-		auto type_id = instruction->getType()->getTypeID();
-		if (type_id == llvm::Type::TypeID::FloatTyID ||
-		    (type_id == llvm::Type::TypeID::IntegerTyID &&
-		     instruction->getType()->getIntegerBitWidth() == 32))
-		{
-			return emit_cbuffer_load_root_constant(impl, instruction);
-		}
-		else
-		{
-			LOGE("Must only use 32-bit cbuffer for root constants.\n");
-			return false;
-		}
+		return emit_cbuffer_load_root_constant(impl, instruction);
 	}
 	else
 	{
@@ -1760,7 +1850,7 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 		unsigned addr_shift;
 		RawWidth raw_width;
-		switch (get_type_scalar_alignment(instruction->getType()))
+		switch (get_type_scalar_alignment(impl, instruction->getType()))
 		{
 		case 2:
 			raw_width = RawWidth::B16;
@@ -1844,7 +1934,14 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 	else
 	{
 		auto &meta = impl.handle_to_resource_meta[ptr_id];
-		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, RawWidth::B32, RawVecSize::V4);
+
+		auto *result_type = instruction->getType();
+
+		if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
+		{
+			LOGE("CBufferLoadLegacy: return type must be struct.\n");
+			return false;
+		}
 
 		if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 		{
@@ -1856,55 +1953,77 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			                                       impl.handle_to_root_member_offset[instruction->getOperand(1)]);
 		}
 
+		// Handle min16float where we want FP16 value, but FP32 physical.
+		auto *result_component_type = result_type->getStructElementType(0);
+		spv::Op value_cast_op = spv::OpNop;
+		spv::Id physical_type_id = 0;
+		get_physical_load_store_cast_info(impl, result_component_type, physical_type_id, value_cast_op);
+
+		RawVecSize alias_vecsize;
+		RawWidth alias_width;
+		unsigned scalar_alignment = get_type_scalar_alignment(impl, result_component_type);
+		unsigned bits, vecsize;
+
+		if (scalar_alignment == 8)
+		{
+			alias_width = RawWidth::B64;
+			alias_vecsize = RawVecSize::V2;
+		}
+		else
+		{
+			alias_width = RawWidth::B32;
+			alias_vecsize = RawVecSize::V4;
+		}
+
+		bits = raw_width_to_bits(alias_width);
+		vecsize = raw_vecsize_to_vecsize(alias_vecsize);
+
+		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, alias_width, alias_vecsize);
+
 		spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
 
-		Operation *access_chain_op = impl.allocate(
-		    spv::OpAccessChain, builder.makePointer(meta.storage, builder.makeVectorType(builder.makeFloatType(32), 4)));
+		spv::Id vector_type_id = builder.makeVectorType(builder.makeFloatType(bits), vecsize);
+		Operation *access_chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(meta.storage, vector_type_id));
 		access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
 		impl.add(access_chain_op);
 
 		if (meta.non_uniform)
 			builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
 
-		auto *result_type = instruction->getType();
-
-		if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
-		{
-			LOGE("CBufferLoadLegacy: return type must be struct.\n");
-			return false;
-		}
-
-		if (get_type_scalar_alignment(result_type->getStructElementType(0)) != 4)
-		{
-			LOGE("CBufferLoadLegacy: element must be 32-bit.\n");
-			return false;
-		}
-
-		if (result_type->getStructNumElements() != 4)
-		{
-			LOGE("CBufferLoadLegacy: return type must be 4 elements.\n");
-			return false;
-		}
-
 		bool need_bitcast = false;
-		if (result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::FloatTyID)
+		if (result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID)
 			need_bitcast = true;
 
-		Operation *load_op =
-		    impl.allocate(spv::OpLoad, instruction, builder.makeVectorType(builder.makeFloatType(32), 4));
+		Operation *load_op = impl.allocate(spv::OpLoad, instruction, vector_type_id);
 		load_op->add_id(access_chain_op->id);
 		impl.add(load_op);
 
-		if (need_bitcast)
+		if (scalar_alignment == 2)
 		{
-			Operation *op = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(32), 4));
+			// Special case, need to bitcast and build a struct with 8 elements instead.
+			if (!build_bitcast_32x4_to_16x8_composite(impl, instruction, load_op->id))
+				return false;
+		}
+		else if (need_bitcast)
+		{
+			spv::Id uint_vector_type_id = builder.makeVectorType(builder.makeUintType(bits), vecsize);
+			Operation *op = impl.allocate(spv::OpBitcast, uint_vector_type_id);
 
-			assert(result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID);
 			op->add_id(load_op->id);
 			impl.add(op);
 			impl.rewrite_value(instruction, op->id);
 		}
-		return true;
+
+		// If we have min-precision loads, we might have to truncate here.
+		if (value_cast_op != spv::OpNop)
+		{
+			auto *cast_op = impl.allocate(value_cast_op, builder.makeVectorType(impl.get_type_id(result_component_type), vecsize));
+			cast_op->add_id(impl.get_id_for_value(instruction));
+			impl.add(cast_op);
+			impl.rewrite_value(instruction, cast_op->id);
+		}
 	}
+
+	return true;
 }
 } // namespace dxil_spv

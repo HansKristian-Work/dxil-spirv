@@ -54,23 +54,23 @@ void main()
     _46._m0 = uaddCarry(registers._m0.x, 8u, _46._m1);
     AddCarry _57;
     _57._m0 = uaddCarry(registers._m0.x, 12u, _57._m1);
-    AddCarry _68;
-    _68._m0 = uaddCarry(registers._m0.x, 32u, _68._m1);
+    AddCarry _69;
+    _69._m0 = uaddCarry(registers._m0.x, 32u, _69._m1);
     AddCarry _83;
     _83._m0 = uaddCarry(registers._m0.x, 40u, _83._m1);
     AddCarry _94;
     _94._m0 = uaddCarry(registers._m0.x, 48u, _94._m1);
     AddCarry _105;
     _105._m0 = uaddCarry(registers._m0.x, 56u, _105._m1);
-    AddCarry _124;
-    _124._m0 = uaddCarry(registers._m0.x, 16u, _124._m1);
+    AddCarry _125;
+    _125._m0 = uaddCarry(registers._m0.x, 16u, _125._m1);
     AddCarry _139;
     _139._m0 = uaddCarry(registers._m0.x, 20u, _139._m1);
     AddCarry _150;
     _150._m0 = uaddCarry(registers._m0.x, 24u, _150._m1);
     AddCarry _161;
     _161._m0 = uaddCarry(registers._m0.x, 28u, _161._m1);
-    SV_Target.x = (float(int64_t(PhysicalPointerUint64NonWrite(uvec2(_68._m0, registers._m0.y + _68._m1)).value)) + PhysicalPointerFloatNonWrite(uvec2(_21._m0, registers._m0.y + _21._m1)).value) + float(PhysicalPointerHalfNonWrite(uvec2(_124._m0, registers._m0.y + _124._m1)).value);
+    SV_Target.x = (float(int64_t(PhysicalPointerUint64NonWrite(uvec2(_69._m0, registers._m0.y + _69._m1)).value)) + PhysicalPointerFloatNonWrite(uvec2(_21._m0, registers._m0.y + _21._m1)).value) + float(PhysicalPointerHalfNonWrite(uvec2(_125._m0, registers._m0.y + _125._m1)).value);
     SV_Target.y = (float(int64_t(PhysicalPointerUint64NonWrite(uvec2(_83._m0, registers._m0.y + _83._m1)).value)) + PhysicalPointerFloatNonWrite(uvec2(_35._m0, registers._m0.y + _35._m1)).value) + float(PhysicalPointerHalfNonWrite(uvec2(_139._m0, registers._m0.y + _139._m1)).value);
     SV_Target.z = (float(int64_t(PhysicalPointerUint64NonWrite(uvec2(_94._m0, registers._m0.y + _94._m1)).value)) + PhysicalPointerFloatNonWrite(uvec2(_46._m0, registers._m0.y + _46._m1)).value) + float(PhysicalPointerHalfNonWrite(uvec2(_150._m0, registers._m0.y + _150._m1)).value);
     SV_Target.w = (float(int64_t(PhysicalPointerUint64NonWrite(uvec2(_105._m0, registers._m0.y + _105._m1)).value)) + PhysicalPointerFloatNonWrite(uvec2(_57._m0, registers._m0.y + _57._m1)).value) + float(PhysicalPointerHalfNonWrite(uvec2(_161._m0, registers._m0.y + _161._m1)).value);
@@ -139,18 +139,18 @@ OpMemberDecorate %130 0 NonWritable
 %43 = OpConstant %5 8
 %54 = OpConstant %5 12
 %65 = OpConstant %5 32
-%73 = OpTypeInt 64 0
-%74 = OpTypeStruct %73
+%66 = OpTypeInt 64 0
+%74 = OpTypeStruct %66
 %75 = OpTypePointer PhysicalStorageBuffer %74
-%77 = OpTypePointer PhysicalStorageBuffer %73
+%77 = OpTypePointer PhysicalStorageBuffer %66
 %80 = OpConstant %5 40
 %91 = OpConstant %5 48
 %102 = OpConstant %5 56
 %121 = OpConstant %5 16
-%129 = OpTypeFloat 16
-%130 = OpTypeStruct %129
+%122 = OpTypeFloat 16
+%130 = OpTypeStruct %122
 %131 = OpTypePointer PhysicalStorageBuffer %130
-%133 = OpTypePointer PhysicalStorageBuffer %129
+%133 = OpTypePointer PhysicalStorageBuffer %122
 %136 = OpConstant %5 20
 %147 = OpConstant %5 24
 %158 = OpConstant %5 28
@@ -204,16 +204,16 @@ OpBranch %185
 %62 = OpBitcast %27 %61
 %63 = OpAccessChain %29 %62 %16
 %64 = OpLoad %10 %63 Aligned 4
-%66 = OpCompositeExtract %5 %17 0
-%67 = OpCompositeExtract %5 %17 1
-%68 = OpIAddCarry %20 %66 %65
-%69 = OpCompositeExtract %5 %68 0
-%70 = OpCompositeExtract %5 %68 1
-%71 = OpIAdd %5 %67 %70
-%72 = OpCompositeConstruct %6 %69 %71
-%76 = OpBitcast %75 %72
+%67 = OpCompositeExtract %5 %17 0
+%68 = OpCompositeExtract %5 %17 1
+%69 = OpIAddCarry %20 %67 %65
+%70 = OpCompositeExtract %5 %69 0
+%71 = OpCompositeExtract %5 %69 1
+%72 = OpIAdd %5 %68 %71
+%73 = OpCompositeConstruct %6 %70 %72
+%76 = OpBitcast %75 %73
 %78 = OpAccessChain %77 %76 %16
-%79 = OpLoad %73 %78 Aligned 8
+%79 = OpLoad %66 %78 Aligned 8
 %81 = OpCompositeExtract %5 %17 0
 %82 = OpCompositeExtract %5 %17 1
 %83 = OpIAddCarry %20 %81 %80
@@ -223,7 +223,7 @@ OpBranch %185
 %87 = OpCompositeConstruct %6 %84 %86
 %88 = OpBitcast %75 %87
 %89 = OpAccessChain %77 %88 %16
-%90 = OpLoad %73 %89 Aligned 8
+%90 = OpLoad %66 %89 Aligned 8
 %92 = OpCompositeExtract %5 %17 0
 %93 = OpCompositeExtract %5 %17 1
 %94 = OpIAddCarry %20 %92 %91
@@ -233,7 +233,7 @@ OpBranch %185
 %98 = OpCompositeConstruct %6 %95 %97
 %99 = OpBitcast %75 %98
 %100 = OpAccessChain %77 %99 %16
-%101 = OpLoad %73 %100 Aligned 8
+%101 = OpLoad %66 %100 Aligned 8
 %103 = OpCompositeExtract %5 %17 0
 %104 = OpCompositeExtract %5 %17 1
 %105 = OpIAddCarry %20 %103 %102
@@ -243,7 +243,7 @@ OpBranch %185
 %109 = OpCompositeConstruct %6 %106 %108
 %110 = OpBitcast %75 %109
 %111 = OpAccessChain %77 %110 %16
-%112 = OpLoad %73 %111 Aligned 8
+%112 = OpLoad %66 %111 Aligned 8
 %113 = OpConvertSToF %10 %79
 %114 = OpConvertSToF %10 %90
 %115 = OpConvertSToF %10 %101
@@ -252,16 +252,16 @@ OpBranch %185
 %118 = OpFAdd %10 %114 %42
 %119 = OpFAdd %10 %115 %53
 %120 = OpFAdd %10 %116 %64
-%122 = OpCompositeExtract %5 %17 0
-%123 = OpCompositeExtract %5 %17 1
-%124 = OpIAddCarry %20 %122 %121
-%125 = OpCompositeExtract %5 %124 0
-%126 = OpCompositeExtract %5 %124 1
-%127 = OpIAdd %5 %123 %126
-%128 = OpCompositeConstruct %6 %125 %127
-%132 = OpBitcast %131 %128
+%123 = OpCompositeExtract %5 %17 0
+%124 = OpCompositeExtract %5 %17 1
+%125 = OpIAddCarry %20 %123 %121
+%126 = OpCompositeExtract %5 %125 0
+%127 = OpCompositeExtract %5 %125 1
+%128 = OpIAdd %5 %124 %127
+%129 = OpCompositeConstruct %6 %126 %128
+%132 = OpBitcast %131 %129
 %134 = OpAccessChain %133 %132 %16
-%135 = OpLoad %129 %134 Aligned 2
+%135 = OpLoad %122 %134 Aligned 2
 %137 = OpCompositeExtract %5 %17 0
 %138 = OpCompositeExtract %5 %17 1
 %139 = OpIAddCarry %20 %137 %136
@@ -271,7 +271,7 @@ OpBranch %185
 %143 = OpCompositeConstruct %6 %140 %142
 %144 = OpBitcast %131 %143
 %145 = OpAccessChain %133 %144 %16
-%146 = OpLoad %129 %145 Aligned 2
+%146 = OpLoad %122 %145 Aligned 2
 %148 = OpCompositeExtract %5 %17 0
 %149 = OpCompositeExtract %5 %17 1
 %150 = OpIAddCarry %20 %148 %147
@@ -281,7 +281,7 @@ OpBranch %185
 %154 = OpCompositeConstruct %6 %151 %153
 %155 = OpBitcast %131 %154
 %156 = OpAccessChain %133 %155 %16
-%157 = OpLoad %129 %156 Aligned 2
+%157 = OpLoad %122 %156 Aligned 2
 %159 = OpCompositeExtract %5 %17 0
 %160 = OpCompositeExtract %5 %17 1
 %161 = OpIAddCarry %20 %159 %158
@@ -291,7 +291,7 @@ OpBranch %185
 %165 = OpCompositeConstruct %6 %162 %164
 %166 = OpBitcast %131 %165
 %167 = OpAccessChain %133 %166 %16
-%168 = OpLoad %129 %167 Aligned 2
+%168 = OpLoad %122 %167 Aligned 2
 %169 = OpFConvert %10 %135
 %170 = OpFConvert %10 %146
 %171 = OpFConvert %10 %157

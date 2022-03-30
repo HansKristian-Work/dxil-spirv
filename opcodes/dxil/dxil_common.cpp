@@ -80,22 +80,32 @@ spv::Id emit_u32x2_u32_add(Converter::Impl &impl, spv::Id u32x2_value, spv::Id u
 	return addr_vec;
 }
 
-unsigned get_type_scalar_alignment(const llvm::Type *type)
+unsigned get_type_scalar_alignment(Converter::Impl &impl, const llvm::Type *type)
 {
+	unsigned scalar_alignment;
 	switch (type->getTypeID())
 	{
 	case llvm::Type::TypeID::IntegerTyID:
-		return type->getIntegerBitWidth() / 8;
+		scalar_alignment = type->getIntegerBitWidth() / 8;
+		break;
 	case llvm::Type::TypeID::HalfTyID:
-		return 2;
+		scalar_alignment = 2;
+		break;
 	case llvm::Type::TypeID::FloatTyID:
-		return 4;
+		scalar_alignment = 4;
+		break;
 	case llvm::Type::TypeID::DoubleTyID:
-		return 8;
+		scalar_alignment = 8;
+		break;
 	default:
 		LOGE("Invalid type for scalar alignment query.\n");
 		return 1;
 	}
+
+	if (!impl.execution_mode_meta.native_16bit_operations && scalar_alignment == 2)
+		scalar_alignment = 4;
+
+	return scalar_alignment;
 }
 
 spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
@@ -111,5 +121,43 @@ spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::Re
 	}
 
 	return default_id;
+}
+
+bool type_is_16bit(const llvm::Type *data_type)
+{
+	return data_type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
+	       (data_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+	        data_type->getIntegerBitWidth() == 16);
+}
+
+bool type_is_64bit(const llvm::Type *data_type)
+{
+	return data_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ||
+	       (data_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+	        data_type->getIntegerBitWidth() == 64);
+}
+
+void get_physical_load_store_cast_info(Converter::Impl &impl, const llvm::Type *element_type,
+                                       spv::Id &physical_type_id, spv::Op &value_cast_op)
+{
+	if (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
+	    impl.options.min_precision_prefer_native_16bit)
+	{
+		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+		{
+			physical_type_id = impl.get_type_id(DXIL::ComponentType::F32, 1, 1);
+			value_cast_op = spv::OpFConvert;
+		}
+		else
+		{
+			physical_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1, 1);
+			value_cast_op = spv::OpUConvert;
+		}
+	}
+	else
+	{
+		physical_type_id = impl.get_type_id(element_type);
+		value_cast_op = spv::OpNop;
+	}
 }
 } // namespace dxil_spv
