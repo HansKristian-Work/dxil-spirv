@@ -24,153 +24,6 @@
 
 namespace dxil_spv
 {
-static spv::Id build_index_divider_fallback(Converter::Impl &impl, const llvm::Value *offset, unsigned addr_shift_log2)
-{
-	auto &builder = impl.builder();
-	Operation *op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
-	op->add_ids({ impl.get_id_for_value(offset), builder.makeUintConstant(addr_shift_log2) });
-	impl.add(op);
-	return op->id;
-}
-
-bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
-                                     uint32_t addr_shift_log2, unsigned vecsize,
-                                     RawBufferAccessSplit &split)
-{
-	unsigned element_size = (1u << addr_shift_log2) * vecsize;
-
-	// Base case first, a constant value.
-	if (const auto *const_addr = llvm::dyn_cast<llvm::ConstantInt>(index))
-	{
-		int64_t constant_offset = const_addr->getUniqueInteger().getSExtValue();
-		constant_offset *= stride;
-
-		// Always pass scalar constant dividers through.
-		// Building a fallback divider helps nothing.
-		if (vecsize == 1 || constant_offset % int(element_size) == 0)
-		{
-			split = {};
-			split.bias = constant_offset / element_size;
-			return true;
-		}
-		else
-			return false;
-	}
-
-	const llvm::ConstantInt *scale = nullptr;
-	const llvm::ConstantInt *bias = nullptr;
-	bool scale_log2 = false;
-	bool bias_is_add = false;
-	bool bias_negate = false;
-
-	while (!scale && llvm::isa<llvm::BinaryOperator>(index))
-	{
-		auto *binop = llvm::cast<llvm::BinaryOperator>(index);
-		auto *lhs = binop->getOperand(0);
-		auto *rhs = binop->getOperand(1);
-		if (!bias && (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add ||
-		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Sub ||
-		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Or ||
-		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Xor))
-		{
-			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
-			{
-				bias = const_lhs;
-				index = rhs;
-			}
-			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
-			{
-				bias = const_rhs;
-				index = lhs;
-			}
-			else
-				break;
-
-			// DXC tends to be emit shift + or in some cases.
-			// We can turn this back into mul + add in most cases.
-			bias_negate = binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Sub;
-			bias_is_add =
-				binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add ||
-			    bias_negate;
-		}
-		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Shl)
-		{
-			if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
-			{
-				scale = const_rhs;
-				index = lhs;
-			}
-			else
-				break;
-
-			scale_log2 = true;
-		}
-		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Mul)
-		{
-			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
-			{
-				scale = const_lhs;
-				index = rhs;
-			}
-			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
-			{
-				scale = const_rhs;
-				index = lhs;
-			}
-			else
-				break;
-
-			scale_log2 = false;
-		}
-		else
-			break;
-	}
-
-	if (!scale && !bias)
-	{
-		// We cannot split anything, but we might be able to vectorize if the stride alone carries us.
-		if (stride % element_size == 0)
-		{
-			split = {};
-			split.scale = stride / element_size;
-			split.dynamic_index = index;
-			return true;
-		}
-		else
-			return false;
-	}
-
-	uint64_t scale_factor = 1;
-	if (scale)
-		scale_factor = scale->getUniqueInteger().getZExtValue();
-	if (scale_log2)
-		scale_factor = 1ull << scale_factor;
-
-	int64_t bias_factor = 0;
-	if (bias)
-		bias_factor = bias->getUniqueInteger().getSExtValue();
-	if (bias_negate)
-		bias_factor = -bias_factor;
-
-	// If there is no bit overlap between scale_factor and bias_factor
-	// then the bitwise OR is equivalent to add.
-	if (!bias_is_add && (scale_factor & bias_factor) != 0)
-		return false;
-
-	scale_factor *= stride;
-	bias_factor *= stride;
-
-	if (scale_factor % element_size == 0 && bias_factor % element_size == 0 && index)
-	{
-		split.scale = scale_factor / element_size;
-		split.bias = bias_factor / int(element_size);
-		split.dynamic_index = index;
-		return true;
-	}
-	else
-		return false;
-}
-
 bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Type *type,
                                            const llvm::Value *byte_offset,
                                            unsigned vecsize)
@@ -280,61 +133,6 @@ static spv::Id build_accumulate_offsets(Converter::Impl &impl, const spv::Id *id
 	return accumulated_id;
 }
 
-static spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
-                                   unsigned addr_shift_log2, unsigned vecsize)
-{
-	auto &builder = impl.builder();
-	// Attempt to do trivial constant folding to make output a little more sensible to read.
-	// Try to find an expression for offset which is "constant0 * offset + constant1",
-	// where constant0 and constant1 are aligned with addr_shift_log2.
-
-	spv::Id index_id;
-	RawBufferAccessSplit split = {};
-
-	if (extract_raw_buffer_access_split(offset, 1, addr_shift_log2, vecsize, split))
-	{
-		if (!split.dynamic_index)
-			return builder.makeUintConstant(split.bias);
-
-		spv::Op bias_opcode = split.bias > 0 ? spv::OpIAdd : spv::OpISub;
-		if (bias_opcode == spv::OpISub)
-			split.bias = -split.bias;
-
-		spv::Id scaled_id;
-		if (split.scale != 1)
-		{
-			Operation *scale_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-			scale_op->add_id(impl.get_id_for_value(split.dynamic_index));
-			scale_op->add_id(builder.makeUintConstant(split.scale));
-			impl.add(scale_op);
-			scaled_id = scale_op->id;
-		}
-		else
-			scaled_id = impl.get_id_for_value(split.dynamic_index);
-
-		spv::Id bias_id;
-		if (split.bias != 0)
-		{
-			Operation *bias_op = impl.allocate(bias_opcode, builder.makeUintType(32));
-			bias_op->add_id(scaled_id);
-			bias_op->add_id(builder.makeUintConstant(split.bias));
-			impl.add(bias_op);
-			bias_id = bias_op->id;
-		}
-		else
-			bias_id = scaled_id;
-
-		index_id = bias_id;
-	}
-	else
-	{
-		assert(vecsize == 1);
-		index_id = build_index_divider_fallback(impl, offset, addr_shift_log2);
-	}
-
-	return index_id;
-}
-
 static spv::Id build_structured_index(Converter::Impl &impl, const llvm::Value *index,
                                       unsigned stride,
                                       const llvm::Value *byte_offset,
@@ -408,20 +206,6 @@ static spv::Id build_structured_index(Converter::Impl &impl, const llvm::Value *
 
 		return build_accumulate_offsets(impl, offsets_id, 2);
 	}
-}
-
-static bool type_is_16bit(const llvm::Type *data_type)
-{
-	return data_type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
-	       (data_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
-	        data_type->getIntegerBitWidth() == 16);
-}
-
-static bool type_is_64bit(const llvm::Type *data_type)
-{
-	return data_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ||
-	       (data_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
-	        data_type->getIntegerBitWidth() == 64);
 }
 
 unsigned raw_buffer_data_type_to_addr_shift_log2(Converter::Impl &impl, const llvm::Type *data_type)
@@ -591,30 +375,6 @@ static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl
 	return emit_u32x2_u32_add(impl, ptr_id, byte_offset_id);
 }
 
-static void get_physical_load_store_cast_info(Converter::Impl &impl, const llvm::Type *element_type,
-                                              spv::Id &physical_type_id, spv::Op &value_cast_op)
-{
-	if (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
-	    impl.options.min_precision_prefer_native_16bit)
-	{
-		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-		{
-			physical_type_id = impl.get_type_id(DXIL::ComponentType::F32, 1, 1);
-			value_cast_op = spv::OpFConvert;
-		}
-		else
-		{
-			physical_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1, 1);
-			value_cast_op = spv::OpUConvert;
-		}
-	}
-	else
-	{
-		physical_type_id = impl.get_type_id(element_type);
-		value_cast_op = spv::OpNop;
-	}
-}
-
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                   const Converter::Impl::PhysicalPointerMeta &ptr_meta,
                                                   uint32_t mask = 0, uint32_t alignment = 0)
@@ -700,21 +460,6 @@ static RawWidth get_buffer_access_bits_per_component(
 		return RawWidth::B64;
 	else
 		return RawWidth::B32;
-}
-
-static spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
-                                       spv::Id default_id, RawWidth width, RawVecSize vecsize)
-{
-	for (auto &alias : meta.var_alias_group)
-	{
-		if (alias.declaration.width == width && alias.declaration.vecsize == vecsize)
-		{
-			default_id = alias.var_id;
-			break;
-		}
-	}
-
-	return default_id;
 }
 
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -1425,12 +1170,11 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 
 	Operation *op = impl.allocate(opcode, instruction, impl.get_type_id(component_type, 1, 1));
-	op->add_ids({
-	    counter_ptr_op->id,
-	    builder.makeUintConstant(spv::ScopeDevice),
-	    builder.makeUintConstant(0), // Relaxed
-	    impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))),
-	});
+
+	op->add_id(counter_ptr_op->id);
+	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))));
 
 	impl.add(op);
 	impl.fixup_load_type_atomic(component_type, 1, instruction);
@@ -1519,14 +1263,12 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	comparison_id = impl.fixup_store_type_atomic(component_type, 1, comparison_id);
 	new_value_id = impl.fixup_store_type_atomic(component_type, 1, new_value_id);
 
-	op->add_ids({
-	    counter_ptr_op->id,
-	    builder.makeUintConstant(spv::ScopeDevice),
-	    builder.makeUintConstant(0), // Relaxed
-	    builder.makeUintConstant(0), // Relaxed
-	    new_value_id,
-	    comparison_id,
-	});
+	op->add_id(counter_ptr_op->id);
+	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(new_value_id);
+	op->add_id(comparison_id);
 
 	impl.add(op);
 	impl.fixup_load_type_atomic(component_type, 1, instruction);
@@ -1553,7 +1295,10 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 	{
 		counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
 		                               builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
-		counter_ptr_op->add_ids({ meta.counter_var_id, builder.makeUintConstant(0), builder.makeUintConstant(0) });
+
+		counter_ptr_op->add_id(meta.counter_var_id);
+		counter_ptr_op->add_id(builder.makeUintConstant(0));
+		counter_ptr_op->add_id(builder.makeUintConstant(0));
 
 		if (meta.non_uniform)
 			builder.addDecoration(counter_ptr_op->id, spv::DecorationNonUniformEXT);
@@ -1562,9 +1307,11 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 	impl.add(counter_ptr_op);
 
 	Operation *op = impl.allocate(spv::OpAtomicIAdd, instruction);
-	op->add_ids({ counter_ptr_op->id, builder.makeUintConstant(spv::ScopeDevice),
-	              builder.makeUintConstant(0), // Relaxed.
-	              builder.makeUintConstant(direction) });
+
+	op->add_id(counter_ptr_op->id);
+	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	op->add_id(builder.makeUintConstant(0));
+	op->add_id(builder.makeUintConstant(direction));
 
 	impl.add(op);
 

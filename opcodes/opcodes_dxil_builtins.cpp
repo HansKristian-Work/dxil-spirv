@@ -48,6 +48,7 @@ struct DXILDispatcher
 		OP(CreateHandle) = emit_create_handle_instruction;
 		OP(CreateHandleForLib) = emit_create_handle_for_lib_instruction;
 		OP(CBufferLoadLegacy) = emit_cbuffer_load_legacy_instruction;
+		OP(CBufferLoad) = emit_cbuffer_load_instruction;
 		OP(EvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset>;
 		OP(EvalSampleIndex) = emit_interpolate_dispatch<GLSLstd450InterpolateAtSample>;
 		OP(EvalCentroid) = emit_interpolate_dispatch<GLSLstd450InterpolateAtCentroid>;
@@ -356,7 +357,12 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		return false;
 	}
 
-	return global_dispatcher.builder_lut[opcode](impl, instruction);
+	if (!global_dispatcher.builder_lut[opcode](impl, instruction))
+	{
+		LOGE("Failed DXIL opcode %u.\n", opcode);
+		return false;
+	}
+	return true;
 }
 
 static void update_raw_access_tracking_from_vector_type(Converter::Impl::AccessTracking &tracking,
@@ -461,6 +467,64 @@ get_resource_meta_from_buffer_op(Converter::Impl &impl, const llvm::CallInst *in
 
 	LOGE("No resource?\n");
 	return { DXIL::ResourceKind::Invalid, 0 };
+}
+
+static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	Converter::Impl::AccessTracking *tracking = nullptr;
+	auto itr = impl.llvm_value_to_cbv_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_cbv_resource_index_map.end())
+		tracking = &impl.cbv_access_tracking[itr->second];
+
+	if (!tracking)
+	{
+		auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
+		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+			tracking = &annotate_itr->second.tracking;
+	}
+
+	if (tracking)
+	{
+		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+		{
+			// Legacy float4 model. However, it seems like DXIL also supports f16x8, f32x4 and f64x2 ... :(
+			switch (get_type_scalar_alignment(impl, instruction->getType()->getStructElementType(0)))
+			{
+			case 2:
+			case 4:
+				// We'll bit-cast on-demand for f16x8.
+				tracking->raw_access_buffer_declarations[int(RawWidth::B32)][int(RawVecSize::V4)] = true;
+				break;
+
+			case 8:
+				tracking->raw_access_buffer_declarations[int(RawWidth::B64)][int(RawVecSize::V2)] = true;
+				break;
+
+			default:
+				break;
+			}
+		}
+		else
+		{
+			switch (get_type_scalar_alignment(impl, instruction->getType()))
+			{
+			case 2:
+				tracking->raw_access_buffer_declarations[int(RawWidth::B16)][int(RawVecSize::V1)] = true;
+				break;
+
+			case 4:
+				tracking->raw_access_buffer_declarations[int(RawWidth::B32)][int(RawVecSize::V1)] = true;
+				break;
+
+			case 8:
+				tracking->raw_access_buffer_declarations[int(RawWidth::B64)][int(RawVecSize::V1)] = true;
+				break;
+
+			default:
+				break;
+			}
+		}
+	}
 }
 
 static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode)
@@ -653,6 +717,8 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 			impl.llvm_value_to_uav_resource_index_map[instruction] = resource_range;
 		else if (static_cast<DXIL::ResourceType>(resource_type_operand) == DXIL::ResourceType::SRV)
 			impl.llvm_value_to_srv_resource_index_map[instruction] = resource_range;
+		else if (static_cast<DXIL::ResourceType>(resource_type_operand) == DXIL::ResourceType::CBV)
+			impl.llvm_value_to_cbv_resource_index_map[instruction] = resource_range;
 
 		if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
 			impl.resource_handle_to_block[instruction] = bb;
@@ -669,6 +735,8 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 			impl.llvm_value_to_uav_resource_index_map[instruction] = itr->second.meta_index;
 		else if (itr->second.type == DXIL::ResourceType::SRV)
 			impl.llvm_value_to_srv_resource_index_map[instruction] = itr->second.meta_index;
+		else if (itr->second.type == DXIL::ResourceType::CBV)
+			impl.llvm_value_to_cbv_resource_index_map[instruction] = itr->second.meta_index;
 
 		impl.llvm_active_global_resource_variables.insert(itr->second.variable);
 
@@ -726,7 +794,8 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 
 			if (use.resource_kind == DXIL::ResourceKind::StructuredBuffer)
 				use.stride = params;
-			else if (use.resource_kind != DXIL::ResourceKind::RawBuffer)
+			else if (use.resource_kind != DXIL::ResourceKind::RawBuffer &&
+			         use.resource_kind != DXIL::ResourceKind::CBuffer)
 				use.component_type = DXIL::ComponentType(params & 0xff);
 		}
 		else if (meta.resource_op == DXIL::Op::CreateHandleFromBinding ||
@@ -736,6 +805,8 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 				impl.llvm_value_to_uav_resource_index_map[instruction] = meta.binding_index;
 			else if (meta.resource_type == DXIL::ResourceType::SRV)
 				impl.llvm_value_to_srv_resource_index_map[instruction] = meta.binding_index;
+			else if (meta.resource_type == DXIL::ResourceType::CBV)
+				impl.llvm_value_to_cbv_resource_index_map[instruction] = meta.binding_index;
 		}
 
 		if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
@@ -749,6 +820,11 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 
 	case DXIL::Op::TextureStore:
 		analyze_dxil_buffer_store(impl, instruction, op);
+		break;
+
+	case DXIL::Op::CBufferLoad:
+	case DXIL::Op::CBufferLoadLegacy:
+		analyze_dxil_cbuffer_load(impl, instruction);
 		break;
 
 	case DXIL::Op::BufferUpdateCounter:

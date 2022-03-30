@@ -99,6 +99,7 @@ void main()
 OpCapability Shader
 OpCapability Float16
 OpCapability Int16
+OpCapability StorageBuffer16BitAccess
 OpCapability RuntimeDescriptorArray
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"

@@ -97,6 +97,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
             dxil_cmd += ['-denorm', 'ftz']
         if '.denorm-preserve.' in shader:
             dxil_cmd += ['-denorm', 'preserve']
+        if '.no-legacy-cbuf-layout.' in shader:
+            dxil_cmd += ['-no-legacy-cbuf-layout']
         subprocess.check_call(dxil_cmd)
     else:
         dxil_path = shader
@@ -343,7 +345,7 @@ def main():
             action = 'store_true',
             help = 'Execute tests in parallel.  Useful for doing regression quickly, but bad for debugging and stat output.')
     parser.add_argument('--dxc',
-            default = './external/dxc-build/output/bin/dxc',
+            default = './external/dxc-build/bin/dxc',
             help = 'Explicit path to DXC')
     parser.add_argument('--dxil-spirv',
             default = './dxil-spirv',

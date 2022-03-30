@@ -1,13 +1,6 @@
 #!/bin/bash
 
-# Commit before GatherCmp regression
-DXC_REV=19360a8fa63ee29925f59328c261c1c920402bfd
-
-if [ -z $PROTOCOL ]; then
-	PROTOCOL=git
-fi
-
-echo "Using protocol \"$PROTOCOL\" for checking out repositories. If this is problematic, try PROTOCOL=https $0."
+DXC_REV=2dc067b561f17d09d8012a1ded05bf0f6253fea5
 
 if [ -d external/DirectXShaderCompiler ]; then
 	echo "Updating DirectXShaderCompiler to revision $DXC_REV."
@@ -19,7 +12,7 @@ else
 	echo "Cloning DirectXShaderCompiler revision $DXC_REV."
 	mkdir -p external
 	cd external
-	git clone $PROTOCOL://github.com/Microsoft/DirectXShaderCompiler.git
+	git clone https://github.com/Microsoft/DirectXShaderCompiler.git
 	cd DirectXShaderCompiler
 	git checkout $DXC_REV
 	git submodule update --init

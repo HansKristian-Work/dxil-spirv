@@ -105,8 +105,8 @@ void main()
     uint _59 = _58 & 1u;
     vec4 _67 = texelFetch(_21[registers._m0 + _59], ivec2(uvec2(0u)), int(0u));
     vec4 _80 = texelFetch(_21[registers._m0 + _58], ivec2(uvec2(0u)), int(0u));
-    vec4 _99 = texelFetch(_21[((SBT._m7.x >> 6u) + 17u) + _58], ivec2(uvec2(0u)), int(0u));
-    vec4 _119 = imageLoad(_25[((SBT._m8.x >> 6u) + 18u) + _58], ivec2(uvec2(0u)));
+    vec4 _99 = texelFetch(_21[nonuniformEXT(((SBT._m7.x >> 6u) + 17u) + _58)], ivec2(uvec2(0u)), int(0u));
+    vec4 _119 = imageLoad(_25[nonuniformEXT(((SBT._m8.x >> 6u) + 18u) + _58)], ivec2(uvec2(0u)));
     uint _146 = ((SBT._m9.x >> 6u) + 13u) + _58;
     vec4 _169 = uintBitsToFloat(uvec4(SBT._m0[0u], SBT._m0[1u], SBT._m0[2u], SBT._m0[3u]));
     vec4 _182 = uintBitsToFloat(uvec4(SBT._m0[4u], 0u, 0u, 0u));
@@ -114,7 +114,7 @@ void main()
     _196._m0 = uaddCarry(SBT._m6.x, 1u * 16u, _196._m1);
     PhysicalPointerFloat4NonWrite _203 = PhysicalPointerFloat4NonWrite(uvec2(_196._m0, SBT._m6.y + _196._m1));
     vec4 _232 = textureLod(nonuniformEXT(sampler2D(_21[registers._m0 + _59], _36[(SBT._m10.x >> 5u) + 13u])), vec2(0.5), 0.0);
-    vec4 _258 = textureLod(sampler2D(_21[registers._m0 + _58], _36[((SBT._m10.x >> 5u) + 14u) + (_58 ^ 1u)]), vec2(0.5), 0.0);
+    vec4 _258 = textureLod(nonuniformEXT(sampler2D(_21[registers._m0 + _58], _36[((SBT._m10.x >> 5u) + 14u) + (_58 ^ 1u)])), vec2(0.5), 0.0);
     AddCarry _274;
     _274._m0 = uaddCarry(SBT._m2.x, (_58 * 16u) + 0u, _274._m1);
     PhysicalPointerFloat4NonWrite _279 = PhysicalPointerFloat4NonWrite(uvec2(_274._m0, SBT._m2.y + _274._m1));
@@ -243,7 +243,12 @@ OpDecorate %32 Binding 0
 OpDecorate %36 DescriptorSet 2
 OpDecorate %36 Binding 0
 OpDecorate %47 NonUniform
+OpDecorate %97 NonUniform
+OpDecorate %98 NonUniform
+OpDecorate %117 NonUniform
+OpDecorate %118 NonUniform
 OpDecorate %130 NonUniform
+OpDecorate %146 NonUniform
 OpDecorate %140 NonUniform
 OpDecorate %147 NonUniform
 OpMemberDecorate %201 0 Offset 0
@@ -251,6 +256,9 @@ OpDecorate %201 Block
 OpMemberDecorate %201 0 NonWritable
 OpDecorate %227 NonUniform
 OpDecorate %229 NonUniform
+OpDecorate %255 NonUniform
+OpDecorate %256 NonUniform
+OpDecorate %257 NonUniform
 OpMemberDecorate %293 0 Offset 0
 OpDecorate %293 Block
 OpMemberDecorate %293 0 NonWritable

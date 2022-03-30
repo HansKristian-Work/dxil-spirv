@@ -73,10 +73,10 @@ OpDecorate %18 Location 5
 %24 = OpConstant %11 1
 %27 = OpConstant %11 2
 %30 = OpConstant %11 3
-%32 = OpTypePointer Output %5
-%42 = OpConstant %5 1
-%51 = OpConstant %5 2
-%60 = OpConstant %5 3
+%33 = OpConstant %5 1
+%38 = OpConstant %5 2
+%43 = OpConstant %5 3
+%47 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %72
@@ -89,65 +89,65 @@ OpBranch %72
 %28 = OpLoad %5 %26
 %29 = OpAccessChain %19 %8 %30
 %31 = OpLoad %5 %29
-%33 = OpAccessChain %32 %10 %21
-OpStore %33 %22
-%34 = OpAccessChain %32 %10 %24
-OpStore %34 %25
-%35 = OpAccessChain %32 %10 %27
-OpStore %35 %28
-%36 = OpAccessChain %32 %10 %30
-OpStore %36 %31
-%37 = OpAccessChain %32 %15 %21 %21
-OpStore %37 %22
-%38 = OpAccessChain %32 %15 %21 %24
-OpStore %38 %25
-%39 = OpAccessChain %32 %15 %21 %27
-OpStore %39 %28
-%40 = OpAccessChain %32 %15 %21 %30
-OpStore %40 %31
-%41 = OpFAdd %5 %22 %42
-%43 = OpFAdd %5 %25 %42
-%44 = OpFAdd %5 %28 %42
-%45 = OpFAdd %5 %31 %42
-%46 = OpAccessChain %32 %15 %24 %21
-OpStore %46 %41
-%47 = OpAccessChain %32 %15 %24 %24
-OpStore %47 %43
-%48 = OpAccessChain %32 %15 %24 %27
-OpStore %48 %44
-%49 = OpAccessChain %32 %15 %24 %30
-OpStore %49 %45
-%50 = OpFAdd %5 %22 %51
-%52 = OpFAdd %5 %25 %51
-%53 = OpFAdd %5 %28 %51
-%54 = OpFAdd %5 %31 %51
-%55 = OpAccessChain %32 %15 %27 %21
-OpStore %55 %50
-%56 = OpAccessChain %32 %15 %27 %24
-OpStore %56 %52
-%57 = OpAccessChain %32 %15 %27 %27
-OpStore %57 %53
-%58 = OpAccessChain %32 %15 %27 %30
-OpStore %58 %54
-%59 = OpFAdd %5 %22 %60
-%61 = OpFAdd %5 %25 %60
-%62 = OpFAdd %5 %28 %60
-%63 = OpFAdd %5 %31 %60
-%64 = OpAccessChain %32 %15 %30 %21
-OpStore %64 %59
-%65 = OpAccessChain %32 %15 %30 %24
-OpStore %65 %61
-%66 = OpAccessChain %32 %15 %30 %27
-OpStore %66 %62
-%67 = OpAccessChain %32 %15 %30 %30
-OpStore %67 %63
-%68 = OpAccessChain %32 %18 %21
+%32 = OpFAdd %5 %22 %33
+%34 = OpFAdd %5 %25 %33
+%35 = OpFAdd %5 %28 %33
+%36 = OpFAdd %5 %31 %33
+%37 = OpFAdd %5 %22 %38
+%39 = OpFAdd %5 %25 %38
+%40 = OpFAdd %5 %28 %38
+%41 = OpFAdd %5 %31 %38
+%42 = OpFAdd %5 %22 %43
+%44 = OpFAdd %5 %25 %43
+%45 = OpFAdd %5 %28 %43
+%46 = OpFAdd %5 %31 %43
+%48 = OpAccessChain %47 %10 %21
+OpStore %48 %22
+%49 = OpAccessChain %47 %10 %24
+OpStore %49 %25
+%50 = OpAccessChain %47 %10 %27
+OpStore %50 %28
+%51 = OpAccessChain %47 %10 %30
+OpStore %51 %31
+%52 = OpAccessChain %47 %15 %21 %21
+OpStore %52 %22
+%53 = OpAccessChain %47 %15 %21 %24
+OpStore %53 %25
+%54 = OpAccessChain %47 %15 %21 %27
+OpStore %54 %28
+%55 = OpAccessChain %47 %15 %21 %30
+OpStore %55 %31
+%56 = OpAccessChain %47 %15 %24 %21
+OpStore %56 %32
+%57 = OpAccessChain %47 %15 %24 %24
+OpStore %57 %34
+%58 = OpAccessChain %47 %15 %24 %27
+OpStore %58 %35
+%59 = OpAccessChain %47 %15 %24 %30
+OpStore %59 %36
+%60 = OpAccessChain %47 %15 %27 %21
+OpStore %60 %37
+%61 = OpAccessChain %47 %15 %27 %24
+OpStore %61 %39
+%62 = OpAccessChain %47 %15 %27 %27
+OpStore %62 %40
+%63 = OpAccessChain %47 %15 %27 %30
+OpStore %63 %41
+%64 = OpAccessChain %47 %15 %30 %21
+OpStore %64 %42
+%65 = OpAccessChain %47 %15 %30 %24
+OpStore %65 %44
+%66 = OpAccessChain %47 %15 %30 %27
+OpStore %66 %45
+%67 = OpAccessChain %47 %15 %30 %30
+OpStore %67 %46
+%68 = OpAccessChain %47 %18 %21
 OpStore %68 %22
-%69 = OpAccessChain %32 %18 %24
+%69 = OpAccessChain %47 %18 %24
 OpStore %69 %25
-%70 = OpAccessChain %32 %18 %27
+%70 = OpAccessChain %47 %18 %27
 OpStore %70 %28
-%71 = OpAccessChain %32 %18 %30
+%71 = OpAccessChain %47 %18 %30
 OpStore %71 %31
 OpReturn
 OpFunctionEnd

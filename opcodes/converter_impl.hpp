@@ -191,8 +191,10 @@ struct Converter::Impl
 		bool has_atomic_64bit = false;
 		bool raw_access_buffer_declarations[unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
 	};
+	UnorderedMap<uint32_t, AccessTracking> cbv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> uav_access_tracking;
+	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_cbv_resource_index_map;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_srv_resource_index_map;
 	UnorderedMap<const llvm::Value *, uint32_t> llvm_value_to_uav_resource_index_map;
 	UnorderedSet<const llvm::Value *> llvm_values_using_update_counter;
@@ -514,10 +516,15 @@ struct Converter::Impl
 
 	spv::Id create_bindless_heap_variable(const BindlessInfo &info);
 	Vector<RawDeclarationVariable> create_bindless_heap_variable_alias_group(
-		const BindlessInfo &base_info, const Vector<RawDeclaration> &raw_decls);
-	Vector<RawDeclarationVariable> create_variable_alias_group(
-	    const Vector<RawDeclaration> &raw_decls, uint32_t range_size, const String &name);
+			const BindlessInfo &base_info, const Vector<RawDeclaration> &raw_decls);
+	Vector<RawDeclarationVariable> create_raw_ssbo_variable_alias_group(
+			const Vector<RawDeclaration> &raw_decls,
+			uint32_t range_size, const String &name);
+	Vector<RawDeclarationVariable> create_ubo_variable_alias_group(
+			const Vector<RawDeclaration> &raw_decls,
+			uint32_t range_size, const String &name, unsigned cbv_size);
 	spv::Id create_raw_ssbo_variable(const RawDeclaration &raw_decl, uint32_t range_size, const String &name);
+	spv::Id create_ubo_variable(const RawDeclaration &raw_decl, uint32_t range_size, const String &name, unsigned cbv_size);
 
 	struct BindlessResource
 	{

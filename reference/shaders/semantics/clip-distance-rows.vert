@@ -53,8 +53,8 @@ OpDecorate %17 BuiltIn ClipDistance
 %20 = OpConstant %13 0
 %23 = OpConstant %13 1
 %28 = OpConstant %13 3
-%30 = OpTypePointer Output %5
-%37 = OpConstant %5 1
+%31 = OpConstant %5 1
+%32 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %39
@@ -68,19 +68,19 @@ OpBranch %39
 %26 = OpLoad %5 %25
 %27 = OpAccessChain %9 %8 %28
 %29 = OpLoad %5 %27
-%31 = OpAccessChain %30 %12 %20
-OpStore %31 %21
-%32 = OpAccessChain %30 %12 %23
-OpStore %32 %24
-%33 = OpAccessChain %30 %12 %14
-OpStore %33 %26
-%34 = OpAccessChain %30 %12 %28
-OpStore %34 %29
-%35 = OpAccessChain %30 %17 %20
-OpStore %35 %18
-%36 = OpFAdd %5 %18 %37
-%38 = OpAccessChain %30 %17 %23
-OpStore %38 %36
+%30 = OpFAdd %5 %18 %31
+%33 = OpAccessChain %32 %12 %20
+OpStore %33 %21
+%34 = OpAccessChain %32 %12 %23
+OpStore %34 %24
+%35 = OpAccessChain %32 %12 %14
+OpStore %35 %26
+%36 = OpAccessChain %32 %12 %28
+OpStore %36 %29
+%37 = OpAccessChain %32 %17 %20
+OpStore %37 %18
+%38 = OpAccessChain %32 %17 %23
+OpStore %38 %30
 OpReturn
 OpFunctionEnd
 #endif

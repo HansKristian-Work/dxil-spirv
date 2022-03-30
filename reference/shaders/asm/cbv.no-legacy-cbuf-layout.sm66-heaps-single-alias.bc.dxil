@@ -1,0 +1,105 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_scalar_block_layout : require
+
+layout(set = 0, binding = 0, scalar) uniform BindlessCBV
+{
+    float _m0[16384];
+} _12[];
+
+layout(set = 0, binding = 0, std140) uniform _16_19
+{
+    vec4 _m0[4096];
+} _19[];
+
+layout(location = 0) out vec4 SV_Target;
+
+void main()
+{
+    uint _34 = floatBitsToUint(_12[1u]._m0[1u]) >> 2u;
+    SV_Target.x = _12[0u]._m0[_34];
+    SV_Target.y = _12[0u]._m0[_34];
+    SV_Target.z = _12[0u]._m0[_34];
+    SV_Target.w = _12[0u]._m0[_34];
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 45
+; Schema: 0
+OpCapability Shader
+OpCapability RuntimeDescriptorArray
+OpExtension "SPV_EXT_descriptor_indexing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint Fragment %3 "main" %21
+OpExecutionMode %3 OriginUpperLeft
+OpName %3 "main"
+OpName %9 "BindlessCBV"
+OpName %16 "BindlessCBV"
+OpName %21 "SV_Target"
+OpDecorate %8 ArrayStride 4
+OpDecorate %9 Block
+OpMemberDecorate %9 0 Offset 0
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 0
+OpDecorate %15 ArrayStride 16
+OpDecorate %16 Block
+OpMemberDecorate %16 0 Offset 0
+OpDecorate %19 DescriptorSet 0
+OpDecorate %19 Binding 0
+OpDecorate %21 Location 0
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeInt 32 0
+%7 = OpConstant %6 16384
+%8 = OpTypeArray %5 %7
+%9 = OpTypeStruct %8
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypePointer Uniform %10
+%12 = OpVariable %11 Uniform
+%13 = OpTypeVector %5 4
+%14 = OpConstant %6 4096
+%15 = OpTypeArray %13 %14
+%16 = OpTypeStruct %15
+%17 = OpTypeRuntimeArray %16
+%18 = OpTypePointer Uniform %17
+%19 = OpVariable %18 Uniform
+%20 = OpTypePointer Output %13
+%21 = OpVariable %20 Output
+%22 = OpTypePointer Uniform %9
+%24 = OpConstant %6 0
+%26 = OpConstant %6 1
+%27 = OpTypePointer Uniform %16
+%29 = OpConstant %6 2
+%30 = OpTypePointer Uniform %5
+%37 = OpTypePointer Output %5
+%42 = OpConstant %6 3
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %43
+%43 = OpLabel
+%23 = OpAccessChain %22 %12 %24
+%25 = OpAccessChain %22 %12 %26
+%28 = OpAccessChain %27 %19 %29
+%31 = OpAccessChain %30 %25 %24 %26
+%32 = OpLoad %5 %31
+%33 = OpBitcast %6 %32
+%34 = OpShiftRightLogical %6 %33 %29
+%35 = OpAccessChain %30 %23 %24 %34
+%36 = OpLoad %5 %35
+%38 = OpAccessChain %37 %21 %24
+OpStore %38 %36
+%39 = OpAccessChain %37 %21 %26
+OpStore %39 %36
+%40 = OpAccessChain %37 %21 %29
+OpStore %40 %36
+%41 = OpAccessChain %37 %21 %42
+OpStore %41 %36
+OpReturn
+OpFunctionEnd
+#endif

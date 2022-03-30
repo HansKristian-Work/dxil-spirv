@@ -209,6 +209,7 @@ OpCapability Int16
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability ImageQuery
 OpCapability GroupNonUniformBallot
+OpCapability StorageBuffer16BitAccess
 OpCapability RuntimeDescriptorArray
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability PhysicalStorageBufferAddresses

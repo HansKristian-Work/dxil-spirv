@@ -19,9 +19,34 @@
 #pragma once
 #include "SpvBuilder.h"
 #include "opcodes/opcodes.hpp"
+#include "opcodes/converter_impl.hpp"
 
 namespace dxil_spv
 {
 bool get_constant_operand(const llvm::CallInst *value, unsigned index, uint32_t *operand);
 spv::Id emit_u32x2_u32_add(Converter::Impl &impl, spv::Id u32x2_value, spv::Id u32_value);
+unsigned get_type_scalar_alignment(Converter::Impl &impl, const llvm::Type *type);
+
+spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
+                                spv::Id default_id, RawWidth width, RawVecSize vecsize);
+
+bool type_is_16bit(const llvm::Type *data_type);
+bool type_is_64bit(const llvm::Type *data_type);
+
+void get_physical_load_store_cast_info(Converter::Impl &impl, const llvm::Type *element_type,
+                                       spv::Id &physical_type_id, spv::Op &value_cast_op);
+
+struct RawBufferAccessSplit
+{
+	uint64_t scale;
+	int64_t bias;
+	const llvm::Value *dynamic_index;
+};
+
+bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
+									 uint32_t addr_shift_log2, unsigned vecsize,
+									 RawBufferAccessSplit &split);
+
+spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
+                            unsigned addr_shift_log2, unsigned vecsize);
 }

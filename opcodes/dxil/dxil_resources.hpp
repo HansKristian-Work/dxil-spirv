@@ -32,6 +32,7 @@ bool emit_create_handle_from_heap_instruction(Converter::Impl &impl, const llvm:
 bool emit_create_handle_from_binding_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_annotate_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
+bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 template <GLSLstd450 opcode>

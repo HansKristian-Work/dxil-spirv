@@ -280,22 +280,74 @@ Converter::Impl::create_bindless_heap_variable_alias_group(const BindlessInfo &b
 	return decls;
 }
 
+spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uint32_t range_size, const String &name,
+                                             unsigned cbv_size)
+{
+	auto &builder = spirv_module.get_builder();
+
+	unsigned element_size = raw_width_to_bits(raw_decl.width) * raw_vecsize_to_vecsize(raw_decl.vecsize) / 8;
+	unsigned array_length = (cbv_size + element_size - 1) / element_size;
+
+	// It seems like we will have to bitcast ourselves away from vec4 here after loading.
+	spv::Id size_id = builder.makeUintConstant(array_length, false);
+	spv::Id element_type = builder.makeFloatType(raw_width_to_bits(raw_decl.width));
+	if (raw_decl.vecsize != RawVecSize::V1)
+		element_type = builder.makeVectorType(element_type, raw_vecsize_to_vecsize(raw_decl.vecsize));
+	spv::Id member_array_type = builder.makeArrayType(element_type, size_id, element_size);
+
+	builder.addDecoration(member_array_type, spv::DecorationArrayStride, element_size);
+
+	spv::Id type_id = get_struct_type({ member_array_type }, name.c_str());
+	builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+	builder.addDecoration(type_id, spv::DecorationBlock);
+
+	if (range_size != 1)
+	{
+		if (range_size == ~0u)
+			type_id = builder.makeRuntimeArray(type_id);
+		else
+			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+	}
+
+	if (raw_decl.width == RawWidth::B16)
+		builder.addCapability(spv::CapabilityUniformAndStorageBuffer16BitAccess);
+
+	return create_variable(spv::StorageClassUniform,
+	                       type_id, name.empty() ? nullptr : name.c_str());
+}
+
 spv::Id Converter::Impl::create_raw_ssbo_variable(const RawDeclaration &raw_decl, uint32_t range_size, const String &name)
 {
 	spv::Id type_id = build_ssbo_runtime_array_type(*this,
 	                                                raw_width_to_bits(raw_decl.width),
 	                                                raw_vecsize_to_vecsize(raw_decl.vecsize),
 	                                                range_size, "SSBO");
+
+	if (raw_decl.width == RawWidth::B16)
+		builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
+
 	return create_variable(spv::StorageClassStorageBuffer, type_id, name.empty() ? nullptr : name.c_str());
 }
 
-Vector<Converter::Impl::RawDeclarationVariable> Converter::Impl::create_variable_alias_group(
-    const Vector<RawDeclaration> &raw_decls, uint32_t range_size, const String &name)
+Vector<Converter::Impl::RawDeclarationVariable> Converter::Impl::create_raw_ssbo_variable_alias_group(
+		const Vector<RawDeclaration> &raw_decls,
+		uint32_t range_size, const String &name)
 {
 	Vector<RawDeclarationVariable> group;
 	group.reserve(raw_decls.size());
 	for (auto &decl : raw_decls)
 		group.push_back({ decl, create_raw_ssbo_variable(decl, range_size, name) });
+	return group;
+}
+
+Vector<Converter::Impl::RawDeclarationVariable> Converter::Impl::create_ubo_variable_alias_group(
+		const Vector<RawDeclaration> &raw_decls,
+		uint32_t range_size, const String &name, unsigned cbv_size)
+{
+	Vector<RawDeclarationVariable> group;
+	group.reserve(raw_decls.size());
+	for (auto &decl : raw_decls)
+		group.push_back({ decl, create_ubo_variable(decl, range_size, name, cbv_size) });
 	return group;
 }
 
@@ -371,6 +423,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 					type_id = build_ssbo_runtime_array_type(*this, bits, raw_vecsize_to_vecsize(info.raw_vecsize),
 					                                        ~0u, "SSBO");
 				storage = spv::StorageClassStorageBuffer;
+				if (bits == 16)
+					builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
 			}
 			else
 			{
@@ -433,6 +487,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				type_id = build_ssbo_runtime_array_type(*this, bits, raw_vecsize_to_vecsize(info.raw_vecsize),
 				                                        ~0u, "SSBO");
 				storage = spv::StorageClassStorageBuffer;
+				if (bits == 16)
+					builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
 			}
 			else
 			{
@@ -463,9 +519,29 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 
 		case DXIL::ResourceType::CBV:
 		{
-			type_id = builder().makeVectorType(builder().makeFloatType(32), 4);
-			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(64 * 1024 / 16), 16);
-			builder().addDecoration(type_id, spv::DecorationArrayStride, 16);
+			unsigned bits;
+			if (info.component == DXIL::ComponentType::U16)
+				bits = 16;
+			else if (info.component == DXIL::ComponentType::U32)
+				bits = 32;
+			else if (info.component == DXIL::ComponentType::U64)
+				bits = 64;
+			else
+			{
+				LOGE("Invalid component type for UBO.\n");
+				return 0;
+			}
+
+			unsigned vecsize = raw_vecsize_to_vecsize(info.raw_vecsize);
+			type_id = builder().makeFloatType(bits);
+			if (vecsize > 1)
+				type_id = builder().makeVectorType(type_id, vecsize);
+
+			unsigned element_size = (bits / 8) * vecsize;
+			unsigned num_elements = 0x10000 / element_size;
+
+			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(num_elements), element_size);
+			builder().addDecoration(type_id, spv::DecorationArrayStride, element_size);
 			type_id = get_struct_type({ type_id }, "BindlessCBV");
 			builder().addDecoration(type_id, spv::DecorationBlock);
 			if (options.bindless_cbv_ssbo_emulation)
@@ -473,6 +549,14 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 			type_id = builder().makeRuntimeArray(type_id);
 			storage = options.bindless_cbv_ssbo_emulation ? spv::StorageClassStorageBuffer : spv::StorageClassUniform;
+
+			if (bits == 16)
+			{
+				if (options.bindless_cbv_ssbo_emulation)
+					builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
+				else
+					builder().addCapability(spv::CapabilityUniformAndStorageBuffer16BitAccess);
+			}
 			break;
 		}
 
@@ -740,32 +824,51 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 
 	if (raw_access_16bit &&
 	    descriptor_type != VulkanDescriptorType::SSBO &&
+	    descriptor_type != VulkanDescriptorType::UBO &&
 	    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 	{
-		LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO or BDA.\n");
+		LOGE("Raw 16-bit load-store was used, which must be implemented with SSBO, UBO or BDA.\n");
 		return false;
 	}
 
 	if (raw_access_64bit &&
 	    descriptor_type != VulkanDescriptorType::SSBO &&
+	    descriptor_type != VulkanDescriptorType::UBO &&
 	    descriptor_type != VulkanDescriptorType::BufferDeviceAddress)
 	{
-		LOGE("Raw 64-bit load-store was used, which must be implemented with SSBO or BDA.\n");
+		LOGE("Raw 64-bit load-store was used, which must be implemented with SSBO, UBO or BDA.\n");
 		return false;
 	}
 
-	// Only SSBO can be reclared with different types.
+	// Only SSBO and UBO can be reclared with different types.
 	// Typed descriptors are always scalar.
-	aliased_access.requires_alias_decoration = descriptor_type == VulkanDescriptorType::SSBO &&
+	aliased_access.requires_alias_decoration = (descriptor_type == VulkanDescriptorType::SSBO ||
+	                                            descriptor_type == VulkanDescriptorType::UBO) &&
 	                                           aliased_access.raw_declarations.size() > 1;
 
-	// If we only emit one 16-bit or 64-bit SSBO, we need to override the component type of that meta declaration.
-	aliased_access.override_primary_component_types = descriptor_type == VulkanDescriptorType::SSBO &&
+	// If we only emit one 16-bit or 64-bit SSBO/UBO, we need to override the component type of that meta declaration.
+	aliased_access.override_primary_component_types = (descriptor_type == VulkanDescriptorType::SSBO ||
+	                                                   descriptor_type == VulkanDescriptorType::UBO) &&
 	                                                  aliased_access.raw_declarations.size() == 1;
 
 	// If the SSBO is never actually accessed (UAV counters for example), fudge the default type.
 	if (descriptor_type == VulkanDescriptorType::SSBO && aliased_access.raw_declarations.empty())
 		aliased_access.raw_declarations.push_back({ RawWidth::B32, RawVecSize::V1 });
+
+	// If the CBV is never actually accessed, fudge the default legacy CBV type.
+	if (descriptor_type == VulkanDescriptorType::UBO && aliased_access.raw_declarations.empty())
+		aliased_access.raw_declarations.push_back({ RawWidth::B32, RawVecSize::V4 });
+
+	// Safeguard against unused variables where we never end up setting any primary component type.
+	if ((descriptor_type == VulkanDescriptorType::SSBO ||
+	     descriptor_type == VulkanDescriptorType::UBO) &&
+	    aliased_access.raw_declarations.size() == 1)
+	{
+		aliased_access.primary_component_type =
+				raw_width_to_component_type(aliased_access.raw_declarations.front().width);
+		aliased_access.primary_raw_vecsize = aliased_access.raw_declarations.front().vecsize;
+		aliased_access.override_primary_component_types = true;
+	}
 
 	return true;
 }
@@ -1049,7 +1152,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			if (type_id)
 				ref.var_id = create_variable(storage, type_id, name.empty() ? nullptr : name.c_str());
 			else if (aliased_access.requires_alias_decoration)
-				ref.var_alias_group = create_variable_alias_group(aliased_access.raw_declarations, range_size, name);
+				ref.var_alias_group = create_raw_ssbo_variable_alias_group(aliased_access.raw_declarations, range_size, name);
 			else
 			{
 				assert(aliased_access.raw_declarations.size() == 1);
@@ -1596,7 +1699,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 				storage = spv::StorageClassStorageBuffer;
 
 				if (aliased_access.requires_alias_decoration)
-					var_alias_group = create_variable_alias_group(aliased_access.raw_declarations, range_size, name);
+					var_alias_group = create_raw_ssbo_variable_alias_group(aliased_access.raw_declarations, range_size, name);
 				else
 				{
 					assert(aliased_access.raw_declarations.size() == 1);
@@ -1756,6 +1859,11 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
 			return false;
 
+		auto &access_meta = cbv_access_tracking[index];
+		AliasedAccess aliased_access;
+		if (!analyze_aliased_access(access_meta, VulkanDescriptorType::UBO, aliased_access))
+			return false;
+
 		cbv_index_to_reference.resize(std::max(cbv_index_to_reference.size(), size_t(index + 1)));
 
 		if (range_size != 1)
@@ -1777,6 +1885,8 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		bindless_info.kind = DXIL::ResourceKind::CBuffer;
 		bindless_info.desc_set = vulkan_binding.buffer.descriptor_set;
 		bindless_info.binding = vulkan_binding.buffer.binding;
+		bindless_info.component = aliased_access.primary_component_type;
+		bindless_info.raw_vecsize = aliased_access.primary_raw_vecsize;
 
 		if (local_root_signature_entry >= 0)
 		{
@@ -1789,8 +1899,6 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 					return false;
 				}
 
-				spv::Id var_id = create_bindless_heap_variable(bindless_info);
-
 				uint32_t heap_offset = local_table_entry.offset_in_heap;
 				heap_offset += bind_register - local_table_entry.register_index;
 
@@ -1801,7 +1909,17 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				}
 
 				auto &ref = cbv_index_to_reference[index];
-				ref.var_id = var_id;
+
+				if (aliased_access.requires_alias_decoration)
+				{
+					ref.var_alias_group = create_bindless_heap_variable_alias_group(
+							bindless_info, aliased_access.raw_declarations);
+				}
+				else
+				{
+					ref.var_id = create_bindless_heap_variable(bindless_info);
+				}
+
 				ref.base_offset = heap_offset;
 				ref.base_resource_is_array = range_size != 1;
 				ref.bindless = true;
@@ -1851,8 +1969,6 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		}
 		else if (vulkan_binding.buffer.bindless.use_heap)
 		{
-			spv::Id var_id = create_bindless_heap_variable(bindless_info);
-
 			// DXIL already applies the t# register offset to any dynamic index, so counteract that here.
 			// The exception is with lib_* where we access resources by variable, not through
 			// createResource() >_____<.
@@ -1861,7 +1977,17 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 				heap_offset -= bind_register;
 
 			auto &ref = cbv_index_to_reference[index];
-			ref.var_id = var_id;
+
+			if (aliased_access.requires_alias_decoration)
+			{
+				ref.var_alias_group = create_bindless_heap_variable_alias_group(
+						bindless_info, aliased_access.raw_declarations);
+			}
+			else
+			{
+				ref.var_id = create_bindless_heap_variable(bindless_info);
+			}
+
 			ref.push_constant_member = vulkan_binding.buffer.root_constant_index + root_descriptor_count;
 			ref.base_offset = heap_offset;
 			ref.base_resource_is_array = range_size != 1;
@@ -1870,35 +1996,47 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 		}
 		else
 		{
-			unsigned vec4_length = (cbv_size + 15) / 16;
+			auto &ref = cbv_index_to_reference[index];
 
-			// It seems like we will have to bitcast ourselves away from vec4 here after loading.
-			spv::Id member_array_type = builder.makeArrayType(builder.makeVectorType(builder.makeFloatType(32), 4),
-			                                                  builder.makeUintConstant(vec4_length, false), 16);
-
-			builder.addDecoration(member_array_type, spv::DecorationArrayStride, 16);
-
-			spv::Id type_id = get_struct_type({ member_array_type }, name.c_str());
-			builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
-			builder.addDecoration(type_id, spv::DecorationBlock);
-
-			if (range_size != 1)
+			if (aliased_access.requires_alias_decoration)
 			{
-				if (range_size == ~0u)
-					type_id = builder.makeRuntimeArray(type_id);
-				else
-					type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+				ref.var_alias_group = create_ubo_variable_alias_group(
+						aliased_access.raw_declarations, range_size, name, cbv_size);
+			}
+			else
+			{
+				assert(aliased_access.raw_declarations.size() == 1);
+				ref.var_id = create_ubo_variable(aliased_access.raw_declarations.front(), range_size, name, cbv_size);
 			}
 
-			spv::Id var_id = create_variable(spv::StorageClassUniform, type_id, name.empty() ? nullptr : name.c_str());
-
-			builder.addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
-			builder.addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
-
-			auto &ref = cbv_index_to_reference[index];
-			ref.var_id = var_id;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
+
+			if (ref.var_id)
+			{
+				auto &meta = handle_to_resource_meta[ref.var_id];
+				meta = {};
+				meta.kind = ref.resource_kind;
+				meta.var_id = ref.var_id;
+				meta.storage = spv::StorageClassUniform;
+				meta.component_type = aliased_access.primary_component_type;
+				meta.raw_component_vecsize = aliased_access.primary_raw_vecsize;
+				builder.addDecoration(meta.var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
+				builder.addDecoration(meta.var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
+			}
+
+			for (auto &var : ref.var_alias_group)
+			{
+				auto &meta = handle_to_resource_meta[var.var_id];
+				meta = {};
+				meta.kind = ref.resource_kind;
+				meta.var_id = var.var_id;
+				meta.storage = spv::StorageClassUniform;
+				meta.component_type = raw_width_to_component_type(var.declaration.width);
+				meta.raw_component_vecsize = var.declaration.vecsize;
+				builder.addDecoration(meta.var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
+				builder.addDecoration(meta.var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
+			}
 		}
 	}
 
@@ -2194,9 +2332,10 @@ bool Converter::Impl::emit_shader_record_buffer()
 		{
 		case LocalRootSignatureType::Constants:
 		{
+			spv::Id array_size_id = builder.makeUintConstant(elem.constants.num_words);
+			spv::Id u32_type = builder.makeUintType(32);
 			spv::Id member_type_id =
-				builder.makeArrayType(builder.makeUintType(32),
-				                      builder.makeUintConstant(elem.constants.num_words), 4);
+				builder.makeArrayType(u32_type, array_size_id, 4);
 			builder.addDecoration(member_type_id, spv::DecorationArrayStride, 4);
 			member_types.push_back(member_type_id);
 			offsets.push_back(current_offset);
@@ -2441,7 +2580,8 @@ bool Converter::Impl::emit_global_heaps()
 
 		auto actual_component_type = DXIL::ComponentType::U32;
 		info.format = spv::ImageFormatUnknown;
-		if (annotation->resource_kind != DXIL::ResourceKind::RawBuffer &&
+		if (annotation->resource_type != DXIL::ResourceType::CBV &&
+		    annotation->resource_kind != DXIL::ResourceKind::RawBuffer &&
 		    annotation->resource_kind != DXIL::ResourceKind::StructuredBuffer)
 		{
 			actual_component_type = normalize_component_type(annotation->component_type);
@@ -2529,6 +2669,7 @@ bool Converter::Impl::emit_global_heaps()
 					return false;
 				}
 				vulkan_binding = vulkan_cbv_binding.buffer;
+				vulkan_binding.descriptor_type = VulkanDescriptorType::UBO;
 				break;
 			}
 
@@ -3105,10 +3246,14 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	}
 
 	case llvm::Type::TypeID::ArrayTyID:
+	{
 		if (type->getArrayNumElements() == 0)
 			return 0;
-		return builder.makeArrayType(get_type_id(type->getArrayElementType()),
-		                             builder.makeUintConstant(type->getArrayNumElements(), false), 0);
+
+		spv::Id array_size_id = builder.makeUintConstant(type->getArrayNumElements());
+		spv::Id element_type_id = get_type_id(type->getArrayElementType());
+		return builder.makeArrayType(element_type_id, array_size_id, 0);
+	}
 
 	case llvm::Type::TypeID::StructTyID:
 	{
