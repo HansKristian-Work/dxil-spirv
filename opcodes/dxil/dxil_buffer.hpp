@@ -37,16 +37,6 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 
 unsigned raw_buffer_data_type_to_addr_shift_log2(Converter::Impl &impl, const llvm::Type *data_type);
 
-struct RawBufferAccessSplit
-{
-	uint64_t scale;
-	int64_t bias;
-	const llvm::Value *dynamic_index;
-};
-bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
-                                     uint32_t addr_shift_log2, unsigned vecsize,
-                                     RawBufferAccessSplit &split);
-
 bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Type *type,
                                            const llvm::Value *byte_offset, unsigned vecsize);
 

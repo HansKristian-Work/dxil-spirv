@@ -35,4 +35,18 @@ bool type_is_64bit(const llvm::Type *data_type);
 
 void get_physical_load_store_cast_info(Converter::Impl &impl, const llvm::Type *element_type,
                                        spv::Id &physical_type_id, spv::Op &value_cast_op);
+
+struct RawBufferAccessSplit
+{
+	uint64_t scale;
+	int64_t bias;
+	const llvm::Value *dynamic_index;
+};
+
+bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
+									 uint32_t addr_shift_log2, unsigned vecsize,
+									 RawBufferAccessSplit &split);
+
+spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
+                            unsigned addr_shift_log2, unsigned vecsize);
 }
