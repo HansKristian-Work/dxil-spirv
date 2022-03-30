@@ -1879,20 +1879,7 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 		unsigned raw_bits = raw_width_to_bits(raw_width);
 		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_width, RawVecSize::V1);
 
-		spv::Id array_index_id;
-		if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2)))
-		{
-			array_index_id = builder.makeUintConstant(c->getUniqueInteger().getZExtValue() >> addr_shift);
-		}
-		else
-		{
-			spv::Id byte_offset_id = impl.get_id_for_value(instruction->getOperand(2));
-			auto *shift_op = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
-			shift_op->add_id(byte_offset_id);
-			shift_op->add_id(builder.makeUintConstant(addr_shift));
-			impl.add(shift_op);
-			array_index_id = shift_op->id;
-		}
+		spv::Id array_index_id = build_index_divider(impl, instruction->getOperand(2), addr_shift, 1);
 
 		Operation *access_chain_op = impl.allocate(
 				spv::OpAccessChain, builder.makePointer(meta.storage, builder.makeFloatType(raw_bits)));
