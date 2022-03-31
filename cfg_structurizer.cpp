@@ -3138,8 +3138,10 @@ void CFGStructurizer::find_loops()
 
 CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode *node, size_t header_index)
 {
+	CFGNode *inner_header = node->headers[header_index];
 	CFGNode *target_header = nullptr;
-	for (size_t j = header_index; j; j--)
+
+	for (size_t j = header_index; j && !target_header; j--)
 	{
 		if (node->headers[j - 1]->merge == MergeType::Loop)
 		{
@@ -3153,11 +3155,19 @@ CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode 
 			else if (candidate_header->loop_merge_block)
 				candidate_merge = candidate_header->loop_merge_block;
 
-			if (candidate_merge && !query_reachability(*candidate_merge, *node->headers[header_index]))
-			{
-				target_header = candidate_header;
-				break;
-			}
+			if (!candidate_merge)
+				continue;
+
+			// Check for backwards branch.
+			if (query_reachability(*candidate_merge, *node->headers[header_index]))
+				continue;
+
+			// An outer header is expected to dominate the inner header. Otherwise, they live in
+			// separate scopes, and we should look for a header that is further out.
+			if (!candidate_header->dominates(inner_header))
+				continue;
+
+			target_header = candidate_header;
 		}
 	}
 
