@@ -733,6 +733,20 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				auto tmp_pred = node->pred;
 				for (auto *pred : tmp_pred)
 					pred->retarget_branch(node, node->succ.front());
+
+				// Iteratively, we need to recompute the dominance frontier for all preds.
+				// When we eliminate nodes like this, we might cause the pred blocks to become degenerate in
+				// future iterations in this loop.
+				std::sort(tmp_pred.begin(), tmp_pred.end(), [](const CFGNode *a, const CFGNode *b) {
+					return a->forward_post_visit_order < b->forward_post_visit_order;
+				});
+
+				// Need to compute dominance frontiers from inside out.
+				for (auto *pred : tmp_pred)
+				{
+					pred->dominance_frontier.clear();
+					recompute_dominance_frontier(pred);
+				}
 			}
 		}
 	}
