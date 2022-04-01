@@ -1518,8 +1518,39 @@ void CFGStructurizer::backwards_visit()
 				tracer.trace_to_parent(node, node->pred_back_edge);
 				LoopMergeTracer merge_tracer(tracer);
 				merge_tracer.trace_from_parent(node);
-				for (auto *f : merge_tracer.loop_exits)
-					node->pred_back_edge->add_fake_branch(f);
+
+				// If we have an infinite loop, the continue block will not be reachable with backwards traversal.
+				// Also, the only way to exit the loop construct could be through a single return block.
+				// In this case, the return block should be moved and considered to be the merge block.
+				// We add true branches from the continue block to return block instead of fake branches.
+
+				// Ensure stable codegen order.
+				Vector<CFGNode *> exits;
+				exits.reserve(merge_tracer.loop_exits.size());
+				for (auto *exit_node : merge_tracer.loop_exits)
+					exits.push_back(exit_node);
+				std::sort(exits.begin(), exits.end(), [](const CFGNode *a, const CFGNode *b) {
+					return a->forward_post_visit_order > b->forward_post_visit_order;
+				});
+
+				bool exit_is_pure_return = false;
+				if (exits.size() == 1)
+				{
+					auto *exit_node = exits.front();
+					exit_is_pure_return = exit_node->ir.phi.empty() && exit_node->ir.operations.empty() &&
+					                      exit_node->ir.terminator.type == Terminator::Type::Return;
+				}
+
+				if (exit_is_pure_return)
+				{
+					for (auto *f : exits)
+						node->pred_back_edge->add_branch(f);
+				}
+				else
+				{
+					for (auto *f : exits)
+						node->pred_back_edge->add_fake_branch(f);
+				}
 				need_revisit = true;
 			}
 		}
