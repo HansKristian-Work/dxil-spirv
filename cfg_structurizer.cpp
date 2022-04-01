@@ -565,12 +565,40 @@ Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, sp
 
 bool CFGStructurizer::can_duplicate_phis(const CFGNode *node)
 {
+	// If we want to duplicate nodes, we cannot do so in complicated scenarios where
+	// we need to resolve PHIs. For example, if a node is split, the split nodes might have to
+	// insert PHI nodes covering the subset of nodes which can reach each split.
+	// This get very hairy, very quickly.
+	// To check this, ensure that the node we want to split does not require any complex PHI handling.
+
+	// First, validate that we can even find incoming values properly.
 	for (auto *pred : node->pred)
 	{
 		for (auto &phi : node->ir.phi)
 		{
 			auto itr = find_incoming_value(pred, phi.incoming);
 			if (itr == phi.incoming.end())
+				return false;
+		}
+	}
+
+	// Then, make sure that every incoming value dominates at least pred of node.
+	// This way, we know that we don't need complicated PHI frontier merges along the way.
+	for (auto &phi : node->ir.phi)
+	{
+		for (auto &incoming : phi.incoming)
+		{
+			bool dominates_at_least_one_pred = false;
+			for (auto *pred : node->pred)
+			{
+				if (incoming.block->dominates(pred))
+				{
+					dominates_at_least_one_pred = true;
+					break;
+				}
+			}
+
+			if (!dominates_at_least_one_pred)
 				return false;
 		}
 	}
@@ -705,7 +733,7 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 			// PHIs and we hit assertions in duplicate_node().
 			// This means the block is probably load bearing after all, and we should not split it.
 			// Normally, we only want to break up blocks which have fairly trivial PHI resolves.
-			LOGW("Was asked to duplicate node, but cannot split phis without crashing ...\n");
+			LOGW("Was asked to duplicate node %s, but cannot split phis without crashing ...\n", node->name.c_str());
 			continue;
 		}
 
