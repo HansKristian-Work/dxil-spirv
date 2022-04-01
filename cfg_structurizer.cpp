@@ -261,15 +261,6 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 	assert(node->ir.phi.empty());
 }
 
-static bool node_has_phi_inputs_from(const CFGNode *from, const CFGNode *to)
-{
-	for (auto &phi : to->ir.phi)
-		for (auto &incoming : phi.incoming)
-			if (incoming.block == from)
-				return true;
-	return false;
-}
-
 void CFGStructurizer::cleanup_breaking_phi_constructs()
 {
 	bool did_work = false;
@@ -298,7 +289,7 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 		auto *succ = node->succ.front();
 
 		// Checks if either the merge block or successor is sensitive to PHI somehow.
-		if (!node_has_phi_inputs_from(node, succ))
+		if (!ladder_chain_has_phi_dependencies(succ, node))
 			continue;
 
 		if (node->dominates(succ))
@@ -723,6 +714,24 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 	recompute_cfg();
 }
 
+bool CFGStructurizer::ladder_chain_has_phi_dependencies(const CFGNode *succ, const CFGNode *node)
+{
+	while (succ)
+	{
+		for (auto &phi : succ->ir.phi)
+			for (auto &incoming : phi.incoming)
+				if (incoming.block == node)
+					return true;
+
+		if (succ->succ.size() == 1)
+			succ = succ->succ.front();
+		else
+			succ = nullptr;
+	}
+
+	return false;
+}
+
 void CFGStructurizer::eliminate_degenerate_blocks()
 {
 	// After we create ladder blocks, we will likely end up with a lot of blocks which don't do much.
@@ -742,7 +751,7 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 		    node->merge == MergeType::None &&
 		    // Loop merge targets are sacred, and must not be removed.
 		    structured_loop_merge_targets.count(node) == 0 &&
-		    !node_has_phi_inputs_from(node, node->succ.front()))
+		    !ladder_chain_has_phi_dependencies(node->succ.front(), node))
 		{
 			// If any pred is a continue block, this block is also load-bearing, since it can be used as a merge block.
 			if (std::find_if(node->pred.begin(), node->pred.end(),
@@ -759,20 +768,7 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				continue;
 			}
 
-			// If succ uses this block as an incoming block, we should keep the block around.
-			// We're only really interested in eliminating degenerate ladder blocks,
-			// which generally do not deal with PHI.
 			auto *succ = node->succ.front();
-			if (std::find_if(succ->ir.phi.begin(), succ->ir.phi.end(),
-			                 [node](const PHI &phi) {
-			                   return std::find_if(phi.incoming.begin(), phi.incoming.end(),
-			                                       [node](const IncomingValue &incoming) {
-				                                     return incoming.block == node;
-			                                       }) != phi.incoming.end();
-			                 }) != succ->ir.phi.end())
-			{
-				continue;
-			}
 
 			if (node->pred.size() == 1 && node->post_dominates(node->pred.front()))
 			{
