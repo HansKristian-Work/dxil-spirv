@@ -592,6 +592,7 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 	Vector<UnorderedMap<spv::Id, spv::Id>> rewritten_ids;
 	assert(node->succ.size() == 1);
 	assert(node->pred.size() >= 2);
+	assert(!node->dominates(node->succ.front()));
 
 	Vector<CFGNode *> break_blocks(node->pred.size());
 	rewritten_ids.resize(node->pred.size());
@@ -633,21 +634,40 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 	// We know that node does not dominate succ,
 	// so succ cannot use any SSA variables node generated directly
 	// without using PHI nodes.
-	for (auto &phi : succ->ir.phi)
-	{
-		// Find incoming ID from the block we're splitting up.
-		auto incoming_itr = std::find_if(phi.incoming.begin(), phi.incoming.end(), [&](const IncomingValue &incoming) {
-			return incoming.block == node;
-		});
-		assert(incoming_itr != phi.incoming.end());
-		spv::Id incoming_from_node = incoming_itr->id;
-		phi.incoming.erase(incoming_itr);
 
-		for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
+	// We might have placed ladders in between so that we need to fixup PHI later than just plain succ.
+	// Chase down the chain and replace all PHIs.
+
+	while (succ)
+	{
+		bool done = false;
+		for (auto &phi : succ->ir.phi)
 		{
-			auto &remap = rewritten_ids[i];
-			phi.incoming.push_back({ break_blocks[i], get_remapped_id_for_duplicated_block(incoming_from_node, remap) });
+			// Find incoming ID from the block we're splitting up.
+			auto incoming_itr = std::find_if(phi.incoming.begin(), phi.incoming.end(), [&](const IncomingValue &incoming) {
+				return incoming.block == node;
+			});
+
+			if (incoming_itr != phi.incoming.end())
+			{
+				spv::Id incoming_from_node = incoming_itr->id;
+				phi.incoming.erase(incoming_itr);
+
+				for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
+				{
+					auto &remap = rewritten_ids[i];
+					phi.incoming.push_back({ break_blocks[i], get_remapped_id_for_duplicated_block(incoming_from_node, remap) });
+				}
+
+				// We've found the block we wanted to rewrite, terminate loop now.
+				done = true;
+			}
 		}
+
+		if (!done && succ->succ.size() == 1)
+			succ = succ->succ.front();
+		else
+			succ = nullptr;
 	}
 }
 
