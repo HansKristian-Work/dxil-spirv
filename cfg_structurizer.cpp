@@ -677,7 +677,19 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 		return;
 
 	for (auto *node : duplicate_queue)
+	{
+		if (!can_duplicate_phis(node))
+		{
+			// A block could be subtly load bearing, in that if we split the node, it becomes impossible to resolve
+			// PHIs and we hit assertions in duplicate_node().
+			// This means the block is probably load bearing after all, and we should not split it.
+			// Normally, we only want to break up blocks which have fairly trivial PHI resolves.
+			LOGW("Was asked to duplicate node, but cannot split phis without crashing ...\n");
+			continue;
+		}
+
 		duplicate_node(node);
+	}
 	recompute_cfg();
 }
 
