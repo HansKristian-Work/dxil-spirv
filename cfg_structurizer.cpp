@@ -3317,12 +3317,13 @@ CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode 
 
 	for (size_t j = header_index; j && !target_header; j--)
 	{
-		if (node->headers[j - 1]->merge == MergeType::Loop)
+		auto *candidate_header = node->headers[j - 1];
+
+		if (candidate_header->merge == MergeType::Loop)
 		{
 			// We might have two loops, each at equal scopes.
 			// In order to break out to an outer loop, we must verify that the loops actually nest.
 			// We must not introduce any backwards branches here.
-			auto *candidate_header = node->headers[j - 1];
 			CFGNode *candidate_merge = nullptr;
 			if (candidate_header->loop_ladder_block)
 				candidate_merge = candidate_header->loop_ladder_block;
@@ -3333,7 +3334,7 @@ CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode 
 				continue;
 
 			// Check for backwards branch.
-			if (query_reachability(*candidate_merge, *node->headers[header_index]))
+			if (query_reachability(*candidate_merge, *inner_header))
 				continue;
 
 			// An outer header is expected to dominate the inner header. Otherwise, they live in
@@ -3587,10 +3588,12 @@ void CFGStructurizer::split_merge_blocks()
 		// This ladder block will break to outer scope, or keep executing the old merge block.
 		for (size_t i = node->headers.size() - 1; i; i--)
 		{
+			auto *current_node = node->headers[i];
+
 			// Find innermost loop header scope we can break to when resolving ladders.
 			CFGNode *target_header = get_target_break_block_for_inner_header(node, i);
 
-			if (node->headers[i]->merge == MergeType::Loop)
+			if (current_node->merge == MergeType::Loop)
 			{
 				auto *loop_ladder = get_or_create_ladder_block(node, i);
 
@@ -3604,22 +3607,22 @@ void CFGStructurizer::split_merge_blocks()
 				if (loop_ladder)
 				{
 					new_ladder_block = build_ladder_block_for_escaping_edge_handling(
-						node, node->headers[i], loop_ladder,
+						node, current_node, loop_ladder,
 						target_header, full_break_target,
 						normal_preds[i]);
 				}
 
 				// We won't analyze this again, so make sure header knows
 				// about the new merge block.
-				if (node->headers[i]->freeze_structured_analysis)
+				if (current_node->freeze_structured_analysis)
 				{
 					if (new_ladder_block)
-						node->headers[i]->loop_ladder_block = new_ladder_block;
-					node->headers[i]->loop_merge_block = node->headers[i]->loop_ladder_block;
-					node->headers[i]->loop_ladder_block = nullptr;
+						current_node->loop_ladder_block = new_ladder_block;
+					current_node->loop_merge_block = current_node->loop_ladder_block;
+					current_node->loop_ladder_block = nullptr;
 				}
 			}
-			else if (node->headers[i]->merge == MergeType::Selection)
+			else if (current_node->merge == MergeType::Selection)
 			{
 				if (target_header)
 				{
@@ -3631,13 +3634,13 @@ void CFGStructurizer::split_merge_blocks()
 						rewrite_to = target_header->loop_merge_block;
 
 					if (rewrite_to)
-						node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, rewrite_to);
+						current_node->traverse_dominated_blocks_and_rewrite_branch(node, rewrite_to);
 					else
 						LOGW("No loop merge block?\n");
 				}
 				else if (full_break_target)
 				{
-					node->headers[i]->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
+					current_node->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
 				}
 				else
 				{
