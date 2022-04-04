@@ -1734,9 +1734,9 @@ bool CFGStructurizer::control_flow_is_escaping_from_loop(const CFGNode *node, co
 		for (auto *frontier : node->post_dominance_frontier)
 		{
 			bool header_dominates_frontier = innermost_loop_header->dominates(frontier);
-			bool fronter_is_inside_loop_construct =
+			bool frontier_is_inside_loop_construct =
 				query_reachability(*frontier, *innermost_loop_header->pred_back_edge);
-			if (!header_dominates_frontier || !fronter_is_inside_loop_construct)
+			if (!header_dominates_frontier || !frontier_is_inside_loop_construct)
 			{
 				pdf_can_reach_continue = false;
 				break;
