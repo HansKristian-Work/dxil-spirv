@@ -1770,13 +1770,61 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 	// This means that control flow can merge somewhere before we hit the merge block, and we consider that
 	// normal structured control flow.
 
-	bool escaping_path = true;
-	for (auto *frontier : node->dominance_frontier)
+	bool escaping_path = !node->reaches_domination_frontier_before_merge(merge);
+
+	// This is a strong check.
+	// If node directly branches to merge, but PDF does not,
+	// we have detected a control flow pattern which is clearly a break.
+	// The PDF candidate must dominate node for this check to be meaningful.
+	if (escaping_path)
 	{
-		if (merge != frontier && merge->post_dominates(frontier))
+		for (auto *frontier : node->post_dominance_frontier)
+			if (frontier->dominates(node) && frontier->reaches_domination_frontier_before_merge(merge))
+				return true;
+
+		// Strong check as well.
+		// If branching directly to continue block like this, this is a non-merging continue,
+		// which we should always consider an escape.
+		if (node->succ_back_edge)
+			return true;
+	}
+
+	if (escaping_path && node->pred.size() >= 2)
+	{
+		// We also need to consider false positives here, which are mostly only relevant for merge candidates.
+
+		// One case would be selection construct A, which terminates in block B. B then branches to C.
+		// Earlier in the A -> B construct, there might be a break block D which also branches to B.
+		// This means C is in the domination frontier of B, and we would think B is a break block, which is wrong.
+		// To fix this, we should look at all preds of C. If they can all reach B, B is probably not a break construct ...
+
+		// Measure post-dominance distance. Breaking paths tend to have the shortest paths from their nodes
+		// to their post-dominance frontiers, more normal merge blocks post-dominate more than breaking paths do.
+
+		const CFGNode *max_post_visit_order_candidate = nullptr;
+		const CFGNode *max_post_visit_order_other = nullptr;
+
+		for (auto *pred : merge->pred)
 		{
-			escaping_path = false;
-			break;
+			// Ignore any pred on the breaking candidate path.
+			for (auto *front : pred->post_dominance_frontier)
+			{
+				auto &max_post_visit = node->dominates(pred) ?
+						max_post_visit_order_candidate : max_post_visit_order_other;
+
+				if (!max_post_visit ||
+				    front->forward_post_visit_order > max_post_visit->forward_post_visit_order)
+				{
+					max_post_visit = front;
+				}
+			}
+		}
+
+		// If we don't have clear candidates, we should try to say anything meaningful about escaping, so just ignore it.
+		if (max_post_visit_order_candidate && max_post_visit_order_other)
+		{
+			escaping_path = max_post_visit_order_candidate != max_post_visit_order_other &&
+			                max_post_visit_order_other->dominates(max_post_visit_order_candidate);
 		}
 	}
 
