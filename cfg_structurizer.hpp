@@ -76,6 +76,7 @@ private:
 	void eliminate_degenerate_blocks();
 	void duplicate_impossible_merge_constructs();
 	void duplicate_node(CFGNode *node);
+	static bool can_duplicate_phis(const CFGNode *node);
 	Operation *duplicate_op(Operation *op, UnorderedMap<spv::Id, spv::Id> &id_remap);
 	void update_structured_loop_merge_targets();
 	void find_selection_merges(unsigned pass);

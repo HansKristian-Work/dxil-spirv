@@ -572,6 +572,21 @@ Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, sp
 	return duplicated_op;
 }
 
+bool CFGStructurizer::can_duplicate_phis(const CFGNode *node)
+{
+	for (auto *pred : node->pred)
+	{
+		for (auto &phi : node->ir.phi)
+		{
+			auto itr = find_incoming_value(pred, phi.incoming);
+			if (itr == phi.incoming.end())
+				return false;
+		}
+	}
+
+	return true;
+}
+
 void CFGStructurizer::duplicate_node(CFGNode *node)
 {
 	Vector<UnorderedMap<spv::Id, spv::Id>> rewritten_ids;
