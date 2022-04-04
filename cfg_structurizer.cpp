@@ -3306,6 +3306,19 @@ void CFGStructurizer::find_loops()
 					node->loop_ladder_block = dominated_merge;
 				}
 			}
+
+			if (node->loop_merge_block && node->loop_ladder_block && !non_dominated_exit.empty())
+			{
+				// We might have a horribly complex scenario where a loop breaks, but it breaks to an outer scope
+				// which is not consistent with the merge block.
+				// When we split merge scopes, we need to specially consider any header that dominates this common break target.
+				auto *common_break_target = find_common_post_dominator(non_dominated_exit);
+				if (common_break_target && common_break_target != node->loop_merge_block &&
+				    common_break_target->reaches_domination_frontier_before_merge(node->loop_merge_block))
+				{
+					LOGE("FIXME: Impossible loop merge detected.\n");
+				}
+			}
 		}
 	}
 }
