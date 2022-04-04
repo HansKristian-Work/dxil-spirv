@@ -92,6 +92,7 @@ private:
 	const CFGNode *get_innermost_loop_header_for(const CFGNode *other) const;
 	bool branchless_path_to(const CFGNode *to) const;
 	bool post_dominates(const CFGNode *other) const;
+	bool post_dominates_perfect_structured_construct() const;
 	bool dominates_all_reachable_exits() const;
 	static CFGNode *find_common_dominator(CFGNode *a, CFGNode *b);
 	static CFGNode *find_common_post_dominator(CFGNode *a, CFGNode *b);

@@ -2636,7 +2636,7 @@ bool CFGStructurizer::merge_candidate_is_on_loop_breaking_path(const CFGNode *no
 	       !node->dominates(node->succ.front()) &&
 	       node->succ.front()->post_dominates(node) &&
 	       control_flow_is_escaping_from_loop(node, node->succ.front()) &&
-	       !block_is_load_bearing(node, node->succ.front());
+	       !node->post_dominates_perfect_structured_construct();
 }
 
 bool CFGStructurizer::merge_candidate_is_on_breaking_path(const CFGNode *node) const
@@ -2645,7 +2645,7 @@ bool CFGStructurizer::merge_candidate_is_on_breaking_path(const CFGNode *node) c
 	       !node->dominates(node->succ.front()) &&
 	       node->succ.front()->post_dominates(node) &&
 	       control_flow_is_escaping(node, node->succ.front()) &&
-	       !block_is_load_bearing(node, node->succ.front());
+	       !node->post_dominates_perfect_structured_construct();
 }
 
 void CFGStructurizer::find_selection_merges(unsigned pass)

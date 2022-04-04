@@ -204,6 +204,17 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 	return this == start_node;
 }
 
+bool CFGNode::post_dominates_perfect_structured_construct() const
+{
+	if (!post_dominates(immediate_dominator))
+		return false;
+
+	for (auto *p : pred)
+		if (!post_dominates(p))
+			return false;
+	return true;
+}
+
 bool CFGNode::dominates_all_reachable_exits(UnorderedSet<const CFGNode *> &completed, const CFGNode &header) const
 {
 	if (!completed.count(this))
