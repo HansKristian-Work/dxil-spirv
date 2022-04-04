@@ -665,12 +665,22 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 		// If the candidate has control dependent effects like barriers and such,
 		// this will likely break completely,
 		// but I don't see how that would work on native drivers either ...
-		if (merge_candidate_is_on_loop_breaking_path(node) &&
-		    !node->ir.operations.empty() &&
-		    !block_is_control_dependent(node))
+		bool loop_breaking_path = merge_candidate_is_on_loop_breaking_path(node);
+		bool breaking = loop_breaking_path;
+
+#if 0
+		// TODO: This significantly changes codegen. Need to figure out how to reduce the impact.
+		if (!breaking && merge_candidate_is_on_breaking_path(node))
 		{
-			duplicate_queue.push_back(node);
+			// Loop breaks are pretty obvious, but normal breaks are a bit more subtle.
+			// We need pretty decent heuristics here.
+			// It is far more difficult to accurately detect breaking constructs since it's ambiguous in most cases.
+			breaking = true;
 		}
+#endif
+
+		if (breaking && !node->ir.operations.empty() && !block_is_control_dependent(node))
+			duplicate_queue.push_back(node);
 	}
 
 	if (duplicate_queue.empty())
