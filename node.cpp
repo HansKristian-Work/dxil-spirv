@@ -87,6 +87,14 @@ bool CFGNode::has_pred_back_edges() const
 	return pred_back_edge != nullptr;
 }
 
+bool CFGNode::reaches_domination_frontier_before_merge(const CFGNode *merge) const
+{
+	for (auto *frontier : dominance_frontier)
+		if (merge != frontier && merge->post_dominates(frontier))
+			return true;
+	return false;
+}
+
 bool CFGNode::dominates(const CFGNode *other) const
 {
 	// Follow immediate dominator graph. Either we end up at this, or entry block.
@@ -194,6 +202,17 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 	}
 
 	return this == start_node;
+}
+
+bool CFGNode::post_dominates_perfect_structured_construct() const
+{
+	if (!post_dominates(immediate_dominator))
+		return false;
+
+	for (auto *p : pred)
+		if (!post_dominates(p))
+			return false;
+	return true;
 }
 
 bool CFGNode::dominates_all_reachable_exits(UnorderedSet<const CFGNode *> &completed, const CFGNode &header) const

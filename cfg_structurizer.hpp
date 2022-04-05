@@ -74,8 +74,10 @@ private:
 	void find_loops();
 	void split_merge_scopes();
 	void eliminate_degenerate_blocks();
+	static bool ladder_chain_has_phi_dependencies(const CFGNode *chain, const CFGNode *incoming);
 	void duplicate_impossible_merge_constructs();
 	void duplicate_node(CFGNode *node);
+	static bool can_duplicate_phis(const CFGNode *node);
 	Operation *duplicate_op(Operation *op, UnorderedMap<spv::Id, spv::Id> &id_remap);
 	void update_structured_loop_merge_targets();
 	void find_selection_merges(unsigned pass);
