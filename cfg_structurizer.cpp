@@ -704,19 +704,10 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 		// If the candidate has control dependent effects like barriers and such,
 		// this will likely break completely,
 		// but I don't see how that would work on native drivers either ...
-		bool loop_breaking_path = merge_candidate_is_on_loop_breaking_path(node);
-		bool breaking = loop_breaking_path;
 
-#if 0
-		// TODO: This significantly changes codegen. Need to figure out how to reduce the impact.
-		if (!breaking && merge_candidate_is_on_breaking_path(node))
-		{
-			// Loop breaks are pretty obvious, but normal breaks are a bit more subtle.
-			// We need pretty decent heuristics here.
-			// It is far more difficult to accurately detect breaking constructs since it's ambiguous in most cases.
-			breaking = true;
-		}
-#endif
+		// WARNING: This check is EXTREMELY sensitive and microscopic changes to the implementation
+		// will dramatically affect codegen.
+		bool breaking = merge_candidate_is_on_breaking_path(node);
 
 		if (breaking && !node->ir.operations.empty() && !block_is_control_dependent(node))
 			duplicate_queue.push_back(node);
@@ -1843,43 +1834,82 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 			return true;
 	}
 
+	if (escaping_path && node->ir.operations.empty() && node->ir.phi.empty())
+	{
+		bool post_dominates_nothing = true;
+		for (auto *pred : node->pred)
+		{
+			// Skip completely useless ladder blocks when we consider this case.
+			while (pred->pred.size() == 1 && pred->ir.operations.empty() && pred->ir.phi.empty())
+				pred = pred->pred.front();
+
+			if (node->post_dominates(pred))
+			{
+				post_dominates_nothing = false;
+				break;
+			}
+		}
+
+		// If we post-dominate nothing useful or do nothing useful ourselves,
+		// this is a good indication we're a common escape edge ladder block.
+		// This can happen if we have a graph of:
+		// A -> B
+		// A -> C
+		// B -> merge
+		// C -> merge
+		// B -> node
+		// C -> node
+		// node -> merge
+		// This super jank diamond pattern will break the heuristics.
+		if (post_dominates_nothing)
+			return true;
+	}
+
 	if (escaping_path && node->pred.size() >= 2)
 	{
 		// We also need to consider false positives here, which are mostly only relevant for merge candidates.
 
 		// One case would be selection construct A, which terminates in block B. B then branches to C.
 		// Earlier in the A -> B construct, there might be a break block D which also branches to B.
-		// This means C is in the domination frontier of B, and we would think B is a break block, which is wrong.
-		// To fix this, we should look at all preds of C. If they can all reach B, B is probably not a break construct ...
+		// This means that C will be a "false" domination frontier of B and our analysis above is wrong.
 
-		// Measure post-dominance distance. Breaking paths tend to have the shortest paths from their nodes
-		// to their post-dominance frontiers, more normal merge blocks post-dominate more than breaking paths do.
+		// The algorithm here:
+		// - Get idom of node, which represents the header. For this analysis, we're only interested
+		//   in code paths which are dominated by idom.
+		// - Find all preds of merge which are dominated by idom(node).
+		// - Backtrace every pred P until they can reach B, or B can reach P.
+		// - If B has strictly lowest post-visit order, we are not escaping. P was.
 
-		const CFGNode *max_post_visit_order_candidate = nullptr;
-		const CFGNode *max_post_visit_order_other = nullptr;
+		auto *idom = node->immediate_dominator;
+		bool found_false_positive = false;
 
 		for (auto *pred : merge->pred)
 		{
-			// Ignore any pred on the breaking candidate path.
-			for (auto *front : pred->post_dominance_frontier)
-			{
-				auto &max_post_visit = node->dominates(pred) ?
-						max_post_visit_order_candidate : max_post_visit_order_other;
+			// Don't care about these.
+			if (!idom->dominates(pred))
+				continue;
 
-				if (!max_post_visit ||
-				    front->forward_post_visit_order > max_post_visit->forward_post_visit_order)
-				{
-					max_post_visit = front;
-				}
+			while (pred != node && !query_reachability(*pred, *node) && !query_reachability(*node, *pred))
+				pred = pred->immediate_dominator;
+
+			// Ignore these.
+			if (pred == node)
+				continue;
+
+			if (query_reachability(*pred, *node))
+			{
+				// Seems good. Keep going. If we don't find a counter example, we'll accept this as a false positive.
+				found_false_positive = true;
+			}
+			else
+			{
+				// Indeed, this is an escape.
+				found_false_positive = false;
+				break;
 			}
 		}
 
-		// If we don't have clear candidates, we should try to say anything meaningful about escaping, so just ignore it.
-		if (max_post_visit_order_candidate && max_post_visit_order_other)
-		{
-			escaping_path = max_post_visit_order_candidate != max_post_visit_order_other &&
-			                max_post_visit_order_other->dominates(max_post_visit_order_candidate);
-		}
+		escaping_path = !found_false_positive;
 	}
 
 	return escaping_path;
