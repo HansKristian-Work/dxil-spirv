@@ -72,6 +72,25 @@ private:
 	bool query_reachability(const CFGNode &from, const CFGNode &to) const;
 	void structurize(unsigned pass);
 	void find_loops();
+	bool rewrite_transposed_loops();
+
+	struct LoopAnalysis
+	{
+		Vector<CFGNode *> direct_exits;
+		Vector<CFGNode *> inner_direct_exits;
+		Vector<CFGNode *> dominated_exit;
+		Vector<CFGNode *> inner_dominated_exit;
+		Vector<CFGNode *> non_dominated_exit;
+	};
+	LoopAnalysis analyze_loop(CFGNode *node) const;
+
+	struct LoopMergeAnalysis
+	{
+		CFGNode *merge;
+		CFGNode *dominated_merge;
+	};
+	LoopMergeAnalysis analyze_loop_merge(CFGNode *node, const LoopAnalysis &analysis);
+
 	void split_merge_scopes();
 	void eliminate_degenerate_blocks();
 	static bool ladder_chain_has_phi_dependencies(const CFGNode *chain, const CFGNode *incoming);
