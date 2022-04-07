@@ -469,6 +469,9 @@ void CFGNode::fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to)
 
 void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to)
 {
+	if (from == to)
+		return;
+
 	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *node) -> bool { return true; });
 	fixup_merge_info_after_branch_rewrite(from, to);
 }
