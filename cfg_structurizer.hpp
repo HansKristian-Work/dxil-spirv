@@ -90,6 +90,10 @@ private:
 		CFGNode *dominated_merge;
 	};
 	LoopMergeAnalysis analyze_loop_merge(CFGNode *node, const LoopAnalysis &analysis);
+	void rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impossible_merge_target,
+	                                   const LoopMergeAnalysis &analysis);
+	void rewrite_transposed_loop_outer(CFGNode *node, CFGNode *impossible_merge_target,
+	                                   const LoopMergeAnalysis &analysis);
 
 	void split_merge_scopes();
 	void eliminate_degenerate_blocks();

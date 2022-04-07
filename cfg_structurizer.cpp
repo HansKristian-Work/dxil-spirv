@@ -3093,6 +3093,75 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(Vector<C
 	return candidates.front();
 }
 
+void CFGStructurizer::rewrite_transposed_loop_outer(CFGNode *node, CFGNode *impossible_merge_target,
+                                                    const LoopMergeAnalysis &analysis)
+{
+	abort();
+}
+
+void CFGStructurizer::rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impossible_merge_target,
+                                                    const LoopMergeAnalysis &analysis)
+{
+	// Rewrite the control flow from the inside out through a transposition.
+	// The common break target will become the merge block instead.
+	// The continue will break out to the transposed merge instead.
+	// In the ladder, we will enter a breaking path which branches out to loop_ladder.
+
+	// We just arbitrary call this "inner", since I don't think it has a formal name.
+	// In this case, dominated merge cannot reach impossible merge target.
+
+	auto *merge = analysis.merge;
+	auto *dominated_merge = analysis.dominated_merge;
+
+	auto *ladder_break = pool.create_node();
+	ladder_break->name = node->name + ".transposed-merge.break";
+	ladder_break->ir.terminator.type = Terminator::Type::Branch;
+	ladder_break->ir.terminator.direct_block = impossible_merge_target;
+	ladder_break->immediate_post_dominator = impossible_merge_target;
+	ladder_break->forward_post_visit_order = impossible_merge_target->forward_post_visit_order;
+	ladder_break->backward_post_visit_order = impossible_merge_target->backward_post_visit_order;
+
+	auto *ladder_selection = pool.create_node();
+	ladder_selection->name = node->name + ".transposed-merge";
+	ladder_selection->forward_post_visit_order = impossible_merge_target->forward_post_visit_order;
+	ladder_selection->backward_post_visit_order = impossible_merge_target->backward_post_visit_order;
+	ladder_selection->immediate_post_dominator = merge;
+	ladder_break->immediate_dominator = ladder_selection;
+
+	auto ladder_preds = dominated_merge->pred;
+
+	ladder_selection->add_branch(ladder_break);
+	ladder_selection->add_branch(dominated_merge);
+	node->traverse_dominated_blocks_and_rewrite_branch(impossible_merge_target, ladder_selection);
+	ladder_selection->recompute_immediate_dominator();
+
+	ladder_break->add_branch(impossible_merge_target);
+
+	// Branches from these blocks should be rewritten to target transposed-merge.
+	for (auto *ladder_pred : ladder_preds)
+		ladder_pred->retarget_branch(dominated_merge, ladder_selection);
+
+	ladder_selection->ir.terminator.type = Terminator::Type::Condition;
+	ladder_selection->ir.terminator.true_block = dominated_merge;
+	ladder_selection->ir.terminator.false_block = ladder_break;
+	ladder_selection->ir.terminator.conditional_id = module.allocate_id();
+
+	PHI phi;
+	phi.id = ladder_selection->ir.terminator.conditional_id;
+	phi.type_id = module.get_builder().makeBoolType();
+	module.get_builder().addName(phi.id, (String("transposed_selector_") + node->name).c_str());
+	for (auto *ladder_pred : ladder_selection->pred)
+	{
+		IncomingValue incoming = {};
+		incoming.block = ladder_pred;
+		bool branches_to_dominated_merge =
+				std::find(ladder_preds.begin(), ladder_preds.end(), ladder_pred) != ladder_preds.end();
+		incoming.id = module.get_builder().makeBoolConstant(branches_to_dominated_merge);
+		phi.incoming.push_back(incoming);
+	}
+	ladder_selection->ir.phi.push_back(std::move(phi));
+}
+
 bool CFGStructurizer::rewrite_transposed_loops()
 {
 	bool did_rewrite = false;
@@ -3114,81 +3183,78 @@ bool CFGStructurizer::rewrite_transposed_loops()
 		auto *merge = merge_result.merge;
 		auto *dominated_merge = merge_result.dominated_merge;
 
+		if (!merge || !dominated_merge)
+			continue;
+
 		// We might have a horribly complex scenario where a loop breaks, but it breaks to an outer scope
 		// which is not consistent with the merge block, i.e. we need structured control flow to resolve properly
 		// before we can break. This is ... problematic.
+
+		// We call this an "inner" transposed loop here since merge block cannot reach this block.
+
 		CFGNode *impossible_merge_target = nullptr;
-		if (merge_result.merge && merge_result.dominated_merge && !result.non_dominated_exit.empty())
+		if (!result.non_dominated_exit.empty())
 		{
 			auto *common_break_target = find_common_post_dominator(result.non_dominated_exit);
 			if (common_break_target && common_break_target != merge &&
-			    common_break_target->reaches_domination_frontier_before_merge(merge))
+			    common_break_target->reaches_domination_frontier_before_merge(merge) &&
+			    !query_reachability(*dominated_merge, *common_break_target))
 			{
 				impossible_merge_target = common_break_target;
 			}
 		}
 
 		if (!impossible_merge_target)
-			continue;
-
-		// Rewrite the control flow from the inside out through a transposition.
-		// The common break target will become the merge block instead.
-		// The continue will break out to the transposed merge instead.
-		// In the ladder, we will enter a breaking path which branches out to loop_ladder.
-
-		auto *ladder_break = pool.create_node();
-		ladder_break->name = node->name + ".transposed-merge.break";
-		ladder_break->ir.terminator.type = Terminator::Type::Branch;
-		ladder_break->ir.terminator.direct_block = impossible_merge_target;
-		ladder_break->immediate_post_dominator = impossible_merge_target;
-		ladder_break->forward_post_visit_order = impossible_merge_target->forward_post_visit_order;
-		ladder_break->backward_post_visit_order = impossible_merge_target->backward_post_visit_order;
-
-		auto *ladder_selection = pool.create_node();
-		ladder_selection->name = node->name + ".transposed-merge";
-		ladder_selection->forward_post_visit_order = impossible_merge_target->forward_post_visit_order;
-		ladder_selection->backward_post_visit_order = impossible_merge_target->backward_post_visit_order;
-		ladder_selection->immediate_post_dominator = merge;
-		ladder_break->immediate_dominator = ladder_selection;
-
-		auto ladder_preds = dominated_merge->pred;
-
-		ladder_selection->add_branch(ladder_break);
-		ladder_selection->add_branch(dominated_merge);
-		node->traverse_dominated_blocks_and_rewrite_branch(impossible_merge_target, ladder_selection);
-		ladder_selection->recompute_immediate_dominator();
-
-		ladder_break->add_branch(impossible_merge_target);
-
-		// Branches from these blocks should be rewritten to target transposed-merge.
-		for (auto *ladder_pred : ladder_preds)
-			ladder_pred->retarget_branch(dominated_merge, ladder_selection);
-
-		ladder_selection->ir.terminator.type = Terminator::Type::Condition;
-		ladder_selection->ir.terminator.true_block = dominated_merge;
-		ladder_selection->ir.terminator.false_block = ladder_break;
-		ladder_selection->ir.terminator.conditional_id = module.allocate_id();
-
-		PHI phi;
-		phi.id = ladder_selection->ir.terminator.conditional_id;
-		phi.type_id = module.get_builder().makeBoolType();
-		module.get_builder().addName(phi.id, (String("transposed_selector_") + node->name).c_str());
-		for (auto *ladder_pred : ladder_selection->pred)
 		{
-			IncomingValue incoming = {};
-			incoming.block = ladder_pred;
-			bool branches_to_dominated_merge =
-					std::find(ladder_preds.begin(), ladder_preds.end(), ladder_pred) != ladder_preds.end();
-			incoming.id = module.get_builder().makeBoolConstant(branches_to_dominated_merge);
-			phi.incoming.push_back(incoming);
-		}
-		ladder_selection->ir.phi.push_back(std::move(phi));
+			// We might have a different scenario where there are multiple breaks, but they break out to different
+			// scopes. One of these might require a similar impossible merge.
+			// Common post dominator analysis would not catch this.
+			// What we're looking for is a node which:
+			// - Is dominated by loop header
+			// - Is reachable, but not dominated by dominated_merge.
+			// - Post dominates one of the non_dominated_exits.
+			// This means the node is in a twilight zone where the node is kinda in the loop construct, but kinda not.
 
-		// We have obliterated the existing control flow through transposition,
-		// and any domination or post-domination analysis will break.
-		// Re-traverse the CFG and try again.
-		// Continue until we have eliminated all impossible loops (should be extremely rare).
-		did_rewrite = true;
+			// Structured rules for a loop state that a node is in the construct if:
+			// - It is dominated by loop header
+			// - Not dominated by merge block.
+			// In a sense, the merge block ends up branching back into its own loop, which is irreducible, kinda ...
+
+			// We call this an "outer" transposed loop here since merge block *can* reach this block.
+
+			for (size_t i = 0, n = result.non_dominated_exit.size(); i < n && !impossible_merge_target; i++)
+			{
+				auto *candidate = result.non_dominated_exit[i];
+
+				while (node->dominates(candidate) && !impossible_merge_target &&
+				       candidate != merge && candidate != dominated_merge)
+				{
+					if (node->dominates(candidate) &&
+					    query_reachability(*dominated_merge, *candidate) &&
+					    !dominated_merge->dominates(candidate))
+					{
+						// Merge block attempts to branch back into its own loop construct (yikes).
+						impossible_merge_target = candidate;
+					}
+					else
+						candidate = candidate->immediate_post_dominator;
+				}
+			}
+		}
+
+		if (impossible_merge_target)
+		{
+			if (query_reachability(*dominated_merge, *impossible_merge_target))
+				rewrite_transposed_loop_outer(node, impossible_merge_target, merge_result);
+			else
+				rewrite_transposed_loop_inner(node, impossible_merge_target, merge_result);
+
+			// We have obliterated the existing control flow through transposition,
+			// and any domination or post-domination analysis will break.
+			// Re-traverse the CFG and try again.
+			// Continue until we have eliminated all impossible loops (should be extremely rare).
+			did_rewrite = true;
+		}
 	}
 
 	if (did_rewrite)
