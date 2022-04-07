@@ -86,7 +86,6 @@ void CFGStructurizer::log_cfg_graphviz(const char *path) const
 		case Terminator::Type::Switch:
 			for (auto &c : node->ir.terminator.cases)
 				fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(c.node));
-			fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(node->ir.terminator.default_node));
 			break;
 
 		default:
@@ -141,8 +140,12 @@ void CFGStructurizer::log_cfg(const char *tag) const
 		case Terminator::Type::Switch:
 			LOGI("  Switch\n");
 			for (auto &c : node->ir.terminator.cases)
-				LOGI("    Case %u -> %s\n", c.value, c.node->name.c_str());
-			LOGI("    Default -> %s\n", node->ir.terminator.default_node->name.c_str());
+			{
+				if (c.is_default)
+					LOGI("    Default -> %s\n", c.node->name.c_str());
+				else
+					LOGI("    Case %u -> %s\n", c.value, c.node->name.c_str());
+			}
 			break;
 
 		case Terminator::Type::Kill:
@@ -2946,8 +2949,6 @@ void CFGStructurizer::retarget_pred_from(CFGNode *new_node, CFGNode *old_succ)
 			p_term.true_block = new_node;
 		if (p_term.false_block == old_succ)
 			p_term.false_block = new_node;
-		if (p_term.default_node == old_succ)
-			p_term.default_node = new_node;
 		for (auto &c : p_term.cases)
 			if (c.node == old_succ)
 				c.node = new_node;

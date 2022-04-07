@@ -429,8 +429,6 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 		ir.terminator.true_block = to_next;
 	if (ir.terminator.false_block == to_prev)
 		ir.terminator.false_block = to_next;
-	if (ir.terminator.default_node == to_prev)
-		ir.terminator.default_node = to_next;
 	for (auto &c : ir.terminator.cases)
 		if (c.node == to_prev)
 			c.node = to_next;

@@ -987,10 +987,16 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	{
 		auto switch_op = std::make_unique<spv::Instruction>(spv::OpSwitch);
 		switch_op->addIdOperand(ir.terminator.conditional_id);
-		switch_op->addIdOperand(ir.terminator.default_node->id);
-		get_spv_block(ir.terminator.default_node)->addPredecessor(bb);
+
+		auto default_itr = std::find_if(ir.terminator.cases.begin(), ir.terminator.cases.end(),
+		                                [](const Terminator::Case &c) { return c.is_default; });
+		assert(default_itr != ir.terminator.cases.end());
+		switch_op->addIdOperand(default_itr->node->id);
+		get_spv_block(default_itr->node)->addPredecessor(bb);
 		for (auto &switch_case : ir.terminator.cases)
 		{
+			if (switch_case.is_default)
+				continue;
 			switch_op->addImmediateOperand(switch_case.value);
 			switch_op->addIdOperand(switch_case.node->id);
 			get_spv_block(switch_case.node)->addPredecessor(bb);
