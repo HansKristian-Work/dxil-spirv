@@ -3096,7 +3096,37 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(Vector<C
 void CFGStructurizer::rewrite_transposed_loop_outer(CFGNode *node, CFGNode *impossible_merge_target,
                                                     const LoopMergeAnalysis &analysis)
 {
-	abort();
+	auto impossible_preds = impossible_merge_target->pred;
+
+	auto *replaced_merge_block = create_helper_pred_block(analysis.dominated_merge);
+	replaced_merge_block->name = analysis.dominated_merge->name + ".transposed-merge-outer";
+
+	for (auto *pred : impossible_preds)
+		if (!query_reachability(*analysis.dominated_merge, *pred))
+			pred->retarget_branch(impossible_merge_target, replaced_merge_block);
+
+	replaced_merge_block->add_branch(impossible_merge_target);
+	replaced_merge_block->ir.terminator.true_block = impossible_merge_target;
+	replaced_merge_block->ir.terminator.false_block = analysis.dominated_merge;
+	replaced_merge_block->ir.terminator.type = Terminator::Type::Condition;
+	replaced_merge_block->ir.terminator.conditional_id = module.allocate_id();
+
+	PHI phi;
+	phi.id = replaced_merge_block->ir.terminator.conditional_id;
+	phi.type_id = module.get_builder().makeBoolType();
+	module.get_builder().addName(phi.id, (String("transposed_selector_") + node->name).c_str());
+
+	for (auto *ladder_pred : replaced_merge_block->pred)
+	{
+		IncomingValue incoming = {};
+		incoming.block = ladder_pred;
+		bool branches_to_impossible =
+				std::find(impossible_preds.begin(), impossible_preds.end(), ladder_pred) != impossible_preds.end();
+		incoming.id = module.get_builder().makeBoolConstant(branches_to_impossible);
+		phi.incoming.push_back(incoming);
+	}
+
+	replaced_merge_block->ir.phi.push_back(std::move(phi));
 }
 
 void CFGStructurizer::rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impossible_merge_target,
@@ -3114,7 +3144,7 @@ void CFGStructurizer::rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impo
 	auto *dominated_merge = analysis.dominated_merge;
 
 	auto *ladder_break = pool.create_node();
-	ladder_break->name = node->name + ".transposed-merge.break";
+	ladder_break->name = node->name + ".transposed-merge-inner.break";
 	ladder_break->ir.terminator.type = Terminator::Type::Branch;
 	ladder_break->ir.terminator.direct_block = impossible_merge_target;
 	ladder_break->immediate_post_dominator = impossible_merge_target;
@@ -3122,7 +3152,7 @@ void CFGStructurizer::rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impo
 	ladder_break->backward_post_visit_order = impossible_merge_target->backward_post_visit_order;
 
 	auto *ladder_selection = pool.create_node();
-	ladder_selection->name = node->name + ".transposed-merge";
+	ladder_selection->name = node->name + ".transposed-merge-inner";
 	ladder_selection->forward_post_visit_order = impossible_merge_target->forward_post_visit_order;
 	ladder_selection->backward_post_visit_order = impossible_merge_target->backward_post_visit_order;
 	ladder_selection->immediate_post_dominator = merge;
