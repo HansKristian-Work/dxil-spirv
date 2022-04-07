@@ -5360,7 +5360,12 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		else if (auto *inst = llvm::dyn_cast<llvm::SwitchInst>(instruction))
 		{
 			node->ir.terminator.type = Terminator::Type::Switch;
-			node->ir.terminator.default_node = bb_map[inst->getDefaultDest()]->node;
+
+			Terminator::Case default_case = {};
+			default_case.is_default = true;
+			default_case.node = bb_map[inst->getDefaultDest()]->node;
+			node->ir.terminator.cases.push_back(default_case);
+
 			node->ir.terminator.conditional_id = get_id_for_value(inst->getCondition());
 			for (auto itr = inst->case_begin(); itr != inst->case_end(); ++itr)
 			{
