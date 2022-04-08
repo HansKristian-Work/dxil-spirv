@@ -154,6 +154,45 @@ bool CFGNode::can_backtrace_to(const CFGNode *parent) const
 	return can_backtrace_to(parent, node_cache);
 }
 
+bool CFGNode::post_dominates_any_work(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const
+{
+	// If we reached this node before and didn't terminate, it must have returned false.
+	if (node_cache.count(parent))
+		return false;
+	node_cache.insert(parent);
+
+	// This is not a dummy block, we have an answer.
+	if (!parent->ir.operations.empty() || !parent->ir.phi.empty())
+		return post_dominates(parent);
+
+	for (auto *p : parent->pred)
+		if (post_dominates_any_work(p, node_cache))
+			return true;
+
+	return false;
+}
+
+bool CFGNode::post_dominates_any_work() const
+{
+	auto *start_node = this;
+	// Trivial back-trace as far as we can go.
+	while (start_node->pred.size() == 1 &&
+	       start_node->ir.operations.empty() && start_node->ir.phi.empty() &&
+	       start_node->post_dominates(start_node->pred.front()))
+	{
+		start_node = start_node->pred.front();
+	}
+
+	if (!start_node->ir.operations.empty() || !start_node->ir.phi.empty())
+		return true;
+
+	UnorderedSet<const CFGNode *> node_cache;
+	for (auto *p : start_node->pred)
+		if (start_node->post_dominates_any_work(p, node_cache))
+			return true;
+	return false;
+}
+
 const CFGNode *CFGNode::get_innermost_loop_header_for(const CFGNode *other) const
 {
 	while (this != other)

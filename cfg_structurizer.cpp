@@ -1845,20 +1845,6 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 
 	if (escaping_path && node->ir.operations.empty() && node->ir.phi.empty())
 	{
-		bool post_dominates_nothing = true;
-		for (auto *pred : node->pred)
-		{
-			// Skip completely useless ladder blocks when we consider this case.
-			while (pred->pred.size() == 1 && pred->ir.operations.empty() && pred->ir.phi.empty())
-				pred = pred->pred.front();
-
-			if (node->post_dominates(pred))
-			{
-				post_dominates_nothing = false;
-				break;
-			}
-		}
-
 		// If we post-dominate nothing useful or do nothing useful ourselves,
 		// this is a good indication we're a common escape edge ladder block.
 		// This can happen if we have a graph of:
@@ -1870,7 +1856,7 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 		// C -> node
 		// node -> merge
 		// This super jank diamond pattern will break the heuristics.
-		if (post_dominates_nothing)
+		if (!node->post_dominates_any_work())
 			return true;
 	}
 

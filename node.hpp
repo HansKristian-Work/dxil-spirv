@@ -99,6 +99,8 @@ private:
 	CFGNode *get_immediate_dominator_loop_header();
 	bool can_backtrace_to(const CFGNode *parent) const;
 	bool can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
+	bool post_dominates_any_work() const;
+	bool post_dominates_any_work(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
