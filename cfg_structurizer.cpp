@@ -3215,7 +3215,8 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			auto *common_break_target = find_common_post_dominator(result.non_dominated_exit);
 			if (common_break_target && common_break_target != merge &&
 			    common_break_target->reaches_domination_frontier_before_merge(merge) &&
-			    !query_reachability(*dominated_merge, *common_break_target))
+			    !query_reachability(*dominated_merge, *common_break_target) &&
+			    !query_reachability(*common_break_target, *dominated_merge))
 			{
 				impossible_merge_target = common_break_target;
 			}
