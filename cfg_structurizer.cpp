@@ -2716,6 +2716,14 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				idom = header;
 		}
 
+		// Similar, but also check if we have associated ladder blocks with the idom.
+		if (!idom->pred_back_edge)
+		{
+			auto *inner_loop_header = entry_block->get_innermost_loop_header_for(idom);
+			if (inner_loop_header && inner_loop_header->loop_ladder_block == node)
+				idom = const_cast<CFGNode *>(inner_loop_header);
+		}
+
 		if (pass == 0)
 		{
 			// Check that we're not merging ourselves into the aether.
@@ -2817,7 +2825,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				//LOGI("Loop merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(loop), loop->name.c_str(),
 				//     static_cast<const void *>(node), node->name.c_str());
 			}
-			else if (idom->loop_merge_block != node)
+			else if (idom->loop_merge_block != node && idom->loop_ladder_block != node)
 			{
 				auto *selection_idom = create_helper_succ_block(idom);
 				// If we split the loop header into the loop header -> selection merge header,
@@ -3215,7 +3223,8 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			auto *common_break_target = find_common_post_dominator(result.non_dominated_exit);
 			if (common_break_target && common_break_target != merge &&
 			    common_break_target->reaches_domination_frontier_before_merge(merge) &&
-			    !query_reachability(*dominated_merge, *common_break_target))
+			    !query_reachability(*dominated_merge, *common_break_target) &&
+			    !query_reachability(*common_break_target, *dominated_merge))
 			{
 				impossible_merge_target = common_break_target;
 			}
