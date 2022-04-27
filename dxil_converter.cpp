@@ -4679,21 +4679,46 @@ spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_ty
 
 bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction)
 {
-	PHI phi;
-	phi.id = get_id_for_value(&instruction);
-	phi.type_id = get_type_id(instruction.getType());
-
 	unsigned count = instruction.getNumIncomingValues();
-	for (unsigned i = 0; i < count; i++)
+
+	if (count == 1)
 	{
-		IncomingValue incoming = {};
-		incoming.block = bb_map[instruction.getIncomingBlock(i)]->node;
-		auto *value = instruction.getIncomingValue(i);
-		incoming.id = get_id_for_value(value);
-		phi.incoming.push_back(incoming);
+		// Degenerate PHI. Seems to happen in some bizarre cases with lcssa passes?
+		auto *value = instruction.getIncomingValue(0);
+		rewrite_value(&instruction, get_id_for_value(value));
+
+		// This PHI node can actually be pointer or descriptor for whatever reason,
+		// so inherit any such mappings.
+		{
+			auto itr = handle_to_storage_class.find(value);
+			if (itr != handle_to_storage_class.end())
+				handle_to_storage_class[&instruction] = itr->second;
+		}
+
+		{
+			auto itr = handle_to_root_member_offset.find(value);
+			if (itr != handle_to_root_member_offset.end())
+				handle_to_root_member_offset[&instruction] = itr->second;
+		}
+	}
+	else
+	{
+		PHI phi;
+		phi.id = get_id_for_value(&instruction);
+		phi.type_id = get_type_id(instruction.getType());
+
+		for (unsigned i = 0; i < count; i++)
+		{
+			IncomingValue incoming = {};
+			incoming.block = bb_map[instruction.getIncomingBlock(i)]->node;
+			auto *value = instruction.getIncomingValue(i);
+			incoming.id = get_id_for_value(value);
+			phi.incoming.push_back(incoming);
+		}
+
+		block->ir.phi.push_back(std::move(phi));
 	}
 
-	block->ir.phi.push_back(std::move(phi));
 	return true;
 }
 
