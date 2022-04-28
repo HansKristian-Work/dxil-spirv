@@ -784,12 +784,15 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 	builder.setBuildPoint(bb);
 
-	spv::Block *fake_incoming_block = nullptr;
+	spv::Block *fake_loop_block = nullptr;
+
+	// Break-like loops might not have a continue block.
+	// Infinite loops won't have merge blocks.
 	if (node->ir.merge_info.merge_type == MergeType::Loop &&
-	    node->ir.merge_info.merge_block &&
-	    !node->ir.merge_info.continue_block)
+	    (int(node->ir.merge_info.merge_block != nullptr) +
+	     int(node->ir.merge_info.continue_block != nullptr) == 1))
 	{
-		fake_incoming_block = new spv::Block(builder.getUniqueId(), *active_function);
+		fake_loop_block = new spv::Block(builder.getUniqueId(), *active_function);
 	}
 
 	// Emit phi nodes.
@@ -805,12 +808,12 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			phi_op->addIdOperand(incoming.block->id);
 		}
 
-		if (fake_incoming_block)
+		if (fake_loop_block && !node->ir.merge_info.continue_block)
 		{
-			builder.setBuildPoint(fake_incoming_block);
+			builder.setBuildPoint(fake_loop_block);
 			phi_op->addIdOperand(builder.createUndefined(phi.type_id));
 			builder.setBuildPoint(bb);
-			phi_op->addIdOperand(fake_incoming_block->getId());
+			phi_op->addIdOperand(fake_loop_block->getId());
 		}
 
 		bb->addInstruction(std::move(phi_op));
@@ -947,13 +950,21 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else if (ir.merge_info.merge_block)
 		{
-			auto *continue_bb = fake_incoming_block;
+			auto *continue_bb = fake_loop_block;
 			active_function->addBlock(continue_bb);
 			builder.setBuildPoint(continue_bb);
 			builder.createBranch(get_spv_block(node));
 			builder.setBuildPoint(bb);
 			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block), continue_bb, 0);
-			break;
+		}
+		else if (ir.merge_info.continue_block)
+		{
+			auto *merge_bb = fake_loop_block;
+			active_function->addBlock(merge_bb);
+			builder.setBuildPoint(merge_bb);
+			builder.createUnreachable();
+			builder.setBuildPoint(bb);
+			builder.createLoopMerge(merge_bb, get_spv_block(ir.merge_info.continue_block), 0);
 		}
 		break;
 
