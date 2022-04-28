@@ -193,43 +193,6 @@ bool CFGNode::post_dominates_any_work() const
 	return false;
 }
 
-const CFGNode *CFGNode::get_innermost_loop_header_for(const CFGNode *other) const
-{
-	while (this != other)
-	{
-		// Entry block case.
-		if (other->pred.empty())
-			break;
-
-		// Found a loop header. This better be the one.
-		if (other->pred_back_edge)
-			break;
-
-		assert(other->immediate_dominator);
-		other = other->immediate_dominator;
-	}
-
-	return other;
-}
-
-bool CFGNode::is_innermost_loop_header_for(const CFGNode *other) const
-{
-	return this == get_innermost_loop_header_for(other);
-}
-
-bool CFGNode::branchless_path_to(const CFGNode *to) const
-{
-	const auto *node = this;
-	while (node != to)
-	{
-		if (node->succ.size() != 1 || node->succ_back_edge)
-			return false;
-		node = node->succ.front();
-	}
-
-	return true;
-}
-
 bool CFGNode::post_dominates(const CFGNode *start_node) const
 {
 	while (start_node != this)

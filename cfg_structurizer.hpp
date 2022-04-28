@@ -108,6 +108,9 @@ private:
 	void fixup_broken_selection_merges(unsigned pass);
 	bool find_switch_blocks(unsigned pass);
 	static CFGNode *find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator);
+	const CFGNode *get_innermost_loop_header_for(const CFGNode *node) const;
+	const CFGNode *get_innermost_loop_header_for(const CFGNode *header, const CFGNode *node) const;
+	bool loop_exit_supports_infinite_loop(const CFGNode *header, const CFGNode *loop_exit) const;
 
 	void split_merge_blocks();
 	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;

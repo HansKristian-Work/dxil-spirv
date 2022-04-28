@@ -1777,7 +1777,7 @@ bool CFGStructurizer::control_flow_is_escaping_from_loop(const CFGNode *node, co
 	// - Continue block cannot reach node.
 	// - All post-domination frontiers can reach the continue block, meaning that at some point control flow
 	//   decided to break out of the loop construct.
-	auto *innermost_loop_header = entry_block->get_innermost_loop_header_for(node);
+	auto *innermost_loop_header = get_innermost_loop_header_for(node);
 	if (innermost_loop_header && innermost_loop_header->pred_back_edge)
 	{
 		bool dominates_merge = node->dominates(merge);
@@ -2160,7 +2160,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	CFGNode *inner_continue_succ = nullptr;
 	bool ladder_to_dominates_continue = false;
 	bool break_post_dominates_ladder_to = false;
-	auto *innermost_loop_header = entry_block->get_innermost_loop_header_for(header);
+	auto *innermost_loop_header = get_innermost_loop_header_for(header);
 	if (innermost_loop_header && innermost_loop_header->pred_back_edge)
 		inner_continue_block = innermost_loop_header->pred_back_edge;
 	if (inner_continue_block && inner_continue_block->succ.size() == 1)
@@ -2710,7 +2710,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 		// Similar, but also check if we have associated ladder blocks with the idom.
 		if (!idom->pred_back_edge)
 		{
-			auto *inner_loop_header = entry_block->get_innermost_loop_header_for(idom);
+			auto *inner_loop_header = get_innermost_loop_header_for(idom);
 			if (inner_loop_header && inner_loop_header->loop_ladder_block == node)
 				idom = const_cast<CFGNode *>(inner_loop_header);
 		}
@@ -2837,10 +2837,52 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 	}
 }
 
+const CFGNode *CFGStructurizer::get_innermost_loop_header_for(const CFGNode *header, const CFGNode *other) const
+{
+	auto *node = other;
+
+	while (header != other)
+	{
+		// Entry block case.
+		if (other->pred.empty())
+			break;
+
+		// Found a loop header. This better be the one.
+		// Detect false positive if back-edge can reach the node, this means we just skip over
+		// the loop. We want to detect loops in a structured sense.
+		// Breaking constructs should still detect the loop header as we'd expect.
+		if (other->pred_back_edge && !query_reachability(*other->pred_back_edge, *node))
+			break;
+
+		assert(other->immediate_dominator);
+		other = other->immediate_dominator;
+	}
+
+	return other;
+}
+
+const CFGNode *CFGStructurizer::get_innermost_loop_header_for(const CFGNode *other) const
+{
+	return get_innermost_loop_header_for(entry_block, other);
+}
+
+bool CFGStructurizer::loop_exit_supports_infinite_loop(const CFGNode *header, const CFGNode *loop_exit) const
+{
+	auto *inner_header = get_innermost_loop_header_for(header, loop_exit);
+	// A loop exit can exit out to an outer scope such that inner_header dominates the header.
+	// If there is no inner loop we can transform the loop exit into a merge block quite easily
+	// and avoid the infinite loop.
+	if (inner_header->dominates(header))
+		return false;
+
+	// We have a candidate. If the candidates dominates all reachable exits, there is never a need to merge later.
+	return loop_exit->dominates_all_reachable_exits();
+}
+
 CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode &header, const CFGNode &node) const
 {
 	// If there exists an inner loop which dominates this exit, we treat it as an inner loop exit.
-	const CFGNode *innermost_loop_header = header.get_innermost_loop_header_for(&node);
+	const CFGNode *innermost_loop_header = get_innermost_loop_header_for(&header, &node);
 	bool is_innermost_loop_header = &header == innermost_loop_header;
 
 	if (header.dominates(&node) && node.dominates_all_reachable_exits())
