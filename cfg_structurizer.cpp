@@ -2655,15 +2655,6 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 	return modified_cfg;
 }
 
-bool CFGStructurizer::merge_candidate_is_on_loop_breaking_path(const CFGNode *node) const
-{
-	return node->pred.size() >= 2 && node->succ.size() == 1 &&
-	       !node->dominates(node->succ.front()) &&
-	       node->succ.front()->post_dominates(node) &&
-	       control_flow_is_escaping_from_loop(node, node->succ.front()) &&
-	       !node->post_dominates_perfect_structured_construct();
-}
-
 bool CFGStructurizer::merge_candidate_is_on_breaking_path(const CFGNode *node) const
 {
 	return node->pred.size() >= 2 && node->succ.size() == 1 &&
