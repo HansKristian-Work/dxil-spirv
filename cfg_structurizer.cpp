@@ -3505,7 +3505,27 @@ void CFGStructurizer::find_loops()
 		auto &inner_dominated_exit = result.inner_dominated_exit;
 		auto &non_dominated_exit = result.non_dominated_exit;
 
-		if (dominated_exit.empty() && inner_dominated_exit.empty() && non_dominated_exit.empty())
+		// Detect infinite loop with an exit which is only in inner loop construct.
+		// It is impossible to construct a merge block in this case since the merge targets,
+		// so just merge to unreachable.
+		bool force_infinite_loop = false;
+		if (node->pred_back_edge->succ.empty())
+		{
+			force_infinite_loop = true;
+			for (auto *e : result.dominated_exit)
+				force_infinite_loop = force_infinite_loop && loop_exit_supports_infinite_loop(node, e);
+			for (auto *e : result.non_dominated_exit)
+				force_infinite_loop = force_infinite_loop && loop_exit_supports_infinite_loop(node, e);
+			for (auto *e : result.inner_dominated_exit)
+				force_infinite_loop = force_infinite_loop && loop_exit_supports_infinite_loop(node, e);
+			for (auto *e : result.direct_exits)
+				force_infinite_loop = force_infinite_loop && loop_exit_supports_infinite_loop(node, e);
+			for (auto *e : result.inner_direct_exits)
+				force_infinite_loop = force_infinite_loop && loop_exit_supports_infinite_loop(node, e);
+		}
+
+		if (force_infinite_loop ||
+		    (dominated_exit.empty() && inner_dominated_exit.empty() && non_dominated_exit.empty()))
 		{
 			// There can be zero loop exits, i.e. infinite loop. This means we have no merge block.
 			// We will invent a merge block to satisfy SPIR-V validator, and declare it as unreachable.
