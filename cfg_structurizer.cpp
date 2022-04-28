@@ -3387,7 +3387,7 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 
 	// If there are no direct exists, treat inner direct exists as direct exits.
 	if (result.direct_exits.empty())
-		result.direct_exits = std::move(result.inner_direct_exits);
+		std::swap(result.direct_exits, result.inner_direct_exits);
 
 	// A direct exit can be considered a dominated exit if there are no better candidates.
 	if (result.dominated_exit.empty() && !result.direct_exits.empty())
