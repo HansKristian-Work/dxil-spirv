@@ -42,20 +42,38 @@ bool MemoryStream::read(void *buffer, size_t size)
 	return true;
 }
 
-bool MemoryStream::read_string(String &str)
+const void *MemoryStream::map_read(size_t size)
 {
-	str.clear();
+	if (blob_offset + size > blob_size)
+		return nullptr;
 
-	for (;;)
+	const void *mapped = blob + blob_offset;
+	blob_offset += size;
+	return mapped;
+}
+
+bool MemoryStream::map_string_iterate(const char *&str)
+{
+	// Strings are C strings and can be mapped 1:1.
+	// Just need to verify they terminate properly.
+	str = reinterpret_cast<const char *>(blob + blob_offset);
+	char c;
+
+	do
 	{
-		char c;
 		if (!read(c))
 			return false;
 		else if (c == '\0')
-			return true;
-		else
-			str += c;
-	}
+			break;
+	} while (c != '\0');
+
+	return true;
+}
+
+bool MemoryStream::map_string_absolute(const char *&str, size_t offset) const
+{
+	auto substream = create_substream(offset);
+	return substream.map_string_iterate(str);
 }
 
 bool MemoryStream::seek(size_t new_offset)
@@ -74,7 +92,7 @@ bool MemoryStream::skip(size_t count)
 
 MemoryStream MemoryStream::create_substream(size_t offset, size_t size) const
 {
-	if (offset + size > blob_size)
+	if (offset >= blob_size || offset + size > blob_size)
 		return { nullptr, 0 };
 	else
 		return { blob + offset, size };
@@ -82,7 +100,7 @@ MemoryStream MemoryStream::create_substream(size_t offset, size_t size) const
 
 MemoryStream MemoryStream::create_substream(size_t offset) const
 {
-	if (offset > blob_size)
+	if (offset >= blob_size)
 		return { nullptr, 0 };
 	else
 		return { blob + offset, blob_size - offset };

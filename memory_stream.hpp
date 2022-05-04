@@ -28,6 +28,7 @@ class MemoryStream
 {
 public:
 	MemoryStream(const void *blob, size_t size);
+	MemoryStream() = default;
 
 	void reset();
 
@@ -37,8 +38,17 @@ public:
 		return read(&buffer, sizeof(T));
 	}
 
+	const void *map_read(size_t byte_size);
+
+	template <typename T>
+	const T *map_read(size_t byte_size)
+	{
+		return static_cast<const T *>(map_read(byte_size));
+	}
+
 	bool read(void *buffer, size_t size);
-	bool read_string(String &str);
+	bool map_string_iterate(const char *&str);
+	bool map_string_absolute(const char *&str, size_t offset) const;
 	bool seek(size_t offset);
 	bool skip(size_t count);
 
@@ -48,8 +58,8 @@ public:
 	MemoryStream create_substream(size_t offset) const;
 
 private:
-	const uint8_t *blob;
-	size_t blob_size;
+	const uint8_t *blob = nullptr;
+	size_t blob_size = 0;
 	size_t blob_offset = 0;
 };
 } // namespace dxil_spv

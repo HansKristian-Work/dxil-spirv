@@ -1,0 +1,15 @@
+RaytracingShaderConfig sconf = { 80, 60 };
+RaytracingPipelineConfig pconf0 = { 4 };
+RaytracingPipelineConfig1 pconf1 = { 5, RAYTRACING_PIPELINE_FLAG_SKIP_TRIANGLES };
+// DXC specifies the typo :V
+StateObjectConfig soc = { STATE_OBJECT_FLAGS_ALLOW_LOCAL_DEPENDENCIES_ON_EXTERNAL_DEFINITONS };
+TriangleHitGroup tri_hg = { "a", "b" };
+TriangleHitGroup tri_hg2 = { "", "b" };
+ProceduralPrimitiveHitGroup aabb_hg = { "c", "d", "e" };
+SubobjectToExportsAssociation assoc1 = { "A", "foo;bar;meow;nyaa;frog" };
+SubobjectToExportsAssociation assoc2 = { "B", "meep;frog" };
+
+[shader("raygeneration")]
+void main()
+{
+}

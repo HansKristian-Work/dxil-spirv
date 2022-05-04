@@ -99,6 +99,24 @@ enum class RuntimeDataPartType : uint32_t
 	SubobjectTable = 6
 };
 
+enum class SubobjectKind : uint32_t
+{
+	StateObjectConfig = 0,
+	GlobalRootSignature = 1,
+	LocalRootSignature = 2,
+	SubobjectToExportsAssociation = 8,
+	RaytracingShaderConfig = 9,
+	RaytracingPipelineConfig = 10,
+	HitGroup = 11,
+	RaytracingPipelineConfig1 = 12
+};
+
+enum class HitGroupType : uint32_t
+{
+	Triangle = 0,
+	Procedural = 1
+};
+
 enum class ComponentType : uint8_t
 {
 	Invalid = 0,
