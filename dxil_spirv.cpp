@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <vector>
 
 #include "dxil_spirv_c.h"
@@ -987,6 +988,96 @@ int main(int argc, char **argv)
 			}
 			else
 				LOGE("Failed to open %s.\n", args.output_path.c_str());
+		}
+	}
+
+	// Dump debug output of RDAT objects if we have them.
+	if (args.glsl || args.emit_asm)
+	{
+		unsigned num_subobjects = dxil_spv_parsed_blob_get_num_rdat_subobjects(blob);
+		if (num_subobjects > 0)
+		{
+			final_output += "\n#if 0\n==== RDAT ====\n";
+			for (unsigned i = 0; i < num_subobjects; i++)
+			{
+				dxil_spv_rdat_subobject obj;
+				dxil_spv_parsed_blob_get_rdat_subobject(blob, i, &obj);
+				switch (obj.kind)
+				{
+				case DXIL_SPV_RDAT_SUBOBJECT_KIND_STATE_OBJECT_CONFIG:
+					final_output += "ShaderConfig ";
+					final_output += obj.subobject_name;
+					final_output += " = { flags = ";
+					final_output += std::to_string(obj.args[0]);
+					final_output += " };\n";
+					break;
+
+				case DXIL_SPV_RDAT_SUBOBJECT_KIND_RAYTRACING_SHADER_CONFIG:
+					final_output += "ShaderConfig ";
+					final_output += obj.subobject_name;
+					final_output += " = { maxPayloadSize = ";
+					final_output += std::to_string(obj.args[0]);
+					final_output += ", maxAttributeSize = ";
+					final_output += std::to_string(obj.args[1]);
+					final_output += " };\n";
+					break;
+
+				case DXIL_SPV_RDAT_SUBOBJECT_KIND_RAYTRACING_PIPELINE_CONFIG:
+				case DXIL_SPV_RDAT_SUBOBJECT_KIND_RAYTRACING_PIPELINE_CONFIG1:
+					final_output += "RaytracingPipelineConfig1 ";
+					final_output += obj.subobject_name;
+					final_output += " = { maxRecursion = ";
+					final_output += std::to_string(obj.args[0]);
+					final_output += ", flags = ";
+					final_output += std::to_string(obj.args[1]);
+					final_output += " };\n";
+					break;
+
+				case DXIL_SPV_RDAT_SUBOBJECT_KIND_GLOBAL_ROOT_SIGNATURE:
+				case DXIL_SPV_RDAT_SUBOBJECT_KIND_LOCAL_ROOT_SIGNATURE:
+					final_output += obj.kind == DXIL_SPV_RDAT_SUBOBJECT_KIND_GLOBAL_ROOT_SIGNATURE ?
+							"GlobalRootSignature " : "LocalRootSignature ";
+					final_output += obj.subobject_name;
+					final_output += " = { ";
+					final_output += std::to_string(obj.payload_size);
+					final_output += " bytes };\n";
+					break;
+
+				case DXIL_SPV_RDAT_SUBOBJECT_KIND_HIT_GROUP:
+					final_output += obj.hit_group_type == DXIL_SPV_HIT_GROUP_TYPE_TRIANGLE ?
+							"TriangleHitGroup " : "ProceduralHitGroup ";
+					final_output += obj.subobject_name;
+					assert(obj.num_exports == 3);
+					final_output += " = { ahit = \"";
+					final_output += obj.exports[0];
+					final_output += "\", chit = \"";
+					final_output += obj.exports[1];
+					final_output += "\", intersection = \"";
+					final_output += obj.exports[2];
+					final_output += "\" };\n";
+					break;
+
+				case DXIL_SPV_RDAT_SUBOBJECT_KIND_SUBOBJECT_TO_EXPORTS_ASSOCIATION:
+					final_output += "SubobjectToExportsAssociation ";
+					final_output += obj.subobject_name;
+					final_output += " = { ";
+					assert(obj.num_exports >= 1);
+					final_output += obj.exports[0];
+					final_output += ", { ";
+					for (unsigned j = 1; j < obj.num_exports; j++)
+					{
+						final_output += obj.exports[j];
+						if (j + 1 < obj.num_exports)
+							final_output += ", ";
+					}
+					final_output += " } };\n";
+					break;
+
+				default:
+					break;
+				}
+			}
+			final_output += "============\n#endif";
 		}
 	}
 

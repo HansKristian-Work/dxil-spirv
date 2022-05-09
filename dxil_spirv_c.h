@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 15
+#define DXIL_SPV_API_VERSION_MINOR 16
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -163,6 +163,26 @@ typedef enum dxil_spv_vulkan_descriptor_type
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INT_MAX = 0x7fffffff
 } dxil_spv_vulkan_descriptor_type;
 
+typedef enum dxil_spv_rdat_subobject_kind
+{
+	DXIL_SPV_RDAT_SUBOBJECT_KIND_STATE_OBJECT_CONFIG = 0,
+	DXIL_SPV_RDAT_SUBOBJECT_KIND_GLOBAL_ROOT_SIGNATURE = 1,
+	DXIL_SPV_RDAT_SUBOBJECT_KIND_LOCAL_ROOT_SIGNATURE = 2,
+	DXIL_SPV_RDAT_SUBOBJECT_KIND_SUBOBJECT_TO_EXPORTS_ASSOCIATION = 8,
+	DXIL_SPV_RDAT_SUBOBJECT_KIND_RAYTRACING_SHADER_CONFIG = 9,
+	DXIL_SPV_RDAT_SUBOBJECT_KIND_RAYTRACING_PIPELINE_CONFIG = 10,
+	DXIL_SPV_RDAT_SUBOBJECT_KIND_HIT_GROUP = 11,
+	DXIL_SPV_RDAT_SUBOBJECT_KIND_RAYTRACING_PIPELINE_CONFIG1 = 12,
+	DXIL_SPV_RDAT_SUBOBJECT_TYPE_INT_MAX = 0x7fffffff
+} dxil_spv_rdat_subobject_kind;
+
+typedef enum dxil_spv_hit_group_type
+{
+	DXIL_SPV_HIT_GROUP_TYPE_TRIANGLE = 0,
+	DXIL_SPV_HIT_GROUP_TYPE_PROCEDURAL = 1,
+	DXIL_SPV_HIT_GROUP_TYPE_INT_MAX = 0x7fffffff
+} dxil_spv_hit_group_type;
+
 typedef struct dxil_spv_d3d_binding
 {
 	dxil_spv_shader_stage stage;
@@ -247,6 +267,19 @@ typedef dxil_spv_bool (*dxil_spv_uav_remapper_cb)(void *userdata,
 typedef dxil_spv_bool (*dxil_spv_cbv_remapper_cb)(void *userdata,
                                                   const dxil_spv_d3d_binding *d3d_uav_binding,
                                                   dxil_spv_cbv_vulkan_binding *vulkan_uav_binding);
+
+typedef struct dxil_spv_rdat_subobject
+{
+	// See dxil_parser.hpp for details.
+	dxil_spv_rdat_subobject_kind kind;
+	const char *subobject_name;
+	dxil_spv_hit_group_type hit_group_type;
+	const char * const *exports;
+	unsigned num_exports;
+	unsigned args[2];
+	const void *payload;
+	size_t payload_size;
+} dxil_spv_rdat_subobject;
 
 typedef enum dxil_spv_log_level
 {
@@ -470,6 +503,12 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_scan_resources(
 		dxil_spv_cbv_remapper_cb cbv_remapper,
 		dxil_spv_uav_remapper_cb uav_remapper,
 		void *userdata);
+
+/* For DXR, API subobjects can be embedded inside the blob. */
+DXIL_SPV_PUBLIC_API unsigned dxil_spv_parsed_blob_get_num_rdat_subobjects(
+		dxil_spv_parsed_blob blob);
+DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_get_rdat_subobject(
+		dxil_spv_parsed_blob blob, unsigned index, dxil_spv_rdat_subobject *subobject);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob);
 /* Parsing API */

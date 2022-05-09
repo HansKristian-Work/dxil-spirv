@@ -23,6 +23,7 @@
 #include "llvm_bitcode_parser.hpp"
 #include "logging.hpp"
 #include "spirv_module.hpp"
+#include <string.h>
 #include <new>
 
 using namespace dxil_spv;
@@ -43,6 +44,7 @@ struct dxil_spv_parsed_blob_s
 	std::string disasm;
 #endif
 	Vector<uint8_t> dxil_blob;
+	Vector<RDATSubobject> rdat_subobjects;
 	Vector<String> entry_points;
 };
 
@@ -342,6 +344,7 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 	}
 
 	parsed->dxil_blob = std::move(parser.get_blob());
+	parsed->rdat_subobjects = std::move(parser.get_rdat_subobjects());
 
 	if (!parsed->bc.parse(parsed->dxil_blob.data(), parsed->dxil_blob.size()))
 	{
@@ -912,6 +915,26 @@ dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 
 	converter->active_table = false;
 	return DXIL_SPV_SUCCESS;
+}
+
+unsigned dxil_spv_parsed_blob_get_num_rdat_subobjects(dxil_spv_parsed_blob blob)
+{
+	return unsigned(blob->rdat_subobjects.size());
+}
+
+void dxil_spv_parsed_blob_get_rdat_subobject(
+		dxil_spv_parsed_blob blob, unsigned index, dxil_spv_rdat_subobject *subobject)
+{
+	auto &sub = blob->rdat_subobjects[index];
+	subobject->kind = static_cast<dxil_spv_rdat_subobject_kind>(sub.kind);
+	subobject->subobject_name = sub.subobject_name;
+	subobject->exports = sub.exports.data();
+	subobject->num_exports = unsigned(sub.exports.size());
+	subobject->payload = sub.payload;
+	subobject->payload_size = sub.payload_size;
+	subobject->hit_group_type = static_cast<dxil_spv_hit_group_type>(sub.hit_group_type);
+	static_assert(sizeof(subobject->args) == sizeof(sub.args), "Mismatch is args size.");
+	memcpy(subobject->args, sub.args, sizeof(sub.args));
 }
 
 dxil_spv_bool dxil_spv_converter_uses_subgroup_size(dxil_spv_converter converter)
