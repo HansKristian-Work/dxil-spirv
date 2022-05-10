@@ -33,7 +33,7 @@ def convert_spirv(in_path, out_path, args, stage):
     if args.preserve and os.path.exists(out_file):
         return
 
-    spirv_cross_cmd = [args.spirv_cross, '--vulkan-semantics', '--output', out_file, in_path, '--stage', stage]
+    spirv_cross_cmd = [args.spirv_cross, '--version', '460', '--vulkan-semantics', '--output', out_file, in_path, '--stage', stage]
     try:
         subprocess.check_call(spirv_cross_cmd, stderr = subprocess.DEVNULL)
     except subprocess.CalledProcessError as e:
@@ -60,6 +60,12 @@ def convert_shaders(args):
         results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'tese')))
         results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'geom')))
         results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'comp')))
+        results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rgen')))
+        results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rint')))
+        results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rahit')))
+        results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rchit')))
+        results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rmiss')))
+        results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rcall')))
 
     for res in results:
         res.get()
