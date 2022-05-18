@@ -93,7 +93,9 @@ public:
 
     assert(groupBitSize > 1 && "chunk size must be greater than 1");
     assert(groupBitSize <= 8 && "Only chunk sizes up to 8 supported");
-    byte scratch = 0;
+
+    // Avoid false positive warning.
+    byte scratch[8] = {};
 
     const byte hibit = 1 << (groupBitSize - 1);
     const byte lobits = hibit - 1;
@@ -101,14 +103,14 @@ public:
     uint64_t shift = 0;
     do
     {
-      ReadBits(groupBitSize, &scratch);
+      ReadBits(groupBitSize, scratch);
 
       assert(shift <= 63);
 
-      ret += (uint64_t(scratch & lobits) << shift);
+      ret += (uint64_t(scratch[0] & lobits) << shift);
 
       shift += uint64_t(groupBitSize - 1);
-    } while(scratch & hibit);
+    } while(scratch[0] & hibit);
 
 #ifndef NDEBUG
     // check for overflow of the return type
