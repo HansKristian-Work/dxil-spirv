@@ -1,4 +1,6 @@
-/* Copyright 2020-2021 Hans-Kristian Arntzen for Valve Corporation
+/* Copyright (c) 2019-2022 Hans-Kristian Arntzen for Valve Corporation
+ *
+ * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
