@@ -1,4 +1,6 @@
-/* Copyright (c) 2017-2019 Hans-Kristian Arntzen
+/* Copyright (c) 2019-2022 Hans-Kristian Arntzen for Valve Corporation
+ *
+ * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -19,8 +21,6 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
-// Reused from Granite.
 
 #pragma once
 

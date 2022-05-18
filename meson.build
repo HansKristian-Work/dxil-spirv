@@ -52,7 +52,6 @@ dxil_spirv_src = [
   'bc/disassembler.cpp',
 
   # spirv-module
-  'ir.cpp',
   'spirv_module.cpp',
   'descriptor_qa.cpp',
 
