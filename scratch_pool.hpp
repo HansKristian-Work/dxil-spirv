@@ -16,6 +16,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#ifndef DXIL_SPV_SCRATCH_POOL_H_
+#define DXIL_SPV_SCRATCH_POOL_H_
+
 #include "thread_local_allocator.hpp"
 
 namespace dxil_spv
@@ -78,3 +81,5 @@ private:
 	Vector<std::unique_ptr<T, MallocDeleter>> blocks;
 };
 } // namespace dxil_spv
+
+#endif
