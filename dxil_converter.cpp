@@ -700,6 +700,7 @@ spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, c
 		return entry.meta.coherent == meta.coherent &&
 		       entry.meta.nonreadable == meta.nonreadable &&
 		       entry.meta.nonwritable == meta.nonwritable &&
+		       entry.meta.size == meta.size &&
 		       entry.meta.stride == meta.stride &&
 		       entry.base_type_id == base_type_id;
 	});
@@ -753,9 +754,18 @@ spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, c
 
 	if (meta.stride > 0)
 	{
-		type_id = builder().makeRuntimeArray(type_id);
+		if (meta.size == 0)
+		{
+			type_id = builder().makeRuntimeArray(type_id);
+			type += "Array";
+		}
+		else
+		{
+			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(meta.size / meta.stride),
+			                                  meta.stride);
+			type += "CBVArray";
+		}
 		builder().addDecoration(type_id, spv::DecorationArrayStride, meta.stride);
-		type += "Array";
 	}
 
 	spv::Id block_type_id = builder().makeStructType({ type_id }, type.c_str());

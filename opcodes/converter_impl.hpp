@@ -341,6 +341,7 @@ struct Converter::Impl
 		bool nonreadable;
 		bool coherent;
 		uint8_t stride;
+		uint32_t size;
 	};
 
 	struct ResourceMeta

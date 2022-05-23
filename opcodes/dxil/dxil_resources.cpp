@@ -27,6 +27,7 @@
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
+#include "dxil_buffer.hpp"
 
 namespace dxil_spv
 {
@@ -1597,28 +1598,20 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 {
 	auto &builder = impl.builder();
 
-	spv::Id member_index = impl.get_id_for_value(instruction->getOperand(2));
 	bool scalar_load = instruction->getType()->getTypeID() != llvm::Type::TypeID::StructTyID;
 	unsigned scalar_alignment;
-	spv::Id byteaddr_id;
 	uint32_t alignment;
 
 	const llvm::Type *result_component_type;
 
 	if (!scalar_load)
 	{
-		auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-		mul_op->add_id(member_index);
-		mul_op->add_id(builder.makeUintConstant(16));
-		impl.add(mul_op);
-		byteaddr_id = mul_op->id;
 		result_component_type = instruction->getType()->getStructElementType(0);
 		scalar_alignment = get_type_scalar_alignment(impl, result_component_type);
 		alignment = 16;
 	}
 	else
 	{
-		byteaddr_id = member_index;
 		// DXIL emits the alignment, but we cannot trust it, DXC is completely buggy here and emits
 		// obviously bogus alignment values.
 		// Use scalar alignment.
@@ -1632,7 +1625,17 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 	spv::Id physical_type_id = 0;
 	get_physical_load_store_cast_info(impl, result_component_type, physical_type_id, value_cast_op);
 
-	spv::Id addr_vec = emit_u32x2_u32_add(impl, impl.get_id_for_value(instruction->getOperand(1)), byteaddr_id);
+	spv::Id index_id;
+
+	if (!scalar_load)
+	{
+		index_id = impl.get_id_for_value(instruction->getOperand(2));
+	}
+	else
+	{
+		unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, instruction->getType());
+		index_id = build_index_divider(impl, instruction->getOperand(2), addr_shift_log2, 1);
+	}
 
 	auto *result_type = instruction->getType();
 	unsigned physical_vecsize;
@@ -1659,15 +1662,20 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 
 	Converter::Impl::PhysicalPointerMeta ptr_meta = {};
 	ptr_meta.nonwritable = true;
+	ptr_meta.stride = alignment;
+	ptr_meta.size = 64 * 1024;
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(result_type_id, ptr_meta);
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
-	ptr_bitcast_op->add_id(addr_vec);
+	ptr_bitcast_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	impl.add(ptr_bitcast_op);
 
-	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, result_type_id));
+	// Out of bounds is undefined behavior for root descriptors.
+	// Allows a compiler to assume that the index is unsigned and multiplying by stride does not overflow 32-bit space.
+	auto *chain_op = impl.allocate(spv::OpInBoundsAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, result_type_id));
 	chain_op->add_id(ptr_bitcast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
+	chain_op->add_id(index_id);
 	impl.add(chain_op);
 
 	auto *load_op = impl.allocate(spv::OpLoad, instruction, result_type_id);
