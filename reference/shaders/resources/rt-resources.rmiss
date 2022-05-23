@@ -19,15 +19,12 @@ void main()
 {
     vec4 _28 = texelFetch(Tex[payload._m1 & 1u], ivec2(uvec2(0u)), int(0u));
     vec4 _39 = texelFetch(TexUnsized[payload._m1], ivec2(uvec2(0u)), int(0u));
-    vec4 _49 = _50;
+    vec4 _49;
     _49.x = _28.x + _39.x;
-    vec4 _51 = _49;
-    _51.y = _28.y + _39.y;
-    vec4 _52 = _51;
-    _52.z = _28.z + _39.z;
-    vec4 _53 = _52;
-    _53.w = _28.w + _39.w;
-    payload._m0 = _53;
+    _49.y = _28.y + _39.y;
+    _49.z = _28.z + _39.z;
+    _49.w = _28.w + _39.w;
+    payload._m0 = _49;
 }
 
 

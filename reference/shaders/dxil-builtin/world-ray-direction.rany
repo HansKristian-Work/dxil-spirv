@@ -19,13 +19,11 @@ vec3 _22;
 
 void main()
 {
-    vec3 _21 = _22;
+    vec3 _21;
     _21.x = gl_WorldRayDirectionEXT.x;
-    vec3 _26 = _21;
-    _26.y = gl_WorldRayDirectionEXT.y;
-    vec3 _30 = _26;
-    _30.z = gl_WorldRayDirectionEXT.z;
-    payload._m0 = _30;
+    _21.y = gl_WorldRayDirectionEXT.y;
+    _21.z = gl_WorldRayDirectionEXT.z;
+    payload._m0 = _21;
 }
 
 

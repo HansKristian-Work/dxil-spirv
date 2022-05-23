@@ -30,24 +30,18 @@ uvec4 _54;
 
 void main()
 {
-    vec4 _37 = _38;
+    vec4 _37;
     _37.x = uintBitsToFloat(SBT._m0[0u]);
-    vec4 _39 = _37;
-    _39.y = float(SBT._m0[1u]);
-    vec4 _40 = _39;
-    _40.z = float(int(SBT._m0[2u]));
-    vec4 _41 = _40;
-    _41.w = 1.0;
-    uvec4 _53 = _54;
+    _37.y = float(SBT._m0[1u]);
+    _37.z = float(int(SBT._m0[2u]));
+    _37.w = 1.0;
+    uvec4 _53;
     _53.x = uint(int(uintBitsToFloat(SBT._m1[0u])));
-    uvec4 _55 = _53;
-    _55.y = uint(int(uintBitsToFloat(SBT._m1[1u])));
-    uvec4 _56 = _55;
-    _56.z = SBT._m1[2u];
-    uvec4 _57 = _56;
-    _57.w = SBT._m0[2u];
-    payload._m0 = _41;
-    payload._m1 = _57;
+    _53.y = uint(int(uintBitsToFloat(SBT._m1[1u])));
+    _53.z = SBT._m1[2u];
+    _53.w = SBT._m0[2u];
+    payload._m0 = _37;
+    payload._m1 = _53;
 }
 
 

@@ -19,13 +19,11 @@ vec3 _59;
 
 void main()
 {
-    vec3 _58 = _59;
+    vec3 _58;
     _58.x = fma(gl_WorldToObjectEXT[2u].x, payload._m0.z, fma(gl_WorldToObjectEXT[1u].x, payload._m0.y, gl_WorldToObjectEXT[0u].x * payload._m0.x)) + gl_WorldToObjectEXT[3u].x;
-    vec3 _64 = _58;
-    _64.y = fma(gl_WorldToObjectEXT[2u].y, payload._m0.z, fma(gl_WorldToObjectEXT[1u].y, payload._m0.y, gl_WorldToObjectEXT[0u].y * payload._m0.x)) + gl_WorldToObjectEXT[3u].y;
-    vec3 _69 = _64;
-    _69.z = fma(gl_WorldToObjectEXT[2u].z, payload._m0.z, fma(gl_WorldToObjectEXT[1u].z, payload._m0.y, gl_WorldToObjectEXT[0u].z * payload._m0.x)) + gl_WorldToObjectEXT[3u].z;
-    payload._m0 = _69;
+    _58.y = fma(gl_WorldToObjectEXT[2u].y, payload._m0.z, fma(gl_WorldToObjectEXT[1u].y, payload._m0.y, gl_WorldToObjectEXT[0u].y * payload._m0.x)) + gl_WorldToObjectEXT[3u].y;
+    _58.z = fma(gl_WorldToObjectEXT[2u].z, payload._m0.z, fma(gl_WorldToObjectEXT[1u].z, payload._m0.y, gl_WorldToObjectEXT[0u].z * payload._m0.x)) + gl_WorldToObjectEXT[3u].z;
+    payload._m0 = _58;
 }
 
 

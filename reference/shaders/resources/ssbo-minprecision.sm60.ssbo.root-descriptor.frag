@@ -1,14 +1,15 @@
 #version 460
 #extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 
 layout(buffer_reference) buffer PhysicalPointerFloatNonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerFloatArray;
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloatNonWriteArray
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloatNonWriteArray
 {
     float value[];
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerFloatArray
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloatArray
 {
     float value[];
 };

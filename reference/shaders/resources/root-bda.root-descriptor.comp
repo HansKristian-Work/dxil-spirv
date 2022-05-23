@@ -9,6 +9,7 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteArray;
@@ -19,42 +20,42 @@ layout(buffer_reference) buffer PhysicalPointerHalf2Array;
 layout(buffer_reference) buffer PhysicalPointerHalf3Array;
 layout(buffer_reference) buffer PhysicalPointerHalf4Array;
 layout(buffer_reference) buffer PhysicalPointerUint2Array;
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
     vec4 value[];
 };
 
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
 {
     vec4 value[4096];
 };
 
-layout(buffer_reference, std430) coherent buffer PhysicalPointerFloat4CoherentArray
+layout(buffer_reference, buffer_reference_align = 4, std430) coherent buffer PhysicalPointerFloat4CoherentArray
 {
     vec4 value[];
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerHalfArray
+layout(buffer_reference, buffer_reference_align = 2, std430) buffer PhysicalPointerHalfArray
 {
     float16_t value[];
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerHalf2Array
+layout(buffer_reference, buffer_reference_align = 2, std430) buffer PhysicalPointerHalf2Array
 {
     f16vec2 value[];
 };
 
-layout(buffer_reference, scalar) buffer PhysicalPointerHalf3Array
+layout(buffer_reference, buffer_reference_align = 2, scalar) buffer PhysicalPointerHalf3Array
 {
     f16vec3 value[];
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerHalf4Array
+layout(buffer_reference, buffer_reference_align = 2, std430) buffer PhysicalPointerHalf4Array
 {
     f16vec4 value[];
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerUint2Array
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerUint2Array
 {
     uvec2 value[];
 };

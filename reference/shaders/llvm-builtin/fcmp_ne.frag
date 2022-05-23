@@ -5,7 +5,7 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    SV_Target = (!(A.x == A.y)) ? A.z : A.w;
+    SV_Target = (A.x != A.y) ? A.z : A.w;
 }
 
 

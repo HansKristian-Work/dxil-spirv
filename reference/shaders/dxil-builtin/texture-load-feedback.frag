@@ -72,14 +72,14 @@ void main()
     float _166 = float(sparseTexelsResidentARB(int(_159._m4)));
     uint _309;
     vec4 _310;
-    _309 = sparseTexelFetchARB(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), TEXCOORD.z, _310);
+    _309 = sparseTexelFetchARB(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z), _310);
     SparseTexel _169 = SparseTexel(_309, _310);
     vec4 _172 = _169._m1;
     _83 _177 = _83(_172.x, _172.y, _172.z, _172.w, _169._m0);
     float _184 = float(sparseTexelsResidentARB(int(_177._m4)));
     uint _311;
     vec4 _312;
-    _311 = sparseTexelFetchARB(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), TEXCOORD.w, _312);
+    _311 = sparseTexelFetchARB(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), _312);
     SparseTexel _187 = SparseTexel(_311, _312);
     vec4 _190 = _187._m1;
     _83 _195 = _83(_190.x, _190.y, _190.z, _190.w, _187._m0);

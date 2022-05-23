@@ -19,13 +19,11 @@ vec3 _18;
 
 void main()
 {
-    vec3 _17 = _18;
+    vec3 _17;
     _17.x = gl_RayTminEXT;
-    vec3 _19 = _17;
-    _19.y = gl_RayTminEXT;
-    vec3 _20 = _19;
-    _20.z = gl_RayTminEXT;
-    payload._m0 = _20;
+    _17.y = gl_RayTminEXT;
+    _17.z = gl_RayTminEXT;
+    payload._m0 = _17;
 }
 
 

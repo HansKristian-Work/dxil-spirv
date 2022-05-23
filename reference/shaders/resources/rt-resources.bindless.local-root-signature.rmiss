@@ -4,6 +4,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_samplerless_texture_functions : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 
 struct _37
 {
@@ -19,42 +20,42 @@ layout(buffer_reference) buffer PhysicalPointerUint3NonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerUint4NonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerFloatArray;
 layout(buffer_reference) buffer PhysicalPointerUintArray;
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
 {
     vec4 value[4096];
 };
 
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
     vec4 value[];
 };
 
-layout(buffer_reference, std430) readonly buffer PhysicalPointerUintNonWriteArray
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerUintNonWriteArray
 {
     uint value[];
 };
 
-layout(buffer_reference, std430) readonly buffer PhysicalPointerUint2NonWriteArray
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerUint2NonWriteArray
 {
     uvec2 value[];
 };
 
-layout(buffer_reference, scalar) readonly buffer PhysicalPointerUint3NonWriteArray
+layout(buffer_reference, buffer_reference_align = 4, scalar) readonly buffer PhysicalPointerUint3NonWriteArray
 {
     uvec3 value[];
 };
 
-layout(buffer_reference, std430) readonly buffer PhysicalPointerUint4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerUint4NonWriteArray
 {
     uvec4 value[];
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerFloatArray
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloatArray
 {
     float value[];
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerUintArray
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerUintArray
 {
     uint value[];
 };
@@ -126,15 +127,12 @@ void main()
     float _366 = uintBitsToFloat(PhysicalPointerUintArray(SBT._m5).value[_58]);
     float _367 = ((((((((((((((((_67.x + _80.x) + _99.x) + _119.x) + _32[nonuniformEXT(_53)]._m0[0u].x) + _32[nonuniformEXT(_146)]._m0[0u].x) + _169.x) + _182.x) + _194.value[1u].x) + _223.x) + _249.x) + _264.value[_58].x) + _285) + _300) + uintBitsToFloat(_311.value[_58].x)) + uintBitsToFloat(_329.value[_58].x)) + _350.value[_58]) + _366;
     float _368 = ((((((((((((((((_67.y + _80.y) + _99.y) + _119.y) + _32[nonuniformEXT(_53)]._m0[0u].y) + _32[nonuniformEXT(_146)]._m0[0u].y) + _169.y) + _182.y) + _194.value[1u].y) + _223.y) + _249.y) + _264.value[_58].y) + _285) + _301) + uintBitsToFloat(_311.value[_58].y)) + uintBitsToFloat(_329.value[_58].y)) + _350.value[_58]) + _366;
-    vec4 _371 = _372;
+    vec4 _371;
     _371.x = _367;
-    vec4 _373 = _371;
-    _373.y = _368;
-    vec4 _374 = _373;
-    _374.z = ((((((((((((((((_67.z + _80.z) + _99.z) + _119.z) + _32[nonuniformEXT(_53)]._m0[0u].z) + _32[nonuniformEXT(_146)]._m0[0u].z) + _169.z) + _182.z) + _194.value[1u].z) + _223.z) + _249.z) + _264.value[_58].z) + _285) + _300) + _320) + uintBitsToFloat(_329.value[_58].z)) + _350.value[_58]) + _366;
-    vec4 _375 = _374;
-    _375.w = ((((((((((((((((_67.w + _80.w) + _99.w) + _119.w) + _32[nonuniformEXT(_53)]._m0[0u].w) + _32[nonuniformEXT(_146)]._m0[0u].w) + _169.w) + _182.w) + _194.value[1u].w) + _223.w) + _249.w) + _264.value[_58].w) + _285) + _301) + _320) + uintBitsToFloat(_329.value[_58].w)) + _350.value[_58]) + _366;
-    payload._m0 = _375;
+    _371.y = _368;
+    _371.z = ((((((((((((((((_67.z + _80.z) + _99.z) + _119.z) + _32[nonuniformEXT(_53)]._m0[0u].z) + _32[nonuniformEXT(_146)]._m0[0u].z) + _169.z) + _182.z) + _194.value[1u].z) + _223.z) + _249.z) + _264.value[_58].z) + _285) + _300) + _320) + uintBitsToFloat(_329.value[_58].z)) + _350.value[_58]) + _366;
+    _371.w = ((((((((((((((((_67.w + _80.w) + _99.w) + _119.w) + _32[nonuniformEXT(_53)]._m0[0u].w) + _32[nonuniformEXT(_146)]._m0[0u].w) + _169.w) + _182.w) + _194.value[1u].w) + _223.w) + _249.w) + _264.value[_58].w) + _285) + _301) + _320) + uintBitsToFloat(_329.value[_58].w)) + _350.value[_58]) + _366;
+    payload._m0 = _371;
     PhysicalPointerFloatArray(SBT._m3).value[_58] = _367;
     PhysicalPointerFloatArray(SBT._m5).value[_58] = _368;
 }

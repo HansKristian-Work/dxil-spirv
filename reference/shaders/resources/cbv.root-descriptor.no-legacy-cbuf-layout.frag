@@ -9,21 +9,22 @@
 #endif
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 
 layout(buffer_reference) buffer PhysicalPointerFloatNonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerUint64NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerHalfNonWriteCBVArray;
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloatNonWriteCBVArray
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloatNonWriteCBVArray
 {
     float value[16384];
 };
 
-layout(buffer_reference, std430) readonly buffer PhysicalPointerUint64NonWriteCBVArray
+layout(buffer_reference, buffer_reference_align = 8, std430) readonly buffer PhysicalPointerUint64NonWriteCBVArray
 {
     uint64_t value[8192];
 };
 
-layout(buffer_reference, std430) readonly buffer PhysicalPointerHalfNonWriteCBVArray
+layout(buffer_reference, buffer_reference_align = 2, std430) readonly buffer PhysicalPointerHalfNonWriteCBVArray
 {
     float16_t value[32768];
 };

@@ -53,7 +53,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformArithmetic
-OpCapability DemoteToHelperInvocationEXT
+OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %8 %11
@@ -95,14 +95,14 @@ OpBranch %44
 OpSelectionMerge %49 None
 OpBranchConditional %21 %48 %45
 %48 = OpLabel
-OpDemoteToHelperInvocationEXT
+OpDemoteToHelperInvocation
 OpBranch %49
 %45 = OpLabel
 %23 = OpFOrdGreaterThan %20 %19 %24
 OpSelectionMerge %47 None
 OpBranchConditional %23 %46 %47
 %46 = OpLabel
-OpDemoteToHelperInvocationEXT
+OpDemoteToHelperInvocation
 OpBranch %47
 %47 = OpLabel
 OpBranch %49

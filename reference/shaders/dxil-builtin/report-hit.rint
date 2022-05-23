@@ -11,8 +11,9 @@ hitAttributeEXT _6 hit;
 
 void main()
 {
+    float _14 = gl_RayTmaxEXT;
     _6 _10;
-    _10._m0 = gl_RayTmaxEXT;
+    _10._m0 = _14;
     _6 _11;
     _11._m0 = gl_RayTminEXT;
     hit = _10;

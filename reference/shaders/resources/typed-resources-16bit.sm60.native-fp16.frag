@@ -52,10 +52,10 @@ void main()
     f16vec4 _143 = f16vec4(textureGather(sampler2D(_8, _46), vec2(UV.x, UV.y)));
     u16vec4 _156 = u16vec4(textureGather(isampler2D(_12, _46), vec2(UV.x, UV.y), int(1u)));
     u16vec4 _169 = u16vec4(textureGather(usampler2D(_16, _46), vec2(UV.x, UV.y), int(2u)));
-    vec4 _184 = vec4(texture(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5)));
-    float _185 = _184.x;
-    vec4 _200 = vec4(textureLod(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5), 0.0));
-    float _201 = _200.x;
+    mediump vec4 _184 = vec4(texture(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5)));
+    mediump float _185 = _184.x;
+    mediump vec4 _200 = vec4(textureLod(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5), 0.0));
+    mediump float _201 = _200.x;
     vec2 _214 = vec2(UV.x, UV.y);
     f16vec4 _216 = f16vec4(textureGather(sampler2DShadow(_8, _47), _214, 0.5));
     f16vec4 _227 = f16vec4(textureLod(sampler2D(_8, _46), vec2(UV.x, UV.y), 0.0));

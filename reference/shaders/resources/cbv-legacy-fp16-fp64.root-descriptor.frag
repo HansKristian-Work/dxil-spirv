@@ -9,6 +9,7 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_ARB_gpu_shader_int64 : require
 #extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 
 struct CBVComposite16x8
 {
@@ -24,12 +25,12 @@ struct CBVComposite16x8
 
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerUint642NonWriteCBVArray;
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
 {
     vec4 value[4096];
 };
 
-layout(buffer_reference, std430) readonly buffer PhysicalPointerUint642NonWriteCBVArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerUint642NonWriteCBVArray
 {
     u64vec2 value[4096];
 };

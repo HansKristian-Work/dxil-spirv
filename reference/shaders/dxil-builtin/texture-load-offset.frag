@@ -19,8 +19,8 @@ void main()
     vec4 _70 = texelFetchOffset(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z), ivec2(3, 4));
     vec4 _80 = texelFetchOffset(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), ivec2(-4, -3));
     vec4 _88 = texelFetchOffset(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), ivec3(-4, 2, 3));
-    vec4 _96 = texelFetchOffset(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), ivec2(2, 3), TEXCOORD.z);
-    vec4 _104 = texelFetchOffset(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), ivec2(4, 5), TEXCOORD.w);
+    vec4 _96 = texelFetchOffset(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), ivec2(2, 3), int(TEXCOORD.z));
+    vec4 _104 = texelFetchOffset(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), ivec2(4, 5), int(TEXCOORD.w));
     SV_Target.x = (((((_61.x + _57.x) + _70.x) + _80.x) + _88.x) + _96.x) + _104.x;
     SV_Target.y = (((((_61.y + _57.y) + _70.y) + _80.y) + _88.y) + _96.y) + _104.y;
 }
