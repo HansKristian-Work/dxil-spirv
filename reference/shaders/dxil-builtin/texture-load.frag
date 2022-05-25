@@ -24,8 +24,8 @@ void main()
     vec4 _85 = texelFetch(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z));
     vec4 _91 = texelFetch(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w));
     vec4 _98 = texelFetch(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w));
-    vec4 _104 = texelFetch(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), TEXCOORD.z);
-    vec4 _110 = texelFetch(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), TEXCOORD.w);
+    vec4 _104 = texelFetch(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z));
+    vec4 _110 = texelFetch(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w));
     vec4 _116 = imageLoad(_29, int(TEXCOORD.x));
     vec4 _121 = imageLoad(_32, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)));
     vec4 _127 = imageLoad(_35, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)));

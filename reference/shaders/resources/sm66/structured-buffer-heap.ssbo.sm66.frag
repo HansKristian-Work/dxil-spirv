@@ -78,8 +78,7 @@ void main()
     vec3 _156 = uintBitsToFloat(_22[INDEX + 2u]._m0[_91]);
     vec4 _165 = uintBitsToFloat(_28[INDEX + 3u]._m0[_95]);
     uint _174 = _33[INDEX + 4u]._m0[_83];
-    uvec2 _178 = _38[_112]._m0[_87];
-    vec2 _179 = uintBitsToFloat(_178);
+    vec2 _179 = uintBitsToFloat(_38[_112]._m0[_87]);
     uvec3 _185 = _43[INDEX + 6u]._m0[_91];
     vec3 _186 = uintBitsToFloat(_185);
     uvec4 _194 = _48[INDEX + 7u]._m0[_95];

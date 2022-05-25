@@ -67,10 +67,10 @@ void main()
     f16vec4 _225 = f16vec4(textureGather(sampler2D(_13[registers._m0], _62[registers._m2]), vec2(UV.x, UV.y)));
     u16vec4 _238 = u16vec4(textureGather(isampler2D(_18[_145], _62[registers._m2]), vec2(UV.x, UV.y), int(1u)));
     u16vec4 _251 = u16vec4(textureGather(usampler2D(_22[_139], _62[registers._m2]), vec2(UV.x, UV.y), int(2u)));
-    vec4 _266 = vec4(texture(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5)));
-    float _267 = _266.x;
-    vec4 _282 = vec4(textureLod(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5), 0.0));
-    float _283 = _282.x;
+    mediump vec4 _266 = vec4(texture(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5)));
+    mediump float _267 = _266.x;
+    mediump vec4 _282 = vec4(textureLod(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5), 0.0));
+    mediump float _283 = _282.x;
     vec2 _296 = vec2(UV.x, UV.y);
     f16vec4 _298 = f16vec4(textureGather(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), _296, 0.5));
     f16vec4 _309 = f16vec4(textureLod(sampler2D(_13[registers._m0], _62[registers._m2]), vec2(UV.x, UV.y), 0.0));

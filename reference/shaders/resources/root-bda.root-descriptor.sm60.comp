@@ -1,23 +1,24 @@
 #version 460
 #extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-struct AddCarry
+layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteArray;
+layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
+layout(buffer_reference) buffer PhysicalPointerFloat4CoherentArray;
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
-    uint _m0;
-    uint _m1;
+    vec4 value[];
 };
 
-layout(buffer_reference) buffer PhysicalPointerFloat4NonWrite;
-layout(buffer_reference) buffer PhysicalPointerFloat4Coherent;
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloat4NonWrite
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
 {
-    vec4 value;
+    vec4 value[4096];
 };
 
-layout(buffer_reference, std430) coherent buffer PhysicalPointerFloat4Coherent
+layout(buffer_reference, buffer_reference_align = 4, std430) coherent buffer PhysicalPointerFloat4CoherentArray
 {
-    vec4 value;
+    vec4 value[];
 };
 
 layout(push_constant, std430) uniform RootConstants
@@ -30,15 +31,9 @@ layout(push_constant, std430) uniform RootConstants
 
 void main()
 {
-    AddCarry _36;
-    _36._m0 = uaddCarry(registers._m1.x, (gl_GlobalInvocationID.x * 16u) + 0u, _36._m1);
-    PhysicalPointerFloat4NonWrite _41 = PhysicalPointerFloat4NonWrite(uvec2(_36._m0, registers._m1.y + _36._m1));
-    AddCarry _52;
-    _52._m0 = uaddCarry(registers._m0.x, gl_GlobalInvocationID.x * 16u, _52._m1);
-    PhysicalPointerFloat4NonWrite _57 = PhysicalPointerFloat4NonWrite(uvec2(_52._m0, registers._m0.y + _52._m1));
-    AddCarry _74;
-    _74._m0 = uaddCarry(registers._m2.x, (gl_GlobalInvocationID.x * 16u) + 0u, _74._m1);
-    PhysicalPointerFloat4Coherent(uvec2(_74._m0, registers._m2.y + _74._m1)).value = vec4(_57.value.x + _41.value.x, _57.value.y + _41.value.y, _57.value.z + _41.value.z, _57.value.w + _41.value.w);
+    PhysicalPointerFloat4NonWriteArray _31 = PhysicalPointerFloat4NonWriteArray(registers._m1);
+    PhysicalPointerFloat4NonWriteCBVArray _43 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0);
+    PhysicalPointerFloat4CoherentArray(registers._m2).value[gl_GlobalInvocationID.x] = vec4(_43.value[gl_GlobalInvocationID.x].x + _31.value[gl_GlobalInvocationID.x].x, _43.value[gl_GlobalInvocationID.x].y + _31.value[gl_GlobalInvocationID.x].y, _43.value[gl_GlobalInvocationID.x].z + _31.value[gl_GlobalInvocationID.x].z, _43.value[gl_GlobalInvocationID.x].w + _31.value[gl_GlobalInvocationID.x].w);
 }
 
 
@@ -47,7 +42,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 84
+; Bound: 62
 ; Schema: 0
 OpCapability Shader
 OpCapability PhysicalStorageBufferAddresses
@@ -58,23 +53,30 @@ OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
 OpName %7 "RootConstants"
 OpName %9 "registers"
-OpName %28 "PhysicalPointerFloat4NonWrite"
-OpMemberName %28 0 "value"
-OpName %35 "AddCarry"
-OpName %68 "PhysicalPointerFloat4Coherent"
-OpMemberName %68 0 "value"
+OpName %29 "PhysicalPointerFloat4NonWriteArray"
+OpMemberName %29 0 "value"
+OpName %41 "PhysicalPointerFloat4NonWriteCBVArray"
+OpMemberName %41 0 "value"
+OpName %55 "PhysicalPointerFloat4CoherentArray"
+OpMemberName %55 0 "value"
 OpDecorate %7 Block
 OpMemberDecorate %7 0 Offset 0
 OpMemberDecorate %7 1 Offset 8
 OpMemberDecorate %7 2 Offset 16
 OpMemberDecorate %7 3 Offset 24
 OpDecorate %22 BuiltIn GlobalInvocationId
-OpMemberDecorate %28 0 Offset 0
-OpDecorate %28 Block
-OpMemberDecorate %28 0 NonWritable
-OpMemberDecorate %68 0 Offset 0
-OpDecorate %68 Block
-OpMemberDecorate %68 0 Coherent
+OpDecorate %28 ArrayStride 16
+OpMemberDecorate %29 0 Offset 0
+OpDecorate %29 Block
+OpMemberDecorate %29 0 NonWritable
+OpDecorate %40 ArrayStride 16
+OpMemberDecorate %41 0 Offset 0
+OpDecorate %41 Block
+OpMemberDecorate %41 0 NonWritable
+OpDecorate %54 ArrayStride 16
+OpMemberDecorate %55 0 Offset 0
+OpDecorate %55 Block
+OpMemberDecorate %55 0 Coherent
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -92,17 +94,21 @@ OpMemberDecorate %68 0 Coherent
 %23 = OpTypePointer Input %5
 %26 = OpTypeFloat 32
 %27 = OpTypeVector %26 4
-%28 = OpTypeStruct %27
-%29 = OpTypePointer PhysicalStorageBuffer %28
-%31 = OpConstant %5 16
-%35 = OpTypeStruct %5 %5
-%42 = OpTypePointer PhysicalStorageBuffer %27
-%68 = OpTypeStruct %27
-%69 = OpTypePointer PhysicalStorageBuffer %68
+%28 = OpTypeRuntimeArray %27
+%29 = OpTypeStruct %28
+%30 = OpTypePointer PhysicalStorageBuffer %29
+%32 = OpTypePointer PhysicalStorageBuffer %27
+%39 = OpConstant %5 4096
+%40 = OpTypeArray %27 %39
+%41 = OpTypeStruct %40
+%42 = OpTypePointer PhysicalStorageBuffer %41
+%54 = OpTypeRuntimeArray %27
+%55 = OpTypeStruct %54
+%56 = OpTypePointer PhysicalStorageBuffer %55
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %82
-%82 = OpLabel
+OpBranch %60
+%60 = OpLabel
 %11 = OpAccessChain %10 %9 %12
 %13 = OpLoad %6 %11
 %14 = OpAccessChain %10 %9 %15
@@ -111,54 +117,28 @@ OpBranch %82
 %19 = OpLoad %6 %17
 %24 = OpAccessChain %23 %22 %18
 %25 = OpLoad %5 %24
-%30 = OpIMul %5 %25 %31
-%32 = OpIAdd %5 %30 %18
-%33 = OpCompositeExtract %5 %16 0
-%34 = OpCompositeExtract %5 %16 1
-%36 = OpIAddCarry %35 %33 %32
-%37 = OpCompositeExtract %5 %36 0
-%38 = OpCompositeExtract %5 %36 1
-%39 = OpIAdd %5 %34 %38
-%40 = OpCompositeConstruct %6 %37 %39
-%41 = OpBitcast %29 %40
-%43 = OpAccessChain %42 %41 %18
-%44 = OpLoad %27 %43 Aligned 4
-%45 = OpCompositeExtract %26 %44 0
-%46 = OpCompositeExtract %26 %44 1
-%47 = OpCompositeExtract %26 %44 2
-%48 = OpCompositeExtract %26 %44 3
-%49 = OpIMul %5 %25 %31
-%50 = OpCompositeExtract %5 %19 0
-%51 = OpCompositeExtract %5 %19 1
-%52 = OpIAddCarry %35 %50 %49
-%53 = OpCompositeExtract %5 %52 0
-%54 = OpCompositeExtract %5 %52 1
-%55 = OpIAdd %5 %51 %54
-%56 = OpCompositeConstruct %6 %53 %55
-%57 = OpBitcast %29 %56
-%58 = OpAccessChain %42 %57 %18
-%59 = OpLoad %27 %58 Aligned 16
-%60 = OpCompositeExtract %26 %59 0
-%61 = OpCompositeExtract %26 %59 1
-%62 = OpCompositeExtract %26 %59 2
-%63 = OpCompositeExtract %26 %59 3
-%64 = OpFAdd %26 %60 %45
-%65 = OpFAdd %26 %61 %46
-%66 = OpFAdd %26 %62 %47
-%67 = OpFAdd %26 %63 %48
-%70 = OpIMul %5 %25 %31
-%71 = OpIAdd %5 %70 %18
-%72 = OpCompositeExtract %5 %13 0
-%73 = OpCompositeExtract %5 %13 1
-%74 = OpIAddCarry %35 %72 %71
-%75 = OpCompositeExtract %5 %74 0
-%76 = OpCompositeExtract %5 %74 1
-%77 = OpIAdd %5 %73 %76
-%78 = OpCompositeConstruct %6 %75 %77
-%79 = OpBitcast %69 %78
-%80 = OpAccessChain %42 %79 %18
-%81 = OpCompositeConstruct %27 %64 %65 %66 %67
-OpStore %80 %81 Aligned 4
+%31 = OpBitcast %30 %16
+%33 = OpAccessChain %32 %31 %18 %25
+%34 = OpLoad %27 %33 Aligned 4
+%35 = OpCompositeExtract %26 %34 0
+%36 = OpCompositeExtract %26 %34 1
+%37 = OpCompositeExtract %26 %34 2
+%38 = OpCompositeExtract %26 %34 3
+%43 = OpBitcast %42 %19
+%44 = OpInBoundsAccessChain %32 %43 %18 %25
+%45 = OpLoad %27 %44 Aligned 16
+%46 = OpCompositeExtract %26 %45 0
+%47 = OpCompositeExtract %26 %45 1
+%48 = OpCompositeExtract %26 %45 2
+%49 = OpCompositeExtract %26 %45 3
+%50 = OpFAdd %26 %46 %35
+%51 = OpFAdd %26 %47 %36
+%52 = OpFAdd %26 %48 %37
+%53 = OpFAdd %26 %49 %38
+%57 = OpBitcast %56 %13
+%58 = OpAccessChain %32 %57 %18 %25
+%59 = OpCompositeConstruct %27 %50 %51 %52 %53
+OpStore %58 %59 Aligned 4
 OpReturn
 OpFunctionEnd
 #endif

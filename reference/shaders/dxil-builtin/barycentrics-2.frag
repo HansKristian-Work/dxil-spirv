@@ -22,7 +22,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability SampleRateShading
-OpCapability FragmentBarycentricNV
+OpCapability FragmentBarycentricKHR
 OpExtension "SPV_NV_fragment_shader_barycentric"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %10 %11 %12 %15 %17 %19
@@ -34,15 +34,15 @@ OpName %12 "ATTRIB_2"
 OpName %15 "SV_Barycentrics"
 OpName %17 "FOO"
 OpName %19 "SV_Target"
-OpDecorate %10 PerVertexNV
+OpDecorate %10 PerVertexKHR
 OpDecorate %10 Location 0
-OpDecorate %11 PerVertexNV
+OpDecorate %11 PerVertexKHR
 OpDecorate %11 Location 0
 OpDecorate %11 Component 1
-OpDecorate %12 PerVertexNV
+OpDecorate %12 PerVertexKHR
 OpDecorate %12 Location 0
 OpDecorate %12 Component 2
-OpDecorate %15 BuiltIn BaryCoordNV
+OpDecorate %15 BuiltIn BaryCoordKHR
 OpDecorate %15 Sample
 OpDecorate %17 Centroid
 OpDecorate %17 Location 1

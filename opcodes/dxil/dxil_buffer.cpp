@@ -53,10 +53,10 @@ bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Ty
 }
 
 bool raw_access_structured_can_vectorize(
-	Converter::Impl &impl, const llvm::Type *type,
-	const llvm::Value *index, const llvm::Value *byte_offset,
-	unsigned stride,
-	unsigned vecsize)
+		Converter::Impl &impl, const llvm::Type *type,
+		const llvm::Value *index, unsigned stride,
+		const llvm::Value *byte_offset,
+		unsigned vecsize)
 {
 	// vec3 vectorization requires scalar block layout always.
 	if (!impl.options.scalar_block_layout && vecsize == 3)
@@ -101,11 +101,11 @@ RawVecSize raw_access_structured_vectorize(
     const llvm::Value *byte_offset,
 	uint32_t mask)
 {
-	if (mask == 0xfu && raw_access_structured_can_vectorize(impl, type, index, byte_offset, stride, 4))
+	if (mask == 0xfu && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 4))
 		return RawVecSize::V4;
-	else if (mask == 0x7u && raw_access_structured_can_vectorize(impl, type, index, byte_offset, stride, 3))
+	else if (mask == 0x7u && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 3))
 		return RawVecSize::V3;
-	else if (mask == 0x3u && raw_access_structured_can_vectorize(impl, type, index, byte_offset, stride, 2))
+	else if (mask == 0x3u && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 2))
 		return RawVecSize::V2;
 	else
 		return RawVecSize::V1;
@@ -381,6 +381,41 @@ static spv::Id build_physical_pointer_address_for_raw_load_store(Converter::Impl
 	return emit_u32x2_u32_add(impl, ptr_id, byte_offset_id);
 }
 
+static spv::Id build_vectorized_physical_load_store_access(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                           unsigned vecsize, const llvm::Type *element_type)
+{
+	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[ptr_id];
+	unsigned mask = (1u << vecsize) - 1u;
+
+	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
+	// If we cannot do it trivially, fallback to raw pointer arithmetic.
+	bool can_vectorize = false;
+
+	if (meta.stride)
+	{
+		if (raw_access_structured_can_vectorize(impl, element_type,
+		                                        instruction->getOperand(2), meta.stride,
+		                                        instruction->getOperand(3), vecsize))
+		{
+			can_vectorize = true;
+		}
+	}
+	else if (raw_access_byte_address_can_vectorize(impl, element_type,
+	                                               instruction->getOperand(2), vecsize))
+	{
+		can_vectorize = true;
+	}
+
+	if (can_vectorize)
+	{
+		auto access = build_buffer_access(impl, instruction, 0, 0, element_type, mask);
+		return access.index_id;
+	}
+	else
+		return 0;
+}
+
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                   const Converter::Impl::PhysicalPointerMeta &ptr_meta,
                                                   uint32_t mask = 0, uint32_t alignment = 0)
@@ -408,15 +443,26 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	}
 
 	auto *element_type = instruction->getType()->getStructElementType(0);
+	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
+	// If we cannot do it trivially, fallback to raw pointer arithmetic.
+	spv::Id array_id = build_vectorized_physical_load_store_access(impl, instruction, vecsize, element_type);
+
 	spv::Id physical_type_id;
 	spv::Op value_cast_op;
 	get_physical_load_store_cast_info(impl, element_type, physical_type_id, value_cast_op);
 
 	if (vecsize > 1)
 		physical_type_id = builder.makeVectorType(physical_type_id, vecsize);
-	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(physical_type_id, ptr_meta);
 
-	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
+	auto tmp_ptr_meta = ptr_meta;
+	tmp_ptr_meta.stride = array_id ? vecsize * get_type_scalar_alignment(impl, element_type) : 0;
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(physical_type_id, tmp_ptr_meta);
+
+	spv::Id u64_ptr_id;
+	if (array_id)
+		u64_ptr_id = impl.get_id_for_value(instruction->getOperand(1));
+	else
+		u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(u64_ptr_id);
@@ -425,6 +471,8 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, physical_type_id));
 	chain_op->add_id(ptr_bitcast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
+	if (array_id)
+		chain_op->add_id(array_id);
 	impl.add(chain_op);
 
 	auto *load_op = impl.allocate(spv::OpLoad, physical_type_id);
@@ -797,6 +845,11 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	}
 
 	auto *element_type = instruction->getOperand(4)->getType();
+
+	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
+	// If we cannot do it trivially, fallback to raw pointer arithmetic.
+	spv::Id array_id = build_vectorized_physical_load_store_access(impl, instruction, vecsize, element_type);
+
 	spv::Id physical_type_id;
 	spv::Op value_cast_op;
 	get_physical_load_store_cast_info(impl, element_type, physical_type_id, value_cast_op);
@@ -804,9 +857,16 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	spv::Id vec_type_id = physical_type_id;
 	if (vecsize > 1)
 		vec_type_id = builder.makeVectorType(physical_type_id, vecsize);
-	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, ptr_meta);
 
-	spv::Id u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
+	auto tmp_ptr_meta = ptr_meta;
+	tmp_ptr_meta.stride = array_id ? vecsize * get_type_scalar_alignment(impl, element_type) : 0;
+	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, tmp_ptr_meta);
+
+	spv::Id u64_ptr_id;
+	if (array_id)
+		u64_ptr_id = impl.get_id_for_value(instruction->getOperand(1));
+	else
+		u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(u64_ptr_id);
@@ -815,6 +875,8 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id));
 	chain_op->add_id(ptr_bitcast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
+	if (array_id)
+		chain_op->add_id(array_id);
 	impl.add(chain_op);
 
 	spv::Id elems[4] = {};

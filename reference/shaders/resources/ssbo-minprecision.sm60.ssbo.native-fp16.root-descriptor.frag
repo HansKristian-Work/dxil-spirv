@@ -9,29 +9,24 @@
 #error No extension available for FP16.
 #endif
 #extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 
-struct AddCarry
+layout(buffer_reference) buffer PhysicalPointerFloatNonWriteArray;
+layout(buffer_reference) buffer PhysicalPointerFloatArray;
+layout(buffer_reference) buffer PhysicalPointerUintArray;
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloatNonWriteArray
 {
-    uint _m0;
-    uint _m1;
+    float value[];
 };
 
-layout(buffer_reference) buffer PhysicalPointerFloatNonWrite;
-layout(buffer_reference) buffer PhysicalPointerFloat;
-layout(buffer_reference) buffer PhysicalPointerUint;
-layout(buffer_reference, std430) readonly buffer PhysicalPointerFloatNonWrite
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloatArray
 {
-    float value;
+    float value[];
 };
 
-layout(buffer_reference, std430) buffer PhysicalPointerFloat
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerUintArray
 {
-    float value;
-};
-
-layout(buffer_reference, std430) buffer PhysicalPointerUint
-{
-    uint value;
+    uint value[];
 };
 
 layout(set = 0, binding = 1, std430) restrict readonly buffer SSBO
@@ -50,24 +45,16 @@ layout(push_constant, std430) uniform RootConstants
 layout(location = 0) flat in mediump int A;
 layout(location = 0) out int SV_Target;
 
-float16_t _84;
-uint16_t _108;
+float16_t _57;
+uint16_t _73;
 
 void main()
 {
     uint16_t _31 = uint16_t(A);
     uint _32 = uint(int16_t(_31));
-    AddCarry _43;
-    _43._m0 = uaddCarry(registers._m1.x, (_32 * 4u) + 0u, _43._m1);
-    uint _56 = uint(int16_t(_31 + 1us));
-    AddCarry _61;
-    _61._m0 = uaddCarry(registers._m1.x, (_56 * 4u) + 0u, _61._m1);
-    AddCarry _77;
-    _77._m0 = uaddCarry(registers._m2.x, (_32 * 4u) + 0u, _77._m1);
-    PhysicalPointerFloat(uvec2(_77._m0, registers._m2.y + _77._m1)).value = float(float16_t(PhysicalPointerFloatNonWrite(uvec2(_61._m0, registers._m1.y + _61._m1)).value) + float16_t(PhysicalPointerFloatNonWrite(uvec2(_43._m0, registers._m1.y + _43._m1)).value));
-    AddCarry _100;
-    _100._m0 = uaddCarry(registers._m3.x, (_32 * 4u) + 0u, _100._m1);
-    PhysicalPointerUint(uvec2(_100._m0, registers._m3.y + _100._m1)).value = uint(uint16_t(_13._m0[_56]) + uint16_t(_13._m0[_32]));
+    uint _46 = uint(int16_t(_31 + 1us));
+    PhysicalPointerFloatArray(registers._m2).value[_32] = float(float16_t(PhysicalPointerFloatNonWriteArray(registers._m1).value[_46]) + float16_t(PhysicalPointerFloatNonWriteArray(registers._m1).value[_32]));
+    PhysicalPointerUintArray(registers._m3).value[_32] = uint(uint16_t(_13._m0[_46]) + uint16_t(_13._m0[_32]));
     SV_Target = int(10u);
 }
 
@@ -77,7 +64,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 114
+; Bound: 79
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -93,13 +80,12 @@ OpName %9 "registers"
 OpName %11 "SSBO"
 OpName %16 "A"
 OpName %18 "SV_Target"
-OpName %34 "PhysicalPointerFloatNonWrite"
-OpMemberName %34 0 "value"
-OpName %42 "AddCarry"
-OpName %71 "PhysicalPointerFloat"
-OpMemberName %71 0 "value"
-OpName %94 "PhysicalPointerUint"
-OpMemberName %94 0 "value"
+OpName %35 "PhysicalPointerFloatNonWriteArray"
+OpMemberName %35 0 "value"
+OpName %53 "PhysicalPointerFloatArray"
+OpMemberName %53 0 "value"
+OpName %68 "PhysicalPointerUintArray"
+OpMemberName %68 0 "value"
 OpDecorate %7 Block
 OpMemberDecorate %7 0 Offset 0
 OpMemberDecorate %7 1 Offset 8
@@ -116,13 +102,16 @@ OpDecorate %16 RelaxedPrecision
 OpDecorate %16 Flat
 OpDecorate %16 Location 0
 OpDecorate %18 Location 0
-OpMemberDecorate %34 0 Offset 0
-OpDecorate %34 Block
-OpMemberDecorate %34 0 NonWritable
-OpMemberDecorate %71 0 Offset 0
-OpDecorate %71 Block
-OpMemberDecorate %94 0 Offset 0
-OpDecorate %94 Block
+OpDecorate %34 ArrayStride 4
+OpMemberDecorate %35 0 Offset 0
+OpDecorate %35 Block
+OpMemberDecorate %35 0 NonWritable
+OpDecorate %52 ArrayStride 4
+OpMemberDecorate %53 0 Offset 0
+OpDecorate %53 Block
+OpDecorate %67 ArrayStride 4
+OpMemberDecorate %68 0 Offset 0
+OpDecorate %68 Block
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -145,27 +134,28 @@ OpDecorate %94 Block
 %27 = OpConstant %5 1
 %30 = OpTypeInt 16 0
 %33 = OpTypeFloat 32
-%34 = OpTypeStruct %33
-%35 = OpTypePointer PhysicalStorageBuffer %34
-%36 = OpConstant %5 0
-%38 = OpConstant %5 4
-%42 = OpTypeStruct %5 %5
-%49 = OpTypePointer PhysicalStorageBuffer %33
-%52 = OpTypeFloat 16
-%55 = OpConstant %30 1
-%71 = OpTypeStruct %33
-%72 = OpTypePointer PhysicalStorageBuffer %71
-%86 = OpTypePointer StorageBuffer %5
-%94 = OpTypeStruct %5
-%95 = OpTypePointer PhysicalStorageBuffer %94
-%106 = OpTypePointer PhysicalStorageBuffer %5
-%110 = OpConstant %5 10
+%34 = OpTypeRuntimeArray %33
+%35 = OpTypeStruct %34
+%36 = OpTypePointer PhysicalStorageBuffer %35
+%38 = OpTypePointer PhysicalStorageBuffer %33
+%40 = OpConstant %5 0
+%42 = OpTypeFloat 16
+%45 = OpConstant %30 1
+%52 = OpTypeRuntimeArray %33
+%53 = OpTypeStruct %52
+%54 = OpTypePointer PhysicalStorageBuffer %53
+%59 = OpTypePointer StorageBuffer %5
+%67 = OpTypeRuntimeArray %5
+%68 = OpTypeStruct %67
+%69 = OpTypePointer PhysicalStorageBuffer %68
+%71 = OpTypePointer PhysicalStorageBuffer %5
+%75 = OpConstant %5 10
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%84 = OpUndef %52
-%108 = OpUndef %30
-OpBranch %112
-%112 = OpLabel
+%57 = OpUndef %42
+%73 = OpUndef %30
+OpBranch %77
+%77 = OpLabel
 %20 = OpAccessChain %19 %9 %21
 %22 = OpLoad %6 %20
 %23 = OpAccessChain %19 %9 %24
@@ -175,70 +165,34 @@ OpBranch %112
 %29 = OpLoad %14 %16
 %31 = OpSConvert %30 %29
 %32 = OpSConvert %5 %31
-%37 = OpIMul %5 %32 %38
-%39 = OpIAdd %5 %37 %36
-%40 = OpCompositeExtract %5 %28 0
-%41 = OpCompositeExtract %5 %28 1
-%43 = OpIAddCarry %42 %40 %39
-%44 = OpCompositeExtract %5 %43 0
-%45 = OpCompositeExtract %5 %43 1
-%46 = OpIAdd %5 %41 %45
-%47 = OpCompositeConstruct %6 %44 %46
-%48 = OpBitcast %35 %47
-%50 = OpAccessChain %49 %48 %36
-%51 = OpLoad %33 %50 Aligned 4
-%53 = OpFConvert %52 %51
-%54 = OpIAdd %30 %31 %55
-%56 = OpSConvert %5 %54
-%57 = OpIMul %5 %56 %38
-%58 = OpIAdd %5 %57 %36
-%59 = OpCompositeExtract %5 %28 0
-%60 = OpCompositeExtract %5 %28 1
-%61 = OpIAddCarry %42 %59 %58
-%62 = OpCompositeExtract %5 %61 0
-%63 = OpCompositeExtract %5 %61 1
-%64 = OpIAdd %5 %60 %63
-%65 = OpCompositeConstruct %6 %62 %64
-%66 = OpBitcast %35 %65
-%67 = OpAccessChain %49 %66 %36
-%68 = OpLoad %33 %67 Aligned 4
-%69 = OpFConvert %52 %68
-%70 = OpFAdd %52 %69 %53
-%73 = OpIMul %5 %32 %38
-%74 = OpIAdd %5 %73 %36
-%75 = OpCompositeExtract %5 %25 0
-%76 = OpCompositeExtract %5 %25 1
-%77 = OpIAddCarry %42 %75 %74
-%78 = OpCompositeExtract %5 %77 0
-%79 = OpCompositeExtract %5 %77 1
-%80 = OpIAdd %5 %76 %79
-%81 = OpCompositeConstruct %6 %78 %80
-%82 = OpBitcast %72 %81
-%83 = OpAccessChain %49 %82 %36
-%85 = OpFConvert %33 %70
-OpStore %83 %85 Aligned 4
-%87 = OpAccessChain %86 %13 %36 %32
-%88 = OpLoad %5 %87
-%89 = OpUConvert %30 %88
-%90 = OpAccessChain %86 %13 %36 %56
-%91 = OpLoad %5 %90
-%92 = OpUConvert %30 %91
-%93 = OpIAdd %30 %92 %89
-%96 = OpIMul %5 %32 %38
-%97 = OpIAdd %5 %96 %36
-%98 = OpCompositeExtract %5 %22 0
-%99 = OpCompositeExtract %5 %22 1
-%100 = OpIAddCarry %42 %98 %97
-%101 = OpCompositeExtract %5 %100 0
-%102 = OpCompositeExtract %5 %100 1
-%103 = OpIAdd %5 %99 %102
-%104 = OpCompositeConstruct %6 %101 %103
-%105 = OpBitcast %95 %104
-%107 = OpAccessChain %106 %105 %36
-%109 = OpUConvert %5 %93
-OpStore %107 %109 Aligned 4
-%111 = OpBitcast %14 %110
-OpStore %18 %111
+%37 = OpBitcast %36 %28
+%39 = OpAccessChain %38 %37 %40 %32
+%41 = OpLoad %33 %39 Aligned 4
+%43 = OpFConvert %42 %41
+%44 = OpIAdd %30 %31 %45
+%46 = OpSConvert %5 %44
+%47 = OpBitcast %36 %28
+%48 = OpAccessChain %38 %47 %40 %46
+%49 = OpLoad %33 %48 Aligned 4
+%50 = OpFConvert %42 %49
+%51 = OpFAdd %42 %50 %43
+%55 = OpBitcast %54 %25
+%56 = OpAccessChain %38 %55 %40 %32
+%58 = OpFConvert %33 %51
+OpStore %56 %58 Aligned 4
+%60 = OpAccessChain %59 %13 %40 %32
+%61 = OpLoad %5 %60
+%62 = OpUConvert %30 %61
+%63 = OpAccessChain %59 %13 %40 %46
+%64 = OpLoad %5 %63
+%65 = OpUConvert %30 %64
+%66 = OpIAdd %30 %65 %62
+%70 = OpBitcast %69 %22
+%72 = OpAccessChain %71 %70 %40 %32
+%74 = OpUConvert %5 %66
+OpStore %72 %74 Aligned 4
+%76 = OpBitcast %14 %75
+OpStore %18 %76
 OpReturn
 OpFunctionEnd
 #endif

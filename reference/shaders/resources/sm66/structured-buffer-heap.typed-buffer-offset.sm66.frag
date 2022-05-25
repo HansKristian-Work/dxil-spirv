@@ -71,9 +71,7 @@ void main()
     uvec4 _223 = imageLoad(_21[_84], int((_45 < _13._m0[_89].y) ? (_45 + _13._m0[_89].x) : 1073741820u));
     uint _227 = _49 * 2u;
     uint _232 = (_227 < _13._m0[_96].y) ? (_227 + _13._m0[_96].x) : 1073741820u;
-    uvec4 _233 = imageLoad(_24[_92], int(_232));
-    uvec4 _235 = imageLoad(_24[_92], int(_232 + 1u));
-    vec2 _239 = uintBitsToFloat(uvec2(_233.x, _235.x));
+    vec2 _239 = uintBitsToFloat(uvec2(imageLoad(_24[_92], int(_232)).x, imageLoad(_24[_92], int(_232 + 1u)).x));
     uint _244 = _53 * 3u;
     uint _249 = (_244 < _13._m0[_103].y) ? (_244 + _13._m0[_103].x) : 1073741820u;
     uvec4 _250 = imageLoad(_21[_99], int(_249));

@@ -26,7 +26,7 @@ void main()
 ; Bound: 36
 ; Schema: 0
 OpCapability Shader
-OpCapability DemoteToHelperInvocationEXT
+OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %8
@@ -72,7 +72,7 @@ OpFunctionEnd
 OpSelectionMerge %31 None
 OpBranchConditional %27 %30 %31
 %30 = OpLabel
-OpDemoteToHelperInvocationEXT
+OpDemoteToHelperInvocation
 OpBranch %31
 %31 = OpLabel
 OpReturn

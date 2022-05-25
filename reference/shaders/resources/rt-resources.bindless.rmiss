@@ -32,15 +32,12 @@ void main()
     vec4 _31 = texelFetch(_13[registers._m0 + (payload._m1 & 1u)], ivec2(uvec2(0u)), int(0u));
     vec4 _45 = texelFetch(_13[registers._m0 + payload._m1], ivec2(uvec2(0u)), int(0u));
     vec4 _62 = texelFetch(_13[(registers._m0 + 10u) + payload._m1], ivec2(uvec2(0u)), int(0u));
-    vec4 _72 = _73;
+    vec4 _72;
     _72.x = (_31.x + _45.x) + _62.x;
-    vec4 _74 = _72;
-    _74.y = (_31.y + _45.y) + _62.y;
-    vec4 _75 = _74;
-    _75.z = (_31.z + _45.z) + _62.z;
-    vec4 _76 = _75;
-    _76.w = (_31.w + _45.w) + _62.w;
-    payload._m0 = _76;
+    _72.y = (_31.y + _45.y) + _62.y;
+    _72.z = (_31.z + _45.z) + _62.z;
+    _72.w = (_31.w + _45.w) + _62.w;
+    payload._m0 = _72;
 }
 
 

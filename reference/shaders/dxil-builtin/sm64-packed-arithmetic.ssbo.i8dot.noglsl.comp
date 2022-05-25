@@ -7,8 +7,8 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
-OpCapability DotProductInput4x8BitPackedKHR
-OpCapability DotProductKHR
+OpCapability DotProductInput4x8BitPacked
+OpCapability DotProduct
 OpExtension "SPV_KHR_integer_dot_product"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %34
@@ -122,7 +122,7 @@ OpBranch %121
 %43 = OpLoad %5 %42
 %44 = OpAccessChain %39 %9 %37 %38
 %45 = OpLoad %5 %44
-%46 = OpUDotKHR %5 %45 %43 PackedVectorFormat4x8BitKHR
+%46 = OpUDot %5 %45 %43 PackedVectorFormat4x8Bit
 %47 = OpIAdd %5 %41 %46
 %48 = OpAccessChain %39 %27 %37 %38
 OpStore %48 %47
@@ -132,7 +132,7 @@ OpStore %48 %47
 %52 = OpLoad %5 %51
 %53 = OpAccessChain %39 %9 %37 %38
 %54 = OpLoad %5 %53
-%55 = OpSDotKHR %5 %54 %52 PackedVectorFormat4x8BitKHR
+%55 = OpSDot %5 %54 %52 PackedVectorFormat4x8Bit
 %56 = OpIAdd %5 %50 %55
 %57 = OpAccessChain %39 %27 %37 %38
 OpStore %57 %56

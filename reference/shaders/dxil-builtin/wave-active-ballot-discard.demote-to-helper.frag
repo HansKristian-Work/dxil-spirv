@@ -28,7 +28,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
-OpCapability DemoteToHelperInvocationEXT
+OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %7 %10
@@ -64,7 +64,7 @@ OpBranch %31
 OpSelectionMerge %33 None
 OpBranchConditional %13 %32 %33
 %32 = OpLabel
-OpDemoteToHelperInvocationEXT
+OpDemoteToHelperInvocation
 OpBranch %33
 %33 = OpLabel
 %15 = OpULessThan %12 %11 %16

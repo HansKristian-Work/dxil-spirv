@@ -34,14 +34,9 @@ void main()
     vec4 _144 = uintBitsToFloat(uvec4(texelFetch(_9[_60], int(_131)).x, texelFetch(_9[_60], int(_131 + 1u)).x, texelFetch(_9[_60], int(_131 + 2u)).x, texelFetch(_9[_60], int(_131 + 3u)).x));
     uvec4 _152 = imageLoad(_13[INDEX + 4u], int(_37));
     uint _156 = _41 * 2u;
-    uvec4 _157 = imageLoad(_16[_68], int(_156));
-    uvec4 _159 = imageLoad(_16[_68], int(_156 + 1u));
-    vec2 _163 = uintBitsToFloat(uvec2(_157.x, _159.x));
+    vec2 _163 = uintBitsToFloat(uvec2(imageLoad(_16[_68], int(_156)).x, imageLoad(_16[_68], int(_156 + 1u)).x));
     uint _168 = _45 * 3u;
-    uvec4 _169 = imageLoad(_13[_72], int(_168));
-    uvec4 _171 = imageLoad(_13[_72], int(_168 + 1u));
-    uvec4 _174 = imageLoad(_13[_72], int(_168 + 2u));
-    vec3 _178 = uintBitsToFloat(uvec3(_169.x, _171.x, _174.x));
+    vec3 _178 = uintBitsToFloat(uvec3(imageLoad(_13[_72], int(_168)).x, imageLoad(_13[_72], int(_168 + 1u)).x, imageLoad(_13[_72], int(_168 + 2u)).x));
     uint _185 = _49 * 4u;
     uvec4 _186 = imageLoad(_13[_76], int(_185));
     uvec4 _188 = imageLoad(_13[_76], int(_185 + 1u));

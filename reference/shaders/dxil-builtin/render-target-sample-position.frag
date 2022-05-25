@@ -7,7 +7,8 @@ layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    uint _74 = ((uint(gl_SampleID) < _13) && (_13 <= 16u)) ? ((_13 - 1u) + uint(gl_SampleID)) : 0u;
+    uint _66 = _13 - 1u;
+    uint _74 = ((uint(gl_SampleID) < _13) && (_13 <= 16u)) ? (_66 + uint(gl_SampleID)) : 0u;
     SV_Target.x = _63[_74].x;
     SV_Target.y = _63[_74].y;
 }
