@@ -885,6 +885,12 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &scalar.base);
 	}
 
+	{
+		const dxil_spv_option_barycentric_khr bary = { { DXIL_SPV_OPTION_BARYCENTRIC_KHR },
+													   DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &bary.base);
+	}
+
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 
 	unsigned num_entry_points = 1;

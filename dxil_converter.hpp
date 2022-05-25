@@ -220,6 +220,7 @@ enum class Option : uint32_t
 	ShaderRayTracingPrimitiveCulling = 18,
 	InvariantPosition = 19,
 	ScalarBlockLayout = 20,
+	BarycentricKHR = 21,
 	Count
 };
 
@@ -444,6 +445,16 @@ struct OptionScalarBlockLayout : OptionBase
 
 	bool supported = false;
 	bool supports_per_component_robustness = false;
+};
+
+struct OptionBarycentricKHR : OptionBase
+{
+	OptionBarycentricKHR()
+		: OptionBase(Option::BarycentricKHR)
+	{
+	}
+
+	bool supported = false;
 };
 
 struct DescriptorTableEntry

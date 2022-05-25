@@ -843,6 +843,16 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_BARYCENTRIC_KHR:
+	{
+		OptionBarycentricKHR helper;
+		auto *opt = reinterpret_cast<const dxil_spv_option_barycentric_khr *>(option);
+		helper.supported = bool(opt->supported);
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

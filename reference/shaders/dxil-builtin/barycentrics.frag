@@ -24,7 +24,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability FragmentBarycentricKHR
-OpExtension "SPV_NV_fragment_shader_barycentric"
+OpExtension "SPV_KHR_fragment_shader_barycentric"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %11 %16 %19 %20 %22 %24
 OpExecutionMode %3 OriginUpperLeft

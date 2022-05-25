@@ -500,6 +500,7 @@ struct Converter::Impl
 		bool invariant_position = false;
 		bool scalar_block_layout = false;
 		bool supports_per_component_robustness = false;
+		bool khr_barycentrics_enabled = false;
 	} options;
 
 	struct BindlessInfo

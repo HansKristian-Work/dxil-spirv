@@ -3965,9 +3965,15 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::Barycentrics:
 	case DXIL::Semantic::InternalBarycentricsNoPerspective:
 	{
-		builder.addExtension("SPV_NV_fragment_shader_barycentric");
-		builder.addCapability(spv::CapabilityFragmentBarycentricNV);
-		auto builtin = semantic == DXIL::Semantic::Barycentrics ? spv::BuiltInBaryCoordNV : spv::BuiltInBaryCoordNoPerspNV;
+		if (options.khr_barycentrics_enabled)
+			builder.addExtension("SPV_KHR_fragment_shader_barycentric");
+		else
+			builder.addExtension("SPV_NV_fragment_shader_barycentric");
+
+		// These enums all alias.
+		builder.addCapability(spv::CapabilityFragmentBarycentricKHR);
+		auto builtin = semantic == DXIL::Semantic::Barycentrics ?
+		               spv::BuiltInBaryCoordKHR : spv::BuiltInBaryCoordNoPerspKHR;
 		builder.addDecoration(id, spv::DecorationBuiltIn, builtin);
 		spirv_module.register_builtin_shader_input(id, builtin);
 		break;
@@ -4253,7 +4259,14 @@ bool Converter::Impl::emit_stage_input_variables()
 		input_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
 
 		if (per_vertex)
-			builder.addDecoration(variable_id, spv::DecorationPerVertexNV);
+		{
+			if (options.khr_barycentrics_enabled)
+				builder.addExtension("SPV_KHR_fragment_shader_barycentric");
+			else
+				builder.addExtension("SPV_NV_fragment_shader_barycentric");
+			builder.addCapability(spv::CapabilityFragmentBarycentricKHR);
+			builder.addDecoration(variable_id, spv::DecorationPerVertexKHR);
+		}
 
 		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))
 			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
@@ -5868,6 +5881,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionScalarBlockLayout &>(cap).supported;
 		options.supports_per_component_robustness =
 		    static_cast<const OptionScalarBlockLayout &>(cap).supports_per_component_robustness;
+		break;
+
+	case Option::BarycentricKHR:
+		options.khr_barycentrics_enabled = static_cast<const OptionBarycentricKHR &>(cap).supported;
 		break;
 
 	default:
