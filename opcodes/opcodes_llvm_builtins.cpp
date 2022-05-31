@@ -474,8 +474,10 @@ static unsigned get_effective_integer_width(Converter::Impl &impl, unsigned widt
 }
 
 template <typename InstructionType>
-static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *instruction)
+static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *instruction, bool &relaxed_precision_cast)
 {
+	relaxed_precision_cast = false;
+
 	// In case we extend min16int to int without native 16-bit ints, this is just a noop.
 	// I don't believe overflow is well defined for min-precision integers ...
 	// They certainly are not in Vulkan.
@@ -506,6 +508,7 @@ static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *ins
 		    instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
 		    !impl.support_16bit_operations())
 		{
+			relaxed_precision_cast = true;
 			return true;
 		}
 		break;
@@ -525,10 +528,25 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	bool signed_input = false;
 	spv::Op opcode;
 
-	if (value_cast_is_noop(impl, instruction))
+	if (value_cast_is_noop(impl, instruction, can_relax_precision))
 	{
-		spv::Id id = impl.get_id_for_value(instruction->getOperand(0));
-		impl.rewrite_value(instruction, id);
+		spv::Id id;
+		if (can_relax_precision)
+		{
+			// We cannot change the type, but we can mark the copied object
+			// as relaxed to attempt to signal the intent.
+			auto *trunc_op = impl.allocate(spv::OpCopyObject, instruction);
+			trunc_op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+			impl.add(trunc_op);
+			id = trunc_op->id;
+			impl.builder().addDecoration(id, spv::DecorationRelaxedPrecision);
+		}
+		else
+		{
+			id = impl.get_id_for_value(instruction->getOperand(0));
+			impl.rewrite_value(instruction, id);
+		}
+
 		return id;
 	}
 
