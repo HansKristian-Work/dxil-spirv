@@ -1273,6 +1273,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		PHI frontier_phi;
 		frontier_phi.id = module.allocate_id();
 		frontier_phi.type_id = phi.type_id;
+		frontier_phi.relaxed = phi.relaxed;
 		module.get_builder().addName(frontier_phi.id, (String("frontier_phi_") + frontier->name).c_str());
 
 		assert(!frontier->pred_back_edge);
@@ -1359,6 +1360,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			// If we came from such a block,
 			// we should replace the incoming value of dominating_incoming rather than adding a new incoming value.
 			PHI merge_phi = {};
+			merge_phi.relaxed = phi.relaxed;
 
 			// Here we need to figure out if we have a cross branch which functions as a ladder.
 			// If we have such a special edge, the PHI value we find here will override any other value on this path.

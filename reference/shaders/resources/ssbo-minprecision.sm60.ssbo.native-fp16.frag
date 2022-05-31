@@ -93,6 +93,7 @@ OpDecorate %24 RelaxedPrecision
 OpDecorate %24 Flat
 OpDecorate %24 Location 0
 OpDecorate %26 Location 0
+OpDecorate %46 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

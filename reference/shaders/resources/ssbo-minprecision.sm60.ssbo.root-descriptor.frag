@@ -30,7 +30,11 @@ float _43;
 void main()
 {
     uint _23 = uint(A);
-    PhysicalPointerFloatArray(registers._m2).value[_23] = PhysicalPointerFloatNonWriteArray(registers._m1).value[_23 + 1u] + PhysicalPointerFloatNonWriteArray(registers._m1).value[_23];
+    float _32 = PhysicalPointerFloatNonWriteArray(registers._m1).value[_23];
+    mediump float mp_copy_32 = _32;
+    float _36 = PhysicalPointerFloatNonWriteArray(registers._m1).value[_23 + 1u];
+    mediump float mp_copy_36 = _36;
+    PhysicalPointerFloatArray(registers._m2).value[_23] = mp_copy_36 + mp_copy_32;
     SV_Target = int(10u);
 }
 
@@ -70,6 +74,7 @@ OpDecorate %25 ArrayStride 4
 OpMemberDecorate %26 0 Offset 0
 OpDecorate %26 Block
 OpMemberDecorate %26 0 NonWritable
+OpDecorate %37 RelaxedPrecision
 OpDecorate %38 ArrayStride 4
 OpMemberDecorate %39 0 Offset 0
 OpDecorate %39 Block
