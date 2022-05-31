@@ -115,15 +115,15 @@ OpBranch %46
 %22 = OpLoad %10 %12
 %23 = OpBitcast %5 %22
 %28 = OpBitcast %27 %21
-%30 = OpAccessChain %29 %28 %31 %23
+%30 = OpInBoundsAccessChain %29 %28 %31 %23
 %32 = OpLoad %24 %30 Aligned 4
 %33 = OpIAdd %5 %23 %20
 %34 = OpBitcast %27 %21
-%35 = OpAccessChain %29 %34 %31 %33
+%35 = OpInBoundsAccessChain %29 %34 %31 %33
 %36 = OpLoad %24 %35 Aligned 4
 %37 = OpFAdd %24 %36 %32
 %41 = OpBitcast %40 %18
-%42 = OpAccessChain %29 %41 %31 %23
+%42 = OpInBoundsAccessChain %29 %41 %31 %23
 OpStore %42 %37 Aligned 4
 %45 = OpBitcast %10 %44
 OpStore %14 %45

@@ -167,18 +167,18 @@ OpBranch %77
 %31 = OpSConvert %30 %29
 %32 = OpSConvert %5 %31
 %37 = OpBitcast %36 %28
-%39 = OpAccessChain %38 %37 %40 %32
+%39 = OpInBoundsAccessChain %38 %37 %40 %32
 %41 = OpLoad %33 %39 Aligned 4
 %43 = OpFConvert %42 %41
 %44 = OpIAdd %30 %31 %45
 %46 = OpSConvert %5 %44
 %47 = OpBitcast %36 %28
-%48 = OpAccessChain %38 %47 %40 %46
+%48 = OpInBoundsAccessChain %38 %47 %40 %46
 %49 = OpLoad %33 %48 Aligned 4
 %50 = OpFConvert %42 %49
 %51 = OpFAdd %42 %50 %43
 %55 = OpBitcast %54 %25
-%56 = OpAccessChain %38 %55 %40 %32
+%56 = OpInBoundsAccessChain %38 %55 %40 %32
 %58 = OpFConvert %33 %51
 OpStore %56 %58 Aligned 4
 %60 = OpAccessChain %59 %13 %40 %32
@@ -189,7 +189,7 @@ OpStore %56 %58 Aligned 4
 %65 = OpUConvert %30 %64
 %66 = OpIAdd %30 %65 %62
 %70 = OpBitcast %69 %22
-%72 = OpAccessChain %71 %70 %40 %32
+%72 = OpInBoundsAccessChain %71 %70 %40 %32
 %74 = OpUConvert %5 %66
 OpStore %72 %74 Aligned 4
 %76 = OpBitcast %14 %75

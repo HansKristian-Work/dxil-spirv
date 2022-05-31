@@ -468,7 +468,8 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	ptr_bitcast_op->add_id(u64_ptr_id);
 	impl.add(ptr_bitcast_op);
 
-	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, physical_type_id));
+	auto *chain_op = impl.allocate(spv::OpInBoundsAccessChain,
+								   builder.makePointer(spv::StorageClassPhysicalStorageBuffer, physical_type_id));
 	chain_op->add_id(ptr_bitcast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
 	if (array_id)
@@ -875,7 +876,8 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	ptr_bitcast_op->add_id(u64_ptr_id);
 	impl.add(ptr_bitcast_op);
 
-	auto *chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id));
+	auto *chain_op = impl.allocate(spv::OpInBoundsAccessChain,
+								   builder.makePointer(spv::StorageClassPhysicalStorageBuffer, vec_type_id));
 	chain_op->add_id(ptr_bitcast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
 	if (array_id)

@@ -557,7 +557,7 @@ OpBranch %383
 %259 = OpAccessChain %40 %16 %162
 %260 = OpLoad %13 %259
 %264 = OpBitcast %263 %260
-%265 = OpAccessChain %195 %264 %45 %58
+%265 = OpInBoundsAccessChain %195 %264 %45 %58
 %266 = OpLoad %26 %265 Aligned 4
 %267 = OpCompositeExtract %17 %266 0
 %268 = OpCompositeExtract %17 %266 1
@@ -571,7 +571,7 @@ OpBranch %383
 %276 = OpAccessChain %40 %16 %179
 %277 = OpLoad %13 %276
 %281 = OpBitcast %280 %277
-%283 = OpAccessChain %282 %281 %45 %58
+%283 = OpInBoundsAccessChain %282 %281 %45 %58
 %284 = OpLoad %5 %283 Aligned 4
 %285 = OpBitcast %17 %284
 %286 = OpFAdd %17 %271 %285
@@ -580,7 +580,7 @@ OpBranch %383
 %289 = OpFAdd %17 %274 %285
 %290 = OpShiftLeftLogical %5 %58 %165
 %294 = OpBitcast %293 %277
-%296 = OpAccessChain %295 %294 %45 %58
+%296 = OpInBoundsAccessChain %295 %294 %45 %58
 %297 = OpLoad %13 %296 Aligned 4
 %298 = OpCompositeExtract %5 %297 0
 %299 = OpCompositeExtract %5 %297 1
@@ -592,7 +592,7 @@ OpBranch %383
 %305 = OpFAdd %17 %289 %301
 %306 = OpIMul %5 %58 %54
 %311 = OpBitcast %310 %277
-%313 = OpAccessChain %312 %311 %45 %58
+%313 = OpInBoundsAccessChain %312 %311 %45 %58
 %314 = OpLoad %307 %313 Aligned 4
 %315 = OpCompositeExtract %5 %314 0
 %316 = OpCompositeExtract %5 %314 1
@@ -606,7 +606,7 @@ OpBranch %383
 %324 = OpFAdd %17 %305 %320
 %325 = OpShiftLeftLogical %5 %58 %179
 %329 = OpBitcast %328 %277
-%331 = OpAccessChain %330 %329 %45 %58
+%331 = OpInBoundsAccessChain %330 %329 %45 %58
 %332 = OpLoad %167 %331 Aligned 4
 %333 = OpCompositeExtract %5 %332 0
 %334 = OpCompositeExtract %5 %332 1
@@ -623,7 +623,7 @@ OpBranch %383
 %345 = OpAccessChain %40 %16 %165
 %346 = OpLoad %13 %345
 %350 = OpBitcast %349 %346
-%352 = OpAccessChain %351 %350 %45 %58
+%352 = OpInBoundsAccessChain %351 %350 %45 %58
 %353 = OpLoad %17 %352 Aligned 4
 %354 = OpFAdd %17 %341 %353
 %355 = OpFAdd %17 %342 %353
@@ -632,7 +632,7 @@ OpBranch %383
 %358 = OpAccessChain %40 %16 %9
 %359 = OpLoad %13 %358
 %363 = OpBitcast %362 %359
-%364 = OpAccessChain %282 %363 %45 %58
+%364 = OpInBoundsAccessChain %282 %363 %45 %58
 %365 = OpLoad %5 %364 Aligned 4
 %366 = OpBitcast %17 %365
 %367 = OpFAdd %17 %354 %366
@@ -645,12 +645,12 @@ OpBranch %383
 %375 = OpCompositeInsert %26 %370 %374 3
 OpStore %74 %375
 %376 = OpBitcast %349 %346
-%377 = OpAccessChain %351 %376 %45 %58
+%377 = OpInBoundsAccessChain %351 %376 %45 %58
 OpStore %377 %367 Aligned 4
 %379 = OpAccessChain %40 %16 %9
 %380 = OpLoad %13 %379
 %381 = OpBitcast %349 %380
-%382 = OpAccessChain %351 %381 %45 %58
+%382 = OpInBoundsAccessChain %351 %381 %45 %58
 OpStore %382 %368 Aligned 4
 OpReturn
 OpFunctionEnd
