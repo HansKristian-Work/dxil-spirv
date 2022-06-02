@@ -501,6 +501,7 @@ struct Converter::Impl
 		bool scalar_block_layout = false;
 		bool supports_per_component_robustness = false;
 		bool khr_barycentrics_enabled = false;
+		bool robust_physical_cbv = false;
 	} options;
 
 	struct BindlessInfo

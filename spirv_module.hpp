@@ -94,6 +94,7 @@ public:
 	                                         const char *name = nullptr);
 
 	spv::Id get_helper_call_id(HelperCall call, spv::Id type_id = 0);
+	spv::Id get_robust_physical_cbv_load_call_id(spv::Id type_id, spv::Id ptr_type_id, unsigned alignment);
 	void set_descriptor_qa_info(const DescriptorQAInfo &info);
 	const DescriptorQAInfo &get_descriptor_qa_info() const;
 

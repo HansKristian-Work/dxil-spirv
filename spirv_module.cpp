@@ -63,6 +63,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_wave_match(SPIRVModule &module, spv::Id type_id);
 	spv::Id build_wave_multi_prefix_count_bits(SPIRVModule &module);
 	spv::Id build_wave_multi_prefix_op(SPIRVModule &module, spv::Op opcode, spv::Id type_id);
+	spv::Id build_robust_physical_cbv_load(SPIRVModule &module, spv::Id type_id, spv::Id ptr_type_id, unsigned alignment);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -112,6 +113,15 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 		spv::Id func_id;
 	};
 	Vector<MultiPrefixOp> wave_multi_prefix_call_ids;
+
+	struct CBVOp
+	{
+		spv::Id type_id;
+		spv::Id ptr_type_id;
+		unsigned alignment;
+		spv::Id func_id;
+	};
+	Vector<CBVOp> physical_cbv_call_ids;
 
 	DescriptorQAInfo descriptor_qa_info;
 };
@@ -686,6 +696,78 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_robust_physical_cbv_load(SPIRVModule &module, spv::Id type_id, spv::Id ptr_type_id,
+                                                          unsigned alignment)
+{
+	for (auto &func : physical_cbv_call_ids)
+		if (func.ptr_type_id == ptr_type_id && func.type_id == type_id && func.alignment == alignment)
+			return func.func_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bda_type = builder.makeVectorType(uint_type, 2);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, type_id,
+										   "RobustPhysicalCBVLoad",
+										   { bda_type, uint_type }, {}, &entry);
+
+	spv::Id bda_value_id = func->getParamId(0);
+	spv::Id index_id = func->getParamId(1);
+
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+
+	builder.setBuildPoint(entry);
+	auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpULessThan);
+	compare->addIdOperand(index_id);
+	compare->addIdOperand(builder.makeUintConstant(64 * 1024 / alignment));
+	spv::Id compare_id = compare->getResultId();
+	entry->addInstruction(std::move(compare));
+	builder.createSelectionMerge(merge_block, 0);
+	builder.createConditionalBranch(compare_id, body_block, merge_block);
+
+	spv::Id loaded_id;
+	{
+		builder.setBuildPoint(body_block);
+		auto bitcast_op = std::make_unique<spv::Instruction>(
+				builder.getUniqueId(), ptr_type_id, spv::OpBitcast);
+		auto chain_op = std::make_unique<spv::Instruction>(
+				builder.getUniqueId(),
+				builder.makePointer(spv::StorageClassPhysicalStorageBuffer, type_id),
+				spv::OpInBoundsAccessChain);
+		auto load_op = std::make_unique<spv::Instruction>(
+				builder.getUniqueId(), type_id, spv::OpLoad);
+		bitcast_op->addIdOperand(bda_value_id);
+		chain_op->addIdOperand(bitcast_op->getResultId());
+		chain_op->addIdOperand(builder.makeUintConstant(0));
+		chain_op->addIdOperand(index_id);
+		load_op->addIdOperand(chain_op->getResultId());
+		load_op->addImmediateOperand(spv::MemoryAccessAlignedMask);
+		load_op->addImmediateOperand(alignment);
+		loaded_id = load_op->getResultId();
+		body_block->addInstruction(std::move(bitcast_op));
+		body_block->addInstruction(std::move(chain_op));
+		body_block->addInstruction(std::move(load_op));
+		builder.createBranch(merge_block);
+	}
+
+	builder.setBuildPoint(merge_block);
+	auto phi_op = std::make_unique<spv::Instruction>(
+			builder.getUniqueId(), type_id, spv::OpPhi);
+	phi_op->addIdOperand(builder.makeNullConstant(type_id));
+	phi_op->addIdOperand(entry->getId());
+	phi_op->addIdOperand(loaded_id);
+	phi_op->addIdOperand(body_block->getId());
+	spv::Id return_value = phi_op->getResultId();
+	merge_block->addInstruction(std::move(phi_op));
+	builder.makeReturn(false, return_value);
+
+	builder.setBuildPoint(current_build_point);
+	physical_cbv_call_ids.push_back({ type_id, ptr_type_id, alignment, func->getId() });
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall call, spv::Id type_id)
 {
 	switch (call)
@@ -1211,6 +1293,11 @@ spv::Id SPIRVModule::create_variable_with_initializer(spv::StorageClass storage,
 spv::Id SPIRVModule::get_helper_call_id(HelperCall call, spv::Id type_id)
 {
 	return impl->get_helper_call_id(*this, call, type_id);
+}
+
+spv::Id SPIRVModule::get_robust_physical_cbv_load_call_id(spv::Id type_id, spv::Id ptr_type_id, unsigned alignment)
+{
+	return impl->build_robust_physical_cbv_load(*this, type_id, ptr_type_id, alignment);
 }
 
 void SPIRVModule::set_descriptor_qa_info(const DescriptorQAInfo &info)
