@@ -221,6 +221,7 @@ enum class Option : uint32_t
 	InvariantPosition = 19,
 	ScalarBlockLayout = 20,
 	BarycentricKHR = 21,
+	RobustPhysicalCBVLoad = 22,
 	Count
 };
 
@@ -455,6 +456,16 @@ struct OptionBarycentricKHR : OptionBase
 	}
 
 	bool supported = false;
+};
+
+struct OptionRobustPhysicalCBVLoad : OptionBase
+{
+	OptionRobustPhysicalCBVLoad()
+		: OptionBase(Option::RobustPhysicalCBVLoad)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry

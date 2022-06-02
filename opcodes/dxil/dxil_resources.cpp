@@ -1666,27 +1666,45 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 	ptr_meta.size = 64 * 1024;
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(result_type_id, ptr_meta);
 
-	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
-	ptr_bitcast_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-	impl.add(ptr_bitcast_op);
+	spv::Id loaded_id;
 
-	// Out of bounds is undefined behavior for root descriptors.
-	// Allows a compiler to assume that the index is unsigned and multiplying by stride does not overflow 32-bit space.
-	auto *chain_op = impl.allocate(spv::OpInBoundsAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, result_type_id));
-	chain_op->add_id(ptr_bitcast_op->id);
-	chain_op->add_id(builder.makeUintConstant(0));
-	chain_op->add_id(index_id);
-	impl.add(chain_op);
+	if (impl.options.robust_physical_cbv && !llvm::isa<llvm::ConstantInt>(instruction->getOperand(2)))
+	{
+		spv::Id call_id = impl.spirv_module.get_robust_physical_cbv_load_call_id(result_type_id, ptr_type_id, alignment);
+		auto *call_op = impl.allocate(spv::OpFunctionCall, result_type_id);
+		call_op->add_id(call_id);
+		call_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		call_op->add_id(index_id);
+		impl.add(call_op);
+		loaded_id = call_op->id;
+		impl.rewrite_value(instruction, loaded_id);
+	}
+	else
+	{
+		auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+		ptr_bitcast_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(ptr_bitcast_op);
 
-	auto *load_op = impl.allocate(spv::OpLoad, instruction, result_type_id);
-	load_op->add_id(chain_op->id);
-	load_op->add_literal(spv::MemoryAccessAlignedMask);
-	load_op->add_literal(alignment);
-	impl.add(load_op);
+		// Out of bounds is undefined behavior for root descriptors.
+		// Allows a compiler to assume that the index is unsigned and multiplying by stride does not overflow 32-bit space.
+		auto *chain_op = impl.allocate(spv::OpInBoundsAccessChain,
+		                               builder.makePointer(spv::StorageClassPhysicalStorageBuffer, result_type_id));
+		chain_op->add_id(ptr_bitcast_op->id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		chain_op->add_id(index_id);
+		impl.add(chain_op);
+
+		auto *load_op = impl.allocate(spv::OpLoad, instruction, result_type_id);
+		load_op->add_id(chain_op->id);
+		load_op->add_literal(spv::MemoryAccessAlignedMask);
+		load_op->add_literal(alignment);
+		impl.add(load_op);
+		loaded_id = load_op->id;
+	}
 
 	// Handle f16x8 loads.
 	if (!scalar_load && scalar_alignment == 2)
-		return build_bitcast_32x4_to_16x8_composite(impl, instruction, load_op->id);
+		return build_bitcast_32x4_to_16x8_composite(impl, instruction, loaded_id);
 	else if (value_cast_op != spv::OpNop)
 	{
 		spv::Id type_id = impl.get_type_id(result_component_type);

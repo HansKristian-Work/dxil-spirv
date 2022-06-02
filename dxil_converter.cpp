@@ -5913,6 +5913,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.khr_barycentrics_enabled = static_cast<const OptionBarycentricKHR &>(cap).supported;
 		break;
 
+	case Option::RobustPhysicalCBVLoad:
+		options.robust_physical_cbv = static_cast<const OptionRobustPhysicalCBVLoad &>(cap).enabled;
+		break;
+
 	default:
 		break;
 	}

@@ -154,7 +154,8 @@ static void print_help()
 	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
 	     "\t[--min-precision-native-16bit]\n"
 	     "\t[--raw-llvm]\n"
-	     "\t[--invariant-position]\n");
+	     "\t[--invariant-position]\n"
+	     "\t[--robust-physical-cbv-load]\n");
 }
 
 struct Arguments
@@ -182,6 +183,7 @@ struct Arguments
 	bool min_precision_native_16bit = false;
 	bool raw_llvm = false;
 	bool invariant_position = false;
+	bool robust_physical_cbv_load = false;
 
 	unsigned ssbo_alignment = 1;
 
@@ -700,6 +702,7 @@ int main(int argc, char **argv)
 	cbs.add("--min-precision-native-16bit", [&](CLIParser &) { args.min_precision_native_16bit = true; });
 	cbs.add("--raw-llvm", [&](CLIParser &) { args.raw_llvm = true; });
 	cbs.add("--invariant-position", [&](CLIParser &) { args.invariant_position = true; });
+	cbs.add("--robust-physical-cbv-load", [&](CLIParser &) { args.robust_physical_cbv_load = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -889,6 +892,13 @@ int main(int argc, char **argv)
 		const dxil_spv_option_barycentric_khr bary = { { DXIL_SPV_OPTION_BARYCENTRIC_KHR },
 													   DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &bary.base);
+	}
+
+	if (args.robust_physical_cbv_load)
+	{
+		const dxil_spv_option_robust_physical_cbv_load cbv = { { DXIL_SPV_OPTION_ROBUST_PHYSICAL_CBV_LOAD },
+		                                                       DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &cbv.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
