@@ -5743,6 +5743,9 @@ spv::Id Converter::Impl::get_effective_input_output_type_id(DXIL::ComponentType 
 
 bool Converter::Impl::type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const
 {
+	if (!options.arithmetic_relaxed_precision)
+		return false;
+
 	if (type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
 		type = llvm::cast<llvm::ArrayType>(type)->getArrayElementType();
 	if (type->getTypeID() == llvm::Type::TypeID::VectorTyID)
@@ -5915,6 +5918,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 	case Option::RobustPhysicalCBVLoad:
 		options.robust_physical_cbv = static_cast<const OptionRobustPhysicalCBVLoad &>(cap).enabled;
+		break;
+
+	case Option::ArithmeticRelaxedPrecision:
+		options.arithmetic_relaxed_precision = static_cast<const OptionArithmeticRelaxedPrecision &>(cap).enabled;
 		break;
 
 	default:

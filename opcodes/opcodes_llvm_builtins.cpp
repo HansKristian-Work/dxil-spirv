@@ -508,7 +508,7 @@ static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *ins
 		    instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
 		    !impl.support_16bit_operations())
 		{
-			relaxed_precision_cast = true;
+			relaxed_precision_cast = impl.options.arithmetic_relaxed_precision;
 			return true;
 		}
 		break;

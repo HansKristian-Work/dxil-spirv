@@ -222,6 +222,7 @@ enum class Option : uint32_t
 	ScalarBlockLayout = 20,
 	BarycentricKHR = 21,
 	RobustPhysicalCBVLoad = 22,
+	ArithmeticRelaxedPrecision = 23,
 	Count
 };
 
@@ -462,6 +463,16 @@ struct OptionRobustPhysicalCBVLoad : OptionBase
 {
 	OptionRobustPhysicalCBVLoad()
 		: OptionBase(Option::RobustPhysicalCBVLoad)
+	{
+	}
+
+	bool enabled = false;
+};
+
+struct OptionArithmeticRelaxedPrecision : OptionBase
+{
+	OptionArithmeticRelaxedPrecision()
+		: OptionBase(Option::ArithmeticRelaxedPrecision)
 	{
 	}
 

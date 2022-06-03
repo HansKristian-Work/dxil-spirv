@@ -863,6 +863,16 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_ARITHMETIC_RELAXED_PRECISION:
+	{
+		OptionArithmeticRelaxedPrecision helper;
+		auto *robust = reinterpret_cast<const dxil_spv_option_arithmetic_relaxed_precision *>(option);
+		helper.enabled = bool(robust->enabled);
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
