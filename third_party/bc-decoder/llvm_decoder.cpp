@@ -86,7 +86,7 @@ enum class BlockInfoRecord
 BitcodeReader::BitcodeReader(const byte *bitcode, size_t length) : b(bitcode, length)
 {
   uint32_t magic = b.Read<uint32_t>();
-
+  (void)magic;
   assert(magic == uint32_t(MAKE_FOURCC('B', 'C', 0xC0, 0xDE)));
 }
 
@@ -102,6 +102,7 @@ BlockOrRecord BitcodeReader::ReadToplevelBlock()
 
   // should hit ENTER_SUBBLOCK first for top-level block
   uint32_t abbrevID = b.fixed<uint32_t>(abbrevSize());
+  (void)abbrevID;
   assert(abbrevID == ENTER_SUBBLOCK);
 
   ReadBlockContents(ret);
