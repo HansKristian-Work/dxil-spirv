@@ -55,7 +55,10 @@ public:
   }
   char c6()
   {
-    byte c = 0;
+    byte scratch[8];
+    scratch[0] = 0;
+    byte &c = scratch[0];
+
     ReadBits(6, &c);
 
     if(c <= 25)
