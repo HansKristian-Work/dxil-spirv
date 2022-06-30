@@ -64,6 +64,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_wave_multi_prefix_count_bits(SPIRVModule &module);
 	spv::Id build_wave_multi_prefix_op(SPIRVModule &module, spv::Op opcode, spv::Id type_id);
 	spv::Id build_robust_physical_cbv_load(SPIRVModule &module, spv::Id type_id, spv::Id ptr_type_id, unsigned alignment);
+	spv::Id build_robust_atomic_counter_op(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -104,6 +105,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id get_helper_call_id(SPIRVModule &module, HelperCall call, spv::Id type_id);
 	spv::Id descriptor_qa_helper_call_id = 0;
 	spv::Id wave_multi_prefix_count_bits_id = 0;
+	spv::Id robust_atomic_counter_call_id = 0;
 	Vector<std::pair<spv::Id, spv::Id>> wave_match_call_ids;
 
 	struct MultiPrefixOp
@@ -696,6 +698,76 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_robust_atomic_counter_op(SPIRVModule &module)
+{
+	if (robust_atomic_counter_call_id)
+		return robust_atomic_counter_call_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bda_type = builder.makeVectorType(uint_type, 2);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
+	                                       "RobustPhysicalAtomicCounter",
+	                                       { bda_type, uint_type, uint_type }, {}, &entry);
+
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id bvec2_type = builder.makeVectorType(bool_type, 2);
+
+	spv::Id null_bda = builder.makeNullConstant(bda_type);
+	auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), bvec2_type, spv::OpINotEqual);
+	compare->addIdOperand(func->getParamId(0));
+	compare->addIdOperand(null_bda);
+	auto not_zero = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpAny);
+	not_zero->addIdOperand(compare->getResultId());
+	spv::Id cond_id = not_zero->getResultId();
+	entry->addInstruction(std::move(compare));
+	entry->addInstruction(std::move(not_zero));
+	builder.setBuildPoint(entry);
+	builder.createSelectionMerge(merge_block, 0);
+	builder.createConditionalBranch(cond_id, body_block, merge_block);
+
+	spv::Id loaded_id;
+	{
+		builder.setBuildPoint(body_block);
+		spv::Id uint_ptr_type = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type);
+		auto bitcast_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_ptr_type, spv::OpBitcast);
+		bitcast_op->addIdOperand(func->getParamId(0));
+		auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
+		atomic_op->addIdOperand(bitcast_op->getResultId());
+		atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->addIdOperand(builder.makeUintConstant(0));
+		atomic_op->addIdOperand(func->getParamId(1));
+		auto add_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
+		add_op->addIdOperand(atomic_op->getResultId());
+		add_op->addIdOperand(func->getParamId(2));
+		loaded_id = add_op->getResultId();
+		body_block->addInstruction(std::move(bitcast_op));
+		body_block->addInstruction(std::move(atomic_op));
+		body_block->addInstruction(std::move(add_op));
+		builder.createBranch(merge_block);
+	}
+
+	builder.setBuildPoint(merge_block);
+	auto phi_op = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), uint_type, spv::OpPhi);
+	phi_op->addIdOperand(builder.makeUintConstant(0));
+	phi_op->addIdOperand(entry->getId());
+	phi_op->addIdOperand(loaded_id);
+	phi_op->addIdOperand(body_block->getId());
+	spv::Id return_value = phi_op->getResultId();
+	merge_block->addInstruction(std::move(phi_op));
+	builder.makeReturn(false, return_value);
+
+	builder.setBuildPoint(current_build_point);
+	robust_atomic_counter_call_id = func->getId();
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_robust_physical_cbv_load(SPIRVModule &module, spv::Id type_id, spv::Id ptr_type_id,
                                                           unsigned alignment)
 {
@@ -795,6 +867,8 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformBitwiseAnd, type_id);
 	case HelperCall::WaveMultiPrefixBitXor:
 		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformBitwiseXor, type_id);
+	case HelperCall::RobustAtomicCounter:
+		return build_robust_atomic_counter_op(module);
 
 	default:
 		break;

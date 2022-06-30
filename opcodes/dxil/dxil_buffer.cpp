@@ -27,6 +27,7 @@
 #include "dxil_sampling.hpp"
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "spirv_module.hpp"
 
 namespace dxil_spv
 {
@@ -1355,19 +1356,20 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	int direction = llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getSExtValue();
 
-	Operation *counter_ptr_op;
-
 	if (meta.counter_is_physical_pointer)
 	{
-		counter_ptr_op = impl.allocate(
-		    spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, builder.makeUintType(32)));
-		counter_ptr_op->add_id(meta.counter_var_id);
-		counter_ptr_op->add_id(builder.makeUintConstant(0));
+		spv::Id func_id = impl.spirv_module.get_helper_call_id(HelperCall::RobustAtomicCounter);
+		auto *op = impl.allocate(spv::OpFunctionCall, instruction);
+		op->add_id(func_id);
+		op->add_id(meta.counter_var_id);
+		op->add_id(builder.makeUintConstant(direction));
+		op->add_id(builder.makeUintConstant(direction < 0 ? -1u : 0u));
+		impl.add(op);
 	}
 	else
 	{
-		counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
-		                               builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
+		auto *counter_ptr_op = impl.allocate(spv::OpImageTexelPointer,
+		                                     builder.makePointer(spv::StorageClassImage, builder.makeUintType(32)));
 
 		counter_ptr_op->add_id(meta.counter_var_id);
 		counter_ptr_op->add_id(builder.makeUintConstant(0));
@@ -1375,26 +1377,25 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 
 		if (meta.non_uniform)
 			builder.addDecoration(counter_ptr_op->id, spv::DecorationNonUniformEXT);
-	}
+		impl.add(counter_ptr_op);
 
-	impl.add(counter_ptr_op);
+		auto *op = impl.allocate(spv::OpAtomicIAdd, instruction);
 
-	Operation *op = impl.allocate(spv::OpAtomicIAdd, instruction);
-
-	op->add_id(counter_ptr_op->id);
-	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
-	op->add_id(builder.makeUintConstant(0));
-	op->add_id(builder.makeUintConstant(direction));
-
-	impl.add(op);
-
-	if (direction < 0)
-	{
-		spv::Id result_id = op->id;
-		op = impl.allocate(spv::OpISub, builder.makeUintType(32));
-		op->add_ids({ result_id, builder.makeUintConstant(1) });
+		op->add_id(counter_ptr_op->id);
+		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(builder.makeUintConstant(0));
+		op->add_id(builder.makeUintConstant(direction));
 		impl.add(op);
-		impl.rewrite_value(instruction, op->id);
+
+		spv::Id result_id = op->id;
+
+		if (direction < 0)
+		{
+			op = impl.allocate(spv::OpISub, builder.makeUintType(32));
+			op->add_ids({ result_id, builder.makeUintConstant(1) });
+			impl.add(op);
+			impl.rewrite_value(instruction, op->id);
+		}
 	}
 
 	return true;

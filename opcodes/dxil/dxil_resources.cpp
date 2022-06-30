@@ -626,8 +626,11 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 {
 	auto &builder = impl.builder();
 
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+
 	auto *chain_op = impl.allocate(spv::OpAccessChain,
-	                               builder.makePointer(spv::StorageClassStorageBuffer, impl.physical_counter_type));
+	                               builder.makePointer(spv::StorageClassStorageBuffer, uvec2_type));
 	chain_op->add_id(counter.var_id);
 	chain_op->add_id(builder.makeUintConstant(0));
 
@@ -638,7 +641,7 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 	chain_op->add_id(offset_id);
 	impl.add(chain_op);
 
-	auto *load_op = impl.allocate(spv::OpLoad, impl.physical_counter_type);
+	auto *load_op = impl.allocate(spv::OpLoad, uvec2_type);
 	load_op->add_id(chain_op->id);
 	impl.add(load_op);
 

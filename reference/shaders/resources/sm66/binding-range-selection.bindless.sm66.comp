@@ -1,18 +1,18 @@
 #version 460
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(buffer_reference) buffer AtomicCounter;
-layout(buffer_reference, buffer_reference_align = 4, std430) buffer AtomicCounter
+layout(buffer_reference, buffer_reference_align = 4) buffer uintPointer
 {
-    uint _m0;
+    uint value;
 };
 
 layout(set = 7, binding = 0, std430) readonly buffer AtomicCounters
 {
-    AtomicCounter counters[];
-} _18;
+    uvec2 counters[];
+} _17;
 
 layout(push_constant, std430) uniform RootConstants
 {
@@ -27,19 +27,35 @@ layout(push_constant, std430) uniform RootConstants
 } registers;
 
 layout(set = 4, binding = 0, r32ui) uniform readonly writeonly uimageBuffer _12[];
-layout(set = 3, binding = 0) uniform writeonly image2D _23[];
+layout(set = 3, binding = 0) uniform writeonly image2D _22[];
+
+uint RobustPhysicalAtomicCounter(uvec2 _71, uint _72, uint _73)
+{
+    uint _86;
+    if (any(notEqual(_71, uvec2(0u))))
+    {
+        uint _84 = atomicAdd(uintPointer(_71), _72);
+        _86 = _84 + _73;
+    }
+    else
+    {
+        _86 = 0u;
+    }
+    return _86;
+}
 
 void main()
 {
     if (gl_GlobalInvocationID.x > 80u)
     {
-        imageStore(_23[registers._m3 + 6u], ivec2(uvec2(gl_GlobalInvocationID.x, 0u)), vec4(0.0));
+        imageStore(_22[registers._m3 + 6u], ivec2(uvec2(gl_GlobalInvocationID.x, 0u)), vec4(0.0));
     }
     if (gl_GlobalInvocationID.x > 90u)
     {
-        imageStore(_23[registers._m3 + ((gl_GlobalInvocationID.x & 1u) + 7u)], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), vec4(0.0));
+        imageStore(_22[registers._m3 + ((gl_GlobalInvocationID.x & 1u) + 7u)], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), vec4(0.0));
     }
-    uint _74 = atomicAdd(_18.counters[registers._m4]._m0, 1u);
+    uvec2 _69 = _17.counters[registers._m4];
+    uint _88 = RobustPhysicalAtomicCounter(_69, 1u, 0u);
 }
 
 
@@ -48,7 +64,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 81
+; Bound: 95
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageArrayDynamicIndexing
@@ -59,14 +75,14 @@ OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint GLCompute %3 "main" %26
+OpEntryPoint GLCompute %3 "main" %25
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
-OpName %13 "AtomicCounter"
-OpName %16 "AtomicCounters"
-OpMemberName %16 0 "counters"
+OpName %15 "AtomicCounters"
+OpMemberName %15 0 "counters"
+OpName %74 "RobustPhysicalAtomicCounter"
 OpDecorate %6 Block
 OpMemberDecorate %6 0 Offset 0
 OpMemberDecorate %6 1 Offset 4
@@ -80,19 +96,17 @@ OpDecorate %12 DescriptorSet 4
 OpDecorate %12 Binding 0
 OpDecorate %12 NonReadable
 OpDecorate %12 NonWritable
-OpDecorate %13 Block
-OpMemberDecorate %13 0 Offset 0
-OpDecorate %15 ArrayStride 8
-OpDecorate %16 Block
-OpMemberDecorate %16 0 Offset 0
-OpMemberDecorate %16 0 NonWritable
-OpDecorate %18 DescriptorSet 7
-OpDecorate %18 Binding 0
-OpDecorate %18 AliasedPointer
-OpDecorate %23 DescriptorSet 3
-OpDecorate %23 Binding 0
-OpDecorate %23 NonReadable
-OpDecorate %26 BuiltIn GlobalInvocationId
+OpDecorate %14 ArrayStride 8
+OpDecorate %15 Block
+OpMemberDecorate %15 0 Offset 0
+OpMemberDecorate %15 0 NonWritable
+OpDecorate %17 DescriptorSet 7
+OpDecorate %17 Binding 0
+OpDecorate %17 AliasedPointer
+OpDecorate %22 DescriptorSet 3
+OpDecorate %22 Binding 0
+OpDecorate %22 NonReadable
+OpDecorate %25 BuiltIn GlobalInvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -103,84 +117,102 @@ OpDecorate %26 BuiltIn GlobalInvocationId
 %10 = OpTypeRuntimeArray %9
 %11 = OpTypePointer UniformConstant %10
 %12 = OpVariable %11 UniformConstant
-%13 = OpTypeStruct %5
-%14 = OpTypePointer PhysicalStorageBuffer %13
-%15 = OpTypeRuntimeArray %14
-%16 = OpTypeStruct %15
-%17 = OpTypePointer StorageBuffer %16
-%18 = OpVariable %17 StorageBuffer
-%19 = OpTypeFloat 32
-%20 = OpTypeImage %19 2D 0 0 0 2 Unknown
-%21 = OpTypeRuntimeArray %20
-%22 = OpTypePointer UniformConstant %21
-%23 = OpVariable %22 UniformConstant
-%24 = OpTypeVector %5 3
-%25 = OpTypePointer Input %24
-%26 = OpVariable %25 Input
-%27 = OpTypePointer Input %5
-%29 = OpConstant %5 0
-%31 = OpTypeBool
-%33 = OpConstant %5 80
-%34 = OpTypePointer UniformConstant %20
-%36 = OpTypePointer PushConstant %5
-%38 = OpConstant %5 3
-%41 = OpConstant %5 6
-%43 = OpConstant %19 0
-%44 = OpTypeVector %5 2
-%46 = OpTypeVector %19 4
-%49 = OpConstant %5 90
-%51 = OpConstant %5 1
-%53 = OpConstant %5 7
-%61 = OpTypePointer UniformConstant %9
-%64 = OpConstant %5 4
-%67 = OpTypePointer StorageBuffer %14
-%72 = OpTypePointer PhysicalStorageBuffer %5
+%13 = OpTypeVector %5 2
+%14 = OpTypeRuntimeArray %13
+%15 = OpTypeStruct %14
+%16 = OpTypePointer StorageBuffer %15
+%17 = OpVariable %16 StorageBuffer
+%18 = OpTypeFloat 32
+%19 = OpTypeImage %18 2D 0 0 0 2 Unknown
+%20 = OpTypeRuntimeArray %19
+%21 = OpTypePointer UniformConstant %20
+%22 = OpVariable %21 UniformConstant
+%23 = OpTypeVector %5 3
+%24 = OpTypePointer Input %23
+%25 = OpVariable %24 Input
+%26 = OpTypePointer Input %5
+%28 = OpConstant %5 0
+%30 = OpTypeBool
+%32 = OpConstant %5 80
+%33 = OpTypePointer UniformConstant %19
+%35 = OpTypePointer PushConstant %5
+%37 = OpConstant %5 3
+%40 = OpConstant %5 6
+%42 = OpConstant %18 0
+%44 = OpTypeVector %18 4
+%47 = OpConstant %5 90
+%49 = OpConstant %5 1
+%51 = OpConstant %5 7
+%59 = OpTypePointer UniformConstant %9
+%62 = OpConstant %5 4
+%65 = OpTypePointer StorageBuffer %13
+%70 = OpTypeFunction %5 %13 %5 %5
+%78 = OpTypeVector %30 2
+%79 = OpConstantNull %13
+%82 = OpTypePointer PhysicalStorageBuffer %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %75
+OpBranch %89
+%89 = OpLabel
+%27 = OpAccessChain %26 %25 %28
+%29 = OpLoad %5 %27
+%31 = OpUGreaterThan %30 %29 %32
+OpSelectionMerge %91 None
+OpBranchConditional %31 %90 %91
+%90 = OpLabel
+%36 = OpAccessChain %35 %8 %37
+%38 = OpLoad %5 %36
+%39 = OpIAdd %5 %38 %40
+%34 = OpAccessChain %33 %22 %39
+%41 = OpLoad %19 %34
+%43 = OpCompositeConstruct %13 %29 %28
+%45 = OpCompositeConstruct %44 %42 %42 %42 %42
+OpImageWrite %41 %43 %45
+OpBranch %91
+%91 = OpLabel
+%46 = OpUGreaterThan %30 %29 %47
+OpSelectionMerge %93 None
+OpBranchConditional %46 %92 %93
+%92 = OpLabel
+%48 = OpBitwiseAnd %5 %29 %49
+%50 = OpIAdd %5 %48 %51
+%53 = OpAccessChain %35 %8 %37
+%54 = OpLoad %5 %53
+%55 = OpIAdd %5 %54 %50
+%52 = OpAccessChain %33 %22 %55
+%56 = OpLoad %19 %52
+%57 = OpCompositeConstruct %13 %28 %29
+%58 = OpCompositeConstruct %44 %42 %42 %42 %42
+OpImageWrite %56 %57 %58
+OpBranch %93
+%93 = OpLabel
+%61 = OpAccessChain %35 %8 %62
+%63 = OpLoad %5 %61
+%60 = OpAccessChain %59 %12 %63
+%64 = OpLoad %9 %60
+%67 = OpAccessChain %35 %8 %62
+%68 = OpLoad %5 %67
+%66 = OpAccessChain %65 %17 %28 %68
+%69 = OpLoad %13 %66
+%88 = OpFunctionCall %5 %74 %69 %49 %28
+OpReturn
+OpFunctionEnd
+%74 = OpFunction %5 None %70
+%71 = OpFunctionParameter %13
+%72 = OpFunctionParameter %5
+%73 = OpFunctionParameter %5
 %75 = OpLabel
-%28 = OpAccessChain %27 %26 %29
-%30 = OpLoad %5 %28
-%32 = OpUGreaterThan %31 %30 %33
+%80 = OpINotEqual %78 %71 %79
+%81 = OpAny %30 %80
 OpSelectionMerge %77 None
-OpBranchConditional %32 %76 %77
+OpBranchConditional %81 %76 %77
 %76 = OpLabel
-%37 = OpAccessChain %36 %8 %38
-%39 = OpLoad %5 %37
-%40 = OpIAdd %5 %39 %41
-%35 = OpAccessChain %34 %23 %40
-%42 = OpLoad %20 %35
-%45 = OpCompositeConstruct %44 %30 %29
-%47 = OpCompositeConstruct %46 %43 %43 %43 %43
-OpImageWrite %42 %45 %47
+%83 = OpBitcast %82 %71
+%84 = OpAtomicIAdd %5 %83 %49 %28 %72
+%85 = OpIAdd %5 %84 %73
 OpBranch %77
 %77 = OpLabel
-%48 = OpUGreaterThan %31 %30 %49
-OpSelectionMerge %79 None
-OpBranchConditional %48 %78 %79
-%78 = OpLabel
-%50 = OpBitwiseAnd %5 %30 %51
-%52 = OpIAdd %5 %50 %53
-%55 = OpAccessChain %36 %8 %38
-%56 = OpLoad %5 %55
-%57 = OpIAdd %5 %56 %52
-%54 = OpAccessChain %34 %23 %57
-%58 = OpLoad %20 %54
-%59 = OpCompositeConstruct %44 %29 %30
-%60 = OpCompositeConstruct %46 %43 %43 %43 %43
-OpImageWrite %58 %59 %60
-OpBranch %79
-%79 = OpLabel
-%63 = OpAccessChain %36 %8 %64
-%65 = OpLoad %5 %63
-%62 = OpAccessChain %61 %12 %65
-%66 = OpLoad %9 %62
-%69 = OpAccessChain %36 %8 %64
-%70 = OpLoad %5 %69
-%68 = OpAccessChain %67 %18 %29 %70
-%71 = OpLoad %14 %68
-%73 = OpAccessChain %72 %71 %29
-%74 = OpAtomicIAdd %5 %73 %51 %29 %51
-OpReturn
+%86 = OpPhi %5 %28 %75 %85 %76
+OpReturnValue %86
 OpFunctionEnd
 #endif

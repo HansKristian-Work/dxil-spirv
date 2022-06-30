@@ -445,7 +445,6 @@ struct Converter::Impl
 	spv::Id cmpxchg_type = 0;
 	spv::Id texture_sample_pos_lut_id = 0;
 	spv::Id rasterizer_sample_count_id = 0;
-	spv::Id physical_counter_type = 0;
 	spv::Id shader_record_buffer_id = 0;
 	Vector<spv::Id> shader_record_buffer_types;
 
