@@ -456,16 +456,10 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		{
 			if (info.counters)
 			{
-				if (!physical_counter_type)
-				{
-					spv::Id counter_type_id = get_struct_type({ builder().makeUintType(32) }, "AtomicCounter");
-					builder().addDecoration(counter_type_id, spv::DecorationBlock);
-					builder().addMemberDecoration(counter_type_id, 0, spv::DecorationOffset, 0);
-					physical_counter_type =
-					    builder().makePointer(spv::StorageClassPhysicalStorageBuffer, counter_type_id);
-				}
+				spv::Id uint_type = builder().makeUintType(32);
+				spv::Id uvec2_type = builder().makeVectorType(uint_type, 2);
 
-				spv::Id runtime_array_type_id = builder().makeRuntimeArray(physical_counter_type);
+				spv::Id runtime_array_type_id = builder().makeRuntimeArray(uvec2_type);
 				builder().addDecoration(runtime_array_type_id, spv::DecorationArrayStride, sizeof(uint64_t));
 
 				type_id = get_struct_type({ runtime_array_type_id }, "AtomicCounters");
