@@ -124,6 +124,8 @@ private:
 	Vector<CFGNode *> dominance_frontier;
 	Vector<CFGNode *> post_dominance_frontier;
 
+	bool block_is_jump_thread_ladder() const;
+
 private:
 	bool dominates_all_reachable_exits(UnorderedSet<const CFGNode *>& completed, const CFGNode &header) const;
 

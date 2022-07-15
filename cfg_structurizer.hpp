@@ -159,7 +159,7 @@ private:
 	CFGNode *create_helper_pred_block(CFGNode *node);
 	CFGNode *create_helper_succ_block(CFGNode *node);
 	void reset_traversal();
-	void validate_structured();
+	bool rewrite_invalid_loop_breaks();
 	void recompute_cfg();
 	void compute_dominance_frontier();
 	void compute_post_dominance_frontier();

@@ -421,7 +421,30 @@ bool CFGStructurizer::run()
 	//LOGI("=== Structurize pass ===\n");
 	structurize(1);
 
-	//validate_structured();
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_final = graphviz_path + ".struct1";
+		log_cfg_graphviz(graphviz_final.c_str());
+	}
+
+	bool need_restructure = false;
+	while (rewrite_invalid_loop_breaks())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_final = graphviz_path + ".loop-break-rewrite";
+			log_cfg_graphviz(graphviz_final.c_str());
+		}
+
+		need_restructure = true;
+	}
+
+	if (need_restructure)
+	{
+		// Need to redo the final structurization pass if we end up here.
+		structurize(1);
+	}
+
 	//log_cfg("Final");
 	if (!graphviz_path.empty())
 	{
@@ -4153,44 +4176,94 @@ void CFGStructurizer::recompute_dominance_frontier(CFGNode *node)
 	}
 }
 
-void CFGStructurizer::validate_structured()
+bool CFGStructurizer::rewrite_invalid_loop_breaks()
 {
+	// Keep iterating here until we have validated a clean CFG w.r.t. block-like loops.
+	// This should pass through first time without issue with extremely high probability,
+	// so hitting the slow path isn't a real concern until proven otherwise.
+	CFGNode *rewrite_header = nullptr;
+	CFGNode *invalid_target = nullptr;
+
+	// Process from inside out.
 	for (auto *node : forward_post_visit_order)
 	{
-		if (node->headers.size() > 1)
+		// Structured loop constructs can end up with problematic merge scenarios where we missed
+		// some cases where blocks branch outside our construct.
+		// At some point, we were considered mere selection constructs and breaking out of it is fine,
+		// but if the selection is promoted to a loop at some point after this analysis, we are a bit screwed.
+		// This can happen in complex ladder resolve scenarios.
+		// The fix-up means introducing multiple levels of ladder blocks.
+		if (node->merge == MergeType::Loop && node->freeze_structured_analysis)
 		{
-			LOGE("Node %s has %u headers!\n", node->name.c_str(), unsigned(node->headers.size()));
-			return;
-		}
+			auto *merge = node->loop_merge_block;
+			if (!merge || !merge->block_is_jump_thread_ladder())
+				continue;
 
-		if (node->merge == MergeType::Loop)
-		{
-			if (!node->dominates(node->loop_merge_block) && !node->loop_merge_block->pred.empty())
-			{
-				LOGE("Node %s does not dominate its merge block %s!\n", node->name.c_str(),
-				     node->loop_merge_block->name.c_str());
-				return;
-			}
-		}
-		else if (node->merge == MergeType::Selection)
-		{
-			if (!node->selection_merge_block)
-				LOGE("No selection merge block for %s\n", node->name.c_str());
-			else if (!node->dominates(node->selection_merge_block) && !node->selection_merge_block->pred.empty())
-			{
-				LOGE("Node %s does not dominate its selection merge block %s!\n", node->name.c_str(),
-				     node->selection_merge_block->name.c_str());
-				return;
-			}
-		}
+			if (merge->post_dominates(node))
+				continue;
 
-		if (node->succ.size() >= 2 && node->merge == MergeType::None)
-		{
-			// This might not be critical.
-			LOGW("Node %s has %u successors, but no merge header.\n", node->name.c_str(), unsigned(node->succ.size()));
+			node->traverse_dominated_blocks([&](CFGNode *candidate) {
+				if (candidate == merge || invalid_target)
+					return false;
+
+				for (auto *succ : candidate->succ)
+					if (!query_reachability(*succ, *merge))
+						invalid_target = succ;
+				return true;
+			});
+
+			if (invalid_target)
+			{
+				rewrite_header = node;
+				break;
+			}
 		}
 	}
-	LOGI("Successful CFG validation!\n");
+
+	if (invalid_target)
+	{
+		auto *merge = rewrite_header->loop_merge_block;
+		auto *dispatcher = create_helper_pred_block(merge);
+		rewrite_header->loop_merge_block = dispatcher;
+
+		size_t natural_preds = dispatcher->pred.size();
+		traverse_dominated_blocks_and_rewrite_branch(rewrite_header, invalid_target, dispatcher);
+
+		PHI phi;
+		phi.id = module.allocate_id();
+		phi.type_id = module.get_builder().makeBoolType();
+		module.get_builder().addName(phi.id, (String("break_selector_") + merge->name).c_str());
+
+		for (size_t i = 0; i < natural_preds; i++)
+		{
+			IncomingValue incoming = {};
+			incoming.block = dispatcher->pred[i];
+			incoming.id = module.get_builder().makeBoolConstant(true);
+			phi.incoming.push_back(incoming);
+		}
+
+		for (size_t i = natural_preds, n = dispatcher->pred.size(); i < n; i++)
+		{
+			IncomingValue incoming = {};
+			incoming.block = dispatcher->pred[i];
+			incoming.id = module.get_builder().makeBoolConstant(false);
+			phi.incoming.push_back(incoming);
+		}
+
+		dispatcher->ir.terminator.type = Terminator::Type::Condition;
+		dispatcher->ir.terminator.true_block = merge;
+		dispatcher->ir.terminator.false_block = invalid_target;
+		dispatcher->ir.terminator.direct_block = nullptr;
+		dispatcher->ir.terminator.conditional_id = phi.id;
+
+		dispatcher->ir.phi.push_back(std::move(phi));
+		dispatcher->add_branch(invalid_target);
+
+		recompute_cfg();
+		return true;
+	}
+
+	return false;
 }
 
 void CFGStructurizer::traverse(BlockEmissionInterface &iface)

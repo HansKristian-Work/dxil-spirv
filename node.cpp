@@ -561,4 +561,15 @@ CFGNode *CFGNode::get_outer_header_dominator()
 	return node;
 }
 
+bool CFGNode::block_is_jump_thread_ladder() const
+{
+	if (!ir.operations.empty() || ir.terminator.type != Terminator::Type::Condition || ir.phi.size() != 1)
+		return false;
+
+	auto &phi = ir.phi.front();
+
+	// Detect a jump thread block. If the branch target directly depends on the incoming blocks,
+	// we have this scenario.
+	return ir.terminator.conditional_id == phi.id;
+}
 } // namespace dxil_spv
