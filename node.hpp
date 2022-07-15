@@ -107,10 +107,6 @@ private:
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
-	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to);
-
-	template <typename Op>
-	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to, const Op &op);
 
 	void fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to);
 
@@ -130,11 +126,7 @@ private:
 
 private:
 	bool dominates_all_reachable_exits(UnorderedSet<const CFGNode *>& completed, const CFGNode &header) const;
-	template <typename Op>
-	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op);
-	template <typename Op>
-	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op,
-	                                                  UnorderedSet<const CFGNode *> &visitation_cache);
+
 	template <typename Op>
 	void traverse_dominated_blocks(const CFGNode &header, const Op &op) const;
 
@@ -149,69 +141,6 @@ void CFGNode::walk_cfg_from(const Op &op) const
 
 	for (auto *s : succ)
 		s->walk_cfg_from(op);
-}
-
-template <typename Op>
-void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to, const Op &op)
-{
-	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, op);
-}
-
-template <typename Op>
-void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to, const Op &op,
-                                                           UnorderedSet<const CFGNode *> &visitation_cache)
-{
-	visitation_cache.insert(this);
-
-	if (from == to)
-		return;
-
-	for (auto *node : succ)
-	{
-		if (!op(node))
-			continue;
-
-		if (node == from)
-		{
-			// Don't introduce a cycle.
-			// We only retarget branches when we have "escape-like" edges.
-			if (!to->dominates(this))
-			{
-				// If we already have a branch to "to", need to branch there via an intermediate node.
-				// This way, we can distinguish between a normal branch and a rewritten branch.
-				if (std::find(succ.begin(), succ.end(), to) != succ.end())
-					retarget_branch_with_intermediate_node(from, to);
-				else
-					retarget_branch(from, to);
-			}
-		}
-		else if (header.dominates(node) && node != to) // Do not traverse beyond the new branch target.
-		{
-			if (!visitation_cache.count(node))
-				node->traverse_dominated_blocks_and_rewrite_branch(header, from, to, op, visitation_cache);
-		}
-	}
-
-	// In case we are rewriting branches to a new merge block, we might
-	// change the immediate post dominator for continue blocks inside this loop construct.
-	// When analysing post dominance in these cases, we need to make sure that we merge to the new merge block,
-	// and not the old one. This avoids some redundant awkward loop constructs.
-	for (auto &fake_next : fake_succ)
-	{
-		if (fake_next == from)
-		{
-			retarget_fake_succ(from, to);
-			break;
-		}
-	}
-}
-
-template <typename Op>
-void CFGNode::traverse_dominated_blocks_and_rewrite_branch(const CFGNode &header, CFGNode *from, CFGNode *to,
-                                                           const Op &op)
-{
-	UnorderedSet<const CFGNode *> visitation_cache;
-	traverse_dominated_blocks_and_rewrite_branch(header, from, to, op, visitation_cache);
 }
 
 template <typename Op>

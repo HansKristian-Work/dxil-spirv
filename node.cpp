@@ -397,6 +397,7 @@ void CFGNode::retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *
 void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 {
 	//LOGI("Retargeting branch for %s: %s -> %s\n", name.c_str(), to_prev->name.c_str(), to_next->name.c_str());
+
 	assert(std::find(succ.begin(), succ.end(), to_prev) != succ.end());
 	assert(std::find(to_prev->pred.begin(), to_prev->pred.end(), this) != to_prev->pred.end());
 	assert(std::find(succ.begin(), succ.end(), to_next) == succ.end());
@@ -471,15 +472,6 @@ void CFGNode::fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to)
 		if (loop_ladder_block == from)
 			loop_ladder_block = to;
 	}
-}
-
-void CFGNode::traverse_dominated_blocks_and_rewrite_branch(CFGNode *from, CFGNode *to)
-{
-	if (from == to)
-		return;
-
-	traverse_dominated_blocks_and_rewrite_branch(*this, from, to, [](const CFGNode *node) -> bool { return true; });
-	fixup_merge_info_after_branch_rewrite(from, to);
 }
 
 void CFGNode::recompute_immediate_dominator()
