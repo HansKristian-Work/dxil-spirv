@@ -4255,7 +4255,17 @@ void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode
 		{
 			// Don't introduce a cycle.
 			// We only retarget branches when we have "escape-like" edges.
-			if (!to->dominates(candidate))
+			bool introduces_cycle;
+
+			if (to->forward_post_visit_order == candidate->forward_post_visit_order && to != candidate)
+			{
+				// Can happen when resolving ladders. We cannot use reachability query, do it slow way.
+				introduces_cycle = candidate->can_backtrace_to(to);
+			}
+			else
+				introduces_cycle = query_reachability(*to, *candidate);
+
+			if (!introduces_cycle)
 			{
 				// If we already have a branch to "to", need to branch there via an intermediate node.
 				// This way, we can distinguish between a normal branch and a rewritten branch.
