@@ -2018,67 +2018,110 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			{
 				bool dominates_merge = node->dominates(merge);
 				bool merges_to_continue = block_is_plain_continue(merge);
-				if (!merges_to_continue && dominates_merge && !merge->headers.empty())
+
+				// Here we have a likely case where one block is doing a clean "break" out of a loop, and
+				// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
+				bool ambiguous_merge_case = !merges_to_continue && dominates_merge && !merge->headers.empty();
+
+				// Happens first iteration. We'll have to split blocks, so register a merge target where we want it.
+				// Otherwise, this is the easy case if we observe it in pass 1.
+				// This shouldn't really happen though, as we'd normally resolve this earlier in find_selection_merges.
+				bool mark_merge_block_case = !merges_to_continue && (merge->headers.empty() || pass == 0);
+
+				// Another scenario is that we don't dominate the merge block in pass 1. We cannot split blocks now.
+				// Check to see which paths can actually reach the merge target without going through a ladder block.
+				// If we don't go through ladder it means an outer scope will actually reach the merge node.
+				// If we reach a ladder it means a block we dominate will make the escape.
+
+				// Another case is when one path is "breaking" out to a continue block which we don't dominate.
+				// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
+				bool tie_break_merge = ambiguous_merge_case || !mark_merge_block_case;
+
+				if (tie_break_merge)
 				{
-					// Here we have a likely case where one block is doing a clean "break" out of a loop, and
-					// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
 					bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
 					bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
 
 					if (a_path_is_break && b_path_is_break)
 					{
-						// If either path branches to the other,
-						// we should be able to merge to the node which has not committed to the break path yet.
-						if (node->succ[1]->can_backtrace_to(node->succ[0]))
-							merge_to_succ(node, 0);
-						else if (node->succ[0]->can_backtrace_to(node->succ[1]))
-							merge_to_succ(node, 1);
-						else
-						{
-							node->merge = MergeType::Selection;
-							node->selection_merge_block = nullptr;
-							//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
-						}
-					}
-					else if (b_path_is_break)
-						merge_to_succ(node, 0);
-					else
-						merge_to_succ(node, 1);
-				}
-				else if (!merges_to_continue && (merge->headers.empty() || pass == 0))
-				{
-					// Happens first iteration. We'll have to split blocks, so register a merge target where we want it.
-					// Otherwise, this is the easy case if we observe it in pass 1.
-					// This shouldn't really happen though, as we'd normally resolve this earlier in find_selection_merges.
-					assert(merge);
-					node->selection_merge_block = merge;
-					node->merge = MergeType::Selection;
-					merge->headers.push_back(node);
-					//LOGI("Merging %s -> %s\n", node->name.c_str(), node->selection_merge_block->name.c_str());
-				}
-				else
-				{
-					// We don't dominate the merge block in pass 1. We cannot split blocks now.
-					// Check to see which paths can actually reach the merge target without going through a ladder block.
-					// If we don't go through ladder it means an outer scope will actually reach the merge node.
-					// If we reach a ladder it means a block we dominate will make the escape.
-
-					// Another case is when one path is "breaking" out to a continue block which we don't dominate.
-					// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
-
-					bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
-					bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
-					if (a_path_is_break && b_path_is_break)
-					{
-						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
+						// Both paths break, so we don't need to merge anything. Use Unreachable merge target.
 						node->merge = MergeType::Selection;
 						node->selection_merge_block = nullptr;
 						//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
 					}
 					else if (b_path_is_break)
 						merge_to_succ(node, 0);
-					else
+					else if (a_path_is_break)
 						merge_to_succ(node, 1);
+					else
+					{
+						// Need more interesting tie-breaking.
+						// We can deduce which path is breaking or not based on the dominance frontier.
+						// If a dominance frontier for A can reach B, then we assume that B is breaking further than A
+						// is, so we should merge to A.
+						// The breaking path for B will likely need to ensure that the selection header can
+						// support such a break.
+						// If we hit this path, the common post-dominator will not find the intended merge
+						// target for B, so we never get to perform the necessary fixup.
+						auto *a_front = node->succ[0]->dominance_frontier.size() == 1 ?
+						                node->succ[0]->dominance_frontier.front() : nullptr;
+						auto *b_front = node->succ[1]->dominance_frontier.size() == 1 ?
+						                node->succ[1]->dominance_frontier.front() : nullptr;
+						bool found_candidate = false;
+
+						CFGNode *inner_merge_candidate = nullptr;
+
+						// If there is no unique dominance frontier for one path, pick the one that has a unique frontier
+						// as that in considered a merge.
+						if ((a_front || b_front) && a_front != b_front)
+						{
+							if (!b_front || (a_front && query_reachability(*a_front, *b_front)))
+							{
+								merge_to_succ(node, 0);
+								inner_merge_candidate = b_front;
+								found_candidate = true;
+							}
+							else if (!a_front || (b_front && query_reachability(*b_front, *a_front)))
+							{
+								merge_to_succ(node, 1);
+								inner_merge_candidate = a_front;
+								found_candidate = true;
+							}
+						}
+
+						if (!found_candidate)
+						{
+							// This is a nonsense path. Just give up.
+							// Would need to observe a real shader hitting this to know what to do.
+							node->merge = MergeType::Selection;
+							node->selection_merge_block = nullptr;
+						}
+
+						if (inner_merge_candidate && inner_merge_candidate->headers.size() == 1)
+						{
+							// The breaking path tries to break to this node.
+							// This will only trigger in pass 1.
+							auto *header = inner_merge_candidate->headers.front();
+							if (header->merge == MergeType::Selection)
+							{
+								// Promote to loop header instead.
+								// We might have to enter the loop ladder fixup stages later
+								// to insert ladders as required.
+								header->merge = MergeType::Loop;
+								header->loop_merge_block = header->selection_merge_block;
+								header->selection_merge_block = nullptr;
+								header->freeze_structured_analysis = true;
+							}
+						}
+					}
+				}
+				else
+				{
+					assert(merge);
+					node->selection_merge_block = merge;
+					node->merge = MergeType::Selection;
+					merge->headers.push_back(node);
+					//LOGI("Merging %s -> %s\n", node->name.c_str(), node->selection_merge_block->name.c_str());
 				}
 			}
 			else
