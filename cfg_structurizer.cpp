@@ -2091,10 +2091,22 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 
 						if (!found_candidate)
 						{
-							// This is a nonsense path. Just give up.
-							// Would need to observe a real shader hitting this to know what to do.
 							node->merge = MergeType::Selection;
 							node->selection_merge_block = nullptr;
+
+							if (a_front && b_front && a_front->headers.size() == 1 && b_front->headers.size() == 1)
+							{
+								// Extremely ambiguous merge where the selection construct can merge to two different paths.
+								// Our only option at this point is to pick an arbitrary winner
+								// and consider one path the breaking one arbitrarily.
+								auto *a_header = a_front->headers.front();
+								auto *b_header = b_front->headers.front();
+
+								// Pick the largest enclosing header as a heuristic.
+								inner_merge_candidate =
+									a_header->forward_post_visit_order > b_header->forward_post_visit_order ?
+									a_front : b_front;
+							}
 						}
 
 						if (inner_merge_candidate && inner_merge_candidate->headers.size() == 1)
