@@ -421,7 +421,30 @@ bool CFGStructurizer::run()
 	//LOGI("=== Structurize pass ===\n");
 	structurize(1);
 
-	//validate_structured();
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_final = graphviz_path + ".struct1";
+		log_cfg_graphviz(graphviz_final.c_str());
+	}
+
+	bool need_restructure = false;
+	while (rewrite_invalid_loop_breaks())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_final = graphviz_path + ".loop-break-rewrite";
+			log_cfg_graphviz(graphviz_final.c_str());
+		}
+
+		need_restructure = true;
+	}
+
+	if (need_restructure)
+	{
+		// Need to redo the final structurization pass if we end up here.
+		structurize(1);
+	}
+
 	//log_cfg("Final");
 	if (!graphviz_path.empty())
 	{
@@ -1995,67 +2018,122 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 			{
 				bool dominates_merge = node->dominates(merge);
 				bool merges_to_continue = block_is_plain_continue(merge);
-				if (!merges_to_continue && dominates_merge && !merge->headers.empty())
+
+				// Here we have a likely case where one block is doing a clean "break" out of a loop, and
+				// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
+				bool ambiguous_merge_case = !merges_to_continue && dominates_merge && !merge->headers.empty();
+
+				// Happens first iteration. We'll have to split blocks, so register a merge target where we want it.
+				// Otherwise, this is the easy case if we observe it in pass 1.
+				// This shouldn't really happen though, as we'd normally resolve this earlier in find_selection_merges.
+				bool mark_merge_block_case = !merges_to_continue && (merge->headers.empty() || pass == 0);
+
+				// Another scenario is that we don't dominate the merge block in pass 1. We cannot split blocks now.
+				// Check to see which paths can actually reach the merge target without going through a ladder block.
+				// If we don't go through ladder it means an outer scope will actually reach the merge node.
+				// If we reach a ladder it means a block we dominate will make the escape.
+
+				// Another case is when one path is "breaking" out to a continue block which we don't dominate.
+				// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
+				bool tie_break_merge = ambiguous_merge_case || !mark_merge_block_case;
+
+				if (tie_break_merge)
 				{
-					// Here we have a likely case where one block is doing a clean "break" out of a loop, and
-					// the other path continues as normal, and then conditionally breaks in a continue block or something similar.
 					bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
 					bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
 
 					if (a_path_is_break && b_path_is_break)
 					{
-						// If either path branches to the other,
-						// we should be able to merge to the node which has not committed to the break path yet.
-						if (node->succ[1]->can_backtrace_to(node->succ[0]))
-							merge_to_succ(node, 0);
-						else if (node->succ[0]->can_backtrace_to(node->succ[1]))
-							merge_to_succ(node, 1);
-						else
-						{
-							node->merge = MergeType::Selection;
-							node->selection_merge_block = nullptr;
-							//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
-						}
-					}
-					else if (b_path_is_break)
-						merge_to_succ(node, 0);
-					else
-						merge_to_succ(node, 1);
-				}
-				else if (!merges_to_continue && (merge->headers.empty() || pass == 0))
-				{
-					// Happens first iteration. We'll have to split blocks, so register a merge target where we want it.
-					// Otherwise, this is the easy case if we observe it in pass 1.
-					// This shouldn't really happen though, as we'd normally resolve this earlier in find_selection_merges.
-					assert(merge);
-					node->selection_merge_block = merge;
-					node->merge = MergeType::Selection;
-					merge->headers.push_back(node);
-					//LOGI("Merging %s -> %s\n", node->name.c_str(), node->selection_merge_block->name.c_str());
-				}
-				else
-				{
-					// We don't dominate the merge block in pass 1. We cannot split blocks now.
-					// Check to see which paths can actually reach the merge target without going through a ladder block.
-					// If we don't go through ladder it means an outer scope will actually reach the merge node.
-					// If we reach a ladder it means a block we dominate will make the escape.
-
-					// Another case is when one path is "breaking" out to a continue block which we don't dominate.
-					// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
-
-					bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
-					bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
-					if (a_path_is_break && b_path_is_break)
-					{
-						// Both paths break, so we never merge. Merge against Unreachable node if necessary ...
+						// Both paths break, so we don't need to merge anything. Use Unreachable merge target.
 						node->merge = MergeType::Selection;
 						node->selection_merge_block = nullptr;
 						//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
 					}
 					else if (b_path_is_break)
 						merge_to_succ(node, 0);
-					else
+					else if (a_path_is_break)
 						merge_to_succ(node, 1);
+					else
+					{
+						// Need more interesting tie-breaking.
+						// We can deduce which path is breaking or not based on the dominance frontier.
+						// If a dominance frontier for A can reach B, then we assume that B is breaking further than A
+						// is, so we should merge to A.
+						// The breaking path for B will likely need to ensure that the selection header can
+						// support such a break.
+						// If we hit this path, the common post-dominator will not find the intended merge
+						// target for B, so we never get to perform the necessary fixup.
+						auto *a_front = node->succ[0]->dominance_frontier.size() == 1 ?
+						                node->succ[0]->dominance_frontier.front() : nullptr;
+						auto *b_front = node->succ[1]->dominance_frontier.size() == 1 ?
+						                node->succ[1]->dominance_frontier.front() : nullptr;
+						bool found_candidate = false;
+
+						CFGNode *inner_merge_candidate = nullptr;
+
+						// If there is no unique dominance frontier for one path, pick the one that has a unique frontier
+						// as that in considered a merge.
+						if ((a_front || b_front) && a_front != b_front)
+						{
+							if (!b_front || (a_front && query_reachability(*a_front, *b_front)))
+							{
+								merge_to_succ(node, 0);
+								inner_merge_candidate = b_front;
+								found_candidate = true;
+							}
+							else if (!a_front || (b_front && query_reachability(*b_front, *a_front)))
+							{
+								merge_to_succ(node, 1);
+								inner_merge_candidate = a_front;
+								found_candidate = true;
+							}
+						}
+
+						if (!found_candidate)
+						{
+							node->merge = MergeType::Selection;
+							node->selection_merge_block = nullptr;
+
+							if (a_front && b_front && a_front->headers.size() == 1 && b_front->headers.size() == 1)
+							{
+								// Extremely ambiguous merge where the selection construct can merge to two different paths.
+								// Our only option at this point is to pick an arbitrary winner
+								// and consider one path the breaking one arbitrarily.
+								auto *a_header = a_front->headers.front();
+								auto *b_header = b_front->headers.front();
+
+								// Pick the largest enclosing header as a heuristic.
+								inner_merge_candidate =
+									a_header->forward_post_visit_order > b_header->forward_post_visit_order ?
+									a_front : b_front;
+							}
+						}
+
+						if (inner_merge_candidate && inner_merge_candidate->headers.size() == 1)
+						{
+							// The breaking path tries to break to this node.
+							// This will only trigger in pass 1.
+							auto *header = inner_merge_candidate->headers.front();
+							if (header->merge == MergeType::Selection)
+							{
+								// Promote to loop header instead.
+								// We might have to enter the loop ladder fixup stages later
+								// to insert ladders as required.
+								header->merge = MergeType::Loop;
+								header->loop_merge_block = header->selection_merge_block;
+								header->selection_merge_block = nullptr;
+								header->freeze_structured_analysis = true;
+							}
+						}
+					}
+				}
+				else
+				{
+					assert(merge);
+					node->selection_merge_block = merge;
+					node->merge = MergeType::Selection;
+					merge->headers.push_back(node);
+					//LOGI("Merging %s -> %s\n", node->name.c_str(), node->selection_merge_block->name.c_str());
 				}
 			}
 			else
@@ -2238,7 +2316,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		ladder->backward_post_visit_order = ladder_to->backward_post_visit_order;
 
 		// Stop rewriting once we hit a merge block.
-		inner_block->traverse_dominated_blocks_and_rewrite_branch(
+		traverse_dominated_blocks_and_rewrite_branch(inner_block,
 		    ladder_to, ladder, [inner_block](CFGNode *node) -> bool {
 			    return inner_block->selection_merge_block != node;
 		    });
@@ -2624,7 +2702,7 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 			ladder->dominance_frontier.push_back(merge);
 			ladder->forward_post_visit_order = merge->forward_post_visit_order;
 			ladder->backward_post_visit_order = merge->backward_post_visit_order;
-			node->traverse_dominated_blocks_and_rewrite_branch(merge, ladder);
+			traverse_dominated_blocks_and_rewrite_branch(node, merge, ladder);
 
 			merge = find_common_post_dominator(node->succ);
 			modified_cfg = true;
@@ -3198,7 +3276,7 @@ void CFGStructurizer::rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impo
 
 	ladder_selection->add_branch(ladder_break);
 	ladder_selection->add_branch(dominated_merge);
-	node->traverse_dominated_blocks_and_rewrite_branch(impossible_merge_target, ladder_selection);
+	traverse_dominated_blocks_and_rewrite_branch(node, impossible_merge_target, ladder_selection);
 	ladder_selection->recompute_immediate_dominator();
 
 	ladder_break->add_branch(impossible_merge_target);
@@ -3569,7 +3647,7 @@ void CFGStructurizer::find_loops()
 			ladder->forward_post_visit_order = merge_block->forward_post_visit_order;
 			ladder->backward_post_visit_order = merge_block->backward_post_visit_order;
 
-			node->traverse_dominated_blocks_and_rewrite_branch(merge_block, ladder);
+			traverse_dominated_blocks_and_rewrite_branch(node, merge_block, ladder);
 			node->loop_ladder_block = nullptr;
 			node->loop_merge_block = ladder;
 			ladder->recompute_immediate_dominator();
@@ -3680,7 +3758,7 @@ CFGNode *CFGStructurizer::get_or_create_ladder_block(CFGNode *node, size_t heade
 		ladder->forward_post_visit_order = node->forward_post_visit_order;
 		ladder->backward_post_visit_order = node->backward_post_visit_order;
 
-		header->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
+		traverse_dominated_blocks_and_rewrite_branch(header, node, ladder);
 		header->loop_ladder_block = ladder;
 		ladder->recompute_immediate_dominator();
 
@@ -3724,7 +3802,7 @@ CFGNode *CFGStructurizer::build_enclosing_break_target_for_loop_ladder(CFGNode *
 		loop->freeze_structured_analysis = true;
 
 		// After the loop ladder, make sure we always branch to the break target.
-		loop_ladder->traverse_dominated_blocks_and_rewrite_branch(new_selection_merge, node);
+		traverse_dominated_blocks_and_rewrite_branch(loop_ladder, new_selection_merge, node);
 
 		node = new_selection_merge;
 	}
@@ -3753,7 +3831,7 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 		new_ladder_block = ladder;
 
 		// Merge to ladder instead.
-		header->traverse_dominated_blocks_and_rewrite_branch(node, ladder);
+		traverse_dominated_blocks_and_rewrite_branch(header, node, ladder);
 
 		ladder->ir.terminator.type = Terminator::Type::Condition;
 		ladder->ir.terminator.conditional_id = module.allocate_id();
@@ -3811,7 +3889,7 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 			// any operations we can avoid messing around with ladder PHI variables and just execute the branch.
 			// This block will likely become a frontier node when merging PHI instead.
 			// This is a common case when breaking out of a simple for loop.
-			header->traverse_dominated_blocks_and_rewrite_branch(node, loop_ladder);
+			traverse_dominated_blocks_and_rewrite_branch(header, node, loop_ladder);
 		}
 		else
 		{
@@ -3831,7 +3909,7 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 			ladder_pre->ir.terminator.false_block = loop_ladder;
 
 			// Merge to ladder instead.
-			header->traverse_dominated_blocks_and_rewrite_branch(node, ladder_pre);
+			traverse_dominated_blocks_and_rewrite_branch(header, node, ladder_pre);
 			new_ladder_block = ladder_pre;
 
 			PHI phi;
@@ -3906,6 +3984,8 @@ void CFGStructurizer::split_merge_blocks()
 			// Find innermost loop header scope we can break to when resolving ladders.
 			CFGNode *target_header = get_target_break_block_for_inner_header(node, i);
 
+			//LOGI("Current: %s, target: %s.\n", current_node->name.c_str(), target_header->name.c_str());
+
 			if (current_node->merge == MergeType::Loop)
 			{
 				auto *loop_ladder = get_or_create_ladder_block(node, i);
@@ -3947,13 +4027,13 @@ void CFGStructurizer::split_merge_blocks()
 						rewrite_to = target_header->loop_merge_block;
 
 					if (rewrite_to)
-						current_node->traverse_dominated_blocks_and_rewrite_branch(node, rewrite_to);
+						traverse_dominated_blocks_and_rewrite_branch(current_node, node, rewrite_to);
 					else
 						LOGW("No loop merge block?\n");
 				}
 				else if (full_break_target)
 				{
-					current_node->traverse_dominated_blocks_and_rewrite_branch(node, full_break_target);
+					traverse_dominated_blocks_and_rewrite_branch(current_node, node, full_break_target);
 				}
 				else
 				{
@@ -4151,44 +4231,101 @@ void CFGStructurizer::recompute_dominance_frontier(CFGNode *node)
 	}
 }
 
-void CFGStructurizer::validate_structured()
+bool CFGStructurizer::rewrite_invalid_loop_breaks()
 {
+	// Keep iterating here until we have validated a clean CFG w.r.t. block-like loops.
+	// This should pass through first time without issue with extremely high probability,
+	// so hitting the slow path isn't a real concern until proven otherwise.
+	CFGNode *rewrite_header = nullptr;
+	CFGNode *invalid_target = nullptr;
+
+	// Process from inside out.
 	for (auto *node : forward_post_visit_order)
 	{
-		if (node->headers.size() > 1)
+		// Structured loop constructs can end up with problematic merge scenarios where we missed
+		// some cases where blocks branch outside our construct.
+		// At some point, we were considered mere selection constructs and breaking out of it is fine,
+		// but if the selection is promoted to a loop at some point after this analysis, we are a bit screwed.
+		// This can happen in complex ladder resolve scenarios.
+		// The fix-up means introducing multiple levels of ladder blocks.
+		if (node->merge == MergeType::Loop && node->freeze_structured_analysis)
 		{
-			LOGE("Node %s has %u headers!\n", node->name.c_str(), unsigned(node->headers.size()));
-			return;
-		}
+			auto *merge = node->loop_merge_block;
+			if (!merge || merge->post_dominates(node))
+				continue;
 
-		if (node->merge == MergeType::Loop)
-		{
-			if (!node->dominates(node->loop_merge_block) && !node->loop_merge_block->pred.empty())
-			{
-				LOGE("Node %s does not dominate its merge block %s!\n", node->name.c_str(),
-				     node->loop_merge_block->name.c_str());
-				return;
-			}
-		}
-		else if (node->merge == MergeType::Selection)
-		{
-			if (!node->selection_merge_block)
-				LOGE("No selection merge block for %s\n", node->name.c_str());
-			else if (!node->dominates(node->selection_merge_block) && !node->selection_merge_block->pred.empty())
-			{
-				LOGE("Node %s does not dominate its selection merge block %s!\n", node->name.c_str(),
-				     node->selection_merge_block->name.c_str());
-				return;
-			}
-		}
+			node->traverse_dominated_blocks([&](CFGNode *candidate) {
+				if (candidate == merge || invalid_target)
+					return false;
 
-		if (node->succ.size() >= 2 && node->merge == MergeType::None)
-		{
-			// This might not be critical.
-			LOGW("Node %s has %u successors, but no merge header.\n", node->name.c_str(), unsigned(node->succ.size()));
+				// If the succ can reach outside the loop construct, we have an error condition.
+				for (auto *succ : candidate->succ)
+				{
+					if (!query_reachability(*succ, *merge))
+					{
+						// Determine if we're an inner terminate/return, or a loop exit.
+						// If the common post-dominator is EXIT node, this is a return-like relationship,
+						// and we skip any fixup.
+						auto *pdom = CFGNode::find_common_post_dominator(succ, merge);
+						if (pdom != nullptr && !pdom->pred.empty())
+							invalid_target = succ;
+					}
+				}
+				return true;
+			});
+
+			if (invalid_target)
+			{
+				rewrite_header = node;
+				break;
+			}
 		}
 	}
-	LOGI("Successful CFG validation!\n");
+
+	if (invalid_target)
+	{
+		auto *merge = rewrite_header->loop_merge_block;
+		auto *dispatcher = create_helper_pred_block(merge);
+		rewrite_header->loop_merge_block = dispatcher;
+
+		size_t natural_preds = dispatcher->pred.size();
+		traverse_dominated_blocks_and_rewrite_branch(rewrite_header, invalid_target, dispatcher);
+
+		PHI phi;
+		phi.id = module.allocate_id();
+		phi.type_id = module.get_builder().makeBoolType();
+		module.get_builder().addName(phi.id, (String("break_selector_") + merge->name).c_str());
+
+		for (size_t i = 0; i < natural_preds; i++)
+		{
+			IncomingValue incoming = {};
+			incoming.block = dispatcher->pred[i];
+			incoming.id = module.get_builder().makeBoolConstant(true);
+			phi.incoming.push_back(incoming);
+		}
+
+		for (size_t i = natural_preds, n = dispatcher->pred.size(); i < n; i++)
+		{
+			IncomingValue incoming = {};
+			incoming.block = dispatcher->pred[i];
+			incoming.id = module.get_builder().makeBoolConstant(false);
+			phi.incoming.push_back(incoming);
+		}
+
+		dispatcher->ir.terminator.type = Terminator::Type::Condition;
+		dispatcher->ir.terminator.true_block = merge;
+		dispatcher->ir.terminator.false_block = invalid_target;
+		dispatcher->ir.terminator.direct_block = nullptr;
+		dispatcher->ir.terminator.conditional_id = phi.id;
+
+		dispatcher->ir.phi.push_back(std::move(phi));
+		dispatcher->add_branch(invalid_target);
+
+		recompute_cfg();
+		return true;
+	}
+
+	return false;
 }
 
 void CFGStructurizer::traverse(BlockEmissionInterface &iface)
@@ -4235,5 +4372,79 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 			break;
 		}
 	}
+}
+
+template <typename Op>
+void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode *dominator, CFGNode *candidate,
+                                                                   CFGNode *from, CFGNode *to, const Op &op,
+                                                                   UnorderedSet<const CFGNode *> &visitation_cache)
+{
+	visitation_cache.insert(candidate);
+
+	for (auto *node : candidate->succ)
+	{
+		if (!op(node))
+			continue;
+
+		if (node == from)
+		{
+			// Don't introduce a cycle.
+			// We only retarget branches when we have "escape-like" edges.
+			bool introduces_cycle;
+
+			if (to->forward_post_visit_order == candidate->forward_post_visit_order && to != candidate)
+			{
+				// Can happen when resolving ladders. We cannot use reachability query, do it slow way.
+				introduces_cycle = candidate->can_backtrace_to(to);
+			}
+			else
+				introduces_cycle = query_reachability(*to, *candidate);
+
+			if (!introduces_cycle)
+			{
+				// If we already have a branch to "to", need to branch there via an intermediate node.
+				// This way, we can distinguish between a normal branch and a rewritten branch.
+				if (std::find(candidate->succ.begin(), candidate->succ.end(), to) != candidate->succ.end())
+					candidate->retarget_branch_with_intermediate_node(from, to);
+				else
+					candidate->retarget_branch(from, to);
+			}
+		}
+		else if (dominator->dominates(node) && node != to) // Do not traverse beyond the new branch target.
+		{
+			if (!visitation_cache.count(node))
+				traverse_dominated_blocks_and_rewrite_branch(dominator, node, from, to, op, visitation_cache);
+		}
+	}
+
+	// In case we are rewriting branches to a new merge block, we might
+	// change the immediate post dominator for continue blocks inside this loop construct.
+	// When analysing post dominance in these cases, we need to make sure that we merge to the new merge block,
+	// and not the old one. This avoids some redundant awkward loop constructs.
+	for (auto &fake_next : candidate->fake_succ)
+	{
+		if (fake_next == from)
+		{
+			candidate->retarget_fake_succ(from, to);
+			break;
+		}
+	}
+}
+
+template <typename Op>
+void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to,
+                                                                   const Op &op)
+{
+	if (from == to)
+		return;
+
+	UnorderedSet<const CFGNode *> visitation_cache;
+	traverse_dominated_blocks_and_rewrite_branch(dominator, dominator, from, to, op, visitation_cache);
+	dominator->fixup_merge_info_after_branch_rewrite(from, to);
+}
+
+void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to)
+{
+	traverse_dominated_blocks_and_rewrite_branch(dominator, from, to, [](const CFGNode *node) -> bool { return true; });
 }
 } // namespace dxil_spv

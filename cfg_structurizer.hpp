@@ -159,7 +159,7 @@ private:
 	CFGNode *create_helper_pred_block(CFGNode *node);
 	CFGNode *create_helper_succ_block(CFGNode *node);
 	void reset_traversal();
-	void validate_structured();
+	bool rewrite_invalid_loop_breaks();
 	void recompute_cfg();
 	void compute_dominance_frontier();
 	void compute_post_dominance_frontier();
@@ -202,5 +202,13 @@ private:
 	bool query_reachability_split_loop_header(const CFGNode &from, const CFGNode &to, const CFGNode &end_node) const;
 	bool phi_frontier_makes_forward_progress(const PHI &phi, const CFGNode *frontier,
 	                                         const CFGNode *end_node) const;
+
+	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to);
+	template <typename Op>
+	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to, const Op &op);
+	template <typename Op>
+	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode *dominator, CFGNode *candidate,
+	                                                  CFGNode *from, CFGNode *to, const Op &op,
+	                                                  UnorderedSet<const CFGNode *> &visitation_cache);
 };
 } // namespace dxil_spv
