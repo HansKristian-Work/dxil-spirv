@@ -4196,19 +4196,26 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 		if (node->merge == MergeType::Loop && node->freeze_structured_analysis)
 		{
 			auto *merge = node->loop_merge_block;
-			if (!merge || !merge->block_is_jump_thread_ladder())
-				continue;
-
-			if (merge->post_dominates(node))
+			if (!merge || merge->post_dominates(node))
 				continue;
 
 			node->traverse_dominated_blocks([&](CFGNode *candidate) {
 				if (candidate == merge || invalid_target)
 					return false;
 
+				// If the succ can reach outside the loop construct, we have an error condition.
 				for (auto *succ : candidate->succ)
+				{
 					if (!query_reachability(*succ, *merge))
-						invalid_target = succ;
+					{
+						// Determine if we're an inner terminate/return, or a loop exit.
+						// If the common post-dominator is EXIT node, this is a return-like relationship,
+						// and we skip any fixup.
+						auto *pdom = CFGNode::find_common_post_dominator(succ, merge);
+						if (pdom != nullptr && !pdom->pred.empty())
+							invalid_target = succ;
+					}
+				}
 				return true;
 			});
 
