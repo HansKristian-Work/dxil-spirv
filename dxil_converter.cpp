@@ -640,10 +640,26 @@ Converter::Impl::ResourceVariableMeta Converter::Impl::get_resource_variable_met
 
 	if (const auto *variable = llvm::dyn_cast<llvm::ConstantAsMetadata>(resource->getOperand(1)))
 	{
-		if (const auto *var = llvm::dyn_cast<llvm::GlobalVariable>(variable->getValue()))
+		const llvm::Value *val = variable->getValue();
+		const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(val);
+
+		// It's possible that the variable is a constexpr bitcast, so resolve those ...
+		while (!global && val)
+		{
+			auto *constexpr_op = llvm::dyn_cast<llvm::ConstantExpr>(val);
+			val = nullptr;
+
+			if (constexpr_op && constexpr_op->getOpcode() == llvm::UnaryOperator::BitCast)
+			{
+				val = constexpr_op->getOperand(0);
+				global = llvm::dyn_cast<llvm::GlobalVariable>(val);
+			}
+		}
+
+		if (global)
 		{
 			meta.is_lib_variable = true;
-			meta.is_active = llvm_active_global_resource_variables.count(var) != 0;
+			meta.is_active = llvm_active_global_resource_variables.count(global) != 0;
 			return meta;
 		}
 	}
