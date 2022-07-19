@@ -42,6 +42,9 @@ bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Ty
 	if ((!impl.options.scalar_block_layout || !impl.options.supports_per_component_robustness) && vecsize == 3)
 		return false;
 
+	if (impl.options.ssbo_alignment > 16 && vecsize == 3)
+		return false;
+
 	// The rules for raw BAB vectorization are pretty simple.
 	// If the offset % element_size == 0, we can translate that load to a clean vectorized load-store.
 	// vec3 is the special case due to robustness, but robustness2 will generally have 16 byte alignment here,
