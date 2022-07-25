@@ -2036,6 +2036,10 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				// If we don't go through ladder it means an outer scope will actually reach the merge node.
 				// If we reach a ladder it means a block we dominate will make the escape.
 
+				// If we're in pass 1 and we still don't dominate our merge target, consider it ambiguous.
+				if (pass == 1 && !dominates_merge)
+					ambiguous_merge_case = true;
+
 				// Another case is when one path is "breaking" out to a continue block which we don't dominate.
 				// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
 				bool tie_break_merge = ambiguous_merge_case || !mark_merge_block_case;
