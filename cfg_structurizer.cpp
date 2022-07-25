@@ -1660,8 +1660,11 @@ void CFGStructurizer::backwards_visit()
 				}
 				else
 				{
+					// Only consider exits that are themselves backwards reachable.
+					// Otherwise, we'll be adding fake succs that resolve to outer infinite loops again.
 					for (auto *f : exits)
-						node->pred_back_edge->add_fake_branch(f);
+						if (f->backward_visited)
+							node->pred_back_edge->add_fake_branch(f);
 				}
 				need_revisit = true;
 			}
@@ -2032,6 +2035,10 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				// Check to see which paths can actually reach the merge target without going through a ladder block.
 				// If we don't go through ladder it means an outer scope will actually reach the merge node.
 				// If we reach a ladder it means a block we dominate will make the escape.
+
+				// If we're in pass 1 and we still don't dominate our merge target, consider it ambiguous.
+				if (pass == 1 && !dominates_merge)
+					ambiguous_merge_case = true;
 
 				// Another case is when one path is "breaking" out to a continue block which we don't dominate.
 				// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
@@ -2985,7 +2992,24 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 		{
 			// Even if we dominate node, we might not be able to merge to it.
 			if (!header.can_loop_merge_to(&node))
-				return LoopExitType::Escape;
+			{
+				// This is an escape we dominate, but this could also be a case where we break
+				// to a continue construct in the outer loop which is not reachable through back traversal.
+				// This will confuse loop analysis, since this kind of double continue will not resolve properly.
+				// In this case we need to rendezvous at this block with a ladder to avoid
+				// double-continue.
+
+				auto *outer_infinite_loop = get_innermost_loop_header_for(entry_block,
+				                                                          innermost_loop_header->immediate_dominator);
+				if (outer_infinite_loop && outer_infinite_loop->pred_back_edge &&
+				    outer_infinite_loop->pred_back_edge->succ.empty() &&
+				    outer_infinite_loop->pred_back_edge->post_dominates(&node))
+				{
+					return LoopExitType::MergeToInfiniteLoop;
+				}
+				else
+					return LoopExitType::Escape;
+			}
 
 			return LoopExitType::Merge;
 		}
@@ -3336,8 +3360,12 @@ bool CFGStructurizer::rewrite_transposed_loops()
 
 		// We call this an "inner" transposed loop here since merge block cannot reach this block.
 
-		CFGNode *impossible_merge_target = nullptr;
-		if (!result.non_dominated_exit.empty())
+		// Always resolve infinite continue ladders. This is where we break to
+		// an outer infinite loop. We must resolve the scopes by making this ladder the
+		// merge point, then we can break further.
+		CFGNode *impossible_merge_target = merge_result.infinite_continue_ladder;
+
+		if (!impossible_merge_target && !result.non_dominated_exit.empty())
 		{
 			auto *common_break_target = find_common_post_dominator(result.non_dominated_exit);
 			if (common_break_target && common_break_target != merge &&
@@ -3464,6 +3492,29 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 		case LoopExitType::Escape:
 			result.non_dominated_exit.push_back(loop_exit);
 			break;
+
+		case LoopExitType::MergeToInfiniteLoop:
+			result.dominated_continue_exit.push_back(loop_exit);
+			break;
+		}
+	}
+
+	if (result.dominated_continue_exit.size() > 1)
+	{
+		// If we have multiple continue exit candidates, they better merge into a single clean candidate that we
+		// still dominate, otherwise, ignore this case and treat them all as normal Escape nodes.
+		auto *common = find_common_post_dominator(result.dominated_continue_exit);
+		if (common && node->dominates(common))
+		{
+			result.dominated_continue_exit.clear();
+			result.dominated_continue_exit.push_back(common);
+		}
+		else
+		{
+			result.non_dominated_exit.insert(result.non_dominated_exit.end(),
+			                                 result.dominated_continue_exit.begin(),
+			                                 result.dominated_continue_exit.end());
+			result.dominated_continue_exit.clear();
 		}
 	}
 
@@ -3558,6 +3609,13 @@ CFGStructurizer::LoopMergeAnalysis CFGStructurizer::analyze_loop_merge(CFGNode *
 	LoopMergeAnalysis merge_result = {};
 	merge_result.merge = merge;
 	merge_result.dominated_merge = dominated_merge;
+
+	if (!analysis.dominated_continue_exit.empty())
+	{
+		assert(analysis.dominated_continue_exit.size() == 1);
+		merge_result.infinite_continue_ladder = analysis.dominated_continue_exit.front();
+	}
+
 	return merge_result;
 }
 
@@ -3590,6 +3648,9 @@ void CFGStructurizer::find_loops()
 		auto &dominated_exit = result.dominated_exit;
 		auto &inner_dominated_exit = result.inner_dominated_exit;
 		auto &non_dominated_exit = result.non_dominated_exit;
+
+		// This should not come up here, and must be handled in transpose loops.
+		assert(result.dominated_continue_exit.empty());
 
 		// Detect infinite loop with an exit which is only in inner loop construct.
 		// It is impossible to construct a merge block in this case since the merge targets,
