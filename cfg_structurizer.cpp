@@ -2572,7 +2572,7 @@ void CFGStructurizer::recompute_cfg()
 	compute_post_dominance_frontier();
 }
 
-CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator)
+CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator) const
 {
 	// Maintain the original switch block order if possible to avoid awkward churn in reference output.
 	uint64_t order = 1;
@@ -2599,7 +2599,8 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 
 			// A case label might be the merge block candidate of the switch.
 			// Don't consider case fallthrough if b post-dominates the entire switch statement.
-			if (child.node != post_dominator && parent.node != child.node && child.node->can_backtrace_to(parent.node))
+			if (child.node != post_dominator && parent.node != child.node &&
+			    query_reachability(*parent.node, *child.node))
 			{
 				parent.global_order = child.global_order - 1;
 				break;
