@@ -2636,6 +2636,38 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 			if (c.global_order == target_order)
 				return c.node;
 
+	// If two case labels merge execution before the candidate merge, we should consider that the natural merge,
+	// since it is not possible to express this without a switch merge.
+	for (auto &c : node->ir.terminator.cases)
+	{
+		for (auto *front : c.node->dominance_frontier)
+		{
+			// Ignore frontiers that are other case labels.
+			// We allow simple fallthrough, and if we found an impossible case we would have handled it already.
+			for (auto &ic : node->ir.terminator.cases)
+			{
+				if (ic.node == front)
+				{
+					front = nullptr;
+					break;
+				}
+			}
+
+			if (!front)
+				continue;
+
+			if (front->forward_post_visit_order != post_dominator->forward_post_visit_order &&
+			    query_reachability(*front, *post_dominator))
+			{
+				// If this is reachable by a different case label, we have a winner. This must be a fake fallthrough
+				// that we should promote to switch merge.
+				for (auto &ic : node->ir.terminator.cases)
+					if (ic.node != c.node && query_reachability(*ic.node, *front))
+						return front;
+			}
+		}
+	}
+
 	return post_dominator;
 }
 
@@ -2666,27 +2698,36 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 				switch_outer->freeze_structured_analysis = true;
 				merge->headers.push_back(switch_outer);
 
-				auto *dummy_case = pool.create_node();
-				dummy_case->name = natural_merge->name + ".pred";
-				dummy_case->immediate_dominator = node;
-				dummy_case->immediate_post_dominator = natural_merge;
-				dummy_case->forward_post_visit_order = node->forward_post_visit_order;
-				dummy_case->backward_post_visit_order = node->backward_post_visit_order;
-				dummy_case->ir.terminator.type = Terminator::Type::Branch;
-				dummy_case->ir.terminator.direct_block = natural_merge;
-				dummy_case->add_branch(natural_merge);
-				node->retarget_branch(natural_merge, dummy_case);
+				// Shouldn't be needed (I believe), but spirv-val is a bit temperamental when double breaking
+				// straight out of a switch block in some situations,
+				// so try not to ruffle too many feathers.
+				if (std::find(node->succ.begin(), node->succ.end(), natural_merge) != node->succ.end())
+				{
+					auto *dummy_case = pool.create_node();
+					dummy_case->name = natural_merge->name + ".pred";
+					dummy_case->immediate_dominator = node;
+					dummy_case->immediate_post_dominator = natural_merge;
+					dummy_case->forward_post_visit_order = node->forward_post_visit_order;
+					dummy_case->backward_post_visit_order = node->backward_post_visit_order;
+					dummy_case->ir.terminator.type = Terminator::Type::Branch;
+					dummy_case->ir.terminator.direct_block = natural_merge;
+					dummy_case->add_branch(natural_merge);
+					node->retarget_branch(natural_merge, dummy_case);
+				}
 
-				auto *dummy_break = pool.create_node();
-				dummy_break->name = node->name + ".break";
-				dummy_break->immediate_dominator = node;
-				dummy_break->immediate_post_dominator = merge;
-				dummy_break->forward_post_visit_order = node->forward_post_visit_order;
-				dummy_break->backward_post_visit_order = node->backward_post_visit_order;
-				dummy_break->ir.terminator.type = Terminator::Type::Branch;
-				dummy_break->ir.terminator.direct_block = merge;
-				dummy_break->add_branch(merge);
-				node->retarget_branch(merge, dummy_break);
+				if (std::find(node->succ.begin(), node->succ.end(), merge) != node->succ.end())
+				{
+					auto *dummy_break = pool.create_node();
+					dummy_break->name = node->name + ".break";
+					dummy_break->immediate_dominator = node;
+					dummy_break->immediate_post_dominator = merge;
+					dummy_break->forward_post_visit_order = node->forward_post_visit_order;
+					dummy_break->backward_post_visit_order = node->backward_post_visit_order;
+					dummy_break->ir.terminator.type = Terminator::Type::Branch;
+					dummy_break->ir.terminator.direct_block = merge;
+					dummy_break->add_branch(merge);
+					node->retarget_branch(merge, dummy_break);
+				}
 
 				node->freeze_structured_analysis = true;
 			}
