@@ -87,6 +87,7 @@ private:
 		Vector<CFGNode *> dominated_exit;
 		Vector<CFGNode *> inner_dominated_exit;
 		Vector<CFGNode *> non_dominated_exit;
+		Vector<CFGNode *> dominated_continue_exit;
 	};
 	LoopAnalysis analyze_loop(CFGNode *node) const;
 
@@ -94,6 +95,7 @@ private:
 	{
 		CFGNode *merge;
 		CFGNode *dominated_merge;
+		CFGNode *infinite_continue_ladder;
 	};
 	LoopMergeAnalysis analyze_loop_merge(CFGNode *node, const LoopAnalysis &analysis);
 	void rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impossible_merge_target,
@@ -151,6 +153,7 @@ private:
 		Exit,
 		Merge,
 		Escape,
+		MergeToInfiniteLoop,
 		InnerLoopExit,
 		InnerLoopMerge,
 		InnerLoopFalsePositive
