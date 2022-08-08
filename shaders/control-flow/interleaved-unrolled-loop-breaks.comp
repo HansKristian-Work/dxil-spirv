@@ -1,0 +1,44 @@
+RWStructuredBuffer<uint> RW : register(u0);
+
+[numthreads(1, 1, 1)]
+void main(uint id : SV_DispatchThreadID)
+{
+	uint v;
+	uint w = 1;
+	uint dummy = 0;
+
+	[unroll]
+	for (int i = 0; i < 4; i++)
+	{
+		InterlockedAdd(RW[0], w, v); w = v;
+
+		[branch]
+		if (w & 13)
+		{
+			InterlockedAdd(RW[0], w, v); w = v;
+			dummy = 1;
+			break;
+		}
+
+		[branch]
+		if (w & 1)
+		{
+			[branch]
+			if (w & 4)
+				InterlockedOr(RW[0], w, v); w = v;
+			dummy = 2;
+			break;
+		}
+
+		[branch]
+		if (w & 2)
+		{
+			InterlockedOr(RW[0], w, v); w = v;
+			dummy = 3;
+			break;
+		}
+	}
+
+	InterlockedAdd(RW[0], w, v); w = v;
+	InterlockedAdd(RW[0], dummy, v);
+}

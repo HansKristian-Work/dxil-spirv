@@ -357,6 +357,12 @@ bool CFGStructurizer::run()
 
 	create_continue_block_ladders();
 
+	while (serialize_interleaved_merge_scopes())
+	{
+		auto graphviz_split = graphviz_path + ".serialize";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+
 	split_merge_scopes();
 	recompute_cfg();
 
@@ -2333,6 +2339,11 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	}
 }
 
+bool CFGStructurizer::is_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c)
+{
+	return a != b && a->dominates(b) && b != c && b->dominates(c);
+}
+
 bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge) const
 {
 	if (!merge->post_dominates(header))
@@ -2448,10 +2459,6 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const 
 		return false;
 	}
 
-	const auto is_ordered = [](const CFGNode *a, const CFGNode *b, const CFGNode *c) {
-		return a != b && a->dominates(b) && b != c && b->dominates(c);
-	};
-
 	// Crossing break scenario.
 	if (is_ordered(first_natural_breaks_to_inner, first_natural_breaks_to_outer, last_natural_breaks_to_inner))
 		return true;
@@ -2459,6 +2466,179 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const 
 		return true;
 	else
 		return false;
+}
+
+bool CFGStructurizer::serialize_interleaved_merge_scopes()
+{
+	// Try to fixup scenarios which arise from unrolled loops with multiple break blocks.
+	// DXC will emit maximal convergence and force all dynamic instances of a given break to branch to the same
+	// block, which then breaks, e.g.:
+	// for (int i = 0; i < CONSTANT; i++) { cond_break_construct1(); cond_break_construct2(); cond_break_construct3(); }
+	// When this unrolls we can end up with merge blocks which are entangled. Only sane way to make this work
+	// is to serialize the breaks to after the merge block.
+	UnorderedSet<CFGNode *> potential_merge_nodes;
+
+	for (auto *node : forward_post_visit_order)
+		if (node->num_forward_preds() >= 2 && !block_is_plain_continue(node))
+			potential_merge_nodes.insert(node);
+
+	UnorderedSet<const CFGNode *> visited;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->num_forward_preds() <= 1)
+			continue;
+		if (block_is_plain_continue(node))
+			continue;
+
+		auto *idom = node->immediate_dominator;
+
+		Vector<CFGNode *> inner_constructs;
+		Vector<CFGNode *> valid_constructs;
+
+		// Find merge block candidates that are strictly dominated by idom and immediately post-dominated by node.
+		// They also must not be good merge candidates on their own.
+		// Also, we're not interested in any loop merge candidates.
+		for (auto *candidate : potential_merge_nodes)
+		{
+			if (candidate != idom && idom->dominates(candidate) &&
+			    candidate->immediate_post_dominator == node &&
+			    !candidate->post_dominates_perfect_structured_construct() &&
+			    get_innermost_loop_header_for(idom, node) == idom)
+			{
+				bool direct_dominance_frontier = candidate->dominance_frontier.size() == 1 &&
+				                                 candidate->dominance_frontier.front() == node;
+				// The candidate must not try to merge to other code since we might end up introducing loops that way.
+				// All code reachable by candidate must cleanly break to node.
+				if (direct_dominance_frontier)
+					inner_constructs.push_back(candidate);
+			}
+		}
+
+		// Ensure stable order.
+		std::sort(inner_constructs.begin(), inner_constructs.end(), [](const CFGNode *a, const CFGNode *b) {
+			return a->forward_post_visit_order < b->forward_post_visit_order;
+		});
+
+		// Prune any candidate that can reach another candidate. The sort ensures that candidate to be removed comes last.
+		size_t count = inner_constructs.size();
+		for (size_t i = 0; i < count; i++)
+		{
+			bool valid = true;
+			for (size_t j = 0; j < i; j++)
+			{
+				if (query_reachability(*inner_constructs[j], *inner_constructs[i]))
+				{
+					valid = false;
+					break;
+				}
+			}
+
+			if (valid)
+				valid_constructs.push_back(inner_constructs[i]);
+		}
+
+		if (valid_constructs.size() < 2)
+			continue;
+
+		Vector<std::pair<CFGNode *, CFGNode *>> pdf_ranges;
+		pdf_ranges.reserve(inner_constructs.size());
+
+		// If breaking merge constructs are entangled, their PDFs will overlap.
+		for (auto *candidate : valid_constructs)
+		{
+			auto &pdf = candidate->post_dominance_frontier;
+			assert(!pdf.empty());
+			CFGNode *first = pdf.front();
+			CFGNode *last = first;
+
+			for (auto *n : pdf)
+			{
+				if (n->forward_post_visit_order > first->forward_post_visit_order)
+					first = n;
+				if (n->forward_post_visit_order < last->forward_post_visit_order)
+					last = n;
+			}
+
+			pdf_ranges.push_back({ first, last });
+		}
+
+		bool need_deinterleave = false;
+		count = valid_constructs.size();
+		for (size_t i = 0; i < count && !need_deinterleave; i++)
+			for (size_t j = 0; j < count && !need_deinterleave; j++)
+				if (i != j)
+					need_deinterleave = is_ordered(pdf_ranges[i].first, pdf_ranges[j].first, pdf_ranges[i].second);
+
+		if (need_deinterleave)
+		{
+			// Rewrite the control flow to serialize execution of the candidate blocks.
+			auto *dispatcher = create_helper_pred_block(node);
+
+			auto &builder = module.get_builder();
+			PHI phi;
+			phi.id = module.allocate_id();
+			phi.type_id = builder.makeIntType(32);
+
+			for (auto *candidate : valid_constructs)
+				traverse_dominated_blocks_and_rewrite_branch(candidate, dispatcher, node);
+
+			size_t cutoff_index = dispatcher->pred.size();
+
+			// If there is no direct branch intended for node, the default case label will never be reached,
+			// so just pilfer one of the cases as default.
+			bool need_default_case = !dispatcher->pred.empty();
+
+			for (size_t i = 0; i < cutoff_index; i++)
+				phi.incoming.push_back({ dispatcher->pred[i], builder.makeIntConstant(-1) });
+
+			for (size_t i = 0; i < count; i++)
+			{
+				auto *candidate = valid_constructs[i];
+				traverse_dominated_blocks_and_rewrite_branch(idom, candidate, dispatcher);
+				size_t next_cutoff_index = dispatcher->pred.size();
+				for (size_t j = cutoff_index; j < next_cutoff_index; j++)
+					phi.incoming.push_back({ dispatcher->pred[j], builder.makeIntConstant(int32_t(i)) });
+				cutoff_index = next_cutoff_index;
+			}
+
+			idom->freeze_structured_analysis = true;
+			idom->merge = MergeType::Loop;
+			idom->loop_merge_block = dispatcher;
+
+			dispatcher->ir.terminator.conditional_id = phi.id;
+			dispatcher->ir.phi.push_back(std::move(phi));
+			builder.addName(phi.id, String("selector_" + node->name).c_str());
+
+			Terminator::Case default_case;
+			dispatcher->ir.terminator.type = Terminator::Type::Switch;
+			dispatcher->ir.terminator.direct_block = nullptr;
+			default_case.node = need_default_case ? node : valid_constructs[0];
+			default_case.is_default = true;
+			dispatcher->ir.terminator.cases.push_back(default_case);
+
+			for (size_t i = 0; i < count; i++)
+			{
+				auto *candidate = valid_constructs[i];
+				assert(candidate->pred.empty());
+				dispatcher->add_branch(candidate);
+
+				if (need_default_case || i)
+				{
+					Terminator::Case break_case;
+					break_case.node = candidate;
+					break_case.value = uint32_t(i);
+					dispatcher->ir.terminator.cases.push_back(break_case);
+				}
+			}
+
+			// This completely transposes the CFG, so need to recompute CFG to keep going.
+			recompute_cfg();
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void CFGStructurizer::split_merge_scopes()
@@ -2497,6 +2677,11 @@ void CFGStructurizer::split_merge_scopes()
 		// The idom is the natural header block.
 		auto *idom = node->immediate_dominator;
 		assert(idom->succ.size() >= 2);
+
+		// We already rewrote this selection construct in serialize_interleaved_merge_scopes.
+		// Don't try to introduce unnecessary ladders.
+		if (idom->merge == MergeType::Loop && idom->loop_merge_block == node)
+			continue;
 
 		// If we find a construct which is a typical entry <-> exit scenario, do not attempt to rewrite
 		// any branches. The real merge block might be contained inside this construct, and this block merely
