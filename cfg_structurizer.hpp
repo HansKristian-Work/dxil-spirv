@@ -103,6 +103,8 @@ private:
 	void rewrite_transposed_loop_outer(CFGNode *node, CFGNode *impossible_merge_target,
 	                                   const LoopMergeAnalysis &analysis);
 
+	static bool is_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
+	bool serialize_interleaved_merge_scopes();
 	void split_merge_scopes();
 	void eliminate_degenerate_blocks();
 	static bool ladder_chain_has_phi_dependencies(const CFGNode *chain, const CFGNode *incoming);

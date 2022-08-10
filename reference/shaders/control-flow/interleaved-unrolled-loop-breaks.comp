@@ -1,0 +1,403 @@
+#version 460
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
+
+uint _75;
+uint _77;
+uint _78;
+uint _80;
+uint _81;
+uint _82;
+uint _83;
+uint _84;
+uint _85;
+uint _86;
+uint _87;
+uint _88;
+uint _89;
+uint _90;
+uint _92;
+uint _93;
+uint _94;
+uint _95;
+uint _96;
+uint _97;
+uint _98;
+uint _99;
+uint _100;
+uint _101;
+uint _102;
+
+void main()
+{
+    int selector_5;
+    uint frontier_phi_5_pred;
+    uint frontier_phi_5_pred_1;
+    uint frontier_phi_5_pred_2;
+    uint frontier_phi_5_pred_3;
+    uint frontier_phi_5_pred_4;
+    uint _13;
+    for (;;)
+    {
+        _13 = imageAtomicAdd(_8, int(0u), 1u);
+        if ((_13 & 13u) == 0u)
+        {
+            if (!((_13 & 1u) == 0u))
+            {
+                selector_5 = 1;
+                frontier_phi_5_pred = _13;
+                frontier_phi_5_pred_1 = _13;
+                frontier_phi_5_pred_2 = _77;
+                frontier_phi_5_pred_3 = _86;
+                frontier_phi_5_pred_4 = _98;
+                break;
+            }
+            if (!((_13 & 2u) == 0u))
+            {
+                selector_5 = 0;
+                frontier_phi_5_pred = _13;
+                frontier_phi_5_pred_1 = _13;
+                frontier_phi_5_pred_2 = _13;
+                frontier_phi_5_pred_3 = _82;
+                frontier_phi_5_pred_4 = _94;
+                break;
+            }
+            uint _22 = imageAtomicAdd(_8, int(0u), _13);
+            if (!((_22 & 13u) == 0u))
+            {
+                selector_5 = 2;
+                frontier_phi_5_pred = _22;
+                frontier_phi_5_pred_1 = _13;
+                frontier_phi_5_pred_2 = _13;
+                frontier_phi_5_pred_3 = _89;
+                frontier_phi_5_pred_4 = _101;
+                break;
+            }
+            if (!((_22 & 1u) == 0u))
+            {
+                selector_5 = 1;
+                frontier_phi_5_pred = _22;
+                frontier_phi_5_pred_1 = _22;
+                frontier_phi_5_pred_2 = _13;
+                frontier_phi_5_pred_3 = _85;
+                frontier_phi_5_pred_4 = _97;
+                break;
+            }
+            if (!((_22 & 2u) == 0u))
+            {
+                selector_5 = 0;
+                frontier_phi_5_pred = _22;
+                frontier_phi_5_pred_1 = _22;
+                frontier_phi_5_pred_2 = _22;
+                frontier_phi_5_pred_3 = _81;
+                frontier_phi_5_pred_4 = _93;
+                break;
+            }
+            uint _23 = imageAtomicAdd(_8, int(0u), _22);
+            if (!((_23 & 13u) == 0u))
+            {
+                selector_5 = 2;
+                frontier_phi_5_pred = _23;
+                frontier_phi_5_pred_1 = _22;
+                frontier_phi_5_pred_2 = _22;
+                frontier_phi_5_pred_3 = _88;
+                frontier_phi_5_pred_4 = _100;
+                break;
+            }
+            if (!((_23 & 1u) == 0u))
+            {
+                selector_5 = 1;
+                frontier_phi_5_pred = _23;
+                frontier_phi_5_pred_1 = _23;
+                frontier_phi_5_pred_2 = _22;
+                frontier_phi_5_pred_3 = _84;
+                frontier_phi_5_pred_4 = _96;
+                break;
+            }
+            if (!((_23 & 2u) == 0u))
+            {
+                selector_5 = 0;
+                frontier_phi_5_pred = _23;
+                frontier_phi_5_pred_1 = _23;
+                frontier_phi_5_pred_2 = _23;
+                frontier_phi_5_pred_3 = _80;
+                frontier_phi_5_pred_4 = _92;
+                break;
+            }
+            uint _24 = imageAtomicAdd(_8, int(0u), _23);
+            if (!((_24 & 13u) == 0u))
+            {
+                selector_5 = 2;
+                frontier_phi_5_pred = _24;
+                frontier_phi_5_pred_1 = _23;
+                frontier_phi_5_pred_2 = _23;
+                frontier_phi_5_pred_3 = _87;
+                frontier_phi_5_pred_4 = _99;
+                break;
+            }
+            if (!((_24 & 1u) == 0u))
+            {
+                selector_5 = 1;
+                frontier_phi_5_pred = _24;
+                frontier_phi_5_pred_1 = _24;
+                frontier_phi_5_pred_2 = _23;
+                frontier_phi_5_pred_3 = _83;
+                frontier_phi_5_pred_4 = _95;
+                break;
+            }
+            if ((_24 & 2u) == 0u)
+            {
+                selector_5 = -1;
+                frontier_phi_5_pred = _24;
+                frontier_phi_5_pred_1 = _24;
+                frontier_phi_5_pred_2 = _24;
+                frontier_phi_5_pred_3 = 0u;
+                frontier_phi_5_pred_4 = _24;
+                break;
+            }
+            selector_5 = 0;
+            frontier_phi_5_pred = _24;
+            frontier_phi_5_pred_1 = _24;
+            frontier_phi_5_pred_2 = _24;
+            frontier_phi_5_pred_3 = 0u;
+            frontier_phi_5_pred_4 = _24;
+            break;
+        }
+        else
+        {
+            selector_5 = 2;
+            frontier_phi_5_pred = _13;
+            frontier_phi_5_pred_1 = _75;
+            frontier_phi_5_pred_2 = _78;
+            frontier_phi_5_pred_3 = _90;
+            frontier_phi_5_pred_4 = _102;
+            break;
+        }
+    }
+    uint _21 = frontier_phi_5_pred;
+    uint _30 = frontier_phi_5_pred_1;
+    uint _46 = frontier_phi_5_pred_2;
+    uint _34;
+    uint _36;
+    switch (selector_5)
+    {
+        case 0:
+        {
+            uint _37 = imageAtomicOr(_8, int(0u), _46);
+            _34 = 3u;
+            _36 = _37;
+            break;
+        }
+        case 1:
+        {
+            if ((_30 & 4u) == 0u)
+            {
+                _34 = 2u;
+                _36 = _30;
+                break;
+            }
+            uint _38 = imageAtomicOr(_8, int(0u), _30);
+            _34 = 2u;
+            _36 = _38;
+            break;
+        }
+        case 2:
+        {
+            uint _26 = imageAtomicAdd(_8, int(0u), _21);
+            _34 = 1u;
+            _36 = _26;
+            break;
+        }
+        default:
+        {
+            _34 = frontier_phi_5_pred_3;
+            _36 = frontier_phi_5_pred_4;
+            break;
+        }
+    }
+    uint _40 = imageAtomicAdd(_8, int(0u), _36);
+    uint _42 = imageAtomicAdd(_8, int(0u), _34);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 124
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main"
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %67 "selector_5"
+OpName %73 "frontier_phi_5.pred"
+OpName %74 "frontier_phi_5.pred"
+OpName %76 "frontier_phi_5.pred"
+OpName %79 "frontier_phi_5.pred"
+OpName %91 "frontier_phi_5.pred"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpConstant %5 0
+%11 = OpTypePointer Image %5
+%14 = OpConstant %5 1
+%16 = OpConstant %5 13
+%17 = OpTypeBool
+%28 = OpConstant %5 2
+%32 = OpConstant %5 4
+%35 = OpConstant %5 3
+%68 = OpTypeInt 32 1
+%69 = OpConstant %68 -1
+%70 = OpConstant %68 0
+%71 = OpConstant %68 1
+%72 = OpConstant %68 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%75 = OpUndef %5
+%77 = OpUndef %5
+%78 = OpUndef %5
+%80 = OpUndef %5
+%81 = OpUndef %5
+%82 = OpUndef %5
+%83 = OpUndef %5
+%84 = OpUndef %5
+%85 = OpUndef %5
+%86 = OpUndef %5
+%87 = OpUndef %5
+%88 = OpUndef %5
+%89 = OpUndef %5
+%90 = OpUndef %5
+%92 = OpUndef %5
+%93 = OpUndef %5
+%94 = OpUndef %5
+%95 = OpUndef %5
+%96 = OpUndef %5
+%97 = OpUndef %5
+%98 = OpUndef %5
+%99 = OpUndef %5
+%100 = OpUndef %5
+%101 = OpUndef %5
+%102 = OpUndef %5
+OpBranch %103
+%103 = OpLabel
+%9 = OpLoad %6 %8
+%12 = OpImageTexelPointer %11 %8 %10 %10
+%13 = OpAtomicIAdd %5 %12 %14 %10 %14
+%15 = OpBitwiseAnd %5 %13 %16
+%18 = OpIEqual %17 %15 %10
+OpLoopMerge %116 %122 None
+OpBranchConditional %18 %104 %116
+%104 = OpLabel
+%19 = OpBitwiseAnd %5 %13 %14
+%20 = OpIEqual %17 %19 %10
+OpSelectionMerge %105 None
+OpBranchConditional %20 %105 %116
+%105 = OpLabel
+%27 = OpBitwiseAnd %5 %13 %28
+%29 = OpIEqual %17 %27 %10
+OpSelectionMerge %106 None
+OpBranchConditional %29 %106 %116
+%106 = OpLabel
+%43 = OpImageTexelPointer %11 %8 %10 %10
+%22 = OpAtomicIAdd %5 %43 %14 %10 %13
+%44 = OpBitwiseAnd %5 %22 %16
+%45 = OpIEqual %17 %44 %10
+OpSelectionMerge %107 None
+OpBranchConditional %45 %107 %116
+%107 = OpLabel
+%49 = OpBitwiseAnd %5 %22 %14
+%50 = OpIEqual %17 %49 %10
+OpSelectionMerge %108 None
+OpBranchConditional %50 %108 %116
+%108 = OpLabel
+%51 = OpBitwiseAnd %5 %22 %28
+%52 = OpIEqual %17 %51 %10
+OpSelectionMerge %109 None
+OpBranchConditional %52 %109 %116
+%109 = OpLabel
+%53 = OpImageTexelPointer %11 %8 %10 %10
+%23 = OpAtomicIAdd %5 %53 %14 %10 %22
+%54 = OpBitwiseAnd %5 %23 %16
+%55 = OpIEqual %17 %54 %10
+OpSelectionMerge %110 None
+OpBranchConditional %55 %110 %116
+%110 = OpLabel
+%56 = OpBitwiseAnd %5 %23 %14
+%57 = OpIEqual %17 %56 %10
+OpSelectionMerge %111 None
+OpBranchConditional %57 %111 %116
+%111 = OpLabel
+%58 = OpBitwiseAnd %5 %23 %28
+%59 = OpIEqual %17 %58 %10
+OpSelectionMerge %112 None
+OpBranchConditional %59 %112 %116
+%112 = OpLabel
+%60 = OpImageTexelPointer %11 %8 %10 %10
+%24 = OpAtomicIAdd %5 %60 %14 %10 %23
+%61 = OpBitwiseAnd %5 %24 %16
+%62 = OpIEqual %17 %61 %10
+OpSelectionMerge %113 None
+OpBranchConditional %62 %113 %116
+%113 = OpLabel
+%63 = OpBitwiseAnd %5 %24 %14
+%64 = OpIEqual %17 %63 %10
+OpSelectionMerge %114 None
+OpBranchConditional %64 %114 %116
+%114 = OpLabel
+%65 = OpBitwiseAnd %5 %24 %28
+%66 = OpIEqual %17 %65 %10
+OpSelectionMerge %115 None
+OpBranchConditional %66 %116 %115
+%115 = OpLabel
+OpBranch %116
+%122 = OpLabel
+OpBranch %103
+%116 = OpLabel
+%67 = OpPhi %68 %69 %114 %70 %115 %70 %111 %70 %108 %70 %105 %71 %113 %71 %110 %71 %107 %71 %104 %72 %112 %72 %109 %72 %106 %72 %103
+%73 = OpPhi %5 %24 %114 %24 %115 %23 %111 %22 %108 %13 %105 %24 %113 %23 %110 %22 %107 %13 %104 %24 %112 %23 %109 %22 %106 %13 %103
+%74 = OpPhi %5 %24 %114 %24 %115 %23 %111 %22 %108 %13 %105 %24 %113 %23 %110 %22 %107 %13 %104 %23 %112 %22 %109 %13 %106 %75 %103
+%76 = OpPhi %5 %24 %114 %24 %115 %23 %111 %22 %108 %13 %105 %23 %113 %22 %110 %13 %107 %77 %104 %23 %112 %22 %109 %13 %106 %78 %103
+%79 = OpPhi %5 %10 %114 %10 %115 %80 %111 %81 %108 %82 %105 %83 %113 %84 %110 %85 %107 %86 %104 %87 %112 %88 %109 %89 %106 %90 %103
+%91 = OpPhi %5 %24 %114 %24 %115 %92 %111 %93 %108 %94 %105 %95 %113 %96 %110 %97 %107 %98 %104 %99 %112 %100 %109 %101 %106 %102 %103
+%21 = OpCopyObject %5 %73
+%30 = OpCopyObject %5 %74
+%46 = OpCopyObject %5 %76
+OpSelectionMerge %121 None
+OpSwitch %67 %121 0 %120 1 %118 2 %117
+%120 = OpLabel
+%47 = OpImageTexelPointer %11 %8 %10 %10
+%37 = OpAtomicOr %5 %47 %14 %10 %46
+OpBranch %121
+%118 = OpLabel
+%31 = OpBitwiseAnd %5 %30 %32
+%33 = OpIEqual %17 %31 %10
+OpSelectionMerge %119 None
+OpBranchConditional %33 %121 %119
+%119 = OpLabel
+%48 = OpImageTexelPointer %11 %8 %10 %10
+%38 = OpAtomicOr %5 %48 %14 %10 %30
+OpBranch %121
+%117 = OpLabel
+%25 = OpImageTexelPointer %11 %8 %10 %10
+%26 = OpAtomicIAdd %5 %25 %14 %10 %21
+OpBranch %121
+%121 = OpLabel
+%34 = OpPhi %5 %79 %116 %35 %120 %28 %118 %28 %119 %14 %117
+%36 = OpPhi %5 %91 %116 %37 %120 %30 %118 %38 %119 %26 %117
+%39 = OpImageTexelPointer %11 %8 %10 %10
+%40 = OpAtomicIAdd %5 %39 %14 %10 %36
+%41 = OpImageTexelPointer %11 %8 %10 %10
+%42 = OpAtomicIAdd %5 %41 %14 %10 %34
+OpReturn
+OpFunctionEnd
+#endif
