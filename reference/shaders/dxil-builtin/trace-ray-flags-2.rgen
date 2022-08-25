@@ -9,10 +9,10 @@ struct _20
     vec4 _m0;
 };
 
-layout(set = 0, binding = 0, std140) uniform Flags
+layout(set = 0, binding = 0, std140) uniform FlagsUBO
 {
     vec4 _m0[1];
-} Flags_1;
+} Flags;
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT AS;
 layout(set = 0, binding = 0) uniform writeonly image2D IMG;
@@ -20,7 +20,7 @@ layout(location = 0) rayPayloadEXT _20 _22;
 
 void main()
 {
-    traceRayEXT(AS, floatBitsToUint(Flags_1._m0[0u]).x, 0u, 1u, 2u, 3u, vec3(1.0, 2.0, 3.0), 7.0, vec3(4.0, 5.0, 6.0), 8.0, 0);
+    traceRayEXT(AS, floatBitsToUint(Flags._m0[0u]).x, 0u, 1u, 2u, 3u, vec3(1.0, 2.0, 3.0), 7.0, vec3(4.0, 5.0, 6.0), 8.0, 0);
     imageStore(IMG, ivec2(uvec2(0u)), vec4(_22._m0));
 }
 
@@ -52,7 +52,7 @@ OpEntryPoint RayGenerationNV %3 "main" %8 %12 %19 %22
 OpName %3 "main"
 OpName %8 "AS"
 OpName %12 "IMG"
-OpName %17 "Flags"
+OpName %17 "FlagsUBO"
 OpName %19 "Flags"
 OpName %20 ""
 OpDecorate %8 DescriptorSet 0

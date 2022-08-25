@@ -497,7 +497,7 @@ enum class ShaderFeature
 class Converter
 {
 public:
-	Converter(LLVMBCParser &bitcode_parser, SPIRVModule &module);
+	Converter(LLVMBCParser &bitcode_parser, LLVMBCParser *bitcode_reflection_parser, SPIRVModule &module);
 	~Converter();
 	ConvertedFunction convert_entry_point();
 	void set_resource_remapping_interface(ResourceRemappingInterface *iface);

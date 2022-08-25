@@ -11,7 +11,7 @@
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : require
 
-layout(set = 0, binding = 0, std430) writeonly buffer SSBO
+layout(set = 0, binding = 0, std430) writeonly buffer BUFSSBO
 {
     uint16_t _m0[];
 } BUF;
@@ -48,7 +48,7 @@ OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
 OpEntryPoint RayGenerationNV %3 "main" %9 %13
 OpName %3 "main"
-OpName %7 "SSBO"
+OpName %7 "BUFSSBO"
 OpName %9 "BUF"
 OpDecorate %6 ArrayStride 2
 OpMemberDecorate %7 0 Offset 0

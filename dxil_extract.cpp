@@ -33,7 +33,7 @@ using namespace dxil_spv;
 
 static void print_help()
 {
-	LOGE("dxil-extract <DXIL blob> [--output file.bc]\n");
+	LOGE("dxil-extract <DXIL blob> [--output file.bc] [--reflection]\n");
 }
 
 static std::vector<uint8_t> read_file(const char *path)
@@ -76,6 +76,7 @@ static bool write_file(const char *path, const void *data, size_t size)
 int main(int argc, char **argv)
 {
 	std::string input, output;
+	bool reflection = false;
 
 	CLICallbacks cbs;
 	cbs.add("--help", [](CLIParser &parser) {
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
 		parser.end();
 	});
 	cbs.add("--output", [&](CLIParser &parser) { output = parser.next_string(); });
+	cbs.add("--reflection", [&](CLIParser &) { reflection = true; });
 	cbs.default_handler = [&](const char *arg) { input = arg; };
 	CLIParser parser(std::move(cbs), argc - 1, argv + 1);
 
@@ -105,14 +107,26 @@ int main(int argc, char **argv)
 	}
 
 	dxil_spv_parsed_blob blob;
-	if (dxil_spv_parse_dxil_blob(input_file.data(), input_file.size(), &blob) != DXIL_SPV_SUCCESS)
+	if (reflection)
 	{
-		LOGE("Failed to parse blob.\n");
-		return EXIT_FAILURE;
+		if (dxil_spv_parse_reflection_dxil_blob(input_file.data(), input_file.size(), &blob) != DXIL_SPV_SUCCESS)
+		{
+			LOGE("Failed to parse blob.\n");
+			return EXIT_FAILURE;
+		}
+	}
+	else
+	{
+		if (dxil_spv_parse_dxil_blob(input_file.data(), input_file.size(), &blob) != DXIL_SPV_SUCCESS)
+		{
+			LOGE("Failed to parse blob.\n");
+			return EXIT_FAILURE;
+		}
 	}
 
 	const void *ir_data;
 	size_t ir_size;
+
 	if (dxil_spv_parsed_blob_get_raw_ir(blob, &ir_data, &ir_size) != DXIL_SPV_SUCCESS)
 	{
 		LOGE("Failed to extract raw IR.\n");

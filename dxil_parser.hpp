@@ -59,7 +59,7 @@ struct RDATSubobject
 class DXILContainerParser
 {
 public:
-	bool parse_container(const void *data, size_t size);
+	bool parse_container(const void *data, size_t size, bool reflection);
 	Vector<uint8_t> &get_blob();
 	Vector<RDATSubobject> &get_rdat_subobjects();
 
