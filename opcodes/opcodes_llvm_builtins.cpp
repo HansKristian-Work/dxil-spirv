@@ -135,6 +135,24 @@ static bool peephole_trivial_arithmetic_identity(Converter::Impl &impl,
 	return false;
 }
 
+static spv::Id resolve_llvm_actual_value_type(Converter::Impl &impl,
+                                              const llvm::Value *dependent_value,
+                                              const llvm::Value *value, spv::Id default_value_type)
+{
+	auto itr = impl.llvm_value_actual_type.find(value);
+	if (itr != impl.llvm_value_actual_type.end())
+	{
+		if (dependent_value)
+		{
+			// Forward the remapped type as required.
+			impl.llvm_value_actual_type[dependent_value] = itr->second;
+		}
+		return itr->second;
+	}
+	else
+		return default_value_type;
+}
+
 bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
 {
 	bool signed_input = false;
@@ -623,7 +641,39 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		// Fake this by copying the object instead without any cast, and resolve the bitcast in OpLoad/OpStore instead.
 		auto *pointer_type = llvm::cast<llvm::PointerType>(instruction->getOperand(0)->getType());
 		auto *pointee_type = pointer_type->getPointerElementType();
+
+		auto *output_type = llvm::cast<llvm::PointerType>(instruction->getType());
+		auto *output_value_type = output_type->getPointerElementType();
+		unsigned input_pointer_array_depth = 0;
+		unsigned output_pointer_array_depth = 0;
+
+		// The pointee type can be an array if we're bitcasting a pointer to array.
+		// The intention is that we will eventually access chain into the bitcast pointer.
+		// In DXIL we can only store scalars, so chase down the underlying type.
+		while (pointee_type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+		{
+			pointee_type = pointee_type->getArrayElementType();
+			input_pointer_array_depth++;
+		}
+
+		while (output_value_type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+		{
+			output_value_type = output_value_type->getArrayElementType();
+			output_pointer_array_depth++;
+		}
+
+		if (pointee_type->getTypeID() == llvm::Type::TypeID::PointerTyID ||
+		    output_value_type->getTypeID() == llvm::Type::TypeID::PointerTyID)
+		{
+			// Pretty sure DXIL does not support this ...
+			LOGE("Cannot handle pointer-to-pointer.\n");
+			return 0;
+		}
+
 		spv::Id value_type = impl.get_type_id(pointee_type);
+		// In case we get back-to-back pointer bitcasts for no good reason :v
+		value_type = resolve_llvm_actual_value_type(impl, instruction,
+		                                            instruction->getOperand(0), value_type);
 
 		spv::StorageClass fallback_storage;
 		if (static_cast<DXIL::AddressSpace>(pointer_type->getAddressSpace()) == DXIL::AddressSpace::GroupShared)
@@ -635,10 +685,38 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 
 		spv::Id id = impl.get_id_for_value(instruction->getOperand(0));
 
-		// Shouldn't try to copy constant expressions.
-		// They are built on-demand either way, and we risk infinite recursion that way.
-		if (!llvm::isa<llvm::ConstantExpr>(instruction))
+		if (output_pointer_array_depth != input_pointer_array_depth)
 		{
+			if (output_pointer_array_depth > input_pointer_array_depth)
+			{
+				// Non-sensical.
+				LOGE("Bitcasting pointer while adding more array dimensions.\n");
+				return 0;
+			}
+			else if (output_pointer_array_depth != 0)
+			{
+				// Bitcasting an array to anything other than scalar is non-sense.
+				// We might be able to make it work by access chaining partially, but don't bother unless we observe
+				// this. DXIL generally does not support array-of-array anyways ...
+				LOGE("Bitcasting pointer to unexpected number of array dimensions.\n");
+				return 0;
+			}
+
+			// It is apparently possible to bitcast pointer-to-array into pointer-to-value.
+			// Since we don't implement pointer bitcast,
+			// we pretend to do so by accessing chaining into the first element.
+			spv::Id type_id = impl.builder().makePointer(storage, value_type);
+			Operation *op = impl.allocate(spv::OpInBoundsAccessChain, type_id);
+			op->add_id(id);
+			for (unsigned i = 0; i < input_pointer_array_depth; i++)
+				op->add_id(impl.builder().makeUintConstant(0));
+			impl.add(op);
+			id = op->id;
+		}
+		else if (!llvm::isa<llvm::ConstantExpr>(instruction))
+		{
+			// Shouldn't try to copy constant expressions.
+			// They are built on-demand either way, and we risk infinite recursion that way.
 			spv::Id type_id = impl.builder().makePointer(storage, value_type);
 			Operation *op = impl.allocate(spv::OpCopyObject, instruction, type_id);
 			op->add_id(id);
@@ -730,6 +808,9 @@ static spv::Id build_constant_getelementptr(Converter::Impl &impl, const llvm::C
 	auto *element_type = cexpr->getType()->getPointerElementType();
 	spv::Id type_id = impl.get_type_id(element_type);
 
+	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
+	type_id = resolve_llvm_actual_value_type(impl, cexpr, cexpr->getOperand(0), type_id);
+
 	auto storage = impl.get_effective_storage_class(cexpr->getOperand(0), builder.getStorageClass(ptr_id));
 	type_id = builder.makePointer(storage, type_id);
 
@@ -810,6 +891,9 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(0));
 	spv::Id type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
 
+	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
+	resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), type_id);
+
 	auto storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
 	type_id = builder.makePointer(storage, type_id);
 
@@ -853,11 +937,12 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	// We need to get the ID here as the constexpr chain could set our type.
 	spv::Id value_id = impl.get_id_for_value(instruction->getPointerOperand());
 
-	auto type_itr = impl.llvm_value_actual_type.find(instruction->getPointerOperand());
+	spv::Id remapped_type_id = resolve_llvm_actual_value_type(impl, nullptr,
+	                                                          instruction->getPointerOperand(), 0);
 
-	if (type_itr != impl.llvm_value_actual_type.end())
+	if (remapped_type_id != 0)
 	{
-		Operation *load_op = impl.allocate(spv::OpLoad, type_itr->second);
+		Operation *load_op = impl.allocate(spv::OpLoad, remapped_type_id);
 		load_op->add_id(value_id);
 		impl.add(load_op);
 
@@ -868,9 +953,7 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	else
 	{
 		Operation *op = impl.allocate(spv::OpLoad, instruction);
-
 		op->add_id(value_id);
-
 		impl.add(op);
 	}
 	return true;
@@ -883,10 +966,11 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 	// We need to get the ID here as the constexpr chain could set our type.
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 
-	auto itr = impl.llvm_value_actual_type.find(instruction->getOperand(1));
-	if (itr != impl.llvm_value_actual_type.end())
+	spv::Id remapped_type_id = resolve_llvm_actual_value_type(impl, nullptr, instruction->getOperand(1), 0);
+
+	if (remapped_type_id != 0)
 	{
-		Operation *cast_op = impl.allocate(spv::OpBitcast, itr->second);
+		Operation *cast_op = impl.allocate(spv::OpBitcast, remapped_type_id);
 		cast_op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 		impl.add(cast_op);
 		op->add_id(cast_op->id);
