@@ -396,7 +396,7 @@ bool DXILContainerParser::parse_rdat(MemoryStream &stream)
 	return true;
 }
 
-bool DXILContainerParser::parse_container(const void *data, size_t size)
+bool DXILContainerParser::parse_container(const void *data, size_t size, bool reflection)
 {
 	MemoryStream stream(data, size);
 
@@ -425,10 +425,18 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 		if (!stream.read(part_header))
 			return false;
 
-		switch (static_cast<DXIL::FourCC>(part_header.part_fourcc))
+		auto fourcc = static_cast<DXIL::FourCC>(part_header.part_fourcc);
+		switch (fourcc)
 		{
 		case DXIL::FourCC::DXIL:
+		case DXIL::FourCC::ShaderStatistics:
 		{
+			DXIL::FourCC expected = reflection ? DXIL::FourCC::ShaderStatistics : DXIL::FourCC::DXIL;
+			if (expected != fourcc)
+				break;
+
+			// The STAT block includes a DXIL blob that is literally the same DXIL IR
+			// minus code + string names in the metadata chunks ... <__________________________________<
 			auto substream = stream.create_substream(stream.get_offset(), part_header.part_size);
 			if (!parse_dxil(substream))
 				return false;
@@ -467,9 +475,6 @@ bool DXILContainerParser::parse_container(const void *data, size_t size)
 			break;
 
 		case DXIL::FourCC::ResourceDef:
-			break;
-
-		case DXIL::FourCC::ShaderStatistics:
 			break;
 
 		case DXIL::FourCC::ShaderHash:

@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 18
+#define DXIL_SPV_API_VERSION_MINOR 19
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -69,6 +69,7 @@ typedef enum dxil_spv_result
 	DXIL_SPV_ERROR_PARSER = -4,
 	DXIL_SPV_ERROR_FAILED_VALIDATION = -5,
 	DXIL_SPV_ERROR_INVALID_ARGUMENT = -6,
+	DXIL_SPV_ERROR_NO_DATA = -7,
 	DXIL_SPV_RESULT_INT_MAX = 0x7fffffff
 } dxil_spv_result;
 
@@ -506,6 +507,9 @@ typedef struct dxil_spv_parsed_blob_s *dxil_spv_parsed_blob;
 
 /* Parses a DXBC archive as is passed into CreatePipeline, which contains a DXIL blob. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob);
+/* A variant that attempts to read the STAT block instead. The STAT block contains DXIL that is only used for reflection. (?!?!) */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_reflection_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob);
+
 /* Parses raw DXIL (LLVM BC). */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_parsed_blob *blob);
 
@@ -547,6 +551,9 @@ DXIL_SPV_PUBLIC_API void dxil_spv_set_thread_log_callback(dxil_spv_log_cb callba
 
 typedef struct dxil_spv_converter_s *dxil_spv_converter;
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_converter *converter);
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_create_converter_with_reflection(dxil_spv_parsed_blob blob,
+                                                                              dxil_spv_parsed_blob reflection_blob,
+                                                                              dxil_spv_converter *converter);
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_free(dxil_spv_converter converter);
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_entry_point(dxil_spv_converter converter, const char *entry_point);

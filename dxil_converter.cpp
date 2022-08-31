@@ -36,9 +36,9 @@
 
 namespace dxil_spv
 {
-Converter::Converter(LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
+Converter::Converter(LLVMBCParser &bitcode_parser_, LLVMBCParser *bitcode_reflection_parser_, SPIRVModule &module_)
 {
-	impl = std::make_unique<Impl>(bitcode_parser_, module_);
+	impl = std::make_unique<Impl>(bitcode_parser_, bitcode_reflection_parser_, module_);
 }
 
 Converter::~Converter()
@@ -120,7 +120,7 @@ static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
 	    llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
 }
 
-static dxil_spv::String get_string_metadata(const llvm::MDNode *node, unsigned index)
+static String get_string_metadata(const llvm::MDNode *node, unsigned index)
 {
 #ifdef HAVE_LLVMBC
 	return llvm::cast<llvm::MDString>(node->getOperand(index))->getString();
@@ -129,6 +129,27 @@ static dxil_spv::String get_string_metadata(const llvm::MDNode *node, unsigned i
 	String str(tmp.begin(), tmp.end());
 	return str;
 #endif
+}
+
+static String get_resource_name_metadata(const llvm::MDNode *node, const llvm::MDNode *reflections)
+{
+	if (reflections)
+	{
+		unsigned bind_space = get_constant_metadata(node, 3);
+		unsigned bind_register = get_constant_metadata(node, 4);
+		unsigned num_operands = reflections->getNumOperands();
+		for (unsigned i = 0; i < num_operands; i++)
+		{
+			auto *refl_node = llvm::cast<llvm::MDNode>(reflections->getOperand(i));
+			if (get_constant_metadata(refl_node, 3) == bind_space &&
+			    get_constant_metadata(refl_node, 4) == bind_register)
+			{
+				return get_string_metadata(refl_node, 2);
+			}
+		}
+	}
+
+	return get_string_metadata(node, 2);
 }
 
 static spv::Dim image_dimension_from_resource_kind(DXIL::ResourceKind kind)
@@ -239,7 +260,7 @@ static DXIL::ComponentType normalize_component_type(DXIL::ComponentType type)
 }
 
 static spv::Id build_ssbo_runtime_array_type(Converter::Impl &impl, unsigned bits, unsigned vecsize,
-                                             unsigned range_size, const char *name)
+                                             unsigned range_size, const String &name)
 {
 	auto &builder = impl.builder();
 	spv::Id uint_type = builder.makeUintType(bits);
@@ -247,7 +268,7 @@ static spv::Id build_ssbo_runtime_array_type(Converter::Impl &impl, unsigned bit
 		uint_type = builder.makeVectorType(uint_type, vecsize);
 	spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
 	builder.addDecoration(uint_array_type, spv::DecorationArrayStride, vecsize * (bits / 8));
-	spv::Id block_type_id = impl.get_struct_type({ uint_array_type }, name);
+	spv::Id block_type_id = impl.get_struct_type({ uint_array_type }, name.c_str());
 	builder.addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
 	builder.addDecoration(block_type_id, spv::DecorationBlock);
 
@@ -303,7 +324,8 @@ spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uin
 
 	builder.addDecoration(member_array_type, spv::DecorationArrayStride, element_size);
 
-	spv::Id type_id = get_struct_type({ member_array_type }, name.c_str());
+	auto ubo_block_name = name.empty() ? "" : (name + "UBO");
+	spv::Id type_id = get_struct_type({ member_array_type }, ubo_block_name.c_str());
 	builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
@@ -327,7 +349,7 @@ spv::Id Converter::Impl::create_raw_ssbo_variable(const RawDeclaration &raw_decl
 	spv::Id type_id = build_ssbo_runtime_array_type(*this,
 	                                                raw_width_to_bits(raw_decl.width),
 	                                                raw_vecsize_to_vecsize(raw_decl.vecsize),
-	                                                range_size, "SSBO");
+	                                                range_size, name + "SSBO");
 
 	if (raw_decl.width == RawWidth::B16)
 		builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
@@ -899,7 +921,7 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 	return true;
 }
 
-bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
+bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *refl)
 {
 	auto &builder = spirv_module.get_builder();
 	unsigned num_srvs = srvs->getNumOperands();
@@ -913,7 +935,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs)
 			continue;
 
 		unsigned index = get_constant_metadata(srv, 0);
-		auto name = get_string_metadata(srv, 2);
+		auto name = get_resource_name_metadata(srv, refl);
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
@@ -1352,7 +1374,7 @@ bool Converter::Impl::get_uav_image_format(DXIL::ResourceKind resource_kind,
 	return true;
 }
 
-bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
+bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *refl)
 {
 	auto &builder = spirv_module.get_builder();
 	unsigned num_uavs = uavs->getNumOperands();
@@ -1366,7 +1388,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 			continue;
 
 		unsigned index = get_constant_metadata(uav, 0);
-		auto name = get_string_metadata(uav, 2);
+		auto name = get_resource_name_metadata(uav, refl);
 		unsigned bind_space = get_constant_metadata(uav, 3);
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
@@ -1849,7 +1871,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs)
 	return true;
 }
 
-bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
+bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *refl)
 {
 	auto &builder = spirv_module.get_builder();
 	unsigned num_cbvs = cbvs->getNumOperands();
@@ -1862,7 +1884,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 			continue;
 
 		unsigned index = get_constant_metadata(cbv, 0);
-		auto name = get_string_metadata(cbv, 2);
+		auto name = get_resource_name_metadata(cbv, refl);
 		unsigned bind_space = get_constant_metadata(cbv, 3);
 		unsigned bind_register = get_constant_metadata(cbv, 4);
 		unsigned range_size = get_constant_metadata(cbv, 5);
@@ -2069,7 +2091,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs)
 	return true;
 }
 
-bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
+bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MDNode *refl)
 {
 	auto &builder = spirv_module.get_builder();
 	unsigned num_samplers = samplers->getNumOperands();
@@ -2083,7 +2105,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers)
 			continue;
 
 		unsigned index = get_constant_metadata(sampler, 0);
-		auto name = get_string_metadata(sampler, 2);
+		auto name = get_resource_name_metadata(sampler, refl);
 		unsigned bind_space = get_constant_metadata(sampler, 3);
 		unsigned bind_register = get_constant_metadata(sampler, 4);
 		unsigned range_size = get_constant_metadata(sampler, 5);
@@ -2778,17 +2800,39 @@ bool Converter::Impl::emit_resources()
 
 	auto *metas = resource_meta->getOperand(0);
 
-	if (metas->getOperand(0))
-		if (!emit_srvs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(0))))
+	llvm::MDNode *reflection_metas = nullptr;
+	if (bitcode_reflection_parser)
+	{
+		auto &reflection_module = bitcode_reflection_parser->get_module();
+		auto *reflection_resource_meta = reflection_module.getNamedMetadata("dx.resources");
+		if (reflection_resource_meta)
+			reflection_metas = reflection_resource_meta->getOperand(0);
+	}
+
+	const llvm::MDNode *reflection_type_metas[4] = {};
+	const llvm::MDNode *type_metas[4] = {};
+
+	for (unsigned i = 0; i < 4; i++)
+	{
+		if (metas->getOperand(i))
+		{
+			type_metas[i] = llvm::dyn_cast<llvm::MDNode>(metas->getOperand(i));
+			if (reflection_metas)
+				reflection_type_metas[i] = llvm::dyn_cast<llvm::MDNode>(reflection_metas->getOperand(i));
+		}
+	}
+
+	if (type_metas[0])
+		if (!emit_srvs(type_metas[0], reflection_type_metas[0]))
 			return false;
-	if (metas->getOperand(1))
-		if (!emit_uavs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(1))))
+	if (type_metas[1])
+		if (!emit_uavs(type_metas[1], reflection_type_metas[1]))
 			return false;
-	if (metas->getOperand(2))
-		if (!emit_cbvs(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(2))))
+	if (type_metas[2])
+		if (!emit_cbvs(type_metas[2], reflection_type_metas[2]))
 			return false;
-	if (metas->getOperand(3))
-		if (!emit_samplers(llvm::dyn_cast<llvm::MDNode>(metas->getOperand(3))))
+	if (type_metas[3])
+		if (!emit_samplers(type_metas[3], reflection_type_metas[3]))
 			return false;
 
 	return true;

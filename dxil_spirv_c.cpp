@@ -313,12 +313,13 @@ struct LocalRootParameter
 
 struct dxil_spv_converter_s
 {
-	explicit dxil_spv_converter_s(LLVMBCParser &bc_parser_)
-		: bc_parser(bc_parser_)
+	dxil_spv_converter_s(LLVMBCParser &bc_parser_, LLVMBCParser *bc_reflection_parser_)
+		: bc_parser(bc_parser_), bc_reflection_parser(bc_reflection_parser_)
 	{
 	}
 
 	LLVMBCParser &bc_parser;
+	LLVMBCParser *bc_reflection_parser;
 	Vector<uint32_t> spirv;
 	String entry_point;
 	Remapper remapper;
@@ -343,7 +344,7 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 		return DXIL_SPV_ERROR_OUT_OF_MEMORY;
 
 	DXILContainerParser parser;
-	if (!parser.parse_container(data, size))
+	if (!parser.parse_container(data, size, false))
 	{
 		delete parsed;
 		return DXIL_SPV_ERROR_PARSER;
@@ -359,6 +360,37 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 	}
 
 	parsed->entry_points = Converter::get_entry_points(parsed->bc);
+	*blob = parsed;
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_parse_reflection_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
+{
+	auto *parsed = new (std::nothrow) dxil_spv_parsed_blob_s;
+	if (!parsed)
+		return DXIL_SPV_ERROR_OUT_OF_MEMORY;
+
+	DXILContainerParser parser;
+	if (!parser.parse_container(data, size, true))
+	{
+		delete parsed;
+		return DXIL_SPV_ERROR_PARSER;
+	}
+
+	if (parser.get_blob().empty())
+	{
+		delete parsed;
+		return DXIL_SPV_ERROR_NO_DATA;
+	}
+
+	parsed->dxil_blob = std::move(parser.get_blob());
+
+	if (!parsed->bc.parse(parsed->dxil_blob.data(), parsed->dxil_blob.size()))
+	{
+		delete parsed;
+		return DXIL_SPV_ERROR_PARSER;
+	}
+
 	*blob = parsed;
 	return DXIL_SPV_SUCCESS;
 }
@@ -471,14 +503,21 @@ void dxil_spv_parsed_blob_free(dxil_spv_parsed_blob blob)
 	delete blob;
 }
 
-dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_converter *converter)
+dxil_spv_result dxil_spv_create_converter_with_reflection(dxil_spv_parsed_blob blob,
+                                                          dxil_spv_parsed_blob reflection_blob,
+                                                          dxil_spv_converter *converter)
 {
-	auto *conv = new (std::nothrow) dxil_spv_converter_s(blob->bc);
+	auto *conv = new (std::nothrow) dxil_spv_converter_s(blob->bc, reflection_blob ? &reflection_blob->bc : nullptr);
 	if (!conv)
 		return DXIL_SPV_ERROR_OUT_OF_MEMORY;
 
 	*converter = conv;
 	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_create_converter(dxil_spv_parsed_blob blob, dxil_spv_converter *converter)
+{
+	return dxil_spv_create_converter_with_reflection(blob, nullptr, converter);
 }
 
 void dxil_spv_converter_free(dxil_spv_converter converter)
@@ -497,7 +536,7 @@ void dxil_spv_converter_set_entry_point(dxil_spv_converter converter, const char
 dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 {
 	SPIRVModule module;
-	Converter dxil_converter(converter->bc_parser, module);
+	Converter dxil_converter(converter->bc_parser, converter->bc_reflection_parser, module);
 
 	if (!converter->entry_point.empty())
 		dxil_converter.set_entry_point(converter->entry_point.c_str());

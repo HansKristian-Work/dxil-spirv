@@ -154,6 +154,7 @@ static void print_help()
 	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
 	     "\t[--min-precision-native-16bit]\n"
 	     "\t[--raw-llvm]\n"
+	     "\t[--use-reflection-names]\n"
 	     "\t[--invariant-position]\n"
 	     "\t[--robust-physical-cbv-load]\n"
 	     "\t[--allow-arithmetic-relaxed-precision]\n");
@@ -183,6 +184,7 @@ struct Arguments
 	bool bindless_typed_buffer_offsets = false;
 	bool min_precision_native_16bit = false;
 	bool raw_llvm = false;
+	bool use_reflection_names = false;
 	bool invariant_position = false;
 	bool robust_physical_cbv_load = false;
 	bool allow_arithmetic_relaxed_precision = false;
@@ -703,6 +705,7 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--min-precision-native-16bit", [&](CLIParser &) { args.min_precision_native_16bit = true; });
 	cbs.add("--raw-llvm", [&](CLIParser &) { args.raw_llvm = true; });
+	cbs.add("--use-reflection-names", [&](CLIParser &) { args.use_reflection_names = true; });
 	cbs.add("--invariant-position", [&](CLIParser &) { args.invariant_position = true; });
 	cbs.add("--robust-physical-cbv-load", [&](CLIParser &) { args.robust_physical_cbv_load = true; });
 	cbs.add("--allow-arithmetic-relaxed-precision", [&](CLIParser &) { args.allow_arithmetic_relaxed_precision = true; });
@@ -728,6 +731,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	dxil_spv_parsed_blob reflection_blob = nullptr;
 	dxil_spv_parsed_blob blob;
 
 	if (args.raw_llvm)
@@ -747,11 +751,26 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (args.use_reflection_names)
+	{
+		auto result = dxil_spv_parse_reflection_dxil_blob(binary.data(), binary.size(), &reflection_blob);
+		if (result != DXIL_SPV_SUCCESS && result != DXIL_SPV_ERROR_NO_DATA)
+		{
+			LOGE("Failed to parse blob.\n");
+			return EXIT_FAILURE;
+		}
+		else if (result == DXIL_SPV_ERROR_NO_DATA)
+		{
+			LOGW("No STAT block found in DXIL blob.\n");
+			reflection_blob = nullptr;
+		}
+	}
+
 	if (args.dump_module)
 		dxil_spv_parsed_blob_dump_llvm_ir(blob);
 
 	dxil_spv_converter converter;
-	if (dxil_spv_create_converter(blob, &converter) != DXIL_SPV_SUCCESS)
+	if (dxil_spv_create_converter_with_reflection(blob, reflection_blob, &converter) != DXIL_SPV_SUCCESS)
 		return EXIT_FAILURE;
 
 	dxil_spv_converter_set_srv_remapper(converter, remap_srv, &remapper);
@@ -1131,6 +1150,8 @@ int main(int argc, char **argv)
 
 	dxil_spv_converter_free(converter);
 	dxil_spv_parsed_blob_free(blob);
+	if (reflection_blob)
+		dxil_spv_parsed_blob_free(reflection_blob);
 	dxil_spv_end_thread_allocator_context();
 	return EXIT_SUCCESS;
 }

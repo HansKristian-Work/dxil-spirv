@@ -126,13 +126,15 @@ struct Converter::Impl
 {
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 
-	Impl(LLVMBCParser &bitcode_parser_, SPIRVModule &module_)
+	Impl(LLVMBCParser &bitcode_parser_, LLVMBCParser *bitcode_reflection_parser_, SPIRVModule &module_)
 	    : bitcode_parser(bitcode_parser_)
+	    , bitcode_reflection_parser(bitcode_reflection_parser_)
 	    , spirv_module(module_)
 	{
 	}
 
 	LLVMBCParser &bitcode_parser;
+	LLVMBCParser *bitcode_reflection_parser;
 	SPIRVModule &spirv_module;
 
 	struct BlockMeta
@@ -263,10 +265,10 @@ struct Converter::Impl
 	bool emit_resources_global_mapping(DXIL::ResourceType type, const llvm::MDNode *node);
 	bool emit_resources();
 	bool emit_global_heaps();
-	bool emit_srvs(const llvm::MDNode *srvs);
-	bool emit_uavs(const llvm::MDNode *uavs);
-	bool emit_cbvs(const llvm::MDNode *cbvs);
-	bool emit_samplers(const llvm::MDNode *samplers);
+	bool emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *refl);
+	bool emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *refl);
+	bool emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *refl);
+	bool emit_samplers(const llvm::MDNode *samplers, const llvm::MDNode *refl);
 	bool emit_shader_record_buffer();
 	void register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index);
 	void emit_root_constants(unsigned num_descriptors, unsigned num_constant_words);
