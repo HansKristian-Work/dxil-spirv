@@ -76,6 +76,7 @@ dxil_spirv_src = [
   'opcodes/dxil/dxil_sampling.cpp',
   'opcodes/dxil/dxil_buffer.cpp',
   'opcodes/dxil/dxil_ray_tracing.cpp',
+  'opcodes/dxil/dxil_mesh.cpp',
   'opcodes/opcodes_llvm_builtins.cpp',
   'opcodes/opcodes_dxil_builtins.cpp',
 

@@ -2890,6 +2890,10 @@ ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_m
 		return ShaderStage::RayGeneration;
 	case spv::ExecutionModelCallableKHR:
 		return ShaderStage::Callable;
+	case spv::ExecutionModelTaskEXT:
+		return ShaderStage::Amplification;
+	case spv::ExecutionModelMeshEXT:
+		return ShaderStage::Mesh;
 	default:
 		return ShaderStage::Unknown;
 	}
@@ -3246,6 +3250,10 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 			return spv::ExecutionModelGeometry;
 		case DXIL::ShaderKind::Compute:
 			return spv::ExecutionModelGLCompute;
+		case DXIL::ShaderKind::Amplification:
+			return spv::ExecutionModelTaskEXT;
+		case DXIL::ShaderKind::Mesh:
+			return spv::ExecutionModelMeshEXT;
 		case DXIL::ShaderKind::RayGeneration:
 			return spv::ExecutionModelRayGenerationKHR;
 		case DXIL::ShaderKind::Miss:
@@ -3280,6 +3288,10 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 			return spv::ExecutionModelGeometry;
 		else if (model == "cs")
 			return spv::ExecutionModelGLCompute;
+		else if (model == "as")
+			return spv::ExecutionModelTaskEXT;
+		else if (model == "ms")
+			return spv::ExecutionModelMeshEXT;
 	}
 
 	return spv::ExecutionModelMax;
@@ -3462,7 +3474,7 @@ bool Converter::Impl::emit_patch_variables()
 	auto &builder = spirv_module.get_builder();
 
 	spv::StorageClass storage =
-	    execution_model == spv::ExecutionModelTessellationControl ? spv::StorageClassOutput : spv::StorageClassInput;
+	    execution_model == spv::ExecutionModelTessellationEvaluation ? spv::StorageClassInput : spv::StorageClassOutput;
 
 	for (unsigned i = 0; i < patch_node->getNumOperands(); i++)
 	{
@@ -3488,7 +3500,18 @@ bool Converter::Impl::emit_patch_variables()
 		else if (system_value == DXIL::Semantic::InsideTessFactor)
 			rows = 2;
 
-		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
+		spv::Id type_id;
+
+		if (system_value == DXIL::Semantic::CullPrimitive)
+			type_id = builder.makeBoolType();
+		else
+			type_id = get_type_id(effective_element_type, rows, cols);
+
+		if (execution_model == spv::ExecutionModelMeshEXT)
+		{
+			type_id = builder.makeArrayType(
+			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
+		}
 
 		auto variable_name = semantic_name;
 		if (semantic_index != 0)
@@ -3511,12 +3534,52 @@ bool Converter::Impl::emit_patch_variables()
 			// The offset is deduced from the control point I/O signature.
 			// TODO: If it's possible to omit trailing CP members in domain shader, we will need to pass this offset
 			// into the compiler.
-			builder.addDecoration(variable_id, spv::DecorationLocation, start_row + patch_location_offset);
-			if (start_col != 0)
-				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
+			VulkanStageIO vk_io = { start_row + patch_location_offset, start_col, true };
+
+			if (resource_mapping_iface)
+			{
+				D3DStageIO d3d_io = { semantic_name.c_str(), semantic_index, start_row, rows };
+
+				if (execution_model == spv::ExecutionModelTessellationEvaluation)
+				{
+					if (!resource_mapping_iface->remap_stage_input(d3d_io, vk_io))
+						return false;
+				}
+				else if (!resource_mapping_iface->remap_stage_output(d3d_io, vk_io))
+					return false;
+			}
+
+			builder.addDecoration(variable_id, spv::DecorationLocation, vk_io.location);
+			if (vk_io.component != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, vk_io.component);
 		}
 
-		builder.addDecoration(variable_id, spv::DecorationPatch);
+		builder.addDecoration(variable_id, execution_model == spv::ExecutionModelMeshEXT
+				? spv::DecorationPerPrimitiveEXT : spv::DecorationPatch);
+	}
+
+	return true;
+}
+
+bool Converter::Impl::emit_other_variables()
+{
+	auto &builder = spirv_module.get_builder();
+
+	if (execution_model == spv::ExecutionModelMeshEXT)
+	{
+		unsigned index_dim = execution_mode_meta.primitive_index_dimension;
+
+		if (index_dim)
+		{
+			spv::Id type_id = builder.makeArrayType(get_type_id(DXIL::ComponentType::U32, 1, index_dim),
+					builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
+			primitive_index_array_id = create_variable(spv::StorageClassOutput, type_id, "indices");
+
+			spv::BuiltIn builtin_id = index_dim == 3
+					? spv::BuiltInPrimitiveTriangleIndicesEXT : spv::BuiltInPrimitiveLineIndicesEXT;
+			builder.addDecoration(primitive_index_array_id, spv::DecorationBuiltIn, builtin_id);
+			spirv_module.register_builtin_shader_output(primitive_index_array_id, builtin_id);
+		}
 	}
 
 	return true;
@@ -3607,7 +3670,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		auto start_row = get_constant_metadata(output, 8);
 		auto start_col = get_constant_metadata(output, 9);
 
-		if (execution_model == spv::ExecutionModelTessellationControl)
+		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
@@ -3641,7 +3704,7 @@ bool Converter::Impl::emit_stage_output_variables()
 			continue;
 		}
 
-		if (execution_model == spv::ExecutionModelTessellationControl)
+		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
@@ -3729,25 +3792,34 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			if (execution_model == spv::ExecutionModelVertex ||
 			    execution_model == spv::ExecutionModelTessellationEvaluation ||
-			    execution_model == spv::ExecutionModelGeometry)
+			    execution_model == spv::ExecutionModelGeometry ||
+					execution_model == spv::ExecutionModelMeshEXT)
 			{
 				emit_interpolation_decorations(variable_id, interpolation);
 			}
 
-			unsigned effective_start_row = start_row;
-			if (execution_model == spv::ExecutionModelGeometry && geometry_stream < 4)
-				effective_start_row += start_row_for_geometry_stream[geometry_stream];
+			VulkanStageIO vk_output = { start_row, start_col };
 
-			builder.addDecoration(variable_id, spv::DecorationLocation, effective_start_row);
-			if (start_col != 0)
-				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
+			if (execution_model == spv::ExecutionModelGeometry && geometry_stream < 4)
+				vk_output.location += start_row_for_geometry_stream[geometry_stream];
+
+			if (resource_mapping_iface)
+			{
+				D3DStageIO d3d_output = { semantic_name.c_str(), semantic_index, start_row, rows };
+				if (!resource_mapping_iface->remap_stage_output(d3d_output, vk_output))
+					return false;
+			}
+
+			builder.addDecoration(variable_id, spv::DecorationLocation, vk_output.location);
+			if (vk_output.component != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, vk_output.component);
 		}
 	}
 
 	if (clip_distance_count)
 	{
 		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, clip_distance_count, 1, true);
-		if (execution_model == spv::ExecutionModelTessellationControl)
+		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
@@ -3761,7 +3833,7 @@ bool Converter::Impl::emit_stage_output_variables()
 	if (cull_distance_count)
 	{
 		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, cull_distance_count, 1, true);
-		if (execution_model == spv::ExecutionModelTessellationControl)
+		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
@@ -4033,6 +4105,15 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		break;
 	}
 
+	case DXIL::Semantic::CullPrimitive:
+	{
+		builder.addExtension("SPV_EXT_mesh_shader");
+		builder.addCapability(spv::CapabilityMeshShadingEXT);
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInCullPrimitiveEXT);
+		spirv_module.register_builtin_shader_output(id, spv::BuiltInCullPrimitiveEXT);
+		break;
+	}
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
@@ -4167,8 +4248,10 @@ bool Converter::Impl::emit_global_variables()
 		if (initializer)
 			initializer_id = get_id_for_constant(initializer, 0);
 
+    spv::StorageClass storage_class = address_space == DXIL::AddressSpace::GroupShared
+		    ? spv::StorageClassWorkgroup : spv::StorageClassPrivate;
 		spv::Id var_id = create_variable_with_initializer(
-		    address_space == DXIL::AddressSpace::GroupShared ? spv::StorageClassWorkgroup : spv::StorageClassPrivate,
+		    get_effective_storage_class(&global, storage_class),
 		    pointee_type_id, initializer_id);
 
 		decorate_relaxed_precision(global.getType()->getPointerElementType(), var_id, false);
@@ -4338,18 +4421,29 @@ bool Converter::Impl::emit_stage_input_variables()
 			if (execution_model == spv::ExecutionModelFragment)
 				emit_interpolation_decorations(variable_id, interpolation);
 
-			VulkanVertexInput vk_input = { start_row };
-			if (execution_model == spv::ExecutionModelVertex && resource_mapping_iface)
+			VulkanStageIO vk_input = { start_row, start_col };
+
+			if (resource_mapping_iface)
 			{
-				D3DVertexInput d3d_input = { semantic_name.c_str(), semantic_index, start_row, rows };
-				if (!resource_mapping_iface->remap_vertex_input(d3d_input, vk_input))
+				D3DStageIO d3d_input = { semantic_name.c_str(), semantic_index, start_row, rows };
+
+				if (execution_model == spv::ExecutionModelVertex)
+				{
+					if (!resource_mapping_iface->remap_vertex_input(d3d_input, vk_input))
+						return false;
+				}
+
+				if (!resource_mapping_iface->remap_stage_input(d3d_input, vk_input))
 					return false;
 			}
 
 			builder.addDecoration(variable_id, spv::DecorationLocation, vk_input.location);
 
-			if (execution_model != spv::ExecutionModelVertex && start_col != 0)
-				builder.addDecoration(variable_id, spv::DecorationComponent, start_col);
+			if (execution_model != spv::ExecutionModelVertex && vk_input.component != 0)
+				builder.addDecoration(variable_id, spv::DecorationComponent, vk_input.component);
+
+			if (execution_model == spv::ExecutionModelFragment && (vk_input.flags & STAGE_IO_PER_PRIMITIVE))
+				builder.addDecoration(variable_id, spv::DecorationPerPrimitiveEXT);
 		}
 	}
 
@@ -4845,52 +4939,11 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 
 bool Converter::Impl::emit_execution_modes_compute()
 {
-	auto &builder = spirv_module.get_builder();
-
-	auto *wave_size_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::WaveSize);
-	if (wave_size_node)
-	{
-		auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_node);
-		execution_mode_meta.required_wave_size = get_constant_metadata(wave_size, 0);
-	}
-
 	auto *num_threads_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NumThreads);
 	if (num_threads_node)
 	{
 		auto *num_threads = llvm::cast<llvm::MDNode>(*num_threads_node);
-		unsigned threads[3];
-		for (unsigned dim = 0; dim < 3; dim++)
-			threads[dim] = get_constant_metadata(num_threads, dim);
-
-		if (shader_analysis.require_compute_shader_derivatives)
-		{
-			// For sanity, verify that dimensions align sufficiently.
-			// Spec says that product of workgroup size must align with 4.
-			unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
-			if (total_workgroup_threads % 4 == 0)
-			{
-				builder.addExtension("SPV_NV_compute_shader_derivatives");
-				builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearNV);
-				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupLinearNV);
-
-				// If the X and Y dimensions align with 2,
-				// we need to assume that any quad op works on a 2D dispatch.
-				execution_mode_meta.synthesize_2d_quad_dispatch = (threads[0] % 2 == 0) && (threads[1] % 2 == 0);
-				if (execution_mode_meta.synthesize_2d_quad_dispatch)
-				{
-					threads[0] *= 2;
-					threads[1] /= 2;
-				}
-			}
-		}
-
-		for (unsigned dim = 0; dim < 3; dim++)
-			execution_mode_meta.workgroup_threads[dim] = threads[dim];
-
-		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
-		                         threads[0], threads[1], threads[2]);
-
-		return true;
+		return emit_execution_modes_thread_wave_properties(num_threads);
 	}
 	else
 		return false;
@@ -5202,6 +5255,126 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 	return true;
 }
 
+bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads)
+{
+	auto &builder = spirv_module.get_builder();
+
+	auto *wave_size_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::WaveSize);
+	if (wave_size_node)
+	{
+		auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_node);
+		execution_mode_meta.required_wave_size = get_constant_metadata(wave_size, 0);
+	}
+
+	unsigned threads[3];
+	for (unsigned dim = 0; dim < 3; dim++)
+		threads[dim] = get_constant_metadata(num_threads, dim);
+
+	if (shader_analysis.require_compute_shader_derivatives)
+	{
+		if (execution_model != spv::ExecutionModelGLCompute)
+		{
+			LOGE("Derivatives only supported in compute shaders.\n");
+			return false;
+		}
+
+		// For sanity, verify that dimensions align sufficiently.
+		// Spec says that product of workgroup size must align with 4.
+		unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
+		if (total_workgroup_threads % 4 == 0)
+		{
+			builder.addExtension("SPV_NV_compute_shader_derivatives");
+			builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearNV);
+			builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupLinearNV);
+
+			// If the X and Y dimensions align with 2,
+			// we need to assume that any quad op works on a 2D dispatch.
+			execution_mode_meta.synthesize_2d_quad_dispatch = (threads[0] % 2 == 0) && (threads[1] % 2 == 0);
+			if (execution_mode_meta.synthesize_2d_quad_dispatch)
+			{
+				threads[0] *= 2;
+				threads[1] /= 2;
+			}
+		}
+	}
+
+	for (unsigned dim = 0; dim < 3; dim++)
+		execution_mode_meta.workgroup_threads[dim] = threads[dim];
+
+	builder.addExecutionMode(spirv_module.get_entry_function(),
+			spv::ExecutionModeLocalSize, threads[0], threads[1], threads[2]);
+
+	return true;
+}
+
+bool Converter::Impl::emit_execution_modes_amplification()
+{
+	auto &builder = spirv_module.get_builder();
+
+	builder.addExtension("SPV_EXT_mesh_shader");
+	builder.addCapability(spv::CapabilityMeshShadingEXT);
+
+	auto *as_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ASState);
+
+	if (as_state_node) {
+		auto *arguments = llvm::cast<llvm::MDNode>(*as_state_node);
+		auto *num_threads = llvm::cast<llvm::MDNode>(arguments->getOperand(0));
+		return emit_execution_modes_thread_wave_properties(num_threads);
+	} else
+		return false;
+}
+
+bool Converter::Impl::emit_execution_modes_mesh()
+{
+	auto &builder = spirv_module.get_builder();
+	auto *func = spirv_module.get_entry_function();
+
+	builder.addExtension("SPV_EXT_mesh_shader");
+	builder.addCapability(spv::CapabilityMeshShadingEXT);
+
+	auto *ms_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::MSState);
+
+	if (ms_state_node) {
+		auto *arguments = llvm::cast<llvm::MDNode>(*ms_state_node);
+		unsigned max_vertex_count = get_constant_metadata(arguments, 1);
+		unsigned max_primitive_count = get_constant_metadata(arguments, 2);
+		auto topology = static_cast<DXIL::MeshOutputTopology>(get_constant_metadata(arguments, 3));
+		unsigned index_count;
+
+		builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
+		builder.addExecutionMode(func, spv::ExecutionModeOutputPrimitivesEXT, max_primitive_count);
+
+		switch (topology)
+		{
+		case DXIL::MeshOutputTopology::Undefined:
+			index_count = 0;
+			break;
+
+		case DXIL::MeshOutputTopology::Line:
+			builder.addExecutionMode(func, spv::ExecutionModeOutputLinesEXT);
+			index_count = 2;
+			break;
+
+		case DXIL::MeshOutputTopology::Triangle:
+			builder.addExecutionMode(func, spv::ExecutionModeOutputTrianglesEXT);
+			index_count = 3;
+			break;
+
+		default:
+			LOGE("Unexpected mesh output topology (%u).\n", unsigned(topology));
+			return false;
+		}
+
+		execution_mode_meta.stage_output_num_vertex = max_vertex_count;
+		execution_mode_meta.stage_output_num_primitive = max_primitive_count;
+		execution_mode_meta.primitive_index_dimension = index_count;
+
+		auto *num_threads = llvm::cast<llvm::MDNode>(arguments->getOperand(0));
+		return emit_execution_modes_thread_wave_properties(num_threads);
+	} else
+		return false;
+}
+
 bool Converter::Impl::emit_execution_modes_fp_denorm()
 {
 	// Check for SM 6.2 denorm handling. Only applies to FP32.
@@ -5285,6 +5458,16 @@ bool Converter::Impl::emit_execution_modes()
 	case spv::ExecutionModelCallableKHR:
 	case spv::ExecutionModelClosestHitKHR:
 		if (!emit_execution_modes_ray_tracing(execution_model))
+			return false;
+		break;
+
+	case spv::ExecutionModelTaskEXT:
+		if (!emit_execution_modes_amplification())
+			return false;
+		break;
+
+	case spv::ExecutionModelMeshEXT:
+		if (!emit_execution_modes_mesh())
 			return false;
 		break;
 
@@ -5644,6 +5827,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_stage_output_variables())
 		return result;
 	if (!emit_patch_variables())
+		return result;
+	if (!emit_other_variables())
 		return result;
 	if (!emit_global_variables())
 		return result;

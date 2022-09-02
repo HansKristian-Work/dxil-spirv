@@ -36,6 +36,7 @@
 #include "opcodes/dxil/dxil_tessellation.hpp"
 #include "opcodes/dxil/dxil_waveops.hpp"
 #include "opcodes/dxil/dxil_ray_tracing.hpp"
+#include "opcodes/dxil/dxil_mesh.hpp"
 
 namespace dxil_spv
 {
@@ -334,6 +335,14 @@ struct DXILDispatcher
 			emit_ray_query_get_matrix_value_instruction<spv::OpRayQueryGetIntersectionObjectToWorldKHR,
 				spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR>;
 		////////////
+
+		// dxil_mesh.cpp
+		OP(SetMeshOutputCounts) = emit_set_mesh_output_counts_instruction;
+		OP(EmitIndices) = emit_emit_indices_instruction;
+		OP(GetMeshPayload) = emit_get_mesh_payload_instruction;
+		OP(StoreVertexOutput) = emit_store_vertex_output_instruction;
+		OP(StorePrimitiveOutput) = emit_store_primitive_output_instruction;
+		OP(DispatchMesh) = emit_dispatch_mesh_instruction;
 	}
 
 #undef OP
@@ -961,6 +970,10 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 		// Very specific check for HZD invariance. See f32_to_f16 code for details.
 		if (instruction->getMetadata("dx.precise") != nullptr)
 			impl.shader_analysis.precise_f16_to_f32_observed = true;
+		break;
+
+	case DXIL::Op::DispatchMesh:
+		impl.handle_to_storage_class[instruction->getOperand(4)] = spv::StorageClassTaskPayloadWorkgroupEXT;
 		break;
 
 	default:

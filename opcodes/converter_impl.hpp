@@ -165,6 +165,7 @@ struct Converter::Impl
 	bool emit_stage_input_variables();
 	bool emit_stage_output_variables();
 	bool emit_patch_variables();
+	bool emit_other_variables();
 	bool emit_global_variables();
 	bool emit_incoming_payload();
 	bool emit_hit_attribute();
@@ -180,7 +181,10 @@ struct Converter::Impl
 	bool emit_execution_modes_domain();
 	bool emit_execution_modes_pixel();
 	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
+	bool emit_execution_modes_amplification();
+	bool emit_execution_modes_mesh();
 	bool emit_execution_modes_fp_denorm();
+	bool emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads);
 
 	bool analyze_instructions();
 	bool analyze_instructions(const llvm::Function *function);
@@ -250,6 +254,8 @@ struct Converter::Impl
 	{
 		unsigned stage_input_num_vertex = 0;
 		unsigned stage_output_num_vertex = 0;
+		unsigned stage_output_num_primitive = 0;
+		unsigned primitive_index_dimension = 0;
 		unsigned gs_stream_active_mask = 0;
 		llvm::Function *patch_constant_function = nullptr;
 		unsigned workgroup_threads[3] = {};
@@ -336,6 +342,7 @@ struct Converter::Impl
 	unsigned root_constant_num_words = 0;
 	unsigned patch_location_offset = 0;
 	unsigned descriptor_qa_counter = 0;
+	spv::Id primitive_index_array_id = 0;
 
 	struct PhysicalPointerMeta
 	{
