@@ -907,8 +907,8 @@ bool SPIRVModule::Impl::execution_model_is_ray_tracing() const
 bool SPIRVModule::Impl::spirv_requires_14() const
 {
 	return execution_model_is_ray_tracing() ||
-		execution_model == spv::ExecutionModelMeshEXT ||
-		execution_model == spv::ExecutionModelTaskEXT;
+	       execution_model == spv::ExecutionModelMeshEXT ||
+	       execution_model == spv::ExecutionModelTaskEXT;
 }
 
 bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv)

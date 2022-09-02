@@ -712,14 +712,14 @@ void dxil_spv_converter_set_cbv_remapper(dxil_spv_converter converter, dxil_spv_
 }
 
 void dxil_spv_converter_set_stage_input_remapper(dxil_spv_converter converter,
-                                              dxil_spv_shader_stage_io_remapper_cb remapper, void *userdata)
+                                                 dxil_spv_shader_stage_io_remapper_cb remapper, void *userdata)
 {
 	converter->remapper.stage_input_remapper = remapper;
 	converter->remapper.stage_input_userdata = userdata;
 }
 
 void dxil_spv_converter_set_stage_output_remapper(dxil_spv_converter converter,
-                                              dxil_spv_shader_stage_io_remapper_cb remapper, void *userdata)
+                                                  dxil_spv_shader_stage_io_remapper_cb remapper, void *userdata)
 {
 	converter->remapper.stage_output_remapper = remapper;
 	converter->remapper.stage_output_userdata = userdata;

@@ -556,9 +556,9 @@ enum class TessellatorPartitioning : uint8_t
 
 enum class MeshOutputTopology
 {
-  Undefined = 0,
-  Line = 1,
-  Triangle = 2
+	Undefined = 0,
+	Line = 1,
+	Triangle = 2
 };
 
 enum ShaderFlag

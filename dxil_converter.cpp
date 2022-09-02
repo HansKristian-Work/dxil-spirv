@@ -3510,7 +3510,7 @@ bool Converter::Impl::emit_patch_variables()
 		if (execution_model == spv::ExecutionModelMeshEXT)
 		{
 			type_id = builder.makeArrayType(
-			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
+				type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
 		}
 
 		auto variable_name = semantic_name;
@@ -3555,7 +3555,7 @@ bool Converter::Impl::emit_patch_variables()
 		}
 
 		builder.addDecoration(variable_id, execution_model == spv::ExecutionModelMeshEXT
-				? spv::DecorationPerPrimitiveEXT : spv::DecorationPatch);
+		                                   ? spv::DecorationPerPrimitiveEXT : spv::DecorationPatch);
 	}
 
 	return true;
@@ -3571,12 +3571,13 @@ bool Converter::Impl::emit_other_variables()
 
 		if (index_dim)
 		{
-			spv::Id type_id = builder.makeArrayType(get_type_id(DXIL::ComponentType::U32, 1, index_dim),
-					builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
+			spv::Id type_id = builder.makeArrayType(
+				get_type_id(DXIL::ComponentType::U32, 1, index_dim),
+				builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
 			primitive_index_array_id = create_variable(spv::StorageClassOutput, type_id, "indices");
 
-			spv::BuiltIn builtin_id = index_dim == 3
-					? spv::BuiltInPrimitiveTriangleIndicesEXT : spv::BuiltInPrimitiveLineIndicesEXT;
+			spv::BuiltIn builtin_id =
+			    index_dim == 3 ? spv::BuiltInPrimitiveTriangleIndicesEXT : spv::BuiltInPrimitiveLineIndicesEXT;
 			builder.addDecoration(primitive_index_array_id, spv::DecorationBuiltIn, builtin_id);
 			spirv_module.register_builtin_shader_output(primitive_index_array_id, builtin_id);
 		}
@@ -3793,7 +3794,7 @@ bool Converter::Impl::emit_stage_output_variables()
 			if (execution_model == spv::ExecutionModelVertex ||
 			    execution_model == spv::ExecutionModelTessellationEvaluation ||
 			    execution_model == spv::ExecutionModelGeometry ||
-					execution_model == spv::ExecutionModelMeshEXT)
+			    execution_model == spv::ExecutionModelMeshEXT)
 			{
 				emit_interpolation_decorations(variable_id, interpolation);
 			}
@@ -4248,11 +4249,11 @@ bool Converter::Impl::emit_global_variables()
 		if (initializer)
 			initializer_id = get_id_for_constant(initializer, 0);
 
-    spv::StorageClass storage_class = address_space == DXIL::AddressSpace::GroupShared
-		    ? spv::StorageClassWorkgroup : spv::StorageClassPrivate;
+		spv::StorageClass storage_class = address_space == DXIL::AddressSpace::GroupShared
+		                                  ? spv::StorageClassWorkgroup : spv::StorageClassPrivate;
 		spv::Id var_id = create_variable_with_initializer(
-		    get_effective_storage_class(&global, storage_class),
-		    pointee_type_id, initializer_id);
+			get_effective_storage_class(&global, storage_class),
+			pointee_type_id, initializer_id);
 
 		decorate_relaxed_precision(global.getType()->getPointerElementType(), var_id, false);
 		rewrite_value(&global, var_id);
@@ -5302,7 +5303,7 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 		execution_mode_meta.workgroup_threads[dim] = threads[dim];
 
 	builder.addExecutionMode(spirv_module.get_entry_function(),
-			spv::ExecutionModeLocalSize, threads[0], threads[1], threads[2]);
+	                         spv::ExecutionModeLocalSize, threads[0], threads[1], threads[2]);
 
 	return true;
 }
@@ -5316,11 +5317,13 @@ bool Converter::Impl::emit_execution_modes_amplification()
 
 	auto *as_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ASState);
 
-	if (as_state_node) {
+	if (as_state_node)
+	{
 		auto *arguments = llvm::cast<llvm::MDNode>(*as_state_node);
 		auto *num_threads = llvm::cast<llvm::MDNode>(arguments->getOperand(0));
 		return emit_execution_modes_thread_wave_properties(num_threads);
-	} else
+	}
+	else
 		return false;
 }
 
@@ -5334,7 +5337,8 @@ bool Converter::Impl::emit_execution_modes_mesh()
 
 	auto *ms_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::MSState);
 
-	if (ms_state_node) {
+	if (ms_state_node)
+	{
 		auto *arguments = llvm::cast<llvm::MDNode>(*ms_state_node);
 		unsigned max_vertex_count = get_constant_metadata(arguments, 1);
 		unsigned max_primitive_count = get_constant_metadata(arguments, 2);
@@ -5371,7 +5375,8 @@ bool Converter::Impl::emit_execution_modes_mesh()
 
 		auto *num_threads = llvm::cast<llvm::MDNode>(arguments->getOperand(0));
 		return emit_execution_modes_thread_wave_properties(num_threads);
-	} else
+	}
+	else
 		return false;
 }
 

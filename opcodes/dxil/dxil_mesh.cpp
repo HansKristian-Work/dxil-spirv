@@ -55,7 +55,7 @@ bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id index_id = impl.build_vector(index_scalar_type_id, components, index_dim);
 
 	Operation *op = impl.allocate(spv::OpAccessChain,
-			builder.makePointer(spv::StorageClassOutput, index_type_id));
+	                              builder.makePointer(spv::StorageClassOutput, index_type_id));
 	spv::Id ptr_id = op->id;
 
 	op->add_id(impl.primitive_index_array_id);
@@ -133,7 +133,7 @@ bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::
 	uint32_t num_cols = builder.getNumTypeComponents(output_type_id);
 
 	spv::Id store_value = impl.fixup_store_type_io(meta.component_type, 1,
-		impl.get_id_for_value(instruction->getOperand(4)));
+	                                               impl.get_id_for_value(instruction->getOperand(4)));
 
 	Operation *op;
 	spv::BuiltIn builtin;
@@ -148,7 +148,7 @@ bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::
 	}
 
 	op = impl.allocate(spv::OpAccessChain,
-			builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+	                   builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
 	ptr_id = op->id;
 	op->add_id(var_id);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(5)));
