@@ -23,6 +23,7 @@ OpName %3 "main"
 OpName %7 "SV_Target"
 OpDecorate %7 Location 0
 OpDecorate %11 BuiltIn SampleMask
+OpDecorate %11 Flat
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

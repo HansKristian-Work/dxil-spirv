@@ -13,6 +13,7 @@ OpName %3 "main"
 OpName %7 "SV_ShadingRate"
 OpName %9 "SV_Target"
 OpDecorate %7 BuiltIn ShadingRateKHR
+OpDecorate %7 Flat
 OpDecorate %9 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

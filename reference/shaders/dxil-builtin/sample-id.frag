@@ -24,6 +24,7 @@ OpName %3 "main"
 OpName %7 "SV_SampleIndex"
 OpName %9 "SV_Target"
 OpDecorate %7 BuiltIn SampleId
+OpDecorate %7 Flat
 OpDecorate %9 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1

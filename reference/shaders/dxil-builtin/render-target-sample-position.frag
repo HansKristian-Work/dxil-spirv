@@ -32,6 +32,7 @@ OpName %7 "SV_SampleIndex"
 OpName %11 "SV_Target"
 OpName %65 "Texture2DMSSamplePositionLUT"
 OpDecorate %7 BuiltIn SampleId
+OpDecorate %7 Flat
 OpDecorate %11 Location 0
 OpDecorate %13 SpecId 0
 %1 = OpTypeVoid

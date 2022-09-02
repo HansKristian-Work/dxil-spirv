@@ -94,7 +94,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	UnorderedMap<spv::BuiltIn, spv::Id> builtins_output;
 	UnorderedMap<spv::Id, spv::BuiltIn> id_to_builtin_output;
 
-	spv::Id get_type_for_builtin(spv::BuiltIn builtin);
+	spv::Id get_type_for_builtin(spv::BuiltIn builtin, bool &requires_flat_decoration);
 	ScratchPool<Operation> operation_pool;
 
 	bool spirv_requires_14() const;
@@ -128,11 +128,13 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	DescriptorQAInfo descriptor_qa_info;
 };
 
-spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
+spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requires_flat)
 {
+	requires_flat = false;
 	switch (builtin)
 	{
 	case spv::BuiltInSampleMask:
+		requires_flat = true;
 		return builder.makeArrayType(builder.makeUintType(32), builder.makeUintConstant(1), 0);
 
 	case spv::BuiltInTessCoord:
@@ -149,11 +151,13 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInShadingRateKHR:
 	case spv::BuiltInPrimitiveShadingRateKHR:
 	case spv::BuiltInViewIndex:
+		requires_flat = true;
 		return builder.makeUintType(32);
 
 	case spv::BuiltInSubgroupSize:
 	case spv::BuiltInSubgroupLocalInvocationId:
 		builder.addCapability(spv::CapabilityGroupNonUniform);
+		requires_flat = true;
 		return builder.makeUintType(32);
 
 	case spv::BuiltInGlobalInvocationId:
@@ -182,6 +186,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin)
 	case spv::BuiltInRayGeometryIndexKHR:
 	case spv::BuiltInIncomingRayFlagsKHR:
 	case spv::BuiltInHitKindKHR:
+		requires_flat = true;
 		return builder.makeUintType(32);
 
 	case spv::BuiltInHelperInvocation:
@@ -269,10 +274,15 @@ spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 	if (itr != builtins_input.end())
 		return itr->second;
 
-	spv::Id var_id = create_variable(spv::StorageClassInput, get_type_for_builtin(builtin), nullptr);
+	bool requires_flat = false;
+	spv::Id var_id = create_variable(spv::StorageClassInput, get_type_for_builtin(builtin, requires_flat), nullptr);
 	builder.addDecoration(var_id, spv::DecorationBuiltIn, builtin);
 	if (builtin_requires_volatile(builtin))
 		builder.addDecoration(var_id, spv::DecorationVolatile);
+
+	// VUID-StandaloneSpirv-Flat-04744
+	if (requires_flat && execution_model == spv::ExecutionModelFragment)
+		builder.addDecoration(var_id, spv::DecorationFlat);
 	register_builtin_shader_input(var_id, builtin);
 	return var_id;
 }

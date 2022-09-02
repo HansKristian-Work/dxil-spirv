@@ -32,6 +32,7 @@ OpName %10 "SV_Target"
 OpDecorate %8 Location 0
 OpDecorate %10 Location 0
 OpDecorate %26 BuiltIn ViewIndex
+OpDecorate %26 Flat
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

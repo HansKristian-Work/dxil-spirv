@@ -29,6 +29,7 @@ OpName %13 "SV_Coverage"
 OpDecorate %8 Location 0
 OpDecorate %13 BuiltIn SampleMask
 OpDecorate %15 BuiltIn SampleMask
+OpDecorate %15 Flat
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

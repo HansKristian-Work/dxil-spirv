@@ -3917,6 +3917,7 @@ void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::
 void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage)
 {
 	auto &builder = spirv_module.get_builder();
+	bool requires_flat_input = false;
 	switch (semantic)
 	{
 	case DXIL::Semantic::Position:
@@ -3943,6 +3944,7 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInSampleId);
 		spirv_module.register_builtin_shader_input(id, spv::BuiltInSampleId);
 		builder.addCapability(spv::CapabilitySampleRateShading);
+		requires_flat_input = true;
 		break;
 
 	case DXIL::Semantic::VertexID:
@@ -4035,8 +4037,7 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		else
 		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInLayer);
-			if (execution_model == spv::ExecutionModelFragment)
-				builder.addDecoration(id, spv::DecorationFlat);
+			requires_flat_input = true;
 		}
 		builder.addCapability(spv::CapabilityGeometry);
 		break;
@@ -4055,8 +4056,7 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		else
 		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInViewportIndex);
-			if (execution_model == spv::ExecutionModelFragment)
-				builder.addDecoration(id, spv::DecorationFlat);
+			requires_flat_input = true;
 		}
 		builder.addCapability(spv::CapabilityMultiViewport);
 		break;
@@ -4068,8 +4068,7 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		else
 		{
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInPrimitiveId);
-			if (execution_model == spv::ExecutionModelFragment)
-				builder.addDecoration(id, spv::DecorationFlat);
+			requires_flat_input = true;
 		}
 		builder.addCapability(spv::CapabilityGeometry);
 		break;
@@ -4084,6 +4083,7 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		{
 			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInShadingRateKHR);
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInShadingRateKHR);
+			requires_flat_input = true;
 		}
 		builder.addExtension("SPV_KHR_fragment_shading_rate");
 		builder.addCapability(spv::CapabilityFragmentShadingRateKHR);
@@ -4119,6 +4119,10 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		LOGE("Unknown DXIL semantic.\n");
 		break;
 	}
+
+	// VUID-StandaloneSpirv-Flat-04744
+	if (requires_flat_input && execution_model == spv::ExecutionModelFragment)
+		builder.addDecoration(id, spv::DecorationFlat);
 }
 
 static bool execution_model_has_incoming_payload(spv::ExecutionModel model)

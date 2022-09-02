@@ -37,6 +37,7 @@ OpDecorate %10 Flat
 OpDecorate %10 Location 1
 OpDecorate %13 Location 0
 OpDecorate %19 BuiltIn SubgroupLocalInvocationId
+OpDecorate %19 Flat
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
