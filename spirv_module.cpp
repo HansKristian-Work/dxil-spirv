@@ -1052,10 +1052,12 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				builder.addExtension("SPV_EXT_demote_to_helper_invocation");
 				builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
 			}
-			else if (op->op == spv::OpTerminateRayKHR || op->op == spv::OpIgnoreIntersectionKHR)
+			else if (op->op == spv::OpTerminateRayKHR || op->op == spv::OpIgnoreIntersectionKHR ||
+			         op->op == spv::OpEmitMeshTasksEXT)
 			{
 				// In DXIL, these must be by unreachable.
 				// There is no [[noreturn]] qualifier used for these intrinsics apparently.
+				// EmitMeshTasksEXT is similar, but ret void comes after.
 				implicit_terminator = true;
 			}
 
@@ -1088,13 +1090,11 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		{
 			LOGE("Basic block has implicit terminator, but attempts to merge execution?\n");
 			mark_error = true;
-			return;
 		}
-		else if (ir.terminator.type != Terminator::Type::Unreachable)
+		else if (ir.terminator.type != Terminator::Type::Unreachable && ir.terminator.type != Terminator::Type::Return)
 		{
-			LOGE("Implicitly terminated blocks must terminate with Unreachable.\n");
+			LOGE("Implicitly terminated blocks must terminate with Unreachable or Return.\n");
 			mark_error = true;
-			return;
 		}
 
 		return;
