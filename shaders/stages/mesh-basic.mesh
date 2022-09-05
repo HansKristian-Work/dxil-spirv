@@ -1,0 +1,43 @@
+struct VOut
+{
+	float4 pos : SV_Position;
+	float4 b : B;
+};
+
+struct PrimOut
+{
+	bool cull : SV_CullPrimitive;
+	uint layer : SV_RenderTargetArrayIndex;
+	uint primid : SV_PrimitiveID;
+	float4 c : C;
+};
+
+groupshared float foo[64];
+
+struct Payload
+{
+	float p;
+};
+
+[numthreads(2, 3, 4)]
+[outputtopology("triangle")]
+void main(uint tid : SV_GroupIndex,
+		in payload Payload p,
+		out vertices VOut vout[24],
+		out indices uint3 ind[8],
+		out primitives PrimOut prim[8])
+{
+	foo[tid] = float(tid);
+	GroupMemoryBarrierWithGroupSync();
+	SetMeshOutputCounts(24, 8);
+	vout[tid].pos = foo[tid].xxxx;
+	vout[tid].b = foo[tid ^ 1].xxxx + p.p;
+	if (tid < 8)
+	{
+		ind[tid] = 3 * tid + uint3(0, 1, 2);
+		prim[tid].cull = bool(tid & 1);
+		prim[tid].primid = tid;
+		prim[tid].layer = tid;
+		prim[tid].c = foo[tid ^ 2].xxxx;
+	}
+}

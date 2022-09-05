@@ -71,6 +71,8 @@ def convert_shaders(args):
         results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rchit')))
         results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rmiss')))
         results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'rcall')))
+        results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'mesh')))
+        results.append(pool.apply_async(convert_spirv, args = (in_path, out_path, args, 'task')))
 
     for res in results:
         res.get()

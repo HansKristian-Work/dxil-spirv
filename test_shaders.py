@@ -56,6 +56,7 @@ def create_temporary(suff = ''):
 def get_sm(shader, version_minor):
     minor_version = '_{}'.format(version_minor)
     lib_version = 'lib_6_{}'.format(5 if version_minor <= 5 else 6)
+    mesh_version = '_{}'.format(5 if version_minor <= 5 else version_minor)
     _, ext = os.path.splitext(shader)
     if ext == '.vert':
         return 'vs_6' + minor_version
@@ -69,6 +70,10 @@ def get_sm(shader, version_minor):
         return 'ds_6' + minor_version
     elif ext == '.geom':
         return 'gs_6' + minor_version
+    elif ext == '.mesh':
+        return 'ms_6' + mesh_version
+    elif ext == '.task':
+        return 'as_6' + mesh_version
     elif ext == '.rmiss':
         return lib_version
     elif ext == '.rint':
