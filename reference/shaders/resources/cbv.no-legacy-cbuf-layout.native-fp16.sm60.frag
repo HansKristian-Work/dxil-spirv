@@ -7,7 +7,11 @@
 #error No extension available for FP16.
 #endif
 #extension GL_EXT_shader_16bit_storage : require
+#if defined(GL_ARB_gpu_shader_int64)
 #extension GL_ARB_gpu_shader_int64 : require
+#else
+#error No extension available for 64-bit integers.
+#endif
 #extension GL_EXT_scalar_block_layout : require
 
 layout(set = 0, binding = 0, scalar) uniform _9_11

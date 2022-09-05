@@ -1,5 +1,9 @@
 #version 460
+#if defined(GL_ARB_gpu_shader_int64)
 #extension GL_ARB_gpu_shader_int64 : require
+#else
+#error No extension available for 64-bit integers.
+#endif
 #if defined(GL_AMD_gpu_shader_half_float)
 #extension GL_AMD_gpu_shader_half_float : require
 #elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)

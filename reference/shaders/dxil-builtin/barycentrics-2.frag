@@ -1,15 +1,15 @@
 #version 460
-#extension GL_NV_fragment_shader_barycentric : require
+#extension GL_EXT_fragment_shader_barycentric : require
 
-layout(location = 0) pervertexNV in float ATTRIB[3];
-layout(location = 0, component = 1) pervertexNV in float ATTRIB_1[3];
-layout(location = 0, component = 2) pervertexNV in float ATTRIB_2[3];
+layout(location = 0) pervertexEXT in float ATTRIB[3];
+layout(location = 0, component = 1) pervertexEXT in float ATTRIB_1[3];
+layout(location = 0, component = 2) pervertexEXT in float ATTRIB_2[3];
 layout(location = 1) centroid in float FOO;
 layout(location = 0) out float SV_Target;
 
 void main()
 {
-    SV_Target = (((ATTRIB[0u] * gl_BaryCoordNV.x) + FOO) + (ATTRIB_1[1u] * gl_BaryCoordNV.y)) + (ATTRIB_2[2u] * gl_BaryCoordNV.z);
+    SV_Target = (((ATTRIB[0u] * gl_BaryCoordEXT.x) + FOO) + (ATTRIB_1[1u] * gl_BaryCoordEXT.y)) + (ATTRIB_2[2u] * gl_BaryCoordEXT.z);
 }
 
 

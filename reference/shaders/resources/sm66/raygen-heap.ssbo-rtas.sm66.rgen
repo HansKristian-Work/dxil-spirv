@@ -25,9 +25,9 @@ layout(location = 1) rayPayloadEXT _20 _22;
 void main()
 {
     uint _24 = subgroupBroadcastFirst(0u);
-    accelerationStructureEXT _30 = accelerationStructureEXT(_10._m0[_24]);
-    traceRayEXT(_30, 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
-    traceRayEXT(_30, 0u, 1u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    uvec2 _30 = _10._m0[_24];
+    traceRayEXT(accelerationStructureEXT(_30), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    traceRayEXT(accelerationStructureEXT(_30), 0u, 1u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
     imageStore(_15[1u], ivec2(uvec2(0u)), vec4(_19._m0.x + _22._m0, _19._m0.y + _22._m0, _19._m0.z + _22._m0, _19._m0.w + _22._m0));
 }
 

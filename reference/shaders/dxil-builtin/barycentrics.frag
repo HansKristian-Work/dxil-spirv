@@ -1,17 +1,17 @@
 #version 460
-#extension GL_NV_fragment_shader_barycentric : require
+#extension GL_EXT_fragment_shader_barycentric : require
 
-layout(location = 0) pervertexNV in vec4 ATTRIB[3];
-layout(location = 1) pervertexNV in vec4 ATTRIB_2[3][2];
+layout(location = 0) pervertexEXT in vec4 ATTRIB[3];
+layout(location = 1) pervertexEXT in vec4 ATTRIB_2[3][2];
 layout(location = 3) flat in uint INDEX;
 layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    SV_Target.x = (((((ATTRIB[0u].x + gl_BaryCoordNV.x) + (ATTRIB[0u].x * gl_BaryCoordNV.x)) + (ATTRIB[1u].x * gl_BaryCoordNV.y)) + (ATTRIB_2[0u][INDEX].x * gl_BaryCoordNV.z)) + ((ATTRIB_2[1u][1u].x + ATTRIB_2[2u][0u].x) * gl_BaryCoordNoPerspNV.y)) + ((ATTRIB_2[0u][1u].x + ATTRIB_2[1u][0u].x) * gl_BaryCoordNoPerspNV.x);
-    SV_Target.y = (((((ATTRIB[0u].y + gl_BaryCoordNV.y) + (ATTRIB[0u].y * gl_BaryCoordNV.x)) + (ATTRIB[1u].y * gl_BaryCoordNV.y)) + (ATTRIB_2[0u][INDEX].y * gl_BaryCoordNV.z)) + ((ATTRIB_2[1u][1u].y + ATTRIB_2[2u][0u].y) * gl_BaryCoordNoPerspNV.y)) + ((ATTRIB_2[0u][1u].y + ATTRIB_2[1u][0u].y) * gl_BaryCoordNoPerspNV.x);
-    SV_Target.z = (((((ATTRIB[0u].z + gl_BaryCoordNoPerspNV.y) + (ATTRIB[0u].z * gl_BaryCoordNV.x)) + (ATTRIB[1u].z * gl_BaryCoordNV.y)) + (ATTRIB_2[0u][INDEX].z * gl_BaryCoordNV.z)) + ((ATTRIB_2[1u][1u].z + ATTRIB_2[2u][0u].z) * gl_BaryCoordNoPerspNV.y)) + ((ATTRIB_2[0u][1u].z + ATTRIB_2[1u][0u].z) * gl_BaryCoordNoPerspNV.x);
-    SV_Target.w = (((((ATTRIB[0u].w + gl_BaryCoordNoPerspNV.x) + (ATTRIB[0u].w * gl_BaryCoordNV.x)) + (ATTRIB[1u].w * gl_BaryCoordNV.y)) + (ATTRIB_2[0u][INDEX].w * gl_BaryCoordNV.z)) + ((ATTRIB_2[1u][1u].w + ATTRIB_2[2u][0u].w) * gl_BaryCoordNoPerspNV.y)) + ((ATTRIB_2[0u][1u].w + ATTRIB_2[1u][0u].w) * gl_BaryCoordNoPerspNV.x);
+    SV_Target.x = (((((ATTRIB[0u].x + gl_BaryCoordEXT.x) + (ATTRIB[0u].x * gl_BaryCoordEXT.x)) + (ATTRIB[1u].x * gl_BaryCoordEXT.y)) + (ATTRIB_2[0u][INDEX].x * gl_BaryCoordEXT.z)) + ((ATTRIB_2[1u][1u].x + ATTRIB_2[2u][0u].x) * gl_BaryCoordNoPerspEXT.y)) + ((ATTRIB_2[0u][1u].x + ATTRIB_2[1u][0u].x) * gl_BaryCoordNoPerspEXT.x);
+    SV_Target.y = (((((ATTRIB[0u].y + gl_BaryCoordEXT.y) + (ATTRIB[0u].y * gl_BaryCoordEXT.x)) + (ATTRIB[1u].y * gl_BaryCoordEXT.y)) + (ATTRIB_2[0u][INDEX].y * gl_BaryCoordEXT.z)) + ((ATTRIB_2[1u][1u].y + ATTRIB_2[2u][0u].y) * gl_BaryCoordNoPerspEXT.y)) + ((ATTRIB_2[0u][1u].y + ATTRIB_2[1u][0u].y) * gl_BaryCoordNoPerspEXT.x);
+    SV_Target.z = (((((ATTRIB[0u].z + gl_BaryCoordNoPerspEXT.y) + (ATTRIB[0u].z * gl_BaryCoordEXT.x)) + (ATTRIB[1u].z * gl_BaryCoordEXT.y)) + (ATTRIB_2[0u][INDEX].z * gl_BaryCoordEXT.z)) + ((ATTRIB_2[1u][1u].z + ATTRIB_2[2u][0u].z) * gl_BaryCoordNoPerspEXT.y)) + ((ATTRIB_2[0u][1u].z + ATTRIB_2[1u][0u].z) * gl_BaryCoordNoPerspEXT.x);
+    SV_Target.w = (((((ATTRIB[0u].w + gl_BaryCoordNoPerspEXT.x) + (ATTRIB[0u].w * gl_BaryCoordEXT.x)) + (ATTRIB[1u].w * gl_BaryCoordEXT.y)) + (ATTRIB_2[0u][INDEX].w * gl_BaryCoordEXT.z)) + ((ATTRIB_2[1u][1u].w + ATTRIB_2[2u][0u].w) * gl_BaryCoordNoPerspEXT.y)) + ((ATTRIB_2[0u][1u].w + ATTRIB_2[1u][0u].w) * gl_BaryCoordNoPerspEXT.x);
 }
 
 
