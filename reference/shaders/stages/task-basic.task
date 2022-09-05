@@ -1,0 +1,74 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct _11
+{
+    float _m0[64][4];
+};
+
+taskPayloadSharedEXT _11 _13;
+
+void main()
+{
+    float _17 = float(gl_LocalInvocationIndex);
+    _13._m0[gl_LocalInvocationIndex][0u] = _17;
+    _13._m0[gl_LocalInvocationIndex][1u] = _17;
+    _13._m0[gl_LocalInvocationIndex][2u] = _17;
+    _13._m0[gl_LocalInvocationIndex][3u] = _17;
+    EmitMeshTasksEXT(2u, 3u, 4u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 29
+; Schema: 0
+OpCapability Shader
+OpCapability MeshShadingEXT
+OpExtension "SPV_EXT_mesh_shader"
+OpMemoryModel Logical GLSL450
+OpEntryPoint TaskEXT %3 "main" %13 %15
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %11 ""
+OpDecorate %15 BuiltIn LocalInvocationIndex
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpConstant %5 64
+%7 = OpConstant %5 4
+%8 = OpTypeFloat 32
+%9 = OpTypeArray %8 %7
+%10 = OpTypeArray %9 %6
+%11 = OpTypeStruct %10
+%12 = OpTypePointer TaskPayloadWorkgroupEXT %11
+%13 = OpVariable %12 TaskPayloadWorkgroupEXT
+%14 = OpTypePointer Input %5
+%15 = OpVariable %14 Input
+%18 = OpTypePointer TaskPayloadWorkgroupEXT %8
+%20 = OpConstant %5 0
+%22 = OpConstant %5 1
+%24 = OpConstant %5 2
+%26 = OpConstant %5 3
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %27
+%27 = OpLabel
+%16 = OpLoad %5 %15
+%17 = OpConvertUToF %8 %16
+%19 = OpAccessChain %18 %13 %20 %16 %20
+OpStore %19 %17
+%21 = OpAccessChain %18 %13 %20 %16 %22
+OpStore %21 %17
+%23 = OpAccessChain %18 %13 %20 %16 %24
+OpStore %23 %17
+%25 = OpAccessChain %18 %13 %20 %16 %26
+OpStore %25 %17
+OpEmitMeshTasksEXT %24 %26 %7 %13
+OpReturn
+OpFunctionEnd
+#endif

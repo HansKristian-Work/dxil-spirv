@@ -1,5 +1,9 @@
 #version 460
+#if defined(GL_ARB_gpu_shader_int64)
 #extension GL_ARB_gpu_shader_int64 : require
+#else
+#error No extension available for 64-bit integers.
+#endif
 
 layout(set = 0, binding = 0, std140) uniform _10_12
 {

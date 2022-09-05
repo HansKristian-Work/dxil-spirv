@@ -1,0 +1,13 @@
+struct Payload
+{
+	float4 p[64];
+};
+
+groupshared Payload p;
+
+[numthreads(64, 1, 1)]
+void main(uint tid : SV_GroupIndex)
+{
+	p.p[tid] = float(tid).xxxx;
+	DispatchMesh(2, 3, 4, p);
+}
