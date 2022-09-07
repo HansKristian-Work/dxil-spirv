@@ -2683,6 +2683,16 @@ bool Converter::Impl::emit_global_heaps()
 			if (shader_analysis.require_uav_thread_group_coherence)
 				annotation->coherent = true;
 
+			if (annotation->resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			    annotation->resource_kind == DXIL::ResourceKind::RawBuffer)
+			{
+				// In case there is aliasing through different declarations,
+				// we cannot emit NonWritable or NonReadable safely. Assume full read-write.
+				// Be a bit careful with typed resources since it's not always supported with read-write + typed.
+				annotation->tracking.has_read = true;
+				annotation->tracking.has_written = true;
+			}
+
 			info.uav_coherent = annotation->coherent;
 			info.uav_read = annotation->tracking.has_read;
 			info.uav_written = annotation->tracking.has_written;
