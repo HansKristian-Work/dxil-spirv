@@ -13,7 +13,7 @@ layout(set = 15, binding = 0, std430) restrict readonly buffer SSBO_Offsets
     uvec2 _m0[];
 } _10;
 
-layout(set = 0, binding = 0, std430) writeonly buffer SSBO
+layout(set = 0, binding = 0, std430) buffer SSBO
 {
     uint64_t _m0[];
 } _16[];
@@ -23,7 +23,7 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer _18_21
     uint64_t _m0[];
 } _21[];
 
-layout(set = 0, binding = 0, std430) writeonly buffer _23_26
+layout(set = 0, binding = 0, std430) buffer _23_26
 {
     uint64_t _m0[];
 } _26[];
@@ -138,7 +138,6 @@ OpMemberDecorate %13 0 Offset 0
 OpDecorate %13 Block
 OpDecorate %16 DescriptorSet 0
 OpDecorate %16 Binding 0
-OpDecorate %16 NonReadable
 OpDecorate %17 ArrayStride 8
 OpMemberDecorate %18 0 Offset 0
 OpDecorate %18 Block
@@ -151,7 +150,6 @@ OpMemberDecorate %23 0 Offset 0
 OpDecorate %23 Block
 OpDecorate %26 DescriptorSet 0
 OpDecorate %26 Binding 0
-OpDecorate %26 NonReadable
 OpDecorate %27 ArrayStride 8
 OpMemberDecorate %28 0 Offset 0
 OpDecorate %28 Block

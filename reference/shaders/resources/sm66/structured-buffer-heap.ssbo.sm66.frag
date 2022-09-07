@@ -22,7 +22,7 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer _25_28
     uvec4 _m0[];
 } _28[];
 
-layout(set = 0, binding = 0, std430) readonly buffer _30_33
+layout(set = 0, binding = 0, std430) buffer _30_33
 {
     uint _m0[];
 } _33[];
@@ -32,22 +32,22 @@ layout(set = 0, binding = 0, std430) buffer _35_38
     uvec2 _m0[];
 } _38[];
 
-layout(set = 0, binding = 0, scalar) readonly buffer _40_43
+layout(set = 0, binding = 0, scalar) buffer _40_43
 {
     uvec3 _m0[];
 } _43[];
 
-layout(set = 0, binding = 0, std430) readonly buffer _45_48
+layout(set = 0, binding = 0, std430) buffer _45_48
 {
     uvec4 _m0[];
 } _48[];
 
-layout(set = 0, binding = 0, std430) coherent readonly buffer _50_53
+layout(set = 0, binding = 0, std430) coherent buffer _50_53
 {
     uint _m0[];
 } _53[];
 
-layout(set = 0, binding = 0, std430) coherent readonly buffer _55_58
+layout(set = 0, binding = 0, std430) coherent buffer _55_58
 {
     uvec2 _m0[];
 } _58[];
@@ -57,7 +57,7 @@ layout(set = 0, binding = 0, scalar) coherent buffer _60_63
     uvec3 _m0[];
 } _63[];
 
-layout(set = 0, binding = 0, std430) coherent readonly buffer _65_68
+layout(set = 0, binding = 0, std430) coherent buffer _65_68
 {
     uvec4 _m0[];
 } _68[];
@@ -161,7 +161,6 @@ OpMemberDecorate %30 0 Offset 0
 OpDecorate %30 Block
 OpDecorate %33 DescriptorSet 0
 OpDecorate %33 Binding 0
-OpDecorate %33 NonWritable
 OpDecorate %34 ArrayStride 8
 OpMemberDecorate %35 0 Offset 0
 OpDecorate %35 Block
@@ -172,26 +171,22 @@ OpMemberDecorate %40 0 Offset 0
 OpDecorate %40 Block
 OpDecorate %43 DescriptorSet 0
 OpDecorate %43 Binding 0
-OpDecorate %43 NonWritable
 OpDecorate %44 ArrayStride 16
 OpMemberDecorate %45 0 Offset 0
 OpDecorate %45 Block
 OpDecorate %48 DescriptorSet 0
 OpDecorate %48 Binding 0
-OpDecorate %48 NonWritable
 OpDecorate %49 ArrayStride 4
 OpMemberDecorate %50 0 Offset 0
 OpDecorate %50 Block
 OpDecorate %53 DescriptorSet 0
 OpDecorate %53 Binding 0
-OpDecorate %53 NonWritable
 OpDecorate %53 Coherent
 OpDecorate %54 ArrayStride 8
 OpMemberDecorate %55 0 Offset 0
 OpDecorate %55 Block
 OpDecorate %58 DescriptorSet 0
 OpDecorate %58 Binding 0
-OpDecorate %58 NonWritable
 OpDecorate %58 Coherent
 OpDecorate %59 ArrayStride 12
 OpMemberDecorate %60 0 Offset 0
@@ -204,7 +199,6 @@ OpMemberDecorate %65 0 Offset 0
 OpDecorate %65 Block
 OpDecorate %68 DescriptorSet 0
 OpDecorate %68 Binding 0
-OpDecorate %68 NonWritable
 OpDecorate %68 Coherent
 OpDecorate %70 Flat
 OpDecorate %70 Location 0
