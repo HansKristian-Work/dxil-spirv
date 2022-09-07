@@ -20,12 +20,12 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer _14_17
     u16vec2 _m0[];
 } _17[];
 
-layout(set = 0, binding = 0, std430) readonly buffer _19_22
+layout(set = 0, binding = 0, std430) buffer _19_22
 {
     uint _m0[];
 } _22[];
 
-layout(set = 0, binding = 0, std430) readonly buffer _24_27
+layout(set = 0, binding = 0, std430) buffer _24_27
 {
     u16vec2 _m0[];
 } _27[];
@@ -125,13 +125,11 @@ OpMemberDecorate %19 0 Offset 0
 OpDecorate %19 Block
 OpDecorate %22 DescriptorSet 0
 OpDecorate %22 Binding 0
-OpDecorate %22 NonWritable
 OpDecorate %23 ArrayStride 4
 OpMemberDecorate %24 0 Offset 0
 OpDecorate %24 Block
 OpDecorate %27 DescriptorSet 0
 OpDecorate %27 Binding 0
-OpDecorate %27 NonWritable
 OpDecorate %29 ArrayStride 8
 OpMemberDecorate %30 0 Offset 0
 OpDecorate %30 Block

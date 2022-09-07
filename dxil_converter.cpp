@@ -1411,6 +1411,24 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		auto effective_component_type = actual_component_type;
 
 		auto &access_meta = uav_access_tracking[index];
+		if (globally_coherent)
+			execution_mode_meta.declares_globallycoherent_uav = true;
+
+		// If the shader has device-memory memory barriers, we need to support this.
+		// GLSL450 memory model does not do this for us by default.
+		//   coherent: memory variable where reads and writes are coherent with reads and
+		//             writes from other shader invocations
+		// We have two options:
+		// - slap Coherent on it.
+		// - Use Vulkan memory model and make use of MakeVisibleKHR/MakeAvailableKHR flags in a OpMemoryBarrier.
+		//   This would flush and invalidate any incoherent caches as necessary.
+		// For now, slapping coherent on all UAVs is good enough.
+		// When we move to full Vulkan memory model we can do a slightly better job.
+		// If no UAV actually needs globallycoherent we can demote any barriers to workgroup barriers,
+		// which is hopefully more optimal if the compiler understands the intent ...
+		// Only promote resources which actually need some kind of coherence.
+		if (shader_analysis.require_uav_thread_group_coherence && access_meta.has_written && access_meta.has_read)
+			globally_coherent = true;
 
 		if (tags && get_constant_metadata(tags, 0) == 0)
 		{
@@ -2655,6 +2673,26 @@ bool Converter::Impl::emit_global_heaps()
 
 		if (info.type == DXIL::ResourceType::UAV)
 		{
+			// See emit_uavs() for details around coherent and memory model shenanigans ...
+			if (annotation->coherent)
+				execution_mode_meta.declares_globallycoherent_uav = true;
+
+			// Do not attempt to track read and write here to figure out if this resource in particular needs to be coherent.
+			// It's plausible that the write and read can happen across
+			// two different accesses to ResourceDescriptorHeap[]. Don't take any chances here ...
+			if (shader_analysis.require_uav_thread_group_coherence)
+				annotation->coherent = true;
+
+			if (annotation->resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			    annotation->resource_kind == DXIL::ResourceKind::RawBuffer)
+			{
+				// In case there is aliasing through different declarations,
+				// we cannot emit NonWritable or NonReadable safely. Assume full read-write.
+				// Be a bit careful with typed resources since it's not always supported with read-write + typed.
+				annotation->tracking.has_read = true;
+				annotation->tracking.has_written = true;
+			}
+
 			info.uav_coherent = annotation->coherent;
 			info.uav_read = annotation->tracking.has_read;
 			info.uav_written = annotation->tracking.has_written;

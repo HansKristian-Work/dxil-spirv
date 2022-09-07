@@ -6,7 +6,7 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
     uint _m0[];
 } _10[];
 
-layout(set = 0, binding = 0, std430) coherent writeonly buffer _12_15
+layout(set = 0, binding = 0, std430) coherent buffer _12_15
 {
     uint _m0[];
 } _15[];
@@ -64,7 +64,6 @@ OpMemberDecorate %12 0 Offset 0
 OpDecorate %12 Block
 OpDecorate %15 DescriptorSet 0
 OpDecorate %15 Binding 0
-OpDecorate %15 NonReadable
 OpDecorate %15 Coherent
 OpDecorate %17 Flat
 OpDecorate %17 Location 0

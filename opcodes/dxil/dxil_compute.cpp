@@ -39,12 +39,16 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	// Match DXC SPIR-V output here.
 	Operation *op = nullptr;
 
+	// We might only need to ensure coherency within the workgroup, in which case we can narrow the scope.
+	spv::Scope uav_memory_scope = impl.execution_mode_meta.declares_globallycoherent_uav ?
+	                              spv::ScopeDevice : spv::ScopeWorkgroup;
+
 	switch (static_cast<DXIL::BarrierMode>(operation))
 	{
 	case DXIL::BarrierMode::DeviceMemoryBarrierWithGroupSync:
 		op = impl.allocate(spv::OpControlBarrier);
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(builder.makeUintConstant(uav_memory_scope));
 		op->add_id(
 			builder.makeUintConstant(spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask |
 		                             spv::MemorySemanticsAcquireReleaseMask));
@@ -61,7 +65,7 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::BarrierMode::AllMemoryBarrierWithGroupSync:
 		op = impl.allocate(spv::OpControlBarrier);
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(builder.makeUintConstant(uav_memory_scope));
 		op->add_id(
 		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsImageMemoryMask |
 		                             spv::MemorySemanticsUniformMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
@@ -69,7 +73,7 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	case DXIL::BarrierMode::DeviceMemoryBarrier:
 		op = impl.allocate(spv::OpMemoryBarrier);
-		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(builder.makeUintConstant(uav_memory_scope));
 		op->add_id(
 			builder.makeUintConstant(spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask |
 		                             spv::MemorySemanticsAcquireReleaseMask));
@@ -84,7 +88,7 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	case DXIL::BarrierMode::AllMemoryBarrier:
 		op = impl.allocate(spv::OpMemoryBarrier);
-		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(builder.makeUintConstant(uav_memory_scope));
 		op->add_id(
 		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsImageMemoryMask |
 		                             spv::MemorySemanticsUniformMemoryMask | spv::MemorySemanticsAcquireReleaseMask));

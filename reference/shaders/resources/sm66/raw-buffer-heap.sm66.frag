@@ -49,7 +49,6 @@ OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
 OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 0
-OpDecorate %13 NonReadable
 OpDecorate %13 Coherent
 OpDecorate %15 Flat
 OpDecorate %15 Location 0

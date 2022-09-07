@@ -262,6 +262,7 @@ struct Converter::Impl
 		bool native_16bit_operations = false;
 		bool synthesize_2d_quad_dispatch = false;
 		unsigned required_wave_size = 0;
+		bool declares_globallycoherent_uav = false;
 	} execution_mode_meta;
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
@@ -609,6 +610,7 @@ struct Converter::Impl
 		bool can_require_primitive_culling = false;
 		bool require_compute_shader_derivatives = false;
 		bool precise_f16_to_f32_observed = false;
+		bool require_uav_thread_group_coherence = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

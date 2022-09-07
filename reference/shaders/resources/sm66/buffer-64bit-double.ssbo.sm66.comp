@@ -8,7 +8,7 @@
 #extension GL_EXT_scalar_block_layout : require
 layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, scalar) writeonly buffer SSBO
+layout(set = 0, binding = 0, scalar) buffer SSBO
 {
     u64vec3 _m0[];
 } _11[];
@@ -18,7 +18,7 @@ layout(set = 0, binding = 0, scalar) restrict readonly buffer _13_16
     u64vec3 _m0[];
 } _16[];
 
-layout(set = 0, binding = 0, std430) writeonly buffer _18_21
+layout(set = 0, binding = 0, std430) buffer _18_21
 {
     uint64_t _m0[];
 } _21[];
@@ -76,7 +76,6 @@ OpMemberDecorate %8 0 Offset 0
 OpDecorate %8 Block
 OpDecorate %11 DescriptorSet 0
 OpDecorate %11 Binding 0
-OpDecorate %11 NonReadable
 OpDecorate %12 ArrayStride 24
 OpMemberDecorate %13 0 Offset 0
 OpDecorate %13 Block
@@ -89,7 +88,6 @@ OpMemberDecorate %18 0 Offset 0
 OpDecorate %18 Block
 OpDecorate %21 DescriptorSet 0
 OpDecorate %21 Binding 0
-OpDecorate %21 NonReadable
 OpDecorate %22 ArrayStride 8
 OpMemberDecorate %23 0 Offset 0
 OpDecorate %23 Block

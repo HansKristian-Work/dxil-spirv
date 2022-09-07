@@ -976,6 +976,32 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 		impl.handle_to_storage_class[instruction->getOperand(4)] = spv::StorageClassTaskPayloadWorkgroupEXT;
 		break;
 
+	case DXIL::Op::Barrier:
+	{
+		uint32_t operation;
+		if (!get_constant_operand(instruction, 1, &operation))
+			return false;
+
+		// See D3D11 functional spec: 7.14.4 Global vs Group/Local Coherency on Non-Atomic UAV Reads.
+		// In the GLSL memory model, we need coherent between invocations in general.
+		// There is no guarantee for intra-workgroup coherence sadly :(
+		auto barrier_op = static_cast<DXIL::BarrierMode>(operation);
+		switch (barrier_op)
+		{
+		case DXIL::BarrierMode::DeviceMemoryBarrier:
+		case DXIL::BarrierMode::DeviceMemoryBarrierWithGroupSync:
+		case DXIL::BarrierMode::AllMemoryBarrier:
+		case DXIL::BarrierMode::AllMemoryBarrierWithGroupSync:
+			impl.shader_analysis.require_uav_thread_group_coherence = true;
+			break;
+
+		default:
+			break;
+		}
+
+		break;
+	}
+
 	default:
 		break;
 	}
