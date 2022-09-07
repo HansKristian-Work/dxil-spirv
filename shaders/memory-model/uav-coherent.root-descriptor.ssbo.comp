@@ -1,0 +1,27 @@
+globallycoherent RWStructuredBuffer<float4> RW : register(u0);
+RWStructuredBuffer<float4> RW_RDONLY : register(u1);
+RWStructuredBuffer<float4> RW_WRONLY : register(u2);
+StructuredBuffer<uint> WorkList : register(t0);
+StructuredBuffer<float4> RO : register(t1);
+
+cbuffer Constants : register(b0) { uint count; };
+
+[numthreads(256, 1, 1)]
+void main(uint id : SV_GroupIndex)
+{
+	// Prime the L0 caches.
+	RW[id] = 0.0.xxxx;
+
+	for (uint iter = 0; iter < count; iter++)
+	{
+		uint increment_offset = WorkList[256 * iter + id];
+		// globallycoherent is not needed when sharing data between threads in the same group.
+		DeviceMemoryBarrierWithGroupSync();
+
+		// If caches are incoherent here in the workgroup, this will break hard.
+		if (increment_offset < 256)
+			RW[increment_offset] += RO[256 * iter + id];
+	}
+
+	RW_WRONLY[id] = RW_RDONLY[id];
+}
