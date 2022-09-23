@@ -769,7 +769,9 @@ static spv::Id build_root_descriptor_access_chain(Converter::Impl &impl, unsigne
 {
 	auto &builder = impl.builder();
 
-	spv::Id ptr_type_id = builder.makePointer(spv::StorageClassPushConstant, builder.makeVectorType(builder.makeUintType(32), 2));
+	auto storage = impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant;
+
+	spv::Id ptr_type_id = builder.makePointer(storage, builder.makeVectorType(builder.makeUintType(32), 2));
 	auto *access_chain = impl.allocate(spv::OpAccessChain, ptr_type_id);
 	access_chain->add_id(impl.root_constant_id);
 	access_chain->add_id(builder.makeUintConstant(member_index));
