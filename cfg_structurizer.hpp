@@ -117,6 +117,7 @@ private:
 	bool header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge) const;
 	void fixup_broken_selection_merges(unsigned pass);
 	bool find_switch_blocks(unsigned pass);
+	CFGNode *create_switch_merge_ladder(CFGNode *header, CFGNode *merge);
 	CFGNode *find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator) const;
 	const CFGNode *get_innermost_loop_header_for(const CFGNode *node) const;
 	const CFGNode *get_innermost_loop_header_for(const CFGNode *header, const CFGNode *node) const;
