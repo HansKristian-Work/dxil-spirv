@@ -80,22 +80,6 @@ OpDecorate %12 RelaxedPrecision
 OpDecorate %12 Location 0
 OpDecorate %14 RelaxedPrecision
 OpDecorate %14 Location 0
-OpDecorate %51 RelaxedPrecision
-OpDecorate %52 RelaxedPrecision
-OpDecorate %53 RelaxedPrecision
-OpDecorate %54 RelaxedPrecision
-OpDecorate %70 RelaxedPrecision
-OpDecorate %71 RelaxedPrecision
-OpDecorate %72 RelaxedPrecision
-OpDecorate %73 RelaxedPrecision
-OpDecorate %74 RelaxedPrecision
-OpDecorate %75 RelaxedPrecision
-OpDecorate %76 RelaxedPrecision
-OpDecorate %77 RelaxedPrecision
-OpDecorate %78 RelaxedPrecision
-OpDecorate %79 RelaxedPrecision
-OpDecorate %80 RelaxedPrecision
-OpDecorate %81 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

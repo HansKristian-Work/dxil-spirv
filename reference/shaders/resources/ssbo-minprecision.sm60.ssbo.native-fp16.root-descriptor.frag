@@ -106,7 +106,6 @@ OpDecorate %34 ArrayStride 4
 OpMemberDecorate %35 0 Offset 0
 OpDecorate %35 Block
 OpMemberDecorate %35 0 NonWritable
-OpDecorate %51 RelaxedPrecision
 OpDecorate %52 ArrayStride 4
 OpMemberDecorate %53 0 Offset 0
 OpDecorate %53 Block

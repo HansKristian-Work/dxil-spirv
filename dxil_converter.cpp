@@ -6037,7 +6037,7 @@ bool Converter::Impl::type_can_relax_precision(const llvm::Type *type, bool know
 	if (type->getTypeID() == llvm::Type::TypeID::VectorTyID)
 		type = llvm::cast<llvm::VectorType>(type)->getElementType();
 
-	return !execution_mode_meta.native_16bit_operations &&
+	return (!execution_mode_meta.native_16bit_operations && !options.min_precision_prefer_native_16bit) &&
 	       (type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
 	        (type->getTypeID() == llvm::Type::TypeID::IntegerTyID && type->getIntegerBitWidth() == 16 &&
 	         known_integer_sign));

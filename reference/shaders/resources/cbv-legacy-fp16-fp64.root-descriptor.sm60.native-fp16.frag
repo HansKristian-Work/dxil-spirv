@@ -84,14 +84,6 @@ OpDecorate %19 ArrayStride 16
 OpMemberDecorate %20 0 Offset 0
 OpDecorate %20 Block
 OpMemberDecorate %20 0 NonWritable
-OpDecorate %37 RelaxedPrecision
-OpDecorate %38 RelaxedPrecision
-OpDecorate %39 RelaxedPrecision
-OpDecorate %40 RelaxedPrecision
-OpDecorate %54 RelaxedPrecision
-OpDecorate %55 RelaxedPrecision
-OpDecorate %56 RelaxedPrecision
-OpDecorate %57 RelaxedPrecision
 OpDecorate %69 ArrayStride 16
 OpMemberDecorate %70 0 Offset 0
 OpDecorate %70 Block
