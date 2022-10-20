@@ -1808,7 +1808,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 			impl.add(load_op);
 			elements[i] = load_op->id;
 		}
-		else
+		else if (!scalar_load)
 			elements[i] = builder.makeUintConstant(0);
 	}
 
