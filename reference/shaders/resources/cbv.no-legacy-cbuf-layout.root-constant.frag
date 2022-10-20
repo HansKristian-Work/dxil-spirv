@@ -24,11 +24,11 @@ layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    float _18 = uintBitsToFloat(registers._m4);
+    float _17 = uintBitsToFloat(registers._m4);
     float _35 = float(registers._m2 + registers._m5);
     float _45 = float(int(registers._m3 + registers._m6));
-    SV_Target.x = ((uintBitsToFloat(registers._m0) + _18) + _35) + _45;
-    SV_Target.y = ((uintBitsToFloat(registers._m1) + _18) + _35) + _45;
+    SV_Target.x = ((uintBitsToFloat(registers._m0) + _17) + _35) + _45;
+    SV_Target.y = ((uintBitsToFloat(registers._m1) + _17) + _35) + _45;
 }
 
 
@@ -77,7 +77,7 @@ OpDecorate %12 Location 0
 %12 = OpVariable %11 Output
 %13 = OpTypePointer PushConstant %5
 %15 = OpConstant %5 4
-%17 = OpConstant %5 0
+%19 = OpConstant %5 0
 %23 = OpConstant %5 1
 %29 = OpConstant %5 5
 %32 = OpConstant %5 2
@@ -90,15 +90,15 @@ OpBranch %51
 %51 = OpLabel
 %14 = OpAccessChain %13 %8 %15
 %16 = OpLoad %5 %14
-%18 = OpBitcast %9 %16
-%19 = OpAccessChain %13 %8 %17
-%20 = OpLoad %5 %19
+%17 = OpBitcast %9 %16
+%18 = OpAccessChain %13 %8 %19
+%20 = OpLoad %5 %18
 %21 = OpBitcast %9 %20
 %22 = OpAccessChain %13 %8 %23
 %24 = OpLoad %5 %22
 %25 = OpBitcast %9 %24
-%26 = OpFAdd %9 %21 %18
-%27 = OpFAdd %9 %25 %18
+%26 = OpFAdd %9 %21 %17
+%27 = OpFAdd %9 %25 %17
 %28 = OpAccessChain %13 %8 %29
 %30 = OpLoad %5 %28
 %31 = OpAccessChain %13 %8 %32
@@ -115,7 +115,7 @@ OpBranch %51
 %45 = OpConvertSToF %9 %44
 %46 = OpFAdd %9 %36 %45
 %47 = OpFAdd %9 %37 %45
-%49 = OpAccessChain %48 %12 %17
+%49 = OpAccessChain %48 %12 %19
 OpStore %49 %46
 %50 = OpAccessChain %48 %12 %23
 OpStore %50 %47

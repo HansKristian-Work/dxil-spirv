@@ -1780,14 +1780,12 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 
 	unsigned num_words = std::min(scalar_load ? 1u : 4u, num_elements - member_index);
 
-	auto *result_type = instruction->getType();
+	auto *result_scalar_type = instruction->getType();
+	if (!scalar_load)
+		result_scalar_type = result_scalar_type->getStructElementType(0);
 
 	// Root constants are emitted as uints as they are typically used as indices.
-	bool need_bitcast;
-	if (scalar_load)
-		need_bitcast = result_type->getTypeID() != llvm::Type::TypeID::IntegerTyID;
-	else
-		need_bitcast = result_type->getStructElementType(0)->getTypeID() != llvm::Type::TypeID::IntegerTyID;
+	bool need_bitcast = result_scalar_type->getTypeID() != llvm::Type::TypeID::IntegerTyID;
 
 	spv::Id elements[4];
 	for (unsigned i = 0; i < 4; i++)
@@ -1808,7 +1806,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 			impl.add(load_op);
 			elements[i] = load_op->id;
 		}
-		else
+		else if (!scalar_load)
 			elements[i] = builder.makeUintConstant(0);
 	}
 
@@ -1819,21 +1817,37 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	else
 		id = impl.build_vector(builder.makeUintType(32), elements, 4);
 
+	spv::Op value_cast_op = spv::OpNop;
+	spv::Id physical_type_id = 0;
+	get_physical_load_store_cast_info(impl, result_scalar_type, physical_type_id, value_cast_op);
+
 	if (need_bitcast)
 	{
-		spv::Id type_id;
-		if (scalar_load)
-			type_id = impl.get_type_id(result_type);
-		else
-			type_id = builder.makeVectorType(impl.get_type_id(result_type->getStructElementType(0)), 4);
+		spv::Id type_id = physical_type_id;
+		if (!scalar_load)
+			type_id = builder.makeVectorType(type_id, 4);
 
 		auto *op = impl.allocate(spv::OpBitcast, instruction, type_id);
 		op->add_id(id);
 		impl.add(op);
+		id = op->id;
 	}
 	else
 	{
 		impl.rewrite_value(instruction, id);
+	}
+
+	// To handle min16 types in root constants, we might have to narrow here.
+	if (value_cast_op != spv::OpNop)
+	{
+		spv::Id type_id = impl.get_type_id(result_scalar_type);
+		if (!scalar_load)
+			type_id = builder.makeVectorType(type_id, 4);
+
+		auto *cast_op = impl.allocate(value_cast_op, type_id);
+		cast_op->add_id(id);
+		impl.add(cast_op);
+		impl.rewrite_value(instruction, cast_op->id);
 	}
 
 	return true;
