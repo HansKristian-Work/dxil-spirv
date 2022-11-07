@@ -1,0 +1,173 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+layout(local_size_x = 2, local_size_y = 3, local_size_z = 4) in;
+layout(max_vertices = 24, max_primitives = 8, triangles) out;
+
+out gl_MeshPerVertexEXT
+{
+    vec4 gl_Position;
+    float gl_ClipDistance[24];
+    float gl_CullDistance[24];
+};
+
+struct _26
+{
+    float _m0[24][4];
+    float _m1[24][4];
+    float _m2[24][4];
+};
+
+taskPayloadSharedEXT _26 _28;
+
+void main()
+{
+    SetMeshOutputsEXT(24u, 8u);
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.x = _28._m0[gl_LocalInvocationIndex][0u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.y = _28._m0[gl_LocalInvocationIndex][1u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.z = _28._m0[gl_LocalInvocationIndex][2u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.w = _28._m0[gl_LocalInvocationIndex][3u];
+    gl_ClipDistance[gl_LocalInvocationIndex][0u] = _28._m1[gl_LocalInvocationIndex][0u];
+    gl_ClipDistance[gl_LocalInvocationIndex][1u] = _28._m1[gl_LocalInvocationIndex][1u];
+    gl_ClipDistance[gl_LocalInvocationIndex][2u] = _28._m1[gl_LocalInvocationIndex][2u];
+    gl_ClipDistance[gl_LocalInvocationIndex][3u] = _28._m1[gl_LocalInvocationIndex][3u];
+    gl_CullDistance[gl_LocalInvocationIndex][0u] = _28._m2[gl_LocalInvocationIndex][0u];
+    gl_CullDistance[gl_LocalInvocationIndex][1u] = _28._m2[gl_LocalInvocationIndex][1u];
+    gl_CullDistance[gl_LocalInvocationIndex][2u] = _28._m2[gl_LocalInvocationIndex][2u];
+    gl_CullDistance[gl_LocalInvocationIndex][3u] = _28._m2[gl_LocalInvocationIndex][3u];
+    if (gl_LocalInvocationIndex < 8u)
+    {
+        uint _73 = gl_LocalInvocationIndex * 3u;
+        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex] = uvec3(_73, _73 + 1u, _73 + 2u);
+    }
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 83
+; Schema: 0
+OpCapability Shader
+OpCapability ClipDistance
+OpCapability CullDistance
+OpCapability MeshShadingEXT
+OpExtension "SPV_EXT_mesh_shader"
+OpMemoryModel Logical GLSL450
+OpEntryPoint MeshEXT %3 "main" %11 %16 %17 %22 %24 %28
+OpExecutionMode %3 OutputVertices 24
+OpExecutionMode %3 OutputPrimitivesNV 8
+OpExecutionMode %3 OutputTrianglesNV
+OpExecutionMode %3 LocalSize 2 3 4
+OpName %3 "main"
+OpName %11 "SV_Position"
+OpName %22 "indices"
+OpName %26 ""
+OpDecorate %11 BuiltIn Position
+OpDecorate %16 BuiltIn ClipDistance
+OpDecorate %17 BuiltIn CullDistance
+OpDecorate %22 BuiltIn PrimitiveTriangleIndicesEXT
+OpDecorate %24 BuiltIn LocalInvocationIndex
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 4
+%7 = OpTypeInt 32 0
+%8 = OpConstant %7 24
+%9 = OpTypeArray %6 %8
+%10 = OpTypePointer Output %9
+%11 = OpVariable %10 Output
+%12 = OpConstant %7 4
+%13 = OpTypeArray %5 %12
+%14 = OpTypeArray %13 %8
+%15 = OpTypePointer Output %14
+%16 = OpVariable %15 Output
+%17 = OpVariable %15 Output
+%18 = OpConstant %7 8
+%19 = OpTypeVector %7 3
+%20 = OpTypeArray %19 %18
+%21 = OpTypePointer Output %20
+%22 = OpVariable %21 Output
+%23 = OpTypePointer Input %7
+%24 = OpVariable %23 Input
+%26 = OpTypeStruct %14 %14 %14
+%27 = OpTypePointer TaskPayloadWorkgroupEXT %26
+%28 = OpVariable %27 TaskPayloadWorkgroupEXT
+%29 = OpTypePointer TaskPayloadWorkgroupEXT %5
+%31 = OpConstant %7 0
+%34 = OpConstant %7 1
+%37 = OpConstant %7 2
+%40 = OpConstant %7 3
+%42 = OpTypePointer Output %5
+%71 = OpTypeBool
+%77 = OpTypePointer Output %19
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %79
+%79 = OpLabel
+%25 = OpLoad %7 %24
+OpSetMeshOutputsEXT %8 %18
+%30 = OpInBoundsAccessChain %29 %28 %31 %25 %31
+%32 = OpLoad %5 %30
+%33 = OpInBoundsAccessChain %29 %28 %31 %25 %34
+%35 = OpLoad %5 %33
+%36 = OpInBoundsAccessChain %29 %28 %31 %25 %37
+%38 = OpLoad %5 %36
+%39 = OpInBoundsAccessChain %29 %28 %31 %25 %40
+%41 = OpLoad %5 %39
+%43 = OpAccessChain %42 %11 %25 %31
+OpStore %43 %32
+%44 = OpAccessChain %42 %11 %25 %34
+OpStore %44 %35
+%45 = OpAccessChain %42 %11 %25 %37
+OpStore %45 %38
+%46 = OpAccessChain %42 %11 %25 %40
+OpStore %46 %41
+%47 = OpInBoundsAccessChain %29 %28 %34 %25 %31
+%48 = OpLoad %5 %47
+%49 = OpInBoundsAccessChain %29 %28 %34 %25 %34
+%50 = OpLoad %5 %49
+%51 = OpInBoundsAccessChain %29 %28 %34 %25 %37
+%52 = OpLoad %5 %51
+%53 = OpInBoundsAccessChain %29 %28 %34 %25 %40
+%54 = OpLoad %5 %53
+%55 = OpAccessChain %42 %16 %25 %31
+OpStore %55 %48
+%56 = OpAccessChain %42 %16 %25 %34
+OpStore %56 %50
+%57 = OpAccessChain %42 %16 %25 %37
+OpStore %57 %52
+%58 = OpAccessChain %42 %16 %25 %40
+OpStore %58 %54
+%59 = OpInBoundsAccessChain %29 %28 %37 %25 %31
+%60 = OpLoad %5 %59
+%61 = OpInBoundsAccessChain %29 %28 %37 %25 %34
+%62 = OpLoad %5 %61
+%63 = OpInBoundsAccessChain %29 %28 %37 %25 %37
+%64 = OpLoad %5 %63
+%65 = OpInBoundsAccessChain %29 %28 %37 %25 %40
+%66 = OpLoad %5 %65
+%67 = OpAccessChain %42 %17 %25 %31
+OpStore %67 %60
+%68 = OpAccessChain %42 %17 %25 %34
+OpStore %68 %62
+%69 = OpAccessChain %42 %17 %25 %37
+OpStore %69 %64
+%70 = OpAccessChain %42 %17 %25 %40
+OpStore %70 %66
+%72 = OpULessThan %71 %25 %18
+OpSelectionMerge %81 None
+OpBranchConditional %72 %80 %81
+%80 = OpLabel
+%73 = OpIMul %7 %25 %40
+%74 = OpIAdd %7 %73 %34
+%75 = OpIAdd %7 %73 %37
+%76 = OpCompositeConstruct %19 %73 %74 %75
+%78 = OpAccessChain %77 %22 %25
+OpStore %78 %76
+OpBranch %81
+%81 = OpLabel
+OpReturn
+OpFunctionEnd
+#endif

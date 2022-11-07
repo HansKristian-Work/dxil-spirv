@@ -55,4 +55,14 @@ bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
 
 spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
                             unsigned addr_shift_log2, unsigned vecsize);
+
+// Clip-cull distance munging.
+spv::Id get_clip_cull_distance_access_chain(
+	Converter::Impl &impl, const llvm::CallInst *instruction,
+	const Converter::Impl::ClipCullMeta &meta, spv::StorageClass storage);
+Converter::Impl::ClipCullMeta *output_clip_cull_distance_meta(
+	Converter::Impl &impl, unsigned index);
+bool emit_store_clip_cull_distance(
+	Converter::Impl &impl, const llvm::CallInst *instruction,
+	const Converter::Impl::ClipCullMeta &meta);
 }
