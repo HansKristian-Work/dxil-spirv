@@ -1,0 +1,28 @@
+struct VOut
+{
+	float4 pos : SV_Position;
+	float4 clip : SV_ClipDistance;
+	float4 cull : SV_CullDistance;
+};
+
+struct Payload
+{
+	float4 pos[24];
+	float4 clip[24];
+	float4 cull[24];
+};
+
+[numthreads(2, 3, 4)]
+[outputtopology("triangle")]
+void main(uint tid : SV_GroupIndex,
+		in payload Payload p,
+		out vertices VOut vout[24],
+		out indices uint3 ind[8])
+{
+	SetMeshOutputCounts(24, 8);
+	vout[tid].pos = p.pos[tid];
+	vout[tid].clip = p.clip[tid];
+	vout[tid].cull = p.cull[tid];
+	if (tid < 8)
+		ind[tid] = 3 * tid + uint3(0, 1, 2);
+}

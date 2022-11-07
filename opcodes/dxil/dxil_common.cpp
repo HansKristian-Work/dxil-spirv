@@ -381,6 +381,12 @@ spv::Id get_clip_cull_distance_access_chain(Converter::Impl &impl, const llvm::C
 	Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(storage, builder.makeFloatType(32)));
 	op->add_id(var_id);
 
+	if (instruction->getNumOperands() == 6)
+	{
+		// Mesh shaders, need to index into per-vertex array.
+		op->add_id(impl.get_id_for_value(instruction->getOperand(5)));
+	}
+
 	auto *row = instruction->getOperand(2);
 	auto *row_const = llvm::dyn_cast<llvm::ConstantInt>(row);
 

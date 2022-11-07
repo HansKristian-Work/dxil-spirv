@@ -75,6 +75,11 @@ bool emit_store_vertex_output_instruction(Converter::Impl &impl, const llvm::Cal
 	if (!get_constant_operand(instruction, 1, &output_element_index))
 		return false;
 
+	// Need special handling for clip distance.
+	auto *clip_cull_meta = output_clip_cull_distance_meta(impl, output_element_index);
+	if (clip_cull_meta)
+		return emit_store_clip_cull_distance(impl, instruction, *clip_cull_meta);
+
 	const auto &meta = impl.output_elements_meta[output_element_index];
 
 	uint32_t var_id = meta.id;
