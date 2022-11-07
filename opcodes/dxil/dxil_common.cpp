@@ -25,6 +25,7 @@
 #include "dxil_common.hpp"
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "spirv_module.hpp"
 
 namespace dxil_spv
 {
@@ -370,4 +371,82 @@ spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
 	return index_id;
 }
 
+spv::Id get_clip_cull_distance_access_chain(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                            const Converter::Impl::ClipCullMeta &meta, spv::StorageClass storage)
+{
+	auto &builder = impl.builder();
+	uint32_t var_id = storage == spv::StorageClassOutput ? impl.spirv_module.get_builtin_shader_output(meta.builtin) :
+	                  impl.spirv_module.get_builtin_shader_input(meta.builtin);
+
+	Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(storage, builder.makeFloatType(32)));
+	op->add_id(var_id);
+
+	auto *row = instruction->getOperand(2);
+	auto *row_const = llvm::dyn_cast<llvm::ConstantInt>(row);
+
+	uint32_t constant_col;
+	if (!get_constant_operand(instruction, 3, &constant_col))
+		return false;
+
+	unsigned stride = meta.row_stride;
+
+	if (row_const)
+	{
+		op->add_id(builder.makeUintConstant(row_const->getUniqueInteger().getZExtValue() * stride + constant_col +
+		                                    meta.offset));
+	}
+	else if (stride == 1 && meta.offset == 0)
+	{
+		// Simple case, can just index directly into ClipDistance array.
+		op->add_id(impl.get_id_for_value(row));
+	}
+	else if (stride == 1)
+	{
+		Operation *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add_op->add_id(impl.get_id_for_value(row));
+		add_op->add_id(builder.makeUintConstant(meta.offset));
+		impl.add(add_op);
+
+		op->add_id(add_op->id);
+	}
+	else
+	{
+		// A more annoying case, flatten 2D to 1D.
+		Operation *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		mul_op->add_id(impl.get_id_for_value(row));
+		mul_op->add_id(builder.makeUintConstant(stride));
+		impl.add(mul_op);
+
+		Operation *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add_op->add_id(mul_op->id);
+		add_op->add_id(builder.makeUintConstant(constant_col + meta.offset));
+		impl.add(add_op);
+
+		op->add_id(add_op->id);
+	}
+
+	impl.add(op);
+	return op->id;
+}
+
+bool emit_store_clip_cull_distance(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                   const Converter::Impl::ClipCullMeta &meta)
+{
+	spv::Id ptr_id = get_clip_cull_distance_access_chain(impl, instruction, meta, spv::StorageClassOutput);
+
+	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
+	Operation *store_op = impl.allocate(spv::OpStore);
+	store_op->add_ids({ ptr_id, store_value });
+	impl.add(store_op);
+	return true;
+}
+
+Converter::Impl::ClipCullMeta *output_clip_cull_distance_meta(Converter::Impl &impl, unsigned index)
+{
+	auto itr = impl.output_clip_cull_meta.find(index);
+	if (itr != impl.output_clip_cull_meta.end())
+		return &itr->second;
+	else
+		return nullptr;
+}
 } // namespace dxil_spv
