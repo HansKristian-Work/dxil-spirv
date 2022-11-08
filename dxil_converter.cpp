@@ -3603,7 +3603,7 @@ bool Converter::Impl::emit_other_variables()
 {
 	auto &builder = spirv_module.get_builder();
 
-	if (execution_model == spv::ExecutionModelMeshEXT)
+	if (execution_model == spv::ExecutionModelMeshEXT && execution_mode_meta.stage_output_num_primitive)
 	{
 		unsigned index_dim = execution_mode_meta.primitive_index_dimension;
 
@@ -4486,7 +4486,11 @@ bool Converter::Impl::emit_stage_input_variables()
 				builder.addDecoration(variable_id, spv::DecorationComponent, vk_input.component);
 
 			if (execution_model == spv::ExecutionModelFragment && (vk_input.flags & STAGE_IO_PER_PRIMITIVE))
+			{
 				builder.addDecoration(variable_id, spv::DecorationPerPrimitiveEXT);
+				builder.addExtension("SPV_EXT_mesh_shader");
+				builder.addCapability(spv::CapabilityMeshShadingEXT);
+			}
 		}
 	}
 
@@ -5832,6 +5836,14 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto &module = bitcode_parser.get_module();
 	entry_point_meta = get_entry_point_meta(module, options.entry_point.empty() ? nullptr : options.entry_point.c_str());
 	execution_model = get_execution_model(module, entry_point_meta);
+
+	if (execution_model == spv::ExecutionModelFragment &&
+	    resource_mapping_iface && resource_mapping_iface->has_nontrivial_stage_input_remapping())
+	{
+		// Force SPIR-V 1.4 for fragment shaders if we might end up requiring mesh shader capabilities.
+		// Non-trivial stage input remapping may require PerPrimitiveEXT decoration.
+		spirv_module.set_override_spirv_version(0x10400);
+	}
 
 	if (!entry_point_meta)
 	{

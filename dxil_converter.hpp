@@ -209,6 +209,7 @@ public:
 	virtual bool remap_stage_output(const D3DStageIO &d3d_output, VulkanStageIO &vk_output) = 0;
 	virtual unsigned get_root_constant_word_count() = 0;
 	virtual unsigned get_root_descriptor_count() = 0;
+	virtual bool has_nontrivial_stage_input_remapping() = 0;
 };
 
 enum class Option : uint32_t

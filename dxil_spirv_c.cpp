@@ -274,6 +274,11 @@ struct Remapper : ResourceRemappingInterface
 		}
 	}
 
+	bool has_nontrivial_stage_input_remapping() override
+	{
+		return stage_input_remapper != nullptr;
+	}
+
 	bool remap_stage_output(const D3DStageIO &d3d_output, VulkanStageIO &vk_output) override
 	{
 		dxil_spv_d3d_shader_stage_io c_output = { d3d_output.semantic, d3d_output.semantic_index };
