@@ -45,6 +45,11 @@ bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *
 {
 	auto &builder = impl.builder();
 
+	// If we for some reason have max primitives 0 in the execution mode,
+	// just ignore any access to index buffer.
+	if (!impl.primitive_index_array_id)
+		return true;
+
 	unsigned index_dim = impl.execution_mode_meta.primitive_index_dimension;
 	spv::Id index_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1, index_dim);
 	spv::Id index_scalar_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1, 1);

@@ -3603,7 +3603,7 @@ bool Converter::Impl::emit_other_variables()
 {
 	auto &builder = spirv_module.get_builder();
 
-	if (execution_model == spv::ExecutionModelMeshEXT)
+	if (execution_model == spv::ExecutionModelMeshEXT && execution_mode_meta.stage_output_num_primitive)
 	{
 		unsigned index_dim = execution_mode_meta.primitive_index_dimension;
 
