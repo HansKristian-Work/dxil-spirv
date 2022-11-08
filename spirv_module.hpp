@@ -101,6 +101,8 @@ public:
 
 	static bool opcode_is_control_dependent(spv::Op opcode);
 
+	void set_override_spirv_version(uint32_t version);
+
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 
 private:

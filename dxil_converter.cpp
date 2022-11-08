@@ -5837,6 +5837,14 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	entry_point_meta = get_entry_point_meta(module, options.entry_point.empty() ? nullptr : options.entry_point.c_str());
 	execution_model = get_execution_model(module, entry_point_meta);
 
+	if (execution_model == spv::ExecutionModelFragment &&
+	    resource_mapping_iface && resource_mapping_iface->has_nontrivial_stage_input_remapping())
+	{
+		// Force SPIR-V 1.4 for fragment shaders if we might end up requiring mesh shader capabilities.
+		// Non-trivial stage input remapping may require PerPrimitiveEXT decoration.
+		spirv_module.set_override_spirv_version(0x10400);
+	}
+
 	if (!entry_point_meta)
 	{
 		if (!options.entry_point.empty())

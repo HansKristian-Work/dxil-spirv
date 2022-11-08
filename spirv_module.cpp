@@ -126,6 +126,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	Vector<CBVOp> physical_cbv_call_ids;
 
 	DescriptorQAInfo descriptor_qa_info;
+
+	uint32_t override_spirv_version = 0;
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requires_flat)
@@ -916,9 +918,16 @@ bool SPIRVModule::Impl::execution_model_is_ray_tracing() const
 
 bool SPIRVModule::Impl::spirv_requires_14() const
 {
-	return execution_model_is_ray_tracing() ||
-	       execution_model == spv::ExecutionModelMeshEXT ||
-	       execution_model == spv::ExecutionModelTaskEXT;
+	static const uint32_t Version_1_4 = 0x00010400;
+	if (override_spirv_version)
+	{
+		return override_spirv_version >= Version_1_4;
+	}
+	else
+	{
+		return execution_model_is_ray_tracing() || execution_model == spv::ExecutionModelMeshEXT ||
+		       execution_model == spv::ExecutionModelTaskEXT;
+	}
 }
 
 bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv)
@@ -929,9 +938,16 @@ bool SPIRVModule::Impl::finalize_spirv(Vector<uint32_t> &spirv)
 	builder.dump(spirv);
 	if (spirv.size() >= 2)
 	{
-		static const uint32_t Version_1_3 = 0x00010300;
-		static const uint32_t Version_1_4 = 0x00010400;
-		spirv[1] = spirv_requires_14() ? Version_1_4 : Version_1_3;
+		if (override_spirv_version)
+		{
+			spirv[1] = override_spirv_version;
+		}
+		else
+		{
+			static const uint32_t Version_1_3 = 0x00010300;
+			static const uint32_t Version_1_4 = 0x00010400;
+			spirv[1] = spirv_requires_14() ? Version_1_4 : Version_1_3;
+		}
 	}
 	return !mark_error;
 }
@@ -1394,6 +1410,11 @@ void SPIRVModule::set_descriptor_qa_info(const DescriptorQAInfo &info)
 const DescriptorQAInfo &SPIRVModule::get_descriptor_qa_info() const
 {
 	return impl->descriptor_qa_info;
+}
+
+void SPIRVModule::set_override_spirv_version(uint32_t version)
+{
+	impl->override_spirv_version = version;
 }
 
 bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
