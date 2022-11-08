@@ -4486,7 +4486,11 @@ bool Converter::Impl::emit_stage_input_variables()
 				builder.addDecoration(variable_id, spv::DecorationComponent, vk_input.component);
 
 			if (execution_model == spv::ExecutionModelFragment && (vk_input.flags & STAGE_IO_PER_PRIMITIVE))
+			{
 				builder.addDecoration(variable_id, spv::DecorationPerPrimitiveEXT);
+				builder.addExtension("SPV_EXT_mesh_shader");
+				builder.addCapability(spv::CapabilityMeshShadingEXT);
+			}
 		}
 	}
 
