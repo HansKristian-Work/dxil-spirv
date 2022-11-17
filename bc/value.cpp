@@ -268,6 +268,11 @@ ConstantAggregateZero::ConstantAggregateZero(Type *type)
 {
 }
 
+ConstantPointerNull::ConstantPointerNull(Type *type)
+    : Constant(type, ValueKind::ConstantPointerNull)
+{
+}
+
 ConstantDataArray::ConstantDataArray(Type *type, Vector<Value *> elements_)
     : Constant(type, ValueKind::ConstantDataArray)
     , elements(std::move(elements_))

@@ -39,6 +39,7 @@ enum class ValueKind
 	ConstantInt,
 	ConstantFP,
 	ConstantAggregateZero,
+	ConstantPointerNull,
 	ConstantAggregate,
 	ConstantDataArray,
 	ConstantDataVector,
@@ -200,6 +201,19 @@ public:
 		return ValueKind::ConstantAggregateZero;
 	}
 	explicit ConstantAggregateZero(Type *type);
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+};
+
+class ConstantPointerNull : public Constant
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::ConstantPointerNull;
+	}
+
+	explicit ConstantPointerNull(Type *type);
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };

@@ -469,6 +469,11 @@ Value *ModuleParseContext::get_value(uint64_t op, Type *expected_type, bool forc
 	}
 	else
 	{
+		// A pointer to function and a constant function do match.
+		if (auto *ptr_type = dyn_cast<PointerType>(expected_type))
+			if (ptr_type->getPointerElementType()->getTypeID() == Type::TypeID::FunctionTyID)
+				expected_type = ptr_type->getPointerElementType();
+
 		if (expected_type && expected_type != values[op]->getType())
 		{
 			LOGE("Type mismatch.\n");
@@ -697,11 +702,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		else if (isa<ArrayType>(type) || isa<StructType>(type) || isa<VectorType>(type))
 			value = context->construct<ConstantAggregateZero>(type);
 		else if (isa<PointerType>(type))
-		{
-			// Happens for @llvm.global_ctors.
-			LOGW("Ignoring type of CONST_NULL pointer.\n");
-			value = ConstantInt::get(type, 0);
-		}
+			value = context->construct<ConstantPointerNull>(type);
 
 		if (!value)
 		{
