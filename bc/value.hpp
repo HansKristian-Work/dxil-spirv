@@ -302,7 +302,8 @@ public:
 	enum LinkageTypes
 	{
 		ExternalLinkage,
-		InternalLinkage
+		InternalLinkage,
+		AppendingLinkage
 	};
 
 	explicit GlobalVariable(Type *type, LinkageTypes linkage, bool is_const);

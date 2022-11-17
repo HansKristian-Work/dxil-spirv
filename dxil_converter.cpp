@@ -4264,6 +4264,11 @@ bool Converter::Impl::emit_global_variables()
 			continue;
 		}
 
+		// Ignore @llvm.global_ctors(). Only observed once with dummy ctor.
+		// It probably is not intended to work.
+		if (global.getLinkage() == llvm::GlobalVariable::AppendingLinkage)
+			continue;
+
 		spv::Id pointee_type_id = get_type_id(global.getType()->getPointerElementType());
 
 		// Happens for some global variables in DXR for some reason, benign.

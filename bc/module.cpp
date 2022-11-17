@@ -696,6 +696,12 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 			value = ConstantFP::get(type, 0);
 		else if (isa<ArrayType>(type) || isa<StructType>(type) || isa<VectorType>(type))
 			value = context->construct<ConstantAggregateZero>(type);
+		else if (isa<PointerType>(type))
+		{
+			// Happens for @llvm.global_ctors.
+			LOGW("Ignoring type of CONST_NULL pointer.\n");
+			value = ConstantInt::get(type, 0);
+		}
 
 		if (!value)
 		{
@@ -2060,6 +2066,9 @@ static GlobalVariable::LinkageTypes decode_linkage(uint64_t v)
 	case 6:
 	case 15:
 		return GlobalVariable::ExternalLinkage;
+
+	case 2:
+		return GlobalVariable::AppendingLinkage;
 
 	default:
 		return GlobalVariable::InternalLinkage;
