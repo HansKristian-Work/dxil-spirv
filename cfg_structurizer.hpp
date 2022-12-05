@@ -197,6 +197,7 @@ private:
 	void prune_dead_preds();
 
 	void fixup_broken_value_dominance();
+	void hoist_control_dependent_opcodes();
 
 	UnorderedMap<uint32_t, CFGNode *> value_id_to_block;
 

@@ -901,6 +901,121 @@ static void rewrite_consumed_ids(IRBlock &ir, spv::Id from, spv::Id to)
 		ir.terminator.return_value = to;
 }
 
+void CFGStructurizer::hoist_control_dependent_opcodes()
+{
+	UnorderedMap<spv::Id, CFGNode *> origin;
+	UnorderedSet<spv::Id> dependent_hoist_argument;
+	// First, scan through all blocks and figure out which block creates an ID.
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto *op : node->ir.operations)
+		{
+			if (op->id)
+				origin[op->id] = node;
+
+			// If we need to hoist a texturing instruction, we probably
+			// need to hoist its combined image sampler and UV coordinate as well.
+			// Just try to hoist every SSA dependency along with ourselves.
+			if (SPIRVModule::opcode_is_control_dependent_sampled(op->op) &&
+			    SPIRVModule::opcode_is_control_dependent_trivially_hoistable(op->op))
+			{
+				for (unsigned i = 0; i < op->num_arguments; i++)
+					if ((op->get_literal_mask() & (1u << i)) == 0)
+						dependent_hoist_argument.insert(op->arguments[i]);
+			}
+		}
+
+		for (auto &phi : node->ir.phi)
+			origin[phi.id] = node;
+	}
+
+	// Traverse bottom-up, bubble up instructions that we can hoist.
+	for (auto *node : forward_post_visit_order)
+	{
+		// Only consider simple cases where we can hoist to a selection construct.
+		// Don't consider cases where we have multiple PDFs.
+		if (node->post_dominance_frontier.size() != 1)
+			continue;
+
+		// We can only hoist if we don't change dominance.
+		CFGNode *hoist_candidate = node->post_dominance_frontier.front();
+		if (!hoist_candidate->dominates(node))
+			continue;
+
+		Vector<const Operation *> hoisted_sampled_images;
+
+		bool erased;
+		for (size_t i = 0; i < node->ir.operations.size(); i += erased ? 0 : 1)
+		{
+			// Only consider simpler opcodes that are not associated with significant cost.
+			// We could attempt to hoist sampled instructions as well, but these can be very costly to
+			// sample. If we hoist to top level, but only consume the instruction in inner scope,
+			// a smart compiler could mask the sampling operation with quadAny(condition_chain),
+			// but that's overkill for now.
+			erased = false;
+
+			auto *op = node->ir.operations[i];
+
+			bool should_hoist = SPIRVModule::opcode_is_control_dependent_trivially_hoistable(op->op) ||
+			                    dependent_hoist_argument.count(op->id) != 0;
+
+			if (!should_hoist)
+				continue;
+
+			bool can_hoist = true;
+			for (unsigned j = 0; j < op->num_arguments; j++)
+			{
+				if ((op->get_literal_mask() & (1u << j)) != 0)
+					continue;
+
+				auto itr = origin.find(op->arguments[j]);
+				if (itr != origin.end() && !itr->second->dominates(hoist_candidate))
+				{
+					can_hoist = false;
+					break;
+				}
+			}
+
+			if (can_hoist)
+			{
+				erased = true;
+				hoist_candidate->ir.operations.push_back(op);
+				node->ir.operations.erase(node->ir.operations.begin() + i);
+				origin[op->id] = hoist_candidate;
+
+				// Sampled images opcodes must be consumed in the same basic block.
+				// If a dependent instruction is not hoisted, but this expression is,
+				// we have to emit a duplicate instruction and replace the sampled image for these opcodes.
+				if (op->op == spv::OpSampledImage)
+					hoisted_sampled_images.push_back(op);
+			}
+		}
+
+		for (auto *hoisted : hoisted_sampled_images)
+		{
+			bool need_sampled_image_dup = false;
+			for (auto *op : node->ir.operations)
+				for (unsigned i = 0; i < op->num_arguments && !need_sampled_image_dup; i++)
+					if ((op->get_literal_mask() & (1u << i)) == 0 && op->arguments[i] == hoisted->id)
+						need_sampled_image_dup = true;
+
+			if (need_sampled_image_dup)
+			{
+				auto *dup_op = module.allocate_op(spv::OpSampledImage, module.allocate_id(), hoisted->type_id);
+				dup_op->add_id(hoisted->arguments[0]);
+				dup_op->add_id(hoisted->arguments[1]);
+
+				for (auto *op : node->ir.operations)
+					for (unsigned i = 0; i < op->num_arguments; i++)
+						if ((op->get_literal_mask() & (1u << i)) == 0 && op->arguments[i] == hoisted->id)
+							op->arguments[i] = dup_op->id;
+
+				node->ir.operations.insert(node->ir.operations.begin(), dup_op);
+			}
+		}
+	}
+}
+
 void CFGStructurizer::fixup_broken_value_dominance()
 {
 	struct Origin
@@ -1011,6 +1126,12 @@ void CFGStructurizer::fixup_broken_value_dominance()
 void CFGStructurizer::insert_phi()
 {
 	prune_dead_preds();
+
+	// Some games are bugged and insert control dependent statements in control flow,
+	// like derivatives.
+	// Try to move these instructions out of control flow when the dependent SSA instructions
+	// are generated in outer control flow.
+	hoist_control_dependent_opcodes();
 
 	// It is possible that an SSA value was created in a block, and consumed in another.
 	// With CFG rewriting branches, it is possible that dominance relationship no longer holds
