@@ -103,6 +103,12 @@ bool Converter::shader_requires_feature(ShaderFeature feature) const
 		return impl->builder().hasCapability(spv::CapabilityFloat16) ||
 		       impl->builder().hasCapability(spv::CapabilityInt16);
 
+	case ShaderFeature::DoublePrecisionFloatOperations:
+		return impl->builder().hasCapability(spv::CapabilityFloat64);
+
+	case ShaderFeature::Int64:
+		return impl->builder().hasCapability(spv::CapabilityInt64);
+
 	default:
 		return false;
 	}

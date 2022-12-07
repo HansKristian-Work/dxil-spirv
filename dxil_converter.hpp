@@ -506,6 +506,8 @@ struct DescriptorTableEntry
 enum class ShaderFeature
 {
 	Native16BitOperations = 0,
+	DoublePrecisionFloatOperations = 1,
+	Int64 = 2,
 	Count
 };
 
