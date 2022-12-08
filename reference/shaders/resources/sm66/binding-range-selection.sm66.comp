@@ -11,12 +11,12 @@ void main()
     if (gl_GlobalInvocationID.x > 80u)
     {
         imageStore(_13, ivec2(uvec2(gl_GlobalInvocationID.x, 0u)), vec4(0.0));
+        if (gl_GlobalInvocationID.x > 90u)
+        {
+            imageStore(_17[(gl_GlobalInvocationID.x & 1u) + 7u], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), vec4(0.0));
+        }
     }
-    if (gl_GlobalInvocationID.x > 90u)
-    {
-        imageStore(_17[(gl_GlobalInvocationID.x & 1u) + 7u], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), vec4(0.0));
-    }
-    uint _47 = imageAtomicAdd(_9, int(0u), 1u);
+    uint _39 = imageAtomicAdd(_9, int(0u), 1u);
 }
 
 
@@ -74,9 +74,9 @@ OpDecorate %20 BuiltIn GlobalInvocationId
 %30 = OpTypeVector %5 2
 %32 = OpTypeVector %10 4
 %35 = OpConstant %5 90
-%37 = OpConstant %5 1
-%39 = OpConstant %5 7
-%45 = OpTypePointer Image %5
+%37 = OpTypePointer Image %5
+%40 = OpConstant %5 1
+%43 = OpConstant %5 7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %48
@@ -84,31 +84,31 @@ OpBranch %48
 %22 = OpAccessChain %21 %20 %23
 %24 = OpLoad %5 %22
 %26 = OpUGreaterThan %25 %24 %27
-OpSelectionMerge %50 None
-OpBranchConditional %26 %49 %50
+OpSelectionMerge %52 None
+OpBranchConditional %26 %49 %52
 %49 = OpLabel
 %28 = OpLoad %11 %13
 %31 = OpCompositeConstruct %30 %24 %23
 %33 = OpCompositeConstruct %32 %29 %29 %29 %29
 OpImageWrite %28 %31 %33
-OpBranch %50
-%50 = OpLabel
 %34 = OpUGreaterThan %25 %24 %35
-OpSelectionMerge %52 None
-OpBranchConditional %34 %51 %52
+OpSelectionMerge %51 None
+OpBranchConditional %34 %50 %51
+%50 = OpLabel
+%41 = OpBitwiseAnd %5 %24 %40
+%42 = OpIAdd %5 %41 %43
+%44 = OpAccessChain %12 %17 %42
+%45 = OpLoad %11 %44
+%46 = OpCompositeConstruct %30 %23 %24
+%47 = OpCompositeConstruct %32 %29 %29 %29 %29
+OpImageWrite %45 %46 %47
+OpBranch %51
 %51 = OpLabel
-%36 = OpBitwiseAnd %5 %24 %37
-%38 = OpIAdd %5 %36 %39
-%40 = OpAccessChain %12 %17 %38
-%41 = OpLoad %11 %40
-%42 = OpCompositeConstruct %30 %23 %24
-%43 = OpCompositeConstruct %32 %29 %29 %29 %29
-OpImageWrite %41 %42 %43
 OpBranch %52
 %52 = OpLabel
-%44 = OpLoad %6 %8
-%46 = OpImageTexelPointer %45 %9 %23 %23
-%47 = OpAtomicIAdd %5 %46 %37 %23 %37
+%36 = OpLoad %6 %8
+%38 = OpImageTexelPointer %37 %9 %23 %23
+%39 = OpAtomicIAdd %5 %38 %40 %23 %40
 OpReturn
 OpFunctionEnd
 #endif

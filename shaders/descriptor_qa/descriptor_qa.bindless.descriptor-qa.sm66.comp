@@ -26,38 +26,38 @@ SamplerState samp : register(s0, space0);
 void main(uint index : SV_DispatchThreadID)
 {
 	float value = 0.0;
-	if (index > 2)
+	if ((index & 3423432) > 2)
 		value += c.v;
-	if (index > 3)
+	if ((index & 234234) > 3)
 		value += carr[index].v;
-	if (index > 4)
+	if ((index & 236234) > 4)
 		value += tex.SampleLevel(samp, float2(0.5, 0.5), 0.0);
-	if (index > 5)
+	if ((index & 34234) > 5)
 		value += texarr[index & 1][int2(0, index)];
-	if (index > 6)
+	if ((index & 234) > 6)
 		value += typedbuf[index];
-	if (index > 7)
+	if ((index & 22) > 7)
 		value += typedbufarr[index & 1][index];
-	if (index > 8)
+	if ((index & 9234234) > 8)
 		value += buf[index];
-	if (index > 9)
+	if ((index & 2342342) > 9)
 		value += bufarr[index & 1][index];
-	if (index > 10)
+	if ((index & 234234324) > 10)
 		value += asfloat(rawbuf.Load(4 * index));
-	if (index > 11)
+	if ((index & 234234233) > 11)
 		value += asfloat(rawbufarr[index & 1].Load(index));
 
-	if (index > 1)
+	if ((index & 234884) > 1)
 		rwbuf[index] = value;
-	if (index > 30)
+	if ((index & 9999) > 30)
 		rwbufarr[index & 1][index] = value;
-	if (index > 40)
+	if ((index & 8888) > 40)
 		rwrawbuf.Store(4 * index, asuint(value));
-	if (index > 50)
+	if ((index & 7777) > 50)
 		rwrawbufarr[index & 1].Store(4 * index, asuint(value));
-	if (index > 80)
+	if ((index & 5555) > 80)
 		rwtex[int2(index, 0)] = value;
-	if (index > 90)
+	if ((index & 34234) > 90)
 		rwtexarr[index & 1][int2(0, index)] = value;
 
 	rwbuf.IncrementCounter();
