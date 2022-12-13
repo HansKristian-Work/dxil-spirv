@@ -34,8 +34,17 @@ namespace dxil_spv
 bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	Operation *op = impl.allocate(spv::OpSetMeshOutputsEXT);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-	op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+
+	// If we have a degenerate case where either of these is 0, we have to declare 0 as max output.
+	if (impl.execution_mode_meta.stage_output_num_vertex == 0)
+		op->add_id(impl.builder().makeUintConstant(0));
+	else
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	if (impl.execution_mode_meta.stage_output_num_primitive == 0)
+		op->add_id(impl.builder().makeUintConstant(0));
+	else
+		op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
 
 	impl.add(op);
 	return true;
@@ -47,7 +56,7 @@ bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	// If we for some reason have max primitives 0 in the execution mode,
 	// just ignore any access to index buffer.
-	if (!impl.primitive_index_array_id)
+	if (!impl.primitive_index_array_id || impl.execution_mode_meta.stage_output_num_primitive == 0)
 		return true;
 
 	unsigned index_dim = impl.execution_mode_meta.primitive_index_dimension;
@@ -75,6 +84,11 @@ bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 bool emit_store_vertex_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// If we for some reason have max vertices 0 in the execution mode,
+	// just ignore any access to vertex output.
+	if (impl.execution_mode_meta.stage_output_num_vertex == 0)
+		return true;
+
 	auto &builder = impl.builder();
 	uint32_t output_element_index;
 	if (!get_constant_operand(instruction, 1, &output_element_index))
@@ -123,6 +137,11 @@ bool emit_store_vertex_output_instruction(Converter::Impl &impl, const llvm::Cal
 
 bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// If we for some reason have max primitives 0 in the execution mode,
+	// just ignore any access to primitive output.
+	if (impl.execution_mode_meta.stage_output_num_primitive == 0)
+		return true;
+
 	auto &builder = impl.builder();
 	uint32_t output_element_index;
 	if (!get_constant_operand(instruction, 1, &output_element_index))
