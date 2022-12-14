@@ -3519,7 +3519,7 @@ bool Converter::Impl::emit_patch_variables()
 		auto *patch = llvm::cast<llvm::MDNode>(patch_node->getOperand(i));
 		auto element_id = get_constant_metadata(patch, 0);
 		auto semantic_name = get_string_metadata(patch, 1);
-		auto actual_element_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(patch, 2)));
+		auto actual_element_type = convert_component_to_unsigned(normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(patch, 2))));
 		auto effective_element_type = get_effective_input_output_type(actual_element_type);
 		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(patch, 3));
 
