@@ -175,10 +175,13 @@ bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::Cal
 	                                spv::StorageClassInput :
 	                                spv::StorageClassOutput;
 
+	spv::Id load_type_id;
+
 	if (row_index || num_cols > 1)
 	{
+		load_type_id = builder.getScalarTypeId(output_type_id);
 		Operation *op =
-		    impl.allocate(spv::OpAccessChain, builder.makePointer(storage, builder.getScalarTypeId(output_type_id)));
+		    impl.allocate(spv::OpAccessChain, builder.makePointer(storage, load_type_id));
 		ptr_id = op->id;
 		op->add_id(var_id);
 		if (row_index)
@@ -189,9 +192,12 @@ bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::Cal
 		impl.add(op);
 	}
 	else
+	{
 		ptr_id = var_id;
+		load_type_id = output_type_id;
+	}
 
-	Operation *op = impl.allocate(spv::OpLoad, instruction);
+	Operation *op = impl.allocate(spv::OpLoad, instruction, load_type_id);
 	op->add_id(ptr_id);
 	impl.add(op);
 
