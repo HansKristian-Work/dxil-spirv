@@ -85,6 +85,7 @@ enum class ConstantsRecord : uint32_t
 	FLOAT = 6,
 	AGGREGATE = 7,
 	STRING = 8,
+	BINOP = 10,
 	CE_CAST = 11,
 	GEP = 12,
 	INBOUNDS_GEP = 20,
@@ -644,6 +645,42 @@ static Type *resolve_gep_element_type(Type *type, const Vector<Value *> &args)
 	return type;
 }
 
+static BinaryOperator::BinaryOps translate_binop(BinOp op, Type *type)
+{
+	bool is_fp = type->isFloatingPointTy();
+	switch (op)
+	{
+	case BinOp::ADD:
+		return is_fp ? BinaryOperator::BinaryOps::FAdd : BinaryOperator::BinaryOps::Add;
+	case BinOp::SUB:
+		return is_fp ? BinaryOperator::BinaryOps::FSub : BinaryOperator::BinaryOps::Sub;
+	case BinOp::MUL:
+		return is_fp ? BinaryOperator::BinaryOps::FMul : BinaryOperator::BinaryOps::Mul;
+	case BinOp::UDIV:
+		return is_fp ? BinaryOperator::BinaryOps::InvalidBinaryOp : BinaryOperator::BinaryOps::UDiv;
+	case BinOp::SDIV:
+		return is_fp ? BinaryOperator::BinaryOps::FDiv : BinaryOperator::BinaryOps::SDiv;
+	case BinOp::UREM:
+		return is_fp ? BinaryOperator::BinaryOps::InvalidBinaryOp : BinaryOperator::BinaryOps::URem;
+	case BinOp::SREM:
+		return is_fp ? BinaryOperator::BinaryOps::FRem : BinaryOperator::BinaryOps::SRem;
+	case BinOp::SHL:
+		return is_fp ? BinaryOperator::BinaryOps::InvalidBinaryOp : BinaryOperator::BinaryOps::Shl;
+	case BinOp::LSHR:
+		return is_fp ? BinaryOperator::BinaryOps::InvalidBinaryOp : BinaryOperator::BinaryOps::LShr;
+	case BinOp::ASHR:
+		return is_fp ? BinaryOperator::BinaryOps::InvalidBinaryOp : BinaryOperator::BinaryOps::AShr;
+	case BinOp::AND:
+		return is_fp ? BinaryOperator::BinaryOps::InvalidBinaryOp : BinaryOperator::BinaryOps::And;
+	case BinOp::OR:
+		return is_fp ? BinaryOperator::BinaryOps::InvalidBinaryOp : BinaryOperator::BinaryOps::Or;
+	case BinOp::XOR:
+		return is_fp ? BinaryOperator::BinaryOps::InvalidBinaryOp : BinaryOperator::BinaryOps::Xor;
+	default:
+		return BinaryOperator::BinaryOps::InvalidBinaryOp;
+	}
+}
+
 static Instruction::CastOps translate_castop(CastOp op)
 {
 	switch (op)
@@ -675,7 +712,7 @@ static Instruction::CastOps translate_castop(CastOp op)
 	case CastOp::ADDSPACECAST:
 		return Instruction::AddrSpaceCast;
 	}
-	return Instruction::CastOps::Invalid;
+	return Instruction::CastOps::InvalidCastOp;
 }
 
 bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
@@ -802,6 +839,19 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 	case ConstantsRecord::STRING:
 		LOGE("STRING unimplemented.\n");
 		return false;
+
+	case ConstantsRecord::BINOP:
+	{
+		unsigned index = 0;
+		auto *type = get_constant_type();
+		auto op = translate_binop(BinOp(entry.ops[index++]), type);
+		auto *a = get_value(entry.ops[index++], type, true);
+		auto *b = get_value(entry.ops[index++], type, true);
+		auto elements = Vector<Value *>{a, b};
+		Value *value = context->construct<ConstantExpr>(op, type, std::move(elements));
+		values.push_back(value);
+		break;
+	}
 
 	case ConstantsRecord::CE_CAST:
 	{
@@ -1223,42 +1273,6 @@ static UnaryOperator::UnaryOps translate_uop(UnaryOp op, Type *type)
 		return UnaryOperator::UnaryOps::FNeg;
 	else
 		return UnaryOperator::UnaryOps::Invalid;
-}
-
-static BinaryOperator::BinaryOps translate_binop(BinOp op, Type *type)
-{
-	bool is_fp = type->isFloatingPointTy();
-	switch (op)
-	{
-	case BinOp::ADD:
-		return is_fp ? BinaryOperator::BinaryOps::FAdd : BinaryOperator::BinaryOps::Add;
-	case BinOp::SUB:
-		return is_fp ? BinaryOperator::BinaryOps::FSub : BinaryOperator::BinaryOps::Sub;
-	case BinOp::MUL:
-		return is_fp ? BinaryOperator::BinaryOps::FMul : BinaryOperator::BinaryOps::Mul;
-	case BinOp::UDIV:
-		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::UDiv;
-	case BinOp::SDIV:
-		return is_fp ? BinaryOperator::BinaryOps::FDiv : BinaryOperator::BinaryOps::SDiv;
-	case BinOp::UREM:
-		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::URem;
-	case BinOp::SREM:
-		return is_fp ? BinaryOperator::BinaryOps::FRem : BinaryOperator::BinaryOps::SRem;
-	case BinOp::SHL:
-		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::Shl;
-	case BinOp::LSHR:
-		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::LShr;
-	case BinOp::ASHR:
-		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::AShr;
-	case BinOp::AND:
-		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::And;
-	case BinOp::OR:
-		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::Or;
-	case BinOp::XOR:
-		return is_fp ? BinaryOperator::BinaryOps::Invalid : BinaryOperator::BinaryOps::Xor;
-	default:
-		return BinaryOperator::BinaryOps::Invalid;
-	}
 }
 
 static AtomicRMWInst::BinOp translate_atomic_binop(AtomicBinOp op)

@@ -356,7 +356,7 @@ static const char *to_string(BinaryOperator::BinaryOps op)
 #define BINOP(op, str)                  \
 	case BinaryOperator::BinaryOps::op: \
 		return str
-		BINOP(Invalid, "invalid");
+		BINOP(InvalidBinaryOp, "invalid");
 		BINOP(Add, "add");
 		BINOP(FAdd, "fadd");
 		BINOP(Sub, "sub");
