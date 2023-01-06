@@ -3642,7 +3642,7 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			// scopes. One of these might require a similar impossible merge.
 			// Common post dominator analysis would not catch this.
 			// What we're looking for is a node which:
-			// - Is dominated by loop header
+			// - Is dominated by loop header (or is in the domination frontier of loop header)
 			// - Is reachable, but not dominated by dominated_merge.
 			// - Post dominates one of the non_dominated_exits.
 			// This means the node is in a twilight zone where the node is kinda in the loop construct, but kinda not.
@@ -3658,18 +3658,30 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			{
 				auto *candidate = result.non_dominated_exit[i];
 
-				while (node->dominates(candidate) && !impossible_merge_target &&
-				       candidate != merge && candidate != dominated_merge)
+				while (candidate != merge && candidate != dominated_merge)
 				{
-					if (node->dominates(candidate) &&
-					    query_reachability(*dominated_merge, *candidate) &&
-					    !dominated_merge->dominates(candidate))
+					if (query_reachability(*dominated_merge, *candidate) && !dominated_merge->dominates(candidate))
 					{
 						// Merge block attempts to branch back into its own loop construct (yikes).
 						impossible_merge_target = candidate;
+
+						// If we don't dominate the merge target, i.e. we're in the domination frontier,
+						// we have to synthesize a fake impossible merge target first since the rewrite
+						// algorithm depends on node dominating the merge target.
+						if (!node->dominates(impossible_merge_target))
+							impossible_merge_target = create_ladder_block(node, impossible_merge_target, ".impossible-ladder");
+						break;
+					}
+					else if (node->dominates(candidate) && candidate != candidate->immediate_post_dominator)
+					{
+						candidate = candidate->immediate_post_dominator;
 					}
 					else
-						candidate = candidate->immediate_post_dominator;
+					{
+						// We will be able to select a candidate in the domination frontier once.
+						// If we failed to find a candidate in the domination frontier, we're done checking.
+						break;
+					}
 				}
 			}
 		}
