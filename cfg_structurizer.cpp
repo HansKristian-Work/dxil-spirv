@@ -2884,19 +2884,7 @@ CFGNode *CFGStructurizer::create_switch_merge_ladder(CFGNode *header, CFGNode *m
 	// We did not rewrite switch blocks w.r.t. selection breaks.
 	// We might be in a situation where the switch block is trying to merge to a block which is already being merged to.
 	// Create a ladder which the switch block could merge to.
-	auto *ladder = pool.create_node();
-	ladder->name = merge->name + ".switch-merge";
-	ladder->add_branch(merge);
-	ladder->ir.terminator.type = Terminator::Type::Branch;
-	ladder->ir.terminator.direct_block = merge;
-	ladder->immediate_post_dominator = merge;
-	ladder->immediate_dominator = merge->immediate_dominator;
-	ladder->dominance_frontier.push_back(merge);
-	ladder->forward_post_visit_order = merge->forward_post_visit_order;
-	ladder->backward_post_visit_order = merge->backward_post_visit_order;
-	traverse_dominated_blocks_and_rewrite_branch(header, merge, ladder);
-
-	return ladder;
+	return create_ladder_block(header, merge, ".switch-merge");
 }
 
 bool CFGStructurizer::find_switch_blocks(unsigned pass)
@@ -4072,6 +4060,24 @@ CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode 
 	return target_header;
 }
 
+CFGNode *CFGStructurizer::create_ladder_block(CFGNode *header, CFGNode *node, const char *tag)
+{
+	auto *ladder = pool.create_node();
+	ladder->name = node->name + tag;
+	ladder->add_branch(node);
+	ladder->ir.terminator.type = Terminator::Type::Branch;
+	ladder->ir.terminator.direct_block = node;
+	ladder->immediate_post_dominator = node;
+	ladder->forward_post_visit_order = node->forward_post_visit_order;
+	ladder->backward_post_visit_order = node->backward_post_visit_order;
+	ladder->dominance_frontier.push_back(node);
+
+	traverse_dominated_blocks_and_rewrite_branch(header, node, ladder);
+	ladder->recompute_immediate_dominator();
+
+	return ladder;
+}
+
 CFGNode *CFGStructurizer::get_or_create_ladder_block(CFGNode *node, size_t header_index)
 {
 	auto *header = node->headers[header_index];
@@ -4081,18 +4087,8 @@ CFGNode *CFGStructurizer::get_or_create_ladder_block(CFGNode *node, size_t heade
 	{
 		// We don't have a ladder, because the loop merged to an outer scope, so we need to fake a ladder.
 		// If we hit this case, we did not hit the simpler case in find_loops().
-		auto *ladder = pool.create_node();
-		ladder->name = node->name + ".merge";
-		ladder->add_branch(node);
-		ladder->ir.terminator.type = Terminator::Type::Branch;
-		ladder->ir.terminator.direct_block = node;
-		ladder->immediate_post_dominator = node;
-		ladder->forward_post_visit_order = node->forward_post_visit_order;
-		ladder->backward_post_visit_order = node->backward_post_visit_order;
-
-		traverse_dominated_blocks_and_rewrite_branch(header, node, ladder);
+		auto *ladder = create_ladder_block(header, node, ".merge");
 		header->loop_ladder_block = ladder;
-		ladder->recompute_immediate_dominator();
 
 		// If this is the second outermost scope, we don't need to deal with ladders.
 		// ladder is a dummy branch straight out to the outer merge point.

@@ -127,6 +127,11 @@ private:
 	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;
 	bool continue_block_can_merge(CFGNode *node) const;
 	static bool block_is_plain_continue(const CFGNode *node);
+
+	// Create a new block. Rewrite all branches to node from blocks that are dominated by header to that block.
+	// The new block then branches to node.
+	CFGNode *create_ladder_block(CFGNode *header, CFGNode *node, const char *tag);
+
 	CFGNode *get_target_break_block_for_inner_header(const CFGNode *node, size_t header_index);
 	CFGNode *get_or_create_ladder_block(CFGNode *node, size_t header_index);
 	CFGNode *build_enclosing_break_target_for_loop_ladder(CFGNode *&node, CFGNode *loop_ladder);
