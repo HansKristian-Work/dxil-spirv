@@ -172,6 +172,26 @@ static bool instruction_is_fast_math(const llvm::ConstantExpr *)
 	return false;
 }
 
+static bool instruction_is_undefined_value(const llvm::Value *value)
+{
+	if (llvm::isa<llvm::UndefValue>(value))
+	{
+		return true;
+	}
+	else if (const auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(value))
+	{
+		return instruction_is_undefined_value(cexpr->getOperand(0)) &&
+		       instruction_is_undefined_value(cexpr->getOperand(1));
+	}
+	else if (const auto *expr = llvm::dyn_cast<llvm::BinaryOperator>(value))
+	{
+		return instruction_is_undefined_value(expr->getOperand(0)) &&
+		       instruction_is_undefined_value(expr->getOperand(1));
+	}
+	else
+		return false;
+}
+
 template <typename InstructionType>
 static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
@@ -325,11 +345,37 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		return false;
 	}
 
+	// If we can collapse the expression to undefined (yes, DXIL really emits jank like this!),
+	// just emit the non-undefined part.
+	// We can consider the value to be undefined in a way that it is irrelevant.
+
+	// Here we make the assumption that undef is not frozen to a fixed but indeterminate value,
+	// it can take different values when it's instantiated.
+	bool a_is_undef = instruction_is_undefined_value(instruction->getOperand(0));
+	bool b_is_undef = instruction_is_undefined_value(instruction->getOperand(1));
+	spv::Id forward_value = 0;
+	if (b_is_undef)
+		forward_value = impl.get_id_for_value(instruction->getOperand(0));
+	else if (a_is_undef)
+		forward_value = impl.get_id_for_value(instruction->getOperand(1));
+
 	Operation *op;
 	if (llvm::isa<llvm::ConstantExpr>(instruction))
+	{
+		if (forward_value != 0)
+			return forward_value;
+
 		op = impl.allocate(opcode, impl.get_type_id(instruction->getType()));
+	}
+	else if (forward_value != 0)
+	{
+		impl.rewrite_value(instruction, forward_value);
+		return forward_value;
+	}
 	else
+	{
 		op = impl.allocate(opcode, instruction);
+	}
 
 	uint32_t id0, id1;
 	if (is_width_sensitive)
