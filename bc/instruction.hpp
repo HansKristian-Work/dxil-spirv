@@ -71,7 +71,7 @@ public:
 
 	enum CastOps
 	{
-		Invalid = 100,
+		InvalidCastOp = 100,
 		Trunc,
 		ZExt,
 		SExt,
@@ -87,9 +87,32 @@ public:
 		AddrSpaceCast
 	};
 
-	enum ConstExprOps
+	enum GEPOps
 	{
 		GetElementPtr = 200
+	};
+
+	enum BinaryOps
+	{
+		InvalidBinaryOp = 300,
+		Add,
+		FAdd,
+		Sub,
+		FSub,
+		Mul,
+		FMul,
+		UDiv,
+		SDiv,
+		FDiv,
+		URem,
+		SRem,
+		FRem,
+		Shl,
+		LShr,
+		AShr,
+		And,
+		Or,
+		Xor
 	};
 
 	bool isTerminator() const;
@@ -182,29 +205,6 @@ private:
 class BinaryOperator : public Instruction
 {
 public:
-	enum class BinaryOps
-	{
-		Invalid,
-		Add,
-		FAdd,
-		Sub,
-		FSub,
-		Mul,
-		FMul,
-		UDiv,
-		SDiv,
-		FDiv,
-		URem,
-		SRem,
-		FRem,
-		Shl,
-		LShr,
-		AShr,
-		And,
-		Or,
-		Xor
-	};
-
 	static constexpr ValueKind get_value_kind()
 	{
 		return ValueKind::BinaryOperator;

@@ -80,14 +80,22 @@ static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm:
 	return build_naturally_extended_value(impl, value, logical_bits, is_signed);
 }
 
-static bool peephole_trivial_arithmetic_identity(Converter::Impl &impl,
-                                                 const llvm::BinaryOperator *instruction,
-                                                 llvm::BinaryOperator::BinaryOps inverse_operation,
-                                                 bool is_commutative)
+static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &,
+                                                    const llvm::ConstantExpr *,
+                                                    llvm::BinaryOperator::BinaryOps,
+                                                    bool)
+{
+	return 0;
+}
+
+static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &impl,
+                                                    const llvm::BinaryOperator *instruction,
+                                                    llvm::BinaryOperator::BinaryOps inverse_operation,
+                                                    bool is_commutative)
 {
 	// Only peephole fast math.
 	if (!instruction->isFast())
-		return false;
+		return 0;
 
 	// CP77 can trigger a scenario where we do (a / b) * b in fast math.
 	// When b is 0, we hit a singularity, but native drivers optimize this away.
@@ -125,14 +133,14 @@ static bool peephole_trivial_arithmetic_identity(Converter::Impl &impl,
 
 	if (auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(op0))
 		if (binop->isFast() && binop->getOpcode() == inverse_operation && hoist_value(binop, op1))
-			return true;
+			return impl.get_id_for_value(instruction);
 
 	if (is_commutative)
 		if (auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(op1))
 			if (binop->isFast() && binop->getOpcode() == inverse_operation && hoist_value(binop, op0))
-				return true;
+				return impl.get_id_for_value(instruction);
 
-	return false;
+	return 0;
 }
 
 static spv::Id resolve_llvm_actual_value_type(Converter::Impl &impl,
@@ -153,7 +161,19 @@ static spv::Id resolve_llvm_actual_value_type(Converter::Impl &impl,
 		return default_value_type;
 }
 
-bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
+static bool instruction_is_fast_math(const llvm::BinaryOperator *op)
+{
+	return op->isFast();
+}
+
+static bool instruction_is_fast_math(const llvm::ConstantExpr *)
+{
+	// Don't want reordering in constant folding anyways.
+	return false;
+}
+
+template <typename InstructionType>
+static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
 	bool signed_input = false;
 	bool is_width_sensitive = false;
@@ -161,7 +181,7 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 	bool can_relax_precision = false;
 	spv::Op opcode;
 
-	switch (instruction->getOpcode())
+	switch (llvm::Instruction::BinaryOps(instruction->getOpcode()))
 	{
 	case llvm::BinaryOperator::BinaryOps::FAdd:
 		opcode = spv::OpFAdd;
@@ -176,19 +196,21 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::FMul:
+	{
 		opcode = spv::OpFMul;
 		is_precision_sensitive = true;
 		can_relax_precision = true;
-		if (peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FDiv, true))
-			return true;
+		if (spv::Id id = peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FDiv, true))
+			return id;
 		break;
+	}
 
 	case llvm::BinaryOperator::BinaryOps::FDiv:
 		opcode = spv::OpFDiv;
 		is_precision_sensitive = true;
 		can_relax_precision = true;
-		if (peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FMul, false))
-			return true;
+		if (spv::Id id = peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FMul, false))
+			return id;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Add:
@@ -266,10 +288,16 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 			if (not_id)
 			{
 				opcode = spv::OpLogicalNot;
-				auto *op = impl.allocate(opcode, instruction);
+
+				Operation *op;
+				if (llvm::isa<llvm::ConstantExpr>(instruction))
+					op = impl.allocate(opcode, impl.get_type_id(instruction->getType()));
+				else
+					op = impl.allocate(opcode, instruction);
+
 				op->add_id(not_id);
 				impl.add(op);
-				return true;
+				return op->id;
 			}
 
 			opcode = spv::OpLogicalNotEqual;
@@ -297,7 +325,11 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 		return false;
 	}
 
-	Operation *op = impl.allocate(opcode, instruction);
+	Operation *op;
+	if (llvm::isa<llvm::ConstantExpr>(instruction))
+		op = impl.allocate(opcode, impl.get_type_id(instruction->getType()));
+	else
+		op = impl.allocate(opcode, instruction);
 
 	uint32_t id0, id1;
 	if (is_width_sensitive)
@@ -313,13 +345,19 @@ bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *
 	op->add_ids({ id0, id1 });
 
 	impl.add(op);
-	if (is_precision_sensitive && !instruction->isFast())
+	if (is_precision_sensitive && !instruction_is_fast_math(instruction))
 		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
 
 	// Only bother relaxing FP, since Integers are murky w.r.t. signage in DXIL.
 	if (can_relax_precision)
 		impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
-	return true;
+
+	return op->id;
+}
+
+bool emit_binary_instruction(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
+{
+	return emit_binary_instruction_impl(impl, instruction) != 0;
 }
 
 bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *instruction)
@@ -867,6 +905,26 @@ spv::Id build_constant_expression(Converter::Impl &impl, const llvm::ConstantExp
 	case llvm::Instruction::BitCast:
 	case llvm::Instruction::AddrSpaceCast:
 		return build_constant_cast(impl, cexpr);
+
+	case llvm::Instruction::Add:
+	case llvm::Instruction::FAdd:
+	case llvm::Instruction::Sub:
+	case llvm::Instruction::FSub:
+	case llvm::Instruction::Mul:
+	case llvm::Instruction::FMul:
+	case llvm::Instruction::UDiv:
+	case llvm::Instruction::SDiv:
+	case llvm::Instruction::FDiv:
+	case llvm::Instruction::URem:
+	case llvm::Instruction::SRem:
+	case llvm::Instruction::FRem:
+	case llvm::Instruction::Shl:
+	case llvm::Instruction::LShr:
+	case llvm::Instruction::AShr:
+	case llvm::Instruction::And:
+	case llvm::Instruction::Or:
+	case llvm::Instruction::Xor:
+		return emit_binary_instruction_impl(impl, cexpr);
 
 	default:
 	{
