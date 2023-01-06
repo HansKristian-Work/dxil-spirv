@@ -2884,19 +2884,7 @@ CFGNode *CFGStructurizer::create_switch_merge_ladder(CFGNode *header, CFGNode *m
 	// We did not rewrite switch blocks w.r.t. selection breaks.
 	// We might be in a situation where the switch block is trying to merge to a block which is already being merged to.
 	// Create a ladder which the switch block could merge to.
-	auto *ladder = pool.create_node();
-	ladder->name = merge->name + ".switch-merge";
-	ladder->add_branch(merge);
-	ladder->ir.terminator.type = Terminator::Type::Branch;
-	ladder->ir.terminator.direct_block = merge;
-	ladder->immediate_post_dominator = merge;
-	ladder->immediate_dominator = merge->immediate_dominator;
-	ladder->dominance_frontier.push_back(merge);
-	ladder->forward_post_visit_order = merge->forward_post_visit_order;
-	ladder->backward_post_visit_order = merge->backward_post_visit_order;
-	traverse_dominated_blocks_and_rewrite_branch(header, merge, ladder);
-
-	return ladder;
+	return create_ladder_block(header, merge, ".switch-merge");
 }
 
 bool CFGStructurizer::find_switch_blocks(unsigned pass)
@@ -3654,7 +3642,7 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			// scopes. One of these might require a similar impossible merge.
 			// Common post dominator analysis would not catch this.
 			// What we're looking for is a node which:
-			// - Is dominated by loop header
+			// - Is dominated by loop header (or is in the domination frontier of loop header)
 			// - Is reachable, but not dominated by dominated_merge.
 			// - Post dominates one of the non_dominated_exits.
 			// This means the node is in a twilight zone where the node is kinda in the loop construct, but kinda not.
@@ -3670,18 +3658,30 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			{
 				auto *candidate = result.non_dominated_exit[i];
 
-				while (node->dominates(candidate) && !impossible_merge_target &&
-				       candidate != merge && candidate != dominated_merge)
+				while (candidate != merge && candidate != dominated_merge)
 				{
-					if (node->dominates(candidate) &&
-					    query_reachability(*dominated_merge, *candidate) &&
-					    !dominated_merge->dominates(candidate))
+					if (query_reachability(*dominated_merge, *candidate) && !dominated_merge->dominates(candidate))
 					{
 						// Merge block attempts to branch back into its own loop construct (yikes).
 						impossible_merge_target = candidate;
+
+						// If we don't dominate the merge target, i.e. we're in the domination frontier,
+						// we have to synthesize a fake impossible merge target first since the rewrite
+						// algorithm depends on node dominating the merge target.
+						if (!node->dominates(impossible_merge_target))
+							impossible_merge_target = create_ladder_block(node, impossible_merge_target, ".impossible-ladder");
+						break;
+					}
+					else if (node->dominates(candidate) && candidate != candidate->immediate_post_dominator)
+					{
+						candidate = candidate->immediate_post_dominator;
 					}
 					else
-						candidate = candidate->immediate_post_dominator;
+					{
+						// We will be able to select a candidate in the domination frontier once.
+						// If we failed to find a candidate in the domination frontier, we're done checking.
+						break;
+					}
 				}
 			}
 		}
@@ -4072,6 +4072,24 @@ CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode 
 	return target_header;
 }
 
+CFGNode *CFGStructurizer::create_ladder_block(CFGNode *header, CFGNode *node, const char *tag)
+{
+	auto *ladder = pool.create_node();
+	ladder->name = node->name + tag;
+	ladder->add_branch(node);
+	ladder->ir.terminator.type = Terminator::Type::Branch;
+	ladder->ir.terminator.direct_block = node;
+	ladder->immediate_post_dominator = node;
+	ladder->forward_post_visit_order = node->forward_post_visit_order;
+	ladder->backward_post_visit_order = node->backward_post_visit_order;
+	ladder->dominance_frontier.push_back(node);
+
+	traverse_dominated_blocks_and_rewrite_branch(header, node, ladder);
+	ladder->recompute_immediate_dominator();
+
+	return ladder;
+}
+
 CFGNode *CFGStructurizer::get_or_create_ladder_block(CFGNode *node, size_t header_index)
 {
 	auto *header = node->headers[header_index];
@@ -4081,18 +4099,8 @@ CFGNode *CFGStructurizer::get_or_create_ladder_block(CFGNode *node, size_t heade
 	{
 		// We don't have a ladder, because the loop merged to an outer scope, so we need to fake a ladder.
 		// If we hit this case, we did not hit the simpler case in find_loops().
-		auto *ladder = pool.create_node();
-		ladder->name = node->name + ".merge";
-		ladder->add_branch(node);
-		ladder->ir.terminator.type = Terminator::Type::Branch;
-		ladder->ir.terminator.direct_block = node;
-		ladder->immediate_post_dominator = node;
-		ladder->forward_post_visit_order = node->forward_post_visit_order;
-		ladder->backward_post_visit_order = node->backward_post_visit_order;
-
-		traverse_dominated_blocks_and_rewrite_branch(header, node, ladder);
+		auto *ladder = create_ladder_block(header, node, ".merge");
 		header->loop_ladder_block = ladder;
-		ladder->recompute_immediate_dominator();
 
 		// If this is the second outermost scope, we don't need to deal with ladders.
 		// ladder is a dummy branch straight out to the outer merge point.

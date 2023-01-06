@@ -310,7 +310,8 @@ def test_shader_file(relpath, args):
 
 def test_shaders(args):
     all_files = []
-    for root, dirs, files in os.walk(os.path.join(args.folder)):
+    walk_path = os.path.join(args.folder, args.subfolder) if args.subfolder else args.folder
+    for root, dirs, files in os.walk(walk_path):
         files = [ f for f in files if not f.startswith(".") ]   #ignore system files (esp OSX)
         for i in files:
             path = os.path.join(root, i)
@@ -363,6 +364,8 @@ def main():
     parser.add_argument('--dxil-spirv',
             default = './dxil-spirv',
             help = 'Explicit path to dxil-spirv')
+    parser.add_argument('--subfolder',
+            help = 'Only test specific subfolder')
 
     args = parser.parse_args()
     if not args.folder:
