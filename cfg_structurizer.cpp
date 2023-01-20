@@ -1082,12 +1082,41 @@ Vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
 	return candidate;
 }
 
+static IncomingValue *phi_incoming_blocks_find_block(Vector<IncomingValue> &incomings, const CFGNode *block)
+{
+	for (auto &incoming : incomings)
+		if (incoming.block == block)
+			return &incoming;
+	return nullptr;
+}
+
+static bool id_is_generated_by_block(const CFGNode *block, spv::Id id)
+{
+	for (const auto *op : block->ir.operations)
+		if (op->id == id)
+			return true;
+
+	for (const auto &phi : block->ir.phi)
+		if (phi.id == id)
+			return true;
+
+	return false;
+}
+
+static void retarget_phi_incoming_block(PHI &phi, CFGNode *from, CFGNode *to)
+{
+	auto *value = phi_incoming_blocks_find_block(phi.incoming, from);
+	if (value)
+		value->block = to;
+}
+
 void CFGStructurizer::fixup_phi(PHINode &node)
 {
 	// We want to move any incoming block to where the ID was created.
 	// This avoids some problematic cases of crossing edges when using ladders.
+	auto &incomings = node.block->ir.phi[node.phi_index].incoming;
 
-	for (auto &incoming : node.block->ir.phi[node.phi_index].incoming)
+	for (auto &incoming : incomings)
 	{
 		auto itr = value_id_to_block.find(incoming.id);
 		if (itr == end(value_id_to_block))
@@ -1096,8 +1125,18 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 			continue;
 		}
 
-		if (!itr->second->dominates(incoming.block))
+		auto *source_block = itr->second;
+
+		// Only hoist PHI inputs if there used to be a dominance relationship in the original CFG,
+		// but there no longer is.
+		if (!source_block->dominates(incoming.block))
 		{
+			if (phi_incoming_blocks_find_block(incomings, source_block) != nullptr)
+			{
+				// Sanity check. This would create ambiguity.
+				continue;
+			}
+
 #ifdef PHI_DEBUG
 			LOGI("For node %s, move incoming node %s to %s.\n", node.block->name.c_str(), incoming.block->name.c_str(),
 			     itr->second->name.c_str());
@@ -1359,6 +1398,12 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		for (size_t i = 0; i < num_alive_incoming_values; )
 		{
 			auto *incoming_block = incoming_values[i].block;
+
+			// This is fundamentally ambiguous and should never happen.
+			if (incoming_block == frontier)
+				LOGE("Invalid PHI collapse detected!\n");
+			assert(incoming_block != frontier);
+
 			if (!exists_path_in_cfg_without_intermediate_node(incoming_block, node.block, frontier))
 			{
 #ifdef PHI_DEBUG
@@ -4118,6 +4163,74 @@ CFGNode *CFGStructurizer::build_enclosing_break_target_for_loop_ladder(CFGNode *
 	// This is the purpose of the full_break_target fallback.
 
 	bool ladder_to_merge_is_trivial = loop_ladder->succ.size() == 1 && loop_ladder->succ.front() == node;
+
+	if (ladder_to_merge_is_trivial)
+	{
+		auto *succ = loop_ladder->succ.front();
+
+		// Chase through dummy ladders until we find something tangible that is actually PHI sensitive.
+		while (succ->ir.phi.empty() && succ->succ.size() == 1)
+			succ = succ->succ.front();
+
+		IncomingValue *incoming_from_ladder = nullptr;
+		if (!succ->ir.phi.empty())
+		{
+			// All PHIs are fundamentally the same w.r.t. input blocks.
+			auto &phi = succ->ir.phi.front();
+			incoming_from_ladder = phi_incoming_blocks_find_block(phi.incoming, loop_ladder);
+		}
+
+		CFGNode *retarget_idom = nullptr;
+		if (incoming_from_ladder != nullptr)
+		{
+			// If succ takes this ladder as a PHI input, we have to be careful.
+			// We can only treat this merge as trivial if we can trivially hoist the input to the idom.
+			// Hoisting to idom only works if that idom is not already a PHI input for succ,
+			// and that idom dominates the input value.
+			retarget_idom = loop_ladder->immediate_dominator;
+
+			bool can_hoist_incoming_value =
+			    retarget_idom && retarget_idom != loop_ladder &&
+			    !phi_incoming_blocks_find_block(succ->ir.phi.front().incoming, retarget_idom);
+
+			if (!can_hoist_incoming_value)
+				retarget_idom = nullptr;
+		}
+
+		if (retarget_idom)
+		{
+			bool is_generated = false;
+
+			// We have no opcodes in loop ladder, but theoretically,
+			// we can have some PHI values that are being depended on.
+			for (auto &override_phi : succ->ir.phi)
+			{
+				auto *incoming = phi_incoming_blocks_find_block(override_phi.incoming, loop_ladder);
+				if (!incoming)
+					continue;
+
+				if (id_is_generated_by_block(loop_ladder, incoming->id))
+				{
+					is_generated = true;
+					break;
+				}
+			}
+
+			if (!is_generated)
+			{
+				// If we don't generate the ID ourselves and idom dominates this block we can prove
+				// that idom is a valid incoming value.
+				for (auto &override_phi : succ->ir.phi)
+					retarget_phi_incoming_block(override_phi, loop_ladder, retarget_idom);
+			}
+			else
+			{
+				// It's not a trivial merge after all :(
+				ladder_to_merge_is_trivial = false;
+			}
+		}
+	}
+
 	CFGNode *full_break_target = nullptr;
 
 	// We have to break somewhere, turn the outer selection construct into
