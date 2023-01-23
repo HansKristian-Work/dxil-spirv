@@ -5783,6 +5783,11 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 				if (!analyze_load_instruction(*this, load_inst))
 					return false;
 			}
+			else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&inst))
+			{
+				if (!analyze_phi_instruction(*this, phi_inst))
+					return false;
+			}
 			else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst))
 			{
 				if (!analyze_getelementptr_instruction(*this, getelementptr_inst))
