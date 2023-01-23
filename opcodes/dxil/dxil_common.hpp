@@ -65,4 +65,6 @@ Converter::Impl::ClipCullMeta *output_clip_cull_distance_meta(
 bool emit_store_clip_cull_distance(
 	Converter::Impl &impl, const llvm::CallInst *instruction,
 	const Converter::Impl::ClipCullMeta &meta);
+
+void build_exploded_composite_from_vector(Converter::Impl &impl, const llvm::Instruction *inst, unsigned active_lanes);
 }
