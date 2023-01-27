@@ -3202,7 +3202,7 @@ static bool is_identifier(char c)
 	const auto is_lower = [](char c) -> bool { return c >= 'a' && c <= 'z'; };
 	const auto is_upper = [](char c) -> bool { return c >= 'A' && c <= 'Z'; };
 	const auto is_digit = [](char c) -> bool { return c >= '0' && c <= '9'; };
-	return is_lower(c) || is_upper(c) || c == '_' || is_digit(c);
+	return is_lower(c) || is_upper(c) || c == '_' || c == '-' || is_digit(c);
 }
 
 static bool is_mangled_entry_point(const char *user)
