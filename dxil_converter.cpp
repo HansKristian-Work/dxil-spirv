@@ -3196,40 +3196,6 @@ Vector<String> Converter::get_entry_points(const LLVMBCParser &parser)
 	return result;
 }
 
-static bool is_identifier(char c)
-{
-	// We don't control the locale, so to be safe ...
-	const auto is_lower = [](char c) -> bool { return c >= 'a' && c <= 'z'; };
-	const auto is_upper = [](char c) -> bool { return c >= 'A' && c <= 'Z'; };
-	const auto is_digit = [](char c) -> bool { return c >= '0' && c <= '9'; };
-	return is_lower(c) || is_upper(c) || c == '_' || is_digit(c);
-}
-
-static bool is_mangled_entry_point(const char *user)
-{
-	// The mangling algorithm is intentionally left undefined in spec.
-	// However, we'll just try to detect any non-identifier characters.
-	while (*user != '\0')
-	{
-		if (!is_identifier(*user))
-			return true;
-		user++;
-	}
-	return false;
-}
-
-static String demangle_entry_point(const String &entry)
-{
-	// Demangling appears to work if we find first identifier character and delimit string to first non-identifier char.
-	// This is undocumented, so just have to guess. :(
-	auto itr = std::find_if(entry.begin(), entry.end(), [](char c) { return is_identifier(c); });
-	if (itr == entry.end())
-		return "";
-
-	auto end_itr = std::find_if(itr, entry.end(), [](char c) { return !is_identifier(c); });
-	return String(itr, end_itr);
-}
-
 bool Converter::entry_point_matches(const String &mangled, const char *user)
 {
 	if (is_mangled_entry_point(user))

@@ -51,7 +51,9 @@ struct dxil_spv_parsed_blob_s
 #endif
 	Vector<uint8_t> dxil_blob;
 	Vector<RDATSubobject> rdat_subobjects;
-	Vector<String> entry_points;
+
+	struct Names { String mangled, demangled; };
+	Vector<Names> entry_points;
 };
 
 struct Remapper : ResourceRemappingInterface
@@ -417,7 +419,10 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 		return DXIL_SPV_ERROR_PARSER;
 	}
 
-	parsed->entry_points = Converter::get_entry_points(parsed->bc);
+	auto names = Converter::get_entry_points(parsed->bc);
+	for (auto &name : names)
+		parsed->entry_points.push_back({ name, demangle_entry_point(name) });
+
 	*blob = parsed;
 	return DXIL_SPV_SUCCESS;
 }
@@ -465,7 +470,10 @@ dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_pars
 		return DXIL_SPV_ERROR_PARSER;
 	}
 
-	parsed->entry_points = Converter::get_entry_points(parsed->bc);
+	auto names = Converter::get_entry_points(parsed->bc);
+	for (auto &name : names)
+		parsed->entry_points.push_back({ name, demangle_entry_point(name) });
+
 	*blob = parsed;
 	return DXIL_SPV_SUCCESS;
 }
@@ -532,7 +540,17 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_name(dxil_spv_parsed_blob b
 {
 	if (index >= blob->entry_points.size())
 		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
-	*mangled_entry = blob->entry_points[index].c_str();
+	*mangled_entry = blob->entry_points[index].mangled.c_str();
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_parsed_blob_get_entry_point_demangled_name(dxil_spv_parsed_blob blob,
+                                                                    unsigned index,
+                                                                    const char **demangled_entry)
+{
+	if (index >= blob->entry_points.size())
+		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+	*demangled_entry = blob->entry_points[index].demangled.c_str();
 	return DXIL_SPV_SUCCESS;
 }
 

@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 20
+#define DXIL_SPV_API_VERSION_MINOR 21
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -552,6 +552,9 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_num_entry_points(dx
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_name(dxil_spv_parsed_blob blob,
                                                                               unsigned index,
                                                                               const char **mangled_entry);
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_demangled_name(dxil_spv_parsed_blob blob,
+                                                                                        unsigned index,
+                                                                                        const char **demangled_entry);
 
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_scan_resources(
 		dxil_spv_parsed_blob blob,

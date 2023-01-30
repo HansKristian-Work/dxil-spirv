@@ -27,10 +27,42 @@
 #include "memory_stream.hpp"
 #include "logging.hpp"
 #include <stdio.h>
+#include <string.h>
 #include <vector>
 
 namespace dxil_spv
 {
+bool is_mangled_entry_point(const char *user)
+{
+	// The mangling algorithm is intentionally left undefined in spec.
+	// However, the mangling scheme clearly follows MSVC here.
+	// The format we're looking for is:
+	// <blah>?<identifier>@<suffix>.
+	// http://www.agner.org/optimize/calling_conventions.pdf (section 8.1).
+	// DXC also seems to start with '\01', but we can ignore that.
+	const char *mangle_begin = strchr(user, '?');
+	if (!mangle_begin)
+		return false;
+
+	const char *mangle_end = strchr(mangle_begin + 1, '@');
+	return mangle_end != nullptr;
+}
+
+String demangle_entry_point(const String &entry)
+{
+	auto start_idx = entry.find_first_of('?');
+	if (start_idx == std::string::npos)
+		return entry;
+
+	start_idx++;
+
+	auto end_idx = entry.find_first_of('@', start_idx);
+	if (end_idx == std::string::npos)
+		return entry;
+
+	return entry.substr(start_idx, end_idx - start_idx);
+}
+
 Vector<uint8_t> &DXILContainerParser::get_blob()
 {
 	return dxil_blob;
