@@ -940,11 +940,11 @@ int main(int argc, char **argv)
 
 	for (unsigned entry_point = 0; entry_point < num_entry_points; entry_point++)
 	{
-		const char *mangled_entry = nullptr;
+		const char *demangled_entry = nullptr;
 		if (args.debug_all_entry_points)
 		{
-			dxil_spv_parsed_blob_get_entry_point_name(blob, entry_point, &mangled_entry);
-			dxil_spv_converter_set_entry_point(converter, mangled_entry);
+			dxil_spv_parsed_blob_get_entry_point_demangled_name(blob, entry_point, &demangled_entry);
+			dxil_spv_converter_set_entry_point(converter, demangled_entry);
 		}
 		else if (!args.entry_point.empty())
 			dxil_spv_converter_set_entry_point(converter, args.entry_point.c_str());
@@ -972,14 +972,14 @@ int main(int argc, char **argv)
 
 		if (args.emit_asm || (!args.glsl && args.output_path.empty()))
 		{
-			if (mangled_entry && !args.glsl)
+			if (demangled_entry && !args.glsl)
 			{
 				spirv_asm_string += "// ========== ";
-				spirv_asm_string += mangled_entry;
+				spirv_asm_string += demangled_entry;
 				spirv_asm_string += " ==========\n";
 			}
 			spirv_asm_string += convert_to_asm(compiled.data, compiled.size);
-			if (mangled_entry && !args.glsl)
+			if (demangled_entry && !args.glsl)
 				spirv_asm_string += "// ==================\n";
 		}
 
@@ -1002,10 +1002,10 @@ int main(int argc, char **argv)
 			}
 
 			std::string output;
-			if (mangled_entry)
+			if (demangled_entry)
 			{
 				output += "// ========= ";
-				output += mangled_entry;
+				output += demangled_entry;
 				output += " =========\n";
 				output += compiled_glsl;
 				output += "\n// =================\n";
@@ -1021,7 +1021,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			if (mangled_entry)
+			if (demangled_entry)
 			{
 				LOGE("Cannot emit binary output when using debug-all-entry-points.\n");
 				return EXIT_FAILURE;

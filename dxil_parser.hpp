@@ -73,4 +73,7 @@ private:
 	bool parse_iosg1(MemoryStream &stream, Vector<DXIL::IOElement> &elements);
 	bool parse_rdat(MemoryStream &stream);
 };
+
+bool is_mangled_entry_point(const char *user);
+String demangle_entry_point(const String &entry);
 } // namespace dxil_spv
