@@ -3011,10 +3011,12 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 
 		merge = natural_merge;
 
+		CFGNode *merge_ladder = nullptr;
+
 		// We cannot rewrite the CFG in pass 1 safely, this should have happened in pass 0.
 		if (pass == 0 && (!node->dominates(merge) || block_is_plain_continue(merge)))
 		{
-			create_switch_merge_ladder(node, merge);
+			merge_ladder = create_switch_merge_ladder(node, merge);
 			merge = find_common_post_dominator(node->succ);
 			modified_cfg = true;
 		}
@@ -3032,6 +3034,15 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 			// We got a switch block where someone is escaping. Similar idea as for loop analysis.
 			// Find a post-dominator where we ignore branches which are "escaping".
 			auto *dominated_merge_target = find_common_post_dominator_with_ignored_break(node->succ, merge);
+
+			if (!dominated_merge_target)
+			{
+				LOGW("No dominated merge target found. Likely a bug. Falling back to merge ladder.\n");
+				dominated_merge_target = merge_ladder;
+			}
+
+			assert(dominated_merge_target);
+
 			if (node->dominates(dominated_merge_target))
 			{
 				node->merge = MergeType::Selection;
@@ -3517,7 +3528,8 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(Vector<C
 		          [](const CFGNode *a, const CFGNode *b) { return a->forward_post_visit_order > b->forward_post_visit_order; });
 
 		// We reached exit without merging execution, there is no common post dominator.
-		if (candidates.front()->succ.empty())
+		// A continue block which only branches back to header is conveniently ignored here.
+		if (candidates.front()->succ.empty() && !candidates.front()->succ_back_edge)
 			return nullptr;
 
 		for (auto *succ : candidates.front()->succ)
