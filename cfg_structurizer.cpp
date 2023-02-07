@@ -2884,10 +2884,20 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 		}
 	}
 
+	CFGNode *candidate = nullptr;
 	if (has_impossible_fallthrough)
+	{
 		for (auto &c : node->ir.terminator.cases)
+		{
 			if (c.global_order == target_order)
-				return c.node;
+			{
+				candidate = c.node;
+				break;
+			}
+		}
+	}
+
+	// We found a candidate, but there might be multiple candidates which are considered impossible.
 
 	// If two case labels merge execution before the candidate merge, we should consider that the natural merge,
 	// since it is not possible to express this without a switch merge.
@@ -2915,13 +2925,20 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 				// If this is reachable by a different case label, we have a winner. This must be a fake fallthrough
 				// that we should promote to switch merge.
 				for (auto &ic : node->ir.terminator.cases)
+				{
 					if (ic.node != c.node && query_reachability(*ic.node, *front))
-						return front;
+					{
+						// Select the innermost block that is impossible.
+						// Breaking further out can be handled with loops, etc.
+						if (!candidate || front->forward_post_visit_order > candidate->forward_post_visit_order)
+							candidate = front;
+					}
+				}
 			}
 		}
 	}
 
-	return post_dominator;
+	return candidate ? candidate : post_dominator;
 }
 
 CFGNode *CFGStructurizer::create_switch_merge_ladder(CFGNode *header, CFGNode *merge)
