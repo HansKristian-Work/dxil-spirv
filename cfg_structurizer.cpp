@@ -3204,12 +3204,32 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 					LOGW("Mismatch headers in pass 1 ... ?\n");
 			}
 
-			idom->merge = MergeType::Selection;
-			node->add_unique_header(idom);
-			assert(node);
-			idom->selection_merge_block = node;
-			//LOGI("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(idom), idom->name.c_str(),
-			//     static_cast<const void *>(node), node->name.c_str());
+			// If we're in a pass 1, opting for a selection merge better make sure that we can
+			// actually use this as a merge block.
+			// If we have more than 2 preds, there is no way this is not a break block merge.
+			// It is not a switch statement and selections spawn two new scopes.
+			// We should have resolved this in pass 0, but it can slip through the cracks if there
+			// are multiple interleaving merge scopes in play.
+			bool force_loop = pass == 1 &&
+			                  node->num_forward_preds() > 2 &&
+			                  idom->merge == MergeType::None;
+
+			if (force_loop)
+			{
+				idom->merge = MergeType::Loop;
+				node->add_unique_header(idom);
+				idom->loop_merge_block = node;
+				idom->freeze_structured_analysis = true;
+			}
+			else
+			{
+				idom->merge = MergeType::Selection;
+				node->add_unique_header(idom);
+				assert(node);
+				idom->selection_merge_block = node;
+				//LOGI("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(idom), idom->name.c_str(),
+				//     static_cast<const void *>(node), node->name.c_str());
+			}
 		}
 		else if (idom->merge == MergeType::Loop)
 		{
