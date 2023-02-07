@@ -145,6 +145,28 @@ static bool get_constant_int(const llvm::Value *value, uint32_t *const_value)
 		return false;
 }
 
+static bool get_constant_xor_lane(const llvm::Value *lane, uint32_t *xor_lane)
+{
+	auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(lane);
+	if (!binop)
+		return false;
+
+	if (binop->getOpcode() != llvm::BinaryOperator::BinaryOps::Xor)
+		return false;
+
+	auto *lhs = binop->getOperand(0);
+	auto *rhs = binop->getOperand(1);
+	bool lhs_is_wave_lane = value_is_wave_lane(lhs);
+	bool rhs_is_wave_lane = value_is_wave_lane(rhs);
+
+	if (lhs_is_wave_lane && llvm::isa<llvm::ConstantInt>(rhs))
+		return get_constant_int(rhs, xor_lane);
+	else if (rhs_is_wave_lane && llvm::isa<llvm::ConstantInt>(lhs))
+		return get_constant_int(lhs, xor_lane);
+
+	return false;
+}
+
 static bool get_constant_quad_lane(const llvm::Value *lane, uint32_t *quad_lane)
 {
 	// Cases to consider:
@@ -224,14 +246,35 @@ bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallI
 		// This generates a flurry of ds_permute instructions, where it could have used implicit quad shuffle instead.
 		// Rather than emitting a ton of shuffles, try to optimize the statements back to a quad broadcast.
 
-		uint32_t quad_lane = 0;
-		if (execution_model_can_quad_op(impl.execution_model) && get_constant_quad_lane(lane, &quad_lane))
+		uint32_t const_lane = 0;
+		if (execution_model_can_quad_op(impl.execution_model) && get_constant_quad_lane(lane, &const_lane))
 		{
 			op = impl.allocate(spv::OpGroupNonUniformQuadBroadcast, instruction);
 			op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 			op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-			op->add_id(builder.makeUintConstant(quad_lane));
+			op->add_id(builder.makeUintConstant(const_lane));
 			builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+		}
+		else if (get_constant_xor_lane(lane, &const_lane))
+		{
+			if (execution_model_can_quad_op(impl.execution_model) && const_lane < 4 && const_lane > 0)
+			{
+				// Here we assume that derivative groups are 1D.
+				// This is always the case since we rewrite LocalInvocationID.
+				op = impl.allocate(spv::OpGroupNonUniformQuadSwap, instruction);
+				op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+				op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+				op->add_id(builder.makeUintConstant(const_lane - 1u));
+				builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+			}
+			else
+			{
+				op = impl.allocate(spv::OpGroupNonUniformShuffleXor, instruction);
+				op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+				op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+				op->add_id(builder.makeUintConstant(const_lane));
+				builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
+			}
 		}
 		else
 		{

@@ -5,5 +5,13 @@ void main(uint3 index : SV_DispatchThreadID)
 {
 	uint3 first_value = WaveReadLaneAt(index, index.x & (WaveGetLaneCount() - 1));
 	first_value += WaveReadLaneAt(index, 11);
+	first_value += WaveReadLaneAt(index, WaveGetLaneIndex() ^ 1);
+	first_value += WaveReadLaneAt(index, WaveGetLaneIndex() ^ 2);
+	first_value += WaveReadLaneAt(index, WaveGetLaneIndex() ^ 3);
+	first_value += WaveReadLaneAt(index, WaveGetLaneIndex() ^ 4);
+	first_value += WaveReadLaneAt(index, WaveGetLaneIndex() ^ 8);
+	first_value += WaveReadLaneAt(index, 16 ^ WaveGetLaneIndex());
+	first_value += WaveReadLaneAt(index, 32 ^ WaveGetLaneIndex());
+
 	Buf.Store3(index.x * 12, first_value);
 }
