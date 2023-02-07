@@ -2983,46 +2983,72 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 			}
 
 			// Need to rewrite the switch.
-			if (merge != natural_merge && can_merge_to_post_dominator)
+			if (merge != natural_merge)
 			{
-				auto *switch_outer = create_helper_pred_block(node);
-				switch_outer->merge = MergeType::Loop;
-				switch_outer->loop_merge_block = merge;
-				switch_outer->freeze_structured_analysis = true;
-				merge->headers.push_back(switch_outer);
-
-				// Shouldn't be needed (I believe), but spirv-val is a bit temperamental when double breaking
-				// straight out of a switch block in some situations,
-				// so try not to ruffle too many feathers.
-				if (std::find(node->succ.begin(), node->succ.end(), natural_merge) != node->succ.end())
+				if (can_merge_to_post_dominator)
 				{
-					auto *dummy_case = pool.create_node();
-					dummy_case->name = natural_merge->name + ".pred";
-					dummy_case->immediate_dominator = node;
-					dummy_case->immediate_post_dominator = natural_merge;
-					dummy_case->forward_post_visit_order = node->forward_post_visit_order;
-					dummy_case->backward_post_visit_order = node->backward_post_visit_order;
-					dummy_case->ir.terminator.type = Terminator::Type::Branch;
-					dummy_case->ir.terminator.direct_block = natural_merge;
-					dummy_case->add_branch(natural_merge);
-					node->retarget_branch(natural_merge, dummy_case);
+					auto *switch_outer = create_helper_pred_block(node);
+					switch_outer->merge = MergeType::Loop;
+					switch_outer->loop_merge_block = merge;
+					switch_outer->freeze_structured_analysis = true;
+					merge->headers.push_back(switch_outer);
+
+					// Shouldn't be needed (I believe), but spirv-val is a bit temperamental when double breaking
+					// straight out of a switch block in some situations,
+					// so try not to ruffle too many feathers.
+					if (std::find(node->succ.begin(), node->succ.end(), natural_merge) != node->succ.end())
+					{
+						auto *dummy_case = pool.create_node();
+						dummy_case->name = natural_merge->name + ".pred";
+						dummy_case->immediate_dominator = node;
+						dummy_case->immediate_post_dominator = natural_merge;
+						dummy_case->forward_post_visit_order = node->forward_post_visit_order;
+						dummy_case->backward_post_visit_order = node->backward_post_visit_order;
+						dummy_case->ir.terminator.type = Terminator::Type::Branch;
+						dummy_case->ir.terminator.direct_block = natural_merge;
+						dummy_case->add_branch(natural_merge);
+						node->retarget_branch(natural_merge, dummy_case);
+					}
+
+					node->freeze_structured_analysis = true;
 				}
 
-				if (std::find(node->succ.begin(), node->succ.end(), merge) != node->succ.end())
+				// Switch case labels must be contained within the switch statement.
+				// Use a dummy label if we have to.
+				auto succs = node->succ;
+				for (auto *succ : succs)
 				{
-					auto *dummy_break = pool.create_node();
-					dummy_break->name = node->name + ".break";
-					dummy_break->immediate_dominator = node;
-					dummy_break->immediate_post_dominator = merge;
-					dummy_break->forward_post_visit_order = node->forward_post_visit_order;
-					dummy_break->backward_post_visit_order = node->backward_post_visit_order;
-					dummy_break->ir.terminator.type = Terminator::Type::Branch;
-					dummy_break->ir.terminator.direct_block = merge;
-					dummy_break->add_branch(merge);
-					node->retarget_branch(merge, dummy_break);
-				}
+					bool need_fixup;
+					if (succ == merge)
+					{
+						// If we used outer shell method, we dominate merge,
+						// but not structurally, since there's a loop merge already.
+						need_fixup = can_merge_to_post_dominator;
+					}
+					else
+					{
+						// If we don't dominate succ, but it's not the common merge block, this is
+						// an edge case we have to handle as well.
+						need_fixup = !node->dominates(succ);
+					}
 
-				node->freeze_structured_analysis = true;
+					// Guard against duplicate label branches.
+					bool has_succ = std::find(node->succ.begin(), node->succ.end(), succ) != node->succ.end();
+
+					if (need_fixup && has_succ)
+					{
+						auto *dummy_break = pool.create_node();
+						dummy_break->name = node->name + ".break";
+						dummy_break->immediate_dominator = node;
+						dummy_break->immediate_post_dominator = succ;
+						dummy_break->forward_post_visit_order = node->forward_post_visit_order;
+						dummy_break->backward_post_visit_order = node->backward_post_visit_order;
+						dummy_break->ir.terminator.type = Terminator::Type::Branch;
+						dummy_break->ir.terminator.direct_block = succ;
+						dummy_break->add_branch(succ);
+						node->retarget_branch(succ, dummy_break);
+					}
+				}
 			}
 		}
 
