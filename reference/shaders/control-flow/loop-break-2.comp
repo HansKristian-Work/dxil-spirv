@@ -16,10 +16,12 @@ void main()
         uint _25 = 0u;
         uint _26 = 0u;
         uint _30;
+        bool _31;
         for (;;)
         {
             _30 = imageLoad(_8, int(_26)).x;
-            if (_30 == 30u)
+            _31 = _30 == 30u;
+            if (_31)
             {
                 frontier_phi_6 = imageLoad(_8, int(25u)).x + _25;
                 break;
@@ -52,7 +54,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 48
+; Bound: 50
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -101,6 +103,9 @@ OpBranch %41
 %30 = OpCompositeExtract %5 %29 0
 %31 = OpIEqual %17 %30 %32
 OpLoopMerge %45 %43 None
+OpBranch %47
+%47 = OpLabel
+OpSelectionMerge %48 None
 OpBranchConditional %31 %44 %42
 %44 = OpLabel
 %34 = OpImageRead %23 %9 %33
@@ -109,6 +114,8 @@ OpBranchConditional %31 %44 %42
 OpBranch %45
 %42 = OpLabel
 OpBranch %43
+%48 = OpLabel
+OpUnreachable
 %43 = OpLabel
 %22 = OpIAdd %5 %30 %25
 %27 = OpIAdd %5 %26 %36

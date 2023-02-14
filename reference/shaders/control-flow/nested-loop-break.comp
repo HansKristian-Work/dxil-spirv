@@ -32,9 +32,11 @@ void main()
                 uint _34;
                 uint frontier_phi_12;
                 uint _38 = _31;
+                bool _45;
                 for (;;)
                 {
-                    if (imageLoad(_8, int(_36 * 32u)).x == 10u)
+                    _45 = imageLoad(_8, int(_36 * 32u)).x == 10u;
+                    if (_45)
                     {
                         frontier_phi_12 = imageLoad(_8, int(1u)).x + _38;
                         break;
@@ -51,9 +53,11 @@ void main()
                             uint frontier_phi_16;
                             uint _53 = _38;
                             uint _54 = 0u;
+                            bool _60;
                             for (;;)
                             {
-                                if (imageLoad(_8, int(_54 * 32u)).x == 10u)
+                                _60 = imageLoad(_8, int(_54 * 32u)).x == 10u;
+                                if (_60)
                                 {
                                     frontier_phi_16 = imageLoad(_8, int(2u)).x + _53;
                                     break;
@@ -119,7 +123,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 95
+; Bound: 99
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -188,6 +192,9 @@ OpBranch %78
 %44 = OpCompositeExtract %5 %43 0
 %45 = OpIEqual %23 %44 %46
 OpLoopMerge %89 %87 None
+OpBranch %94
+%94 = OpLabel
+OpSelectionMerge %95 None
 OpBranchConditional %45 %88 %79
 %88 = OpLabel
 %47 = OpImageRead %27 %9 %18
@@ -209,6 +216,9 @@ OpBranch %81
 %59 = OpCompositeExtract %5 %58 0
 %60 = OpIEqual %23 %59 %46
 OpLoopMerge %85 %83 None
+OpBranch %96
+%96 = OpLabel
+OpSelectionMerge %97 None
 OpBranchConditional %60 %84 %82
 %84 = OpLabel
 %61 = OpImageRead %27 %9 %21
@@ -217,6 +227,8 @@ OpBranchConditional %60 %84 %82
 OpBranch %85
 %82 = OpLabel
 OpBranch %83
+%97 = OpLabel
+OpUnreachable
 %83 = OpLabel
 %63 = OpBitwiseXor %5 %36 %29
 %64 = OpBitwiseXor %5 %63 %54
@@ -234,6 +246,8 @@ OpBranch %86
 %70 = OpPhi %5 %38 %79 %69 %85
 %34 = OpCopyObject %5 %70
 OpBranch %87
+%95 = OpLabel
+OpUnreachable
 %87 = OpLabel
 %37 = OpIAdd %5 %36 %18
 %52 = OpULessThan %23 %37 %19

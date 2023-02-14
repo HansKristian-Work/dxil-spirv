@@ -24,9 +24,11 @@ void main()
             _27 = 0u;
             _29 = _25;
             bool ladder_phi_7_pred;
+            bool _31;
             for (;;)
             {
-                if (_29 < 10u)
+                _31 = _29 < 10u;
+                if (_31)
                 {
                     ladder_phi_7_pred = true;
                     frontier_phi_7_pred_pred = gl_GlobalInvocationID.y;
@@ -97,7 +99,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -161,18 +163,23 @@ OpBranch %54
 %29 = OpPhi %5 %25 %53 %26 %57
 %31 = OpULessThan %30 %29 %32
 OpLoopMerge %60 %57 None
+OpBranch %67
+%67 = OpLabel
+OpSelectionMerge %68 None
 OpBranchConditional %31 %59 %55
 %59 = OpLabel
 OpBranch %60
 %55 = OpLabel
 %36 = OpULessThan %30 %22 %32
-OpSelectionMerge %67 None
+OpSelectionMerge %69 None
 OpBranchConditional %36 %58 %56
 %58 = OpLabel
 OpBranch %60
 %56 = OpLabel
 OpBranch %57
-%67 = OpLabel
+%69 = OpLabel
+OpUnreachable
+%68 = OpLabel
 OpUnreachable
 %57 = OpLabel
 %26 = OpIAdd %5 %29 %18
