@@ -3322,7 +3322,7 @@ const CFGNode *CFGStructurizer::get_innermost_loop_header_for(const CFGNode *hea
 		// Detect false positive if back-edge can reach the node, this means we just skip over
 		// the loop. We want to detect loops in a structured sense.
 		// Breaking constructs should still detect the loop header as we'd expect.
-		if (other->pred_back_edge && !query_reachability(*other->pred_back_edge, *node))
+		if (other->pred_back_edge && (other->pred_back_edge == node || !query_reachability(*other->pred_back_edge, *node)))
 			break;
 
 		assert(other->immediate_dominator);
