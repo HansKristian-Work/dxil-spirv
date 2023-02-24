@@ -487,7 +487,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 			op->add_id(mip_or_sample);
 	}
 
-	impl.add(op);
+	impl.add(op, meta.rov);
 
 	auto *target_type = instruction->getType()->getStructElementType(0);
 
@@ -688,7 +688,7 @@ bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst 
 	op->add_id(store_id);
 	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
 
-	impl.add(op);
+	impl.add(op, meta.rov);
 	return true;
 }
 

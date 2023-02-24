@@ -1060,7 +1060,9 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.stride = reference.stride;
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
 			meta.physical_pointer_meta.coherent = reference.coherent;
+			meta.physical_pointer_meta.rov = reference.rov;
 			meta.kind = reference.resource_kind;
+			meta.rov = reference.rov;
 		}
 		else
 		{
@@ -1125,6 +1127,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.index_offset_id = offset_id;
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
+			meta.rov = reference.rov;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
 			meta.var_id = resource_ptr_id;

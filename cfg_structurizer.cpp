@@ -331,6 +331,128 @@ void CFGStructurizer::cleanup_breaking_phi_constructs()
 		recompute_cfg();
 }
 
+static void scrub_rov_begin_lock(CFGNode *node, bool preserve_first_begin)
+{
+	auto begin_itr = node->ir.operations.begin();
+	if (preserve_first_begin)
+	{
+		begin_itr = std::find_if(node->ir.operations.begin(), node->ir.operations.end(),
+		                         [](const Operation *op) { return op->op == spv::OpBeginInvocationInterlockEXT; });
+		assert(begin_itr != node->ir.operations.end());
+		++begin_itr;
+	}
+
+	auto itr = std::remove_if(begin_itr, node->ir.operations.end(),
+	                          [](const Operation *op) { return op->op == spv::OpBeginInvocationInterlockEXT; });
+	node->ir.operations.erase(itr, node->ir.operations.end());
+}
+
+static void scrub_rov_end_lock(CFGNode *node, bool preserve_last_end)
+{
+	auto end_itr = node->ir.operations.end();
+
+	if (preserve_last_end)
+	{
+		for (size_t i = node->ir.operations.size(); i; i--)
+		{
+			size_t index = i - 1;
+			auto &op = node->ir.operations[index];
+			if (op->op == spv::OpEndInvocationInterlockEXT)
+			{
+				end_itr = node->ir.operations.begin() + index;
+				break;
+			}
+		}
+	}
+
+	auto itr = std::remove_if(node->ir.operations.begin(), end_itr,
+	                          [](const Operation *op) { return op->op == spv::OpEndInvocationInterlockEXT; });
+	node->ir.operations.erase(itr, end_itr);
+}
+
+static void scrub_rov_lock_regions(CFGNode *node, bool preserve_first_begin, bool preserve_last_end)
+{
+	scrub_rov_begin_lock(node, preserve_first_begin);
+	scrub_rov_end_lock(node, preserve_last_end);
+}
+
+bool CFGStructurizer::rewrite_rov_lock_region()
+{
+	recompute_cfg();
+
+	// First, find all BBs that use ROV.
+	Vector<CFGNode *> rov_blocks;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto &op : node->ir.operations)
+		{
+			if (op->op == spv::OpBeginInvocationInterlockEXT)
+			{
+				rov_blocks.push_back(node);
+				break;
+			}
+		}
+	}
+
+	// If we declare ROVs but never actually use them ... *shrug*
+	if (rov_blocks.empty())
+		return true;
+
+	// Rules: OpBegin and OpEnd must be dynamically called exactly once.
+	// To simplify, we want to only emit one begin and one end that covers the entire shader.
+	// Usually ROV access is constrained to a single BB as a simple case.
+	// Simple BB case fails with control flow. E.g. a loop or conditional. In this case we must widen the range
+	// of the lock such that: end post-dominates begin. Begin post-dominates entry.
+	// If we cannot make this work, flag as non-trivial and wrap the entire shader in a big lock.
+
+	auto *idom = rov_blocks.front();
+	for (size_t i = 1; i < rov_blocks.size() && idom; i++)
+		idom = CFGNode::find_common_dominator(idom, rov_blocks[i]);
+
+	// Stretch scope as long as we don't post-dominate entry.
+	while (idom && idom != entry_block && !idom->post_dominates(entry_block))
+		idom = idom->immediate_dominator;
+
+	// If the lock region has multiple instances, i.e. a loop, give up right away.
+	if (idom && get_innermost_loop_header_for(entry_block, idom) != entry_block)
+	{
+		for (auto *node : rov_blocks)
+			scrub_rov_lock_regions(node, false, false);
+		return false;
+	}
+
+	auto *pdom = find_common_post_dominator(rov_blocks);
+
+	// Stretch post-dominator if we need to.
+	if (pdom)
+		pdom = CFGNode::find_common_post_dominator(pdom, idom);
+
+	bool internal_early_return = pdom && pdom->immediate_post_dominator == pdom;
+
+	// Non trivial case.
+	if (!idom || !pdom || internal_early_return)
+	{
+		for (auto *node : rov_blocks)
+			scrub_rov_lock_regions(node, false, false);
+		return false;
+	}
+
+	bool begin_block_has_lock = std::find(rov_blocks.begin(), rov_blocks.end(), idom) != rov_blocks.end();
+	bool end_block_has_lock = std::find(rov_blocks.begin(), rov_blocks.end(), pdom) != rov_blocks.end();
+
+	for (auto *node : rov_blocks)
+		scrub_rov_lock_regions(node, node == idom, node == pdom);
+
+	if (!begin_block_has_lock)
+		idom->ir.operations.push_back(module.allocate_op(spv::OpBeginInvocationInterlockEXT));
+
+	if (!end_block_has_lock)
+		pdom->ir.operations.insert(pdom->ir.operations.begin(), module.allocate_op(spv::OpEndInvocationInterlockEXT));
+
+	return true;
+}
+
 bool CFGStructurizer::run()
 {
 	String graphviz_path;

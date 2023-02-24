@@ -158,6 +158,8 @@ struct Converter::Impl
 	CFGNode *convert_function(llvm::Function *func, CFGNodePool &pool);
 	CFGNode *build_hull_main(llvm::Function *func, CFGNodePool &pool,
 	                         Vector<ConvertedFunction::LeafFunction> &leaves);
+	CFGNode *build_rov_main(llvm::Function *func, CFGNodePool &pool,
+	                        Vector<ConvertedFunction::LeafFunction> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
@@ -174,12 +176,14 @@ struct Converter::Impl
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 	bool emit_execution_modes();
+	bool emit_execution_modes_late();
 	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
 	bool emit_execution_modes_geometry();
 	bool emit_execution_modes_hull();
 	bool emit_execution_modes_domain();
 	bool emit_execution_modes_pixel();
+	bool emit_execution_modes_pixel_late();
 	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
 	bool emit_execution_modes_amplification();
 	bool emit_execution_modes_mesh();
@@ -265,6 +269,8 @@ struct Converter::Impl
 		bool synthesize_2d_quad_dispatch = false;
 		unsigned required_wave_size = 0;
 		bool declares_globallycoherent_uav = false;
+		bool declares_rov = false;
+		bool per_sample_shading = false;
 	} execution_mode_meta;
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
@@ -312,6 +318,7 @@ struct Converter::Impl
 		bool base_resource_is_array = false;
 		bool root_descriptor = false;
 		bool coherent = false;
+		bool rov = false;
 		DXIL::ResourceKind resource_kind = DXIL::ResourceKind::Invalid;
 		int local_root_signature_entry = -1;
 	};
@@ -327,6 +334,7 @@ struct Converter::Impl
 		AccessTracking tracking;
 		unsigned stride;
 		bool coherent;
+		bool rov;
 		ResourceReference reference;
 		spv::Id offset_buffer_id;
 	};
@@ -352,6 +360,7 @@ struct Converter::Impl
 		bool nonwritable;
 		bool nonreadable;
 		bool coherent;
+		bool rov;
 		uint8_t stride;
 		uint32_t size;
 	};
@@ -366,12 +375,13 @@ struct Converter::Impl
 		spv::Id var_id;
 		Vector<RawDeclarationVariable> var_alias_group;
 		bool aliased;
+		bool non_uniform;
+		bool counter_is_physical_pointer;
+		bool rov;
 
 		spv::StorageClass storage;
-		bool non_uniform;
 
 		spv::Id counter_var_id;
-		bool counter_is_physical_pointer;
 		PhysicalPointerMeta physical_pointer_meta;
 		spv::Id index_offset_id;
 	};
@@ -441,7 +451,7 @@ struct Converter::Impl
 	bool support_16bit_operations() const;
 
 	Vector<Operation *> *current_block = nullptr;
-	void add(Operation *op);
+	void add(Operation *op, bool is_rov = false);
 	Operation *allocate(spv::Op op);
 	Operation *allocate(spv::Op op, const llvm::Value *value);
 	Operation *allocate(spv::Op op, spv::Id type_id);
