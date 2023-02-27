@@ -1395,10 +1395,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
 
-		bool globally_coherent = get_constant_metadata(uav, 7) != 0;
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
-		//bool is_rov = get_constant_metadata(uav, 9) != 0;
-		//assert(!is_rov);
+		bool is_rov = get_constant_metadata(uav, 9) != 0;
+
+		// ROV implies coherent in Vulkan memory models.
+		bool globally_coherent = get_constant_metadata(uav, 7) != 0 || is_rov;
 
 		llvm::MDNode *tags = nullptr;
 		if (uav->getNumOperands() >= 11 && uav->getOperand(10))
@@ -1413,6 +1414,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		auto &access_meta = uav_access_tracking[index];
 		if (globally_coherent)
 			execution_mode_meta.declares_globallycoherent_uav = true;
+		if (is_rov)
+			execution_mode_meta.declares_rov = true;
 
 		// If the shader has device-memory memory barriers, we need to support this.
 		// GLSL450 memory model does not do this for us by default.
@@ -1663,6 +1666,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.coherent = globally_coherent;
+			ref.rov = is_rov;
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
 
@@ -1705,6 +1709,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.stride = stride;
 			ref.bindless = true;
 			ref.coherent = globally_coherent;
+			ref.rov = is_rov;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
 
@@ -1804,6 +1809,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.aliased = aliased_access.requires_alias_decoration;
 			ref.stride = stride;
 			ref.coherent = globally_coherent;
+			ref.rov = is_rov;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
 
@@ -2676,6 +2682,8 @@ bool Converter::Impl::emit_global_heaps()
 			// See emit_uavs() for details around coherent and memory model shenanigans ...
 			if (annotation->coherent)
 				execution_mode_meta.declares_globallycoherent_uav = true;
+			if (annotation->rov)
+				execution_mode_meta.declares_rov = true;
 
 			// Do not attempt to track read and write here to figure out if this resource in particular needs to be coherent.
 			// It's plausible that the write and read can happen across
@@ -2693,7 +2701,7 @@ bool Converter::Impl::emit_global_heaps()
 				annotation->tracking.has_written = true;
 			}
 
-			info.uav_coherent = annotation->coherent;
+			info.uav_coherent = annotation->coherent || annotation->rov;
 			info.uav_read = annotation->tracking.has_read;
 			info.uav_written = annotation->tracking.has_written;
 			if (!get_uav_image_format(annotation->resource_kind, actual_component_type,
@@ -2788,7 +2796,8 @@ bool Converter::Impl::emit_global_heaps()
 		annotation->reference.push_constant_member = UINT32_MAX;
 		annotation->reference.stride = annotation->stride;
 		annotation->reference.resource_kind = annotation->resource_kind;
-		annotation->reference.coherent = annotation->coherent;
+		annotation->reference.coherent = annotation->coherent || annotation->rov;
+		annotation->reference.rov = annotation->rov;
 
 		if (aliased_access.requires_alias_decoration)
 		{
@@ -3896,6 +3905,7 @@ void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::
 	case DXIL::InterpolationMode::LinearSample:
 		builder.addDecoration(variable_id, spv::DecorationSample);
 		builder.addCapability(spv::CapabilitySampleRateShading);
+		execution_mode_meta.per_sample_shading = true;
 		break;
 
 	case DXIL::InterpolationMode::LinearNoperspective:
@@ -3911,6 +3921,7 @@ void Converter::Impl::emit_interpolation_decorations(spv::Id variable_id, DXIL::
 		builder.addDecoration(variable_id, spv::DecorationNoPerspective);
 		builder.addDecoration(variable_id, spv::DecorationSample);
 		builder.addCapability(spv::CapabilitySampleRateShading);
+		execution_mode_meta.per_sample_shading = true;
 		break;
 
 	default:
@@ -3948,6 +3959,7 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInSampleId);
 		spirv_module.register_builtin_shader_input(id, spv::BuiltInSampleId);
 		builder.addCapability(spv::CapabilitySampleRateShading);
+		execution_mode_meta.per_sample_shading = true;
 		requires_flat_input = true;
 		break;
 
@@ -5004,14 +5016,33 @@ static uint64_t get_shader_flags(const llvm::MDNode *entry_point_meta)
 		return 0;
 }
 
+bool Converter::Impl::emit_execution_modes_pixel_late()
+{
+	auto &builder = spirv_module.get_builder();
+
+	if (execution_mode_meta.declares_rov)
+	{
+		builder.addExtension("SPV_EXT_fragment_shader_interlock");
+		if (execution_mode_meta.per_sample_shading)
+		{
+			builder.addCapability(spv::CapabilityFragmentShaderSampleInterlockEXT);
+			builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSampleInterlockOrderedEXT);
+		}
+		else
+		{
+			builder.addCapability(spv::CapabilityFragmentShaderPixelInterlockEXT);
+			builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModePixelInterlockOrderedEXT);
+		}
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_execution_modes_pixel()
 {
 	auto &builder = spirv_module.get_builder();
 	auto flags = get_shader_flags(entry_point_meta);
-	bool early_depth_stencil = false;
-
-	if (flags & DXIL::ShaderFlagEarlyDepthStencil)
-		early_depth_stencil = true;
+	bool early_depth_stencil = (flags & DXIL::ShaderFlagEarlyDepthStencil) != 0;
 
 	if (options.descriptor_qa_enabled)
 	{
@@ -5444,6 +5475,22 @@ bool Converter::Impl::analyze_execution_modes_meta()
 	return true;
 }
 
+bool Converter::Impl::emit_execution_modes_late()
+{
+	switch (execution_model)
+	{
+	case spv::ExecutionModelFragment:
+		if (!emit_execution_modes_pixel_late())
+			return false;
+		break;
+
+	default:
+		break;
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_execution_modes()
 {
 	switch (execution_model)
@@ -5501,6 +5548,37 @@ bool Converter::Impl::emit_execution_modes()
 		return false;
 
 	return true;
+}
+
+CFGNode *Converter::Impl::build_rov_main(llvm::Function *func, CFGNodePool &pool,
+                                         Vector<ConvertedFunction::LeafFunction> &leaves)
+{
+	auto *code_main = convert_function(func, pool);
+
+	// Need to figure out if our ROV use is trivial. If not, we will wrap the entire function in ROV pairs.
+	CFGStructurizer cfg{code_main, pool, spirv_module};
+	bool trivial_rewrite = cfg.rewrite_rov_lock_region();
+
+	if (trivial_rewrite)
+		return code_main;
+
+	// If we need to fallback we need a wrapper function. Replace the entry point.
+
+	spv::Block *code_entry;
+	auto *code_func =
+	    builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "code_main", {}, {}, &code_entry);
+
+	code_func->moveLocalVariablesFrom(spirv_module.get_entry_function());
+
+	auto *entry = pool.create_node();
+	entry->ir.operations.push_back(allocate(spv::OpBeginInvocationInterlockEXT));
+	auto *call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
+	call_op->add_id(code_func->getId());
+	entry->ir.operations.push_back(call_op);
+	entry->ir.operations.push_back(allocate(spv::OpEndInvocationInterlockEXT));
+	entry->ir.terminator.type = Terminator::Type::Return;
+	leaves.push_back({ code_main, code_func });
+	return entry;
 }
 
 CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &pool,
@@ -5868,11 +5946,17 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_global_variables())
 		return result;
 
+	// Some execution modes depend on other execution modes, so handle that here.
+	if (!emit_execution_modes_late())
+		return result;
+
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
 	assert(func);
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
 		result.entry = build_hull_main(func, pool, result.leaf_functions);
+	else if (execution_mode_meta.declares_rov)
+		result.entry = build_rov_main(func, pool, result.leaf_functions);
 	else
 		result.entry = convert_function(func, pool);
 
@@ -5925,10 +6009,14 @@ void Converter::Impl::rewrite_value(const llvm::Value *value, spv::Id id)
 		value_map[value] = id;
 }
 
-void Converter::Impl::add(Operation *op)
+void Converter::Impl::add(Operation *op, bool is_rov)
 {
 	assert(current_block);
+	if (is_rov)
+		current_block->push_back(allocate(spv::OpBeginInvocationInterlockEXT));
 	current_block->push_back(op);
+	if (is_rov)
+		current_block->push_back(allocate(spv::OpEndInvocationInterlockEXT));
 }
 
 spv::Builder &Converter::Impl::builder()

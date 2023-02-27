@@ -52,6 +52,8 @@ public:
 	void traverse(BlockEmissionInterface &iface);
 	CFGNode *get_entry_block() const;
 
+	bool rewrite_rov_lock_region();
+
 private:
 	CFGNode *entry_block;
 	CFGNode *exit_block;

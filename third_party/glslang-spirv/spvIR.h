@@ -54,6 +54,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <utility>
 
 namespace spv {
 
@@ -284,6 +285,8 @@ public:
     void addLocalVariable(std::unique_ptr<Instruction> inst);
     Id getReturnType() const { return functionInstruction.getTypeId(); }
 
+    void moveLocalVariablesFrom(Function* other);
+
     void setImplicitThis() { implicitThis = true; }
     bool hasImplicitThis() const { return implicitThis; }
 
@@ -389,6 +392,12 @@ __inline Function::Function(Id id, Id resultType, Id functionType, Id firstParam
         parent.mapInstruction(param);
         parameterInstructions.push_back(param);
     }
+}
+
+__inline void Function::moveLocalVariablesFrom(Function* other)
+{
+    blocks[0]->localVariables.clear();
+    std::swap(blocks[0]->localVariables, other->blocks[0]->localVariables);
 }
 
 __inline void Function::addLocalVariable(std::unique_ptr<Instruction> inst)

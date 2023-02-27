@@ -789,6 +789,7 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 
 			// The encoding here is very ... peculiar.
 			constexpr uint32_t AnnotateUAVMask = 1u << 12;
+			constexpr uint32_t AnnotateROVMask = 1u << 13;
 			constexpr uint32_t AnnotateGloballyCoherentMask = 1u << 14;
 			use.resource_kind = DXIL::ResourceKind(type & 0xff);
 			switch (use.resource_kind)
@@ -804,6 +805,7 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 			default:
 				use.resource_type = (type & AnnotateUAVMask) != 0 ? DXIL::ResourceType::UAV : DXIL::ResourceType::SRV;
 				use.coherent = (type & AnnotateGloballyCoherentMask) != 0;
+				use.rov = (type & AnnotateROVMask) != 0;
 				break;
 			}
 
