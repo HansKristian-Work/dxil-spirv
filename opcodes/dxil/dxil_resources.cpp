@@ -542,6 +542,31 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 	return offset_id;
 }
 
+static spv::Id build_physical_address_indexing_from_ssbo(Converter::Impl &impl, spv::Id offset_id)
+{
+	auto &builder = impl.builder();
+
+	if (impl.options.physical_address_descriptor_stride != 1)
+	{
+		auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		mul_op->add_id(builder.makeUintConstant(impl.options.physical_address_descriptor_stride));
+		mul_op->add_id(offset_id);
+		impl.add(mul_op);
+		offset_id = mul_op->id;
+	}
+
+	if (impl.options.physical_address_descriptor_offset != 0)
+	{
+		auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add_op->add_id(offset_id);
+		add_op->add_id(builder.makeUintConstant(impl.options.physical_address_descriptor_offset));
+		impl.add(add_op);
+		offset_id = add_op->id;
+	}
+
+	return offset_id;
+}
+
 static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &counter,
                                            const llvm::CallInst *instruction)
 {
@@ -558,6 +583,8 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 	spv::Id offset_id = build_bindless_heap_offset(
 		impl, counter, DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
 		counter.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+
+	offset_id = build_physical_address_indexing_from_ssbo(impl, offset_id);
 
 	chain_op->add_id(offset_id);
 	impl.add(chain_op);
@@ -741,6 +768,8 @@ static spv::Id build_load_physical_rtas(Converter::Impl &impl, const Converter::
 			impl.add(broadcast_op);
 			offset_id = broadcast_op->id;
 		}
+
+		offset_id = build_physical_address_indexing_from_ssbo(impl, offset_id);
 
 		spv::Id uvec2_type = builder.makeVectorType(builder.makeUintType(32), 2);
 		auto *chain_op =

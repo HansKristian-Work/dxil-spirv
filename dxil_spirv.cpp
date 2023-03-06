@@ -157,7 +157,8 @@ static void print_help()
 	     "\t[--use-reflection-names]\n"
 	     "\t[--invariant-position]\n"
 	     "\t[--robust-physical-cbv-load]\n"
-	     "\t[--allow-arithmetic-relaxed-precision]\n");
+	     "\t[--allow-arithmetic-relaxed-precision]\n"
+	     "\t[--physical-address-descriptor-indexing <element stride> <element offset>]\n");
 }
 
 struct Arguments
@@ -190,6 +191,8 @@ struct Arguments
 	bool allow_arithmetic_relaxed_precision = false;
 
 	unsigned ssbo_alignment = 1;
+	unsigned physical_address_indexing_stride = 1;
+	unsigned physical_address_indexing_offset = 0;
 
 	bool descriptor_qa = false;
 	uint32_t descriptor_qa_set = 0;
@@ -709,6 +712,10 @@ int main(int argc, char **argv)
 	cbs.add("--invariant-position", [&](CLIParser &) { args.invariant_position = true; });
 	cbs.add("--robust-physical-cbv-load", [&](CLIParser &) { args.robust_physical_cbv_load = true; });
 	cbs.add("--allow-arithmetic-relaxed-precision", [&](CLIParser &) { args.allow_arithmetic_relaxed_precision = true; });
+	cbs.add("--physical-address-descriptor-indexing", [&](CLIParser &parser) {
+		args.physical_address_indexing_stride = parser.next_uint();
+		args.physical_address_indexing_offset = parser.next_uint();
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -928,6 +935,13 @@ int main(int argc, char **argv)
 		const dxil_spv_option_arithmetic_relaxed_precision relaxed = { { DXIL_SPV_OPTION_ARITHMETIC_RELAXED_PRECISION },
 		                                                               DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &relaxed.base);
+	}
+
+	{
+		const dxil_spv_option_physical_address_descriptor_indexing indexing = { { DXIL_SPV_OPTION_PHYSICAL_ADDRESS_DESCRIPTOR_INDEXING },
+		                                                                        args.physical_address_indexing_stride,
+		                                                                        args.physical_address_indexing_offset };
+		dxil_spv_converter_add_option(converter, &indexing.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

@@ -1,0 +1,188 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_KHR_shader_subgroup_ballot : require
+
+struct _20
+{
+    vec4 _m0;
+};
+
+struct _23
+{
+    float _m0;
+};
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer RTASHeap
+{
+    uvec2 _m0[];
+} _13;
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uint _m0;
+    uint _m1;
+    uint _m2;
+    uint _m3;
+    uint _m4;
+    uint _m5;
+    uint _m6;
+    uint _m7;
+} registers;
+
+layout(set = 3, binding = 0) uniform writeonly image2D _18[];
+layout(location = 0) rayPayloadEXT _20 _22;
+layout(location = 1) rayPayloadEXT _23 _25;
+
+void main()
+{
+    traceRayEXT(accelerationStructureEXT(_13._m0[(4u * subgroupBroadcastFirst(registers._m0 + 30u)) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    traceRayEXT(accelerationStructureEXT(_13._m0[(4u * subgroupBroadcastFirst(registers._m0 + 30u)) + 3u]), 0u, 1u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    imageStore(_18[registers._m3 + 10u], ivec2(uvec2(0u)), vec4(_22._m0.x + _25._m0, _22._m0.y + _25._m0, _22._m0.z + _25._m0, _22._m0.w + _25._m0));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 87
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability StorageImageWriteWithoutFormat
+OpCapability GroupNonUniformBallot
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint RayGenerationNV %3 "main" %8 %13 %18 %22 %25
+OpName %3 "main"
+OpName %6 "RootConstants"
+OpName %8 "registers"
+OpName %11 "RTASHeap"
+OpName %20 ""
+OpName %23 ""
+OpDecorate %6 Block
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 4
+OpMemberDecorate %6 2 Offset 8
+OpMemberDecorate %6 3 Offset 12
+OpMemberDecorate %6 4 Offset 16
+OpMemberDecorate %6 5 Offset 20
+OpMemberDecorate %6 6 Offset 24
+OpMemberDecorate %6 7 Offset 28
+OpDecorate %10 ArrayStride 8
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 0
+OpDecorate %13 NonWritable
+OpDecorate %13 Restrict
+OpDecorate %18 DescriptorSet 3
+OpDecorate %18 Binding 0
+OpDecorate %18 NonReadable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeStruct %5 %5 %5 %5 %5 %5 %5 %5
+%7 = OpTypePointer PushConstant %6
+%8 = OpVariable %7 PushConstant
+%9 = OpTypeVector %5 2
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeFloat 32
+%15 = OpTypeImage %14 2D 0 0 0 2 Unknown
+%16 = OpTypeRuntimeArray %15
+%17 = OpTypePointer UniformConstant %16
+%18 = OpVariable %17 UniformConstant
+%19 = OpTypeVector %14 4
+%20 = OpTypeStruct %19
+%21 = OpTypePointer RayPayloadNV %20
+%22 = OpVariable %21 RayPayloadNV
+%23 = OpTypeStruct %14
+%24 = OpTypePointer RayPayloadNV %23
+%25 = OpVariable %24 RayPayloadNV
+%26 = OpTypePointer PushConstant %5
+%28 = OpConstant %5 0
+%31 = OpConstant %5 30
+%33 = OpConstant %5 3
+%35 = OpConstant %5 4
+%37 = OpTypePointer StorageBuffer %9
+%40 = OpTypeAccelerationStructureKHR
+%42 = OpConstant %14 1
+%43 = OpConstant %14 0
+%44 = OpConstant %14 2
+%45 = OpConstant %14 3
+%46 = OpConstant %14 4
+%47 = OpTypeVector %14 3
+%59 = OpConstant %5 1
+%62 = OpTypePointer RayPayloadNV %19
+%69 = OpTypePointer RayPayloadNV %14
+%76 = OpTypePointer UniformConstant %15
+%81 = OpConstant %5 10
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %85
+%85 = OpLabel
+%27 = OpAccessChain %26 %8 %28
+%29 = OpLoad %5 %27
+%30 = OpIAdd %5 %29 %31
+%32 = OpGroupNonUniformBroadcastFirst %5 %33 %30
+%34 = OpIMul %5 %35 %32
+%36 = OpIAdd %5 %34 %33
+%38 = OpAccessChain %37 %13 %28 %36
+%39 = OpLoad %9 %38
+%41 = OpConvertUToAccelerationStructureKHR %40 %39
+%48 = OpCompositeConstruct %47 %42 %44 %45
+%49 = OpCompositeConstruct %47 %43 %43 %42
+OpTraceRayKHR %41 %28 %28 %28 %28 %28 %48 %42 %49 %46 %22
+%50 = OpAccessChain %26 %8 %28
+%51 = OpLoad %5 %50
+%52 = OpIAdd %5 %51 %31
+%53 = OpGroupNonUniformBroadcastFirst %5 %33 %52
+%54 = OpIMul %5 %35 %53
+%55 = OpIAdd %5 %54 %33
+%56 = OpAccessChain %37 %13 %28 %55
+%57 = OpLoad %9 %56
+%58 = OpConvertUToAccelerationStructureKHR %40 %57
+%60 = OpCompositeConstruct %47 %42 %44 %45
+%61 = OpCompositeConstruct %47 %43 %43 %42
+OpTraceRayKHR %58 %28 %59 %28 %28 %28 %60 %42 %61 %46 %25
+%63 = OpInBoundsAccessChain %62 %22 %28
+%64 = OpLoad %19 %63
+%65 = OpCompositeExtract %14 %64 0
+%66 = OpCompositeExtract %14 %64 1
+%67 = OpCompositeExtract %14 %64 2
+%68 = OpCompositeExtract %14 %64 3
+%70 = OpInBoundsAccessChain %69 %25 %28
+%71 = OpLoad %14 %70
+%72 = OpFAdd %14 %65 %71
+%73 = OpFAdd %14 %66 %71
+%74 = OpFAdd %14 %67 %71
+%75 = OpFAdd %14 %68 %71
+%78 = OpAccessChain %26 %8 %33
+%79 = OpLoad %5 %78
+%80 = OpIAdd %5 %79 %81
+%77 = OpAccessChain %76 %18 %80
+%82 = OpLoad %15 %77
+%83 = OpCompositeConstruct %9 %28 %28
+%84 = OpCompositeConstruct %19 %72 %73 %74 %75
+OpImageWrite %82 %83 %84
+OpReturn
+OpFunctionEnd
+#endif

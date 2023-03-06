@@ -1,0 +1,145 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uint _m0;
+    uint _m1;
+    uint _m2;
+    uint _m3;
+    uint _m4;
+    uint _m5;
+    uint _m6;
+    uint _m7;
+    uint _m8;
+    uint _m9;
+    uint _m10;
+    uint _m11;
+    uint _m12;
+    uint _m13;
+    uint _m14;
+    uint _m15;
+} registers;
+
+layout(set = 4, binding = 0, r32ui) uniform readonly writeonly uimageBuffer _12[];
+layout(set = 7, binding = 0, r32ui) uniform uimageBuffer _15[];
+
+void main()
+{
+    uint _23 = gl_GlobalInvocationID.x + 2u;
+    uint _39 = imageAtomicAdd(_15[nonuniformEXT(registers._m4 + _23)], int(0u), 1u);
+    uint _42 = (gl_GlobalInvocationID.x ^ 1u) + 2u;
+    uint _53 = imageAtomicAdd(_15[nonuniformEXT(registers._m4 + _42)], int(0u), 1u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 56
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability RuntimeDescriptorArray
+OpCapability StorageTexelBufferArrayDynamicIndexing
+OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpExtension "SPV_EXT_descriptor_indexing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %18
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %6 "RootConstants"
+OpName %8 "registers"
+OpDecorate %6 Block
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 4
+OpMemberDecorate %6 2 Offset 8
+OpMemberDecorate %6 3 Offset 12
+OpMemberDecorate %6 4 Offset 16
+OpMemberDecorate %6 5 Offset 20
+OpMemberDecorate %6 6 Offset 24
+OpMemberDecorate %6 7 Offset 28
+OpMemberDecorate %6 8 Offset 32
+OpMemberDecorate %6 9 Offset 36
+OpMemberDecorate %6 10 Offset 40
+OpMemberDecorate %6 11 Offset 44
+OpMemberDecorate %6 12 Offset 48
+OpMemberDecorate %6 13 Offset 52
+OpMemberDecorate %6 14 Offset 56
+OpMemberDecorate %6 15 Offset 60
+OpDecorate %12 DescriptorSet 4
+OpDecorate %12 Binding 0
+OpDecorate %12 NonReadable
+OpDecorate %12 NonWritable
+OpDecorate %15 DescriptorSet 7
+OpDecorate %15 Binding 0
+OpDecorate %18 BuiltIn GlobalInvocationId
+OpDecorate %31 NonUniform
+OpDecorate %32 NonUniform
+OpDecorate %36 NonUniform
+OpDecorate %38 NonUniform
+OpDecorate %46 NonUniform
+OpDecorate %47 NonUniform
+OpDecorate %51 NonUniform
+OpDecorate %52 NonUniform
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeStruct %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5
+%7 = OpTypePointer PushConstant %6
+%8 = OpVariable %7 PushConstant
+%9 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeRuntimeArray %9
+%14 = OpTypePointer UniformConstant %13
+%15 = OpVariable %14 UniformConstant
+%16 = OpTypeVector %5 3
+%17 = OpTypePointer Input %16
+%18 = OpVariable %17 Input
+%19 = OpTypePointer Input %5
+%21 = OpConstant %5 0
+%24 = OpConstant %5 2
+%25 = OpTypePointer UniformConstant %9
+%27 = OpTypePointer PushConstant %5
+%29 = OpConstant %5 4
+%37 = OpTypePointer Image %5
+%40 = OpConstant %5 1
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %54
+%54 = OpLabel
+%20 = OpAccessChain %19 %18 %21
+%22 = OpLoad %5 %20
+%23 = OpIAdd %5 %22 %24
+%28 = OpAccessChain %27 %8 %29
+%30 = OpLoad %5 %28
+%31 = OpIAdd %5 %30 %23
+%26 = OpAccessChain %25 %12 %31
+%32 = OpLoad %9 %26
+%34 = OpAccessChain %27 %8 %29
+%35 = OpLoad %5 %34
+%36 = OpIAdd %5 %35 %23
+%33 = OpAccessChain %25 %15 %36
+%38 = OpImageTexelPointer %37 %33 %21 %21
+%39 = OpAtomicIAdd %5 %38 %40 %21 %40
+%41 = OpBitwiseXor %5 %22 %40
+%42 = OpIAdd %5 %41 %24
+%44 = OpAccessChain %27 %8 %29
+%45 = OpLoad %5 %44
+%46 = OpIAdd %5 %45 %42
+%43 = OpAccessChain %25 %12 %46
+%47 = OpLoad %9 %43
+%49 = OpAccessChain %27 %8 %29
+%50 = OpLoad %5 %49
+%51 = OpIAdd %5 %50 %42
+%48 = OpAccessChain %25 %15 %51
+%52 = OpImageTexelPointer %37 %48 %21 %21
+%53 = OpAtomicIAdd %5 %52 %40 %21 %40
+OpReturn
+OpFunctionEnd
+#endif

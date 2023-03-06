@@ -238,6 +238,7 @@ enum class Option : uint32_t
 	BarycentricKHR = 21,
 	RobustPhysicalCBVLoad = 22,
 	ArithmeticRelaxedPrecision = 23,
+	PhysicalAddressDescriptorIndexing = 24,
 	Count
 };
 
@@ -492,6 +493,20 @@ struct OptionArithmeticRelaxedPrecision : OptionBase
 	}
 
 	bool enabled = false;
+};
+
+struct OptionPhysicalAddressDescriptorIndexing : OptionBase
+{
+	OptionPhysicalAddressDescriptorIndexing()
+	    : OptionBase(Option::PhysicalAddressDescriptorIndexing)
+	{
+	}
+
+	// In units of uint64_t addresses.
+	// Used for scenarios where a descriptor buffer is bound directly as an SSBO
+	// and raw VAs might not longer be tightly packed in memory.
+	unsigned element_stride = 1;
+	unsigned element_offset = 0;
 };
 
 struct DescriptorTableEntry

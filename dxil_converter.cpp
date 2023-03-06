@@ -6286,6 +6286,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.arithmetic_relaxed_precision = static_cast<const OptionArithmeticRelaxedPrecision &>(cap).enabled;
 		break;
 
+	case Option::PhysicalAddressDescriptorIndexing:
+		options.physical_address_descriptor_stride =
+		    static_cast<const OptionPhysicalAddressDescriptorIndexing &>(cap).element_stride;
+		options.physical_address_descriptor_offset =
+			static_cast<const OptionPhysicalAddressDescriptorIndexing &>(cap).element_offset;
+		break;
+
 	default:
 		break;
 	}
