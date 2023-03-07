@@ -1185,7 +1185,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 				if (counter_reference.bindless)
 				{
-					if (impl.options.physical_storage_buffer)
+					if (counter_reference.resource_kind == DXIL::ResourceKind::RawBuffer)
 					{
 						meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction);
 						meta.counter_is_physical_pointer = true;

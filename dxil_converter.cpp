@@ -1540,7 +1540,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		bindless_info.aliased = aliased_access.requires_alias_decoration;
 
 		BindlessInfo counter_info = {};
-		if (options.physical_storage_buffer)
+		if (options.physical_storage_buffer &&
+		    vulkan_binding.counter_binding.descriptor_type != VulkanDescriptorType::TexelBuffer)
 		{
 			counter_info.type = DXIL::ResourceType::UAV;
 			counter_info.component = DXIL::ComponentType::U32;
@@ -1627,6 +1628,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					counter_ref.bindless = true;
 					counter_ref.base_resource_is_array = range_size != 1;
 					counter_ref.local_root_signature_entry = local_root_signature_entry;
+					// Signals the underlying type of the counter buffer.
+					counter_ref.resource_kind =
+						counter_info.counters ? DXIL::ResourceKind::RawBuffer : DXIL::ResourceKind::TypedBuffer;
 				}
 			}
 			else
@@ -1730,6 +1734,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					counter_ref.stride = 4;
 					counter_ref.bindless = true;
 					counter_ref.base_resource_is_array = range_size != 1;
+
+					// Signals the underlying type of the counter buffer.
+					counter_ref.resource_kind =
+					    counter_info.counters ? DXIL::ResourceKind::RawBuffer : DXIL::ResourceKind::TypedBuffer;
 				}
 				else
 				{
@@ -1749,6 +1757,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					counter_ref.var_id = counter_var_id;
 					counter_ref.stride = 4;
 					counter_ref.base_resource_is_array = range_size != 1;
+					counter_ref.resource_kind = DXIL::ResourceKind::TypedBuffer;
 				}
 			}
 		}
@@ -1859,6 +1868,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				counter_ref.var_id = counter_var_id;
 				counter_ref.stride = 4;
 				counter_ref.base_resource_is_array = range_size != 1;
+				counter_ref.resource_kind = DXIL::ResourceKind::TypedBuffer;
 			}
 
 			if (var_id)
