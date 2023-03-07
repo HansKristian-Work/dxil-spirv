@@ -2751,14 +2751,54 @@ bool Converter::Impl::emit_global_heaps()
 			{
 				VulkanUAVBinding vulkan_uav_binding = {};
 				D3DUAVBinding d3d_uav_binding = {};
+
 				d3d_uav_binding.binding = d3d_binding;
-				// UAV counters appear to be banned in SM 6.6 heaps, nice!
+				d3d_uav_binding.counter = annotation->counter;
+
 				remap_success = resource_mapping_iface->remap_uav(d3d_uav_binding, vulkan_uav_binding);
 				vulkan_binding = vulkan_uav_binding.buffer_binding;
 				if (!get_ssbo_offset_buffer_id(annotation->offset_buffer_id, vulkan_uav_binding.buffer_binding,
 											   vulkan_uav_binding.offset_binding, annotation->resource_kind, alignment))
 				{
 					return false;
+				}
+
+				if (annotation->counter)
+				{
+					auto &counter_binding = vulkan_uav_binding.counter_binding;
+					BindlessInfo counter_info = {};
+
+					annotation->counter_reference.base_resource_is_array = true;
+					annotation->counter_reference.push_constant_member = UINT32_MAX;
+					annotation->counter_reference.stride = 4;
+					annotation->counter_reference.bindless = true;
+
+					if (options.physical_storage_buffer &&
+					    counter_binding.descriptor_type != VulkanDescriptorType::TexelBuffer)
+					{
+						counter_info.type = DXIL::ResourceType::UAV;
+						counter_info.component = DXIL::ComponentType::U32;
+						counter_info.kind = DXIL::ResourceKind::Invalid;
+						counter_info.desc_set = counter_binding.descriptor_set;
+						counter_info.binding = counter_binding.binding;
+						counter_info.counters = true;
+						annotation->counter_reference.resource_kind = DXIL::ResourceKind::RawBuffer;
+					}
+					else
+					{
+						counter_info.type = DXIL::ResourceType::UAV;
+						counter_info.component = DXIL::ComponentType::U32;
+						counter_info.kind = DXIL::ResourceKind::RawBuffer;
+						counter_info.desc_set = vulkan_binding.descriptor_set;
+						counter_info.binding = vulkan_binding.binding;
+						counter_info.uav_read = true;
+						counter_info.uav_written = true;
+						counter_info.uav_coherent = false;
+						counter_info.format = spv::ImageFormatR32ui;
+						annotation->counter_reference.resource_kind = DXIL::ResourceKind::TypedBuffer;
+					}
+
+					annotation->counter_reference.var_id = create_bindless_heap_variable(counter_info);
 				}
 				break;
 			}

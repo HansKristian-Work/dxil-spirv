@@ -335,7 +335,9 @@ struct Converter::Impl
 		unsigned stride;
 		bool coherent;
 		bool rov;
+		bool counter;
 		ResourceReference reference;
+		ResourceReference counter_reference;
 		spv::Id offset_buffer_id;
 	};
 	UnorderedMap<const llvm::Value *, AnnotateHandleReference> llvm_annotate_handle_uses;

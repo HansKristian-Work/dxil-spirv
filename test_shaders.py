@@ -172,6 +172,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd.append('--no-bda')
     if '.local-root-signature.' in shader:
         hlsl_cmd.append('--local-root-signature')
+    if '.uav-counter-texel-buffer.' in shader:
+        hlsl_cmd.append('--uav-counter-force-texel-buffer')
 
     if '.inline-ubo.' in shader:
         hlsl_cmd.append('--root-constant-inline-ubo')
