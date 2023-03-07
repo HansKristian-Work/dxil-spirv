@@ -568,7 +568,7 @@ static spv::Id build_physical_address_indexing_from_ssbo(Converter::Impl &impl, 
 }
 
 static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &counter,
-                                           const llvm::CallInst *instruction)
+                                           const llvm::Value *offset, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
@@ -582,7 +582,7 @@ static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converte
 
 	spv::Id offset_id = build_bindless_heap_offset(
 		impl, counter, DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
-		counter.base_resource_is_array ? instruction->getOperand(3) : nullptr);
+		counter.base_resource_is_array ? offset : nullptr);
 
 	offset_id = build_physical_address_indexing_from_ssbo(impl, offset_id);
 
@@ -919,6 +919,15 @@ static bool resource_kind_is_buffer(DXIL::ResourceKind kind)
 	}
 }
 
+static Converter::Impl::ResourceReference &get_resource_counter_reference(
+	Converter::Impl &impl, const llvm::CallInst *instruction, unsigned resource_range)
+{
+	if (resource_range == UINT32_MAX)
+		return impl.llvm_annotate_handle_uses[instruction].counter_reference;
+	else
+		return impl.uav_index_to_counter[resource_range];
+}
+
 static Converter::Impl::ResourceReference &get_resource_reference(
 		Converter::Impl &impl, DXIL::ResourceType resource_type,
 		const llvm::CallInst *instruction, unsigned resource_range)
@@ -1181,13 +1190,13 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 			if (impl.llvm_values_using_update_counter.count(instruction) != 0)
 			{
-				auto &counter_reference = impl.uav_index_to_counter[resource_range];
+				auto &counter_reference = get_resource_counter_reference(impl, instruction, resource_range);
 
 				if (counter_reference.bindless)
 				{
-					if (impl.options.physical_storage_buffer)
+					if (counter_reference.resource_kind == DXIL::ResourceKind::RawBuffer)
 					{
-						meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction);
+						meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction_offset, instruction);
 						meta.counter_is_physical_pointer = true;
 					}
 					else
