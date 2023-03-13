@@ -5358,11 +5358,18 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 {
 	auto &builder = spirv_module.get_builder();
 
-	auto *wave_size_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::WaveSize);
-	if (wave_size_node)
+	if (options.force_wave_size_enable && options.force_subgroup_size)
 	{
-		auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_node);
-		execution_mode_meta.required_wave_size = get_constant_metadata(wave_size, 0);
+		execution_mode_meta.required_wave_size = options.force_subgroup_size;
+	}
+	else
+	{
+		auto *wave_size_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::WaveSize);
+		if (wave_size_node)
+		{
+			auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_node);
+			execution_mode_meta.required_wave_size = get_constant_metadata(wave_size, 0);
+		}
 	}
 
 	unsigned threads[3];
@@ -6341,6 +6348,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionPhysicalAddressDescriptorIndexing &>(cap).element_stride;
 		options.physical_address_descriptor_offset =
 			static_cast<const OptionPhysicalAddressDescriptorIndexing &>(cap).element_offset;
+		break;
+
+	case Option::ForceSubgroupSize:
+		options.force_subgroup_size =
+			static_cast<const OptionForceSubgroupSize &>(cap).forced_value;
+		options.force_wave_size_enable =
+			static_cast<const OptionForceSubgroupSize &>(cap).wave_size_enable;
 		break;
 
 	default:

@@ -42,6 +42,12 @@ bool emit_wave_is_first_lane_instruction(Converter::Impl &impl, const llvm::Call
 
 bool emit_wave_builtin_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (impl.options.force_subgroup_size && builtin == spv::BuiltInSubgroupSize)
+	{
+		impl.rewrite_value(instruction, impl.builder().makeUintConstant(impl.options.force_subgroup_size));
+		return true;
+	}
+
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
 	auto *op = impl.allocate(spv::OpLoad, instruction);
 	op->add_id(var_id);

@@ -239,6 +239,7 @@ enum class Option : uint32_t
 	RobustPhysicalCBVLoad = 22,
 	ArithmeticRelaxedPrecision = 23,
 	PhysicalAddressDescriptorIndexing = 24,
+	ForceSubgroupSize = 25,
 	Count
 };
 
@@ -507,6 +508,24 @@ struct OptionPhysicalAddressDescriptorIndexing : OptionBase
 	// and raw VAs might not longer be tightly packed in memory.
 	unsigned element_stride = 1;
 	unsigned element_offset = 0;
+};
+
+struct OptionForceSubgroupSize : OptionBase
+{
+	OptionForceSubgroupSize()
+	    : OptionBase(Option::ForceSubgroupSize)
+	{
+	}
+
+	// If not 0, forces WaveGetLaneCount() to return a fixed value.
+	// Can be used to force a shader to avoid buggy code paths.
+	unsigned forced_value = 0;
+	// If true and forced_value is not 0,
+	// pretends that the shader exposes SM 6.6 WaveSize equal to forced_value.
+	// Intended use case:
+	// - false: Workaround and avoid bad subgroup code paths by setting forced_value to something meaningless.
+	// - true: Performance tweaks. Force e.g. wave32 vs wave64 on RDNA.
+	bool wave_size_enable = false;
 };
 
 struct DescriptorTableEntry

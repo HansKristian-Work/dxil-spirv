@@ -526,8 +526,10 @@ struct Converter::Impl
 		bool khr_barycentrics_enabled = false;
 		bool robust_physical_cbv = false;
 		bool arithmetic_relaxed_precision = false;
+		bool force_wave_size_enable = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
+		unsigned force_subgroup_size = 0;
 	} options;
 
 	struct BindlessInfo
