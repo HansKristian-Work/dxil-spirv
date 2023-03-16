@@ -1697,6 +1697,7 @@ void CFGStructurizer::reset_traversal()
 		node.traversing = false;
 		node.immediate_dominator = nullptr;
 		node.immediate_post_dominator = nullptr;
+		node.split_merge_block_candidate = nullptr;
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 
@@ -3549,6 +3550,10 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 		header->fixup_merge_info_after_branch_rewrite(node, pred_node);
 	node->headers.clear();
 
+	// When splitting merge scopes, need to consider these pred blocks as well
+	// since they might end up with headers.size() >= 2.
+	node->split_merge_block_candidate = pred_node;
+
 	// We're replacing entry block.
 	if (node == node->immediate_dominator)
 		pred_node->immediate_dominator = pred_node;
@@ -4586,6 +4591,23 @@ void CFGStructurizer::split_merge_blocks()
 {
 	for (auto *node : forward_post_visit_order)
 	{
+		// If we created a new helper pred block during traversal, it might not
+		// exist in forward_post_visit_order.
+		// Look for the replacement block here to make sure it gets processed in the appropriate order.
+		// The replacement can happen in-line in this function,
+		// so there is no chance to re-traverse the CFG.
+		// Only consider blocks that we trivially post-dominate and that
+		// definitely have no entry in forward_post_visit_order already.
+		while (node->headers.empty() &&
+		       node->pred.size() == 1 &&
+		       node->split_merge_block_candidate &&
+		       node->split_merge_block_candidate->forward_post_visit_order == node->forward_post_visit_order &&
+		       node->split_merge_block_candidate->succ.size() == 1 &&
+		       node->split_merge_block_candidate->succ.front() == node)
+		{
+			node = node->split_merge_block_candidate;
+		}
+
 		if (node->headers.size() <= 1)
 			continue;
 
