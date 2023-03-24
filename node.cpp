@@ -394,7 +394,7 @@ void CFGNode::retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *
 	to_next->recompute_immediate_dominator();
 }
 
-void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
+void CFGNode::retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next)
 {
 	//LOGI("Retargeting branch for %s: %s -> %s\n", name.c_str(), to_prev->name.c_str(), to_next->name.c_str());
 
@@ -416,6 +416,21 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 	else
 		to_next->add_unique_pred(this);
 
+	if (ir.terminator.direct_block == to_prev)
+		ir.terminator.direct_block = to_next;
+	if (ir.terminator.true_block == to_prev)
+		ir.terminator.true_block = to_next;
+	if (ir.terminator.false_block == to_prev)
+		ir.terminator.false_block = to_next;
+	for (auto &c : ir.terminator.cases)
+		if (c.node == to_prev)
+			c.node = to_next;
+}
+
+void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
+{
+	retarget_branch_pre_traversal(to_prev, to_next);
+
 	// Branch targets have changed, so recompute immediate dominators.
 	if (to_prev->forward_post_visit_order > to_next->forward_post_visit_order)
 	{
@@ -431,16 +446,6 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 	// ... and post dominator for ourself.
 	// I am not sure if it's technically possible that we have to recompute the entire post domination graph now?
 	recompute_immediate_post_dominator();
-
-	if (ir.terminator.direct_block == to_prev)
-		ir.terminator.direct_block = to_next;
-	if (ir.terminator.true_block == to_prev)
-		ir.terminator.true_block = to_next;
-	if (ir.terminator.false_block == to_prev)
-		ir.terminator.false_block = to_next;
-	for (auto &c : ir.terminator.cases)
-		if (c.node == to_prev)
-			c.node = to_next;
 }
 
 void CFGNode::retarget_fake_succ(CFGNode *to_prev, CFGNode *to_next)

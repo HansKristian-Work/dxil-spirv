@@ -71,6 +71,7 @@ private:
 	UnorderedSet<const CFGNode *> reachable_nodes;
 	UnorderedSet<const CFGNode *> structured_loop_merge_targets;
 	void visit(CFGNode &entry);
+	void visit_for_back_edge_analysis(CFGNode &entry);
 	void backwards_visit();
 	void backwards_visit(CFGNode &entry);
 	void build_immediate_dominators();
@@ -174,6 +175,7 @@ private:
 	void reset_traversal();
 	bool rewrite_invalid_loop_breaks();
 	void recompute_cfg();
+	void rewrite_multiple_back_edges();
 	void compute_dominance_frontier();
 	void compute_post_dominance_frontier();
 	void create_continue_block_ladders();

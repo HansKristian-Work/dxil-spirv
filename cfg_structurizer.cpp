@@ -453,11 +453,21 @@ bool CFGStructurizer::rewrite_rov_lock_region()
 	return true;
 }
 
+void CFGStructurizer::rewrite_multiple_back_edges()
+{
+	reset_traversal();
+	visit_for_back_edge_analysis(*entry_block);
+}
+
 bool CFGStructurizer::run()
 {
 	String graphviz_path;
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 		graphviz_path = env;
+
+	// We make the assumption during traversal that there is only one back edge.
+	// Fix this up here.
+	rewrite_multiple_back_edges();
 
 	//log_cfg("Input state");
 	if (!graphviz_path.empty())
@@ -1902,6 +1912,38 @@ void CFGStructurizer::backwards_visit(CFGNode &entry)
 
 	entry.backward_post_visit_order = backward_post_visit_order.size();
 	backward_post_visit_order.push_back(&entry);
+}
+
+void CFGStructurizer::visit_for_back_edge_analysis(CFGNode &entry)
+{
+	entry.visited = true;
+	entry.traversing = true;
+	reachable_nodes.insert(&entry);
+
+	for (auto *succ : entry.succ)
+	{
+		// Reuse the existing vector to keep track of back edges.
+		if (succ->traversing)
+			succ->fake_pred.push_back(&entry);
+		else if (!succ->visited)
+			visit_for_back_edge_analysis(*succ);
+	}
+
+	entry.traversing = false;
+
+	// After we get here, we must have observed all back edges.
+	// If there is more than one back edge, merge them.
+	if (entry.fake_pred.size() >= 2)
+	{
+		auto *new_back_edge = pool.create_node();
+		new_back_edge->name = entry.name + ".back-edge-merge";
+		for (auto *n : entry.fake_pred)
+			n->retarget_branch_pre_traversal(&entry, new_back_edge);
+		new_back_edge->succ.push_back(&entry);
+		new_back_edge->ir.terminator.type = Terminator::Type::Branch;
+		new_back_edge->ir.terminator.direct_block = &entry;
+		new_back_edge->add_branch(&entry);
+	}
 }
 
 void CFGStructurizer::visit(CFGNode &entry)
