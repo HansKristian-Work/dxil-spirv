@@ -453,11 +453,21 @@ bool CFGStructurizer::rewrite_rov_lock_region()
 	return true;
 }
 
+void CFGStructurizer::rewrite_multiple_back_edges()
+{
+	reset_traversal();
+	visit_for_back_edge_analysis(*entry_block);
+}
+
 bool CFGStructurizer::run()
 {
 	String graphviz_path;
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 		graphviz_path = env;
+
+	// We make the assumption during traversal that there is only one back edge.
+	// Fix this up here.
+	rewrite_multiple_back_edges();
 
 	//log_cfg("Input state");
 	if (!graphviz_path.empty())
@@ -1809,8 +1819,12 @@ void CFGStructurizer::backwards_visit()
 	// For successors of B, we will observe some successors which can reach C ({E}), and some successors which can not reach C.
 	// C will add fake successor edges to {E}.
 	bool need_revisit = false;
-	for (auto *node : forward_post_visit_order)
+	for (size_t i = forward_post_visit_order.size(); i; i--)
 	{
+		// Resolve outer loops before inner loops since we can have nested loops which need
+		// to link into each other.
+		auto *node = forward_post_visit_order[i - 1];
+
 		if (node->pred_back_edge)
 		{
 			if (!node->pred_back_edge->backward_visited)
@@ -1860,9 +1874,18 @@ void CFGStructurizer::backwards_visit()
 					// Only consider exits that are themselves backwards reachable.
 					// Otherwise, we'll be adding fake succs that resolve to outer infinite loops again.
 					for (auto *f : exits)
-						if (f->backward_visited)
+						if (f->trivially_reaches_backward_visited_node())
 							node->pred_back_edge->add_fake_branch(f);
 				}
+
+				if (!node->pred_back_edge->succ.empty() ||
+				    !node->pred_back_edge->fake_succ.empty())
+				{
+					// Consider this to be backwards visited in case we have a nested inner loop
+					// that needs to link up to node->pred_back_edge.
+					node->pred_back_edge->backward_visited = true;
+				}
+
 				need_revisit = true;
 			}
 		}
@@ -1902,6 +1925,38 @@ void CFGStructurizer::backwards_visit(CFGNode &entry)
 
 	entry.backward_post_visit_order = backward_post_visit_order.size();
 	backward_post_visit_order.push_back(&entry);
+}
+
+void CFGStructurizer::visit_for_back_edge_analysis(CFGNode &entry)
+{
+	entry.visited = true;
+	entry.traversing = true;
+	reachable_nodes.insert(&entry);
+
+	for (auto *succ : entry.succ)
+	{
+		// Reuse the existing vector to keep track of back edges.
+		if (succ->traversing)
+			succ->fake_pred.push_back(&entry);
+		else if (!succ->visited)
+			visit_for_back_edge_analysis(*succ);
+	}
+
+	entry.traversing = false;
+
+	// After we get here, we must have observed all back edges.
+	// If there is more than one back edge, merge them.
+	if (entry.fake_pred.size() >= 2)
+	{
+		auto *new_back_edge = pool.create_node();
+		new_back_edge->name = entry.name + ".back-edge-merge";
+		for (auto *n : entry.fake_pred)
+			n->retarget_branch_pre_traversal(&entry, new_back_edge);
+		new_back_edge->succ.push_back(&entry);
+		new_back_edge->ir.terminator.type = Terminator::Type::Branch;
+		new_back_edge->ir.terminator.direct_block = &entry;
+		new_back_edge->add_branch(&entry);
+	}
 }
 
 void CFGStructurizer::visit(CFGNode &entry)
