@@ -577,4 +577,16 @@ bool CFGNode::block_is_jump_thread_ladder() const
 	// we have this scenario.
 	return ir.terminator.conditional_id == phi.id;
 }
+
+bool CFGNode::trivially_reaches_backward_visited_node() const
+{
+	if (backward_visited)
+		return true;
+	else if (succ.size() == 1)
+		return succ.front()->trivially_reaches_backward_visited_node();
+	else if (fake_succ.size() == 1)
+		return fake_succ.front()->trivially_reaches_backward_visited_node();
+	else
+		return false;
+}
 } // namespace dxil_spv

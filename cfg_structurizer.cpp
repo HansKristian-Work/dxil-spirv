@@ -1819,8 +1819,12 @@ void CFGStructurizer::backwards_visit()
 	// For successors of B, we will observe some successors which can reach C ({E}), and some successors which can not reach C.
 	// C will add fake successor edges to {E}.
 	bool need_revisit = false;
-	for (auto *node : forward_post_visit_order)
+	for (size_t i = forward_post_visit_order.size(); i; i--)
 	{
+		// Resolve outer loops before inner loops since we can have nested loops which need
+		// to link into each other.
+		auto *node = forward_post_visit_order[i - 1];
+
 		if (node->pred_back_edge)
 		{
 			if (!node->pred_back_edge->backward_visited)
@@ -1870,9 +1874,18 @@ void CFGStructurizer::backwards_visit()
 					// Only consider exits that are themselves backwards reachable.
 					// Otherwise, we'll be adding fake succs that resolve to outer infinite loops again.
 					for (auto *f : exits)
-						if (f->backward_visited)
+						if (f->trivially_reaches_backward_visited_node())
 							node->pred_back_edge->add_fake_branch(f);
 				}
+
+				if (!node->pred_back_edge->succ.empty() ||
+				    !node->pred_back_edge->fake_succ.empty())
+				{
+					// Consider this to be backwards visited in case we have a nested inner loop
+					// that needs to link up to node->pred_back_edge.
+					node->pred_back_edge->backward_visited = true;
+				}
+
 				need_revisit = true;
 			}
 		}

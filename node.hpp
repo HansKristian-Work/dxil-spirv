@@ -105,6 +105,7 @@ private:
 	bool can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
 	bool post_dominates_any_work() const;
 	bool post_dominates_any_work(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
+	bool trivially_reaches_backward_visited_node() const;
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next);
