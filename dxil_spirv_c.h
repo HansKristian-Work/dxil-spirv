@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 23
+#define DXIL_SPV_API_VERSION_MINOR 24
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -682,6 +682,9 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter co
 /* Obtain final SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_spv_converter converter,
                                                                           dxil_spv_compiled_spirv *compiled);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compiled_entry_point(dxil_spv_converter converter,
+                                                                                const char **entry_point);
 
 /* Useful to check if the implementation recognizes a particular option for ABI compatibility. */
 DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_supports_option(dxil_spv_option option);

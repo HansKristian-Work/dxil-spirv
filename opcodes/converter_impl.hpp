@@ -271,6 +271,7 @@ struct Converter::Impl
 		bool declares_globallycoherent_uav = false;
 		bool declares_rov = false;
 		bool per_sample_shading = false;
+		String entry_point_name;
 	} execution_mode_meta;
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);

@@ -382,6 +382,7 @@ struct dxil_spv_converter_s
 	LLVMBCParser *bc_reflection_parser;
 	Vector<uint32_t> spirv;
 	String entry_point;
+	String compiled_entry_point;
 	Remapper remapper;
 
 	Vector<LocalRootParameter> local_root_parameters;
@@ -674,6 +675,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 		return DXIL_SPV_ERROR_GENERIC;
 	}
 
+	converter->compiled_entry_point = dxil_converter.get_compiled_entry_point();
 	converter->uses_subgroup_size = module.has_builtin_shader_input(spv::BuiltInSubgroupSize);
 	dxil_converter.get_workgroup_dimensions(converter->workgroup_size[0],
 	                                        converter->workgroup_size[1],
@@ -693,6 +695,16 @@ dxil_spv_result dxil_spv_converter_get_compiled_spirv(dxil_spv_converter convert
 
 	compiled->data = converter->spirv.data();
 	compiled->size = converter->spirv.size() * sizeof(uint32_t);
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_converter_get_compiled_entry_point(dxil_spv_converter converter,
+                                                            const char **entry_point)
+{
+	if (converter->spirv.empty())
+		return DXIL_SPV_ERROR_GENERIC;
+
+	*entry_point = converter->compiled_entry_point.c_str();
 	return DXIL_SPV_SUCCESS;
 }
 
