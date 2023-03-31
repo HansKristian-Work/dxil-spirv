@@ -557,6 +557,7 @@ public:
 	static Vector<String> get_entry_points(const LLVMBCParser &parser);
 	static bool entry_point_matches(const String &mangled, const char *user);
 	void set_entry_point(const char *entry);
+	const String &get_compiled_entry_point() const;
 
 	void add_option(const OptionBase &cap);
 	static bool recognizes_option(Option cap);

@@ -3263,6 +3263,23 @@ bool Converter::entry_point_matches(const String &mangled, const char *user)
 		return demangle_entry_point(mangled) == user;
 }
 
+static String get_entry_point_name(llvm::MDNode *node)
+{
+	if (!node)
+		return {};
+
+	auto &name_node = node->getOperand(1);
+
+	if (name_node)
+	{
+		auto *str_node = llvm::dyn_cast<llvm::MDString>(name_node);
+		if (str_node)
+			return str_node->getString();
+	}
+
+	return {};
+}
+
 static llvm::Function *get_entry_point_function(llvm::MDNode *node)
 {
 	if (!node)
@@ -6007,6 +6024,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_execution_modes_late())
 		return result;
 
+	execution_mode_meta.entry_point_name = get_entry_point_name(entry_point_meta);
+
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
 	assert(func);
 
@@ -6391,5 +6410,10 @@ bool Converter::recognizes_option(Option cap)
 void Converter::set_entry_point(const char *entry)
 {
 	impl->options.entry_point = entry;
+}
+
+const String &Converter::get_compiled_entry_point() const
+{
+	return impl->execution_mode_meta.entry_point_name;
 }
 } // namespace dxil_spv
