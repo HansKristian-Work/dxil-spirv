@@ -2410,6 +2410,23 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					// In worst case we can always merge to an unreachable node in the CFG.
 					node->merge = MergeType::Selection;
 					node->selection_merge_block = nullptr;
+
+					// In some cases however, we have to try even harder to tie-break these blocks,
+					// since post-domination analysis may break due to early exit blocks.
+					// Use principle of least break to tie-break.
+					if (node->succ[0]->dominance_frontier.size() == 1 &&
+					    node->succ[1]->dominance_frontier.size() == 1)
+					{
+						auto *a_frontier = node->succ[0]->dominance_frontier.front();
+						auto *b_frontier = node->succ[1]->dominance_frontier.front();
+						if (a_frontier != b_frontier)
+						{
+							if (query_reachability(*a_frontier, *b_frontier))
+								merge_to_succ(node, 0);
+							else if (query_reachability(*b_frontier, *a_frontier))
+								merge_to_succ(node, 1);
+						}
+					}
 				}
 			}
 		}
