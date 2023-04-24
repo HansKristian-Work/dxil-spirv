@@ -4393,9 +4393,9 @@ bool Converter::Impl::emit_stage_input_variables()
 	if (!inputs)
 		return true;
 
-	bool arrayed_input = execution_model == spv::ExecutionModelGeometry ||
-	                     execution_model == spv::ExecutionModelTessellationControl ||
-	                     execution_model == spv::ExecutionModelTessellationEvaluation;
+	bool stage_arrayed_inputs = execution_model == spv::ExecutionModelGeometry ||
+	                            execution_model == spv::ExecutionModelTessellationControl ||
+	                            execution_model == spv::ExecutionModelTessellationEvaluation;
 
 	auto *inputs_node = llvm::dyn_cast<llvm::MDNode>(inputs);
 
@@ -4406,6 +4406,7 @@ bool Converter::Impl::emit_stage_input_variables()
 
 	for (unsigned i = 0; i < inputs_node->getNumOperands(); i++)
 	{
+		bool arrayed_input = stage_arrayed_inputs;
 		auto *input = llvm::cast<llvm::MDNode>(inputs_node->getOperand(i));
 		auto element_id = get_constant_metadata(input, 0);
 		auto semantic_name = get_string_metadata(input, 1);
@@ -4547,7 +4548,7 @@ bool Converter::Impl::emit_stage_input_variables()
 	if (clip_distance_count)
 	{
 		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, clip_distance_count, 1, true);
-		if (arrayed_input)
+		if (stage_arrayed_inputs)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex, false), 0);
@@ -4561,7 +4562,7 @@ bool Converter::Impl::emit_stage_input_variables()
 	if (cull_distance_count)
 	{
 		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, cull_distance_count, 1, true);
-		if (arrayed_input)
+		if (stage_arrayed_inputs)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex, false), 0);
