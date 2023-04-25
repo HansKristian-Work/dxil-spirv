@@ -95,6 +95,14 @@ uint32_t Converter::get_compute_required_wave_size() const
 	return impl->execution_mode_meta.required_wave_size;
 }
 
+uint32_t Converter::get_compute_heuristic_max_wave_size() const
+{
+	if (impl->execution_mode_meta.required_wave_size)
+		return 0;
+
+	return impl->execution_mode_meta.heuristic_max_wave_size;
+}
+
 bool Converter::shader_requires_feature(ShaderFeature feature) const
 {
 	switch (feature)
@@ -5393,6 +5401,18 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 	unsigned threads[3];
 	for (unsigned dim = 0; dim < 3; dim++)
 		threads[dim] = get_constant_metadata(num_threads, dim);
+	unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
+
+	if (execution_model == spv::ExecutionModelGLCompute)
+	{
+		if ((total_workgroup_threads <= 32 && shader_analysis.require_subgroups) ||
+		    (shader_analysis.subgroup_ballot_reads_first && !shader_analysis.subgroup_ballot_reads_upper))
+		{
+			// Common game bug. Only reading the first scalar of a ballot probably means
+			// the shader relies on WaveSize <= 32.
+			suggest_maximum_wave_size(32);
+		}
+	}
 
 	if (shader_analysis.require_compute_shader_derivatives)
 	{
@@ -5404,7 +5424,6 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 
 		// For sanity, verify that dimensions align sufficiently.
 		// Spec says that product of workgroup size must align with 4.
-		unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
 		if (total_workgroup_threads % 4 == 0)
 		{
 			builder.addExtension("SPV_NV_compute_shader_derivatives");
@@ -5907,6 +5926,11 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 				if (!analyze_phi_instruction(*this, phi_inst))
 					return false;
 			}
+			else if (auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst))
+			{
+				if (!analyze_store_instruction(*this, store_inst))
+					return false;
+			}
 			else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst))
 			{
 				if (!analyze_getelementptr_instruction(*this, getelementptr_inst))
@@ -5922,7 +5946,7 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 				auto *called_function = call_inst->getCalledFunction();
 				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 				{
-					if (!analyze_dxil_resource_instruction(*this, call_inst, &bb))
+					if (!analyze_dxil_instruction(*this, call_inst, &bb))
 						return false;
 				}
 			}
@@ -6379,6 +6403,16 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 	default:
 		break;
+	}
+}
+
+void Converter::Impl::suggest_maximum_wave_size(unsigned wave_size)
+{
+	if ((execution_mode_meta.heuristic_max_wave_size == 0 ||
+	     execution_mode_meta.heuristic_max_wave_size > wave_size) &&
+	    options.force_subgroup_size == 0)
+	{
+		execution_mode_meta.heuristic_max_wave_size = wave_size;
 	}
 }
 

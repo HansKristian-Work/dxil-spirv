@@ -706,7 +706,7 @@ bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::C
 	return true;
 }
 
-bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb)
+bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb)
 {
 	// The opcode is encoded as a constant integer.
 	uint32_t opcode;
@@ -954,6 +954,23 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 		}
 		break;
 
+	case DXIL::Op::WaveIsFirstLane:
+	case DXIL::Op::WaveGetLaneIndex:
+	case DXIL::Op::WaveGetLaneCount:
+	case DXIL::Op::WaveAnyTrue:
+	case DXIL::Op::WaveAllTrue:
+	case DXIL::Op::WaveActiveAllEqual:
+	case DXIL::Op::WaveActiveBallot:
+	case DXIL::Op::WaveReadLaneAt:
+	case DXIL::Op::WaveReadLaneFirst:
+	case DXIL::Op::WaveActiveOp:
+	case DXIL::Op::WaveActiveBit:
+	case DXIL::Op::WavePrefixOp:
+	case DXIL::Op::WaveAllBitCount:
+	case DXIL::Op::WavePrefixBitCount:
+		impl.shader_analysis.require_subgroups = true;
+		break;
+
 	case DXIL::Op::QuadOp:
 	case DXIL::Op::QuadReadLaneAt:
 		if (impl.execution_model == spv::ExecutionModelGLCompute)
@@ -968,6 +985,7 @@ bool analyze_dxil_resource_instruction(Converter::Impl &impl, const llvm::CallIn
 				impl.shader_analysis.require_compute_shader_derivatives = true;
 			}
 		}
+		impl.shader_analysis.require_subgroups = true;
 		break;
 
 	case DXIL::Op::LegacyF16ToF32:

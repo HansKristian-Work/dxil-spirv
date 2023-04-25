@@ -581,6 +581,8 @@ public:
 	uint32_t get_patch_vertex_count() const;
 	// If non-zero, a CS must be compiled for a specific wave size.
 	uint32_t get_compute_required_wave_size() const;
+	// If non-zero, similar to required, but can be ignored. Used as a workaround hint or performance hint.
+	uint32_t get_compute_heuristic_max_wave_size() const;
 
 	bool shader_requires_feature(ShaderFeature feature) const;
 

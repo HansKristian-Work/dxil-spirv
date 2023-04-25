@@ -45,6 +45,25 @@ unsigned physical_integer_bit_width(unsigned width)
 	}
 }
 
+static bool instruction_is_ballot(const llvm::Value *aggregate)
+{
+	if (const auto *call_inst = llvm::dyn_cast<llvm::CallInst>(aggregate))
+	{
+		auto *called_function = call_inst->getCalledFunction();
+		if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
+		{
+			auto *constant = llvm::dyn_cast<llvm::ConstantInt>(call_inst->getOperand(0));
+			if (constant)
+			{
+				auto elem = constant->getUniqueInteger().getZExtValue();
+				return static_cast<DXIL::Op>(elem) == DXIL::Op::WaveActiveBallot;
+			}
+		}
+	}
+
+	return false;
+}
+
 static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm::Value *value,
                                               unsigned bits, bool is_signed)
 {
@@ -1525,6 +1544,18 @@ bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 	return true;
 }
 
+bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *inst)
+{
+	// Assume we're consuming the entire uvec4.
+	if (instruction_is_ballot(inst->getOperand(0)))
+	{
+		impl.shader_analysis.subgroup_ballot_reads_first = true;
+		impl.shader_analysis.subgroup_ballot_reads_upper = true;
+	}
+
+	return true;
+}
+
 bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *inst)
 {
 	auto *type = inst->getType();
@@ -1543,6 +1574,13 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *inst)
 		m.forced_struct = true;
 		m.access_mask = 0xf;
 		m.components = 4;
+
+		// Assume we're consuming the entire uvec4.
+		if (instruction_is_ballot(inst->getIncomingValue(i)))
+		{
+			impl.shader_analysis.subgroup_ballot_reads_first = true;
+			impl.shader_analysis.subgroup_ballot_reads_upper = true;
+		}
 	}
 
 	return true;
@@ -1558,6 +1596,14 @@ bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Extract
 		meta.access_mask |= 1u << index;
 		if (index >= meta.components)
 			meta.components = index + 1;
+
+		if (instruction_is_ballot(inst->getAggregateOperand()))
+		{
+			if (index == 0)
+				impl.shader_analysis.subgroup_ballot_reads_first = true;
+			else
+				impl.shader_analysis.subgroup_ballot_reads_upper = true;
+		}
 	}
 	return true;
 }
