@@ -289,6 +289,9 @@ bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallI
 			op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 			op->add_id(impl.get_id_for_value(lane));
 			builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
+
+			// For shuffle, wave64 is particularly slow on RDNA, so suggest wave32.
+			impl.suggest_maximum_wave_size(32);
 		}
 	}
 
@@ -603,6 +606,9 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 		op->add_id(local_id);
 
 		builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
+
+		// For shuffle, wave64 is particularly slow on RDNA, so suggest wave32.
+		impl.suggest_maximum_wave_size(32);
 	}
 
 	impl.add(op);

@@ -268,6 +268,7 @@ struct Converter::Impl
 		bool native_16bit_operations = false;
 		bool synthesize_2d_quad_dispatch = false;
 		unsigned required_wave_size = 0;
+		unsigned heuristic_max_wave_size = 0;
 		bool declares_globallycoherent_uav = false;
 		bool declares_rov = false;
 		bool per_sample_shading = false;
@@ -630,6 +631,9 @@ struct Converter::Impl
 		bool require_compute_shader_derivatives = false;
 		bool precise_f16_to_f32_observed = false;
 		bool require_uav_thread_group_coherence = false;
+		bool require_subgroups = false;
+		bool subgroup_ballot_reads_upper = false;
+		bool subgroup_ballot_reads_first = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.
@@ -640,5 +644,7 @@ struct Converter::Impl
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);
+
+	void suggest_maximum_wave_size(unsigned wave_size);
 };
 } // namespace dxil_spv

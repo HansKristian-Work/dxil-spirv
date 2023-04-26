@@ -395,6 +395,7 @@ struct dxil_spv_converter_s
 	uint32_t workgroup_size[3] = {};
 	uint32_t patch_vertex_count = 0;
 	uint32_t wave_size = 0;
+	uint32_t heuristic_wave_size = 0;
 	bool shader_feature_used[unsigned(ShaderFeature::Count)] = {};
 };
 
@@ -681,6 +682,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	                                        converter->workgroup_size[1],
 	                                        converter->workgroup_size[2]);
 	converter->wave_size = dxil_converter.get_compute_required_wave_size();
+	converter->heuristic_wave_size = dxil_converter.get_compute_heuristic_max_wave_size();
 	converter->patch_vertex_count = dxil_converter.get_patch_vertex_count();
 	for (int i = 0; i < int(ShaderFeature::Count); i++)
 		converter->shader_feature_used[i] = dxil_converter.shader_requires_feature(ShaderFeature(i));
@@ -1155,6 +1157,13 @@ dxil_spv_result dxil_spv_converter_get_compute_required_wave_size(
 	dxil_spv_converter converter, unsigned *wave_size)
 {
 	*wave_size = converter->wave_size;
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_converter_get_compute_heuristic_max_wave_size(
+    dxil_spv_converter converter, unsigned *wave_size)
+{
+	*wave_size = converter->heuristic_wave_size;
 	return DXIL_SPV_SUCCESS;
 }
 

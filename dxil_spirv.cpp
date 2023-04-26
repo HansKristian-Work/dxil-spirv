@@ -980,6 +980,11 @@ int main(int argc, char **argv)
 		if (dxil_spv_converter_get_compiled_spirv(converter, &compiled) != DXIL_SPV_SUCCESS)
 			return EXIT_FAILURE;
 
+		unsigned heuristic_wave_size = 0;
+		unsigned wave_size = 0;
+		dxil_spv_converter_get_compute_required_wave_size(converter, &wave_size);
+		dxil_spv_converter_get_compute_heuristic_max_wave_size(converter, &heuristic_wave_size);
+
 		if (args.validate)
 		{
 			if (!validate_spirv(compiled.data, compiled.size))
@@ -993,6 +998,20 @@ int main(int argc, char **argv)
 
 		if (args.emit_asm || (!args.glsl && args.output_path.empty()))
 		{
+			if (wave_size)
+			{
+				spirv_asm_string += "// WaveSize(";
+				spirv_asm_string += std::to_string(wave_size);
+				spirv_asm_string += ")\n";
+			}
+
+			if (heuristic_wave_size)
+			{
+				spirv_asm_string += "// HeuristicWaveSize(";
+				spirv_asm_string += std::to_string(heuristic_wave_size);
+				spirv_asm_string += ")\n";
+			}
+
 			if (demangled_entry && !args.glsl)
 			{
 				spirv_asm_string += "// ========== ";
