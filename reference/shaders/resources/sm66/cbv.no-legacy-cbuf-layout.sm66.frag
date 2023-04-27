@@ -62,9 +62,13 @@ OpCapability Float16
 OpCapability Float64
 OpCapability Int64
 OpCapability UniformAndStorageBuffer16BitAccess
+OpCapability DenormPreserve
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %35
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
+OpExecutionMode %3 DenormPreserve 64
 OpName %3 "main"
 OpName %9 ""
 OpName %15 ""

@@ -177,6 +177,7 @@ struct Converter::Impl
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 	bool emit_execution_modes();
 	bool emit_execution_modes_late();
+	void emit_execution_modes_post_code_generation();
 	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
 	bool emit_execution_modes_geometry();

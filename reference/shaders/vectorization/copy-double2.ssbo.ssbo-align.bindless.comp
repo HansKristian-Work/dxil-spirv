@@ -57,13 +57,16 @@ OpCapability Shader
 OpCapability Float64
 OpCapability Int64
 OpCapability GroupNonUniformBallot
+OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint GLCompute %3 "main" %52
 OpExecutionMode %3 LocalSize 2 1 1
+OpExecutionMode %3 DenormPreserve 64
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"

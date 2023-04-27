@@ -77,11 +77,14 @@ void main()
 OpCapability Shader
 OpCapability Float16
 OpCapability Int64
+OpCapability DenormPreserve
 OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint Fragment %3 "main" %13
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %7 "RootConstants"
 OpName %9 "registers"

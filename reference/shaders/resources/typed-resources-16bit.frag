@@ -92,9 +92,12 @@ OpCapability Int16
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
+OpCapability DenormPreserve
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %50 %53 %56 %59
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %50 "UV"
 OpName %53 "SV_Target"

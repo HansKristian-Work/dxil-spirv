@@ -5569,6 +5569,24 @@ bool Converter::Impl::analyze_execution_modes_meta()
 	return true;
 }
 
+void Converter::Impl::emit_execution_modes_post_code_generation()
+{
+	// Float16 and Float64 require denorms to be preserved in D3D12.
+	if (builder().hasCapability(spv::CapabilityFloat16))
+	{
+		builder().addExtension("SPV_KHR_float_controls");
+		builder().addCapability(spv::CapabilityDenormPreserve);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
+	}
+
+	if (builder().hasCapability(spv::CapabilityFloat64))
+	{
+		builder().addExtension("SPV_KHR_float_controls");
+		builder().addCapability(spv::CapabilityDenormPreserve);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+	}
+}
+
 bool Converter::Impl::emit_execution_modes_late()
 {
 	switch (execution_model)
@@ -6060,6 +6078,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		result.entry = build_rov_main(func, pool, result.leaf_functions);
 	else
 		result.entry = convert_function(func, pool);
+
+	// Some execution modes depend on code generation, handle that here.
+	emit_execution_modes_post_code_generation();
 
 	return result;
 }
