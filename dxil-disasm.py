@@ -37,29 +37,33 @@ def disasm_shader_regex(input_file, args, regex):
     f2, path2 = tempfile.mkstemp(suffix = 'dxil2')
     os.close(f)
     os.close(f2)
-    result = ''
+    result = None
 
     try:
         dxil_extract_cmd = [args.dxil_extract, input_file, '--output']
-        p1 = subprocess.Popen(dxil_extract_cmd + [path, '--verbose'], stdout = subprocess.PIPE)
-        [s , _] = p1.communicate()
-        result = s.decode()
+        p = subprocess.Popen(dxil_extract_cmd + [path, '--verbose'], stdout = subprocess.PIPE)
         subprocess.check_call(dxil_extract_cmd + [path2, '--reflection'], stdout = subprocess.DEVNULL)
         llvm_dis_cmd = [args.llvm_dis, '-o', '/dev/stdout']
         main_pipe = subprocess.Popen(llvm_dis_cmd + [path], stdout = subprocess.PIPE)
         refl_pipe = subprocess.Popen(llvm_dis_cmd + [path2], stdout = subprocess.PIPE)
+        lines_main = main_pipe.communicate()[0].decode()
+        lines_refl = refl_pipe.communicate()[0].decode()
 
-        result += '  DXIL:\n'
-        lines = main_pipe.communicate()[0].decode().splitlines()
-        for line in lines:
-            if re.search(regex, line):
-                result += '    ' + line + '\n'
+        if args.isolate:
+            allow = re.search(regex, lines_main + lines_refl)
+        else:
+            allow = True
 
-        result += '  STAT:\n'
-        lines = refl_pipe.communicate()[0].decode().splitlines()
-        for line in lines:
-            if re.search(regex, line):
-                result += '    ' + line + '\n'
+        if allow:
+            result = p.communicate()[0].decode()
+            result += '  DXIL:\n'
+            for line in lines_main.splitlines():
+                if re.search(regex, line):
+                    result += '    ' + line + '\n'
+            result += '  STAT:\n'
+            for line in lines_refl.splitlines():
+                if re.search(regex, line):
+                    result += '    ' + line + '\n'
     except:
         pass
 
@@ -100,6 +104,8 @@ def main():
             default = 'llvm-dis')
     parser.add_argument('--reflect', action = 'store_true',
             help = 'Use reflection section')
+    parser.add_argument('--isolate', action = 'store_true',
+            help = 'Isolate regex output to hits only')
     parser.add_argument('--symbol-regex', type = str,
             help = 'Grep disassemblies for a symbol')
 
