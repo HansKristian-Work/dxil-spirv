@@ -33,7 +33,7 @@ using namespace dxil_spv;
 
 static void print_help()
 {
-	LOGE("dxil-extract <DXIL blob> [--output file.bc] [--reflection]\n");
+	LOGE("dxil-extract <DXIL blob> [--output file.bc] [--reflection] [--verbose]\n");
 }
 
 static std::vector<uint8_t> read_file(const char *path)
@@ -77,6 +77,7 @@ int main(int argc, char **argv)
 {
 	std::string input, output;
 	bool reflection = false;
+	bool verbose = false;
 
 	CLICallbacks cbs;
 	cbs.add("--help", [](CLIParser &parser) {
@@ -85,6 +86,7 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--output", [&](CLIParser &parser) { output = parser.next_string(); });
 	cbs.add("--reflection", [&](CLIParser &) { reflection = true; });
+	cbs.add("--verbose", [&](CLIParser &) { verbose = true; });
 	cbs.default_handler = [&](const char *arg) { input = arg; };
 	CLIParser parser(std::move(cbs), argc - 1, argv + 1);
 
@@ -109,10 +111,21 @@ int main(int argc, char **argv)
 	dxil_spv_parsed_blob blob;
 	if (reflection)
 	{
-		if (dxil_spv_parse_reflection_dxil_blob(input_file.data(), input_file.size(), &blob) != DXIL_SPV_SUCCESS)
+		dxil_spv_result result;
+		if ((result = dxil_spv_parse_reflection_dxil_blob(input_file.data(), input_file.size(), &blob)) != DXIL_SPV_SUCCESS)
 		{
-			LOGE("Failed to parse blob.\n");
-			return EXIT_FAILURE;
+			// Fallback in case there is no STAT block.
+			if (result == DXIL_SPV_ERROR_NO_DATA)
+			{
+				LOGW("There is no STAT block, falling back to normal DXIL block.\n");
+				result = dxil_spv_parse_dxil_blob(input_file.data(), input_file.size(), &blob);
+			}
+
+			if (result != DXIL_SPV_SUCCESS)
+			{
+				LOGE("Failed to parse blob.\n");
+				return EXIT_FAILURE;
+			}
 		}
 	}
 	else
@@ -122,6 +135,20 @@ int main(int argc, char **argv)
 			LOGE("Failed to parse blob.\n");
 			return EXIT_FAILURE;
 		}
+	}
+
+	if (verbose)
+	{
+		printf("=== %s ===\n", input.c_str());
+		unsigned entry_point_count = 0;
+		dxil_spv_parsed_blob_get_num_entry_points(blob, &entry_point_count);
+		for (unsigned i = 0; i < entry_point_count; i++)
+		{
+			const char *demangled = nullptr;
+			dxil_spv_parsed_blob_get_entry_point_demangled_name(blob, i, &demangled);
+			printf("  %s\n", demangled);
+		}
+		printf("==================\n");
 	}
 
 	const void *ir_data;
