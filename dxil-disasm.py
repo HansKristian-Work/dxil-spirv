@@ -127,7 +127,8 @@ def main():
     else:
         files = []
         for file in os.scandir(args.input):
-            files.append(os.path.join(args.input, file.name))
+            if os.path.splitext(file.name)[1] == '.dxil':
+                files.append(os.path.join(args.input, file.name))
 
     pool = multiprocessing.Pool(multiprocessing.cpu_count())
     results = []
