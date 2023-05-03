@@ -61,11 +61,14 @@ void main()
 OpCapability Shader
 OpCapability Float64
 OpCapability Int64
+OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %30
 OpExecutionMode %3 LocalSize 128 1 1
+OpExecutionMode %3 DenormPreserve 64
 OpName %3 "main"
 OpName %8 "SSBO"
 OpName %13 "SSBO"

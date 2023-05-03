@@ -37,9 +37,12 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability StorageInputOutput16
+OpCapability DenormPreserve
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %8 %12 %15 %17 %19 %21
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %8 "A"
 OpName %12 "B"

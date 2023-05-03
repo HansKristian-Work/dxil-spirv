@@ -89,11 +89,14 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
+OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %51 %55 %59
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %7 "SSBO"
 OpName %14 "SSBO"

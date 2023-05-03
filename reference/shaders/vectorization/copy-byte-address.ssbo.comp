@@ -188,9 +188,13 @@ OpCapability Float64
 OpCapability Int64
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
+OpCapability DenormPreserve
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %114 %119
 OpExecutionMode %3 LocalSize 2 1 1
+OpExecutionMode %3 DenormPreserve 16
+OpExecutionMode %3 DenormPreserve 64
 OpName %3 "main"
 OpName %7 "SSBO"
 OpName %12 "SSBO"

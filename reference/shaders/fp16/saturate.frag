@@ -37,10 +37,13 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
+OpCapability DenormPreserve
+OpExtension "SPV_KHR_float_controls"
 %30 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %8 %10
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %8 "V"
 OpName %10 "SV_Target"

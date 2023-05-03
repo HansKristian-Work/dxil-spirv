@@ -43,13 +43,16 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Sampled1D
 OpCapability SampledBuffer
+OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability UniformTexelBufferArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %20 %23 %26
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %20 "INDEX"
 OpName %23 "UV"

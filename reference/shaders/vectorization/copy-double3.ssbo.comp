@@ -34,9 +34,12 @@ void main()
 OpCapability Shader
 OpCapability Float64
 OpCapability Int64
+OpCapability DenormPreserve
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %18
 OpExecutionMode %3 LocalSize 2 1 1
+OpExecutionMode %3 DenormPreserve 64
 OpName %3 "main"
 OpName %8 "SSBO"
 OpName %12 "SSBO"

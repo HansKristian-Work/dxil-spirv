@@ -5569,6 +5569,26 @@ bool Converter::Impl::analyze_execution_modes_meta()
 	return true;
 }
 
+void Converter::Impl::emit_execution_modes_post_code_generation()
+{
+	// Float16 and Float64 require denorms to be preserved in D3D12.
+	if (builder().hasCapability(spv::CapabilityFloat16) &&
+	    options.supports_float16_denorm_preserve)
+	{
+		builder().addExtension("SPV_KHR_float_controls");
+		builder().addCapability(spv::CapabilityDenormPreserve);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
+	}
+
+	if (builder().hasCapability(spv::CapabilityFloat64) &&
+	    options.supports_float64_denorm_preserve)
+	{
+		builder().addExtension("SPV_KHR_float_controls");
+		builder().addCapability(spv::CapabilityDenormPreserve);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+	}
+}
+
 bool Converter::Impl::emit_execution_modes_late()
 {
 	switch (execution_model)
@@ -6061,6 +6081,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	else
 		result.entry = convert_function(func, pool);
 
+	// Some execution modes depend on code generation, handle that here.
+	emit_execution_modes_post_code_generation();
+
 	return result;
 }
 
@@ -6399,6 +6422,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			static_cast<const OptionForceSubgroupSize &>(cap).forced_value;
 		options.force_wave_size_enable =
 			static_cast<const OptionForceSubgroupSize &>(cap).wave_size_enable;
+		break;
+
+	case Option::DenormPreserveSupport:
+		options.supports_float16_denorm_preserve =
+		    static_cast<const OptionDenormPreserveSupport &>(cap).support_float16_denorm_preserve;
+		options.supports_float64_denorm_preserve =
+		    static_cast<const OptionDenormPreserveSupport &>(cap).support_float64_denorm_preserve;
 		break;
 
 	default:

@@ -126,13 +126,16 @@ OpCapability Float16
 OpCapability Int16
 OpCapability GroupNonUniformBallot
 OpCapability StorageBuffer16BitAccess
+OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint Fragment %3 "main" %59 %63 %67
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"

@@ -240,6 +240,7 @@ enum class Option : uint32_t
 	ArithmeticRelaxedPrecision = 23,
 	PhysicalAddressDescriptorIndexing = 24,
 	ForceSubgroupSize = 25,
+	DenormPreserveSupport = 26,
 	Count
 };
 
@@ -526,6 +527,19 @@ struct OptionForceSubgroupSize : OptionBase
 	// - false: Workaround and avoid bad subgroup code paths by setting forced_value to something meaningless.
 	// - true: Performance tweaks. Force e.g. wave32 vs wave64 on RDNA.
 	bool wave_size_enable = false;
+};
+
+struct OptionDenormPreserveSupport : OptionBase
+{
+	OptionDenormPreserveSupport()
+		: OptionBase(Option::DenormPreserveSupport)
+	{
+	}
+
+	// Should always be set to true if supported.
+	// If not supported, rely on implementation to default to the right thing.
+	bool support_float16_denorm_preserve = false;
+	bool support_float64_denorm_preserve = false;
 };
 
 struct DescriptorTableEntry

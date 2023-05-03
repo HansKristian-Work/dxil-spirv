@@ -162,14 +162,17 @@ OpCapability Int16
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability ImageQuery
 OpCapability StorageBuffer16BitAccess
+OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint GLCompute %3 "main" %178
 OpExecutionMode %3 LocalSize 64 1 1
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"

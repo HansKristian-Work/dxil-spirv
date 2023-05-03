@@ -203,9 +203,12 @@ OpCapability Int16
 OpCapability SparseResidency
 OpCapability MinLod
 OpCapability SampledBuffer
+OpCapability DenormPreserve
+OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %32 %35 %38 %41 %43
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %32 "UV"
 OpName %35 "SV_Target"

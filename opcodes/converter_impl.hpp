@@ -177,6 +177,7 @@ struct Converter::Impl
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 	bool emit_execution_modes();
 	bool emit_execution_modes_late();
+	void emit_execution_modes_post_code_generation();
 	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
 	bool emit_execution_modes_geometry();
@@ -529,6 +530,8 @@ struct Converter::Impl
 		bool robust_physical_cbv = false;
 		bool arithmetic_relaxed_precision = false;
 		bool force_wave_size_enable = false;
+		bool supports_float16_denorm_preserve = false;
+		bool supports_float64_denorm_preserve = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;
