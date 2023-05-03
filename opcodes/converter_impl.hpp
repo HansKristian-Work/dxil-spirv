@@ -530,6 +530,8 @@ struct Converter::Impl
 		bool robust_physical_cbv = false;
 		bool arithmetic_relaxed_precision = false;
 		bool force_wave_size_enable = false;
+		bool supports_float16_denorm_preserve = false;
+		bool supports_float64_denorm_preserve = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;

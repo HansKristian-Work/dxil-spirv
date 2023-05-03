@@ -5572,14 +5572,16 @@ bool Converter::Impl::analyze_execution_modes_meta()
 void Converter::Impl::emit_execution_modes_post_code_generation()
 {
 	// Float16 and Float64 require denorms to be preserved in D3D12.
-	if (builder().hasCapability(spv::CapabilityFloat16))
+	if (builder().hasCapability(spv::CapabilityFloat16) &&
+	    options.supports_float16_denorm_preserve)
 	{
 		builder().addExtension("SPV_KHR_float_controls");
 		builder().addCapability(spv::CapabilityDenormPreserve);
 		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
 	}
 
-	if (builder().hasCapability(spv::CapabilityFloat64))
+	if (builder().hasCapability(spv::CapabilityFloat64) &&
+	    options.supports_float64_denorm_preserve)
 	{
 		builder().addExtension("SPV_KHR_float_controls");
 		builder().addCapability(spv::CapabilityDenormPreserve);
@@ -6420,6 +6422,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			static_cast<const OptionForceSubgroupSize &>(cap).forced_value;
 		options.force_wave_size_enable =
 			static_cast<const OptionForceSubgroupSize &>(cap).wave_size_enable;
+		break;
+
+	case Option::DenormPreserveSupport:
+		options.supports_float16_denorm_preserve =
+		    static_cast<const OptionDenormPreserveSupport &>(cap).support_float16_denorm_preserve;
+		options.supports_float64_denorm_preserve =
+		    static_cast<const OptionDenormPreserveSupport &>(cap).support_float64_denorm_preserve;
 		break;
 
 	default:

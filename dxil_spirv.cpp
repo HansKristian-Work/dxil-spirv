@@ -951,6 +951,12 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &indexing.base);
 	}
 
+	{
+		const dxil_spv_option_denorm_preserve_support denorm = { { DXIL_SPV_OPTION_DENORM_PRESERVE_SUPPORT },
+		                                                         DXIL_SPV_TRUE, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &denorm.base);
+	}
+
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 
 	unsigned num_entry_points = 1;
