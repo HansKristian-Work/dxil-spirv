@@ -1874,7 +1874,7 @@ void CFGStructurizer::backwards_visit()
 					// Only consider exits that are themselves backwards reachable.
 					// Otherwise, we'll be adding fake succs that resolve to outer infinite loops again.
 					for (auto *f : exits)
-						if (f->trivially_reaches_backward_visited_node())
+						if (f->reaches_backward_visited_node())
 							node->pred_back_edge->add_fake_branch(f);
 				}
 

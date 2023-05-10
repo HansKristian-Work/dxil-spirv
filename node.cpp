@@ -578,15 +578,29 @@ bool CFGNode::block_is_jump_thread_ladder() const
 	return ir.terminator.conditional_id == phi.id;
 }
 
-bool CFGNode::trivially_reaches_backward_visited_node() const
+bool CFGNode::reaches_backward_visited_node(UnorderedSet<const dxil_spv::CFGNode *> &completed) const
 {
+	if (completed.count(this))
+		return false;
+	completed.insert(this);
+
 	if (backward_visited)
 		return true;
-	else if (succ.size() == 1)
-		return succ.front()->trivially_reaches_backward_visited_node();
-	else if (fake_succ.size() == 1)
-		return fake_succ.front()->trivially_reaches_backward_visited_node();
-	else
-		return false;
+
+	for (auto *node : succ)
+		if (node->reaches_backward_visited_node(completed))
+			return true;
+
+	for (auto *node : fake_succ)
+		if (node->reaches_backward_visited_node(completed))
+			return true;
+
+	return false;
+}
+
+bool CFGNode::reaches_backward_visited_node() const
+{
+	UnorderedSet<const CFGNode *> visit;
+	return reaches_backward_visited_node(visit);
 }
 } // namespace dxil_spv
