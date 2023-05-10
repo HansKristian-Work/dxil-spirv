@@ -121,6 +121,7 @@ private:
 
 	template <typename Op>
 	void traverse_dominated_blocks(const Op &op) const;
+
 	CFGNode *get_outer_selection_dominator();
 	CFGNode *get_outer_header_dominator();
 
@@ -133,7 +134,8 @@ private:
 	bool dominates_all_reachable_exits(UnorderedSet<const CFGNode *>& completed, const CFGNode &header) const;
 
 	template <typename Op>
-	void traverse_dominated_blocks(const CFGNode &header, const Op &op) const;
+	void traverse_dominated_blocks(UnorderedSet<const CFGNode *> &completed,
+	                                    const CFGNode &header, const Op &op) const;
 
 	void retarget_fake_succ(CFGNode *from, CFGNode *to);
 	bool reaches_backward_visited_node(UnorderedSet<const CFGNode *> &completed) const;
@@ -150,14 +152,19 @@ void CFGNode::walk_cfg_from(const Op &op) const
 }
 
 template <typename Op>
-void CFGNode::traverse_dominated_blocks(const CFGNode &header, const Op &op) const
+void CFGNode::traverse_dominated_blocks(UnorderedSet<const CFGNode *> &completed,
+                                        const CFGNode &header, const Op &op) const
 {
 	for (auto *node : succ)
 	{
-		if (header.dominates(node))
+		bool can_visit = completed.count(node) == 0;
+		if (can_visit)
+			completed.insert(node);
+
+		if (can_visit && header.dominates(node))
 		{
 			if (op(node))
-				node->traverse_dominated_blocks(header, op);
+				node->traverse_dominated_blocks(completed, header, op);
 		}
 	}
 }
@@ -165,7 +172,7 @@ void CFGNode::traverse_dominated_blocks(const CFGNode &header, const Op &op) con
 template <typename Op>
 void CFGNode::traverse_dominated_blocks(const Op &op) const
 {
-	traverse_dominated_blocks(*this, op);
+	UnorderedSet<const CFGNode *> completed;
+	traverse_dominated_blocks(completed, *this, op);
 }
-
 } // namespace dxil_spv
