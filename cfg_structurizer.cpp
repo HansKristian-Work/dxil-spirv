@@ -3212,6 +3212,12 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 						{
 							if (c.node == succ)
 							{
+								if (c.is_default)
+								{
+									LOGE("Unhandled default case for early dispatch.\n");
+									abort();
+								}
+
 								auto *ieq = module.allocate_op(spv::OpIEqual, module.allocate_id(),
 								                               module.get_builder().makeBoolType());
 								ieq->add_id(node->ir.terminator.conditional_id);
