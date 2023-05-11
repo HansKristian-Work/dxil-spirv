@@ -3170,6 +3170,104 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 
 				merge = inner_merge;
 			}
+			else if (merge && !node->dominates(merge))
+			{
+				CFGNode *dominance_frontier_candidate = nullptr;
+
+				// If we have a normal merge scenario (merge == natural_merge),
+				// there might still be breaks which can reach the switch merge block.
+				// This can happen if a switch block is in an if() {} block, and
+				// one of the case labels branch to the else() block. Both the switch and else() block
+				// reconvene later, which means that we should defer the break.
+				for (auto *frontier : node->dominance_frontier)
+				{
+					if (frontier != merge && query_reachability(*frontier, *merge))
+					{
+						// Uncertain if we can deal with this.
+						// Multiple nested branches perhaps?
+						if (dominance_frontier_candidate)
+							LOGW("Multiple candidates for switch break transposition.\n");
+						dominance_frontier_candidate = frontier;
+					}
+				}
+
+				if (dominance_frontier_candidate)
+				{
+					// Dispatch to the dominance frontier before we enter switch scope.
+					auto *pred = create_helper_pred_block(node);
+					std::swap(pred->ir.operations, node->ir.operations);
+
+					auto succs = node->succ;
+					for (auto *succ : succs)
+					{
+						if (!query_reachability(*succ, *dominance_frontier_candidate))
+							continue;
+
+						// Rewrite the case label to reach merge block in a unique path.
+						// That way we can PHI select whether to branch to dominance frontier or not
+						// in the switch merge block.
+
+						spv::Id cond_id = 0;
+						for (auto &c : node->ir.terminator.cases)
+						{
+							if (c.node == succ)
+							{
+								auto *ieq = module.allocate_op(spv::OpIEqual, module.allocate_id(),
+								                               module.get_builder().makeBoolType());
+								ieq->add_id(node->ir.terminator.conditional_id);
+								ieq->add_id(module.get_builder().makeUintConstant(c.value));
+								pred->ir.operations.push_back(ieq);
+
+								if (cond_id)
+								{
+									auto *bor = module.allocate_op(spv::OpLogicalOr, module.allocate_id(),
+									                               module.get_builder().makeBoolType());
+									bor->add_id(cond_id);
+									bor->add_id(ieq->id);
+									pred->ir.operations.push_back(bor);
+									cond_id = bor->id;
+								}
+								else
+								{
+									cond_id = ieq->id;
+								}
+							}
+						}
+
+						if (succ == dominance_frontier_candidate)
+						{
+							// We're directly branching to target, so might have to rewrite PHI incoming
+							// block to pred helper block instead.
+							for (auto &phi : dominance_frontier_candidate->ir.phi)
+								for (auto &incoming : phi.incoming)
+									if (incoming.block == node)
+										incoming.block = pred;
+						}
+
+						for (auto *&p : succ->pred)
+							if (p == node)
+								p = pred;
+
+						for (auto &c : node->ir.terminator.cases)
+							if (c.node == succ)
+								c.node = merge;
+
+						node->succ.erase(std::find(node->succ.begin(), node->succ.end(), succ));
+						node->add_unique_succ(merge);
+						pred->add_unique_succ(succ);
+						pred->ir.terminator.type = Terminator::Type::Condition;
+						pred->ir.terminator.conditional_id = cond_id;
+						pred->ir.terminator.true_block = succ;
+						pred->ir.terminator.false_block = node;
+						pred->ir.terminator.direct_block = nullptr;
+
+						// Have to assume that there is only one path to this frontier,
+						// otherwise we're in a world of impossible case merges
+						// which should have been handled elsewhere ...
+						break;
+					}
+				}
+			}
 
 			bool can_merge_to_post_dominator = merge && node->dominates(merge) && merge->headers.empty();
 
