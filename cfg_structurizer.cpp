@@ -3181,7 +3181,8 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 				// reconvene later, which means that we should defer the break.
 				for (auto *frontier : node->dominance_frontier)
 				{
-					if (frontier != merge && query_reachability(*frontier, *merge))
+					if (frontier->forward_post_visit_order != merge->forward_post_visit_order &&
+					    query_reachability(*frontier, *merge))
 					{
 						// Uncertain if we can deal with this.
 						// Multiple nested branches perhaps?
