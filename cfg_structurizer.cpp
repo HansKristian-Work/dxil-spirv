@@ -3151,6 +3151,26 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		}
 		else if (pass == 0)
 		{
+			// It is possible that we don't necessarily want to merge to the post-dominator.
+			// There might be inner constructs which are better suited.
+			// This can happen if some branches break farther out than some other branches.
+			// We should let the loop ladder system take care of that.
+			// The switch merge should consume the smallest possible scope.
+			if (merge != natural_merge)
+			{
+				CFGNode *inner_merge = merge;
+				for (auto *frontier_node : natural_merge->dominance_frontier)
+				{
+					if (node->dominates(frontier_node) && merge->post_dominates(frontier_node) &&
+					    frontier_node->forward_post_visit_order > inner_merge->forward_post_visit_order)
+					{
+						inner_merge = frontier_node;
+					}
+				}
+
+				merge = inner_merge;
+			}
+
 			bool can_merge_to_post_dominator = merge && node->dominates(merge) && merge->headers.empty();
 
 			// Need to guarantee that we can merge somewhere.
