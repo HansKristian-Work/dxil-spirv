@@ -980,7 +980,7 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				did_work = true;
 				auto tmp_pred = node->pred;
 				for (auto *pred : tmp_pred)
-					pred->retarget_branch(node, node->succ.front());
+					pred->retarget_branch_with_intermediate_node(node, node->succ.front());
 
 				// Iteratively, we need to recompute the dominance frontier for all preds.
 				// When we eliminate nodes like this, we might cause the pred blocks to become degenerate in
@@ -5268,10 +5268,7 @@ void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode
 			{
 				// If we already have a branch to "to", need to branch there via an intermediate node.
 				// This way, we can distinguish between a normal branch and a rewritten branch.
-				if (std::find(candidate->succ.begin(), candidate->succ.end(), to) != candidate->succ.end())
-					candidate->retarget_branch_with_intermediate_node(from, to);
-				else
-					candidate->retarget_branch(from, to);
+				candidate->retarget_branch_with_intermediate_node(from, to);
 			}
 		}
 		else if (dominator->dominates(node) && node != to) // Do not traverse beyond the new branch target.
