@@ -637,9 +637,14 @@ bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
 			    std::find(node->succ.begin(), node->succ.end(), common_post_dominator) == node->succ.end())
 			{
 				pred_candidate = pred;
-				break;
 			}
 		}
+
+		// If we have a situation where a switch block inside our loop uses the continue block
+		// as a continue target, it's important that we keep this block as a continue block,
+		// otherwise, it will complicate the switch block greatly.
+		if (pred->ir.terminator.type == Terminator::Type::Switch && !node->post_dominates(pred))
+			return false;
 	}
 
 	// No obviously nasty case to handle, probably safe to let the algorithm do its thing ...
