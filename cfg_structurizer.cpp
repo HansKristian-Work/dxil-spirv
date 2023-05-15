@@ -637,9 +637,14 @@ bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
 			    std::find(node->succ.begin(), node->succ.end(), common_post_dominator) == node->succ.end())
 			{
 				pred_candidate = pred;
-				break;
 			}
 		}
+
+		// If we have a situation where a switch block inside our loop uses the continue block
+		// as a continue target, it's important that we keep this block as a continue block,
+		// otherwise, it will complicate the switch block greatly.
+		if (pred->ir.terminator.type == Terminator::Type::Switch && !node->post_dominates(pred))
+			return false;
 	}
 
 	// No obviously nasty case to handle, probably safe to let the algorithm do its thing ...
@@ -980,7 +985,7 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				did_work = true;
 				auto tmp_pred = node->pred;
 				for (auto *pred : tmp_pred)
-					pred->retarget_branch(node, node->succ.front());
+					pred->retarget_branch_with_intermediate_node(node, node->succ.front());
 
 				// Iteratively, we need to recompute the dominance frontier for all preds.
 				// When we eliminate nodes like this, we might cause the pred blocks to become degenerate in
@@ -3133,6 +3138,130 @@ CFGNode *CFGStructurizer::create_switch_merge_ladder(CFGNode *header, CFGNode *m
 	return create_ladder_block(header, merge, ".switch-merge");
 }
 
+Operation *CFGStructurizer::build_switch_case_equal_check(
+    const CFGNode *header, CFGNode *insert_node, const Terminator::Case &c)
+{
+	Operation *ieq;
+
+	if (c.is_default)
+	{
+		// Awkward since we have to compare all other case labels.
+		Operation *neq_and = nullptr;
+		for (auto &label : header->ir.terminator.cases)
+		{
+			if (!label.is_default)
+			{
+				Operation *neq = module.allocate_op(spv::OpINotEqual,
+				                                    module.allocate_id(),
+				                                    module.get_builder().makeBoolType());
+				neq->add_id(header->ir.terminator.conditional_id);
+				neq->add_id(module.get_builder().makeUintConstant(label.value));
+				insert_node->ir.operations.push_back(neq);
+
+				if (neq_and)
+				{
+					Operation *and_op = module.allocate_op(spv::OpLogicalAnd,
+					                                       module.allocate_id(),
+					                                       module.get_builder().makeBoolType());
+					and_op->add_id(neq_and->id);
+					and_op->add_id(neq->id);
+					insert_node->ir.operations.push_back(and_op);
+					neq_and = and_op;
+				}
+				else
+				{
+					neq_and = neq;
+				}
+			}
+		}
+
+		ieq = neq_and;
+	}
+	else
+	{
+		ieq = module.allocate_op(spv::OpIEqual, module.allocate_id(), module.get_builder().makeBoolType());
+		ieq->add_id(header->ir.terminator.conditional_id);
+		ieq->add_id(module.get_builder().makeUintConstant(c.value));
+		insert_node->ir.operations.push_back(ieq);
+	}
+
+	return ieq;
+}
+
+void CFGStructurizer::hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *merge,
+                                                        CFGNode *dominance_frontier_candidate)
+{
+	// Dispatch to the dominance frontier before we enter switch scope.
+	auto *pred = create_helper_pred_block(node);
+	std::swap(pred->ir.operations, node->ir.operations);
+
+	auto succs = node->succ;
+	for (auto *succ : succs)
+	{
+		if (!query_reachability(*succ, *dominance_frontier_candidate))
+			continue;
+
+		// Rewrite the case label to reach merge block in a unique path.
+		// That way we can PHI select whether to branch to dominance frontier or not
+		// in the switch merge block.
+
+		spv::Id cond_id = 0;
+		for (auto &c : node->ir.terminator.cases)
+		{
+			if (c.node == succ)
+			{
+				auto *ieq = build_switch_case_equal_check(node, pred, c);
+
+				if (cond_id)
+				{
+					auto *bor = module.allocate_op(spv::OpLogicalOr, module.allocate_id(),
+					                               module.get_builder().makeBoolType());
+					bor->add_id(cond_id);
+					bor->add_id(ieq->id);
+					pred->ir.operations.push_back(bor);
+					cond_id = bor->id;
+				}
+				else
+				{
+					cond_id = ieq->id;
+				}
+			}
+		}
+
+		if (succ == dominance_frontier_candidate)
+		{
+			// We're directly branching to target, so might have to rewrite PHI incoming
+			// block to pred helper block instead.
+			for (auto &phi : dominance_frontier_candidate->ir.phi)
+				for (auto &incoming : phi.incoming)
+					if (incoming.block == node)
+						incoming.block = pred;
+		}
+
+		for (auto *&p : succ->pred)
+			if (p == node)
+				p = pred;
+
+		for (auto &c : node->ir.terminator.cases)
+			if (c.node == succ)
+				c.node = merge;
+
+		node->succ.erase(std::find(node->succ.begin(), node->succ.end(), succ));
+		node->add_unique_succ(merge);
+		pred->add_unique_succ(succ);
+		pred->ir.terminator.type = Terminator::Type::Condition;
+		pred->ir.terminator.conditional_id = cond_id;
+		pred->ir.terminator.true_block = succ;
+		pred->ir.terminator.false_block = node;
+		pred->ir.terminator.direct_block = nullptr;
+
+		// Have to assume that there is only one path to this frontier,
+		// otherwise we're in a world of impossible case merges
+		// which should have been handled elsewhere ...
+		return;
+	}
+}
+
 bool CFGStructurizer::find_switch_blocks(unsigned pass)
 {
 	bool modified_cfg = false;
@@ -3151,6 +3280,52 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		}
 		else if (pass == 0)
 		{
+			// It is possible that we don't necessarily want to merge to the post-dominator.
+			// There might be inner constructs which are better suited.
+			// This can happen if some branches break farther out than some other branches.
+			// We should let the loop ladder system take care of that.
+			// The switch merge should consume the smallest possible scope.
+			if (merge != natural_merge)
+			{
+				CFGNode *inner_merge = merge;
+				for (auto *frontier_node : natural_merge->dominance_frontier)
+				{
+					if (node->dominates(frontier_node) && merge->post_dominates(frontier_node) &&
+					    frontier_node->forward_post_visit_order > inner_merge->forward_post_visit_order)
+					{
+						inner_merge = frontier_node;
+					}
+				}
+
+				merge = inner_merge;
+			}
+			else if (merge && !node->dominates(merge))
+			{
+				CFGNode *dominance_frontier_candidate = nullptr;
+
+				// If we have a normal merge scenario (merge == natural_merge),
+				// there might still be breaks which can reach the switch merge block.
+				// This can happen if a switch block is in an if() {} block, and
+				// one of the case labels branch to the else() block. Both the switch and else() block
+				// reconvene later, which means that we should hoist the break so it's not contained
+				// in switch scope.
+				for (auto *frontier : node->dominance_frontier)
+				{
+					if (frontier->forward_post_visit_order != merge->forward_post_visit_order &&
+					    query_reachability(*frontier, *merge))
+					{
+						// Uncertain if we can deal with this.
+						// Multiple nested branches perhaps?
+						if (dominance_frontier_candidate)
+							LOGW("Multiple candidates for switch break transposition.\n");
+						dominance_frontier_candidate = frontier;
+					}
+				}
+
+				if (dominance_frontier_candidate)
+					hoist_switch_branches_to_frontier(node, merge, dominance_frontier_candidate);
+			}
+
 			bool can_merge_to_post_dominator = merge && node->dominates(merge) && merge->headers.empty();
 
 			// Need to guarantee that we can merge somewhere.
@@ -5143,10 +5318,7 @@ void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode
 			{
 				// If we already have a branch to "to", need to branch there via an intermediate node.
 				// This way, we can distinguish between a normal branch and a rewritten branch.
-				if (std::find(candidate->succ.begin(), candidate->succ.end(), to) != candidate->succ.end())
-					candidate->retarget_branch_with_intermediate_node(from, to);
-				else
-					candidate->retarget_branch(from, to);
+				candidate->retarget_branch_with_intermediate_node(from, to);
 			}
 		}
 		else if (dominator->dominates(node) && node != to) // Do not traverse beyond the new branch target.
