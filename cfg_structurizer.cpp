@@ -3138,6 +3138,56 @@ CFGNode *CFGStructurizer::create_switch_merge_ladder(CFGNode *header, CFGNode *m
 	return create_ladder_block(header, merge, ".switch-merge");
 }
 
+Operation *CFGStructurizer::build_switch_case_equal_check(
+    const CFGNode *header, CFGNode *insert_node, const Terminator::Case &c)
+{
+	Operation *ieq;
+
+	if (c.is_default)
+	{
+		// Awkward since we have to compare all other case labels.
+		Operation *neq_and = nullptr;
+		for (auto &label : header->ir.terminator.cases)
+		{
+			if (!label.is_default)
+			{
+				Operation *neq = module.allocate_op(spv::OpINotEqual,
+				                                    module.allocate_id(),
+				                                    module.get_builder().makeBoolType());
+				neq->add_id(header->ir.terminator.conditional_id);
+				neq->add_id(module.get_builder().makeUintConstant(label.value));
+				insert_node->ir.operations.push_back(neq);
+
+				if (neq_and)
+				{
+					Operation *and_op = module.allocate_op(spv::OpLogicalAnd,
+					                                       module.allocate_id(),
+					                                       module.get_builder().makeBoolType());
+					and_op->add_id(neq_and->id);
+					and_op->add_id(neq->id);
+					insert_node->ir.operations.push_back(and_op);
+					neq_and = and_op;
+				}
+				else
+				{
+					neq_and = neq;
+				}
+			}
+		}
+
+		ieq = neq_and;
+	}
+	else
+	{
+		ieq = module.allocate_op(spv::OpIEqual, module.allocate_id(), module.get_builder().makeBoolType());
+		ieq->add_id(header->ir.terminator.conditional_id);
+		ieq->add_id(module.get_builder().makeUintConstant(c.value));
+		insert_node->ir.operations.push_back(ieq);
+	}
+
+	return ieq;
+}
+
 void CFGStructurizer::hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *merge,
                                                         CFGNode *dominance_frontier_candidate)
 {
@@ -3160,17 +3210,7 @@ void CFGStructurizer::hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *
 		{
 			if (c.node == succ)
 			{
-				if (c.is_default)
-				{
-					LOGE("Unhandled default case for early dispatch.\n");
-					abort();
-				}
-
-				auto *ieq = module.allocate_op(spv::OpIEqual, module.allocate_id(),
-				                               module.get_builder().makeBoolType());
-				ieq->add_id(node->ir.terminator.conditional_id);
-				ieq->add_id(module.get_builder().makeUintConstant(c.value));
-				pred->ir.operations.push_back(ieq);
+				auto *ieq = build_switch_case_equal_check(node, pred, c);
 
 				if (cond_id)
 				{

@@ -121,6 +121,8 @@ private:
 	void fixup_broken_selection_merges(unsigned pass);
 	bool find_switch_blocks(unsigned pass);
 	void hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *merge, CFGNode *frontier);
+	Operation *build_switch_case_equal_check(const CFGNode *header, CFGNode *insert_node,
+	                                         const Terminator::Case &case_label);
 	CFGNode *create_switch_merge_ladder(CFGNode *header, CFGNode *merge);
 	CFGNode *find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator) const;
 	const CFGNode *get_innermost_loop_header_for(const CFGNode *node) const;
