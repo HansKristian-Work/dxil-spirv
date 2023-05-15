@@ -270,6 +270,65 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 	assert(node->ir.phi.empty());
 }
 
+bool CFGStructurizer::cleanup_breaking_return_constructs()
+{
+	unsigned post_dominating_returns = 0;
+	CFGNode *split_candidate = nullptr;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.terminator.type != Terminator::Type::Return)
+			continue;
+
+		// If this block is only serving to return, it's meaningless to merge.
+		// It will only complicate the CFG.
+		if (node->ir.operations.empty() && node->num_forward_preds() > 1 && !node->post_dominates_any_work())
+		{
+			split_candidate = node;
+		}
+		else
+		{
+			// If we're actually post-dominating other blocks, the split candidate is relevant.
+			for (auto *pred : node->pred)
+			{
+				if (node->post_dominates(pred))
+				{
+					post_dominating_returns++;
+					break;
+				}
+			}
+		}
+	}
+
+	// Only bother if we have more than one return and at least another return that is actually post-dominating
+	// work. Avoids potential false positives.
+	if (!post_dominating_returns)
+		return false;
+
+	if (split_candidate)
+	{
+		auto preds = split_candidate->pred;
+
+		for (auto *pred : preds)
+		{
+			auto *dummy_return = pool.create_node();
+			dummy_return->name = split_candidate->name + ".dup";
+			dummy_return->immediate_dominator = split_candidate->immediate_dominator;
+			dummy_return->immediate_post_dominator = exit_block;
+			dummy_return->forward_post_visit_order = split_candidate->forward_post_visit_order;
+			dummy_return->backward_post_visit_order = split_candidate->backward_post_visit_order;
+			dummy_return->ir.terminator.type = Terminator::Type::Return;
+			pred->retarget_branch(split_candidate, dummy_return);
+		}
+
+		// Iterate until we are done.
+		recompute_cfg();
+		return true;
+	}
+
+	return false;
+}
+
 void CFGStructurizer::cleanup_breaking_phi_constructs()
 {
 	bool did_work = false;
@@ -481,9 +540,16 @@ bool CFGStructurizer::run()
 	recompute_cfg();
 
 	cleanup_breaking_phi_constructs();
+
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_split = graphviz_path + ".phi-split";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+
+	while (cleanup_breaking_return_constructs())
+	{
+		auto graphviz_split = graphviz_path + ".break-return";
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
 
