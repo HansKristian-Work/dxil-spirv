@@ -5413,6 +5413,11 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 	builder.addCapability(spv::CapabilityRayTracingKHR);
 	if (options.ray_tracing_primitive_culling_enabled && shader_analysis.can_require_primitive_culling)
 		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
+	if (options.opacity_micromap_enabled && shader_analysis.can_require_opacity_micromap)
+	{
+		builder.addCapability(spv::CapabilityRayTracingOpacityMicromapEXT);
+		builder.addExtension("SPV_EXT_opacity_micromap");
+	}
 	builder.addExtension("SPV_KHR_ray_tracing");
 	builder.addExtension("SPV_EXT_descriptor_indexing");
 
@@ -6666,6 +6671,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionSampleGradOptimizationControl &>(cap).enabled;
 		options.grad_opt.assume_uniform_scale =
 			static_cast<const OptionSampleGradOptimizationControl &>(cap).assume_uniform_scale;
+		break;
+
+	case Option::OpacityMicromap:
+		options.opacity_micromap_enabled =
+		    static_cast<const OptionOpacityMicromap &>(cap).enabled;
 		break;
 
 	default:

@@ -246,6 +246,7 @@ enum class Option : uint32_t
 	DeadCodeEliminate = 29,
 	PreciseControl = 30,
 	SampleGradOptimizationControl = 31,
+	OpacityMicromap = 32,
 	Count
 };
 
@@ -599,6 +600,16 @@ struct OptionSampleGradOptimizationControl : OptionBase
 
 	bool enabled = false;
 	bool assume_uniform_scale = false;
+};
+
+struct OptionOpacityMicromap : OptionBase
+{
+	OptionOpacityMicromap()
+		: OptionBase(Option::OpacityMicromap)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry

@@ -981,16 +981,21 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 		if (const auto *flags_inst = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2)))
 		{
-			if ((flags_inst->getUniqueInteger().getZExtValue() & (spv::RayFlagsSkipTrianglesKHRMask |
-			                                                      spv::RayFlagsSkipAABBsKHRMask)) != 0)
+			auto value = flags_inst->getUniqueInteger().getZExtValue();
+			if ((value & (spv::RayFlagsSkipTrianglesKHRMask | spv::RayFlagsSkipAABBsKHRMask)) != 0)
 			{
 				impl.shader_analysis.can_require_primitive_culling = true;
+			}
+			if ((value & spv::RayFlagsForceOpacityMicromap2StateEXTMask) != 0)
+			{
+				impl.shader_analysis.can_require_opacity_micromap = true;
 			}
 		}
 		else
 		{
 			// Non constant flags, so we must be conservative.
 			impl.shader_analysis.can_require_primitive_culling = true;
+			impl.shader_analysis.can_require_opacity_micromap = true;
 		}
 
 		break;

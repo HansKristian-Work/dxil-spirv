@@ -163,7 +163,8 @@ static void print_help()
 	     "\t[--subgroup-partitioned-nv]\n"
 	     "\t[--dead-code-eliminate]\n"
 	     "\t[--propagate-precise]\n"
-	     "\t[--force-precise]\n");
+	     "\t[--force-precise]\n"
+	     "\t[--opacity-micromap]\n");
 }
 
 struct Arguments
@@ -198,6 +199,7 @@ struct Arguments
 	bool dead_code_eliminate = false;
 	bool propagate_precise = false;
 	bool force_precise = false;
+	bool opacity_micromap = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -743,6 +745,9 @@ int main(int argc, char **argv)
 	cbs.add("--force-precise", [&](CLIParser &) {
 		args.force_precise = true;
 	});
+	cbs.add("--opacity-micromap", [&](CLIParser &) {
+		args.opacity_micromap = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -994,6 +999,12 @@ int main(int argc, char **argv)
 		                                                  args.force_precise ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
 		                                                  args.propagate_precise ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &precise.base);
+	}
+
+	{
+		const dxil_spv_option_opacity_micromap omm = { { DXIL_SPV_OPTION_OPACITY_MICROMAP },
+		                                               args.opacity_micromap ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		dxil_spv_converter_add_option(converter, &omm.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

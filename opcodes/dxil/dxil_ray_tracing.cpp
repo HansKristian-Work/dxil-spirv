@@ -324,6 +324,11 @@ static void emit_ray_query_capabilities(Converter::Impl &impl)
 	builder.addExtension("SPV_KHR_ray_query");
 	builder.addCapability(spv::CapabilityRayQueryKHR);
 	builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
+	if (impl.options.opacity_micromap_enabled)
+	{
+		builder.addExtension("SPV_EXT_opacity_micromap");
+		builder.addCapability(spv::CapabilityRayTracingOpacityMicromapEXT);
+	}
 }
 
 bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *inst)

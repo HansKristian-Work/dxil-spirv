@@ -584,6 +584,7 @@ struct Converter::Impl
 			bool enabled = false;
 			bool assume_uniform_scale = false;
 		} grad_opt;
+		bool opacity_micromap_enabled = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;
@@ -690,6 +691,7 @@ struct Converter::Impl
 		bool require_subgroups = false;
 		bool subgroup_ballot_reads_upper = false;
 		bool subgroup_ballot_reads_first = false;
+		bool can_require_opacity_micromap = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.
