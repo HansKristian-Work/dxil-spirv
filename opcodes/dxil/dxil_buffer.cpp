@@ -576,7 +576,10 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	                                  smeared_access_mask);
 
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, target_type);
-	image_id = get_buffer_alias_handle(impl, meta, image_id, width, access.raw_vec_size);
+	RawType raw_type = target_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
+	                   RawType::Float : RawType::Integer;
+
+	image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
 	bool vectorized_load = access.raw_vec_size != RawVecSize::V1;
 
 	// Sparse information is stored in the 5th component.
@@ -604,7 +607,10 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 		spv::Id component_ids[4] = {};
 
-		spv::Id extracted_id_type = builder.makeUintType(raw_width_to_bits(width));
+		spv::Id extracted_id_type = raw_type == RawType::Integer ?
+		                            builder.makeUintType(raw_width_to_bits(width)) :
+		                            builder.makeFloatType(raw_width_to_bits(width));
+
 		if (vectorized_load)
 			extracted_id_type = builder.makeVectorType(extracted_id_type, vecsize);
 
@@ -615,6 +621,10 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		bool need_cast = (element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID) ||
 		                 (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
 		                  impl.options.min_precision_prefer_native_16bit);
+
+		// FP64 is handled directly.
+		if (target_type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
+			need_cast = false;
 
 		if (ssbo && sparse)
 		{
@@ -973,7 +983,11 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	                                  meta.storage != spv::StorageClassUniformConstant ? mask : 1u);
 
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
-	image_id = get_buffer_alias_handle(impl, meta, image_id, width, access.raw_vec_size);
+
+	RawType raw_type = element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
+	                   RawType::Float : RawType::Integer;
+
+	image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
 	bool vectorized_store = access.raw_vec_size != RawVecSize::V1;
 
 	spv::Id store_values[4] = {};
@@ -1013,7 +1027,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 						impl.add(op);
 					}
 				}
-				else if (element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+				else if (element_type->getTypeID() != llvm::Type::TypeID::DoubleTyID &&
+				         element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 				{
 					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(raw_width_to_bits(width)));
 					op->add_id(store_values[i]);
@@ -1040,7 +1055,10 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	{
 		if (vectorized_store)
 		{
-			spv::Id elem_type_id = builder.makeUintType(raw_width_to_bits(width));
+			spv::Id elem_type_id = raw_type == RawType::Integer ?
+			                       builder.makeUintType(raw_width_to_bits(width)) :
+			                       builder.makeFloatType(raw_width_to_bits(width));
+
 			unsigned vecsize = raw_vecsize_to_vecsize(access.raw_vec_size);
 			spv::Id vec_type_id = builder.makeVectorType(elem_type_id, vecsize);
 			spv::Id vector_value_id = impl.build_vector(elem_type_id, store_values, vecsize);
@@ -1066,9 +1084,12 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 			{
 				if (mask & (1u << i))
 				{
+					spv::Id elem_type_id = raw_type == RawType::Integer ?
+					                       builder.makeUintType(raw_width_to_bits(width)) :
+					                       builder.makeFloatType(raw_width_to_bits(width));
+
 					Operation *chain_op = impl.allocate(
-					    spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer,
-					                                            builder.makeUintType(raw_width_to_bits(width))));
+					    spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, elem_type_id));
 					chain_op->add_id(image_id);
 					chain_op->add_id(builder.makeUintConstant(0));
 					chain_op->add_id(impl.build_offset(access.index_id, i));
@@ -1149,7 +1170,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, instruction->getType());
 	if (width == RawWidth::B64)
 		builder.addCapability(spv::CapabilityInt64Atomics);
-	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, width, RawVecSize::V1);
+	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, RawType::Integer, width, RawVecSize::V1);
 
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
@@ -1173,7 +1194,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
 	Operation *counter_ptr_op = nullptr;
-	DXIL::ComponentType component_type = raw_width_to_component_type(width);
+	DXIL::ComponentType component_type = raw_width_to_component_type(RawType::Integer, width);
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
 		spv::Id uint_type = builder.makeUintType(raw_width_to_bits(width));
@@ -1277,7 +1298,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	uint32_t num_coords_full = 0, num_coords = 0;
 
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, instruction->getType());
-	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, width, RawVecSize::V1);
+	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, RawType::Integer, width, RawVecSize::V1);
 	if (width == RawWidth::B64)
 		builder.addCapability(spv::CapabilityInt64Atomics);
 
@@ -1304,7 +1325,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	spv::Id coord = impl.build_vector(builder.makeUintType(32), coords, num_coords_full);
 
 	Operation *counter_ptr_op = nullptr;
-	DXIL::ComponentType component_type = raw_width_to_component_type(width);
+	DXIL::ComponentType component_type = raw_width_to_component_type(RawType::Integer, width);
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
 		spv::Id uint_type = builder.makeUintType(raw_width_to_bits(width));

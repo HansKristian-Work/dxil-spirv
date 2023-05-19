@@ -116,11 +116,13 @@ unsigned get_type_scalar_alignment(Converter::Impl &impl, const llvm::Type *type
 }
 
 spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
-                                spv::Id default_id, RawWidth width, RawVecSize vecsize)
+                                spv::Id default_id, RawType type, RawWidth width, RawVecSize vecsize)
 {
 	for (auto &alias : meta.var_alias_group)
 	{
-		if (alias.declaration.width == width && alias.declaration.vecsize == vecsize)
+		if (alias.declaration.type == type &&
+		    alias.declaration.width == width &&
+		    alias.declaration.vecsize == vecsize)
 		{
 			default_id = alias.var_id;
 			break;

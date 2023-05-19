@@ -383,20 +383,21 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 static void update_raw_access_tracking_from_vector_type(Converter::Impl::AccessTracking &tracking,
                                                         const llvm::Type *type, RawVecSize vec_size)
 {
+	// For SSBOs, always use uint types, except for 64-bit since Float64 vs Int64 are two separate features.
 	if (type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B16)][unsigned(vec_size)] = true;
+		tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B16)][int(vec_size)] = true;
 	else if (type->getTypeID() == llvm::Type::TypeID::FloatTyID)
-		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B32)][unsigned(vec_size)] = true;
+		tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B32)][int(vec_size)] = true;
 	else if (type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
-		tracking.raw_access_buffer_declarations[unsigned(RawWidth::B64)][unsigned(vec_size)] = true;
+		tracking.raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B64)][int(vec_size)] = true;
 	else if (type->getTypeID() == llvm::Type::TypeID::IntegerTyID)
 	{
 		if (type->getIntegerBitWidth() == 16)
-			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B16)][unsigned(vec_size)] = true;
+			tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B16)][int(vec_size)] = true;
 		else if (type->getIntegerBitWidth() == 32)
-			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B32)][unsigned(vec_size)] = true;
+			tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B32)][int(vec_size)] = true;
 		else if (type->getIntegerBitWidth() == 64)
-			tracking.raw_access_buffer_declarations[unsigned(RawWidth::B64)][unsigned(vec_size)] = true;
+			tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B64)][int(vec_size)] = true;
 	}
 }
 
@@ -508,12 +509,17 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			case 2:
 			case 4:
 				// We'll bit-cast on-demand for f16x8.
-				tracking->raw_access_buffer_declarations[int(RawWidth::B32)][int(RawVecSize::V4)] = true;
+				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B32)][int(RawVecSize::V4)] = true;
 				break;
 
 			case 8:
-				tracking->raw_access_buffer_declarations[int(RawWidth::B64)][int(RawVecSize::V2)] = true;
+			{
+				// Need aliases here to handle difference in Float64 vs Int64 support.
+				// For 16-bit, support is gated behind both types.
+				bool is_float = instruction->getType()->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::DoubleTyID;
+				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V2)] = true;
 				break;
+			}
 
 			default:
 				break;
@@ -524,16 +530,21 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			switch (get_type_scalar_alignment(impl, instruction->getType()))
 			{
 			case 2:
-				tracking->raw_access_buffer_declarations[int(RawWidth::B16)][int(RawVecSize::V1)] = true;
+				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B16)][int(RawVecSize::V1)] = true;
 				break;
 
 			case 4:
-				tracking->raw_access_buffer_declarations[int(RawWidth::B32)][int(RawVecSize::V1)] = true;
+				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B32)][int(RawVecSize::V1)] = true;
 				break;
 
 			case 8:
-				tracking->raw_access_buffer_declarations[int(RawWidth::B64)][int(RawVecSize::V1)] = true;
+			{
+				// Need aliases here to handle difference in Float64 vs Int64 support.
+				// For 16-bit, support is gated behind both types.
+				bool is_float = instruction->getType()->getTypeID() == llvm::Type::TypeID::DoubleTyID;
+				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V1)] = true;
 				break;
+			}
 
 			default:
 				break;

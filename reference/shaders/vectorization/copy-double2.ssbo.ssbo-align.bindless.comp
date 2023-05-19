@@ -1,9 +1,4 @@
 #version 460
-#if defined(GL_ARB_gpu_shader_int64)
-#extension GL_ARB_gpu_shader_int64 : require
-#else
-#error No extension available for 64-bit integers.
-#endif
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_KHR_shader_subgroup_ballot : require
@@ -16,12 +11,12 @@ layout(set = 15, binding = 0, std430) restrict readonly buffer SSBO_Offsets
 
 layout(set = 4, binding = 0, std430) readonly buffer SSBO
 {
-    u64vec2 _m0[];
+    dvec2 _m0[];
 } _20[];
 
 layout(set = 4, binding = 0, std430) writeonly buffer _22_25
 {
-    u64vec2 _m0[];
+    dvec2 _m0[];
 } _25[];
 
 layout(push_constant, std430) uniform RootConstants
@@ -41,8 +36,7 @@ void main()
     uint _32 = registers._m4 + 1u;
     uvec2 _40 = _13._m0[subgroupBroadcastFirst(_32)] >> uvec2(4u);
     uvec2 _49 = _13._m0[subgroupBroadcastFirst(registers._m4)] >> uvec2(4u);
-    dvec2 _68 = uint64BitsToDouble(_20[registers._m4]._m0[(gl_GlobalInvocationID.x < _49.y) ? (gl_GlobalInvocationID.x + _49.x) : 268435455u]);
-    _25[_32]._m0[(gl_GlobalInvocationID.x < _40.y) ? (gl_GlobalInvocationID.x + _40.x) : 268435455u] = u64vec2(doubleBitsToUint64(_68.x), doubleBitsToUint64(_68.y));
+    _25[_32]._m0[(gl_GlobalInvocationID.x < _40.y) ? (gl_GlobalInvocationID.x + _40.x) : 268435455u] = dvec2(_20[registers._m4]._m0[(gl_GlobalInvocationID.x < _49.y) ? (gl_GlobalInvocationID.x + _49.x) : 268435455u]);
 }
 
 
@@ -51,11 +45,10 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 82
+; Bound: 77
 ; Schema: 0
 OpCapability Shader
 OpCapability Float64
-OpCapability Int64
 OpCapability GroupNonUniformBallot
 OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
@@ -113,7 +106,7 @@ OpDecorate %52 BuiltIn GlobalInvocationId
 %11 = OpTypeStruct %10
 %12 = OpTypePointer StorageBuffer %11
 %13 = OpVariable %12 StorageBuffer
-%14 = OpTypeInt 64 0
+%14 = OpTypeFloat 64
 %15 = OpTypeVector %14 2
 %16 = OpTypeRuntimeArray %15
 %17 = OpTypeStruct %16
@@ -141,12 +134,10 @@ OpDecorate %52 BuiltIn GlobalInvocationId
 %59 = OpTypeBool
 %62 = OpConstant %5 268435455
 %63 = OpTypePointer StorageBuffer %15
-%66 = OpTypeFloat 64
-%67 = OpTypeVector %66 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %80
-%80 = OpLabel
+OpBranch %75
+%75 = OpLabel
 %29 = OpAccessChain %28 %8 %30
 %31 = OpLoad %5 %29
 %32 = OpIAdd %5 %31 %33
@@ -171,19 +162,16 @@ OpBranch %80
 %61 = OpSelect %5 %60 %58 %62
 %64 = OpAccessChain %63 %43 %38 %61
 %65 = OpLoad %15 %64
-%68 = OpBitcast %67 %65
-%69 = OpCompositeExtract %66 %68 0
-%70 = OpCompositeExtract %66 %68 1
-%71 = OpCompositeExtract %5 %40 0
-%72 = OpCompositeExtract %5 %40 1
-%73 = OpIAdd %5 %55 %71
-%74 = OpULessThan %59 %55 %72
-%75 = OpSelect %5 %74 %73 %62
-%76 = OpBitcast %14 %69
-%77 = OpBitcast %14 %70
-%78 = OpCompositeConstruct %15 %76 %77
-%79 = OpAccessChain %63 %27 %38 %75
-OpStore %79 %78
+%66 = OpCompositeExtract %14 %65 0
+%67 = OpCompositeExtract %14 %65 1
+%68 = OpCompositeExtract %5 %40 0
+%69 = OpCompositeExtract %5 %40 1
+%70 = OpIAdd %5 %55 %68
+%71 = OpULessThan %59 %55 %69
+%72 = OpSelect %5 %71 %70 %62
+%73 = OpCompositeConstruct %15 %66 %67
+%74 = OpAccessChain %63 %27 %38 %72
+OpStore %74 %73
 OpReturn
 OpFunctionEnd
 #endif

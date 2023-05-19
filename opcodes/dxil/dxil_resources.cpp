@@ -1893,13 +1893,20 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 			return false;
 		}
 
+		RawType raw_type = instruction->getType()->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+		                   raw_width == RawWidth::B64 ?
+		                   RawType::Integer : RawType::Float;
+
 		unsigned raw_bits = raw_width_to_bits(raw_width);
-		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_width, RawVecSize::V1);
+		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, raw_width, RawVecSize::V1);
 
 		spv::Id array_index_id = build_index_divider(impl, instruction->getOperand(2), addr_shift, 1);
 
+		spv::Id element_type_id = raw_type == RawType::Integer ?
+		    builder.makeUintType(raw_bits) : builder.makeFloatType(raw_bits);
+
 		Operation *access_chain_op = impl.allocate(
-				spv::OpAccessChain, builder.makePointer(meta.storage, builder.makeFloatType(raw_bits)));
+				spv::OpAccessChain, builder.makePointer(meta.storage, element_type_id));
 		access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), array_index_id });
 		impl.add(access_chain_op);
 
@@ -1908,10 +1915,10 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 		bool need_bitcast = false;
 		auto *result_type = instruction->getType();
-		if (result_type->getTypeID() == llvm::Type::TypeID::IntegerTyID)
+		if (result_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && raw_width != RawWidth::B64)
 			need_bitcast = true;
 
-		Operation *load_op = impl.allocate(spv::OpLoad, instruction, builder.makeFloatType(raw_bits));
+		Operation *load_op = impl.allocate(spv::OpLoad, instruction, element_type_id);
 		load_op->add_id(access_chain_op->id);
 		impl.add(load_op);
 
@@ -1999,11 +2006,17 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 		bits = raw_width_to_bits(alias_width);
 		vecsize = raw_vecsize_to_vecsize(alias_vecsize);
 
-		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, alias_width, alias_vecsize);
+		RawType raw_type = result_component_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+		                   scalar_alignment == 8 ? RawType::Integer : RawType::Float;
+
+		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, alias_width, alias_vecsize);
 
 		spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
 
-		spv::Id vector_type_id = builder.makeVectorType(builder.makeFloatType(bits), vecsize);
+		spv::Id element_type_id = raw_type == RawType::Integer ?
+		                          builder.makeUintType(bits) : builder.makeFloatType(bits);
+
+		spv::Id vector_type_id = builder.makeVectorType(element_type_id, vecsize);
 		Operation *access_chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(meta.storage, vector_type_id));
 		access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), vec4_index });
 		impl.add(access_chain_op);
@@ -2012,7 +2025,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
 
 		bool need_bitcast = false;
-		if (result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID)
+		if (result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID && scalar_alignment < 8)
 			need_bitcast = true;
 
 		Operation *load_op = impl.allocate(spv::OpLoad, instruction, vector_type_id);

@@ -83,16 +83,16 @@ struct LocalRootSignatureEntry
 	Vector<DescriptorTableEntry> table_entries;
 };
 
-static inline DXIL::ComponentType raw_width_to_component_type(RawWidth raw_width)
+static inline DXIL::ComponentType raw_width_to_component_type(RawType type, RawWidth raw_width)
 {
 	switch (raw_width)
 	{
 	case RawWidth::B16:
-		return DXIL::ComponentType::U16;
+		return type == RawType::Float ? DXIL::ComponentType::F16 : DXIL::ComponentType::U16;
 	case RawWidth::B64:
-		return DXIL::ComponentType::U64;
+		return type == RawType::Float ? DXIL::ComponentType::F64 : DXIL::ComponentType::U64;
 	default:
-		return DXIL::ComponentType::U32;
+		return type == RawType::Float ? DXIL::ComponentType::F32 : DXIL::ComponentType::U32;
 	}
 }
 
@@ -106,10 +106,13 @@ static inline unsigned raw_component_type_to_bits(DXIL::ComponentType type)
 	switch (type)
 	{
 	case DXIL::ComponentType::U16:
+	case DXIL::ComponentType::F16:
 		return 16;
 	case DXIL::ComponentType::U32:
+	case DXIL::ComponentType::F32:
 		return 32;
 	case DXIL::ComponentType::U64:
+	case DXIL::ComponentType::F64:
 		return 64;
 	default:
 		assert(0 && "Invalid component type.");
@@ -117,9 +120,27 @@ static inline unsigned raw_component_type_to_bits(DXIL::ComponentType type)
 	}
 }
 
+static inline RawType raw_component_type_to_type(DXIL::ComponentType type)
+{
+	switch (type)
+	{
+	case DXIL::ComponentType::U16:
+	case DXIL::ComponentType::U32:
+	case DXIL::ComponentType::U64:
+		return RawType::Integer;
+	case DXIL::ComponentType::F16:
+	case DXIL::ComponentType::F32:
+	case DXIL::ComponentType::F64:
+		return RawType::Float;
+	default:
+		assert(0 && "Invalid component type.");
+		return RawType::Count;
+	}
+}
+
 static inline unsigned raw_width_to_bits(RawWidth raw_width)
 {
-	return raw_component_type_to_bits(raw_width_to_component_type(raw_width));
+	return raw_component_type_to_bits(raw_width_to_component_type(RawType::Integer, raw_width));
 }
 
 struct Converter::Impl
@@ -196,6 +217,7 @@ struct Converter::Impl
 
 	struct RawDeclaration
 	{
+		RawType type;
 		RawWidth width;
 		RawVecSize vecsize;
 	};
@@ -206,7 +228,7 @@ struct Converter::Impl
 		bool has_written = false;
 		bool has_atomic = false;
 		bool has_atomic_64bit = false;
-		bool raw_access_buffer_declarations[unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
+		bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
 	};
 	UnorderedMap<uint32_t, AccessTracking> cbv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
