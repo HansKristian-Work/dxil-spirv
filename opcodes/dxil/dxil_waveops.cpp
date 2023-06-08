@@ -523,6 +523,24 @@ bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallIns
 	return true;
 }
 
+bool emit_wave_quad_vote_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	uint32_t vote_kind;
+	if (!get_constant_operand(instruction, 2, &vote_kind))
+		return false;
+
+	// QuadAll/Any. There is no direct equivalent.
+	// However, all lanes must be active according to SM 6.7 (and backed up by tests),
+	// so quadBroadcast pattern is valid and can be optimized by compilers into the intrinsic short form.
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(vote_kind ? HelperCall::QuadAll : HelperCall::QuadAny);
+
+	auto *op = impl.allocate(spv::OpFunctionCall, instruction);
+	op->add_id(call_id);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
+	return true;
+}
+
 bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();

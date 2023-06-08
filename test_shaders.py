@@ -98,6 +98,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         version_minor = 0
     elif '.sm66.' in shader:
         version_minor = 6
+    elif '.sm67.' in shader:
+        version_minor = 7
 
     if not is_asm:
         dxil_path = create_temporary()

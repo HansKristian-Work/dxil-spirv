@@ -451,6 +451,7 @@ enum class Op : unsigned
 	Unpack4x8 = 219,
 	Pack4x8 = 220,
 	IsHelperLane = 221,
+	QuadVote = 222,
 
 	Count
 };

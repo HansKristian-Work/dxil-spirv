@@ -65,6 +65,9 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_wave_multi_prefix_op(SPIRVModule &module, spv::Op opcode, spv::Id type_id);
 	spv::Id build_robust_physical_cbv_load(SPIRVModule &module, spv::Id type_id, spv::Id ptr_type_id, unsigned alignment);
 	spv::Id build_robust_atomic_counter_op(SPIRVModule &module);
+	spv::Id build_quad_all(SPIRVModule &module);
+	spv::Id build_quad_any(SPIRVModule &module);
+	spv::Id build_quad_vote(SPIRVModule &module, HelperCall call);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -106,6 +109,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id descriptor_qa_helper_call_id = 0;
 	spv::Id wave_multi_prefix_count_bits_id = 0;
 	spv::Id robust_atomic_counter_call_id = 0;
+	spv::Id quad_all_call_id = 0;
+	spv::Id quad_any_call_id = 0;
 	Vector<std::pair<spv::Id, spv::Id>> wave_match_call_ids;
 
 	struct MultiPrefixOp
@@ -710,6 +715,62 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_quad_vote(SPIRVModule &module, HelperCall call)
+{
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id bool_type = builder.makeBoolType();
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, bool_type,
+	                                       call == HelperCall::QuadAll ? "QuadAll" : "QuadAny",
+	                                       { bool_type }, {}, &entry);
+
+	builder.setBuildPoint(entry);
+	spv::Id ids[4];
+	for (unsigned i = 0; i < 4; i++)
+	{
+		auto broadcast = std::make_unique<spv::Instruction>(
+				builder.getUniqueId(), bool_type, spv::OpGroupNonUniformQuadBroadcast);
+		broadcast->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		broadcast->addIdOperand(func->getParamId(0));
+		broadcast->addIdOperand(builder.makeUintConstant(i));
+		ids[i] = broadcast->getResultId();
+		entry->addInstruction(std::move(broadcast));
+	}
+
+	spv::Op op = call == HelperCall::QuadAll ? spv::OpLogicalAnd : spv::OpLogicalOr;
+
+	spv::Id ret_id = ids[0];
+	for (unsigned i = 1; i < 4; i++)
+	{
+		auto logic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, op);
+		logic_op->addIdOperand(ret_id);
+		logic_op->addIdOperand(ids[i]);
+		ret_id = logic_op->getResultId();
+		entry->addInstruction(std::move(logic_op));
+	}
+
+	builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+	builder.makeReturn(false, ret_id);
+	builder.setBuildPoint(current_build_point);
+	return func->getId();
+}
+
+spv::Id SPIRVModule::Impl::build_quad_all(SPIRVModule &module)
+{
+	if (quad_all_call_id)
+		return quad_all_call_id;
+	quad_all_call_id = build_quad_vote(module, HelperCall::QuadAll);
+	return quad_all_call_id;
+}
+
+spv::Id SPIRVModule::Impl::build_quad_any(SPIRVModule &module)
+{
+	if (quad_any_call_id)
+		return quad_any_call_id;
+	quad_any_call_id = build_quad_vote(module, HelperCall::QuadAny);
+	return quad_any_call_id;
+}
+
 spv::Id SPIRVModule::Impl::build_robust_atomic_counter_op(SPIRVModule &module)
 {
 	if (robust_atomic_counter_call_id)
@@ -881,6 +942,10 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_wave_multi_prefix_op(module, spv::OpGroupNonUniformBitwiseXor, type_id);
 	case HelperCall::RobustAtomicCounter:
 		return build_robust_atomic_counter_op(module);
+	case HelperCall::QuadAll:
+		return build_quad_all(module);
+	case HelperCall::QuadAny:
+		return build_quad_any(module);
 
 	default:
 		break;

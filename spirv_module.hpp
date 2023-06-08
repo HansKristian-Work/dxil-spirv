@@ -55,6 +55,8 @@ enum class HelperCall
 	WaveMultiPrefixBitXor,
 	WaveMultiPrefixCountBits,
 	RobustAtomicCounter,
+	QuadAll,
+	QuadAny
 };
 
 class SPIRVModule
