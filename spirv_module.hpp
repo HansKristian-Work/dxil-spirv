@@ -102,6 +102,8 @@ public:
 	const DescriptorQAInfo &get_descriptor_qa_info() const;
 
 	static bool opcode_is_control_dependent(spv::Op opcode);
+	static bool opcode_is_control_dependent_sampled(spv::Op opcode);
+	static bool opcode_is_control_dependent_trivially_hoistable(spv::Op opcode);
 
 	void set_override_spirv_version(uint32_t version);
 

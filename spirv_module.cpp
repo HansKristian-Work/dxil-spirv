@@ -1521,12 +1521,11 @@ void SPIRVModule::set_override_spirv_version(uint32_t version)
 	impl->override_spirv_version = version;
 }
 
-bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
+bool SPIRVModule::opcode_is_control_dependent_trivially_hoistable(spv::Op opcode)
 {
-	// An opcode is considered control dependent if it is affected by other invocations in the subgroup.
 	switch (opcode)
 	{
-		// Anything derivatives
+		// Anything derivatives does not consume bandwidth
 	case spv::OpDPdx:
 	case spv::OpDPdxCoarse:
 	case spv::OpDPdxFine:
@@ -1536,7 +1535,19 @@ bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
 	case spv::OpFwidth:
 	case spv::OpFwidthCoarse:
 	case spv::OpFwidthFine:
+		// Querying LOD does not consume bandwidth
+	case spv::OpImageQueryLod:
+		return true;
 
+	default:
+		return false;
+	}
+}
+
+bool SPIRVModule::opcode_is_control_dependent_sampled(spv::Op opcode)
+{
+	switch (opcode)
+	{
 		// Anything implicit LOD
 	case spv::OpImageSampleImplicitLod:
 	case spv::OpImageSampleDrefImplicitLod:
@@ -1546,12 +1557,29 @@ bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
 	case spv::OpImageSparseSampleDrefImplicitLod:
 	case spv::OpImageSparseSampleProjImplicitLod:
 	case spv::OpImageSparseSampleProjDrefImplicitLod:
-	case spv::OpImageQueryLod:
 	case spv::OpImageDrefGather:
 	case spv::OpImageGather:
 	case spv::OpImageSparseDrefGather:
 	case spv::OpImageSparseGather:
+	case spv::OpImageQueryLod:
+		return true;
 
+	default:
+		return false;
+	}
+}
+
+bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
+{
+	if (opcode_is_control_dependent_trivially_hoistable(opcode) ||
+	    opcode_is_control_dependent_sampled(opcode))
+	{
+		return true;
+	}
+
+	// An opcode is considered control dependent if it is affected by other invocations in the subgroup.
+	switch (opcode)
+	{
 		// Anything subgroups
 	case spv::OpGroupNonUniformElect:
 	case spv::OpGroupNonUniformAll:
