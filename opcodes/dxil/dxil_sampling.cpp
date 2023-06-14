@@ -164,7 +164,9 @@ static bool get_texel_offsets(Converter::Impl &impl, const llvm::CallInst *instr
 
 bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	bool comparison_sampling = opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero;
+	bool comparison_sampling = opcode == DXIL::Op::SampleCmp ||
+	                           opcode == DXIL::Op::SampleCmpLevelZero ||
+	                           opcode == DXIL::Op::SampleCmpLevel;
 
 	// Elide dead loads.
 	if (!comparison_sampling && !impl.composite_is_accessed(instruction))
@@ -187,7 +189,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	uint32_t image_ops = 0;
 
-	if (opcode == DXIL::Op::SampleLevel || opcode == DXIL::Op::SampleCmpLevelZero)
+	if (opcode == DXIL::Op::SampleLevel || opcode == DXIL::Op::SampleCmpLevelZero || opcode == DXIL::Op::SampleCmpLevel)
 		image_ops |= spv::ImageOperandsLodMask;
 	else if (opcode == DXIL::Op::SampleBias)
 		image_ops |= spv::ImageOperandsBiasMask;
@@ -198,12 +200,12 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	spv::Id dref_id = 0;
 
-	if (opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleCmpLevelZero)
+	if (comparison_sampling)
 		dref_id = impl.get_id_for_value(instruction->getOperand(10));
 
 	spv::Id bias_level_argument = 0;
 	spv::Id min_lod_argument = 0;
-	const unsigned bias_level_argument_index = 10;
+	const unsigned bias_level_argument_index = comparison_sampling ? 11 : 10;
 	const unsigned min_lod_argument_index = opcode == DXIL::Op::Sample ? 10 : 11;
 
 	auto &access_meta = impl.llvm_composite_meta[instruction];
@@ -221,7 +223,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		}
 	}
 
-	if (opcode == DXIL::Op::SampleBias || opcode == DXIL::Op::SampleLevel)
+	if (opcode == DXIL::Op::SampleBias || opcode == DXIL::Op::SampleLevel || opcode == DXIL::Op::SampleCmpLevel)
 		bias_level_argument = impl.get_id_for_value(instruction->getOperand(bias_level_argument_index));
 	else
 		bias_level_argument = builder.makeFloatConstant(0.0f);
@@ -243,6 +245,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		spv_op = sparse ? spv::OpImageSparseSampleDrefImplicitLod : spv::OpImageSampleDrefImplicitLod;
 		break;
 
+	case DXIL::Op::SampleCmpLevel:
 	case DXIL::Op::SampleCmpLevelZero:
 		spv_op = sparse ? spv::OpImageSparseSampleDrefExplicitLod : spv::OpImageSampleDrefExplicitLod;
 		break;

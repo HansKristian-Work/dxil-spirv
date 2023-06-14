@@ -69,6 +69,7 @@ struct DXILDispatcher
 		OP(SampleLevel) = emit_sample_instruction_dispatch<DXIL::Op::SampleLevel>;
 		OP(SampleCmp) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmp>;
 		OP(SampleCmpLevelZero) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevelZero>;
+		OP(SampleCmpLevel) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevel>;
 		OP(SampleGrad) = emit_sample_grad_instruction;
 		OP(TextureLoad) = emit_texture_load_instruction;
 		OP(TextureStore) = emit_texture_store_instruction<false>;
