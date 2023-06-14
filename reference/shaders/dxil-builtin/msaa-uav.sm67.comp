@@ -1,0 +1,295 @@
+#version 460
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+
+layout(set = 0, binding = 0, r32f) uniform coherent image2DMS _8;
+layout(set = 0, binding = 1, r32f) uniform coherent image2DMSArray _11;
+layout(set = 0, binding = 2, r32ui) uniform writeonly uimageBuffer _15;
+
+void main()
+{
+    uint _33 = gl_GlobalInvocationID.x ^ 1u;
+    uint _34 = gl_GlobalInvocationID.y ^ 2u;
+    uint _35 = gl_GlobalInvocationID.z ^ 3u;
+    uint _44 = ((_34 << 4u) + (_33 << 2u)) + (_35 << 6u);
+    float _45 = float(_44);
+    float _47 = float(_44 | 1u);
+    float _49 = float(_44 | 2u);
+    float _51 = float(_44 | 3u);
+    if (gl_GlobalInvocationID.z == 3u)
+    {
+        imageStore(_8, ivec2(uvec2(_33, _34)), 0u, vec4(_45));
+        imageStore(_8, ivec2(uvec2(_33, _34)), 1u, vec4(_47));
+        imageStore(_8, ivec2(uvec2(_33, _34)), 2u, vec4(_49));
+        imageStore(_8, ivec2(uvec2(_33, _34)), 3u, vec4(_51));
+    }
+    else
+    {
+        imageStore(_11, ivec3(uvec3(_33, _34, _35)), 0u, vec4(_45));
+        imageStore(_11, ivec3(uvec3(_33, _34, _35)), 1u, vec4(_47));
+        imageStore(_11, ivec3(uvec3(_33, _34, _35)), 2u, vec4(_49));
+        imageStore(_11, ivec3(uvec3(_33, _34, _35)), 3u, vec4(_51));
+    }
+    groupMemoryBarrier();
+    barrier();
+    float _32[4];
+    float _102;
+    float _104;
+    float _106;
+    float _108;
+    if (gl_GlobalInvocationID.z == 0u)
+    {
+        vec4 _83 = imageLoad(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 0u);
+        float _85 = _83.x;
+        _32[0u] = _85;
+        vec4 _86 = imageLoad(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 1u);
+        float _88 = _86.x;
+        _32[1u] = _88;
+        vec4 _90 = imageLoad(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 2u);
+        float _92 = _90.x;
+        _32[2u] = _92;
+        vec4 _94 = imageLoad(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 3u);
+        float _96 = _94.x;
+        _32[3u] = _96;
+        _102 = _96;
+        _104 = _92;
+        _106 = _88;
+        _108 = _85;
+    }
+    else
+    {
+        _32[0u] = imageLoad(_11, ivec3(uvec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, gl_GlobalInvocationID.z)), 0u).x;
+        uint _128;
+        _128 = 1u;
+        for (;;)
+        {
+            _32[_128] = imageLoad(_11, ivec3(uvec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, gl_GlobalInvocationID.z)), _128).x;
+            uint _129 = _128 + 1u;
+            if (_129 == 4u)
+            {
+                break;
+            }
+            else
+            {
+                _128 = _129;
+            }
+        }
+        _102 = _32[3u];
+        _104 = _32[2u];
+        _106 = _32[1u];
+        _108 = _32[0u];
+    }
+    uint _115 = (((gl_GlobalInvocationID.y << 2u) + gl_GlobalInvocationID.x) + (gl_GlobalInvocationID.z << 4u)) * 4u;
+    imageStore(_15, int(_115), uvec4(floatBitsToUint(_108)));
+    imageStore(_15, int(_115 + 1u), uvec4(floatBitsToUint(_106)));
+    imageStore(_15, int(_115 + 2u), uvec4(floatBitsToUint(_104)));
+    imageStore(_15, int(_115 + 3u), uvec4(floatBitsToUint(_102)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 149
+; Schema: 0
+OpCapability Shader
+OpCapability StorageImageMultisample
+OpCapability ImageBuffer
+OpCapability ImageMSArray
+OpCapability StorageImageWriteWithoutFormat
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %18
+OpExecutionMode %3 LocalSize 4 4 4
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 Coherent
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 1
+OpDecorate %11 Coherent
+OpDecorate %15 DescriptorSet 0
+OpDecorate %15 Binding 2
+OpDecorate %15 NonReadable
+OpDecorate %18 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeImage %5 2D 0 0 1 2 R32f
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 2D 0 1 1 2 R32f
+%10 = OpTypePointer UniformConstant %9
+%11 = OpVariable %10 UniformConstant
+%12 = OpTypeInt 32 0
+%13 = OpTypeImage %12 Buffer 0 0 0 2 R32ui
+%14 = OpTypePointer UniformConstant %13
+%15 = OpVariable %14 UniformConstant
+%16 = OpTypeVector %12 3
+%17 = OpTypePointer Input %16
+%18 = OpVariable %17 Input
+%19 = OpTypePointer Input %12
+%21 = OpConstant %12 0
+%24 = OpConstant %12 1
+%27 = OpConstant %12 2
+%29 = OpConstant %12 4
+%30 = OpTypeArray %5 %29
+%31 = OpTypePointer Function %30
+%36 = OpConstant %12 3
+%37 = OpTypeBool
+%40 = OpConstant %12 6
+%53 = OpTypeVector %12 2
+%55 = OpTypeVector %5 4
+%78 = OpConstant %12 2120
+%80 = OpTypePointer Function %5
+%120 = OpTypeVector %12 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%32 = OpVariable %31 Function
+OpBranch %139
+%139 = OpLabel
+%20 = OpAccessChain %19 %18 %21
+%22 = OpLoad %12 %20
+%23 = OpAccessChain %19 %18 %24
+%25 = OpLoad %12 %23
+%26 = OpAccessChain %19 %18 %27
+%28 = OpLoad %12 %26
+%33 = OpBitwiseXor %12 %22 %24
+%34 = OpBitwiseXor %12 %25 %27
+%35 = OpBitwiseXor %12 %28 %36
+%38 = OpIEqual %37 %28 %36
+%39 = OpShiftLeftLogical %12 %35 %40
+%41 = OpShiftLeftLogical %12 %34 %29
+%42 = OpShiftLeftLogical %12 %33 %27
+%43 = OpIAdd %12 %41 %42
+%44 = OpIAdd %12 %43 %39
+%45 = OpConvertUToF %5 %44
+%46 = OpBitwiseOr %12 %44 %24
+%47 = OpConvertUToF %5 %46
+%48 = OpBitwiseOr %12 %44 %27
+%49 = OpConvertUToF %5 %48
+%50 = OpBitwiseOr %12 %44 %36
+%51 = OpConvertUToF %5 %50
+OpSelectionMerge %142 None
+OpBranchConditional %38 %141 %140
+%141 = OpLabel
+%52 = OpLoad %6 %8
+%54 = OpCompositeConstruct %53 %33 %34
+%56 = OpCompositeConstruct %55 %45 %45 %45 %45
+OpImageWrite %52 %54 %56 Sample %21
+%57 = OpLoad %6 %8
+%58 = OpCompositeConstruct %53 %33 %34
+%59 = OpCompositeConstruct %55 %47 %47 %47 %47
+OpImageWrite %57 %58 %59 Sample %24
+%60 = OpLoad %6 %8
+%61 = OpCompositeConstruct %53 %33 %34
+%62 = OpCompositeConstruct %55 %49 %49 %49 %49
+OpImageWrite %60 %61 %62 Sample %27
+%63 = OpLoad %6 %8
+%64 = OpCompositeConstruct %53 %33 %34
+%65 = OpCompositeConstruct %55 %51 %51 %51 %51
+OpImageWrite %63 %64 %65 Sample %36
+OpBranch %142
+%140 = OpLabel
+%66 = OpLoad %9 %11
+%67 = OpCompositeConstruct %16 %33 %34 %35
+%68 = OpCompositeConstruct %55 %45 %45 %45 %45
+OpImageWrite %66 %67 %68 Sample %21
+%69 = OpLoad %9 %11
+%70 = OpCompositeConstruct %16 %33 %34 %35
+%71 = OpCompositeConstruct %55 %47 %47 %47 %47
+OpImageWrite %69 %70 %71 Sample %24
+%72 = OpLoad %9 %11
+%73 = OpCompositeConstruct %16 %33 %34 %35
+%74 = OpCompositeConstruct %55 %49 %49 %49 %49
+OpImageWrite %72 %73 %74 Sample %27
+%75 = OpLoad %9 %11
+%76 = OpCompositeConstruct %16 %33 %34 %35
+%77 = OpCompositeConstruct %55 %51 %51 %51 %51
+OpImageWrite %75 %76 %77 Sample %36
+OpBranch %142
+%142 = OpLabel
+OpControlBarrier %27 %27 %78
+%79 = OpIEqual %37 %28 %21
+%81 = OpAccessChain %80 %32 %21
+OpSelectionMerge %147 None
+OpBranchConditional %79 %146 %143
+%146 = OpLabel
+%82 = OpLoad %6 %8
+%84 = OpCompositeConstruct %53 %22 %25
+%83 = OpImageRead %55 %82 %84 Sample %21
+%85 = OpCompositeExtract %5 %83 0
+OpStore %81 %85
+%87 = OpCompositeConstruct %53 %22 %25
+%86 = OpImageRead %55 %82 %87 Sample %24
+%88 = OpCompositeExtract %5 %86 0
+%89 = OpAccessChain %80 %32 %24
+OpStore %89 %88
+%91 = OpCompositeConstruct %53 %22 %25
+%90 = OpImageRead %55 %82 %91 Sample %27
+%92 = OpCompositeExtract %5 %90 0
+%93 = OpAccessChain %80 %32 %27
+OpStore %93 %92
+%95 = OpCompositeConstruct %53 %22 %25
+%94 = OpImageRead %55 %82 %95 Sample %36
+%96 = OpCompositeExtract %5 %94 0
+%97 = OpAccessChain %80 %32 %36
+OpStore %97 %96
+OpBranch %147
+%143 = OpLabel
+%98 = OpLoad %9 %11
+%100 = OpCompositeConstruct %16 %22 %25 %28
+%99 = OpImageRead %55 %98 %100 Sample %21
+%101 = OpCompositeExtract %5 %99 0
+OpStore %81 %101
+OpBranch %144
+%144 = OpLabel
+%128 = OpPhi %12 %24 %143 %129 %144
+%130 = OpLoad %9 %11
+%132 = OpCompositeConstruct %16 %22 %25 %28
+%131 = OpImageRead %55 %130 %132 Sample %128
+%133 = OpCompositeExtract %5 %131 0
+%134 = OpAccessChain %80 %32 %128
+OpStore %134 %133
+%129 = OpIAdd %12 %128 %24
+%135 = OpIEqual %37 %129 %29
+OpLoopMerge %145 %144 None
+OpBranchConditional %135 %145 %144
+%145 = OpLabel
+%109 = OpLoad %5 %81
+%136 = OpInBoundsAccessChain %80 %32 %24
+%107 = OpLoad %5 %136
+%137 = OpInBoundsAccessChain %80 %32 %27
+%105 = OpLoad %5 %137
+%138 = OpInBoundsAccessChain %80 %32 %36
+%103 = OpLoad %5 %138
+OpBranch %147
+%147 = OpLabel
+%102 = OpPhi %5 %96 %146 %103 %145
+%104 = OpPhi %5 %92 %146 %105 %145
+%106 = OpPhi %5 %88 %146 %107 %145
+%108 = OpPhi %5 %85 %146 %109 %145
+%110 = OpShiftLeftLogical %12 %28 %29
+%111 = OpShiftLeftLogical %12 %25 %27
+%112 = OpIAdd %12 %111 %22
+%113 = OpIAdd %12 %112 %110
+%114 = OpLoad %13 %15
+%115 = OpIMul %12 %113 %29
+%116 = OpBitcast %12 %108
+%117 = OpBitcast %12 %106
+%118 = OpBitcast %12 %104
+%119 = OpBitcast %12 %102
+%121 = OpCompositeConstruct %120 %116 %116 %116 %116
+OpImageWrite %114 %115 %121
+%122 = OpCompositeConstruct %120 %117 %117 %117 %117
+%123 = OpIAdd %12 %115 %24
+OpImageWrite %114 %123 %122
+%124 = OpCompositeConstruct %120 %118 %118 %118 %118
+%125 = OpIAdd %12 %115 %27
+OpImageWrite %114 %125 %124
+%126 = OpCompositeConstruct %120 %119 %119 %119 %119
+%127 = OpIAdd %12 %115 %36
+OpImageWrite %114 %127 %126
+OpReturn
+OpFunctionEnd
+#endif

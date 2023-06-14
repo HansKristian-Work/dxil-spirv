@@ -482,9 +482,13 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 		if (image_ops & spv::ImageOperandsConstOffsetMask)
 			op->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
+	}
 
-		if (image_ops & spv::ImageOperandsSampleMask)
-			op->add_id(mip_or_sample);
+	if (image_ops & spv::ImageOperandsSampleMask)
+	{
+		op->add_id(mip_or_sample);
+		if (is_uav)
+			impl.builder().addCapability(spv::CapabilityStorageImageMultisample);
 	}
 
 	impl.add(op, meta.rov);
@@ -652,7 +656,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	return true;
 }
 
-bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction, bool multi_sampled)
 {
 	auto &builder = impl.builder();
 
@@ -687,6 +691,14 @@ bool emit_texture_store_instruction(Converter::Impl &impl, const llvm::CallInst 
 	store_id = impl.fixup_store_type_typed(meta.component_type, 4, store_id);
 	op->add_id(store_id);
 	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
+
+	if (multi_sampled)
+	{
+		spv::Id sample_id = impl.get_id_for_value(instruction->getOperand(10));
+		op->add_literal(spv::ImageOperandsSampleMask);
+		op->add_id(sample_id);
+		builder.addCapability(spv::CapabilityStorageImageMultisample);
+	}
 
 	impl.add(op, meta.rov);
 	return true;

@@ -71,7 +71,8 @@ struct DXILDispatcher
 		OP(SampleCmpLevelZero) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevelZero>;
 		OP(SampleGrad) = emit_sample_grad_instruction;
 		OP(TextureLoad) = emit_texture_load_instruction;
-		OP(TextureStore) = emit_texture_store_instruction;
+		OP(TextureStore) = emit_texture_store_instruction<false>;
+		OP(TextureStoreSample) = emit_texture_store_instruction<true>;
 		OP(GetDimensions) = emit_get_dimensions_instruction;
 		OP(TextureGather) = emit_texture_gather_dispatch<false>;
 		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true>;
@@ -631,7 +632,7 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 	if (tracking)
 	{
 		tracking->has_written = true;
-		if (opcode != DXIL::Op::TextureStore)
+		if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
 		{
 			auto meta = get_resource_meta_from_buffer_op(impl, instruction);
 
@@ -850,6 +851,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 
 	case DXIL::Op::TextureStore:
+	case DXIL::Op::TextureStoreSample:
 		analyze_dxil_buffer_store(impl, instruction, op);
 		break;
 
