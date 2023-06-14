@@ -4645,7 +4645,7 @@ spv::Id Converter::Impl::build_offset(spv::Id value, unsigned offset)
 }
 
 void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type, unsigned num_components, const llvm::Value *value,
-                                             const llvm::Type *target_type)
+                                             const llvm::Type *target_type, spv::Id override_value)
 {
 	auto *code_id = allocate(spv::OpCompositeExtract, builder().makeUintType(32));
 	code_id->add_id(get_id_for_value(value));
@@ -4653,12 +4653,21 @@ void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type,
 	add(code_id);
 
 	auto effective_component_type = get_effective_typed_resource_type(component_type);
-	auto *texel = allocate(spv::OpCompositeExtract, get_type_id(effective_component_type, 1, num_components));
-	texel->add_id(get_id_for_value(value));
-	texel->add_literal(1);
-	add(texel);
+	spv::Id texel_id;
 
-	spv::Id texel_id = texel->id;
+	if (override_value)
+	{
+		texel_id = override_value;
+	}
+	else
+	{
+		auto *texel = allocate(spv::OpCompositeExtract, get_type_id(effective_component_type, 1, num_components));
+		texel->add_id(get_id_for_value(value));
+		texel->add_literal(1);
+		add(texel);
+		texel_id = texel->id;
+	}
+
 	fixup_load_type_typed(component_type, num_components, texel_id, target_type);
 
 	spv::Id components[5];

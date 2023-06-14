@@ -707,7 +707,7 @@ bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::
 	return true;
 }
 
-bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// Elide dead loads.
 	if (!impl.composite_is_accessed(instruction))
@@ -736,13 +736,19 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 		return false;
 
 	spv::Id aux_id;
-	if (compare)
+
+	if (!raw)
 	{
-		// TextureGatherCmp has a component here. Perhaps it is to select depth vs stencil?
-		aux_id = impl.get_id_for_value(instruction->getOperand(10));
+		if (compare)
+		{
+			// TextureGatherCmp has a component here. Perhaps it is to select depth vs stencil?
+			aux_id = impl.get_id_for_value(instruction->getOperand(10));
+		}
+		else
+			aux_id = impl.get_id_for_value(instruction->getOperand(9));
 	}
 	else
-		aux_id = impl.get_id_for_value(instruction->getOperand(9));
+		aux_id = builder.makeUintConstant(0);
 
 	auto &access_meta = impl.llvm_composite_meta[instruction];
 	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
@@ -757,6 +763,8 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
 	else
 		sample_type = texel_type;
+
+	bool raw_gather64 = raw && instruction->getType()->getStructElementType(0)->getIntegerBitWidth() == 64;
 
 	spv::Op opcode;
 	if (compare)
@@ -781,15 +789,83 @@ bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const 
 
 	impl.add(op);
 
-	auto *target_type = instruction->getType()->getStructElementType(0);
+	if (raw_gather64)
+	{
+		Operation *op_green = impl.allocate(spv::OpImageGather, texel_type);
+		op_green->add_ids({ combined_image_sampler_id, coord_id, builder.makeUintConstant(1) });
 
-	if (sparse)
-		impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
+		if (image_flags)
+		{
+			op_green->add_literal(image_flags);
+			if (image_flags & spv::ImageOperandsOffsetMask)
+				op_green->add_id(impl.build_vector(builder.makeIntegerType(32, true), offsets, num_coords));
+			else if (image_flags & spv::ImageOperandsConstOffsetMask)
+				op_green->add_id(impl.build_constant_vector(builder.makeIntegerType(32, true), offsets, num_coords));
+		}
+
+		impl.add(op_green);
+
+		spv::Id components64[4];
+		spv::Id gather_result;
+
+		if (sparse)
+		{
+			auto *extract_value = impl.allocate(spv::OpCompositeExtract, texel_type);
+			gather_result = extract_value->id;
+			extract_value->add_id(op->id);
+			extract_value->add_literal(1);
+			impl.add(extract_value);
+		}
+		else
+			gather_result = op->id;
+
+		for (unsigned i = 0; i < 4; i++)
+		{
+			auto *extr0 = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+			auto *extr1 = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+
+			extr0->add_id(gather_result);
+			extr0->add_literal(i);
+			extr1->add_id(op_green->id);
+			extr1->add_literal(i);
+
+			impl.add(extr0);
+			impl.add(extr1);
+
+			spv::Id components[2] = { extr0->id, extr1->id };
+			spv::Id value = impl.build_vector(builder.makeUintType(32), components, 2);
+			auto *bitcast_64 = impl.allocate(spv::OpBitcast, builder.makeUintType(64));
+			bitcast_64->add_id(value);
+			components64[i] = bitcast_64->id;
+
+			impl.add(bitcast_64);
+		}
+
+		spv::Id u64_vector = impl.build_vector(builder.makeUintType(64), components64, 4);
+
+		if (sparse)
+		{
+			auto *target_type = instruction->getType()->getStructElementType(0);
+			impl.repack_sparse_feedback(DXIL::ComponentType::U64, 4, instruction, target_type, u64_vector);
+		}
+		else
+		{
+			impl.rewrite_value(instruction, u64_vector);
+		}
+	}
 	else
 	{
-		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
-		build_exploded_composite_from_vector(impl, instruction, 4);
+		auto *target_type = instruction->getType()->getStructElementType(0);
+
+		if (sparse)
+			impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
+		else
+		{
+			impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
+			build_exploded_composite_from_vector(impl, instruction, 4);
+		}
 	}
+
 	return true;
 }
 

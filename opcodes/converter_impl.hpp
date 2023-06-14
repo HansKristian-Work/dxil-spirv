@@ -469,7 +469,7 @@ struct Converter::Impl
 	void fixup_load_type_typed(DXIL::ComponentType &component_type, unsigned components, spv::Id &value_id,
 	                           const llvm::Type *target_type);
 	void repack_sparse_feedback(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value,
-	                            const llvm::Type *target_type);
+	                            const llvm::Type *target_type, spv::Id override_value = 0);
 	spv::Id fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 	spv::Id fixup_store_type_atomic(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 	spv::Id fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value);

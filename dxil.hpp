@@ -452,6 +452,7 @@ enum class Op : unsigned
 	Pack4x8 = 220,
 	IsHelperLane = 221,
 	QuadVote = 222,
+	TextureGatherRaw = 223,
 	SampleCmpLevel = 224,
 	TextureStoreSample = 225,
 

@@ -31,7 +31,7 @@ bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num
 
 bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-bool emit_texture_gather_instruction(bool compare, Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction, bool multi_sampled);
 bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
@@ -54,10 +54,10 @@ static inline bool emit_texture_store_instruction(Converter::Impl &impl, const l
 	return emit_texture_store_instruction_dispatch(impl, instruction, multi_sampled);
 }
 
-template <bool compare>
+template <bool compare, bool raw>
 static inline bool emit_texture_gather_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	return emit_texture_gather_instruction(compare, impl, instruction);
+	return emit_texture_gather_instruction(compare, raw, impl, instruction);
 }
 
 template <bool image>

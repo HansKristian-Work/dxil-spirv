@@ -1,0 +1,19 @@
+Texture2D<uint16_t> D16 : register(t0);
+Texture2D<uint> D32 : register(t1);
+Texture2D<uint64_t> D64 : register(t2);
+SamplerState S : register(s0);
+RWByteAddressBuffer U : register(u0);
+
+[numthreads(1, 1, 1)]
+void main(uint id : SV_DispatchThreadID)
+{
+	uint3 status;
+	uint16_t4 d16 = D16.GatherRaw(S, 0.5.xx, int2(0, 0), status.x);
+	uint4 d32 = D32.GatherRaw(S, 0.5.xx, int2(0, 0), status.y);
+	uint64_t4 d64 = D64.GatherRaw(S, 0.5.xx, int2(0, 0), status.z);
+
+	U.Store<uint4>(0, uint4(d16));
+	U.Store<uint4>(16, d32);
+	U.Store<uint64_t4>(32, d64);
+	U.Store<uint3>(64, status);
+}

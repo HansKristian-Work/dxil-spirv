@@ -75,8 +75,9 @@ struct DXILDispatcher
 		OP(TextureStore) = emit_texture_store_instruction<false>;
 		OP(TextureStoreSample) = emit_texture_store_instruction<true>;
 		OP(GetDimensions) = emit_get_dimensions_instruction;
-		OP(TextureGather) = emit_texture_gather_dispatch<false>;
-		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true>;
+		OP(TextureGather) = emit_texture_gather_dispatch<false, false>;
+		OP(TextureGatherRaw) = emit_texture_gather_dispatch<false, true>;
+		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true, false>;
 		OP(CalculateLOD) = emit_calculate_lod_instruction;
 		OP(Texture2DMSGetSamplePosition) = emit_get_sample_position_dispatch<true>;
 		OP(RenderTargetGetSamplePosition) = emit_get_sample_position_dispatch<false>;
