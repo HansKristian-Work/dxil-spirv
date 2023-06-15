@@ -104,6 +104,7 @@ public:
 
 	// Bare bones implementation, we only need it for fp32-denorm-mode attribute.
 	Attribute getFnAttribute(const char *attribute) const;
+	bool hasFnAttribute(const char *attribute) const;
 	void set_attributes(Vector<std::pair<String, String>> attributes);
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL

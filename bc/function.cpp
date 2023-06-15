@@ -97,6 +97,14 @@ Attribute Function::getFnAttribute(const char *attribute) const
 	return Attribute(nullptr);
 }
 
+bool Function::hasFnAttribute(const char *attribute) const
+{
+	for (auto &attr : attributes)
+		if (attr.first == attribute)
+			return true;
+	return false;
+}
+
 void Function::set_attributes(Vector<std::pair<String, String>> attributes_)
 {
 	attributes = std::move(attributes_);
