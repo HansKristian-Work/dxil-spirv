@@ -458,9 +458,9 @@ struct Converter::Impl
 	bool emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
 
 	spv::Id build_sampled_image(spv::Id image_id, spv::Id sampler_id, bool comparison);
-	spv::Id build_vector(spv::Id element_type, spv::Id *elements, unsigned count);
+	spv::Id build_vector(spv::Id element_type, const spv::Id *elements, unsigned count);
 	spv::Id build_vector_type(spv::Id element_type, unsigned count);
-	spv::Id build_constant_vector(spv::Id element_type, spv::Id *elements, unsigned count);
+	spv::Id build_constant_vector(spv::Id element_type, const spv::Id *elements, unsigned count);
 	spv::Id build_offset(spv::Id value, unsigned offset);
 	void fixup_load_type_io(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
 	void fixup_load_type_atomic(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
