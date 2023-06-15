@@ -56,7 +56,10 @@ enum class HelperCall
 	WaveMultiPrefixCountBits,
 	RobustAtomicCounter,
 	QuadAll,
-	QuadAny
+	QuadAny,
+	WaveIsFirstLaneMasked,
+	WaveActiveAllEqualMasked,
+	WaveReadFirstLaneMasked
 };
 
 class SPIRVModule
@@ -104,6 +107,7 @@ public:
 	static bool opcode_is_control_dependent(spv::Op opcode);
 
 	void set_override_spirv_version(uint32_t version);
+	void set_helper_lanes_participate_in_wave_ops(bool enable);
 
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 

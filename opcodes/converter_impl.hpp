@@ -295,6 +295,7 @@ struct Converter::Impl
 		bool declares_globallycoherent_uav = false;
 		bool declares_rov = false;
 		bool per_sample_shading = false;
+		bool waveops_include_helper_lanes = false;
 		String entry_point_name;
 	} execution_mode_meta;
 
@@ -554,6 +555,7 @@ struct Converter::Impl
 		bool force_wave_size_enable = false;
 		bool supports_float16_denorm_preserve = false;
 		bool supports_float64_denorm_preserve = false;
+		bool strict_helper_lane_waveops = true;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;
@@ -652,6 +654,7 @@ struct Converter::Impl
 		// Only relevant for fragment shaders.
 		bool has_side_effects = false;
 		bool discards = false;
+		bool helper_lanes_may_exist = false;
 		bool can_require_primitive_culling = false;
 		bool require_compute_shader_derivatives = false;
 		bool precise_f16_to_f32_observed = false;

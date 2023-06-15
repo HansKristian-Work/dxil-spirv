@@ -5,12 +5,12 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform usamplerBuffer _8;
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _11;
 
-uvec4 WaveMatch(uint _25)
+uvec4 WaveMatch(uint _26)
 {
     uvec4 _35;
     for (;;)
     {
-        bool _34 = _25 == subgroupBroadcastFirst(_25);
+        bool _34 = _26 == subgroupBroadcastFirst(_26);
         _35 = subgroupBallot(_34);
         if (_34)
         {
@@ -53,7 +53,7 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %16
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
-OpName %26 "WaveMatch"
+OpName %27 "WaveMatch"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %11 DescriptorSet 0
@@ -75,9 +75,9 @@ OpDecorate %16 BuiltIn GlobalInvocationId
 %17 = OpTypePointer Input %5
 %19 = OpConstant %5 0
 %21 = OpTypeVector %5 4
-%24 = OpTypeFunction %21 %5
-%32 = OpConstant %5 3
-%33 = OpTypeBool
+%24 = OpTypeBool
+%25 = OpTypeFunction %21 %5
+%33 = OpConstant %5 3
 %44 = OpTypeFloat 32
 %59 = OpConstant %5 20
 %60 = OpConstant %44 0
@@ -95,7 +95,7 @@ OpBranch %84
 %20 = OpLoad %5 %18
 %22 = OpImageFetch %21 %13 %20
 %23 = OpCompositeExtract %5 %22 0
-%37 = OpFunctionCall %21 %26 %23
+%37 = OpFunctionCall %21 %27 %23
 %38 = OpCompositeExtract %5 %37 0
 %39 = OpCompositeExtract %5 %37 1
 %40 = OpCompositeExtract %5 %37 2
@@ -104,7 +104,7 @@ OpBranch %84
 %43 = OpCompositeExtract %5 %42 0
 %45 = OpBitcast %44 %43
 %46 = OpBitcast %5 %45
-%47 = OpFunctionCall %21 %26 %46
+%47 = OpFunctionCall %21 %27 %46
 %48 = OpCompositeExtract %5 %47 0
 %49 = OpCompositeExtract %5 %47 1
 %50 = OpCompositeExtract %5 %47 2
@@ -115,10 +115,10 @@ OpBranch %84
 %55 = OpBitwiseOr %5 %51 %41
 %56 = OpImageFetch %21 %13 %20
 %57 = OpCompositeExtract %5 %56 0
-%58 = OpINotEqual %33 %57 %59
+%58 = OpINotEqual %24 %57 %59
 %62 = OpSelect %44 %58 %61 %60
 %63 = OpBitcast %5 %62
-%64 = OpFunctionCall %21 %26 %63
+%64 = OpFunctionCall %21 %27 %63
 %65 = OpCompositeExtract %5 %64 0
 %66 = OpCompositeExtract %5 %64 1
 %67 = OpCompositeExtract %5 %64 2
@@ -137,23 +137,23 @@ OpImageWrite %12 %77 %76
 %80 = OpIAdd %5 %73 %81
 OpImageWrite %12 %80 %79
 %82 = OpCompositeConstruct %21 %72 %72 %72 %72
-%83 = OpIAdd %5 %73 %32
+%83 = OpIAdd %5 %73 %33
 OpImageWrite %12 %83 %82
 OpReturn
 OpFunctionEnd
-%26 = OpFunction %21 None %24
-%25 = OpFunctionParameter %5
-%27 = OpLabel
-OpBranch %28
+%27 = OpFunction %21 None %25
+%26 = OpFunctionParameter %5
 %28 = OpLabel
-OpLoopMerge %30 %29 None
 OpBranch %29
 %29 = OpLabel
-%31 = OpGroupNonUniformBroadcastFirst %5 %32 %25
-%34 = OpIEqual %33 %25 %31
-%35 = OpGroupNonUniformBallot %21 %32 %34
-OpBranchConditional %34 %30 %28
+OpLoopMerge %31 %30 None
+OpBranch %30
 %30 = OpLabel
+%32 = OpGroupNonUniformBroadcastFirst %5 %33 %26
+%34 = OpIEqual %24 %26 %32
+%35 = OpGroupNonUniformBallot %21 %33 %34
+OpBranchConditional %34 %31 %29
+%31 = OpLabel
 OpReturnValue %35
 OpFunctionEnd
 #endif

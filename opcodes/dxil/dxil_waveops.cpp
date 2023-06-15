@@ -26,17 +26,41 @@
 #include "dxil_common.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
+#include <limits>
 
 namespace dxil_spv
 {
+static bool wave_op_needs_helper_lane_masking(Converter::Impl &impl)
+{
+	return impl.shader_analysis.helper_lanes_may_exist &&
+	       impl.options.strict_helper_lane_waveops &&
+	       !impl.execution_mode_meta.waveops_include_helper_lanes;
+}
+
 bool emit_wave_is_first_lane_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	auto *op = impl.allocate(spv::OpGroupNonUniformElect, instruction);
-	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 
-	builder.addCapability(spv::CapabilityGroupNonUniform);
-	impl.add(op);
+	if (wave_op_needs_helper_lane_masking(impl))
+	{
+		auto *is_helper = impl.allocate(spv::OpIsHelperInvocationEXT, builder.makeBoolType());
+		impl.add(is_helper);
+
+		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::WaveIsFirstLaneMasked);
+		auto *op = impl.allocate(spv::OpFunctionCall, instruction);
+		op->add_id(call_id);
+		op->add_id(is_helper->id);
+		impl.add(op);
+	}
+	else
+	{
+		auto *op = impl.allocate(spv::OpGroupNonUniformElect, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+
+		builder.addCapability(spv::CapabilityGroupNonUniform);
+		impl.add(op);
+	}
+
 	return true;
 }
 
@@ -58,14 +82,82 @@ bool emit_wave_builtin_instruction(spv::BuiltIn builtin, Converter::Impl &impl, 
 
 bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (opcode == spv::OpGroupNonUniformAllEqual && wave_op_needs_helper_lane_masking(impl))
+	{
+		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+		impl.add(is_helper_lane);
+
+		spv::Id call_id = impl.spirv_module.get_helper_call_id(
+		    HelperCall::WaveActiveAllEqualMasked, impl.get_type_id(instruction->getOperand(1)->getType()));
+		auto *op = impl.allocate(spv::OpFunctionCall, instruction);
+		op->add_id(call_id);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		op->add_id(is_helper_lane->id);
+
+		impl.add(op);
+		return true;
+	}
+
 	auto &builder = impl.builder();
 	auto *op = impl.allocate(opcode, instruction);
 	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	spv::Id value = impl.get_id_for_value(instruction->getOperand(1));
+
+	if (wave_op_needs_helper_lane_masking(impl))
+	{
+		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+		impl.add(is_helper_lane);
+
+		// Helper lanes cannot affect the result, but let them participate.
+		// Just force a specific boolean value here that ensures invariant result.
+
+		if (opcode == spv::OpGroupNonUniformAny)
+		{
+			// Force false for helpers.
+			auto *is_active = impl.allocate(spv::OpLogicalNot, impl.builder().makeBoolType());
+			is_active->add_id(is_helper_lane->id);
+			impl.add(is_active);
+			auto *and_op = impl.allocate(spv::OpLogicalAnd, impl.builder().makeBoolType());
+			and_op->add_id(value);
+			and_op->add_id(is_active->id);
+			impl.add(and_op);
+			value = and_op->id;
+		}
+		else if (opcode == spv::OpGroupNonUniformAll)
+		{
+			// Force true for helpers.
+			auto *or_op = impl.allocate(spv::OpLogicalOr, impl.builder().makeBoolType());
+			or_op->add_id(value);
+			or_op->add_id(is_helper_lane->id);
+			impl.add(or_op);
+			value = or_op->id;
+		}
+	}
+
+	op->add_id(value);
 
 	builder.addCapability(spv::CapabilityGroupNonUniformVote);
 	impl.add(op);
 	return true;
+}
+
+static spv::Id build_masked_ballot(Converter::Impl &impl, spv::Id input_value)
+{
+	auto &builder = impl.builder();
+
+	auto *is_helper = impl.allocate(spv::OpIsHelperInvocationEXT, builder.makeBoolType());
+	impl.add(is_helper);
+
+	auto *is_active = impl.allocate(spv::OpLogicalNot, builder.makeBoolType());
+	is_active->add_id(is_helper->id);
+	impl.add(is_active);
+
+	auto *is_active_ballot = impl.allocate(spv::OpLogicalAnd, builder.makeBoolType());
+	is_active_ballot->add_ids({ input_value, is_active->id });
+	impl.add(is_active_ballot);
+
+	return is_active_ballot->id;
 }
 
 bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -73,29 +165,9 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto &builder = impl.builder();
 	spv::Id bool_value;
 
-	// Disable this path for now. It appears to cause GPU hangs in some very weird cases.
-	// Near-impossible to debug, and it should be safer to not mess with lanes here anyways.
-#if 0
-	if (impl.execution_model == spv::ExecutionModelFragment)
-	{
-		auto *is_helper = impl.allocate(spv::OpIsHelperInvocationEXT, builder.makeBoolType());
-		impl.add(is_helper);
-
-		auto *is_active = impl.allocate(spv::OpLogicalNot, builder.makeBoolType());
-		is_active->add_id(is_helper->id);
-		impl.add(is_active);
-
-		auto *is_active_ballot = impl.allocate(spv::OpLogicalAnd, builder.makeBoolType());
-		is_active_ballot->add_ids({ impl.get_id_for_value(instruction->getOperand(1)), is_active->id });
-		impl.add(is_active_ballot);
-
-		bool_value = is_active_ballot->id;
-	}
-	else
-#endif
-	{
-		bool_value = impl.get_id_for_value(instruction->getOperand(1));
-	}
+	bool_value = impl.get_id_for_value(instruction->getOperand(1));
+	if (wave_op_needs_helper_lane_masking(impl))
+		bool_value = build_masked_ballot(impl, bool_value);
 
 	auto *op = impl.allocate(spv::OpGroupNonUniformBallot, instruction,
 	                         builder.makeVectorType(builder.makeUintType(32), 4));
@@ -109,13 +181,30 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	auto &builder = impl.builder();
-	auto *op = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, instruction);
-	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	if (wave_op_needs_helper_lane_masking(impl))
+	{
+		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+		impl.add(is_helper_lane);
 
-	impl.add(op);
-	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::WaveReadFirstLaneMasked,
+		                                                       impl.get_type_id(instruction->getOperand(1)->getType()));
+		auto *op = impl.allocate(spv::OpFunctionCall, instruction);
+		op->add_id(call_id);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		op->add_id(is_helper_lane->id);
+		impl.add(op);
+	}
+	else
+	{
+		auto &builder = impl.builder();
+		auto *op = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+		impl.add(op);
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	}
+
 	return true;
 }
 
@@ -306,7 +395,12 @@ bool emit_wave_bit_count_instruction(spv::GroupOperation operation, Converter::I
 
 	auto *ballot_op = impl.allocate(spv::OpGroupNonUniformBallot, builder.makeVectorType(builder.makeUintType(32), 4));
 	ballot_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	ballot_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	spv::Id bool_value = impl.get_id_for_value(instruction->getOperand(1));
+	if (wave_op_needs_helper_lane_masking(impl))
+		bool_value = build_masked_ballot(impl, bool_value);
+	ballot_op->add_id(bool_value);
+
 	impl.add(ballot_op);
 
 	auto *op = impl.allocate(spv::OpGroupNonUniformBallotBitCount, instruction);
@@ -333,6 +427,159 @@ static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv:
 		return u;
 }
 
+static spv::Id build_mask_reduction_input_arith(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                spv::Id input_value, DXIL::WaveOpKind op_kind)
+{
+	auto &builder = impl.builder();
+
+	// For arithmetic cases, we can just replace the input with a sentinel value
+	// if we're a helper lane.
+	auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+	impl.add(is_helper_lane);
+
+	uint32_t sign_kind;
+	if (!get_constant_operand(instruction, 3, &sign_kind))
+		return 0;
+
+#define DECLARE_TYPE_TEMPLATE(type, product, sum, min, max) do { \
+	switch (op_kind) \
+	{ \
+	case DXIL::WaveOpKind::Product: \
+		replacement_value = builder.make##type##Constant(product); \
+		break; \
+	case DXIL::WaveOpKind::Sum: \
+		replacement_value = builder.make##type##Constant(sum); \
+		break; \
+	case DXIL::WaveOpKind::Min: \
+		replacement_value = builder.make##type##Constant(min); \
+		break; \
+	case DXIL::WaveOpKind::Max: \
+		replacement_value = builder.make##type##Constant(max); \
+		break; \
+	} \
+} while(0)
+
+	spv::Id replacement_value;
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+	{
+		DECLARE_TYPE_TEMPLATE(Float,
+		                      1.0f, 0.0f,
+		                      std::numeric_limits<float>::infinity(),
+		                      -std::numeric_limits<float>::infinity());
+	}
+	else if (instruction->getType()->getTypeID() == llvm::Type::TypeID::DoubleTyID)
+	{
+		DECLARE_TYPE_TEMPLATE(Double,
+		                      1.0, 0.0,
+		                      std::numeric_limits<double>::infinity(),
+		                      -std::numeric_limits<double>::infinity());
+	}
+	else if (instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID)
+	{
+		DECLARE_TYPE_TEMPLATE(Float16, 0x3c00, 0, 0x7c00, 0xfc00);
+	}
+	else if (static_cast<DXIL::SignedOpKind>(sign_kind) == DXIL::SignedOpKind::Signed)
+	{
+		switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+		{
+		case 16:
+			DECLARE_TYPE_TEMPLATE(Uint16, 1, 0,
+			                      uint16_t(std::numeric_limits<int16_t>::max()),
+			                      uint16_t(std::numeric_limits<int16_t>::min()));
+			break;
+
+		case 32:
+			DECLARE_TYPE_TEMPLATE(Uint, 1, 0,
+			                      uint32_t(std::numeric_limits<int32_t>::max()),
+			                      uint32_t(std::numeric_limits<int32_t>::min()));
+			break;
+
+		case 64:
+			DECLARE_TYPE_TEMPLATE(Uint64, 1, 0,
+			                      uint64_t(std::numeric_limits<int64_t>::max()),
+			                      uint64_t(std::numeric_limits<int64_t>::min()));
+			break;
+
+		default:
+			return 0;
+		}
+	}
+	else
+	{
+		switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+		{
+		case 16:
+			DECLARE_TYPE_TEMPLATE(Uint16, 1, 0,
+			                      std::numeric_limits<uint16_t>::max(),
+			                      std::numeric_limits<uint16_t>::min());
+			break;
+
+		case 32:
+			DECLARE_TYPE_TEMPLATE(Uint, 1, 0,
+			                      std::numeric_limits<uint32_t>::max(),
+			                      std::numeric_limits<uint32_t>::min());
+			break;
+
+		case 64:
+			DECLARE_TYPE_TEMPLATE(Uint64, 1, 0,
+			                      std::numeric_limits<uint64_t>::max(),
+			                      std::numeric_limits<uint64_t>::min());
+			break;
+
+		default:
+			return 0;
+		}
+	}
+
+	auto *replace_op = impl.allocate(spv::OpSelect, impl.get_type_id(instruction->getOperand(1)->getType()));
+	replace_op->add_id(is_helper_lane->id);
+	replace_op->add_id(replacement_value);
+	replace_op->add_id(input_value);
+	impl.add(replace_op);
+	return replace_op->id;
+}
+
+static spv::Id build_mask_reduction_input_bitwise(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                  spv::Id input_value, DXIL::WaveBitOpKind op_kind)
+{
+	auto &builder = impl.builder();
+
+	// For bitwise cases, we can just replace the input with a sentinel value
+	// if we're a helper lane.
+	auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+	impl.add(is_helper_lane);
+
+	spv::Id replacement_value;
+	switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+	{
+	case 16:
+		replacement_value = builder.makeUint16Constant(
+		    op_kind == DXIL::WaveBitOpKind::And ? std::numeric_limits<uint16_t>::max() : 0u);
+		break;
+
+	case 32:
+		replacement_value = builder.makeUintConstant(
+			op_kind == DXIL::WaveBitOpKind::And ? std::numeric_limits<uint32_t>::max() : 0u);
+		break;
+
+	case 64:
+		replacement_value = builder.makeUint64Constant(
+			op_kind == DXIL::WaveBitOpKind::And ? std::numeric_limits<uint64_t>::max() : 0u);
+		break;
+
+	default:
+		replacement_value = 0;
+		break;
+	}
+
+	auto *replace_op = impl.allocate(spv::OpSelect, impl.get_type_id(instruction->getOperand(1)->getType()));
+	replace_op->add_id(is_helper_lane->id);
+	replace_op->add_id(replacement_value);
+	replace_op->add_id(input_value);
+	impl.add(replace_op);
+	return replace_op->id;
+}
+
 static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv::Op i)
 {
 	if (instruction->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
@@ -351,7 +598,7 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	if (!get_constant_operand(instruction, 2, &op_kind))
 		return false;
 
-	switch (static_cast<DXIL::WaveOpKind>(op_kind))
+	switch (DXIL::WaveOpKind(op_kind))
 	{
 	case DXIL::WaveOpKind::Sum:
 		opcode = select_opcode(instruction, spv::OpGroupNonUniformFAdd, spv::OpGroupNonUniformIAdd,
@@ -377,7 +624,13 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	auto *op = impl.allocate(opcode, instruction);
 	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 	op->add_literal(spv::GroupOperationReduce);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	spv::Id input_value = impl.get_id_for_value(instruction->getOperand(1));
+	if (wave_op_needs_helper_lane_masking(impl))
+		input_value = build_mask_reduction_input_arith(impl, instruction, input_value, DXIL::WaveOpKind(op_kind));
+
+	op->add_id(input_value);
+
 	impl.add(op);
 
 	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
@@ -411,7 +664,13 @@ bool emit_wave_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	auto *op = impl.allocate(opcode, instruction);
 	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 	op->add_literal(spv::GroupOperationExclusiveScan);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	spv::Id input_value = impl.get_id_for_value(instruction->getOperand(1));
+	if (wave_op_needs_helper_lane_masking(impl))
+		input_value = build_mask_reduction_input_arith(impl, instruction, input_value, DXIL::WaveOpKind(op_kind));
+
+	op->add_id(input_value);
+
 	impl.add(op);
 
 	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
@@ -431,6 +690,14 @@ bool emit_wave_multi_prefix_count_bits_instruction(Converter::Impl &impl, const 
 	for (unsigned i = 0; i < 4; i++)
 		ballot[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
 	op->add_id(impl.build_vector(builder.makeUintType(32), ballot, 4));
+
+	if (wave_op_needs_helper_lane_masking(impl))
+	{
+		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+		impl.add(is_helper_lane);
+		op->add_id(is_helper_lane->id);
+	}
+
 	impl.add(op);
 
 	return true;
@@ -479,10 +746,19 @@ bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::Ca
 	auto *op = impl.allocate(spv::OpFunctionCall, instruction);
 	op->add_id(call_id);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
 	spv::Id ballot[4];
 	for (unsigned i = 0; i < 4; i++)
 		ballot[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
 	op->add_id(impl.build_vector(builder.makeUintType(32), ballot, 4));
+
+	if (wave_op_needs_helper_lane_masking(impl))
+	{
+		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+		impl.add(is_helper_lane);
+		op->add_id(is_helper_lane->id);
+	}
+
 	impl.add(op);
 
 	return true;
@@ -516,7 +792,13 @@ bool emit_wave_active_bit_instruction(Converter::Impl &impl, const llvm::CallIns
 	auto *op = impl.allocate(opcode, instruction);
 	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 	op->add_literal(spv::GroupOperationReduce);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	spv::Id input_value = impl.get_id_for_value(instruction->getOperand(1));
+	if (wave_op_needs_helper_lane_masking(impl))
+		input_value = build_mask_reduction_input_bitwise(impl, instruction, input_value, DXIL::WaveBitOpKind(op_kind));
+
+	op->add_id(input_value);
+
 	impl.add(op);
 
 	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
@@ -675,6 +957,14 @@ bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	auto *call_op = impl.allocate(spv::OpFunctionCall, instruction, builder.makeVectorType(builder.makeUintType(32), 4));
 	call_op->add_id(call_id);
 	call_op->add_id(value_id);
+
+	if (wave_op_needs_helper_lane_masking(impl))
+	{
+		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+		impl.add(is_helper_lane);
+		call_op->add_id(is_helper_lane->id);
+	}
+
 	impl.add(call_op);
 
 	return true;

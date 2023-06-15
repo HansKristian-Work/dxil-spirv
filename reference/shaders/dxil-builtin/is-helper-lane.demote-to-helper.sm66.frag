@@ -32,10 +32,14 @@ void main()
     }
     else
     {
-        _26 = subgroupExclusiveAdd(TEXCOORD.x);
-        _29 = subgroupExclusiveAdd(TEXCOORD.y);
-        _31 = subgroupExclusiveAdd(TEXCOORD.x * TEXCOORD.x);
-        _33 = subgroupExclusiveAdd(TEXCOORD.y * TEXCOORD.y);
+        bool _44 = helperInvocationEXT();
+        bool _46 = helperInvocationEXT();
+        bool _48 = helperInvocationEXT();
+        bool _50 = helperInvocationEXT();
+        _26 = subgroupExclusiveAdd(_44 ? 0.0 : TEXCOORD.x);
+        _29 = subgroupExclusiveAdd(_46 ? 0.0 : TEXCOORD.y);
+        _31 = subgroupExclusiveAdd(_48 ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
+        _33 = subgroupExclusiveAdd(_50 ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
     }
     SV_Target.x = _26;
     SV_Target.y = _29;
@@ -49,7 +53,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 53
+; Bound: 61
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformArithmetic
@@ -85,44 +89,52 @@ OpDecorate %11 Location 0
 %41 = OpConstant %14 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %44
-%44 = OpLabel
+OpBranch %52
+%52 = OpLabel
 %13 = OpAccessChain %12 %8 %15
 %16 = OpLoad %5 %13
 %17 = OpAccessChain %12 %8 %18
 %19 = OpLoad %5 %17
 %21 = OpFOrdGreaterThan %20 %16 %22
-OpSelectionMerge %49 None
-OpBranchConditional %21 %48 %45
-%48 = OpLabel
+OpSelectionMerge %57 None
+OpBranchConditional %21 %56 %53
+%56 = OpLabel
 OpDemoteToHelperInvocation
-OpBranch %49
-%45 = OpLabel
+OpBranch %57
+%53 = OpLabel
 %23 = OpFOrdGreaterThan %20 %19 %24
-OpSelectionMerge %47 None
-OpBranchConditional %23 %46 %47
-%46 = OpLabel
+OpSelectionMerge %55 None
+OpBranchConditional %23 %54 %55
+%54 = OpLabel
 OpDemoteToHelperInvocation
-OpBranch %47
-%47 = OpLabel
-OpBranch %49
-%49 = OpLabel
+OpBranch %55
+%55 = OpLabel
+OpBranch %57
+%57 = OpLabel
 %25 = OpIsHelperInvocationEXT %20
-OpSelectionMerge %51 None
-OpBranchConditional %25 %51 %50
-%50 = OpLabel
+OpSelectionMerge %59 None
+OpBranchConditional %25 %59 %58
+%58 = OpLabel
 %42 = OpFMul %5 %16 %16
 %43 = OpFMul %5 %19 %19
-%28 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %16
-%30 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %19
-%32 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %42
-%34 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %43
-OpBranch %51
-%51 = OpLabel
-%26 = OpPhi %5 %27 %49 %28 %50
-%29 = OpPhi %5 %27 %49 %30 %50
-%31 = OpPhi %5 %27 %49 %32 %50
-%33 = OpPhi %5 %27 %49 %34 %50
+%44 = OpIsHelperInvocationEXT %20
+%45 = OpSelect %5 %44 %27 %16
+%28 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %45
+%46 = OpIsHelperInvocationEXT %20
+%47 = OpSelect %5 %46 %27 %19
+%30 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %47
+%48 = OpIsHelperInvocationEXT %20
+%49 = OpSelect %5 %48 %27 %42
+%32 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %49
+%50 = OpIsHelperInvocationEXT %20
+%51 = OpSelect %5 %50 %27 %43
+%34 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %51
+OpBranch %59
+%59 = OpLabel
+%26 = OpPhi %5 %27 %57 %28 %58
+%29 = OpPhi %5 %27 %57 %30 %58
+%31 = OpPhi %5 %27 %57 %32 %58
+%33 = OpPhi %5 %27 %57 %34 %58
 %36 = OpAccessChain %35 %11 %15
 OpStore %36 %26
 %37 = OpAccessChain %35 %11 %18

@@ -20,11 +20,11 @@ void main()
     {
         discard_state = true;
     }
-    uvec4 _20 = subgroupBallot(INDEX < 100u);
-    SV_Target.x = _20.x;
-    SV_Target.y = _20.y;
-    SV_Target.z = _20.z;
-    SV_Target.w = _20.w;
+    uvec4 _23 = subgroupBallot((INDEX < 100u) && (!(gl_HelperInvocation || discard_state)));
+    SV_Target.x = _23.x;
+    SV_Target.y = _23.y;
+    SV_Target.z = _23.z;
+    SV_Target.w = _23.w;
     discard_exit();
 }
 
@@ -34,21 +34,22 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 46
+; Bound: 53
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %7 %10
+OpEntryPoint Fragment %3 "main" %7 %10 %42
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %7 "INDEX"
 OpName %10 "SV_Target"
 OpName %16 "discard_state"
-OpName %38 "discard_exit"
+OpName %45 "discard_exit"
 OpDecorate %7 Flat
 OpDecorate %7 Location 0
 OpDecorate %10 Location 0
+OpDecorate %42 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -63,50 +64,57 @@ OpDecorate %10 Location 0
 %16 = OpVariable %15 Private
 %17 = OpConstantFalse %12
 %19 = OpConstant %5 100
-%21 = OpConstant %5 3
-%26 = OpTypePointer Output %5
-%28 = OpConstant %5 0
-%30 = OpConstant %5 1
-%32 = OpConstant %5 2
-%37 = OpConstantTrue %12
+%24 = OpConstant %5 3
+%29 = OpTypePointer Output %5
+%31 = OpConstant %5 0
+%33 = OpConstant %5 1
+%35 = OpConstant %5 2
+%40 = OpConstantTrue %12
+%41 = OpTypePointer Input %12
+%42 = OpVariable %41 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %16 %17
-OpBranch %34
-%34 = OpLabel
+OpBranch %37
+%37 = OpLabel
 %11 = OpLoad %5 %7
 %13 = OpIEqual %12 %11 %14
-OpSelectionMerge %36 None
-OpBranchConditional %13 %35 %36
-%35 = OpLabel
-OpStore %16 %37
-OpBranch %36
-%36 = OpLabel
+OpSelectionMerge %39 None
+OpBranchConditional %13 %38 %39
+%38 = OpLabel
+OpStore %16 %40
+OpBranch %39
+%39 = OpLabel
 %18 = OpULessThan %12 %11 %19
-%20 = OpGroupNonUniformBallot %8 %21 %18
-%22 = OpCompositeExtract %5 %20 0
-%23 = OpCompositeExtract %5 %20 1
-%24 = OpCompositeExtract %5 %20 2
-%25 = OpCompositeExtract %5 %20 3
-%27 = OpAccessChain %26 %10 %28
-OpStore %27 %22
-%29 = OpAccessChain %26 %10 %30
-OpStore %29 %23
-%31 = OpAccessChain %26 %10 %32
-OpStore %31 %24
-%33 = OpAccessChain %26 %10 %21
-OpStore %33 %25
-%44 = OpFunctionCall %1 %38
+%43 = OpLoad %12 %42
+%44 = OpLoad %12 %16
+%20 = OpLogicalOr %12 %43 %44
+%21 = OpLogicalNot %12 %20
+%22 = OpLogicalAnd %12 %18 %21
+%23 = OpGroupNonUniformBallot %8 %24 %22
+%25 = OpCompositeExtract %5 %23 0
+%26 = OpCompositeExtract %5 %23 1
+%27 = OpCompositeExtract %5 %23 2
+%28 = OpCompositeExtract %5 %23 3
+%30 = OpAccessChain %29 %10 %31
+OpStore %30 %25
+%32 = OpAccessChain %29 %10 %33
+OpStore %32 %26
+%34 = OpAccessChain %29 %10 %35
+OpStore %34 %27
+%36 = OpAccessChain %29 %10 %24
+OpStore %36 %28
+%51 = OpFunctionCall %1 %45
 OpReturn
 OpFunctionEnd
-%38 = OpFunction %1 None %2
-%39 = OpLabel
-%42 = OpLoad %12 %16
-OpSelectionMerge %41 None
-OpBranchConditional %42 %40 %41
-%40 = OpLabel
+%45 = OpFunction %1 None %2
+%46 = OpLabel
+%49 = OpLoad %12 %16
+OpSelectionMerge %48 None
+OpBranchConditional %49 %47 %48
+%47 = OpLabel
 OpKill
-%41 = OpLabel
+%48 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

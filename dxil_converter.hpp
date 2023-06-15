@@ -241,6 +241,7 @@ enum class Option : uint32_t
 	PhysicalAddressDescriptorIndexing = 24,
 	ForceSubgroupSize = 25,
 	DenormPreserveSupport = 26,
+	StrictHelperLaneWaveOps = 27,
 	Count
 };
 
@@ -540,6 +541,18 @@ struct OptionDenormPreserveSupport : OptionBase
 	// If not supported, rely on implementation to default to the right thing.
 	bool support_float16_denorm_preserve = false;
 	bool support_float64_denorm_preserve = false;
+};
+
+struct OptionStrictHelperLaneWaveOps : OptionBase
+{
+	OptionStrictHelperLaneWaveOps()
+	    : OptionBase(Option::StrictHelperLaneWaveOps)
+	{
+	}
+
+	// If true, and WaveOpsIncludeHelperLanes is not set,
+	// helper lanes explicitly do not participate in wave ops.
+	bool enable = true;
 };
 
 struct DescriptorTableEntry

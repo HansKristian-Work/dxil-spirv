@@ -5115,6 +5115,19 @@ bool Converter::Impl::emit_execution_modes_pixel()
 	if (early_depth_stencil)
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeEarlyFragmentTests);
 
+	// TODO: There is no execution mode for this yet, but it is the "default" Vulkan behavior.
+	// For now, we'll avoid masking helper lanes when strict_helper_lane_waveops is used.
+	auto *func = get_entry_point_function(entry_point_meta);
+	execution_mode_meta.waveops_include_helper_lanes =
+	    func->hasFnAttribute("waveops-include-helper-lanes");
+
+	// If helper lanes don't exist, don't bother trying to mask them out,
+	// it will just confuse the compiler.
+	spirv_module.set_helper_lanes_participate_in_wave_ops(
+		!options.strict_helper_lane_waveops ||
+	    !shader_analysis.helper_lanes_may_exist ||
+		execution_mode_meta.waveops_include_helper_lanes);
+
 	return true;
 }
 
@@ -6409,6 +6422,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionDenormPreserveSupport &>(cap).support_float16_denorm_preserve;
 		options.supports_float64_denorm_preserve =
 		    static_cast<const OptionDenormPreserveSupport &>(cap).support_float64_denorm_preserve;
+		break;
+
+	case Option::StrictHelperLaneWaveOps:
+		options.strict_helper_lane_waveops =
+		    static_cast<const OptionStrictHelperLaneWaveOps &>(cap).enable;
 		break;
 
 	default:
