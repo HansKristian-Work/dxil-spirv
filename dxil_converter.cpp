@@ -2542,14 +2542,7 @@ void Converter::Impl::get_shader_model(const llvm::Module &module, String *model
 		auto *meta = resource_meta->getOperand(0);
 
 		if (model)
-		{
-			auto str = llvm::cast<llvm::MDString>(meta->getOperand(0))->getString();
-#ifdef HAVE_LLVMBC
-			*model = std::move(str);
-#else
-			*model = String(str.begin(), str.end());
-#endif
-		}
+			*model = get_string_metadata(meta, 0);
 		if (major)
 			*major = get_constant_metadata(meta, 1);
 		if (minor)
@@ -3260,7 +3253,7 @@ static String get_entry_point_name(llvm::MDNode *node)
 	{
 		auto *str_node = llvm::dyn_cast<llvm::MDString>(name_node);
 		if (str_node)
-			return str_node->getString();
+			return get_string_metadata(node, 1);
 	}
 
 	return {};
