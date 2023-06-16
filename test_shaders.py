@@ -188,7 +188,7 @@ def cross_compile_dxil(shader, args, paths, is_asm):
     if '.invalid.' not in shader:
         hlsl_cmd.append('--validate')
 
-    if '.demote-to-helper.' in shader:
+    if ('.demote-to-helper.' in shader) or is_asm:
         hlsl_cmd.append('--enable-shader-demote')
     if '.i8dot.' in shader:
         hlsl_cmd.append('--enable-shader-i8-dot')
