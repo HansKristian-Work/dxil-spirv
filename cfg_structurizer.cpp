@@ -4325,6 +4325,42 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 		}
 	}
 
+	// A dominated continue exit should not be considered as such if it can reach other "normal" exits.
+	// In this case, it's just a break.
+	auto continue_itr = result.dominated_continue_exit.begin();
+	while (continue_itr != result.dominated_continue_exit.end())
+	{
+		auto *candidate = *continue_itr;
+		bool found_candidate = false;
+		for (auto *dominated : result.dominated_exit)
+		{
+			if (query_reachability(*candidate, *dominated))
+			{
+				result.non_dominated_exit.push_back(candidate);
+				continue_itr = result.dominated_continue_exit.erase(continue_itr);
+				found_candidate = true;
+				break;
+			}
+		}
+
+		if (!found_candidate)
+		{
+			for (auto *non_dominated : result.non_dominated_exit)
+			{
+				if (query_reachability(*candidate, *non_dominated))
+				{
+					result.non_dominated_exit.push_back(candidate);
+					continue_itr = result.dominated_continue_exit.erase(continue_itr);
+					found_candidate = true;
+					break;
+				}
+			}
+		}
+
+		if (!found_candidate)
+			++continue_itr;
+	}
+
 	if (result.dominated_continue_exit.size() > 1)
 	{
 		// If we have multiple continue exit candidates, they better merge into a single clean candidate that we
