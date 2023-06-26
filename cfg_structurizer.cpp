@@ -945,6 +945,10 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 	{
 		auto *node = forward_post_visit_order[i - 1];
 
+		// Never duplicate back-edges.
+		if (node->succ_back_edge)
+			continue;
+
 		// Check for breaking merge blocks which were not considered degenerate.
 		// This can happen if we actually have code in the breaking construct ... (scary!)
 		// We'll have to split this block somehow.
