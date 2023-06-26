@@ -4564,20 +4564,9 @@ void CFGStructurizer::find_loops()
 			// We can make the non-dominated exit dominated by
 			// adding a ladder block in-between. This allows us to merge the loop cleanly
 			// before breaking out.
-
-			auto *ladder = pool.create_node();
-			ladder->name = node->name + ".merge";
-			ladder->add_branch(merge_block);
-			ladder->ir.terminator.type = Terminator::Type::Branch;
-			ladder->ir.terminator.direct_block = merge_block;
-			ladder->immediate_post_dominator = merge_block;
-			ladder->forward_post_visit_order = merge_block->forward_post_visit_order;
-			ladder->backward_post_visit_order = merge_block->backward_post_visit_order;
-
-			traverse_dominated_blocks_and_rewrite_branch(node, merge_block, ladder);
+			auto *ladder = create_ladder_block(node, merge_block, ".merge");
 			node->loop_ladder_block = nullptr;
 			node->loop_merge_block = ladder;
-			ladder->recompute_immediate_dominator();
 
 			const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
 			//LOGI("Loop with ladder merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node), node->name.c_str(),
