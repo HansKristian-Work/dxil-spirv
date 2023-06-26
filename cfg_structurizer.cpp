@@ -4595,17 +4595,24 @@ void CFGStructurizer::find_loops()
 			}
 			else
 			{
+				if (!dominated_merge && node->pred_back_edge->succ.size() == 1)
+				{
+					// If continue block exits, and it still does not dominate, we should invent a ladder block
+					// so we get one, otherwise splitting merge scopes will break.
+					dominated_merge = create_ladder_block(node->pred_back_edge, node->pred_back_edge->succ.front(), ".merge");
+				}
+
 				// Single-escape merge.
 				// It is unique, but we need workarounds later.
 				//LOGI("Loop with ladder multi-exit merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node),
 				//     node->name.c_str(), static_cast<const void *>(node->loop_merge_block),
 				//     node->loop_merge_block->name.c_str());
 
-				if (dominated_merge)
-				{
+				//if (dominated_merge)
+				//{
 					//LOGI("    Ladder block: %p (%s)\n", static_cast<const void *>(dominated_merge),
 					//     dominated_merge->name.c_str());
-				}
+				//}
 
 				// We will use this block as a ladder.
 				node->loop_ladder_block = dominated_merge;
