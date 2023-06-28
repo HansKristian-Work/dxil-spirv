@@ -65,12 +65,16 @@ void CFGNode::add_branch(CFGNode *to)
 
 void CFGNode::add_fake_branch(CFGNode *to)
 {
+	if (std::find(succ.begin(), succ.end(), to) != succ.end())
+		return;
+
 	add_unique_fake_succ(to);
 	to->add_unique_fake_pred(this);
 }
 
 void CFGNode::add_unique_succ(CFGNode *node)
 {
+	assert(std::find(fake_succ.begin(), fake_succ.end(), node) == fake_succ.end());
 	auto itr = std::find(succ.begin(), succ.end(), node);
 	if (itr == succ.end())
 		succ.push_back(node);
