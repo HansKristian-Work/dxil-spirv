@@ -3730,6 +3730,12 @@ bool Converter::Impl::emit_stage_output_variables()
 		auto start_row = get_constant_metadata(output, 8);
 		auto start_col = get_constant_metadata(output, 9);
 
+		if (options.dual_source_blending && start_row >= 2)
+		{
+			// Mask out writes to unused higher RTs when using dual source blending.
+			continue;
+		}
+
 		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
@@ -3818,22 +3824,15 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			if (options.dual_source_blending)
 			{
-				if (start_row == 0 || start_row == 1)
+				assert(start_row == 0 || start_row == 1);
+				if (rows != 1)
 				{
-					if (rows != 1)
-					{
-						LOGE("For dual source blending, number of rows must be 1.\n");
-						return false;
-					}
-					builder.addDecoration(variable_id, spv::DecorationLocation, 0);
-					builder.addDecoration(variable_id, spv::DecorationIndex, start_row);
-					output_elements_meta[element_id].rt_index = 0;
-				}
-				else
-				{
-					LOGE("For dual source blending, only RT 0 and 1 can be used.\n");
+					LOGE("For dual source blending, number of rows must be 1.\n");
 					return false;
 				}
+				builder.addDecoration(variable_id, spv::DecorationLocation, 0);
+				builder.addDecoration(variable_id, spv::DecorationIndex, start_row);
+				output_elements_meta[element_id].rt_index = 0;
 			}
 			else
 			{
