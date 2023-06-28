@@ -669,6 +669,8 @@ struct Converter::Impl
 	UnorderedSet<const llvm::CallInst *> resource_handles_needing_sink;
 	UnorderedSet<const llvm::CallInst *> resource_handle_is_conservative;
 	UnorderedMap<const llvm::BasicBlock *, Vector<const llvm::Instruction *>> bb_to_sinks;
+	UnorderedSet<const llvm::CallInst *> wave_op_forced_helper_lanes;
+	UnorderedSet<const llvm::Value *> control_sensitive_bools;
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);

@@ -5925,6 +5925,24 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 	// alignments of the loads and stores. This lets us build up a list of SSBO declarations we need to
 	// optimally implement the loads and stores. We need to do this late, because we depend on results
 	// of ExtractValue analysis.
+
+	if (execution_model == spv::ExecutionModelFragment)
+	{
+		bool waveops_include_helper_lanes = function->hasFnAttribute("waveops-include-helper-lanes");
+
+		if (!waveops_include_helper_lanes && options.strict_helper_lane_waveops)
+		{
+			for (auto &bb : *function)
+			{
+				if (auto *branch_inst = llvm::dyn_cast<llvm::BranchInst>(bb.getTerminator()))
+				{
+					if (!analyze_branch_instruction(*this, branch_inst))
+						return false;
+				}
+			}
+		}
+	}
+
 	for (auto &bb : *function)
 	{
 		for (auto &inst : bb)
@@ -5952,6 +5970,11 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 			else if (auto *extractvalue_inst = llvm::dyn_cast<llvm::ExtractValueInst>(&inst))
 			{
 				if (!analyze_extractvalue_instruction(*this, extractvalue_inst))
+					return false;
+			}
+			else if (auto *cmp_inst = llvm::dyn_cast<llvm::CmpInst>(&inst))
+			{
+				if (!analyze_compare_instruction(*this, cmp_inst))
 					return false;
 			}
 			else if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))

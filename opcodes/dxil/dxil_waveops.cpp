@@ -82,7 +82,8 @@ bool emit_wave_builtin_instruction(spv::BuiltIn builtin, Converter::Impl &impl, 
 
 bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	if (opcode == spv::OpGroupNonUniformAllEqual && wave_op_needs_helper_lane_masking(impl))
+	if (opcode == spv::OpGroupNonUniformAllEqual && wave_op_needs_helper_lane_masking(impl) &&
+	    impl.control_sensitive_bools.count(instruction) == 0)
 	{
 		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
 		impl.add(is_helper_lane);
@@ -181,7 +182,7 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	if (wave_op_needs_helper_lane_masking(impl))
+	if (wave_op_needs_helper_lane_masking(impl) && impl.wave_op_forced_helper_lanes.count(instruction) == 0)
 	{
 		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
 		impl.add(is_helper_lane);
