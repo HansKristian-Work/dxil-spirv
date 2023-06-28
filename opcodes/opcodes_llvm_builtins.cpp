@@ -26,6 +26,7 @@
 #include "converter_impl.hpp"
 #include "logging.hpp"
 #include "spirv_module.hpp"
+#include "dxil/dxil_common.hpp"
 
 namespace dxil_spv
 {
@@ -1605,6 +1606,79 @@ bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Extract
 				impl.shader_analysis.subgroup_ballot_reads_upper = true;
 		}
 	}
+	return true;
+}
+
+static void mark_control_dependent_boolean(Converter::Impl &impl, const llvm::Value *value)
+{
+	if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(value))
+	{
+		if (impl.control_sensitive_bools.count(phi_inst) != 0)
+			return;
+		impl.control_sensitive_bools.insert(value);
+		for (unsigned i = 0; i < phi_inst->getNumIncomingValues(); i++)
+			mark_control_dependent_boolean(impl, phi_inst->getIncomingValue(i));
+	}
+	else
+		impl.control_sensitive_bools.insert(value);
+}
+
+static bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
+{
+	auto *call = llvm::dyn_cast<llvm::CallInst>(value);
+	if (!call)
+		return false;
+
+	auto *func = call->getCalledFunction();
+	if (strncmp(func->getName().data(), "dx.op", 5) != 0)
+		return false;
+
+	// The opcode is encoded as a constant integer.
+	uint32_t opcode;
+	if (!get_constant_operand(call, 0, &opcode))
+		return false;
+
+	return op == DXIL::Op(opcode);
+}
+
+bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *inst)
+{
+	// With patterns like WaveReadFirstLane(x) == x, we have to be extremely careful.
+	// A boolean like this will generally be used in control flow later, and if this is in a loop,
+	// we risk infinite loops. This is technically undefined in DX without WaveOpsIncludeHelperLanes,
+	// but games rely on it working ... somehow :')
+
+	if ((inst->getPredicate() != llvm::CmpInst::Predicate::ICMP_EQ &&
+	     inst->getPredicate() != llvm::CmpInst::Predicate::ICMP_NE) ||
+	    impl.control_sensitive_bools.count(inst) == 0)
+	{
+		return true;
+	}
+
+	auto *op0 = inst->getOperand(0);
+	auto *op1 = inst->getOperand(1);
+
+	bool op0_is_read_first = value_is_dx_op_instrinsic(op0, DXIL::Op::WaveReadLaneFirst);
+	bool op1_is_read_first = value_is_dx_op_instrinsic(op1, DXIL::Op::WaveReadLaneFirst);
+	if (op1_is_read_first)
+	{
+		std::swap(op0, op1);
+		std::swap(op0_is_read_first, op1_is_read_first);
+	}
+
+	if (op0_is_read_first && !op1_is_read_first)
+	{
+		auto *call = llvm::cast<llvm::CallInst>(op0);
+		if (call->getOperand(1) == op1)
+			impl.wave_op_forced_helper_lanes.insert(call);
+	}
+
+	return true;
+}
+
+bool analyze_branch_instruction(Converter::Impl &impl, const llvm::BranchInst *inst)
+{
+	mark_control_dependent_boolean(impl, inst->getCondition());
 	return true;
 }
 
