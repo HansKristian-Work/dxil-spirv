@@ -328,6 +328,13 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (clip_cull_meta)
 		return emit_store_clip_cull_distance(impl, instruction, *clip_cull_meta);
 
+	if (impl.options.dual_source_blending)
+	{
+		// Mask out writes to unused higher RTs when using dual source blending.
+		if (impl.output_elements_meta.count(output_element_index) == 0)
+			return true;
+	}
+
 	const auto &meta = impl.output_elements_meta[output_element_index];
 
 	uint32_t var_id = meta.id;
