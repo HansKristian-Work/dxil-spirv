@@ -1609,20 +1609,6 @@ bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Extract
 	return true;
 }
 
-static void mark_control_dependent_boolean(Converter::Impl &impl, const llvm::Value *value)
-{
-	if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(value))
-	{
-		if (impl.control_sensitive_bools.count(phi_inst) != 0)
-			return;
-		impl.control_sensitive_bools.insert(value);
-		for (unsigned i = 0; i < phi_inst->getNumIncomingValues(); i++)
-			mark_control_dependent_boolean(impl, phi_inst->getIncomingValue(i));
-	}
-	else
-		impl.control_sensitive_bools.insert(value);
-}
-
 static bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
 {
 	auto *call = llvm::dyn_cast<llvm::CallInst>(value);
@@ -1648,9 +1634,8 @@ bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *ins
 	// we risk infinite loops. This is technically undefined in DX without WaveOpsIncludeHelperLanes,
 	// but games rely on it working ... somehow :')
 
-	if ((inst->getPredicate() != llvm::CmpInst::Predicate::ICMP_EQ &&
-	     inst->getPredicate() != llvm::CmpInst::Predicate::ICMP_NE) ||
-	    impl.control_sensitive_bools.count(inst) == 0)
+	if (inst->getPredicate() != llvm::CmpInst::Predicate::ICMP_EQ &&
+	    inst->getPredicate() != llvm::CmpInst::Predicate::ICMP_NE)
 	{
 		return true;
 	}
@@ -1673,12 +1658,6 @@ bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *ins
 			impl.wave_op_forced_helper_lanes.insert(call);
 	}
 
-	return true;
-}
-
-bool analyze_branch_instruction(Converter::Impl &impl, const llvm::BranchInst *inst)
-{
-	mark_control_dependent_boolean(impl, inst->getCondition());
 	return true;
 }
 

@@ -82,8 +82,9 @@ bool emit_wave_builtin_instruction(spv::BuiltIn builtin, Converter::Impl &impl, 
 
 bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	if (opcode == spv::OpGroupNonUniformAllEqual && wave_op_needs_helper_lane_masking(impl) &&
-	    impl.control_sensitive_bools.count(instruction) == 0)
+	// Given how ReadFirstLane is questionable w.r.t undef, be defensive here for now.
+#if 0
+	if (opcode == spv::OpGroupNonUniformAllEqual && wave_op_needs_helper_lane_masking(impl))
 	{
 		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
 		impl.add(is_helper_lane);
@@ -98,6 +99,7 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 		impl.add(op);
 		return true;
 	}
+#endif
 
 	auto &builder = impl.builder();
 	auto *op = impl.allocate(opcode, instruction);
