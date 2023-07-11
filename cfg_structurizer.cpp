@@ -253,7 +253,6 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 			// If it was then we need to split up the PHI node. The break block will serve as a proxy
 			// incoming block instead.
 			phi.incoming.insert(phi.incoming.end(), outgoing_itr->incoming.begin(), outgoing_itr->incoming.end());
-			node->ir.phi.erase(outgoing_itr);
 			validate_phi(succ->ir.phi);
 		}
 		else
@@ -267,7 +266,8 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 			validate_phi(succ->ir.phi);
 		}
 	}
-	assert(node->ir.phi.empty());
+
+	node->ir.phi.clear();
 }
 
 bool CFGStructurizer::cleanup_breaking_return_constructs()
