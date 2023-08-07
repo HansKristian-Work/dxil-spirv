@@ -242,6 +242,7 @@ enum class Option : uint32_t
 	ForceSubgroupSize = 25,
 	DenormPreserveSupport = 26,
 	StrictHelperLaneWaveOps = 27,
+	SubgroupPartitionedNV = 28,
 	Count
 };
 
@@ -553,6 +554,16 @@ struct OptionStrictHelperLaneWaveOps : OptionBase
 	// If true, and WaveOpsIncludeHelperLanes is not set,
 	// helper lanes explicitly do not participate in wave ops.
 	bool enable = true;
+};
+
+struct OptionSubgroupPartitionedNV : OptionBase
+{
+	OptionSubgroupPartitionedNV()
+		: OptionBase(Option::SubgroupPartitionedNV)
+	{
+	}
+
+	bool supported = false;
 };
 
 struct DescriptorTableEntry

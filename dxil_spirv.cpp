@@ -159,7 +159,8 @@ static void print_help()
 	     "\t[--invariant-position]\n"
 	     "\t[--robust-physical-cbv-load]\n"
 	     "\t[--allow-arithmetic-relaxed-precision]\n"
-	     "\t[--physical-address-descriptor-indexing <element stride> <element offset>]\n");
+	     "\t[--physical-address-descriptor-indexing <element stride> <element offset>]\n"
+	     "\t[--subgroup-partitioned-nv]\n");
 }
 
 struct Arguments
@@ -190,6 +191,7 @@ struct Arguments
 	bool invariant_position = false;
 	bool robust_physical_cbv_load = false;
 	bool allow_arithmetic_relaxed_precision = false;
+	bool subgroup_partitioned_nv = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -723,6 +725,9 @@ int main(int argc, char **argv)
 		args.physical_address_indexing_stride = parser.next_uint();
 		args.physical_address_indexing_offset = parser.next_uint();
 	});
+	cbs.add("--subgroup-partitioned-nv", [&](CLIParser &) {
+		args.subgroup_partitioned_nv = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -955,6 +960,12 @@ int main(int argc, char **argv)
 		const dxil_spv_option_denorm_preserve_support denorm = { { DXIL_SPV_OPTION_DENORM_PRESERVE_SUPPORT },
 		                                                         DXIL_SPV_TRUE, DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &denorm.base);
+	}
+
+	{
+		const dxil_spv_option_subgroup_partitioned_nv partitioned = { { DXIL_SPV_OPTION_SUBGROUP_PARTITIONED_NV },
+		                                                              args.subgroup_partitioned_nv ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		dxil_spv_converter_add_option(converter, &partitioned.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

@@ -6434,6 +6434,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionStrictHelperLaneWaveOps &>(cap).enable;
 		break;
 
+	case Option::SubgroupPartitionedNV:
+		options.nv_subgroup_partition_enabled =
+		    static_cast<const OptionSubgroupPartitionedNV &>(cap).supported;
+		break;
+
 	default:
 		break;
 	}

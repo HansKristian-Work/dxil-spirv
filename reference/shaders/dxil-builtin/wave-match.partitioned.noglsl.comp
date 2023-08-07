@@ -1,0 +1,101 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 75
+; Schema: 0
+OpCapability Shader
+OpCapability SampledBuffer
+OpCapability ImageBuffer
+OpCapability GroupNonUniformPartitionedNV
+OpExtension "SPV_NV_shader_subgroup_partitioned"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %16
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 0
+OpDecorate %11 NonReadable
+OpDecorate %16 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 1 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%10 = OpTypePointer UniformConstant %9
+%11 = OpVariable %10 UniformConstant
+%14 = OpTypeVector %5 3
+%15 = OpTypePointer Input %14
+%16 = OpVariable %15 Input
+%17 = OpTypePointer Input %5
+%19 = OpConstant %5 0
+%21 = OpTypeVector %5 4
+%31 = OpTypeFloat 32
+%45 = OpTypeBool
+%47 = OpConstant %5 20
+%48 = OpConstant %31 0
+%49 = OpConstant %31 1
+%62 = OpConstant %5 4
+%66 = OpConstant %5 1
+%69 = OpConstant %5 2
+%72 = OpConstant %5 3
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %73
+%73 = OpLabel
+%12 = OpLoad %9 %11
+%13 = OpLoad %6 %8
+%18 = OpAccessChain %17 %16 %19
+%20 = OpLoad %5 %18
+%22 = OpImageFetch %21 %13 %20
+%23 = OpCompositeExtract %5 %22 0
+%24 = OpGroupNonUniformPartitionNV %21 %23
+%25 = OpCompositeExtract %5 %24 0
+%26 = OpCompositeExtract %5 %24 1
+%27 = OpCompositeExtract %5 %24 2
+%28 = OpCompositeExtract %5 %24 3
+%29 = OpImageFetch %21 %13 %20
+%30 = OpCompositeExtract %5 %29 0
+%32 = OpBitcast %31 %30
+%33 = OpBitcast %5 %32
+%34 = OpGroupNonUniformPartitionNV %21 %33
+%35 = OpCompositeExtract %5 %34 0
+%36 = OpCompositeExtract %5 %34 1
+%37 = OpCompositeExtract %5 %34 2
+%38 = OpCompositeExtract %5 %34 3
+%39 = OpBitwiseOr %5 %35 %25
+%40 = OpBitwiseOr %5 %36 %26
+%41 = OpBitwiseOr %5 %37 %27
+%42 = OpBitwiseOr %5 %38 %28
+%43 = OpImageFetch %21 %13 %20
+%44 = OpCompositeExtract %5 %43 0
+%46 = OpINotEqual %45 %44 %47
+%50 = OpSelect %31 %46 %49 %48
+%51 = OpBitcast %5 %50
+%52 = OpGroupNonUniformPartitionNV %21 %51
+%53 = OpCompositeExtract %5 %52 0
+%54 = OpCompositeExtract %5 %52 1
+%55 = OpCompositeExtract %5 %52 2
+%56 = OpCompositeExtract %5 %52 3
+%57 = OpBitwiseOr %5 %39 %53
+%58 = OpBitwiseOr %5 %40 %54
+%59 = OpBitwiseOr %5 %41 %55
+%60 = OpBitwiseOr %5 %42 %56
+%61 = OpIMul %5 %20 %62
+%63 = OpCompositeConstruct %21 %57 %57 %57 %57
+OpImageWrite %12 %61 %63
+%64 = OpCompositeConstruct %21 %58 %58 %58 %58
+%65 = OpIAdd %5 %61 %66
+OpImageWrite %12 %65 %64
+%67 = OpCompositeConstruct %21 %59 %59 %59 %59
+%68 = OpIAdd %5 %61 %69
+OpImageWrite %12 %68 %67
+%70 = OpCompositeConstruct %21 %60 %60 %60 %60
+%71 = OpIAdd %5 %61 %72
+OpImageWrite %12 %71 %70
+OpReturn
+OpFunctionEnd
+

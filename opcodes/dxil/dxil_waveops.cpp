@@ -683,10 +683,13 @@ bool emit_wave_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst
 bool emit_wave_multi_prefix_count_bits_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::WaveMultiPrefixCountBits);
 
+	// There is no NV equivalent for this one.
+
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::WaveMultiPrefixCountBits);
 	auto *op = impl.allocate(spv::OpFunctionCall, instruction);
 	op->add_id(call_id);
+
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 
 	spv::Id ballot[4];
@@ -694,7 +697,8 @@ bool emit_wave_multi_prefix_count_bits_instruction(Converter::Impl &impl, const 
 		ballot[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
 	op->add_id(impl.build_vector(builder.makeUintType(32), ballot, 4));
 
-	if (wave_op_needs_helper_lane_masking(impl))
+	if (!impl.options.nv_subgroup_partition_enabled &&
+	    wave_op_needs_helper_lane_masking(impl))
 	{
 		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
 		impl.add(is_helper_lane);
@@ -706,6 +710,25 @@ bool emit_wave_multi_prefix_count_bits_instruction(Converter::Impl &impl, const 
 	return true;
 }
 
+static spv::Id emit_masked_ballot(Converter::Impl &impl, spv::Id value)
+{
+	auto &builder = impl.builder();
+
+	spv::Id uvec4_type = builder.makeVectorType(builder.makeUintType(32), 4);
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	auto *ballot_op = impl.allocate(spv::OpGroupNonUniformBallot, uvec4_type);
+	ballot_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	ballot_op->add_id(builder.makeBoolConstant(true));
+	impl.add(ballot_op);
+
+	auto *and_op = impl.allocate(spv::OpBitwiseAnd, uvec4_type);
+	and_op->add_id(value);
+	and_op->add_id(ballot_op->id);
+	impl.add(and_op);
+
+	return and_op->id;
+}
+
 bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -715,28 +738,34 @@ bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::Ca
 		return false;
 
 	HelperCall helper_call;
+	spv::Op partitioned_op;
 	bool fp = !instruction->getOperand(1)->getType()->isIntegerTy();
 
 	switch (static_cast<DXIL::WaveMultiPrefixOpKind>(op_kind))
 	{
 	case DXIL::WaveMultiPrefixOpKind::Sum:
 		helper_call = fp ? HelperCall::WaveMultiPrefixFAdd : HelperCall::WaveMultiPrefixIAdd;
+		partitioned_op = fp ? spv::OpGroupNonUniformFAdd : spv::OpGroupNonUniformIAdd;
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::Product:
 		helper_call = fp ? HelperCall::WaveMultiPrefixFMul : HelperCall::WaveMultiPrefixIMul;
+		partitioned_op = fp ? spv::OpGroupNonUniformFMul : spv::OpGroupNonUniformIMul;
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::And:
 		helper_call = HelperCall::WaveMultiPrefixBitAnd;
+		partitioned_op = spv::OpGroupNonUniformBitwiseAnd;
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::Or:
 		helper_call = HelperCall::WaveMultiPrefixBitOr;
+		partitioned_op = spv::OpGroupNonUniformBitwiseOr;
 		break;
 
 	case DXIL::WaveMultiPrefixOpKind::Xor:
 		helper_call = HelperCall::WaveMultiPrefixBitXor;
+		partitioned_op = spv::OpGroupNonUniformBitwiseXor;
 		break;
 
 	default:
@@ -744,18 +773,41 @@ bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::Ca
 	}
 
 	spv::Id type_id = impl.get_type_id(instruction->getOperand(1)->getType());
-	spv::Id call_id = impl.spirv_module.get_helper_call_id(helper_call, type_id);
 
-	auto *op = impl.allocate(spv::OpFunctionCall, instruction);
-	op->add_id(call_id);
+	Operation *op;
+
+	if (impl.options.nv_subgroup_partition_enabled)
+	{
+		builder.addExtension("SPV_NV_shader_subgroup_partitioned");
+		builder.addCapability(spv::CapabilityGroupNonUniformPartitionedNV);
+		op = impl.allocate(partitioned_op, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_literal(spv::GroupOperationPartitionedExclusiveScanNV);
+	}
+	else
+	{
+		spv::Id call_id = impl.spirv_module.get_helper_call_id(helper_call, type_id);
+		op = impl.allocate(spv::OpFunctionCall, instruction);
+		op->add_id(call_id);
+	}
+
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 
 	spv::Id ballot[4];
 	for (unsigned i = 0; i < 4; i++)
 		ballot[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
-	op->add_id(impl.build_vector(builder.makeUintType(32), ballot, 4));
 
-	if (wave_op_needs_helper_lane_masking(impl))
+	spv::Id ballot_value = impl.build_vector(builder.makeUintType(32), ballot, 4);
+
+	// Have to explicitly ignore inactive lanes here to make sure that lanes in the same partition have equal
+	// partition values.
+	if (impl.options.nv_subgroup_partition_enabled)
+		ballot_value = emit_masked_ballot(impl, ballot_value);
+
+	op->add_id(ballot_value);
+
+	if (!impl.options.nv_subgroup_partition_enabled &&
+	    wave_op_needs_helper_lane_masking(impl))
 	{
 		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
 		impl.add(is_helper_lane);
@@ -956,19 +1008,32 @@ bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *in
 		impl.add(bitcast_op);
 	}
 
-	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::WaveMatch, type_id);
-	auto *call_op = impl.allocate(spv::OpFunctionCall, instruction, builder.makeVectorType(builder.makeUintType(32), 4));
-	call_op->add_id(call_id);
-	call_op->add_id(value_id);
-
-	if (wave_op_needs_helper_lane_masking(impl))
+	if (impl.options.nv_subgroup_partition_enabled)
 	{
-		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
-		impl.add(is_helper_lane);
-		call_op->add_id(is_helper_lane->id);
+		builder.addExtension("SPV_NV_shader_subgroup_partitioned");
+		builder.addCapability(spv::CapabilityGroupNonUniformPartitionedNV);
+		auto *op = impl.allocate(spv::OpGroupNonUniformPartitionNV, instruction,
+		                         builder.makeVectorType(builder.makeUintType(32), 4));
+		op->add_id(value_id);
+		impl.add(op);
 	}
+	else
+	{
+		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::WaveMatch, type_id);
+		auto *call_op =
+		    impl.allocate(spv::OpFunctionCall, instruction, builder.makeVectorType(builder.makeUintType(32), 4));
+		call_op->add_id(call_id);
+		call_op->add_id(value_id);
 
-	impl.add(call_op);
+		if (wave_op_needs_helper_lane_masking(impl))
+		{
+			auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+			impl.add(is_helper_lane);
+			call_op->add_id(is_helper_lane->id);
+		}
+
+		impl.add(call_op);
+	}
 
 	return true;
 }
