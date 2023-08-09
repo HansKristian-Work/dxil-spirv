@@ -4693,7 +4693,13 @@ void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type,
 
 bool Converter::Impl::support_16bit_operations() const
 {
-	return execution_mode_meta.native_16bit_operations || options.min_precision_prefer_native_16bit;
+	return execution_mode_meta.native_16bit_operations ||
+	       (options.min_precision_prefer_native_16bit && !execution_mode_meta.prefer_fp32_arithmetic);
+}
+
+bool Converter::Impl::allow_fp16_relaxed_precision() const
+{
+	return options.arithmetic_relaxed_precision && !execution_mode_meta.prefer_fp32_arithmetic;
 }
 
 spv::Id Converter::Impl::build_value_cast(spv::Id value_id,
@@ -5959,6 +5965,11 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 				if (!analyze_compare_instruction(*this, cmp_inst))
 					return false;
 			}
+			else if (auto *cast_inst = llvm::dyn_cast<llvm::CastInst>(&inst))
+			{
+				if (!analyze_cast_instruction(*this, cast_inst))
+					return false;
+			}
 			else if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))
 			{
 				auto *called_function = call_inst->getCalledFunction();
@@ -5997,7 +6008,18 @@ bool Converter::Impl::composite_is_accessed(const llvm::Value *composite) const
 
 bool Converter::Impl::analyze_instructions()
 {
-	return analyze_instructions(get_entry_point_function(entry_point_meta));
+	bool ret = analyze_instructions(get_entry_point_function(entry_point_meta));
+
+	// Crude heuristic, but the idea is that if there are lots of FP16 <-> FP32 conversions,
+	// we're better off just staying in FP32.
+	// This is mostly to workaround bugged shaders which don't seem to be well-behaved in FP16 mode,
+	// and we suspect that native drivers do similar analysis.
+	// The cutoffs are chosen to fit our shader test suites.
+	execution_mode_meta.prefer_fp32_arithmetic = options.arithmetic_fp32_promotion_heuristic &&
+	                                             shader_analysis.num_fp16_truncs > 24 &&
+	                                             shader_analysis.num_fp32_exts > 16;
+
+	return ret;
 }
 
 ConvertedFunction Converter::Impl::convert_entry_point()
@@ -6227,7 +6249,7 @@ spv::Id Converter::Impl::get_effective_input_output_type_id(DXIL::ComponentType 
 
 bool Converter::Impl::type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const
 {
-	if (!options.arithmetic_relaxed_precision)
+	if (!allow_fp16_relaxed_precision())
 		return false;
 
 	if (type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
@@ -6437,6 +6459,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	case Option::SubgroupPartitionedNV:
 		options.nv_subgroup_partition_enabled =
 		    static_cast<const OptionSubgroupPartitionedNV &>(cap).supported;
+		break;
+
+	case Option::ArithmeticFP32PromotionHeuristic:
+		options.arithmetic_fp32_promotion_heuristic =
+			static_cast<const OptionArithmeticFP32PromotionHeuristic &>(cap).enabled;
 		break;
 
 	default:

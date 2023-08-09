@@ -296,6 +296,7 @@ struct Converter::Impl
 		bool declares_rov = false;
 		bool per_sample_shading = false;
 		bool waveops_include_helper_lanes = false;
+		bool prefer_fp32_arithmetic = false;
 		String entry_point_name;
 	} execution_mode_meta;
 
@@ -477,6 +478,7 @@ struct Converter::Impl
 	spv::Id build_value_cast(spv::Id value_id, DXIL::ComponentType input_type, DXIL::ComponentType output_type,
 	                         unsigned components);
 	bool support_16bit_operations() const;
+	bool allow_fp16_relaxed_precision() const;
 
 	Vector<Operation *> *current_block = nullptr;
 	void add(Operation *op, bool is_rov = false);
@@ -557,6 +559,7 @@ struct Converter::Impl
 		bool supports_float64_denorm_preserve = false;
 		bool strict_helper_lane_waveops = true;
 		bool nv_subgroup_partition_enabled = false;
+		bool arithmetic_fp32_promotion_heuristic = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;
@@ -663,6 +666,8 @@ struct Converter::Impl
 		bool require_subgroups = false;
 		bool subgroup_ballot_reads_upper = false;
 		bool subgroup_ballot_reads_first = false;
+		unsigned num_fp16_truncs = 0;
+		unsigned num_fp32_exts = 0;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

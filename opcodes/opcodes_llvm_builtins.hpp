@@ -50,6 +50,7 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *instruc
 bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction);
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
 bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instruction);
+bool analyze_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruction);
 
 bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instruction);
 

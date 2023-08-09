@@ -630,7 +630,7 @@ static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *ins
 		    instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
 		    !impl.support_16bit_operations())
 		{
-			relaxed_precision_cast = impl.options.arithmetic_relaxed_precision;
+			relaxed_precision_cast = impl.allow_fp16_relaxed_precision();
 			return true;
 		}
 		break;
@@ -1666,6 +1666,22 @@ static bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
 		return false;
 
 	return op == DXIL::Op(opcode);
+}
+
+bool analyze_cast_instruction(Converter::Impl &impl, const llvm::CastInst *inst)
+{
+	if (inst->getOpcode() == llvm::Instruction::CastOps::FPTrunc &&
+	    inst->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID)
+	{
+		impl.shader_analysis.num_fp16_truncs++;
+	}
+	else if (inst->getOpcode() == llvm::Instruction::CastOps::FPExt &&
+			 inst->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+	{
+		impl.shader_analysis.num_fp32_exts++;
+	}
+
+	return true;
 }
 
 bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *inst)

@@ -159,6 +159,7 @@ static void print_help()
 	     "\t[--invariant-position]\n"
 	     "\t[--robust-physical-cbv-load]\n"
 	     "\t[--allow-arithmetic-relaxed-precision]\n"
+	     "\t[--arithmetic-fp32-promotion-heuristic]\n"
 	     "\t[--physical-address-descriptor-indexing <element stride> <element offset>]\n"
 	     "\t[--subgroup-partitioned-nv]\n");
 }
@@ -191,6 +192,7 @@ struct Arguments
 	bool invariant_position = false;
 	bool robust_physical_cbv_load = false;
 	bool allow_arithmetic_relaxed_precision = false;
+	bool arithmetic_fp32_promotion_heuristic = false;
 	bool subgroup_partitioned_nv = false;
 
 	unsigned ssbo_alignment = 1;
@@ -721,6 +723,7 @@ int main(int argc, char **argv)
 	cbs.add("--invariant-position", [&](CLIParser &) { args.invariant_position = true; });
 	cbs.add("--robust-physical-cbv-load", [&](CLIParser &) { args.robust_physical_cbv_load = true; });
 	cbs.add("--allow-arithmetic-relaxed-precision", [&](CLIParser &) { args.allow_arithmetic_relaxed_precision = true; });
+	cbs.add("--arithmetic-fp32-promotion-heuristic", [&](CLIParser &) { args.arithmetic_fp32_promotion_heuristic = true; });
 	cbs.add("--physical-address-descriptor-indexing", [&](CLIParser &parser) {
 		args.physical_address_indexing_stride = parser.next_uint();
 		args.physical_address_indexing_offset = parser.next_uint();
@@ -947,6 +950,13 @@ int main(int argc, char **argv)
 		const dxil_spv_option_arithmetic_relaxed_precision relaxed = { { DXIL_SPV_OPTION_ARITHMETIC_RELAXED_PRECISION },
 		                                                               DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &relaxed.base);
+	}
+
+	if (args.arithmetic_fp32_promotion_heuristic)
+	{
+		const dxil_spv_option_arithmetic_fp32_promotion_heuristic heuristic =
+		    { { DXIL_SPV_OPTION_ARITHMETIC_FP32_PROMOTION_HEURISTIC }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &heuristic.base);
 	}
 
 	{
