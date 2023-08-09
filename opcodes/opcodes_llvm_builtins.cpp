@@ -643,12 +643,53 @@ static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *ins
 	return false;
 }
 
+static bool value_cast_is_fp16_quantization(Converter::Impl &impl, const llvm::CastInst *cast_inst, spv::Id &value_id)
+{
+	if (cast_inst->getOpcode() == llvm::Instruction::CastOps::FPExt &&
+	    cast_inst->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+	{
+		if (const auto *trunc_inst = llvm::dyn_cast<llvm::CastInst>(cast_inst->getOperand(0)))
+		{
+			if (trunc_inst->getOpcode() == llvm::Instruction::CastOps::FPTrunc &&
+			    trunc_inst->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
+			    trunc_inst->getOperand(0)->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+			{
+				value_id = impl.get_id_for_value(trunc_inst->getOperand(0));
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool value_cast_is_fp16_quantization(Converter::Impl &, const llvm::ConstantExpr *, spv::Id &)
+{
+	return false;
+}
+
 template <typename InstructionType>
 static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
 	bool can_relax_precision = false;
 	bool signed_input = false;
+	spv::Id value_id = 0;
 	spv::Op opcode;
+
+	if (value_cast_is_fp16_quantization(impl, instruction, value_id) &&
+	    impl.execution_mode_meta.native_16bit_operations)
+	{
+		// D3D12 compilers will enforce a truncate here through a FP32 -> FP16 -> FP32 chain,
+		// where Vulkan compilers ... don't :(
+		// If we find this pattern, assume that compilers will try to be clever about it (NoContract does not work on NV),
+		// and force use of QuantizeToFP16 instead.
+		// Rounding mode of this operation is not well-defined,
+		// but that is also the case for D3D12. AMD drivers will prefer RTZ here for example.
+		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, instruction);
+		quant_op->add_id(value_id);
+		impl.add(quant_op);
+		return quant_op->id;
+	}
 
 	if (value_cast_is_noop(impl, instruction, can_relax_precision))
 	{

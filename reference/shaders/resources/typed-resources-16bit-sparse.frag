@@ -123,6 +123,10 @@ void main()
     mediump float _203 = _200._m1;
     _204 _205 = _204(_203, _203, _203, _203, _200._m0);
     mediump float _206 = _205._m0;
+    float _213 = _206 + float(_137._m0 + _75._m0);
+    float _214 = _206 + float(_137._m1 + _75._m1);
+    float _215 = _206 + float(_137._m2 + _75._m2);
+    float _216 = _206 + float(_137._m3 + _75._m3);
     uint _436;
     float _437;
     _436 = sparseTextureLodARB(sampler2DShadow(_8, _29), vec3(vec2(UV.x, UV.y), 0.5), 0.0, _437);
@@ -174,10 +178,10 @@ void main()
     SparseTexel_2 _373 = SparseTexel_2(_450, _451);
     u16vec4 _376 = u16vec4(_373._m1);
     _98 _381 = _98(_376.x, _376.y, _376.z, _376.w, _373._m0);
-    SV_Target.x = float(((((_252._m0 + float16_t(_227 + float(float16_t(_206 + float(_137._m0 + _75._m0))))) + _273._m0) + _299._m0) + _320._m0) + _341._m0);
-    SV_Target.y = float(((((_252._m1 + float16_t(_227 + float(float16_t(_206 + float(_137._m1 + _75._m1))))) + _273._m1) + _299._m1) + _320._m1) + _341._m1);
-    SV_Target.z = float(((((_252._m2 + float16_t(_227 + float(float16_t(_206 + float(_137._m2 + _75._m2))))) + _273._m2) + _299._m2) + _320._m2) + _341._m2);
-    SV_Target.w = float(((((_252._m3 + float16_t(_227 + float(float16_t(_206 + float(_137._m3 + _75._m3))))) + _273._m3) + _299._m3) + _320._m3) + _341._m3);
+    SV_Target.x = float(((((_252._m0 + float16_t(_227 + unpackHalf2x16(packHalf2x16(vec2(_213))).x)) + _273._m0) + _299._m0) + _320._m0) + _341._m0);
+    SV_Target.y = float(((((_252._m1 + float16_t(_227 + unpackHalf2x16(packHalf2x16(vec2(_214))).x)) + _273._m1) + _299._m1) + _320._m1) + _341._m1);
+    SV_Target.z = float(((((_252._m2 + float16_t(_227 + unpackHalf2x16(packHalf2x16(vec2(_215))).x)) + _273._m2) + _299._m2) + _320._m2) + _341._m2);
+    SV_Target.w = float(((((_252._m3 + float16_t(_227 + unpackHalf2x16(packHalf2x16(vec2(_216))).x)) + _273._m3) + _299._m3) + _320._m3) + _341._m3);
     SV_Target_1.x = int(int16_t((_160._m0 + _99._m0) + _361._m0));
     SV_Target_1.y = int(int16_t((_160._m1 + _99._m1) + _361._m1));
     SV_Target_1.z = int(int16_t((_160._m2 + _99._m2) + _361._m2));
@@ -488,10 +492,10 @@ OpBranch %420
 %227 = OpCompositeExtract %5 %226 0
 %228 = OpCompositeExtract %13 %226 4
 %229 = OpImageSparseTexelsResident %81 %228
-%230 = OpFConvert %5 %217
-%231 = OpFConvert %5 %218
-%232 = OpFConvert %5 %219
-%233 = OpFConvert %5 %220
+%230 = OpQuantizeToF16 %5 %213
+%231 = OpQuantizeToF16 %5 %214
+%232 = OpQuantizeToF16 %5 %215
+%233 = OpQuantizeToF16 %5 %216
 %234 = OpFAdd %5 %227 %230
 %235 = OpFAdd %5 %227 %231
 %236 = OpFAdd %5 %227 %232
