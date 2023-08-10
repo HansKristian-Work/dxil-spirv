@@ -5015,8 +5015,12 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 
 	// We really shouldn't have to do this, but DXC misses some dead SSA ops.
 	// Helps sanitize repro suite output in some cases.
-	if (!instruction_has_side_effects(instruction) && llvm_used_ssa_values.count(&instruction) == 0)
+	if (options.eliminate_dead_code &&
+	    !instruction_has_side_effects(instruction) &&
+	    llvm_used_ssa_values.count(&instruction) == 0)
+	{
 		return true;
+	}
 
 	current_block = &block->ir.operations;
 
@@ -5998,11 +6002,13 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 
 	for (auto &bb : *function)
 	{
-		mark_used_values(bb.getTerminator());
+		if (options.eliminate_dead_code)
+			mark_used_values(bb.getTerminator());
 
 		for (auto &inst : bb)
 		{
-			mark_used_values(&inst);
+			if (options.eliminate_dead_code)
+				mark_used_values(&inst);
 
 			if (auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst))
 			{
@@ -6512,6 +6518,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	case Option::SubgroupPartitionedNV:
 		options.nv_subgroup_partition_enabled =
 		    static_cast<const OptionSubgroupPartitionedNV &>(cap).supported;
+		break;
+
+	case Option::DeadCodeEliminate:
+		options.eliminate_dead_code =
+			static_cast<const OptionDeadCodeEliminate &>(cap).enabled;
 		break;
 
 	default:

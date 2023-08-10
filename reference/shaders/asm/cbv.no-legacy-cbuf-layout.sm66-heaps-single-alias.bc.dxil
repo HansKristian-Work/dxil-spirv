@@ -16,11 +16,11 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    uint _31 = floatBitsToUint(_12[1u]._m0[1u]) >> 2u;
-    SV_Target.x = _12[0u]._m0[_31];
-    SV_Target.y = _12[0u]._m0[_31];
-    SV_Target.z = _12[0u]._m0[_31];
-    SV_Target.w = _12[0u]._m0[_31];
+    uint _34 = floatBitsToUint(_12[1u]._m0[1u]) >> 2u;
+    SV_Target.x = _12[0u]._m0[_34];
+    SV_Target.y = _12[0u]._m0[_34];
+    SV_Target.z = _12[0u]._m0[_34];
+    SV_Target.w = _12[0u]._m0[_34];
 }
 
 
@@ -29,7 +29,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 43
+; Bound: 45
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
@@ -74,30 +74,32 @@ OpDecorate %21 Location 0
 %22 = OpTypePointer Uniform %9
 %24 = OpConstant %6 0
 %26 = OpConstant %6 1
-%27 = OpTypePointer Uniform %5
-%32 = OpConstant %6 2
-%35 = OpTypePointer Output %5
-%40 = OpConstant %6 3
+%27 = OpTypePointer Uniform %16
+%29 = OpConstant %6 2
+%30 = OpTypePointer Uniform %5
+%37 = OpTypePointer Output %5
+%42 = OpConstant %6 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %41
-%41 = OpLabel
+OpBranch %43
+%43 = OpLabel
 %23 = OpAccessChain %22 %12 %24
 %25 = OpAccessChain %22 %12 %26
-%28 = OpAccessChain %27 %25 %24 %26
-%29 = OpLoad %5 %28
-%30 = OpBitcast %6 %29
-%31 = OpShiftRightLogical %6 %30 %32
-%33 = OpAccessChain %27 %23 %24 %31
-%34 = OpLoad %5 %33
-%36 = OpAccessChain %35 %21 %24
-OpStore %36 %34
-%37 = OpAccessChain %35 %21 %26
-OpStore %37 %34
-%38 = OpAccessChain %35 %21 %32
-OpStore %38 %34
-%39 = OpAccessChain %35 %21 %40
-OpStore %39 %34
+%28 = OpAccessChain %27 %19 %29
+%31 = OpAccessChain %30 %25 %24 %26
+%32 = OpLoad %5 %31
+%33 = OpBitcast %6 %32
+%34 = OpShiftRightLogical %6 %33 %29
+%35 = OpAccessChain %30 %23 %24 %34
+%36 = OpLoad %5 %35
+%38 = OpAccessChain %37 %21 %24
+OpStore %38 %36
+%39 = OpAccessChain %37 %21 %26
+OpStore %39 %36
+%40 = OpAccessChain %37 %21 %29
+OpStore %40 %36
+%41 = OpAccessChain %37 %21 %42
+OpStore %41 %36
 OpReturn
 OpFunctionEnd
 #endif

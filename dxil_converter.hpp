@@ -243,6 +243,7 @@ enum class Option : uint32_t
 	DenormPreserveSupport = 26,
 	StrictHelperLaneWaveOps = 27,
 	SubgroupPartitionedNV = 28,
+	DeadCodeEliminate = 29,
 	Count
 };
 
@@ -564,6 +565,16 @@ struct OptionSubgroupPartitionedNV : OptionBase
 	}
 
 	bool supported = false;
+};
+
+struct OptionDeadCodeEliminate : OptionBase
+{
+	OptionDeadCodeEliminate()
+		: OptionBase(Option::DeadCodeEliminate)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry
