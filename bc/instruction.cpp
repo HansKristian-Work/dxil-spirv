@@ -408,6 +408,7 @@ AtomicRMWInst::AtomicRMWInst(Type *type, Value *ptr_, Value *value_, BinOp op_)
     , value(value_)
     , op(op_)
 {
+	set_operands({ ptr, value });
 }
 
 Value *AtomicRMWInst::getPointerOperand() const
@@ -433,6 +434,7 @@ AtomicCmpXchgInst::AtomicCmpXchgInst(Value *ptr_, Value *cmp_, Value *new_value_
 	, new_value(new_value_)
 	, cmp_value(cmp_)
 {
+	set_operands({ ptr, new_value, cmp_value });
 }
 
 Value *AtomicCmpXchgInst::getPointerOperand() const
@@ -470,6 +472,7 @@ ExtractElementInst::ExtractElementInst(Value *vec_, Value *index_)
 	: Instruction(cast<VectorType>(vec_->getType())->getElementType(), ValueKind::ExtractElement),
 	  vec(vec_), index(index_)
 {
+	set_operands({ vec, index });
 }
 
 Value *ExtractElementInst::getVectorOperand() const

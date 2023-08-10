@@ -30,6 +30,7 @@ namespace dxil_spv
 {
 using DXILOperationBuilder = bool (*)(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction);
 
 bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb);
 bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);

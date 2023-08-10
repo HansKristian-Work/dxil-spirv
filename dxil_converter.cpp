@@ -4987,9 +4987,35 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 	return true;
 }
 
+static bool instruction_has_side_effects(const llvm::Instruction &instruction)
+{
+	if (llvm::isa<llvm::StoreInst>(&instruction) ||
+	    llvm::isa<llvm::AtomicCmpXchgInst>(&instruction) ||
+	    llvm::isa<llvm::AtomicRMWInst>(&instruction))
+	{
+		return true;
+	}
+
+	if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&instruction))
+	{
+		auto *called_function = call_inst->getCalledFunction();
+		if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
+			return dxil_instruction_has_side_effects(call_inst);
+		else
+			return true;
+	}
+
+	return false;
+}
+
 bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &instruction)
 {
 	if (instruction.isTerminator())
+		return true;
+
+	// We really shouldn't have to do this, but DXC misses some dead SSA ops.
+	// Helps sanitize repro suite output in some cases.
+	if (!instruction_has_side_effects(instruction) && llvm_used_ssa_values.count(&instruction) == 0)
 		return true;
 
 	current_block = &block->ir.operations;
@@ -5913,6 +5939,51 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 	return entry_node;
 }
 
+void Converter::Impl::mark_used_value(const llvm::Value *value)
+{
+	if (!llvm::isa<llvm::Constant>(value))
+	{
+		// Technically, we won't be able to eliminate a chain of SSA expressions
+		// which are unused this way, but eeeeeeh. DXC really should handle that.
+		// This is to deal with odd-ball edge cases where random single SSA instructions
+		// were not eliminated for whatever reason.
+		llvm_used_ssa_values.insert(value);
+	}
+}
+
+void Converter::Impl::mark_used_values(const llvm::Instruction *instruction)
+{
+	if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(instruction))
+	{
+		for (unsigned i = 0, n = phi_inst->getNumIncomingValues(); i < n; i++)
+		{
+			auto *incoming = phi_inst->getIncomingValue(i);
+			// Ignore self-referential PHI. Someone else need to refer to us.
+			if (incoming != phi_inst)
+				mark_used_value(incoming);
+		}
+	}
+	else if (const auto *ret_inst = llvm::dyn_cast<llvm::ReturnInst>(instruction))
+	{
+		if (ret_inst->getReturnValue())
+			mark_used_value(ret_inst->getReturnValue());
+	}
+	else if (const auto *cond_inst = llvm::dyn_cast<llvm::BranchInst>(instruction))
+	{
+		if (cond_inst->isConditional())
+			mark_used_value(cond_inst->getCondition());
+	}
+	else if (const auto *switch_inst = llvm::dyn_cast<llvm::SwitchInst>(instruction))
+	{
+		mark_used_value(switch_inst->getCondition());
+	}
+	else
+	{
+		for (unsigned i = 0, n = instruction->getNumOperands(); i < n; i++)
+			mark_used_value(instruction->getOperand(i));
+	}
+}
+
 bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 {
 	// Need to analyze this in two stages.
@@ -5927,8 +5998,12 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 
 	for (auto &bb : *function)
 	{
+		mark_used_values(bb.getTerminator());
+
 		for (auto &inst : bb)
 		{
+			mark_used_values(&inst);
+
 			if (auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst))
 			{
 				if (!analyze_load_instruction(*this, load_inst))

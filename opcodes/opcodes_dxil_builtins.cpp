@@ -384,6 +384,64 @@ bool emit_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	return true;
 }
 
+bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction)
+{
+	uint32_t opcode;
+	if (!get_constant_operand(instruction, 0, &opcode))
+		return false;
+
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VoidTyID)
+		return true;
+
+	bool ret;
+
+	// Most of these are covered by the void check, but be exhaustive for completeness.
+	switch (DXIL::Op(opcode))
+	{
+	case DXIL::Op::StoreOutput:
+	case DXIL::Op::TextureStore:
+	case DXIL::Op::BufferStore:
+	case DXIL::Op::BufferUpdateCounter:
+	case DXIL::Op::AtomicBinOp:
+	case DXIL::Op::AtomicCompareExchange:
+	case DXIL::Op::Barrier:
+	case DXIL::Op::Discard:
+	case DXIL::Op::EmitStream:
+	case DXIL::Op::CutStream:
+	case DXIL::Op::EmitThenCutStream:
+	case DXIL::Op::StorePatchConstant:
+	case DXIL::Op::RawBufferStore:
+	case DXIL::Op::IgnoreHit:
+	case DXIL::Op::AcceptHitAndEndSearch:
+	case DXIL::Op::TraceRay:
+	case DXIL::Op::ReportHit:
+	case DXIL::Op::CallShader:
+	case DXIL::Op::SetMeshOutputCounts:
+	case DXIL::Op::EmitIndices:
+	case DXIL::Op::StoreVertexOutput:
+	case DXIL::Op::StorePrimitiveOutput:
+	case DXIL::Op::DispatchMesh:
+	case DXIL::Op::WriteSamplerFeedback:
+	case DXIL::Op::WriteSamplerFeedbackBias:
+	case DXIL::Op::WriteSamplerFeedbackLevel:
+	case DXIL::Op::WriteSamplerFeedbackGrad:
+	case DXIL::Op::RayQuery_TraceRayInline:
+	case DXIL::Op::RayQuery_Proceed:
+	case DXIL::Op::RayQuery_Abort:
+	case DXIL::Op::RayQuery_CommitNonOpaqueTriangleHit:
+	case DXIL::Op::RayQuery_CommitProceduralPrimitiveHit:
+	case DXIL::Op::TextureStoreSample:
+		ret = true;
+		break;
+
+	default:
+		ret = false;
+		break;
+	}
+
+	return ret;
+}
+
 static void update_raw_access_tracking_from_vector_type(Converter::Impl::AccessTracking &tracking,
                                                         const llvm::Type *type, RawVecSize vec_size)
 {
