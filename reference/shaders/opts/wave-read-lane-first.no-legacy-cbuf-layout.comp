@@ -1,0 +1,267 @@
+#version 460
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_vote : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, scalar) uniform _22_24
+{
+    float _m0[4093];
+} _24;
+
+layout(set = 0, binding = 1, scalar) uniform _26_29
+{
+    float _m0[4093];
+} _29[2];
+
+layout(set = 0, binding = 0) uniform usamplerBuffer _8;
+layout(set = 0, binding = 1) uniform usamplerBuffer _12[2];
+layout(set = 0, binding = 3) uniform samplerBuffer _16;
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _19;
+
+void main()
+{
+    uint _53 = imageAtomicAdd(_19, int(0u), floatBitsToUint(_24._m0[4u]));
+    uint _62 = imageAtomicAdd(_19, int(1u), subgroupBroadcastFirst(floatBitsToUint(_24._m0[gl_GlobalInvocationID.x * 4u])));
+    uint _68 = imageAtomicAdd(_19, int(1u), subgroupBroadcastFirst(floatBitsToUint(_29[1u]._m0[4u])));
+    uint _75 = imageAtomicAdd(_19, int(1u), subgroupBroadcastFirst(floatBitsToUint(_29[1u]._m0[gl_GlobalInvocationID.x * 4u])));
+    uint _81 = imageAtomicAdd(_19, int(0u), subgroupBroadcastFirst(texelFetch(_8, int(1u)).x));
+    uint _86 = imageAtomicAdd(_19, int(1u), subgroupBroadcastFirst(texelFetch(_8, int(gl_GlobalInvocationID.x)).x));
+    uint _93 = imageAtomicAdd(_19, int(1u), subgroupBroadcastFirst(texelFetch(_12[1u], int(1u)).x));
+    uint _98 = imageAtomicAdd(_19, int(1u), subgroupBroadcastFirst(imageLoad(_19, int(2u)).x));
+    uint _105 = imageAtomicAdd(_19, int(1u), uint(subgroupBroadcastFirst(texelFetch(_16, int(0u)).x)));
+    uint _107 = imageAtomicAdd(_19, int(0u), gl_WorkGroupID.x);
+    uint _110 = imageAtomicAdd(_19, int(1u), subgroupBroadcastFirst(gl_GlobalInvocationID.x));
+    uint _115 = imageAtomicAdd(_19, int(0u), floatBitsToUint(_24._m0[4u]));
+    uint _122 = imageAtomicAdd(_19, int(0u), subgroupAdd(floatBitsToUint(_24._m0[gl_GlobalInvocationID.x * 4u])));
+    uint _129 = imageAtomicAdd(_19, int(0u), subgroupOr(floatBitsToUint(_24._m0[gl_GlobalInvocationID.x * 4u])));
+    uint _138 = imageAtomicAdd(_19, int(0u), uint(subgroupAllEqual(floatBitsToUint(_24._m0[gl_GlobalInvocationID.x * 4u]))));
+    uint _147 = imageAtomicAdd(_19, int(0u), subgroupBallot(floatBitsToUint(_24._m0[gl_GlobalInvocationID.x * 4u]) != 0u).x);
+    uint _156 = imageAtomicAdd(_19, int(0u), uint(subgroupAny(floatBitsToUint(_24._m0[gl_GlobalInvocationID.x * 4u]) != 0u)));
+    uint _165 = imageAtomicAdd(_19, int(0u), uint(subgroupAll(floatBitsToUint(_24._m0[gl_GlobalInvocationID.x * 4u]) != 0u)));
+    uint _173 = imageAtomicAdd(_19, int(1u), subgroupBroadcastFirst(subgroupExclusiveAdd(floatBitsToUint(_24._m0[gl_GlobalInvocationID.x * 4u]))));
+}
+
+
+#if 0
+// SPIR-V disassembly
+// HeuristicWaveSize(32)
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 176
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledBuffer
+OpCapability ImageBuffer
+OpCapability GroupNonUniformVote
+OpCapability GroupNonUniformArithmetic
+OpCapability GroupNonUniformBallot
+OpCapability UniformTexelBufferArrayDynamicIndexing
+OpExtension "SPV_EXT_descriptor_indexing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %38 %43
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %22 ""
+OpName %26 ""
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 1
+OpDecorate %16 DescriptorSet 0
+OpDecorate %16 Binding 3
+OpDecorate %19 DescriptorSet 0
+OpDecorate %19 Binding 0
+OpDecorate %21 ArrayStride 4
+OpMemberDecorate %22 0 Offset 0
+OpDecorate %22 Block
+OpDecorate %24 DescriptorSet 0
+OpDecorate %24 Binding 0
+OpDecorate %25 ArrayStride 4
+OpMemberDecorate %26 0 Offset 0
+OpDecorate %26 Block
+OpDecorate %29 DescriptorSet 0
+OpDecorate %29 Binding 1
+OpDecorate %38 BuiltIn GlobalInvocationId
+OpDecorate %43 BuiltIn WorkgroupId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 1 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpConstant %5 2
+%10 = OpTypeArray %6 %9
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeFloat 32
+%14 = OpTypeImage %13 Buffer 0 0 0 1 Unknown
+%15 = OpTypePointer UniformConstant %14
+%16 = OpVariable %15 UniformConstant
+%17 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%18 = OpTypePointer UniformConstant %17
+%19 = OpVariable %18 UniformConstant
+%20 = OpConstant %5 4093
+%21 = OpTypeArray %13 %20
+%22 = OpTypeStruct %21
+%23 = OpTypePointer Uniform %22
+%24 = OpVariable %23 Uniform
+%25 = OpTypeArray %13 %20
+%26 = OpTypeStruct %25
+%27 = OpTypeArray %26 %9
+%28 = OpTypePointer Uniform %27
+%29 = OpVariable %28 Uniform
+%33 = OpTypePointer Uniform %26
+%35 = OpConstant %5 1
+%36 = OpTypeVector %5 3
+%37 = OpTypePointer Input %36
+%38 = OpVariable %37 Input
+%39 = OpTypePointer Input %5
+%41 = OpConstant %5 0
+%43 = OpVariable %37 Input
+%46 = OpConstant %5 4
+%47 = OpTypePointer Uniform %13
+%51 = OpTypePointer Image %5
+%60 = OpConstant %5 3
+%76 = OpTypeVector %5 4
+%99 = OpTypeVector %13 4
+%134 = OpTypeBool
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %174
+%174 = OpLabel
+%30 = OpLoad %17 %19
+%31 = OpLoad %14 %16
+%32 = OpLoad %6 %8
+%34 = OpAccessChain %33 %29 %35
+%40 = OpAccessChain %39 %38 %41
+%42 = OpLoad %5 %40
+%44 = OpAccessChain %39 %43 %41
+%45 = OpLoad %5 %44
+%48 = OpAccessChain %47 %24 %41 %46
+%49 = OpLoad %13 %48
+%50 = OpBitcast %5 %49
+%52 = OpImageTexelPointer %51 %19 %41 %41
+%53 = OpAtomicIAdd %5 %52 %35 %41 %50
+%54 = OpShiftLeftLogical %5 %42 %46
+%55 = OpIMul %5 %42 %46
+%56 = OpAccessChain %47 %24 %41 %55
+%57 = OpLoad %13 %56
+%58 = OpBitcast %5 %57
+%59 = OpGroupNonUniformBroadcastFirst %5 %60 %58
+%61 = OpImageTexelPointer %51 %19 %35 %41
+%62 = OpAtomicIAdd %5 %61 %35 %41 %59
+%63 = OpAccessChain %47 %34 %41 %46
+%64 = OpLoad %13 %63
+%65 = OpBitcast %5 %64
+%66 = OpGroupNonUniformBroadcastFirst %5 %60 %65
+%67 = OpImageTexelPointer %51 %19 %35 %41
+%68 = OpAtomicIAdd %5 %67 %35 %41 %66
+%69 = OpIMul %5 %42 %46
+%70 = OpAccessChain %47 %34 %41 %69
+%71 = OpLoad %13 %70
+%72 = OpBitcast %5 %71
+%73 = OpGroupNonUniformBroadcastFirst %5 %60 %72
+%74 = OpImageTexelPointer %51 %19 %35 %41
+%75 = OpAtomicIAdd %5 %74 %35 %41 %73
+%77 = OpImageFetch %76 %32 %35
+%78 = OpCompositeExtract %5 %77 0
+%79 = OpGroupNonUniformBroadcastFirst %5 %60 %78
+%80 = OpImageTexelPointer %51 %19 %41 %41
+%81 = OpAtomicIAdd %5 %80 %35 %41 %79
+%82 = OpImageFetch %76 %32 %42
+%83 = OpCompositeExtract %5 %82 0
+%84 = OpGroupNonUniformBroadcastFirst %5 %60 %83
+%85 = OpImageTexelPointer %51 %19 %35 %41
+%86 = OpAtomicIAdd %5 %85 %35 %41 %84
+%87 = OpAccessChain %7 %12 %35
+%88 = OpLoad %6 %87
+%89 = OpImageFetch %76 %88 %35
+%90 = OpCompositeExtract %5 %89 0
+%91 = OpGroupNonUniformBroadcastFirst %5 %60 %90
+%92 = OpImageTexelPointer %51 %19 %35 %41
+%93 = OpAtomicIAdd %5 %92 %35 %41 %91
+%94 = OpImageRead %76 %30 %9
+%95 = OpCompositeExtract %5 %94 0
+%96 = OpGroupNonUniformBroadcastFirst %5 %60 %95
+%97 = OpImageTexelPointer %51 %19 %35 %41
+%98 = OpAtomicIAdd %5 %97 %35 %41 %96
+%100 = OpImageFetch %99 %31 %41
+%101 = OpCompositeExtract %13 %100 0
+%102 = OpGroupNonUniformBroadcastFirst %13 %60 %101
+%103 = OpConvertFToU %5 %102
+%104 = OpImageTexelPointer %51 %19 %35 %41
+%105 = OpAtomicIAdd %5 %104 %35 %41 %103
+%106 = OpImageTexelPointer %51 %19 %41 %41
+%107 = OpAtomicIAdd %5 %106 %35 %41 %45
+%108 = OpGroupNonUniformBroadcastFirst %5 %60 %42
+%109 = OpImageTexelPointer %51 %19 %35 %41
+%110 = OpAtomicIAdd %5 %109 %35 %41 %108
+%111 = OpAccessChain %47 %24 %41 %46
+%112 = OpLoad %13 %111
+%113 = OpBitcast %5 %112
+%114 = OpImageTexelPointer %51 %19 %41 %41
+%115 = OpAtomicIAdd %5 %114 %35 %41 %113
+%116 = OpIMul %5 %42 %46
+%117 = OpAccessChain %47 %24 %41 %116
+%118 = OpLoad %13 %117
+%119 = OpBitcast %5 %118
+%120 = OpGroupNonUniformIAdd %5 %60 Reduce %119
+%121 = OpImageTexelPointer %51 %19 %41 %41
+%122 = OpAtomicIAdd %5 %121 %35 %41 %120
+%123 = OpIMul %5 %42 %46
+%124 = OpAccessChain %47 %24 %41 %123
+%125 = OpLoad %13 %124
+%126 = OpBitcast %5 %125
+%127 = OpGroupNonUniformBitwiseOr %5 %60 Reduce %126
+%128 = OpImageTexelPointer %51 %19 %41 %41
+%129 = OpAtomicIAdd %5 %128 %35 %41 %127
+%130 = OpIMul %5 %42 %46
+%131 = OpAccessChain %47 %24 %41 %130
+%132 = OpLoad %13 %131
+%133 = OpBitcast %5 %132
+%135 = OpGroupNonUniformAllEqual %134 %60 %133
+%136 = OpSelect %5 %135 %35 %41
+%137 = OpImageTexelPointer %51 %19 %41 %41
+%138 = OpAtomicIAdd %5 %137 %35 %41 %136
+%139 = OpIMul %5 %42 %46
+%140 = OpAccessChain %47 %24 %41 %139
+%141 = OpLoad %13 %140
+%142 = OpBitcast %5 %141
+%143 = OpINotEqual %134 %142 %41
+%144 = OpGroupNonUniformBallot %76 %60 %143
+%145 = OpCompositeExtract %5 %144 0
+%146 = OpImageTexelPointer %51 %19 %41 %41
+%147 = OpAtomicIAdd %5 %146 %35 %41 %145
+%148 = OpIMul %5 %42 %46
+%149 = OpAccessChain %47 %24 %41 %148
+%150 = OpLoad %13 %149
+%151 = OpBitcast %5 %150
+%152 = OpINotEqual %134 %151 %41
+%153 = OpGroupNonUniformAny %134 %60 %152
+%154 = OpSelect %5 %153 %35 %41
+%155 = OpImageTexelPointer %51 %19 %41 %41
+%156 = OpAtomicIAdd %5 %155 %35 %41 %154
+%157 = OpIMul %5 %42 %46
+%158 = OpAccessChain %47 %24 %41 %157
+%159 = OpLoad %13 %158
+%160 = OpBitcast %5 %159
+%161 = OpINotEqual %134 %160 %41
+%162 = OpGroupNonUniformAll %134 %60 %161
+%163 = OpSelect %5 %162 %35 %41
+%164 = OpImageTexelPointer %51 %19 %41 %41
+%165 = OpAtomicIAdd %5 %164 %35 %41 %163
+%166 = OpIMul %5 %42 %46
+%167 = OpAccessChain %47 %24 %41 %166
+%168 = OpLoad %13 %167
+%169 = OpBitcast %5 %168
+%170 = OpGroupNonUniformIAdd %5 %60 ExclusiveScan %169
+%171 = OpGroupNonUniformBroadcastFirst %5 %60 %170
+%172 = OpImageTexelPointer %51 %19 %35 %41
+%173 = OpAtomicIAdd %5 %172 %35 %41 %171
+OpReturn
+OpFunctionEnd
+#endif

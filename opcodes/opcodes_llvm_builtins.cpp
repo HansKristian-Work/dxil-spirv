@@ -1650,24 +1650,6 @@ bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Extract
 	return true;
 }
 
-static bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
-{
-	auto *call = llvm::dyn_cast<llvm::CallInst>(value);
-	if (!call)
-		return false;
-
-	auto *func = call->getCalledFunction();
-	if (strncmp(func->getName().data(), "dx.op", 5) != 0)
-		return false;
-
-	// The opcode is encoded as a constant integer.
-	uint32_t opcode;
-	if (!get_constant_operand(call, 0, &opcode))
-		return false;
-
-	return op == DXIL::Op(opcode);
-}
-
 bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *inst)
 {
 	// With patterns like WaveReadFirstLane(x) == x, we have to be extremely careful.

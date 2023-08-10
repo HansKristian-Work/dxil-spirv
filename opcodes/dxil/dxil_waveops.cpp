@@ -24,6 +24,7 @@
 
 #include "dxil_waveops.hpp"
 #include "dxil_common.hpp"
+#include "dxil_resources.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
 #include <limits>
@@ -182,8 +183,66 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	return true;
 }
 
+static bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *value)
+{
+	// A surprising amount of shaders try to broadcast a value that is provably wave-uniform already.
+	// Just forward this directly ...
+	// This is an SSA value, so the input must dominate the use. The active threads here must be a subset of
+	// the active threads when the wave uniform value was generated, so it is impossible for the input value to
+	// not be wave uniform. We might end up promoting an undef value to not undef, but that is fine, since undef is ...
+	// well, undef.
+
+	// Buffer loads usually go through extractvalue first.
+	// Ignore extractelement, it's only used in esoteric cases in DXR.
+	if (const auto *extract = llvm::dyn_cast<llvm::ExtractValueInst>(value))
+		value = extract->getAggregateOperand();
+
+	if (llvm::isa<llvm::Constant>(value))
+		return true;
+
+	if (value_is_dx_op_instrinsic(value, DXIL::Op::WaveActiveOp) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveActiveAllEqual) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveActiveBit) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveActiveBallot) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveAnyTrue) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveAllTrue) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveReadLaneFirst) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::GroupId))
+	{
+		return true;
+	}
+
+	// Also detect loading a provably uniform value. This happens as well for some reason ...
+	if (value_is_dx_op_instrinsic(value, DXIL::Op::CBufferLoadLegacy) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::CBufferLoad))
+	{
+		auto *call_op = llvm::cast<llvm::CallInst>(value);
+		return value_is_statically_wave_uniform(impl, call_op->getOperand(2)) &&
+		       resource_handle_is_uniform_readonly_descriptor(impl, call_op->getOperand(1));
+	}
+	else if (value_is_dx_op_instrinsic(value, DXIL::Op::BufferLoad) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::RawBufferLoad))
+	{
+		auto *call_op = llvm::cast<llvm::CallInst>(value);
+
+		// For byte-address-buffers, arg 3 will be undef and treated as wave uniform (it's a constant).
+		return value_is_statically_wave_uniform(impl, call_op->getOperand(2)) &&
+		       value_is_statically_wave_uniform(impl, call_op->getOperand(3)) &&
+		       resource_handle_is_uniform_readonly_descriptor(impl, call_op->getOperand(1));
+	}
+
+	return false;
+}
+
 bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (value_is_statically_wave_uniform(impl, instruction->getOperand(1)))
+	{
+		// This is hit where you least expect ;_;
+		impl.rewrite_value(instruction, impl.get_id_for_value(instruction->getOperand(1)));
+		return true;
+	}
+
 	if (wave_op_needs_helper_lane_masking(impl) && impl.wave_op_forced_helper_lanes.count(instruction) == 0)
 	{
 		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());

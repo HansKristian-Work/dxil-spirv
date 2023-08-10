@@ -67,4 +67,6 @@ bool emit_store_clip_cull_distance(
 	const Converter::Impl::ClipCullMeta &meta);
 
 void build_exploded_composite_from_vector(Converter::Impl &impl, const llvm::Instruction *inst, unsigned active_lanes);
+
+bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op);
 }

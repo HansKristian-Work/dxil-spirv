@@ -1,0 +1,361 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_vote : require
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer TSSBO
+{
+    uint _m0[];
+} T;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer T_1
+{
+    uvec2 _m0[];
+} T_2;
+
+layout(set = 0, binding = 1, std430) restrict readonly buffer TsSSBO
+{
+    uint _m0[];
+} Ts[2];
+
+layout(set = 0, binding = 4, std430) restrict readonly buffer TBSSBO
+{
+    uint _m0[];
+} TB;
+
+layout(set = 0, binding = 0, std430) buffer USSBO
+{
+    uint _m0[];
+} U;
+
+layout(set = 0, binding = 0, std140) uniform CUBO
+{
+    vec4 _m0[1024];
+} C;
+
+layout(set = 0, binding = 1, std140) uniform CsUBO
+{
+    vec4 _m0[1024];
+} Cs[2];
+
+layout(set = 0, binding = 3) uniform samplerBuffer B;
+
+void main()
+{
+    uint _62 = atomicAdd(U._m0[0u], floatBitsToUint(C._m0[1u]).x);
+    uint _70 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(floatBitsToUint(C._m0[gl_LaunchIDEXT.x]).x));
+    uint _77 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(floatBitsToUint(Cs[0u]._m0[1u]).x));
+    uint _84 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(floatBitsToUint(Cs[0u]._m0[gl_LaunchIDEXT.x]).x));
+    uint _88 = atomicAdd(U._m0[0u], T._m0[2u]);
+    uint _92 = atomicAdd(U._m0[0u], TB._m0[0u]);
+    uint _99 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(T_2._m0[gl_LaunchIDEXT.x].y));
+    uint _103 = 1u * 2u;
+    uint _110 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(T._m0[_103 + (((gl_LaunchIDEXT.x << 2u) & 4u) >> 2u)]));
+    uint _117 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(Ts[0u]._m0[1u]));
+    uint _122 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(TB._m0[gl_LaunchIDEXT.x]));
+    uint _127 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(U._m0[2u]));
+    uint _134 = atomicAdd(U._m0[1u], uint(subgroupBroadcastFirst(texelFetch(B, int(0u)).x)));
+    uint _140 = atomicAdd(U._m0[0u], floatBitsToUint(C._m0[1u]).x);
+    uint _147 = atomicAdd(U._m0[0u], subgroupAdd(floatBitsToUint(C._m0[gl_LaunchIDEXT.x]).x));
+    uint _154 = atomicAdd(U._m0[0u], subgroupOr(floatBitsToUint(C._m0[gl_LaunchIDEXT.x]).x));
+    uint _163 = atomicAdd(U._m0[0u], uint(subgroupAllEqual(floatBitsToUint(C._m0[gl_LaunchIDEXT.x]).x)));
+    uint _172 = atomicAdd(U._m0[0u], subgroupBallot(floatBitsToUint(C._m0[gl_LaunchIDEXT.x]).x != 0u).x);
+    uint _181 = atomicAdd(U._m0[0u], uint(subgroupAny(floatBitsToUint(C._m0[gl_LaunchIDEXT.x]).x != 0u)));
+    uint _190 = atomicAdd(U._m0[0u], uint(subgroupAll(floatBitsToUint(C._m0[gl_LaunchIDEXT.x]).x != 0u)));
+    uint _198 = atomicAdd(U._m0[1u], subgroupBroadcastFirst(subgroupExclusiveAdd(floatBitsToUint(C._m0[gl_LaunchIDEXT.x]).x)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 201
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability SampledBuffer
+OpCapability GroupNonUniformVote
+OpCapability GroupNonUniformArithmetic
+OpCapability GroupNonUniformBallot
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint RayGenerationNV %3 "main" %9 %14 %20 %24 %28 %32 %38 %43 %49
+OpName %3 "main"
+OpName %7 "TSSBO"
+OpName %9 "T"
+OpName %12 "TSSBO"
+OpName %14 "T"
+OpName %16 "TsSSBO"
+OpName %20 "Ts"
+OpName %24 "B"
+OpName %26 "TBSSBO"
+OpName %28 "TB"
+OpName %30 "USSBO"
+OpName %32 "U"
+OpName %36 "CUBO"
+OpName %38 "C"
+OpName %40 "CsUBO"
+OpName %43 "Cs"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %11 ArrayStride 8
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %9 NonWritable
+OpDecorate %9 Restrict
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 0
+OpDecorate %14 NonWritable
+OpDecorate %14 Restrict
+OpDecorate %15 ArrayStride 4
+OpMemberDecorate %16 0 Offset 0
+OpDecorate %16 Block
+OpDecorate %20 DescriptorSet 0
+OpDecorate %20 Binding 1
+OpDecorate %20 NonWritable
+OpDecorate %20 Restrict
+OpDecorate %24 DescriptorSet 0
+OpDecorate %24 Binding 3
+OpDecorate %25 ArrayStride 4
+OpMemberDecorate %26 0 Offset 0
+OpDecorate %26 Block
+OpDecorate %28 DescriptorSet 0
+OpDecorate %28 Binding 4
+OpDecorate %28 NonWritable
+OpDecorate %28 Restrict
+OpDecorate %29 ArrayStride 4
+OpMemberDecorate %30 0 Offset 0
+OpDecorate %30 Block
+OpDecorate %32 DescriptorSet 0
+OpDecorate %32 Binding 0
+OpDecorate %35 ArrayStride 16
+OpMemberDecorate %36 0 Offset 0
+OpDecorate %36 Block
+OpDecorate %38 DescriptorSet 0
+OpDecorate %38 Binding 0
+OpDecorate %39 ArrayStride 16
+OpMemberDecorate %40 0 Offset 0
+OpDecorate %40 Block
+OpDecorate %43 DescriptorSet 0
+OpDecorate %43 Binding 1
+OpDecorate %49 BuiltIn LaunchIdNV
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeVector %5 2
+%11 = OpTypeRuntimeArray %10
+%12 = OpTypeStruct %11
+%13 = OpTypePointer StorageBuffer %12
+%14 = OpVariable %13 StorageBuffer
+%15 = OpTypeRuntimeArray %5
+%16 = OpTypeStruct %15
+%17 = OpConstant %5 2
+%18 = OpTypeArray %16 %17
+%19 = OpTypePointer StorageBuffer %18
+%20 = OpVariable %19 StorageBuffer
+%21 = OpTypeFloat 32
+%22 = OpTypeImage %21 Buffer 0 0 0 1 Unknown
+%23 = OpTypePointer UniformConstant %22
+%24 = OpVariable %23 UniformConstant
+%25 = OpTypeRuntimeArray %5
+%26 = OpTypeStruct %25
+%27 = OpTypePointer StorageBuffer %26
+%28 = OpVariable %27 StorageBuffer
+%29 = OpTypeRuntimeArray %5
+%30 = OpTypeStruct %29
+%31 = OpTypePointer StorageBuffer %30
+%32 = OpVariable %31 StorageBuffer
+%33 = OpConstant %5 1024
+%34 = OpTypeVector %21 4
+%35 = OpTypeArray %34 %33
+%36 = OpTypeStruct %35
+%37 = OpTypePointer Uniform %36
+%38 = OpVariable %37 Uniform
+%39 = OpTypeArray %34 %33
+%40 = OpTypeStruct %39
+%41 = OpTypeArray %40 %17
+%42 = OpTypePointer Uniform %41
+%43 = OpVariable %42 Uniform
+%44 = OpTypePointer Uniform %40
+%46 = OpConstant %5 0
+%47 = OpTypeVector %5 3
+%48 = OpTypePointer Input %47
+%49 = OpVariable %48 Input
+%50 = OpTypePointer Input %5
+%53 = OpConstant %5 1
+%54 = OpTypePointer Uniform %34
+%57 = OpTypeVector %5 4
+%60 = OpTypePointer StorageBuffer %5
+%68 = OpConstant %5 3
+%93 = OpTypePointer StorageBuffer %10
+%102 = OpConstant %5 4
+%111 = OpTypePointer StorageBuffer %16
+%159 = OpTypeBool
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %199
+%199 = OpLabel
+%45 = OpAccessChain %44 %43 %46
+%51 = OpAccessChain %50 %49 %46
+%52 = OpLoad %5 %51
+%55 = OpAccessChain %54 %38 %46 %53
+%56 = OpLoad %34 %55
+%58 = OpBitcast %57 %56
+%59 = OpCompositeExtract %5 %58 0
+%61 = OpAccessChain %60 %32 %46 %46
+%62 = OpAtomicIAdd %5 %61 %53 %46 %59
+%63 = OpAccessChain %54 %38 %46 %52
+%64 = OpLoad %34 %63
+%65 = OpBitcast %57 %64
+%66 = OpCompositeExtract %5 %65 0
+%67 = OpGroupNonUniformBroadcastFirst %5 %68 %66
+%69 = OpAccessChain %60 %32 %46 %53
+%70 = OpAtomicIAdd %5 %69 %53 %46 %67
+%71 = OpAccessChain %54 %45 %46 %53
+%72 = OpLoad %34 %71
+%73 = OpBitcast %57 %72
+%74 = OpCompositeExtract %5 %73 0
+%75 = OpGroupNonUniformBroadcastFirst %5 %68 %74
+%76 = OpAccessChain %60 %32 %46 %53
+%77 = OpAtomicIAdd %5 %76 %53 %46 %75
+%78 = OpAccessChain %54 %45 %46 %52
+%79 = OpLoad %34 %78
+%80 = OpBitcast %57 %79
+%81 = OpCompositeExtract %5 %80 0
+%82 = OpGroupNonUniformBroadcastFirst %5 %68 %81
+%83 = OpAccessChain %60 %32 %46 %53
+%84 = OpAtomicIAdd %5 %83 %53 %46 %82
+%85 = OpAccessChain %60 %9 %46 %17
+%86 = OpLoad %5 %85
+%87 = OpAccessChain %60 %32 %46 %46
+%88 = OpAtomicIAdd %5 %87 %53 %46 %86
+%89 = OpAccessChain %60 %28 %46 %46
+%90 = OpLoad %5 %89
+%91 = OpAccessChain %60 %32 %46 %46
+%92 = OpAtomicIAdd %5 %91 %53 %46 %90
+%94 = OpAccessChain %93 %14 %46 %52
+%95 = OpLoad %10 %94
+%96 = OpCompositeExtract %5 %95 1
+%97 = OpGroupNonUniformBroadcastFirst %5 %68 %96
+%98 = OpAccessChain %60 %32 %46 %53
+%99 = OpAtomicIAdd %5 %98 %53 %46 %97
+%100 = OpShiftLeftLogical %5 %52 %17
+%101 = OpBitwiseAnd %5 %100 %102
+%103 = OpIMul %5 %53 %17
+%104 = OpShiftRightLogical %5 %101 %17
+%105 = OpIAdd %5 %103 %104
+%106 = OpAccessChain %60 %9 %46 %105
+%107 = OpLoad %5 %106
+%108 = OpGroupNonUniformBroadcastFirst %5 %68 %107
+%109 = OpAccessChain %60 %32 %46 %53
+%110 = OpAtomicIAdd %5 %109 %53 %46 %108
+%112 = OpAccessChain %111 %20 %46
+%113 = OpAccessChain %60 %112 %46 %53
+%114 = OpLoad %5 %113
+%115 = OpGroupNonUniformBroadcastFirst %5 %68 %114
+%116 = OpAccessChain %60 %32 %46 %53
+%117 = OpAtomicIAdd %5 %116 %53 %46 %115
+%118 = OpAccessChain %60 %28 %46 %52
+%119 = OpLoad %5 %118
+%120 = OpGroupNonUniformBroadcastFirst %5 %68 %119
+%121 = OpAccessChain %60 %32 %46 %53
+%122 = OpAtomicIAdd %5 %121 %53 %46 %120
+%123 = OpAccessChain %60 %32 %46 %17
+%124 = OpLoad %5 %123
+%125 = OpGroupNonUniformBroadcastFirst %5 %68 %124
+%126 = OpAccessChain %60 %32 %46 %53
+%127 = OpAtomicIAdd %5 %126 %53 %46 %125
+%128 = OpLoad %22 %24
+%129 = OpImageFetch %34 %128 %46
+%130 = OpCompositeExtract %21 %129 0
+%131 = OpGroupNonUniformBroadcastFirst %21 %68 %130
+%132 = OpConvertFToU %5 %131
+%133 = OpAccessChain %60 %32 %46 %53
+%134 = OpAtomicIAdd %5 %133 %53 %46 %132
+%135 = OpAccessChain %54 %38 %46 %53
+%136 = OpLoad %34 %135
+%137 = OpBitcast %57 %136
+%138 = OpCompositeExtract %5 %137 0
+%139 = OpAccessChain %60 %32 %46 %46
+%140 = OpAtomicIAdd %5 %139 %53 %46 %138
+%141 = OpAccessChain %54 %38 %46 %52
+%142 = OpLoad %34 %141
+%143 = OpBitcast %57 %142
+%144 = OpCompositeExtract %5 %143 0
+%145 = OpGroupNonUniformIAdd %5 %68 Reduce %144
+%146 = OpAccessChain %60 %32 %46 %46
+%147 = OpAtomicIAdd %5 %146 %53 %46 %145
+%148 = OpAccessChain %54 %38 %46 %52
+%149 = OpLoad %34 %148
+%150 = OpBitcast %57 %149
+%151 = OpCompositeExtract %5 %150 0
+%152 = OpGroupNonUniformBitwiseOr %5 %68 Reduce %151
+%153 = OpAccessChain %60 %32 %46 %46
+%154 = OpAtomicIAdd %5 %153 %53 %46 %152
+%155 = OpAccessChain %54 %38 %46 %52
+%156 = OpLoad %34 %155
+%157 = OpBitcast %57 %156
+%158 = OpCompositeExtract %5 %157 0
+%160 = OpGroupNonUniformAllEqual %159 %68 %158
+%161 = OpSelect %5 %160 %53 %46
+%162 = OpAccessChain %60 %32 %46 %46
+%163 = OpAtomicIAdd %5 %162 %53 %46 %161
+%164 = OpAccessChain %54 %38 %46 %52
+%165 = OpLoad %34 %164
+%166 = OpBitcast %57 %165
+%167 = OpCompositeExtract %5 %166 0
+%168 = OpINotEqual %159 %167 %46
+%169 = OpGroupNonUniformBallot %57 %68 %168
+%170 = OpCompositeExtract %5 %169 0
+%171 = OpAccessChain %60 %32 %46 %46
+%172 = OpAtomicIAdd %5 %171 %53 %46 %170
+%173 = OpAccessChain %54 %38 %46 %52
+%174 = OpLoad %34 %173
+%175 = OpBitcast %57 %174
+%176 = OpCompositeExtract %5 %175 0
+%177 = OpINotEqual %159 %176 %46
+%178 = OpGroupNonUniformAny %159 %68 %177
+%179 = OpSelect %5 %178 %53 %46
+%180 = OpAccessChain %60 %32 %46 %46
+%181 = OpAtomicIAdd %5 %180 %53 %46 %179
+%182 = OpAccessChain %54 %38 %46 %52
+%183 = OpLoad %34 %182
+%184 = OpBitcast %57 %183
+%185 = OpCompositeExtract %5 %184 0
+%186 = OpINotEqual %159 %185 %46
+%187 = OpGroupNonUniformAll %159 %68 %186
+%188 = OpSelect %5 %187 %53 %46
+%189 = OpAccessChain %60 %32 %46 %46
+%190 = OpAtomicIAdd %5 %189 %53 %46 %188
+%191 = OpAccessChain %54 %38 %46 %52
+%192 = OpLoad %34 %191
+%193 = OpBitcast %57 %192
+%194 = OpCompositeExtract %5 %193 0
+%195 = OpGroupNonUniformIAdd %5 %68 ExclusiveScan %194
+%196 = OpGroupNonUniformBroadcastFirst %5 %68 %195
+%197 = OpAccessChain %60 %32 %46 %53
+%198 = OpAtomicIAdd %5 %197 %53 %46 %196
+OpReturn
+OpFunctionEnd
+#endif

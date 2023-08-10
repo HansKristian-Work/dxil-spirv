@@ -2069,4 +2069,79 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 
 	return true;
 }
+
+bool resource_handle_is_uniform_readonly_descriptor(Converter::Impl &impl, const llvm::Value *value)
+{
+	spv::Id ptr_id = impl.get_id_for_value(value);
+	if (!ptr_id)
+		return false;
+
+	auto &meta = impl.handle_to_resource_meta[ptr_id];
+
+	// Root constants must be wave uniform unless waves are merged across different state calls which is ridiculous.
+	// Anything loaded from record buffer is probably not wave uniform;
+	// waves are merged arbitrarily, so we cannot assume anything.
+	if (ptr_id == impl.root_constant_id)
+		return true;
+
+	// Only consider an untyped load to be uniform.
+	// There are reasonable use cases for scalaizing a typed load,
+	// since those tend to never go through scalar caches.
+	if (meta.storage != spv::StorageClassPhysicalStorageBuffer &&
+	    meta.storage != spv::StorageClassStorageBuffer &&
+	    meta.storage != spv::StorageClassUniform)
+	{
+		return false;
+	}
+
+	auto *instruction = llvm::cast<llvm::CallInst>(value);
+	Converter::Impl::ResourceReference *reference = nullptr;
+	DXIL::ResourceType resource_type = {};
+
+	if (value_is_dx_op_instrinsic(value, DXIL::Op::CreateHandle))
+	{
+		uint32_t resource_type_operand, resource_range;
+		if (!get_constant_operand(instruction, 1, &resource_type_operand))
+			return false;
+		if (!get_constant_operand(instruction, 2, &resource_range))
+			return false;
+
+		resource_type = static_cast<DXIL::ResourceType>(resource_type_operand);
+		reference = &get_resource_reference(impl, resource_type, instruction, resource_range);
+	}
+	else if (value_is_dx_op_instrinsic(value, DXIL::Op::CreateHandleForLib))
+	{
+		auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getOperand(1));
+		if (itr == impl.llvm_global_variable_to_resource_mapping.end())
+			return false;
+		resource_type = itr->second.type;
+		reference = &get_resource_reference(impl, itr->second.type, instruction, itr->second.meta_index);
+	}
+	else if (value_is_dx_op_instrinsic(value, DXIL::Op::AnnotateHandle))
+	{
+		AnnotateHandleMeta annotate_meta = {};
+		if (!get_annotate_handle_meta(impl, instruction, annotate_meta))
+			return false;
+		resource_type = annotate_meta.resource_type;
+		reference = &get_resource_reference(impl, annotate_meta.resource_type, instruction, annotate_meta.binding_index);
+	}
+
+	if (resource_type != DXIL::ResourceType::SRV && resource_type != DXIL::ResourceType::CBV)
+		return false;
+
+	if (!reference)
+		return false;
+
+	// Anything referencing local root signature is questionable to assume anything about.
+	if (reference->local_root_signature_entry >= 0)
+		return false;
+
+	// For any array, be afraid. Even if the index is dynamically uniform, it might become not wave uniform
+	// due to multi-draw shenanigans. A constant index would work, but that's going a bit too far for
+	// a simple peephole ...
+	if (reference->base_resource_is_array)
+		return false;
+
+	return true;
+}
 } // namespace dxil_spv

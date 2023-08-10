@@ -1,0 +1,48 @@
+RWStructuredBuffer<uint> U : register(u0);
+StructuredBuffer<uint2> T : register(t0);
+StructuredBuffer<uint> Ts[2] : register(t1);
+Buffer<float> B : register(t3);
+ByteAddressBuffer TB : register(t4);
+
+struct Foo { uint value[1024]; };
+ConstantBuffer<Foo> C : register(b0);
+ConstantBuffer<Foo> Cs[2] : register(b1);
+
+[shader("raygeneration")]
+void main()
+{
+	uint thr = DispatchRaysIndex().x;
+	uint o;
+
+	// CBV loads.
+	InterlockedAdd(U[0], WaveReadLaneFirst(C.value[1]), o); // Should opt
+	InterlockedAdd(U[1], WaveReadLaneFirst(C.value[thr]), o); // Should not opt
+	InterlockedAdd(U[1], WaveReadLaneFirst(Cs[0].value[1]), o); // Should not opt (but could if we care)
+	InterlockedAdd(U[1], WaveReadLaneFirst(Cs[0].value[thr]), o); // Should not opt
+
+	// SRV loads.
+	InterlockedAdd(U[0], WaveReadLaneFirst(T[1].x), o); // Should opt
+	InterlockedAdd(U[0], WaveReadLaneFirst(TB.Load(0)), o); // Should opt
+	InterlockedAdd(U[1], WaveReadLaneFirst(T[thr].y), o); // Should not opt
+	InterlockedAdd(U[1], WaveReadLaneFirst(T[1][thr & 1]), o); // Should not opt
+	InterlockedAdd(U[1], WaveReadLaneFirst(Ts[0][1]), o); // Should not opt (but could if we care)
+	InterlockedAdd(U[1], WaveReadLaneFirst(TB.Load(thr * 4)), o); // Should not opt
+
+	// UAV loads.
+	InterlockedAdd(U[1], WaveReadLaneFirst(U[2]), o); // Should not opt
+
+	// Typed loads.
+	InterlockedAdd(U[1], WaveReadLaneFirst(B[0]), o); // Should not opt
+
+	// Wave ops which are considered wave uniform.
+	InterlockedAdd(U[0], WaveReadLaneFirst(WaveReadLaneFirst(C.value[1])), o);
+	InterlockedAdd(U[0], WaveReadLaneFirst(WaveActiveSum(C.value[thr])), o);
+	InterlockedAdd(U[0], WaveReadLaneFirst(WaveActiveBitOr(C.value[thr])), o);
+	InterlockedAdd(U[0], WaveReadLaneFirst(WaveActiveAllEqual(C.value[thr])), o);
+	InterlockedAdd(U[0], WaveReadLaneFirst(WaveActiveBallot(C.value[thr] != 0).x), o);
+	InterlockedAdd(U[0], WaveReadLaneFirst(WaveActiveAnyTrue(C.value[thr] != 0)), o);
+	InterlockedAdd(U[0], WaveReadLaneFirst(WaveActiveAllTrue(C.value[thr] != 0)), o);
+
+	// Wave ops that should not optimize.
+	InterlockedAdd(U[1], WaveReadLaneFirst(WavePrefixSum(C.value[thr])), o);
+}

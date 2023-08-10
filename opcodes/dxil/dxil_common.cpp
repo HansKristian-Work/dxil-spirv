@@ -494,4 +494,22 @@ void build_exploded_composite_from_vector(Converter::Impl &impl, const llvm::Ins
 		impl.rewrite_value(value, struct_op->id);
 	}
 }
+
+bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
+{
+	auto *call = llvm::dyn_cast<llvm::CallInst>(value);
+	if (!call)
+		return false;
+
+	auto *func = call->getCalledFunction();
+	if (strncmp(func->getName().data(), "dx.op", 5) != 0)
+		return false;
+
+	// The opcode is encoded as a constant integer.
+	uint32_t opcode;
+	if (!get_constant_operand(call, 0, &opcode))
+		return false;
+
+	return op == DXIL::Op(opcode);
+}
 } // namespace dxil_spv
