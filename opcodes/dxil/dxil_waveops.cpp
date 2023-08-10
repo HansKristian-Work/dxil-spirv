@@ -110,14 +110,14 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 
 	if (wave_op_needs_helper_lane_masking(impl))
 	{
-		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
-		impl.add(is_helper_lane);
-
 		// Helper lanes cannot affect the result, but let them participate.
 		// Just force a specific boolean value here that ensures invariant result.
 
 		if (opcode == spv::OpGroupNonUniformAny)
 		{
+			auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+			impl.add(is_helper_lane);
+
 			// Force false for helpers.
 			auto *is_active = impl.allocate(spv::OpLogicalNot, impl.builder().makeBoolType());
 			is_active->add_id(is_helper_lane->id);
@@ -130,6 +130,9 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 		}
 		else if (opcode == spv::OpGroupNonUniformAll)
 		{
+			auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
+			impl.add(is_helper_lane);
+
 			// Force true for helpers.
 			auto *or_op = impl.allocate(spv::OpLogicalOr, impl.builder().makeBoolType());
 			or_op->add_id(value);

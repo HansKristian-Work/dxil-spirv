@@ -788,6 +788,7 @@ spv::Id SPIRVModule::Impl::build_wave_read_first_lane_masked(SPIRVModule &module
 			return calls.second;
 
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
 	auto *current_build_point = builder.getBuildPoint();
 	spv::Block *entry = nullptr;
 	spv::Id bool_type = builder.makeBoolType();
@@ -795,43 +796,40 @@ spv::Id SPIRVModule::Impl::build_wave_read_first_lane_masked(SPIRVModule &module
 	                                       "WaveReadFirstLane",
 	                                       { type_id, bool_type }, {}, &entry);
 
-	auto *is_helper_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *is_active_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
-	spv::Id read_id, undef_id;
-
 	builder.setBuildPoint(entry);
 
-	builder.createSelectionMerge(merge_block, 0);
-	builder.createConditionalBranch(func->getParamId(1), is_helper_block, is_active_block);
+	spv::Id uvec4_type = builder.makeVectorType(builder.makeUintType(32), 4);
 
-	{
-		builder.setBuildPoint(is_helper_block);
-		// Assist in scalar promotion, if we set something concrete, we will force VGPR.
-		undef_id = builder.createUndefined(type_id);
-		builder.createBranch(merge_block);
-	}
+	// Shuffle path is more robust since it will avoid undefs.
+	// The branchy style where helpers receive undefs confuses NV it seems ...
 
-	{
-		builder.setBuildPoint(is_active_block);
-		auto broadcast_first = std::make_unique<spv::Instruction>(builder.getUniqueId(), type_id, spv::OpGroupNonUniformBroadcastFirst);
-		broadcast_first->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
-		broadcast_first->addIdOperand(func->getParamId(0));
-		read_id = broadcast_first->getResultId();
-		is_active_block->addInstruction(std::move(broadcast_first));
-		builder.createBranch(merge_block);
-	}
+	auto not_inst = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), bool_type, spv::OpLogicalNot);
+	not_inst->addIdOperand(func->getParamId(1));
 
-	builder.setBuildPoint(merge_block);
-	auto phi = std::make_unique<spv::Instruction>(builder.getUniqueId(), type_id, spv::OpPhi);
-	phi->addIdOperand(read_id);
-	phi->addIdOperand(is_active_block->getId());
-	phi->addIdOperand(undef_id);
-	phi->addIdOperand(is_helper_block->getId());
-	read_id = phi->getResultId();
-	merge_block->addInstruction(std::move(phi));
+	auto ballot = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBallot);
+	ballot->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	ballot->addIdOperand(not_inst->getResultId());
 
-	builder.makeReturn(false, read_id);
+	auto lsb = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), type_id, spv::OpGroupNonUniformBallotFindLSB);
+	lsb->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	lsb->addIdOperand(ballot->getResultId());
+
+	auto shuffle = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), type_id, spv::OpGroupNonUniformShuffle);
+	shuffle->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	shuffle->addIdOperand(func->getParamId(0));
+	shuffle->addIdOperand(lsb->getResultId());
+	spv::Id ret_id = shuffle->getResultId();
+
+	entry->addInstruction(std::move(not_inst));
+	entry->addInstruction(std::move(ballot));
+	entry->addInstruction(std::move(lsb));
+	entry->addInstruction(std::move(shuffle));
+	builder.makeReturn(false, ret_id);
+
 	builder.setBuildPoint(current_build_point);
 	wave_read_first_lane_masked_ids.emplace_back(type_id, func->getId());
 	return func->getId();

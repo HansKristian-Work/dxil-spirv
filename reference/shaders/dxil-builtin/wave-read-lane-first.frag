@@ -1,25 +1,15 @@
 #version 460
 #extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_shuffle : require
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
 layout(location = 0) flat in uvec3 INDEX;
 bool discard_state;
 
-uint _38;
-
 uint WaveReadFirstLane(uint _31, bool _32)
 {
-    uint _41;
-    if (_32)
-    {
-        _41 = _38;
-    }
-    else
-    {
-        _41 = subgroupBroadcastFirst(_31);
-    }
-    return _41;
+    return subgroupShuffle(_31, subgroupBallotFindLSB(subgroupBallot(!_32)));
 }
 
 void discard_exit()
@@ -37,10 +27,10 @@ void main()
     {
         discard_state = true;
     }
-    uint _50 = INDEX.x * 3u;
-    imageStore(_8, int(_50), uvec4(WaveReadFirstLane(INDEX.x, gl_HelperInvocation || discard_state)));
-    imageStore(_8, int(_50 + 1u), uvec4(WaveReadFirstLane(INDEX.y, gl_HelperInvocation || discard_state)));
-    imageStore(_8, int(_50 + 2u), uvec4(WaveReadFirstLane(INDEX.z, gl_HelperInvocation || discard_state)));
+    uint _49 = INDEX.x * 3u;
+    imageStore(_8, int(_49), uvec4(WaveReadFirstLane(INDEX.x, gl_HelperInvocation || discard_state)));
+    imageStore(_8, int(_49 + 1u), uvec4(WaveReadFirstLane(INDEX.y, gl_HelperInvocation || discard_state)));
+    imageStore(_8, int(_49 + 2u), uvec4(WaveReadFirstLane(INDEX.z, gl_HelperInvocation || discard_state)));
     discard_exit();
 }
 
@@ -50,25 +40,26 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 77
+; Bound: 75
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformBallot
+OpCapability GroupNonUniformShuffle
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %11 %62
+OpEntryPoint Fragment %3 "main" %11 %60
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %11 "INDEX"
 OpName %27 "discard_state"
 OpName %33 "WaveReadFirstLane"
-OpName %69 "discard_exit"
+OpName %67 "discard_exit"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
 OpDecorate %11 Flat
 OpDecorate %11 Location 0
-OpDecorate %62 BuiltIn HelperInvocation
+OpDecorate %60 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -88,17 +79,17 @@ OpDecorate %62 BuiltIn HelperInvocation
 %27 = OpVariable %26 Private
 %28 = OpConstantFalse %23
 %30 = OpTypeFunction %5 %5 %23
-%40 = OpConstant %5 3
-%49 = OpConstant %5 12
-%51 = OpTypeVector %5 4
-%60 = OpConstantTrue %23
-%61 = OpTypePointer Input %23
-%62 = OpVariable %61 Input
+%35 = OpTypeVector %5 4
+%38 = OpConstant %5 3
+%48 = OpConstant %5 12
+%58 = OpConstantTrue %23
+%59 = OpTypePointer Input %23
+%60 = OpVariable %59 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %27 %28
-OpBranch %57
-%57 = OpLabel
+OpBranch %55
+%55 = OpLabel
 %12 = OpLoad %6 %8
 %14 = OpAccessChain %13 %11 %15
 %16 = OpLoad %5 %14
@@ -107,61 +98,55 @@ OpBranch %57
 %20 = OpAccessChain %13 %11 %21
 %22 = OpLoad %5 %20
 %24 = OpIEqual %23 %16 %25
-OpSelectionMerge %59 None
-OpBranchConditional %24 %58 %59
-%58 = OpLabel
-OpStore %27 %60
-OpBranch %59
-%59 = OpLabel
-%63 = OpLoad %23 %62
+OpSelectionMerge %57 None
+OpBranchConditional %24 %56 %57
+%56 = OpLabel
+OpStore %27 %58
+OpBranch %57
+%57 = OpLabel
+%61 = OpLoad %23 %60
+%62 = OpLoad %23 %27
+%29 = OpLogicalOr %23 %61 %62
+%42 = OpFunctionCall %5 %33 %16 %29
+%63 = OpLoad %23 %60
 %64 = OpLoad %23 %27
-%29 = OpLogicalOr %23 %63 %64
-%43 = OpFunctionCall %5 %33 %16 %29
-%65 = OpLoad %23 %62
+%43 = OpLogicalOr %23 %63 %64
+%44 = OpFunctionCall %5 %33 %19 %43
+%65 = OpLoad %23 %60
 %66 = OpLoad %23 %27
-%44 = OpLogicalOr %23 %65 %66
-%45 = OpFunctionCall %5 %33 %19 %44
-%67 = OpLoad %23 %62
-%68 = OpLoad %23 %27
-%46 = OpLogicalOr %23 %67 %68
-%47 = OpFunctionCall %5 %33 %22 %46
-%48 = OpIMul %5 %16 %49
-%50 = OpIMul %5 %16 %40
-%52 = OpCompositeConstruct %51 %43 %43 %43 %43
-OpImageWrite %12 %50 %52
-%53 = OpCompositeConstruct %51 %45 %45 %45 %45
-%54 = OpIAdd %5 %50 %18
+%45 = OpLogicalOr %23 %65 %66
+%46 = OpFunctionCall %5 %33 %22 %45
+%47 = OpIMul %5 %16 %48
+%49 = OpIMul %5 %16 %38
+%50 = OpCompositeConstruct %35 %42 %42 %42 %42
+OpImageWrite %12 %49 %50
+%51 = OpCompositeConstruct %35 %44 %44 %44 %44
+%52 = OpIAdd %5 %49 %18
+OpImageWrite %12 %52 %51
+%53 = OpCompositeConstruct %35 %46 %46 %46 %46
+%54 = OpIAdd %5 %49 %21
 OpImageWrite %12 %54 %53
-%55 = OpCompositeConstruct %51 %47 %47 %47 %47
-%56 = OpIAdd %5 %50 %21
-OpImageWrite %12 %56 %55
-%75 = OpFunctionCall %1 %69
+%73 = OpFunctionCall %1 %67
 OpReturn
 OpFunctionEnd
 %33 = OpFunction %5 None %30
 %31 = OpFunctionParameter %5
 %32 = OpFunctionParameter %23
 %34 = OpLabel
-OpSelectionMerge %37 None
-OpBranchConditional %32 %35 %36
-%35 = OpLabel
-%38 = OpUndef %5
-OpBranch %37
-%36 = OpLabel
-%39 = OpGroupNonUniformBroadcastFirst %5 %40 %31
-OpBranch %37
-%37 = OpLabel
-%41 = OpPhi %5 %39 %36 %38 %35
-OpReturnValue %41
+%36 = OpLogicalNot %23 %32
+%37 = OpGroupNonUniformBallot %35 %38 %36
+%39 = OpGroupNonUniformBallotFindLSB %5 %38 %37
+%40 = OpGroupNonUniformShuffle %5 %38 %31 %39
+OpReturnValue %40
 OpFunctionEnd
-%69 = OpFunction %1 None %2
-%70 = OpLabel
-%73 = OpLoad %23 %27
-OpSelectionMerge %72 None
-OpBranchConditional %73 %71 %72
-%71 = OpLabel
+%67 = OpFunction %1 None %2
+%68 = OpLabel
+%71 = OpLoad %23 %27
+OpSelectionMerge %70 None
+OpBranchConditional %71 %69 %70
+%69 = OpLabel
 OpKill
-%72 = OpLabel
+%70 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif
