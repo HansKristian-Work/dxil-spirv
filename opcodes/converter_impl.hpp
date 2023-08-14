@@ -301,7 +301,8 @@ struct Converter::Impl
 		String entry_point_name;
 	} execution_mode_meta;
 
-	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
+	ShaderStage get_remapping_stage() const;
+	static ShaderStage get_remapping_stage(spv::ExecutionModel model, bool mesh_compute_emulation);
 
 	llvm::MDNode *entry_point_meta = nullptr;
 	bool emit_resources_global_mapping();
@@ -560,6 +561,7 @@ struct Converter::Impl
 		bool strict_helper_lane_waveops = true;
 		bool nv_subgroup_partition_enabled = false;
 		bool eliminate_dead_code = false;
+		bool mesh_shader_emulation = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;

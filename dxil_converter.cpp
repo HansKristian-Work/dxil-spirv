@@ -960,7 +960,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
 		D3DBinding d3d_binding = {
-			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment,
+			get_remapping_stage(), resource_kind, index, bind_space, bind_register, range_size, alignment,
 		};
 		VulkanSRVBinding vulkan_binding = { { bind_space, bind_register }, {} };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
@@ -1454,7 +1454,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		D3DUAVBinding d3d_binding = {};
 		d3d_binding.counter = has_counter;
 		d3d_binding.binding = {
-			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment
+			get_remapping_stage(), resource_kind, index, bind_space, bind_register, range_size, alignment
 		};
 		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register }, {} };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
@@ -1916,7 +1916,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
-		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
+		D3DBinding d3d_binding = { get_remapping_stage(),
 			                       DXIL::ResourceKind::CBuffer,
 			                       index,
 			                       bind_space,
@@ -2148,7 +2148,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
-		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
+		D3DBinding d3d_binding = { get_remapping_stage(),
 			                       DXIL::ResourceKind::Sampler,
 			                       index,
 			                       bind_space,
@@ -2703,7 +2703,7 @@ bool Converter::Impl::emit_global_heaps()
 		unsigned stride = annotation->stride;
 		unsigned alignment = info.kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
 		D3DBinding d3d_binding = {
-			get_remapping_stage(execution_model), info.kind, 0,
+			get_remapping_stage(), info.kind, 0,
 			UINT32_MAX, UINT32_MAX, UINT32_MAX, alignment,
 		};
 		VulkanBinding vulkan_binding = {};
@@ -2938,7 +2938,7 @@ void Converter::Impl::scan_resources(ResourceRemappingInterface *iface, const LL
 			return;
 }
 
-ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_model)
+ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_model, bool mesh_shader_emulation)
 {
 	switch (execution_model)
 	{
@@ -2953,7 +2953,7 @@ ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_m
 	case spv::ExecutionModelFragment:
 		return ShaderStage::Pixel;
 	case spv::ExecutionModelGLCompute:
-		return ShaderStage::Compute;
+		return mesh_shader_emulation ? ShaderStage::Mesh : ShaderStage::Compute;
 	case spv::ExecutionModelIntersectionKHR:
 		return ShaderStage::Intersection;
 	case spv::ExecutionModelClosestHitKHR:
@@ -2973,6 +2973,11 @@ ShaderStage Converter::Impl::get_remapping_stage(spv::ExecutionModel execution_m
 	default:
 		return ShaderStage::Unknown;
 	}
+}
+
+ShaderStage Converter::Impl::get_remapping_stage() const
+{
+	return get_remapping_stage(execution_model, options.mesh_shader_emulation);
 }
 
 static inline float half_to_float(uint16_t u16_value)
@@ -3533,7 +3538,8 @@ bool Converter::Impl::emit_patch_variables()
 	auto &builder = spirv_module.get_builder();
 
 	spv::StorageClass storage =
-	    execution_model == spv::ExecutionModelTessellationEvaluation ? spv::StorageClassInput : spv::StorageClassOutput;
+		execution_model == spv::ExecutionModelTessellationEvaluation ? spv::StorageClassInput :
+		(execution_model == spv::ExecutionModelGLCompute ? spv::StorageClassWorkgroup : spv::StorageClassOutput);
 
 	for (unsigned i = 0; i < patch_node->getNumOperands(); i++)
 	{
@@ -3566,7 +3572,7 @@ bool Converter::Impl::emit_patch_variables()
 		else
 			type_id = get_type_id(effective_element_type, rows, cols);
 
-		if (execution_model == spv::ExecutionModelMeshEXT)
+		if (execution_model == spv::ExecutionModelMeshEXT || execution_model == spv::ExecutionModelGLCompute)
 		{
 			type_id = builder.makeArrayType(
 				type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
@@ -3608,13 +3614,20 @@ bool Converter::Impl::emit_patch_variables()
 					return false;
 			}
 
-			builder.addDecoration(variable_id, spv::DecorationLocation, vk_io.location);
-			if (vk_io.component != 0)
-				builder.addDecoration(variable_id, spv::DecorationComponent, vk_io.component);
+			if (execution_model != spv::ExecutionModelGLCompute)
+			{
+				builder.addDecoration(variable_id, spv::DecorationLocation, vk_io.location);
+				if (vk_io.component != 0)
+					builder.addDecoration(variable_id, spv::DecorationComponent, vk_io.component);
+			}
 		}
 
-		builder.addDecoration(variable_id, execution_model == spv::ExecutionModelMeshEXT
-		                                   ? spv::DecorationPerPrimitiveEXT : spv::DecorationPatch);
+		if (execution_model != spv::ExecutionModelGLCompute)
+		{
+			builder.addDecoration(variable_id, execution_model == spv::ExecutionModelMeshEXT ?
+			                                   spv::DecorationPerPrimitiveEXT :
+			                                   spv::DecorationPatch);
+		}
 	}
 
 	return true;
@@ -3624,7 +3637,8 @@ bool Converter::Impl::emit_other_variables()
 {
 	auto &builder = spirv_module.get_builder();
 
-	if (execution_model == spv::ExecutionModelMeshEXT && execution_mode_meta.stage_output_num_primitive)
+	if ((execution_model == spv::ExecutionModelMeshEXT || execution_model == spv::ExecutionModelGLCompute) &&
+	    execution_mode_meta.stage_output_num_primitive)
 	{
 		unsigned index_dim = execution_mode_meta.primitive_index_dimension;
 
@@ -3633,11 +3647,16 @@ bool Converter::Impl::emit_other_variables()
 			spv::Id type_id = builder.makeArrayType(
 				get_type_id(DXIL::ComponentType::U32, 1, index_dim),
 				builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
-			primitive_index_array_id = create_variable(spv::StorageClassOutput, type_id, "indices");
+
+			auto storage_class = execution_model == spv::ExecutionModelGLCompute ?
+			                     spv::StorageClassWorkgroup : spv::StorageClassOutput;
+			primitive_index_array_id = create_variable(storage_class, type_id, "indices");
 
 			spv::BuiltIn builtin_id =
 			    index_dim == 3 ? spv::BuiltInPrimitiveTriangleIndicesEXT : spv::BuiltInPrimitiveLineIndicesEXT;
-			builder.addDecoration(primitive_index_array_id, spv::DecorationBuiltIn, builtin_id);
+
+			if (storage_class == spv::StorageClassOutput)
+				builder.addDecoration(primitive_index_array_id, spv::DecorationBuiltIn, builtin_id);
 			spirv_module.register_builtin_shader_output(primitive_index_array_id, builtin_id);
 		}
 	}
@@ -3770,7 +3789,9 @@ bool Converter::Impl::emit_stage_output_variables()
 			continue;
 		}
 
-		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
+		if (execution_model == spv::ExecutionModelTessellationControl ||
+		    execution_model == spv::ExecutionModelMeshEXT ||
+		    execution_model == spv::ExecutionModelGLCompute)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
@@ -3783,7 +3804,10 @@ bool Converter::Impl::emit_stage_output_variables()
 			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
-		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
+		auto storage_class = execution_model == spv::ExecutionModelGLCompute ?
+		                     spv::StorageClassWorkgroup : spv::StorageClassOutput;
+
+		spv::Id variable_id = create_variable(storage_class, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
 
 		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))
@@ -3845,7 +3869,8 @@ bool Converter::Impl::emit_stage_output_variables()
 		}
 		else if (system_value != DXIL::Semantic::User)
 		{
-			emit_builtin_decoration(variable_id, system_value, spv::StorageClassOutput);
+			if (execution_model != spv::ExecutionModelGLCompute)
+				emit_builtin_decoration(variable_id, system_value, spv::StorageClassOutput);
 		}
 		else
 		{
@@ -3869,37 +3894,52 @@ bool Converter::Impl::emit_stage_output_variables()
 					return false;
 			}
 
-			builder.addDecoration(variable_id, spv::DecorationLocation, vk_output.location);
-			if (vk_output.component != 0)
-				builder.addDecoration(variable_id, spv::DecorationComponent, vk_output.component);
+			if (execution_model != spv::ExecutionModelGLCompute)
+			{
+				builder.addDecoration(variable_id, spv::DecorationLocation, vk_output.location);
+				if (vk_output.component != 0)
+					builder.addDecoration(variable_id, spv::DecorationComponent, vk_output.component);
+			}
 		}
 	}
 
 	if (clip_distance_count)
 	{
 		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, clip_distance_count, 1, true);
-		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
+		if (execution_model == spv::ExecutionModelTessellationControl ||
+		    execution_model == spv::ExecutionModelMeshEXT ||
+		    execution_model == spv::ExecutionModelGLCompute)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
 		}
 
-		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id);
-		emit_builtin_decoration(variable_id, DXIL::Semantic::ClipDistance, spv::StorageClassOutput);
+		auto storage_class = execution_model == spv::ExecutionModelGLCompute ?
+		                     spv::StorageClassWorkgroup : spv::StorageClassOutput;
+
+		spv::Id variable_id = create_variable(storage_class, type_id);
+		if (storage_class == spv::StorageClassOutput)
+			emit_builtin_decoration(variable_id, DXIL::Semantic::ClipDistance, spv::StorageClassOutput);
 		spirv_module.register_builtin_shader_output(variable_id, spv::BuiltInClipDistance);
 	}
 
 	if (cull_distance_count)
 	{
 		spv::Id type_id = get_type_id(DXIL::ComponentType::F32, cull_distance_count, 1, true);
-		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
+		if (execution_model == spv::ExecutionModelTessellationControl ||
+		    execution_model == spv::ExecutionModelMeshEXT ||
+		    execution_model == spv::ExecutionModelGLCompute)
 		{
 			type_id = builder.makeArrayType(
 			    type_id, builder.makeUintConstant(execution_mode_meta.stage_output_num_vertex, false), 0);
 		}
 
-		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id);
-		emit_builtin_decoration(variable_id, DXIL::Semantic::CullDistance, spv::StorageClassOutput);
+		auto storage_class = execution_model == spv::ExecutionModelGLCompute ?
+		                     spv::StorageClassWorkgroup : spv::StorageClassOutput;
+
+		spv::Id variable_id = create_variable(storage_class, type_id);
+		if (storage_class == spv::StorageClassOutput)
+			emit_builtin_decoration(variable_id, DXIL::Semantic::CullDistance, spv::StorageClassOutput);
 		spirv_module.register_builtin_shader_output(variable_id, spv::BuiltInCullDistance);
 	}
 
@@ -3978,6 +4018,8 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 {
 	auto &builder = spirv_module.get_builder();
 	bool requires_flat_input = false;
+	bool is_non_emulation_stage = execution_model != spv::ExecutionModelGLCompute;
+
 	switch (semantic)
 	{
 	case DXIL::Semantic::Position:
@@ -3993,9 +4035,10 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		}
 		else if (storage == spv::StorageClassOutput)
 		{
-			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPosition);
+			if (is_non_emulation_stage)
+				builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPosition);
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInPosition);
-			if (options.invariant_position)
+			if (options.invariant_position && is_non_emulation_stage)
 				builder.addDecoration(id, spv::DecorationInvariant);
 		}
 		break;
@@ -4067,8 +4110,11 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		break;
 
 	case DXIL::Semantic::ClipDistance:
-		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInClipDistance);
-		builder.addCapability(spv::CapabilityClipDistance);
+		if (is_non_emulation_stage)
+		{
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInClipDistance);
+			builder.addCapability(spv::CapabilityClipDistance);
+		}
 		if (storage == spv::StorageClassOutput)
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInClipDistance);
 		else if (storage == spv::StorageClassInput)
@@ -4076,8 +4122,11 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		break;
 
 	case DXIL::Semantic::CullDistance:
-		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInCullDistance);
-		builder.addCapability(spv::CapabilityCullDistance);
+		if (is_non_emulation_stage)
+		{
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInCullDistance);
+			builder.addCapability(spv::CapabilityCullDistance);
+		}
 		if (storage == spv::StorageClassOutput)
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInCullDistance);
 		else if (storage == spv::StorageClassInput)
@@ -4085,11 +4134,12 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		break;
 
 	case DXIL::Semantic::RenderTargetArrayIndex:
-		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInLayer);
+		if (is_non_emulation_stage)
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInLayer);
 		if (storage == spv::StorageClassOutput)
 		{
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInLayer);
-			if (execution_model != spv::ExecutionModelGeometry)
+			if (execution_model != spv::ExecutionModelGeometry && is_non_emulation_stage)
 			{
 				builder.addExtension("SPV_EXT_shader_viewport_index_layer");
 				builder.addCapability(spv::CapabilityShaderViewportIndexLayerEXT);
@@ -4100,15 +4150,18 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInLayer);
 			requires_flat_input = true;
 		}
-		builder.addCapability(spv::CapabilityGeometry);
+
+		if (is_non_emulation_stage)
+			builder.addCapability(spv::CapabilityGeometry);
 		break;
 
 	case DXIL::Semantic::ViewPortArrayIndex:
-		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInViewportIndex);
+		if (is_non_emulation_stage)
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInViewportIndex);
 		if (storage == spv::StorageClassOutput)
 		{
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInViewportIndex);
-			if (execution_model != spv::ExecutionModelGeometry)
+			if (execution_model != spv::ExecutionModelGeometry && is_non_emulation_stage)
 			{
 				builder.addExtension("SPV_EXT_shader_viewport_index_layer");
 				builder.addCapability(spv::CapabilityShaderViewportIndexLayerEXT);
@@ -4119,11 +4172,14 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInViewportIndex);
 			requires_flat_input = true;
 		}
-		builder.addCapability(spv::CapabilityMultiViewport);
+
+		if (is_non_emulation_stage)
+			builder.addCapability(spv::CapabilityMultiViewport);
 		break;
 
 	case DXIL::Semantic::PrimitiveID:
-		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPrimitiveId);
+		if (is_non_emulation_stage)
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPrimitiveId);
 		if (storage == spv::StorageClassOutput)
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInPrimitiveId);
 		else
@@ -4131,23 +4187,29 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInPrimitiveId);
 			requires_flat_input = true;
 		}
-		builder.addCapability(spv::CapabilityGeometry);
+		if (is_non_emulation_stage)
+			builder.addCapability(spv::CapabilityGeometry);
 		break;
 
 	case DXIL::Semantic::ShadingRate:
-		if (storage == spv::StorageClassOutput)
+		if (storage == spv::StorageClassOutput && is_non_emulation_stage)
 		{
 			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPrimitiveShadingRateKHR);
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInPrimitiveShadingRateKHR);
 		}
 		else
 		{
-			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInShadingRateKHR);
+			if (is_non_emulation_stage)
+				builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInShadingRateKHR);
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInShadingRateKHR);
 			requires_flat_input = true;
 		}
-		builder.addExtension("SPV_KHR_fragment_shading_rate");
-		builder.addCapability(spv::CapabilityFragmentShadingRateKHR);
+
+		if (is_non_emulation_stage)
+		{
+			builder.addExtension("SPV_KHR_fragment_shading_rate");
+			builder.addCapability(spv::CapabilityFragmentShadingRateKHR);
+		}
 		break;
 
 	case DXIL::Semantic::Barycentrics:
@@ -4169,9 +4231,12 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 
 	case DXIL::Semantic::CullPrimitive:
 	{
-		builder.addExtension("SPV_EXT_mesh_shader");
-		builder.addCapability(spv::CapabilityMeshShadingEXT);
-		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInCullPrimitiveEXT);
+		if (is_non_emulation_stage)
+		{
+			builder.addExtension("SPV_EXT_mesh_shader");
+			builder.addCapability(spv::CapabilityMeshShadingEXT);
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInCullPrimitiveEXT);
+		}
 		spirv_module.register_builtin_shader_output(id, spv::BuiltInCullPrimitiveEXT);
 		break;
 	}
@@ -5496,8 +5561,11 @@ bool Converter::Impl::emit_execution_modes_mesh()
 	auto &builder = spirv_module.get_builder();
 	auto *func = spirv_module.get_entry_function();
 
-	builder.addExtension("SPV_EXT_mesh_shader");
-	builder.addCapability(spv::CapabilityMeshShadingEXT);
+	if (!options.mesh_shader_emulation)
+	{
+		builder.addExtension("SPV_EXT_mesh_shader");
+		builder.addCapability(spv::CapabilityMeshShadingEXT);
+	}
 
 	auto *ms_state_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::MSState);
 
@@ -5509,8 +5577,11 @@ bool Converter::Impl::emit_execution_modes_mesh()
 		auto topology = static_cast<DXIL::MeshOutputTopology>(get_constant_metadata(arguments, 3));
 		unsigned index_count;
 
-		builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
-		builder.addExecutionMode(func, spv::ExecutionModeOutputPrimitivesEXT, max_primitive_count);
+		if (!options.mesh_shader_emulation)
+		{
+			builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
+			builder.addExecutionMode(func, spv::ExecutionModeOutputPrimitivesEXT, max_primitive_count);
+		}
 
 		switch (topology)
 		{
@@ -5519,12 +5590,14 @@ bool Converter::Impl::emit_execution_modes_mesh()
 			break;
 
 		case DXIL::MeshOutputTopology::Line:
-			builder.addExecutionMode(func, spv::ExecutionModeOutputLinesEXT);
+			if (!options.mesh_shader_emulation)
+				builder.addExecutionMode(func, spv::ExecutionModeOutputLinesEXT);
 			index_count = 2;
 			break;
 
 		case DXIL::MeshOutputTopology::Triangle:
-			builder.addExecutionMode(func, spv::ExecutionModeOutputTrianglesEXT);
+			if (!options.mesh_shader_emulation)
+				builder.addExecutionMode(func, spv::ExecutionModeOutputTrianglesEXT);
 			index_count = 3;
 			break;
 
@@ -5632,8 +5705,16 @@ bool Converter::Impl::emit_execution_modes()
 	switch (execution_model)
 	{
 	case spv::ExecutionModelGLCompute:
-		if (!emit_execution_modes_compute())
-			return false;
+		if (options.mesh_shader_emulation)
+		{
+			if (!emit_execution_modes_mesh())
+				return false;
+		}
+		else
+		{
+			if (!emit_execution_modes_compute())
+				return false;
+		}
 		break;
 
 	case spv::ExecutionModelGeometry:
@@ -6089,6 +6170,17 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	entry_point_meta = get_entry_point_meta(module, options.entry_point.empty() ? nullptr : options.entry_point.c_str());
 	execution_model = get_execution_model(module, entry_point_meta);
 
+	if (options.mesh_shader_emulation)
+	{
+		if (execution_model == spv::ExecutionModelMeshEXT)
+			execution_model = spv::ExecutionModelGLCompute;
+		else if (execution_model == spv::ExecutionModelTaskEXT)
+		{
+			LOGE("Unsupported task execution model for mesh shader emulation.\n");
+			return {};
+		}
+	}
+
 	if (execution_model == spv::ExecutionModelFragment &&
 	    resource_mapping_iface && resource_mapping_iface->has_nontrivial_stage_input_remapping())
 	{
@@ -6119,7 +6211,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto &pool = *result.node_pool;
 
 	spirv_module.set_descriptor_qa_info(options.descriptor_qa);
-	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", options.physical_storage_buffer);
+	spirv_module.emit_entry_point(execution_model, "main", options.physical_storage_buffer);
 
 	// Need to analyze some execution modes early which affect opcode analysis later.
 	if (!analyze_execution_modes_meta())
@@ -6525,6 +6617,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			static_cast<const OptionDeadCodeEliminate &>(cap).enabled;
 		break;
 
+	case Option::MeshComputeEmulation:
+		options.mesh_shader_emulation =
+		    static_cast<const OptionMeshComputeEmulation &>(cap).enabled;
+		break;
+
 	default:
 		break;
 	}
@@ -6548,7 +6645,7 @@ void Converter::set_resource_remapping_interface(ResourceRemappingInterface *ifa
 ShaderStage Converter::get_shader_stage(const LLVMBCParser &bitcode_parser, const char *entry)
 {
 	auto &module = bitcode_parser.get_module();
-	return Impl::get_remapping_stage(get_execution_model(module, get_entry_point_meta(module, entry)));
+	return Impl::get_remapping_stage(get_execution_model(module, get_entry_point_meta(module, entry)), false);
 }
 
 void Converter::scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &bitcode_parser)

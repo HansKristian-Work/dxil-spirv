@@ -33,7 +33,15 @@ namespace dxil_spv
 {
 bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	Operation *op = impl.allocate(spv::OpSetMeshOutputsEXT);
+	Operation *op;
+	if (impl.execution_model == spv::ExecutionModelGLCompute)
+	{
+		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::SetMeshOutputCounts);
+		op = impl.allocate(spv::OpFunctionCall, impl.builder().makeVoidType());
+		op->add_id(call_id);
+	}
+	else
+		op = impl.allocate(spv::OpSetMeshOutputsEXT);
 
 	// If we have a degenerate case where either of these is 0, we have to declare 0 as max output.
 	if (impl.execution_mode_meta.stage_output_num_vertex == 0)
@@ -47,7 +55,13 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 		op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
 
 	impl.add(op);
+
 	return true;
+}
+
+static spv::StorageClass get_output_storage_class(Converter::Impl &impl)
+{
+	return impl.execution_model == spv::ExecutionModelGLCompute ? spv::StorageClassWorkgroup : spv::StorageClassOutput;
 }
 
 bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -69,7 +83,7 @@ bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id index_id = impl.build_vector(index_scalar_type_id, components, index_dim);
 
 	Operation *op = impl.allocate(spv::OpAccessChain,
-	                              builder.makePointer(spv::StorageClassOutput, index_type_id));
+	                              builder.makePointer(get_output_storage_class(impl), index_type_id));
 	spv::Id ptr_id = op->id;
 
 	op->add_id(impl.primitive_index_array_id);
@@ -115,7 +129,7 @@ bool emit_store_vertex_output_instruction(Converter::Impl &impl, const llvm::Cal
 	uint32_t num_cols = builder.getNumTypeComponents(output_type_id);
 
 	Operation *op = impl.allocate(
-			spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+			spv::OpAccessChain, builder.makePointer(get_output_storage_class(impl), builder.getScalarTypeId(output_type_id)));
 	ptr_id = op->id;
 
 	op->add_id(var_id);
@@ -177,7 +191,7 @@ bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::
 	}
 
 	op = impl.allocate(spv::OpAccessChain,
-	                   builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+	                   builder.makePointer(get_output_storage_class(impl), builder.getScalarTypeId(output_type_id)));
 	ptr_id = op->id;
 	op->add_id(var_id);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(5)));
@@ -207,6 +221,10 @@ bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 bool emit_get_mesh_payload_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	// Task shaders are unsupported (for now) in emulation.
+	if (impl.execution_model == spv::ExecutionModelGLCompute)
+		return false;
+
 	// GetMeshPayload can only be called once per shader
 	spv::Id type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
 	spv::Id var_id = impl.create_variable(spv::StorageClassTaskPayloadWorkgroupEXT, type_id);

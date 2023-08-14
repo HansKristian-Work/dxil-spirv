@@ -71,6 +71,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_quad_all(SPIRVModule &module);
 	spv::Id build_quad_any(SPIRVModule &module);
 	spv::Id build_quad_vote(SPIRVModule &module, HelperCall call);
+	spv::Id build_set_mesh_output_counts(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -115,6 +116,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id quad_all_call_id = 0;
 	spv::Id quad_any_call_id = 0;
 	spv::Id wave_is_first_lane_masked_id = 0;
+	spv::Id set_mesh_output_counts_call_id = 0;
 	Vector<std::pair<spv::Id, spv::Id>> wave_match_call_ids;
 	Vector<std::pair<spv::Id, spv::Id>> wave_active_all_equal_masked_ids;
 	Vector<std::pair<spv::Id, spv::Id>> wave_read_first_lane_masked_ids;
@@ -988,6 +990,35 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_set_mesh_output_counts(SPIRVModule &module)
+{
+	if (set_mesh_output_counts_call_id)
+		return set_mesh_output_counts_call_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id u32_type = builder.makeUintType(32);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+	                                       "SetMeshOutputCounts", { u32_type, u32_type }, {}, &entry);
+	builder.addName(func->getParamId(0), "vertex_count");
+	builder.addName(func->getParamId(1), "primitive_count");
+
+	// Just annotates the CS source for now.
+	// Eventually, this could build an execute indirect command.
+	auto barrier = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
+
+	barrier->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+	barrier->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+	barrier->addIdOperand(
+	    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+	entry->addInstruction(std::move(barrier));
+
+	builder.makeReturn(false);
+	builder.setBuildPoint(current_build_point);
+	set_mesh_output_counts_call_id = func->getId();
+	return set_mesh_output_counts_call_id;
+}
+
 spv::Id SPIRVModule::Impl::build_quad_vote(SPIRVModule &module, HelperCall call)
 {
 	auto *current_build_point = builder.getBuildPoint();
@@ -1225,6 +1256,8 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_quad_all(module);
 	case HelperCall::QuadAny:
 		return build_quad_any(module);
+	case HelperCall::SetMeshOutputCounts:
+		return build_set_mesh_output_counts(module);
 
 	default:
 		break;

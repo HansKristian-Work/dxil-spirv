@@ -380,12 +380,15 @@ spv::Id get_clip_cull_distance_access_chain(Converter::Impl &impl, const llvm::C
 	uint32_t var_id = storage == spv::StorageClassOutput ? impl.spirv_module.get_builtin_shader_output(meta.builtin) :
 	                  impl.spirv_module.get_builtin_shader_input(meta.builtin);
 
-	Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(storage, builder.makeFloatType(32)));
+	auto override_storage = storage == spv::StorageClassOutput && impl.execution_model == spv::ExecutionModelGLCompute ?
+	                        spv::StorageClassWorkgroup : storage;
+
+	Operation *op = impl.allocate(spv::OpAccessChain, builder.makePointer(override_storage, builder.makeFloatType(32)));
 	op->add_id(var_id);
 
 	if (instruction->getNumOperands() >= 6 &&
 	    storage == spv::StorageClassOutput &&
-	    impl.execution_model == spv::ExecutionModelMeshEXT)
+	    (impl.execution_model == spv::ExecutionModelMeshEXT || impl.execution_model == spv::ExecutionModelGLCompute))
 	{
 		// Mesh shaders, need to index into per-vertex array.
 		op->add_id(impl.get_id_for_value(instruction->getOperand(5)));

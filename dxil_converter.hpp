@@ -244,6 +244,7 @@ enum class Option : uint32_t
 	StrictHelperLaneWaveOps = 27,
 	SubgroupPartitionedNV = 28,
 	DeadCodeEliminate = 29,
+	MeshComputeEmulation = 30,
 	Count
 };
 
@@ -571,6 +572,16 @@ struct OptionDeadCodeEliminate : OptionBase
 {
 	OptionDeadCodeEliminate()
 		: OptionBase(Option::DeadCodeEliminate)
+	{
+	}
+
+	bool enabled = false;
+};
+
+struct OptionMeshComputeEmulation : OptionBase
+{
+	OptionMeshComputeEmulation()
+		: OptionBase(Option::MeshComputeEmulation)
 	{
 	}
 

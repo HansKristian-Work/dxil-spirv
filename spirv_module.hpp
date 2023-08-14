@@ -59,7 +59,8 @@ enum class HelperCall
 	QuadAny,
 	WaveIsFirstLaneMasked,
 	WaveActiveAllEqualMasked,
-	WaveReadFirstLaneMasked
+	WaveReadFirstLaneMasked,
+	SetMeshOutputCounts
 };
 
 class SPIRVModule
