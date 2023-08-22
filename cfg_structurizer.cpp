@@ -3030,8 +3030,6 @@ void CFGStructurizer::split_merge_scopes()
 		// We'll need intermediate blocks which merge each layer of the selection "onion".
 		rewrite_selection_breaks(idom, node);
 	}
-
-	recompute_cfg();
 }
 
 bool CFGStructurizer::query_reachability(const CFGNode &from, const CFGNode &to) const
