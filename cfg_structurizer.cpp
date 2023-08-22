@@ -1217,6 +1217,25 @@ void CFGStructurizer::fixup_broken_value_dominance()
 
 void CFGStructurizer::insert_phi()
 {
+	// If we inserted dummy branches from back-edge to rewrite infinite loops, we must prune these branches
+	// now, so we don't end up creating a wrong amount of PHI incoming values.
+	// We don't have to recompute the CFG since we don't really care about post-visit orders at this stage.
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->pred_back_edge && node->pred_back_edge->ir.terminator.type == Terminator::Type::Branch &&
+		    node->pred_back_edge->succ_back_edge == node->pred_back_edge->ir.terminator.direct_block &&
+		    node->pred_back_edge->succ.size() == 1)
+		{
+			auto *back_edge = node->pred_back_edge;
+			auto *succ = back_edge->succ.front();
+			back_edge->succ.clear();
+			auto itr = std::find(succ->pred.begin(), succ->pred.end(), back_edge);
+			assert(itr != succ->pred.end());
+			succ->pred.erase(itr);
+			succ->recompute_immediate_dominator();
+		}
+	}
+
 	prune_dead_preds();
 
 	// It is possible that an SSA value was created in a block, and consumed in another.
@@ -1241,21 +1260,6 @@ void CFGStructurizer::insert_phi()
 		for (auto *op : node->ir.operations)
 			if (op->id)
 				value_id_to_block[op->id] = node;
-
-		// If we inserted dummy branches from back-edge to rewrite infinite loops, we must prune these branches
-		// now, so we don't end up creating a wrong amount of PHI incoming values.
-		// We don't have to recompute the CFG since we don't really care about post-visit orders at this stage.
-		if (node->pred_back_edge && node->pred_back_edge->ir.terminator.type == Terminator::Type::Branch &&
-		    node->pred_back_edge->succ_back_edge == node->pred_back_edge->ir.terminator.direct_block &&
-		    node->pred_back_edge->succ.size() == 1)
-		{
-			auto *back_edge = node->pred_back_edge;
-			auto *succ = back_edge->succ.front();
-			back_edge->succ.clear();
-			auto itr = std::find(succ->pred.begin(), succ->pred.end(), back_edge);
-			assert(itr != succ->pred.end());
-			succ->pred.erase(itr);
-		}
 	}
 
 	// Resolve phi-nodes top-down since PHI nodes may depend on other PHI nodes.
