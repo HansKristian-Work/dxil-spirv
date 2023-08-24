@@ -25,6 +25,7 @@
 #include "opcodes/converter_impl.hpp"
 #include "opcodes/opcodes_dxil_builtins.hpp"
 #include "opcodes/opcodes_llvm_builtins.hpp"
+#include "opcodes/dxil/dxil_common.hpp"
 
 #include "dxil_converter.hpp"
 #include "logging.hpp"
@@ -5988,6 +5989,99 @@ void Converter::Impl::mark_used_values(const llvm::Instruction *instruction)
 	}
 }
 
+static bool instruction_is_precise_sensitive(const llvm::Instruction *value)
+{
+	if (auto *binary_op = llvm::dyn_cast<llvm::BinaryOperator>(value))
+	{
+		auto opcode = binary_op->getOpcode();
+		switch (opcode)
+		{
+		case llvm::BinaryOperator::BinaryOps::FAdd:
+		case llvm::BinaryOperator::BinaryOps::FSub:
+		case llvm::BinaryOperator::BinaryOps::FMul:
+		case llvm::BinaryOperator::BinaryOps::FDiv:
+		case llvm::BinaryOperator::BinaryOps::FRem:
+			return true;
+
+		default:
+			break;
+		}
+	}
+	else if (value_is_dx_op_instrinsic(value, DXIL::Op::FMad) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::Dot2) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::Dot2AddHalf) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::Dot3) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::Dot4))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+static bool instruction_requires_no_contraction(const llvm::Instruction *value)
+{
+	if (instruction_is_precise_sensitive(value))
+	{
+		if (auto *binary_op = llvm::dyn_cast<llvm::BinaryOperator>(value))
+			return !binary_op->isFast();
+		else
+			return llvm::cast<llvm::CallInst>(value)->hasMetadata("dx.precise");
+	}
+
+	return false;
+}
+
+static void propagate_precise(UnorderedSet<const llvm::Instruction *> &cache, const llvm::Instruction *value);
+
+static void mark_precise(UnorderedSet<const llvm::Instruction *> &cache, const llvm::Value *value)
+{
+	// Stop propagating when we hit something not an instruction, i.e. a constant or variable (alloca is very rare).
+	if (auto *inst = llvm::dyn_cast<llvm::Instruction>(value))
+	{
+		if (instruction_is_precise_sensitive(inst) && !instruction_requires_no_contraction(inst))
+		{
+			if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(inst))
+				const_cast<llvm::CallInst *>(call_inst)->setMetadata("dx.precise", nullptr);
+			else if (auto *binary_op = llvm::dyn_cast<llvm::BinaryOperator>(inst))
+				const_cast<llvm::BinaryOperator *>(binary_op)->setFast(false);
+		}
+
+		propagate_precise(cache, inst);
+	}
+}
+
+static void propagate_precise(UnorderedSet<const llvm::Instruction *> &cache, const llvm::Instruction *value)
+{
+	if (cache.count(value) != 0)
+		return;
+	cache.insert(value);
+
+	if (const auto *phi = llvm::dyn_cast<llvm::PHINode>(value))
+	{
+		for (unsigned i = 0, n = phi->getNumIncomingValues(); i < n; i++)
+			mark_precise(cache, phi->getIncomingValue(i));
+	}
+	else
+	{
+		for (unsigned i = 0, n = value->getNumOperands(); i < n; i++)
+			mark_precise(cache, value->getOperand(i));
+	}
+}
+
+static void propagate_precise(const llvm::Function *function)
+{
+	Vector<const llvm::Instruction *> precise_instructions;
+	for (auto &bb : *function)
+		for (auto &inst : bb)
+			if (instruction_requires_no_contraction(&inst))
+				precise_instructions.push_back(&inst);
+
+	UnorderedSet<const llvm::Instruction *> visitation_cache;
+	for (auto *inst : precise_instructions)
+		propagate_precise(visitation_cache, inst);
+}
+
 bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 {
 	// Need to analyze this in two stages.
@@ -5999,6 +6093,8 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 	// alignments of the loads and stores. This lets us build up a list of SSBO declarations we need to
 	// optimally implement the loads and stores. We need to do this late, because we depend on results
 	// of ExtractValue analysis.
+
+	propagate_precise(function);
 
 	for (auto &bb : *function)
 	{
