@@ -123,7 +123,8 @@ public:
 	bool resolve_proxy_values();
 
 	MDNode *getMetadata(const String &str) const;
-	void add_metadata(const String &str, MDNode *node);
+	bool hasMetadata(const String &str) const;
+	void setMetadata(const String &str, MDNode *node);
 
 	UnorderedMap<String, MDNode *>::const_iterator metadata_begin() const;
 	UnorderedMap<String, MDNode *>::const_iterator metadata_end() const;

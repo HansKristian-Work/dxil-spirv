@@ -911,7 +911,7 @@ bool emit_cast_instruction(Converter::Impl &impl, const llvm::CastInst *instruct
 
 static bool elementptr_is_nonuniform(const llvm::GetElementPtrInst *inst)
 {
-	return inst->getMetadata("dx.nonuniform") != nullptr;
+	return inst->hasMetadata("dx.nonuniform");
 }
 
 static bool elementptr_is_nonuniform(const llvm::ConstantExpr *)

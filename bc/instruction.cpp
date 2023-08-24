@@ -79,7 +79,7 @@ bool Instruction::resolve_proxy_values()
 	return true;
 }
 
-void Instruction::add_metadata(const String &str, MDNode *node)
+void Instruction::setMetadata(const String &str, MDNode *node)
 {
 	attachments[str] = node;
 }
@@ -92,6 +92,11 @@ UnorderedMap<String, MDNode *>::const_iterator Instruction::metadata_begin() con
 UnorderedMap<String, MDNode *>::const_iterator Instruction::metadata_end() const
 {
 	return attachments.end();
+}
+
+bool Instruction::hasMetadata(const String &str) const
+{
+	return attachments.find(str) != attachments.end();
 }
 
 MDNode *Instruction::getMetadata(const String &str) const

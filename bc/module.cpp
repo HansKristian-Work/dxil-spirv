@@ -1014,7 +1014,7 @@ bool ModuleParseContext::parse_metadata_attachment_record(const BlockOrRecord &e
 			return false;
 		}
 
-		inst->add_metadata(kind, node);
+		inst->setMetadata(kind, node);
 	}
 	return true;
 }

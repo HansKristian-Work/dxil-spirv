@@ -49,7 +49,7 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	auto &builder = impl.builder();
 	spv::Id result_id;
 
-	if (instruction->getMetadata("dx.precise") != nullptr)
+	if (instruction->hasMetadata("dx.precise"))
 	{
 		// DXIL docs says to split the expression explicitly.
 		// HLSL docs says it just has to be invariant.
@@ -273,7 +273,7 @@ bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm
 	impl.add(op);
 	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 
-	bool precise = instruction->getMetadata("dx.precise") != nullptr;
+	bool precise = instruction->hasMetadata("dx.precise");
 	if (precise)
 		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
 
@@ -514,7 +514,7 @@ bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst 
 	bs[0] = impl.get_id_for_value(instruction->getOperand(4));
 	bs[1] = impl.get_id_for_value(instruction->getOperand(5));
 
-	bool precise = instruction->getMetadata("dx.precise") != nullptr;
+	bool precise = instruction->hasMetadata("dx.precise");
 
 	// V_DOT2C_F32_F16 is emitted on native drivers, and based on some reversing, the behavior is
 	// acc = (float(a.x * b.x) + float(a.y * b.y)) + acc
