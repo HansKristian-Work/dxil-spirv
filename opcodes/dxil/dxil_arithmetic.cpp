@@ -272,6 +272,11 @@ bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm
 	op->add_ids({ vec0, vec1 });
 	impl.add(op);
 	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+
+	bool precise = instruction->getMetadata("dx.precise") != nullptr;
+	if (precise)
+		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
+
 	return true;
 }
 
