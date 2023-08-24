@@ -161,7 +161,7 @@ bool BinaryOperator::isFast() const
 	return fast_math;
 }
 
-void BinaryOperator::set_fast_math(bool enabled)
+void BinaryOperator::setFast(bool enabled)
 {
 	fast_math = enabled;
 }

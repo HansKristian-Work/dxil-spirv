@@ -219,7 +219,7 @@ public:
 	BinaryOperator(Value *LHS, Value *RHS, BinaryOps op);
 	BinaryOps getOpcode() const;
 
-	void set_fast_math(bool enabled);
+	void setFast(bool enabled);
 	bool isFast() const;
 
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL

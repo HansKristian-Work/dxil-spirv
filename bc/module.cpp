@@ -1490,7 +1490,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 			// FP operations anyways.
 			auto fast_math_flags = entry.ops[index];
 			bool fast = (fast_math_flags & (FAST_MATH_UNSAFE_ALGEBRA_BIT | FAST_MATH_ALLOW_CONTRACT_BIT)) != 0;
-			value->set_fast_math(fast);
+			value->setFast(fast);
 		}
 		if (!add_instruction(value))
 			return false;
