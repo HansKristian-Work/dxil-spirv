@@ -129,6 +129,12 @@ public:
 	UnorderedMap<String, MDNode *>::const_iterator metadata_begin() const;
 	UnorderedMap<String, MDNode *>::const_iterator metadata_end() const;
 
+	static bool is_base_of_value_kind(ValueKind kind);
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::InstructionBase;
+	}
+
 protected:
 	void set_terminator();
 	bool is_terminator = false;

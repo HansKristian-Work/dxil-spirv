@@ -35,6 +35,7 @@ enum class ValueKind
 {
 	Argument,
 	Function,
+	InstructionBase,
 	ConstantBase,
 	ConstantInt,
 	ConstantFP,

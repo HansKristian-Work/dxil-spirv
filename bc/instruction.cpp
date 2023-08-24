@@ -108,6 +108,42 @@ MDNode *Instruction::getMetadata(const String &str) const
 		return nullptr;
 }
 
+bool Instruction::is_base_of_value_kind(ValueKind kind)
+{
+	switch (kind)
+	{
+	case ValueKind::Return:
+	case ValueKind::Unreachable:
+	case ValueKind::Call:
+	case ValueKind::UnaryOperator:
+	case ValueKind::BinaryOperator:
+	case ValueKind::Cast:
+	case ValueKind::Select:
+	case ValueKind::ExtractValue:
+	case ValueKind::Alloca:
+	case ValueKind::GetElementPtr:
+	case ValueKind::Load:
+	case ValueKind::Store:
+	case ValueKind::CompareBase:
+	case ValueKind::FCmp:
+	case ValueKind::ICmp:
+	case ValueKind::Branch:
+	case ValueKind::Switch:
+	case ValueKind::PHI:
+	case ValueKind::AtomicRMW:
+	case ValueKind::AtomicCmpXchg:
+	case ValueKind::ShuffleVector:
+	case ValueKind::ExtractElement:
+	case ValueKind::InsertElement:
+		return true;
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
 BinaryOperator::BinaryOperator(Value *LHS, Value *RHS, BinaryOps op_)
     : Instruction(LHS->getType(), ValueKind::BinaryOperator)
     , op(op_)
