@@ -161,7 +161,9 @@ static void print_help()
 	     "\t[--allow-arithmetic-relaxed-precision]\n"
 	     "\t[--physical-address-descriptor-indexing <element stride> <element offset>]\n"
 	     "\t[--subgroup-partitioned-nv]\n"
-	     "\t[--dead-code-eliminate]\n");
+	     "\t[--dead-code-eliminate]\n"
+	     "\t[--propagate-precise]\n"
+	     "\t[--force-precise]\n");
 }
 
 struct Arguments
@@ -194,6 +196,8 @@ struct Arguments
 	bool allow_arithmetic_relaxed_precision = false;
 	bool subgroup_partitioned_nv = false;
 	bool dead_code_eliminate = false;
+	bool propagate_precise = false;
+	bool force_precise = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -733,6 +737,12 @@ int main(int argc, char **argv)
 	cbs.add("--dead-code-eliminate", [&](CLIParser &) {
 		args.dead_code_eliminate = true;
 	});
+	cbs.add("--propagate-precise", [&](CLIParser &) {
+		args.propagate_precise = true;
+	});
+	cbs.add("--force-precise", [&](CLIParser &) {
+		args.force_precise = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -977,6 +987,13 @@ int main(int argc, char **argv)
 		const dxil_spv_option_dead_code_eliminate eliminate = { { DXIL_SPV_OPTION_DEAD_CODE_ELIMINATE },
 		                                                        args.dead_code_eliminate ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &eliminate.base);
+	}
+
+	{
+		const dxil_spv_option_precise_control precise = { { DXIL_SPV_OPTION_PRECISE_CONTROL },
+		                                                  args.force_precise ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
+		                                                  args.propagate_precise ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		dxil_spv_converter_add_option(converter, &precise.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

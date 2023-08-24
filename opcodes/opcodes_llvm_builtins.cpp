@@ -114,7 +114,7 @@ static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &impl,
                                                     bool is_commutative)
 {
 	// Only peephole fast math.
-	if (!instruction->isFast())
+	if (!instruction->isFast() || impl.options.force_precise)
 		return 0;
 
 	// CP77 can trigger a scenario where we do (a / b) * b in fast math.
@@ -411,7 +411,7 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 	op->add_ids({ id0, id1 });
 
 	impl.add(op);
-	if (is_precision_sensitive && !instruction_is_fast_math(instruction))
+	if (is_precision_sensitive && (impl.options.force_precise || !instruction_is_fast_math(instruction)))
 		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
 
 	// Only bother relaxing FP, since Integers are murky w.r.t. signage in DXIL.

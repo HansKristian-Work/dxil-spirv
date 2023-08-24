@@ -244,6 +244,7 @@ enum class Option : uint32_t
 	StrictHelperLaneWaveOps = 27,
 	SubgroupPartitionedNV = 28,
 	DeadCodeEliminate = 29,
+	PreciseControl = 30,
 	Count
 };
 
@@ -575,6 +576,17 @@ struct OptionDeadCodeEliminate : OptionBase
 	}
 
 	bool enabled = false;
+};
+
+struct OptionPreciseControl : OptionBase
+{
+	OptionPreciseControl()
+		: OptionBase(Option::PreciseControl)
+	{
+	}
+
+	bool force_precise = false;
+	bool propagate_precise = false;
 };
 
 struct DescriptorTableEntry

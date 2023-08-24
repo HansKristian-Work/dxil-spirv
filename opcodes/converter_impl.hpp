@@ -560,6 +560,8 @@ struct Converter::Impl
 		bool strict_helper_lane_waveops = true;
 		bool nv_subgroup_partition_enabled = false;
 		bool eliminate_dead_code = false;
+		bool propagate_precise = false;
+		bool force_precise = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;

@@ -6094,7 +6094,8 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 	// optimally implement the loads and stores. We need to do this late, because we depend on results
 	// of ExtractValue analysis.
 
-	propagate_precise(function);
+	if (options.propagate_precise && !options.force_precise)
+		propagate_precise(function);
 
 	for (auto &bb : *function)
 	{
@@ -6619,6 +6620,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	case Option::DeadCodeEliminate:
 		options.eliminate_dead_code =
 			static_cast<const OptionDeadCodeEliminate &>(cap).enabled;
+		break;
+
+	case Option::PreciseControl:
+		options.propagate_precise =
+		    static_cast<const OptionPreciseControl &>(cap).propagate_precise;
+		options.force_precise =
+		    static_cast<const OptionPreciseControl &>(cap).force_precise;
 		break;
 
 	default:
