@@ -50,10 +50,47 @@ bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	Operation *op = impl.allocate(opcode, instruction);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	auto &builder = impl.builder();
+	spv::Id input_id = impl.get_id_for_value(instruction->getOperand(1));
 
+	bool fp32;
+	spv::Id fp32_type = builder.makeFloatType(32);
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		auto *vec_type = llvm::cast<llvm::VectorType>(instruction->getType());
+		fp32 = vec_type->getElementType()->getTypeID() == llvm::Type::TypeID::FloatTyID;
+		fp32_type = builder.makeVectorType(fp32_type, vec_type->getVectorNumElements());
+	}
+	else
+	{
+		fp32 = instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID;
+	}
+
+	Operation *op;
+	if (fp32)
+	{
+		op = impl.allocate(opcode, instruction);
+	}
+	else
+	{
+		auto *cast_op = impl.allocate(spv::OpFConvert, fp32_type);
+		cast_op->add_id(input_id);
+		impl.add(cast_op);
+		input_id = cast_op->id;
+
+		op = impl.allocate(opcode, fp32_type);
+	}
+
+	op->add_id(input_id);
 	impl.add(op);
+
+	if (!fp32)
+	{
+		auto *cast_op = impl.allocate(spv::OpFConvert, instruction);
+		cast_op->add_id(op->id);
+		impl.add(cast_op);
+	}
+
 	impl.builder().addCapability(spv::CapabilityDerivativeControl);
 	return true;
 }
