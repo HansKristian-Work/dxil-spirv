@@ -50,10 +50,52 @@ bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	Operation *op = impl.allocate(opcode, instruction);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	auto &builder = impl.builder();
+	bool relax_precision = false;
+	spv::Id input_id;
 
+	// SPIR-V only supports 32-bit derivatives.
+	bool fp32 = instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID;
+
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
+	    !impl.support_16bit_operations())
+	{
+		fp32 = true;
+		relax_precision = true;
+	}
+
+	Operation *op;
+	if (fp32)
+	{
+		op = impl.allocate(opcode, instruction);
+		// Somewhat redundant, but avoid changing reference output
+		// for all shaders that use derivatives with constants.
+		input_id = impl.get_id_for_value(instruction->getOperand(1));
+	}
+	else
+	{
+		spv::Id fp32_type = builder.makeFloatType(32);
+		auto *cast_op = impl.allocate(spv::OpFConvert, fp32_type);
+		cast_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(cast_op);
+		input_id = cast_op->id;
+
+		op = impl.allocate(opcode, fp32_type);
+	}
+
+	op->add_id(input_id);
 	impl.add(op);
+
+	if (relax_precision)
+		impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+
+	if (!fp32)
+	{
+		auto *cast_op = impl.allocate(spv::OpFConvert, instruction);
+		cast_op->add_id(op->id);
+		impl.add(cast_op);
+	}
+
 	impl.builder().addCapability(spv::CapabilityDerivativeControl);
 	return true;
 }

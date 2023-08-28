@@ -15,10 +15,10 @@ void main()
 {
     float16_t _33 = float16_t(TEXCOORD.x);
     float16_t _34 = float16_t(TEXCOORD.y);
-    SV_Target.x = ((((dFdxFine(TEXCOORD.x) + dFdxCoarse(TEXCOORD.x)) + float(float16_t(dFdxCoarse(float(_33))))) + float(float16_t(dFdxFine(float(_33))))) + dFdxCoarse(TEXCOORD.x)) + dFdxFine(TEXCOORD.x);
-    SV_Target.y = ((((dFdxFine(TEXCOORD.y) + dFdxCoarse(TEXCOORD.y)) + float(float16_t(dFdxCoarse(float(_34))))) + float(float16_t(dFdxFine(float(_34))))) + dFdxCoarse(TEXCOORD.y)) + dFdxFine(TEXCOORD.y);
-    SV_Target.z = ((((dFdyFine(TEXCOORD.x) + dFdyCoarse(TEXCOORD.x)) + float(float16_t(dFdyCoarse(float(_33))))) + float(float16_t(dFdyFine(float(_33))))) + dFdyCoarse(TEXCOORD.x)) + dFdyFine(TEXCOORD.x);
-    SV_Target.w = ((((dFdyFine(TEXCOORD.y) + dFdyCoarse(TEXCOORD.y)) + float(float16_t(dFdyCoarse(float(_34))))) + float(float16_t(dFdyFine(float(_34))))) + dFdyCoarse(TEXCOORD.y)) + dFdyFine(TEXCOORD.y);
+    SV_Target.x = ((dFdxFine(TEXCOORD.x) + dFdxCoarse(TEXCOORD.x)) + float(float16_t(dFdxCoarse(float(_33))))) + float(float16_t(dFdxFine(float(_33))));
+    SV_Target.y = ((dFdxFine(TEXCOORD.y) + dFdxCoarse(TEXCOORD.y)) + float(float16_t(dFdxCoarse(float(_34))))) + float(float16_t(dFdxFine(float(_34))));
+    SV_Target.z = ((dFdyFine(TEXCOORD.x) + dFdyCoarse(TEXCOORD.x)) + float(float16_t(dFdyCoarse(float(_33))))) + float(float16_t(dFdyFine(float(_33))));
+    SV_Target.w = ((dFdyFine(TEXCOORD.y) + dFdyCoarse(TEXCOORD.y)) + float(float16_t(dFdyCoarse(float(_34))))) + float(float16_t(dFdyFine(float(_34))));
 }
 
 
@@ -27,7 +27,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 100
+; Bound: 84
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -57,13 +57,13 @@ OpDecorate %11 Location 0
 %15 = OpConstant %14 0
 %18 = OpConstant %14 1
 %32 = OpTypeFloat 16
-%91 = OpTypePointer Output %5
-%95 = OpConstant %14 2
-%97 = OpConstant %14 3
+%75 = OpTypePointer Output %5
+%79 = OpConstant %14 2
+%81 = OpConstant %14 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %98
-%98 = OpLabel
+OpBranch %82
+%82 = OpLabel
 %13 = OpAccessChain %12 %8 %15
 %16 = OpLoad %5 %13
 %17 = OpAccessChain %12 %8 %18
@@ -122,30 +122,14 @@ OpBranch %98
 %72 = OpFConvert %5 %70
 %73 = OpFAdd %5 %53 %71
 %74 = OpFAdd %5 %54 %72
-%75 = OpDPdxCoarse %5 %16
-%76 = OpDPdxCoarse %5 %19
-%77 = OpFAdd %5 %63 %75
-%78 = OpFAdd %5 %64 %76
-%79 = OpDPdyCoarse %5 %16
-%80 = OpDPdyCoarse %5 %19
-%81 = OpFAdd %5 %73 %79
-%82 = OpFAdd %5 %74 %80
-%83 = OpDPdxFine %5 %16
-%84 = OpDPdxFine %5 %19
-%85 = OpFAdd %5 %77 %83
-%86 = OpFAdd %5 %78 %84
-%87 = OpDPdyFine %5 %16
-%88 = OpDPdyFine %5 %19
-%89 = OpFAdd %5 %81 %87
-%90 = OpFAdd %5 %82 %88
-%92 = OpAccessChain %91 %11 %15
-OpStore %92 %85
-%93 = OpAccessChain %91 %11 %18
-OpStore %93 %86
-%94 = OpAccessChain %91 %11 %95
-OpStore %94 %89
-%96 = OpAccessChain %91 %11 %97
-OpStore %96 %90
+%76 = OpAccessChain %75 %11 %15
+OpStore %76 %63
+%77 = OpAccessChain %75 %11 %18
+OpStore %77 %64
+%78 = OpAccessChain %75 %11 %79
+OpStore %78 %73
+%80 = OpAccessChain %75 %11 %81
+OpStore %80 %74
 OpReturn
 OpFunctionEnd
 #endif
