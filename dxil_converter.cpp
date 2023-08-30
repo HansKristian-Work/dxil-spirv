@@ -3634,12 +3634,27 @@ bool Converter::Impl::emit_other_variables()
 			spv::Id type_id = builder.makeArrayType(
 				get_type_id(DXIL::ComponentType::U32, 1, index_dim),
 				builder.makeUintConstant(execution_mode_meta.stage_output_num_primitive, false), 0);
-			primitive_index_array_id = create_variable(spv::StorageClassOutput, type_id, "indices");
+			mesh.primitive_index_array_id = create_variable(spv::StorageClassOutput, type_id, "indices");
 
 			spv::BuiltIn builtin_id =
 			    index_dim == 3 ? spv::BuiltInPrimitiveTriangleIndicesEXT : spv::BuiltInPrimitiveLineIndicesEXT;
-			builder.addDecoration(primitive_index_array_id, spv::DecorationBuiltIn, builtin_id);
-			spirv_module.register_builtin_shader_output(primitive_index_array_id, builtin_id);
+			builder.addDecoration(mesh.primitive_index_array_id, spv::DecorationBuiltIn, builtin_id);
+			spirv_module.register_builtin_shader_output(mesh.primitive_index_array_id, builtin_id);
+
+			if (options.mesh_index_output_workaround && !shader_analysis.mesh_shader_writes_lane_crossing_index)
+			{
+				spv::Id uvec_type = get_type_id(DXIL::ComponentType::U32, 1, index_dim);
+				mesh.private_index_buffer_output_id =
+					create_variable_with_initializer(spv::StorageClassPrivate, uvec_type,
+					                                 builder.makeNullConstant(uvec_type),
+					                                 "LaneIndexOutput");
+				spv::Id uint_type = get_type_id(DXIL::ComponentType::U32, 1, 1);
+				mesh.lds_primitive_count = create_variable(spv::StorageClassWorkgroup, uint_type, "LDSPrimitiveCount");
+				mesh.private_primitive_count = create_variable_with_initializer(spv::StorageClassPrivate, uint_type,
+				                                                                builder.makeUintConstant(0),
+				                                                                "PrimitiveCount");
+				spirv_module.register_mesh_shader_workaround_globals(mesh);
+			}
 		}
 	}
 
@@ -5583,6 +5598,20 @@ bool Converter::Impl::analyze_execution_modes_meta()
 			meta = null_meta;
 		break;
 
+	case spv::ExecutionModelMeshEXT:
+	{
+		auto *ms_state_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::MSState);
+		if (ms_state_node)
+		{
+			// Preliminary. Need to know thread group sizes for EmitIndices workaround analysis.
+			auto *arguments = llvm::cast<llvm::MDNode>(*ms_state_node);
+			auto *num_threads = llvm::cast<llvm::MDNode>(arguments->getOperand(0));
+			for (unsigned i = 0; i < 3; i++)
+				execution_mode_meta.workgroup_threads[i] = get_constant_metadata(num_threads, i);
+		}
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -5908,6 +5937,17 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		}
 		else if (auto *inst = llvm::dyn_cast<llvm::ReturnInst>(instruction))
 		{
+			// This is not safe in the general case, since all writes to mesh outputs
+			// must be dominated by SetMeshOutputCounts, and it's possible that a return can happen on the outside,
+			// but this is a workaround path, and we only enable the workaround for games which are known to be safe.
+			if (mesh.private_index_buffer_output_id)
+			{
+				spv::Id call_id = spirv_module.get_helper_call_id(HelperCall::FlushMeshIndex);
+				auto *op = allocate(spv::OpFunctionCall, builder().makeVoidType());
+				op->add_id(call_id);
+				node->ir.operations.push_back(op);
+			}
+
 			node->ir.terminator.type = Terminator::Type::Return;
 			if (inst->getReturnValue())
 				node->ir.terminator.return_value = get_id_for_value(inst->getReturnValue());
@@ -6627,6 +6667,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionPreciseControl &>(cap).propagate_precise;
 		options.force_precise =
 		    static_cast<const OptionPreciseControl &>(cap).force_precise;
+		break;
+
+	case Option::MeshIndexOutputWorkaround:
+		options.mesh_index_output_workaround =
+		    static_cast<const OptionMeshIndexOutputWorkaround &>(cap).enabled;
 		break;
 
 	default:

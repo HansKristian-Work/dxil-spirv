@@ -59,7 +59,9 @@ enum class HelperCall
 	QuadAny,
 	WaveIsFirstLaneMasked,
 	WaveActiveAllEqualMasked,
-	WaveReadFirstLaneMasked
+	WaveReadFirstLaneMasked,
+	SetMeshOutputCounts,
+	FlushMeshIndex
 };
 
 class SPIRVModule
@@ -98,6 +100,8 @@ public:
 	spv::Id create_variable(spv::StorageClass storage, spv::Id type, const char *name = nullptr);
 	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type, spv::Id initializer,
 	                                         const char *name = nullptr);
+
+	void register_mesh_shader_workaround_globals(const MeshShaderIndexOutputs &outputs);
 
 	spv::Id get_helper_call_id(HelperCall call, spv::Id type_id = 0);
 	spv::Id get_robust_physical_cbv_load_call_id(spv::Id type_id, spv::Id ptr_type_id, unsigned alignment);

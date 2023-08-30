@@ -33,7 +33,15 @@ namespace dxil_spv
 {
 bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	Operation *op = impl.allocate(spv::OpSetMeshOutputsEXT);
+	Operation *op;
+	if (impl.mesh.private_primitive_count)
+	{
+		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::SetMeshOutputCounts);
+		op = impl.allocate(spv::OpFunctionCall, impl.builder().makeVoidType());
+		op->add_id(call_id);
+	}
+	else
+		op = impl.allocate(spv::OpSetMeshOutputsEXT);
 
 	// If we have a degenerate case where either of these is 0, we have to declare 0 as max output.
 	if (impl.execution_mode_meta.stage_output_num_vertex == 0)
@@ -56,7 +64,7 @@ bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	// If we for some reason have max primitives 0 in the execution mode,
 	// just ignore any access to index buffer.
-	if (!impl.primitive_index_array_id || impl.execution_mode_meta.stage_output_num_primitive == 0)
+	if (!impl.mesh.primitive_index_array_id || impl.execution_mode_meta.stage_output_num_primitive == 0)
 		return true;
 
 	unsigned index_dim = impl.execution_mode_meta.primitive_index_dimension;
@@ -68,16 +76,26 @@ bool emit_emit_indices_instruction(Converter::Impl &impl, const llvm::CallInst *
 		components[i] = impl.get_id_for_value(instruction->getOperand(2 + i));
 	spv::Id index_id = impl.build_vector(index_scalar_type_id, components, index_dim);
 
-	Operation *op = impl.allocate(spv::OpAccessChain,
-	                              builder.makePointer(spv::StorageClassOutput, index_type_id));
-	spv::Id ptr_id = op->id;
+	Operation *op;
+	if (impl.mesh.private_index_buffer_output_id)
+	{
+		op = impl.allocate(spv::OpStore);
+		op->add_id(impl.mesh.private_index_buffer_output_id);
+		op->add_id(index_id);
+	}
+	else
+	{
+		op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, index_type_id));
+		spv::Id ptr_id = op->id;
 
-	op->add_id(impl.primitive_index_array_id);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-	impl.add(op);
+		op->add_id(impl.mesh.primitive_index_array_id);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(op);
 
-	op = impl.allocate(spv::OpStore);
-	op->add_ids({ ptr_id, index_id });
+		op = impl.allocate(spv::OpStore);
+		op->add_ids({ ptr_id, index_id });
+	}
+
 	impl.add(op);
 	return true;
 }

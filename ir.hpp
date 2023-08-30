@@ -185,4 +185,12 @@ struct IRBlock
 	Terminator terminator;
 };
 
+struct MeshShaderIndexOutputs
+{
+	spv::Id primitive_index_array_id;
+	spv::Id private_index_buffer_output_id;
+	spv::Id lds_primitive_count;
+	spv::Id private_primitive_count;
+};
+
 } // namespace dxil_spv

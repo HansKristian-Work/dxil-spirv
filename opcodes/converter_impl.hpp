@@ -383,7 +383,7 @@ struct Converter::Impl
 	unsigned root_constant_num_words = 0;
 	unsigned patch_location_offset = 0;
 	unsigned descriptor_qa_counter = 0;
-	spv::Id primitive_index_array_id = 0;
+	MeshShaderIndexOutputs mesh = {};
 
 	struct PhysicalPointerMeta
 	{
@@ -562,6 +562,7 @@ struct Converter::Impl
 		bool eliminate_dead_code = false;
 		bool propagate_precise = false;
 		bool force_precise = false;
+		bool mesh_index_output_workaround = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;
@@ -668,6 +669,7 @@ struct Converter::Impl
 		bool require_subgroups = false;
 		bool subgroup_ballot_reads_upper = false;
 		bool subgroup_ballot_reads_first = false;
+		bool mesh_shader_writes_lane_crossing_index = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

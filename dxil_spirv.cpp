@@ -163,7 +163,8 @@ static void print_help()
 	     "\t[--subgroup-partitioned-nv]\n"
 	     "\t[--dead-code-eliminate]\n"
 	     "\t[--propagate-precise]\n"
-	     "\t[--force-precise]\n");
+	     "\t[--force-precise]\n"
+	     "\t[--mesh-index-output-workaround]\n");
 }
 
 struct Arguments
@@ -198,6 +199,7 @@ struct Arguments
 	bool dead_code_eliminate = false;
 	bool propagate_precise = false;
 	bool force_precise = false;
+	bool mesh_index_output_workaround = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -743,6 +745,9 @@ int main(int argc, char **argv)
 	cbs.add("--force-precise", [&](CLIParser &) {
 		args.force_precise = true;
 	});
+	cbs.add("--mesh-index-output-workaround", [&](CLIParser &) {
+		args.mesh_index_output_workaround = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -994,6 +999,12 @@ int main(int argc, char **argv)
 		                                                  args.force_precise ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
 		                                                  args.propagate_precise ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &precise.base);
+	}
+
+	{
+		const dxil_spv_option_mesh_index_output_workaround workaround = { { DXIL_SPV_OPTION_MESH_INDEX_OUTPUT_WORKAROUND },
+		                                                                  args.mesh_index_output_workaround ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		dxil_spv_converter_add_option(converter, &workaround.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

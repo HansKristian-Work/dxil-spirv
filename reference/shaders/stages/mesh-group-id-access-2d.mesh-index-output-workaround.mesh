@@ -1,0 +1,98 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+layout(local_size_x = 2, local_size_y = 3, local_size_z = 4) in;
+layout(max_vertices = 24, max_primitives = 8, triangles) out;
+
+void main()
+{
+    SetMeshOutputsEXT(24u, 8u);
+    gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position.x = 1.0;
+    gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position.y = 1.0;
+    gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position.z = 1.0;
+    gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position.w = 1.0;
+    if (gl_LocalInvocationID.x < 4u)
+    {
+        uint _35 = gl_LocalInvocationID.x * 3u;
+        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationID.x] = uvec3(_35, _35 + 1u, _35 + 2u);
+    }
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 45
+; Schema: 0
+OpCapability Shader
+OpCapability MeshShadingEXT
+OpExtension "SPV_EXT_mesh_shader"
+OpMemoryModel Logical GLSL450
+OpEntryPoint MeshEXT %3 "main" %11 %16 %18
+OpExecutionMode %3 OutputVertices 24
+OpExecutionMode %3 OutputPrimitivesNV 8
+OpExecutionMode %3 OutputTrianglesNV
+OpExecutionMode %3 LocalSize 2 3 4
+OpName %3 "main"
+OpName %11 "SV_Position"
+OpName %16 "indices"
+OpDecorate %11 BuiltIn Position
+OpDecorate %16 BuiltIn PrimitiveTriangleIndicesEXT
+OpDecorate %18 BuiltIn LocalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 4
+%7 = OpTypeInt 32 0
+%8 = OpConstant %7 24
+%9 = OpTypeArray %6 %8
+%10 = OpTypePointer Output %9
+%11 = OpVariable %10 Output
+%12 = OpConstant %7 8
+%13 = OpTypeVector %7 3
+%14 = OpTypeArray %13 %12
+%15 = OpTypePointer Output %14
+%16 = OpVariable %15 Output
+%17 = OpTypePointer Input %13
+%18 = OpVariable %17 Input
+%19 = OpTypePointer Input %7
+%21 = OpConstant %7 0
+%23 = OpTypePointer Output %5
+%25 = OpConstant %5 1
+%27 = OpConstant %7 1
+%29 = OpConstant %7 2
+%31 = OpConstant %7 3
+%32 = OpTypeBool
+%34 = OpConstant %7 4
+%39 = OpTypePointer Output %13
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %41
+%41 = OpLabel
+%20 = OpAccessChain %19 %18 %21
+%22 = OpLoad %7 %20
+OpSetMeshOutputsEXT %8 %12
+%24 = OpAccessChain %23 %11 %22 %21
+OpStore %24 %25
+%26 = OpAccessChain %23 %11 %22 %27
+OpStore %26 %25
+%28 = OpAccessChain %23 %11 %22 %29
+OpStore %28 %25
+%30 = OpAccessChain %23 %11 %22 %31
+OpStore %30 %25
+%33 = OpULessThan %32 %22 %34
+OpSelectionMerge %43 None
+OpBranchConditional %33 %42 %43
+%42 = OpLabel
+%35 = OpIMul %7 %22 %31
+%36 = OpIAdd %7 %35 %27
+%37 = OpIAdd %7 %35 %29
+%38 = OpCompositeConstruct %13 %35 %36 %37
+%40 = OpAccessChain %39 %16 %22
+OpStore %40 %38
+OpBranch %43
+%43 = OpLabel
+OpReturn
+OpFunctionEnd
+#endif

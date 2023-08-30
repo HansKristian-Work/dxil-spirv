@@ -1,0 +1,18 @@
+struct VOut
+{
+	float4 pos : SV_Position;
+};
+
+[numthreads(2, 3, 4)]
+[outputtopology("triangle")]
+void main(uint3 tid : SV_GroupThreadID,
+		out vertices VOut vout[24],
+		out indices uint3 ind[8])
+{
+	SetMeshOutputCounts(24, 8);
+	vout[tid.x].pos = 1.0.xxxx;
+	if (tid.x < 4)
+	{
+		ind[tid.x] = 3 * tid.x + uint3(0, 1, 2);
+	}
+}

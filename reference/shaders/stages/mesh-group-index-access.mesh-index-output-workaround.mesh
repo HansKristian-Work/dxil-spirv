@@ -1,0 +1,191 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+layout(local_size_x = 2, local_size_y = 3, local_size_z = 4) in;
+layout(max_vertices = 24, max_primitives = 8, triangles) out;
+
+uvec3 LaneIndexOutput = uvec3(0u);
+shared uint LDSPrimitiveCount;
+uint PrimitiveCount = 0u;
+
+void SetMeshOutputCount(uint _30, uint _31)
+{
+    SetMeshOutputsEXT(_30, _31);
+    if (gl_NumSubgroups == 1u)
+    {
+        PrimitiveCount = subgroupBroadcastFirst(_31);
+    }
+    else
+    {
+        if (gl_LocalInvocationIndex == 0u)
+        {
+            LDSPrimitiveCount = _31;
+        }
+        barrier();
+        PrimitiveCount = LDSPrimitiveCount;
+    }
+}
+
+void FlushMeshIndex()
+{
+    if (gl_LocalInvocationIndex < PrimitiveCount)
+    {
+        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex] = LaneIndexOutput;
+    }
+}
+
+void main()
+{
+    SetMeshOutputCount(24u, 8u);
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.x = 1.0;
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.y = 1.0;
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.z = 1.0;
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.w = 1.0;
+    if (gl_LocalInvocationIndex < 4u)
+    {
+        uint _60 = gl_LocalInvocationIndex * 3u;
+        LaneIndexOutput = uvec3(_60, _60 + 1u, _60 + 2u);
+    }
+    FlushMeshIndex();
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 80
+; Schema: 0
+OpCapability Shader
+OpCapability GroupNonUniform
+OpCapability GroupNonUniformBallot
+OpCapability MeshShadingEXT
+OpExtension "SPV_EXT_mesh_shader"
+OpMemoryModel Logical GLSL450
+OpEntryPoint MeshEXT %3 "main" %11 %16 %19 %21 %24 %26 %40
+OpExecutionMode %3 OutputVertices 24
+OpExecutionMode %3 OutputPrimitivesNV 8
+OpExecutionMode %3 OutputTrianglesNV
+OpExecutionMode %3 LocalSize 2 3 4
+OpName %3 "main"
+OpName %11 "SV_Position"
+OpName %16 "indices"
+OpName %19 "LaneIndexOutput"
+OpName %21 "LDSPrimitiveCount"
+OpName %24 "PrimitiveCount"
+OpName %32 "SetMeshOutputCount"
+OpName %64 "FlushMeshIndex"
+OpDecorate %11 BuiltIn Position
+OpDecorate %16 BuiltIn PrimitiveTriangleIndicesEXT
+OpDecorate %26 BuiltIn LocalInvocationIndex
+OpDecorate %40 BuiltIn NumSubgroups
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 4
+%7 = OpTypeInt 32 0
+%8 = OpConstant %7 24
+%9 = OpTypeArray %6 %8
+%10 = OpTypePointer Output %9
+%11 = OpVariable %10 Output
+%12 = OpConstant %7 8
+%13 = OpTypeVector %7 3
+%14 = OpTypeArray %13 %12
+%15 = OpTypePointer Output %14
+%16 = OpVariable %15 Output
+%17 = OpConstantNull %13
+%18 = OpTypePointer Private %13
+%19 = OpVariable %18 Private %17
+%20 = OpTypePointer Workgroup %7
+%21 = OpVariable %20 Workgroup
+%22 = OpConstant %7 0
+%23 = OpTypePointer Private %7
+%24 = OpVariable %23 Private %22
+%25 = OpTypePointer Input %7
+%26 = OpVariable %25 Input
+%28 = OpTypeBool
+%29 = OpTypeFunction %1 %7 %7
+%40 = OpVariable %25 Input
+%42 = OpConstant %7 1
+%44 = OpConstant %7 3
+%47 = OpConstant %7 2
+%48 = OpConstant %7 264
+%52 = OpTypePointer Output %5
+%54 = OpConstant %5 1
+%59 = OpConstant %7 4
+%71 = OpTypePointer Output %13
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %76
+%76 = OpLabel
+%27 = OpLoad %7 %26
+%51 = OpFunctionCall %1 %32 %8 %12
+%53 = OpAccessChain %52 %11 %27 %22
+OpStore %53 %54
+%55 = OpAccessChain %52 %11 %27 %42
+OpStore %55 %54
+%56 = OpAccessChain %52 %11 %27 %47
+OpStore %56 %54
+%57 = OpAccessChain %52 %11 %27 %44
+OpStore %57 %54
+%58 = OpULessThan %28 %27 %59
+OpSelectionMerge %78 None
+OpBranchConditional %58 %77 %78
+%77 = OpLabel
+%60 = OpIMul %7 %27 %44
+%61 = OpIAdd %7 %60 %42
+%62 = OpIAdd %7 %60 %47
+%63 = OpCompositeConstruct %13 %60 %61 %62
+OpStore %19 %63
+OpBranch %78
+%78 = OpLabel
+%75 = OpFunctionCall %1 %64
+OpReturn
+OpFunctionEnd
+%32 = OpFunction %1 None %29
+%30 = OpFunctionParameter %7
+%31 = OpFunctionParameter %7
+%33 = OpLabel
+OpSetMeshOutputsEXT %30 %31
+%39 = OpLoad %7 %40
+%41 = OpIEqual %28 %39 %42
+OpSelectionMerge %36 None
+OpBranchConditional %41 %34 %35
+%34 = OpLabel
+%43 = OpGroupNonUniformBroadcastFirst %7 %44 %31
+OpStore %24 %43
+OpBranch %36
+%35 = OpLabel
+%45 = OpLoad %7 %26
+%46 = OpIEqual %28 %45 %22
+OpSelectionMerge %38 None
+OpBranchConditional %46 %37 %38
+%37 = OpLabel
+OpStore %21 %31
+OpBranch %38
+%38 = OpLabel
+OpControlBarrier %47 %47 %48
+%49 = OpLoad %7 %21
+OpStore %24 %49
+OpBranch %36
+%36 = OpLabel
+OpReturn
+OpFunctionEnd
+%64 = OpFunction %1 None %2
+%65 = OpLabel
+%68 = OpLoad %7 %26
+%69 = OpLoad %7 %24
+%70 = OpULessThan %28 %68 %69
+OpSelectionMerge %67 None
+OpBranchConditional %70 %66 %67
+%66 = OpLabel
+%72 = OpLoad %13 %19
+%73 = OpAccessChain %71 %16 %68
+OpStore %73 %72
+OpBranch %67
+%67 = OpLabel
+OpReturn
+OpFunctionEnd
+#endif

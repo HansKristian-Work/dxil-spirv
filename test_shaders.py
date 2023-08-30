@@ -232,6 +232,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--invariant-position']
     if '.partitioned.' in shader:
         hlsl_cmd += ['--subgroup-partitioned-nv']
+    if '.mesh-index-output-workaround.' in shader:
+        hlsl_cmd += ['--mesh-index-output-workaround']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

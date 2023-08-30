@@ -245,6 +245,7 @@ enum class Option : uint32_t
 	SubgroupPartitionedNV = 28,
 	DeadCodeEliminate = 29,
 	PreciseControl = 30,
+	MeshIndexOutputWorkaround = 31,
 	Count
 };
 
@@ -587,6 +588,16 @@ struct OptionPreciseControl : OptionBase
 
 	bool force_precise = false;
 	bool propagate_precise = false;
+};
+
+struct OptionMeshIndexOutputWorkaround : OptionBase
+{
+	OptionMeshIndexOutputWorkaround()
+		: OptionBase(Option::MeshIndexOutputWorkaround)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry

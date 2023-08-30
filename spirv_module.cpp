@@ -71,6 +71,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_quad_all(SPIRVModule &module);
 	spv::Id build_quad_any(SPIRVModule &module);
 	spv::Id build_quad_vote(SPIRVModule &module, HelperCall call);
+	spv::Id build_set_mesh_output_counts(SPIRVModule &module);
+	spv::Id build_flush_mesh_index(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -115,6 +117,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id quad_all_call_id = 0;
 	spv::Id quad_any_call_id = 0;
 	spv::Id wave_is_first_lane_masked_id = 0;
+	spv::Id set_mesh_output_counts_call_id = 0;
+	spv::Id flush_mesh_index_call_id = 0;
 	Vector<std::pair<spv::Id, spv::Id>> wave_match_call_ids;
 	Vector<std::pair<spv::Id, spv::Id>> wave_active_all_equal_masked_ids;
 	Vector<std::pair<spv::Id, spv::Id>> wave_read_first_lane_masked_ids;
@@ -140,6 +144,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	uint32_t override_spirv_version = 0;
 	bool helper_lanes_participate_in_wave_ops = true;
+	MeshShaderIndexOutputs mesh = {};
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requires_flat)
@@ -169,6 +174,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 		return builder.makeUintType(32);
 
 	case spv::BuiltInSubgroupSize:
+	case spv::BuiltInNumSubgroups:
 	case spv::BuiltInSubgroupLocalInvocationId:
 		builder.addCapability(spv::CapabilityGroupNonUniform);
 		requires_flat = true;
@@ -1044,6 +1050,184 @@ spv::Id SPIRVModule::Impl::build_quad_any(SPIRVModule &module)
 	return quad_any_call_id;
 }
 
+spv::Id SPIRVModule::Impl::build_set_mesh_output_counts(SPIRVModule &module)
+{
+	if (set_mesh_output_counts_call_id)
+		return set_mesh_output_counts_call_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bool_type = builder.makeBoolType();
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+	                                       "SetMeshOutputCount",
+	                                       { uint_type, uint_type }, {}, &entry);
+
+	auto *true_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *false_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *elect_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *elect_merge = new spv::Block(builder.getUniqueId(), *func);
+
+	builder.setBuildPoint(entry);
+	{
+		auto set_counts = std::make_unique<spv::Instruction>(spv::OpSetMeshOutputsEXT);
+		set_counts->addIdOperand(func->getParamId(0));
+		set_counts->addIdOperand(func->getParamId(1));
+
+		auto subgroup_count = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+		subgroup_count->addIdOperand(get_builtin_shader_input(spv::BuiltInNumSubgroups));
+
+		auto comp = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
+		comp->addIdOperand(subgroup_count->getResultId());
+		comp->addIdOperand(builder.makeUintConstant(1));
+		spv::Id cond = comp->getResultId();
+
+		entry->addInstruction(std::move(set_counts));
+		entry->addInstruction(std::move(subgroup_count));
+		entry->addInstruction(std::move(comp));
+
+		builder.createSelectionMerge(merge_block, 0);
+		builder.createConditionalBranch(cond, true_block, false_block);
+	}
+
+	builder.setBuildPoint(true_block);
+	{
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+		auto first = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpGroupNonUniformBroadcastFirst);
+		first->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		first->addIdOperand(func->getParamId(1));
+
+		auto store = std::make_unique<spv::Instruction>(spv::OpStore);
+		store->addIdOperand(mesh.private_primitive_count);
+		store->addIdOperand(first->getResultId());
+
+		true_block->addInstruction(std::move(first));
+		true_block->addInstruction(std::move(store));
+
+		builder.createBranch(merge_block);
+	}
+
+	builder.setBuildPoint(false_block);
+	{
+		auto load = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+		load->addIdOperand(get_builtin_shader_input(spv::BuiltInLocalInvocationIndex));
+		spv::Id invocation_index = load->getResultId();
+
+		auto comp = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
+		comp->addIdOperand(invocation_index);
+		comp->addIdOperand(builder.makeUintConstant(0));
+		spv::Id cond = comp->getResultId();
+
+		false_block->addInstruction(std::move(load));
+		false_block->addInstruction(std::move(comp));
+		builder.createSelectionMerge(elect_merge, 0);
+		builder.createConditionalBranch(cond, elect_block, elect_merge);
+
+		builder.setBuildPoint(elect_block);
+		{
+			auto store = std::make_unique<spv::Instruction>(spv::OpStore);
+			store->addIdOperand(mesh.lds_primitive_count);
+			store->addIdOperand(func->getParamId(1));
+			elect_block->addInstruction(std::move(store));
+			builder.createBranch(elect_merge);
+		}
+		builder.setBuildPoint(elect_merge);
+
+		auto barrier = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
+		barrier->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+		barrier->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+		barrier->addIdOperand(builder.makeUintConstant(
+		    spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+
+		load = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+		load->addIdOperand(mesh.lds_primitive_count);
+
+		auto store = std::make_unique<spv::Instruction>(spv::OpStore);
+		store->addIdOperand(mesh.private_primitive_count);
+		store->addIdOperand(load->getResultId());
+
+		elect_merge->addInstruction(std::move(barrier));
+		elect_merge->addInstruction(std::move(load));
+		elect_merge->addInstruction(std::move(store));
+
+		builder.createBranch(merge_block);
+	}
+
+	builder.setBuildPoint(merge_block);
+	builder.makeReturn(false);
+	builder.setBuildPoint(current_build_point);
+	set_mesh_output_counts_call_id = func->getId();
+	return func->getId();
+}
+
+spv::Id SPIRVModule::Impl::build_flush_mesh_index(SPIRVModule &module)
+{
+	if (flush_mesh_index_call_id)
+		return flush_mesh_index_call_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bool_type = builder.makeBoolType();
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+	                                       "FlushMeshIndex",
+	                                       {}, {}, &entry);
+
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	spv::Id invocation_index;
+
+	builder.setBuildPoint(entry);
+	{
+		auto load = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+		load->addIdOperand(get_builtin_shader_input(spv::BuiltInLocalInvocationIndex));
+		invocation_index = load->getResultId();
+
+		auto limit = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+		limit->addIdOperand(mesh.private_primitive_count);
+		auto comp = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpULessThan);
+		comp->addIdOperand(load->getResultId());
+		comp->addIdOperand(limit->getResultId());
+		spv::Id cond = comp->getResultId();
+		entry->addInstruction(std::move(load));
+		entry->addInstruction(std::move(limit));
+		entry->addInstruction(std::move(comp));
+		builder.createSelectionMerge(merge_block, 0);
+		builder.createConditionalBranch(cond, body_block, merge_block);
+	}
+
+	builder.setBuildPoint(body_block);
+	{
+		spv::Id index_buffer_type_id = builder.getDerefTypeId(mesh.private_index_buffer_output_id);
+		spv::Id output_ptr_id = builder.makePointer(spv::StorageClassOutput, index_buffer_type_id);
+
+		auto load = std::make_unique<spv::Instruction>(builder.getUniqueId(), index_buffer_type_id, spv::OpLoad);
+		load->addIdOperand(mesh.private_index_buffer_output_id);
+
+		auto chain = std::make_unique<spv::Instruction>(builder.getUniqueId(), output_ptr_id, spv::OpAccessChain);
+		chain->addIdOperand(mesh.primitive_index_array_id);
+		chain->addIdOperand(invocation_index);
+
+		auto store = std::make_unique<spv::Instruction>(spv::OpStore);
+		store->addIdOperand(chain->getResultId());
+		store->addIdOperand(load->getResultId());
+
+		body_block->addInstruction(std::move(load));
+		body_block->addInstruction(std::move(chain));
+		body_block->addInstruction(std::move(store));
+		builder.createBranch(merge_block);
+	}
+
+	builder.setBuildPoint(merge_block);
+	builder.makeReturn(false);
+	builder.setBuildPoint(current_build_point);
+	flush_mesh_index_call_id = func->getId();
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_robust_atomic_counter_op(SPIRVModule &module)
 {
 	if (robust_atomic_counter_call_id)
@@ -1225,6 +1409,10 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_quad_all(module);
 	case HelperCall::QuadAny:
 		return build_quad_any(module);
+	case HelperCall::SetMeshOutputCounts:
+		return build_set_mesh_output_counts(module);
+	case HelperCall::FlushMeshIndex:
+		return build_flush_mesh_index(module);
 
 	default:
 		break;
@@ -1803,6 +1991,11 @@ void SPIRVModule::set_override_spirv_version(uint32_t version)
 void SPIRVModule::set_helper_lanes_participate_in_wave_ops(bool enable)
 {
 	impl->helper_lanes_participate_in_wave_ops = enable;
+}
+
+void SPIRVModule::register_mesh_shader_workaround_globals(const MeshShaderIndexOutputs &mesh)
+{
+	impl->mesh = mesh;
 }
 
 bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)

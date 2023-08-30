@@ -1105,6 +1105,26 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::EmitIndices:
+	{
+		if (!impl.options.mesh_index_output_workaround)
+			break;
+
+		auto *index = instruction->getOperand(1);
+		uint32_t dim_index = 0;
+
+		bool is_flattened_id = value_is_dx_op_instrinsic(index, DXIL::Op::FlattenedThreadIdInGroup) ||
+		                       (value_is_dx_op_instrinsic(index, DXIL::Op::ThreadIdInGroup) &&
+		                        get_constant_operand(llvm::cast<llvm::CallInst>(index), 1, &dim_index) &&
+		                        dim_index == 0 &&
+		                        impl.execution_mode_meta.workgroup_threads[1] == 1 &&
+		                        impl.execution_mode_meta.workgroup_threads[2] == 1);
+
+		if (!is_flattened_id)
+			impl.shader_analysis.mesh_shader_writes_lane_crossing_index = true;
+		break;
+	}
+
 	default:
 		break;
 	}
