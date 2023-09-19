@@ -1,5 +1,8 @@
 #version 460
 
+uint _104;
+uint _121;
+
 layout(set = 0, binding = 0) uniform samplerBuffer _8;
 layout(set = 0, binding = 1) uniform usamplerBuffer _12;
 layout(set = 0, binding = 2) uniform usamplerBuffer _13;
@@ -11,9 +14,6 @@ layout(set = 0, binding = 3, r32ui) uniform readonly uimageBuffer _22;
 
 layout(location = 0) flat in uint TEXCOORD;
 layout(location = 0) out vec2 SV_Target;
-
-uint _104;
-uint _121;
 
 void main()
 {

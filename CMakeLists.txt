@@ -85,6 +85,7 @@ add_library(dxil-converter STATIC
         opcodes/dxil/dxil_buffer.hpp opcodes/dxil/dxil_buffer.cpp
         opcodes/dxil/dxil_ray_tracing.hpp opcodes/dxil/dxil_ray_tracing.cpp
         opcodes/dxil/dxil_mesh.hpp opcodes/dxil/dxil_mesh.cpp
+        opcodes/dxil/dxil_ags.hpp
         opcodes/opcodes_llvm_builtins.hpp opcodes/opcodes_llvm_builtins.cpp
         opcodes/opcodes_dxil_builtins.hpp opcodes/opcodes_dxil_builtins.cpp)
 set_target_properties(dxil-converter PROPERTIES POSITION_INDEPENDENT_CODE ON)

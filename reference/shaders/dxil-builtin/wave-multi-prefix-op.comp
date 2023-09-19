@@ -3,10 +3,6 @@
 #extension GL_KHR_shader_subgroup_arithmetic : require
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform usamplerBuffer _8;
-layout(set = 0, binding = 1) uniform usamplerBuffer _9;
-layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _12;
-
 uint _54;
 float _101;
 uint _145;
@@ -14,6 +10,10 @@ float _189;
 uint _233;
 uint _278;
 uint _324;
+
+layout(set = 0, binding = 0) uniform usamplerBuffer _8;
+layout(set = 0, binding = 1) uniform usamplerBuffer _9;
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _12;
 
 uint WaveMultiPrefixSum(uint _50, uvec4 _51)
 {

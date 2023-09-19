@@ -6,9 +6,9 @@ layout(max_vertices = 24, max_primitives = 8, triangles) out;
 out gl_MeshPerVertexEXT
 {
     vec4 gl_Position;
-    float gl_ClipDistance[24];
-    float gl_CullDistance[24];
-};
+    float gl_ClipDistance[4];
+    float gl_CullDistance[4];
+} gl_MeshVerticesEXT[];
 
 struct _26
 {
@@ -26,14 +26,14 @@ void main()
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.y = _28._m0[gl_LocalInvocationIndex][1u];
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.z = _28._m0[gl_LocalInvocationIndex][2u];
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.w = _28._m0[gl_LocalInvocationIndex][3u];
-    gl_ClipDistance[gl_LocalInvocationIndex][0u] = _28._m1[gl_LocalInvocationIndex][0u];
-    gl_ClipDistance[gl_LocalInvocationIndex][1u] = _28._m1[gl_LocalInvocationIndex][1u];
-    gl_ClipDistance[gl_LocalInvocationIndex][2u] = _28._m1[gl_LocalInvocationIndex][2u];
-    gl_ClipDistance[gl_LocalInvocationIndex][3u] = _28._m1[gl_LocalInvocationIndex][3u];
-    gl_CullDistance[gl_LocalInvocationIndex][0u] = _28._m2[gl_LocalInvocationIndex][0u];
-    gl_CullDistance[gl_LocalInvocationIndex][1u] = _28._m2[gl_LocalInvocationIndex][1u];
-    gl_CullDistance[gl_LocalInvocationIndex][2u] = _28._m2[gl_LocalInvocationIndex][2u];
-    gl_CullDistance[gl_LocalInvocationIndex][3u] = _28._m2[gl_LocalInvocationIndex][3u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_ClipDistance[0u] = _28._m1[gl_LocalInvocationIndex][0u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_ClipDistance[1u] = _28._m1[gl_LocalInvocationIndex][1u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_ClipDistance[2u] = _28._m1[gl_LocalInvocationIndex][2u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_ClipDistance[3u] = _28._m1[gl_LocalInvocationIndex][3u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_CullDistance[0u] = _28._m2[gl_LocalInvocationIndex][0u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_CullDistance[1u] = _28._m2[gl_LocalInvocationIndex][1u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_CullDistance[2u] = _28._m2[gl_LocalInvocationIndex][2u];
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_CullDistance[3u] = _28._m2[gl_LocalInvocationIndex][3u];
     if (gl_LocalInvocationIndex < 8u)
     {
         uint _73 = gl_LocalInvocationIndex * 3u;

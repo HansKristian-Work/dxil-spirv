@@ -1,13 +1,13 @@
 #version 460
 #extension GL_KHR_shader_subgroup_ballot : require
 
+uvec4 _36;
+
 layout(set = 0, binding = 0) uniform usamplerBuffer _8;
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _11;
 
 layout(location = 0) flat in uint THR;
 bool discard_state;
-
-uvec4 _36;
 
 uvec4 WaveMatch(uint _27, bool _28)
 {

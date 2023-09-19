@@ -2,12 +2,6 @@
 #extension GL_KHR_shader_subgroup_ballot : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
 
-layout(set = 0, binding = 0) uniform usamplerBuffer _8;
-layout(set = 0, binding = 1) uniform usamplerBuffer _9;
-layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _12;
-
-layout(location = 0) flat in uint THR;
-
 uint _50;
 float _97;
 uint _141;
@@ -15,6 +9,12 @@ float _185;
 uint _229;
 uint _274;
 uint _320;
+
+layout(set = 0, binding = 0) uniform usamplerBuffer _8;
+layout(set = 0, binding = 1) uniform usamplerBuffer _9;
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _12;
+
+layout(location = 0) flat in uint THR;
 
 uint WaveMultiPrefixSum(uint _46, uvec4 _47)
 {

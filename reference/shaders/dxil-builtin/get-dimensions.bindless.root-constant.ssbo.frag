@@ -3,6 +3,8 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
 
+uint _67;
+
 layout(set = 1, binding = 0, std430) restrict readonly buffer SSBO
 {
     uint _m0[];
@@ -51,8 +53,6 @@ layout(set = 4, binding = 0) uniform readonly writeonly imageBuffer _35[];
 layout(location = 0) flat in uint LEVEL;
 layout(location = 0, component = 1) flat in uint INDEX;
 layout(location = 0) out uint SV_Target;
-
-uint _67;
 
 void main()
 {

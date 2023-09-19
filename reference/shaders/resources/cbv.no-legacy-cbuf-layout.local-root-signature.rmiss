@@ -8,6 +8,9 @@ struct _17
     uvec4 _m1;
 };
 
+vec4 _38;
+uvec4 _54;
+
 layout(shaderRecordEXT, std430) buffer SBTBlock
 {
     uint _m0[5];
@@ -24,9 +27,6 @@ layout(shaderRecordEXT, std430) buffer SBTBlock
 } SBT;
 
 layout(location = 0) rayPayloadInEXT _17 payload;
-
-vec4 _38;
-uvec4 _54;
 
 void main()
 {

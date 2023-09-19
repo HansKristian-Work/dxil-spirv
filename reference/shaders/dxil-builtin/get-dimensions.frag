@@ -1,6 +1,13 @@
 #version 460
 #extension GL_EXT_samplerless_texture_functions : require
 
+uint _92;
+uint _93;
+uint _100;
+uint _107;
+uint _122;
+uint _143;
+
 layout(set = 0, binding = 0) uniform texture1D _8;
 layout(set = 0, binding = 1) uniform texture1DArray _11;
 layout(set = 0, binding = 2) uniform texture2D _14;
@@ -24,13 +31,6 @@ layout(set = 0, binding = 11, r32ui) uniform readonly writeonly uimageBuffer _62
 
 layout(location = 0) flat in uint LEVEL;
 layout(location = 0) out uint SV_Target;
-
-uint _92;
-uint _93;
-uint _100;
-uint _107;
-uint _122;
-uint _143;
 
 void main()
 {

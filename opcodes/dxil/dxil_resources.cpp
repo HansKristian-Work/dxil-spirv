@@ -1094,6 +1094,19 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 	case DXIL::ResourceType::UAV:
 	{
+		if (resource_range == impl.ags.uav_magic_resource_type_index)
+		{
+			// Resources tied to constant uints are considered "magic".
+			if (impl.ags.magic_ptr_id == 0)
+			{
+				spv::Id dummy_value = impl.spirv_module.allocate_id();
+				impl.ags.magic_ptr_id = dummy_value;
+			}
+
+			impl.rewrite_value(instruction, impl.ags.magic_ptr_id);
+			break;
+		}
+
 		auto &reference = get_resource_reference(impl, resource_type, instruction, resource_range);
 
 		if (resource_is_physical_pointer(impl, reference))

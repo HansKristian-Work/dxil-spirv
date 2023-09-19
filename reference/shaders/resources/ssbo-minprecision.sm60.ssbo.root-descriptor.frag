@@ -2,6 +2,8 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 
+float _43;
+
 layout(buffer_reference) buffer PhysicalPointerFloatNonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerFloatArray;
 layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloatNonWriteArray
@@ -24,8 +26,6 @@ layout(push_constant, std430) uniform RootConstants
 
 layout(location = 0) flat in mediump int A;
 layout(location = 0) out int SV_Target;
-
-float _43;
 
 void main()
 {
