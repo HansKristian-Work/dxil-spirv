@@ -1,0 +1,20 @@
+RWByteAddressBuffer Buf;
+RWTexture1D<uint2> Img1D;
+RWTexture2D<uint2> Img2D;
+RWTexture3D<uint2> Img3D;
+RWStructuredBuffer<uint2> Out;
+
+#include "ags_shader_intrinsics_dx12.inc"
+
+[numthreads(8, 8, 1)]
+void main(uint3 thr : SV_DispatchThreadID)
+{
+	Out[thr.x] = AmdExtD3DShaderIntrinsics_AtomicMaxU64(Buf, 8 * thr.x, uint2(40, 50));
+	Out[thr.x] += AmdExtD3DShaderIntrinsics_AtomicMinU64(Img1D, thr.x, uint2(60, 70));
+	Out[thr.x] += AmdExtD3DShaderIntrinsics_AtomicXorU64(Img2D, thr.xy, uint2(80, 90));
+	Out[thr.x] += AmdExtD3DShaderIntrinsics_AtomicAddU64(Img3D, thr, uint2(100, 110));
+	Out[thr.x].x += AmdExtD3DShaderIntrinsics_ReadfirstlaneU(thr.x * 16);
+	Out[thr.x].x += AmdExtD3DShaderIntrinsics_ReadfirstlaneF(thr.y * 16);
+	Out[thr.x].y += AmdExtD3DShaderIntrinsics_ReadlaneU(thr.z * 16, 7);
+	Out[thr.x].y += AmdExtD3DShaderIntrinsics_ReadlaneF(thr.x * 16, 9);
+}

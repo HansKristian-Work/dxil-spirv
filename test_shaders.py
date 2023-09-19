@@ -305,7 +305,7 @@ def test_shader(shader, args, paths):
     if joined_path.endswith('.dxil'):
         glsl = cross_compile_dxil(joined_path, args, paths, True)
         regression_check(shader, glsl, args)
-    else:
+    elif not joined_path.endswith('.inc'):
         dxil, glsl = cross_compile_dxil(joined_path, args, paths, False)
         regression_check(shader, glsl, args)
         remove_file(dxil)
