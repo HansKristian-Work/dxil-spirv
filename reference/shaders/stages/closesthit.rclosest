@@ -12,10 +12,10 @@ struct _11
     vec2 _m0;
 };
 
+vec2 _20;
+
 layout(location = 0) rayPayloadInEXT _7 payload;
 hitAttributeEXT _11 hit;
-
-vec2 _20;
 
 void main()
 {

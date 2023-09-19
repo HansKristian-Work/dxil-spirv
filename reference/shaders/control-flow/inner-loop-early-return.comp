@@ -1,9 +1,9 @@
 #version 460
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
-
 uint _41;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
 void main()
 {

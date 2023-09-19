@@ -3,6 +3,8 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
 
+uint _61;
+
 layout(push_constant, std430) uniform RootConstants
 {
     uint _m0;
@@ -35,8 +37,6 @@ layout(set = 4, binding = 0, r32ui) uniform readonly writeonly uimageBuffer _39[
 layout(location = 0) flat in uint LEVEL;
 layout(location = 0, component = 1) flat in uint INDEX;
 layout(location = 0) out uint SV_Target;
-
-uint _61;
 
 void main()
 {

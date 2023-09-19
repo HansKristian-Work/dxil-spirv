@@ -1,14 +1,14 @@
 #version 460
 #extension GL_KHR_shader_subgroup_ballot : require
 
+uint _63;
+
 layout(set = 0, binding = 0) uniform usamplerBuffer _8;
 layout(set = 0, binding = 1) uniform usamplerBuffer _9;
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _12;
 
 layout(location = 0) flat in uint THR;
 bool discard_state;
-
-uint _63;
 
 uint WaveMultiPrefixCountBits(bool _53, uvec4 _54, bool _55)
 {

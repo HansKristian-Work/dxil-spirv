@@ -4,13 +4,14 @@
 #else
 #error No extension available for 64-bit integers.
 #endif
+#extension GL_EXT_shader_image_int64 : require
 #extension GL_EXT_samplerless_texture_functions : require
 layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform usamplerBuffer _8;
 layout(set = 0, binding = 1) uniform utexture2D _11;
-layout(set = 0, binding = 0) uniform imageBuffer _15;
-layout(set = 0, binding = 1) uniform image2D _18;
+layout(set = 0, binding = 0, r64ui) uniform u64imageBuffer _15;
+layout(set = 0, binding = 1, r64ui) uniform u64image2D _18;
 
 void main()
 {

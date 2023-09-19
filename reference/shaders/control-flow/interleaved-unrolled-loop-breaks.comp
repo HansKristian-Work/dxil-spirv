@@ -1,8 +1,6 @@
 #version 460
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
-
 uint _75;
 uint _77;
 uint _78;
@@ -28,6 +26,8 @@ uint _99;
 uint _100;
 uint _101;
 uint _102;
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 
 void main()
 {

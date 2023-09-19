@@ -10,6 +10,8 @@ struct _15
     uint _m1;
 };
 
+vec4 _73;
+
 layout(push_constant, std430) uniform RootConstants
 {
     uint _m0;
@@ -24,8 +26,6 @@ layout(push_constant, std430) uniform RootConstants
 
 layout(set = 0, binding = 0) uniform texture2D _13[];
 layout(location = 0) rayPayloadInEXT _15 payload;
-
-vec4 _73;
 
 void main()
 {

@@ -12,6 +12,9 @@ struct _37
     uint _m1;
 };
 
+vec4 _372;
+float _378;
+
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerUintNonWriteArray;
@@ -96,9 +99,6 @@ layout(set = 0, binding = 0) uniform texture2D _21[];
 layout(set = 3, binding = 0, r32f) uniform readonly image2D _25[];
 layout(set = 2, binding = 0) uniform sampler _36[];
 layout(location = 0) rayPayloadInEXT _37 payload;
-
-vec4 _372;
-float _378;
 
 void main()
 {

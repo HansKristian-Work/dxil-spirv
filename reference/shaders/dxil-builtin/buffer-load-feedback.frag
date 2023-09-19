@@ -25,14 +25,6 @@ struct _82
     uint _m4;
 };
 
-layout(set = 0, binding = 1) uniform usamplerBuffer _8;
-layout(set = 0, binding = 2) uniform usamplerBuffer _9;
-layout(set = 0, binding = 1, r32ui) uniform readonly uimageBuffer _12;
-layout(set = 0, binding = 2, r32ui) uniform readonly uimageBuffer _13;
-
-layout(location = 0) flat in uint TEXCOORD;
-layout(location = 0) out vec2 SV_Target;
-
 uint _40;
 uint _41;
 uint _62;
@@ -41,6 +33,14 @@ float _86;
 float _87;
 float _107;
 float _108;
+
+layout(set = 0, binding = 1) uniform usamplerBuffer _8;
+layout(set = 0, binding = 2) uniform usamplerBuffer _9;
+layout(set = 0, binding = 1, r32ui) uniform readonly uimageBuffer _12;
+layout(set = 0, binding = 2, r32ui) uniform readonly uimageBuffer _13;
+
+layout(location = 0) flat in uint TEXCOORD;
+layout(location = 0) out vec2 SV_Target;
 
 void main()
 {

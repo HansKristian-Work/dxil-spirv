@@ -10,6 +10,8 @@ struct _25
     uint _m1;
 };
 
+vec4 _89;
+
 layout(shaderRecordEXT, std430) buffer SBTBlock
 {
     uint _m0[5];
@@ -43,8 +45,6 @@ layout(push_constant, std430) uniform RootConstants
 } registers;
 
 layout(location = 0) rayPayloadInEXT _25 payload;
-
-vec4 _89;
 
 void main()
 {
