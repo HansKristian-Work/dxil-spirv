@@ -1403,6 +1403,7 @@ static bool emit_magic_ags_atomic_u64(Converter::Impl &impl, spv::Id image_id,
 
 static bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
 	impl.push_ags_instruction(instruction);
 
 	// We might be able to retire an instruction now.
@@ -1412,14 +1413,32 @@ static bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallIn
 
 	switch (impl.ags.instructions[0].opcode)
 	{
+	case AmdExtD3DShaderIntrinsicsOpcode_Readfirstlane:
+	{
+		// Don't bother with all the weird special cases.
+		auto *op = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(5)));
+
+		impl.add(op);
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+		break;
+	}
+
+	case AmdExtD3DShaderIntrinsicsOpcode_Readlane:
+	{
+		auto *op = impl.allocate(spv::OpGroupNonUniformBroadcast, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(5)));
+		op->add_id(builder.makeUintConstant(impl.ags.instructions[0].immediate));
+
+		impl.add(op);
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+		break;
+	}
+
 	case AmdExtD3DShaderIntrinsicsOpcode_AtomicU64:
 	{
-		if (impl.ags.active_uav_op != DXIL::Op::TextureStore || impl.ags.active_uav_ptr == 0)
-		{
-			LOGE("Attempting to use U64 atomics on non-textures. This is unsupported.\n");
-			return false;
-		}
-
 		spv::Op atomic_op = spv::OpNop;
 		if (impl.ags.phases == 3)
 		{
