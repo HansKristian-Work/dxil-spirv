@@ -242,6 +242,22 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, spv::Id> llvm_value_actual_type;
 	UnorderedSet<uint32_t> llvm_attribute_at_vertex_indices;
 
+	struct
+	{
+		// For magic resource types, assume there is one globally declared dummy resource.
+		// Don't conflict with sentinel index for SM 6.6 heap.
+		uint32_t uav_magic_resource_type_index = UINT32_MAX - 1;
+		spv::Id magic_ptr_id = 0;
+		uint32_t active_uav_index = 0;
+		spv::Id active_uav_ptr = 0;
+		DXIL::Op active_uav_op;
+		AgsInstruction instructions[AgsInstruction::MaxPhases];
+		const llvm::CallInst *backdoor_instructions[AgsInstruction::MaxPhases];
+		unsigned phases = 0;
+	} ags;
+
+	void push_ags_instruction(const llvm::CallInst *instruction);
+
 	// DXIL has no storage class concept for hit/callable/payload types.
 	const llvm::Type *llvm_hit_attribute_output_type = nullptr;
 	spv::Id llvm_hit_attribute_output_value = 0;

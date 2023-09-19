@@ -716,6 +716,15 @@ bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::
 	auto &builder = impl.builder();
 
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+
+	// Deferred 64-bit atomic. Resolve in a later AGS atomic.
+	if (impl.ags.phases == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2) && !multi_sampled)
+	{
+		impl.ags.active_uav_ptr = image_id;
+		impl.ags.active_uav_op = DXIL::Op::TextureStore;
+		return true;
+	}
+
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	spv::Id coord[3] = {};
 

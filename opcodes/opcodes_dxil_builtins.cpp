@@ -37,6 +37,7 @@
 #include "opcodes/dxil/dxil_waveops.hpp"
 #include "opcodes/dxil/dxil_ray_tracing.hpp"
 #include "opcodes/dxil/dxil_mesh.hpp"
+#include "opcodes/dxil/dxil_ags.hpp"
 
 namespace dxil_spv
 {
@@ -692,6 +693,25 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 	if (tracking)
 	{
 		tracking->has_written = true;
+
+		// Detect 64-bit atomics.
+		if (impl.ags.phases == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2))
+		{
+			tracking->has_atomic = true;
+			tracking->has_read = true;
+			if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+			{
+				impl.ags.active_uav_index = itr->second;
+				impl.ags.active_uav_op = opcode;
+			}
+
+			// Mark 64-bit usage.
+			if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
+				tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V1)] = true;
+			else
+				tracking->has_atomic_64bit = true;
+		}
+
 		if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
 		{
 			auto meta = get_resource_meta_from_buffer_op(impl, instruction);
@@ -724,7 +744,17 @@ static void analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 
 	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+	{
+		// Special magic.
+		if (itr->second == impl.ags.uav_magic_resource_type_index &&
+		    value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
+		{
+			impl.push_ags_instruction(instruction);
+			return;
+		}
+
 		tracking = &impl.uav_access_tracking[itr->second];
+	}
 
 	auto annotate_itr = impl.llvm_annotate_handle_uses.find(instruction->getOperand(1));
 	if (annotate_itr != impl.llvm_annotate_handle_uses.end())
@@ -767,8 +797,10 @@ bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::C
 		analyze_dxil_atomic_op(impl, instruction);
 		break;
 
+	case DXIL::Op::TextureStore:
 	case DXIL::Op::BufferStore:
 	case DXIL::Op::RawBufferStore:
+		// TextureStore only needed here to track AGS U64 image atomics.
 		analyze_dxil_buffer_store(impl, instruction, op);
 		break;
 

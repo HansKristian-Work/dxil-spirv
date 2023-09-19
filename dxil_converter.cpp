@@ -26,6 +26,7 @@
 #include "opcodes/opcodes_dxil_builtins.hpp"
 #include "opcodes/opcodes_llvm_builtins.hpp"
 #include "opcodes/dxil/dxil_common.hpp"
+#include "opcodes/dxil/dxil_ags.hpp"
 
 #include "dxil_converter.hpp"
 #include "logging.hpp"
@@ -704,6 +705,14 @@ bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, con
 	{
 		auto *resource = llvm::cast<llvm::MDNode>(node->getOperand(i));
 		unsigned index = get_constant_metadata(resource, 0);
+
+		if (type == DXIL::ResourceType::UAV)
+		{
+			unsigned bind_space = get_constant_metadata(resource, 3);
+			auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(resource, 6));
+			if (bind_space == AgsUAVMagicRegisterSpace && resource_kind == DXIL::ResourceKind::RawBuffer)
+				ags.uav_magic_resource_type_index = index;
+		}
 		register_resource_meta_reference(resource->getOperand(1), type, index);
 	}
 	return true;
@@ -1381,6 +1390,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		unsigned range_size = get_constant_metadata(uav, 5);
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
+
+		// Magic resource that does not actually exist.
+		if (index == ags.uav_magic_resource_type_index)
+			continue;
 
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
 		bool is_rov = get_constant_metadata(uav, 9) != 0;
@@ -5869,6 +5882,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 				return {};
 			}
 		}
+		ags.phases = 0;
 
 		auto *instruction = bb->getTerminator();
 		if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(instruction))
@@ -6163,6 +6177,9 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 				}
 			}
 		}
+
+		// Reset AGS tracking for every BB.
+		ags.phases = 0;
 	}
 
 	return true;
@@ -6641,6 +6658,33 @@ void Converter::Impl::suggest_maximum_wave_size(unsigned wave_size)
 	    options.force_subgroup_size == 0)
 	{
 		execution_mode_meta.heuristic_max_wave_size = wave_size;
+	}
+}
+
+void Converter::Impl::push_ags_instruction(const llvm::CallInst *instruction)
+{
+	uint32_t op = 0;
+	if (!get_constant_operand(instruction, 2, &op))
+		return;
+
+	if (!is_ags_magic(op))
+		return;
+
+	auto inst = decode_ags_instruction(op);
+
+	// Reset if we're beginning a new instruction sequence.
+	if (inst.phase < ags.phases)
+		ags.phases = 0;
+
+	// New instruction type, reset.
+	if (ags.phases && inst.opcode != ags.instructions[0].opcode)
+		ags.phases = 0;
+
+	if (inst.phase == ags.phases && inst.phase < AgsInstruction::MaxPhases)
+	{
+		ags.instructions[inst.phase] = inst;
+		ags.backdoor_instructions[inst.phase] = instruction;
+		ags.phases = inst.phase + 1;
 	}
 }
 
