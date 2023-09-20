@@ -407,6 +407,34 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
+static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
+                                          spv::Id table_index_id,
+                                          uint32_t base_offset,
+                                          const llvm::Value *dynamic_offset)
+{
+	auto &builder = impl.builder();
+
+	if (base_offset != 0)
+	{
+		auto *heap_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		heap_offset->add_id(table_index_id);
+		heap_offset->add_id(builder.makeUintConstant(base_offset));
+		impl.add(heap_offset);
+		table_index_id = heap_offset->id;
+	}
+
+	if (dynamic_offset)
+	{
+		auto *offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		offset->add_id(table_index_id);
+		offset->add_id(impl.get_id_for_value(dynamic_offset));
+		impl.add(offset);
+		table_index_id = offset->id;
+	}
+
+	return table_index_id;
+}
+
 static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
                                                         const llvm::Value *dynamic_offset)
 {
@@ -434,25 +462,7 @@ static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, c
 	impl.add(shifted_word);
 	loaded_word = shifted_word;
 
-	if (reference.base_offset != 0)
-	{
-		auto *heap_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		heap_offset->add_id(loaded_word->id);
-		heap_offset->add_id(builder.makeUintConstant(reference.base_offset));
-		impl.add(heap_offset);
-		loaded_word = heap_offset;
-	}
-
-	if (dynamic_offset)
-	{
-		auto *offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		offset->add_id(loaded_word->id);
-		offset->add_id(impl.get_id_for_value(dynamic_offset));
-		impl.add(offset);
-		loaded_word = offset;
-	}
-
-	return loaded_word->id;
+	return build_bindless_heap_offset(impl, loaded_word->id, reference.base_offset, dynamic_offset);
 }
 
 static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
@@ -479,25 +489,7 @@ static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, c
 	loaded_word->add_id(descriptor_table->id);
 	impl.add(loaded_word);
 
-	if (reference.base_offset != 0)
-	{
-		auto *heap_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		heap_offset->add_id(loaded_word->id);
-		heap_offset->add_id(builder.makeUintConstant(reference.base_offset));
-		impl.add(heap_offset);
-		loaded_word = heap_offset;
-	}
-
-	if (dynamic_offset)
-	{
-		auto *offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		offset->add_id(loaded_word->id);
-		offset->add_id(impl.get_id_for_value(dynamic_offset));
-		impl.add(offset);
-		loaded_word = offset;
-	}
-
-	return loaded_word->id;
+	return build_bindless_heap_offset(impl, loaded_word->id, reference.base_offset, dynamic_offset);
 }
 
 static spv::Id build_descriptor_qa_check(Converter::Impl &impl, spv::Id offset_id,
