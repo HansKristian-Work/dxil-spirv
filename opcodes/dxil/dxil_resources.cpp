@@ -414,6 +414,31 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 {
 	auto &builder = impl.builder();
 
+	if (base_offset != 0 && dynamic_offset)
+	{
+		// Try to constant fold the offsets.
+		// Works around some driver issues in some cases and makes the code neater.
+		// It's very common for bindless to get counteracting - and + here, turning base_offset into 0 ...
+		if (const auto *bin_op = llvm::dyn_cast<llvm::BinaryOperator>(dynamic_offset))
+		{
+			if (bin_op->getOpcode() == llvm::BinaryOperator::BinaryOps::Add)
+			{
+				auto *a = bin_op->getOperand(0);
+				auto *b = bin_op->getOperand(1);
+				if (const auto *a_const = llvm::dyn_cast<llvm::ConstantInt>(a))
+				{
+					base_offset += uint32_t(a_const->getUniqueInteger().getZExtValue());
+					dynamic_offset = b;
+				}
+				else if (const auto *b_const = llvm::dyn_cast<llvm::ConstantInt>(b))
+				{
+					base_offset += uint32_t(b_const->getUniqueInteger().getZExtValue());
+					dynamic_offset = a;
+				}
+			}
+		}
+	}
+
 	if (base_offset != 0)
 	{
 		auto *heap_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
