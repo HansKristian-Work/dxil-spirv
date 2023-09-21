@@ -291,6 +291,8 @@ public:
 
     // Create an intermediate with an undefined value.
     Id createUndefined(Id type);
+    // Create at global scope.
+    Id createUndefinedConstant(Id type);
 
     // Store into an Id and return the l-value
     void createStore(Id rValue, Id lValue);

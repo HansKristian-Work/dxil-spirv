@@ -3123,7 +3123,10 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 			for (unsigned i = 0; i < agg->getNumOperands(); i++)
 			{
 				llvm::Constant *c = agg->getOperand(i);
-				constituents.push_back(get_id_for_constant(c, 0));
+				if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
+					constituents.push_back(get_id_for_undef_constant(undef));
+				else
+					constituents.push_back(get_id_for_constant(c, 0));
 			}
 		}
 		else if (auto *array = llvm::dyn_cast<llvm::ConstantDataArray>(constant))
@@ -3132,7 +3135,10 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 			for (unsigned i = 0; i < array->getNumElements(); i++)
 			{
 				llvm::Constant *c = array->getElementAsConstant(i);
-				constituents.push_back(get_id_for_constant(c, 0));
+				if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
+					constituents.push_back(get_id_for_undef_constant(undef));
+				else
+					constituents.push_back(get_id_for_constant(c, 0));
 			}
 		}
 		else if (auto *vec = llvm::dyn_cast<llvm::ConstantDataVector>(constant))
@@ -3141,7 +3147,10 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 			for (unsigned i = 0; i < vec->getNumElements(); i++)
 			{
 				llvm::Constant *c = vec->getElementAsConstant(i);
-				constituents.push_back(get_id_for_constant(c, 0));
+				if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
+					constituents.push_back(get_id_for_undef_constant(undef));
+				else
+					constituents.push_back(get_id_for_constant(c, 0));
 			}
 		}
 		else
@@ -3159,6 +3168,12 @@ spv::Id Converter::Impl::get_id_for_undef(const llvm::UndefValue *undef)
 {
 	auto &builder = spirv_module.get_builder();
 	return builder.createUndefined(get_type_id(undef->getType()));
+}
+
+spv::Id Converter::Impl::get_id_for_undef_constant(const llvm::UndefValue *undef)
+{
+	auto &builder = spirv_module.get_builder();
+	return builder.createUndefinedConstant(get_type_id(undef->getType()));
 }
 
 spv::Id Converter::Impl::get_id_for_value(const llvm::Value *value, unsigned forced_width)

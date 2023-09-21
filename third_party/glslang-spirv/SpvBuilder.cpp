@@ -1135,6 +1135,13 @@ Id Builder::createUndefined(Id type)
   return inst->getResultId();
 }
 
+Id Builder::createUndefinedConstant(Id type)
+{
+  Instruction* inst = new Instruction(getUniqueId(), type, OpUndef);
+  constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(inst));
+  return inst->getResultId();
+}
+
 // Comments in header
 void Builder::createStore(Id rValue, Id lValue)
 {
