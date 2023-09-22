@@ -4831,8 +4831,26 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 		auto *ladder = create_helper_pred_block(loop_ladder);
 		new_ladder_block = ladder;
 
+		unsigned header_index;
+		for (header_index = 0; header_index < uint32_t(node->headers.size()); header_index++)
+			if (node->headers[header_index] == header)
+				break;
+
+		assert(header_index != node->headers.size());
+
 		// Merge to ladder instead.
-		traverse_dominated_blocks_and_rewrite_branch(header, node, ladder);
+		traverse_dominated_blocks_and_rewrite_branch(
+			header, node, ladder, [node, header_index](const CFGNode *next)
+			{
+			  for (unsigned i = 0; i < header_index; i++)
+			  {
+				  auto *target = node->headers[i];
+				  // Do not introduce cycles. Outer scopes must never be rewritten to branch to inner scopes.
+				  if (target && target->loop_ladder_block == next)
+					  return false;
+			  }
+			  return true;
+			});
 
 		ladder->ir.terminator.type = Terminator::Type::Condition;
 		ladder->ir.terminator.conditional_id = module.allocate_id();
