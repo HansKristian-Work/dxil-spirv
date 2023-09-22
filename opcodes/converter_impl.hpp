@@ -579,6 +579,11 @@ struct Converter::Impl
 		bool eliminate_dead_code = false;
 		bool propagate_precise = false;
 		bool force_precise = false;
+		struct
+		{
+			bool enabled = false;
+			bool assume_uniform_scale = false;
+		} grad_opt;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;

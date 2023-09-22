@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 30
+#define DXIL_SPV_API_VERSION_MINOR 31
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -357,6 +357,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_SUBGROUP_PARTITIONED_NV = 28,
 	DXIL_SPV_OPTION_DEAD_CODE_ELIMINATE = 29,
 	DXIL_SPV_OPTION_PRECISE_CONTROL = 30,
+	DXIL_SPV_OPTION_SAMPLE_GRAD_OPTIMIZATION_CONTROL = 31,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -576,6 +577,13 @@ typedef struct dxil_spv_option_precise_control
 	dxil_spv_bool force_precise;
 	dxil_spv_bool propagate_precise;
 } dxil_spv_option_precise_control;
+
+typedef struct dxil_spv_option_sample_grad_optimization_control
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool enabled;
+	dxil_spv_bool assume_uniform_scale;
+} dxil_spv_option_sample_grad_optimization_control;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

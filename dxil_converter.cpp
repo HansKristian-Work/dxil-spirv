@@ -6661,6 +6661,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionPreciseControl &>(cap).force_precise;
 		break;
 
+	case Option::SampleGradOptimizationControl:
+		options.grad_opt.enabled =
+		    static_cast<const OptionSampleGradOptimizationControl &>(cap).enabled;
+		options.grad_opt.assume_uniform_scale =
+			static_cast<const OptionSampleGradOptimizationControl &>(cap).assume_uniform_scale;
+		break;
+
 	default:
 		break;
 	}

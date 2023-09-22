@@ -245,6 +245,7 @@ enum class Option : uint32_t
 	SubgroupPartitionedNV = 28,
 	DeadCodeEliminate = 29,
 	PreciseControl = 30,
+	SampleGradOptimizationControl = 31,
 	Count
 };
 
@@ -587,6 +588,17 @@ struct OptionPreciseControl : OptionBase
 
 	bool force_precise = false;
 	bool propagate_precise = false;
+};
+
+struct OptionSampleGradOptimizationControl : OptionBase
+{
+	OptionSampleGradOptimizationControl()
+	    : OptionBase(Option::SampleGradOptimizationControl)
+	{
+	}
+
+	bool enabled = false;
+	bool assume_uniform_scale = false;
 };
 
 struct DescriptorTableEntry

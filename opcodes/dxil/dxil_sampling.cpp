@@ -354,6 +354,156 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	return true;
 }
 
+static bool binary_op_is_multiple_of_derivative(const llvm::Value *grad_value, const llvm::Value *coord_value,
+                                                DXIL::Op candidate_coarse_op, DXIL::Op candidate_fine_op,
+                                                const llvm::Value *&multiple)
+{
+	const auto *bin_op = llvm::dyn_cast<llvm::BinaryOperator>(grad_value);
+	if (!bin_op)
+		return false;
+
+	if (bin_op->getOpcode() != llvm::BinaryOperator::BinaryOps::FMul)
+		return false;
+
+	// Play fast and loose if we can :3
+	if (!bin_op->isFast())
+		return false;
+
+	auto *a = bin_op->getOperand(0);
+	auto *b = bin_op->getOperand(1);
+
+	if ((value_is_dx_op_instrinsic(a, candidate_coarse_op) ||
+	     value_is_dx_op_instrinsic(a, candidate_fine_op)))
+	{
+		if (llvm::cast<llvm::CallInst>(a)->getOperand(1) == coord_value)
+		{
+			multiple = b;
+			return true;
+		}
+	}
+	else if ((value_is_dx_op_instrinsic(b, candidate_coarse_op) ||
+	          value_is_dx_op_instrinsic(b, candidate_fine_op)))
+	{
+		if (llvm::cast<llvm::CallInst>(b)->getOperand(1) == coord_value)
+		{
+			multiple = a;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static spv::Id sample_grad_is_lod_bias(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned num_coords)
+{
+	if (!impl.current_block)
+		return 0;
+
+	if (!impl.options.grad_opt.enabled)
+		return 0;
+
+	const llvm::Value *mult_grad_x[3] = {};
+	const llvm::Value *mult_grad_y[3] = {};
+
+	for (unsigned i = 0; i < num_coords; i++)
+	{
+		auto *coord = instruction->getOperand(i + 3);
+
+		// Don't bother trying to fiddle with constant expressions.
+		// All derivatives are expected to constant-fold.
+		if (llvm::isa<llvm::Constant>(coord))
+			return 0;
+
+		auto *grad_x = instruction->getOperand(i + 10);
+		auto *grad_y = instruction->getOperand(i + 13);
+
+		// Gradients must have been computed in this block,
+		// otherwise we might introduce bugs with helper lanes being deactivated,
+		// since this that scenario is the primary use case for grad in the first place ...
+		spv::Id grad_x_id = impl.get_id_for_value(grad_x);
+		spv::Id grad_y_id = impl.get_id_for_value(grad_y);
+		if (!grad_x_id || !grad_y_id)
+			return 0;
+
+		for (auto &op : *impl.current_block)
+		{
+			if (op->id == grad_x_id)
+				grad_x_id = 0;
+			if (op->id == grad_y_id)
+				grad_y_id = 0;
+		}
+
+		if (grad_x_id || grad_y_id)
+			return 0;
+
+		if (!binary_op_is_multiple_of_derivative(grad_x, coord, DXIL::Op::DerivCoarseX, DXIL::Op::DerivFineX, mult_grad_x[i]) ||
+		    !binary_op_is_multiple_of_derivative(grad_y, coord, DXIL::Op::DerivCoarseY, DXIL::Op::DerivFineY, mult_grad_y[i]))
+			return 0;
+	}
+
+	for (unsigned i = 0; i < num_coords; i++)
+	{
+		if (!mult_grad_x[i] || !mult_grad_y[i])
+			return 0;
+
+		if (i > 0)
+		{
+			if (mult_grad_x[i] != mult_grad_x[0])
+				return 0;
+			if (mult_grad_y[i] != mult_grad_y[0])
+				return 0;
+		}
+	}
+
+	// We can only apply uniform scale with textureBias, unless we have app-opt.
+	if (mult_grad_x[0] != mult_grad_y[0] && !impl.options.grad_opt.assume_uniform_scale)
+		return 0;
+
+	auto &builder = impl.builder();
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	spv::Id min_value_id;
+
+	spv::Id fp32_type = builder.makeFloatType(32);
+
+	Operation *abs_x_op = impl.allocate(spv::OpExtInst, fp32_type);
+	abs_x_op->add_id(impl.glsl_std450_ext);
+	abs_x_op->add_literal(GLSLstd450FAbs);
+	abs_x_op->add_id(impl.get_id_for_value(mult_grad_x[0]));
+	impl.add(abs_x_op);
+
+	if (mult_grad_x[0] != mult_grad_y[0])
+	{
+		Operation *abs_y_op = impl.allocate(spv::OpExtInst, fp32_type);
+		abs_y_op->add_id(impl.glsl_std450_ext);
+		abs_y_op->add_literal(GLSLstd450FAbs);
+		abs_y_op->add_id(impl.get_id_for_value(mult_grad_y[0]));
+		impl.add(abs_y_op);
+
+		Operation *min_op = impl.allocate(spv::OpExtInst, fp32_type);
+		min_op->add_id(impl.glsl_std450_ext);
+		min_op->add_literal(GLSLstd450FMin);
+		min_op->add_id(abs_x_op->id);
+		min_op->add_id(abs_y_op->id);
+
+		impl.add(min_op);
+		min_value_id = min_op->id;
+	}
+	else
+	{
+		min_value_id = abs_x_op->id;
+	}
+
+	Operation *op = impl.allocate(spv::OpExtInst, fp32_type);
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(GLSLstd450Log2);
+	op->add_id(min_value_id);
+	impl.add(op);
+
+	return op->id;
+}
+
 bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// Elide dead loads.
@@ -380,12 +530,22 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	if (!get_texel_offsets(impl, instruction, image_ops, 7, num_coords, offsets, false))
 		return false;
 
+	spv::Id bias_id = sample_grad_is_lod_bias(impl, instruction, num_coords);
+
 	spv::Id grad_x[3] = {};
 	spv::Id grad_y[3] = {};
-	for (unsigned i = 0; i < num_coords; i++)
-		grad_x[i] = impl.get_id_for_value(instruction->getOperand(i + 10));
-	for (unsigned i = 0; i < num_coords; i++)
-		grad_y[i] = impl.get_id_for_value(instruction->getOperand(i + 13));
+
+	if (bias_id)
+	{
+		image_ops = spv::ImageOperandsBiasMask;
+	}
+	else
+	{
+		for (unsigned i = 0; i < num_coords; i++)
+			grad_x[i] = impl.get_id_for_value(instruction->getOperand(i + 10));
+		for (unsigned i = 0; i < num_coords; i++)
+			grad_y[i] = impl.get_id_for_value(instruction->getOperand(i + 13));
+	}
 
 	spv::Id aux_argument = 0;
 	if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(16)))
@@ -409,9 +569,13 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	else
 		sample_type = texel_type;
 
-	Operation *op =
-		impl.allocate(sparse ? spv::OpImageSparseSampleExplicitLod : spv::OpImageSampleExplicitLod,
-		              instruction, sample_type);
+	spv::Op opcode;
+	if (bias_id)
+		opcode = sparse ? spv::OpImageSparseSampleImplicitLod : spv::OpImageSampleImplicitLod;
+	else
+		opcode = sparse ? spv::OpImageSparseSampleExplicitLod : spv::OpImageSampleExplicitLod;
+
+	Operation *op = impl.allocate(opcode, instruction, sample_type);
 
 	if (!sparse)
 		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
@@ -427,6 +591,8 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		op->add_id(impl.build_vector(builder.makeFloatType(32), grad_x, num_coords));
 		op->add_id(impl.build_vector(builder.makeFloatType(32), grad_y, num_coords));
 	}
+	else if (image_ops & spv::ImageOperandsBiasMask)
+		op->add_id(bias_id);
 
 	if (image_ops & (spv::ImageOperandsConstOffsetMask | spv::ImageOperandsOffsetMask))
 		op->add_id(build_texel_offset_vector(impl, offsets, num_coords, image_ops, false));
