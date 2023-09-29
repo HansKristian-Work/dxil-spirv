@@ -165,6 +165,8 @@ struct DXILDispatcher
 		OP(Unpack4x8) = emit_unpack4x8_instruction;
 		OP(Pack4x8) = emit_pack4x8_instruction;
 
+		OP(Msad) = emit_msad_instruction;
+
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;
 		OP(ThreadId) = emit_thread_id_load_dispatch<spv::BuiltInGlobalInvocationId>;
