@@ -105,4 +105,6 @@ static inline bool emit_i8_dot_instruction(Converter::Impl &impl, const llvm::Ca
 bool emit_dot2_add_half_instruction(Converter::Impl &Impl, const llvm::CallInst *instruction);
 bool emit_unpack4x8_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_pack4x8_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool emit_msad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv

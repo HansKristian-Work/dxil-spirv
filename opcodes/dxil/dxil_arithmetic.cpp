@@ -660,4 +660,102 @@ bool emit_pack4x8_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	return true;
 }
 
+bool emit_msad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	spv::Id uint32_scalar_type = builder.makeIntType(32);
+	spv::Id uint32_vector_type = builder.makeVectorType(uint32_scalar_type, 4);
+	spv::Id bool_type = builder.makeVectorType(builder.makeBoolType(), 4);
+
+	Vector<spv::Id> ref_byte_ids = { 0, 0, 0, 0 };
+	Vector<spv::Id> src_byte_ids = { 0, 0, 0, 0 };
+
+	for (uint32_t i = 0; i < 4; i++)
+	{
+		auto *ref_bfe_op = impl.allocate(spv::OpBitFieldUExtract, uint32_scalar_type);
+		ref_bfe_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		ref_bfe_op->add_id(builder.makeUintConstant(8 * i));
+		ref_bfe_op->add_id(builder.makeUintConstant(8));
+		impl.add(ref_bfe_op);
+
+		auto *src_bfe_op = impl.allocate(spv::OpBitFieldUExtract, uint32_scalar_type);
+		src_bfe_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		src_bfe_op->add_id(builder.makeUintConstant(8 * i));
+		src_bfe_op->add_id(builder.makeUintConstant(8));
+		impl.add(src_bfe_op);
+
+		ref_byte_ids[i] = ref_bfe_op->id;
+		src_byte_ids[i] = src_bfe_op->id;
+	}
+
+	auto *ref_composite_op = impl.allocate(spv::OpCompositeConstruct, uint32_vector_type);
+	for (uint32_t i = 0; i < 4; i++)
+		ref_composite_op->add_id(ref_byte_ids[i]);
+	impl.add(ref_composite_op);
+
+	auto *src_composite_op = impl.allocate(spv::OpCompositeConstruct, uint32_vector_type);
+	for (uint32_t i = 0; i < 4; i++)
+		src_composite_op->add_id(src_byte_ids[i]);
+	impl.add(src_composite_op);
+
+	spv::Id zero_vector = builder.makeNullConstant(uint32_vector_type);
+
+	auto *compare_ref_zero_op = impl.allocate(spv::OpIEqual, bool_type);
+	compare_ref_zero_op->add_id(ref_composite_op->id);
+	compare_ref_zero_op->add_id(zero_vector);
+	impl.add(compare_ref_zero_op);
+
+	auto *ref_src_diff_op = impl.allocate(spv::OpISub, uint32_vector_type);
+	ref_src_diff_op->add_id(ref_composite_op->id);
+	ref_src_diff_op->add_id(src_composite_op->id);
+	impl.add(ref_src_diff_op);
+
+	auto *abs_diff_op = impl.allocate(spv::OpExtInst, uint32_vector_type);
+	abs_diff_op->add_id(impl.glsl_std450_ext);
+	abs_diff_op->add_literal(GLSLstd450SAbs);
+	abs_diff_op->add_id(ref_src_diff_op->id);
+	impl.add(abs_diff_op);
+
+	auto *masked_diff_op = impl.allocate(spv::OpSelect, uint32_vector_type);
+	masked_diff_op->add_id(compare_ref_zero_op->id);
+	masked_diff_op->add_id(zero_vector);
+	masked_diff_op->add_id(abs_diff_op->id);
+	impl.add(masked_diff_op);
+
+	spv::Id sum_id = 0;
+
+	for (uint32_t i = 0; i < 4; i++)
+	{
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, uint32_scalar_type);
+		extract_op->add_id(masked_diff_op->id);
+		extract_op->add_literal(i);
+		impl.add(extract_op);
+
+		if (sum_id)
+		{
+			auto *add_op = impl.allocate(spv::OpIAdd, uint32_scalar_type);
+			add_op->add_id(sum_id);
+			add_op->add_id(extract_op->id);
+			impl.add(add_op);
+
+			sum_id = add_op->id;
+		}
+		else
+			sum_id = extract_op->id;
+	}
+
+	/* DXIL docs say that the addition should saturate on overflow,
+	 * but but drivers don't seem to do that. */
+	auto *add_op = impl.allocate(spv::OpIAdd, instruction);
+	add_op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
+	add_op->add_id(sum_id);
+	impl.add(add_op);
+
+	return true;
+}
+
 } // namespace dxil_spv
