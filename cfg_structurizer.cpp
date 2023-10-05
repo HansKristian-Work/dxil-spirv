@@ -4842,18 +4842,24 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 		assert(header_index != node->headers.size());
 
 		// Merge to ladder instead.
-		traverse_dominated_blocks_and_rewrite_branch(
-			header, node, ladder, [node, header_index](const CFGNode *next)
-			{
-			  for (unsigned i = 0; i < header_index; i++)
-			  {
-				  auto *target = node->headers[i];
-				  // Do not introduce cycles. Outer scopes must never be rewritten to branch to inner scopes.
-				  if (target && target->loop_ladder_block == next)
-					  return false;
-			  }
-			  return true;
-			});
+		// If we're fixing up ladders for header index 0 it means we've already rewritten everything,
+		// only apply the last fixup branch.
+		if (header_index != 0)
+		{
+			traverse_dominated_blocks_and_rewrite_branch(
+				header, node, ladder,
+				[node, header_index](const CFGNode *next)
+				{
+					for (unsigned i = 0; i < header_index; i++)
+					{
+						auto *target = node->headers[i];
+						// Do not introduce cycles. Outer scopes must never be rewritten to branch to inner scopes.
+						if (target && target->loop_ladder_block == next)
+							return false;
+					}
+					return true;
+				});
+		}
 
 		ladder->ir.terminator.type = Terminator::Type::Condition;
 		ladder->ir.terminator.conditional_id = module.allocate_id();
@@ -5013,6 +5019,8 @@ void CFGStructurizer::split_merge_blocks()
 				for (auto *pred : node->headers[i]->loop_ladder_block->pred)
 					normal_preds[i].insert(pred);
 
+		bool has_rewrites_to_outer_ladder = false;
+
 		// Start from innermost scope, and rewrite all escape branches to a merge block which is dominated by the loop header in question.
 		// The merge block for the loop must have a ladder block before the old merge block.
 		// This ladder block will break to outer scope, or keep executing the old merge block.
@@ -5042,6 +5050,9 @@ void CFGStructurizer::split_merge_blocks()
 						node, current_node, loop_ladder,
 						target_header, full_break_target,
 						normal_preds[i]);
+
+					if (target_header == node->headers[0])
+						has_rewrites_to_outer_ladder = true;
 				}
 
 				// We won't analyze this again, so make sure header knows
@@ -5066,7 +5077,11 @@ void CFGStructurizer::split_merge_blocks()
 						rewrite_to = target_header->loop_merge_block;
 
 					if (rewrite_to)
+					{
 						traverse_dominated_blocks_and_rewrite_branch(current_node, node, rewrite_to);
+						if (target_header == node->headers[0])
+							has_rewrites_to_outer_ladder = true;
+					}
 					else
 						LOGW("No loop merge block?\n");
 				}
@@ -5091,6 +5106,29 @@ void CFGStructurizer::split_merge_blocks()
 			}
 			else
 				LOGE("Invalid merge type.\n");
+		}
+
+		auto *outer_header = node->headers[0];
+		if (has_rewrites_to_outer_ladder &&
+		    outer_header->merge == MergeType::Loop &&
+		    outer_header->loop_ladder_block &&
+		    outer_header->loop_merge_block &&
+		    outer_header->loop_ladder_block->dominates(outer_header->loop_merge_block))
+		{
+			auto *ladder = outer_header->loop_ladder_block;
+			bool non_trivial_ladder = !ladder->ir.operations.empty() ||
+			                          ladder_chain_has_phi_dependencies(ladder, outer_header->loop_merge_block);
+
+			if (non_trivial_ladder)
+			{
+				// It's possible we have branches that intended to rewrite to loop_merge_block
+				// but ended up writing to loop_ladder_block instead.
+				// Perform a final fixup branch if this is necessary.
+				// If the ladder block is a dummy, we can ignore this.
+				build_ladder_block_for_escaping_edge_handling(
+					node, outer_header, outer_header->loop_ladder_block,
+					nullptr, outer_header->loop_merge_block, normal_preds[0]);
+			}
 		}
 	}
 }
