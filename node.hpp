@@ -61,6 +61,7 @@ private:
 	bool backward_visited = false;
 	bool traversing = false;
 	bool freeze_structured_analysis = false;
+	bool is_pseudo_back_edge = false;
 
 	MergeType merge = MergeType::None;
 	CFGNode *loop_merge_block = nullptr;

@@ -1016,6 +1016,7 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 		    node->ir.phi.empty() &&
 		    !node->pred_back_edge &&
 		    !node->succ_back_edge &&
+		    !node->is_pseudo_back_edge &&
 		    node->succ.size() == 1 &&
 		    node->ir.terminator.type == Terminator::Type::Branch &&
 		    node->merge == MergeType::None &&
@@ -3116,7 +3117,7 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 			// If a case label is a continue block, ignore it, since it will be a pure continue break in this scenario.
 			// This is not considered a fallthrough, just a common break.
 			if (child.node != post_dominator && parent.node != child.node &&
-			    !child.node->succ_back_edge &&
+			    !(child.node->succ_back_edge || child.node->is_pseudo_back_edge) &&
 			    query_reachability(*parent.node, *child.node))
 			{
 				parent.global_order = child.global_order - 1;
@@ -3169,6 +3170,10 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 	{
 		for (auto *front : c.node->dominance_frontier)
 		{
+			// Never consider continue constructs here.
+			if (front->succ_back_edge || front->is_pseudo_back_edge)
+				continue;
+
 			// Ignore frontiers that are other case labels.
 			// We allow simple fallthrough, and if we found an impossible case we would have handled it already.
 			for (auto &ic : node->ir.terminator.cases)
@@ -3446,42 +3451,44 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 
 					node->freeze_structured_analysis = true;
 				}
+			}
 
-				// Switch case labels must be contained within the switch statement.
-				// Use a dummy label if we have to.
-				auto succs = node->succ;
-				for (auto *succ : succs)
+			// Switch case labels must be contained within the switch statement.
+			// Use a dummy label if we have to.
+			auto succs = node->succ;
+			for (auto *succ : succs)
+			{
+				bool need_fixup = false;
+				if (succ == merge && merge != natural_merge)
 				{
-					bool need_fixup;
-					if (succ == merge)
-					{
-						// If we used outer shell method, we dominate merge,
-						// but not structurally, since there's a loop merge already.
-						need_fixup = can_merge_to_post_dominator;
-					}
-					else
-					{
-						// If we don't dominate succ, but it's not the common merge block, this is
-						// an edge case we have to handle as well.
-						need_fixup = !node->dominates(succ);
-					}
+					// If we used outer shell method, we dominate merge,
+					// but not structurally, since there's a loop merge already.
+					need_fixup = can_merge_to_post_dominator;
+				}
+				else if (succ != merge)
+				{
+					// If we don't dominate succ, but it's not the common merge block, this is
+					// an edge case we have to handle as well.
+					// We might dominate a continue block, but these actually belong to outer loop scope.
+					need_fixup = !node->dominates(succ) || succ->succ_back_edge;
+				}
 
-					// Guard against duplicate label branches.
-					bool has_succ = std::find(node->succ.begin(), node->succ.end(), succ) != node->succ.end();
+				// Guard against duplicate label branches.
+				bool has_succ = std::find(node->succ.begin(), node->succ.end(), succ) != node->succ.end();
 
-					if (need_fixup && has_succ)
-					{
-						auto *dummy_break = pool.create_node();
-						dummy_break->name = node->name + ".break";
-						dummy_break->immediate_dominator = node;
-						dummy_break->immediate_post_dominator = succ;
-						dummy_break->forward_post_visit_order = node->forward_post_visit_order;
-						dummy_break->backward_post_visit_order = node->backward_post_visit_order;
-						dummy_break->ir.terminator.type = Terminator::Type::Branch;
-						dummy_break->ir.terminator.direct_block = succ;
-						dummy_break->add_branch(succ);
-						node->retarget_branch(succ, dummy_break);
-					}
+				if (need_fixup && has_succ)
+				{
+					auto *dummy_break = pool.create_node();
+					dummy_break->name = node->name + (succ->succ_back_edge ? ".continue" : ".break");
+					dummy_break->immediate_dominator = node;
+					dummy_break->immediate_post_dominator = succ;
+					dummy_break->forward_post_visit_order = node->forward_post_visit_order;
+					dummy_break->backward_post_visit_order = node->backward_post_visit_order;
+					dummy_break->ir.terminator.type = Terminator::Type::Branch;
+					dummy_break->ir.terminator.direct_block = succ;
+					dummy_break->is_pseudo_back_edge = succ->succ_back_edge != nullptr;
+					dummy_break->add_branch(succ);
+					node->retarget_branch(succ, dummy_break);
 				}
 			}
 		}
