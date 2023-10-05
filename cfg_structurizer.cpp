@@ -3503,6 +3503,10 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 			//LOGI("Switch merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node), node->name.c_str(),
 			//     static_cast<const void *>(merge), merge->name.c_str());
 			node->merge = MergeType::Selection;
+
+			// There is a small chance that this is supposed to be a loop merge target.
+			// We'll fix that up later if needed. In that case, the switch block will merge to unreachable.
+
 			node->selection_merge_block = merge;
 			merge->add_unique_header(node);
 		}
@@ -4960,6 +4964,40 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 	return new_ladder_block;
 }
 
+void CFGStructurizer::eliminate_degenerate_switch_merges()
+{
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->headers.size() <= 1)
+			continue;
+
+		// In the second pass, it's illegal to have more than two target headers, so we have to turn some
+		// headers into unreachable. The outermost scope wins.
+		std::sort(node->headers.begin(), node->headers.end(),
+		          [](const CFGNode *a, const CFGNode *b) -> bool {
+			          if (a->dominates(b))
+				          return true;
+			          else if (b->dominates(a))
+				          return false;
+			          else
+				          return a->forward_post_visit_order > b->forward_post_visit_order;
+		          });
+
+		// Can only elide if we have a true loop merge to this node.
+		if (node->headers[0]->merge != MergeType::Loop || node->headers[0]->loop_merge_block != node)
+			continue;
+
+		for (size_t i = 1, n = node->headers.size(); i < n; i++)
+		{
+			auto *header = node->headers[i];
+			// This cannot possibly work with loops.
+			// We can generally turn selections into unreachable merges without trouble however ...
+			if (header->merge == MergeType::Selection && header->selection_merge_block == node)
+				header->selection_merge_block = nullptr;
+		}
+	}
+}
+
 void CFGStructurizer::split_merge_blocks()
 {
 	for (auto *node : forward_post_visit_order)
@@ -5150,6 +5188,8 @@ void CFGStructurizer::structurize(unsigned pass)
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)
 		split_merge_blocks();
+	else
+		eliminate_degenerate_switch_merges();
 }
 
 bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(const CFGNode *start_block,
