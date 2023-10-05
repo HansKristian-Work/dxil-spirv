@@ -3113,7 +3113,10 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 
 			// A case label might be the merge block candidate of the switch.
 			// Don't consider case fallthrough if b post-dominates the entire switch statement.
+			// If a case label is a continue block, ignore it, since it will be a pure continue break in this scenario.
+			// This is not considered a fallthrough, just a common break.
 			if (child.node != post_dominator && parent.node != child.node &&
+			    !child.node->succ_back_edge &&
 			    query_reachability(*parent.node, *child.node))
 			{
 				parent.global_order = child.global_order - 1;
