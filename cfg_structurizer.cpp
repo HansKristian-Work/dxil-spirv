@@ -3459,13 +3459,26 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 			for (auto *succ : succs)
 			{
 				bool need_fixup = false;
-				if (succ == merge && merge != natural_merge)
+				if (succ == merge)
 				{
-					// If we used outer shell method, we dominate merge,
-					// but not structurally, since there's a loop merge already.
-					need_fixup = can_merge_to_post_dominator;
+					if (merge != natural_merge)
+					{
+						// If we used outer shell method, we dominate merge,
+						// but not structurally, since there's a loop merge already.
+						need_fixup = can_merge_to_post_dominator;
+					}
+					else
+					{
+						// If this happens we are our own outer shell.
+						// The node itself is both a loop header *and* switch header,
+						// so similar analysis applies.
+						// Only consider fixup if we cannot reach continue block.
+						// This can still be a normal inner merge for the switch, which then branches to continue block.
+						need_fixup = node->pred_back_edge != nullptr &&
+						             !query_reachability(*succ, *node->pred_back_edge);
+					}
 				}
-				else if (succ != merge)
+				else
 				{
 					// If we don't dominate succ, but it's not the common merge block, this is
 					// an edge case we have to handle as well.
