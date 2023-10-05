@@ -312,6 +312,7 @@ spv::Id SPIRVModule::Impl::get_builtin_shader_output(spv::BuiltIn builtin)
 
 spv::Block *SPIRVModule::Impl::get_spv_block(CFGNode *node)
 {
+	assert(node->userdata);
 	return static_cast<spv::Block *>(node->userdata);
 }
 
