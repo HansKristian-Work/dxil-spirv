@@ -173,6 +173,8 @@ static spv::Dim image_dimension_from_resource_kind(DXIL::ResourceKind kind)
 	case DXIL::ResourceKind::Texture2DMS:
 	case DXIL::ResourceKind::Texture2DArray:
 	case DXIL::ResourceKind::Texture2DMSArray:
+	case DXIL::ResourceKind::FeedbackTexture2D:
+	case DXIL::ResourceKind::FeedbackTexture2DArray:
 		return spv::Dim2D;
 	case DXIL::ResourceKind::Texture3D:
 		return spv::Dim3D;
@@ -198,6 +200,7 @@ static bool image_dimension_is_arrayed(DXIL::ResourceKind kind)
 	case DXIL::ResourceKind::Texture2DArray:
 	case DXIL::ResourceKind::Texture2DMSArray:
 	case DXIL::ResourceKind::TextureCubeArray:
+	case DXIL::ResourceKind::FeedbackTexture2DArray:
 		return true;
 
 	default:
@@ -1324,8 +1327,16 @@ bool Converter::Impl::get_uav_image_format(DXIL::ResourceKind resource_kind,
                                            const AccessTracking &access_meta,
                                            spv::ImageFormat &format)
 {
-	if (resource_kind != DXIL::ResourceKind::RawBuffer &&
-	    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+	if (resource_kind == DXIL::ResourceKind::FeedbackTexture2D ||
+	    resource_kind == DXIL::ResourceKind::FeedbackTexture2DArray)
+	{
+		format = spv::ImageFormatR64ui;
+		builder().addExtension("SPV_EXT_shader_image_int64");
+		builder().addCapability(spv::CapabilityInt64ImageEXT);
+		return true;
+	}
+	else if (resource_kind != DXIL::ResourceKind::RawBuffer &&
+	         resource_kind != DXIL::ResourceKind::StructuredBuffer)
 	{
 		// For any typed resource, we need to check if the resource is being read.
 		// To avoid StorageReadWithoutFormat, we emit a format based on the component type.
@@ -1433,7 +1444,14 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		if (shader_analysis.require_uav_thread_group_coherence && access_meta.has_written && access_meta.has_read)
 			globally_coherent = true;
 
-		if (tags && get_constant_metadata(tags, 0) == 0)
+		if (resource_kind == DXIL::ResourceKind::FeedbackTexture2D ||
+		    resource_kind == DXIL::ResourceKind::FeedbackTexture2DArray)
+		{
+			// 64-bit atomics make things a bit nicer.
+			actual_component_type = DXIL::ComponentType::U64;
+			effective_component_type = get_effective_typed_resource_type(actual_component_type);
+		}
+		else if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
 			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)));
@@ -4649,6 +4667,14 @@ spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, const spv::
 
 	auto &builder = spirv_module.get_builder();
 	return builder.makeCompositeConstant(builder.makeVectorType(element_type, count), { elements, elements + count });
+}
+
+spv::Id Converter::Impl::build_splat_constant_vector(spv::Id element_type, spv::Id value, unsigned count)
+{
+	spv::Id ids[4];
+	for (unsigned i = 0; i < count; i++)
+		ids[i] = value;
+	return build_constant_vector(element_type, ids, count);
 }
 
 spv::Id Converter::Impl::build_offset(spv::Id value, unsigned offset)

@@ -1286,4 +1286,763 @@ bool emit_get_sample_position(Converter::Impl &impl, const llvm::CallInst *instr
 	builder.addCapability(spv::CapabilityImageQuery);
 	return true;
 }
+
+static spv::Id emit_query_size(Converter::Impl &impl, spv::Id image_id,
+                               bool array, spv::Id lod_id = 0)
+{
+	auto &builder = impl.builder();
+	spv::Id i32_type = builder.makeIntType(32);
+
+	auto *query_size_level_zero = impl.allocate(
+		lod_id ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize,
+	    builder.makeVectorType(i32_type, array ? 3 : 2));
+	query_size_level_zero->add_id(image_id);
+	if (lod_id)
+		query_size_level_zero->add_id(lod_id);
+	impl.add(query_size_level_zero);
+
+	if (array)
+	{
+		auto *extract = impl.allocate(spv::OpVectorShuffle, builder.makeVectorType(i32_type, 2));
+		extract->add_id(query_size_level_zero->id);
+		extract->add_id(query_size_level_zero->id);
+		extract->add_literal(0);
+		extract->add_literal(1);
+		impl.add(extract);
+
+		query_size_level_zero = extract;
+	}
+
+	return query_size_level_zero->id;
+}
+
+// A software implementation of sampler feedback is by nature quite brittle.
+// Implement a best-effort solution.
+
+static spv::Id emit_accessed_lod(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction,
+                                 spv::Id image_id, spv::Id sampler_id, spv::Id coord_id, spv::Id max_level_id,
+                                 spv::Id *gradient_mod_id, bool array)
+{
+	auto &builder = impl.builder();
+	spv::Id f32_type = builder.makeFloatType(32);
+	spv::Id fvec_type = builder.makeVectorType(f32_type, 2);
+	spv::Id access_lod_id;
+
+	*gradient_mod_id = 0;
+
+	if (opcode == DXIL::Op::WriteSamplerFeedback || opcode == DXIL::Op::WriteSamplerFeedbackBias)
+	{
+		spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, false);
+
+		// This is more or less correct.
+		// We can also detect if tri-linear should be used by checking fractional clamped LOD.
+		spv::Id modified_coord_id;
+
+		if (opcode == DXIL::Op::WriteSamplerFeedbackBias)
+		{
+			// Fake a larger or smaller gradient to get effective LOD bias.
+			// In D3D11 functional spec, out of range LOD bias is undefined, so don't bother clamping.
+			auto *exp = impl.allocate(spv::OpExtInst, f32_type);
+			exp->add_id(impl.glsl_std450_ext);
+			exp->add_literal(GLSLstd450Exp2);
+			exp->add_id(impl.get_id_for_value(instruction->getOperand(8)));
+			impl.add(exp);
+
+			*gradient_mod_id = exp->id;
+
+			// Bias can technically be unique per pixel in a quad, so we have to compute LOD 4 times,
+			// but make the assumption that LOD bias is constant over a quad to stay sane.
+			// The common use for LOD bias for streaming is TAA related either way.
+			// Workaround is to QuadBroadcast(exp, i), then compute LOD 4 times, then select the appropriate LOD.
+			auto *quad_first = impl.allocate(spv::OpGroupNonUniformQuadBroadcast, f32_type);
+			quad_first->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			quad_first->add_id(exp->id);
+			quad_first->add_id(builder.makeUintConstant(0));
+			impl.add(quad_first);
+			builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+
+			auto *mul = impl.allocate(spv::OpVectorTimesScalar, fvec_type);
+			mul->add_id(coord_id);
+			mul->add_id(quad_first->id);
+			impl.add(mul);
+			modified_coord_id = mul->id;
+		}
+		else
+		{
+			modified_coord_id = coord_id;
+		}
+
+		auto *query_op = impl.allocate(spv::OpImageQueryLod, builder.makeVectorType(f32_type, 2));
+		query_op->add_ids({ combined_image_sampler_id, modified_coord_id });
+		impl.add(query_op);
+
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, f32_type);
+		extract_op->add_id(query_op->id);
+		extract_op->add_literal(0);
+		impl.add(extract_op);
+		access_lod_id = extract_op->id;
+	}
+	else if (opcode == DXIL::Op::WriteSamplerFeedbackLevel)
+	{
+		access_lod_id = impl.get_id_for_value(instruction->getOperand(8));
+	}
+	else if (opcode == DXIL::Op::WriteSamplerFeedbackGrad)
+	{
+		auto *fp_size = impl.allocate(spv::OpConvertSToF, fvec_type);
+		fp_size->add_id(emit_query_size(impl, image_id, array, builder.makeIntConstant(0)));
+		impl.add(fp_size);
+
+		spv::Id ddx[2];
+		spv::Id ddy[2];
+		for (unsigned i = 0; i < 2; i++)
+		{
+			ddx[i] = impl.get_id_for_value(instruction->getOperand(8 + i));
+			ddy[i] = impl.get_id_for_value(instruction->getOperand(11 + i));
+		}
+
+		// Spec is very lenient on how LOD can be computed, but choose the D3D11 spec wording.
+		// Based it on maximum gradient length, which is rotationally invariant and matches
+		// observed behavior on AMD and Intel. NV + aniso is ... weird and non-compliant.
+
+		spv::Id ddx_id = impl.build_vector(f32_type, ddx, 2);
+		spv::Id ddy_id = impl.build_vector(f32_type, ddy, 2);
+
+		auto *grad_x = impl.allocate(spv::OpFMul, fvec_type);
+		grad_x->add_id(fp_size->id);
+		grad_x->add_id(ddx_id);
+		impl.add(grad_x);
+
+		auto *grad_y = impl.allocate(spv::OpFMul, fvec_type);
+		grad_y->add_id(fp_size->id);
+		grad_y->add_id(ddy_id);
+		impl.add(grad_y);
+
+		auto *dot_x = impl.allocate(spv::OpDot, f32_type);
+		dot_x->add_id(grad_x->id);
+		dot_x->add_id(grad_x->id);
+		impl.add(dot_x);
+
+		auto *dot_y = impl.allocate(spv::OpDot, f32_type);
+		dot_y->add_id(grad_y->id);
+		dot_y->add_id(grad_y->id);
+		impl.add(dot_y);
+
+		auto *dot_max = impl.allocate(spv::OpExtInst, f32_type);
+		dot_max->add_id(impl.glsl_std450_ext);
+		dot_max->add_literal(GLSLstd450FMax);
+		dot_max->add_id(dot_x->id);
+		dot_max->add_id(dot_y->id);
+		impl.add(dot_max);
+
+		auto *log_op = impl.allocate(spv::OpExtInst, f32_type);
+		log_op->add_id(impl.glsl_std450_ext);
+		log_op->add_literal(GLSLstd450Log2);
+		log_op->add_id(dot_max->id);
+		impl.add(log_op);
+
+		auto *half_mul = impl.allocate(spv::OpFMul, f32_type);
+		half_mul->add_id(log_op->id);
+		half_mul->add_id(builder.makeFloatConstant(0.5f));
+		impl.add(half_mul);
+
+		access_lod_id = half_mul->id;
+	}
+	else
+		return 0;
+
+	if (opcode == DXIL::Op::WriteSamplerFeedbackLevel || opcode == DXIL::Op::WriteSamplerFeedbackGrad)
+	{
+		auto *max_level_fp = impl.allocate(spv::OpConvertSToF, f32_type);
+		max_level_fp->add_id(max_level_id);
+		impl.add(max_level_fp);
+
+		// We don't know sampler clamping here, so we'll have to assume min/maxLOD covers more than image view.
+		// We also don't know about tri-linear vs bi-linear at all, so we have to assume tri-linear
+		// if explicit LOD is fractional.
+		// NClamp in case the gradient causes NaN for whatever reason.
+		auto *clamped_lod = impl.allocate(spv::OpExtInst, f32_type);
+		clamped_lod->add_id(impl.glsl_std450_ext);
+		clamped_lod->add_literal(GLSLstd450NClamp);
+		clamped_lod->add_id(access_lod_id);
+		clamped_lod->add_id(builder.makeFloatConstant(0.0f));
+		clamped_lod->add_id(max_level_fp->id);
+		impl.add(clamped_lod);
+
+		access_lod_id = clamped_lod->id;
+	}
+
+    if (opcode != DXIL::Op::WriteSamplerFeedbackLevel)
+    {
+        // Undocumented feature in spec. There's an extra MinMipClamp operand here.
+        // We cannot implement that completely accurately since we need QueryLod + MinMip, which
+        // does not exist, but just YOLO it.
+        // Normally, that clamp value will be integer, which should be fine.
+        // This comes after [0, levels - 1] clamp, since if we clamp LOD to out of bounds of view,
+        // we end up accessing OOB.
+        auto *clamp_value = instruction->getOperand(instruction->getNumOperands() - 1);
+        if (!llvm::isa<llvm::UndefValue>(clamp_value))
+        {
+            auto *clamp_lod = impl.allocate(spv::OpExtInst, f32_type);
+            clamp_lod->add_id(impl.glsl_std450_ext);
+            clamp_lod->add_literal(GLSLstd450FMax);
+            clamp_lod->add_id(access_lod_id);
+            clamp_lod->add_id(impl.get_id_for_value(clamp_value));
+            impl.add(clamp_lod);
+
+            // LOD 15 bits are reserved.
+            auto *max_lod_clamp = impl.allocate(spv::OpExtInst, f32_type);
+            max_lod_clamp->add_id(impl.glsl_std450_ext);
+            max_lod_clamp->add_literal(GLSLstd450FMin);
+            max_lod_clamp->add_id(clamp_lod->id);
+            max_lod_clamp->add_id(builder.makeFloatConstant(14.0f));
+            impl.add(max_lod_clamp);
+
+            access_lod_id = max_lod_clamp->id;
+        }
+    }
+
+	return access_lod_id;
+}
+
+static spv::Id emit_mip_region_size_log2(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                         spv::Id feedback_image_id, bool arrayed)
+{
+	auto &builder = impl.builder();
+	spv::Id i32_type = builder.makeIntType(32);
+	spv::Id ivec_type = builder.makeVectorType(i32_type, 2);
+
+	spv::Id feedback_size_id;
+
+	if (arrayed)
+	{
+		auto *query_feedback_size = impl.allocate(spv::OpImageQuerySize, builder.makeVectorType(i32_type, 3));
+		query_feedback_size->add_id(feedback_image_id);
+		impl.add(query_feedback_size);
+
+		auto *extract = impl.allocate(spv::OpVectorShuffle, ivec_type);
+		extract->add_id(query_feedback_size->id);
+		extract->add_id(query_feedback_size->id);
+		extract->add_literal(0);
+		extract->add_literal(1);
+		impl.add(extract);
+
+		feedback_size_id = extract->id;
+	}
+	else
+	{
+		auto *query_feedback_size = impl.allocate(spv::OpImageQuerySize, ivec_type);
+		query_feedback_size->add_id(feedback_image_id);
+		impl.add(query_feedback_size);
+
+		feedback_size_id = query_feedback_size->id;
+	}
+
+	auto *masked_size = impl.allocate(spv::OpBitwiseAnd, ivec_type);
+	masked_size->add_id(feedback_size_id);
+	masked_size->add_id(impl.build_splat_constant_vector(i32_type, builder.makeIntConstant(15), 2));
+	impl.add(masked_size);
+
+	return masked_size->id;
+}
+
+struct ScalingFactors
+{
+	spv::Id normalized_scale_id;
+    spv::Id float_size_id;
+	spv::Id unnormalized_exponent_id;
+};
+
+static ScalingFactors emit_scaling_factor_to_mip_region_space(
+    Converter::Impl &impl, const llvm::CallInst *instruction,
+    spv::Id image_id, spv::Id lod_id, spv::Id mip_region_size_log2, bool arrayed)
+{
+	auto &builder = impl.builder();
+	spv::Id i32_type = builder.makeIntType(32);
+	spv::Id ivec_type = builder.makeVectorType(i32_type, 2);
+	spv::Id f32_type = builder.makeFloatType(32);
+	spv::Id fvec_type = builder.makeVectorType(f32_type, 2);
+
+	// Query size of top-level mip we're writing to.
+	auto *fp_size = impl.allocate(spv::OpConvertSToF, fvec_type);
+	fp_size->add_id(emit_query_size(impl, image_id, arrayed, lod_id));
+	impl.add(fp_size);
+
+	// The lower 4 bits of feedback image store log2(MipRegionWidth).
+	// X dimension for width and Y for height.
+	// Clever hackery that avoids having to pass down an extra side buffer ... :V
+	auto *to_mip_region_space = impl.allocate(spv::OpSNegate, ivec_type);
+	to_mip_region_space->add_id(mip_region_size_log2);
+	impl.add(to_mip_region_space);
+
+	// Scale the UV coordinates into sub-pixel coordinates in mip-region space.
+	auto *ld_exp = impl.allocate(spv::OpExtInst, fvec_type);
+	ld_exp->add_id(impl.glsl_std450_ext);
+	ld_exp->add_literal(GLSLstd450Ldexp);
+	ld_exp->add_id(fp_size->id);
+	ld_exp->add_id(to_mip_region_space->id);
+	impl.add(ld_exp);
+
+	ScalingFactors factors = {};
+	factors.normalized_scale_id = ld_exp->id;
+    factors.float_size_id = fp_size->id;
+	factors.unnormalized_exponent_id = to_mip_region_space->id;
+	return factors;
+}
+
+static spv::Id emit_max_level(Converter::Impl &impl, spv::Id image_id)
+{
+    auto &builder = impl.builder();
+    spv::Id i32_type = builder.makeIntType(32);
+
+    auto *query_levels = impl.allocate(spv::OpImageQueryLevels, i32_type);
+    query_levels->add_id(image_id);
+    impl.add(query_levels);
+
+    auto *max_level = impl.allocate(spv::OpISub, i32_type);
+    max_level->add_id(query_levels->id);
+    max_level->add_id(builder.makeIntConstant(1));
+    impl.add(max_level);
+
+    return max_level->id;
+}
+
+struct LodSelection
+{
+    spv::Id fine_lod_id;
+    spv::Id coarse_lod_id;
+    spv::Id trilinear_enable_id;
+};
+
+static LodSelection emit_trilinear_lods(Converter::Impl &impl, spv::Id access_lod_id, spv::Id max_level_id)
+{
+    LodSelection lods = {};
+    auto &builder = impl.builder();
+    spv::Id i32_type = builder.makeIntType(32);
+    spv::Id f32_type = builder.makeFloatType(32);
+    spv::Id bool_type = builder.makeBoolType();
+
+    auto *fine_lod = impl.allocate(spv::OpConvertFToS, i32_type);
+    fine_lod->add_id(access_lod_id);
+    impl.add(fine_lod);
+
+    lods.fine_lod_id = fine_lod->id;
+
+    // Trilinear only kicks in one the fractional value hits 1 / 256.
+    // It does not trigger on 1 / 512 from real-world testing for example.
+    // Use mid-point between the two. Avoids subtle rounding issues in FP add.
+    auto *coarse_bias_lod = impl.allocate(spv::OpFAdd, f32_type);
+    coarse_bias_lod->add_id(access_lod_id);
+    coarse_bias_lod->add_id(builder.makeFloatConstant(1.0f - 0.75f / 256.0f));
+    impl.add(coarse_bias_lod);
+
+    auto *coarse_lod = impl.allocate(spv::OpConvertFToS, i32_type);
+    coarse_lod->add_id(coarse_bias_lod->id);
+    impl.add(coarse_lod);
+
+    auto *clamped_lod = impl.allocate(spv::OpExtInst, i32_type);
+    clamped_lod->add_id(impl.glsl_std450_ext);
+    clamped_lod->add_literal(GLSLstd450SMin);
+    clamped_lod->add_id(coarse_lod->id);
+    clamped_lod->add_id(max_level_id);
+    impl.add(clamped_lod);
+    lods.coarse_lod_id = coarse_lod->id;
+
+    auto *trilinear = impl.allocate(spv::OpINotEqual, bool_type);
+    trilinear->add_id(fine_lod->id);
+    trilinear->add_id(coarse_lod->id);
+    impl.add(trilinear);
+    lods.trilinear_enable_id = trilinear->id;
+
+    return lods;
+}
+
+static spv::Id emit_gradient_extent_normalized(Converter::Impl &impl, spv::Id coord_id, spv::Id grad_scale_id)
+{
+    auto &builder = impl.builder();
+    spv::Id f32_type = builder.makeFloatType(32);
+    spv::Id fvec_type = builder.makeVectorType(f32_type, 2);
+
+    auto *ddx = impl.allocate(spv::OpDPdx, fvec_type);
+    ddx->add_id(coord_id);
+    impl.add(ddx);
+
+    auto *ddy = impl.allocate(spv::OpDPdy, fvec_type);
+    ddy->add_id(coord_id);
+    impl.add(ddy);
+
+    auto *ddx_abs = impl.allocate(spv::OpExtInst, fvec_type);
+    ddx_abs->add_id(impl.glsl_std450_ext);
+    ddx_abs->add_literal(GLSLstd450FAbs);
+    ddx_abs->add_id(ddx->id);
+    impl.add(ddx_abs);
+
+    auto *ddy_abs = impl.allocate(spv::OpExtInst, fvec_type);
+    ddy_abs->add_id(impl.glsl_std450_ext);
+    ddy_abs->add_literal(GLSLstd450FAbs);
+    ddy_abs->add_id(ddy->id);
+    impl.add(ddy_abs);
+
+    auto *ddx_abs_0 = impl.allocate(spv::OpCompositeExtract, f32_type);
+    ddx_abs_0->add_id(ddx_abs->id);
+    ddx_abs_0->add_literal(0);
+    impl.add(ddx_abs_0);
+
+    auto *ddy_abs_0 = impl.allocate(spv::OpCompositeExtract, f32_type);
+    ddy_abs_0->add_id(ddy_abs->id);
+    ddy_abs_0->add_literal(0);
+    impl.add(ddy_abs_0);
+
+    auto *ddx_abs_1 = impl.allocate(spv::OpCompositeExtract, f32_type);
+    ddx_abs_1->add_id(ddx_abs->id);
+    ddx_abs_1->add_literal(1);
+    impl.add(ddx_abs_1);
+
+    auto *ddy_abs_1 = impl.allocate(spv::OpCompositeExtract, f32_type);
+    ddy_abs_1->add_id(ddy_abs->id);
+    ddy_abs_1->add_literal(1);
+    impl.add(ddy_abs_1);
+
+    auto *extent_x = impl.allocate(spv::OpExtInst, f32_type);
+    extent_x->add_id(impl.glsl_std450_ext);
+    extent_x->add_literal(GLSLstd450FMax);
+    extent_x->add_id(ddx_abs_0->id);
+    extent_x->add_id(ddy_abs_0->id);
+    impl.add(extent_x);
+
+    auto *extent_y = impl.allocate(spv::OpExtInst, f32_type);
+    extent_y->add_id(impl.glsl_std450_ext);
+    extent_y->add_literal(GLSLstd450FMax);
+    extent_y->add_id(ddx_abs_1->id);
+    extent_y->add_id(ddy_abs_1->id);
+    impl.add(extent_y);
+
+    spv::Id extent_ids[2] = {extent_x->id, extent_y->id};
+    spv::Id extent = impl.build_vector(f32_type, extent_ids, 2);
+
+    // Extremely weird behavior observed on both NV and Intel.
+    // It seems that if you have LOD bias, the effective gradient is scaled accordingly.
+    // This means the aniso footprint is scaled too, which is extremely weird and definitely
+    // not accurate to spec how I understand it ...
+    // TODO: Does sampler LOD bias affect this too?
+    if (grad_scale_id)
+    {
+        auto *grad_mul = impl.allocate(spv::OpVectorTimesScalar, fvec_type);
+        grad_mul->add_id(extent);
+        grad_mul->add_id(grad_scale_id);
+        impl.add(grad_mul);
+        extent = grad_mul->id;
+    }
+
+    return extent;
+}
+
+bool emit_write_sampler_feedback_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityImageQuery);
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	spv::Id feedback_id = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(2));
+	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(3));
+	const auto &meta = impl.handle_to_resource_meta[feedback_id];
+
+	uint32_t num_coords_full = 0, num_coords = 0;
+	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
+		return false;
+
+	// Should not happen.
+	if (num_coords != 2)
+		return false;
+
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id i32_type = builder.makeIntType(32);
+	spv::Id f32_type = builder.makeFloatType(32);
+	spv::Id bvec_type = builder.makeVectorType(bool_type, 2);
+	spv::Id ivec_type = builder.makeVectorType(i32_type, 2);
+	spv::Id fvec_type = builder.makeVectorType(f32_type, 2);
+
+	spv::Id int_layer_id = 0;
+	if (num_coords_full == 3)
+	{
+		// Vulkan allows for two implementation of this rounding, either RTE or floor(v + 0.5).
+		// Pick the suggested one. This matches real-world implementations.
+		auto *rounded_layer = impl.allocate(spv::OpExtInst, f32_type);
+		rounded_layer->add_id(impl.glsl_std450_ext);
+		rounded_layer->add_literal(GLSLstd450RoundEven);
+		rounded_layer->add_id(impl.get_id_for_value(instruction->getOperand(6)));
+		impl.add(rounded_layer);
+
+		auto *int_layer = impl.allocate(spv::OpConvertFToS, i32_type);
+		int_layer->add_id(rounded_layer->id);
+		impl.add(int_layer);
+
+		int_layer_id = int_layer->id;
+	}
+
+	spv::Id coord_ids[2];
+	for (uint32_t i = 0; i < 2; i++)
+		coord_ids[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+	spv::Id coord_id = impl.build_vector(f32_type, coord_ids, 2);
+	spv::Id mip_region_size_log2 = emit_mip_region_size_log2(impl, instruction, feedback_id, num_coords_full == 3);
+    spv::Id max_level_id = emit_max_level(impl, image_id);
+
+	// This part will change quite dramatically based on op-code.
+	// Computing the actual LOD to access is quite painful.
+	// We cannot do it properly for most interesting cases without having side band information
+	// about sampler state. In real-world scenarios, applications will likely adhere to whatever mip level
+	// we decide to access either way, so it shouldn't lead to serious problems.
+    spv::Id grad_scale_id;
+	spv::Id access_lod_id = emit_accessed_lod(opcode, impl, instruction, image_id, sampler_id, coord_id,
+                                              max_level_id, &grad_scale_id, num_coords_full == 3);
+
+    auto lods = emit_trilinear_lods(impl, access_lod_id, max_level_id);
+
+    spv::Id normalized_grad_extent = 0;
+    if (opcode == DXIL::Op::WriteSamplerFeedback || opcode == DXIL::Op::WriteSamplerFeedbackBias)
+        normalized_grad_extent = emit_gradient_extent_normalized(impl, coord_id, grad_scale_id);
+
+	// Assume that if we get coordinates above 1.0 we intend to WRAP.
+	// Only WRAP and CLAMP is supported with sampler feedback (but WRAP is kinda broken on NV hardware).
+	// After wrap, assume CLAMP semantics for purposes of filtering.
+    auto *fract_uv_op = impl.allocate(spv::OpExtInst, fvec_type);
+	fract_uv_op->add_id(impl.glsl_std450_ext);
+	fract_uv_op->add_literal(GLSLstd450Fract);
+	fract_uv_op->add_id(coord_id);
+	impl.add(fract_uv_op);
+
+    for (unsigned lod_iteration = 0; lod_iteration < 2; lod_iteration++)
+    {
+        spv::Id lod_id = lod_iteration ? lods.coarse_lod_id : lods.fine_lod_id;
+
+        auto scaling = emit_scaling_factor_to_mip_region_space(
+                impl, instruction, image_id, lod_id,
+                mip_region_size_log2, num_coords_full == 3);
+
+        auto *mul_mip_region_coord = impl.allocate(spv::OpFMul, fvec_type);
+        mul_mip_region_coord->add_id(fract_uv_op->id);
+        mul_mip_region_coord->add_id(scaling.normalized_scale_id);
+        impl.add(mul_mip_region_coord);
+
+        // We have to assume the worst w.r.t. filtering / aniso.
+        // Simplify this with a ton with crude, but effective approximations.
+        // Compute derivatives in mip region space.
+        // Based on these derivatives, we get a bounding box.
+        // The size of this bounding box is then clamped to a minimum and maximum size.
+        // At minimum, we have 1x aniso / bilinear. Extent is +/- 0.5 texels.
+        // At maximum, we have 16x aniso. Extent is +/- 8 texels.
+        // Need to look at derivatives so that we can compute conservative aniso extent.
+
+        // For implicit LOD, we compute the gradient and try to recover aniso information.
+        spv::Id clamped_extent_id;
+
+        if (opcode == DXIL::Op::WriteSamplerFeedback || opcode == DXIL::Op::WriteSamplerFeedbackBias)
+        {
+            auto *scale_size = impl.allocate(spv::OpFMul, f32_type);
+            scale_size->add_id(normalized_grad_extent);
+            scale_size->add_id(scaling.float_size_id);
+            impl.add(scale_size);
+
+            // For integer LODs, we will end up computing an approximate integer due to FP derivatives.
+            // It would be very bad if we got a positive error and rounded up a full POT.
+            // LODs tend to be snapped to fixed point, so use a sufficient threshold to avoid these errors.
+            // This value is chosen somewhat arbitrarily, but one subtexel worth of bias seems reasonable.
+            auto *rounding_bias = impl.allocate(spv::OpFSub, fvec_type);
+            rounding_bias->add_id(scale_size->id);
+            rounding_bias->add_id(
+                    impl.build_splat_constant_vector(f32_type, builder.makeFloatConstant(1.0f / 256.0f), 2));
+            impl.add(rounding_bias);
+
+            // With aniso factors, implementations are allowed to round up the aniso factor
+            // to nearest supported value.
+            // From exhaustive testing, NV and Intel have somewhat different behavior, but in general,
+            // all POT factors behave accurately with this implementation.
+            // Oddly enough, the extent is enlongated as well when rounding up, which is also not spec compliant ...
+            // What we want to do is round up to next POT and round up extent similarly,
+            // and the cutest way to do this is with frexp. The exponent represents next POT in magnitude.
+            // We can then clamp that frexp to [unormalized_exponent_id, unnormalized_exponent_id + 4].
+            // We're robust against NaN since the exponent is undefined, but we'll clamp that below in integer space.
+            auto *frexp = impl.allocate(spv::OpExtInst, builder.makeStructResultType(fvec_type, ivec_type));
+            frexp->add_id(impl.glsl_std450_ext);
+            frexp->add_literal(GLSLstd450FrexpStruct);
+            frexp->add_id(rounding_bias->id);
+            impl.add(frexp);
+
+            auto *extract = impl.allocate(spv::OpCompositeExtract, ivec_type);
+            extract->add_id(frexp->id);
+            extract->add_literal(1);
+            impl.add(extract);
+
+            auto *sclamp = impl.allocate(spv::OpExtInst, ivec_type);
+            sclamp->add_id(impl.glsl_std450_ext);
+            sclamp->add_literal(GLSLstd450SClamp);
+            sclamp->add_id(extract->id);
+            sclamp->add_id(impl.build_splat_constant_vector(i32_type, builder.makeIntConstant(0), num_coords));
+            sclamp->add_id(impl.build_splat_constant_vector(i32_type, builder.makeIntConstant(4), num_coords));
+            impl.add(sclamp);
+
+            auto *shift_exp = impl.allocate(spv::OpIAdd, ivec_type);
+            shift_exp->add_id(sclamp->id);
+            shift_exp->add_id(scaling.unnormalized_exponent_id);
+            impl.add(shift_exp);
+
+            // For aniso, the conservative filter extent is half the major length.
+            // Halve the bounding box extents as a rough approximation.
+            // For bilinear, the footprint can be found in [-0.5, 0.5] texels.
+            // Fuse the multiply and exp2() here in ldexp.
+            auto *fextent = impl.allocate(spv::OpExtInst, fvec_type);
+            fextent->add_id(impl.glsl_std450_ext);
+            fextent->add_literal(GLSLstd450Ldexp);
+            fextent->add_id(impl.build_splat_constant_vector(f32_type, builder.makeFloatConstant(0.5f), num_coords));
+            fextent->add_id(shift_exp->id);
+            impl.add(fextent);
+
+            // We only support signalling access for nearest neighbor.
+            // For 16x aniso with 4x4 region, this can go wrong, but we don't really care.
+            // Worst case, we can clamp to 16x16 region internally and upsample the region map on resolve.
+            // Maximum +/- 0.5 regions is allowed here, this ensures that we access maximum 2x2 blocks.
+            auto *clamped_extent = impl.allocate(spv::OpExtInst, fvec_type);
+            clamped_extent->add_id(impl.glsl_std450_ext);
+            clamped_extent->add_literal(GLSLstd450FMin);
+            clamped_extent->add_id(fextent->id);
+            clamped_extent->add_id(
+                    impl.build_splat_constant_vector(f32_type, builder.makeFloatConstant(0.5f), num_coords));
+            impl.add(clamped_extent);
+
+            clamped_extent_id = clamped_extent->id;
+        }
+        else
+        {
+            // Level is incompatible with aniso, so always assume simple bilinear. Use fixed +/- 0.5 pixel footprint.
+            // For explicit gradient, we also assume no aniso,
+            // since computing aniso-factors can cause far too fine mips to be requested if this was not intended by app.
+            // We have no good way to detect this, and trying to compute aniso factors
+            // accurately to hardware is a losing game since every implementation applies heavy approximations.
+            auto *min_extent = impl.allocate(spv::OpExtInst, fvec_type);
+            min_extent->add_id(impl.glsl_std450_ext);
+            min_extent->add_literal(GLSLstd450Ldexp);
+            min_extent->add_id(impl.build_splat_constant_vector(f32_type, builder.makeFloatConstant(0.5f), num_coords));
+            min_extent->add_id(scaling.unnormalized_exponent_id);
+            impl.add(min_extent);
+
+            clamped_extent_id = min_extent->id;
+        }
+
+        auto *lo_foot_print = impl.allocate(spv::OpFSub, fvec_type);
+        lo_foot_print->add_id(mul_mip_region_coord->id);
+        lo_foot_print->add_id(clamped_extent_id);
+        impl.add(lo_foot_print);
+
+        auto *lo_clamped = impl.allocate(spv::OpExtInst, fvec_type);
+        lo_clamped->add_id(impl.glsl_std450_ext);
+        lo_clamped->add_literal(GLSLstd450FMax);
+        lo_clamped->add_id(lo_foot_print->id);
+        lo_clamped->add_id(impl.build_splat_constant_vector(f32_type, builder.makeFloatConstant(0.0f), num_coords));
+        impl.add(lo_clamped);
+
+        auto *hi_foot_print = impl.allocate(spv::OpFAdd, fvec_type);
+        hi_foot_print->add_id(mul_mip_region_coord->id);
+        hi_foot_print->add_id(clamped_extent_id);
+        impl.add(hi_foot_print);
+
+        auto *lo_int = impl.allocate(spv::OpConvertFToS, ivec_type);
+        lo_int->add_id(lo_clamped->id);
+        impl.add(lo_int);
+
+        auto *hi_int = impl.allocate(spv::OpConvertFToS, ivec_type);
+        hi_int->add_id(hi_foot_print->id);
+        impl.add(hi_int);
+
+        auto *not_equal = impl.allocate(spv::OpINotEqual, bvec_type);
+        not_equal->add_id(lo_int->id);
+        not_equal->add_id(hi_int->id);
+        impl.add(not_equal);
+
+        auto *visit_horiz = impl.allocate(spv::OpCompositeExtract, bool_type);
+        visit_horiz->add_id(not_equal->id);
+        visit_horiz->add_literal(0);
+        impl.add(visit_horiz);
+
+        auto *visit_vert = impl.allocate(spv::OpCompositeExtract, bool_type);
+        visit_vert->add_id(not_equal->id);
+        visit_vert->add_literal(1);
+        impl.add(visit_vert);
+
+        auto *visit_diag = impl.allocate(spv::OpLogicalAnd, bool_type);
+        visit_diag->add_id(visit_horiz->id);
+        visit_diag->add_id(visit_vert->id);
+        impl.add(visit_diag);
+
+        const spv::Id bit_ids[3] = {visit_horiz->id, visit_vert->id, visit_diag->id};
+        spv::Id merged_bit = builder.makeIntConstant(1);
+
+        for (unsigned i = 0; i < 3; i++)
+        {
+            auto *select_op = impl.allocate(spv::OpSelect, i32_type);
+            select_op->add_id(bit_ids[i]);
+            select_op->add_id(builder.makeIntConstant(2 << i));
+            select_op->add_id(builder.makeIntConstant(0));
+            impl.add(select_op);
+
+            auto *or_op = impl.allocate(spv::OpBitwiseOr, i32_type);
+            or_op->add_id(merged_bit);
+            or_op->add_id(select_op->id);
+            impl.add(or_op);
+
+            merged_bit = or_op->id;
+        }
+
+        spv::Id u64_type = builder.makeUintType(64);
+        auto *u64_conv = impl.allocate(spv::OpSConvert, u64_type);
+        u64_conv->add_id(merged_bit);
+        impl.add(u64_conv);
+
+        auto *shamt = impl.allocate(spv::OpIMul, i32_type);
+        shamt->add_id(lod_id);
+        shamt->add_id(builder.makeIntConstant(4));
+        impl.add(shamt);
+
+        auto *shamt64 = impl.allocate(spv::OpSConvert, u64_type);
+        shamt64->add_id(shamt->id);
+        impl.add(shamt64);
+
+        auto *shift_op = impl.allocate(spv::OpShiftLeftLogical, u64_type);
+        shift_op->add_id(u64_conv->id);
+        shift_op->add_id(shamt64->id);
+        impl.add(shift_op);
+
+        auto *texel_ptr = impl.allocate(spv::OpImageTexelPointer,
+                builder.makePointer(spv::StorageClassImage, u64_type));
+        texel_ptr->add_id(meta.var_id);
+
+        if (int_layer_id)
+        {
+            auto *comp = impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(i32_type, num_coords_full));
+            comp->add_id(lo_int->id);
+            comp->add_id(int_layer_id);
+            impl.add(comp);
+
+            texel_ptr->add_id(comp->id);
+        }
+        else
+        {
+            texel_ptr->add_id(lo_int->id);
+        }
+
+        texel_ptr->add_id(builder.makeIntConstant(0));
+        impl.add(texel_ptr);
+
+        auto *atomic_or = impl.allocate(spv::OpAtomicOr, u64_type);
+        atomic_or->add_id(texel_ptr->id);
+        atomic_or->add_id(builder.makeUintConstant(spv::ScopeDevice));
+        atomic_or->add_id(builder.makeUintConstant(0));
+        atomic_or->add_id(shift_op->id);
+        impl.add(atomic_or);
+    }
+
+	builder.addCapability(spv::CapabilityInt64Atomics);
+
+	return true;
+}
 } // namespace dxil_spv

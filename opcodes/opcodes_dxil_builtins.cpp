@@ -84,6 +84,10 @@ struct DXILDispatcher
 		OP(RenderTargetGetSamplePosition) = emit_get_sample_position_dispatch<false>;
 		OP(RenderTargetGetSampleCount) = emit_get_render_target_sample_count;
 		OP(CheckAccessFullyMapped) = emit_check_access_fully_mapped_instruction;
+		OP(WriteSamplerFeedback) = emit_write_sampler_feedback_instruction<DXIL::Op::WriteSamplerFeedback>;
+		OP(WriteSamplerFeedbackLevel) = emit_write_sampler_feedback_instruction<DXIL::Op::WriteSamplerFeedbackLevel>;
+		OP(WriteSamplerFeedbackGrad) = emit_write_sampler_feedback_instruction<DXIL::Op::WriteSamplerFeedbackGrad>;
+		OP(WriteSamplerFeedbackBias) = emit_write_sampler_feedback_instruction<DXIL::Op::WriteSamplerFeedbackBias>;
 
 		// dxil_buffer.hpp
 		OP(BufferLoad) = emit_buffer_load_instruction;
@@ -767,8 +771,13 @@ static void analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 		tracking->has_read = true;
 		tracking->has_written = true;
 		tracking->has_atomic = true;
-		if (instruction->getType()->getIntegerBitWidth() == 64)
+
+		// Feedback is 64-bit atomic.
+		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VoidTyID ||
+		    instruction->getType()->getIntegerBitWidth() == 64)
+		{
 			tracking->has_atomic_64bit = true;
+		}
 
 		auto meta = get_resource_meta_from_buffer_op(impl, instruction);
 		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
@@ -796,6 +805,11 @@ bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::C
 
 	case DXIL::Op::AtomicCompareExchange:
 	case DXIL::Op::AtomicBinOp:
+	case DXIL::Op::WriteSamplerFeedback:
+	case DXIL::Op::WriteSamplerFeedbackBias:
+	case DXIL::Op::WriteSamplerFeedbackGrad:
+	case DXIL::Op::WriteSamplerFeedbackLevel:
+		// Writing sampler feedback is more or less equivalent to an atomic.
 		analyze_dxil_atomic_op(impl, instruction);
 		break;
 

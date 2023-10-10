@@ -42,6 +42,14 @@ bool emit_get_render_target_sample_count(Converter::Impl &impl, const llvm::Call
 
 bool emit_check_access_fully_mapped_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
+bool emit_write_sampler_feedback_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
+
+template <DXIL::Op opcode>
+bool emit_write_sampler_feedback_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_write_sampler_feedback_instruction(opcode, impl, instruction);
+}
+
 template <DXIL::Op opcode>
 static inline bool emit_sample_instruction_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {

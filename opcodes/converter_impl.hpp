@@ -481,6 +481,7 @@ struct Converter::Impl
 	spv::Id build_vector(spv::Id element_type, const spv::Id *elements, unsigned count);
 	spv::Id build_vector_type(spv::Id element_type, unsigned count);
 	spv::Id build_constant_vector(spv::Id element_type, const spv::Id *elements, unsigned count);
+	spv::Id build_splat_constant_vector(spv::Id element_type, spv::Id value, unsigned count);
 	spv::Id build_offset(spv::Id value, unsigned offset);
 	void fixup_load_type_io(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
 	void fixup_load_type_atomic(DXIL::ComponentType component_type, unsigned components, const llvm::Value *value);
