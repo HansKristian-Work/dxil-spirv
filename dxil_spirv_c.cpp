@@ -1101,6 +1101,16 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_OPACITY_MICROMAP:
+	{
+		OptionOpacityMicromap helper;
+		auto *omm = reinterpret_cast<const dxil_spv_option_opacity_micromap *>(option);
+		helper.enabled = omm->enabled;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
