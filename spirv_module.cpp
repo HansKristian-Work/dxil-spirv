@@ -71,6 +71,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_quad_all(SPIRVModule &module);
 	spv::Id build_quad_any(SPIRVModule &module);
 	spv::Id build_quad_vote(SPIRVModule &module, HelperCall call);
+	spv::Id build_image_atomic_r64_compact(SPIRVModule &module, bool array, spv::Id image_ptr_type_id);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -118,6 +119,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	Vector<std::pair<spv::Id, spv::Id>> wave_match_call_ids;
 	Vector<std::pair<spv::Id, spv::Id>> wave_active_all_equal_masked_ids;
 	Vector<std::pair<spv::Id, spv::Id>> wave_read_first_lane_masked_ids;
+	spv::Id image_r64_atomic_call_id = 0;
+	spv::Id image_r64_array_atomic_call_id = 0;
 
 	struct MultiPrefixOp
 	{
@@ -1045,6 +1048,149 @@ spv::Id SPIRVModule::Impl::build_quad_any(SPIRVModule &module)
 	return quad_any_call_id;
 }
 
+spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
+	SPIRVModule &module, bool array, spv::Id image_ptr_type_id)
+{
+	auto &call_id = array ? image_r64_array_atomic_call_id : image_r64_atomic_call_id;
+	if (call_id)
+		return call_id;
+
+	builder.addCapability(spv::CapabilityGroupNonUniform);
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Id image_type = builder.makeImageType(builder.makeUintType(64),
+	                                           spv::Dim2D, false, array, false, 2, spv::ImageFormatR64ui);
+	spv::Id ptr_image_type = builder.makePointer(spv::StorageClassUniformConstant, image_type);
+
+	spv::Block *entry = nullptr;
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id int_type = builder.makeIntType(32);
+	spv::Id coord_type = builder.makeVectorType(int_type, array ? 3 : 2);
+	spv::Id bvec_type = builder.makeVectorType(bool_type, array ? 3 : 2);
+	spv::Id u64_type = builder.makeUintType(64);
+	spv::Id ptr_atomic_type = builder.makePointer(spv::StorageClassImage, u64_type);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+	                                       array ? "WriteFeedbackArray" : "WriteFeedback",
+	                                       { ptr_image_type, coord_type, u64_type, bool_type }, {}, &entry);
+
+	spv::Id image_ptr = func->getParamId(0);
+	spv::Id coord = func->getParamId(1);
+	spv::Id value = func->getParamId(2);
+	spv::Id active = func->getParamId(3);
+
+	builder.addName(image_ptr, "img");
+	builder.addName(coord, "coord");
+	builder.addName(value, "value");
+	builder.addName(active, "active_lane");
+
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *loop_merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *loop_body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *loop_continue_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *write_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *write_merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *elect_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *elect_merge_block = new spv::Block(builder.getUniqueId(), *func);
+
+	builder.setBuildPoint(entry);
+	builder.createSelectionMerge(merge_block, 0);
+	builder.createConditionalBranch(active, body_block, merge_block);
+
+	spv::Id var_is_done = builder.createVariableWithInitializer(spv::StorageClassFunction, bool_type,
+	                                                            builder.makeBoolConstant(false), "is_done");
+
+	builder.setBuildPoint(body_block);
+	{
+		auto load = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLoad);
+		auto inot = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLogicalNot);
+		spv::Id inot_id = inot->getResultId();
+		load->addIdOperand(var_is_done);
+		inot->addIdOperand(load->getResultId());
+		body_block->addInstruction(std::move(load));
+		body_block->addInstruction(std::move(inot));
+		builder.createLoopMerge(loop_merge_block, loop_continue_block, 0);
+		builder.createConditionalBranch(inot_id, loop_body_block, loop_merge_block);
+
+		builder.setBuildPoint(loop_body_block);
+		{
+			auto first = std::make_unique<spv::Instruction>(builder.getUniqueId(), coord_type, spv::OpGroupNonUniformBroadcastFirst);
+			auto compare_coord = std::make_unique<spv::Instruction>(builder.getUniqueId(), bvec_type, spv::OpIEqual);
+			auto all_equal = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpAll);
+			auto store = std::make_unique<spv::Instruction>(spv::OpStore);
+
+			first->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+			first->addIdOperand(coord);
+			compare_coord->addIdOperand(coord);
+			compare_coord->addIdOperand(first->getResultId());
+			all_equal->addIdOperand(compare_coord->getResultId());
+			store->addIdOperand(var_is_done);
+			store->addIdOperand(all_equal->getResultId());
+
+			spv::Id cond_id = all_equal->getResultId();
+			loop_body_block->addInstruction(std::move(first));
+			loop_body_block->addInstruction(std::move(compare_coord));
+			loop_body_block->addInstruction(std::move(all_equal));
+			loop_body_block->addInstruction(std::move(store));
+
+			builder.createSelectionMerge(write_merge_block, 0);
+			builder.createConditionalBranch(cond_id, write_block, write_merge_block);
+			builder.setBuildPoint(write_block);
+			{
+				auto or_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u64_type, spv::OpGroupNonUniformBitwiseOr);
+				auto elect = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpGroupNonUniformElect);
+				or_op->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+				or_op->addImmediateOperand(spv::GroupOperationReduce);
+				or_op->addIdOperand(value);
+				elect->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+				spv::Id elect_id = elect->getResultId();
+				spv::Id or_op_id = or_op->getResultId();
+				write_block->addInstruction(std::move(or_op));
+				write_block->addInstruction(std::move(elect));
+
+				builder.createSelectionMerge(elect_merge_block, 0);
+				builder.createConditionalBranch(elect_id, elect_block, elect_merge_block);
+				builder.setBuildPoint(elect_block);
+				{
+					auto texel = std::make_unique<spv::Instruction>(builder.getUniqueId(), ptr_atomic_type, spv::OpImageTexelPointer);
+					auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u64_type, spv::OpAtomicOr);
+					texel->addIdOperand(image_ptr);
+					texel->addIdOperand(coord);
+					texel->addIdOperand(builder.makeIntConstant(0));
+					atomic_op->addIdOperand(texel->getResultId());
+					atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+					atomic_op->addIdOperand(builder.makeUintConstant(0));
+					atomic_op->addIdOperand(or_op_id);
+					elect_block->addInstruction(std::move(texel));
+					elect_block->addInstruction(std::move(atomic_op));
+					builder.createBranch(elect_merge_block);
+				}
+
+				builder.setBuildPoint(elect_merge_block);
+				builder.createBranch(write_merge_block);
+			}
+
+			builder.setBuildPoint(write_merge_block);
+			builder.createBranch(loop_continue_block);
+
+			builder.setBuildPoint(loop_continue_block);
+			builder.createBranch(body_block);
+		}
+
+		builder.setBuildPoint(loop_merge_block);
+		builder.createBranch(merge_block);
+	}
+
+	builder.setBuildPoint(merge_block);
+	builder.makeReturn(false);
+
+	builder.setBuildPoint(current_build_point);
+	call_id = func->getId();
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_robust_atomic_counter_op(SPIRVModule &module)
 {
 	if (robust_atomic_counter_call_id)
@@ -1226,6 +1372,9 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_quad_all(module);
 	case HelperCall::QuadAny:
 		return build_quad_any(module);
+	case HelperCall::AtomicImageArrayR64Compact:
+	case HelperCall::AtomicImageR64Compact:
+		return build_image_atomic_r64_compact(module, call == HelperCall::AtomicImageArrayR64Compact, type_id);
 
 	default:
 		break;

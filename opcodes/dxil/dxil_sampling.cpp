@@ -24,6 +24,7 @@
 
 #include "dxil_sampling.hpp"
 #include "dxil_common.hpp"
+#include "spirv_module.hpp"
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
 
@@ -1839,7 +1840,7 @@ bool emit_write_sampler_feedback_instruction(DXIL::Op opcode, Converter::Impl &i
 
         if (opcode == DXIL::Op::WriteSamplerFeedback || opcode == DXIL::Op::WriteSamplerFeedbackBias)
         {
-            auto *scale_size = impl.allocate(spv::OpFMul, f32_type);
+            auto *scale_size = impl.allocate(spv::OpFMul, fvec_type);
             scale_size->add_id(normalized_grad_extent);
             scale_size->add_id(scaling.float_size_id);
             impl.add(scale_size);
@@ -2012,33 +2013,58 @@ bool emit_write_sampler_feedback_instruction(DXIL::Op opcode, Converter::Impl &i
         shift_op->add_id(shamt64->id);
         impl.add(shift_op);
 
-        auto *texel_ptr = impl.allocate(spv::OpImageTexelPointer,
-                builder.makePointer(spv::StorageClassImage, u64_type));
-        texel_ptr->add_id(meta.var_id);
-
+		spv::Id comp_id;
         if (int_layer_id)
         {
             auto *comp = impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(i32_type, num_coords_full));
             comp->add_id(lo_int->id);
             comp->add_id(int_layer_id);
             impl.add(comp);
-
-            texel_ptr->add_id(comp->id);
+			comp_id = comp->id;
         }
         else
         {
-            texel_ptr->add_id(lo_int->id);
+	        comp_id = lo_int->id;
         }
 
-        texel_ptr->add_id(builder.makeIntConstant(0));
-        impl.add(texel_ptr);
+		spv::Id participate_id;
+	    if (impl.execution_model == spv::ExecutionModelFragment)
+	    {
+		    auto *is_helper = impl.allocate(spv::OpIsHelperInvocationEXT, bool_type);
+		    impl.add(is_helper);
 
-        auto *atomic_or = impl.allocate(spv::OpAtomicOr, u64_type);
-        atomic_or->add_id(texel_ptr->id);
-        atomic_or->add_id(builder.makeUintConstant(spv::ScopeDevice));
-        atomic_or->add_id(builder.makeUintConstant(0));
-        atomic_or->add_id(shift_op->id);
-        impl.add(atomic_or);
+		    auto *not_op = impl.allocate(spv::OpLogicalNot, bool_type);
+		    not_op->add_id(is_helper->id);
+		    impl.add(not_op);
+
+		    participate_id = not_op->id;
+
+		    if (lod_iteration != 0)
+		    {
+				auto *trilinear_and = impl.allocate(spv::OpLogicalAnd, bool_type);
+				trilinear_and->add_id(participate_id);
+				trilinear_and->add_id(lods.trilinear_enable_id);
+				impl.add(trilinear_and);
+				participate_id = trilinear_and->id;
+		    }
+	    }
+		else
+		{
+			if (lod_iteration == 0)
+				participate_id = builder.makeBoolConstant(true);
+			else
+				participate_id = lods.trilinear_enable_id;
+		}
+
+	    spv::Id call_id = impl.spirv_module.get_helper_call_id(
+		    num_coords_full == 3 ? HelperCall::AtomicImageArrayR64Compact : HelperCall::AtomicImageR64Compact);
+		auto *call = impl.allocate(spv::OpFunctionCall, builder.makeVoidType());
+	    call->add_id(call_id);
+		call->add_id(meta.var_id);
+		call->add_id(comp_id);
+		call->add_id(shift_op->id);
+		call->add_id(participate_id);
+		impl.add(call);
     }
 
 	builder.addCapability(spv::CapabilityInt64Atomics);
