@@ -59,7 +59,11 @@ enum class HelperCall
 	QuadAny,
 	WaveIsFirstLaneMasked,
 	WaveActiveAllEqualMasked,
-	WaveReadFirstLaneMasked
+	WaveReadFirstLaneMasked,
+	AtomicImageR64Compact,
+	AtomicImageArrayR64Compact,
+	AtomicImageR64CompactNonUniform,
+	AtomicImageArrayR64CompactNonUniform,
 };
 
 class SPIRVModule
