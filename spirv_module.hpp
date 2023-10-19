@@ -61,7 +61,9 @@ enum class HelperCall
 	WaveActiveAllEqualMasked,
 	WaveReadFirstLaneMasked,
 	AtomicImageR64Compact,
-	AtomicImageArrayR64Compact
+	AtomicImageArrayR64Compact,
+	AtomicImageR64CompactNonUniform,
+	AtomicImageArrayR64CompactNonUniform,
 };
 
 class SPIRVModule

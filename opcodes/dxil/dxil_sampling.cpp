@@ -2041,23 +2041,32 @@ bool emit_write_sampler_feedback_instruction(DXIL::Op opcode, Converter::Impl &i
 
 		    if (lod_iteration != 0)
 		    {
-				auto *trilinear_and = impl.allocate(spv::OpLogicalAnd, bool_type);
-				trilinear_and->add_id(participate_id);
-				trilinear_and->add_id(lods.trilinear_enable_id);
-				impl.add(trilinear_and);
-				participate_id = trilinear_and->id;
+			    auto *trilinear_and = impl.allocate(spv::OpLogicalAnd, bool_type);
+			    trilinear_and->add_id(participate_id);
+			    trilinear_and->add_id(lods.trilinear_enable_id);
+			    impl.add(trilinear_and);
+			    participate_id = trilinear_and->id;
 		    }
 	    }
-		else
-		{
-			if (lod_iteration == 0)
-				participate_id = builder.makeBoolConstant(true);
-			else
-				participate_id = lods.trilinear_enable_id;
-		}
+	    else
+	    {
+		    if (lod_iteration == 0)
+			    participate_id = builder.makeBoolConstant(true);
+		    else
+			    participate_id = lods.trilinear_enable_id;
+	    }
 
-	    spv::Id call_id = impl.spirv_module.get_helper_call_id(
-		    num_coords_full == 3 ? HelperCall::AtomicImageArrayR64Compact : HelperCall::AtomicImageR64Compact);
+		HelperCall helper_call;
+		if (num_coords_full == 3 && meta.non_uniform)
+			helper_call = HelperCall::AtomicImageArrayR64CompactNonUniform;
+		else if (num_coords_full == 3)
+			helper_call = HelperCall::AtomicImageArrayR64Compact;
+		else if (meta.non_uniform)
+			helper_call = HelperCall::AtomicImageR64CompactNonUniform;
+		else
+			helper_call = HelperCall::AtomicImageR64Compact;
+
+	    spv::Id call_id = impl.spirv_module.get_helper_call_id(helper_call);
 		auto *call = impl.allocate(spv::OpFunctionCall, builder.makeVoidType());
 	    call->add_id(call_id);
 		call->add_id(meta.var_id);
@@ -2066,8 +2075,6 @@ bool emit_write_sampler_feedback_instruction(DXIL::Op opcode, Converter::Impl &i
 		call->add_id(participate_id);
 		impl.add(call);
     }
-
-	builder.addCapability(spv::CapabilityInt64Atomics);
 
 	return true;
 }

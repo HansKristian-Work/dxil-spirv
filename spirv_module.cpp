@@ -71,7 +71,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_quad_all(SPIRVModule &module);
 	spv::Id build_quad_any(SPIRVModule &module);
 	spv::Id build_quad_vote(SPIRVModule &module, HelperCall call);
-	spv::Id build_image_atomic_r64_compact(SPIRVModule &module, bool array, spv::Id image_ptr_type_id);
+	spv::Id build_image_atomic_r64_compact(SPIRVModule &module, bool array, bool non_uniform);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -121,6 +121,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	Vector<std::pair<spv::Id, spv::Id>> wave_read_first_lane_masked_ids;
 	spv::Id image_r64_atomic_call_id = 0;
 	spv::Id image_r64_array_atomic_call_id = 0;
+	spv::Id image_r64_atomic_non_uniform_call_id = 0;
+	spv::Id image_r64_array_atomic_non_uniform_call_id = 0;
 
 	struct MultiPrefixOp
 	{
@@ -1049,11 +1051,39 @@ spv::Id SPIRVModule::Impl::build_quad_any(SPIRVModule &module)
 }
 
 spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
-	SPIRVModule &module, bool array, spv::Id image_ptr_type_id)
+	SPIRVModule &module, bool array, bool non_uniform)
 {
-	auto &call_id = array ? image_r64_array_atomic_call_id : image_r64_atomic_call_id;
-	if (call_id)
-		return call_id;
+	spv::Id *call_id;
+	const char *name;
+	if (array)
+	{
+		if (non_uniform)
+		{
+			call_id = &image_r64_array_atomic_non_uniform_call_id;
+			name = "WriteFeedbackArrayNonUniform";
+		}
+		else
+		{
+			call_id = &image_r64_array_atomic_call_id;
+			name = "WriteFeedbackArray";
+		}
+	}
+	else
+	{
+		if (non_uniform)
+		{
+			call_id = &image_r64_atomic_non_uniform_call_id;
+			name = "WriteFeedbackNonUniform";
+		}
+		else
+		{
+			call_id = &image_r64_atomic_call_id;
+			name = "WriteFeedback";
+		}
+	}
+
+	if (*call_id)
+		return *call_id;
 
 	builder.addCapability(spv::CapabilityGroupNonUniform);
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
@@ -1071,8 +1101,7 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 	spv::Id bvec_type = builder.makeVectorType(bool_type, array ? 3 : 2);
 	spv::Id u64_type = builder.makeUintType(64);
 	spv::Id ptr_atomic_type = builder.makePointer(spv::StorageClassImage, u64_type);
-	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
-	                                       array ? "WriteFeedbackArray" : "WriteFeedback",
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), name,
 	                                       { ptr_image_type, coord_type, u64_type, bool_type }, {}, &entry);
 
 	spv::Id image_ptr = func->getParamId(0);
@@ -1155,6 +1184,8 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 				builder.setBuildPoint(elect_block);
 				{
 					auto texel = std::make_unique<spv::Instruction>(builder.getUniqueId(), ptr_atomic_type, spv::OpImageTexelPointer);
+					if (non_uniform)
+						builder.addDecoration(texel->getResultId(), spv::DecorationNonUniform);
 					auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u64_type, spv::OpAtomicOr);
 					texel->addIdOperand(image_ptr);
 					texel->addIdOperand(coord);
@@ -1186,8 +1217,10 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 	builder.setBuildPoint(merge_block);
 	builder.makeReturn(false);
 
+	builder.addCapability(spv::CapabilityInt64Atomics);
+
 	builder.setBuildPoint(current_build_point);
-	call_id = func->getId();
+	*call_id = func->getId();
 	return func->getId();
 }
 
@@ -1374,7 +1407,12 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_quad_any(module);
 	case HelperCall::AtomicImageArrayR64Compact:
 	case HelperCall::AtomicImageR64Compact:
-		return build_image_atomic_r64_compact(module, call == HelperCall::AtomicImageArrayR64Compact, type_id);
+	case HelperCall::AtomicImageArrayR64CompactNonUniform:
+	case HelperCall::AtomicImageR64CompactNonUniform:
+		return build_image_atomic_r64_compact(
+			module,
+			call == HelperCall::AtomicImageArrayR64Compact || call == HelperCall::AtomicImageArrayR64CompactNonUniform,
+			call == HelperCall::AtomicImageR64CompactNonUniform || call == HelperCall::AtomicImageArrayR64CompactNonUniform);
 
 	default:
 		break;
