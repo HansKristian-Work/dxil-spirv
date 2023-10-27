@@ -3327,8 +3327,8 @@ void CFGStructurizer::hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *
 				c.node = merge;
 
 		node->succ.erase(std::find(node->succ.begin(), node->succ.end(), succ));
-		node->add_unique_succ(merge);
-		pred->add_unique_succ(succ);
+		node->add_branch(merge);
+		pred->add_branch(succ);
 		pred->ir.terminator.type = Terminator::Type::Condition;
 		pred->ir.terminator.conditional_id = cond_id;
 		pred->ir.terminator.true_block = succ;
