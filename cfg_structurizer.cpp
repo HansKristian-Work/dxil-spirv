@@ -3329,6 +3329,14 @@ void CFGStructurizer::hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *
 		node->succ.erase(std::find(node->succ.begin(), node->succ.end(), succ));
 		node->add_branch(merge);
 		pred->add_branch(succ);
+
+		// Make sure that our selection branch has somewhere to merge if it has to.
+		if (succ == dominance_frontier_candidate)
+		{
+			succ = pred->rewrite_branch_through_intermediate_node(dominance_frontier_candidate,
+			                                                      dominance_frontier_candidate);
+		}
+
 		pred->ir.terminator.type = Terminator::Type::Condition;
 		pred->ir.terminator.conditional_id = cond_id;
 		pred->ir.terminator.true_block = succ;
