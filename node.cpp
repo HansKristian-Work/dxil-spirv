@@ -383,11 +383,9 @@ CFGNode *CFGNode::get_immediate_dominator_loop_header()
 	return node;
 }
 
-void CFGNode::retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next)
+CFGNode *CFGNode::rewrite_branch_through_intermediate_node(CFGNode *to_prev, CFGNode *to_next)
 {
-	// If there is no duplication, just go ahead.
-	if (std::find(succ.begin(), succ.end(), to_next) == succ.end())
-		return retarget_branch(to_prev, to_next);
+	assert(std::find(succ.begin(), succ.end(), to_next) != succ.end());
 
 	auto *intermediate = pool.create_node();
 	intermediate->name = name + ".intermediate." + to_next->name;
@@ -400,6 +398,17 @@ void CFGNode::retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *
 	intermediate->backward_post_visit_order = backward_post_visit_order;
 	retarget_branch(to_prev, intermediate);
 	to_next->recompute_immediate_dominator();
+
+	return intermediate;
+}
+
+void CFGNode::retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next)
+{
+	// If there is no duplication, just go ahead.
+	if (std::find(succ.begin(), succ.end(), to_next) == succ.end())
+		retarget_branch(to_prev, to_next);
+	else
+		rewrite_branch_through_intermediate_node(to_prev, to_next);
 }
 
 void CFGNode::retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next)

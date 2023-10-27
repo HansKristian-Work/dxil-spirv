@@ -3327,8 +3327,16 @@ void CFGStructurizer::hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *
 				c.node = merge;
 
 		node->succ.erase(std::find(node->succ.begin(), node->succ.end(), succ));
-		node->add_unique_succ(merge);
-		pred->add_unique_succ(succ);
+		node->add_branch(merge);
+		pred->add_branch(succ);
+
+		// Make sure that our selection branch has somewhere to merge if it has to.
+		if (succ == dominance_frontier_candidate)
+		{
+			succ = pred->rewrite_branch_through_intermediate_node(dominance_frontier_candidate,
+			                                                      dominance_frontier_candidate);
+		}
+
 		pred->ir.terminator.type = Terminator::Type::Condition;
 		pred->ir.terminator.conditional_id = cond_id;
 		pred->ir.terminator.true_block = succ;
@@ -5514,7 +5522,7 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 template <typename Op>
 void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode *dominator, CFGNode *candidate,
                                                                    CFGNode *from, CFGNode *to, const Op &op,
-                                                                   UnorderedSet<const CFGNode *> &visitation_cache)
+                                                                   UnorderedSet<CFGNode *> &visitation_cache)
 {
 	visitation_cache.insert(candidate);
 
@@ -5572,9 +5580,18 @@ void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *domi
 	if (from == to)
 		return;
 
-	UnorderedSet<const CFGNode *> visitation_cache;
+	UnorderedSet<CFGNode *> visitation_cache;
 	traverse_dominated_blocks_and_rewrite_branch(dominator, dominator, from, to, op, visitation_cache);
 	dominator->fixup_merge_info_after_branch_rewrite(from, to);
+
+	// Force all post-domination information to be recomputed.
+	for (auto *n : visitation_cache)
+		if (n->immediate_post_dominator == from)
+			n->immediate_post_dominator = nullptr;
+
+	// Will recompute everything that was cleared out.
+	find_common_post_dominator(dominator->succ);
+	dominator->recompute_immediate_post_dominator();
 }
 
 void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to)
