@@ -229,6 +229,6 @@ private:
 	template <typename Op>
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode *dominator, CFGNode *candidate,
 	                                                  CFGNode *from, CFGNode *to, const Op &op,
-	                                                  UnorderedSet<const CFGNode *> &visitation_cache);
+	                                                  UnorderedSet<CFGNode *> &visitation_cache);
 };
 } // namespace dxil_spv

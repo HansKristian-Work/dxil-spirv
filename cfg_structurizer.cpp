@@ -5514,7 +5514,7 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 template <typename Op>
 void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode *dominator, CFGNode *candidate,
                                                                    CFGNode *from, CFGNode *to, const Op &op,
-                                                                   UnorderedSet<const CFGNode *> &visitation_cache)
+                                                                   UnorderedSet<CFGNode *> &visitation_cache)
 {
 	visitation_cache.insert(candidate);
 
@@ -5572,9 +5572,18 @@ void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *domi
 	if (from == to)
 		return;
 
-	UnorderedSet<const CFGNode *> visitation_cache;
+	UnorderedSet<CFGNode *> visitation_cache;
 	traverse_dominated_blocks_and_rewrite_branch(dominator, dominator, from, to, op, visitation_cache);
 	dominator->fixup_merge_info_after_branch_rewrite(from, to);
+
+	// Force all post-domination information to be recomputed.
+	for (auto *n : visitation_cache)
+		if (n->immediate_post_dominator == from)
+			n->immediate_post_dominator = nullptr;
+
+	// Will recompute everything that was cleared out.
+	find_common_post_dominator(dominator->succ);
+	dominator->recompute_immediate_post_dominator();
 }
 
 void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to)
