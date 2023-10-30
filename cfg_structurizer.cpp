@@ -1349,6 +1349,16 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 				continue;
 			}
 
+			// Don't hoist PHI inputs across the loop header boundary.
+			if (incoming.block->succ_back_edge && query_reachability(*source_block, *incoming.block->succ_back_edge))
+			{
+				// If this happens somehow, we have a problem. It's a bit unclear how this is supposed to work.
+				// It's possible we'd need to synthesize a fake input to back-edge which can be resolved
+				// in a code path that does dominate the loop ...
+				LOGW("Incoming value to back edge does not dominate loop header.\n");
+				continue;
+			}
+
 #ifdef PHI_DEBUG
 			LOGI("For node %s, move incoming node %s to %s.\n", node.block->name.c_str(), incoming.block->name.c_str(),
 			     itr->second->name.c_str());
