@@ -1349,6 +1349,16 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 				continue;
 			}
 
+			// Don't hoist PHI inputs across the loop header boundary.
+			if (incoming.block->succ_back_edge && query_reachability(*source_block, *incoming.block->succ_back_edge))
+			{
+				// If this happens somehow, we have a problem. It's a bit unclear how this is supposed to work.
+				// It's possible we'd need to synthesize a fake input to back-edge which can be resolved
+				// in a code path that does dominate the loop ...
+				LOGW("Incoming value to back edge does not dominate loop header.\n");
+				continue;
+			}
+
 #ifdef PHI_DEBUG
 			LOGI("For node %s, move incoming node %s to %s.\n", node.block->name.c_str(), incoming.block->name.c_str(),
 			     itr->second->name.c_str());
@@ -5224,6 +5234,15 @@ bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(const CFGNode
                                                                    const CFGNode *end_block,
                                                                    const CFGNode *stop_block) const
 {
+	// If we're resolving PHI for a frontier inside a loop, consider the back-edge as the end target for analysis.
+	// If we start outside the loop, don't move the end block.
+	if (end_block->pred_back_edge &&
+	    !query_reachability(*stop_block, *end_block) &&
+	    !query_reachability(*start_block, *end_block))
+	{
+		end_block = end_block->pred_back_edge;
+	}
+
 	if (query_reachability(*start_block, *end_block) &&
 	    query_reachability(*start_block, *stop_block) &&
 	    query_reachability(*stop_block, *end_block))
@@ -5234,7 +5253,7 @@ bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(const CFGNode
 	}
 	else
 	{
-		bool ret = query_reachability(*start_block, *end_block);
+		bool ret = query_reachability_through_back_edges(*start_block, *end_block);
 		return ret;
 	}
 }
