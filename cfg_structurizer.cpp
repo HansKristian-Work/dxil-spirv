@@ -4110,6 +4110,36 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(Vector<C
 	return candidates.front();
 }
 
+void CFGStructurizer::add_ladder_conditional_branch_from_incoming_blocks(
+	CFGNode *ladder, CFGNode *true_block, CFGNode *false_block,
+	const UnorderedSet<const CFGNode *> &reference_false_preds)
+{
+	ladder->add_branch(true_block);
+	ladder->add_branch(false_block);
+
+	ladder->ir.terminator.type = Terminator::Type::Condition;
+	ladder->ir.terminator.conditional_id = module.allocate_id();
+	ladder->ir.terminator.true_block = true_block;
+	ladder->ir.terminator.false_block = false_block;
+	ladder->ir.terminator.direct_block = nullptr;
+
+	PHI phi;
+	phi.id = ladder->ir.terminator.conditional_id;
+	phi.type_id = module.get_builder().makeBoolType();
+	module.get_builder().addName(phi.id, (String("transpose_ladder_phi_") + ladder->name).c_str());
+
+	for (auto *pred : ladder->pred)
+	{
+		IncomingValue incoming = {};
+		incoming.block = pred;
+		bool is_breaking_pred = reference_false_preds.count(pred) == 0;
+		incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
+		phi.incoming.push_back(incoming);
+	}
+
+	ladder->ir.phi.push_back(std::move(phi));
+}
+
 CFGNode *CFGStructurizer::transpose_code_path_through_ladder_block(
     CFGNode *header, CFGNode *merge, CFGNode *path)
 {
@@ -4122,34 +4152,12 @@ CFGNode *CFGStructurizer::transpose_code_path_through_ladder_block(
 
 	// Rewrite the merge block into merge.pred where merge.pred will branch to either merge or path.
 	auto *ladder = create_ladder_block(header, merge, ".transpose");
-	ladder->add_branch(path);
 
 	UnorderedSet<const CFGNode *> normal_preds;
 	for (auto *p : ladder->pred)
 		normal_preds.insert(p);
 	traverse_dominated_blocks_and_rewrite_branch(header, path, ladder);
-
-	ladder->ir.terminator.type = Terminator::Type::Condition;
-	ladder->ir.terminator.conditional_id = module.allocate_id();
-	ladder->ir.terminator.true_block = path;
-	ladder->ir.terminator.false_block = ladder->ir.terminator.direct_block;
-	ladder->ir.terminator.direct_block = nullptr;
-
-	PHI phi;
-	phi.id = ladder->ir.terminator.conditional_id;
-	phi.type_id = module.get_builder().makeBoolType();
-	module.get_builder().addName(phi.id, (String("transpose_ladder_phi_") + ladder->name).c_str());
-
-	for (auto *pred : ladder->pred)
-	{
-		IncomingValue incoming = {};
-		incoming.block = pred;
-		bool is_breaking_pred = normal_preds.count(pred) == 0;
-		incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
-		phi.incoming.push_back(incoming);
-	}
-
-	ladder->ir.phi.push_back(std::move(phi));
+	add_ladder_conditional_branch_from_incoming_blocks(ladder, path, merge, normal_preds);
 	return ladder;
 }
 
