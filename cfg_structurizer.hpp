@@ -232,8 +232,8 @@ private:
 	                                                  UnorderedSet<CFGNode *> &visitation_cache);
 
 	CFGNode *transpose_code_path_through_ladder_block(CFGNode *header, CFGNode *merge, CFGNode *succ);
-	void add_ladder_conditional_branch_from_incoming_blocks(
-	    CFGNode *ladder, CFGNode *true_block, CFGNode *false_block,
-	    const UnorderedSet<const CFGNode *> &reference_false_preds);
+	void rewrite_ladder_conditional_branch_from_incoming_blocks(
+		CFGNode *ladder, CFGNode *true_block, CFGNode *false_block,
+		const std::function<bool (const CFGNode *)> &path_cb, const String &name);
 };
 } // namespace dxil_spv
