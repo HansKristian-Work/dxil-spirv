@@ -4939,49 +4939,31 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 				});
 		}
 
-		ladder->ir.terminator.type = Terminator::Type::Condition;
-		ladder->ir.terminator.conditional_id = module.allocate_id();
-		ladder->ir.terminator.false_block = loop_ladder;
-
-		PHI phi;
-		phi.id = ladder->ir.terminator.conditional_id;
-		phi.type_id = module.get_builder().makeBoolType();
-		module.get_builder().addName(phi.id, (String("ladder_phi_") + loop_ladder->name).c_str());
-
-		for (auto *pred : ladder->pred)
-		{
-			IncomingValue incoming = {};
-			incoming.block = pred;
-			bool is_breaking_pred = normal_preds.count(pred) == 0;
-			incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
-			phi.incoming.push_back(incoming);
-		}
-		ladder->ir.phi.push_back(std::move(phi));
+		CFGNode *true_block = nullptr;
 
 		// Ladder breaks out to outer scope.
 		if (target_header && target_header->loop_ladder_block)
-		{
-			ladder->ir.terminator.true_block = target_header->loop_ladder_block;
-			ladder->add_branch(target_header->loop_ladder_block);
-		}
+			true_block = target_header->loop_ladder_block;
 		else if (target_header && target_header->loop_merge_block)
-		{
-			ladder->ir.terminator.true_block = target_header->loop_merge_block;
-			ladder->add_branch(target_header->loop_merge_block);
-		}
+			true_block = target_header->loop_merge_block;
 		else if (full_break_target)
-		{
-			ladder->ir.terminator.true_block = full_break_target;
-			ladder->add_branch(full_break_target);
-		}
+			true_block = full_break_target;
 		else
 			LOGW("No loop merge block?\n");
 
-		// This can happen in some scenarios, fixup the branch to be a direct one instead.
-		if (ladder->ir.terminator.true_block == ladder->ir.terminator.false_block)
+		if (true_block)
 		{
-			ladder->ir.terminator.direct_block = ladder->ir.terminator.true_block;
-			ladder->ir.terminator.type = Terminator::Type::Branch;
+			rewrite_ladder_conditional_branch_from_incoming_blocks(
+				ladder,
+				true_block, loop_ladder, [&](const CFGNode *n) { return normal_preds.count(n) == 0; },
+				String("ladder_phi_") + loop_ladder->name);
+
+			// This can happen in some scenarios, fixup the branch to be a direct one instead.
+			if (ladder->ir.terminator.true_block == ladder->ir.terminator.false_block)
+			{
+				ladder->ir.terminator.direct_block = ladder->ir.terminator.true_block;
+				ladder->ir.terminator.type = Terminator::Type::Branch;
+			}
 		}
 	}
 	else
