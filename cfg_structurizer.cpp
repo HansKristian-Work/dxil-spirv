@@ -4989,31 +4989,17 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 			//      \-------------------/
 			auto *ladder_pre = create_helper_pred_block(loop_ladder);
 			auto *ladder_post = create_helper_succ_block(loop_ladder);
-			ladder_pre->add_branch(ladder_post);
-
-			ladder_pre->ir.terminator.type = Terminator::Type::Condition;
-			ladder_pre->ir.terminator.conditional_id = module.allocate_id();
-			ladder_pre->ir.terminator.true_block = ladder_post;
-			ladder_pre->ir.terminator.false_block = loop_ladder;
 
 			// Merge to ladder instead.
 			traverse_dominated_blocks_and_rewrite_branch(header, node, ladder_pre);
-			new_ladder_block = ladder_pre;
 
-			PHI phi;
-			phi.id = ladder_pre->ir.terminator.conditional_id;
-			phi.type_id = module.get_builder().makeBoolType();
-			module.get_builder().addName(phi.id,
-										 (String("ladder_phi_") + loop_ladder->name).c_str());
-			for (auto *pred : ladder_pre->pred)
-			{
-				IncomingValue incoming = {};
-				incoming.block = pred;
-				bool is_breaking_pred = normal_preds.count(pred) == 0;
-				incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
-				phi.incoming.push_back(incoming);
-			}
-			ladder_pre->ir.phi.push_back(std::move(phi));
+			rewrite_ladder_conditional_branch_from_incoming_blocks(
+				ladder_pre,
+				ladder_post, loop_ladder,
+				[&](const CFGNode *n) { return normal_preds.count(n) == 0; },
+				String("ladder_phi_") + loop_ladder->name);
+
+			new_ladder_block = ladder_pre;
 		}
 	}
 
