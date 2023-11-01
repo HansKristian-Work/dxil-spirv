@@ -683,6 +683,17 @@ bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
 	// we see in the wild. It's probably safe to block continue merge in far more cases than this, but we
 	// want to be maximally convergent as often as we can.
 
+	if (header->ir.terminator.type == Terminator::Type::Switch)
+	{
+		// If the loop header is also a switch statement, there can be some nasty edge cases.
+		// We likely never intend for the continue block to be maximally convergent here
+		// if the natural merge block is not the continue block.
+		auto *merge = find_common_post_dominator(header->succ);
+		auto *natural_merge = find_natural_switch_merge_block(header, merge);
+		if (merge == node && natural_merge != merge)
+			return false;
+	}
+
 	for (auto *pred : node->pred)
 	{
 		// If we have a situation where a continue block has a pred which is itself a selection merge target, that
