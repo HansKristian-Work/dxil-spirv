@@ -4224,25 +4224,11 @@ void CFGStructurizer::rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impo
 	for (auto *ladder_pred : ladder_preds)
 		ladder_pred->retarget_branch(dominated_merge, ladder_selection);
 
-	ladder_selection->ir.terminator.type = Terminator::Type::Condition;
-	ladder_selection->ir.terminator.true_block = dominated_merge;
-	ladder_selection->ir.terminator.false_block = ladder_break;
-	ladder_selection->ir.terminator.conditional_id = module.allocate_id();
-
-	PHI phi;
-	phi.id = ladder_selection->ir.terminator.conditional_id;
-	phi.type_id = module.get_builder().makeBoolType();
-	module.get_builder().addName(phi.id, (String("transposed_selector_") + node->name).c_str());
-	for (auto *ladder_pred : ladder_selection->pred)
-	{
-		IncomingValue incoming = {};
-		incoming.block = ladder_pred;
-		bool branches_to_dominated_merge =
-				std::find(ladder_preds.begin(), ladder_preds.end(), ladder_pred) != ladder_preds.end();
-		incoming.id = module.get_builder().makeBoolConstant(branches_to_dominated_merge);
-		phi.incoming.push_back(incoming);
-	}
-	ladder_selection->ir.phi.push_back(std::move(phi));
+	rewrite_ladder_conditional_branch_from_incoming_blocks(
+		ladder_selection,
+		dominated_merge, ladder_break,
+		[&](const CFGNode *n) { return std::find(ladder_preds.begin(), ladder_preds.end(), n) != ladder_preds.end(); },
+		String("transposed_selector_") + node->name);
 }
 
 bool CFGStructurizer::rewrite_transposed_loops()
