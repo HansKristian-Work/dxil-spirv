@@ -3450,36 +3450,33 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 				can_merge_to_post_dominator = true;
 			}
 
-			// Need to rewrite the switch.
-			if (merge != natural_merge)
+			// Need to rewrite the switch if we're not already a loop header.
+			if (merge != natural_merge && can_merge_to_post_dominator && !node->pred_back_edge)
 			{
-				if (can_merge_to_post_dominator)
+				auto *switch_outer = create_helper_pred_block(node);
+				switch_outer->merge = MergeType::Loop;
+				switch_outer->loop_merge_block = merge;
+				switch_outer->freeze_structured_analysis = true;
+				merge->headers.push_back(switch_outer);
+
+				// Shouldn't be needed (I believe), but spirv-val is a bit temperamental when double breaking
+				// straight out of a switch block in some situations,
+				// so try not to ruffle too many feathers.
+				if (std::find(node->succ.begin(), node->succ.end(), natural_merge) != node->succ.end())
 				{
-					auto *switch_outer = create_helper_pred_block(node);
-					switch_outer->merge = MergeType::Loop;
-					switch_outer->loop_merge_block = merge;
-					switch_outer->freeze_structured_analysis = true;
-					merge->headers.push_back(switch_outer);
-
-					// Shouldn't be needed (I believe), but spirv-val is a bit temperamental when double breaking
-					// straight out of a switch block in some situations,
-					// so try not to ruffle too many feathers.
-					if (std::find(node->succ.begin(), node->succ.end(), natural_merge) != node->succ.end())
-					{
-						auto *dummy_case = pool.create_node();
-						dummy_case->name = natural_merge->name + ".pred";
-						dummy_case->immediate_dominator = node;
-						dummy_case->immediate_post_dominator = natural_merge;
-						dummy_case->forward_post_visit_order = node->forward_post_visit_order;
-						dummy_case->backward_post_visit_order = node->backward_post_visit_order;
-						dummy_case->ir.terminator.type = Terminator::Type::Branch;
-						dummy_case->ir.terminator.direct_block = natural_merge;
-						dummy_case->add_branch(natural_merge);
-						node->retarget_branch(natural_merge, dummy_case);
-					}
-
-					node->freeze_structured_analysis = true;
+					auto *dummy_case = pool.create_node();
+					dummy_case->name = natural_merge->name + ".pred";
+					dummy_case->immediate_dominator = node;
+					dummy_case->immediate_post_dominator = natural_merge;
+					dummy_case->forward_post_visit_order = node->forward_post_visit_order;
+					dummy_case->backward_post_visit_order = node->backward_post_visit_order;
+					dummy_case->ir.terminator.type = Terminator::Type::Branch;
+					dummy_case->ir.terminator.direct_block = natural_merge;
+					dummy_case->add_branch(natural_merge);
+					node->retarget_branch(natural_merge, dummy_case);
 				}
+
+				node->freeze_structured_analysis = true;
 			}
 
 			// Switch case labels must be contained within the switch statement.
