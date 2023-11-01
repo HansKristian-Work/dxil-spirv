@@ -3412,34 +3412,7 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 				// It's possible that the switch block is also a loop header for example.
 				// Need to transpose the code with a ladder to avoid impossible problems later.
 				if (node->pred_back_edge)
-				{
-					natural_merge = create_ladder_block(node, natural_merge, ".switch-transpose");
-					UnorderedSet<const CFGNode *> normal_preds;
-					for (auto *p : natural_merge->pred)
-						normal_preds.insert(p);
-					traverse_dominated_blocks_and_rewrite_branch(node, inner_merge, natural_merge);
-
-					natural_merge->ir.terminator.type = Terminator::Type::Condition;
-					natural_merge->ir.terminator.conditional_id = module.allocate_id();
-					natural_merge->ir.terminator.true_block = natural_merge->ir.terminator.direct_block;
-					natural_merge->ir.terminator.false_block = inner_merge;
-
-					PHI phi;
-					phi.id = natural_merge->ir.terminator.conditional_id;
-					phi.type_id = module.get_builder().makeBoolType();
-					module.get_builder().addName(phi.id, (String("switch_phi_") + natural_merge->name).c_str());
-
-					for (auto *pred : natural_merge->pred)
-					{
-						IncomingValue incoming = {};
-						incoming.block = pred;
-						bool is_normal_pred = normal_preds.count(pred) != 0;
-						incoming.id = module.get_builder().makeBoolConstant(is_normal_pred);
-						phi.incoming.push_back(incoming);
-					}
-					natural_merge->ir.phi.push_back(std::move(phi));
-					natural_merge->add_branch(inner_merge);
-				}
+					natural_merge = transpose_code_path_through_ladder_block(node, natural_merge, inner_merge);
 			}
 			else if (merge && !node->dominates(merge))
 			{
@@ -4135,6 +4108,49 @@ CFGNode *CFGStructurizer::find_common_post_dominator_with_ignored_break(Vector<C
 		return nullptr;
 
 	return candidates.front();
+}
+
+CFGNode *CFGStructurizer::transpose_code_path_through_ladder_block(
+    CFGNode *header, CFGNode *merge, CFGNode *path)
+{
+	assert(header->dominates(merge) && header->dominates(path));
+	assert(query_reachability(*merge, *path));
+	assert(!merge->dominates(path));
+	assert(header != merge);
+	assert(merge != path);
+	assert(header != path);
+
+	// Rewrite the merge block into merge.pred where merge.pred will branch to either merge or path.
+	auto *ladder = create_ladder_block(header, merge, ".transpose");
+	ladder->add_branch(path);
+
+	UnorderedSet<const CFGNode *> normal_preds;
+	for (auto *p : ladder->pred)
+		normal_preds.insert(p);
+	traverse_dominated_blocks_and_rewrite_branch(header, path, ladder);
+
+	ladder->ir.terminator.type = Terminator::Type::Condition;
+	ladder->ir.terminator.conditional_id = module.allocate_id();
+	ladder->ir.terminator.true_block = path;
+	ladder->ir.terminator.false_block = ladder->ir.terminator.direct_block;
+	ladder->ir.terminator.direct_block = nullptr;
+
+	PHI phi;
+	phi.id = ladder->ir.terminator.conditional_id;
+	phi.type_id = module.get_builder().makeBoolType();
+	module.get_builder().addName(phi.id, (String("transpose_ladder_phi_") + ladder->name).c_str());
+
+	for (auto *pred : ladder->pred)
+	{
+		IncomingValue incoming = {};
+		incoming.block = pred;
+		bool is_breaking_pred = normal_preds.count(pred) == 0;
+		incoming.id = module.get_builder().makeBoolConstant(is_breaking_pred);
+		phi.incoming.push_back(incoming);
+	}
+
+	ladder->ir.phi.push_back(std::move(phi));
+	return ladder;
 }
 
 void CFGStructurizer::rewrite_transposed_loop_outer(CFGNode *node, CFGNode *impossible_merge_target,

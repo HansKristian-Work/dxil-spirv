@@ -230,5 +230,7 @@ private:
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode *dominator, CFGNode *candidate,
 	                                                  CFGNode *from, CFGNode *to, const Op &op,
 	                                                  UnorderedSet<CFGNode *> &visitation_cache);
+
+	CFGNode *transpose_code_path_through_ladder_block(CFGNode *header, CFGNode *merge, CFGNode *succ);
 };
 } // namespace dxil_spv
