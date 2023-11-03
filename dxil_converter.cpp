@@ -5930,6 +5930,13 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		}
 		ags.phases = 0;
 
+		// We don't know if the block is a loop yet, so just tag every BB.
+		// CFG will propagate the information as necessary.
+		node->ir.terminator.force_flatten = options.branch_control.force_flatten;
+		node->ir.terminator.force_branch = options.branch_control.force_branch;
+		node->ir.terminator.force_unroll = options.branch_control.force_unroll;
+		node->ir.terminator.force_loop = options.branch_control.force_loop;
+
 		auto *instruction = bb->getTerminator();
 		if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(instruction))
 		{
@@ -6703,6 +6710,17 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.opacity_micromap_enabled =
 		    static_cast<const OptionOpacityMicromap &>(cap).enabled;
 		break;
+
+	case Option::BranchControl:
+	{
+		auto &c = static_cast<const OptionBranchControl &>(cap);
+		options.branch_control.use_shader_metadata = c.use_shader_metadata;
+		options.branch_control.force_branch = c.force_branch;
+		options.branch_control.force_unroll = c.force_unroll;
+		options.branch_control.force_loop = c.force_loop;
+		options.branch_control.force_flatten = c.force_flatten;
+		break;
+	}
 
 	default:
 		break;

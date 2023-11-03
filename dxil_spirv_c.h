@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 32
+#define DXIL_SPV_API_VERSION_MINOR 33
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -359,6 +359,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_PRECISE_CONTROL = 30,
 	DXIL_SPV_OPTION_SAMPLE_GRAD_OPTIMIZATION_CONTROL = 31,
 	DXIL_SPV_OPTION_OPACITY_MICROMAP = 32,
+	DXIL_SPV_OPTION_BRANCH_CONTROL = 33,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -591,6 +592,16 @@ typedef struct dxil_spv_option_opacity_micromap
 	dxil_spv_option_base base;
 	dxil_spv_bool enabled;
 } dxil_spv_option_opacity_micromap;
+
+typedef struct dxil_spv_option_branch_control
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool use_shader_metadata;
+	dxil_spv_bool force_unroll;
+	dxil_spv_bool force_loop;
+	dxil_spv_bool force_flatten;
+	dxil_spv_bool force_branch;
+} dxil_spv_option_branch_control;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

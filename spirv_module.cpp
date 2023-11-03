@@ -1654,7 +1654,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	case MergeType::Selection:
 		if (ir.merge_info.merge_block)
 		{
-			builder.createSelectionMerge(get_spv_block(ir.merge_info.merge_block), 0);
+			builder.createSelectionMerge(get_spv_block(ir.merge_info.merge_block), ir.merge_info.selection_control_mask);
 		}
 		else
 		{
@@ -1671,7 +1671,8 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		if (ir.merge_info.merge_block && ir.merge_info.continue_block)
 		{
 			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block),
-			                        get_spv_block(ir.merge_info.continue_block), 0);
+			                        get_spv_block(ir.merge_info.continue_block),
+			                        ir.merge_info.loop_control_mask);
 		}
 		else if (ir.merge_info.merge_block)
 		{

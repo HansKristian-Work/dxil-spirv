@@ -1111,6 +1111,20 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_BRANCH_CONTROL:
+	{
+		OptionBranchControl helper;
+		auto *branch = reinterpret_cast<const dxil_spv_option_branch_control *>(option);
+		helper.use_shader_metadata = branch->use_shader_metadata;
+		helper.force_branch = branch->force_branch;
+		helper.force_loop = branch->force_loop;
+		helper.force_unroll = branch->force_unroll;
+		helper.force_flatten = branch->force_flatten;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

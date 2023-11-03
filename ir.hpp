@@ -48,6 +48,8 @@ struct MergeInfo
 	MergeType merge_type = MergeType::None;
 	CFGNode *merge_block = nullptr;
 	CFGNode *continue_block = nullptr;
+	spv::LoopControlMask loop_control_mask = spv::LoopControlMaskNone;
+	spv::SelectionControlMask selection_control_mask = spv::SelectionControlMaskNone;
 };
 
 struct IncomingValue
@@ -175,6 +177,11 @@ struct Terminator
 	};
 	Vector<Case> cases;
 	uint32_t return_value = 0;
+
+	bool force_unroll = false;
+	bool force_loop = false;
+	bool force_flatten = false;
+	bool force_branch = false;
 };
 
 struct IRBlock

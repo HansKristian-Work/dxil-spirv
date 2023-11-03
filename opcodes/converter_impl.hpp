@@ -589,6 +589,15 @@ struct Converter::Impl
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;
+
+		struct
+		{
+			bool use_shader_metadata = false;
+			bool force_unroll = false;
+			bool force_loop = false;
+			bool force_flatten = false;
+			bool force_branch = false;
+		} branch_control;
 	} options;
 
 	struct BindlessInfo

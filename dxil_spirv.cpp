@@ -164,7 +164,10 @@ static void print_help()
 	     "\t[--dead-code-eliminate]\n"
 	     "\t[--propagate-precise]\n"
 	     "\t[--force-precise]\n"
-	     "\t[--opacity-micromap]\n");
+	     "\t[--force-flatten]\n"
+	     "\t[--force-loop]\n"
+	     "\t[--force-branch]\n"
+	     "\t[--force-unroll]\n");
 }
 
 struct Arguments
@@ -200,6 +203,10 @@ struct Arguments
 	bool propagate_precise = false;
 	bool force_precise = false;
 	bool opacity_micromap = false;
+	bool force_flatten = false;
+	bool force_loop = false;
+	bool force_branch = false;
+	bool force_unroll = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -748,6 +755,18 @@ int main(int argc, char **argv)
 	cbs.add("--opacity-micromap", [&](CLIParser &) {
 		args.opacity_micromap = true;
 	});
+	cbs.add("--force-flatten", [&](CLIParser &) {
+		args.force_flatten = true;
+	});
+	cbs.add("--force-loop", [&](CLIParser &) {
+		args.force_loop = true;
+	});
+	cbs.add("--force-unroll", [&](CLIParser &) {
+		args.force_unroll = true;
+	});
+	cbs.add("--force-branch", [&](CLIParser &) {
+		args.force_branch = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1005,6 +1024,15 @@ int main(int argc, char **argv)
 		const dxil_spv_option_opacity_micromap omm = { { DXIL_SPV_OPTION_OPACITY_MICROMAP },
 		                                               args.opacity_micromap ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
 		dxil_spv_converter_add_option(converter, &omm.base);
+	}
+
+	{
+		dxil_spv_option_branch_control branch = { { DXIL_SPV_OPTION_BRANCH_CONTROL } };
+		branch.force_flatten = args.force_flatten ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+		branch.force_loop = args.force_loop ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+		branch.force_unroll = args.force_unroll ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+		branch.force_branch = args.force_branch ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+		dxil_spv_converter_add_option(converter, &branch.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

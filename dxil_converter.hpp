@@ -247,6 +247,7 @@ enum class Option : uint32_t
 	PreciseControl = 30,
 	SampleGradOptimizationControl = 31,
 	OpacityMicromap = 32,
+	BranchControl = 33,
 	Count
 };
 
@@ -610,6 +611,20 @@ struct OptionOpacityMicromap : OptionBase
 	}
 
 	bool enabled = false;
+};
+
+struct OptionBranchControl : OptionBase
+{
+	OptionBranchControl()
+		: OptionBase(Option::BranchControl)
+	{
+	}
+
+	bool use_shader_metadata = false;
+	bool force_unroll = false;
+	bool force_loop = false;
+	bool force_flatten = false;
+	bool force_branch = false;
 };
 
 struct DescriptorTableEntry

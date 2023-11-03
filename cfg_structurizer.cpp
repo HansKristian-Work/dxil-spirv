@@ -518,6 +518,27 @@ void CFGStructurizer::rewrite_multiple_back_edges()
 	visit_for_back_edge_analysis(*entry_block);
 }
 
+void CFGStructurizer::propagate_branch_control_hints()
+{
+	for (auto *n : forward_post_visit_order)
+	{
+		if (n->pred_back_edge)
+		{
+			if (n->ir.terminator.force_loop)
+				n->ir.merge_info.loop_control_mask = spv::LoopControlDontUnrollMask;
+			else if (n->ir.terminator.force_unroll)
+				n->ir.merge_info.loop_control_mask = spv::LoopControlUnrollMask;
+		}
+		else if (n->ir.terminator.type == Terminator::Type::Condition)
+		{
+			if (n->ir.terminator.force_flatten)
+				n->ir.merge_info.selection_control_mask = spv::SelectionControlFlattenMask;
+			else if (n->ir.terminator.force_branch)
+				n->ir.merge_info.selection_control_mask = spv::SelectionControlDontFlattenMask;
+		}
+	}
+}
+
 bool CFGStructurizer::run()
 {
 	String graphviz_path;
@@ -538,6 +559,7 @@ bool CFGStructurizer::run()
 	}
 
 	recompute_cfg();
+	propagate_branch_control_hints();
 
 	cleanup_breaking_phi_constructs();
 

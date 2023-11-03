@@ -235,5 +235,7 @@ private:
 	void rewrite_ladder_conditional_branch_from_incoming_blocks(
 		CFGNode *ladder, CFGNode *true_block, CFGNode *false_block,
 		const std::function<bool (const CFGNode *)> &path_cb, const String &name);
+
+	void propagate_branch_control_hints();
 };
 } // namespace dxil_spv
