@@ -524,18 +524,21 @@ void CFGStructurizer::propagate_branch_control_hints()
 	{
 		if (n->pred_back_edge)
 		{
-			if (n->ir.terminator.force_loop)
+			if (n->pred_back_edge->ir.terminator.force_loop)
 				n->ir.merge_info.loop_control_mask = spv::LoopControlDontUnrollMask;
-			else if (n->ir.terminator.force_unroll)
+			else if (n->pred_back_edge->ir.terminator.force_unroll)
 				n->ir.merge_info.loop_control_mask = spv::LoopControlUnrollMask;
 		}
-		else if (n->ir.terminator.type == Terminator::Type::Condition)
+
+		if (n->ir.terminator.type == Terminator::Type::Condition)
 		{
 			if (n->ir.terminator.force_flatten)
 				n->ir.merge_info.selection_control_mask = spv::SelectionControlFlattenMask;
 			else if (n->ir.terminator.force_branch)
 				n->ir.merge_info.selection_control_mask = spv::SelectionControlDontFlattenMask;
 		}
+
+		// Both are possible if a selection construct is also a loop header.
 	}
 }
 
@@ -4032,6 +4035,10 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 	succ_node->ir.terminator = node->ir.terminator;
 	node->ir.terminator.type = Terminator::Type::Branch;
 	node->ir.terminator.direct_block = succ_node;
+
+	// Inherit selection construct from parent since we're taking over any selection.
+	if (succ_node->ir.terminator.type == Terminator::Type::Condition)
+		succ_node->ir.merge_info.selection_control_mask = node->ir.merge_info.selection_control_mask;
 
 	retarget_succ_from(succ_node, node);
 

@@ -5896,6 +5896,8 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		processing.clear();
 	}
 
+	bool has_partial_unroll = false;
+
 	for (auto *bb : visit_order)
 	{
 		auto *meta = bb_map[bb];
@@ -5938,8 +5940,42 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		node->ir.terminator.force_loop = options.branch_control.force_loop;
 
 		auto *instruction = bb->getTerminator();
+
 		if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(instruction))
 		{
+			// Loop information is attached to the back edge in LLVM.
+			// Continue blocks can be direct branches or conditional ones, so make it generic.
+			auto *loop_meta = instruction->getMetadata("llvm.loop");
+			if (loop_meta && loop_meta->getNumOperands() >= 2)
+			{
+				auto *meta_node = llvm::dyn_cast<llvm::MDNode>(loop_meta->getOperand(1));
+				if (meta_node)
+				{
+					auto *meta_name = llvm::dyn_cast<llvm::MDString>(meta_node->getOperand(0));
+					if (meta_name)
+					{
+						auto &str = meta_name->getString();
+
+						if (options.branch_control.use_shader_metadata)
+						{
+							if (str == "llvm.loop.unroll.disable")
+							{
+								node->ir.terminator.force_loop = true;
+								node->ir.terminator.force_unroll = false;
+							}
+							else if (str == "llvm.loop.unroll.full")
+							{
+								node->ir.terminator.force_unroll = true;
+								node->ir.terminator.force_loop = false;
+							}
+						}
+
+						if (str == "llvm.loop.unroll.count")
+							has_partial_unroll = true;
+					}
+				}
+			}
+
 			if (inst->isConditional())
 			{
 				node->ir.terminator.type = Terminator::Type::Condition;
@@ -5947,12 +5983,37 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 				assert(inst->getNumSuccessors() == 2);
 				node->ir.terminator.true_block = bb_map[inst->getSuccessor(0)]->node;
 				node->ir.terminator.false_block = bb_map[inst->getSuccessor(1)]->node;
+
+				if (options.branch_control.use_shader_metadata)
+				{
+					auto *branch_meta = inst->getMetadata("dx.controlflow.hints");
+					if (branch_meta && branch_meta->getNumOperands() >= 3)
+					{
+						if (get_constant_metadata(branch_meta, 2) == 1)
+						{
+							node->ir.terminator.force_branch = true;
+							node->ir.terminator.force_flatten = false;
+						}
+						else if (get_constant_metadata(branch_meta, 2) == 2)
+						{
+							node->ir.terminator.force_flatten = true;
+							node->ir.terminator.force_branch = false;
+						}
+					}
+				}
 			}
 			else
 			{
 				node->ir.terminator.type = Terminator::Type::Branch;
 				assert(inst->getNumSuccessors() == 1);
 				node->ir.terminator.direct_block = bb_map[inst->getSuccessor(0)]->node;
+
+				// If the shader uses partial unrolling, but we see loops anyway,
+				// it's very likely we really want this to be a loop.
+				// This is somewhat of a hack heuristic to work around a Mesa bug in Lords of the Fallen,
+				// but it makes at least some sense ...
+				if (has_partial_unroll)
+					node->ir.terminator.force_loop = true;
 			}
 		}
 		else if (auto *inst = llvm::dyn_cast<llvm::SwitchInst>(instruction))
