@@ -5030,13 +5030,28 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 		for (unsigned i = 0; i < count; i++)
 		{
 			IncomingValue incoming = {};
-			incoming.block = bb_map[instruction.getIncomingBlock(i)]->node;
-			auto *value = instruction.getIncomingValue(i);
-			incoming.id = get_id_for_value(value);
-			phi.incoming.push_back(incoming);
+			auto bb_itr = bb_map.find(instruction.getIncomingBlock(i));
+
+			// If the block was statically eliminated, it might not exist.
+			if (bb_itr != bb_map.end())
+			{
+				incoming.block = bb_itr->second->node;
+				auto *value = instruction.getIncomingValue(i);
+				incoming.id = get_id_for_value(value);
+				phi.incoming.push_back(incoming);
+			}
 		}
 
-		block->ir.phi.push_back(std::move(phi));
+		if (phi.incoming.empty())
+		{
+			LOGE("PHI instruction has zero incoming blocks.\n");
+			return false;
+		}
+
+		if (phi.incoming.size() > 1)
+			block->ir.phi.push_back(std::move(phi));
+		else
+			rewrite_value(&instruction, phi.incoming.front().id);
 	}
 
 	return true;
@@ -5869,6 +5884,21 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 
 	unsigned fake_label_id = 0;
 
+	const auto queue_visit_succ = [&](llvm::BasicBlock *block, llvm::BasicBlock *succ) {
+		if (!bb_map.count(succ))
+		{
+			to_process.push_back(succ);
+			auto succ_meta = std::make_unique<BlockMeta>(succ);
+			bb_map[succ] = succ_meta.get();
+			auto *succ_node = pool.create_node();
+			bb_map[succ]->node = succ_node;
+			succ_node->name = dxil_spv::to_string(++fake_label_id);
+			metas.push_back(std::move(succ_meta));
+		}
+
+		bb_map[block]->node->add_branch(bb_map[succ]->node);
+	};
+
 	// Traverse the CFG and register all blocks in the pool.
 	while (!to_process.empty())
 	{
@@ -5876,22 +5906,24 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		for (auto *block : processing)
 		{
 			visit_order.push_back(block);
-			for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
-			{
-				auto *succ = *itr;
-				if (!bb_map.count(succ))
-				{
-					to_process.push_back(succ);
-					auto succ_meta = std::make_unique<BlockMeta>(succ);
-					bb_map[succ] = succ_meta.get();
-					auto *succ_node = pool.create_node();
-					bb_map[succ]->node = succ_node;
-					succ_node->name = dxil_spv::to_string(++fake_label_id);
-					metas.push_back(std::move(succ_meta));
-				}
 
-				bb_map[block]->node->add_branch(bb_map[succ]->node);
+			auto *term = block->getTerminator();
+			if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(term))
+			{
+				if (inst->isConditional())
+				{
+					bool cond_value;
+					if (can_optimize_conditional_branch_to_static(*this, inst->getCondition(), cond_value))
+					{
+						auto *succ = inst->getSuccessor(cond_value ? 0 : 1);
+						queue_visit_succ(block, succ);
+						continue;
+					}
+				}
 			}
+
+			for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
+				queue_visit_succ(block, *itr);
 		}
 		processing.clear();
 	}
@@ -5978,26 +6010,36 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 
 			if (inst->isConditional())
 			{
-				node->ir.terminator.type = Terminator::Type::Condition;
-				node->ir.terminator.conditional_id = get_id_for_value(inst->getCondition());
-				assert(inst->getNumSuccessors() == 2);
-				node->ir.terminator.true_block = bb_map[inst->getSuccessor(0)]->node;
-				node->ir.terminator.false_block = bb_map[inst->getSuccessor(1)]->node;
-
-				if (options.branch_control.use_shader_metadata)
+				// Works around some pathological unrolling scenarios where games may unroll based on WaveGetLaneCount().
+				bool cond_value;
+				if (can_optimize_conditional_branch_to_static(*this, inst->getCondition(), cond_value))
 				{
-					auto *branch_meta = inst->getMetadata("dx.controlflow.hints");
-					if (branch_meta && branch_meta->getNumOperands() >= 3)
+					node->ir.terminator.type = Terminator::Type::Branch;
+					node->ir.terminator.direct_block = bb_map[inst->getSuccessor(cond_value ? 0 : 1)]->node;
+				}
+				else
+				{
+					node->ir.terminator.type = Terminator::Type::Condition;
+					node->ir.terminator.conditional_id = get_id_for_value(inst->getCondition());
+					assert(inst->getNumSuccessors() == 2);
+					node->ir.terminator.true_block = bb_map[inst->getSuccessor(0)]->node;
+					node->ir.terminator.false_block = bb_map[inst->getSuccessor(1)]->node;
+
+					if (options.branch_control.use_shader_metadata)
 					{
-						if (get_constant_metadata(branch_meta, 2) == 1)
+						auto *branch_meta = inst->getMetadata("dx.controlflow.hints");
+						if (branch_meta && branch_meta->getNumOperands() >= 3)
 						{
-							node->ir.terminator.force_branch = true;
-							node->ir.terminator.force_flatten = false;
-						}
-						else if (get_constant_metadata(branch_meta, 2) == 2)
-						{
-							node->ir.terminator.force_flatten = true;
-							node->ir.terminator.force_branch = false;
+							if (get_constant_metadata(branch_meta, 2) == 1)
+							{
+								node->ir.terminator.force_branch = true;
+								node->ir.terminator.force_flatten = false;
+							}
+							else if (get_constant_metadata(branch_meta, 2) == 2)
+							{
+								node->ir.terminator.force_flatten = true;
+								node->ir.terminator.force_branch = false;
+							}
 						}
 					}
 				}
@@ -6780,6 +6822,14 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.branch_control.force_unroll = c.force_unroll;
 		options.branch_control.force_loop = c.force_loop;
 		options.branch_control.force_flatten = c.force_flatten;
+		break;
+	}
+
+	case Option::SubgroupProperties:
+	{
+		auto &c = static_cast<const OptionSubgroupProperties &>(cap);
+		options.subgroup_size.implementation_minimum = c.minimum_size;
+		options.subgroup_size.implementation_maximum = c.maximum_size;
 		break;
 	}
 

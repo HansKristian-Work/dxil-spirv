@@ -167,7 +167,8 @@ static void print_help()
 	     "\t[--force-flatten]\n"
 	     "\t[--force-loop]\n"
 	     "\t[--force-branch]\n"
-	     "\t[--force-unroll]\n");
+	     "\t[--force-unroll]\n"
+	     "\t[--subgroup-size minimum maximum]\n");
 }
 
 struct Arguments
@@ -211,6 +212,8 @@ struct Arguments
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
 	unsigned physical_address_indexing_offset = 0;
+	unsigned subgroup_size_minimum = 4;
+	unsigned subgroup_size_maximum = 128;
 
 	bool descriptor_qa = false;
 	uint32_t descriptor_qa_set = 0;
@@ -767,6 +770,10 @@ int main(int argc, char **argv)
 	cbs.add("--force-branch", [&](CLIParser &) {
 		args.force_branch = true;
 	});
+	cbs.add("--subgroup-size", [&](CLIParser &parser) {
+		args.subgroup_size_minimum = parser.next_uint();
+		args.subgroup_size_maximum = parser.next_uint();
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1033,6 +1040,12 @@ int main(int argc, char **argv)
 		branch.force_unroll = args.force_unroll ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 		branch.force_branch = args.force_branch ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 		dxil_spv_converter_add_option(converter, &branch.base);
+	}
+
+	{
+		const dxil_spv_option_subgroup_properties props = { { DXIL_SPV_OPTION_SUBGROUP_PROPERTIES },
+		                                                    args.subgroup_size_minimum, args.subgroup_size_maximum };
+		dxil_spv_converter_add_option(converter, &props.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

@@ -1125,6 +1125,17 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_SUBGROUP_PROPERTIES:
+	{
+		OptionSubgroupProperties helper;
+		auto *sub = reinterpret_cast<const dxil_spv_option_subgroup_properties *>(option);
+		helper.minimum_size = sub->minimum_size;
+		helper.maximum_size = sub->maximum_size;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

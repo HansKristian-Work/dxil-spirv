@@ -1,0 +1,20 @@
+RWStructuredBuffer<float4> U : register(u0);
+
+groupshared float4 foo[64];
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	uint count = 256 / WaveGetLaneCount();
+	uint i;
+
+	[unroll]
+	for (i = 0; i < count; i++)
+		foo[i] = float4(0, 1, 2, 3) + float(i) * 4.0;
+
+	GroupMemoryBarrierWithGroupSync();
+
+	for (i = 0; i < count; i++)
+		U[thr] = foo[i];
+
+}

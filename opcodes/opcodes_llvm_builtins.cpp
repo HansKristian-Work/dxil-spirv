@@ -1684,6 +1684,63 @@ bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *ins
 	return true;
 }
 
+bool can_optimize_conditional_branch_to_static(
+    Converter::Impl &impl, const llvm::Value *value, bool &static_cond)
+{
+	// Can be expanded as needed.
+	// For now, search for common exhaustive loop unrolling patterns that DXC farts out.
+	// Expect pattern of:
+	// lower_bounded_expression > constant.
+	// In the shader we've seen, we have: constant / WaveGetLaneCount(), which
+	// we must narrow the bound of to avoid generating invalid code.
+	const auto *comp_inst = llvm::dyn_cast<llvm::CmpInst>(value);
+	if (!comp_inst)
+		return false;
+
+	if (comp_inst->getPredicate() != llvm::CmpInst::Predicate::ICMP_UGT)
+		return false;
+
+	const auto *rhs = llvm::dyn_cast<llvm::ConstantInt>(comp_inst->getOperand(1));
+	if (!rhs)
+		return false;
+
+	uint64_t rhs_value = rhs->getUniqueInteger().getZExtValue();
+
+	const auto *lhs = llvm::dyn_cast<llvm::BinaryOperator>(comp_inst->getOperand(0));
+	if (!lhs)
+		return false;
+
+	if (lhs->getOpcode() != llvm::BinaryOperator::BinaryOps::UDiv)
+		return false;
+
+	const auto *num = llvm::dyn_cast<llvm::ConstantInt>(lhs->getOperand(0));
+	if (!num)
+		return false;
+	if (!value_is_dx_op_instrinsic(lhs->getOperand(1), DXIL::Op::WaveGetLaneCount))
+		return false;
+
+	uint64_t upper_bound =
+	    num->getUniqueInteger().getZExtValue() / impl.options.subgroup_size.implementation_minimum;
+	uint64_t lower_bound =
+		num->getUniqueInteger().getZExtValue() / impl.options.subgroup_size.implementation_maximum;
+
+	if (lower_bound > rhs_value)
+	{
+		static_cond = true;
+		return true;
+	}
+	else if (rhs_value >= upper_bound)
+	{
+		static_cond = false;
+		return true;
+	}
+	else
+	{
+		static_cond = false;
+		return false;
+	}
+}
+
 bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instruction)
 {
 	if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))

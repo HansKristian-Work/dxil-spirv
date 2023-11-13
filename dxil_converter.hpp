@@ -248,6 +248,7 @@ enum class Option : uint32_t
 	SampleGradOptimizationControl = 31,
 	OpacityMicromap = 32,
 	BranchControl = 33,
+	SubgroupProperties = 34,
 	Count
 };
 
@@ -625,6 +626,17 @@ struct OptionBranchControl : OptionBase
 	bool force_loop = false;
 	bool force_flatten = false;
 	bool force_branch = false;
+};
+
+struct OptionSubgroupProperties : OptionBase
+{
+	OptionSubgroupProperties()
+		: OptionBase(Option::SubgroupProperties)
+	{
+	}
+
+	unsigned minimum_size = 4;
+	unsigned maximum_size = 128;
 };
 
 struct DescriptorTableEntry

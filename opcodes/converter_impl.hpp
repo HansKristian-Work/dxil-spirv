@@ -598,6 +598,12 @@ struct Converter::Impl
 			bool force_flatten = false;
 			bool force_branch = false;
 		} branch_control;
+
+		struct
+		{
+			unsigned implementation_minimum = 4;
+			unsigned implementation_maximum = 128;
+		} subgroup_size;
 	} options;
 
 	struct BindlessInfo
