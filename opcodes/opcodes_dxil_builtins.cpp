@@ -1141,20 +1141,8 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		// See D3D11 functional spec: 7.14.4 Global vs Group/Local Coherency on Non-Atomic UAV Reads.
 		// In the GLSL memory model, we need coherent between invocations in general.
 		// There is no guarantee for intra-workgroup coherence sadly :(
-		auto barrier_op = static_cast<DXIL::BarrierMode>(operation);
-		switch (barrier_op)
-		{
-		case DXIL::BarrierMode::DeviceMemoryBarrier:
-		case DXIL::BarrierMode::DeviceMemoryBarrierWithGroupSync:
-		case DXIL::BarrierMode::AllMemoryBarrier:
-		case DXIL::BarrierMode::AllMemoryBarrierWithGroupSync:
+		if ((operation & (DXIL::AccessUAVThreadGroup | DXIL::AccessUAVGlobal)) != 0)
 			impl.shader_analysis.require_uav_thread_group_coherence = true;
-			break;
-
-		default:
-			break;
-		}
-
 		break;
 	}
 

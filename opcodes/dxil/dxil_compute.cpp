@@ -37,66 +37,27 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		return false;
 
 	// Match DXC SPIR-V output here.
-	Operation *op = nullptr;
+	bool is_sync = (operation & DXIL::SyncThreadGroup) != 0;
+	auto *op = impl.allocate(is_sync ? spv::OpControlBarrier : spv::OpMemoryBarrier);
+
+	if (is_sync)
+		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
 
 	// We might only need to ensure coherency within the workgroup, in which case we can narrow the scope.
-	spv::Scope uav_memory_scope = impl.execution_mode_meta.declares_globallycoherent_uav ?
-	                              spv::ScopeDevice : spv::ScopeWorkgroup;
+	// DXC emits AccessUAVGlobal all the time, so try to demote to UAVThreadGroup when appropriate.
+	spv::Scope memory_scope;
+	if ((operation & DXIL::AccessUAVGlobal) != 0 && impl.execution_mode_meta.declares_globallycoherent_uav)
+		memory_scope = spv::ScopeDevice;
+	else
+		memory_scope = spv::ScopeWorkgroup;
+	op->add_id(builder.makeUintConstant(memory_scope));
 
-	switch (static_cast<DXIL::BarrierMode>(operation))
-	{
-	case DXIL::BarrierMode::DeviceMemoryBarrierWithGroupSync:
-		op = impl.allocate(spv::OpControlBarrier);
-		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(builder.makeUintConstant(uav_memory_scope));
-		op->add_id(
-			builder.makeUintConstant(spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask |
-		                             spv::MemorySemanticsAcquireReleaseMask));
-		break;
-
-	case DXIL::BarrierMode::GroupMemoryBarrierWithGroupSync:
-		op = impl.allocate(spv::OpControlBarrier);
-		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(
-		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
-		break;
-
-	case DXIL::BarrierMode::AllMemoryBarrierWithGroupSync:
-		op = impl.allocate(spv::OpControlBarrier);
-		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(builder.makeUintConstant(uav_memory_scope));
-		op->add_id(
-		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsImageMemoryMask |
-		                             spv::MemorySemanticsUniformMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
-		break;
-
-	case DXIL::BarrierMode::DeviceMemoryBarrier:
-		op = impl.allocate(spv::OpMemoryBarrier);
-		op->add_id(builder.makeUintConstant(uav_memory_scope));
-		op->add_id(
-			builder.makeUintConstant(spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask |
-		                             spv::MemorySemanticsAcquireReleaseMask));
-		break;
-
-	case DXIL::BarrierMode::GroupMemoryBarrier:
-		op = impl.allocate(spv::OpMemoryBarrier);
-		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-		op->add_id(
-		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
-		break;
-
-	case DXIL::BarrierMode::AllMemoryBarrier:
-		op = impl.allocate(spv::OpMemoryBarrier);
-		op->add_id(builder.makeUintConstant(uav_memory_scope));
-		op->add_id(
-		    builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsImageMemoryMask |
-		                             spv::MemorySemanticsUniformMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
-		break;
-
-	default:
-		return false;
-	}
+	uint32_t semantics = spv::MemorySemanticsAcquireReleaseMask;
+	if ((operation & (DXIL::AccessUAVGlobal | DXIL::AccessUAVThreadGroup)) != 0)
+		semantics |= spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask;
+	if ((operation & DXIL::AccessGroupShared) != 0)
+		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
+	op->add_id(builder.makeUintConstant(semantics));
 
 	impl.add(op);
 	return true;

@@ -494,15 +494,12 @@ enum class GSStageOutTags : uint32_t
 	Invalid
 };
 
-enum class BarrierMode : uint8_t
+enum BarrierModeBits : uint8_t
 {
-	Invalid = 0,
-	DeviceMemoryBarrier = 2,
-	GroupMemoryBarrier = 8,
-	AllMemoryBarrier = 10,
-	DeviceMemoryBarrierWithGroupSync = 3,
-	GroupMemoryBarrierWithGroupSync = 9,
-	AllMemoryBarrierWithGroupSync = 11
+	SyncThreadGroup = 1 << 0,
+	AccessUAVGlobal = 1 << 1,
+	AccessUAVThreadGroup = 1 << 2,
+	AccessGroupShared = 1 << 3
 };
 
 enum class AddressSpace : uint8_t
