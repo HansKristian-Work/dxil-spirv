@@ -540,6 +540,27 @@ static spv::Id build_descriptor_qa_check(Converter::Impl &impl, spv::Id offset_i
 	return call_op->id;
 }
 
+static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id offset_id)
+{
+	auto &builder = impl.builder();
+	auto *op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
+	op->add_id(impl.descriptor_heap_robustness_var_id);
+	op->add_literal(0);
+	impl.add(op);
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+	clamp_op->add_id(impl.glsl_std450_ext);
+	clamp_op->add_literal(GLSLstd450UMin);
+	clamp_op->add_id(offset_id);
+	clamp_op->add_id(op->id);
+	impl.add(clamp_op);
+
+	return clamp_op->id;
+}
+
 static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
                                           const Converter::Impl::ResourceReference &reference,
                                           DescriptorQATypeFlags type,
@@ -562,6 +583,8 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 
 	if (impl.options.descriptor_qa_enabled)
 		offset_id = build_descriptor_qa_check(impl, offset_id, type);
+	else if (type != DESCRIPTOR_QA_TYPE_SAMPLER_BIT && dynamic_offset && impl.descriptor_heap_robustness_var_id)
+		offset_id = build_descriptor_heap_robustness(impl, offset_id);
 
 	return offset_id;
 }

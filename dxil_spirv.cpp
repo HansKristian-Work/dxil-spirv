@@ -168,7 +168,8 @@ static void print_help()
 	     "\t[--force-loop]\n"
 	     "\t[--force-branch]\n"
 	     "\t[--force-unroll]\n"
-	     "\t[--subgroup-size minimum maximum]\n");
+	     "\t[--subgroup-size minimum maximum]\n"
+	     "\t[--descriptor-heap-robustness]\n");
 }
 
 struct Arguments
@@ -208,6 +209,7 @@ struct Arguments
 	bool force_loop = false;
 	bool force_branch = false;
 	bool force_unroll = false;
+	bool descriptor_heap_robustness = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -774,6 +776,9 @@ int main(int argc, char **argv)
 		args.subgroup_size_minimum = parser.next_uint();
 		args.subgroup_size_maximum = parser.next_uint();
 	});
+	cbs.add("--descriptor-heap-robustness", [&](CLIParser &parser) {
+		args.descriptor_heap_robustness = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1046,6 +1051,13 @@ int main(int argc, char **argv)
 		const dxil_spv_option_subgroup_properties props = { { DXIL_SPV_OPTION_SUBGROUP_PROPERTIES },
 		                                                    args.subgroup_size_minimum, args.subgroup_size_maximum };
 		dxil_spv_converter_add_option(converter, &props.base);
+	}
+
+	if (args.descriptor_heap_robustness)
+	{
+		const dxil_spv_option_descriptor_heap_robustness robustness = { { DXIL_SPV_OPTION_DESCRIPTOR_HEAP_ROBUSTNESS },
+			                                                            DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &robustness.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

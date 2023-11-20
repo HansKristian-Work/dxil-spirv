@@ -2655,6 +2655,61 @@ uint32_t Converter::Impl::find_binding_meta_index(uint32_t binding_range_lo, uin
 	return UINT32_MAX;
 }
 
+bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
+{
+	// We need to know the size of the descriptor heap. Rather than passing this
+	// through a separate descriptor, we can just query the SSBO size of the
+	// side-band SSBO. It is designed to have a size equal to the descriptor heap.
+	// Somewhat hacky is that we can ask for a global heap of RTAS, which gets us this descriptor.
+	D3DBinding d3d_binding = {
+		get_remapping_stage(execution_model), DXIL::ResourceKind::RTAccelerationStructure, 0,
+		UINT32_MAX, UINT32_MAX, UINT32_MAX, 0,
+	};
+	VulkanSRVBinding vulkan_binding = {};
+
+	if (!resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
+		return false;
+
+	if (vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO &&
+	    vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::Identity)
+	{
+		LOGE("Dummy SSBO must be an SSBO.\n");
+		return false;
+	}
+
+	if (options.physical_address_descriptor_stride == 0)
+	{
+		LOGE("physical_address_descriptor_stride must be set.\n");
+		return false;
+	}
+
+	spv::Id u32_type = builder().makeUintType(32);
+	spv::Id u32_array_type = builder().makeArrayType(
+	    u32_type, builder().makeUintConstant(options.physical_address_descriptor_stride * 2), 0);
+	builder().addDecoration(u32_array_type, spv::DecorationArrayStride, 4);
+
+	spv::Id inner_struct_type = get_struct_type({ u32_array_type }, "DescriptorHeapRawPayload");
+	builder().addMemberDecoration(inner_struct_type, 0, spv::DecorationOffset, 0);
+
+	spv::Id inner_struct_array_type = builder().makeRuntimeArray(inner_struct_type);
+	builder().addDecoration(inner_struct_array_type, spv::DecorationArrayStride, 8u * options.physical_address_descriptor_stride);
+
+	spv::Id block_type_id = get_struct_type({ inner_struct_array_type }, "DescriptorHeapRobustnessSSBO");
+	builder().addDecoration(block_type_id, spv::DecorationBlock);
+	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
+	builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
+	builder().addMemberName(block_type_id, 0, "descriptors");
+	spv::Id var_id = create_variable(spv::StorageClassStorageBuffer, block_type_id, "DescriptorHeapRobustness");
+
+	builder().addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
+	builder().addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
+
+	// Take OpArrayLength of this variable's first member and we have it.
+	descriptor_heap_robustness_var_id = var_id;
+	return true;
+}
+
 bool Converter::Impl::emit_global_heaps()
 {
 	Vector<AnnotateHandleReference *> annotations;
@@ -2900,6 +2955,8 @@ bool Converter::Impl::emit_resources()
 			return false;
 
 	emit_global_heaps();
+	if (options.descriptor_heap_robustness && !emit_descriptor_heap_dummy_ssbo())
+		return false;
 
 	auto &module = bitcode_parser.get_module();
 	auto *resource_meta = module.getNamedMetadata("dx.resources");
@@ -6830,6 +6887,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		auto &c = static_cast<const OptionSubgroupProperties &>(cap);
 		options.subgroup_size.implementation_minimum = c.minimum_size;
 		options.subgroup_size.implementation_maximum = c.maximum_size;
+		break;
+	}
+
+	case Option::DescriptorHeapRobustness:
+	{
+		auto &c = static_cast<const OptionDescriptorHeapRobustness &>(cap);
+		options.descriptor_heap_robustness = c.enabled;
 		break;
 	}
 

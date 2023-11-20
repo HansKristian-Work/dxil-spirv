@@ -1136,6 +1136,16 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_DESCRIPTOR_HEAP_ROBUSTNESS:
+	{
+		OptionDescriptorHeapRobustness helper;
+		auto *rob = reinterpret_cast<const dxil_spv_option_descriptor_heap_robustness *>(option);
+		helper.enabled = rob->enabled;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

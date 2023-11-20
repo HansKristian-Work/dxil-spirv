@@ -249,6 +249,7 @@ enum class Option : uint32_t
 	OpacityMicromap = 32,
 	BranchControl = 33,
 	SubgroupProperties = 34,
+	DescriptorHeapRobustness = 35,
 	Count
 };
 
@@ -637,6 +638,16 @@ struct OptionSubgroupProperties : OptionBase
 
 	unsigned minimum_size = 4;
 	unsigned maximum_size = 128;
+};
+
+struct OptionDescriptorHeapRobustness : OptionBase
+{
+	OptionDescriptorHeapRobustness()
+		: OptionBase(Option::DescriptorHeapRobustness)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry

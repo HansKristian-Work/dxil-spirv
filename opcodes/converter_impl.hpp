@@ -325,6 +325,7 @@ struct Converter::Impl
 	bool emit_resources_global_mapping(DXIL::ResourceType type, const llvm::MDNode *node);
 	bool emit_resources();
 	bool emit_global_heaps();
+	bool emit_descriptor_heap_dummy_ssbo();
 	bool emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *refl);
 	bool emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *refl);
 	bool emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *refl);
@@ -401,6 +402,7 @@ struct Converter::Impl
 	unsigned patch_location_offset = 0;
 	unsigned descriptor_qa_counter = 0;
 	spv::Id primitive_index_array_id = 0;
+	spv::Id descriptor_heap_robustness_var_id = 0;
 
 	struct PhysicalPointerMeta
 	{
@@ -580,6 +582,7 @@ struct Converter::Impl
 		bool eliminate_dead_code = false;
 		bool propagate_precise = false;
 		bool force_precise = false;
+		bool descriptor_heap_robustness = false;
 		struct
 		{
 			bool enabled = false;
