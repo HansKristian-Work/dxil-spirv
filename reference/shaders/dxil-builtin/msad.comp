@@ -1,0 +1,233 @@
+#version 460
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform usamplerBuffer _8;
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _11;
+
+void main()
+{
+    uint _21 = gl_GlobalInvocationID.x * 4u;
+    uvec4 _38 = uvec4(texelFetch(_8, int(_21)).x, texelFetch(_8, int(_21 + 1u)).x, texelFetch(_8, int(_21 + 2u)).x, texelFetch(_8, int(_21 + 3u)).x);
+    uint _39 = _38.w;
+    uint _40 = _38.y;
+    uint _41 = _38.z;
+    uint _42 = _38.x;
+    uint _47 = 24u & 31u;
+    uint _53 = bitfieldInsert(_40 >> 8u, _41, int(_47), int(min((8u & 31u), (32u - _47))));
+    uint _57 = 16u & 31u;
+    uint _60 = bitfieldInsert(_40 >> 16u, _41, int(_57), int(min((16u & 31u), (32u - _57))));
+    uint _63 = 8u & 31u;
+    uint _66 = bitfieldInsert(_40 >> 24u, _41, int(_63), int(min((24u & 31u), (32u - _63))));
+    uvec4 _77 = uvec4(bitfieldExtract(_42, int(0u), int(8u)), bitfieldExtract(_42, int(8u), int(8u)), bitfieldExtract(_42, int(16u), int(8u)), bitfieldExtract(_42, int(24u), int(8u)));
+    uvec4 _83 = mix(uvec4(abs(ivec4(_77 - uvec4(bitfieldExtract(_40, int(0u), int(8u)), bitfieldExtract(_40, int(8u), int(8u)), bitfieldExtract(_40, int(16u), int(8u)), bitfieldExtract(_40, int(24u), int(8u)))))), uvec4(0u), equal(_77, uvec4(0u)));
+    uvec4 _100 = uvec4(bitfieldExtract(_42, int(0u), int(8u)), bitfieldExtract(_42, int(8u), int(8u)), bitfieldExtract(_42, int(16u), int(8u)), bitfieldExtract(_42, int(24u), int(8u)));
+    uvec4 _106 = mix(uvec4(abs(ivec4(_100 - uvec4(bitfieldExtract(_53, int(0u), int(8u)), bitfieldExtract(_53, int(8u), int(8u)), bitfieldExtract(_53, int(16u), int(8u)), bitfieldExtract(_53, int(24u), int(8u)))))), uvec4(0u), equal(_100, uvec4(0u)));
+    uvec4 _123 = uvec4(bitfieldExtract(_42, int(0u), int(8u)), bitfieldExtract(_42, int(8u), int(8u)), bitfieldExtract(_42, int(16u), int(8u)), bitfieldExtract(_42, int(24u), int(8u)));
+    uvec4 _129 = mix(uvec4(abs(ivec4(_123 - uvec4(bitfieldExtract(_60, int(0u), int(8u)), bitfieldExtract(_60, int(8u), int(8u)), bitfieldExtract(_60, int(16u), int(8u)), bitfieldExtract(_60, int(24u), int(8u)))))), uvec4(0u), equal(_123, uvec4(0u)));
+    uvec4 _146 = uvec4(bitfieldExtract(_42, int(0u), int(8u)), bitfieldExtract(_42, int(8u), int(8u)), bitfieldExtract(_42, int(16u), int(8u)), bitfieldExtract(_42, int(24u), int(8u)));
+    uvec4 _152 = mix(uvec4(abs(ivec4(_146 - uvec4(bitfieldExtract(_66, int(0u), int(8u)), bitfieldExtract(_66, int(8u), int(8u)), bitfieldExtract(_66, int(16u), int(8u)), bitfieldExtract(_66, int(24u), int(8u)))))), uvec4(0u), equal(_146, uvec4(0u)));
+    uint _161 = gl_GlobalInvocationID.x * 4u;
+    imageStore(_11, int(_161), uvec4(_39 + (((_83.x + _83.y) + _83.z) + _83.w)));
+    imageStore(_11, int(_161 + 1u), uvec4(_39 + (((_106.x + _106.y) + _106.z) + _106.w)));
+    imageStore(_11, int(_161 + 2u), uvec4(_39 + (((_129.x + _129.y) + _129.z) + _129.w)));
+    imageStore(_11, int(_161 + 3u), uvec4(_39 + (((_152.x + _152.y) + _152.z) + _152.w)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 171
+; Schema: 0
+OpCapability Shader
+OpCapability SampledBuffer
+OpCapability ImageBuffer
+%52 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %16
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 0
+OpDecorate %11 NonReadable
+OpDecorate %16 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 1 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%10 = OpTypePointer UniformConstant %9
+%11 = OpVariable %10 UniformConstant
+%14 = OpTypeVector %5 3
+%15 = OpTypePointer Input %14
+%16 = OpVariable %15 Input
+%17 = OpTypePointer Input %5
+%19 = OpConstant %5 0
+%22 = OpConstant %5 4
+%23 = OpTypeVector %5 4
+%28 = OpConstant %5 1
+%32 = OpConstant %5 2
+%36 = OpConstant %5 3
+%44 = OpConstant %5 8
+%46 = OpConstant %5 31
+%48 = OpConstant %5 24
+%50 = OpConstant %5 32
+%55 = OpConstant %5 16
+%67 = OpTypeBool
+%68 = OpTypeVector %67 4
+%79 = OpConstantNull %23
+%102 = OpConstantNull %23
+%125 = OpConstantNull %23
+%148 = OpConstantNull %23
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %169
+%169 = OpLabel
+%12 = OpLoad %9 %11
+%13 = OpLoad %6 %8
+%18 = OpAccessChain %17 %16 %19
+%20 = OpLoad %5 %18
+%21 = OpIMul %5 %20 %22
+%24 = OpImageFetch %23 %13 %21
+%25 = OpCompositeExtract %5 %24 0
+%27 = OpIAdd %5 %21 %28
+%26 = OpImageFetch %23 %13 %27
+%29 = OpCompositeExtract %5 %26 0
+%31 = OpIAdd %5 %21 %32
+%30 = OpImageFetch %23 %13 %31
+%33 = OpCompositeExtract %5 %30 0
+%35 = OpIAdd %5 %21 %36
+%34 = OpImageFetch %23 %13 %35
+%37 = OpCompositeExtract %5 %34 0
+%38 = OpCompositeConstruct %23 %25 %29 %33 %37
+%39 = OpCompositeExtract %5 %38 3
+%40 = OpCompositeExtract %5 %38 1
+%41 = OpCompositeExtract %5 %38 2
+%42 = OpCompositeExtract %5 %38 0
+%43 = OpShiftRightLogical %5 %40 %44
+%45 = OpBitwiseAnd %5 %44 %46
+%47 = OpBitwiseAnd %5 %48 %46
+%49 = OpISub %5 %50 %47
+%51 = OpExtInst %5 %52 UMin %45 %49
+%53 = OpBitFieldInsert %5 %43 %41 %47 %51
+%54 = OpShiftRightLogical %5 %40 %55
+%56 = OpBitwiseAnd %5 %55 %46
+%57 = OpBitwiseAnd %5 %55 %46
+%58 = OpISub %5 %50 %57
+%59 = OpExtInst %5 %52 UMin %56 %58
+%60 = OpBitFieldInsert %5 %54 %41 %57 %59
+%61 = OpShiftRightLogical %5 %40 %48
+%62 = OpBitwiseAnd %5 %48 %46
+%63 = OpBitwiseAnd %5 %44 %46
+%64 = OpISub %5 %50 %63
+%65 = OpExtInst %5 %52 UMin %62 %64
+%66 = OpBitFieldInsert %5 %61 %41 %63 %65
+%69 = OpBitFieldUExtract %5 %42 %19 %44
+%70 = OpBitFieldUExtract %5 %40 %19 %44
+%71 = OpBitFieldUExtract %5 %42 %44 %44
+%72 = OpBitFieldUExtract %5 %40 %44 %44
+%73 = OpBitFieldUExtract %5 %42 %55 %44
+%74 = OpBitFieldUExtract %5 %40 %55 %44
+%75 = OpBitFieldUExtract %5 %42 %48 %44
+%76 = OpBitFieldUExtract %5 %40 %48 %44
+%77 = OpCompositeConstruct %23 %69 %71 %73 %75
+%78 = OpCompositeConstruct %23 %70 %72 %74 %76
+%80 = OpIEqual %68 %77 %79
+%81 = OpISub %23 %77 %78
+%82 = OpExtInst %23 %52 SAbs %81
+%83 = OpSelect %23 %80 %79 %82
+%84 = OpCompositeExtract %5 %83 0
+%85 = OpCompositeExtract %5 %83 1
+%86 = OpIAdd %5 %84 %85
+%87 = OpCompositeExtract %5 %83 2
+%88 = OpIAdd %5 %86 %87
+%89 = OpCompositeExtract %5 %83 3
+%90 = OpIAdd %5 %88 %89
+%91 = OpIAdd %5 %39 %90
+%92 = OpBitFieldUExtract %5 %42 %19 %44
+%93 = OpBitFieldUExtract %5 %53 %19 %44
+%94 = OpBitFieldUExtract %5 %42 %44 %44
+%95 = OpBitFieldUExtract %5 %53 %44 %44
+%96 = OpBitFieldUExtract %5 %42 %55 %44
+%97 = OpBitFieldUExtract %5 %53 %55 %44
+%98 = OpBitFieldUExtract %5 %42 %48 %44
+%99 = OpBitFieldUExtract %5 %53 %48 %44
+%100 = OpCompositeConstruct %23 %92 %94 %96 %98
+%101 = OpCompositeConstruct %23 %93 %95 %97 %99
+%103 = OpIEqual %68 %100 %102
+%104 = OpISub %23 %100 %101
+%105 = OpExtInst %23 %52 SAbs %104
+%106 = OpSelect %23 %103 %102 %105
+%107 = OpCompositeExtract %5 %106 0
+%108 = OpCompositeExtract %5 %106 1
+%109 = OpIAdd %5 %107 %108
+%110 = OpCompositeExtract %5 %106 2
+%111 = OpIAdd %5 %109 %110
+%112 = OpCompositeExtract %5 %106 3
+%113 = OpIAdd %5 %111 %112
+%114 = OpIAdd %5 %39 %113
+%115 = OpBitFieldUExtract %5 %42 %19 %44
+%116 = OpBitFieldUExtract %5 %60 %19 %44
+%117 = OpBitFieldUExtract %5 %42 %44 %44
+%118 = OpBitFieldUExtract %5 %60 %44 %44
+%119 = OpBitFieldUExtract %5 %42 %55 %44
+%120 = OpBitFieldUExtract %5 %60 %55 %44
+%121 = OpBitFieldUExtract %5 %42 %48 %44
+%122 = OpBitFieldUExtract %5 %60 %48 %44
+%123 = OpCompositeConstruct %23 %115 %117 %119 %121
+%124 = OpCompositeConstruct %23 %116 %118 %120 %122
+%126 = OpIEqual %68 %123 %125
+%127 = OpISub %23 %123 %124
+%128 = OpExtInst %23 %52 SAbs %127
+%129 = OpSelect %23 %126 %125 %128
+%130 = OpCompositeExtract %5 %129 0
+%131 = OpCompositeExtract %5 %129 1
+%132 = OpIAdd %5 %130 %131
+%133 = OpCompositeExtract %5 %129 2
+%134 = OpIAdd %5 %132 %133
+%135 = OpCompositeExtract %5 %129 3
+%136 = OpIAdd %5 %134 %135
+%137 = OpIAdd %5 %39 %136
+%138 = OpBitFieldUExtract %5 %42 %19 %44
+%139 = OpBitFieldUExtract %5 %66 %19 %44
+%140 = OpBitFieldUExtract %5 %42 %44 %44
+%141 = OpBitFieldUExtract %5 %66 %44 %44
+%142 = OpBitFieldUExtract %5 %42 %55 %44
+%143 = OpBitFieldUExtract %5 %66 %55 %44
+%144 = OpBitFieldUExtract %5 %42 %48 %44
+%145 = OpBitFieldUExtract %5 %66 %48 %44
+%146 = OpCompositeConstruct %23 %138 %140 %142 %144
+%147 = OpCompositeConstruct %23 %139 %141 %143 %145
+%149 = OpIEqual %68 %146 %148
+%150 = OpISub %23 %146 %147
+%151 = OpExtInst %23 %52 SAbs %150
+%152 = OpSelect %23 %149 %148 %151
+%153 = OpCompositeExtract %5 %152 0
+%154 = OpCompositeExtract %5 %152 1
+%155 = OpIAdd %5 %153 %154
+%156 = OpCompositeExtract %5 %152 2
+%157 = OpIAdd %5 %155 %156
+%158 = OpCompositeExtract %5 %152 3
+%159 = OpIAdd %5 %157 %158
+%160 = OpIAdd %5 %39 %159
+%161 = OpIMul %5 %20 %22
+%162 = OpCompositeConstruct %23 %91 %91 %91 %91
+OpImageWrite %12 %161 %162
+%163 = OpCompositeConstruct %23 %114 %114 %114 %114
+%164 = OpIAdd %5 %161 %28
+OpImageWrite %12 %164 %163
+%165 = OpCompositeConstruct %23 %137 %137 %137 %137
+%166 = OpIAdd %5 %161 %32
+OpImageWrite %12 %166 %165
+%167 = OpCompositeConstruct %23 %160 %160 %160 %160
+%168 = OpIAdd %5 %161 %36
+OpImageWrite %12 %168 %167
+OpReturn
+OpFunctionEnd
+#endif

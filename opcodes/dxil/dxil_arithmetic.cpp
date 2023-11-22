@@ -667,7 +667,9 @@ bool emit_msad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
-	spv::Id uint32_scalar_type = builder.makeIntType(32);
+	// Don't modify this implementation since compilers pattern match this.
+
+	spv::Id uint32_scalar_type = builder.makeUintType(32);
 	spv::Id uint32_vector_type = builder.makeVectorType(uint32_scalar_type, 4);
 	spv::Id bool_type = builder.makeVectorType(builder.makeBoolType(), 4);
 
