@@ -795,6 +795,19 @@ bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
 	// we see in the wild. It's probably safe to block continue merge in far more cases than this, but we
 	// want to be maximally convergent as often as we can.
 
+	for (auto *pred : node->pred)
+	{
+		// This is the merge block of another inner loop, we really need an intermediate merge.
+		if (pred->succ_back_edge && header != pred->succ_back_edge && header->dominates(pred->succ_back_edge))
+			return true;
+	}
+
+	// Plain continue block that does nothing useful. No point merging this.
+	// A continue block's succ is sometimes used to aid analysis and simplify other passes,
+	// use terminator here explicitly.
+	if (node->ir.operations.empty() && node->ir.terminator.type == Terminator::Type::Branch)
+		return false;
+
 	if (header->ir.terminator.type == Terminator::Type::Switch)
 	{
 		// If the loop header is also a switch statement, there can be some nasty edge cases.
@@ -2338,7 +2351,7 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 		// Strong check as well.
 		// If branching directly to continue block like this, this is a non-merging continue,
 		// which we should always consider an escape.
-		if (node->succ_back_edge)
+		if (node->succ.front()->succ_back_edge)
 			return true;
 	}
 
