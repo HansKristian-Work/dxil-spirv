@@ -574,16 +574,22 @@ bool CFGStructurizer::run()
 
 	while (cleanup_breaking_return_constructs())
 	{
-		auto graphviz_split = graphviz_path + ".break-return";
-		log_cfg_graphviz(graphviz_split.c_str());
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".break-return";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
 	}
 
 	create_continue_block_ladders();
 
 	while (serialize_interleaved_merge_scopes())
 	{
-		auto graphviz_split = graphviz_path + ".serialize";
-		log_cfg_graphviz(graphviz_split.c_str());
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".serialize";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
 	}
 
 	split_merge_scopes();
@@ -620,8 +626,11 @@ bool CFGStructurizer::run()
 
 	while (rewrite_transposed_loops())
 	{
-		auto graphviz_split = graphviz_path + ".transpose-loop-rewrite";
-		log_cfg_graphviz(graphviz_split.c_str());
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".transpose-loop-rewrite";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
 	}
 
 	//LOGI("=== Structurize pass ===\n");
