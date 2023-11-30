@@ -2427,6 +2427,21 @@ bool CFGStructurizer::block_is_plain_continue(const CFGNode *node)
 	return node->succ_back_edge != nullptr && node != node->succ_back_edge;
 }
 
+const CFGNode *CFGStructurizer::scan_plain_continue_block(const CFGNode *node)
+{
+	auto *base_node = node;
+	while (!block_is_plain_continue(node) &&
+	       base_node->dominates(node) &&
+	       !node->succ_back_edge &&
+	       node->immediate_post_dominator &&
+	       node->immediate_post_dominator != node)
+	{
+		node = node->immediate_post_dominator;
+	}
+
+	return node;
+}
+
 void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 {
 	// Here we deal with selection branches where one path breaks and one path merges.
@@ -2524,19 +2539,23 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 
 				if (tie_break_merge)
 				{
-					bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
-					bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
+					bool a_path_is_break_or_continue =
+						control_flow_is_escaping(node->succ[0], merge) ||
+						block_is_plain_continue(scan_plain_continue_block(node->succ[0]));
+					bool b_path_is_break_or_continue =
+						control_flow_is_escaping(node->succ[1], merge) ||
+						block_is_plain_continue(scan_plain_continue_block(node->succ[1]));
 
-					if (a_path_is_break && b_path_is_break)
+					if (a_path_is_break_or_continue && b_path_is_break_or_continue)
 					{
 						// Both paths break, so we don't need to merge anything. Use Unreachable merge target.
 						node->merge = MergeType::Selection;
 						node->selection_merge_block = nullptr;
 						//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
 					}
-					else if (b_path_is_break)
+					else if (b_path_is_break_or_continue)
 						merge_to_succ(node, 0);
-					else if (a_path_is_break)
+					else if (a_path_is_break_or_continue)
 						merge_to_succ(node, 1);
 					else
 					{
