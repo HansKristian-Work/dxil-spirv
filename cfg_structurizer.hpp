@@ -180,6 +180,7 @@ private:
 	bool rewrite_invalid_loop_breaks();
 	void recompute_cfg();
 	void rewrite_multiple_back_edges();
+	bool rewrite_impossible_back_edges();
 	void compute_dominance_frontier();
 	void compute_post_dominance_frontier();
 	void create_continue_block_ladders();

@@ -542,6 +542,74 @@ void CFGStructurizer::propagate_branch_control_hints()
 	}
 }
 
+bool CFGStructurizer::rewrite_impossible_back_edges()
+{
+	bool did_rewrite = false;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (!node->succ_back_edge)
+			continue;
+
+		// Make sure that the continue block in question branches to the innermost loop header.
+		// If this is not the case, it is not a valid structured CFG.
+		// In unstructured CFG, as long as the continue block cannot reach the back-edge of any inner loop constructs,
+		// it's technically not considered part of their loops, even if the loops dominate it.
+		// Utter nonsense ... >_<
+		// The only viable solution is to transpose out the continue block and use ladder selection
+		// to resolve the control flow.
+
+		auto *header = get_innermost_loop_header_for(node);
+		if (header == node->succ_back_edge)
+			continue;
+
+		// Make sure that we're in valid unstructured control flow. Our node cannot reach any back edge on the way,
+		// meaning it's okay to transpose code. If the continue block can reach us, it means we're already
+		// outside the loop, stop any attempt to transpose.
+		const auto validate_header_suitability = [this, node](const CFGNode *header) {
+			return !query_reachability(*node, *header->pred_back_edge) &&
+			       !query_reachability(*header->pred_back_edge, *node);
+		};
+
+		// Find a more appropriate place to put it.
+		// We want to rewrite the flow so that the continue block lives outside any inner scopes.
+		// The succ of the outer continue block is appropriate.
+		const CFGNode *next_header;
+		while ((next_header = get_innermost_loop_header_for(header->immediate_dominator)) != node->succ_back_edge &&
+		       validate_header_suitability(next_header))
+		{
+			header = next_header;
+		}
+
+		if (next_header != node->succ_back_edge || !validate_header_suitability(header))
+			continue;
+
+		auto *outer_continue = header->pred_back_edge;
+
+		// The outer continue must have a normal succ.
+		if (outer_continue->succ.size() != 1)
+			continue;
+
+		// This succ is now in the loop scope of node->succ_back_edge. We can do the continue construct here.
+		auto *succ = outer_continue->succ.front();
+		auto *ladder = create_helper_pred_block(succ);
+
+		auto orig_preds = node->pred;
+		traverse_dominated_blocks_and_rewrite_branch(node->succ_back_edge, node, ladder);
+		rewrite_ladder_conditional_branch_from_incoming_blocks(
+			ladder, node, succ,
+			[&orig_preds](const CFGNode *n) { return std::find(orig_preds.begin(), orig_preds.end(), n) != orig_preds.end(); },
+			"tranpose_continue_phi");
+
+		did_rewrite = true;
+		break;
+	}
+
+	if (did_rewrite)
+		recompute_cfg();
+	return did_rewrite;
+}
+
 bool CFGStructurizer::run()
 {
 	String graphviz_path;
@@ -629,6 +697,16 @@ bool CFGStructurizer::run()
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_split = graphviz_path + ".transpose-loop-rewrite";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+	}
+
+	// If there are back-edges that punch through multiple loop headers, fix this up.
+	while (rewrite_impossible_back_edges())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".impossible-continue";
 			log_cfg_graphviz(graphviz_split.c_str());
 		}
 	}
