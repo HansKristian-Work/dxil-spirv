@@ -134,6 +134,7 @@ private:
 	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;
 	bool continue_block_can_merge(CFGNode *node) const;
 	static bool block_is_plain_continue(const CFGNode *node);
+	static const CFGNode *scan_plain_continue_block(const CFGNode *node);
 
 	// Create a new block. Rewrite all branches to node from blocks that are dominated by header to that block.
 	// The new block then branches to node.
@@ -180,6 +181,7 @@ private:
 	bool rewrite_invalid_loop_breaks();
 	void recompute_cfg();
 	void rewrite_multiple_back_edges();
+	bool rewrite_impossible_back_edges();
 	void compute_dominance_frontier();
 	void compute_post_dominance_frontier();
 	void create_continue_block_ladders();

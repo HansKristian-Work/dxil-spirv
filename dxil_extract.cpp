@@ -73,6 +73,17 @@ static bool write_file(const char *path, const void *data, size_t size)
 	return ret;
 }
 
+static uint64_t vkd3d_proton_hash_fnv1(const void *data_, size_t size)
+{
+	auto *data = static_cast<const uint8_t *>(data_);
+	uint64_t h = 0xcbf29ce484222325ull;
+
+	for (size_t i = 0; i < size; i++)
+		h = (h * 0x100000001b3ull) ^ data[i];
+
+	return h;
+}
+
 int main(int argc, char **argv)
 {
 	std::string input, output;
@@ -148,6 +159,8 @@ int main(int argc, char **argv)
 			dxil_spv_parsed_blob_get_entry_point_demangled_name(blob, i, &demangled);
 			printf("  %s\n", demangled);
 		}
+		printf("vkd3d-proton hash: %016llx\n",
+		       static_cast<unsigned long long>(vkd3d_proton_hash_fnv1(input_file.data(), input_file.size())));
 		printf("==================\n");
 	}
 

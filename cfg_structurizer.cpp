@@ -542,6 +542,74 @@ void CFGStructurizer::propagate_branch_control_hints()
 	}
 }
 
+bool CFGStructurizer::rewrite_impossible_back_edges()
+{
+	bool did_rewrite = false;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (!node->succ_back_edge)
+			continue;
+
+		// Make sure that the continue block in question branches to the innermost loop header.
+		// If this is not the case, it is not a valid structured CFG.
+		// In unstructured CFG, as long as the continue block cannot reach the back-edge of any inner loop constructs,
+		// it's technically not considered part of their loops, even if the loops dominate it.
+		// Utter nonsense ... >_<
+		// The only viable solution is to transpose out the continue block and use ladder selection
+		// to resolve the control flow.
+
+		auto *header = get_innermost_loop_header_for(node);
+		if (header == node->succ_back_edge)
+			continue;
+
+		// Make sure that we're in valid unstructured control flow. Our node cannot reach any back edge on the way,
+		// meaning it's okay to transpose code. If the continue block can reach us, it means we're already
+		// outside the loop, stop any attempt to transpose.
+		const auto validate_header_suitability = [this, node](const CFGNode *header) {
+			return !query_reachability(*node, *header->pred_back_edge) &&
+			       !query_reachability(*header->pred_back_edge, *node);
+		};
+
+		// Find a more appropriate place to put it.
+		// We want to rewrite the flow so that the continue block lives outside any inner scopes.
+		// The succ of the outer continue block is appropriate.
+		const CFGNode *next_header;
+		while ((next_header = get_innermost_loop_header_for(header->immediate_dominator)) != node->succ_back_edge &&
+		       validate_header_suitability(next_header))
+		{
+			header = next_header;
+		}
+
+		if (next_header != node->succ_back_edge || !validate_header_suitability(header))
+			continue;
+
+		auto *outer_continue = header->pred_back_edge;
+
+		// The outer continue must have a normal succ.
+		if (outer_continue->succ.size() != 1)
+			continue;
+
+		// This succ is now in the loop scope of node->succ_back_edge. We can do the continue construct here.
+		auto *succ = outer_continue->succ.front();
+		auto *ladder = create_helper_pred_block(succ);
+
+		auto orig_preds = node->pred;
+		traverse_dominated_blocks_and_rewrite_branch(node->succ_back_edge, node, ladder);
+		rewrite_ladder_conditional_branch_from_incoming_blocks(
+			ladder, node, succ,
+			[&orig_preds](const CFGNode *n) { return std::find(orig_preds.begin(), orig_preds.end(), n) != orig_preds.end(); },
+			"tranpose_continue_phi");
+
+		did_rewrite = true;
+		break;
+	}
+
+	if (did_rewrite)
+		recompute_cfg();
+	return did_rewrite;
+}
+
 bool CFGStructurizer::run()
 {
 	String graphviz_path;
@@ -574,16 +642,22 @@ bool CFGStructurizer::run()
 
 	while (cleanup_breaking_return_constructs())
 	{
-		auto graphviz_split = graphviz_path + ".break-return";
-		log_cfg_graphviz(graphviz_split.c_str());
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".break-return";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
 	}
 
 	create_continue_block_ladders();
 
 	while (serialize_interleaved_merge_scopes())
 	{
-		auto graphviz_split = graphviz_path + ".serialize";
-		log_cfg_graphviz(graphviz_split.c_str());
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".serialize";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
 	}
 
 	split_merge_scopes();
@@ -620,8 +694,21 @@ bool CFGStructurizer::run()
 
 	while (rewrite_transposed_loops())
 	{
-		auto graphviz_split = graphviz_path + ".transpose-loop-rewrite";
-		log_cfg_graphviz(graphviz_split.c_str());
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".transpose-loop-rewrite";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+	}
+
+	// If there are back-edges that punch through multiple loop headers, fix this up.
+	while (rewrite_impossible_back_edges())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".impossible-continue";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
 	}
 
 	//LOGI("=== Structurize pass ===\n");
@@ -707,6 +794,19 @@ bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
 	// This algorithm is very arbitrary and should be seen as a nasty heuristic which solves real shaders
 	// we see in the wild. It's probably safe to block continue merge in far more cases than this, but we
 	// want to be maximally convergent as often as we can.
+
+	for (auto *pred : node->pred)
+	{
+		// This is the merge block of another inner loop, we really need an intermediate merge.
+		if (pred->succ_back_edge && header != pred->succ_back_edge && header->dominates(pred->succ_back_edge))
+			return true;
+	}
+
+	// Plain continue block that does nothing useful. No point merging this.
+	// A continue block's succ is sometimes used to aid analysis and simplify other passes,
+	// use terminator here explicitly.
+	if (node->ir.operations.empty() && node->ir.terminator.type == Terminator::Type::Branch)
+		return false;
 
 	if (header->ir.terminator.type == Terminator::Type::Switch)
 	{
@@ -2251,7 +2351,7 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 		// Strong check as well.
 		// If branching directly to continue block like this, this is a non-merging continue,
 		// which we should always consider an escape.
-		if (node->succ_back_edge)
+		if (node->succ.front()->succ_back_edge)
 			return true;
 	}
 
@@ -2325,6 +2425,21 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 bool CFGStructurizer::block_is_plain_continue(const CFGNode *node)
 {
 	return node->succ_back_edge != nullptr && node != node->succ_back_edge;
+}
+
+const CFGNode *CFGStructurizer::scan_plain_continue_block(const CFGNode *node)
+{
+	auto *base_node = node;
+	while (!block_is_plain_continue(node) &&
+	       base_node->dominates(node) &&
+	       !node->succ_back_edge &&
+	       node->immediate_post_dominator &&
+	       node->immediate_post_dominator != node)
+	{
+		node = node->immediate_post_dominator;
+	}
+
+	return node;
 }
 
 void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
@@ -2424,19 +2539,23 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 
 				if (tie_break_merge)
 				{
-					bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
-					bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
+					bool a_path_is_break_or_continue =
+						control_flow_is_escaping(node->succ[0], merge) ||
+						block_is_plain_continue(scan_plain_continue_block(node->succ[0]));
+					bool b_path_is_break_or_continue =
+						control_flow_is_escaping(node->succ[1], merge) ||
+						block_is_plain_continue(scan_plain_continue_block(node->succ[1]));
 
-					if (a_path_is_break && b_path_is_break)
+					if (a_path_is_break_or_continue && b_path_is_break_or_continue)
 					{
 						// Both paths break, so we don't need to merge anything. Use Unreachable merge target.
 						node->merge = MergeType::Selection;
 						node->selection_merge_block = nullptr;
 						//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
 					}
-					else if (b_path_is_break)
+					else if (b_path_is_break_or_continue)
 						merge_to_succ(node, 0);
-					else if (a_path_is_break)
+					else if (a_path_is_break_or_continue)
 						merge_to_succ(node, 1);
 					else
 					{
