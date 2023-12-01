@@ -1558,23 +1558,21 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		bindless_info.aliased = aliased_access.requires_alias_decoration;
 
 		BindlessInfo counter_info = {};
+
+		counter_info.type = DXIL::ResourceType::UAV;
+		counter_info.component = DXIL::ComponentType::U32;
+		counter_info.desc_set = vulkan_binding.counter_binding.descriptor_set;
+		counter_info.binding = vulkan_binding.counter_binding.binding;
+
 		if (options.physical_storage_buffer &&
 		    vulkan_binding.counter_binding.descriptor_type != VulkanDescriptorType::TexelBuffer)
 		{
-			counter_info.type = DXIL::ResourceType::UAV;
-			counter_info.component = DXIL::ComponentType::U32;
 			counter_info.kind = DXIL::ResourceKind::Invalid;
-			counter_info.desc_set = vulkan_binding.counter_binding.descriptor_set;
-			counter_info.binding = vulkan_binding.counter_binding.binding;
 			counter_info.counters = true;
 		}
 		else
 		{
-			counter_info.type = DXIL::ResourceType::UAV;
-			counter_info.component = DXIL::ComponentType::U32;
 			counter_info.kind = DXIL::ResourceKind::RawBuffer;
-			counter_info.desc_set = vulkan_binding.counter_binding.descriptor_set;
-			counter_info.binding = vulkan_binding.counter_binding.binding;
 			counter_info.uav_read = true;
 			counter_info.uav_written = true;
 			counter_info.uav_coherent = globally_coherent;
@@ -2839,24 +2837,21 @@ bool Converter::Impl::emit_global_heaps()
 					annotation->counter_reference.stride = 4;
 					annotation->counter_reference.bindless = true;
 
+					counter_info.type = DXIL::ResourceType::UAV;
+					counter_info.component = DXIL::ComponentType::U32;
+					counter_info.desc_set = counter_binding.descriptor_set;
+					counter_info.binding = counter_binding.binding;
+
 					if (options.physical_storage_buffer &&
 					    counter_binding.descriptor_type != VulkanDescriptorType::TexelBuffer)
 					{
-						counter_info.type = DXIL::ResourceType::UAV;
-						counter_info.component = DXIL::ComponentType::U32;
 						counter_info.kind = DXIL::ResourceKind::Invalid;
-						counter_info.desc_set = counter_binding.descriptor_set;
-						counter_info.binding = counter_binding.binding;
 						counter_info.counters = true;
 						annotation->counter_reference.resource_kind = DXIL::ResourceKind::RawBuffer;
 					}
 					else
 					{
-						counter_info.type = DXIL::ResourceType::UAV;
-						counter_info.component = DXIL::ComponentType::U32;
 						counter_info.kind = DXIL::ResourceKind::RawBuffer;
-						counter_info.desc_set = vulkan_binding.descriptor_set;
-						counter_info.binding = vulkan_binding.binding;
 						counter_info.uav_read = true;
 						counter_info.uav_written = true;
 						counter_info.uav_coherent = false;
