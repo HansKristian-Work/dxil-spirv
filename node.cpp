@@ -231,7 +231,7 @@ bool CFGNode::dominates_all_reachable_exits(UnorderedSet<const CFGNode *> &compl
 {
 	if (!completed.count(this))
 	{
-		if (succ_back_edge)
+		if (succ_back_edge && !header.dominates(succ_back_edge))
 			return false;
 
 		for (auto *node : succ)
