@@ -3990,7 +3990,11 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 	const CFGNode *innermost_loop_header = get_innermost_loop_header_for(&header, &node);
 	bool is_innermost_loop_header = &header == innermost_loop_header;
 
-	if (header.dominates(&node) && node.dominates_all_reachable_exits())
+	// If a back-edge can reach this node, it's not really an exit, but an Escape.
+	// Exits must never branch "out" of the loop.
+	if (header.dominates(&node) &&
+	    (!header.pred_back_edge || !query_reachability(*header.pred_back_edge, node)) &&
+	    node.dominates_all_reachable_exits())
 	{
 		if (is_innermost_loop_header)
 			return LoopExitType::Exit;
