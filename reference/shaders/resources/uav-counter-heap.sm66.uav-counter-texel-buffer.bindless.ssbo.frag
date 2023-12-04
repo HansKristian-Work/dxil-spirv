@@ -19,7 +19,7 @@ layout(push_constant, std430) uniform RootConstants
     uint _m7;
 } registers;
 
-layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _12[];
+layout(set = 7, binding = 0, r32ui) uniform uimageBuffer _12[];
 
 layout(location = 0) flat in uint I;
 layout(location = 0) out vec4 SV_Target;
@@ -66,7 +66,7 @@ OpMemberDecorate %6 4 Offset 16
 OpMemberDecorate %6 5 Offset 20
 OpMemberDecorate %6 6 Offset 24
 OpMemberDecorate %6 7 Offset 28
-OpDecorate %12 DescriptorSet 0
+OpDecorate %12 DescriptorSet 7
 OpDecorate %12 Binding 0
 OpDecorate %14 ArrayStride 16
 OpMemberDecorate %15 0 Offset 0
