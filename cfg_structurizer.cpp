@@ -2656,6 +2656,12 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					node->merge = MergeType::Selection;
 					node->selection_merge_block = nullptr;
 
+					const auto node_is_degenerate_merge_block = [](const CFGNode *n) {
+						return n->ir.terminator.type == Terminator::Type::Unreachable ||
+						       (n->ir.terminator.type == Terminator::Type::Return &&
+						        n->ir.operations.empty());
+					};
+
 					// In some cases however, we have to try even harder to tie-break these blocks,
 					// since post-domination analysis may break due to early exit blocks.
 					// Use principle of least break to tie-break.
@@ -2671,6 +2677,18 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 							else if (query_reachability(*b_frontier, *a_frontier))
 								merge_to_succ(node, 1);
 						}
+					}
+					else if (node_is_degenerate_merge_block(node->succ[1]) &&
+					         !node_is_degenerate_merge_block(node->succ[0]))
+					{
+						// Try to merge away from blank returns.
+						merge_to_succ(node, 0);
+					}
+					else if (node_is_degenerate_merge_block(node->succ[0]) &&
+					         !node_is_degenerate_merge_block(node->succ[1]))
+					{
+						// Try to merge away from blank returns.
+						merge_to_succ(node, 1);
 					}
 				}
 			}
