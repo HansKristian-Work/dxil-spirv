@@ -231,14 +231,13 @@ bool CFGNode::dominates_all_reachable_exits(UnorderedSet<const CFGNode *> &compl
 {
 	if (!completed.count(this))
 	{
+		completed.insert(this);
 		if (succ_back_edge && !header.dominates(succ_back_edge))
 			return false;
 
 		for (auto *node : succ)
 			if (!header.dominates(node) || !node->dominates_all_reachable_exits(completed, header))
 				return false;
-
-		completed.insert(this);
 	}
 
 	return true;
