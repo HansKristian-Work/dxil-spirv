@@ -4757,7 +4757,38 @@ void CFGStructurizer::find_loops()
 		// It is impossible to construct a merge block in this case since the merge targets,
 		// so just merge to unreachable.
 		bool force_infinite_loop = false;
-		if (node->pred_back_edge->succ.empty())
+
+		// If we have a trivial case where there is only one possible loop exit which we dominate,
+		// we shouldn't consider it an infinite loop, but a merge.
+		bool trivial_exit_loop = dominated_exit.size() == 1 && result.non_dominated_exit.empty() &&
+		                         result.inner_dominated_exit.empty() && result.direct_exits.empty() &&
+		                         result.inner_direct_exits.empty();
+
+		if (trivial_exit_loop)
+		{
+			auto *candidate = dominated_exit.front();
+
+			// Resolve some false positives. It's possible that a loop exit can be detected as inner,
+			// but it's just a good merge candidate for an inner infinite loop.
+			bool loop_exit_dominates_continue =
+				candidate->immediate_dominator &&
+			    candidate->immediate_dominator->dominates(node->pred_back_edge);
+
+			// If we promoted inner header, this is not a trivial exit.
+			const CFGNode *innermost_loop_header = get_innermost_loop_header_for(node, dominated_exit.front());
+			if (node != innermost_loop_header)
+			{
+				// There are at least two scenarios where we have to be careful:
+				// - If the innermost header has a edge out of continue block.
+				//   If we still detect this as belong to inner loop, it must be the case.
+				// - Also, only accept this as a trivial exit if the immediate dominator of exit also dominates
+				//   continue block.
+				if (!innermost_loop_header->pred_back_edge->succ.empty() || !loop_exit_dominates_continue)
+					trivial_exit_loop = false;
+			}
+		}
+
+		if (node->pred_back_edge->succ.empty() && !trivial_exit_loop)
 		{
 			force_infinite_loop = true;
 			for (auto *e : result.dominated_exit)
