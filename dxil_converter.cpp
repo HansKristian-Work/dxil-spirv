@@ -977,7 +977,10 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		};
 		VulkanSRVBinding vulkan_binding = { { bind_space, bind_register }, {} };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
+		{
+			LOGE("Failed to remap SRV %u:%u.\n", bind_space, bind_register);
 			return false;
+		}
 
 		auto &access_meta = srv_access_tracking[index];
 
@@ -1490,7 +1493,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		};
 		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register }, {} };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
+		{
+			LOGE("Failed to remap UAV %u:%u.\n", bind_space, bind_register);
 			return false;
+		}
 
 		AliasedAccess aliased_access;
 		if (!analyze_aliased_access(access_meta,
@@ -1955,7 +1961,10 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
+		{
+			LOGE("Failed to remap CBV %u:%u.\n", bind_space, bind_register);
 			return false;
+		}
 
 		auto &access_meta = cbv_access_tracking[index];
 		AliasedAccess aliased_access;
@@ -2186,7 +2195,10 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 			                       range_size, 0 };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
 		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
+		{
+			LOGE("Failed to remap sampler %u:%u.\n", bind_space, bind_register);
 			return false;
+		}
 
 		sampler_index_to_reference.resize(std::max(sampler_index_to_reference.size(), size_t(index + 1)));
 
