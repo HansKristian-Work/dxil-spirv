@@ -250,6 +250,7 @@ enum class Option : uint32_t
 	BranchControl = 33,
 	SubgroupProperties = 34,
 	DescriptorHeapRobustness = 35,
+	ComputeShaderDerivativesNV = 36,
 	Count
 };
 
@@ -648,6 +649,17 @@ struct OptionDescriptorHeapRobustness : OptionBase
 	}
 
 	bool enabled = false;
+};
+
+struct OptionComputeShaderDerivativesNV : OptionBase
+{
+	OptionComputeShaderDerivativesNV()
+		: OptionBase(Option::ComputeShaderDerivativesNV)
+	{
+	}
+
+	// Before adding this option, we assumed that by default.
+	bool supported = true;
 };
 
 struct DescriptorTableEntry
