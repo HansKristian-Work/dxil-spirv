@@ -48,8 +48,112 @@ bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	return true;
 }
 
+static bool emit_derivative_instruction_quad_coarse(
+    spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+
+	spv::Id type_id = impl.get_type_id(instruction->getType());
+
+	auto *base = impl.allocate(spv::OpGroupNonUniformQuadBroadcast, type_id);
+	base->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	base->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	base->add_id(builder.makeUintConstant(0));
+
+	auto *flip = impl.allocate(spv::OpGroupNonUniformQuadBroadcast, type_id);
+	flip->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	flip->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	flip->add_id(builder.makeUintConstant(opcode == spv::OpDPdyCoarse ? 2 : 1));
+
+	auto *sub = impl.allocate(spv::OpFSub, instruction);
+	sub->add_id(flip->id);
+	sub->add_id(base->id);
+
+	impl.add(base);
+	impl.add(flip);
+	impl.add(sub);
+
+	return true;
+}
+
+static bool emit_derivative_instruction_quad_fine(
+	spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	builder.addCapability(spv::CapabilityGroupNonUniform);
+	builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+
+	spv::Id type_id = impl.get_type_id(instruction->getType());
+
+	auto *flip = impl.allocate(spv::OpGroupNonUniformQuadSwap, type_id);
+	flip->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	flip->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	flip->add_id(builder.makeUintConstant(opcode == spv::OpDPdyFine ? 1 : 0));
+	impl.add(flip);
+
+	auto *sub = impl.allocate(spv::OpFSub, type_id);
+	sub->add_id(flip->id);
+	sub->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(sub);
+
+	auto *flip_result = impl.allocate(spv::OpGroupNonUniformQuadSwap, type_id);
+	flip_result->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	flip_result->add_id(sub->id);
+	flip_result->add_id(builder.makeUintConstant(opcode == spv::OpDPdyFine ? 1 : 0));
+	impl.add(flip_result);
+
+	spv::Id local_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSubgroupLocalInvocationId);
+	auto *load_local = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	load_local->add_id(local_id);
+	impl.add(load_local);
+
+	auto *mask_op = impl.allocate(spv::OpBitwiseAnd, builder.makeUintType(32));
+	mask_op->add_id(load_local->id);
+	mask_op->add_id(builder.makeUintConstant(opcode == spv::OpDPdyFine ? 2 : 1));
+	impl.add(mask_op);
+
+	auto *should_flip = impl.allocate(spv::OpINotEqual, builder.makeBoolType());
+	should_flip->add_id(mask_op->id);
+	should_flip->add_id(builder.makeUintConstant(0));
+	impl.add(should_flip);
+
+	auto *sel = impl.allocate(spv::OpSelect, instruction);
+	sel->add_id(should_flip->id);
+	sel->add_id(flip_result->id);
+	sel->add_id(sub->id);
+	impl.add(sel);
+
+	return true;
+}
+
+static bool emit_derivative_instruction_quad(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	switch (opcode)
+	{
+	case spv::OpDPdxCoarse:
+	case spv::OpDPdyCoarse:
+		return emit_derivative_instruction_quad_coarse(opcode, impl, instruction);
+
+	case spv::OpDPdxFine:
+	case spv::OpDPdyFine:
+		return emit_derivative_instruction_quad_fine(opcode, impl, instruction);
+
+	default:
+		return false;
+	}
+
+}
+
 bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (impl.execution_model != spv::ExecutionModelFragment &&
+	    !impl.options.nv_compute_shader_derivatives)
+	{
+		return emit_derivative_instruction_quad(opcode, impl, instruction);
+	}
+
 	auto &builder = impl.builder();
 	bool relax_precision = false;
 	spv::Id input_id;

@@ -1,0 +1,17 @@
+Texture2D<float> T2D;
+Texture2DArray<float> T2DArr;
+TextureCube<float> TCube;
+TextureCubeArray<float> TCubeArr;
+Texture3D<float> T3D;
+
+RWStructuredBuffer<float> O;
+
+SamplerState S;
+SamplerComparisonState SComp;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	float4 uv = float4(0.1, 0.2, 0.3, 0.4) * float(thr);
+	O[thr] += TCube.CalculateLevelOfDetail(S, uv.xyz);
+}

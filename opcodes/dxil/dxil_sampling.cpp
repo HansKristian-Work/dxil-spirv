@@ -198,6 +198,70 @@ static bool get_texel_offsets(Converter::Impl &impl, const llvm::CallInst *instr
 	return true;
 }
 
+static void build_gradient(Converter::Impl &impl, const spv::Id *coord, unsigned num_coords,
+                           spv::Id &grad_x, spv::Id &grad_y, spv::Id bias_id, uint32_t &ops)
+{
+	auto &builder = impl.builder();
+	spv::Id f32_type = builder.makeFloatType(32);
+	spv::Id vec_type = builder.makeVectorType(f32_type, num_coords);
+	spv::Id coord_vec = impl.build_vector(builder.makeFloatType(32), coord, num_coords);
+	builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+
+	auto *shuf_x = impl.allocate(spv::OpGroupNonUniformQuadSwap, vec_type);
+	shuf_x->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	shuf_x->add_id(coord_vec);
+	shuf_x->add_id(builder.makeUintConstant(0));
+
+	auto *shuf_y = impl.allocate(spv::OpGroupNonUniformQuadSwap, vec_type);
+	shuf_y->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	shuf_y->add_id(coord_vec);
+	shuf_y->add_id(builder.makeUintConstant(1));
+
+	// Sign does not matter here. LOD computation takes absolute values.
+	auto *horiz_sub = impl.allocate(spv::OpFSub, vec_type);
+	auto *vert_sub = impl.allocate(spv::OpFSub, vec_type);
+	horiz_sub->add_id(coord_vec);
+	horiz_sub->add_id(shuf_x->id);
+	vert_sub->add_id(coord_vec);
+	vert_sub->add_id(shuf_y->id);
+
+	impl.add(shuf_x);
+	impl.add(shuf_y);
+	impl.add(horiz_sub);
+	impl.add(vert_sub);
+
+	grad_x = horiz_sub->id;
+	grad_y = vert_sub->id;
+
+	if (ops & spv::ImageOperandsBiasMask)
+	{
+		ops &= ~spv::ImageOperandsBiasMask;
+
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+		auto *exp2 = impl.allocate(spv::OpExtInst, f32_type);
+		exp2->add_id(impl.glsl_std450_ext);
+		exp2->add_literal(GLSLstd450Exp2);
+		exp2->add_id(bias_id);
+		impl.add(exp2);
+
+		auto *scale_x = impl.allocate(spv::OpVectorTimesScalar, vec_type);
+		auto *scale_y = impl.allocate(spv::OpVectorTimesScalar, vec_type);
+		scale_x->add_id(grad_x);
+		scale_x->add_id(exp2->id);
+		scale_y->add_id(grad_y);
+		scale_y->add_id(exp2->id);
+
+		impl.add(scale_x);
+		impl.add(scale_y);
+		grad_x = scale_x->id;
+		grad_y = scale_y->id;
+	}
+
+	ops |= spv::ImageOperandsGradMask;
+}
+
 bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	bool comparison_sampling = opcode == DXIL::Op::SampleCmp ||
@@ -292,12 +356,45 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	auto effective_component_type = Converter::Impl::get_effective_typed_resource_type(meta.component_type);
 	spv::Id texel_type = impl.get_type_id(effective_component_type, 1, comparison_sampling ? 1 : 4);
+	spv::Id grad_x = 0, grad_y = 0;
 	spv::Id sample_type;
 
 	if (sparse)
 		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
 	else
 		sample_type = texel_type;
+
+	bool grad_rewrite = impl.execution_model != spv::ExecutionModelFragment &&
+	                    !impl.options.nv_compute_shader_derivatives;
+
+	if (grad_rewrite)
+	{
+		switch (spv_op)
+		{
+		case spv::OpImageSampleImplicitLod:
+			spv_op = spv::OpImageSampleExplicitLod;
+			break;
+
+		case spv::OpImageSparseSampleImplicitLod:
+			spv_op = spv::OpImageSparseSampleExplicitLod;
+			break;
+
+		case spv::OpImageSampleDrefImplicitLod:
+			spv_op = spv::OpImageSampleDrefExplicitLod;
+			break;
+
+		case spv::OpImageSparseSampleDrefImplicitLod:
+			spv_op = spv::OpImageSparseSampleDrefExplicitLod;
+			break;
+
+		default:
+			grad_rewrite = false;
+			break;
+		}
+	}
+
+	if (grad_rewrite)
+		build_gradient(impl, coord, num_coords, grad_x, grad_y, bias_level_argument, image_ops);
 
 	// Comparison sampling only returns a scalar, so we'll need to splat out result.
 	Operation *op = impl.allocate(spv_op, instruction, sample_type);
@@ -315,6 +412,12 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	if (image_ops & (spv::ImageOperandsBiasMask | spv::ImageOperandsLodMask))
 		op->add_id(bias_level_argument);
+
+	if (image_ops & spv::ImageOperandsGradMask)
+	{
+		op->add_id(grad_x);
+		op->add_id(grad_y);
+	}
 
 	if (image_ops & (spv::ImageOperandsConstOffsetMask | spv::ImageOperandsOffsetMask))
 	{
@@ -1093,8 +1196,413 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 	return true;
 }
 
+static spv::Id build_lod_from_gradient(Converter::Impl &impl, spv::Id grad_x, spv::Id grad_y)
+{
+	auto &builder = impl.builder();
+	spv::Id f32_type = builder.makeFloatType(32);
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	auto *dot_x = impl.allocate(spv::OpDot, f32_type);
+	dot_x->add_id(grad_x);
+	dot_x->add_id(grad_x);
+	impl.add(dot_x);
+
+	auto *dot_y = impl.allocate(spv::OpDot, f32_type);
+	dot_y->add_id(grad_y);
+	dot_y->add_id(grad_y);
+	impl.add(dot_y);
+
+	auto *dot_max = impl.allocate(spv::OpExtInst, f32_type);
+	dot_max->add_id(impl.glsl_std450_ext);
+	dot_max->add_literal(GLSLstd450FMax);
+	dot_max->add_id(dot_x->id);
+	dot_max->add_id(dot_y->id);
+	impl.add(dot_max);
+
+	auto *log_op = impl.allocate(spv::OpExtInst, f32_type);
+	log_op->add_id(impl.glsl_std450_ext);
+	log_op->add_literal(GLSLstd450Log2);
+	log_op->add_id(dot_max->id);
+	impl.add(log_op);
+
+	auto *half_mul = impl.allocate(spv::OpFMul, f32_type);
+	half_mul->add_id(log_op->id);
+	half_mul->add_id(builder.makeFloatConstant(0.5f));
+	impl.add(half_mul);
+
+	return half_mul->id;
+}
+
+static spv::Id emit_cube_extract_str(Converter::Impl &impl, spv::Id coord,
+                                     spv::Id z_major_id, spv::Id y_major_id)
+{
+	auto &builder = impl.builder();
+	spv::Id f32_type = builder.makeFloatType(32);
+	spv::Id vec3_type = builder.makeVectorType(f32_type, 3);
+
+	auto *y_major_shuffle = impl.allocate(spv::OpVectorShuffle, vec3_type);
+	y_major_shuffle->add_id(coord);
+	y_major_shuffle->add_id(coord);
+	y_major_shuffle->add_literal(0);
+	y_major_shuffle->add_literal(2);
+	y_major_shuffle->add_literal(1);
+	impl.add(y_major_shuffle);
+
+	auto *x_major_shuffle = impl.allocate(spv::OpVectorShuffle, vec3_type);
+	x_major_shuffle->add_id(coord);
+	x_major_shuffle->add_id(coord);
+	x_major_shuffle->add_literal(2);
+	x_major_shuffle->add_literal(1);
+	x_major_shuffle->add_literal(0);
+
+	impl.add(x_major_shuffle);
+	auto *z_major_splat3 = impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeBoolType(), 3));
+	for (unsigned i = 0; i < 3; i++)
+		z_major_splat3->add_id(z_major_id);
+	impl.add(z_major_splat3);
+
+	auto *y_major_splat4 = impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(builder.makeBoolType(), 3));
+	for (unsigned i = 0; i < 3; i++)
+		y_major_splat4->add_id(y_major_id);
+	impl.add(y_major_splat4);
+
+	auto *yx_select = impl.allocate(spv::OpSelect, vec3_type);
+	yx_select->add_id(y_major_splat4->id);
+	yx_select->add_id(y_major_shuffle->id);
+	yx_select->add_id(x_major_shuffle->id);
+	impl.add(yx_select);
+
+	auto *reordered = impl.allocate(spv::OpSelect, vec3_type);
+	reordered->add_id(z_major_splat3->id);
+	reordered->add_id(coord);
+	reordered->add_id(yx_select->id);
+	impl.add(reordered);
+
+	return reordered->id;
+}
+
+static void emit_calculate_lod_cube_gradient_transform(Converter::Impl &impl,
+                                                       spv::Id coord_vec, spv::Id dx, spv::Id dy,
+                                                       spv::Id &out_dx, spv::Id &out_dy)
+{
+	auto &builder = impl.builder();
+	spv::Id f32_type = builder.makeFloatType(32);
+	spv::Id vec2_type = builder.makeVectorType(f32_type, 2);
+	spv::Id vec3_type = builder.makeVectorType(f32_type, 3);
+	spv::Id vec4_type = builder.makeVectorType(f32_type, 4);
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	builder.addName(coord_vec, "coord");
+	builder.addName(dx, "d_coord_dx");
+	builder.addName(dy, "d_coord_dy");
+
+	// See 7.18.11 of D3D11 functional spec
+	// 16.5.6 - Cube Map Derivative Transform in Vulkan spec
+	auto *coord_abs = impl.allocate(spv::OpExtInst, vec3_type);
+	coord_abs->add_id(impl.glsl_std450_ext);
+	coord_abs->add_literal(GLSLstd450FAbs);
+	coord_abs->add_id(coord_vec);
+	impl.add(coord_abs);
+	builder.addName(coord_abs->id, "abs_uvw");
+
+	spv::Id max_component_id = 0;
+	spv::Id abs_components[3];
+	for (unsigned i = 0; i < 3; i++)
+	{
+		auto *extract = impl.allocate(spv::OpCompositeExtract, f32_type);
+		extract->add_id(coord_abs->id);
+		extract->add_literal(i);
+		impl.add(extract);
+		abs_components[i] = extract->id;
+
+		if (max_component_id != 0)
+		{
+			auto *max_comp = impl.allocate(spv::OpExtInst, f32_type);
+			max_comp->add_id(impl.glsl_std450_ext);
+			max_comp->add_literal(GLSLstd450FMax);
+			max_comp->add_id(extract->id);
+			max_comp->add_id(max_component_id);
+			impl.add(max_comp);
+			max_component_id = max_comp->id;
+		}
+		else
+			max_component_id = extract->id;
+	}
+
+	builder.addName(max_component_id, "max_component");
+
+	// Shuffle components based on major axis.
+	// Ordering of the minor axes isn't interesting since our LOD computation is rotationally invariant and sign invariant,
+	// and cube faces are square.
+
+	// Z takes precedence, then Y.
+	auto *z_major = impl.allocate(spv::OpFOrdGreaterThanEqual, builder.makeBoolType());
+	z_major->add_id(abs_components[2]);
+	z_major->add_id(max_component_id);
+	impl.add(z_major);
+	builder.addName(z_major->id, "z_major");
+
+	auto *y_major = impl.allocate(spv::OpFOrdGreaterThanEqual, builder.makeBoolType());
+	y_major->add_id(abs_components[1]);
+	y_major->add_id(max_component_id);
+	impl.add(y_major);
+	builder.addName(y_major->id, "y_major");
+
+	auto *r_sqr = impl.allocate(spv::OpFMul, f32_type);
+	r_sqr->add_id(max_component_id);
+	r_sqr->add_id(max_component_id);
+	impl.add(r_sqr);
+
+	auto *r_sqr_inv_half = impl.allocate(spv::OpFDiv, f32_type);
+	r_sqr_inv_half->add_id(builder.makeFloatConstant(0.5f));
+	r_sqr_inv_half->add_id(r_sqr->id);
+	impl.add(r_sqr_inv_half);
+
+	// [ dsdx, dtdx, drdx ]
+	spv::Id d_coord_dx = emit_cube_extract_str(impl, dx, z_major->id, y_major->id);
+	// [ dsdy, dtdy, drdy ]
+	spv::Id d_coord_dy = emit_cube_extract_str(impl, dy, z_major->id, y_major->id);
+	// [ s, t, r ]
+	spv::Id coords = emit_cube_extract_str(impl, coord_vec, z_major->id, y_major->id);
+
+	builder.addName(d_coord_dx, "d_str_dx");
+	builder.addName(d_coord_dy, "d_str_dy");
+	builder.addName(coords, "str");
+
+	// [ dsdx, dtdx, dsdy, dtdy ]
+	auto *st_gradients = impl.allocate(spv::OpVectorShuffle, vec4_type);
+	st_gradients->add_id(d_coord_dx);
+	st_gradients->add_id(d_coord_dy);
+	st_gradients->add_literal(0);
+	st_gradients->add_literal(3);
+	st_gradients->add_literal(1);
+	st_gradients->add_literal(4);
+	impl.add(st_gradients);
+
+	// [ s, s, t, t ]
+	auto *st_coords = impl.allocate(spv::OpVectorShuffle, vec4_type);
+	st_coords->add_id(coords);
+	st_coords->add_id(coords);
+	st_coords->add_literal(0);
+	st_coords->add_literal(0);
+	st_coords->add_literal(1);
+	st_coords->add_literal(1);
+	impl.add(st_coords);
+
+	// [ drdx, drdy, drdx, drdy ]
+	auto *r_gradients = impl.allocate(spv::OpVectorShuffle, vec4_type);
+	r_gradients->add_id(d_coord_dx);
+	r_gradients->add_id(d_coord_dy);
+	r_gradients->add_literal(2);
+	r_gradients->add_literal(5);
+	r_gradients->add_literal(2);
+	r_gradients->add_literal(5);
+	impl.add(r_gradients);
+
+	// |r_c| * [ dsdx, dtdx, dsdy, dtdy ]
+	auto *st_gradient_times_r = impl.allocate(spv::OpVectorTimesScalar, vec4_type);
+	st_gradient_times_r->add_id(st_gradients->id);
+	st_gradient_times_r->add_id(max_component_id);
+	impl.add(st_gradient_times_r);
+
+	// [ s, s, t, t ] * [ drdx, drdy, drdx, drdy ]
+	auto *coord_times_r_gradient = impl.allocate(spv::OpFMul, vec4_type);
+	coord_times_r_gradient->add_id(st_coords->id);
+	coord_times_r_gradient->add_id(r_gradients->id);
+	impl.add(coord_times_r_gradient);
+
+	auto *sub = impl.allocate(spv::OpFSub, vec4_type);
+	sub->add_id(st_gradient_times_r->id);
+	sub->add_id(coord_times_r_gradient->id);
+	impl.add(sub);
+
+	auto *mul = impl.allocate(spv::OpVectorTimesScalar, vec4_type);
+	mul->add_id(sub->id);
+	mul->add_id(r_sqr_inv_half->id);
+	impl.add(mul);
+
+	builder.addName(mul->id, "cube_gradients");
+
+	// [ ds'dx, dt'dx ]
+	auto *grad_x_extract = impl.allocate(spv::OpVectorShuffle, vec2_type);
+	grad_x_extract->add_id(mul->id);
+	grad_x_extract->add_id(mul->id);
+	grad_x_extract->add_literal(0);
+	grad_x_extract->add_literal(2);
+	impl.add(grad_x_extract);
+
+	// [ ds'dy, dt'dy ]
+	auto *grad_y_extract = impl.allocate(spv::OpVectorShuffle, vec2_type);
+	grad_y_extract->add_id(mul->id);
+	grad_y_extract->add_id(mul->id);
+	grad_y_extract->add_literal(1);
+	grad_y_extract->add_literal(3);
+	impl.add(grad_y_extract);
+
+	out_dx = grad_x_extract->id;
+	out_dy = grad_y_extract->id;
+}
+
+static bool emit_calculate_lod_instruction_fallback(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	LOGW("Emitting non-conformant CalculateLevelOfDetail. Missing NV_compute_shader_derivatives.\n");
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityImageQuery);
+	builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+
+	// Best effort workaround. Extremely unlikely that this will be a real problem in practice.
+	// Only Pascal should ever hit this path.
+	// Assumes sampler with no LOD bias and no mip clamp + trilinear.
+	// Same concerns as sampler feedback where we need side channel data to be conformant.
+
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+
+	uint32_t num_coords_full = 0, num_coords = 0;
+	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
+		return false;
+
+	spv::Id coords[3] = {};
+	for (unsigned i = 0; i < num_coords; i++)
+		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
+	spv::Id coord_vec = impl.build_vector(builder.makeFloatType(32), coords, num_coords);
+
+	spv::Id i32_type = builder.makeIntType(32);
+	spv::Id f32_type = builder.makeFloatType(32);
+	spv::Id fvec_type = builder.makeVectorType(f32_type, num_coords);
+
+	auto *swap_x = impl.allocate(spv::OpGroupNonUniformQuadSwap, fvec_type);
+	swap_x->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	swap_x->add_id(coord_vec);
+	swap_x->add_id(builder.makeUintConstant(0));
+	impl.add(swap_x);
+
+	auto *swap_y = impl.allocate(spv::OpGroupNonUniformQuadSwap, fvec_type);
+	swap_y->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	swap_y->add_id(coord_vec);
+	swap_y->add_id(builder.makeUintConstant(1));
+	impl.add(swap_y);
+
+	auto *grad_x = impl.allocate(spv::OpFSub, fvec_type);
+	grad_x->add_id(swap_x->id);
+	grad_x->add_id(coord_vec);
+	impl.add(grad_x);
+
+	auto *grad_y = impl.allocate(spv::OpFSub, fvec_type);
+	grad_y->add_id(swap_y->id);
+	grad_y->add_id(coord_vec);
+	impl.add(grad_y);
+
+	uint32_t num_size_coords;
+	if (!get_image_dimensions_query_size(impl, builder, image_id, &num_size_coords))
+		return false;
+
+	spv::Id grad_x_id = grad_x->id;
+	spv::Id grad_y_id = grad_y->id;
+	if (builder.getTypeDimensionality(impl.get_type_id(image_id)) == spv::DimCube)
+	{
+		emit_calculate_lod_cube_gradient_transform(impl, coord_vec,
+		                                           grad_x->id, grad_y->id,
+		                                           grad_x_id, grad_y_id);
+
+		// Projected down to 2 dimensions now.
+		fvec_type = builder.makeVectorType(f32_type, 2);
+		num_coords = 2;
+	}
+
+	auto *query_op = impl.allocate(spv::OpImageQuerySizeLod, builder.makeVectorType(i32_type, num_size_coords));
+	query_op->add_ids({ image_id, builder.makeIntConstant(0) });
+	impl.add(query_op);
+
+	if (num_coords != num_size_coords)
+	{
+		auto *shuffle_op = impl.allocate(spv::OpVectorShuffle, builder.makeVectorType(i32_type, num_coords));
+		shuffle_op->add_id(query_op->id);
+		shuffle_op->add_id(query_op->id);
+		for (unsigned i = 0; i < num_coords; i++)
+			shuffle_op->add_literal(i);
+		impl.add(shuffle_op);
+
+		query_op = shuffle_op;
+	}
+
+	auto *fconv = impl.allocate(spv::OpConvertSToF, fvec_type);
+	fconv->add_id(query_op->id);
+	impl.add(fconv);
+
+	auto *scale_x = impl.allocate(spv::OpFMul, fvec_type);
+	scale_x->add_ids({ grad_x_id, fconv->id });
+	impl.add(scale_x);
+
+	auto *scale_y = impl.allocate(spv::OpFMul, fvec_type);
+	scale_y->add_ids({ grad_y_id, fconv->id });
+	impl.add(scale_y);
+
+	spv::Id lod = build_lod_from_gradient(impl, scale_x->id, scale_y->id);
+
+	auto *clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
+	bool clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
+
+	if (clamped)
+	{
+		auto *levels_op = impl.allocate(spv::OpImageQueryLevels, builder.makeIntType(32));
+		levels_op->add_id(image_id);
+		impl.add(levels_op);
+
+		auto *f_levels = impl.allocate(spv::OpConvertSToF, f32_type);
+		f_levels->add_id(levels_op->id);
+		impl.add(f_levels);
+
+		auto *max_level = impl.allocate(spv::OpFSub, f32_type);
+		max_level->add_id(f_levels->id);
+		max_level->add_id(builder.makeFloatConstant(-1.0f));
+		impl.add(max_level);
+
+		// In case of null descriptor, make sure we end up with 0, so do min, then max.
+		auto *min_op = impl.allocate(spv::OpExtInst, f32_type);
+		min_op->add_id(impl.glsl_std450_ext);
+		min_op->add_literal(GLSLstd450FMin);
+		min_op->add_ids({ lod, max_level->id });
+		impl.add(min_op);
+
+		auto *max_op = impl.allocate(spv::OpExtInst, f32_type);
+		max_op->add_id(impl.glsl_std450_ext);
+		max_op->add_literal(GLSLstd450FMax);
+		max_op->add_ids({ min_op->id, builder.makeFloatConstant(0.0f) });
+		impl.add(max_op);
+
+		lod = max_op->id;
+	}
+	else
+	{
+		// The assumption is still fixed point,
+		// and real hardware will not return -inf here. Clamp to [-128, 128] which has been observed in the wild.
+		auto *clamp_op = impl.allocate(spv::OpExtInst, f32_type);
+		clamp_op->add_id(impl.glsl_std450_ext);
+		clamp_op->add_literal(GLSLstd450FClamp);
+		clamp_op->add_id(lod);
+		clamp_op->add_id(builder.makeFloatConstant(-128.0f));
+		clamp_op->add_id(builder.makeFloatConstant(+128.0f));
+		impl.add(clamp_op);
+
+		lod = clamp_op->id;
+	}
+
+	impl.rewrite_value(instruction, lod);
+	return true;
+}
+
 bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (impl.execution_model != spv::ExecutionModelFragment &&
+	    !impl.options.nv_compute_shader_derivatives)
+	{
+		return emit_calculate_lod_instruction_fallback(impl, instruction);
+	}
+
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
@@ -1418,35 +1926,7 @@ static spv::Id emit_accessed_lod(DXIL::Op opcode, Converter::Impl &impl, const l
 		grad_y->add_id(ddy_id);
 		impl.add(grad_y);
 
-		auto *dot_x = impl.allocate(spv::OpDot, f32_type);
-		dot_x->add_id(grad_x->id);
-		dot_x->add_id(grad_x->id);
-		impl.add(dot_x);
-
-		auto *dot_y = impl.allocate(spv::OpDot, f32_type);
-		dot_y->add_id(grad_y->id);
-		dot_y->add_id(grad_y->id);
-		impl.add(dot_y);
-
-		auto *dot_max = impl.allocate(spv::OpExtInst, f32_type);
-		dot_max->add_id(impl.glsl_std450_ext);
-		dot_max->add_literal(GLSLstd450FMax);
-		dot_max->add_id(dot_x->id);
-		dot_max->add_id(dot_y->id);
-		impl.add(dot_max);
-
-		auto *log_op = impl.allocate(spv::OpExtInst, f32_type);
-		log_op->add_id(impl.glsl_std450_ext);
-		log_op->add_literal(GLSLstd450Log2);
-		log_op->add_id(dot_max->id);
-		impl.add(log_op);
-
-		auto *half_mul = impl.allocate(spv::OpFMul, f32_type);
-		half_mul->add_id(log_op->id);
-		half_mul->add_id(builder.makeFloatConstant(0.5f));
-		impl.add(half_mul);
-
-		access_lod_id = half_mul->id;
+		access_lod_id = build_lod_from_gradient(impl, grad_x->id, grad_y->id);
 	}
 	else
 		return 0;

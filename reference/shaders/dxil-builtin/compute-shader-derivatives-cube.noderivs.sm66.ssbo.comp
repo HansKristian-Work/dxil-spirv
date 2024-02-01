@@ -1,0 +1,186 @@
+#version 460
+#extension GL_KHR_shader_subgroup_quad : require
+#extension GL_EXT_samplerless_texture_functions : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer SSBO
+{
+    uint _m0[];
+} _13;
+
+layout(set = 0, binding = 0) uniform textureCube _8;
+layout(set = 0, binding = 0) uniform sampler _16;
+
+void main()
+{
+    float _24 = float(gl_GlobalInvocationID.x);
+    vec3 coord = vec3(_24 * 0.100000001490116119384765625, _24 * 0.20000000298023223876953125, _24 * 0.300000011920928955078125);
+    vec3 d_coord_dx = subgroupQuadSwapHorizontal(coord) - coord;
+    vec3 d_coord_dy = subgroupQuadSwapVertical(coord) - coord;
+    vec3 abs_uvw = abs(coord);
+    float _47 = abs_uvw.y;
+    float _49 = abs_uvw.z;
+    float max_component = max(_49, max(_47, abs_uvw.x));
+    bool z_major = _49 >= max_component;
+    bool y_major = _47 >= max_component;
+    vec3 d_str_dx = mix(mix(d_coord_dx.zyx, d_coord_dx.xzy, bvec3(y_major)), d_coord_dx, bvec3(z_major));
+    vec3 d_str_dy = mix(mix(d_coord_dy.zyx, d_coord_dy.xzy, bvec3(y_major)), d_coord_dy, bvec3(z_major));
+    vec4 cube_gradients = ((vec4(d_str_dx.x, d_str_dy.x, d_str_dx.y, d_str_dy.y) * max_component) - (mix(mix(coord.zyx, coord.xzy, bvec3(y_major)), coord, bvec3(z_major)).xxyy * vec4(d_str_dx.z, d_str_dy.z, d_str_dx.z, d_str_dy.z))) * (0.5 / (max_component * max_component));
+    vec2 _88 = vec2(textureSize(_8, 0));
+    vec2 _89 = cube_gradients.xz * _88;
+    vec2 _90 = cube_gradients.yw * _88;
+    _13._m0[gl_GlobalInvocationID.x] = floatBitsToUint(uintBitsToFloat(_13._m0[gl_GlobalInvocationID.x]) + max(min(log2(max(dot(_89, _89), dot(_90, _90))) * 0.5, float(textureQueryLevels(_8)) - (-1.0)), 0.0));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 112
+; Schema: 0
+OpCapability Shader
+OpCapability ImageQuery
+OpCapability GroupNonUniformQuad
+%44 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %19
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %11 "SSBO"
+OpName %34 "coord"
+OpName %40 "d_coord_dx"
+OpName %41 "d_coord_dy"
+OpName %45 "abs_uvw"
+OpName %50 "max_component"
+OpName %52 "z_major"
+OpName %53 "y_major"
+OpName %63 "d_str_dx"
+OpName %69 "d_str_dy"
+OpName %75 "str"
+OpName %82 "cube_gradients"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %10 ArrayStride 4
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 0
+OpDecorate %16 DescriptorSet 0
+OpDecorate %16 Binding 0
+OpDecorate %19 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeImage %5 Cube 0 0 0 1 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeInt 32 0
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeSampler
+%15 = OpTypePointer UniformConstant %14
+%16 = OpVariable %15 UniformConstant
+%17 = OpTypeVector %9 3
+%18 = OpTypePointer Input %17
+%19 = OpVariable %18 Input
+%20 = OpTypePointer Input %9
+%22 = OpConstant %9 0
+%26 = OpConstant %5 0.100000001
+%28 = OpConstant %5 0.200000003
+%30 = OpConstant %5 0.300000012
+%33 = OpTypeVector %5 3
+%35 = OpTypeInt 32 1
+%37 = OpConstant %9 3
+%39 = OpConstant %9 1
+%42 = OpTypeVector %5 2
+%43 = OpTypeVector %5 4
+%51 = OpTypeBool
+%56 = OpConstant %5 0.5
+%59 = OpTypeVector %51 3
+%85 = OpTypeVector %35 2
+%87 = OpConstant %35 0
+%99 = OpConstant %5 -1
+%102 = OpConstant %5 0
+%103 = OpTypePointer StorageBuffer %9
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %110
+%110 = OpLabel
+%21 = OpAccessChain %20 %19 %22
+%23 = OpLoad %9 %21
+%24 = OpConvertUToF %5 %23
+%25 = OpFMul %5 %24 %26
+%27 = OpFMul %5 %24 %28
+%29 = OpFMul %5 %24 %30
+%31 = OpLoad %6 %8
+%32 = OpLoad %14 %16
+%34 = OpCompositeConstruct %33 %25 %27 %29
+%36 = OpGroupNonUniformQuadSwap %33 %37 %34 %22
+%38 = OpGroupNonUniformQuadSwap %33 %37 %34 %39
+%40 = OpFSub %33 %36 %34
+%41 = OpFSub %33 %38 %34
+%45 = OpExtInst %33 %44 FAbs %34
+%46 = OpCompositeExtract %5 %45 0
+%47 = OpCompositeExtract %5 %45 1
+%48 = OpExtInst %5 %44 FMax %47 %46
+%49 = OpCompositeExtract %5 %45 2
+%50 = OpExtInst %5 %44 FMax %49 %48
+%52 = OpFOrdGreaterThanEqual %51 %49 %50
+%53 = OpFOrdGreaterThanEqual %51 %47 %50
+%54 = OpFMul %5 %50 %50
+%55 = OpFDiv %5 %56 %54
+%57 = OpVectorShuffle %33 %40 %40 0 2 1
+%58 = OpVectorShuffle %33 %40 %40 2 1 0
+%60 = OpCompositeConstruct %59 %52 %52 %52
+%61 = OpCompositeConstruct %59 %53 %53 %53
+%62 = OpSelect %33 %61 %57 %58
+%63 = OpSelect %33 %60 %40 %62
+%64 = OpVectorShuffle %33 %41 %41 0 2 1
+%65 = OpVectorShuffle %33 %41 %41 2 1 0
+%66 = OpCompositeConstruct %59 %52 %52 %52
+%67 = OpCompositeConstruct %59 %53 %53 %53
+%68 = OpSelect %33 %67 %64 %65
+%69 = OpSelect %33 %66 %41 %68
+%70 = OpVectorShuffle %33 %34 %34 0 2 1
+%71 = OpVectorShuffle %33 %34 %34 2 1 0
+%72 = OpCompositeConstruct %59 %52 %52 %52
+%73 = OpCompositeConstruct %59 %53 %53 %53
+%74 = OpSelect %33 %73 %70 %71
+%75 = OpSelect %33 %72 %34 %74
+%76 = OpVectorShuffle %43 %63 %69 0 3 1 4
+%77 = OpVectorShuffle %43 %75 %75 0 0 1 1
+%78 = OpVectorShuffle %43 %63 %69 2 5 2 5
+%79 = OpVectorTimesScalar %43 %76 %50
+%80 = OpFMul %43 %77 %78
+%81 = OpFSub %43 %79 %80
+%82 = OpVectorTimesScalar %43 %81 %55
+%83 = OpVectorShuffle %42 %82 %82 0 2
+%84 = OpVectorShuffle %42 %82 %82 1 3
+%86 = OpImageQuerySizeLod %85 %31 %87
+%88 = OpConvertSToF %42 %86
+%89 = OpFMul %42 %83 %88
+%90 = OpFMul %42 %84 %88
+%91 = OpDot %5 %89 %89
+%92 = OpDot %5 %90 %90
+%93 = OpExtInst %5 %44 FMax %91 %92
+%94 = OpExtInst %5 %44 Log2 %93
+%95 = OpFMul %5 %94 %56
+%96 = OpImageQueryLevels %35 %31
+%97 = OpConvertSToF %5 %96
+%98 = OpFSub %5 %97 %99
+%100 = OpExtInst %5 %44 FMin %95 %98
+%101 = OpExtInst %5 %44 FMax %100 %102
+%104 = OpAccessChain %103 %13 %22 %23
+%105 = OpLoad %9 %104
+%106 = OpBitcast %5 %105
+%107 = OpFAdd %5 %106 %101
+%108 = OpBitcast %9 %107
+%109 = OpAccessChain %103 %13 %22 %23
+OpStore %109 %108
+OpReturn
+OpFunctionEnd
+#endif
