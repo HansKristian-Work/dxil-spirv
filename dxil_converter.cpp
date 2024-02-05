@@ -7007,6 +7007,15 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::QuadControlReconvergence:
+	{
+		auto &c = static_cast<const OptionQuadControlReconvergence &>(cap);
+		options.supports_quad_control = c.supports_quad_control;
+		options.supports_maximal_reconvergence = c.supports_maximal_reconvergence;
+		options.force_maximal_reconvergence = c.force_maximal_reconvergence;
+		break;
+	}
+
 	default:
 		break;
 	}

@@ -251,6 +251,7 @@ enum class Option : uint32_t
 	SubgroupProperties = 34,
 	DescriptorHeapRobustness = 35,
 	ComputeShaderDerivativesNV = 36,
+	QuadControlReconvergence = 37,
 	Count
 };
 
@@ -660,6 +661,18 @@ struct OptionComputeShaderDerivativesNV : OptionBase
 
 	// Before adding this option, we assumed that by default.
 	bool supported = true;
+};
+
+struct OptionQuadControlReconvergence : OptionBase
+{
+	OptionQuadControlReconvergence()
+		: OptionBase(Option::QuadControlReconvergence)
+	{
+	}
+
+	bool supports_quad_control = false;
+	bool supports_maximal_reconvergence = false;
+	bool force_maximal_reconvergence = false;
 };
 
 struct DescriptorTableEntry

@@ -607,6 +607,9 @@ struct Converter::Impl
 		bool propagate_precise = false;
 		bool force_precise = false;
 		bool descriptor_heap_robustness = false;
+		bool supports_quad_control = false;
+		bool supports_maximal_reconvergence = false;
+		bool force_maximal_reconvergence = false;
 		struct
 		{
 			bool enabled = false;
