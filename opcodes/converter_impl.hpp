@@ -176,15 +176,25 @@ struct Converter::Impl
 	UnorderedMap<spv::Id, spv::Id> phi_incoming_rewrite;
 
 	ConvertedFunction convert_entry_point();
-	CFGNode *convert_function(llvm::Function *func, CFGNodePool &pool);
-	CFGNode *build_hull_main(llvm::Function *func, CFGNodePool &pool,
+	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs);
+	CFGNode *build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
+	                         const Vector<llvm::BasicBlock *> &patch_bbs,
+	                         CFGNodePool &pool,
 	                         Vector<ConvertedFunction::LeafFunction> &leaves);
-	CFGNode *build_rov_main(llvm::Function *func, CFGNodePool &pool,
+	CFGNode *build_rov_main(const Vector<llvm::BasicBlock *> &bbs,
+	                        CFGNodePool &pool,
 	                        Vector<ConvertedFunction::LeafFunction> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
 	spv::Id get_id_for_undef_constant(const llvm::UndefValue *undef);
+
+	Vector<llvm::BasicBlock *> build_function_bb_visit_order_legacy(llvm::Function *func, CFGNodePool &pool);
+	Vector<llvm::BasicBlock *> build_function_bb_visit_order_analysis(llvm::Function *func);
+	void build_function_bb_visit_order_inner_analysis(Vector<llvm::BasicBlock *> &bbs,
+	                                                  UnorderedSet<llvm::BasicBlock *> &visited,
+	                                                  llvm::BasicBlock *bb);
+	void build_function_bb_visit_register(llvm::BasicBlock *bb, CFGNodePool &pool, String tag);
 
 	bool emit_stage_input_variables();
 	bool emit_stage_output_variables();
@@ -213,8 +223,7 @@ struct Converter::Impl
 	bool emit_execution_modes_fp_denorm();
 	bool emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads);
 
-	bool analyze_instructions();
-	bool analyze_instructions(const llvm::Function *function);
+	bool analyze_instructions(llvm::Function *func);
 	void mark_used_values(const llvm::Instruction *instruction);
 	void mark_used_value(const llvm::Value *value);
 
