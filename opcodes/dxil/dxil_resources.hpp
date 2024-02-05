@@ -40,6 +40,9 @@ bool emit_annotate_handle_instruction(Converter::Impl &impl, const llvm::CallIns
 
 bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction,
+                                       const llvm::Value *cbv_handle, uint32_t scalar_index_offset, uint32_t stride);
+bool cbuffer_supports_gep_punchthrough(Converter::Impl &impl, const llvm::Value *cbv_handle);
 
 template <GLSLstd450 opcode>
 static inline bool emit_interpolate_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)

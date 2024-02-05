@@ -143,6 +143,18 @@ static inline unsigned raw_width_to_bits(RawWidth raw_width)
 	return raw_component_type_to_bits(raw_width_to_component_type(RawType::Integer, raw_width));
 }
 
+// Track patterns where shader copies CBV arrays into a local array.
+// DXC does not seem to optimize this in all cases that games run into.
+struct AllocaCBVForwardingTracking
+{
+	const llvm::Value *cbv_handle = nullptr;
+	uint32_t scalar_index_offset = 0;
+	uint32_t stride = 0;
+	uint32_t highest_store_index = 0;
+	uint32_t min_highest_store_index = 0;
+	bool has_load = false;
+};
+
 struct Converter::Impl
 {
 	DXIL_SPV_OVERRIDE_NEW_DELETE
@@ -730,6 +742,8 @@ struct Converter::Impl
 	UnorderedSet<const llvm::CallInst *> wave_op_forced_helper_lanes;
 
 	UnorderedSet<const llvm::Value *> llvm_used_ssa_values;
+	UnorderedMap<const llvm::AllocaInst *, AllocaCBVForwardingTracking> alloca_tracking;
+	UnorderedSet<const llvm::GetElementPtrInst *> masked_alloca_forward_gep;
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);

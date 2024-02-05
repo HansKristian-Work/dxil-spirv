@@ -34,4 +34,11 @@ bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction);
 
 bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb);
 bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+struct AllocaCBVForwardingTracking;
+bool analyze_alloca_cbv_forwarding_pre_resource_emit(Converter::Impl &impl,
+                                                     const llvm::Type *scalar_type,
+                                                     AllocaCBVForwardingTracking &tracking);
+bool analyze_alloca_cbv_forwarding_post_resource_emit(Converter::Impl &impl,
+                                                      AllocaCBVForwardingTracking &tracking);
 } // namespace dxil_spv

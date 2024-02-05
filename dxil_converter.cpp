@@ -3008,6 +3008,13 @@ bool Converter::Impl::emit_resources()
 		if (!emit_samplers(type_metas[3], reflection_type_metas[3]))
 			return false;
 
+	for (auto &alloc : alloca_tracking)
+	{
+		// Now that we have emitted resources, we can determine which alloca -> CBV punchthroughs to accept.
+		if (!analyze_alloca_cbv_forwarding_post_resource_emit(*this, alloc.second))
+			return false;
+	}
+
 	return true;
 }
 
@@ -6420,6 +6427,11 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 				if (!analyze_store_instruction(*this, store_inst))
 					return false;
 			}
+			else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&inst))
+			{
+				if (!analyze_alloca_instruction(*this, alloca_inst))
+					return false;
+			}
 			else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst))
 			{
 				if (!analyze_getelementptr_instruction(*this, getelementptr_inst))
@@ -6464,6 +6476,15 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 
 		// Reset AGS tracking for every BB.
 		ags.phases = 0;
+	}
+
+	for (auto &alloc : alloca_tracking)
+	{
+		// Mark required resource aliases before we emit resources. Defer some work until after resource creation.
+		const auto *scalar_type =
+		    alloc.first->getType()->getPointerElementType()->getArrayElementType();
+		if (!analyze_alloca_cbv_forwarding_pre_resource_emit(*this, scalar_type, alloc.second))
+			return false;
 	}
 
 	return true;

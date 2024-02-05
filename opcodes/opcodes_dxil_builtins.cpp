@@ -554,6 +554,62 @@ get_resource_meta_from_buffer_op(Converter::Impl &impl, const llvm::CallInst *in
 	return { DXIL::ResourceKind::Invalid, 0 };
 }
 
+bool analyze_alloca_cbv_forwarding_pre_resource_emit(Converter::Impl &impl, const llvm::Type *scalar_type,
+                                                     AllocaCBVForwardingTracking &tracking)
+{
+	if (!tracking.cbv_handle)
+		return true;
+
+	if (!tracking.has_load || !tracking.stride)
+	{
+		tracking.cbv_handle = nullptr;
+		return true;
+	}
+
+	// Robustness purposes, if we cannot prove that all input data was read,
+	// we may falsely cause an OOB read on BDA to happen when we redirect a load to it.
+	if (tracking.highest_store_index < tracking.min_highest_store_index)
+	{
+		tracking.cbv_handle = nullptr;
+		return true;
+	}
+
+	Converter::Impl::AccessTracking *cbv_tracking = nullptr;
+	auto itr = impl.llvm_value_to_cbv_resource_index_map.find(tracking.cbv_handle);
+	if (itr != impl.llvm_value_to_cbv_resource_index_map.end())
+		cbv_tracking = &impl.cbv_access_tracking[itr->second];
+
+	if (!cbv_tracking)
+	{
+		auto annotate_itr = impl.llvm_annotate_handle_uses.find(tracking.cbv_handle);
+		if (annotate_itr != impl.llvm_annotate_handle_uses.end())
+			cbv_tracking = &annotate_itr->second.tracking;
+	}
+
+	if (cbv_tracking)
+	{
+		auto raw_type = scalar_type->isFloatingPointTy() ? RawType::Float : RawType::Integer;
+		cbv_tracking->raw_access_buffer_declarations[int(raw_type)][int(RawWidth::B32)][int(RawVecSize::V1)] = true;
+	}
+
+	return true;
+}
+
+bool analyze_alloca_cbv_forwarding_post_resource_emit(Converter::Impl &impl, AllocaCBVForwardingTracking &tracking)
+{
+	if (!tracking.cbv_handle)
+		return true;
+
+	// We don't know this until after resource creation.
+	if (!cbuffer_supports_gep_punchthrough(impl, tracking.cbv_handle))
+	{
+		tracking.cbv_handle = nullptr;
+		return true;
+	}
+
+	return true;
+}
+
 static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	Converter::Impl::AccessTracking *tracking = nullptr;

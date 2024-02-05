@@ -1,0 +1,204 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference_uvec2 : require
+
+layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
+layout(buffer_reference) buffer PhysicalPointerFloatNonWriteCBVArray;
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
+{
+    vec4 value[4096];
+};
+
+layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloatNonWriteCBVArray
+{
+    float value[16384];
+};
+
+layout(shaderRecordEXT, std430) buffer SBTBlock
+{
+    uint _m0[5];
+    uint _m1[6];
+    uvec2 _m2;
+    uvec2 _m3;
+    uvec2 _m4;
+    uvec2 _m5;
+    uvec2 _m6;
+    uvec2 _m7;
+    uvec2 _m8;
+    uvec2 _m9;
+    uvec2 _m10;
+} SBT;
+
+layout(set = 0, binding = 0) uniform writeonly image2D RWIMG;
+
+void main()
+{
+    vec4 _43 = uintBitsToFloat(uvec4(SBT._m0[0u], SBT._m0[1u], SBT._m0[2u], SBT._m0[3u]));
+    float _21[4];
+    _21[0u] = _43.x;
+    _21[1u] = _43.y;
+    _21[2u] = _43.z;
+    _21[3u] = _43.w;
+    imageStore(RWIMG, ivec2(uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y)), vec4(PhysicalPointerFloatNonWriteCBVArray(SBT._m6).value[gl_LaunchIDEXT.y & 3u] * _21[gl_LaunchIDEXT.x & 3u]));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 91
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability StorageImageWriteWithoutFormat
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint RayGenerationNV %3 "main" %13 %17 %67
+OpName %3 "main"
+OpName %11 "SBTBlock"
+OpName %13 "SBT"
+OpName %17 "RWIMG"
+OpName %55 "PhysicalPointerFloat4NonWriteCBVArray"
+OpMemberName %55 0 "value"
+OpName %79 "PhysicalPointerFloatNonWriteCBVArray"
+OpMemberName %79 0 "value"
+OpDecorate %7 ArrayStride 4
+OpDecorate %9 ArrayStride 4
+OpDecorate %11 Block
+OpMemberDecorate %11 0 Offset 0
+OpMemberDecorate %11 1 Offset 20
+OpMemberDecorate %11 2 Offset 48
+OpMemberDecorate %11 3 Offset 56
+OpMemberDecorate %11 4 Offset 64
+OpMemberDecorate %11 5 Offset 72
+OpMemberDecorate %11 6 Offset 80
+OpMemberDecorate %11 7 Offset 88
+OpMemberDecorate %11 8 Offset 96
+OpMemberDecorate %11 9 Offset 104
+OpMemberDecorate %11 10 Offset 112
+OpDecorate %17 DescriptorSet 0
+OpDecorate %17 Binding 0
+OpDecorate %17 NonReadable
+OpDecorate %54 ArrayStride 16
+OpMemberDecorate %55 0 Offset 0
+OpDecorate %55 Block
+OpMemberDecorate %55 0 NonWritable
+OpDecorate %67 BuiltIn LaunchIdNV
+OpDecorate %78 ArrayStride 4
+OpMemberDecorate %79 0 Offset 0
+OpDecorate %79 Block
+OpMemberDecorate %79 0 NonWritable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpConstant %5 5
+%7 = OpTypeArray %5 %6
+%8 = OpConstant %5 6
+%9 = OpTypeArray %5 %8
+%10 = OpTypeVector %5 2
+%11 = OpTypeStruct %7 %9 %10 %10 %10 %10 %10 %10 %10 %10 %10
+%12 = OpTypePointer ShaderRecordBufferNV %11
+%13 = OpVariable %12 ShaderRecordBufferNV
+%14 = OpTypeFloat 32
+%15 = OpTypeImage %14 2D 0 0 0 2 Unknown
+%16 = OpTypePointer UniformConstant %15
+%17 = OpVariable %16 UniformConstant
+%18 = OpConstant %5 4
+%19 = OpTypeArray %14 %18
+%20 = OpTypePointer Function %19
+%22 = OpTypePointer ShaderRecordBufferNV %10
+%25 = OpTypePointer ShaderRecordBufferNV %7
+%27 = OpConstant %5 0
+%28 = OpTypePointer ShaderRecordBufferNV %5
+%32 = OpConstant %5 1
+%35 = OpConstant %5 2
+%38 = OpConstant %5 3
+%40 = OpTypeVector %5 4
+%42 = OpTypeVector %14 4
+%45 = OpTypePointer Function %14
+%53 = OpConstant %5 4096
+%54 = OpTypeArray %42 %53
+%55 = OpTypeStruct %54
+%56 = OpTypePointer PhysicalStorageBuffer %55
+%58 = OpTypePointer PhysicalStorageBuffer %42
+%65 = OpTypeVector %5 3
+%66 = OpTypePointer Input %65
+%67 = OpVariable %66 Input
+%68 = OpTypePointer Input %5
+%77 = OpConstant %5 16384
+%78 = OpTypeArray %14 %77
+%79 = OpTypeStruct %78
+%80 = OpTypePointer PhysicalStorageBuffer %79
+%82 = OpTypePointer PhysicalStorageBuffer %14
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%21 = OpVariable %20 Function
+OpBranch %89
+%89 = OpLabel
+%23 = OpAccessChain %22 %13 %8
+%24 = OpLoad %10 %23
+%26 = OpAccessChain %25 %13 %27
+%29 = OpAccessChain %28 %26 %27
+%30 = OpLoad %5 %29
+%31 = OpAccessChain %28 %26 %32
+%33 = OpLoad %5 %31
+%34 = OpAccessChain %28 %26 %35
+%36 = OpLoad %5 %34
+%37 = OpAccessChain %28 %26 %38
+%39 = OpLoad %5 %37
+%41 = OpCompositeConstruct %40 %30 %33 %36 %39
+%43 = OpBitcast %42 %41
+%44 = OpCompositeExtract %14 %43 0
+%46 = OpInBoundsAccessChain %45 %21 %27
+OpStore %46 %44
+%47 = OpCompositeExtract %14 %43 1
+%48 = OpInBoundsAccessChain %45 %21 %32
+OpStore %48 %47
+%49 = OpCompositeExtract %14 %43 2
+%50 = OpInBoundsAccessChain %45 %21 %35
+OpStore %50 %49
+%51 = OpCompositeExtract %14 %43 3
+%52 = OpInBoundsAccessChain %45 %21 %38
+OpStore %52 %51
+%57 = OpBitcast %56 %24
+%59 = OpInBoundsAccessChain %58 %57 %27 %27
+%60 = OpLoad %42 %59 Aligned 16
+%61 = OpCompositeExtract %14 %60 0
+%62 = OpCompositeExtract %14 %60 1
+%63 = OpCompositeExtract %14 %60 2
+%64 = OpCompositeExtract %14 %60 3
+%69 = OpAccessChain %68 %67 %27
+%70 = OpLoad %5 %69
+%71 = OpAccessChain %68 %67 %32
+%72 = OpLoad %5 %71
+%73 = OpBitwiseAnd %5 %70 %38
+%74 = OpInBoundsAccessChain %45 %21 %73
+%75 = OpLoad %14 %74
+%76 = OpBitwiseAnd %5 %72 %38
+%81 = OpBitcast %80 %24
+%83 = OpInBoundsAccessChain %82 %81 %27 %76
+%84 = OpLoad %14 %83 Aligned 4
+%85 = OpFMul %14 %84 %75
+%86 = OpLoad %15 %17
+%87 = OpCompositeConstruct %10 %70 %72
+%88 = OpCompositeConstruct %42 %85 %85 %85 %85
+OpImageWrite %86 %87 %88
+OpReturn
+OpFunctionEnd
+#endif

@@ -922,7 +922,7 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &cbv.base);
 	}
 
-	if (remapper.bindless || !remapper.root_descriptors.empty())
+	if (remapper.bindless || !remapper.root_descriptors.empty() || local_root_signature)
 	{
 		const dxil_spv_option_physical_storage_buffer phys = { { DXIL_SPV_OPTION_PHYSICAL_STORAGE_BUFFER },
 			                                                   remapper.bda ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };

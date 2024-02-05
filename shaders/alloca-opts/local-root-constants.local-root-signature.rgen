@@ -1,0 +1,37 @@
+struct Foo
+{
+	float b0, b1, b2, b3;
+};
+
+cbuffer Buf : register(b0, space15)
+{
+	Foo foo;
+};
+
+cbuffer Buf : register(b2, space15)
+{
+	Foo foo2;
+};
+
+RWTexture2D<float> RWIMG : register(u0);
+
+[shader("raygeneration")]
+void main()
+{
+	float bs[4];
+	float cs[4];
+
+	bs[0] = foo.b0;
+	bs[1] = foo.b1;
+	bs[2] = foo.b2;
+	bs[3] = foo.b3;
+
+	cs[0] = foo2.b0;
+	cs[1] = foo2.b1;
+	cs[2] = foo2.b2;
+	cs[3] = foo2.b3;
+
+	uint2 id = DispatchRaysIndex().xy;
+
+	RWIMG[id] = bs[id.x % 4] * cs[id.y % 4];
+}
