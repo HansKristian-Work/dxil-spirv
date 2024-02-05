@@ -5286,8 +5286,8 @@ bool Converter::Impl::emit_execution_modes_pixel()
 	if (early_depth_stencil)
 		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeEarlyFragmentTests);
 
-	// TODO: There is no execution mode for this yet, but it is the "default" Vulkan behavior.
-	// For now, we'll avoid masking helper lanes when strict_helper_lane_waveops is used.
+	// Avoid masking helper lanes when strict_helper_lane_waveops is used.
+	// Execution modes to enable correct Vulkan behaviour are set up later.
 	auto *func = get_entry_point_function(entry_point_meta);
 	execution_mode_meta.waveops_include_helper_lanes =
 	    func->hasFnAttribute("waveops-include-helper-lanes");
@@ -5759,6 +5759,25 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 		builder().addExtension("SPV_KHR_float_controls");
 		builder().addCapability(spv::CapabilityDenormPreserve);
 		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+	}
+
+	// Opt into quad derivatives and maximal reconvergence for fragment shaders using
+	// QuadAll/QuadAny intrinsics to get meaningful behaviour for quad-uniform control
+	// flow, other quad ops are ignored for now.
+	if (options.supports_quad_control && execution_model == spv::ExecutionModelFragment &&
+			execution_mode_meta.needs_quad_derivatives)
+	{
+		builder().addExtension("SPV_KHR_quad_control");
+		builder().addCapability(spv::CapabilityQuadControlKHR);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRequireFullQuadsKHR);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeQuadDerivativesKHR);
+	}
+
+	if (options.supports_maximal_reconvergence && (options.force_maximal_reconvergence ||
+			execution_mode_meta.waveops_include_helper_lanes || execution_mode_meta.needs_quad_derivatives))
+	{
+		builder().addExtension("SPV_KHR_maximal_reconvergence");
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeMaximallyReconvergesKHR);
 	}
 }
 
