@@ -6050,7 +6050,11 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 					auto *meta_name = llvm::dyn_cast<llvm::MDString>(meta_node->getOperand(0));
 					if (meta_name)
 					{
+#ifdef HAVE_LLVMBC
 						auto &str = meta_name->getString();
+#else
+						auto str = meta_name->getString();
+#endif
 
 						if (options.branch_control.use_shader_metadata)
 						{
