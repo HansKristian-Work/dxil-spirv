@@ -1898,6 +1898,104 @@ static bool emit_cbuffer_load_root_constant(Converter::Impl &impl, const llvm::C
 	                                    impl.root_constant_num_words + impl.root_descriptor_count);
 }
 
+bool cbuffer_supports_gep_punchthrough(Converter::Impl &impl, const llvm::Value *cbv_handle)
+{
+	auto itr = impl.llvm_value_to_cbv_resource_index_map.find(cbv_handle);
+
+	// Bindless, cannot be push constant or local root sig.
+	if (itr == impl.llvm_value_to_cbv_resource_index_map.end())
+		return true;
+
+	auto &ref = impl.cbv_index_to_reference[itr->second];
+
+	// Block root constants for local root signatures as well.
+	if (ref.local_root_signature_entry >= 0)
+	{
+		auto &entry = impl.local_root_signature[ref.local_root_signature_entry];
+		return entry.type != LocalRootSignatureType::Constants;
+	}
+
+	if (ref.var_id != 0 && ref.var_id == impl.root_constant_id &&
+	    !resource_is_physical_pointer(impl, ref))
+	{
+		return false;
+	}
+
+	// Root descriptor and table descriptors are fine.
+	return true;
+}
+
+bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction,
+                                       const llvm::Value *cbv_handle, uint32_t scalar_index_offset, uint32_t stride)
+{
+	auto &builder = impl.builder();
+	spv::Id ptr_id = impl.get_id_for_value(cbv_handle);
+	if (!ptr_id)
+		return false;
+
+	auto &meta = impl.handle_to_resource_meta[ptr_id];
+
+	// We should have guarded against this.
+	// Guard against shader record buffer to avoid having to deal with bitcasting.
+	if (ptr_id == impl.root_constant_id || meta.storage == spv::StorageClassShaderRecordBufferKHR)
+		return false;
+
+	spv::Id array_index_id = impl.get_id_for_value(instruction->getOperand(2));
+
+	if (stride != 1)
+	{
+		auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		mul_op->add_id(array_index_id);
+		mul_op->add_id(builder.makeUintConstant(stride));
+		impl.add(mul_op);
+		array_index_id = mul_op->id;
+	}
+
+	if (scalar_index_offset != 0)
+	{
+		auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add_op->add_id(array_index_id);
+		add_op->add_id(builder.makeUintConstant(scalar_index_offset));
+		impl.add(add_op);
+		array_index_id = add_op->id;
+	}
+
+	const auto *elem_type = instruction->getType()->getPointerElementType();
+	spv::Id result_type_id = impl.get_type_id(elem_type);
+
+	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+	{
+		Converter::Impl::PhysicalPointerMeta ptr_meta = {};
+		ptr_meta.nonwritable = true;
+		ptr_meta.stride = 4;
+		ptr_meta.size = 64 * 1024;
+		spv::Id ptr_type_id = impl.get_physical_pointer_block_type(result_type_id, ptr_meta);
+
+		auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
+		ptr_bitcast_op->add_id(ptr_id);
+		impl.add(ptr_bitcast_op);
+
+		auto *chain_op = impl.allocate(spv::OpInBoundsAccessChain, instruction,
+		                               builder.makePointer(spv::StorageClassPhysicalStorageBuffer, result_type_id));
+		chain_op->add_id(ptr_bitcast_op->id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		chain_op->add_id(array_index_id);
+		impl.add(chain_op);
+	}
+	else
+	{
+		RawType raw_type = elem_type->isIntegerTy() ? RawType::Integer : RawType::Float;
+		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, RawWidth::B32, RawVecSize::V1);
+
+		Operation *access_chain_op = impl.allocate(
+		    spv::OpAccessChain, instruction, builder.makePointer(meta.storage, impl.get_type_id(elem_type)));
+		access_chain_op->add_ids({ ptr_id, builder.makeUintConstant(0), array_index_id });
+		impl.add(access_chain_op);
+	}
+
+	return true;
+}
+
 bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();

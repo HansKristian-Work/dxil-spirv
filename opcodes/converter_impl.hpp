@@ -143,6 +143,18 @@ static inline unsigned raw_width_to_bits(RawWidth raw_width)
 	return raw_component_type_to_bits(raw_width_to_component_type(RawType::Integer, raw_width));
 }
 
+// Track patterns where shader copies CBV arrays into a local array.
+// DXC does not seem to optimize this in all cases that games run into.
+struct AllocaCBVForwardingTracking
+{
+	const llvm::Value *cbv_handle = nullptr;
+	uint32_t scalar_index_offset = 0;
+	uint32_t stride = 0;
+	uint32_t highest_store_index = 0;
+	uint32_t min_highest_store_index = 0;
+	bool has_load = false;
+};
+
 struct Converter::Impl
 {
 	DXIL_SPV_OVERRIDE_NEW_DELETE
@@ -176,15 +188,25 @@ struct Converter::Impl
 	UnorderedMap<spv::Id, spv::Id> phi_incoming_rewrite;
 
 	ConvertedFunction convert_entry_point();
-	CFGNode *convert_function(llvm::Function *func, CFGNodePool &pool);
-	CFGNode *build_hull_main(llvm::Function *func, CFGNodePool &pool,
+	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs);
+	CFGNode *build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
+	                         const Vector<llvm::BasicBlock *> &patch_bbs,
+	                         CFGNodePool &pool,
 	                         Vector<ConvertedFunction::LeafFunction> &leaves);
-	CFGNode *build_rov_main(llvm::Function *func, CFGNodePool &pool,
+	CFGNode *build_rov_main(const Vector<llvm::BasicBlock *> &bbs,
+	                        CFGNodePool &pool,
 	                        Vector<ConvertedFunction::LeafFunction> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
 	spv::Id get_id_for_undef_constant(const llvm::UndefValue *undef);
+
+	Vector<llvm::BasicBlock *> build_function_bb_visit_order_legacy(llvm::Function *func, CFGNodePool &pool);
+	Vector<llvm::BasicBlock *> build_function_bb_visit_order_analysis(llvm::Function *func);
+	void build_function_bb_visit_order_inner_analysis(Vector<llvm::BasicBlock *> &bbs,
+	                                                  UnorderedSet<llvm::BasicBlock *> &visited,
+	                                                  llvm::BasicBlock *bb);
+	void build_function_bb_visit_register(llvm::BasicBlock *bb, CFGNodePool &pool, String tag);
 
 	bool emit_stage_input_variables();
 	bool emit_stage_output_variables();
@@ -213,8 +235,7 @@ struct Converter::Impl
 	bool emit_execution_modes_fp_denorm();
 	bool emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads);
 
-	bool analyze_instructions();
-	bool analyze_instructions(const llvm::Function *function);
+	bool analyze_instructions(llvm::Function *func);
 	void mark_used_values(const llvm::Instruction *instruction);
 	void mark_used_value(const llvm::Value *value);
 
@@ -721,6 +742,8 @@ struct Converter::Impl
 	UnorderedSet<const llvm::CallInst *> wave_op_forced_helper_lanes;
 
 	UnorderedSet<const llvm::Value *> llvm_used_ssa_values;
+	UnorderedMap<const llvm::AllocaInst *, AllocaCBVForwardingTracking> alloca_tracking;
+	UnorderedSet<const llvm::GetElementPtrInst *> masked_alloca_forward_gep;
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);

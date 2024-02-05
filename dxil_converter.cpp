@@ -35,6 +35,7 @@
 #include "spirv_module.hpp"
 
 #include <utility>
+#include <algorithm>
 
 namespace dxil_spv
 {
@@ -3007,6 +3008,13 @@ bool Converter::Impl::emit_resources()
 		if (!emit_samplers(type_metas[3], reflection_type_metas[3]))
 			return false;
 
+	for (auto &alloc : alloca_tracking)
+	{
+		// Now that we have emitted resources, we can determine which alloca -> CBV punchthroughs to accept.
+		if (!analyze_alloca_cbv_forwarding_post_resource_emit(*this, alloc.second))
+			return false;
+	}
+
 	return true;
 }
 
@@ -5346,8 +5354,6 @@ bool Converter::Impl::emit_execution_modes_hull()
 		auto *patch_constant = llvm::cast<llvm::ConstantAsMetadata>(arguments->getOperand(0));
 		auto *patch_constant_value = patch_constant->getValue();
 		execution_mode_meta.patch_constant_function = llvm::cast<llvm::Function>(patch_constant_value);
-		if (!analyze_instructions(execution_mode_meta.patch_constant_function))
-			return false;
 
 		unsigned input_control_points = get_constant_metadata(arguments, 1);
 		unsigned output_control_points = get_constant_metadata(arguments, 2);
@@ -5825,10 +5831,11 @@ bool Converter::Impl::emit_execution_modes()
 	return true;
 }
 
-CFGNode *Converter::Impl::build_rov_main(llvm::Function *func, CFGNodePool &pool,
+CFGNode *Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
+                                         CFGNodePool &pool,
                                          Vector<ConvertedFunction::LeafFunction> &leaves)
 {
-	auto *code_main = convert_function(func, pool);
+	auto *code_main = convert_function(visit_order);
 
 	// Need to figure out if our ROV use is trivial. If not, we will wrap the entire function in ROV pairs.
 	CFGStructurizer cfg{code_main, pool, spirv_module};
@@ -5856,7 +5863,9 @@ CFGNode *Converter::Impl::build_rov_main(llvm::Function *func, CFGNodePool &pool
 	return entry;
 }
 
-CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &pool,
+CFGNode *Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
+                                          const Vector<llvm::BasicBlock *> &patch_visit_order,
+                                          CFGNodePool &pool,
                                           Vector<ConvertedFunction::LeafFunction> &leaves)
 {
 	// Just make sure there is an entry block already created.
@@ -5868,9 +5877,9 @@ CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &poo
 
 	// Set build point so alloca() functions can create variables correctly.
 	builder().setBuildPoint(hull_entry);
-	auto *hull_main = convert_function(func, pool);
+	auto *hull_main = convert_function(visit_order);
 	builder().setBuildPoint(patch_entry);
-	auto *patch_main = convert_function(execution_mode_meta.patch_constant_function, pool);
+	auto *patch_main = convert_function(patch_visit_order);
 	builder().setBuildPoint(spirv_module.get_entry_function()->getEntryBlock());
 
 	leaves.push_back({ hull_main, hull_func });
@@ -5931,15 +5940,71 @@ CFGNode *Converter::Impl::build_hull_main(llvm::Function *func, CFGNodePool &poo
 	return entry;
 }
 
-CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &pool)
+void Converter::Impl::build_function_bb_visit_order_inner_analysis(
+	Vector<llvm::BasicBlock *> &bbs, UnorderedSet<llvm::BasicBlock *> &visited,
+	llvm::BasicBlock *bb)
+{
+	if (visited.count(bb))
+		return;
+	visited.insert(bb);
+
+	// Check for special case where we optimize to direct branch.
+	auto *term = bb->getTerminator();
+	if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(term))
+	{
+		if (inst->isConditional())
+		{
+			bool cond_value;
+			if (can_optimize_conditional_branch_to_static(*this, inst->getCondition(), cond_value))
+			{
+				auto *succ = inst->getSuccessor(cond_value ? 0 : 1);
+				build_function_bb_visit_order_inner_analysis(bbs, visited, succ);
+				bbs.push_back(bb);
+				return;
+			}
+		}
+	}
+
+	for (auto itr = llvm::succ_begin(bb); itr != llvm::succ_end(bb); ++itr)
+	{
+		auto *succ = *itr;
+		build_function_bb_visit_order_inner_analysis(bbs, visited, succ);
+	}
+
+	bbs.push_back(bb);
+}
+
+Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_analysis(llvm::Function *func)
+{
+	UnorderedSet<llvm::BasicBlock *> visited;
+	Vector<llvm::BasicBlock *> visit_order;
+	auto *entry = &func->getEntryBlock();
+	build_function_bb_visit_order_inner_analysis(visit_order, visited, entry);
+	// Get natural traverse order, input is post-traversal order.
+	std::reverse(visit_order.begin(), visit_order.end());
+	return visit_order;
+}
+
+void Converter::Impl::build_function_bb_visit_register(llvm::BasicBlock *bb, CFGNodePool &pool, String tag)
+{
+	auto entry_meta = std::make_unique<BlockMeta>(bb);
+	bb_map[bb] = entry_meta.get();
+	auto *entry_node = pool.create_node();
+	bb_map[bb]->node = entry_node;
+	entry_node->name = std::move(tag);
+	metas.push_back(std::move(entry_meta));
+}
+
+// This only exists so that we can avoid nuking all existing Fossilize caches with completely new shaders.
+// This traversal order is not a perfect reverse post-traversal,
+// so we cannot use it for analysis with alloca() -> CBV forwarding checks.
+// Once we are ready to consider doing large scale SPIR-V changes that invalidate all caches anyway,
+// we might as well get rid of this path in the same update and use the common analysis path.
+Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_legacy(
+    llvm::Function *func, CFGNodePool &pool)
 {
 	auto *entry = &func->getEntryBlock();
-	auto entry_meta = std::make_unique<BlockMeta>(entry);
-	bb_map[entry] = entry_meta.get();
-	auto *entry_node = pool.create_node();
-	bb_map[entry]->node = entry_node;
-	entry_node->name += ".entry";
-	metas.push_back(std::move(entry_meta));
+	build_function_bb_visit_register(entry, pool, ".entry");
 
 	Vector<llvm::BasicBlock *> to_process;
 	Vector<llvm::BasicBlock *> processing;
@@ -5952,12 +6017,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		if (!bb_map.count(succ))
 		{
 			to_process.push_back(succ);
-			auto succ_meta = std::make_unique<BlockMeta>(succ);
-			bb_map[succ] = succ_meta.get();
-			auto *succ_node = pool.create_node();
-			bb_map[succ]->node = succ_node;
-			succ_node->name = dxil_spv::to_string(++fake_label_id);
-			metas.push_back(std::move(succ_meta));
+			build_function_bb_visit_register(succ, pool, dxil_spv::to_string(++fake_label_id));
 		}
 
 		bb_map[block]->node->add_branch(bb_map[succ]->node);
@@ -5992,6 +6052,11 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		processing.clear();
 	}
 
+	return visit_order;
+}
+
+CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order)
+{
 	bool has_partial_unroll = false;
 
 	for (auto *bb : visit_order)
@@ -6050,7 +6115,11 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 					auto *meta_name = llvm::dyn_cast<llvm::MDString>(meta_node->getOperand(0));
 					if (meta_name)
 					{
+#ifdef HAVE_LLVMBC
 						auto &str = meta_name->getString();
+#else
+						auto str = meta_name->getString();
+#endif
 
 						if (options.branch_control.use_shader_metadata)
 						{
@@ -6175,7 +6244,7 @@ CFGNode *Converter::Impl::convert_function(llvm::Function *func, CFGNodePool &po
 		}
 	}
 
-	return entry_node;
+	return bb_map[visit_order.front()]->node;
 }
 
 void Converter::Impl::mark_used_value(const llvm::Value *value)
@@ -6303,10 +6372,10 @@ static void propagate_precise(UnorderedSet<const llvm::Instruction *> &cache, co
 	}
 }
 
-static void propagate_precise(const llvm::Function *function)
+static void propagate_precise(llvm::Function *func)
 {
 	Vector<const llvm::Instruction *> precise_instructions;
-	for (auto &bb : *function)
+	for (auto &bb : *func)
 		for (auto &inst : bb)
 			if (instruction_requires_no_contraction(&inst))
 				precise_instructions.push_back(&inst);
@@ -6316,7 +6385,7 @@ static void propagate_precise(const llvm::Function *function)
 		propagate_precise(visitation_cache, inst);
 }
 
-bool Converter::Impl::analyze_instructions(const llvm::Function *function)
+bool Converter::Impl::analyze_instructions(llvm::Function *func)
 {
 	// Need to analyze this in two stages.
 	// In the first stage, we need to analyze:
@@ -6329,14 +6398,16 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 	// of ExtractValue analysis.
 
 	if (options.propagate_precise && !options.force_precise)
-		propagate_precise(function);
+		propagate_precise(func);
 
-	for (auto &bb : *function)
+	auto visit_order = build_function_bb_visit_order_analysis(func);
+
+	for (auto *bb : visit_order)
 	{
 		if (options.eliminate_dead_code)
-			mark_used_values(bb.getTerminator());
+			mark_used_values(bb->getTerminator());
 
-		for (auto &inst : bb)
+		for (auto &inst : *bb)
 		{
 			if (options.eliminate_dead_code)
 				mark_used_values(&inst);
@@ -6354,6 +6425,11 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 			else if (auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst))
 			{
 				if (!analyze_store_instruction(*this, store_inst))
+					return false;
+			}
+			else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&inst))
+			{
+				if (!analyze_alloca_instruction(*this, alloca_inst))
 					return false;
 			}
 			else if (auto *getelementptr_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst))
@@ -6376,16 +6452,16 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 				auto *called_function = call_inst->getCalledFunction();
 				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 				{
-					if (!analyze_dxil_instruction(*this, call_inst, &bb))
+					if (!analyze_dxil_instruction(*this, call_inst, bb))
 						return false;
 				}
 			}
 		}
 	}
 
-	for (auto &bb : *function)
+	for (auto *bb : visit_order)
 	{
-		for (auto &inst : bb)
+		for (auto &inst : *bb)
 		{
 			if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))
 			{
@@ -6402,17 +6478,21 @@ bool Converter::Impl::analyze_instructions(const llvm::Function *function)
 		ags.phases = 0;
 	}
 
+	for (auto &alloc : alloca_tracking)
+	{
+		// Mark required resource aliases before we emit resources. Defer some work until after resource creation.
+		const auto *scalar_type =
+		    alloc.first->getType()->getPointerElementType()->getArrayElementType();
+		if (!analyze_alloca_cbv_forwarding_pre_resource_emit(*this, scalar_type, alloc.second))
+			return false;
+	}
+
 	return true;
 }
 
 bool Converter::Impl::composite_is_accessed(const llvm::Value *composite) const
 {
 	return llvm_composite_meta.find(composite) != llvm_composite_meta.end();
-}
-
-bool Converter::Impl::analyze_instructions()
-{
-	return analyze_instructions(get_entry_point_function(entry_point_meta));
 }
 
 ConvertedFunction Converter::Impl::convert_entry_point()
@@ -6455,15 +6535,28 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	spirv_module.set_descriptor_qa_info(options.descriptor_qa);
 	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", options.physical_storage_buffer);
 
+	llvm::Function *func = get_entry_point_function(entry_point_meta);
+	assert(func);
+	auto visit_order = build_function_bb_visit_order_legacy(func, pool);
+	Vector<llvm::BasicBlock *> patch_visit_order;
+
 	// Need to analyze some execution modes early which affect opcode analysis later.
 	if (!analyze_execution_modes_meta())
 		return result;
 	if (!emit_resources_global_mapping())
 		return result;
-	if (!analyze_instructions())
+	if (!analyze_instructions(func))
 		return result;
+
 	if (!emit_execution_modes())
 		return result;
+
+	if (execution_mode_meta.patch_constant_function)
+	{
+		patch_visit_order = build_function_bb_visit_order_legacy(execution_mode_meta.patch_constant_function, pool);
+		if (!analyze_instructions(execution_mode_meta.patch_constant_function))
+			return result;
+	}
 
 	if (!emit_resources())
 		return result;
@@ -6484,15 +6577,12 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	execution_mode_meta.entry_point_name = get_entry_point_name(entry_point_meta);
 
-	llvm::Function *func = get_entry_point_function(entry_point_meta);
-	assert(func);
-
 	if (execution_model == spv::ExecutionModelTessellationControl)
-		result.entry = build_hull_main(func, pool, result.leaf_functions);
+		result.entry = build_hull_main(visit_order, patch_visit_order, pool, result.leaf_functions);
 	else if (execution_mode_meta.declares_rov)
-		result.entry = build_rov_main(func, pool, result.leaf_functions);
+		result.entry = build_rov_main(visit_order, pool, result.leaf_functions);
 	else
-		result.entry = convert_function(func, pool);
+		result.entry = convert_function(visit_order);
 
 	// Some execution modes depend on code generation, handle that here.
 	emit_execution_modes_post_code_generation();

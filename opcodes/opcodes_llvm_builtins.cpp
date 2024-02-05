@@ -27,6 +27,7 @@
 #include "logging.hpp"
 #include "spirv_module.hpp"
 #include "dxil/dxil_common.hpp"
+#include "dxil/dxil_resources.hpp"
 
 namespace dxil_spv
 {
@@ -1043,10 +1044,47 @@ spv::Id build_constant_expression(Converter::Impl &impl, const llvm::ConstantExp
 	return 0;
 }
 
+struct AllocaTrackedIndex
+{
+	const llvm::AllocaInst *alloca_inst;
+	const llvm::Value *index;
+	UnorderedMap<const llvm::AllocaInst *, AllocaCBVForwardingTracking>::iterator itr;
+	const llvm::Value *cbv_handle;
+};
+
+static AllocaTrackedIndex gep_pointer_to_alloca_tracked_inst(Converter::Impl &impl, const llvm::Value *ptr)
+{
+	if (const auto *gep_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr))
+	{
+		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(gep_inst->getOperand(0)))
+		{
+			auto itr = impl.alloca_tracking.find(alloca_inst);
+			if (itr != impl.alloca_tracking.end())
+				return { alloca_inst, gep_inst->getOperand(2), itr, itr->second.cbv_handle };
+		}
+	}
+
+	return {};
+}
+
 bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
 {
 	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
 	// For now, just assert that the first index is constant 0, in which case PtrAccessChain == AccessChain.
+
+	// Detour the GEP instruction via a cbuffer + AccessChain.
+	// This is the store that is ignored.
+	auto tracker = gep_pointer_to_alloca_tracked_inst(impl, instruction);
+
+	if (tracker.cbv_handle)
+	{
+		if (impl.masked_alloca_forward_gep.count(instruction))
+			return true;
+
+		return emit_gep_as_cbuffer_scalar_offset(
+			impl, instruction,
+			tracker.cbv_handle, tracker.itr->second.scalar_index_offset, tracker.itr->second.stride);
+	}
 
 	auto global_itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getOperand(0));
 	if (global_itr != impl.llvm_global_variable_to_resource_mapping.end())
@@ -1119,6 +1157,20 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	{
 		Operation *op = impl.allocate(spv::OpLoad, instruction);
 		op->add_id(value_id);
+
+		// If this is remapped to BDA, need to add Aligned mask.
+		auto tracked = gep_pointer_to_alloca_tracked_inst(impl, instruction->getPointerOperand());
+		if (tracked.alloca_inst && tracked.itr->second.cbv_handle)
+		{
+			spv::Id ptr_id = impl.get_id_for_value(tracked.itr->second.cbv_handle);
+			auto &meta = impl.handle_to_resource_meta[ptr_id];
+			if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+			{
+				op->add_literal(spv::MemoryAccessAlignedMask);
+				op->add_literal(4);
+			}
+		}
+
 		impl.add(op);
 	}
 	return true;
@@ -1126,6 +1178,11 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 
 bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instruction)
 {
+	// Ignore stores to remapped alloca().
+	auto tracking = gep_pointer_to_alloca_tracked_inst(impl, instruction->getOperand(1));
+	if (tracking.cbv_handle)
+		return true;
+
 	Operation *op = impl.allocate(spv::OpStore);
 
 	// We need to get the ID here as the constexpr chain could set our type.
@@ -1345,6 +1402,11 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 
 bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction)
 {
+	// Remapped. Ignore.
+	auto itr = impl.alloca_tracking.find(instruction);
+	if (itr != impl.alloca_tracking.end() && itr->second.cbv_handle)
+		return true;
+
 	auto *element_type = instruction->getType()->getPointerElementType();
 	if (llvm::isa<llvm::PointerType>(element_type))
 	{
@@ -1560,11 +1622,26 @@ bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetEle
 		return false;
 	}
 
+	// If this GEP is associated with a tracked alloca, we might want to mask the GEP
+	// if this GEP is actually never consumed.
+	// Avoids lots of dead code being emitted which looks goofy in disassemblies.
+	auto tracking = gep_pointer_to_alloca_tracked_inst(impl, inst);
+	if (tracking.alloca_inst)
+		impl.masked_alloca_forward_gep.insert(inst);
+
 	return true;
 }
 
 bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 {
+	auto tracked = gep_pointer_to_alloca_tracked_inst(impl, inst->getPointerOperand());
+	if (tracked.cbv_handle)
+	{
+		tracked.itr->second.has_load = true;
+		// We'll need this GEP after all.
+		impl.masked_alloca_forward_gep.erase(llvm::cast<llvm::GetElementPtrInst>(inst->getPointerOperand()));
+	}
+
 	if (auto *const_expr = llvm::dyn_cast<llvm::ConstantExpr>(inst->getPointerOperand()))
 	{
 		if (const_expr->getOpcode() == llvm::Instruction::GetElementPtr)
@@ -1586,13 +1663,141 @@ bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 	return true;
 }
 
+static bool analyze_alloca_store(Converter::Impl &impl,
+                                 const llvm::AllocaInst *alloca_inst,
+                                 AllocaCBVForwardingTracking &tracking,
+                                 const llvm::Value *index,
+                                 const llvm::Value *store_value)
+{
+	// If we observe store after load, invalidate.
+	// Instructions are processed in domination order, so this kind of linear tracking is fine.
+	// If a store instruction is reachable after a load, it will be processed after the load.
+	if (tracking.has_load)
+		return false;
+
+	// Need to store with constant GEP index.
+	const auto *const_index = llvm::dyn_cast<llvm::ConstantInt>(index);
+	if (!const_index)
+		return false;
+
+	uint32_t store_index = const_index->getUniqueInteger().getZExtValue();
+
+	// This needs to be extractvalue from a cbuffer load, that is directly stored into alloca().
+	// Ignore non-legacy cbuffer for now. Can be expanded as needed. Non-legacy cbuffer is very rare.
+	const auto *extract_value = llvm::dyn_cast<llvm::ExtractValueInst>(store_value);
+	if (!extract_value)
+		return false;
+
+	const auto *aggregate = extract_value->getAggregateOperand();
+	if (!value_is_dx_op_instrinsic(aggregate, DXIL::Op::CBufferLoadLegacy))
+		return false;
+
+	const auto *cbuf_load = llvm::cast<llvm::CallInst>(aggregate);
+	const auto *cbuffer_handle = cbuf_load->getOperand(1);
+	if (tracking.cbv_handle && cbuffer_handle != tracking.cbv_handle)
+		return false;
+
+	const auto *cbv_index = llvm::dyn_cast<llvm::ConstantInt>(cbuf_load->getOperand(2));
+	if (!cbv_index)
+		return false;
+
+	uint32_t scalar_index_offset =
+		cbv_index->getUniqueInteger().getZExtValue() * 4 + extract_value->getIndices()[0];
+
+	// Don't want negative word offsets, that does not make much sense.
+	if (scalar_index_offset < store_index)
+		return false;
+
+	if (tracking.cbv_handle)
+	{
+		// Redundant store just needs to be validated.
+		if (store_index == 0)
+			return tracking.scalar_index_offset == scalar_index_offset;
+
+		// Negative stride. Non-sense.
+		if (scalar_index_offset < tracking.scalar_index_offset)
+			return false;
+
+		scalar_index_offset -= tracking.scalar_index_offset;
+		uint32_t stride = scalar_index_offset / store_index;
+
+		// Awkward and doesn't happen in practice. We use this as sentinel.
+		if (stride == 0)
+			return false;
+
+		// This comes up when alloca-ing vectors. We end up with multiple scalar arrays.
+		// When accessing the CBV we have to multiply the stride back up again.
+		if ((tracking.stride && stride != tracking.stride) || (scalar_index_offset % stride != 0))
+			return false;
+
+		tracking.stride = stride;
+	}
+	else
+	{
+		// The first store should be to offset 0. This latches base values.
+		if (store_index != 0)
+			return false;
+
+		// Must observe a write to last element, for robustness reasons.
+		// We only need to care about this for BDA, but always checking is fine with shaders in the wild.
+		tracking.min_highest_store_index = alloca_inst->getType()->getPointerElementType()->getArrayNumElements() - 1;
+		tracking.cbv_handle = cbuffer_handle;
+		tracking.scalar_index_offset = scalar_index_offset;
+	}
+
+	tracking.highest_store_index = std::max<uint32_t>(tracking.highest_store_index, store_index);
+	return true;
+}
+
 bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *inst)
 {
+	auto tracked = gep_pointer_to_alloca_tracked_inst(impl, inst->getOperand(1));
+	if (tracked.index && !analyze_alloca_store(
+		impl, tracked.alloca_inst,
+		tracked.itr->second, tracked.index, inst->getOperand(0)))
+	{
+		impl.alloca_tracking.erase(tracked.itr);
+	}
+
 	// Assume we're consuming the entire uvec4.
 	if (instruction_is_ballot(inst->getOperand(0)))
 	{
 		impl.shader_analysis.subgroup_ballot_reads_first = true;
 		impl.shader_analysis.subgroup_ballot_reads_upper = true;
+	}
+
+	return true;
+}
+
+bool analyze_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst)
+{
+	// Only attempt to track simple 32-bit scalar cases.
+	// We don't want to deal with DXR vector types, or weird 16-bit promotion shenanigans.
+	if (DXIL::AddressSpace(inst->getType()->getAddressSpace()) != DXIL::AddressSpace::Thread)
+		return true;
+
+	if (const auto *array_type = llvm::dyn_cast<llvm::ArrayType>(inst->getType()->getPointerElementType()))
+	{
+		auto *elem_type = array_type->getArrayElementType();
+		bool simple_scalar;
+
+		switch (elem_type->getTypeID())
+		{
+		case llvm::Type::TypeID::FloatTyID:
+			simple_scalar = true;
+			break;
+
+		case llvm::Type::TypeID::IntegerTyID:
+			simple_scalar = elem_type->getIntegerBitWidth() == 32;
+			break;
+
+		default:
+			simple_scalar = false;
+			break;
+		}
+
+		if (simple_scalar)
+			impl.alloca_tracking[inst] = {};
 	}
 
 	return true;

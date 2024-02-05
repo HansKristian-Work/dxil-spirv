@@ -46,6 +46,7 @@ bool emit_insertelement_instruction(Converter::Impl &impl, const llvm::InsertEle
 
 bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction);
 bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instruction);
+bool analyze_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction);
 bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *instruction);
 bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction);
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
