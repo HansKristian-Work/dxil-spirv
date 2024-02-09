@@ -1,0 +1,11 @@
+RWStructuredBuffer<uint> A : register(u0);
+RWStructuredBuffer<uint> B : register(u1);
+
+[numthreads(8, 8, 1)]
+void main(uint index : SV_DispatchThreadID)
+{
+	bool any_result = QuadAny(bool(A[index]));
+	bool all_result = QuadAll(bool(A[index]));
+	B[2 * index] = uint(any_result);
+	B[2 * index + 1] = uint(all_result);
+}

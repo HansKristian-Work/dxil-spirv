@@ -170,7 +170,9 @@ static void print_help()
 	     "\t[--force-unroll]\n"
 	     "\t[--subgroup-size minimum maximum]\n"
 	     "\t[--descriptor-heap-robustness]\n"
-	     "\t[--no-compute-shader-derivatives]\n");
+	     "\t[--no-compute-shader-derivatives]\n"
+	     "\t[--quad-control-maximal-reconvergence]\n"
+	     "\t[--force-maximal-reconvergence]\n");
 }
 
 struct Arguments
@@ -212,6 +214,8 @@ struct Arguments
 	bool force_unroll = false;
 	bool descriptor_heap_robustness = false;
 	bool compute_shader_derivatives = true;
+	bool quad_control_maximal_reconvergence = false;
+	bool force_maximal_reconvergence = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -778,11 +782,17 @@ int main(int argc, char **argv)
 		args.subgroup_size_minimum = parser.next_uint();
 		args.subgroup_size_maximum = parser.next_uint();
 	});
-	cbs.add("--descriptor-heap-robustness", [&](CLIParser &parser) {
+	cbs.add("--descriptor-heap-robustness", [&](CLIParser &) {
 		args.descriptor_heap_robustness = true;
 	});
-	cbs.add("--no-compute-shader-derivatives", [&](CLIParser &parser) {
+	cbs.add("--no-compute-shader-derivatives", [&](CLIParser &) {
 		args.compute_shader_derivatives = false;
+	});
+	cbs.add("--quad-control-maximal-reconvergence", [&](CLIParser &) {
+		args.quad_control_maximal_reconvergence = true;
+	});
+	cbs.add("--force-maximal-reconvergence", [&](CLIParser &) {
+		args.force_maximal_reconvergence = true;
 	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
@@ -1071,6 +1081,19 @@ int main(int argc, char **argv)
 			args.compute_shader_derivatives ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
 		};
 		dxil_spv_converter_add_option(converter, &derivs.base);
+	}
+
+	{
+		dxil_spv_option_quad_control_reconvergence reconv = {
+			{ DXIL_SPV_OPTION_QUAD_CONTROL_RECONVERGENCE } };
+
+		reconv.force_maximal_reconvergence = args.force_maximal_reconvergence ?
+		                                     DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+		reconv.supports_maximal_reconvergence =
+		    (args.quad_control_maximal_reconvergence || args.force_maximal_reconvergence) ?
+		        DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+		reconv.supports_quad_control = args.quad_control_maximal_reconvergence;
+		dxil_spv_converter_add_option(converter, &reconv.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
