@@ -5765,7 +5765,7 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 	// QuadAll/QuadAny intrinsics to get meaningful behaviour for quad-uniform control
 	// flow, other quad ops are ignored for now.
 	if (options.supports_quad_control && execution_model == spv::ExecutionModelFragment &&
-			execution_mode_meta.needs_quad_derivatives)
+	    execution_mode_meta.needs_quad_derivatives)
 	{
 		builder().addExtension("SPV_KHR_quad_control");
 		builder().addCapability(spv::CapabilityQuadControlKHR);
@@ -5773,8 +5773,10 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeQuadDerivativesKHR);
 	}
 
-	if (options.supports_maximal_reconvergence && (options.force_maximal_reconvergence ||
-			execution_mode_meta.waveops_include_helper_lanes || execution_mode_meta.needs_quad_derivatives))
+	if (options.supports_maximal_reconvergence &&
+	    (options.force_maximal_reconvergence ||
+	     execution_mode_meta.waveops_include_helper_lanes ||
+	     execution_mode_meta.needs_quad_derivatives))
 	{
 		builder().addExtension("SPV_KHR_maximal_reconvergence");
 		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeMaximallyReconvergesKHR);
