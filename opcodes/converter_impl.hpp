@@ -336,6 +336,7 @@ struct Converter::Impl
 		bool declares_rov = false;
 		bool per_sample_shading = false;
 		bool waveops_include_helper_lanes = false;
+		bool needs_quad_derivatives = false;
 		String entry_point_name;
 	} execution_mode_meta;
 
@@ -607,6 +608,9 @@ struct Converter::Impl
 		bool propagate_precise = false;
 		bool force_precise = false;
 		bool descriptor_heap_robustness = false;
+		bool supports_quad_control = false;
+		bool supports_maximal_reconvergence = false;
+		bool force_maximal_reconvergence = false;
 		struct
 		{
 			bool enabled = false;

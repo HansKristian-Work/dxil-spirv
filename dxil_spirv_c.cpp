@@ -1156,6 +1156,18 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_QUAD_CONTROL_RECONVERGENCE:
+	{
+		OptionQuadControlReconvergence helper;
+		auto *quad = reinterpret_cast<const dxil_spv_option_quad_control_reconvergence *>(option);
+		helper.supports_quad_control = quad->supports_quad_control;
+		helper.supports_maximal_reconvergence = quad->supports_maximal_reconvergence;
+		helper.force_maximal_reconvergence = quad->force_maximal_reconvergence;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
