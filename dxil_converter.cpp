@@ -119,6 +119,16 @@ bool Converter::shader_requires_feature(ShaderFeature feature) const
 	}
 }
 
+void Converter::set_multiview_transform(
+	ShaderStage stage, unsigned base_output_row,
+	unsigned cbv_register, unsigned cbv_space,
+	unsigned matrix_offset, bool row_major_matrix,
+	unsigned num_views)
+{
+	impl->set_multiview_transform(stage, base_output_row, cbv_register, cbv_space,
+	                              matrix_offset, row_major_matrix, num_views);
+}
+
 ConvertedFunction Converter::convert_entry_point()
 {
 	return impl->convert_entry_point();
@@ -2944,6 +2954,87 @@ bool Converter::Impl::emit_global_heaps()
 	return true;
 }
 
+bool Converter::Impl::emit_multiview_cbv()
+{
+	const D3DBinding d3d_binding = { get_remapping_stage(execution_model),
+	                                 DXIL::ResourceKind::CBuffer,
+	                                 UINT32_MAX,
+	                                 multiview.cbv_space,
+	                                 multiview.cbv_register, 1, 0 };
+
+	VulkanCBVBinding vulkan_binding = {};
+	vulkan_binding.buffer = { multiview.cbv_space, multiview.cbv_register };
+	if (resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
+	{
+		LOGE("Failed to remap multiview CBV %u:%u.\n", multiview.cbv_space, multiview.cbv_register);
+		return false;
+	}
+
+	if (vulkan_binding.push_constant)
+	{
+		LOGE("Multiview CBV cannot map to root constants.\n");
+		return false;
+	}
+
+	bool root_desc = vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress;
+	auto &res = multiview.resource;
+
+	auto &builder = spirv_module.get_builder();
+	spv::Id matrix_type = builder.makeMatrixType(builder.makeFloatType(32), 4, 4);
+	spv::Id array_of_matrices = builder.makeArrayType(matrix_type, builder.makeUintConstant(multiview.num_views), 64);
+	builder.addDecoration(array_of_matrices, spv::DecorationArrayStride, 64);
+	spv::Id type_id = get_struct_type({ array_of_matrices }, "CBVMultiviewTransforms");
+	builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, multiview.matrix_offset);
+	builder.addMemberDecoration(type_id, 0, spv::DecorationMatrixStride, 16);
+	builder.addMemberDecoration(type_id, 0, multiview.row_major_matrix ? spv::DecorationRowMajor : spv::DecorationColMajor);
+	builder.addMemberName(type_id, 0, "vp");
+	builder.addDecoration(type_id, spv::DecorationBlock);
+
+	multiview.block_type = type_id;
+	multiview.matrix_type = matrix_type;
+
+	if (!root_desc)
+	{
+		if (vulkan_binding.buffer.bindless.use_heap)
+		{
+			builder.addExtension("SPV_EXT_descriptor_indexing");
+			builder.addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
+			type_id = builder.makeRuntimeArray(type_id);
+			if (options.bindless_cbv_ssbo_emulation)
+				builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
+			else
+				builder.addCapability(spv::CapabilityUniformBufferArrayDynamicIndexing);
+		}
+
+		auto storage = options.bindless_cbv_ssbo_emulation && vulkan_binding.buffer.bindless.use_heap ?
+		    spv::StorageClassStorageBuffer : spv::StorageClassUniform;
+		res.var_id = create_variable(storage, type_id, "CBVMultiview");
+
+		builder.addDecoration(res.var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
+		builder.addDecoration(res.var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
+	}
+	else
+		builder.addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
+
+	res.resource_kind = DXIL::ResourceKind::CBuffer;
+
+	if (root_desc)
+	{
+		res.var_id = root_constant_id;
+		res.root_descriptor = true;
+		res.push_constant_member = vulkan_binding.buffer.root_constant_index;
+	}
+	else if (vulkan_binding.buffer.bindless.use_heap)
+	{
+		uint32_t heap_offset = vulkan_binding.buffer.bindless.heap_root_offset;
+		res.push_constant_member = vulkan_binding.buffer.root_constant_index + root_descriptor_count;
+		res.base_offset = heap_offset;
+		res.bindless = true;
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_resources()
 {
 	unsigned num_root_descriptors = 0;
@@ -2957,6 +3048,9 @@ bool Converter::Impl::emit_resources()
 
 	if (num_root_constant_words != 0 || num_root_descriptors != 0)
 		emit_root_constants(num_root_descriptors, num_root_constant_words);
+
+	if (multiview.enabled && !emit_multiview_cbv())
+		return false;
 
 	if (execution_model_is_ray_tracing(execution_model))
 		if (!emit_shader_record_buffer())
@@ -3854,6 +3948,9 @@ bool Converter::Impl::emit_stage_output_variables()
 			// Mask out writes to unused higher RTs when using dual source blending.
 			continue;
 		}
+
+		if (multiview.enabled && start_row == multiview.base_output_row)
+			system_value = DXIL::Semantic::Position;
 
 		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
@@ -5862,7 +5959,7 @@ CFGNode *Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit
                                          CFGNodePool &pool,
                                          Vector<ConvertedFunction::LeafFunction> &leaves)
 {
-	auto *code_main = convert_function(visit_order);
+	auto *code_main = convert_function(visit_order, false);
 
 	// Need to figure out if our ROV use is trivial. If not, we will wrap the entire function in ROV pairs.
 	CFGStructurizer cfg{code_main, pool, spirv_module};
@@ -5904,9 +6001,9 @@ CFGNode *Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visi
 
 	// Set build point so alloca() functions can create variables correctly.
 	builder().setBuildPoint(hull_entry);
-	auto *hull_main = convert_function(visit_order);
+	auto *hull_main = convert_function(visit_order, false);
 	builder().setBuildPoint(patch_entry);
-	auto *patch_main = convert_function(patch_visit_order);
+	auto *patch_main = convert_function(patch_visit_order, false);
 	builder().setBuildPoint(spirv_module.get_entry_function()->getEntryBlock());
 
 	leaves.push_back({ hull_main, hull_func });
@@ -6082,7 +6179,8 @@ Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_legacy
 	return visit_order;
 }
 
-CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order)
+CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order,
+                                           bool run_return_lowering)
 {
 	bool has_partial_unroll = false;
 
@@ -6238,6 +6336,9 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		}
 		else if (auto *inst = llvm::dyn_cast<llvm::ReturnInst>(instruction))
 		{
+			if (run_return_lowering)
+				emit_return_lowering();
+
 			node->ir.terminator.type = Terminator::Type::Return;
 			if (inst->getReturnValue())
 				node->ir.terminator.return_value = get_id_for_value(inst->getReturnValue());
@@ -6609,12 +6710,138 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	else if (execution_mode_meta.declares_rov)
 		result.entry = build_rov_main(visit_order, pool, result.leaf_functions);
 	else
-		result.entry = convert_function(visit_order);
+		result.entry = convert_function(visit_order, true);
 
 	// Some execution modes depend on code generation, handle that here.
 	emit_execution_modes_post_code_generation();
 
 	return result;
+}
+
+void Converter::Impl::emit_return_lowering_multiview_cbv()
+{
+	spv::Id position_id = spirv_module.get_builtin_shader_output(spv::BuiltInPosition);
+	auto &builder = spirv_module.get_builder();
+
+	spv::Id f32_type = builder.makeFloatType(32);
+	spv::Id vec4_type = builder.makeVectorType(f32_type, 4);
+	auto *load_op = allocate(spv::OpLoad, vec4_type);
+	load_op->add_id(position_id);
+	add(load_op);
+
+	// If the stage output is float3, the W is undefined.
+	// The normal use here is that position is passed down in world space or similar,
+	// and the GS does view projection N times.
+	auto *insert_w_op = allocate(spv::OpCompositeInsert, vec4_type);
+	insert_w_op->add_id(builder.makeFloatConstant(1.0f));
+	insert_w_op->add_id(load_op->id);
+	insert_w_op->add_literal(3);
+	add(insert_w_op);
+
+	builder.addCapability(spv::CapabilityMultiView);
+	auto *load_view_index = allocate(spv::OpLoad, builder.makeUintType(32));
+	load_view_index->add_id(spirv_module.get_builtin_shader_input(spv::BuiltInViewIndex));
+	add(load_view_index);
+
+	spv::Id vec_id = insert_w_op->id;
+	spv::Id mat_id;
+
+	if (multiview.resource.root_descriptor)
+	{
+		spv::Id uvec2_type = builder.makeVectorType(builder.makeUintType(32), 2);
+		auto storage = options.inline_ubo_enable ?
+		               spv::StorageClassUniform : spv::StorageClassPushConstant;
+		auto *root_chain = allocate(spv::OpAccessChain, builder.makePointer(storage, uvec2_type));
+		root_chain->add_id(root_constant_id);
+		root_chain->add_id(builder.makeUintConstant(multiview.resource.push_constant_member));
+		add(root_chain);
+
+		auto *load_chain = allocate(spv::OpLoad, uvec2_type);
+		load_chain->add_id(root_chain->id);
+		add(load_chain);
+
+		spv::Id ptr_block = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, multiview.block_type);
+		auto *bitcast_op = allocate(spv::OpBitcast, ptr_block);
+		bitcast_op->add_id(load_chain->id);
+		add(bitcast_op);
+
+		auto *chain_op = allocate(
+		    spv::OpInBoundsAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, multiview.matrix_type));
+		chain_op->add_id(bitcast_op->id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		chain_op->add_id(load_view_index->id);
+		add(chain_op);
+
+		auto *load_matrix_op = allocate(spv::OpLoad, multiview.matrix_type);
+		load_matrix_op->add_id(chain_op->id);
+		load_matrix_op->add_literal(spv::MemoryAccessAlignedMask);
+		load_matrix_op->add_literal(16);
+		add(load_matrix_op);
+
+		mat_id = load_matrix_op->id;
+	}
+	else
+	{
+		auto ubo_storage = multiview.resource.bindless &&
+		                   options.bindless_cbv_ssbo_emulation ?
+		                   spv::StorageClassStorageBuffer : spv::StorageClassUniform;
+
+		auto *chain_op = allocate(
+		    spv::OpInBoundsAccessChain, builder.makePointer(ubo_storage, multiview.matrix_type));
+		chain_op->add_id(multiview.resource.var_id);
+
+		if (multiview.resource.bindless)
+		{
+			auto storage = options.inline_ubo_enable ?
+			               spv::StorageClassUniform : spv::StorageClassPushConstant;
+			auto *root_chain = allocate(spv::OpAccessChain, builder.makePointer(storage, builder.makeUintType(32)));
+			root_chain->add_id(root_constant_id);
+			root_chain->add_id(builder.makeUintConstant(multiview.resource.push_constant_member));
+			add(root_chain);
+
+			auto *load_chain = allocate(spv::OpLoad, builder.makeUintType(32));
+			load_chain->add_id(root_chain->id);
+			add(load_chain);
+
+			if (multiview.resource.base_offset != 0)
+			{
+				auto *add_op = allocate(spv::OpIAdd, builder.makeUintType(32));
+				add_op->add_id(load_chain->id);
+				add_op->add_id(builder.makeUintConstant(multiview.resource.base_offset));
+				add(add_op);
+
+				chain_op->add_id(add_op->id);
+			}
+			else
+				chain_op->add_id(load_chain->id);
+		}
+
+		chain_op->add_id(builder.makeUintConstant(0));
+		chain_op->add_id(load_view_index->id);
+		add(chain_op);
+
+		auto *load_matrix_op = allocate(spv::OpLoad, multiview.matrix_type);
+		load_matrix_op->add_id(chain_op->id);
+		add(load_matrix_op);
+
+		mat_id = load_matrix_op->id;
+	}
+
+	auto *mul_op = allocate(spv::OpMatrixTimesVector, vec4_type);
+	mul_op->add_id(mat_id);
+	mul_op->add_id(vec_id);
+	add(mul_op);
+
+	auto *store_op = allocate(spv::OpStore);
+	store_op->add_id(position_id);
+	store_op->add_id(mul_op->id);
+	add(store_op);
+}
+
+void Converter::Impl::emit_return_lowering()
+{
+	if (multiview.enabled)
+		emit_return_lowering_multiview_cbv();
 }
 
 Operation *Converter::Impl::allocate(spv::Op op)
@@ -7077,6 +7304,22 @@ void Converter::Impl::push_ags_instruction(const llvm::CallInst *instruction)
 		ags.backdoor_instructions[inst.phase] = instruction;
 		ags.phases = inst.phase + 1;
 	}
+}
+
+void Converter::Impl::set_multiview_transform(
+	ShaderStage stage, unsigned base_output_row,
+	unsigned cbv_register, unsigned cbv_space,
+	unsigned matrix_offset, bool row_major_matrix,
+	unsigned num_views)
+{
+	multiview.enabled = true;
+	multiview.stage = stage;
+	multiview.base_output_row = base_output_row;
+	multiview.cbv_register = cbv_register;
+	multiview.cbv_space = cbv_space;
+	multiview.matrix_offset = matrix_offset;
+	multiview.row_major_matrix = row_major_matrix;
+	multiview.num_views = num_views;
 }
 
 void Converter::set_resource_remapping_interface(ResourceRemappingInterface *iface)

@@ -188,7 +188,9 @@ struct Converter::Impl
 	UnorderedMap<spv::Id, spv::Id> phi_incoming_rewrite;
 
 	ConvertedFunction convert_entry_point();
-	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs);
+	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs, bool run_return_lowering);
+	void emit_return_lowering();
+	void emit_return_lowering_multiview_cbv();
 	CFGNode *build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
 	                         const Vector<llvm::BasicBlock *> &patch_bbs,
 	                         CFGNodePool &pool,
@@ -756,5 +758,27 @@ struct Converter::Impl
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);
 
 	void suggest_maximum_wave_size(unsigned wave_size);
+
+	struct
+	{
+		bool enabled;
+		ShaderStage stage;
+		unsigned base_output_row;
+		unsigned cbv_register;
+		unsigned cbv_space;
+		unsigned matrix_offset;
+		bool row_major_matrix;
+		unsigned num_views;
+		spv::Id block_type;
+		spv::Id matrix_type;
+		ResourceReference resource;
+	} multiview = {};
+
+	void set_multiview_transform(ShaderStage stage, unsigned base_output_row,
+	                             unsigned cbv_register, unsigned cbv_space,
+	                             unsigned matrix_offset, bool row_major_matrix,
+	                             unsigned num_views);
+
+	bool emit_multiview_cbv();
 };
 } // namespace dxil_spv

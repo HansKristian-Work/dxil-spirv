@@ -733,6 +733,17 @@ public:
 
 	bool shader_requires_feature(ShaderFeature feature) const;
 
+	// For location = N output, forces that output to be BuiltInPosition,
+	// and transforms Position = UBO.transforms[ViewIndex] * Position.
+	// matrix_offset is the byte offset for transforms. It is assumed that the matrix is a 4x4 matrix.
+	// ShaderStage is used when looking up the CBV binding. Usually this is Geometry shader,
+	// but we're compiling a vertex shader here.
+	// The CBV resource must not be an array or SM 6.6 bindless.
+	void set_multiview_transform(ShaderStage stage, unsigned base_output_row,
+	                             unsigned cbv_register, unsigned cbv_space,
+	                             unsigned matrix_offset, bool row_major_matrix,
+	                             unsigned num_views);
+
 	struct Impl;
 
 private:
