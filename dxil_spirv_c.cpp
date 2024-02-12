@@ -397,6 +397,18 @@ struct dxil_spv_converter_s
 	uint32_t wave_size = 0;
 	uint32_t heuristic_wave_size = 0;
 	bool shader_feature_used[unsigned(ShaderFeature::Count)] = {};
+
+	struct
+	{
+		bool enabled;
+		ShaderStage stage;
+		unsigned base_output_row;
+		unsigned cbv_register;
+		unsigned cbv_space;
+		unsigned matrix_offset;
+		bool row_major_matrix;
+		unsigned num_views;
+	} multiview = {};
 };
 
 dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv_parsed_blob *blob)
@@ -642,6 +654,16 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 			dxil_converter.add_local_root_descriptor_table(local_param.table_entries);
 			break;
 		}
+	}
+
+	auto &mv = converter->multiview;
+	if (mv.enabled)
+	{
+		dxil_converter.set_multiview_transform(
+		    mv.stage, mv.base_output_row,
+		    mv.cbv_register, mv.cbv_space,
+		    mv.matrix_offset, mv.row_major_matrix,
+		    mv.num_views);
 	}
 
 	auto entry_point = dxil_converter.convert_entry_point();
@@ -1246,6 +1268,23 @@ dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 
 	converter->active_table = false;
 	return DXIL_SPV_SUCCESS;
+}
+
+void dxil_spv_converter_set_multiview_transform(
+    dxil_spv_converter converter,
+    dxil_spv_shader_stage stage, unsigned base_output_row,
+    unsigned cbv_register, unsigned cbv_space,
+    unsigned matrix_offset, dxil_spv_bool row_major_matrix,
+    unsigned num_views)
+{
+	converter->multiview.enabled = true;
+	converter->multiview.stage = static_cast<ShaderStage>(stage);
+	converter->multiview.base_output_row = base_output_row;
+	converter->multiview.cbv_register = cbv_register;
+	converter->multiview.cbv_space = cbv_space;
+	converter->multiview.matrix_offset = matrix_offset;
+	converter->multiview.row_major_matrix = row_major_matrix == DXIL_SPV_TRUE;
+	converter->multiview.num_views = num_views;
 }
 
 unsigned dxil_spv_parsed_blob_get_num_rdat_subobjects(dxil_spv_parsed_blob blob)

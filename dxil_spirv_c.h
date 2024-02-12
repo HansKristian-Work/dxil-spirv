@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 37
+#define DXIL_SPV_API_VERSION_MINOR 38
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -769,6 +769,13 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_begin_local_root_descript
 	dxil_spv_converter converter);
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 	dxil_spv_converter converter);
+
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_multiview_transform(
+	dxil_spv_converter converter,
+	dxil_spv_shader_stage stage, unsigned base_output_row,
+	unsigned cbv_register, unsigned cbv_space,
+	unsigned matrix_offset, dxil_spv_bool row_major_matrix,
+	unsigned num_views);
 
 /* After setting up converter, runs the converted to SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter);
