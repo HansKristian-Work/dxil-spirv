@@ -2956,7 +2956,7 @@ bool Converter::Impl::emit_global_heaps()
 
 bool Converter::Impl::emit_multiview_cbv()
 {
-	const D3DBinding d3d_binding = { get_remapping_stage(execution_model),
+	const D3DBinding d3d_binding = { multiview.stage,
 	                                 DXIL::ResourceKind::CBuffer,
 	                                 UINT32_MAX,
 	                                 multiview.cbv_space,
