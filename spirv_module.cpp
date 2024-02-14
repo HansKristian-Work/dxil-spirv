@@ -174,6 +174,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 		return builder.makeUintType(32);
 
 	case spv::BuiltInSubgroupSize:
+	case spv::BuiltInNumSubgroups:
 	case spv::BuiltInSubgroupLocalInvocationId:
 		builder.addCapability(spv::CapabilityGroupNonUniform);
 		requires_flat = true;

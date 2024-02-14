@@ -727,7 +727,7 @@ struct Converter::Impl
 
 	struct
 	{
-		// Only relevant for fragment shaders.
+		// Only relevant for fragment shaders, and some other misc uses.
 		bool has_side_effects = false;
 		bool discards = false;
 		bool helper_lanes_may_exist = false;

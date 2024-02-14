@@ -35,18 +35,79 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 {
 	Operation *op = impl.allocate(spv::OpSetMeshOutputsEXT);
 
+	spv::Id num_vertex_id, num_prim_id;
+
 	// If we have a degenerate case where either of these is 0, we have to declare 0 as max output.
 	if (impl.execution_mode_meta.stage_output_num_vertex == 0)
-		op->add_id(impl.builder().makeUintConstant(0));
+		num_vertex_id = impl.builder().makeUintConstant(0);
 	else
-		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		num_vertex_id = impl.get_id_for_value(instruction->getOperand(1));
+	op->add_id(num_vertex_id);
 
 	if (impl.execution_mode_meta.stage_output_num_primitive == 0)
-		op->add_id(impl.builder().makeUintConstant(0));
+		num_prim_id = impl.builder().makeUintConstant(0);
 	else
-		op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		num_prim_id = impl.get_id_for_value(instruction->getOperand(2));
+	op->add_id(num_prim_id);
 
 	impl.add(op);
+
+	// Workaround shader compiler bugs by emitting a conditional return.
+	if (!impl.shader_analysis.has_side_effects)
+	{
+		auto &builder = impl.builder();
+
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+		spv::Id num_ids = impl.spirv_module.get_builtin_shader_input(spv::BuiltInNumSubgroups);
+		auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+		load_op->add_id(num_ids);
+		impl.add(load_op);
+
+		auto *one_subgroup = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+		one_subgroup->add_id(load_op->id);
+		one_subgroup->add_id(builder.makeUintConstant(1));
+		impl.add(one_subgroup);
+
+		auto *broadcast_vert = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, builder.makeUintType(32));
+		broadcast_vert->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		broadcast_vert->add_id(num_vertex_id);
+		impl.add(broadcast_vert);
+
+		auto *broadcast_prim = impl.allocate(spv::OpGroupNonUniformBroadcastFirst, builder.makeUintType(32));
+		broadcast_prim->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		broadcast_prim->add_id(num_prim_id);
+		impl.add(broadcast_prim);
+
+		auto *vert_zero = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+		vert_zero->add_id(broadcast_vert->id);
+		vert_zero->add_id(builder.makeUintConstant(0));
+		impl.add(vert_zero);
+
+		auto *prim_zero = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+		prim_zero->add_id(broadcast_prim->id);
+		prim_zero->add_id(builder.makeUintConstant(0));
+		impl.add(prim_zero);
+
+		auto *degenerate_meshlet = impl.allocate(spv::OpLogicalOr, builder.makeBoolType());
+		degenerate_meshlet->add_id(vert_zero->id);
+		degenerate_meshlet->add_id(prim_zero->id);
+		impl.add(degenerate_meshlet);
+
+		auto *early_return = impl.allocate(spv::OpLogicalAnd, builder.makeBoolType());
+		early_return->add_id(one_subgroup->id);
+		early_return->add_id(degenerate_meshlet->id);
+		impl.add(early_return);
+
+		// This may also be useful in some cases if application does misc shader work after SetMeshOutputsEXT.
+		// Use a pseudo-op (arbitrarily chosen as OpLifetimeStop as the name is convenient) for conditional return
+		// since we have no easy way of introducing additional control flow
+		// in the LLVM -> SPIR-V emitter.
+		// This gets resolved during final SPIR-V lowering.
+		auto *cond_ret = impl.allocate(spv::OpLifetimeStop);
+		cond_ret->add_id(early_return->id);
+		impl.add(cond_ret);
+	}
+
 	return true;
 }
 
