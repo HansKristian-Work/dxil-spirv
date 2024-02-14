@@ -174,6 +174,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 		return builder.makeUintType(32);
 
 	case spv::BuiltInSubgroupSize:
+	case spv::BuiltInNumSubgroups:
 	case spv::BuiltInSubgroupLocalInvocationId:
 		builder.addCapability(spv::CapabilityGroupNonUniform);
 		requires_flat = true;
@@ -1545,6 +1546,35 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	}
 
 	bool implicit_terminator = false;
+	spv::Id rewrite_phi_incoming_from = node->id;
+	spv::Id rewrite_phi_incoming_to = 0;
+
+	const auto emit_loop_header = [&]() {
+		if (ir.merge_info.merge_block && ir.merge_info.continue_block)
+		{
+			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block),
+			                        get_spv_block(ir.merge_info.continue_block),
+			                        ir.merge_info.loop_control_mask);
+		}
+		else if (ir.merge_info.merge_block)
+		{
+			auto *continue_bb = fake_loop_block;
+			active_function->addBlock(continue_bb);
+			builder.setBuildPoint(continue_bb);
+			builder.createBranch(get_spv_block(node));
+			builder.setBuildPoint(bb);
+			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block), continue_bb, 0);
+		}
+		else if (ir.merge_info.continue_block)
+		{
+			auto *merge_bb = fake_loop_block;
+			active_function->addBlock(merge_bb);
+			builder.setBuildPoint(merge_bb);
+			builder.createUnreachable();
+			builder.setBuildPoint(bb);
+			builder.createLoopMerge(merge_bb, get_spv_block(ir.merge_info.continue_block), 0);
+		}
+	};
 
 	// Emit opcodes.
 	for (auto *op : ir.operations)
@@ -1592,6 +1622,38 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			builder.addExtension("SPV_EXT_demote_to_helper_invocation");
 			builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
 			build_demote_call_cond(op->arguments[0]);
+		}
+		else if (op->op == spv::OpLifetimeStop)
+		{
+			// Have to ensure we emit loop header before we replace block.
+			if (ir.merge_info.merge_type == MergeType::Loop && rewrite_phi_incoming_to == 0)
+			{
+				emit_loop_header();
+
+				auto *direct_bb = new spv::Block(builder.getUniqueId(), *active_function);
+				active_function->addBlock(direct_bb);
+				builder.createBranch(direct_bb);
+				bb = direct_bb;
+				builder.setBuildPoint(bb);
+			}
+
+			// Pseudo-op. Conditional return.
+			auto *return_bb = new spv::Block(builder.getUniqueId(), *active_function);
+			auto *merge_bb = new spv::Block(builder.getUniqueId(), *active_function);
+			active_function->addBlock(return_bb);
+			active_function->addBlock(merge_bb);
+			builder.createSelectionMerge(merge_bb, 0);
+			builder.createConditionalBranch(op->arguments[0], return_bb, merge_bb);
+			builder.setBuildPoint(return_bb);
+			builder.makeReturn(false);
+			builder.setBuildPoint(merge_bb);
+
+			// If this is called in a continue block, the loop header might have a PHI incoming,
+			// and we'll have to rewrite that.
+			// For purposes of handling PHI later, the incoming block is this ID, i.e. the selection construct merge.
+			node->id = merge_bb->getId();
+			rewrite_phi_incoming_to = node->id;
+			bb = merge_bb;
 		}
 		else
 		{
@@ -1668,30 +1730,8 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		break;
 
 	case MergeType::Loop:
-		if (ir.merge_info.merge_block && ir.merge_info.continue_block)
-		{
-			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block),
-			                        get_spv_block(ir.merge_info.continue_block),
-			                        ir.merge_info.loop_control_mask);
-		}
-		else if (ir.merge_info.merge_block)
-		{
-			auto *continue_bb = fake_loop_block;
-			active_function->addBlock(continue_bb);
-			builder.setBuildPoint(continue_bb);
-			builder.createBranch(get_spv_block(node));
-			builder.setBuildPoint(bb);
-			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block), continue_bb, 0);
-		}
-		else if (ir.merge_info.continue_block)
-		{
-			auto *merge_bb = fake_loop_block;
-			active_function->addBlock(merge_bb);
-			builder.setBuildPoint(merge_bb);
-			builder.createUnreachable();
-			builder.setBuildPoint(bb);
-			builder.createLoopMerge(merge_bb, get_spv_block(ir.merge_info.continue_block), 0);
-		}
+		if (rewrite_phi_incoming_to == 0)
+			emit_loop_header();
 		break;
 
 	default:
@@ -1709,12 +1749,18 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 	case Terminator::Type::Branch:
 	{
-		builder.createBranch(get_spv_block(ir.terminator.direct_block));
+		auto *direct_target = get_spv_block(ir.terminator.direct_block);
+		builder.createBranch(direct_target);
+		if (rewrite_phi_incoming_to)
+			direct_target->rewritePhiIncoming(rewrite_phi_incoming_from, rewrite_phi_incoming_to);
 		break;
 	}
 
 	case Terminator::Type::Condition:
 	{
+		auto *true_block = get_spv_block(ir.terminator.true_block);
+		auto *false_block = get_spv_block(ir.terminator.false_block);
+
 		// This used to pass validator, but latest SPIRV-Tools as of 2023-02 started caring about it.
 		// Patch this up late by rewriting loop header + conditional branch as
 		// loop header -> direct -> selection merge to unreachable -> conditional branch.
@@ -1724,6 +1770,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		// since a selection merge is no longer required.
 		if (node->ir.merge_info.merge_type == MergeType::Loop &&
 		    node->ir.terminator.type == Terminator::Type::Condition &&
+		    rewrite_phi_incoming_to == 0 &&
 		    node->ir.terminator.true_block != node->ir.merge_info.merge_block &&
 		    node->ir.terminator.true_block != node->ir.merge_info.continue_block &&
 		    node->ir.terminator.false_block != node->ir.merge_info.merge_block &&
@@ -1736,9 +1783,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			builder.createBranch(fake_selection_bb);
 			builder.setBuildPoint(fake_selection_bb);
 			builder.createSelectionMerge(unreachable_bb, 0);
-			builder.createConditionalBranch(ir.terminator.conditional_id,
-			                                get_spv_block(ir.terminator.true_block),
-			                                get_spv_block(ir.terminator.false_block));
+			builder.createConditionalBranch(ir.terminator.conditional_id, true_block, false_block);
 			builder.setBuildPoint(unreachable_bb);
 			builder.createUnreachable();
 
@@ -1753,8 +1798,13 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		else
 		{
 			builder.createConditionalBranch(ir.terminator.conditional_id,
-			                                get_spv_block(ir.terminator.true_block),
-			                                get_spv_block(ir.terminator.false_block));
+			                                true_block, false_block);
+		}
+
+		if (rewrite_phi_incoming_to)
+		{
+			true_block->rewritePhiIncoming(rewrite_phi_incoming_from, rewrite_phi_incoming_to);
+			false_block->rewritePhiIncoming(rewrite_phi_incoming_from, rewrite_phi_incoming_to);
 		}
 		break;
 	}
@@ -1768,14 +1818,22 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		                                [](const Terminator::Case &c) { return c.is_default; });
 		assert(default_itr != ir.terminator.cases.end());
 		switch_op->addIdOperand(default_itr->node->id);
-		get_spv_block(default_itr->node)->addPredecessor(bb);
+
+		auto *default_block = get_spv_block(default_itr->node);
+		default_block->addPredecessor(bb);
+		if (rewrite_phi_incoming_to)
+			default_block->rewritePhiIncoming(rewrite_phi_incoming_from, rewrite_phi_incoming_to);
 		for (auto &switch_case : ir.terminator.cases)
 		{
 			if (switch_case.is_default)
 				continue;
 			switch_op->addImmediateOperand(switch_case.value);
 			switch_op->addIdOperand(switch_case.node->id);
-			get_spv_block(switch_case.node)->addPredecessor(bb);
+
+			auto *case_block = get_spv_block(switch_case.node);
+			case_block->addPredecessor(bb);
+			if (rewrite_phi_incoming_to)
+				case_block->rewritePhiIncoming(rewrite_phi_incoming_from, rewrite_phi_incoming_to);
 		}
 		bb->addInstruction(std::move(switch_op));
 		break;

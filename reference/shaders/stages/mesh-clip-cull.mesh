@@ -1,5 +1,7 @@
 #version 460
 #extension GL_EXT_mesh_shader : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
 layout(local_size_x = 2, local_size_y = 3, local_size_z = 4) in;
 layout(max_vertices = 24, max_primitives = 8, triangles) out;
 
@@ -22,6 +24,10 @@ taskPayloadSharedEXT _26 _28;
 void main()
 {
     SetMeshOutputsEXT(24u, 8u);
+    if ((gl_NumSubgroups == 1u) && ((subgroupBroadcastFirst(24u) == 0u) || (subgroupBroadcastFirst(8u) == 0u)))
+    {
+        return;
+    }
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.x = _28._m0[gl_LocalInvocationIndex][0u];
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.y = _28._m0[gl_LocalInvocationIndex][1u];
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.z = _28._m0[gl_LocalInvocationIndex][2u];
@@ -36,8 +42,8 @@ void main()
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_CullDistance[3u] = _28._m2[gl_LocalInvocationIndex][3u];
     if (gl_LocalInvocationIndex < 8u)
     {
-        uint _73 = gl_LocalInvocationIndex * 3u;
-        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex] = uvec3(_73, _73 + 1u, _73 + 2u);
+        uint _82 = gl_LocalInvocationIndex * 3u;
+        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex] = uvec3(_82, _82 + 1u, _82 + 2u);
     }
 }
 
@@ -47,15 +53,17 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 83
+; Bound: 95
 ; Schema: 0
 OpCapability Shader
 OpCapability ClipDistance
 OpCapability CullDistance
+OpCapability GroupNonUniform
+OpCapability GroupNonUniformBallot
 OpCapability MeshShadingEXT
 OpExtension "SPV_EXT_mesh_shader"
 OpMemoryModel Logical GLSL450
-OpEntryPoint MeshEXT %3 "main" %11 %16 %17 %22 %24 %28
+OpEntryPoint MeshEXT %3 "main" %11 %16 %17 %22 %24 %28 %29
 OpExecutionMode %3 OutputVertices 24
 OpExecutionMode %3 OutputPrimitivesNV 8
 OpExecutionMode %3 OutputTrianglesNV
@@ -69,6 +77,7 @@ OpDecorate %16 BuiltIn ClipDistance
 OpDecorate %17 BuiltIn CullDistance
 OpDecorate %22 BuiltIn PrimitiveTriangleIndicesEXT
 OpDecorate %24 BuiltIn LocalInvocationIndex
+OpDecorate %29 BuiltIn NumSubgroups
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -94,80 +103,94 @@ OpDecorate %24 BuiltIn LocalInvocationIndex
 %26 = OpTypeStruct %14 %14 %14
 %27 = OpTypePointer TaskPayloadWorkgroupEXT %26
 %28 = OpVariable %27 TaskPayloadWorkgroupEXT
-%29 = OpTypePointer TaskPayloadWorkgroupEXT %5
-%31 = OpConstant %7 0
-%34 = OpConstant %7 1
-%37 = OpConstant %7 2
-%40 = OpConstant %7 3
-%42 = OpTypePointer Output %5
-%71 = OpTypeBool
-%77 = OpTypePointer Output %19
+%29 = OpVariable %23 Input
+%31 = OpTypeBool
+%33 = OpConstant %7 1
+%35 = OpConstant %7 3
+%38 = OpConstant %7 0
+%42 = OpTypePointer TaskPayloadWorkgroupEXT %5
+%48 = OpConstant %7 2
+%52 = OpTypePointer Output %5
+%86 = OpTypePointer Output %19
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %79
-%79 = OpLabel
+OpBranch %88
+%88 = OpLabel
 %25 = OpLoad %7 %24
 OpSetMeshOutputsEXT %8 %18
-%30 = OpInBoundsAccessChain %29 %28 %31 %25 %31
-%32 = OpLoad %5 %30
-%33 = OpInBoundsAccessChain %29 %28 %31 %25 %34
-%35 = OpLoad %5 %33
-%36 = OpInBoundsAccessChain %29 %28 %31 %25 %37
-%38 = OpLoad %5 %36
-%39 = OpInBoundsAccessChain %29 %28 %31 %25 %40
-%41 = OpLoad %5 %39
-%43 = OpAccessChain %42 %11 %25 %31
-OpStore %43 %32
-%44 = OpAccessChain %42 %11 %25 %34
-OpStore %44 %35
-%45 = OpAccessChain %42 %11 %25 %37
-OpStore %45 %38
-%46 = OpAccessChain %42 %11 %25 %40
-OpStore %46 %41
-%47 = OpInBoundsAccessChain %29 %28 %34 %25 %31
-%48 = OpLoad %5 %47
-%49 = OpInBoundsAccessChain %29 %28 %34 %25 %34
-%50 = OpLoad %5 %49
-%51 = OpInBoundsAccessChain %29 %28 %34 %25 %37
-%52 = OpLoad %5 %51
-%53 = OpInBoundsAccessChain %29 %28 %34 %25 %40
-%54 = OpLoad %5 %53
-%55 = OpAccessChain %42 %16 %25 %31
-OpStore %55 %48
-%56 = OpAccessChain %42 %16 %25 %34
-OpStore %56 %50
-%57 = OpAccessChain %42 %16 %25 %37
-OpStore %57 %52
-%58 = OpAccessChain %42 %16 %25 %40
-OpStore %58 %54
-%59 = OpInBoundsAccessChain %29 %28 %37 %25 %31
+%30 = OpLoad %7 %29
+%32 = OpIEqual %31 %30 %33
+%34 = OpGroupNonUniformBroadcastFirst %7 %35 %8
+%36 = OpGroupNonUniformBroadcastFirst %7 %35 %18
+%37 = OpIEqual %31 %34 %38
+%39 = OpIEqual %31 %36 %38
+%40 = OpLogicalOr %31 %37 %39
+%41 = OpLogicalAnd %31 %32 %40
+OpSelectionMerge %92 None
+OpBranchConditional %41 %91 %92
+%91 = OpLabel
+OpReturn
+%92 = OpLabel
+%43 = OpInBoundsAccessChain %42 %28 %38 %25 %38
+%44 = OpLoad %5 %43
+%45 = OpInBoundsAccessChain %42 %28 %38 %25 %33
+%46 = OpLoad %5 %45
+%47 = OpInBoundsAccessChain %42 %28 %38 %25 %48
+%49 = OpLoad %5 %47
+%50 = OpInBoundsAccessChain %42 %28 %38 %25 %35
+%51 = OpLoad %5 %50
+%53 = OpAccessChain %52 %11 %25 %38
+OpStore %53 %44
+%54 = OpAccessChain %52 %11 %25 %33
+OpStore %54 %46
+%55 = OpAccessChain %52 %11 %25 %48
+OpStore %55 %49
+%56 = OpAccessChain %52 %11 %25 %35
+OpStore %56 %51
+%57 = OpInBoundsAccessChain %42 %28 %33 %25 %38
+%58 = OpLoad %5 %57
+%59 = OpInBoundsAccessChain %42 %28 %33 %25 %33
 %60 = OpLoad %5 %59
-%61 = OpInBoundsAccessChain %29 %28 %37 %25 %34
+%61 = OpInBoundsAccessChain %42 %28 %33 %25 %48
 %62 = OpLoad %5 %61
-%63 = OpInBoundsAccessChain %29 %28 %37 %25 %37
+%63 = OpInBoundsAccessChain %42 %28 %33 %25 %35
 %64 = OpLoad %5 %63
-%65 = OpInBoundsAccessChain %29 %28 %37 %25 %40
-%66 = OpLoad %5 %65
-%67 = OpAccessChain %42 %17 %25 %31
-OpStore %67 %60
-%68 = OpAccessChain %42 %17 %25 %34
-OpStore %68 %62
-%69 = OpAccessChain %42 %17 %25 %37
-OpStore %69 %64
-%70 = OpAccessChain %42 %17 %25 %40
-OpStore %70 %66
-%72 = OpULessThan %71 %25 %18
-OpSelectionMerge %81 None
-OpBranchConditional %72 %80 %81
-%80 = OpLabel
-%73 = OpIMul %7 %25 %40
-%74 = OpIAdd %7 %73 %34
-%75 = OpIAdd %7 %73 %37
-%76 = OpCompositeConstruct %19 %73 %74 %75
-%78 = OpAccessChain %77 %22 %25
-OpStore %78 %76
-OpBranch %81
-%81 = OpLabel
+%65 = OpAccessChain %52 %16 %25 %38
+OpStore %65 %58
+%66 = OpAccessChain %52 %16 %25 %33
+OpStore %66 %60
+%67 = OpAccessChain %52 %16 %25 %48
+OpStore %67 %62
+%68 = OpAccessChain %52 %16 %25 %35
+OpStore %68 %64
+%69 = OpInBoundsAccessChain %42 %28 %48 %25 %38
+%70 = OpLoad %5 %69
+%71 = OpInBoundsAccessChain %42 %28 %48 %25 %33
+%72 = OpLoad %5 %71
+%73 = OpInBoundsAccessChain %42 %28 %48 %25 %48
+%74 = OpLoad %5 %73
+%75 = OpInBoundsAccessChain %42 %28 %48 %25 %35
+%76 = OpLoad %5 %75
+%77 = OpAccessChain %52 %17 %25 %38
+OpStore %77 %70
+%78 = OpAccessChain %52 %17 %25 %33
+OpStore %78 %72
+%79 = OpAccessChain %52 %17 %25 %48
+OpStore %79 %74
+%80 = OpAccessChain %52 %17 %25 %35
+OpStore %80 %76
+%81 = OpULessThan %31 %25 %18
+OpSelectionMerge %90 None
+OpBranchConditional %81 %89 %90
+%89 = OpLabel
+%82 = OpIMul %7 %25 %35
+%83 = OpIAdd %7 %82 %33
+%84 = OpIAdd %7 %82 %48
+%85 = OpCompositeConstruct %19 %82 %83 %84
+%87 = OpAccessChain %86 %22 %25
+OpStore %87 %85
+OpBranch %90
+%90 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

@@ -127,6 +127,7 @@ public:
     Id getResultId() const { return resultId; }
     Id getTypeId() const { return typeId; }
     Id getIdOperand(int op) const { return operands[op]; }
+    void setIdOperand(int op, spv::Id id) { operands[op] = id; }
     unsigned int getImmediateOperand(int op) const { return operands[op]; }
 
     // Write out the binary form.
@@ -200,6 +201,8 @@ public:
         }
         return nullptr;
     }
+
+    void rewritePhiIncoming(spv::Id from_id, spv::Id to_id);
 
     bool isTerminated() const
     {
@@ -421,6 +424,19 @@ __inline void Block::addInstruction(std::unique_ptr<Instruction> inst)
     raw_instruction->setBlock(this);
     if (raw_instruction->getResultId())
         parent.getParent().mapInstruction(raw_instruction);
+}
+
+__inline void Block::rewritePhiIncoming(spv::Id from_id, spv::Id to_id)
+{
+    for (auto &inst : instructions)
+    {
+        if (inst->getOpCode() == spv::OpPhi)
+        {
+            for (int i = 1, n = inst->getNumOperands(); i < n; i += 2)
+                if (inst->getIdOperand(i) == from_id)
+                    inst->setIdOperand(i, to_id);
+        }
+    }
 }
 
 };  // end spv namespace

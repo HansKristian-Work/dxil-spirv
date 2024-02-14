@@ -1,5 +1,7 @@
 #version 460
 #extension GL_EXT_mesh_shader : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
 layout(local_size_x = 2, local_size_y = 3, local_size_z = 4) in;
 layout(max_vertices = 24, max_primitives = 8, triangles) out;
 
@@ -18,27 +20,31 @@ void main()
     _32[gl_LocalInvocationIndex] = float(gl_LocalInvocationIndex);
     barrier();
     SetMeshOutputsEXT(24u, 8u);
+    if ((gl_NumSubgroups == 1u) && ((subgroupBroadcastFirst(24u) == 0u) || (subgroupBroadcastFirst(8u) == 0u)))
+    {
+        return;
+    }
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.x = _32[gl_LocalInvocationIndex];
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.y = _32[gl_LocalInvocationIndex];
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.z = _32[gl_LocalInvocationIndex];
     gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.w = _32[gl_LocalInvocationIndex];
-    float _59 = _38._m0 + _32[gl_LocalInvocationIndex ^ 1u];
-    B[gl_LocalInvocationIndex].x = _59;
-    B[gl_LocalInvocationIndex].y = _59;
-    B[gl_LocalInvocationIndex].z = _59;
-    B[gl_LocalInvocationIndex].w = _59;
+    float _68 = _38._m0 + _32[gl_LocalInvocationIndex ^ 1u];
+    B[gl_LocalInvocationIndex].x = _68;
+    B[gl_LocalInvocationIndex].y = _68;
+    B[gl_LocalInvocationIndex].z = _68;
+    B[gl_LocalInvocationIndex].w = _68;
     if (gl_LocalInvocationIndex < 8u)
     {
-        uint _65 = gl_LocalInvocationIndex * 3u;
-        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex] = uvec3(_65, _65 + 1u, _65 + 2u);
+        uint _74 = gl_LocalInvocationIndex * 3u;
+        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex] = uvec3(_74, _74 + 1u, _74 + 2u);
         gl_MeshPrimitivesEXT[gl_LocalInvocationIndex].gl_CullPrimitiveEXT = (gl_LocalInvocationIndex & 1u) != 0u;
         gl_MeshPrimitivesEXT[gl_LocalInvocationIndex].gl_PrimitiveID = int(gl_LocalInvocationIndex);
         gl_MeshPrimitivesEXT[gl_LocalInvocationIndex].gl_Layer = int(gl_LocalInvocationIndex);
-        uint _78 = gl_LocalInvocationIndex ^ 2u;
-        C[gl_LocalInvocationIndex].x = _32[_78];
-        C[gl_LocalInvocationIndex].y = _32[_78];
-        C[gl_LocalInvocationIndex].z = _32[_78];
-        C[gl_LocalInvocationIndex].w = _32[_78];
+        uint _87 = gl_LocalInvocationIndex ^ 2u;
+        C[gl_LocalInvocationIndex].x = _32[_87];
+        C[gl_LocalInvocationIndex].y = _32[_87];
+        C[gl_LocalInvocationIndex].z = _32[_87];
+        C[gl_LocalInvocationIndex].w = _32[_87];
     }
 }
 
@@ -48,16 +54,18 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 89
+; Bound: 101
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
+OpCapability GroupNonUniform
+OpCapability GroupNonUniformBallot
 OpCapability ShaderViewportIndexLayerEXT
 OpCapability MeshShadingEXT
 OpExtension "SPV_EXT_mesh_shader"
 OpExtension "SPV_EXT_shader_viewport_index_layer"
 OpMemoryModel Logical GLSL450
-OpEntryPoint MeshEXT %3 "main" %11 %12 %17 %20 %21 %24 %28 %32 %34 %38
+OpEntryPoint MeshEXT %3 "main" %11 %12 %17 %20 %21 %24 %28 %32 %34 %38 %44
 OpExecutionMode %3 OutputVertices 24
 OpExecutionMode %3 OutputPrimitivesNV 8
 OpExecutionMode %3 OutputTrianglesNV
@@ -83,6 +91,7 @@ OpDecorate %24 Location 3
 OpDecorate %24 PerPrimitiveNV
 OpDecorate %28 BuiltIn PrimitiveTriangleIndicesEXT
 OpDecorate %34 BuiltIn LocalInvocationIndex
+OpDecorate %44 BuiltIn NumSubgroups
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -121,78 +130,92 @@ OpDecorate %34 BuiltIn LocalInvocationIndex
 %40 = OpTypePointer Workgroup %5
 %42 = OpConstant %7 2
 %43 = OpConstant %7 264
-%45 = OpTypePointer Output %5
-%47 = OpConstant %7 0
-%49 = OpConstant %7 1
-%52 = OpConstant %7 3
-%56 = OpTypePointer TaskPayloadWorkgroupEXT %5
-%69 = OpTypePointer Output %25
-%73 = OpTypePointer Output %13
-%75 = OpTypePointer Output %7
+%44 = OpVariable %33 Input
+%47 = OpConstant %7 1
+%49 = OpConstant %7 3
+%52 = OpConstant %7 0
+%57 = OpTypePointer Output %5
+%65 = OpTypePointer TaskPayloadWorkgroupEXT %5
+%78 = OpTypePointer Output %25
+%82 = OpTypePointer Output %13
+%84 = OpTypePointer Output %7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %85
-%85 = OpLabel
+OpBranch %94
+%94 = OpLabel
 %35 = OpLoad %7 %34
 %39 = OpConvertUToF %5 %35
 %41 = OpAccessChain %40 %32 %35
 OpStore %41 %39
 OpControlBarrier %42 %42 %43
 OpSetMeshOutputsEXT %8 %14
-%44 = OpLoad %5 %41
-%46 = OpAccessChain %45 %11 %35 %47
-OpStore %46 %44
-%48 = OpAccessChain %45 %11 %35 %49
-OpStore %48 %44
-%50 = OpAccessChain %45 %11 %35 %42
-OpStore %50 %44
-%51 = OpAccessChain %45 %11 %35 %52
-OpStore %51 %44
-%53 = OpBitwiseXor %7 %35 %49
-%54 = OpAccessChain %40 %32 %53
-%55 = OpLoad %5 %54
-%57 = OpInBoundsAccessChain %56 %38 %47
-%58 = OpLoad %5 %57
-%59 = OpFAdd %5 %58 %55
-%60 = OpAccessChain %45 %12 %35 %47
-OpStore %60 %59
-%61 = OpAccessChain %45 %12 %35 %49
-OpStore %61 %59
-%62 = OpAccessChain %45 %12 %35 %42
-OpStore %62 %59
-%63 = OpAccessChain %45 %12 %35 %52
-OpStore %63 %59
-%64 = OpULessThan %13 %35 %14
-OpSelectionMerge %87 None
-OpBranchConditional %64 %86 %87
-%86 = OpLabel
-%65 = OpIMul %7 %35 %52
-%66 = OpIAdd %7 %65 %49
-%67 = OpIAdd %7 %65 %42
-%68 = OpCompositeConstruct %25 %65 %66 %67
-%70 = OpAccessChain %69 %28 %35
+%45 = OpLoad %7 %44
+%46 = OpIEqual %13 %45 %47
+%48 = OpGroupNonUniformBroadcastFirst %7 %49 %8
+%50 = OpGroupNonUniformBroadcastFirst %7 %49 %14
+%51 = OpIEqual %13 %48 %52
+%53 = OpIEqual %13 %50 %52
+%54 = OpLogicalOr %13 %51 %53
+%55 = OpLogicalAnd %13 %46 %54
+OpSelectionMerge %98 None
+OpBranchConditional %55 %97 %98
+%97 = OpLabel
+OpReturn
+%98 = OpLabel
+%56 = OpLoad %5 %41
+%58 = OpAccessChain %57 %11 %35 %52
+OpStore %58 %56
+%59 = OpAccessChain %57 %11 %35 %47
+OpStore %59 %56
+%60 = OpAccessChain %57 %11 %35 %42
+OpStore %60 %56
+%61 = OpAccessChain %57 %11 %35 %49
+OpStore %61 %56
+%62 = OpBitwiseXor %7 %35 %47
+%63 = OpAccessChain %40 %32 %62
+%64 = OpLoad %5 %63
+%66 = OpInBoundsAccessChain %65 %38 %52
+%67 = OpLoad %5 %66
+%68 = OpFAdd %5 %67 %64
+%69 = OpAccessChain %57 %12 %35 %52
+OpStore %69 %68
+%70 = OpAccessChain %57 %12 %35 %47
 OpStore %70 %68
-%71 = OpBitwiseAnd %7 %35 %49
-%72 = OpINotEqual %13 %71 %47
-%74 = OpAccessChain %73 %17 %35
-OpStore %74 %72
-%76 = OpAccessChain %75 %21 %35
-OpStore %76 %35
-%77 = OpAccessChain %75 %20 %35
-OpStore %77 %35
-%78 = OpBitwiseXor %7 %35 %42
-%79 = OpAccessChain %40 %32 %78
-%80 = OpLoad %5 %79
-%81 = OpAccessChain %45 %24 %35 %47
-OpStore %81 %80
-%82 = OpAccessChain %45 %24 %35 %49
-OpStore %82 %80
-%83 = OpAccessChain %45 %24 %35 %42
-OpStore %83 %80
-%84 = OpAccessChain %45 %24 %35 %52
-OpStore %84 %80
-OpBranch %87
-%87 = OpLabel
+%71 = OpAccessChain %57 %12 %35 %42
+OpStore %71 %68
+%72 = OpAccessChain %57 %12 %35 %49
+OpStore %72 %68
+%73 = OpULessThan %13 %35 %14
+OpSelectionMerge %96 None
+OpBranchConditional %73 %95 %96
+%95 = OpLabel
+%74 = OpIMul %7 %35 %49
+%75 = OpIAdd %7 %74 %47
+%76 = OpIAdd %7 %74 %42
+%77 = OpCompositeConstruct %25 %74 %75 %76
+%79 = OpAccessChain %78 %28 %35
+OpStore %79 %77
+%80 = OpBitwiseAnd %7 %35 %47
+%81 = OpINotEqual %13 %80 %52
+%83 = OpAccessChain %82 %17 %35
+OpStore %83 %81
+%85 = OpAccessChain %84 %21 %35
+OpStore %85 %35
+%86 = OpAccessChain %84 %20 %35
+OpStore %86 %35
+%87 = OpBitwiseXor %7 %35 %42
+%88 = OpAccessChain %40 %32 %87
+%89 = OpLoad %5 %88
+%90 = OpAccessChain %57 %24 %35 %52
+OpStore %90 %89
+%91 = OpAccessChain %57 %24 %35 %47
+OpStore %91 %89
+%92 = OpAccessChain %57 %24 %35 %42
+OpStore %92 %89
+%93 = OpAccessChain %57 %24 %35 %49
+OpStore %93 %89
+OpBranch %96
+%96 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif
