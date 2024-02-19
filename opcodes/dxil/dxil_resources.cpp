@@ -1107,6 +1107,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.index_offset_id = offset_id;
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
+			meta.physical_pointer_meta.nonwritable = true;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -1226,6 +1227,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
 			meta.rov = reference.rov;
+			meta.physical_pointer_meta.coherent = reference.coherent;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
 			meta.var_id = resource_ptr_id;

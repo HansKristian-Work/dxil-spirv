@@ -611,6 +611,7 @@ struct Converter::Impl
 		bool supports_quad_control = false;
 		bool supports_maximal_reconvergence = false;
 		bool force_maximal_reconvergence = false;
+		bool nv_raw_access_chains = false;
 		struct
 		{
 			bool enabled = false;

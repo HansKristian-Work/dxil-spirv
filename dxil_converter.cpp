@@ -7042,6 +7042,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::RawAccessChainsNV:
+	{
+		auto &c = static_cast<const OptionRawAccessChainsNV &>(cap);
+		options.nv_raw_access_chains = c.supported;
+		break;
+	}
+
 	default:
 		break;
 	}
