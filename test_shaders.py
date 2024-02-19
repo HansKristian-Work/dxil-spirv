@@ -236,6 +236,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--no-compute-shader-derivatives']
     if '.quad-maximal-reconvergence.' in shader:
         hlsl_cmd += ['--quad-control-maximal-reconvergence']
+    if '.raw-access-chains.' in shader:
+        hlsl_cmd += ['--raw-access-chains-nv']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

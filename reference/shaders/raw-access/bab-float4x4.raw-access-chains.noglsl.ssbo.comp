@@ -1,0 +1,198 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 168
+; Schema: 0
+OpCapability Shader
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability RawAccessChainsNV
+OpExtension "SPV_NV_raw_access_chains"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %14
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %7 "SSBO"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 0
+OpDecorate %14 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpConstant %5 2
+%9 = OpTypeArray %7 %8
+%10 = OpTypePointer StorageBuffer %9
+%11 = OpVariable %10 StorageBuffer
+%12 = OpTypeVector %5 3
+%13 = OpTypePointer Input %12
+%14 = OpVariable %13 Input
+%15 = OpTypePointer Input %5
+%17 = OpConstant %5 0
+%20 = OpConstant %5 6
+%21 = OpTypePointer StorageBuffer %7
+%23 = OpTypeFloat 32
+%24 = OpTypeVector %23 4
+%25 = OpTypePointer StorageBuffer %24
+%28 = OpConstant %5 4
+%29 = OpConstant %5 16
+%39 = OpConstant %5 1
+%53 = OpConstant %5 48
+%57 = OpConstant %5 3
+%64 = OpConstant %23 4
+%88 = OpConstant %5 32
+%98 = OpConstant %5 80
+%102 = OpConstant %5 5
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %166
+%166 = OpLabel
+%16 = OpAccessChain %15 %14 %17
+%18 = OpLoad %5 %16
+%19 = OpShiftLeftLogical %5 %18 %20
+%22 = OpAccessChain %21 %11 %17
+%27 = OpIMul %5 %18 %28
+%26 = OpRawAccessChainNV %25 %22 %29 %27 %17 RobustnessPerElementNV
+%30 = OpLoad %24 %26 Aligned 16
+%31 = OpCompositeExtract %23 %30 0
+%32 = OpCompositeExtract %23 %30 1
+%33 = OpCompositeExtract %23 %30 2
+%34 = OpCompositeExtract %23 %30 3
+%35 = OpBitwiseOr %5 %19 %29
+%37 = OpIMul %5 %18 %28
+%38 = OpIAdd %5 %37 %39
+%36 = OpRawAccessChainNV %25 %22 %29 %38 %17 RobustnessPerElementNV
+%40 = OpLoad %24 %36 Aligned 16
+%41 = OpCompositeExtract %23 %40 0
+%42 = OpCompositeExtract %23 %40 1
+%43 = OpCompositeExtract %23 %40 2
+%44 = OpCompositeExtract %23 %40 3
+%45 = OpIAdd %5 %35 %29
+%46 = OpRawAccessChainNV %25 %22 %17 %17 %45 RobustnessPerComponentNV
+%47 = OpLoad %24 %46 Aligned 4
+%48 = OpCompositeExtract %23 %47 0
+%49 = OpCompositeExtract %23 %47 1
+%50 = OpCompositeExtract %23 %47 2
+%51 = OpCompositeExtract %23 %47 3
+%52 = OpBitwiseOr %5 %19 %53
+%55 = OpIMul %5 %18 %28
+%56 = OpIAdd %5 %55 %57
+%54 = OpRawAccessChainNV %25 %22 %29 %56 %17 RobustnessPerElementNV
+%58 = OpLoad %24 %54 Aligned 16
+%59 = OpCompositeExtract %23 %58 0
+%60 = OpCompositeExtract %23 %58 1
+%61 = OpCompositeExtract %23 %58 2
+%62 = OpCompositeExtract %23 %58 3
+%63 = OpFAdd %23 %31 %64
+%65 = OpFAdd %23 %32 %64
+%66 = OpFAdd %23 %33 %64
+%67 = OpFAdd %23 %34 %64
+%68 = OpFAdd %23 %41 %64
+%69 = OpFAdd %23 %42 %64
+%70 = OpFAdd %23 %43 %64
+%71 = OpFAdd %23 %44 %64
+%72 = OpFAdd %23 %48 %64
+%73 = OpFAdd %23 %49 %64
+%74 = OpFAdd %23 %50 %64
+%75 = OpFAdd %23 %51 %64
+%76 = OpFAdd %23 %59 %64
+%77 = OpFAdd %23 %60 %64
+%78 = OpFAdd %23 %61 %64
+%79 = OpFAdd %23 %62 %64
+%81 = OpIMul %5 %18 %28
+%80 = OpRawAccessChainNV %25 %22 %29 %81 %17 RobustnessPerElementNV
+%82 = OpCompositeConstruct %24 %63 %68 %72 %76
+OpStore %80 %82 Aligned 16
+%84 = OpIMul %5 %18 %28
+%85 = OpIAdd %5 %84 %39
+%83 = OpRawAccessChainNV %25 %22 %29 %85 %17 RobustnessPerElementNV
+%86 = OpCompositeConstruct %24 %65 %69 %73 %77
+OpStore %83 %86 Aligned 16
+%87 = OpBitwiseOr %5 %19 %88
+%90 = OpIMul %5 %18 %28
+%91 = OpIAdd %5 %90 %8
+%89 = OpRawAccessChainNV %25 %22 %29 %91 %17 RobustnessPerElementNV
+%92 = OpCompositeConstruct %24 %66 %70 %74 %78
+OpStore %89 %92 Aligned 16
+%94 = OpIMul %5 %18 %28
+%95 = OpIAdd %5 %94 %57
+%93 = OpRawAccessChainNV %25 %22 %29 %95 %17 RobustnessPerElementNV
+%96 = OpCompositeConstruct %24 %67 %71 %75 %79
+OpStore %93 %96 Aligned 16
+%97 = OpIMul %5 %18 %98
+%99 = OpAccessChain %21 %11 %39
+%101 = OpIMul %5 %18 %102
+%100 = OpRawAccessChainNV %25 %99 %29 %101 %17 RobustnessPerElementNV
+%103 = OpLoad %24 %100 Aligned 16
+%104 = OpCompositeExtract %23 %103 0
+%105 = OpCompositeExtract %23 %103 1
+%106 = OpCompositeExtract %23 %103 2
+%107 = OpCompositeExtract %23 %103 3
+%108 = OpIAdd %5 %97 %29
+%110 = OpIMul %5 %18 %102
+%111 = OpIAdd %5 %110 %39
+%109 = OpRawAccessChainNV %25 %99 %29 %111 %17 RobustnessPerElementNV
+%112 = OpLoad %24 %109 Aligned 16
+%113 = OpCompositeExtract %23 %112 0
+%114 = OpCompositeExtract %23 %112 1
+%115 = OpCompositeExtract %23 %112 2
+%116 = OpCompositeExtract %23 %112 3
+%117 = OpIAdd %5 %97 %88
+%119 = OpIMul %5 %18 %102
+%120 = OpIAdd %5 %119 %8
+%118 = OpRawAccessChainNV %25 %99 %29 %120 %17 RobustnessPerElementNV
+%121 = OpLoad %24 %118 Aligned 16
+%122 = OpCompositeExtract %23 %121 0
+%123 = OpCompositeExtract %23 %121 1
+%124 = OpCompositeExtract %23 %121 2
+%125 = OpCompositeExtract %23 %121 3
+%126 = OpIAdd %5 %97 %53
+%128 = OpIMul %5 %18 %102
+%129 = OpIAdd %5 %128 %57
+%127 = OpRawAccessChainNV %25 %99 %29 %129 %17 RobustnessPerElementNV
+%130 = OpLoad %24 %127 Aligned 16
+%131 = OpCompositeExtract %23 %130 0
+%132 = OpCompositeExtract %23 %130 1
+%133 = OpCompositeExtract %23 %130 2
+%134 = OpCompositeExtract %23 %130 3
+%135 = OpFAdd %23 %104 %64
+%136 = OpFAdd %23 %105 %64
+%137 = OpFAdd %23 %106 %64
+%138 = OpFAdd %23 %107 %64
+%139 = OpFAdd %23 %113 %64
+%140 = OpFAdd %23 %114 %64
+%141 = OpFAdd %23 %115 %64
+%142 = OpFAdd %23 %116 %64
+%143 = OpFAdd %23 %122 %64
+%144 = OpFAdd %23 %123 %64
+%145 = OpFAdd %23 %124 %64
+%146 = OpFAdd %23 %125 %64
+%147 = OpFAdd %23 %131 %64
+%148 = OpFAdd %23 %132 %64
+%149 = OpFAdd %23 %133 %64
+%150 = OpFAdd %23 %134 %64
+%152 = OpIMul %5 %18 %102
+%151 = OpRawAccessChainNV %25 %99 %29 %152 %17 RobustnessPerElementNV
+%153 = OpCompositeConstruct %24 %135 %139 %143 %147
+OpStore %151 %153 Aligned 16
+%155 = OpIMul %5 %18 %102
+%156 = OpIAdd %5 %155 %39
+%154 = OpRawAccessChainNV %25 %99 %29 %156 %17 RobustnessPerElementNV
+%157 = OpCompositeConstruct %24 %136 %140 %144 %148
+OpStore %154 %157 Aligned 16
+%159 = OpIMul %5 %18 %102
+%160 = OpIAdd %5 %159 %8
+%158 = OpRawAccessChainNV %25 %99 %29 %160 %17 RobustnessPerElementNV
+%161 = OpCompositeConstruct %24 %137 %141 %145 %149
+OpStore %158 %161 Aligned 16
+%163 = OpIMul %5 %18 %102
+%164 = OpIAdd %5 %163 %57
+%162 = OpRawAccessChainNV %25 %99 %29 %164 %17 RobustnessPerElementNV
+%165 = OpCompositeConstruct %24 %138 %142 %146 %150
+OpStore %162 %165 Aligned 16
+OpReturn
+OpFunctionEnd
+
