@@ -38,7 +38,7 @@ def convert_spirv(in_path, out_path, args, stage):
     if args.preserve and os.path.exists(out_file):
         return
 
-    spirv_cross_cmd = [args.spirv_cross, '--version', '460', '--vulkan-semantics', '--output', out_file, in_path, '--stage', stage]
+    spirv_cross_cmd = [args.spirv_cross, '--version', '460', '--vulkan-semantics', '--output', out_file, in_path, '--stage', stage, '--relax-nan-checks']
     try:
         subprocess.check_call(spirv_cross_cmd, stderr = subprocess.DEVNULL)
     except subprocess.CalledProcessError as e:
