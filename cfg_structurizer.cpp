@@ -2433,6 +2433,7 @@ const CFGNode *CFGStructurizer::scan_plain_continue_block(const CFGNode *node)
 	while (!block_is_plain_continue(node) &&
 	       base_node->dominates(node) &&
 	       !node->succ_back_edge &&
+	       !node->pred_back_edge &&
 	       node->immediate_post_dominator &&
 	       node->immediate_post_dominator != node)
 	{
