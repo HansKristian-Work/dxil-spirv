@@ -148,13 +148,31 @@ static bool emit_derivative_instruction_quad(spv::Op opcode, Converter::Impl &im
 
 bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
+
+	if (impl.execution_mode_meta.synthesize_dummy_derivatives)
+	{
+		spv::Id constant_0;
+		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
+		    impl.support_16bit_operations())
+		{
+			constant_0 = builder.makeFloat16Constant(0);
+		}
+		else
+		{
+			constant_0 = builder.makeFloatConstant(0.0f);
+		}
+
+		impl.rewrite_value(instruction, constant_0);
+		return true;
+	}
+
 	if (impl.execution_model != spv::ExecutionModelFragment &&
 	    !impl.options.nv_compute_shader_derivatives)
 	{
 		return emit_derivative_instruction_quad(opcode, impl, instruction);
 	}
 
-	auto &builder = impl.builder();
 	bool relax_precision = false;
 	spv::Id input_id;
 

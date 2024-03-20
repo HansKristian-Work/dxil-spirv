@@ -330,6 +330,7 @@ struct Converter::Impl
 		unsigned workgroup_threads[3] = {};
 		bool native_16bit_operations = false;
 		bool synthesize_2d_quad_dispatch = false;
+		bool synthesize_dummy_derivatives = false;
 		unsigned required_wave_size = 0;
 		unsigned heuristic_max_wave_size = 0;
 		bool declares_globallycoherent_uav = false;

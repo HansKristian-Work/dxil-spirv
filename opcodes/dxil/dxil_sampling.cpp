@@ -268,6 +268,8 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	                           opcode == DXIL::Op::SampleCmpLevelZero ||
 	                           opcode == DXIL::Op::SampleCmpLevel;
 
+	bool force_explicit_lod = impl.execution_mode_meta.synthesize_dummy_derivatives;
+
 	// Elide dead loads.
 	if (!comparison_sampling && !impl.composite_is_accessed(instruction))
 		return true;
@@ -288,6 +290,16 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		coord[i] = impl.get_id_for_value(instruction->getOperand(i + 3));
 
 	uint32_t image_ops = 0;
+
+	if (force_explicit_lod)
+	{
+		if (opcode == DXIL::Op::Sample || opcode == DXIL::Op::SampleBias)
+			opcode = DXIL::Op::SampleLevel;
+		else if (opcode == DXIL::Op::SampleCmp)
+			opcode = DXIL::Op::SampleCmpLevelZero;
+		else
+			force_explicit_lod = false;
+	}
 
 	if (opcode == DXIL::Op::SampleLevel || opcode == DXIL::Op::SampleCmpLevelZero || opcode == DXIL::Op::SampleCmpLevel)
 		image_ops |= spv::ImageOperandsLodMask;
@@ -323,7 +335,9 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		}
 	}
 
-	if (opcode == DXIL::Op::SampleBias || opcode == DXIL::Op::SampleLevel || opcode == DXIL::Op::SampleCmpLevel)
+	if (force_explicit_lod)
+		bias_level_argument = builder.makeFloatConstant(0.0f);
+	else if (opcode == DXIL::Op::SampleBias || opcode == DXIL::Op::SampleLevel || opcode == DXIL::Op::SampleCmpLevel)
 		bias_level_argument = impl.get_id_for_value(instruction->getOperand(bias_level_argument_index));
 	else
 		bias_level_argument = builder.makeFloatConstant(0.0f);
@@ -1597,13 +1611,19 @@ static bool emit_calculate_lod_instruction_fallback(Converter::Impl &impl, const
 
 bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	auto &builder = impl.builder();
+	if (impl.execution_mode_meta.synthesize_dummy_derivatives)
+	{
+		impl.rewrite_value(instruction, builder.makeFloatConstant(0.0f));
+		return true;
+	}
+
 	if (impl.execution_model != spv::ExecutionModelFragment &&
 	    !impl.options.nv_compute_shader_derivatives)
 	{
 		return emit_calculate_lod_instruction_fallback(impl, instruction);
 	}
 
-	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
 	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, false);

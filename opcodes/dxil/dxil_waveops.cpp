@@ -962,6 +962,12 @@ bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *
 {
 	auto &builder = impl.builder();
 
+	if (impl.execution_mode_meta.synthesize_dummy_derivatives)
+	{
+		impl.rewrite_value(instruction, impl.get_id_for_value(instruction->getOperand(1)));
+		return true;
+	}
+
 	// Matches with SPIR-V.
 	uint32_t swap_kind;
 	if (!get_constant_operand(instruction, 2, &swap_kind))
@@ -995,6 +1001,12 @@ bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *
 bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
+
+	if (impl.execution_mode_meta.synthesize_dummy_derivatives)
+	{
+		impl.rewrite_value(instruction, impl.get_id_for_value(instruction->getOperand(1)));
+		return true;
+	}
 
 	auto *lane = instruction->getOperand(2);
 
