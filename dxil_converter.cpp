@@ -5617,6 +5617,13 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 				threads[1] /= 2;
 			}
 		}
+		else
+		{
+			// DXC is robust against this case.
+			// Derivatives become meaningless now, so we have to fake the results.
+			execution_mode_meta.synthesize_dummy_derivatives = true;
+			LOGW("Invalid use of compute shader derivatives detected. Falling back to robust results.\n");
+		}
 	}
 
 	for (unsigned dim = 0; dim < 3; dim++)

@@ -1,0 +1,68 @@
+Texture2D<float> T2D;
+Texture2DArray<float> T2DArr;
+TextureCube<float> TCube;
+TextureCubeArray<float> TCubeArr;
+Texture3D<float> T3D;
+
+RWStructuredBuffer<float> O;
+
+SamplerState S;
+SamplerComparisonState SComp;
+
+// DXC is robust against this, even if it is non-sensical.
+
+[numthreads(1, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	float4 uv = float4(0.1, 0.2, 0.3, 0.4) * float(thr);
+
+	O[thr] += T2D.Sample(S, uv.xy);
+	O[thr] += T2DArr.Sample(S, uv.xyz);
+	O[thr] += TCube.Sample(S, uv.xyz);
+	O[thr] += TCubeArr.Sample(S, uv);
+	O[thr] += T3D.Sample(S, uv.xyz);
+
+	// Delimiter to make things a bit easier to read.
+	DeviceMemoryBarrierWithGroupSync();
+
+	O[thr] += T2D.SampleBias(S, uv.xy, uv.w);
+	O[thr] += T2DArr.SampleBias(S, uv.xyz, uv.w);
+	O[thr] += TCube.SampleBias(S, uv.xyz, uv.w);
+	O[thr] += TCubeArr.SampleBias(S, uv, uv.w);
+	O[thr] += T3D.SampleBias(S, uv.xyz, uv.w);
+
+	DeviceMemoryBarrierWithGroupSync();
+
+	O[thr] += T2D.SampleCmp(SComp, uv.xy, uv.w);
+	O[thr] += T2DArr.SampleCmp(SComp, uv.xyz, uv.w);
+	O[thr] += TCube.SampleCmp(SComp, uv.xyz, uv.w);
+	O[thr] += TCubeArr.SampleCmp(SComp, uv, uv.w);
+
+	DeviceMemoryBarrierWithGroupSync();
+
+	O[thr] += ddx(uv.w);
+	O[thr] += ddy(uv.w);
+
+	DeviceMemoryBarrierWithGroupSync();
+
+	O[thr] += ddx_coarse(uv.w);
+	O[thr] += ddy_coarse(uv.w);
+
+	DeviceMemoryBarrierWithGroupSync();
+
+	O[thr] += ddx_fine(uv.w);
+	O[thr] += ddy_fine(uv.w);
+
+	DeviceMemoryBarrierWithGroupSync();
+
+	O[thr] += T2D.CalculateLevelOfDetail(S, uv.xy);
+	O[thr] += T2DArr.CalculateLevelOfDetail(S, uv.xy);
+	// Cube derivatives in separate test
+	O[thr] += T3D.CalculateLevelOfDetail(S, uv.xyz);
+
+	DeviceMemoryBarrierWithGroupSync();
+
+	O[thr] += T2D.CalculateLevelOfDetailUnclamped(S, uv.xy);
+	O[thr] += T2DArr.CalculateLevelOfDetailUnclamped(S, uv.xy);
+	O[thr] += T3D.CalculateLevelOfDetailUnclamped(S, uv.xyz);
+}
