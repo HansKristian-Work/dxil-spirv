@@ -1,0 +1,56 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 34
+; Schema: 0
+OpCapability Shader
+OpCapability RawAccessChainsNV
+OpExtension "SPV_NV_raw_access_chains"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %7 "SSBO"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%17 = OpTypeFloat 32
+%18 = OpTypeVector %17 3
+%19 = OpTypePointer StorageBuffer %18
+%21 = OpConstant %5 12
+%27 = OpConstant %17 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %32
+%32 = OpLabel
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%20 = OpRawAccessChainNV %19 %9 %21 %16 %15 RobustnessPerElementNV
+%22 = OpLoad %18 %20 Aligned 4
+%23 = OpCompositeExtract %17 %22 0
+%24 = OpCompositeExtract %17 %22 1
+%25 = OpCompositeExtract %17 %22 2
+%26 = OpFAdd %17 %23 %27
+%28 = OpFAdd %17 %24 %27
+%29 = OpFAdd %17 %25 %27
+%30 = OpRawAccessChainNV %19 %9 %21 %16 %15 RobustnessPerElementNV
+%31 = OpCompositeConstruct %18 %26 %28 %29
+OpStore %30 %31 Aligned 4
+OpReturn
+OpFunctionEnd
+

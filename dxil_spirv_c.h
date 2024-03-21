@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 37
+#define DXIL_SPV_API_VERSION_MINOR 38
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -364,6 +364,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_DESCRIPTOR_HEAP_ROBUSTNESS = 35,
 	DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES_NV = 36,
 	DXIL_SPV_OPTION_QUAD_CONTROL_RECONVERGENCE = 37,
+	DXIL_SPV_OPTION_RAW_ACCESS_CHAINS_NV = 38,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -633,6 +634,12 @@ typedef struct dxil_spv_option_quad_control_reconvergence
 	dxil_spv_bool supports_maximal_reconvergence;
 	dxil_spv_bool force_maximal_reconvergence;
 } dxil_spv_option_quad_control_reconvergence;
+
+typedef struct dxil_spv_option_raw_access_chains_nv
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool supported;
+} dxil_spv_option_raw_access_chains_nv;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

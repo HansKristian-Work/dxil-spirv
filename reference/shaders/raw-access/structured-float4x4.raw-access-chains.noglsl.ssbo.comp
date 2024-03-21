@@ -1,0 +1,100 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 75
+; Schema: 0
+OpCapability Shader
+OpCapability RawAccessChainsNV
+OpExtension "SPV_NV_raw_access_chains"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %7 "SSBO"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%17 = OpTypeFloat 32
+%18 = OpTypeVector %17 4
+%19 = OpTypePointer StorageBuffer %18
+%21 = OpConstant %5 64
+%28 = OpConstant %5 16
+%35 = OpConstant %5 32
+%42 = OpConstant %5 48
+%49 = OpConstant %17 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %73
+%73 = OpLabel
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%20 = OpRawAccessChainNV %19 %9 %21 %16 %15 RobustnessPerElementNV
+%22 = OpLoad %18 %20 Aligned 16
+%23 = OpCompositeExtract %17 %22 0
+%24 = OpCompositeExtract %17 %22 1
+%25 = OpCompositeExtract %17 %22 2
+%26 = OpCompositeExtract %17 %22 3
+%27 = OpRawAccessChainNV %19 %9 %21 %16 %28 RobustnessPerElementNV
+%29 = OpLoad %18 %27 Aligned 16
+%30 = OpCompositeExtract %17 %29 0
+%31 = OpCompositeExtract %17 %29 1
+%32 = OpCompositeExtract %17 %29 2
+%33 = OpCompositeExtract %17 %29 3
+%34 = OpRawAccessChainNV %19 %9 %21 %16 %35 RobustnessPerElementNV
+%36 = OpLoad %18 %34 Aligned 16
+%37 = OpCompositeExtract %17 %36 0
+%38 = OpCompositeExtract %17 %36 1
+%39 = OpCompositeExtract %17 %36 2
+%40 = OpCompositeExtract %17 %36 3
+%41 = OpRawAccessChainNV %19 %9 %21 %16 %42 RobustnessPerElementNV
+%43 = OpLoad %18 %41 Aligned 16
+%44 = OpCompositeExtract %17 %43 0
+%45 = OpCompositeExtract %17 %43 1
+%46 = OpCompositeExtract %17 %43 2
+%47 = OpCompositeExtract %17 %43 3
+%48 = OpFAdd %17 %23 %49
+%50 = OpFAdd %17 %30 %49
+%51 = OpFAdd %17 %37 %49
+%52 = OpFAdd %17 %44 %49
+%53 = OpFAdd %17 %24 %49
+%54 = OpFAdd %17 %31 %49
+%55 = OpFAdd %17 %38 %49
+%56 = OpFAdd %17 %45 %49
+%57 = OpFAdd %17 %25 %49
+%58 = OpFAdd %17 %32 %49
+%59 = OpFAdd %17 %39 %49
+%60 = OpFAdd %17 %46 %49
+%61 = OpFAdd %17 %26 %49
+%62 = OpFAdd %17 %33 %49
+%63 = OpFAdd %17 %40 %49
+%64 = OpFAdd %17 %47 %49
+%65 = OpRawAccessChainNV %19 %9 %21 %16 %15 RobustnessPerElementNV
+%66 = OpCompositeConstruct %18 %48 %53 %57 %61
+OpStore %65 %66 Aligned 16
+%67 = OpRawAccessChainNV %19 %9 %21 %16 %28 RobustnessPerElementNV
+%68 = OpCompositeConstruct %18 %50 %54 %58 %62
+OpStore %67 %68 Aligned 16
+%69 = OpRawAccessChainNV %19 %9 %21 %16 %35 RobustnessPerElementNV
+%70 = OpCompositeConstruct %18 %51 %55 %59 %63
+OpStore %69 %70 Aligned 16
+%71 = OpRawAccessChainNV %19 %9 %21 %16 %42 RobustnessPerElementNV
+%72 = OpCompositeConstruct %18 %52 %56 %60 %64
+OpStore %71 %72 Aligned 16
+OpReturn
+OpFunctionEnd
+

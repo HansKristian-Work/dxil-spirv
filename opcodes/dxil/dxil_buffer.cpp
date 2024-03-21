@@ -525,6 +525,180 @@ static RawWidth get_buffer_access_bits_per_component(
 		return RawWidth::B32;
 }
 
+struct RawAccessChain
+{
+    spv::Id ptr_id;
+    spv::Id component_type_id;
+    spv::Id vector_type_id;
+    unsigned alignment;
+};
+
+static bool buffer_access_is_raw_access_chain(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta)
+{
+    return impl.options.nv_raw_access_chains &&
+            (meta.storage == spv::StorageClassStorageBuffer || meta.storage == spv::StorageClassPhysicalStorageBuffer);
+}
+
+static RawAccessChain emit_raw_access_chain(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
+                                            const llvm::CallInst *inst, const llvm::Type *element_type, unsigned vecsize)
+{
+	auto &builder = impl.builder();
+	spv::Id raw_component_type_id;
+	RawAccessChain raw = {};
+
+	// If we're storing to min16 types and we use native 16-bit in arithmetic,
+	// we have to expand to 32-bit before storing :(
+	// This will probably fall over with int vs uint, since we don't know how to sign-extend.
+	if (!impl.execution_mode_meta.native_16bit_operations &&
+	    impl.options.min_precision_prefer_native_16bit &&
+	    type_is_16bit(element_type))
+	{
+		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+			raw_component_type_id = builder.makeFloatType(32);
+		else
+			raw_component_type_id = builder.makeUintType(32);
+	}
+	else
+		raw_component_type_id = impl.get_type_id(element_type);
+
+	spv::Id vec_type = vecsize > 1 ? builder.makeVectorType(raw_component_type_id, vecsize) : raw_component_type_id;
+	spv::Id ptr_vec_type = builder.makePointer(spv::StorageClassStorageBuffer, vec_type);
+
+	builder.addCapability(spv::CapabilityRawAccessChainsNV);
+	builder.addExtension("SPV_NV_raw_access_chains");
+
+	auto *op = impl.allocate(spv::OpRawAccessChainNV, ptr_vec_type);
+	op->add_id(impl.get_id_for_value(inst->getOperand(1)));
+
+	unsigned scalar_size = builder.getScalarTypeWidth(raw_component_type_id) / 8;
+
+	if (meta.kind == DXIL::ResourceKind::RawBuffer)
+	{
+		unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, element_type);
+
+		if (raw_access_byte_address_can_vectorize(impl, element_type, inst->getOperand(2), 4))
+			raw.alignment = 4;
+		else if (raw_access_byte_address_can_vectorize(impl, element_type, inst->getOperand(2), 2))
+			raw.alignment = 2;
+		else
+			raw.alignment = 1;
+
+		if (raw.alignment != 1 && raw.alignment * scalar_size <= 16 && vecsize <= raw.alignment)
+		{
+			// If we can prove vectorization, we can treat this as a structured buffer instead.
+			// That way we needlessly avoid per-component robustness.
+			// BAB descriptor range is aligned to 16 bytes, so we cannot use PerElementMask if the load
+			// can straddle a 16 byte boundary.
+			// If we care enough, we can split this load into two, and use per-element on both, but that's overkill.
+
+			spv::Id element_id = build_index_divider(impl, inst->getOperand(2), addr_shift_log2, raw.alignment);
+			op->add_id(builder.makeUintConstant(raw.alignment * scalar_size));
+			op->add_id(element_id);
+			op->add_id(builder.makeUintConstant(0));
+			op->add_literal(spv::RawAccessChainOperandsRobustnessPerElementNVMask);
+		}
+		else
+		{
+			op->add_id(builder.makeUintConstant(0));
+			op->add_id(builder.makeUintConstant(0));
+			op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+			op->add_literal(spv::RawAccessChainOperandsRobustnessPerComponentNVMask);
+		}
+	}
+	else
+	{
+		op->add_id(builder.makeUintConstant(meta.stride));
+		op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+		op->add_id(impl.get_id_for_value(inst->getOperand(3)));
+		op->add_literal(spv::RawAccessChainOperandsRobustnessPerElementNVMask);
+
+		// Need extra check for stride alignment since we can normally "vectorize" vec3 structured buffers
+		// if SSBO alignment is 4. However, we also need to make sure the alignment is correct before accepting.
+		if ((meta.stride & (scalar_size * 4 - 1)) == 0 &&
+		    raw_access_structured_can_vectorize(
+			    impl, element_type,
+			    inst->getOperand(2), meta.stride, inst->getOperand(3), 4))
+		{
+			raw.alignment = 4;
+		}
+		else if ((meta.stride & (scalar_size * 2 - 1)) == 0 &&
+		         raw_access_structured_can_vectorize(
+			         impl, element_type,
+			         inst->getOperand(2), meta.stride,
+			         inst->getOperand(3), 2))
+		{
+			raw.alignment = 2;
+		}
+		else
+			raw.alignment = 1;
+	}
+
+	raw.alignment *= scalar_size;
+	raw.component_type_id = raw_component_type_id;
+	raw.vector_type_id = vec_type;
+	raw.ptr_id = op->id;
+
+	impl.add(op);
+
+	if (meta.non_uniform)
+		builder.addDecoration(op->id, spv::DecorationNonUniform);
+
+	if (meta.physical_pointer_meta.nonwritable)
+		builder.addDecoration(op->id, spv::DecorationNonWritable);
+	if (meta.physical_pointer_meta.coherent)
+		builder.addDecoration(op->id, spv::DecorationCoherent);
+
+	return raw;
+}
+
+static bool emit_buffer_load_raw_chain_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                   const Converter::Impl::ResourceMeta &meta,
+                                                   Converter::Impl::CompositeMeta &access_meta)
+{
+	auto *result_type = instruction->getType();
+	auto *target_type = result_type->getStructElementType(0);
+
+	unsigned num_elements = 1;
+	for (unsigned i = 0; i < 4; i++)
+		if ((access_meta.access_mask & (1u << i)) != 0)
+			num_elements = i + 1;
+	auto raw = emit_raw_access_chain(impl, meta, instruction, target_type, num_elements);
+
+	auto *load_op = impl.allocate(spv::OpLoad, instruction, raw.vector_type_id);
+	load_op->add_id(raw.ptr_id);
+	load_op->add_literal(spv::MemoryAccessAlignedMask);
+	load_op->add_literal(raw.alignment);
+	impl.add(load_op);
+
+	if (type_is_16bit(target_type) &&
+	    !impl.execution_mode_meta.native_16bit_operations &&
+	    impl.options.min_precision_prefer_native_16bit)
+	{
+		Operation *narrow_op;
+
+		if (target_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+		{
+			narrow_op = impl.allocate(
+				spv::OpFConvert,
+				impl.get_type_id(DXIL::ComponentType::F16, 1, num_elements));
+		}
+		else
+		{
+			narrow_op = impl.allocate(
+				spv::OpUConvert,
+				impl.get_type_id(DXIL::ComponentType::U16, 1, num_elements));
+		}
+
+		narrow_op->add_id(load_op->id);
+		impl.add(narrow_op);
+		impl.rewrite_value(instruction, narrow_op->id);
+	}
+
+	build_exploded_composite_from_vector(impl, instruction, num_elements);
+	access_meta.forced_composite = false;
+	return true;
+}
+
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// Elide dead loads.
@@ -567,6 +741,10 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta,
 		                                             smeared_access_mask, 4);
 	}
+
+	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta) && !sparse;
+	if (raw_access_chain)
+		return emit_buffer_load_raw_chain_instruction(impl, instruction, meta, access_meta);
 
 	auto *result_type = instruction->getType();
 	auto *target_type = result_type->getStructElementType(0);
@@ -959,6 +1137,71 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta);
 }
 
+static unsigned emit_buffer_store_values_bitcast(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                 spv::Id *store_values, unsigned write_mask,
+                                                 RawWidth raw_width,
+                                                 bool is_typed, bool ignore_bitcast)
+{
+	auto *element_type = instruction->getOperand(4)->getType();
+	auto &builder = impl.builder();
+	unsigned raw_vecsize = 0;
+
+	for (unsigned i = 0; i < 4; i++)
+	{
+		if ((write_mask & (1u << i)) != 0)
+		{
+			store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+			if (!is_typed)
+			{
+				// If we're storing to min16 types and we use native 16-bit in arithmetic,
+				// we have to expand to 32-bit before storing :(
+				// This will probably fall over with int vs uint, since we don't know how to sign-extend.
+				if (!impl.execution_mode_meta.native_16bit_operations &&
+				    impl.options.min_precision_prefer_native_16bit &&
+				    type_is_16bit(element_type))
+				{
+					if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+					{
+						Operation *op = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
+						op->add_id(store_values[i]);
+						store_values[i] = op->id;
+						impl.add(op);
+
+						if (!ignore_bitcast)
+						{
+							Operation *bitcast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+							bitcast_op->add_id(store_values[i]);
+							impl.add(bitcast_op);
+							store_values[i] = bitcast_op->id;
+						}
+					}
+					else
+					{
+						// SConvert or UConvert, who knows. :)
+						Operation *op = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
+						op->add_id(store_values[i]);
+						store_values[i] = op->id;
+						impl.add(op);
+					}
+				}
+				else if (!ignore_bitcast &&
+				         element_type->getTypeID() != llvm::Type::TypeID::DoubleTyID &&
+				         element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+				{
+					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(raw_width_to_bits(raw_width)));
+					op->add_id(store_values[i]);
+					store_values[i] = op->id;
+					impl.add(op);
+				}
+			}
+
+			raw_vecsize = i + 1;
+		}
+	}
+
+	return raw_vecsize;
+}
+
 bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -988,11 +1231,29 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	// We only get native 16-bit load-store with native_16bit_operations.
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
+
+	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta);
+	spv::Id store_values[4] = {};
+
+	if (raw_access_chain)
+	{
+		auto raw_vecsize = emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, false, true);
+		auto raw = emit_raw_access_chain(impl, meta, instruction, element_type, raw_vecsize);
+		spv::Id vector_value_id = impl.build_vector(raw.component_type_id, store_values, raw_vecsize);
+
+		auto *store_op = impl.allocate(spv::OpStore);
+		store_op->add_id(raw.ptr_id);
+		store_op->add_id(vector_value_id);
+		store_op->add_literal(spv::MemoryAccessAlignedMask);
+		store_op->add_literal(raw.alignment);
+		impl.add(store_op);
+		return true;
+	}
+
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
 	                                  instruction->getOperand(4)->getType(),
 	                                  meta.storage != spv::StorageClassUniformConstant ? mask : 1u);
-
-	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
 
 	RawType raw_type = element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
 	                   RawType::Float : RawType::Integer;
@@ -1000,54 +1261,9 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
 	bool vectorized_store = access.raw_vec_size != RawVecSize::V1;
 
-	spv::Id store_values[4] = {};
-
-	for (unsigned i = 0; i < 4; i++)
-	{
-		if ((mask & (1u << i)) != 0)
-		{
-			store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
-			if (!is_typed)
-			{
-				// If we're storing to min16 types and we use native 16-bit in arithmetic,
-				// we have to expand to 32-bit before storing :(
-				// This will probably fall over with int vs uint, since we don't know how to sign-extend.
-				if (!impl.execution_mode_meta.native_16bit_operations &&
-				    impl.options.min_precision_prefer_native_16bit &&
-				    type_is_16bit(element_type))
-				{
-					if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-					{
-						Operation *op = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
-						op->add_id(store_values[i]);
-						store_values[i] = op->id;
-						impl.add(op);
-
-						Operation *bitcast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
-						bitcast_op->add_id(store_values[i]);
-						impl.add(bitcast_op);
-						store_values[i] = bitcast_op->id;
-					}
-					else
-					{
-						// SConvert or UConvert, who knows. :)
-						Operation *op = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
-						op->add_id(store_values[i]);
-						store_values[i] = op->id;
-						impl.add(op);
-					}
-				}
-				else if (element_type->getTypeID() != llvm::Type::TypeID::DoubleTyID &&
-				         element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
-				{
-					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(raw_width_to_bits(width)));
-					op->add_id(store_values[i]);
-					store_values[i] = op->id;
-					impl.add(op);
-				}
-			}
-		}
-	}
+	// We could hoist the call to emit_buffer_store_values_bitcast,
+	// but causes too much churn on shader deltas.
+	emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, is_typed, false);
 
 	if (is_typed)
 	{

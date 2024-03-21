@@ -172,7 +172,8 @@ static void print_help()
 	     "\t[--descriptor-heap-robustness]\n"
 	     "\t[--no-compute-shader-derivatives]\n"
 	     "\t[--quad-control-maximal-reconvergence]\n"
-	     "\t[--force-maximal-reconvergence]\n");
+	     "\t[--force-maximal-reconvergence]\n"
+	     "\t[--raw-access-chains-nv]\n");
 }
 
 struct Arguments
@@ -216,6 +217,7 @@ struct Arguments
 	bool compute_shader_derivatives = true;
 	bool quad_control_maximal_reconvergence = false;
 	bool force_maximal_reconvergence = false;
+	bool raw_access_chains_nv = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -794,6 +796,9 @@ int main(int argc, char **argv)
 	cbs.add("--force-maximal-reconvergence", [&](CLIParser &) {
 		args.force_maximal_reconvergence = true;
 	});
+	cbs.add("--raw-access-chains-nv", [&](CLIParser &) {
+		args.raw_access_chains_nv = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1094,6 +1099,13 @@ int main(int argc, char **argv)
 		        DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 		reconv.supports_quad_control = args.quad_control_maximal_reconvergence;
 		dxil_spv_converter_add_option(converter, &reconv.base);
+	}
+
+	if (args.raw_access_chains_nv)
+	{
+		const dxil_spv_option_raw_access_chains_nv chain = {
+			{ DXIL_SPV_OPTION_RAW_ACCESS_CHAINS_NV }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &chain.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
