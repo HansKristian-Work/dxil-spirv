@@ -328,7 +328,6 @@ OpDecorate %92 Aliased
 OpDecorate %95 BuiltIn GlobalInvocationId
 OpDecorate %285 NonUniform
 OpDecorate %287 NonUniform
-OpDecorate %285 NonUniform
 OpDecorate %289 NonUniform
 OpDecorate %291 NonUniform
 OpDecorate %304 NonUniform

@@ -708,8 +708,9 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 		op->add_id(offset_id);
 
 		// Some compilers require the index to be marked as NonUniformEXT, even if it not required by Vulkan spec.
+		// Avoid SPIR-V validation error if same index is used for multiple resources.
 		if (is_non_uniform && instruction_offset_value)
-			builder.addDecoration(offset_id, spv::DecorationNonUniformEXT);
+			builder.addUniqueDecoration(offset_id, spv::DecorationNonUniformEXT);
 
 		impl.add(op);
 		resource_id = op->id;
@@ -1107,6 +1108,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.index_offset_id = offset_id;
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
+			meta.physical_pointer_meta.nonwritable = true;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -1226,6 +1228,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
 			meta.rov = reference.rov;
+			meta.physical_pointer_meta.coherent = reference.coherent;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
 			meta.var_id = resource_ptr_id;

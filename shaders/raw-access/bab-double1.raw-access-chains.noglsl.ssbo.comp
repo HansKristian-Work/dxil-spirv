@@ -1,0 +1,7 @@
+RWByteAddressBuffer BAB : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	BAB.Store<double>(8 * thr, BAB.Load<double>(8 * thr) + 4.0);
+}

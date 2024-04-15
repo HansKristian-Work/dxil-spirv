@@ -252,6 +252,7 @@ enum class Option : uint32_t
 	DescriptorHeapRobustness = 35,
 	ComputeShaderDerivativesNV = 36,
 	QuadControlReconvergence = 37,
+	RawAccessChainsNV = 38,
 	Count
 };
 
@@ -673,6 +674,16 @@ struct OptionQuadControlReconvergence : OptionBase
 	bool supports_quad_control = false;
 	bool supports_maximal_reconvergence = false;
 	bool force_maximal_reconvergence = false;
+};
+
+struct OptionRawAccessChainsNV : OptionBase
+{
+	OptionRawAccessChainsNV()
+		: OptionBase(Option::RawAccessChainsNV)
+	{
+	}
+
+	bool supported = false;
 };
 
 struct DescriptorTableEntry

@@ -483,8 +483,13 @@ static void update_raw_access_tracking_for_byte_address(
 	const llvm::Value *byte_offset,
 	uint32_t mask)
 {
-	auto vec = raw_access_byte_address_vectorize(impl, type, byte_offset, mask);
-	update_raw_access_tracking_from_vector_type(tracking, type, vec);
+    // If we have raw access chains, we don't bother trying to vectorize the SSBOs.
+    // Just emit one alias and we can go from there.
+    if (!impl.options.nv_raw_access_chains)
+    {
+        auto vec = raw_access_byte_address_vectorize(impl, type, byte_offset, mask);
+        update_raw_access_tracking_from_vector_type(tracking, type, vec);
+    }
 }
 
 static void update_raw_access_tracking_for_structured(
@@ -496,8 +501,11 @@ static void update_raw_access_tracking_for_structured(
 	const llvm::Value *byte_offset,
 	uint32_t mask)
 {
-	auto vec = raw_access_structured_vectorize(impl, type, index, stride, byte_offset, mask);
-	update_raw_access_tracking_from_vector_type(tracking, type, vec);
+    if (!impl.options.nv_raw_access_chains)
+    {
+        auto vec = raw_access_structured_vectorize(impl, type, index, stride, byte_offset, mask);
+        update_raw_access_tracking_from_vector_type(tracking, type, vec);
+    }
 }
 
 static void analyze_descriptor_handle_sink(Converter::Impl &impl,
