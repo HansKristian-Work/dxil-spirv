@@ -37,8 +37,6 @@ OpCapability TransformFeedback
 OpMemoryModel Logical GLSL450
 OpEntryPoint Vertex %3 "main" %8 %9 %10
 OpExecutionMode %3 Xfb
-OpExecutionMode %3 Xfb
-OpExecutionMode %3 Xfb
 OpName %3 "main"
 OpName %8 "SV_Position"
 OpName %9 "StreamOut"

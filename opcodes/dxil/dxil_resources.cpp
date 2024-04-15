@@ -708,8 +708,9 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 		op->add_id(offset_id);
 
 		// Some compilers require the index to be marked as NonUniformEXT, even if it not required by Vulkan spec.
+		// Avoid SPIR-V validation error if same index is used for multiple resources.
 		if (is_non_uniform && instruction_offset_value)
-			builder.addDecoration(offset_id, spv::DecorationNonUniformEXT);
+			builder.addUniqueDecoration(offset_id, spv::DecorationNonUniformEXT);
 
 		impl.add(op);
 		resource_id = op->id;

@@ -955,6 +955,15 @@ Instruction* Builder::addEntryPoint(ExecutionModel model, Function* function, co
 // Currently relying on the fact that all 'value' of interest are small non-negative values.
 void Builder::addExecutionMode(Function* entryPoint, ExecutionMode mode, int value1, int value2, int value3)
 {
+    for (auto &execMode : executionModes)
+    {
+        // For execution modes with arguments, we don't have an issue with duplication.
+        if (execMode->getIdOperand(0) == entryPoint->getId() &&
+                execMode->getImmediateOperand(1) == mode &&
+                execMode->getNumOperands() == 2)
+            return;
+    }
+
     Instruction* instr = new Instruction(OpExecutionMode);
     instr->addIdOperand(entryPoint->getId());
     instr->addImmediateOperand(mode);
@@ -998,6 +1007,23 @@ void Builder::addDecoration(Id id, Decoration decoration, int num)
         dec->addImmediateOperand(num);
 
     decorations.push_back(std::unique_ptr<Instruction>(dec));
+}
+
+void Builder::addUniqueDecoration(Id id, Decoration decoration, int num)
+{
+    for (auto &dec : decorations)
+    {
+        if (dec->getIdOperand(0) != id || dec->getImmediateOperand(1) != decoration)
+            continue;
+
+        // Can have same decoration but different literal parameter.
+        if (num < 0 && dec->getNumOperands() == 2)
+            return;
+        if (num >= 0 && dec->getImmediateOperand(2) == uint32_t(num))
+            return;
+    }
+
+    addDecoration(id, decoration, num);
 }
 
 void Builder::addMemberDecoration(Id id, unsigned int member, Decoration decoration, int num)

@@ -259,6 +259,7 @@ public:
     void addName(Id, const char* name);
     void addMemberName(Id, int member, const char* name);
     void addDecoration(Id, Decoration, int num = -1);
+    void addUniqueDecoration(Id, Decoration, int num = -1);
     void addMemberDecoration(Id, unsigned int member, Decoration, int num = -1);
 
     // At the end of what block do the next create*() instructions go?
