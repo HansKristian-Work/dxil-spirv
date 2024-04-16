@@ -2538,15 +2538,29 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				// We should not attempt to do ladder breaking here in pass 0 since it's unnecessary.
 				bool tie_break_merge = ambiguous_merge_case || !mark_merge_block_case;
 
+				bool a_path_is_break = control_flow_is_escaping(node->succ[0], merge);
+				bool a_path_is_continue = block_is_plain_continue(scan_plain_continue_block(node->succ[0]));
+				bool b_path_is_break = control_flow_is_escaping(node->succ[1], merge);
+				bool b_path_is_continue = block_is_plain_continue(scan_plain_continue_block(node->succ[1]));
+
+				bool a_path_is_break_or_continue = a_path_is_break || a_path_is_continue;
+				bool b_path_is_break_or_continue = b_path_is_break || b_path_is_continue;
+
+				// Continue is stronger than break. A breaking path may still need to merge control flow
+				// especially if that breaking path is very complicated. If we detect continue, the back-edge
+				// post-dominates our succ, so we are guaranteed to never need to merge control flow on that path.
+				// Demote the other path to a non-breaking path.
+				if (a_path_is_continue != b_path_is_continue)
+				{
+					tie_break_merge = true;
+					if (a_path_is_continue)
+						b_path_is_break_or_continue = false;
+					else
+						a_path_is_break_or_continue = false;
+				}
+
 				if (tie_break_merge)
 				{
-					bool a_path_is_break_or_continue =
-						control_flow_is_escaping(node->succ[0], merge) ||
-						block_is_plain_continue(scan_plain_continue_block(node->succ[0]));
-					bool b_path_is_break_or_continue =
-						control_flow_is_escaping(node->succ[1], merge) ||
-						block_is_plain_continue(scan_plain_continue_block(node->succ[1]));
-
 					if (a_path_is_break_or_continue && b_path_is_break_or_continue)
 					{
 						// Both paths break, so we don't need to merge anything. Use Unreachable merge target.
