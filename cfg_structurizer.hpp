@@ -208,6 +208,7 @@ private:
 	void insert_phi(PHINode &node);
 	void fixup_phi(PHINode &node);
 	void cleanup_breaking_phi_constructs();
+	bool block_is_breaking_phi_construct(const CFGNode *node) const;
 	bool cleanup_breaking_return_constructs();
 	void eliminate_node_link_preds_to_succ(CFGNode *node);
 	void prune_dead_preds();
