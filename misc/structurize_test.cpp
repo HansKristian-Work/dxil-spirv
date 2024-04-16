@@ -100,7 +100,7 @@ static void print_spirv_assembly(const Vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
 	std::string str;
-	if (!tools.Disassemble(code.data(), code.size(), &str))
+	if (!tools.Disassemble(code.data(), code.size(), &str, SPV_BINARY_TO_TEXT_OPTION_INDENT))
 		LOGE("Failed to disassemble SPIR-V.\n");
 	else
 		LOGE("\nSPIR-V:\n%s\n", str.c_str());
