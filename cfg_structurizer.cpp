@@ -42,6 +42,14 @@ CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule
 	exit_block->name = "EXIT";
 }
 
+static bool block_is_control_dependent(const CFGNode *node)
+{
+	for (auto *op : node->ir.operations)
+		if (SPIRVModule::opcode_is_control_dependent(op->op))
+			return true;
+	return false;
+}
+
 void CFGStructurizer::log_cfg_graphviz(const char *path) const
 {
 	FILE *file = fopen(path, "w");
@@ -179,6 +187,145 @@ void CFGStructurizer::log_cfg(const char *tag) const
 	}
 	LOGI("\n=====================\n");
 }
+
+#define SIMPLIFY_CFG
+
+//#ifdef SIMPIFY_CFG
+bool CFGStructurizer::simplify_cfg()
+{
+	eliminate_degenerate_blocks();
+
+	auto node_is_candidate = [](const CFGNode *node) {
+		if (node->num_forward_preds() != 2)
+			return false;
+		if (node->succ.empty())
+			return false;
+		if (!node->post_dominates_perfect_structured_construct())
+			return false;
+
+		if (node->succ_back_edge)
+			return false;
+
+		for (auto *pred : node->pred)
+			if (pred->succ_back_edge)
+				return false;
+
+		auto *idom = node->immediate_dominator;
+		if (idom->pred_back_edge)
+			return false;
+
+		for (auto *pred : node->pred)
+			if (pred != idom && pred->immediate_dominator != idom)
+				return false;
+
+		return true;
+	};
+
+	auto &builder = module.get_builder();
+
+	UnorderedSet<const CFGNode *> phi_sensitive_nodes;
+	auto *entry = forward_post_visit_order.back();
+
+	for (size_t i = forward_post_visit_order.size() - 1; i; i--)
+	{
+		auto *node = forward_post_visit_order[i - 1];
+
+		bool is_control_dependent = block_is_control_dependent(node);
+		bool non_empty = !node->ir.operations.empty();
+
+		// We only really care about PHI for non-trivial cases, since those determine how we split nodes, etc.
+		if (!node->ir.phi.empty() && !node->post_dominates_perfect_structured_construct())
+			phi_sensitive_nodes.insert(node);
+
+		// Need to hold on to every opcode since we have decorations that will fail validation if their opcodes are not used.
+		for (auto &phi : node->ir.phi)
+			entry->ir.operations.push_back(module.allocate_op(spv::OpUndef, phi.id, phi.type_id));
+		entry->ir.operations.insert(entry->ir.operations.end(), node->ir.operations.begin(), node->ir.operations.end());
+		node->ir.operations.clear();
+		node->ir.phi.clear();
+
+		if (is_control_dependent)
+		{
+			// Insert a stray subgroup op.
+			auto *subgroup_op = module.allocate_op(spv::OpGroupNonUniformElect, module.allocate_id(), builder.makeBoolType());
+			subgroup_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			builder.addCapability(spv::CapabilityGroupNonUniform);
+			node->ir.operations.push_back(subgroup_op);
+		}
+		else if (non_empty)
+		{
+			// Insert dummy work.
+			node->ir.operations.push_back(module.allocate_op(
+				spv::OpUndef, module.allocate_id(), builder.makeBoolType()));
+		}
+	}
+
+	bool did_work = false;
+
+	// Collapse trivial CFGs to make debug more reasonable.
+	// Skip the entry block.
+	for (size_t i = forward_post_visit_order.size() - 1; i; i--)
+	{
+		auto *node = forward_post_visit_order[i - 1];
+
+		if (node_is_candidate(node))
+		{
+			// If we have a very simple structured construct, just collapse it into a plain direct branch.
+			auto *idom = node->immediate_dominator;
+
+			idom->succ.clear();
+			node->pred.clear();
+			idom->add_branch(node);
+			idom->ir.terminator.type = Terminator::Type::Branch;
+			idom->ir.terminator.direct_block = node;
+
+			// Collapse this block completely.
+			idom->ir.phi.clear();
+			idom->ir.operations.clear();
+			phi_sensitive_nodes.erase(idom);
+
+			did_work = true;
+		}
+	}
+
+	if (did_work)
+		recompute_cfg();
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (phi_sensitive_nodes.count(node) == 0)
+			continue;
+
+		// Synthesize a fake PHI.
+		PHI phi;
+		phi.id = module.allocate_id();
+		phi.type_id = builder.makeBoolType();
+
+		for (auto *pred : node->pred)
+		{
+			IncomingValue incoming = {};
+			incoming.block = pred;
+			incoming.id = builder.makeBoolConstant(true, true);
+			phi.incoming.push_back(incoming);
+		}
+
+		if (node->pred_back_edge)
+		{
+			IncomingValue incoming = {};
+			incoming.block = node->pred_back_edge;
+			incoming.id = builder.makeBoolConstant(true, true);
+			phi.incoming.push_back(incoming);
+		}
+
+		node->ir.phi.push_back(std::move(phi));
+	}
+
+	if (did_work)
+		eliminate_degenerate_blocks();
+
+	return did_work;
+}
+//#endif
 
 //#define PHI_DEBUG
 #ifdef PHI_DEBUG
@@ -666,6 +813,18 @@ bool CFGStructurizer::run()
 	}
 
 	recompute_cfg();
+
+#ifdef SIMPLIFY_CFG
+	while (simplify_cfg())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".simplify-early";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+	}
+#endif
+
 	propagate_branch_control_hints();
 
 	cleanup_breaking_phi_constructs();
@@ -747,6 +906,17 @@ bool CFGStructurizer::run()
 		}
 	}
 
+#ifdef SIMPLIFY_CFG
+	while (simplify_cfg())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".simplify-pre-struct0";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+	}
+#endif
+
 	//LOGI("=== Structurize pass ===\n");
 	structurize(0);
 	update_structured_loop_merge_targets();
@@ -812,14 +982,6 @@ bool CFGStructurizer::run()
 CFGNode *CFGStructurizer::get_entry_block() const
 {
 	return entry_block;
-}
-
-static bool block_is_control_dependent(const CFGNode *node)
-{
-	for (auto *op : node->ir.operations)
-		if (SPIRVModule::opcode_is_control_dependent(op->op))
-			return true;
-	return false;
 }
 
 bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const

@@ -240,5 +240,7 @@ private:
 		const std::function<bool (const CFGNode *)> &path_cb, const String &name);
 
 	void propagate_branch_control_hints();
+
+	bool simplify_cfg();
 };
 } // namespace dxil_spv
