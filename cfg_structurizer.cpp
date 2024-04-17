@@ -4758,7 +4758,26 @@ CFGStructurizer::LoopMergeAnalysis CFGStructurizer::analyze_loop_merge(CFGNode *
 			if (!control_flow_is_escaping(exit, merge))
 				non_breaking_exits.push_back(exit);
 
-		dominated_merge = CFGStructurizer::find_common_post_dominator(non_breaking_exits);
+		if (!non_breaking_exits.empty())
+			dominated_merge = CFGStructurizer::find_common_post_dominator(non_breaking_exits);
+
+		if (!dominated_merge)
+		{
+			// If we get here, we likely have some questionable tie-break situation.
+			// One possible case is an infinite loop where one path does a multi-level break,
+			// and other paths branch to outer loop's continue. We'll want to only look at dominated exits
+			// with the smallest break scope and try to find a common post dominator.
+			auto *innermost_header = get_innermost_loop_header_for(node->immediate_dominator);
+			Vector<CFGNode *> continue_exits;
+
+			if (innermost_header && innermost_header->pred_back_edge)
+				for (auto *exit : analysis.dominated_exit)
+					if (query_reachability(*exit, *innermost_header->pred_back_edge))
+						continue_exits.push_back(exit);
+
+			if (!continue_exits.empty())
+				dominated_merge = CFGStructurizer::find_common_post_dominator(continue_exits);
+		}
 	}
 	else
 	{
