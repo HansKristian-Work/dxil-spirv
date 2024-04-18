@@ -1219,6 +1219,11 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				did_work = true;
 				auto *pred = node->pred.front();
 				pred->retarget_branch(node, succ);
+
+				pred->dominance_frontier.clear();
+				// Propagates any idom information up to pred if pred dominates succ.
+				recompute_dominance_frontier(succ);
+				recompute_dominance_frontier(pred);
 			}
 			else if (merge_candidate_is_on_breaking_path(node))
 			{
