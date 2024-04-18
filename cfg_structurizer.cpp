@@ -1973,9 +1973,9 @@ void CFGStructurizer::reset_traversal()
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 
+		node.headers.clear();
 		if (!node.freeze_structured_analysis)
 		{
-			node.headers.clear();
 			node.merge = MergeType::None;
 			node.loop_merge_block = nullptr;
 			node.loop_ladder_block = nullptr;
