@@ -109,6 +109,7 @@ private:
 	static bool is_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
 	bool serialize_interleaved_merge_scopes();
 	void split_merge_scopes();
+	static CFGNode *rewind_candidate_split_node(CFGNode *node);
 	void eliminate_degenerate_blocks();
 	static bool ladder_chain_has_phi_dependencies(const CFGNode *chain, const CFGNode *incoming);
 	void duplicate_impossible_merge_constructs();
