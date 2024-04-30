@@ -637,6 +637,9 @@ struct Converter::Impl
 			unsigned implementation_minimum = 4;
 			unsigned implementation_maximum = 128;
 		} subgroup_size;
+
+		uint32_t driver_id = 0;
+		uint32_t driver_version = 0;
 	} options;
 
 	struct BindlessInfo

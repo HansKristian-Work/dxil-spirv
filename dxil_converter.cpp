@@ -119,6 +119,16 @@ bool Converter::shader_requires_feature(ShaderFeature feature) const
 	}
 }
 
+bool Converter::get_driver_version(uint32_t &driver_id, uint32_t &driver_version) const
+{
+	if (impl->options.driver_version == 0)
+		return false;
+
+	driver_id = impl->options.driver_id;
+	driver_version = impl->options.driver_version;
+	return true;
+}
+
 ConvertedFunction Converter::convert_entry_point()
 {
 	return impl->convert_entry_point();
@@ -5878,6 +5888,7 @@ CFGNode *Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit
 
 	// Need to figure out if our ROV use is trivial. If not, we will wrap the entire function in ROV pairs.
 	CFGStructurizer cfg{code_main, pool, spirv_module};
+	cfg.set_driver_version(options.driver_id, options.driver_version);
 	bool trivial_rewrite = cfg.rewrite_rov_lock_region();
 
 	if (trivial_rewrite)
@@ -7053,6 +7064,14 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &c = static_cast<const OptionRawAccessChainsNV &>(cap);
 		options.nv_raw_access_chains = c.supported;
+		break;
+	}
+
+	case Option::DriverVersion:
+	{
+		auto &c = static_cast<const OptionDriverVersion &>(cap);
+		options.driver_id = c.driver_id;
+		options.driver_version = c.driver_version;
 		break;
 	}
 

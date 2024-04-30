@@ -471,6 +471,12 @@ static void scrub_rov_lock_regions(CFGNode *node, bool preserve_first_begin, boo
 	scrub_rov_end_lock(node, preserve_last_end);
 }
 
+void CFGStructurizer::set_driver_version(uint32_t driver_id_, uint32_t driver_version_)
+{
+	driver_id = driver_id_;
+	driver_version = driver_version_;
+}
+
 bool CFGStructurizer::rewrite_rov_lock_region()
 {
 	recompute_cfg();
@@ -1968,7 +1974,12 @@ void CFGStructurizer::reset_traversal()
 	reachable_nodes.clear();
 	forward_post_visit_order.clear();
 	backward_post_visit_order.clear();
-	pool.for_each_node([](CFGNode &node) {
+
+	// Triggers for RADV pre 24.0.0.
+	constexpr uint32_t DRIVER_ID_MESA_RADV = 3;
+	bool is_old_mesa_radv = driver_version && driver_id == DRIVER_ID_MESA_RADV && driver_version < (24u << 22);
+
+	pool.for_each_node([is_old_mesa_radv](CFGNode &node) {
 		node.visited = false;
 		node.backward_visited = false;
 		node.traversing = false;
@@ -1978,9 +1989,16 @@ void CFGStructurizer::reset_traversal()
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 
-		node.headers.clear();
+		// Extremely specific workaround for HFW on Mesa 23.3.1 on stableOS Deck.
+		// The better code path trips a bug causing GPU hang, but does not happen on newer Mesa.
+		if (!is_old_mesa_radv)
+			node.headers.clear();
+
 		if (!node.freeze_structured_analysis)
 		{
+			if (is_old_mesa_radv)
+				node.headers.clear();
+
 			node.merge = MergeType::None;
 			node.loop_merge_block = nullptr;
 			node.loop_ladder_block = nullptr;

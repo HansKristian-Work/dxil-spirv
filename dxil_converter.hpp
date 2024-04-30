@@ -253,6 +253,7 @@ enum class Option : uint32_t
 	ComputeShaderDerivativesNV = 36,
 	QuadControlReconvergence = 37,
 	RawAccessChainsNV = 38,
+	DriverVersion = 39,
 	Count
 };
 
@@ -686,6 +687,17 @@ struct OptionRawAccessChainsNV : OptionBase
 	bool supported = false;
 };
 
+struct OptionDriverVersion : OptionBase
+{
+	OptionDriverVersion()
+		: OptionBase(Option::DriverVersion)
+	{
+	}
+
+	uint32_t driver_id = 0; // Vulkan12Properties::driverID
+	uint32_t driver_version = 0; // PhysicalDeviceProperties::driverVersion
+};
+
 struct DescriptorTableEntry
 {
 	ResourceClass type;
@@ -743,6 +755,9 @@ public:
 	uint32_t get_compute_heuristic_max_wave_size() const;
 
 	bool shader_requires_feature(ShaderFeature feature) const;
+
+	// For esoteric CFG workarounds.
+	bool get_driver_version(uint32_t &driver_id, uint32_t &driver_version) const;
 
 	struct Impl;
 

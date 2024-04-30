@@ -654,6 +654,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 	{
 		dxil_spv::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, module);
+		uint32_t driver_id, driver_version;
+		if (dxil_converter.get_driver_version(driver_id, driver_version))
+			structurizer.set_driver_version(driver_id, driver_version);
 		structurizer.run();
 		module.emit_entry_point_function_body(structurizer);
 	}
@@ -1173,6 +1176,17 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		OptionRawAccessChainsNV helper;
 		auto *chain = reinterpret_cast<const dxil_spv_option_raw_access_chains_nv *>(option);
 		helper.supported = chain->supported;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
+	case DXIL_SPV_OPTION_DRIVER_VERSION:
+	{
+		OptionDriverVersion helper;
+		auto *ver = reinterpret_cast<const dxil_spv_option_driver_version *>(option);
+		helper.driver_id = ver->driver_id;
+		helper.driver_version = ver->driver_version;
 
 		converter->options.emplace_back(duplicate(helper));
 		break;

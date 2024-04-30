@@ -54,6 +54,9 @@ public:
 
 	bool rewrite_rov_lock_region();
 
+	// For esoteric CFG workarounds.
+	void set_driver_version(uint32_t driver_id, uint32_t driver_version);
+
 private:
 	CFGNode *entry_block;
 	CFGNode *exit_block;
@@ -241,5 +244,8 @@ private:
 		const std::function<bool (const CFGNode *)> &path_cb, const String &name);
 
 	void propagate_branch_control_hints();
+
+	uint32_t driver_id = 0;
+	uint32_t driver_version = 0;
 };
 } // namespace dxil_spv
