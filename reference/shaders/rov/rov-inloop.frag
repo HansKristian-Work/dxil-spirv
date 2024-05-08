@@ -20,7 +20,7 @@ layout(set = 0, binding = 2, r32f) uniform image2D _9;
 
 layout(location = 0) out float SV_Target;
 
-void code_main()
+void main()
 {
     uint _29 = uint(gl_FragCoord.x);
     uint _30 = uint(gl_FragCoord.y);
@@ -35,6 +35,7 @@ void code_main()
     _28[7u] = 7.0;
     vec4 _54 = imageLoad(_9, ivec2(uvec2(_29, _30)));
     imageStore(_9, ivec2(uvec2(_29, _30)), vec4(_54.x + 1.0, _54.y + 2.0, _54.z + 3.0, _54.w + 4.0));
+    SPIRV_Cross_beginInvocationInterlock();
     uint _67;
     _67 = 0u;
     for (;;)
@@ -52,14 +53,8 @@ void code_main()
             _67 = _68;
         }
     }
-    SV_Target = _28[uint((1.0 / gl_FragCoord.w) * 7.0)];
-}
-
-void main()
-{
-    SPIRV_Cross_beginInvocationInterlock();
-    code_main();
     SPIRV_Cross_endInvocationInterlock();
+    SV_Target = _28[uint((1.0 / gl_FragCoord.w) * 7.0)];
 }
 
 
@@ -68,7 +63,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 103
+; Bound: 98
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -82,7 +77,6 @@ OpExecutionMode %3 PixelInterlockOrderedEXT
 OpName %3 "main"
 OpName %12 "SV_Position"
 OpName %14 "SV_Target"
-OpName %94 "code_main"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 Coherent
@@ -128,18 +122,9 @@ OpDecorate %14 Location 0
 %85 = OpTypeBool
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %97
-%97 = OpLabel
-OpBeginInvocationInterlockEXT
-%96 = OpFunctionCall %1 %94
-OpEndInvocationInterlockEXT
-OpReturn
-OpFunctionEnd
-%94 = OpFunction %1 None %2
-%95 = OpLabel
 %28 = OpVariable %27 Function
-OpBranch %99
-%99 = OpLabel
+OpBranch %94
+%94 = OpLabel
 %15 = OpLoad %6 %9
 %16 = OpLoad %6 %8
 %18 = OpAccessChain %17 %12 %20
@@ -177,9 +162,10 @@ OpStore %51 %53
 %65 = OpCompositeConstruct %55 %29 %30
 %66 = OpCompositeConstruct %10 %61 %62 %63 %64
 OpImageWrite %15 %65 %66
-OpBranch %100
-%100 = OpLabel
-%67 = OpPhi %19 %20 %99 %68 %100
+OpBeginInvocationInterlockEXT
+OpBranch %95
+%95 = OpLabel
+%67 = OpPhi %19 %20 %94 %68 %95
 %70 = OpCompositeConstruct %55 %29 %30
 %69 = OpImageRead %10 %16 %70 None
 %71 = OpCompositeExtract %5 %69 0
@@ -200,9 +186,10 @@ OpImageWrite %16 %79 %80
 OpStore %84 %83
 %68 = OpIAdd %19 %67 %23
 %86 = OpIEqual %85 %68 %43
-OpLoopMerge %101 %100 None
-OpBranchConditional %86 %101 %100
-%101 = OpLabel
+OpLoopMerge %96 %95 None
+OpBranchConditional %86 %96 %95
+%96 = OpLabel
+OpEndInvocationInterlockEXT
 %87 = OpAccessChain %17 %12 %40
 %88 = OpLoad %5 %87
 %89 = OpFDiv %5 %35 %88

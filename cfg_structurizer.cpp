@@ -477,6 +477,96 @@ void CFGStructurizer::set_driver_version(uint32_t driver_id_, uint32_t driver_ve
 	driver_version = driver_version_;
 }
 
+bool CFGStructurizer::find_single_entry_exit_lock_region(
+	CFGNode *&idom, CFGNode *&pdom, const Vector<CFGNode *> &rov_blocks)
+{
+	// If the lock region has multiple instances, i.e. a loop, give up right away, unless the construct is simple
+	// and we can trivially do:
+	// begin(); for(;;) {} end();
+	// For this to work, all ROV blocks must be contained by one loop. The must be a trivial input branch to the loop
+	// header, and trivial exit out of the loop, i.e. one loop exit which is covered by the continue block.
+	auto *outermost_loop_header = idom ? const_cast<CFGNode *>(get_innermost_loop_header_for(entry_block, idom)) : nullptr;
+
+	while (outermost_loop_header && outermost_loop_header != entry_block)
+	{
+		auto *innermost_loop_header = const_cast<CFGNode *>(
+		    get_innermost_loop_header_for(entry_block, outermost_loop_header->immediate_dominator));
+
+		// Stop right before we hit the entry block.
+		if (innermost_loop_header && innermost_loop_header != entry_block)
+			outermost_loop_header = innermost_loop_header;
+		else
+			break;
+	}
+
+	if (idom && outermost_loop_header != entry_block)
+	{
+		// First, all ROV blocks must be inside the loop construct.
+		for (auto *rov : rov_blocks)
+		{
+			if (!outermost_loop_header->dominates(rov) ||
+			    !query_reachability(*rov, *outermost_loop_header->pred_back_edge))
+			{
+				// Cannot promote directly. Can only promote if idom is entered once.
+				return execution_path_is_single_entry_and_dominates_exit(idom, pdom);
+			}
+		}
+
+		idom = outermost_loop_header;
+
+		auto analysis = analyze_loop(outermost_loop_header);
+		auto merge = analyze_loop_merge(outermost_loop_header, analysis);
+		if (!merge.merge || !merge.dominated_merge || merge.infinite_continue_ladder ||
+		    merge.merge != merge.dominated_merge)
+		{
+			return false;
+		}
+		else
+		{
+			pdom = merge.merge;
+		}
+
+		// We must insert the lock before entering loop.
+		// This only works if we have exactly one pred and that pred directly branches to us.
+		if (idom->pred.size() == 1 && idom->pred.front()->ir.terminator.type == Terminator::Type::Branch)
+			idom = idom->pred.front();
+		else
+			return false;
+	}
+
+	return true;
+}
+
+bool CFGStructurizer::execution_path_is_single_entry_and_dominates_exit(CFGNode *idom, CFGNode *pdom)
+{
+	if (!idom->dominates_all_reachable_exits())
+		return false;
+
+	pdom = CFGNode::find_common_post_dominator(pdom, idom);
+
+	bool internal_early_return = !pdom || pdom->immediate_post_dominator == pdom;
+	if (internal_early_return)
+		return false;
+
+	// If we're dominating all reachable exits despite being inside a loop, it's okay to use ROV as-is.
+	// We have proven that this path will only be executed once per thread.
+	// We will have to make sure that this exit path doesn't loop itself.
+	// Just prove this by making sure there are no back-edges on the path from idom to pdom.
+	// If there are back-edges that loop back to an earlier header, that is covered by dominates_all_reachable_exits.
+
+	if (idom->pred_back_edge || !idom->dominates(pdom))
+		return false;
+
+	while (pdom != idom)
+	{
+		if (pdom->pred_back_edge)
+			return false;
+		pdom = pdom->immediate_dominator;
+	}
+
+	return true;
+}
+
 bool CFGStructurizer::rewrite_rov_lock_region()
 {
 	recompute_cfg();
@@ -515,21 +605,20 @@ bool CFGStructurizer::rewrite_rov_lock_region()
 	while (idom && idom != entry_block && !idom->post_dominates(entry_block))
 		idom = idom->immediate_dominator;
 
-	// If the lock region has multiple instances, i.e. a loop, give up right away.
-	if (idom && get_innermost_loop_header_for(entry_block, idom) != entry_block)
-	{
-		for (auto *node : rov_blocks)
-			scrub_rov_lock_regions(node, false, false);
-		return false;
-	}
-
 	auto *pdom = find_common_post_dominator(rov_blocks);
 
+	if (!find_single_entry_exit_lock_region(idom, pdom, rov_blocks) ||
+	    !idom || !idom->dominates(pdom))
+	{
+		idom = nullptr;
+		pdom = nullptr;
+	}
+
 	// Stretch post-dominator if we need to.
-	if (pdom)
+	if (idom && pdom)
 		pdom = CFGNode::find_common_post_dominator(pdom, idom);
 
-	bool internal_early_return = pdom && pdom->immediate_post_dominator == pdom;
+	bool internal_early_return = !pdom || pdom->immediate_post_dominator == pdom;
 
 	// Non trivial case.
 	if (!idom || !pdom || internal_early_return)

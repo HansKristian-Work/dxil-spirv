@@ -247,5 +247,9 @@ private:
 
 	uint32_t driver_id = 0;
 	uint32_t driver_version = 0;
+
+	bool find_single_entry_exit_lock_region(
+	    CFGNode *&idom, CFGNode *&pdom, const Vector<CFGNode *> &rov_blocks);
+	bool execution_path_is_single_entry_and_dominates_exit(CFGNode *idom, CFGNode *pdom);
 };
 } // namespace dxil_spv
