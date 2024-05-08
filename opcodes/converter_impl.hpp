@@ -189,13 +189,13 @@ struct Converter::Impl
 
 	ConvertedFunction convert_entry_point();
 	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs);
-	CFGNode *build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
-	                         const Vector<llvm::BasicBlock *> &patch_bbs,
-	                         CFGNodePool &pool,
-	                         Vector<ConvertedFunction::LeafFunction> &leaves);
-	CFGNode *build_rov_main(const Vector<llvm::BasicBlock *> &bbs,
-	                        CFGNodePool &pool,
-	                        Vector<ConvertedFunction::LeafFunction> &leaves);
+	ConvertedFunction::Function build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
+	                                            const Vector<llvm::BasicBlock *> &patch_bbs,
+	                                            CFGNodePool &pool,
+	                                            Vector<ConvertedFunction::Function> &leaves);
+	ConvertedFunction::Function build_rov_main(const Vector<llvm::BasicBlock *> &bbs,
+	                                           CFGNodePool &pool,
+	                                           Vector<ConvertedFunction::Function> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);

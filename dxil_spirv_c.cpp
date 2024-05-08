@@ -646,17 +646,18 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 	auto entry_point = dxil_converter.convert_entry_point();
 
-	if (entry_point.entry == nullptr)
+	if (entry_point.entry.entry == nullptr)
 	{
 		LOGE("Failed to convert function.\n");
 		return DXIL_SPV_ERROR_GENERIC;
 	}
 
 	{
-		dxil_spv::CFGStructurizer structurizer(entry_point.entry, *entry_point.node_pool, module);
+		dxil_spv::CFGStructurizer structurizer(entry_point.entry.entry, *entry_point.node_pool, module);
 		uint32_t driver_id, driver_version;
 		if (dxil_converter.get_driver_version(driver_id, driver_version))
 			structurizer.set_driver_version(driver_id, driver_version);
+		module.set_entry_build_point(entry_point.entry.func);
 		structurizer.run();
 		module.emit_entry_point_function_body(structurizer);
 	}
@@ -669,6 +670,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 			return DXIL_SPV_ERROR_GENERIC;
 		}
 		dxil_spv::CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, module);
+		module.set_entry_build_point(leaf.func);
 		structurizer.run();
 		module.emit_leaf_function_body(leaf.func, structurizer);
 	}

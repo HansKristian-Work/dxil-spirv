@@ -2052,6 +2052,11 @@ void SPIRVModule::set_helper_lanes_participate_in_wave_ops(bool enable)
 	impl->helper_lanes_participate_in_wave_ops = enable;
 }
 
+void SPIRVModule::set_entry_build_point(spv::Function *func)
+{
+	get_builder().setBuildPoint(func->getEntryBlock());
+}
+
 bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
 {
 	// An opcode is considered control dependent if it is affected by other invocations in the subgroup.

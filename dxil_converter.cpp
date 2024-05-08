@@ -5880,9 +5880,10 @@ bool Converter::Impl::emit_execution_modes()
 	return true;
 }
 
-CFGNode *Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
-                                         CFGNodePool &pool,
-                                         Vector<ConvertedFunction::LeafFunction> &leaves)
+ConvertedFunction::Function
+Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
+                                CFGNodePool &pool,
+                                Vector<ConvertedFunction::Function> &leaves)
 {
 	auto *code_main = convert_function(visit_order);
 
@@ -5892,7 +5893,7 @@ CFGNode *Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit
 	bool trivial_rewrite = cfg.rewrite_rov_lock_region();
 
 	if (trivial_rewrite)
-		return code_main;
+		return { code_main, spirv_module.get_entry_function() };
 
 	// If we need to fallback we need a wrapper function. Replace the entry point.
 
@@ -5910,13 +5911,14 @@ CFGNode *Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit
 	entry->ir.operations.push_back(allocate(spv::OpEndInvocationInterlockEXT));
 	entry->ir.terminator.type = Terminator::Type::Return;
 	leaves.push_back({ code_main, code_func });
-	return entry;
+	return { entry, spirv_module.get_entry_function() };
 }
 
-CFGNode *Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
-                                          const Vector<llvm::BasicBlock *> &patch_visit_order,
-                                          CFGNodePool &pool,
-                                          Vector<ConvertedFunction::LeafFunction> &leaves)
+ConvertedFunction::Function
+Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
+                                 const Vector<llvm::BasicBlock *> &patch_visit_order,
+                                 CFGNodePool &pool,
+                                 Vector<ConvertedFunction::Function> &leaves)
 {
 	// Just make sure there is an entry block already created.
 	spv::Block *hull_entry, *patch_entry;
@@ -5987,7 +5989,7 @@ CFGNode *Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visi
 		entry->ir.terminator.type = Terminator::Type::Return;
 	}
 
-	return entry;
+	return { entry, spirv_module.get_entry_function() };
 }
 
 void Converter::Impl::build_function_bb_visit_order_inner_analysis(
@@ -6632,7 +6634,10 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	else if (execution_mode_meta.declares_rov)
 		result.entry = build_rov_main(visit_order, pool, result.leaf_functions);
 	else
-		result.entry = convert_function(visit_order);
+	{
+		result.entry.entry = convert_function(visit_order);
+		result.entry.func = spirv_module.get_entry_function();
+	}
 
 	// Some execution modes depend on code generation, handle that here.
 	emit_execution_modes_post_code_generation();

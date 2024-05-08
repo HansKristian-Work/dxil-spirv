@@ -113,6 +113,8 @@ public:
 	void set_override_spirv_version(uint32_t version);
 	void set_helper_lanes_participate_in_wave_ops(bool enable);
 
+	void set_entry_build_point(spv::Function *func);
+
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 
 private:

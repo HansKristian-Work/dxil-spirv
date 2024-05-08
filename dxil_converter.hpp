@@ -39,14 +39,13 @@ namespace dxil_spv
 {
 struct ConvertedFunction
 {
-	CFGNode *entry;
-
-	struct LeafFunction
+	struct Function
 	{
 		CFGNode *entry;
 		spv::Function *func;
 	};
-	Vector<LeafFunction> leaf_functions;
+	Function entry = {};
+	Vector<Function> leaf_functions;
 	std::unique_ptr<CFGNodePool> node_pool;
 };
 
