@@ -5311,7 +5311,7 @@ bool Converter::Impl::emit_execution_modes_pixel()
 	// it will just confuse the compiler.
 	spirv_module.set_helper_lanes_participate_in_wave_ops(
 		!options.strict_helper_lane_waveops ||
-	    !shader_analysis.helper_lanes_may_exist ||
+	    execution_model != spv::ExecutionModelFragment ||
 		execution_mode_meta.waveops_include_helper_lanes);
 
 	return true;

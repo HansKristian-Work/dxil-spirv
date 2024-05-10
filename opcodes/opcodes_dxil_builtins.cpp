@@ -1114,7 +1114,6 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	case DXIL::Op::Discard:
 		impl.shader_analysis.discards = true;
-		impl.shader_analysis.helper_lanes_may_exist = true;
 		break;
 
 	case DXIL::Op::AttributeAtVertex:
@@ -1144,8 +1143,6 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			// We could rely on QuadNV here, but it's not widely supported.
 			impl.shader_analysis.require_compute_shader_derivatives = true;
 		}
-		else if (impl.execution_model == spv::ExecutionModelFragment)
-			impl.shader_analysis.helper_lanes_may_exist = true;
 		break;
 
 	case DXIL::Op::WaveIsFirstLane:
@@ -1180,8 +1177,6 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 				impl.shader_analysis.require_compute_shader_derivatives = true;
 			}
 		}
-		else if (impl.execution_model == spv::ExecutionModelFragment)
-			impl.shader_analysis.helper_lanes_may_exist = true;
 
 		impl.shader_analysis.require_subgroups = true;
 		break;

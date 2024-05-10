@@ -33,7 +33,7 @@ namespace dxil_spv
 {
 static bool wave_op_needs_helper_lane_masking(Converter::Impl &impl)
 {
-	return impl.shader_analysis.helper_lanes_may_exist &&
+	return impl.execution_model == spv::ExecutionModelFragment &&
 	       impl.options.strict_helper_lane_waveops &&
 	       !impl.execution_mode_meta.waveops_include_helper_lanes;
 }

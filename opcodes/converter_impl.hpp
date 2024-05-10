@@ -735,7 +735,6 @@ struct Converter::Impl
 		// Only relevant for fragment shaders, and some other misc uses.
 		bool has_side_effects = false;
 		bool discards = false;
-		bool helper_lanes_may_exist = false;
 		bool can_require_primitive_culling = false;
 		bool require_compute_shader_derivatives = false;
 		bool precise_f16_to_f32_observed = false;
