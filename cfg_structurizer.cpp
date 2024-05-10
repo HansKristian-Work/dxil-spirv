@@ -5696,7 +5696,7 @@ CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reach
 		else if (frontiers.empty())
 			break;
 
-		auto &frontier = frontiers.back();
+		auto *frontier = frontiers.back();
 
 		// For a frontier to be discounted, we look at all successors and check
 		// if there no node in promoted_post_dominators that post-dominate the successor, that path cannot reach must_reach.
