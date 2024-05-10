@@ -780,7 +780,37 @@ static spv::Id emit_masked_ballot(Converter::Impl &impl, spv::Id value)
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
 	auto *ballot_op = impl.allocate(spv::OpGroupNonUniformBallot, uvec4_type);
 	ballot_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	ballot_op->add_id(builder.makeBoolConstant(true));
+
+	spv::Id helper_ballot = 0;
+	spv::Id is_helper_id = 0;
+	spv::Id ballot_id;
+
+	if (wave_op_needs_helper_lane_masking(impl))
+	{
+		auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, builder.makeBoolType());
+		impl.add(is_helper_lane);
+		is_helper_id = is_helper_lane->id;
+
+		auto *helper_op = impl.allocate(spv::OpGroupNonUniformBallot,
+		                                builder.makeVectorType(builder.makeUintType(32), 4));
+		helper_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		helper_op->add_id(is_helper_id);
+		impl.add(helper_op);
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+		helper_ballot = helper_op->id;
+
+		auto *not_op = impl.allocate(spv::OpLogicalNot, builder.makeBoolType());
+		not_op->add_id(is_helper_id);
+		impl.add(not_op);
+
+		ballot_id = not_op->id;
+	}
+	else
+	{
+		ballot_id = builder.makeBoolConstant(true);
+	}
+
+	ballot_op->add_id(ballot_id);
 	impl.add(ballot_op);
 
 	auto *and_op = impl.allocate(spv::OpBitwiseAnd, uvec4_type);
@@ -788,7 +818,25 @@ static spv::Id emit_masked_ballot(Converter::Impl &impl, spv::Id value)
 	and_op->add_id(ballot_op->id);
 	impl.add(and_op);
 
-	return and_op->id;
+	if (wave_op_needs_helper_lane_masking(impl))
+	{
+		// Helper lanes may participate, and they will need a valid partition mask, since the SPV_NV extension
+		// requires this.
+		const spv::Id is_helper_ids[] = { is_helper_id, is_helper_id, is_helper_id, is_helper_id };
+		spv::Id bvec_splat_id = impl.build_vector(builder.makeBoolType(), is_helper_ids, 4);
+
+		auto *ballot_select = impl.allocate(spv::OpSelect, builder.makeVectorType(builder.makeUintType(32), 4));
+		ballot_select->add_id(bvec_splat_id);
+		ballot_select->add_id(helper_ballot);
+		ballot_select->add_id(and_op->id);
+		impl.add(ballot_select);
+
+		return ballot_select->id;
+	}
+	else
+	{
+		return and_op->id;
+	}
 }
 
 bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -1108,6 +1156,30 @@ bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *in
 		                         builder.makeVectorType(builder.makeUintType(32), 4));
 		op->add_id(value_id);
 		impl.add(op);
+
+		if (wave_op_needs_helper_lane_masking(impl))
+		{
+			auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, builder.makeBoolType());
+			impl.add(is_helper_lane);
+
+			auto *not_op = impl.allocate(spv::OpLogicalNot, builder.makeBoolType());
+			not_op->add_id(is_helper_lane->id);
+			impl.add(not_op);
+
+			auto *non_helper_op = impl.allocate(spv::OpGroupNonUniformBallot,
+			                                    builder.makeVectorType(builder.makeUintType(32), 4));
+			non_helper_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			non_helper_op->add_id(not_op->id);
+			impl.add(non_helper_op);
+			builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+
+			auto *and_op = impl.allocate(spv::OpBitwiseAnd, builder.makeVectorType(builder.makeUintType(32), 4));
+			and_op->add_id(op->id);
+			and_op->add_id(non_helper_op->id);
+			impl.add(and_op);
+
+			impl.rewrite_value(instruction, and_op->id);
+		}
 	}
 	else
 	{
