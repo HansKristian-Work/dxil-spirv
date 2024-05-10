@@ -12,7 +12,7 @@
 #else
 #error No extension available for 64-bit integers.
 #endif
-#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 
 struct CBVComposite16x8

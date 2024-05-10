@@ -1,5 +1,5 @@
 #version 460
-#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_nonuniform_qualifier : require
 
 layout(set = 5, binding = 0, std430) readonly buffer BindlessCBV

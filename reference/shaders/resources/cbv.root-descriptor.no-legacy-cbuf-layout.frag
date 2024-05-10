@@ -12,7 +12,7 @@
 #error No extension available for FP16.
 #endif
 #extension GL_EXT_shader_16bit_storage : require
-#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 
 layout(buffer_reference) buffer PhysicalPointerFloatNonWriteCBVArray;

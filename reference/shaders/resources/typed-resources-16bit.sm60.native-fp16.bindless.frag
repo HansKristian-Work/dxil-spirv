@@ -8,7 +8,7 @@
 #endif
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
-#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
 

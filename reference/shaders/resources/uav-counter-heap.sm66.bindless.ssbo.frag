@@ -1,8 +1,9 @@
 #version 460
-#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 
+layout(buffer_reference) buffer uintPointer;
 layout(buffer_reference, buffer_reference_align = 4) buffer uintPointer
 {
     uint value;

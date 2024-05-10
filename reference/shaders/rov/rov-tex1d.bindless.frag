@@ -1,5 +1,5 @@
 #version 460
-#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_nonuniform_qualifier : require
 #ifdef GL_ARB_fragment_shader_interlock
 #extension GL_ARB_fragment_shader_interlock : enable
