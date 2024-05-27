@@ -2898,8 +2898,37 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				auto *current_candidate = node->succ[trivial_merge_index];
 				auto *other_candidate = node->succ[1 - trivial_merge_index];
 
-				bool current_escapes = control_flow_is_escaping(current_candidate, merge) || current_candidate == merge;
-				bool other_escapes = control_flow_is_escaping(other_candidate, merge) || other_candidate == merge;
+				bool current_escapes = current_candidate == merge || control_flow_is_escaping(current_candidate, merge);
+
+				// It's possible that our other candidate is a merge target. If we don't dominate the candidate,
+				// it means it's on the dominance frontier and we should not consider it escaping.
+
+				// Trivial heuristic for escape.
+				bool other_escapes = other_candidate == merge || block_is_plain_continue(other_candidate);
+
+				// Second level heuristic.
+				if (!other_escapes && control_flow_is_escaping(other_candidate, merge))
+				{
+					// Final layer of hell.
+					if (node->dominates(other_candidate))
+					{
+						// There is no frontier, so we accept escape analysis as-is.
+						other_escapes = true;
+					}
+					else
+					{
+						// This is a frontier, so it shouldn't be considered an escape,
+						// but if this is a "weak" frontier, we can avoid creating a dummy interim block.
+						// If the other candidate is a loop merge, then we will resolve the merge in another way,
+						// which will make the interim block superfluous.
+						bool other_is_loop_merge_candidate =
+							other_candidate->headers.size() == 1 &&
+							other_candidate->headers.front()->merge == MergeType::Loop &&
+							(other_candidate->headers.front()->loop_merge_block == other_candidate ||
+							 other_candidate->headers.front()->loop_ladder_block == other_candidate);
+						other_escapes = other_is_loop_merge_candidate;
+					}
+				}
 
 				// If we tried to merge in a direction which is a breaking construct,
 				// this means that the other path is actual desired break path.
