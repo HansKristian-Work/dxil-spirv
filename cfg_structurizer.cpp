@@ -2930,6 +2930,19 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					}
 				}
 
+				if (!current_escapes && !other_escapes)
+				{
+					// Neither is considered an escape. This is strange and should not happen unless we have
+					// a fake frontier block to contend with.
+					// Attempt to tie-break by observing if current candidate has a direct branch to merge,
+					// but other does not.
+					if (std::find(current_candidate->succ.begin(), current_candidate->succ.end(), merge) != current_candidate->succ.end() &&
+					    std::find(other_candidate->succ.begin(), other_candidate->succ.end(), merge) == other_candidate->succ.end())
+					{
+						current_escapes = true;
+					}
+				}
+
 				// If we tried to merge in a direction which is a breaking construct,
 				// this means that the other path is actual desired break path.
 				if (current_escapes && !other_escapes)
