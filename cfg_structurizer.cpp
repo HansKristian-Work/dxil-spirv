@@ -2940,6 +2940,17 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					    std::find(other_candidate->succ.begin(), other_candidate->succ.end(), merge) == other_candidate->succ.end())
 					{
 						current_escapes = true;
+
+						// If current candidate's frontier can reach the other candidate directly,
+						// this is a final tie-break to show that we should accept the current situation.
+						for (auto *frontier : current_candidate->dominance_frontier)
+						{
+							if (frontier != other_candidate && query_reachability(*frontier, *other_candidate))
+							{
+								current_escapes = false;
+								break;
+							}
+						}
 					}
 				}
 
