@@ -2499,7 +2499,7 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 		// Strong check as well.
 		// If branching directly to continue block like this, this is a non-merging continue,
 		// which we should always consider an escape.
-		if (node->succ.front()->succ_back_edge)
+		if (node->succ.size() == 1 && node->succ.front()->succ_back_edge)
 			return true;
 	}
 
