@@ -2499,7 +2499,7 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 		// Strong check as well.
 		// If branching directly to continue block like this, this is a non-merging continue,
 		// which we should always consider an escape.
-		if (node->succ.front()->succ_back_edge)
+		if (node->succ.size() == 1 && node->succ.front()->succ_back_edge)
 			return true;
 	}
 
@@ -2898,8 +2898,61 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				auto *current_candidate = node->succ[trivial_merge_index];
 				auto *other_candidate = node->succ[1 - trivial_merge_index];
 
-				bool current_escapes = control_flow_is_escaping(current_candidate, merge) || current_candidate == merge;
-				bool other_escapes = control_flow_is_escaping(other_candidate, merge) || other_candidate == merge;
+				bool current_escapes = current_candidate == merge || control_flow_is_escaping(current_candidate, merge);
+
+				// It's possible that our other candidate is a merge target. If we don't dominate the candidate,
+				// it means it's on the dominance frontier and we should not consider it escaping.
+
+				// Trivial heuristic for escape.
+				bool other_escapes = other_candidate == merge || block_is_plain_continue(other_candidate);
+
+				// Second level heuristic.
+				if (!other_escapes && control_flow_is_escaping(other_candidate, merge))
+				{
+					// Final layer of hell.
+					if (node->dominates(other_candidate))
+					{
+						// There is no frontier, so we accept escape analysis as-is.
+						other_escapes = true;
+					}
+					else
+					{
+						// This is a frontier, so it shouldn't be considered an escape,
+						// but if this is a "weak" frontier, we can avoid creating a dummy interim block.
+						// If the other candidate is a loop merge, then we will resolve the merge in another way,
+						// which will make the interim block superfluous.
+						bool other_is_loop_merge_candidate =
+							other_candidate->headers.size() == 1 &&
+							other_candidate->headers.front()->merge == MergeType::Loop &&
+							(other_candidate->headers.front()->loop_merge_block == other_candidate ||
+							 other_candidate->headers.front()->loop_ladder_block == other_candidate);
+						other_escapes = other_is_loop_merge_candidate;
+					}
+				}
+
+				if (!current_escapes && !other_escapes)
+				{
+					// Neither is considered an escape. This is strange and should not happen unless we have
+					// a fake frontier block to contend with.
+					// Attempt to tie-break by observing if current candidate has a direct branch to merge,
+					// but other does not.
+					if (std::find(current_candidate->succ.begin(), current_candidate->succ.end(), merge) != current_candidate->succ.end() &&
+					    std::find(other_candidate->succ.begin(), other_candidate->succ.end(), merge) == other_candidate->succ.end())
+					{
+						current_escapes = true;
+
+						// If current candidate's frontier can reach the other candidate directly,
+						// this is a final tie-break to show that we should accept the current situation.
+						for (auto *frontier : current_candidate->dominance_frontier)
+						{
+							if (frontier != other_candidate && query_reachability(*frontier, *other_candidate))
+							{
+								current_escapes = false;
+								break;
+							}
+						}
+					}
+				}
 
 				// If we tried to merge in a direction which is a breaking construct,
 				// this means that the other path is actual desired break path.
