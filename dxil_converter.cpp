@@ -27,6 +27,7 @@
 #include "opcodes/opcodes_llvm_builtins.hpp"
 #include "opcodes/dxil/dxil_common.hpp"
 #include "opcodes/dxil/dxil_ags.hpp"
+#include "opcodes/dxil/dxil_workgraph.hpp"
 
 #include "dxil_converter.hpp"
 #include "logging.hpp"
@@ -294,7 +295,7 @@ static spv::Id build_ssbo_runtime_array_type(Converter::Impl &impl, RawType type
 		value_type = builder.makeVectorType(value_type, vecsize);
 	spv::Id element_array_type = builder.makeRuntimeArray(value_type);
 	builder.addDecoration(element_array_type, spv::DecorationArrayStride, vecsize * (bits / 8));
-	spv::Id block_type_id = impl.get_struct_type({ element_array_type }, name.c_str());
+	spv::Id block_type_id = impl.get_struct_type({ element_array_type }, 0, name.c_str());
 	builder.addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
 	builder.addDecoration(block_type_id, spv::DecorationBlock);
 
@@ -354,7 +355,7 @@ spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uin
 	builder.addDecoration(member_array_type, spv::DecorationArrayStride, element_size);
 
 	auto ubo_block_name = name.empty() ? "" : (name + "UBO");
-	spv::Id type_id = get_struct_type({ member_array_type }, ubo_block_name.c_str());
+	spv::Id type_id = get_struct_type({ member_array_type }, 0, ubo_block_name.c_str());
 	builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
@@ -504,7 +505,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				spv::Id runtime_array_type_id = builder().makeRuntimeArray(uvec2_type);
 				builder().addDecoration(runtime_array_type_id, spv::DecorationArrayStride, sizeof(uint64_t));
 
-				type_id = get_struct_type({ runtime_array_type_id }, "AtomicCounters");
+				type_id = get_struct_type({ runtime_array_type_id }, 0, "AtomicCounters");
 				builder().addDecoration(type_id, spv::DecorationBlock);
 				builder().addMemberName(type_id, 0, "counters");
 				builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
@@ -564,7 +565,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 
 			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(num_elements), element_size);
 			builder().addDecoration(type_id, spv::DecorationArrayStride, element_size);
-			type_id = get_struct_type({ type_id }, "BindlessCBV");
+			type_id = get_struct_type({ type_id }, 0, "BindlessCBV");
 			builder().addDecoration(type_id, spv::DecorationBlock);
 			if (options.bindless_cbv_ssbo_emulation)
 				builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
@@ -2392,7 +2393,7 @@ void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num
 	for (unsigned i = 0; i < num_constant_words; i++)
 		members[i + num_descriptors] = builder.makeUintType(32);
 
-	spv::Id type_id = get_struct_type(members, "RootConstants");
+	spv::Id type_id = get_struct_type(members, 0, "RootConstants");
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
 	for (unsigned i = 0; i < num_descriptors; i++)
@@ -2434,10 +2435,10 @@ static bool execution_model_is_ray_tracing(spv::ExecutionModel model)
 	}
 }
 
-bool Converter::Impl::emit_shader_record_buffer()
+spv::Id Converter::Impl::emit_shader_record_buffer_block_type(bool physical_storage)
 {
 	if (local_root_signature.empty())
-		return true;
+		return 0;
 
 	auto &builder = spirv_module.get_builder();
 
@@ -2458,7 +2459,7 @@ bool Converter::Impl::emit_shader_record_buffer()
 			spv::Id array_size_id = builder.makeUintConstant(elem.constants.num_words);
 			spv::Id u32_type = builder.makeUintType(32);
 			spv::Id member_type_id =
-				builder.makeArrayType(u32_type, array_size_id, 4);
+			    builder.makeArrayType(u32_type, array_size_id, 4);
 			builder.addDecoration(member_type_id, spv::DecorationArrayStride, 4);
 			member_types.push_back(member_type_id);
 			offsets.push_back(current_offset);
@@ -2496,13 +2497,24 @@ bool Converter::Impl::emit_shader_record_buffer()
 		}
 	}
 
-	type_id = get_struct_type(member_types, "SBTBlock");
+	type_id = get_struct_type(member_types, 0, "SBTBlock");
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
 	for (size_t i = 0; i < local_root_signature.size(); i++)
+	{
 		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, offsets[i]);
+		if (physical_storage)
+			builder.addMemberDecoration(type_id, i, spv::DecorationNonWritable);
+	}
 
-	shader_record_buffer_id = create_variable(spv::StorageClassShaderRecordBufferKHR, type_id, "SBT");
+	return type_id;
+}
+
+bool Converter::Impl::emit_shader_record_buffer()
+{
+	spv::Id type_id = emit_shader_record_buffer_block_type(false);
+	if (type_id)
+		shader_record_buffer_id = create_variable(spv::StorageClassShaderRecordBufferKHR, type_id, "SBT");
 	return true;
 }
 
@@ -2711,13 +2723,13 @@ bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
 	    u32_type, builder().makeUintConstant(options.physical_address_descriptor_stride * 2), 0);
 	builder().addDecoration(u32_array_type, spv::DecorationArrayStride, 4);
 
-	spv::Id inner_struct_type = get_struct_type({ u32_array_type }, "DescriptorHeapRawPayload");
+	spv::Id inner_struct_type = get_struct_type({ u32_array_type }, 0, "DescriptorHeapRawPayload");
 	builder().addMemberDecoration(inner_struct_type, 0, spv::DecorationOffset, 0);
 
 	spv::Id inner_struct_array_type = builder().makeRuntimeArray(inner_struct_type);
 	builder().addDecoration(inner_struct_array_type, spv::DecorationArrayStride, 8u * options.physical_address_descriptor_stride);
 
-	spv::Id block_type_id = get_struct_type({ inner_struct_array_type }, "DescriptorHeapRobustnessSSBO");
+	spv::Id block_type_id = get_struct_type({ inner_struct_array_type }, 0, "DescriptorHeapRobustnessSSBO");
 	builder().addDecoration(block_type_id, spv::DecorationBlock);
 	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
 	builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
@@ -3417,6 +3429,13 @@ static const llvm::MDOperand *get_shader_property_tag(const llvm::MDNode *func_m
 	return nullptr;
 }
 
+static bool get_execution_model_lib_target(const llvm::Module &module, llvm::MDNode *entry_point_meta)
+{
+	String model;
+	Converter::Impl::get_shader_model(module, &model, nullptr, nullptr);
+	return model == "lib";
+}
+
 static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm::MDNode *entry_point_meta)
 {
 	if (auto *tag = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ShaderKind))
@@ -3439,6 +3458,7 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 		case DXIL::ShaderKind::Geometry:
 			return spv::ExecutionModelGeometry;
 		case DXIL::ShaderKind::Compute:
+		case DXIL::ShaderKind::Node:
 			return spv::ExecutionModelGLCompute;
 		case DXIL::ShaderKind::Amplification:
 			return spv::ExecutionModelTaskEXT;
@@ -3487,7 +3507,7 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 	return spv::ExecutionModelMax;
 }
 
-spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
+spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags flags)
 {
 	auto &builder = spirv_module.get_builder();
 	switch (type->getTypeID())
@@ -3512,9 +3532,18 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 
 	case llvm::Type::TypeID::PointerTyID:
 	{
-		// Have to deal with this from the outside. Should only be relevant for getelementptr and instructions like that.
-		LOGE("Cannot reliably convert LLVM pointer type, we cannot differentiate between Function and Private.\n");
-		std::terminate();
+		if (DXIL::AddressSpace(type->getPointerAddressSpace()) != DXIL::AddressSpace::PhysicalNodeIO ||
+		    (flags & TYPE_LAYOUT_PHYSICAL_BIT) == 0)
+		{
+			// Have to deal with this from the outside. Should only be relevant for getelementptr and instructions like that.
+			LOGE("Cannot reliably convert LLVM pointer type, we cannot differentiate between Function and Private.\n");
+			std::terminate();
+		}
+
+		// This is free-flowing BDA in DXIL. We'll deal with it as-is.
+		// Main complication is that we have to emit Offset information ourselves.
+		spv::Id pointee_type = get_type_id(type->getPointerElementType(), flags);
+		return builder.makePointer(spv::StorageClassPhysicalStorageBuffer, pointee_type);
 	}
 
 	case llvm::Type::TypeID::ArrayTyID:
@@ -3523,8 +3552,28 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 			return 0;
 
 		spv::Id array_size_id = builder.makeUintConstant(type->getArrayNumElements());
-		spv::Id element_type_id = get_type_id(type->getArrayElementType());
-		return builder.makeArrayType(element_type_id, array_size_id, 0);
+		spv::Id element_type_id = get_type_id(type->getArrayElementType(), flags & ~TYPE_LAYOUT_BLOCK_BIT);
+
+		if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) != 0)
+		{
+			auto size_stride = get_physical_size_for_type(element_type_id);
+			uint32_t stride = size_stride.size;
+
+			// We always use scalar layout.
+			for (auto &cached_type : cached_physical_array_types)
+				if (cached_type.element_type_id == element_type_id && cached_type.array_size_id == array_size_id)
+					return cached_type.id;
+
+			spv::Id array_type_id = builder.makeArrayType(element_type_id, array_size_id, stride);
+			builder.addDecoration(array_type_id, spv::DecorationArrayStride, stride);
+			cached_physical_array_types.push_back({ array_type_id, element_type_id, array_size_id });
+			return array_type_id;
+		}
+		else
+		{
+			// glslang emitter deduplicates.
+			return builder.makeArrayType(element_type_id, array_size_id, 0);
+		}
 	}
 
 	case llvm::Type::TypeID::StructTyID:
@@ -3533,8 +3582,8 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 		Vector<spv::Id> member_types;
 		member_types.reserve(struct_type->getStructNumElements());
 		for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
-			member_types.push_back(get_type_id(struct_type->getStructElementType(i)));
-		return get_struct_type(member_types, "");
+			member_types.push_back(get_type_id(struct_type->getStructElementType(i), flags & ~TYPE_LAYOUT_BLOCK_BIT));
+		return get_struct_type(member_types, flags, "");
 	}
 
 	case llvm::Type::TypeID::VectorTyID:
@@ -3548,10 +3597,72 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	}
 }
 
-spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, const char *name)
+Converter::Impl::SizeAlignment Converter::Impl::get_physical_size_for_type(spv::Id type_id)
+{
+	SizeAlignment res = {};
+
+	if (builder().isScalarType(type_id))
+	{
+		res.size = builder().getScalarTypeWidth(type_id) / 8;
+		res.alignment = res.size;
+	}
+	else if (builder().isVectorType(type_id))
+	{
+		res = get_physical_size_for_type(builder().getContainedTypeId(type_id));
+		res.size *= builder().getNumComponents(type_id);
+	}
+	else if (builder().isArrayType(type_id))
+	{
+		res = get_physical_size_for_type(builder().getContainedTypeId(type_id));
+		uint32_t array_size = builder().getNumTypeConstituents(type_id);
+		// Alignment is inherited from constituent, we do scalar block layout here.
+		res.size *= array_size;
+	}
+	else if (builder().isStructType(type_id))
+	{
+		int num_members = builder().getNumTypeConstituents(type_id);
+		for (int i = 0; i < num_members; i++)
+		{
+			uint32_t member_type_id = builder().getContainedTypeId(type_id, i);
+			auto member_res = get_physical_size_for_type(builder().getContainedTypeId(member_type_id));
+			res.size = (res.size + member_res.alignment - 1) & ~(member_res.alignment - 1);
+			res.size += member_res.size;
+			res.alignment = std::max<uint32_t>(res.alignment, member_res.alignment);
+		}
+		res.size = (res.size + res.alignment - 1) & ~(res.alignment - 1);
+	}
+	else if (builder().isPointerType(type_id))
+	{
+		res.size = sizeof(uint64_t);
+		res.alignment = sizeof(uint64_t);
+	}
+
+	return res;
+}
+
+void Converter::Impl::decorate_physical_offsets(spv::Id struct_type_id, const Vector<spv::Id> &type_ids)
+{
+	uint32_t offset = 0;
+	int member_index = 0;
+	for (auto &type_id : type_ids)
+	{
+		// DXIL seems to imply scalar alignment for node payload.
+		// It's simple and easy, so just roll with that.
+		auto size_alignment = get_physical_size_for_type(type_id);
+		assert(size_alignment.size != 0);
+		offset = (offset + size_alignment.alignment - 1) & ~(size_alignment.alignment - 1);
+		builder().addMemberDecoration(struct_type_id, member_index, spv::DecorationOffset, offset);
+		offset += size_alignment.size;
+		member_index++;
+	}
+}
+
+spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, TypeLayoutFlags flags, const char *name)
 {
 	auto itr = std::find_if(cached_struct_types.begin(), cached_struct_types.end(), [&](const StructTypeEntry &entry) -> bool {
 		if (type_ids.size() != entry.subtypes.size())
+			return false;
+		if (flags != entry.flags)
 			return false;
 		if ((!name && !entry.name.empty()) || (entry.name != name))
 			return false;
@@ -3568,7 +3679,30 @@ spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, const 
 		StructTypeEntry entry;
 		entry.subtypes = type_ids;
 		entry.name = name ? name : "";
-		entry.id = builder().makeStructType(type_ids, entry.name.c_str());
+
+		if ((flags & TYPE_LAYOUT_BLOCK_BIT) != 0)
+		{
+			constexpr TypeLayoutFlags block_flags = TYPE_LAYOUT_BLOCK_BIT |
+			                                        TYPE_LAYOUT_COHERENT_BIT |
+			                                        TYPE_LAYOUT_READ_ONLY_BIT;
+			spv::Id struct_type_id = get_struct_type(type_ids, flags & ~block_flags, entry.name.c_str());
+			entry.id = builder().makeStructType({ struct_type_id }, entry.name.c_str());
+			builder().addDecoration(entry.id, spv::DecorationBlock);
+			builder().addMemberDecoration(entry.id, 0, spv::DecorationOffset, 0);
+			if ((flags & TYPE_LAYOUT_COHERENT_BIT) != 0)
+				builder().addMemberDecoration(entry.id, 0, spv::DecorationCoherent);
+			if ((flags & TYPE_LAYOUT_READ_ONLY_BIT) != 0)
+				builder().addMemberDecoration(entry.id, 0, spv::DecorationNonWritable);
+			builder().addMemberName(entry.id, 0, "data");
+		}
+		else
+		{
+			entry.id = builder().makeStructType(type_ids, entry.name.c_str());
+			if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) != 0)
+				decorate_physical_offsets(entry.id, type_ids);
+		}
+
+		entry.flags = flags;
 		spv::Id id = entry.id;
 		cached_struct_types.push_back(std::move(entry));
 		return id;
@@ -5211,6 +5345,478 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	return false;
 }
 
+bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
+{
+	NodeOutputMeta output_meta = {};
+
+	bool is_rw_sharing;
+	output_meta.payload_stride = node_parse_payload_stride(output, is_rw_sharing);
+	output_meta.spec_constant_node_index = builder().makeUintConstant(0, true);
+	builder().addDecoration(output_meta.spec_constant_node_index, spv::DecorationSpecId,
+	                        int(NodeSpecIdOutputBase + node_outputs.size()));
+
+	uint32_t num_ops = output->getNumOperands();
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(output, i));
+		if (tag == DXIL::NodeMetadataTag::NodeOutputID)
+		{
+			auto *output_node = llvm::cast<llvm::MDNode>(output->getOperand(i + 1));
+			String name = get_string_metadata(output_node, 0);
+			builder().addName(output_meta.spec_constant_node_index, name.c_str());
+
+			// FIXME: This is probably not accurate for arrayed nodes.
+			// Can recursive nodes be arrayed? Seems very spicy ...
+			output_meta.is_recursive =
+				name == node_input.node_id &&
+				node_input.node_array_index == get_constant_metadata(output_node, 1);
+		}
+	}
+
+	node_outputs.push_back(output_meta);
+	return true;
+}
+
+NodeDispatchGrid Converter::Impl::node_parse_dispatch_grid(llvm::MDNode *node_meta)
+{
+	uint32_t num_ops = node_meta->getNumOperands();
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(node_meta, i));
+		if (tag == DXIL::NodeMetadataTag::NodeRecordType)
+		{
+			auto *node_record_type = llvm::cast<llvm::MDNode>(node_meta->getOperand(i + 1));
+			for (uint32_t j = 0; j < node_record_type->getNumOperands(); j += 2)
+			{
+				if (get_constant_metadata(node_record_type, j) == 1)
+				{
+					auto *dispatch_info = llvm::cast<llvm::MDNode>(node_record_type->getOperand(j + 1));
+					uint32_t byte_offset = get_constant_metadata(dispatch_info, 0);
+					auto component_type = DXIL::ComponentType(get_constant_metadata(dispatch_info, 1));
+					uint32_t num_components = get_constant_metadata(dispatch_info, 2);
+					return { byte_offset, component_type, num_components };
+				}
+			}
+		}
+	}
+
+	return {};
+}
+
+uint32_t Converter::Impl::node_parse_payload_stride(llvm::MDNode *node_meta, bool &is_rw_sharing)
+{
+	uint32_t num_ops = node_meta->getNumOperands();
+	uint32_t payload_stride = 0;
+	is_rw_sharing = false;
+
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(node_meta, i));
+		if (tag == DXIL::NodeMetadataTag::NodeIOFlags)
+		{
+			uint32_t node_io_flags = get_constant_metadata(node_meta, i + 1);
+			if ((node_io_flags & DXIL::NodeIOEmptyRecordBit) != 0)
+				return 0;
+			if ((node_io_flags & DXIL::NodeIOTrackRWInputSharingBit) != 0)
+				is_rw_sharing = true;
+		}
+		else if (tag == DXIL::NodeMetadataTag::NodeRecordType)
+		{
+			auto *node_record_type = llvm::cast<llvm::MDNode>(node_meta->getOperand(i + 1));
+			for (uint32_t j = 0; j < node_record_type->getNumOperands(); j += 2)
+			{
+				if (get_constant_metadata(node_record_type, j) == 0)
+				{
+					uint32_t input_node_size = get_constant_metadata(node_record_type, j + 1);
+					payload_stride = input_node_size;
+				}
+			}
+		}
+	}
+
+	if (is_rw_sharing)
+	{
+		// DXIL metadata does not account for the implied u32 used for group sharing.
+		// In case the last member is u16, align to u32.
+		payload_stride = (payload_stride + 3u) & ~3u;
+		// Allocate space for magic word.
+		payload_stride += 4;
+	}
+
+	return payload_stride;
+}
+
+bool Converter::Impl::emit_execution_modes_node_input()
+{
+	spv::Id u32_type_id = builder().makeUintType(32);
+	spv::Id uvec2_type_id = builder().makeVectorType(u32_type_id, 2);
+	spv::Id u64_type_id = builder().makeUintType(64);
+
+	if (node_input.payload_stride)
+	{
+		node_input.private_bda_var_id = create_variable(
+			spv::StorageClassPrivate, u64_type_id, "NodeInputPayloadBDA");
+		node_input.private_stride_var_id = create_variable(
+			spv::StorageClassPrivate, u32_type_id, "NodeInputStride");
+	}
+
+	// We have to rewrite global IDs. Local invocation should remain intact.
+	spv::Id uvec3_type = builder().makeVectorType(u32_type_id, 3);
+	spv::Id workgroup_id = create_variable(spv::StorageClassPrivate, uvec3_type, "WorkgroupID");
+	spv::Id global_invocation_id = create_variable(spv::StorageClassPrivate, uvec3_type, "GlobalInvocationID");
+	spirv_module.register_builtin_shader_input(workgroup_id, spv::BuiltInWorkgroupId);
+	spirv_module.register_builtin_shader_input(global_invocation_id, spv::BuiltInGlobalInvocationId);
+
+	// Emit binding model.
+	// Push constants are our only option.
+	if (!options.inline_ubo_enable)
+	{
+		LOGE("When compiling for nodes, inline UBO path must be enabled for root parameters.\n");
+		return false;
+	}
+
+	node_input.shader_record_block_type_id = emit_shader_record_buffer_block_type(true);
+	spv::Id ptr_shader_record_block_type_id = 0;
+	if (node_input.shader_record_block_type_id)
+	{
+		ptr_shader_record_block_type_id =
+			builder().makePointer(spv::StorageClassPhysicalStorageBuffer,
+			                      node_input.shader_record_block_type_id);
+	}
+	else
+	{
+		// Dummy type
+		ptr_shader_record_block_type_id = builder().makeVectorType(builder().makeUintType(32), 2);
+	}
+
+	// Declare the ABI for dispatching a node. This will change depending on the dispatch mode,
+	// and style of execution (indirect pull or array).
+
+	spv::Id u32_array_type_id = builder().makeRuntimeArray(u32_type_id);
+	builder().addDecoration(u32_array_type_id, spv::DecorationArrayStride, 4);
+
+	spv::Id u32_struct_type_id = builder().makeStructType({ u32_type_id }, "NodeReadonlyU32Ptr");
+	builder().addDecoration(u32_struct_type_id, spv::DecorationBlock);
+	builder().addMemberDecoration(u32_struct_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(u32_struct_type_id, 0, spv::DecorationNonWritable);
+	builder().addMemberName(u32_struct_type_id, 0, "value");
+	spv::Id u32_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u32_struct_type_id);
+
+	spv::Id u32_array_struct_type_id = builder().makeStructType({ u32_array_type_id }, "NodeReadonlyU32ArrayPtr");
+	builder().addDecoration(u32_array_struct_type_id, spv::DecorationBlock);
+	builder().addMemberDecoration(u32_array_struct_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(u32_array_struct_type_id, 0, spv::DecorationNonWritable);
+	builder().addMemberName(u32_array_struct_type_id, 0, "offsets");
+	spv::Id u32_array_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u32_array_struct_type_id);
+
+	const Vector<spv::Id> members = {
+		u64_type_id,
+		u32_ptr_type_id,
+		u32_ptr_type_id,
+		uvec2_type_id,
+		u64_type_id,
+		u64_type_id,
+		ptr_shader_record_block_type_id,
+		u32_type_id,
+		u32_type_id,
+		u32_type_id,
+		u32_type_id,
+		u32_type_id,
+		u32_type_id,
+	};
+
+	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
+	builder().addMemberDecoration(type_id, NodePayloadBDA, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(type_id, NodeLinearOffsetBDA, spv::DecorationOffset, 8);
+	builder().addMemberDecoration(type_id, NodeEndNodesBDA, spv::DecorationOffset, 16);
+	builder().addMemberDecoration(type_id, NodePayloadStrideOrOffsetsBDA, spv::DecorationOffset, 24);
+	builder().addMemberDecoration(type_id, NodePayloadOutputBDA, spv::DecorationOffset, 32);
+	builder().addMemberDecoration(type_id, NodePayloadOutputAtomicBDA, spv::DecorationOffset, 40);
+	builder().addMemberDecoration(type_id, NodeLocalRootSignatureBDA, spv::DecorationOffset, 48);
+	builder().addMemberDecoration(type_id, NodeGridDispatchX, spv::DecorationOffset, 56);
+	builder().addMemberDecoration(type_id, NodeGridDispatchY, spv::DecorationOffset, 60);
+	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 64);
+	builder().addMemberDecoration(type_id, NodePayloadOutputOffset, spv::DecorationOffset, 68);
+	builder().addMemberDecoration(type_id, NodePayloadOutputStride, spv::DecorationOffset, 72);
+	builder().addMemberDecoration(type_id, NodeRemainingRecursionLevels, spv::DecorationOffset, 76);
+
+	// For linear node layout (entry point).
+	// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
+	builder().addMemberName(type_id, NodePayloadBDA, "PayloadLinearBDA");
+	// With packed workgroup layout, need to apply an offset.
+	builder().addMemberName(type_id, NodeLinearOffsetBDA, "NodeLinearOffsetBDA");
+	// For thread and coalesce, need to know total number of threads to mask execution on edge.
+	builder().addMemberName(type_id, NodeEndNodesBDA, "NodeEndNodesBDA");
+	builder().addMemberName(type_id, NodePayloadStrideOrOffsetsBDA, "NodePayloadStrideOrOffsetsBDA");
+	builder().addMemberName(type_id, NodePayloadOutputBDA, "NodePayloadOutputBDA");
+	builder().addMemberName(type_id, NodePayloadOutputAtomicBDA, "NodePayloadOutputAtomicBDA");
+	builder().addMemberName(type_id, NodeLocalRootSignatureBDA, "NodeLocalRootSignatureBDA");
+	// For broadcast nodes. Need to instance multiple times.
+	// Becomes WorkGroupID and affects GlobalInvocationID.
+	builder().addMemberName(type_id, NodeGridDispatchX, "NodeGridDispatchX");
+	builder().addMemberName(type_id, NodeGridDispatchY, "NodeGridDispatchY");
+	builder().addMemberName(type_id, NodeGridDispatchZ, "NodeGridDispatchZ");
+	builder().addMemberName(type_id, NodePayloadOutputOffset, "NodePayloadOutputOffset");
+	builder().addMemberName(type_id, NodePayloadOutputStride, "NodePayloadOutputStride");
+	builder().addMemberName(type_id, NodeRemainingRecursionLevels, "NodeRemainingRecursionLevels");
+	builder().addDecoration(type_id, spv::DecorationBlock);
+	node_input.node_dispatch_push_id =
+	    create_variable(spv::StorageClassPushConstant, type_id, "NodeDispatch");
+	builder().addDecoration(node_input.node_dispatch_push_id, spv::DecorationRestrictPointer);
+
+	node_input.private_coalesce_offset_id =
+		create_variable(spv::StorageClassPrivate, u32_type_id, "NodeCoalesceOffset");
+	node_input.private_coalesce_count_id =
+		create_variable(spv::StorageClassPrivate, u32_type_id, "NodeCoalesceCount");
+
+	node_input.u32_ptr_type_id = u32_ptr_type_id;
+	node_input.u32_array_ptr_type_id = u32_array_ptr_type_id;
+
+	spv::Id u64_struct_type_id = builder().makeStructType({ u64_type_id }, "NodeReadonlyU64Ptr");
+	builder().addDecoration(u64_struct_type_id, spv::DecorationBlock);
+	builder().addMemberDecoration(u64_struct_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(u64_struct_type_id, 0, spv::DecorationNonWritable);
+	builder().addMemberName(u64_struct_type_id, 0, "value");
+	node_input.u64_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u64_struct_type_id);
+
+	return true;
+}
+
+NodeOutputData Converter::Impl::get_node_output(llvm::MDNode *output)
+{
+	NodeOutputData data = {};
+
+	uint32_t num_ops = output->getNumOperands();
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(output, i));
+		if (tag == DXIL::NodeMetadataTag::NodeOutputID)
+		{
+			auto *output_node = llvm::cast<llvm::MDNode>(output->getOperand(i + 1));
+			data.node_id = get_string_metadata(output_node, 0);
+			data.node_array_index = get_constant_metadata(output_node, 1);
+		}
+		else if (tag == DXIL::NodeMetadataTag::NodeAllowSparseNodes)
+			data.sparse_array = get_constant_metadata(output, i + 1) != 0;
+		else if (tag == DXIL::NodeMetadataTag::NodeOutputArraySize)
+			data.node_array_size = get_constant_metadata(output, i + 1);
+		else if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
+			data.max_records = get_constant_metadata(output, i + 1);
+	}
+
+	return data;
+}
+
+NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
+{
+	NodeInputData node = {};
+
+	auto *launch_type_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeLaunchType);
+	if (!launch_type_node)
+		return {};
+
+	node.launch_type = DXIL::NodeLaunchType(
+	    llvm::cast<llvm::ConstantAsMetadata>(*launch_type_node)->getValue()->getUniqueInteger().getZExtValue());
+
+	if (node.launch_type == DXIL::NodeLaunchType::Invalid)
+		return {};
+
+	auto *is_program_entry_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeIsProgramEntry);
+	if (is_program_entry_node)
+	{
+		node.is_program_entry =
+		    llvm::cast<llvm::ConstantAsMetadata>(*is_program_entry_node)->getValue()->getUniqueInteger().getZExtValue() != 0;
+	}
+
+	node.is_indirect_bda_stride_program_entry_spec_id = NodeSpecIdIndirectPayloadStride;
+	node.is_entry_point_spec_id = NodeSpecIdIsEntryPoint;
+
+	if (node.launch_type == DXIL::NodeLaunchType::Broadcasting)
+		node.dispatch_grid_is_upper_bound_spec_id = NodeSpecIdDispatchGridIsUpperBound;
+	else
+		node.dispatch_grid_is_upper_bound_spec_id = UINT32_MAX;
+
+	auto *recursion_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeMaxRecursionDepth);
+	if (recursion_node)
+	{
+		node.recursion_factor =
+			llvm::cast<llvm::ConstantAsMetadata>(*recursion_node)->getValue()->getUniqueInteger().getZExtValue();
+	}
+
+	if (node.launch_type == DXIL::NodeLaunchType::Broadcasting)
+	{
+		auto *max_grid = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeMaxDispatchGrid);
+		const llvm::MDOperand *fixed_grid;
+
+		if (max_grid)
+		{
+			node.dispatch_grid_is_upper_bound = true;
+			fixed_grid = max_grid;
+		}
+		else
+			fixed_grid = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeDispatchGrid);
+
+		if (!fixed_grid)
+			return {};
+
+		for (uint32_t i = 0; i < 3; i++)
+			node.broadcast_grid[i] = get_constant_metadata(llvm::cast<llvm::MDNode>(*fixed_grid), i);
+	}
+
+	node.thread_group_size_spec_id[0] = NodeSpecIdGroupSizeX;
+	node.thread_group_size_spec_id[1] = NodeSpecIdGroupSizeY;
+	node.thread_group_size_spec_id[2] = NodeSpecIdGroupSizeZ;
+
+	auto *name_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeID);
+
+	if (name_node)
+	{
+		auto *name_id = llvm::cast<llvm::MDNode>(*name_node);
+		node.node_id = get_string_metadata(name_id, 0);
+		node.node_array_index = get_constant_metadata(name_id, 1);
+	}
+
+	auto *inputs_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeInputs);
+
+	llvm::MDNode *input = nullptr;
+	if (inputs_node)
+	{
+		auto *inputs = llvm::cast<llvm::MDNode>(*inputs_node);
+		// Current spec only allows one input node.
+		if (inputs->getNumOperands() != 1)
+			return {};
+		input = llvm::cast<llvm::MDNode>(inputs->getOperand(0));
+	}
+
+	if (input)
+	{
+		uint32_t num_ops = input->getNumOperands();
+
+		node.grid_buffer = node_parse_dispatch_grid(input);
+		node.payload_stride = node_parse_payload_stride(input, node.node_track_rw_input_sharing);
+
+		for (uint32_t i = 0; i < num_ops; i += 2)
+		{
+			auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
+			if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
+				node.coalesce_factor = get_constant_metadata(input, i + 1);
+		}
+
+        // We seem to need a sensible default.
+        if (node.coalesce_factor == 0 && node.launch_type == DXIL::NodeLaunchType::Coalescing)
+            node.coalesce_factor = 1;
+	}
+
+	auto *share_input_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeShareInputOf);
+	if (share_input_node)
+	{
+		auto *share_input = llvm::cast<llvm::MDNode>(*share_input_node);
+		node.node_share_input_id = get_string_metadata(share_input, 0);
+		node.node_share_input_array_index = get_constant_metadata(share_input, 1);
+	}
+
+	auto *local_argument_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeLocalRootArgumentsTableIndex);
+	if (local_argument_node)
+	{
+		node.local_root_arguments_table_index =
+		    llvm::cast<llvm::ConstantAsMetadata>(*local_argument_node)->getValue()->getUniqueInteger().getZExtValue();
+	}
+	else
+		node.local_root_arguments_table_index = UINT32_MAX;
+
+	return node;
+}
+
+NodeInputData Converter::get_node_input(const LLVMBCParser &parser, const char *entry)
+{
+	auto *entry_point_meta = get_entry_point_meta(parser.get_module(), entry);
+	if (!entry_point_meta)
+		return {};
+	return Impl::get_node_input(entry_point_meta);
+}
+
+Vector<NodeOutputData> Converter::get_node_outputs(const LLVMBCParser &parser, const char *entry)
+{
+	Vector<NodeOutputData> output_data;
+	auto *entry_point_meta = get_entry_point_meta(parser.get_module(), entry);
+	if (!entry_point_meta)
+		return {};
+
+	auto *outputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeOutputs);
+	if (outputs_node)
+	{
+		auto *outputs = llvm::cast<llvm::MDNode>(*outputs_node);
+		for (unsigned i = 0; i < outputs->getNumOperands(); i++)
+		{
+			auto *output = llvm::cast<llvm::MDNode>(outputs->getOperand(i));
+			output_data.push_back(Impl::get_node_output(output));
+		}
+	}
+
+	// Spec constant IDs are allowed incrementally.
+	// Spec constant ID 0 is reserved for workgroup size spec constant.
+	uint32_t spec_constant_id = NodeSpecIdOutputBase;
+	for (auto &output : output_data)
+	{
+		output.node_index_spec_constant_id = spec_constant_id;
+		spec_constant_id++;
+	}
+
+	return output_data;
+}
+
+bool Converter::Impl::emit_execution_modes_node()
+{
+	// It will be necessary to override all this metadata through some API.
+	// Not really needed to support this until we've implemented everything.
+	NodeInputData node = get_node_input(entry_point_meta);
+	if (node.launch_type == DXIL::NodeLaunchType::Invalid)
+		return false;
+
+	node_input.node_id = node.node_id;
+	node_input.node_array_index = node.node_array_index;
+	node_input.launch_type = node.launch_type;
+	node_input.dispatch_grid = node.grid_buffer;
+	node_input.payload_stride = node.payload_stride;
+	node_input.coalesce_stride = node.coalesce_factor;
+
+	if (!emit_execution_modes_node_input())
+		return false;
+
+	auto *outputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeOutputs);
+	if (outputs_node)
+	{
+		auto *outputs = llvm::cast<llvm::MDNode>(*outputs_node);
+
+		for (unsigned i = 0; i < outputs->getNumOperands(); i++)
+		{
+			auto *output = llvm::cast<llvm::MDNode>(outputs->getOperand(i));
+			if (!emit_execution_modes_node_output(output))
+				return false;
+		}
+	}
+
+	node_input.is_indirect_payload_stride_id = builder().makeBoolConstant(false, true);
+	builder().addDecoration(node_input.is_indirect_payload_stride_id, spv::DecorationSpecId,
+	                        int(node.is_indirect_bda_stride_program_entry_spec_id));
+	builder().addName(node_input.is_indirect_payload_stride_id, "NodeEntryIndirectPayloadStride");
+
+	node_input.is_entry_point_id = builder().makeBoolConstant(node.is_program_entry, true);
+	builder().addDecoration(node_input.is_entry_point_id, spv::DecorationSpecId,
+	                        int(node.is_entry_point_spec_id));
+	builder().addName(node_input.is_entry_point_id, "NodeIsProgramEntry");
+
+	if (node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)
+	{
+		node_input.broadcast_has_max_grid_id = builder().makeBoolConstant(node.dispatch_grid_is_upper_bound, true);
+		builder().addDecoration(node_input.broadcast_has_max_grid_id, spv::DecorationSpecId,
+		                        int(node.dispatch_grid_is_upper_bound_spec_id));
+		builder().addName(node_input.broadcast_has_max_grid_id, "DispatchGridIsUpperBound");
+	}
+
+	return emit_execution_modes_compute();
+}
+
 bool Converter::Impl::emit_execution_modes_compute()
 {
 	auto *num_threads_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NumThreads);
@@ -5657,8 +6263,28 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 	for (unsigned dim = 0; dim < 3; dim++)
 		execution_mode_meta.workgroup_threads[dim] = threads[dim];
 
-	builder.addExecutionMode(spirv_module.get_entry_function(),
-	                         spv::ExecutionModeLocalSize, threads[0], threads[1], threads[2]);
+	if (execution_model_lib_target)
+	{
+		threads[0] = builder.makeUintConstant(threads[0], true);
+		threads[1] = builder.makeUintConstant(threads[1], true);
+		threads[2] = builder.makeUintConstant(threads[2], true);
+		builder.addDecoration(threads[0], spv::DecorationSpecId, NodeSpecIdGroupSizeX);
+		builder.addDecoration(threads[1], spv::DecorationSpecId, NodeSpecIdGroupSizeY);
+		builder.addDecoration(threads[2], spv::DecorationSpecId, NodeSpecIdGroupSizeZ);
+		builder.addExecutionModeId(spirv_module.get_entry_function(),
+		                           spv::ExecutionModeLocalSizeId,
+		                           threads[0], threads[1], threads[2]);
+
+		node_input.thread_group_size_id =
+			builder.makeCompositeConstant(builder.makeVectorType(builder.makeUintType(32), 3),
+			                              { threads[0], threads[1], threads[2] }, true);
+		builder.addName(node_input.thread_group_size_id, "ThreadGroupSize");
+	}
+	else
+	{
+		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
+		                         threads[0], threads[1], threads[2]);
+	}
 
 	return true;
 }
@@ -5761,21 +6387,9 @@ bool Converter::Impl::analyze_execution_modes_meta()
 {
 	auto *meta = entry_point_meta;
 
-	switch (execution_model)
-	{
-	case spv::ExecutionModelRayGenerationKHR:
-	case spv::ExecutionModelMissKHR:
-	case spv::ExecutionModelIntersectionKHR:
-	case spv::ExecutionModelAnyHitKHR:
-	case spv::ExecutionModelCallableKHR:
-	case spv::ExecutionModelClosestHitKHR:
+	if (execution_model_lib_target)
 		if (auto *null_meta = get_null_entry_point_meta(bitcode_parser.get_module()))
 			meta = null_meta;
-		break;
-
-	default:
-		break;
-	}
 
 	auto flags = get_shader_flags(meta);
 	execution_mode_meta.native_16bit_operations = (flags & DXIL::ShaderFlagNativeLowPrecision) != 0;
@@ -5816,7 +6430,8 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 	if (options.supports_maximal_reconvergence &&
 	    (options.force_maximal_reconvergence ||
 	     execution_mode_meta.waveops_include_helper_lanes ||
-	     execution_mode_meta.needs_quad_derivatives))
+	     execution_mode_meta.needs_quad_derivatives ||
+	     shader_analysis.need_maximal_reconvergence_helper_call))
 	{
 		builder().addExtension("SPV_KHR_maximal_reconvergence");
 		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeMaximallyReconvergesKHR);
@@ -5844,8 +6459,16 @@ bool Converter::Impl::emit_execution_modes()
 	switch (execution_model)
 	{
 	case spv::ExecutionModelGLCompute:
-		if (!emit_execution_modes_compute())
-			return false;
+		if (execution_model_lib_target)
+		{
+			if (!emit_execution_modes_node())
+				return false;
+		}
+		else
+		{
+			if (!emit_execution_modes_compute())
+				return false;
+		}
 		break;
 
 	case spv::ExecutionModelGeometry:
@@ -5929,6 +6552,32 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
 	entry->ir.operations.push_back(allocate(spv::OpEndInvocationInterlockEXT));
 	entry->ir.terminator.type = Terminator::Type::Return;
 	leaves.push_back({ code_main, code_func });
+	return { entry, spirv_module.get_entry_function() };
+}
+
+
+ConvertedFunction::Function
+Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
+                                 CFGNodePool &pool,
+                                 Vector<ConvertedFunction::Function> &leaves)
+{
+	spv::Block *node_entry;
+	auto *node_func =
+		builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(),
+		                            "node_main", {}, {}, &node_entry);
+
+	// Set build point so alloca() functions can create variables correctly.
+	builder().setBuildPoint(node_entry);
+	auto *node_main = convert_function(visit_order);
+	leaves.push_back({ node_main, node_func });
+
+	auto *entry = pool.create_node();
+	current_block = &entry->ir.operations;
+	entry->ir.terminator.type = Terminator::Type::Return;
+
+	if (!emit_workgraph_dispatcher(*this, pool, entry, node_func->getId()))
+		return {};
+
 	return { entry, spirv_module.get_entry_function() };
 }
 
@@ -6572,9 +7221,16 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto &module = bitcode_parser.get_module();
 	entry_point_meta = get_entry_point_meta(module, options.entry_point.empty() ? nullptr : options.entry_point.c_str());
 	execution_model = get_execution_model(module, entry_point_meta);
+	execution_model_lib_target = get_execution_model_lib_target(module, entry_point_meta);
 
-	if (execution_model == spv::ExecutionModelFragment &&
-	    resource_mapping_iface && resource_mapping_iface->has_nontrivial_stage_input_remapping())
+	if (execution_model_lib_target && execution_model == spv::ExecutionModelGLCompute)
+	{
+		// Might as well go with SPIR-V 1.6. Then we get subgroup size control semantics for "free".
+		// When we're willing to do a clean break with Fossilize all shaders should target SPIR-V 1.6.
+		spirv_module.set_override_spirv_version(0x10600);
+	}
+	else if (execution_model == spv::ExecutionModelFragment &&
+	         resource_mapping_iface && resource_mapping_iface->has_nontrivial_stage_input_remapping())
 	{
 		// Force SPIR-V 1.4 for fragment shaders if we might end up requiring mesh shader capabilities.
 		// Non-trivial stage input remapping may require PerPrimitiveEXT decoration.
@@ -6602,11 +7258,16 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	result.node_pool = std::make_unique<CFGNodePool>();
 	auto &pool = *result.node_pool;
 
+	bool need_bda =
+		options.physical_storage_buffer ||
+		(execution_model_lib_target &&
+		 execution_model == spv::ExecutionModelGLCompute);
+
 	spirv_module.set_descriptor_qa_info(options.descriptor_qa);
 	options.instruction_instrumentation.fp16 =
 	    options.min_precision_prefer_native_16bit || execution_mode_meta.native_16bit_operations;
 	spirv_module.set_instruction_instrumentation_info(options.instruction_instrumentation);
-	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", options.physical_storage_buffer);
+	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", need_bda);
 
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
 	assert(func);
@@ -6654,6 +7315,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		result.entry = build_hull_main(visit_order, patch_visit_order, pool, result.leaf_functions);
 	else if (execution_mode_meta.declares_rov)
 		result.entry = build_rov_main(visit_order, pool, result.leaf_functions);
+	else if (execution_model_lib_target && execution_model == spv::ExecutionModelGLCompute)
+		result.entry = build_node_main(visit_order, pool, result.leaf_functions);
 	else
 	{
 		result.entry.entry = convert_function(visit_order);
@@ -6673,11 +7336,14 @@ Operation *Converter::Impl::allocate(spv::Op op)
 
 Operation *Converter::Impl::allocate(spv::Op op, spv::Id id, spv::Id type_id)
 {
+	assert(type_id != 0);
+	assert(id != 0);
 	return spirv_module.allocate_op(op, id, type_id);
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, spv::Id type_id)
 {
+	assert(type_id != 0);
 	return spirv_module.allocate_op(op, spirv_module.allocate_id(), type_id);
 }
 
@@ -6692,6 +7358,7 @@ Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value, spv::
 {
 	// Constant expressions cannot have an associated opcode ID to them.
 	assert(!llvm::isa<llvm::ConstantExpr>(value));
+	assert(type_id != 0);
 	return spirv_module.allocate_op(op, get_id_for_value(value), type_id);
 }
 

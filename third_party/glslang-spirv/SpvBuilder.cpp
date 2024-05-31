@@ -977,6 +977,21 @@ void Builder::addExecutionMode(Function* entryPoint, ExecutionMode mode, int val
     executionModes.push_back(std::unique_ptr<Instruction>(instr));
 }
 
+void Builder::addExecutionModeId(Function* entryPoint, ExecutionMode mode, spv::Id id1, spv::Id id2, spv::Id id3)
+{
+    Instruction* instr = new Instruction(OpExecutionModeId);
+    instr->addIdOperand(entryPoint->getId());
+    instr->addImmediateOperand(mode);
+    if (id1)
+        instr->addIdOperand(id1);
+    if (id2)
+        instr->addIdOperand(id2);
+    if (id3)
+        instr->addIdOperand(id3);
+
+    executionModes.push_back(std::unique_ptr<Instruction>(instr));
+}
+
 void Builder::addName(Id id, const char* string)
 {
     Instruction* name = new Instruction(OpName);

@@ -256,6 +256,7 @@ public:
     // Methods for adding information outside the CFG.
     Instruction* addEntryPoint(ExecutionModel, Function*, const char* name);
     void addExecutionMode(Function*, ExecutionMode mode, int value1 = -1, int value2 = -1, int value3 = -1);
+    void addExecutionModeId(Function*, ExecutionMode mode, spv::Id id1 = 0, spv::Id id2 = 0, spv::Id id3 = 0);
     void addName(Id, const char* name);
     void addMemberName(Id, int member, const char* name);
     void addDecoration(Id, Decoration, int num = -1);

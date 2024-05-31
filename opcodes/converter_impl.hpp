@@ -196,6 +196,9 @@ struct Converter::Impl
 	ConvertedFunction::Function build_rov_main(const Vector<llvm::BasicBlock *> &bbs,
 	                                           CFGNodePool &pool,
 	                                           Vector<ConvertedFunction::Function> &leaves);
+	ConvertedFunction::Function build_node_main(const Vector<llvm::BasicBlock *> &bbs,
+	                                            CFGNodePool &pool,
+	                                            Vector<ConvertedFunction::Function> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
@@ -219,11 +222,18 @@ struct Converter::Impl
 	void emit_builtin_interpolation_decorations(spv::Id variable_id, DXIL::Semantic semantic, DXIL::InterpolationMode mode);
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
+	bool execution_model_lib_target = false;
 	bool emit_execution_modes();
 	bool emit_execution_modes_late();
 	void emit_execution_modes_post_code_generation();
 	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
+	bool emit_execution_modes_node();
+
+	static NodeDispatchGrid node_parse_dispatch_grid(llvm::MDNode *node_meta);
+	static uint32_t node_parse_payload_stride(llvm::MDNode *node_meta, bool &is_rw_sharing);
+	bool emit_execution_modes_node_input();
+	bool emit_execution_modes_node_output(llvm::MDNode *input);
 	bool emit_execution_modes_geometry();
 	bool emit_execution_modes_hull();
 	bool emit_execution_modes_domain();
@@ -356,6 +366,7 @@ struct Converter::Impl
 	bool emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *refl);
 	bool emit_samplers(const llvm::MDNode *samplers, const llvm::MDNode *refl);
 	bool emit_shader_record_buffer();
+	spv::Id emit_shader_record_buffer_block_type(bool physical_storage);
 	void register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index);
 	void emit_root_constants(unsigned num_descriptors, unsigned num_constant_words);
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &parser);
@@ -478,7 +489,17 @@ struct Converter::Impl
 	spv::Id get_temp_payload(spv::Id type, spv::StorageClass storage);
 
 	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array = false);
-	spv::Id get_type_id(const llvm::Type *type);
+
+	enum TypeLayoutFlagBits
+	{
+		TYPE_LAYOUT_PHYSICAL_BIT = 0x1,
+		TYPE_LAYOUT_READ_ONLY_BIT = 0x2,
+		TYPE_LAYOUT_COHERENT_BIT = 0x4,
+		TYPE_LAYOUT_BLOCK_BIT = 0x8,
+	};
+	using TypeLayoutFlags = uint32_t;
+
+	spv::Id get_type_id(const llvm::Type *type, TypeLayoutFlags flags = 0);
 	spv::Id get_type_id(spv::Id id) const;
 
 	struct ElementMeta
@@ -500,6 +521,41 @@ struct Converter::Impl
 	UnorderedMap<uint32_t, ClipCullMeta> input_clip_cull_meta;
 	UnorderedMap<uint32_t, ClipCullMeta> output_clip_cull_meta;
 	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage);
+
+	struct NodeInputMeta
+	{
+		String node_id;
+		uint32_t node_array_index;
+		spv::Id private_bda_var_id; // Private variable which holds a BDA to the node, set by the main() dispatcher.
+		spv::Id private_stride_var_id; // Private variable which holds stride for entry point nodes, set by the main() dispatcher.
+		spv::Id private_coalesce_offset_id; // Private variable which holds the linear input index.
+		spv::Id private_coalesce_count_id; // Private variable which holds the input count.
+		spv::Id node_dispatch_push_id; // PushConstant ABI for dispatching.
+		spv::Id shader_record_block_type_id;
+		// Stride for the payload. This is recorded in metadata, but we may have to allocate SV_DispatchGrid.
+		uint32_t payload_stride;
+		uint32_t coalesce_stride; // Coalesce width.
+		spv::Id u32_ptr_type_id;
+		spv::Id u64_ptr_type_id;
+		spv::Id u32_array_ptr_type_id;
+		spv::Id is_indirect_payload_stride_id;
+		spv::Id is_entry_point_id;
+		spv::Id broadcast_has_max_grid_id;
+		spv::Id thread_group_size_id;
+		DXIL::NodeLaunchType launch_type;
+		NodeDispatchGrid dispatch_grid;
+	};
+
+	struct NodeOutputMeta
+	{
+		spv::Id spec_constant_node_index;
+		// Stride for the payload. This is recorded in metadata, but we may have to allocate SV_DispatchGrid.
+		uint32_t payload_stride;
+		bool is_recursive;
+	};
+
+	NodeInputMeta node_input = {};
+	Vector<NodeOutputMeta> node_outputs;
 
 	bool emit_instruction(CFGNode *block, const llvm::Instruction &instruction);
 	bool emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
@@ -553,9 +609,26 @@ struct Converter::Impl
 		spv::Id id;
 		String name;
 		Vector<spv::Id> subtypes;
+		TypeLayoutFlags flags;
+	};
+
+	struct ArrayTypeEntry
+	{
+		spv::Id id;
+		uint32_t element_type_id;
+		uint32_t array_size_id;
 	};
 	Vector<StructTypeEntry> cached_struct_types;
-	spv::Id get_struct_type(const Vector<spv::Id> &type_ids, const char *name = nullptr);
+	Vector<ArrayTypeEntry> cached_physical_array_types;
+	spv::Id get_struct_type(const Vector<spv::Id> &type_ids, TypeLayoutFlags flags, const char *name);
+	void decorate_physical_offsets(spv::Id struct_type_id, const Vector<spv::Id> &type_ids);
+
+	struct SizeAlignment
+	{
+		uint32_t size;
+		uint32_t alignment;
+	};
+	SizeAlignment get_physical_size_for_type(spv::Id type_id);
 
 	void set_option(const OptionBase &cap);
 	struct
@@ -744,10 +817,13 @@ struct Converter::Impl
 		bool require_compute_shader_derivatives = false;
 		bool precise_f16_to_f32_observed = false;
 		bool require_uav_thread_group_coherence = false;
+		bool require_node_output_group_coherence = false;
+		bool require_node_input_group_coherence = false;
 		bool require_subgroups = false;
 		bool subgroup_ballot_reads_upper = false;
 		bool subgroup_ballot_reads_first = false;
 		bool can_require_opacity_micromap = false;
+		bool need_maximal_reconvergence_helper_call = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.
@@ -765,5 +841,8 @@ struct Converter::Impl
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);
 
 	void suggest_maximum_wave_size(unsigned wave_size);
+
+	static NodeInputData get_node_input(llvm::MDNode *meta);
+	static NodeOutputData get_node_output(llvm::MDNode *meta);
 };
 } // namespace dxil_spv

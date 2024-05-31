@@ -1102,7 +1102,12 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
 	resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), type_id);
 
-	auto storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
+	spv::StorageClass storage;
+	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
+		storage = spv::StorageClassPhysicalStorageBuffer;
+	else
+		storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
+
 	type_id = builder.makePointer(storage, type_id);
 
 	Operation *op = impl.allocate(instruction->isInBounds() ? spv::OpInBoundsAccessChain : spv::OpAccessChain,
@@ -1176,6 +1181,17 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 			}
 		}
 
+		// For NodeIO, we always have to tag with aligned mask.
+		if (DXIL::AddressSpace(instruction->getPointerOperand()->getType()->getPointerAddressSpace()) ==
+		    DXIL::AddressSpace::PhysicalNodeIO)
+		{
+			// TODO: Properly track aligned size based on the GEP, but for now, just assume scalar.
+			op->add_literal(spv::MemoryAccessAlignedMask);
+			auto size_alignment = impl.get_physical_size_for_type(
+			    impl.builder().getContainedTypeId(impl.get_type_id(instruction->getPointerOperand()->getType(), true)));
+			op->add_literal(size_alignment.alignment);
+		}
+
 		impl.add(op);
 	}
 	return true;
@@ -1204,6 +1220,17 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 	}
 	else
 		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+
+	// For NodeIO, we always have to tag with aligned mask.
+	if (DXIL::AddressSpace(instruction->getOperand(1)->getType()->getPointerAddressSpace()) ==
+	    DXIL::AddressSpace::PhysicalNodeIO)
+	{
+		// TODO: Properly track aligned size based on the GEP, but for now, just assume scalar.
+		op->add_literal(spv::MemoryAccessAlignedMask);
+		auto size_alignment = impl.get_physical_size_for_type(
+		    impl.builder().getContainedTypeId(impl.get_type_id(instruction->getOperand(1)->getType(), true)));
+		op->add_literal(size_alignment.alignment);
+	}
 
 	impl.add(op);
 	return true;
@@ -1485,7 +1512,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 	if (!impl.cmpxchg_type)
 		impl.cmpxchg_type =
-		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, "CmpXchgResult");
+		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, 0, "CmpXchgResult");
 
 	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
 	op->add_ids({ atomic_op->id, cmp_op->id });

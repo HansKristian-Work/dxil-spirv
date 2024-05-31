@@ -38,6 +38,7 @@
 #include "opcodes/dxil/dxil_ray_tracing.hpp"
 #include "opcodes/dxil/dxil_mesh.hpp"
 #include "opcodes/dxil/dxil_ags.hpp"
+#include "opcodes/dxil/dxil_workgraph.hpp"
 
 namespace dxil_spv
 {
@@ -363,6 +364,24 @@ struct DXILDispatcher
 		OP(StoreVertexOutput) = emit_store_vertex_output_instruction;
 		OP(StorePrimitiveOutput) = emit_store_primitive_output_instruction;
 		OP(DispatchMesh) = emit_dispatch_mesh_instruction;
+
+		// dxil_workgraph.hpp
+		OP(AllocateNodeOutputRecords) = emit_allocate_node_output_records;
+		OP(GetNodeRecordPtr) = emit_get_node_record_ptr;
+		OP(IncrementOutputCount) = emit_increment_output_count;
+		OP(OutputComplete) = emit_output_complete;
+		OP(GetInputRecordCount) = emit_get_input_record_count;
+		OP(FinishedCrossGroupSharing) = emit_finished_cross_group_sharing;
+		OP(BarrierByMemoryType) = emit_barrier_by_memory_type;
+		OP(BarrierByMemoryHandle) = emit_barrier_by_memory_handle;
+		OP(BarrierByNodeRecordHandle) = emit_barrier_by_node_record_handle;
+		OP(IndexNodeHandle) = emit_index_node_handle;
+		OP(AnnotateNodeHandle) = emit_annotate_node_handle;
+		OP(CreateNodeInputRecordHandle) = emit_create_node_input_record_handle;
+		OP(CreateNodeOutputHandle) = emit_create_node_output_handle;
+		OP(AnnotateNodeRecordHandle) = emit_annotate_node_record_handle;
+		OP(NodeOutputIsValid) = emit_node_output_is_valid;
+		OP(GetRemainingRecursionLevels) = emit_get_remaining_recursion_levels;
 	}
 
 #undef OP
@@ -1215,6 +1234,94 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		// There is no guarantee for intra-workgroup coherence sadly :(
 		if ((operation & (DXIL::AccessUAVThreadGroup | DXIL::AccessUAVGlobal)) != 0)
 			impl.shader_analysis.require_uav_thread_group_coherence = true;
+		break;
+	}
+
+	case DXIL::Op::BarrierByMemoryType:
+	{
+		uint32_t memory_flags = 0;
+		uint32_t semantic_flags = 0;
+		if (!get_constant_operand(instruction, 1, &memory_flags))
+			return false;
+		if (!get_constant_operand(instruction, 2, &semantic_flags))
+			return false;
+
+		if ((semantic_flags & DXIL::GroupScopeBit) != 0)
+		{
+			// Similar. If we observe a UAV + Group barrier, we need to consider coherence for any UAV.
+			// For DeviceScope bit, shader already needs to declare with globallycoherent for that to work.
+			if ((memory_flags & DXIL::MemoryTypeUavBit) != 0)
+				impl.shader_analysis.require_uav_thread_group_coherence = true;
+			if ((memory_flags & DXIL::MemoryTypeNodeOutputBit) != 0)
+				impl.shader_analysis.require_node_output_group_coherence = true;
+			if ((memory_flags & DXIL::MemoryTypeNodeInputBit) != 0)
+				impl.shader_analysis.require_node_input_group_coherence = true;
+		}
+
+		break;
+	}
+
+	case DXIL::Op::BarrierByNodeRecordHandle:
+	{
+		uint32_t semantics = 0;
+		if (!get_constant_operand(instruction, 2, &semantics))
+			return false;
+
+		if ((semantics & DXIL::GroupScopeBit) != 0)
+		{
+			if (!value_is_dx_op_instrinsic(instruction->getOperand(1), DXIL::Op::AnnotateNodeRecordHandle))
+				return false;
+
+			auto *annotation = llvm::cast<llvm::CallInst>(instruction->getOperand(1));
+			uint32_t node_io = get_node_io_from_annotate_handle(annotation);
+
+			// If the resource isn't declared as globally coherent, promote.
+			// TODO: Could promote on a per-node basis, but seems overkill for now.
+			if ((node_io & DXIL::NodeIOGloballyCoherentBit) == 0)
+			{
+				if ((node_io & DXIL::NodeIOInputBit) != 0)
+					impl.shader_analysis.require_node_input_group_coherence = true;
+				else if ((node_io & DXIL::NodeIOOutputBit) != 0)
+					impl.shader_analysis.require_node_output_group_coherence = true;
+			}
+		}
+
+		break;
+	}
+
+	case DXIL::Op::BarrierByMemoryHandle:
+	{
+		uint32_t semantics = 0;
+		if (!get_constant_operand(instruction, 2, &semantics))
+			return false;
+
+		if ((semantics & DXIL::GroupScopeBit) != 0)
+		{
+			if (!value_is_dx_op_instrinsic(instruction->getOperand(1), DXIL::Op::AnnotateHandle))
+				return false;
+
+			auto *annotation = llvm::cast<llvm::CallInst>(instruction->getOperand(1));
+			auto *aggregate = llvm::cast<llvm::ConstantAggregate>(annotation->getOperand(2));
+
+			uint32_t type = aggregate->getOperand(0)->getUniqueInteger().getZExtValue();
+			constexpr uint32_t AnnotateUAVMask = 1u << 12;
+			constexpr uint32_t AnnotateGloballyCoherentMask = 1u << 14;
+
+			// If the resource isn't declared as globally coherent, promote.
+			// TODO: Could promote on a per-resource basis, but seems overkill for now.
+			if ((type & AnnotateUAVMask) != 0 && (type & AnnotateGloballyCoherentMask) == 0)
+				impl.shader_analysis.require_uav_thread_group_coherence = true;
+		}
+
+		break;
+	}
+
+	case DXIL::Op::AllocateNodeOutputRecords:
+	{
+		uint32_t is_per_thread = 0;
+		// Per-thread allocator needs careful subgroup operations in potential control flow.
+		if (get_constant_operand(instruction, 2, &is_per_thread) && is_per_thread)
+			impl.shader_analysis.need_maximal_reconvergence_helper_call = true;
 		break;
 	}
 
