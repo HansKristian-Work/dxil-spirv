@@ -67,6 +67,13 @@ enum class HelperCall
 	AtomicImageArrayR64Compact,
 	AtomicImageR64CompactNonUniform,
 	AtomicImageArrayR64CompactNonUniform,
+	FinishCrossGroupSharing,
+	AllocateThreadNodeRecords,
+	AllocateGroupNodeRecords,
+	AllocateThreadNodeRecordsWaterfall,
+	ThreadIncrementOutputCount,
+	GroupIncrementOutputCount,
+	NodeCoalescePayloadOffset
 };
 
 class SPIRVModule
@@ -107,6 +114,7 @@ public:
 	                                         const char *name = nullptr);
 
 	spv::Id get_helper_call_id(HelperCall call, spv::Id type_id = 0);
+	spv::Id get_helper_call_id(HelperCall call, const spv::Id *aux_ids, uint32_t aux_id_count);
 	spv::Id get_robust_physical_cbv_load_call_id(spv::Id type_id, spv::Id ptr_type_id, unsigned alignment);
 	void set_descriptor_qa_info(const DescriptorQAInfo &info);
 	void set_instruction_instrumentation_info(const InstructionInstrumentationInfo &info);

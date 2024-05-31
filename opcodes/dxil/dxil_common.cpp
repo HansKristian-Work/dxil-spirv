@@ -39,10 +39,7 @@ bool get_constant_operand(const llvm::CallInst *value, unsigned index, uint32_t 
 
 	auto *constant = llvm::dyn_cast<llvm::ConstantInt>(value->getOperand(index));
 	if (!constant)
-	{
-		LOGE("Operand is not constant.\n");
 		return false;
-	}
 
 	*operand = uint32_t(constant->getUniqueInteger().getZExtValue());
 	return true;
@@ -63,7 +60,7 @@ spv::Id emit_u32x2_u32_add(Converter::Impl &impl, spv::Id u32x2_value, spv::Id u
 	base_addr_hi->add_literal(1);
 	impl.add(base_addr_hi);
 
-	auto *add_op = impl.allocate(spv::OpIAddCarry, impl.get_struct_type({ uint_type, uint_type }, "AddCarry"));
+	auto *add_op = impl.allocate(spv::OpIAddCarry, impl.get_struct_type({ uint_type, uint_type }, 0, "AddCarry"));
 	add_op->add_ids({ base_addr_lo->id, u32_value });
 	impl.add(add_op);
 

@@ -41,7 +41,7 @@ using namespace dxil_spv;
 
 static std::string convert_to_asm(const void *code, size_t size)
 {
-	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1_SPIRV_1_4);
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
@@ -55,7 +55,7 @@ static std::string convert_to_asm(const void *code, size_t size)
 
 static bool validate_spirv(const void *code, size_t size)
 {
-	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1_SPIRV_1_4);
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});

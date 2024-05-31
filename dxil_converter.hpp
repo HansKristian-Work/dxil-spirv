@@ -739,6 +739,45 @@ struct DescriptorTableEntry
 	uint32_t offset_in_heap;
 };
 
+struct NodeDispatchGrid
+{
+	uint32_t offset;
+	DXIL::ComponentType component_type;
+	uint32_t count;
+};
+
+struct NodeInputData
+{
+	String node_id;
+	uint32_t payload_stride;
+	DXIL::NodeLaunchType launch_type;
+	uint32_t node_array_index;
+	NodeDispatchGrid grid_buffer;
+	uint32_t broadcast_grid[3];
+	uint32_t thread_group_size_spec_id[3];
+	uint32_t recursion_factor;
+	uint32_t coalesce_factor;
+	String node_share_input_id;
+	uint32_t node_share_input_array_index;
+	uint32_t local_root_arguments_table_index;
+	uint32_t is_indirect_bda_stride_program_entry_spec_id;
+	uint32_t is_entry_point_spec_id;
+	uint32_t dispatch_grid_is_upper_bound_spec_id;
+	bool dispatch_grid_is_upper_bound;
+	bool node_track_rw_input_sharing;
+	bool is_program_entry;
+};
+
+struct NodeOutputData
+{
+	String node_id;
+	uint32_t node_array_index;
+	uint32_t node_array_size;
+	uint32_t node_index_spec_constant_id;
+	uint32_t max_records;
+	bool sparse_array;
+};
+
 enum class ShaderFeature
 {
 	Native16BitOperations = 0,
@@ -790,6 +829,9 @@ public:
 
 	// For esoteric CFG workarounds.
 	bool get_driver_version(uint32_t &driver_id, uint32_t &driver_version) const;
+
+	static NodeInputData get_node_input(const LLVMBCParser &parser, const char *entry);
+	static Vector<NodeOutputData> get_node_outputs(const LLVMBCParser &parser, const char *entry);
 
 	struct Impl;
 

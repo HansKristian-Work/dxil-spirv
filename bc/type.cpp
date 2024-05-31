@@ -139,6 +139,12 @@ unsigned Type::getVectorNumElements() const
 	return cast<VectorType>(this)->getVectorSize();
 }
 
+unsigned Type::getPointerAddressSpace() const
+{
+	assert(type_id == TypeID::PointerTyID);
+	return cast<PointerType>(this)->getAddressSpace();
+}
+
 Type *Type::getArrayElementType() const
 {
 	assert(type_id == TypeID::ArrayTyID);

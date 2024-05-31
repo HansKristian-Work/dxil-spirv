@@ -518,6 +518,16 @@ enum class ShaderPropertyTag : uint8_t
 	MSState = 9,
 	ASState = 10,
 	WaveSize = 11,
+	NodeLaunchType = 13,
+	NodeIsProgramEntry = 14,
+	NodeID = 15,
+	NodeLocalRootArgumentsTableIndex = 16,
+	NodeShareInputOf = 17,
+	NodeDispatchGrid = 18,
+	NodeMaxRecursionDepth = 19,
+	NodeInputs = 20,
+	NodeOutputs = 21,
+	NodeMaxDispatchGrid = 22,
 	RangedWaveSize = 23
 };
 
@@ -539,6 +549,7 @@ enum class AddressSpace : uint8_t
 {
 	Thread = 0,
 	GroupShared = 3,
+	PhysicalNodeIO = 6,
 	Invalid
 };
 
@@ -648,7 +659,82 @@ enum class ShaderKind
 	Callable,
 	Mesh,
 	Amplification,
+	Node,
 	Invalid
 };
 
+enum class NodeLaunchType
+{
+	Invalid = 0,
+	Broadcasting = 1,
+	Coalescing = 2,
+	Thread = 3
+};
+
+enum class NodeMetadataTag
+{
+	NodeOutputID = 0,
+	NodeIOFlags = 1,
+	NodeRecordType = 2,
+	NodeMaxRecords = 3,
+	NodeMaxRecordsSharedWith = 4,
+	NodeOutputArraySize = 5,
+	NodeAllowSparseNodes = 6
+};
+
+enum NodeIOFlagBits
+{
+	NodeIOInputBit = 0x1,
+	NodeIOOutputBit = 0x2,
+	NodeIOReadWriteBit = 0x4,
+	NodeIOEmptyRecordBit = 0x8,
+	NodeIONodeArrayBit = 0x10,
+	NodeIOThreadRecordBit = 0x20,
+	NodeIOGroupRecordBit = 0x40,
+	NodeIODispatchRecordBit = 0x60,
+	RecordGranularityMask = 0x60,
+	NodeIOKindMask = 0x7f,
+	NodeIOTrackRWInputSharingBit = 0x100,
+	NodeIOGloballyCoherentBit = 0x200,
+	NodeFlagsMask = 0x100,
+	RecordFlagsMask = 0x200
+};
+
+enum class NodeIOKind
+{
+	Invalid = 0,
+	EmptyInput = NodeIOEmptyRecordBit | NodeIOInputBit,
+	NodeOutput = NodeIOReadWriteBit | NodeIOOutputBit,
+	NodeOutputArray = NodeIOReadWriteBit | NodeIOOutputBit | NodeIONodeArrayBit,
+	EmptyOutput = NodeIOEmptyRecordBit | NodeIOOutputBit,
+	EmptyOutputArray = NodeIOEmptyRecordBit | NodeIOOutputBit | NodeIONodeArrayBit,
+
+	// Records:
+	DispatchNodeInputRecord = NodeIOInputBit | NodeIODispatchRecordBit,
+	GroupNodeInputRecords   = NodeIOInputBit | NodeIOGroupRecordBit,
+	ThreadNodeInputRecord   = NodeIOInputBit | NodeIOThreadRecordBit,
+
+	RWDispatchNodeInputRecord = NodeIOReadWriteBit | NodeIOInputBit | NodeIODispatchRecordBit,
+	RWGroupNodeInputRecords   = NodeIOReadWriteBit | NodeIOInputBit | NodeIOGroupRecordBit,
+	RWThreadNodeInputRecord   = NodeIOReadWriteBit | NodeIOInputBit | NodeIOThreadRecordBit,
+
+	GroupNodeOutputRecords  = NodeIOReadWriteBit | NodeIOOutputBit | NodeIOGroupRecordBit,
+	ThreadNodeOutputRecords = NodeIOReadWriteBit | NodeIOOutputBit | NodeIOThreadRecordBit
+};
+
+enum MemoryTypeFlagBits
+{
+	MemoryTypeUavBit = 0x1,
+	MemoryTypeGroupSharedBit = 0x2,
+	MemoryTypeNodeInputBit = 0x4,
+	MemoryTypeNodeOutputBit = 0x8,
+	MemoryTypeAllBits = 0xf
+};
+
+enum BarrierSemanticsFlagBits
+{
+	GroupSyncBit = 0x1,
+	GroupScopeBit = 0x2,
+	DeviceScopeBit = 0x4
+};
 } // namespace DXIL
