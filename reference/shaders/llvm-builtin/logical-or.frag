@@ -5,7 +5,16 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    SV_Target = (isnan(A.x) || isnan(A.y)) ? A.z : A.w;
+    float _21;
+    if (isnan(A.x))
+    {
+        _21 = A.z;
+    }
+    else
+    {
+        _21 = isnan(A.y) ? A.z : A.w;
+    }
+    SV_Target = _21;
 }
 
 
@@ -14,7 +23,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 32
+; Bound: 34
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -36,10 +45,10 @@ OpDecorate %10 Location 0
 %11 = OpTypePointer Input %5
 %13 = OpTypeInt 32 0
 %14 = OpConstant %13 0
-%17 = OpConstant %13 1
-%20 = OpConstant %13 2
-%23 = OpConstant %13 3
-%25 = OpTypeBool
+%17 = OpConstant %13 2
+%19 = OpTypeBool
+%24 = OpConstant %13 3
+%27 = OpConstant %13 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %30
@@ -48,15 +57,20 @@ OpBranch %30
 %15 = OpLoad %5 %12
 %16 = OpAccessChain %11 %8 %17
 %18 = OpLoad %5 %16
-%19 = OpAccessChain %11 %8 %20
-%21 = OpLoad %5 %19
-%22 = OpAccessChain %11 %8 %23
-%24 = OpLoad %5 %22
-%26 = OpIsNan %25 %15
-%27 = OpIsNan %25 %18
-%28 = OpLogicalOr %25 %26 %27
-%29 = OpSelect %5 %28 %21 %24
-OpStore %10 %29
+%20 = OpIsNan %19 %15
+OpSelectionMerge %32 None
+OpBranchConditional %20 %32 %31
+%31 = OpLabel
+%23 = OpAccessChain %11 %8 %24
+%25 = OpLoad %5 %23
+%26 = OpAccessChain %11 %8 %27
+%28 = OpLoad %5 %26
+%29 = OpIsNan %19 %28
+%22 = OpSelect %5 %29 %18 %25
+OpBranch %32
+%32 = OpLabel
+%21 = OpPhi %5 %18 %30 %22 %31
+OpStore %10 %21
 OpReturn
 OpFunctionEnd
 #endif

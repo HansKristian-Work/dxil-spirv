@@ -5,7 +5,25 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    SV_Target = (isnan(A.x) && isnan(A.y)) ? A.z : A.w;
+    float _28;
+    if (isnan(A.x))
+    {
+        float frontier_phi_3_1_ladder;
+        if (isnan(A.y))
+        {
+            frontier_phi_3_1_ladder = A.z;
+        }
+        else
+        {
+            frontier_phi_3_1_ladder = A.w;
+        }
+        _28 = frontier_phi_3_1_ladder;
+    }
+    else
+    {
+        _28 = A.w;
+    }
+    SV_Target = _28;
 }
 
 
@@ -14,7 +32,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 32
+; Bound: 37
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -23,6 +41,7 @@ OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "A"
 OpName %10 "SV_Target"
+OpName %29 "frontier_phi_3.1.ladder"
 OpDecorate %8 Location 0
 OpDecorate %10 Location 0
 %1 = OpTypeVoid
@@ -36,10 +55,10 @@ OpDecorate %10 Location 0
 %11 = OpTypePointer Input %5
 %13 = OpTypeInt 32 0
 %14 = OpConstant %13 0
-%17 = OpConstant %13 1
-%20 = OpConstant %13 2
-%23 = OpConstant %13 3
-%25 = OpTypeBool
+%17 = OpConstant %13 3
+%19 = OpTypeBool
+%22 = OpConstant %13 2
+%25 = OpConstant %13 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %30
@@ -48,15 +67,27 @@ OpBranch %30
 %15 = OpLoad %5 %12
 %16 = OpAccessChain %11 %8 %17
 %18 = OpLoad %5 %16
-%19 = OpAccessChain %11 %8 %20
-%21 = OpLoad %5 %19
-%22 = OpAccessChain %11 %8 %23
-%24 = OpLoad %5 %22
-%26 = OpIsNan %25 %15
-%27 = OpIsNan %25 %18
-%28 = OpLogicalAnd %25 %26 %27
-%29 = OpSelect %5 %28 %21 %24
-OpStore %10 %29
+%20 = OpIsNan %19 %15
+OpSelectionMerge %35 None
+OpBranchConditional %20 %32 %31
+%32 = OpLabel
+%21 = OpAccessChain %11 %8 %22
+%23 = OpLoad %5 %21
+%24 = OpAccessChain %11 %8 %25
+%26 = OpLoad %5 %24
+%27 = OpIsNan %19 %26
+OpSelectionMerge %34 None
+OpBranchConditional %27 %34 %33
+%33 = OpLabel
+OpBranch %34
+%34 = OpLabel
+%29 = OpPhi %5 %23 %32 %18 %33
+OpBranch %35
+%31 = OpLabel
+OpBranch %35
+%35 = OpLabel
+%28 = OpPhi %5 %18 %31 %29 %34
+OpStore %10 %28
 OpReturn
 OpFunctionEnd
 #endif
