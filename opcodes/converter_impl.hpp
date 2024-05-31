@@ -219,11 +219,13 @@ struct Converter::Impl
 	void emit_builtin_interpolation_decorations(spv::Id variable_id, DXIL::Semantic semantic, DXIL::InterpolationMode mode);
 
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
+	bool execution_model_lib_target = false;
 	bool emit_execution_modes();
 	bool emit_execution_modes_late();
 	void emit_execution_modes_post_code_generation();
 	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
+	bool emit_execution_modes_node();
 	bool emit_execution_modes_geometry();
 	bool emit_execution_modes_hull();
 	bool emit_execution_modes_domain();

@@ -3417,6 +3417,13 @@ static const llvm::MDOperand *get_shader_property_tag(const llvm::MDNode *func_m
 	return nullptr;
 }
 
+static bool get_execution_model_lib_target(const llvm::Module &module, llvm::MDNode *entry_point_meta)
+{
+	String model;
+	Converter::Impl::get_shader_model(module, &model, nullptr, nullptr);
+	return model == "lib";
+}
+
 static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm::MDNode *entry_point_meta)
 {
 	if (auto *tag = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::ShaderKind))
@@ -3439,6 +3446,7 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 		case DXIL::ShaderKind::Geometry:
 			return spv::ExecutionModelGeometry;
 		case DXIL::ShaderKind::Compute:
+		case DXIL::ShaderKind::Node:
 			return spv::ExecutionModelGLCompute;
 		case DXIL::ShaderKind::Amplification:
 			return spv::ExecutionModelTaskEXT;
@@ -5211,6 +5219,11 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	return false;
 }
 
+bool Converter::Impl::emit_execution_modes_node()
+{
+	return emit_execution_modes_compute();
+}
+
 bool Converter::Impl::emit_execution_modes_compute()
 {
 	auto *num_threads_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NumThreads);
@@ -5758,21 +5771,9 @@ bool Converter::Impl::analyze_execution_modes_meta()
 {
 	auto *meta = entry_point_meta;
 
-	switch (execution_model)
-	{
-	case spv::ExecutionModelRayGenerationKHR:
-	case spv::ExecutionModelMissKHR:
-	case spv::ExecutionModelIntersectionKHR:
-	case spv::ExecutionModelAnyHitKHR:
-	case spv::ExecutionModelCallableKHR:
-	case spv::ExecutionModelClosestHitKHR:
+	if (execution_model_lib_target)
 		if (auto *null_meta = get_null_entry_point_meta(bitcode_parser.get_module()))
 			meta = null_meta;
-		break;
-
-	default:
-		break;
-	}
 
 	auto flags = get_shader_flags(meta);
 	execution_mode_meta.native_16bit_operations = (flags & DXIL::ShaderFlagNativeLowPrecision) != 0;
@@ -5841,8 +5842,16 @@ bool Converter::Impl::emit_execution_modes()
 	switch (execution_model)
 	{
 	case spv::ExecutionModelGLCompute:
-		if (!emit_execution_modes_compute())
-			return false;
+		if (execution_model_lib_target)
+		{
+			if (!emit_execution_modes_node())
+				return false;
+		}
+		else
+		{
+			if (!emit_execution_modes_compute())
+				return false;
+		}
 		break;
 
 	case spv::ExecutionModelGeometry:
@@ -6569,6 +6578,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto &module = bitcode_parser.get_module();
 	entry_point_meta = get_entry_point_meta(module, options.entry_point.empty() ? nullptr : options.entry_point.c_str());
 	execution_model = get_execution_model(module, entry_point_meta);
+	execution_model_lib_target = get_execution_model_lib_target(module, entry_point_meta);
 
 	if (execution_model == spv::ExecutionModelFragment &&
 	    resource_mapping_iface && resource_mapping_iface->has_nontrivial_stage_input_remapping())

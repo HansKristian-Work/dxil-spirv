@@ -38,6 +38,7 @@
 #include "opcodes/dxil/dxil_ray_tracing.hpp"
 #include "opcodes/dxil/dxil_mesh.hpp"
 #include "opcodes/dxil/dxil_ags.hpp"
+#include "opcodes/dxil/dxil_workgraph.hpp"
 
 namespace dxil_spv
 {
@@ -358,6 +359,23 @@ struct DXILDispatcher
 		OP(StoreVertexOutput) = emit_store_vertex_output_instruction;
 		OP(StorePrimitiveOutput) = emit_store_primitive_output_instruction;
 		OP(DispatchMesh) = emit_dispatch_mesh_instruction;
+
+		// dxil_workgraph.hpp
+		OP(AllocateNodeOutputRecords) = emit_allocate_node_output_records;
+		OP(GetNodeRecordPtr) = emit_get_node_record_ptr;
+		OP(IncrementOutputCount) = emit_increment_output_count;
+		OP(OutputComplete) = emit_output_complete;
+		OP(GetInputRecordCount) = emit_get_input_record_count;
+		OP(FinishedCrossGroupSharing) = emit_finished_cross_group_sharing;
+		OP(BarrierByMemoryType) = emit_barrier_by_memory_type;
+		OP(BarrierByMemoryHandle) = emit_barrier_by_memory_handle;
+		OP(BarrierByNodeRecordHandle) = emit_barrier_by_node_record_handle;
+		OP(IndexNodeHandle) = emit_index_node_handle;
+		OP(AnnotateNodeHandle) = emit_annotate_node_handle;
+		OP(CreateNodeInputRecordHandle) = emit_create_node_input_record_handle;
+		OP(AnnotateNodeRecordHandle) = emit_annotate_node_record_handle;
+		OP(NodeOutputIsValid) = emit_node_output_is_valid;
+		OP(GetRemainingRecursionLevels) = emit_get_remaining_recursion_levels;
 	}
 
 #undef OP
