@@ -455,6 +455,38 @@ enum class Op : unsigned
 	TextureGatherRaw = 223,
 	SampleCmpLevel = 224,
 	TextureStoreSample = 225,
+	WaveMatrix_Annotate = 226,
+	WaveMatrix_Depth = 227,
+	WaveMatrix_Fill = 228,
+	WaveMatrix_LoadRawBuf = 229,
+	WaveMatrix_LoadGroupShared = 230,
+	WaveMatrix_StoreRawBuf = 231,
+	WaveMatrix_StoreGroupShared = 232,
+	WaveMatrix_Multiply = 233,
+	WaveMatrix_MultiplyAccumulate = 234,
+	WaveMatrix_ScalarOp = 235,
+	WaveMatrix_SumAccumulate = 236,
+	WaveMatrix_Add = 237,
+	AllocateNodeOutputRecords = 238,
+	GetNodeRecordPtr = 239,
+	IncrementOutputCount = 240,
+	OutputComplete = 241,
+	GetInputRecordCount = 242,
+	FinishedCrossGroupSharing = 243,
+	BarrierByMemoryType = 244,
+	BarrierByMemoryHandle = 245,
+	BarrierByNodeRecordHandle = 246,
+	CreateNodeOutputHandle = 247,
+	IndexNodeHandle = 248,
+	AnnotateNodeHandle = 249,
+	CreateNodeInputRecordHandle = 250,
+	AnnotateNodeRecordHandle = 251,
+	NodeOutputIsValid = 252,
+	GetRemainingRecursionLevels = 253,
+	SampleCmpGrad = 254,
+	SampleCmpBias = 255,
+	StartVertexLocation = 256,
+	StartInstanceLocation = 257,
 
 	Count
 };
@@ -485,7 +517,8 @@ enum class ShaderPropertyTag : uint8_t
 	ShaderKind = 8,
 	MSState = 9,
 	ASState = 10,
-	WaveSize = 11
+	WaveSize = 11,
+	RangedWaveSize = 23
 };
 
 enum class GSStageOutTags : uint32_t
