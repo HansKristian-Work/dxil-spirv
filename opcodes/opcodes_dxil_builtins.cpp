@@ -63,6 +63,8 @@ struct DXILDispatcher
 		OP(AnnotateHandle) = emit_annotate_handle_instruction;
 		OP(CreateHandleFromHeap) = emit_create_handle_from_heap_instruction;
 		OP(CreateHandleFromBinding) = emit_create_handle_from_binding_instruction;
+		OP(StartVertexLocation) = emit_load_draw_parameter_dispatch<spv::BuiltInBaseVertex>;
+		OP(StartInstanceLocation) = emit_load_draw_parameter_dispatch<spv::BuiltInBaseInstance>;
 
 		// dxil_sampling.hpp
 		OP(Sample) = emit_sample_instruction_dispatch<DXIL::Op::Sample>;
