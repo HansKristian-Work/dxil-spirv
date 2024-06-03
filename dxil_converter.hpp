@@ -748,8 +748,8 @@ public:
 	void get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const;
 	// After compilation, query expected patch size.
 	uint32_t get_patch_vertex_count() const;
-	// If non-zero, a CS must be compiled for a specific wave size.
-	uint32_t get_compute_required_wave_size() const;
+	// If any of these are non-zero, a CS may have to be compiled for a specific wave size.
+	void get_compute_wave_size_range(uint32_t &min, uint32_t &max, uint32_t &preferred) const;
 	// If non-zero, similar to required, but can be ignored. Used as a workaround hint or performance hint.
 	uint32_t get_compute_heuristic_max_wave_size() const;
 
