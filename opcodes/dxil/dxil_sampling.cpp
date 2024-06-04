@@ -519,7 +519,8 @@ static bool binary_op_is_multiple_of_derivative(const llvm::Value *grad_value, c
 	return false;
 }
 
-static spv::Id sample_grad_is_lod_bias(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned num_coords)
+static spv::Id sample_grad_is_lod_bias(Converter::Impl &impl, const llvm::CallInst *instruction, unsigned num_coords,
+                                       unsigned grad_argument_index)
 {
 	if (!impl.current_block)
 		return 0;
@@ -539,8 +540,8 @@ static spv::Id sample_grad_is_lod_bias(Converter::Impl &impl, const llvm::CallIn
 		if (llvm::isa<llvm::Constant>(coord))
 			return 0;
 
-		auto *grad_x = instruction->getOperand(i + 10);
-		auto *grad_y = instruction->getOperand(i + 13);
+		auto *grad_x = instruction->getOperand(i + grad_argument_index);
+		auto *grad_y = instruction->getOperand(i + grad_argument_index + 3);
 
 		// Gradients must have been computed in this block,
 		// otherwise we might introduce bugs with helper lanes being deactivated,
@@ -629,16 +630,18 @@ static spv::Id sample_grad_is_lod_bias(Converter::Impl &impl, const llvm::CallIn
 	return op->id;
 }
 
-bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	bool comparison_sampling = opcode == DXIL::Op::SampleCmpGrad;
+
 	// Elide dead loads.
-	if (!impl.composite_is_accessed(instruction))
+	if (!comparison_sampling && !impl.composite_is_accessed(instruction))
 		return true;
 
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
-	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, false);
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, comparison_sampling);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	unsigned num_coords_full = 0, num_coords = 0;
@@ -655,7 +658,8 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	if (!get_texel_offsets(impl, instruction, image_ops, 7, num_coords, offsets, false))
 		return false;
 
-	spv::Id bias_id = sample_grad_is_lod_bias(impl, instruction, num_coords);
+	unsigned grad_argument_index = comparison_sampling ? 11 : 10;
+	spv::Id bias_id = sample_grad_is_lod_bias(impl, instruction, num_coords, grad_argument_index);
 
 	spv::Id grad_x[3] = {};
 	spv::Id grad_y[3] = {};
@@ -667,15 +671,16 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	else
 	{
 		for (unsigned i = 0; i < num_coords; i++)
-			grad_x[i] = impl.get_id_for_value(instruction->getOperand(i + 10));
+			grad_x[i] = impl.get_id_for_value(instruction->getOperand(i + grad_argument_index));
 		for (unsigned i = 0; i < num_coords; i++)
-			grad_y[i] = impl.get_id_for_value(instruction->getOperand(i + 13));
+			grad_y[i] = impl.get_id_for_value(instruction->getOperand(i + grad_argument_index + 3));
 	}
 
+	unsigned min_lod_argument_index = comparison_sampling ? 17 : 16;
 	spv::Id aux_argument = 0;
-	if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(16)))
+	if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(min_lod_argument_index)))
 	{
-		aux_argument = impl.get_id_for_value(instruction->getOperand(16));
+		aux_argument = impl.get_id_for_value(instruction->getOperand(min_lod_argument_index));
 		image_ops |= spv::ImageOperandsMinLodMask;
 		builder.addCapability(spv::CapabilityMinLod);
 	}
@@ -686,7 +691,7 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		builder.addCapability(spv::CapabilitySparseResidency);
 
 	auto effective_component_type = Converter::Impl::get_effective_typed_resource_type(meta.component_type);
-	spv::Id texel_type = impl.get_type_id(effective_component_type, 1, 4);
+	spv::Id texel_type = impl.get_type_id(effective_component_type, 1, comparison_sampling ? 1 : 4);
 	spv::Id sample_type;
 
 	if (sparse)
@@ -694,22 +699,37 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	else
 		sample_type = texel_type;
 
-	spv::Op opcode;
-	if (bias_id)
-		opcode = sparse ? spv::OpImageSparseSampleImplicitLod : spv::OpImageSampleImplicitLod;
-	else
-		opcode = sparse ? spv::OpImageSparseSampleExplicitLod : spv::OpImageSampleExplicitLod;
+	spv::Id dref_id = 0;
+	spv::Op spv_op;
+	if (comparison_sampling)
+	{
+		if (bias_id)
+			spv_op = sparse ? spv::OpImageSparseSampleDrefImplicitLod : spv::OpImageSampleDrefImplicitLod;
+		else
+			spv_op = sparse ? spv::OpImageSparseSampleDrefExplicitLod : spv::OpImageSampleDrefExplicitLod;
 
-	Operation *op = impl.allocate(opcode, instruction, sample_type);
+		dref_id = impl.get_id_for_value(instruction->getOperand(10));
+	}
+	else
+	{
+		if (bias_id)
+			spv_op = sparse ? spv::OpImageSparseSampleImplicitLod : spv::OpImageSampleImplicitLod;
+		else
+			spv_op = sparse ? spv::OpImageSparseSampleExplicitLod : spv::OpImageSampleExplicitLod;
+	}
+
+	Operation *op = impl.allocate(spv_op, instruction, sample_type);
 
 	if (!sparse)
 		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
 
-	op->add_ids({
-	    combined_image_sampler_id,
-	    impl.build_vector(builder.makeFloatType(32), coord, num_coords_full),
-	    image_ops,
-	});
+	op->add_id(combined_image_sampler_id);
+	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
+
+	if (dref_id)
+		op->add_id(dref_id);
+
+	op->add_id(image_ops);
 
 	if (image_ops & spv::ImageOperandsGradMask)
 	{
@@ -730,7 +750,18 @@ bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto *target_type = instruction->getType()->getStructElementType(0);
 
 	if (sparse)
-		impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
+		impl.repack_sparse_feedback(meta.component_type, comparison_sampling ? 1 : 4, instruction, target_type);
+	else if (comparison_sampling)
+	{
+		spv::Id loaded_id = op->id;
+		auto tmp = meta.component_type;
+		impl.fixup_load_type_typed(tmp, 1, loaded_id, target_type);
+		Operation *splat_op =
+			impl.allocate(spv::OpCompositeConstruct, builder.makeVectorType(impl.get_type_id(target_type), 4));
+		splat_op->add_ids({ loaded_id, loaded_id, loaded_id, loaded_id });
+		impl.add(splat_op);
+		impl.rewrite_value(instruction, splat_op->id);
+	}
 	else
 	{
 		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
