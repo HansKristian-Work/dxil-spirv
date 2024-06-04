@@ -503,6 +503,19 @@ struct Converter::Impl
 	UnorderedMap<uint32_t, ClipCullMeta> output_clip_cull_meta;
 	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage);
 
+	struct NodeInputMeta
+	{
+		spv::Id private_bda_var_id; // Private variable which holds a BDA to the node.
+		uint32_t payload_stride; // Stride for the payload. This is recorded in metadata.
+	};
+
+	struct NodeOutputMeta
+	{
+	};
+
+	NodeInputMeta node_input = {};
+	Vector<NodeOutputMeta> node_outputs;
+
 	bool emit_instruction(CFGNode *block, const llvm::Instruction &instruction);
 	bool emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction);
 
@@ -554,9 +567,11 @@ struct Converter::Impl
 		spv::Id id;
 		String name;
 		Vector<spv::Id> subtypes;
+		bool physical_layout;
 	};
 	Vector<StructTypeEntry> cached_struct_types;
-	spv::Id get_struct_type(const Vector<spv::Id> &type_ids, const char *name = nullptr);
+	spv::Id get_struct_type(const Vector<spv::Id> &type_ids, bool physical_layout, const char *name = nullptr);
+	void deduce_physical_offsets(spv::Id struct_type_id, const Vector<spv::Id> &type_ids);
 
 	void set_option(const OptionBase &cap);
 	struct

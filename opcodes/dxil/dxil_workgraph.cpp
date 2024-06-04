@@ -35,7 +35,63 @@ bool emit_allocate_node_output_records(Converter::Impl &impl, const llvm::CallIn
 
 bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	auto &builder = impl.builder();
+	if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeRecordHandle))
+	{
+		// Input pointer.
+		auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(64));
+		load_op->add_id(impl.node_input.private_bda_var_id);
+		impl.add(load_op);
+
+		spv::Id addr = load_op->id;
+
+		uint32_t const_op;
+		if (get_constant_operand(inst, 2, &const_op))
+		{
+			if (const_op != 0)
+			{
+				auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
+				add_op->add_id(addr);
+				add_op->add_id(builder.makeUint64Constant(uint64_t(impl.node_input.payload_stride) * const_op));
+				impl.add(add_op);
+
+				addr = add_op->id;
+			}
+		}
+		else
+		{
+			auto *offset_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+			offset_op->add_id(builder.makeUintConstant(impl.node_input.payload_stride));
+			offset_op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+			impl.add(offset_op);
+
+			auto *conv_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
+			conv_op->add_id(offset_op->id);
+			impl.add(conv_op);
+
+			auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
+			add_op->add_id(addr);
+			add_op->add_id(conv_op->id);
+			impl.add(add_op);
+
+			addr = add_op->id;
+		}
+
+		auto *cast_op = impl.allocate(spv::OpConvertUToPtr, inst);
+		cast_op->add_id(addr);
+		impl.add(cast_op);
+		return true;
+	}
+	else if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeHandle))
+	{
+		// Output pointer.
+		return false;
+	}
+	else
+	{
+		// Should not happen.
+		return false;
+	}
 }
 
 bool emit_increment_output_count(Converter::Impl &impl, const llvm::CallInst *inst)
@@ -96,10 +152,13 @@ bool emit_annotate_node_record_handle(Converter::Impl &impl, const llvm::CallIns
 	if (!value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::CreateNodeInputRecordHandle))
 		return false;
 
-	auto *type_operand = llvm::cast<llvm::ConstantAggregate>(inst->getOperand(2));
-	uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
-	uint32_t record_size = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(1))->getUniqueInteger().getZExtValue();
-	return false;
+	//auto *type_operand = llvm::cast<llvm::ConstantAggregate>(inst->getOperand(2));
+	//uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
+	//uint32_t record_size = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(1))->getUniqueInteger().getZExtValue();
+	// This is also a dummy. There is only one node record handle, and we can defer dealing with pointers until
+	// GetNodeRecordPtr.
+
+	return true;
 }
 
 bool emit_node_output_is_valid(Converter::Impl &impl, const llvm::CallInst *inst)

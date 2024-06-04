@@ -3520,9 +3520,16 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 
 	case llvm::Type::TypeID::PointerTyID:
 	{
-		// Have to deal with this from the outside. Should only be relevant for getelementptr and instructions like that.
-		LOGE("Cannot reliably convert LLVM pointer type, we cannot differentiate between Function and Private.\n");
-		std::terminate();
+		if (DXIL::AddressSpace(type->getAddressSpace()) != DXIL::AddressSpace::PhysicalNodeIO)
+		{
+			// Have to deal with this from the outside. Should only be relevant for getelementptr and instructions like that.
+			LOGE("Cannot reliably convert LLVM pointer type, we cannot differentiate between Function and Private.\n");
+			std::terminate();
+		}
+
+		// This is free-flowing BDA in DXIL. We'll deal with it as-is.
+		// Main complication is that we have to emit Offset information ourselves.
+		break;
 	}
 
 	case llvm::Type::TypeID::ArrayTyID:
@@ -3556,10 +3563,24 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type)
 	}
 }
 
-spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, const char *name)
+void Converter::Impl::deduce_physical_offsets(spv::Id struct_type_id, const Vector<spv::Id> &type_ids)
+{
+	uint32_t offset = 0;
+	for (auto &type_id : type_ids)
+	{
+		// DXIL seems to imply scalar alignment for node payload.
+		// It's simple and easy, so just roll with that.
+		uint32_t scalar_alignment = 0;
+
+	}
+}
+
+spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, bool physical_layout, const char *name)
 {
 	auto itr = std::find_if(cached_struct_types.begin(), cached_struct_types.end(), [&](const StructTypeEntry &entry) -> bool {
 		if (type_ids.size() != entry.subtypes.size())
+			return false;
+		if (physical_layout != entry.physical_layout)
 			return false;
 		if ((!name && !entry.name.empty()) || (entry.name != name))
 			return false;
@@ -3577,6 +3598,8 @@ spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, const 
 		entry.subtypes = type_ids;
 		entry.name = name ? name : "";
 		entry.id = builder().makeStructType(type_ids, entry.name.c_str());
+		deduce_physical_offsets(entry.id, type_ids);
+		entry.physical_layout = physical_layout;
 		spv::Id id = entry.id;
 		cached_struct_types.push_back(std::move(entry));
 		return id;
