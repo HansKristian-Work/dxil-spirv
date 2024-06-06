@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 39
+#define DXIL_SPV_API_VERSION_MINOR 40
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -816,6 +816,8 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_workgroup_dim
  * If *wave_size is non-zero, maps to requiredSubgroupSize, otherwise, VARYING_SUBGROUP_SIZE. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_required_wave_size(
 	dxil_spv_converter converter, unsigned *wave_size);
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_wave_size_range(
+	dxil_spv_converter converter, unsigned *wave_size, unsigned *wave_size_max, unsigned *wave_size_preferred);
 
 /* After compilation. Queries suggested maximum wave size. The behavior here depends on heuristics
  * and can be ignored, but is often used for workarounds and identifying dubious shader code.

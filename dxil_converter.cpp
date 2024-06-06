@@ -93,14 +93,16 @@ uint32_t Converter::get_patch_vertex_count() const
 	return impl->execution_mode_meta.stage_input_num_vertex;
 }
 
-uint32_t Converter::get_compute_required_wave_size() const
+void Converter::get_compute_wave_size_range(uint32_t &min, uint32_t &max, uint32_t &preferred) const
 {
-	return impl->execution_mode_meta.required_wave_size;
+	min = impl->execution_mode_meta.wave_size_min;
+	max = impl->execution_mode_meta.wave_size_max;
+	preferred = impl->execution_mode_meta.wave_size_preferred;
 }
 
 uint32_t Converter::get_compute_heuristic_max_wave_size() const
 {
-	if (impl->execution_mode_meta.required_wave_size)
+	if (impl->execution_mode_meta.wave_size_min)
 		return 0;
 
 	return impl->execution_mode_meta.heuristic_max_wave_size;
@@ -5568,15 +5570,28 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 
 	if (options.force_wave_size_enable && options.force_subgroup_size)
 	{
-		execution_mode_meta.required_wave_size = options.force_subgroup_size;
+		execution_mode_meta.wave_size_min = options.force_subgroup_size;
+		execution_mode_meta.wave_size_max = 0;
+		execution_mode_meta.wave_size_preferred = 0;
 	}
 	else
 	{
 		auto *wave_size_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::WaveSize);
-		if (wave_size_node)
+		auto *wave_size_range_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::RangedWaveSize);
+
+		if (wave_size_range_node)
+		{
+			auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_range_node);
+			execution_mode_meta.wave_size_min = get_constant_metadata(wave_size, 0);
+			execution_mode_meta.wave_size_max = get_constant_metadata(wave_size, 1);
+			execution_mode_meta.wave_size_preferred = get_constant_metadata(wave_size, 2);
+		}
+		else if (wave_size_node)
 		{
 			auto *wave_size = llvm::cast<llvm::MDNode>(*wave_size_node);
-			execution_mode_meta.required_wave_size = get_constant_metadata(wave_size, 0);
+			execution_mode_meta.wave_size_min = get_constant_metadata(wave_size, 0);
+			execution_mode_meta.wave_size_max = 0;
+			execution_mode_meta.wave_size_preferred = 0;
 		}
 	}
 

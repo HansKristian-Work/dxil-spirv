@@ -30,7 +30,7 @@ namespace dxil_spv
 bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num_coords, uint32_t *num_dimensions);
 
 bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
-bool emit_sample_grad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction, bool multi_sampled);
@@ -54,6 +54,12 @@ template <DXIL::Op opcode>
 static inline bool emit_sample_instruction_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	return emit_sample_instruction(opcode, impl, instruction);
+}
+
+template <DXIL::Op opcode>
+static inline bool emit_sample_grad_instruction_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_sample_grad_instruction(opcode, impl, instruction);
 }
 
 template <bool multi_sampled>

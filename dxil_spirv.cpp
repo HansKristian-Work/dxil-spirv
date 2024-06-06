@@ -1138,8 +1138,10 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 
 		unsigned heuristic_wave_size = 0;
-		unsigned wave_size = 0;
-		dxil_spv_converter_get_compute_required_wave_size(converter, &wave_size);
+		unsigned wave_size_min = 0;
+		unsigned wave_size_max = 0;
+		unsigned wave_size_preferred = 0;
+		dxil_spv_converter_get_compute_wave_size_range(converter, &wave_size_min, &wave_size_max, &wave_size_preferred);
 		dxil_spv_converter_get_compute_heuristic_max_wave_size(converter, &heuristic_wave_size);
 
 		if (args.validate)
@@ -1155,10 +1157,14 @@ int main(int argc, char **argv)
 
 		if (args.emit_asm || (!args.glsl && args.output_path.empty()))
 		{
-			if (wave_size)
+			if (wave_size_min)
 			{
 				spirv_asm_string += "// WaveSize(";
-				spirv_asm_string += std::to_string(wave_size);
+				spirv_asm_string += std::to_string(wave_size_min);
+				if (wave_size_max || wave_size_preferred)
+					spirv_asm_string += "," + std::to_string(wave_size_max ? wave_size_max : wave_size_min);
+				if (wave_size_preferred)
+					spirv_asm_string += "," + std::to_string(wave_size_preferred);
 				spirv_asm_string += ")\n";
 			}
 

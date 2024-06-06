@@ -43,11 +43,18 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction,
                                        const llvm::Value *cbv_handle, uint32_t scalar_index_offset, uint32_t stride);
 bool cbuffer_supports_gep_punchthrough(Converter::Impl &impl, const llvm::Value *cbv_handle);
+bool emit_load_draw_parameter_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction);
 
 template <GLSLstd450 opcode>
 static inline bool emit_interpolate_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	return emit_interpolate_instruction(opcode, impl, instruction);
+}
+
+template <spv::BuiltIn builtin>
+static inline bool emit_load_draw_parameter_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_load_draw_parameter_instruction(builtin, impl, instruction);
 }
 
 struct AnnotateHandleMeta

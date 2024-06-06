@@ -63,6 +63,8 @@ struct DXILDispatcher
 		OP(AnnotateHandle) = emit_annotate_handle_instruction;
 		OP(CreateHandleFromHeap) = emit_create_handle_from_heap_instruction;
 		OP(CreateHandleFromBinding) = emit_create_handle_from_binding_instruction;
+		OP(StartVertexLocation) = emit_load_draw_parameter_dispatch<spv::BuiltInBaseVertex>;
+		OP(StartInstanceLocation) = emit_load_draw_parameter_dispatch<spv::BuiltInBaseInstance>;
 
 		// dxil_sampling.hpp
 		OP(Sample) = emit_sample_instruction_dispatch<DXIL::Op::Sample>;
@@ -71,7 +73,9 @@ struct DXILDispatcher
 		OP(SampleCmp) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmp>;
 		OP(SampleCmpLevelZero) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevelZero>;
 		OP(SampleCmpLevel) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpLevel>;
-		OP(SampleGrad) = emit_sample_grad_instruction;
+		OP(SampleCmpBias) = emit_sample_instruction_dispatch<DXIL::Op::SampleCmpBias>;
+		OP(SampleGrad) = emit_sample_grad_instruction_dispatch<DXIL::Op::SampleGrad>;
+		OP(SampleCmpGrad) = emit_sample_grad_instruction_dispatch<DXIL::Op::SampleCmpGrad>;
 		OP(TextureLoad) = emit_texture_load_instruction;
 		OP(TextureStore) = emit_texture_store_instruction<false>;
 		OP(TextureStoreSample) = emit_texture_store_instruction<true>;
