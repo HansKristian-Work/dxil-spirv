@@ -226,6 +226,7 @@ struct Converter::Impl
 	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
 	bool emit_execution_modes_node();
+	bool emit_execution_modes_node_input(llvm::MDNode *input);
 	bool emit_execution_modes_geometry();
 	bool emit_execution_modes_hull();
 	bool emit_execution_modes_domain();

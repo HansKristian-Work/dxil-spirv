@@ -1176,6 +1176,17 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 			}
 		}
 
+		// For NodeIO, we always have to tag with aligned mask.
+		if (DXIL::AddressSpace(instruction->getPointerOperand()->getType()->getAddressSpace()) ==
+		    DXIL::AddressSpace::PhysicalNodeIO)
+		{
+			// TODO: Properly track aligned size based on the GEP, but for now, just assume scalar.
+			op->add_literal(spv::MemoryAccessAlignedMask);
+			auto size_alignment = impl.get_physical_size_for_type(
+			    impl.builder().getContainedTypeId(impl.get_type_id(instruction->getPointerOperand()->getType(), true)));
+			op->add_literal(size_alignment.alignment);
+		}
+
 		impl.add(op);
 	}
 	return true;

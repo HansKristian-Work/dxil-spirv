@@ -5313,8 +5313,119 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	return false;
 }
 
+bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
+{
+	uint32_t num_ops = input->getNumOperands();
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
+		if (tag == DXIL::NodeMetadataTag::NodeIOFlags)
+		{
+			uint32_t node_io_flags = get_constant_metadata(input, i + 1);
+
+			switch (DXIL::NodeIOFlagBits(node_io_flags & DXIL::RecordGranularityMask))
+			{
+			case DXIL::NodeIOThreadRecordBit:
+				LOGI("Input ThreadRecord\n");
+				break;
+
+			case DXIL::NodeIOGroupRecordBit:
+				LOGI("Input GroupRecord\n");
+				break;
+
+			case DXIL::NodeIODispatchRecordBit:
+				LOGI("Input GroupRecord\n");
+				break;
+
+			default:
+				break;
+			}
+
+			// Sanity check the flags.
+			if ((node_io_flags & DXIL::NodeIOInputBit) == 0)
+				return false;
+			if ((node_io_flags & DXIL::NodeIOOutputBit) != 0)
+				return false;
+			if ((node_io_flags & DXIL::NodeIOReadWriteBit) != 0)
+				LOGI("  Input ReadWrite\n");
+			if ((node_io_flags & DXIL::NodeIOEmptyRecordBit) != 0)
+				LOGI("  Input EmptyRecord\n");
+			if ((node_io_flags & DXIL::NodeIONodeArrayBit) != 0)
+				LOGI("  Input NodeArray\n");
+			if ((node_io_flags & DXIL::NodeIOTrackRWInputSharingBit) != 0)
+				LOGI("  Input RWInputSharing\n");
+			if ((node_io_flags & DXIL::NodeIOGloballyCoherentBit) != 0)
+				LOGI("  Input GloballyCoherent\n");
+		}
+		else if (tag == DXIL::NodeMetadataTag::NodeRecordType)
+		{
+			auto *node_record_type = llvm::cast<llvm::MDNode>(input->getOperand(i + 1));
+			for (uint32_t j = 0; j < node_record_type->getNumOperands(); j += 2)
+			{
+				if (get_constant_metadata(node_record_type, j) == 0)
+				{
+					uint32_t input_node_size = get_constant_metadata(node_record_type, j + 1);
+					LOGI("InputNodeSize = %u\n", input_node_size);
+					node_input.payload_stride = input_node_size;
+					node_input.private_bda_var_id = create_variable(spv::StorageClassPrivate, builder().makeUintType(64), "NodeInputPayloadBDA");
+				}
+				else if (get_constant_metadata(node_record_type, j) == 1)
+				{
+					auto *dispatch_info = llvm::cast<llvm::MDNode>(node_record_type->getOperand(j + 1));
+					uint32_t byte_offset = get_constant_metadata(dispatch_info, 0);
+					auto component_type = DXIL::ComponentType(get_constant_metadata(dispatch_info, 1));
+					uint32_t num_components = get_constant_metadata(dispatch_info, 2);
+					LOGI("SV_DispatchGrid { offset = %u, %s%u }\n", byte_offset,
+					     component_type == DXIL::ComponentType::U32 ? "uint" : "ushort", num_components);
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_execution_modes_node()
 {
+	auto *inputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeInputs);
+	if (inputs_node)
+	{
+		auto *inputs = llvm::cast<llvm::MDNode>(*inputs_node);
+
+		// Current spec only allows one input node.
+		if (inputs->getNumOperands() != 1)
+			return false;
+
+		auto *input = llvm::cast<llvm::MDNode>(inputs->getOperand(0));
+		if (!emit_execution_modes_node_input(input))
+			return false;
+	}
+
+	auto *launch_type_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeLaunchType);
+	if (!launch_type_node)
+		return false;
+
+	auto launch_type = DXIL::NodeLaunchType(
+	    llvm::cast<llvm::ConstantAsMetadata>(*launch_type_node)->getValue()->getUniqueInteger().getZExtValue());
+
+	switch (launch_type)
+	{
+	case DXIL::NodeLaunchType::Broadcasting:
+		LOGI("Broadcasting\n");
+		break;
+
+	case DXIL::NodeLaunchType::Coalescing:
+		LOGI("Coalescing\n");
+		break;
+
+	case DXIL::NodeLaunchType::Thread:
+		LOGI("Thread\n");
+		break;
+
+	default:
+		return false;
+	}
+
 	return emit_execution_modes_compute();
 }
 
@@ -6703,8 +6814,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	result.node_pool = std::make_unique<CFGNodePool>();
 	auto &pool = *result.node_pool;
 
+	bool need_bda =
+		options.physical_storage_buffer ||
+		(execution_model_lib_target &&
+		 execution_model == spv::ExecutionModelGLCompute);
+
 	spirv_module.set_descriptor_qa_info(options.descriptor_qa);
-	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", options.physical_storage_buffer);
+	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", need_bda);
 
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
 	assert(func);

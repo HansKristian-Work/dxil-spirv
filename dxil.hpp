@@ -694,8 +694,8 @@ enum NodeIOFlagBits
 	NodeIODispatchRecordBit = 0x60,
 	RecordGranularityMask = 0x60,
 	NodeIOKindMask = 0x7f,
-	NodeTrackRWInputSharingMask = 0x100,
-	NodeGloballyCoherentMask = 0x200,
+	NodeIOTrackRWInputSharingBit = 0x100,
+	NodeIOGloballyCoherentBit = 0x200,
 	NodeFlagsMask = 0x100,
 	RecordFlagsMask = 0x200
 };
