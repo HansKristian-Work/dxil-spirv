@@ -1507,7 +1507,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 	if (!impl.cmpxchg_type)
 		impl.cmpxchg_type =
-		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, false, "CmpXchgResult");
+		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, 0, "CmpXchgResult");
 
 	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
 	op->add_ids({ atomic_op->id, cmp_op->id });

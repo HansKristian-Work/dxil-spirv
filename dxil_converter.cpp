@@ -294,7 +294,7 @@ static spv::Id build_ssbo_runtime_array_type(Converter::Impl &impl, RawType type
 		value_type = builder.makeVectorType(value_type, vecsize);
 	spv::Id element_array_type = builder.makeRuntimeArray(value_type);
 	builder.addDecoration(element_array_type, spv::DecorationArrayStride, vecsize * (bits / 8));
-	spv::Id block_type_id = impl.get_struct_type({ element_array_type }, false, name.c_str());
+	spv::Id block_type_id = impl.get_struct_type({ element_array_type }, 0, name.c_str());
 	builder.addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
 	builder.addDecoration(block_type_id, spv::DecorationBlock);
 
@@ -354,7 +354,7 @@ spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uin
 	builder.addDecoration(member_array_type, spv::DecorationArrayStride, element_size);
 
 	auto ubo_block_name = name.empty() ? "" : (name + "UBO");
-	spv::Id type_id = get_struct_type({ member_array_type }, false, ubo_block_name.c_str());
+	spv::Id type_id = get_struct_type({ member_array_type }, 0, ubo_block_name.c_str());
 	builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
@@ -504,7 +504,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				spv::Id runtime_array_type_id = builder().makeRuntimeArray(uvec2_type);
 				builder().addDecoration(runtime_array_type_id, spv::DecorationArrayStride, sizeof(uint64_t));
 
-				type_id = get_struct_type({ runtime_array_type_id }, false, "AtomicCounters");
+				type_id = get_struct_type({ runtime_array_type_id }, 0, "AtomicCounters");
 				builder().addDecoration(type_id, spv::DecorationBlock);
 				builder().addMemberName(type_id, 0, "counters");
 				builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
@@ -564,7 +564,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 
 			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(num_elements), element_size);
 			builder().addDecoration(type_id, spv::DecorationArrayStride, element_size);
-			type_id = get_struct_type({ type_id }, false, "BindlessCBV");
+			type_id = get_struct_type({ type_id }, 0, "BindlessCBV");
 			builder().addDecoration(type_id, spv::DecorationBlock);
 			if (options.bindless_cbv_ssbo_emulation)
 				builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
@@ -2392,7 +2392,7 @@ void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num
 	for (unsigned i = 0; i < num_constant_words; i++)
 		members[i + num_descriptors] = builder.makeUintType(32);
 
-	spv::Id type_id = get_struct_type(members, false, "RootConstants");
+	spv::Id type_id = get_struct_type(members, 0, "RootConstants");
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
 	for (unsigned i = 0; i < num_descriptors; i++)
@@ -2496,7 +2496,7 @@ bool Converter::Impl::emit_shader_record_buffer()
 		}
 	}
 
-	type_id = get_struct_type(member_types, false, "SBTBlock");
+	type_id = get_struct_type(member_types, 0, "SBTBlock");
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
 	for (size_t i = 0; i < local_root_signature.size(); i++)
@@ -2711,13 +2711,13 @@ bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
 	    u32_type, builder().makeUintConstant(options.physical_address_descriptor_stride * 2), 0);
 	builder().addDecoration(u32_array_type, spv::DecorationArrayStride, 4);
 
-	spv::Id inner_struct_type = get_struct_type({ u32_array_type }, false, "DescriptorHeapRawPayload");
+	spv::Id inner_struct_type = get_struct_type({ u32_array_type }, 0, "DescriptorHeapRawPayload");
 	builder().addMemberDecoration(inner_struct_type, 0, spv::DecorationOffset, 0);
 
 	spv::Id inner_struct_array_type = builder().makeRuntimeArray(inner_struct_type);
 	builder().addDecoration(inner_struct_array_type, spv::DecorationArrayStride, 8u * options.physical_address_descriptor_stride);
 
-	spv::Id block_type_id = get_struct_type({ inner_struct_array_type }, false, "DescriptorHeapRobustnessSSBO");
+	spv::Id block_type_id = get_struct_type({ inner_struct_array_type }, 0, "DescriptorHeapRobustnessSSBO");
 	builder().addDecoration(block_type_id, spv::DecorationBlock);
 	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
 	builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
@@ -3495,7 +3495,7 @@ static spv::ExecutionModel get_execution_model(const llvm::Module &module, llvm:
 	return spv::ExecutionModelMax;
 }
 
-spv::Id Converter::Impl::get_type_id(const llvm::Type *type, bool physical_layout)
+spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags flags)
 {
 	auto &builder = spirv_module.get_builder();
 	switch (type->getTypeID())
@@ -3520,7 +3520,8 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, bool physical_layou
 
 	case llvm::Type::TypeID::PointerTyID:
 	{
-		if (DXIL::AddressSpace(type->getAddressSpace()) != DXIL::AddressSpace::PhysicalNodeIO)
+		if (DXIL::AddressSpace(type->getAddressSpace()) != DXIL::AddressSpace::PhysicalNodeIO ||
+		    (flags & TYPE_LAYOUT_PHYSICAL_BIT) == 0)
 		{
 			// Have to deal with this from the outside. Should only be relevant for getelementptr and instructions like that.
 			LOGE("Cannot reliably convert LLVM pointer type, we cannot differentiate between Function and Private.\n");
@@ -3529,7 +3530,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, bool physical_layou
 
 		// This is free-flowing BDA in DXIL. We'll deal with it as-is.
 		// Main complication is that we have to emit Offset information ourselves.
-		spv::Id pointee_type = get_type_id(type->getPointerElementType(), true);
+		spv::Id pointee_type = get_type_id(type->getPointerElementType(), flags);
 		return builder.makePointer(spv::StorageClassPhysicalStorageBuffer, pointee_type);
 	}
 
@@ -3539,21 +3540,21 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, bool physical_layou
 			return 0;
 
 		spv::Id array_size_id = builder.makeUintConstant(type->getArrayNumElements());
-		spv::Id element_type_id = get_type_id(type->getArrayElementType(), physical_layout);
+		spv::Id element_type_id = get_type_id(type->getArrayElementType(), flags & ~TYPE_LAYOUT_BLOCK_BIT);
 
-		if (physical_layout)
+		if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) != 0)
 		{
 			auto size_stride = get_physical_size_for_type(element_type_id);
 			uint32_t stride = size_stride.size;
 
 			// We always use scalar layout.
-			for (auto &cached_type : cached_array_types)
+			for (auto &cached_type : cached_physical_array_types)
 				if (cached_type.element_type_id == element_type_id && cached_type.array_size_id == array_size_id)
 					return cached_type.id;
 
 			spv::Id array_type_id = builder.makeArrayType(element_type_id, array_size_id, stride);
 			builder.addDecoration(array_size_id, spv::DecorationArrayStride, stride);
-			cached_array_types.push_back({ array_type_id, element_type_id, array_size_id });
+			cached_physical_array_types.push_back({ array_type_id, element_type_id, array_size_id });
 			return array_type_id;
 		}
 		else
@@ -3569,8 +3570,8 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, bool physical_layou
 		Vector<spv::Id> member_types;
 		member_types.reserve(struct_type->getStructNumElements());
 		for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
-			member_types.push_back(get_type_id(struct_type->getStructElementType(i), physical_layout));
-		return get_struct_type(member_types, physical_layout, "");
+			member_types.push_back(get_type_id(struct_type->getStructElementType(i), flags & ~TYPE_LAYOUT_BLOCK_BIT));
+		return get_struct_type(member_types, flags, "");
 	}
 
 	case llvm::Type::TypeID::VectorTyID:
@@ -3645,12 +3646,12 @@ void Converter::Impl::decorate_physical_offsets(spv::Id struct_type_id, const Ve
 	}
 }
 
-spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, bool physical_layout, const char *name)
+spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, TypeLayoutFlags flags, const char *name)
 {
 	auto itr = std::find_if(cached_struct_types.begin(), cached_struct_types.end(), [&](const StructTypeEntry &entry) -> bool {
 		if (type_ids.size() != entry.subtypes.size())
 			return false;
-		if (physical_layout != entry.physical_layout)
+		if (flags != entry.flags)
 			return false;
 		if ((!name && !entry.name.empty()) || (entry.name != name))
 			return false;
@@ -3668,9 +3669,9 @@ spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, bool p
 		entry.subtypes = type_ids;
 		entry.name = name ? name : "";
 		entry.id = builder().makeStructType(type_ids, entry.name.c_str());
-		if (physical_layout)
+		if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) != 0)
 			decorate_physical_offsets(entry.id, type_ids);
-		entry.physical_layout = physical_layout;
+		entry.flags = flags;
 		spv::Id id = entry.id;
 		cached_struct_types.push_back(std::move(entry));
 		return id;

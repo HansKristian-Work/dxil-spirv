@@ -381,7 +381,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	spv::Id sample_type;
 
 	if (sparse)
-		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, false, "SparseTexel");
+		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, 0, "SparseTexel");
 	else
 		sample_type = texel_type;
 
@@ -695,7 +695,7 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 	spv::Id sample_type;
 
 	if (sparse)
-		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, false, "SparseTexel");
+		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, 0, "SparseTexel");
 	else
 		sample_type = texel_type;
 
@@ -821,7 +821,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id sample_type;
 
 	if (sparse)
-		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, false, "SparseTexel");
+		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, 0, "SparseTexel");
 	else
 		sample_type = texel_type;
 
@@ -1143,7 +1143,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 	spv::Id sample_type;
 
 	if (sparse)
-		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, false, "SparseTexel");
+		sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, 0, "SparseTexel");
 	else
 		sample_type = texel_type;
 
