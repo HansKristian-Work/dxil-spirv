@@ -1097,7 +1097,12 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
 	resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), type_id);
 
-	auto storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
+	spv::StorageClass storage;
+	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
+		storage = spv::StorageClassPhysicalStorageBuffer;
+	else
+		storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
+
 	type_id = builder.makePointer(storage, type_id);
 
 	Operation *op = impl.allocate(instruction->isInBounds() ? spv::OpInBoundsAccessChain : spv::OpAccessChain,
@@ -1480,7 +1485,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 	if (!impl.cmpxchg_type)
 		impl.cmpxchg_type =
-		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, "CmpXchgResult");
+		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, false, "CmpXchgResult");
 
 	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
 	op->add_ids({ atomic_op->id, cmp_op->id });

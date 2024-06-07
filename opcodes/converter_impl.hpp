@@ -480,7 +480,7 @@ struct Converter::Impl
 	spv::Id get_temp_payload(spv::Id type, spv::StorageClass storage);
 
 	spv::Id get_type_id(DXIL::ComponentType element_type, unsigned rows, unsigned cols, bool force_array = false);
-	spv::Id get_type_id(const llvm::Type *type);
+	spv::Id get_type_id(const llvm::Type *type, bool physical_layout = false);
 	spv::Id get_type_id(spv::Id id) const;
 
 	struct ElementMeta
@@ -569,9 +569,24 @@ struct Converter::Impl
 		Vector<spv::Id> subtypes;
 		bool physical_layout;
 	};
+
+	struct ArrayTypeEntry
+	{
+		spv::Id id;
+		uint32_t element_type_id;
+		uint32_t array_size_id;
+	};
 	Vector<StructTypeEntry> cached_struct_types;
-	spv::Id get_struct_type(const Vector<spv::Id> &type_ids, bool physical_layout, const char *name = nullptr);
-	void deduce_physical_offsets(spv::Id struct_type_id, const Vector<spv::Id> &type_ids);
+	Vector<ArrayTypeEntry> cached_array_types;
+	spv::Id get_struct_type(const Vector<spv::Id> &type_ids, bool physical_layout, const char *name);
+	void decorate_physical_offsets(spv::Id struct_type_id, const Vector<spv::Id> &type_ids);
+
+	struct SizeAlignment
+	{
+		uint32_t size;
+		uint32_t alignment;
+	};
+	SizeAlignment get_physical_size_for_type(spv::Id type_id);
 
 	void set_option(const OptionBase &cap);
 	struct

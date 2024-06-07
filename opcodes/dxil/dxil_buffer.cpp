@@ -849,7 +849,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			spv::Id sparse_code_id = 0;
 			spv::Id sparse_loaded_id_type = 0;
 			if (sparse)
-				sparse_loaded_id_type = impl.get_struct_type({ extracted_id_type, loaded_id_type }, "SparseTexel");
+				sparse_loaded_id_type = impl.get_struct_type({ extracted_id_type, loaded_id_type }, false, "SparseTexel");
 
 			bool first_load = true;
 			for (unsigned i = 0; i < conservative_num_elements; i++)
@@ -991,7 +991,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		spv::Id sample_type;
 
 		if (sparse)
-			sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, "SparseTexel");
+			sample_type = impl.get_struct_type({ builder.makeUintType(32), texel_type }, false, "SparseTexel");
 		else
 			sample_type = texel_type;
 

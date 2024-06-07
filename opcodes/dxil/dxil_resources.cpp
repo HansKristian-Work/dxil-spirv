@@ -1628,7 +1628,7 @@ static bool build_bitcast_32x4_to_16x8_composite(Converter::Impl &impl, const ll
 		}
 	}
 
-	spv::Id struct_type_id = impl.get_struct_type(member_types, "CBVComposite16x8");
+	spv::Id struct_type_id = impl.get_struct_type(member_types, false, "CBVComposite16x8");
 	auto *composite = impl.allocate(spv::OpCompositeConstruct, struct_type_id);
 	for (auto &comp : u16_composites)
 		composite->add_id(comp);
