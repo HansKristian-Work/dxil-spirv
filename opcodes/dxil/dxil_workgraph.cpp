@@ -331,6 +331,30 @@ static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl)
 		store_op->add_id(workgroup_id);
 		impl.add(store_op);
 
+		spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
+		auto *load_local_id = impl.allocate(spv::OpLoad, uvec3_type);
+		load_local_id->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInLocalInvocationId));
+		impl.add(load_local_id);
+
+		for (unsigned i = 0; i < 3; i++)
+			elems[i] = builder.makeUintConstant(impl.execution_mode_meta.workgroup_threads[i]);
+		spv::Id workgroup_size = impl.build_vector(u32_type, elems, 3);
+
+		auto *mul_op = impl.allocate(spv::OpIMul, uvec3_type);
+		mul_op->add_id(workgroup_size);
+		mul_op->add_id(workgroup_id);
+		impl.add(mul_op);
+
+		auto *add_op = impl.allocate(spv::OpIAdd, uvec3_type);
+		add_op->add_id(mul_op->id);
+		add_op->add_id(load_local_id->id);
+		impl.add(add_op);
+
+		store_op = impl.allocate(spv::OpStore);
+		store_op->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInGlobalInvocationId));
+		store_op->add_id(add_op->id);
+		impl.add(store_op);
+
 		// TODO: For NodeMaxDispatchGrid, need to load grid size and determine if we should skip.
 		return 0;
 	}
