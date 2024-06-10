@@ -5377,6 +5377,7 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 					uint32_t byte_offset = get_constant_metadata(dispatch_info, 0);
 					auto component_type = DXIL::ComponentType(get_constant_metadata(dispatch_info, 1));
 					uint32_t num_components = get_constant_metadata(dispatch_info, 2);
+					node_input.dispatch_grid = { byte_offset, component_type, num_components };
 					LOGI("SV_DispatchGrid { offset = %u, %s%u }\n", byte_offset,
 					     component_type == DXIL::ComponentType::U32 ? "uint" : "ushort", num_components);
 				}
@@ -5484,6 +5485,10 @@ bool Converter::Impl::emit_execution_modes_node()
 
 	auto launch_type = DXIL::NodeLaunchType(
 	    llvm::cast<llvm::ConstantAsMetadata>(*launch_type_node)->getValue()->getUniqueInteger().getZExtValue());
+
+	// Currently don't care what the max dispatch grid is, just if we have to deal with it.
+	node_input.broadcast_has_max_grid =
+	    get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeMaxDispatchGrid) != nullptr;
 
 	node_input.launch_type = launch_type;
 
@@ -6254,12 +6259,11 @@ Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
 
 	auto *entry = pool.create_node();
 	current_block = &entry->ir.operations;
+	entry->ir.terminator.type = Terminator::Type::Return;
 
-	if (!emit_workgraph_dispatcher(*this, node_func->getId()))
+	if (!emit_workgraph_dispatcher(*this, pool, entry, node_func->getId()))
 		return {};
 
-
-	entry->ir.terminator.type = Terminator::Type::Return;
 	return { entry, spirv_module.get_entry_function() };
 }
 

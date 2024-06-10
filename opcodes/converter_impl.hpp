@@ -526,6 +526,14 @@ struct Converter::Impl
 		spv::Id u64_ptr_type_id;
 		spv::Id u32_ptr_type_id;
 		DXIL::NodeLaunchType launch_type;
+
+		struct
+		{
+			uint32_t offset;
+			DXIL::ComponentType component_type;
+			uint32_t count;
+		} dispatch_grid;
+		bool broadcast_has_max_grid;
 	};
 
 	struct NodeOutputMeta

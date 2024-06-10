@@ -54,5 +54,5 @@ enum NodeInputParameter
 	NodeGridDispatchZ = 6,
 };
 
-bool emit_workgraph_dispatcher(Converter::Impl &impl, spv::Id main_entry_id);
+bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode *entry, spv::Id main_entry_id);
 }
