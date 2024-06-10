@@ -196,6 +196,9 @@ struct Converter::Impl
 	ConvertedFunction::Function build_rov_main(const Vector<llvm::BasicBlock *> &bbs,
 	                                           CFGNodePool &pool,
 	                                           Vector<ConvertedFunction::Function> &leaves);
+	ConvertedFunction::Function build_node_main(const Vector<llvm::BasicBlock *> &bbs,
+	                                            CFGNodePool &pool,
+	                                            Vector<ConvertedFunction::Function> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);

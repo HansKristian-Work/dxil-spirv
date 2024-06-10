@@ -45,6 +45,7 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 
 		spv::Id addr = load_op->id;
 
+		// Handle NodeArray.
 		uint32_t const_op;
 		if (get_constant_operand(inst, 2, &const_op))
 		{
@@ -77,7 +78,11 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 			addr = add_op->id;
 		}
 
-		auto *cast_op = impl.allocate(spv::OpConvertUToPtr, inst);
+		spv::Id physical_type_id = impl.get_type_id(inst->getType(),
+		                                            Converter::Impl::TYPE_LAYOUT_BLOCK_BIT |
+		                                            Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
+
+		auto *cast_op = impl.allocate(spv::OpConvertUToPtr, inst, physical_type_id);
 		cast_op->add_id(addr);
 		impl.add(cast_op);
 		return true;

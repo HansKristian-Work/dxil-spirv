@@ -6145,6 +6145,29 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
 }
 
 ConvertedFunction::Function
+Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
+                                 CFGNodePool &pool,
+                                 Vector<ConvertedFunction::Function> &leaves)
+{
+	spv::Block *node_entry;
+	auto *node_func =
+		builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(),
+		                            "node_main", {}, {}, &node_entry);
+
+	// Set build point so alloca() functions can create variables correctly.
+	builder().setBuildPoint(node_entry);
+	auto *node_main = convert_function(visit_order);
+	leaves.push_back({ node_main, node_func });
+
+	auto *entry = pool.create_node();
+	auto *call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
+	call_op->add_id(node_func->getId());
+	entry->ir.operations.push_back(call_op);
+	entry->ir.terminator.type = Terminator::Type::Return;
+	return { entry, spirv_module.get_entry_function() };
+}
+
+ConvertedFunction::Function
 Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
                                  const Vector<llvm::BasicBlock *> &patch_visit_order,
                                  CFGNodePool &pool,
@@ -6869,6 +6892,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		result.entry = build_hull_main(visit_order, patch_visit_order, pool, result.leaf_functions);
 	else if (execution_mode_meta.declares_rov)
 		result.entry = build_rov_main(visit_order, pool, result.leaf_functions);
+	else if (execution_model_lib_target && execution_model == spv::ExecutionModelGLCompute)
+		result.entry = build_node_main(visit_order, pool, result.leaf_functions);
 	else
 	{
 		result.entry.entry = convert_function(visit_order);
