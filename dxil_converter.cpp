@@ -5391,6 +5391,79 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	spirv_module.register_builtin_shader_input(workgroup_id, spv::BuiltInWorkgroupId);
 	spirv_module.register_builtin_shader_input(global_invocation_id, spv::BuiltInGlobalInvocationId);
 
+	// Emit binding model.
+	// Push constants are our only option.
+	if (!options.inline_ubo_enable)
+	{
+		LOGE("When compiling for nodes, inline UBO path must be enabled for root parameters.\n");
+		return false;
+	}
+
+	// Declare the ABI for dispatching a node. This will change depending on the dispatch mode,
+	// and style of execution (indirect pull or array).
+
+	spv::Id u32_type_id = builder().makeUintType(32);
+	spv::Id u64_type_id = builder().makeUintType(64);
+
+	spv::Id u32_struct_type_id = builder().makeStructType({ u32_type_id }, "NodeReadonlyU32Ptr");
+	builder().addDecoration(u32_struct_type_id, spv::DecorationBlock);
+	builder().addMemberDecoration(u32_struct_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(u32_struct_type_id, 0, spv::DecorationNonWritable);
+	builder().addMemberName(u32_struct_type_id, 0, "value");
+	spv::Id u32_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u32_struct_type_id);
+
+	spv::Id u64_struct_type_id = builder().makeStructType({ u64_type_id }, "NodeReadonlyU64Ptr");
+	builder().addDecoration(u64_struct_type_id, spv::DecorationBlock);
+	builder().addMemberDecoration(u64_struct_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(u64_struct_type_id, 0, spv::DecorationNonWritable);
+	builder().addMemberName(u64_struct_type_id, 0, "value");
+	spv::Id u64_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u64_struct_type_id);
+
+	constexpr bool is_entry_point = false;
+
+	const Vector<spv::Id> members = {
+		is_entry_point ? u64_type_id : u64_ptr_type_id,
+		u32_ptr_type_id,
+		u32_ptr_type_id,
+		u32_type_id,
+		u32_type_id,
+		u32_type_id,
+	};
+
+	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
+	builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(type_id, 1, spv::DecorationOffset, 8);
+	builder().addMemberDecoration(type_id, 2, spv::DecorationOffset, 16);
+	builder().addMemberDecoration(type_id, 3, spv::DecorationOffset, 24);
+	builder().addMemberDecoration(type_id, 4, spv::DecorationOffset, 28);
+	builder().addMemberDecoration(type_id, 5, spv::DecorationOffset, 32);
+
+	if (is_entry_point)
+	{
+		// For linear node layout (entry point).
+		// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
+		builder().addMemberName(type_id, 0, "PayloadLinearBDA");
+	}
+	else
+	{
+		// For indirect node layout (not entry point), we'll likely load a pointer to payload base instead.
+		builder().addMemberName(type_id, 0, "PayloadIndirectBDA");
+	}
+
+	// With packed workgroup layout, need to apply an offset.
+	builder().addMemberName(type_id, 1, "LinearOffsetBDA");
+	// For thread and coalesce, need to know total number of threads to mask execution on edge.
+	builder().addMemberName(type_id, 2, "TotalNodesBDA");
+	// For broadcast nodes. Need to instance multiple times.
+	// Becomes WorkGroupID and affects GlobalInvocationID.
+	builder().addMemberName(type_id, 3, "NodeGridDispatchX");
+	builder().addMemberName(type_id, 4, "NodeGridDispatchY");
+	builder().addMemberName(type_id, 5, "NodeGridDispatchZ");
+	builder().addDecoration(type_id, spv::DecorationBlock);
+	node_input.node_dispatch_push_id =
+	    builder().createVariable(spv::StorageClassPushConstant, type_id, "NodeDispatch");
+	builder().addDecoration(node_input.node_dispatch_push_id, spv::DecorationRestrictPointer);
+
 	return true;
 }
 
