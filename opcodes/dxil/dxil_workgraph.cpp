@@ -223,7 +223,7 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
 
 	spv::Id linear_ptr = emit_load_node_input_push_parameter(
-	    impl, LinearOffsetBDA, impl.node_input.u32_ptr_type_id);
+	    impl, NodeLinearOffsetBDA, impl.node_input.u32_ptr_type_id);
 	spv::Id linear_offset = emit_load_node_input_push_pointer(
 	    impl, linear_ptr, u32_type, sizeof(uint32_t));
 
@@ -275,9 +275,9 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 
 	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)
 	{
-		spv::Id payload_base = emit_load_node_input_push_parameter(impl, PayloadBDA, u64_type);
+		spv::Id payload_base = emit_load_node_input_push_parameter(impl, NodePayloadBDA, u64_type);
 		spv::Id payload_stride_ptr = emit_load_node_input_push_parameter(
-		    impl, PayloadStrideBDA, impl.node_input.u32_ptr_type_id);
+		    impl, NodePayloadStrideOrOffsetsBDA, impl.node_input.u32_ptr_type_id);
 		spv::Id payload_stride = emit_load_node_input_push_pointer(
 		    impl, payload_stride_ptr, u32_type, sizeof(uint32_t));
 

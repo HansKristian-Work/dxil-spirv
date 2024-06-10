@@ -45,10 +45,10 @@ bool emit_get_remaining_recursion_levels(Converter::Impl &impl, const llvm::Call
 
 enum NodeInputParameter
 {
-	PayloadBDA = 0,
-	LinearOffsetBDA = 1,
-	TotalNodesBDA = 2,
-	PayloadStrideBDA = 3,
+	NodePayloadBDA = 0,
+	NodeLinearOffsetBDA = 1,
+	NodeTotalNodesBDA = 2,
+	NodePayloadStrideOrOffsetsBDA = 3,
 	NodeGridDispatchX = 4,
 	NodeGridDispatchY = 5,
 	NodeGridDispatchZ = 6,

@@ -5407,6 +5407,9 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	spv::Id u32_type_id = builder().makeUintType(32);
 	spv::Id u64_type_id = builder().makeUintType(64);
 
+	spv::Id u32_array_type_id = builder().makeRuntimeArray(u32_type_id);
+	builder().addDecoration(u32_array_type_id, spv::DecorationArrayStride, 4);
+
 	spv::Id u32_struct_type_id = builder().makeStructType({ u32_type_id }, "NodeReadonlyU32Ptr");
 	builder().addDecoration(u32_struct_type_id, spv::DecorationBlock);
 	builder().addMemberDecoration(u32_struct_type_id, 0, spv::DecorationOffset, 0);
@@ -5414,51 +5417,40 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	builder().addMemberName(u32_struct_type_id, 0, "value");
 	spv::Id u32_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u32_struct_type_id);
 
-	spv::Id u64_struct_type_id = builder().makeStructType({ u64_type_id }, "NodeReadonlyU64Ptr");
-	builder().addDecoration(u64_struct_type_id, spv::DecorationBlock);
-	builder().addMemberDecoration(u64_struct_type_id, 0, spv::DecorationOffset, 0);
-	builder().addMemberDecoration(u64_struct_type_id, 0, spv::DecorationNonWritable);
-	builder().addMemberName(u64_struct_type_id, 0, "value");
-	spv::Id u64_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u64_struct_type_id);
-
-	constexpr bool is_entry_point = true;
+	spv::Id u32_array_struct_type_id = builder().makeStructType({ u32_array_type_id }, "NodeReadonlyU32ArrayPtr");
+	builder().addDecoration(u32_array_struct_type_id, spv::DecorationBlock);
+	builder().addMemberDecoration(u32_array_struct_type_id, 0, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(u32_array_struct_type_id, 0, spv::DecorationNonWritable);
+	builder().addMemberName(u32_array_struct_type_id, 0, "offsets");
+	spv::Id u32_array_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u32_array_struct_type_id);
 
 	const Vector<spv::Id> members = {
-		is_entry_point ? u64_type_id : u64_ptr_type_id,
+		u64_type_id,
 		u32_ptr_type_id,
 		u32_ptr_type_id,
-		u32_ptr_type_id,
+		node_input.is_entry_point ? u32_ptr_type_id : u32_array_ptr_type_id,
 		u32_type_id,
 		u32_type_id,
 		u32_type_id,
 	};
 
 	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
-	builder().addMemberDecoration(type_id, PayloadBDA, spv::DecorationOffset, 0);
-	builder().addMemberDecoration(type_id, LinearOffsetBDA, spv::DecorationOffset, 8);
-	builder().addMemberDecoration(type_id, TotalNodesBDA, spv::DecorationOffset, 16);
-	builder().addMemberDecoration(type_id, PayloadStrideBDA, spv::DecorationOffset, 24);
+	builder().addMemberDecoration(type_id, NodePayloadBDA, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(type_id, NodeLinearOffsetBDA, spv::DecorationOffset, 8);
+	builder().addMemberDecoration(type_id, NodeTotalNodesBDA, spv::DecorationOffset, 16);
+	builder().addMemberDecoration(type_id, NodePayloadStrideOrOffsetsBDA, spv::DecorationOffset, 24);
 	builder().addMemberDecoration(type_id, NodeGridDispatchX, spv::DecorationOffset, 32);
 	builder().addMemberDecoration(type_id, NodeGridDispatchY, spv::DecorationOffset, 36);
 	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 40);
 
-	if (is_entry_point)
-	{
-		// For linear node layout (entry point).
-		// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
-		builder().addMemberName(type_id, PayloadBDA, "PayloadLinearBDA");
-	}
-	else
-	{
-		// For indirect node layout (not entry point), we'll likely load a pointer to payload base instead.
-		builder().addMemberName(type_id, PayloadBDA, "PayloadIndirectBDA");
-	}
-
+	// For linear node layout (entry point).
+	// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
+	builder().addMemberName(type_id, NodePayloadBDA, "PayloadLinearBDA");
 	// With packed workgroup layout, need to apply an offset.
-	builder().addMemberName(type_id, LinearOffsetBDA, "LinearOffsetBDA");
+	builder().addMemberName(type_id, NodeLinearOffsetBDA, "NodeLinearOffsetBDA");
 	// For thread and coalesce, need to know total number of threads to mask execution on edge.
-	builder().addMemberName(type_id, TotalNodesBDA, "TotalNodesBDA");
-	builder().addMemberName(type_id, PayloadStrideBDA, "NodePayloadStride");
+	builder().addMemberName(type_id, NodeTotalNodesBDA, "NodeTotalNodesBDA");
+	builder().addMemberName(type_id, NodePayloadStrideOrOffsetsBDA, "NodePayloadStrideOrOffsets");
 	// For broadcast nodes. Need to instance multiple times.
 	// Becomes WorkGroupID and affects GlobalInvocationID.
 	builder().addMemberName(type_id, NodeGridDispatchX, "NodeGridDispatchX");
@@ -5471,8 +5463,8 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	node_input.private_coalesce_count_id =
 	    builder().createVariable(spv::StorageClassPrivate, u32_type_id, "NodeCoalesceCount");
 
-	node_input.u64_ptr_type_id = u64_ptr_type_id;
 	node_input.u32_ptr_type_id = u32_ptr_type_id;
+	node_input.u32_array_ptr_type_id = u32_array_ptr_type_id;
 
 	return true;
 }
@@ -5485,6 +5477,13 @@ bool Converter::Impl::emit_execution_modes_node()
 
 	auto launch_type = DXIL::NodeLaunchType(
 	    llvm::cast<llvm::ConstantAsMetadata>(*launch_type_node)->getValue()->getUniqueInteger().getZExtValue());
+
+	auto *is_program_entry_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeIsProgramEntry);
+	if (is_program_entry_node)
+	{
+		node_input.is_entry_point =
+			llvm::cast<llvm::ConstantAsMetadata>(*is_program_entry_node)->getValue()->getUniqueInteger().getZExtValue() != 0;
+	}
 
 	// Currently don't care what the max dispatch grid is, just if we have to deal with it.
 	node_input.broadcast_has_max_grid =
