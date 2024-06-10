@@ -519,21 +519,13 @@ struct Converter::Impl
 
 	struct NodeInputMeta
 	{
-		spv::Id private_bda_var_id; // Private variable which holds a BDA to the node.
+		spv::Id private_bda_var_id; // Private variable which holds a BDA to the node, set by the main() dispatcher.
+		spv::Id private_coalesce_count_id; // Private variable which holds the input count.
 		spv::Id node_dispatch_push_id; // PushConstant ABI for dispatching.
 		uint32_t payload_stride; // Stride for the payload. This is recorded in metadata.
 		spv::Id u64_ptr_type_id;
 		spv::Id u32_ptr_type_id;
-
-		enum
-		{
-			PayloadBDA = 0,
-			LinearOffsetBDA = 1,
-			TotalNodesBDA = 2,
-			NodeGridDispatchX = 3,
-			NodeGridDispatchY = 4,
-			NodeGridDispatchZ = 5
-		};
+		DXIL::NodeLaunchType launch_type;
 	};
 
 	struct NodeOutputMeta

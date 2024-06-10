@@ -27,6 +27,7 @@
 #include "opcodes/opcodes_llvm_builtins.hpp"
 #include "opcodes/dxil/dxil_common.hpp"
 #include "opcodes/dxil/dxil_ags.hpp"
+#include "opcodes/dxil/dxil_workgraph.hpp"
 
 #include "dxil_converter.hpp"
 #include "logging.hpp"
@@ -5419,10 +5420,11 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	builder().addMemberName(u64_struct_type_id, 0, "value");
 	spv::Id u64_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u64_struct_type_id);
 
-	constexpr bool is_entry_point = false;
+	constexpr bool is_entry_point = true;
 
 	const Vector<spv::Id> members = {
 		is_entry_point ? u64_type_id : u64_ptr_type_id,
+		u32_ptr_type_id,
 		u32_ptr_type_id,
 		u32_ptr_type_id,
 		u32_type_id,
@@ -5431,38 +5433,42 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	};
 
 	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
-	builder().addMemberDecoration(type_id, NodeInputMeta::PayloadBDA, spv::DecorationOffset, 0);
-	builder().addMemberDecoration(type_id, NodeInputMeta::LinearOffsetBDA, spv::DecorationOffset, 8);
-	builder().addMemberDecoration(type_id, NodeInputMeta::TotalNodesBDA, spv::DecorationOffset, 16);
-	builder().addMemberDecoration(type_id, NodeInputMeta::NodeGridDispatchX, spv::DecorationOffset, 24);
-	builder().addMemberDecoration(type_id, NodeInputMeta::NodeGridDispatchY, spv::DecorationOffset, 28);
-	builder().addMemberDecoration(type_id, NodeInputMeta::NodeGridDispatchZ, spv::DecorationOffset, 32);
+	builder().addMemberDecoration(type_id, PayloadBDA, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(type_id, LinearOffsetBDA, spv::DecorationOffset, 8);
+	builder().addMemberDecoration(type_id, TotalNodesBDA, spv::DecorationOffset, 16);
+	builder().addMemberDecoration(type_id, PayloadStrideBDA, spv::DecorationOffset, 24);
+	builder().addMemberDecoration(type_id, NodeGridDispatchX, spv::DecorationOffset, 32);
+	builder().addMemberDecoration(type_id, NodeGridDispatchY, spv::DecorationOffset, 36);
+	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 40);
 
 	if (is_entry_point)
 	{
 		// For linear node layout (entry point).
 		// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
-		builder().addMemberName(type_id, NodeInputMeta::PayloadBDA, "PayloadLinearBDA");
+		builder().addMemberName(type_id, PayloadBDA, "PayloadLinearBDA");
 	}
 	else
 	{
 		// For indirect node layout (not entry point), we'll likely load a pointer to payload base instead.
-		builder().addMemberName(type_id, NodeInputMeta::PayloadBDA, "PayloadIndirectBDA");
+		builder().addMemberName(type_id, PayloadBDA, "PayloadIndirectBDA");
 	}
 
 	// With packed workgroup layout, need to apply an offset.
-	builder().addMemberName(type_id, NodeInputMeta::LinearOffsetBDA, "LinearOffsetBDA");
+	builder().addMemberName(type_id, LinearOffsetBDA, "LinearOffsetBDA");
 	// For thread and coalesce, need to know total number of threads to mask execution on edge.
-	builder().addMemberName(type_id, NodeInputMeta::TotalNodesBDA, "TotalNodesBDA");
+	builder().addMemberName(type_id, TotalNodesBDA, "TotalNodesBDA");
+	builder().addMemberName(type_id, PayloadStrideBDA, "NodePayloadStride");
 	// For broadcast nodes. Need to instance multiple times.
 	// Becomes WorkGroupID and affects GlobalInvocationID.
-	builder().addMemberName(type_id, NodeInputMeta::NodeGridDispatchX, "NodeGridDispatchX");
-	builder().addMemberName(type_id, NodeInputMeta::NodeGridDispatchY, "NodeGridDispatchY");
-	builder().addMemberName(type_id, NodeInputMeta::NodeGridDispatchZ, "NodeGridDispatchZ");
+	builder().addMemberName(type_id, NodeGridDispatchX, "NodeGridDispatchX");
+	builder().addMemberName(type_id, NodeGridDispatchY, "NodeGridDispatchY");
+	builder().addMemberName(type_id, NodeGridDispatchZ, "NodeGridDispatchZ");
 	builder().addDecoration(type_id, spv::DecorationBlock);
 	node_input.node_dispatch_push_id =
 	    builder().createVariable(spv::StorageClassPushConstant, type_id, "NodeDispatch");
 	builder().addDecoration(node_input.node_dispatch_push_id, spv::DecorationRestrictPointer);
+	node_input.private_coalesce_count_id =
+	    builder().createVariable(spv::StorageClassPrivate, u32_type_id, "NodeCoalesceCount");
 
 	node_input.u64_ptr_type_id = u64_ptr_type_id;
 	node_input.u32_ptr_type_id = u32_ptr_type_id;
@@ -5472,26 +5478,14 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 
 bool Converter::Impl::emit_execution_modes_node()
 {
-	auto *inputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeInputs);
-	if (inputs_node)
-	{
-		auto *inputs = llvm::cast<llvm::MDNode>(*inputs_node);
-
-		// Current spec only allows one input node.
-		if (inputs->getNumOperands() != 1)
-			return false;
-
-		auto *input = llvm::cast<llvm::MDNode>(inputs->getOperand(0));
-		if (!emit_execution_modes_node_input(input))
-			return false;
-	}
-
 	auto *launch_type_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeLaunchType);
 	if (!launch_type_node)
 		return false;
 
 	auto launch_type = DXIL::NodeLaunchType(
 	    llvm::cast<llvm::ConstantAsMetadata>(*launch_type_node)->getValue()->getUniqueInteger().getZExtValue());
+
+	node_input.launch_type = launch_type;
 
 	switch (launch_type)
 	{
@@ -5509,6 +5503,20 @@ bool Converter::Impl::emit_execution_modes_node()
 
 	default:
 		return false;
+	}
+
+	auto *inputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeInputs);
+	if (inputs_node)
+	{
+		auto *inputs = llvm::cast<llvm::MDNode>(*inputs_node);
+
+		// Current spec only allows one input node.
+		if (inputs->getNumOperands() != 1)
+			return false;
+
+		auto *input = llvm::cast<llvm::MDNode>(inputs->getOperand(0));
+		if (!emit_execution_modes_node_input(input))
+			return false;
 	}
 
 	return emit_execution_modes_compute();
@@ -6228,6 +6236,7 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
 	return { entry, spirv_module.get_entry_function() };
 }
 
+
 ConvertedFunction::Function
 Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
                                  CFGNodePool &pool,
@@ -6244,9 +6253,12 @@ Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
 	leaves.push_back({ node_main, node_func });
 
 	auto *entry = pool.create_node();
-	auto *call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
-	call_op->add_id(node_func->getId());
-	entry->ir.operations.push_back(call_op);
+	current_block = &entry->ir.operations;
+
+	if (!emit_workgraph_dispatcher(*this, node_func->getId()))
+		return {};
+
+
 	entry->ir.terminator.type = Terminator::Type::Return;
 	return { entry, spirv_module.get_entry_function() };
 }

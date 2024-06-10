@@ -42,4 +42,17 @@ bool emit_create_node_input_record_handle(Converter::Impl &impl, const llvm::Cal
 bool emit_annotate_node_record_handle(Converter::Impl &impl, const llvm::CallInst *inst);
 bool emit_node_output_is_valid(Converter::Impl &impl, const llvm::CallInst *inst);
 bool emit_get_remaining_recursion_levels(Converter::Impl &impl, const llvm::CallInst *inst);
+
+enum NodeInputParameter
+{
+	PayloadBDA = 0,
+	LinearOffsetBDA = 1,
+	TotalNodesBDA = 2,
+	PayloadStrideBDA = 3,
+	NodeGridDispatchX = 4,
+	NodeGridDispatchY = 5,
+	NodeGridDispatchZ = 6,
+};
+
+bool emit_workgraph_dispatcher(Converter::Impl &impl, spv::Id main_entry_id);
 }
