@@ -63,6 +63,15 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	return true;
 }
 
+static spv::StorageClass get_compute_builtin_storage_class(Converter::Impl &impl, spv::BuiltIn builtin)
+{
+	if (!impl.execution_model_lib_target || impl.execution_model != spv::ExecutionModelGLCompute)
+		return spv::StorageClassInput;
+
+	return builtin == spv::BuiltInWorkgroupId || builtin == spv::BuiltInGlobalInvocationId ?
+	       spv::StorageClassPrivate : spv::StorageClassInput;
+}
+
 static bool emit_thread_2d_quad_fixup_instruction(spv::BuiltIn builtin, Converter::Impl &impl,
                                                   const llvm::CallInst *instruction, uint32_t component)
 {
@@ -173,8 +182,10 @@ static bool emit_thread_2d_quad_fixup_instruction(spv::BuiltIn builtin, Converte
 	else
 	{
 		spv::Id wg_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInWorkgroupId);
-		auto *ptr_wg = impl.allocate(spv::OpAccessChain,
-		                             builder.makePointer(spv::StorageClassInput, builder.makeUintType(32)));
+		auto *ptr_wg = impl.allocate(spv::OpAccessChain, builder.makePointer(
+			get_compute_builtin_storage_class(impl, spv::BuiltInWorkgroupId),
+			builder.makeUintType(32)));
+
 		ptr_wg->add_id(wg_id);
 		ptr_wg->add_id(builder.makeUintConstant(component));
 		impl.add(ptr_wg);
@@ -232,8 +243,8 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl
 	if (builtin != spv::BuiltInLocalInvocationIndex)
 	{
 		Operation *op =
-		    impl.allocate(spv::OpAccessChain,
-		                  impl.builder().makePointer(spv::StorageClassInput, impl.get_type_id(instruction->getType())));
+			impl.allocate(spv::OpAccessChain, impl.builder().makePointer(
+				get_compute_builtin_storage_class(impl, builtin), impl.get_type_id(instruction->getType())));
 
 		op->add_id(var_id);
 		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));

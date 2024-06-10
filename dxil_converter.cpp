@@ -5383,6 +5383,14 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 		}
 	}
 
+	// We have to rewrite global IDs. Local invocation should remain intact.
+	spv::Id uint_type = builder().makeUintType(32);
+	spv::Id uvec3_type = builder().makeVectorType(uint_type, 3);
+	spv::Id workgroup_id = create_variable(spv::StorageClassPrivate, uvec3_type, "WorkgroupID");
+	spv::Id global_invocation_id = create_variable(spv::StorageClassPrivate, uvec3_type, "GlobalInvocationID");
+	spirv_module.register_builtin_shader_input(workgroup_id, spv::BuiltInWorkgroupId);
+	spirv_module.register_builtin_shader_input(global_invocation_id, spv::BuiltInGlobalInvocationId);
+
 	return true;
 }
 
