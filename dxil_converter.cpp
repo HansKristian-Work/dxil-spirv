@@ -5450,7 +5450,7 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	builder().addMemberName(type_id, NodeLinearOffsetBDA, "NodeLinearOffsetBDA");
 	// For thread and coalesce, need to know total number of threads to mask execution on edge.
 	builder().addMemberName(type_id, NodeTotalNodesBDA, "NodeTotalNodesBDA");
-	builder().addMemberName(type_id, NodePayloadStrideOrOffsetsBDA, "NodePayloadStrideOrOffsets");
+	builder().addMemberName(type_id, NodePayloadStrideOrOffsetsBDA, "NodePayloadStrideOrOffsetsBDA");
 	// For broadcast nodes. Need to instance multiple times.
 	// Becomes WorkGroupID and affects GlobalInvocationID.
 	builder().addMemberName(type_id, NodeGridDispatchX, "NodeGridDispatchX");

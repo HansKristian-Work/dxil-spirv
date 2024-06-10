@@ -277,17 +277,48 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 	{
 		spv::Id payload_base = emit_load_node_input_push_parameter(impl, NodePayloadBDA, u64_type);
 		spv::Id payload_stride_ptr = emit_load_node_input_push_parameter(
-		    impl, NodePayloadStrideOrOffsetsBDA, impl.node_input.u32_ptr_type_id);
-		spv::Id payload_stride = emit_load_node_input_push_pointer(
-		    impl, payload_stride_ptr, u32_type, sizeof(uint32_t));
+			impl, NodePayloadStrideOrOffsetsBDA, impl.node_input.is_entry_point ?
+			                                     impl.node_input.u32_ptr_type_id :
+			                                     impl.node_input.u32_array_ptr_type_id);
 
-		auto *payload_offset = impl.allocate(spv::OpIMul, u32_type);
-		payload_offset->add_id(linear_node_index_id);
-		payload_offset->add_id(payload_stride);
-		impl.add(payload_offset);
+		spv::Id payload_offset_id;
+
+		// Entry points are linear. Read stride (this can be sourced from GPU buffer, so has to be a pointer).
+		if (impl.node_input.is_entry_point)
+		{
+			spv::Id payload_stride =
+			    emit_load_node_input_push_pointer(impl, payload_stride_ptr, u32_type, sizeof(uint32_t));
+
+			auto *payload_offset = impl.allocate(spv::OpIMul, u32_type);
+			payload_offset->add_id(linear_node_index_id);
+			payload_offset->add_id(payload_stride);
+			impl.add(payload_offset);
+
+			payload_offset_id = payload_offset->id;
+		}
+		else
+		{
+			// Load offset to payload indirectly.
+			auto *offset_chain = impl.allocate(
+				spv::OpInBoundsAccessChain,
+				builder.makePointer(spv::StorageClassPhysicalStorageBuffer, u32_type));
+
+			offset_chain->add_id(payload_stride_ptr);
+			offset_chain->add_id(builder.makeUintConstant(0));
+			offset_chain->add_id(linear_node_index_id);
+			impl.add(offset_chain);
+
+			auto *load_op = impl.allocate(spv::OpLoad, u32_type);
+			load_op->add_id(offset_chain->id);
+			load_op->add_literal(spv::MemoryAccessAlignedMask);
+			load_op->add_literal(sizeof(uint32_t));
+			impl.add(load_op);
+
+			payload_offset_id = load_op->id;
+		}
 
 		auto *upconv = impl.allocate(spv::OpUConvert, u64_type);
-		upconv->add_id(payload_offset->id);
+		upconv->add_id(payload_offset_id);
 		impl.add(upconv);
 
 		auto *offset_payload = impl.allocate(spv::OpIAdd, u64_type);
@@ -302,7 +333,8 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 	}
 	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Coalescing)
 	{
-
+		// For Coalesce, we can load an array of payloads, have to defer the resolve.
+		// Fortunately, we don't have to read the payload in dispatcher, so we're okay.
 	}
 	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Thread)
 	{
@@ -408,9 +440,8 @@ static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl)
 			else
 			{
 				workgroup_id = impl.build_vector(u32_type, workgroup_elems, impl.node_input.dispatch_grid.count);
-				auto *mask_op = impl.allocate(spv::OpULessThan,
-				                              builder.makeVectorType(builder.makeBoolType(),
-				                                                     impl.node_input.dispatch_grid.count));
+				auto *mask_op = impl.allocate(spv::OpULessThan, builder.makeVectorType(
+					builder.makeBoolType(), impl.node_input.dispatch_grid.count));
 				mask_op->add_id(workgroup_id);
 				mask_op->add_id(load_grid->id);
 				impl.add(mask_op);
