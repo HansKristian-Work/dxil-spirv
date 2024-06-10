@@ -5431,38 +5431,41 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	};
 
 	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
-	builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
-	builder().addMemberDecoration(type_id, 1, spv::DecorationOffset, 8);
-	builder().addMemberDecoration(type_id, 2, spv::DecorationOffset, 16);
-	builder().addMemberDecoration(type_id, 3, spv::DecorationOffset, 24);
-	builder().addMemberDecoration(type_id, 4, spv::DecorationOffset, 28);
-	builder().addMemberDecoration(type_id, 5, spv::DecorationOffset, 32);
+	builder().addMemberDecoration(type_id, NodeInputMeta::PayloadBDA, spv::DecorationOffset, 0);
+	builder().addMemberDecoration(type_id, NodeInputMeta::LinearOffsetBDA, spv::DecorationOffset, 8);
+	builder().addMemberDecoration(type_id, NodeInputMeta::TotalNodesBDA, spv::DecorationOffset, 16);
+	builder().addMemberDecoration(type_id, NodeInputMeta::NodeGridDispatchX, spv::DecorationOffset, 24);
+	builder().addMemberDecoration(type_id, NodeInputMeta::NodeGridDispatchY, spv::DecorationOffset, 28);
+	builder().addMemberDecoration(type_id, NodeInputMeta::NodeGridDispatchZ, spv::DecorationOffset, 32);
 
 	if (is_entry_point)
 	{
 		// For linear node layout (entry point).
 		// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
-		builder().addMemberName(type_id, 0, "PayloadLinearBDA");
+		builder().addMemberName(type_id, NodeInputMeta::PayloadBDA, "PayloadLinearBDA");
 	}
 	else
 	{
 		// For indirect node layout (not entry point), we'll likely load a pointer to payload base instead.
-		builder().addMemberName(type_id, 0, "PayloadIndirectBDA");
+		builder().addMemberName(type_id, NodeInputMeta::PayloadBDA, "PayloadIndirectBDA");
 	}
 
 	// With packed workgroup layout, need to apply an offset.
-	builder().addMemberName(type_id, 1, "LinearOffsetBDA");
+	builder().addMemberName(type_id, NodeInputMeta::LinearOffsetBDA, "LinearOffsetBDA");
 	// For thread and coalesce, need to know total number of threads to mask execution on edge.
-	builder().addMemberName(type_id, 2, "TotalNodesBDA");
+	builder().addMemberName(type_id, NodeInputMeta::TotalNodesBDA, "TotalNodesBDA");
 	// For broadcast nodes. Need to instance multiple times.
 	// Becomes WorkGroupID and affects GlobalInvocationID.
-	builder().addMemberName(type_id, 3, "NodeGridDispatchX");
-	builder().addMemberName(type_id, 4, "NodeGridDispatchY");
-	builder().addMemberName(type_id, 5, "NodeGridDispatchZ");
+	builder().addMemberName(type_id, NodeInputMeta::NodeGridDispatchX, "NodeGridDispatchX");
+	builder().addMemberName(type_id, NodeInputMeta::NodeGridDispatchY, "NodeGridDispatchY");
+	builder().addMemberName(type_id, NodeInputMeta::NodeGridDispatchZ, "NodeGridDispatchZ");
 	builder().addDecoration(type_id, spv::DecorationBlock);
 	node_input.node_dispatch_push_id =
 	    builder().createVariable(spv::StorageClassPushConstant, type_id, "NodeDispatch");
 	builder().addDecoration(node_input.node_dispatch_push_id, spv::DecorationRestrictPointer);
+
+	node_input.u64_ptr_type_id = u64_ptr_type_id;
+	node_input.u32_ptr_type_id = u32_ptr_type_id;
 
 	return true;
 }
