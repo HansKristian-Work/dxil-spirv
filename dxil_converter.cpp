@@ -5422,10 +5422,14 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	// We have to rewrite global IDs. Local invocation should remain intact.
 	spv::Id uint_type = builder().makeUintType(32);
 	spv::Id uvec3_type = builder().makeVectorType(uint_type, 3);
-	spv::Id workgroup_id = create_variable(spv::StorageClassPrivate, uvec3_type, "WorkgroupID");
-	spv::Id global_invocation_id = create_variable(spv::StorageClassPrivate, uvec3_type, "GlobalInvocationID");
-	spirv_module.register_builtin_shader_input(workgroup_id, spv::BuiltInWorkgroupId);
-	spirv_module.register_builtin_shader_input(global_invocation_id, spv::BuiltInGlobalInvocationId);
+
+	if (node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)
+	{
+		spv::Id workgroup_id = create_variable(spv::StorageClassPrivate, uvec3_type, "WorkgroupID");
+		spv::Id global_invocation_id = create_variable(spv::StorageClassPrivate, uvec3_type, "GlobalInvocationID");
+		spirv_module.register_builtin_shader_input(workgroup_id, spv::BuiltInWorkgroupId);
+		spirv_module.register_builtin_shader_input(global_invocation_id, spv::BuiltInGlobalInvocationId);
+	}
 
 	// Emit binding model.
 	// Push constants are our only option.
@@ -5492,10 +5496,14 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	builder().addMemberName(type_id, NodeGridDispatchZ, "NodeGridDispatchZ");
 	builder().addDecoration(type_id, spv::DecorationBlock);
 	node_input.node_dispatch_push_id =
-	    builder().createVariable(spv::StorageClassPushConstant, type_id, "NodeDispatch");
+	    create_variable(spv::StorageClassPushConstant, type_id, "NodeDispatch");
 	builder().addDecoration(node_input.node_dispatch_push_id, spv::DecorationRestrictPointer);
-	node_input.private_coalesce_count_id =
-	    builder().createVariable(spv::StorageClassPrivate, u32_type_id, "NodeCoalesceCount");
+
+	if (node_input.launch_type == DXIL::NodeLaunchType::Coalescing)
+	{
+		node_input.private_coalesce_count_id =
+		    create_variable(spv::StorageClassPrivate, u32_type_id, "NodeCoalesceCount");
+	}
 
 	node_input.u32_ptr_type_id = u32_ptr_type_id;
 	node_input.u32_array_ptr_type_id = u32_array_ptr_type_id;
@@ -5557,7 +5565,23 @@ bool Converter::Impl::emit_execution_modes_node()
 			return false;
 	}
 
-	return emit_execution_modes_compute();
+	if (node_input.launch_type != DXIL::NodeLaunchType::Thread)
+	{
+		return emit_execution_modes_compute();
+	}
+	else
+	{
+		// For thread we have to fuse execution ourselves, the threadgroup size needs to be decided from
+		// environment. Use spec constant here.
+		spv::Id threads[3];
+		threads[0] = builder().makeUintConstant(1, true);
+		threads[1] = builder().makeUintConstant(1);
+		threads[2] = builder().makeUintConstant(1);
+		builder().addDecoration(threads[0], spv::DecorationSpecId, 0); // TODO. Make this configurable.
+		builder().addExecutionModeId(spirv_module.get_entry_function(),
+		                             spv::ExecutionModeLocalSizeId, threads[0], threads[1], threads[2]);
+		return true;
+	}
 }
 
 bool Converter::Impl::emit_execution_modes_compute()
@@ -6942,8 +6966,14 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	execution_model = get_execution_model(module, entry_point_meta);
 	execution_model_lib_target = get_execution_model_lib_target(module, entry_point_meta);
 
-	if (execution_model == spv::ExecutionModelFragment &&
-	    resource_mapping_iface && resource_mapping_iface->has_nontrivial_stage_input_remapping())
+	if (execution_model_lib_target && execution_model == spv::ExecutionModelGLCompute)
+	{
+		// Might as well go with SPIR-V 1.6. Then we get subgroup size control semantics for "free".
+		// When we're willing to do a clean break with Fossilize all shaders should target SPIR-V 1.6.
+		spirv_module.set_override_spirv_version(0x10600);
+	}
+	else if (execution_model == spv::ExecutionModelFragment &&
+	         resource_mapping_iface && resource_mapping_iface->has_nontrivial_stage_input_remapping())
 	{
 		// Force SPIR-V 1.4 for fragment shaders if we might end up requiring mesh shader capabilities.
 		// Non-trivial stage input remapping may require PerPrimitiveEXT decoration.
