@@ -5338,6 +5338,8 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 {
 	uint32_t num_ops = input->getNumOperands();
+	bool is_rw_sharing = false;
+
 	for (uint32_t i = 0; i < num_ops; i += 2)
 	{
 		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
@@ -5375,7 +5377,10 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 			if ((node_io_flags & DXIL::NodeIONodeArrayBit) != 0)
 				LOGI("  Input NodeArray\n");
 			if ((node_io_flags & DXIL::NodeIOTrackRWInputSharingBit) != 0)
+			{
 				LOGI("  Input RWInputSharing\n");
+				is_rw_sharing = true;
+			}
 			if ((node_io_flags & DXIL::NodeIOGloballyCoherentBit) != 0)
 				LOGI("  Input GloballyCoherent\n");
 		}
@@ -5403,6 +5408,15 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 				}
 			}
 		}
+	}
+
+	if (is_rw_sharing)
+	{
+		// DXIL metadata does not account for the implied u32 used for group sharing.
+		// In case the last member is u16, align to u32.
+		node_input.payload_stride = (node_input.payload_stride + 3u) & ~3u;
+		// Allocate space for magic word.
+		node_input.payload_stride += 4;
 	}
 
 	// We have to rewrite global IDs. Local invocation should remain intact.

@@ -137,7 +137,25 @@ bool emit_get_input_record_count(Converter::Impl &impl, const llvm::CallInst *in
 
 bool emit_finished_cross_group_sharing(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::FinishCrossGroupSharing);
+
+	auto *load_op = impl.allocate(spv::OpLoad, impl.builder().makeUintType(64));
+	load_op->add_id(impl.node_input.private_bda_var_id);
+	impl.add(load_op);
+
+	auto *add_op = impl.allocate(spv::OpIAdd, impl.builder().makeUintType(64));
+	add_op->add_id(load_op->id);
+	// Use the last 4 bytes of the node as the u32 cookie.
+	// We don't have the node pointer type here, so this is the most convenient approach.
+	add_op->add_id(impl.builder().makeUint64Constant(impl.node_input.payload_stride - 4));
+	impl.add(add_op);
+
+	auto *call_op = impl.allocate(spv::OpFunctionCall, inst, impl.builder().makeBoolType());
+	call_op->add_id(call_id);
+	call_op->add_id(add_op->id);
+	impl.add(call_op);
+
+	return true;
 }
 
 bool emit_barrier_by_memory_type(Converter::Impl &impl, const llvm::CallInst *inst)
@@ -172,19 +190,10 @@ bool emit_create_node_input_record_handle(Converter::Impl &, const llvm::CallIns
 	return true;
 }
 
-bool emit_annotate_node_record_handle(Converter::Impl &impl, const llvm::CallInst *inst)
+bool emit_annotate_node_record_handle(Converter::Impl &, const llvm::CallInst *inst)
 {
 	// This is only used by inputs
-	if (!value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::CreateNodeInputRecordHandle))
-		return false;
-
-	//auto *type_operand = llvm::cast<llvm::ConstantAggregate>(inst->getOperand(2));
-	//uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
-	//uint32_t record_size = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(1))->getUniqueInteger().getZExtValue();
-	// This is also a dummy. There is only one node record handle, and we can defer dealing with pointers until
-	// GetNodeRecordPtr.
-
-	return true;
+	return value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::CreateNodeInputRecordHandle);
 }
 
 bool emit_node_output_is_valid(Converter::Impl &impl, const llvm::CallInst *inst)
