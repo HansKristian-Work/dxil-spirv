@@ -523,6 +523,7 @@ struct Converter::Impl
 		spv::Id private_coalesce_count_id; // Private variable which holds the input count.
 		spv::Id node_dispatch_push_id; // PushConstant ABI for dispatching.
 		uint32_t payload_stride; // Stride for the payload. This is recorded in metadata.
+		uint32_t coalesce_stride; // Coalesce width.
 		spv::Id u32_ptr_type_id;
 		spv::Id u32_array_ptr_type_id;
 		DXIL::NodeLaunchType launch_type;

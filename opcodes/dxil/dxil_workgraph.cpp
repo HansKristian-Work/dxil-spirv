@@ -289,10 +289,40 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	linear_node_index->add_id(wg_x->id);
 	impl.add(linear_node_index);
 
-	// TODO: In thread mode, need to multiply by workgroup size and offset local invocation index as appropriate.
-	// TODO: In coalesce mode, multiply by coalesce width.
+	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Thread)
+	{
+		spv::Id workgroup_size = builder.makeUintConstant(1, true);
+		builder.addDecoration(workgroup_size, spv::DecorationSpecId, 0); // TODO: Make this configurable.
+		builder.addName(workgroup_size, "ThreadGroupSize");
 
-	return linear_node_index->id;
+		auto *mul_wg_index = impl.allocate(spv::OpIMul, u32_type);
+		mul_wg_index->add_id(linear_node_index->id);
+		mul_wg_index->add_id(workgroup_size);
+		impl.add(mul_wg_index);
+
+		spv::Id local_invocation_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInLocalInvocationIndex);
+		auto *load_local = impl.allocate(spv::OpLoad, u32_type);
+		load_local->add_id(local_invocation_id);
+		impl.add(load_local);
+
+		auto *add_op = impl.allocate(spv::OpIAdd, u32_type);
+		add_op->add_id(mul_wg_index->id);
+		add_op->add_id(load_local->id);
+		impl.add(add_op);
+		return add_op->id;
+	}
+	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Coalescing)
+	{
+		auto *mul_wg_index = impl.allocate(spv::OpIMul, u32_type);
+		mul_wg_index->add_id(linear_node_index->id);
+		mul_wg_index->add_id(builder.makeUintConstant(impl.node_input.coalesce_stride));
+		impl.add(mul_wg_index);
+		return mul_wg_index->id;
+	}
+	else
+	{
+		return linear_node_index->id;
+	}
 }
 
 static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_node_index_id)
@@ -301,7 +331,7 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 	spv::Id u32_type = builder.makeUintType(32);
 	spv::Id u64_type = builder.makeUintType(64);
 
-	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)
+	if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing)
 	{
 		spv::Id payload_base = emit_load_node_input_push_parameter(impl, NodePayloadBDA, u64_type);
 		spv::Id payload_stride_ptr = emit_load_node_input_push_parameter(
@@ -358,20 +388,14 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 		store_op->add_id(impl.node_input.private_bda_var_id);
 		store_op->add_id(offset_payload->id);
 		impl.add(store_op);
+		return true;
 	}
-	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Coalescing)
+	else
 	{
 		// For Coalesce, we can load an array of payloads, have to defer the resolve.
 		// Fortunately, we don't have to read the payload in dispatcher, so we're okay.
-	}
-	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Thread)
-	{
-
-	}
-	else
 		return false;
-
-	return true;
+	}
 }
 
 static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl)
