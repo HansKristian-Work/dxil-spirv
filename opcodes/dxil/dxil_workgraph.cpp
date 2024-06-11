@@ -80,9 +80,19 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 			addr = add_op->id;
 		}
 
-		spv::Id physical_block_type_id = impl.get_type_id(inst->getType(),
-		                                                  Converter::Impl::TYPE_LAYOUT_BLOCK_BIT |
-		                                                  Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
+		auto *annotate_call = llvm::cast<llvm::CallInst>(inst->getOperand(1));
+		auto *type_operand = llvm::cast<llvm::ConstantAggregate>(annotate_call->getOperand(2));
+		uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
+
+		Converter::Impl::TypeLayoutFlags flags = Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT;
+
+		if ((node_io_flags & DXIL::NodeIOReadWriteBit) == 0)
+			flags |= Converter::Impl::TYPE_LAYOUT_READ_ONLY_BIT;
+		// We might have to promote this to coherent if device-scope barrier is used just like normal UAVs.
+		if ((node_io_flags & DXIL::NodeIOGloballyCoherentBit) != 0)
+			flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
+
+		spv::Id physical_block_type_id = impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_BLOCK_BIT | flags);
 		spv::Id physical_type_id = impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
 
 		auto *cast_op = impl.allocate(spv::OpConvertUToPtr, physical_block_type_id);

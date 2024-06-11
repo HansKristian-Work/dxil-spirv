@@ -3672,7 +3672,10 @@ spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, TypeLa
 
 		if ((flags & TYPE_LAYOUT_BLOCK_BIT) != 0)
 		{
-			spv::Id struct_type_id = get_struct_type(type_ids, flags & ~TYPE_LAYOUT_BLOCK_BIT, entry.name.c_str());
+			constexpr TypeLayoutFlags block_flags = TYPE_LAYOUT_BLOCK_BIT |
+			                                        TYPE_LAYOUT_COHERENT_BIT |
+			                                        TYPE_LAYOUT_READ_ONLY_BIT;
+			spv::Id struct_type_id = get_struct_type(type_ids, flags & ~block_flags, entry.name.c_str());
 			entry.id = builder().makeStructType({ struct_type_id }, entry.name.c_str());
 			builder().addDecoration(entry.id, spv::DecorationBlock);
 			builder().addMemberDecoration(entry.id, 0, spv::DecorationOffset, 0);
