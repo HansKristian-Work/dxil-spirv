@@ -520,6 +520,7 @@ struct Converter::Impl
 	struct NodeInputMeta
 	{
 		spv::Id private_bda_var_id; // Private variable which holds a BDA to the node, set by the main() dispatcher.
+		spv::Id private_coalesce_offset_id; // Private variable which holds the linear input index.
 		spv::Id private_coalesce_count_id; // Private variable which holds the input count.
 		spv::Id node_dispatch_push_id; // PushConstant ABI for dispatching.
 		uint32_t payload_stride; // Stride for the payload. This is recorded in metadata.

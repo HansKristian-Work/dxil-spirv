@@ -35,48 +35,123 @@ bool emit_allocate_node_output_records(Converter::Impl &impl, const llvm::CallIn
 	return false;
 }
 
+static spv::Id emit_load_node_input_push_parameter(
+	Converter::Impl &impl, NodeInputParameter param, spv::Id type)
+{
+	auto *access_offset_point = impl.allocate(spv::OpAccessChain, impl.builder().makePointer(
+		spv::StorageClassPushConstant, type));
+	access_offset_point->add_id(impl.node_input.node_dispatch_push_id);
+	access_offset_point->add_id(impl.builder().makeUintConstant(param));
+	impl.add(access_offset_point);
+
+	auto *load_offset_point = impl.allocate(spv::OpLoad, type);
+	load_offset_point->add_id(access_offset_point->id);
+	impl.add(load_offset_point);
+
+	return load_offset_point->id;
+}
+
+static spv::Id emit_load_node_input_push_pointer(
+	Converter::Impl &impl, spv::Id ptr_id, spv::Id type_id, uint32_t alignment)
+{
+	auto *access_chain = impl.allocate(spv::OpAccessChain, impl.builder().makePointer(
+		spv::StorageClassPhysicalStorageBuffer, type_id));
+	access_chain->add_id(ptr_id);
+	access_chain->add_id(impl.builder().makeUintConstant(0));
+	impl.add(access_chain);
+
+	auto *load_op = impl.allocate(spv::OpLoad, type_id);
+	load_op->add_id(access_chain->id);
+	load_op->add_literal(spv::MemoryAccessAlignedMask);
+	load_op->add_literal(alignment);
+	impl.add(load_op);
+
+	return load_op->id;
+}
+
+static spv::Id emit_build_input_payload_offset(Converter::Impl &impl, const llvm::Value *value)
+{
+	// There is no extra offset in broadcast / thread. We've already resolved it.
+	if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing)
+		return 0;
+
+	auto &builder = impl.builder();
+	spv::Id u32_type = builder.makeUintType(32);
+
+	// Compute the effective offset.
+	auto *load_op = impl.allocate(spv::OpLoad, u32_type);
+	load_op->add_id(impl.node_input.private_coalesce_offset_id);
+	impl.add(load_op);
+
+	auto *add_op = impl.allocate(spv::OpIAdd, u32_type);
+	add_op->add_id(load_op->id);
+	add_op->add_id(impl.get_id_for_value(value));
+	impl.add(add_op);
+
+	spv::Id payload_offset_id;
+
+	if (impl.node_input.is_entry_point)
+	{
+		auto *offset_op = impl.allocate(spv::OpIMul, u32_type);
+		offset_op->add_id(builder.makeUintConstant(impl.node_input.payload_stride));
+		offset_op->add_id(add_op->id);
+		impl.add(offset_op);
+		payload_offset_id = offset_op->id;
+	}
+	else
+	{
+		spv::Id ptr_offset_id =
+		    emit_load_node_input_push_parameter(impl, NodePayloadStrideOrOffsetsBDA, impl.node_input.u32_array_ptr_type_id);
+		auto *chain_op = impl.allocate(
+		    spv::OpInBoundsAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, u32_type));
+		chain_op->add_id(ptr_offset_id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		chain_op->add_id(add_op->id);
+		impl.add(chain_op);
+
+		load_op = impl.allocate(spv::OpLoad, u32_type);
+		load_op->add_id(chain_op->id);
+		load_op->add_literal(spv::MemoryAccessAlignedMask);
+		load_op->add_literal(sizeof(uint32_t));
+		impl.add(load_op);
+
+		payload_offset_id = load_op->id;
+	}
+
+	auto *conv_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
+	conv_op->add_id(payload_offset_id);
+	impl.add(conv_op);
+	return conv_op->id;
+}
+
 bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
 	if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeRecordHandle))
 	{
 		// Input pointer.
-		auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(64));
-		load_op->add_id(impl.node_input.private_bda_var_id);
-		impl.add(load_op);
+		spv::Id addr;
 
-		spv::Id addr = load_op->id;
-
-		// Handle NodeArray.
-		uint32_t const_op;
-		if (get_constant_operand(inst, 2, &const_op))
+		if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing)
 		{
-			if (const_op != 0)
-			{
-				auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
-				add_op->add_id(addr);
-				add_op->add_id(builder.makeUint64Constant(uint64_t(impl.node_input.payload_stride) * const_op));
-				impl.add(add_op);
-
-				addr = add_op->id;
-			}
+			auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(64));
+			load_op->add_id(impl.node_input.private_bda_var_id);
+			impl.add(load_op);
+			addr = load_op->id;
 		}
 		else
 		{
-			auto *offset_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-			offset_op->add_id(builder.makeUintConstant(impl.node_input.payload_stride));
-			offset_op->add_id(impl.get_id_for_value(inst->getOperand(2)));
-			impl.add(offset_op);
+			addr = emit_load_node_input_push_parameter(impl, NodePayloadBDA, builder.makeUintType(64));
+		}
 
-			auto *conv_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
-			conv_op->add_id(offset_op->id);
-			impl.add(conv_op);
+		spv::Id addr_offset_id = emit_build_input_payload_offset(impl, inst->getOperand(2));
 
+		if (addr_offset_id != 0)
+		{
 			auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
 			add_op->add_id(addr);
-			add_op->add_id(conv_op->id);
+			add_op->add_id(addr_offset_id);
 			impl.add(add_op);
-
 			addr = add_op->id;
 		}
 
@@ -132,7 +207,11 @@ bool emit_output_complete(Converter::Impl &impl, const llvm::CallInst *inst)
 
 bool emit_get_input_record_count(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	spv::Id u32_type = impl.builder().makeUintType(32);
+	auto *load_op = impl.allocate(spv::OpLoad, inst, u32_type);
+	load_op->add_id(impl.node_input.private_coalesce_count_id);
+	impl.add(load_op);
+	return true;
 }
 
 bool emit_finished_cross_group_sharing(Converter::Impl &impl, const llvm::CallInst *inst)
@@ -208,40 +287,6 @@ bool emit_get_remaining_recursion_levels(Converter::Impl &impl, const llvm::Call
 	auto &builder = impl.builder();
 	impl.rewrite_value(inst, builder.makeUintConstant(0));
 	return true;
-}
-
-static spv::Id emit_load_node_input_push_parameter(
-	Converter::Impl &impl, NodeInputParameter param, spv::Id type)
-{
-	auto *access_offset_point = impl.allocate(spv::OpAccessChain, impl.builder().makePointer(
-		spv::StorageClassPushConstant, type));
-	access_offset_point->add_id(impl.node_input.node_dispatch_push_id);
-	access_offset_point->add_id(impl.builder().makeUintConstant(param));
-	impl.add(access_offset_point);
-
-	auto *load_offset_point = impl.allocate(spv::OpLoad, type);
-	load_offset_point->add_id(access_offset_point->id);
-	impl.add(load_offset_point);
-
-	return load_offset_point->id;
-}
-
-static spv::Id emit_load_node_input_push_pointer(
-	Converter::Impl &impl, spv::Id ptr_id, spv::Id type_id, uint32_t alignment)
-{
-	auto *access_chain = impl.allocate(spv::OpAccessChain, impl.builder().makePointer(
-		spv::StorageClassPhysicalStorageBuffer, type_id));
-	access_chain->add_id(ptr_id);
-	access_chain->add_id(impl.builder().makeUintConstant(0));
-	impl.add(access_chain);
-
-	auto *load_op = impl.allocate(spv::OpLoad, type_id);
-	load_op->add_id(access_chain->id);
-	load_op->add_literal(spv::MemoryAccessAlignedMask);
-	load_op->add_literal(alignment);
-	impl.add(load_op);
-
-	return load_op->id;
 }
 
 static spv::Id emit_linear_node_index(Converter::Impl &impl)
@@ -388,14 +433,40 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 		store_op->add_id(impl.node_input.private_bda_var_id);
 		store_op->add_id(offset_payload->id);
 		impl.add(store_op);
-		return true;
 	}
 	else
 	{
 		// For Coalesce, we can load an array of payloads, have to defer the resolve.
 		// Fortunately, we don't have to read the payload in dispatcher, so we're okay.
-		return false;
+		spv::Id total_ptr = emit_load_node_input_push_parameter(impl, NodeTotalNodesBDA, impl.node_input.u32_ptr_type_id);
+		spv::Id total_id = emit_load_node_input_push_pointer(impl, total_ptr, u32_type, sizeof(uint32_t));
+
+		auto *store_op = impl.allocate(spv::OpStore);
+		store_op->add_id(impl.node_input.private_coalesce_offset_id);
+		store_op->add_id(linear_node_index_id);
+		impl.add(store_op);
+
+		auto *count_id = impl.allocate(spv::OpISub, u32_type);
+		count_id->add_id(total_id);
+		count_id->add_id(linear_node_index_id);
+		impl.add(count_id);
+
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+		auto *min_id = impl.allocate(spv::OpExtInst, u32_type);
+		min_id->add_id(impl.glsl_std450_ext);
+		min_id->add_literal(GLSLstd450UMin);
+		min_id->add_id(count_id->id);
+		min_id->add_id(builder.makeUintConstant(impl.node_input.coalesce_stride));
+		impl.add(min_id);
+
+		store_op = impl.allocate(spv::OpStore);
+		store_op->add_id(impl.node_input.private_coalesce_count_id);
+		store_op->add_id(min_id->id);
+		impl.add(store_op);
 	}
+
+	return true;
 }
 
 static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl, spv::Id linear_index_id)

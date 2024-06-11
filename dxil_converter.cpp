@@ -5394,7 +5394,14 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 					uint32_t input_node_size = get_constant_metadata(node_record_type, j + 1);
 					LOGI("InputNodeSize = %u\n", input_node_size);
 					node_input.payload_stride = input_node_size;
-					node_input.private_bda_var_id = create_variable(spv::StorageClassPrivate, builder().makeUintType(64), "NodeInputPayloadBDA");
+
+					// In Coalescing mode we have to defer this resolve
+					// since the input payload is an array and we might have to deal with indirection on top of that.
+					if (node_input.launch_type != DXIL::NodeLaunchType::Coalescing)
+					{
+						node_input.private_bda_var_id = create_variable(
+						    spv::StorageClassPrivate, builder().makeUintType(64), "NodeInputPayloadBDA");
+					}
 				}
 				else if (get_constant_metadata(node_record_type, j) == 1)
 				{
@@ -5407,6 +5414,10 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 					     component_type == DXIL::ComponentType::U32 ? "uint" : "ushort", num_components);
 				}
 			}
+		}
+		else if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
+		{
+			node_input.coalesce_stride = get_constant_metadata(input, i + 1);
 		}
 	}
 
@@ -5501,6 +5512,8 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 
 	if (node_input.launch_type == DXIL::NodeLaunchType::Coalescing)
 	{
+		node_input.private_coalesce_offset_id =
+			create_variable(spv::StorageClassPrivate, u32_type_id, "NodeCoalesceOffset");
 		node_input.private_coalesce_count_id =
 		    create_variable(spv::StorageClassPrivate, u32_type_id, "NodeCoalesceCount");
 	}
