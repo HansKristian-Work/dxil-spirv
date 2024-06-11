@@ -3669,9 +3669,26 @@ spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, TypeLa
 		StructTypeEntry entry;
 		entry.subtypes = type_ids;
 		entry.name = name ? name : "";
-		entry.id = builder().makeStructType(type_ids, entry.name.c_str());
-		if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) != 0)
-			decorate_physical_offsets(entry.id, type_ids);
+
+		if ((flags & TYPE_LAYOUT_BLOCK_BIT) != 0)
+		{
+			spv::Id struct_type_id = get_struct_type(type_ids, flags & ~TYPE_LAYOUT_BLOCK_BIT, entry.name.c_str());
+			entry.id = builder().makeStructType({ struct_type_id }, entry.name.c_str());
+			builder().addDecoration(entry.id, spv::DecorationBlock);
+			builder().addMemberDecoration(entry.id, 0, spv::DecorationOffset, 0);
+			if ((flags & TYPE_LAYOUT_COHERENT_BIT) != 0)
+				builder().addMemberDecoration(entry.id, 0, spv::DecorationCoherent);
+			if ((flags & TYPE_LAYOUT_READ_ONLY_BIT) != 0)
+				builder().addMemberDecoration(entry.id, 0, spv::DecorationNonWritable);
+			builder().addMemberName(entry.id, 0, "data");
+		}
+		else
+		{
+			entry.id = builder().makeStructType(type_ids, entry.name.c_str());
+			if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) != 0)
+				decorate_physical_offsets(entry.id, type_ids);
+		}
+
 		entry.flags = flags;
 		spv::Id id = entry.id;
 		cached_struct_types.push_back(std::move(entry));

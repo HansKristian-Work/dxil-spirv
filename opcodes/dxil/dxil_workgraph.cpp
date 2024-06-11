@@ -80,13 +80,22 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 			addr = add_op->id;
 		}
 
-		spv::Id physical_type_id = impl.get_type_id(inst->getType(),
-		                                            Converter::Impl::TYPE_LAYOUT_BLOCK_BIT |
-		                                            Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
+		spv::Id physical_block_type_id = impl.get_type_id(inst->getType(),
+		                                                  Converter::Impl::TYPE_LAYOUT_BLOCK_BIT |
+		                                                  Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
+		spv::Id physical_type_id = impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
 
-		auto *cast_op = impl.allocate(spv::OpConvertUToPtr, inst, physical_type_id);
+		auto *cast_op = impl.allocate(spv::OpConvertUToPtr, physical_block_type_id);
 		cast_op->add_id(addr);
 		impl.add(cast_op);
+
+		// Start the chain at the first member.
+		// This way we get coherency / read-only to propagate properly.
+		auto *chain_op = impl.allocate(spv::OpAccessChain, inst, physical_type_id);
+		chain_op->add_id(cast_op->id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		impl.add(chain_op);
+
 		return true;
 	}
 	else if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeHandle))
