@@ -284,10 +284,10 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	y_node_index->add_id(builder.makeUintConstant(32 * 1024));
 	impl.add(y_node_index);
 
-	auto *linear_node_index = impl.allocate(spv::OpIAdd, u32_type);
-	linear_node_index->add_id(y_node_index->id);
-	linear_node_index->add_id(wg_x->id);
-	impl.add(linear_node_index);
+	auto *linear_wg_index = impl.allocate(spv::OpIAdd, u32_type);
+	linear_wg_index->add_id(y_node_index->id);
+	linear_wg_index->add_id(wg_x->id);
+	impl.add(linear_wg_index);
 
 	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Thread)
 	{
@@ -296,7 +296,7 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 		builder.addName(workgroup_size, "ThreadGroupSize");
 
 		auto *mul_wg_index = impl.allocate(spv::OpIMul, u32_type);
-		mul_wg_index->add_id(linear_node_index->id);
+		mul_wg_index->add_id(linear_wg_index->id);
 		mul_wg_index->add_id(workgroup_size);
 		impl.add(mul_wg_index);
 
@@ -314,14 +314,14 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Coalescing)
 	{
 		auto *mul_wg_index = impl.allocate(spv::OpIMul, u32_type);
-		mul_wg_index->add_id(linear_node_index->id);
+		mul_wg_index->add_id(linear_wg_index->id);
 		mul_wg_index->add_id(builder.makeUintConstant(impl.node_input.coalesce_stride));
 		impl.add(mul_wg_index);
 		return mul_wg_index->id;
 	}
 	else
 	{
-		return linear_node_index->id;
+		return linear_wg_index->id;
 	}
 }
 
@@ -398,7 +398,7 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 	}
 }
 
-static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl)
+static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl, spv::Id linear_index_id)
 {
 	auto &builder = impl.builder();
 	spv::Id u32_type = builder.makeUintType(32);
@@ -506,6 +506,18 @@ static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl)
 			}
 		}
 	}
+	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Thread)
+	{
+		// Execution mask is just based on linear index < total threads.
+		// Nice and easy.
+		spv::Id total_ptr = emit_load_node_input_push_parameter(impl, NodeTotalNodesBDA, impl.node_input.u32_ptr_type_id);
+		spv::Id total_id = emit_load_node_input_push_pointer(impl, total_ptr, u32_type, sizeof(uint32_t));
+		auto *compare_op = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+		compare_op->add_id(linear_index_id);
+		compare_op->add_id(total_id);
+		impl.add(compare_op);
+		execution_mask_id = compare_op->id;
+	}
 
 	return execution_mask_id;
 }
@@ -518,8 +530,7 @@ bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode
 	if (!linear_node_index_id)
 		return false;
 
-	emit_payload_pointer_resolve(impl, linear_node_index_id);
-	spv::Id execution_mask_id = emit_workgraph_compute_builtins(impl);
+	spv::Id execution_mask_id = emit_workgraph_compute_builtins(impl, linear_node_index_id);
 
 	if (execution_mask_id)
 	{
@@ -538,6 +549,7 @@ bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode
 		impl.current_block = &masked_block->ir.operations;
 	}
 
+	emit_payload_pointer_resolve(impl, linear_node_index_id);
 	auto *call_op = impl.allocate(spv::OpFunctionCall, builder.makeVoidType());
 	call_op->add_id(main_entry_id);
 	impl.add(call_op);
