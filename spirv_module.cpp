@@ -1253,6 +1253,20 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 	builder.addName(func->getParamId(4), "AllocationOffset");
 	builder.addName(func->getParamId(5), "AllocationStride");
 
+	auto *return_block = new spv::Block(builder.getUniqueId(), *func);
+	auto check_empty = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
+	check_empty->addIdOperand(func->getParamId(2));
+	check_empty->addIdOperand(builder.makeUintConstant(0));
+	spv::Id return_early_cond_id = check_empty->getResultId();
+	entry->addInstruction(std::move(check_empty));
+
+	auto *reconverge_block = new spv::Block(builder.getUniqueId(), *func);
+	builder.setBuildPoint(entry);
+	builder.createSelectionMerge(reconverge_block, 0);
+	builder.createConditionalBranch(return_early_cond_id, return_block, reconverge_block);
+	builder.setBuildPoint(return_block);
+	builder.makeReturn(false, builder.makeUintConstant(0));
+
 	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
 	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
 
@@ -1267,9 +1281,9 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 	is_first_lane->addIdOperand(builder.makeUintConstant(0));
 	spv::Id cond_id = is_first_lane->getResultId();
 
-	entry->addInstruction(std::move(load_local_index));
-	entry->addInstruction(std::move(is_first_lane));
-	builder.setBuildPoint(entry);
+	reconverge_block->addInstruction(std::move(load_local_index));
+	reconverge_block->addInstruction(std::move(is_first_lane));
+	builder.setBuildPoint(reconverge_block);
 	builder.createSelectionMerge(merge_block, 0);
 	builder.createConditionalBranch(cond_id, body_block, merge_block);
 
