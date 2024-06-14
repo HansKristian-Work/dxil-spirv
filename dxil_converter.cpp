@@ -6221,7 +6221,8 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 	if (options.supports_maximal_reconvergence &&
 	    (options.force_maximal_reconvergence ||
 	     execution_mode_meta.waveops_include_helper_lanes ||
-	     execution_mode_meta.needs_quad_derivatives))
+	     execution_mode_meta.needs_quad_derivatives ||
+	     shader_analysis.need_maximal_reconvergence_helper_call))
 	{
 		builder().addExtension("SPV_KHR_maximal_reconvergence");
 		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeMaximallyReconvergesKHR);

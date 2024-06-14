@@ -1228,6 +1228,15 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::AllocateNodeOutputRecords:
+	{
+		uint32_t is_per_thread = 0;
+		// Per-thread allocator needs careful subgroup operations in potential control flow.
+		if (get_constant_operand(instruction, 2, &is_per_thread) && is_per_thread)
+			impl.shader_analysis.need_maximal_reconvergence_helper_call = true;
+		break;
+	}
+
 	default:
 		break;
 	}

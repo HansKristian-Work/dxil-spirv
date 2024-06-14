@@ -818,6 +818,7 @@ struct Converter::Impl
 		bool subgroup_ballot_reads_upper = false;
 		bool subgroup_ballot_reads_first = false;
 		bool can_require_opacity_micromap = false;
+		bool need_maximal_reconvergence_helper_call = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.
