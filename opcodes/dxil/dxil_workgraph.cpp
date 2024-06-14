@@ -31,6 +31,13 @@
 
 namespace dxil_spv
 {
+static uint32_t get_node_io_from_annotate_handle(const llvm::CallInst *inst)
+{
+	auto *type_operand = llvm::cast<llvm::ConstantAggregate>(inst->getOperand(2));
+	uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
+	return node_io_flags;
+}
+
 static uint32_t get_node_stride_from_annotate_handle(const llvm::CallInst *inst)
 {
 	auto *type_operand = llvm::cast<llvm::ConstantAggregate>(inst->getOperand(2));
@@ -44,6 +51,27 @@ static uint32_t get_node_stride_from_annotate_handle(const llvm::CallInst *inst)
 	}
 
 	return stride;
+}
+
+static uint32_t get_node_meta_index_from_annotate_handle(const llvm::CallInst *inst)
+{
+	// Crawl through the SSA noise until we find CreateNodeOutputHandle.
+	while (!value_is_dx_op_instrinsic(inst, DXIL::Op::CreateNodeOutputHandle))
+	{
+		if (value_is_dx_op_instrinsic(inst, DXIL::Op::AnnotateNodeRecordHandle) ||
+		    value_is_dx_op_instrinsic(inst, DXIL::Op::AnnotateNodeHandle) ||
+		    value_is_dx_op_instrinsic(inst, DXIL::Op::IndexNodeHandle) ||
+		    value_is_dx_op_instrinsic(inst, DXIL::Op::AllocateNodeOutputRecords))
+		{
+			inst = llvm::cast<llvm::CallInst>(inst->getOperand(1));
+		}
+	}
+
+	uint32_t meta_index = UINT32_MAX;
+	if (value_is_dx_op_instrinsic(inst, DXIL::Op::CreateNodeOutputHandle))
+		get_constant_operand(inst, 1, &meta_index);
+
+	return meta_index;
 }
 
 static spv::Id emit_load_node_input_push_parameter(
