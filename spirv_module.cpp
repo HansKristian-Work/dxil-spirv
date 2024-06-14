@@ -74,6 +74,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_image_atomic_r64_compact(SPIRVModule &module, bool array, bool non_uniform);
 	spv::Id build_finish_cross_group_sharing(SPIRVModule &module);
 	spv::Id build_allocate_node_records(SPIRVModule &module, bool per_thread);
+	spv::Id build_allocate_node_records_waterfall(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -128,6 +129,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id finish_cross_group_sharing_call_id = 0;
 	spv::Id allocate_thread_node_records_call_id = 0;
 	spv::Id allocate_group_node_records_call_id = 0;
+	spv::Id allocate_thread_node_records_waterfall_call_id = 0;
 
 	struct MultiPrefixOp
 	{
@@ -1230,6 +1232,89 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_allocate_node_records_waterfall(SPIRVModule &module)
+{
+	if (allocate_thread_node_records_waterfall_call_id)
+		return allocate_thread_node_records_waterfall_call_id;
+
+	spv::Id inner_call_id = module.get_helper_call_id(HelperCall::AllocateThreadNodeRecords);
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uint64_type = builder.makeUintType(64);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
+	                                       "AllocateThreadNodeRecordsWaterfall",
+	                                       { uint64_type, uint_type, uint_type, uint_type, uint_type, uint_type },
+	                                       {}, &entry);
+
+	builder.addName(func->getParamId(0), "AtomicCountersBDA");
+	builder.addName(func->getParamId(1), "NodeMetadataIndex");
+	builder.addName(func->getParamId(2), "Count");
+	builder.addName(func->getParamId(3), "Stride");
+	builder.addName(func->getParamId(4), "AllocationOffset");
+	builder.addName(func->getParamId(5), "AllocationStride");
+
+	auto *loop_header = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_header = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *continue_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_merge = new spv::Block(builder.getUniqueId(), *func);
+
+	builder.setBuildPoint(entry);
+	builder.createBranch(loop_header);
+
+	builder.setBuildPoint(loop_header);
+	builder.createLoopMerge(merge_block, continue_block, 0);
+	builder.createBranch(body_header);
+
+	builder.setBuildPoint(body_header);
+	auto broadcast = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpGroupNonUniformBroadcastFirst);
+	broadcast->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	broadcast->addIdOperand(func->getParamId(1));
+	spv::Id broadcast_id = broadcast->getResultId();
+
+	auto do_work = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
+	do_work->addIdOperand(broadcast->getResultId());
+	do_work->addIdOperand(func->getParamId(1));
+	spv::Id do_work_cond_id = do_work->getResultId();
+
+	body_header->addInstruction(std::move(broadcast));
+	body_header->addInstruction(std::move(do_work));
+	builder.createSelectionMerge(body_merge, 0);
+	builder.createConditionalBranch(do_work_cond_id, body_block, body_merge);
+
+	builder.setBuildPoint(body_block);
+	spv::Id return_value;
+	{
+		auto call_inner = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpFunctionCall);
+		call_inner->addIdOperand(inner_call_id);
+		call_inner->addIdOperand(func->getParamId(0));
+		call_inner->addIdOperand(broadcast_id);
+		call_inner->addIdOperand(func->getParamId(2));
+		call_inner->addIdOperand(func->getParamId(3));
+		call_inner->addIdOperand(func->getParamId(4));
+		call_inner->addIdOperand(func->getParamId(5));
+
+		return_value = call_inner->getResultId();
+		body_block->addInstruction(std::move(call_inner));
+		builder.createBranch(merge_block);
+	}
+
+	builder.setBuildPoint(body_merge);
+	builder.createBranch(continue_block);
+	builder.setBuildPoint(continue_block);
+	builder.createBranch(loop_header);
+
+	builder.setBuildPoint(merge_block);
+	builder.makeReturn(false, return_value);
+	builder.setBuildPoint(current_build_point);
+	allocate_thread_node_records_waterfall_call_id = func->getId();
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_thread)
 {
 	auto &call_id = per_thread ? allocate_thread_node_records_call_id : allocate_group_node_records_call_id;
@@ -1800,6 +1885,8 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_allocate_node_records(module, false);
 	case HelperCall::AllocateThreadNodeRecords:
 		return build_allocate_node_records(module, true);
+	case HelperCall::AllocateThreadNodeRecordsWaterfall:
+		return build_allocate_node_records_waterfall(module);
 
 	default:
 		break;

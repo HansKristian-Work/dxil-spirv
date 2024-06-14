@@ -64,4 +64,6 @@ static inline bool emit_wave_builtin_dispatch(Converter::Impl &impl, const llvm:
 {
 	return emit_wave_builtin_instruction(builtin, impl, instruction);
 }
+
+bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *value);
 } // namespace dxil_spv

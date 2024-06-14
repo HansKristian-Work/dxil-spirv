@@ -67,6 +67,7 @@ enum class HelperCall
 	FinishCrossGroupSharing,
 	AllocateThreadNodeRecords,
 	AllocateGroupNodeRecords,
+	AllocateThreadNodeRecordsWaterfall,
 	OutputComplete
 };
 

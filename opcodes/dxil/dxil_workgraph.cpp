@@ -24,6 +24,7 @@
 
 #include "dxil_workgraph.hpp"
 #include "dxil_common.hpp"
+#include "dxil_waveops.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
 #include "node.hpp"
@@ -165,8 +166,18 @@ bool emit_allocate_node_output_records(Converter::Impl &impl, const llvm::CallIn
 	spv::Id node_index = impl.get_id_for_value(inst->getOperand(1));
 	spv::Id alloc_count = impl.get_id_for_value(inst->getOperand(2));
 
-	spv::Id call_id = impl.spirv_module.get_helper_call_id(
-	    is_per_thread ? HelperCall::AllocateThreadNodeRecords : HelperCall::AllocateGroupNodeRecords);
+	HelperCall required_call;
+	if (is_per_thread)
+	{
+		if (value_is_statically_wave_uniform(impl, inst->getOperand(1)))
+			required_call = HelperCall::AllocateThreadNodeRecords;
+		else
+			required_call = HelperCall::AllocateThreadNodeRecordsWaterfall;
+	}
+	else
+		required_call = HelperCall::AllocateGroupNodeRecords;
+
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(required_call);
 
 	auto *call_op = impl.allocate(spv::OpFunctionCall, inst, builder.makeUintType(32));
 	call_op->add_id(call_id);

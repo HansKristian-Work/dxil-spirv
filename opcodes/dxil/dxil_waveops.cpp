@@ -186,7 +186,7 @@ bool emit_wave_ballot_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	return true;
 }
 
-static bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *value)
+bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *value)
 {
 	// A surprising amount of shaders try to broadcast a value that is provably wave-uniform already.
 	// Just forward this directly ...
@@ -194,6 +194,17 @@ static bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::
 	// the active threads when the wave uniform value was generated, so it is impossible for the input value to
 	// not be wave uniform. We might end up promoting an undef value to not undef, but that is fine, since undef is ...
 	// well, undef.
+
+	if (value_is_dx_op_instrinsic(value, DXIL::Op::AnnotateNodeHandle))
+	{
+		auto *node = llvm::cast<llvm::CallInst>(value)->getOperand(1);
+		// This is a static index.
+		if (!value_is_dx_op_instrinsic(node, DXIL::Op::IndexNodeHandle))
+			return true;
+
+		// If the array index is wave uniform, the handle is wave uniform.
+		value = llvm::cast<llvm::CallInst>(node)->getOperand(2);
+	}
 
 	// Buffer loads usually go through extractvalue first.
 	// Ignore extractelement, it's only used in esoteric cases in DXR.
