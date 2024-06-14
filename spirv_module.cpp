@@ -73,8 +73,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_quad_vote(SPIRVModule &module, HelperCall call);
 	spv::Id build_image_atomic_r64_compact(SPIRVModule &module, bool array, bool non_uniform);
 	spv::Id build_finish_cross_group_sharing(SPIRVModule &module);
-	spv::Id build_allocate_thread_node_records(SPIRVModule &module);
-	spv::Id build_allocate_group_node_records(SPIRVModule &module);
+	spv::Id build_allocate_node_records(SPIRVModule &module, bool per_thread);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -1231,10 +1230,11 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 	return func->getId();
 }
 
-spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module)
+spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_thread)
 {
-	if (allocate_group_node_records_call_id)
-		return allocate_group_node_records_call_id;
+	auto &call_id = per_thread ? allocate_thread_node_records_call_id : allocate_group_node_records_call_id;
+	if (call_id)
+		return call_id;
 
 	auto *current_build_point = builder.getBuildPoint();
 	spv::Block *entry = nullptr;
@@ -1242,7 +1242,7 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 	spv::Id uint_type = builder.makeUintType(32);
 	spv::Id uint64_type = builder.makeUintType(64);
 	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
-	                                       "AllocateGroupNodeRecords",
+	                                       per_thread ? "AllocateThreadNodeRecords" : "AllocateGroupNodeRecords",
 	                                       { uint64_type, uint_type, uint_type, uint_type, uint_type, uint_type },
 	                                       {}, &entry);
 
@@ -1253,9 +1253,35 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 	builder.addName(func->getParamId(4), "AllocationOffset");
 	builder.addName(func->getParamId(5), "AllocationStride");
 
+	spv::Id total_count_id;
+	spv::Id phi_undefined_id = 0;
+
+	if (per_thread)
+	{
+		// Do this on a per-wave basis. The node metadata index can be divergent, and we need to consider
+		// that the outer function is a waterfall loop.
+		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+		builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
+
+		auto counts_total =
+		    std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpGroupNonUniformIAdd);
+		counts_total->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		counts_total->addImmediateOperand(spv::GroupOperationReduce);
+		counts_total->addIdOperand(func->getParamId(2));
+
+		total_count_id = counts_total->getResultId();
+		entry->addInstruction(std::move(counts_total));
+
+		phi_undefined_id = builder.createUndefined(uint_type);
+	}
+	else
+	{
+		total_count_id = func->getParamId(2);
+	}
+
 	auto *return_block = new spv::Block(builder.getUniqueId(), *func);
 	auto check_empty = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
-	check_empty->addIdOperand(func->getParamId(2));
+	check_empty->addIdOperand(total_count_id);
 	check_empty->addIdOperand(builder.makeUintConstant(0));
 	spv::Id return_early_cond_id = check_empty->getResultId();
 	entry->addInstruction(std::move(check_empty));
@@ -1270,28 +1296,43 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
 	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
 
-	spv::Id local_invocation_index = get_builtin_shader_input(spv::BuiltInLocalInvocationIndex);
-	spv::Id shared_id = create_variable(spv::StorageClassWorkgroup, uint_type, "AllocateGroupNodeRecordsShared");
+	spv::Id shared_id = 0;
+	if (!per_thread)
+		shared_id = create_variable(spv::StorageClassWorkgroup, uint_type, "AllocateGroupNodeRecordsShared");
 
-	auto load_local_index = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
-	load_local_index->addIdOperand(local_invocation_index);
+	spv::Id is_first_lane_id;
 
-	auto is_first_lane = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
-	is_first_lane->addIdOperand(load_local_index->getResultId());
-	is_first_lane->addIdOperand(builder.makeUintConstant(0));
-	spv::Id cond_id = is_first_lane->getResultId();
+	if (per_thread)
+	{
+		auto is_first_lane = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpGroupNonUniformElect);
+		is_first_lane->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		is_first_lane_id = is_first_lane->getResultId();
+		reconverge_block->addInstruction(std::move(is_first_lane));
+	}
+	else
+	{
+		spv::Id local_invocation_index = get_builtin_shader_input(spv::BuiltInLocalInvocationIndex);
+		auto load_local_index = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+		load_local_index->addIdOperand(local_invocation_index);
 
-	reconverge_block->addInstruction(std::move(load_local_index));
-	reconverge_block->addInstruction(std::move(is_first_lane));
+		auto is_first_lane = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
+		is_first_lane->addIdOperand(load_local_index->getResultId());
+		is_first_lane->addIdOperand(builder.makeUintConstant(0));
+		is_first_lane_id = is_first_lane->getResultId();
+		reconverge_block->addInstruction(std::move(load_local_index));
+		reconverge_block->addInstruction(std::move(is_first_lane));
+	}
+
 	builder.setBuildPoint(reconverge_block);
 	builder.createSelectionMerge(merge_block, 0);
-	builder.createConditionalBranch(cond_id, body_block, merge_block);
+	builder.createConditionalBranch(is_first_lane_id, body_block, merge_block);
 
+	spv::Id payload_offset_id;
 	builder.setBuildPoint(body_block);
 	{
 		// Compute required payload bytes to allocate, and align.
 		auto mul_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
-		mul_op->addIdOperand(func->getParamId(2));
+		mul_op->addIdOperand(total_count_id);
 		mul_op->addIdOperand(func->getParamId(3));
 
 		auto add_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
@@ -1355,10 +1396,6 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 		atomic_node_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
 		atomic_node_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 
-		auto store_inst = std::make_unique<spv::Instruction>(spv::OpStore);
-		store_inst->addIdOperand(shared_id);
-		store_inst->addIdOperand(atomic_op->getResultId());
-
 		auto payload_mul_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
 		payload_mul_op->addIdOperand(func->getParamId(5));
 		payload_mul_op->addIdOperand(func->getParamId(1));
@@ -1381,6 +1418,8 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 		store_payload_inst->addImmediateOperand(spv::MemoryAccessAlignedMask);
 		store_payload_inst->addImmediateOperand(4);
 
+		payload_offset_id = atomic_op->getResultId();
+
 		body_block->addInstruction(std::move(mul_op));
 		body_block->addInstruction(std::move(add_op));
 		body_block->addInstruction(std::move(and_op));
@@ -1392,51 +1431,92 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 		body_block->addInstruction(std::move(count_minus_1));
 		body_block->addInstruction(std::move(or_op));
 		body_block->addInstruction(std::move(atomic_node_op));
-		body_block->addInstruction(std::move(store_inst));
 		body_block->addInstruction(std::move(payload_mul_op));
 		body_block->addInstruction(std::move(payload_add_op));
 		body_block->addInstruction(std::move(chain_payload_op));
 		body_block->addInstruction(std::move(store_payload_inst));
+
+		if (!per_thread)
+		{
+			auto store_inst = std::make_unique<spv::Instruction>(spv::OpStore);
+			store_inst->addIdOperand(shared_id);
+			store_inst->addIdOperand(payload_offset_id);
+			body_block->addInstruction(std::move(store_inst));
+		}
+
 		builder.createBranch(merge_block);
 	}
 	builder.setBuildPoint(merge_block);
 
-	// We don't need double barrier since FinishGroupSharing can only be called once.
-	// There is no risk of WAR hazard on the same shared memory.
-	auto barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
-	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
-	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
-	barrier_op->addIdOperand(builder.makeUintConstant(
-	    spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+	if (!per_thread)
+	{
+		auto barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
+		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+		barrier_op->addIdOperand(
+		    builder.makeUintConstant(spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+		merge_block->addInstruction(std::move(barrier_op));
+	}
 
-	auto load_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
-	load_op->addIdOperand(shared_id);
+	spv::Id return_value;
 
-	spv::Id return_value = load_op->getResultId();
-	merge_block->addInstruction(std::move(barrier_op));
-	merge_block->addInstruction(std::move(load_op));
+	if (per_thread)
+	{
+		auto counts_offsets =
+		    std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpGroupNonUniformIAdd);
+		counts_offsets->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		counts_offsets->addImmediateOperand(spv::GroupOperationExclusiveScan);
+		counts_offsets->addIdOperand(func->getParamId(2));
 
-	// Avoid WAR hazard for back-to-back allocations.
-	barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
-	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
-	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
-	barrier_op->addIdOperand(builder.makeUintConstant(
-	    spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+		auto phi_node = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpPhi);
+		phi_node->addIdOperand(payload_offset_id);
+		phi_node->addIdOperand(body_block->getId());
+		phi_node->addIdOperand(phi_undefined_id);
+		phi_node->addIdOperand(reconverge_block->getId());
 
-	merge_block->addInstruction(std::move(barrier_op));
+		auto broadcast_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpGroupNonUniformBroadcastFirst);
+		broadcast_op->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+		broadcast_op->addIdOperand(phi_node->getResultId());
+
+		auto mul_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
+		mul_op->addIdOperand(counts_offsets->getResultId());
+		mul_op->addIdOperand(func->getParamId(3));
+
+		auto add_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
+		add_op->addIdOperand(broadcast_op->getResultId());
+		add_op->addIdOperand(mul_op->getResultId());
+
+		return_value = add_op->getResultId();
+
+		merge_block->addInstruction(std::move(phi_node));
+		merge_block->addInstruction(std::move(broadcast_op));
+		merge_block->addInstruction(std::move(counts_offsets));
+		merge_block->addInstruction(std::move(mul_op));
+		merge_block->addInstruction(std::move(add_op));
+	}
+	else
+	{
+		auto load_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+		load_op->addIdOperand(shared_id);
+		return_value = load_op->getResultId();
+		merge_block->addInstruction(std::move(load_op));
+	}
+
+	if (!per_thread)
+	{
+		// Avoid WAR hazard for back-to-back allocations.
+		auto barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
+		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+		barrier_op->addIdOperand(
+		    builder.makeUintConstant(spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+		merge_block->addInstruction(std::move(barrier_op));
+	}
 
 	builder.makeReturn(false, return_value);
 	builder.setBuildPoint(current_build_point);
-	allocate_group_node_records_call_id = func->getId();
+	call_id = func->getId();
 	return func->getId();
-}
-
-spv::Id SPIRVModule::Impl::build_allocate_thread_node_records(SPIRVModule &module)
-{
-	if (allocate_thread_node_records_call_id)
-		return allocate_thread_node_records_call_id;
-
-	return 0;
 }
 
 spv::Id SPIRVModule::Impl::build_finish_cross_group_sharing(SPIRVModule &module)
@@ -1717,9 +1797,9 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 	case HelperCall::FinishCrossGroupSharing:
 		return build_finish_cross_group_sharing(module);
 	case HelperCall::AllocateGroupNodeRecords:
-		return build_allocate_group_node_records(module);
+		return build_allocate_node_records(module, false);
 	case HelperCall::AllocateThreadNodeRecords:
-		return build_allocate_thread_node_records(module);
+		return build_allocate_node_records(module, true);
 
 	default:
 		break;
