@@ -373,6 +373,7 @@ struct DXILDispatcher
 		OP(IndexNodeHandle) = emit_index_node_handle;
 		OP(AnnotateNodeHandle) = emit_annotate_node_handle;
 		OP(CreateNodeInputRecordHandle) = emit_create_node_input_record_handle;
+		OP(CreateNodeOutputHandle) = emit_create_node_output_handle;
 		OP(AnnotateNodeRecordHandle) = emit_annotate_node_record_handle;
 		OP(NodeOutputIsValid) = emit_node_output_is_valid;
 		OP(GetRemainingRecursionLevels) = emit_get_remaining_recursion_levels;

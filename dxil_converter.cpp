@@ -5335,89 +5335,73 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	return false;
 }
 
-bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
+bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
 {
-	uint32_t num_ops = input->getNumOperands();
-	bool is_rw_sharing = false;
+	NodeOutputMeta output_meta = {};
 
+	output_meta.grid = node_parse_dispatch_grid(output);
+	output_meta.payload_stride = node_parse_payload_stride(output);
+	output_meta.spec_constant_node_index = builder().makeUintConstant(0, true);
+	builder().addDecoration(output_meta.spec_constant_node_index, spv::DecorationSpecId, int(1 + node_outputs.size()));
+
+	node_outputs.push_back(output_meta);
+	return true;
+}
+
+Converter::Impl::NodeDispatchGrid Converter::Impl::node_parse_dispatch_grid(llvm::MDNode *node_meta)
+{
+	uint32_t num_ops = node_meta->getNumOperands();
 	for (uint32_t i = 0; i < num_ops; i += 2)
 	{
-		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
-		if (tag == DXIL::NodeMetadataTag::NodeIOFlags)
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(node_meta, i));
+		if (tag == DXIL::NodeMetadataTag::NodeRecordType)
 		{
-			uint32_t node_io_flags = get_constant_metadata(input, i + 1);
-
-			switch (DXIL::NodeIOFlagBits(node_io_flags & DXIL::RecordGranularityMask))
-			{
-			case DXIL::NodeIOThreadRecordBit:
-				LOGI("Input ThreadRecord\n");
-				break;
-
-			case DXIL::NodeIOGroupRecordBit:
-				LOGI("Input GroupRecord\n");
-				break;
-
-			case DXIL::NodeIODispatchRecordBit:
-				LOGI("Input GroupRecord\n");
-				break;
-
-			default:
-				break;
-			}
-
-			// Sanity check the flags.
-			if ((node_io_flags & DXIL::NodeIOInputBit) == 0)
-				return false;
-			if ((node_io_flags & DXIL::NodeIOOutputBit) != 0)
-				return false;
-			if ((node_io_flags & DXIL::NodeIOReadWriteBit) != 0)
-				LOGI("  Input ReadWrite\n");
-			if ((node_io_flags & DXIL::NodeIOEmptyRecordBit) != 0)
-				LOGI("  Input EmptyRecord\n");
-			if ((node_io_flags & DXIL::NodeIONodeArrayBit) != 0)
-				LOGI("  Input NodeArray\n");
-			if ((node_io_flags & DXIL::NodeIOTrackRWInputSharingBit) != 0)
-			{
-				LOGI("  Input RWInputSharing\n");
-				is_rw_sharing = true;
-			}
-			if ((node_io_flags & DXIL::NodeIOGloballyCoherentBit) != 0)
-				LOGI("  Input GloballyCoherent\n");
-		}
-		else if (tag == DXIL::NodeMetadataTag::NodeRecordType)
-		{
-			auto *node_record_type = llvm::cast<llvm::MDNode>(input->getOperand(i + 1));
+			auto *node_record_type = llvm::cast<llvm::MDNode>(node_meta->getOperand(i + 1));
 			for (uint32_t j = 0; j < node_record_type->getNumOperands(); j += 2)
 			{
-				if (get_constant_metadata(node_record_type, j) == 0)
-				{
-					uint32_t input_node_size = get_constant_metadata(node_record_type, j + 1);
-					LOGI("InputNodeSize = %u\n", input_node_size);
-					node_input.payload_stride = input_node_size;
-
-					// In Coalescing mode we have to defer this resolve
-					// since the input payload is an array and we might have to deal with indirection on top of that.
-					if (node_input.launch_type != DXIL::NodeLaunchType::Coalescing)
-					{
-						node_input.private_bda_var_id = create_variable(
-						    spv::StorageClassPrivate, builder().makeUintType(64), "NodeInputPayloadBDA");
-					}
-				}
-				else if (get_constant_metadata(node_record_type, j) == 1)
+				if (get_constant_metadata(node_record_type, j) == 1)
 				{
 					auto *dispatch_info = llvm::cast<llvm::MDNode>(node_record_type->getOperand(j + 1));
 					uint32_t byte_offset = get_constant_metadata(dispatch_info, 0);
 					auto component_type = DXIL::ComponentType(get_constant_metadata(dispatch_info, 1));
 					uint32_t num_components = get_constant_metadata(dispatch_info, 2);
-					node_input.dispatch_grid = { byte_offset, component_type, num_components };
-					LOGI("SV_DispatchGrid { offset = %u, %s%u }\n", byte_offset,
-					     component_type == DXIL::ComponentType::U32 ? "uint" : "ushort", num_components);
+					return { byte_offset, component_type, num_components };
 				}
 			}
 		}
-		else if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
+	}
+
+	return {};
+}
+
+uint32_t Converter::Impl::node_parse_payload_stride(llvm::MDNode *node_meta)
+{
+	uint32_t num_ops = node_meta->getNumOperands();
+	uint32_t payload_stride = 0;
+	bool is_rw_sharing = false;
+
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(node_meta, i));
+		if (tag == DXIL::NodeMetadataTag::NodeIOFlags)
 		{
-			node_input.coalesce_stride = get_constant_metadata(input, i + 1);
+			uint32_t node_io_flags = get_constant_metadata(node_meta, i + 1);
+			if ((node_io_flags & DXIL::NodeIOEmptyRecordBit) != 0)
+				return 0;
+			if ((node_io_flags & DXIL::NodeIOTrackRWInputSharingBit) != 0)
+				is_rw_sharing = true;
+		}
+		else if (tag == DXIL::NodeMetadataTag::NodeRecordType)
+		{
+			auto *node_record_type = llvm::cast<llvm::MDNode>(node_meta->getOperand(i + 1));
+			for (uint32_t j = 0; j < node_record_type->getNumOperands(); j += 2)
+			{
+				if (get_constant_metadata(node_record_type, j) == 0)
+				{
+					uint32_t input_node_size = get_constant_metadata(node_record_type, j + 1);
+					payload_stride = input_node_size;
+				}
+			}
 		}
 	}
 
@@ -5425,9 +5409,34 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	{
 		// DXIL metadata does not account for the implied u32 used for group sharing.
 		// In case the last member is u16, align to u32.
-		node_input.payload_stride = (node_input.payload_stride + 3u) & ~3u;
+		payload_stride = (payload_stride + 3u) & ~3u;
 		// Allocate space for magic word.
-		node_input.payload_stride += 4;
+		payload_stride += 4;
+	}
+
+	return payload_stride;
+}
+
+bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
+{
+	uint32_t num_ops = input->getNumOperands();
+
+	node_input.dispatch_grid = node_parse_dispatch_grid(input);
+	node_input.payload_stride = node_parse_payload_stride(input);
+
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
+		if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
+			node_input.coalesce_stride = get_constant_metadata(input, i + 1);
+	}
+
+	// In Coalescing mode we have to defer this resolve
+	// since the input payload is an array, and we might have to deal with indirection on top of that.
+	if (node_input.launch_type != DXIL::NodeLaunchType::Coalescing && node_input.payload_stride)
+	{
+		node_input.private_bda_var_id = create_variable(
+		    spv::StorageClassPrivate, builder().makeUintType(64), "NodeInputPayloadBDA");
 	}
 
 	// We have to rewrite global IDs. Local invocation should remain intact.
@@ -5526,6 +5535,9 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 
 bool Converter::Impl::emit_execution_modes_node()
 {
+	// It will be necessary to override all this metadata through some API.
+	// Not really needed to support this until we've implemented everything.
+
 	auto *launch_type_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeLaunchType);
 	if (!launch_type_node)
 		return false;
@@ -5541,28 +5553,13 @@ bool Converter::Impl::emit_execution_modes_node()
 	}
 
 	// Currently don't care what the max dispatch grid is, just if we have to deal with it.
+	// In this case we get masked execution.
 	node_input.broadcast_has_max_grid =
 	    get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeMaxDispatchGrid) != nullptr;
 
-	node_input.launch_type = launch_type;
-
-	switch (launch_type)
-	{
-	case DXIL::NodeLaunchType::Broadcasting:
-		LOGI("Broadcasting\n");
-		break;
-
-	case DXIL::NodeLaunchType::Coalescing:
-		LOGI("Coalescing\n");
-		break;
-
-	case DXIL::NodeLaunchType::Thread:
-		LOGI("Thread\n");
-		break;
-
-	default:
+	if (launch_type == DXIL::NodeLaunchType::Invalid)
 		return false;
-	}
+	node_input.launch_type = launch_type;
 
 	auto *inputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeInputs);
 	if (inputs_node)
@@ -5576,6 +5573,19 @@ bool Converter::Impl::emit_execution_modes_node()
 		auto *input = llvm::cast<llvm::MDNode>(inputs->getOperand(0));
 		if (!emit_execution_modes_node_input(input))
 			return false;
+	}
+
+	auto *outputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeOutputs);
+	if (outputs_node)
+	{
+		auto *outputs = llvm::cast<llvm::MDNode>(*outputs_node);
+
+		for (unsigned i = 0; i < outputs->getNumOperands(); i++)
+		{
+			auto *output = llvm::cast<llvm::MDNode>(outputs->getOperand(i));
+			if (!emit_execution_modes_node_output(output))
+				return false;
+		}
 	}
 
 	if (node_input.launch_type != DXIL::NodeLaunchType::Thread)

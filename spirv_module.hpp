@@ -64,7 +64,10 @@ enum class HelperCall
 	AtomicImageArrayR64Compact,
 	AtomicImageR64CompactNonUniform,
 	AtomicImageArrayR64CompactNonUniform,
-	FinishCrossGroupSharing
+	FinishCrossGroupSharing,
+	AllocateThreadNodeRecords,
+	AllocateGroupNodeRecords,
+	OutputComplete
 };
 
 class SPIRVModule

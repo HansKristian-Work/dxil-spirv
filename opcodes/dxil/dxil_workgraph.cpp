@@ -30,9 +30,47 @@
 
 namespace dxil_spv
 {
+static uint32_t get_node_stride_from_annotate_handle(const llvm::CallInst *inst)
+{
+	auto *type_operand = llvm::cast<llvm::ConstantAggregate>(inst->getOperand(2));
+	uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
+	uint32_t stride = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(1))->getUniqueInteger().getZExtValue();
+
+	if ((node_io_flags & DXIL::NodeIOTrackRWInputSharingBit) != 0)
+	{
+		stride = (stride + 3u) & ~3u;
+		stride += 4;
+	}
+
+	return stride;
+}
+
 bool emit_allocate_node_output_records(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	auto &builder = impl.builder();
+	uint32_t is_per_thread = 0;
+	if (!get_constant_operand(inst, 3, &is_per_thread))
+		return false;
+
+	if (!value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeHandle))
+		return false;
+
+	uint32_t stride = get_node_stride_from_annotate_handle(llvm::cast<llvm::CallInst>(inst->getOperand(1)));
+	spv::Id node_index = impl.get_id_for_value(inst->getOperand(1));
+	spv::Id alloc_count = impl.get_id_for_value(inst->getOperand(2));
+
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(
+	    is_per_thread ? HelperCall::AllocateThreadNodeRecords : HelperCall::AllocateGroupNodeRecords);
+
+	auto *call_op = impl.allocate(spv::OpFunctionCall, inst, builder.makeUintType(32));
+	call_op->add_id(call_id);
+	call_op->add_id(builder.makeUint64Constant(0)); // Pointer to { u32, u32[] }. Atomic.
+	call_op->add_id(node_index);
+	call_op->add_id(alloc_count);
+	call_op->add_id(builder.makeUintConstant(stride));
+	impl.add(call_op);
+
+	return true;
 }
 
 static spv::Id emit_load_node_input_push_parameter(
@@ -67,6 +105,23 @@ static spv::Id emit_load_node_input_push_pointer(
 	impl.add(load_op);
 
 	return load_op->id;
+}
+
+static spv::Id emit_build_output_payload_offset(
+    Converter::Impl &impl, const llvm::Value *base_offset, const llvm::Value *index, uint32_t stride)
+{
+	auto &builder = impl.builder();
+	auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+	mul_op->add_id(impl.get_id_for_value(index));
+	mul_op->add_id(builder.makeUintConstant(stride));
+	impl.add(mul_op);
+
+	auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+	add_op->add_id(impl.get_id_for_value(base_offset));
+	add_op->add_id(mul_op->id);
+	impl.add(add_op);
+
+	return add_op->id;
 }
 
 static spv::Id emit_build_input_payload_offset(Converter::Impl &impl, const llvm::Value *value)
@@ -127,11 +182,48 @@ static spv::Id emit_build_input_payload_offset(Converter::Impl &impl, const llvm
 bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
-	if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeRecordHandle))
-	{
-		// Input pointer.
-		spv::Id addr;
+	if (!value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeRecordHandle))
+		return false;
 
+	auto *annotation = llvm::cast<llvm::CallInst>(inst->getOperand(1));
+	auto *type_operand = llvm::cast<llvm::ConstantAggregate>(annotation->getOperand(2));
+
+	uint32_t node_io_flags =
+	    llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
+
+	Converter::Impl::TypeLayoutFlags flags = Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT;
+
+	if ((node_io_flags & DXIL::NodeIOReadWriteBit) == 0)
+		flags |= Converter::Impl::TYPE_LAYOUT_READ_ONLY_BIT;
+	// We might have to promote this to coherent if device-scope barrier is used just like normal UAVs.
+	if ((node_io_flags & DXIL::NodeIOGloballyCoherentBit) != 0)
+		flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
+
+	spv::Id physical_block_type_id =
+	    impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_BLOCK_BIT | flags);
+	spv::Id physical_type_id = impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
+
+	spv::Id addr;
+
+	if (value_is_dx_op_instrinsic(annotation->getOperand(1), DXIL::Op::AllocateNodeOutputRecords))
+	{
+		spv::Id base_addr = emit_load_node_input_push_parameter(impl, NodePayloadBDA, builder.makeUintType(64));
+		spv::Id offset_id = emit_build_output_payload_offset(impl, annotation->getOperand(1), inst->getOperand(2),
+		                                                     get_node_stride_from_annotate_handle(annotation));
+
+		auto *cast_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
+		cast_op->add_id(offset_id);
+		impl.add(cast_op);
+
+		auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(64));
+		add_op->add_id(base_addr);
+		add_op->add_id(cast_op->id);
+		impl.add(add_op);
+
+		addr = add_op->id;
+	}
+	else
+	{
 		if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing)
 		{
 			auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(64));
@@ -154,45 +246,20 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 			impl.add(add_op);
 			addr = add_op->id;
 		}
-
-		auto *annotate_call = llvm::cast<llvm::CallInst>(inst->getOperand(1));
-		auto *type_operand = llvm::cast<llvm::ConstantAggregate>(annotate_call->getOperand(2));
-		uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
-
-		Converter::Impl::TypeLayoutFlags flags = Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT;
-
-		if ((node_io_flags & DXIL::NodeIOReadWriteBit) == 0)
-			flags |= Converter::Impl::TYPE_LAYOUT_READ_ONLY_BIT;
-		// We might have to promote this to coherent if device-scope barrier is used just like normal UAVs.
-		if ((node_io_flags & DXIL::NodeIOGloballyCoherentBit) != 0)
-			flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
-
-		spv::Id physical_block_type_id = impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_BLOCK_BIT | flags);
-		spv::Id physical_type_id = impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
-
-		auto *cast_op = impl.allocate(spv::OpConvertUToPtr, physical_block_type_id);
-		cast_op->add_id(addr);
-		impl.add(cast_op);
-
-		// Start the chain at the first member.
-		// This way we get coherency / read-only to propagate properly.
-		auto *chain_op = impl.allocate(spv::OpAccessChain, inst, physical_type_id);
-		chain_op->add_id(cast_op->id);
-		chain_op->add_id(builder.makeUintConstant(0));
-		impl.add(chain_op);
-
-		return true;
 	}
-	else if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeHandle))
-	{
-		// Output pointer.
-		return false;
-	}
-	else
-	{
-		// Should not happen.
-		return false;
-	}
+
+	auto *cast_op = impl.allocate(spv::OpConvertUToPtr, physical_block_type_id);
+	cast_op->add_id(addr);
+	impl.add(cast_op);
+
+	// Start the chain at the first member.
+	// This way we get coherency / read-only to propagate properly.
+	auto *chain_op = impl.allocate(spv::OpAccessChain, inst, physical_type_id);
+	chain_op->add_id(cast_op->id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	impl.add(chain_op);
+
+	return true;
 }
 
 bool emit_increment_output_count(Converter::Impl &impl, const llvm::CallInst *inst)
@@ -202,7 +269,7 @@ bool emit_increment_output_count(Converter::Impl &impl, const llvm::CallInst *in
 
 bool emit_output_complete(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	return true;
 }
 
 bool emit_get_input_record_count(Converter::Impl &impl, const llvm::CallInst *inst)
@@ -254,12 +321,39 @@ bool emit_barrier_by_node_record_handle(Converter::Impl &impl, const llvm::CallI
 
 bool emit_index_node_handle(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	// This is fairly easy, just add. This becomes the index into atomic array.
+	auto &builder = impl.builder();
+	auto *add_op = impl.allocate(spv::OpIAdd, inst, builder.makeUintType(32));
+	add_op->add_id(impl.get_id_for_value(inst->getOperand(1)));
+	add_op->add_id(impl.get_id_for_value(inst->getOperand(2)));
+	impl.add(add_op);
+	return true;
 }
 
 bool emit_annotate_node_handle(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	// Not sure why there are two separate opcodes for annotating a handle, but DXIL's gonna DXIL ...
+	if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::IndexNodeHandle))
+	{
+		// Trivially forward the annotation.
+		impl.rewrite_value(inst, impl.get_id_for_value(inst->getOperand(1)));
+		return true;
+	}
+
+	if (!value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::CreateNodeOutputHandle))
+		return false;
+
+	auto *node_output = llvm::cast<llvm::CallInst>(inst->getOperand(1));
+	uint32_t node_meta_index = 0;
+	if (!get_constant_operand(node_output, 1, &node_meta_index))
+		return false;
+
+	if (node_meta_index >= impl.node_outputs.size())
+		return false;
+
+	auto &node_meta = impl.node_outputs[node_meta_index];
+	impl.rewrite_value(inst, node_meta.spec_constant_node_index);
+	return true;
 }
 
 bool emit_create_node_input_record_handle(Converter::Impl &, const llvm::CallInst *)
@@ -269,10 +363,16 @@ bool emit_create_node_input_record_handle(Converter::Impl &, const llvm::CallIns
 	return true;
 }
 
+bool emit_create_node_output_handle(Converter::Impl &, const llvm::CallInst *)
+{
+	// Do nothing here. We have to annotate the handle first, and there we can look at the node instruction.
+	return true;
+}
+
 bool emit_annotate_node_record_handle(Converter::Impl &, const llvm::CallInst *inst)
 {
-	// This is only used by inputs
-	return value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::CreateNodeInputRecordHandle);
+	return value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::CreateNodeInputRecordHandle) ||
+	       value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AllocateNodeOutputRecords);
 }
 
 bool emit_node_output_is_valid(Converter::Impl &impl, const llvm::CallInst *inst)

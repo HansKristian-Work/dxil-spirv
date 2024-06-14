@@ -39,6 +39,7 @@ bool emit_barrier_by_node_record_handle(Converter::Impl &impl, const llvm::CallI
 bool emit_index_node_handle(Converter::Impl &impl, const llvm::CallInst *inst);
 bool emit_annotate_node_handle(Converter::Impl &impl, const llvm::CallInst *inst);
 bool emit_create_node_input_record_handle(Converter::Impl &impl, const llvm::CallInst *inst);
+bool emit_create_node_output_handle(Converter::Impl &impl, const llvm::CallInst *inst);
 bool emit_annotate_node_record_handle(Converter::Impl &impl, const llvm::CallInst *inst);
 bool emit_node_output_is_valid(Converter::Impl &impl, const llvm::CallInst *inst);
 bool emit_get_remaining_recursion_levels(Converter::Impl &impl, const llvm::CallInst *inst);

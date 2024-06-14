@@ -229,7 +229,18 @@ struct Converter::Impl
 	bool analyze_execution_modes_meta();
 	bool emit_execution_modes_compute();
 	bool emit_execution_modes_node();
+
+	struct NodeDispatchGrid
+	{
+		uint32_t offset;
+		DXIL::ComponentType component_type;
+		uint32_t count;
+	};
+
+	static NodeDispatchGrid node_parse_dispatch_grid(llvm::MDNode *node_meta);
+	static uint32_t node_parse_payload_stride(llvm::MDNode *node_meta);
 	bool emit_execution_modes_node_input(llvm::MDNode *input);
+	bool emit_execution_modes_node_output(llvm::MDNode *input);
 	bool emit_execution_modes_geometry();
 	bool emit_execution_modes_hull();
 	bool emit_execution_modes_domain();
@@ -523,24 +534,24 @@ struct Converter::Impl
 		spv::Id private_coalesce_offset_id; // Private variable which holds the linear input index.
 		spv::Id private_coalesce_count_id; // Private variable which holds the input count.
 		spv::Id node_dispatch_push_id; // PushConstant ABI for dispatching.
-		uint32_t payload_stride; // Stride for the payload. This is recorded in metadata.
+		// Stride for the payload. This is recorded in metadata, but we may have to allocate SV_DispatchGrid.
+		uint32_t payload_stride;
 		uint32_t coalesce_stride; // Coalesce width.
 		spv::Id u32_ptr_type_id;
 		spv::Id u32_array_ptr_type_id;
 		DXIL::NodeLaunchType launch_type;
+		NodeDispatchGrid dispatch_grid;
 		bool is_entry_point;
-
-		struct
-		{
-			uint32_t offset;
-			DXIL::ComponentType component_type;
-			uint32_t count;
-		} dispatch_grid;
 		bool broadcast_has_max_grid;
 	};
 
 	struct NodeOutputMeta
 	{
+		spv::Id spec_constant_node_index;
+		// Stride for the payload. This is recorded in metadata, but we may have to allocate SV_DispatchGrid.
+		uint32_t payload_stride;
+		// On OutputComplete, we may have to compute the total dispatch factor.
+		NodeDispatchGrid grid;
 	};
 
 	NodeInputMeta node_input = {};

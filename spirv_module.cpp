@@ -73,6 +73,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_quad_vote(SPIRVModule &module, HelperCall call);
 	spv::Id build_image_atomic_r64_compact(SPIRVModule &module, bool array, bool non_uniform);
 	spv::Id build_finish_cross_group_sharing(SPIRVModule &module);
+	spv::Id build_allocate_thread_node_records(SPIRVModule &module);
+	spv::Id build_allocate_group_node_records(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -125,6 +127,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id image_r64_atomic_non_uniform_call_id = 0;
 	spv::Id image_r64_array_atomic_non_uniform_call_id = 0;
 	spv::Id finish_cross_group_sharing_call_id = 0;
+	spv::Id allocate_thread_node_records_call_id = 0;
+	spv::Id allocate_group_node_records_call_id = 0;
 
 	struct MultiPrefixOp
 	{
@@ -1227,6 +1231,125 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module)
+{
+	if (allocate_group_node_records_call_id)
+		return allocate_group_node_records_call_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uint64_type = builder.makeUintType(64);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
+	                                       "AllocateGroupNodeRecords",
+	                                       { uint64_type, uint_type, uint_type, uint_type },
+	                                       {}, &entry);
+
+	builder.addName(func->getParamId(0), "AtomicCountersBDA");
+	builder.addName(func->getParamId(1), "NodeMetadataIndex");
+	builder.addName(func->getParamId(2), "Count");
+	builder.addName(func->getParamId(3), "Stride");
+
+	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+
+	spv::Id local_invocation_index = get_builtin_shader_input(spv::BuiltInLocalInvocationIndex);
+	spv::Id shared_id = create_variable(spv::StorageClassWorkgroup, uint_type, "AllocateGroupNodeRecordsShared");
+
+	auto load_local_index = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+	load_local_index->addIdOperand(local_invocation_index);
+
+	auto is_first_lane = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
+	is_first_lane->addIdOperand(load_local_index->getResultId());
+	is_first_lane->addIdOperand(builder.makeUintConstant(0));
+	spv::Id cond_id = is_first_lane->getResultId();
+
+	entry->addInstruction(std::move(load_local_index));
+	entry->addInstruction(std::move(is_first_lane));
+	builder.setBuildPoint(entry);
+	builder.createSelectionMerge(merge_block, 0);
+	builder.createConditionalBranch(cond_id, body_block, merge_block);
+
+	builder.setBuildPoint(body_block);
+	{
+		// Compute required payload bytes to allocate, and align.
+		auto mul_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
+		mul_op->addIdOperand(func->getParamId(2));
+		mul_op->addIdOperand(func->getParamId(3));
+
+		auto add_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
+		add_op->addIdOperand(mul_op->getResultId());
+		add_op->addIdOperand(builder.makeUintConstant(15));
+
+		auto and_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpBitwiseAnd);
+		and_op->addIdOperand(add_op->getResultId());
+		and_op->addIdOperand(builder.makeUintConstant(~15u));
+
+		auto cast_op = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(),
+		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
+		    spv::OpBitcast);
+		cast_op->addIdOperand(func->getParamId(0));
+
+		auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
+		atomic_op->addIdOperand(cast_op->getResultId());
+		atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
+		atomic_op->addIdOperand(and_op->getResultId());
+
+		auto store_inst = std::make_unique<spv::Instruction>(spv::OpStore);
+		store_inst->addIdOperand(shared_id);
+		store_inst->addIdOperand(atomic_op->getResultId());
+
+		body_block->addInstruction(std::move(mul_op));
+		body_block->addInstruction(std::move(add_op));
+		body_block->addInstruction(std::move(and_op));
+		body_block->addInstruction(std::move(cast_op));
+		body_block->addInstruction(std::move(atomic_op));
+		body_block->addInstruction(std::move(store_inst));
+		builder.createBranch(merge_block);
+	}
+	builder.setBuildPoint(merge_block);
+
+	// We don't need double barrier since FinishGroupSharing can only be called once.
+	// There is no risk of WAR hazard on the same shared memory.
+	auto barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
+	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+	barrier_op->addIdOperand(builder.makeUintConstant(
+	    spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+
+	auto load_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+	load_op->addIdOperand(shared_id);
+
+	spv::Id return_value = load_op->getResultId();
+	merge_block->addInstruction(std::move(barrier_op));
+	merge_block->addInstruction(std::move(load_op));
+
+	// Avoid WAR hazard for back-to-back allocations.
+	barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
+	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
+	barrier_op->addIdOperand(builder.makeUintConstant(
+	    spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+
+	merge_block->addInstruction(std::move(barrier_op));
+
+	builder.makeReturn(false, return_value);
+	builder.setBuildPoint(current_build_point);
+	allocate_group_node_records_call_id = func->getId();
+	return func->getId();
+}
+
+spv::Id SPIRVModule::Impl::build_allocate_thread_node_records(SPIRVModule &module)
+{
+	if (allocate_thread_node_records_call_id)
+		return allocate_thread_node_records_call_id;
+
+	return 0;
+}
+
 spv::Id SPIRVModule::Impl::build_finish_cross_group_sharing(SPIRVModule &module)
 {
 	if (finish_cross_group_sharing_call_id)
@@ -1504,6 +1627,10 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 			call == HelperCall::AtomicImageR64CompactNonUniform || call == HelperCall::AtomicImageArrayR64CompactNonUniform);
 	case HelperCall::FinishCrossGroupSharing:
 		return build_finish_cross_group_sharing(module);
+	case HelperCall::AllocateGroupNodeRecords:
+		return build_allocate_group_node_records(module);
+	case HelperCall::AllocateThreadNodeRecords:
+		return build_allocate_thread_node_records(module);
 
 	default:
 		break;
