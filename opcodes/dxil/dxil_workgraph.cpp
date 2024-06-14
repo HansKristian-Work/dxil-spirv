@@ -45,34 +45,6 @@ static uint32_t get_node_stride_from_annotate_handle(const llvm::CallInst *inst)
 	return stride;
 }
 
-bool emit_allocate_node_output_records(Converter::Impl &impl, const llvm::CallInst *inst)
-{
-	auto &builder = impl.builder();
-	uint32_t is_per_thread = 0;
-	if (!get_constant_operand(inst, 3, &is_per_thread))
-		return false;
-
-	if (!value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeHandle))
-		return false;
-
-	uint32_t stride = get_node_stride_from_annotate_handle(llvm::cast<llvm::CallInst>(inst->getOperand(1)));
-	spv::Id node_index = impl.get_id_for_value(inst->getOperand(1));
-	spv::Id alloc_count = impl.get_id_for_value(inst->getOperand(2));
-
-	spv::Id call_id = impl.spirv_module.get_helper_call_id(
-	    is_per_thread ? HelperCall::AllocateThreadNodeRecords : HelperCall::AllocateGroupNodeRecords);
-
-	auto *call_op = impl.allocate(spv::OpFunctionCall, inst, builder.makeUintType(32));
-	call_op->add_id(call_id);
-	call_op->add_id(builder.makeUint64Constant(0)); // Pointer to { u32, u32[] }. Atomic.
-	call_op->add_id(node_index);
-	call_op->add_id(alloc_count);
-	call_op->add_id(builder.makeUintConstant(stride));
-	impl.add(call_op);
-
-	return true;
-}
-
 static spv::Id emit_load_node_input_push_parameter(
 	Converter::Impl &impl, NodeInputParameter param, spv::Id type)
 {
@@ -179,6 +151,37 @@ static spv::Id emit_build_input_payload_offset(Converter::Impl &impl, const llvm
 	return conv_op->id;
 }
 
+bool emit_allocate_node_output_records(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto &builder = impl.builder();
+	uint32_t is_per_thread = 0;
+	if (!get_constant_operand(inst, 3, &is_per_thread))
+		return false;
+
+	if (!value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeHandle))
+		return false;
+
+	uint32_t stride = get_node_stride_from_annotate_handle(llvm::cast<llvm::CallInst>(inst->getOperand(1)));
+	spv::Id node_index = impl.get_id_for_value(inst->getOperand(1));
+	spv::Id alloc_count = impl.get_id_for_value(inst->getOperand(2));
+
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(
+	    is_per_thread ? HelperCall::AllocateThreadNodeRecords : HelperCall::AllocateGroupNodeRecords);
+
+	auto *call_op = impl.allocate(spv::OpFunctionCall, inst, builder.makeUintType(32));
+	call_op->add_id(call_id);
+	spv::Id atomic_addr = emit_load_node_input_push_parameter(impl, NodePayloadOutputAtomicBDA, builder.makeUintType(64));
+	call_op->add_id(atomic_addr);
+	call_op->add_id(node_index);
+	call_op->add_id(alloc_count);
+	call_op->add_id(builder.makeUintConstant(stride));
+	call_op->add_id(emit_load_node_input_push_parameter(impl, NodePayloadOutputOffset, builder.makeUintType(32)));
+	call_op->add_id(emit_load_node_input_push_parameter(impl, NodePayloadOutputStride, builder.makeUintType(32)));
+	impl.add(call_op);
+
+	return true;
+}
+
 bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
@@ -207,7 +210,7 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 
 	if (value_is_dx_op_instrinsic(annotation->getOperand(1), DXIL::Op::AllocateNodeOutputRecords))
 	{
-		spv::Id base_addr = emit_load_node_input_push_parameter(impl, NodePayloadBDA, builder.makeUintType(64));
+		spv::Id base_addr = emit_load_node_input_push_parameter(impl, NodePayloadOutputBDA, builder.makeUintType(64));
 		spv::Id offset_id = emit_build_output_payload_offset(impl, annotation->getOperand(1), inst->getOperand(2),
 		                                                     get_node_stride_from_annotate_handle(annotation));
 

@@ -5344,6 +5344,18 @@ bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
 	output_meta.spec_constant_node_index = builder().makeUintConstant(0, true);
 	builder().addDecoration(output_meta.spec_constant_node_index, spv::DecorationSpecId, int(1 + node_outputs.size()));
 
+	uint32_t num_ops = output->getNumOperands();
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(output, i));
+		if (tag == DXIL::NodeMetadataTag::NodeOutputID)
+		{
+			auto *output_node = llvm::cast<llvm::MDNode>(output->getOperand(i + 1));
+			String name = llvm::cast<llvm::MDString>(output_node->getOperand(0))->getString();
+			builder().addName(output_meta.spec_constant_node_index, name.c_str());
+		}
+	}
+
 	node_outputs.push_back(output_meta);
 	return true;
 }
@@ -5487,6 +5499,10 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 		u32_ptr_type_id,
 		u32_ptr_type_id,
 		node_input.is_entry_point ? u32_ptr_type_id : u32_array_ptr_type_id,
+		u64_type_id,
+		u64_type_id,
+		u32_type_id,
+		u32_type_id,
 		u32_type_id,
 		u32_type_id,
 		u32_type_id,
@@ -5497,9 +5513,13 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	builder().addMemberDecoration(type_id, NodeLinearOffsetBDA, spv::DecorationOffset, 8);
 	builder().addMemberDecoration(type_id, NodeTotalNodesBDA, spv::DecorationOffset, 16);
 	builder().addMemberDecoration(type_id, NodePayloadStrideOrOffsetsBDA, spv::DecorationOffset, 24);
-	builder().addMemberDecoration(type_id, NodeGridDispatchX, spv::DecorationOffset, 32);
-	builder().addMemberDecoration(type_id, NodeGridDispatchY, spv::DecorationOffset, 36);
-	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 40);
+	builder().addMemberDecoration(type_id, NodePayloadOutputBDA, spv::DecorationOffset, 32);
+	builder().addMemberDecoration(type_id, NodePayloadOutputAtomicBDA, spv::DecorationOffset, 40);
+	builder().addMemberDecoration(type_id, NodeGridDispatchX, spv::DecorationOffset, 48);
+	builder().addMemberDecoration(type_id, NodeGridDispatchY, spv::DecorationOffset, 52);
+	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 56);
+	builder().addMemberDecoration(type_id, NodePayloadOutputOffset, spv::DecorationOffset, 60);
+	builder().addMemberDecoration(type_id, NodePayloadOutputStride, spv::DecorationOffset, 64);
 
 	// For linear node layout (entry point).
 	// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
@@ -5509,11 +5529,15 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	// For thread and coalesce, need to know total number of threads to mask execution on edge.
 	builder().addMemberName(type_id, NodeTotalNodesBDA, "NodeTotalNodesBDA");
 	builder().addMemberName(type_id, NodePayloadStrideOrOffsetsBDA, "NodePayloadStrideOrOffsetsBDA");
+	builder().addMemberName(type_id, NodePayloadOutputBDA, "NodePayloadOutputBDA");
+	builder().addMemberName(type_id, NodePayloadOutputAtomicBDA, "NodePayloadOutputAtomicBDA");
 	// For broadcast nodes. Need to instance multiple times.
 	// Becomes WorkGroupID and affects GlobalInvocationID.
 	builder().addMemberName(type_id, NodeGridDispatchX, "NodeGridDispatchX");
 	builder().addMemberName(type_id, NodeGridDispatchY, "NodeGridDispatchY");
 	builder().addMemberName(type_id, NodeGridDispatchZ, "NodeGridDispatchZ");
+	builder().addMemberName(type_id, NodePayloadOutputOffset, "NodePayloadOutputOffset");
+	builder().addMemberName(type_id, NodePayloadOutputStride, "NodePayloadOutputStride");
 	builder().addDecoration(type_id, spv::DecorationBlock);
 	node_input.node_dispatch_push_id =
 	    create_variable(spv::StorageClassPushConstant, type_id, "NodeDispatch");

@@ -1243,13 +1243,15 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 	spv::Id uint64_type = builder.makeUintType(64);
 	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
 	                                       "AllocateGroupNodeRecords",
-	                                       { uint64_type, uint_type, uint_type, uint_type },
+	                                       { uint64_type, uint_type, uint_type, uint_type, uint_type, uint_type },
 	                                       {}, &entry);
 
 	builder.addName(func->getParamId(0), "AtomicCountersBDA");
 	builder.addName(func->getParamId(1), "NodeMetadataIndex");
 	builder.addName(func->getParamId(2), "Count");
 	builder.addName(func->getParamId(3), "Stride");
+	builder.addName(func->getParamId(4), "AllocationOffset");
+	builder.addName(func->getParamId(5), "AllocationStride");
 
 	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
 	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
@@ -1286,28 +1288,101 @@ spv::Id SPIRVModule::Impl::build_allocate_group_node_records(SPIRVModule &module
 		and_op->addIdOperand(add_op->getResultId());
 		and_op->addIdOperand(builder.makeUintConstant(~15u));
 
+		spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
+		builder.addDecoration(uint_array_type, spv::DecorationArrayStride, 4);
+		spv::Id struct_type_id = builder.makeStructType({ uint_type, uint_array_type }, "NodeAtomics");
+		builder.addDecoration(struct_type_id, spv::DecorationBlock);
+		builder.addMemberName(struct_type_id, 0, "payloadCount");
+		builder.addMemberName(struct_type_id, 1, "perNodeCount");
+		builder.addMemberDecoration(struct_type_id, 0, spv::DecorationOffset, 0);
+		builder.addMemberDecoration(struct_type_id, 1, spv::DecorationOffset, 4);
+
 		auto cast_op = std::make_unique<spv::Instruction>(
 		    builder.getUniqueId(),
-		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
+		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, struct_type_id),
 		    spv::OpBitcast);
 		cast_op->addIdOperand(func->getParamId(0));
 
+		auto chain_op = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(),
+		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
+		    spv::OpInBoundsAccessChain);
+		chain_op->addIdOperand(cast_op->getResultId());
+		chain_op->addIdOperand(builder.makeUintConstant(0));
+
+		auto chain_index_op = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(),
+		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
+		    spv::OpInBoundsAccessChain);
+		chain_index_op->addIdOperand(cast_op->getResultId());
+		chain_index_op->addIdOperand(builder.makeUintConstant(1));
+		chain_index_op->addIdOperand(func->getParamId(1));
+
 		auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
-		atomic_op->addIdOperand(cast_op->getResultId());
+		atomic_op->addIdOperand(chain_op->getResultId());
 		atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
 		atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 		atomic_op->addIdOperand(and_op->getResultId());
+
+		auto shift_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpShiftLeftLogical);
+		shift_op->addIdOperand(atomic_op->getResultId());
+		shift_op->addIdOperand(builder.makeUintConstant(4));
+
+		auto count_minus_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpISub);
+		count_minus_1->addIdOperand(func->getParamId(2));
+		count_minus_1->addIdOperand(builder.makeUintConstant(1));
+
+		auto or_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpBitwiseOr);
+		or_op->addIdOperand(shift_op->getResultId());
+		or_op->addIdOperand(count_minus_1->getResultId());
+
+		auto atomic_node_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIIncrement);
+		atomic_node_op->addIdOperand(chain_index_op->getResultId());
+		atomic_node_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_node_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 
 		auto store_inst = std::make_unique<spv::Instruction>(spv::OpStore);
 		store_inst->addIdOperand(shared_id);
 		store_inst->addIdOperand(atomic_op->getResultId());
 
+		auto payload_mul_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
+		payload_mul_op->addIdOperand(func->getParamId(5));
+		payload_mul_op->addIdOperand(func->getParamId(1));
+
+		auto payload_add_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
+		payload_add_op->addIdOperand(payload_mul_op->getResultId());
+		payload_add_op->addIdOperand(func->getParamId(4));
+
+		auto chain_payload_op = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(),
+		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
+		    spv::OpInBoundsAccessChain);
+		chain_payload_op->addIdOperand(cast_op->getResultId());
+		chain_payload_op->addIdOperand(builder.makeUintConstant(1));
+		chain_payload_op->addIdOperand(payload_add_op->getResultId());
+
+		auto store_payload_inst = std::make_unique<spv::Instruction>(spv::OpStore);
+		store_payload_inst->addIdOperand(chain_payload_op->getResultId());
+		store_payload_inst->addIdOperand(or_op->getResultId());
+		store_payload_inst->addImmediateOperand(spv::MemoryAccessAlignedMask);
+		store_payload_inst->addImmediateOperand(4);
+
 		body_block->addInstruction(std::move(mul_op));
 		body_block->addInstruction(std::move(add_op));
 		body_block->addInstruction(std::move(and_op));
 		body_block->addInstruction(std::move(cast_op));
+		body_block->addInstruction(std::move(chain_op));
+		body_block->addInstruction(std::move(chain_index_op));
 		body_block->addInstruction(std::move(atomic_op));
+		body_block->addInstruction(std::move(shift_op));
+		body_block->addInstruction(std::move(count_minus_1));
+		body_block->addInstruction(std::move(or_op));
+		body_block->addInstruction(std::move(atomic_node_op));
 		body_block->addInstruction(std::move(store_inst));
+		body_block->addInstruction(std::move(payload_mul_op));
+		body_block->addInstruction(std::move(payload_add_op));
+		body_block->addInstruction(std::move(chain_payload_op));
+		body_block->addInstruction(std::move(store_payload_inst));
 		builder.createBranch(merge_block);
 	}
 	builder.setBuildPoint(merge_block);

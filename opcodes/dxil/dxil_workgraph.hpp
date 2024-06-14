@@ -50,9 +50,13 @@ enum NodeInputParameter
 	NodeLinearOffsetBDA = 1,
 	NodeTotalNodesBDA = 2,
 	NodePayloadStrideOrOffsetsBDA = 3,
-	NodeGridDispatchX = 4,
-	NodeGridDispatchY = 5,
-	NodeGridDispatchZ = 6,
+	NodePayloadOutputBDA = 4,
+	NodePayloadOutputAtomicBDA = 5,
+	NodeGridDispatchX = 6,
+	NodeGridDispatchY = 7,
+	NodeGridDispatchZ = 8,
+	NodePayloadOutputOffset = 9,
+	NodePayloadOutputStride = 10,
 };
 
 bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode *entry, spv::Id main_entry_id);
