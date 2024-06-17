@@ -539,7 +539,6 @@ struct Converter::Impl
 		uint32_t coalesce_stride; // Coalesce width.
 		spv::Id u32_ptr_type_id;
 		spv::Id u32_array_ptr_type_id;
-		spv::Id node_atomics_ptr_type_id;
 		DXIL::NodeLaunchType launch_type;
 		NodeDispatchGrid dispatch_grid;
 		bool is_entry_point;

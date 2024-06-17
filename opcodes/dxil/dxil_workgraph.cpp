@@ -322,27 +322,19 @@ bool emit_increment_output_count(Converter::Impl &impl, const llvm::CallInst *in
 	if (!value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeHandle))
 		return false;
 
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(
+	    is_per_thread ? HelperCall::ThreadIncrementOutputCount : HelperCall::GroupIncrementOutputCount);
+
+	spv::Id atomic_addr = emit_load_node_input_push_parameter(impl, NodePayloadOutputAtomicBDA, builder.makeUintType(64));
 	spv::Id node_index = impl.get_id_for_value(inst->getOperand(1));
 	spv::Id alloc_count = impl.get_id_for_value(inst->getOperand(2));
-	spv::Id atomic_addr = emit_load_node_input_push_parameter(impl, NodePayloadOutputAtomicBDA, builder.makeUintType(64));
 
-	auto *bitcast = impl.allocate(spv::OpBitcast, impl.node_input.node_atomics_ptr_type_id);
-	bitcast->add_id(atomic_addr);
-	impl.add(bitcast);
-
-	auto *chain = impl.allocate(spv::OpInBoundsAccessChain,
-	                            builder.makePointer(spv::StorageClassPhysicalStorageBuffer, builder.makeUintType(32)));
-	chain->add_id(bitcast->id);
-	chain->add_id(builder.makeUintConstant(1));
-	chain->add_id(node_index);
-	impl.add(chain);
-
-	auto *atomic = impl.allocate(spv::OpAtomicIAdd, builder.makeUintType(32));
-	atomic->add_id(chain->id);
-	atomic->add_id(builder.makeUintConstant(spv::ScopeDevice));
-	atomic->add_id(builder.makeUintConstant(0));
-	atomic->add_id(alloc_count);
-	impl.add(atomic);
+	auto *call_op = impl.allocate(spv::OpFunctionCall, builder.makeVoidType());
+	call_op->add_id(call_id);
+	call_op->add_id(atomic_addr);
+	call_op->add_id(node_index);
+	call_op->add_id(alloc_count);
+	impl.add(call_op);
 
 	return true;
 }

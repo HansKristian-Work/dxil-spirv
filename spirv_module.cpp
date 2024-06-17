@@ -74,6 +74,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_image_atomic_r64_compact(SPIRVModule &module, bool array, bool non_uniform);
 	spv::Id build_finish_cross_group_sharing(SPIRVModule &module);
 	spv::Id build_allocate_node_records(SPIRVModule &module, bool per_thread);
+	spv::Id build_increment_node_count(SPIRVModule &module, bool per_thread);
 	spv::Id build_allocate_node_records_waterfall(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
@@ -129,6 +130,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id finish_cross_group_sharing_call_id = 0;
 	spv::Id allocate_thread_node_records_call_id = 0;
 	spv::Id allocate_group_node_records_call_id = 0;
+	spv::Id increment_thread_node_count_call_id = 0;
+	spv::Id increment_group_node_count_call_id = 0;
 	spv::Id allocate_thread_node_records_waterfall_call_id = 0;
 
 	struct MultiPrefixOp
@@ -1315,6 +1318,103 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records_waterfall(SPIRVModule &mo
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_increment_node_count(SPIRVModule &, bool per_thread)
+{
+	auto &call_id = per_thread ? increment_thread_node_count_call_id : increment_group_node_count_call_id;
+	if (call_id)
+		return call_id;
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uint64_type = builder.makeUintType(64);
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+	                                       per_thread ? "IncrementThreadNodeCount" : "IncrementGroupNodeCount",
+	                                       { uint64_type, uint_type, uint_type },
+	                                       {}, &entry);
+
+	builder.addName(func->getParamId(0), "AtomicCountersBDA");
+	builder.addName(func->getParamId(1), "NodeMetadataIndex");
+	builder.addName(func->getParamId(2), "Count");
+
+	spv::Id total_count_id = func->getParamId(2);
+
+	spv::Block *body_block = nullptr;
+	spv::Block *merge_block = nullptr;
+
+	if (!per_thread)
+	{
+		body_block = new spv::Block(builder.getUniqueId(), *func);
+		merge_block = new spv::Block(builder.getUniqueId(), *func);
+	}
+
+	spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
+	builder.addDecoration(uint_array_type, spv::DecorationArrayStride, 4);
+	spv::Id struct_type_id = builder.makeStructType({ uint_type, uint_array_type }, "NodeAtomicsEmpty");
+	builder.addDecoration(struct_type_id, spv::DecorationBlock);
+	builder.addMemberName(struct_type_id, 0, "payloadCount");
+	builder.addMemberName(struct_type_id, 1, "perNodeCount");
+	builder.addMemberDecoration(struct_type_id, 0, spv::DecorationOffset, 0);
+	builder.addMemberDecoration(struct_type_id, 1, spv::DecorationOffset, 4);
+
+	auto cast_op = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(),
+	    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, struct_type_id),
+	    spv::OpBitcast);
+	cast_op->addIdOperand(func->getParamId(0));
+
+	auto chain_index_op = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(),
+	    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
+	    spv::OpInBoundsAccessChain);
+	chain_index_op->addIdOperand(cast_op->getResultId());
+	chain_index_op->addIdOperand(builder.makeUintConstant(1));
+	chain_index_op->addIdOperand(func->getParamId(1));
+
+	auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
+	atomic_op->addIdOperand(chain_index_op->getResultId());
+	atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
+	atomic_op->addIdOperand(total_count_id);
+
+	auto *body = per_thread ? entry : body_block;
+	body->addInstruction(std::move(cast_op));
+	body->addInstruction(std::move(chain_index_op));
+	body->addInstruction(std::move(atomic_op));
+
+	if (!per_thread)
+	{
+		spv::Id local_invocation_index = get_builtin_shader_input(spv::BuiltInLocalInvocationIndex);
+		auto load_local_index = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+		load_local_index->addIdOperand(local_invocation_index);
+
+		auto is_first_lane = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
+		is_first_lane->addIdOperand(load_local_index->getResultId());
+		is_first_lane->addIdOperand(builder.makeUintConstant(0));
+		spv::Id is_first_lane_id = is_first_lane->getResultId();
+		entry->addInstruction(std::move(load_local_index));
+		entry->addInstruction(std::move(is_first_lane));
+
+		builder.setBuildPoint(entry);
+		builder.createSelectionMerge(merge_block, 0);
+		builder.createConditionalBranch(is_first_lane_id, body_block, merge_block);
+
+		builder.setBuildPoint(body_block);
+		builder.createBranch(merge_block);
+		builder.setBuildPoint(merge_block);
+		builder.makeReturn(false);
+	}
+	else
+	{
+		builder.setBuildPoint(entry);
+		builder.makeReturn(false);
+	}
+
+	builder.setBuildPoint(current_build_point);
+	call_id = func->getId();
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_thread)
 {
 	auto &call_id = per_thread ? allocate_thread_node_records_call_id : allocate_group_node_records_call_id;
@@ -1887,6 +1987,10 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_allocate_node_records(module, true);
 	case HelperCall::AllocateThreadNodeRecordsWaterfall:
 		return build_allocate_node_records_waterfall(module);
+	case HelperCall::GroupIncrementOutputCount:
+		return build_increment_node_count(module, false);
+	case HelperCall::ThreadIncrementOutputCount:
+		return build_increment_node_count(module, true);
 
 	default:
 		break;

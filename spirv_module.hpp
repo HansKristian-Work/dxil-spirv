@@ -67,7 +67,9 @@ enum class HelperCall
 	FinishCrossGroupSharing,
 	AllocateThreadNodeRecords,
 	AllocateGroupNodeRecords,
-	AllocateThreadNodeRecordsWaterfall
+	AllocateThreadNodeRecordsWaterfall,
+	ThreadIncrementOutputCount,
+	GroupIncrementOutputCount
 };
 
 class SPIRVModule

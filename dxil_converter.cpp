@@ -5553,17 +5553,6 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 
 	node_input.u32_ptr_type_id = u32_ptr_type_id;
 	node_input.u32_array_ptr_type_id = u32_array_ptr_type_id;
-
-	spv::Id uint_array_type = builder().makeRuntimeArray(uint_type);
-	builder().addDecoration(uint_array_type, spv::DecorationArrayStride, 4);
-	spv::Id struct_type_id = builder().makeStructType({ uint_type, uint_array_type }, "NodeAtomics");
-	builder().addDecoration(struct_type_id, spv::DecorationBlock);
-	builder().addMemberName(struct_type_id, 0, "payloadCount");
-	builder().addMemberName(struct_type_id, 1, "perNodeCount");
-	builder().addMemberDecoration(struct_type_id, 0, spv::DecorationOffset, 0);
-	builder().addMemberDecoration(struct_type_id, 1, spv::DecorationOffset, 4);
-	node_input.node_atomics_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, struct_type_id);
-
 	return true;
 }
 
