@@ -44,6 +44,8 @@ bool emit_annotate_node_record_handle(Converter::Impl &impl, const llvm::CallIns
 bool emit_node_output_is_valid(Converter::Impl &impl, const llvm::CallInst *inst);
 bool emit_get_remaining_recursion_levels(Converter::Impl &impl, const llvm::CallInst *inst);
 
+uint32_t get_node_io_from_annotate_handle(const llvm::CallInst *inst);
+
 enum NodeInputParameter
 {
 	NodePayloadBDA = 0,

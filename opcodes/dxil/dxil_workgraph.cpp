@@ -31,7 +31,7 @@
 
 namespace dxil_spv
 {
-static uint32_t get_node_io_from_annotate_handle(const llvm::CallInst *inst)
+uint32_t get_node_io_from_annotate_handle(const llvm::CallInst *inst)
 {
 	auto *type_operand = llvm::cast<llvm::ConstantAggregate>(inst->getOperand(2));
 	uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
@@ -53,6 +53,7 @@ static uint32_t get_node_stride_from_annotate_handle(const llvm::CallInst *inst)
 	return stride;
 }
 
+#if 0
 static uint32_t get_node_meta_index_from_annotate_handle(const llvm::CallInst *inst)
 {
 	// Crawl through the SSA noise until we find CreateNodeOutputHandle.
@@ -73,6 +74,7 @@ static uint32_t get_node_meta_index_from_annotate_handle(const llvm::CallInst *i
 
 	return meta_index;
 }
+#endif
 
 static spv::Id emit_load_node_input_push_parameter(
 	Converter::Impl &impl, NodeInputParameter param, spv::Id type)
@@ -241,6 +243,11 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 	if ((node_io_flags & DXIL::NodeIOGloballyCoherentBit) != 0)
 		flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
 
+	if ((node_io_flags & DXIL::NodeIOInputBit) != 0 && impl.shader_analysis.require_node_input_group_coherence)
+		flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
+	else if ((node_io_flags & DXIL::NodeIOOutputBit) != 0 && impl.shader_analysis.require_node_output_group_coherence)
+		flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
+
 	spv::Id physical_block_type_id =
 	    impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_BLOCK_BIT | flags);
 	spv::Id physical_type_id = impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_PHYSICAL_BIT);
@@ -346,19 +353,81 @@ bool emit_finished_cross_group_sharing(Converter::Impl &impl, const llvm::CallIn
 	return true;
 }
 
+static bool emit_barrier(Converter::Impl &impl, uint32_t memory_flags, uint32_t semantic_flags)
+{
+	auto &builder = impl.builder();
+	bool is_sync = (semantic_flags & DXIL::GroupSyncBit) != 0;
+	auto *op = impl.allocate(is_sync ? spv::OpControlBarrier : spv::OpMemoryBarrier);
+	if (is_sync)
+		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+
+	bool needs_device_memory_scope = false;
+	if ((semantic_flags & DXIL::DeviceScopeBit) != 0)
+		needs_device_memory_scope = true;
+
+	op->add_id(builder.makeUintConstant(needs_device_memory_scope ? spv::ScopeDevice : spv::ScopeWorkgroup));
+
+	uint32_t semantics = spv::MemorySemanticsAcquireReleaseMask;
+	if ((semantic_flags & (DXIL::MemoryTypeNodeInputBit | DXIL::MemoryTypeNodeOutputBit | DXIL::MemoryTypeUavBit)) != 0)
+		semantics |= spv::MemorySemanticsUniformMemoryMask;
+	if ((semantic_flags & DXIL::MemoryTypeUavBit) != 0)
+		semantics |= spv::MemorySemanticsImageMemoryMask;
+	if ((semantic_flags & DXIL::MemoryTypeGroupSharedBit) != 0)
+		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
+
+	op->add_id(builder.makeUintConstant(semantics));
+	impl.add(op);
+
+	return true;
+}
+
 bool emit_barrier_by_memory_type(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	uint32_t memory_flags = 0;
+	uint32_t semantics_flags = 0;
+	if (!get_constant_operand(inst, 1, &memory_flags) ||
+	    !get_constant_operand(inst, 2, &semantics_flags))
+	{
+		return false;
+	}
+
+	return emit_barrier(impl, memory_flags, semantics_flags);
 }
 
 bool emit_barrier_by_memory_handle(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	uint32_t semantics = 0;
+	if (!get_constant_operand(inst, 2, &semantics))
+		return false;
+
+	if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateHandle))
+	{
+		// Plain UAV.
+		return emit_barrier(impl, DXIL::MemoryTypeUavBit, semantics);
+	}
+	else
+		return false;
 }
 
 bool emit_barrier_by_node_record_handle(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	return false;
+	uint32_t semantics = 0;
+	if (!get_constant_operand(inst, 2, &semantics))
+		return false;
+
+	if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::AnnotateNodeRecordHandle))
+	{
+		auto *annotation = llvm::cast<llvm::CallInst>(inst->getOperand(1));
+		uint32_t node_io = get_node_io_from_annotate_handle(annotation);
+		if ((node_io & DXIL::NodeIOInputBit) != 0)
+			return emit_barrier(impl, DXIL::MemoryTypeNodeInputBit, semantics);
+		else if ((node_io & DXIL::NodeIOOutputBit) != 0)
+			return emit_barrier(impl, DXIL::MemoryTypeNodeOutputBit, semantics);
+		else
+			return false;
+	}
+	else
+		return false;
 }
 
 bool emit_index_node_handle(Converter::Impl &impl, const llvm::CallInst *inst)

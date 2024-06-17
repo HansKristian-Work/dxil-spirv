@@ -814,6 +814,8 @@ struct Converter::Impl
 		bool require_compute_shader_derivatives = false;
 		bool precise_f16_to_f32_observed = false;
 		bool require_uav_thread_group_coherence = false;
+		bool require_node_output_group_coherence = false;
+		bool require_node_input_group_coherence = false;
 		bool require_subgroups = false;
 		bool subgroup_ballot_reads_upper = false;
 		bool subgroup_ballot_reads_first = false;

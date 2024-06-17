@@ -1228,6 +1228,85 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::BarrierByMemoryType:
+	{
+		uint32_t memory_flags = 0;
+		uint32_t semantic_flags = 0;
+		if (!get_constant_operand(instruction, 1, &memory_flags))
+			return false;
+		if (!get_constant_operand(instruction, 2, &semantic_flags))
+			return false;
+
+		if ((semantic_flags & DXIL::GroupScopeBit) != 0)
+		{
+			// Similar. If we observe a UAV + Group barrier, we need to consider coherence for any UAV.
+			// For DeviceScope bit, shader already needs to declare with globallycoherent for that to work.
+			if ((memory_flags & DXIL::MemoryTypeUavBit) != 0)
+				impl.shader_analysis.require_uav_thread_group_coherence = true;
+			if ((memory_flags & DXIL::MemoryTypeNodeOutputBit) != 0)
+				impl.shader_analysis.require_node_output_group_coherence = true;
+			if ((memory_flags & DXIL::MemoryTypeNodeInputBit) != 0)
+				impl.shader_analysis.require_node_input_group_coherence = true;
+		}
+
+		break;
+	}
+
+	case DXIL::Op::BarrierByNodeRecordHandle:
+	{
+		uint32_t semantics = 0;
+		if (!get_constant_operand(instruction, 2, &semantics))
+			return false;
+
+		if ((semantics & DXIL::GroupScopeBit) != 0)
+		{
+			if (!value_is_dx_op_instrinsic(instruction->getOperand(1), DXIL::Op::AnnotateNodeRecordHandle))
+				return false;
+
+			auto *annotation = llvm::cast<llvm::CallInst>(instruction->getOperand(1));
+			uint32_t node_io = get_node_io_from_annotate_handle(annotation);
+
+			// If the resource isn't declared as globally coherent, promote.
+			// TODO: Could promote on a per-node basis, but seems overkill for now.
+			if ((node_io & DXIL::NodeIOGloballyCoherentBit) == 0)
+			{
+				if ((node_io & DXIL::NodeIOInputBit) != 0)
+					impl.shader_analysis.require_node_input_group_coherence = true;
+				else if ((node_io & DXIL::NodeIOOutputBit) != 0)
+					impl.shader_analysis.require_node_output_group_coherence = true;
+			}
+		}
+
+		break;
+	}
+
+	case DXIL::Op::BarrierByMemoryHandle:
+	{
+		uint32_t semantics = 0;
+		if (!get_constant_operand(instruction, 2, &semantics))
+			return false;
+
+		if ((semantics & DXIL::GroupScopeBit) != 0)
+		{
+			if (!value_is_dx_op_instrinsic(instruction->getOperand(1), DXIL::Op::AnnotateHandle))
+				return false;
+
+			auto *annotation = llvm::cast<llvm::CallInst>(instruction->getOperand(1));
+			auto *aggregate = llvm::cast<llvm::ConstantAggregate>(annotation->getOperand(2));
+
+			uint32_t type = aggregate->getOperand(0)->getUniqueInteger().getZExtValue();
+			constexpr uint32_t AnnotateUAVMask = 1u << 12;
+			constexpr uint32_t AnnotateGloballyCoherentMask = 1u << 14;
+
+			// If the resource isn't declared as globally coherent, promote.
+			// TODO: Could promote on a per-resource basis, but seems overkill for now.
+			if ((type & AnnotateUAVMask) != 0 && (type & AnnotateGloballyCoherentMask) == 0)
+				impl.shader_analysis.require_uav_thread_group_coherence = true;
+		}
+
+		break;
+	}
+
 	case DXIL::Op::AllocateNodeOutputRecords:
 	{
 		uint32_t is_per_thread = 0;

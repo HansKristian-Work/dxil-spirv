@@ -722,4 +722,19 @@ enum class NodeIOKind
 	ThreadNodeOutputRecords = NodeIOReadWriteBit | NodeIOOutputBit | NodeIOThreadRecordBit
 };
 
+enum MemoryTypeFlagBits
+{
+	MemoryTypeUavBit = 0x1,
+	MemoryTypeGroupSharedBit = 0x2,
+	MemoryTypeNodeInputBit = 0x4,
+	MemoryTypeNodeOutputBit = 0x8,
+	MemoryTypeAllBits = 0xf
+};
+
+enum BarrierSemanticsFlagBits
+{
+	GroupSyncBit = 0x1,
+	GroupScopeBit = 0x2,
+	DeviceScopeBit = 0x4
+};
 } // namespace DXIL
