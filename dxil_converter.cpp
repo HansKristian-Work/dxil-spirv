@@ -5431,16 +5431,19 @@ uint32_t Converter::Impl::node_parse_payload_stride(llvm::MDNode *node_meta)
 
 bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 {
-	uint32_t num_ops = input->getNumOperands();
-
-	node_input.dispatch_grid = node_parse_dispatch_grid(input);
-	node_input.payload_stride = node_parse_payload_stride(input);
-
-	for (uint32_t i = 0; i < num_ops; i += 2)
+	if (input)
 	{
-		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
-		if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
-			node_input.coalesce_stride = get_constant_metadata(input, i + 1);
+		uint32_t num_ops = input->getNumOperands();
+
+		node_input.dispatch_grid = node_parse_dispatch_grid(input);
+		node_input.payload_stride = node_parse_payload_stride(input);
+
+		for (uint32_t i = 0; i < num_ops; i += 2)
+		{
+			auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
+			if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
+				node_input.coalesce_stride = get_constant_metadata(input, i + 1);
+		}
 	}
 
 	// In Coalescing mode we have to defer this resolve
@@ -5597,6 +5600,8 @@ bool Converter::Impl::emit_execution_modes_node()
 		if (!emit_execution_modes_node_input(input))
 			return false;
 	}
+	else if (!emit_execution_modes_node_input(nullptr))
+		return false;
 
 	auto *outputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeOutputs);
 	if (outputs_node)
@@ -7123,11 +7128,14 @@ Operation *Converter::Impl::allocate(spv::Op op)
 
 Operation *Converter::Impl::allocate(spv::Op op, spv::Id id, spv::Id type_id)
 {
+	assert(type_id != 0);
+	assert(id != 0);
 	return spirv_module.allocate_op(op, id, type_id);
 }
 
 Operation *Converter::Impl::allocate(spv::Op op, spv::Id type_id)
 {
+	assert(type_id != 0);
 	return spirv_module.allocate_op(op, spirv_module.allocate_id(), type_id);
 }
 
@@ -7142,6 +7150,7 @@ Operation *Converter::Impl::allocate(spv::Op op, const llvm::Value *value, spv::
 {
 	// Constant expressions cannot have an associated opcode ID to them.
 	assert(!llvm::isa<llvm::ConstantExpr>(value));
+	assert(type_id != 0);
 	return spirv_module.allocate_op(op, get_id_for_value(value), type_id);
 }
 

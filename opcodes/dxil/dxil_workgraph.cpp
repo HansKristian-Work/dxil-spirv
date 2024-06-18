@@ -854,7 +854,9 @@ bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode
 		impl.current_block = &masked_block->ir.operations;
 	}
 
-	emit_payload_pointer_resolve(impl, linear_node_index_id);
+	if (impl.node_input.private_bda_var_id)
+		emit_payload_pointer_resolve(impl, linear_node_index_id);
+
 	auto *call_op = impl.allocate(spv::OpFunctionCall, builder.makeVoidType());
 	call_op->add_id(main_entry_id);
 	impl.add(call_op);
