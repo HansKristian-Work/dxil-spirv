@@ -10,7 +10,6 @@ struct Payload
 
 struct EntryData
 {
-	uint grid : SV_DispatchGrid;
 	uint node_idx;
 	uint size;
 	uint offset;
@@ -21,6 +20,7 @@ struct EntryData
 [NodeLaunch("broadcasting")]
 [NumThreads(8, 1, 1)]
 [NodeDispatchGrid(2, 2, 2)]
+[NodeIsProgramEntry]
 void entry(DispatchNodeInputRecord<EntryData> entry,
 		uint thr : SV_DispatchThreadID,
 		uint local_id : SV_GroupIndex,
@@ -49,7 +49,7 @@ void entry(DispatchNodeInputRecord<EntryData> entry,
 [NodeLaunch("broadcasting")]
 [NumThreads(8, 1, 1)]
 [NodeMaxDispatchGrid(4, 1, 1)]
-void node1(DispatchNodeInputRecord<EntryData> entry,
+void node1(DispatchNodeInputRecord<Payload> entry,
 		uint thr : SV_DispatchThreadID,
 		uint local_id : SV_GroupIndex,
 		uint group_id : SV_GroupID,
@@ -64,7 +64,7 @@ void node1(DispatchNodeInputRecord<EntryData> entry,
 [NodeLaunch("broadcasting")]
 [NumThreads(8, 1, 1)]
 [NodeMaxDispatchGrid(4, 1, 1)]
-void node2(DispatchNodeInputRecord<EntryData> entry,
+void node2(DispatchNodeInputRecord<Payload> entry,
 		uint thr : SV_DispatchThreadID,
 		uint local_id : SV_GroupIndex,
 		uint group_id : SV_GroupID)
