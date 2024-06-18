@@ -1,16 +1,20 @@
-add_subdirectory(spirv-headers EXCLUDE_FROM_ALL)
-set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/spirv-headers" CACHE STRING "SPIRV-Headers path" FORCE)
+if (NOT TARGET granite-vulkan)
+    add_subdirectory(spirv-headers EXCLUDE_FROM_ALL)
+    set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/spirv-headers" CACHE STRING "SPIRV-Headers path" FORCE)
+endif()
 
 add_library(dxil-spirv-headers INTERFACE)
 target_include_directories(dxil-spirv-headers INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}/spirv-headers/include/spirv/unified1)
 
 if (DXIL_SPIRV_CLI)
-    set(SPIRV_WERROR OFF CACHE STRING "" FORCE)
-    # SPIRV-Tools refuses to configure if this is not set.
-    set(CMAKE_CXX_STANDARD 17)
-    add_subdirectory(SPIRV-Tools EXCLUDE_FROM_ALL)
-    add_subdirectory(SPIRV-Cross EXCLUDE_FROM_ALL)
+    if (NOT TARGET granite-vulkan)
+        set(SPIRV_WERROR OFF CACHE STRING "" FORCE)
+        # SPIRV-Tools refuses to configure if this is not set.
+        set(CMAKE_CXX_STANDARD 17)
+        add_subdirectory(SPIRV-Tools EXCLUDE_FROM_ALL)
+        add_subdirectory(SPIRV-Cross EXCLUDE_FROM_ALL)
+    endif()
 endif()
 
 add_library(glslang-spirv-builder STATIC
