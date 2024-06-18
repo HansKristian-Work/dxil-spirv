@@ -552,12 +552,6 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	wg_y->add_literal(1);
 	impl.add(wg_y);
 
-	auto *offset_op = impl.allocate(spv::OpIAdd, u32_type);
-	offset_op->add_id(wg_y->id);
-	offset_op->add_id(linear_offset);
-	impl.add(offset_op);
-	wg_y = offset_op;
-
 	auto *y_node_index = impl.allocate(spv::OpIMul, u32_type);
 	y_node_index->add_id(wg_y->id);
 	y_node_index->add_id(builder.makeUintConstant(32 * 1024));
@@ -567,6 +561,12 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	linear_wg_index->add_id(y_node_index->id);
 	linear_wg_index->add_id(wg_x->id);
 	impl.add(linear_wg_index);
+
+	auto *offset_op = impl.allocate(spv::OpIAdd, u32_type);
+	offset_op->add_id(linear_wg_index->id);
+	offset_op->add_id(linear_offset);
+	impl.add(offset_op);
+	linear_wg_index = offset_op;
 
 	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Thread)
 	{
