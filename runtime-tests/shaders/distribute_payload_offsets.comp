@@ -1,0 +1,94 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+
+layout(local_size_x_id = 0) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer NodePayloadOffsetCount
+{
+	uint packed_offset_counts[];
+};
+
+layout(set = 0, binding = 1, std430) writeonly buffer UnrolledOffsets
+{
+	uint unrolled_offsets[];
+};
+
+#include "data_structures.h"
+
+// Abuse aliasing rules to make sure that we can get scalar loads while doing
+// atomics to part of the buffer :v
+layout(set = 0, binding = 2, std430) buffer IndirectCommandsBufferAtomicAlias
+{
+	IndirectCommands indirect_commands_atomic[];
+};
+
+layout(set = 0, binding = 2, std430) restrict readonly buffer IndirectCommandsBufferRO
+{
+	IndirectCommands indirect_commands_read[];
+};
+
+// For patching in sharing count.
+layout(set = 0, binding = 3, std430) buffer Payload32
+{
+	uint payload32[];
+};
+
+layout(set = 0, binding = 3, std430) buffer Payload16
+{
+	uint payload16[];
+};
+
+layout(push_constant, std430) uniform Registers
+{
+	uint node_index;
+	uint packed_offset_counts_stride;
+	uint payload_stride;
+} registers;
+
+void main()
+{
+	uint total_fused_elements = indirect_commands_read[registers.node_index].total_fused_elements;
+	uint total_fused_groups = (total_fused_elements + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
+
+	for (uint i = gl_WorkGroupID.x; i < total_fused_groups; i += gl_NumWorkGroups.x)
+	{
+		uint node_offset = registers.node_index * registers.packed_offset_counts_stride;
+		uint packed_offset_index = i * gl_SubgroupSize + gl_SubgroupInvocationID;
+
+		uint payload_offset = 0;
+		uint count = 0;
+		if (packed_offset_index < total_fused_elements)
+		{
+			uint word = packed_offset_counts[node_offset + packed_offset_index];
+			payload_offset = bitfieldExtract(word, 8, 24) << 4u;
+			count = bitfieldExtract(word, 0, 8) + 1;
+		}
+
+		uint scan = subgroupInclusiveAdd(count);
+		uint total_scan = subgroupShuffle(scan, gl_SubgroupSize - 1) - count;
+		scan -= count;
+
+		uint output_offset;
+		if (subgroupElect())
+			output_offset = atomicAdd(indirect_commands_atomic[registers.node_index].linear_offset_atomic, total_scan);
+		output_offset = subgroupBroadcastFirst(output_offset);
+
+		for (uint lane = 0; lane < gl_SubgroupSize; lane++)
+		{
+			uint wave_payload_offset = subgroupShuffle(payload_offset, lane);
+			uint wave_count = subgroupShuffle(count, lane);
+
+			for (uint packed_index = gl_SubgroupInvocationID; packed_index < wave_count; packed_index += gl_SubgroupSize)
+			{
+				unrolled_offsets[output_offset + packed_index] = wave_payload_offset + registers.payload_stride * packed_index;
+				// TODO: Potentially patch in group sharing tracking 4 byte counter.
+			}
+
+			output_offset += wave_count;
+		}
+	}
+}
+
