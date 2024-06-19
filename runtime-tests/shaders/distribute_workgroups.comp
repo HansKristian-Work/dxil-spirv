@@ -1,0 +1,107 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 1) const uint COALESCE_DIVIDER = 0;
+layout(constant_id = 2) const uint FUSED_DIVIDER = 0;
+
+struct NodeCounts
+{
+	uint fused;
+	uint total;
+};
+
+layout(set = 0, binding = 0, std430) buffer NodeAtomics
+{
+	// First uint is payload offset atomic. Not interesting here.
+	layout(offset = 8) NodeCounts node_counts[];
+};
+
+layout(set = 0, binding = 1, std430) readonly buffer NodePayloadOffsetCount
+{
+	uint packed_offset_counts[];
+};
+
+layout(set = 0, binding = 2, std430) writeonly buffer UnrolledOffsets
+{
+	uint unrolled_offsets[];
+};
+
+// 64 bytes per node, nicely aligns to a cache line.
+struct IndirectCommands
+{
+	uvec3 primary_execute;
+	uint primary_linear_offset; // Read by node as input metadata.
+	uvec3 secondary_execute;
+	uint secondary_linear_offset; // Read by node as input metadata.
+	uvec3 expander_execute;
+	uint total_elements; // Read by node as input metadata in coalesce / thread mode.
+	uint linear_offset_atomic; // Used by expander to write unrolled data.
+	uint total_fused_elements;
+	uint padding0;
+	uint padding1;
+};
+
+layout(set = 0, binding = 3, std430) writeonly buffer IndirectCommandsBuffer
+{
+	IndirectCommands indirect_commands[];
+};
+
+layout(push_constant, std430) uniform Registers
+{
+	uint num_nodes;
+} registers;
+
+// Assumption is that number of nodes is fairly small and can reasonably be iterated over one wave.
+// We do very little work here, just parcel out memory regions and have fun.
+// Here, we could in theory detect OOM, report the failure and nop out the indirects.
+
+void main()
+{
+	uint linear_offset = 0;
+	for (uint i = 0; i < registers.num_nodes; i += gl_SubgroupSize)
+	{
+		uint node_index = i + gl_SubgroupInvocationID;
+		NodeCounts counts = NodeCounts(0, 0);
+		if (node_index < registers.num_nodes)
+			counts = node_counts[node_index];
+
+		uint scan = subgroupInclusiveAdd(counts.total);
+		uint total_scan = subgroupShuffle(scan, gl_SubgroupSize - 1) - counts.total;
+		scan -= counts.total;
+
+		if (node_index < registers.num_nodes)
+		{
+			uint node_linear_offset = scan + linear_offset;
+
+			const uint WG_DIVIDER = 32 * 1024;
+
+			uint total_wgs = counts.total;
+			// Divide by constant should be fine.
+			if (COALESCE_DIVIDER != 0)
+				total_wgs = (total_wgs + COALESCE_DIVIDER - 1) / COALESCE_DIVIDER;
+
+			IndirectCommands cmd;
+			cmd.primary_execute = uvec3(WG_DIVIDER, total_wgs / WG_DIVIDER, 1);
+			cmd.primary_linear_offset = node_linear_offset;
+			cmd.secondary_execute = uvec3(total_wgs % WG_DIVIDER, 1, 1);
+			cmd.secondary_linear_offset = node_linear_offset + cmd.primary_execute.y * WG_DIVIDER;
+			cmd.total_elements = counts.total;
+			cmd.linear_offset_atomic = node_linear_offset;
+			cmd.total_fused_elements = counts.fused;
+
+			cmd.expander_execute = uvec3(min(0xffffu, (counts.fused + FUSED_DIVIDER - 1) / FUSED_DIVIDER), 1, 1);
+
+			indirect_commands[node_index] = cmd;
+
+			// Reset the counters so we don't have to do an extra pass on next iteration.
+			node_counts[node_index] = NodeCounts(0, 0);
+		}
+
+		// Wave-uniform accumulate.
+		linear_offset += total_scan;
+	}
+}
