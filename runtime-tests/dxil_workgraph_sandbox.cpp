@@ -7,9 +7,13 @@
 #include "logging.hpp"
 #include "filesystem.hpp"
 #include "global_managers_init.hpp"
+#include "thread_group.hpp"
+#include "math.hpp"
 
 using namespace Vulkan;
 using namespace Granite;
+
+#include "shaders/data_structures.h"
 
 dxil_spv_bool srv_remap(void *,
                         const dxil_spv_d3d_binding *d3d_binding,
@@ -182,7 +186,7 @@ static int run_tests(Device &device)
 	signature.node_payload_stride_or_offsets_bda = node_payload_stride_or_offsets_buffer->get_device_address();
 	signature.node_payload_output_bda = node_payload_output_buffer->get_device_address();
 	signature.node_payload_output_atomic_bda = node_payload_output_atomic_buffer->get_device_address();
-	signature.node_payload_output_offset = 64;
+	signature.node_payload_output_offset = 64 - 2; // 256 byte offset.
 	signature.node_payload_output_stride = 64;
 
 	Device::init_renderdoc_capture();
@@ -203,6 +207,7 @@ static int run_tests(Device &device)
 	cmd->set_specialization_constant(1, 0);
 	cmd->set_specialization_constant(2, 1);
 
+	cmd->begin_region("execute-entry-node");
 	// [NodeDispatchGrid or NodeMaxDispatchGrid]
 	for (uint32_t z = 0; z < 2; z++)
 	{
@@ -218,6 +223,35 @@ static int run_tests(Device &device)
 			}
 		}
 	}
+	cmd->end_region();
+
+	cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+	             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_READ_BIT);
+
+	cmd->begin_region("distribute-workgroups");
+	{
+		uint32_t num_nodes = 2;
+		cmd->set_program("assets://distribute_workgroups.comp");
+		cmd->set_specialization_constant_mask(0x7);
+		cmd->set_specialization_constant(0, 32);
+		cmd->set_specialization_constant(1, 0); // COALESCE_DIVIDER
+		cmd->set_specialization_constant(2, 32);
+
+		cmd->set_storage_buffer(0, 0, *node_payload_output_atomic_buffer, 0, 256);
+		cmd->set_storage_buffer(0, 1, *node_payload_output_atomic_buffer, 256, VK_WHOLE_SIZE);
+		cmd->set_storage_buffer(0, 2, *indirect_buffer);
+
+		cmd->enable_subgroup_size_control(true);
+		cmd->set_subgroup_size_log2(true, 5, 5);
+		cmd->push_constants(&num_nodes, 0, sizeof(num_nodes));
+		cmd->dispatch((num_nodes + 31) / 32, 1, 1);
+		cmd->enable_subgroup_size_control(false);
+		cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+		             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+		             VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+		cmd->set_specialization_constant_mask(0);
+	}
+	cmd->end_region();
 
 	cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
 	             VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_TRANSFER_READ_BIT);
@@ -244,10 +278,16 @@ int main()
 	Global::init(Global::MANAGER_FEATURE_FILESYSTEM_BIT | Global::MANAGER_FEATURE_THREAD_GROUP_BIT, 2);
 	Filesystem::setup_default_filesystem(GRANITE_FILESYSTEM(), ASSET_DIRECTORY);
 
+	Context::SystemHandles handles = {};
+	handles.filesystem = GRANITE_FILESYSTEM();
+	handles.thread_group = GRANITE_THREAD_GROUP();
+
 	if (!Context::init_loader(nullptr))
 		return EXIT_FAILURE;
 
 	Context ctx;
+	ctx.set_system_handles(handles);
+	ctx.set_num_thread_indices(2);
 	if (!ctx.init_instance_and_device(nullptr, 0, nullptr, 0))
 		return EXIT_FAILURE;
 
