@@ -244,7 +244,7 @@ static int run_tests(Device &device)
 		uint32_t num_nodes = 2;
 		cmd->set_program("assets://distribute_workgroups.comp");
 		cmd->set_specialization_constant_mask(0x7);
-		cmd->set_specialization_constant(0, 32);
+		cmd->set_specialization_constant(0, target_wg_size);
 		cmd->set_specialization_constant(1, 0); // COALESCE_DIVIDER
 		cmd->set_specialization_constant(2, target_wg_size);
 
@@ -253,9 +253,9 @@ static int run_tests(Device &device)
 		cmd->set_storage_buffer(0, 2, *indirect_buffer);
 
 		cmd->enable_subgroup_size_control(true);
-		cmd->set_subgroup_size_log2(true, 5, 5);
+		cmd->set_subgroup_size_log2(true, 0, target_wg_size_log2);
 		cmd->push_constants(&num_nodes, 0, sizeof(num_nodes));
-		cmd->dispatch((num_nodes + 31) / 32, 1, 1);
+		cmd->dispatch((num_nodes + target_wg_size - 1) >> target_wg_size_log2, 1, 1);
 		cmd->enable_subgroup_size_control(false);
 		cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
 		             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,

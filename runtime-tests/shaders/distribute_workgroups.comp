@@ -39,6 +39,9 @@ layout(push_constant, std430) uniform Registers
 
 void main()
 {
+	if (gl_SubgroupID != 0)
+		return;
+
 	uint linear_offset = 0;
 	for (uint i = 0; i < registers.num_nodes; i += gl_SubgroupSize)
 	{
