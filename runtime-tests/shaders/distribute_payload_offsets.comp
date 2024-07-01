@@ -3,6 +3,9 @@
 #extension GL_KHR_shader_subgroup_ballot : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
 #extension GL_KHR_shader_subgroup_shuffle : require
+#extension GL_EXT_shader_16bit_storage : require
+
+#pragma optimize off
 
 layout(local_size_x_id = 0) in;
 
@@ -38,7 +41,7 @@ layout(set = 0, binding = 3, std430) buffer Payload32
 
 layout(set = 0, binding = 3, std430) buffer Payload16
 {
-	uint payload16[];
+	uint16_t payload16[];
 };
 
 layout(push_constant, std430) uniform Registers
@@ -68,7 +71,7 @@ void main()
 		}
 
 		uint scan = subgroupInclusiveAdd(count);
-		uint total_scan = subgroupShuffle(scan, gl_SubgroupSize - 1) - count;
+		uint total_scan = subgroupShuffle(scan, gl_SubgroupSize - 1);
 		scan -= count;
 
 		uint output_offset;

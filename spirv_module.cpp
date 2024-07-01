@@ -1593,7 +1593,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 		shift_op->addIdOperand(builder.makeUintConstant(4));
 
 		auto count_minus_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpISub);
-		count_minus_1->addIdOperand(func->getParamId(2));
+		count_minus_1->addIdOperand(total_count_id);
 		count_minus_1->addIdOperand(builder.makeUintConstant(1));
 
 		auto or_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpBitwiseOr);

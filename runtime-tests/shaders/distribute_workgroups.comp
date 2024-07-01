@@ -4,6 +4,8 @@
 #extension GL_KHR_shader_subgroup_arithmetic : require
 #extension GL_KHR_shader_subgroup_shuffle : require
 
+#pragma optimize off
+
 layout(local_size_x_id = 0) in;
 layout(constant_id = 1) const uint COALESCE_DIVIDER = 0;
 layout(constant_id = 2) const uint FUSED_DIVIDER = 0;
@@ -46,7 +48,7 @@ void main()
 			counts = node_counts[node_index];
 
 		uint scan = subgroupInclusiveAdd(counts.total);
-		uint total_scan = subgroupShuffle(scan, gl_SubgroupSize - 1) - counts.total;
+		uint total_scan = subgroupShuffle(scan, gl_SubgroupSize - 1);
 		scan -= counts.total;
 
 		if (node_index < registers.num_nodes)
