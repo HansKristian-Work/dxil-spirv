@@ -50,7 +50,7 @@ enum NodeInputParameter
 {
 	NodePayloadBDA = 0,
 	NodeLinearOffsetBDA = 1,
-	NodeTotalNodesBDA = 2,
+	NodeEndNodesBDA = 2,
 	NodePayloadStrideOrOffsetsBDA = 3,
 	NodePayloadOutputBDA = 4,
 	NodePayloadOutputAtomicBDA = 5,

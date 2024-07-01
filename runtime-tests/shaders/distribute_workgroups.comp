@@ -7,7 +7,7 @@
 #pragma optimize off
 
 layout(local_size_x_id = 0) in;
-layout(constant_id = 1) const uint COALESCE_DIVIDER = 0;
+layout(constant_id = 1) const uint COALESCE_DIVIDER = 1;
 layout(constant_id = 2) const uint FUSED_DIVIDER = 0;
 
 #include "data_structures.h"
@@ -65,12 +65,14 @@ void main()
 			if (COALESCE_DIVIDER != 0)
 				total_wgs = (total_wgs + COALESCE_DIVIDER - 1) / COALESCE_DIVIDER;
 
+			const uint COALESCE_MULT = COALESCE_DIVIDER != 0 ? COALESCE_DIVIDER : 1u;
+
 			IndirectCommands cmd;
 			cmd.primary_execute = uvec3(WG_DIVIDER, total_wgs / WG_DIVIDER, 1);
 			cmd.primary_linear_offset = node_linear_offset;
 			cmd.secondary_execute = uvec3(total_wgs % WG_DIVIDER, 1, 1);
-			cmd.secondary_linear_offset = node_linear_offset + cmd.primary_execute.y * WG_DIVIDER;
-			cmd.total_elements = counts.total;
+			cmd.secondary_linear_offset = node_linear_offset + cmd.primary_execute.y * WG_DIVIDER * COALESCE_MULT;
+			cmd.end_elements = counts.total + node_linear_offset;
 			cmd.linear_offset_atomic = node_linear_offset;
 			cmd.total_fused_elements = counts.fused;
 

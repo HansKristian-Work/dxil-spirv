@@ -5514,7 +5514,7 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
 	builder().addMemberDecoration(type_id, NodePayloadBDA, spv::DecorationOffset, 0);
 	builder().addMemberDecoration(type_id, NodeLinearOffsetBDA, spv::DecorationOffset, 8);
-	builder().addMemberDecoration(type_id, NodeTotalNodesBDA, spv::DecorationOffset, 16);
+	builder().addMemberDecoration(type_id, NodeEndNodesBDA, spv::DecorationOffset, 16);
 	builder().addMemberDecoration(type_id, NodePayloadStrideOrOffsetsBDA, spv::DecorationOffset, 24);
 	builder().addMemberDecoration(type_id, NodePayloadOutputBDA, spv::DecorationOffset, 32);
 	builder().addMemberDecoration(type_id, NodePayloadOutputAtomicBDA, spv::DecorationOffset, 40);
@@ -5530,7 +5530,7 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	// With packed workgroup layout, need to apply an offset.
 	builder().addMemberName(type_id, NodeLinearOffsetBDA, "NodeLinearOffsetBDA");
 	// For thread and coalesce, need to know total number of threads to mask execution on edge.
-	builder().addMemberName(type_id, NodeTotalNodesBDA, "NodeTotalNodesBDA");
+	builder().addMemberName(type_id, NodeEndNodesBDA, "NodeEndNodesBDA");
 	builder().addMemberName(type_id, NodePayloadStrideOrOffsetsBDA, "NodePayloadStrideOrOffsetsBDA");
 	builder().addMemberName(type_id, NodePayloadOutputBDA, "NodePayloadOutputBDA");
 	builder().addMemberName(type_id, NodePayloadOutputAtomicBDA, "NodePayloadOutputAtomicBDA");

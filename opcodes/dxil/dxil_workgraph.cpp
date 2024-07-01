@@ -529,11 +529,6 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	spv::Id u32_type = builder.makeUintType(32);
 	spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
 
-	spv::Id linear_ptr = emit_load_node_input_push_parameter(
-	    impl, NodeLinearOffsetBDA, impl.node_input.u32_ptr_type_id);
-	spv::Id linear_offset = emit_load_node_input_push_pointer(
-	    impl, linear_ptr, u32_type, sizeof(uint32_t));
-
 	// Build our own true workgroup ID. This is hidden from application.
 	spv::Id workgroup_id = impl.create_variable(spv::StorageClassInput, uvec3_type);
 	builder.addDecoration(workgroup_id, spv::DecorationBuiltIn, spv::BuiltInWorkgroupId);
@@ -562,11 +557,7 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	linear_wg_index->add_id(wg_x->id);
 	impl.add(linear_wg_index);
 
-	auto *offset_op = impl.allocate(spv::OpIAdd, u32_type);
-	offset_op->add_id(linear_wg_index->id);
-	offset_op->add_id(linear_offset);
-	impl.add(offset_op);
-	linear_wg_index = offset_op;
+	spv::Id linear_id;
 
 	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Thread)
 	{
@@ -588,7 +579,7 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 		add_op->add_id(mul_wg_index->id);
 		add_op->add_id(load_local->id);
 		impl.add(add_op);
-		return add_op->id;
+		linear_id = add_op->id;
 	}
 	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Coalescing)
 	{
@@ -596,12 +587,23 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 		mul_wg_index->add_id(linear_wg_index->id);
 		mul_wg_index->add_id(builder.makeUintConstant(impl.node_input.coalesce_stride));
 		impl.add(mul_wg_index);
-		return mul_wg_index->id;
+		linear_id = mul_wg_index->id;
 	}
 	else
 	{
-		return linear_wg_index->id;
+		linear_id = linear_wg_index->id;
 	}
+
+	spv::Id linear_ptr = emit_load_node_input_push_parameter(
+	    impl, NodeLinearOffsetBDA, impl.node_input.u32_ptr_type_id);
+	spv::Id linear_offset = emit_load_node_input_push_pointer(
+	    impl, linear_ptr, u32_type, sizeof(uint32_t));
+
+	auto *offset_op = impl.allocate(spv::OpIAdd, u32_type);
+	offset_op->add_id(linear_id);
+	offset_op->add_id(linear_offset);
+	impl.add(offset_op);
+	return offset_op->id;
 }
 
 static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_node_index_id)
@@ -672,8 +674,8 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 	{
 		// For Coalesce, we can load an array of payloads, have to defer the resolve.
 		// Fortunately, we don't have to read the payload in dispatcher, so we're okay.
-		spv::Id total_ptr = emit_load_node_input_push_parameter(impl, NodeTotalNodesBDA, impl.node_input.u32_ptr_type_id);
-		spv::Id total_id = emit_load_node_input_push_pointer(impl, total_ptr, u32_type, sizeof(uint32_t));
+		spv::Id end_ptr = emit_load_node_input_push_parameter(impl, NodeEndNodesBDA, impl.node_input.u32_ptr_type_id);
+		spv::Id end_id = emit_load_node_input_push_pointer(impl, end_ptr, u32_type, sizeof(uint32_t));
 
 		auto *store_op = impl.allocate(spv::OpStore);
 		store_op->add_id(impl.node_input.private_coalesce_offset_id);
@@ -681,7 +683,7 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 		impl.add(store_op);
 
 		auto *count_id = impl.allocate(spv::OpISub, u32_type);
-		count_id->add_id(total_id);
+		count_id->add_id(end_id);
 		count_id->add_id(linear_node_index_id);
 		impl.add(count_id);
 
@@ -815,11 +817,11 @@ static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl, spv::Id li
 	{
 		// Execution mask is just based on linear index < total threads.
 		// Nice and easy.
-		spv::Id total_ptr = emit_load_node_input_push_parameter(impl, NodeTotalNodesBDA, impl.node_input.u32_ptr_type_id);
-		spv::Id total_id = emit_load_node_input_push_pointer(impl, total_ptr, u32_type, sizeof(uint32_t));
+		spv::Id end_ptr = emit_load_node_input_push_parameter(impl, NodeEndNodesBDA, impl.node_input.u32_ptr_type_id);
+		spv::Id end_id = emit_load_node_input_push_pointer(impl, end_ptr, u32_type, sizeof(uint32_t));
 		auto *compare_op = impl.allocate(spv::OpULessThan, builder.makeBoolType());
 		compare_op->add_id(linear_index_id);
-		compare_op->add_id(total_id);
+		compare_op->add_id(end_id);
 		impl.add(compare_op);
 		execution_mask_id = compare_op->id;
 	}

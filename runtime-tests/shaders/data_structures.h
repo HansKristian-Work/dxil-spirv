@@ -15,7 +15,7 @@ struct IndirectCommands
 	uvec3 secondary_execute;
 	uint secondary_linear_offset; // Read by node as input metadata.
 	uvec3 expander_execute;
-	uint total_elements; // Read by node as input metadata in coalesce / thread mode.
+	uint end_elements; // Read by node as input metadata in coalesce / thread mode.
 	uint linear_offset_atomic; // Used by expander to write unrolled data.
 	uint total_fused_elements;
 	uint padding0;

@@ -46,6 +46,7 @@ void entry(DispatchNodeInputRecord<EntryData> entry,
 	}
 }
 
+#if 0
 [Shader("node")]
 [NodeLaunch("broadcasting")]
 [NumThreads(8, 1, 1)]
@@ -73,4 +74,21 @@ void node2(DispatchNodeInputRecord<Payload> entry,
 	uint o;
 	InterlockedAdd(RWBuf1[entry.Get().offset], entry.Get().increment, o);
 }
+#else
+[Shader("node")]
+[NodeLaunch("thread")]
+void node1(ThreadNodeInputRecord<Payload> entry)
+{
+	uint o;
+	InterlockedAdd(RWBuf0[entry.Get().offset], entry.Get().increment, o);
+}
+
+[Shader("node")]
+[NodeLaunch("thread")]
+void node2(ThreadNodeInputRecord<Payload> entry)
+{
+	uint o;
+	InterlockedAdd(RWBuf1[entry.Get().offset], entry.Get().increment, o);
+}
+#endif
 
