@@ -46,6 +46,9 @@ void entry(DispatchNodeInputRecord<EntryData> entry,
 }
 
 #if 1
+
+cbuffer cbuf : register(b0) { uint mult; };
+
 [Shader("node")]
 [NodeLaunch("broadcasting")]
 [NumThreads(8, 1, 1)]
@@ -58,7 +61,7 @@ void node1(RWDispatchNodeInputRecord<Payload> entry,
 	uint o;
 	if (entry.FinishedCrossGroupSharing())
 		InterlockedAdd(RWBuf0[0], entry.Get().increment, o);
-	InterlockedAdd(RWBuf0[2], entry.Get().increment, o);
+	InterlockedAdd(RWBuf0[2], entry.Get().increment * mult, o);
 }
 
 [Shader("node")]

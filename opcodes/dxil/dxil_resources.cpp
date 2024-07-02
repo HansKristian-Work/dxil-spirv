@@ -28,6 +28,7 @@
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
 #include "dxil_buffer.hpp"
+#include "dxil_workgraph.hpp"
 
 namespace dxil_spv
 {
@@ -478,16 +479,38 @@ static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, c
 {
 	auto &builder = impl.builder();
 
-	auto *descriptor_table = impl.allocate(
-		spv::OpAccessChain,
-		builder.makePointer(spv::StorageClassShaderRecordBufferKHR, builder.makeUintType(32)));
-	descriptor_table->add_id(impl.shader_record_buffer_id);
+	Operation *descriptor_table;
+
+	if (impl.node_input.node_dispatch_push_id)
+	{
+		// Nodes
+		spv::Id shader_record_buffer_id = emit_load_node_input_push_parameter(
+		    impl, NodeLocalRootSignatureBDA,
+		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer,
+		                        impl.node_input.shader_record_block_type_id));
+
+		descriptor_table = impl.allocate(
+			spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, builder.makeUintType(32)));
+		descriptor_table->add_id(shader_record_buffer_id);
+	}
+	else
+	{
+		descriptor_table = impl.allocate(
+		    spv::OpAccessChain, builder.makePointer(spv::StorageClassShaderRecordBufferKHR, builder.makeUintType(32)));
+		descriptor_table->add_id(impl.shader_record_buffer_id);
+	}
+
 	descriptor_table->add_id(builder.makeUintConstant(reference.local_root_signature_entry));
 	descriptor_table->add_id(builder.makeUintConstant(0));
 	impl.add(descriptor_table);
 
 	auto *loaded_word = impl.allocate(spv::OpLoad, builder.makeUintType(32));
 	loaded_word->add_id(descriptor_table->id);
+	if (impl.node_input.node_dispatch_push_id)
+	{
+		loaded_word->add_literal(spv::MemoryAccessAlignedMask);
+		loaded_word->add_literal(8);
+	}
 	impl.add(loaded_word);
 
 	auto *shifted_word = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
@@ -765,12 +788,30 @@ static spv::Id build_shader_record_access_chain(Converter::Impl &impl, unsigned 
 	auto &builder = impl.builder();
 
 	spv::Id array_type_id = impl.shader_record_buffer_types[local_root_signature_entry];
-	spv::Id ptr_array_type_id = builder.makePointer(spv::StorageClassShaderRecordBufferKHR, array_type_id);
-	auto *access_chain = impl.allocate(spv::OpAccessChain, ptr_array_type_id);
-	access_chain->add_id(impl.shader_record_buffer_id);
+	Operation *access_chain;
+
+	if (impl.node_input.node_dispatch_push_id)
+	{
+		// Nodes
+		spv::Id shader_record_buffer_id = emit_load_node_input_push_parameter(
+			impl, NodeLocalRootSignatureBDA,
+			builder.makePointer(spv::StorageClassPhysicalStorageBuffer,
+			                    impl.node_input.shader_record_block_type_id));
+
+		spv::Id ptr_array_type_id = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, array_type_id);
+		access_chain = impl.allocate(spv::OpAccessChain, ptr_array_type_id);
+		access_chain->add_id(shader_record_buffer_id);
+	}
+	else
+	{
+		// RayTracing with ShaderRecordBufferKHR.
+		spv::Id ptr_array_type_id = builder.makePointer(spv::StorageClassShaderRecordBufferKHR, array_type_id);
+		access_chain = impl.allocate(spv::OpAccessChain, ptr_array_type_id);
+		access_chain->add_id(impl.shader_record_buffer_id);
+	}
+
 	access_chain->add_id(builder.makeUintConstant(local_root_signature_entry));
 	impl.add(access_chain);
-
 	return access_chain->id;
 }
 
@@ -803,6 +844,13 @@ static spv::Id build_root_descriptor_load_physical_pointer(Converter::Impl &impl
 
 	auto *load_ptr = impl.allocate(spv::OpLoad, builder.makeVectorType(builder.makeUintType(32), 2));
 	load_ptr->add_id(ptr_id);
+
+	if (local_root_signature_entry >= 0 && impl.node_input.shader_record_block_type_id != 0)
+	{
+		load_ptr->add_literal(spv::MemoryAccessAlignedMask);
+		load_ptr->add_literal(8);
+	}
+
 	impl.add(load_ptr);
 	return load_ptr->id;
 }
@@ -1832,10 +1880,11 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	{
 		if (i < num_words)
 		{
-			auto *op = impl.allocate(spv::OpAccessChain,
-			                         builder.makePointer(storage == spv::StorageClassPushConstant && impl.options.inline_ubo_enable ?
-			                                             spv::StorageClassUniform : storage,
-			                                             builder.makeUintType(32)));
+			auto *op = impl.allocate(
+				storage == spv::StorageClassPhysicalStorageBuffer ? spv::OpInBoundsAccessChain : spv::OpAccessChain,
+				builder.makePointer(storage == spv::StorageClassPushConstant && impl.options.inline_ubo_enable ?
+				                    spv::StorageClassUniform : storage,
+				                    builder.makeUintType(32)));
 
 			op->add_id(base_ptr);
 			op->add_id(builder.makeUintConstant(member_index + i));
@@ -1843,6 +1892,13 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 
 			auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
 			load_op->add_id(op->id);
+
+			if (storage == spv::StorageClassPhysicalStorageBuffer)
+			{
+				load_op->add_literal(spv::MemoryAccessAlignedMask);
+				load_op->add_literal(4);
+			}
+
 			impl.add(load_op);
 			elements[i] = load_op->id;
 		}
@@ -1901,7 +1957,8 @@ static bool emit_cbuffer_load_shader_record(Converter::Impl &impl, const llvm::C
 	auto &entry = impl.local_root_signature[local_root_signature_entry];
 	return emit_cbuffer_load_from_uints(impl, instruction,
 	                                    impl.get_id_for_value(instruction->getOperand(1)),
-	                                    spv::StorageClassShaderRecordBufferKHR,
+	                                    impl.node_input.shader_record_block_type_id ?
+	                                    spv::StorageClassPhysicalStorageBuffer : spv::StorageClassShaderRecordBufferKHR,
 	                                    0, entry.constants.num_words);
 }
 

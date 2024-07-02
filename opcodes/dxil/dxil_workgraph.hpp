@@ -54,12 +54,16 @@ enum NodeInputParameter
 	NodePayloadStrideOrOffsetsBDA = 3,
 	NodePayloadOutputBDA = 4,
 	NodePayloadOutputAtomicBDA = 5,
-	NodeGridDispatchX = 6,
-	NodeGridDispatchY = 7,
-	NodeGridDispatchZ = 8,
-	NodePayloadOutputOffset = 9,
-	NodePayloadOutputStride = 10,
+	NodeLocalRootSignatureBDA = 6,
+	NodeGridDispatchX = 7,
+	NodeGridDispatchY = 8,
+	NodeGridDispatchZ = 9,
+	NodePayloadOutputOffset = 10,
+	NodePayloadOutputStride = 11,
 };
+
+spv::Id emit_load_node_input_push_parameter(
+	Converter::Impl &impl, NodeInputParameter param, spv::Id type);
 
 bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode *entry, spv::Id main_entry_id);
 }

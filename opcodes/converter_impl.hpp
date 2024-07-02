@@ -373,6 +373,7 @@ struct Converter::Impl
 	bool emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *refl);
 	bool emit_samplers(const llvm::MDNode *samplers, const llvm::MDNode *refl);
 	bool emit_shader_record_buffer();
+	spv::Id emit_shader_record_buffer_block_type(bool physical_storage);
 	void register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index);
 	void emit_root_constants(unsigned num_descriptors, unsigned num_constant_words);
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &parser);
@@ -534,6 +535,7 @@ struct Converter::Impl
 		spv::Id private_coalesce_offset_id; // Private variable which holds the linear input index.
 		spv::Id private_coalesce_count_id; // Private variable which holds the input count.
 		spv::Id node_dispatch_push_id; // PushConstant ABI for dispatching.
+		spv::Id shader_record_block_type_id;
 		// Stride for the payload. This is recorded in metadata, but we may have to allocate SV_DispatchGrid.
 		uint32_t payload_stride;
 		uint32_t coalesce_stride; // Coalesce width.

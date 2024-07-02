@@ -2435,10 +2435,10 @@ static bool execution_model_is_ray_tracing(spv::ExecutionModel model)
 	}
 }
 
-bool Converter::Impl::emit_shader_record_buffer()
+spv::Id Converter::Impl::emit_shader_record_buffer_block_type(bool physical_storage)
 {
 	if (local_root_signature.empty())
-		return true;
+		return 0;
 
 	auto &builder = spirv_module.get_builder();
 
@@ -2459,7 +2459,7 @@ bool Converter::Impl::emit_shader_record_buffer()
 			spv::Id array_size_id = builder.makeUintConstant(elem.constants.num_words);
 			spv::Id u32_type = builder.makeUintType(32);
 			spv::Id member_type_id =
-				builder.makeArrayType(u32_type, array_size_id, 4);
+			    builder.makeArrayType(u32_type, array_size_id, 4);
 			builder.addDecoration(member_type_id, spv::DecorationArrayStride, 4);
 			member_types.push_back(member_type_id);
 			offsets.push_back(current_offset);
@@ -2501,9 +2501,20 @@ bool Converter::Impl::emit_shader_record_buffer()
 	builder.addDecoration(type_id, spv::DecorationBlock);
 
 	for (size_t i = 0; i < local_root_signature.size(); i++)
+	{
 		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, offsets[i]);
+		if (physical_storage)
+			builder.addMemberDecoration(type_id, i, spv::DecorationNonWritable);
+	}
 
-	shader_record_buffer_id = create_variable(spv::StorageClassShaderRecordBufferKHR, type_id, "SBT");
+	return type_id;
+}
+
+bool Converter::Impl::emit_shader_record_buffer()
+{
+	spv::Id type_id = emit_shader_record_buffer_block_type(false);
+	if (type_id)
+		shader_record_buffer_id = create_variable(spv::StorageClassShaderRecordBufferKHR, type_id, "SBT");
 	return true;
 }
 
@@ -3554,7 +3565,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 					return cached_type.id;
 
 			spv::Id array_type_id = builder.makeArrayType(element_type_id, array_size_id, stride);
-			builder.addDecoration(array_size_id, spv::DecorationArrayStride, stride);
+			builder.addDecoration(array_type_id, spv::DecorationArrayStride, stride);
 			cached_physical_array_types.push_back({ array_type_id, element_type_id, array_size_id });
 			return array_type_id;
 		}
@@ -3603,8 +3614,7 @@ Converter::Impl::SizeAlignment Converter::Impl::get_physical_size_for_type(spv::
 	else if (builder().isArrayType(type_id))
 	{
 		res = get_physical_size_for_type(builder().getContainedTypeId(type_id));
-		uint32_t array_size_id = builder().getNumTypeConstituents(type_id);
-		uint32_t array_size = builder().getConstantScalar(array_size_id);
+		uint32_t array_size = builder().getNumTypeConstituents(type_id);
 		// Alignment is inherited from constituent, we do scalar block layout here.
 		res.size *= array_size;
 	}
@@ -5474,6 +5484,10 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 		return false;
 	}
 
+	node_input.shader_record_block_type_id = emit_shader_record_buffer_block_type(true);
+	spv::Id ptr_shader_record_block_type_id = builder().makePointer(
+	    spv::StorageClassPhysicalStorageBuffer, node_input.shader_record_block_type_id);
+
 	// Declare the ABI for dispatching a node. This will change depending on the dispatch mode,
 	// and style of execution (indirect pull or array).
 
@@ -5504,6 +5518,7 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 		node_input.is_entry_point ? u32_ptr_type_id : u32_array_ptr_type_id,
 		u64_type_id,
 		u64_type_id,
+		ptr_shader_record_block_type_id,
 		u32_type_id,
 		u32_type_id,
 		u32_type_id,
@@ -5518,11 +5533,12 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	builder().addMemberDecoration(type_id, NodePayloadStrideOrOffsetsBDA, spv::DecorationOffset, 24);
 	builder().addMemberDecoration(type_id, NodePayloadOutputBDA, spv::DecorationOffset, 32);
 	builder().addMemberDecoration(type_id, NodePayloadOutputAtomicBDA, spv::DecorationOffset, 40);
-	builder().addMemberDecoration(type_id, NodeGridDispatchX, spv::DecorationOffset, 48);
-	builder().addMemberDecoration(type_id, NodeGridDispatchY, spv::DecorationOffset, 52);
-	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 56);
-	builder().addMemberDecoration(type_id, NodePayloadOutputOffset, spv::DecorationOffset, 60);
-	builder().addMemberDecoration(type_id, NodePayloadOutputStride, spv::DecorationOffset, 64);
+	builder().addMemberDecoration(type_id, NodeLocalRootSignatureBDA, spv::DecorationOffset, 48);
+	builder().addMemberDecoration(type_id, NodeGridDispatchX, spv::DecorationOffset, 56);
+	builder().addMemberDecoration(type_id, NodeGridDispatchY, spv::DecorationOffset, 60);
+	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 64);
+	builder().addMemberDecoration(type_id, NodePayloadOutputOffset, spv::DecorationOffset, 68);
+	builder().addMemberDecoration(type_id, NodePayloadOutputStride, spv::DecorationOffset, 72);
 
 	// For linear node layout (entry point).
 	// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
@@ -5534,6 +5550,7 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	builder().addMemberName(type_id, NodePayloadStrideOrOffsetsBDA, "NodePayloadStrideOrOffsetsBDA");
 	builder().addMemberName(type_id, NodePayloadOutputBDA, "NodePayloadOutputBDA");
 	builder().addMemberName(type_id, NodePayloadOutputAtomicBDA, "NodePayloadOutputAtomicBDA");
+	builder().addMemberName(type_id, NodeLocalRootSignatureBDA, "NodeLocalRootSignatureBDA");
 	// For broadcast nodes. Need to instance multiple times.
 	// Becomes WorkGroupID and affects GlobalInvocationID.
 	builder().addMemberName(type_id, NodeGridDispatchX, "NodeGridDispatchX");

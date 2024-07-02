@@ -110,13 +110,17 @@ struct Operation
 	void add_id(spv::Id arg)
 	{
 		assert(num_arguments < MaxArguments);
+		assert(arg != 0);
 		arguments[num_arguments++] = arg;
 	}
 
 	void add_ids(const std::initializer_list<spv::Id> &args)
 	{
 		for (auto &arg : args)
+		{
+			assert(arg != 0);
 			add_id(arg);
+		}
 	}
 
 	void add_literal(uint32_t lit)

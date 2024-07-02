@@ -83,7 +83,7 @@ static uint32_t get_node_meta_index_from_annotate_handle(const llvm::CallInst *i
 }
 #endif
 
-static spv::Id emit_load_node_input_push_parameter(
+spv::Id emit_load_node_input_push_parameter(
 	Converter::Impl &impl, NodeInputParameter param, spv::Id type)
 {
 	auto *access_offset_point = impl.allocate(spv::OpAccessChain, impl.builder().makePointer(
@@ -625,7 +625,7 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 	spv::Id u32_type = builder.makeUintType(32);
 	spv::Id u64_type = builder.makeUintType(64);
 
-	if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing)
+	if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing && impl.node_input.private_bda_var_id)
 	{
 		spv::Id payload_base = emit_load_node_input_push_parameter(impl, NodePayloadBDA, u64_type);
 		spv::Id payload_stride_ptr = emit_load_node_input_push_parameter(
@@ -683,7 +683,7 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 		store_op->add_id(offset_payload->id);
 		impl.add(store_op);
 	}
-	else
+	else if (impl.node_input.launch_type == DXIL::NodeLaunchType::Coalescing)
 	{
 		// For Coalesce, we can load an array of payloads, have to defer the resolve.
 		// Fortunately, we don't have to read the payload in dispatcher, so we're okay.
