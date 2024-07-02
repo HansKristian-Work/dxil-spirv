@@ -5485,8 +5485,18 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	}
 
 	node_input.shader_record_block_type_id = emit_shader_record_buffer_block_type(true);
-	spv::Id ptr_shader_record_block_type_id = builder().makePointer(
-	    spv::StorageClassPhysicalStorageBuffer, node_input.shader_record_block_type_id);
+	spv::Id ptr_shader_record_block_type_id = 0;
+	if (node_input.shader_record_block_type_id)
+	{
+		ptr_shader_record_block_type_id =
+			builder().makePointer(spv::StorageClassPhysicalStorageBuffer,
+			                      node_input.shader_record_block_type_id);
+	}
+	else
+	{
+		// Dummy type
+		ptr_shader_record_block_type_id = builder().makeVectorType(builder().makeUintType(32), 2);
+	}
 
 	// Declare the ABI for dispatching a node. This will change depending on the dispatch mode,
 	// and style of execution (indirect pull or array).

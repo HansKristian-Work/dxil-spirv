@@ -126,6 +126,7 @@ struct PushSignature
 	VkDeviceAddress node_payload_stride_or_offsets_bda;
 	VkDeviceAddress node_payload_output_bda;
 	VkDeviceAddress node_payload_output_atomic_bda;
+	VkDeviceAddress local_root_signature_bda;
 	uint32_t node_grid_dispatch[3];
 	uint32_t node_payload_output_offset;
 	uint32_t node_payload_output_stride;
