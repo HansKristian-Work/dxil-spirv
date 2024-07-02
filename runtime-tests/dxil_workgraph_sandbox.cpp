@@ -146,7 +146,7 @@ static int run_tests(Device &device)
 	auto *node2_program = get_compute_shader_from_dxil(device, "assets://test.dxil", "node2");
 
 	BufferCreateInfo info = {};
-	info.size = 1024 * 1024 * 1024;
+	info.size = 100 * 1024 * 1024;
 	info.domain = BufferDomain::Device;
 	info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
 	             VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -183,10 +183,10 @@ static int run_tests(Device &device)
 	device.set_name(*output_uav, "UAV");
 
 	std::vector<EntryData> entry_data;
-	for (unsigned i = 0; i < 100000; i++)
+	for (unsigned i = 0; i < 1000; i++)
 	{
-		entry_data.push_back({ 0, 1, 4, 1 });
-		entry_data.push_back({ 1, 1, 200, 1 });
+		entry_data.push_back({ 0, 3, 4, 1 });
+		entry_data.push_back({ 1, 3, 200, 1 });
 	}
 
 	PushSignature signature = {};
@@ -258,7 +258,7 @@ static int run_tests(Device &device)
 		cmd->set_program("assets://distribute_workgroups.comp");
 		cmd->set_specialization_constant_mask(0x7);
 		cmd->set_specialization_constant(0, target_wg_size);
-		cmd->set_specialization_constant(1, 3); // COALESCE_DIVIDER
+		cmd->set_specialization_constant(1, 0); // COALESCE_DIVIDER
 		cmd->set_specialization_constant(2, target_wg_size);
 
 		cmd->set_storage_buffer(0, 0, *node_payload_output_atomic_buffer, 0, 256);
@@ -281,9 +281,11 @@ static int run_tests(Device &device)
 	{
 		cmd->set_program("assets://distribute_payload_offsets.comp");
 		cmd->enable_subgroup_size_control(true);
-		cmd->set_specialization_constant_mask(1);
+		cmd->set_specialization_constant_mask(0x7);
 		cmd->set_subgroup_size_log2(true, 2, target_wg_size_log2);
 		cmd->set_specialization_constant(0, target_wg_size);
+		cmd->set_specialization_constant(1, 1); // RW_GROUP_TRACKING_COMPONENTS
+		cmd->set_specialization_constant(2, uint32_t(true)); // RW_GROUP_TRACKING_U32
 
 		cmd->set_storage_buffer(0, 0, *node_payload_output_atomic_buffer, 256, VK_WHOLE_SIZE);
 		cmd->set_storage_buffer(0, 1, *node_unrolled_payload_offsets_buffer);
@@ -295,10 +297,12 @@ static int run_tests(Device &device)
 			uint32_t node_index;
 			uint32_t packed_offset_counts_stride;
 			uint32_t payload_stride;
+			int32_t grid_offset_or_count;
 		};
 		Push push = {};
-		push.packed_offset_counts_stride = 64;
-		push.payload_stride = 12;
+		push.packed_offset_counts_stride = 1024 * 1024;
+		push.payload_stride = 16;
+		push.grid_offset_or_count = 0;
 
 		for (uint32_t node_index = 0; node_index < 2; node_index++)
 		{
@@ -332,15 +336,15 @@ static int run_tests(Device &device)
 			signature.node_payload_output_atomic_bda = node_payload_output_atomic_buffer->get_device_address();
 			signature.node_payload_output_offset = 64 - 2; // 256 byte offset.
 			signature.node_payload_output_stride = 1024 * 1024;
-			//signature.node_grid_dispatch[1] = 0;
-			//signature.node_grid_dispatch[2] = 0;
+			signature.node_grid_dispatch[1] = 0;
+			signature.node_grid_dispatch[2] = 0;
 
-			//cmd->set_specialization_constant_mask(1);
-			//cmd->set_specialization_constant(0, target_wg_size);
+			cmd->set_specialization_constant_mask(1);
+			cmd->set_specialization_constant(0, target_wg_size);
 
-			//for (uint32_t i = 0; i < 4; i++)
+			for (uint32_t i = 0; i < 4; i++)
 			{
-				//signature.node_grid_dispatch[0] = i;
+				signature.node_grid_dispatch[0] = i;
 
 				// Execute primary group.
 				signature.node_linear_offset_bda = indirect_buffer->get_device_address() +

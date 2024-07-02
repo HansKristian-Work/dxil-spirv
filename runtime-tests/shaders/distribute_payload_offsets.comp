@@ -8,6 +8,8 @@
 #pragma optimize off
 
 layout(local_size_x_id = 0) in;
+layout(constant_id = 1) const int RW_GROUP_TRACKING_COMPONENTS = 0;
+layout(constant_id = 2) const bool RW_GROUP_TRACKING_U32 = false;
 
 layout(set = 0, binding = 0, std430) readonly buffer NodePayloadOffsetCount
 {
@@ -49,6 +51,7 @@ layout(push_constant, std430) uniform Registers
 	uint node_index;
 	uint packed_offset_counts_stride;
 	uint payload_stride;
+	int grid_offset_or_count;
 } registers;
 
 void main()
@@ -86,8 +89,36 @@ void main()
 
 			for (uint packed_index = gl_SubgroupInvocationID; packed_index < wave_count; packed_index += gl_SubgroupSize)
 			{
-				unrolled_offsets[output_offset + packed_index] = wave_payload_offset + registers.payload_stride * packed_index;
-				// TODO: Potentially patch in group sharing tracking 4 byte counter.
+				uint unrolled_offset = wave_payload_offset + registers.payload_stride * packed_index;
+				unrolled_offsets[output_offset + packed_index] = unrolled_offset;
+
+				if (RW_GROUP_TRACKING_COMPONENTS > 0)
+				{
+					uint grid_count = 1u;
+					if (registers.grid_offset_or_count >= 0)
+					{
+						// For [NodeMaxDispatchGrid].
+						if (RW_GROUP_TRACKING_U32)
+						{
+							uint u32_grid_offset = (unrolled_offset + registers.grid_offset_or_count) >> 2u;
+							for (int i = 0; i < RW_GROUP_TRACKING_COMPONENTS; i++)
+								grid_count *= payload32[u32_grid_offset + i];
+						}
+						else
+						{
+							uint u16_grid_offset = (unrolled_offset + registers.grid_offset_or_count) >> 1u;
+							for (int i = 0; i < RW_GROUP_TRACKING_COMPONENTS; i++)
+								grid_count *= uint(payload16[u16_grid_offset + i]);
+						}
+					}
+					else
+					{
+						// For [NodeDispatchGrid]. Ignore any grids.
+						grid_count = -registers.grid_offset_or_count;
+					}
+
+					payload32[(unrolled_offset + registers.payload_stride - 4u) >> 2u] = grid_count;
+				}
 			}
 
 			output_offset += wave_count;

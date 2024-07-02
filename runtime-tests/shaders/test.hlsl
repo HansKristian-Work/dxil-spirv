@@ -1,7 +1,7 @@
 RWStructuredBuffer<uint> RWBuf0 : register(u1);
 RWStructuredBuffer<uint> RWBuf1 : register(u2);
 
-struct Payload
+struct [NodeTrackRWInputSharing] Payload
 {
 	uint grid : SV_DispatchGrid;
 	uint offset;
@@ -46,33 +46,35 @@ void entry(DispatchNodeInputRecord<EntryData> entry,
 	}
 }
 
-#if 0
+#if 1
 [Shader("node")]
 [NodeLaunch("broadcasting")]
 [NumThreads(8, 1, 1)]
 [NodeMaxDispatchGrid(4, 1, 1)]
-void node1(DispatchNodeInputRecord<Payload> entry,
+void node1(RWDispatchNodeInputRecord<Payload> entry,
 		uint thr : SV_DispatchThreadID,
 		uint local_id : SV_GroupIndex,
-		uint group_id : SV_GroupID,
-		[MaxRecords(64)] [NodeArraySize(8)] [NodeID("Broadcast0")] NodeOutputArray<Payload> opayload0,
-		[MaxRecords(64)] [NodeID("Broadcast1")] NodeOutput<Payload> opayload)
+		uint group_id : SV_GroupID)
 {
 	uint o;
-	InterlockedAdd(RWBuf0[entry.Get().offset], entry.Get().increment, o);
+	if (entry.FinishedCrossGroupSharing())
+		InterlockedAdd(RWBuf0[0], entry.Get().increment, o);
+	InterlockedAdd(RWBuf0[2], entry.Get().increment, o);
 }
 
 [Shader("node")]
 [NodeLaunch("broadcasting")]
 [NumThreads(8, 1, 1)]
 [NodeMaxDispatchGrid(4, 1, 1)]
-void node2(DispatchNodeInputRecord<Payload> entry,
+void node2(RWDispatchNodeInputRecord<Payload> entry,
 		uint thr : SV_DispatchThreadID,
 		uint local_id : SV_GroupIndex,
 		uint group_id : SV_GroupID)
 {
 	uint o;
-	InterlockedAdd(RWBuf1[entry.Get().offset], entry.Get().increment, o);
+	if (entry.FinishedCrossGroupSharing())
+		InterlockedAdd(RWBuf1[1], entry.Get().increment, o);
+	InterlockedAdd(RWBuf1[3], entry.Get().increment, o);
 }
 #else
 [Shader("node")]
