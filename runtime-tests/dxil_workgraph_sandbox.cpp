@@ -146,7 +146,7 @@ static int run_tests(Device &device)
 	auto *node2_program = get_compute_shader_from_dxil(device, "assets://test.dxil", "node2");
 
 	BufferCreateInfo info = {};
-	info.size = 4096;
+	info.size = 1024 * 1024 * 1024;
 	info.domain = BufferDomain::Device;
 	info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
 	             VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -182,10 +182,12 @@ static int run_tests(Device &device)
 	device.set_name(*indirect_buffer, "IndirectBuffer");
 	device.set_name(*output_uav, "UAV");
 
-	const EntryData entry_data[] = {
-		{ 0, 3, 4, 1 },
-		{ 1, 2, 200, 1 },
-	};
+	std::vector<EntryData> entry_data;
+	for (unsigned i = 0; i < 100000; i++)
+	{
+		entry_data.push_back({ 0, 1, 4, 1 });
+		entry_data.push_back({ 1, 1, 200, 1 });
+	}
 
 	PushSignature signature = {};
 	signature.node_payload_bda = node_payload_buffer->get_device_address();
@@ -195,7 +197,7 @@ static int run_tests(Device &device)
 	signature.node_payload_output_bda = node_payload_output_buffer->get_device_address();
 	signature.node_payload_output_atomic_bda = node_payload_output_atomic_buffer->get_device_address();
 	signature.node_payload_output_offset = 64 - 2; // 256 byte offset.
-	signature.node_payload_output_stride = 64;
+	signature.node_payload_output_stride = 1024 * 1024;
 
 	Device::init_renderdoc_capture();
 	device.begin_renderdoc_capture();
@@ -205,7 +207,9 @@ static int run_tests(Device &device)
 
 	*static_cast<uint32_t *>(cmd->update_buffer(*node_payload_stride_or_offsets_buffer, 0, 4)) = sizeof(EntryData);
 	*static_cast<uint32_t *>(cmd->update_buffer(*node_linear_offset_buffer, 0, 4)) = 0;
-	memcpy(cmd->update_buffer(*node_payload_buffer, 0, sizeof(entry_data)), entry_data, sizeof(entry_data));
+	*static_cast<uint32_t *>(cmd->update_buffer(*node_linear_offset_buffer, 4, 4)) = entry_data.size() & ~(32 * 1024 - 1);
+	memcpy(cmd->update_buffer(*node_payload_buffer, 0, entry_data.size() * sizeof(entry_data.front())),
+	       entry_data.data(), entry_data.size() * sizeof(entry_data.front()));
 	cmd->fill_buffer(*node_payload_output_atomic_buffer, 0);
 
 	cmd->barrier(VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -226,8 +230,17 @@ static int run_tests(Device &device)
 				signature.node_grid_dispatch[0] = x;
 				signature.node_grid_dispatch[1] = y;
 				signature.node_grid_dispatch[2] = z;
+				signature.node_linear_offset_bda = node_linear_offset_buffer->get_device_address();
 				cmd->push_constants(&signature, 0, sizeof(signature));
-				cmd->dispatch(2, 1, 1); // Feed from indirect as needed.
+
+				uint32_t num_dispatches = entry_data.size();
+				constexpr uint32_t divider = 32 * 1024;
+
+				cmd->dispatch(divider, num_dispatches / divider, 1);
+
+				signature.node_linear_offset_bda = node_linear_offset_buffer->get_device_address() + 4;
+				cmd->push_constants(&signature, 0, sizeof(signature));
+				cmd->dispatch(num_dispatches % divider, 1, 1);
 			}
 		}
 	}
@@ -318,7 +331,7 @@ static int run_tests(Device &device)
 			signature.node_payload_output_bda = node_payload_buffer->get_device_address();
 			signature.node_payload_output_atomic_bda = node_payload_output_atomic_buffer->get_device_address();
 			signature.node_payload_output_offset = 64 - 2; // 256 byte offset.
-			signature.node_payload_output_stride = 64;
+			signature.node_payload_output_stride = 1024 * 1024;
 			//signature.node_grid_dispatch[1] = 0;
 			//signature.node_grid_dispatch[2] = 0;
 

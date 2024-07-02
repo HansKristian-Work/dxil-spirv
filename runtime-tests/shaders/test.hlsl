@@ -83,7 +83,7 @@ void node1([MaxRecords(3)] GroupNodeInputRecords<Payload> entry, uint lid : SV_G
 	if (lid < entry.Count())
 	{
 		uint o;
-		InterlockedAdd(RWBuf0[entry.Get(lid).offset], entry.Get(lid).increment, o);
+		//InterlockedAdd(RWBuf0[entry.Get(lid).offset], entry.Get(lid).increment, o);
 		InterlockedAdd(RWBuf0[0], 1, o);
 	}
 }
@@ -96,7 +96,7 @@ void node2([MaxRecords(3)] GroupNodeInputRecords<Payload> entry, uint lid : SV_G
 	if (lid < entry.Count())
 	{
 		uint o;
-		InterlockedAdd(RWBuf1[entry.Get(lid).offset], entry.Get(lid).increment, o);
+		//InterlockedAdd(RWBuf1[entry.Get(lid).offset], entry.Get(lid).increment, o);
 		InterlockedAdd(RWBuf1[1], 1, o);
 	}
 }
