@@ -40,6 +40,13 @@ uint32_t get_node_io_from_annotate_handle(const llvm::CallInst *inst)
 
 static uint32_t get_node_stride_from_annotate_handle(const llvm::CallInst *inst)
 {
+	// This is a red herring, since the flags are wrong. Gotta keep digging ... >_<
+	if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::IndexNodeHandle))
+	{
+		auto *index_handle = llvm::cast<llvm::CallInst>(inst->getOperand(1));
+		inst = llvm::cast<llvm::CallInst>(index_handle->getOperand(1));
+	}
+
 	auto *type_operand = llvm::cast<llvm::ConstantAggregate>(inst->getOperand(2));
 	uint32_t node_io_flags = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(0))->getUniqueInteger().getZExtValue();
 	uint32_t stride = llvm::cast<llvm::ConstantInt>(type_operand->getOperand(1))->getUniqueInteger().getZExtValue();

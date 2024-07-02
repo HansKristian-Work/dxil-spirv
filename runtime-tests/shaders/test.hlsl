@@ -24,13 +24,12 @@ struct EntryData
 void entry(DispatchNodeInputRecord<EntryData> entry,
 		uint3 thr : SV_DispatchThreadID,
 		uint local_id : SV_GroupIndex,
-		[MaxRecords(8)] [NodeID("Broadcast0")] NodeOutput<Payload> opayload0,
-		[MaxRecords(8)] [NodeID("Broadcast1")] NodeOutput<Payload> opayload1)
+		[MaxRecords(8)] [NodeID("Broadcast0")] [NodeArraySize(2)] NodeOutputArray<Payload> opayload0)
 {
 	uint linear_thr = thr.x + thr.y * 16 + thr.z * 32;
 	if (entry.Get().node_idx != 0)
 	{
-		GroupNodeOutputRecords<Payload> write1 = opayload1.GetGroupNodeOutputRecords(8);
+		GroupNodeOutputRecords<Payload> write1 = opayload0[1].GetGroupNodeOutputRecords(8);
 		write1.Get(local_id).grid = entry.Get().size;
 		write1.Get(local_id).offset = entry.Get().offset + linear_thr;
 		write1.Get(local_id).increment = entry.Get().increment;
@@ -38,7 +37,7 @@ void entry(DispatchNodeInputRecord<EntryData> entry,
 	}
 	else
 	{
-		ThreadNodeOutputRecords<Payload> write0 = opayload0.GetThreadNodeOutputRecords(1);
+		ThreadNodeOutputRecords<Payload> write0 = opayload0[0].GetThreadNodeOutputRecords(1);
 		write0.Get().grid = entry.Get().size;
 		write0.Get().offset = entry.Get().offset + linear_thr;
 		write0.Get().increment = entry.Get().increment;
