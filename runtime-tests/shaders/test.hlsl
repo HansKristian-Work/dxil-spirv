@@ -76,19 +76,29 @@ void node2(DispatchNodeInputRecord<Payload> entry,
 }
 #else
 [Shader("node")]
-[NodeLaunch("thread")]
-void node1(ThreadNodeInputRecord<Payload> entry)
+[NodeLaunch("coalescing")]
+[NumThreads(3, 1, 1)]
+void node1([MaxRecords(3)] GroupNodeInputRecords<Payload> entry, uint lid : SV_GroupIndex)
 {
-	uint o;
-	InterlockedAdd(RWBuf0[entry.Get().offset], entry.Get().increment, o);
+	if (lid < entry.Count())
+	{
+		uint o;
+		InterlockedAdd(RWBuf0[entry.Get(lid).offset], entry.Get(lid).increment, o);
+		InterlockedAdd(RWBuf0[0], 1, o);
+	}
 }
 
 [Shader("node")]
-[NodeLaunch("thread")]
-void node2(ThreadNodeInputRecord<Payload> entry)
+[NodeLaunch("coalescing")]
+[NumThreads(3, 1, 1)]
+void node2([MaxRecords(3)] GroupNodeInputRecords<Payload> entry, uint lid : SV_GroupIndex)
 {
-	uint o;
-	InterlockedAdd(RWBuf1[entry.Get().offset], entry.Get().increment, o);
+	if (lid < entry.Count())
+	{
+		uint o;
+		InterlockedAdd(RWBuf1[entry.Get(lid).offset], entry.Get(lid).increment, o);
+		InterlockedAdd(RWBuf1[1], 1, o);
+	}
 }
 #endif
 

@@ -838,7 +838,7 @@ bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode
 		return false;
 
 	// Need payload before, since we need to mask execution based on the payload when using NodeMaxDispatchGrid.
-	if (impl.node_input.private_bda_var_id && impl.node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)
+	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)
 		emit_payload_pointer_resolve(impl, linear_node_index_id);
 
 	spv::Id execution_mask_id = emit_workgraph_compute_builtins(impl, linear_node_index_id);
@@ -861,7 +861,7 @@ bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode
 	}
 
 	// For non-broadcasting, we have to resolve in a branch to avoid potential out-of-bounds access.
-	if (impl.node_input.private_bda_var_id && impl.node_input.launch_type != DXIL::NodeLaunchType::Broadcasting)
+	if (impl.node_input.launch_type != DXIL::NodeLaunchType::Broadcasting)
 		emit_payload_pointer_resolve(impl, linear_node_index_id);
 
 	auto *call_op = impl.allocate(spv::OpFunctionCall, builder.makeVoidType());

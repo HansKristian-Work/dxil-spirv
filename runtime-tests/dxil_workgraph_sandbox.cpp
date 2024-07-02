@@ -245,7 +245,7 @@ static int run_tests(Device &device)
 		cmd->set_program("assets://distribute_workgroups.comp");
 		cmd->set_specialization_constant_mask(0x7);
 		cmd->set_specialization_constant(0, target_wg_size);
-		cmd->set_specialization_constant(1, target_wg_size); // COALESCE_DIVIDER
+		cmd->set_specialization_constant(1, 3); // COALESCE_DIVIDER
 		cmd->set_specialization_constant(2, target_wg_size);
 
 		cmd->set_storage_buffer(0, 0, *node_payload_output_atomic_buffer, 0, 256);
@@ -322,8 +322,8 @@ static int run_tests(Device &device)
 			//signature.node_grid_dispatch[1] = 0;
 			//signature.node_grid_dispatch[2] = 0;
 
-			cmd->set_specialization_constant_mask(1);
-			cmd->set_specialization_constant(0, target_wg_size);
+			//cmd->set_specialization_constant_mask(1);
+			//cmd->set_specialization_constant(0, target_wg_size);
 
 			//for (uint32_t i = 0; i < 4; i++)
 			{
