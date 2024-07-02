@@ -257,8 +257,14 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 	if (value_is_dx_op_instrinsic(annotation->getOperand(1), DXIL::Op::AllocateNodeOutputRecords))
 	{
 		spv::Id base_addr = emit_load_node_input_push_parameter(impl, NodePayloadOutputBDA, builder.makeUintType(64));
+
+		// The NodeIOTracking flags only exist on the annotation for AllocateNodeOutputRecords for some reason ...
+		// Probably a DXC bug, but oh well.
+		auto *alloc_node_outputs = llvm::cast<llvm::CallInst>(annotation->getOperand(1));
+		auto *real_annotation = llvm::cast<llvm::CallInst>(alloc_node_outputs->getOperand(1));
+
 		spv::Id offset_id = emit_build_output_payload_offset(impl, annotation->getOperand(1), inst->getOperand(2),
-		                                                     get_node_stride_from_annotate_handle(annotation));
+		                                                     get_node_stride_from_annotate_handle(real_annotation));
 
 		auto *cast_op = impl.allocate(spv::OpUConvert, builder.makeUintType(64));
 		cast_op->add_id(offset_id);
