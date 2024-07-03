@@ -706,6 +706,37 @@ struct DescriptorTableEntry
 	uint32_t offset_in_heap;
 };
 
+struct NodeDispatchGrid
+{
+	uint32_t offset;
+	DXIL::ComponentType component_type;
+	uint32_t count;
+};
+
+struct NodeInputData
+{
+	String node_id;
+	uint32_t payload_stride;
+	DXIL::NodeLaunchType launch_type;
+	uint32_t node_array_index;
+	NodeDispatchGrid grid_buffer;
+	uint32_t broadcast_grid[3];
+	uint32_t recursion_factor;
+	uint32_t coalesce_factor;
+	bool dispatch_grid_is_upper_bound;
+	bool node_track_rw_input_sharing;
+	bool is_program_entry;
+};
+
+struct NodeOutputData
+{
+	String node_id;
+	unsigned node_array_index;
+	unsigned node_array_size;
+	bool sparse_array;
+	bool unbounded_array;
+};
+
 enum class ShaderFeature
 {
 	Native16BitOperations = 0,
@@ -757,6 +788,9 @@ public:
 
 	// For esoteric CFG workarounds.
 	bool get_driver_version(uint32_t &driver_id, uint32_t &driver_version) const;
+
+	static NodeInputData get_node_input(const LLVMBCParser &parser, const char *entry);
+	static Vector<NodeOutputData> get_node_outputs(const LLVMBCParser &parser, const char *entry);
 
 	struct Impl;
 

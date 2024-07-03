@@ -216,6 +216,15 @@ typedef enum dxil_spv_hit_group_type
 	DXIL_SPV_HIT_GROUP_TYPE_INT_MAX = 0x7fffffff
 } dxil_spv_hit_group_type;
 
+typedef enum dxil_spv_node_launch_type
+{
+	DXIL_SPV_NODE_LAUNCH_TYPE_INVALID = 0,
+	DXIL_SPV_NODE_LAUNCH_TYPE_BROADCASTING = 1,
+	DXIL_SPV_NODE_LAUNCH_TYPE_COALESCING = 2,
+	DXIL_SPV_NODE_LAUNCH_TYPE_THREAD = 3,
+	DXIL_SPV_NODE_LAUNCH_TYPE_INT_MAX = 0x7fffffff
+} dxil_spv_node_launch_type;
+
 typedef struct dxil_spv_d3d_binding
 {
 	dxil_spv_shader_stage stage;
@@ -313,6 +322,30 @@ typedef struct dxil_spv_rdat_subobject
 	const void *payload;
 	size_t payload_size;
 } dxil_spv_rdat_subobject;
+
+typedef struct dxil_spv_node_input_data
+{
+	const char *node_id; /* This is often same as entry point name, but does not have to be. */
+	unsigned payload_stride; /* If 0, there is no input payload, i.e. EmptyNode. */
+	dxil_spv_node_launch_type launch_type;
+	unsigned node_array_index;
+	unsigned dispatch_grid[3]; /* For broadcast nodes. */
+	unsigned recursion_factor; /* [NodeMaxRecursionDepth] */
+	unsigned coalesce_factor;
+	dxil_spv_bool dispatch_grid_is_upper_bound; /* [NodeMaxDispatchGrid] if true. */
+	dxil_spv_bool node_track_rw_input_sharing; /* Payload is tagged with [NodeTrackRWInputSharing]. */
+	dxil_spv_bool is_program_entry; /* [NodeIsProgramEntry] */
+} dxil_spv_node_input_data;
+
+typedef struct dxil_spv_node_output_data
+{
+	const char *node_id;
+	unsigned node_array_index;
+	unsigned node_array_size;
+	dxil_spv_bool sparse_array;
+	dxil_spv_bool unbounded_array; /* Effective sizes are controlled by which inputs exist. */
+	/* We get the rest of the information from the target entry point's input data. */
+} dxil_spv_node_output_data;
 
 typedef enum dxil_spv_log_level
 {
@@ -680,6 +713,15 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_name(dx
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_demangled_name(dxil_spv_parsed_blob blob,
                                                                                         unsigned index,
                                                                                         const char **demangled_entry);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_input(
+	dxil_spv_parsed_blob blob, unsigned index, dxil_spv_node_input_data *data);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_num_node_outputs(
+	dxil_spv_parsed_blob blob, unsigned index, unsigned *num_outputs);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_output(
+	dxil_spv_parsed_blob blob, unsigned index, unsigned output_index, dxil_spv_node_output_data *data);
 
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_scan_resources(
 		dxil_spv_parsed_blob blob,

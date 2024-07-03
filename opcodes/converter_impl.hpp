@@ -230,16 +230,9 @@ struct Converter::Impl
 	bool emit_execution_modes_compute();
 	bool emit_execution_modes_node();
 
-	struct NodeDispatchGrid
-	{
-		uint32_t offset;
-		DXIL::ComponentType component_type;
-		uint32_t count;
-	};
-
 	static NodeDispatchGrid node_parse_dispatch_grid(llvm::MDNode *node_meta);
-	static uint32_t node_parse_payload_stride(llvm::MDNode *node_meta);
-	bool emit_execution_modes_node_input(llvm::MDNode *input);
+	static uint32_t node_parse_payload_stride(llvm::MDNode *node_meta, bool &is_rw_sharing);
+	bool emit_execution_modes_node_input();
 	bool emit_execution_modes_node_output(llvm::MDNode *input);
 	bool emit_execution_modes_geometry();
 	bool emit_execution_modes_hull();
@@ -840,5 +833,7 @@ struct Converter::Impl
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);
 
 	void suggest_maximum_wave_size(unsigned wave_size);
+
+	static NodeInputData get_node_input(llvm::MDNode *meta);
 };
 } // namespace dxil_spv

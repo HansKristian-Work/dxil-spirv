@@ -5350,7 +5350,8 @@ bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
 	NodeOutputMeta output_meta = {};
 
 	output_meta.grid = node_parse_dispatch_grid(output);
-	output_meta.payload_stride = node_parse_payload_stride(output);
+	bool is_rw_sharing;
+	output_meta.payload_stride = node_parse_payload_stride(output, is_rw_sharing);
 	output_meta.spec_constant_node_index = builder().makeUintConstant(0, true);
 	builder().addDecoration(output_meta.spec_constant_node_index, spv::DecorationSpecId, int(1 + node_outputs.size()));
 
@@ -5370,7 +5371,7 @@ bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
 	return true;
 }
 
-Converter::Impl::NodeDispatchGrid Converter::Impl::node_parse_dispatch_grid(llvm::MDNode *node_meta)
+NodeDispatchGrid Converter::Impl::node_parse_dispatch_grid(llvm::MDNode *node_meta)
 {
 	uint32_t num_ops = node_meta->getNumOperands();
 	for (uint32_t i = 0; i < num_ops; i += 2)
@@ -5396,11 +5397,11 @@ Converter::Impl::NodeDispatchGrid Converter::Impl::node_parse_dispatch_grid(llvm
 	return {};
 }
 
-uint32_t Converter::Impl::node_parse_payload_stride(llvm::MDNode *node_meta)
+uint32_t Converter::Impl::node_parse_payload_stride(llvm::MDNode *node_meta, bool &is_rw_sharing)
 {
 	uint32_t num_ops = node_meta->getNumOperands();
 	uint32_t payload_stride = 0;
-	bool is_rw_sharing = false;
+	is_rw_sharing = false;
 
 	for (uint32_t i = 0; i < num_ops; i += 2)
 	{
@@ -5439,23 +5440,8 @@ uint32_t Converter::Impl::node_parse_payload_stride(llvm::MDNode *node_meta)
 	return payload_stride;
 }
 
-bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
+bool Converter::Impl::emit_execution_modes_node_input()
 {
-	if (input)
-	{
-		uint32_t num_ops = input->getNumOperands();
-
-		node_input.dispatch_grid = node_parse_dispatch_grid(input);
-		node_input.payload_stride = node_parse_payload_stride(input);
-
-		for (uint32_t i = 0; i < num_ops; i += 2)
-		{
-			auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
-			if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
-				node_input.coalesce_stride = get_constant_metadata(input, i + 1);
-		}
-	}
-
 	// In Coalescing mode we have to defer this resolve
 	// since the input payload is an array, and we might have to deal with indirection on top of that.
 	if (node_input.launch_type != DXIL::NodeLaunchType::Coalescing && node_input.payload_stride)
@@ -5586,48 +5572,117 @@ bool Converter::Impl::emit_execution_modes_node_input(llvm::MDNode *input)
 	return true;
 }
 
+NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
+{
+	NodeInputData node = {};
+
+	auto *launch_type_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeLaunchType);
+	if (!launch_type_node)
+		return {};
+
+	node.launch_type = DXIL::NodeLaunchType(
+	    llvm::cast<llvm::ConstantAsMetadata>(*launch_type_node)->getValue()->getUniqueInteger().getZExtValue());
+
+	if (node.launch_type == DXIL::NodeLaunchType::Invalid)
+		return {};
+
+	auto *is_program_entry_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeIsProgramEntry);
+	if (is_program_entry_node)
+	{
+		node.is_program_entry =
+		    llvm::cast<llvm::ConstantAsMetadata>(*is_program_entry_node)->getValue()->getUniqueInteger().getZExtValue() != 0;
+	}
+
+	auto *recursion_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeMaxRecursionDepth);
+	if (recursion_node)
+	{
+		node.recursion_factor =
+			llvm::cast<llvm::ConstantAsMetadata>(*is_program_entry_node)->getValue()->getUniqueInteger().getZExtValue();
+	}
+
+	if (node.launch_type == DXIL::NodeLaunchType::Broadcasting)
+	{
+		auto *max_grid = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeMaxDispatchGrid);
+		const llvm::MDOperand *fixed_grid;
+
+		if (max_grid)
+		{
+			node.dispatch_grid_is_upper_bound = true;
+			fixed_grid = max_grid;
+		}
+		else
+			fixed_grid = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeDispatchGrid);
+
+		if (!fixed_grid)
+			return {};
+
+		for (uint32_t i = 0; i < 3; i++)
+			node.broadcast_grid[i] = get_constant_metadata(llvm::cast<llvm::MDNode>(*fixed_grid), i);
+	}
+
+	auto *name_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeID);
+
+	if (name_node)
+	{
+		auto *name_id = llvm::cast<llvm::MDNode>(*name_node);
+		node.node_id = llvm::cast<llvm::MDString>(name_id->getOperand(0))->getString();
+		node.node_array_index = get_constant_metadata(name_id, 1);
+	}
+
+	auto *inputs_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeInputs);
+
+	llvm::MDNode *input = nullptr;
+	if (inputs_node)
+	{
+		auto *inputs = llvm::cast<llvm::MDNode>(*inputs_node);
+		// Current spec only allows one input node.
+		if (inputs->getNumOperands() != 1)
+			return {};
+		input = llvm::cast<llvm::MDNode>(inputs->getOperand(0));
+	}
+
+	if (input)
+	{
+		uint32_t num_ops = input->getNumOperands();
+
+		node.grid_buffer = node_parse_dispatch_grid(input);
+		node.payload_stride = node_parse_payload_stride(input, node.node_track_rw_input_sharing);
+
+		for (uint32_t i = 0; i < num_ops; i += 2)
+		{
+			auto tag = DXIL::NodeMetadataTag(get_constant_metadata(input, i));
+			if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
+				node.coalesce_factor = get_constant_metadata(input, i + 1);
+		}
+	}
+
+	return node;
+}
+
+NodeInputData Converter::get_node_input(const LLVMBCParser &parser, const char *entry)
+{
+	auto *entry_point_meta = get_entry_point_meta(parser.get_module(), entry);
+	if (!entry_point_meta)
+		return {};
+	return Impl::get_node_input(entry_point_meta);
+}
+
 bool Converter::Impl::emit_execution_modes_node()
 {
 	// It will be necessary to override all this metadata through some API.
 	// Not really needed to support this until we've implemented everything.
-
-	auto *launch_type_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeLaunchType);
-	if (!launch_type_node)
+	NodeInputData node = get_node_input(entry_point_meta);
+	if (node.launch_type == DXIL::NodeLaunchType::Invalid)
 		return false;
 
-	auto launch_type = DXIL::NodeLaunchType(
-	    llvm::cast<llvm::ConstantAsMetadata>(*launch_type_node)->getValue()->getUniqueInteger().getZExtValue());
+	node_input.launch_type = node.launch_type;
+	node_input.is_entry_point = node.is_program_entry;
+	node_input.broadcast_has_max_grid = node.dispatch_grid_is_upper_bound;
+	node_input.dispatch_grid = node.grid_buffer;
+	node_input.payload_stride = node.payload_stride;
+	node_input.coalesce_stride = node.coalesce_factor;
 
-	auto *is_program_entry_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeIsProgramEntry);
-	if (is_program_entry_node)
-	{
-		node_input.is_entry_point =
-			llvm::cast<llvm::ConstantAsMetadata>(*is_program_entry_node)->getValue()->getUniqueInteger().getZExtValue() != 0;
-	}
-
-	// Currently don't care what the max dispatch grid is, just if we have to deal with it.
-	// In this case we get masked execution.
-	node_input.broadcast_has_max_grid =
-	    get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeMaxDispatchGrid) != nullptr;
-
-	if (launch_type == DXIL::NodeLaunchType::Invalid)
-		return false;
-	node_input.launch_type = launch_type;
-
-	auto *inputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeInputs);
-	if (inputs_node)
-	{
-		auto *inputs = llvm::cast<llvm::MDNode>(*inputs_node);
-
-		// Current spec only allows one input node.
-		if (inputs->getNumOperands() != 1)
-			return false;
-
-		auto *input = llvm::cast<llvm::MDNode>(inputs->getOperand(0));
-		if (!emit_execution_modes_node_input(input))
-			return false;
-	}
-	else if (!emit_execution_modes_node_input(nullptr))
+	if (!emit_execution_modes_node_input())
 		return false;
 
 	auto *outputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeOutputs);

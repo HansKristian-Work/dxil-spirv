@@ -558,6 +558,33 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_demangled_name(dxil_spv_par
 	return DXIL_SPV_SUCCESS;
 }
 
+dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_input(
+    dxil_spv_parsed_blob blob, unsigned index, dxil_spv_node_input_data *data)
+{
+	if (index >= blob->entry_points.size())
+		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_parsed_blob_get_entry_point_num_node_outputs(
+    dxil_spv_parsed_blob blob, unsigned index, unsigned *num_outputs)
+{
+	if (index >= blob->entry_points.size())
+		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_output(
+    dxil_spv_parsed_blob blob, unsigned index, unsigned output_index, dxil_spv_node_output_data *data)
+{
+	if (index >= blob->entry_points.size())
+		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+
+	return DXIL_SPV_SUCCESS;
+}
+
 dxil_spv_result dxil_spv_parsed_blob_scan_resources(dxil_spv_parsed_blob blob,
                                                     dxil_spv_srv_remapper_cb srv_remapper,
                                                     dxil_spv_sampler_remapper_cb sampler_remapper,

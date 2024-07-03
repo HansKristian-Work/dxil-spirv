@@ -64,6 +64,34 @@ dxil_spv_bool cbv_remap(void *,
 	return DXIL_SPV_TRUE;
 }
 
+static void analyze_shader_dxil(const char *path)
+{
+	auto mapping = GRANITE_FILESYSTEM()->open_readonly_mapping(path);
+	if (!mapping)
+		return;
+
+	dxil_spv_parsed_blob blob = nullptr;
+	if (dxil_spv_parse_dxil_blob(mapping->data(), mapping->get_size(), &blob) != DXIL_SPV_SUCCESS)
+		goto err;
+
+	uint32_t num_entry_points;
+	dxil_spv_parsed_blob_get_num_entry_points(blob, &num_entry_points);
+	for (uint32_t i = 0; i < num_entry_points; i++)
+	{
+		const char *mangled_entry = nullptr;
+		dxil_spv_parsed_blob_get_entry_point_name(blob, i, &mangled_entry);
+		dxil_spv_shader_stage stage = dxil_spv_parsed_blob_get_shader_stage_for_entry(blob, mangled_entry);
+		if (stage != DXIL_SPV_STAGE_COMPUTE)
+			goto err;
+
+		LOGI("Found entry point: %s\n", mangled_entry);
+	}
+
+err:
+	if (blob)
+		dxil_spv_parsed_blob_free(blob);
+}
+
 static Program *get_compute_shader_from_dxil_inner(Device &device, const char *path, const char *entry)
 {
 	Program *prog = nullptr;
@@ -145,6 +173,8 @@ static int run_tests(Device &device)
 	auto *entry_program = get_compute_shader_from_dxil(device, "assets://test.dxil", "entry");
 	auto *node1_program = get_compute_shader_from_dxil(device, "assets://test.dxil", "node1");
 	auto *node2_program = get_compute_shader_from_dxil(device, "assets://test.dxil", "node2");
+
+	analyze_shader_dxil("assets://test.dxil");
 
 	BufferCreateInfo info = {};
 	info.size = 100 * 1024 * 1024;
