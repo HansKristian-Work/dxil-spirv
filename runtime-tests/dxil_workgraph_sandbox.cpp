@@ -93,9 +93,10 @@ static void analyze_shader_dxil(const char *path)
 		{
 			dxil_spv_node_output_data node_output;
 			dxil_spv_parsed_blob_get_entry_point_node_output(blob, i, j, &node_output);
-			LOGI("Entry point %u, output %u, NodeID(\"%s\", %u)[%u]%s\n",
+			LOGI("Entry point %u, output %u, NodeID(\"%s\", %u)[%u]%s [MaxRecords %u]\n",
 			     i, j, node_output.node_id, node_output.node_array_index,
-			     node_output.node_array_size, node_output.sparse_array ? " sparse" : "");
+			     node_output.node_array_size, node_output.sparse_array ? " sparse" : "",
+			     node_output.max_records);
 		}
 
 		LOGI("Found entry point: %s\n", mangled_entry);

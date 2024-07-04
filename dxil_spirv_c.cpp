@@ -596,6 +596,8 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_input(
 		data->broadcast_grid[i] = input.broadcast_grid[i];
 	data->recursion_factor = input.recursion_factor;
 	data->coalesce_factor = input.coalesce_factor;
+	data->node_share_input_id = input.node_share_input_id.c_str();
+	data->node_share_input_array_index = input.node_share_input_array_index;
 	data->dispatch_grid_is_upper_bound = input.dispatch_grid_is_upper_bound ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	data->node_track_rw_input_sharing = input.node_track_rw_input_sharing ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	data->is_program_entry = input.is_program_entry ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
@@ -629,6 +631,7 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_output(
 	data->node_array_index = output.node_array_index;
 	data->node_array_size = output.node_array_size;
 	data->sparse_array = output.sparse_array;
+	data->max_records = output.max_records;
 	data->node_index_spec_constant_id = output.node_index_spec_constant_id;
 
 	return DXIL_SPV_SUCCESS;

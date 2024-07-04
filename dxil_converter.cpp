@@ -5590,6 +5590,8 @@ NodeOutputData Converter::Impl::get_node_output(llvm::MDNode *output)
 			data.sparse_array = get_constant_metadata(output, i + 1) != 0;
 		else if (tag == DXIL::NodeMetadataTag::NodeOutputArraySize)
 			data.node_array_size = get_constant_metadata(output, i + 1);
+		else if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
+			data.max_records = get_constant_metadata(output, i + 1);
 	}
 
 	return data;
@@ -5677,6 +5679,14 @@ NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 			if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
 				node.coalesce_factor = get_constant_metadata(input, i + 1);
 		}
+	}
+
+	auto *share_input_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeShareInputOf);
+	if (share_input_node)
+	{
+		auto *share_input = llvm::cast<llvm::MDNode>(*share_input_node);
+		node.node_share_input_id = llvm::cast<llvm::MDString>(share_input->getOperand(0))->getString();
+		node.node_share_input_array_index = get_constant_metadata(share_input, 1);
 	}
 
 	return node;

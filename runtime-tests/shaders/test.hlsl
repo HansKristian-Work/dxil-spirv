@@ -53,6 +53,7 @@ cbuffer cbuf : register(b0) { uint mult; };
 [NodeLaunch("broadcasting")]
 [NumThreads(8, 1, 1)]
 [NodeMaxDispatchGrid(4, 1, 1)]
+[NodeShareInputOf("Foo", 3)]
 void node1(RWDispatchNodeInputRecord<Payload> entry,
 		uint thr : SV_DispatchThreadID,
 		uint local_id : SV_GroupIndex,

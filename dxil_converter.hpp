@@ -723,6 +723,8 @@ struct NodeInputData
 	uint32_t broadcast_grid[3];
 	uint32_t recursion_factor;
 	uint32_t coalesce_factor;
+	String node_share_input_id;
+	uint32_t node_share_input_array_index;
 	bool dispatch_grid_is_upper_bound;
 	bool node_track_rw_input_sharing;
 	bool is_program_entry;
@@ -734,6 +736,7 @@ struct NodeOutputData
 	uint32_t node_array_index;
 	uint32_t node_array_size;
 	uint32_t node_index_spec_constant_id;
+	uint32_t max_records;
 	bool sparse_array;
 };
 

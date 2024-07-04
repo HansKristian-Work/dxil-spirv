@@ -335,6 +335,8 @@ typedef struct dxil_spv_node_input_data
 	unsigned broadcast_grid[3]; /* For broadcast nodes. */
 	unsigned recursion_factor; /* [NodeMaxRecursionDepth] */
 	unsigned coalesce_factor;
+	const char *node_share_input_id;
+	unsigned node_share_input_array_index;
 	dxil_spv_bool dispatch_grid_is_upper_bound; /* [NodeMaxDispatchGrid] if true. */
 	dxil_spv_bool node_track_rw_input_sharing; /* Payload is tagged with [NodeTrackRWInputSharing]. */
 	dxil_spv_bool is_program_entry; /* [NodeIsProgramEntry] */
@@ -346,6 +348,7 @@ typedef struct dxil_spv_node_output_data
 	unsigned node_array_index;
 	unsigned node_array_size; /* If UINT32_MAX, it's unbounded. */
 	unsigned node_index_spec_constant_id;
+	unsigned max_records;
 	dxil_spv_bool sparse_array;
 	/* We get the rest of the information from the target entry point's input data.
 	 * Output data is only for determining linkage. */
