@@ -5688,6 +5688,15 @@ NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 		node.node_share_input_array_index = get_constant_metadata(share_input, 1);
 	}
 
+	auto *local_argument_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeLocalRootArgumentsTableIndex);
+	if (local_argument_node)
+	{
+		node.local_root_arguments_table_index =
+		    llvm::cast<llvm::ConstantAsMetadata>(*local_argument_node)->getValue()->getUniqueInteger().getZExtValue();
+	}
+	else
+		node.local_root_arguments_table_index = UINT32_MAX;
+
 	return node;
 }
 

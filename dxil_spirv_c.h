@@ -337,6 +337,7 @@ typedef struct dxil_spv_node_input_data
 	unsigned coalesce_factor;
 	const char *node_share_input_id;
 	unsigned node_share_input_array_index;
+	unsigned local_root_arguments_table_index;
 	dxil_spv_bool dispatch_grid_is_upper_bound; /* [NodeMaxDispatchGrid] if true. */
 	dxil_spv_bool node_track_rw_input_sharing; /* Payload is tagged with [NodeTrackRWInputSharing]. */
 	dxil_spv_bool is_program_entry; /* [NodeIsProgramEntry] */

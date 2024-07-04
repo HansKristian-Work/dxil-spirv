@@ -725,6 +725,7 @@ struct NodeInputData
 	uint32_t coalesce_factor;
 	String node_share_input_id;
 	uint32_t node_share_input_array_index;
+	uint32_t local_root_arguments_table_index;
 	bool dispatch_grid_is_upper_bound;
 	bool node_track_rw_input_sharing;
 	bool is_program_entry;
