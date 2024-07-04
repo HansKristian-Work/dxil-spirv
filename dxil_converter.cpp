@@ -3532,7 +3532,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 
 	case llvm::Type::TypeID::PointerTyID:
 	{
-		if (DXIL::AddressSpace(type->getAddressSpace()) != DXIL::AddressSpace::PhysicalNodeIO ||
+		if (DXIL::AddressSpace(type->getPointerAddressSpace()) != DXIL::AddressSpace::PhysicalNodeIO ||
 		    (flags & TYPE_LAYOUT_PHYSICAL_BIT) == 0)
 		{
 			// Have to deal with this from the outside. Should only be relevant for getelementptr and instructions like that.
@@ -5361,7 +5361,7 @@ bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
 		if (tag == DXIL::NodeMetadataTag::NodeOutputID)
 		{
 			auto *output_node = llvm::cast<llvm::MDNode>(output->getOperand(i + 1));
-			String name = llvm::cast<llvm::MDString>(output_node->getOperand(0))->getString();
+			String name = get_string_metadata(output_node, 0);
 			builder().addName(output_meta.spec_constant_node_index, name.c_str());
 		}
 	}
@@ -5582,8 +5582,7 @@ NodeOutputData Converter::Impl::get_node_output(llvm::MDNode *output)
 		if (tag == DXIL::NodeMetadataTag::NodeOutputID)
 		{
 			auto *output_node = llvm::cast<llvm::MDNode>(output->getOperand(i + 1));
-			String name = llvm::cast<llvm::MDString>(output_node->getOperand(0))->getString();
-			data.node_id = std::move(name);
+			data.node_id = get_string_metadata(output_node, 0);
 			data.node_array_index = get_constant_metadata(output_node, 1);
 		}
 		else if (tag == DXIL::NodeMetadataTag::NodeAllowSparseNodes)
@@ -5650,7 +5649,7 @@ NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 	if (name_node)
 	{
 		auto *name_id = llvm::cast<llvm::MDNode>(*name_node);
-		node.node_id = llvm::cast<llvm::MDString>(name_id->getOperand(0))->getString();
+		node.node_id = get_string_metadata(name_id, 0);
 		node.node_array_index = get_constant_metadata(name_id, 1);
 	}
 
@@ -5685,7 +5684,7 @@ NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 	if (share_input_node)
 	{
 		auto *share_input = llvm::cast<llvm::MDNode>(*share_input_node);
-		node.node_share_input_id = llvm::cast<llvm::MDString>(share_input->getOperand(0))->getString();
+		node.node_share_input_id = get_string_metadata(share_input, 0);
 		node.node_share_input_array_index = get_constant_metadata(share_input, 1);
 	}
 

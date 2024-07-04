@@ -1098,7 +1098,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), type_id);
 
 	spv::StorageClass storage;
-	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
+	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
 		storage = spv::StorageClassPhysicalStorageBuffer;
 	else
 		storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
@@ -1177,7 +1177,7 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 		}
 
 		// For NodeIO, we always have to tag with aligned mask.
-		if (DXIL::AddressSpace(instruction->getPointerOperand()->getType()->getAddressSpace()) ==
+		if (DXIL::AddressSpace(instruction->getPointerOperand()->getType()->getPointerAddressSpace()) ==
 		    DXIL::AddressSpace::PhysicalNodeIO)
 		{
 			// TODO: Properly track aligned size based on the GEP, but for now, just assume scalar.
@@ -1217,7 +1217,7 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 
 	// For NodeIO, we always have to tag with aligned mask.
-	if (DXIL::AddressSpace(instruction->getOperand(1)->getType()->getAddressSpace()) ==
+	if (DXIL::AddressSpace(instruction->getOperand(1)->getType()->getPointerAddressSpace()) ==
 	    DXIL::AddressSpace::PhysicalNodeIO)
 	{
 		// TODO: Properly track aligned size based on the GEP, but for now, just assume scalar.
