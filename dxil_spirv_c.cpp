@@ -52,8 +52,14 @@ struct dxil_spv_parsed_blob_s
 	Vector<uint8_t> dxil_blob;
 	Vector<RDATSubobject> rdat_subobjects;
 
-	struct Names { String mangled, demangled; };
-	Vector<Names> entry_points;
+	struct EntryPoint
+	{
+		String mangled;
+		String demangled;
+		NodeInputData node_input;
+		Vector<NodeOutputData> node_outputs;
+	};
+	Vector<EntryPoint> entry_points;
 };
 
 struct Remapper : ResourceRemappingInterface
@@ -425,7 +431,14 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 
 	auto names = Converter::get_entry_points(parsed->bc);
 	for (auto &name : names)
-		parsed->entry_points.push_back({ name, demangle_entry_point(name) });
+	{
+		parsed->entry_points.push_back(
+		    {
+		        name, demangle_entry_point(name),
+		        Converter::get_node_input(parsed->bc, name.c_str()),
+		        Converter::get_node_outputs(parsed->bc, name.c_str())
+		    });
+	}
 
 	*blob = parsed;
 	return DXIL_SPV_SUCCESS;
@@ -476,7 +489,14 @@ dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_pars
 
 	auto names = Converter::get_entry_points(parsed->bc);
 	for (auto &name : names)
-		parsed->entry_points.push_back({ name, demangle_entry_point(name) });
+	{
+		parsed->entry_points.push_back(
+			{
+				name, demangle_entry_point(name),
+		        Converter::get_node_input(parsed->bc, name.c_str()),
+				Converter::get_node_outputs(parsed->bc, name.c_str())
+			});
+	}
 
 	*blob = parsed;
 	return DXIL_SPV_SUCCESS;
@@ -564,6 +584,22 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_input(
 	if (index >= blob->entry_points.size())
 		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
 
+	auto &input = blob->entry_points[index].node_input;
+	data->node_id = input.node_id.c_str();
+	data->payload_stride = input.payload_stride;
+	data->launch_type = dxil_spv_node_launch_type(input.launch_type);
+	data->node_array_index = input.node_array_index;
+	data->dispatch_grid_offset = input.grid_buffer.offset;
+	data->dispatch_grid_type_bits = input.grid_buffer.component_type == DXIL::ComponentType::U32 ? 32 : 16;
+	data->dispatch_grid_components = input.grid_buffer.count;
+	for (int i = 0; i < 3; i++)
+		data->broadcast_grid[i] = input.broadcast_grid[i];
+	data->recursion_factor = input.recursion_factor;
+	data->coalesce_factor = input.coalesce_factor;
+	data->dispatch_grid_is_upper_bound = input.dispatch_grid_is_upper_bound ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+	data->node_track_rw_input_sharing = input.node_track_rw_input_sharing ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+	data->is_program_entry = input.is_program_entry ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
+
 	return DXIL_SPV_SUCCESS;
 }
 
@@ -573,6 +609,7 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_num_node_outputs(
 	if (index >= blob->entry_points.size())
 		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
 
+	*num_outputs = unsigned(blob->entry_points[index].node_outputs.size());
 	return DXIL_SPV_SUCCESS;
 }
 
@@ -581,6 +618,18 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_output(
 {
 	if (index >= blob->entry_points.size())
 		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+
+	auto &entry = blob->entry_points[index];
+	if (output_index >= entry.node_outputs.size())
+		return DXIL_SPV_ERROR_INVALID_ARGUMENT;
+
+	auto &output = entry.node_outputs[output_index];
+
+	data->node_id = output.node_id.c_str();
+	data->node_array_index = output.node_array_index;
+	data->node_array_size = output.node_array_size;
+	data->sparse_array = output.sparse_array;
+	data->node_index_spec_constant_id = output.node_index_spec_constant_id;
 
 	return DXIL_SPV_SUCCESS;
 }

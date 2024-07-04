@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 40
+#define DXIL_SPV_API_VERSION_MINOR 41
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -329,7 +329,10 @@ typedef struct dxil_spv_node_input_data
 	unsigned payload_stride; /* If 0, there is no input payload, i.e. EmptyNode. */
 	dxil_spv_node_launch_type launch_type;
 	unsigned node_array_index;
-	unsigned dispatch_grid[3]; /* For broadcast nodes. */
+	unsigned dispatch_grid_offset;
+	unsigned dispatch_grid_type_bits;
+	unsigned dispatch_grid_components;
+	unsigned broadcast_grid[3]; /* For broadcast nodes. */
 	unsigned recursion_factor; /* [NodeMaxRecursionDepth] */
 	unsigned coalesce_factor;
 	dxil_spv_bool dispatch_grid_is_upper_bound; /* [NodeMaxDispatchGrid] if true. */
@@ -341,10 +344,11 @@ typedef struct dxil_spv_node_output_data
 {
 	const char *node_id;
 	unsigned node_array_index;
-	unsigned node_array_size;
+	unsigned node_array_size; /* If UINT32_MAX, it's unbounded. */
+	unsigned node_index_spec_constant_id;
 	dxil_spv_bool sparse_array;
-	dxil_spv_bool unbounded_array; /* Effective sizes are controlled by which inputs exist. */
-	/* We get the rest of the information from the target entry point's input data. */
+	/* We get the rest of the information from the target entry point's input data.
+	 * Output data is only for determining linkage. */
 } dxil_spv_node_output_data;
 
 typedef enum dxil_spv_log_level

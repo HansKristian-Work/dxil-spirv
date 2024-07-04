@@ -731,10 +731,10 @@ struct NodeInputData
 struct NodeOutputData
 {
 	String node_id;
-	unsigned node_array_index;
-	unsigned node_array_size;
+	uint32_t node_array_index;
+	uint32_t node_array_size;
+	uint32_t node_index_spec_constant_id;
 	bool sparse_array;
-	bool unbounded_array;
 };
 
 enum class ShaderFeature

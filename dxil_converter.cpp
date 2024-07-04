@@ -5349,7 +5349,6 @@ bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
 {
 	NodeOutputMeta output_meta = {};
 
-	output_meta.grid = node_parse_dispatch_grid(output);
 	bool is_rw_sharing;
 	output_meta.payload_stride = node_parse_payload_stride(output, is_rw_sharing);
 	output_meta.spec_constant_node_index = builder().makeUintConstant(0, true);
@@ -5572,6 +5571,30 @@ bool Converter::Impl::emit_execution_modes_node_input()
 	return true;
 }
 
+NodeOutputData Converter::Impl::get_node_output(llvm::MDNode *output)
+{
+	NodeOutputData data = {};
+
+	uint32_t num_ops = output->getNumOperands();
+	for (uint32_t i = 0; i < num_ops; i += 2)
+	{
+		auto tag = DXIL::NodeMetadataTag(get_constant_metadata(output, i));
+		if (tag == DXIL::NodeMetadataTag::NodeOutputID)
+		{
+			auto *output_node = llvm::cast<llvm::MDNode>(output->getOperand(i + 1));
+			String name = llvm::cast<llvm::MDString>(output_node->getOperand(0))->getString();
+			data.node_id = std::move(name);
+			data.node_array_index = get_constant_metadata(output_node, 1);
+		}
+		else if (tag == DXIL::NodeMetadataTag::NodeAllowSparseNodes)
+			data.sparse_array = get_constant_metadata(output, i + 1) != 0;
+		else if (tag == DXIL::NodeMetadataTag::NodeOutputArraySize)
+			data.node_array_size = get_constant_metadata(output, i + 1);
+	}
+
+	return data;
+}
+
 NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 {
 	NodeInputData node = {};
@@ -5665,6 +5688,36 @@ NodeInputData Converter::get_node_input(const LLVMBCParser &parser, const char *
 	if (!entry_point_meta)
 		return {};
 	return Impl::get_node_input(entry_point_meta);
+}
+
+Vector<NodeOutputData> Converter::get_node_outputs(const LLVMBCParser &parser, const char *entry)
+{
+	Vector<NodeOutputData> output_data;
+	auto *entry_point_meta = get_entry_point_meta(parser.get_module(), entry);
+	if (!entry_point_meta)
+		return {};
+
+	auto *outputs_node = get_shader_property_tag(entry_point_meta, DXIL::ShaderPropertyTag::NodeOutputs);
+	if (outputs_node)
+	{
+		auto *outputs = llvm::cast<llvm::MDNode>(*outputs_node);
+		for (unsigned i = 0; i < outputs->getNumOperands(); i++)
+		{
+			auto *output = llvm::cast<llvm::MDNode>(outputs->getOperand(i));
+			output_data.push_back(Impl::get_node_output(output));
+		}
+	}
+
+	// Spec constant IDs are allowed incrementally.
+	// Spec constant ID 0 is reserved for workgroup size spec constant.
+	uint32_t spec_constant_id = 1;
+	for (auto &output : output_data)
+	{
+		output.node_index_spec_constant_id = spec_constant_id;
+		spec_constant_id++;
+	}
+
+	return output_data;
 }
 
 bool Converter::Impl::emit_execution_modes_node()

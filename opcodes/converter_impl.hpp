@@ -545,8 +545,6 @@ struct Converter::Impl
 		spv::Id spec_constant_node_index;
 		// Stride for the payload. This is recorded in metadata, but we may have to allocate SV_DispatchGrid.
 		uint32_t payload_stride;
-		// On OutputComplete, we may have to compute the total dispatch factor.
-		NodeDispatchGrid grid;
 	};
 
 	NodeInputMeta node_input = {};
@@ -835,5 +833,6 @@ struct Converter::Impl
 	void suggest_maximum_wave_size(unsigned wave_size);
 
 	static NodeInputData get_node_input(llvm::MDNode *meta);
+	static NodeOutputData get_node_output(llvm::MDNode *meta);
 };
 } // namespace dxil_spv

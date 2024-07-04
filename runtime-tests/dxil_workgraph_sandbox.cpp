@@ -84,6 +84,20 @@ static void analyze_shader_dxil(const char *path)
 		if (stage != DXIL_SPV_STAGE_COMPUTE)
 			goto err;
 
+		dxil_spv_node_input_data node_input;
+		dxil_spv_parsed_blob_get_entry_point_node_input(blob, i, &node_input);
+		LOGI("Entry point %u, NodeID(\"%s\", %u)\n", i, node_input.node_id, node_input.node_array_index);
+		unsigned num_outputs;
+		dxil_spv_parsed_blob_get_entry_point_num_node_outputs(blob, i, &num_outputs);
+		for (unsigned j = 0; j < num_outputs; j++)
+		{
+			dxil_spv_node_output_data node_output;
+			dxil_spv_parsed_blob_get_entry_point_node_output(blob, i, j, &node_output);
+			LOGI("Entry point %u, output %u, NodeID(\"%s\", %u)[%u]%s\n",
+			     i, j, node_output.node_id, node_output.node_array_index,
+			     node_output.node_array_size, node_output.sparse_array ? " sparse" : "");
+		}
+
 		LOGI("Found entry point: %s\n", mangled_entry);
 	}
 
