@@ -713,7 +713,9 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_raw_ir(dxil_spv_par
 
 DXIL_SPV_PUBLIC_API dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage(dxil_spv_parsed_blob blob);
 DXIL_SPV_PUBLIC_API dxil_spv_shader_stage dxil_spv_parsed_blob_get_shader_stage_for_entry(dxil_spv_parsed_blob blob, const char *entry);
-
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_index_by_name(dxil_spv_parsed_blob blob,
+                                                                                 const char *entry,
+                                                                                 unsigned *index);
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_num_entry_points(dxil_spv_parsed_blob blob, unsigned *count);
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_parsed_blob_get_entry_point_name(dxil_spv_parsed_blob blob,
                                                                               unsigned index,
