@@ -615,6 +615,7 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_input(
 	data->node_share_input_id = input.node_share_input_id.c_str();
 	data->node_share_input_array_index = input.node_share_input_array_index;
 	data->local_root_arguments_table_index = input.local_root_arguments_table_index;
+	data->is_indirect_bda_stride_program_entry_spec_id = input.is_indirect_bda_stride_program_entry_spec_id;
 	data->dispatch_grid_is_upper_bound = input.dispatch_grid_is_upper_bound ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	data->node_track_rw_input_sharing = input.node_track_rw_input_sharing ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	data->is_program_entry = input.is_program_entry ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;

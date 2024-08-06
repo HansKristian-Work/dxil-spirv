@@ -286,17 +286,10 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 	}
 	else
 	{
-		if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing)
-		{
-			auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(64));
-			load_op->add_id(impl.node_input.private_bda_var_id);
-			impl.add(load_op);
-			addr = load_op->id;
-		}
-		else
-		{
-			addr = emit_load_node_input_push_parameter(impl, NodePayloadBDA, builder.makeUintType(64));
-		}
+		auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(64));
+		load_op->add_id(impl.node_input.private_bda_var_id);
+		impl.add(load_op);
+		addr = load_op->id;
 
 		spv::Id addr_offset_id = emit_build_input_payload_offset(impl, inst->getOperand(2));
 
@@ -623,15 +616,26 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 {
 	auto &builder = impl.builder();
 	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
 	spv::Id u64_type = builder.makeUintType(64);
 
 	if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing && impl.node_input.private_bda_var_id)
 	{
-		spv::Id payload_base = emit_load_node_input_push_parameter(impl, NodePayloadBDA, u64_type);
+		auto *payload_base = impl.allocate(spv::OpLoad, u64_type);
+		payload_base->add_id(impl.node_input.private_bda_var_id);
+		impl.add(payload_base);
+
 		spv::Id payload_stride_ptr = emit_load_node_input_push_parameter(
 			impl, NodePayloadStrideOrOffsetsBDA, impl.node_input.is_entry_point ?
-			                                     impl.node_input.u32_ptr_type_id :
-			                                     impl.node_input.u32_array_ptr_type_id);
+			                                     uvec2_type : impl.node_input.u32_array_ptr_type_id);
+
+		if (impl.node_input.is_entry_point)
+		{
+			auto *cast_op = impl.allocate(spv::OpBitcast, impl.node_input.u32_ptr_type_id);
+			cast_op->add_id(payload_stride_ptr);
+			impl.add(cast_op);
+			payload_stride_ptr = cast_op->id;
+		}
 
 		spv::Id payload_offset_id;
 
@@ -674,7 +678,7 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 		impl.add(upconv);
 
 		auto *offset_payload = impl.allocate(spv::OpIAdd, u64_type);
-		offset_payload->add_id(payload_base);
+		offset_payload->add_id(payload_base->id);
 		offset_payload->add_id(upconv->id);
 		impl.add(offset_payload);
 
@@ -849,6 +853,60 @@ bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode
 	spv::Id linear_node_index_id = emit_linear_node_index(impl);
 	if (!linear_node_index_id)
 		return false;
+
+	if (impl.node_input.private_bda_var_id)
+	{
+		spv::Id u64_type = builder.makeUintType(64);
+		spv::Id payload_base = emit_load_node_input_push_parameter(impl, NodePayloadBDA, u64_type);
+		auto *store_op = impl.allocate(spv::OpStore);
+		store_op->add_id(impl.node_input.private_bda_var_id);
+		store_op->add_id(payload_base);
+		impl.add(store_op);
+
+		if (impl.node_input.is_entry_point)
+		{
+			auto *masked_block = pool.create_node();
+			impl.current_block = &masked_block->ir.operations;
+			{
+				auto *cast_op = impl.allocate(spv::OpConvertUToPtr, impl.node_input.u64_ptr_type_id);
+				cast_op->add_id(payload_base);
+				impl.add(cast_op);
+
+				auto *chain_op = impl.allocate(spv::OpAccessChain,
+				                               builder.makePointer(spv::StorageClassPhysicalStorageBuffer,
+				                                                   u64_type));
+				chain_op->add_id(cast_op->id);
+				chain_op->add_id(builder.makeUintConstant(0));
+				impl.add(chain_op);
+
+				auto *load_op = impl.allocate(spv::OpLoad, u64_type);
+				load_op->add_id(chain_op->id);
+				load_op->add_literal(spv::MemoryAccessAlignedMask);
+				load_op->add_literal(sizeof(uint64_t));
+				impl.add(load_op);
+
+				store_op = impl.allocate(spv::OpStore);
+				store_op->add_id(impl.node_input.private_bda_var_id);
+				store_op->add_id(load_op->id);
+				impl.add(store_op);
+			}
+
+			auto *new_entry = pool.create_node();
+
+			entry->ir.terminator.type = Terminator::Type::Condition;
+			entry->ir.terminator.conditional_id = impl.node_input.is_indirect_payload_stride;
+			entry->ir.terminator.true_block = masked_block;
+			entry->ir.terminator.false_block = new_entry;
+			entry->add_branch(masked_block);
+			entry->add_branch(new_entry);
+			masked_block->add_branch(new_entry);
+			masked_block->ir.terminator.type = Terminator::Type::Branch;
+			masked_block->ir.terminator.direct_block = new_entry;
+
+			entry = new_entry;
+			impl.current_block = &entry->ir.operations;
+		}
+	}
 
 	// Need payload before, since we need to mask execution based on the payload when using NodeMaxDispatchGrid.
 	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)

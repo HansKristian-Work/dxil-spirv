@@ -5352,7 +5352,7 @@ bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
 	bool is_rw_sharing;
 	output_meta.payload_stride = node_parse_payload_stride(output, is_rw_sharing);
 	output_meta.spec_constant_node_index = builder().makeUintConstant(0, true);
-	builder().addDecoration(output_meta.spec_constant_node_index, spv::DecorationSpecId, int(1 + node_outputs.size()));
+	builder().addDecoration(output_meta.spec_constant_node_index, spv::DecorationSpecId, int(2 + node_outputs.size()));
 
 	uint32_t num_ops = output->getNumOperands();
 	for (uint32_t i = 0; i < num_ops; i += 2)
@@ -5441,9 +5441,7 @@ uint32_t Converter::Impl::node_parse_payload_stride(llvm::MDNode *node_meta, boo
 
 bool Converter::Impl::emit_execution_modes_node_input()
 {
-	// In Coalescing mode we have to defer this resolve
-	// since the input payload is an array, and we might have to deal with indirection on top of that.
-	if (node_input.launch_type != DXIL::NodeLaunchType::Coalescing && node_input.payload_stride)
+	if (node_input.payload_stride)
 	{
 		node_input.private_bda_var_id = create_variable(
 		    spv::StorageClassPrivate, builder().makeUintType(64), "NodeInputPayloadBDA");
@@ -5487,6 +5485,7 @@ bool Converter::Impl::emit_execution_modes_node_input()
 	// and style of execution (indirect pull or array).
 
 	spv::Id u32_type_id = builder().makeUintType(32);
+	spv::Id uvec2_type_id = builder().makeVectorType(u32_type_id, 2);
 	spv::Id u64_type_id = builder().makeUintType(64);
 
 	spv::Id u32_array_type_id = builder().makeRuntimeArray(u32_type_id);
@@ -5510,7 +5509,7 @@ bool Converter::Impl::emit_execution_modes_node_input()
 		u64_type_id,
 		u32_ptr_type_id,
 		u32_ptr_type_id,
-		node_input.is_entry_point ? u32_ptr_type_id : u32_array_ptr_type_id,
+		node_input.is_entry_point ? uvec2_type_id : u32_array_ptr_type_id,
 		u64_type_id,
 		u64_type_id,
 		ptr_shader_record_block_type_id,
@@ -5568,6 +5567,17 @@ bool Converter::Impl::emit_execution_modes_node_input()
 
 	node_input.u32_ptr_type_id = u32_ptr_type_id;
 	node_input.u32_array_ptr_type_id = u32_array_ptr_type_id;
+
+	if (node_input.is_entry_point)
+	{
+		spv::Id u64_struct_type_id = builder().makeStructType({ u64_type_id }, "NodeReadonlyU64Ptr");
+		builder().addDecoration(u64_struct_type_id, spv::DecorationBlock);
+		builder().addMemberDecoration(u64_struct_type_id, 0, spv::DecorationOffset, 0);
+		builder().addMemberDecoration(u64_struct_type_id, 0, spv::DecorationNonWritable);
+		builder().addMemberName(u64_struct_type_id, 0, "value");
+		node_input.u64_ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, u64_struct_type_id);
+	}
+
 	return true;
 }
 
@@ -5616,6 +5626,8 @@ NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 		node.is_program_entry =
 		    llvm::cast<llvm::ConstantAsMetadata>(*is_program_entry_node)->getValue()->getUniqueInteger().getZExtValue() != 0;
 	}
+
+	node.is_indirect_bda_stride_program_entry_spec_id = node.is_program_entry ? 1 : UINT32_MAX;
 
 	auto *recursion_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeMaxRecursionDepth);
 	if (recursion_node)
@@ -5728,7 +5740,7 @@ Vector<NodeOutputData> Converter::get_node_outputs(const LLVMBCParser &parser, c
 
 	// Spec constant IDs are allowed incrementally.
 	// Spec constant ID 0 is reserved for workgroup size spec constant.
-	uint32_t spec_constant_id = 1;
+	uint32_t spec_constant_id = 2;
 	for (auto &output : output_data)
 	{
 		output.node_index_spec_constant_id = spec_constant_id;
@@ -5767,6 +5779,14 @@ bool Converter::Impl::emit_execution_modes_node()
 			if (!emit_execution_modes_node_output(output))
 				return false;
 		}
+	}
+
+	if (node_input.is_entry_point)
+	{
+		node_input.is_indirect_payload_stride = builder().makeBoolConstant(false, true);
+		builder().addDecoration(node_input.is_indirect_payload_stride, spv::DecorationSpecId,
+		                        int(node.is_indirect_bda_stride_program_entry_spec_id));
+		builder().addName(node_input.is_indirect_payload_stride, "NodeEntryIndirectPayloadStride");
 	}
 
 	if (node_input.launch_type != DXIL::NodeLaunchType::Thread)
