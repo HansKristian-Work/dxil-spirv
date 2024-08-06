@@ -39,10 +39,7 @@ bool get_constant_operand(const llvm::CallInst *value, unsigned index, uint32_t 
 
 	auto *constant = llvm::dyn_cast<llvm::ConstantInt>(value->getOperand(index));
 	if (!constant)
-	{
-		LOGE("Operand is not constant.\n");
 		return false;
-	}
 
 	*operand = uint32_t(constant->getUniqueInteger().getZExtValue());
 	return true;
