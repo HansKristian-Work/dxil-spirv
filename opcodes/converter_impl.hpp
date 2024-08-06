@@ -525,6 +525,7 @@ struct Converter::Impl
 	struct NodeInputMeta
 	{
 		spv::Id private_bda_var_id; // Private variable which holds a BDA to the node, set by the main() dispatcher.
+		spv::Id private_stride_var_id; // Private variable which holds stride for entry point nodes, set by the main() dispatcher.
 		spv::Id private_coalesce_offset_id; // Private variable which holds the linear input index.
 		spv::Id private_coalesce_count_id; // Private variable which holds the input count.
 		spv::Id node_dispatch_push_id; // PushConstant ABI for dispatching.

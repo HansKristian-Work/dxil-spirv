@@ -5441,15 +5441,24 @@ uint32_t Converter::Impl::node_parse_payload_stride(llvm::MDNode *node_meta, boo
 
 bool Converter::Impl::emit_execution_modes_node_input()
 {
+	spv::Id u32_type_id = builder().makeUintType(32);
+	spv::Id uvec2_type_id = builder().makeVectorType(u32_type_id, 2);
+	spv::Id u64_type_id = builder().makeUintType(64);
+
 	if (node_input.payload_stride)
 	{
 		node_input.private_bda_var_id = create_variable(
-		    spv::StorageClassPrivate, builder().makeUintType(64), "NodeInputPayloadBDA");
+			spv::StorageClassPrivate, u64_type_id, "NodeInputPayloadBDA");
+
+		if (node_input.is_entry_point)
+		{
+			node_input.private_stride_var_id = create_variable(
+				spv::StorageClassPrivate, u32_type_id, "NodeInputStride");
+		}
 	}
 
 	// We have to rewrite global IDs. Local invocation should remain intact.
-	spv::Id uint_type = builder().makeUintType(32);
-	spv::Id uvec3_type = builder().makeVectorType(uint_type, 3);
+	spv::Id uvec3_type = builder().makeVectorType(u32_type_id, 3);
 
 	if (node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)
 	{
@@ -5483,10 +5492,6 @@ bool Converter::Impl::emit_execution_modes_node_input()
 
 	// Declare the ABI for dispatching a node. This will change depending on the dispatch mode,
 	// and style of execution (indirect pull or array).
-
-	spv::Id u32_type_id = builder().makeUintType(32);
-	spv::Id uvec2_type_id = builder().makeVectorType(u32_type_id, 2);
-	spv::Id u64_type_id = builder().makeUintType(64);
 
 	spv::Id u32_array_type_id = builder().makeRuntimeArray(u32_type_id);
 	builder().addDecoration(u32_array_type_id, spv::DecorationArrayStride, 4);

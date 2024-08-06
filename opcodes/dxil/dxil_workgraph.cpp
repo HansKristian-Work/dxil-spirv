@@ -616,7 +616,6 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 {
 	auto &builder = impl.builder();
 	spv::Id u32_type = builder.makeUintType(32);
-	spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
 	spv::Id u64_type = builder.makeUintType(64);
 
 	if (impl.node_input.launch_type != DXIL::NodeLaunchType::Coalescing && impl.node_input.private_bda_var_id)
@@ -625,35 +624,27 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 		payload_base->add_id(impl.node_input.private_bda_var_id);
 		impl.add(payload_base);
 
-		spv::Id payload_stride_ptr = emit_load_node_input_push_parameter(
-			impl, NodePayloadStrideOrOffsetsBDA, impl.node_input.is_entry_point ?
-			                                     uvec2_type : impl.node_input.u32_array_ptr_type_id);
-
-		if (impl.node_input.is_entry_point)
-		{
-			auto *cast_op = impl.allocate(spv::OpBitcast, impl.node_input.u32_ptr_type_id);
-			cast_op->add_id(payload_stride_ptr);
-			impl.add(cast_op);
-			payload_stride_ptr = cast_op->id;
-		}
-
 		spv::Id payload_offset_id;
 
 		// Entry points are linear. Read stride (this can be sourced from GPU buffer, so has to be a pointer).
 		if (impl.node_input.is_entry_point)
 		{
-			spv::Id payload_stride =
-			    emit_load_node_input_push_pointer(impl, payload_stride_ptr, u32_type, sizeof(uint32_t));
+			auto *stride_load = impl.allocate(spv::OpLoad, u32_type);
+			stride_load->add_id(impl.node_input.private_stride_var_id);
+			impl.add(stride_load);
 
 			auto *payload_offset = impl.allocate(spv::OpIMul, u32_type);
 			payload_offset->add_id(linear_node_index_id);
-			payload_offset->add_id(payload_stride);
+			payload_offset->add_id(stride_load->id);
 			impl.add(payload_offset);
 
 			payload_offset_id = payload_offset->id;
 		}
 		else
 		{
+			spv::Id payload_stride_ptr = emit_load_node_input_push_parameter(
+				impl, NodePayloadStrideOrOffsetsBDA, impl.node_input.u32_array_ptr_type_id);
+
 			// Load offset to payload indirectly.
 			auto *offset_chain = impl.allocate(
 				spv::OpInBoundsAccessChain,
@@ -865,8 +856,24 @@ bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode
 
 		if (impl.node_input.is_entry_point)
 		{
+			spv::Id u32_type = builder.makeUintType(32);
+			spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
+			spv::Id stride_base = emit_load_node_input_push_parameter(impl, NodePayloadStrideOrOffsetsBDA, uvec2_type);
+
+			auto *extracted = impl.allocate(spv::OpCompositeExtract, u32_type);
+			extracted->add_id(stride_base);
+			extracted->add_literal(0);
+			impl.add(extracted);
+
+			store_op = impl.allocate(spv::OpStore);
+			store_op->add_id(impl.node_input.private_stride_var_id);
+			store_op->add_id(extracted->id);
+			impl.add(store_op);
+
 			auto *masked_block = pool.create_node();
 			impl.current_block = &masked_block->ir.operations;
+
+			// Resolve Payload pointer
 			{
 				auto *cast_op = impl.allocate(spv::OpConvertUToPtr, impl.node_input.u64_ptr_type_id);
 				cast_op->add_id(payload_base);
@@ -887,6 +894,31 @@ bool emit_workgraph_dispatcher(Converter::Impl &impl, CFGNodePool &pool, CFGNode
 
 				store_op = impl.allocate(spv::OpStore);
 				store_op->add_id(impl.node_input.private_bda_var_id);
+				store_op->add_id(load_op->id);
+				impl.add(store_op);
+			}
+
+			// Resolve stride pointer
+			{
+				auto *cast_op = impl.allocate(spv::OpBitcast, impl.node_input.u32_ptr_type_id);
+				cast_op->add_id(stride_base);
+				impl.add(cast_op);
+
+				auto *chain_op = impl.allocate(spv::OpAccessChain,
+				                               builder.makePointer(spv::StorageClassPhysicalStorageBuffer,
+				                                                   u32_type));
+				chain_op->add_id(cast_op->id);
+				chain_op->add_id(builder.makeUintConstant(0));
+				impl.add(chain_op);
+
+				auto *load_op = impl.allocate(spv::OpLoad, u32_type);
+				load_op->add_id(chain_op->id);
+				load_op->add_literal(spv::MemoryAccessAlignedMask);
+				load_op->add_literal(sizeof(uint32_t));
+				impl.add(load_op);
+
+				store_op = impl.allocate(spv::OpStore);
+				store_op->add_id(impl.node_input.private_stride_var_id);
 				store_op->add_id(load_op->id);
 				impl.add(store_op);
 			}
