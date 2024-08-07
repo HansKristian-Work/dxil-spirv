@@ -157,8 +157,12 @@ static spv::Id emit_build_input_payload_offset(Converter::Impl &impl, const llvm
 
 	if (impl.node_input.is_entry_point)
 	{
+        auto *load_stride_op = impl.allocate(spv::OpLoad, u32_type);
+        load_stride_op->add_id(impl.node_input.private_stride_var_id);
+        impl.add(load_stride_op);
+
 		auto *offset_op = impl.allocate(spv::OpIMul, u32_type);
-		offset_op->add_id(builder.makeUintConstant(impl.node_input.payload_stride));
+		offset_op->add_id(load_stride_op->id);
 		offset_op->add_id(add_op->id);
 		impl.add(offset_op);
 		payload_offset_id = offset_op->id;
