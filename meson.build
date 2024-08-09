@@ -20,7 +20,6 @@ dxil_spirv_include_dirs = include_directories([
 add_project_arguments(dxil_spirv_compiler.get_supported_arguments([
     '-Wno-missing-field-initializers',
     '-Wno-empty-body',
-    '-ffast-math',
     '-Wno-unused-parameter',
     '-fno-exceptions',
     '-fvisibility=hidden',
