@@ -60,6 +60,7 @@ enum NodeInputParameter
 	NodeGridDispatchZ = 9,
 	NodePayloadOutputOffset = 10,
 	NodePayloadOutputStride = 11,
+	NodeRemainingRecursionLevels = 12
 };
 
 spv::Id emit_load_node_input_push_parameter(

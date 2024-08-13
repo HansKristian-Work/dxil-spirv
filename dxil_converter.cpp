@@ -5523,6 +5523,7 @@ bool Converter::Impl::emit_execution_modes_node_input()
 		u32_type_id,
 		u32_type_id,
 		u32_type_id,
+		u32_type_id,
 	};
 
 	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
@@ -5538,6 +5539,7 @@ bool Converter::Impl::emit_execution_modes_node_input()
 	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 64);
 	builder().addMemberDecoration(type_id, NodePayloadOutputOffset, spv::DecorationOffset, 68);
 	builder().addMemberDecoration(type_id, NodePayloadOutputStride, spv::DecorationOffset, 72);
+	builder().addMemberDecoration(type_id, NodeRemainingRecursionLevels, spv::DecorationOffset, 76);
 
 	// For linear node layout (entry point).
 	// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
@@ -5557,6 +5559,7 @@ bool Converter::Impl::emit_execution_modes_node_input()
 	builder().addMemberName(type_id, NodeGridDispatchZ, "NodeGridDispatchZ");
 	builder().addMemberName(type_id, NodePayloadOutputOffset, "NodePayloadOutputOffset");
 	builder().addMemberName(type_id, NodePayloadOutputStride, "NodePayloadOutputStride");
+	builder().addMemberName(type_id, NodeRemainingRecursionLevels, "NodeRemainingRecursionLevels");
 	builder().addDecoration(type_id, spv::DecorationBlock);
 	node_input.node_dispatch_push_id =
 	    create_variable(spv::StorageClassPushConstant, type_id, "NodeDispatch");

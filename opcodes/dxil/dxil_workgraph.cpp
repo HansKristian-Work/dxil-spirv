@@ -522,14 +522,15 @@ bool emit_annotate_node_record_handle(Converter::Impl &, const llvm::CallInst *i
 bool emit_node_output_is_valid(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
-	impl.rewrite_value(inst, builder.makeBoolConstant(false));
+	impl.rewrite_value(inst, builder.makeBoolConstant(true));
 	return true;
 }
 
 bool emit_get_remaining_recursion_levels(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
-	impl.rewrite_value(inst, builder.makeUintConstant(0));
+	spv::Id id = emit_load_node_input_push_parameter(impl, NodeRemainingRecursionLevels, builder.makeUintType(32));
+	impl.rewrite_value(inst, id);
 	return true;
 }
 
