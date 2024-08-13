@@ -5363,6 +5363,12 @@ bool Converter::Impl::emit_execution_modes_node_output(llvm::MDNode *output)
 			auto *output_node = llvm::cast<llvm::MDNode>(output->getOperand(i + 1));
 			String name = get_string_metadata(output_node, 0);
 			builder().addName(output_meta.spec_constant_node_index, name.c_str());
+
+			// FIXME: This is probably not accurate for arrayed nodes.
+			// Can recursive nodes be arrayed? Seems very spicy ...
+			output_meta.is_recursive =
+				name == node_input.node_id &&
+				node_input.node_array_index == get_constant_metadata(output_node, 1);
 		}
 	}
 
@@ -5766,6 +5772,8 @@ bool Converter::Impl::emit_execution_modes_node()
 	if (node.launch_type == DXIL::NodeLaunchType::Invalid)
 		return false;
 
+	node_input.node_id = node.node_id;
+	node_input.node_array_index = node.node_array_index;
 	node_input.launch_type = node.launch_type;
 	node_input.is_entry_point = node.is_program_entry;
 	node_input.broadcast_has_max_grid = node.dispatch_grid_is_upper_bound;

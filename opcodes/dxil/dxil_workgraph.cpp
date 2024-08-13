@@ -60,7 +60,6 @@ static uint32_t get_node_stride_from_annotate_handle(const llvm::CallInst *inst)
 	return stride;
 }
 
-#if 0
 static uint32_t get_node_meta_index_from_annotate_handle(const llvm::CallInst *inst)
 {
 	// Crawl through the SSA noise until we find CreateNodeOutputHandle.
@@ -81,7 +80,6 @@ static uint32_t get_node_meta_index_from_annotate_handle(const llvm::CallInst *i
 
 	return meta_index;
 }
-#endif
 
 spv::Id emit_load_node_input_push_parameter(
 	Converter::Impl &impl, NodeInputParameter param, spv::Id type)
@@ -522,7 +520,26 @@ bool emit_annotate_node_record_handle(Converter::Impl &, const llvm::CallInst *i
 bool emit_node_output_is_valid(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
-	impl.rewrite_value(inst, builder.makeBoolConstant(true));
+
+	uint32_t output_meta_index = get_node_meta_index_from_annotate_handle(llvm::cast<llvm::CallInst>(inst->getOperand(1)));
+	if (output_meta_index >= impl.node_outputs.size())
+		return false;
+
+	auto &node_meta = impl.node_outputs[output_meta_index];
+	if (node_meta.is_recursive)
+	{
+		spv::Id id = emit_load_node_input_push_parameter(impl, NodeRemainingRecursionLevels, builder.makeUintType(32));
+		auto *eq_op = impl.allocate(spv::OpINotEqual, inst);
+		eq_op->add_id(id);
+		eq_op->add_id(builder.makeUintConstant(0));
+		impl.add(eq_op);
+	}
+	else
+	{
+		// TODO: For now, assume that every output is valid. This will need a lot of spec constant magic later.
+		impl.rewrite_value(inst, builder.makeBoolConstant(true));
+	}
+
 	return true;
 }
 

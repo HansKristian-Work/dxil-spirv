@@ -524,6 +524,8 @@ struct Converter::Impl
 
 	struct NodeInputMeta
 	{
+		String node_id;
+		uint32_t node_array_index;
 		spv::Id private_bda_var_id; // Private variable which holds a BDA to the node, set by the main() dispatcher.
 		spv::Id private_stride_var_id; // Private variable which holds stride for entry point nodes, set by the main() dispatcher.
 		spv::Id private_coalesce_offset_id; // Private variable which holds the linear input index.
@@ -548,6 +550,7 @@ struct Converter::Impl
 		spv::Id spec_constant_node_index;
 		// Stride for the payload. This is recorded in metadata, but we may have to allocate SV_DispatchGrid.
 		uint32_t payload_stride;
+		bool is_recursive;
 	};
 
 	NodeInputMeta node_input = {};
