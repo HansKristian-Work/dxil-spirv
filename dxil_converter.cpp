@@ -5638,7 +5638,7 @@ NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 	if (recursion_node)
 	{
 		node.recursion_factor =
-			llvm::cast<llvm::ConstantAsMetadata>(*is_program_entry_node)->getValue()->getUniqueInteger().getZExtValue();
+			llvm::cast<llvm::ConstantAsMetadata>(*recursion_node)->getValue()->getUniqueInteger().getZExtValue();
 	}
 
 	if (node.launch_type == DXIL::NodeLaunchType::Broadcasting)
