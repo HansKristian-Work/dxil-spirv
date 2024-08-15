@@ -112,6 +112,14 @@ MemoryStream MemoryStream::create_substream(size_t offset) const
 		return { blob + offset, blob_size - offset };
 }
 
+MemoryStream MemoryStream::create_substream_bitcode_size(size_t offset, uint32_t bitcode_size) const
+{
+	if (offset >= blob_size)
+		return { nullptr, 0 };
+	else
+		return { blob + offset, bitcode_size };
+}
+
 size_t MemoryStream::get_offset() const
 {
 	return blob_offset;

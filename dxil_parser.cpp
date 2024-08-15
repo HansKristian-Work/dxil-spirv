@@ -85,7 +85,9 @@ bool DXILContainerParser::parse_dxil(MemoryStream &stream)
 	if (program_header.bitcode_offset < 16)
 		return false;
 
-	auto substream = stream.create_substream(stream.get_offset() + program_header.bitcode_offset - 16);
+	auto substream = stream.create_substream_bitcode_size(
+		stream.get_offset() + program_header.bitcode_offset - 16,
+		program_header.bitcode_size);
 
 	dxil_blob.resize(substream.get_size());
 	if (!substream.read(dxil_blob.data(), substream.get_size()))

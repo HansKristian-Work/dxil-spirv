@@ -62,6 +62,7 @@ public:
 	size_t get_size() const;
 	MemoryStream create_substream(size_t offset, size_t size) const;
 	MemoryStream create_substream(size_t offset) const;
+	MemoryStream create_substream_bitcode_size(size_t offset, uint32_t bitcode_size) const;
 
 private:
 	const uint8_t *blob = nullptr;
