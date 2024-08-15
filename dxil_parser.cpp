@@ -82,11 +82,13 @@ bool DXILContainerParser::parse_dxil(MemoryStream &stream)
 	if (static_cast<DXIL::FourCC>(program_header.dxil_magic) != DXIL::FourCC::DXIL)
 		return false;
 
-	if (program_header.bitcode_offset < 16)
+	constexpr uint32_t DxilMagicPad = sizeof(DXIL::ProgramHeader) - offsetof(DXIL::ProgramHeader, dxil_magic);
+
+	if (program_header.bitcode_offset < DxilMagicPad)
 		return false;
 
 	auto substream = stream.create_substream_bitcode_size(
-		stream.get_offset() + program_header.bitcode_offset - 16,
+		stream.get_offset() + program_header.bitcode_offset - DxilMagicPad,
 		program_header.bitcode_size);
 
 	dxil_blob.resize(substream.get_size());
