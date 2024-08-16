@@ -877,7 +877,12 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	}
 	else
 	{
-		Operation *op = impl.allocate(opcode, instruction);
+		Operation *op;
+		if (llvm::isa<llvm::ConstantExpr>(instruction))
+			op = impl.allocate(opcode, impl.get_type_id(instruction->getType()));
+		else
+			op = impl.allocate(opcode, instruction);
+
 		op->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), signed_input));
 		impl.add(op);
 		if (can_relax_precision)
