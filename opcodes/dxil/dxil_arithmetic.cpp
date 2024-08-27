@@ -185,6 +185,23 @@ bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &im
 bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
+
+	// Games rely on this peephole, since DXC doesn't do it for us.
+	if (opcode == GLSLstd450Exp2 || opcode == GLSLstd450Log2)
+	{
+		bool precise = instruction->hasMetadata("dx.precise") || impl.options.force_precise;
+		if (!precise)
+		{
+			if ((opcode == GLSLstd450Exp2 && value_is_dx_op_instrinsic(instruction->getOperand(1), DXIL::Op::Log)) ||
+			    (value_is_dx_op_instrinsic(instruction->getOperand(1), DXIL::Op::Exp)))
+			{
+				auto *base_value = llvm::cast<llvm::CallInst>(instruction->getOperand(1))->getOperand(1);
+				impl.rewrite_value(instruction, impl.get_id_for_value(base_value));
+				return true;
+			}
+		}
+	}
+
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
