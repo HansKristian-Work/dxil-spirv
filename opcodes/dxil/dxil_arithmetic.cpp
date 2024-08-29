@@ -777,4 +777,127 @@ bool emit_msad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	return true;
 }
 
+bool emit_bit_reverse_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	auto int_width = instruction->getType()->getIntegerBitWidth();
+
+	if (int_width == 32 || (int_width == 16 && !impl.support_16bit_operations()))
+	{
+		auto *op = impl.allocate(spv::OpBitReverse, instruction);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(op);
+		return true;
+	}
+	else if (int_width == 16)
+	{
+		spv::Id uint_type = builder.makeUintType(32);
+		spv::Id u16_type = builder.makeUintType(16);
+		spv::Id u16vec2_type = builder.makeVectorType(u16_type, 2);
+
+		auto *conv_op = impl.allocate(spv::OpUConvert, uint_type);
+		conv_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(conv_op);
+
+		auto *reverse_op = impl.allocate(spv::OpBitReverse, uint_type);
+		reverse_op->add_id(conv_op->id);
+		impl.add(reverse_op);
+
+		auto *cast_op = impl.allocate(spv::OpBitcast, u16vec2_type);
+		cast_op->add_id(reverse_op->id);
+		impl.add(cast_op);
+
+		auto *ext1 = impl.allocate(spv::OpCompositeExtract, instruction);
+		ext1->add_id(cast_op->id);
+		ext1->add_literal(1);
+		impl.add(ext1);
+		return true;
+	}
+	else if (int_width == 64)
+	{
+		spv::Id uint_type = builder.makeUintType(32);
+		spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+
+		auto *conv_op = impl.allocate(spv::OpBitcast, uvec2_type);
+		conv_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(conv_op);
+
+		auto *reverse_op = impl.allocate(spv::OpBitReverse, uvec2_type);
+		reverse_op->add_id(conv_op->id);
+		impl.add(reverse_op);
+
+		auto *shuf_op = impl.allocate(spv::OpVectorShuffle, uvec2_type);
+		shuf_op->add_id(reverse_op->id);
+		shuf_op->add_id(reverse_op->id);
+		shuf_op->add_literal(1);
+		shuf_op->add_literal(0);
+		impl.add(shuf_op);
+
+		auto *cast_op = impl.allocate(spv::OpBitcast, instruction);
+		cast_op->add_id(shuf_op->id);
+		impl.add(cast_op);
+
+		return true;
+	}
+
+	return false;
+}
+
+bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	// Vulkan only allows 32-bit types here for whatever reason ...
+	auto &builder = impl.builder();
+	auto int_width = instruction->getOperand(1)->getType()->getIntegerBitWidth();
+
+	if (int_width == 32 || (int_width == 16 && !impl.support_16bit_operations()))
+	{
+		auto *op = impl.allocate(spv::OpBitCount, instruction);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(op);
+		return true;
+	}
+	else if (int_width == 16)
+	{
+		auto *conv_op = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
+		conv_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(conv_op);
+
+		auto *op = impl.allocate(spv::OpBitCount, instruction);
+		op->add_id(conv_op->id);
+		impl.add(op);
+		return true;
+	}
+	else if (int_width == 64)
+	{
+		spv::Id uint_type = builder.makeUintType(32);
+		spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+
+		auto *conv_op = impl.allocate(spv::OpBitcast, uvec2_type);
+		conv_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(conv_op);
+
+		auto *count_op = impl.allocate(spv::OpBitCount, uvec2_type);
+		count_op->add_id(conv_op->id);
+		impl.add(count_op);
+
+		auto *ext0 = impl.allocate(spv::OpCompositeExtract, uint_type);
+		ext0->add_id(count_op->id);
+		ext0->add_literal(0);
+		impl.add(ext0);
+
+		auto *ext1 = impl.allocate(spv::OpCompositeExtract, uint_type);
+		ext1->add_id(count_op->id);
+		ext1->add_literal(1);
+		impl.add(ext1);
+
+		auto *add_op = impl.allocate(spv::OpIAdd, instruction);
+		add_op->add_id(ext0->id);
+		add_op->add_id(ext1->id);
+		impl.add(add_op);
+		return true;
+	}
+
+	return false;
+}
+
 } // namespace dxil_spv

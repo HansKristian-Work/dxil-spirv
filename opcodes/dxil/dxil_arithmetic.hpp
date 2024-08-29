@@ -107,4 +107,7 @@ bool emit_unpack4x8_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 bool emit_pack4x8_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_msad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool emit_bit_reverse_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv

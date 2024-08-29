@@ -137,8 +137,8 @@ struct DXILDispatcher
 		OP(Round_pi) = std450_unary_dispatch<GLSLstd450Ceil>;
 		OP(Round_z) = std450_unary_dispatch<GLSLstd450Trunc>;
 
-		OP(Bfrev) = unary_dispatch<spv::OpBitReverse>;
-		OP(Countbits) = unary_dispatch<spv::OpBitCount>;
+		OP(Bfrev) = emit_bit_reverse_instruction;
+		OP(Countbits) = emit_bit_count_instruction;
 		OP(FirstbitLo) = std450_unary_dispatch<GLSLstd450FindILsb>;
 		OP(FirstbitSHi) = emit_find_high_bit_dispatch<GLSLstd450FindSMsb>;
 		OP(FirstbitHi) = emit_find_high_bit_dispatch<GLSLstd450FindUMsb>;
