@@ -3233,9 +3233,9 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		for (auto *candidate : potential_merge_nodes)
 		{
 			if (candidate != idom && idom->dominates(candidate) &&
-			    candidate->immediate_post_dominator == node &&
+				node->post_dominates(candidate) &&
 			    !candidate->post_dominates_perfect_structured_construct() &&
-			    get_innermost_loop_header_for(idom, node) == idom)
+			    get_innermost_loop_header_for(idom, candidate) == idom)
 			{
 				bool direct_dominance_frontier = candidate->dominance_frontier.size() == 1 &&
 				                                 candidate->dominance_frontier.front() == node;
@@ -3258,10 +3258,27 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 			bool valid = true;
 			for (size_t j = 0; j < i; j++)
 			{
-				if (query_reachability(*inner_constructs[j], *inner_constructs[i]))
+				if (query_reachability(*inner_constructs[i], *inner_constructs[j]))
 				{
 					valid = false;
 					break;
+				}
+			}
+
+			// Another sanity check for candidates, the idom must be able to reach other nodes.
+			if (valid)
+			{
+				valid = false;
+				for (size_t j = 0; j < count; j++)
+				{
+					if (i == j)
+						continue;
+
+					if (query_reachability(*inner_constructs[i]->immediate_dominator, *inner_constructs[j]))
+					{
+						valid = true;
+						break;
+					}
 				}
 			}
 
