@@ -5375,7 +5375,7 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 		// Merge to ladder instead.
 		// If we're fixing up ladders for header index 0 it means we've already rewritten everything,
 		// only apply the last fixup branch.
-		if (header_index != 0)
+		if (header_index != 0 || block_is_plain_continue(node))
 		{
 			traverse_dominated_blocks_and_rewrite_branch(
 				header, node, ladder,
@@ -5530,10 +5530,14 @@ void CFGStructurizer::split_merge_blocks()
 	{
 		node = rewind_candidate_split_node(node);
 
-		if (node->headers.size() <= 1)
+		if (node->headers.size() <= 1 && !block_is_plain_continue(node))
 			continue;
 
-		assert(!block_is_plain_continue(node));
+		// It's possible that we have just one header.
+		// One loop has a ladder block which is not this block, but the post-dominator is a pure continue block.
+		// This gets rather awkward, since we need to special case this scenario.
+		if (node->headers.empty())
+			continue;
 
 		// If this block was the merge target for more than one construct,
 		// we will need to split the block. In SPIR-V, a merge block can only be the merge target for one construct.
@@ -5559,6 +5563,11 @@ void CFGStructurizer::split_merge_blocks()
 
 		CFGNode *full_break_target = nullptr;
 
+		// If we're a plain continue block, we're implicitly the full break target.
+		bool plain_continue_resolve = block_is_plain_continue(node);
+		if (plain_continue_resolve)
+			full_break_target = node;
+
 		// Before we start splitting and rewriting branches, we need to know which preds are considered "normal",
 		// and which branches are considered ladder breaking branches (rewritten branches).
 		// This will influence if a pred block gets false or true when emitting ladder breaking blocks later.
@@ -5573,12 +5582,12 @@ void CFGStructurizer::split_merge_blocks()
 		// Start from innermost scope, and rewrite all escape branches to a merge block which is dominated by the loop header in question.
 		// The merge block for the loop must have a ladder block before the old merge block.
 		// This ladder block will break to outer scope, or keep executing the old merge block.
-		for (size_t i = node->headers.size() - 1; i; i--)
+		for (size_t i = node->headers.size() - 1; i || plain_continue_resolve; i--)
 		{
 			auto *current_node = node->headers[i];
 
 			// Find innermost loop header scope we can break to when resolving ladders.
-			CFGNode *target_header = get_target_break_block_for_inner_header(node, i);
+			CFGNode *target_header = i != 0 ? get_target_break_block_for_inner_header(node, i) : nullptr;
 
 			//LOGI("Current: %s, target: %s.\n", current_node->name.c_str(), target_header->name.c_str());
 
@@ -5655,6 +5664,9 @@ void CFGStructurizer::split_merge_blocks()
 			}
 			else
 				LOGE("Invalid merge type.\n");
+
+			if (i == 0)
+				break;
 		}
 
 		auto *outer_header = node->headers[0];
