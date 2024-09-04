@@ -173,6 +173,44 @@ bool emit_dxil_wide_mul_instruction(spv::Op opcode, Converter::Impl &impl, const
 	return true;
 }
 
+bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	spv::Id id0 = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id id1 = impl.get_id_for_value(instruction->getOperand(2));
+
+	auto *div_op = impl.allocate(spv::OpUDiv, builder.makeUintType(32));
+	div_op->add_id(id0);
+	div_op->add_id(id1);
+	impl.add(div_op);
+
+	auto *mod_op = impl.allocate(spv::OpUMod, builder.makeUintType(32));
+	mod_op->add_id(id0);
+	mod_op->add_id(id1);
+	impl.add(mod_op);
+
+	auto *is_zero_divider = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+	is_zero_divider->add_id(id1);
+	is_zero_divider->add_id(builder.makeUintConstant(0));
+	impl.add(is_zero_divider);
+
+	auto *quot_select = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+	quot_select->add_id(is_zero_divider->id);
+	quot_select->add_id(builder.makeUintConstant(UINT32_MAX));
+	quot_select->add_id(div_op->id);
+	impl.add(quot_select);
+
+	auto *rem_select = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+	rem_select->add_id(is_zero_divider->id);
+	rem_select->add_id(builder.makeUintConstant(UINT32_MAX));
+	rem_select->add_id(mod_op->id);
+	impl.add(rem_select);
+
+	spv::Id elems[2] = { quot_select->id, rem_select->id };
+	impl.rewrite_value(instruction, impl.build_vector(builder.makeUintType(32), elems, 2));
+	return true;
+}
+
 bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();

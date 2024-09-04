@@ -40,6 +40,7 @@ bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl
 bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dxil_wide_mul_instruction(spv::Op op, Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm::CallInst *instruction);
 
