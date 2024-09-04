@@ -3318,6 +3318,60 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 				if (i != j)
 					need_deinterleave = is_ordered(pdf_ranges[i].first, pdf_ranges[j].first, pdf_ranges[i].second);
 
+		if (!need_deinterleave)
+		{
+			const CFGNode *interleaved_exit_loop = nullptr;
+
+			// Try finding interleaved loops exits. Extremely rare and awkward scenario.
+			// This pattern makes it so that loop resolves cannot work well since nothing ends up being nested.
+			// We can deal with one, but if two or more loops end up with awkward resolves, we have to employ magic.
+
+			// First, look at the PDFs, try to find a node in an inner loop.
+			// If the loop exits in a way where they can both reach the interleaving candidates,
+			// that's a scenario where we need to consider rewriting.
+			for (auto *candidate : valid_constructs)
+			{
+				auto &pdf = candidate->post_dominance_frontier;
+				for (auto *pdf_candidate : pdf)
+				{
+					auto *inner_header = get_innermost_loop_header_for(idom, pdf_candidate);
+					if (inner_header != idom && inner_header != interleaved_exit_loop)
+					{
+						// Don't allow nested loops to be considered as two loops.
+						if (interleaved_exit_loop && query_reachability(*inner_header, *interleaved_exit_loop))
+							continue;
+
+						if (query_reachability(*pdf_candidate, *inner_header->pred_back_edge))
+						{
+							// The back-edge can only reach one of the interleave nodes, while the candidate PDF
+							// can reach both. This proves weird break cases.
+
+							unsigned back_edge_reach_count = 0;
+							unsigned pdf_reach_count = 0;
+							for (auto *reach_candidate : valid_constructs)
+							{
+								if (query_reachability(*inner_header->pred_back_edge, *reach_candidate))
+									back_edge_reach_count++;
+								if (query_reachability(*pdf_candidate, *reach_candidate))
+									pdf_reach_count++;
+							}
+
+							if (back_edge_reach_count == 1 && pdf_reach_count == valid_constructs.size())
+							{
+								// We've found two candidates now, break out.
+								need_deinterleave = interleaved_exit_loop != nullptr;
+								interleaved_exit_loop = inner_header;
+								break;
+							}
+						}
+					}
+				}
+
+				if (need_deinterleave)
+					break;
+			}
+		}
+
 		if (need_deinterleave)
 		{
 			// Rewrite the control flow to serialize execution of the candidate blocks.
