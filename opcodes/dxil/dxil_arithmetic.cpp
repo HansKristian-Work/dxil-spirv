@@ -164,6 +164,15 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 	return true;
 }
 
+bool emit_dxil_wide_mul_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	Operation *op = impl.allocate(opcode, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+	impl.add(op);
+	return true;
+}
+
 bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();

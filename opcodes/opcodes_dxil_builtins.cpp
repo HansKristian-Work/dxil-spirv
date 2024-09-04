@@ -111,6 +111,8 @@ struct DXILDispatcher
 		OP(IMax) = std450_binary_dispatch<GLSLstd450SMax>;
 		OP(UMin) = std450_binary_dispatch<GLSLstd450UMin>;
 		OP(UMax) = std450_binary_dispatch<GLSLstd450UMax>;
+		OP(IMul) = wide_mul_dispatch<spv::OpSMulExtended>;
+		OP(UMul) = wide_mul_dispatch<spv::OpUMulExtended>;
 		OP(IsNan) = unary_dispatch<spv::OpIsNan>;
 		OP(IsInf) = unary_dispatch<spv::OpIsInf>;
 		OP(IsFinite) = emit_isfinite_instruction;
