@@ -312,6 +312,11 @@ Type *Type::getLabelTy(LLVMContext &context)
 	return getTy(context, TypeID::LabelTyID);
 }
 
+Type *Type::getOpaqueTy(LLVMBC::LLVMContext &context)
+{
+	return getTy(context, TypeID::OpaqueTyID);
+}
+
 Type *Type::getMetadataTy(LLVMContext &context)
 {
 	return getTy(context, TypeID::MetadataTyID);

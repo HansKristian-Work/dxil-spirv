@@ -2032,6 +2032,12 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 		break;
 	}
 
+	case TypeRecord::OPAQUE_TYPE:
+	{
+		type = Type::getOpaqueTy(*context);
+		break;
+	}
+
 	default:
 		LOGE("Unknown type!\n");
 		return false;

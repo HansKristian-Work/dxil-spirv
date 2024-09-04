@@ -48,7 +48,8 @@ public:
 		FunctionTyID,
 		LabelTyID,
 		VectorTyID,
-		MetadataTyID
+		MetadataTyID,
+		OpaqueTyID
 	};
 
 	Type(LLVMContext &context, TypeID type_id);
@@ -67,6 +68,7 @@ public:
 	static Type *getIntTy(LLVMContext &context, uint32_t width);
 	static Type *getLabelTy(LLVMContext &context);
 	static Type *getMetadataTy(LLVMContext &context);
+	static Type *getOpaqueTy(LLVMContext &context);
 
 	bool isIntegerTy() const;
 	bool isFloatingPointTy() const;
