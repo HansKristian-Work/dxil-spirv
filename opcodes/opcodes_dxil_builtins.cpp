@@ -111,8 +111,10 @@ struct DXILDispatcher
 		OP(IMax) = std450_binary_dispatch<GLSLstd450SMax>;
 		OP(UMin) = std450_binary_dispatch<GLSLstd450UMin>;
 		OP(UMax) = std450_binary_dispatch<GLSLstd450UMax>;
-		OP(IMul) = wide_mul_dispatch<spv::OpSMulExtended>;
-		OP(UMul) = wide_mul_dispatch<spv::OpUMulExtended>;
+		OP(IMul) = wide_arith_dispatch<spv::OpSMulExtended>;
+		OP(UMul) = wide_arith_dispatch<spv::OpUMulExtended>;
+		OP(UAddc) = wide_arith_dispatch<spv::OpIAddCarry>;
+		OP(USubb) = wide_arith_dispatch<spv::OpISubBorrow>;
 		OP(UDiv) = emit_dxbc_udiv_instruction;
 		OP(IsNan) = unary_dispatch<spv::OpIsNan>;
 		OP(IsInf) = unary_dispatch<spv::OpIsInf>;

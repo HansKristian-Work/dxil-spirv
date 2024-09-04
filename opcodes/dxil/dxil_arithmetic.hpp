@@ -86,7 +86,7 @@ static inline bool unary_dispatch(Converter::Impl &impl, const llvm::CallInst *i
 }
 
 template <spv::Op opcode>
-static inline bool wide_mul_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+static inline bool wide_arith_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	return emit_dxil_wide_mul_instruction(opcode, impl, instruction);
 }
