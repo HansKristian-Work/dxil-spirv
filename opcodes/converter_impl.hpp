@@ -606,7 +606,8 @@ struct Converter::Impl
 		bool nv_subgroup_partition_enabled = false;
 		// Assumed by default in earlier code, so avoid surprises if dxil-spirv
 		// is updated on its own.
-		bool nv_compute_shader_derivatives = true;
+		bool compute_shader_derivatives = true;
+		bool compute_shader_derivatives_khr = false;
 		bool eliminate_dead_code = false;
 		bool propagate_precise = false;
 		bool force_precise = false;

@@ -5613,9 +5613,11 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 
 	if (shader_analysis.require_compute_shader_derivatives)
 	{
-		if (execution_model != spv::ExecutionModelGLCompute)
+		if (execution_model != spv::ExecutionModelGLCompute &&
+		    execution_model != spv::ExecutionModelTaskEXT &&
+		    execution_model != spv::ExecutionModelMeshEXT)
 		{
-			LOGE("Derivatives only supported in compute shaders.\n");
+			LOGE("Derivatives only supported in compute, task and mesh shaders.\n");
 			return false;
 		}
 
@@ -5623,9 +5625,10 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 		// Spec says that product of workgroup size must align with 4.
 		if (total_workgroup_threads % 4 == 0)
 		{
-			if (options.nv_compute_shader_derivatives)
+			if (options.compute_shader_derivatives)
 			{
-				builder.addExtension("SPV_NV_compute_shader_derivatives");
+				builder.addExtension(options.compute_shader_derivatives_khr
+					? "SPV_KHR_compute_shader_derivatives" : "SPV_NV_compute_shader_derivatives");
 				builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearNV);
 
 				// It is technically not in spec to just assume this since subgroup lane mapping to local invocation index
@@ -7067,7 +7070,7 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	case Option::ComputeShaderDerivativesNV:
 	{
 		auto &c = static_cast<const OptionComputeShaderDerivativesNV &>(cap);
-		options.nv_compute_shader_derivatives = c.supported;
+		options.compute_shader_derivatives = c.supported;
 		break;
 	}
 
@@ -7092,6 +7095,14 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		auto &c = static_cast<const OptionDriverVersion &>(cap);
 		options.driver_id = c.driver_id;
 		options.driver_version = c.driver_version;
+		break;
+	}
+
+	case Option::ComputeShaderDerivatives:
+	{
+		auto &c = static_cast<const OptionComputeShaderDerivatives &>(cap);
+		options.compute_shader_derivatives = c.supports_nv || c.supports_khr;
+		options.compute_shader_derivatives_khr = c.supports_khr;
 		break;
 	}
 
