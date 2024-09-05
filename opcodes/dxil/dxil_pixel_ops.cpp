@@ -168,7 +168,7 @@ bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const ll
 	}
 
 	if (impl.execution_model != spv::ExecutionModelFragment &&
-	    !impl.options.nv_compute_shader_derivatives)
+	    !impl.options.compute_shader_derivatives)
 	{
 		return emit_derivative_instruction_quad(opcode, impl, instruction);
 	}

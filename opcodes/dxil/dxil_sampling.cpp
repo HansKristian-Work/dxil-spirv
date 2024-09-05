@@ -386,7 +386,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		sample_type = texel_type;
 
 	bool grad_rewrite = impl.execution_model != spv::ExecutionModelFragment &&
-	                    !impl.options.nv_compute_shader_derivatives;
+	                    !impl.options.compute_shader_derivatives;
 
 	if (grad_rewrite)
 	{
@@ -1657,7 +1657,7 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	}
 
 	if (impl.execution_model != spv::ExecutionModelFragment &&
-	    !impl.options.nv_compute_shader_derivatives)
+	    !impl.options.compute_shader_derivatives)
 	{
 		return emit_calculate_lod_instruction_fallback(impl, instruction);
 	}

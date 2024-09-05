@@ -1196,6 +1196,17 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES:
+	{
+		OptionComputeShaderDerivatives helper;
+		auto *deriv = reinterpret_cast<const dxil_spv_option_compute_shader_derivatives *>(option);
+		helper.supports_nv = deriv->supports_nv;
+		helper.supports_khr = deriv->supports_khr;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

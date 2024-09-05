@@ -1138,7 +1138,9 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::SampleBias:
 	case DXIL::Op::Sample:
 	case DXIL::Op::SampleCmp:
-		if (impl.execution_model == spv::ExecutionModelGLCompute)
+		if (impl.execution_model == spv::ExecutionModelGLCompute ||
+		    impl.execution_model == spv::ExecutionModelTaskEXT ||
+		    impl.execution_model == spv::ExecutionModelMeshEXT)
 		{
 			// We're trying to do shader derivatives outside fragment, uh oh.
 			// Also, we need to map 4 lanes to invocation IDs.
@@ -1169,7 +1171,9 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::QuadOp:
 	case DXIL::Op::QuadVote:
 	case DXIL::Op::QuadReadLaneAt:
-		if (impl.execution_model == spv::ExecutionModelGLCompute)
+		if (impl.execution_model == spv::ExecutionModelGLCompute ||
+		    impl.execution_model == spv::ExecutionModelTaskEXT ||
+		    impl.execution_model == spv::ExecutionModelMeshEXT)
 		{
 			uint32_t sm_major = 0, sm_minor = 0;
 			Converter::Impl::get_shader_model(impl.bitcode_parser.get_module(), nullptr, &sm_major, &sm_minor);

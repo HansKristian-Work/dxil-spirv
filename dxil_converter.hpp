@@ -253,6 +253,7 @@ enum class Option : uint32_t
 	QuadControlReconvergence = 37,
 	RawAccessChainsNV = 38,
 	DriverVersion = 39,
+	ComputeShaderDerivatives = 40,
 	Count
 };
 
@@ -695,6 +696,17 @@ struct OptionDriverVersion : OptionBase
 
 	uint32_t driver_id = 0; // Vulkan12Properties::driverID
 	uint32_t driver_version = 0; // PhysicalDeviceProperties::driverVersion
+};
+
+struct OptionComputeShaderDerivatives : OptionBase
+{
+	OptionComputeShaderDerivatives()
+		: OptionBase(Option::ComputeShaderDerivatives)
+	{
+	}
+
+	bool supports_nv = false;
+	bool supports_khr = false;
 };
 
 struct DescriptorTableEntry
