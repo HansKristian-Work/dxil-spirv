@@ -82,8 +82,9 @@ private:
 	void build_reachability();
 	void visit_reachability(const CFGNode &node);
 	bool query_reachability(const CFGNode &from, const CFGNode &to) const;
-	void structurize(unsigned pass);
-	void find_loops();
+	bool structurize(unsigned pass);
+	bool find_loops(unsigned pass);
+	bool rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, Vector<CFGNode *> &dominated_exits);
 	bool rewrite_transposed_loops();
 
 	struct LoopAnalysis
@@ -251,5 +252,9 @@ private:
 	bool find_single_entry_exit_lock_region(
 	    CFGNode *&idom, CFGNode *&pdom, const Vector<CFGNode *> &rov_blocks);
 	bool execution_path_is_single_entry_and_dominates_exit(CFGNode *idom, CFGNode *pdom);
+
+	void collect_and_dispatch_control_flow(
+	    CFGNode *common_idom, CFGNode *common_pdom, const Vector<CFGNode *> &constructs,
+	    bool collect_all_code_paths_to_pdom);
 };
 } // namespace dxil_spv

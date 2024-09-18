@@ -843,7 +843,16 @@ bool CFGStructurizer::run()
 	}
 
 	//LOGI("=== Structurize pass ===\n");
-	structurize(0);
+	while (structurize(0))
+	{
+		recompute_cfg();
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_final = graphviz_path + ".partial-struct0";
+			log_cfg_graphviz(graphviz_final.c_str());
+		}
+	}
+
 	update_structured_loop_merge_targets();
 
 	//log_cfg("Structurize pass 0");
@@ -3374,66 +3383,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 
 		if (need_deinterleave)
 		{
-			// Rewrite the control flow to serialize execution of the candidate blocks.
-			auto *dispatcher = create_helper_pred_block(node);
-
-			auto &builder = module.get_builder();
-			PHI phi;
-			phi.id = module.allocate_id();
-			phi.type_id = builder.makeIntType(32);
-
-			for (auto *candidate : valid_constructs)
-				traverse_dominated_blocks_and_rewrite_branch(candidate, dispatcher, node);
-
-			size_t cutoff_index = dispatcher->pred.size();
-
-			// If there is no direct branch intended for node, the default case label will never be reached,
-			// so just pilfer one of the cases as default.
-			bool need_default_case = !dispatcher->pred.empty();
-
-			for (size_t i = 0; i < cutoff_index; i++)
-				phi.incoming.push_back({ dispatcher->pred[i], builder.makeIntConstant(-1) });
-
-			for (size_t i = 0; i < count; i++)
-			{
-				auto *candidate = valid_constructs[i];
-				traverse_dominated_blocks_and_rewrite_branch(idom, candidate, dispatcher);
-				size_t next_cutoff_index = dispatcher->pred.size();
-				for (size_t j = cutoff_index; j < next_cutoff_index; j++)
-					phi.incoming.push_back({ dispatcher->pred[j], builder.makeIntConstant(int32_t(i)) });
-				cutoff_index = next_cutoff_index;
-			}
-
-			idom->freeze_structured_analysis = true;
-			idom->merge = MergeType::Loop;
-			idom->loop_merge_block = dispatcher;
-
-			dispatcher->ir.terminator.conditional_id = phi.id;
-			dispatcher->ir.phi.push_back(std::move(phi));
-			builder.addName(phi.id, String("selector_" + node->name).c_str());
-
-			Terminator::Case default_case;
-			dispatcher->ir.terminator.type = Terminator::Type::Switch;
-			dispatcher->ir.terminator.direct_block = nullptr;
-			default_case.node = need_default_case ? node : valid_constructs[0];
-			default_case.is_default = true;
-			dispatcher->ir.terminator.cases.push_back(default_case);
-
-			for (size_t i = 0; i < count; i++)
-			{
-				auto *candidate = valid_constructs[i];
-				assert(candidate->pred.empty());
-				dispatcher->add_branch(candidate);
-
-				if (need_default_case || i)
-				{
-					Terminator::Case break_case;
-					break_case.node = candidate;
-					break_case.value = uint32_t(i);
-					dispatcher->ir.terminator.cases.push_back(break_case);
-				}
-			}
-
+			collect_and_dispatch_control_flow(idom, node, valid_constructs, true);
 			// This completely transposes the CFG, so need to recompute CFG to keep going.
 			recompute_cfg();
 			return true;
@@ -5044,7 +4994,261 @@ CFGStructurizer::LoopMergeAnalysis CFGStructurizer::analyze_loop_merge(CFGNode *
 	return merge_result;
 }
 
-void CFGStructurizer::find_loops()
+void CFGStructurizer::collect_and_dispatch_control_flow(
+	CFGNode *common_idom, CFGNode *common_pdom, const Vector<CFGNode *> &constructs,
+	bool collect_all_code_paths_to_pdom)
+{
+	assert(constructs.size() >= 2);
+	auto &builder = module.get_builder();
+	bool need_default_case = false;
+	bool plain_branch = false;
+	size_t cutoff_index = 0;
+	CFGNode *dispatcher;
+
+	PHI phi;
+	phi.id = module.allocate_id();
+
+	if (collect_all_code_paths_to_pdom)
+	{
+		// In some merge scenarios, we need to make sure we encapsulate all code into this new dispatcher.
+		// This will become our new merge block. Incoming impossible merges will be transposed to after this new merge.
+		dispatcher = create_helper_pred_block(common_pdom);
+		for (auto *candidate : constructs)
+			traverse_dominated_blocks_and_rewrite_branch(candidate, dispatcher, common_pdom);
+
+		cutoff_index = dispatcher->pred.size();
+
+		// If there is no direct branch intended for node, the default case label will never be reached,
+		// so just pilfer one of the cases as default.
+		need_default_case = !dispatcher->pred.empty();
+
+		plain_branch = !need_default_case && constructs.size() == 2;
+		if (!plain_branch)
+		{
+			for (size_t i = 0; i < cutoff_index; i++)
+				phi.incoming.push_back({ dispatcher->pred[i], builder.makeIntConstant(-1) });
+			phi.type_id = builder.makeIntType(32);
+		}
+		else
+		{
+			phi.type_id = builder.makeBoolType();
+		}
+	}
+	else
+	{
+		dispatcher = pool.create_node();
+		dispatcher->name = common_idom->name + ".collector";
+		dispatcher->immediate_dominator = common_idom;
+		dispatcher->immediate_post_dominator = common_pdom;
+		dispatcher->forward_post_visit_order = common_pdom->forward_post_visit_order;
+		dispatcher->backward_post_visit_order = common_pdom->backward_post_visit_order;
+		plain_branch = constructs.size() == 2;
+	}
+
+	phi.type_id = plain_branch ? builder.makeBoolType() : builder.makeIntType(32);
+
+	for (size_t i = 0, n = constructs.size(); i < n; i++)
+	{
+		auto *candidate = constructs[i];
+		traverse_dominated_blocks_and_rewrite_branch(common_idom, candidate, dispatcher);
+		size_t next_cutoff_index = dispatcher->pred.size();
+		for (size_t j = cutoff_index; j < next_cutoff_index; j++)
+		{
+			spv::Id cond_id;
+			if (plain_branch)
+				cond_id = builder.makeBoolConstant(i != 0);
+			else
+				cond_id = builder.makeIntConstant(int32_t(i));
+
+			phi.incoming.push_back({ dispatcher->pred[j], cond_id });
+		}
+		cutoff_index = next_cutoff_index;
+	}
+
+	if (!common_idom->pred_back_edge)
+	{
+		common_idom->freeze_structured_analysis = true;
+		common_idom->merge = MergeType::Loop;
+		common_idom->loop_merge_block = dispatcher;
+	}
+
+	dispatcher->ir.terminator.conditional_id = phi.id;
+	dispatcher->ir.phi.push_back(std::move(phi));
+	builder.addName(phi.id, String("selector_" + common_pdom->name).c_str());
+
+	dispatcher->ir.terminator.direct_block = nullptr;
+
+	if (plain_branch)
+	{
+		dispatcher->ir.terminator.type = Terminator::Type::Condition;
+		dispatcher->ir.terminator.false_block = constructs[0];
+		dispatcher->ir.terminator.true_block = constructs[1];
+		dispatcher->add_branch(constructs[0]);
+		dispatcher->add_branch(constructs[1]);
+	}
+	else
+	{
+		dispatcher->ir.terminator.type = Terminator::Type::Switch;
+		Terminator::Case default_case;
+		default_case.node = need_default_case ? common_pdom : constructs[0];
+		default_case.is_default = true;
+		dispatcher->ir.terminator.cases.push_back(default_case);
+
+		for (size_t i = 0, n = constructs.size(); i < n; i++)
+		{
+			auto *candidate = constructs[i];
+			assert(candidate->pred.empty());
+			dispatcher->add_branch(candidate);
+
+			if (need_default_case || i)
+			{
+				Terminator::Case break_case;
+				break_case.node = candidate;
+				break_case.value = uint32_t(i);
+				dispatcher->ir.terminator.cases.push_back(break_case);
+			}
+		}
+	}
+}
+
+bool CFGStructurizer::rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, Vector<CFGNode *> &dominated_exits)
+{
+	if (!merge || !node->pred_back_edge->succ.empty() || dominated_exits.size() < 2)
+		return false;
+
+	// This heuristic is somewhat questionable. :')
+	bool needs_early_explicit_ladder = false;
+	CFGNode *common_idom = node;
+
+	// Use a stricter definition when there is a clean merge candidate.
+	if (node->can_loop_merge_to(merge))
+	{
+		// If all nodes share a frontier node which is not the target merge block, we have a spicy merge
+		// that should be collected in a ladder first, since there is no natural latter block
+		// in this scenario. The shared frontier node is the more plausible true merge target,
+		// and the outer merge was a red herring, but since we don't have a proper ladder block,
+		// it will complicate things.
+		Vector<const CFGNode *> frontier_nodes;
+		for (auto *n : dominated_exits)
+		{
+			frontier_nodes.insert(frontier_nodes.end(),
+			                      n->dominance_frontier.begin(),
+			                      n->dominance_frontier.end());
+		}
+
+		std::sort(frontier_nodes.begin(), frontier_nodes.end());
+		const CFGNode *frontier_base = nullptr;
+		uint32_t count = 0;
+
+		for (auto *n : frontier_nodes)
+		{
+			if (n == frontier_base)
+				count++;
+			else
+				count = 1;
+
+			frontier_base = n;
+
+			if (count == dominated_exits.size() && n != merge && query_reachability(*n, *merge))
+			{
+				needs_early_explicit_ladder = true;
+				break;
+			}
+		}
+	}
+	else
+	{
+		// If we cannot do a clean merge anyway, then we should try to look for frontier nodes.
+		auto frontier_nodes = dominated_exits;
+
+		// Skip forward to the dominance frontier. This makes control flow easier to deal with
+		// since unrelated branches to the frontiers can also be resolved.
+		// This heuristic is admittedly somewhat arbitrary,
+		// but it is meant to help on some specific real-world shaders.
+		for (auto *&n : frontier_nodes)
+		{
+			if (n->dominance_frontier.size() == 1 && !node->dominates(n->dominance_frontier.front()))
+			{
+				n = n->dominance_frontier.front();
+			}
+			else
+			{
+				// We don't have a clean frontier, skip this check.
+				frontier_nodes.clear();
+				break;
+			}
+		}
+
+		if (!frontier_nodes.empty())
+		{
+			// If the frontiers are all different, and it's not the merge block, something is afoot.
+			// Don't sort by pointer since we care about codegen invariance.
+			std::sort(frontier_nodes.begin(), frontier_nodes.end(), [](const CFGNode *a, const CFGNode *b)
+			          { return a->forward_post_visit_order > b->forward_post_visit_order; });
+
+			bool has_dup_frontier = false;
+			for (size_t i = 1, n = frontier_nodes.size(); i < n && !has_dup_frontier; i++)
+				if (frontier_nodes[i] == frontier_nodes[i - 1] || frontier_nodes[i] == merge)
+					has_dup_frontier = true;
+
+			if (has_dup_frontier)
+				frontier_nodes.clear();
+		}
+
+		if (!frontier_nodes.empty())
+		{
+			// Make sure that the frontier nodes we found fully dominate all preds of merge,
+			// otherwise, the transpose of code will likely break.
+			for (auto *pred : merge->pred)
+			{
+				bool has_dominating = false;
+				for (auto *f : frontier_nodes)
+				{
+					if (f->dominates(pred))
+					{
+						has_dominating = true;
+						break;
+					}
+				}
+
+				if (!has_dominating)
+				{
+					frontier_nodes.clear();
+					break;
+				}
+			}
+		}
+
+		if (!frontier_nodes.empty())
+		{
+			needs_early_explicit_ladder = true;
+			// First collect the inner break blocks in a neat bow.
+			node->pred_back_edge->fake_succ.clear();
+			node->pred_back_edge->fake_pred.clear();
+			collect_and_dispatch_control_flow(node, merge, dominated_exits, false);
+
+			recompute_cfg();
+
+			// Then collect the outer layer.
+			dominated_exits = std::move(frontier_nodes);
+			common_idom = merge->immediate_dominator;
+		}
+	}
+
+	if (needs_early_explicit_ladder)
+	{
+		// Avoids false-positive assertions when trying to rewrite branches.
+		// We're going to recompute the CFG after this anyway.
+		node->pred_back_edge->fake_succ.clear();
+		node->pred_back_edge->fake_pred.clear();
+		collect_and_dispatch_control_flow(common_idom, merge, dominated_exits, false);
+		return true;
+	}
+
+	return false;
+}
+
+bool CFGStructurizer::find_loops(unsigned pass)
 {
 	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
@@ -5168,6 +5372,9 @@ void CFGStructurizer::find_loops()
 			auto *merge = merge_result.merge;
 			auto *dominated_merge = merge_result.dominated_merge;
 
+			if (pass == 0 && rewrite_complex_loop_exits(node, merge, dominated_exit))
+				return true;
+
 			if (!merge)
 			{
 				LOGW("Failed to find a common merge point ...\n");
@@ -5212,6 +5419,8 @@ void CFGStructurizer::find_loops()
 			}
 		}
 	}
+
+	return false;
 }
 
 CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode *node, size_t header_index)
@@ -5748,7 +5957,7 @@ void CFGStructurizer::split_merge_blocks()
 	}
 }
 
-void CFGStructurizer::structurize(unsigned pass)
+bool CFGStructurizer::structurize(unsigned pass)
 {
 	if (find_switch_blocks(pass))
 	{
@@ -5760,13 +5969,16 @@ void CFGStructurizer::structurize(unsigned pass)
 		}
 	}
 
-	find_loops();
+	if (find_loops(pass))
+		return true;
 	find_selection_merges(pass);
 	fixup_broken_selection_merges(pass);
 	if (pass == 0)
 		split_merge_blocks();
 	else
 		eliminate_degenerate_switch_merges();
+
+	return false;
 }
 
 bool CFGStructurizer::exists_path_in_cfg_without_intermediate_node(const CFGNode *start_block,
