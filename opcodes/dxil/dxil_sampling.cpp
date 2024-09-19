@@ -1063,7 +1063,10 @@ bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::
 
 	spv::Id write_values[4] = {};
 	for (unsigned i = 0; i < 4; i++)
+	{
+		impl.register_externally_visible_write(instruction->getOperand(i + 5));
 		write_values[i] = impl.get_id_for_value(instruction->getOperand(i + 5));
+	}
 
 	// Ignore write mask. We cannot do anything meaningful about it.
 	// The write mask must cover all components in the image, and there is no "sliced write" support for typed resources.

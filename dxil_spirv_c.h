@@ -34,10 +34,11 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 41
+#define DXIL_SPV_API_VERSION_MINOR 42
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
+#define DXIL_SPV_INSTRUCTION_INSTRUMENTATION_INTERFACE_VERSION 1
 
 #if !defined(DXIL_SPV_PUBLIC_API)
 #if defined(DXIL_SPV_EXPORT_SYMBOLS)
@@ -367,6 +368,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_RAW_ACCESS_CHAINS_NV = 38,
 	DXIL_SPV_OPTION_DRIVER_VERSION = 39,
 	DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES = 40,
+	DXIL_SPV_OPTION_INSTRUCTION_INSTRUMENTATION = 41,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -375,6 +377,13 @@ typedef enum dxil_spv_shader_feature
 	DXIL_SPV_SHADER_FEATURE_NATIVE_16BIT_OPERATIONS = 0,
 	DXIL_SPV_SHADER_FEATURE_INT_MAX = 0x7fffffff
 } dxil_spv_shader_feature;
+
+typedef enum dxil_spv_instruction_instrumentation_type
+{
+	DXIL_SPV_INSTRUCTION_INSTRUMENTATION_TYPE_FULL_NAN_INF = 0,
+	DXIL_SPV_INSTRUCTION_INSTRUMENTATION_TYPE_EXTERNALLY_VISIBLE_WRITE_NAN_INF = 1,
+	DXIL_SPV_INSTRUCTION_INSTRUMENTATION_INT_MAX = 0x7fffffff
+} dxil_spv_instruction_instrumentation_type;
 
 typedef struct dxil_spv_option_base
 {
@@ -656,6 +665,19 @@ typedef struct dxil_spv_option_compute_shader_derivatives
 	dxil_spv_bool supports_nv;
 	dxil_spv_bool supports_khr;
 } dxil_spv_option_compute_shader_derivatives;
+
+typedef struct dxil_spv_option_instruction_instrumentation
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool enabled;
+	unsigned version;
+	unsigned control_desc_set;
+	unsigned control_binding;
+	unsigned payload_desc_set;
+	unsigned payload_binding;
+	unsigned long long shader_hash;
+	dxil_spv_instruction_instrumentation_type type;
+} dxil_spv_option_instruction_instrumentation;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

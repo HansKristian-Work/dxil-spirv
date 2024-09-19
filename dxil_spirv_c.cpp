@@ -1207,6 +1207,23 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_INSTRUCTION_INSTRUMENTATION:
+	{
+		OptionInstructionInstrumentation helper;
+		auto *inst = reinterpret_cast<const dxil_spv_option_instruction_instrumentation *>(option);
+		helper.enabled = inst->enabled;
+		helper.version = inst->version;
+		helper.control_desc_set = inst->control_desc_set;
+		helper.control_binding = inst->control_binding;
+		helper.payload_desc_set = inst->payload_desc_set;
+		helper.payload_binding = inst->payload_binding;
+		helper.shader_hash = inst->shader_hash;
+		helper.type = InstructionInstrumentationType(inst->type);
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

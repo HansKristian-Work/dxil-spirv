@@ -399,6 +399,7 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	else
 		ptr_id = var_id;
 
+	impl.register_externally_visible_write(instruction->getOperand(4));
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
 	Operation *op = impl.allocate(spv::OpStore);

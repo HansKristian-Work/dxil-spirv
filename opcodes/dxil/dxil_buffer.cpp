@@ -1087,7 +1087,10 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 
 	spv::Id elems[4] = {};
 	for (unsigned i = 0; i < 4; i++)
+	{
+		impl.register_externally_visible_write(instruction->getOperand(4 + i));
 		elems[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+	}
 
 	auto *store_op = impl.allocate(spv::OpStore);
 	store_op->add_id(chain_op->id);
@@ -1150,6 +1153,7 @@ static unsigned emit_buffer_store_values_bitcast(Converter::Impl &impl, const ll
 	{
 		if ((write_mask & (1u << i)) != 0)
 		{
+			impl.register_externally_visible_write(instruction->getOperand(4 + i));
 			store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
 			if (!is_typed)
 			{

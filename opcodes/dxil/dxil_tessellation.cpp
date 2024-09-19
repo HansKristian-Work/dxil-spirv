@@ -67,6 +67,7 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 		ptr_id = var_id;
 
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
+	impl.register_externally_visible_write(instruction->getOperand(4));
 
 	Operation *op = impl.allocate(spv::OpStore);
 	op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });

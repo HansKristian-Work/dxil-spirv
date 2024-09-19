@@ -444,6 +444,7 @@ bool emit_store_clip_cull_distance(Converter::Impl &impl, const llvm::CallInst *
 {
 	spv::Id ptr_id = get_clip_cull_distance_access_chain(impl, instruction, meta, spv::StorageClassOutput);
 
+	impl.register_externally_visible_write(instruction->getOperand(4));
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 	Operation *store_op = impl.allocate(spv::OpStore);
 	store_op->add_ids({ ptr_id, store_value });

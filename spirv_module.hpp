@@ -37,6 +37,7 @@ class Builder;
 class Instruction;
 
 static constexpr spv::Op PseudoOpReturnCond = spv::Op(0x100000);
+static constexpr spv::Op PseudoOpInstrumentExternallyVisibleStore = spv::Op(0x100001);
 } // namespace spv
 
 namespace dxil_spv
@@ -108,6 +109,7 @@ public:
 	spv::Id get_helper_call_id(HelperCall call, spv::Id type_id = 0);
 	spv::Id get_robust_physical_cbv_load_call_id(spv::Id type_id, spv::Id ptr_type_id, unsigned alignment);
 	void set_descriptor_qa_info(const DescriptorQAInfo &info);
+	void set_instruction_instrumentation_info(const InstructionInstrumentationInfo &info);
 	const DescriptorQAInfo &get_descriptor_qa_info() const;
 
 	static bool opcode_is_control_dependent(spv::Op opcode);

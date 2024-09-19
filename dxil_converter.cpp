@@ -5288,7 +5288,7 @@ bool Converter::Impl::emit_execution_modes_pixel()
 	auto flags = get_shader_flags(entry_point_meta);
 	bool early_depth_stencil = (flags & DXIL::ShaderFlagEarlyDepthStencil) != 0;
 
-	if (options.descriptor_qa_enabled)
+	if (options.descriptor_qa_enabled || options.instruction_instrumentation.enabled)
 	{
 		// If we have descriptor QA enabled, we will have side effects when running fragment shaders.
 		// This forces late-Z which can trigger some horrible performance issues.
@@ -6603,6 +6603,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto &pool = *result.node_pool;
 
 	spirv_module.set_descriptor_qa_info(options.descriptor_qa);
+	options.instruction_instrumentation.fp16 =
+	    options.min_precision_prefer_native_16bit || execution_mode_meta.native_16bit_operations;
+	spirv_module.set_instruction_instrumentation_info(options.instruction_instrumentation);
 	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", options.physical_storage_buffer);
 
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
@@ -6717,6 +6720,33 @@ void Converter::Impl::add(Operation *op, bool is_rov)
 	current_block->push_back(op);
 	if (is_rov)
 		current_block->push_back(allocate(spv::OpEndInvocationInterlockEXT));
+}
+
+void Converter::Impl::register_externally_visible_write(const llvm::Value *value)
+{
+	if (!options.instruction_instrumentation.enabled ||
+	    options.instruction_instrumentation.type != InstructionInstrumentationType::ExternallyVisibleWriteNanInf)
+		return;
+
+	// Ignore undefs and intentional nan/inf writes.
+	if (llvm::isa<llvm::Constant>(value))
+		return;
+
+	switch (value->getType()->getTypeID())
+	{
+	case llvm::Type::TypeID::HalfTyID:
+	case llvm::Type::TypeID::FloatTyID:
+	case llvm::Type::TypeID::DoubleTyID:
+	{
+		auto *op = allocate(spv::PseudoOpInstrumentExternallyVisibleStore);
+		op->add_id(get_id_for_value(value));
+		add(op);
+		break;
+	}
+
+	default:
+		break;
+	}
 }
 
 spv::Builder &Converter::Impl::builder()
@@ -7103,6 +7133,23 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		auto &c = static_cast<const OptionComputeShaderDerivatives &>(cap);
 		options.compute_shader_derivatives = c.supports_nv || c.supports_khr;
 		options.compute_shader_derivatives_khr = c.supports_khr;
+		break;
+	}
+
+	case Option::InstructionInstrumentation:
+	{
+		auto &qa = static_cast<const OptionInstructionInstrumentation &>(cap);
+		options.instruction_instrumentation.enabled = qa.enabled;
+		options.instruction_instrumentation.version = qa.version;
+		options.instruction_instrumentation.shader_hash = qa.shader_hash;
+		options.instruction_instrumentation.fp16 = false;
+		options.instruction_instrumentation.fp32 = true;
+		options.instruction_instrumentation.fp64 = true;
+		options.instruction_instrumentation.type = qa.type;
+		options.instruction_instrumentation.control_desc_set = qa.control_desc_set;
+		options.instruction_instrumentation.control_binding = qa.control_binding;
+		options.instruction_instrumentation.payload_desc_set = qa.payload_desc_set;
+		options.instruction_instrumentation.payload_binding = qa.payload_binding;
 		break;
 	}
 
