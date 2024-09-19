@@ -532,6 +532,7 @@ struct Converter::Impl
 	Operation *allocate(spv::Op op, spv::Id type_id);
 	Operation *allocate(spv::Op op, const llvm::Value *value, spv::Id type_id);
 	Operation *allocate(spv::Op op, spv::Id id, spv::Id type_id);
+	void register_externally_visible_write(const llvm::Value *value);
 	void rewrite_value(const llvm::Value *value, spv::Id id);
 	spv::Builder &builder();
 	spv::Id create_variable(spv::StorageClass storage, spv::Id type_id, const char *name = nullptr);
@@ -588,6 +589,7 @@ struct Converter::Impl
 		} offset_buffer_layout;
 
 		DescriptorQAInfo descriptor_qa;
+		InstructionInstrumentationInfo instruction_instrumentation;
 		bool descriptor_qa_enabled = false;
 		bool descriptor_qa_sink_handles = true;
 		bool min_precision_prefer_native_16bit = false;

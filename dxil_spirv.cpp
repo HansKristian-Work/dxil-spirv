@@ -176,6 +176,7 @@ static void print_help()
 	     "\t[--storage-input-output-16bit]\n"
 	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n"
 	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
+	     "\t[--instruction-instrumentation <set> <binding base> <shader hash>]\n"
 	     "\t[--min-precision-native-16bit]\n"
 	     "\t[--raw-llvm]\n"
 	     "\t[--use-reflection-names]\n"
@@ -251,6 +252,11 @@ struct Arguments
 	bool descriptor_qa = false;
 	uint32_t descriptor_qa_set = 0;
 	uint32_t descriptor_qa_binding = 0;
+
+	bool instruction_instrumentation = false;
+	uint32_t instruction_instrumentation_set = 0;
+	uint32_t instruction_instrumentation_binding = 0;
+
 	uint64_t shader_hash = 0;
 
 	dxil_spv_option_bindless_offset_buffer_layout offset_buffer_layout;
@@ -766,6 +772,12 @@ int main(int argc, char **argv)
 		args.descriptor_qa_binding = parser.next_uint();
 		args.shader_hash = uint64_t(strtoull(parser.next_string(), nullptr, 16));
 	});
+	cbs.add("--instruction-instrumentation", [&](CLIParser &parser) {
+		args.instruction_instrumentation = true;
+		args.instruction_instrumentation_set = parser.next_uint();
+		args.instruction_instrumentation_binding = parser.next_uint();
+		args.shader_hash = uint64_t(strtoull(parser.next_string(), nullptr, 16));
+	});
 	cbs.add("--min-precision-native-16bit", [&](CLIParser &) { args.min_precision_native_16bit = true; });
 	cbs.add("--raw-llvm", [&](CLIParser &) { args.raw_llvm = true; });
 	cbs.add("--use-reflection-names", [&](CLIParser &) { args.use_reflection_names = true; });
@@ -1003,6 +1015,19 @@ int main(int argc, char **argv)
 		                                           args.descriptor_qa_set, args.descriptor_qa_binding + 1,
 		                                           args.shader_hash };
 		dxil_spv_converter_add_option(converter, &qa.base);
+	}
+
+	{
+		const dxil_spv_option_instruction_instrumentation inst = {
+			{ DXIL_SPV_OPTION_INSTRUCTION_INSTRUMENTATION },
+			args.instruction_instrumentation ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
+			DXIL_SPV_INSTRUCTION_INSTRUMENTATION_INTERFACE_VERSION,
+			args.instruction_instrumentation_set, args.instruction_instrumentation_binding,
+			args.instruction_instrumentation_set, args.instruction_instrumentation_binding + 1,
+			args.shader_hash,
+			DXIL_SPV_INSTRUCTION_INSTRUMENTATION_TYPE_EXTERNALLY_VISIBLE_WRITE_NAN_INF,
+		};
+		dxil_spv_converter_add_option(converter, &inst.base);
 	}
 
 	{

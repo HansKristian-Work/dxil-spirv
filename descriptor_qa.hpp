@@ -41,6 +41,29 @@ struct DescriptorQAInfo
 	uint64_t shader_hash = 0;
 };
 
+enum class InstructionInstrumentationType
+{
+	FullNanInf = 0,
+	// Only instrument writes to externally visible memory, etc.
+	// Gets rid of potential false positives.
+	ExternallyVisibleWriteNanInf = 1
+};
+
+struct InstructionInstrumentationInfo
+{
+	uint32_t version = 0;
+	bool enabled = false;
+	bool fp16 = false;
+	bool fp32 = false;
+	bool fp64 = false;
+	uint32_t control_desc_set = 0;
+	uint32_t control_binding = 0;
+	uint32_t payload_desc_set = 0;
+	uint32_t payload_binding = 0;
+	uint64_t shader_hash = 0;
+	InstructionInstrumentationType type = {};
+};
+
 enum DescriptorQATypeFlagBits
 {
 	DESCRIPTOR_QA_TYPE_NONE_BIT = 0,

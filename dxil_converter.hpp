@@ -28,6 +28,7 @@
 #include "dxil_parser.hpp"
 #include "llvm_bitcode_parser.hpp"
 #include "node_pool.hpp"
+#include "spirv_module.hpp"
 #include <memory>
 
 namespace spv
@@ -254,6 +255,7 @@ enum class Option : uint32_t
 	RawAccessChainsNV = 38,
 	DriverVersion = 39,
 	ComputeShaderDerivatives = 40,
+	InstructionInstrumentation = 41,
 	Count
 };
 
@@ -707,6 +709,25 @@ struct OptionComputeShaderDerivatives : OptionBase
 
 	bool supports_nv = false;
 	bool supports_khr = false;
+};
+
+struct OptionInstructionInstrumentation : OptionBase
+{
+	OptionInstructionInstrumentation()
+	    : OptionBase(Option::InstructionInstrumentation)
+	{
+	}
+
+	enum { DefaultVersion = 1 };
+
+	bool enabled = false;
+	uint32_t version = DefaultVersion;
+	uint32_t control_desc_set = 0;
+	uint32_t control_binding = 0;
+	uint32_t payload_desc_set = 0;
+	uint32_t payload_binding = 0;
+	uint64_t shader_hash = 0;
+	InstructionInstrumentationType type = {};
 };
 
 struct DescriptorTableEntry

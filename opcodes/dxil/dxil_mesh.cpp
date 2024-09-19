@@ -188,6 +188,7 @@ bool emit_store_vertex_output_instruction(Converter::Impl &impl, const llvm::Cal
 
 	impl.add(op);
 
+	impl.register_externally_visible_write(instruction->getOperand(4));
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
 	op = impl.allocate(spv::OpStore);
@@ -222,6 +223,7 @@ bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::
 	}
 	uint32_t num_cols = builder.getNumTypeComponents(output_type_id);
 
+	impl.register_externally_visible_write(instruction->getOperand(4));
 	spv::Id store_value = impl.fixup_store_type_io(meta.component_type, 1,
 	                                               impl.get_id_for_value(instruction->getOperand(4)));
 
