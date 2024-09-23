@@ -5704,6 +5704,10 @@ NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 			if (tag == DXIL::NodeMetadataTag::NodeMaxRecords)
 				node.coalesce_factor = get_constant_metadata(input, i + 1);
 		}
+
+        // We seem to need a sensible default.
+        if (node.coalesce_factor == 0 && node.launch_type == DXIL::NodeLaunchType::Coalescing)
+            node.coalesce_factor = 1;
 	}
 
 	auto *share_input_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeShareInputOf);
