@@ -103,7 +103,7 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 		// since we have no easy way of introducing additional control flow
 		// in the LLVM -> SPIR-V emitter.
 		// This gets resolved during final SPIR-V lowering.
-		auto *cond_ret = impl.allocate(spv::OpLifetimeStop);
+		auto *cond_ret = impl.allocate(spv::PseudoOpReturnCond);
 		cond_ret->add_id(early_return->id);
 		impl.add(cond_ret);
 	}

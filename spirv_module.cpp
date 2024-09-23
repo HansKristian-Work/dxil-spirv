@@ -1623,7 +1623,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
 			build_demote_call_cond(op->arguments[0]);
 		}
-		else if (op->op == spv::OpLifetimeStop)
+		else if (op->op == spv::PseudoOpReturnCond)
 		{
 			// Have to ensure we emit loop header before we replace block.
 			if (ir.merge_info.merge_type == MergeType::Loop && rewrite_phi_incoming_to == 0)

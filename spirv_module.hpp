@@ -35,6 +35,8 @@ namespace spv
 class Function;
 class Builder;
 class Instruction;
+
+static constexpr spv::Op PseudoOpReturnCond = spv::Op(0x100000);
 } // namespace spv
 
 namespace dxil_spv
