@@ -41,7 +41,7 @@ using namespace dxil_spv;
 
 static std::string convert_to_asm(const void *code, size_t size)
 {
-	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1_SPIRV_1_4);
+	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
@@ -55,13 +55,36 @@ static std::string convert_to_asm(const void *code, size_t size)
 
 static bool validate_spirv(const void *code, size_t size)
 {
-	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1_SPIRV_1_4);
+	// We've already validated the module, now parse information which is related to API limits.
+	auto num_words = unsigned(size >> 2);
+	// Temporary spirv-val workaround. Broken validation for VUID 04924.
+	bool has_unusual_component = false;
+	auto *words = static_cast<const uint32_t *>(code);
+
+	unsigned offset = 5;
+	while (offset < num_words)
+	{
+		auto op = words[offset] & 0xffff;
+		unsigned count = (words[offset] >> 16) & 0xffff;
+
+		if (op == SpvOpDecorate && words[offset + 2] == SpvDecorationComponent &&
+		    words[offset + 3] != 0)
+		{
+			// This trips up spirv-val, but it only bothers with that in Vulkan environment, fallback to universal env.
+			has_unusual_component = true;
+			break;
+		}
+
+		offset += count;
+	}
+
+	spvtools::SpirvTools tools(has_unusual_component ? SPV_ENV_UNIVERSAL_1_6 : SPV_ENV_VULKAN_1_3);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("SPIRV-Tools message: %s\n", message);
 	});
 	spvtools::ValidatorOptions opts;
 	opts.SetScalarBlockLayout(true);
-	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), opts);
+	return tools.Validate(static_cast<const uint32_t *>(code), num_words, opts);
 }
 
 static std::string convert_to_glsl(const void *code, size_t size)
