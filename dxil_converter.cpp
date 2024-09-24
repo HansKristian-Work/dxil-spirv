@@ -6732,6 +6732,17 @@ void Converter::Impl::register_externally_visible_write(const llvm::Value *value
 	if (llvm::isa<llvm::Constant>(value))
 		return;
 
+	// Punch through any bitcasts.
+	// Sometimes, shaders want to store floats as uints for practical reasons.
+	while (llvm::isa<llvm::CastInst>(value))
+	{
+		auto *cast = llvm::cast<llvm::CastInst>(value);
+		if (cast->getOpcode() == llvm::CastInst::CastOps::BitCast)
+			value = cast->getOperand(0);
+		else
+			break;
+	}
+
 	switch (value->getType()->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
