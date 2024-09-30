@@ -49,25 +49,25 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 %54 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
-OpEntryPoint AnyHitNV %3 "main" %9 %13 %24
+OpEntryPoint AnyHitKHR %3 "main" %9 %13 %24
 OpName %3 "main"
 OpName %7 ""
 OpName %9 "payload"
 OpName %11 ""
 OpName %13 "hit"
-OpDecorate %24 BuiltIn WorldToObjectNV
+OpDecorate %24 BuiltIn WorldToObjectKHR
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
 %6 = OpTypeVector %5 3
 %7 = OpTypeStruct %6
-%8 = OpTypePointer IncomingRayPayloadNV %7
-%9 = OpVariable %8 IncomingRayPayloadNV
+%8 = OpTypePointer IncomingRayPayloadKHR %7
+%9 = OpVariable %8 IncomingRayPayloadKHR
 %10 = OpTypeVector %5 2
 %11 = OpTypeStruct %10
-%12 = OpTypePointer HitAttributeNV %11
-%13 = OpVariable %12 HitAttributeNV
-%14 = OpTypePointer IncomingRayPayloadNV %6
+%12 = OpTypePointer HitAttributeKHR %11
+%13 = OpVariable %12 HitAttributeKHR
+%14 = OpTypePointer IncomingRayPayloadKHR %6
 %16 = OpTypeInt 32 0
 %17 = OpConstant %16 0
 %22 = OpTypeMatrix %6 4

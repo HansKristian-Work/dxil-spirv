@@ -65,8 +65,8 @@ OpExtension "SPV_EXT_mesh_shader"
 OpMemoryModel Logical GLSL450
 OpEntryPoint MeshEXT %3 "main" %11 %16 %17 %22 %24 %28 %29
 OpExecutionMode %3 OutputVertices 24
-OpExecutionMode %3 OutputPrimitivesNV 8
-OpExecutionMode %3 OutputTrianglesNV
+OpExecutionMode %3 OutputPrimitivesEXT 8
+OpExecutionMode %3 OutputTrianglesEXT
 OpExecutionMode %3 LocalSize 2 3 4
 OpName %3 "main"
 OpName %11 "SV_Position"

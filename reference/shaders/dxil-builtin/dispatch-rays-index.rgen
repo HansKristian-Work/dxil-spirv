@@ -32,13 +32,13 @@ OpCapability StorageImageArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %8 %11
+OpEntryPoint RayGenerationKHR %3 "main" %8 %11
 OpName %3 "main"
 OpName %8 "UTex"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
-OpDecorate %11 BuiltIn LaunchIdNV
+OpDecorate %11 BuiltIn LaunchIdKHR
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

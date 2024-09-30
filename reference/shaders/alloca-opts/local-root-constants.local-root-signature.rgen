@@ -69,7 +69,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %13 %17 %67
+OpEntryPoint RayGenerationKHR %3 "main" %13 %17 %67
 OpName %3 "main"
 OpName %11 "SBTBlock"
 OpName %13 "SBT"
@@ -99,7 +99,7 @@ OpDecorate %54 ArrayStride 16
 OpMemberDecorate %55 0 Offset 0
 OpDecorate %55 Block
 OpMemberDecorate %55 0 NonWritable
-OpDecorate %67 BuiltIn LaunchIdNV
+OpDecorate %67 BuiltIn LaunchIdKHR
 OpDecorate %78 ArrayStride 4
 OpMemberDecorate %79 0 Offset 0
 OpDecorate %79 Block
@@ -113,8 +113,8 @@ OpMemberDecorate %79 0 NonWritable
 %9 = OpTypeArray %5 %8
 %10 = OpTypeVector %5 2
 %11 = OpTypeStruct %7 %9 %10 %10 %10 %10 %10 %10 %10 %10 %10
-%12 = OpTypePointer ShaderRecordBufferNV %11
-%13 = OpVariable %12 ShaderRecordBufferNV
+%12 = OpTypePointer ShaderRecordBufferKHR %11
+%13 = OpVariable %12 ShaderRecordBufferKHR
 %14 = OpTypeFloat 32
 %15 = OpTypeImage %14 2D 0 0 0 2 Unknown
 %16 = OpTypePointer UniformConstant %15
@@ -122,10 +122,10 @@ OpMemberDecorate %79 0 NonWritable
 %18 = OpConstant %5 4
 %19 = OpTypeArray %14 %18
 %20 = OpTypePointer Function %19
-%22 = OpTypePointer ShaderRecordBufferNV %10
-%25 = OpTypePointer ShaderRecordBufferNV %7
+%22 = OpTypePointer ShaderRecordBufferKHR %10
+%25 = OpTypePointer ShaderRecordBufferKHR %7
 %27 = OpConstant %5 0
-%28 = OpTypePointer ShaderRecordBufferNV %5
+%28 = OpTypePointer ShaderRecordBufferKHR %5
 %32 = OpConstant %5 1
 %35 = OpConstant %5 2
 %38 = OpConstant %5 3

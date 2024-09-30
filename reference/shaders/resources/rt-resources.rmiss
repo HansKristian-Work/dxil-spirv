@@ -49,7 +49,7 @@ OpCapability StorageImageArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint MissNV %3 "main" %11 %14 %18
+OpEntryPoint MissKHR %3 "main" %11 %14 %18
 OpName %3 "main"
 OpName %11 "Tex"
 OpName %14 "TexUnsized"
@@ -73,14 +73,14 @@ OpDecorate %14 Binding 0
 %14 = OpVariable %13 UniformConstant
 %15 = OpTypeVector %5 4
 %16 = OpTypeStruct %15 %7
-%17 = OpTypePointer IncomingRayPayloadNV %16
-%18 = OpVariable %17 IncomingRayPayloadNV
-%19 = OpTypePointer IncomingRayPayloadNV %7
+%17 = OpTypePointer IncomingRayPayloadKHR %16
+%18 = OpVariable %17 IncomingRayPayloadKHR
+%19 = OpTypePointer IncomingRayPayloadKHR %7
 %21 = OpConstant %7 1
 %24 = OpTypePointer UniformConstant %6
 %27 = OpConstant %7 0
 %29 = OpTypeVector %7 2
-%35 = OpTypePointer IncomingRayPayloadNV %15
+%35 = OpTypePointer IncomingRayPayloadKHR %15
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %50 = OpUndef %15

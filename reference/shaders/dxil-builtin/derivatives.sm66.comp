@@ -22,11 +22,11 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
-OpCapability ComputeDerivativeGroupLinearNV
+OpCapability ComputeDerivativeGroupLinearKHR
 OpExtension "SPV_NV_compute_shader_derivatives"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %18 %27 %49
-OpExecutionMode %3 DerivativeGroupLinearNV
+OpExecutionMode %3 DerivativeGroupLinearKHR
 OpExecutionMode %3 LocalSize 8 2 4
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0

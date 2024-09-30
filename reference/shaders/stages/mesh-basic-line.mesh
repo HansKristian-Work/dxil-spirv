@@ -67,8 +67,8 @@ OpExtension "SPV_EXT_shader_viewport_index_layer"
 OpMemoryModel Logical GLSL450
 OpEntryPoint MeshEXT %3 "main" %11 %12 %17 %20 %21 %24 %28 %32 %34 %38 %44
 OpExecutionMode %3 OutputVertices 24
-OpExecutionMode %3 OutputPrimitivesNV 8
-OpExecutionMode %3 OutputLinesNV
+OpExecutionMode %3 OutputPrimitivesEXT 8
+OpExecutionMode %3 OutputLinesEXT
 OpExecutionMode %3 LocalSize 2 3 4
 OpName %3 "main"
 OpName %11 "SV_Position"
@@ -82,13 +82,13 @@ OpName %36 ""
 OpDecorate %11 BuiltIn Position
 OpDecorate %12 Location 1
 OpDecorate %17 BuiltIn CullPrimitiveEXT
-OpDecorate %17 PerPrimitiveNV
+OpDecorate %17 PerPrimitiveEXT
 OpDecorate %20 BuiltIn Layer
-OpDecorate %20 PerPrimitiveNV
+OpDecorate %20 PerPrimitiveEXT
 OpDecorate %21 BuiltIn PrimitiveId
-OpDecorate %21 PerPrimitiveNV
+OpDecorate %21 PerPrimitiveEXT
 OpDecorate %24 Location 3
-OpDecorate %24 PerPrimitiveNV
+OpDecorate %24 PerPrimitiveEXT
 OpDecorate %28 BuiltIn PrimitiveLineIndicesEXT
 OpDecorate %34 BuiltIn LocalInvocationIndex
 OpDecorate %44 BuiltIn NumSubgroups

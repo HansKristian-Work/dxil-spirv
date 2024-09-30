@@ -31,11 +31,11 @@ OpCapability ImageBuffer
 OpCapability GroupNonUniform
 OpCapability GroupNonUniformShuffle
 OpCapability GroupNonUniformQuad
-OpCapability ComputeDerivativeGroupLinearNV
+OpCapability ComputeDerivativeGroupLinearKHR
 OpExtension "SPV_NV_compute_shader_derivatives"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %12 %32 %48
-OpExecutionMode %3 DerivativeGroupLinearNV
+OpExecutionMode %3 DerivativeGroupLinearKHR
 OpExecutionMode %3 LocalSize 16 2 2
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0

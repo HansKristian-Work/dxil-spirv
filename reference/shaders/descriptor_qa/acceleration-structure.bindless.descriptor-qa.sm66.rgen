@@ -111,7 +111,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %8 %12 %17 %40 %82
+OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %17 %40 %82
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -193,9 +193,9 @@ OpDecorate %143 NonUniform
 %13 = OpTypeFloat 32
 %14 = OpTypeVector %13 4
 %15 = OpTypeStruct %14
-%16 = OpTypePointer RayPayloadNV %15
-%17 = OpVariable %16 RayPayloadNV
-%18 = OpTypePointer RayPayloadNV %14
+%16 = OpTypePointer RayPayloadKHR %15
+%17 = OpVariable %16 RayPayloadKHR
+%18 = OpTypePointer RayPayloadKHR %14
 %20 = OpConstant %5 0
 %21 = OpConstant %13 1
 %22 = OpConstant %13 2

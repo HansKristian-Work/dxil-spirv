@@ -48,7 +48,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %9 %13
+OpEntryPoint RayGenerationKHR %3 "main" %9 %13
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
 OpName %7 "BUFSSBO"
@@ -59,7 +59,7 @@ OpDecorate %7 Block
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
 OpDecorate %9 NonReadable
-OpDecorate %13 BuiltIn LaunchIdNV
+OpDecorate %13 BuiltIn LaunchIdKHR
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 16 0

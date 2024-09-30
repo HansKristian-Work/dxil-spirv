@@ -45,14 +45,14 @@ OpCapability StorageImageArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %8 %12 %13 %14 %15 %60
+OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %13 %14 %15 %60
 OpName %3 "main"
 OpName %8 "IMG"
 OpName %10 ""
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
-OpDecorate %60 BuiltIn LaunchIdNV
+OpDecorate %60 BuiltIn LaunchIdKHR
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -61,17 +61,17 @@ OpDecorate %60 BuiltIn LaunchIdNV
 %8 = OpVariable %7 UniformConstant
 %9 = OpTypeVector %5 4
 %10 = OpTypeStruct %9
-%11 = OpTypePointer CallableDataNV %10
-%12 = OpVariable %11 CallableDataNV
-%13 = OpVariable %11 CallableDataNV
-%14 = OpVariable %11 CallableDataNV
-%15 = OpVariable %11 CallableDataNV
+%11 = OpTypePointer CallableDataKHR %10
+%12 = OpVariable %11 CallableDataKHR
+%13 = OpVariable %11 CallableDataKHR
+%14 = OpVariable %11 CallableDataKHR
+%15 = OpVariable %11 CallableDataKHR
 %16 = OpTypeInt 32 0
 %17 = OpConstant %16 0
 %18 = OpConstant %16 1
 %19 = OpConstant %16 2
 %20 = OpConstant %16 3
-%21 = OpTypePointer CallableDataNV %9
+%21 = OpTypePointer CallableDataKHR %9
 %58 = OpTypeVector %16 3
 %59 = OpTypePointer Input %58
 %60 = OpVariable %59 Input

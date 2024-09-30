@@ -66,7 +66,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint RayGenerationNV %3 "main" %9 %16 %20 %25
+OpEntryPoint RayGenerationKHR %3 "main" %9 %16 %20 %25
 OpName %3 "main"
 OpName %7 "RootConstants"
 OpName %9 "registers"
@@ -107,8 +107,8 @@ OpDecorate %20 Binding 1
 %12 = OpConstant %5 6
 %13 = OpTypeArray %5 %12
 %14 = OpTypeStruct %11 %13 %6 %6 %6 %6 %6 %6 %6 %6 %6
-%15 = OpTypePointer ShaderRecordBufferNV %14
-%16 = OpVariable %15 ShaderRecordBufferNV
+%15 = OpTypePointer ShaderRecordBufferKHR %14
+%16 = OpVariable %15 ShaderRecordBufferKHR
 %17 = OpTypeInt 32 1
 %18 = OpTypeAccelerationStructureKHR
 %19 = OpTypePointer UniformConstant %18
@@ -116,16 +116,16 @@ OpDecorate %20 Binding 1
 %21 = OpTypeFloat 32
 %22 = OpTypeVector %21 4
 %23 = OpTypeStruct %22
-%24 = OpTypePointer RayPayloadNV %23
-%25 = OpVariable %24 RayPayloadNV
-%26 = OpTypePointer RayPayloadNV %22
+%24 = OpTypePointer RayPayloadKHR %23
+%25 = OpVariable %24 RayPayloadKHR
+%26 = OpTypePointer RayPayloadKHR %22
 %28 = OpConstant %5 0
 %29 = OpConstant %21 1
 %30 = OpConstant %21 2
 %31 = OpConstant %21 3
 %32 = OpConstant %21 4
 %33 = OpConstantComposite %22 %29 %30 %31 %32
-%34 = OpTypePointer ShaderRecordBufferNV %6
+%34 = OpTypePointer ShaderRecordBufferKHR %6
 %36 = OpConstant %5 2
 %39 = OpConstant %21 0
 %40 = OpTypeVector %21 3
