@@ -611,6 +611,7 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_input(
 	{
 		data->broadcast_grid[i] = input.broadcast_grid[i];
 		data->thread_group_size_spec_id[i] = input.thread_group_size_spec_id[i];
+		data->max_broadcast_grid_spec_id[i] = input.max_broadcast_grid_spec_id[i];
 	}
 	data->recursion_factor = input.recursion_factor;
 	data->coalesce_factor = input.coalesce_factor;
@@ -621,6 +622,7 @@ dxil_spv_result dxil_spv_parsed_blob_get_entry_point_node_input(
 	data->is_entry_point_spec_id = input.is_entry_point_spec_id;
 	data->dispatch_grid_is_upper_bound = input.dispatch_grid_is_upper_bound ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	data->dispatch_grid_is_upper_bound_spec_id = input.dispatch_grid_is_upper_bound_spec_id;
+	data->is_static_broadcast_node_spec_id = input.is_static_broadcast_node_spec_id;
 	data->node_track_rw_input_sharing = input.node_track_rw_input_sharing ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	data->is_program_entry = input.is_program_entry ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 

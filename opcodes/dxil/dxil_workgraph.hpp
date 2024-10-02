@@ -55,12 +55,9 @@ enum NodeInputParameter
 	NodePayloadOutputBDA = 4,
 	NodePayloadOutputAtomicBDA = 5,
 	NodeLocalRootSignatureBDA = 6,
-	NodeGridDispatchX = 7,
-	NodeGridDispatchY = 8,
-	NodeGridDispatchZ = 9,
-	NodePayloadOutputOffset = 10,
-	NodePayloadOutputStride = 11,
-	NodeRemainingRecursionLevels = 12
+	NodePayloadOutputOffset = 7,
+	NodePayloadOutputStride = 8,
+	NodeRemainingRecursionLevels = 9
 };
 
 enum NodeSpecConstant
@@ -71,6 +68,10 @@ enum NodeSpecConstant
 	NodeSpecIdIsEntryPoint = 3,
 	NodeSpecIdIndirectPayloadStride = 4,
 	NodeSpecIdDispatchGridIsUpperBound = 5,
+	NodeSpecIdIsStaticBroadcastNode = 6,
+	NodeSpecIdMaxBroadcastGridX = 7,
+	NodeSpecIdMaxBroadcastGridY = 8,
+	NodeSpecIdMaxBroadcastGridZ = 9,
 	NodeSpecIdOutputBase = 100,
 };
 

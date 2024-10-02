@@ -535,15 +535,37 @@ bool emit_get_remaining_recursion_levels(Converter::Impl &impl, const llvm::Call
 	return true;
 }
 
+static spv::Id emit_real_builtin_id(Converter::Impl &impl, spv::Id &id, spv::BuiltIn builtin)
+{
+	if (id)
+		return id;
+
+	// Build our own true workgroup ID. This is hidden from application.
+	auto &builder = impl.builder();
+	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
+	spv::Id workgroup_id = impl.create_variable(spv::StorageClassInput, uvec3_type);
+	builder.addDecoration(workgroup_id, spv::DecorationBuiltIn, builtin);
+	id = workgroup_id;
+	return id;
+}
+
+static spv::Id emit_real_workgroup_id(Converter::Impl &impl)
+{
+	return emit_real_builtin_id(impl, impl.node_input.real_workgroup_id, spv::BuiltInWorkgroupId);
+}
+
+static spv::Id emit_real_global_invocation_id(Converter::Impl &impl)
+{
+	return emit_real_builtin_id(impl, impl.node_input.real_global_invocation_id, spv::BuiltInGlobalInvocationId);
+}
+
 static spv::Id emit_linear_node_index(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
 	spv::Id u32_type = builder.makeUintType(32);
 	spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
-
-	// Build our own true workgroup ID. This is hidden from application.
-	spv::Id workgroup_id = impl.create_variable(spv::StorageClassInput, uvec3_type);
-	builder.addDecoration(workgroup_id, spv::DecorationBuiltIn, spv::BuiltInWorkgroupId);
+	spv::Id workgroup_id = emit_real_workgroup_id(impl);
 
 	auto *load_wg_id = impl.allocate(spv::OpLoad, uvec3_type);
 	load_wg_id->add_id(workgroup_id);
@@ -615,7 +637,19 @@ static spv::Id emit_linear_node_index(Converter::Impl &impl)
 	offset_op->add_id(linear_id);
 	offset_op->add_id(linear_offset);
 	impl.add(offset_op);
-	return offset_op->id;
+
+	if (impl.node_input.launch_type == DXIL::NodeLaunchType::Broadcasting)
+	{
+		// Select between static payload and WorkGroupID.xy driven payload.
+		auto *linear_id_select = impl.allocate(spv::OpSelect, u32_type);
+		linear_id_select->add_id(impl.node_input.is_static_broadcast_node_id);
+		linear_id_select->add_id(linear_offset);
+		linear_id_select->add_id(offset_op->id);
+		impl.add(linear_id_select);
+		return linear_id_select->id;
+	}
+	else
+		return offset_op->id;
 }
 
 static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_node_index_id,
@@ -725,125 +759,507 @@ static bool emit_payload_pointer_resolve(Converter::Impl &impl, spv::Id linear_n
 	return true;
 }
 
-static spv::Id emit_workgraph_compute_builtins(Converter::Impl &impl, spv::Id linear_index_id,
-                                               DXIL::NodeLaunchType launch_type,
-                                               bool broadcast_has_max_grid)
+static spv::Id emit_dispatch_bit_count(Converter::Impl &impl, spv::Id count_minus_1)
 {
 	auto &builder = impl.builder();
 	spv::Id u32_type = builder.makeUintType(32);
+	auto *bits = impl.allocate(spv::OpExtInst, u32_type);
+	bits->add_id(impl.glsl_std450_ext);
+	bits->add_literal(GLSLstd450FindUMsb);
+	bits->add_id(count_minus_1);
+	impl.add(bits);
+
+	auto *plus1 = impl.allocate(spv::OpIAdd, u32_type);
+	plus1->add_id(bits->id);
+	plus1->add_id(builder.makeUintConstant(1));
+	impl.add(plus1);
+
+	return plus1->id;
+}
+
+static CFGNode *emit_workgraph_dispatcher_path_broadcast_static_payload(
+	Converter::Impl &impl, CFGNode *path, spv::Id main_entry_id)
+{
+	impl.current_block = &path->ir.operations;
+	auto &builder = impl.builder();
+	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
+
+	spv::Id workgroup_var_id = emit_real_workgroup_id(impl);
+	spv::Id global_invocation_id = emit_real_global_invocation_id(impl);
+
+	auto *load_wg = impl.allocate(spv::OpLoad, uvec3_type);
+	load_wg->add_id(workgroup_var_id);
+	impl.add(load_wg);
+
+	auto *load_gid = impl.allocate(spv::OpLoad, uvec3_type);
+	load_gid->add_id(global_invocation_id);
+	impl.add(load_gid);
+
+	auto *store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInWorkgroupId));
+	store_op->add_id(load_wg->id);
+	impl.add(store_op);
+
+	store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInGlobalInvocationId));
+	store_op->add_id(load_gid->id);
+	impl.add(store_op);
+
+	auto *call_op = impl.allocate(spv::OpFunctionCall, impl.builder().makeVoidType());
+	call_op->add_id(main_entry_id);
+	impl.add(call_op);
+
+	return path;
+}
+
+static CFGNode *emit_workgraph_dispatcher_path_broadcast_amplified(
+    Converter::Impl &impl, CFGNodePool &pool, CFGNode *path,
+    spv::Id main_entry_id, bool broadcast_has_max_grid)
+{
+	impl.current_block = &path->ir.operations;
+	auto &builder = impl.builder();
+	spv::Id u32_type = builder.makeUintType(32);
 	spv::Id u64_type = builder.makeUintType(64);
-	spv::Id execution_mask_id = 0;
+	spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
+	spv::Id real_workgroup_var_id = emit_real_workgroup_id(impl);
 
-	if (launch_type == DXIL::NodeLaunchType::Broadcasting)
+	// Load gl_WorkGroupID.
+	auto *load_wg = impl.allocate(spv::OpLoad, uvec3_type);
+	load_wg->add_id(real_workgroup_var_id);
+	impl.add(load_wg);
+
+	// gl_WorkGroupID.z.
+	auto *dispatch_z = impl.allocate(spv::OpCompositeExtract, u32_type);
+	dispatch_z->add_id(load_wg->id);
+	dispatch_z->add_literal(2);
+	impl.add(dispatch_z);
+
+	spv::Id num_workgroups_var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInNumWorkgroups);
+	auto *num_workgroups = impl.allocate(spv::OpLoad, uvec3_type);
+	num_workgroups->add_id(num_workgroups_var_id);
+	impl.add(num_workgroups);
+
+	auto *num_workgroups_z = impl.allocate(spv::OpCompositeExtract, u32_type);
+	num_workgroups_z->add_id(num_workgroups->id);
+	num_workgroups_z->add_literal(2);
+	impl.add(num_workgroups_z);
+
+	// The grid size is embedded in the payload itself.
+	spv::Id target_dispatch_grid_minus_1[3] = {};
+	spv::Id workgroup_bit_offset[3] = {};
+	spv::Id workgroup_bit_count[3] = {};
+	bool dimension_is_trivial[3] = {};
+	spv::Id upper_dimension_size_id = 0;
+	spv::Id target_amplification_rate_id = 0;
+	spv::Id workgroup_size_id = 0;
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	if (broadcast_has_max_grid && impl.node_input.dispatch_grid.count)
 	{
-		spv::Id workgroup_elems[3];
-		workgroup_elems[0] = emit_load_node_input_push_parameter(impl, NodeGridDispatchX, u32_type);
-		workgroup_elems[1] = emit_load_node_input_push_parameter(impl, NodeGridDispatchY, u32_type);
-		workgroup_elems[2] = emit_load_node_input_push_parameter(impl, NodeGridDispatchZ, u32_type);
-		spv::Id workgroup_id = impl.build_vector(u32_type, workgroup_elems, 3);
+		spv::Id target_dispatch_grid[3];
 
-		auto *store_op = impl.allocate(spv::OpStore);
-		store_op->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInWorkgroupId));
-		store_op->add_id(workgroup_id);
-		impl.add(store_op);
+		auto *load_bda = impl.allocate(spv::OpLoad, u64_type);
+		load_bda->add_id(impl.node_input.private_bda_var_id);
+		impl.add(load_bda);
 
-		spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
-		auto *load_local_id = impl.allocate(spv::OpLoad, uvec3_type);
-		load_local_id->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInLocalInvocationId));
-		impl.add(load_local_id);
+		auto *offset_ptr = impl.allocate(spv::OpIAdd, u64_type);
+		offset_ptr->add_id(load_bda->id);
+		offset_ptr->add_id(builder.makeUint64Constant(impl.node_input.dispatch_grid.offset));
+		impl.add(offset_ptr);
 
-		auto *mul_op = impl.allocate(spv::OpIMul, uvec3_type);
-		mul_op->add_id(impl.node_input.thread_group_size_id);
-		mul_op->add_id(workgroup_id);
-		impl.add(mul_op);
+		spv::Id u32_grid_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1,
+		                                            impl.node_input.dispatch_grid.count);
+		spv::Id grid_type_id = impl.get_type_id(impl.node_input.dispatch_grid.component_type,
+		                                        1, impl.node_input.dispatch_grid.count);
 
-		auto *add_op = impl.allocate(spv::OpIAdd, uvec3_type);
-		add_op->add_id(mul_op->id);
-		add_op->add_id(load_local_id->id);
-		impl.add(add_op);
+		auto *grid_cast = impl.allocate(
+		    spv::OpBitcast, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, grid_type_id));
+		grid_cast->add_id(offset_ptr->id);
+		impl.add(grid_cast);
 
-		store_op = impl.allocate(spv::OpStore);
-		store_op->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInGlobalInvocationId));
-		store_op->add_id(add_op->id);
-		impl.add(store_op);
+		auto *load_grid = impl.allocate(spv::OpLoad, grid_type_id);
+		load_grid->add_id(grid_cast->id);
+		load_grid->add_literal(spv::MemoryAccessAlignedMask);
+		load_grid->add_literal(impl.node_input.dispatch_grid.component_type == DXIL::ComponentType::U32 ?
+		                           sizeof(uint32_t) : sizeof(uint16_t));
+		impl.add(load_grid);
 
-		// The grid size is embedded in the payload itself.
-		if (broadcast_has_max_grid && impl.node_input.dispatch_grid.count)
+		if (impl.node_input.dispatch_grid.component_type == DXIL::ComponentType::U16)
 		{
-			auto *load_bda = impl.allocate(spv::OpLoad, u64_type);
-			load_bda->add_id(impl.node_input.private_bda_var_id);
-			impl.add(load_bda);
+			auto *conv_op = impl.allocate(spv::OpUConvert, u32_grid_type_id);
+			conv_op->add_id(load_grid->id);
+			impl.add(conv_op);
+			load_grid = conv_op;
+		}
 
-			auto *offset_ptr = impl.allocate(spv::OpIAdd, u64_type);
-			offset_ptr->add_id(load_bda->id);
-			offset_ptr->add_id(builder.makeUint64Constant(impl.node_input.dispatch_grid.offset));
-			impl.add(offset_ptr);
-
-			spv::Id u32_grid_type_id = impl.get_type_id(DXIL::ComponentType::U32, 1,
-			                                            impl.node_input.dispatch_grid.count);
-			spv::Id grid_type_id = impl.get_type_id(impl.node_input.dispatch_grid.component_type,
-			                                        1, impl.node_input.dispatch_grid.count);
-
-			auto *grid_cast = impl.allocate(
-			    spv::OpBitcast, builder.makePointer(spv::StorageClassPhysicalStorageBuffer, grid_type_id));
-			grid_cast->add_id(offset_ptr->id);
-			impl.add(grid_cast);
-
-			auto *load_grid = impl.allocate(spv::OpLoad, grid_type_id);
-			load_grid->add_id(grid_cast->id);
-			load_grid->add_literal(spv::MemoryAccessAlignedMask);
-			load_grid->add_literal(impl.node_input.dispatch_grid.component_type == DXIL::ComponentType::U32 ?
-			                       sizeof(uint32_t) : sizeof(uint16_t));
-			impl.add(load_grid);
-
-			if (impl.node_input.dispatch_grid.component_type == DXIL::ComponentType::U16)
-			{
-				auto *conv_op = impl.allocate(spv::OpUConvert, u32_grid_type_id);
-				conv_op->add_id(load_grid->id);
-				impl.add(conv_op);
-				load_grid = conv_op;
-			}
-
+		for (uint32_t i = 0; i < impl.node_input.dispatch_grid.count; i++)
+		{
 			if (impl.node_input.dispatch_grid.count == 1)
 			{
-				spv::Id dispatch_x = emit_load_node_input_push_parameter(impl, NodeGridDispatchX, u32_type);
-				auto *mask_op = impl.allocate(spv::OpULessThan, builder.makeBoolType());
-				mask_op->add_id(dispatch_x);
-				mask_op->add_id(load_grid->id);
-				impl.add(mask_op);
-				execution_mask_id = mask_op->id;
+				target_dispatch_grid[i] = load_grid->id;
 			}
 			else
 			{
-				workgroup_id = impl.build_vector(u32_type, workgroup_elems, impl.node_input.dispatch_grid.count);
-				auto *mask_op = impl.allocate(spv::OpULessThan, builder.makeVectorType(
-					builder.makeBoolType(), impl.node_input.dispatch_grid.count));
-				mask_op->add_id(workgroup_id);
-				mask_op->add_id(load_grid->id);
-				impl.add(mask_op);
+				auto *ext = impl.allocate(spv::OpCompositeExtract, u32_type);
+				ext->add_id(load_grid->id);
+				ext->add_literal(i);
+				impl.add(ext);
+				target_dispatch_grid[i] = ext->id;
+			}
 
-				auto *all_op = impl.allocate(spv::OpAll, builder.makeBoolType());
-				all_op->add_id(mask_op->id);
-				impl.add(all_op);
+			auto *sub = impl.allocate(spv::OpISub, u32_type);
+			sub->add_id(target_dispatch_grid[i]);
+			sub->add_id(builder.makeUintConstant(1));
+			impl.add(sub);
 
-				execution_mask_id = all_op->id;
+			target_dispatch_grid_minus_1[i] = sub->id;
+			workgroup_bit_count[i] = emit_dispatch_bit_count(impl, target_dispatch_grid_minus_1[i]);
+		}
+
+		upper_dimension_size_id = target_dispatch_grid[impl.node_input.dispatch_grid.count - 1];
+
+		for (uint32_t i = impl.node_input.dispatch_grid.count; i < 3; i++)
+		{
+			target_dispatch_grid_minus_1[i] = builder.makeUintConstant(0);
+			workgroup_bit_count[i] = builder.makeUintConstant(0);
+			dimension_is_trivial[i] = true;
+		}
+	}
+	else
+	{
+		for (uint32_t i = 0; i < 3; i++)
+			target_dispatch_grid_minus_1[i] = impl.node_input.max_broadcast_grid_minus_1_id[i];
+	}
+
+	if (broadcast_has_max_grid && impl.node_input.dispatch_grid.count)
+	{
+		workgroup_bit_offset[0] = builder.makeUintConstant(0);
+		workgroup_bit_offset[1] = workgroup_bit_count[0];
+		auto *count_add = impl.allocate(spv::OpIAdd, u32_type);
+		count_add->add_id(workgroup_bit_count[0]);
+		count_add->add_id(workgroup_bit_count[1]);
+		impl.add(count_add);
+		workgroup_bit_offset[2] = count_add->id;
+
+		// We want to avoid expensive non-constant udivs if we can help it.
+		auto *shift = impl.allocate(spv::OpShiftLeftLogical, u32_type);
+		shift->add_id(upper_dimension_size_id);
+		shift->add_id(workgroup_bit_offset[impl.node_input.dispatch_grid.count - 1]);
+		impl.add(shift);
+		target_amplification_rate_id = shift->id;
+
+		workgroup_size_id = impl.build_vector(u32_type, target_dispatch_grid_minus_1, 3);
+
+		Operation *is_any_zero;
+
+		if (impl.node_input.dispatch_grid.count > 1)
+		{
+			auto *is_zero = impl.allocate(
+				spv::OpSLessThan, builder.makeVectorType(builder.makeBoolType(), impl.node_input.dispatch_grid.count));
+			is_zero->add_id(workgroup_size_id);
+			is_zero->add_id(impl.build_splat_constant_vector(u32_type, builder.makeUintConstant(0),
+			                                                 impl.node_input.dispatch_grid.count));
+			impl.add(is_zero);
+
+			is_any_zero = impl.allocate(spv::OpAny, builder.makeBoolType());
+			is_any_zero->add_id(is_zero->id);
+			impl.add(is_any_zero);
+		}
+		else
+		{
+			is_any_zero = impl.allocate(spv::OpSLessThan, builder.makeBoolType());
+			is_any_zero->add_id(target_dispatch_grid_minus_1[0]);
+			is_any_zero->add_id(builder.makeUintConstant(0));
+			impl.add(is_any_zero);
+		}
+
+		auto *select_rate = impl.allocate(spv::OpSelect, u32_type);
+		select_rate->add_id(is_any_zero->id);
+		select_rate->add_id(builder.makeUintConstant(0));
+		select_rate->add_id(target_amplification_rate_id);
+		impl.add(select_rate);
+
+		target_amplification_rate_id = select_rate->id;
+	}
+	else
+	{
+		spv::Id amp_xy = builder.createSpecConstantOp(
+			spv::OpIMul, u32_type,
+			{ impl.node_input.max_broadcast_grid_id[0], impl.node_input.max_broadcast_grid_id[1] }, {});
+
+		target_amplification_rate_id = builder.createSpecConstantOp(
+			spv::OpIMul, u32_type,
+			{ amp_xy, impl.node_input.max_broadcast_grid_id[2] }, {});
+	}
+
+	// Loop over target_amplification_rate_id.
+	auto *loop_header = pool.create_node();
+	auto *loop_body = pool.create_node();
+	auto *loop_continue = pool.create_node();
+	auto *loop_merge = pool.create_node();
+	loop_header->name = "loop-header";
+	loop_body->name = "loop-body";
+	loop_continue->name = "loop-continue";
+	loop_merge->name = "loop-merge";
+	path->name = "path";
+
+	path->ir.terminator.type = Terminator::Type::Branch;
+	path->ir.terminator.direct_block = loop_header;
+	path->add_branch(loop_header);
+
+	// Bit-extract the real workgroup size.
+	// Reroll the dispatch grid into a 3-dimensional vector.
+	spv::Id amp_id = builder.getUniqueId();
+	builder.addName(amp_id, "amplification_index");
+
+	auto *dispatch_increment = impl.allocate(spv::OpIAdd, u32_type);
+	dispatch_increment->add_id(amp_id);
+	dispatch_increment->add_id(num_workgroups_z->id);
+	impl.current_block = &loop_continue->ir.operations;
+	impl.add(dispatch_increment);
+
+	loop_continue->ir.terminator.type = Terminator::Type::Branch;
+	loop_continue->ir.terminator.direct_block = loop_header;
+	loop_continue->add_branch(loop_header);
+
+	PHI phi;
+	phi.id = amp_id;
+	phi.type_id = u32_type;
+	phi.incoming.push_back({ path, dispatch_z->id });
+	phi.incoming.push_back({ loop_continue, dispatch_increment->id });
+
+	auto *loop_cond = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+	loop_cond->add_id(phi.id);
+	loop_cond->add_id(target_amplification_rate_id);
+	impl.current_block = &loop_header->ir.operations;
+	impl.add(loop_cond);
+
+	loop_header->ir.terminator.type = Terminator::Type::Condition;
+	loop_header->ir.terminator.true_block = loop_body;
+	loop_header->ir.terminator.false_block = loop_merge;
+	loop_header->ir.terminator.conditional_id = loop_cond->id;
+	loop_header->add_branch(loop_body);
+	loop_header->add_branch(loop_merge);
+	loop_header->ir.phi.push_back(std::move(phi));
+
+	impl.current_block = &loop_body->ir.operations;
+
+	spv::Id workgroup_elems[3];
+
+	if (broadcast_has_max_grid && impl.node_input.dispatch_grid.count)
+	{
+		for (uint32_t i = 0; i < 3; i++)
+		{
+			if (dimension_is_trivial[i])
+			{
+				workgroup_elems[i] = builder.makeUintConstant(0);
+			}
+			else
+			{
+				auto *ext = impl.allocate(spv::OpBitFieldUExtract, u32_type);
+				ext->add_id(amp_id);
+				ext->add_id(workgroup_bit_offset[i]);
+				ext->add_id(workgroup_bit_count[i]);
+				impl.add(ext);
+				workgroup_elems[i] = ext->id;
 			}
 		}
 	}
-	else if (launch_type == DXIL::NodeLaunchType::Thread)
+	else
 	{
-		// Execution mask is just based on linear index < total threads.
-		// Nice and easy.
-		spv::Id end_ptr = emit_load_node_input_push_parameter(impl, NodeEndNodesBDA, impl.node_input.u32_ptr_type_id);
-		spv::Id end_id = emit_load_node_input_push_pointer(impl, end_ptr, u32_type, sizeof(uint32_t));
-		auto *compare_op = impl.allocate(spv::OpULessThan, builder.makeBoolType());
-		compare_op->add_id(linear_index_id);
-		compare_op->add_id(end_id);
-		impl.add(compare_op);
-		execution_mask_id = compare_op->id;
+		auto *wg_x = impl.allocate(spv::OpUMod, u32_type);
+		wg_x->add_id(amp_id);
+		wg_x->add_id(impl.node_input.max_broadcast_grid_id[0]);
+		impl.add(wg_x);
+		workgroup_elems[0] = wg_x->id;
+
+		auto *wg_yz = impl.allocate(spv::OpUDiv, u32_type);
+		wg_yz->add_id(amp_id);
+		wg_yz->add_id(impl.node_input.max_broadcast_grid_id[0]);
+		impl.add(wg_yz);
+
+		auto *wg_y = impl.allocate(spv::OpUMod, u32_type);
+		wg_y->add_id(wg_yz->id);
+		wg_y->add_id(impl.node_input.max_broadcast_grid_id[1]);
+		impl.add(wg_y);
+
+		auto *wg_z = impl.allocate(spv::OpUDiv, u32_type);
+		wg_z->add_id(wg_yz->id);
+		wg_z->add_id(impl.node_input.max_broadcast_grid_id[1]);
+		impl.add(wg_z);
+
+		workgroup_elems[1] = wg_y->id;
+		workgroup_elems[2] = wg_z->id;
 	}
 
-	return execution_mask_id;
+	spv::Id workgroup_id = impl.build_vector(u32_type, workgroup_elems, 3);
+
+	auto *store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInWorkgroupId));
+	store_op->add_id(workgroup_id);
+	impl.add(store_op);
+
+	auto *load_local_id = impl.allocate(spv::OpLoad, uvec3_type);
+	load_local_id->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInLocalInvocationId));
+	impl.add(load_local_id);
+
+	auto *mul_op = impl.allocate(spv::OpIMul, uvec3_type);
+	mul_op->add_id(impl.node_input.thread_group_size_id);
+	mul_op->add_id(workgroup_id);
+	impl.add(mul_op);
+
+	auto *add_op = impl.allocate(spv::OpIAdd, uvec3_type);
+	add_op->add_id(mul_op->id);
+	add_op->add_id(load_local_id->id);
+	impl.add(add_op);
+
+	store_op = impl.allocate(spv::OpStore);
+	store_op->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInGlobalInvocationId));
+	store_op->add_id(add_op->id);
+	impl.add(store_op);
+
+	if (broadcast_has_max_grid && impl.node_input.dispatch_grid.count)
+	{
+		auto *mask_op = impl.allocate(spv::OpULessThanEqual, builder.makeVectorType(builder.makeBoolType(), 3));
+		mask_op->add_id(workgroup_id);
+		mask_op->add_id(impl.build_vector(u32_type, target_dispatch_grid_minus_1, 3));
+		impl.add(mask_op);
+
+		auto *all_op = impl.allocate(spv::OpAll, builder.makeBoolType());
+		all_op->add_id(mask_op->id);
+		impl.add(all_op);
+
+		auto *call_block = pool.create_node();
+		call_block->name = "caller";
+
+		loop_body->ir.terminator.type = Terminator::Type::Condition;
+		loop_body->ir.terminator.conditional_id = all_op->id;
+		loop_body->ir.terminator.true_block = call_block;
+		loop_body->ir.terminator.false_block = loop_continue;
+		loop_body->add_branch(call_block);
+		loop_body->add_branch(loop_continue);
+		call_block->add_branch(loop_continue);
+		call_block->ir.terminator.type = Terminator::Type::Branch;
+		call_block->ir.terminator.direct_block = loop_continue;
+		impl.current_block = &call_block->ir.operations;
+	}
+	else
+	{
+		loop_body->ir.terminator.type = Terminator::Type::Branch;
+		loop_body->ir.terminator.direct_block = loop_continue;
+		loop_body->add_branch(loop_continue);
+	}
+
+	auto *call_op = impl.allocate(spv::OpFunctionCall, impl.builder().makeVoidType());
+	call_op->add_id(main_entry_id);
+	impl.add(call_op);
+
+	auto *barrier_op = impl.allocate(spv::OpControlBarrier);
+	barrier_op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+	barrier_op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+	barrier_op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
+	                                            spv::MemorySemanticsAcquireReleaseMask));
+	impl.add(barrier_op);
+
+	return loop_merge;
+}
+
+static CFGNode *emit_workgraph_dispatcher_path_broadcast(
+	Converter::Impl &impl, CFGNodePool &pool, CFGNode *path,
+	spv::Id main_entry_id, spv::Id linear_node_index_id,
+    bool broadcast_has_max_grid, bool is_entry_point)
+{
+	impl.current_block = &path->ir.operations;
+	emit_payload_pointer_resolve(impl, linear_node_index_id, DXIL::NodeLaunchType::Broadcasting, is_entry_point);
+
+	if (broadcast_has_max_grid)
+	{
+		return emit_workgraph_dispatcher_path_broadcast_amplified(
+			impl, pool, path, main_entry_id, broadcast_has_max_grid);
+	}
+	else
+	{
+		auto *static_path = pool.create_node();
+		auto *amplified_path = pool.create_node();
+		auto *merge_block = pool.create_node();
+
+		auto *static_end = emit_workgraph_dispatcher_path_broadcast_static_payload(
+			impl, static_path, main_entry_id);
+
+		auto *amplified_end = emit_workgraph_dispatcher_path_broadcast_amplified(
+			impl, pool, amplified_path, main_entry_id, broadcast_has_max_grid);
+
+		path->ir.terminator.type = Terminator::Type::Condition;
+		path->ir.terminator.conditional_id = impl.node_input.is_static_broadcast_node_id;
+		path->ir.terminator.true_block = static_path;
+		path->ir.terminator.false_block = amplified_path;
+		path->add_branch(static_path);
+		path->add_branch(amplified_path);
+
+		static_end->ir.terminator.type = Terminator::Type::Branch;
+		static_end->ir.terminator.direct_block = merge_block;
+		static_end->add_branch(merge_block);
+
+		amplified_end->ir.terminator.type = Terminator::Type::Branch;
+		amplified_end->ir.terminator.direct_block = merge_block;
+		amplified_end->add_branch(merge_block);
+
+		return merge_block;
+	}
+}
+
+static CFGNode *emit_workgraph_dispatcher_path_thread(
+    Converter::Impl &impl, CFGNodePool &pool, CFGNode *path,
+    spv::Id main_entry_id, spv::Id linear_node_index_id, bool is_entry_point)
+{
+	auto &builder = impl.builder();
+	spv::Id u32_type = builder.makeUintType(32);
+	impl.current_block = &path->ir.operations;
+
+	// Execution mask is just based on linear index < total threads.
+	// Nice and easy.
+	spv::Id end_ptr = emit_load_node_input_push_parameter(impl, NodeEndNodesBDA, impl.node_input.u32_ptr_type_id);
+	spv::Id end_id = emit_load_node_input_push_pointer(impl, end_ptr, u32_type, sizeof(uint32_t));
+	auto *compare_op = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+	compare_op->add_id(linear_node_index_id);
+	compare_op->add_id(end_id);
+	impl.add(compare_op);
+
+	auto *call_block = pool.create_node();
+	auto *merge_block = pool.create_node();
+
+	path->ir.terminator.type = Terminator::Type::Condition;
+	path->ir.terminator.conditional_id = compare_op->id;
+	path->ir.terminator.true_block = call_block;
+	path->ir.terminator.false_block = merge_block;
+	path->add_branch(call_block);
+	path->add_branch(merge_block);
+	call_block->add_branch(merge_block);
+	call_block->ir.terminator.type = Terminator::Type::Branch;
+	call_block->ir.terminator.direct_block = merge_block;
+	impl.current_block = &call_block->ir.operations;
+
+	emit_payload_pointer_resolve(impl, linear_node_index_id, DXIL::NodeLaunchType::Thread, is_entry_point);
+	auto *call_op = impl.allocate(spv::OpFunctionCall, impl.builder().makeVoidType());
+	call_op->add_id(main_entry_id);
+	impl.add(call_op);
+
+	return merge_block;
+}
+
+static CFGNode *emit_workgraph_dispatcher_path_coalescing(
+    Converter::Impl &impl, CFGNodePool &, CFGNode *path,
+    spv::Id main_entry_id, spv::Id linear_node_index_id)
+{
+	impl.current_block = &path->ir.operations;
+	emit_payload_pointer_resolve(impl, linear_node_index_id, DXIL::NodeLaunchType::Coalescing, true);
+	auto *call_op = impl.allocate(spv::OpFunctionCall, impl.builder().makeVoidType());
+	call_op->add_id(main_entry_id);
+	impl.add(call_op);
+	return path;
 }
 
 static CFGNode *emit_workgraph_dispatcher_path(
@@ -856,44 +1272,30 @@ static CFGNode *emit_workgraph_dispatcher_path(
 	bool is_entry_point)
 {
 	auto *path = pool.create_node();
-	impl.current_block = &path->ir.operations;
+	CFGNode *end_path;
 
-	// For non-broadcasting, we have to resolve in a branch to avoid potential out-of-bounds access.
 	if (launch_type == DXIL::NodeLaunchType::Broadcasting)
-		emit_payload_pointer_resolve(impl, linear_node_index_id, launch_type, is_entry_point);
-
-	spv::Id execution_mask_id = emit_workgraph_compute_builtins(impl, linear_node_index_id,
-	                                                            launch_type,
-	                                                            broadcast_has_max_grid);
-
-	if (execution_mask_id)
 	{
-		auto *masked_block = pool.create_node();
-		path->ir.terminator.type = Terminator::Type::Condition;
-		path->ir.terminator.conditional_id = execution_mask_id;
-		path->ir.terminator.true_block = masked_block;
-		path->ir.terminator.false_block = return_block;
-		path->add_branch(masked_block);
-		masked_block->add_branch(return_block);
-		masked_block->ir.terminator.type = Terminator::Type::Branch;
-		masked_block->ir.terminator.direct_block = return_block;
-		impl.current_block = &masked_block->ir.operations;
+		end_path = emit_workgraph_dispatcher_path_broadcast(
+			impl, pool, path, main_entry_id, linear_node_index_id,
+			broadcast_has_max_grid, is_entry_point);
+	}
+	else if (launch_type == DXIL::NodeLaunchType::Thread)
+	{
+		end_path = emit_workgraph_dispatcher_path_thread(
+			impl, pool, path, main_entry_id, linear_node_index_id,
+			is_entry_point);
 	}
 	else
 	{
-		path->ir.terminator.type = Terminator::Type::Branch;
-		path->ir.terminator.direct_block = return_block;
+		end_path = emit_workgraph_dispatcher_path_coalescing(
+			impl, pool, path, main_entry_id, linear_node_index_id);
 	}
 
-	path->add_branch(return_block);
-
-	// For non-broadcasting, we have to resolve in a branch to avoid potential out-of-bounds access.
-	if (launch_type != DXIL::NodeLaunchType::Broadcasting)
-		emit_payload_pointer_resolve(impl, linear_node_index_id, launch_type, is_entry_point);
-
-	auto *call_op = impl.allocate(spv::OpFunctionCall, impl.builder().makeVoidType());
-	call_op->add_id(main_entry_id);
-	impl.add(call_op);
+	impl.current_block = &end_path->ir.operations;
+	end_path->ir.terminator.type = Terminator::Type::Branch;
+	end_path->ir.terminator.direct_block = return_block;
+	end_path->add_branch(return_block);
 
 	return path;
 }

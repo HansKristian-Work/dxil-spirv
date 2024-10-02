@@ -542,6 +542,11 @@ struct Converter::Impl
 		spv::Id is_entry_point_id;
 		spv::Id broadcast_has_max_grid_id;
 		spv::Id thread_group_size_id;
+		spv::Id is_static_broadcast_node_id;
+		spv::Id max_broadcast_grid_id[3];
+		spv::Id max_broadcast_grid_minus_1_id[3];
+		spv::Id real_workgroup_id;
+		spv::Id real_global_invocation_id;
 		DXIL::NodeLaunchType launch_type;
 		NodeDispatchGrid dispatch_grid;
 	};

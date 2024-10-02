@@ -5520,9 +5520,6 @@ bool Converter::Impl::emit_execution_modes_node_input()
 		u32_type_id,
 		u32_type_id,
 		u32_type_id,
-		u32_type_id,
-		u32_type_id,
-		u32_type_id,
 	};
 
 	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
@@ -5533,12 +5530,9 @@ bool Converter::Impl::emit_execution_modes_node_input()
 	builder().addMemberDecoration(type_id, NodePayloadOutputBDA, spv::DecorationOffset, 32);
 	builder().addMemberDecoration(type_id, NodePayloadOutputAtomicBDA, spv::DecorationOffset, 40);
 	builder().addMemberDecoration(type_id, NodeLocalRootSignatureBDA, spv::DecorationOffset, 48);
-	builder().addMemberDecoration(type_id, NodeGridDispatchX, spv::DecorationOffset, 56);
-	builder().addMemberDecoration(type_id, NodeGridDispatchY, spv::DecorationOffset, 60);
-	builder().addMemberDecoration(type_id, NodeGridDispatchZ, spv::DecorationOffset, 64);
-	builder().addMemberDecoration(type_id, NodePayloadOutputOffset, spv::DecorationOffset, 68);
-	builder().addMemberDecoration(type_id, NodePayloadOutputStride, spv::DecorationOffset, 72);
-	builder().addMemberDecoration(type_id, NodeRemainingRecursionLevels, spv::DecorationOffset, 76);
+	builder().addMemberDecoration(type_id, NodePayloadOutputOffset, spv::DecorationOffset, 56);
+	builder().addMemberDecoration(type_id, NodePayloadOutputStride, spv::DecorationOffset, 60);
+	builder().addMemberDecoration(type_id, NodeRemainingRecursionLevels, spv::DecorationOffset, 64);
 
 	// For linear node layout (entry point).
 	// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
@@ -5553,9 +5547,6 @@ bool Converter::Impl::emit_execution_modes_node_input()
 	builder().addMemberName(type_id, NodeLocalRootSignatureBDA, "NodeLocalRootSignatureBDA");
 	// For broadcast nodes. Need to instance multiple times.
 	// Becomes WorkGroupID and affects GlobalInvocationID.
-	builder().addMemberName(type_id, NodeGridDispatchX, "NodeGridDispatchX");
-	builder().addMemberName(type_id, NodeGridDispatchY, "NodeGridDispatchY");
-	builder().addMemberName(type_id, NodeGridDispatchZ, "NodeGridDispatchZ");
 	builder().addMemberName(type_id, NodePayloadOutputOffset, "NodePayloadOutputOffset");
 	builder().addMemberName(type_id, NodePayloadOutputStride, "NodePayloadOutputStride");
 	builder().addMemberName(type_id, NodeRemainingRecursionLevels, "NodeRemainingRecursionLevels");
@@ -5632,9 +5623,20 @@ NodeInputData Converter::Impl::get_node_input(llvm::MDNode *meta)
 	node.is_entry_point_spec_id = NodeSpecIdIsEntryPoint;
 
 	if (node.launch_type == DXIL::NodeLaunchType::Broadcasting)
+	{
 		node.dispatch_grid_is_upper_bound_spec_id = NodeSpecIdDispatchGridIsUpperBound;
+		node.is_static_broadcast_node_spec_id = NodeSpecIdIsStaticBroadcastNode;
+		node.max_broadcast_grid_spec_id[0] = NodeSpecIdMaxBroadcastGridX;
+		node.max_broadcast_grid_spec_id[1] = NodeSpecIdMaxBroadcastGridY;
+		node.max_broadcast_grid_spec_id[2] = NodeSpecIdMaxBroadcastGridZ;
+	}
 	else
+	{
 		node.dispatch_grid_is_upper_bound_spec_id = UINT32_MAX;
+		node.is_static_broadcast_node_spec_id = UINT32_MAX;
+		for (auto &spec_id : node.max_broadcast_grid_spec_id)
+			spec_id = UINT32_MAX;
+	}
 
 	auto *recursion_node = get_shader_property_tag(meta, DXIL::ShaderPropertyTag::NodeMaxRecursionDepth);
 	if (recursion_node)
@@ -5812,6 +5814,27 @@ bool Converter::Impl::emit_execution_modes_node()
 		builder().addDecoration(node_input.broadcast_has_max_grid_id, spv::DecorationSpecId,
 		                        int(node.dispatch_grid_is_upper_bound_spec_id));
 		builder().addName(node_input.broadcast_has_max_grid_id, "DispatchGridIsUpperBound");
+
+		node_input.is_static_broadcast_node_id = builder().makeBoolConstant(false, true);
+		builder().addDecoration(node_input.is_static_broadcast_node_id, spv::DecorationSpecId,
+		                        int(node.is_static_broadcast_node_spec_id));
+		builder().addName(node_input.is_static_broadcast_node_id, "DispatchStaticPayload");
+
+		spv::Id u32_type = builder().makeUintType(32);
+
+		for (uint32_t i = 0; i < 3; i++)
+		{
+			node_input.max_broadcast_grid_id[i] = builder().makeUintConstant(node.broadcast_grid[i], true);
+			builder().addDecoration(node_input.max_broadcast_grid_id[i], spv::DecorationSpecId,
+			                        int(node.max_broadcast_grid_spec_id[i]));
+			static const char *names[] = { "MaxBroadcastGridX", "MaxBroadcastGridY", "MaxBroadcastGridZ" };
+			builder().addName(node_input.max_broadcast_grid_id[i], names[i]);
+
+			node_input.max_broadcast_grid_minus_1_id[i] = builder().createSpecConstantOp(
+			    spv::OpISub, u32_type, { node_input.max_broadcast_grid_id[i], builder().makeUintConstant(1) }, {});
+			static const char *sub_names[] = { "GridXMinus1", "GridYMinus1", "GridZMinus1" };
+			builder().addName(node_input.max_broadcast_grid_minus_1_id[i], sub_names[i]);
+		}
 	}
 
 	return emit_execution_modes_compute();
