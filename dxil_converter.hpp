@@ -755,6 +755,7 @@ struct NodeInputData
 	NodeDispatchGrid grid_buffer;
 	uint32_t broadcast_grid[3];
 	uint32_t thread_group_size_spec_id[3];
+	uint32_t max_broadcast_grid_spec_id[3];
 	uint32_t recursion_factor;
 	uint32_t coalesce_factor;
 	String node_share_input_id;
@@ -763,6 +764,7 @@ struct NodeInputData
 	uint32_t is_indirect_bda_stride_program_entry_spec_id;
 	uint32_t is_entry_point_spec_id;
 	uint32_t dispatch_grid_is_upper_bound_spec_id;
+	uint32_t is_static_broadcast_node_spec_id;
 	bool dispatch_grid_is_upper_bound;
 	bool node_track_rw_input_sharing;
 	bool is_program_entry;

@@ -338,6 +338,7 @@ typedef struct dxil_spv_node_input_data
 	unsigned dispatch_grid_components;
 	unsigned broadcast_grid[3]; /* For broadcast nodes. */
 	unsigned thread_group_size_spec_id[3];
+	unsigned max_broadcast_grid_spec_id[3];
 	unsigned recursion_factor; /* [NodeMaxRecursionDepth] */
 	unsigned coalesce_factor;
 	const char *node_share_input_id;
@@ -346,6 +347,7 @@ typedef struct dxil_spv_node_input_data
 	unsigned is_indirect_bda_stride_program_entry_spec_id;
 	unsigned is_entry_point_spec_id;
 	unsigned dispatch_grid_is_upper_bound_spec_id;
+	unsigned is_static_broadcast_node_spec_id;
 	dxil_spv_bool dispatch_grid_is_upper_bound; /* [NodeMaxDispatchGrid] if true. */
 	dxil_spv_bool node_track_rw_input_sharing; /* Payload is tagged with [NodeTrackRWInputSharing]. */
 	dxil_spv_bool is_program_entry; /* [NodeIsProgramEntry] */
