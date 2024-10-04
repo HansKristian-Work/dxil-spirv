@@ -3624,7 +3624,7 @@ Converter::Impl::SizeAlignment Converter::Impl::get_physical_size_for_type(spv::
 		for (int i = 0; i < num_members; i++)
 		{
 			uint32_t member_type_id = builder().getContainedTypeId(type_id, i);
-			auto member_res = get_physical_size_for_type(builder().getContainedTypeId(member_type_id));
+			auto member_res = get_physical_size_for_type(member_type_id);
 			res.size = (res.size + member_res.alignment - 1) & ~(member_res.alignment - 1);
 			res.size += member_res.size;
 			res.alignment = std::max<uint32_t>(res.alignment, member_res.alignment);
