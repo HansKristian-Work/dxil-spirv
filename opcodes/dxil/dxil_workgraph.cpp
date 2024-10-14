@@ -959,7 +959,12 @@ static CFGNode *emit_workgraph_dispatcher_path_broadcast_amplified(
 		{
 			auto *is_zero = impl.allocate(
 				spv::OpSLessThan, builder.makeVectorType(builder.makeBoolType(), impl.node_input.dispatch_grid.count));
-			is_zero->add_id(workgroup_size_id);
+
+			if (impl.node_input.dispatch_grid.count == 3)
+				is_zero->add_id(workgroup_size_id);
+			else
+				is_zero->add_id(impl.build_vector(u32_type, target_dispatch_grid_minus_1, impl.node_input.dispatch_grid.count));
+
 			is_zero->add_id(impl.build_splat_constant_vector(u32_type, builder.makeUintConstant(0),
 			                                                 impl.node_input.dispatch_grid.count));
 			impl.add(is_zero);
