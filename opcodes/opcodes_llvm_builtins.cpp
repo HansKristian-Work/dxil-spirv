@@ -76,6 +76,11 @@ static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm:
 	auto logical_bits = value->getType()->getIntegerBitWidth();
 	auto physical_bits = physical_integer_bit_width(logical_bits);
 
+	// Explicitly sign-extend if we're going to do signed casts.
+	// Unsigned isn't as interesting, since everything is kind of unsigned by default.
+	if (logical_bits == 16 && !impl.support_16bit_operations() && is_signed)
+		physical_bits = 32;
+
 	if (bits == 0)
 		bits = logical_bits;
 	if (bits == physical_bits)
