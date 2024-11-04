@@ -1110,7 +1110,11 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		{
 			bool is_non_uniform = false;
 
-			auto storage = get_resource_storage_class(impl, reference.var_id);
+			spv::Id representative_var_id = reference.var_id;
+			if (!representative_var_id && !reference.var_alias_group.empty())
+				representative_var_id = reference.var_alias_group.front().var_id;
+			auto storage = get_resource_storage_class(impl, representative_var_id);
+
 			DescriptorQATypeFlagBits descriptor_type;
 			if (storage == spv::StorageClassStorageBuffer)
 				descriptor_type = DESCRIPTOR_QA_TYPE_STORAGE_BUFFER_BIT;
@@ -1230,7 +1234,11 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		{
 			bool is_non_uniform = false;
 
-			auto storage = get_resource_storage_class(impl, reference.var_id);
+			spv::Id representative_var_id = reference.var_id;
+			if (!representative_var_id && !reference.var_alias_group.empty())
+				representative_var_id = reference.var_alias_group.front().var_id;
+			auto storage = get_resource_storage_class(impl, representative_var_id);
+
 			DescriptorQATypeFlagBits descriptor_type;
 			if (storage == spv::StorageClassStorageBuffer)
 				descriptor_type = DESCRIPTOR_QA_TYPE_STORAGE_BUFFER_BIT;
