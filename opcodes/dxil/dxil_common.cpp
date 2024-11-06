@@ -146,8 +146,11 @@ bool type_is_64bit(const llvm::Type *data_type)
 void get_physical_load_store_cast_info(Converter::Impl &impl, const llvm::Type *element_type,
                                        spv::Id &physical_type_id, spv::Op &value_cast_op)
 {
-	if (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
-	    impl.options.min_precision_prefer_native_16bit)
+	bool using_native_16bit_arith =
+		type_is_16bit(element_type) &&
+		(element_type->getTypeID() == llvm::Type::TypeID::IntegerTyID || impl.support_native_fp16_operations());
+
+	if (!impl.execution_mode_meta.native_16bit_operations && using_native_16bit_arith)
 	{
 		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 		{

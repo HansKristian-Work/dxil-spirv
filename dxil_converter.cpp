@@ -3165,7 +3165,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 		auto *fp = llvm::cast<llvm::ConstantFP>(constant);
 		auto f16 = uint16_t(fp->getValueAPF().bitcastToAPInt().getZExtValue());
 
-		if (support_16bit_operations())
+		if (support_native_fp16_operations())
 			return builder.makeFloat16Constant(f16);
 		else
 			return builder.makeFloatConstant(half_to_float(f16));
@@ -3193,21 +3193,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 			return builder.makeBoolConstant(constant->getUniqueInteger().getZExtValue() != 0);
 
 		case 16:
-			if (support_16bit_operations())
-				return builder.makeUint16Constant(constant->getUniqueInteger().getZExtValue());
-			else
-			{
-				// Integers are sign-extended on use.
-				// We don't know if the literal is intended to be used as signed or unsigned.
-				// Need to get the raw underlying value that has not been masked.
-				// It seems that the literal is sign-extended to 64-bit, so
-				// we should be safe here.
-#ifdef HAVE_LLVMBC
-				return builder.makeUintConstant(constant->getUniqueInteger().get_raw_value());
-#else
-				return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue());
-#endif
-			}
+			return builder.makeUint16Constant(constant->getUniqueInteger().getZExtValue());
 
 		case 32:
 			return builder.makeUintConstant(constant->getUniqueInteger().getZExtValue());
@@ -3513,7 +3499,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 	switch (type->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
-		return builder.makeFloatType(support_16bit_operations() ? 16 : 32);
+		return builder.makeFloatType(support_native_fp16_operations() ? 16 : 32);
 	case llvm::Type::TypeID::FloatTyID:
 		return builder.makeFloatType(32);
 	case llvm::Type::TypeID::DoubleTyID:
@@ -3525,8 +3511,6 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 		else
 		{
 			auto width = physical_integer_bit_width(type->getIntegerBitWidth());
-			if (width == 16 && !support_16bit_operations())
-				width = 32;
 			return builder.makeIntegerType(width, false);
 		}
 
@@ -4969,7 +4953,7 @@ void Converter::Impl::repack_sparse_feedback(DXIL::ComponentType component_type,
 	rewrite_value(value, repack_op->id);
 }
 
-bool Converter::Impl::support_16bit_operations() const
+bool Converter::Impl::support_native_fp16_operations() const
 {
 	return execution_mode_meta.native_16bit_operations || options.min_precision_prefer_native_16bit;
 }
@@ -5034,11 +5018,13 @@ void Converter::Impl::fixup_load_type_io(DXIL::ComponentType component_type, uns
 	auto output_component_type = component_type;
 	auto input_component_type = component_type;
 
-	if (component_type_is_16bit(input_component_type) && (!options.storage_16bit_input_output || !support_16bit_operations()))
-		input_component_type = convert_16bit_component_to_32bit(input_component_type);
+	bool promote_fp16 = input_component_type == DXIL::ComponentType::F16 && !support_native_fp16_operations();
 
-	if (component_type_is_16bit(output_component_type) && !support_16bit_operations())
+	if (!options.storage_16bit_input_output || promote_fp16)
+		input_component_type = convert_16bit_component_to_32bit(input_component_type);
+	if (promote_fp16)
 		output_component_type = convert_16bit_component_to_32bit(output_component_type);
+
 	output_component_type = convert_component_to_unsigned(output_component_type);
 
 	if (output_component_type != input_component_type)
@@ -5053,13 +5039,6 @@ void Converter::Impl::fixup_load_type_atomic(DXIL::ComponentType component_type,
 	auto output_component_type = component_type;
 	auto input_component_type = component_type;
 
-	if (!support_16bit_operations())
-	{
-		if (component_type_is_16bit(input_component_type))
-			input_component_type = convert_16bit_component_to_32bit(input_component_type);
-		if (component_type_is_16bit(output_component_type))
-			output_component_type = convert_16bit_component_to_32bit(output_component_type);
-	}
 	output_component_type = convert_component_to_unsigned(output_component_type);
 
 	if (output_component_type != input_component_type)
@@ -5113,7 +5092,7 @@ void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType &component_type,
 	}
 	else
 	{
-		if (component_type_is_16bit(output_component_type) && !support_16bit_operations())
+		if (output_component_type == DXIL::ComponentType::F16 && !support_native_fp16_operations())
 			output_component_type = convert_16bit_component_to_32bit(output_component_type);
 		else if (target_type->getTypeID() == llvm::Type::TypeID::FloatTyID)
 		{
@@ -5145,11 +5124,15 @@ spv::Id Converter::Impl::fixup_store_type_io(DXIL::ComponentType component_type,
 	auto output_component_type = component_type;
 	auto input_component_type = component_type;
 
-	if (component_type_is_16bit(output_component_type) && (!options.storage_16bit_input_output || !support_16bit_operations()))
+	if (!options.storage_16bit_input_output ||
+	    (output_component_type == DXIL::ComponentType::F16 && !support_native_fp16_operations()))
+	{
 		output_component_type = convert_16bit_component_to_32bit(output_component_type);
+	}
 
-	if (component_type_is_16bit(input_component_type) && !support_16bit_operations())
+	if (input_component_type == DXIL::ComponentType::F16 && !support_native_fp16_operations())
 		input_component_type = convert_16bit_component_to_32bit(input_component_type);
+
 	input_component_type = convert_component_to_unsigned(input_component_type);
 
 	if (output_component_type != input_component_type)
@@ -5162,13 +5145,6 @@ spv::Id Converter::Impl::fixup_store_type_atomic(DXIL::ComponentType component_t
 	auto output_component_type = component_type;
 	auto input_component_type = component_type;
 
-	if (!support_16bit_operations())
-	{
-		if (component_type_is_16bit(input_component_type))
-			input_component_type = convert_16bit_component_to_32bit(input_component_type);
-		if (component_type_is_16bit(output_component_type))
-			output_component_type = convert_16bit_component_to_32bit(output_component_type);
-	}
 	input_component_type = convert_component_to_unsigned(input_component_type);
 
 	if (output_component_type != input_component_type)
@@ -5208,7 +5184,7 @@ spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_ty
 		auto output_component_type = get_effective_typed_resource_type(component_type);
 		auto input_component_type = component_type;
 
-		if (component_type_is_16bit(input_component_type) && !support_16bit_operations())
+		if (input_component_type == DXIL::ComponentType::F16 && !support_native_fp16_operations())
 			input_component_type = convert_16bit_component_to_32bit(input_component_type);
 		input_component_type = convert_component_to_unsigned(input_component_type);
 
@@ -7512,7 +7488,8 @@ DXIL::ComponentType Converter::Impl::get_effective_typed_resource_type(DXIL::Com
 
 DXIL::ComponentType Converter::Impl::get_effective_input_output_type(DXIL::ComponentType type)
 {
-	if (options.storage_16bit_input_output && support_16bit_operations())
+	bool supports_narrow_arith_type = type != DXIL::ComponentType::F16 || support_native_fp16_operations();
+	if (options.storage_16bit_input_output && supports_narrow_arith_type)
 	{
 		if (component_type_is_16bit(type))
 			builder().addCapability(spv::CapabilityStorageInputOutput16);

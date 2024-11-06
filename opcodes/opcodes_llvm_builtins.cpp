@@ -76,11 +76,6 @@ static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm:
 	auto logical_bits = value->getType()->getIntegerBitWidth();
 	auto physical_bits = physical_integer_bit_width(logical_bits);
 
-	// Explicitly sign-extend if we're going to do signed casts.
-	// Unsigned isn't as interesting, since everything is kind of unsigned by default.
-	if (logical_bits == 16 && !impl.support_16bit_operations() && is_signed)
-		physical_bits = 32;
-
 	if (bits == 0)
 		bits = logical_bits;
 	if (bits == physical_bits)
@@ -467,10 +462,7 @@ static spv::Id emit_boolean_trunc_instruction(Converter::Impl &impl, const Instr
 	switch (physical_width)
 	{
 	case 16:
-		if (impl.support_16bit_operations())
-			op->add_id(builder.makeUint16Constant(0));
-		else
-			op->add_id(builder.makeUintConstant(0));
+		op->add_id(builder.makeUint16Constant(0));
 		break;
 
 	case 32:
@@ -499,7 +491,7 @@ static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const Ins
 	switch (instruction->getType()->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
-		if (impl.support_16bit_operations())
+		if (impl.support_native_fp16_operations())
 		{
 			const_0 = builder.makeFloat16Constant(0);
 			const_1 = builder.makeFloat16Constant(0x3c00u | (is_signed ? 0x8000u : 0u));
@@ -525,16 +517,8 @@ static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const Ins
 		switch (physical_integer_bit_width(instruction->getType()->getIntegerBitWidth()))
 		{
 		case 16:
-			if (impl.support_16bit_operations())
-			{
-				const_0 = builder.makeUint16Constant(0);
-				const_1 = builder.makeUint16Constant(is_signed ? 0xffff : 1u);
-			}
-			else
-			{
-				const_0 = builder.makeUintConstant(0);
-				const_1 = builder.makeUintConstant(is_signed ? 0xffffffffu : 1u);
-			}
+			const_0 = builder.makeUint16Constant(0);
+			const_1 = builder.makeUint16Constant(is_signed ? 0xffff : 1u);
 			break;
 
 		case 32:
@@ -594,13 +578,6 @@ static spv::Id emit_masked_cast_instruction(Converter::Impl &impl, const Instruc
 	return 0;
 }
 
-static unsigned get_effective_integer_width(Converter::Impl &impl, unsigned width)
-{
-	if (!impl.support_16bit_operations() && width == 16)
-		width = 32;
-	return width;
-}
-
 template <typename InstructionType>
 static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *instruction, bool &relaxed_precision_cast)
 {
@@ -611,20 +588,10 @@ static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *ins
 	// They certainly are not in Vulkan.
 	switch (instruction->getOpcode())
 	{
-	case llvm::Instruction::CastOps::SExt:
-	case llvm::Instruction::CastOps::ZExt:
-	case llvm::Instruction::CastOps::Trunc:
-		if (get_effective_integer_width(impl, instruction->getType()->getIntegerBitWidth()) ==
-		    get_effective_integer_width(impl, instruction->getOperand(0)->getType()->getIntegerBitWidth()))
-		{
-			return true;
-		}
-		break;
-
 	case llvm::Instruction::CastOps::FPExt:
 		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID &&
 		    instruction->getOperand(0)->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
-		    !impl.support_16bit_operations())
+		    !impl.support_native_fp16_operations())
 		{
 			return true;
 		}
@@ -634,7 +601,7 @@ static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *ins
 	{
 		if (instruction->getOperand(0)->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID &&
 		    instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
-		    !impl.support_16bit_operations())
+		    !impl.support_native_fp16_operations())
 		{
 			relaxed_precision_cast = impl.options.arithmetic_relaxed_precision;
 			return true;

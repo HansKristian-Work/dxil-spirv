@@ -154,7 +154,7 @@ bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const ll
 	{
 		spv::Id constant_0;
 		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
-		    impl.support_16bit_operations())
+		    impl.support_native_fp16_operations())
 		{
 			constant_0 = builder.makeFloat16Constant(0);
 		}
@@ -180,7 +180,7 @@ bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const ll
 	bool fp32 = instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID;
 
 	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
-	    !impl.support_16bit_operations())
+	    !impl.support_native_fp16_operations())
 	{
 		fp32 = true;
 		relax_precision = true;

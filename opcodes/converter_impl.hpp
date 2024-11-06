@@ -584,7 +584,7 @@ struct Converter::Impl
 	spv::Id fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 	spv::Id build_value_cast(spv::Id value_id, DXIL::ComponentType input_type, DXIL::ComponentType output_type,
 	                         unsigned components);
-	bool support_16bit_operations() const;
+	bool support_native_fp16_operations() const;
 
 	Vector<Operation *> *current_block = nullptr;
 	void add(Operation *op, bool is_rov = false);

@@ -1133,7 +1133,7 @@ bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	switch (instruction->getOperand(1)->getType()->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
-		type_id = builder.makeUintType(impl.support_16bit_operations() ? 16 : 32);
+		type_id = builder.makeUintType(impl.support_native_fp16_operations() ? 16 : 32);
 		cast_op = spv::OpBitcast;
 		break;
 

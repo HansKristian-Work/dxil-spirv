@@ -282,7 +282,7 @@ bool emit_saturate_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	switch (instruction->getType()->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
-		if (impl.support_16bit_operations())
+		if (impl.support_native_fp16_operations())
 		{
 			constant_0 = builder.makeFloat16Constant(0);
 			constant_1 = builder.makeFloat16Constant(0x3c00);
@@ -599,7 +599,7 @@ bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst 
 		builder.addDecoration(dot_op->id, spv::DecorationNoContraction);
 
 	spv::Id expanded_input = dot_op->id;
-	if (impl.support_16bit_operations())
+	if (impl.support_native_fp16_operations())
 	{
 		auto *extend_op = impl.allocate(spv::OpFConvert, builder.makeVectorType(float_type_id, 2));
 		extend_op->add_id(expanded_input);
@@ -829,7 +829,7 @@ bool emit_bit_reverse_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto &builder = impl.builder();
 	auto int_width = instruction->getType()->getIntegerBitWidth();
 
-	if (int_width == 32 || (int_width == 16 && !impl.support_16bit_operations()))
+	if (int_width == 32)
 	{
 		auto *op = impl.allocate(spv::OpBitReverse, instruction);
 		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
@@ -896,7 +896,7 @@ bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	auto &builder = impl.builder();
 	auto int_width = instruction->getOperand(1)->getType()->getIntegerBitWidth();
 
-	if (int_width == 32 || (int_width == 16 && !impl.support_16bit_operations()))
+	if (int_width == 32)
 	{
 		auto *op = impl.allocate(spv::OpBitCount, instruction);
 		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));

@@ -1,4 +1,6 @@
 #version 460
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_16bit_storage : require
 
 layout(push_constant, std430) uniform RootConstants
 {
@@ -25,20 +27,12 @@ layout(location = 0) out mediump ivec4 SV_Target;
 
 void main()
 {
-    mediump float _20 = C.x;
-    float hp_copy_20 = _20;
-    mediump float _23 = C.y;
-    float hp_copy_23 = _23;
-    mediump float _26 = C.z;
-    float hp_copy_26 = _26;
-    mediump float _29 = C.w;
-    float hp_copy_29 = _29;
-    uvec4 _44 = uvec4(registers._m4, registers._m5, registers._m6, registers._m7);
-    uvec4 _61 = uvec4(registers._m8, registers._m9, registers._m10, registers._m11);
-    SV_Target.x = int((_44.x + uint(int(hp_copy_20))) + _61.x);
-    SV_Target.y = int((_44.y + uint(int(hp_copy_23))) + _61.y);
-    SV_Target.z = int((_44.z + uint(int(hp_copy_26))) + _61.z);
-    SV_Target.w = int((_44.w + uint(int(hp_copy_29))) + _61.w);
+    u16vec4 _47 = u16vec4(uvec4(registers._m4, registers._m5, registers._m6, registers._m7));
+    u16vec4 _65 = u16vec4(uvec4(registers._m8, registers._m9, registers._m10, registers._m11));
+    SV_Target.x = int(int16_t((_47.x + uint16_t(int16_t(C.x))) + _65.x));
+    SV_Target.y = int(int16_t((_47.y + uint16_t(int16_t(C.y))) + _65.y));
+    SV_Target.z = int(int16_t((_47.z + uint16_t(int16_t(C.z))) + _65.z));
+    SV_Target.w = int(int16_t((_47.w + uint16_t(int16_t(C.w))) + _65.w));
 }
 
 
@@ -47,9 +41,10 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 89
+; Bound: 93
 ; Schema: 0
 OpCapability Shader
+OpCapability Int16
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %12 %16
 OpExecutionMode %3 OriginUpperLeft
@@ -104,15 +99,17 @@ OpDecorate %16 Location 0
 %38 = OpConstant %5 6
 %41 = OpConstant %5 7
 %43 = OpTypeVector %5 4
-%50 = OpConstant %5 8
-%53 = OpConstant %5 9
-%56 = OpConstant %5 10
-%59 = OpConstant %5 11
-%78 = OpTypePointer Output %13
+%45 = OpTypeInt 16 0
+%46 = OpTypeVector %45 4
+%53 = OpConstant %5 8
+%56 = OpConstant %5 9
+%59 = OpConstant %5 10
+%62 = OpConstant %5 11
+%82 = OpTypePointer Output %13
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %87
-%87 = OpLabel
+OpBranch %91
+%91 = OpLabel
 %18 = OpAccessChain %17 %12 %19
 %20 = OpLoad %9 %18
 %21 = OpAccessChain %17 %12 %22
@@ -130,47 +127,49 @@ OpBranch %87
 %40 = OpAccessChain %30 %8 %41
 %42 = OpLoad %5 %40
 %44 = OpCompositeConstruct %43 %33 %36 %39 %42
-%45 = OpCompositeExtract %5 %44 0
-%46 = OpCompositeExtract %5 %44 1
-%47 = OpCompositeExtract %5 %44 2
-%48 = OpCompositeExtract %5 %44 3
-%49 = OpAccessChain %30 %8 %50
-%51 = OpLoad %5 %49
+%47 = OpUConvert %46 %44
+%48 = OpCompositeExtract %45 %47 0
+%49 = OpCompositeExtract %45 %47 1
+%50 = OpCompositeExtract %45 %47 2
+%51 = OpCompositeExtract %45 %47 3
 %52 = OpAccessChain %30 %8 %53
 %54 = OpLoad %5 %52
 %55 = OpAccessChain %30 %8 %56
 %57 = OpLoad %5 %55
 %58 = OpAccessChain %30 %8 %59
 %60 = OpLoad %5 %58
-%61 = OpCompositeConstruct %43 %51 %54 %57 %60
-%62 = OpCompositeExtract %5 %61 0
-%63 = OpCompositeExtract %5 %61 1
-%64 = OpCompositeExtract %5 %61 2
-%65 = OpCompositeExtract %5 %61 3
-%66 = OpConvertFToS %5 %20
-%67 = OpConvertFToS %5 %23
-%68 = OpConvertFToS %5 %26
-%69 = OpConvertFToS %5 %29
-%70 = OpIAdd %5 %45 %66
-%71 = OpIAdd %5 %70 %62
-%72 = OpIAdd %5 %46 %67
-%73 = OpIAdd %5 %72 %63
-%74 = OpIAdd %5 %47 %68
-%75 = OpIAdd %5 %74 %64
-%76 = OpIAdd %5 %48 %69
-%77 = OpIAdd %5 %76 %65
-%79 = OpAccessChain %78 %16 %19
-%80 = OpBitcast %13 %71
-OpStore %79 %80
-%81 = OpAccessChain %78 %16 %22
-%82 = OpBitcast %13 %73
-OpStore %81 %82
-%83 = OpAccessChain %78 %16 %25
-%84 = OpBitcast %13 %75
+%61 = OpAccessChain %30 %8 %62
+%63 = OpLoad %5 %61
+%64 = OpCompositeConstruct %43 %54 %57 %60 %63
+%65 = OpUConvert %46 %64
+%66 = OpCompositeExtract %45 %65 0
+%67 = OpCompositeExtract %45 %65 1
+%68 = OpCompositeExtract %45 %65 2
+%69 = OpCompositeExtract %45 %65 3
+%70 = OpConvertFToS %45 %20
+%71 = OpConvertFToS %45 %23
+%72 = OpConvertFToS %45 %26
+%73 = OpConvertFToS %45 %29
+%74 = OpIAdd %45 %48 %70
+%75 = OpIAdd %45 %74 %66
+%76 = OpIAdd %45 %49 %71
+%77 = OpIAdd %45 %76 %67
+%78 = OpIAdd %45 %50 %72
+%79 = OpIAdd %45 %78 %68
+%80 = OpIAdd %45 %51 %73
+%81 = OpIAdd %45 %80 %69
+%83 = OpAccessChain %82 %16 %19
+%84 = OpSConvert %13 %75
 OpStore %83 %84
-%85 = OpAccessChain %78 %16 %28
-%86 = OpBitcast %13 %77
+%85 = OpAccessChain %82 %16 %22
+%86 = OpSConvert %13 %77
 OpStore %85 %86
+%87 = OpAccessChain %82 %16 %25
+%88 = OpSConvert %13 %79
+OpStore %87 %88
+%89 = OpAccessChain %82 %16 %28
+%90 = OpSConvert %13 %81
+OpStore %89 %90
 OpReturn
 OpFunctionEnd
 #endif

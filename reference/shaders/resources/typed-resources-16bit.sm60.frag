@@ -1,4 +1,6 @@
 #version 460
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_samplerless_texture_functions : require
 
 layout(set = 0, binding = 0) uniform mediump texture2D _8;
@@ -28,81 +30,65 @@ void main()
     uint _83 = uint(int(UV.x));
     uint _84 = uint(int(UV.y));
     imageStore(_28, ivec2(uvec2(_83, _84)), vec4(_81, _82, _81, _82));
-    uint _88 = uint(int(UV.x));
-    uint _89 = uint(int(UV.y));
-    imageStore(_31, ivec2(uvec2(_83, _84)), ivec4(uvec4(_88, _89, _88, _89)));
-    uint _93 = uint(UV.x);
-    uint _94 = uint(UV.y);
-    imageStore(_34, ivec2(uvec2(_83, _84)), uvec4(_93, _94, _93, _94));
+    uint16_t _89 = uint16_t(int16_t(UV.x));
+    uint16_t _90 = uint16_t(int16_t(UV.y));
+    imageStore(_31, ivec2(uvec2(_83, _84)), ivec4(i16vec4(u16vec4(_89, _90, _89, _90))));
+    uint16_t _95 = uint16_t(UV.x);
+    uint16_t _96 = uint16_t(UV.y);
+    imageStore(_34, ivec2(uvec2(_83, _84)), uvec4(u16vec4(_95, _96, _95, _96)));
     imageStore(_37, int(_83), vec4(8.0));
-    imageStore(_40, int(_83), ivec4(uvec4(4294967276u)));
-    imageStore(_43, int(_83), uvec4(80u));
-    mediump vec4 _107 = texture(sampler2D(_8, _46), vec2(UV.x, UV.y));
-    uvec4 _117 = uvec4(texelFetch(_12, ivec2(uvec2(1u, 2u)), int(3u)));
-    mediump uvec4 _125 = texelFetch(_16, ivec2(uvec2(4u, 5u)), int(6u));
-    mediump uint _127 = _125.x;
-    uint hp_copy_127 = _127;
-    mediump uint _128 = _125.y;
-    uint hp_copy_128 = _128;
-    mediump uint _129 = _125.z;
-    uint hp_copy_129 = _129;
-    mediump uint _130 = _125.w;
-    uint hp_copy_130 = _130;
-    mediump vec4 _132 = textureGather(sampler2D(_8, _46), vec2(UV.x, UV.y));
-    mediump float _137 = _132.x + _107.x;
-    float hp_copy_137 = _137;
-    mediump float _138 = _132.y + _107.y;
-    float hp_copy_138 = _138;
-    mediump float _139 = _132.z + _107.z;
-    float hp_copy_139 = _139;
-    mediump float _140 = _132.w + _107.w;
-    float hp_copy_140 = _140;
-    uvec4 _145 = uvec4(textureGather(isampler2D(_12, _46), vec2(UV.x, UV.y), int(1u)));
-    mediump uvec4 _157 = textureGather(usampler2D(_16, _46), vec2(UV.x, UV.y), int(2u));
-    mediump uint _158 = _157.x;
-    uint hp_copy_158 = _158;
-    mediump uint _159 = _157.y;
-    uint hp_copy_159 = _159;
-    mediump uint _160 = _157.z;
-    uint hp_copy_160 = _160;
-    mediump uint _161 = _157.w;
-    uint hp_copy_161 = _161;
-    mediump float _173 = vec4(texture(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5))).x;
-    float hp_copy_173 = _173;
-    mediump float _178 = hp_copy_173 + hp_copy_137;
-    float hp_copy_178 = _178;
-    mediump float _179 = hp_copy_173 + hp_copy_138;
+    imageStore(_40, int(_83), ivec4(i16vec4(u16vec4(65516us))));
+    imageStore(_43, int(_83), uvec4(u16vec4(80us)));
+    mediump vec4 _111 = texture(sampler2D(_8, _46), vec2(UV.x, UV.y));
+    u16vec4 _121 = u16vec4(texelFetch(_12, ivec2(uvec2(1u, 2u)), int(3u)));
+    u16vec4 _131 = u16vec4(texelFetch(_16, ivec2(uvec2(4u, 5u)), int(6u)));
+    mediump vec4 _137 = textureGather(sampler2D(_8, _46), vec2(UV.x, UV.y));
+    mediump float _142 = _137.x + _111.x;
+    float hp_copy_142 = _142;
+    mediump float _143 = _137.y + _111.y;
+    float hp_copy_143 = _143;
+    mediump float _144 = _137.z + _111.z;
+    float hp_copy_144 = _144;
+    mediump float _145 = _137.w + _111.w;
+    float hp_copy_145 = _145;
+    u16vec4 _150 = u16vec4(textureGather(isampler2D(_12, _46), vec2(UV.x, UV.y), int(1u)));
+    u16vec4 _163 = u16vec4(textureGather(usampler2D(_16, _46), vec2(UV.x, UV.y), int(2u)));
+    mediump float _179 = vec4(texture(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5))).x;
     float hp_copy_179 = _179;
-    mediump float _180 = hp_copy_173 + hp_copy_139;
-    float hp_copy_180 = _180;
-    mediump float _181 = hp_copy_173 + hp_copy_140;
-    float hp_copy_181 = _181;
-    mediump float _185 = vec4(textureLod(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5), 0.0)).x;
+    mediump float _184 = hp_copy_179 + hp_copy_142;
+    float hp_copy_184 = _184;
+    mediump float _185 = hp_copy_179 + hp_copy_143;
     float hp_copy_185 = _185;
-    mediump float _190 = hp_copy_185 + hp_copy_178;
-    mediump float _191 = hp_copy_185 + hp_copy_179;
-    mediump float _192 = hp_copy_185 + hp_copy_180;
-    mediump float _193 = hp_copy_185 + hp_copy_181;
-    vec2 _194 = vec2(UV.x, UV.y);
-    mediump vec4 _195 = textureGather(sampler2DShadow(_8, _47), _194, 0.5);
-    mediump vec4 _204 = textureLod(sampler2D(_8, _46), vec2(UV.x, UV.y), 0.0);
-    mediump vec4 _217 = textureGrad(sampler2D(_8, _46), vec2(UV.x, UV.y), vec2(0.20000000298023223876953125, 0.300000011920928955078125), vec2(0.4000000059604644775390625, 0.5));
-    mediump vec4 _229 = texture(sampler2D(_8, _46), vec2(UV.x, UV.y), 0.5);
-    mediump vec4 _239 = texelFetch(_19, int(_83));
-    uvec4 _249 = uvec4(texelFetch(_22, int(_83)));
-    mediump uvec4 _258 = texelFetch(_25, int(_83));
-    SV_Target.x = ((((_195.x + _190) + _204.x) + _217.x) + _229.x) + _239.x;
-    SV_Target.y = ((((_195.y + _191) + _204.y) + _217.y) + _229.y) + _239.y;
-    SV_Target.z = ((((_195.z + _192) + _204.z) + _217.z) + _229.z) + _239.z;
-    SV_Target.w = ((((_195.w + _193) + _204.w) + _217.w) + _229.w) + _239.w;
-    SV_Target_1.x = int((_145.x + _117.x) + _249.x);
-    SV_Target_1.y = int((_145.y + _117.y) + _249.y);
-    SV_Target_1.z = int((_145.z + _117.z) + _249.z);
-    SV_Target_1.w = int((_145.w + _117.w) + _249.w);
-    SV_Target_2.x = (hp_copy_158 + hp_copy_127) + _258.x;
-    SV_Target_2.y = (hp_copy_159 + hp_copy_128) + _258.y;
-    SV_Target_2.z = (hp_copy_160 + hp_copy_129) + _258.z;
-    SV_Target_2.w = (hp_copy_161 + hp_copy_130) + _258.w;
+    mediump float _186 = hp_copy_179 + hp_copy_144;
+    float hp_copy_186 = _186;
+    mediump float _187 = hp_copy_179 + hp_copy_145;
+    float hp_copy_187 = _187;
+    mediump float _191 = vec4(textureLod(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5), 0.0)).x;
+    float hp_copy_191 = _191;
+    mediump float _196 = hp_copy_191 + hp_copy_184;
+    mediump float _197 = hp_copy_191 + hp_copy_185;
+    mediump float _198 = hp_copy_191 + hp_copy_186;
+    mediump float _199 = hp_copy_191 + hp_copy_187;
+    vec2 _200 = vec2(UV.x, UV.y);
+    mediump vec4 _201 = textureGather(sampler2DShadow(_8, _47), _200, 0.5);
+    mediump vec4 _210 = textureLod(sampler2D(_8, _46), vec2(UV.x, UV.y), 0.0);
+    mediump vec4 _223 = textureGrad(sampler2D(_8, _46), vec2(UV.x, UV.y), vec2(0.20000000298023223876953125, 0.300000011920928955078125), vec2(0.4000000059604644775390625, 0.5));
+    mediump vec4 _235 = texture(sampler2D(_8, _46), vec2(UV.x, UV.y), 0.5);
+    mediump vec4 _245 = texelFetch(_19, int(_83));
+    u16vec4 _255 = u16vec4(texelFetch(_22, int(_83)));
+    u16vec4 _265 = u16vec4(texelFetch(_25, int(_83)));
+    SV_Target.x = ((((_201.x + _196) + _210.x) + _223.x) + _235.x) + _245.x;
+    SV_Target.y = ((((_201.y + _197) + _210.y) + _223.y) + _235.y) + _245.y;
+    SV_Target.z = ((((_201.z + _198) + _210.z) + _223.z) + _235.z) + _245.z;
+    SV_Target.w = ((((_201.w + _199) + _210.w) + _223.w) + _235.w) + _245.w;
+    SV_Target_1.x = int(int16_t((_150.x + _121.x) + _255.x));
+    SV_Target_1.y = int(int16_t((_150.y + _121.y) + _255.y));
+    SV_Target_1.z = int(int16_t((_150.z + _121.z) + _255.z));
+    SV_Target_1.w = int(int16_t((_150.w + _121.w) + _255.w));
+    SV_Target_2.x = uint((_163.x + _131.x) + _265.x);
+    SV_Target_2.y = uint((_163.y + _131.y) + _265.y);
+    SV_Target_2.z = uint((_163.z + _131.z) + _265.z);
+    SV_Target_2.w = uint((_163.w + _131.w) + _265.w);
 }
 
 
@@ -111,9 +97,10 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 288
+; Bound: 299
 ; Schema: 0
 OpCapability Shader
+OpCapability Int16
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
@@ -180,66 +167,60 @@ OpDecorate %59 RelaxedPrecision
 OpDecorate %59 Location 2
 OpDecorate %81 RelaxedPrecision
 OpDecorate %82 RelaxedPrecision
-OpDecorate %107 RelaxedPrecision
-OpDecorate %109 RelaxedPrecision
-OpDecorate %110 RelaxedPrecision
 OpDecorate %111 RelaxedPrecision
-OpDecorate %112 RelaxedPrecision
+OpDecorate %113 RelaxedPrecision
+OpDecorate %114 RelaxedPrecision
 OpDecorate %115 RelaxedPrecision
-OpDecorate %125 RelaxedPrecision
-OpDecorate %132 RelaxedPrecision
-OpDecorate %133 RelaxedPrecision
-OpDecorate %134 RelaxedPrecision
-OpDecorate %135 RelaxedPrecision
-OpDecorate %136 RelaxedPrecision
+OpDecorate %116 RelaxedPrecision
+OpDecorate %119 RelaxedPrecision
+OpDecorate %129 RelaxedPrecision
 OpDecorate %137 RelaxedPrecision
 OpDecorate %138 RelaxedPrecision
 OpDecorate %139 RelaxedPrecision
 OpDecorate %140 RelaxedPrecision
+OpDecorate %141 RelaxedPrecision
+OpDecorate %142 RelaxedPrecision
+OpDecorate %143 RelaxedPrecision
 OpDecorate %144 RelaxedPrecision
-OpDecorate %157 RelaxedPrecision
-OpDecorate %178 RelaxedPrecision
-OpDecorate %179 RelaxedPrecision
-OpDecorate %180 RelaxedPrecision
-OpDecorate %181 RelaxedPrecision
-OpDecorate %190 RelaxedPrecision
-OpDecorate %191 RelaxedPrecision
-OpDecorate %192 RelaxedPrecision
-OpDecorate %193 RelaxedPrecision
-OpDecorate %195 RelaxedPrecision
+OpDecorate %145 RelaxedPrecision
+OpDecorate %149 RelaxedPrecision
+OpDecorate %162 RelaxedPrecision
+OpDecorate %184 RelaxedPrecision
+OpDecorate %185 RelaxedPrecision
+OpDecorate %186 RelaxedPrecision
+OpDecorate %187 RelaxedPrecision
 OpDecorate %196 RelaxedPrecision
 OpDecorate %197 RelaxedPrecision
 OpDecorate %198 RelaxedPrecision
 OpDecorate %199 RelaxedPrecision
-OpDecorate %200 RelaxedPrecision
 OpDecorate %201 RelaxedPrecision
 OpDecorate %202 RelaxedPrecision
 OpDecorate %203 RelaxedPrecision
 OpDecorate %204 RelaxedPrecision
+OpDecorate %205 RelaxedPrecision
 OpDecorate %206 RelaxedPrecision
 OpDecorate %207 RelaxedPrecision
 OpDecorate %208 RelaxedPrecision
 OpDecorate %209 RelaxedPrecision
 OpDecorate %210 RelaxedPrecision
-OpDecorate %211 RelaxedPrecision
 OpDecorate %212 RelaxedPrecision
 OpDecorate %213 RelaxedPrecision
+OpDecorate %214 RelaxedPrecision
+OpDecorate %215 RelaxedPrecision
+OpDecorate %216 RelaxedPrecision
 OpDecorate %217 RelaxedPrecision
-OpDecorate %221 RelaxedPrecision
-OpDecorate %222 RelaxedPrecision
+OpDecorate %218 RelaxedPrecision
+OpDecorate %219 RelaxedPrecision
 OpDecorate %223 RelaxedPrecision
-OpDecorate %224 RelaxedPrecision
-OpDecorate %225 RelaxedPrecision
-OpDecorate %226 RelaxedPrecision
 OpDecorate %227 RelaxedPrecision
 OpDecorate %228 RelaxedPrecision
 OpDecorate %229 RelaxedPrecision
+OpDecorate %230 RelaxedPrecision
 OpDecorate %231 RelaxedPrecision
 OpDecorate %232 RelaxedPrecision
 OpDecorate %233 RelaxedPrecision
 OpDecorate %234 RelaxedPrecision
 OpDecorate %235 RelaxedPrecision
-OpDecorate %236 RelaxedPrecision
 OpDecorate %237 RelaxedPrecision
 OpDecorate %238 RelaxedPrecision
 OpDecorate %239 RelaxedPrecision
@@ -252,7 +233,13 @@ OpDecorate %245 RelaxedPrecision
 OpDecorate %246 RelaxedPrecision
 OpDecorate %247 RelaxedPrecision
 OpDecorate %248 RelaxedPrecision
-OpDecorate %258 RelaxedPrecision
+OpDecorate %249 RelaxedPrecision
+OpDecorate %250 RelaxedPrecision
+OpDecorate %251 RelaxedPrecision
+OpDecorate %252 RelaxedPrecision
+OpDecorate %253 RelaxedPrecision
+OpDecorate %254 RelaxedPrecision
+OpDecorate %264 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -314,31 +301,33 @@ OpDecorate %258 RelaxedPrecision
 %76 = OpConstant %13 0
 %79 = OpConstant %13 1
 %85 = OpTypeVector %13 2
-%97 = OpConstant %5 8
-%99 = OpConstant %13 4294967276
-%102 = OpConstant %13 80
-%104 = OpTypeSampledImage %6
-%106 = OpConstant %5 0
-%113 = OpConstant %13 3
-%114 = OpConstant %13 2
-%122 = OpConstant %13 6
-%123 = OpConstant %13 4
-%124 = OpConstant %13 5
-%141 = OpTypeSampledImage %10
-%154 = OpTypeSampledImage %14
-%166 = OpTypeImage %5 2D 1 0 0 1 Unknown
-%167 = OpTypeSampledImage %166
-%169 = OpConstant %5 0.5
-%214 = OpConstant %5 0.200000003
-%215 = OpConstant %5 0.300000012
-%216 = OpConstant %5 0.400000006
-%267 = OpTypePointer Output %5
-%272 = OpTypePointer Output %9
-%281 = OpTypePointer Output %13
+%88 = OpTypeInt 16 0
+%92 = OpTypeVector %88 4
+%100 = OpConstant %5 8
+%102 = OpConstant %88 65516
+%105 = OpConstant %88 80
+%108 = OpTypeSampledImage %6
+%110 = OpConstant %5 0
+%117 = OpConstant %13 3
+%118 = OpConstant %13 2
+%126 = OpConstant %13 6
+%127 = OpConstant %13 4
+%128 = OpConstant %13 5
+%146 = OpTypeSampledImage %10
+%159 = OpTypeSampledImage %14
+%172 = OpTypeImage %5 2D 1 0 0 1 Unknown
+%173 = OpTypeSampledImage %172
+%175 = OpConstant %5 0.5
+%220 = OpConstant %5 0.200000003
+%221 = OpConstant %5 0.300000012
+%222 = OpConstant %5 0.400000006
+%274 = OpTypePointer Output %5
+%279 = OpTypePointer Output %9
+%288 = OpTypePointer Output %13
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %286
-%286 = OpLabel
+OpBranch %297
+%297 = OpLabel
 %60 = OpLoad %41 %43
 %61 = OpLoad %38 %40
 %62 = OpLoad %35 %37
@@ -364,200 +353,209 @@ OpBranch %286
 %86 = OpCompositeConstruct %85 %83 %84
 %87 = OpCompositeConstruct %51 %81 %82 %81 %82
 OpImageWrite %65 %86 %87
-%88 = OpConvertFToS %13 %77
-%89 = OpConvertFToS %13 %80
-%90 = OpCompositeConstruct %85 %83 %84
-%91 = OpCompositeConstruct %57 %88 %89 %88 %89
-%92 = OpBitcast %54 %91
-OpImageWrite %64 %90 %92
-%93 = OpConvertFToU %13 %77
-%94 = OpConvertFToU %13 %80
-%95 = OpCompositeConstruct %85 %83 %84
-%96 = OpCompositeConstruct %57 %93 %94 %93 %94
-OpImageWrite %63 %95 %96
-%98 = OpCompositeConstruct %51 %97 %97 %97 %97
-OpImageWrite %62 %83 %98
-%100 = OpCompositeConstruct %57 %99 %99 %99 %99
-%101 = OpBitcast %54 %100
-OpImageWrite %61 %83 %101
-%103 = OpCompositeConstruct %57 %102 %102 %102 %102
-OpImageWrite %60 %83 %103
-%105 = OpSampledImage %104 %71 %73
-%108 = OpCompositeConstruct %48 %77 %80
-%107 = OpImageSampleImplicitLod %51 %105 %108 None
-%109 = OpCompositeExtract %5 %107 0
-%110 = OpCompositeExtract %5 %107 1
-%111 = OpCompositeExtract %5 %107 2
-%112 = OpCompositeExtract %5 %107 3
-%116 = OpCompositeConstruct %85 %79 %114
-%115 = OpImageFetch %54 %70 %116 Lod %113
-%117 = OpBitcast %57 %115
-%118 = OpCompositeExtract %13 %117 0
-%119 = OpCompositeExtract %13 %117 1
-%120 = OpCompositeExtract %13 %117 2
-%121 = OpCompositeExtract %13 %117 3
-%126 = OpCompositeConstruct %85 %123 %124
-%125 = OpImageFetch %57 %69 %126 Lod %122
-%127 = OpCompositeExtract %13 %125 0
-%128 = OpCompositeExtract %13 %125 1
-%129 = OpCompositeExtract %13 %125 2
-%130 = OpCompositeExtract %13 %125 3
-%131 = OpCompositeConstruct %48 %77 %80
-%132 = OpImageGather %51 %105 %131 %76
-%133 = OpCompositeExtract %5 %132 0
-%134 = OpCompositeExtract %5 %132 1
-%135 = OpCompositeExtract %5 %132 2
-%136 = OpCompositeExtract %5 %132 3
-%137 = OpFAdd %5 %133 %109
-%138 = OpFAdd %5 %134 %110
-%139 = OpFAdd %5 %135 %111
-%140 = OpFAdd %5 %136 %112
-%142 = OpSampledImage %141 %70 %73
-%143 = OpCompositeConstruct %48 %77 %80
-%144 = OpImageGather %54 %142 %143 %79
-%145 = OpBitcast %57 %144
-%146 = OpCompositeExtract %13 %145 0
-%147 = OpCompositeExtract %13 %145 1
-%148 = OpCompositeExtract %13 %145 2
-%149 = OpCompositeExtract %13 %145 3
-%150 = OpIAdd %13 %146 %118
-%151 = OpIAdd %13 %147 %119
-%152 = OpIAdd %13 %148 %120
-%153 = OpIAdd %13 %149 %121
-%155 = OpSampledImage %154 %69 %73
-%156 = OpCompositeConstruct %48 %77 %80
-%157 = OpImageGather %57 %155 %156 %114
-%158 = OpCompositeExtract %13 %157 0
-%159 = OpCompositeExtract %13 %157 1
-%160 = OpCompositeExtract %13 %157 2
-%161 = OpCompositeExtract %13 %157 3
-%162 = OpIAdd %13 %158 %127
-%163 = OpIAdd %13 %159 %128
-%164 = OpIAdd %13 %160 %129
-%165 = OpIAdd %13 %161 %130
-%168 = OpSampledImage %167 %71 %72
-%171 = OpCompositeConstruct %48 %77 %80
-%170 = OpImageSampleDrefImplicitLod %5 %168 %171 %169 None
-%172 = OpCompositeConstruct %51 %170 %170 %170 %170
-%173 = OpCompositeExtract %5 %172 0
-%174 = OpFAdd %5 %173 %137
-%175 = OpFAdd %5 %173 %138
-%176 = OpFAdd %5 %173 %139
-%177 = OpFAdd %5 %173 %140
-%178 = OpCopyObject %5 %174
-%179 = OpCopyObject %5 %175
-%180 = OpCopyObject %5 %176
-%181 = OpCopyObject %5 %177
-%183 = OpCompositeConstruct %48 %77 %80
-%182 = OpImageSampleDrefExplicitLod %5 %168 %183 %169 Lod %106
-%184 = OpCompositeConstruct %51 %182 %182 %182 %182
-%185 = OpCompositeExtract %5 %184 0
-%186 = OpFAdd %5 %185 %178
-%187 = OpFAdd %5 %185 %179
-%188 = OpFAdd %5 %185 %180
-%189 = OpFAdd %5 %185 %181
-%190 = OpCopyObject %5 %186
-%191 = OpCopyObject %5 %187
-%192 = OpCopyObject %5 %188
-%193 = OpCopyObject %5 %189
-%194 = OpCompositeConstruct %48 %77 %80
-%195 = OpImageDrefGather %51 %168 %194 %169
-%196 = OpCompositeExtract %5 %195 0
-%197 = OpCompositeExtract %5 %195 1
-%198 = OpCompositeExtract %5 %195 2
-%199 = OpCompositeExtract %5 %195 3
-%200 = OpFAdd %5 %196 %190
-%201 = OpFAdd %5 %197 %191
-%202 = OpFAdd %5 %198 %192
-%203 = OpFAdd %5 %199 %193
-%205 = OpCompositeConstruct %48 %77 %80
-%204 = OpImageSampleExplicitLod %51 %105 %205 Lod %106
-%206 = OpCompositeExtract %5 %204 0
-%207 = OpCompositeExtract %5 %204 1
-%208 = OpCompositeExtract %5 %204 2
-%209 = OpCompositeExtract %5 %204 3
-%210 = OpFAdd %5 %200 %206
-%211 = OpFAdd %5 %201 %207
-%212 = OpFAdd %5 %202 %208
-%213 = OpFAdd %5 %203 %209
-%218 = OpCompositeConstruct %48 %77 %80
-%219 = OpCompositeConstruct %48 %214 %215
-%220 = OpCompositeConstruct %48 %216 %169
-%217 = OpImageSampleExplicitLod %51 %105 %218 Grad %219 %220
-%221 = OpCompositeExtract %5 %217 0
-%222 = OpCompositeExtract %5 %217 1
-%223 = OpCompositeExtract %5 %217 2
-%224 = OpCompositeExtract %5 %217 3
-%225 = OpFAdd %5 %210 %221
-%226 = OpFAdd %5 %211 %222
-%227 = OpFAdd %5 %212 %223
-%228 = OpFAdd %5 %213 %224
-%230 = OpCompositeConstruct %48 %77 %80
-%229 = OpImageSampleImplicitLod %51 %105 %230 Bias %169
-%231 = OpCompositeExtract %5 %229 0
-%232 = OpCompositeExtract %5 %229 1
-%233 = OpCompositeExtract %5 %229 2
-%234 = OpCompositeExtract %5 %229 3
-%235 = OpFAdd %5 %225 %231
-%236 = OpFAdd %5 %226 %232
-%237 = OpFAdd %5 %227 %233
-%238 = OpFAdd %5 %228 %234
-%239 = OpImageFetch %51 %68 %83
-%240 = OpCompositeExtract %5 %239 0
-%241 = OpCompositeExtract %5 %239 1
-%242 = OpCompositeExtract %5 %239 2
-%243 = OpCompositeExtract %5 %239 3
-%244 = OpFAdd %5 %235 %240
-%245 = OpFAdd %5 %236 %241
-%246 = OpFAdd %5 %237 %242
-%247 = OpFAdd %5 %238 %243
-%248 = OpImageFetch %54 %67 %83
-%249 = OpBitcast %57 %248
-%250 = OpCompositeExtract %13 %249 0
-%251 = OpCompositeExtract %13 %249 1
-%252 = OpCompositeExtract %13 %249 2
-%253 = OpCompositeExtract %13 %249 3
-%254 = OpIAdd %13 %150 %250
-%255 = OpIAdd %13 %151 %251
-%256 = OpIAdd %13 %152 %252
-%257 = OpIAdd %13 %153 %253
-%258 = OpImageFetch %57 %66 %83
-%259 = OpCompositeExtract %13 %258 0
-%260 = OpCompositeExtract %13 %258 1
-%261 = OpCompositeExtract %13 %258 2
-%262 = OpCompositeExtract %13 %258 3
-%263 = OpIAdd %13 %162 %259
-%264 = OpIAdd %13 %163 %260
-%265 = OpIAdd %13 %164 %261
-%266 = OpIAdd %13 %165 %262
-%268 = OpAccessChain %267 %53 %76
-OpStore %268 %244
-%269 = OpAccessChain %267 %53 %79
-OpStore %269 %245
-%270 = OpAccessChain %267 %53 %114
-OpStore %270 %246
-%271 = OpAccessChain %267 %53 %113
-OpStore %271 %247
-%273 = OpAccessChain %272 %56 %76
-%274 = OpBitcast %9 %254
-OpStore %273 %274
-%275 = OpAccessChain %272 %56 %79
-%276 = OpBitcast %9 %255
-OpStore %275 %276
-%277 = OpAccessChain %272 %56 %114
-%278 = OpBitcast %9 %256
-OpStore %277 %278
-%279 = OpAccessChain %272 %56 %113
-%280 = OpBitcast %9 %257
-OpStore %279 %280
-%282 = OpAccessChain %281 %59 %76
-OpStore %282 %263
-%283 = OpAccessChain %281 %59 %79
-OpStore %283 %264
-%284 = OpAccessChain %281 %59 %114
-OpStore %284 %265
-%285 = OpAccessChain %281 %59 %113
-OpStore %285 %266
+%89 = OpConvertFToS %88 %77
+%90 = OpConvertFToS %88 %80
+%91 = OpCompositeConstruct %85 %83 %84
+%93 = OpCompositeConstruct %92 %89 %90 %89 %90
+%94 = OpSConvert %54 %93
+OpImageWrite %64 %91 %94
+%95 = OpConvertFToU %88 %77
+%96 = OpConvertFToU %88 %80
+%97 = OpCompositeConstruct %85 %83 %84
+%98 = OpCompositeConstruct %92 %95 %96 %95 %96
+%99 = OpUConvert %57 %98
+OpImageWrite %63 %97 %99
+%101 = OpCompositeConstruct %51 %100 %100 %100 %100
+OpImageWrite %62 %83 %101
+%103 = OpCompositeConstruct %92 %102 %102 %102 %102
+%104 = OpSConvert %54 %103
+OpImageWrite %61 %83 %104
+%106 = OpCompositeConstruct %92 %105 %105 %105 %105
+%107 = OpUConvert %57 %106
+OpImageWrite %60 %83 %107
+%109 = OpSampledImage %108 %71 %73
+%112 = OpCompositeConstruct %48 %77 %80
+%111 = OpImageSampleImplicitLod %51 %109 %112 None
+%113 = OpCompositeExtract %5 %111 0
+%114 = OpCompositeExtract %5 %111 1
+%115 = OpCompositeExtract %5 %111 2
+%116 = OpCompositeExtract %5 %111 3
+%120 = OpCompositeConstruct %85 %79 %118
+%119 = OpImageFetch %54 %70 %120 Lod %117
+%121 = OpSConvert %92 %119
+%122 = OpCompositeExtract %88 %121 0
+%123 = OpCompositeExtract %88 %121 1
+%124 = OpCompositeExtract %88 %121 2
+%125 = OpCompositeExtract %88 %121 3
+%130 = OpCompositeConstruct %85 %127 %128
+%129 = OpImageFetch %57 %69 %130 Lod %126
+%131 = OpUConvert %92 %129
+%132 = OpCompositeExtract %88 %131 0
+%133 = OpCompositeExtract %88 %131 1
+%134 = OpCompositeExtract %88 %131 2
+%135 = OpCompositeExtract %88 %131 3
+%136 = OpCompositeConstruct %48 %77 %80
+%137 = OpImageGather %51 %109 %136 %76
+%138 = OpCompositeExtract %5 %137 0
+%139 = OpCompositeExtract %5 %137 1
+%140 = OpCompositeExtract %5 %137 2
+%141 = OpCompositeExtract %5 %137 3
+%142 = OpFAdd %5 %138 %113
+%143 = OpFAdd %5 %139 %114
+%144 = OpFAdd %5 %140 %115
+%145 = OpFAdd %5 %141 %116
+%147 = OpSampledImage %146 %70 %73
+%148 = OpCompositeConstruct %48 %77 %80
+%149 = OpImageGather %54 %147 %148 %79
+%150 = OpSConvert %92 %149
+%151 = OpCompositeExtract %88 %150 0
+%152 = OpCompositeExtract %88 %150 1
+%153 = OpCompositeExtract %88 %150 2
+%154 = OpCompositeExtract %88 %150 3
+%155 = OpIAdd %88 %151 %122
+%156 = OpIAdd %88 %152 %123
+%157 = OpIAdd %88 %153 %124
+%158 = OpIAdd %88 %154 %125
+%160 = OpSampledImage %159 %69 %73
+%161 = OpCompositeConstruct %48 %77 %80
+%162 = OpImageGather %57 %160 %161 %118
+%163 = OpUConvert %92 %162
+%164 = OpCompositeExtract %88 %163 0
+%165 = OpCompositeExtract %88 %163 1
+%166 = OpCompositeExtract %88 %163 2
+%167 = OpCompositeExtract %88 %163 3
+%168 = OpIAdd %88 %164 %132
+%169 = OpIAdd %88 %165 %133
+%170 = OpIAdd %88 %166 %134
+%171 = OpIAdd %88 %167 %135
+%174 = OpSampledImage %173 %71 %72
+%177 = OpCompositeConstruct %48 %77 %80
+%176 = OpImageSampleDrefImplicitLod %5 %174 %177 %175 None
+%178 = OpCompositeConstruct %51 %176 %176 %176 %176
+%179 = OpCompositeExtract %5 %178 0
+%180 = OpFAdd %5 %179 %142
+%181 = OpFAdd %5 %179 %143
+%182 = OpFAdd %5 %179 %144
+%183 = OpFAdd %5 %179 %145
+%184 = OpCopyObject %5 %180
+%185 = OpCopyObject %5 %181
+%186 = OpCopyObject %5 %182
+%187 = OpCopyObject %5 %183
+%189 = OpCompositeConstruct %48 %77 %80
+%188 = OpImageSampleDrefExplicitLod %5 %174 %189 %175 Lod %110
+%190 = OpCompositeConstruct %51 %188 %188 %188 %188
+%191 = OpCompositeExtract %5 %190 0
+%192 = OpFAdd %5 %191 %184
+%193 = OpFAdd %5 %191 %185
+%194 = OpFAdd %5 %191 %186
+%195 = OpFAdd %5 %191 %187
+%196 = OpCopyObject %5 %192
+%197 = OpCopyObject %5 %193
+%198 = OpCopyObject %5 %194
+%199 = OpCopyObject %5 %195
+%200 = OpCompositeConstruct %48 %77 %80
+%201 = OpImageDrefGather %51 %174 %200 %175
+%202 = OpCompositeExtract %5 %201 0
+%203 = OpCompositeExtract %5 %201 1
+%204 = OpCompositeExtract %5 %201 2
+%205 = OpCompositeExtract %5 %201 3
+%206 = OpFAdd %5 %202 %196
+%207 = OpFAdd %5 %203 %197
+%208 = OpFAdd %5 %204 %198
+%209 = OpFAdd %5 %205 %199
+%211 = OpCompositeConstruct %48 %77 %80
+%210 = OpImageSampleExplicitLod %51 %109 %211 Lod %110
+%212 = OpCompositeExtract %5 %210 0
+%213 = OpCompositeExtract %5 %210 1
+%214 = OpCompositeExtract %5 %210 2
+%215 = OpCompositeExtract %5 %210 3
+%216 = OpFAdd %5 %206 %212
+%217 = OpFAdd %5 %207 %213
+%218 = OpFAdd %5 %208 %214
+%219 = OpFAdd %5 %209 %215
+%224 = OpCompositeConstruct %48 %77 %80
+%225 = OpCompositeConstruct %48 %220 %221
+%226 = OpCompositeConstruct %48 %222 %175
+%223 = OpImageSampleExplicitLod %51 %109 %224 Grad %225 %226
+%227 = OpCompositeExtract %5 %223 0
+%228 = OpCompositeExtract %5 %223 1
+%229 = OpCompositeExtract %5 %223 2
+%230 = OpCompositeExtract %5 %223 3
+%231 = OpFAdd %5 %216 %227
+%232 = OpFAdd %5 %217 %228
+%233 = OpFAdd %5 %218 %229
+%234 = OpFAdd %5 %219 %230
+%236 = OpCompositeConstruct %48 %77 %80
+%235 = OpImageSampleImplicitLod %51 %109 %236 Bias %175
+%237 = OpCompositeExtract %5 %235 0
+%238 = OpCompositeExtract %5 %235 1
+%239 = OpCompositeExtract %5 %235 2
+%240 = OpCompositeExtract %5 %235 3
+%241 = OpFAdd %5 %231 %237
+%242 = OpFAdd %5 %232 %238
+%243 = OpFAdd %5 %233 %239
+%244 = OpFAdd %5 %234 %240
+%245 = OpImageFetch %51 %68 %83
+%246 = OpCompositeExtract %5 %245 0
+%247 = OpCompositeExtract %5 %245 1
+%248 = OpCompositeExtract %5 %245 2
+%249 = OpCompositeExtract %5 %245 3
+%250 = OpFAdd %5 %241 %246
+%251 = OpFAdd %5 %242 %247
+%252 = OpFAdd %5 %243 %248
+%253 = OpFAdd %5 %244 %249
+%254 = OpImageFetch %54 %67 %83
+%255 = OpSConvert %92 %254
+%256 = OpCompositeExtract %88 %255 0
+%257 = OpCompositeExtract %88 %255 1
+%258 = OpCompositeExtract %88 %255 2
+%259 = OpCompositeExtract %88 %255 3
+%260 = OpIAdd %88 %155 %256
+%261 = OpIAdd %88 %156 %257
+%262 = OpIAdd %88 %157 %258
+%263 = OpIAdd %88 %158 %259
+%264 = OpImageFetch %57 %66 %83
+%265 = OpUConvert %92 %264
+%266 = OpCompositeExtract %88 %265 0
+%267 = OpCompositeExtract %88 %265 1
+%268 = OpCompositeExtract %88 %265 2
+%269 = OpCompositeExtract %88 %265 3
+%270 = OpIAdd %88 %168 %266
+%271 = OpIAdd %88 %169 %267
+%272 = OpIAdd %88 %170 %268
+%273 = OpIAdd %88 %171 %269
+%275 = OpAccessChain %274 %53 %76
+OpStore %275 %250
+%276 = OpAccessChain %274 %53 %79
+OpStore %276 %251
+%277 = OpAccessChain %274 %53 %118
+OpStore %277 %252
+%278 = OpAccessChain %274 %53 %117
+OpStore %278 %253
+%280 = OpAccessChain %279 %56 %76
+%281 = OpSConvert %9 %260
+OpStore %280 %281
+%282 = OpAccessChain %279 %56 %79
+%283 = OpSConvert %9 %261
+OpStore %282 %283
+%284 = OpAccessChain %279 %56 %118
+%285 = OpSConvert %9 %262
+OpStore %284 %285
+%286 = OpAccessChain %279 %56 %117
+%287 = OpSConvert %9 %263
+OpStore %286 %287
+%289 = OpAccessChain %288 %59 %76
+%290 = OpUConvert %13 %270
+OpStore %289 %290
+%291 = OpAccessChain %288 %59 %79
+%292 = OpUConvert %13 %271
+OpStore %291 %292
+%293 = OpAccessChain %288 %59 %118
+%294 = OpUConvert %13 %272
+OpStore %293 %294
+%295 = OpAccessChain %288 %59 %117
+%296 = OpUConvert %13 %273
+OpStore %295 %296
 OpReturn
 OpFunctionEnd
 #endif
