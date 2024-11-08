@@ -7831,6 +7831,21 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::ShaderQuirk:
+	{
+		auto &quirk = static_cast<const OptionShaderQuirk &>(cap);
+		switch (quirk.quirk)
+		{
+		case ShaderQuirk::ForceDeviceMemoryBarriersThreadGroupCoherence:
+			options.quirks.force_device_memory_barriers_thread_group_coherence = true;
+			break;
+
+		default:
+			break;
+		}
+		break;
+	}
+
 	default:
 		break;
 	}

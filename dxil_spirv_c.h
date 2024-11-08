@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 43
+#define DXIL_SPV_API_VERSION_MINOR 44
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -216,6 +216,13 @@ typedef enum dxil_spv_hit_group_type
 	DXIL_SPV_HIT_GROUP_TYPE_PROCEDURAL = 1,
 	DXIL_SPV_HIT_GROUP_TYPE_INT_MAX = 0x7fffffff
 } dxil_spv_hit_group_type;
+
+typedef enum dxil_spv_shader_quirk
+{
+	DXIL_SPV_SHADER_QUIRK_NONE = 0,
+	DXIL_SPV_SHADER_QUIRK_FORCE_DEVICE_MEMORY_BARRIERS_THREAD_GROUP_COHERENCE = 1,
+	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
+} dxil_spv_shader_quirk;
 
 #ifdef DXIL_SPV_ENABLE_EXPERIMENTAL_WORKGRAPHS
 typedef enum dxil_spv_node_launch_type
@@ -420,6 +427,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_DRIVER_VERSION = 39,
 	DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES = 40,
 	DXIL_SPV_OPTION_INSTRUCTION_INSTRUMENTATION = 41,
+	DXIL_SPV_OPTION_SHADER_QUIRK = 42,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -729,6 +737,12 @@ typedef struct dxil_spv_option_instruction_instrumentation
 	unsigned long long shader_hash;
 	dxil_spv_instruction_instrumentation_type type;
 } dxil_spv_option_instruction_instrumentation;
+
+typedef struct dxil_spv_option_shader_quirk
+{
+	dxil_spv_option_base base;
+	dxil_spv_shader_quirk quirk;
+} dxil_spv_option_shader_quirk;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

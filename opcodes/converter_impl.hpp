@@ -723,6 +723,11 @@ struct Converter::Impl
 
 		uint32_t driver_id = 0;
 		uint32_t driver_version = 0;
+
+		struct
+		{
+			bool force_device_memory_barriers_thread_group_coherence = false;
+		} quirks;
 	} options;
 
 	struct BindlessInfo

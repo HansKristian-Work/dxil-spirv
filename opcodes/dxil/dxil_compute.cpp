@@ -53,8 +53,17 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	op->add_id(builder.makeUintConstant(memory_scope));
 
 	uint32_t semantics = spv::MemorySemanticsAcquireReleaseMask;
-	if ((operation & (DXIL::AccessUAVGlobal | DXIL::AccessUAVThreadGroup)) != 0)
+
+	// Game workaround. Sometimes a game might forget to insert device memory barrier in the proper place ._.
+	const bool force_device_memory_barriers =
+	    is_sync && impl.options.quirks.force_device_memory_barriers_thread_group_coherence;
+
+	if ((operation & (DXIL::AccessUAVGlobal | DXIL::AccessUAVThreadGroup)) != 0 ||
+	    (force_device_memory_barriers && impl.shader_analysis.require_uav_thread_group_coherence))
+	{
 		semantics |= spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask;
+	}
+
 	if ((operation & DXIL::AccessGroupShared) != 0)
 		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
 	op->add_id(builder.makeUintConstant(semantics));

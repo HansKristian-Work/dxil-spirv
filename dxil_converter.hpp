@@ -256,6 +256,7 @@ enum class Option : uint32_t
 	DriverVersion = 39,
 	ComputeShaderDerivatives = 40,
 	InstructionInstrumentation = 41,
+	ShaderQuirk = 42,
 	Count
 };
 
@@ -728,6 +729,22 @@ struct OptionInstructionInstrumentation : OptionBase
 	uint32_t payload_binding = 0;
 	uint64_t shader_hash = 0;
 	InstructionInstrumentationType type = {};
+};
+
+enum class ShaderQuirk : uint32_t
+{
+	None = 0,
+	ForceDeviceMemoryBarriersThreadGroupCoherence
+};
+
+struct OptionShaderQuirk : OptionBase
+{
+	OptionShaderQuirk()
+	    : OptionBase(Option::ShaderQuirk)
+	{
+	}
+
+	ShaderQuirk quirk = ShaderQuirk::None;
 };
 
 struct DescriptorTableEntry
