@@ -2748,6 +2748,7 @@ bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
 bool Converter::Impl::emit_global_heaps()
 {
 	Vector<AnnotateHandleReference *> annotations;
+	annotations.reserve(llvm_annotate_handle_uses.size());
 	for (auto &use : llvm_annotate_handle_uses)
 		annotations.push_back(&use.second);
 
@@ -5724,6 +5725,7 @@ Vector<NodeOutputData> Converter::get_node_outputs(const LLVMBCParser &parser, c
 	if (outputs_node)
 	{
 		auto *outputs = llvm::cast<llvm::MDNode>(*outputs_node);
+		output_data.reserve(outputs->getNumOperands());
 		for (unsigned i = 0; i < outputs->getNumOperands(); i++)
 		{
 			auto *output = llvm::cast<llvm::MDNode>(outputs->getOperand(i));
@@ -6544,6 +6546,7 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
 	code_func->moveLocalVariablesFrom(spirv_module.get_entry_function());
 
 	auto *entry = pool.create_node();
+	entry->ir.operations.reserve(3);
 	entry->ir.operations.push_back(allocate(spv::OpBeginInvocationInterlockEXT));
 	auto *call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
 	call_op->add_id(code_func->getId());
@@ -6613,6 +6616,7 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 	{
 		auto *load_op = allocate(spv::OpLoad, builder().makeUintType(32));
 		load_op->add_id(spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId));
+		entry->ir.operations.reserve(3);
 		entry->ir.operations.push_back(load_op);
 
 		auto *cmp_op = allocate(spv::OpIEqual, builder().makeBoolType());
@@ -6745,6 +6749,7 @@ Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_legacy
 	while (!to_process.empty())
 	{
 		std::swap(to_process, processing);
+		visit_order.reserve(processing.size());
 		for (auto *block : processing)
 		{
 			visit_order.push_back(block);
@@ -6916,6 +6921,7 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 			Terminator::Case default_case = {};
 			default_case.is_default = true;
 			default_case.node = bb_map[inst->getDefaultDest()]->node;
+			node->ir.terminator.cases.reserve(inst->case_end() - inst->case_begin() + 1);
 			node->ir.terminator.cases.push_back(default_case);
 
 			node->ir.terminator.conditional_id = get_id_for_value(inst->getCondition());
