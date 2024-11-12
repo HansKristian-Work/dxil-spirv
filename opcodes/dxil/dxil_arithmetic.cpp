@@ -114,6 +114,93 @@ bool emit_isfinite_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	return true;
 }
 
+static spv::Id emit_bitscan_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::Value *value)
+{
+	auto &builder = impl.builder();
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	Operation *op;
+
+	// Vulkan currently does not allow 16/64-bit for these ... :(
+	if (value->getType()->getIntegerBitWidth() == 16)
+	{
+		auto *extend = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
+		extend->add_id(impl.get_id_for_value(value));
+		impl.add(extend);
+
+		op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+		op->add_id(impl.glsl_std450_ext);
+		op->add_literal(opcode);
+		op->add_id(extend->id);
+	}
+	else if (value->getType()->getIntegerBitWidth() == 64)
+	{
+		spv::Id uint_type = builder.makeUintType(32);
+		spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+
+		auto *bitcast = impl.allocate(spv::OpBitcast, uvec2_type);
+		bitcast->add_id(impl.get_id_for_value(value));
+		impl.add(bitcast);
+
+		auto *ilsb = impl.allocate(spv::OpExtInst, uvec2_type);
+		ilsb->add_id(impl.glsl_std450_ext);
+		ilsb->add_literal(opcode);
+		ilsb->add_id(bitcast->id);
+		impl.add(ilsb);
+
+		spv::Id scalars[2];
+		spv::Id scalar_is_degenerate[2];
+		for (int i = 0; i < 2; i++)
+		{
+			auto *ext = impl.allocate(spv::OpCompositeExtract, uint_type);
+			ext->add_id(ilsb->id);
+			ext->add_literal(i);
+			impl.add(ext);
+			scalars[i] = ext->id;
+
+			auto *is_zero = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+			is_zero->add_id(ext->id);
+			is_zero->add_id(builder.makeUintConstant(-1u));
+			impl.add(is_zero);
+			scalar_is_degenerate[i] = is_zero->id;
+		}
+
+		auto *add32 = impl.allocate(spv::OpIAdd, uint_type);
+		add32->add_id(scalars[1]);
+		add32->add_id(builder.makeUintConstant(32));
+		impl.add(add32);
+
+		auto *high_sel = impl.allocate(spv::OpSelect, uint_type);
+		high_sel->add_id(scalar_is_degenerate[1]);
+		high_sel->add_id(builder.makeUintConstant(-1u));
+		high_sel->add_id(add32->id);
+		impl.add(high_sel);
+
+		op = impl.allocate(spv::OpSelect, uint_type);
+		op->add_id(scalar_is_degenerate[0]);
+		op->add_id(high_sel->id);
+		op->add_id(scalars[0]);
+	}
+	else
+	{
+		op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+		op->add_id(impl.glsl_std450_ext);
+		op->add_literal(opcode);
+		op->add_id(impl.get_id_for_value(value));
+	}
+
+	impl.add(op);
+	return op->id;
+}
+
+bool emit_find_low_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id res = emit_bitscan_instruction(GLSLstd450FindILsb, impl, instruction->getOperand(1));
+	impl.rewrite_value(instruction, res);
+	return true;
+}
+
 bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -121,23 +208,21 @@ bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, co
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
 	// This is actually CLZ, and not FindMSB.
-	Operation *msb_op = impl.allocate(spv::OpExtInst, impl.get_type_id(instruction->getType()));
-	{
-		msb_op->add_id(impl.glsl_std450_ext);
-		msb_op->add_literal(opcode);
-		msb_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-		impl.add(msb_op);
-	}
+	auto *value = instruction->getOperand(1);
+	spv::Id msb_id = emit_bitscan_instruction(opcode, impl, value);
 
 	Operation *eq_neg1_op = impl.allocate(spv::OpIEqual, builder.makeBoolType());
 	{
-		eq_neg1_op->add_ids({ msb_op->id, builder.makeUintConstant(~0u) });
+		eq_neg1_op->add_ids({ msb_id, builder.makeUintConstant(~0u) });
 		impl.add(eq_neg1_op);
 	}
 
 	Operation *msb_sub_op = impl.allocate(spv::OpISub, impl.get_type_id(instruction->getType()));
 	{
-		msb_sub_op->add_ids({ builder.makeUintConstant(31), msb_op->id });
+		msb_sub_op->add_ids({
+		    builder.makeUintConstant(value->getType()->getIntegerBitWidth() - 1),
+		    msb_id
+		});
 		impl.add(msb_sub_op);
 	}
 

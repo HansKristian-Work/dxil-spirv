@@ -145,7 +145,7 @@ struct DXILDispatcher
 
 		OP(Bfrev) = emit_bit_reverse_instruction;
 		OP(Countbits) = emit_bit_count_instruction;
-		OP(FirstbitLo) = std450_unary_dispatch<GLSLstd450FindILsb>;
+		OP(FirstbitLo) = emit_find_low_bit_instruction;
 		OP(FirstbitSHi) = emit_find_high_bit_dispatch<GLSLstd450FindSMsb>;
 		OP(FirstbitHi) = emit_find_high_bit_dispatch<GLSLstd450FindUMsb>;
 
