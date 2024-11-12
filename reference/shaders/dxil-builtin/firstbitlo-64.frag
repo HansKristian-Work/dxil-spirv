@@ -12,9 +12,7 @@ layout(location = 0) out uint SV_Target;
 void main()
 {
     uvec2 _22 = uvec2(findLSB(unpackUint2x32(uint64_t(A) | (uint64_t(B) << 32ul))));
-    uint _23 = _22.x;
-    uint _27 = _22.y;
-    SV_Target = (_23 == 4294967295u) ? ((_27 == 4294967295u) ? 4294967295u : (_27 + 32u)) : _23;
+    SV_Target = min(_22.x, (_22.y | 32u));
 }
 
 
@@ -23,7 +21,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 35
+; Bound: 30
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -52,13 +50,11 @@ OpDecorate %10 Location 0
 %13 = OpTypeInt 64 0
 %17 = OpConstant %13 32
 %20 = OpTypeVector %5 2
-%24 = OpTypeBool
-%26 = OpConstant %5 4294967295
-%30 = OpConstant %5 32
+%26 = OpConstant %5 32
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %33
-%33 = OpLabel
+OpBranch %28
+%28 = OpLabel
 %11 = OpLoad %5 %8
 %12 = OpLoad %5 %7
 %14 = OpUConvert %13 %12
@@ -68,13 +64,10 @@ OpBranch %33
 %21 = OpBitcast %20 %18
 %22 = OpExtInst %20 %19 FindILsb %21
 %23 = OpCompositeExtract %5 %22 0
-%25 = OpIEqual %24 %23 %26
-%27 = OpCompositeExtract %5 %22 1
-%28 = OpIEqual %24 %27 %26
-%29 = OpIAdd %5 %27 %30
-%31 = OpSelect %5 %28 %26 %29
-%32 = OpSelect %5 %25 %31 %23
-OpStore %10 %32
+%24 = OpCompositeExtract %5 %22 1
+%25 = OpBitwiseOr %5 %24 %26
+%27 = OpExtInst %5 %19 UMin %23 %25
+OpStore %10 %27
 OpReturn
 OpFunctionEnd
 #endif

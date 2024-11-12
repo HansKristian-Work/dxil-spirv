@@ -126,7 +126,9 @@ spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
 	// Vulkan currently does not allow 16/64-bit for these ... :(
 	if (value->getType()->getIntegerBitWidth() == 16)
 	{
-		auto *extend = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
+		auto *extend = impl.allocate(
+		    opcode == GLSLstd450FindSMsb ? spv::OpSConvert : spv::OpUConvert, builder.makeUintType(32));
+
 		extend->add_id(impl.get_id_for_value(value));
 		impl.add(extend);
 
@@ -148,6 +150,23 @@ spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
 		bitcast->add_id(impl.get_id_for_value(value));
 		impl.add(bitcast);
 
+		if (opcode == GLSLstd450FindSMsb)
+		{
+			spv::Id int_type = builder.makeIntType(32);
+			auto *shifted = impl.allocate(spv::OpShiftRightArithmetic, builder.makeVectorType(int_type, 2));
+			shifted->add_id(bitcast->id);
+			shifted->add_id(impl.build_splat_constant_vector(int_type, builder.makeIntConstant(31), 2));
+			impl.add(shifted);
+
+			auto *xored = impl.allocate(spv::OpBitwiseXor, uvec2_type);
+			xored->add_id(bitcast->id);
+			xored->add_id(shifted->id);
+			impl.add(xored);
+
+			bitcast = xored;
+			opcode = GLSLstd450FindUMsb;
+		}
+
 		auto *ilsb = impl.allocate(spv::OpExtInst, uvec2_type);
 		ilsb->add_id(impl.glsl_std450_ext);
 		ilsb->add_literal(opcode);
@@ -155,7 +174,6 @@ spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
 		impl.add(ilsb);
 
 		spv::Id scalars[2];
-		spv::Id scalar_is_degenerate[2];
 		for (int i = 0; i < 2; i++)
 		{
 			auto *ext = impl.allocate(spv::OpCompositeExtract, uint_type);
@@ -163,32 +181,25 @@ spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
 			ext->add_literal(i);
 			impl.add(ext);
 			scalars[i] = ext->id;
-
-			auto *is_zero = impl.allocate(spv::OpIEqual, builder.makeBoolType());
-			is_zero->add_id(ext->id);
-			is_zero->add_id(builder.makeUintConstant(-1u));
-			impl.add(is_zero);
-			scalar_is_degenerate[i] = is_zero->id;
 		}
 
-		auto *add32 = impl.allocate(spv::OpIAdd, uint_type);
-		add32->add_id(scalars[1]);
-		add32->add_id(builder.makeUintConstant(32));
-		impl.add(add32);
+		auto *or32 = impl.allocate(spv::OpBitwiseOr, uint_type);
+		or32->add_id(scalars[1]);
+		or32->add_id(builder.makeUintConstant(32));
+		impl.add(or32);
+		scalars[1] = or32->id;
 
-		auto *high_sel = impl.allocate(spv::OpSelect, uint_type);
-		high_sel->add_id(scalar_is_degenerate[1]);
-		high_sel->add_id(builder.makeUintConstant(-1u));
-		high_sel->add_id(add32->id);
-		impl.add(high_sel);
+		auto merge_op = opcode == GLSLstd450FindILsb ? GLSLstd450UMin : GLSLstd450SMax;
 
 		if (instruction)
-			op = impl.allocate(spv::OpSelect, instruction);
+			op = impl.allocate(spv::OpExtInst, instruction);
 		else
-			op = impl.allocate(spv::OpSelect, uint_type);
-		op->add_id(scalar_is_degenerate[0]);
-		op->add_id(high_sel->id);
+			op = impl.allocate(spv::OpExtInst, uint_type);
+
+		op->add_id(impl.glsl_std450_ext);
+		op->add_literal(merge_op);
 		op->add_id(scalars[0]);
+		op->add_id(scalars[1]);
 	}
 	else
 	{
