@@ -13,12 +13,12 @@ void main()
 {
     uint64_t _19 = (uint64_t(B) << 32ul) | uint64_t(A);
     uvec2 _22 = unpackUint2x32(_19);
-    uvec2 _28 = uvec2(findMSB(_22 ^ uvec2(ivec2(_22) >> ivec2(31))));
-    uint _33 = uint(max(int(_28.x), int(_28.y | 32u)));
-    uint _39 = (_33 == 4294967295u) ? 4294967295u : (63u - _33);
-    uvec2 _42 = unpackUint2x32(_19);
-    uvec2 _45 = uvec2(findMSB(_42 ^ uvec2(ivec2(_42) >> ivec2(31))));
-    SV_Target = int(uint(max(int(_45.x), int(_45.y | 32u))));
+    uvec2 _29 = uvec2(findMSB(_22 ^ uvec2(ivec2(int(_22.y) >> 31))));
+    uint _34 = uint(max(int(_29.x), int(_29.y | 32u)));
+    uint _40 = (_34 == 4294967295u) ? 4294967295u : (63u - _34);
+    uvec2 _43 = unpackUint2x32(_19);
+    uvec2 _48 = uvec2(findMSB(_43 ^ uvec2(ivec2(int(_43.y) >> 31))));
+    SV_Target = int(uint(max(int(_48.x), int(_48.y | 32u))));
 }
 
 
@@ -27,7 +27,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 53
+; Bound: 56
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -57,17 +57,16 @@ OpDecorate %11 Location 0
 %14 = OpTypeInt 64 0
 %17 = OpConstant %14 32
 %21 = OpTypeVector %5 2
-%23 = OpTypeVector %9 2
 %25 = OpConstant %9 31
-%26 = OpConstantComposite %23 %25 %25
-%32 = OpConstant %5 32
-%34 = OpTypeBool
-%36 = OpConstant %5 4294967295
-%38 = OpConstant %5 63
+%27 = OpTypeVector %9 2
+%33 = OpConstant %5 32
+%35 = OpTypeBool
+%37 = OpConstant %5 4294967295
+%39 = OpConstant %5 63
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %51
-%51 = OpLabel
+OpBranch %54
+%54 = OpLabel
 %12 = OpLoad %5 %8
 %13 = OpLoad %5 %7
 %15 = OpUConvert %14 %12
@@ -75,28 +74,32 @@ OpBranch %51
 %18 = OpUConvert %14 %13
 %19 = OpBitwiseOr %14 %16 %18
 %22 = OpBitcast %21 %19
-%24 = OpShiftRightArithmetic %23 %22 %26
-%27 = OpBitwiseXor %21 %22 %24
-%28 = OpExtInst %21 %20 FindUMsb %27
-%29 = OpCompositeExtract %5 %28 0
-%30 = OpCompositeExtract %5 %28 1
-%31 = OpBitwiseOr %5 %30 %32
-%33 = OpExtInst %5 %20 SMax %29 %31
-%35 = OpIEqual %34 %33 %36
-%37 = OpISub %5 %38 %33
-%39 = OpSelect %5 %35 %36 %37
-%40 = OpISub %5 %38 %39
-%41 = OpIEqual %34 %39 %36
-%42 = OpBitcast %21 %19
-%43 = OpShiftRightArithmetic %23 %42 %26
-%44 = OpBitwiseXor %21 %42 %43
-%45 = OpExtInst %21 %20 FindUMsb %44
-%46 = OpCompositeExtract %5 %45 0
-%47 = OpCompositeExtract %5 %45 1
-%48 = OpBitwiseOr %5 %47 %32
-%49 = OpExtInst %5 %20 SMax %46 %48
-%50 = OpBitcast %9 %49
-OpStore %11 %50
+%23 = OpCompositeExtract %5 %22 1
+%24 = OpShiftRightArithmetic %9 %23 %25
+%28 = OpCompositeConstruct %27 %24 %24
+%26 = OpBitwiseXor %21 %22 %28
+%29 = OpExtInst %21 %20 FindUMsb %26
+%30 = OpCompositeExtract %5 %29 0
+%31 = OpCompositeExtract %5 %29 1
+%32 = OpBitwiseOr %5 %31 %33
+%34 = OpExtInst %5 %20 SMax %30 %32
+%36 = OpIEqual %35 %34 %37
+%38 = OpISub %5 %39 %34
+%40 = OpSelect %5 %36 %37 %38
+%41 = OpISub %5 %39 %40
+%42 = OpIEqual %35 %40 %37
+%43 = OpBitcast %21 %19
+%44 = OpCompositeExtract %5 %43 1
+%45 = OpShiftRightArithmetic %9 %44 %25
+%47 = OpCompositeConstruct %27 %45 %45
+%46 = OpBitwiseXor %21 %43 %47
+%48 = OpExtInst %21 %20 FindUMsb %46
+%49 = OpCompositeExtract %5 %48 0
+%50 = OpCompositeExtract %5 %48 1
+%51 = OpBitwiseOr %5 %50 %33
+%52 = OpExtInst %5 %20 SMax %49 %51
+%53 = OpBitcast %9 %52
+OpStore %11 %53
 OpReturn
 OpFunctionEnd
 #endif
