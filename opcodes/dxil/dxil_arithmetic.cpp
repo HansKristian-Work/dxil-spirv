@@ -152,15 +152,22 @@ spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
 
 		if (opcode == GLSLstd450FindSMsb)
 		{
+			auto *ext = impl.allocate(spv::OpCompositeExtract, uint_type);
+			ext->add_id(bitcast->id);
+			ext->add_literal(1);
+			impl.add(ext);
+
 			spv::Id int_type = builder.makeIntType(32);
-			auto *shifted = impl.allocate(spv::OpShiftRightArithmetic, builder.makeVectorType(int_type, 2));
-			shifted->add_id(bitcast->id);
-			shifted->add_id(impl.build_splat_constant_vector(int_type, builder.makeIntConstant(31), 2));
+			auto *shifted = impl.allocate(spv::OpShiftRightArithmetic, int_type);
+			shifted->add_id(ext->id);
+			shifted->add_id(builder.makeIntConstant(31));
 			impl.add(shifted);
+
+			const spv::Id elems[] = { shifted->id, shifted->id };
 
 			auto *xored = impl.allocate(spv::OpBitwiseXor, uvec2_type);
 			xored->add_id(bitcast->id);
-			xored->add_id(shifted->id);
+			xored->add_id(impl.build_vector(int_type, elems, 2));
 			impl.add(xored);
 
 			bitcast = xored;
