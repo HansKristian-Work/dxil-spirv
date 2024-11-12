@@ -11,12 +11,16 @@ layout(location = 0) out uint SV_Target;
 
 void main()
 {
-    uvec2 _22 = uvec2(findMSB(unpackUint2x32(uint64_t(A) | (uint64_t(B) << 32ul))));
+    uint64_t _18 = uint64_t(A) | (uint64_t(B) << 32ul);
+    uvec2 _22 = uvec2(findMSB(unpackUint2x32(_18)));
     uint _23 = _22.x;
     uint _27 = _22.y;
     uint _32 = (_23 == 4294967295u) ? ((_27 == 4294967295u) ? 4294967295u : (_27 + 32u)) : _23;
     uint _36 = (_32 == 4294967295u) ? 4294967295u : (63u - _32);
-    SV_Target = (_36 == 4294967295u) ? 4294967295u : (63u - _36);
+    uvec2 _40 = uvec2(findMSB(unpackUint2x32(_18)));
+    uint _41 = _40.x;
+    uint _43 = _40.y;
+    SV_Target = (_41 == 4294967295u) ? ((_43 == 4294967295u) ? 4294967295u : (_43 + 32u)) : _41;
 }
 
 
@@ -25,7 +29,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 42
+; Bound: 50
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -60,8 +64,8 @@ OpDecorate %10 Location 0
 %35 = OpConstant %5 63
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %40
-%40 = OpLabel
+OpBranch %48
+%48 = OpLabel
 %11 = OpLoad %5 %8
 %12 = OpLoad %5 %7
 %14 = OpUConvert %13 %12
@@ -82,8 +86,16 @@ OpBranch %40
 %36 = OpSelect %5 %33 %26 %34
 %37 = OpISub %5 %35 %36
 %38 = OpIEqual %24 %36 %26
-%39 = OpSelect %5 %38 %26 %37
-OpStore %10 %39
+%39 = OpBitcast %20 %18
+%40 = OpExtInst %20 %19 FindUMsb %39
+%41 = OpCompositeExtract %5 %40 0
+%42 = OpIEqual %24 %41 %26
+%43 = OpCompositeExtract %5 %40 1
+%44 = OpIEqual %24 %43 %26
+%45 = OpIAdd %5 %43 %30
+%46 = OpSelect %5 %44 %26 %45
+%47 = OpSelect %5 %42 %46 %41
+OpStore %10 %47
 OpReturn
 OpFunctionEnd
 #endif

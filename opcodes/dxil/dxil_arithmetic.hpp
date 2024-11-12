@@ -55,6 +55,8 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 
 bool emit_bitcast_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
+spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
+                            const llvm::Instruction *instruction, const llvm::Value *value);
 bool emit_find_low_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 template <GLSLstd450 opcode>

@@ -7,9 +7,10 @@ layout(location = 0) out uint SV_Target;
 
 void main()
 {
-    uint _15 = uint(findMSB(uint(uint16_t(A))));
+    uint16_t _12 = uint16_t(A);
+    uint _15 = uint(findMSB(uint(_12)));
     uint _21 = (_15 == 4294967295u) ? 4294967295u : (15u - _15);
-    SV_Target = (_21 == 4294967295u) ? 4294967295u : (15u - _21);
+    SV_Target = uint(findMSB(uint(_12)));
 }
 
 
@@ -18,7 +19,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 27
+; Bound: 28
 ; Schema: 0
 OpCapability Shader
 OpCapability Int16
@@ -46,8 +47,8 @@ OpDecorate %9 Location 0
 %20 = OpConstant %5 15
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %25
-%25 = OpLabel
+OpBranch %26
+%26 = OpLabel
 %10 = OpLoad %5 %7
 %12 = OpUConvert %11 %10
 %14 = OpUConvert %5 %12
@@ -57,8 +58,9 @@ OpBranch %25
 %21 = OpSelect %5 %17 %18 %19
 %22 = OpISub %5 %20 %21
 %23 = OpIEqual %16 %21 %18
-%24 = OpSelect %5 %23 %18 %22
-OpStore %9 %24
+%24 = OpUConvert %5 %12
+%25 = OpExtInst %5 %13 FindUMsb %24
+OpStore %9 %25
 OpReturn
 OpFunctionEnd
 #endif

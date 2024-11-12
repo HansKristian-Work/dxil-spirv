@@ -5,9 +5,10 @@ layout(location = 0) out int SV_Target;
 
 void main()
 {
-    uint _14 = uint(findMSB(int(uint(A))));
+    uint _12 = uint(A);
+    uint _14 = uint(findMSB(int(_12)));
     uint _20 = (_14 == 4294967295u) ? 4294967295u : (31u - _14);
-    SV_Target = int((_20 == 4294967295u) ? 4294967295u : (31u - _20));
+    SV_Target = int(uint(findMSB(int(_12))));
 }
 
 
@@ -52,7 +53,7 @@ OpBranch %25
 %20 = OpSelect %11 %16 %17 %18
 %21 = OpISub %11 %19 %20
 %22 = OpIEqual %15 %20 %17
-%23 = OpSelect %11 %22 %17 %21
+%23 = OpExtInst %11 %13 FindSMsb %12
 %24 = OpBitcast %5 %23
 OpStore %9 %24
 OpReturn

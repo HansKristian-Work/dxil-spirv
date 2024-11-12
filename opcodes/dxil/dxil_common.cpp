@@ -29,7 +29,7 @@
 
 namespace dxil_spv
 {
-bool get_constant_operand(const llvm::CallInst *value, unsigned index, uint32_t *operand)
+bool get_constant_operand(const llvm::Instruction *value, unsigned index, uint32_t *operand)
 {
 	if (index >= value->getNumOperands())
 	{

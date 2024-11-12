@@ -29,7 +29,7 @@
 
 namespace dxil_spv
 {
-bool get_constant_operand(const llvm::CallInst *value, unsigned index, uint32_t *operand);
+bool get_constant_operand(const llvm::Instruction *value, unsigned index, uint32_t *operand);
 spv::Id emit_u32x2_u32_add(Converter::Impl &impl, spv::Id u32x2_value, spv::Id u32_value);
 unsigned get_type_scalar_alignment(Converter::Impl &impl, const llvm::Type *type);
 

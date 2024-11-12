@@ -114,7 +114,8 @@ bool emit_isfinite_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	return true;
 }
 
-static spv::Id emit_bitscan_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::Value *value)
+spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
+                            const llvm::Instruction *instruction, const llvm::Value *value)
 {
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
@@ -129,7 +130,11 @@ static spv::Id emit_bitscan_instruction(GLSLstd450 opcode, Converter::Impl &impl
 		extend->add_id(impl.get_id_for_value(value));
 		impl.add(extend);
 
-		op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+		if (instruction)
+			op = impl.allocate(spv::OpExtInst, instruction);
+		else
+			op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+
 		op->add_id(impl.glsl_std450_ext);
 		op->add_literal(opcode);
 		op->add_id(extend->id);
@@ -177,14 +182,21 @@ static spv::Id emit_bitscan_instruction(GLSLstd450 opcode, Converter::Impl &impl
 		high_sel->add_id(add32->id);
 		impl.add(high_sel);
 
-		op = impl.allocate(spv::OpSelect, uint_type);
+		if (instruction)
+			op = impl.allocate(spv::OpSelect, instruction);
+		else
+			op = impl.allocate(spv::OpSelect, uint_type);
 		op->add_id(scalar_is_degenerate[0]);
 		op->add_id(high_sel->id);
 		op->add_id(scalars[0]);
 	}
 	else
 	{
-		op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+		if (instruction)
+			op = impl.allocate(spv::OpExtInst, instruction);
+		else
+			op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+
 		op->add_id(impl.glsl_std450_ext);
 		op->add_literal(opcode);
 		op->add_id(impl.get_id_for_value(value));
@@ -196,20 +208,17 @@ static spv::Id emit_bitscan_instruction(GLSLstd450 opcode, Converter::Impl &impl
 
 bool emit_find_low_bit_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	spv::Id res = emit_bitscan_instruction(GLSLstd450FindILsb, impl, instruction->getOperand(1));
-	impl.rewrite_value(instruction, res);
+	emit_native_bitscan(GLSLstd450FindILsb, impl, instruction, instruction->getOperand(1));
 	return true;
 }
 
 bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	if (!impl.glsl_std450_ext)
-		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
 	// This is actually CLZ, and not FindMSB.
 	auto *value = instruction->getOperand(1);
-	spv::Id msb_id = emit_bitscan_instruction(opcode, impl, value);
+	spv::Id msb_id = emit_native_bitscan(opcode, impl, nullptr, value);
 
 	Operation *eq_neg1_op = impl.allocate(spv::OpIEqual, builder.makeBoolType());
 	{

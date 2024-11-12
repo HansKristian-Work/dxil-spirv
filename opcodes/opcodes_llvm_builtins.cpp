@@ -28,6 +28,7 @@
 #include "spirv_module.hpp"
 #include "dxil/dxil_common.hpp"
 #include "dxil/dxil_resources.hpp"
+#include "dxil/dxil_arithmetic.hpp"
 
 namespace dxil_spv
 {
@@ -1446,8 +1447,75 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	return true;
 }
 
+static bool emit_peephole_findmsb(Converter::Impl &impl, const llvm::Instruction *instruction)
+{
+	// DXIL is CLZ, while original HLSL is Vulkan-style findMSB. Peephole the double-conversion pattern.
+	auto *cond = instruction->getOperand(0);
+	auto *true_value = instruction->getOperand(1);
+	auto *false_value = instruction->getOperand(2);
+	const llvm::CallInst *clz_instruction = nullptr;
+
+	// Optimize clz(x) == -1 ? -1 : (bits - 1 - clz(x)) -> findmsb(x)
+
+	if (auto *cmp = llvm::dyn_cast<llvm::CmpInst>(cond))
+	{
+		if (cmp->getPredicate() != llvm::CmpInst::Predicate::ICMP_EQ)
+			return false;
+
+		if (!value_is_dx_op_instrinsic(cmp->getOperand(0), DXIL::Op::FirstbitHi) &&
+		    !value_is_dx_op_instrinsic(cmp->getOperand(0), DXIL::Op::FirstbitSHi))
+			return false;
+
+		uint32_t const_val = 0;
+		if (!get_constant_operand(cmp, 1, &const_val) || const_val != UINT32_MAX)
+			return false;
+
+		clz_instruction = llvm::cast<llvm::CallInst>(cmp->getOperand(0));
+	}
+	else
+		return false;
+
+	if (auto *true_const_value = llvm::dyn_cast<llvm::ConstantInt>(true_value))
+	{
+		if (true_const_value->getUniqueInteger().getSExtValue() != -1)
+			return false;
+	}
+	else
+		return false;
+
+	if (auto *sub_inst = llvm::dyn_cast<llvm::BinaryOperator>(false_value))
+	{
+		if (sub_inst->getOpcode() != llvm::Instruction::BinaryOps::Sub)
+			return false;
+
+		if (sub_inst->getOperand(1) != clz_instruction)
+			return false;
+
+		uint32_t const_val = 0;
+		if (!get_constant_operand(sub_inst, 0, &const_val) ||
+		    const_val != clz_instruction->getOperand(1)->getType()->getIntegerBitWidth() - 1)
+		{
+			return false;
+		}
+	}
+	else
+		return false;
+
+	GLSLstd450 opcode;
+	if (value_is_dx_op_instrinsic(clz_instruction, DXIL::Op::FirstbitHi))
+		opcode = GLSLstd450FindUMsb;
+	else
+		opcode = GLSLstd450FindSMsb;
+
+	emit_native_bitscan(opcode, impl, instruction, clz_instruction->getOperand(1));
+	return true;
+}
+
 bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *instruction)
 {
+	if (emit_peephole_findmsb(impl, instruction))
+		return true;
+
 	Operation *op = impl.allocate(spv::OpSelect, instruction);
 
 	for (unsigned i = 0; i < 3; i++)

@@ -7,7 +7,7 @@ void main()
 {
     uint _12 = uint(findMSB(A));
     uint _18 = (_12 == 4294967295u) ? 4294967295u : (31u - _12);
-    SV_Target = (_18 == 4294967295u) ? 4294967295u : (31u - _18);
+    SV_Target = uint(findMSB(A));
 }
 
 
@@ -50,7 +50,7 @@ OpBranch %22
 %18 = OpSelect %5 %14 %15 %16
 %19 = OpISub %5 %17 %18
 %20 = OpIEqual %13 %18 %15
-%21 = OpSelect %5 %20 %15 %19
+%21 = OpExtInst %5 %11 FindUMsb %10
 OpStore %9 %21
 OpReturn
 OpFunctionEnd
