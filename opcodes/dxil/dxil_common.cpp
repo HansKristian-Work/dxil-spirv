@@ -373,6 +373,18 @@ spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
 	return index_id;
 }
 
+spv::Id build_load_invocation_id(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId);
+
+	Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	op->add_id(var_id);
+
+	impl.add(op);
+	return op->id;
+}
+
 spv::Id get_clip_cull_distance_access_chain(Converter::Impl &impl, const llvm::CallInst *instruction,
                                             const Converter::Impl::ClipCullMeta &meta, spv::StorageClass storage)
 {
@@ -389,6 +401,20 @@ spv::Id get_clip_cull_distance_access_chain(Converter::Impl &impl, const llvm::C
 	{
 		// Mesh shaders, need to index into per-vertex array.
 		op->add_id(impl.get_id_for_value(instruction->getOperand(5)));
+	}
+
+	if (storage == spv::StorageClassInput)
+	{
+		if (impl.execution_model == spv::ExecutionModelGeometry ||
+		    impl.execution_model == spv::ExecutionModelTessellationControl ||
+		    impl.execution_model == spv::ExecutionModelTessellationEvaluation)
+		{
+			op->add_id(impl.get_id_for_value(instruction->getOperand(4)));
+		}
+	}
+	else if (storage == spv::StorageClassOutput && impl.execution_model == spv::ExecutionModelTessellationControl)
+	{
+		op->add_id(build_load_invocation_id(impl));
 	}
 
 	auto *row = instruction->getOperand(2);

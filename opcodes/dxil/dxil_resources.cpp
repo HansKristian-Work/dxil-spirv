@@ -305,18 +305,6 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 	return true;
 }
 
-static spv::Id build_load_invocation_id(Converter::Impl &impl)
-{
-	auto &builder = impl.builder();
-	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId);
-
-	Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
-	op->add_id(var_id);
-
-	impl.add(op);
-	return op->id;
-}
-
 bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
