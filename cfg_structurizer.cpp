@@ -3233,6 +3233,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 
 		auto *idom = node->immediate_dominator;
 
+		Vector<CFGNode *> complex_inner_constructs;
 		Vector<CFGNode *> inner_constructs;
 		Vector<CFGNode *> valid_constructs;
 
@@ -3250,8 +3251,85 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 				                                 candidate->dominance_frontier.front() == node;
 				// The candidate must not try to merge to other code since we might end up introducing loops that way.
 				// All code reachable by candidate must cleanly break to node.
+				// We can make use of a simpler rewrite path if all code paths to node goes through our candidates.
+				// Accept a construct and determine if we need to promote the complex constructs instead of the inner constructs.
+				// The inner construct may just be a false positive that ends up blocking the rewrite.
 				if (direct_dominance_frontier)
 					inner_constructs.push_back(candidate);
+				else
+					complex_inner_constructs.push_back(candidate);
+			}
+		}
+
+		// If true, we need a complex rewrite. This means taking unrelated branches to node and fuse them into
+		// one big merge. This requires very simple control flow from the candidates,
+		// since otherwise we end up with unintended loops in the rewrite.
+		// The simplified flow requires that all code paths from idom flow through the complex inner candidates.
+		bool collect_all_paths_to_pdom = true;
+
+		if (inner_constructs.size() == 1 && complex_inner_constructs.size() >= 2)
+		{
+			auto *candidate_inner = inner_constructs.front();
+			inner_constructs.clear();
+
+			// Try to detect a false positive where we should ignore inner_constructs.
+
+			// Ensure that the inner construct comes after the candidate constructs.
+			bool should_promote_complex = true;
+			for (auto *candidate : complex_inner_constructs)
+			{
+				if (!query_reachability(*candidate, *candidate_inner))
+				{
+					should_promote_complex = false;
+					break;
+				}
+			}
+
+			if (should_promote_complex)
+			{
+				// The inner candidate should not post-dominate any other block.
+				// We're looking for unusual merge patterns here.
+				for (auto *pred : candidate_inner->pred)
+				{
+					if (candidate_inner->post_dominates(pred))
+					{
+						should_promote_complex = false;
+						break;
+					}
+				}
+			}
+
+			if (should_promote_complex)
+			{
+				// In complex merges, we focus on merging as early as possible, rather than as late as possible.
+				// Remove any candidates which are reachable by other candidates.
+
+				// Disregard the inner constructs, promote the complex ones.
+				collect_all_paths_to_pdom = false;
+
+				// Ensure stable order.
+				std::sort(complex_inner_constructs.begin(), complex_inner_constructs.end(), [](const CFGNode *a, const CFGNode *b) {
+					return a->forward_post_visit_order > b->forward_post_visit_order;
+				});
+
+				size_t count = complex_inner_constructs.size();
+				for (size_t j = 0; j < count; j++)
+				{
+					bool is_reachable = false;
+					for (size_t i = 0; i < j && !is_reachable; i++)
+						if (query_reachability(*complex_inner_constructs[i], *complex_inner_constructs[j]))
+							is_reachable = true;
+
+					if (!is_reachable)
+						inner_constructs.push_back(complex_inner_constructs[j]);
+				}
+			}
+
+			if (should_promote_complex && inner_constructs.size() >= 2)
+			{
+				// Verify that all paths to node must go through the inner constructs.
+				// We cannot handle more awkward merges.
+				should_promote_complex = !node->can_backtrace_to_with_blockers(idom, inner_constructs);
 			}
 		}
 
@@ -3259,6 +3337,9 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		std::sort(inner_constructs.begin(), inner_constructs.end(), [](const CFGNode *a, const CFGNode *b) {
 			return a->forward_post_visit_order < b->forward_post_visit_order;
 		});
+
+		if (inner_constructs.size() < 2)
+			continue;
 
 		// Prune any candidate that can reach another candidate. The sort ensures that candidate to be removed comes last.
 		size_t count = inner_constructs.size();
@@ -3383,7 +3464,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 
 		if (need_deinterleave)
 		{
-			collect_and_dispatch_control_flow(idom, node, valid_constructs, true);
+			collect_and_dispatch_control_flow(idom, node, valid_constructs, collect_all_paths_to_pdom);
 			// This completely transposes the CFG, so need to recompute CFG to keep going.
 			recompute_cfg();
 			return true;
