@@ -154,6 +154,23 @@ bool CFGNode::can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode
 	return false;
 }
 
+bool CFGNode::can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes,
+                                             UnorderedSet<const CFGNode *> &node_cache) const
+{
+	if (node_cache.count(this))
+		return false;
+	node_cache.insert(this);
+
+	if (std::find(block_nodes.begin(), block_nodes.end(), this) != block_nodes.end())
+		return false;
+
+	for (auto *p : pred)
+		if (p == parent || p->can_backtrace_to(parent, node_cache))
+			return true;
+
+	return false;
+}
+
 bool CFGNode::can_backtrace_to(const CFGNode *parent) const
 {
 	// If parent can branch to this, then post_order(parent) must be greater than post_order(this).
@@ -162,6 +179,16 @@ bool CFGNode::can_backtrace_to(const CFGNode *parent) const
 
 	UnorderedSet<const CFGNode *> node_cache;
 	return can_backtrace_to(parent, node_cache);
+}
+
+bool CFGNode::can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes) const
+{
+	// If parent can branch to this, then post_order(parent) must be greater than post_order(this).
+	if (parent->forward_post_visit_order < forward_post_visit_order)
+		return false;
+
+	UnorderedSet<const CFGNode *> node_cache;
+	return can_backtrace_to_with_blockers(parent, block_nodes, node_cache);
 }
 
 bool CFGNode::post_dominates_any_work(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const
