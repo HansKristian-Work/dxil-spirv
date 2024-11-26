@@ -165,7 +165,7 @@ bool CFGNode::can_backtrace_to_with_blockers(const CFGNode *parent, const Vector
 		return false;
 
 	for (auto *p : pred)
-		if (p == parent || p->can_backtrace_to(parent, node_cache))
+		if (p == parent || p->can_backtrace_to_with_blockers(parent, block_nodes, node_cache))
 			return true;
 
 	return false;
