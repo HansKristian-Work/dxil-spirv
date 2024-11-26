@@ -3331,6 +3331,9 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 				// We cannot handle more awkward merges.
 				should_promote_complex = !node->can_backtrace_to_with_blockers(idom, inner_constructs);
 			}
+
+			if (!should_promote_complex)
+				continue;
 		}
 
 		// Ensure stable order.
