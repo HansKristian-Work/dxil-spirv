@@ -122,4 +122,13 @@ bool emit_msad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 
 bool emit_bit_reverse_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool emit_legacy_double_conv_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
+
+template <spv::Op opcode>
+static inline bool emit_legacy_double_conv_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_legacy_double_conv_instruction(opcode, impl, instruction);
+}
+
 } // namespace dxil_spv

@@ -1089,4 +1089,32 @@ bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	return false;
 }
 
+bool emit_legacy_double_conv_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id input_value = impl.get_id_for_value(instruction->getOperand(1));
+
+	// We probably need round-to-zero semantics here, but w/e.
+	if (opcode != spv::OpFConvert)
+	{
+		auto &builder = impl.builder();
+		// Clamp to target range.
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+		auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeFloatType(64));
+		clamp_op->add_id(impl.glsl_std450_ext);
+		clamp_op->add_literal(GLSLstd450NClamp);
+		clamp_op->add_id(input_value);
+		clamp_op->add_id(builder.makeDoubleConstant(opcode == spv::OpConvertFToU ? 0.0 : double(INT32_MIN)));
+		clamp_op->add_id(builder.makeDoubleConstant(opcode == spv::OpConvertFToU ? double(UINT32_MAX) : double(INT32_MAX)));
+
+		impl.add(clamp_op);
+		input_value = clamp_op->id;
+	}
+
+	auto *op = impl.allocate(opcode, instruction);
+	op->add_id(input_value);
+	impl.add(op);
+	return true;
+}
 } // namespace dxil_spv
