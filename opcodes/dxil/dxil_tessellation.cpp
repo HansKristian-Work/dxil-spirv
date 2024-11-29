@@ -185,8 +185,24 @@ bool emit_load_patch_constant_instruction(Converter::Impl &impl, const llvm::Cal
 		    impl.allocate(spv::OpAccessChain, builder.makePointer(storage, load_type_id));
 		ptr_id = op->id;
 		op->add_id(var_id);
+
 		if (row_index)
-			op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		{
+			spv::Id row_id = impl.get_id_for_value(instruction->getOperand(2));
+
+			if (meta.semantic_offset != 0)
+			{
+				auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+				add_op->add_id(row_id);
+				add_op->add_id(builder.makeUintConstant(meta.semantic_offset));
+				impl.add(add_op);
+
+				row_id = add_op->id;
+			}
+
+			op->add_id(row_id);
+		}
+
 		if (num_cols > 1)
 			op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
 

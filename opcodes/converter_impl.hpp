@@ -506,7 +506,7 @@ struct Converter::Impl
 	{
 		spv::Id id;
 		DXIL::ComponentType component_type;
-		unsigned rt_index;
+		unsigned semantic_offset;
 	};
 
 	struct ClipCullMeta

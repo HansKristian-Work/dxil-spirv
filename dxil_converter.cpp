@@ -3824,6 +3824,20 @@ bool Converter::Impl::emit_patch_variables()
 		else if (system_value == DXIL::Semantic::InsideTessFactor)
 			rows = 2;
 
+		// Handle case where shader declares the tess factors twice at different offsets.
+		unsigned semantic_offset = 0;
+		if (system_value == DXIL::Semantic::TessFactor || system_value == DXIL::Semantic::InsideTessFactor)
+		{
+			auto builtin = system_value == DXIL::Semantic::TessFactor ?
+			               spv::BuiltInTessLevelOuter : spv::BuiltInTessLevelInner;
+			if (spirv_module.has_builtin_shader_input(builtin))
+			{
+				patch_elements_meta[element_id] =
+					{ spirv_module.get_builtin_shader_input(builtin), actual_element_type, start_row };
+				continue;
+			}
+		}
+
 		spv::Id type_id;
 
 		if (system_value == DXIL::Semantic::CullPrimitive)
@@ -3845,7 +3859,7 @@ bool Converter::Impl::emit_patch_variables()
 		}
 
 		spv::Id variable_id = create_variable(storage, type_id, variable_name.c_str());
-		patch_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
+		patch_elements_meta[element_id] = { variable_id, actual_element_type, semantic_offset };
 
 		if (system_value != DXIL::Semantic::User)
 		{
@@ -4102,12 +4116,12 @@ bool Converter::Impl::emit_stage_output_variables()
 				}
 				builder.addDecoration(variable_id, spv::DecorationLocation, 0);
 				builder.addDecoration(variable_id, spv::DecorationIndex, start_row);
-				output_elements_meta[element_id].rt_index = 0;
+				output_elements_meta[element_id].semantic_offset = 0;
 			}
 			else
 			{
 				builder.addDecoration(variable_id, spv::DecorationLocation, start_row);
-				output_elements_meta[element_id].rt_index = start_row;
+				output_elements_meta[element_id].semantic_offset = start_row;
 			}
 
 			if (start_col != 0)
@@ -4737,7 +4751,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
-		input_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
+		input_elements_meta[element_id] = { variable_id, actual_element_type, system_value != DXIL::Semantic::User ? start_row : 0 };
 
 		if (per_vertex)
 		{

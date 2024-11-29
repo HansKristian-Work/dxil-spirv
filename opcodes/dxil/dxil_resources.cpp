@@ -366,10 +366,10 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 			// If we need to swizzle fragment shader outputs, do it here.
 			if (impl.execution_model == spv::ExecutionModelFragment &&
-			    meta.rt_index < impl.options.output_swizzles.size())
+			    meta.semantic_offset < impl.options.output_swizzles.size())
 			{
 				// Assume a 1:1 reversible mapping, so we don't need to splat the write or something like that.
-				unsigned swiz = impl.options.output_swizzles[meta.rt_index];
+				unsigned swiz = impl.options.output_swizzles[meta.semantic_offset];
 				for (unsigned output_component = 0; output_component < 4; output_component++)
 				{
 					if (((swiz >> (2u * output_component)) & 3u) == col)
