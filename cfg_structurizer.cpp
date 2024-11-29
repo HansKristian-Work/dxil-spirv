@@ -3692,8 +3692,9 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 			if (!front)
 				continue;
 
-			if (front->forward_post_visit_order != post_dominator->forward_post_visit_order &&
-			    query_reachability(*front, *post_dominator))
+			if (!post_dominator ||
+			    (front->forward_post_visit_order != post_dominator->forward_post_visit_order &&
+			     query_reachability(*front, *post_dominator)))
 			{
 				// If this is reachable by a different case label, we have a winner. This must be a fake fallthrough
 				// that we should promote to switch merge.
@@ -3866,6 +3867,14 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		auto *merge = find_common_post_dominator(node->succ);
 		auto *natural_merge = find_natural_switch_merge_block(node, merge);
 
+		// If there are early exits inside the switch statement, post-dominance analysis won't work.
+		// Just pick the natural merge.
+		// This only seems to happen in dxbc2dxil.
+		if (!merge)
+			merge = natural_merge;
+
+		assert(merge);
+
 		if (node->freeze_structured_analysis && node->merge == MergeType::Selection)
 		{
 			natural_merge = node->selection_merge_block;
@@ -4030,6 +4039,10 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		{
 			merge_ladder = create_switch_merge_ladder(node, merge);
 			merge = find_common_post_dominator(node->succ);
+			// If there are early-exits, the pdom may be nullptr. Safeguard against this.
+			// This only seems to happen in dxbc2dxil.
+			if (!merge)
+				merge = merge_ladder;
 			modified_cfg = true;
 		}
 
