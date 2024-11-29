@@ -278,10 +278,40 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 
 bool emit_dxil_wide_mul_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	Operation *op = impl.allocate(opcode, instruction);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-	op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
-	impl.add(op);
+	auto &builder = impl.builder();
+	spv::Id u32_type = builder.makeUintType(32);
+
+	// Demote to plain multiply.
+	auto composite_itr = impl.llvm_composite_meta.find(instruction);
+	if (composite_itr != impl.llvm_composite_meta.end() && composite_itr->second.access_mask == 0x2)
+	{
+		Operation *mul_op = impl.allocate(spv::OpIMul, instruction, u32_type);
+		mul_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		mul_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		impl.add(mul_op);
+		composite_itr->second.components = 1;
+		composite_itr->second.forced_composite = false;
+		return true;
+	}
+
+	Operation *mul_op = impl.allocate(opcode, impl.get_type_id(instruction->getType()));
+	mul_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	mul_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+	impl.add(mul_op);
+
+	spv::Id extracted_values[2];
+	for (uint32_t i = 0; i < 2; i++)
+	{
+		auto *ext_op = impl.allocate(spv::OpCompositeExtract, u32_type);
+		ext_op->add_id(mul_op->id);
+		ext_op->add_literal(i);
+		impl.add(ext_op);
+		extracted_values[1 - i] = ext_op->id;
+	}
+
+	spv::Id result = impl.build_vector(u32_type, extracted_values, 2);
+	impl.rewrite_value(instruction, result);
+
 	return true;
 }
 
