@@ -3535,8 +3535,24 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 		if (type->getArrayNumElements() == 0)
 			return 0;
 
-		spv::Id array_size_id = builder.makeUintConstant(type->getArrayNumElements());
-		spv::Id element_type_id = get_type_id(type->getArrayElementType(), flags & ~TYPE_LAYOUT_BLOCK_BIT);
+		spv::Id array_size_id;
+		spv::Id element_type_id;
+
+		// dxbc2dxil emits broken code for TGSM. It's an array of i8 which is absolute nonsense.
+		// It then bitcasts the pointer to i32, which isn't legal either.
+		if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) == 0 &&
+		    type->getArrayElementType()->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+		    type->getArrayElementType()->getIntegerBitWidth() == 8 &&
+		    type->getArrayNumElements() % 4 == 0)
+		{
+			array_size_id = builder.makeUintConstant(type->getArrayNumElements() / 4);
+			element_type_id = builder.makeUintType(32);
+		}
+		else
+		{
+			array_size_id = builder.makeUintConstant(type->getArrayNumElements());
+			element_type_id = get_type_id(type->getArrayElementType(), flags & ~TYPE_LAYOUT_BLOCK_BIT);
+		}
 
 		if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) != 0)
 		{
