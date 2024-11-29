@@ -751,6 +751,60 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		return 0;
 	}
 
+	// dxbc2dxil workarounds. Backing storage is i8 array. Rewrite this to i32.
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::PointerTyID &&
+	    DXIL::AddressSpace(instruction->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+	{
+		auto *input_value = instruction->getOperand(0);
+		while (llvm::isa<llvm::ConstantExpr>(input_value))
+			input_value = llvm::cast<llvm::ConstantExpr>(input_value)->getOperand(0);
+
+		auto *elem_type = input_value->getType()->getPointerElementType();
+
+		uint32_t input_pointer_depth = 0;
+		while (elem_type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+		{
+			input_pointer_depth++;
+			elem_type = elem_type->getArrayElementType();
+		}
+
+		uint32_t output_pointer_depth = 0;
+		auto *output_elem_type = instruction->getType()->getPointerElementType();
+		while (output_elem_type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+		{
+			output_pointer_depth++;
+			output_elem_type = output_elem_type->getArrayElementType();
+		}
+
+		if (elem_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && elem_type->getIntegerBitWidth() == 8)
+		{
+			auto &builder = impl.builder();
+			spv::Id input_id = impl.get_id_for_value(input_value);
+
+			if (output_pointer_depth < input_pointer_depth)
+			{
+				auto *chain = impl.allocate(
+					spv::OpInBoundsAccessChain,
+					builder.makePointer(spv::StorageClassWorkgroup,
+					                    impl.get_type_id(instruction->getType()->getPointerElementType())));
+
+				chain->add_id(input_id);
+				while (output_pointer_depth < input_pointer_depth)
+				{
+					output_pointer_depth++;
+					chain->add_id(builder.makeUintConstant(0));
+				}
+				impl.add(chain);
+				input_id = chain->id;
+			}
+
+			// The backing storage is always 32-bit.
+			impl.rewrite_value(instruction, input_id);
+			impl.llvm_value_actual_type[instruction] = builder.makeUintType(32);
+			return input_id;
+		}
+	}
+
 	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::PointerTyID)
 	{
 		// I have observed this code in the wild
@@ -864,7 +918,7 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	}
 }
 
-static bool cast_instruction_is_ignored(Converter::Impl &impl, const llvm::CastInst *instruction)
+static bool cast_instruction_is_ignored(Converter::Impl &, const llvm::CastInst *instruction)
 {
 	// llvm.lifetime.begin takes i8*, but this pointer type is not allowed otherwise.
 	// We have to explicitly ignore this.
@@ -1070,7 +1124,25 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 
 	auto &builder = impl.builder();
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(0));
-	spv::Id type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
+	spv::Id type_id = 0;
+
+	// Workaround dxbc2dxil where we access chain into i8 array which is non-sense.
+	// The backing variable is i32 array instead. Rewrite appropriately.
+	uint32_t elementptr_shift = 0;
+	if (DXIL::AddressSpace(instruction->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+	{
+		auto *elem_type = instruction->getOperand(0)->getType()->getPointerElementType();
+		if (elem_type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+			elem_type = elem_type->getArrayElementType();
+		if (elem_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && elem_type->getIntegerBitWidth() == 8)
+		{
+			elementptr_shift = 2;
+			type_id = builder.makeUintType(32);
+		}
+	}
+
+	if (type_id == 0)
+		type_id = impl.get_type_id(instruction->getType()->getPointerElementType());
 
 	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
 	resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), type_id);
@@ -1105,7 +1177,17 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 
 	unsigned num_operands = instruction->getNumOperands();
 	for (uint32_t i = 2; i < num_operands; i++)
-		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
+	{
+		if (i == 2 && elementptr_shift != 0)
+		{
+			spv::Id index = build_index_divider(impl, instruction->getOperand(2), elementptr_shift, 1);
+			op->add_id(index);
+		}
+		else
+		{
+			op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
+		}
+	}
 
 	impl.handle_to_storage_class[instruction] = storage;
 	impl.add(op);
