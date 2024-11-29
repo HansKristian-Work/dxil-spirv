@@ -5425,9 +5425,21 @@ bool CFGStructurizer::find_loops(unsigned pass)
 		}
 		else if (dominated_exit.size() == 1 && non_dominated_exit.empty() && inner_dominated_exit.empty())
 		{
-			// Clean merge.
-			// This is a unique merge block. There can be no other merge candidate.
-			node->loop_merge_block = dominated_exit.front();
+			CFGNode *direct_exit_pdom = nullptr;
+			if (!result.direct_exits.empty())
+				direct_exit_pdom = find_common_post_dominator(result.direct_exits);
+
+			if (direct_exit_pdom && query_reachability(*dominated_exit.front(), *direct_exit_pdom))
+			{
+				node->loop_ladder_block = dominated_exit.front();
+				node->loop_merge_block = direct_exit_pdom;
+			}
+			else
+			{
+				// Clean merge.
+				// This is a unique merge block. There can be no other merge candidate.
+				node->loop_merge_block = dominated_exit.front();
+			}
 
 			const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
 			//LOGI("Loop with simple merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(node), node->name.c_str(),
