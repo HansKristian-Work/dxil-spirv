@@ -3873,6 +3873,40 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		if (!merge)
 			merge = natural_merge;
 
+		// If there is still nothing, it's possible one of the case labels is the only non-exiting path.
+		// If we have no natural merge either, this is the likely merge point.
+		if (!merge)
+		{
+			CFGNode *pdom = nullptr;
+			for (auto *succ : node->succ)
+			{
+				if (!succ->dominates_all_reachable_exits())
+				{
+					if (!pdom)
+					{
+						pdom = succ;
+					}
+					else
+					{
+						auto *new_pdom = CFGNode::find_common_post_dominator(pdom, succ);
+						if (new_pdom)
+							pdom = new_pdom;
+					}
+
+					// If there is at least one exit, have a fallback.
+					merge = succ;
+					natural_merge = succ;
+				}
+			}
+
+			// If we have a valid pdom, that is the more reasonable target.
+			if (pdom)
+			{
+				merge = pdom;
+				natural_merge = pdom;
+			}
+		}
+
 		if (!merge)
 		{
 			// Merge to unreachable.
