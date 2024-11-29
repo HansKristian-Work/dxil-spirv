@@ -3873,7 +3873,12 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		if (!merge)
 			merge = natural_merge;
 
-		assert(merge);
+		if (!merge)
+		{
+			// Merge to unreachable.
+			node->merge = MergeType::Selection;
+			continue;
+		}
 
 		if (node->freeze_structured_analysis && node->merge == MergeType::Selection)
 		{
