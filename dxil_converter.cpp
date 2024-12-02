@@ -3322,6 +3322,15 @@ static llvm::MDNode *get_entry_point_meta(const llvm::Module &module, const char
 		}
 	}
 
+	// dxilconv can emit null hull shader with non-null patch constant function ... *shrug*
+	// I suppose we need to deal with that too.
+	if (!entry && num_entry_points)
+	{
+		auto *node = ep_meta->getOperand(0);
+		if (node)
+			return node;
+	}
+
 	return nullptr;
 }
 
@@ -6441,6 +6450,9 @@ bool Converter::Impl::emit_execution_modes_fp_denorm()
 {
 	// Check for SM 6.2 denorm handling. Only applies to FP32.
 	auto *func = get_entry_point_function(entry_point_meta);
+	if (!func)
+		return true;
+
 	auto attr = func->getFnAttribute("fp32-denorm-mode");
 	auto str = attr.getValueAsString();
 	if (str == "ftz")
@@ -6794,27 +6806,41 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
                                  Vector<ConvertedFunction::Function> &leaves)
 {
 	// Just make sure there is an entry block already created.
-	spv::Block *hull_entry, *patch_entry;
-	auto *hull_func =
-	    builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {}, &hull_entry);
+	spv::Block *hull_entry = nullptr, *patch_entry = nullptr;
+	spv::Function *hull_func = nullptr;
+	if (!visit_order.empty())
+	{
+		hull_func =
+			builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {}, &hull_entry);
+	}
+
 	auto *patch_func =
 	    builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "patch_main", {}, {}, &patch_entry);
 
 	// Set build point so alloca() functions can create variables correctly.
-	builder().setBuildPoint(hull_entry);
-	auto *hull_main = convert_function(visit_order);
+	if (hull_entry)
+		builder().setBuildPoint(hull_entry);
+	CFGNode *hull_main = nullptr;
+	if (!visit_order.empty())
+		hull_main = convert_function(visit_order);
+
 	builder().setBuildPoint(patch_entry);
 	auto *patch_main = convert_function(patch_visit_order);
 	builder().setBuildPoint(spirv_module.get_entry_function()->getEntryBlock());
 
-	leaves.push_back({ hull_main, hull_func });
+	if (hull_main)
+		leaves.push_back({ hull_main, hull_func });
 	leaves.push_back({ patch_main, patch_func });
 
 	auto *entry = pool.create_node();
 
-	auto *call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
-	call_op->add_id(hull_func->getId());
-	entry->ir.operations.push_back(call_op);
+	Operation *call_op;
+	if (hull_func)
+	{
+		call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
+		call_op->add_id(hull_func->getId());
+		entry->ir.operations.push_back(call_op);
+	}
 
 	if (execution_mode_meta.stage_output_num_vertex > 1)
 	{
@@ -6826,12 +6852,15 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 		cmp_op->add_ids({ load_op->id, builder().makeUintConstant(0) });
 		entry->ir.operations.push_back(cmp_op);
 
-		auto *barrier_op = allocate(spv::OpControlBarrier);
-		// Not 100% sure what to emit here. Just do what glslang does.
-		barrier_op->add_id(builder().makeUintConstant(spv::ScopeWorkgroup));
-		barrier_op->add_id(builder().makeUintConstant(spv::ScopeInvocation));
-		barrier_op->add_id(builder().makeUintConstant(0));
-		entry->ir.operations.push_back(barrier_op);
+		if (hull_main)
+		{
+			auto *barrier_op = allocate(spv::OpControlBarrier);
+			// Not 100% sure what to emit here. Just do what glslang does.
+			barrier_op->add_id(builder().makeUintConstant(spv::ScopeWorkgroup));
+			barrier_op->add_id(builder().makeUintConstant(spv::ScopeInvocation));
+			barrier_op->add_id(builder().makeUintConstant(0));
+			entry->ir.operations.push_back(barrier_op);
+		}
 
 		auto *patch_block = pool.create_node();
 		auto *merge_block = pool.create_node();
@@ -6905,6 +6934,9 @@ void Converter::Impl::build_function_bb_visit_order_inner_analysis(
 
 Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_analysis(llvm::Function *func)
 {
+	if (!func)
+		return {};
+
 	UnorderedSet<llvm::BasicBlock *> visited;
 	Vector<llvm::BasicBlock *> visit_order;
 	auto *entry = &func->getEntryBlock();
@@ -6932,6 +6964,9 @@ void Converter::Impl::build_function_bb_visit_register(llvm::BasicBlock *bb, CFG
 Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_legacy(
     llvm::Function *func, CFGNodePool &pool)
 {
+	if (!func)
+		return {};
+
 	auto *entry = &func->getEntryBlock();
 	build_function_bb_visit_register(entry, pool, ".entry");
 
@@ -7326,7 +7361,7 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 	// optimally implement the loads and stores. We need to do this late, because we depend on results
 	// of ExtractValue analysis.
 
-	if (options.propagate_precise && !options.force_precise)
+	if (func && options.propagate_precise && !options.force_precise)
 		propagate_precise(func);
 
 	auto visit_order = build_function_bb_visit_order_analysis(func);
@@ -7480,7 +7515,6 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", need_bda);
 
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
-	assert(func);
 	auto visit_order = build_function_bb_visit_order_legacy(func, pool);
 	Vector<llvm::BasicBlock *> patch_visit_order;
 
