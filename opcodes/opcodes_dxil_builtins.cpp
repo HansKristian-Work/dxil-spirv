@@ -717,6 +717,19 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 	}
 }
 
+// dxilconv is broken and doesn't flag the UAV counter bit in metadata in all situations.
+static void analyze_dxil_atomic_counter(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	Converter::Impl::AccessTracking *tracking = nullptr;
+
+	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		tracking = &impl.uav_access_tracking[itr->second];
+
+	if (tracking)
+		tracking->has_counter = true;
+}
+
 static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode)
 {
 	Converter::Impl::AccessTracking *tracking = nullptr;
@@ -913,6 +926,10 @@ bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::C
 	case DXIL::Op::RawBufferStore:
 		// TextureStore only needed here to track AGS U64 image atomics.
 		analyze_dxil_buffer_store(impl, instruction, op);
+		break;
+
+	case DXIL::Op::BufferUpdateCounter:
+		analyze_dxil_atomic_counter(impl, instruction);
 		break;
 
 	default:

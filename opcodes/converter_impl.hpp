@@ -263,6 +263,7 @@ struct Converter::Impl
 		bool has_written = false;
 		bool has_atomic = false;
 		bool has_atomic_64bit = false;
+		bool has_counter = false;
 		bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
 	};
 	UnorderedMap<uint32_t, AccessTracking> cbv_access_tracking;

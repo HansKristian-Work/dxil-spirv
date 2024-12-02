@@ -1445,6 +1445,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		if (is_rov)
 			execution_mode_meta.declares_rov = true;
 
+		// We shouldn't need this, but dxilconv is broken.
+		if (access_meta.has_counter)
+			has_counter = true;
+
 		// If the shader has device-memory memory barriers, we need to support this.
 		// GLSL450 memory model does not do this for us by default.
 		//   coherent: memory variable where reads and writes are coherent with reads and
