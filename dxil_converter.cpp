@@ -3784,6 +3784,18 @@ spv::Id Converter::Impl::get_type_id(spv::Id id) const
 		return itr->second;
 }
 
+static bool module_is_dxilconv(llvm::Module &module)
+{
+	auto *ident_meta = module.getNamedMetadata("llvm.ident");
+	if (ident_meta)
+		if (auto *arg0 = ident_meta->getOperand(0))
+			if (auto *str = llvm::dyn_cast<llvm::MDString>(arg0->getOperand(0)))
+				if (str->getString().find("dxbc2dxil") != std::string::npos)
+					return true;
+
+	return false;
+}
+
 bool Converter::Impl::emit_patch_variables()
 {
 	auto *node = entry_point_meta;
@@ -3801,16 +3813,8 @@ bool Converter::Impl::emit_patch_variables()
 	// It assumes that you can write outside the bounds of a signature element.
 	// To make this work, we need to lower the patch constant variables from Private variables instead.
 	bool broken_patch_variables = false;
-
 	if (execution_model == spv::ExecutionModelTessellationControl)
-	{
-		auto *ident_meta = bitcode_parser.get_module().getNamedMetadata("llvm.ident");
-		if (ident_meta)
-			if (auto *arg0 = ident_meta->getOperand(0))
-				if (auto *str = llvm::dyn_cast<llvm::MDString>(arg0->getOperand(0)))
-					if (str->getString().find("dxbc2dxil") != std::string::npos)
-						broken_patch_variables = true;
-	}
+		broken_patch_variables = module_is_dxilconv(bitcode_parser.get_module());
 
 	auto *patch_node = llvm::dyn_cast<llvm::MDNode>(patch_variables);
 
@@ -6470,21 +6474,46 @@ bool Converter::Impl::analyze_execution_modes_meta()
 
 void Converter::Impl::emit_execution_modes_post_code_generation()
 {
-	// Float16 and Float64 require denorms to be preserved in D3D12.
-	if (builder().hasCapability(spv::CapabilityFloat16) &&
-	    options.supports_float16_denorm_preserve)
+	auto &b = builder();
+
+	if (module_is_dxilconv(bitcode_parser.get_module()))
 	{
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityDenormPreserve);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
+		// We should use these globally, but don't want to invalidate all Fossilize archives just yet.
+		// Shader instrumentation may declare its own preservation modes, so only declare execution modes
+		// if we haven't done anything.
+		if (!builder().hasCapability(spv::CapabilitySignedZeroInfNanPreserve))
+		{
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilitySignedZeroInfNanPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 32);
+			if (b.hasCapability(spv::CapabilityFloat64))
+				b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 64);
+		}
+
+		// DXBC assumes flush-to-zero, but dxilconv doesn't explicitly emit that, since it's not in SM 6.0.
+		if (!b.hasCapability(spv::CapabilityDenormFlushToZero) && !b.hasCapability(spv::CapabilityDenormPreserve))
+		{
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormFlushToZero);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, 32);
+		}
 	}
 
-	if (builder().hasCapability(spv::CapabilityFloat64) &&
+	// Float16 and Float64 require denorms to be preserved in D3D12.
+	if (b.hasCapability(spv::CapabilityFloat16) &&
+	    options.supports_float16_denorm_preserve)
+	{
+		b.addExtension("SPV_KHR_float_controls");
+		b.addCapability(spv::CapabilityDenormPreserve);
+		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
+	}
+
+	if (b.hasCapability(spv::CapabilityFloat64) &&
 	    options.supports_float64_denorm_preserve)
 	{
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityDenormPreserve);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+		b.addExtension("SPV_KHR_float_controls");
+		b.addCapability(spv::CapabilityDenormPreserve);
+		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
 	}
 
 	// Opt into quad derivatives and maximal reconvergence for fragment shaders using
@@ -6493,10 +6522,10 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 	if (options.supports_quad_control && execution_model == spv::ExecutionModelFragment &&
 	    execution_mode_meta.needs_quad_derivatives)
 	{
-		builder().addExtension("SPV_KHR_quad_control");
-		builder().addCapability(spv::CapabilityQuadControlKHR);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRequireFullQuadsKHR);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeQuadDerivativesKHR);
+		b.addExtension("SPV_KHR_quad_control");
+		b.addCapability(spv::CapabilityQuadControlKHR);
+		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRequireFullQuadsKHR);
+		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeQuadDerivativesKHR);
 	}
 
 	if (options.supports_maximal_reconvergence &&
@@ -6505,8 +6534,8 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 	     execution_mode_meta.needs_quad_derivatives ||
 	     shader_analysis.need_maximal_reconvergence_helper_call))
 	{
-		builder().addExtension("SPV_KHR_maximal_reconvergence");
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeMaximallyReconvergesKHR);
+		b.addExtension("SPV_KHR_maximal_reconvergence");
+		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeMaximallyReconvergesKHR);
 	}
 }
 
