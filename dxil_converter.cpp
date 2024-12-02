@@ -7518,6 +7518,11 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto visit_order = build_function_bb_visit_order_legacy(func, pool);
 	Vector<llvm::BasicBlock *> patch_visit_order;
 
+	// dxilconv emits somewhat broken code for min16float for resource access.
+	// Just use FP32 here since that's what we've tested and avoids lots of awkward workarounds.
+	if (module_is_dxilconv(module))
+		options.min_precision_prefer_native_16bit = false;
+
 	// Need to analyze some execution modes early which affect opcode analysis later.
 	if (!analyze_execution_modes_meta())
 		return result;
