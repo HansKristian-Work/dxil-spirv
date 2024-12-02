@@ -203,6 +203,7 @@ struct Converter::Impl
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
 	spv::Id get_id_for_undef_constant(const llvm::UndefValue *undef);
+	void emit_patch_output_lowering(CFGNode *node);
 
 	Vector<llvm::BasicBlock *> build_function_bb_visit_order_legacy(llvm::Function *func, CFGNodePool &pool);
 	Vector<llvm::BasicBlock *> build_function_bb_visit_order_analysis(llvm::Function *func);
@@ -337,6 +338,7 @@ struct Converter::Impl
 		unsigned primitive_index_dimension = 0;
 		unsigned gs_stream_active_mask = 0;
 		llvm::Function *patch_constant_function = nullptr;
+		spv::Id patch_lowering_array_var_id = 0;
 		unsigned workgroup_threads[3] = {};
 		bool native_16bit_operations = false;
 		bool synthesize_2d_quad_dispatch = false;
@@ -509,6 +511,13 @@ struct Converter::Impl
 		unsigned semantic_offset;
 	};
 
+	struct ElementPatchMeta : ElementMeta
+	{
+		spv::Id start_row;
+		spv::Id start_col;
+		bool lowering;
+	};
+
 	struct ClipCullMeta
 	{
 		unsigned offset;
@@ -517,7 +526,7 @@ struct Converter::Impl
 	};
 	UnorderedMap<uint32_t, ElementMeta> input_elements_meta;
 	UnorderedMap<uint32_t, ElementMeta> output_elements_meta;
-	UnorderedMap<uint32_t, ElementMeta> patch_elements_meta;
+	UnorderedMap<uint32_t, ElementPatchMeta> patch_elements_meta;
 	UnorderedMap<uint32_t, ClipCullMeta> input_clip_cull_meta;
 	UnorderedMap<uint32_t, ClipCullMeta> output_clip_cull_meta;
 	void emit_builtin_decoration(spv::Id id, DXIL::Semantic semantic, spv::StorageClass storage);

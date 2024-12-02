@@ -38,6 +38,10 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 
 	const auto &meta = impl.patch_elements_meta[output_element_index];
 	uint32_t var_id = meta.id;
+
+	if (meta.lowering)
+		var_id = impl.execution_mode_meta.patch_lowering_array_var_id;
+
 	spv::Id ptr_id;
 
 	spv::Id output_type_id = builder.getDerefTypeId(var_id);
@@ -53,13 +57,42 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 	if (row_index || num_cols > 1)
 	{
 		Operation *op = impl.allocate(
-		    spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
+			spv::OpAccessChain, builder.makePointer(
+				meta.lowering ? spv::StorageClassPrivate : spv::StorageClassOutput,
+				builder.getScalarTypeId(output_type_id)));
+
 		ptr_id = op->id;
 		op->add_id(var_id);
+
 		if (row_index)
-			op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		{
+			spv::Id row_id = impl.get_id_for_value(instruction->getOperand(2));
+			if (meta.lowering && meta.start_row != 0)
+			{
+				auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+				add_op->add_id(row_id);
+				add_op->add_id(builder.makeUintConstant(meta.start_row));
+				impl.add(add_op);
+
+				row_id = add_op->id;
+			}
+			op->add_id(row_id);
+		}
+
 		if (num_cols > 1)
-			op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
+		{
+			spv::Id col_id = impl.get_id_for_value(instruction->getOperand(3), 32);
+			if (meta.lowering && meta.start_col != 0)
+			{
+				auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+				add_op->add_id(col_id);
+				add_op->add_id(builder.makeUintConstant(meta.start_col));
+				impl.add(add_op);
+
+				col_id = add_op->id;
+			}
+			op->add_id(col_id);
+		}
 
 		impl.add(op);
 	}
@@ -70,7 +103,31 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 	impl.register_externally_visible_write(instruction->getOperand(4));
 
 	Operation *op = impl.allocate(spv::OpStore);
-	op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });
+	op->add_id(ptr_id);
+
+	if (meta.lowering)
+	{
+		auto *storage_type = instruction->getOperand(4)->getType();
+		if (type_is_64bit(storage_type))
+		{
+			LOGE("Lowering for dxbc 64-bit patch output not supported.\n");
+			return false;
+		}
+
+		if (!storage_type->isIntegerTy())
+		{
+			auto *cast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+			cast_op->add_id(store_value);
+			impl.add(cast_op);
+			store_value = cast_op->id;
+		}
+	}
+	else
+	{
+		store_value = impl.fixup_store_type_io(meta.component_type, 1, store_value);
+	}
+
+	op->add_id(store_value);
 	impl.add(op);
 	return true;
 }

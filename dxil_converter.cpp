@@ -3793,12 +3793,29 @@ bool Converter::Impl::emit_patch_variables()
 	if (!patch_variables)
 		return true;
 
+	// dxilconv is broken and emits patch the fork phase in a way that is non-sensical.
+	// It assumes that you can write outside the bounds of a signature element.
+	// To make this work, we need to lower the patch constant variables from Private variables instead.
+	bool broken_patch_variables = false;
+
+	if (execution_model == spv::ExecutionModelTessellationControl)
+	{
+		auto *ident_meta = bitcode_parser.get_module().getNamedMetadata("llvm.ident");
+		if (ident_meta)
+			if (auto *arg0 = ident_meta->getOperand(0))
+				if (auto *str = llvm::dyn_cast<llvm::MDString>(arg0->getOperand(0)))
+					if (str->getString().find("dxbc2dxil") != std::string::npos)
+						broken_patch_variables = true;
+	}
+
 	auto *patch_node = llvm::dyn_cast<llvm::MDNode>(patch_variables);
 
 	auto &builder = spirv_module.get_builder();
 
 	spv::StorageClass storage =
 	    execution_model == spv::ExecutionModelTessellationEvaluation ? spv::StorageClassInput : spv::StorageClassOutput;
+
+	unsigned num_broken_user_rows = 0;
 
 	for (unsigned i = 0; i < patch_node->getNumOperands(); i++)
 	{
@@ -3824,6 +3841,11 @@ bool Converter::Impl::emit_patch_variables()
 		else if (system_value == DXIL::Semantic::InsideTessFactor)
 			rows = 2;
 
+		if (broken_patch_variables && system_value == DXIL::Semantic::User)
+			num_broken_user_rows = std::max<unsigned>(num_broken_user_rows, start_row + rows);
+
+		auto &meta = patch_elements_meta[element_id];
+
 		// Handle case where shader declares the tess factors twice at different offsets.
 		unsigned semantic_offset = 0;
 		if (system_value == DXIL::Semantic::TessFactor || system_value == DXIL::Semantic::InsideTessFactor)
@@ -3832,8 +3854,10 @@ bool Converter::Impl::emit_patch_variables()
 			               spv::BuiltInTessLevelOuter : spv::BuiltInTessLevelInner;
 			if (spirv_module.has_builtin_shader_input(builtin))
 			{
-				patch_elements_meta[element_id] =
-					{ spirv_module.get_builtin_shader_input(builtin), actual_element_type, start_row };
+				meta = {};
+				meta.id = spirv_module.get_builtin_shader_input(builtin);
+				meta.component_type = actual_element_type;
+				meta.semantic_offset = start_row;
 				continue;
 			}
 		}
@@ -3859,7 +3883,12 @@ bool Converter::Impl::emit_patch_variables()
 		}
 
 		spv::Id variable_id = create_variable(storage, type_id, variable_name.c_str());
-		patch_elements_meta[element_id] = { variable_id, actual_element_type, semantic_offset };
+		meta.id = variable_id;
+		meta.component_type = actual_element_type;
+		meta.semantic_offset = semantic_offset;
+		meta.start_row = start_row;
+		meta.start_col = start_col;
+		meta.lowering = broken_patch_variables && system_value == DXIL::Semantic::User;
 
 		if (system_value != DXIL::Semantic::User)
 		{
@@ -3894,6 +3923,16 @@ bool Converter::Impl::emit_patch_variables()
 
 		builder.addDecoration(variable_id, execution_model == spv::ExecutionModelMeshEXT
 		                                   ? spv::DecorationPerPrimitiveEXT : spv::DecorationPatch);
+	}
+
+	if (num_broken_user_rows)
+	{
+		spv::Id type_id = builder.makeArrayType(builder.makeVectorType(builder.makeUintType(32), 4),
+		                                        builder.makeUintConstant(num_broken_user_rows), 0);
+		execution_mode_meta.patch_lowering_array_var_id =
+			create_variable_with_initializer(spv::StorageClassPrivate, type_id,
+			                                 builder.makeNullConstant(type_id),
+			                                 "PatchLoweringRows");
 	}
 
 	return true;
@@ -6610,6 +6649,111 @@ Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
 	return { entry, spirv_module.get_entry_function() };
 }
 
+void Converter::Impl::emit_patch_output_lowering(CFGNode *bb)
+{
+	auto *node = entry_point_meta;
+	current_block = &bb->ir.operations;
+	assert(node->getOperand(2));
+
+	auto &signature = node->getOperand(2);
+	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
+	auto &patch_variables = signature_node->getOperand(2);
+	if (!patch_variables)
+		return;
+
+	auto *patch_node = llvm::dyn_cast<llvm::MDNode>(patch_variables);
+
+	spv::Id u32_type = builder().makeUintType(32);
+	spv::Id uvec4_type = builder().makeVectorType(u32_type, 4);
+
+	for (unsigned i = 0; i < patch_node->getNumOperands(); i++)
+	{
+		auto *patch = llvm::cast<llvm::MDNode>(patch_node->getOperand(i));
+		auto element_id = get_constant_metadata(patch, 0);
+		auto actual_element_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(patch, 2)));
+		auto system_value = static_cast<DXIL::Semantic>(get_constant_metadata(patch, 3));
+
+		if (system_value != DXIL::Semantic::User)
+			continue;
+
+		auto rows = get_constant_metadata(patch, 6);
+		auto cols = get_constant_metadata(patch, 7);
+		auto start_row = get_constant_metadata(patch, 8);
+		auto start_col = get_constant_metadata(patch, 9);
+
+		auto &meta = patch_elements_meta[element_id];
+		assert(meta.id);
+
+		for (unsigned row = 0; row < rows; row++)
+		{
+			auto *chain = allocate(spv::OpAccessChain, builder().makePointer(spv::StorageClassPrivate, uvec4_type));
+			chain->add_id(execution_mode_meta.patch_lowering_array_var_id);
+			chain->add_id(builder().makeUintConstant(row + start_row));
+			add(chain);
+
+			auto *load_op = allocate(spv::OpLoad, uvec4_type);
+			load_op->add_id(chain->id);
+			add(load_op);
+
+			spv::Id store_id;
+
+			if (cols == 4)
+			{
+				store_id = load_op->id;
+			}
+			else if (cols > 1)
+			{
+				auto *shuffle_op = allocate(spv::OpVectorShuffle, get_type_id(DXIL::ComponentType::U32, 1, cols));
+				shuffle_op->add_id(load_op->id);
+				shuffle_op->add_id(load_op->id);
+				for (unsigned c = 0; c < cols; c++)
+					shuffle_op->add_literal(c + start_col);
+				add(shuffle_op);
+				store_id = shuffle_op->id;
+			}
+			else
+			{
+				auto *extract_op = allocate(spv::OpCompositeExtract, u32_type);
+				extract_op->add_id(load_op->id);
+				extract_op->add_literal(start_col);
+				add(extract_op);
+				store_id = extract_op->id;
+			}
+
+			if (actual_element_type != DXIL::ComponentType::U32)
+			{
+				auto *cast = allocate(spv::OpBitcast, get_type_id(actual_element_type, 1, cols));
+				cast->add_id(store_id);
+				add(cast);
+				store_id = cast->id;
+			}
+
+			auto *store_op = allocate(spv::OpStore);
+
+			if (rows > 1)
+			{
+				auto *store_chain = allocate(
+					spv::OpAccessChain,
+					builder().makePointer(spv::StorageClassOutput,
+					                      get_type_id(actual_element_type, 1, cols)));
+
+				store_chain->add_id(meta.id);
+				store_chain->add_id(builder().makeUintConstant(row));
+				add(store_chain);
+
+				store_op->add_id(store_chain->id);
+			}
+			else
+			{
+				store_op->add_id(meta.id);
+			}
+
+			store_op->add_id(store_id);
+			add(store_op);
+		}
+	}
+}
+
 ConvertedFunction::Function
 Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
                                  const Vector<llvm::BasicBlock *> &patch_visit_order,
@@ -6674,6 +6818,8 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 		call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
 		call_op->add_id(patch_func->getId());
 		patch_block->ir.operations.push_back(call_op);
+		if (execution_mode_meta.patch_lowering_array_var_id)
+			emit_patch_output_lowering(patch_block);
 
 		merge_block->ir.terminator.type = Terminator::Type::Return;
 	}
@@ -6683,6 +6829,8 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 		call_op->add_id(patch_func->getId());
 		entry->ir.operations.push_back(call_op);
 		entry->ir.terminator.type = Terminator::Type::Return;
+		if (execution_mode_meta.patch_lowering_array_var_id)
+			emit_patch_output_lowering(entry);
 	}
 
 	return { entry, spirv_module.get_entry_function() };
