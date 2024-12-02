@@ -729,7 +729,7 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 	if (dref_id)
 		op->add_id(dref_id);
 
-	op->add_id(image_ops);
+	op->add_literal(image_ops);
 
 	if (image_ops & spv::ImageOperandsGradMask)
 	{
