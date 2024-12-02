@@ -76,6 +76,16 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 
 				row_id = add_op->id;
 			}
+			else if (!meta.lowering && meta.semantic_offset)
+			{
+				auto *add_op = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+				add_op->add_id(row_id);
+				add_op->add_id(builder.makeUintConstant(meta.semantic_offset));
+				impl.add(add_op);
+
+				row_id = add_op->id;
+			}
+
 			op->add_id(row_id);
 		}
 
