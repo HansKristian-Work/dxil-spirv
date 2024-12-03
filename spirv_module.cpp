@@ -2533,16 +2533,42 @@ void SPIRVModule::Impl::add_instrumented_instruction(spv::Block *bb, spv::Id id)
 
 void SPIRVModule::Impl::add_instruction(spv::Block *bb, std::unique_ptr<spv::Instruction> inst)
 {
-	spv::Id id = inst->getResultId();
 	spv::Op op = inst->getOpCode();
-	bb->addInstruction(std::move(inst));
+	spv::Id id = inst->getResultId();
+	spv::Id type_id = inst->getTypeId();
 
-	// For Full instrumentation add everything, otherwise, we need specialized instrumentation.
-	if (instruction_instrumentation.info.enabled &&
-	    instruction_instrumentation.info.type == InstructionInstrumentationType::FullNanInf &&
-	    op != spv::OpPhi)
+	if (id != 0 && instruction_instrumentation.info.enabled &&
+	    instruction_instrumentation.info.type == InstructionInstrumentationType::FlushNaNToZero &&
+	    builder.getTypeClass(type_id) == spv::OpTypeFloat && op != spv::OpPhi)
 	{
-		add_instrumented_instruction(bb, id);
+		// A bit special since we're rewriting the IDs.
+		spv::Id new_id = builder.getUniqueId();
+		spv::Id nan_id = builder.getUniqueId();
+		inst->setResultId(new_id);
+
+		spv::Id null_const = builder.makeNullConstant(type_id);
+		auto is_nan = std::make_unique<spv::Instruction>(nan_id, builder.makeBoolType(), spv::OpIsNan);
+		is_nan->addIdOperand(new_id);
+		auto replaced = std::make_unique<spv::Instruction>(id, type_id, spv::OpSelect);
+		replaced->addIdOperand(nan_id);
+		replaced->addIdOperand(null_const);
+		replaced->addIdOperand(new_id);
+
+		bb->addInstruction(std::move(inst));
+		bb->addInstruction(std::move(is_nan));
+		bb->addInstruction(std::move(replaced));
+	}
+	else
+	{
+		bb->addInstruction(std::move(inst));
+
+		// For Full instrumentation add everything, otherwise, we need specialized instrumentation.
+		if (instruction_instrumentation.info.enabled &&
+		    instruction_instrumentation.info.type == InstructionInstrumentationType::FullNanInf &&
+		    op != spv::OpPhi)
+		{
+			add_instrumented_instruction(bb, id);
+		}
 	}
 }
 

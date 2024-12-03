@@ -46,7 +46,10 @@ enum class InstructionInstrumentationType
 	FullNanInf = 0,
 	// Only instrument writes to externally visible memory, etc.
 	// Gets rid of potential false positives.
-	ExternallyVisibleWriteNanInf = 1
+	ExternallyVisibleWriteNanInf = 1,
+	// Flushes all NaNs to zero.
+	// Useful when trying to figure out where a NaN is first generated.
+	FlushNaNToZero = 2
 };
 
 struct InstructionInstrumentationInfo

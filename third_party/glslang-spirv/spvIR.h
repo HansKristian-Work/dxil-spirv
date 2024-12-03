@@ -125,6 +125,7 @@ public:
     Op getOpCode() const { return opCode; }
     int getNumOperands() const { return (int)operands.size(); }
     Id getResultId() const { return resultId; }
+    void setResultId(Id id) { resultId = id; }
     Id getTypeId() const { return typeId; }
     Id getIdOperand(int op) const { return operands[op]; }
     void setIdOperand(int op, spv::Id id) { operands[op] = id; }
