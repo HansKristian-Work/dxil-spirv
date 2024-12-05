@@ -42,6 +42,7 @@ static spv::Id build_descriptor_qa_heap_buffer_type(spv::Builder &builder)
 	spv::Id uvec2_arr_type = builder.makeRuntimeArray(uvec2_type);
 	builder.addDecoration(uvec2_arr_type, spv::DecorationArrayStride, 8);
 
+	member_types.reserve(3);
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
 	member_types.push_back(uvec2_arr_type);
@@ -81,6 +82,7 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	spv::Id u32_arr_type = builder.makeRuntimeArray(u32_type);
 	builder.addDecoration(u32_arr_type, spv::DecorationArrayStride, 4);
 
+	member_types.reserve(10);
 	member_types.push_back(uvec2_type);
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
