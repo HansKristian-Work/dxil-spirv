@@ -734,7 +734,8 @@ struct OptionInstructionInstrumentation : OptionBase
 enum class ShaderQuirk : uint32_t
 {
 	None = 0,
-	ForceDeviceMemoryBarriersThreadGroupCoherence
+	ForceDeviceMemoryBarriersThreadGroupCoherence,
+	AssumeBrokenSub8x8CubeMips
 };
 
 struct OptionShaderQuirk : OptionBase

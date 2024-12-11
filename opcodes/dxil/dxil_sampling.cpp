@@ -262,6 +262,41 @@ static void build_gradient(Converter::Impl &impl, const spv::Id *coord, unsigned
 	ops |= spv::ImageOperandsGradMask;
 }
 
+static spv::Id emit_workaround_clamp_cube_mips(Converter::Impl &impl, spv::Id image_id, spv::Id bias_level_argument)
+{
+	auto &builder = impl.builder();
+
+	if (builder.getTypeDimensionality(impl.get_type_id(image_id)) != spv::DimCube)
+		return bias_level_argument;
+
+	// Very specific workaround where the game is only computing mips down to
+	// 8x8 despite having all mips in the chain. Sigh ...
+	auto *lods = impl.allocate(spv::OpImageQueryLevels, builder.makeIntType(32));
+	lods->add_id(image_id);
+	impl.add(lods);
+
+	auto *sub4 = impl.allocate(spv::OpISub, builder.makeIntType(32));
+	sub4->add_id(lods->id);
+	sub4->add_id(builder.makeUintConstant(4));
+	impl.add(sub4);
+
+	auto *conv = impl.allocate(spv::OpConvertSToF, builder.makeFloatType(32));
+	conv->add_id(sub4->id);
+	impl.add(conv);
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	auto *min_op = impl.allocate(spv::OpExtInst, builder.makeFloatType(32));
+	min_op->add_id(impl.glsl_std450_ext);
+	min_op->add_literal(GLSLstd450FMin);
+	min_op->add_id(conv->id);
+	min_op->add_id(bias_level_argument);
+	impl.add(min_op);
+
+	return min_op->id;
+}
+
 bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	bool comparison_sampling = opcode == DXIL::Op::SampleCmp ||
@@ -347,6 +382,9 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		bias_level_argument = impl.get_id_for_value(instruction->getOperand(bias_level_argument_index));
 	else
 		bias_level_argument = builder.makeFloatConstant(0.0f);
+
+	if (!force_explicit_lod && impl.options.quirks.assume_broken_sub_8x8_cube_mips && opcode == DXIL::Op::SampleLevel)
+		bias_level_argument = emit_workaround_clamp_cube_mips(impl, image_id, bias_level_argument);
 
 	spv::Op spv_op;
 

@@ -8087,7 +8087,14 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		switch (quirk.quirk)
 		{
 		case ShaderQuirk::ForceDeviceMemoryBarriersThreadGroupCoherence:
+			// Dragon Age: Veilguard workaround.
 			options.quirks.force_device_memory_barriers_thread_group_coherence = true;
+			break;
+
+		case ShaderQuirk::AssumeBrokenSub8x8CubeMips:
+			// The First Descendant workaround. Importance sampling pass is broken since only mips down to 8x8
+			// are populated with valid data.
+			options.quirks.assume_broken_sub_8x8_cube_mips = true;
 			break;
 
 		default:
