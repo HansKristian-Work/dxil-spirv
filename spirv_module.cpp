@@ -1378,7 +1378,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records_waterfall(SPIRVModule &mo
 	spv::Id uint64_type = builder.makeUintType(64);
 	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
 	                                       "AllocateThreadNodeRecordsWaterfall",
-	                                       { uint64_type, uint_type, uint_type, uint_type, uint_type, uint_type },
+	                                       { uint64_type, uint_type, uint_type, uint_type, uint_type },
 	                                       {}, &entry);
 
 	builder.addName(func->getParamId(0), "AtomicCountersBDA");
@@ -1386,7 +1386,6 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records_waterfall(SPIRVModule &mo
 	builder.addName(func->getParamId(2), "Count");
 	builder.addName(func->getParamId(3), "Stride");
 	builder.addName(func->getParamId(4), "AllocationOffset");
-	builder.addName(func->getParamId(5), "AllocationStride");
 
 	auto *loop_header = new spv::Block(builder.getUniqueId(), *func);
 	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
@@ -1428,7 +1427,6 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records_waterfall(SPIRVModule &mo
 		call_inner->addIdOperand(func->getParamId(2));
 		call_inner->addIdOperand(func->getParamId(3));
 		call_inner->addIdOperand(func->getParamId(4));
-		call_inner->addIdOperand(func->getParamId(5));
 
 		return_value = call_inner->getResultId();
 		add_instruction(body_block, std::move(call_inner));
@@ -1456,7 +1454,6 @@ spv::Id SPIRVModule::Impl::build_increment_node_count(SPIRVModule &, bool per_th
 	spv::Block *entry = nullptr;
 	spv::Id bool_type = builder.makeBoolType();
 	spv::Id uint_type = builder.makeUintType(32);
-	spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
 	spv::Id uint64_type = builder.makeUintType(64);
 	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
 	                                       per_thread ? "IncrementThreadNodeCount" : "IncrementGroupNodeCount",
@@ -1478,14 +1475,16 @@ spv::Id SPIRVModule::Impl::build_increment_node_count(SPIRVModule &, bool per_th
 		merge_block = new spv::Block(builder.getUniqueId(), *func);
 	}
 
-	spv::Id uvec2_array_type = builder.makeRuntimeArray(uvec2_type);
-	builder.addDecoration(uvec2_array_type, spv::DecorationArrayStride, 8);
-	spv::Id struct_type_id = builder.makeStructType({ uint_type, uvec2_array_type }, "NodeAtomicsEmpty");
+	spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
+	builder.addDecoration(uint_array_type, spv::DecorationArrayStride, 4);
+	spv::Id struct_type_id = builder.makeStructType({ uint_type, uint_type, uint_array_type }, "NodeAtomicsEmpty");
 	builder.addDecoration(struct_type_id, spv::DecorationBlock);
 	builder.addMemberName(struct_type_id, 0, "payloadCount");
-	builder.addMemberName(struct_type_id, 1, "perNodeFusedAndTotal");
+	builder.addMemberName(struct_type_id, 1, "fusedCount");
+	builder.addMemberName(struct_type_id, 2, "perNodeTotal");
 	builder.addMemberDecoration(struct_type_id, 0, spv::DecorationOffset, 0);
-	builder.addMemberDecoration(struct_type_id, 1, spv::DecorationOffset, 8);
+	builder.addMemberDecoration(struct_type_id, 1, spv::DecorationOffset, 4);
+	builder.addMemberDecoration(struct_type_id, 2, spv::DecorationOffset, 8);
 
 	auto cast_op = std::make_unique<spv::Instruction>(
 	    builder.getUniqueId(),
@@ -1498,9 +1497,8 @@ spv::Id SPIRVModule::Impl::build_increment_node_count(SPIRVModule &, bool per_th
 	    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
 	    spv::OpInBoundsAccessChain);
 	chain_index_op->addIdOperand(cast_op->getResultId());
-	chain_index_op->addIdOperand(builder.makeUintConstant(1));
+	chain_index_op->addIdOperand(builder.makeUintConstant(2));
 	chain_index_op->addIdOperand(func->getParamId(1));
-	chain_index_op->addIdOperand(builder.makeUintConstant(1));
 
 	auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
 	atomic_op->addIdOperand(chain_index_op->getResultId());
@@ -1559,7 +1557,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 	spv::Id uint64_type = builder.makeUintType(64);
 	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
 	                                       per_thread ? "AllocateThreadNodeRecords" : "AllocateGroupNodeRecords",
-	                                       { uint64_type, uint_type, uint_type, uint_type, uint_type, uint_type },
+	                                       { uint64_type, uint_type, uint_type, uint_type, uint_type },
 	                                       {}, &entry);
 
 	builder.addName(func->getParamId(0), "AtomicCountersBDA");
@@ -1567,7 +1565,6 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 	builder.addName(func->getParamId(2), "Count");
 	builder.addName(func->getParamId(3), "Stride");
 	builder.addName(func->getParamId(4), "AllocationOffset");
-	builder.addName(func->getParamId(5), "AllocationStride");
 
 	spv::Id total_count_id;
 	spv::Id phi_undefined_id = 0;
@@ -1661,12 +1658,14 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 
 		spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
 		builder.addDecoration(uint_array_type, spv::DecorationArrayStride, 4);
-		spv::Id struct_type_id = builder.makeStructType({ uint_type, uint_array_type }, "NodeAtomics");
+		spv::Id struct_type_id = builder.makeStructType({ uint_type, uint_type, uint_array_type }, "NodeAtomics");
 		builder.addDecoration(struct_type_id, spv::DecorationBlock);
 		builder.addMemberName(struct_type_id, 0, "payloadCount");
-		builder.addMemberName(struct_type_id, 1, "perNodeFusedAndTotal");
+		builder.addMemberName(struct_type_id, 1, "fusedCount");
+		builder.addMemberName(struct_type_id, 2, "perNodeTotal");
 		builder.addMemberDecoration(struct_type_id, 0, spv::DecorationOffset, 0);
-		builder.addMemberDecoration(struct_type_id, 1, spv::DecorationOffset, 8);
+		builder.addMemberDecoration(struct_type_id, 1, spv::DecorationOffset, 4);
+		builder.addMemberDecoration(struct_type_id, 2, spv::DecorationOffset, 8);
 
 		auto cast_op = std::make_unique<spv::Instruction>(
 		    builder.getUniqueId(),
@@ -1674,52 +1673,45 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 		    spv::OpBitcast);
 		cast_op->addIdOperand(func->getParamId(0));
 
-		auto chain_op = std::make_unique<spv::Instruction>(
+		auto chain_payload_total_op = std::make_unique<spv::Instruction>(
 		    builder.getUniqueId(),
 		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
 		    spv::OpInBoundsAccessChain);
-		chain_op->addIdOperand(cast_op->getResultId());
-		chain_op->addIdOperand(builder.makeUintConstant(0));
+		chain_payload_total_op->addIdOperand(cast_op->getResultId());
+		chain_payload_total_op->addIdOperand(builder.makeUintConstant(0));
 
-		auto node_index_times_2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
-		node_index_times_2->addIdOperand(func->getParamId(1));
-		node_index_times_2->addIdOperand(builder.makeUintConstant(2));
-
-		auto node_index_times_2_plus_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
-		node_index_times_2_plus_1->addIdOperand(node_index_times_2->getResultId());
-		node_index_times_2_plus_1->addIdOperand(builder.makeUintConstant(1));
-
-		auto chain_index_op = std::make_unique<spv::Instruction>(
+		auto chain_fused_total_op = std::make_unique<spv::Instruction>(
 		    builder.getUniqueId(),
 		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
 		    spv::OpInBoundsAccessChain);
-		chain_index_op->addIdOperand(cast_op->getResultId());
-		chain_index_op->addIdOperand(builder.makeUintConstant(1));
-		chain_index_op->addIdOperand(node_index_times_2->getResultId());
+		chain_fused_total_op->addIdOperand(cast_op->getResultId());
+		chain_fused_total_op->addIdOperand(builder.makeUintConstant(1));
 
-		auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
-		atomic_op->addIdOperand(chain_op->getResultId());
-		atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
-		atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
-		atomic_op->addIdOperand(and_op->getResultId());
+		auto payload_total_atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
+		payload_total_atomic_op->addIdOperand(chain_payload_total_op->getResultId());
+		payload_total_atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		payload_total_atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
+		payload_total_atomic_op->addIdOperand(and_op->getResultId());
 
-		auto chain_index_total_op = std::make_unique<spv::Instruction>(
+		spv::Id node_index = func->getParamId(1);
+
+		auto chain_node_total_op = std::make_unique<spv::Instruction>(
 		    builder.getUniqueId(),
 		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
 		    spv::OpInBoundsAccessChain);
-		chain_index_total_op->addIdOperand(cast_op->getResultId());
-		chain_index_total_op->addIdOperand(builder.makeUintConstant(1));
-		chain_index_total_op->addIdOperand(node_index_times_2_plus_1->getResultId());
+		chain_node_total_op->addIdOperand(cast_op->getResultId());
+		chain_node_total_op->addIdOperand(builder.makeUintConstant(2));
+		chain_node_total_op->addIdOperand(node_index);
 
 		auto atomic_total_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
-		atomic_total_op->addIdOperand(chain_index_total_op->getResultId());
+		atomic_total_op->addIdOperand(chain_node_total_op->getResultId());
 		atomic_total_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
 		atomic_total_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 		atomic_total_op->addIdOperand(total_count_id);
 
 		auto shift_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpShiftLeftLogical);
-		shift_op->addIdOperand(atomic_op->getResultId());
-		shift_op->addIdOperand(builder.makeUintConstant(4));
+		shift_op->addIdOperand(node_index);
+		shift_op->addIdOperand(builder.makeUintConstant(8));
 
 		auto count_minus_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpISub);
 		count_minus_1->addIdOperand(total_count_id);
@@ -1729,59 +1721,73 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 		or_op->addIdOperand(shift_op->getResultId());
 		or_op->addIdOperand(count_minus_1->getResultId());
 
-		auto atomic_node_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIIncrement);
-		atomic_node_op->addIdOperand(chain_index_op->getResultId());
-		atomic_node_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
-		atomic_node_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
+		auto fused_atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIIncrement);
+		fused_atomic_op->addIdOperand(chain_fused_total_op->getResultId());
+		fused_atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		fused_atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 
-		auto payload_mul_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
-		payload_mul_op->addIdOperand(func->getParamId(5));
-		payload_mul_op->addIdOperand(func->getParamId(1));
-
-		auto payload_add_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
-		payload_add_op->addIdOperand(payload_mul_op->getResultId());
-		payload_add_op->addIdOperand(func->getParamId(4));
+		auto fused_mul2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
+		fused_mul2->addIdOperand(builder.makeUintConstant(2));
+		fused_mul2->addIdOperand(fused_atomic_op->getResultId());
 
 		auto payload_add_atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
-		payload_add_atomic_op->addIdOperand(payload_add_op->getResultId());
-		payload_add_atomic_op->addIdOperand(atomic_node_op->getResultId());
+		payload_add_atomic_op->addIdOperand(func->getParamId(4));
+		payload_add_atomic_op->addIdOperand(fused_mul2->getResultId());
+
+		auto payload_add_atomic_op_plus_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
+		payload_add_atomic_op_plus_1->addIdOperand(payload_add_atomic_op->getResultId());
+		payload_add_atomic_op_plus_1->addIdOperand(builder.makeUintConstant(1));
 
 		auto chain_payload_op = std::make_unique<spv::Instruction>(
 		    builder.getUniqueId(),
 		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
 		    spv::OpInBoundsAccessChain);
 		chain_payload_op->addIdOperand(cast_op->getResultId());
-		chain_payload_op->addIdOperand(builder.makeUintConstant(1));
+		chain_payload_op->addIdOperand(builder.makeUintConstant(2));
 		chain_payload_op->addIdOperand(payload_add_atomic_op->getResultId());
 
 		auto store_payload_inst = std::make_unique<spv::Instruction>(spv::OpStore);
 		store_payload_inst->addIdOperand(chain_payload_op->getResultId());
 		store_payload_inst->addIdOperand(or_op->getResultId());
 		store_payload_inst->addImmediateOperand(spv::MemoryAccessAlignedMask);
-		store_payload_inst->addImmediateOperand(4);
+		store_payload_inst->addImmediateOperand(8);
 
-		payload_offset_id = atomic_op->getResultId();
+		auto chain_payload_op_plus_1 = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(),
+		    builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type),
+		    spv::OpInBoundsAccessChain);
+		chain_payload_op_plus_1->addIdOperand(cast_op->getResultId());
+		chain_payload_op_plus_1->addIdOperand(builder.makeUintConstant(2));
+		chain_payload_op_plus_1->addIdOperand(payload_add_atomic_op_plus_1->getResultId());
+
+		auto store_payload_inst_plus_1 = std::make_unique<spv::Instruction>(spv::OpStore);
+		store_payload_inst_plus_1->addIdOperand(chain_payload_op_plus_1->getResultId());
+		store_payload_inst_plus_1->addIdOperand(payload_total_atomic_op->getResultId());
+		store_payload_inst_plus_1->addImmediateOperand(spv::MemoryAccessAlignedMask);
+		store_payload_inst_plus_1->addImmediateOperand(4);
+
+		payload_offset_id = payload_total_atomic_op->getResultId();
 
 		add_instruction(body_block, std::move(mul_op));
 		add_instruction(body_block, std::move(add_op));
 		add_instruction(body_block, std::move(and_op));
 		add_instruction(body_block, std::move(cast_op));
-		add_instruction(body_block, std::move(chain_op));
-		add_instruction(body_block, std::move(node_index_times_2));
-		add_instruction(body_block, std::move(node_index_times_2_plus_1));
-		add_instruction(body_block, std::move(chain_index_op));
-		add_instruction(body_block, std::move(atomic_op));
-		add_instruction(body_block, std::move(chain_index_total_op));
+		add_instruction(body_block, std::move(chain_payload_total_op));
+		add_instruction(body_block, std::move(chain_fused_total_op));
+		add_instruction(body_block, std::move(payload_total_atomic_op));
+		add_instruction(body_block, std::move(chain_node_total_op));
 		add_instruction(body_block, std::move(shift_op));
 		add_instruction(body_block, std::move(count_minus_1));
 		add_instruction(body_block, std::move(or_op));
-		add_instruction(body_block, std::move(atomic_node_op));
+		add_instruction(body_block, std::move(fused_atomic_op));
+		add_instruction(body_block, std::move(fused_mul2));
 		add_instruction(body_block, std::move(atomic_total_op));
-		add_instruction(body_block, std::move(payload_mul_op));
-		add_instruction(body_block, std::move(payload_add_op));
 		add_instruction(body_block, std::move(payload_add_atomic_op));
+		add_instruction(body_block, std::move(payload_add_atomic_op_plus_1));
 		add_instruction(body_block, std::move(chain_payload_op));
 		add_instruction(body_block, std::move(store_payload_inst));
+		add_instruction(body_block, std::move(chain_payload_op_plus_1));
+		add_instruction(body_block, std::move(store_payload_inst_plus_1));
 
 		if (!per_thread)
 		{

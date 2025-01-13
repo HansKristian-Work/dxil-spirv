@@ -210,7 +210,6 @@ bool emit_allocate_node_output_records(Converter::Impl &impl, const llvm::CallIn
 	call_op->add_id(alloc_count);
 	call_op->add_id(builder.makeUintConstant(stride));
 	call_op->add_id(emit_load_node_input_push_parameter(impl, NodePayloadOutputOffset, builder.makeUintType(32)));
-	call_op->add_id(emit_load_node_input_push_parameter(impl, NodePayloadOutputStride, builder.makeUintType(32)));
 	impl.add(call_op);
 
 	return true;

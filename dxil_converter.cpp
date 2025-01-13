@@ -5581,7 +5581,6 @@ bool Converter::Impl::emit_execution_modes_node_input()
 		ptr_shader_record_block_type_id,
 		u32_type_id,
 		u32_type_id,
-		u32_type_id,
 	};
 
 	spv::Id type_id = builder().makeStructType(members, "NodeDispatchRegisters");
@@ -5593,8 +5592,7 @@ bool Converter::Impl::emit_execution_modes_node_input()
 	builder().addMemberDecoration(type_id, NodePayloadOutputAtomicBDA, spv::DecorationOffset, 40);
 	builder().addMemberDecoration(type_id, NodeLocalRootSignatureBDA, spv::DecorationOffset, 48);
 	builder().addMemberDecoration(type_id, NodePayloadOutputOffset, spv::DecorationOffset, 56);
-	builder().addMemberDecoration(type_id, NodePayloadOutputStride, spv::DecorationOffset, 60);
-	builder().addMemberDecoration(type_id, NodeRemainingRecursionLevels, spv::DecorationOffset, 64);
+	builder().addMemberDecoration(type_id, NodeRemainingRecursionLevels, spv::DecorationOffset, 60);
 
 	// For linear node layout (entry point).
 	// Node payload is found at PayloadLinearBDA + NodeIndex * PayloadStride.
@@ -5610,7 +5608,6 @@ bool Converter::Impl::emit_execution_modes_node_input()
 	// For broadcast nodes. Need to instance multiple times.
 	// Becomes WorkGroupID and affects GlobalInvocationID.
 	builder().addMemberName(type_id, NodePayloadOutputOffset, "NodePayloadOutputOffset");
-	builder().addMemberName(type_id, NodePayloadOutputStride, "NodePayloadOutputStride");
 	builder().addMemberName(type_id, NodeRemainingRecursionLevels, "NodeRemainingRecursionLevels");
 	builder().addDecoration(type_id, spv::DecorationBlock);
 	node_input.node_dispatch_push_id =

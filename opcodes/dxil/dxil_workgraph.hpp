@@ -56,8 +56,7 @@ enum NodeInputParameter
 	NodePayloadOutputAtomicBDA = 5,
 	NodeLocalRootSignatureBDA = 6,
 	NodePayloadOutputOffset = 7,
-	NodePayloadOutputStride = 8,
-	NodeRemainingRecursionLevels = 9
+	NodeRemainingRecursionLevels = 8
 };
 
 enum NodeSpecConstant
