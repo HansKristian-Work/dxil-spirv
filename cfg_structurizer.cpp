@@ -398,6 +398,31 @@ bool CFGStructurizer::block_is_breaking_phi_construct(const CFGNode *node) const
 		if (pred->succ_back_edge)
 			return false;
 
+	// A more complicated case where we want the block to remain as a ladder block.
+	auto *loop_header = get_innermost_loop_header_for(node);
+	if (loop_header && loop_header->pred_back_edge &&
+	    loop_header->dominates(node) && loop_header->pred_back_edge->succ.empty())
+	{
+		bool merge_is_outside_loop = !query_reachability(*node, *loop_header->pred_back_edge);
+		if (merge_is_outside_loop)
+		{
+			auto *header_pdom = loop_header->pred_back_edge->immediate_post_dominator;
+
+			// We only want to avoid the split when this is a meaningful ladder.
+			// If the paths all end up in the same merge anyway, it's safer to split.
+			for (auto *df : node->dominance_frontier)
+				if (df == header_pdom)
+					return true;
+
+			for (auto *pdf : node->post_dominance_frontier)
+			{
+				// We can't reach, but the PDF can. We're confident we're a loop exit.
+				if (query_reachability(*pdf, *loop_header->pred_back_edge))
+					return false;
+			}
+		}
+	}
+
 	return true;
 }
 
