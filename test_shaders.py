@@ -117,10 +117,12 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         dxil_path = shader
 
     hlsl_cmd = [paths.dxil_spirv, '--output', glsl_path, dxil_path, '--vertex-input', 'ATTR', '0']
-    if '.noglsl' not in shader:
-        hlsl_cmd += ['--asm', '--glsl']
-    else:
-        hlsl_cmd += ['--asm']
+
+    if not args.bench:
+        if '.noglsl' not in shader:
+            hlsl_cmd += ['--asm', '--glsl']
+        else:
+            hlsl_cmd += ['--asm']
 
     if '.bc.' in shader:
         hlsl_cmd += ['--raw-llvm']
@@ -220,8 +222,9 @@ def cross_compile_dxil(shader, args, paths, is_asm):
 
     if '.offset-layout.' in shader:
         hlsl_cmd += ['--bindless-offset-buffer-layout', '0', '1', '2']
-    if '.lib.' in shader:
-        hlsl_cmd += ['--debug-all-entry-points']
+    if not args.bench:
+        if '.lib.' in shader:
+            hlsl_cmd += ['--debug-all-entry-points']
     if '.16bit-io.' in shader:
         hlsl_cmd += ['--storage-input-output-16bit']
     if '.descriptor-qa.' in shader:
@@ -310,10 +313,16 @@ def test_shader(shader, args, paths):
 
     if joined_path.endswith('.dxil'):
         glsl = cross_compile_dxil(joined_path, args, paths, True)
-        regression_check(shader, glsl, args)
+        if not args.bench:
+            regression_check(shader, glsl, args)
+        else:
+            remove_file(glsl)
     elif not joined_path.endswith('.inc'):
         dxil, glsl = cross_compile_dxil(joined_path, args, paths, False)
-        regression_check(shader, glsl, args)
+        if not args.bench:
+            regression_check(shader, glsl, args)
+        else:
+            remove_file(glsl)
         remove_file(dxil)
 
 def test_shader_file(relpath, args):
@@ -382,6 +391,9 @@ def main():
             help = 'Explicit path to dxil-spirv')
     parser.add_argument('--subfolder',
             help = 'Only test specific subfolder')
+    parser.add_argument('--bench',
+                        action = 'store_true',
+                        help = 'Disable any non dxil-spirv work, for benchmarking')
 
     args = parser.parse_args()
     if not args.folder:
