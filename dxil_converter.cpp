@@ -5326,6 +5326,40 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 		phi.type_id = get_type_id(instruction.getType());
 		phi.relaxed = type_can_relax_precision(instruction.getType(), false);
 
+		// Another NVIDIA workaround. If we can resolve the PHI to a select, do so.
+		// NVIDIA compiler seems to break if LocalInvocationID is part of a Phi in mesh shaders.
+		const llvm::Value *input_volatile = nullptr;
+		const llvm::Constant *input_constant = nullptr;
+
+		for (unsigned i = 0; i < count; i++)
+		{
+			auto *incoming = instruction.getIncomingValue(i);
+			if (value_is_implicit_volatile(*this, incoming))
+			{
+				if (input_volatile && input_volatile != incoming)
+					break;
+				input_volatile = incoming;
+			}
+			else if (const auto *const_value = llvm::dyn_cast<llvm::Constant>(incoming))
+			{
+				if (input_constant && input_constant != const_value)
+					break;
+				input_constant = const_value;
+			}
+			else
+			{
+				input_volatile = nullptr;
+				input_constant = nullptr;
+				break;
+			}
+		}
+
+		if (input_volatile && input_constant)
+		{
+			phi.type_id = builder().makeBoolType();
+			phi.relaxed = false;
+		}
+
 		for (unsigned i = 0; i < count; i++)
 		{
 			IncomingValue incoming = {};
@@ -5337,7 +5371,11 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 				incoming.block = bb_itr->second->node;
 				auto *value = instruction.getIncomingValue(i);
 
-				if (value_is_implicit_volatile(*this, value))
+				if (input_volatile && input_constant)
+				{
+					incoming.id = builder().makeBoolConstant(value_is_implicit_volatile(*this, value));
+				}
+				else if (value_is_implicit_volatile(*this, value))
 				{
 					// Re-materialize the value in the incoming block.
 					auto *save_current = current_block;
@@ -5361,7 +5399,18 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 		}
 
 		if (phi.incoming.size() > 1)
+		{
+			if (input_volatile && input_constant)
+			{
+				auto *select_op = allocate(spv::OpSelect, get_type_id(instruction.getType()));
+				select_op->add_id(phi.id);
+				select_op->add_id(get_id_for_value(input_volatile));
+				select_op->add_id(get_id_for_value(input_constant));
+				add(select_op);
+				rewrite_value(&instruction, select_op->id);
+			}
 			block->ir.phi.push_back(std::move(phi));
+		}
 		else
 			rewrite_value(&instruction, phi.incoming.front().id);
 	}
