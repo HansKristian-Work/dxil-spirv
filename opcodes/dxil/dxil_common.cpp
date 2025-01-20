@@ -541,4 +541,19 @@ bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
 
 	return op == DXIL::Op(opcode);
 }
+
+bool value_is_implicit_volatile(Converter::Impl &impl, const llvm::Value *value)
+{
+	// NVIDIA workaround. Mesh shaders and task shaders may need to unroll their workgroups.
+	// It seems like there is a compiler bug where we cannot just keep reusing the same SSA value,
+	// since technically, that SSA value will have to change every internal iteration.
+	// This is something NV's compiler need to consider, but it's bugged,
+	// so let's re-materialize the SSA value everywhere it's used.
+	if (impl.execution_model != spv::ExecutionModelTaskEXT && impl.execution_model != spv::ExecutionModelMeshEXT)
+		return false;
+
+	return value_is_dx_op_instrinsic(value, DXIL::Op::ThreadIdInGroup) ||
+	       value_is_dx_op_instrinsic(value, DXIL::Op::FlattenedThreadIdInGroup) ||
+	       value_is_dx_op_instrinsic(value, DXIL::Op::ThreadId);
+}
 } // namespace dxil_spv

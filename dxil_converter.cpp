@@ -3302,7 +3302,21 @@ spv::Id Converter::Impl::get_id_for_value(const llvm::Value *value, unsigned for
 	else
 		ret = spirv_module.allocate_id();
 
-	value_map[value] = ret;
+	auto &mapped = value_map[value];
+	mapped = ret;
+
+	if (value_is_implicit_volatile(*this, value))
+	{
+		// Never cache a volatile value.
+		// Emit it inline. Need to temporarily keep the value in hash map so we don't recursive indefinitely.
+		if (!emit_dxil_instruction(*this, llvm::cast<llvm::CallInst>(value)))
+			return 0;
+
+		// In case value was rewritten late.
+		ret = mapped;
+		value_map.erase(value);
+	}
+
 	return ret;
 }
 
@@ -5322,7 +5336,20 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 			{
 				incoming.block = bb_itr->second->node;
 				auto *value = instruction.getIncomingValue(i);
-				incoming.id = get_id_for_value(value);
+
+				if (value_is_implicit_volatile(*this, value))
+				{
+					// Re-materialize the value in the incoming block.
+					auto *save_current = current_block;
+					current_block = &incoming.block->ir.operations;
+					incoming.id = get_id_for_value(value);
+					current_block = save_current;
+				}
+				else
+				{
+					incoming.id = get_id_for_value(value);
+				}
+
 				phi.incoming.push_back(incoming);
 			}
 		}
@@ -5376,6 +5403,10 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 	{
 		return true;
 	}
+
+	// We'll rematerialize this as needed.
+	if (value_is_implicit_volatile(*this, &instruction))
+		return true;
 
 	current_block = &block->ir.operations;
 
