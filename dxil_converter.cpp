@@ -8094,6 +8094,12 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			options.quirks.assume_broken_sub_8x8_cube_mips = true;
 			break;
 
+		case ShaderQuirk::RobustPhysicalCBVForwarding:
+			// Gray Zone Warfare workaround. Does CBV forwarding with out of bounds access on the local array <_<.
+			// Can trip page faults.
+			options.quirks.robust_physical_cbv_forwarding = true;
+			break;
+
 		default:
 			break;
 		}

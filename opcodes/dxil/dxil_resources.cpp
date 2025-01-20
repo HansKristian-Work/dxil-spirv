@@ -2012,6 +2012,33 @@ bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetEle
 
 	spv::Id array_index_id = impl.get_id_for_value(instruction->getOperand(2));
 
+	if (meta.storage == spv::StorageClassPhysicalStorageBuffer && impl.options.quirks.robust_physical_cbv_forwarding)
+	{
+		// Clamp the index to the range of the private array.
+		// Otherwise we can rely on robustness to clean things up, but here we risk page faults.
+		auto *aggregate_type = instruction->getOperand(0)->getType();
+		if (auto *ptr_type = llvm::dyn_cast<llvm::PointerType>(aggregate_type))
+		{
+			if (auto *array_type = llvm::dyn_cast<llvm::ArrayType>(ptr_type->getPointerElementType()))
+			{
+				unsigned num_elements = array_type->getArrayNumElements();
+
+				if (!impl.glsl_std450_ext)
+					impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+				auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeIntType(32));
+				clamp_op->add_id(impl.glsl_std450_ext);
+				clamp_op->add_literal(GLSLstd450SClamp);
+				clamp_op->add_id(array_index_id);
+				clamp_op->add_id(builder.makeIntConstant(0));
+				clamp_op->add_id(builder.makeIntConstant(int(num_elements) - 1));
+				impl.add(clamp_op);
+
+				array_index_id = clamp_op->id;
+			}
+		}
+	}
+
 	if (stride != 1)
 	{
 		auto *mul_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
