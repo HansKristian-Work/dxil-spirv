@@ -5319,45 +5319,52 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 				handle_to_root_member_offset[&instruction] = itr->second;
 		}
 	}
+	else if (execution_model == spv::ExecutionModelMeshEXT)
+	{
+		spv::Id var_id = create_variable(spv::StorageClassFunction, get_type_id(instruction.getType()));
+
+		for (unsigned i = 0; i < count; i++)
+		{
+			IncomingValue incoming = {};
+			auto bb_itr = bb_map.find(instruction.getIncomingBlock(i));
+
+			// If the block was statically eliminated, it might not exist.
+			if (bb_itr != bb_map.end())
+			{
+				incoming.block = bb_itr->second->node;
+				auto *value = instruction.getIncomingValue(i);
+				spv::Id incoming_id;
+
+				if (value_is_implicit_volatile(*this, value))
+				{
+					// Re-materialize the value in the incoming block.
+					auto *save_current = current_block;
+					current_block = &incoming.block->ir.operations;
+					incoming_id = get_id_for_value(value);
+					current_block = save_current;
+				}
+				else
+				{
+					incoming_id = get_id_for_value(value);
+				}
+
+				auto *store_incoming = allocate(spv::OpStore);
+				store_incoming->add_id(var_id);
+				store_incoming->add_id(incoming_id);
+				incoming.block->ir.post_operations.push_back(store_incoming);
+			}
+		}
+
+		auto *load_op = allocate(spv::OpLoad, &instruction);
+		load_op->add_id(var_id);
+		add(load_op);
+	}
 	else
 	{
 		PHI phi;
 		phi.id = get_id_for_value(&instruction);
 		phi.type_id = get_type_id(instruction.getType());
 		phi.relaxed = type_can_relax_precision(instruction.getType(), false);
-
-		// Another NVIDIA workaround. If we can resolve the PHI to a select, do so.
-		// NVIDIA compiler seems to break if LocalInvocationID is part of a Phi in mesh shaders.
-		const llvm::BasicBlock *originating_block = nullptr;
-		const llvm::Value *input_volatile = nullptr;
-		spv::Id input_volatile_id = 0;
-
-		for (unsigned i = 0; i < count; i++)
-		{
-			auto *incoming = instruction.getIncomingValue(i);
-			if (value_is_implicit_volatile(*this, incoming))
-			{
-				if (input_volatile && input_volatile != incoming)
-				{
-					input_volatile = nullptr;
-					break;
-				}
-				input_volatile = incoming;
-
-				if (!originating_block)
-					originating_block = instruction.getIncomingBlock(i);
-				else
-					originating_block = &*get_entry_point_function(entry_point_meta)->begin();
-			}
-		}
-
-		if (input_volatile)
-		{
-			auto *save_current = current_block;
-			current_block = &bb_map.find(originating_block)->second->node->ir.operations;
-			input_volatile_id = get_id_for_value(input_volatile);
-			current_block = save_current;
-		}
 
 		for (unsigned i = 0; i < count; i++)
 		{
@@ -5372,18 +5379,11 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 
 				if (value_is_implicit_volatile(*this, value))
 				{
-					if (input_volatile_id)
-					{
-						incoming.id = input_volatile_id;
-					}
-					else
-					{
-						// Re-materialize the value in the incoming block.
-						auto *save_current = current_block;
-						current_block = &incoming.block->ir.operations;
-						incoming.id = get_id_for_value(value);
-						current_block = save_current;
-					}
+					// Re-materialize the value in the incoming block.
+					auto *save_current = current_block;
+					current_block = &incoming.block->ir.operations;
+					incoming.id = get_id_for_value(value);
+					current_block = save_current;
 				}
 				else
 				{

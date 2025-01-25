@@ -2678,12 +2678,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 	};
 
-	// Emit opcodes.
-	for (auto *op : ir.operations)
-	{
-		if (implicit_terminator)
-			break;
-
+	const auto emit_op = [&](Operation *op) {
 		if (op->op == spv::OpIsHelperInvocationEXT && !caps.supports_demote)
 		{
 			spv::Id helper_var_id = get_builtin_shader_input(spv::BuiltInHelperInvocation);
@@ -2798,6 +2793,21 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			}
 			add_instruction(bb, std::move(inst));
 		}
+	};
+
+	// Emit opcodes.
+	for (auto *op : ir.operations)
+	{
+		if (implicit_terminator)
+			break;
+		emit_op(op);
+	}
+
+	for (auto *op : ir.post_operations)
+	{
+		if (implicit_terminator)
+			break;
+		emit_op(op);
 	}
 
 	if (implicit_terminator)

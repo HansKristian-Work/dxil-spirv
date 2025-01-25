@@ -192,6 +192,7 @@ struct IRBlock
 {
 	Vector<PHI> phi;
 	Vector<Operation *> operations;
+	Vector<Operation *> post_operations;
 	MergeInfo merge_info;
 	Terminator terminator;
 };
