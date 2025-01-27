@@ -160,7 +160,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	bool helper_lanes_participate_in_wave_ops = true;
 
 	void add_instruction(spv::Block *bb, std::unique_ptr<spv::Instruction> inst);
-	void add_instrumented_instruction(spv::Block *bb, spv::Id id);
+	void add_instrumented_instruction(spv::Op op, spv::Block *bb, spv::Id id);
 
 	struct
 	{
@@ -168,12 +168,15 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 		spv::Id nan_inf_instrument_fp16_call_id = 0;
 		spv::Id nan_inf_instrument_fp32_call_id = 0;
 		spv::Id nan_inf_instrument_fp64_call_id = 0;
-		spv::Id should_report_nan_inf_var_id = 0;
+		spv::Id assume_true_call_id = 0;
+		spv::Id should_report_instrumentation_id = 0;
 		spv::Id global_nan_inf_control_var_id = 0;
 		spv::Id global_nan_inf_data_var_id = 0;
 		InstructionInstrumentationInfo info = {};
 	} instruction_instrumentation;
 	spv::Id build_nan_inf_instrument_call(spv::Id type_id);
+	spv::Id build_assume_true_call();
+	void emit_instrumentation_hash(spv::Function *func, spv::Id value_id, spv::Id instruction_id);
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requires_flat)
@@ -2258,6 +2261,192 @@ void SPIRVModule::Impl::register_block(CFGNode *node)
 	}
 }
 
+void SPIRVModule::Impl::emit_instrumentation_hash(spv::Function *func, spv::Id value_id, spv::Id instruction_id)
+{
+	auto *bb = builder.getBuildPoint();
+	auto *write_payload_path = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_payload_path = new spv::Block(builder.getUniqueId(), *func);
+
+	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id bool_type = builder.makeBoolType();
+	auto prime_mul = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpIMul);
+	auto hash = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseXor);
+	auto payload_size = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpArrayLength);
+	auto sub_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpISub);
+	auto mask = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+	auto control_word = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftRightLogical);
+	auto control_bit = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+	auto control_mask = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftLeftLogical);
+	auto access_chain = std::make_unique<spv::Instruction>(builder.getUniqueId(),
+	                                                       builder.makePointer(spv::StorageClassStorageBuffer, u32_type),
+	                                                       spv::OpAccessChain);
+	auto atomic_or = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpAtomicOr);
+	auto store_op = std::make_unique<spv::Instruction>(spv::OpStore);
+	auto atomic_result_mask = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+	auto atomic_need_write = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
+
+	prime_mul->addIdOperand(instruction_id);
+	prime_mul->addIdOperand(builder.makeUintConstant(97)); // Arbitrary prime number
+
+	hash->addIdOperand(prime_mul->getResultId());
+	auto shader_hash = instruction_instrumentation.info.shader_hash;
+	hash->addIdOperand(builder.makeUintConstant(uint32_t(shader_hash) ^ uint32_t(shader_hash >> 32)));
+
+	payload_size->addIdOperand(instruction_instrumentation.global_nan_inf_data_var_id);
+	payload_size->addImmediateOperand(0);
+	sub_1->addIdOperand(payload_size->getResultId());
+	sub_1->addIdOperand(builder.makeUintConstant(1));
+	mask->addIdOperand(hash->getResultId());
+	mask->addIdOperand(sub_1->getResultId());
+	spv::Id mask_id = mask->getResultId();
+
+	control_word->addIdOperand(mask->getResultId());
+	control_word->addIdOperand(builder.makeUintConstant(4));
+	control_bit->addIdOperand(mask->getResultId());
+	control_bit->addIdOperand(builder.makeUintConstant(15));
+	control_mask->addIdOperand(builder.makeUintConstant(1));
+	control_mask->addIdOperand(control_bit->getResultId());
+
+	access_chain->addIdOperand(instruction_instrumentation.global_nan_inf_control_var_id);
+	access_chain->addIdOperand(builder.makeUintConstant(0));
+	access_chain->addIdOperand(control_word->getResultId());
+
+	atomic_or->addIdOperand(access_chain->getResultId());
+	atomic_or->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	atomic_or->addIdOperand(builder.makeUintConstant(0));
+	atomic_or->addIdOperand(control_mask->getResultId());
+
+	atomic_result_mask->addIdOperand(atomic_or->getResultId());
+	atomic_result_mask->addIdOperand(control_mask->getResultId());
+	atomic_need_write->addIdOperand(atomic_result_mask->getResultId());
+	atomic_need_write->addIdOperand(builder.makeUintConstant(0));
+
+	store_op->addIdOperand(instruction_instrumentation.should_report_instrumentation_id);
+	store_op->addIdOperand(builder.makeBoolConstant(false));
+
+	spv::Id cond_id = atomic_need_write->getResultId();
+	spv::Id control_mask_id = control_mask->getResultId();
+	spv::Id control_chain_id = access_chain->getResultId();
+
+	bb->addInstruction(std::move(prime_mul));
+	bb->addInstruction(std::move(hash));
+	bb->addInstruction(std::move(payload_size));
+	bb->addInstruction(std::move(sub_1));
+	bb->addInstruction(std::move(mask));
+	bb->addInstruction(std::move(control_word));
+	bb->addInstruction(std::move(control_bit));
+	bb->addInstruction(std::move(control_mask));
+	bb->addInstruction(std::move(access_chain));
+	bb->addInstruction(std::move(atomic_or));
+	bb->addInstruction(std::move(atomic_result_mask));
+	bb->addInstruction(std::move(atomic_need_write));
+	bb->addInstruction(std::move(store_op));
+
+	builder.createSelectionMerge(merge_payload_path, 0);
+	builder.createConditionalBranch(cond_id, write_payload_path, merge_payload_path);
+	builder.setBuildPoint(write_payload_path);
+	{
+		spv::Id uvec4_type = builder.makeVectorType(u32_type, 4);
+
+		auto composite = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(), uvec4_type, spv::OpCompositeConstruct);
+		auto shift_16 = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(), u32_type, spv::OpShiftLeftLogical);
+		access_chain = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(),
+		    builder.makePointer(spv::StorageClassStorageBuffer, uvec4_type),
+		    spv::OpAccessChain);
+		store_op = std::make_unique<spv::Instruction>(spv::OpStore);
+		atomic_or = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(), u32_type, spv::OpAtomicOr);
+		auto barrier_op = std::make_unique<spv::Instruction>(spv::OpMemoryBarrier);
+
+		composite->addIdOperand(builder.makeUintConstant(uint32_t(shader_hash >> 0)));
+		composite->addIdOperand(builder.makeUintConstant(uint32_t(shader_hash >> 32)));
+		composite->addIdOperand(func->getParamId(1));
+		composite->addIdOperand(value_id);
+
+		shift_16->addIdOperand(control_mask_id);
+		shift_16->addIdOperand(builder.makeUintConstant(16));
+
+		access_chain->addIdOperand(instruction_instrumentation.global_nan_inf_data_var_id);
+		access_chain->addIdOperand(builder.makeUintConstant(0));
+		access_chain->addIdOperand(mask_id);
+
+		store_op->addIdOperand(access_chain->getResultId());
+		store_op->addIdOperand(composite->getResultId());
+
+		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		barrier_op->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsUniformMemoryMask |
+		                                                  spv::MemorySemanticsAcquireReleaseMask));
+
+		atomic_or->addIdOperand(control_chain_id);
+		atomic_or->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_or->addIdOperand(builder.makeUintConstant(0));
+		atomic_or->addIdOperand(shift_16->getResultId());
+
+		write_payload_path->addInstruction(std::move(composite));
+		write_payload_path->addInstruction(std::move(shift_16));
+		write_payload_path->addInstruction(std::move(access_chain));
+		write_payload_path->addInstruction(std::move(store_op));
+		write_payload_path->addInstruction(std::move(barrier_op));
+		write_payload_path->addInstruction(std::move(atomic_or));
+
+		builder.createBranch(merge_payload_path);
+	}
+	builder.setBuildPoint(merge_payload_path);
+}
+
+spv::Id SPIRVModule::Impl::build_assume_true_call()
+{
+	// Use normal bb->addInstruction here since we don't want to instrument the code that is doing instrumentation :')
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id u32_type = builder.makeUintType(32);
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
+	                                       "AssumeTrue",
+	                                       { bool_type, u32_type }, {}, &entry);
+
+	builder.addName(func->getParamId(0), "value");
+	builder.addName(func->getParamId(1), "inst");
+
+	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *fail_block = new spv::Block(builder.getUniqueId(), *func);
+
+	auto should_report = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLogicalNot);
+	should_report->addIdOperand(func->getParamId(0));
+
+	auto loaded = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLoad);
+	loaded->addIdOperand(instruction_instrumentation.should_report_instrumentation_id);
+
+	auto will_report = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLogicalAnd);
+	will_report->addIdOperand(should_report->getResultId());
+	will_report->addIdOperand(loaded->getResultId());
+
+	spv::Id cond_id = will_report->getResultId();
+
+	entry->addInstruction(std::move(should_report));
+	entry->addInstruction(std::move(loaded));
+	entry->addInstruction(std::move(will_report));
+
+	builder.createSelectionMerge(merge_block, 0);
+	builder.createConditionalBranch(cond_id, fail_block, merge_block);
+
+	builder.setBuildPoint(fail_block);
+	{
+		// Dummy value is stored.
+		emit_instrumentation_hash(func, builder.makeUintConstant(0), func->getParamId(1));
+		builder.createBranch(merge_block);
+	}
+
+	builder.setBuildPoint(merge_block);
+	builder.makeReturn(false);
+	builder.setBuildPoint(current_build_point);
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_nan_inf_instrument_call(spv::Id type_id)
 {
 	// Use normal bb->addInstruction here since we don't want to instrument the code that is doing instrumentation :')
@@ -2272,8 +2461,6 @@ spv::Id SPIRVModule::Impl::build_nan_inf_instrument_call(spv::Id type_id)
 
 	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
 	auto *first_nan_inf_path = new spv::Block(builder.getUniqueId(), *func);
-	auto *write_payload_path = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_payload_path = new spv::Block(builder.getUniqueId(), *func);
 
 	builder.addName(func->getParamId(0), "value");
 	builder.addName(func->getParamId(1), "inst");
@@ -2291,7 +2478,7 @@ spv::Id SPIRVModule::Impl::build_nan_inf_instrument_call(spv::Id type_id)
 	is_inf->addIdOperand(func->getParamId(0));
 	is_not_normal->addIdOperand(is_nan->getResultId());
 	is_not_normal->addIdOperand(is_inf->getResultId());
-	should_report->addIdOperand(instruction_instrumentation.should_report_nan_inf_var_id);
+	should_report->addIdOperand(instruction_instrumentation.should_report_instrumentation_id);
 	will_report->addIdOperand(should_report->getResultId());
 	will_report->addIdOperand(is_not_normal->getResultId());
 	spv::Id cond_id = will_report->getResultId();
@@ -2307,147 +2494,23 @@ spv::Id SPIRVModule::Impl::build_nan_inf_instrument_call(spv::Id type_id)
 
 	builder.setBuildPoint(first_nan_inf_path);
 	{
-		auto prime_mul = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpIMul);
-		auto hash = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseXor);
-		auto payload_size = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpArrayLength);
-		auto sub_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpISub);
-		auto mask = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
-		auto control_word = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftRightLogical);
-		auto control_bit = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
-		auto control_mask = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftLeftLogical);
-		auto access_chain = std::make_unique<spv::Instruction>(builder.getUniqueId(),
-		                                                       builder.makePointer(spv::StorageClassStorageBuffer, u32_type),
-		                                                       spv::OpAccessChain);
-		auto atomic_or = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpAtomicOr);
-		auto store_op = std::make_unique<spv::Instruction>(spv::OpStore);
-		auto atomic_result_mask = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
-		auto atomic_need_write = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
-
-		prime_mul->addIdOperand(func->getParamId(1));
-		prime_mul->addIdOperand(builder.makeUintConstant(97)); // Arbitrary prime number
-
-		hash->addIdOperand(prime_mul->getResultId());
-		auto shader_hash = instruction_instrumentation.info.shader_hash;
-		hash->addIdOperand(builder.makeUintConstant(uint32_t(shader_hash) ^ uint32_t(shader_hash >> 32)));
-
-		payload_size->addIdOperand(instruction_instrumentation.global_nan_inf_data_var_id);
-		payload_size->addImmediateOperand(0);
-		sub_1->addIdOperand(payload_size->getResultId());
-		sub_1->addIdOperand(builder.makeUintConstant(1));
-		mask->addIdOperand(hash->getResultId());
-		mask->addIdOperand(sub_1->getResultId());
-		spv::Id mask_id = mask->getResultId();
-
-		control_word->addIdOperand(mask->getResultId());
-		control_word->addIdOperand(builder.makeUintConstant(4));
-		control_bit->addIdOperand(mask->getResultId());
-		control_bit->addIdOperand(builder.makeUintConstant(15));
-		control_mask->addIdOperand(builder.makeUintConstant(1));
-		control_mask->addIdOperand(control_bit->getResultId());
-
-		access_chain->addIdOperand(instruction_instrumentation.global_nan_inf_control_var_id);
-		access_chain->addIdOperand(builder.makeUintConstant(0));
-		access_chain->addIdOperand(control_word->getResultId());
-
-		atomic_or->addIdOperand(access_chain->getResultId());
-		atomic_or->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
-		atomic_or->addIdOperand(builder.makeUintConstant(0));
-		atomic_or->addIdOperand(control_mask->getResultId());
-
-		atomic_result_mask->addIdOperand(atomic_or->getResultId());
-		atomic_result_mask->addIdOperand(control_mask->getResultId());
-		atomic_need_write->addIdOperand(atomic_result_mask->getResultId());
-		atomic_need_write->addIdOperand(builder.makeUintConstant(0));
-
-		store_op->addIdOperand(instruction_instrumentation.should_report_nan_inf_var_id);
-		store_op->addIdOperand(builder.makeBoolConstant(false));
-
-		cond_id = atomic_need_write->getResultId();
-		spv::Id control_mask_id = control_mask->getResultId();
-		spv::Id control_chain_id = access_chain->getResultId();
-
-		first_nan_inf_path->addInstruction(std::move(prime_mul));
-		first_nan_inf_path->addInstruction(std::move(hash));
-		first_nan_inf_path->addInstruction(std::move(payload_size));
-		first_nan_inf_path->addInstruction(std::move(sub_1));
-		first_nan_inf_path->addInstruction(std::move(mask));
-		first_nan_inf_path->addInstruction(std::move(control_word));
-		first_nan_inf_path->addInstruction(std::move(control_bit));
-		first_nan_inf_path->addInstruction(std::move(control_mask));
-		first_nan_inf_path->addInstruction(std::move(access_chain));
-		first_nan_inf_path->addInstruction(std::move(atomic_or));
-		first_nan_inf_path->addInstruction(std::move(atomic_result_mask));
-		first_nan_inf_path->addInstruction(std::move(atomic_need_write));
-		first_nan_inf_path->addInstruction(std::move(store_op));
-
-		builder.createSelectionMerge(merge_payload_path, 0);
-		builder.createConditionalBranch(cond_id, write_payload_path, merge_payload_path);
-		builder.setBuildPoint(write_payload_path);
+		spv::Id value_id = func->getParamId(0);
+		if (builder.getScalarTypeWidth(type_id) != 32)
 		{
-			spv::Id uvec4_type = builder.makeVectorType(u32_type, 4);
-
-			spv::Id value_id = func->getParamId(0);
-			if (builder.getScalarTypeWidth(type_id) != 32)
-			{
-				auto conv = std::make_unique<spv::Instruction>(
-					builder.getUniqueId(), builder.makeFloatType(32), spv::OpFConvert);
-				conv->addIdOperand(value_id);
-				value_id = conv->getResultId();
-				write_payload_path->addInstruction(std::move(conv));
-			}
-
-			auto bitcast = std::make_unique<spv::Instruction>(
-				builder.getUniqueId(), u32_type, spv::OpBitcast);
-			auto composite = std::make_unique<spv::Instruction>(
-				builder.getUniqueId(), uvec4_type, spv::OpCompositeConstruct);
-			auto shift_16 = std::make_unique<spv::Instruction>(
-			    builder.getUniqueId(), u32_type, spv::OpShiftLeftLogical);
-			access_chain = std::make_unique<spv::Instruction>(
-				builder.getUniqueId(),
-				builder.makePointer(spv::StorageClassStorageBuffer, uvec4_type),
-				spv::OpAccessChain);
-			store_op = std::make_unique<spv::Instruction>(spv::OpStore);
-			atomic_or = std::make_unique<spv::Instruction>(
-			    builder.getUniqueId(), u32_type, spv::OpAtomicOr);
-			auto barrier_op = std::make_unique<spv::Instruction>(spv::OpMemoryBarrier);
-
-			bitcast->addIdOperand(value_id);
-
-			composite->addIdOperand(builder.makeUintConstant(uint32_t(shader_hash >> 0)));
-			composite->addIdOperand(builder.makeUintConstant(uint32_t(shader_hash >> 32)));
-			composite->addIdOperand(func->getParamId(1));
-			composite->addIdOperand(bitcast->getResultId());
-
-			shift_16->addIdOperand(control_mask_id);
-			shift_16->addIdOperand(builder.makeUintConstant(16));
-
-			access_chain->addIdOperand(instruction_instrumentation.global_nan_inf_data_var_id);
-			access_chain->addIdOperand(builder.makeUintConstant(0));
-			access_chain->addIdOperand(mask_id);
-
-			store_op->addIdOperand(access_chain->getResultId());
-			store_op->addIdOperand(composite->getResultId());
-
-			barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
-			barrier_op->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsUniformMemoryMask |
-			                                                  spv::MemorySemanticsAcquireReleaseMask));
-
-			atomic_or->addIdOperand(control_chain_id);
-			atomic_or->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
-			atomic_or->addIdOperand(builder.makeUintConstant(0));
-			atomic_or->addIdOperand(shift_16->getResultId());
-
-			write_payload_path->addInstruction(std::move(bitcast));
-			write_payload_path->addInstruction(std::move(composite));
-			write_payload_path->addInstruction(std::move(shift_16));
-			write_payload_path->addInstruction(std::move(access_chain));
-			write_payload_path->addInstruction(std::move(store_op));
-			write_payload_path->addInstruction(std::move(barrier_op));
-			write_payload_path->addInstruction(std::move(atomic_or));
-
-			builder.createBranch(merge_payload_path);
+			auto conv = std::make_unique<spv::Instruction>(
+			    builder.getUniqueId(), builder.makeFloatType(32), spv::OpFConvert);
+			conv->addIdOperand(value_id);
+			value_id = conv->getResultId();
+			first_nan_inf_path->addInstruction(std::move(conv));
 		}
-		builder.setBuildPoint(merge_payload_path);
+
+		auto bitcast = std::make_unique<spv::Instruction>(
+			builder.getUniqueId(), u32_type, spv::OpBitcast);
+		bitcast->addIdOperand(value_id);
+		value_id = bitcast->getResultId();
+		first_nan_inf_path->addInstruction(std::move(bitcast));
+
+		emit_instrumentation_hash(func, value_id, func->getParamId(1));
 		builder.createBranch(merge_block);
 	}
 
@@ -2457,50 +2520,59 @@ spv::Id SPIRVModule::Impl::build_nan_inf_instrument_call(spv::Id type_id)
 	return func->getId();
 }
 
-void SPIRVModule::Impl::add_instrumented_instruction(spv::Block *bb, spv::Id id)
+void SPIRVModule::Impl::add_instrumented_instruction(spv::Op op, spv::Block *bb, spv::Id id)
 {
 	if (id == 0 || !instruction_instrumentation.info.enabled)
 		return;
 
-	spv::Id type_id = builder.getTypeId(id);
-	if (builder.getTypeClass(type_id) != spv::OpTypeFloat)
-		return;
-
 	spv::Id *call_id = nullptr;
-	switch (builder.getScalarTypeWidth(type_id))
+	spv::Id type_id = 0;
+
+	if (op == spv::OpAssumeTrueKHR)
 	{
-	case 16:
-		call_id = &instruction_instrumentation.nan_inf_instrument_fp16_call_id;
-		break;
+		call_id = &instruction_instrumentation.assume_true_call_id;
+	}
+	else
+	{
+		type_id = builder.getTypeId(id);
+		if (builder.getTypeClass(type_id) != spv::OpTypeFloat)
+			return;
 
-	case 32:
-		call_id = &instruction_instrumentation.nan_inf_instrument_fp32_call_id;
-		break;
+		switch (builder.getScalarTypeWidth(type_id))
+		{
+		case 16:
+			call_id = &instruction_instrumentation.nan_inf_instrument_fp16_call_id;
+			break;
 
-	case 64:
-		call_id = &instruction_instrumentation.nan_inf_instrument_fp64_call_id;
-		break;
+		case 32:
+			call_id = &instruction_instrumentation.nan_inf_instrument_fp32_call_id;
+			break;
 
-	default:
-		break;
+		case 64:
+			call_id = &instruction_instrumentation.nan_inf_instrument_fp64_call_id;
+			break;
+
+		default:
+			break;
+		}
 	}
 
-	if (!instruction_instrumentation.should_report_nan_inf_var_id)
+	if (!instruction_instrumentation.should_report_instrumentation_id)
 	{
-		instruction_instrumentation.should_report_nan_inf_var_id = create_variable_with_initializer(
+		instruction_instrumentation.should_report_instrumentation_id = create_variable_with_initializer(
 			spv::StorageClassPrivate, builder.makeBoolType(),
-			builder.makeBoolConstant(true), "ShouldReportNanInf");
+			builder.makeBoolConstant(true), "ShouldReportInstrumentation");
 
 		spv::Id u32_type = builder.makeUintType(32);
 		spv::Id uvec4_type = builder.makeVectorType(u32_type, 4);
 		spv::Id u32_array_type = builder.makeRuntimeArray(u32_type);
 		builder.addDecoration(u32_array_type, spv::DecorationArrayStride, 4);
-		spv::Id control_data = builder.makeStructType({ u32_array_type }, "NanInfInstrumentationControlDataSSBO");
+		spv::Id control_data = builder.makeStructType({ u32_array_type }, "InstrumentationControlDataSSBO");
 		builder.addMemberDecoration(control_data, 0, spv::DecorationOffset, 0);
 		builder.addMemberName(control_data, 0, "atomics");
 		builder.addDecoration(control_data, spv::DecorationBlock);
 		instruction_instrumentation.global_nan_inf_control_var_id =
-			create_variable(spv::StorageClassStorageBuffer, control_data, "NanInfInstrumentationControlData");
+			create_variable(spv::StorageClassStorageBuffer, control_data, "InstrumentationControlData");
 
 		builder.addDecoration(instruction_instrumentation.global_nan_inf_control_var_id,
 		                      spv::DecorationDescriptorSet, instruction_instrumentation.info.control_desc_set);
@@ -2512,12 +2584,12 @@ void SPIRVModule::Impl::add_instrumented_instruction(spv::Block *bb, spv::Id id)
 		spv::Id payload_data_array = builder.makeRuntimeArray(uvec4_type);
 		builder.addDecoration(payload_data_array, spv::DecorationArrayStride, 16);
 
-		spv::Id payload_block = builder.makeStructType({ payload_data_array }, "NanInfInstrumentationDataSSBO");
+		spv::Id payload_block = builder.makeStructType({ payload_data_array }, "InstrumentationDataSSBO");
 		builder.addMemberName(payload_block, 0, "data");
 		builder.addMemberDecoration(payload_block, 0, spv::DecorationOffset, 0);
 		builder.addDecoration(payload_block, spv::DecorationBlock);
 		instruction_instrumentation.global_nan_inf_data_var_id =
-			create_variable(spv::StorageClassStorageBuffer, payload_block, "NanInfInstrumentationData");
+			create_variable(spv::StorageClassStorageBuffer, payload_block, "InstrumentationData");
 
 		builder.addDecoration(instruction_instrumentation.global_nan_inf_data_var_id,
 		                      spv::DecorationDescriptorSet, instruction_instrumentation.info.payload_desc_set);
@@ -2528,7 +2600,12 @@ void SPIRVModule::Impl::add_instrumented_instruction(spv::Block *bb, spv::Id id)
 	}
 
 	if (call_id && !*call_id)
-		*call_id = build_nan_inf_instrument_call(type_id);
+	{
+		if (op == spv::OpAssumeTrueKHR)
+			*call_id = build_assume_true_call();
+		else
+			*call_id = build_nan_inf_instrument_call(type_id);
+	}
 
 	auto call = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeVoidType(), spv::OpFunctionCall);
 	call->addIdOperand(*call_id);
@@ -2573,7 +2650,7 @@ void SPIRVModule::Impl::add_instruction(spv::Block *bb, std::unique_ptr<spv::Ins
 		    instruction_instrumentation.info.type == InstructionInstrumentationType::FullNanInf &&
 		    op != spv::OpPhi)
 		{
-			add_instrumented_instruction(bb, id);
+			add_instrumented_instruction(op, bb, id);
 		}
 	}
 }
@@ -2701,9 +2778,9 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
 			build_demote_call_cond(op->arguments[0]);
 		}
-		else if (op->op == spv::PseudoOpInstrumentExternallyVisibleStore)
+		else if (op->op == spv::PseudoOpInstrumentExternallyVisibleStore || op->op == spv::OpAssumeTrueKHR)
 		{
-			add_instrumented_instruction(bb, op->arguments[0]);
+			add_instrumented_instruction(op->op, bb, op->arguments[0]);
 		}
 		else if (op->op == spv::PseudoOpReturnCond)
 		{

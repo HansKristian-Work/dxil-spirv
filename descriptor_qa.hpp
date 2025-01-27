@@ -49,7 +49,10 @@ enum class InstructionInstrumentationType
 	ExternallyVisibleWriteNanInf = 1,
 	// Flushes all NaNs to zero.
 	// Useful when trying to figure out where a NaN is first generated.
-	FlushNaNToZero = 2
+	FlushNaNToZero = 2,
+	// Adds assertions with OpAssumeTrueKHR. For now, these are resolved internally,
+	// but we could add a more that forwards them to driver.
+	ExpectAssume = 3
 };
 
 struct InstructionInstrumentationInfo
