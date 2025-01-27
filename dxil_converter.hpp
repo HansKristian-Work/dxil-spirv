@@ -736,7 +736,8 @@ enum class ShaderQuirk : uint32_t
 	None = 0,
 	ForceDeviceMemoryBarriersThreadGroupCoherence,
 	AssumeBrokenSub8x8CubeMips,
-	RobustPhysicalCBVForwarding
+	RobustPhysicalCBVForwarding,
+	MeshOutputRobustness
 };
 
 struct OptionShaderQuirk : OptionBase
