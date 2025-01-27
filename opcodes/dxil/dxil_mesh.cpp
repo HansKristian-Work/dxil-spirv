@@ -50,6 +50,27 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 		num_prim_id = impl.get_id_for_value(instruction->getOperand(2));
 	op->add_id(num_prim_id);
 
+	if (impl.options.instruction_instrumentation.enabled &&
+	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	{
+		auto *assert_vertex = impl.allocate(spv::OpULessThanEqual, impl.builder().makeBoolType());
+		assert_vertex->add_id(num_vertex_id);
+		assert_vertex->add_id(impl.builder().makeUintConstant(impl.execution_mode_meta.stage_output_num_vertex));
+		auto *assume_vertex = impl.allocate(spv::OpAssumeTrueKHR);
+		assume_vertex->add_id(assert_vertex->id);
+
+		auto *assert_prim = impl.allocate(spv::OpULessThanEqual, impl.builder().makeBoolType());
+		assert_prim->add_id(num_prim_id);
+		assert_prim->add_id(impl.builder().makeUintConstant(impl.execution_mode_meta.stage_output_num_primitive));
+		auto *assume_prim = impl.allocate(spv::OpAssumeTrueKHR);
+		assume_prim->add_id(assert_prim->id);
+
+		impl.add(assert_vertex);
+		impl.add(assume_vertex);
+		impl.add(assert_prim);
+		impl.add(assume_prim);
+	}
+
 	impl.add(op);
 
 	// Workaround shader compiler bugs by emitting a conditional return.
