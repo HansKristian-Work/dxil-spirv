@@ -8171,6 +8171,12 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			options.quirks.robust_physical_cbv_forwarding = true;
 			break;
 
+		case ShaderQuirk::MeshOutputRobustness:
+			// FFVII Rebirth. SetMeshOutputEXT can be called out of bounds apparently?
+			// Just skip these meshlets.
+			options.quirks.mesh_outputs_bounds_check = true;
+			break;
+
 		default:
 			break;
 		}

@@ -249,6 +249,8 @@ void StreamState::append(Type *type)
 		return append("unknown");
 	case Type::TypeID::VoidTyID:
 		return append("void");
+	case Type::TypeID::OpaqueTyID:
+		return append("opaque");
 	default:
 		break;
 	}

@@ -1430,8 +1430,13 @@ void CFGStructurizer::fixup_broken_value_dominance()
 	for (auto *node : forward_post_visit_order)
 	{
 		for (auto *op : node->ir.operations)
-			if (op->id)
+		{
+			// OpVariable is always hoisted to function entry or above.
+			// It can never not have dominance relationship.
+			if (op->op != spv::OpVariable && op->id)
 				origin[op->id] = { node, op->type_id };
+		}
+
 		for (auto &phi : node->ir.phi)
 			origin[phi.id] = { node, phi.type_id };
 	}
@@ -1457,6 +1462,9 @@ void CFGStructurizer::fixup_broken_value_dominance()
 		}
 	};
 
+	// Need value copy here since we might be updating node->ir.operations inline leading to iterator invalidation.
+	Vector<Operation> access_chain_operations;
+
 	// Now, scan through all blocks and figure out which values are consumed in different blocks.
 	for (auto *node : forward_post_visit_order)
 	{
@@ -1466,6 +1474,10 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			for (unsigned i = 0; i < op->num_arguments; i++)
 				if (((1u << i) & literal_mask) == 0)
 					mark_node_value_access(node, op->arguments[i]);
+
+			// We're only interested in bindless-style access here.
+			if (op->op == spv::OpAccessChain)
+				access_chain_operations.push_back(*op);
 		}
 
 		// Incoming PHI values are handled elsewhere by modifying the incoming block to the creating block.
@@ -1475,6 +1487,52 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			mark_node_value_access(node, node->ir.terminator.conditional_id);
 		if (node->ir.terminator.return_value != 0)
 			mark_node_value_access(node, node->ir.terminator.return_value);
+	}
+
+	for (auto &chain_op : access_chain_operations)
+	{
+		auto itr = id_to_non_local_consumers.find(chain_op.id);
+		if (itr != id_to_non_local_consumers.end())
+		{
+			// We will need to sink the AccessChain.
+			// Make sure the resource index is also marked as used in potentially non-local block.
+
+			// Sort for deterministic output.
+			Vector<CFGNode *> local_consumers_sorted;
+			for (auto *non_local_node : itr->second)
+				local_consumers_sorted.push_back(non_local_node);
+
+			std::sort(local_consumers_sorted.begin(), local_consumers_sorted.end(),
+			          [](const CFGNode *a, const CFGNode *b) {
+			              return a->forward_post_visit_order < b->forward_post_visit_order;
+			          });
+
+			auto literal_mask = chain_op.literal_mask;
+
+			// The first access chain is always OpVariable, so don't bother checking that.
+			for (unsigned i = 1; i < chain_op.num_arguments; i++)
+			{
+				if (((1u << i) & literal_mask) == 0)
+				{
+					for (auto *non_local_node : local_consumers_sorted)
+						mark_node_value_access(non_local_node, chain_op.arguments[i]);
+				}
+			}
+
+			auto *sunk_chain = module.allocate_op();
+			*sunk_chain = chain_op;
+			sunk_chain->id = module.allocate_id();
+
+			if (module.get_builder().hasDecoration(chain_op.id, spv::DecorationNonUniform))
+				module.get_builder().addDecoration(chain_op.id, spv::DecorationNonUniform);
+
+			for (auto *non_local_node : local_consumers_sorted)
+			{
+				auto &ops = non_local_node->ir.operations;
+				rewrite_consumed_ids(non_local_node->ir, chain_op.id, sunk_chain->id);
+				ops.insert(ops.begin(), sunk_chain);
+			}
+		}
 	}
 
 	// Resolve these broken PHIs by using OpVariable. It is the simplest solution, and this is a very rare case to begin with.
@@ -1500,24 +1558,32 @@ void CFGStructurizer::fixup_broken_value_dominance()
 	for (auto &rewrite : rewrites)
 	{
 		auto &orig = origin[rewrite.id];
-		spv::Id alloca_var_id = module.create_variable(spv::StorageClassFunction, orig.type_id);
 
-		auto *store_op = module.allocate_op(spv::OpStore);
-		store_op->add_id(alloca_var_id);
-		store_op->add_id(rewrite.id);
-		orig.node->ir.operations.push_back(store_op);
+		// We don't rely on VariablePointers, so if this comes up, we need to figure out something else.
+		bool is_invalid_pointer = module.get_builder().isPointerType(orig.type_id);
 
-		// For every non-local node which consumes ID, we load from the alloca'd variable instead.
-		// Rewrite all ID references to point to the loaded value.
-		for (auto *consumer : *rewrite.consumers)
+		// Invalid access chains are resolved above. We end up rewriting any non-dominated values instead.
+		if (!is_invalid_pointer)
 		{
-			spv::Id loaded_id = module.allocate_id();
-			auto *load_op = module.allocate_op(spv::OpLoad, loaded_id, orig.type_id);
-			load_op->add_id(alloca_var_id);
+			spv::Id alloca_var_id = module.create_variable(spv::StorageClassFunction, orig.type_id);
 
-			rewrite_consumed_ids(consumer->ir, rewrite.id, loaded_id);
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->add_id(alloca_var_id);
+			store_op->add_id(rewrite.id);
+			orig.node->ir.operations.push_back(store_op);
 
-			consumer->ir.operations.insert(consumer->ir.operations.begin(), load_op);
+			// For every non-local node which consumes ID, we load from the alloca'd variable instead.
+			// Rewrite all ID references to point to the loaded value.
+			for (auto *consumer : *rewrite.consumers)
+			{
+				spv::Id loaded_id = module.allocate_id();
+				auto *load_op = module.allocate_op(spv::OpLoad, loaded_id, orig.type_id);
+				load_op->add_id(alloca_var_id);
+
+				rewrite_consumed_ids(consumer->ir, rewrite.id, loaded_id);
+
+				consumer->ir.operations.insert(consumer->ir.operations.begin(), load_op);
+			}
 		}
 	}
 }

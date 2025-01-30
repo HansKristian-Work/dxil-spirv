@@ -153,7 +153,7 @@ static void print_help()
 	     "\t[--storage-input-output-16bit]\n"
 	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n"
 	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
-	     "\t[--instruction-instrumentation <set> <binding base> <shader hash>]\n"
+	     "\t[--instruction-instrumentation <type> <set> <binding base> <shader hash>]\n"
 	     "\t[--min-precision-native-16bit]\n"
 	     "\t[--raw-llvm]\n"
 	     "\t[--use-reflection-names]\n"
@@ -233,6 +233,7 @@ struct Arguments
 	bool instruction_instrumentation = false;
 	uint32_t instruction_instrumentation_set = 0;
 	uint32_t instruction_instrumentation_binding = 0;
+	dxil_spv_instruction_instrumentation_type instruction_instrumentation_type = {};
 
 	uint64_t shader_hash = 0;
 
@@ -751,6 +752,7 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--instruction-instrumentation", [&](CLIParser &parser) {
 		args.instruction_instrumentation = true;
+		args.instruction_instrumentation_type = dxil_spv_instruction_instrumentation_type(parser.next_uint());
 		args.instruction_instrumentation_set = parser.next_uint();
 		args.instruction_instrumentation_binding = parser.next_uint();
 		args.shader_hash = uint64_t(strtoull(parser.next_string(), nullptr, 16));
@@ -1002,7 +1004,7 @@ int main(int argc, char **argv)
 			args.instruction_instrumentation_set, args.instruction_instrumentation_binding,
 			args.instruction_instrumentation_set, args.instruction_instrumentation_binding + 1,
 			args.shader_hash,
-			DXIL_SPV_INSTRUCTION_INSTRUMENTATION_TYPE_EXTERNALLY_VISIBLE_WRITE_NAN_INF,
+			args.instruction_instrumentation_type,
 		};
 		dxil_spv_converter_add_option(converter, &inst.base);
 	}

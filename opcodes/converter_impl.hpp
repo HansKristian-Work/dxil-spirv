@@ -739,6 +739,7 @@ struct Converter::Impl
 			bool force_device_memory_barriers_thread_group_coherence = false;
 			bool assume_broken_sub_8x8_cube_mips = false;
 			bool robust_physical_cbv_forwarding = false;
+			bool mesh_outputs_bounds_check = false;
 		} quirks;
 	} options;
 
