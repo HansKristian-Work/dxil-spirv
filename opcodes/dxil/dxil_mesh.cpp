@@ -99,7 +99,7 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 	impl.add(op);
 
 	// Workaround shader compiler bugs by emitting a conditional return.
-	if (!impl.shader_analysis.has_side_effects)
+	if (false && !impl.shader_analysis.has_side_effects)
 	{
 		auto &builder = impl.builder();
 
