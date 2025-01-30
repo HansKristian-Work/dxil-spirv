@@ -1024,6 +1024,14 @@ void Builder::addDecoration(Id id, Decoration decoration, int num)
     decorations.push_back(std::unique_ptr<Instruction>(dec));
 }
 
+bool Builder::hasDecoration(spv::Id id, spv::Decoration decoration) const
+{
+    for (auto &dec : decorations)
+        if (dec->getIdOperand(0) == id && dec->getImmediateOperand(1) == decoration)
+            return true;
+    return false;
+}
+
 void Builder::addUniqueDecoration(Id id, Decoration decoration, int num)
 {
     for (auto &dec : decorations)
