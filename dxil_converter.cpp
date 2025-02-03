@@ -2991,8 +2991,18 @@ bool Converter::Impl::emit_resources()
 			return false;
 
 	emit_global_heaps();
-	if (options.descriptor_heap_robustness && !emit_descriptor_heap_dummy_ssbo())
-		return false;
+
+	if (options.descriptor_heap_robustness)
+	{
+		if (!emit_descriptor_heap_dummy_ssbo())
+			return false;
+	}
+	else if (options.instruction_instrumentation.enabled &&
+	         options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	{
+		// Failure is not a big deal.
+		emit_descriptor_heap_dummy_ssbo();
+	}
 
 	auto &module = bitcode_parser.get_module();
 	auto *resource_meta = module.getNamedMetadata("dx.resources");
