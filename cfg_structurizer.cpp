@@ -1609,6 +1609,7 @@ void CFGStructurizer::fixup_broken_value_dominance()
 	{
 		CFGNode *node;
 		spv::Id type_id;
+		const Operation *rematerialize_op;
 	};
 
 	UnorderedMap<spv::Id, Origin> origin;
@@ -1622,11 +1623,11 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			// OpVariable is always hoisted to function entry or above.
 			// It can never not have dominance relationship.
 			if (op->op != spv::OpVariable && op->id)
-				origin[op->id] = { node, op->type_id };
+				origin[op->id] = { node, op->type_id, op->op == spv::OpSampledImage ? op : nullptr };
 		}
 
 		for (auto &phi : node->ir.phi)
-			origin[phi.id] = { node, phi.type_id };
+			origin[phi.id] = { node, phi.type_id, nullptr };
 	}
 
 	const auto sort_unique_node_vector = [](Vector<CFGNode *> &nodes) {
@@ -1643,7 +1644,7 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			return;
 
 		auto *origin_node = origin_itr->second.node;
-		if (!origin_node->dominates(node))
+		if (!origin_node->dominates(node) || (origin_itr->second.rematerialize_op && node != origin_node))
 		{
 			// We have a problem. Mark that we need to rewrite a certain variable.
 			id_to_non_local_consumers[id].push_back(node);
@@ -1750,9 +1751,24 @@ void CFGStructurizer::fixup_broken_value_dominance()
 		// We don't rely on VariablePointers, so if this comes up, we need to figure out something else.
 		bool is_invalid_pointer = module.get_builder().isPointerType(orig.type_id);
 
-		// Invalid access chains are resolved above. We end up rewriting any non-dominated values instead.
-		if (!is_invalid_pointer)
+		if (orig.rematerialize_op)
 		{
+			auto *rematerialize_op = module.allocate_op();
+			*rematerialize_op = *orig.rematerialize_op;
+			rematerialize_op->id = module.allocate_id();
+
+			if (module.get_builder().hasDecoration(orig.rematerialize_op->id, spv::DecorationNonUniform))
+				module.get_builder().addDecoration(rematerialize_op->id, spv::DecorationNonUniform);
+
+			for (auto *consumer : *rewrite.consumers)
+			{
+				rewrite_consumed_ids(consumer->ir, rewrite.id, rematerialize_op->id);
+				consumer->ir.operations.insert(consumer->ir.operations.begin(), rematerialize_op);
+			}
+		}
+		else if (!is_invalid_pointer)
+		{
+			// Invalid access chains are resolved above. We end up rewriting any non-dominated values instead.
 			spv::Id alloca_var_id = module.create_variable(spv::StorageClassFunction, orig.type_id);
 
 			auto *store_op = module.allocate_op(spv::OpStore);
