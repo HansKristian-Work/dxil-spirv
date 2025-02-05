@@ -754,7 +754,14 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 		// Some compilers require the index to be marked as NonUniformEXT, even if it not required by Vulkan spec.
 		// Avoid SPIR-V validation error if same index is used for multiple resources.
 		if (is_non_uniform && instruction_offset_value)
+		{
 			builder.addUniqueDecoration(offset_id, spv::DecorationNonUniformEXT);
+
+			// Mark this operation as a sink candidate.
+			// We have observed some really nasty bugs in the wild where a resource is loaded from,
+			// but not actually needed before a branch. That branch will guard invalid usage.
+			op->flags |= Operation::SinkableBit;
+		}
 
 		impl.add(op);
 		resource_id = op->id;

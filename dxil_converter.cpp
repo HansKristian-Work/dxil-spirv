@@ -4933,7 +4933,10 @@ spv::Id Converter::Impl::build_sampled_image(spv::Id image_id, spv::Id sampler_i
 	add(op);
 
 	if (is_non_uniform)
+	{
 		builder.addDecoration(op->id, spv::DecorationNonUniformEXT);
+		op->flags |= Operation::SinkableBit;
+	}
 
 	combined_image_sampler_cache.push_back({ image_id, sampler_id, op->id, is_non_uniform });
 	return op->id;

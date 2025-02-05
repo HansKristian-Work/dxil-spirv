@@ -674,6 +674,193 @@ void CFGStructurizer::rewrite_multiple_back_edges()
 	visit_for_back_edge_analysis(*entry_block);
 }
 
+void CFGStructurizer::sink_ssa_constructs()
+{
+	sink_ssa_constructs_run(true);
+	sink_ssa_constructs_run(false);
+}
+
+void CFGStructurizer::sink_ssa_constructs_run(bool dry_run)
+{
+	// First, propagate sinkability state to any operation that uses a sinkable SSA.
+	// If an SSA expression is used in a BB, but that use of the SSA can be sunk, we need to
+	// sink everything as a group.
+	Vector<spv::Id> sinkable_ops;
+
+	struct RewriteState
+	{
+		CFGNode *consumed_block;
+		Operation *op;
+	};
+	UnorderedMap<spv::Id, RewriteState> sinks;
+
+	for (auto *n : forward_post_visit_order)
+	{
+		sinkable_ops.clear();
+
+		auto &ops = n->ir.operations;
+		for (auto *op : ops)
+		{
+			if ((op->flags & Operation::SinkableBit) != 0)
+			{
+				sinkable_ops.push_back(op->id);
+				sinks[op->id] = { nullptr, op };
+			}
+			else if (op->id && !SPIRVModule::opcode_is_control_dependent(op->op) &&
+			         !SPIRVModule::opcode_has_side_effect_and_result(op->op))
+			{
+				// We cannot sink any opcode which is control dependent, or has side effects.
+				for (uint32_t i = 0; i < op->num_arguments; i++)
+				{
+					if ((op->literal_mask & (1u << i)) != 0)
+						continue;
+
+					spv::Id consumed_id = op->arguments[i];
+					if (std::find(sinkable_ops.begin(), sinkable_ops.end(), consumed_id) != sinkable_ops.end())
+					{
+						sinkable_ops.push_back(op->id);
+						op->flags |= Operation::DependencySinkableBit;
+						sinks[op->id] = { nullptr, op };
+						break;
+					}
+				}
+			}
+			else if (op->op == spv::OpControlBarrier || op->op == spv::OpMemoryBarrier)
+			{
+				// We cannot sink beyond this barrier. Invalidate every sinkable op we saw so far.
+				for (spv::Id id : sinkable_ops)
+				{
+					auto *op_ptr = sinks[id].op;
+					assert(op_ptr);
+					op_ptr->flags &= ~(Operation::SinkableBit | Operation::DependencySinkableBit);
+				}
+				sinkable_ops.clear();
+			}
+		}
+	}
+
+	// If an expression is used as a PHI input assume we cannot sink.
+	// It gets a bit awkward to deal with this, and it's not required for this workaround pass.
+	for (auto *n : forward_post_visit_order)
+	{
+		for (auto &phi : n->ir.phi)
+		{
+			for (auto &incoming : phi.incoming)
+			{
+				auto itr = sinks.find(incoming.id);
+				if (itr != sinks.end())
+				{
+					auto *op_ptr = itr->second.op;
+					assert(op_ptr);
+					op_ptr->flags &= ~(Operation::SinkableBit | Operation::DependencySinkableBit);
+				}
+			}
+		}
+	}
+
+	const auto consume_id = [&](spv::Id consumed_id, CFGNode *n) {
+		auto itr = sinks.find(consumed_id);
+		if (itr != sinks.end())
+		{
+			if (!itr->second.consumed_block)
+				itr->second.consumed_block = n;
+			else if (itr->second.consumed_block != n)
+				itr->second.op->flags &= ~(Operation::SinkableBit | Operation::DependencySinkableBit);
+		}
+	};
+
+	const auto path_is_reorderable = [&](const CFGNode *src, const CFGNode *dst) {
+		// There cannot be any control or memory barriers along the way, or we have to be conservative.
+
+		// There is absolutely no point in sinking if dst ends up post-dominating src anyway.
+		// We cannot avoid any bug from happening.
+		if (dst->post_dominates(src))
+			return false;
+
+		// Never sink into a loop.
+		if (dst->pred_back_edge)
+			return false;
+
+		// Could deal with multiple preds, but we mostly just care about trivial sinks.
+		if (dst->pred.size() > 1)
+			return false;
+		dst = dst->immediate_dominator;
+
+		while (src != dst)
+		{
+			if (dst->pred.size() > 1 || dst->pred_back_edge)
+				return false;
+
+			for (auto *op : dst->ir.operations)
+				if (op->op == spv::OpControlBarrier || op->op == spv::OpMemoryBarrier)
+					return false;
+
+			dst = dst->pred.front();
+		}
+
+		// We reached src, and we validated that block already when deciding on what is sinkable or not, so we're good.
+		return true;
+	};
+
+	// Walk all instructions in reverse order.
+	// We can sink an instruction if:
+	// - An ID was only consumed in a BB != generating BB.
+	//   The consumed BB must be unique for us to consider it for simplicity.
+	for (auto *n : forward_post_visit_order)
+	{
+		if (n->ir.terminator.type == Terminator::Type::Condition ||
+		    n->ir.terminator.type == Terminator::Type::Switch)
+		{
+			consume_id(n->ir.terminator.conditional_id, n);
+		}
+
+		auto &ops = n->ir.operations;
+
+		for (size_t i = ops.size(); i; i--)
+		{
+			auto *op = ops[i - 1];
+			auto *target_block = n;
+
+			if (op->id && (op->flags & (Operation::SinkableBit | Operation::DependencySinkableBit)) != 0)
+			{
+				auto sink_itr = sinks.find(op->id);
+
+				if (sink_itr != sinks.end() &&
+				    sink_itr->second.consumed_block &&
+				    sink_itr->second.consumed_block != n &&
+				    path_is_reorderable(n, sink_itr->second.consumed_block))
+				{
+					// Move the operation to the beginning of the consumed block instead.
+					target_block = sink_itr->second.consumed_block;
+
+					// Don't actually move the instruction until we have confirmed the entire chain can be sunk,
+					// otherwise this exercise is meaningless.
+					if (!dry_run)
+					{
+						target_block->ir.operations.insert(target_block->ir.operations.begin(), op);
+						ops.erase(ops.begin() + int(i - 1));
+					}
+				}
+				else
+				{
+					// This failed to sink. Remember this for the next run.
+					op->flags &= ~Operation::SinkableBit;
+				}
+			}
+
+			// Mark uses after we have sunk the instruction. This allows us to sink a chain of SSA instructions.
+			for (uint32_t j = 0; j < op->num_arguments; j++)
+				if ((op->literal_mask & (1u << j)) == 0)
+					consume_id(op->arguments[j], target_block);
+		}
+	}
+
+	if (dry_run)
+		for (auto *n : forward_post_visit_order)
+			for (auto *op : n->ir.operations)
+				op->flags &= ~Operation::DependencySinkableBit;
+}
+
 void CFGStructurizer::propagate_branch_control_hints()
 {
 	for (auto *n : forward_post_visit_order)
@@ -786,6 +973,7 @@ bool CFGStructurizer::run()
 	}
 
 	recompute_cfg();
+	sink_ssa_constructs();
 	propagate_branch_control_hints();
 
 	cleanup_breaking_phi_constructs();

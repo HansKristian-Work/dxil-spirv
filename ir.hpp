@@ -152,6 +152,13 @@ struct Operation
 	spv::Id arguments[MaxArguments];
 	unsigned num_arguments = 0;
 	uint8_t literal_mask = 0;
+
+	enum : uint8_t
+	{
+		SinkableBit = 1 << 0,
+		DependencySinkableBit = 1 << 1
+	};
+	uint8_t flags = 0;
 };
 
 struct Terminator

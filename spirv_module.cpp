@@ -3226,6 +3226,36 @@ void SPIRVModule::set_entry_build_point(spv::Function *func)
 	get_builder().setBuildPoint(func->getEntryBlock());
 }
 
+bool SPIRVModule::opcode_has_side_effect_and_result(spv::Op opcode)
+{
+	switch (opcode)
+	{
+	case spv::OpAtomicIAdd:
+	case spv::OpAtomicIDecrement:
+	case spv::OpAtomicIIncrement:
+	case spv::OpAtomicISub:
+	case spv::OpAtomicAnd:
+	case spv::OpAtomicOr:
+	case spv::OpAtomicXor:
+	case spv::OpAtomicUMax:
+	case spv::OpAtomicUMin:
+	case spv::OpAtomicSMax:
+	case spv::OpAtomicSMin:
+	case spv::OpAtomicFAddEXT:
+	case spv::OpAtomicFMaxEXT:
+	case spv::OpAtomicFMinEXT:
+	case spv::OpAtomicCompareExchange:
+	case spv::OpAtomicCompareExchangeWeak:
+	case spv::OpAtomicExchange:
+	case spv::OpAtomicStore:
+	case spv::OpFunctionCall: // This depends, but we have to assume it might.
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
 {
 	// An opcode is considered control dependent if it is affected by other invocations in the subgroup.
@@ -3295,6 +3325,7 @@ bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
 
 		// Control barriers
 	case spv::OpControlBarrier:
+	case spv::OpMemoryBarrier:
 
 		// Internal helpers function calls may or may not include control dependent ops.
 	case spv::OpFunctionCall:

@@ -121,6 +121,7 @@ public:
 	const DescriptorQAInfo &get_descriptor_qa_info() const;
 
 	static bool opcode_is_control_dependent(spv::Op opcode);
+	static bool opcode_has_side_effect_and_result(spv::Op opcode);
 
 	void set_override_spirv_version(uint32_t version);
 	void set_helper_lanes_participate_in_wave_ops(bool enable);
