@@ -2743,6 +2743,17 @@ Vector<CFGNode *> CFGStructurizer::isolate_structured_sorted(const CFGNode *head
 
 bool CFGStructurizer::block_is_load_bearing(const CFGNode *node, const CFGNode *merge) const
 {
+	while (merge->succ.size() == 1)
+	{
+		// If we're going to eliminate a block due to impossible merge,
+		// we should look ahead since we might get a false positive.
+		bool breaking = merge_candidate_is_on_breaking_path(merge);
+		if (breaking && !merge->ir.operations.empty() && !block_is_control_dependent(merge))
+			merge = merge->succ.front();
+		else
+			break;
+	}
+
 	return node->pred.size() >= 2 &&
 	       !exists_path_in_cfg_without_intermediate_node(node->immediate_dominator, merge, node);
 }
