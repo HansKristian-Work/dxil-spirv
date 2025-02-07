@@ -3683,6 +3683,35 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		if (inner_constructs.size() < 2)
 			continue;
 
+		auto *common_idom = inner_constructs[0];
+		for (size_t i = 1, n = inner_constructs.size(); i < n; i++)
+			common_idom = CFGNode::find_common_dominator(common_idom, inner_constructs[i]);
+
+		// Filter out false positive inner constructs.
+		// If we're dominated by another inner construct, and we don't post-dominate that construct, we should yield.
+		for (auto itr = inner_constructs.begin(); itr != inner_constructs.end(); )
+		{
+			bool eliminated = false;
+			for (auto candidate_itr = itr + 1; candidate_itr != inner_constructs.end() && !eliminated; ++candidate_itr)
+			{
+				// Don't let the common idom of constructs consume subsequent constructs.
+				if ((*candidate_itr) == common_idom ||
+				    !(*candidate_itr)->dominates(*itr) ||
+				    (*itr)->post_dominates(*candidate_itr))
+				{
+					continue;
+				}
+
+				// To accept a dominator, we don't want any common idom removing every node.
+				std::move(itr + 1, inner_constructs.end(), itr);
+				inner_constructs.pop_back();
+				eliminated = true;
+			}
+
+			if (!eliminated)
+				++itr;
+		}
+
 		// Prune any candidate that can reach another candidate. The sort ensures that candidate to be removed comes last.
 		size_t count = inner_constructs.size();
 		for (size_t i = 0; i < count; i++)
@@ -3750,6 +3779,47 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 				if (i != j)
 					need_deinterleave = is_ordered(pdf_ranges[i].first, pdf_ranges[j].first, pdf_ranges[i].second);
 
+		CFGNode *common_anchor = nullptr;
+
+		if (!need_deinterleave)
+		{
+			// Detect a complicated pattern that comes up which looks a lot like interleaved merges, but isn't really.
+			// A       B
+			// |\     /|
+			// | \   / |
+			// |   E   |
+			// | /  \  |
+			// C      D
+			//  \    /
+			//   \  /
+			//    F
+			// Candidates: {C, D}
+			// Where {A, E} is pdf range of C
+			// and {B, E} is pdf range of D
+			// The last PDF can be considered a merge anchor that distributes code further.
+			// E must have {C, D} - and only those - in the dominance frontier.
+			common_anchor = pdf_ranges[0].second;
+			need_deinterleave = common_anchor->dominance_frontier.size() == count &&
+			                    common_anchor->succ.size() == count &&
+			                    common_anchor->ir.terminator.type == Terminator::Type::Condition &&
+			                    common_anchor->pred.size() >= 2;
+
+			for (size_t i = 0; i < count && need_deinterleave; i++)
+			{
+				need_deinterleave =
+					query_reachability(*pdf_ranges[i].first, *pdf_ranges[i].second) &&
+					pdf_ranges[0].second == pdf_ranges[i].second;
+
+				need_deinterleave = need_deinterleave &&
+				                    std::find(common_anchor->dominance_frontier.begin(),
+				                              common_anchor->dominance_frontier.end(),
+				                              valid_constructs[i]) != common_anchor->dominance_frontier.end();
+			}
+
+			if (!need_deinterleave)
+				common_anchor = nullptr;
+		}
+
 		if (!need_deinterleave)
 		{
 			const CFGNode *interleaved_exit_loop = nullptr;
@@ -3806,7 +3876,11 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 
 		if (need_deinterleave)
 		{
-			collect_and_dispatch_control_flow(idom, node, valid_constructs, collect_all_paths_to_pdom);
+			if (common_anchor)
+				collect_and_dispatch_control_flow_from_anchor(common_anchor, node, valid_constructs);
+			else
+				collect_and_dispatch_control_flow(idom, node, valid_constructs, collect_all_paths_to_pdom);
+
 			// This completely transposes the CFG, so need to recompute CFG to keep going.
 			recompute_cfg();
 			return true;
@@ -5467,6 +5541,112 @@ CFGStructurizer::LoopMergeAnalysis CFGStructurizer::analyze_loop_merge(CFGNode *
 	}
 
 	return merge_result;
+}
+
+void CFGStructurizer::collect_and_dispatch_control_flow_from_anchor(
+	CFGNode *anchor, CFGNode *common_pdom, const Vector<CFGNode *> &constructs)
+{
+	auto &builder = module.get_builder();
+
+	// If we have an anchor, it should collect all control flow, maybe dispatch itself, then dispatch to the constructs.
+	// It must be a conditional branch, since it's too much of a mess to deal with switch.
+	assert(anchor->ir.terminator.type == Terminator::Type::Condition);
+	assert(constructs.size() == 2);
+	assert(constructs[0]->post_dominates(anchor->ir.terminator.true_block) ||
+	       constructs[0]->post_dominates(anchor->ir.terminator.false_block));
+	assert(constructs[1]->post_dominates(anchor->ir.terminator.true_block) ||
+	       constructs[1]->post_dominates(anchor->ir.terminator.false_block));
+
+	auto *anchor_pred = create_helper_pred_block(anchor);
+
+	auto *anchor_to_construct0 = pool.create_node();
+	auto *anchor_to_construct1 = pool.create_node();
+	auto *anchor_terminator = pool.create_node();
+	auto *anchor_dispatcher = pool.create_node();
+
+	anchor_to_construct0->name = anchor->name + ".anchor0";
+	anchor_to_construct1->name = anchor->name + ".anchor1";
+
+	anchor_to_construct0->immediate_dominator = anchor;
+	anchor_to_construct1->immediate_dominator = anchor;
+	anchor_to_construct0->immediate_post_dominator = constructs[0];
+	anchor_to_construct1->immediate_post_dominator = constructs[1];
+	anchor_to_construct0->forward_post_visit_order = constructs[0]->forward_post_visit_order;
+	anchor_to_construct1->forward_post_visit_order = constructs[1]->forward_post_visit_order;
+	anchor_to_construct0->backward_post_visit_order = constructs[0]->backward_post_visit_order;
+	anchor_to_construct1->backward_post_visit_order = constructs[1]->backward_post_visit_order;
+
+	anchor_to_construct0->add_branch(anchor_terminator);
+	anchor_to_construct1->add_branch(anchor_terminator);
+	anchor_to_construct0->ir.terminator.type = Terminator::Type::Branch;
+	anchor_to_construct0->ir.terminator.direct_block = anchor_terminator;
+	anchor_to_construct1->ir.terminator.type = Terminator::Type::Branch;
+	anchor_to_construct1->ir.terminator.direct_block = anchor_terminator;
+	anchor_terminator->name = anchor->name + ".anchor-term";
+	anchor_terminator->add_branch(anchor_dispatcher);
+	anchor_terminator->ir.terminator.type = Terminator::Type::Branch;
+	anchor_terminator->ir.terminator.direct_block = anchor_dispatcher;
+	anchor_dispatcher->name = anchor->name + ".anchor-dispatch";
+
+	PHI terminator_selector;
+	terminator_selector.id = module.allocate_id();
+	terminator_selector.type_id = builder.makeBoolType();
+	terminator_selector.incoming.push_back({ anchor_to_construct0, builder.makeBoolConstant(true) });
+	terminator_selector.incoming.push_back({ anchor_to_construct1, builder.makeBoolConstant(false) });
+
+	traverse_dominated_blocks_and_rewrite_branch(anchor, constructs[0], anchor_to_construct0);
+	traverse_dominated_blocks_and_rewrite_branch(anchor, constructs[1], anchor_to_construct1);
+
+	size_t cutoff_normal_path = anchor_pred->pred.size();
+	traverse_dominated_blocks_and_rewrite_branch(constructs[0]->immediate_dominator, constructs[0], anchor_pred);
+	size_t cutoff_path0 = anchor_pred->pred.size();
+	traverse_dominated_blocks_and_rewrite_branch(constructs[1]->immediate_dominator, constructs[1], anchor_pred);
+
+	assert(constructs[0]->pred.empty());
+	assert(constructs[1]->pred.empty());
+
+	// Branch to anchor as normal if we have a pre-existing pred.
+	PHI take_anchor_phi;
+	take_anchor_phi.id = module.allocate_id();
+	take_anchor_phi.type_id = builder.makeBoolType();
+	for (size_t i = 0; i < cutoff_normal_path; i++)
+		take_anchor_phi.incoming.push_back({ anchor_pred->pred[i], builder.makeBoolConstant(true) });
+	for (size_t i = cutoff_normal_path; i < anchor_pred->pred.size(); i++)
+		take_anchor_phi.incoming.push_back({ anchor_pred->pred[i], builder.makeBoolConstant(false) });
+
+	anchor_pred->add_branch(anchor);
+	anchor_pred->add_branch(anchor_dispatcher);
+	anchor_pred->ir.terminator.type = Terminator::Type::Condition;
+	anchor_pred->ir.terminator.true_block = anchor;
+	anchor_pred->ir.terminator.false_block = anchor_dispatcher;
+	anchor_pred->ir.terminator.direct_block = nullptr;
+	anchor_pred->ir.terminator.conditional_id = take_anchor_phi.id;
+
+	PHI outside_true_phi;
+	outside_true_phi.id = module.allocate_id();
+	outside_true_phi.type_id = builder.makeBoolType();
+	for (size_t i = 0; i < cutoff_path0; i++)
+		outside_true_phi.incoming.push_back({ anchor_pred->pred[i], builder.makeBoolConstant(true) });
+	for (size_t i = cutoff_path0; i < anchor_pred->pred.size(); i++)
+		outside_true_phi.incoming.push_back({ anchor_pred->pred[i], builder.makeBoolConstant(false) });
+
+	PHI anchor_cond_phi;
+	anchor_cond_phi.id = module.allocate_id();
+	anchor_cond_phi.type_id = builder.makeBoolType();
+	// If we took the path through anchor, use that conditional. Otherwise, use the selector between path 0 or 1.
+	anchor_cond_phi.incoming.push_back({ anchor, terminator_selector.id });
+	anchor_cond_phi.incoming.push_back({ anchor_pred, outside_true_phi.id });
+
+	anchor_pred->ir.phi.push_back(std::move(take_anchor_phi));
+	anchor_pred->ir.phi.push_back(std::move(outside_true_phi));
+	anchor_terminator->ir.phi.push_back(std::move(terminator_selector));
+	anchor_dispatcher->ir.terminator.conditional_id = anchor_cond_phi.id;
+	anchor_dispatcher->ir.terminator.type = Terminator::Type::Condition;
+	anchor_dispatcher->ir.terminator.true_block = constructs[0];
+	anchor_dispatcher->ir.terminator.false_block = constructs[1];
+	anchor_dispatcher->add_branch(constructs[0]);
+	anchor_dispatcher->add_branch(constructs[1]);
+	anchor_dispatcher->ir.phi.push_back(std::move(anchor_cond_phi));
 }
 
 void CFGStructurizer::collect_and_dispatch_control_flow(
