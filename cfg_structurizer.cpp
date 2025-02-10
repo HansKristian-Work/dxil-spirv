@@ -1902,7 +1902,8 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 {
 	// We want to move any incoming block to where the ID was created.
 	// This avoids some problematic cases of crossing edges when using ladders.
-	auto &incomings = node.block->ir.phi[node.phi_index].incoming;
+	auto &phi = node.block->ir.phi[node.phi_index];
+	auto &incomings = phi.incoming;
 
 	for (auto &incoming : incomings)
 	{
@@ -1919,10 +1920,11 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 		// but there no longer is.
 		if (!source_block->dominates(incoming.block))
 		{
+			bool hoist_incoming = true;
 			if (phi_incoming_blocks_find_block(incomings, source_block) != nullptr)
 			{
 				// Sanity check. This would create ambiguity.
-				continue;
+				hoist_incoming = false;
 			}
 
 			// Don't hoist PHI inputs across the loop header boundary.
@@ -1932,14 +1934,34 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 				// It's possible we'd need to synthesize a fake input to back-edge which can be resolved
 				// in a code path that does dominate the loop ...
 				LOGW("Incoming value to back edge does not dominate loop header.\n");
-				continue;
+				hoist_incoming = false;
 			}
 
+			if (hoist_incoming)
+			{
 #ifdef PHI_DEBUG
-			LOGI("For node %s, move incoming node %s to %s.\n", node.block->name.c_str(), incoming.block->name.c_str(),
-			     itr->second->name.c_str());
+				LOGI("For node %s, move incoming node %s to %s.\n", node.block->name.c_str(),
+				     incoming.block->name.c_str(), itr->second->name.c_str());
 #endif
-			incoming.block = itr->second;
+				incoming.block = itr->second;
+			}
+			else
+			{
+				// We cannot hoist, so need to use dummy OpVariable instead.
+				spv::Id alloca_var_id = module.create_variable(spv::StorageClassFunction, phi.type_id, "phi_fixup");
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->add_id(alloca_var_id);
+				store_op->add_id(incoming.id);
+				itr->second->ir.operations.push_back(store_op);
+
+				spv::Id loaded_id = module.allocate_id();
+				auto *load_op = module.allocate_op(spv::OpLoad, loaded_id, phi.type_id);
+				load_op->add_id(alloca_var_id);
+				incoming.block->ir.operations.push_back(load_op);
+
+				incoming.id = loaded_id;
+			}
+
 			validate_phi(node.block->ir.phi[node.phi_index]);
 		}
 	}
