@@ -44,6 +44,7 @@ public:
 
 	void add_branch(CFGNode *to);
 	void add_fake_branch(CFGNode *to);
+	void clear_branches();
 
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 

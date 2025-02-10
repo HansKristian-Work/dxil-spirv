@@ -63,6 +63,19 @@ void CFGNode::add_branch(CFGNode *to)
 	to->add_unique_pred(this);
 }
 
+void CFGNode::clear_branches()
+{
+	for (auto *s : succ)
+	{
+		auto itr = std::find(s->pred.begin(), s->pred.end(), this);
+		// We might have become stale during rewrites. In this case we might have a succ
+		// with no corresponding pred. Ignore that.
+		if (itr != s->pred.end())
+			s->pred.erase(itr);
+	}
+	succ.clear();
+}
+
 void CFGNode::add_fake_branch(CFGNode *to)
 {
 	if (std::find(succ.begin(), succ.end(), to) != succ.end())
