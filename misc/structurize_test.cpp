@@ -222,6 +222,22 @@ int main(int argc, char **argv)
 		emitter.module.get_builder().addName(f->ir.terminator.conditional_id, (std::string(from) + "_sel").c_str());
 	};
 
+	const auto add_switch = [&](const char *from, const String *nodes, size_t num_nodes) {
+		auto *f = get(from);
+		f->ir.terminator.type = Terminator::Type::Switch;
+		f->ir.terminator.conditional_id = emitter.module.get_builder().makeUintConstant(0, true);
+		for (size_t i = 0; i < num_nodes; i++)
+		{
+			auto *t = get(nodes[i]);
+			f->add_branch(t);
+			Terminator::Case case_label = {};
+			case_label.node = t;
+			case_label.global_order = i;
+			case_label.is_default = i == 0;
+			f->ir.terminator.cases.push_back(case_label);
+		}
+	};
+
 	const auto add_phi = [&](const char *phi, const Vector<const char *> &from_nodes) {
 		auto *p = get(phi);
 		p->ir.phi.emplace_back();
@@ -286,6 +302,16 @@ int main(int argc, char **argv)
 			}
 
 			add_selection(tokens[1].c_str(), tokens[2].c_str(), tokens[3].c_str());
+		}
+		else if (tokens.front() == "switch")
+		{
+			if (tokens.size() < 3)
+			{
+				LOGE("switch token needs at least.\n");
+				continue;
+			}
+
+			add_switch(tokens[1].c_str(), tokens.data() + 2, tokens.size() - 2);
 		}
 		else if (tokens.front() == "phi")
 		{
