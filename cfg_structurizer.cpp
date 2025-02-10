@@ -2815,6 +2815,17 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 	if (block_is_load_bearing(node, merge))
 		return false;
 
+	// If we have two different switch blocks in our PDF frontier something ridiculous is happening
+	// where we effectively have one switch block falling through to another switch block (?!?!?!)
+	// Definitely needs to be split up.
+	unsigned switch_pdf_frontiers = 0;
+	for (auto *frontier : node->post_dominance_frontier)
+		if (frontier->ir.terminator.type == Terminator::Type::Switch)
+			switch_pdf_frontiers++;
+
+	if (switch_pdf_frontiers >= 2)
+		return true;
+
 	// If we cannot prove the escape through loop analysis, we might be able to deduce it from domination frontiers.
 	// If control flow is not escaping, then there must exist a dominance frontier node A,
 	// where merge strictly post-dominates A.
