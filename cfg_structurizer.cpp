@@ -3650,6 +3650,34 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		if (inner_constructs.size() < 2)
 			continue;
 
+		auto *common_idom = inner_constructs[0];
+		for (size_t i = 1, n = inner_constructs.size(); i < n; i++)
+			common_idom = CFGNode::find_common_dominator(common_idom, inner_constructs[i]);
+
+		// Filter out false positive inner constructs.
+		// If we're dominated by another inner construct, and we don't post-dominate that construct, we should yield.
+		for (auto itr = inner_constructs.begin(); itr != inner_constructs.end(); )
+		{
+			bool eliminated = false;
+			for (auto candidate_itr = itr + 1; candidate_itr != inner_constructs.end() && !eliminated; ++candidate_itr)
+			{
+				// Don't let the common idom of constructs consume subsequent constructs.
+				if ((*candidate_itr) == common_idom)
+					continue;
+
+				if ((*candidate_itr)->dominates(*itr) && !(*itr)->post_dominates(*candidate_itr))
+				{
+					// To accept a dominator, we don't want any common idom removing every node.
+					std::move(itr + 1, inner_constructs.end(), itr);
+					inner_constructs.pop_back();
+					eliminated = true;
+				}
+			}
+
+			if (!eliminated)
+				++itr;
+		}
+
 		// Prune any candidate that can reach another candidate. The sort ensures that candidate to be removed comes last.
 		size_t count = inner_constructs.size();
 		for (size_t i = 0; i < count; i++)
