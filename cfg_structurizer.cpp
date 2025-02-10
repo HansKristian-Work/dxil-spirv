@@ -5519,6 +5519,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 	builder.addName(phi.id, String("selector_" + common_pdom->name).c_str());
 
 	dispatcher->ir.terminator.direct_block = nullptr;
+	dispatcher->clear_branches();
 
 	if (plain_branch)
 	{
@@ -5535,6 +5536,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 		default_case.node = need_default_case ? common_pdom : constructs[0];
 		default_case.is_default = true;
 		dispatcher->ir.terminator.cases.push_back(default_case);
+		dispatcher->add_branch(default_case.node);
 
 		for (size_t i = 0, n = constructs.size(); i < n; i++)
 		{
