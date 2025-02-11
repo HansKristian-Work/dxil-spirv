@@ -107,6 +107,10 @@ target_compile_options(dxil-spirv-c-shared PRIVATE ${DXIL_SPV_CXX_FLAGS})
 target_compile_definitions(dxil-spirv-c-shared PRIVATE DXIL_SPV_EXPORT_SYMBOLS)
 set_target_properties(dxil-spirv-c-shared PROPERTIES PUBLIC_HEADERS dxil_spirv_c.h)
 
+if (WIN32 AND CMAKE_COMPILER_IS_GNUCXX)
+    target_link_libraries(dxil-spirv-c-shared PRIVATE -static gcc stdc++ winpthread)
+endif()
+
 # If we're linking in full LLVM statically, ensure we don't export all LLVM symbols.
 if (NOT MSVC AND DXIL_SPIRV_NATIVE_LLVM)
     set_target_properties(dxil-spirv-c-shared PROPERTIES LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/link.T")
@@ -137,6 +141,11 @@ if (DXIL_SPIRV_CLI)
     target_compile_options(dxil-spirv PRIVATE ${DXIL_SPV_CXX_FLAGS})
     target_link_libraries(dxil-extract PRIVATE dxil-spirv-c-shared cli-parser external::llvm)
     target_compile_options(dxil-extract PRIVATE ${DXIL_SPV_CXX_FLAGS})
+
+    if (WIN32 AND CMAKE_COMPILER_IS_GNUCXX)
+        target_link_libraries(dxil-spirv PRIVATE -static gcc stdc++ winpthread)
+        target_link_libraries(dxil-extract PRIVATE -static gcc stdc++ winpthread)
+    endif()
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 2)
