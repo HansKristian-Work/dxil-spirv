@@ -6,20 +6,22 @@ layout(set = 0, binding = 2, r32ui) uniform writeonly uimageBuffer _13;
 layout(set = 0, binding = 3, r32ui) uniform writeonly uimageBuffer _14;
 
 layout(location = 0) flat in uint INDEX;
-layout(location = 0, component = 1) flat in vec2 DATA;
+layout(location = 0, component = 1) flat in uvec2 DATA;
 
 void main()
 {
-    imageStore(_8, int(INDEX), vec4(DATA.x, DATA.y, DATA.x, DATA.x));
-    uint _38 = INDEX * 2u;
-    imageStore(_12, int(_38), uvec4(floatBitsToUint(DATA.x)));
-    imageStore(_12, int(_38 + 1u), uvec4(floatBitsToUint(DATA.y)));
-    uint _44 = INDEX * 2u;
-    imageStore(_13, int(_44), uvec4(floatBitsToUint(DATA.x)));
-    imageStore(_13, int(_44 + 1u), uvec4(floatBitsToUint(DATA.y)));
-    uint _52 = (INDEX * 5u) + 3u;
-    imageStore(_14, int(_52), uvec4(floatBitsToUint(DATA.x)));
-    imageStore(_14, int(_52 + 1u), uvec4(floatBitsToUint(DATA.y)));
+    float _27 = uintBitsToFloat(DATA.x);
+    float _31 = uintBitsToFloat(DATA.y);
+    imageStore(_8, int(INDEX), vec4(_27, _31, _27, _27));
+    uint _39 = INDEX * 2u;
+    imageStore(_12, int(_39), uvec4(floatBitsToUint(_27)));
+    imageStore(_12, int(_39 + 1u), uvec4(floatBitsToUint(_31)));
+    uint _45 = INDEX * 2u;
+    imageStore(_13, int(_45), uvec4(floatBitsToUint(_27)));
+    imageStore(_13, int(_45 + 1u), uvec4(floatBitsToUint(_31)));
+    uint _53 = (INDEX * 5u) + 3u;
+    imageStore(_14, int(_53), uvec4(floatBitsToUint(_27)));
+    imageStore(_14, int(_53 + 1u), uvec4(floatBitsToUint(_31)));
 }
 
 
@@ -28,7 +30,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 60
+; Bound: 61
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -70,58 +72,59 @@ OpDecorate %19 Component 1
 %14 = OpVariable %11 UniformConstant
 %15 = OpTypePointer Input %9
 %16 = OpVariable %15 Input
-%17 = OpTypeVector %5 2
+%17 = OpTypeVector %9 2
 %18 = OpTypePointer Input %17
 %19 = OpVariable %18 Input
-%24 = OpTypePointer Input %5
-%26 = OpConstant %9 0
+%25 = OpConstant %9 0
 %29 = OpConstant %9 1
-%32 = OpTypeVector %5 4
-%37 = OpConstant %9 3
-%39 = OpConstant %9 2
-%40 = OpTypeVector %9 4
-%51 = OpConstant %9 5
+%33 = OpTypeVector %5 4
+%38 = OpConstant %9 3
+%40 = OpConstant %9 2
+%41 = OpTypeVector %9 4
+%52 = OpConstant %9 5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %58
-%58 = OpLabel
+OpBranch %59
+%59 = OpLabel
 %20 = OpLoad %10 %14
 %21 = OpLoad %10 %13
 %22 = OpLoad %10 %12
 %23 = OpLoad %6 %8
-%25 = OpAccessChain %24 %19 %26
-%27 = OpLoad %5 %25
-%28 = OpAccessChain %24 %19 %29
-%30 = OpLoad %5 %28
-%31 = OpLoad %9 %16
-%33 = OpCompositeConstruct %32 %27 %30 %27 %27
-OpImageWrite %23 %31 %33
-%34 = OpBitcast %9 %27
-%35 = OpBitcast %9 %30
-%36 = OpShiftLeftLogical %9 %31 %37
-%38 = OpIMul %9 %31 %39
-%41 = OpCompositeConstruct %40 %34 %34 %34 %34
-OpImageWrite %22 %38 %41
-%42 = OpCompositeConstruct %40 %35 %35 %35 %35
-%43 = OpIAdd %9 %38 %29
-OpImageWrite %22 %43 %42
-%44 = OpIMul %9 %31 %39
-%45 = OpBitcast %9 %27
-%46 = OpBitcast %9 %30
-%47 = OpCompositeConstruct %40 %45 %45 %45 %45
-OpImageWrite %21 %44 %47
-%48 = OpCompositeConstruct %40 %46 %46 %46 %46
-%49 = OpIAdd %9 %44 %29
-OpImageWrite %21 %49 %48
-%50 = OpIMul %9 %31 %51
-%52 = OpIAdd %9 %50 %37
-%53 = OpBitcast %9 %27
-%54 = OpBitcast %9 %30
-%55 = OpCompositeConstruct %40 %53 %53 %53 %53
-OpImageWrite %20 %52 %55
-%56 = OpCompositeConstruct %40 %54 %54 %54 %54
-%57 = OpIAdd %9 %52 %29
-OpImageWrite %20 %57 %56
+%24 = OpAccessChain %15 %19 %25
+%26 = OpLoad %9 %24
+%27 = OpBitcast %5 %26
+%28 = OpAccessChain %15 %19 %29
+%30 = OpLoad %9 %28
+%31 = OpBitcast %5 %30
+%32 = OpLoad %9 %16
+%34 = OpCompositeConstruct %33 %27 %31 %27 %27
+OpImageWrite %23 %32 %34
+%35 = OpBitcast %9 %27
+%36 = OpBitcast %9 %31
+%37 = OpShiftLeftLogical %9 %32 %38
+%39 = OpIMul %9 %32 %40
+%42 = OpCompositeConstruct %41 %35 %35 %35 %35
+OpImageWrite %22 %39 %42
+%43 = OpCompositeConstruct %41 %36 %36 %36 %36
+%44 = OpIAdd %9 %39 %29
+OpImageWrite %22 %44 %43
+%45 = OpIMul %9 %32 %40
+%46 = OpBitcast %9 %27
+%47 = OpBitcast %9 %31
+%48 = OpCompositeConstruct %41 %46 %46 %46 %46
+OpImageWrite %21 %45 %48
+%49 = OpCompositeConstruct %41 %47 %47 %47 %47
+%50 = OpIAdd %9 %45 %29
+OpImageWrite %21 %50 %49
+%51 = OpIMul %9 %32 %52
+%53 = OpIAdd %9 %51 %38
+%54 = OpBitcast %9 %27
+%55 = OpBitcast %9 %31
+%56 = OpCompositeConstruct %41 %54 %54 %54 %54
+OpImageWrite %20 %53 %56
+%57 = OpCompositeConstruct %41 %55 %55 %55 %55
+%58 = OpIAdd %9 %53 %29
+OpImageWrite %20 %58 %57
 OpReturn
 OpFunctionEnd
 #endif

@@ -189,8 +189,21 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 
 	fixup_builtin_load(impl, var_id, instruction);
 
-	// Need to bitcast after we load.
-	impl.fixup_load_type_io(meta.component_type, 1, instruction);
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID &&
+	    meta.flat && meta.component_type == DXIL::ComponentType::U32)
+	{
+		// Rewrite for flat IO since we lower those to U32.
+		auto *cast = impl.allocate(spv::OpBitcast, impl.get_type_id(instruction->getType()));
+		cast->add_id(impl.get_id_for_value(instruction));
+		impl.add(cast);
+		impl.rewrite_value(instruction, cast->id);
+	}
+	else
+	{
+		// Need to bitcast after we load.
+		impl.fixup_load_type_io(meta.component_type, 1, instruction);
+	}
+
 	return true;
 }
 
@@ -392,7 +405,22 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
 	Operation *op = impl.allocate(spv::OpStore);
-	op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });
+
+	if (meta.component_type == DXIL::ComponentType::U32 &&
+	    meta.flat &&
+	    instruction->getOperand(4)->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+	{
+		// Rewrite to U32 for flat IO.
+		auto *cast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+		cast_op->add_id(store_value);
+		impl.add(cast_op);
+		op->add_ids({ ptr_id, cast_op->id });
+	}
+	else
+	{
+		op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });
+	}
+
 	impl.add(op);
 	return true;
 }

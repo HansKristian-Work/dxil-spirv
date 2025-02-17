@@ -4069,6 +4069,16 @@ bool Converter::Impl::emit_stage_output_variables()
 			semantic_index = get_constant_metadata(llvm::cast<llvm::MDNode>(output->getOperand(4)), 0);
 
 		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(output, 5));
+
+		if (system_value == DXIL::Semantic::User &&
+		    interpolation == DXIL::InterpolationMode::Constant &&
+		    actual_element_type == DXIL::ComponentType::F32)
+		{
+			// Special consideration to make GLSL roundtrips easier.
+			actual_element_type = DXIL::ComponentType::U32;
+			effective_element_type = DXIL::ComponentType::U32;
+		}
+
 		auto rows = get_constant_metadata(output, 6);
 		auto cols = get_constant_metadata(output, 7);
 
@@ -4134,7 +4144,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
-		output_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
+		output_elements_meta[element_id] = { variable_id, actual_element_type, 0, interpolation == DXIL::InterpolationMode::Constant };
 
 		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))
 			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
@@ -4749,6 +4759,15 @@ bool Converter::Impl::emit_stage_input_variables()
 		auto interpolation = static_cast<DXIL::InterpolationMode>(get_constant_metadata(input, 5));
 		adjust_system_value(system_value, interpolation);
 
+		if (system_value == DXIL::Semantic::User &&
+		    interpolation == DXIL::InterpolationMode::Constant &&
+		    actual_element_type == DXIL::ComponentType::F32)
+		{
+			// Special consideration to make GLSL roundtrips easier.
+			actual_element_type = DXIL::ComponentType::U32;
+			effective_element_type = DXIL::ComponentType::U32;
+		}
+
 		auto rows = get_constant_metadata(input, 6);
 		auto cols = get_constant_metadata(input, 7);
 
@@ -4817,7 +4836,9 @@ bool Converter::Impl::emit_stage_input_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
-		input_elements_meta[element_id] = { variable_id, actual_element_type, system_value != DXIL::Semantic::User ? start_row : 0 };
+		input_elements_meta[element_id] = { variable_id, actual_element_type,
+		                                    system_value != DXIL::Semantic::User ? start_row : 0,
+		                                    interpolation == DXIL::InterpolationMode::Constant || per_vertex };
 
 		if (per_vertex)
 		{

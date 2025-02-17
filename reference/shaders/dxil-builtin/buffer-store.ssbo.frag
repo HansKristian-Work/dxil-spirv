@@ -18,16 +18,18 @@ layout(set = 0, binding = 3, std430) writeonly buffer _20_22
 layout(set = 0, binding = 0) uniform writeonly imageBuffer _8;
 
 layout(location = 0) flat in uint INDEX;
-layout(location = 0, component = 1) flat in vec2 DATA;
+layout(location = 0, component = 1) flat in uvec2 DATA;
 
 void main()
 {
-    imageStore(_8, int(INDEX), vec4(DATA.x, DATA.y, DATA.x, DATA.x));
-    _14._m0[INDEX] = uvec2(floatBitsToUint(DATA.x), floatBitsToUint(DATA.y));
-    _18._m0[INDEX] = uvec2(floatBitsToUint(DATA.x), floatBitsToUint(DATA.y));
+    float _31 = uintBitsToFloat(DATA.x);
+    float _35 = uintBitsToFloat(DATA.y);
+    imageStore(_8, int(INDEX), vec4(_31, _35, _31, _31));
+    _14._m0[INDEX] = uvec2(floatBitsToUint(_31), floatBitsToUint(_35));
+    _18._m0[INDEX] = uvec2(floatBitsToUint(_31), floatBitsToUint(_35));
     uint _52 = (INDEX * 5u) + 3u;
-    _22._m0[_52] = floatBitsToUint(DATA.x);
-    _22._m0[_52 + 1u] = floatBitsToUint(DATA.y);
+    _22._m0[_52] = floatBitsToUint(_31);
+    _22._m0[_52 + 1u] = floatBitsToUint(_35);
 }
 
 
@@ -42,14 +44,14 @@ OpCapability Shader
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %24 %27
+OpEntryPoint Fragment %3 "main" %24 %26
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %12 "SSBO"
 OpName %16 "SSBO"
 OpName %20 "SSBO"
 OpName %24 "INDEX"
-OpName %27 "DATA"
+OpName %26 "DATA"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
@@ -73,9 +75,9 @@ OpDecorate %22 Binding 3
 OpDecorate %22 NonReadable
 OpDecorate %24 Flat
 OpDecorate %24 Location 0
-OpDecorate %27 Flat
-OpDecorate %27 Location 0
-OpDecorate %27 Component 1
+OpDecorate %26 Flat
+OpDecorate %26 Location 0
+OpDecorate %26 Component 1
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -98,12 +100,10 @@ OpDecorate %27 Component 1
 %22 = OpVariable %21 StorageBuffer
 %23 = OpTypePointer Input %9
 %24 = OpVariable %23 Input
-%25 = OpTypeVector %5 2
-%26 = OpTypePointer Input %25
-%27 = OpVariable %26 Input
-%29 = OpTypePointer Input %5
-%31 = OpConstant %9 0
-%34 = OpConstant %9 1
+%25 = OpTypePointer Input %10
+%26 = OpVariable %25 Input
+%29 = OpConstant %9 0
+%33 = OpConstant %9 1
 %37 = OpTypeVector %5 4
 %42 = OpConstant %9 3
 %44 = OpTypePointer StorageBuffer %10
@@ -113,33 +113,35 @@ OpDecorate %27 Component 1
 %4 = OpLabel
 OpBranch %59
 %59 = OpLabel
-%28 = OpLoad %6 %8
-%30 = OpAccessChain %29 %27 %31
-%32 = OpLoad %5 %30
-%33 = OpAccessChain %29 %27 %34
-%35 = OpLoad %5 %33
+%27 = OpLoad %6 %8
+%28 = OpAccessChain %23 %26 %29
+%30 = OpLoad %9 %28
+%31 = OpBitcast %5 %30
+%32 = OpAccessChain %23 %26 %33
+%34 = OpLoad %9 %32
+%35 = OpBitcast %5 %34
 %36 = OpLoad %9 %24
-%38 = OpCompositeConstruct %37 %32 %35 %32 %32
-OpImageWrite %28 %36 %38
-%39 = OpBitcast %9 %32
+%38 = OpCompositeConstruct %37 %31 %35 %31 %31
+OpImageWrite %27 %36 %38
+%39 = OpBitcast %9 %31
 %40 = OpBitcast %9 %35
 %41 = OpShiftLeftLogical %9 %36 %42
 %43 = OpCompositeConstruct %10 %39 %40
-%45 = OpAccessChain %44 %14 %31 %36
+%45 = OpAccessChain %44 %14 %29 %36
 OpStore %45 %43
-%46 = OpBitcast %9 %32
+%46 = OpBitcast %9 %31
 %47 = OpBitcast %9 %35
 %48 = OpCompositeConstruct %10 %46 %47
-%49 = OpAccessChain %44 %18 %31 %36
+%49 = OpAccessChain %44 %18 %29 %36
 OpStore %49 %48
 %50 = OpIMul %9 %36 %51
 %52 = OpIAdd %9 %50 %42
-%53 = OpBitcast %9 %32
+%53 = OpBitcast %9 %31
 %54 = OpBitcast %9 %35
-%56 = OpAccessChain %55 %22 %31 %52
+%56 = OpAccessChain %55 %22 %29 %52
 OpStore %56 %53
-%58 = OpIAdd %9 %52 %34
-%57 = OpAccessChain %55 %22 %31 %58
+%58 = OpIAdd %9 %52 %33
+%57 = OpAccessChain %55 %22 %29 %58
 OpStore %57 %54
 OpReturn
 OpFunctionEnd
