@@ -73,7 +73,8 @@ enum class HelperCall
 	AllocateThreadNodeRecordsWaterfall,
 	ThreadIncrementOutputCount,
 	GroupIncrementOutputCount,
-	NodeCoalescePayloadOffset
+	NodeCoalescePayloadOffset,
+	IsQuadUniformControlFlow
 };
 
 class SPIRVModule

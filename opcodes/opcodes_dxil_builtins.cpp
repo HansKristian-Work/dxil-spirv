@@ -1194,6 +1194,12 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			// We could rely on QuadNV here, but it's not widely supported.
 			impl.shader_analysis.require_compute_shader_derivatives = true;
 		}
+		else if (impl.options.instruction_instrumentation.enabled &&
+		         impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume &&
+		         impl.execution_model == spv::ExecutionModelFragment)
+		{
+			impl.shader_analysis.need_maximal_reconvergence_helper_call = true;
+		}
 		break;
 
 	case DXIL::Op::WaveIsFirstLane:

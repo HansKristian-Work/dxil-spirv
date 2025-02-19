@@ -71,4 +71,6 @@ void build_exploded_composite_from_vector(Converter::Impl &impl, const llvm::Ins
 bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op);
 
 spv::Id build_load_invocation_id(Converter::Impl &impl);
+
+void emit_expect_assume_quad_uniform(Converter::Impl &impl);
 }

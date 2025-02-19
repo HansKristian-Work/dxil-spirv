@@ -337,6 +337,12 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 			force_explicit_lod = false;
 	}
 
+	if (opcode == DXIL::Op::Sample || opcode == DXIL::Op::SampleBias ||
+	    opcode == DXIL::Op::SampleCmpBias || opcode == DXIL::Op::SampleCmp)
+	{
+		emit_expect_assume_quad_uniform(impl);
+	}
+
 	if (opcode == DXIL::Op::SampleLevel || opcode == DXIL::Op::SampleCmpLevelZero || opcode == DXIL::Op::SampleCmpLevel)
 		image_ops |= spv::ImageOperandsLodMask;
 	else if (opcode == DXIL::Op::SampleBias || opcode == DXIL::Op::SampleCmpBias)
@@ -1696,6 +1702,8 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 		impl.rewrite_value(instruction, builder.makeFloatConstant(0.0f));
 		return true;
 	}
+
+	emit_expect_assume_quad_uniform(impl);
 
 	if (impl.execution_model != spv::ExecutionModelFragment &&
 	    !impl.options.compute_shader_derivatives)

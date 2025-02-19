@@ -23,6 +23,7 @@
  */
 
 #include "dxil_pixel_ops.hpp"
+#include "dxil_common.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
 
@@ -51,6 +52,7 @@ bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 static bool emit_derivative_instruction_quad_coarse(
     spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	emit_expect_assume_quad_uniform(impl);
 	auto &builder = impl.builder();
 	builder.addCapability(spv::CapabilityGroupNonUniformQuad);
 
@@ -80,6 +82,7 @@ static bool emit_derivative_instruction_quad_coarse(
 static bool emit_derivative_instruction_quad_fine(
 	spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	emit_expect_assume_quad_uniform(impl);
 	auto &builder = impl.builder();
 
 	builder.addCapability(spv::CapabilityGroupNonUniform);

@@ -541,4 +541,20 @@ bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
 
 	return op == DXIL::Op(opcode);
 }
+
+void emit_expect_assume_quad_uniform(Converter::Impl &impl)
+{
+	if (impl.options.instruction_instrumentation.enabled &&
+	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	{
+		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::IsQuadUniformControlFlow);
+		auto *call = impl.allocate(spv::OpFunctionCall, impl.builder().makeBoolType());
+		call->add_id(call_id);
+		impl.add(call);
+
+		auto *assert_uniform = impl.allocate(spv::OpAssumeTrueKHR);
+		assert_uniform->add_id(call->id);
+		impl.add(assert_uniform);
+	}
+}
 } // namespace dxil_spv

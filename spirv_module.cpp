@@ -77,6 +77,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_increment_node_count(SPIRVModule &module, bool per_thread);
 	spv::Id build_allocate_node_records_waterfall(SPIRVModule &module);
 	spv::Id build_node_coalesce_payload_offset(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
+	spv::Id build_is_quad_uniform_control_flow(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -136,6 +137,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id increment_group_node_count_call_id = 0;
 	spv::Id allocate_thread_node_records_waterfall_call_id = 0;
 	spv::Id node_coalesce_payload_offset_call_id = 0;
+	spv::Id is_quad_uniform_call_id = 0;
 
 	struct MultiPrefixOp
 	{
@@ -2103,6 +2105,74 @@ spv::Id SPIRVModule::Impl::build_robust_physical_cbv_load(SPIRVModule &module, s
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_is_quad_uniform_control_flow(SPIRVModule &module)
+{
+	if (is_quad_uniform_call_id)
+		return is_quad_uniform_call_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uvec4_type = builder.makeVectorType(uint_type, 4);
+	spv::Id bool_type = builder.makeBoolType();
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, bool_type,
+	                                       "IsQuadUniformControlFlow",
+	                                       {}, {}, &entry);
+
+	auto ballot_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBallot);
+	ballot_op->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	ballot_op->addIdOperand(builder.makeBoolConstant(true));
+
+	spv::Id uint_2 = builder.makeUintConstant(2);
+	spv::Id uint_1 = builder.makeUintConstant(1);
+	uint_2 = builder.makeCompositeConstant(uvec4_type, { uint_2, uint_2, uint_2, uint_2 });
+	uint_1 = builder.makeCompositeConstant(uvec4_type, { uint_1, uint_1, uint_1, uint_1 });
+
+	auto shift_2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpShiftRightLogical);
+	shift_2->addIdOperand(ballot_op->getResultId());
+	shift_2->addIdOperand(uint_2);
+	auto or_2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpBitwiseOr);
+	or_2->addIdOperand(ballot_op->getResultId());
+	or_2->addIdOperand(shift_2->getResultId());
+	auto shift_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpShiftRightLogical);
+	shift_1->addIdOperand(or_2->getResultId());
+	shift_1->addIdOperand(uint_1);
+	auto or_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpBitwiseOr);
+	or_1->addIdOperand(or_2->getResultId());
+	or_1->addIdOperand(shift_1->getResultId());
+
+	auto load_invocation_id = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
+	load_invocation_id->addIdOperand(get_builtin_shader_input(spv::BuiltInSubgroupLocalInvocationId));
+
+	auto and_invocation_id = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpBitwiseAnd);
+	and_invocation_id->addIdOperand(load_invocation_id->getResultId());
+	and_invocation_id->addIdOperand(builder.makeUintConstant(~3u));
+
+	auto extract_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpGroupNonUniformBallotBitExtract);
+	extract_op->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	extract_op->addIdOperand(or_1->getResultId());
+	extract_op->addIdOperand(and_invocation_id->getResultId());
+	spv::Id result_id = extract_op->getResultId();
+
+	entry->addInstruction(std::move(ballot_op));
+	entry->addInstruction(std::move(shift_2));
+	entry->addInstruction(std::move(or_2));
+	entry->addInstruction(std::move(shift_1));
+	entry->addInstruction(std::move(or_1));
+	entry->addInstruction(std::move(load_invocation_id));
+	entry->addInstruction(std::move(and_invocation_id));
+	entry->addInstruction(std::move(extract_op));
+
+	builder.makeReturn(false, result_id);
+	builder.setBuildPoint(current_build_point);
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+	builder.addCapability(spv::CapabilityGroupNonUniform);
+
+	is_quad_uniform_call_id = func->getId();
+	return is_quad_uniform_call_id;
+}
+
 spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall call,
                                               const spv::Id *aux_ids, uint32_t aux_ids_count)
 {
@@ -2175,6 +2245,8 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_increment_node_count(module, false);
 	case HelperCall::ThreadIncrementOutputCount:
 		return build_increment_node_count(module, true);
+	case HelperCall::IsQuadUniformControlFlow:
+		return build_is_quad_uniform_control_flow(module);
 
 	default:
 		break;
