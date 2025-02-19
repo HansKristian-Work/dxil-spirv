@@ -29,6 +29,7 @@
 #include "spirv_module.hpp"
 #include "dxil_buffer.hpp"
 #include "dxil_workgraph.hpp"
+#include "dxil_waveops.hpp"
 
 namespace dxil_spv
 {
@@ -761,6 +762,25 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 			// We have observed some really nasty bugs in the wild where a resource is loaded from,
 			// but not actually needed before a branch. That branch will guard invalid usage.
 			op->flags |= Operation::SinkableBit;
+		}
+
+		if (impl.options.instruction_instrumentation.enabled &&
+		    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume &&
+		    !is_non_uniform && reference.base_resource_is_array &&
+		    instruction_offset_value &&
+		    !value_is_statically_wave_uniform(impl, instruction_offset_value))
+		{
+			// Assert that the index is wave uniform.
+			builder.addCapability(spv::CapabilityGroupNonUniformVote);
+
+			auto *is_valid = impl.allocate(spv::OpGroupNonUniformAllEqual, builder.makeBoolType());
+			is_valid->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			is_valid->add_id(offset_id);
+			impl.add(is_valid);
+
+			auto *assert_op = impl.allocate(spv::OpAssumeTrueKHR);
+			assert_op->add_id(is_valid->id);
+			impl.add(assert_op);
 		}
 
 		impl.add(op);
