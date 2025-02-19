@@ -764,6 +764,13 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 			op->flags |= Operation::SinkableBit;
 		}
 
+		if (!is_non_uniform && instruction_offset_value &&
+		    value_is_likely_non_uniform(impl, instruction_offset_value))
+		{
+			// Native drivers seems to apply hacks and workarounds to workaround bugged games.
+			is_non_uniform = true;
+		}
+
 		if (impl.options.instruction_instrumentation.enabled &&
 		    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume &&
 		    !is_non_uniform && reference.base_resource_is_array &&

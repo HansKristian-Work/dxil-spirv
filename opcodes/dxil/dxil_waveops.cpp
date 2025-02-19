@@ -248,6 +248,32 @@ bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *
 	return false;
 }
 
+bool value_is_likely_non_uniform(Converter::Impl &impl, const llvm::Value *value)
+{
+	// If the index is loaded from PS varying, it's almost guaranteed to be nonuniform in some way.
+	// Similar with using InstanceID as bindless index.
+	if (const auto *unary = llvm::dyn_cast<llvm::UnaryOperator>(value))
+	{
+		return value_is_likely_non_uniform(impl, unary->getOperand(0));
+	}
+	else if (const auto *cast_op = llvm::dyn_cast<llvm::CastInst>(value))
+	{
+		return value_is_likely_non_uniform(impl, cast_op->getOperand(0));
+	}
+	else if (const auto *binary = llvm::dyn_cast<llvm::BinaryOperator>(value))
+	{
+		return value_is_likely_non_uniform(impl, binary->getOperand(0)) ||
+		       value_is_likely_non_uniform(impl, binary->getOperand(1));
+	}
+	else if (value_is_dx_op_instrinsic(value, DXIL::Op::LoadInput) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::InstanceID))
+	{
+		return true;
+	}
+	else
+		return false;
+}
+
 bool emit_wave_read_lane_first_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	if (value_is_statically_wave_uniform(impl, instruction->getOperand(1)))
