@@ -1182,6 +1182,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	case DXIL::Op::SampleBias:
 	case DXIL::Op::Sample:
 	case DXIL::Op::SampleCmp:
+	case DXIL::Op::SampleCmpBias:
 		if (impl.execution_model == spv::ExecutionModelGLCompute ||
 		    impl.execution_model == spv::ExecutionModelTaskEXT ||
 		    impl.execution_model == spv::ExecutionModelMeshEXT)
