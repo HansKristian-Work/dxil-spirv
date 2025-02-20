@@ -8114,9 +8114,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			break;
 
 		case ShaderQuirk::MeshOutputRobustness:
-			// FFVII Rebirth. SetMeshOutputEXT can be called out of bounds apparently?
-			// Just skip these meshlets.
 			options.quirks.mesh_outputs_bounds_check = true;
+			break;
+
+		case ShaderQuirk::AggressiveNonUniform:
+			// Starfield workaround. Some shaders should have used nonuniform,
+			// but the general pattern to detect it is quite complicated.
+			options.quirks.aggressive_nonuniform = false;
 			break;
 
 		default:

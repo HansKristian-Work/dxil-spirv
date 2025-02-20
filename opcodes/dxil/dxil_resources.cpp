@@ -765,11 +765,11 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 		}
 
 		if (!is_non_uniform && instruction_offset_value &&
-		    reference.resource_kind == DXIL::ResourceKind::CBuffer &&
-		    value_is_likely_non_uniform(impl, instruction_offset_value))
+		    ((reference.resource_kind == DXIL::ResourceKind::CBuffer || impl.options.quirks.aggressive_nonuniform) &&
+		     value_is_likely_non_uniform(impl, instruction_offset_value)))
 		{
 			// Native drivers seems to apply hacks and workarounds to workaround bugged games.
-			// Only apply this for bindless CBV for now.
+			// Only apply this for bindless CBV for now, unless we opt in to more aggressive checks.
 			// I have not been able to prove this effect for other resource types so far.
 			is_non_uniform = true;
 		}

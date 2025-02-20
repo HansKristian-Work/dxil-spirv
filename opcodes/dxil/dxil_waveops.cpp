@@ -250,20 +250,37 @@ bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *
 
 bool value_is_likely_non_uniform(Converter::Impl &impl, const llvm::Value *value)
 {
-	// If the index is loaded from PS varying, it's almost guaranteed to be nonuniform in some way.
-	// Similar with using InstanceID as bindless index.
-	if (const auto *unary = llvm::dyn_cast<llvm::UnaryOperator>(value))
+	for (;;)
 	{
-		return value_is_likely_non_uniform(impl, unary->getOperand(0));
+		// If the index is loaded from PS varying, it's almost guaranteed to be nonuniform in some way.
+		// Similar with using InstanceID as bindless index.
+		if (llvm::isa<llvm::Constant>(value))
+			return false;
+		else if (const auto *unary = llvm::dyn_cast<llvm::UnaryOperator>(value))
+			value = unary->getOperand(0);
+		else if (const auto *cast_op = llvm::dyn_cast<llvm::CastInst>(value))
+			value = cast_op->getOperand(0);
+		else if (const auto *extract_value = llvm::dyn_cast<llvm::ExtractValueInst>(value))
+			value = extract_value->getOperand(0);
+		else
+			break;
 	}
-	else if (const auto *cast_op = llvm::dyn_cast<llvm::CastInst>(value))
-	{
-		return value_is_likely_non_uniform(impl, cast_op->getOperand(0));
-	}
-	else if (const auto *binary = llvm::dyn_cast<llvm::BinaryOperator>(value))
+
+	if (const auto *binary = llvm::dyn_cast<llvm::BinaryOperator>(value))
 	{
 		return value_is_likely_non_uniform(impl, binary->getOperand(0)) ||
 		       value_is_likely_non_uniform(impl, binary->getOperand(1));
+	}
+	else if (value_is_dx_op_instrinsic(value, DXIL::Op::BufferLoad) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::RawBufferLoad) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::CBufferLoad) ||
+	         value_is_dx_op_instrinsic(value, DXIL::Op::CBufferLoadLegacy))
+	{
+		auto *call = llvm::cast<llvm::CallInst>(value);
+		for (uint32_t i = 2; i < call->getNumOperands(); i++)
+			if (value_is_likely_non_uniform(impl, call->getOperand(i)))
+				return true;
+		return false;
 	}
 	else if (value_is_dx_op_instrinsic(value, DXIL::Op::LoadInput) ||
 	         value_is_dx_op_instrinsic(value, DXIL::Op::InstanceID))

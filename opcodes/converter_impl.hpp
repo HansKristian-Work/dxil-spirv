@@ -740,6 +740,7 @@ struct Converter::Impl
 			bool assume_broken_sub_8x8_cube_mips = false;
 			bool robust_physical_cbv_forwarding = false;
 			bool mesh_outputs_bounds_check = false;
+			bool aggressive_nonuniform = false;
 		} quirks;
 	} options;
 
