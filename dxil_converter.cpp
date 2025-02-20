@@ -8120,7 +8120,7 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		case ShaderQuirk::AggressiveNonUniform:
 			// Starfield workaround. Some shaders should have used nonuniform,
 			// but the general pattern to detect it is quite complicated.
-			options.quirks.aggressive_nonuniform = false;
+			options.quirks.aggressive_nonuniform = true;
 			break;
 
 		default:
