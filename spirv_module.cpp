@@ -873,7 +873,7 @@ spv::Id SPIRVModule::Impl::build_wave_read_first_lane_masked(SPIRVModule &module
 	ballot->addIdOperand(not_inst->getResultId());
 
 	auto lsb = std::make_unique<spv::Instruction>(
-		builder.getUniqueId(), type_id, spv::OpGroupNonUniformBallotFindLSB);
+		builder.getUniqueId(), builder.makeUintType(32), spv::OpGroupNonUniformBallotFindLSB);
 	lsb->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
 	lsb->addIdOperand(ballot->getResultId());
 
