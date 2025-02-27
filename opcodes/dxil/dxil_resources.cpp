@@ -1812,6 +1812,20 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 
 	spv::Id loaded_id;
 
+	if (impl.options.instruction_instrumentation.enabled &&
+	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume &&
+	    !llvm::isa<llvm::ConstantInt>(instruction->getOperand(2)))
+	{
+		auto *is_in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+		is_in_bounds->add_id(index_id);
+		is_in_bounds->add_id(builder.makeUintConstant(ptr_meta.size / alignment));
+		impl.add(is_in_bounds);
+
+		auto *assert_that = impl.allocate(spv::OpAssumeTrueKHR);
+		assert_that->add_id(is_in_bounds->id);
+		impl.add(assert_that);
+	}
+
 	if (impl.options.robust_physical_cbv && !llvm::isa<llvm::ConstantInt>(instruction->getOperand(2)))
 	{
 		spv::Id call_id = impl.spirv_module.get_robust_physical_cbv_load_call_id(result_type_id, ptr_type_id, alignment);
@@ -2068,7 +2082,11 @@ bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetEle
 
 	spv::Id array_index_id = impl.get_id_for_value(instruction->getOperand(2));
 
-	if (meta.storage == spv::StorageClassPhysicalStorageBuffer && impl.options.quirks.robust_physical_cbv_forwarding)
+	bool expect_assume = impl.options.instruction_instrumentation.enabled &&
+	                     impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume;
+
+	if (meta.storage == spv::StorageClassPhysicalStorageBuffer &&
+	    (impl.options.quirks.robust_physical_cbv_forwarding || expect_assume))
 	{
 		// Clamp the index to the range of the private array.
 		// Otherwise we can rely on robustness to clean things up, but here we risk page faults.
@@ -2079,18 +2097,33 @@ bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetEle
 			{
 				unsigned num_elements = array_type->getArrayNumElements();
 
-				if (!impl.glsl_std450_ext)
-					impl.glsl_std450_ext = builder.import("GLSL.std.450");
+				if (expect_assume)
+				{
+					auto *is_in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+					is_in_bounds->add_id(array_index_id);
+					is_in_bounds->add_id(builder.makeUintConstant(num_elements));
+					impl.add(is_in_bounds);
 
-				auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeIntType(32));
-				clamp_op->add_id(impl.glsl_std450_ext);
-				clamp_op->add_literal(GLSLstd450SClamp);
-				clamp_op->add_id(array_index_id);
-				clamp_op->add_id(builder.makeIntConstant(0));
-				clamp_op->add_id(builder.makeIntConstant(int(num_elements) - 1));
-				impl.add(clamp_op);
+					auto *assert_that = impl.allocate(spv::OpAssumeTrueKHR);
+					assert_that->add_id(is_in_bounds->id);
+					impl.add(assert_that);
+				}
 
-				array_index_id = clamp_op->id;
+				if (impl.options.quirks.robust_physical_cbv_forwarding)
+				{
+					if (!impl.glsl_std450_ext)
+						impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+					auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeIntType(32));
+					clamp_op->add_id(impl.glsl_std450_ext);
+					clamp_op->add_literal(GLSLstd450SClamp);
+					clamp_op->add_id(array_index_id);
+					clamp_op->add_id(builder.makeIntConstant(0));
+					clamp_op->add_id(builder.makeIntConstant(int(num_elements) - 1));
+					impl.add(clamp_op);
+
+					array_index_id = clamp_op->id;
+				}
 			}
 		}
 	}

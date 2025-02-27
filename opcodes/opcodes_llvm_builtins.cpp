@@ -1190,9 +1190,36 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 		return false;
 	}
 
+	bool expect_assume = impl.options.instruction_instrumentation.enabled &&
+	                     impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume;
+
 	unsigned num_operands = instruction->getNumOperands();
 	for (uint32_t i = 2; i < num_operands; i++)
 	{
+		// Be a bit careful with the typing since we might have some weird bitcast pointer types flying around.
+		if (i == 2 && expect_assume && !llvm::isa<llvm::Constant>(instruction->getOperand(2)))
+		{
+			if (auto *aggregate_type = llvm::dyn_cast<llvm::PointerType>(instruction->getOperand(0)->getType()))
+			{
+				if (auto *array_type = llvm::dyn_cast<llvm::ArrayType>(aggregate_type->getPointerElementType()))
+				{
+					auto address_space = DXIL::AddressSpace(aggregate_type->getPointerAddressSpace());
+					if (address_space == DXIL::AddressSpace::GroupShared || address_space == DXIL::AddressSpace::Thread)
+					{
+						unsigned num_elements = array_type->getArrayNumElements();
+						auto *is_in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+						is_in_bounds->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+						is_in_bounds->add_id(builder.makeUintConstant(num_elements));
+						impl.add(is_in_bounds);
+
+						auto *assert_that = impl.allocate(spv::OpAssumeTrueKHR);
+						assert_that->add_id(is_in_bounds->id);
+						impl.add(assert_that);
+					}
+				}
+			}
+		}
+
 		if (i == 2 && elementptr_shift != 0)
 		{
 			spv::Id index = build_index_divider(impl, instruction->getOperand(2), elementptr_shift, 1);
