@@ -858,9 +858,11 @@ spv::Id SPIRVModule::Impl::build_wave_read_first_lane_masked(SPIRVModule &module
 
 	builder.setBuildPoint(entry);
 
-	spv::Id uvec4_type = builder.makeVectorType(builder.makeUintType(32), 4);
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uvec4_type = builder.makeVectorType(uint_type, 4);
 
 	// Shuffle path is more robust since it will avoid undefs.
+	// Also matches codegen on AMD.
 	// The branchy style where helpers receive undefs confuses NV it seems ...
 
 	auto not_inst = std::make_unique<spv::Instruction>(
@@ -882,12 +884,31 @@ spv::Id SPIRVModule::Impl::build_wave_read_first_lane_masked(SPIRVModule &module
 	shuffle->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
 	shuffle->addIdOperand(func->getParamId(0));
 	shuffle->addIdOperand(lsb->getResultId());
-	spv::Id ret_id = shuffle->getResultId();
+
+	// Undocumented requirement, if all lanes are helpers, 0 is returned.
+	auto ballot_real_lane_count = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), uint_type, spv::OpGroupNonUniformBallotBitCount);
+	ballot_real_lane_count->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+	ballot_real_lane_count->addImmediateOperand(spv::GroupOperationReduce);
+	ballot_real_lane_count->addIdOperand(ballot->getResultId());
+	auto ballot_has_real_lane = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), bool_type, spv::OpINotEqual);
+	ballot_has_real_lane->addIdOperand(ballot_real_lane_count->getResultId());
+	ballot_has_real_lane->addIdOperand(builder.makeUintConstant(0));
+
+	auto select_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), type_id, spv::OpSelect);
+	select_op->addIdOperand(ballot_has_real_lane->getResultId());
+	select_op->addIdOperand(shuffle->getResultId());
+	select_op->addIdOperand(builder.makeNullConstant(type_id));
+	spv::Id ret_id = select_op->getResultId();
 
 	add_instruction(entry, std::move(not_inst));
 	add_instruction(entry, std::move(ballot));
 	add_instruction(entry, std::move(lsb));
 	add_instruction(entry, std::move(shuffle));
+	add_instruction(entry, std::move(ballot_real_lane_count));
+	add_instruction(entry, std::move(ballot_has_real_lane));
+	add_instruction(entry, std::move(select_op));
 	builder.makeReturn(false, ret_id);
 
 	builder.setBuildPoint(current_build_point);
