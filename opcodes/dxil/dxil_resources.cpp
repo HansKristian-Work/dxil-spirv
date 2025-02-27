@@ -574,36 +574,35 @@ static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id o
 	op->add_literal(0);
 	impl.add(op);
 
-	if (impl.options.descriptor_heap_robustness)
-	{
-		if (!impl.glsl_std450_ext)
-			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+    if (impl.options.instruction_instrumentation.enabled &&
+            impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+    {
+        // If we can just assert instead, go for that.
+        auto *less_than = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+        less_than->add_id(offset_id);
+        less_than->add_id(op->id);
+        impl.add(less_than);
 
-		auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
-		clamp_op->add_id(impl.glsl_std450_ext);
-		clamp_op->add_literal(GLSLstd450UMin);
-		clamp_op->add_id(offset_id);
-		clamp_op->add_id(op->id);
-		impl.add(clamp_op);
-		return clamp_op->id;
-	}
-	else if (impl.options.instruction_instrumentation.enabled &&
-	         impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
-	{
-		// If we can just assert instead, go for that.
-		auto *less_than = impl.allocate(spv::OpULessThan, builder.makeBoolType());
-		less_than->add_id(offset_id);
-		less_than->add_id(op->id);
-		impl.add(less_than);
+        auto *assert_in_bounds = impl.allocate(spv::OpAssumeTrueKHR);
+        assert_in_bounds->add_id(less_than->id);
+        impl.add(assert_in_bounds);
+    }
 
-		auto *assert_in_bounds = impl.allocate(spv::OpAssumeTrueKHR);
-		assert_in_bounds->add_id(less_than->id);
-		impl.add(assert_in_bounds);
+    if (impl.options.descriptor_heap_robustness)
+    {
+        if (!impl.glsl_std450_ext)
+            impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
-		return offset_id;
-	}
-	else
-		return 0;
+        auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+        clamp_op->add_id(impl.glsl_std450_ext);
+        clamp_op->add_literal(GLSLstd450UMin);
+        clamp_op->add_id(offset_id);
+        clamp_op->add_id(op->id);
+        impl.add(clamp_op);
+        return clamp_op->id;
+    }
+
+    return offset_id;
 }
 
 static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
