@@ -2432,6 +2432,7 @@ void SPIRVModule::Impl::emit_instrumentation_hash(spv::Function *func, spv::Id v
 		atomic_or = std::make_unique<spv::Instruction>(
 		    builder.getUniqueId(), u32_type, spv::OpAtomicOr);
 		auto barrier_op = std::make_unique<spv::Instruction>(spv::OpMemoryBarrier);
+		auto barrier_op2 = std::make_unique<spv::Instruction>(spv::OpMemoryBarrier);
 
 		composite->addIdOperand(builder.makeUintConstant(uint32_t(shader_hash >> 0)));
 		composite->addIdOperand(builder.makeUintConstant(uint32_t(shader_hash >> 32)));
@@ -2451,6 +2452,9 @@ void SPIRVModule::Impl::emit_instrumentation_hash(spv::Function *func, spv::Id v
 		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
 		barrier_op->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsUniformMemoryMask |
 		                                                  spv::MemorySemanticsAcquireReleaseMask));
+		barrier_op2->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		barrier_op2->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsUniformMemoryMask |
+		                                                   spv::MemorySemanticsAcquireReleaseMask));
 
 		atomic_or->addIdOperand(control_chain_id);
 		atomic_or->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
@@ -2463,6 +2467,8 @@ void SPIRVModule::Impl::emit_instrumentation_hash(spv::Function *func, spv::Id v
 		write_payload_path->addInstruction(std::move(store_op));
 		write_payload_path->addInstruction(std::move(barrier_op));
 		write_payload_path->addInstruction(std::move(atomic_or));
+		// In case we have breadcrumbs, need to flush out this atomic to memory before we fault.
+		write_payload_path->addInstruction(std::move(barrier_op2));
 
 		builder.createBranch(merge_payload_path);
 	}
