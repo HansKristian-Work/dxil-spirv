@@ -1826,7 +1826,7 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 		impl.add(assert_that);
 	}
 
-	if (impl.options.robust_physical_cbv && !llvm::isa<llvm::ConstantInt>(instruction->getOperand(2)))
+	if (impl.options.quirks.robust_physical_cbv && !llvm::isa<llvm::ConstantInt>(instruction->getOperand(2)))
 	{
 		spv::Id call_id = impl.spirv_module.get_robust_physical_cbv_load_call_id(result_type_id, ptr_type_id, alignment);
 		auto *call_op = impl.allocate(spv::OpFunctionCall, result_type_id);

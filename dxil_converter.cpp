@@ -7947,7 +7947,8 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 
 	case Option::RobustPhysicalCBVLoad:
-		options.robust_physical_cbv = static_cast<const OptionRobustPhysicalCBVLoad &>(cap).enabled;
+		// Obsolete option, use normal quirks instead.
+		options.quirks.robust_physical_cbv = static_cast<const OptionRobustPhysicalCBVLoad &>(cap).enabled;
 		break;
 
 	case Option::ArithmeticRelaxedPrecision:
@@ -8121,6 +8122,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			// Starfield workaround. Some shaders should have used nonuniform,
 			// but the general pattern to detect it is quite complicated.
 			options.quirks.aggressive_nonuniform = true;
+			break;
+
+		case ShaderQuirk::RobustPhysicalCBV:
+			options.quirks.robust_physical_cbv = true;
 			break;
 
 		default:

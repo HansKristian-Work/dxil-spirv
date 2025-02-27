@@ -687,7 +687,6 @@ struct Converter::Impl
 		bool scalar_block_layout = false;
 		bool supports_per_component_robustness = false;
 		bool khr_barycentrics_enabled = false;
-		bool robust_physical_cbv = false;
 		bool arithmetic_relaxed_precision = false;
 		bool force_wave_size_enable = false;
 		bool supports_float16_denorm_preserve = false;
@@ -739,6 +738,7 @@ struct Converter::Impl
 			bool force_device_memory_barriers_thread_group_coherence = false;
 			bool assume_broken_sub_8x8_cube_mips = false;
 			bool robust_physical_cbv_forwarding = false;
+			bool robust_physical_cbv = false;
 			bool mesh_outputs_bounds_check = false;
 			bool aggressive_nonuniform = false;
 		} quirks;

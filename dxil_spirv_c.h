@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 45
+#define DXIL_SPV_API_VERSION_MINOR 46
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -225,6 +225,7 @@ typedef enum dxil_spv_shader_quirk
 	DXIL_SPV_SHADER_QUIRK_ROBUST_PHYSICAL_CBV_FORWARDING = 3,
 	DXIL_SPV_SHADER_QUIRK_MESH_OUTPUTS_ROBUSTNESS = 4,
 	DXIL_SPV_SHADER_QUIRK_AGGRESSIVE_NONUNIFORM = 5,
+	DXIL_SPV_SHADER_QUIRK_ROBUST_PHYSICAL_CBV = 6,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 
@@ -603,6 +604,7 @@ typedef struct dxil_spv_option_barycentric_khr
 	dxil_spv_bool supported;
 } dxil_spv_option_barycentric_khr;
 
+/* Obsolete. Use the shader quirk version of this instead. */
 typedef struct dxil_spv_option_robust_physical_cbv_load
 {
 	dxil_spv_option_base base;

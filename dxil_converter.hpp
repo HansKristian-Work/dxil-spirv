@@ -738,7 +738,8 @@ enum class ShaderQuirk : uint32_t
 	AssumeBrokenSub8x8CubeMips,
 	RobustPhysicalCBVForwarding,
 	MeshOutputRobustness,
-	AggressiveNonUniform
+	AggressiveNonUniform,
+	RobustPhysicalCBV
 };
 
 struct OptionShaderQuirk : OptionBase
