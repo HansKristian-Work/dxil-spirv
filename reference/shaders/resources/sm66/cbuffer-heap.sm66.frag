@@ -15,7 +15,7 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    uvec4 _40 = floatBitsToUint(_17[INDEX + 2u]._m0[0u]);
+    uvec4 _40 = floatBitsToUint(_17[nonuniformEXT(INDEX + 2u)]._m0[0u]);
     vec4 _45 = texelFetch(_9[INDEX + 1u], ivec3(uvec3(_40.xyz)), int(_40.w));
     SV_Target.x = _45.x;
     SV_Target.y = _45.y;
@@ -33,6 +33,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %19 %22 %24
@@ -53,6 +54,8 @@ OpDecorate %19 Flat
 OpDecorate %19 Location 0
 OpDecorate %22 Location 1
 OpDecorate %24 Location 0
+OpDecorate %34 NonUniform
+OpDecorate %37 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
