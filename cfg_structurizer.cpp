@@ -4268,7 +4268,7 @@ void CFGStructurizer::hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *
 	}
 }
 
-bool CFGStructurizer::find_switch_blocks(unsigned pass)
+CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsigned pass)
 {
 	bool modified_cfg = false;
 	for (auto index = forward_post_visit_order.size(); index; index--)
@@ -4347,6 +4347,23 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 					    frontier_node->forward_post_visit_order > inner_merge->forward_post_visit_order)
 					{
 						inner_merge = frontier_node;
+					}
+				}
+
+				if (merge != inner_merge && inner_merge != natural_merge && node->dominates(merge))
+				{
+					// If node dominates the merge, it's important that node remains a header block.
+					// If we have an inner merge, we need to transpose the control flow so that
+					// we avoid the inner merge altogether.
+					Vector<CFGNode *> constructs = { natural_merge };
+					for (auto *pred : inner_merge->pred)
+						if (!query_reachability(*pred, *natural_merge) && !query_reachability(*natural_merge, *pred))
+							constructs.push_back(pred);
+
+					if (constructs.size() >= 2)
+					{
+						collect_and_dispatch_control_flow(node, merge, constructs, false);
+						return SwitchProgressMode::IterativeModify;
 					}
 				}
 
@@ -4541,7 +4558,7 @@ bool CFGStructurizer::find_switch_blocks(unsigned pass)
 		}
 	}
 
-	return modified_cfg;
+	return modified_cfg ? SwitchProgressMode::SimpleModify : SwitchProgressMode::Done;
 }
 
 bool CFGStructurizer::merge_candidate_is_on_breaking_path(const CFGNode *node) const
@@ -6628,10 +6645,19 @@ void CFGStructurizer::split_merge_blocks()
 
 bool CFGStructurizer::structurize(unsigned pass)
 {
-	if (find_switch_blocks(pass))
+	auto switch_mode = process_switch_blocks(pass);
+	while (switch_mode == SwitchProgressMode::IterativeModify)
+	{
+		// For complex rewrites, we damage the CFG, so need to start over every iteration.
+		recompute_cfg();
+		switch_mode = process_switch_blocks(pass);
+	}
+
+	// After a trivial modify, we must be able to complete the process in one iteration.
+	if (switch_mode == SwitchProgressMode::SimpleModify)
 	{
 		recompute_cfg();
-		if (find_switch_blocks(pass))
+		if (process_switch_blocks(pass) != SwitchProgressMode::Done)
 		{
 			LOGE("Fatal, detected infinite loop.\n");
 			abort();

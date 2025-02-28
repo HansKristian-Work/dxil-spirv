@@ -124,7 +124,10 @@ private:
 	void find_selection_merges(unsigned pass);
 	bool header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge) const;
 	void fixup_broken_selection_merges(unsigned pass);
-	bool find_switch_blocks(unsigned pass);
+
+	enum class SwitchProgressMode { Done, SimpleModify, IterativeModify };
+	SwitchProgressMode process_switch_blocks(unsigned pass);
+
 	void hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *merge, CFGNode *frontier);
 	Operation *build_switch_case_equal_check(const CFGNode *header, CFGNode *insert_node,
 	                                         const Terminator::Case &case_label);
