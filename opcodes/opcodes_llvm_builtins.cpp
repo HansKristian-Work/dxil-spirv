@@ -1326,7 +1326,12 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 		}
 
 		if (op->op == spv::PseudoOpMaskedLoad)
+		{
+			// OpSampledImage must be consumed in same block.
+			// We'll split blocks here, so just recreate the combined sampler image if needed.
+			impl.combined_image_sampler_cache.clear();
 			op->add_id(robust_itr->second);
+		}
 
 		impl.add(op);
 	}
@@ -1370,7 +1375,12 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 	}
 
 	if (op->op == spv::PseudoOpMaskedStore)
+	{
+		// OpSampledImage must be consumed in same block.
+		// We'll split blocks here, so just recreate the combined sampler image if needed.
+		impl.combined_image_sampler_cache.clear();
 		op->add_id(robust_itr->second);
+	}
 
 	impl.add(op);
 	return true;

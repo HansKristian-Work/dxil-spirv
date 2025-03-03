@@ -73,6 +73,10 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 		auto *return_op = impl.allocate(spv::PseudoOpReturnCond);
 		return_op->add_id(should_exit->id);
 		impl.add(return_op);
+
+		// OpSampledImage must be consumed in same block.
+		// We'll split blocks here, so just recreate the combined sampler image if needed.
+		impl.combined_image_sampler_cache.clear();
 	}
 
 	if (impl.options.instruction_instrumentation.enabled &&
