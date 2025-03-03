@@ -28,10 +28,46 @@ void main()
     _37[2u] = _12._m0[3u].z;
     _38[2u] = _12._m0[3u].w;
     uint _71 = A % 6u;
-    SV_Target.x = _35[_71] * P.x;
-    SV_Target.y = _36[_71] * P.y;
-    SV_Target.z = _37[_71] * P.z;
-    SV_Target.w = _38[_71] * P.w;
+    float _81;
+    if (_71 < 6u)
+    {
+        _81 = _35[_71];
+    }
+    else
+    {
+        _81 = 0.0;
+    }
+    float _82;
+    if (_71 < 6u)
+    {
+        _82 = _36[_71];
+    }
+    else
+    {
+        _82 = 0.0;
+    }
+    float _83;
+    if (_71 < 6u)
+    {
+        _83 = _37[_71];
+    }
+    else
+    {
+        _83 = 0.0;
+    }
+    float _84;
+    if (_71 < 6u)
+    {
+        _84 = _38[_71];
+    }
+    else
+    {
+        _84 = 0.0;
+    }
+    SV_Target.x = _81 * P.x;
+    SV_Target.y = _82 * P.y;
+    SV_Target.z = _83 * P.z;
+    SV_Target.w = _84 * P.w;
 }
 
 
@@ -40,7 +76,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 91
+; Bound: 112
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -85,15 +121,20 @@ OpDecorate %18 Location 0
 %34 = OpTypePointer Function %33
 %39 = OpTypePointer Uniform %8
 %46 = OpTypePointer Function %7
-%84 = OpTypePointer Output %7
+%73 = OpTypeBool
+%89 = OpTypePointer Output %7
+%98 = OpConstantNull %7
+%102 = OpConstantNull %7
+%106 = OpConstantNull %7
+%110 = OpConstantNull %7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %35 = OpVariable %34 Function
 %36 = OpVariable %34 Function
 %37 = OpVariable %34 Function
 %38 = OpVariable %34 Function
-OpBranch %89
-%89 = OpLabel
+OpBranch %94
+%94 = OpLabel
 %20 = OpAccessChain %19 %16 %21
 %22 = OpLoad %7 %20
 %23 = OpAccessChain %19 %16 %24
@@ -146,26 +187,54 @@ OpStore %68 %64
 OpStore %69 %65
 OpStore %70 %66
 %71 = OpUMod %5 %32 %6
+%74 = OpULessThan %73 %71 %6
 %72 = OpAccessChain %46 %35 %71
-%73 = OpAccessChain %46 %36 %71
-%74 = OpAccessChain %46 %37 %71
-%75 = OpAccessChain %46 %38 %71
-%76 = OpLoad %7 %72
-%77 = OpLoad %7 %73
-%78 = OpLoad %7 %74
-%79 = OpLoad %7 %75
-%80 = OpFMul %7 %76 %22
-%81 = OpFMul %7 %77 %25
-%82 = OpFMul %7 %78 %28
-%83 = OpFMul %7 %79 %31
-%85 = OpAccessChain %84 %18 %21
-OpStore %85 %80
-%86 = OpAccessChain %84 %18 %24
-OpStore %86 %81
-%87 = OpAccessChain %84 %18 %27
-OpStore %87 %82
-%88 = OpAccessChain %84 %18 %30
-OpStore %88 %83
+%76 = OpULessThan %73 %71 %6
+%75 = OpAccessChain %46 %36 %71
+%78 = OpULessThan %73 %71 %6
+%77 = OpAccessChain %46 %37 %71
+%80 = OpULessThan %73 %71 %6
+%79 = OpAccessChain %46 %38 %71
+OpSelectionMerge %96 None
+OpBranchConditional %74 %95 %96
+%95 = OpLabel
+%97 = OpLoad %7 %72
+OpBranch %96
+%96 = OpLabel
+%81 = OpPhi %7 %97 %95 %98 %94
+OpSelectionMerge %100 None
+OpBranchConditional %76 %99 %100
+%99 = OpLabel
+%101 = OpLoad %7 %75
+OpBranch %100
+%100 = OpLabel
+%82 = OpPhi %7 %101 %99 %102 %96
+OpSelectionMerge %104 None
+OpBranchConditional %78 %103 %104
+%103 = OpLabel
+%105 = OpLoad %7 %77
+OpBranch %104
+%104 = OpLabel
+%83 = OpPhi %7 %105 %103 %106 %100
+OpSelectionMerge %108 None
+OpBranchConditional %80 %107 %108
+%107 = OpLabel
+%109 = OpLoad %7 %79
+OpBranch %108
+%108 = OpLabel
+%84 = OpPhi %7 %109 %107 %110 %104
+%85 = OpFMul %7 %81 %22
+%86 = OpFMul %7 %82 %25
+%87 = OpFMul %7 %83 %28
+%88 = OpFMul %7 %84 %31
+%90 = OpAccessChain %89 %18 %21
+OpStore %90 %85
+%91 = OpAccessChain %89 %18 %24
+OpStore %91 %86
+%92 = OpAccessChain %89 %18 %27
+OpStore %92 %87
+%93 = OpAccessChain %89 %18 %30
+OpStore %93 %88
 OpReturn
 OpFunctionEnd
 #endif

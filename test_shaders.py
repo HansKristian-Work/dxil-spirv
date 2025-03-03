@@ -127,7 +127,7 @@ def cross_compile_dxil(shader, args, paths, is_asm):
     if '.bc.' in shader:
         hlsl_cmd += ['--raw-llvm']
 
-    hlsl_cmd += ['--allow-arithmetic-relaxed-precision', '--subgroup-size', '32', '64']
+    hlsl_cmd += ['--allow-arithmetic-relaxed-precision', '--subgroup-size', '32', '64', '--extended-robustness']
 
     if '.root-constant.' in shader:
         hlsl_cmd.append('--root-constant')

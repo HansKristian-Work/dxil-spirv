@@ -3085,30 +3085,47 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		// since a selection merge is no longer required.
 		if (node->ir.merge_info.merge_type == MergeType::Loop &&
 		    node->ir.terminator.type == Terminator::Type::Condition &&
-		    rewrite_phi_incoming_to == 0 &&
 		    node->ir.terminator.true_block != node->ir.merge_info.merge_block &&
 		    node->ir.terminator.true_block != node->ir.merge_info.continue_block &&
 		    node->ir.terminator.false_block != node->ir.merge_info.merge_block &&
 		    node->ir.terminator.false_block != node->ir.merge_info.continue_block)
 		{
-			auto *fake_selection_bb = new spv::Block(builder.getUniqueId(), *active_function);
-			auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
-			active_function->addBlock(fake_selection_bb);
-			active_function->addBlock(unreachable_bb);
-			builder.createBranch(fake_selection_bb);
-			builder.setBuildPoint(fake_selection_bb);
-			builder.createSelectionMerge(unreachable_bb, 0);
-			builder.createConditionalBranch(ir.terminator.conditional_id, true_block, false_block);
-			builder.setBuildPoint(unreachable_bb);
-			builder.createUnreachable();
+			if (rewrite_phi_incoming_to == 0)
+			{
+				auto *fake_selection_bb = new spv::Block(builder.getUniqueId(), *active_function);
+				auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
+				active_function->addBlock(fake_selection_bb);
+				active_function->addBlock(unreachable_bb);
+				builder.createBranch(fake_selection_bb);
+				builder.setBuildPoint(fake_selection_bb);
+				builder.createSelectionMerge(unreachable_bb, 0);
+				builder.createConditionalBranch(ir.terminator.conditional_id, true_block, false_block);
+				builder.setBuildPoint(unreachable_bb);
+				builder.createUnreachable();
 
-			// For purposes of handling PHI later, the incoming block is this ID, i.e. the selection construct.
-			// Any branches that target the loop header have already been resolved since we emit SPIR-V blocks
-			// in traversal order.
-			// We don't need to consider single loop block constructs since those will never hit this
-			// code path. In that case, true or false block would have targeted continue block and
-			// avoided this workaround in the first place.
-			node->id = fake_selection_bb->getId();
+				// For purposes of handling PHI later, the incoming block is this ID, i.e. the selection construct.
+				// Any branches that target the loop header have already been resolved since we emit SPIR-V blocks
+				// in traversal order.
+				// We don't need to consider single loop block constructs since those will never hit this
+				// code path. In that case, true or false block would have targeted continue block and
+				// avoided this workaround in the first place.
+				node->id = fake_selection_bb->getId();
+			}
+			else
+			{
+				// If we added blocks through masked ops, we have become a selection
+				// construction instead of a loop, and we have to add a merge target to make this valid.
+				// If we are directly branching to continue or merge target, we can omit a merge,
+				// since that case does not need a merge.
+				auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
+				active_function->addBlock(unreachable_bb);
+				builder.setBuildPoint(unreachable_bb);
+				builder.createUnreachable();
+				builder.setBuildPoint(bb);
+				builder.createSelectionMerge(unreachable_bb, 0);
+				builder.createConditionalBranch(ir.terminator.conditional_id,
+				                                true_block, false_block);
+			}
 		}
 		else
 		{

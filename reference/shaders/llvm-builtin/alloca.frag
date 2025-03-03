@@ -10,7 +10,11 @@ void main()
     _14[1u] = 2u;
     _14[2u] = 3u;
     _14[3u] = 4u;
-    _14[TEXCOORD & 3u] = TEXCOORD;
+    uint _24 = TEXCOORD & 3u;
+    if (_24 < 4u)
+    {
+        _14[_24] = TEXCOORD;
+    }
     SV_Target = ((_14[1u] + _14[0u]) + _14[2u]) + _14[3u];
 }
 
@@ -20,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 35
+; Bound: 39
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -47,11 +51,12 @@ OpDecorate %9 Location 0
 %18 = OpConstant %5 1
 %20 = OpConstant %5 2
 %22 = OpConstant %5 3
+%26 = OpTypeBool
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %14 = OpVariable %13 Function
-OpBranch %33
-%33 = OpLabel
+OpBranch %35
+%35 = OpLabel
 %10 = OpLoad %5 %7
 %16 = OpInBoundsAccessChain %15 %14 %17
 OpStore %16 %18
@@ -62,16 +67,22 @@ OpStore %21 %22
 %23 = OpInBoundsAccessChain %15 %14 %22
 OpStore %23 %11
 %24 = OpBitwiseAnd %5 %10 %22
+%27 = OpULessThan %26 %24 %11
 %25 = OpInBoundsAccessChain %15 %14 %24
+OpSelectionMerge %37 None
+OpBranchConditional %27 %36 %37
+%36 = OpLabel
 OpStore %25 %10
-%26 = OpLoad %5 %16
-%27 = OpLoad %5 %19
-%28 = OpIAdd %5 %27 %26
-%29 = OpLoad %5 %21
-%30 = OpIAdd %5 %28 %29
-%31 = OpLoad %5 %23
+OpBranch %37
+%37 = OpLabel
+%28 = OpLoad %5 %16
+%29 = OpLoad %5 %19
+%30 = OpIAdd %5 %29 %28
+%31 = OpLoad %5 %21
 %32 = OpIAdd %5 %30 %31
-OpStore %9 %32
+%33 = OpLoad %5 %23
+%34 = OpIAdd %5 %32 %33
+OpStore %9 %34
 OpReturn
 OpFunctionEnd
 #endif

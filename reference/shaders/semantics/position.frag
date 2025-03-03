@@ -10,7 +10,16 @@ void main()
     _33[1u] = gl_FragCoord.y;
     _33[2u] = gl_FragCoord.z;
     _33[3u] = 1.0 / gl_FragCoord.w;
-    SV_Target = _33[INDEX];
+    float _42;
+    if (INDEX < 4u)
+    {
+        _42 = _33[INDEX];
+    }
+    else
+    {
+        _42 = 0.0;
+    }
+    SV_Target = _42;
 }
 
 
@@ -19,7 +28,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 43
+; Bound: 49
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -54,11 +63,13 @@ OpDecorate %13 Location 0
 %31 = OpTypeArray %5 %30
 %32 = OpTypePointer Function %31
 %34 = OpTypePointer Function %5
+%40 = OpTypeBool
+%47 = OpConstantNull %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %33 = OpVariable %32 Function
-OpBranch %41
-%41 = OpLabel
+OpBranch %43
+%43 = OpLabel
 %14 = OpLoad %9 %11
 %16 = OpAccessChain %15 %8 %17
 %18 = OpLoad %5 %16
@@ -77,9 +88,16 @@ OpStore %36 %21
 OpStore %37 %24
 %38 = OpInBoundsAccessChain %34 %33 %26
 OpStore %38 %28
+%41 = OpULessThan %40 %14 %30
 %39 = OpAccessChain %34 %33 %14
-%40 = OpLoad %5 %39
-OpStore %13 %40
+OpSelectionMerge %45 None
+OpBranchConditional %41 %44 %45
+%44 = OpLabel
+%46 = OpLoad %5 %39
+OpBranch %45
+%45 = OpLabel
+%42 = OpPhi %5 %46 %44 %47 %43
+OpStore %13 %42
 OpReturn
 OpFunctionEnd
 #endif

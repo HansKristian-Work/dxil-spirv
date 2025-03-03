@@ -38,11 +38,18 @@ void main()
     SPIRV_Cross_beginInvocationInterlock();
     uint _67;
     _67 = 0u;
+    float _83;
+    bool _86;
     for (;;)
     {
         vec4 _69 = imageLoad(_8, ivec2(uvec2(_29, _30)));
         imageStore(_8, ivec2(uvec2(_29, _30)), vec4(_69.x + 1.0, _69.y + 2.0, _69.z + 3.0, _69.w + 4.0));
-        _28[_67] = imageLoad(_8, ivec2(uvec2(_29, _30))).y;
+        _83 = imageLoad(_8, ivec2(uvec2(_29, _30))).y;
+        _86 = _67 < 8u;
+        if (_86)
+        {
+            _28[_67] = _83;
+        }
         uint _68 = _67 + 1u;
         if (_68 == 4u)
         {
@@ -51,10 +58,21 @@ void main()
         else
         {
             _67 = _68;
+            continue;
         }
     }
     SPIRV_Cross_endInvocationInterlock();
-    SV_Target = _28[uint((1.0 / gl_FragCoord.w) * 7.0)];
+    uint _92 = uint((1.0 / gl_FragCoord.w) * 7.0);
+    float _95;
+    if (_92 < 8u)
+    {
+        _95 = _28[_92];
+    }
+    else
+    {
+        _95 = 0.0;
+    }
+    SV_Target = _95;
 }
 
 
@@ -63,7 +81,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 98
+; Bound: 107
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -120,11 +138,12 @@ OpDecorate %14 Location 0
 %53 = OpConstant %5 7
 %55 = OpTypeVector %19 2
 %85 = OpTypeBool
+%105 = OpConstantNull %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %28 = OpVariable %27 Function
-OpBranch %94
-%94 = OpLabel
+OpBranch %96
+%96 = OpLabel
 %15 = OpLoad %6 %9
 %16 = OpLoad %6 %8
 %18 = OpAccessChain %17 %12 %20
@@ -163,9 +182,9 @@ OpStore %51 %53
 %66 = OpCompositeConstruct %10 %61 %62 %63 %64
 OpImageWrite %15 %65 %66
 OpBeginInvocationInterlockEXT
-OpBranch %95
-%95 = OpLabel
-%67 = OpPhi %19 %20 %94 %68 %95
+OpBranch %97
+%97 = OpLabel
+%67 = OpPhi %19 %20 %96 %68 %101
 %70 = OpCompositeConstruct %55 %29 %30
 %69 = OpImageRead %10 %16 %70 None
 %71 = OpCompositeExtract %5 %69 0
@@ -182,22 +201,37 @@ OpImageWrite %16 %79 %80
 %82 = OpCompositeConstruct %55 %29 %30
 %81 = OpImageRead %10 %16 %82 None
 %83 = OpCompositeExtract %5 %81 1
+%86 = OpULessThan %85 %67 %25
 %84 = OpInBoundsAccessChain %31 %28 %67
+OpLoopMerge %98 %99 None
+OpBranch %99
+%99 = OpLabel
+OpSelectionMerge %101 None
+OpBranchConditional %86 %100 %101
+%100 = OpLabel
 OpStore %84 %83
+OpBranch %101
+%101 = OpLabel
 %68 = OpIAdd %19 %67 %23
-%86 = OpIEqual %85 %68 %43
-OpLoopMerge %96 %95 None
-OpBranchConditional %86 %96 %95
-%96 = OpLabel
+%87 = OpIEqual %85 %68 %43
+OpBranchConditional %87 %98 %97
+%98 = OpLabel
 OpEndInvocationInterlockEXT
-%87 = OpAccessChain %17 %12 %40
-%88 = OpLoad %5 %87
-%89 = OpFDiv %5 %35 %88
-%90 = OpFMul %5 %89 %53
-%91 = OpConvertFToU %19 %90
-%92 = OpInBoundsAccessChain %31 %28 %91
-%93 = OpLoad %5 %92
-OpStore %14 %93
+%88 = OpAccessChain %17 %12 %40
+%89 = OpLoad %5 %88
+%90 = OpFDiv %5 %35 %89
+%91 = OpFMul %5 %90 %53
+%92 = OpConvertFToU %19 %91
+%94 = OpULessThan %85 %92 %25
+%93 = OpInBoundsAccessChain %31 %28 %92
+OpSelectionMerge %103 None
+OpBranchConditional %94 %102 %103
+%102 = OpLabel
+%104 = OpLoad %5 %93
+OpBranch %103
+%103 = OpLabel
+%95 = OpPhi %5 %104 %102 %105 %98
+OpStore %14 %95
 OpReturn
 OpFunctionEnd
 #endif
