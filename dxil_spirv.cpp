@@ -174,7 +174,8 @@ static void print_help()
 	     "\t[--no-compute-shader-derivatives]\n"
 	     "\t[--quad-control-maximal-reconvergence]\n"
 	     "\t[--force-maximal-reconvergence]\n"
-	     "\t[--raw-access-chains-nv]\n");
+	     "\t[--raw-access-chains-nv]\n"
+	     "\t[--extended-robustness]\n");
 }
 
 struct Arguments
@@ -219,6 +220,7 @@ struct Arguments
 	bool quad_control_maximal_reconvergence = false;
 	bool force_maximal_reconvergence = false;
 	bool raw_access_chains_nv = false;
+	bool extended_robustness = false;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -813,6 +815,9 @@ int main(int argc, char **argv)
 	cbs.add("--raw-access-chains-nv", [&](CLIParser &) {
 		args.raw_access_chains_nv = true;
 	});
+	cbs.add("--extended-robustness", [&](CLIParser &) {
+		args.extended_robustness = true;
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1133,6 +1138,15 @@ int main(int argc, char **argv)
 		const dxil_spv_option_raw_access_chains_nv chain = {
 			{ DXIL_SPV_OPTION_RAW_ACCESS_CHAINS_NV }, DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &chain.base);
+	}
+
+	if (args.extended_robustness)
+	{
+		dxil_spv_option_extended_robustness robust = {
+			{ DXIL_SPV_OPTION_EXTENDED_ROBUSTNESS } };
+		robust.robust_constant_lut = DXIL_SPV_TRUE;
+		robust.robust_alloca = DXIL_SPV_TRUE;
+		dxil_spv_converter_add_option(converter, &robust.base);
 	}
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);

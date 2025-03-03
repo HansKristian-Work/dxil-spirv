@@ -201,6 +201,7 @@ struct Converter::Impl
 	                                            Vector<ConvertedFunction::Function> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
+	spv::Id get_padded_constant_array(spv::Id padded_type_id, const llvm::Constant *constant);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
 	spv::Id get_id_for_undef_constant(const llvm::UndefValue *undef);
 	void emit_patch_output_lowering(CFGNode *node);
@@ -477,6 +478,7 @@ struct Converter::Impl
 	UnorderedMap<spv::Id, spv::Id> id_to_type;
 	UnorderedMap<const llvm::Value *, unsigned> handle_to_root_member_offset;
 	UnorderedMap<const llvm::Value *, spv::StorageClass> handle_to_storage_class;
+	UnorderedMap<const llvm::Value *, spv::Id> handle_to_robustness;
 	UnorderedSet<const llvm::Value *> needs_temp_storage_copy;
 
 	struct TempPayloadEntry
@@ -742,6 +744,13 @@ struct Converter::Impl
 			bool mesh_outputs_bounds_check = false;
 			bool aggressive_nonuniform = false;
 		} quirks;
+
+		struct
+		{
+			bool group_shared = false;
+			bool constant_lut = false;
+			bool alloca = false;
+		} extended_robustness;
 	} options;
 
 	struct BindlessInfo

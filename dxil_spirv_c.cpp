@@ -1337,6 +1337,18 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_EXTENDED_ROBUSTNESS:
+	{
+		OptionExtendedRobustness helper;
+		auto *robust = reinterpret_cast<const dxil_spv_option_extended_robustness *>(option);
+		helper.robust_group_shared = robust->robust_group_shared;
+		helper.robust_alloca = robust->robust_alloca;
+		helper.robust_constant_lut = robust->robust_constant_lut;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

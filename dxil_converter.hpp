@@ -257,6 +257,7 @@ enum class Option : uint32_t
 	ComputeShaderDerivatives = 40,
 	InstructionInstrumentation = 41,
 	ShaderQuirk = 42,
+	ExtendedRobustness = 43,
 	Count
 };
 
@@ -750,6 +751,18 @@ struct OptionShaderQuirk : OptionBase
 	}
 
 	ShaderQuirk quirk = ShaderQuirk::None;
+};
+
+struct OptionExtendedRobustness : OptionBase
+{
+	OptionExtendedRobustness()
+		: OptionBase(Option::ExtendedRobustness)
+	{
+	}
+
+	bool robust_group_shared = false;
+	bool robust_alloca = false;
+	bool robust_constant_lut = false;
 };
 
 struct DescriptorTableEntry

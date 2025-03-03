@@ -38,6 +38,8 @@ class Instruction;
 
 static constexpr spv::Op PseudoOpReturnCond = spv::Op(0x100000);
 static constexpr spv::Op PseudoOpInstrumentExternallyVisibleStore = spv::Op(0x100001);
+static constexpr spv::Op PseudoOpMaskedLoad = spv::Op(0x100002);
+static constexpr spv::Op PseudoOpMaskedStore = spv::Op(0x100003);
 } // namespace spv
 
 namespace dxil_spv
