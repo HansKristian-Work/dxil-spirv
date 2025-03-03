@@ -2895,7 +2895,10 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				auto *direct_bb = new spv::Block(builder.getUniqueId(), *active_function);
 
 				// Handle post-domination rule.
-				emit_loop_header(direct_bb);
+				if (ir.merge_info.continue_block && get_spv_block(ir.merge_info.continue_block) == bb)
+					emit_loop_header(direct_bb);
+				else
+					emit_loop_header(nullptr);
 
 				active_function->addBlock(direct_bb);
 				builder.createBranch(direct_bb);
