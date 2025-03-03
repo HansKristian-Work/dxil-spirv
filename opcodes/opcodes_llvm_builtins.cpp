@@ -1190,14 +1190,11 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 		return false;
 	}
 
-	bool expect_assume = impl.options.instruction_instrumentation.enabled &&
-	                     impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume;
-
 	unsigned num_operands = instruction->getNumOperands();
 	for (uint32_t i = 2; i < num_operands; i++)
 	{
 		// Be a bit careful with the typing since we might have some weird bitcast pointer types flying around.
-		if (i == 2 && expect_assume && !llvm::isa<llvm::Constant>(instruction->getOperand(2)))
+		if (i == 2 && !llvm::isa<llvm::Constant>(instruction->getOperand(2)))
 		{
 			if (auto *aggregate_type = llvm::dyn_cast<llvm::PointerType>(instruction->getOperand(0)->getType()))
 			{
@@ -1206,15 +1203,53 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 					auto address_space = DXIL::AddressSpace(aggregate_type->getPointerAddressSpace());
 					if (address_space == DXIL::AddressSpace::GroupShared || address_space == DXIL::AddressSpace::Thread)
 					{
-						unsigned num_elements = array_type->getArrayNumElements();
-						auto *is_in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
-						is_in_bounds->add_id(impl.get_id_for_value(instruction->getOperand(2)));
-						is_in_bounds->add_id(builder.makeUintConstant(num_elements));
-						impl.add(is_in_bounds);
+						auto *global_var = llvm::dyn_cast<llvm::GlobalVariable>(instruction->getOperand(0));
+						if (global_var && global_var->hasInitializer() && global_var->isConstant() &&
+						    impl.options.extended_robustness.constant_lut &&
+						    !elementptr_shift && address_space == DXIL::AddressSpace::Thread)
+						{
+							// Robustness for constant LUTs.
+							if (!impl.glsl_std450_ext)
+								impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
-						auto *assert_that = impl.allocate(spv::OpAssumeTrueKHR);
-						assert_that->add_id(is_in_bounds->id);
-						impl.add(assert_that);
+							auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+							clamp_op->add_id(impl.glsl_std450_ext);
+							clamp_op->add_id(GLSLstd450UMin);
+							clamp_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+							clamp_op->add_id(builder.makeUintConstant(array_type->getArrayNumElements()));
+							impl.add(clamp_op);
+							op->add_id(clamp_op->id);
+							continue;
+						}
+						else if (address_space == DXIL::AddressSpace::Thread && impl.options.extended_robustness.alloca)
+						{
+							unsigned num_elements = array_type->getArrayNumElements();
+							auto *is_in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+							is_in_bounds->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+							is_in_bounds->add_id(builder.makeUintConstant(num_elements));
+							impl.add(is_in_bounds);
+
+							impl.handle_to_robustness[instruction] = is_in_bounds->id;
+						}
+						else if (address_space == DXIL::AddressSpace::GroupShared && impl.options.extended_robustness.group_shared)
+						{
+							// Need to handle atomics as well, and it'll be a mess to add support for that.
+							LOGW("Robust group shared GEP not yet implemented.\n");
+						}
+						else if (impl.options.instruction_instrumentation.enabled &&
+						         impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+						{
+							// Fallback expect-assume case.
+							unsigned num_elements = array_type->getArrayNumElements();
+							auto *is_in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+							is_in_bounds->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+							is_in_bounds->add_id(builder.makeUintConstant(num_elements));
+							impl.add(is_in_bounds);
+
+							auto *assert_that = impl.allocate(spv::OpAssumeTrueKHR);
+							assert_that->add_id(is_in_bounds->id);
+							impl.add(assert_that);
+						}
 					}
 				}
 			}
@@ -1262,7 +1297,8 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	}
 	else
 	{
-		Operation *op = impl.allocate(spv::OpLoad, instruction);
+		auto robust_itr = impl.handle_to_robustness.find(instruction->getPointerOperand());
+		Operation *op = impl.allocate(robust_itr != impl.handle_to_robustness.end() ? spv::PseudoOpMaskedLoad : spv::OpLoad, instruction);
 		op->add_id(value_id);
 
 		// If this is remapped to BDA, need to add Aligned mask.
@@ -1289,6 +1325,14 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 			op->add_literal(size_alignment.alignment);
 		}
 
+		if (op->op == spv::PseudoOpMaskedLoad)
+		{
+			// OpSampledImage must be consumed in same block.
+			// We'll split blocks here, so just recreate the combined sampler image if needed.
+			impl.combined_image_sampler_cache.clear();
+			op->add_id(robust_itr->second);
+		}
+
 		impl.add(op);
 	}
 	return true;
@@ -1301,7 +1345,8 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 	if (tracking.cbv_handle)
 		return true;
 
-	Operation *op = impl.allocate(spv::OpStore);
+	auto robust_itr = impl.handle_to_robustness.find(instruction->getOperand(1));
+	Operation *op = impl.allocate(robust_itr != impl.handle_to_robustness.end() ? spv::PseudoOpMaskedStore : spv::OpStore);
 
 	// We need to get the ID here as the constexpr chain could set our type.
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
@@ -1327,6 +1372,14 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 		auto size_alignment = impl.get_physical_size_for_type(
 		    impl.builder().getContainedTypeId(impl.get_type_id(instruction->getOperand(1)->getType(), true)));
 		op->add_literal(size_alignment.alignment);
+	}
+
+	if (op->op == spv::PseudoOpMaskedStore)
+	{
+		// OpSampledImage must be consumed in same block.
+		// We'll split blocks here, so just recreate the combined sampler image if needed.
+		impl.combined_image_sampler_cache.clear();
+		op->add_id(robust_itr->second);
 	}
 
 	impl.add(op);

@@ -2803,16 +2803,20 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	spv::Id rewrite_phi_incoming_from = node->id;
 	spv::Id rewrite_phi_incoming_to = 0;
 
-	const auto emit_loop_header = [&]() {
+	const auto emit_loop_header = [&](spv::Block *replacement_continue_bb) {
+		auto *continue_bb = ir.merge_info.continue_block ? get_spv_block(ir.merge_info.continue_block) : nullptr;
+		if (replacement_continue_bb)
+			continue_bb = replacement_continue_bb;
+
 		if (ir.merge_info.merge_block && ir.merge_info.continue_block)
 		{
 			builder.createLoopMerge(get_spv_block(ir.merge_info.merge_block),
-			                        get_spv_block(ir.merge_info.continue_block),
+			                        continue_bb,
 			                        ir.merge_info.loop_control_mask);
 		}
 		else if (ir.merge_info.merge_block)
 		{
-			auto *continue_bb = fake_loop_block;
+			continue_bb = fake_loop_block;
 			active_function->addBlock(continue_bb);
 			builder.setBuildPoint(continue_bb);
 			builder.createBranch(get_spv_block(node));
@@ -2826,7 +2830,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			builder.setBuildPoint(merge_bb);
 			builder.createUnreachable();
 			builder.setBuildPoint(bb);
-			builder.createLoopMerge(merge_bb, get_spv_block(ir.merge_info.continue_block), 0);
+			builder.createLoopMerge(merge_bb, continue_bb, 0);
 		}
 	};
 
@@ -2881,14 +2885,21 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		{
 			add_instrumented_instruction(op->op, bb, op->arguments[0]);
 		}
-		else if (op->op == spv::PseudoOpReturnCond)
+		else if (op->op == spv::PseudoOpReturnCond ||
+		         op->op == spv::PseudoOpMaskedLoad ||
+		         op->op == spv::PseudoOpMaskedStore)
 		{
 			// Have to ensure we emit loop header before we replace block.
 			if (ir.merge_info.merge_type == MergeType::Loop && rewrite_phi_incoming_to == 0)
 			{
-				emit_loop_header();
-
 				auto *direct_bb = new spv::Block(builder.getUniqueId(), *active_function);
+
+				// Handle post-domination rule.
+				if (ir.merge_info.continue_block && get_spv_block(ir.merge_info.continue_block) == bb)
+					emit_loop_header(direct_bb);
+				else
+					emit_loop_header(nullptr);
+
 				active_function->addBlock(direct_bb);
 				builder.createBranch(direct_bb);
 				bb = direct_bb;
@@ -2896,15 +2907,61 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			}
 
 			// Pseudo-op. Conditional return.
-			auto *return_bb = new spv::Block(builder.getUniqueId(), *active_function);
+			auto *inner_bb = new spv::Block(builder.getUniqueId(), *active_function);
 			auto *merge_bb = new spv::Block(builder.getUniqueId(), *active_function);
-			active_function->addBlock(return_bb);
+			active_function->addBlock(inner_bb);
 			active_function->addBlock(merge_bb);
 			builder.createSelectionMerge(merge_bb, 0);
-			builder.createConditionalBranch(op->arguments[0], return_bb, merge_bb);
-			builder.setBuildPoint(return_bb);
-			builder.makeReturn(false);
+			builder.createConditionalBranch(op->arguments[op->num_arguments - 1], inner_bb, merge_bb);
+			builder.setBuildPoint(inner_bb);
+
+			spv::Id inner_id = 0;
+
+			if (op->op == spv::PseudoOpReturnCond)
+			{
+				builder.makeReturn(false);
+			}
+			else
+			{
+				std::unique_ptr<spv::Instruction> inst;
+				if (op->op == spv::PseudoOpMaskedStore)
+				{
+					inst = std::make_unique<spv::Instruction>(spv::OpStore);
+				}
+				else
+				{
+					inner_id = builder.getUniqueId();
+					inst = std::make_unique<spv::Instruction>(inner_id, op->type_id, spv::OpLoad);
+				}
+
+				unsigned literal_mask = op->get_literal_mask();
+				for (unsigned i = 0; i < op->num_arguments - 1; i++)
+				{
+					spv::Id arg = op->arguments[i];
+					if (literal_mask & 1u)
+						inst->addImmediateOperand(arg);
+					else
+					{
+						assert(arg);
+						inst->addIdOperand(arg);
+					}
+					literal_mask >>= 1u;
+				}
+				add_instruction(inner_bb, std::move(inst));
+				builder.createBranch(merge_bb);
+			}
+
 			builder.setBuildPoint(merge_bb);
+
+			if (op->op == spv::PseudoOpMaskedLoad)
+			{
+				auto phi = std::make_unique<spv::Instruction>(op->id, op->type_id, spv::OpPhi);
+				phi->addIdOperand(inner_id);
+				phi->addIdOperand(inner_bb->getId());
+				phi->addIdOperand(builder.makeNullConstant(op->type_id));
+				phi->addIdOperand(bb->getId());
+				add_instruction(merge_bb, std::move(phi));
+			}
 
 			// If this is called in a continue block, the loop header might have a PHI incoming,
 			// and we'll have to rewrite that.
@@ -2989,7 +3046,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 	case MergeType::Loop:
 		if (rewrite_phi_incoming_to == 0)
-			emit_loop_header();
+			emit_loop_header(nullptr);
 		break;
 
 	default:
@@ -3028,30 +3085,47 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		// since a selection merge is no longer required.
 		if (node->ir.merge_info.merge_type == MergeType::Loop &&
 		    node->ir.terminator.type == Terminator::Type::Condition &&
-		    rewrite_phi_incoming_to == 0 &&
 		    node->ir.terminator.true_block != node->ir.merge_info.merge_block &&
 		    node->ir.terminator.true_block != node->ir.merge_info.continue_block &&
 		    node->ir.terminator.false_block != node->ir.merge_info.merge_block &&
 		    node->ir.terminator.false_block != node->ir.merge_info.continue_block)
 		{
-			auto *fake_selection_bb = new spv::Block(builder.getUniqueId(), *active_function);
-			auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
-			active_function->addBlock(fake_selection_bb);
-			active_function->addBlock(unreachable_bb);
-			builder.createBranch(fake_selection_bb);
-			builder.setBuildPoint(fake_selection_bb);
-			builder.createSelectionMerge(unreachable_bb, 0);
-			builder.createConditionalBranch(ir.terminator.conditional_id, true_block, false_block);
-			builder.setBuildPoint(unreachable_bb);
-			builder.createUnreachable();
+			if (rewrite_phi_incoming_to == 0)
+			{
+				auto *fake_selection_bb = new spv::Block(builder.getUniqueId(), *active_function);
+				auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
+				active_function->addBlock(fake_selection_bb);
+				active_function->addBlock(unreachable_bb);
+				builder.createBranch(fake_selection_bb);
+				builder.setBuildPoint(fake_selection_bb);
+				builder.createSelectionMerge(unreachable_bb, 0);
+				builder.createConditionalBranch(ir.terminator.conditional_id, true_block, false_block);
+				builder.setBuildPoint(unreachable_bb);
+				builder.createUnreachable();
 
-			// For purposes of handling PHI later, the incoming block is this ID, i.e. the selection construct.
-			// Any branches that target the loop header have already been resolved since we emit SPIR-V blocks
-			// in traversal order.
-			// We don't need to consider single loop block constructs since those will never hit this
-			// code path. In that case, true or false block would have targeted continue block and
-			// avoided this workaround in the first place.
-			node->id = fake_selection_bb->getId();
+				// For purposes of handling PHI later, the incoming block is this ID, i.e. the selection construct.
+				// Any branches that target the loop header have already been resolved since we emit SPIR-V blocks
+				// in traversal order.
+				// We don't need to consider single loop block constructs since those will never hit this
+				// code path. In that case, true or false block would have targeted continue block and
+				// avoided this workaround in the first place.
+				node->id = fake_selection_bb->getId();
+			}
+			else
+			{
+				// If we added blocks through masked ops, we have become a selection
+				// construction instead of a loop, and we have to add a merge target to make this valid.
+				// If we are directly branching to continue or merge target, we can omit a merge,
+				// since that case does not need a merge.
+				auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
+				active_function->addBlock(unreachable_bb);
+				builder.setBuildPoint(unreachable_bb);
+				builder.createUnreachable();
+				builder.setBuildPoint(bb);
+				builder.createSelectionMerge(unreachable_bb, 0);
+				builder.createConditionalBranch(ir.terminator.conditional_id,
+				                                true_block, false_block);
+			}
 		}
 		else
 		{

@@ -3168,6 +3168,47 @@ static inline float half_to_float(uint16_t u16_value)
 	return u.f32;
 }
 
+spv::Id Converter::Impl::get_padded_constant_array(spv::Id padded_type_id, const llvm::Constant *constant)
+{
+	auto &builder = spirv_module.get_builder();
+	assert(constant->getType()->getTypeID() == llvm::Type::TypeID::ArrayTyID);
+	Vector<spv::Id> constituents;
+
+	if (llvm::isa<llvm::ConstantAggregateZero>(constant))
+	{
+		return builder.makeNullConstant(padded_type_id);
+	}
+	else if (auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(constant))
+	{
+		constituents.reserve(agg->getNumOperands() + 1);
+		for (unsigned i = 0; i < agg->getNumOperands(); i++)
+		{
+			llvm::Constant *c = agg->getOperand(i);
+			if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
+				constituents.push_back(get_id_for_undef_constant(undef));
+			else
+				constituents.push_back(get_id_for_constant(c, 0));
+		}
+	}
+	else if (auto *array = llvm::dyn_cast<llvm::ConstantDataArray>(constant))
+	{
+		constituents.reserve(array->getType()->getArrayNumElements() + 1);
+		for (unsigned i = 0; i < array->getNumElements(); i++)
+		{
+			llvm::Constant *c = array->getElementAsConstant(i);
+			if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
+				constituents.push_back(get_id_for_undef_constant(undef));
+			else
+				constituents.push_back(get_id_for_constant(c, 0));
+		}
+	}
+	else
+		return 0;
+
+	constituents.push_back(builder.makeNullConstant(get_type_id(constant->getType()->getArrayElementType())));
+	return builder.makeCompositeConstant(padded_type_id, constituents);
+}
+
 spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, unsigned forced_width)
 {
 	auto &builder = spirv_module.get_builder();
@@ -4642,7 +4683,26 @@ bool Converter::Impl::emit_global_variables()
 		if (global.getLinkage() == llvm::GlobalVariable::AppendingLinkage)
 			continue;
 
-		spv::Id pointee_type_id = get_type_id(global.getType()->getPointerElementType());
+		spv::Id pointee_type_id = 0;
+		spv::Id scalar_type_id = 0;
+		bool padded_composite = false;
+
+		if (address_space == DXIL::AddressSpace::Thread &&
+		    options.extended_robustness.constant_lut &&
+		    global.hasInitializer() &&
+		    global.isConstant())
+		{
+			if (auto *array_type = llvm::dyn_cast<llvm::ArrayType>(global.getType()->getPointerElementType()))
+			{
+				scalar_type_id = get_type_id(array_type->getArrayElementType());
+				pointee_type_id = builder().makeArrayType(
+					scalar_type_id, builder().makeUintConstant(array_type->getArrayNumElements() + 1), false);
+				padded_composite = true;
+			}
+		}
+
+		if (!pointee_type_id)
+			pointee_type_id = get_type_id(global.getType()->getPointerElementType());
 
 		// Happens for some global variables in DXR for some reason, benign.
 		if (pointee_type_id == 0)
@@ -4667,7 +4727,12 @@ bool Converter::Impl::emit_global_variables()
 		}
 
 		if (initializer)
-			initializer_id = get_id_for_constant(initializer, 0);
+		{
+			if (padded_composite)
+				initializer_id = get_padded_constant_array(pointee_type_id, initializer);
+			else
+				initializer_id = get_id_for_constant(initializer, 0);
+		}
 
 		spv::StorageClass storage_class = address_space == DXIL::AddressSpace::GroupShared
 		                                  ? spv::StorageClassWorkgroup : spv::StorageClassPrivate;
@@ -8131,6 +8196,15 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		default:
 			break;
 		}
+		break;
+	}
+
+	case Option::ExtendedRobustness:
+	{
+		auto &robust = static_cast<const OptionExtendedRobustness &>(cap);
+		options.extended_robustness.alloca = robust.robust_alloca;
+		options.extended_robustness.constant_lut = robust.robust_constant_lut;
+		options.extended_robustness.group_shared = robust.robust_group_shared;
 		break;
 	}
 

@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 46
+#define DXIL_SPV_API_VERSION_MINOR 47
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -433,6 +433,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES = 40,
 	DXIL_SPV_OPTION_INSTRUCTION_INSTRUMENTATION = 41,
 	DXIL_SPV_OPTION_SHADER_QUIRK = 42,
+	DXIL_SPV_OPTION_EXTENDED_ROBUSTNESS = 43,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -751,6 +752,14 @@ typedef struct dxil_spv_option_shader_quirk
 	dxil_spv_option_base base;
 	dxil_spv_shader_quirk quirk;
 } dxil_spv_option_shader_quirk;
+
+typedef struct dxil_spv_option_extended_robustness
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool robust_group_shared;
+	dxil_spv_bool robust_alloca;
+	dxil_spv_bool robust_constant_lut;
+} dxil_spv_option_extended_robustness;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
