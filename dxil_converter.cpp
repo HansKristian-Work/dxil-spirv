@@ -6486,8 +6486,8 @@ bool Converter::Impl::emit_execution_modes_mesh()
 		auto topology = static_cast<DXIL::MeshOutputTopology>(get_constant_metadata(arguments, 3));
 		unsigned index_count;
 
-		builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, max_vertex_count);
-		builder.addExecutionMode(func, spv::ExecutionModeOutputPrimitivesEXT, max_primitive_count);
+		builder.addExecutionMode(func, spv::ExecutionModeOutputVertices, std::max<int>(1, max_vertex_count));
+		builder.addExecutionMode(func, spv::ExecutionModeOutputPrimitivesEXT, std::max<int>(1, max_primitive_count));
 
 		switch (topology)
 		{
