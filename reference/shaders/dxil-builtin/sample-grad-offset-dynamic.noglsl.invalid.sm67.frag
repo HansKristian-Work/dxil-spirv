@@ -4,6 +4,7 @@
 ; Bound: 137
 ; Schema: 0
 OpCapability Shader
+OpCapability ImageGatherExtended
 OpCapability Sampled1D
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %32 %35

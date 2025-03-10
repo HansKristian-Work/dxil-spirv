@@ -149,13 +149,7 @@ static bool get_texel_offsets(Converter::Impl &impl, const llvm::CallInst *instr
 			}
 			else
 			{
-				// Currently, non-constant offsets are only allowed for gather.
-				// SM 6.7 adds support for non-constant offsets in general.
-				// We'll just pretend this works for now for testing purposes.
-				// Later, we might have to add a different cap bit.
-				if (instruction_is_gather)
-					builder.addCapability(spv::CapabilityImageGatherExtended);
-
+				builder.addCapability(spv::CapabilityImageGatherExtended);
 				is_const_offset = false;
 				has_non_zero_offset = true;
 				break;
