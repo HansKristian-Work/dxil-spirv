@@ -506,15 +506,26 @@ void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
 
 void CFGNode::retarget_fake_succ(CFGNode *to_prev, CFGNode *to_next)
 {
-	assert(std::find(fake_succ.begin(), fake_succ.end(), to_prev) != fake_succ.end());
 	assert(std::find(to_prev->fake_pred.begin(), to_prev->fake_pred.end(), this) != to_prev->fake_pred.end());
-	assert(std::find(fake_succ.begin(), fake_succ.end(), to_next) == fake_succ.end());
-	assert(std::find(to_next->fake_pred.begin(), to_next->fake_pred.end(), this) == to_next->fake_pred.end());
+	auto succ_itr = std::find(fake_succ.begin(), fake_succ.end(), to_next);
+	auto prev_itr = std::find(fake_succ.begin(), fake_succ.end(), to_prev);
+	assert(prev_itr != fake_succ.end());
 
-	// Modify fake_succ in place so we don't invalidate iterator in traverse_dominated_blocks_and_rewrite_branch.
-	*std::find(fake_succ.begin(), fake_succ.end(), to_prev) = to_next;
+	// It is valid to rewrite a fake succ to an existing one.
+	// It's possible that we need to rewrite from one loop exit to another.
+
+	if (succ_itr == fake_succ.end())
+	{
+		*prev_itr = to_next;
+		assert(std::find(to_next->fake_pred.begin(), to_next->fake_pred.end(), this) == to_next->fake_pred.end());
+	}
+	else
+	{
+		// We can invalidate iterators since we break out immediately when rewriting a fake succ.
+		fake_succ.erase(prev_itr);
+	}
+
 	to_next->add_unique_fake_pred(this);
-
 	recompute_immediate_post_dominator();
 }
 
