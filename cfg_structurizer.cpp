@@ -3183,10 +3183,34 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 						auto *b_frontier = node->succ[1]->dominance_frontier.front();
 						if (a_frontier != b_frontier)
 						{
+							// Try to merge in the direction of early returns, since the other direction
+							// will likely result in a loop break or something like that.
+							// Inner constructs tend to use weaker selection merges, which means we need
+							// to merge in that direction to stay valid.
 							if (query_reachability(*a_frontier, *b_frontier))
 								merge_to_succ(node, 0);
 							else if (query_reachability(*b_frontier, *a_frontier))
 								merge_to_succ(node, 1);
+							else
+							{
+								auto a_succ_count = a_frontier->succ.size();
+								auto b_succ_count = b_frontier->succ.size();
+
+								// First look at the idoms. This can give us an idea how the code is nested.
+								// Merge towards innermost idom.
+								// If that fails, merge against early returns as a last resort.
+
+								a_frontier = a_frontier->immediate_dominator;
+								b_frontier = b_frontier->immediate_dominator;
+								if (a_frontier != b_frontier && query_reachability(*a_frontier, *b_frontier))
+									merge_to_succ(node, 1);
+								else if (a_frontier != b_frontier && query_reachability(*b_frontier, *a_frontier))
+									merge_to_succ(node, 0);
+								else if (a_succ_count == 0 && b_succ_count != 0)
+									merge_to_succ(node, 0);
+								else if (b_succ_count == 0 && a_succ_count != 0)
+									merge_to_succ(node, 1);
+							}
 						}
 					}
 					else if (node_is_degenerate_merge_block(node->succ[1]) &&
