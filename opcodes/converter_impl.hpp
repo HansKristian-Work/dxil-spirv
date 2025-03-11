@@ -751,6 +751,8 @@ struct Converter::Impl
 			bool constant_lut = false;
 			bool alloca = false;
 		} extended_robustness;
+
+		unsigned max_tess_factor = 0;
 	} options;
 
 	struct BindlessInfo

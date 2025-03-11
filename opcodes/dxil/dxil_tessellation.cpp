@@ -109,15 +109,46 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 	else
 		ptr_id = var_id;
 
+	auto *storage_type = instruction->getOperand(4)->getType();
+
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 	impl.register_externally_visible_write(instruction->getOperand(4));
+
+	// Tess factors are for some reason classified as inputs
+	spv::BuiltIn builtin = { };
+
+	if (impl.options.max_tess_factor &&
+	    impl.spirv_module.query_builtin_shader_input(meta.id, &builtin) &&
+	    (builtin == spv::BuiltInTessLevelInner || builtin == spv::BuiltInTessLevelOuter) &&
+	    storage_type->isFloatingPointTy() && !type_is_64bit(storage_type))
+	{
+		spv::Id max_tess_factor_id = builder.makeFloatConstant(impl.options.max_tess_factor);
+
+		// Don't bother bit-twiddling this into an fp16 constant manually
+		if (type_is_16bit(storage_type))
+		{
+			max_tess_factor_id = impl.build_value_cast(max_tess_factor_id, DXIL::ComponentType::F32,
+			                                           DXIL::ComponentType::F16, 1);
+		}
+
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+		auto *min_op = impl.allocate(spv::OpExtInst, impl.get_type_id(storage_type));
+		min_op->add_id(impl.glsl_std450_ext);
+		min_op->add_literal(GLSLstd450::GLSLstd450NMin);
+		min_op->add_id(store_value);
+		min_op->add_id(max_tess_factor_id);
+		impl.add(min_op);
+
+		store_value = min_op->id;
+	}
 
 	Operation *op = impl.allocate(spv::OpStore);
 	op->add_id(ptr_id);
 
 	if (meta.lowering)
 	{
-		auto *storage_type = instruction->getOperand(4)->getType();
 		if (type_is_64bit(storage_type))
 		{
 			LOGE("Lowering for dxbc 64-bit patch output not supported.\n");
