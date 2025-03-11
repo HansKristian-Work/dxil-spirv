@@ -8208,6 +8208,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::MaxTessFactor:
+	{
+		auto &tess_factor = static_cast<const OptionMaxTessFactor &>(cap);
+		options.max_tess_factor = tess_factor.max_tess_factor;
+		break;
+	}
+
 	default:
 		break;
 	}

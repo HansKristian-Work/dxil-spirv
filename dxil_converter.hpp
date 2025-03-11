@@ -258,6 +258,7 @@ enum class Option : uint32_t
 	InstructionInstrumentation = 41,
 	ShaderQuirk = 42,
 	ExtendedRobustness = 43,
+	MaxTessFactor = 44,
 	Count
 };
 
@@ -763,6 +764,16 @@ struct OptionExtendedRobustness : OptionBase
 	bool robust_group_shared = false;
 	bool robust_alloca = false;
 	bool robust_constant_lut = false;
+};
+
+struct OptionMaxTessFactor : OptionBase
+{
+	OptionMaxTessFactor()
+		: OptionBase(Option::MaxTessFactor)
+	{
+	}
+
+	unsigned max_tess_factor = 0;
 };
 
 struct DescriptorTableEntry
