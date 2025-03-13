@@ -2454,6 +2454,51 @@ spv::Id SPIRVModule::Impl::build_hash_call(SPIRVModule &module)
 	return func->getId();
 }
 
+static spv::Id build_hash_mask(spv::Builder &builder, spv::Id var_id)
+{
+	auto len = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), builder.makeUintType(32), spv::OpArrayLength);
+	auto sub1 = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), builder.makeUintType(32), spv::OpISub);
+
+	len->addIdOperand(var_id);
+	len->addImmediateOperand(0);
+	sub1->addIdOperand(len->getResultId());
+	sub1->addIdOperand(builder.makeUintConstant(1));
+
+	spv::Id ret_id = sub1->getResultId();
+	builder.getBuildPoint()->addInstruction(std::move(len));
+	builder.getBuildPoint()->addInstruction(std::move(sub1));
+	return ret_id;
+}
+
+static spv::Id build_get_invalidation_mask(spv::Builder &builder, spv::Id id)
+{
+	static const uint64_t invalidation_masks[] = {
+		0xf0ffff0000, // Load -> store and atomics no longer valid
+		0xffffffffff, // Store -> nothing is valid
+		0x0fffffffff, // AtomicRMW -> only atomics are valid
+		0xf0ffff0000, // IndirectRead -> same as load
+	};
+
+	spv::Id u64_type = builder.makeUintType(64);
+	spv::Id u64vec4_type = builder.makeVectorType(u64_type, 4);
+	Vector<spv::Id> invalidation_mask_elems;
+	invalidation_mask_elems.reserve(4);
+	for (auto &mask : invalidation_masks)
+		invalidation_mask_elems.push_back(builder.makeUint64Constant(mask));
+	spv::Id invalidation_table = builder.makeCompositeConstant(u64vec4_type, invalidation_mask_elems);
+
+	auto extract = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), u64_type, spv::OpVectorExtractDynamic);
+	extract->addIdOperand(invalidation_table);
+	extract->addIdOperand(id);
+
+	spv::Id ret_id = extract->getResultId();
+	builder.getBuildPoint()->addInstruction(std::move(extract));
+	return ret_id;
+}
+
 spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 {
 	if (validate_bda_load_store_call_id)
@@ -2512,7 +2557,9 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 	spv::Id byte_mask_id = build_byte_mask(builder, addr_lo_id, func->getParamId(2));
 	spv::Id word_mask_id = build_word_mask(builder, addr_lo_id, func->getParamId(2));
 
+	spv::Id hash_mask = build_hash_mask(builder, bloom_var_id_64);
 	spv::Id hashes[4];
+
 	for (int i = 0; i < 4; i++)
 	{
 		static const uint32_t noise_primes[] = {
@@ -2527,9 +2574,18 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		call->addIdOperand(hash_call_id);
 		call->addIdOperand(addr_id);
 		call->addIdOperand(builder.makeUintConstant(noise_primes[i]));
-		hashes[i] = call->getResultId();
+
+		auto mask = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(), uint_type, spv::OpBitwiseAnd);
+		mask->addIdOperand(call->getResultId());
+		mask->addIdOperand(hash_mask);
+
+		hashes[i] = mask->getResultId();
 		entry->addInstruction(std::move(call));
+		entry->addInstruction(std::move(mask));
 	}
+
+	spv::Id invalidation_mask = build_get_invalidation_mask(builder, func->getParamId(2));
 
 	builder.makeReturn(false, builder.makeBoolConstant(true));
 	builder.setBuildPoint(current_build_point);
