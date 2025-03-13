@@ -2365,7 +2365,90 @@ spv::Id SPIRVModule::Impl::build_hash_call(SPIRVModule &module)
 	builder.addName(func->getParamId(0), "addr");
 	builder.addName(func->getParamId(1), "prime");
 
-	spv::Id ret_id = 0;
+	auto extract0 = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), uint_type, spv::OpCompositeExtract);
+	auto extract1 = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), uint_type, spv::OpCompositeExtract);
+
+	auto shift_lo = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), uint_type, spv::OpShiftRightLogical);
+	auto mask_hi = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), uint_type, spv::OpBitwiseAnd);
+
+	auto construct = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), uvec2_type, spv::OpCompositeConstruct);
+
+	auto splat = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), uvec2_type, spv::OpCompositeConstruct);
+
+	extract0->addIdOperand(func->getParamId(0));
+	extract0->addImmediateOperand(0);
+	extract1->addIdOperand(func->getParamId(0));
+	extract1->addImmediateOperand(1);
+
+	shift_lo->addIdOperand(extract0->getResultId());
+	shift_lo->addIdOperand(builder.makeUintConstant(4));
+	mask_hi->addIdOperand(extract1->getResultId());
+	mask_hi->addIdOperand(builder.makeUintConstant(0xffff));
+
+	construct->addIdOperand(shift_lo->getResultId());
+	construct->addIdOperand(mask_hi->getResultId());
+
+	splat->addIdOperand(func->getParamId(1));
+	splat->addIdOperand(func->getParamId(1));
+
+	spv::Id ret_id = construct->getResultId();
+	spv::Id splat_id = splat->getResultId();
+
+	entry->addInstruction(std::move(extract0));
+	entry->addInstruction(std::move(extract1));
+	entry->addInstruction(std::move(shift_lo));
+	entry->addInstruction(std::move(mask_hi));
+	entry->addInstruction(std::move(construct));
+	entry->addInstruction(std::move(splat));
+
+	spv::Id const8 = builder.makeUintConstant(8);
+	spv::Id const8_splat = builder.makeCompositeConstant(uvec2_type, { const8, const8 });
+
+	for (int i = 0; i < 3; i++)
+	{
+		auto shuffle = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(), uvec2_type, spv::OpVectorShuffle);
+		shuffle->addIdOperand(ret_id);
+		shuffle->addIdOperand(ret_id);
+		shuffle->addImmediateOperand(1);
+		shuffle->addImmediateOperand(0);
+
+		auto shifted = std::make_unique<spv::Instruction>(
+			builder.getUniqueId(), uvec2_type, spv::OpShiftRightLogical);
+		shifted->addIdOperand(ret_id);
+		shifted->addIdOperand(const8_splat);
+
+		auto xor_op = std::make_unique<spv::Instruction>(
+			builder.getUniqueId(), uvec2_type, spv::OpBitwiseXor);
+		xor_op->addIdOperand(shifted->getResultId());
+		xor_op->addIdOperand(shuffle->getResultId());
+
+		auto mult = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(), uvec2_type, spv::OpIMul);
+		mult->addIdOperand(xor_op->getResultId());
+		mult->addIdOperand(splat_id);
+
+		ret_id = mult->getResultId();
+
+		entry->addInstruction(std::move(shuffle));
+		entry->addInstruction(std::move(shifted));
+		entry->addInstruction(std::move(xor_op));
+		entry->addInstruction(std::move(mult));
+	}
+
+	auto extract = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), uint_type, spv::OpCompositeExtract);
+	extract->addIdOperand(ret_id);
+	extract->addImmediateOperand(0);
+	ret_id = extract->getResultId();
+	entry->addInstruction(std::move(extract));
+
 	builder.makeReturn(false, ret_id);
 	builder.setBuildPoint(current_build_point);
 	return func->getId();
@@ -2428,6 +2511,25 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 
 	spv::Id byte_mask_id = build_byte_mask(builder, addr_lo_id, func->getParamId(2));
 	spv::Id word_mask_id = build_word_mask(builder, addr_lo_id, func->getParamId(2));
+
+	spv::Id hashes[4];
+	for (int i = 0; i < 4; i++)
+	{
+		static const uint32_t noise_primes[] = {
+			1103515245u,
+			1103518333u,
+			1103539331u,
+			1103633207u,
+		};
+
+		auto call = std::make_unique<spv::Instruction>(
+		    builder.getUniqueId(), uint_type, spv::OpFunctionCall);
+		call->addIdOperand(hash_call_id);
+		call->addIdOperand(addr_id);
+		call->addIdOperand(builder.makeUintConstant(noise_primes[i]));
+		hashes[i] = call->getResultId();
+		entry->addInstruction(std::move(call));
+	}
 
 	builder.makeReturn(false, builder.makeBoolConstant(true));
 	builder.setBuildPoint(current_build_point);
