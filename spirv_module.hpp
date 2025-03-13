@@ -76,7 +76,16 @@ enum class HelperCall
 	ThreadIncrementOutputCount,
 	GroupIncrementOutputCount,
 	NodeCoalescePayloadOffset,
-	IsQuadUniformControlFlow
+	IsQuadUniformControlFlow,
+	ValidateBDALoadStore
+};
+
+enum class BDAOperation
+{
+	Load,
+	Store,
+	AtomicRMW,
+	IndirectRead
 };
 
 class SPIRVModule

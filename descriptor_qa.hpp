@@ -52,7 +52,8 @@ enum class InstructionInstrumentationType
 	FlushNaNToZero = 2,
 	// Adds assertions with OpAssumeTrueKHR. For now, these are resolved internally,
 	// but we could add a more that forwards them to driver.
-	ExpectAssume = 3
+	ExpectAssume = 3,
+	BufferSynchronizationValidation = 4
 };
 
 struct InstructionInstrumentationInfo

@@ -78,6 +78,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_allocate_node_records_waterfall(SPIRVModule &module);
 	spv::Id build_node_coalesce_payload_offset(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_is_quad_uniform_control_flow(SPIRVModule &module);
+	spv::Id build_validate_bda_load_store(SPIRVModule &module);
+	spv::Id build_hash_call(SPIRVModule &module);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -138,6 +140,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id allocate_thread_node_records_waterfall_call_id = 0;
 	spv::Id node_coalesce_payload_offset_call_id = 0;
 	spv::Id is_quad_uniform_call_id = 0;
+	spv::Id validate_bda_load_store_call_id = 0;
 
 	struct MultiPrefixOp
 	{
@@ -179,6 +182,10 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_nan_inf_instrument_call(spv::Id type_id);
 	spv::Id build_assume_true_call();
 	void emit_instrumentation_hash(spv::Function *func, spv::Id value_id, spv::Id instruction_id);
+
+	spv::Id build_instrumentation_ssbo(spv::Id data_type, uint32_t stride, const char *member_name,
+	                                   const char *block_name, const char *variable_name,
+	                                   uint32_t desc_set, uint32_t binding);
 };
 
 spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requires_flat)
@@ -2194,6 +2201,240 @@ spv::Id SPIRVModule::Impl::build_is_quad_uniform_control_flow(SPIRVModule &modul
 	return is_quad_uniform_call_id;
 }
 
+spv::Id SPIRVModule::Impl::build_instrumentation_ssbo(
+    spv::Id data_type, uint32_t stride, const char *member_name,
+    const char *block_name, const char *variable_name,
+    uint32_t desc_set, uint32_t binding)
+{
+	spv::Id data_array_type = builder.makeRuntimeArray(data_type);
+	builder.addDecoration(data_array_type, spv::DecorationArrayStride, stride);
+	spv::Id block_type = builder.makeStructType({ data_array_type }, block_name);
+	builder.addMemberName(block_type, 0, member_name);
+	builder.addMemberDecoration(block_type, 0, spv::DecorationOffset, 0);
+	builder.addDecoration(block_type, spv::DecorationBlock);
+
+	spv::Id var_id = create_variable(spv::StorageClassStorageBuffer, block_type, variable_name);
+	builder.addDecoration(var_id, spv::DecorationDescriptorSet, desc_set);
+	builder.addDecoration(var_id, spv::DecorationBinding, binding);
+	return var_id;
+}
+
+static spv::Id build_u64_add_u32(spv::Builder &builder, spv::Id a, spv::Id b)
+{
+	spv::Id u32_type = builder.makeUintType(32);
+	auto extract_lo = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), u32_type, spv::OpCompositeExtract);
+	extract_lo->addIdOperand(a);
+	extract_lo->addImmediateOperand(0);
+	auto extract_hi = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), u32_type, spv::OpCompositeExtract);
+	extract_hi->addIdOperand(a);
+	extract_hi->addImmediateOperand(1);
+
+	spv::Id struct_type = builder.makeStructType({ u32_type, u32_type }, "IAddCarryResult");
+	auto add_carry = std::make_unique<spv::Instruction>(builder.getUniqueId(), struct_type, spv::OpIAddCarry);
+	add_carry->addIdOperand(extract_lo->getResultId());
+	add_carry->addIdOperand(b);
+
+	auto extract_carry_lo = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), u32_type, spv::OpCompositeExtract);
+	extract_carry_lo->addIdOperand(add_carry->getResultId());
+	extract_carry_lo->addImmediateOperand(0);
+
+	auto extract_carry = std::make_unique<spv::Instruction>(
+		builder.getUniqueId(), u32_type, spv::OpCompositeExtract);
+	extract_carry->addIdOperand(add_carry->getResultId());
+	extract_carry->addImmediateOperand(1);
+
+	auto add_hi = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpIAdd);
+	add_hi->addIdOperand(extract_hi->getResultId());
+	add_hi->addIdOperand(extract_carry->getResultId());
+
+	spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
+	auto combine = std::make_unique<spv::Instruction>(
+	    builder.getUniqueId(), uvec2_type, spv::OpCompositeConstruct);
+	combine->addIdOperand(extract_carry_lo->getResultId());
+	combine->addIdOperand(add_hi->getResultId());
+
+	spv::Id ret = combine->getResultId();
+
+	auto *bp = builder.getBuildPoint();
+	bp->addInstruction(std::move(extract_lo));
+	bp->addInstruction(std::move(extract_hi));
+	bp->addInstruction(std::move(add_carry));
+	bp->addInstruction(std::move(extract_carry_lo));
+	bp->addInstruction(std::move(extract_carry));
+	bp->addInstruction(std::move(add_hi));
+	bp->addInstruction(std::move(combine));
+
+	return ret;
+}
+
+static spv::Id build_byte_mask(spv::Builder &builder, spv::Id addr_lo_id, spv::Id byte_count)
+{
+	spv::Id u32_type = builder.makeUintType(32);
+	auto extract = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitFieldUExtract);
+	auto and_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+	auto shift_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftLeftLogical);
+	auto and2_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+
+	extract->addIdOperand(builder.makeUintConstant(~0u));
+	extract->addIdOperand(builder.makeUintConstant(0u));
+	extract->addIdOperand(builder.makeUintConstant(byte_count));
+	and_op->addIdOperand(addr_lo_id);
+	and_op->addIdOperand(builder.makeUintConstant(15));
+	shift_op->addIdOperand(extract->getResultId());
+	shift_op->addIdOperand(and_op->getResultId());
+	and2_op->addIdOperand(shift_op->getResultId());
+	and2_op->addIdOperand(builder.makeUintConstant(0xffff));
+
+	spv::Id ret = and2_op->getResultId();
+
+	auto *bp = builder.getBuildPoint();
+	bp->addInstruction(std::move(extract));
+	bp->addInstruction(std::move(and_op));
+	bp->addInstruction(std::move(shift_op));
+	bp->addInstruction(std::move(and2_op));
+
+	return ret;
+}
+
+static spv::Id build_word_mask(spv::Builder &builder, spv::Id addr_lo_id, spv::Id byte_count)
+{
+	spv::Id u32_type = builder.makeUintType(32);
+
+	auto mask_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+	auto add_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpIAdd);
+	auto add3_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpIAdd);
+	auto slr2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftRightLogical);
+	auto extract_shift = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitFieldUExtract);
+	auto extract = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitFieldUExtract);
+	auto shifted = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftLeftLogical);
+	auto final_mask = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+
+	mask_op->addIdOperand(addr_lo_id);
+	mask_op->addIdOperand(builder.makeUintConstant(3));
+	add_op->addIdOperand(mask_op->getResultId());
+	add_op->addIdOperand(byte_count);
+	add3_op->addIdOperand(add_op->getResultId());
+	add3_op->addIdOperand(builder.makeUintConstant(3));
+	slr2->addIdOperand(add3_op->getResultId());
+	slr2->addIdOperand(builder.makeUintConstant(2));
+
+	extract_shift->addIdOperand(addr_lo_id);
+	extract_shift->addIdOperand(builder.makeUintConstant(2));
+	extract_shift->addIdOperand(builder.makeUintConstant(2));
+
+	extract->addIdOperand(builder.makeUintConstant(~0u));
+	extract->addIdOperand(builder.makeUintConstant(0));
+	extract->addIdOperand(builder.makeUintConstant(slr2->getResultId()));
+
+	shifted->addIdOperand(extract->getResultId());
+	shifted->addIdOperand(extract_shift->getResultId());
+
+	final_mask->addIdOperand(shifted->getResultId());
+	final_mask->addIdOperand(builder.makeUintConstant(0xf));
+
+	spv::Id ret = final_mask->getResultId();
+
+	auto *bp = builder.getBuildPoint();
+	bp->addInstruction(std::move(mask_op));
+	bp->addInstruction(std::move(add_op));
+	bp->addInstruction(std::move(add3_op));
+	bp->addInstruction(std::move(slr2));
+	bp->addInstruction(std::move(extract_shift));
+	bp->addInstruction(std::move(extract));
+	bp->addInstruction(std::move(shifted));
+	bp->addInstruction(std::move(final_mask));
+
+	return ret;
+}
+
+spv::Id SPIRVModule::Impl::build_hash_call(SPIRVModule &module)
+{
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+
+	auto *func = builder.makeFunctionEntry(
+	    spv::NoPrecision, uint_type,
+	    "AddrHash",
+	    { uvec2_type, uint_type }, {}, &entry);
+
+	builder.addName(func->getParamId(0), "addr");
+	builder.addName(func->getParamId(1), "prime");
+
+	spv::Id ret_id = 0;
+	builder.makeReturn(false, ret_id);
+	builder.setBuildPoint(current_build_point);
+	return func->getId();
+}
+
+spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
+{
+	if (validate_bda_load_store_call_id)
+		return validate_bda_load_store_call_id;
+
+	spv::Id hash_call_id = build_hash_call(module);
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id u64_type = builder.makeUintType(64);
+	spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+	spv::Id bool_type = builder.makeBoolType();
+
+	spv::Id bloom_var_id_64 = build_instrumentation_ssbo(
+		u64_type, 8, "atomics", "BloomBuffer64SSBO", "BloomBuffer64",
+		instruction_instrumentation.info.control_desc_set,
+		instruction_instrumentation.info.control_binding);
+
+	spv::Id bloom_var_id_32 = build_instrumentation_ssbo(
+		uvec2_type, 8, "atomics", "BloomBuffer32SSBO", "BloomBuffer32",
+		instruction_instrumentation.info.control_desc_set,
+		instruction_instrumentation.info.control_binding);
+
+	auto *func = builder.makeFunctionEntry(
+		spv::NoPrecision, bool_type,
+		"ValidateBDALoadStore",
+		{ uvec2_type, uint_type, uint_type, uint_type }, {}, &entry);
+
+	builder.addName(func->getParamId(0), "BDA");
+	builder.addName(func->getParamId(1), "offset");
+	builder.addName(func->getParamId(2), "len");
+	builder.addName(func->getParamId(3), "type");
+	builder.setBuildPoint(entry);
+
+	spv::Id addr_id = build_u64_add_u32(builder, func->getParamId(0), func->getParamId(1));
+	spv::Id addr_lo_id;
+	spv::Id addr_hi_id;
+
+	{
+		auto extract_lo = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpCompositeExtract);
+		auto extract_hi = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpCompositeExtract);
+
+		extract_lo->addIdOperand(addr_id);
+		extract_lo->addImmediateOperand(0);
+		extract_hi->addIdOperand(addr_id);
+		extract_hi->addImmediateOperand(1);
+
+		addr_lo_id = extract_lo->getResultId();
+		addr_hi_id = extract_hi->getResultId();
+
+		entry->addInstruction(std::move(extract_lo));
+		entry->addInstruction(std::move(extract_hi));
+	}
+
+	spv::Id byte_mask_id = build_byte_mask(builder, addr_lo_id, func->getParamId(2));
+	spv::Id word_mask_id = build_word_mask(builder, addr_lo_id, func->getParamId(2));
+
+	builder.makeReturn(false, builder.makeBoolConstant(true));
+	builder.setBuildPoint(current_build_point);
+	validate_bda_load_store_call_id = func->getId();
+	return validate_bda_load_store_call_id;
+}
+
 spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall call,
                                               const spv::Id *aux_ids, uint32_t aux_ids_count)
 {
@@ -2268,6 +2509,8 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_increment_node_count(module, true);
 	case HelperCall::IsQuadUniformControlFlow:
 		return build_is_quad_uniform_control_flow(module);
+	case HelperCall::ValidateBDALoadStore:
+		return build_validate_bda_load_store(module);
 
 	default:
 		break;

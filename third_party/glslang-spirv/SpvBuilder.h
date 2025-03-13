@@ -96,7 +96,10 @@ public:
     }
 
     // To get a new <id> for anything needing a new one.
-    Id getUniqueId() { return ++uniqueId; }
+    Id getUniqueId() {
+		auto ret = ++uniqueId;
+		return ret;
+	}
 
     // To get a set of new <id>s, e.g., for a set of function parameters
     Id getUniqueIds(int numIds)
