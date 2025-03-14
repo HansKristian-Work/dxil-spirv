@@ -126,7 +126,31 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 	}
 	else
 	{
-		// Atomics
+		unsigned elem_index;
+
+		if (value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
+			elem_index = 2;
+		else
+			elem_index = 3;
+
+		if (meta.kind == DXIL::ResourceKind::RawBuffer)
+		{
+			offset_id = impl.get_id_for_value(instruction->getOperand(elem_index));
+		}
+		else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(elem_index));
+			if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(elem_index + 1)))
+				offset_id = impl.get_id_for_value(instruction->getOperand(elem_index + 1));
+			stride_id = builder.makeUintConstant(meta.stride);
+		}
+		else if (meta.kind == DXIL::ResourceKind::TypedBuffer)
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(elem_index));
+			stride_id = meta.instrumentation.elem_size_id;
+		}
+
+		len_id = builder.makeUintConstant(instruction->getType()->getIntegerBitWidth() / 8);
 	}
 
 	spv::Id total_offset_id = 0;
