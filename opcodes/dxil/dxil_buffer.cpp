@@ -492,6 +492,7 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 
 		call->add_id(builder.makeUintConstant(vecsize * get_type_scalar_alignment(impl, element_type)));
 		call->add_id(builder.makeUintConstant(uint32_t(BDAOperation::Load)));
+		call->add_id(builder.makeUintConstant(0));
 		impl.add(call);
 
 		auto *expect_true = impl.allocate(spv::OpAssumeTrueKHR);
@@ -1126,6 +1127,7 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 
 		call->add_id(builder.makeUintConstant(vecsize * get_type_scalar_alignment(impl, element_type)));
 		call->add_id(builder.makeUintConstant(uint32_t(BDAOperation::Store)));
+		call->add_id(builder.makeUintConstant(0));
 		impl.add(call);
 
 		auto *expect_true = impl.allocate(spv::OpAssumeTrueKHR);
