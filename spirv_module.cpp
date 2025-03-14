@@ -25,6 +25,7 @@
 #include "spirv_module.hpp"
 #include "descriptor_qa.hpp"
 #include "SpvBuilder.h"
+#include "GLSL.std.450.h"
 #include "node.hpp"
 #include "scratch_pool.hpp"
 #include "logging.hpp"
@@ -2394,14 +2395,45 @@ spv::Id SPIRVModule::Impl::build_hash_call(SPIRVModule &module)
 static spv::Id build_hash_mask(spv::Builder &builder, spv::Id var_id)
 {
 	auto *len = builder.addInstruction(builder.makeUintType(32), spv::OpArrayLength);
-	auto *sub1 = builder.addInstruction(builder.makeUintType(32), spv::OpISub);
+	auto *find_msb = builder.addInstruction(builder.makeUintType(32), spv::OpExtInst);
+	auto *extract = builder.addInstruction(builder.makeUintType(32), spv::OpBitFieldUExtract);
+
+	spv::Id glsl = builder.import("GLSL.std.450");
 
 	len->addIdOperand(var_id);
 	len->addImmediateOperand(0);
-	sub1->addIdOperand(len->getResultId());
-	sub1->addIdOperand(builder.makeUintConstant(1));
 
-	return sub1->getResultId();
+	find_msb->addIdOperand(glsl);
+	find_msb->addImmediateOperand(GLSLstd450FindUMsb);
+	find_msb->addIdOperand(len->getResultId());
+
+	extract->addIdOperand(builder.makeUintConstant(~0u));
+	extract->addIdOperand(builder.makeUintConstant(0));
+	extract->addIdOperand(find_msb->getResultId());
+
+	return extract->getResultId();
+}
+
+static spv::Id build_hash_offset(spv::Builder &builder, spv::Id var_id)
+{
+	auto *len = builder.addInstruction(builder.makeUintType(32), spv::OpArrayLength);
+	auto *find_lsb = builder.addInstruction(builder.makeUintType(32), spv::OpExtInst);
+	auto *extract = builder.addInstruction(builder.makeUintType(32), spv::OpBitFieldUExtract);
+
+	spv::Id glsl = builder.import("GLSL.std.450");
+
+	len->addIdOperand(var_id);
+	len->addImmediateOperand(0);
+
+	find_lsb->addIdOperand(glsl);
+	find_lsb->addImmediateOperand(GLSLstd450FindILsb);
+	find_lsb->addIdOperand(len->getResultId());
+
+	extract->addIdOperand(len->getResultId());
+	extract->addIdOperand(builder.makeUintConstant(0));
+	extract->addIdOperand(find_lsb->getResultId());
+
+	return extract->getResultId();
 }
 
 static spv::Id build_get_invalidation_mask(spv::Builder &builder, spv::Id id)
@@ -2424,6 +2456,8 @@ static spv::Id build_get_invalidation_mask(spv::Builder &builder, spv::Id id)
 	auto *extract = builder.addInstruction(u64_type, spv::OpVectorExtractDynamic);
 	extract->addIdOperand(invalidation_table);
 	extract->addIdOperand(id);
+
+	builder.addName(extract->getResultId(), "invalidation_mask");
 
 	return extract->getResultId();
 }
@@ -2482,17 +2516,24 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 	builder.setBuildPoint(entry);
 
 	spv::Id addr_id = build_u64_add_u32(builder, func->getParamId(0), func->getParamId(1));
+	builder.addName(addr_id, "addr");
 	spv::Id addr_lo_id;
 
 	auto *extract_lo = builder.addInstruction(uint_type, spv::OpCompositeExtract);
 	extract_lo->addIdOperand(addr_id);
 	extract_lo->addImmediateOperand(0);
 	addr_lo_id = extract_lo->getResultId();
+	builder.addName(addr_lo_id, "addr_lo");
 
 	spv::Id byte_mask_id = build_byte_mask(builder, addr_lo_id, func->getParamId(2));
 	spv::Id word_mask_id = build_word_mask(builder, addr_lo_id, func->getParamId(2));
+	builder.addName(byte_mask_id, "byte_mask");
+	builder.addName(word_mask_id, "word_mask");
 
 	spv::Id hash_mask = build_hash_mask(builder, bloom_var_id_64);
+	spv::Id hash_offset = build_hash_offset(builder, bloom_var_id_64);
+	builder.addName(hash_mask, "hash_mask");
+	builder.addName(hash_offset, "hash_offset");
 	spv::Id hashes[4];
 
 	for (int i = 0; i < 4; i++)
@@ -2513,7 +2554,12 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		mask->addIdOperand(call->getResultId());
 		mask->addIdOperand(hash_mask);
 
-		hashes[i] = mask->getResultId();
+		auto *add_offset = builder.addInstruction(uint_type, spv::OpIAdd);
+		add_offset->addIdOperand(mask->getResultId());
+		add_offset->addIdOperand(hash_offset);
+
+		hashes[i] = add_offset->getResultId();
+		builder.addName(hashes[i], "bloom_index");
 	}
 
 	spv::Id invalidation_mask = build_get_invalidation_mask(builder, func->getParamId(3));
@@ -2533,6 +2579,8 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		atom->addIdOperand(builder.makeUintConstant(0)); // Relaxed
 		atom->addIdOperand(invalidation_mask);
 
+		builder.addName(atom->getResultId(), "prev_hazard_partial");
+
 		if (atomic_result == 0)
 		{
 			atomic_result = atom->getResultId();
@@ -2550,18 +2598,22 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 
 	auto *atomic_result_uvec2 = builder.addInstruction(uvec2_type, spv::OpBitcast);
 	atomic_result_uvec2->addIdOperand(atomic_result);
+	builder.addName(atomic_result_uvec2->getResultId(), "prev_hazard");
 
 	auto *atomic_result_lo = builder.addInstruction(uint_type, spv::OpCompositeExtract);
 	atomic_result_lo->addIdOperand(atomic_result_uvec2->getResultId());
 	atomic_result_lo->addImmediateOperand(0);
+	builder.addName(atomic_result_lo->getResultId(), "prev_hazard_lo");
 
 	auto *atomic_result_hi = builder.addInstruction(uint_type, spv::OpCompositeExtract);
 	atomic_result_hi->addIdOperand(atomic_result_uvec2->getResultId());
 	atomic_result_hi->addImmediateOperand(1);
+	builder.addName(atomic_result_hi->getResultId(), "prev_hazard_hi");
 
 	// Compute if we took ownership of this byte region. If that's the case then we have zero write hazard overlap.
 	// Every memory access marks STORE as a hazard.
 	spv::Id has_exclusive = build_takes_exclusive_ownership(builder, atomic_result_lo->getResultId(), byte_mask_id);
+	builder.addName(has_exclusive, "has_exclusive_access");
 
 	spv::Id has_complete_self_lock = 0;
 
@@ -2595,6 +2647,8 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 			}
 		}
 
+		builder.addName(lock_mask_id, "lock_mask");
+
 		auto *sel = builder.addInstruction(uint_type, spv::OpSelect);
 		sel->addIdOperand(has_exclusive);
 		sel->addIdOperand(lock_mask_id);
@@ -2611,6 +2665,7 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		atom->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
 		atom->addIdOperand(builder.makeUintConstant(0));
 		atom->addIdOperand(sel->getResultId());
+		builder.addName(atom->getResultId(), "prev_lock");
 
 		spv::Id lock_feedback = atom->getResultId();
 
@@ -2634,6 +2689,8 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 			has_complete_self_lock = logical_and->getResultId();
 		}
 	}
+
+	builder.addName(has_complete_self_lock, "has_complete_self_lock");
 
 	Vector<spv::Block *> segments;
 	// The AST-based builder is a bit awkward to use in this context ...
@@ -2704,6 +2761,7 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		hazard_phi->addIdOperand(hazards[i]);
 		hazard_phi->addIdOperand(segments[i]->getId());
 	}
+	builder.addName(hazard_phi->getResultId(), "hazard");
 
 	auto *inv_complete = builder.addInstruction(bool_type, spv::OpLogicalNot);
 	inv_complete->addIdOperand(has_complete_self_lock);
