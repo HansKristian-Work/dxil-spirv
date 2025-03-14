@@ -3015,8 +3015,7 @@ spv::Function *SPIRVModule::get_entry_function()
 
 uint32_t SPIRVModule::allocate_id()
 {
-	uint32_t id = impl->builder.getUniqueId();
-	return id;
+	return impl->builder.getUniqueId();
 }
 
 uint32_t SPIRVModule::allocate_ids(uint32_t count)
