@@ -59,7 +59,7 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
-	if (meta.instrumentation.bda_id == 0)
+	if (meta.storage != spv::StorageClassPhysicalStorageBuffer && meta.instrumentation.bda_id == 0)
 		return;
 
 	auto &builder = impl.builder();
@@ -180,7 +180,7 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::ValidateBDALoadStore);
 	auto *call = impl.allocate(spv::OpFunctionCall, builder.makeBoolType());
 	call->add_id(call_id);
-	call->add_id(meta.instrumentation.bda_id);
+	call->add_id(meta.instrumentation.bda_id ? meta.instrumentation.bda_id : impl.get_id_for_value(instruction->getOperand(1)));
 	call->add_id(total_offset_id);
 	call->add_id(len_id);
 	call->add_id(builder.makeUintConstant(unsigned(bda_operation)));
@@ -623,42 +623,13 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	tmp_ptr_meta.stride = array_id ? vecsize * get_type_scalar_alignment(impl, element_type) : 0;
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(physical_type_id, tmp_ptr_meta);
 
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
+
 	spv::Id u64_ptr_id;
 	if (array_id)
 		u64_ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 	else
 		u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
-
-	if (impl.options.instruction_instrumentation.enabled &&
-	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation)
-	{
-		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::ValidateBDALoadStore);
-		auto *call = impl.allocate(spv::OpFunctionCall, builder.makeBoolType());
-		call->add_id(call_id);
-		call->add_id(u64_ptr_id);
-
-		if (array_id)
-		{
-			auto *mul = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-			mul->add_id(array_id);
-			mul->add_id(builder.makeUintConstant(tmp_ptr_meta.stride));
-			impl.add(mul);
-			call->add_id(mul->id);
-		}
-		else
-		{
-			call->add_id(builder.makeUintConstant(0));
-		}
-
-		call->add_id(builder.makeUintConstant(vecsize * get_type_scalar_alignment(impl, element_type)));
-		call->add_id(builder.makeUintConstant(uint32_t(BDAOperation::Load)));
-		call->add_id(builder.makeUintConstant(0));
-		impl.add(call);
-
-		auto *expect_true = impl.allocate(spv::OpAssumeTrueKHR);
-		expect_true->add_id(call->id);
-		impl.add(expect_true);
-	}
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(u64_ptr_id);
@@ -1252,36 +1223,7 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	else
 		u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
-	if (impl.options.instruction_instrumentation.enabled &&
-	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation)
-	{
-		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::ValidateBDALoadStore);
-		auto *call = impl.allocate(spv::OpFunctionCall, builder.makeBoolType());
-		call->add_id(call_id);
-		call->add_id(u64_ptr_id);
-
-		if (array_id)
-		{
-			auto *mul = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-			mul->add_id(array_id);
-			mul->add_id(builder.makeUintConstant(tmp_ptr_meta.stride));
-			impl.add(mul);
-			call->add_id(mul->id);
-		}
-		else
-		{
-			call->add_id(builder.makeUintConstant(0));
-		}
-
-		call->add_id(builder.makeUintConstant(vecsize * get_type_scalar_alignment(impl, element_type)));
-		call->add_id(builder.makeUintConstant(uint32_t(BDAOperation::Store)));
-		call->add_id(builder.makeUintConstant(0));
-		impl.add(call);
-
-		auto *expect_true = impl.allocate(spv::OpAssumeTrueKHR);
-		expect_true->add_id(call->id);
-		impl.add(expect_true);
-	}
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store);
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(u64_ptr_id);
