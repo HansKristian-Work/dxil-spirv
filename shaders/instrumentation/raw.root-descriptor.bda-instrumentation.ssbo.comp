@@ -1,0 +1,10 @@
+RWByteAddressBuffer R;
+ByteAddressBuffer RO;
+
+[numthreads(1, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	float3 loaded = RO.Load<float3>(8 * thr);
+	R.Store<float>(4 * thr, R.Load<float>(4 * thr) + 40.0 + loaded.x + loaded.z);
+}
+
