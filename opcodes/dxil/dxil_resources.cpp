@@ -570,7 +570,7 @@ static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id o
 {
 	auto &builder = impl.builder();
 	auto *op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
-	op->add_id(impl.descriptor_heap_robustness_var_id);
+	op->add_id(impl.descriptor_heap_introspection_var_id);
 	op->add_literal(0);
 	impl.add(op);
 
@@ -627,7 +627,7 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 
 	if (impl.options.descriptor_qa_enabled)
 		offset_id = build_descriptor_qa_check(impl, offset_id, type);
-	else if (type != DESCRIPTOR_QA_TYPE_SAMPLER_BIT && dynamic_offset && impl.descriptor_heap_robustness_var_id)
+	else if (type != DESCRIPTOR_QA_TYPE_SAMPLER_BIT && dynamic_offset && impl.descriptor_heap_introspection_var_id)
 		offset_id = build_descriptor_heap_robustness(impl, offset_id);
 
 	return offset_id;
@@ -697,13 +697,54 @@ static spv::StorageClass get_resource_storage_class(Converter::Impl &impl, spv::
 	return storage;
 }
 
+static void build_resource_bda_instrumentation(Converter::Impl &impl, spv::Id offset_id,
+                                               Converter::Impl::ResourceMetaInstrumentation &instrumentation)
+{
+	if (!impl.options.instruction_instrumentation.enabled ||
+	    impl.options.instruction_instrumentation.type != InstructionInstrumentationType::BufferSynchronizationValidation)
+		return;
+
+	if (instrumentation.bda_id != 0 || impl.descriptor_heap_introspection_var_id == 0)
+		return;
+
+	auto &builder = impl.builder();
+
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+	auto *chain = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, uvec2_type));
+	chain->add_id(impl.descriptor_heap_introspection_var_id);
+	chain->add_id(builder.makeUintConstant(0));
+	chain->add_id(offset_id);
+	chain->add_id(builder.makeUintConstant(0));
+	chain->add_id(builder.makeUintConstant(0));
+	impl.add(chain);
+
+	auto *loaded = impl.allocate(spv::OpLoad, uvec2_type);
+	loaded->add_id(chain->id);
+	impl.add(loaded);
+	instrumentation.bda_id = loaded->id;
+
+	auto *extract = impl.allocate(spv::OpCompositeExtract, uint_type);
+	extract->add_id(loaded->id);
+	extract->add_literal(1);
+	impl.add(extract);
+
+	auto *shifted = impl.allocate(spv::OpShiftRightLogical, uint_type);
+	shifted->add_id(extract->id);
+	shifted->add_id(builder.makeUintConstant(16));
+	impl.add(shifted);
+
+	instrumentation.elem_size_id = shifted->id;
+}
+
 static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resource_id,
                                        const Converter::Impl::ResourceReference &reference,
                                        DescriptorQATypeFlagBits descriptor_type,
                                        const llvm::CallInst *instruction,
                                        llvm::Value *instruction_offset_value, bool instruction_is_non_uniform,
                                        bool &is_non_uniform,
-                                       spv::Id *ptr_id, spv::Id *value_id, spv::Id *bindless_offset_id)
+                                       spv::Id *ptr_id, spv::Id *value_id, spv::Id *bindless_offset_id,
+                                       Converter::Impl::ResourceMetaInstrumentation *instrumentation)
 {
 	auto &builder = impl.builder();
 
@@ -741,6 +782,15 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 
 			if (bindless_offset_id)
 				*bindless_offset_id = offset_id;
+
+			if (instrumentation &&
+			    (reference.resource_kind == DXIL::ResourceKind::CBuffer ||
+			     reference.resource_kind == DXIL::ResourceKind::StructuredBuffer ||
+			     reference.resource_kind == DXIL::ResourceKind::TypedBuffer ||
+			     reference.resource_kind == DXIL::ResourceKind::RawBuffer))
+			{
+				build_resource_bda_instrumentation(impl, offset_id, *instrumentation);
+			}
 		}
 		else
 		{
@@ -1174,12 +1224,14 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id resource_id = 0;
 			raw_declarations.reserve(reference.var_alias_group.size());
 
+			Converter::Impl::ResourceMetaInstrumentation instrumentation = {};
+
 			if (reference.var_id)
 			{
 				resource_id = reference.var_id;
 				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type, instruction,
 												instruction_offset, non_uniform, is_non_uniform,
-												nullptr, &loaded_id, &offset_id))
+												nullptr, &loaded_id, &offset_id, &instrumentation))
 				{
 					LOGE("Failed to load SRV resource handle.\n");
 					return false;
@@ -1191,7 +1243,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				resource_id = alias.var_id;
 				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
 												instruction, instruction_offset, non_uniform, is_non_uniform,
-												nullptr, &loaded_id, &offset_id))
+												nullptr, &loaded_id, &offset_id, &instrumentation))
 				{
 					LOGE("Failed to load SRV resource handle.\n");
 					return false;
@@ -1218,6 +1270,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
 			meta.physical_pointer_meta.nonwritable = true;
+			meta.instrumentation = instrumentation;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -1297,12 +1350,14 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id resource_ptr_id = 0;
 			raw_declarations.reserve(reference.var_alias_group.size());
 
+			Converter::Impl::ResourceMetaInstrumentation instrumentation = {};
+
 			if (reference.var_id)
 			{
 				resource_id = reference.var_id;
 				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type, instruction,
 				                                instruction_offset, non_uniform, is_non_uniform, &resource_ptr_id,
-				                                &loaded_id, &offset_id))
+				                                &loaded_id, &offset_id, &instrumentation))
 				{
 					LOGE("Failed to load UAV resource handle.\n");
 					return false;
@@ -1314,7 +1369,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				resource_id = alias.var_id;
 				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
 												instruction, instruction_offset, non_uniform, is_non_uniform,
-												nullptr, &loaded_id, &offset_id))
+												nullptr, &loaded_id, &offset_id, &instrumentation))
 				{
 					LOGE("Failed to load UAV resource handle.\n");
 					return false;
@@ -1342,6 +1397,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.aliased = reference.aliased;
 			meta.rov = reference.rov;
 			meta.physical_pointer_meta.coherent = reference.coherent;
+			meta.instrumentation = instrumentation;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
 			meta.var_id = resource_ptr_id;
@@ -1374,13 +1430,15 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 					{
 						meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction_offset, instruction);
 						meta.counter_is_physical_pointer = true;
+						// Don't support this since the physical pointer we get from heap is actually the counter.
+						meta.instrumentation = {};
 					}
 					else
 					{
 						if (!build_load_resource_handle(impl, counter_reference.var_id, reference,
 						                                DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
 						                                instruction, instruction_offset, non_uniform,
-						                                is_non_uniform, &meta.counter_var_id, nullptr, nullptr))
+						                                is_non_uniform, &meta.counter_var_id, nullptr, nullptr, nullptr))
 						{
 							LOGE("Failed to load UAV counter pointer.\n");
 							return false;
@@ -1452,12 +1510,14 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			spv::Id resource_id = 0;
 			raw_declarations.reserve(reference.var_alias_group.size());
 
+			Converter::Impl::ResourceMetaInstrumentation instrumentation = {};
+
 			if (reference.var_id)
 			{
 				resource_id = reference.var_id;
 				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type, instruction,
 												instruction_offset, non_uniform, is_non_uniform,
-												nullptr, &loaded_id, nullptr))
+												nullptr, &loaded_id, nullptr, &instrumentation))
 				{
 					LOGE("Failed to load CBV resource handle.\n");
 					return false;
@@ -1469,7 +1529,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				resource_id = alias.var_id;
 				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
 												instruction, instruction_offset, non_uniform, is_non_uniform,
-												nullptr, &loaded_id, nullptr))
+												nullptr, &loaded_id, nullptr, &instrumentation))
 				{
 					LOGE("Failed to load CBV resource handle.\n");
 					return false;
@@ -1486,6 +1546,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.storage = storage;
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.kind = DXIL::ResourceKind::CBuffer;
+			meta.instrumentation = instrumentation;
 
 			if (is_non_uniform)
 			{
@@ -1507,7 +1568,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 		bool is_non_uniform = false;
 		spv::Id loaded_id = 0;
 		if (!build_load_resource_handle(impl, base_sampler_id, reference, DESCRIPTOR_QA_TYPE_SAMPLER_BIT, instruction,
-		                                instruction_offset, non_uniform, is_non_uniform, nullptr, &loaded_id, nullptr))
+		                                instruction_offset, non_uniform, is_non_uniform, nullptr, &loaded_id, nullptr, nullptr))
 		{
 			LOGE("Failed to load Sampler resource handle.\n");
 			return false;

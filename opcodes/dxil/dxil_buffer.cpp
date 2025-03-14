@@ -32,6 +32,127 @@
 
 namespace dxil_spv
 {
+static RawWidth get_buffer_access_bits_per_component(
+	Converter::Impl &impl, spv::StorageClass storage, const llvm::Type *element_type)
+{
+	if (impl.execution_mode_meta.native_16bit_operations && storage == spv::StorageClassStorageBuffer &&
+	    type_is_16bit(element_type))
+	{
+		return RawWidth::B16;
+	}
+	else if (type_is_64bit(element_type))
+		return RawWidth::B64;
+	else
+		return RawWidth::B32;
+}
+
+static void emit_buffer_synchronization_validation(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
+                                                   const llvm::CallInst *instruction,
+                                                   BDAOperation bda_operation)
+{
+	if (meta.instrumentation.bda_id == 0)
+		return;
+
+	auto &builder = impl.builder();
+	spv::Id stride_id = 0;
+	spv::Id offset_id = 0;
+	spv::Id elem_id = 0;
+	spv::Id len_id = 0;
+
+	if (bda_operation == BDAOperation::Store || bda_operation == BDAOperation::Load)
+	{
+		const llvm::Type *element_type;
+		if (bda_operation == BDAOperation::Store)
+			element_type = instruction->getOperand(4)->getType();
+		else
+			element_type = instruction->getType()->getStructElementType(0);
+
+		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		{
+			unsigned mask;
+
+			if (bda_operation == BDAOperation::Load)
+			{
+				auto &access_meta = impl.llvm_composite_meta[instruction];
+				mask = access_meta.access_mask & 0xf;
+			}
+			else
+			{
+				mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+			}
+
+			unsigned width = raw_width_to_bits(get_buffer_access_bits_per_component(impl, meta.storage, element_type));
+
+			unsigned num_elems = 0;
+			for (unsigned i = 0; i < 4; i++)
+				if ((mask & (1u << i)) != 0)
+					num_elems = i + 1;
+
+			len_id = builder.makeUintConstant(num_elems * width / 8);
+		}
+
+		if (meta.kind == DXIL::ResourceKind::RawBuffer)
+		{
+			offset_id = impl.get_id_for_value(instruction->getOperand(2));
+		}
+		else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(2));
+			if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(3)))
+				offset_id = impl.get_id_for_value(instruction->getOperand(3));
+			stride_id = builder.makeUintConstant(meta.stride);
+		}
+		else
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(2));
+			stride_id = meta.instrumentation.elem_size_id;
+			len_id = meta.instrumentation.elem_size_id;
+		}
+	}
+	else
+	{
+
+	}
+
+	spv::Id total_offset_id = 0;
+
+	if (elem_id != 0)
+	{
+		auto *mul = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		mul->add_id(elem_id);
+		mul->add_id(stride_id);
+		impl.add(mul);
+		total_offset_id = mul->id;
+	}
+
+	if (!total_offset_id)
+	{
+		total_offset_id = offset_id;
+	}
+	else if (offset_id != 0)
+	{
+		auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add->add_id(total_offset_id);
+		add->add_id(offset_id);
+		impl.add(add);
+		total_offset_id = add->id;
+	}
+
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::ValidateBDALoadStore);
+	auto *call = impl.allocate(spv::OpFunctionCall, builder.makeBoolType());
+	call->add_id(call_id);
+	call->add_id(meta.instrumentation.bda_id);
+	call->add_id(total_offset_id);
+	call->add_id(len_id);
+	call->add_id(builder.makeUintConstant(unsigned(bda_operation)));
+	call->add_id(builder.makeUintConstant(0));
+	impl.add(call);
+
+	auto *expect_true = impl.allocate(spv::OpAssumeTrueKHR);
+	expect_true->add_id(call->id);
+	impl.add(expect_true);
+}
+
 bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Type *type,
                                            const llvm::Value *byte_offset,
                                            unsigned vecsize)
@@ -542,20 +663,6 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	return true;
 }
 
-static RawWidth get_buffer_access_bits_per_component(
-	Converter::Impl &impl, spv::StorageClass storage, const llvm::Type *element_type)
-{
-	if (impl.execution_mode_meta.native_16bit_operations && storage == spv::StorageClassStorageBuffer &&
-	    type_is_16bit(element_type))
-	{
-		return RawWidth::B16;
-	}
-	else if (type_is_64bit(element_type))
-		return RawWidth::B64;
-	else
-		return RawWidth::B32;
-}
-
 struct RawAccessChain
 {
     spv::Id ptr_id;
@@ -747,6 +854,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	// Leave no gaps in the access mask to aid vectorization.
 	// For reads, we can safely read components we not strictly need to read.
 	uint32_t smeared_access_mask;
+
+	emit_buffer_synchronization_validation(impl, meta, instruction, BDAOperation::Load);
 
 	if (meta.storage != spv::StorageClassUniformConstant)
 	{
@@ -1283,6 +1392,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
+	emit_buffer_synchronization_validation(impl, meta, instruction, BDAOperation::Store);
+
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
 		// We don't more about alignment in SM 5.1 BufferStore.
@@ -1510,6 +1621,8 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	auto binop = static_cast<DXIL::AtomicBinOp>(
 	    llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getZExtValue());
+
+	emit_buffer_synchronization_validation(impl, meta, instruction, BDAOperation::AtomicRMW);
 
 	spv::Id coords[3] = {};
 	uint32_t num_coords_full = 0, num_coords = 0;
@@ -1787,6 +1900,8 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 		return emit_magic_ags_instruction(impl, instruction);
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
+
+	emit_buffer_synchronization_validation(impl, meta, instruction, BDAOperation::AtomicRMW);
 
 	spv::Id coords[3] = {};
 	uint32_t num_coords_full = 0, num_coords = 0;

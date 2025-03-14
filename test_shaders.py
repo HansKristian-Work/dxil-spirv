@@ -243,6 +243,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--raw-access-chains-nv']
     if '.extended-robustness.' in shader:
         hlsl_cmd += ['--extended-robustness']
+    if 'bda-instrumentation.' in shader:
+        hlsl_cmd += ['--instruction-instrumentation', '4', '0', '2', 'abcd']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

@@ -2472,7 +2472,7 @@ static spv::Id build_takes_exclusive_ownership(spv::Builder &builder, spv::Id at
 	and_op->addIdOperand(shift->getResultId());
 	and_op->addIdOperand(byte_mask);
 
-	auto *cmp = builder.addInstruction(builder.makeBoolType(), spv::OpINotEqual);
+	auto *cmp = builder.addInstruction(builder.makeBoolType(), spv::OpIEqual);
 	cmp->addIdOperand(and_op->getResultId());
 	cmp->addIdOperand(builder.makeUintConstant(0));
 
@@ -2763,13 +2763,13 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 	}
 	builder.addName(hazard_phi->getResultId(), "hazard");
 
-	auto *inv_complete = builder.addInstruction(bool_type, spv::OpLogicalNot);
-	inv_complete->addIdOperand(has_complete_self_lock);
+	auto *inv_hazard = builder.addInstruction(bool_type, spv::OpLogicalNot);
+	inv_hazard->addIdOperand(hazard_phi->getResultId());
 
 	// Compute self-hazard.
-	auto *ret = builder.addInstruction(bool_type, spv::OpLogicalAnd);
-	ret->addIdOperand(inv_complete->getResultId());
-	ret->addIdOperand(hazard_phi->getResultId());
+	auto *ret = builder.addInstruction(bool_type, spv::OpLogicalOr);
+	ret->addIdOperand(inv_hazard->getResultId());
+	ret->addIdOperand(has_complete_self_lock);
 
 	builder.makeReturn(false, ret->getResultId());
 	builder.setBuildPoint(current_build_point);

@@ -2694,7 +2694,7 @@ uint32_t Converter::Impl::find_binding_meta_index(uint32_t binding_range_lo, uin
 	return UINT32_MAX;
 }
 
-bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
+bool Converter::Impl::emit_descriptor_heap_introspection_ssbo()
 {
 	// We need to know the size of the descriptor heap. Rather than passing this
 	// through a separate descriptor, we can just query the SSBO size of the
@@ -2723,9 +2723,16 @@ bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
 	}
 
 	spv::Id u32_type = builder().makeUintType(32);
-	spv::Id u32_array_type = builder().makeArrayType(
-	    u32_type, builder().makeUintConstant(options.physical_address_descriptor_stride * 2), 0);
-	builder().addDecoration(u32_array_type, spv::DecorationArrayStride, 4);
+	uint32_t elems = options.physical_address_descriptor_stride;
+
+	if (options.instruction_instrumentation.enabled)
+		u32_type = builder().makeVectorType(u32_type, 2);
+	else
+		elems *= 2;
+
+	spv::Id u32_array_type = builder().makeArrayType(u32_type, builder().makeUintConstant(elems), 0);
+	builder().addDecoration(u32_array_type, spv::DecorationArrayStride,
+	                        options.instruction_instrumentation.enabled ? 8 : 4);
 
 	spv::Id inner_struct_type = get_struct_type({ u32_array_type }, 0, "DescriptorHeapRawPayload");
 	builder().addMemberDecoration(inner_struct_type, 0, spv::DecorationOffset, 0);
@@ -2745,7 +2752,7 @@ bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
 	builder().addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
 
 	// Take OpArrayLength of this variable's first member and we have it.
-	descriptor_heap_robustness_var_id = var_id;
+	descriptor_heap_introspection_var_id = var_id;
 	return true;
 }
 
@@ -2994,14 +3001,15 @@ bool Converter::Impl::emit_resources()
 
 	if (options.descriptor_heap_robustness)
 	{
-		if (!emit_descriptor_heap_dummy_ssbo())
+		if (!emit_descriptor_heap_introspection_ssbo())
 			return false;
 	}
 	else if (options.instruction_instrumentation.enabled &&
-	         options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	         (options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume ||
+	          options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation))
 	{
 		// Failure is not a big deal.
-		emit_descriptor_heap_dummy_ssbo();
+		emit_descriptor_heap_introspection_ssbo();
 	}
 
 	auto &module = bitcode_parser.get_module();
