@@ -2264,7 +2264,7 @@ static spv::Id build_byte_mask(spv::Builder &builder, spv::Id addr_lo_id, spv::I
 
 	extract->addIdOperand(builder.makeUintConstant(~0u));
 	extract->addIdOperand(builder.makeUintConstant(0u));
-	extract->addIdOperand(builder.makeUintConstant(byte_count));
+	extract->addIdOperand(byte_count);
 	and_op->addIdOperand(addr_lo_id);
 	and_op->addIdOperand(builder.makeUintConstant(15));
 	shift_op->addIdOperand(extract->getResultId());
@@ -2486,20 +2486,11 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 
 	spv::Id addr_id = build_u64_add_u32(builder, func->getParamId(0), func->getParamId(1));
 	spv::Id addr_lo_id;
-	spv::Id addr_hi_id;
 
-	{
-		auto *extract_lo = builder.addInstruction(uint_type, spv::OpCompositeExtract);
-		auto *extract_hi = builder.addInstruction(uint_type, spv::OpCompositeExtract);
-
-		extract_lo->addIdOperand(addr_id);
-		extract_lo->addImmediateOperand(0);
-		extract_hi->addIdOperand(addr_id);
-		extract_hi->addImmediateOperand(1);
-
-		addr_lo_id = extract_lo->getResultId();
-		addr_hi_id = extract_hi->getResultId();
-	}
+	auto *extract_lo = builder.addInstruction(uint_type, spv::OpCompositeExtract);
+	extract_lo->addIdOperand(addr_id);
+	extract_lo->addImmediateOperand(0);
+	addr_lo_id = extract_lo->getResultId();
 
 	spv::Id byte_mask_id = build_byte_mask(builder, addr_lo_id, func->getParamId(2));
 	spv::Id word_mask_id = build_word_mask(builder, addr_lo_id, func->getParamId(2));
@@ -2617,6 +2608,87 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		atom->addIdOperand(sel->getResultId());
 
 		lock_feedback[i] = atom->getResultId();
+	}
+
+	auto *invalidation_cast = builder.addInstruction(uvec2_type, spv::OpBitcast);
+	invalidation_cast->addIdOperand(invalidation_mask);
+
+	auto *invalidation_lo = builder.addInstruction(uint_type, spv::OpCompositeExtract);
+	invalidation_lo->addIdOperand(invalidation_cast->getResultId());
+	invalidation_lo->addImmediateOperand(0);
+
+	auto *invalidation_hi = builder.addInstruction(uint_type, spv::OpCompositeExtract);
+	invalidation_hi->addIdOperand(invalidation_cast->getResultId());
+	invalidation_hi->addImmediateOperand(1);
+
+	Vector<spv::Block *> segments;
+	// The AST-based builder is a bit awkward to use in this context ...
+	builder.makeSwitch(func->getParamId(3), 0, 4, { 0, 1, 2 }, { 0, 1, 2 }, 3, segments);
+	builder.endSwitch(segments);
+	auto *merge = builder.getBuildPoint();
+	spv::Id hazards[4];
+
+	builder.setBuildPoint(segments[int(BDAOperation::Load)]);
+	{
+		auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
+		auto *neq = builder.addInstruction(bool_type, spv::OpINotEqual);
+		mask->addIdOperand(invalidation_lo->getResultId());
+		mask->addIdOperand(byte_mask_id);
+		neq->addIdOperand(mask->getResultId());
+		neq->addIdOperand(builder.makeUintConstant(0));
+		hazards[int(BDAOperation::Load)] = neq->getResultId();
+		builder.createBranch(merge);
+	}
+
+	builder.setBuildPoint(segments[int(BDAOperation::Store)]);
+	{
+		auto *shift = builder.addInstruction(uint_type, spv::OpShiftLeftLogical);
+		shift->addIdOperand(byte_mask_id);
+		shift->addIdOperand(builder.makeUintConstant(16));
+		auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
+		auto *neq = builder.addInstruction(bool_type, spv::OpINotEqual);
+		mask->addIdOperand(invalidation_lo->getResultId());
+		mask->addIdOperand(shift->getResultId());
+		neq->addIdOperand(mask->getResultId());
+		neq->addIdOperand(builder.makeUintConstant(0));
+		hazards[int(BDAOperation::Store)] = neq->getResultId();
+		builder.createBranch(merge);
+	}
+
+	builder.setBuildPoint(segments[int(BDAOperation::AtomicRMW)]);
+	{
+		auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
+		auto *neq = builder.addInstruction(bool_type, spv::OpINotEqual);
+		mask->addIdOperand(invalidation_hi->getResultId());
+		mask->addIdOperand(word_mask_id);
+		neq->addIdOperand(mask->getResultId());
+		neq->addIdOperand(builder.makeUintConstant(0));
+		hazards[int(BDAOperation::AtomicRMW)] = neq->getResultId();
+		builder.createBranch(merge);
+	}
+
+	builder.setBuildPoint(segments[int(BDAOperation::IndirectRead)]);
+	{
+		auto *shift = builder.addInstruction(uint_type, spv::OpShiftLeftLogical);
+		shift->addIdOperand(byte_mask_id);
+		shift->addIdOperand(builder.makeUintConstant(4));
+		auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
+		auto *neq = builder.addInstruction(bool_type, spv::OpINotEqual);
+		mask->addIdOperand(invalidation_hi->getResultId());
+		mask->addIdOperand(shift->getResultId());
+		neq->addIdOperand(mask->getResultId());
+		neq->addIdOperand(builder.makeUintConstant(0));
+		hazards[int(BDAOperation::IndirectRead)] = neq->getResultId();
+		builder.createBranch(merge);
+	}
+
+	builder.setBuildPoint(merge);
+
+	auto *hazard_phi = builder.addInstruction(bool_type, spv::OpPhi);
+	for (int i = 0; i < 4; i++)
+	{
+		hazard_phi->addIdOperand(hazards[i]);
+		hazard_phi->addIdOperand(segments[i]->getId());
 	}
 
 	builder.makeReturn(false, builder.makeBoolConstant(true));
