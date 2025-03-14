@@ -1,0 +1,12 @@
+RWStructuredBuffer<uint> R;
+RWByteAddressBuffer BAB;
+RWBuffer<uint> T;
+
+[numthreads(1, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	uint o;
+	BAB.InterlockedAdd(4 * thr, 1, o);
+	BAB.InterlockedCompareExchange(4 * thr, 5, 6, o);
+}
+
