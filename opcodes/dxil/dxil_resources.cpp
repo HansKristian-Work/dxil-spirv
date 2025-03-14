@@ -2385,6 +2385,8 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			                                       impl.handle_to_root_member_offset[instruction->getOperand(1)]);
 		}
 
+		emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
+
 		// Handle min16float where we want FP16 value, but FP32 physical.
 		auto *result_component_type = result_type->getStructElementType(0);
 		spv::Op value_cast_op = spv::OpNop;

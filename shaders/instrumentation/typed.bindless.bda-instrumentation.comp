@@ -1,0 +1,10 @@
+RWBuffer<float> R;
+Buffer<float3> RO;
+
+[numthreads(1, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	float3 loaded = RO[thr];
+	R[thr] += 40.0 + loaded.x + loaded.z;
+}
+

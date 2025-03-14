@@ -46,10 +46,19 @@ static RawWidth get_buffer_access_bits_per_component(
 		return RawWidth::B32;
 }
 
-static void emit_buffer_synchronization_validation(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
-                                                   const llvm::CallInst *instruction,
-                                                   BDAOperation bda_operation)
+void emit_buffer_synchronization_validation(Converter::Impl &impl,
+                                            const llvm::CallInst *instruction,
+                                            BDAOperation bda_operation)
 {
+	if (!impl.options.instruction_instrumentation.enabled ||
+	    impl.options.instruction_instrumentation.type != InstructionInstrumentationType::BufferSynchronizationValidation)
+	{
+		return;
+	}
+
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+
 	if (meta.instrumentation.bda_id == 0)
 		return;
 
@@ -102,16 +111,22 @@ static void emit_buffer_synchronization_validation(Converter::Impl &impl, const 
 				offset_id = impl.get_id_for_value(instruction->getOperand(3));
 			stride_id = builder.makeUintConstant(meta.stride);
 		}
-		else
+		else if (meta.kind == DXIL::ResourceKind::TypedBuffer)
 		{
 			elem_id = impl.get_id_for_value(instruction->getOperand(2));
 			stride_id = meta.instrumentation.elem_size_id;
 			len_id = meta.instrumentation.elem_size_id;
 		}
+		else
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(2));
+			stride_id = builder.makeUintConstant(16);
+			len_id = stride_id;
+		}
 	}
 	else
 	{
-
+		// Atomics
 	}
 
 	spv::Id total_offset_id = 0;
@@ -855,7 +870,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	// For reads, we can safely read components we not strictly need to read.
 	uint32_t smeared_access_mask;
 
-	emit_buffer_synchronization_validation(impl, meta, instruction, BDAOperation::Load);
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
 
 	if (meta.storage != spv::StorageClassUniformConstant)
 	{
@@ -1392,7 +1407,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
-	emit_buffer_synchronization_validation(impl, meta, instruction, BDAOperation::Store);
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store);
 
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
@@ -1622,7 +1637,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto binop = static_cast<DXIL::AtomicBinOp>(
 	    llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getZExtValue());
 
-	emit_buffer_synchronization_validation(impl, meta, instruction, BDAOperation::AtomicRMW);
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::AtomicRMW);
 
 	spv::Id coords[3] = {};
 	uint32_t num_coords_full = 0, num_coords = 0;
@@ -1901,7 +1916,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
-	emit_buffer_synchronization_validation(impl, meta, instruction, BDAOperation::AtomicRMW);
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::AtomicRMW);
 
 	spv::Id coords[3] = {};
 	uint32_t num_coords_full = 0, num_coords = 0;
