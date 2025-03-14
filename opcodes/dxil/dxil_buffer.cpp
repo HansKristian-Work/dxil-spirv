@@ -623,13 +623,13 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	tmp_ptr_meta.stride = array_id ? vecsize * get_type_scalar_alignment(impl, element_type) : 0;
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(physical_type_id, tmp_ptr_meta);
 
-	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
-
 	spv::Id u64_ptr_id;
 	if (array_id)
 		u64_ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 	else
 		u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
+
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(u64_ptr_id);
@@ -865,8 +865,6 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	// For reads, we can safely read components we not strictly need to read.
 	uint32_t smeared_access_mask;
 
-	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
-
 	if (meta.storage != spv::StorageClassUniformConstant)
 	{
 		smeared_access_mask = access_meta.access_mask & 0xfu;
@@ -891,6 +889,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta,
 		                                             smeared_access_mask, 4);
 	}
+
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
 
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta) && !sparse;
 	if (raw_access_chain)
@@ -1373,8 +1373,6 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
-	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store);
-
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
 		// We don't more about alignment in SM 5.1 BufferStore.
@@ -1382,6 +1380,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		// Might be possible to do some fancy analysis to deduce a better alignment.
 		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, 4);
 	}
+
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store);
 
 	auto *element_type = instruction->getOperand(4)->getType();
 
