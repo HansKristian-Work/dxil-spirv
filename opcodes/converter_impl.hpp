@@ -442,7 +442,13 @@ struct Converter::Impl
 	unsigned patch_location_offset = 0;
 	unsigned descriptor_qa_counter = 0;
 	spv::Id primitive_index_array_id = 0;
-	spv::Id descriptor_heap_introspection_var_id = 0;
+
+	struct
+	{
+		spv::Id descriptor_heap_introspection_var_id;
+		spv::Id invocation_id_var_id;
+	} instrumentation = {};
+	void emit_write_instrumentation_invocation_id(CFGNode *node);
 
 	struct PhysicalPointerMeta
 	{

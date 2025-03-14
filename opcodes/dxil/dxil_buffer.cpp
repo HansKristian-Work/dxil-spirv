@@ -184,7 +184,12 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 	call->add_id(total_offset_id);
 	call->add_id(len_id);
 	call->add_id(builder.makeUintConstant(unsigned(bda_operation)));
-	call->add_id(builder.makeUintConstant(0));
+
+	auto *load_invocation_id = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	load_invocation_id->add_id(impl.instrumentation.invocation_id_var_id);
+	impl.add(load_invocation_id);
+
+	call->add_id(load_invocation_id->id);
 	impl.add(call);
 
 	auto *expect_true = impl.allocate(spv::OpAssumeTrueKHR);

@@ -2738,13 +2738,21 @@ bool Converter::Impl::emit_descriptor_heap_introspection_ssbo()
 	builder().addMemberDecoration(inner_struct_type, 0, spv::DecorationOffset, 0);
 
 	spv::Id inner_struct_array_type = builder().makeRuntimeArray(inner_struct_type);
-	builder().addDecoration(inner_struct_array_type, spv::DecorationArrayStride, 8u * options.physical_address_descriptor_stride);
+	builder().addDecoration(inner_struct_array_type, spv::DecorationArrayStride,
+	                        8u * options.physical_address_descriptor_stride);
+
+	bool sync_val =
+		options.instruction_instrumentation.enabled &&
+		options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation;
 
 	spv::Id block_type_id = get_struct_type({ inner_struct_array_type }, 0, "DescriptorHeapRobustnessSSBO");
 	builder().addDecoration(block_type_id, spv::DecorationBlock);
 	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
-	builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
-	builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
+	if (!sync_val)
+	{
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
+	}
 	builder().addMemberName(block_type_id, 0, "descriptors");
 	spv::Id var_id = create_variable(spv::StorageClassStorageBuffer, block_type_id, "DescriptorHeapRobustness");
 
@@ -2752,7 +2760,14 @@ bool Converter::Impl::emit_descriptor_heap_introspection_ssbo()
 	builder().addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
 
 	// Take OpArrayLength of this variable's first member and we have it.
-	descriptor_heap_introspection_var_id = var_id;
+	instrumentation.descriptor_heap_introspection_var_id = var_id;
+
+	if (sync_val)
+	{
+		instrumentation.invocation_id_var_id =
+			create_variable(spv::StorageClassPrivate, builder().makeUintType(32), "InvocationID");
+	}
+
 	return true;
 }
 
@@ -7102,6 +7117,43 @@ Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_legacy
 	return visit_order;
 }
 
+void Converter::Impl::emit_write_instrumentation_invocation_id(CFGNode *node)
+{
+	current_block = &node->ir.operations;
+
+	spv::Id u32_type = builder().makeUintType(32);
+	auto *len = allocate(spv::OpArrayLength, u32_type);
+	len->add_id(instrumentation.descriptor_heap_introspection_var_id);
+	len->add_literal(0);
+	add(len);
+
+	auto *sub1 = allocate(spv::OpISub, u32_type);
+	sub1->add_id(len->id);
+	sub1->add_id(builder().makeUintConstant(1));
+	add(sub1);
+
+	auto *chain = allocate(
+	    spv::OpAccessChain, builder().makePointer(spv::StorageClassStorageBuffer, u32_type));
+	chain->add_id(instrumentation.descriptor_heap_introspection_var_id);
+	chain->add_id(builder().makeUintConstant(0));
+	chain->add_id(sub1->id);
+	chain->add_id(builder().makeUintConstant(0));
+	chain->add_id(builder().makeUintConstant(0));
+	chain->add_id(builder().makeUintConstant(0));
+	add(chain);
+
+	auto *atomic = allocate(spv::OpAtomicIIncrement, u32_type);
+	atomic->add_id(chain->id);
+	atomic->add_id(builder().makeUintConstant(spv::ScopeDevice));
+	atomic->add_id(builder().makeUintConstant(0));
+	add(atomic);
+
+	auto *store = allocate(spv::OpStore);
+	store->add_id(instrumentation.invocation_id_var_id);
+	store->add_id(atomic->id);
+	add(store);
+}
+
 CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order)
 {
 	bool has_partial_unroll = false;
@@ -7111,6 +7163,9 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		auto *meta = bb_map[bb];
 		CFGNode *node = meta->node;
 		combined_image_sampler_cache.clear();
+
+		if (bb == visit_order.front() && instrumentation.invocation_id_var_id)
+			emit_write_instrumentation_invocation_id(node);
 
 		auto sink_itr = bb_to_sinks.find(bb);
 		if (sink_itr != bb_to_sinks.end())

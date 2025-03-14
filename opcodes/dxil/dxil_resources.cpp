@@ -570,7 +570,7 @@ static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id o
 {
 	auto &builder = impl.builder();
 	auto *op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
-	op->add_id(impl.descriptor_heap_introspection_var_id);
+	op->add_id(impl.instrumentation.descriptor_heap_introspection_var_id);
 	op->add_literal(0);
 	impl.add(op);
 
@@ -627,7 +627,8 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 
 	if (impl.options.descriptor_qa_enabled)
 		offset_id = build_descriptor_qa_check(impl, offset_id, type);
-	else if (type != DESCRIPTOR_QA_TYPE_SAMPLER_BIT && dynamic_offset && impl.descriptor_heap_introspection_var_id)
+	else if (type != DESCRIPTOR_QA_TYPE_SAMPLER_BIT && dynamic_offset &&
+	         impl.instrumentation.descriptor_heap_introspection_var_id)
 		offset_id = build_descriptor_heap_robustness(impl, offset_id);
 
 	return offset_id;
@@ -704,7 +705,7 @@ static void build_resource_bda_instrumentation(Converter::Impl &impl, spv::Id of
 	    impl.options.instruction_instrumentation.type != InstructionInstrumentationType::BufferSynchronizationValidation)
 		return;
 
-	if (instrumentation.bda_id != 0 || impl.descriptor_heap_introspection_var_id == 0)
+	if (instrumentation.bda_id != 0 || impl.instrumentation.descriptor_heap_introspection_var_id == 0)
 		return;
 
 	auto &builder = impl.builder();
@@ -712,7 +713,7 @@ static void build_resource_bda_instrumentation(Converter::Impl &impl, spv::Id of
 	spv::Id uint_type = builder.makeUintType(32);
 	spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
 	auto *chain = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, uvec2_type));
-	chain->add_id(impl.descriptor_heap_introspection_var_id);
+	chain->add_id(impl.instrumentation.descriptor_heap_introspection_var_id);
 	chain->add_id(builder.makeUintConstant(0));
 	chain->add_id(offset_id);
 	chain->add_id(builder.makeUintConstant(0));
