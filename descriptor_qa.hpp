@@ -83,6 +83,7 @@ struct InstructionInstrumentationState
 	spv::Id global_nan_inf_data_var_id = 0;
 	InstructionInstrumentationInfo info = {};
 };
+
 enum DescriptorQATypeFlagBits
 {
 	DESCRIPTOR_QA_TYPE_NONE_BIT = 0,
