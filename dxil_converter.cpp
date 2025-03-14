@@ -6737,7 +6737,7 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
                                 CFGNodePool &pool,
                                 Vector<ConvertedFunction::Function> &leaves)
 {
-	auto *code_main = convert_function(visit_order);
+	auto *code_main = convert_function(visit_order, true);
 
 	// Need to figure out if our ROV use is trivial. If not, we will wrap the entire function in ROV pairs.
 	CFGStructurizer cfg{code_main, pool, spirv_module};
@@ -6779,7 +6779,7 @@ Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
 
 	// Set build point so alloca() functions can create variables correctly.
 	builder().setBuildPoint(node_entry);
-	auto *node_main = convert_function(visit_order);
+	auto *node_main = convert_function(visit_order, true);
 	leaves.push_back({ node_main, node_func });
 
 	auto *entry = pool.create_node();
@@ -6920,10 +6920,10 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 		builder().setBuildPoint(hull_entry);
 	CFGNode *hull_main = nullptr;
 	if (!visit_order.empty())
-		hull_main = convert_function(visit_order);
+		hull_main = convert_function(visit_order, true);
 
 	builder().setBuildPoint(patch_entry);
-	auto *patch_main = convert_function(patch_visit_order);
+	auto *patch_main = convert_function(patch_visit_order, false);
 	builder().setBuildPoint(spirv_module.get_entry_function()->getEntryBlock());
 
 	if (hull_main)
@@ -7154,7 +7154,7 @@ void Converter::Impl::emit_write_instrumentation_invocation_id(CFGNode *node)
 	add(store);
 }
 
-CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order)
+CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order, bool primary_code)
 {
 	bool has_partial_unroll = false;
 
@@ -7164,7 +7164,7 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		CFGNode *node = meta->node;
 		combined_image_sampler_cache.clear();
 
-		if (bb == visit_order.front() && instrumentation.invocation_id_var_id)
+		if (bb == visit_order.front() && instrumentation.invocation_id_var_id && primary_code)
 			emit_write_instrumentation_invocation_id(node);
 
 		auto sink_itr = bb_to_sinks.find(bb);
@@ -7706,7 +7706,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		result.entry = build_node_main(visit_order, pool, result.leaf_functions);
 	else
 	{
-		result.entry.entry = convert_function(visit_order);
+		result.entry.entry = convert_function(visit_order, true);
 		result.entry.func = spirv_module.get_entry_function();
 	}
 

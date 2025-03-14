@@ -71,6 +71,18 @@ struct InstructionInstrumentationInfo
 	InstructionInstrumentationType type = {};
 };
 
+struct InstructionInstrumentationState
+{
+	uint32_t instruction_count = 0;
+	spv::Id nan_inf_instrument_fp16_call_id = 0;
+	spv::Id nan_inf_instrument_fp32_call_id = 0;
+	spv::Id nan_inf_instrument_fp64_call_id = 0;
+	spv::Id assume_true_call_id = 0;
+	spv::Id should_report_instrumentation_id = 0;
+	spv::Id global_nan_inf_control_var_id = 0;
+	spv::Id global_nan_inf_data_var_id = 0;
+	InstructionInstrumentationInfo info = {};
+};
 enum DescriptorQATypeFlagBits
 {
 	DESCRIPTOR_QA_TYPE_NONE_BIT = 0,

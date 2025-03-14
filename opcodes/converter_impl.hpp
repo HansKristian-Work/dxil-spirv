@@ -188,7 +188,7 @@ struct Converter::Impl
 	UnorderedMap<spv::Id, spv::Id> phi_incoming_rewrite;
 
 	ConvertedFunction convert_entry_point();
-	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs);
+	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs, bool primary_code);
 	ConvertedFunction::Function build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
 	                                            const Vector<llvm::BasicBlock *> &patch_bbs,
 	                                            CFGNodePool &pool,

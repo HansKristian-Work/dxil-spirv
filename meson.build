@@ -53,6 +53,7 @@ dxil_spirv_src = [
   # spirv-module
   'spirv_module.cpp',
   'descriptor_qa.cpp',
+  'spirv_module_instrumentation.cpp',
 
   # dxil-converter
   'memory_stream.cpp',
