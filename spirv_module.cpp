@@ -2303,7 +2303,7 @@ static spv::Id build_word_mask(spv::Builder &builder, spv::Id addr_lo_id, spv::I
 
 	extract->addIdOperand(builder.makeUintConstant(~0u));
 	extract->addIdOperand(builder.makeUintConstant(0));
-	extract->addIdOperand(builder.makeUintConstant(slr2->getResultId()));
+	extract->addIdOperand(slr2->getResultId());
 
 	shifted->addIdOperand(extract->getResultId());
 	shifted->addIdOperand(extract_shift->getResultId());
@@ -2430,11 +2430,8 @@ static spv::Id build_get_invalidation_mask(spv::Builder &builder, spv::Id id)
 
 static spv::Id build_takes_exclusive_ownership(spv::Builder &builder, spv::Id atomic_result, spv::Id byte_mask)
 {
-	auto *conv = builder.addInstruction(builder.makeUintType(32), spv::OpUConvert);
-	conv->addIdOperand(atomic_result);
-
 	auto *shift = builder.addInstruction(builder.makeUintType(32), spv::OpShiftRightLogical);
-	shift->addIdOperand(conv->getResultId());
+	shift->addIdOperand(atomic_result);
 	shift->addIdOperand(builder.makeUintConstant(16));
 
 	auto *and_op = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseAnd);
@@ -2551,12 +2548,22 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		builder.addCapability(spv::CapabilityInt64Atomics);
 	}
 
+	auto *atomic_result_uvec2 = builder.addInstruction(uvec2_type, spv::OpBitcast);
+	atomic_result_uvec2->addIdOperand(atomic_result);
+
+	auto *atomic_result_lo = builder.addInstruction(uint_type, spv::OpCompositeExtract);
+	atomic_result_lo->addIdOperand(atomic_result_uvec2->getResultId());
+	atomic_result_lo->addImmediateOperand(0);
+
+	auto *atomic_result_hi = builder.addInstruction(uint_type, spv::OpCompositeExtract);
+	atomic_result_hi->addIdOperand(atomic_result_uvec2->getResultId());
+	atomic_result_hi->addImmediateOperand(1);
+
 	// Compute if we took ownership of this byte region. If that's the case then we have zero write hazard overlap.
 	// Every memory access marks STORE as a hazard.
-	spv::Id has_exclusive = build_takes_exclusive_ownership(builder, atomic_result, byte_mask_id);
+	spv::Id has_exclusive = build_takes_exclusive_ownership(builder, atomic_result_lo->getResultId(), byte_mask_id);
 
-	spv::Id lock_feedback[4];
-	spv::Id lock_masks[4];
+	spv::Id has_complete_self_lock = 0;
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -2588,11 +2595,9 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 			}
 		}
 
-		lock_masks[i] = lock_mask_id;
-
 		auto *sel = builder.addInstruction(uint_type, spv::OpSelect);
 		sel->addIdOperand(has_exclusive);
-		sel->addIdOperand(lock_masks[i]);
+		sel->addIdOperand(lock_mask_id);
 		sel->addIdOperand(builder.makeUintConstant(0));
 
 		auto *chain = builder.addInstruction(builder.makePointer(spv::StorageClassStorageBuffer, uint_type), spv::OpInBoundsAccessChain);
@@ -2607,19 +2612,28 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		atom->addIdOperand(builder.makeUintConstant(0));
 		atom->addIdOperand(sel->getResultId());
 
-		lock_feedback[i] = atom->getResultId();
+		spv::Id lock_feedback = atom->getResultId();
+
+		auto *and_op = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
+		and_op->addIdOperand(lock_feedback);
+		and_op->addIdOperand(lock_mask_id);
+
+		auto *eq_op = builder.addInstruction(bool_type, spv::OpIEqual);
+		eq_op->addIdOperand(and_op->getResultId());
+		eq_op->addIdOperand(lock_mask_id);
+
+		if (has_complete_self_lock == 0)
+		{
+			has_complete_self_lock = eq_op->getResultId();
+		}
+		else
+		{
+			auto *logical_and = builder.addInstruction(bool_type, spv::OpLogicalAnd);
+			logical_and->addIdOperand(has_complete_self_lock);
+			logical_and->addIdOperand(eq_op->getResultId());
+			has_complete_self_lock = logical_and->getResultId();
+		}
 	}
-
-	auto *invalidation_cast = builder.addInstruction(uvec2_type, spv::OpBitcast);
-	invalidation_cast->addIdOperand(invalidation_mask);
-
-	auto *invalidation_lo = builder.addInstruction(uint_type, spv::OpCompositeExtract);
-	invalidation_lo->addIdOperand(invalidation_cast->getResultId());
-	invalidation_lo->addImmediateOperand(0);
-
-	auto *invalidation_hi = builder.addInstruction(uint_type, spv::OpCompositeExtract);
-	invalidation_hi->addIdOperand(invalidation_cast->getResultId());
-	invalidation_hi->addImmediateOperand(1);
 
 	Vector<spv::Block *> segments;
 	// The AST-based builder is a bit awkward to use in this context ...
@@ -2632,7 +2646,7 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 	{
 		auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
 		auto *neq = builder.addInstruction(bool_type, spv::OpINotEqual);
-		mask->addIdOperand(invalidation_lo->getResultId());
+		mask->addIdOperand(atomic_result_lo->getResultId());
 		mask->addIdOperand(byte_mask_id);
 		neq->addIdOperand(mask->getResultId());
 		neq->addIdOperand(builder.makeUintConstant(0));
@@ -2647,7 +2661,7 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		shift->addIdOperand(builder.makeUintConstant(16));
 		auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
 		auto *neq = builder.addInstruction(bool_type, spv::OpINotEqual);
-		mask->addIdOperand(invalidation_lo->getResultId());
+		mask->addIdOperand(atomic_result_lo->getResultId());
 		mask->addIdOperand(shift->getResultId());
 		neq->addIdOperand(mask->getResultId());
 		neq->addIdOperand(builder.makeUintConstant(0));
@@ -2659,7 +2673,7 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 	{
 		auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
 		auto *neq = builder.addInstruction(bool_type, spv::OpINotEqual);
-		mask->addIdOperand(invalidation_hi->getResultId());
+		mask->addIdOperand(atomic_result_hi->getResultId());
 		mask->addIdOperand(word_mask_id);
 		neq->addIdOperand(mask->getResultId());
 		neq->addIdOperand(builder.makeUintConstant(0));
@@ -2670,11 +2684,11 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 	builder.setBuildPoint(segments[int(BDAOperation::IndirectRead)]);
 	{
 		auto *shift = builder.addInstruction(uint_type, spv::OpShiftLeftLogical);
-		shift->addIdOperand(byte_mask_id);
+		shift->addIdOperand(word_mask_id);
 		shift->addIdOperand(builder.makeUintConstant(4));
 		auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
 		auto *neq = builder.addInstruction(bool_type, spv::OpINotEqual);
-		mask->addIdOperand(invalidation_hi->getResultId());
+		mask->addIdOperand(atomic_result_hi->getResultId());
 		mask->addIdOperand(shift->getResultId());
 		neq->addIdOperand(mask->getResultId());
 		neq->addIdOperand(builder.makeUintConstant(0));
@@ -2691,7 +2705,15 @@ spv::Id SPIRVModule::Impl::build_validate_bda_load_store(SPIRVModule &module)
 		hazard_phi->addIdOperand(segments[i]->getId());
 	}
 
-	builder.makeReturn(false, builder.makeBoolConstant(true));
+	auto *inv_complete = builder.addInstruction(bool_type, spv::OpLogicalNot);
+	inv_complete->addIdOperand(has_complete_self_lock);
+
+	// Compute self-hazard.
+	auto *ret = builder.addInstruction(bool_type, spv::OpLogicalAnd);
+	ret->addIdOperand(inv_complete->getResultId());
+	ret->addIdOperand(hazard_phi->getResultId());
+
+	builder.makeReturn(false, ret->getResultId());
 	builder.setBuildPoint(current_build_point);
 	validate_bda_load_store_call_id = func->getId();
 	return validate_bda_load_store_call_id;
