@@ -98,6 +98,22 @@ void Builder::setLine(int lineNum)
     }
 }
 
+spv::Instruction *Builder::addInstruction(spv::Id typeId, spv::Op op)
+{
+    auto inst = std::make_unique<spv::Instruction>(getUniqueId(), typeId, op);
+    auto *ret = inst.get();
+    getBuildPoint()->addInstruction(std::move(inst));
+    return ret;
+}
+
+spv::Instruction *Builder::addInstruction(spv::Op op)
+{
+    auto inst = std::make_unique<spv::Instruction>(op);
+    auto *ret = inst.get();
+    getBuildPoint()->addInstruction(std::move(inst));
+    return ret;
+}
+
 void Builder::addLine(Id fileName, int lineNum, int column)
 {
     Instruction* line = new Instruction(OpLine);
