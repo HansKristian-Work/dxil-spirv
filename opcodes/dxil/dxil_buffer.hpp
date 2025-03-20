@@ -60,4 +60,6 @@ RawVecSize raw_access_structured_vectorize(Converter::Impl &impl, const llvm::Ty
                                            unsigned stride,
                                            const llvm::Value *byte_offset,
                                            uint32_t mask);
+
+void emit_buffer_synchronization_validation(Converter::Impl &impl, const llvm::CallInst *instruction, BDAOperation bda_operation);
 } // namespace dxil_spv
