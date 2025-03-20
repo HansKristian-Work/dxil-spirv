@@ -75,10 +75,15 @@ Builder::~Builder()
 
 Id Builder::import(const char* name)
 {
+    for (auto &id : importIDCache)
+        if (id.first == name)
+            return id.second;
+
     Instruction* import = new Instruction(getUniqueId(), NoType, OpExtInstImport);
     import->addStringOperand(name);
 
     imports.push_back(std::unique_ptr<Instruction>(import));
+    importIDCache.emplace_back(name, import->getResultId());
     return import->getResultId();
 }
 
@@ -91,6 +96,22 @@ void Builder::setLine(int lineNum)
         if (emitOpLines)
             addLine(sourceFileStringId, currentLine, 0);
     }
+}
+
+spv::Instruction *Builder::addInstruction(spv::Id typeId, spv::Op op)
+{
+    auto inst = std::make_unique<spv::Instruction>(getUniqueId(), typeId, op);
+    auto *ret = inst.get();
+    getBuildPoint()->addInstruction(std::move(inst));
+    return ret;
+}
+
+spv::Instruction *Builder::addInstruction(spv::Op op)
+{
+    auto inst = std::make_unique<spv::Instruction>(op);
+    auto *ret = inst.get();
+    getBuildPoint()->addInstruction(std::move(inst));
+    return ret;
 }
 
 void Builder::addLine(Id fileName, int lineNum, int column)

@@ -52,7 +52,8 @@ enum class InstructionInstrumentationType
 	FlushNaNToZero = 2,
 	// Adds assertions with OpAssumeTrueKHR. For now, these are resolved internally,
 	// but we could add a more that forwards them to driver.
-	ExpectAssume = 3
+	ExpectAssume = 3,
+	BufferSynchronizationValidation = 4
 };
 
 struct InstructionInstrumentationInfo
@@ -68,6 +69,19 @@ struct InstructionInstrumentationInfo
 	uint32_t payload_binding = 0;
 	uint64_t shader_hash = 0;
 	InstructionInstrumentationType type = {};
+};
+
+struct InstructionInstrumentationState
+{
+	uint32_t instruction_count = 0;
+	spv::Id nan_inf_instrument_fp16_call_id = 0;
+	spv::Id nan_inf_instrument_fp32_call_id = 0;
+	spv::Id nan_inf_instrument_fp64_call_id = 0;
+	spv::Id assume_true_call_id = 0;
+	spv::Id should_report_instrumentation_id = 0;
+	spv::Id global_nan_inf_control_var_id = 0;
+	spv::Id global_nan_inf_data_var_id = 0;
+	InstructionInstrumentationInfo info = {};
 };
 
 enum DescriptorQATypeFlagBits

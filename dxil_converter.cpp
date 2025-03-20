@@ -2694,7 +2694,7 @@ uint32_t Converter::Impl::find_binding_meta_index(uint32_t binding_range_lo, uin
 	return UINT32_MAX;
 }
 
-bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
+bool Converter::Impl::emit_descriptor_heap_introspection_ssbo()
 {
 	// We need to know the size of the descriptor heap. Rather than passing this
 	// through a separate descriptor, we can just query the SSBO size of the
@@ -2723,21 +2723,36 @@ bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
 	}
 
 	spv::Id u32_type = builder().makeUintType(32);
-	spv::Id u32_array_type = builder().makeArrayType(
-	    u32_type, builder().makeUintConstant(options.physical_address_descriptor_stride * 2), 0);
-	builder().addDecoration(u32_array_type, spv::DecorationArrayStride, 4);
+	uint32_t elems = options.physical_address_descriptor_stride;
+
+	if (options.instruction_instrumentation.enabled)
+		u32_type = builder().makeVectorType(u32_type, 2);
+	else
+		elems *= 2;
+
+	spv::Id u32_array_type = builder().makeArrayType(u32_type, builder().makeUintConstant(elems), 0);
+	builder().addDecoration(u32_array_type, spv::DecorationArrayStride,
+	                        options.instruction_instrumentation.enabled ? 8 : 4);
 
 	spv::Id inner_struct_type = get_struct_type({ u32_array_type }, 0, "DescriptorHeapRawPayload");
 	builder().addMemberDecoration(inner_struct_type, 0, spv::DecorationOffset, 0);
 
 	spv::Id inner_struct_array_type = builder().makeRuntimeArray(inner_struct_type);
-	builder().addDecoration(inner_struct_array_type, spv::DecorationArrayStride, 8u * options.physical_address_descriptor_stride);
+	builder().addDecoration(inner_struct_array_type, spv::DecorationArrayStride,
+	                        8u * options.physical_address_descriptor_stride);
+
+	bool sync_val =
+		options.instruction_instrumentation.enabled &&
+		options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation;
 
 	spv::Id block_type_id = get_struct_type({ inner_struct_array_type }, 0, "DescriptorHeapRobustnessSSBO");
 	builder().addDecoration(block_type_id, spv::DecorationBlock);
 	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
-	builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
-	builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
+	if (!sync_val)
+	{
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
+		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
+	}
 	builder().addMemberName(block_type_id, 0, "descriptors");
 	spv::Id var_id = create_variable(spv::StorageClassStorageBuffer, block_type_id, "DescriptorHeapRobustness");
 
@@ -2745,7 +2760,14 @@ bool Converter::Impl::emit_descriptor_heap_dummy_ssbo()
 	builder().addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
 
 	// Take OpArrayLength of this variable's first member and we have it.
-	descriptor_heap_robustness_var_id = var_id;
+	instrumentation.descriptor_heap_introspection_var_id = var_id;
+
+	if (sync_val)
+	{
+		instrumentation.invocation_id_var_id =
+			create_variable(spv::StorageClassPrivate, builder().makeUintType(32), "InvocationID");
+	}
+
 	return true;
 }
 
@@ -2994,14 +3016,15 @@ bool Converter::Impl::emit_resources()
 
 	if (options.descriptor_heap_robustness)
 	{
-		if (!emit_descriptor_heap_dummy_ssbo())
+		if (!emit_descriptor_heap_introspection_ssbo())
 			return false;
 	}
 	else if (options.instruction_instrumentation.enabled &&
-	         options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	         (options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume ||
+	          options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation))
 	{
 		// Failure is not a big deal.
-		emit_descriptor_heap_dummy_ssbo();
+		emit_descriptor_heap_introspection_ssbo();
 	}
 
 	auto &module = bitcode_parser.get_module();
@@ -6714,7 +6737,7 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
                                 CFGNodePool &pool,
                                 Vector<ConvertedFunction::Function> &leaves)
 {
-	auto *code_main = convert_function(visit_order);
+	auto *code_main = convert_function(visit_order, true);
 
 	// Need to figure out if our ROV use is trivial. If not, we will wrap the entire function in ROV pairs.
 	CFGStructurizer cfg{code_main, pool, spirv_module};
@@ -6756,7 +6779,7 @@ Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
 
 	// Set build point so alloca() functions can create variables correctly.
 	builder().setBuildPoint(node_entry);
-	auto *node_main = convert_function(visit_order);
+	auto *node_main = convert_function(visit_order, true);
 	leaves.push_back({ node_main, node_func });
 
 	auto *entry = pool.create_node();
@@ -6897,10 +6920,10 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 		builder().setBuildPoint(hull_entry);
 	CFGNode *hull_main = nullptr;
 	if (!visit_order.empty())
-		hull_main = convert_function(visit_order);
+		hull_main = convert_function(visit_order, true);
 
 	builder().setBuildPoint(patch_entry);
-	auto *patch_main = convert_function(patch_visit_order);
+	auto *patch_main = convert_function(patch_visit_order, false);
 	builder().setBuildPoint(spirv_module.get_entry_function()->getEntryBlock());
 
 	if (hull_main)
@@ -7094,7 +7117,23 @@ Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_legacy
 	return visit_order;
 }
 
-CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order)
+void Converter::Impl::emit_write_instrumentation_invocation_id(CFGNode *node)
+{
+	current_block = &node->ir.operations;
+
+	spv::Id alloc_id = spirv_module.get_helper_call_id(HelperCall::AllocateInvocationID);
+
+	auto *call = allocate(spv::OpFunctionCall, builder().makeUintType(32));
+	call->add_id(alloc_id);
+	add(call);
+
+	auto *store = allocate(spv::OpStore);
+	store->add_id(instrumentation.invocation_id_var_id);
+	store->add_id(call->id);
+	add(store);
+}
+
+CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order, bool primary_code)
 {
 	bool has_partial_unroll = false;
 
@@ -7103,6 +7142,9 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		auto *meta = bb_map[bb];
 		CFGNode *node = meta->node;
 		combined_image_sampler_cache.clear();
+
+		if (bb == visit_order.front() && instrumentation.invocation_id_var_id && primary_code)
+			emit_write_instrumentation_invocation_id(node);
 
 		auto sink_itr = bb_to_sinks.find(bb);
 		if (sink_itr != bb_to_sinks.end())
@@ -7643,7 +7685,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		result.entry = build_node_main(visit_order, pool, result.leaf_functions);
 	else
 	{
-		result.entry.entry = convert_function(visit_order);
+		result.entry.entry = convert_function(visit_order, true);
 		result.entry.func = spirv_module.get_entry_function();
 	}
 

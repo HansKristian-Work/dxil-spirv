@@ -54,7 +54,8 @@ add_subdirectory(external EXCLUDE_FROM_ALL)
 add_library(spirv-module STATIC
         ir.hpp
         descriptor_qa.cpp descriptor_qa.hpp
-        spirv_module.hpp spirv_module.cpp)
+        spirv_module.hpp spirv_module.cpp
+        spirv_module_instrumentation.hpp spirv_module_instrumentation.cpp)
 set_target_properties(spirv-module PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spirv-module PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(spirv-module PUBLIC glslang-spirv-builder dxil-spirv-headers)
@@ -149,7 +150,7 @@ if (DXIL_SPIRV_CLI)
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 2)
-set(DXIL_SPV_VERSION_MINOR 48)
+set(DXIL_SPV_VERSION_MINOR 49)
 set(DXIL_SPV_VERSION_PATCH 0)
 set(DXIL_SPV_VERSION ${DXIL_SPV_VERSION_MAJOR}.${DXIL_SPV_VERSION_MINOR}.${DXIL_SPV_VERSION_PATCH})
 set_target_properties(dxil-spirv-c-shared PROPERTIES

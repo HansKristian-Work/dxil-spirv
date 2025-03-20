@@ -32,6 +32,191 @@
 
 namespace dxil_spv
 {
+static RawWidth get_buffer_access_bits_per_component(
+	Converter::Impl &impl, spv::StorageClass storage, const llvm::Type *element_type)
+{
+    if (impl.execution_mode_meta.native_16bit_operations &&
+            (storage == spv::StorageClassPhysicalStorageBuffer || storage == spv::StorageClassStorageBuffer) &&
+            type_is_16bit(element_type))
+	{
+		return RawWidth::B16;
+	}
+	else if (type_is_64bit(element_type))
+		return RawWidth::B64;
+	else
+		return RawWidth::B32;
+}
+
+void emit_buffer_synchronization_validation(Converter::Impl &impl,
+                                            const llvm::CallInst *instruction,
+                                            BDAOperation bda_operation)
+{
+	if (!impl.options.instruction_instrumentation.enabled ||
+	    impl.options.instruction_instrumentation.type != InstructionInstrumentationType::BufferSynchronizationValidation)
+	{
+		return;
+	}
+
+	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+	const auto &meta = impl.handle_to_resource_meta[image_id];
+
+	if (meta.storage != spv::StorageClassPhysicalStorageBuffer && meta.instrumentation.bda_id == 0)
+		return;
+
+	auto &builder = impl.builder();
+	spv::Id stride_id = 0;
+	spv::Id offset_id = 0;
+	spv::Id elem_id = 0;
+	spv::Id len_id = 0;
+
+	if (bda_operation == BDAOperation::Store || bda_operation == BDAOperation::Load)
+	{
+		const llvm::Type *element_type;
+		if (bda_operation == BDAOperation::Store)
+			element_type = instruction->getOperand(4)->getType();
+		else
+			element_type = instruction->getType()->getStructElementType(0);
+
+		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		{
+			unsigned mask;
+
+			if (bda_operation == BDAOperation::Load)
+			{
+				auto &access_meta = impl.llvm_composite_meta[instruction];
+				mask = access_meta.access_mask & 0xf;
+			}
+			else
+			{
+				mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+			}
+
+			unsigned width = raw_width_to_bits(get_buffer_access_bits_per_component(impl, meta.storage, element_type));
+
+			unsigned num_elems = 0;
+			for (unsigned i = 0; i < 4; i++)
+				if ((mask & (1u << i)) != 0)
+					num_elems = i + 1;
+
+			len_id = builder.makeUintConstant(num_elems * width / 8);
+		}
+
+		if (meta.kind == DXIL::ResourceKind::RawBuffer)
+		{
+			offset_id = impl.get_id_for_value(instruction->getOperand(2));
+		}
+		else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(2));
+			if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(3)))
+				offset_id = impl.get_id_for_value(instruction->getOperand(3));
+			stride_id = builder.makeUintConstant(meta.stride);
+		}
+		else if (meta.kind == DXIL::ResourceKind::TypedBuffer)
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(2));
+			stride_id = meta.instrumentation.elem_size_id;
+			len_id = meta.instrumentation.elem_size_id;
+		}
+		else
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(2));
+			stride_id = builder.makeUintConstant(16);
+			len_id = stride_id;
+		}
+	}
+	else
+	{
+		unsigned elem_index;
+
+		if (value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
+			elem_index = 2;
+		else
+			elem_index = 3;
+
+		if (meta.kind == DXIL::ResourceKind::RawBuffer)
+		{
+			offset_id = impl.get_id_for_value(instruction->getOperand(elem_index));
+		}
+		else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(elem_index));
+			if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(elem_index + 1)))
+				offset_id = impl.get_id_for_value(instruction->getOperand(elem_index + 1));
+			stride_id = builder.makeUintConstant(meta.stride);
+		}
+		else if (meta.kind == DXIL::ResourceKind::TypedBuffer)
+		{
+			elem_id = impl.get_id_for_value(instruction->getOperand(elem_index));
+			stride_id = meta.instrumentation.elem_size_id;
+		}
+
+		len_id = builder.makeUintConstant(instruction->getType()->getIntegerBitWidth() / 8);
+	}
+
+	spv::Id total_offset_id = 0;
+
+	if (elem_id != 0)
+	{
+		auto *mul = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		mul->add_id(elem_id);
+		mul->add_id(stride_id);
+		impl.add(mul);
+		total_offset_id = mul->id;
+	}
+
+	if (!total_offset_id)
+	{
+		total_offset_id = offset_id;
+	}
+	else if (offset_id != 0)
+	{
+		auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		add->add_id(total_offset_id);
+		add->add_id(offset_id);
+		impl.add(add);
+		total_offset_id = add->id;
+	}
+
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::ValidateBDALoadStore);
+	auto *call = impl.allocate(spv::OpFunctionCall, builder.makeBoolType());
+	call->add_id(call_id);
+	call->add_id(meta.instrumentation.bda_id ? meta.instrumentation.bda_id : impl.get_id_for_value(instruction->getOperand(1)));
+	call->add_id(total_offset_id);
+	call->add_id(len_id);
+	call->add_id(builder.makeUintConstant(unsigned(bda_operation)));
+
+	auto *load_invocation_id = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	load_invocation_id->add_id(impl.instrumentation.invocation_id_var_id);
+	impl.add(load_invocation_id);
+
+	call->add_id(load_invocation_id->id);
+
+	if (meta.instrumentation.resource_size_id)
+	{
+		auto *in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+
+		if (meta.kind == DXIL::ResourceKind::TypedBuffer)
+			in_bounds->add_id(elem_id);
+		else
+			in_bounds->add_id(total_offset_id);
+		in_bounds->add_id(meta.instrumentation.resource_size_id);
+
+		impl.add(in_bounds);
+		call->add_id(in_bounds->id);
+	}
+	else
+	{
+		call->add_id(builder.makeBoolConstant(true));
+	}
+
+	impl.add(call);
+
+	auto *expect_true = impl.allocate(spv::OpAssumeTrueKHR);
+	expect_true->add_id(call->id);
+	impl.add(expect_true);
+}
+
 bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Type *type,
                                            const llvm::Value *byte_offset,
                                            unsigned vecsize)
@@ -469,6 +654,8 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	else
 		u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
+
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(u64_ptr_id);
 	impl.add(ptr_bitcast_op);
@@ -509,20 +696,6 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	build_exploded_composite_from_vector(impl, instruction, vecsize);
 
 	return true;
-}
-
-static RawWidth get_buffer_access_bits_per_component(
-	Converter::Impl &impl, spv::StorageClass storage, const llvm::Type *element_type)
-{
-	if (impl.execution_mode_meta.native_16bit_operations && storage == spv::StorageClassStorageBuffer &&
-	    type_is_16bit(element_type))
-	{
-		return RawWidth::B16;
-	}
-	else if (type_is_64bit(element_type))
-		return RawWidth::B64;
-	else
-		return RawWidth::B32;
 }
 
 struct RawAccessChain
@@ -741,6 +914,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta,
 		                                             smeared_access_mask, 4);
 	}
+
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
 
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta) && !sparse;
 	if (raw_access_chain)
@@ -1073,6 +1248,8 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	else
 		u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store);
+
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(u64_ptr_id);
 	impl.add(ptr_bitcast_op);
@@ -1228,6 +1405,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		// Might be possible to do some fancy analysis to deduce a better alignment.
 		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, 4);
 	}
+
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store);
 
 	auto *element_type = instruction->getOperand(4)->getType();
 
@@ -1448,6 +1627,8 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	auto binop = static_cast<DXIL::AtomicBinOp>(
 	    llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getZExtValue());
+
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::AtomicRMW);
 
 	spv::Id coords[3] = {};
 	uint32_t num_coords_full = 0, num_coords = 0;
@@ -1725,6 +1906,8 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 		return emit_magic_ags_instruction(impl, instruction);
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
+
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::AtomicRMW);
 
 	spv::Id coords[3] = {};
 	uint32_t num_coords_full = 0, num_coords = 0;

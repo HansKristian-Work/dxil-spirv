@@ -188,7 +188,7 @@ struct Converter::Impl
 	UnorderedMap<spv::Id, spv::Id> phi_incoming_rewrite;
 
 	ConvertedFunction convert_entry_point();
-	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs);
+	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs, bool primary_code);
 	ConvertedFunction::Function build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
 	                                            const Vector<llvm::BasicBlock *> &patch_bbs,
 	                                            CFGNodePool &pool,
@@ -364,7 +364,7 @@ struct Converter::Impl
 	bool emit_resources_global_mapping(DXIL::ResourceType type, const llvm::MDNode *node);
 	bool emit_resources();
 	bool emit_global_heaps();
-	bool emit_descriptor_heap_dummy_ssbo();
+	bool emit_descriptor_heap_introspection_ssbo();
 	bool emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *refl);
 	bool emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *refl);
 	bool emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *refl);
@@ -442,7 +442,13 @@ struct Converter::Impl
 	unsigned patch_location_offset = 0;
 	unsigned descriptor_qa_counter = 0;
 	spv::Id primitive_index_array_id = 0;
-	spv::Id descriptor_heap_robustness_var_id = 0;
+
+	struct
+	{
+		spv::Id descriptor_heap_introspection_var_id;
+		spv::Id invocation_id_var_id;
+	} instrumentation = {};
+	void emit_write_instrumentation_invocation_id(CFGNode *node);
 
 	struct PhysicalPointerMeta
 	{
@@ -452,6 +458,13 @@ struct Converter::Impl
 		bool rov;
 		uint8_t stride;
 		uint32_t size;
+	};
+
+	struct ResourceMetaInstrumentation
+	{
+		spv::Id bda_id;
+		spv::Id elem_size_id;
+		spv::Id resource_size_id;
 	};
 
 	struct ResourceMeta
@@ -473,6 +486,7 @@ struct Converter::Impl
 		spv::Id counter_var_id;
 		PhysicalPointerMeta physical_pointer_meta;
 		spv::Id index_offset_id;
+		ResourceMetaInstrumentation instrumentation;
 	};
 	UnorderedMap<spv::Id, ResourceMeta> handle_to_resource_meta;
 	UnorderedMap<spv::Id, spv::Id> id_to_type;

@@ -106,6 +106,9 @@ public:
         return id;
     }
 
+    spv::Instruction *addInstruction(spv::Id typeId, spv::Op op);
+    spv::Instruction *addInstruction(spv::Op op);
+
     // Log the current line, and if different than the last one,
     // issue a new OpLine, using the current file name.
     void setLine(int line);
@@ -665,6 +668,8 @@ protected:
 
     // The stream for outputting warnings and errors.
     SpvBuildLogger* logger;
+
+    dxil_spv::Vector<std::pair<dxil_spv::String, spv::Id>> importIDCache;
 };  // end Builder class
 
 };  // end spv namespace
