@@ -75,10 +75,15 @@ Builder::~Builder()
 
 Id Builder::import(const char* name)
 {
+    for (auto &id : importIDCache)
+        if (id.first == name)
+            return id.second;
+
     Instruction* import = new Instruction(getUniqueId(), NoType, OpExtInstImport);
     import->addStringOperand(name);
 
     imports.push_back(std::unique_ptr<Instruction>(import));
+    importIDCache.emplace_back(name, import->getResultId());
     return import->getResultId();
 }
 

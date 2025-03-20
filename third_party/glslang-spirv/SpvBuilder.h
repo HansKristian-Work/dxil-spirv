@@ -665,6 +665,8 @@ protected:
 
     // The stream for outputting warnings and errors.
     SpvBuildLogger* logger;
+
+    dxil_spv::Vector<std::pair<dxil_spv::String, spv::Id>> importIDCache;
 };  // end Builder class
 
 };  // end spv namespace
