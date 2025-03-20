@@ -1,0 +1,12 @@
+RWStructuredBuffer<float> R;
+
+struct Foo { float3 vs[64]; };
+ConstantBuffer<Foo> C : register(b0);
+
+[numthreads(1, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	float3 loaded = C.vs[thr / 16];
+	R[thr] += 40.0 + loaded.x + loaded.z;
+}
+
