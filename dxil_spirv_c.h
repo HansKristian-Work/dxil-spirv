@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 49
+#define DXIL_SPV_API_VERSION_MINOR 50
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -966,6 +966,12 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
  * Designed to map closely to D3D12 feature checks. */
 DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_shader_feature(
 	dxil_spv_converter converter, dxil_spv_shader_feature feature);
+
+/* Intended to be added to the GLSL output in repro suite.
+ * Attempts to analyze the DXIL for potential out of spec behavior that needs another pair of eyes.
+ * Lifetime of string is only as long as converter is alive.
+ * Returns NULL when there are no warnings. */
+DXIL_SPV_PUBLIC_API const char *dxil_spv_converter_get_analysis_warnings(dxil_spv_converter converter);
 
 /* Use an optimized allocation scheme.
  * Call begin before allocating any dxil_spv objects,

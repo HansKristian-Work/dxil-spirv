@@ -592,6 +592,156 @@ bool CFGStructurizer::execution_path_is_single_entry_and_dominates_exit(CFGNode 
 	return true;
 }
 
+void CFGStructurizer::rewrite_auto_group_shared_barrier()
+{
+	recompute_cfg();
+
+	enum class Kind { None, Load, Store, Atomic };
+
+	struct Block
+	{
+		CFGNode *node;
+		const CFGNode *innermost_loop;
+		Kind pre_kind;
+		Kind post_kind;
+	};
+
+	// In linear traversal order, find all BBs that use group shared.
+	Vector<Block> shared_blocks;
+
+	for (size_t i = forward_post_visit_order.size(); i; i--)
+	{
+		auto *node = forward_post_visit_order[i - 1];
+		for (auto *op : node->ir.operations)
+		{
+			if ((op->flags & Operation::AutoGroupSharedBarrier) != 0)
+			{
+				shared_blocks.push_back({ node, get_innermost_loop_header_for(node), Kind::None, Kind::None });
+				break;
+			}
+		}
+	}
+
+	// Deal with intra-BB hazards.
+	for (auto &block : shared_blocks)
+	{
+		Kind pending = Kind::None;
+
+		// If we're the first BB to access shared, no need for a post block.
+		// Similar for the last block.
+		// Loops can complicate this analysis, but ... eh.
+		// This is a workaround, not required by spec or anything.
+
+		for (auto *op : block.node->ir.operations)
+		{
+			if ((op->flags & Operation::AutoGroupSharedBarrier) != 0)
+			{
+				if (op->op == spv::OpLoad || op->op == spv::PseudoOpMaskedLoad)
+				{
+					if (pending != Kind::Load && pending != Kind::None)
+						op->flags |= Operation::SubgroupSyncPre;
+					pending = Kind::Load;
+				}
+				else if (op->op == spv::OpStore || op->op == spv::PseudoOpMaskedStore)
+				{
+					if (pending != Kind::Store && pending != Kind::None)
+						op->flags |= Operation::SubgroupSyncPre;
+					pending = Kind::Store;
+				}
+				else
+				{
+					if (pending != Kind::Atomic && pending != Kind::None)
+						op->flags |= Operation::SubgroupSyncPre;
+					pending = Kind::Atomic;
+				}
+
+				if (block.pre_kind == Kind::None)
+					block.pre_kind = pending;
+			}
+		}
+
+		block.post_kind = pending;
+	}
+
+	for (size_t i = 0; i < shared_blocks.size(); i++)
+	{
+		auto &first = shared_blocks[i];
+
+		for (size_t j = i + 1; j < shared_blocks.size(); j++)
+		{
+			auto &second = shared_blocks[j];
+			if (!query_reachability(*first.node, *second.node))
+				continue;
+
+			if (first.post_kind != second.pre_kind)
+			{
+				// Find an intermediate block which:
+				// - post dominates the first
+				// - dominates the second
+				// Has the maximal number of invocations.
+				// The subgroup barrier should be run with as many threads as possible.
+				if (second.node->post_dominates(first.node))
+					second.node->ir.operations.front()->flags |= Operation::SubgroupSyncPre;
+				else if (first.node->dominates(second.node))
+					first.node->ir.operations.back()->flags |= Operation::SubgroupSyncPost;
+				else
+				{
+					// Try to find some intermediate node. If we cannot find it, just yolo in a barrier
+					// somewhere. This is just a workaround, so if it doesn't work 100%, it's not a big deal.
+					auto *pdom = first.node->immediate_post_dominator;
+					while (pdom && query_reachability(*pdom, *second.node) && !pdom->dominates(second.node) &&
+					       pdom->immediate_post_dominator && pdom->immediate_post_dominator != pdom)
+					{
+						pdom = pdom->immediate_post_dominator;
+					}
+
+					if (pdom && pdom != second.node)
+					{
+						if (pdom->ir.operations.empty())
+						{
+							auto *nop = module.allocate_op(spv::OpNop);
+							nop->flags |= Operation::SubgroupSyncPost;
+							pdom->ir.operations.push_back(nop);
+						}
+						else
+							pdom->ir.operations.back()->flags |= Operation::SubgroupSyncPost;
+					}
+					else if (pdom == second.node)
+					{
+						second.node->ir.operations.front()->flags |= Operation::SubgroupSyncPre;
+					}
+				}
+
+				// We've added appropriate barriers for this node now.
+				second.pre_kind = Kind::None;
+			}
+
+			break;
+		}
+
+		// Analyze re-entrant code. We may depend on memory coming from an earlier loop iteration.
+		if (first.pre_kind != Kind::None && first.innermost_loop != entry_block && first.innermost_loop->pred_back_edge)
+		{
+			bool has_complex_dependency = false;
+			// Other blocks within the loop may require a dependency.
+			for (size_t j = i + 1; j < shared_blocks.size() && !has_complex_dependency; j++)
+			{
+				if (query_reachability(*shared_blocks[j].node, *first.innermost_loop->pred_back_edge))
+				{
+					first.node->ir.operations.front()->flags |= Operation::SubgroupSyncPre;
+					has_complex_dependency = true;
+				}
+			}
+
+			if (!has_complex_dependency && first.pre_kind != first.post_kind)
+			{
+				// Self-dependency within the BB.
+				first.node->ir.operations.back()->flags |= Operation::SubgroupSyncPost;
+			}
+		}
+	}
+}
+
 bool CFGStructurizer::rewrite_rov_lock_region()
 {
 	recompute_cfg();

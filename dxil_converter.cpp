@@ -5927,6 +5927,22 @@ Vector<NodeOutputData> Converter::get_node_outputs(const LLVMBCParser &parser, c
 	return output_data;
 }
 
+String Converter::get_analysis_warnings() const
+{
+	String str;
+
+	if (impl->shader_analysis.needs_auto_group_shared_barriers)
+	{
+		// This is a case that might just happen to work if the game assumes lock-step execution.
+		// If the group size is larger, it's extremely unlikely the game works by chance on native drivers.
+		// Some shaders seem to use groupshared as a sort of "scratch space" per thread, which
+		// is a valid use case and does not require barriers to be correct.
+		str += "- Has group shared access, but no group shared barrier anywhere.\n";
+	}
+
+	return str;
+}
+
 bool Converter::Impl::emit_execution_modes_node()
 {
 	// It will be necessary to override all this metadata through some API.
@@ -7466,6 +7482,25 @@ static void propagate_precise(llvm::Function *func)
 		propagate_precise(visitation_cache, inst);
 }
 
+void Converter::Impl::analyze_instructions_post_execution_modes()
+{
+	if (!shader_analysis.has_group_shared_barrier && shader_analysis.has_group_shared_access)
+	{
+		unsigned num_threads = execution_mode_meta.workgroup_threads[0] *
+		                       execution_mode_meta.workgroup_threads[1] *
+		                       execution_mode_meta.workgroup_threads[2];
+
+		if (num_threads <= 32 && num_threads > 1)
+		{
+			// This is a case that might just happen to work if the game assumes lock-step execution on NV + AMD (rip Intel).
+			// If the group size is larger, it's extremely unlikely the game "just works" by chance on native drivers.
+			// Some shaders seem to use groupshared as a sort of "scratch space" per thread, which
+			// is a valid use case and does not require barriers to be correct.
+			shader_analysis.needs_auto_group_shared_barriers = true;
+		}
+	}
+}
+
 bool Converter::Impl::analyze_instructions(llvm::Function *func)
 {
 	// Need to analyze this in two stages.
@@ -7506,6 +7541,16 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 			else if (auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst))
 			{
 				if (!analyze_store_instruction(*this, store_inst))
+					return false;
+			}
+			else if (auto *atomicrmw_inst = llvm::dyn_cast<llvm::AtomicRMWInst>(&inst))
+			{
+				if (!analyze_atomicrmw_instruction(*this, atomicrmw_inst))
+					return false;
+			}
+			else if (auto *cmpxchg_inst = llvm::dyn_cast<llvm::AtomicCmpXchgInst>(&inst))
+			{
+				if (!analyze_cmpxchg_instruction(*this, cmpxchg_inst))
 					return false;
 			}
 			else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&inst))
@@ -7675,6 +7720,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_execution_modes_late())
 		return result;
 
+	analyze_instructions_post_execution_modes();
+
 	execution_mode_meta.entry_point_name = get_entry_point_name(entry_point_meta);
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
@@ -7686,6 +7733,11 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	else
 	{
 		result.entry.entry = convert_function(visit_order, true);
+		if (shader_analysis.needs_auto_group_shared_barriers)
+		{
+			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
+			cfg.rewrite_auto_group_shared_barrier();
+		}
 		result.entry.func = spirv_module.get_entry_function();
 	}
 

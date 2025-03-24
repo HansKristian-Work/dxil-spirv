@@ -881,6 +881,8 @@ public:
 	static NodeInputData get_node_input(const LLVMBCParser &parser, const char *entry);
 	static Vector<NodeOutputData> get_node_outputs(const LLVMBCParser &parser, const char *entry);
 
+	String get_analysis_warnings() const;
+
 	struct Impl;
 
 private:

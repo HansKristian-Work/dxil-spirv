@@ -156,7 +156,11 @@ struct Operation
 	enum : uint8_t
 	{
 		SinkableBit = 1 << 0,
-		DependencySinkableBit = 1 << 1
+		DependencySinkableBit = 1 << 1,
+		AutoGroupSharedBarrier = 1 << 2,
+		// Inserted after analysis passes are done.
+		SubgroupSyncPre = 1 << 3,
+		SubgroupSyncPost = 1 << 4
 	};
 	uint8_t flags = 0;
 };

@@ -2597,6 +2597,15 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		if (implicit_terminator)
 			break;
 
+		if (op->flags & Operation::SubgroupSyncPre)
+		{
+			auto *pre = builder.addInstruction(spv::OpControlBarrier);
+			pre->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+			pre->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+			pre->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
+			                                           spv::MemorySemanticsAcquireReleaseMask));
+		}
+
 		if (op->op == spv::OpIsHelperInvocationEXT && !caps.supports_demote)
 		{
 			spv::Id helper_var_id = get_builtin_shader_input(spv::BuiltInHelperInvocation);
@@ -2727,7 +2736,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			rewrite_phi_incoming_to = node->id;
 			bb = merge_bb;
 		}
-		else
+		else if (op->op != spv::OpNop)
 		{
 			if (op->op == spv::OpDemoteToHelperInvocationEXT || op->op == spv::OpIsHelperInvocationEXT)
 			{
@@ -2763,6 +2772,15 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				literal_mask >>= 1u;
 			}
 			add_instruction(bb, std::move(inst));
+		}
+
+		if (op->flags & Operation::SubgroupSyncPost)
+		{
+			auto *post = builder.addInstruction(spv::OpControlBarrier);
+			post->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+			post->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
+			post->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
+			                                            spv::MemorySemanticsAcquireReleaseMask));
 		}
 	}
 

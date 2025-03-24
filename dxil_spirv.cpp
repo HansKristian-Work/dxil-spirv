@@ -1237,6 +1237,14 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 
+			const char *warn = dxil_spv_converter_get_analysis_warnings(converter);
+			if (warn && *warn != '\0')
+			{
+				compiled_glsl += "/* WARNINGS:\n";
+				compiled_glsl += warn;
+				compiled_glsl += "*/\n\n";
+			}
+
 			if (!spirv_asm_string.empty())
 			{
 				compiled_glsl += "\n#if 0\n";

@@ -248,6 +248,7 @@ struct Converter::Impl
 	bool emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads);
 
 	bool analyze_instructions(llvm::Function *func);
+	void analyze_instructions_post_execution_modes();
 	void mark_used_values(const llvm::Instruction *instruction);
 	void mark_used_value(const llvm::Value *value);
 
@@ -873,6 +874,9 @@ struct Converter::Impl
 		bool subgroup_ballot_reads_first = false;
 		bool can_require_opacity_micromap = false;
 		bool need_maximal_reconvergence_helper_call = false;
+		bool has_group_shared_barrier = false;
+		bool has_group_shared_access = false;
+		bool needs_auto_group_shared_barriers = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

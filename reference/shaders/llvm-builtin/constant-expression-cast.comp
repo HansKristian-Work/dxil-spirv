@@ -10,6 +10,10 @@ void main()
     imageStore(_8, int(0u), uvec4(floatBitsToUint(uintBitsToFloat(_12[2u]))));
 }
 
+/* WARNINGS:
+- Has group shared access, but no group shared barrier anywhere.
+*/
+
 
 #if 0
 // SPIR-V disassembly
