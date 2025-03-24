@@ -758,6 +758,7 @@ struct Converter::Impl
 			bool robust_physical_cbv = false;
 			bool mesh_outputs_bounds_check = false;
 			bool aggressive_nonuniform = false;
+			bool promote_group_to_device_memory_barrier = false;
 		} quirks;
 
 		struct

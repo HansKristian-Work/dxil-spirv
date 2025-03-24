@@ -56,7 +56,9 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	// Game workaround. Sometimes a game might forget to insert device memory barrier in the proper place ._.
 	const bool force_device_memory_barriers =
-	    is_sync && impl.options.quirks.force_device_memory_barriers_thread_group_coherence;
+		is_sync &&
+		(impl.options.quirks.force_device_memory_barriers_thread_group_coherence ||
+		 impl.options.quirks.promote_group_to_device_memory_barrier);
 
 	if ((operation & (DXIL::AccessUAVGlobal | DXIL::AccessUAVThreadGroup)) != 0 ||
 	    (force_device_memory_barriers && impl.shader_analysis.require_uav_thread_group_coherence))

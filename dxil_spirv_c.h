@@ -220,12 +220,17 @@ typedef enum dxil_spv_hit_group_type
 typedef enum dxil_spv_shader_quirk
 {
 	DXIL_SPV_SHADER_QUIRK_NONE = 0,
+	/* This is softer and only applies to shaders that uses thread group coherence at least once.
+	 * If that is the case, promotes all other uses too. Intended to be suitable for a game-global workaround. */
 	DXIL_SPV_SHADER_QUIRK_FORCE_DEVICE_MEMORY_BARRIERS_THREAD_GROUP_COHERENCE = 1,
 	DXIL_SPV_SHADER_QUIRK_ASSUME_BROKEN_SUB_8x8_CUBE_MIPS = 2,
 	DXIL_SPV_SHADER_QUIRK_ROBUST_PHYSICAL_CBV_FORWARDING = 3,
 	DXIL_SPV_SHADER_QUIRK_MESH_OUTPUTS_ROBUSTNESS = 4,
 	DXIL_SPV_SHADER_QUIRK_AGGRESSIVE_NONUNIFORM = 5,
 	DXIL_SPV_SHADER_QUIRK_ROBUST_PHYSICAL_CBV = 6,
+	/* This is a harder workaround which forces UAV barriers even if shader does not use anything like that.
+	 * Intended to be used with specific shaders since it's not feasible to detect the race condition algorithmically. */
+	DXIL_SPV_SHADER_QUIRK_PROMOTE_GROUP_TO_DEVICE_MEMORY_BARRIER = 7,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 

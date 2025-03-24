@@ -8287,6 +8287,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			options.quirks.robust_physical_cbv = true;
 			break;
 
+		case ShaderQuirk::PromoteGroupToDeviceMemoryBarrier:
+			options.quirks.promote_group_to_device_memory_barrier = true;
+			break;
+
 		default:
 			break;
 		}
