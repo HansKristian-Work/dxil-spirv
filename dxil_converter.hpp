@@ -742,7 +742,8 @@ enum class ShaderQuirk : uint32_t
 	MeshOutputRobustness,
 	AggressiveNonUniform,
 	RobustPhysicalCBV,
-	PromoteGroupToDeviceMemoryBarrier
+	PromoteGroupToDeviceMemoryBarrier,
+	GroupSharedAutoBarrier
 };
 
 struct OptionShaderQuirk : OptionBase

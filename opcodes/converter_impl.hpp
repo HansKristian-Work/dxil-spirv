@@ -759,6 +759,7 @@ struct Converter::Impl
 			bool mesh_outputs_bounds_check = false;
 			bool aggressive_nonuniform = false;
 			bool promote_group_to_device_memory_barrier = false;
+			bool group_shared_auto_barrier = false;
 		} quirks;
 
 		struct

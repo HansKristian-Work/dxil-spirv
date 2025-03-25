@@ -231,6 +231,7 @@ typedef enum dxil_spv_shader_quirk
 	/* This is a harder workaround which forces UAV barriers even if shader does not use anything like that.
 	 * Intended to be used with specific shaders since it's not feasible to detect the race condition algorithmically. */
 	DXIL_SPV_SHADER_QUIRK_PROMOTE_GROUP_TO_DEVICE_MEMORY_BARRIER = 7,
+	DXIL_SPV_SHADER_QUIRK_GROUP_SHARED_AUTO_BARRIER = 8,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 

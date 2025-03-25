@@ -7484,7 +7484,9 @@ static void propagate_precise(llvm::Function *func)
 
 void Converter::Impl::analyze_instructions_post_execution_modes()
 {
-	if (!shader_analysis.has_group_shared_barrier && shader_analysis.has_group_shared_access)
+	if (options.quirks.group_shared_auto_barrier &&
+	    !shader_analysis.has_group_shared_barrier &&
+	    shader_analysis.has_group_shared_access)
 	{
 		unsigned num_threads = execution_mode_meta.workgroup_threads[0] *
 		                       execution_mode_meta.workgroup_threads[1] *
@@ -8289,6 +8291,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::PromoteGroupToDeviceMemoryBarrier:
 			options.quirks.promote_group_to_device_memory_barrier = true;
+			break;
+
+		case ShaderQuirk::GroupSharedAutoBarrier:
+			options.quirks.group_shared_auto_barrier = true;
 			break;
 
 		default:
