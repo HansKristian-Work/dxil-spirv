@@ -7484,8 +7484,7 @@ static void propagate_precise(llvm::Function *func)
 
 void Converter::Impl::analyze_instructions_post_execution_modes()
 {
-	if (options.quirks.group_shared_auto_barrier &&
-	    !shader_analysis.has_group_shared_barrier &&
+	if (!shader_analysis.has_group_shared_barrier &&
 	    shader_analysis.has_group_shared_access)
 	{
 		unsigned num_threads = execution_mode_meta.workgroup_threads[0] *
@@ -7735,7 +7734,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	else
 	{
 		result.entry.entry = convert_function(visit_order, true);
-		if (shader_analysis.needs_auto_group_shared_barriers)
+		if (shader_analysis.needs_auto_group_shared_barriers && options.quirks.group_shared_auto_barrier)
 		{
 			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
 			cfg.rewrite_auto_group_shared_barrier();
