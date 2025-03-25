@@ -1,0 +1,19 @@
+RWStructuredBuffer<uint> Output;
+groupshared uint A;
+groupshared uint B[32];
+
+[numthreads(32, 1, 1)]
+void main(uint thr : SV_GroupIndex)
+{
+	// Store
+	A = 10;
+	B[thr] = 40;
+	// Load
+	Output[thr] = B[thr ^ 31];
+	Output[thr] = B[thr ^ 15];
+	// Atomics
+	uint o;
+	InterlockedAdd(B[thr], 1, o);
+	InterlockedOr(B[thr], 1, o);
+	InterlockedXor(B[thr], 1, o);
+}

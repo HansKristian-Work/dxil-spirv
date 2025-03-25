@@ -245,6 +245,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--extended-robustness']
     if 'bda-instrumentation.' in shader:
         hlsl_cmd += ['--instruction-instrumentation', '4', '0', '2', 'abcd']
+    if '.auto-group-shared-barrier.' in shader:
+        hlsl_cmd += ['--shader-quirk', '8']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

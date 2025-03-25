@@ -175,7 +175,8 @@ static void print_help()
 	     "\t[--quad-control-maximal-reconvergence]\n"
 	     "\t[--force-maximal-reconvergence]\n"
 	     "\t[--raw-access-chains-nv]\n"
-	     "\t[--extended-robustness]\n");
+	     "\t[--extended-robustness]\n"
+	     "\t[--shader-quirk <index>]\n");
 }
 
 struct Arguments
@@ -221,6 +222,7 @@ struct Arguments
 	bool force_maximal_reconvergence = false;
 	bool raw_access_chains_nv = false;
 	bool extended_robustness = false;
+	std::vector<dxil_spv_shader_quirk> quirks;
 
 	unsigned ssbo_alignment = 1;
 	unsigned physical_address_indexing_stride = 1;
@@ -818,6 +820,9 @@ int main(int argc, char **argv)
 	cbs.add("--extended-robustness", [&](CLIParser &) {
 		args.extended_robustness = true;
 	});
+	cbs.add("--shader-quirk", [&](CLIParser &parser) {
+		args.quirks.push_back(dxil_spv_shader_quirk(parser.next_uint()));
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1149,6 +1154,13 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &robust.base);
 	}
 
+	for (auto &quirk : args.quirks)
+	{
+		dxil_spv_option_shader_quirk helper = {
+			{ DXIL_SPV_OPTION_SHADER_QUIRK }, quirk };
+		dxil_spv_converter_add_option(converter, &helper.base);
+	}
+
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 
 	unsigned num_entry_points = 1;
@@ -1235,6 +1247,14 @@ int main(int argc, char **argv)
 			{
 				LOGE("Failed to convert to GLSL.\n");
 				return EXIT_FAILURE;
+			}
+
+			const char *warn = dxil_spv_converter_get_analysis_warnings(converter);
+			if (warn && *warn != '\0')
+			{
+				compiled_glsl += "/* WARNINGS:\n";
+				compiled_glsl += warn;
+				compiled_glsl += "*/\n\n";
 			}
 
 			if (!spirv_asm_string.empty())

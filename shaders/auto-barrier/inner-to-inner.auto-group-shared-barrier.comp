@@ -1,0 +1,30 @@
+RWStructuredBuffer<uint> Output;
+RWStructuredBuffer<uint> Output2;
+groupshared uint A[32];
+
+[numthreads(32, 1, 1)]
+void main(uint thr : SV_GroupIndex)
+{
+	[branch]
+	if (thr < 16)
+	{
+		// Store
+		A[thr] = Output[1024 + thr];
+	}
+	else
+	{
+		// Store
+		A[thr ^ 1] = Output2[1024 + thr];
+	}
+
+	[branch]
+	if (thr < 16)
+	{
+		[branch]
+		if (Output[thr] == 50)
+		{
+			// Load
+			Output[thr] = A[thr ^ 31];
+		}
+	}
+}

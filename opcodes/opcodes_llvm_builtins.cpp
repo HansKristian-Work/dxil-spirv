@@ -1271,6 +1271,13 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	return true;
 }
 
+static bool needs_group_shared_auto_barrier(Converter::Impl &impl, const llvm::Value *ptr_value)
+{
+	return impl.shader_analysis.needs_auto_group_shared_barriers &&
+	       DXIL::AddressSpace(ptr_value->getType()->getPointerAddressSpace()) ==
+	       DXIL::AddressSpace::GroupShared;
+}
+
 bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
 	auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getPointerOperand());
@@ -1291,6 +1298,9 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 		load_op->add_id(value_id);
 		impl.add(load_op);
 
+		if (needs_group_shared_auto_barrier(impl, instruction->getPointerOperand()))
+			load_op->flags |= Operation::AutoGroupSharedBarrier;
+
 		Operation *cast_op = impl.allocate(spv::OpBitcast, instruction);
 		cast_op->add_id(load_op->id);
 		impl.add(cast_op);
@@ -1300,6 +1310,9 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 		auto robust_itr = impl.handle_to_robustness.find(instruction->getPointerOperand());
 		Operation *op = impl.allocate(robust_itr != impl.handle_to_robustness.end() ? spv::PseudoOpMaskedLoad : spv::OpLoad, instruction);
 		op->add_id(value_id);
+
+		if (needs_group_shared_auto_barrier(impl, instruction->getPointerOperand()))
+			op->flags |= Operation::AutoGroupSharedBarrier;
 
 		// If this is remapped to BDA, need to add Aligned mask.
 		auto tracked = gep_pointer_to_alloca_tracked_inst(impl, instruction->getPointerOperand());
@@ -1347,6 +1360,9 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 
 	auto robust_itr = impl.handle_to_robustness.find(instruction->getOperand(1));
 	Operation *op = impl.allocate(robust_itr != impl.handle_to_robustness.end() ? spv::PseudoOpMaskedStore : spv::OpStore);
+
+	if (needs_group_shared_auto_barrier(impl, instruction->getOperand(1)))
+		op->flags |= Operation::AutoGroupSharedBarrier;
 
 	// We need to get the ID here as the constexpr chain could set our type.
 	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
@@ -1712,6 +1728,8 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 		builder.addCapability(spv::CapabilityInt64Atomics);
 
 	Operation *atomic_op = impl.allocate(spv::OpAtomicCompareExchange, builder.makeUintType(bits));
+	if (needs_group_shared_auto_barrier(impl, instruction->getPointerOperand()))
+		atomic_op->flags |= Operation::AutoGroupSharedBarrier;
 
 	atomic_op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
 
@@ -1794,6 +1812,8 @@ bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst
 		builder.addCapability(spv::CapabilityInt64Atomics);
 
 	Operation *op = impl.allocate(opcode, instruction);
+	if (needs_group_shared_auto_barrier(impl, instruction->getPointerOperand()))
+		op->flags |= Operation::AutoGroupSharedBarrier;
 
 	op->add_id(impl.get_id_for_value(instruction->getPointerOperand()));
 
@@ -1890,6 +1910,9 @@ bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 		// We'll need this GEP after all.
 		impl.masked_alloca_forward_gep.erase(llvm::cast<llvm::GetElementPtrInst>(inst->getPointerOperand()));
 	}
+
+	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+		impl.shader_analysis.has_group_shared_access = true;
 
 	if (auto *const_expr = llvm::dyn_cast<llvm::ConstantExpr>(inst->getPointerOperand()))
 	{
@@ -2008,6 +2031,9 @@ bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *ins
 		impl.alloca_tracking.erase(tracked.itr);
 	}
 
+	if (DXIL::AddressSpace(inst->getOperand(1)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+		impl.shader_analysis.has_group_shared_access = true;
+
 	// Assume we're consuming the entire uvec4.
 	if (instruction_is_ballot(inst->getOperand(0)))
 	{
@@ -2015,6 +2041,20 @@ bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *ins
 		impl.shader_analysis.subgroup_ballot_reads_upper = true;
 	}
 
+	return true;
+}
+
+bool analyze_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *inst)
+{
+	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+		impl.shader_analysis.has_group_shared_access = true;
+	return true;
+}
+
+bool analyze_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgInst *inst)
+{
+	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+		impl.shader_analysis.has_group_shared_access = true;
 	return true;
 }
 

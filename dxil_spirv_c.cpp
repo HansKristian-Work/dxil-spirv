@@ -390,6 +390,7 @@ struct dxil_spv_converter_s
 	Vector<uint32_t> spirv;
 	String entry_point;
 	String compiled_entry_point;
+	String analysis_warnings;
 	Remapper remapper;
 
 	Vector<LocalRootParameter> local_root_parameters;
@@ -796,6 +797,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	converter->patch_vertex_count = dxil_converter.get_patch_vertex_count();
 	for (int i = 0; i < int(ShaderFeature::Count); i++)
 		converter->shader_feature_used[i] = dxil_converter.shader_requires_feature(ShaderFeature(i));
+	converter->analysis_warnings = dxil_converter.get_analysis_warnings();
 
 	return DXIL_SPV_SUCCESS;
 }
@@ -1515,6 +1517,13 @@ dxil_spv_bool dxil_spv_converter_uses_shader_feature(
 		return converter->shader_feature_used[feature] ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	else
 		return DXIL_SPV_FALSE;
+}
+
+const char *dxil_spv_converter_get_analysis_warnings(dxil_spv_converter converter)
+{
+	if (converter->analysis_warnings.empty())
+		return nullptr;
+	return converter->analysis_warnings.c_str();
 }
 
 void dxil_spv_begin_thread_allocator_context(void)

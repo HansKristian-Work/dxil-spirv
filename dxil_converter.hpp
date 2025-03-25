@@ -741,7 +741,9 @@ enum class ShaderQuirk : uint32_t
 	RobustPhysicalCBVForwarding,
 	MeshOutputRobustness,
 	AggressiveNonUniform,
-	RobustPhysicalCBV
+	RobustPhysicalCBV,
+	PromoteGroupToDeviceMemoryBarrier,
+	GroupSharedAutoBarrier
 };
 
 struct OptionShaderQuirk : OptionBase
@@ -880,6 +882,8 @@ public:
 
 	static NodeInputData get_node_input(const LLVMBCParser &parser, const char *entry);
 	static Vector<NodeOutputData> get_node_outputs(const LLVMBCParser &parser, const char *entry);
+
+	String get_analysis_warnings() const;
 
 	struct Impl;
 

@@ -1261,6 +1261,12 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		// There is no guarantee for intra-workgroup coherence sadly :(
 		if ((operation & (DXIL::AccessUAVThreadGroup | DXIL::AccessUAVGlobal)) != 0)
 			impl.shader_analysis.require_uav_thread_group_coherence = true;
+		if ((operation & DXIL::AccessGroupShared) != 0)
+		{
+			impl.shader_analysis.has_group_shared_barrier = true;
+			if (impl.options.quirks.promote_group_to_device_memory_barrier)
+				impl.shader_analysis.require_uav_thread_group_coherence = true;
+		}
 		break;
 	}
 
@@ -1283,6 +1289,12 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 				impl.shader_analysis.require_node_output_group_coherence = true;
 			if ((memory_flags & DXIL::MemoryTypeNodeInputBit) != 0)
 				impl.shader_analysis.require_node_input_group_coherence = true;
+			if ((memory_flags & DXIL::MemoryTypeGroupSharedBit) != 0)
+			{
+				impl.shader_analysis.has_group_shared_barrier = true;
+				if (impl.options.quirks.promote_group_to_device_memory_barrier)
+					impl.shader_analysis.require_uav_thread_group_coherence = true;
+			}
 		}
 
 		break;

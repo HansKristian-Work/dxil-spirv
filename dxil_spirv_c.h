@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 49
+#define DXIL_SPV_API_VERSION_MINOR 50
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -220,12 +220,18 @@ typedef enum dxil_spv_hit_group_type
 typedef enum dxil_spv_shader_quirk
 {
 	DXIL_SPV_SHADER_QUIRK_NONE = 0,
+	/* This is softer and only applies to shaders that uses thread group coherence at least once.
+	 * If that is the case, promotes all other uses too. Intended to be suitable for a game-global workaround. */
 	DXIL_SPV_SHADER_QUIRK_FORCE_DEVICE_MEMORY_BARRIERS_THREAD_GROUP_COHERENCE = 1,
 	DXIL_SPV_SHADER_QUIRK_ASSUME_BROKEN_SUB_8x8_CUBE_MIPS = 2,
 	DXIL_SPV_SHADER_QUIRK_ROBUST_PHYSICAL_CBV_FORWARDING = 3,
 	DXIL_SPV_SHADER_QUIRK_MESH_OUTPUTS_ROBUSTNESS = 4,
 	DXIL_SPV_SHADER_QUIRK_AGGRESSIVE_NONUNIFORM = 5,
 	DXIL_SPV_SHADER_QUIRK_ROBUST_PHYSICAL_CBV = 6,
+	/* This is a harder workaround which forces UAV barriers even if shader does not use anything like that.
+	 * Intended to be used with specific shaders since it's not feasible to detect the race condition algorithmically. */
+	DXIL_SPV_SHADER_QUIRK_PROMOTE_GROUP_TO_DEVICE_MEMORY_BARRIER = 7,
+	DXIL_SPV_SHADER_QUIRK_GROUP_SHARED_AUTO_BARRIER = 8,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 
@@ -966,6 +972,12 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
  * Designed to map closely to D3D12 feature checks. */
 DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_shader_feature(
 	dxil_spv_converter converter, dxil_spv_shader_feature feature);
+
+/* Intended to be added to the GLSL output in repro suite.
+ * Attempts to analyze the DXIL for potential out of spec behavior that needs another pair of eyes.
+ * Lifetime of string is only as long as converter is alive.
+ * Returns NULL when there are no warnings. */
+DXIL_SPV_PUBLIC_API const char *dxil_spv_converter_get_analysis_warnings(dxil_spv_converter converter);
 
 /* Use an optimized allocation scheme.
  * Call begin before allocating any dxil_spv objects,
