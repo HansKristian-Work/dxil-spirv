@@ -371,6 +371,143 @@ bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &im
 	return true;
 }
 
+static bool value_is_length_squared(const llvm::Value *value)
+{
+	int components = 0;
+	if (value_is_dx_op_instrinsic(value, DXIL::Op::Dot2))
+		components = 2;
+	else if (value_is_dx_op_instrinsic(value, DXIL::Op::Dot3))
+		components = 3;
+	else if (value_is_dx_op_instrinsic(value, DXIL::Op::Dot4))
+		components = 4;
+	else
+		return false;
+
+	auto *dot = llvm::cast<llvm::CallInst>(value);
+	for (int i = 0; i < components; i++)
+		if (dot->getOperand(1 + i) != dot->getOperand(i + 1 + components))
+			return false;
+
+	return true;
+}
+
+static bool is_canonically_normalizing_value(const llvm::Value *value)
+{
+	//return value_is_dx_op_instrinsic(value, DXIL::Op::Rsqrt) &&
+	//       value_is_length_squared(llvm::cast<llvm::CallInst>(value)->getOperand(1));
+	if (!value_is_dx_op_instrinsic(value, DXIL::Op::Rsqrt))
+		return false;
+	if (!value_is_length_squared(llvm::cast<llvm::CallInst>(value)->getOperand(1)))
+		return false;
+	return true;
+}
+
+static std::pair<const llvm::Value *, double> split_constant_multipliers(const llvm::Value *value)
+{
+	if (const auto *fp = llvm::dyn_cast<llvm::ConstantFP>(value))
+	{
+		return { nullptr, fp->getValueAPF().convertToDouble() };
+	}
+	else if (const auto *bin_op = llvm::dyn_cast<llvm::BinaryOperator>(value))
+	{
+		if (bin_op->getOpcode() != llvm::BinaryOperator::BinaryOps::FMul)
+			return { value, 1.0 };
+
+		auto split0 = split_constant_multipliers(bin_op->getOperand(0));
+		auto split1 = split_constant_multipliers(bin_op->getOperand(1));
+
+		if (split0.first && split1.first)
+			return { value, 1.0 };
+		else if (split0.first)
+			return { split0.first, split0.second * split1.second };
+		else if (split1.first)
+			return { split1.first, split0.second * split1.second };
+		else
+			return { nullptr, split0.second * split1.second };
+	}
+
+	return { value, 1.0 };
+}
+
+static bool get_expression_upper_bound(const llvm::Value *value, double &boundary_value)
+{
+	auto overall_split = split_constant_multipliers(value);
+	value = overall_split.first;
+	if (!overall_split.first)
+	{
+		boundary_value = overall_split.second;
+		return true;
+	}
+
+	// Simple analysis to find what we want to see.
+	if (auto *bin_op = llvm::dyn_cast<llvm::BinaryOperator>(value))
+	{
+		if (bin_op->getOpcode() != llvm::BinaryOperator::BinaryOps::FMul)
+			return false;
+
+		const llvm::Value *op0 = bin_op->getOperand(0);
+		const llvm::Value *op1 = bin_op->getOperand(1);
+
+		auto split0 = split_constant_multipliers(op0);
+		auto split1 = split_constant_multipliers(op1);
+
+		// Don't want to deal with any negative numbers here since the definition of max and min flip.
+		if (split0.second < 0.0 || split1.second < 0.0)
+			return false;
+
+		if (split0.first)
+			op0 = split0.first;
+		if (split1.first)
+			op1 = split1.first;
+
+		bool is_normalizing0 = is_canonically_normalizing_value(split0.first);
+		bool is_normalizing1 = is_canonically_normalizing_value(split1.first);
+
+		if (is_normalizing0 || is_normalizing1)
+		{
+			const llvm::Value *mul_value = is_normalizing0 ? op1 : op0;
+			auto *rsqrt = llvm::cast<llvm::CallInst>(is_normalizing0 ? op0 : op1);
+			auto *dot = llvm::cast<llvm::CallInst>(rsqrt->getOperand(1));
+			for (unsigned i = 1; i < dot->getNumOperands(); i++)
+			{
+				if (dot->getOperand(i) == mul_value)
+				{
+					boundary_value = overall_split.second * split0.second * split1.second;
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+static spv::Id build_clamped_non_negative_sqrt(Converter::Impl &impl, spv::Id id, const llvm::Value *value)
+{
+	// Try to detect a pattern that can manifest in some shaders in the wild where 1 ULP causes
+	// A tiny negative value to occur, leading to NaN. This is a workaround, obviously.
+	auto *bin_op = llvm::dyn_cast<llvm::BinaryOperator>(value);
+	if (!bin_op || bin_op->getOpcode() != llvm::BinaryOperator::BinaryOps::FSub || !bin_op->isFast())
+		return id;
+
+	auto *const0 = llvm::dyn_cast<llvm::ConstantFP>(bin_op->getOperand(0));
+	if (!const0)
+		return id;
+
+	double bound = 0.0;
+	if (!get_expression_upper_bound(bin_op->getOperand(1), bound) ||
+	    const0->getValueAPF().convertToDouble() != bound || bound == 0.0)
+		return id;
+
+	auto *lower = impl.allocate(spv::OpExtInst, impl.get_type_id(value->getType()));
+	lower->add_id(impl.glsl_std450_ext);
+	lower->add_literal(GLSLstd450FMax);
+	lower->add_id(id);
+	lower->add_id(impl.builder().makeNullConstant(lower->type_id));
+	impl.add(lower);
+	return lower->id;
+}
+
 bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -397,7 +534,12 @@ bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
 	op->add_literal(opcode);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+	spv::Id id = impl.get_id_for_value(instruction->getOperand(1));
+	if (opcode == GLSLstd450Sqrt)
+		id = build_clamped_non_negative_sqrt(impl, id, instruction->getOperand(1));
+
+	op->add_id(id);
 
 	impl.add(op);
 	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
