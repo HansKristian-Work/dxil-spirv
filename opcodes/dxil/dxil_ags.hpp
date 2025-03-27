@@ -276,4 +276,6 @@ static inline AgsInstruction decode_ags_instruction(uint32_t v)
 
 	return inst;
 }
+
+bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 }
