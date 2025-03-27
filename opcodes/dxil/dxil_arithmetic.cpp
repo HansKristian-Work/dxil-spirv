@@ -393,13 +393,8 @@ static bool value_is_length_squared(const llvm::Value *value)
 
 static bool is_canonically_normalizing_value(const llvm::Value *value)
 {
-	//return value_is_dx_op_instrinsic(value, DXIL::Op::Rsqrt) &&
-	//       value_is_length_squared(llvm::cast<llvm::CallInst>(value)->getOperand(1));
-	if (!value_is_dx_op_instrinsic(value, DXIL::Op::Rsqrt))
-		return false;
-	if (!value_is_length_squared(llvm::cast<llvm::CallInst>(value)->getOperand(1)))
-		return false;
-	return true;
+	return value_is_dx_op_instrinsic(value, DXIL::Op::Rsqrt) &&
+	       value_is_length_squared(llvm::cast<llvm::CallInst>(value)->getOperand(1));
 }
 
 static std::pair<const llvm::Value *, double> split_constant_multipliers(const llvm::Value *value)
