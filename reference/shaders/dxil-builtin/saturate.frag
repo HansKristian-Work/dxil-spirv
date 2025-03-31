@@ -1,12 +1,17 @@
 #version 460
+#extension GL_EXT_spirv_intrinsics : require
 
 layout(location = 0) in float A;
 layout(location = 0) out float SV_Target;
 
+spirv_instruction(set = "GLSL.std.450", id = 81) float spvNClamp(float, float, float);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec2 spvNClamp(vec2, vec2, vec2);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec3 spvNClamp(vec3, vec3, vec3);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4);
+
 void main()
 {
-    float _17 = isnan(0.0) ? A : (isnan(A) ? 0.0 : max(A, 0.0));
-    SV_Target = isnan(1.0) ? _17 : (isnan(_17) ? 1.0 : min(_17, 1.0));
+    SV_Target = spvNClamp(A, 0.0, 1.0);
 }
 
 

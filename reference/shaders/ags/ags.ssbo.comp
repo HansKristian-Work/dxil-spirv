@@ -5,6 +5,7 @@
 #error No extension available for 64-bit integers.
 #endif
 #extension GL_EXT_shader_image_int64 : require
+#extension GL_EXT_shader_atomic_int64 : require
 #extension GL_KHR_shader_subgroup_ballot : require
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 

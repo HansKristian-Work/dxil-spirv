@@ -1,18 +1,44 @@
 #version 460
+#extension GL_EXT_spirv_intrinsics : require
 
 layout(location = 0) in mediump vec4 V;
 layout(location = 0) out mediump vec4 SV_Target;
 
+spirv_instruction(set = "GLSL.std.450", id = 81) float spvNClamp(float, float, float);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec2 spvNClamp(vec2, vec2, vec2);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec3 spvNClamp(vec3, vec3, vec3);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4);
+
+mediump float spvNClampRelaxed(mediump float a, mediump float b, mediump float c)
+{
+    mediump float res = spvNClamp(a, b, c);
+    return res;
+}
+
+mediump vec2 spvNClampRelaxed(mediump vec2 a, mediump vec2 b, mediump vec2 c)
+{
+    mediump vec2 res = spvNClamp(a, b, c);
+    return res;
+}
+
+mediump vec3 spvNClampRelaxed(mediump vec3 a, mediump vec3 b, mediump vec3 c)
+{
+    mediump vec3 res = spvNClamp(a, b, c);
+    return res;
+}
+
+mediump vec4 spvNClampRelaxed(mediump vec4 a, mediump vec4 b, mediump vec4 c)
+{
+    mediump vec4 res = spvNClamp(a, b, c);
+    return res;
+}
+
 void main()
 {
-    mediump float _39 = isnan(0.0) ? V.x : (isnan(V.x) ? 0.0 : max(V.x, 0.0));
-    mediump float _50 = isnan(0.0) ? V.y : (isnan(V.y) ? 0.0 : max(V.y, 0.0));
-    mediump float _61 = isnan(0.0) ? V.z : (isnan(V.z) ? 0.0 : max(V.z, 0.0));
-    mediump float _72 = isnan(0.0) ? V.w : (isnan(V.w) ? 0.0 : max(V.w, 0.0));
-    SV_Target.x = isnan(1.0) ? _39 : (isnan(_39) ? 1.0 : min(_39, 1.0));
-    SV_Target.y = isnan(1.0) ? _50 : (isnan(_50) ? 1.0 : min(_50, 1.0));
-    SV_Target.z = isnan(1.0) ? _61 : (isnan(_61) ? 1.0 : min(_61, 1.0));
-    SV_Target.w = isnan(1.0) ? _72 : (isnan(_72) ? 1.0 : min(_72, 1.0));
+    SV_Target.x = spvNClampRelaxed(V.x, 0.0, 1.0);
+    SV_Target.y = spvNClampRelaxed(V.y, 0.0, 1.0);
+    SV_Target.z = spvNClampRelaxed(V.z, 0.0, 1.0);
+    SV_Target.w = spvNClampRelaxed(V.w, 0.0, 1.0);
 }
 
 

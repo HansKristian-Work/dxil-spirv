@@ -7,24 +7,22 @@
 #error No extension available for FP16.
 #endif
 #extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_spirv_intrinsics : require
 
 layout(location = 0) in mediump vec4 V;
 layout(location = 0) out mediump vec4 SV_Target;
 
+spirv_instruction(set = "GLSL.std.450", id = 81) float16_t spvNClamp(float16_t, float16_t, float16_t);
+spirv_instruction(set = "GLSL.std.450", id = 81) f16vec2 spvNClamp(f16vec2, f16vec2, f16vec2);
+spirv_instruction(set = "GLSL.std.450", id = 81) f16vec3 spvNClamp(f16vec3, f16vec3, f16vec3);
+spirv_instruction(set = "GLSL.std.450", id = 81) f16vec4 spvNClamp(f16vec4, f16vec4, f16vec4);
+
 void main()
 {
-    float16_t _17 = float16_t(V.x);
-    float16_t _21 = float16_t(V.y);
-    float16_t _25 = float16_t(V.z);
-    float16_t _29 = float16_t(V.w);
-    float16_t _48 = isnan(float16_t(0.0)) ? _17 : (isnan(_17) ? float16_t(0.0) : max(_17, float16_t(0.0)));
-    float16_t _59 = isnan(float16_t(0.0)) ? _21 : (isnan(_21) ? float16_t(0.0) : max(_21, float16_t(0.0)));
-    float16_t _70 = isnan(float16_t(0.0)) ? _25 : (isnan(_25) ? float16_t(0.0) : max(_25, float16_t(0.0)));
-    float16_t _81 = isnan(float16_t(0.0)) ? _29 : (isnan(_29) ? float16_t(0.0) : max(_29, float16_t(0.0)));
-    SV_Target.x = float(isnan(float16_t(1.0)) ? _48 : (isnan(_48) ? float16_t(1.0) : min(_48, float16_t(1.0))));
-    SV_Target.y = float(isnan(float16_t(1.0)) ? _59 : (isnan(_59) ? float16_t(1.0) : min(_59, float16_t(1.0))));
-    SV_Target.z = float(isnan(float16_t(1.0)) ? _70 : (isnan(_70) ? float16_t(1.0) : min(_70, float16_t(1.0))));
-    SV_Target.w = float(isnan(float16_t(1.0)) ? _81 : (isnan(_81) ? float16_t(1.0) : min(_81, float16_t(1.0))));
+    SV_Target.x = float(spvNClamp(float16_t(V.x), float16_t(0.0), float16_t(1.0)));
+    SV_Target.y = float(spvNClamp(float16_t(V.y), float16_t(0.0), float16_t(1.0)));
+    SV_Target.z = float(spvNClamp(float16_t(V.z), float16_t(0.0), float16_t(1.0)));
+    SV_Target.w = float(spvNClamp(float16_t(V.w), float16_t(0.0), float16_t(1.0)));
 }
 
 

@@ -39,7 +39,7 @@ uint RobustPhysicalAtomicCounter(uvec2 _34, uint _35, uint _36)
     uint _51;
     if (any(notEqual(_34, uvec2(0u))))
     {
-        uint _48 = atomicAdd(uintPointer(_34), _35);
+        uint _48 = atomicAdd(uintPointer(_34).value, _35);
         _51 = _48 + _36;
     }
     else

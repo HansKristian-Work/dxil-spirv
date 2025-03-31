@@ -1,11 +1,17 @@
 #version 460
+#extension GL_EXT_spirv_intrinsics : require
 
 layout(location = 0) in vec2 A;
 layout(location = 0) out float SV_Target;
 
+spirv_instruction(set = "GLSL.std.450", id = 79) float spvNMin(float, float);
+spirv_instruction(set = "GLSL.std.450", id = 79) vec2 spvNMin(vec2, vec2);
+spirv_instruction(set = "GLSL.std.450", id = 79) vec3 spvNMin(vec3, vec3);
+spirv_instruction(set = "GLSL.std.450", id = 79) vec4 spvNMin(vec4, vec4);
+
 void main()
 {
-    SV_Target = isnan(A.y) ? A.x : (isnan(A.x) ? A.y : min(A.x, A.y));
+    SV_Target = spvNMin(A.x, A.y);
 }
 
 

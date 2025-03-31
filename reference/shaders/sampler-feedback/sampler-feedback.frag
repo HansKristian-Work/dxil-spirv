@@ -9,7 +9,9 @@
 #extension GL_KHR_shader_subgroup_ballot : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
 #extension GL_KHR_shader_subgroup_basic : require
+#extension GL_EXT_shader_atomic_int64 : require
 #extension GL_EXT_samplerless_texture_functions : require
+#extension GL_EXT_spirv_intrinsics : require
 #extension GL_KHR_shader_subgroup_quad : require
 
 struct ResType
@@ -33,6 +35,11 @@ layout(location = 1) in vec2 GRADX;
 layout(location = 1, component = 2) in vec2 GRADY;
 layout(location = 2) in float CLAMP;
 layout(location = 3) flat in uint IDX;
+
+spirv_instruction(set = "GLSL.std.450", id = 81) float spvNClamp(float, float, float);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec2 spvNClamp(vec2, vec2, vec2);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec3 spvNClamp(vec3, vec3, vec3);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4);
 
 void WriteFeedback(u64image2D img, ivec2 coord, uint64_t value, bool active_lane)
 {
@@ -186,9 +193,7 @@ void main()
     WriteFeedback(_21, _305, uint64_t(((1 | (_308 ? 2 : 0)) | (_309 ? 4 : 0)) | ((_308 && _309) ? 8 : 0)) << uint64_t(_239 * 4), (!gl_HelperInvocation) && (_237 != _239));
     ivec2 _327 = imageSize(_21) & ivec2(15);
     int _329 = textureQueryLevels(_8) - 1;
-    float _330 = float(_329);
-    float _1934 = isnan(0.0) ? gl_FragCoord.z : (isnan(gl_FragCoord.z) ? 0.0 : max(gl_FragCoord.z, 0.0));
-    float _331 = isnan(_330) ? _1934 : (isnan(_1934) ? _330 : min(_1934, _330));
+    float _331 = spvNClamp(gl_FragCoord.z, 0.0, float(_329));
     int _332 = int(_331);
     int _334 = int(_331 + 0.9970703125);
     vec2 _337 = fract(vec2(gl_FragCoord.x, gl_FragCoord.y));
@@ -213,10 +218,7 @@ void main()
     vec2 _400 = vec2(textureSize(_8, 0));
     vec2 _404 = _400 * vec2(GRADX.x, GRADX.y);
     vec2 _405 = _400 * vec2(GRADY.x, GRADY.y);
-    float _410 = log2(max(dot(_404, _404), dot(_405, _405))) * 0.5;
-    float _411 = float(_399);
-    float _1945 = isnan(0.0) ? _410 : (isnan(_410) ? 0.0 : max(_410, 0.0));
-    float _412 = isnan(_411) ? _1945 : (isnan(_1945) ? _411 : min(_1945, _411));
+    float _412 = spvNClamp(log2(max(dot(_404, _404), dot(_405, _405))) * 0.5, 0.0, float(_399));
     int _413 = int(_412);
     int _415 = int(_412 + 0.9970703125);
     vec2 _418 = fract(vec2(gl_FragCoord.x, gl_FragCoord.y));
@@ -241,10 +243,7 @@ void main()
     vec2 _481 = vec2(textureSize(_8, 0));
     vec2 _485 = _481 * vec2(GRADX.x, GRADX.y);
     vec2 _486 = _481 * vec2(GRADY.x, GRADY.y);
-    float _491 = log2(max(dot(_485, _485), dot(_486, _486))) * 0.5;
-    float _492 = float(_480);
-    float _1956 = isnan(0.0) ? _491 : (isnan(_491) ? 0.0 : max(_491, 0.0));
-    float _495 = min(max(isnan(_492) ? _1956 : (isnan(_1956) ? _492 : min(_1956, _492)), CLAMP), 14.0);
+    float _495 = min(max(spvNClamp(log2(max(dot(_485, _485), dot(_486, _486))) * 0.5, 0.0, float(_480)), CLAMP), 14.0);
     int _496 = int(_495);
     int _498 = int(_495 + 0.9970703125);
     vec2 _501 = fract(vec2(gl_FragCoord.x, gl_FragCoord.y));
@@ -397,9 +396,7 @@ void main()
     int _997 = int(roundEven(gl_FragCoord.z));
     ivec2 _1001 = imageSize(_24).xy & ivec2(15);
     int _1003 = textureQueryLevels(_11) - 1;
-    float _1004 = float(_1003);
-    float _1967 = isnan(0.0) ? _76 : (isnan(_76) ? 0.0 : max(_76, 0.0));
-    float _1005 = isnan(_1004) ? _1967 : (isnan(_1967) ? _1004 : min(_1967, _1004));
+    float _1005 = spvNClamp(_76, 0.0, float(_1003));
     int _1006 = int(_1005);
     int _1008 = int(_1005 + 0.9970703125);
     vec2 _1011 = fract(vec2(gl_FragCoord.x, gl_FragCoord.y));
@@ -425,10 +422,7 @@ void main()
     vec2 _1081 = vec2(textureSize(_11, 0).xy);
     vec2 _1086 = _1081 * vec2(GRADX.x, GRADX.y);
     vec2 _1087 = _1081 * vec2(GRADY.x, GRADY.y);
-    float _1092 = log2(max(dot(_1086, _1086), dot(_1087, _1087))) * 0.5;
-    float _1093 = float(_1080);
-    float _1978 = isnan(0.0) ? _1092 : (isnan(_1092) ? 0.0 : max(_1092, 0.0));
-    float _1094 = isnan(_1093) ? _1978 : (isnan(_1978) ? _1093 : min(_1978, _1093));
+    float _1094 = spvNClamp(log2(max(dot(_1086, _1086), dot(_1087, _1087))) * 0.5, 0.0, float(_1080));
     int _1095 = int(_1094);
     int _1097 = int(_1094 + 0.9970703125);
     vec2 _1100 = fract(vec2(gl_FragCoord.x, gl_FragCoord.y));
@@ -454,10 +448,7 @@ void main()
     vec2 _1170 = vec2(textureSize(_11, 0).xy);
     vec2 _1175 = _1170 * vec2(GRADX.x, GRADX.y);
     vec2 _1176 = _1170 * vec2(GRADY.x, GRADY.y);
-    float _1181 = log2(max(dot(_1175, _1175), dot(_1176, _1176))) * 0.5;
-    float _1182 = float(_1169);
-    float _1989 = isnan(0.0) ? _1181 : (isnan(_1181) ? 0.0 : max(_1181, 0.0));
-    float _1185 = min(max(isnan(_1182) ? _1989 : (isnan(_1989) ? _1182 : min(_1989, _1182)), CLAMP), 14.0);
+    float _1185 = min(max(spvNClamp(log2(max(dot(_1175, _1175), dot(_1176, _1176))) * 0.5, 0.0, float(_1169)), CLAMP), 14.0);
     int _1186 = int(_1185);
     int _1188 = int(_1185 + 0.9970703125);
     vec2 _1191 = fract(vec2(gl_FragCoord.x, gl_FragCoord.y));

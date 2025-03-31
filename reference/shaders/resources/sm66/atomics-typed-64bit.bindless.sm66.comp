@@ -7,6 +7,7 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_shader_image_int64 : require
+#extension GL_EXT_shader_atomic_int64 : require
 layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant, std430) uniform RootConstants

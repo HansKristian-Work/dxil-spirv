@@ -1,11 +1,17 @@
 #version 460
+#extension GL_EXT_spirv_intrinsics : require
 
 layout(location = 0) in vec2 A;
 layout(location = 0) out float SV_Target;
 
+spirv_instruction(set = "GLSL.std.450", id = 80) float spvNMax(float, float);
+spirv_instruction(set = "GLSL.std.450", id = 80) vec2 spvNMax(vec2, vec2);
+spirv_instruction(set = "GLSL.std.450", id = 80) vec3 spvNMax(vec3, vec3);
+spirv_instruction(set = "GLSL.std.450", id = 80) vec4 spvNMax(vec4, vec4);
+
 void main()
 {
-    SV_Target = isnan(A.y) ? A.x : (isnan(A.x) ? A.y : max(A.x, A.y));
+    SV_Target = spvNMax(A.x, A.y);
 }
 
 
