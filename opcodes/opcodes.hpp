@@ -53,7 +53,7 @@ enum class MagicResource : uint8_t
 
 struct AgsInstruction
 {
-	enum { MaxPhases = 4 };
+	enum { MaxInstructions = 21 };
 	uint32_t opcode;
 	uint32_t phase;
 	uint32_t immediate;

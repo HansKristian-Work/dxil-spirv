@@ -78,7 +78,9 @@ enum class HelperCall
 	NodeCoalescePayloadOffset,
 	IsQuadUniformControlFlow,
 	ValidateBDALoadStore,
-	AllocateInvocationID
+	AllocateInvocationID,
+	CoopMatFP8toFP16,
+	CoopMatFP16toFP8
 };
 
 enum class BDAOperation

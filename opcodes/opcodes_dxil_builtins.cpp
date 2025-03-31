@@ -755,6 +755,33 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 
 	if (tracking)
 	{
+		if (impl.ags.num_instructions == 1)
+		{
+			if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0])
+			{
+				switch (impl.ags.instructions[0].opcode)
+				{
+				case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavStore:
+					tracking->has_written = true;
+					break;
+
+				case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavLoad:
+					tracking->has_read = true;
+					break;
+
+				default:
+					return;
+				}
+
+				// Ensure we have the expected 4 byte uint alias.
+				update_raw_access_tracking_for_byte_address(impl, *tracking,
+				                                            instruction->getType()->getStructElementType(0),
+				                                            instruction->getOperand(2), 1);
+
+				return;
+			}
+		}
+
 		tracking->has_read = true;
 
 		if (opcode != DXIL::Op::TextureLoad)
@@ -809,7 +836,7 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 		tracking->has_written = true;
 
 		// Detect 64-bit atomics.
-		if (impl.ags.phases == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2))
+		if (impl.ags.num_instructions == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2))
 		{
 			tracking->has_atomic = true;
 			tracking->has_read = true;
@@ -852,7 +879,25 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 	}
 }
 
-static void analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *instruction)
+static bool analyze_dxil_ags_op(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+	{
+		// Special magic.
+		if (itr->second == impl.ags.uav_magic_resource_type_index &&
+		    value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
+		{
+			impl.push_ags_instruction(instruction);
+			if (!analyze_magic_ags_instruction(impl))
+				return false;
+		}
+	}
+
+	return true;
+}
+
+static bool analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	Converter::Impl::AccessTracking *tracking = nullptr;
 
@@ -864,7 +909,7 @@ static void analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 		    value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
 		{
 			impl.push_ags_instruction(instruction);
-			return;
+			return true;
 		}
 
 		tracking = &impl.uav_access_tracking[itr->second];
@@ -893,6 +938,8 @@ static void analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 
 		impl.shader_analysis.has_side_effects = true;
 	}
+
+	return true;
 }
 
 bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -918,7 +965,8 @@ bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::C
 	case DXIL::Op::WriteSamplerFeedbackGrad:
 	case DXIL::Op::WriteSamplerFeedbackLevel:
 		// Writing sampler feedback is more or less equivalent to an atomic.
-		analyze_dxil_atomic_op(impl, instruction);
+		if (!analyze_dxil_atomic_op(impl, instruction))
+			return false;
 		break;
 
 	case DXIL::Op::TextureStore:
@@ -1363,6 +1411,11 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 			impl.shader_analysis.need_maximal_reconvergence_helper_call = true;
 		break;
 	}
+
+	case DXIL::Op::AtomicCompareExchange:
+		if (!analyze_dxil_ags_op(impl, instruction))
+			return false;
+		break;
 
 	default:
 		break;

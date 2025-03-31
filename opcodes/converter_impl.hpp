@@ -155,6 +155,13 @@ struct AllocaCBVForwardingTracking
 	bool has_load = false;
 };
 
+struct AllocaAGSForwardingTracking
+{
+	// For AGS WMMA rewrites.
+	spv::Id override_element_type = 0;
+	uint32_t override_element_stride = 0;
+};
+
 struct Converter::Impl
 {
 	DXIL_SPV_OVERRIDE_NEW_DELETE
@@ -278,6 +285,12 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, spv::Id> llvm_value_actual_type;
 	UnorderedSet<uint32_t> llvm_attribute_at_vertex_indices;
 
+	struct AGSCoopMatMapping
+	{
+		spv::Id type_id;
+		uint32_t component;
+	};
+
 	struct
 	{
 		// For magic resource types, assume there is one globally declared dummy resource.
@@ -287,9 +300,27 @@ struct Converter::Impl
 		uint32_t active_uav_index = 0;
 		spv::Id active_uav_ptr = 0;
 		DXIL::Op active_uav_op;
-		AgsInstruction instructions[AgsInstruction::MaxPhases];
-		const llvm::CallInst *backdoor_instructions[AgsInstruction::MaxPhases];
-		unsigned phases = 0;
+		AgsInstruction instructions[AgsInstruction::MaxInstructions];
+		const llvm::CallInst *backdoor_instructions[AgsInstruction::MaxInstructions];
+		unsigned current_phase = 0;
+		unsigned num_instructions = 0;
+		spv::Id debug_var_id = 0;
+		const llvm::Value *active_read_backdoor = nullptr;
+		UnorderedMap<const llvm::Value *, AGSCoopMatMapping> coopmat_component_mapping;
+		spv::Id u8_array_bda_type = 0;
+		spv::Id coopmat_transpose_scratch = 0;
+
+		void reset()
+		{
+			current_phase = 0;
+			num_instructions = 0;
+			active_read_backdoor = nullptr;
+		}
+
+		void reset_analysis()
+		{
+			coopmat_component_mapping.clear();
+		}
 	} ags;
 
 	void push_ags_instruction(const llvm::CallInst *instruction);
@@ -890,6 +921,7 @@ struct Converter::Impl
 
 	UnorderedSet<const llvm::Value *> llvm_used_ssa_values;
 	UnorderedMap<const llvm::AllocaInst *, AllocaCBVForwardingTracking> alloca_tracking;
+	UnorderedMap<const llvm::AllocaInst *, AllocaAGSForwardingTracking> alloca_ags_tracking;
 	UnorderedSet<const llvm::GetElementPtrInst *> masked_alloca_forward_gep;
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;

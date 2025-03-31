@@ -29,6 +29,7 @@
 #include "node.hpp"
 #include "scratch_pool.hpp"
 #include "logging.hpp"
+#include "GLSL.std.450.h"
 
 namespace dxil_spv
 {
@@ -80,6 +81,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_increment_node_count(SPIRVModule &module, bool per_thread);
 	spv::Id build_allocate_node_records_waterfall(SPIRVModule &module);
 	spv::Id build_node_coalesce_payload_offset(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
+	spv::Id build_coop_mat_fp8_to_fp16(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
+	spv::Id build_coop_mat_fp16_to_fp8(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_is_quad_uniform_control_flow(SPIRVModule &module);
 	spv::Id build_validate_bda_load_store(SPIRVModule &module);
 	spv::Id build_allocate_invocation_id(SPIRVModule &module);
@@ -163,6 +166,15 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	};
 	Vector<CBVOp> physical_cbv_call_ids;
 
+	struct CoopMatConvOp
+	{
+		spv::Id u8_type;
+		spv::Id f16_type;
+		spv::Id func_id;
+		HelperCall call;
+	};
+	Vector<CoopMatConvOp> coop_mat_conv_ids;
+
 	DescriptorQAInfo descriptor_qa_info;
 
 	uint32_t override_spirv_version = 0;
@@ -202,6 +214,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 	case spv::BuiltInSubgroupSize:
 	case spv::BuiltInNumSubgroups:
 	case spv::BuiltInSubgroupLocalInvocationId:
+	case spv::BuiltInSubgroupId:
 		builder.addCapability(spv::CapabilityGroupNonUniform);
 		requires_flat = true;
 		return builder.makeUintType(32);
@@ -2212,6 +2225,336 @@ spv::Id SPIRVModule::Impl::build_is_quad_uniform_control_flow(SPIRVModule &modul
 	return is_quad_uniform_call_id;
 }
 
+spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const spv::Id *ids, uint32_t id_count)
+{
+	if (id_count != 2)
+		return 0;
+
+	spv::Id u8_type = ids[0];
+	spv::Id f16_type = ids[1];
+
+	for (auto &ops : coop_mat_conv_ids)
+		if (ops.u8_type == u8_type && ops.f16_type == f16_type && ops.call == HelperCall::CoopMatFP16toFP8)
+			return ops.func_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id s16_type = builder.makeIntType(16);
+
+	// RADV workaround. It fails to understand coopmat passed as value.
+	spv::Id f16_ptr_type = builder.makePointer(spv::StorageClassFunction, f16_type);
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, u8_type,
+	                                       "CoopMatFP16toFP8",
+	                                       { f16_ptr_type }, {}, &entry);
+
+	spv::Id output_id = create_variable(spv::StorageClassFunction, u8_type, "coop_output");
+	auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
+	len->addIdOperand(u8_type);
+
+	auto *header = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge = new spv::Block(builder.getUniqueId(), *func);
+	builder.createBranch(header);
+	builder.setBuildPoint(header);
+	{
+		auto *phi = builder.addInstruction(uint_type, spv::OpPhi);
+		auto *iter = builder.addInstruction(uint_type, spv::OpIAdd);
+		iter->addIdOperand(phi->getResultId());
+		iter->addIdOperand(builder.makeUintConstant(1));
+
+		phi->addIdOperand(builder.makeUintConstant(0));
+		phi->addIdOperand(entry->getId());
+		phi->addIdOperand(iter->getResultId());
+		phi->addIdOperand(header->getId());
+
+		auto *input_chain = builder.addInstruction(
+			builder.makePointer(spv::StorageClassFunction, builder.makeFloatType(16)), spv::OpInBoundsAccessChain);
+		input_chain->addIdOperand(func->getParamId(0));
+		input_chain->addIdOperand(phi->getResultId());
+
+		auto *load = builder.addInstruction(builder.makeFloatType(16), spv::OpLoad);
+		load->addIdOperand(input_chain->getResultId());
+
+		spv::Id glsl450 = builder.import("GLSL.std.450");
+		auto *clamp = builder.addInstruction(builder.makeFloatType(16), spv::OpExtInst);
+		clamp->addIdOperand(glsl450);
+		clamp->addImmediateOperand(GLSLstd450NClamp);
+		clamp->addIdOperand(load->getResultId());
+		clamp->addIdOperand(builder.makeFloat16Constant(0x5f00 | 0x8000));
+		clamp->addIdOperand(builder.makeFloat16Constant(0x5f00)); // 448.0.
+
+		auto *bitcast = builder.addInstruction(s16_type, spv::OpBitcast);
+		bitcast->addIdOperand(clamp->getResultId());
+
+		// Extract the sign bit.
+		auto *split_input = builder.addInstruction(builder.makeVectorType(builder.makeUintType(8), 2), spv::OpBitcast);
+		split_input->addIdOperand(bitcast->getResultId());
+
+		auto *extract_upper = builder.addInstruction(builder.makeUintType(8), spv::OpCompositeExtract);
+		extract_upper->addIdOperand(split_input->getResultId());
+		extract_upper->addImmediateOperand(1);
+
+		auto *sign_bit = builder.addInstruction(builder.makeUintType(8), spv::OpBitwiseAnd);
+		sign_bit->addIdOperand(extract_upper->getResultId());
+		sign_bit->addIdOperand(builder.makeUint8Constant(0x80));
+		///
+
+		// When the input is shifted like this the result is E5M3 in upper byte, which is very handy.
+		auto *unsigned_e5m11 = builder.addInstruction(s16_type, spv::OpShiftLeftLogical);
+		unsigned_e5m11->addIdOperand(bitcast->getResultId());
+		unsigned_e5m11->addIdOperand(builder.makeUint16Constant(1));
+
+		// Shift -15 bias to -7 bias.
+		auto *shift_exponent = builder.addInstruction(s16_type, spv::OpISub);
+		shift_exponent->addIdOperand(unsigned_e5m11->getResultId());
+		shift_exponent->addIdOperand(builder.makeInt16Constant(8 << 11));
+		unsigned_e5m11 = shift_exponent;
+
+		auto *exponent = builder.addInstruction(s16_type, spv::OpShiftRightArithmetic);
+		exponent->addIdOperand(shift_exponent->getResultId());
+		exponent->addIdOperand(builder.makeInt16Constant(11));
+
+		auto *exponent_minus1 = builder.addInstruction(s16_type, spv::OpISub);
+		exponent_minus1->addIdOperand(exponent->getResultId());
+		exponent_minus1->addIdOperand(builder.makeInt16Constant(1));
+
+		auto *denorm_shamt = builder.addInstruction(s16_type, spv::OpSNegate);
+		denorm_shamt->addIdOperand(exponent_minus1->getResultId());
+
+		// Ensure we don't get negative shift.
+		clamp = builder.addInstruction(s16_type, spv::OpExtInst);
+		clamp->addIdOperand(glsl450);
+		clamp->addImmediateOperand(GLSLstd450SMax);
+		clamp->addIdOperand(denorm_shamt->getResultId());
+		clamp->addIdOperand(builder.makeInt16Constant(0));
+		denorm_shamt = clamp;
+
+		// If we're denorm, the arith shift ensures the upper bits are all 1.
+		auto *denorm_mask = builder.addInstruction(s16_type, spv::OpBitwiseAnd);
+		denorm_mask->addIdOperand(exponent_minus1->getResultId());
+		denorm_mask->addIdOperand(builder.makeInt16Constant(1 << 11));
+
+		// Serves as a clamping function.
+		// If the exponent goes negative here, we need to emit a 0 exponent, marking that we're in denorm region.
+		auto *clear_exponent_neg_mask = builder.addInstruction(s16_type, spv::OpBitwiseAnd);
+		clear_exponent_neg_mask->addIdOperand(exponent_minus1->getResultId());
+		clear_exponent_neg_mask->addIdOperand(builder.makeInt16Constant(int16_t(0x1f << 11)));
+		auto *clear_exponent_mask = builder.addInstruction(s16_type, spv::OpBitwiseXor);
+		clear_exponent_mask->addIdOperand(clear_exponent_neg_mask->getResultId());
+		clear_exponent_mask->addIdOperand(builder.makeInt16Constant(-1));
+
+		// Clamp negative exponent to 0.
+		{
+			auto *mask = builder.addInstruction(s16_type, spv::OpBitwiseAnd);
+			mask->addIdOperand(unsigned_e5m11->getResultId());
+			mask->addIdOperand(clear_exponent_mask->getResultId());
+			unsigned_e5m11 = mask;
+		}
+
+		// If denorm, add in the implicit 1.xxxx.
+		{
+			auto *mask = builder.addInstruction(s16_type, spv::OpBitwiseOr);
+			mask->addIdOperand(unsigned_e5m11->getResultId());
+			mask->addIdOperand(denorm_mask->getResultId());
+			unsigned_e5m11 = mask;
+		}
+
+		// Before we shift, we need to capture any possible rounding bits.
+		// Only capture the lower 7 bits.
+		// If we shift more than 7 we've already exhausted all denorm bits on E4M3 anyway, so don't need to care.
+		// Cannot capture the top bit in lower half since we might get a false positive for 0.5 condition.
+		auto *pre_denorm_rounding_bits = builder.addInstruction(s16_type, spv::OpBitwiseAnd);
+		pre_denorm_rounding_bits->addIdOperand(unsigned_e5m11->getResultId());
+		pre_denorm_rounding_bits->addIdOperand(builder.makeInt16Constant(0x7f));
+		auto *trunc = builder.addInstruction(builder.makeIntType(8), spv::OpSConvert);
+		trunc->addIdOperand(pre_denorm_rounding_bits->getResultId());
+		pre_denorm_rounding_bits = trunc;
+
+		// Now we apply the denorm shift.
+		auto *denorm_shift = builder.addInstruction(s16_type, spv::OpShiftRightArithmetic);
+		denorm_shift->addIdOperand(unsigned_e5m11->getResultId());
+		denorm_shift->addIdOperand(denorm_shamt->getResultId());
+		unsigned_e5m11 = denorm_shift;
+
+		// Capture any rounding bits.
+		// If we shift due to denorms,
+		// we have to know if we shifted away bits that are relevant to RTE.
+		auto *split = builder.addInstruction(builder.makeVectorType(builder.makeIntType(8), 2), spv::OpBitcast);
+		split->addIdOperand(unsigned_e5m11->getResultId());
+
+		auto *rounding_bits = builder.addInstruction(builder.makeIntType(8), spv::OpCompositeExtract);
+		rounding_bits->addIdOperand(split->getResultId());
+		rounding_bits->addImmediateOperand(0);
+
+		auto *rounding_bits_or = builder.addInstruction(builder.makeIntType(8), spv::OpBitwiseOr);
+		rounding_bits_or->addIdOperand(rounding_bits->getResultId());
+		rounding_bits_or->addIdOperand(pre_denorm_rounding_bits->getResultId());
+		rounding_bits = rounding_bits_or;
+
+		auto *unsigned_e5m3 = builder.addInstruction(builder.makeIntType(8), spv::OpCompositeExtract);
+		unsigned_e5m3->addIdOperand(split->getResultId());
+		unsigned_e5m3->addImmediateOperand(1);
+
+		auto *is_odd = builder.addInstruction(builder.makeIntType(8), spv::OpBitwiseAnd);
+		is_odd->addIdOperand(unsigned_e5m3->getResultId());
+		is_odd->addIdOperand(builder.makeInt8Constant(1));
+
+		auto *or_rounding_bits = builder.addInstruction(builder.makeIntType(8), spv::OpBitwiseOr);
+		or_rounding_bits->addIdOperand(is_odd->getResultId());
+		or_rounding_bits->addIdOperand(rounding_bits->getResultId());
+
+		// To get > 0x80 in lower bits either the fraction is > 0.5, or it's exactly 0.5 and the upper part is odd,
+		// which would make the result 0x81.
+		auto *should_round = builder.addInstruction(bool_type, spv::OpUGreaterThan);
+		should_round->addIdOperand(or_rounding_bits->getResultId());
+		should_round->addIdOperand(builder.makeUint8Constant(0x80));
+
+		// Compensate for exponent bias when dealing with denorms.
+		auto *rounding = builder.addInstruction(builder.makeUintType(8), spv::OpSelect);
+		rounding->addIdOperand(should_round->getResultId());
+		rounding->addIdOperand(builder.makeUint8Constant(1));
+		rounding->addIdOperand(builder.makeUint8Constant(0));
+
+		// Add rounding.
+		auto *add_rounding = builder.addInstruction(builder.makeUintType(8), spv::OpIAdd);
+		add_rounding->addIdOperand(unsigned_e5m3->getResultId());
+		add_rounding->addIdOperand(rounding->getResultId());
+
+		// Mask away the top exponent. We should be in range now anyway.
+		auto *e4m3 = builder.addInstruction(builder.makeUintType(8), spv::OpBitwiseAnd);
+		e4m3->addIdOperand(add_rounding->getResultId());
+		e4m3->addIdOperand(builder.makeUint8Constant(0x7f));
+
+		// OR in the sign bit.
+		auto *with_sign = builder.addInstruction(builder.makeUintType(8), spv::OpBitwiseOr);
+		with_sign->addIdOperand(e4m3->getResultId());
+		with_sign->addIdOperand(sign_bit->getResultId());
+
+		auto *output_chain = builder.addInstruction(
+			builder.makePointer(spv::StorageClassFunction, builder.makeUintType(8)), spv::OpInBoundsAccessChain);
+		output_chain->addIdOperand(output_id);
+		output_chain->addIdOperand(phi->getResultId());
+		auto *store = builder.addInstruction(spv::OpStore);
+		store->addIdOperand(output_chain->getResultId());
+		store->addIdOperand(with_sign->getResultId());
+
+		auto *cmp = builder.addInstruction(bool_type, spv::OpULessThan);
+		cmp->addIdOperand(iter->getResultId());
+		cmp->addIdOperand(len->getResultId());
+		builder.createLoopMerge(merge, header, 0);
+		builder.createConditionalBranch(cmp->getResultId(), header, merge);
+	}
+
+	builder.setBuildPoint(merge);
+	auto *loaded_result = builder.addInstruction(u8_type, spv::OpLoad);
+	loaded_result->addIdOperand(output_id);
+	builder.makeReturn(false, loaded_result->getResultId());
+	builder.setBuildPoint(current_build_point);
+	coop_mat_conv_ids.push_back({ u8_type, f16_type, func->getId(), HelperCall::CoopMatFP16toFP8 });
+	return func->getId();
+}
+
+spv::Id SPIRVModule::Impl::build_coop_mat_fp8_to_fp16(SPIRVModule &module, const spv::Id *ids, uint32_t id_count)
+{
+	if (id_count != 2)
+		return 0;
+
+	spv::Id u8_type = ids[0];
+	spv::Id f16_type = ids[1];
+
+	for (auto &ops : coop_mat_conv_ids)
+		if (ops.u8_type == u8_type && ops.f16_type == f16_type && ops.call == HelperCall::CoopMatFP8toFP16)
+			return ops.func_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bool_type = builder.makeBoolType();
+
+	// RADV workaround. It fails to understand coopmat passed as value.
+	spv::Id u8_ptr_type = builder.makePointer(spv::StorageClassFunction, u8_type);
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, f16_type,
+	                                       "CoopMatFP8toFP16",
+	                                       { u8_ptr_type }, {}, &entry);
+
+	spv::Id output_id = create_variable(spv::StorageClassFunction, f16_type, "coop_output");
+
+	auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
+	len->addIdOperand(u8_type);
+
+	auto *header = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge = new spv::Block(builder.getUniqueId(), *func);
+	builder.createBranch(header);
+	builder.setBuildPoint(header);
+	{
+		auto *phi = builder.addInstruction(uint_type, spv::OpPhi);
+		auto *iter = builder.addInstruction(uint_type, spv::OpIAdd);
+		iter->addIdOperand(phi->getResultId());
+		iter->addIdOperand(builder.makeUintConstant(1));
+
+		phi->addIdOperand(builder.makeUintConstant(0));
+		phi->addIdOperand(entry->getId());
+		phi->addIdOperand(iter->getResultId());
+		phi->addIdOperand(header->getId());
+
+		auto *input_chain = builder.addInstruction(
+			builder.makePointer(spv::StorageClassFunction, builder.makeUintType(8)), spv::OpInBoundsAccessChain);
+		input_chain->addIdOperand(func->getParamId(0));
+		input_chain->addIdOperand(phi->getResultId());
+
+		auto *load = builder.addInstruction(builder.makeUintType(8), spv::OpLoad);
+		load->addIdOperand(input_chain->getResultId());
+
+		auto *sext = builder.addInstruction(builder.makeIntType(16), spv::OpSConvert);
+		sext->addIdOperand(load->getResultId());
+
+		auto *shift = builder.addInstruction(builder.makeIntType(16), spv::OpShiftLeftLogical);
+		shift->addIdOperand(sext->getResultId());
+		shift->addIdOperand(builder.makeInt16Constant(7));
+
+		auto *mask = builder.addInstruction(builder.makeIntType(16), spv::OpBitwiseAnd);
+		mask->addIdOperand(shift->getResultId());
+		mask->addIdOperand(builder.makeInt16Constant(int16_t(0xffff ^ 0x4000)));
+
+		auto *bitcast = builder.addInstruction(builder.makeFloatType(16), spv::OpBitcast);
+		bitcast->addIdOperand(mask->getResultId());
+
+		auto *output_chain = builder.addInstruction(
+			builder.makePointer(spv::StorageClassFunction, builder.makeFloatType(16)), spv::OpInBoundsAccessChain);
+		output_chain->addIdOperand(output_id);
+		output_chain->addIdOperand(phi->getResultId());
+		auto *store = builder.addInstruction(spv::OpStore);
+		store->addIdOperand(output_chain->getResultId());
+		store->addIdOperand(bitcast->getResultId());
+
+		auto *cmp = builder.addInstruction(bool_type, spv::OpULessThan);
+		cmp->addIdOperand(iter->getResultId());
+		cmp->addIdOperand(len->getResultId());
+		builder.createLoopMerge(merge, header, 0);
+		builder.createConditionalBranch(cmp->getResultId(), header, merge);
+	}
+
+	builder.setBuildPoint(merge);
+	auto *loaded_result = builder.addInstruction(f16_type, spv::OpLoad);
+	loaded_result->addIdOperand(output_id);
+
+	// Need post-scale to correctly deal with denorms.
+	auto *scale = builder.addInstruction(f16_type, spv::OpMatrixTimesScalar);
+	scale->addIdOperand(loaded_result->getResultId());
+	scale->addIdOperand(builder.makeFloat16Constant(0x5c00 /* 256.0 */));
+
+	builder.makeReturn(false, scale->getResultId());
+
+	builder.setBuildPoint(current_build_point);
+	coop_mat_conv_ids.push_back({ u8_type, f16_type, func->getId(), HelperCall::CoopMatFP8toFP16 });
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall call,
                                               const spv::Id *aux_ids, uint32_t aux_ids_count)
 {
@@ -2219,6 +2562,10 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 	{
 	case HelperCall::NodeCoalescePayloadOffset:
 		return build_node_coalesce_payload_offset(module, aux_ids, aux_ids_count);
+	case HelperCall::CoopMatFP8toFP16:
+		return build_coop_mat_fp8_to_fp16(module, aux_ids, aux_ids_count);
+	case HelperCall::CoopMatFP16toFP8:
+		return build_coop_mat_fp16_to_fp8(module, aux_ids, aux_ids_count);
 	default:
 		break;
 	}
@@ -2698,6 +3045,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				{
 					inner_id = builder.getUniqueId();
 					inst = std::make_unique<spv::Instruction>(inner_id, op->type_id, spv::OpLoad);
+					assert(op->type_id);
 				}
 
 				unsigned literal_mask = op->get_literal_mask();
@@ -2754,7 +3102,10 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 			std::unique_ptr<spv::Instruction> inst;
 			if (op->id != 0)
+			{
+				assert(op->type_id);
 				inst = std::make_unique<spv::Instruction>(op->id, op->type_id, op->op);
+			}
 			else
 				inst = std::make_unique<spv::Instruction>(op->op);
 
@@ -3277,6 +3628,11 @@ bool SPIRVModule::opcode_is_control_dependent(spv::Op opcode)
 
 		// Internal helpers function calls may or may not include control dependent ops.
 	case spv::OpFunctionCall:
+
+		// Cooperative matrix is control sensitive.
+	case spv::OpCooperativeMatrixLoadKHR:
+	case spv::OpCooperativeMatrixStoreKHR:
+	case spv::OpCooperativeMatrixMulAddKHR:
 
 		return true;
 

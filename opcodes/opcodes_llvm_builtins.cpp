@@ -29,6 +29,7 @@
 #include "dxil/dxil_common.hpp"
 #include "dxil/dxil_resources.hpp"
 #include "dxil/dxil_arithmetic.hpp"
+#include "dxil/dxil_ags.hpp"
 
 namespace dxil_spv
 {
@@ -1128,6 +1129,20 @@ static void get_dxbc_tgsm_gep_workaround(Converter::Impl &impl, const llvm::GetE
 
 bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
 {
+	if (impl.ags.num_instructions == 1)
+	{
+		if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0] &&
+		    DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) ==
+		    DXIL::AddressSpace::GroupShared)
+		{
+			impl.ags.active_uav_ptr = impl.get_id_for_value(instruction->getOperand(0));
+			// Dummy, signal LDS operation.
+			impl.ags.active_uav_op = DXIL::Op::AtomicBinOp;
+			impl.ags.active_read_backdoor = instruction;
+			return true;
+		}
+	}
+
 	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
 	// For now, just assert that the first index is constant 0, in which case PtrAccessChain == AccessChain.
 
@@ -1161,6 +1176,13 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 
 	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
 	resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), type_id);
+
+	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(0)))
+	{
+		auto override_itr = impl.alloca_ags_tracking.find(alloca);
+		if (override_itr != impl.alloca_ags_tracking.end() && override_itr->second.override_element_type)
+			type_id = override_itr->second.override_element_type;
+	}
 
 	spv::StorageClass storage;
 	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
@@ -1262,7 +1284,18 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 		}
 		else
 		{
-			op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
+			spv::Id id = impl.get_id_for_value(instruction->getOperand(i));
+
+			if (i == 2)
+			{
+				id = rewrite_alloca_gep_index(impl, instruction, id);
+				if (id == UINT32_MAX)
+					return true;
+				if (!id)
+					return false;
+			}
+
+			op->add_id(id);
 		}
 	}
 
@@ -1346,8 +1379,19 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 			op->add_id(robust_itr->second);
 		}
 
+		// Only load if it's the first element.
+		auto component_itr = impl.ags.coopmat_component_mapping.find(instruction->getPointerOperand());
+		if (component_itr != impl.ags.coopmat_component_mapping.end())
+		{
+			op->type_id = component_itr->second.type_id;
+			impl.ags.coopmat_component_mapping[instruction] = component_itr->second;
+			if (component_itr->second.component != 0)
+				return true;
+		}
+
 		impl.add(op);
 	}
+
 	return true;
 }
 
@@ -1356,6 +1400,10 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 	// Ignore stores to remapped alloca().
 	auto tracking = gep_pointer_to_alloca_tracked_inst(impl, instruction->getOperand(1));
 	if (tracking.cbv_handle)
+		return true;
+
+	// Ignore stores of WMMA if it's not the first component
+	if (wmma_store_is_masked(impl, instruction))
 		return true;
 
 	auto robust_itr = impl.handle_to_robustness.find(instruction->getOperand(1));
@@ -1574,6 +1622,12 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 
 bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction)
 {
+	if (instruction->getAggregateOperand() == impl.ags.active_read_backdoor)
+	{
+		impl.ags.active_read_backdoor = instruction;
+		return true;
+	}
+
 	auto itr = impl.llvm_composite_meta.find(instruction->getAggregateOperand());
 	assert(itr != impl.llvm_composite_meta.end());
 
@@ -1631,6 +1685,22 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	auto address_space = static_cast<DXIL::AddressSpace>(instruction->getType()->getAddressSpace());
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
+
+	auto ags_itr = impl.alloca_ags_tracking.find(instruction);
+
+	if (ags_itr != impl.alloca_ags_tracking.end() && ags_itr->second.override_element_type)
+	{
+		uint32_t elems = element_type->getArrayNumElements();
+		if (ags_itr->second.override_element_stride == 0)
+		{
+			LOGE("Element stride is currently unknown. Something must have been missed during analysis.\n");
+			return false;
+		}
+
+		pointee_type_id = impl.builder().makeArrayType(
+		    ags_itr->second.override_element_type,
+			impl.builder().makeUintConstant(elems / ags_itr->second.override_element_stride), 0);
+	}
 
 	auto storage = impl.get_effective_storage_class(instruction, spv::StorageClassFunction);
 	spv::Id var_id = impl.create_variable(storage, pointee_type_id);
@@ -1758,6 +1828,12 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction)
 {
+	if (instruction->getPointerOperand() == impl.ags.active_read_backdoor)
+	{
+		impl.ags.active_read_backdoor = instruction;
+		return true;
+	}
+
 	auto &builder = impl.builder();
 	spv::Op opcode;
 	switch (instruction->getOperation())
@@ -2033,6 +2109,9 @@ bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *ins
 
 	if (DXIL::AddressSpace(inst->getOperand(1)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
 		impl.shader_analysis.has_group_shared_access = true;
+
+	if (!analyze_ags_wmma_store(impl, inst))
+		return false;
 
 	// Assume we're consuming the entire uvec4.
 	if (instruction_is_ballot(inst->getOperand(0)))

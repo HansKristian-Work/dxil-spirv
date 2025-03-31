@@ -5385,6 +5385,23 @@ spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_ty
 bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &instruction)
 {
 	unsigned count = instruction.getNumIncomingValues();
+	spv::Id override_type = 0;
+
+	for (uint32_t i = 0; i < instruction.getNumIncomingValues() && override_type == 0; i++)
+	{
+		auto *incoming = instruction.getIncomingValue(i);
+		auto itr = ags.coopmat_component_mapping.find(incoming);
+		if (itr != ags.coopmat_component_mapping.end())
+		{
+			override_type = itr->second.type_id;
+			ags.coopmat_component_mapping[&instruction] = { override_type, itr->second.component };
+			if (itr->second.component != 0)
+			{
+				// Dummy value, will not actually emit a PHI. Just need to forward the mapping.
+				return true;
+			}
+		}
+	}
 
 	if (count == 1)
 	{
@@ -5410,7 +5427,7 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 	{
 		PHI phi;
 		phi.id = get_id_for_value(&instruction);
-		phi.type_id = get_type_id(instruction.getType());
+		phi.type_id = override_type ? override_type : get_type_id(instruction.getType());
 		phi.relaxed = type_can_relax_precision(instruction.getType(), false);
 
 		for (unsigned i = 0; i < count; i++)
@@ -7188,7 +7205,8 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 				return {};
 			}
 		}
-		ags.phases = 0;
+
+		ags.reset();
 
 		// We don't know if the block is a loop yet, so just tag every BB.
 		// CFG will propagate the information as necessary.
@@ -7584,6 +7602,9 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 				}
 			}
 		}
+
+		// Reset AGS tracking for every BB.
+		ags.reset();
 	}
 
 	for (auto *bb : visit_order)
@@ -7602,7 +7623,7 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 		}
 
 		// Reset AGS tracking for every BB.
-		ags.phases = 0;
+		ags.reset();
 	}
 
 	for (auto &alloc : alloca_tracking)
@@ -7613,6 +7634,8 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 		if (!analyze_alloca_cbv_forwarding_pre_resource_emit(*this, scalar_type, alloc.second))
 			return false;
 	}
+
+	ags.reset_analysis();
 
 	return true;
 }
@@ -8344,19 +8367,38 @@ void Converter::Impl::push_ags_instruction(const llvm::CallInst *instruction)
 
 	auto inst = decode_ags_instruction(op);
 
-	// Reset if we're beginning a new instruction sequence.
-	if (inst.phase < ags.phases)
-		ags.phases = 0;
-
-	// New instruction type, reset.
-	if (ags.phases && inst.opcode != ags.instructions[0].opcode)
-		ags.phases = 0;
-
-	if (inst.phase == ags.phases && inst.phase < AgsInstruction::MaxPhases)
+	switch (inst.opcode)
 	{
-		ags.instructions[inst.phase] = inst;
-		ags.backdoor_instructions[inst.phase] = instruction;
-		ags.phases = inst.phase + 1;
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavLoad:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavStore:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixCopy:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLdsLoad:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLdsStore:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixFill:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementFill:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLength:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementExtract:
+		shader_analysis.require_subgroups = true;
+		break;
+	}
+
+	// Reset if we're beginning a new instruction sequence.
+	// New instruction type, reset.
+	if (inst.phase < ags.current_phase ||
+	    (ags.num_instructions && inst.opcode != ags.instructions[0].opcode))
+	{
+		ags.reset();
+	}
+
+	if ((inst.phase == ags.current_phase || (inst.phase == ags.current_phase + 1)) &&
+	    inst.phase <= ags.num_instructions &&
+	    ags.num_instructions < AgsInstruction::MaxInstructions)
+	{
+		ags.instructions[ags.num_instructions] = inst;
+		ags.backdoor_instructions[ags.num_instructions] = instruction;
+		ags.num_instructions++;
+		ags.current_phase = inst.phase;
 	}
 }
 

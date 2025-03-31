@@ -512,4 +512,8 @@ static inline AgsInstruction decode_ags_instruction(uint32_t v)
 }
 
 bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool analyze_magic_ags_instruction(Converter::Impl &impl);
+bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store);
+spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPtrInst *gep, spv::Id id);
+bool wmma_store_is_masked(Converter::Impl &impl, const llvm::StoreInst *inst);
 }

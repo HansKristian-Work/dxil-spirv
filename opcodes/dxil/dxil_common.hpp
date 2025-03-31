@@ -73,4 +73,13 @@ bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op);
 spv::Id build_load_invocation_id(Converter::Impl &impl);
 
 void emit_expect_assume_quad_uniform(Converter::Impl &impl);
+
+struct SplitScaleBias
+{
+	uint32_t stride;
+	const llvm::Value *index;
+	uint32_t elem;
+};
+
+SplitScaleBias split_index_scale_bias(const llvm::Value *value);
 }
