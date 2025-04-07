@@ -39,6 +39,5 @@ struct AllocaCBVForwardingTracking;
 bool analyze_alloca_cbv_forwarding_pre_resource_emit(Converter::Impl &impl,
                                                      const llvm::Type *scalar_type,
                                                      AllocaCBVForwardingTracking &tracking);
-bool analyze_alloca_cbv_forwarding_post_resource_emit(Converter::Impl &impl,
-                                                      AllocaCBVForwardingTracking &tracking);
+bool analyze_alloca_cbv_forwarding_post_resource_emit(Converter::Impl &impl, AllocaCBVForwardingTracking &tracking);
 } // namespace dxil_spv

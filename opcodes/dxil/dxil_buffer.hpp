@@ -24,6 +24,7 @@
 
 #pragma once
 #include "opcodes/opcodes.hpp"
+#include "opcodes/converter_impl.hpp"
 
 namespace dxil_spv
 {
@@ -62,4 +63,9 @@ RawVecSize raw_access_structured_vectorize(Converter::Impl &impl, const llvm::Ty
                                            uint32_t mask);
 
 void emit_buffer_synchronization_validation(Converter::Impl &impl, const llvm::CallInst *instruction, BDAOperation bda_operation);
+
+spv::Id emit_atomic_access_chain(Converter::Impl &impl,
+                                 const Converter::Impl::ResourceMeta &meta,
+                                 RawWidth width, spv::Id image_id, spv::Id coord,
+                                 DXIL::ComponentType &component_type);
 } // namespace dxil_spv

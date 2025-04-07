@@ -284,6 +284,33 @@ Id Builder::makeFloatType(int width)
     return type->getResultId();
 }
 
+Id Builder::makeCooperativeMatrixType(spv::Id scalar_type, spv::Id rows, spv::Id cols, spv::Id use)
+{
+	Instruction* type;
+	for (int t = 0; t < (int)coopmatTypes.size(); ++t) {
+		type = coopmatTypes[t];
+		if (type->getIdOperand(0) == scalar_type &&
+		    type->getIdOperand(2) == rows &&
+		    type->getIdOperand(3) == cols &&
+		    type->getIdOperand(4) == use)
+			return type->getResultId();
+	}
+
+	addExtension("SPV_KHR_cooperative_matrix");
+	addCapability(spv::CapabilityCooperativeMatrixKHR);
+	type = new Instruction(getUniqueId(), NoType, OpTypeCooperativeMatrixKHR);
+	type->addIdOperand(scalar_type);
+	type->addIdOperand(makeUintConstant(spv::ScopeSubgroup));
+	type->addIdOperand(rows);
+	type->addIdOperand(cols);
+	type->addIdOperand(use);
+	coopmatTypes.push_back(type);
+	constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
+	module.mapInstruction(type);
+
+	return type->getResultId();
+}
+
 // Make a struct without checking for duplication.
 // See makeStructResultType() for non-decorated structs
 // needed as the result of some instructions, which does
@@ -903,24 +930,36 @@ Id Builder::findCompositeConstant(Op typeClass, const dxil_spv::Vector<Id>& comp
 {
     Instruction* constant = 0;
     bool found = false;
-    for (int i = 0; i < (int)groupedConstants[typeClass].size(); ++i) {
-        constant = groupedConstants[typeClass][i];
 
-        // same shape?
-        if (constant->getNumOperands() != (int)comps.size())
-            continue;
+    if (typeClass == spv::OpTypeCooperativeMatrixKHR) {
+        for (int i = 0; i < (int)coopmatConstants.size() && !found; ++i) {
+            constant = coopmatConstants[i];
+            if (constant->getIdOperand(0) == comps[0])
+                found = true;
+        }
+    } else {
+        for (int i = 0; i < (int) groupedConstants[typeClass].size(); ++i) {
+            constant = groupedConstants[typeClass][i];
 
-        // same contents?
-        bool mismatch = false;
-        for (int op = 0; op < constant->getNumOperands(); ++op) {
-            if (constant->getIdOperand(op) != comps[op]) {
-                mismatch = true;
+            // same shape?
+            if (constant->getNumOperands() != (int) comps.size())
+                continue;
+
+            // same contents?
+            bool mismatch = false;
+            for (int op = 0; op < constant->getNumOperands(); ++op)
+            {
+                if (constant->getIdOperand(op) != comps[op])
+                {
+                    mismatch = true;
+                    break;
+                }
+            }
+            if (!mismatch)
+            {
+                found = true;
                 break;
             }
-        }
-        if (! mismatch) {
-            found = true;
-            break;
         }
     }
 
@@ -939,6 +978,7 @@ Id Builder::makeCompositeConstant(Id typeId, const dxil_spv::Vector<Id>& members
     case OpTypeArray:
     case OpTypeStruct:
     case OpTypeMatrix:
+    case OpTypeCooperativeMatrixKHR:
         break;
     default:
         assert(0);
@@ -955,7 +995,12 @@ Id Builder::makeCompositeConstant(Id typeId, const dxil_spv::Vector<Id>& members
     for (int op = 0; op < (int)members.size(); ++op)
         c->addIdOperand(members[op]);
     constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(c));
-    groupedConstants[typeClass].push_back(c);
+
+    if (typeClass == OpTypeCooperativeMatrixKHR)
+        coopmatConstants.push_back(c);
+    else
+        groupedConstants[typeClass].push_back(c);
+
     module.mapInstruction(c);
 
     return c->getResultId();

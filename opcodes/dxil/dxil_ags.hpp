@@ -99,7 +99,31 @@ static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_FloatConversion       
 static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_ReadlaneAt             = 0x1d;
 static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_ShaderClock            = 0x1f;
 static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_ShaderRealtimeClock    = 0x20;
-
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_Halt                   = 0x21;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_IntersectBvhNode            = 0x22;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_BufferStoreByte             = 0x23;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_BufferStoreShort            = 0x24;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_ShaderMarker                = 0x25;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_FloatOpWithRoundMode        = 0x26;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_Reserved5                   = 0x27;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc            = 0x28;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavLoad           = 0x29;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavStore          = 0x2a;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixGlobalLoad        = 0x2b;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixGlobalStore       = 0x2c;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLdsLoad           = 0x2d;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLdsStore          = 0x2e;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementFill       = 0x2f;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementExtract    = 0x30;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLength            = 0x31;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixCopy              = 0x32;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixFill              = 0x33;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_MatrixSparsityIndexLoad     = 0x34;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_MatrixElementWiseArithmetic = 0x35;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_Float8Conversion            = 0x36;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_BuiltIn1                    = 0x37;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_BuiltInArg                  = 0x38;
+static constexpr uint32_t AmdExtD3DShaderIntrinsicsOpcode_LastValidOpcode             = 0x38;
 /**
 ***********************************************************************************************************************
 *   Intrinsic opcode phases.
@@ -261,6 +285,216 @@ static constexpr uint32_t AmdExtD3DShaderIntrinsicsFloatConversionOp_FToF16Near 
 static constexpr uint32_t AmdExtD3DShaderIntrinsicsFloatConversionOp_FToF16NegInf  = 0x02;
 static constexpr uint32_t AmdExtD3DShaderIntrinsicsFloatConversionOp_FToF16PlusInf = 0x03;
 
+/**
+***********************************************************************************************************************
+* @brief
+*    AmdExtD3DShaderIntrinsicsFloat8CvtOp enumeration to specify the conversion operation
+***********************************************************************************************************************
+*/
+enum AmdExtD3DShaderIntrinsicsFloat8CvtOp
+{
+	AmdExtD3DShaderIntrinsicsFloat8CvtOp_FP8_2_F32 = 0x0,
+	AmdExtD3DShaderIntrinsicsFloat8CvtOp_BF8_2_F32 = 0x1,
+	AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_FP8 = 0x2,
+	AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_BF8 = 0x3,
+};
+
+/**
+***********************************************************************************************************************
+* @brief
+*    Shifts and masks for the arguments required for AmdExtD3DShaderIntrinsicsFloat8Conversion
+***********************************************************************************************************************
+*/
+constexpr unsigned int AmdExtD3DShaderIntrinsicsFloat8Conversion_CvtOpShift = 0;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsFloat8Conversion_CvtOpMask  = 0xff;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsFloat8Conversion_SatShift   = 8;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsFloat8Conversion_SatMask    = 0x1;
+/**
+***********************************************************************************************************************
+* @brief
+*    AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat enumeration for supported matrix element data format.
+***********************************************************************************************************************
+*/
+enum AmdExtD3DShaderIntrinsicsWaveMatrixOpDataFormat
+{
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I4   = 0x0,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_U4   = 0x1,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I8   = 0x2,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_U8   = 0x3,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16  = 0x4,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_BF16 = 0x5,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32  = 0x6,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I32  = 0x7,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_U32  = 0x8,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_BF8  = 0x9,
+	AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8  = 0xa,
+};
+
+/**
+***********************************************************************************************************************
+* @brief
+*    AmdExtD3DShaderIntrinsicsWaveMatrixType enumeration for supported wave matrix type.
+***********************************************************************************************************************
+*/
+enum AmdExtD3DShaderIntrinsicsWaveMatrixOpMatrixType
+{
+	AmdExtD3DShaderIntrinsicsWaveMatrixType_A            = 0x0,
+	AmdExtD3DShaderIntrinsicsWaveMatrixType_B            = 0x1,
+	AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator  = 0x2,
+};
+
+/**
+***********************************************************************************************************************
+* @brief
+*    AmdExtD3DShaderIntrinsicsWaveMatrixMatrixShape enumeration for supported wave matrix shape.
+***********************************************************************************************************************
+*/
+enum AmdExtD3DShaderIntrinsicsWaveMatrixOpMatrixShape
+{
+	AmdExtD3DShaderIntrinsicsWaveMatrixShape_16X16 = 0x0,
+	AmdExtD3DShaderIntrinsicsWaveMatrixShape_32X16 = 0x1,
+	AmdExtD3DShaderIntrinsicsWaveMatrixShape_16X32 = 0x2,
+	AmdExtD3DShaderIntrinsicsWaveMatrixShape_64X16 = 0x3,
+};
+
+/**
+***********************************************************************************************************************
+* @brief
+*    AmdExtD3DShaderIntrinsicsWaveMatrixOpcode enumeration to specify the wmma inst opcode.
+***********************************************************************************************************************
+*/
+enum AmdExtD3DShaderIntrinsicsWaveMatrixOpcode
+{
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_BF16_16X16X16_BF16     = 0x0,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F16_16X16X16_F16       = 0x1,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_BF16      = 0x2,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_BF8_BF8   = 0x3,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_BF8_FP8   = 0x4,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_F16       = 0x5,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_FP8_BF8   = 0x6,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_FP8_FP8   = 0x7,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_I4        = 0x8,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_U4        = 0x9,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_IU4       = 0xa,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_UI4       = 0xb,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_I8        = 0xc,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_U8        = 0xd,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_IU8       = 0xe,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_UI8       = 0xf,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X32_I4        = 0x10,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X32_U4        = 0x11,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X32_IU4       = 0x12,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X32_UI4       = 0x13,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_BF16_16X16X32_BF16    = 0x14,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_F16_16X16X32_F16      = 0x15,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_F32_16X16X32_BF16     = 0x16,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_F32_16X16X32_BF8_BF8  = 0x17,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_F32_16X16X32_BF8_FP8  = 0x18,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_F32_16X16X32_F16      = 0x19,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_F32_16X16X32_FP8_BF8  = 0x1a,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_F32_16X16X32_FP8_FP8  = 0x1b,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X32_I4       = 0x1c,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X32_U4       = 0x1d,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X32_IU4      = 0x1e,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X32_UI4      = 0x1f,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X32_I8       = 0x20,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X32_U8       = 0x21,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X32_IU8      = 0x22,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X32_UI8      = 0x23,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X64_I4       = 0x24,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X64_U4       = 0x25,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X64_IU4      = 0x26,
+	AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_SWMMA_I32_16X16X64_UI4      = 0x27,
+};
+
+/**
+***********************************************************************************************************************
+* @brief
+*    AmdExtD3DShaderIntrinsicsWaveMatrixRegType enumeration to specify the temp register.
+***********************************************************************************************************************
+*/
+enum AmdExtD3DShaderIntrinsicsWaveMatrixRegType
+{
+	AmdExtD3DShaderIntrinsicsWaveMatrixRegType_RetVal_Reg          = 0x0,
+	AmdExtD3DShaderIntrinsicsWaveMatrixRegType_A_TempReg           = 0x1,
+	AmdExtD3DShaderIntrinsicsWaveMatrixRegType_B_TempReg           = 0x2,
+	AmdExtD3DShaderIntrinsicsWaveMatrixRegType_Accumulator_TempReg = 0x3,
+};
+
+/**
+***********************************************************************************************************************
+* @brief
+*    AmdExtD3DShaderIntrinsicsMatrixElementWiseOp enumeration to specify the element-wise operation
+***********************************************************************************************************************
+*/
+enum AmdExtD3DShaderIntrinsicsMatrixElementWiseOp
+{
+	AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Add   = 0x1,
+	AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Sub   = 0x2,
+	AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Mul   = 0x3,
+	AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Div   = 0x4,
+	AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Times = 0x5,
+};
+
+/**
+***********************************************************************************************************************
+* @brief
+*    AmdExtD3DShaderIntrinsicsSparsityIndexMem enumeration is used to specify where to read sparsity indexes.
+***********************************************************************************************************************
+*/
+enum AmdExtD3DShaderIntrinsicsSparsityIndexMem
+{
+	AmdExtD3DShaderIntrinsicsSparsityIndexMem_UavBuffer    = 0x0,
+	AmdExtD3DShaderIntrinsicsSparsityIndexMem_GroupShared  = 0x1,
+	AmdExtD3DShaderIntrinsicsSparsityIndexMem_GlobalBuffer = 0x2,
+};
+
+/**
+***********************************************************************************************************************
+* @brief
+*    Shifts and masks for the arguments required for AmdExtD3DShaderIntrinsicsWaveMatrixOpcode
+***********************************************************************************************************************
+*/
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_OpsShift  = 0;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_OpsMask   = 0x7f;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_FlagShift = 15;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_FlagMask  = 0x1;
+
+/**
+***********************************************************************************************************************
+* @brief
+*    Shifts and masks for the arguments required for AmdExtD3DShaderIntrinsicsWaveMatrixOpInOut
+***********************************************************************************************************************
+*/
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixInOut_ChannelShift        = 0;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixInOut_ChannelMask         = 0xf;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixInOut_SecondRegFlagShift  = 4;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixInOut_SecondRegFlagMask   = 0xf;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixInOut_MatRegTypeFlagShift = 8;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixInOut_MatRegTypeFlagMask  = 0xff;
+
+/**
+***********************************************************************************************************************
+* @brief
+*    Shifts and masks for the arguments required for AmdExtD3DShaderIntrinsicsWaveMatrixModifier
+***********************************************************************************************************************
+*/
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_DataFormatFlagShift = 0;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_DataFormatFlagMask  = 0xf;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_MatrixTypeFlagShift = 4;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_MatrixTypeFlagMask  = 0x7;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_LayoutFlagShift     = 7;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_LayoutFlagMask      = 0x1;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_ShapeShift          = 8;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_ShapeMask           = 0x7;
+// Following flags only apply to AmdExtD3DShaderIntrinsicsOpcode_WaveMatrix*Load
+// and AmdExtD3DShaderIntrinsicsOpcode_WaveMatrix*Store
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_MatrixTileShift     = 11;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_MatrixTileMask      = 0x1;
+// Following flags only apply to AmdExtD3DShaderIntrinsicsOpcode_MatrixSparsityIndexLoad
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_IndexMemTypeShift   = 14;
+constexpr unsigned int AmdExtD3DShaderIntrinsicsWaveMatrixModifier_IndexMemTypeMask    = 0x3;
+
 static inline bool is_ags_magic(uint32_t v)
 {
 	return (v >> AmdExtD3DShaderIntrinsics_MagicCodeShift) == AmdExtD3DShaderIntrinsics_MagicCode;
@@ -276,4 +510,10 @@ static inline AgsInstruction decode_ags_instruction(uint32_t v)
 
 	return inst;
 }
+
+bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool analyze_magic_ags_instruction(Converter::Impl &impl);
+bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store);
+spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPtrInst *gep, spv::Id id);
+bool wmma_store_is_masked(Converter::Impl &impl, const llvm::StoreInst *inst);
 }

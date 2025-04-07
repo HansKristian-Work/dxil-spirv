@@ -123,6 +123,7 @@ public:
     Id makeIntType(int width) { return makeIntegerType(width, true); }
     Id makeUintType(int width) { return makeIntegerType(width, false); }
     Id makeFloatType(int width);
+    Id makeCooperativeMatrixType(spv::Id scalar_type, spv::Id rows, spv::Id cols, spv::Id use);
     Id makeStructType(const dxil_spv::Vector<Id>& members, const char*);
     Id makeStructResultType(Id type0, Id type1);
     Id makeVectorType(Id component, int size);
@@ -245,6 +246,8 @@ public:
 #ifdef AMD_EXTENSIONS
     Id makeInt16Constant(short i, bool specConstant = false)        { return makeIntConstant(makeIntType(16),      (unsigned)i, specConstant); }
     Id makeUint16Constant(unsigned short u, bool specConstant = false)  { return makeIntConstant(makeUintType(16), (unsigned)u, specConstant); }
+    Id makeUint8Constant(unsigned char u, bool specConstant = false)  { return makeIntConstant(makeUintType(8), (unsigned)u, specConstant); }
+    Id makeInt8Constant(signed char u, bool specConstant = false)  { return makeIntConstant(makeIntType(8), (unsigned)u, specConstant); }
 #endif
     Id makeFloatConstant(float f, bool specConstant = false);
     Id makeDoubleConstant(double d, bool specConstant = false);
@@ -657,6 +660,8 @@ protected:
     // not output, internally used for quick & dirty canonical (unique) creation
     dxil_spv::Vector<Instruction*> groupedConstants[OpConstant];  // all types appear before OpConstant
     dxil_spv::Vector<Instruction*> groupedTypes[OpConstant];
+    dxil_spv::Vector<Instruction*> coopmatConstants;  // all types appear before OpConstant
+    dxil_spv::Vector<Instruction*> coopmatTypes;
     Instruction *acceleration_structure_type = nullptr;
     Instruction *ray_query_type = nullptr;
 

@@ -557,4 +557,45 @@ void emit_expect_assume_quad_uniform(Converter::Impl &impl)
 		impl.add(assert_uniform);
 	}
 }
+
+SplitScaleBias split_index_scale_bias(const llvm::Value *value)
+{
+	const auto *cint = llvm::dyn_cast<llvm::ConstantInt>(value);
+	// Return UINT32_MAX as stride since we cannot reasonably know yet.
+	if (cint)
+		return { UINT32_MAX, nullptr, uint32_t(cint->getUniqueInteger().getZExtValue()) };
+
+	const auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(value);
+	if (!binop)
+		return {};
+
+	if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Add)
+	{
+		const auto *const0 = llvm::dyn_cast<llvm::ConstantInt>(binop->getOperand(0));
+		const auto *const1 = llvm::dyn_cast<llvm::ConstantInt>(binop->getOperand(1));
+		if (const0 && !const1)
+		{
+			auto split = split_index_scale_bias(binop->getOperand(1));
+			split.elem += const0->getUniqueInteger().getZExtValue();
+			return split;
+		}
+		else if (!const0 && const1)
+		{
+			auto split = split_index_scale_bias(binop->getOperand(0));
+			split.elem += const1->getUniqueInteger().getZExtValue();
+			return split;
+		}
+	}
+	else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Mul)
+	{
+		const auto *const0 = llvm::dyn_cast<llvm::ConstantInt>(binop->getOperand(0));
+		const auto *const1 = llvm::dyn_cast<llvm::ConstantInt>(binop->getOperand(1));
+		if (const0 && !const1)
+			return { uint32_t(const0->getUniqueInteger().getZExtValue()), binop->getOperand(1), 0 };
+		else if (!const0 && const1)
+			return { uint32_t(const1->getUniqueInteger().getZExtValue()), binop->getOperand(0), 0 };
+	}
+
+	return {};
+}
 } // namespace dxil_spv
