@@ -1,0 +1,111 @@
+#version 460
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_KHR_cooperative_matrix : require
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
+{
+    uint _m0[];
+} _20;
+
+layout(set = 0, binding = 0, std430) writeonly buffer _22_24
+{
+    uint _m0[];
+} _24;
+
+void main()
+{
+    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _29;
+    coopMatLoad(_29, _20._m0, 0u, 8u, 1u);
+    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _32;
+    coopMatLoad(_32, _20._m0, 128u, 8u, 0u);
+    coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator> _35;
+    coopMatLoad(_35, _20._m0, 256u, 16u, 0u);
+    coopMatStore(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseAccumulator>(coopMatMulAdd(_29, _32, _35, 0)), _24._m0, 0u, 8u, 0u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+// WaveSize(32)
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 41
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability DenormPreserve
+OpCapability CooperativeMatrixKHR
+OpExtension "SPV_KHR_cooperative_matrix"
+OpExtension "SPV_KHR_float_controls"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main"
+OpExecutionMode %3 LocalSize 32 1 1
+OpExecutionMode %3 DenormPreserve 16
+OpName %3 "main"
+OpName %18 "SSBO"
+OpName %22 "SSBO"
+OpDecorate %17 ArrayStride 4
+OpMemberDecorate %18 0 Offset 0
+OpDecorate %18 Block
+OpDecorate %20 DescriptorSet 0
+OpDecorate %20 Binding 0
+OpDecorate %20 NonWritable
+OpDecorate %20 Restrict
+OpDecorate %21 ArrayStride 4
+OpMemberDecorate %22 0 Offset 0
+OpDecorate %22 Block
+OpDecorate %24 DescriptorSet 0
+OpDecorate %24 Binding 0
+OpDecorate %24 NonReadable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 16
+%6 = OpTypeInt 32 0
+%7 = OpConstant %6 0
+%8 = OpConstant %6 16
+%10 = OpConstant %6 3
+%9 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %7
+%11 = OpConstant %6 1
+%12 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %11
+%13 = OpTypeFloat 32
+%14 = OpConstant %6 2
+%15 = OpTypeCooperativeMatrixKHR %13 %10 %8 %8 %14
+%16 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %14
+%17 = OpTypeRuntimeArray %6
+%18 = OpTypeStruct %17
+%19 = OpTypePointer StorageBuffer %18
+%20 = OpVariable %19 StorageBuffer
+%21 = OpTypeRuntimeArray %6
+%22 = OpTypeStruct %21
+%23 = OpTypePointer StorageBuffer %22
+%24 = OpVariable %23 StorageBuffer
+%26 = OpConstant %6 8
+%27 = OpTypePointer StorageBuffer %6
+%30 = OpConstant %6 128
+%33 = OpConstant %6 256
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %39
+%39 = OpLabel
+%28 = OpAccessChain %27 %20 %7 %7
+%29 = OpCooperativeMatrixLoadKHR %9 %28 %11 %26
+%31 = OpAccessChain %27 %20 %7 %30
+%32 = OpCooperativeMatrixLoadKHR %12 %31 %7 %26
+%34 = OpAccessChain %27 %20 %7 %33
+%35 = OpCooperativeMatrixLoadKHR %15 %34 %7 %8
+%36 = OpCooperativeMatrixMulAddKHR %15 %29 %32 %35
+%37 = OpFConvert %16 %36
+%38 = OpAccessChain %27 %24 %7 %7
+OpCooperativeMatrixStoreKHR %38 %37 %7 %26
+OpReturn
+OpFunctionEnd
+#endif
