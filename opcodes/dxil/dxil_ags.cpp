@@ -1226,7 +1226,7 @@ static WMMAAccessChain build_wmma_access_chain(
 	if (meta.storage == spv::StorageClassStorageBuffer || impl.ags.active_uav_op == DXIL::Op::AtomicBinOp)
 	{
 		spv::Id buffer_id = get_buffer_alias_handle(
-			impl, meta, impl.ags.active_uav_ptr, RawType::Integer, RawWidth::B32, RawVecSize::V1);
+			impl, meta, impl.ags.active_uav_ptr, RawType::Integer, RawWidth::B8, RawVecSize::V1);
 
 		if (!buffer_id)
 		{
@@ -1236,17 +1236,15 @@ static WMMAAccessChain build_wmma_access_chain(
 
 		// Cooperative matrix is in terms of elements of the value type, not bytes.
 		// We could use 8-bit storage, but that means adding a lot of extra cruft ...
-		spv::Id offset_u32 = build_index_divider(impl, offset, 2, 1);
-		spv::Id stride_u32 = build_index_divider(impl, stride, 2, 1);
 		auto *chain = impl.allocate(spv::OpAccessChain,
-		                            builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+		                            builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(8)));
 		chain->add_id(buffer_id);
 		chain->add_id(builder.makeUintConstant(0));
-		chain->add_id(offset_u32);
+		chain->add_id(impl.get_id_for_value(offset));
 
 		impl.add(chain);
 		ret.chain_id = chain->id;
-		ret.stride_id = stride_u32;
+		ret.stride_id = impl.get_id_for_value(stride);
 	}
 	else if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{

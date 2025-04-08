@@ -87,6 +87,8 @@ static inline DXIL::ComponentType raw_width_to_component_type(RawType type, RawW
 {
 	switch (raw_width)
 	{
+	case RawWidth::B8:
+		return DXIL::ComponentType::InternalU8;
 	case RawWidth::B16:
 		return type == RawType::Float ? DXIL::ComponentType::F16 : DXIL::ComponentType::U16;
 	case RawWidth::B64:
@@ -105,6 +107,8 @@ static inline unsigned raw_component_type_to_bits(DXIL::ComponentType type)
 {
 	switch (type)
 	{
+	case DXIL::ComponentType::InternalU8:
+		return 8;
 	case DXIL::ComponentType::U16:
 	case DXIL::ComponentType::F16:
 		return 16;
@@ -124,6 +128,7 @@ static inline RawType raw_component_type_to_type(DXIL::ComponentType type)
 {
 	switch (type)
 	{
+	case DXIL::ComponentType::InternalU8:
 	case DXIL::ComponentType::U16:
 	case DXIL::ComponentType::U32:
 	case DXIL::ComponentType::U64:

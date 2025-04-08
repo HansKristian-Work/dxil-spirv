@@ -15,12 +15,12 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
 {
-    uint _m0[];
+    uint8_t _m0[];
 } _19;
 
 layout(set = 0, binding = 0, std430) writeonly buffer _21_23
 {
-    uint _m0[];
+    uint8_t _m0[];
 } _23;
 
 coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> CoopMatFP8toFP16(coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _41)
@@ -67,15 +67,15 @@ coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> CoopMatFP8toFP16(coopmat<uint8_t
 
 void main()
 {
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _28;
-    coopMatLoad(_28, _19._m0, 0u, 4u, 0u);
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB> _31;
-    coopMatLoad(_31, _19._m0, 64u, 4u, 0u);
+    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _27;
+    coopMatLoad(_27, _19._m0, 0u, 16u, 0u);
+    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB> _30;
+    coopMatLoad(_30, _19._m0, 256u, 16u, 0u);
     coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator> _34;
-    coopMatLoad(_34, _19._m0, 128u, 16u, 0u);
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _68 = _28;
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB> _94 = _31;
-    coopMatStore(coopMatMulAdd(CoopMatFP8toFP16(_68), CoopMatFP8toFP16(_94), _34, 0), _23._m0, 0u, 16u, 0u);
+    coopMatLoad(_34, _19._m0, 512u, 64u, 0u);
+    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _68 = _27;
+    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB> _94 = _30;
+    coopMatStore(coopMatMulAdd(CoopMatFP8toFP16(_68), CoopMatFP8toFP16(_94), _34, 0), _23._m0, 0u, 64u, 0u);
 }
 
 
@@ -91,8 +91,10 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability Int8
+OpCapability StorageBuffer8BitAccess
 OpCapability DenormPreserve
 OpCapability CooperativeMatrixKHR
+OpExtension "SPV_KHR_8bit_storage"
 OpExtension "SPV_KHR_cooperative_matrix"
 OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
@@ -106,14 +108,14 @@ OpName %42 "CoopMatFP8toFP16"
 OpName %45 "coop_output"
 OpName %74 "CoopMatFP8toFP16"
 OpName %77 "coop_output"
-OpDecorate %16 ArrayStride 4
+OpDecorate %16 ArrayStride 1
 OpMemberDecorate %17 0 Offset 0
 OpDecorate %17 Block
 OpDecorate %19 DescriptorSet 0
 OpDecorate %19 Binding 0
 OpDecorate %19 NonWritable
 OpDecorate %19 Restrict
-OpDecorate %20 ArrayStride 4
+OpDecorate %20 ArrayStride 1
 OpMemberDecorate %21 0 Offset 0
 OpDecorate %21 Block
 OpDecorate %23 DescriptorSet 0
@@ -132,18 +134,18 @@ OpDecorate %23 NonReadable
 %13 = OpTypeFloat 32
 %14 = OpConstant %6 2
 %15 = OpTypeCooperativeMatrixKHR %13 %10 %8 %8 %14
-%16 = OpTypeRuntimeArray %6
+%16 = OpTypeRuntimeArray %5
 %17 = OpTypeStruct %16
 %18 = OpTypePointer StorageBuffer %17
 %19 = OpVariable %18 StorageBuffer
-%20 = OpTypeRuntimeArray %6
+%20 = OpTypeRuntimeArray %5
 %21 = OpTypeStruct %20
 %22 = OpTypePointer StorageBuffer %21
 %23 = OpVariable %22 StorageBuffer
-%25 = OpConstant %6 4
-%26 = OpTypePointer StorageBuffer %6
-%29 = OpConstant %6 64
-%32 = OpConstant %6 128
+%25 = OpTypePointer StorageBuffer %5
+%29 = OpConstant %6 256
+%32 = OpConstant %6 512
+%33 = OpConstant %6 64
 %36 = OpTypeFloat 16
 %37 = OpTypeCooperativeMatrixKHR %36 %10 %8 %8 %7
 %38 = OpTypeBool
@@ -166,19 +168,19 @@ OpDecorate %23 NonReadable
 %94 = OpVariable %71 Function
 OpBranch %97
 %97 = OpLabel
-%27 = OpAccessChain %26 %19 %7 %7
-%28 = OpCooperativeMatrixLoadKHR %9 %27 %7 %25
-%30 = OpAccessChain %26 %19 %7 %29
-%31 = OpCooperativeMatrixLoadKHR %12 %30 %7 %25
-%33 = OpAccessChain %26 %19 %7 %32
-%34 = OpCooperativeMatrixLoadKHR %15 %33 %7 %8
-OpStore %68 %28
+%26 = OpAccessChain %25 %19 %7 %7
+%27 = OpCooperativeMatrixLoadKHR %9 %26 %7 %8
+%28 = OpAccessChain %25 %19 %7 %29
+%30 = OpCooperativeMatrixLoadKHR %12 %28 %7 %8
+%31 = OpAccessChain %25 %19 %7 %32
+%34 = OpCooperativeMatrixLoadKHR %15 %31 %7 %33
+OpStore %68 %27
 %69 = OpFunctionCall %37 %42 %68
-OpStore %94 %31
+OpStore %94 %30
 %95 = OpFunctionCall %70 %74 %94
 %35 = OpCooperativeMatrixMulAddKHR %15 %69 %95 %34
-%96 = OpAccessChain %26 %23 %7 %7
-OpCooperativeMatrixStoreKHR %96 %35 %7 %8
+%96 = OpAccessChain %25 %23 %7 %7
+OpCooperativeMatrixStoreKHR %96 %35 %7 %33
 OpReturn
 OpFunctionEnd
 %42 = OpFunction %37 None %40

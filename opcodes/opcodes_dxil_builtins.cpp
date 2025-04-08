@@ -773,10 +773,8 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 					return;
 				}
 
-				// Ensure we have the expected 4 byte uint alias.
-				update_raw_access_tracking_for_byte_address(impl, *tracking,
-				                                            instruction->getType()->getStructElementType(0),
-				                                            instruction->getOperand(2), 1);
+				// Be byte oriented.
+				tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B8)][int(RawVecSize::V1)] = true;
 
 				return;
 			}

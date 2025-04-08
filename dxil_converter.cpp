@@ -369,6 +369,11 @@ spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uin
 
 	if (raw_decl.width == RawWidth::B16)
 		builder.addCapability(spv::CapabilityUniformAndStorageBuffer16BitAccess);
+	else if (raw_decl.width == RawWidth::B8)
+	{
+		builder.addExtension("SPV_KHR_8bit_storage");
+		builder.addCapability(spv::CapabilityUniformAndStorageBuffer8BitAccess);
+	}
 
 	return create_variable(spv::StorageClassUniform,
 	                       type_id, name.empty() ? nullptr : name.c_str());
@@ -384,6 +389,11 @@ spv::Id Converter::Impl::create_raw_ssbo_variable(const RawDeclaration &raw_decl
 
 	if (raw_decl.width == RawWidth::B16)
 		builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
+	else if (raw_decl.width == RawWidth::B8)
+	{
+		builder().addExtension("SPV_KHR_8bit_storage");
+		builder().addCapability(spv::CapabilityStorageBuffer8BitAccess);
+	}
 
 	return create_variable(spv::StorageClassStorageBuffer, type_id, name.empty() ? nullptr : name.c_str());
 }
@@ -474,6 +484,11 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				storage = spv::StorageClassStorageBuffer;
 				if (bits == 16)
 					builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
+				else if (bits == 8)
+				{
+					builder().addExtension("SPV_KHR_8bit_storage");
+					builder().addCapability(spv::CapabilityStorageBuffer8BitAccess);
+				}
 			}
 			else
 			{
@@ -522,6 +537,11 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				storage = spv::StorageClassStorageBuffer;
 				if (bits == 16)
 					builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
+				else if (bits == 8)
+				{
+					builder().addExtension("SPV_KHR_8bit_storage");
+					builder().addCapability(spv::CapabilityStorageBuffer8BitAccess);
+				}
 			}
 			else
 			{
@@ -579,6 +599,14 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 					builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
 				else
 					builder().addCapability(spv::CapabilityUniformAndStorageBuffer16BitAccess);
+			}
+			else if (bits == 8)
+			{
+				builder().addExtension("SPV_KHR_8bit_storage");
+				if (options.bindless_cbv_ssbo_emulation)
+					builder().addCapability(spv::CapabilityStorageBuffer8BitAccess);
+				else
+					builder().addCapability(spv::CapabilityUniformAndStorageBuffer8BitAccess);
 			}
 			break;
 		}

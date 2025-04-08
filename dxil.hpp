@@ -141,7 +141,8 @@ enum class ComponentType : uint8_t
 	SNormF32,
 	UNormF32,
 	SNormF64,
-	UNormF64
+	UNormF64,
+	InternalU8 = 0xff // Doesn't exist, but dummy value to signal 8-bit SSBO
 };
 
 enum class InterpolationMode : uint8_t

@@ -15,12 +15,12 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
 {
-    uint _m0[];
+    uint8_t _m0[];
 } _21;
 
 layout(set = 0, binding = 0, std430) writeonly buffer _23_25
 {
-    uint _m0[];
+    uint8_t _m0[];
 } _25;
 
 coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> CoopMatFP8toFP16(coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _42)
@@ -67,15 +67,15 @@ coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> CoopMatFP8toFP16(coopmat<uint8_t
 
 void main()
 {
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _30;
-    coopMatLoad(_30, _21._m0, 0u, 4u, 0u);
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB> _33;
-    coopMatLoad(_33, _21._m0, 64u, 4u, 0u);
+    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _29;
+    coopMatLoad(_29, _21._m0, 0u, 16u, 0u);
+    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB> _32;
+    coopMatLoad(_32, _21._m0, 256u, 16u, 0u);
     coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator> _36;
-    coopMatLoad(_36, _21._m0, 128u, 16u, 0u);
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _69 = _30;
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB> _95 = _33;
-    coopMatStore(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseAccumulator>(coopMatMulAdd(CoopMatFP8toFP16(_69), CoopMatFP8toFP16(_95), _36, 0)), _25._m0, 0u, 8u, 0u);
+    coopMatLoad(_36, _21._m0, 512u, 64u, 0u);
+    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _69 = _29;
+    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB> _95 = _32;
+    coopMatStore(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseAccumulator>(coopMatMulAdd(CoopMatFP8toFP16(_69), CoopMatFP8toFP16(_95), _36, 0)), _25._m0, 0u, 32u, 0u);
 }
 
 
@@ -91,8 +91,10 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability Int8
+OpCapability StorageBuffer8BitAccess
 OpCapability DenormPreserve
 OpCapability CooperativeMatrixKHR
+OpExtension "SPV_KHR_8bit_storage"
 OpExtension "SPV_KHR_cooperative_matrix"
 OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
@@ -106,14 +108,14 @@ OpName %43 "CoopMatFP8toFP16"
 OpName %46 "coop_output"
 OpName %75 "CoopMatFP8toFP16"
 OpName %78 "coop_output"
-OpDecorate %18 ArrayStride 4
+OpDecorate %18 ArrayStride 1
 OpMemberDecorate %19 0 Offset 0
 OpDecorate %19 Block
 OpDecorate %21 DescriptorSet 0
 OpDecorate %21 Binding 0
 OpDecorate %21 NonWritable
 OpDecorate %21 Restrict
-OpDecorate %22 ArrayStride 4
+OpDecorate %22 ArrayStride 1
 OpMemberDecorate %23 0 Offset 0
 OpDecorate %23 Block
 OpDecorate %25 DescriptorSet 0
@@ -134,18 +136,18 @@ OpDecorate %25 NonReadable
 %15 = OpTypeCooperativeMatrixKHR %13 %10 %8 %8 %14
 %16 = OpTypeFloat 16
 %17 = OpTypeCooperativeMatrixKHR %16 %10 %8 %8 %14
-%18 = OpTypeRuntimeArray %6
+%18 = OpTypeRuntimeArray %5
 %19 = OpTypeStruct %18
 %20 = OpTypePointer StorageBuffer %19
 %21 = OpVariable %20 StorageBuffer
-%22 = OpTypeRuntimeArray %6
+%22 = OpTypeRuntimeArray %5
 %23 = OpTypeStruct %22
 %24 = OpTypePointer StorageBuffer %23
 %25 = OpVariable %24 StorageBuffer
-%27 = OpConstant %6 4
-%28 = OpTypePointer StorageBuffer %6
-%31 = OpConstant %6 64
-%34 = OpConstant %6 128
+%27 = OpTypePointer StorageBuffer %5
+%31 = OpConstant %6 256
+%34 = OpConstant %6 512
+%35 = OpConstant %6 64
 %38 = OpTypeCooperativeMatrixKHR %16 %10 %8 %8 %7
 %39 = OpTypeBool
 %40 = OpTypePointer Function %9
@@ -161,27 +163,27 @@ OpDecorate %25 NonReadable
 %72 = OpTypePointer Function %12
 %73 = OpTypeFunction %71 %72
 %77 = OpTypePointer Function %71
-%98 = OpConstant %6 8
+%99 = OpConstant %6 32
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %69 = OpVariable %40 Function
 %95 = OpVariable %72 Function
 OpBranch %100
 %100 = OpLabel
-%29 = OpAccessChain %28 %21 %7 %7
-%30 = OpCooperativeMatrixLoadKHR %9 %29 %7 %27
-%32 = OpAccessChain %28 %21 %7 %31
-%33 = OpCooperativeMatrixLoadKHR %12 %32 %7 %27
-%35 = OpAccessChain %28 %21 %7 %34
-%36 = OpCooperativeMatrixLoadKHR %15 %35 %7 %8
-OpStore %69 %30
+%28 = OpAccessChain %27 %21 %7 %7
+%29 = OpCooperativeMatrixLoadKHR %9 %28 %7 %8
+%30 = OpAccessChain %27 %21 %7 %31
+%32 = OpCooperativeMatrixLoadKHR %12 %30 %7 %8
+%33 = OpAccessChain %27 %21 %7 %34
+%36 = OpCooperativeMatrixLoadKHR %15 %33 %7 %35
+OpStore %69 %29
 %70 = OpFunctionCall %38 %43 %69
-OpStore %95 %33
+OpStore %95 %32
 %96 = OpFunctionCall %71 %75 %95
 %37 = OpCooperativeMatrixMulAddKHR %15 %70 %96 %36
 %97 = OpFConvert %17 %37
-%99 = OpAccessChain %28 %25 %7 %7
-OpCooperativeMatrixStoreKHR %99 %97 %7 %98
+%98 = OpAccessChain %27 %25 %7 %7
+OpCooperativeMatrixStoreKHR %98 %97 %7 %99
 OpReturn
 OpFunctionEnd
 %43 = OpFunction %38 None %41
