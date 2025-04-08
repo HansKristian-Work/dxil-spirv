@@ -1206,6 +1206,24 @@ static WMMAAccessChain build_wmma_access_chain(
 
 	if (impl.ags.active_uav_op == DXIL::Op::AtomicBinOp)
 	{
+		if (const auto *const_offset = llvm::dyn_cast<llvm::ConstantInt>(offset))
+		{
+			if (const_offset->getUniqueInteger().getZExtValue() % 4)
+			{
+				LOGE("LDS coopmat offset is not aligned to 4 bytes. Will break.\n");
+				return ret;
+			}
+		}
+
+		if (const auto *const_stride = llvm::dyn_cast<llvm::ConstantInt>(stride))
+		{
+			if (const_stride->getUniqueInteger().getZExtValue() % 4)
+			{
+				LOGE("LDS coopmat stride is not aligned to 4 bytes. Will break.\n");
+				return ret;
+			}
+		}
+
 		// LDS.
 		spv::Id offset_u32 = build_index_divider(impl, offset, 2, 1);
 		spv::Id stride_u32 = build_index_divider(impl, stride, 2, 1);
