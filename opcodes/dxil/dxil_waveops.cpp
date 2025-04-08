@@ -503,6 +503,8 @@ bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallI
 		}
 	}
 
+	impl.shader_analysis.require_subgroup_shuffles = true;
+
 	impl.add(op);
 	return true;
 }
@@ -1159,6 +1161,8 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 		// For shuffle, wave64 is particularly slow on RDNA, so suggest wave32.
 		impl.suggest_maximum_wave_size(32);
 	}
+
+	impl.shader_analysis.require_subgroup_shuffles = true;
 
 	impl.add(op);
 	return true;

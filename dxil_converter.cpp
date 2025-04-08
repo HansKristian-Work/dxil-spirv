@@ -7762,6 +7762,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
 			cfg.rewrite_auto_group_shared_barrier();
 		}
+
+		if (shader_analysis.require_subgroup_shuffles)
+		{
+			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
+			cfg.flatten_subgroup_shuffles();
+		}
+
 		result.entry.func = spirv_module.get_entry_function();
 	}
 

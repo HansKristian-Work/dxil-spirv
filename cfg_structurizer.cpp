@@ -592,6 +592,101 @@ bool CFGStructurizer::execution_path_is_single_entry_and_dominates_exit(CFGNode 
 	return true;
 }
 
+void CFGStructurizer::flatten_subgroup_shuffles()
+{
+	recompute_cfg();
+
+	// Look for cases where shuffles happen inside small branches.
+	// This comes up due to HLSL's short-cicruit rules.
+	for (auto *n : forward_post_visit_order)
+	{
+		// Only care about blocks which don't dominate anything.
+		if (n->succ.size() != 1 || n->dominance_frontier.size() != 1 || n->dominance_frontier.front() != n->succ.front())
+			continue;
+		if (n->pred.size() != 1)
+			continue;
+		if (!n->pred.front()->dominates(n->succ.front()))
+			continue;
+		if (n->pred.front()->succ.size() != 2)
+			continue;
+
+		// There's a limit to how much we want to peephole.
+		if (n->ir.operations.size() > 4)
+			continue;
+
+		// We don't want to hoist if both sides of the branch have meaningful work associated with them.
+		auto *succ = n->succ.front();
+		auto *pred = n->pred.front();
+		auto *sibling0 = pred->succ[0];
+		auto *sibling1 = pred->succ[1];
+
+		if (sibling0 != succ && sibling0 != n && !sibling0->ir.operations.empty())
+			continue;
+		if (sibling1 != succ && sibling1 != n && !sibling1->ir.operations.empty())
+			continue;
+
+		// Now we've detected:
+		// if (blah) { a = shuffle(); } phi(a);
+
+		bool has_dubious_shuffle = false;
+
+		for (auto *op : n->ir.operations)
+		{
+			if (op->op == spv::OpGroupNonUniformShuffle || op->op == spv::OpGroupNonUniformBroadcast)
+			{
+				for (auto &phi : n->succ.front()->ir.phi)
+				{
+					for (auto &incoming : phi.incoming)
+					{
+						if (incoming.id == op->id)
+						{
+							has_dubious_shuffle = true;
+							goto out;
+						}
+					}
+				}
+			}
+		}
+	out:
+
+		if (has_dubious_shuffle)
+		{
+			// Now the question is if it's safe to do this. There can be nothing control dependent (except for shuffles).
+			for (auto *op : n->ir.operations)
+			{
+				if (op->op == spv::OpGroupNonUniformShuffle ||
+				    op->op == spv::OpGroupNonUniformBroadcast)
+					continue;
+
+				if (op->op == spv::OpLoad)
+				{
+					// Only allow loads if it's loading from plain OpVariables.
+					// Hoisting a buffer read is not acceptable.
+					if (!module.get_builder().hasDecoration(op->arguments[0], spv::DecorationBuiltIn))
+					{
+						has_dubious_shuffle = false;
+						break;
+					}
+				}
+
+				if (SPIRVModule::opcode_is_control_dependent(op->op) || op->id == 0 ||
+				    SPIRVModule::opcode_has_side_effect_and_result(op->op))
+				{
+					has_dubious_shuffle = false;
+					break;
+				}
+			}
+		}
+
+		if (has_dubious_shuffle)
+		{
+			for (auto *op : n->ir.operations)
+				n->pred.front()->ir.operations.push_back(op);
+			n->ir.operations.clear();
+		}
+	}
+}
+
 void CFGStructurizer::rewrite_auto_group_shared_barrier()
 {
 	recompute_cfg();

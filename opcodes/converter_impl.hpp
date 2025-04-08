@@ -903,6 +903,7 @@ struct Converter::Impl
 		bool require_node_output_group_coherence = false;
 		bool require_node_input_group_coherence = false;
 		bool require_subgroups = false;
+		bool require_subgroup_shuffles = false;
 		bool subgroup_ballot_reads_upper = false;
 		bool subgroup_ballot_reads_first = false;
 		bool can_require_opacity_micromap = false;
