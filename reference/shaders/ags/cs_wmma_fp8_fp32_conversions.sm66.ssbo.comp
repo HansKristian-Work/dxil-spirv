@@ -11,6 +11,7 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_shader_subgroup_basic : require
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) writeonly buffer SSBO
@@ -46,8 +47,12 @@ void main()
     coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _67 = coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA>(uint8_t(gl_WorkGroupID.x));
     coopMatStore(CoopMatFP8toFP16(_67), _24, 0u, 8u, 0u);
     barrier();
+    subgroupMemoryBarrierShared();
+    subgroupBarrier();
     coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseAccumulator> _74;
     coopMatLoad(_74, _24, 0u, 8u, 0u);
+    subgroupMemoryBarrierShared();
+    subgroupBarrier();
     if (gl_LocalInvocationIndex == 0u)
     {
         _20._m0[gl_WorkGroupID.x] = floatBitsToUint((coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator>(_74))[0]);
@@ -145,7 +150,9 @@ OpStore %67 %35
 OpCooperativeMatrixStoreKHR %71 %68 %7 %69
 OpControlBarrier %13 %13 %72
 %73 = OpAccessChain %70 %24 %7
+OpControlBarrier %10 %10 %72
 %74 = OpCooperativeMatrixLoadKHR %14 %73 %7 %69
+OpControlBarrier %10 %10 %72
 %75 = OpFConvert %16 %74
 %76 = OpCompositeExtract %15 %75 0
 %77 = OpBitcast %6 %76

@@ -10,6 +10,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_shader_subgroup_basic : require
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
@@ -30,10 +31,18 @@ void main()
     coopMatLoad(_33, _20._m0, 0u, 32u, 0u);
     coopMatStore(_33, _28, 0u, 8u, 0u);
     barrier();
+    subgroupMemoryBarrierShared();
+    subgroupBarrier();
     coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _39;
     coopMatLoad(_39, _28, 0u, 8u, 1u);
+    subgroupMemoryBarrierShared();
+    subgroupBarrier();
+    subgroupMemoryBarrierShared();
+    subgroupBarrier();
     coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _41;
     coopMatLoad(_41, _28, 0u, 8u, 0u);
+    subgroupMemoryBarrierShared();
+    subgroupBarrier();
     coopMatStore(coopMatMulAdd(_39, _41, coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator>(0.0), 0), _24._m0, 0u, 64u, 0u);
 }
 
@@ -118,9 +127,13 @@ OpBranch %47
 OpCooperativeMatrixStoreKHR %36 %33 %7 %34
 OpControlBarrier %14 %14 %37
 %38 = OpAccessChain %35 %28 %7
+OpControlBarrier %10 %10 %37
 %39 = OpCooperativeMatrixLoadKHR %9 %38 %11 %34
+OpControlBarrier %10 %10 %37
 %40 = OpAccessChain %35 %28 %7
+OpControlBarrier %10 %10 %37
 %41 = OpCooperativeMatrixLoadKHR %12 %40 %7 %34
+OpControlBarrier %10 %10 %37
 %44 = OpCooperativeMatrixMulAddKHR %15 %39 %41 %43
 %45 = OpAccessChain %30 %24 %7 %7
 OpCooperativeMatrixStoreKHR %45 %44 %7 %46

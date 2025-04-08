@@ -1342,6 +1342,16 @@ static bool emit_wmma_store(Converter::Impl &impl)
 	return true;
 }
 
+static void emit_subgroup_barrier(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	auto *barrier = impl.allocate(spv::OpControlBarrier);
+	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	barrier->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+	impl.add(barrier);
+}
+
 static bool emit_wmma_load(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -1373,6 +1383,10 @@ static bool emit_wmma_load(Converter::Impl &impl)
 	bool column_major = ((type_immediate >> AmdExtD3DShaderIntrinsicsWaveMatrixModifier_LayoutFlagShift) &
 	                     AmdExtD3DShaderIntrinsicsWaveMatrixModifier_LayoutFlagMask) != 0;
 
+	// Workaround AGS omitting barriers.
+	if (impl.ags.active_uav_op == DXIL::Op::AtomicBinOp)
+		emit_subgroup_barrier(impl);
+
 	auto *load = impl.allocate(spv::OpCooperativeMatrixLoadKHR, type_id);
 	load->add_id(chain.chain_id);
 	load->add_id(builder.makeUintConstant(
@@ -1386,6 +1400,10 @@ static bool emit_wmma_load(Converter::Impl &impl)
 	}
 
 	impl.add(load);
+
+	// Workaround AGS omitting barriers.
+	if (impl.ags.active_uav_op == DXIL::Op::AtomicBinOp)
+		emit_subgroup_barrier(impl);
 
 	if (!emit_wmma_return_values(impl, type_id, load->id, 2))
 	{
