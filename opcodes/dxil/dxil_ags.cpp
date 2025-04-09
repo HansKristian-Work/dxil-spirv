@@ -30,6 +30,9 @@
 #include "dxil_sampling.hpp"
 #include "dxil_buffer.hpp"
 
+// Temporary testing hack until we have proper support for FP8 in SPIR-V.
+#define WMMA_FP8 0
+
 namespace dxil_spv
 {
 static bool emit_magic_ags_atomic_u64(Converter::Impl &impl, spv::Id image_id,
@@ -113,6 +116,17 @@ static bool emit_magic_ags_atomic_u64(Converter::Impl &impl, spv::Id image_id,
 	return true;
 }
 
+static spv::Id make_fp8_type(Converter::Impl &impl)
+{
+#if WMMA_FP8
+	// Doesn't exist in SPIR-V yet. But if a driver magically understands it ... *shrug*
+	return impl.builder().makeFloatType(8);
+#else
+	impl.builder().addCapability(spv::CapabilityInt8);
+	return impl.builder().makeUintType(8);
+#endif
+}
+
 static inline uint32_t get_type_data_format(uint32_t imm)
 {
 	return (imm >> AmdExtD3DShaderIntrinsicsWaveMatrixModifier_DataFormatFlagShift) &
@@ -191,9 +205,7 @@ static spv::Id build_coopmat_type(Converter::Impl &impl, uint32_t immediate)
 		}
 #endif
 
-		// This doesn't exist in SPIR-V yet. Use U8 and manually convert to FP16 for now.
-		scalar_type = builder.makeUintType(8);
-		builder.addCapability(spv::CapabilityInt8);
+		scalar_type = make_fp8_type(impl);
 		break;
 
 	default:
@@ -421,6 +433,7 @@ static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t
 	return load->id;
 }
 
+#if !WMMA_FP8
 static spv::Id emit_fp8_to_fp16_coopmat(Converter::Impl &impl, spv::Id v, spv::CooperativeMatrixUse use)
 {
 	auto &builder = impl.builder();
@@ -474,6 +487,7 @@ static spv::Id emit_fp16_to_fp8_coopmat(Converter::Impl &impl, spv::Id v, spv::C
 
 	return call->id;
 }
+#endif
 
 static bool emit_wmma_length(Converter::Impl &impl)
 {
@@ -542,6 +556,13 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 				ext->add_id(cast->id);
 				ext->add_literal(i);
 				impl.add(ext);
+
+#if WMMA_FP8
+				auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(8));
+				bitcast->add_id(ext->id);
+				impl.add(bitcast);
+				ext = bitcast;
+#endif
 
 				auto *insert = impl.allocate(spv::OpCompositeInsert, coop_type);
 				insert->add_id(ext->id);
@@ -624,13 +645,20 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 				ext->add_literal(i);
 				impl.add(ext);
 
+#if WMMA_FP8
+				auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(8));
+				bitcast->add_id(ext->id);
+				impl.add(bitcast);
+				ext = bitcast;
+#endif
+
 				auto *index = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
 				index->add_id(index4->id);
 				index->add_id(builder.makeUintConstant(i));
 				impl.add(index);
 
 				auto *chain = impl.allocate(spv::OpInBoundsAccessChain,
-				                            builder.makePointer(spv::StorageClassFunction, builder.makeUintType(8)));
+				                            builder.makePointer(spv::StorageClassFunction, make_fp8_type(impl)));
 				chain->add_id(local_var);
 				chain->add_id(index->id);
 				impl.add(chain);
@@ -724,14 +752,14 @@ static bool emit_wmma_element_extract(Converter::Impl &impl)
 
 			for (int i = 0; i < 4; i++)
 			{
-				auto *extract = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(8));
+				auto *extract = impl.allocate(spv::OpCompositeExtract, make_fp8_type(impl));
 				extract->add_id(coop_vec_id);
 				extract->add_literal(4 * const_e->getUniqueInteger().getZExtValue() + i);
 				impl.add(extract);
 				elements[i] = extract->id;
 			}
 
-			spv::Id vec = impl.build_vector(builder.makeUintType(8), elements, 4);
+			spv::Id vec = impl.build_vector(make_fp8_type(impl), elements, 4);
 
 			auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
 			bitcast->add_id(vec);
@@ -814,19 +842,19 @@ static bool emit_wmma_element_extract(Converter::Impl &impl)
 
 				auto *chain = impl.allocate(
 					spv::OpInBoundsAccessChain,
-					builder.makePointer(spv::StorageClassFunction, builder.makeUintType(8)));
+					builder.makePointer(spv::StorageClassFunction, make_fp8_type(impl)));
 				chain->add_id(local_var);
 				chain->add_id(index->id);
 				impl.add(chain);
 
-				auto *load = impl.allocate(spv::OpLoad, builder.makeUintType(8));
+				auto *load = impl.allocate(spv::OpLoad, make_fp8_type(impl));
 				load->add_id(chain->id);
 				impl.add(load);
 
 				elements[i] = load->id;
 			}
 
-			spv::Id vec = impl.build_vector(builder.makeUintType(8), elements, 4);
+			spv::Id vec = impl.build_vector(make_fp8_type(impl), elements, 4);
 
 			auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
 			bitcast->add_id(vec);
@@ -941,8 +969,15 @@ static bool emit_wmma_fill(Converter::Impl &impl)
 			auto *narrow = impl.allocate(spv::OpUConvert, builder.makeUintType(8));
 			narrow->add_id(id);
 			impl.add(narrow);
-
 			id = narrow->id;
+
+#if WMMA_FP8
+			auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(8));
+			bitcast->add_id(id);
+			impl.add(bitcast);
+			id = bitcast->id;
+#endif
+
 			break;
 		}
 
@@ -1042,12 +1077,14 @@ static bool emit_wmma_muladd(Converter::Impl &impl)
 	spv::Id b = impl.get_id_for_value(impl.ags.backdoor_instructions[4]->getOperand(5));
 	spv::Id c = impl.get_id_for_value(impl.ags.backdoor_instructions[8]->getOperand(5));
 
+#if !WMMA_FP8
 	if (opcode == AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_FP8_FP8)
 	{
 		// Until we have proper FP8 support, we'll need to upconvert.
 		a = emit_fp8_to_fp16_coopmat(impl, a, spv::CooperativeMatrixUseMatrixAKHR);
 		b = emit_fp8_to_fp16_coopmat(impl, b, spv::CooperativeMatrixUseMatrixBKHR);
 	}
+#endif
 
 	muladd->add_id(a);
 	muladd->add_id(b);
@@ -1133,6 +1170,15 @@ static bool emit_wmma_convert(Converter::Impl &impl)
 			output_type_input_use = output_type;
 		}
 
+#if WMMA_FP8
+		if (input_fmt != output_fmt)
+		{
+			auto *conv = impl.allocate(spv::OpFConvert, output_type_input_use);
+			conv->add_id(coopmat);
+			impl.add(conv);
+			coopmat = conv->id;
+		}
+#else
 		if (input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
 		    (output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16 ||
 		     output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32))
@@ -1171,6 +1217,7 @@ static bool emit_wmma_convert(Converter::Impl &impl)
 				coopmat = conv->id;
 			}
 		}
+#endif
 
 		if (in_use != out_use)
 		{
