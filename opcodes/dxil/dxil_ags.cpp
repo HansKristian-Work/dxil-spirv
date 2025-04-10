@@ -433,6 +433,29 @@ static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t
 	return load->id;
 }
 
+#if WMMA_FP8
+static spv::Id emit_coopmat_clamp(Converter::Impl &impl, spv::Id v, spv::Id type, float lo, float hi)
+{
+	auto &builder = impl.builder();
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::CoopMatClamp, type);
+
+	spv::Id param = impl.create_variable(spv::StorageClassFunction, type);
+	auto *store = impl.allocate(spv::OpStore);
+	store->add_id(param);
+	store->add_id(v);
+	impl.add(store);
+
+	auto *call = impl.allocate(spv::OpFunctionCall, type);
+	call->add_id(call_id);
+	call->add_id(param);
+	call->add_id(builder.makeFloatConstant(lo));
+	call->add_id(builder.makeFloatConstant(hi));
+	impl.add(call);
+
+	return call->id;
+}
+#endif
+
 #if !WMMA_FP8
 static spv::Id emit_fp8_to_fp16_coopmat(Converter::Impl &impl, spv::Id v, spv::CooperativeMatrixUse use)
 {
@@ -1143,10 +1166,7 @@ static bool emit_wmma_convert(Converter::Impl &impl)
 
 	if (impl.ags.instructions[4].immediate == output_immediate)
 	{
-		auto *copy = impl.allocate(spv::OpCopyObject, output_type);
-		copy->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
-		impl.add(copy);
-		res_id = copy->id;
+		res_id = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
 	}
 	else
 	{
@@ -1159,6 +1179,23 @@ static bool emit_wmma_convert(Converter::Impl &impl)
 		auto out_use = convert_matrix_use(output_use);
 
 		spv::Id coopmat = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
+
+#if WMMA_FP8
+		// AGS does not seem to saturate on FP16 to FP8, but FSR4 doesn't use that it seems, so *shrug*.
+		if (output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
+		    input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32)
+		{
+			uint32_t needs_clamp = 0;
+			if (!get_constant_operand(impl.ags.backdoor_instructions[4], 6, &needs_clamp))
+			{
+				LOGE("Clamp operand is not a constant expression.\n");
+				return false;
+			}
+
+			if (needs_clamp)
+				coopmat = emit_coopmat_clamp(impl, coopmat, build_coopmat_type(impl, type_imm), -448.0f, 448.0f);
+		}
+#endif
 
 		// Transpose early if the target format does not support the input use.
 		if (in_use != out_use && !output_type_input_use)
