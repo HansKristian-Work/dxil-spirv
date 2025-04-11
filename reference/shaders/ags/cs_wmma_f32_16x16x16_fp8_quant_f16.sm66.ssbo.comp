@@ -45,7 +45,7 @@ coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> CoopMatFP8toFP16(c
     return coop_output * float16_t(256.0);
 }
 
-coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> CoopMatFP8toFP16(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _74)
+coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> CoopMatFP8toFP16_1(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _74)
 {
     uint _82;
     _82 = 0u;
@@ -76,7 +76,7 @@ void main()
     coopMatLoad(_36, _21._m0, 512u, 64u, gl_CooperativeMatrixLayoutRowMajor);
     coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _69 = _29;
     coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _95 = _32;
-    coopMatStore(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(coopMatMulAdd(CoopMatFP8toFP16(_69), CoopMatFP8toFP16(_95), _36, 0)), _25._m0, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(coopMatMulAdd(CoopMatFP8toFP16(_69), CoopMatFP8toFP16_1(_95), _36, 0)), _25._m0, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
 }
 
 
