@@ -10,6 +10,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
@@ -26,16 +27,16 @@ void main()
 {
     uint _34;
     _34 = 0u;
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _32[2];
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _33[2];
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _32[2];
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _33[2];
     for (;;)
     {
         uint _36 = _34 << 5u;
-        coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _42;
-        coopMatLoad(_42, _20._m0, _36, 64u, 0u);
+        coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _42;
+        coopMatLoad(_42, _20._m0, _36, 64u, gl_CooperativeMatrixLayoutRowMajor);
         _33[_34] = _42;
-        coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _75;
-        coopMatLoad(_75, _20._m0, _36 + 1024u, 64u, 1u);
+        coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _75;
+        coopMatLoad(_75, _20._m0, _36 + 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
         _32[_34] = _75;
         uint _35 = _34 + 1u;
         if (_35 == 2u)
@@ -47,25 +48,25 @@ void main()
             _34 = _35;
         }
     }
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _105;
-    coopMatLoad(_105, _20._m0, 32u, 64u, 0u);
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _31[2];
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _105;
+    coopMatLoad(_105, _20._m0, 32u, 64u, gl_CooperativeMatrixLayoutRowMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _31[2];
     _31[1u] = _105;
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _123;
-    coopMatLoad(_123, _20._m0, 1056u, 64u, 1u);
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _28[2];
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _123;
+    coopMatLoad(_123, _20._m0, 1056u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _28[2];
     _28[1u] = _123;
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _133;
-    coopMatLoad(_133, _20._m0, 0u, 64u, 0u);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _133;
+    coopMatLoad(_133, _20._m0, 0u, 64u, gl_CooperativeMatrixLayoutRowMajor);
     _31[0u] = _133;
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _143;
-    coopMatLoad(_143, _20._m0, 1024u, 64u, 1u);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _143;
+    coopMatLoad(_143, _20._m0, 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
     _28[0u] = _143;
-    coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator> _154;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _154;
     uint _156;
-    _154 = coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator>(0.0);
+    _154 = coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0);
     _156 = 0u;
-    coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator> _222;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _222;
     for (;;)
     {
         _222 = coopMatMulAdd(_33[_156], _32[_156], _154, 0);
@@ -80,11 +81,11 @@ void main()
             _156 = _157;
         }
     }
-    coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator> _224;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _224;
     uint _226;
     _224 = _222;
     _226 = 0u;
-    coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator> _292;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _292;
     for (;;)
     {
         _292 = coopMatMulAdd(_31[_226], _28[_226], _224, 0);
@@ -99,7 +100,7 @@ void main()
             _226 = _227;
         }
     }
-    coopMatStore(_292, _24._m0, 0u, 64u, 1u);
+    coopMatStore(_292, _24._m0, 0u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
 }
 
 

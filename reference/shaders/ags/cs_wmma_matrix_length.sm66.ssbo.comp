@@ -10,6 +10,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) writeonly buffer SSBO
@@ -20,19 +21,19 @@ layout(set = 0, binding = 0, std430) writeonly buffer SSBO
 void main()
 {
     uint _13[10];
-    _13[0u] = uint(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA>(0).length());
-    _13[1u] = uint(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB>(0).length());
-    _13[2u] = uint(coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator>(0).length());
-    _13[3u] = uint(coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA>(0).length()) / 4u;
-    _13[4u] = uint(coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB>(0).length()) / 4u;
-    _13[5u] = uint(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA>(0).length());
-    _13[6u] = uint(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB>(0).length());
-    _13[7u] = uint(coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator>(0).length());
-    _13[8u] = uint(coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA>(0).length()) / 4u;
-    _13[9u] = uint(coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseB>(0).length()) / 4u;
+    _13[0u] = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length());
+    _13[1u] = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(0).length());
+    _13[2u] = uint(coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0).length());
+    _13[3u] = uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length()) / 4u;
+    _13[4u] = uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(0).length()) / 4u;
+    _13[5u] = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length());
+    _13[6u] = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(0).length());
+    _13[7u] = uint(coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0).length());
+    _13[8u] = uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length()) / 4u;
+    _13[9u] = uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(0).length()) / 4u;
     uint _59;
     uint _61;
-    _59 = uint(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA>(0).length());
+    _59 = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length());
     _61 = 0u;
     uint _62;
     for (;;)

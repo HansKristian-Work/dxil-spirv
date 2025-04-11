@@ -11,6 +11,7 @@
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
 #extension GL_EXT_spirv_intrinsics : require
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -24,11 +25,11 @@ spirv_instruction(set = "GLSL.std.450", id = 81) f16vec2 spvNClamp(f16vec2, f16v
 spirv_instruction(set = "GLSL.std.450", id = 81) f16vec3 spvNClamp(f16vec3, f16vec3, f16vec3);
 spirv_instruction(set = "GLSL.std.450", id = 81) f16vec4 spvNClamp(f16vec4, f16vec4, f16vec4);
 
-coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> CoopMatFP16toFP8(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _40)
+coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> CoopMatFP16toFP8(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _40)
 {
     uint _48;
     _48 = 0u;
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> coop_output;
+    coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> coop_output;
     for (;;)
     {
         uint _49 = _48 + 1u;
@@ -39,7 +40,7 @@ coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> CoopMatFP16toFP8(coopmat<float16_t
         i8vec2 _89 = unpack8(_82 >> max((-_70), 0s));
         int8_t _92 = _89.y;
         coop_output[_48] = ((uint8_t(_92) + ((uint8_t((_92 & int8_t(1)) | (_89.x | int8_t(_82 & 127s))) > uint8_t(128)) ? uint8_t(1) : uint8_t(0))) & uint8_t(127)) | (unpack8(_58).y & uint8_t(128));
-        if (_49 < uint(coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA>(0).length()))
+        if (_49 < uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length()))
         {
             _48 = _49;
         }
@@ -53,10 +54,10 @@ coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> CoopMatFP16toFP8(coopmat<float16_t
 
 void main()
 {
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _109 = coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA>(uint16BitsToFloat16(uint16_t(gl_WorkGroupID.x)));
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _110 = CoopMatFP16toFP8(_109);
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _111 = coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA>(uint16BitsToFloat16(uint16_t(gl_WorkGroupID.x | 32768u)));
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseA> _112 = CoopMatFP16toFP8(_111);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _109 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(uint16BitsToFloat16(uint16_t(gl_WorkGroupID.x)));
+    coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _110 = CoopMatFP16toFP8(_109);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _111 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(uint16BitsToFloat16(uint16_t(gl_WorkGroupID.x | 32768u)));
+    coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _112 = CoopMatFP16toFP8(_111);
     if (gl_LocalInvocationIndex == 0u)
     {
         _17._m0[gl_WorkGroupID.x] = uvec2(pack32(u8vec4(_110[0], _110[1], _110[2], _110[3])), pack32(u8vec4(_112[0], _112[1], _112[2], _112[3])));

@@ -11,6 +11,7 @@
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
 #extension GL_EXT_spirv_intrinsics : require
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -29,11 +30,11 @@ spirv_instruction(set = "GLSL.std.450", id = 81) f16vec2 spvNClamp(f16vec2, f16v
 spirv_instruction(set = "GLSL.std.450", id = 81) f16vec3 spvNClamp(f16vec3, f16vec3, f16vec3);
 spirv_instruction(set = "GLSL.std.450", id = 81) f16vec4 spvNClamp(f16vec4, f16vec4, f16vec4);
 
-coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseAccumulator> CoopMatFP16toFP8(coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseAccumulator> _45)
+coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> CoopMatFP16toFP8(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _45)
 {
     uint _53;
     _53 = 0u;
-    coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseAccumulator> coop_output;
+    coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> coop_output;
     for (;;)
     {
         uint _54 = _53 + 1u;
@@ -44,7 +45,7 @@ coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseAccumulator> CoopMatFP16toFP8(coopmat
         i8vec2 _94 = unpack8(_87 >> max((-_75), 0s));
         int8_t _97 = _94.y;
         coop_output[_53] = ((uint8_t(_97) + ((uint8_t((_97 & int8_t(1)) | (_94.x | int8_t(_87 & 127s))) > uint8_t(128)) ? uint8_t(1) : uint8_t(0))) & uint8_t(127)) | (unpack8(_62).y & uint8_t(128));
-        if (_54 < uint(coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseAccumulator>(0).length()))
+        if (_54 < uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0).length()))
         {
             _53 = _54;
         }
@@ -58,14 +59,14 @@ coopmat<uint8_t, 3u, 16u, 16u, gl_MatrixUseAccumulator> CoopMatFP16toFP8(coopmat
 
 void main()
 {
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _30;
-    coopMatLoad(_30, _21._m0, 0u, 32u, 0u);
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _33;
-    coopMatLoad(_33, _21._m0, 512u, 32u, 1u);
-    coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator> _37;
-    coopMatLoad(_37, _21._m0, 1024u, 64u, 1u);
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseAccumulator> _114 = coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseAccumulator>(coopMatMulAdd(_30, _33, _37, 0));
-    coopMatStore(CoopMatFP16toFP8(_114), _25._m0, 0u, 16u, 1u);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _30;
+    coopMatLoad(_30, _21._m0, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _33;
+    coopMatLoad(_33, _21._m0, 512u, 32u, gl_CooperativeMatrixLayoutColumnMajor);
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _37;
+    coopMatLoad(_37, _21._m0, 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _114 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(coopMatMulAdd(_30, _33, _37, 0));
+    coopMatStore(CoopMatFP16toFP8(_114), _25._m0, 0u, 16u, gl_CooperativeMatrixLayoutColumnMajor);
 }
 
 

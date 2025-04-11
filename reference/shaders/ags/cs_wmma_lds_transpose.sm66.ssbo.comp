@@ -10,6 +10,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
 #extension GL_KHR_shader_subgroup_basic : require
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -27,23 +28,23 @@ shared uint _28[512];
 
 void main()
 {
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _33;
-    coopMatLoad(_33, _20._m0, 0u, 32u, 0u);
-    coopMatStore(_33, _28, 0u, 32u, 0u);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _33;
+    coopMatLoad(_33, _20._m0, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(_33, _28, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
     subgroupMemoryBarrierShared();
     subgroupBarrier();
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseA> _38;
-    coopMatLoad(_38, _28, 0u, 32u, 1u);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _38;
+    coopMatLoad(_38, _28, 0u, 32u, gl_CooperativeMatrixLayoutColumnMajor);
     subgroupMemoryBarrierShared();
     subgroupBarrier();
     subgroupMemoryBarrierShared();
     subgroupBarrier();
-    coopmat<float16_t, 3u, 16u, 16u, gl_MatrixUseB> _40;
-    coopMatLoad(_40, _28, 0u, 32u, 0u);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _40;
+    coopMatLoad(_40, _28, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
     subgroupMemoryBarrierShared();
     subgroupBarrier();
-    coopMatStore(coopMatMulAdd(_38, _40, coopmat<float, 3u, 16u, 16u, gl_MatrixUseAccumulator>(0.0), 0), _24._m0, 0u, 64u, 0u);
+    coopMatStore(coopMatMulAdd(_38, _40, coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0), 0), _24._m0, 0u, 64u, gl_CooperativeMatrixLayoutRowMajor);
 }
 
 
