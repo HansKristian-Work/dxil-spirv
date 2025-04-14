@@ -83,6 +83,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_node_coalesce_payload_offset(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_coop_mat_fp8_to_fp16(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_coop_mat_fp16_to_fp8(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
+	spv::Id build_coop_mat_transfer(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_coop_mat_clamp(SPIRVModule &module, spv::Id type);
 	spv::Id build_is_quad_uniform_control_flow(SPIRVModule &module);
 	spv::Id build_validate_bda_load_store(SPIRVModule &module);
@@ -169,8 +170,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 
 	struct CoopMatConvOp
 	{
-		spv::Id u8_type;
-		spv::Id float_type;
+		spv::Id input_type;
+		spv::Id output_type;
 		spv::Id func_id;
 		HelperCall call;
 	};
@@ -2226,6 +2227,81 @@ spv::Id SPIRVModule::Impl::build_is_quad_uniform_control_flow(SPIRVModule &modul
 	return is_quad_uniform_call_id;
 }
 
+spv::Id SPIRVModule::Impl::build_coop_mat_transfer(SPIRVModule &module, const spv::Id *ids, uint32_t id_count)
+{
+	if (id_count != 2)
+		return 0;
+
+	spv::Id input_type = ids[0];
+	spv::Id output_type = ids[1];
+	for (auto &ops : coop_mat_conv_ids)
+		if (ops.output_type == output_type && ops.input_type == input_type && ops.call == HelperCall::CoopMatTransfer)
+			return ops.func_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bool_type = builder.makeBoolType();
+
+	// RADV workaround. It fails to understand coopmat passed as value.
+	spv::Id input_ptr_type = builder.makePointer(spv::StorageClassFunction, input_type);
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, output_type,
+	                                       "CoopMatTransfer",
+	                                       { input_ptr_type }, {}, &entry);
+
+	spv::Id output_id = create_variable(spv::StorageClassFunction, output_type, "coop_output");
+	auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
+	len->addIdOperand(output_type);
+
+	auto *header = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge = new spv::Block(builder.getUniqueId(), *func);
+	builder.createBranch(header);
+	builder.setBuildPoint(header);
+	{
+		auto *phi = builder.addInstruction(uint_type, spv::OpPhi);
+		auto *iter = builder.addInstruction(uint_type, spv::OpIAdd);
+		iter->addIdOperand(phi->getResultId());
+		iter->addIdOperand(builder.makeUintConstant(1));
+
+		phi->addIdOperand(builder.makeUintConstant(0));
+		phi->addIdOperand(entry->getId());
+		phi->addIdOperand(iter->getResultId());
+		phi->addIdOperand(header->getId());
+
+		auto *input_chain = builder.addInstruction(
+		    builder.makePointer(spv::StorageClassFunction, builder.getContainedTypeId(input_type)), spv::OpInBoundsAccessChain);
+		input_chain->addIdOperand(func->getParamId(0));
+		input_chain->addIdOperand(phi->getResultId());
+
+		auto *load = builder.addInstruction(builder.getContainedTypeId(input_type), spv::OpLoad);
+		load->addIdOperand(input_chain->getResultId());
+
+		auto *output_chain = builder.addInstruction(
+		    builder.makePointer(spv::StorageClassFunction, builder.getContainedTypeId(output_type)), spv::OpInBoundsAccessChain);
+		output_chain->addIdOperand(output_id);
+		output_chain->addIdOperand(phi->getResultId());
+		auto *store = builder.addInstruction(spv::OpStore);
+		store->addIdOperand(output_chain->getResultId());
+		store->addIdOperand(load->getResultId());
+
+		auto *cmp = builder.addInstruction(bool_type, spv::OpULessThan);
+		cmp->addIdOperand(iter->getResultId());
+		cmp->addIdOperand(len->getResultId());
+		builder.createLoopMerge(merge, header, 0);
+		builder.createConditionalBranch(cmp->getResultId(), header, merge);
+	}
+
+	builder.setBuildPoint(merge);
+	auto *loaded_result = builder.addInstruction(output_type, spv::OpLoad);
+	loaded_result->addIdOperand(output_id);
+	builder.makeReturn(false, loaded_result->getResultId());
+	builder.setBuildPoint(current_build_point);
+	coop_mat_conv_ids.push_back({ input_type, output_type, func->getId(), HelperCall::CoopMatTransfer });
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const spv::Id *ids, uint32_t id_count)
 {
 	if (id_count != 2)
@@ -2235,7 +2311,7 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 	spv::Id f16_type = ids[1];
 
 	for (auto &ops : coop_mat_conv_ids)
-		if (ops.u8_type == u8_type && ops.float_type == f16_type && ops.call == HelperCall::CoopMatFP16toFP8)
+		if (ops.output_type == u8_type && ops.input_type == f16_type && ops.call == HelperCall::CoopMatFP16toFP8)
 			return ops.func_id;
 
 	auto *current_build_point = builder.getBuildPoint();
@@ -2454,14 +2530,14 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 	loaded_result->addIdOperand(output_id);
 	builder.makeReturn(false, loaded_result->getResultId());
 	builder.setBuildPoint(current_build_point);
-	coop_mat_conv_ids.push_back({ u8_type, f16_type, func->getId(), HelperCall::CoopMatFP16toFP8 });
+	coop_mat_conv_ids.push_back({ f16_type, u8_type, func->getId(), HelperCall::CoopMatFP16toFP8 });
 	return func->getId();
 }
 
 spv::Id SPIRVModule::Impl::build_coop_mat_clamp(SPIRVModule &module, spv::Id type_id)
 {
 	for (auto &ops : coop_mat_conv_ids)
-		if (ops.float_type == type_id && ops.call == HelperCall::CoopMatClamp)
+		if (ops.input_type == type_id && ops.call == HelperCall::CoopMatClamp)
 			return ops.func_id;
 	auto *current_build_point = builder.getBuildPoint();
 
@@ -2536,7 +2612,7 @@ spv::Id SPIRVModule::Impl::build_coop_mat_clamp(SPIRVModule &module, spv::Id typ
 	builder.makeReturn(false, loaded_result->getResultId());
 
 	builder.setBuildPoint(current_build_point);
-	coop_mat_conv_ids.push_back({ 0, type_id, func->getId(), HelperCall::CoopMatClamp });
+	coop_mat_conv_ids.push_back({ type_id, type_id, func->getId(), HelperCall::CoopMatClamp });
 	return func->getId();
 }
 
@@ -2549,7 +2625,7 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp8_to_fp16(SPIRVModule &module, const
 	spv::Id f16_type = ids[1];
 
 	for (auto &ops : coop_mat_conv_ids)
-		if (ops.u8_type == u8_type && ops.float_type == f16_type && ops.call == HelperCall::CoopMatFP8toFP16)
+		if (ops.input_type == u8_type && ops.output_type == f16_type && ops.call == HelperCall::CoopMatFP8toFP16)
 			return ops.func_id;
 
 	auto *current_build_point = builder.getBuildPoint();
@@ -2649,6 +2725,8 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_coop_mat_fp8_to_fp16(module, aux_ids, aux_ids_count);
 	case HelperCall::CoopMatFP16toFP8:
 		return build_coop_mat_fp16_to_fp8(module, aux_ids, aux_ids_count);
+	case HelperCall::CoopMatTransfer:
+		return build_coop_mat_transfer(module, aux_ids, aux_ids_count);
 	default:
 		break;
 	}
