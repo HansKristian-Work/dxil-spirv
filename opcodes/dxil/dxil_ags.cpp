@@ -433,7 +433,7 @@ static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t
 	return load->id;
 }
 
-#if WMMA_FP8
+#if WMMA_FP8 && 0
 static spv::Id emit_coopmat_clamp(Converter::Impl &impl, spv::Id v, spv::Id type, float lo, float hi)
 {
 	auto &builder = impl.builder();
@@ -1180,7 +1180,7 @@ static bool emit_wmma_convert(Converter::Impl &impl)
 
 		spv::Id coopmat = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
 
-#if WMMA_FP8
+#if WMMA_FP8 && 0
 		// AGS does not seem to saturate on FP16 to FP8, but FSR4 doesn't use that it seems, so *shrug*.
 		if (output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
 		    input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32)
