@@ -916,6 +916,7 @@ struct Converter::Impl
 		bool has_group_shared_barrier = false;
 		bool has_group_shared_access = false;
 		bool needs_auto_group_shared_barriers = false;
+		bool require_wmma = false;
 	} shader_analysis;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

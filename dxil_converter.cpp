@@ -4751,6 +4751,22 @@ bool Converter::Impl::emit_global_variables()
 				padded_composite = true;
 			}
 		}
+		else if (address_space == DXIL::AddressSpace::GroupShared &&
+		         shader_analysis.require_wmma)
+		{
+			// Workaround for bugged WMMA shaders.
+			// The shaders rely on AMD aligning LDS size to 512 bytes.
+			// This avoids overflow spilling into LDSTranspose area by mistake, which breaks some shaders.
+			if (auto *array_type = llvm::dyn_cast<llvm::ArrayType>(global.getType()->getPointerElementType()))
+			{
+				scalar_type_id = get_type_id(array_type->getArrayElementType());
+				uint32_t elem_count = array_type->getArrayNumElements();
+				uint32_t alignment = (512 * 8) / array_type->getArrayElementType()->getIntegerBitWidth();
+				elem_count = (elem_count + alignment - 1) & ~(alignment - 1);
+				pointee_type_id = builder().makeArrayType(
+					scalar_type_id, builder().makeUintConstant(elem_count), false);
+			}
+		}
 
 		if (!pointee_type_id)
 			pointee_type_id = get_type_id(global.getType()->getPointerElementType());
@@ -8415,6 +8431,7 @@ void Converter::Impl::push_ags_instruction(const llvm::CallInst *instruction)
 	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLength:
 	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementExtract:
 		shader_analysis.require_subgroups = true;
+		shader_analysis.require_wmma = true;
 		break;
 	}
 
