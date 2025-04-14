@@ -344,9 +344,41 @@ static bool emit_wmma_return_values(Converter::Impl &impl, spv::Id type_id, spv:
 	return true;
 }
 
+static spv::Id emit_coopmat_transfer(Converter::Impl &impl, spv::Id v, uint32_t input_imm, uint32_t output_imm)
+{
+	spv::Id input_type = build_coopmat_type(impl, input_imm);
+	spv::Id output_type = build_coopmat_type(impl, output_imm);
+
+	spv::Id aux_types[3] = { input_type, output_type };
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::CoopMatTransfer, aux_types, 2);
+
+	// RADV workaround. Should pass as value, but NIR aborts.
+	spv::Id param = impl.create_variable(spv::StorageClassFunction, input_type);
+	auto *store = impl.allocate(spv::OpStore);
+	store->add_id(param);
+	store->add_id(v);
+	impl.add(store);
+
+	auto *call = impl.allocate(spv::OpFunctionCall, output_type);
+	call->add_id(call_id);
+	call->add_id(param);
+	impl.add(call);
+
+	return call->id;
+}
+
 static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t input_imm, uint32_t output_imm)
 {
 	auto &builder = impl.builder();
+
+	if (get_matrix_type(input_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_A &&
+	    get_matrix_type(output_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_A)
+	{
+		// It appears that in the cases we care about, layout of B and C are the same.
+		// Just do element-wise copy here to avoid the bad roundtrip.
+		return emit_coopmat_transfer(impl, v, input_imm, output_imm);
+	}
+
 	if (!impl.ags.coopmat_transpose_scratch)
 	{
 		spv::Id lds_type_id = builder.makeUintType(32);

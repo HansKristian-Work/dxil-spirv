@@ -675,6 +675,7 @@ Id Builder::getContainedTypeId(Id typeId, int member) const
     case OpTypeMatrix:
     case OpTypeArray:
     case OpTypeRuntimeArray:
+    case OpTypeCooperativeMatrixKHR:
         return instr->getIdOperand(0);
     case OpTypePointer:
         return instr->getIdOperand(1);
