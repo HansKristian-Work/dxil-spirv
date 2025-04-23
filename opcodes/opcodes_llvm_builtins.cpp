@@ -652,8 +652,14 @@ static spv::Id emit_dxbc_tgsm_bitcast(Converter::Impl &impl, const InstructionTy
 	    DXIL::AddressSpace(instruction->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
 	{
 		auto *input_value = instruction->getOperand(0);
+		uint32_t constant_gep_offset = 0;
 		while (llvm::isa<llvm::ConstantExpr>(input_value))
+		{
+			auto *cexpr = llvm::cast<llvm::ConstantExpr>(input_value);
+			if (cexpr->getOpcode() == llvm::Instruction::GetElementPtr && cexpr->getNumOperands() == 3)
+				constant_gep_offset = cexpr->getOperand(2)->getUniqueInteger().getZExtValue();
 			input_value = llvm::cast<llvm::ConstantExpr>(input_value)->getOperand(0);
+		}
 
 		auto *elem_type = input_value->getType()->getPointerElementType();
 
@@ -674,6 +680,12 @@ static spv::Id emit_dxbc_tgsm_bitcast(Converter::Impl &impl, const InstructionTy
 
 		if (elem_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && elem_type->getIntegerBitWidth() == 8)
 		{
+			if (constant_gep_offset % 4)
+			{
+				LOGE("Expected 4 byte aligned constant gep offset for TGSM.\n");
+				return 0;
+			}
+
 			auto &builder = impl.builder();
 			spv::Id input_id = impl.get_id_for_value(input_value);
 
@@ -687,7 +699,8 @@ static spv::Id emit_dxbc_tgsm_bitcast(Converter::Impl &impl, const InstructionTy
 				while (output_pointer_depth < input_pointer_depth)
 				{
 					output_pointer_depth++;
-					chain->add_id(builder.makeUintConstant(0));
+					chain->add_id(builder.makeUintConstant(constant_gep_offset / 4));
+					constant_gep_offset = 0;
 				}
 				impl.add(chain);
 				input_id = chain->id;
