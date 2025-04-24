@@ -62,7 +62,7 @@ OpDecorate %41 BuiltIn InvocationId
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
 %6 = OpTypeInt 32 0
-%7 = OpConstant %6 5
+%7 = OpConstant %6 32
 %8 = OpTypeArray %5 %7
 %9 = OpTypePointer Input %8
 %10 = OpVariable %9 Input

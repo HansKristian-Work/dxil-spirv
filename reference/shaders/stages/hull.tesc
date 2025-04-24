@@ -99,7 +99,7 @@ OpDecorate %33 BuiltIn InvocationId
 %10 = OpTypeStruct %9
 %11 = OpTypePointer Uniform %10
 %12 = OpVariable %11 Uniform
-%13 = OpConstant %5 5
+%13 = OpConstant %5 32
 %14 = OpTypeArray %7 %13
 %15 = OpTypePointer Input %14
 %16 = OpVariable %15 Input

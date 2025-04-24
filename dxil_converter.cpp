@@ -4857,6 +4857,14 @@ bool Converter::Impl::emit_stage_input_variables()
 	                            execution_model == spv::ExecutionModelTessellationControl ||
 	                            execution_model == spv::ExecutionModelTessellationEvaluation;
 
+	uint32_t stage_input_vertices = execution_mode_meta.stage_input_num_vertex;
+	if (execution_model == spv::ExecutionModelTessellationControl)
+	{
+		// The control point input arrays are effectively unsized. We have to give it something, so use upper bound.
+		constexpr uint32_t MaxControlPoints = 32;
+		stage_input_vertices = MaxControlPoints;
+	}
+
 	auto *inputs_node = llvm::dyn_cast<llvm::MDNode>(inputs);
 
 	auto &builder = spirv_module.get_builder();
@@ -4931,7 +4939,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (arrayed_input)
 		{
 			type_id =
-			    builder.makeArrayType(type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex), 0);
+			    builder.makeArrayType(type_id, builder.makeUintConstant(stage_input_vertices), 0);
 		}
 		else if (per_vertex)
 		{
@@ -5011,7 +5019,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (stage_arrayed_inputs)
 		{
 			type_id = builder.makeArrayType(
-			    type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex, false), 0);
+			    type_id, builder.makeUintConstant(stage_input_vertices, false), 0);
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id);
@@ -5025,7 +5033,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (stage_arrayed_inputs)
 		{
 			type_id = builder.makeArrayType(
-			    type_id, builder.makeUintConstant(execution_mode_meta.stage_input_num_vertex, false), 0);
+			    type_id, builder.makeUintConstant(stage_input_vertices, false), 0);
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id);
