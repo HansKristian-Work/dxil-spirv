@@ -22,8 +22,7 @@ Standard CMake build.
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make
-make install
+cmake --build . --config Release
 ```
 
 ## Linking against dxil-spirv
