@@ -368,9 +368,18 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	if (opcode == DXIL::Op::Sample || opcode == DXIL::Op::SampleCmp || opcode == DXIL::Op::SampleBias || opcode == DXIL::Op::SampleCmpBias)
 	{
-		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(min_lod_argument_index)))
+		auto min_lod_argument_value = instruction->getOperand(min_lod_argument_index);
+		if (llvm::isa<llvm::UndefValue>(min_lod_argument_value))
 		{
-			min_lod_argument = impl.get_id_for_value(instruction->getOperand(min_lod_argument_index));
+			// No value set
+		}
+		else if (llvm::isa<llvm::ConstantFP>(min_lod_argument_value) && llvm::cast<llvm::ConstantFP>(min_lod_argument_value)->getValueAPF().convertToFloat() == 0)
+		{
+			// LOD values less than 0 are invalid, so this is a no-op.
+		}
+		else
+		{
+			min_lod_argument = impl.get_id_for_value(min_lod_argument_value);
 			image_ops |= spv::ImageOperandsMinLodMask;
 			builder.addCapability(spv::CapabilityMinLod);
 		}
@@ -716,9 +725,18 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 
 	unsigned min_lod_argument_index = comparison_sampling ? 17 : 16;
 	spv::Id aux_argument = 0;
-	if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(min_lod_argument_index)))
+	auto min_lod_argument_value = instruction->getOperand(min_lod_argument_index);
+	if (llvm::isa<llvm::UndefValue>(min_lod_argument_value))
 	{
-		aux_argument = impl.get_id_for_value(instruction->getOperand(min_lod_argument_index));
+		// No value set
+	}
+	else if (llvm::isa<llvm::ConstantFP>(min_lod_argument_value) && llvm::cast<llvm::ConstantFP>(min_lod_argument_value)->getValueAPF().convertToFloat() == 0)
+	{
+		// LOD values less than 0 are invalid, so this is a no-op.
+	}
+	else
+	{
+		aux_argument = impl.get_id_for_value(min_lod_argument_value);
 		image_ops |= spv::ImageOperandsMinLodMask;
 		builder.addCapability(spv::CapabilityMinLod);
 	}
