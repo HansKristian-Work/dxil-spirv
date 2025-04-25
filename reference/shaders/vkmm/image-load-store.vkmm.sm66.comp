@@ -1,0 +1,101 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_samplerless_texture_functions : require
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32f) uniform image2D _9[];
+layout(set = 0, binding = 0, r32f) uniform image2D _12[];
+layout(set = 0, binding = 0) uniform texture2D _16[];
+
+void main()
+{
+    imageStore(_9[0u], ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), vec4(imageLoad(_9[0u], ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y))).x + 1.0));
+    imageStore(_12[1u], ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), vec4(imageLoad(_12[1u], ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y))).x + texelFetch(_16[2u], ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(0u)).x));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 58
+; Schema: 0
+OpCapability Shader
+OpCapability StorageImageWriteWithoutFormat
+OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
+OpExtension "SPV_EXT_descriptor_indexing"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %12 %16 %20
+OpExecutionMode %3 LocalSize 8 8 1
+OpName %3 "main"
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 0
+OpDecorate %16 DescriptorSet 0
+OpDecorate %16 Binding 0
+OpDecorate %20 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeImage %5 2D 0 0 0 2 R32f
+%7 = OpTypeRuntimeArray %6
+%8 = OpTypePointer UniformConstant %7
+%9 = OpVariable %8 UniformConstant
+%10 = OpTypeRuntimeArray %6
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeImage %5 2D 0 0 0 1 Unknown
+%14 = OpTypeRuntimeArray %13
+%15 = OpTypePointer UniformConstant %14
+%16 = OpVariable %15 UniformConstant
+%17 = OpTypeInt 32 0
+%18 = OpTypeVector %17 3
+%19 = OpTypePointer Input %18
+%20 = OpVariable %19 Input
+%21 = OpTypePointer Input %17
+%23 = OpConstant %17 0
+%26 = OpConstant %17 1
+%28 = OpTypePointer UniformConstant %6
+%33 = OpTypePointer UniformConstant %13
+%35 = OpConstant %17 2
+%37 = OpTypeVector %5 4
+%39 = OpTypeVector %17 2
+%41 = OpConstant %17 5
+%44 = OpConstant %5 1
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %56
+%56 = OpLabel
+%22 = OpAccessChain %21 %20 %23
+%24 = OpLoad %17 %22
+%25 = OpAccessChain %21 %20 %26
+%27 = OpLoad %17 %25
+%29 = OpAccessChain %28 %9 %23
+%30 = OpLoad %6 %29
+%31 = OpAccessChain %28 %12 %26
+%32 = OpLoad %6 %31
+%34 = OpAccessChain %33 %16 %35
+%36 = OpLoad %13 %34
+%40 = OpCompositeConstruct %39 %24 %27
+%38 = OpImageRead %37 %30 %40 MakeTexelVisible|NonPrivateTexel %41
+%42 = OpCompositeExtract %5 %38 0
+%43 = OpFAdd %5 %42 %44
+%45 = OpCompositeConstruct %39 %24 %27
+%46 = OpCompositeConstruct %37 %43 %43 %43 %43
+OpImageWrite %30 %45 %46 MakeTexelAvailable|NonPrivateTexel %41
+%48 = OpCompositeConstruct %39 %24 %27
+%47 = OpImageFetch %37 %36 %48 Lod %23
+%49 = OpCompositeExtract %5 %47 0
+%51 = OpCompositeConstruct %39 %24 %27
+%50 = OpImageRead %37 %32 %51 NonPrivateTexel
+%52 = OpCompositeExtract %5 %50 0
+%53 = OpFAdd %5 %52 %49
+%54 = OpCompositeConstruct %39 %24 %27
+%55 = OpCompositeConstruct %37 %53 %53 %53 %53
+OpImageWrite %32 %54 %55 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+#endif

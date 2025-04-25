@@ -91,7 +91,7 @@ static bool emit_magic_ags_atomic_u64(Converter::Impl &impl, spv::Id image_id,
 	auto *atomic_op = impl.allocate(atomic_opcode, impl.get_type_id(DXIL::ComponentType::U64, 1, 1));
 
 	atomic_op->add_id(counter_ptr_id);
-	atomic_op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	atomic_op->add_id(builder.getAtomicDeviceScopeId());
 	atomic_op->add_id(builder.makeUintConstant(0));
 	atomic_op->add_id(bitcast_op->id);
 	impl.add(atomic_op);
@@ -441,8 +441,8 @@ static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t
 
 	auto *barrier = impl.allocate(spv::OpControlBarrier);
 	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	barrier->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-	barrier->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	barrier->add_id(builder.getWorkgroupBarrierSemanticsId());
 	impl.add(barrier);
 
 	auto *store = impl.allocate(spv::OpCooperativeMatrixStoreKHR);
@@ -450,12 +450,15 @@ static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t
 	store->add_id(v);
 	store->add_id(builder.makeUintConstant(spv::CooperativeMatrixLayoutColumnMajorKHR));
 	store->add_id(builder.makeUintConstant(16));
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		store->add_literal(spv::MemoryAccessNonPrivatePointerMask);
+
 	impl.add(store);
 
 	barrier = impl.allocate(spv::OpControlBarrier);
 	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	barrier->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-	barrier->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	barrier->add_id(builder.getWorkgroupBarrierSemanticsId());
 	impl.add(barrier);
 
 	spv::Id output_type = build_coopmat_type(impl, output_imm);
@@ -466,6 +469,8 @@ static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t
 	load->add_id(chain->id);
 	load->add_id(builder.makeUintConstant(spv::CooperativeMatrixLayoutColumnMajorKHR));
 	load->add_id(builder.makeUintConstant(16));
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		load->add_literal(spv::MemoryAccessNonPrivatePointerMask);
 	impl.add(load);
 
 	return load->id;
@@ -1435,11 +1440,15 @@ static bool emit_wmma_store(Converter::Impl &impl)
 		column_major ? spv::CooperativeMatrixLayoutColumnMajorKHR : spv::CooperativeMatrixLayoutRowMajorKHR));
 	store->add_id(chain.stride_id);
 
+	bool non_private = impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
+
 	if (chain.alignment)
 	{
 		store->add_literal(spv::MemoryAccessAlignedMask);
 		store->add_literal(chain.alignment);
 	}
+
+	add_vkmm_access_qualifiers(impl, store, { non_private });
 
 	impl.add(store);
 
@@ -1452,7 +1461,7 @@ static void emit_subgroup_barrier(Converter::Impl &impl)
 	auto *barrier = impl.allocate(spv::OpControlBarrier);
 	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	barrier->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+	barrier->add_id(builder.getWorkgroupBarrierSemanticsId());
 	impl.add(barrier);
 }
 
@@ -1497,11 +1506,15 @@ static bool emit_wmma_load(Converter::Impl &impl)
 		column_major ? spv::CooperativeMatrixLayoutColumnMajorKHR : spv::CooperativeMatrixLayoutRowMajorKHR));
 	load->add_id(chain.stride_id);
 
+	bool non_private = impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
+
 	if (chain.alignment)
 	{
 		load->add_literal(spv::MemoryAccessAlignedMask);
 		load->add_literal(chain.alignment);
 	}
+
+	add_vkmm_access_qualifiers(impl, load, { non_private });
 
 	impl.add(load);
 

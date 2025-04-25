@@ -108,7 +108,7 @@ void main()
 // SPIR-V disassembly
 // WaveSize(32)
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 303
 ; Schema: 0
@@ -116,15 +116,16 @@ OpCapability Shader
 OpCapability Float16
 OpCapability StorageBuffer8BitAccess
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability CooperativeMatrixKHR
 OpExtension "SPV_KHR_8bit_storage"
 OpExtension "SPV_KHR_cooperative_matrix"
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main"
-OpExecutionMode %3 LocalSize 32 1 1
-OpExecutionMode %3 DenormPreserve 16
-OpName %3 "main"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %14 "main" %20 %24
+OpExecutionMode %14 LocalSize 32 1 1
+OpExecutionMode %14 DenormPreserve 16
+OpName %14 "main"
 OpName %18 "SSBO"
 OpName %22 "SSBO"
 OpDecorate %17 ArrayStride 1
@@ -140,19 +141,19 @@ OpDecorate %22 Block
 OpDecorate %24 DescriptorSet 0
 OpDecorate %24 Binding 0
 OpDecorate %24 NonReadable
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 16
-%6 = OpTypeInt 32 0
-%7 = OpConstant %6 0
-%8 = OpConstant %6 16
-%10 = OpConstant %6 3
-%9 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %7
-%11 = OpConstant %6 1
-%12 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %11
-%13 = OpTypeFloat 32
-%14 = OpConstant %6 2
-%15 = OpTypeCooperativeMatrixKHR %13 %10 %8 %8 %14
+%1 = OpTypeFloat 16
+%2 = OpTypeInt 32 0
+%3 = OpConstant %2 0
+%4 = OpConstant %2 16
+%6 = OpConstant %2 3
+%5 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %3
+%7 = OpConstant %2 1
+%8 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %7
+%9 = OpTypeFloat 32
+%10 = OpConstant %2 2
+%11 = OpTypeCooperativeMatrixKHR %9 %6 %4 %4 %10
+%12 = OpTypeVoid
+%13 = OpTypeFunction %12
 %16 = OpTypeInt 8 0
 %17 = OpTypeRuntimeArray %16
 %18 = OpTypeStruct %17
@@ -162,35 +163,35 @@ OpDecorate %24 NonReadable
 %22 = OpTypeStruct %21
 %23 = OpTypePointer StorageBuffer %22
 %24 = OpVariable %23 StorageBuffer
-%25 = OpTypeArray %6 %8
-%26 = OpTypeArray %12 %14
+%25 = OpTypeArray %2 %4
+%26 = OpTypeArray %8 %10
 %27 = OpTypePointer Function %26
-%29 = OpTypeArray %9 %14
+%29 = OpTypeArray %5 %10
 %30 = OpTypePointer Function %29
-%37 = OpConstant %6 5
+%37 = OpConstant %2 5
 %39 = OpTypePointer StorageBuffer %16
-%41 = OpConstant %6 64
-%44 = OpConstant %6 8
-%46 = OpTypePointer Function %9
-%59 = OpConstant %6 4
-%66 = OpConstant %6 6
-%70 = OpConstant %6 7
-%73 = OpConstant %6 1024
-%78 = OpTypePointer Function %12
+%41 = OpConstant %2 64
+%44 = OpConstant %2 8
+%46 = OpTypePointer Function %5
+%59 = OpConstant %2 4
+%66 = OpConstant %2 6
+%70 = OpConstant %2 7
+%73 = OpConstant %2 1024
+%78 = OpTypePointer Function %8
 %101 = OpTypeBool
-%104 = OpConstant %6 32
-%108 = OpConstant %6 9
-%110 = OpConstant %6 10
-%112 = OpConstant %6 11
-%114 = OpConstant %6 12
-%116 = OpConstant %6 13
-%118 = OpConstant %6 14
-%120 = OpConstant %6 15
-%122 = OpConstant %6 1056
-%152 = OpConstant %13 0
-%153 = OpConstantComposite %15 %152
-%3 = OpFunction %1 None %2
-%4 = OpLabel
+%104 = OpConstant %2 32
+%108 = OpConstant %2 9
+%110 = OpConstant %2 10
+%112 = OpConstant %2 11
+%114 = OpConstant %2 12
+%116 = OpConstant %2 13
+%118 = OpConstant %2 14
+%120 = OpConstant %2 15
+%122 = OpConstant %2 1056
+%152 = OpConstant %9 0
+%153 = OpConstantComposite %11 %152
+%14 = OpFunction %12 None %13
+%15 = OpLabel
 %28 = OpVariable %27 Function
 %31 = OpVariable %30 Function
 %32 = OpVariable %27 Function
@@ -199,164 +200,164 @@ OpBranch %295
 %295 = OpLabel
 OpBranch %296
 %296 = OpLabel
-%34 = OpPhi %6 %7 %295 %35 %296
-%36 = OpShiftLeftLogical %6 %34 %37
-%40 = OpAccessChain %39 %20 %7 %36
-%42 = OpCooperativeMatrixLoadKHR %9 %40 %7 %41
-%43 = OpIMul %6 %34 %44
-%45 = OpIAdd %6 %7 %43
+%34 = OpPhi %2 %3 %295 %35 %296
+%36 = OpShiftLeftLogical %2 %34 %37
+%40 = OpAccessChain %39 %20 %3 %36
+%42 = OpCooperativeMatrixLoadKHR %5 %40 %3 %41 NonPrivatePointer
+%43 = OpIMul %2 %34 %44
+%45 = OpIAdd %2 %3 %43
 %47 = OpAccessChain %46 %33 %34
 OpStore %47 %42
-%48 = OpIMul %6 %34 %44
-%49 = OpIAdd %6 %11 %48
-%51 = OpIMul %6 %34 %44
-%52 = OpIAdd %6 %14 %51
-%54 = OpIMul %6 %34 %44
-%55 = OpIAdd %6 %10 %54
-%57 = OpIMul %6 %34 %44
-%58 = OpIAdd %6 %59 %57
-%61 = OpIMul %6 %34 %44
-%62 = OpIAdd %6 %37 %61
-%64 = OpIMul %6 %34 %44
-%65 = OpIAdd %6 %66 %64
-%68 = OpIMul %6 %34 %44
-%69 = OpIAdd %6 %70 %68
-%72 = OpIAdd %6 %36 %73
-%74 = OpAccessChain %39 %20 %7 %72
-%75 = OpCooperativeMatrixLoadKHR %12 %74 %11 %41
-%76 = OpIMul %6 %34 %44
-%77 = OpIAdd %6 %7 %76
+%48 = OpIMul %2 %34 %44
+%49 = OpIAdd %2 %7 %48
+%51 = OpIMul %2 %34 %44
+%52 = OpIAdd %2 %10 %51
+%54 = OpIMul %2 %34 %44
+%55 = OpIAdd %2 %6 %54
+%57 = OpIMul %2 %34 %44
+%58 = OpIAdd %2 %59 %57
+%61 = OpIMul %2 %34 %44
+%62 = OpIAdd %2 %37 %61
+%64 = OpIMul %2 %34 %44
+%65 = OpIAdd %2 %66 %64
+%68 = OpIMul %2 %34 %44
+%69 = OpIAdd %2 %70 %68
+%72 = OpIAdd %2 %36 %73
+%74 = OpAccessChain %39 %20 %3 %72
+%75 = OpCooperativeMatrixLoadKHR %8 %74 %7 %41 NonPrivatePointer
+%76 = OpIMul %2 %34 %44
+%77 = OpIAdd %2 %3 %76
 %79 = OpAccessChain %78 %32 %34
 OpStore %79 %75
-%80 = OpIMul %6 %34 %44
-%81 = OpIAdd %6 %11 %80
-%83 = OpIMul %6 %34 %44
-%84 = OpIAdd %6 %14 %83
-%86 = OpIMul %6 %34 %44
-%87 = OpIAdd %6 %10 %86
-%89 = OpIMul %6 %34 %44
-%90 = OpIAdd %6 %59 %89
-%92 = OpIMul %6 %34 %44
-%93 = OpIAdd %6 %37 %92
-%95 = OpIMul %6 %34 %44
-%96 = OpIAdd %6 %66 %95
-%98 = OpIMul %6 %34 %44
-%99 = OpIAdd %6 %70 %98
-%35 = OpIAdd %6 %34 %11
-%102 = OpIEqual %101 %35 %14
+%80 = OpIMul %2 %34 %44
+%81 = OpIAdd %2 %7 %80
+%83 = OpIMul %2 %34 %44
+%84 = OpIAdd %2 %10 %83
+%86 = OpIMul %2 %34 %44
+%87 = OpIAdd %2 %6 %86
+%89 = OpIMul %2 %34 %44
+%90 = OpIAdd %2 %59 %89
+%92 = OpIMul %2 %34 %44
+%93 = OpIAdd %2 %37 %92
+%95 = OpIMul %2 %34 %44
+%96 = OpIAdd %2 %66 %95
+%98 = OpIMul %2 %34 %44
+%99 = OpIAdd %2 %70 %98
+%35 = OpIAdd %2 %34 %7
+%102 = OpIEqual %101 %35 %10
 OpLoopMerge %297 %296 None
 OpBranchConditional %102 %297 %296
 %297 = OpLabel
-%103 = OpAccessChain %39 %20 %7 %104
-%105 = OpCooperativeMatrixLoadKHR %9 %103 %7 %41
-%106 = OpAccessChain %46 %31 %11
+%103 = OpAccessChain %39 %20 %3 %104
+%105 = OpCooperativeMatrixLoadKHR %5 %103 %3 %41 NonPrivatePointer
+%106 = OpAccessChain %46 %31 %7
 OpStore %106 %105
-%121 = OpAccessChain %39 %20 %7 %122
-%123 = OpCooperativeMatrixLoadKHR %12 %121 %11 %41
-%124 = OpAccessChain %78 %28 %11
+%121 = OpAccessChain %39 %20 %3 %122
+%123 = OpCooperativeMatrixLoadKHR %8 %121 %7 %41 NonPrivatePointer
+%124 = OpAccessChain %78 %28 %7
 OpStore %124 %123
-%132 = OpAccessChain %39 %20 %7 %7
-%133 = OpCooperativeMatrixLoadKHR %9 %132 %7 %41
-%134 = OpAccessChain %46 %31 %7
+%132 = OpAccessChain %39 %20 %3 %3
+%133 = OpCooperativeMatrixLoadKHR %5 %132 %3 %41 NonPrivatePointer
+%134 = OpAccessChain %46 %31 %3
 OpStore %134 %133
-%142 = OpAccessChain %39 %20 %7 %73
-%143 = OpCooperativeMatrixLoadKHR %12 %142 %11 %41
-%144 = OpAccessChain %78 %28 %7
+%142 = OpAccessChain %39 %20 %3 %73
+%143 = OpCooperativeMatrixLoadKHR %8 %142 %7 %41 NonPrivatePointer
+%144 = OpAccessChain %78 %28 %3
 OpStore %144 %143
 OpBranch %298
 %298 = OpLabel
-%154 = OpPhi %15 %153 %297 %222 %298
-%156 = OpPhi %6 %7 %297 %157 %298
-%158 = OpIMul %6 %156 %44
-%159 = OpIAdd %6 %11 %158
-%162 = OpIMul %6 %156 %44
-%163 = OpIAdd %6 %7 %162
+%154 = OpPhi %11 %153 %297 %222 %298
+%156 = OpPhi %2 %3 %297 %157 %298
+%158 = OpIMul %2 %156 %44
+%159 = OpIAdd %2 %7 %158
+%162 = OpIMul %2 %156 %44
+%163 = OpIAdd %2 %3 %162
 %164 = OpAccessChain %46 %33 %156
-%165 = OpLoad %9 %164
-%166 = OpIMul %6 %156 %44
-%167 = OpIAdd %6 %10 %166
-%170 = OpIMul %6 %156 %44
-%171 = OpIAdd %6 %14 %170
-%174 = OpIMul %6 %156 %44
-%175 = OpIAdd %6 %37 %174
-%178 = OpIMul %6 %156 %44
-%179 = OpIAdd %6 %59 %178
-%182 = OpIMul %6 %156 %44
-%183 = OpIAdd %6 %70 %182
-%186 = OpIMul %6 %156 %44
-%187 = OpIAdd %6 %66 %186
-%190 = OpIMul %6 %156 %44
-%191 = OpIAdd %6 %11 %190
-%194 = OpIMul %6 %156 %44
-%195 = OpIAdd %6 %7 %194
+%165 = OpLoad %5 %164
+%166 = OpIMul %2 %156 %44
+%167 = OpIAdd %2 %6 %166
+%170 = OpIMul %2 %156 %44
+%171 = OpIAdd %2 %10 %170
+%174 = OpIMul %2 %156 %44
+%175 = OpIAdd %2 %37 %174
+%178 = OpIMul %2 %156 %44
+%179 = OpIAdd %2 %59 %178
+%182 = OpIMul %2 %156 %44
+%183 = OpIAdd %2 %70 %182
+%186 = OpIMul %2 %156 %44
+%187 = OpIAdd %2 %66 %186
+%190 = OpIMul %2 %156 %44
+%191 = OpIAdd %2 %7 %190
+%194 = OpIMul %2 %156 %44
+%195 = OpIAdd %2 %3 %194
 %196 = OpAccessChain %78 %32 %156
-%197 = OpLoad %12 %196
-%198 = OpIMul %6 %156 %44
-%199 = OpIAdd %6 %10 %198
-%202 = OpIMul %6 %156 %44
-%203 = OpIAdd %6 %14 %202
-%206 = OpIMul %6 %156 %44
-%207 = OpIAdd %6 %37 %206
-%210 = OpIMul %6 %156 %44
-%211 = OpIAdd %6 %59 %210
-%214 = OpIMul %6 %156 %44
-%215 = OpIAdd %6 %70 %214
-%218 = OpIMul %6 %156 %44
-%219 = OpIAdd %6 %66 %218
-%222 = OpCooperativeMatrixMulAddKHR %15 %165 %197 %154
-%157 = OpIAdd %6 %156 %11
-%223 = OpIEqual %101 %157 %14
+%197 = OpLoad %8 %196
+%198 = OpIMul %2 %156 %44
+%199 = OpIAdd %2 %6 %198
+%202 = OpIMul %2 %156 %44
+%203 = OpIAdd %2 %10 %202
+%206 = OpIMul %2 %156 %44
+%207 = OpIAdd %2 %37 %206
+%210 = OpIMul %2 %156 %44
+%211 = OpIAdd %2 %59 %210
+%214 = OpIMul %2 %156 %44
+%215 = OpIAdd %2 %70 %214
+%218 = OpIMul %2 %156 %44
+%219 = OpIAdd %2 %66 %218
+%222 = OpCooperativeMatrixMulAddKHR %11 %165 %197 %154
+%157 = OpIAdd %2 %156 %7
+%223 = OpIEqual %101 %157 %10
 OpLoopMerge %299 %298 None
 OpBranchConditional %223 %299 %298
 %299 = OpLabel
 OpBranch %300
 %300 = OpLabel
-%224 = OpPhi %15 %222 %299 %292 %300
-%226 = OpPhi %6 %7 %299 %227 %300
-%228 = OpIMul %6 %226 %44
-%229 = OpIAdd %6 %11 %228
-%232 = OpIMul %6 %226 %44
-%233 = OpIAdd %6 %7 %232
+%224 = OpPhi %11 %222 %299 %292 %300
+%226 = OpPhi %2 %3 %299 %227 %300
+%228 = OpIMul %2 %226 %44
+%229 = OpIAdd %2 %7 %228
+%232 = OpIMul %2 %226 %44
+%233 = OpIAdd %2 %3 %232
 %234 = OpAccessChain %46 %31 %226
-%235 = OpLoad %9 %234
-%236 = OpIMul %6 %226 %44
-%237 = OpIAdd %6 %10 %236
-%240 = OpIMul %6 %226 %44
-%241 = OpIAdd %6 %14 %240
-%244 = OpIMul %6 %226 %44
-%245 = OpIAdd %6 %37 %244
-%248 = OpIMul %6 %226 %44
-%249 = OpIAdd %6 %59 %248
-%252 = OpIMul %6 %226 %44
-%253 = OpIAdd %6 %70 %252
-%256 = OpIMul %6 %226 %44
-%257 = OpIAdd %6 %66 %256
-%260 = OpIMul %6 %226 %44
-%261 = OpIAdd %6 %11 %260
-%264 = OpIMul %6 %226 %44
-%265 = OpIAdd %6 %7 %264
+%235 = OpLoad %5 %234
+%236 = OpIMul %2 %226 %44
+%237 = OpIAdd %2 %6 %236
+%240 = OpIMul %2 %226 %44
+%241 = OpIAdd %2 %10 %240
+%244 = OpIMul %2 %226 %44
+%245 = OpIAdd %2 %37 %244
+%248 = OpIMul %2 %226 %44
+%249 = OpIAdd %2 %59 %248
+%252 = OpIMul %2 %226 %44
+%253 = OpIAdd %2 %70 %252
+%256 = OpIMul %2 %226 %44
+%257 = OpIAdd %2 %66 %256
+%260 = OpIMul %2 %226 %44
+%261 = OpIAdd %2 %7 %260
+%264 = OpIMul %2 %226 %44
+%265 = OpIAdd %2 %3 %264
 %266 = OpAccessChain %78 %28 %226
-%267 = OpLoad %12 %266
-%268 = OpIMul %6 %226 %44
-%269 = OpIAdd %6 %10 %268
-%272 = OpIMul %6 %226 %44
-%273 = OpIAdd %6 %14 %272
-%276 = OpIMul %6 %226 %44
-%277 = OpIAdd %6 %37 %276
-%280 = OpIMul %6 %226 %44
-%281 = OpIAdd %6 %59 %280
-%284 = OpIMul %6 %226 %44
-%285 = OpIAdd %6 %70 %284
-%288 = OpIMul %6 %226 %44
-%289 = OpIAdd %6 %66 %288
-%292 = OpCooperativeMatrixMulAddKHR %15 %235 %267 %224
-%227 = OpIAdd %6 %226 %11
-%293 = OpIEqual %101 %227 %14
+%267 = OpLoad %8 %266
+%268 = OpIMul %2 %226 %44
+%269 = OpIAdd %2 %6 %268
+%272 = OpIMul %2 %226 %44
+%273 = OpIAdd %2 %10 %272
+%276 = OpIMul %2 %226 %44
+%277 = OpIAdd %2 %37 %276
+%280 = OpIMul %2 %226 %44
+%281 = OpIAdd %2 %59 %280
+%284 = OpIMul %2 %226 %44
+%285 = OpIAdd %2 %70 %284
+%288 = OpIMul %2 %226 %44
+%289 = OpIAdd %2 %66 %288
+%292 = OpCooperativeMatrixMulAddKHR %11 %235 %267 %224
+%227 = OpIAdd %2 %226 %7
+%293 = OpIEqual %101 %227 %10
 OpLoopMerge %301 %300 None
 OpBranchConditional %293 %301 %300
 %301 = OpLabel
-%294 = OpAccessChain %39 %24 %7 %7
-OpCooperativeMatrixStoreKHR %294 %292 %11 %41
+%294 = OpAccessChain %39 %24 %3 %3
+OpCooperativeMatrixStoreKHR %294 %292 %7 %41 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

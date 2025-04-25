@@ -1,0 +1,238 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer SSBO
+{
+    uvec4 _m0[];
+} _11[];
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer _13_15
+{
+    uint _m0[];
+} _15;
+
+layout(set = 0, binding = 1, std430) restrict readonly buffer _17_19
+{
+    uvec4 _m0[];
+} _19;
+
+layout(set = 0, binding = 0, std140) uniform _24_26
+{
+    vec4 _m0[1];
+} _26;
+
+void main()
+{
+    _11[0u]._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(0.0), floatBitsToUint(0.0), floatBitsToUint(0.0), floatBitsToUint(0.0));
+    if (!(floatBitsToUint(_26._m0[0u]).x == 0u))
+    {
+        uint _64 = 0u;
+        uint _68;
+        uint _71;
+        bool _73;
+        for (;;)
+        {
+            _68 = (_64 << 8u) + gl_LocalInvocationIndex;
+            _71 = _15._m0[_68];
+            groupMemoryBarrier();
+            barrier();
+            _73 = _71 < 256u;
+            if (_73)
+            {
+                vec4 _77 = uintBitsToFloat(_19._m0[_68]);
+                vec4 _84 = uintBitsToFloat(_11[0u]._m0[_71]);
+                _11[0u]._m0[_71] = uvec4(floatBitsToUint(_84.x + _77.x), floatBitsToUint(_84.y + _77.y), floatBitsToUint(_84.z + _77.z), floatBitsToUint(_84.w + _77.w));
+            }
+            uint _65 = _64 + 1u;
+            if (_65 < floatBitsToUint(_26._m0[0u]).x)
+            {
+                _64 = _65;
+                continue;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+    vec4 _53 = uintBitsToFloat(_11[1u]._m0[gl_LocalInvocationIndex]);
+    _11[2u]._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(_53.x), floatBitsToUint(_53.y), floatBitsToUint(_53.z), floatBitsToUint(_53.w));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 114
+; Schema: 0
+OpCapability Shader
+OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
+OpExtension "SPV_EXT_descriptor_indexing"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %11 %15 %19 %26 %28
+OpExecutionMode %3 LocalSize 256 1 1
+OpName %3 "main"
+OpName %8 "SSBO"
+OpName %13 "SSBO"
+OpName %17 "SSBO"
+OpName %24 ""
+OpDecorate %7 ArrayStride 16
+OpMemberDecorate %8 0 Offset 0
+OpDecorate %8 Block
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 0
+OpDecorate %12 ArrayStride 4
+OpMemberDecorate %13 0 Offset 0
+OpDecorate %13 Block
+OpDecorate %15 DescriptorSet 0
+OpDecorate %15 Binding 0
+OpDecorate %15 NonWritable
+OpDecorate %15 Restrict
+OpDecorate %16 ArrayStride 16
+OpMemberDecorate %17 0 Offset 0
+OpDecorate %17 Block
+OpDecorate %19 DescriptorSet 0
+OpDecorate %19 Binding 1
+OpDecorate %19 NonWritable
+OpDecorate %19 Restrict
+OpDecorate %23 ArrayStride 16
+OpMemberDecorate %24 0 Offset 0
+OpDecorate %24 Block
+OpDecorate %26 DescriptorSet 0
+OpDecorate %26 Binding 0
+OpDecorate %28 BuiltIn LocalInvocationIndex
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeVector %5 4
+%7 = OpTypeRuntimeArray %6
+%8 = OpTypeStruct %7
+%9 = OpTypeRuntimeArray %8
+%10 = OpTypePointer StorageBuffer %9
+%11 = OpVariable %10 StorageBuffer
+%12 = OpTypeRuntimeArray %5
+%13 = OpTypeStruct %12
+%14 = OpTypePointer StorageBuffer %13
+%15 = OpVariable %14 StorageBuffer
+%16 = OpTypeRuntimeArray %6
+%17 = OpTypeStruct %16
+%18 = OpTypePointer StorageBuffer %17
+%19 = OpVariable %18 StorageBuffer
+%20 = OpConstant %5 1
+%21 = OpTypeFloat 32
+%22 = OpTypeVector %21 4
+%23 = OpTypeArray %22 %20
+%24 = OpTypeStruct %23
+%25 = OpTypePointer Uniform %24
+%26 = OpVariable %25 Uniform
+%27 = OpTypePointer Input %5
+%28 = OpVariable %27 Input
+%30 = OpTypePointer StorageBuffer %8
+%32 = OpConstant %5 0
+%35 = OpConstant %5 2
+%36 = OpConstant %21 0
+%42 = OpTypePointer StorageBuffer %6
+%44 = OpTypePointer Uniform %22
+%49 = OpTypeBool
+%67 = OpConstant %5 8
+%69 = OpTypePointer StorageBuffer %5
+%72 = OpConstant %5 26696
+%74 = OpConstant %5 256
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %104
+%104 = OpLabel
+%29 = OpLoad %5 %28
+%31 = OpAccessChain %30 %11 %32
+%33 = OpAccessChain %30 %11 %20
+%34 = OpAccessChain %30 %11 %35
+%37 = OpBitcast %5 %36
+%38 = OpBitcast %5 %36
+%39 = OpBitcast %5 %36
+%40 = OpBitcast %5 %36
+%41 = OpCompositeConstruct %6 %37 %38 %39 %40
+%43 = OpAccessChain %42 %31 %32 %29
+OpStore %43 %41 NonPrivatePointer
+%45 = OpAccessChain %44 %26 %32 %32
+%46 = OpLoad %22 %45
+%47 = OpBitcast %6 %46
+%48 = OpCompositeExtract %5 %47 0
+%50 = OpIEqual %49 %48 %32
+OpSelectionMerge %112 None
+OpBranchConditional %50 %112 %105
+%105 = OpLabel
+OpBranch %106
+%106 = OpLabel
+%64 = OpPhi %5 %32 %105 %65 %110
+%66 = OpShiftLeftLogical %5 %64 %67
+%68 = OpIAdd %5 %66 %29
+%70 = OpAccessChain %69 %15 %32 %68
+%71 = OpLoad %5 %70
+OpControlBarrier %35 %35 %72
+%73 = OpULessThan %49 %71 %74
+OpLoopMerge %111 %110 None
+OpBranch %107
+%107 = OpLabel
+OpSelectionMerge %109 None
+OpBranchConditional %73 %108 %109
+%108 = OpLabel
+%75 = OpAccessChain %42 %19 %32 %68
+%76 = OpLoad %6 %75
+%77 = OpBitcast %22 %76
+%78 = OpCompositeExtract %21 %77 0
+%79 = OpCompositeExtract %21 %77 1
+%80 = OpCompositeExtract %21 %77 2
+%81 = OpCompositeExtract %21 %77 3
+%82 = OpAccessChain %42 %31 %32 %71
+%83 = OpLoad %6 %82 NonPrivatePointer
+%84 = OpBitcast %22 %83
+%85 = OpCompositeExtract %21 %84 0
+%86 = OpCompositeExtract %21 %84 1
+%87 = OpCompositeExtract %21 %84 2
+%88 = OpCompositeExtract %21 %84 3
+%89 = OpFAdd %21 %85 %78
+%90 = OpFAdd %21 %86 %79
+%91 = OpFAdd %21 %87 %80
+%92 = OpFAdd %21 %88 %81
+%93 = OpBitcast %5 %89
+%94 = OpBitcast %5 %90
+%95 = OpBitcast %5 %91
+%96 = OpBitcast %5 %92
+%97 = OpCompositeConstruct %6 %93 %94 %95 %96
+%98 = OpAccessChain %42 %31 %32 %71
+OpStore %98 %97 NonPrivatePointer
+OpBranch %109
+%109 = OpLabel
+OpBranch %110
+%110 = OpLabel
+%65 = OpIAdd %5 %64 %20
+%99 = OpAccessChain %44 %26 %32 %32
+%100 = OpLoad %22 %99
+%101 = OpBitcast %6 %100
+%102 = OpCompositeExtract %5 %101 0
+%103 = OpULessThan %49 %65 %102
+OpBranchConditional %103 %106 %111
+%111 = OpLabel
+OpBranch %112
+%112 = OpLabel
+%51 = OpAccessChain %42 %33 %32 %29
+%52 = OpLoad %6 %51 NonPrivatePointer
+%53 = OpBitcast %22 %52
+%54 = OpCompositeExtract %21 %53 0
+%55 = OpCompositeExtract %21 %53 1
+%56 = OpCompositeExtract %21 %53 2
+%57 = OpCompositeExtract %21 %53 3
+%58 = OpBitcast %5 %54
+%59 = OpBitcast %5 %55
+%60 = OpBitcast %5 %56
+%61 = OpBitcast %5 %57
+%62 = OpCompositeConstruct %6 %58 %59 %60 %61
+%63 = OpAccessChain %42 %34 %32 %29
+OpStore %63 %62 NonPrivatePointer
+OpReturn
+OpFunctionEnd
+#endif

@@ -86,18 +86,18 @@ void main()
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _31;
     coopMatLoad(_31, _22._m0, 0u, 32u, gl_CooperativeMatrixLayoutColumnMajor);
     uint _39 = gl_SubgroupID * 256u;
-    memoryBarrierShared();
+    subgroupMemoryBarrierShared();
     subgroupBarrier();
     coopMatStore(_31, LDSTransposeScratch, _39, 16u, gl_CooperativeMatrixLayoutColumnMajor);
-    memoryBarrierShared();
+    subgroupMemoryBarrierShared();
     subgroupBarrier();
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _43;
     coopMatLoad(_43, LDSTransposeScratch, _39, 16u, gl_CooperativeMatrixLayoutColumnMajor);
     uint _45 = gl_SubgroupID * 256u;
-    memoryBarrierShared();
+    subgroupMemoryBarrierShared();
     subgroupBarrier();
     coopMatStore(_31, LDSTransposeScratch, _45, 16u, gl_CooperativeMatrixLayoutColumnMajor);
-    memoryBarrierShared();
+    subgroupMemoryBarrierShared();
     subgroupBarrier();
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _47;
     coopMatLoad(_47, LDSTransposeScratch, _45, 16u, gl_CooperativeMatrixLayoutColumnMajor);
@@ -106,19 +106,19 @@ void main()
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _127 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(_49);
     coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _128 = CoopMatFP16toFP8(_127);
     uint _130 = gl_SubgroupID * 256u;
-    memoryBarrierShared();
+    subgroupMemoryBarrierShared();
     subgroupBarrier();
     coopMatStore(_128, LDSTransposeScratch, _130, 16u, gl_CooperativeMatrixLayoutColumnMajor);
-    memoryBarrierShared();
+    subgroupMemoryBarrierShared();
     subgroupBarrier();
     coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _132;
     coopMatLoad(_132, LDSTransposeScratch, _130, 16u, gl_CooperativeMatrixLayoutColumnMajor);
     coopMatStore(_132, _26._m0, 1024u, 16u, gl_CooperativeMatrixLayoutColumnMajor);
     uint _136 = gl_SubgroupID * 256u;
-    memoryBarrierShared();
+    subgroupMemoryBarrierShared();
     subgroupBarrier();
     coopMatStore(_132, LDSTransposeScratch, _136, 16u, gl_CooperativeMatrixLayoutColumnMajor);
-    memoryBarrierShared();
+    subgroupMemoryBarrierShared();
     subgroupBarrier();
     coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _138;
     coopMatLoad(_138, LDSTransposeScratch, _136, 16u, gl_CooperativeMatrixLayoutColumnMajor);
@@ -131,7 +131,7 @@ void main()
 // SPIR-V disassembly
 // WaveSize(32)
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 170
 ; Schema: 0
@@ -142,16 +142,17 @@ OpCapability Int8
 OpCapability GroupNonUniform
 OpCapability StorageBuffer8BitAccess
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability CooperativeMatrixKHR
 OpExtension "SPV_KHR_8bit_storage"
 OpExtension "SPV_KHR_cooperative_matrix"
 OpExtension "SPV_KHR_float_controls"
 %71 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %37
-OpExecutionMode %3 LocalSize 32 1 1
-OpExecutionMode %3 DenormPreserve 16
-OpName %3 "main"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %17 "main" %22 %26 %35 %37
+OpExecutionMode %17 LocalSize 32 1 1
+OpExecutionMode %17 DenormPreserve 16
+OpName %17 "main"
 OpName %20 "SSBO"
 OpName %24 "SSBO"
 OpName %35 "LDSTransposeScratch"
@@ -173,52 +174,52 @@ OpDecorate %26 DescriptorSet 0
 OpDecorate %26 Binding 0
 OpDecorate %26 NonReadable
 OpDecorate %37 BuiltIn SubgroupId
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 16
-%6 = OpTypeInt 32 0
-%7 = OpConstant %6 2
-%8 = OpConstant %6 16
-%10 = OpConstant %6 3
-%9 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %7
-%11 = OpConstant %6 0
-%12 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %11
-%13 = OpConstant %6 1
-%14 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %13
-%15 = OpTypeFloat 32
-%16 = OpTypeCooperativeMatrixKHR %15 %10 %8 %8 %7
-%17 = OpTypeInt 8 0
-%18 = OpTypeCooperativeMatrixKHR %17 %10 %8 %8 %13
-%19 = OpTypeRuntimeArray %17
+%1 = OpTypeFloat 16
+%2 = OpTypeInt 32 0
+%3 = OpConstant %2 2
+%4 = OpConstant %2 16
+%6 = OpConstant %2 3
+%5 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %3
+%7 = OpConstant %2 0
+%8 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %7
+%9 = OpConstant %2 1
+%10 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %9
+%11 = OpTypeFloat 32
+%12 = OpTypeCooperativeMatrixKHR %11 %6 %4 %4 %3
+%13 = OpTypeInt 8 0
+%14 = OpTypeCooperativeMatrixKHR %13 %6 %4 %4 %9
+%15 = OpTypeVoid
+%16 = OpTypeFunction %15
+%19 = OpTypeRuntimeArray %13
 %20 = OpTypeStruct %19
 %21 = OpTypePointer StorageBuffer %20
 %22 = OpVariable %21 StorageBuffer
-%23 = OpTypeRuntimeArray %17
+%23 = OpTypeRuntimeArray %13
 %24 = OpTypeStruct %23
 %25 = OpTypePointer StorageBuffer %24
 %26 = OpVariable %25 StorageBuffer
-%28 = OpTypePointer StorageBuffer %17
-%30 = OpConstant %6 32
-%32 = OpConstant %6 256
-%33 = OpTypeArray %6 %32
+%28 = OpTypePointer StorageBuffer %13
+%30 = OpConstant %2 32
+%32 = OpConstant %2 256
+%33 = OpTypeArray %2 %32
 %34 = OpTypePointer Workgroup %33
 %35 = OpVariable %34 Workgroup
-%36 = OpTypePointer Input %6
+%36 = OpTypePointer Input %2
 %37 = OpVariable %36 Input
-%40 = OpTypePointer Workgroup %6
-%42 = OpConstant %6 264
-%51 = OpConstant %6 64
-%52 = OpTypeCooperativeMatrixKHR %17 %10 %8 %8 %7
+%40 = OpTypePointer Workgroup %2
+%42 = OpConstant %2 24840
+%51 = OpConstant %2 64
+%52 = OpTypeCooperativeMatrixKHR %13 %6 %4 %4 %3
 %54 = OpTypeBool
 %55 = OpTypeInt 16 1
-%56 = OpTypePointer Function %9
+%56 = OpTypePointer Function %5
 %57 = OpTypeFunction %52 %56
 %61 = OpTypePointer Function %52
-%68 = OpTypePointer Function %5
-%73 = OpConstant %5 -0x1.cp+8
-%74 = OpConstant %5 0x1.cp+8
-%76 = OpTypeVector %17 2
-%80 = OpConstant %17 128
+%68 = OpTypePointer Function %1
+%73 = OpConstant %1 -0x1.cp+8
+%74 = OpConstant %1 0x1.cp+8
+%76 = OpTypeVector %13 2
+%80 = OpConstant %13 128
 %82 = OpTypeInt 16 0
 %83 = OpConstant %82 1
 %85 = OpConstant %55 16384
@@ -232,84 +233,84 @@ OpDecorate %37 BuiltIn SubgroupId
 %103 = OpTypeInt 8 1
 %106 = OpTypeVector %103 2
 %112 = OpConstant %103 1
-%116 = OpConstant %17 1
-%117 = OpConstant %17 0
-%120 = OpConstant %17 127
-%122 = OpTypePointer Function %17
-%134 = OpConstant %6 1024
-%139 = OpTypeFunction %9 %61
+%116 = OpConstant %13 1
+%117 = OpConstant %13 0
+%120 = OpConstant %13 127
+%122 = OpTypePointer Function %13
+%134 = OpConstant %2 1024
+%139 = OpTypeFunction %5 %61
 %153 = OpConstant %55 7
 %155 = OpConstant %55 -16385
-%161 = OpConstant %5 0x1p+8
-%167 = OpConstant %6 2048
-%3 = OpFunction %1 None %2
-%4 = OpLabel
+%161 = OpConstant %1 0x1p+8
+%167 = OpConstant %2 2048
+%17 = OpFunction %15 None %16
+%18 = OpLabel
 %127 = OpVariable %56 Function
 %163 = OpVariable %61 Function
 OpBranch %168
 %168 = OpLabel
-%29 = OpAccessChain %28 %22 %11 %11
-%31 = OpCooperativeMatrixLoadKHR %9 %29 %13 %30
-%38 = OpLoad %6 %37
-%39 = OpIMul %6 %38 %32
+%29 = OpAccessChain %28 %22 %7 %7
+%31 = OpCooperativeMatrixLoadKHR %5 %29 %9 %30 NonPrivatePointer
+%38 = OpLoad %2 %37
+%39 = OpIMul %2 %38 %32
 %41 = OpInBoundsAccessChain %40 %35 %39
-OpControlBarrier %10 %7 %42
-OpCooperativeMatrixStoreKHR %41 %31 %13 %8
-OpControlBarrier %10 %7 %42
-%43 = OpCooperativeMatrixLoadKHR %12 %41 %13 %8
-%44 = OpLoad %6 %37
-%45 = OpIMul %6 %44 %32
+OpControlBarrier %6 %6 %42
+OpCooperativeMatrixStoreKHR %41 %31 %9 %4 NonPrivatePointer
+OpControlBarrier %6 %6 %42
+%43 = OpCooperativeMatrixLoadKHR %8 %41 %9 %4 NonPrivatePointer
+%44 = OpLoad %2 %37
+%45 = OpIMul %2 %44 %32
 %46 = OpInBoundsAccessChain %40 %35 %45
-OpControlBarrier %10 %7 %42
-OpCooperativeMatrixStoreKHR %46 %31 %13 %8
-OpControlBarrier %10 %7 %42
-%47 = OpCooperativeMatrixLoadKHR %14 %46 %13 %8
-%48 = OpFConvert %16 %31
-%49 = OpCooperativeMatrixMulAddKHR %16 %43 %47 %48
-%50 = OpAccessChain %28 %26 %11 %11
-OpCooperativeMatrixStoreKHR %50 %49 %13 %51
-%53 = OpFConvert %9 %49
+OpControlBarrier %6 %6 %42
+OpCooperativeMatrixStoreKHR %46 %31 %9 %4 NonPrivatePointer
+OpControlBarrier %6 %6 %42
+%47 = OpCooperativeMatrixLoadKHR %10 %46 %9 %4 NonPrivatePointer
+%48 = OpFConvert %12 %31
+%49 = OpCooperativeMatrixMulAddKHR %12 %43 %47 %48
+%50 = OpAccessChain %28 %26 %7 %7
+OpCooperativeMatrixStoreKHR %50 %49 %9 %51 NonPrivatePointer
+%53 = OpFConvert %5 %49
 OpStore %127 %53
 %128 = OpFunctionCall %52 %59 %127
-%129 = OpLoad %6 %37
-%130 = OpIMul %6 %129 %32
+%129 = OpLoad %2 %37
+%130 = OpIMul %2 %129 %32
 %131 = OpInBoundsAccessChain %40 %35 %130
-OpControlBarrier %10 %7 %42
-OpCooperativeMatrixStoreKHR %131 %128 %13 %8
-OpControlBarrier %10 %7 %42
-%132 = OpCooperativeMatrixLoadKHR %18 %131 %13 %8
-%133 = OpAccessChain %28 %26 %11 %134
-OpCooperativeMatrixStoreKHR %133 %132 %13 %8
-%135 = OpLoad %6 %37
-%136 = OpIMul %6 %135 %32
+OpControlBarrier %6 %6 %42
+OpCooperativeMatrixStoreKHR %131 %128 %9 %4 NonPrivatePointer
+OpControlBarrier %6 %6 %42
+%132 = OpCooperativeMatrixLoadKHR %14 %131 %9 %4 NonPrivatePointer
+%133 = OpAccessChain %28 %26 %7 %134
+OpCooperativeMatrixStoreKHR %133 %132 %9 %4 NonPrivatePointer
+%135 = OpLoad %2 %37
+%136 = OpIMul %2 %135 %32
 %137 = OpInBoundsAccessChain %40 %35 %136
-OpControlBarrier %10 %7 %42
-OpCooperativeMatrixStoreKHR %137 %132 %13 %8
-OpControlBarrier %10 %7 %42
-%138 = OpCooperativeMatrixLoadKHR %52 %137 %13 %8
+OpControlBarrier %6 %6 %42
+OpCooperativeMatrixStoreKHR %137 %132 %9 %4 NonPrivatePointer
+OpControlBarrier %6 %6 %42
+%138 = OpCooperativeMatrixLoadKHR %52 %137 %9 %4 NonPrivatePointer
 OpStore %163 %138
-%164 = OpFunctionCall %9 %141 %163
-%165 = OpFConvert %16 %164
-%166 = OpAccessChain %28 %26 %11 %167
-OpCooperativeMatrixStoreKHR %166 %165 %13 %51
+%164 = OpFunctionCall %5 %141 %163
+%165 = OpFConvert %12 %164
+%166 = OpAccessChain %28 %26 %7 %167
+OpCooperativeMatrixStoreKHR %166 %165 %9 %51 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %59 = OpFunction %52 None %57
 %58 = OpFunctionParameter %56
 %60 = OpLabel
 %62 = OpVariable %61 Function
-%63 = OpCooperativeMatrixLengthKHR %6 %52
+%63 = OpCooperativeMatrixLengthKHR %2 %52
 OpBranch %64
 %64 = OpLabel
-%66 = OpPhi %6 %11 %60 %67 %64
-%67 = OpIAdd %6 %66 %13
+%66 = OpPhi %2 %7 %60 %67 %64
+%67 = OpIAdd %2 %66 %9
 %69 = OpInBoundsAccessChain %68 %58 %66
-%70 = OpLoad %5 %69
-%72 = OpExtInst %5 %71 NClamp %70 %73 %74
+%70 = OpLoad %1 %69
+%72 = OpExtInst %1 %71 NClamp %70 %73 %74
 %75 = OpBitcast %55 %72
 %77 = OpBitcast %76 %75
-%78 = OpCompositeExtract %17 %77 1
-%79 = OpBitwiseAnd %17 %78 %80
+%78 = OpCompositeExtract %13 %77 1
+%79 = OpBitwiseAnd %13 %78 %80
 %81 = OpShiftLeftLogical %55 %75 %83
 %84 = OpISub %55 %81 %85
 %86 = OpShiftRightArithmetic %55 %84 %87
@@ -331,10 +332,10 @@ OpBranch %64
 %111 = OpBitwiseAnd %103 %110 %112
 %113 = OpBitwiseOr %103 %111 %109
 %114 = OpUGreaterThan %54 %113 %80
-%115 = OpSelect %17 %114 %116 %117
-%118 = OpIAdd %17 %110 %115
-%119 = OpBitwiseAnd %17 %118 %120
-%121 = OpBitwiseOr %17 %119 %79
+%115 = OpSelect %13 %114 %116 %117
+%118 = OpIAdd %13 %110 %115
+%119 = OpBitwiseAnd %13 %118 %120
+%121 = OpBitwiseOr %13 %119 %79
 %123 = OpInBoundsAccessChain %122 %62 %66
 OpStore %123 %121
 %124 = OpULessThan %54 %67 %63
@@ -344,29 +345,29 @@ OpBranchConditional %124 %64 %65
 %125 = OpLoad %52 %62
 OpReturnValue %125
 OpFunctionEnd
-%141 = OpFunction %9 None %139
+%141 = OpFunction %5 None %139
 %140 = OpFunctionParameter %61
 %142 = OpLabel
 %143 = OpVariable %56 Function
-%144 = OpCooperativeMatrixLengthKHR %6 %52
+%144 = OpCooperativeMatrixLengthKHR %2 %52
 OpBranch %145
 %145 = OpLabel
-%147 = OpPhi %6 %11 %142 %148 %145
-%148 = OpIAdd %6 %147 %13
+%147 = OpPhi %2 %7 %142 %148 %145
+%148 = OpIAdd %2 %147 %9
 %149 = OpInBoundsAccessChain %122 %140 %147
-%150 = OpLoad %17 %149
+%150 = OpLoad %13 %149
 %151 = OpSConvert %55 %150
 %152 = OpShiftLeftLogical %55 %151 %153
 %154 = OpBitwiseAnd %55 %152 %155
-%156 = OpBitcast %5 %154
+%156 = OpBitcast %1 %154
 %157 = OpInBoundsAccessChain %68 %143 %147
 OpStore %157 %156
 %158 = OpULessThan %54 %148 %144
 OpLoopMerge %146 %145 None
 OpBranchConditional %158 %145 %146
 %146 = OpLabel
-%159 = OpLoad %9 %143
-%160 = OpMatrixTimesScalar %9 %159 %161
+%159 = OpLoad %5 %143
+%160 = OpMatrixTimesScalar %5 %159 %161
 OpReturnValue %160
 OpFunctionEnd
 #endif

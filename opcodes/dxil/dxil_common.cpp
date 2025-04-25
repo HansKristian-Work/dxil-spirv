@@ -598,4 +598,79 @@ SplitScaleBias split_index_scale_bias(const llvm::Value *value)
 
 	return {};
 }
+
+void add_vkmm_access_qualifiers(Converter::Impl &impl, Operation *op, const ReferenceVkMemoryModel &vkmm)
+{
+	if (impl.execution_mode_meta.memory_model != spv::MemoryModelVulkan)
+		return;
+
+	uint32_t mm_argument_index = 0;
+	uint32_t mm_flags = 0;
+
+	switch (op->op)
+	{
+	case spv::OpLoad:
+		if (vkmm.non_private)
+			mm_flags |= spv::MemoryAccessNonPrivatePointerMask;
+		if (vkmm.auto_visibility)
+			mm_flags |= spv::MemoryAccessMakePointerVisibleMask;
+		mm_argument_index = 1;
+		break;
+
+	case spv::OpStore:
+		if (vkmm.non_private)
+			mm_flags |= spv::MemoryAccessNonPrivatePointerMask;
+		if (vkmm.auto_visibility)
+			mm_flags |= spv::MemoryAccessMakePointerAvailableMask;
+		mm_argument_index = 2;
+		break;
+
+	case spv::OpCooperativeMatrixLoadKHR:
+		if (vkmm.non_private)
+			mm_flags |= spv::MemoryAccessNonPrivatePointerMask;
+		if (vkmm.auto_visibility)
+			mm_flags |= spv::MemoryAccessMakePointerVisibleMask;
+		mm_argument_index = 3;
+		break;
+
+	case spv::OpCooperativeMatrixStoreKHR:
+		if (vkmm.non_private)
+			mm_flags |= spv::MemoryAccessNonPrivatePointerMask;
+		if (vkmm.auto_visibility)
+			mm_flags |= spv::MemoryAccessMakePointerAvailableMask;
+		mm_argument_index = 4;
+		break;
+
+	case spv::OpImageRead:
+	case spv::OpImageSparseRead:
+		if (vkmm.non_private)
+			mm_flags |= spv::ImageOperandsNonPrivateTexelMask;
+		if (vkmm.auto_visibility)
+			mm_flags |= spv::ImageOperandsMakeTexelVisibleMask;
+		mm_argument_index = 2;
+		break;
+
+	case spv::OpImageWrite:
+		if (vkmm.non_private)
+			mm_flags |= spv::ImageOperandsNonPrivateTexelMask;
+		if (vkmm.auto_visibility)
+			mm_flags |= spv::ImageOperandsMakeTexelAvailableMask;
+		mm_argument_index = 3;
+		break;
+
+	default:
+		return;
+	}
+
+	if (mm_flags)
+	{
+		if (op->num_arguments > mm_argument_index)
+			op->arguments[mm_argument_index] |= mm_flags;
+		else
+			op->add_literal(mm_flags);
+
+		if (vkmm.auto_visibility)
+			op->add_id(impl.builder().makeUintConstant(spv::ScopeQueueFamily));
+	}
+}
 } // namespace dxil_spv

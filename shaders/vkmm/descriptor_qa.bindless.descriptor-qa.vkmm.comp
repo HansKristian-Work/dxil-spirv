@@ -1,0 +1,64 @@
+struct C { float v; };
+ConstantBuffer<C> c : register(b0, space0);
+ConstantBuffer<C> carr[2] : register(b1, space0);
+
+Texture2D<float> tex : register(t0, space0);
+Texture2D<float> texarr[2] : register(t1, space0);
+Buffer<float> typedbuf : register(t3, space0);
+Buffer<float> typedbufarr[2] : register(t4, space0);
+StructuredBuffer<float> buf : register(t6, space0);
+StructuredBuffer<float> bufarr[2] : register(t7, space0);
+ByteAddressBuffer rawbuf : register(t9, space0);
+ByteAddressBuffer rawbufarr[2] : register(t10, space0);
+
+RWStructuredBuffer<float> rwbuf : register(u0, space0);
+RWStructuredBuffer<float> rwbufarr[2] : register(u1, space0);
+RWByteAddressBuffer rwrawbuf : register(u3, space0);
+RWByteAddressBuffer rwrawbufarr[2] : register(u4, space0);
+RWTexture2D<float> rwtex : register(u6, space0);
+RWTexture2D<float> rwtexarr[2] : register(u7, space0);
+RWBuffer<float> rwtypedbuf : register(u9, space0);
+RWBuffer<float> rwtypedbufarr[2] : register(u10, space0);
+
+SamplerState samp : register(s0, space0);
+
+[numthreads(1, 1, 1)]
+void main(uint index : SV_DispatchThreadID)
+{
+	float value = 0.0;
+	if (index > 2)
+		value += c.v;
+	if (index > 3)
+		value += carr[index].v;
+	if (index > 4)
+		value += tex.SampleLevel(samp, float2(0.5, 0.5), 0.0);
+	if (index > 5)
+		value += texarr[index & 1][int2(0, index)];
+	if (index > 6)
+		value += typedbuf[index];
+	if (index > 7)
+		value += typedbufarr[index & 1][index];
+	if (index > 8)
+		value += buf[index];
+	if (index > 9)
+		value += bufarr[index & 1][index];
+	if (index > 10)
+		value += asfloat(rawbuf.Load(4 * index));
+	if (index > 11)
+		value += asfloat(rawbufarr[index & 1].Load(index));
+
+	if (index > 1)
+		rwbuf[index] = value;
+	if (index > 30)
+		rwbufarr[index & 1][index] = value;
+	if (index > 40)
+		rwrawbuf.Store(4 * index, asuint(value));
+	if (index > 50)
+		rwrawbufarr[index & 1].Store(4 * index, asuint(value));
+	if (index > 80)
+		rwtex[int2(index, 0)] = value;
+	if (index > 90)
+		rwtexarr[index & 1][int2(0, index)] = value;
+
+	rwbuf.IncrementCounter();
+}

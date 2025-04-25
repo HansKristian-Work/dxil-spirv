@@ -176,6 +176,7 @@ static void print_help()
 	     "\t[--force-maximal-reconvergence]\n"
 	     "\t[--raw-access-chains-nv]\n"
 	     "\t[--extended-robustness]\n"
+	     "\t[--vkmm]\n"
 	     "\t[--shader-quirk <index>]\n");
 }
 
@@ -222,6 +223,7 @@ struct Arguments
 	bool force_maximal_reconvergence = false;
 	bool raw_access_chains_nv = false;
 	bool extended_robustness = false;
+	bool vkmm = false;
 	std::vector<dxil_spv_shader_quirk> quirks;
 
 	unsigned ssbo_alignment = 1;
@@ -820,6 +822,9 @@ int main(int argc, char **argv)
 	cbs.add("--extended-robustness", [&](CLIParser &) {
 		args.extended_robustness = true;
 	});
+	cbs.add("--vkmm", [&](CLIParser &) {
+		args.vkmm = true;
+	});
 	cbs.add("--shader-quirk", [&](CLIParser &parser) {
 		args.quirks.push_back(dxil_spv_shader_quirk(parser.next_uint()));
 	});
@@ -1152,6 +1157,13 @@ int main(int argc, char **argv)
 		robust.robust_constant_lut = DXIL_SPV_TRUE;
 		robust.robust_alloca = DXIL_SPV_TRUE;
 		dxil_spv_converter_add_option(converter, &robust.base);
+	}
+
+	if (args.vkmm)
+	{
+		dxil_spv_option_extended_robustness vkmm = {
+			{ DXIL_SPV_OPTION_VULKAN_MEMORY_MODEL }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &vkmm.base);
 	}
 
 	for (auto &quirk : args.quirks)

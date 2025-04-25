@@ -1395,6 +1395,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.physical_pointer_meta.rov = reference.rov;
 			meta.kind = reference.resource_kind;
 			meta.rov = reference.rov;
+			meta.vkmm = reference.vkmm;
 		}
 		else
 		{
@@ -1466,6 +1467,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
 			meta.rov = reference.rov;
+			meta.vkmm = reference.vkmm;
 			meta.physical_pointer_meta.coherent = reference.coherent;
 			meta.instrumentation = instrumentation;
 

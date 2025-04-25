@@ -235,10 +235,13 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 	if ((node_io_flags & DXIL::NodeIOGloballyCoherentBit) != 0)
 		flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
 
-	if ((node_io_flags & DXIL::NodeIOInputBit) != 0 && impl.shader_analysis.require_node_input_group_coherence)
-		flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
-	else if ((node_io_flags & DXIL::NodeIOOutputBit) != 0 && impl.shader_analysis.require_node_output_group_coherence)
-		flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
+	{
+		if ((node_io_flags & DXIL::NodeIOInputBit) != 0 && impl.shader_analysis.require_node_input_group_coherence)
+			flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
+		else if ((node_io_flags & DXIL::NodeIOOutputBit) != 0 && impl.shader_analysis.require_node_output_group_coherence)
+			flags |= Converter::Impl::TYPE_LAYOUT_COHERENT_BIT;
+	}
 
 	spv::Id physical_block_type_id =
 	    impl.get_type_id(inst->getType(), Converter::Impl::TYPE_LAYOUT_BLOCK_BIT | flags);
@@ -298,6 +301,13 @@ bool emit_get_node_record_ptr(Converter::Impl &impl, const llvm::CallInst *inst)
 	chain_op->add_id(cast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
 	impl.add(chain_op);
+
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan &&
+	    (flags & Converter::Impl::TYPE_LAYOUT_COHERENT_BIT) != 0)
+	{
+		// Need to propgate this information down.
+		impl.llvm_vkmm_coherent_ptrs.push_back(inst);
+	}
 
 	return true;
 }
@@ -379,7 +389,16 @@ static bool emit_barrier(Converter::Impl &impl, uint32_t memory_flags, uint32_t 
 	if ((semantic_flags & DXIL::DeviceScopeBit) != 0)
 		needs_device_memory_scope = true;
 
-	op->add_id(builder.makeUintConstant(needs_device_memory_scope ? spv::ScopeDevice : spv::ScopeWorkgroup));
+	// We only ever need explicit Vis/Avail in workgroup scope for VkMM.
+	// globallycoherent is handled per-operation,
+	// and we only need acquire release to ensure ordering.
+	spv::Scope memory_scope;
+	if (needs_device_memory_scope && impl.execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
+		memory_scope = spv::ScopeDevice;
+	else
+		memory_scope = spv::ScopeWorkgroup;
+
+	op->add_id(builder.makeUintConstant(memory_scope));
 
 	uint32_t semantics = spv::MemorySemanticsAcquireReleaseMask;
 	if ((semantic_flags & (DXIL::MemoryTypeNodeInputBit | DXIL::MemoryTypeNodeOutputBit | DXIL::MemoryTypeUavBit)) != 0)
@@ -388,6 +407,9 @@ static bool emit_barrier(Converter::Impl &impl, uint32_t memory_flags, uint32_t 
 		semantics |= spv::MemorySemanticsImageMemoryMask;
 	if ((semantic_flags & DXIL::MemoryTypeGroupSharedBit) != 0)
 		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
+
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		semantics |= spv::MemorySemanticsMakeAvailableMask | spv::MemorySemanticsMakeVisibleMask;
 
 	op->add_id(builder.makeUintConstant(semantics));
 	impl.add(op);
@@ -1164,8 +1186,7 @@ static CFGNode *emit_workgraph_dispatcher_path_broadcast_amplified(
 	auto *barrier_op = impl.allocate(spv::OpControlBarrier);
 	barrier_op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
 	barrier_op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
-	barrier_op->add_id(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
-	                                            spv::MemorySemanticsAcquireReleaseMask));
+	barrier_op->add_id(builder.getWorkgroupBarrierSemanticsId());
 	impl.add(barrier_op);
 
 	return loop_merge;

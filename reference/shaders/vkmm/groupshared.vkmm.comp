@@ -1,0 +1,67 @@
+#version 460
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+
+shared uint _12[64];
+
+void main()
+{
+    _12[gl_LocalInvocationIndex] = gl_LocalInvocationIndex;
+    barrier();
+    imageStore(_8, int(gl_LocalInvocationIndex), uvec4(_12[gl_LocalInvocationIndex ^ 3u]));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 29
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12 %15
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %15 BuiltIn LocalInvocationIndex
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpConstant %5 64
+%10 = OpTypeArray %5 %9
+%11 = OpTypePointer Workgroup %10
+%12 = OpVariable %11 Workgroup
+%14 = OpTypePointer Input %5
+%15 = OpVariable %14 Input
+%17 = OpTypePointer Workgroup %5
+%19 = OpConstant %5 2
+%20 = OpConstant %5 24840
+%22 = OpConstant %5 3
+%25 = OpTypeVector %5 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %27
+%27 = OpLabel
+%13 = OpLoad %6 %8
+%16 = OpLoad %5 %15
+%18 = OpAccessChain %17 %12 %16
+OpStore %18 %16 NonPrivatePointer
+OpControlBarrier %19 %19 %20
+%21 = OpBitwiseXor %5 %16 %22
+%23 = OpAccessChain %17 %12 %21
+%24 = OpLoad %5 %23 NonPrivatePointer
+%26 = OpCompositeConstruct %25 %24 %24 %24 %24
+OpImageWrite %13 %16 %26 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+#endif

@@ -192,6 +192,13 @@ bool emit_ray_t_current_instruction(Converter::Impl &impl, const llvm::CallInst 
 	spv::Id id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInRayTmaxKHR);
 	auto *op = impl.allocate(spv::OpLoad, inst);
 	op->add_id(id);
+
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan &&
+	    impl.spirv_module.builtin_requires_volatile(spv::BuiltInRayTmaxKHR))
+	{
+		op->add_literal(spv::MemoryAccessVolatileMask);
+	}
+
 	impl.add(op);
 	return true;
 }

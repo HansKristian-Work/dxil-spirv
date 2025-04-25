@@ -608,6 +608,7 @@ static spv::Id build_vectorized_physical_load_store_access(Converter::Impl &impl
 
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                   const Converter::Impl::PhysicalPointerMeta &ptr_meta,
+                                                  const ReferenceVkMemoryModel &vkmm,
                                                   uint32_t mask = 0, uint32_t alignment = 0)
 {
 	auto &builder = impl.builder();
@@ -672,6 +673,7 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	load_op->add_id(chain_op->id);
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
 	load_op->add_literal(alignment);
+	add_vkmm_access_qualifiers(impl, load_op, vkmm);
 
 	impl.add(load_op, ptr_meta.rov);
 
@@ -818,7 +820,7 @@ static RawAccessChain emit_raw_access_chain(Converter::Impl &impl, const Convert
 
 	if (meta.physical_pointer_meta.nonwritable)
 		builder.addDecoration(op->id, spv::DecorationNonWritable);
-	if (meta.physical_pointer_meta.coherent)
+	if (meta.physical_pointer_meta.coherent && impl.execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
 		builder.addDecoration(op->id, spv::DecorationCoherent);
 
 	return raw;
@@ -841,6 +843,7 @@ static bool emit_buffer_load_raw_chain_instruction(Converter::Impl &impl, const 
 	load_op->add_id(raw.ptr_id);
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
 	load_op->add_literal(raw.alignment);
+	add_vkmm_access_qualifiers(impl, load_op, meta.vkmm);
 	impl.add(load_op);
 
 	if (type_is_16bit(target_type) &&
@@ -922,7 +925,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
 
-		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta,
+		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm,
 		                                             smeared_access_mask, 4);
 	}
 
@@ -1015,6 +1018,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 					auto *load_op = impl.allocate(spv::OpLoad, extracted_id_type);
 					load_op->add_id(chain_op->id);
+
+					add_vkmm_access_qualifiers(impl, load_op, meta.vkmm);
 					impl.add(load_op, meta.rov);
 					component_ids[i] = load_op->id;
 				}
@@ -1053,6 +1058,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 					Operation *loaded_op =
 					    impl.allocate(opcode, (sparse && first_load) ? sparse_loaded_id_type : loaded_id_type);
 					loaded_op->add_ids({ image_id, impl.build_offset(access.index_id, i) });
+
+					add_vkmm_access_qualifiers(impl, loaded_op, meta.vkmm);
 					impl.add(loaded_op, meta.rov);
 
 					if (sparse && first_load)
@@ -1193,6 +1200,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
 
 		op->add_ids({ image_id, access.index_id });
+		add_vkmm_access_qualifiers(impl, op, meta.vkmm);
 		impl.add(op, meta.rov);
 
 		if (sparse)
@@ -1209,6 +1217,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                    const Converter::Impl::PhysicalPointerMeta &ptr_meta,
+                                                   const ReferenceVkMemoryModel &vkmm,
                                                    uint32_t alignment = 0)
 {
 	auto &builder = impl.builder();
@@ -1295,6 +1304,7 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	store_op->add_id(vec_id);
 	store_op->add_literal(spv::MemoryAccessAlignedMask);
 	store_op->add_literal(alignment);
+	add_vkmm_access_qualifiers(impl, store_op, vkmm);
 
 	impl.add(store_op, ptr_meta.rov);
 
@@ -1336,7 +1346,7 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 		return emit_buffer_load_instruction(impl, instruction);
 	}
 	else
-		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta);
+		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm);
 }
 
 static unsigned emit_buffer_store_values_bitcast(Converter::Impl &impl, const llvm::CallInst *instruction,
@@ -1425,7 +1435,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		// We don't more about alignment in SM 5.1 BufferStore.
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
-		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, 4);
+		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, 4);
 	}
 
 	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store);
@@ -1452,6 +1462,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		store_op->add_id(vector_value_id);
 		store_op->add_literal(spv::MemoryAccessAlignedMask);
 		store_op->add_literal(raw.alignment);
+		add_vkmm_access_qualifiers(impl, store_op, meta.vkmm);
+
 		impl.add(store_op);
 		return true;
 	}
@@ -1480,6 +1492,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		    { image_id, access.index_id,
 		      impl.fixup_store_type_typed(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
 
+		add_vkmm_access_qualifiers(impl, op, meta.vkmm);
 		impl.add(op, meta.rov);
 	}
 	else if (meta.storage == spv::StorageClassStorageBuffer)
@@ -1507,6 +1520,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 			Operation *store_op = impl.allocate(spv::OpStore);
 			store_op->add_id(chain_op->id);
 			store_op->add_id(vector_value_id);
+			add_vkmm_access_qualifiers(impl, store_op, meta.vkmm);
+
 			impl.add(store_op, meta.rov);
 		}
 		else
@@ -1532,6 +1547,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 					Operation *store_op = impl.allocate(spv::OpStore);
 					store_op->add_id(chain_op->id);
 					store_op->add_id(store_values[i]);
+
+					add_vkmm_access_qualifiers(impl, store_op, meta.vkmm);
 					impl.add(store_op, meta.rov);
 				}
 			}
@@ -1554,6 +1571,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 				    impl.build_offset(access.index_id, i),
 				    splat_op->id,
 				});
+
+				add_vkmm_access_qualifiers(impl, op, meta.vkmm);
 				impl.add(op, meta.rov);
 			}
 		}
@@ -1593,7 +1612,7 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 		return emit_buffer_store_instruction(impl, instruction);
 	}
 	else
-		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta);
+		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm);
 }
 
 spv::Id emit_atomic_access_chain(Converter::Impl &impl,
@@ -1733,7 +1752,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	Operation *op = impl.allocate(opcode, instruction, impl.get_type_id(component_type, 1, 1));
 
 	op->add_id(counter_ptr_id);
-	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	op->add_id(builder.getAtomicDeviceScopeId());
 	op->add_id(builder.makeUintConstant(0));
 	op->add_id(impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))));
 
@@ -1800,7 +1819,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	new_value_id = impl.fixup_store_type_atomic(component_type, 1, new_value_id);
 
 	op->add_id(counter_ptr_id);
-	op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+	op->add_id(builder.getAtomicDeviceScopeId());
 	op->add_id(builder.makeUintConstant(0));
 	op->add_id(builder.makeUintConstant(0));
 	op->add_id(new_value_id);
@@ -1843,7 +1862,7 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 		auto *op = impl.allocate(spv::OpAtomicIAdd, instruction);
 
 		op->add_id(counter_ptr_op->id);
-		op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		op->add_id(builder.getAtomicDeviceScopeId());
 		op->add_id(builder.makeUintConstant(0));
 		op->add_id(builder.makeUintConstant(direction));
 		impl.add(op, meta.rov);

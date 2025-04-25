@@ -45,13 +45,20 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	// We might only need to ensure coherency within the workgroup, in which case we can narrow the scope.
 	// DXC emits AccessUAVGlobal all the time, so try to demote to UAVThreadGroup when appropriate.
-	spv::Scope memory_scope;
-	if ((operation & DXIL::AccessUAVGlobal) != 0 && impl.execution_mode_meta.declares_globallycoherent_uav)
+	spv::Scope memory_scope = spv::ScopeWorkgroup;
+
+	bool needs_device_scope_uav =
+	    (operation & DXIL::AccessUAVGlobal) != 0 && impl.execution_mode_meta.declares_globallycoherent_uav;
+
+	// We only ever need explicit Vis/Avail in workgroup scope for VkMM.
+	// globallycoherent is handled per-operation,
+	// and we only need acquire release to ensure ordering.
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelGLSL450 && needs_device_scope_uav)
 		memory_scope = spv::ScopeDevice;
-	else
-		memory_scope = spv::ScopeWorkgroup;
+
 	op->add_id(builder.makeUintConstant(memory_scope));
 
+	// AcquireReleaseMask doesn't care about scope.
 	uint32_t semantics = spv::MemorySemanticsAcquireReleaseMask;
 
 	// Game workaround. Sometimes a game might forget to insert device memory barrier in the proper place ._.
@@ -60,14 +67,18 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		(impl.options.quirks.force_device_memory_barriers_thread_group_coherence ||
 		 impl.options.quirks.promote_group_to_device_memory_barrier);
 
-	if ((operation & (DXIL::AccessUAVGlobal | DXIL::AccessUAVThreadGroup)) != 0 ||
-	    (force_device_memory_barriers && impl.shader_analysis.require_uav_thread_group_coherence))
-	{
+	bool has_uav_barrier = (operation & (DXIL::AccessUAVGlobal | DXIL::AccessUAVThreadGroup)) != 0 ||
+	                       (force_device_memory_barriers && impl.shader_analysis.require_uav_thread_group_coherence);
+
+	if (has_uav_barrier)
 		semantics |= spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask;
-	}
 
 	if ((operation & DXIL::AccessGroupShared) != 0)
 		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
+
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		semantics |= spv::MemorySemanticsMakeAvailableMask | spv::MemorySemanticsMakeVisibleMask;
+
 	op->add_id(builder.makeUintConstant(semantics));
 
 	impl.add(op);

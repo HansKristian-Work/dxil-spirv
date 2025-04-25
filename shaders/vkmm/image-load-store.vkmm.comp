@@ -1,0 +1,10 @@
+globallycoherent RWTexture2D<float> RWImgCoherent : register(u0);
+RWTexture2D<float> RWImg : register(u1);
+Texture2D<float> Img : register(t0);
+
+[numthreads(8, 8, 1)]
+void main(uint2 thr : SV_DispatchThreadID)
+{
+	RWImgCoherent[thr] += 1.0;
+	RWImg[thr] += Img.Load(int3(thr, 0));
+}
