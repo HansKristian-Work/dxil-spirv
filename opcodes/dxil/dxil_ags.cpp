@@ -344,6 +344,7 @@ static bool emit_wmma_return_values(Converter::Impl &impl, spv::Id type_id, spv:
 	return true;
 }
 
+#if WMMA_FP8
 static spv::Id emit_coopmat_transfer(Converter::Impl &impl, spv::Id v, uint32_t input_imm, uint32_t output_imm)
 {
 	spv::Id input_type = build_coopmat_type(impl, input_imm);
@@ -366,11 +367,13 @@ static spv::Id emit_coopmat_transfer(Converter::Impl &impl, spv::Id v, uint32_t 
 
 	return call->id;
 }
+#endif
 
 static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t input_imm, uint32_t output_imm)
 {
 	auto &builder = impl.builder();
 
+#if WMMA_FP8
 	if (get_matrix_type(input_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_A &&
 	    get_matrix_type(output_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_A &&
 	    get_type_data_format(input_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
@@ -380,6 +383,7 @@ static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t
 		// This assumption only seems to hold for FP8, but that's the only case we care about.
 		return emit_coopmat_transfer(impl, v, input_imm, output_imm);
 	}
+#endif
 
 	if (!impl.ags.coopmat_transpose_scratch)
 	{
