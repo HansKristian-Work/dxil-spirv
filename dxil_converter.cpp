@@ -660,7 +660,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				builder().addDecoration(resource.var_id, spv::DecorationNonReadable);
 			if (!info.uav_written)
 				builder().addDecoration(resource.var_id, spv::DecorationNonWritable);
-			if (info.uav_coherent)
+			if (info.uav_coherent && execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
 				builder().addDecoration(resource.var_id, spv::DecorationCoherent);
 		}
 		else if (info.counters)
@@ -846,7 +846,7 @@ spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, c
 		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
 	if (meta.nonreadable)
 		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
-	if (meta.coherent)
+	if (meta.coherent && execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
 		builder().addMemberDecoration(block_type_id, 0, spv::DecorationCoherent);
 
 	spv::Id ptr_type_id = builder().makePointer(spv::StorageClassPhysicalStorageBuffer, block_type_id);
@@ -1490,8 +1490,12 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		// If no UAV actually needs globallycoherent we can demote any barriers to workgroup barriers,
 		// which is hopefully more optimal if the compiler understands the intent ...
 		// Only promote resources which actually need some kind of coherence.
-		if (shader_analysis.require_uav_thread_group_coherence && access_meta.has_written && access_meta.has_read)
+		if (shader_analysis.require_uav_thread_group_coherence &&
+		    access_meta.has_written && access_meta.has_read &&
+		    execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
+		{
 			globally_coherent = true;
+		}
 
 		if (resource_kind == DXIL::ResourceKind::FeedbackTexture2D ||
 		    resource_kind == DXIL::ResourceKind::FeedbackTexture2DArray)
@@ -1631,6 +1635,15 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			counter_info.format = spv::ImageFormatR32ui;
 		}
 
+		ReferenceVkMemoryModel vkmm = {};
+
+		if (execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		{
+			// For UAV we just slap it on everything.
+			vkmm.non_private = true;
+			vkmm.auto_visibility = globally_coherent || is_rov;
+		}
+
 		if (local_root_signature_entry >= 0)
 		{
 			auto &entry = local_root_signature[local_root_signature_entry];
@@ -1676,6 +1689,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				ref.base_resource_is_array = range_size != 1;
 				ref.local_root_signature_entry = local_root_signature_entry;
 				ref.resource_kind = resource_kind;
+				ref.vkmm = vkmm;
 
 				if (has_counter)
 				{
@@ -1716,6 +1730,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
 				ref.resource_kind = resource_kind;
+				ref.vkmm = vkmm;
 
 				if (range_size != 1)
 				{
@@ -1741,6 +1756,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.rov = is_rov;
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
+			ref.vkmm = vkmm;
 
 			if (range_size != 1)
 			{
@@ -1784,6 +1800,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.rov = is_rov;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
+			ref.vkmm = vkmm;
 
 			if (has_counter)
 			{
@@ -1889,6 +1906,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.rov = is_rov;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
+			ref.vkmm = vkmm;
 
 			const auto decorate_variable = [&](spv::Id id) {
 				builder.addDecoration(id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
@@ -1897,7 +1915,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					builder.addDecoration(id, spv::DecorationNonReadable);
 				if (!access_meta.has_written)
 					builder.addDecoration(id, spv::DecorationNonWritable);
-				if (globally_coherent)
+				if (globally_coherent && execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
 					builder.addDecoration(id, spv::DecorationCoherent);
 				if (aliased_access.requires_alias_decoration)
 					builder.addDecoration(id, spv::DecorationAliased);
@@ -1948,6 +1966,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				meta.var_id = var_id;
 				meta.storage = storage;
 				meta.component_type = actual_component_type;
+				meta.vkmm = vkmm;
 
 				if (aliased_access.override_primary_component_types)
 				{
@@ -1966,6 +1985,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				meta.storage = storage;
 				meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
 				meta.raw_component_vecsize = var.declaration.vecsize;
+				meta.vkmm = vkmm;
 			}
 		}
 	}
@@ -2853,8 +2873,11 @@ bool Converter::Impl::emit_global_heaps()
 			// Do not attempt to track read and write here to figure out if this resource in particular needs to be coherent.
 			// It's plausible that the write and read can happen across
 			// two different accesses to ResourceDescriptorHeap[]. Don't take any chances here ...
-			if (shader_analysis.require_uav_thread_group_coherence)
+			if (shader_analysis.require_uav_thread_group_coherence &&
+			    execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
+			{
 				annotation->coherent = true;
+			}
 
 			if (annotation->resource_kind == DXIL::ResourceKind::StructuredBuffer ||
 			    annotation->resource_kind == DXIL::ResourceKind::RawBuffer)
@@ -3000,6 +3023,12 @@ bool Converter::Impl::emit_global_heaps()
 		annotation->reference.resource_kind = annotation->resource_kind;
 		annotation->reference.coherent = annotation->coherent || annotation->rov;
 		annotation->reference.rov = annotation->rov;
+
+		if (execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		{
+			annotation->reference.vkmm.non_private = info.type == DXIL::ResourceType::UAV;
+			annotation->reference.vkmm.auto_visibility = annotation->coherent || annotation->rov;
+		}
 
 		if (aliased_access.requires_alias_decoration)
 		{
@@ -3804,7 +3833,7 @@ spv::Id Converter::Impl::get_struct_type(const Vector<spv::Id> &type_ids, TypeLa
 			entry.id = builder().makeStructType({ struct_type_id }, entry.name.c_str());
 			builder().addDecoration(entry.id, spv::DecorationBlock);
 			builder().addMemberDecoration(entry.id, 0, spv::DecorationOffset, 0);
-			if ((flags & TYPE_LAYOUT_COHERENT_BIT) != 0)
+			if ((flags & TYPE_LAYOUT_COHERENT_BIT) != 0 && execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
 				builder().addMemberDecoration(entry.id, 0, spv::DecorationCoherent);
 			if ((flags & TYPE_LAYOUT_READ_ONLY_BIT) != 0)
 				builder().addMemberDecoration(entry.id, 0, spv::DecorationNonWritable);
@@ -7040,8 +7069,19 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 			auto *barrier_op = allocate(spv::OpControlBarrier);
 			// Not 100% sure what to emit here. Just do what glslang does.
 			barrier_op->add_id(builder().makeUintConstant(spv::ScopeWorkgroup));
-			barrier_op->add_id(builder().makeUintConstant(spv::ScopeInvocation));
-			barrier_op->add_id(builder().makeUintConstant(0));
+
+			if (execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+			{
+				barrier_op->add_id(builder().makeUintConstant(spv::ScopeWorkgroup));
+				barrier_op->add_id(builder().makeUintConstant(
+				    spv::MemorySemanticsOutputMemoryMask | spv::MemorySemanticsAcquireReleaseMask));
+			}
+			else
+			{
+				barrier_op->add_id(builder().makeUintConstant(spv::ScopeInvocation));
+				barrier_op->add_id(builder().makeUintConstant(0));
+			}
+
 			entry->ir.operations.push_back(barrier_op);
 		}
 
@@ -7689,6 +7729,9 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 
 	ags.reset_analysis();
 
+	if (shader_analysis.require_wmma)
+		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
+
 	return true;
 }
 
@@ -7750,7 +7793,6 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	options.instruction_instrumentation.fp16 =
 	    options.min_precision_prefer_native_16bit || execution_mode_meta.native_16bit_operations;
 	spirv_module.set_instruction_instrumentation_info(options.instruction_instrumentation);
-	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", need_bda);
 
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
 	auto visit_order = build_function_bb_visit_order_legacy(func, pool);
@@ -7768,6 +7810,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 	if (!analyze_instructions(func))
 		return result;
+
+	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", need_bda,
+	                              execution_mode_meta.memory_model);
 
 	if (!emit_execution_modes())
 		return result;
@@ -8397,6 +8442,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &tess_factor = static_cast<const OptionMaxTessFactor &>(cap);
 		options.max_tess_factor = tess_factor.max_tess_factor;
+		break;
+	}
+
+	case Option::VulkanMemoryModel:
+	{
+		auto &vmm = static_cast<const OptionVulkanMemoryModel &>(cap);
+		execution_mode_meta.memory_model = vmm.enabled ? spv::MemoryModelVulkan : spv::MemoryModelGLSL450;
 		break;
 	}
 

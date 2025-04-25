@@ -82,4 +82,7 @@ struct SplitScaleBias
 };
 
 SplitScaleBias split_index_scale_bias(const llvm::Value *value);
+
+struct ReferenceVkMemoryModel;
+void add_vkmm_access_qualifiers(Converter::Impl &impl, Operation *op, const ReferenceVkMemoryModel &vkmm);
 }

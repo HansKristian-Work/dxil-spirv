@@ -611,6 +611,27 @@ public:
 
     void createSelectionMerge(Block* mergeBlock, unsigned int control);
 
+    spv::Scope getAtomicDeviceScope() const
+    {
+        if (hasCapability(spv::CapabilityVulkanMemoryModel))
+            return spv::ScopeQueueFamily;
+        else
+            return spv::ScopeDevice;
+    }
+
+    spv::Id getAtomicDeviceScopeId()
+    {
+        return makeUintConstant(getAtomicDeviceScope());
+    }
+
+    spv::Id getWorkgroupBarrierSemanticsId()
+    {
+        uint32_t semantics = spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask;
+        if (hasCapability(spv::CapabilityVulkanMemoryModel))
+            semantics |= spv::MemorySemanticsMakeAvailableMask | spv::MemorySemanticsMakeVisibleMask;
+        return makeUintConstant(semantics);
+    }
+
 protected:
     Id makeIntConstant(Id typeId, unsigned value, bool specConstant);
     Id makeInt64Constant(Id typeId, unsigned long long value, bool specConstant);

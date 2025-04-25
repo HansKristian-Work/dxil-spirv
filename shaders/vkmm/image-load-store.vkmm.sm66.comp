@@ -1,0 +1,10 @@
+[numthreads(8, 8, 1)]
+void main(uint2 thr : SV_DispatchThreadID)
+{
+	globallycoherent RWTexture2D<float> RWImgCoherent = ResourceDescriptorHeap[0];
+	RWTexture2D<float> RWImg  = ResourceDescriptorHeap[1];
+	Texture2D<float> Img = ResourceDescriptorHeap[2];
+
+	RWImgCoherent[thr] += 1.0;
+	RWImg[thr] += Img.Load(int3(thr, 0));
+}

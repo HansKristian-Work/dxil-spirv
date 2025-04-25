@@ -1,0 +1,10 @@
+groupshared uint blah[64];
+RWStructuredBuffer<uint> B;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_GroupIndex)
+{
+	blah[thr] = thr;
+	GroupMemoryBarrierWithGroupSync();
+	B[thr] = blah[thr ^ 3];
+}

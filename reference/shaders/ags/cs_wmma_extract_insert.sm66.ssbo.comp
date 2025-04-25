@@ -75,20 +75,21 @@ void main()
 // SPIR-V disassembly
 // WaveSize(32)
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 96
 ; Schema: 0
 OpCapability Shader
 OpCapability Int8
 OpCapability StorageBuffer8BitAccess
+OpCapability VulkanMemoryModel
 OpCapability CooperativeMatrixKHR
 OpExtension "SPV_KHR_8bit_storage"
 OpExtension "SPV_KHR_cooperative_matrix"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %24
-OpExecutionMode %3 LocalSize 32 1 1
-OpName %3 "main"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %9 "main" %14 %18 %22 %24
+OpExecutionMode %9 LocalSize 32 1 1
+OpName %9 "main"
 OpName %12 "SSBO"
 OpName %16 "SSBO"
 OpName %20 "SSBO"
@@ -114,113 +115,113 @@ OpDecorate %22 Binding 0
 OpDecorate %22 NonReadable
 OpDecorate %22 Aliased
 OpDecorate %24 BuiltIn LocalInvocationIndex
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeInt 8 0
-%6 = OpTypeInt 32 0
-%7 = OpConstant %6 0
-%8 = OpConstant %6 16
-%10 = OpConstant %6 3
-%9 = OpTypeCooperativeMatrixKHR %5 %10 %8 %8 %7
-%11 = OpTypeRuntimeArray %5
+%1 = OpTypeInt 8 0
+%2 = OpTypeInt 32 0
+%3 = OpConstant %2 0
+%4 = OpConstant %2 16
+%6 = OpConstant %2 3
+%5 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %3
+%7 = OpTypeVoid
+%8 = OpTypeFunction %7
+%11 = OpTypeRuntimeArray %1
 %12 = OpTypeStruct %11
 %13 = OpTypePointer StorageBuffer %12
 %14 = OpVariable %13 StorageBuffer
-%15 = OpTypeRuntimeArray %5
+%15 = OpTypeRuntimeArray %1
 %16 = OpTypeStruct %15
 %17 = OpTypePointer StorageBuffer %16
 %18 = OpVariable %17 StorageBuffer
-%19 = OpTypeRuntimeArray %6
+%19 = OpTypeRuntimeArray %2
 %20 = OpTypeStruct %19
 %21 = OpTypePointer StorageBuffer %20
 %22 = OpVariable %21 StorageBuffer
-%23 = OpTypePointer Input %6
+%23 = OpTypePointer Input %2
 %24 = OpVariable %23 Input
-%27 = OpTypePointer StorageBuffer %5
-%32 = OpConstant %6 4
+%27 = OpTypePointer StorageBuffer %1
+%32 = OpConstant %2 4
 %33 = OpTypeBool
-%41 = OpTypePointer Function %9
-%45 = OpTypePointer Function %5
-%49 = OpConstant %6 1
-%53 = OpConstant %6 2
-%59 = OpTypeVector %5 4
-%66 = OpConstant %6 256
-%68 = OpConstant %6 64
-%69 = OpTypePointer StorageBuffer %6
-%72 = OpConstant %6 16711935
-%3 = OpFunction %1 None %2
-%4 = OpLabel
+%41 = OpTypePointer Function %5
+%45 = OpTypePointer Function %1
+%49 = OpConstant %2 1
+%53 = OpConstant %2 2
+%59 = OpTypeVector %1 4
+%66 = OpConstant %2 256
+%68 = OpConstant %2 64
+%69 = OpTypePointer StorageBuffer %2
+%72 = OpConstant %2 16711935
+%9 = OpFunction %7 None %8
+%10 = OpLabel
 %42 = OpVariable %41 Function
 %73 = OpVariable %41 Function
 OpBranch %90
 %90 = OpLabel
-%25 = OpLoad %6 %24
-%28 = OpAccessChain %27 %14 %7 %7
-%29 = OpCooperativeMatrixLoadKHR %9 %28 %7 %8
-%30 = OpCooperativeMatrixLengthKHR %6 %9
-%31 = OpUDiv %6 %30 %32
-%34 = OpIEqual %33 %31 %7
+%25 = OpLoad %2 %24
+%28 = OpAccessChain %27 %14 %3 %3
+%29 = OpCooperativeMatrixLoadKHR %5 %28 %3 %4 NonPrivatePointer
+%30 = OpCooperativeMatrixLengthKHR %2 %5
+%31 = OpUDiv %2 %30 %32
+%34 = OpIEqual %33 %31 %3
 OpSelectionMerge %94 None
 OpBranchConditional %34 %94 %91
 %91 = OpLabel
 OpBranch %92
 %92 = OpLabel
-%38 = OpPhi %9 %29 %91 %88 %92
-%39 = OpPhi %6 %7 %91 %40 %92
+%38 = OpPhi %5 %29 %91 %88 %92
+%39 = OpPhi %2 %3 %91 %40 %92
 OpStore %42 %38
-%43 = OpIMul %6 %39 %32
-%44 = OpIAdd %6 %43 %7
+%43 = OpIMul %2 %39 %32
+%44 = OpIAdd %2 %43 %3
 %46 = OpInBoundsAccessChain %45 %42 %44
-%47 = OpLoad %5 %46
-%48 = OpIAdd %6 %43 %49
+%47 = OpLoad %1 %46
+%48 = OpIAdd %2 %43 %49
 %50 = OpInBoundsAccessChain %45 %42 %48
-%51 = OpLoad %5 %50
-%52 = OpIAdd %6 %43 %53
+%51 = OpLoad %1 %50
+%52 = OpIAdd %2 %43 %53
 %54 = OpInBoundsAccessChain %45 %42 %52
-%55 = OpLoad %5 %54
-%56 = OpIAdd %6 %43 %10
+%55 = OpLoad %1 %54
+%56 = OpIAdd %2 %43 %6
 %57 = OpInBoundsAccessChain %45 %42 %56
-%58 = OpLoad %5 %57
+%58 = OpLoad %1 %57
 %60 = OpCompositeConstruct %59 %47 %51 %55 %58
-%61 = OpBitcast %6 %60
-%62 = OpIMul %6 %31 %25
-%63 = OpIAdd %6 %39 %62
-%64 = OpShiftLeftLogical %6 %63 %53
-%65 = OpIAdd %6 %64 %66
-%67 = OpIAdd %6 %63 %68
-%70 = OpAccessChain %69 %22 %7 %67
-OpStore %70 %61
-%71 = OpBitwiseXor %6 %61 %72
+%61 = OpBitcast %2 %60
+%62 = OpIMul %2 %31 %25
+%63 = OpIAdd %2 %39 %62
+%64 = OpShiftLeftLogical %2 %63 %53
+%65 = OpIAdd %2 %64 %66
+%67 = OpIAdd %2 %63 %68
+%70 = OpAccessChain %69 %22 %3 %67
+OpStore %70 %61 NonPrivatePointer
+%71 = OpBitwiseXor %2 %61 %72
 OpStore %73 %38
 %74 = OpBitcast %59 %71
-%75 = OpIMul %6 %39 %32
-%76 = OpCompositeExtract %5 %74 0
-%77 = OpIAdd %6 %75 %7
+%75 = OpIMul %2 %39 %32
+%76 = OpCompositeExtract %1 %74 0
+%77 = OpIAdd %2 %75 %3
 %78 = OpInBoundsAccessChain %45 %73 %77
 OpStore %78 %76
-%79 = OpCompositeExtract %5 %74 1
-%80 = OpIAdd %6 %75 %49
+%79 = OpCompositeExtract %1 %74 1
+%80 = OpIAdd %2 %75 %49
 %81 = OpInBoundsAccessChain %45 %73 %80
 OpStore %81 %79
-%82 = OpCompositeExtract %5 %74 2
-%83 = OpIAdd %6 %75 %53
+%82 = OpCompositeExtract %1 %74 2
+%83 = OpIAdd %2 %75 %53
 %84 = OpInBoundsAccessChain %45 %73 %83
 OpStore %84 %82
-%85 = OpCompositeExtract %5 %74 3
-%86 = OpIAdd %6 %75 %10
+%85 = OpCompositeExtract %1 %74 3
+%86 = OpIAdd %2 %75 %6
 %87 = OpInBoundsAccessChain %45 %73 %86
 OpStore %87 %85
-%88 = OpLoad %9 %73
-%40 = OpIAdd %6 %39 %49
+%88 = OpLoad %5 %73
+%40 = OpIAdd %2 %39 %49
 %89 = OpIEqual %33 %40 %31
 OpLoopMerge %93 %92 None
 OpBranchConditional %89 %93 %92
 %93 = OpLabel
 OpBranch %94
 %94 = OpLabel
-%35 = OpPhi %9 %29 %90 %88 %93
-%37 = OpAccessChain %27 %18 %7 %7
-OpCooperativeMatrixStoreKHR %37 %35 %7 %8
+%35 = OpPhi %5 %29 %90 %88 %93
+%37 = OpAccessChain %27 %18 %3 %3
+OpCooperativeMatrixStoreKHR %37 %35 %3 %4 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

@@ -1,0 +1,26 @@
+RWStructuredBuffer<uint> RWBuf0 : register(u0);
+
+struct [NodeTrackRWInputSharing] SharedPayload
+{
+	uint grid : SV_DispatchGrid;
+	uint num_atomics;
+};
+
+[Shader("node")]
+[NodeLaunch("broadcasting")]
+[NumThreads(64, 1, 1)]
+[NodeMaxDispatchGrid(1024, 1, 1)]
+[NodeID("Broadcast", 0)]
+void main(globallycoherent RWDispatchNodeInputRecord<SharedPayload> payload, uint thr : SV_GroupIndex)
+{
+	uint o;
+	InterlockedAdd(payload.Get().num_atomics, 1, o);
+	payload.Get().num_atomics += 3;
+	Barrier(payload, GROUP_SYNC | GROUP_SCOPE | DEVICE_SCOPE);
+	// Spec seems to imply we need to have a barrier outselves. WARP fails if we don't.
+	if (payload.FinishedCrossGroupSharing())
+	{
+		InterlockedAdd(RWBuf0[thr], payload.Get().num_atomics, o);
+	}
+}
+

@@ -103,7 +103,8 @@ public:
 	uint32_t allocate_id();
 	uint32_t allocate_ids(uint32_t count);
 
-	void emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage);
+	void emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage,
+	                      spv::MemoryModel memory_model);
 	void emit_entry_point_function_body(CFGStructurizer &structurizer);
 	void emit_leaf_function_body(spv::Function *func, CFGStructurizer &structurizer);
 
@@ -118,6 +119,7 @@ public:
 	bool has_builtin_shader_output(spv::BuiltIn builtin) const;
 	void register_builtin_shader_input(spv::Id id, spv::BuiltIn builtin);
 	bool query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) const;
+	bool builtin_requires_volatile(spv::BuiltIn builtin) const;
 
 	void register_builtin_shader_output(spv::Id id, spv::BuiltIn builtin);
 	bool query_builtin_shader_output(spv::Id id, spv::BuiltIn *builtin) const;

@@ -83,6 +83,12 @@ struct LocalRootSignatureEntry
 	Vector<DescriptorTableEntry> table_entries;
 };
 
+struct ReferenceVkMemoryModel
+{
+	bool non_private = false;
+	bool auto_visibility = false;
+};
+
 static inline DXIL::ComponentType raw_width_to_component_type(RawType type, RawWidth raw_width)
 {
 	switch (raw_width)
@@ -392,6 +398,10 @@ struct Converter::Impl
 		bool waveops_include_helper_lanes = false;
 		bool needs_quad_derivatives = false;
 		String entry_point_name;
+
+		// Eventually, we should use Vulkan memory model across the board,
+		// but don't want to invalidate all Foz caches.
+		spv::MemoryModel memory_model = spv::MemoryModelGLSL450;
 	} execution_mode_meta;
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
@@ -444,6 +454,7 @@ struct Converter::Impl
 		bool rov = false;
 		DXIL::ResourceKind resource_kind = DXIL::ResourceKind::Invalid;
 		int local_root_signature_entry = -1;
+		ReferenceVkMemoryModel vkmm;
 	};
 
 	// Collects all unique calls to annotateHandle (SM 6.6),
@@ -465,6 +476,7 @@ struct Converter::Impl
 	};
 	UnorderedMap<const llvm::Value *, AnnotateHandleReference> llvm_annotate_handle_uses;
 	UnorderedSet<const llvm::Value *> llvm_annotate_handle_lib_uses;
+	Vector<const llvm::Value *> llvm_vkmm_coherent_ptrs;
 
 	Vector<ResourceReference> srv_index_to_reference;
 	Vector<spv::Id> srv_index_to_offset;
@@ -517,6 +529,7 @@ struct Converter::Impl
 		bool non_uniform;
 		bool counter_is_physical_pointer;
 		bool rov;
+		ReferenceVkMemoryModel vkmm;
 
 		spv::StorageClass storage;
 

@@ -364,7 +364,7 @@ spv::Id build_allocate_invocation_id_function(SPIRVModule &module, uint32_t desc
 
 	auto *atomic_add = builder.addInstruction(uint_type, spv::OpAtomicIAdd);
 	atomic_add->addIdOperand(chain->getResultId());
-	atomic_add->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	atomic_add->addIdOperand(builder.getAtomicDeviceScopeId());
 	atomic_add->addIdOperand(builder.makeUintConstant(0));
 	atomic_add->addIdOperand(builder.makeUintConstant(1103633207u));
 
@@ -488,7 +488,7 @@ spv::Id build_validate_bda_load_store_function(SPIRVModule &module, uint32_t des
 
 		auto *atom = builder.addInstruction(u64_type, spv::OpAtomicOr);
 		atom->addIdOperand(chain->getResultId());
-		atom->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atom->addIdOperand(builder.getAtomicDeviceScopeId());
 		atom->addIdOperand(builder.makeUintConstant(0)); // Relaxed
 		atom->addIdOperand(invalidation_mask);
 
@@ -582,7 +582,7 @@ spv::Id build_validate_bda_load_store_function(SPIRVModule &module, uint32_t des
 
 		auto *atom = builder.addInstruction(uint_type, spv::OpAtomicOr);
 		atom->addIdOperand(chain->getResultId());
-		atom->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atom->addIdOperand(builder.getAtomicDeviceScopeId());
 		atom->addIdOperand(builder.makeUintConstant(0));
 		atom->addIdOperand(sel->getResultId());
 		builder.addName(atom->getResultId(), "prev_lock");
@@ -783,7 +783,7 @@ void emit_instrumentation_hash(SPIRVModule &module, const InstructionInstrumenta
 	access_chain->addIdOperand(control_word->getResultId());
 
 	atomic_or->addIdOperand(access_chain->getResultId());
-	atomic_or->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	atomic_or->addIdOperand(builder.getAtomicDeviceScopeId());
 	atomic_or->addIdOperand(builder.makeUintConstant(0));
 	atomic_or->addIdOperand(control_mask->getResultId());
 
@@ -830,16 +830,18 @@ void emit_instrumentation_hash(SPIRVModule &module, const InstructionInstrumenta
 
 		store_op->addIdOperand(access_chain->getResultId());
 		store_op->addIdOperand(composite->getResultId());
+		if (builder.hasCapability(spv::CapabilityVulkanMemoryModel))
+			store_op->addImmediateOperand(spv::MemoryAccessNonPrivatePointerMask);
 
-		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		barrier_op->addIdOperand(builder.getAtomicDeviceScopeId());
 		barrier_op->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsUniformMemoryMask |
 		                                                  spv::MemorySemanticsAcquireReleaseMask));
-		barrier_op2->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		barrier_op2->addIdOperand(builder.getAtomicDeviceScopeId());
 		barrier_op2->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsUniformMemoryMask |
 		                                                   spv::MemorySemanticsAcquireReleaseMask));
 
 		atomic_or->addIdOperand(control_chain_id);
-		atomic_or->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_or->addIdOperand(builder.getAtomicDeviceScopeId());
 		atomic_or->addIdOperand(builder.makeUintConstant(0));
 		atomic_or->addIdOperand(shift_16->getResultId());
 

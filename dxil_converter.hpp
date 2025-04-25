@@ -259,6 +259,7 @@ enum class Option : uint32_t
 	ShaderQuirk = 42,
 	ExtendedRobustness = 43,
 	MaxTessFactor = 44,
+	VulkanMemoryModel = 45,
 	Count
 };
 
@@ -776,6 +777,16 @@ struct OptionMaxTessFactor : OptionBase
 	}
 
 	unsigned max_tess_factor = 0;
+};
+
+struct OptionVulkanMemoryModel : OptionBase
+{
+	OptionVulkanMemoryModel()
+	    : OptionBase(Option::VulkanMemoryModel)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry

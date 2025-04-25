@@ -65,6 +65,15 @@ bool emit_wave_is_first_lane_instruction(Converter::Impl &impl, const llvm::Call
 	return true;
 }
 
+static void add_vkmm_volatile(Converter::Impl &impl, Operation *op, spv::BuiltIn builtin)
+{
+	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan &&
+	    impl.spirv_module.builtin_requires_volatile(builtin))
+	{
+		op->add_literal(spv::MemoryAccessVolatileMask);
+	}
+}
+
 bool emit_wave_builtin_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	if (impl.options.force_subgroup_size && builtin == spv::BuiltInSubgroupSize)
@@ -76,6 +85,8 @@ bool emit_wave_builtin_instruction(spv::BuiltIn builtin, Converter::Impl &impl, 
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
 	auto *op = impl.allocate(spv::OpLoad, instruction);
 	op->add_id(var_id);
+
+	add_vkmm_volatile(impl, op, builtin);
 
 	impl.add(op);
 	return true;
@@ -1130,6 +1141,7 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 		{
 			Operation *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
 			load_op->add_id(local_id);
+			add_vkmm_volatile(impl, load_op, spv::BuiltInSubgroupLocalInvocationId);
 			impl.add(load_op);
 			local_id = load_op->id;
 		}

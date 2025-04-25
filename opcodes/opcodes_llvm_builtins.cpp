@@ -1324,6 +1324,28 @@ static bool needs_group_shared_auto_barrier(Converter::Impl &impl, const llvm::V
 	       DXIL::AddressSpace::GroupShared;
 }
 
+static bool vkmm_requires_auto_visibility(Converter::Impl &impl, const llvm::Value *ptr)
+{
+	auto &ptrs = impl.llvm_vkmm_coherent_ptrs;
+	if (ptrs.empty())
+		return false;
+
+	for (;;)
+	{
+		if (std::find(ptrs.begin(), ptrs.end(), ptr) != ptrs.end())
+			return true;
+
+		if (const auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr))
+			ptr = gep->getOperand(0);
+		else if (const auto *cast = llvm::dyn_cast<llvm::CastInst>(ptr))
+			ptr = cast->getOperand(0);
+		else
+			break;
+	}
+
+	return false;
+}
+
 bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
 	auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getPointerOperand());
@@ -1338,10 +1360,15 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	spv::Id remapped_type_id = resolve_llvm_actual_value_type(impl, nullptr,
 	                                                          instruction->getPointerOperand(), 0);
 
+	auto addr_space = DXIL::AddressSpace(instruction->getPointerOperand()->getType()->getPointerAddressSpace());
+	bool non_private = addr_space != DXIL::AddressSpace::Thread &&
+	                   impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
+
 	if (remapped_type_id != 0)
 	{
 		Operation *load_op = impl.allocate(spv::OpLoad, remapped_type_id);
 		load_op->add_id(value_id);
+		add_vkmm_access_qualifiers(impl, load_op, { non_private });
 		impl.add(load_op);
 
 		if (needs_group_shared_auto_barrier(impl, instruction->getPointerOperand()))
@@ -1373,16 +1400,21 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 			}
 		}
 
+		bool auto_visibility = false;
+
 		// For NodeIO, we always have to tag with aligned mask.
-		if (DXIL::AddressSpace(instruction->getPointerOperand()->getType()->getPointerAddressSpace()) ==
-		    DXIL::AddressSpace::PhysicalNodeIO)
+		if (addr_space == DXIL::AddressSpace::PhysicalNodeIO)
 		{
 			// TODO: Properly track aligned size based on the GEP, but for now, just assume scalar.
 			op->add_literal(spv::MemoryAccessAlignedMask);
 			auto size_alignment = impl.get_physical_size_for_type(
 			    impl.builder().getContainedTypeId(impl.get_type_id(instruction->getPointerOperand()->getType(), true)));
 			op->add_literal(size_alignment.alignment);
+
+			auto_visibility = vkmm_requires_auto_visibility(impl, instruction->getPointerOperand());
 		}
+
+		add_vkmm_access_qualifiers(impl, op, { non_private, auto_visibility });
 
 		if (op->op == spv::PseudoOpMaskedLoad)
 		{
@@ -1440,16 +1472,24 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 	else
 		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 
+	auto addr_space = DXIL::AddressSpace(instruction->getOperand(1)->getType()->getPointerAddressSpace());
+	bool non_private = addr_space != DXIL::AddressSpace::Thread &&
+	                   impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
+	bool auto_visibility = false;
+
 	// For NodeIO, we always have to tag with aligned mask.
-	if (DXIL::AddressSpace(instruction->getOperand(1)->getType()->getPointerAddressSpace()) ==
-	    DXIL::AddressSpace::PhysicalNodeIO)
+	if (addr_space == DXIL::AddressSpace::PhysicalNodeIO)
 	{
 		// TODO: Properly track aligned size based on the GEP, but for now, just assume scalar.
 		op->add_literal(spv::MemoryAccessAlignedMask);
 		auto size_alignment = impl.get_physical_size_for_type(
-		    impl.builder().getContainedTypeId(impl.get_type_id(instruction->getOperand(1)->getType(), true)));
+			impl.builder().getContainedTypeId(impl.get_type_id(instruction->getOperand(1)->getType(), true)));
 		op->add_literal(size_alignment.alignment);
+
+		auto_visibility = vkmm_requires_auto_visibility(impl, instruction->getOperand(1));
 	}
+
+	add_vkmm_access_qualifiers(impl, op, { non_private, auto_visibility });
 
 	if (op->op == spv::PseudoOpMaskedStore)
 	{

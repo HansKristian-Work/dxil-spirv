@@ -141,6 +141,8 @@ static void build_ssbo_store(spv::Builder &builder, spv::Id value_type, spv::Id 
 	auto store = std::make_unique<spv::Instruction>(spv::OpStore);
 	store->addIdOperand(chain->getResultId());
 	store->addIdOperand(value_id);
+	if (builder.hasCapability(spv::CapabilityVulkanMemoryModel))
+		store->addImmediateOperand(spv::MemoryAccessNonPrivatePointerMask);
 
 	builder.getBuildPoint()->addInstruction(std::move(chain));
 	builder.getBuildPoint()->addInstruction(std::move(store));
@@ -234,7 +236,7 @@ static spv::Id build_binary_op(spv::Builder &builder, spv::Id type, spv::Op opco
 static void build_ssbo_barrier(spv::Builder &builder)
 {
 	auto barrier = std::make_unique<spv::Instruction>(spv::OpMemoryBarrier);
-	barrier->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	barrier->addIdOperand(builder.getAtomicDeviceScopeId());
 	barrier->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsUniformMemoryMask |
 	                                               spv::MemorySemanticsAcquireReleaseMask));
 	builder.getBuildPoint()->addInstruction(std::move(barrier));
@@ -287,7 +289,7 @@ static void build_descriptor_qa_fault_report(SPIRVModule &module, spv::Id &func_
 
 	auto increment = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpAtomicIAdd);
 	increment->addIdOperand(chain->getResultId());
-	increment->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	increment->addIdOperand(builder.getAtomicDeviceScopeId());
 	increment->addIdOperand(builder.makeUintConstant(0));
 	increment->addIdOperand(builder.makeUintConstant(1));
 

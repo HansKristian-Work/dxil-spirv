@@ -1,0 +1,106 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_KHR_shader_subgroup_basic : require
+
+struct _6
+{
+    float _m0;
+};
+
+hitAttributeEXT _6 hit;
+
+void main()
+{
+    _6 _10;
+    _10._m0 = gl_RayTmaxEXT;
+    _6 _11;
+    _11._m0 = gl_RayTminEXT;
+    hit = _10;
+    bool _24 = reportIntersectionEXT(4.0, 100u);
+    hit = _11;
+    bool _28 = reportIntersectionEXT(3.0, 50u);
+    _11._m0 = float(gl_SubgroupInvocationID);
+    hit = _11;
+    bool _36 = reportIntersectionEXT(2.0, 50u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 40
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability GroupNonUniform
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical Vulkan
+OpEntryPoint IntersectionKHR %3 "main" %8 %13 %19 %32
+OpName %3 "main"
+OpName %6 ""
+OpName %8 "hit"
+OpDecorate %13 BuiltIn RayTmaxKHR
+OpDecorate %19 BuiltIn RayTminKHR
+OpDecorate %32 BuiltIn SubgroupLocalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeStruct %5
+%7 = OpTypePointer HitAttributeKHR %6
+%8 = OpVariable %7 HitAttributeKHR
+%9 = OpTypePointer Function %6
+%12 = OpTypePointer Input %5
+%13 = OpVariable %12 Input
+%15 = OpTypePointer Function %5
+%17 = OpTypeInt 32 0
+%18 = OpConstant %17 0
+%19 = OpVariable %12 Input
+%23 = OpTypeBool
+%25 = OpConstant %5 4
+%26 = OpConstant %17 100
+%29 = OpConstant %5 3
+%30 = OpConstant %17 50
+%31 = OpTypePointer Input %17
+%32 = OpVariable %31 Input
+%37 = OpConstant %5 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%10 = OpVariable %9 Function
+%11 = OpVariable %9 Function
+OpBranch %38
+%38 = OpLabel
+%14 = OpLoad %5 %13 Volatile
+%16 = OpInBoundsAccessChain %15 %10 %18
+OpStore %16 %14
+%20 = OpLoad %5 %19
+%21 = OpInBoundsAccessChain %15 %11 %18
+OpStore %21 %20
+%22 = OpLoad %6 %10
+OpStore %8 %22
+%24 = OpReportIntersectionKHR %23 %25 %26
+%27 = OpLoad %6 %11
+OpStore %8 %27
+%28 = OpReportIntersectionKHR %23 %29 %30
+%33 = OpLoad %17 %32 Volatile
+%34 = OpConvertUToF %5 %33
+OpStore %21 %34
+%35 = OpLoad %6 %11
+OpStore %8 %35
+%36 = OpReportIntersectionKHR %23 %37 %30
+OpReturn
+OpFunctionEnd
+#endif

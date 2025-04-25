@@ -49,7 +49,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Function *active_function = nullptr;
 	spv::Instruction *entry_point = nullptr;
 
-	void emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage);
+	void emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage,
+	                      spv::MemoryModel memory_model);
 	bool finalize_spirv(Vector<uint32_t> &spirv);
 
 	void register_block(CFGNode *node) override;
@@ -339,7 +340,7 @@ spv::Id SPIRVModule::Impl::get_builtin_shader_input(spv::BuiltIn builtin)
 	bool requires_flat = false;
 	spv::Id var_id = create_variable(spv::StorageClassInput, get_type_for_builtin(builtin, requires_flat), nullptr);
 	builder.addDecoration(var_id, spv::DecorationBuiltIn, builtin);
-	if (builtin_requires_volatile(builtin))
+	if (builtin_requires_volatile(builtin) && !builder.hasCapability(spv::CapabilityVulkanMemoryModel))
 		builder.addDecoration(var_id, spv::DecorationVolatile);
 
 	// VUID-StandaloneSpirv-Flat-04744
@@ -364,19 +365,24 @@ spv::Block *SPIRVModule::Impl::get_spv_block(CFGNode *node)
 	return static_cast<spv::Block *>(node->userdata);
 }
 
-void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage)
+void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model,
+                                         const char *name, bool physical_storage,
+                                         spv::MemoryModel memory_model)
 {
 	execution_model = model;
 	builder.addCapability(spv::Capability::CapabilityShader);
 
+	if (memory_model == spv::MemoryModelVulkan)
+		builder.addCapability(spv::CapabilityVulkanMemoryModel);
+
 	if (physical_storage)
 	{
-		builder.setMemoryModel(spv::AddressingModel::AddressingModelPhysicalStorageBuffer64, spv::MemoryModelGLSL450);
+		builder.setMemoryModel(spv::AddressingModel::AddressingModelPhysicalStorageBuffer64, memory_model);
 		builder.addCapability(spv::CapabilityPhysicalStorageBufferAddresses);
 		builder.addExtension("SPV_KHR_physical_storage_buffer");
 	}
 	else
-		builder.setMemoryModel(spv::AddressingModel::AddressingModelLogical, spv::MemoryModel::MemoryModelGLSL450);
+		builder.setMemoryModel(spv::AddressingModel::AddressingModelLogical, memory_model);
 
 	entry_function = builder.makeEntryPoint("main");
 	entry_point = builder.addEntryPoint(model, entry_function, name);
@@ -1299,7 +1305,7 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 					texel->addIdOperand(coord);
 					texel->addIdOperand(builder.makeIntConstant(0));
 					atomic_op->addIdOperand(texel->getResultId());
-					atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+					atomic_op->addIdOperand(builder.getAtomicDeviceScopeId());
 					atomic_op->addIdOperand(builder.makeUintConstant(0));
 					atomic_op->addIdOperand(or_op_id);
 					add_instruction(elect_block, std::move(texel));
@@ -1561,7 +1567,7 @@ spv::Id SPIRVModule::Impl::build_increment_node_count(SPIRVModule &, bool per_th
 
 	auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
 	atomic_op->addIdOperand(chain_index_op->getResultId());
-	atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+	atomic_op->addIdOperand(builder.getAtomicDeviceScopeId());
 	atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 	atomic_op->addIdOperand(total_count_id);
 
@@ -1748,7 +1754,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 
 		auto payload_total_atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
 		payload_total_atomic_op->addIdOperand(chain_payload_total_op->getResultId());
-		payload_total_atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		payload_total_atomic_op->addIdOperand(builder.getAtomicDeviceScopeId());
 		payload_total_atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 		payload_total_atomic_op->addIdOperand(and_op->getResultId());
 
@@ -1764,7 +1770,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 
 		auto atomic_total_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
 		atomic_total_op->addIdOperand(chain_node_total_op->getResultId());
-		atomic_total_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_total_op->addIdOperand(builder.getAtomicDeviceScopeId());
 		atomic_total_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 		atomic_total_op->addIdOperand(total_count_id);
 
@@ -1782,7 +1788,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 
 		auto fused_atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIIncrement);
 		fused_atomic_op->addIdOperand(chain_fused_total_op->getResultId());
-		fused_atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		fused_atomic_op->addIdOperand(builder.getAtomicDeviceScopeId());
 		fused_atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 
 		auto fused_mul2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIMul);
@@ -1853,6 +1859,8 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 			auto store_inst = std::make_unique<spv::Instruction>(spv::OpStore);
 			store_inst->addIdOperand(shared_id);
 			store_inst->addIdOperand(payload_offset_id);
+			if (builder.hasCapability(spv::CapabilityVulkanMemoryModel))
+				store_inst->addImmediateOperand(spv::MemoryAccessNonPrivatePointerMask);
 			add_instruction(body_block, std::move(store_inst));
 		}
 
@@ -1865,8 +1873,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 		auto barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
 		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
 		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
-		barrier_op->addIdOperand(
-		    builder.makeUintConstant(spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+		barrier_op->addIdOperand(builder.getWorkgroupBarrierSemanticsId());
 		add_instruction(merge_block, std::move(barrier_op));
 	}
 
@@ -1910,6 +1917,8 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 	{
 		auto load_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
 		load_op->addIdOperand(shared_id);
+		if (builder.hasCapability(spv::CapabilityVulkanMemoryModel))
+			load_op->addImmediateOperand(spv::MemoryAccessNonPrivatePointerMask);
 		return_value = load_op->getResultId();
 		add_instruction(merge_block, std::move(load_op));
 	}
@@ -1920,8 +1929,8 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 		auto barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
 		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
 		barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
-		barrier_op->addIdOperand(
-		    builder.makeUintConstant(spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+		barrier_op->addIdOperand(builder.makeUintConstant(
+		    spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
 		add_instruction(merge_block, std::move(barrier_op));
 	}
 
@@ -1977,7 +1986,7 @@ spv::Id SPIRVModule::Impl::build_finish_cross_group_sharing(SPIRVModule &module)
 
 		auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIDecrement);
 		atomic_op->addIdOperand(cast_op->getResultId());
-		atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->addIdOperand(builder.getAtomicDeviceScopeId());
 		atomic_op->addIdOperand(builder.makeUintConstant(0)); // There is no implied sync.
 
 		auto is_last_wg = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
@@ -1987,6 +1996,8 @@ spv::Id SPIRVModule::Impl::build_finish_cross_group_sharing(SPIRVModule &module)
 		auto store_inst = std::make_unique<spv::Instruction>(spv::OpStore);
 		store_inst->addIdOperand(shared_id);
 		store_inst->addIdOperand(is_last_wg->getResultId());
+		if (builder.hasCapability(spv::CapabilityVulkanMemoryModel))
+			store_inst->addImmediateOperand(spv::MemoryAccessNonPrivatePointerMask);
 
 		add_instruction(body_block, std::move(cast_op));
 		add_instruction(body_block, std::move(atomic_op));
@@ -2001,11 +2012,12 @@ spv::Id SPIRVModule::Impl::build_finish_cross_group_sharing(SPIRVModule &module)
 	auto barrier_op = std::make_unique<spv::Instruction>(spv::OpControlBarrier);
 	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
 	barrier_op->addIdOperand(builder.makeUintConstant(spv::ScopeWorkgroup));
-	barrier_op->addIdOperand(builder.makeUintConstant(
-	    spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+	barrier_op->addIdOperand(builder.getWorkgroupBarrierSemanticsId());
 
 	auto load_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLoad);
 	load_op->addIdOperand(shared_id);
+	if (builder.hasCapability(spv::CapabilityVulkanMemoryModel))
+		load_op->addImmediateOperand(spv::MemoryAccessNonPrivatePointerMask);
 
 	spv::Id return_value = load_op->getResultId();
 	add_instruction(merge_block, std::move(barrier_op));
@@ -2058,7 +2070,7 @@ spv::Id SPIRVModule::Impl::build_robust_atomic_counter_op(SPIRVModule &module)
 		bitcast_op->addIdOperand(func->getParamId(0));
 		auto atomic_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpAtomicIAdd);
 		atomic_op->addIdOperand(bitcast_op->getResultId());
-		atomic_op->addIdOperand(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->addIdOperand(builder.getAtomicDeviceScopeId());
 		atomic_op->addIdOperand(builder.makeUintConstant(0));
 		atomic_op->addIdOperand(func->getParamId(1));
 		auto add_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpIAdd);
@@ -2813,9 +2825,12 @@ SPIRVModule::SPIRVModule()
 	impl = std::make_unique<Impl>(*this);
 }
 
-void SPIRVModule::emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage)
+void SPIRVModule::emit_entry_point(spv::ExecutionModel model, const char *name, bool physical_storage,
+                                   spv::MemoryModel memory_model)
 {
-	impl->emit_entry_point(model, name, physical_storage);
+	if (memory_model == spv::MemoryModelVulkan)
+		set_override_spirv_version(0x10600);
+	impl->emit_entry_point(model, name, physical_storage, memory_model);
 }
 
 bool SPIRVModule::Impl::execution_model_is_ray_tracing() const
@@ -3112,8 +3127,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			auto *pre = builder.addInstruction(spv::OpControlBarrier);
 			pre->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
 			pre->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
-			pre->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
-			                                           spv::MemorySemanticsAcquireReleaseMask));
+			pre->addIdOperand(builder.getWorkgroupBarrierSemanticsId());
 		}
 
 		if (op->op == spv::OpIsHelperInvocationEXT && !caps.supports_demote)
@@ -3293,8 +3307,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			auto *post = builder.addInstruction(spv::OpControlBarrier);
 			post->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
 			post->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
-			post->addIdOperand(builder.makeUintConstant(spv::MemorySemanticsWorkgroupMemoryMask |
-			                                            spv::MemorySemanticsAcquireReleaseMask));
+			post->addIdOperand(builder.getWorkgroupBarrierSemanticsId());
 		}
 	}
 
@@ -3612,6 +3625,11 @@ bool SPIRVModule::query_builtin_shader_input(spv::Id id, spv::BuiltIn *builtin) 
 	return impl->query_builtin_shader_input(id, builtin);
 }
 
+bool SPIRVModule::builtin_requires_volatile(spv::BuiltIn builtin) const
+{
+	return impl->builtin_requires_volatile(builtin);
+}
+
 bool SPIRVModule::query_builtin_shader_output(spv::Id id, spv::BuiltIn *builtin) const
 {
 	return impl->query_builtin_shader_output(id, builtin);
@@ -3675,7 +3693,7 @@ const DescriptorQAInfo &SPIRVModule::get_descriptor_qa_info() const
 
 void SPIRVModule::set_override_spirv_version(uint32_t version)
 {
-	impl->override_spirv_version = version;
+	impl->override_spirv_version = std::max<uint32_t>(impl->override_spirv_version, version);
 }
 
 void SPIRVModule::set_helper_lanes_participate_in_wave_ops(bool enable)

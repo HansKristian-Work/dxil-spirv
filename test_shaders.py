@@ -63,7 +63,7 @@ def get_sm(shader, version_minor):
     elif ext == '.frag':
         return 'ps_6' + minor_version
     elif ext == '.comp':
-        return 'cs_6' + minor_version
+        return 'lib_6_8' if '.node.' in shader else ('cs_6' + minor_version)
     elif ext == '.tesc':
         return 'hs_6' + minor_version
     elif ext == '.tese':
@@ -117,12 +117,12 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         dxil_path = shader
 
     hlsl_cmd = [paths.dxil_spirv, '--output', glsl_path, dxil_path, '--vertex-input', 'ATTR', '0']
+    skip_glsl = '.noglsl.' in shader
 
     if not args.bench:
-        if '.noglsl' not in shader:
-            hlsl_cmd += ['--asm', '--glsl']
-        else:
-            hlsl_cmd += ['--asm']
+        hlsl_cmd += ['--asm']
+        if not skip_glsl:
+            hlsl_cmd += ['--glsl']
 
     if '.bc.' in shader:
         hlsl_cmd += ['--raw-llvm']
@@ -247,6 +247,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--instruction-instrumentation', '4', '0', '2', 'abcd']
     if '.auto-group-shared-barrier.' in shader:
         hlsl_cmd += ['--shader-quirk', '8']
+    if '.vkmm.' in shader:
+        hlsl_cmd += ['--vkmm']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:
