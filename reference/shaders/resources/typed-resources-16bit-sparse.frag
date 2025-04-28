@@ -9,7 +9,6 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #extension GL_ARB_sparse_texture2 : require
-#extension GL_ARB_sparse_texture_clamp : require
 #extension GL_EXT_samplerless_texture_functions : require
 
 struct SparseTexel
@@ -82,7 +81,7 @@ void main()
 {
     uint _422;
     vec4 _423;
-    _422 = sparseTextureClampARB(sampler2D(_8, _28), vec2(UV.x, UV.y), 0.0, _423);
+    _422 = sparseTextureARB(sampler2D(_8, _28), vec2(UV.x, UV.y), _423);
     SparseTexel _63 = SparseTexel(_422, _423);
     f16vec4 _69 = f16vec4(_63._m1);
     _74 _75 = _74(_69.x, _69.y, _69.z, _69.w, _63._m0);
@@ -118,7 +117,7 @@ void main()
     _98 _183 = _98(_178.x, _178.y, _178.z, _178.w, _175._m0);
     uint _434;
     float _435;
-    _434 = sparseTextureClampARB(sampler2DShadow(_8, _29), vec3(vec2(UV.x, UV.y), 0.5), 0.0, _435);
+    _434 = sparseTextureARB(sampler2DShadow(_8, _29), vec3(vec2(UV.x, UV.y), 0.5), _435);
     SparseTexel_3 _200 = SparseTexel_3(_434, _435);
     mediump float _203 = _200._m1;
     _204 _205 = _204(_203, _203, _203, _203, _200._m0);
@@ -149,13 +148,13 @@ void main()
     _74 _273 = _74(_268.x, _268.y, _268.z, _268.w, _264._m0);
     uint _442;
     vec4 _443;
-    _442 = sparseTextureGradClampARB(sampler2D(_8, _28), vec2(UV.x, UV.y), vec2(0.20000000298023223876953125, 0.300000011920928955078125), vec2(0.4000000059604644775390625, 0.5), 0.0, _443);
+    _442 = sparseTextureGradARB(sampler2D(_8, _28), vec2(UV.x, UV.y), vec2(0.20000000298023223876953125, 0.300000011920928955078125), vec2(0.4000000059604644775390625, 0.5), _443);
     SparseTexel _288 = SparseTexel(_442, _443);
     f16vec4 _294 = f16vec4(_288._m1);
     _74 _299 = _74(_294.x, _294.y, _294.z, _294.w, _288._m0);
     uint _444;
     vec4 _445;
-    _444 = sparseTextureClampARB(sampler2D(_8, _28), vec2(UV.x, UV.y), 0.0, _445, 0.5);
+    _444 = sparseTextureARB(sampler2D(_8, _28), vec2(UV.x, UV.y), _445, 0.5);
     SparseTexel _311 = SparseTexel(_444, _445);
     f16vec4 _315 = f16vec4(_311._m1);
     _74 _320 = _74(_315.x, _315.y, _315.z, _315.w, _311._m0);
@@ -205,7 +204,6 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability SparseResidency
-OpCapability MinLod
 OpCapability SampledBuffer
 OpCapability DenormPreserve
 OpExtension "SPV_KHR_float_controls"
@@ -348,7 +346,7 @@ OpBranch %420
 %58 = OpLoad %5 %56
 %60 = OpSampledImage %59 %49 %51
 %64 = OpCompositeConstruct %30 %55 %58
-%63 = OpImageSparseSampleImplicitLod %62 %60 %64 MinLod %61
+%63 = OpImageSparseSampleImplicitLod %62 %60 %64 None
 %65 = OpCompositeExtract %13 %63 0
 %66 = OpCompositeExtract %33 %63 1
 %69 = OpFConvert %68 %66
@@ -464,7 +462,7 @@ OpBranch %420
 %194 = OpLogicalOr %81 %171 %189
 %197 = OpSampledImage %196 %49 %50
 %201 = OpCompositeConstruct %30 %55 %58
-%200 = OpImageSparseSampleDrefImplicitLod %199 %197 %201 %198 MinLod %61
+%200 = OpImageSparseSampleDrefImplicitLod %199 %197 %201 %198 None
 %202 = OpCompositeExtract %13 %200 0
 %203 = OpCompositeExtract %5 %200 1
 %205 = OpCompositeConstruct %204 %203 %203 %203 %203 %202
@@ -550,7 +548,7 @@ OpBranch %420
 %289 = OpCompositeConstruct %30 %55 %58
 %290 = OpCompositeConstruct %30 %285 %286
 %291 = OpCompositeConstruct %30 %287 %198
-%288 = OpImageSparseSampleExplicitLod %62 %60 %289 Grad|MinLod %290 %291 %61
+%288 = OpImageSparseSampleExplicitLod %62 %60 %289 Grad %290 %291
 %292 = OpCompositeExtract %13 %288 0
 %293 = OpCompositeExtract %33 %288 1
 %294 = OpFConvert %68 %293
@@ -571,7 +569,7 @@ OpBranch %420
 %309 = OpFAdd %67 %283 %303
 %310 = OpLogicalOr %81 %284 %305
 %312 = OpCompositeConstruct %30 %55 %58
-%311 = OpImageSparseSampleImplicitLod %62 %60 %312 Bias|MinLod %198 %61
+%311 = OpImageSparseSampleImplicitLod %62 %60 %312 Bias %198
 %313 = OpCompositeExtract %13 %311 0
 %314 = OpCompositeExtract %33 %311 1
 %315 = OpFConvert %68 %314

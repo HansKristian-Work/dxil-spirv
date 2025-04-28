@@ -1,6 +1,5 @@
 #version 460
 #extension GL_ARB_sparse_texture2 : require
-#extension GL_ARB_sparse_texture_clamp : require
 
 struct SparseTexel
 {
@@ -32,38 +31,38 @@ void main()
 {
     uint _152;
     float _153;
-    _152 = sparseTextureOffsetClampARB(sampler1DShadow(_8, _26), vec2(TEXCOORD.x, TEXCOORD.w), 1, 0.0, _153);
+    _152 = sparseTextureOffsetARB(sampler1DShadow(_8, _26), vec2(TEXCOORD.x, TEXCOORD.w), 1, _153);
     SparseTexel _61 = SparseTexel(_152, _153);
     float _63 = _61._m1;
     _64 _65 = _64(_63, _63, _63, _63, _61._m0);
     uint _154;
     float _155;
-    _154 = sparseTextureOffsetClampARB(sampler1DArrayShadow(_11, _26), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 2, 0.0, _155);
+    _154 = sparseTextureOffsetARB(sampler1DArrayShadow(_11, _26), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 2, _155);
     SparseTexel _77 = SparseTexel(_154, _155);
     float _80 = _77._m1;
     _64 _81 = _64(_80, _80, _80, _80, _77._m0);
     uint _156;
     float _157;
-    _156 = sparseTextureOffsetClampARB(sampler2DShadow(_14, _26), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), ivec2(1, 2), 0.0, _157);
+    _156 = sparseTextureOffsetARB(sampler2DShadow(_14, _26), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), ivec2(1, 2), _157);
     SparseTexel _91 = SparseTexel(_156, _157);
     float _96 = _91._m1;
     _64 _97 = _64(_96, _96, _96, _96, _91._m0);
     uint _158;
     float _159;
-    _158 = sparseTextureOffsetClampARB(sampler2DArrayShadow(_17, _26), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), ivec2(1, 2), 0.0, _159);
+    _158 = sparseTextureOffsetARB(sampler2DArrayShadow(_17, _26), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), ivec2(1, 2), _159);
     SparseTexel _107 = SparseTexel(_158, _159);
     float _111 = _107._m1;
     _64 _112 = _64(_111, _111, _111, _111, _107._m0);
     uint _160;
     float _161;
-    _160 = sparseTextureClampARB(samplerCubeShadow(_20, _26), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), 0.0, _161);
+    _160 = sparseTextureARB(samplerCubeShadow(_20, _26), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), _161);
     SparseTexel _122 = SparseTexel(_160, _161);
     float _125 = _122._m1;
     _64 _126 = _64(_125, _125, _125, _125, _122._m0);
     vec4 _137 = vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w);
     uint _162;
     float _163;
-    _162 = sparseTextureClampARB(samplerCubeArrayShadow(_23, _26), _137, TEXCOORD.w, 0.0, _163);
+    _162 = sparseTextureARB(samplerCubeArrayShadow(_23, _26), _137, TEXCOORD.w, _163);
     SparseTexel _136 = SparseTexel(_162, _163);
     float _139 = _136._m1;
     _64 _140 = _64(_139, _139, _139, _139, _136._m0);
@@ -82,7 +81,6 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency
-OpCapability MinLod
 OpCapability Sampled1D
 OpCapability SampledCubeArray
 OpMemoryModel Logical GLSL450
@@ -189,7 +187,7 @@ OpBranch %150
 %51 = OpAccessChain %40 %29 %52
 %53 = OpLoad %5 %51
 %56 = OpSampledImage %55 %38 %39
-%61 = OpImageSparseSampleDrefImplicitLod %60 %56 %44 %53 ConstOffset|MinLod %58 %59
+%61 = OpImageSparseSampleDrefImplicitLod %60 %56 %44 %53 ConstOffset %58
 %62 = OpCompositeExtract %42 %61 0
 %63 = OpCompositeExtract %5 %61 1
 %65 = OpCompositeConstruct %64 %63 %63 %63 %63 %62
@@ -200,7 +198,7 @@ OpBranch %150
 %72 = OpFAdd %5 %70 %66
 %75 = OpSampledImage %74 %37 %39
 %78 = OpCompositeConstruct %30 %44 %47
-%77 = OpImageSparseSampleDrefImplicitLod %60 %75 %78 %53 ConstOffset|MinLod %76 %59
+%77 = OpImageSparseSampleDrefImplicitLod %60 %75 %78 %53 ConstOffset %76
 %79 = OpCompositeExtract %42 %77 0
 %80 = OpCompositeExtract %5 %77 1
 %81 = OpCompositeConstruct %64 %80 %80 %80 %80 %79
@@ -212,7 +210,7 @@ OpBranch %150
 %87 = OpFAdd %5 %85 %86
 %90 = OpSampledImage %89 %36 %39
 %92 = OpCompositeConstruct %30 %44 %47
-%91 = OpImageSparseSampleDrefImplicitLod %60 %90 %92 %53 ConstOffset|MinLod %94 %59
+%91 = OpImageSparseSampleDrefImplicitLod %60 %90 %92 %53 ConstOffset %94
 %95 = OpCompositeExtract %42 %91 0
 %96 = OpCompositeExtract %5 %91 1
 %97 = OpCompositeConstruct %64 %96 %96 %96 %96 %95
@@ -224,7 +222,7 @@ OpBranch %150
 %103 = OpFAdd %5 %101 %102
 %106 = OpSampledImage %105 %35 %39
 %109 = OpCompositeConstruct %108 %44 %47 %50
-%107 = OpImageSparseSampleDrefImplicitLod %60 %106 %109 %53 ConstOffset|MinLod %94 %59
+%107 = OpImageSparseSampleDrefImplicitLod %60 %106 %109 %53 ConstOffset %94
 %110 = OpCompositeExtract %42 %107 0
 %111 = OpCompositeExtract %5 %107 1
 %112 = OpCompositeConstruct %64 %111 %111 %111 %111 %110
@@ -236,7 +234,7 @@ OpBranch %150
 %118 = OpFAdd %5 %116 %117
 %121 = OpSampledImage %120 %34 %39
 %123 = OpCompositeConstruct %108 %44 %47 %50
-%122 = OpImageSparseSampleDrefImplicitLod %60 %121 %123 %53 MinLod %59
+%122 = OpImageSparseSampleDrefImplicitLod %60 %121 %123 %53 None
 %124 = OpCompositeExtract %42 %122 0
 %125 = OpCompositeExtract %5 %122 1
 %126 = OpCompositeConstruct %64 %125 %125 %125 %125 %124
@@ -248,7 +246,7 @@ OpBranch %150
 %132 = OpFAdd %5 %130 %131
 %135 = OpSampledImage %134 %33 %39
 %137 = OpCompositeConstruct %27 %44 %47 %50 %53
-%136 = OpImageSparseSampleDrefImplicitLod %60 %135 %137 %53 MinLod %59
+%136 = OpImageSparseSampleDrefImplicitLod %60 %135 %137 %53 None
 %138 = OpCompositeExtract %42 %136 0
 %139 = OpCompositeExtract %5 %136 1
 %140 = OpCompositeConstruct %64 %139 %139 %139 %139 %138
