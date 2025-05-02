@@ -173,6 +173,18 @@ struct AllocaAGSForwardingTracking
 	uint32_t override_element_stride = 0;
 };
 
+class GlobalConfiguration
+{
+public:
+	// Only used for temporary hackery and testing.
+	static const GlobalConfiguration &get();
+	bool wmma_fp8_hack = false;
+	bool wmma_rdna3_workaround = false;
+
+private:
+	GlobalConfiguration();
+};
+
 struct Converter::Impl
 {
 	DXIL_SPV_OVERRIDE_NEW_DELETE

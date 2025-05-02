@@ -8549,4 +8549,22 @@ const String &Converter::get_compiled_entry_point() const
 {
 	return impl->execution_mode_meta.entry_point_name;
 }
+
+const GlobalConfiguration &GlobalConfiguration::get()
+{
+	static GlobalConfiguration config;
+	return config;
+}
+
+GlobalConfiguration::GlobalConfiguration()
+{
+	const char *env = getenv("DXIL_SPIRV_CONFIG");
+	if (env)
+	{
+		if (strcmp(env, "wmma_fp8_hack") == 0)
+			wmma_fp8_hack = true;
+		else if (strcmp(env, "wmma_rdna3_workaround") == 0)
+			wmma_rdna3_workaround = true;
+	}
+}
 } // namespace dxil_spv

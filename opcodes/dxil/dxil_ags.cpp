@@ -1718,6 +1718,9 @@ static void analyze_dubious_implementation_defined_column_behavior(
 	// This has different results on RDNA4 and RDNA3 and we can detect
 	// this very specific case and rewrite the GEP to hack around it.
 
+	if (!GlobalConfiguration::get().wmma_rdna3_workaround)
+		return;
+
 	if (const auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(value))
 	{
 		analyze_dubious_implementation_defined_column_behavior(impl, binop->getOperand(0));
