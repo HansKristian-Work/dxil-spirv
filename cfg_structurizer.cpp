@@ -6040,7 +6040,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 		for (size_t i = 0, n = constructs.size(); i < n; i++)
 		{
 			auto *candidate = constructs[i];
-			assert(candidate->pred.empty());
+			assert(candidate->pred.empty() || candidate == default_case.node);
 			dispatcher->add_branch(candidate);
 
 			if (need_default_case || i)
