@@ -85,7 +85,6 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_coop_mat_fp8_to_fp16(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_coop_mat_fp16_to_fp8(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_coop_mat_transfer(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
-	spv::Id build_coop_mat_clamp(SPIRVModule &module, spv::Id type);
 	spv::Id build_is_quad_uniform_control_flow(SPIRVModule &module);
 	spv::Id build_validate_bda_load_store(SPIRVModule &module);
 	spv::Id build_allocate_invocation_id(SPIRVModule &module);
@@ -2546,88 +2545,6 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 	return func->getId();
 }
 
-spv::Id SPIRVModule::Impl::build_coop_mat_clamp(SPIRVModule &module, spv::Id type_id)
-{
-	for (auto &ops : coop_mat_conv_ids)
-		if (ops.input_type == type_id && ops.call == HelperCall::CoopMatClamp)
-			return ops.func_id;
-	auto *current_build_point = builder.getBuildPoint();
-
-	spv::Block *entry = nullptr;
-	spv::Id uint_type = builder.makeUintType(32);
-	spv::Id f32_type = builder.makeFloatType(32);
-	spv::Id bool_type = builder.makeBoolType();
-
-	// RADV workaround. It fails to understand coopmat passed as value.
-	spv::Id float_ptr_type = builder.makePointer(spv::StorageClassFunction, type_id);
-
-	auto *func = builder.makeFunctionEntry(spv::NoPrecision, type_id,
-	                                       "CoopMatClamp",
-	                                       { float_ptr_type, f32_type, f32_type }, {}, &entry);
-
-	spv::Id output_id = create_variable(spv::StorageClassFunction, type_id, "coop_output");
-
-	auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
-	len->addIdOperand(type_id);
-
-	auto *header = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge = new spv::Block(builder.getUniqueId(), *func);
-	builder.createBranch(header);
-	builder.setBuildPoint(header);
-	{
-		auto *phi = builder.addInstruction(uint_type, spv::OpPhi);
-		auto *iter = builder.addInstruction(uint_type, spv::OpIAdd);
-		iter->addIdOperand(phi->getResultId());
-		iter->addIdOperand(builder.makeUintConstant(1));
-
-		phi->addIdOperand(builder.makeUintConstant(0));
-		phi->addIdOperand(entry->getId());
-		phi->addIdOperand(iter->getResultId());
-		phi->addIdOperand(header->getId());
-
-		auto *input_chain = builder.addInstruction(
-		    builder.makePointer(spv::StorageClassFunction, f32_type), spv::OpInBoundsAccessChain);
-		input_chain->addIdOperand(func->getParamId(0));
-		input_chain->addIdOperand(phi->getResultId());
-
-		auto *load = builder.addInstruction(f32_type, spv::OpLoad);
-		load->addIdOperand(input_chain->getResultId());
-
-		auto *output_chain = builder.addInstruction(
-		    builder.makePointer(spv::StorageClassFunction, f32_type), spv::OpInBoundsAccessChain);
-		output_chain->addIdOperand(output_id);
-		output_chain->addIdOperand(phi->getResultId());
-
-		spv::Id std450 = builder.import("GLSL.std.450");
-		auto *clamp = builder.addInstruction(f32_type, spv::OpExtInst);
-		clamp->addIdOperand(std450);
-		clamp->addImmediateOperand(GLSLstd450FClamp);
-		clamp->addIdOperand(load->getResultId());
-		clamp->addIdOperand(func->getParamId(1));
-		clamp->addIdOperand(func->getParamId(2));
-
-		auto *store = builder.addInstruction(spv::OpStore);
-		store->addIdOperand(output_chain->getResultId());
-		store->addIdOperand(clamp->getResultId());
-
-		auto *cmp = builder.addInstruction(bool_type, spv::OpULessThan);
-		cmp->addIdOperand(iter->getResultId());
-		cmp->addIdOperand(len->getResultId());
-		builder.createLoopMerge(merge, header, 0);
-		builder.createConditionalBranch(cmp->getResultId(), header, merge);
-	}
-
-	builder.setBuildPoint(merge);
-	auto *loaded_result = builder.addInstruction(type_id, spv::OpLoad);
-	loaded_result->addIdOperand(output_id);
-
-	builder.makeReturn(false, loaded_result->getResultId());
-
-	builder.setBuildPoint(current_build_point);
-	coop_mat_conv_ids.push_back({ type_id, type_id, func->getId(), HelperCall::CoopMatClamp });
-	return func->getId();
-}
-
 spv::Id SPIRVModule::Impl::build_coop_mat_fp8_to_fp16(SPIRVModule &module, const spv::Id *ids, uint32_t id_count)
 {
 	if (id_count != 2)
@@ -2810,8 +2727,6 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_validate_bda_load_store(module);
 	case HelperCall::AllocateInvocationID:
 		return build_allocate_invocation_id(module);
-	case HelperCall::CoopMatClamp:
-		return build_coop_mat_clamp(module, type_id);
 
 	default:
 		break;

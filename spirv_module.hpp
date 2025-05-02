@@ -81,7 +81,6 @@ enum class HelperCall
 	AllocateInvocationID,
 	CoopMatFP8toFP16,
 	CoopMatFP16toFP8,
-	CoopMatClamp,
 	CoopMatTransfer
 };
 
