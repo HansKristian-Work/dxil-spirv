@@ -1192,8 +1192,8 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 
 	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(0)))
 	{
-		auto override_itr = impl.alloca_ags_tracking.find(alloca);
-		if (override_itr != impl.alloca_ags_tracking.end() && override_itr->second.override_element_type)
+		auto override_itr = impl.ags.alloca_tracking.find(alloca);
+		if (override_itr != impl.ags.alloca_tracking.end() && override_itr->second.override_element_type)
 			type_id = override_itr->second.override_element_type;
 	}
 
@@ -1739,9 +1739,9 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	auto ags_itr = impl.alloca_ags_tracking.find(instruction);
+	auto ags_itr = impl.ags.alloca_tracking.find(instruction);
 
-	if (ags_itr != impl.alloca_ags_tracking.end() && ags_itr->second.override_element_type)
+	if (ags_itr != impl.ags.alloca_tracking.end() && ags_itr->second.override_element_type)
 	{
 		uint32_t elems = element_type->getArrayNumElements();
 		if (ags_itr->second.override_element_stride == 0)

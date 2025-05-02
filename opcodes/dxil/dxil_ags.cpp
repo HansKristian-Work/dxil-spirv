@@ -1544,14 +1544,55 @@ bool wmma_store_is_masked(Converter::Impl &impl, const llvm::StoreInst *inst)
 	return true;
 }
 
+static spv::Id rewrite_gep_rdna3(Converter::Impl &impl, const llvm::AllocaInst *alloca, spv::Id id)
+{
+	if (impl.ags.column_oriented_allocas.count(alloca) == 0)
+		return id;
+
+	auto &builder = impl.builder();
+	auto *shift = impl.allocate(spv::OpShiftLeftLogical, builder.makeUintType(32));
+	shift->add_id(id);
+	shift->add_id(builder.makeUintConstant(1));
+	impl.add(shift);
+
+	auto *mask = impl.allocate(spv::OpBitwiseAnd, builder.makeUintType(32));
+	mask->add_id(shift->id);
+	mask->add_id(builder.makeUintConstant(7));
+	impl.add(mask);
+
+	spv::Id local_id_var = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSubgroupLocalInvocationId);
+	auto *load = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	load->add_id(local_id_var);
+	impl.add(load);
+
+	auto *shift_down = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+	shift_down->add_id(load->id);
+	shift_down->add_id(builder.makeUintConstant(4));
+	impl.add(shift_down);
+
+	auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+	add->add_id(mask->id);
+	add->add_id(shift_down->id);
+	impl.add(add);
+
+	return add->id;
+}
+
 spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPtrInst *gep, spv::Id id)
 {
 	auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(gep->getOperand(0));
 	if (!alloca)
 		return id;
 
-	auto itr = impl.alloca_ags_tracking.find(alloca);
-	if (itr == impl.alloca_ags_tracking.end())
+	if (!llvm::isa<llvm::Constant>(gep->getOperand(2)))
+	{
+		spv::Id rdna3_gep_id = rewrite_gep_rdna3(impl, alloca, id);
+		if (rdna3_gep_id != id)
+			return rdna3_gep_id;
+	}
+
+	auto itr = impl.ags.alloca_tracking.find(alloca);
+	if (itr == impl.ags.alloca_tracking.end())
 		return id;
 
 	if (itr->second.override_element_type && itr->second.override_element_stride)
@@ -1611,7 +1652,7 @@ bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store)
 	if (!split.stride)
 		return false;
 
-	auto &tracking = impl.alloca_ags_tracking[alloca];
+	auto &tracking = impl.ags.alloca_tracking[alloca];
 	if (tracking.override_element_stride &&
 	    tracking.override_element_stride != split.stride &&
 	    split.stride != UINT32_MAX)
@@ -1668,6 +1709,39 @@ bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store)
 		tracking.override_element_stride = split.stride;
 	tracking.override_element_type = itr->second.type_id;
 	return true;
+}
+
+static void analyze_dubious_implementation_defined_column_behavior(
+	Converter::Impl &impl, const llvm::Value *value)
+{
+	// Try to figure out if the inserted element depends on manually adding elements from alloca().
+	// This has different results on RDNA4 and RDNA3 and we can detect
+	// this very specific case and rewrite the GEP to hack around it.
+
+	if (const auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(value))
+	{
+		analyze_dubious_implementation_defined_column_behavior(impl, binop->getOperand(0));
+		analyze_dubious_implementation_defined_column_behavior(impl, binop->getOperand(1));
+	}
+	else if (const auto *cast = llvm::dyn_cast<llvm::CastInst>(value))
+	{
+		analyze_dubious_implementation_defined_column_behavior(impl, cast->getOperand(0));
+	}
+	else if (const auto *load = llvm::dyn_cast<llvm::LoadInst>(value))
+	{
+		auto *ptr = load->getPointerOperand();
+		if (const auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr))
+		{
+			if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(gep->getOperand(0)))
+			{
+				auto *type = alloca->getType()->getPointerElementType();
+				if (type->getTypeID() == llvm::Type::TypeID::ArrayTyID && type->getArrayNumElements() == 8)
+				{
+					impl.ags.column_oriented_allocas.insert(alloca);
+				}
+			}
+		}
+	}
 }
 
 bool analyze_magic_ags_instruction(Converter::Impl &impl)
@@ -1740,6 +1814,9 @@ bool analyze_magic_ags_instruction(Converter::Impl &impl)
 		 if (has_wmma_return_values)
 		 {
 			 type_id = build_coopmat_type(impl, impl.ags.instructions[4].immediate);
+			 // FSR4 workaround for RDNA3.
+			 analyze_dubious_implementation_defined_column_behavior(
+			     impl, impl.ags.backdoor_instructions[4]->getOperand(6));
 			 phase = 2;
 		 }
 		 break;

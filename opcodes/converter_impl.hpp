@@ -318,6 +318,8 @@ struct Converter::Impl
 		spv::Id debug_var_id = 0;
 		const llvm::Value *active_read_backdoor = nullptr;
 		UnorderedMap<const llvm::Value *, AGSCoopMatMapping> coopmat_component_mapping;
+		UnorderedSet<const llvm::Value *> column_oriented_allocas;
+		UnorderedMap<const llvm::AllocaInst *, AllocaAGSForwardingTracking> alloca_tracking;
 		spv::Id u8_array_bda_type = 0;
 		spv::Id coopmat_transpose_scratch = 0;
 
@@ -941,7 +943,6 @@ struct Converter::Impl
 
 	UnorderedSet<const llvm::Value *> llvm_used_ssa_values;
 	UnorderedMap<const llvm::AllocaInst *, AllocaCBVForwardingTracking> alloca_tracking;
-	UnorderedMap<const llvm::AllocaInst *, AllocaAGSForwardingTracking> alloca_ags_tracking;
 	UnorderedSet<const llvm::GetElementPtrInst *> masked_alloca_forward_gep;
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
