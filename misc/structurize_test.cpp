@@ -267,7 +267,7 @@ int main(int argc, char **argv)
 		b->ir.operations.push_back(op);
 	};
 
-	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main", false);
+	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main", false, spv::MemoryModelGLSL450);
 
 	FILE *file = fopen(argv[1], "r");
 	if (!file)
