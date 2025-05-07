@@ -3895,9 +3895,9 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 
 			if (should_promote_complex)
 			{
-				// The inner candidate should not post-dominate any other block.
+				// The inner candidate should not post-dominate any other candidate block.
 				// We're looking for unusual merge patterns here.
-				for (auto *pred : candidate_inner->pred)
+				for (auto *pred : complex_inner_constructs)
 				{
 					if (candidate_inner->post_dominates(pred))
 					{
