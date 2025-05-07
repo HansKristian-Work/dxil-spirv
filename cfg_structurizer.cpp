@@ -4073,10 +4073,14 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 			// The last PDF can be considered a merge anchor that distributes code further.
 			// E must have {C, D} - and only those - in the dominance frontier.
 			common_anchor = pdf_ranges[0].second;
+
+			bool can_be_anchor = common_anchor->pred.size() >= 2 ||
+			                     (common_anchor->pred.size() == 1 && common_anchor->pred.front()->succ_back_edge);
+
 			need_deinterleave = common_anchor->dominance_frontier.size() == count &&
 			                    common_anchor->succ.size() == count &&
 			                    common_anchor->ir.terminator.type == Terminator::Type::Condition &&
-			                    common_anchor->pred.size() >= 2;
+			                    can_be_anchor;
 
 			for (size_t i = 0; i < count && need_deinterleave; i++)
 			{
