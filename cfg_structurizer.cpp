@@ -3878,6 +3878,8 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		if (inner_constructs.size() == 1 && complex_inner_constructs.size() >= 2)
 		{
 			auto *candidate_inner = inner_constructs.front();
+			auto *common_idom = candidate_inner;
+
 			inner_constructs.clear();
 
 			// Try to detect a false positive where we should ignore inner_constructs.
@@ -3935,9 +3937,12 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 
 			if (should_promote_complex && inner_constructs.size() >= 2)
 			{
+				for (auto *inner : inner_constructs)
+					common_idom = CFGNode::find_common_dominator(common_idom, inner);
+
 				// Verify that all paths to node must go through the inner constructs.
 				// We cannot handle more awkward merges.
-				should_promote_complex = !node->can_backtrace_to_with_blockers(idom, inner_constructs);
+				should_promote_complex = !node->can_backtrace_to_with_blockers(common_idom, inner_constructs);
 			}
 
 			if (!should_promote_complex)
