@@ -5009,27 +5009,30 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 		}
 		else if (idom->merge == MergeType::Loop)
 		{
-			if (idom->loop_merge_block == node && idom->loop_ladder_block)
+			if (pass == 0)
 			{
-				// We need to create an outer shell for this header since we need to ladder break to this node.
-				auto *loop = create_helper_pred_block(idom);
-				loop->merge = MergeType::Loop;
-				loop->loop_merge_block = node;
-				loop->freeze_structured_analysis = true;
-				node->add_unique_header(loop);
-				//LOGI("Loop merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(loop), loop->name.c_str(),
-				//     static_cast<const void *>(node), node->name.c_str());
-			}
-			else if (idom->loop_merge_block != node && idom->loop_ladder_block != node)
-			{
-				auto *selection_idom = create_helper_succ_block(idom);
-				// If we split the loop header into the loop header -> selection merge header,
-				// then we can merge into a continue block for example.
-				selection_idom->merge = MergeType::Selection;
-				selection_idom->selection_merge_block = node;
-				node->add_unique_header(selection_idom);
-				//LOGI("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(selection_idom),
-				//     selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
+				if (idom->loop_merge_block == node && idom->loop_ladder_block)
+				{
+					// We need to create an outer shell for this header since we need to ladder break to this node.
+					auto *loop = create_helper_pred_block(idom);
+					loop->merge = MergeType::Loop;
+					loop->loop_merge_block = node;
+					loop->freeze_structured_analysis = true;
+					node->add_unique_header(loop);
+					//LOGI("Loop merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(loop), loop->name.c_str(),
+					//     static_cast<const void *>(node), node->name.c_str());
+				}
+				else if (idom->loop_merge_block != node && idom->loop_ladder_block != node)
+				{
+					auto *selection_idom = create_helper_succ_block(idom);
+					// If we split the loop header into the loop header -> selection merge header,
+					// then we can merge into a continue block for example.
+					selection_idom->merge = MergeType::Selection;
+					selection_idom->selection_merge_block = node;
+					node->add_unique_header(selection_idom);
+					//LOGI("Selection merge: %p (%s) -> %p (%s)\n", static_cast<const void *>(selection_idom),
+					//     selection_idom->name.c_str(), static_cast<const void *>(node), node->name.c_str());
+				}
 			}
 		}
 		else
