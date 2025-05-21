@@ -1,12 +1,12 @@
 #version 460
 #extension GL_EXT_samplerless_texture_functions : require
 
-uint _92;
-uint _93;
-uint _100;
-uint _107;
-uint _122;
-uint _143;
+uint _96;
+uint _97;
+uint _109;
+uint _120;
+uint _140;
+uint _169;
 
 layout(set = 0, binding = 0) uniform texture1D _8;
 layout(set = 0, binding = 1) uniform texture1DArray _11;
@@ -34,28 +34,35 @@ layout(location = 0) out uint SV_Target;
 
 void main()
 {
-    uvec4 _91 = uvec4(uint(textureSize(_8, int(LEVEL))), _92, _93, uint(textureQueryLevels(_8)));
-    uvec4 _99 = uvec4(uvec2(textureSize(_11, int(LEVEL))), _100, uint(textureQueryLevels(_11)));
-    uvec4 _106 = uvec4(uvec2(textureSize(_14, int(LEVEL))), _107, uint(textureQueryLevels(_14)));
-    uvec4 _114 = uvec4(uvec3(textureSize(_17, int(LEVEL))), uint(textureQueryLevels(_17)));
-    uvec4 _121 = uvec4(uvec2(textureSize(_20)), _122, uint(textureSamples(_20)));
-    uvec4 _128 = uvec4(uvec3(textureSize(_23)), uint(textureSamples(_23)));
-    uvec4 _135 = uvec4(uvec3(textureSize(_26, int(LEVEL))), uint(textureQueryLevels(_26)));
-    uvec4 _142 = uvec4(uvec2(textureSize(_29, int(LEVEL))), _143, uint(textureQueryLevels(_29)));
-    uvec4 _149 = uvec4(uvec3(textureSize(_32, int(LEVEL))), uint(textureQueryLevels(_32)));
-    uint _154 = uint(textureSize(_35));
-    uint _156 = uint(imageSize(_43));
-    uvec2 _158 = uvec2(imageSize(_46));
-    uvec2 _161 = uvec2(imageSize(_49));
-    uvec3 _164 = uvec3(imageSize(_52));
-    uvec3 _168 = uvec3(imageSize(_55));
-    uint _172 = uint(imageSize(_58));
-    uint _175 = uint(textureSize(_39)) / 4u;
-    uint _179 = uint(imageSize(_61)) / 4u;
-    uint _182 = uint(textureSize(_40)) * 4u;
-    uint _185 = uint(imageSize(_62)) * 4u;
-    uint _216 = ((((((((((((((((((((((((((((_91.w + 32u) + _91.x) + _99.y) + _99.x) + _99.w) + _106.y) + _106.x) + _106.w) + _114.y) + _114.x) + _114.z) + _114.w) + _121.y) + _121.x) + _121.w) + _128.y) + _128.x) + _128.z) + _128.w) + _135.y) + _135.x) + _135.z) + _135.w) + _142.y) + _142.x) + _142.w) + _149.y) + _149.x) + _149.z;
-    SV_Target = (((((((((((((((((_216 + _149.w) + (_154 * _154)) + (_156 * _156)) + _158.y) + _158.x) + _161.y) + _161.x) + _164.y) + _164.x) + _164.z) + _168.y) + _168.x) + _168.z) + (_172 * _172)) + (_175 * _175)) + (_179 * _179)) + (_182 * _182)) + (_185 * _185);
+    uint _89 = uint(textureQueryLevels(_8));
+    uvec4 _95 = uvec4((LEVEL < _89) ? uint(textureSize(_8, int(LEVEL))) : 0u, _96, _97, _89);
+    uint _102 = uint(textureQueryLevels(_11));
+    uvec4 _108 = uvec4(mix(uvec2(0u), uvec2(textureSize(_11, int(LEVEL))), bvec2(LEVEL < _102)), _109, _102);
+    uint _114 = uint(textureQueryLevels(_14));
+    uvec4 _119 = uvec4(mix(uvec2(0u), uvec2(textureSize(_14, int(LEVEL))), bvec2(LEVEL < _114)), _120, _114);
+    uint _126 = uint(textureQueryLevels(_17));
+    uvec4 _132 = uvec4(mix(uvec3(0u), uvec3(textureSize(_17, int(LEVEL))), bvec3(LEVEL < _126)), _126);
+    uvec4 _139 = uvec4(uvec2(textureSize(_20)), _140, uint(textureSamples(_20)));
+    uvec4 _146 = uvec4(uvec3(textureSize(_23)), uint(textureSamples(_23)));
+    uint _152 = uint(textureQueryLevels(_26));
+    uvec4 _157 = uvec4(mix(uvec3(0u), uvec3(textureSize(_26, int(LEVEL))), bvec3(LEVEL < _152)), _152);
+    uint _163 = uint(textureQueryLevels(_29));
+    uvec4 _168 = uvec4(mix(uvec2(0u), uvec2(textureSize(_29, int(LEVEL))), bvec2(LEVEL < _163)), _169, _163);
+    uint _174 = uint(textureQueryLevels(_32));
+    uvec4 _179 = uvec4(mix(uvec3(0u), uvec3(textureSize(_32, int(LEVEL))), bvec3(LEVEL < _174)), _174);
+    uint _184 = uint(textureSize(_35));
+    uint _186 = uint(imageSize(_43));
+    uvec2 _188 = uvec2(imageSize(_46));
+    uvec2 _191 = uvec2(imageSize(_49));
+    uvec3 _194 = uvec3(imageSize(_52));
+    uvec3 _198 = uvec3(imageSize(_55));
+    uint _202 = uint(imageSize(_58));
+    uint _205 = uint(textureSize(_39)) / 4u;
+    uint _209 = uint(imageSize(_61)) / 4u;
+    uint _212 = uint(textureSize(_40)) * 4u;
+    uint _215 = uint(imageSize(_62)) * 4u;
+    uint _246 = ((((((((((((((((((((((((((((_95.w + 32u) + _95.x) + _108.y) + _108.x) + _108.w) + _119.y) + _119.x) + _119.w) + _132.y) + _132.x) + _132.z) + _132.w) + _139.y) + _139.x) + _139.w) + _146.y) + _146.x) + _146.z) + _146.w) + _157.y) + _157.x) + _157.z) + _157.w) + _168.y) + _168.x) + _168.w) + _179.y) + _179.x) + _179.z;
+    SV_Target = (((((((((((((((((_246 + _179.w) + (_184 * _184)) + (_186 * _186)) + _188.y) + _188.x) + _191.y) + _191.x) + _194.y) + _194.x) + _194.z) + _198.y) + _198.x) + _198.z) + (_202 * _202)) + (_205 * _205)) + (_209 * _209)) + (_212 * _212)) + (_215 * _215);
 }
 
 
@@ -64,7 +71,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 237
+; Bound: 267
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
@@ -202,21 +209,31 @@ OpDecorate %66 Location 0
 %64 = OpVariable %63 Input
 %65 = OpTypePointer Output %36
 %66 = OpVariable %65 Output
-%90 = OpTypeVector %36 4
-%96 = OpTypeVector %36 2
-%111 = OpTypeVector %36 3
-%176 = OpConstant %36 4
-%188 = OpConstant %36 32
+%90 = OpTypeBool
+%93 = OpConstantNull %36
+%94 = OpTypeVector %36 4
+%100 = OpTypeVector %36 2
+%104 = OpTypeVector %90 2
+%107 = OpConstantNull %100
+%118 = OpConstantNull %100
+%124 = OpTypeVector %36 3
+%128 = OpTypeVector %90 3
+%131 = OpConstantNull %124
+%156 = OpConstantNull %124
+%167 = OpConstantNull %100
+%178 = OpConstantNull %124
+%206 = OpConstant %36 4
+%218 = OpConstant %36 32
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%92 = OpUndef %36
-%93 = OpUndef %36
-%100 = OpUndef %36
-%107 = OpUndef %36
-%122 = OpUndef %36
-%143 = OpUndef %36
-OpBranch %235
-%235 = OpLabel
+%96 = OpUndef %36
+%97 = OpUndef %36
+%109 = OpUndef %36
+%120 = OpUndef %36
+%140 = OpUndef %36
+%169 = OpUndef %36
+OpBranch %265
+%265 = OpLabel
 %67 = OpLoad %59 %62
 %68 = OpLoad %59 %61
 %69 = OpLoad %56 %58
@@ -240,141 +257,161 @@ OpBranch %235
 %87 = OpLoad %36 %64
 %88 = OpImageQuerySizeLod %36 %86 %87
 %89 = OpImageQueryLevels %36 %86
-%91 = OpCompositeConstruct %90 %88 %92 %93 %89
-%94 = OpCompositeExtract %36 %91 0
-%95 = OpCompositeExtract %36 %91 3
-%97 = OpImageQuerySizeLod %96 %85 %87
-%98 = OpImageQueryLevels %36 %85
-%99 = OpCompositeConstruct %90 %97 %100 %98
-%101 = OpCompositeExtract %36 %99 0
-%102 = OpCompositeExtract %36 %99 1
-%103 = OpCompositeExtract %36 %99 3
-%104 = OpImageQuerySizeLod %96 %84 %87
-%105 = OpImageQueryLevels %36 %84
-%106 = OpCompositeConstruct %90 %104 %107 %105
-%108 = OpCompositeExtract %36 %106 0
-%109 = OpCompositeExtract %36 %106 1
-%110 = OpCompositeExtract %36 %106 3
-%112 = OpImageQuerySizeLod %111 %83 %87
-%113 = OpImageQueryLevels %36 %83
-%114 = OpCompositeConstruct %90 %112 %113
-%115 = OpCompositeExtract %36 %114 0
-%116 = OpCompositeExtract %36 %114 1
-%117 = OpCompositeExtract %36 %114 2
-%118 = OpCompositeExtract %36 %114 3
-%119 = OpImageQuerySize %96 %82
-%120 = OpImageQuerySamples %36 %82
-%121 = OpCompositeConstruct %90 %119 %122 %120
-%123 = OpCompositeExtract %36 %121 0
-%124 = OpCompositeExtract %36 %121 1
-%125 = OpCompositeExtract %36 %121 3
-%126 = OpImageQuerySize %111 %81
-%127 = OpImageQuerySamples %36 %81
-%128 = OpCompositeConstruct %90 %126 %127
-%129 = OpCompositeExtract %36 %128 0
-%130 = OpCompositeExtract %36 %128 1
-%131 = OpCompositeExtract %36 %128 2
-%132 = OpCompositeExtract %36 %128 3
-%133 = OpImageQuerySizeLod %111 %80 %87
-%134 = OpImageQueryLevels %36 %80
-%135 = OpCompositeConstruct %90 %133 %134
-%136 = OpCompositeExtract %36 %135 0
-%137 = OpCompositeExtract %36 %135 1
-%138 = OpCompositeExtract %36 %135 2
-%139 = OpCompositeExtract %36 %135 3
-%140 = OpImageQuerySizeLod %96 %79 %87
-%141 = OpImageQueryLevels %36 %79
-%142 = OpCompositeConstruct %90 %140 %143 %141
-%144 = OpCompositeExtract %36 %142 0
-%145 = OpCompositeExtract %36 %142 1
-%146 = OpCompositeExtract %36 %142 3
-%147 = OpImageQuerySizeLod %111 %78 %87
-%148 = OpImageQueryLevels %36 %78
-%149 = OpCompositeConstruct %90 %147 %148
-%150 = OpCompositeExtract %36 %149 0
-%151 = OpCompositeExtract %36 %149 1
-%152 = OpCompositeExtract %36 %149 2
-%153 = OpCompositeExtract %36 %149 3
-%154 = OpImageQuerySize %36 %77
-%155 = OpIMul %36 %154 %154
-%156 = OpImageQuerySize %36 %74
-%157 = OpIMul %36 %156 %156
-%158 = OpImageQuerySize %96 %73
-%159 = OpCompositeExtract %36 %158 0
-%160 = OpCompositeExtract %36 %158 1
-%161 = OpImageQuerySize %96 %72
-%162 = OpCompositeExtract %36 %161 0
-%163 = OpCompositeExtract %36 %161 1
-%164 = OpImageQuerySize %111 %71
-%165 = OpCompositeExtract %36 %164 0
-%166 = OpCompositeExtract %36 %164 1
-%167 = OpCompositeExtract %36 %164 2
-%168 = OpImageQuerySize %111 %70
-%169 = OpCompositeExtract %36 %168 0
-%170 = OpCompositeExtract %36 %168 1
-%171 = OpCompositeExtract %36 %168 2
-%172 = OpImageQuerySize %36 %69
-%173 = OpIMul %36 %172 %172
-%174 = OpImageQuerySize %36 %76
-%175 = OpUDiv %36 %174 %176
-%177 = OpIMul %36 %175 %175
-%178 = OpImageQuerySize %36 %68
-%179 = OpUDiv %36 %178 %176
-%180 = OpIMul %36 %179 %179
-%181 = OpImageQuerySize %36 %75
-%182 = OpIMul %36 %181 %176
-%183 = OpIMul %36 %182 %182
-%184 = OpImageQuerySize %36 %67
-%185 = OpIMul %36 %184 %176
-%186 = OpIMul %36 %185 %185
-%187 = OpIAdd %36 %95 %188
-%189 = OpIAdd %36 %187 %94
-%190 = OpIAdd %36 %189 %102
-%191 = OpIAdd %36 %190 %101
-%192 = OpIAdd %36 %191 %103
-%193 = OpIAdd %36 %192 %109
-%194 = OpIAdd %36 %193 %108
-%195 = OpIAdd %36 %194 %110
-%196 = OpIAdd %36 %195 %116
-%197 = OpIAdd %36 %196 %115
-%198 = OpIAdd %36 %197 %117
-%199 = OpIAdd %36 %198 %118
-%200 = OpIAdd %36 %199 %124
-%201 = OpIAdd %36 %200 %123
-%202 = OpIAdd %36 %201 %125
-%203 = OpIAdd %36 %202 %130
-%204 = OpIAdd %36 %203 %129
-%205 = OpIAdd %36 %204 %131
-%206 = OpIAdd %36 %205 %132
-%207 = OpIAdd %36 %206 %137
-%208 = OpIAdd %36 %207 %136
-%209 = OpIAdd %36 %208 %138
-%210 = OpIAdd %36 %209 %139
-%211 = OpIAdd %36 %210 %145
-%212 = OpIAdd %36 %211 %144
-%213 = OpIAdd %36 %212 %146
-%214 = OpIAdd %36 %213 %151
-%215 = OpIAdd %36 %214 %150
-%216 = OpIAdd %36 %215 %152
-%217 = OpIAdd %36 %216 %153
-%218 = OpIAdd %36 %217 %155
-%219 = OpIAdd %36 %218 %157
-%220 = OpIAdd %36 %219 %160
-%221 = OpIAdd %36 %220 %159
-%222 = OpIAdd %36 %221 %163
-%223 = OpIAdd %36 %222 %162
-%224 = OpIAdd %36 %223 %166
-%225 = OpIAdd %36 %224 %165
-%226 = OpIAdd %36 %225 %167
-%227 = OpIAdd %36 %226 %170
-%228 = OpIAdd %36 %227 %169
-%229 = OpIAdd %36 %228 %171
-%230 = OpIAdd %36 %229 %173
-%231 = OpIAdd %36 %230 %177
-%232 = OpIAdd %36 %231 %180
-%233 = OpIAdd %36 %232 %183
-%234 = OpIAdd %36 %233 %186
-OpStore %66 %234
+%91 = OpULessThan %90 %87 %89
+%92 = OpSelect %36 %91 %88 %93
+%95 = OpCompositeConstruct %94 %92 %96 %97 %89
+%98 = OpCompositeExtract %36 %95 0
+%99 = OpCompositeExtract %36 %95 3
+%101 = OpImageQuerySizeLod %100 %85 %87
+%102 = OpImageQueryLevels %36 %85
+%103 = OpULessThan %90 %87 %102
+%105 = OpCompositeConstruct %104 %103 %103
+%106 = OpSelect %100 %105 %101 %107
+%108 = OpCompositeConstruct %94 %106 %109 %102
+%110 = OpCompositeExtract %36 %108 0
+%111 = OpCompositeExtract %36 %108 1
+%112 = OpCompositeExtract %36 %108 3
+%113 = OpImageQuerySizeLod %100 %84 %87
+%114 = OpImageQueryLevels %36 %84
+%115 = OpULessThan %90 %87 %114
+%116 = OpCompositeConstruct %104 %115 %115
+%117 = OpSelect %100 %116 %113 %118
+%119 = OpCompositeConstruct %94 %117 %120 %114
+%121 = OpCompositeExtract %36 %119 0
+%122 = OpCompositeExtract %36 %119 1
+%123 = OpCompositeExtract %36 %119 3
+%125 = OpImageQuerySizeLod %124 %83 %87
+%126 = OpImageQueryLevels %36 %83
+%127 = OpULessThan %90 %87 %126
+%129 = OpCompositeConstruct %128 %127 %127 %127
+%130 = OpSelect %124 %129 %125 %131
+%132 = OpCompositeConstruct %94 %130 %126
+%133 = OpCompositeExtract %36 %132 0
+%134 = OpCompositeExtract %36 %132 1
+%135 = OpCompositeExtract %36 %132 2
+%136 = OpCompositeExtract %36 %132 3
+%137 = OpImageQuerySize %100 %82
+%138 = OpImageQuerySamples %36 %82
+%139 = OpCompositeConstruct %94 %137 %140 %138
+%141 = OpCompositeExtract %36 %139 0
+%142 = OpCompositeExtract %36 %139 1
+%143 = OpCompositeExtract %36 %139 3
+%144 = OpImageQuerySize %124 %81
+%145 = OpImageQuerySamples %36 %81
+%146 = OpCompositeConstruct %94 %144 %145
+%147 = OpCompositeExtract %36 %146 0
+%148 = OpCompositeExtract %36 %146 1
+%149 = OpCompositeExtract %36 %146 2
+%150 = OpCompositeExtract %36 %146 3
+%151 = OpImageQuerySizeLod %124 %80 %87
+%152 = OpImageQueryLevels %36 %80
+%153 = OpULessThan %90 %87 %152
+%154 = OpCompositeConstruct %128 %153 %153 %153
+%155 = OpSelect %124 %154 %151 %156
+%157 = OpCompositeConstruct %94 %155 %152
+%158 = OpCompositeExtract %36 %157 0
+%159 = OpCompositeExtract %36 %157 1
+%160 = OpCompositeExtract %36 %157 2
+%161 = OpCompositeExtract %36 %157 3
+%162 = OpImageQuerySizeLod %100 %79 %87
+%163 = OpImageQueryLevels %36 %79
+%164 = OpULessThan %90 %87 %163
+%165 = OpCompositeConstruct %104 %164 %164
+%166 = OpSelect %100 %165 %162 %167
+%168 = OpCompositeConstruct %94 %166 %169 %163
+%170 = OpCompositeExtract %36 %168 0
+%171 = OpCompositeExtract %36 %168 1
+%172 = OpCompositeExtract %36 %168 3
+%173 = OpImageQuerySizeLod %124 %78 %87
+%174 = OpImageQueryLevels %36 %78
+%175 = OpULessThan %90 %87 %174
+%176 = OpCompositeConstruct %128 %175 %175 %175
+%177 = OpSelect %124 %176 %173 %178
+%179 = OpCompositeConstruct %94 %177 %174
+%180 = OpCompositeExtract %36 %179 0
+%181 = OpCompositeExtract %36 %179 1
+%182 = OpCompositeExtract %36 %179 2
+%183 = OpCompositeExtract %36 %179 3
+%184 = OpImageQuerySize %36 %77
+%185 = OpIMul %36 %184 %184
+%186 = OpImageQuerySize %36 %74
+%187 = OpIMul %36 %186 %186
+%188 = OpImageQuerySize %100 %73
+%189 = OpCompositeExtract %36 %188 0
+%190 = OpCompositeExtract %36 %188 1
+%191 = OpImageQuerySize %100 %72
+%192 = OpCompositeExtract %36 %191 0
+%193 = OpCompositeExtract %36 %191 1
+%194 = OpImageQuerySize %124 %71
+%195 = OpCompositeExtract %36 %194 0
+%196 = OpCompositeExtract %36 %194 1
+%197 = OpCompositeExtract %36 %194 2
+%198 = OpImageQuerySize %124 %70
+%199 = OpCompositeExtract %36 %198 0
+%200 = OpCompositeExtract %36 %198 1
+%201 = OpCompositeExtract %36 %198 2
+%202 = OpImageQuerySize %36 %69
+%203 = OpIMul %36 %202 %202
+%204 = OpImageQuerySize %36 %76
+%205 = OpUDiv %36 %204 %206
+%207 = OpIMul %36 %205 %205
+%208 = OpImageQuerySize %36 %68
+%209 = OpUDiv %36 %208 %206
+%210 = OpIMul %36 %209 %209
+%211 = OpImageQuerySize %36 %75
+%212 = OpIMul %36 %211 %206
+%213 = OpIMul %36 %212 %212
+%214 = OpImageQuerySize %36 %67
+%215 = OpIMul %36 %214 %206
+%216 = OpIMul %36 %215 %215
+%217 = OpIAdd %36 %99 %218
+%219 = OpIAdd %36 %217 %98
+%220 = OpIAdd %36 %219 %111
+%221 = OpIAdd %36 %220 %110
+%222 = OpIAdd %36 %221 %112
+%223 = OpIAdd %36 %222 %122
+%224 = OpIAdd %36 %223 %121
+%225 = OpIAdd %36 %224 %123
+%226 = OpIAdd %36 %225 %134
+%227 = OpIAdd %36 %226 %133
+%228 = OpIAdd %36 %227 %135
+%229 = OpIAdd %36 %228 %136
+%230 = OpIAdd %36 %229 %142
+%231 = OpIAdd %36 %230 %141
+%232 = OpIAdd %36 %231 %143
+%233 = OpIAdd %36 %232 %148
+%234 = OpIAdd %36 %233 %147
+%235 = OpIAdd %36 %234 %149
+%236 = OpIAdd %36 %235 %150
+%237 = OpIAdd %36 %236 %159
+%238 = OpIAdd %36 %237 %158
+%239 = OpIAdd %36 %238 %160
+%240 = OpIAdd %36 %239 %161
+%241 = OpIAdd %36 %240 %171
+%242 = OpIAdd %36 %241 %170
+%243 = OpIAdd %36 %242 %172
+%244 = OpIAdd %36 %243 %181
+%245 = OpIAdd %36 %244 %180
+%246 = OpIAdd %36 %245 %182
+%247 = OpIAdd %36 %246 %183
+%248 = OpIAdd %36 %247 %185
+%249 = OpIAdd %36 %248 %187
+%250 = OpIAdd %36 %249 %190
+%251 = OpIAdd %36 %250 %189
+%252 = OpIAdd %36 %251 %193
+%253 = OpIAdd %36 %252 %192
+%254 = OpIAdd %36 %253 %196
+%255 = OpIAdd %36 %254 %195
+%256 = OpIAdd %36 %255 %197
+%257 = OpIAdd %36 %256 %200
+%258 = OpIAdd %36 %257 %199
+%259 = OpIAdd %36 %258 %201
+%260 = OpIAdd %36 %259 %203
+%261 = OpIAdd %36 %260 %207
+%262 = OpIAdd %36 %261 %210
+%263 = OpIAdd %36 %262 %213
+%264 = OpIAdd %36 %263 %216
+OpStore %66 %264
 OpReturn
 OpFunctionEnd
 #endif

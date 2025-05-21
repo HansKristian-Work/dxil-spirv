@@ -951,6 +951,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	uint32_t ssbo_element_size = 4;
 
+	Operation *levels_or_samples_op = nullptr;
 	Operation *dimensions_op = nullptr;
 	auto &access_meta = impl.llvm_composite_meta[instruction];
 	uint32_t num_coords = 0;
@@ -999,6 +1000,9 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		if (num_coords > 1)
 			dim_type_id = builder.makeVectorType(dim_type_id, num_coords);
 
+		// 22.4.14 resinfo. Querying for mip level out of range should return 0.
+		spv::Id level_in_range_id = 0;
+
 		if ((access_meta.access_mask & 7) != 0)
 		{
 			dimensions_op = impl.allocate(has_lod ? spv::OpImageQuerySizeLod : spv::OpImageQuerySize, dim_type_id);
@@ -1006,6 +1010,46 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 			if (has_lod)
 				dimensions_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
 			impl.add(dimensions_op);
+
+			if (has_lod)
+			{
+				auto *level_operand = instruction->getOperand(2);
+				if (!llvm::isa<llvm::ConstantInt>(level_operand) ||
+				    llvm::cast<llvm::ConstantInt>(level_operand)->getUniqueInteger().getZExtValue() != 0)
+				{
+					auto *levels = impl.allocate(spv::OpImageQueryLevels, builder.makeUintType(32));
+					levels->add_id(image_id);
+					impl.add(levels);
+
+					auto *cmp = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+					cmp->add_id(impl.get_id_for_value(level_operand));
+					cmp->add_id(levels->id);
+					impl.add(cmp);
+
+					level_in_range_id = cmp->id;
+
+					if (num_coords > 1)
+					{
+						// Not needed in SPIR-V 1.4+, but for now we can emit SPIR-V 1.3.
+						spv::Id coords_vec[4];
+						for (uint32_t i = 0; i < num_coords; i++)
+							coords_vec[i] = cmp->id;
+						level_in_range_id = impl.build_vector(builder.makeBoolType(), coords_vec, num_coords);
+					}
+
+					auto *select = impl.allocate(spv::OpSelect, dim_type_id);
+					select->add_id(level_in_range_id);
+					select->add_id(dimensions_op->id);
+					select->add_id(builder.makeNullConstant(dim_type_id));
+					impl.add(select);
+
+					dimensions_op = select;
+
+					// If we also need levels, no need to query twice.
+					if ((access_meta.access_mask & (1u << 3)) != 0)
+						levels_or_samples_op = levels;
+				}
+			}
 		}
 		else
 			num_coords = 0;
@@ -1037,26 +1081,25 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		dimensions_op = elem_count_op;
 	}
 
-	Operation *aux_op = nullptr;
-	if ((access_meta.access_mask & (1u << 3)) != 0)
+	if (!levels_or_samples_op && (access_meta.access_mask & (1u << 3)) != 0)
 	{
 		if (has_lod)
 		{
-			aux_op = impl.allocate(spv::OpImageQueryLevels, builder.makeUintType(32));
-			aux_op->add_id(image_id);
-			impl.add(aux_op);
+			levels_or_samples_op = impl.allocate(spv::OpImageQueryLevels, builder.makeUintType(32));
+			levels_or_samples_op->add_id(image_id);
+			impl.add(levels_or_samples_op);
 		}
 		else if (has_samples)
 		{
-			aux_op = impl.allocate(spv::OpImageQuerySamples, builder.makeUintType(32));
-			aux_op->add_id(image_id);
-			impl.add(aux_op);
+			levels_or_samples_op = impl.allocate(spv::OpImageQuerySamples, builder.makeUintType(32));
+			levels_or_samples_op->add_id(image_id);
+			impl.add(levels_or_samples_op);
 		}
 	}
 
-	assert(aux_op || dimensions_op);
+	assert(levels_or_samples_op || dimensions_op);
 
-	if (!aux_op && dimensions_op)
+	if (!levels_or_samples_op && dimensions_op)
 	{
 		if (num_coords == 1)
 			access_meta.forced_composite = false;
@@ -1072,7 +1115,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		// Otherwise, we need to pad out.
 		for (unsigned i = num_coords; i < 3; i++)
 			op->add_id(builder.createUndefined(builder.makeUintType(32)));
-		op->add_id(aux_op->id);
+		op->add_id(levels_or_samples_op->id);
 
 		impl.add(op);
 	}
@@ -1083,7 +1126,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		access_meta.forced_composite = false;
 		access_meta.access_mask = 1;
 		access_meta.components = 1;
-		impl.rewrite_value(instruction, aux_op->id);
+		impl.rewrite_value(instruction, levels_or_samples_op->id);
 	}
 
 	builder.addCapability(spv::CapabilityImageQuery);

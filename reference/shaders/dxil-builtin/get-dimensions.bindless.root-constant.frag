@@ -3,7 +3,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
 
-uint _61;
+uint _67;
 
 layout(push_constant, std430) uniform RootConstants
 {
@@ -41,15 +41,16 @@ layout(location = 0) out uint SV_Target;
 void main()
 {
     uint _54 = registers._m0 + (INDEX + 0u);
-    uvec4 _60 = uvec4(uvec2(textureSize(_13[nonuniformEXT(_54)], int(LEVEL))), _61, uint(textureQueryLevels(_13[nonuniformEXT(_54)])));
-    uint _73 = uint(textureSize(_17[nonuniformEXT(registers._m1 + (INDEX + 0u))]));
-    uvec2 _83 = uvec2(imageSize(_28[nonuniformEXT(registers._m3 + (INDEX + 0u))]));
-    uint _94 = uint(imageSize(_32[nonuniformEXT(registers._m4 + (INDEX + 0u))]));
-    uint _104 = uint(textureSize(_21[nonuniformEXT(registers._m1 + (INDEX + 0u))])) / 4u;
-    uint _114 = uint(imageSize(_36[nonuniformEXT(registers._m4 + (INDEX + 0u))])) / 4u;
-    uint _123 = uint(textureSize(_24[nonuniformEXT(registers._m1 + (INDEX + 0u))])) * 4u;
-    uint _132 = uint(imageSize(_39[nonuniformEXT(registers._m4 + (INDEX + 0u))])) * 4u;
-    SV_Target = ((((((((((_60.y + 32u) + _60.x) + _60.w) + (_73 * _73)) + _83.y) + _83.x) + (_94 * _94)) + (_104 * _104)) + (_114 * _114)) + (_123 * _123)) + (_132 * _132);
+    uint _58 = uint(textureQueryLevels(_13[nonuniformEXT(_54)]));
+    uvec4 _66 = uvec4(mix(uvec2(0u), uvec2(textureSize(_13[nonuniformEXT(_54)], int(LEVEL))), bvec2(LEVEL < _58)), _67, _58);
+    uint _79 = uint(textureSize(_17[nonuniformEXT(registers._m1 + (INDEX + 0u))]));
+    uvec2 _89 = uvec2(imageSize(_28[nonuniformEXT(registers._m3 + (INDEX + 0u))]));
+    uint _100 = uint(imageSize(_32[nonuniformEXT(registers._m4 + (INDEX + 0u))]));
+    uint _110 = uint(textureSize(_21[nonuniformEXT(registers._m1 + (INDEX + 0u))])) / 4u;
+    uint _120 = uint(imageSize(_36[nonuniformEXT(registers._m4 + (INDEX + 0u))])) / 4u;
+    uint _129 = uint(textureSize(_24[nonuniformEXT(registers._m1 + (INDEX + 0u))])) * 4u;
+    uint _138 = uint(imageSize(_39[nonuniformEXT(registers._m4 + (INDEX + 0u))])) * 4u;
+    SV_Target = ((((((((((_66.y + 32u) + _66.x) + _66.w) + (_79 * _79)) + _89.y) + _89.x) + (_100 * _100)) + (_110 * _110)) + (_120 * _120)) + (_129 * _129)) + (_138 * _138);
 }
 
 
@@ -58,7 +59,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 148
+; Bound: 154
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledImageArrayDynamicIndexing
@@ -134,20 +135,20 @@ OpDecorate %42 Component 1
 OpDecorate %44 Location 0
 OpDecorate %54 NonUniform
 OpDecorate %55 NonUniform
-OpDecorate %71 NonUniform
-OpDecorate %72 NonUniform
-OpDecorate %81 NonUniform
-OpDecorate %82 NonUniform
-OpDecorate %92 NonUniform
-OpDecorate %93 NonUniform
-OpDecorate %101 NonUniform
-OpDecorate %102 NonUniform
-OpDecorate %111 NonUniform
-OpDecorate %112 NonUniform
-OpDecorate %120 NonUniform
-OpDecorate %121 NonUniform
-OpDecorate %129 NonUniform
-OpDecorate %130 NonUniform
+OpDecorate %77 NonUniform
+OpDecorate %78 NonUniform
+OpDecorate %87 NonUniform
+OpDecorate %88 NonUniform
+OpDecorate %98 NonUniform
+OpDecorate %99 NonUniform
+OpDecorate %107 NonUniform
+OpDecorate %108 NonUniform
+OpDecorate %117 NonUniform
+OpDecorate %118 NonUniform
+OpDecorate %126 NonUniform
+OpDecorate %127 NonUniform
+OpDecorate %135 NonUniform
+OpDecorate %136 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -194,21 +195,24 @@ OpDecorate %130 NonUniform
 %49 = OpTypePointer UniformConstant %10
 %51 = OpTypePointer PushConstant %5
 %56 = OpTypeVector %5 2
-%59 = OpTypeVector %5 4
-%66 = OpTypePointer UniformConstant %14
-%69 = OpConstant %5 1
-%76 = OpTypePointer UniformConstant %25
-%79 = OpConstant %5 3
-%87 = OpTypePointer UniformConstant %29
-%90 = OpConstant %5 4
-%97 = OpTypePointer UniformConstant %18
-%107 = OpTypePointer UniformConstant %33
-%135 = OpConstant %5 32
+%59 = OpTypeBool
+%61 = OpTypeVector %59 2
+%64 = OpConstantNull %56
+%65 = OpTypeVector %5 4
+%72 = OpTypePointer UniformConstant %14
+%75 = OpConstant %5 1
+%82 = OpTypePointer UniformConstant %25
+%85 = OpConstant %5 3
+%93 = OpTypePointer UniformConstant %29
+%96 = OpConstant %5 4
+%103 = OpTypePointer UniformConstant %18
+%113 = OpTypePointer UniformConstant %33
+%141 = OpConstant %5 32
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%61 = OpUndef %5
-OpBranch %146
-%146 = OpLabel
+%67 = OpUndef %5
+OpBranch %152
+%152 = OpLabel
 %45 = OpLoad %5 %42
 %46 = OpLoad %5 %41
 %47 = OpIAdd %5 %45 %48
@@ -219,83 +223,86 @@ OpBranch %146
 %55 = OpLoad %10 %50
 %57 = OpImageQuerySizeLod %56 %55 %46
 %58 = OpImageQueryLevels %5 %55
-%60 = OpCompositeConstruct %59 %57 %61 %58
-%62 = OpCompositeExtract %5 %60 0
-%63 = OpCompositeExtract %5 %60 1
-%64 = OpCompositeExtract %5 %60 3
-%65 = OpIAdd %5 %45 %48
-%68 = OpAccessChain %51 %8 %69
-%70 = OpLoad %5 %68
-%71 = OpIAdd %5 %70 %65
-%67 = OpAccessChain %66 %17 %71
-%72 = OpLoad %14 %67
-%73 = OpImageQuerySize %5 %72
-%74 = OpIMul %5 %73 %73
-%75 = OpIAdd %5 %45 %48
-%78 = OpAccessChain %51 %8 %79
-%80 = OpLoad %5 %78
-%81 = OpIAdd %5 %80 %75
-%77 = OpAccessChain %76 %28 %81
-%82 = OpLoad %25 %77
-%83 = OpImageQuerySize %56 %82
-%84 = OpCompositeExtract %5 %83 0
-%85 = OpCompositeExtract %5 %83 1
-%86 = OpIAdd %5 %45 %48
-%89 = OpAccessChain %51 %8 %90
-%91 = OpLoad %5 %89
-%92 = OpIAdd %5 %91 %86
-%88 = OpAccessChain %87 %32 %92
-%93 = OpLoad %29 %88
-%94 = OpImageQuerySize %5 %93
-%95 = OpIMul %5 %94 %94
-%96 = OpIAdd %5 %45 %48
-%99 = OpAccessChain %51 %8 %69
-%100 = OpLoad %5 %99
-%101 = OpIAdd %5 %100 %96
-%98 = OpAccessChain %97 %21 %101
-%102 = OpLoad %18 %98
-%103 = OpImageQuerySize %5 %102
-%104 = OpUDiv %5 %103 %90
-%105 = OpIMul %5 %104 %104
-%106 = OpIAdd %5 %45 %48
-%109 = OpAccessChain %51 %8 %90
-%110 = OpLoad %5 %109
-%111 = OpIAdd %5 %110 %106
-%108 = OpAccessChain %107 %36 %111
-%112 = OpLoad %33 %108
-%113 = OpImageQuerySize %5 %112
-%114 = OpUDiv %5 %113 %90
-%115 = OpIMul %5 %114 %114
-%116 = OpIAdd %5 %45 %48
-%118 = OpAccessChain %51 %8 %69
-%119 = OpLoad %5 %118
-%120 = OpIAdd %5 %119 %116
-%117 = OpAccessChain %97 %24 %120
-%121 = OpLoad %18 %117
-%122 = OpImageQuerySize %5 %121
-%123 = OpIMul %5 %122 %90
-%124 = OpIMul %5 %123 %123
-%125 = OpIAdd %5 %45 %48
-%127 = OpAccessChain %51 %8 %90
-%128 = OpLoad %5 %127
-%129 = OpIAdd %5 %128 %125
-%126 = OpAccessChain %107 %39 %129
-%130 = OpLoad %33 %126
-%131 = OpImageQuerySize %5 %130
-%132 = OpIMul %5 %131 %90
-%133 = OpIMul %5 %132 %132
-%134 = OpIAdd %5 %63 %135
-%136 = OpIAdd %5 %134 %62
-%137 = OpIAdd %5 %136 %64
-%138 = OpIAdd %5 %137 %74
-%139 = OpIAdd %5 %138 %85
-%140 = OpIAdd %5 %139 %84
-%141 = OpIAdd %5 %140 %95
-%142 = OpIAdd %5 %141 %105
-%143 = OpIAdd %5 %142 %115
-%144 = OpIAdd %5 %143 %124
-%145 = OpIAdd %5 %144 %133
-OpStore %44 %145
+%60 = OpULessThan %59 %46 %58
+%62 = OpCompositeConstruct %61 %60 %60
+%63 = OpSelect %56 %62 %57 %64
+%66 = OpCompositeConstruct %65 %63 %67 %58
+%68 = OpCompositeExtract %5 %66 0
+%69 = OpCompositeExtract %5 %66 1
+%70 = OpCompositeExtract %5 %66 3
+%71 = OpIAdd %5 %45 %48
+%74 = OpAccessChain %51 %8 %75
+%76 = OpLoad %5 %74
+%77 = OpIAdd %5 %76 %71
+%73 = OpAccessChain %72 %17 %77
+%78 = OpLoad %14 %73
+%79 = OpImageQuerySize %5 %78
+%80 = OpIMul %5 %79 %79
+%81 = OpIAdd %5 %45 %48
+%84 = OpAccessChain %51 %8 %85
+%86 = OpLoad %5 %84
+%87 = OpIAdd %5 %86 %81
+%83 = OpAccessChain %82 %28 %87
+%88 = OpLoad %25 %83
+%89 = OpImageQuerySize %56 %88
+%90 = OpCompositeExtract %5 %89 0
+%91 = OpCompositeExtract %5 %89 1
+%92 = OpIAdd %5 %45 %48
+%95 = OpAccessChain %51 %8 %96
+%97 = OpLoad %5 %95
+%98 = OpIAdd %5 %97 %92
+%94 = OpAccessChain %93 %32 %98
+%99 = OpLoad %29 %94
+%100 = OpImageQuerySize %5 %99
+%101 = OpIMul %5 %100 %100
+%102 = OpIAdd %5 %45 %48
+%105 = OpAccessChain %51 %8 %75
+%106 = OpLoad %5 %105
+%107 = OpIAdd %5 %106 %102
+%104 = OpAccessChain %103 %21 %107
+%108 = OpLoad %18 %104
+%109 = OpImageQuerySize %5 %108
+%110 = OpUDiv %5 %109 %96
+%111 = OpIMul %5 %110 %110
+%112 = OpIAdd %5 %45 %48
+%115 = OpAccessChain %51 %8 %96
+%116 = OpLoad %5 %115
+%117 = OpIAdd %5 %116 %112
+%114 = OpAccessChain %113 %36 %117
+%118 = OpLoad %33 %114
+%119 = OpImageQuerySize %5 %118
+%120 = OpUDiv %5 %119 %96
+%121 = OpIMul %5 %120 %120
+%122 = OpIAdd %5 %45 %48
+%124 = OpAccessChain %51 %8 %75
+%125 = OpLoad %5 %124
+%126 = OpIAdd %5 %125 %122
+%123 = OpAccessChain %103 %24 %126
+%127 = OpLoad %18 %123
+%128 = OpImageQuerySize %5 %127
+%129 = OpIMul %5 %128 %96
+%130 = OpIMul %5 %129 %129
+%131 = OpIAdd %5 %45 %48
+%133 = OpAccessChain %51 %8 %96
+%134 = OpLoad %5 %133
+%135 = OpIAdd %5 %134 %131
+%132 = OpAccessChain %113 %39 %135
+%136 = OpLoad %33 %132
+%137 = OpImageQuerySize %5 %136
+%138 = OpIMul %5 %137 %96
+%139 = OpIMul %5 %138 %138
+%140 = OpIAdd %5 %69 %141
+%142 = OpIAdd %5 %140 %68
+%143 = OpIAdd %5 %142 %70
+%144 = OpIAdd %5 %143 %80
+%145 = OpIAdd %5 %144 %91
+%146 = OpIAdd %5 %145 %90
+%147 = OpIAdd %5 %146 %101
+%148 = OpIAdd %5 %147 %111
+%149 = OpIAdd %5 %148 %121
+%150 = OpIAdd %5 %149 %130
+%151 = OpIAdd %5 %150 %139
+OpStore %44 %151
 OpReturn
 OpFunctionEnd
 #endif
