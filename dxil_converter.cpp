@@ -3069,7 +3069,8 @@ bool Converter::Impl::emit_resources()
 		if (!emit_shader_record_buffer())
 			return false;
 
-	emit_global_heaps();
+	if (!emit_global_heaps())
+		return false;
 
 	if (options.descriptor_heap_robustness)
 	{
