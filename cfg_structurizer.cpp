@@ -4351,10 +4351,20 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 		{
 			if (c.global_order == target_order)
 			{
+				// Pick the earliest one.
 				candidate = c.node;
 				break;
 			}
 		}
+	}
+
+	bool case_labels_can_be_candidate_frontier = false;
+
+	if (has_impossible_fallthrough && !candidate)
+	{
+		// This can happen if the impossible candidate block is a pred of yet another case label ?!?!
+		// If this happens, do the full analysis in the loop below.
+		case_labels_can_be_candidate_frontier = true;
 	}
 
 	// We found a candidate, but there might be multiple candidates which are considered impossible.
@@ -4369,14 +4379,17 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 			if (front->succ_back_edge || front->is_pseudo_back_edge)
 				continue;
 
-			// Ignore frontiers that are other case labels.
-			// We allow simple fallthrough, and if we found an impossible case we would have handled it already.
-			for (auto &ic : node->ir.terminator.cases)
+			if (!case_labels_can_be_candidate_frontier)
 			{
-				if (ic.node == front)
+				// Ignore frontiers that are other case labels.
+				// We allow simple fallthrough, and if we found an impossible case we would have handled it already.
+				for (auto &ic : node->ir.terminator.cases)
 				{
-					front = nullptr;
-					break;
+					if (ic.node == front)
+					{
+						front = nullptr;
+						break;
+					}
 				}
 			}
 
