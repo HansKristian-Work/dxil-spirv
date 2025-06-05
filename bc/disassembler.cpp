@@ -81,6 +81,7 @@ struct StreamState
 	void append(StoreInst *value, bool decl = false);
 	void append(AtomicRMWInst *value, bool decl = false);
 	void append(AtomicCmpXchgInst *xchg, bool decl = false);
+	void append(ConstantAggregate *agg, bool decl = false);
 	void append(ConstantAggregateZero *zero, bool decl = false);
 	void append(ConstantDataArray *data, bool decl = false);
 	void append(ConstantDataVector *vec, bool decl = false);
@@ -717,6 +718,19 @@ void StreamState::append(AtomicCmpXchgInst *xchg, bool decl)
 		append("%", xchg->get_tween_id());
 }
 
+void StreamState::append(ConstantAggregate *agg, bool)
+{
+	append("[");
+
+	if (agg->getNumOperands())
+		append(agg->getOperand(0));
+
+	for (unsigned i = 1; i < agg->getNumOperands(); i++)
+		append(", ", agg->getOperand(i));
+
+	append("]");
+}
+
 void StreamState::append(ConstantAggregateZero *zero, bool)
 {
 	append("[zeroinitialized]");
@@ -912,6 +926,8 @@ void StreamState::append(Value *value, bool decl)
 		return append(cast<AtomicCmpXchgInst>(value), decl);
 	case ValueKind::Global:
 		return append(cast<GlobalVariable>(value), decl);
+	case ValueKind::ConstantAggregate:
+		return append(cast<ConstantAggregate>(value), decl);
 	case ValueKind::ConstantAggregateZero:
 		return append(cast<ConstantAggregateZero>(value), decl);
 	case ValueKind::ConstantDataArray:
