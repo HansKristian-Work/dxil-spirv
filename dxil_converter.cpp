@@ -8456,6 +8456,15 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::NvShaderExtn:
+	{
+		auto &nv_shader_extn = static_cast<const OptionNvShaderExtn &>(cap);
+		options.nv_shader_extn.enabled = true;
+		options.nv_shader_extn.slot = nv_shader_extn.slot;
+		options.nv_shader_extn.space = nv_shader_extn.register_space;
+		break;
+	}
+
 	default:
 		break;
 	}

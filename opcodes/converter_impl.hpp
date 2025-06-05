@@ -792,6 +792,13 @@ struct Converter::Impl
 		} extended_robustness;
 
 		unsigned max_tess_factor = 0;
+
+		struct
+		{
+			bool enabled = false;
+			unsigned slot = 0;
+			unsigned space = 0;
+		} nv_shader_extn;
 	} options;
 
 	struct BindlessInfo
