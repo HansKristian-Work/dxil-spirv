@@ -85,6 +85,7 @@ struct StreamState
 	void append(ConstantAggregateZero *zero, bool decl = false);
 	void append(ConstantDataArray *data, bool decl = false);
 	void append(ConstantDataVector *vec, bool decl = false);
+	void append(ConstantExpr *expr, bool decl = false);
 
 	void append(MDOperand *md);
 	void append(NamedMDNode *md);
@@ -760,6 +761,24 @@ void StreamState::append(ConstantDataVector *vec, bool)
 	append(">");
 }
 
+void StreamState::append(ConstantExpr *expr, bool decl)
+{
+	if (decl)
+	{
+		append("%", expr->get_tween_id(), " = ", expr->getOpcode(), " ", expr->getType());
+
+		if (expr->getNumOperands())
+			append(" ", expr->getOperand(0));
+
+		for (unsigned i = 1; i < expr->getNumOperands(); i++)
+			append(", ", expr->getOperand(i));
+	}
+	else
+	{
+		append("%", expr->get_tween_id());
+	}
+}
+
 void StreamState::append(PHINode *phi, bool decl)
 {
 	if (decl)
@@ -934,6 +953,8 @@ void StreamState::append(Value *value, bool decl)
 		return append(cast<ConstantDataArray>(value), decl);
 	case ValueKind::ConstantDataVector:
 		return append(cast<ConstantDataVector>(value), decl);
+	case ValueKind::ConstantExpr:
+		return append(cast<ConstantExpr>(value), decl);
 	case ValueKind::Switch:
 		return append(cast<SwitchInst>(value), decl);
 	case ValueKind::ShuffleVector:
