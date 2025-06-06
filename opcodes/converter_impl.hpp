@@ -405,6 +405,7 @@ struct Converter::Impl
 		unsigned wave_size_min = 0;
 		unsigned wave_size_max = 0;
 		unsigned wave_size_preferred = 0;
+		unsigned heuristic_min_wave_size = 0;
 		unsigned heuristic_max_wave_size = 0;
 		bool declares_globallycoherent_uav = false;
 		bool declares_rov = false;
@@ -960,6 +961,7 @@ struct Converter::Impl
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);
 
+	void suggest_minimum_wave_size(unsigned wave_size);
 	void suggest_maximum_wave_size(unsigned wave_size);
 
 	static NodeInputData get_node_input(llvm::MDNode *meta);

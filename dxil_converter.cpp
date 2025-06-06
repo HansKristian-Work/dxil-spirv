@@ -109,6 +109,14 @@ uint32_t Converter::get_compute_heuristic_max_wave_size() const
 	return impl->execution_mode_meta.heuristic_max_wave_size;
 }
 
+uint32_t Converter::get_compute_heuristic_min_wave_size() const
+{
+	if (impl->execution_mode_meta.wave_size_min)
+		return 0;
+
+	return impl->execution_mode_meta.heuristic_min_wave_size;
+}
+
 bool Converter::shader_requires_feature(ShaderFeature feature) const
 {
 	switch (feature)
@@ -8465,6 +8473,16 @@ void Converter::Impl::suggest_maximum_wave_size(unsigned wave_size)
 	    options.force_subgroup_size == 0)
 	{
 		execution_mode_meta.heuristic_max_wave_size = wave_size;
+	}
+}
+
+void Converter::Impl::suggest_minimum_wave_size(unsigned wave_size)
+{
+	if ((execution_mode_meta.heuristic_min_wave_size == 0 ||
+	     execution_mode_meta.heuristic_min_wave_size < wave_size) &&
+	    options.force_subgroup_size == 0)
+	{
+		execution_mode_meta.heuristic_min_wave_size = wave_size;
 	}
 }
 

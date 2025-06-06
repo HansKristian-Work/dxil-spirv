@@ -450,6 +450,31 @@ static bool get_constant_quad_lane(const llvm::Value *lane, uint32_t *quad_lane)
 	return false;
 }
 
+static bool lane_is_wave32_masked(const llvm::Value *lane)
+{
+	const auto *bin_op = llvm::dyn_cast<llvm::BinaryOperator>(lane);
+	if (!bin_op)
+		return false;
+
+	if (bin_op->getOpcode() != llvm::BinaryOperator::BinaryOps::And &&
+	    bin_op->getOpcode() != llvm::BinaryOperator::BinaryOps::URem)
+		return false;
+
+	auto *op0 = bin_op->getOperand(0);
+	auto *op1 = bin_op->getOperand(1);
+
+	if (llvm::isa<llvm::ConstantInt>(op1))
+		std::swap(op0, op1);
+
+	const auto *const_mask = llvm::dyn_cast<llvm::ConstantInt>(op0);
+	if (!const_mask)
+		return false;
+
+	uint32_t mask = const_mask->getUniqueInteger().getZExtValue();
+	return (bin_op->getOpcode() == llvm::BinaryOperator::BinaryOps::And && mask == 31) ||
+	       (bin_op->getOpcode() == llvm::BinaryOperator::BinaryOps::URem && mask == 32);
+}
+
 bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -511,6 +536,23 @@ bool emit_wave_read_lane_at_instruction(Converter::Impl &impl, const llvm::CallI
 
 			// For shuffle, wave64 is particularly slow on RDNA, so suggest wave32.
 			impl.suggest_maximum_wave_size(32);
+
+			if (impl.execution_model == spv::ExecutionModelGLCompute ||
+			    impl.execution_model == spv::ExecutionModelMeshEXT ||
+			    impl.execution_model == spv::ExecutionModelTaskEXT)
+			{
+				if (!impl.shader_analysis.has_group_shared_barrier &&
+				    impl.execution_mode_meta.workgroup_threads[0] == 32 &&
+				    impl.execution_mode_meta.workgroup_threads[1] == 1 &&
+				    impl.execution_mode_meta.workgroup_threads[2] == 1 &&
+				    lane_is_wave32_masked(lane))
+				{
+					// Intel workaround. Some shaders may simply assume that wave16 doesn't exist.
+					// The heuristic is to check if shader masks the lane by a constant 31
+					// and no group-shared is used, which would suggest that shader considers wave size < 32.
+					impl.suggest_minimum_wave_size(32);
+				}
+			}
 		}
 	}
 

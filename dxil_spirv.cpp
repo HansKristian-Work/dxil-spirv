@@ -1202,12 +1202,14 @@ int main(int argc, char **argv)
 		if (dxil_spv_converter_get_compiled_spirv(converter, &compiled) != DXIL_SPV_SUCCESS)
 			return EXIT_FAILURE;
 
-		unsigned heuristic_wave_size = 0;
+		unsigned heuristic_min_wave_size = 0;
+		unsigned heuristic_max_wave_size = 0;
 		unsigned wave_size_min = 0;
 		unsigned wave_size_max = 0;
 		unsigned wave_size_preferred = 0;
 		dxil_spv_converter_get_compute_wave_size_range(converter, &wave_size_min, &wave_size_max, &wave_size_preferred);
-		dxil_spv_converter_get_compute_heuristic_max_wave_size(converter, &heuristic_wave_size);
+		dxil_spv_converter_get_compute_heuristic_min_wave_size(converter, &heuristic_min_wave_size);
+		dxil_spv_converter_get_compute_heuristic_max_wave_size(converter, &heuristic_max_wave_size);
 
 		if (args.validate)
 		{
@@ -1233,10 +1235,17 @@ int main(int argc, char **argv)
 				spirv_asm_string += ")\n";
 			}
 
-			if (heuristic_wave_size)
+			if (heuristic_min_wave_size)
+			{
+				spirv_asm_string += "// HeuristicWaveSizeMin(";
+				spirv_asm_string += std::to_string(heuristic_min_wave_size);
+				spirv_asm_string += ")\n";
+			}
+
+			if (heuristic_max_wave_size)
 			{
 				spirv_asm_string += "// HeuristicWaveSize(";
-				spirv_asm_string += std::to_string(heuristic_wave_size);
+				spirv_asm_string += std::to_string(heuristic_max_wave_size);
 				spirv_asm_string += ")\n";
 			}
 

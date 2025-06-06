@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 51
+#define DXIL_SPV_API_VERSION_MINOR 52
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -969,6 +969,12 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_wave_size_ran
  * and can be ignored, but is often used for workarounds and identifying dubious shader code.
  * If *wave_size is non-zero, could map to requiredSubgroupSize. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_heuristic_max_wave_size(
+	dxil_spv_converter converter, unsigned *wave_size);
+
+/* After compilation. Queries suggested minimum wave size. The behavior here depends on heuristics
+ * and can be ignored, but is often used for workarounds and identifying dubious shader code.
+ * If *wave_size is non-zero, could map to requiredSubgroupSize. */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_heuristic_min_wave_size(
 	dxil_spv_converter converter, unsigned *wave_size);
 
 /* After compilation, queries num vertices for HS. */

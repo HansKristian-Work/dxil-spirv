@@ -884,6 +884,7 @@ public:
 	// If any of these are non-zero, a CS may have to be compiled for a specific wave size.
 	void get_compute_wave_size_range(uint32_t &min, uint32_t &max, uint32_t &preferred) const;
 	// If non-zero, similar to required, but can be ignored. Used as a workaround hint or performance hint.
+	uint32_t get_compute_heuristic_min_wave_size() const;
 	uint32_t get_compute_heuristic_max_wave_size() const;
 
 	bool shader_requires_feature(ShaderFeature feature) const;
