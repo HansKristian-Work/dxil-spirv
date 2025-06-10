@@ -260,6 +260,7 @@ enum class Option : uint32_t
 	ExtendedRobustness = 43,
 	MaxTessFactor = 44,
 	VulkanMemoryModel = 45,
+	Float8Support = 46,
 	Count
 };
 
@@ -787,6 +788,17 @@ struct OptionVulkanMemoryModel : OptionBase
 	}
 
 	bool enabled = false;
+};
+
+struct OptionFloat8Support : OptionBase
+{
+	OptionFloat8Support()
+	    : OptionBase(Option::Float8Support)
+	{
+	}
+
+	bool wmma_fp8 = false;
+	bool nv_cooperative_matrix2_conversions = false;
 };
 
 struct DescriptorTableEntry

@@ -1373,6 +1373,17 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_FLOAT8_SUPPORT:
+	{
+		OptionFloat8Support helper;
+		auto *float8 = reinterpret_cast<const dxil_spv_option_float8_support *>(option);
+		helper.wmma_fp8 = float8->wmma_fp8;
+		helper.nv_cooperative_matrix2_conversions = float8->nv_cooperative_matrix2_conversions;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

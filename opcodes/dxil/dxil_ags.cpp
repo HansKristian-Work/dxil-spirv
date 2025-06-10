@@ -115,10 +115,9 @@ static bool emit_magic_ags_atomic_u64(Converter::Impl &impl, spv::Id image_id,
 
 static spv::Id make_fp8_type(Converter::Impl &impl)
 {
-	if (GlobalConfiguration::get().wmma_fp8_hack)
+	if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
 	{
-		// Doesn't exist in SPIR-V yet. But if a driver magically understands it ... *shrug*
-		return impl.builder().makeFloatType(8);
+		return impl.builder().makeFloatType(8, impl.options.wmma_fp8 ? spv::FPEncodingFloat8E4M3EXT : -1);
 	}
 	else
 	{
@@ -367,11 +366,95 @@ static spv::Id emit_coopmat_transfer(Converter::Impl &impl, spv::Id v, uint32_t 
 	return call->id;
 }
 
+static spv::Id emit_coopmat_broken_saturation_fixup(Converter::Impl &impl, spv::Id v, spv::Id type_id)
+{
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::CoopMatSaturationFixup, type_id);
+
+	// RADV workaround. Should pass as value, but NIR aborts.
+	spv::Id param = impl.create_variable(spv::StorageClassFunction, type_id);
+	auto *store = impl.allocate(spv::OpStore);
+	store->add_id(param);
+	store->add_id(v);
+	impl.add(store);
+
+	auto *call = impl.allocate(spv::OpFunctionCall, type_id);
+	call->add_id(call_id);
+	call->add_id(param);
+	impl.add(call);
+
+	return call->id;
+}
+
+static spv::Id emit_coopmat_transpose_with_convert(Converter::Impl &impl, spv::Id v, uint32_t input_imm, uint32_t output_imm)
+{
+	auto &builder = impl.builder();
+
+	if (impl.options.nv_cooperative_matrix2_conversions &&
+	    get_matrix_type(input_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator &&
+	    get_matrix_type(output_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator)
+	{
+		// We can only go from accumulator to non-accumulator in this path.
+		// NV extension allows us to convert between matrix types without extra fuzz.
+		spv::Op opcode;
+
+		if (get_type_data_format(input_imm) != get_type_data_format(output_imm))
+		{
+			switch (get_type_data_format(output_imm))
+			{
+			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8:
+				if (!impl.options.wmma_fp8)
+					return 0;
+				break;
+
+			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16:
+			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32:
+				break;
+
+			default:
+				// FSR4 only needs FP, don't care about all possible combinations yet.
+				return 0;
+			}
+
+			switch (get_type_data_format(input_imm))
+			{
+			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8:
+				if (!impl.options.wmma_fp8)
+					return 0;
+				break;
+
+			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16:
+			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32:
+				break;
+
+			default:
+				// FSR4 only needs FP, don't care about all possible combinations yet.
+				return 0;
+			}
+
+			opcode = spv::OpFConvert;
+		}
+		else
+		{
+			opcode = spv::OpCooperativeMatrixConvertNV;
+		}
+
+		builder.addExtension("SPV_NV_cooperative_matrix2");
+		builder.addCapability(spv::CapabilityCooperativeMatrixConversionsNV);
+
+		auto *conv = impl.allocate(opcode, build_coopmat_type(impl, output_imm));
+		conv->add_id(v);
+		impl.add(conv);
+		return conv->id;
+	}
+
+	return 0;
+}
+
 static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t input_imm, uint32_t output_imm)
 {
 	auto &builder = impl.builder();
 
-	if (GlobalConfiguration::get().wmma_fp8_hack)
+	if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
 	{
 		if (get_matrix_type(input_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_A &&
 		    get_matrix_type(output_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_A &&
@@ -597,9 +680,9 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 				ext->add_literal(i);
 				impl.add(ext);
 
-				if (GlobalConfiguration::get().wmma_fp8_hack)
+				if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
 				{
-					auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(8));
+					auto *bitcast = impl.allocate(spv::OpBitcast, make_fp8_type(impl));
 					bitcast->add_id(ext->id);
 					impl.add(bitcast);
 					ext = bitcast;
@@ -686,9 +769,9 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 				ext->add_literal(i);
 				impl.add(ext);
 
-				if (GlobalConfiguration::get().wmma_fp8_hack)
+				if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
 				{
-					auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(8));
+					auto *bitcast = impl.allocate(spv::OpBitcast, make_fp8_type(impl));
 					bitcast->add_id(ext->id);
 					impl.add(bitcast);
 					ext = bitcast;
@@ -1013,9 +1096,9 @@ static bool emit_wmma_fill(Converter::Impl &impl)
 			impl.add(narrow);
 			id = narrow->id;
 
-			if (GlobalConfiguration::get().wmma_fp8_hack)
+			if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
 			{
-				auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(8));
+				auto *bitcast = impl.allocate(spv::OpBitcast, make_fp8_type(impl));
 				bitcast->add_id(id);
 				impl.add(bitcast);
 				id = bitcast->id;
@@ -1120,7 +1203,7 @@ static bool emit_wmma_muladd(Converter::Impl &impl)
 	spv::Id b = impl.get_id_for_value(impl.ags.backdoor_instructions[4]->getOperand(5));
 	spv::Id c = impl.get_id_for_value(impl.ags.backdoor_instructions[8]->getOperand(5));
 
-	if (!GlobalConfiguration::get().wmma_fp8_hack)
+	if (!GlobalConfiguration::get().wmma_fp8_hack && !impl.options.wmma_fp8)
 	{
 		if (opcode == AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_FP8_FP8)
 		{
@@ -1144,20 +1227,36 @@ static bool emit_wmma_muladd(Converter::Impl &impl)
 	return true;
 }
 
-static bool emit_wmma_convert(Converter::Impl &impl)
+static spv::Id emit_wmma_complex_convert(Converter::Impl &impl, spv::Id coopmat,
+                                         uint32_t type_imm, uint32_t output_immediate,
+                                         bool saturating)
 {
-	if (!validate_wmma_io_registers(impl, 0, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_RetVal_Reg, 0, true))
-		return false;
+	uint32_t input_fmt = get_type_data_format(type_imm);
+	uint32_t output_fmt = get_type_data_format(output_immediate);
 
-	if (impl.ags.instructions[4].phase != 1)
-		return false;
+	if (impl.options.wmma_fp8 &&
+	    output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
+	    (input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16 ||
+	     input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32) &&
+	    saturating)
+	{
+		// Works around broken RDNA4 HW behavior.
+		// Even when saturating, +/- inf becomes NaN.
+		// To allow RADV to emit optimal code we have to explicitly "emulate" this HW bug.
+		// Only do this fixup if we have native FP8, otherwise the compiler will not understand it
+		// and likely emit worse code.
+		coopmat = emit_coopmat_broken_saturation_fixup(impl, coopmat, build_coopmat_type(impl, type_imm));
+	}
 
-	uint32_t output_immediate = 0;
-	if (!get_constant_operand(impl.ags.backdoor_instructions[4], 5, &output_immediate))
-		return false;
+	// If this is supported, we can do everything in one go.
+	spv::Id res_id = emit_coopmat_transpose_with_convert(impl, coopmat, type_imm, output_immediate);
+	if (res_id != 0)
+		return res_id;
 
-	if (!validate_convert_compatibility(impl.ags.instructions[4].immediate, output_immediate))
-		return false;
+	uint32_t input_use = get_matrix_type(type_imm);
+	uint32_t output_use = get_matrix_type(output_immediate);
+	auto in_use = convert_matrix_use(input_use);
+	auto out_use = convert_matrix_use(output_use);
 
 	spv::Id output_type = build_coopmat_type(impl, output_immediate);
 
@@ -1181,7 +1280,107 @@ static bool emit_wmma_convert(Converter::Impl &impl)
 	spv::Id output_type_input_fmt = build_coopmat_type(impl, output_type_input_fmt_imm);
 
 	if (!output_type || (!output_type_input_use && !output_type_input_fmt))
+		return 0;
+
+	// Transpose early if the target format does not support the input use.
+	if (in_use != out_use && !output_type_input_use)
+	{
+		coopmat = emit_coopmat_transpose(impl, coopmat, type_imm, output_type_input_fmt_imm);
+		if (!coopmat)
+			return 0;
+		in_use = out_use;
+		output_type_input_use = output_type;
+	}
+
+	if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
+	{
+		if (input_fmt != output_fmt)
+		{
+			auto *conv = impl.allocate(spv::OpFConvert, output_type_input_use);
+			conv->add_id(coopmat);
+			impl.add(conv);
+			coopmat = conv->id;
+
+			if (impl.options.wmma_fp8 && saturating &&
+			    output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
+			{
+				impl.builder().addDecoration(
+					coopmat, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
+			}
+		}
+	}
+	else
+	{
+		if (input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
+		    (output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16 ||
+		     output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32))
+		{
+			coopmat = emit_fp8_to_fp16_coopmat(impl, coopmat, in_use);
+		}
+		else if (input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16 &&
+		         output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
+		{
+			coopmat = emit_fp16_to_fp8_coopmat(impl, coopmat, in_use);
+		}
+		else if (input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32 &&
+		         output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
+		{
+			uint32_t fp16_imm_type = type_imm;
+			fp16_imm_type &= ~FormatMask;
+			fp16_imm_type |= AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16
+				<< AmdExtD3DShaderIntrinsicsWaveMatrixModifier_DataFormatFlagShift;
+
+			auto *conv = impl.allocate(spv::OpFConvert, build_coopmat_type(impl, fp16_imm_type));
+			conv->add_id(coopmat);
+			impl.add(conv);
+			coopmat = conv->id;
+
+			coopmat = emit_fp16_to_fp8_coopmat(impl, coopmat, in_use);
+		}
+
+		if (output_fmt != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 && input_fmt != output_fmt)
+		{
+			if (input_fmt != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 ||
+			    output_fmt != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16)
+			{
+				auto *conv = impl.allocate(spv::OpFConvert, output_type_input_use);
+				conv->add_id(coopmat);
+				impl.add(conv);
+				coopmat = conv->id;
+			}
+		}
+	}
+
+	if (in_use != out_use)
+	{
+		coopmat = emit_coopmat_transpose(impl, coopmat, output_type_input_use_imm, output_immediate);
+		if (!coopmat)
+			return 0;
+	}
+
+	return coopmat;
+}
+
+static bool emit_wmma_convert(Converter::Impl &impl)
+{
+	if (!validate_wmma_io_registers(impl, 0, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_RetVal_Reg, 0, true))
 		return false;
+
+	if (impl.ags.instructions[4].phase != 1)
+		return false;
+
+	uint32_t output_immediate = 0;
+	if (!get_constant_operand(impl.ags.backdoor_instructions[4], 5, &output_immediate))
+		return false;
+
+	uint32_t saturating = 0;
+	if (!get_constant_operand(impl.ags.backdoor_instructions[4], 6, &saturating))
+		return false;
+
+	if (!validate_convert_compatibility(impl.ags.instructions[4].immediate, output_immediate))
+		return false;
+
+	spv::Id output_type = build_coopmat_type(impl, output_immediate);
 
 	spv::Id res_id;
 
@@ -1191,86 +1390,11 @@ static bool emit_wmma_convert(Converter::Impl &impl)
 	}
 	else
 	{
-		uint32_t type_imm = impl.ags.instructions[4].immediate;
-		uint32_t input_fmt = get_type_data_format(type_imm);
-		uint32_t output_fmt = get_type_data_format(output_immediate);
-		uint32_t input_use = get_matrix_type(type_imm);
-		uint32_t output_use = get_matrix_type(output_immediate);
-		auto in_use = convert_matrix_use(input_use);
-		auto out_use = convert_matrix_use(output_use);
-
 		spv::Id coopmat = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
-
-		// Transpose early if the target format does not support the input use.
-		if (in_use != out_use && !output_type_input_use)
-		{
-			coopmat = emit_coopmat_transpose(impl, coopmat, type_imm, output_type_input_fmt_imm);
-			if (!coopmat)
-				return false;
-			in_use = out_use;
-			output_type_input_use = output_type;
-		}
-
-		if (GlobalConfiguration::get().wmma_fp8_hack)
-		{
-			if (input_fmt != output_fmt)
-			{
-				auto *conv = impl.allocate(spv::OpFConvert, output_type_input_use);
-				conv->add_id(coopmat);
-				impl.add(conv);
-				coopmat = conv->id;
-			}
-		}
-		else
-		{
-			if (input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
-			    (output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16 ||
-			     output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32))
-			{
-				coopmat = emit_fp8_to_fp16_coopmat(impl, coopmat, in_use);
-			}
-			else if (input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16 &&
-			         output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
-			{
-				coopmat = emit_fp16_to_fp8_coopmat(impl, coopmat, in_use);
-			}
-			else if (input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32 &&
-			         output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
-			{
-				uint32_t fp16_imm_type = type_imm;
-				fp16_imm_type &= ~FormatMask;
-				fp16_imm_type |= AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16
-					<< AmdExtD3DShaderIntrinsicsWaveMatrixModifier_DataFormatFlagShift;
-
-				auto *conv = impl.allocate(spv::OpFConvert, build_coopmat_type(impl, fp16_imm_type));
-				conv->add_id(coopmat);
-				impl.add(conv);
-				coopmat = conv->id;
-
-				coopmat = emit_fp16_to_fp8_coopmat(impl, coopmat, in_use);
-			}
-
-			if (output_fmt != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 && input_fmt != output_fmt)
-			{
-				if (input_fmt != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 ||
-				    output_fmt != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16)
-				{
-					auto *conv = impl.allocate(spv::OpFConvert, output_type_input_use);
-					conv->add_id(coopmat);
-					impl.add(conv);
-					coopmat = conv->id;
-				}
-			}
-		}
-
-		if (in_use != out_use)
-		{
-			coopmat = emit_coopmat_transpose(impl, coopmat, output_type_input_use_imm, output_immediate);
-			if (!coopmat)
-				return false;
-		}
-
-		res_id = coopmat;
+		res_id = emit_wmma_complex_convert(impl, coopmat, impl.ags.instructions[4].immediate,
+		                                   output_immediate, saturating != 0);
+		if (!res_id)
+			return false;
 	}
 
 	if (!emit_wmma_return_values(impl, output_type, res_id, 2))
