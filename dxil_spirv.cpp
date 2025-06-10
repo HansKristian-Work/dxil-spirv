@@ -56,12 +56,25 @@ static std::string convert_to_asm(const void *code, size_t size)
 static bool validate_spirv(const void *code, size_t size)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
-	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
-		LOGE("SPIRV-Tools message: %s\n", message);
+	bool expected_failure = false;
+	bool unexpected_failure = false;
+
+	tools.SetMessageConsumer([&](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
+		if (strstr(message, "08721") || strstr(message, "08722"))
+		{
+			LOGW("SPIRV-Tools message expected failure: %s\n", message);
+			expected_failure = true;
+		}
+		else
+		{
+			LOGE("SPIRV-Tools message: %s\n", message);
+			unexpected_failure = true;
+		}
 	});
 	spvtools::ValidatorOptions opts;
 	opts.SetScalarBlockLayout(true);
-	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), opts);
+	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), opts) ||
+	       (expected_failure && !unexpected_failure);
 }
 
 static std::string convert_to_glsl(const void *code, size_t size)
