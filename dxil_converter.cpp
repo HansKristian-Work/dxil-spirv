@@ -8461,6 +8461,14 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::Float8Support:
+	{
+		auto &float8 = static_cast<const OptionFloat8Support &>(cap);
+		options.wmma_fp8 = float8.wmma_fp8;
+		options.nv_cooperative_matrix2_conversions = float8.nv_cooperative_matrix2_conversions;
+		break;
+	}
+
 	default:
 		break;
 	}

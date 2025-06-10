@@ -786,6 +786,8 @@ struct Converter::Impl
 		bool supports_maximal_reconvergence = false;
 		bool force_maximal_reconvergence = false;
 		bool nv_raw_access_chains = false;
+		bool wmma_fp8 = false;
+		bool nv_cooperative_matrix2_conversions = false;
 		struct
 		{
 			bool enabled = false;
