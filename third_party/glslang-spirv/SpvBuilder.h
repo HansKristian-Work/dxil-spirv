@@ -122,7 +122,7 @@ public:
     Id makeIntegerType(int width, bool hasSign);   // generic
     Id makeIntType(int width) { return makeIntegerType(width, true); }
     Id makeUintType(int width) { return makeIntegerType(width, false); }
-    Id makeFloatType(int width);
+    Id makeFloatType(int width, int encoding = -1);
     Id makeCooperativeMatrixType(spv::Id scalar_type, spv::Id rows, spv::Id cols, spv::Id use);
     Id makeStructType(const dxil_spv::Vector<Id>& members, const char*);
     Id makeStructResultType(Id type0, Id type1);
