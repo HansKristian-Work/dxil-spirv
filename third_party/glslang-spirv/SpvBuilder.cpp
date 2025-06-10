@@ -252,25 +252,42 @@ Id Builder::makeIntegerType(int width, bool hasSign)
     return type->getResultId();
 }
 
-Id Builder::makeFloatType(int width)
+Id Builder::makeFloatType(int width, int encoding)
 {
     // try to find it
     Instruction* type;
     for (int t = 0; t < (int)groupedTypes[OpTypeFloat].size(); ++t) {
         type = groupedTypes[OpTypeFloat][t];
-        if (type->getImmediateOperand(0) == (unsigned)width)
+        if (encoding >= 0) {
+            if (type->getNumOperands() == 2 &&
+                type->getImmediateOperand(0) == (unsigned)width &&
+                type->getImmediateOperand(1) == (unsigned)encoding) {
+                return type->getResultId();
+            }
+        } else if (type->getNumOperands() == 1 && type->getImmediateOperand(0) == (unsigned)width) {
             return type->getResultId();
+        }
     }
 
     // not found, make it
     type = new Instruction(getUniqueId(), NoType, OpTypeFloat);
     type->addImmediateOperand(width);
+    if (encoding >= 0)
+        type->addImmediateOperand(encoding);
     groupedTypes[OpTypeFloat].push_back(type);
     constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
     module.mapInstruction(type);
 
     // deal with capabilities
     switch (width) {
+    case 8:
+        if (encoding >= 0) {
+            // Ignore encoding -1 case. It's not legal SPIR-V, only used by hack path.
+            addExtension("SPV_EXT_float8");
+            addCapability(CapabilityFloat8EXT);
+            addCapability(CapabilityFloat8CooperativeMatrixEXT);
+        }
+        break;
     case 16:
         addCapability(CapabilityFloat16);
         break;
