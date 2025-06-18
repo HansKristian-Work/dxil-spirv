@@ -253,6 +253,7 @@ public:
     Id makeDoubleConstant(double d, bool specConstant = false);
 #ifdef AMD_EXTENSIONS
     Id makeFloat16Constant(uint16_t f16, bool specConstant = false);
+    Id makeFloat8Constant(uint8_t f8, int encoding, bool specConstant = false);
 #endif
     Id makeNullConstant(Id type);
 

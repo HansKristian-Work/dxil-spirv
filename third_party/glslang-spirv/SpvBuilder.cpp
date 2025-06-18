@@ -240,7 +240,7 @@ Id Builder::makeIntegerType(int width, bool hasSign)
     // deal with capabilities
     switch (width) {
     case 8:
-        addCapability(spv::CapabilityInt8);
+        addCapability(CapabilityInt8);
         break;
     case 16:
         addCapability(CapabilityInt16);
@@ -928,6 +928,30 @@ Id Builder::makeFloat16Constant(uint16_t f16, bool specConstant)
     Id typeId = makeFloatType(16);
 
     unsigned value = f16;
+
+    // See if we already made it. Applies only to regular constants, because specialization constants
+    // must remain distinct for the purpose of applying a SpecId decoration.
+    if (!specConstant) {
+        Id existing = findScalarConstant(OpTypeFloat, opcode, typeId, value);
+        if (existing)
+            return existing;
+    }
+
+    Instruction* c = new Instruction(getUniqueId(), typeId, opcode);
+    c->addImmediateOperand(value);
+    constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(c));
+    groupedConstants[OpTypeFloat].push_back(c);
+    module.mapInstruction(c);
+
+    return c->getResultId();
+}
+
+Id Builder::makeFloat8Constant(uint8_t f8, int encoding, bool specConstant)
+{
+    Op opcode = specConstant ? OpSpecConstant : OpConstant;
+    Id typeId = makeFloatType(8, encoding);
+
+    unsigned value = f8;
 
     // See if we already made it. Applies only to regular constants, because specialization constants
     // must remain distinct for the purpose of applying a SpecId decoration.

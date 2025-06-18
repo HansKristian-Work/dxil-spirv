@@ -1056,7 +1056,10 @@ static bool emit_wmma_fill(Converter::Impl &impl)
 		switch (fmt)
 		{
 		case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8:
-			id = builder.makeUint8Constant(const_v->getUniqueInteger().getZExtValue());
+			if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
+				id = builder.makeFloat8Constant(const_v->getUniqueInteger().getZExtValue(), spv::FPEncodingFloat8E4M3EXT);
+			else
+				id = builder.makeUint8Constant(const_v->getUniqueInteger().getZExtValue());
 			break;
 
 		case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16:
