@@ -116,14 +116,9 @@ static bool emit_magic_ags_atomic_u64(Converter::Impl &impl, spv::Id image_id,
 static spv::Id make_fp8_type(Converter::Impl &impl)
 {
 	if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
-	{
 		return impl.builder().makeFloatType(8, impl.options.wmma_fp8 ? spv::FPEncodingFloat8E4M3EXT : -1);
-	}
 	else
-	{
-		impl.builder().addCapability(spv::CapabilityInt8);
 		return impl.builder().makeUintType(8);
-	}
 }
 
 static inline uint32_t get_type_data_format(uint32_t imm)
@@ -1484,8 +1479,6 @@ static WMMAAccessChain build_wmma_access_chain(
 		ret.chain_id = chain->id;
 		ret.stride_id = impl.get_id_for_value(stride);
 		ret.alignment = 16; // Unsure what requirements are here. Just do the simple thing.
-
-		builder.addCapability(spv::CapabilityInt8);
 	}
 	else
 	{

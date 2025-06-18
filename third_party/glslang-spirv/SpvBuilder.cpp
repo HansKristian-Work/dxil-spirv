@@ -239,6 +239,9 @@ Id Builder::makeIntegerType(int width, bool hasSign)
 
     // deal with capabilities
     switch (width) {
+    case 8:
+        addCapability(spv::CapabilityInt8);
+        break;
     case 16:
         addCapability(CapabilityInt16);
         break;
