@@ -259,45 +259,44 @@ bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *
 	return false;
 }
 
-bool value_is_likely_non_uniform(Converter::Impl &impl, const llvm::Value *value)
+static bool value_depends_on_stage_input(
+    const llvm::Instruction *inst, UnorderedSet<const llvm::Instruction *> &visit_cache)
 {
-	for (;;)
-	{
-		// If the index is loaded from PS varying, it's almost guaranteed to be nonuniform in some way.
-		// Similar with using InstanceID as bindless index.
-		if (llvm::isa<llvm::Constant>(value))
-			return false;
-		else if (const auto *unary = llvm::dyn_cast<llvm::UnaryOperator>(value))
-			value = unary->getOperand(0);
-		else if (const auto *cast_op = llvm::dyn_cast<llvm::CastInst>(value))
-			value = cast_op->getOperand(0);
-		else if (const auto *extract_value = llvm::dyn_cast<llvm::ExtractValueInst>(value))
-			value = extract_value->getOperand(0);
-		else
-			break;
-	}
-
-	if (const auto *binary = llvm::dyn_cast<llvm::BinaryOperator>(value))
-	{
-		return value_is_likely_non_uniform(impl, binary->getOperand(0)) ||
-		       value_is_likely_non_uniform(impl, binary->getOperand(1));
-	}
-	else if (value_is_dx_op_instrinsic(value, DXIL::Op::BufferLoad) ||
-	         value_is_dx_op_instrinsic(value, DXIL::Op::RawBufferLoad) ||
-	         value_is_dx_op_instrinsic(value, DXIL::Op::CBufferLoad) ||
-	         value_is_dx_op_instrinsic(value, DXIL::Op::CBufferLoadLegacy))
-	{
-		auto *call = llvm::cast<llvm::CallInst>(value);
-		for (uint32_t i = 2; i < call->getNumOperands(); i++)
-			if (value_is_likely_non_uniform(impl, call->getOperand(i)))
-				return true;
+	if (visit_cache.count(inst))
 		return false;
-	}
-	else if (value_is_dx_op_instrinsic(value, DXIL::Op::LoadInput) ||
-	         value_is_dx_op_instrinsic(value, DXIL::Op::InstanceID))
+	visit_cache.insert(inst);
+
+	if (value_is_dx_op_instrinsic(inst, DXIL::Op::LoadInput) ||
+	    value_is_dx_op_instrinsic(inst, DXIL::Op::InstanceID))
 	{
 		return true;
 	}
+
+	if (const auto *phi = llvm::dyn_cast<llvm::PHINode>(inst))
+	{
+		for (uint32_t i = 0; i < phi->getNumIncomingValues(); i++)
+			if (const auto *dependent_inst = llvm::dyn_cast<llvm::Instruction>(phi->getIncomingValue(i)))
+				if (value_depends_on_stage_input(dependent_inst, visit_cache))
+					return true;
+	}
+	else
+	{
+		for (uint32_t i = 0; i < inst->getNumOperands(); i++)
+			if (const auto *dependent_inst = llvm::dyn_cast<llvm::Instruction>(inst->getOperand(i)))
+				if (value_depends_on_stage_input(dependent_inst, visit_cache))
+					return true;
+	}
+
+	return false;
+}
+
+bool value_is_likely_non_uniform(Converter::Impl &, const llvm::Value *value)
+{
+	// If the index is loaded from VS input or PS varying, it's almost guaranteed to be nonuniform in some way.
+	// Similar with using InstanceID as bindless index.
+	UnorderedSet<const llvm::Instruction *> visit_cache;
+	if (const auto *inst = llvm::dyn_cast<llvm::Instruction>(value))
+		return value_depends_on_stage_input(inst, visit_cache);
 	else
 		return false;
 }

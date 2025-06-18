@@ -67,5 +67,4 @@ static inline bool emit_wave_builtin_dispatch(Converter::Impl &impl, const llvm:
 
 bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *value);
 bool value_is_likely_non_uniform(Converter::Impl &impl, const llvm::Value *value);
-bool value_depends_on_varying_input(Converter::Impl &impl, const llvm::Value *value);
 } // namespace dxil_spv
