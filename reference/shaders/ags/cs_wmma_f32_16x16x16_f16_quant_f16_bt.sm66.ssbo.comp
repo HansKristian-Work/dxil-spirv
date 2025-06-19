@@ -45,6 +45,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
+OpCapability Int8
 OpCapability StorageBuffer8BitAccess
 OpCapability DenormPreserve
 OpCapability VulkanMemoryModel
