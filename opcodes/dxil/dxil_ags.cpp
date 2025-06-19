@@ -380,7 +380,8 @@ static spv::Id emit_coopmat_broken_saturation_fixup(Converter::Impl &impl, spv::
 	return call->id;
 }
 
-static spv::Id emit_coopmat_transpose_with_convert(Converter::Impl &impl, spv::Id v, uint32_t input_imm, uint32_t output_imm)
+static spv::Id emit_coopmat_transpose_with_convert(
+    Converter::Impl &impl, spv::Id v, uint32_t input_imm, uint32_t output_imm, bool saturating)
 {
 	auto &builder = impl.builder();
 
@@ -439,6 +440,15 @@ static spv::Id emit_coopmat_transpose_with_convert(Converter::Impl &impl, spv::I
 		auto *conv = impl.allocate(opcode, build_coopmat_type(impl, output_imm));
 		conv->add_id(v);
 		impl.add(conv);
+
+		if (impl.options.wmma_fp8 && saturating &&
+		    opcode == spv::OpFConvert &&
+		    get_type_data_format(output_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
+		{
+			impl.builder().addDecoration(
+			    conv->id, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
+		}
+
 		return conv->id;
 	}
 
@@ -1247,7 +1257,7 @@ static spv::Id emit_wmma_complex_convert(Converter::Impl &impl, spv::Id coopmat,
 	}
 
 	// If this is supported, we can do everything in one go.
-	spv::Id res_id = emit_coopmat_transpose_with_convert(impl, coopmat, type_imm, output_immediate);
+	spv::Id res_id = emit_coopmat_transpose_with_convert(impl, coopmat, type_imm, output_immediate, saturating);
 	if (res_id != 0)
 		return res_id;
 
