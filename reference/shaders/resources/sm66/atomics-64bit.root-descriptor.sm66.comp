@@ -10,6 +10,7 @@
 layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 layout(buffer_reference) buffer PhysicalPointerUint64Array;
+
 layout(buffer_reference, buffer_reference_align = 8, std430) buffer PhysicalPointerUint64Array
 {
     uint64_t value[];

@@ -17,6 +17,7 @@
 
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerUint642NonWriteCBVArray;
+
 layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
 {
     vec4 value[4096];

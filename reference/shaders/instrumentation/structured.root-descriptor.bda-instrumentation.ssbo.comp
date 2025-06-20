@@ -10,6 +10,9 @@
 #extension GL_EXT_buffer_reference_uvec2 : require
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
+layout(buffer_reference) buffer PhysicalPointerFloat3NonWriteArray;
+layout(buffer_reference) buffer PhysicalPointerFloatArray;
+
 struct DescriptorHeapRawPayload
 {
     uvec2 _m0[1];
@@ -23,8 +26,6 @@ struct IAddCarryResult
 
 float _465;
 
-layout(buffer_reference) buffer PhysicalPointerFloat3NonWriteArray;
-layout(buffer_reference) buffer PhysicalPointerFloatArray;
 layout(buffer_reference, buffer_reference_align = 4, scalar) readonly buffer PhysicalPointerFloat3NonWriteArray
 {
     vec3 value[];

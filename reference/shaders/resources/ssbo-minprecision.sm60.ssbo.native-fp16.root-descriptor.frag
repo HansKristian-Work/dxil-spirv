@@ -11,12 +11,13 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 
-float16_t _57;
-uint16_t _73;
-
 layout(buffer_reference) buffer PhysicalPointerFloatNonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerFloatArray;
 layout(buffer_reference) buffer PhysicalPointerUintArray;
+
+float16_t _57;
+uint16_t _73;
+
 layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloatNonWriteArray
 {
     float value[];

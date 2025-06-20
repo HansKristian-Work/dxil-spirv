@@ -8,6 +8,12 @@
 #extension GL_EXT_buffer_reference_uvec2 : require
 layout(local_size_x_id = 0, local_size_y_id = 1, local_size_z_id = 2) in;
 
+layout(buffer_reference) buffer NodeReadonlyU32Ptr;
+layout(buffer_reference) buffer NodeReadonlyU32ArrayPtr;
+layout(buffer_reference) buffer NodeReadonlyU64Ptr;
+layout(buffer_reference) buffer _50;
+layout(buffer_reference) buffer uintPointer;
+
 layout(constant_id = 4) const bool NodeEntryIndirectPayloadStride = false;
 layout(constant_id = 3) const bool NodeIsProgramEntry = false;
 layout(constant_id = 5) const bool DispatchGridIsUpperBound = true;
@@ -31,11 +37,6 @@ const uint _175 = (_174 * MaxBroadcastGridZ);
 const uint _239 = (MaxBroadcastGridX * MaxBroadcastGridY);
 const uint _240 = (_239 * MaxBroadcastGridZ);
 
-layout(buffer_reference) buffer NodeReadonlyU32Ptr;
-layout(buffer_reference) buffer NodeReadonlyU32ArrayPtr;
-layout(buffer_reference) buffer NodeReadonlyU64Ptr;
-layout(buffer_reference) buffer _50;
-layout(buffer_reference) buffer uintPointer;
 layout(buffer_reference, buffer_reference_align = 4) buffer uintPointer
 {
     uint value;

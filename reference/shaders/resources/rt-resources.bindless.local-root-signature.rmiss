@@ -6,6 +6,15 @@
 #extension GL_EXT_samplerless_texture_functions : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 
+layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
+layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteArray;
+layout(buffer_reference) buffer PhysicalPointerUintNonWriteArray;
+layout(buffer_reference) buffer PhysicalPointerUint2NonWriteArray;
+layout(buffer_reference) buffer PhysicalPointerUint3NonWriteArray;
+layout(buffer_reference) buffer PhysicalPointerUint4NonWriteArray;
+layout(buffer_reference) buffer PhysicalPointerFloatArray;
+layout(buffer_reference) buffer PhysicalPointerUintArray;
+
 struct _37
 {
     vec4 _m0;
@@ -15,14 +24,6 @@ struct _37
 vec4 _372;
 float _378;
 
-layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
-layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteArray;
-layout(buffer_reference) buffer PhysicalPointerUintNonWriteArray;
-layout(buffer_reference) buffer PhysicalPointerUint2NonWriteArray;
-layout(buffer_reference) buffer PhysicalPointerUint3NonWriteArray;
-layout(buffer_reference) buffer PhysicalPointerUint4NonWriteArray;
-layout(buffer_reference) buffer PhysicalPointerFloatArray;
-layout(buffer_reference) buffer PhysicalPointerUintArray;
 layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
 {
     vec4 value[4096];

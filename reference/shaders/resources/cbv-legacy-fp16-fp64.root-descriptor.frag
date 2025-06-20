@@ -15,6 +15,9 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 
+layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
+layout(buffer_reference) buffer PhysicalPointerUint642NonWriteCBVArray;
+
 struct CBVComposite16x8
 {
     float16_t _m0;
@@ -27,8 +30,6 @@ struct CBVComposite16x8
     float16_t _m7;
 };
 
-layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
-layout(buffer_reference) buffer PhysicalPointerUint642NonWriteCBVArray;
 layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteCBVArray
 {
     vec4 value[4096];

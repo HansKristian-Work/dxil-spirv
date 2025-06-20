@@ -6,6 +6,7 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerFloat4CoherentArray;
+
 layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
     vec4 value[];

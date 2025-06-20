@@ -18,6 +18,7 @@ layout(pixel_interlock_ordered) in;
 layout(early_fragment_tests) in;
 
 layout(buffer_reference) buffer PhysicalPointerFloat4CoherentArray;
+
 layout(buffer_reference, buffer_reference_align = 4, std430) coherent buffer PhysicalPointerFloat4CoherentArray
 {
     vec4 value[];

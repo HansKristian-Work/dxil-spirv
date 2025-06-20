@@ -12,9 +12,6 @@
 #extension GL_EXT_buffer_reference_uvec2 : require
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-float16_t _72;
-uint _112;
-
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerFloat4NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerFloat4CoherentArray;
@@ -23,6 +20,10 @@ layout(buffer_reference) buffer PhysicalPointerHalf2Array;
 layout(buffer_reference) buffer PhysicalPointerHalf3Array;
 layout(buffer_reference) buffer PhysicalPointerHalf4Array;
 layout(buffer_reference) buffer PhysicalPointerUint2Array;
+
+float16_t _72;
+uint _112;
+
 layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
     vec4 value[];
