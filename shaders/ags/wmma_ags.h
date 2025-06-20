@@ -329,6 +329,26 @@ WMMA_Matrix WMMA_Convert(WMMA_Type intype, WMMA_Type outtype, WMMA_Matrix m)
 	return ret;
 }
 
+WMMA_Matrix WMMA_ConvertSaturate(WMMA_Type intype, WMMA_Type outtype, WMMA_Matrix m)
+{
+	AGSMagic(WaveMatrixCopy, 0, 0, 0, 0);
+	AGSMagic(WaveMatrixCopy, 0, MatrixIO(0, 0, 0), m.v[0], m.v[1]);
+	AGSMagic(WaveMatrixCopy, 0, MatrixIO(1, 0, 0), m.v[2], m.v[3]);
+	AGSMagic(WaveMatrixCopy, 0, MatrixIO(0, 1, 0), m.v[4], m.v[5]);
+	AGSMagic(WaveMatrixCopy, 0, MatrixIO(1, 1, 0), m.v[6], m.v[7]);
+	AGSMagic(WaveMatrixCopy, 1, intype.code, outtype.code, 1);
+	WMMA_Matrix ret;
+	ret.v[0] = AGSMagic(WaveMatrixCopy, 2, MatrixIO(0, 0, WaveMatrixRegType_RetVal_Reg), 0, 0);
+	ret.v[1] = AGSMagic(WaveMatrixCopy, 2, MatrixIO(1, 0, WaveMatrixRegType_RetVal_Reg), 0, 0);
+	ret.v[2] = AGSMagic(WaveMatrixCopy, 2, MatrixIO(2, 0, WaveMatrixRegType_RetVal_Reg), 0, 0);
+	ret.v[3] = AGSMagic(WaveMatrixCopy, 2, MatrixIO(3, 0, WaveMatrixRegType_RetVal_Reg), 0, 0);
+	ret.v[4] = AGSMagic(WaveMatrixCopy, 2, MatrixIO(0, 1, WaveMatrixRegType_RetVal_Reg), 0, 0);
+	ret.v[5] = AGSMagic(WaveMatrixCopy, 2, MatrixIO(1, 1, WaveMatrixRegType_RetVal_Reg), 0, 0);
+	ret.v[6] = AGSMagic(WaveMatrixCopy, 2, MatrixIO(2, 1, WaveMatrixRegType_RetVal_Reg), 0, 0);
+	ret.v[7] = AGSMagic(WaveMatrixCopy, 2, MatrixIO(3, 1, WaveMatrixRegType_RetVal_Reg), 0, 0);
+	return ret;
+}
+
 uint WMMA_MatrixLength(WMMA_Type type)
 {
 	return AGSMagic(WaveMatrixLength, 0, type.code, 0, 0);

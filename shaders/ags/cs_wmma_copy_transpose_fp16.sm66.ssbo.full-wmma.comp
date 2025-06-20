@@ -1,0 +1,18 @@
+RWByteAddressBuffer Outputs : register(u0);
+ByteAddressBuffer Inputs : register(t0);
+RWByteAddressBuffer MAGIC : register(u0, space2147420894);
+
+#include "wmma_ags.h"
+
+[numthreads(32, 1, 1)]
+[WaveSize(32)]
+void main(uint thr : SV_GroupIndex)
+{
+	// Transpose layout is ignored on arith ops it seems.
+	WMMA_Type TypeC32 = WMMA_MakeType(WaveMatrixDataFormat_F32, WaveMatrixType_Accumulator, WaveMatrixShape_16X16, true);
+	WMMA_Type TypeB8 = WMMA_MakeType(WaveMatrixDataFormat_FP8, WaveMatrixType_B, WaveMatrixShape_16X16, true);
+
+	WMMA_Matrix m = WMMA_Load(TypeC32, Inputs, 0, 64);
+	m = WMMA_ConvertSaturate(TypeC32, TypeB8, m);
+	WMMA_Store(TypeB8, Outputs, 1024, 16, m);
+}

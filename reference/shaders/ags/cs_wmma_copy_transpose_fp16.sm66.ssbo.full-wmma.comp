@@ -1,0 +1,159 @@
+#version 460
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+#extension GL_NV_cooperative_matrix2 : require
+#extension GL_EXT_float_e4m3 : require
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
+{
+    uint8_t _m0[];
+} _18;
+
+layout(set = 0, binding = 0, std430) writeonly buffer _20_22
+{
+    uint8_t _m0[];
+} _22;
+
+coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> CoopMatSaturationFixup(coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _32)
+{
+    uint _39;
+    _39 = 0u;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> coop_output;
+    for (;;)
+    {
+        uint _40 = _39 + 1u;
+        coop_output[_39] = isinf(_32[_39]) ? uintBitsToFloat(0x7fc00000u /* nan */) : _32[_39];
+        if (_40 < uint(coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0).length()))
+        {
+            _39 = _40;
+        }
+        else
+        {
+            break;
+        }
+    }
+    return coop_output;
+}
+
+void main()
+{
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _28;
+    coopMatLoad(_28, _18._m0, 0u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _51 = _28;
+    coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _53;
+    saturatedConvertEXT(_53, CoopMatSaturationFixup(_51));
+    coopMatStore(_53, _22._m0, 1024u, 16u, gl_CooperativeMatrixLayoutColumnMajor);
+}
+
+
+#if 0
+// SPIR-V disassembly
+// WaveSize(32)
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 58
+; Schema: 0
+OpCapability Shader
+OpCapability Int8
+OpCapability Float8EXT
+OpCapability Float8CooperativeMatrixEXT
+OpCapability StorageBuffer8BitAccess
+OpCapability VulkanMemoryModel
+OpCapability CooperativeMatrixConversionsNV
+OpCapability CooperativeMatrixKHR
+OpExtension "SPV_EXT_float8"
+OpExtension "SPV_KHR_8bit_storage"
+OpExtension "SPV_KHR_cooperative_matrix"
+OpExtension "SPV_NV_cooperative_matrix2"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %12 "main" %18 %22
+OpExecutionMode %12 LocalSize 32 1 1
+OpName %12 "main"
+OpName %16 "SSBO"
+OpName %20 "SSBO"
+OpName %33 "CoopMatSaturationFixup"
+OpName %35 "coop_output"
+OpDecorate %15 ArrayStride 1
+OpMemberDecorate %16 0 Offset 0
+OpDecorate %16 Block
+OpDecorate %18 DescriptorSet 0
+OpDecorate %18 Binding 0
+OpDecorate %18 NonWritable
+OpDecorate %18 Restrict
+OpDecorate %19 ArrayStride 1
+OpMemberDecorate %20 0 Offset 0
+OpDecorate %20 Block
+OpDecorate %22 DescriptorSet 0
+OpDecorate %22 Binding 0
+OpDecorate %22 NonReadable
+OpDecorate %53 SaturatedToLargestFloat8NormalConversionEXT
+%1 = OpTypeFloat 32
+%2 = OpTypeInt 32 0
+%3 = OpConstant %2 2
+%4 = OpConstant %2 16
+%6 = OpConstant %2 3
+%5 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %3
+%7 = OpTypeFloat 8 Float8E4M3EXT
+%8 = OpConstant %2 1
+%9 = OpTypeCooperativeMatrixKHR %7 %6 %4 %4 %8
+%10 = OpTypeVoid
+%11 = OpTypeFunction %10
+%14 = OpTypeInt 8 0
+%15 = OpTypeRuntimeArray %14
+%16 = OpTypeStruct %15
+%17 = OpTypePointer StorageBuffer %16
+%18 = OpVariable %17 StorageBuffer
+%19 = OpTypeRuntimeArray %14
+%20 = OpTypeStruct %19
+%21 = OpTypePointer StorageBuffer %20
+%22 = OpVariable %21 StorageBuffer
+%24 = OpTypePointer StorageBuffer %14
+%26 = OpConstant %2 0
+%27 = OpConstant %2 64
+%29 = OpTypeBool
+%30 = OpTypePointer Function %5
+%31 = OpTypeFunction %5 %30
+%41 = OpTypePointer Function %1
+%46 = OpConstant %1 0x1.8p+128
+%55 = OpConstant %2 1024
+%12 = OpFunction %10 None %11
+%13 = OpLabel
+%51 = OpVariable %30 Function
+OpBranch %56
+%56 = OpLabel
+%25 = OpAccessChain %24 %18 %26 %26
+%28 = OpCooperativeMatrixLoadKHR %5 %25 %8 %27 NonPrivatePointer
+OpStore %51 %28
+%52 = OpFunctionCall %5 %33 %51
+%53 = OpFConvert %9 %52
+%54 = OpAccessChain %24 %22 %26 %55
+OpCooperativeMatrixStoreKHR %54 %53 %8 %4 NonPrivatePointer
+OpReturn
+OpFunctionEnd
+%33 = OpFunction %5 None %31
+%32 = OpFunctionParameter %30
+%34 = OpLabel
+%35 = OpVariable %30 Function
+%36 = OpCooperativeMatrixLengthKHR %2 %5
+OpBranch %37
+%37 = OpLabel
+%39 = OpPhi %2 %26 %34 %40 %37
+%40 = OpIAdd %2 %39 %8
+%42 = OpInBoundsAccessChain %41 %32 %39
+%43 = OpLoad %1 %42
+%44 = OpIsInf %29 %43
+%45 = OpSelect %1 %44 %46 %43
+%47 = OpInBoundsAccessChain %41 %35 %39
+OpStore %47 %45
+%48 = OpULessThan %29 %40 %36
+OpLoopMerge %38 %37 None
+OpBranchConditional %48 %37 %38
+%38 = OpLabel
+%49 = OpLoad %5 %35
+OpReturnValue %49
+OpFunctionEnd
+#endif
