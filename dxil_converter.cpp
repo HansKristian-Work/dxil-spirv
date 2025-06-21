@@ -1459,6 +1459,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		if (index == ags.uav_magic_resource_type_index)
 			continue;
 
+		if (options.nv_shader_extn.enabled &&
+		    bind_register == options.nv_shader_extn.slot &&
+		    bind_space == options.nv_shader_extn.space)
+			continue;
+
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
 		bool is_rov = get_constant_metadata(uav, 9) != 0;
 
