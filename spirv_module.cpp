@@ -85,6 +85,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_node_coalesce_payload_offset(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_coop_mat_fp8_to_fp16(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_coop_mat_fp16_to_fp8(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
+	spv::Id build_coop_mat_saturate_fp8(SPIRVModule &module, spv::Id type_id);
 	spv::Id build_coop_mat_transfer(SPIRVModule &module, const spv::Id *ids, uint32_t id_count);
 	spv::Id build_coop_mat_saturation_fixup(SPIRVModule &module, spv::Id type_id);
 	spv::Id build_is_quad_uniform_control_flow(SPIRVModule &module);
@@ -2399,6 +2400,84 @@ spv::Id SPIRVModule::Impl::build_coop_mat_transfer(SPIRVModule &module, const sp
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_coop_mat_saturate_fp8(SPIRVModule &module, spv::Id type_id)
+{
+	for (auto &ops : coop_mat_conv_ids)
+		if (ops.output_type == type_id && ops.input_type == type_id && ops.call == HelperCall::CoopMatSaturateFP8)
+			return ops.func_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bool_type = builder.makeBoolType();
+
+	// RADV workaround. It fails to understand coopmat passed as value.
+	spv::Id f16_ptr_type = builder.makePointer(spv::StorageClassFunction, type_id);
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, type_id,
+	                                       "CoopMatSaturateFP8",
+	                                       { f16_ptr_type }, {}, &entry);
+
+	spv::Id output_id = create_variable(spv::StorageClassFunction, type_id, "coop_output");
+	auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
+	len->addIdOperand(type_id);
+
+	auto *header = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge = new spv::Block(builder.getUniqueId(), *func);
+	builder.createBranch(header);
+	builder.setBuildPoint(header);
+	{
+		auto *phi = builder.addInstruction(uint_type, spv::OpPhi);
+		auto *iter = builder.addInstruction(uint_type, spv::OpIAdd);
+		iter->addIdOperand(phi->getResultId());
+		iter->addIdOperand(builder.makeUintConstant(1));
+
+		phi->addIdOperand(builder.makeUintConstant(0));
+		phi->addIdOperand(entry->getId());
+		phi->addIdOperand(iter->getResultId());
+		phi->addIdOperand(header->getId());
+
+		auto *input_chain = builder.addInstruction(
+		    builder.makePointer(spv::StorageClassFunction, builder.makeFloatType(16)), spv::OpInBoundsAccessChain);
+		input_chain->addIdOperand(func->getParamId(0));
+		input_chain->addIdOperand(phi->getResultId());
+
+		auto *load = builder.addInstruction(builder.makeFloatType(16), spv::OpLoad);
+		load->addIdOperand(input_chain->getResultId());
+
+		spv::Id glsl450 = builder.import("GLSL.std.450");
+		auto *clamp = builder.addInstruction(builder.makeFloatType(16), spv::OpExtInst);
+		clamp->addIdOperand(glsl450);
+		clamp->addImmediateOperand(GLSLstd450NClamp);
+		clamp->addIdOperand(load->getResultId());
+		clamp->addIdOperand(builder.makeFloat16Constant(0x5f00 | 0x8000));
+		clamp->addIdOperand(builder.makeFloat16Constant(0x5f00)); // 448.0.
+
+		auto *output_chain = builder.addInstruction(
+		    builder.makePointer(spv::StorageClassFunction, builder.makeFloatType(16)), spv::OpInBoundsAccessChain);
+		output_chain->addIdOperand(output_id);
+		output_chain->addIdOperand(phi->getResultId());
+		auto *store = builder.addInstruction(spv::OpStore);
+		store->addIdOperand(output_chain->getResultId());
+		store->addIdOperand(clamp->getResultId());
+
+		auto *cmp = builder.addInstruction(bool_type, spv::OpULessThan);
+		cmp->addIdOperand(iter->getResultId());
+		cmp->addIdOperand(len->getResultId());
+		builder.createLoopMerge(merge, header, 0);
+		builder.createConditionalBranch(cmp->getResultId(), header, merge);
+	}
+
+	builder.setBuildPoint(merge);
+	auto *loaded_result = builder.addInstruction(type_id, spv::OpLoad);
+	loaded_result->addIdOperand(output_id);
+	builder.makeReturn(false, loaded_result->getResultId());
+	builder.setBuildPoint(current_build_point);
+	coop_mat_conv_ids.push_back({ type_id, type_id, func->getId(), HelperCall::CoopMatSaturateFP8 });
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const spv::Id *ids, uint32_t id_count)
 {
 	if (id_count != 2)
@@ -2452,16 +2531,8 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 		auto *load = builder.addInstruction(builder.makeFloatType(16), spv::OpLoad);
 		load->addIdOperand(input_chain->getResultId());
 
-		spv::Id glsl450 = builder.import("GLSL.std.450");
-		auto *clamp = builder.addInstruction(builder.makeFloatType(16), spv::OpExtInst);
-		clamp->addIdOperand(glsl450);
-		clamp->addImmediateOperand(GLSLstd450NClamp);
-		clamp->addIdOperand(load->getResultId());
-		clamp->addIdOperand(builder.makeFloat16Constant(0x5f00 | 0x8000));
-		clamp->addIdOperand(builder.makeFloat16Constant(0x5f00)); // 448.0.
-
 		auto *bitcast = builder.addInstruction(s16_type, spv::OpBitcast);
-		bitcast->addIdOperand(clamp->getResultId());
+		bitcast->addIdOperand(load->getResultId());
 
 		// Extract the sign bit.
 		auto *split_input = builder.addInstruction(builder.makeVectorType(builder.makeUintType(8), 2), spv::OpBitcast);
@@ -2499,7 +2570,8 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 		denorm_shamt->addIdOperand(exponent_minus1->getResultId());
 
 		// Ensure we don't get negative shift.
-		clamp = builder.addInstruction(s16_type, spv::OpExtInst);
+		spv::Id glsl450 = builder.import("GLSL.std.450");
+		auto *clamp = builder.addInstruction(s16_type, spv::OpExtInst);
 		clamp->addIdOperand(glsl450);
 		clamp->addImmediateOperand(GLSLstd450SMax);
 		clamp->addIdOperand(denorm_shamt->getResultId());
@@ -2815,6 +2887,8 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_allocate_invocation_id(module);
 	case HelperCall::CoopMatSaturationFixup:
 		return build_coop_mat_saturation_fixup(module, type_id);
+	case HelperCall::CoopMatSaturateFP8:
+		return build_coop_mat_saturate_fp8(module, type_id);
 
 	default:
 		break;

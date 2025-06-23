@@ -82,7 +82,8 @@ enum class HelperCall
 	CoopMatFP8toFP16,
 	CoopMatFP16toFP8,
 	CoopMatTransfer,
-	CoopMatSaturationFixup
+	CoopMatSaturationFixup,
+	CoopMatSaturateFP8
 };
 
 enum class BDAOperation
