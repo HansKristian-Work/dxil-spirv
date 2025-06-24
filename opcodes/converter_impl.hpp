@@ -180,6 +180,7 @@ public:
 	static const GlobalConfiguration &get();
 	bool wmma_fp8_hack = false;
 	bool wmma_rdna3_workaround = false;
+	bool wmma_conv_hack = false;
 
 private:
 	GlobalConfiguration();

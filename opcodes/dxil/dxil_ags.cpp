@@ -398,23 +398,41 @@ static spv::Id emit_coopmat_transpose_with_convert(
 {
 	auto &builder = impl.builder();
 
-	if (impl.options.nv_cooperative_matrix2_conversions &&
-	    get_matrix_type(input_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator &&
-	    get_matrix_type(output_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator)
+	bool can_convert_use;
+	if (GlobalConfiguration::get().wmma_conv_hack || GlobalConfiguration::get().wmma_rdna3_workaround)
+	{
+		// Go out of spec if we explicitly enable that.
+		can_convert_use = get_matrix_type(input_imm) != get_matrix_type(output_imm);
+	}
+	else
+	{
+		can_convert_use = get_matrix_type(input_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator &&
+		                  get_matrix_type(output_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator;
+	}
+
+	if (impl.options.nv_cooperative_matrix2_conversions && can_convert_use)
 	{
 		// We can only go from accumulator to non-accumulator in this path.
 		// NV extension allows us to convert between matrix types without extra fuzz.
+		// However, it "just werks" on RADV for now (with wmma_conv_hack enabled),
+		// so skirt around the issue.
 		spv::Op opcode;
 
-		if (get_type_data_format(input_imm) != get_type_data_format(output_imm))
+		auto effective_input_fmt = get_type_data_format(input_imm);
+		auto effective_output_fmt = get_type_data_format(output_imm);
+		if (!impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack)
 		{
-			switch (get_type_data_format(output_imm))
+			if (effective_input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
+				effective_input_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16;
+			if (effective_output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
+				effective_output_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16;
+		}
+
+		if (effective_input_fmt != effective_output_fmt)
+		{
+			switch (effective_input_fmt)
 			{
 			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8:
-				if (!impl.options.wmma_fp8)
-					return 0;
-				break;
-
 			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16:
 			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32:
 				break;
@@ -424,13 +442,9 @@ static spv::Id emit_coopmat_transpose_with_convert(
 				return 0;
 			}
 
-			switch (get_type_data_format(input_imm))
+			switch (effective_output_fmt)
 			{
 			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8:
-				if (!impl.options.wmma_fp8)
-					return 0;
-				break;
-
 			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16:
 			case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32:
 				break;
@@ -454,15 +468,23 @@ static spv::Id emit_coopmat_transpose_with_convert(
 		conv->add_id(v);
 		impl.add(conv);
 
+		spv::Id id = conv->id;
+
 		if (impl.options.wmma_fp8 && saturating &&
 		    opcode == spv::OpFConvert &&
 		    get_type_data_format(output_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
 		{
 			impl.builder().addDecoration(
-			    conv->id, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
+				id, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
+		}
+		else if (get_type_data_format(output_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
+		         get_type_data_format(input_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
+		         !impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack)
+		{
+			id = emit_coopmat_saturate_fp8(impl, id, build_coopmat_type(impl, output_imm, false));
 		}
 
-		return conv->id;
+		return id;
 	}
 
 	return 0;

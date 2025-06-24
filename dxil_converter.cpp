@@ -8592,6 +8592,8 @@ GlobalConfiguration::GlobalConfiguration()
 			wmma_fp8_hack = true;
 		else if (strcmp(env, "wmma_rdna3_workaround") == 0)
 			wmma_rdna3_workaround = true;
+		else if (strcmp(env, "wmma_conv_hack") == 0)
+			wmma_conv_hack = true;
 	}
 }
 } // namespace dxil_spv
