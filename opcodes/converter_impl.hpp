@@ -31,6 +31,7 @@
 #include "scratch_pool.hpp"
 #include "descriptor_qa.hpp"
 #include "opcodes.hpp"
+#include "dxil/dxil_ags.hpp"
 
 #include "GLSL.std.450.h"
 
@@ -164,13 +165,6 @@ struct AllocaCBVForwardingTracking
 	uint32_t highest_store_index = 0;
 	uint32_t min_highest_store_index = 0;
 	bool has_load = false;
-};
-
-struct AllocaAGSForwardingTracking
-{
-	// For AGS WMMA rewrites.
-	spv::Id override_element_type = 0;
-	uint32_t override_element_stride = 0;
 };
 
 class GlobalConfiguration
@@ -310,45 +304,7 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, spv::Id> llvm_value_actual_type;
 	UnorderedSet<uint32_t> llvm_attribute_at_vertex_indices;
 
-	struct AGSCoopMatMapping
-	{
-		spv::Id type_id;
-		uint32_t component;
-	};
-
-	struct
-	{
-		// For magic resource types, assume there is one globally declared dummy resource.
-		// Don't conflict with sentinel index for SM 6.6 heap.
-		uint32_t uav_magic_resource_type_index = UINT32_MAX - 1;
-		spv::Id magic_ptr_id = 0;
-		uint32_t active_uav_index = 0;
-		spv::Id active_uav_ptr = 0;
-		DXIL::Op active_uav_op;
-		AgsInstruction instructions[AgsInstruction::MaxInstructions];
-		const llvm::CallInst *backdoor_instructions[AgsInstruction::MaxInstructions];
-		unsigned current_phase = 0;
-		unsigned num_instructions = 0;
-		spv::Id debug_var_id = 0;
-		const llvm::Value *active_read_backdoor = nullptr;
-		UnorderedMap<const llvm::Value *, AGSCoopMatMapping> coopmat_component_mapping;
-		UnorderedSet<const llvm::Value *> column_oriented_allocas;
-		UnorderedMap<const llvm::AllocaInst *, AllocaAGSForwardingTracking> alloca_tracking;
-		spv::Id u8_array_bda_type = 0;
-		spv::Id coopmat_transpose_scratch = 0;
-
-		void reset()
-		{
-			current_phase = 0;
-			num_instructions = 0;
-			active_read_backdoor = nullptr;
-		}
-
-		void reset_analysis()
-		{
-			coopmat_component_mapping.clear();
-		}
-	} ags;
+	AGSState ags;
 
 	// DXIL has no storage class concept for hit/callable/payload types.
 	const llvm::Type *llvm_hit_attribute_output_type = nullptr;
