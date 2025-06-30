@@ -1,0 +1,140 @@
+#version 460
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+#extension GL_EXT_float_e4m3 : require
+#extension GL_KHR_shader_subgroup_basic : require
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) writeonly buffer SSBO
+{
+    uint _m0[];
+} _20;
+
+shared uint _24[512];
+
+void main()
+{
+    coopMatStore(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(uintBitsToFloate4m3EXT(uint8_t(gl_WorkGroupID.x)))), _24, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
+    barrier();
+    subgroupMemoryBarrierShared();
+    subgroupBarrier();
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _44;
+    coopMatLoad(_44, _24, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
+    subgroupMemoryBarrierShared();
+    subgroupBarrier();
+    if (gl_LocalInvocationIndex == 0u)
+    {
+        _20._m0[gl_WorkGroupID.x] = floatBitsToUint((coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(_44))[0]);
+    }
+}
+
+
+#if 0
+// SPIR-V disassembly
+// WaveSize(32)
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 57
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability Int8
+OpCapability Float8EXT
+OpCapability Float8CooperativeMatrixEXT
+OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
+OpCapability CooperativeMatrixKHR
+OpExtension "SPV_EXT_float8"
+OpExtension "SPV_KHR_cooperative_matrix"
+OpExtension "SPV_KHR_float_controls"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %15 "main" %20 %24 %26 %30
+OpExecutionMode %15 LocalSize 32 1 1
+OpExecutionMode %15 DenormPreserve 16
+OpName %15 "main"
+OpName %18 "SSBO"
+OpDecorate %17 ArrayStride 4
+OpMemberDecorate %18 0 Offset 0
+OpDecorate %18 Block
+OpDecorate %20 DescriptorSet 0
+OpDecorate %20 Binding 0
+OpDecorate %20 NonReadable
+OpDecorate %26 BuiltIn LocalInvocationIndex
+OpDecorate %30 BuiltIn WorkgroupId
+%1 = OpTypeFloat 8 Float8E4M3EXT
+%2 = OpTypeInt 32 0
+%3 = OpConstant %2 0
+%4 = OpConstant %2 16
+%6 = OpConstant %2 3
+%5 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %3
+%7 = OpTypeFloat 16
+%8 = OpTypeCooperativeMatrixKHR %7 %6 %4 %4 %3
+%9 = OpConstant %2 2
+%10 = OpTypeCooperativeMatrixKHR %7 %6 %4 %4 %9
+%11 = OpTypeFloat 32
+%12 = OpTypeCooperativeMatrixKHR %11 %6 %4 %4 %9
+%13 = OpTypeVoid
+%14 = OpTypeFunction %13
+%17 = OpTypeRuntimeArray %2
+%18 = OpTypeStruct %17
+%19 = OpTypePointer StorageBuffer %18
+%20 = OpVariable %19 StorageBuffer
+%21 = OpConstant %2 512
+%22 = OpTypeArray %2 %21
+%23 = OpTypePointer Workgroup %22
+%24 = OpVariable %23 Workgroup
+%25 = OpTypePointer Input %2
+%26 = OpVariable %25 Input
+%28 = OpTypeVector %2 3
+%29 = OpTypePointer Input %28
+%30 = OpVariable %29 Input
+%34 = OpTypeInt 8 0
+%39 = OpTypePointer Workgroup %2
+%41 = OpConstant %2 32
+%42 = OpConstant %2 24840
+%48 = OpTypeBool
+%51 = OpTypePointer StorageBuffer %2
+%15 = OpFunction %13 None %14
+%16 = OpLabel
+OpBranch %53
+%53 = OpLabel
+%27 = OpLoad %2 %26
+%31 = OpAccessChain %25 %30 %3
+%32 = OpLoad %2 %31
+%35 = OpUConvert %34 %32
+%36 = OpBitcast %1 %35
+%37 = OpCompositeConstruct %5 %36
+%38 = OpFConvert %8 %37
+%40 = OpAccessChain %39 %24 %3
+OpCooperativeMatrixStoreKHR %40 %38 %3 %41 NonPrivatePointer
+OpControlBarrier %9 %9 %42
+%43 = OpAccessChain %39 %24 %3
+OpControlBarrier %6 %6 %42
+%44 = OpCooperativeMatrixLoadKHR %10 %43 %3 %41 NonPrivatePointer
+OpControlBarrier %6 %6 %42
+%45 = OpFConvert %12 %44
+%46 = OpCompositeExtract %11 %45 0
+%47 = OpBitcast %2 %46
+%49 = OpIEqual %48 %27 %3
+OpSelectionMerge %55 None
+OpBranchConditional %49 %54 %55
+%54 = OpLabel
+%50 = OpShiftLeftLogical %2 %32 %9
+%52 = OpAccessChain %51 %20 %3 %32
+OpStore %52 %47 NonPrivatePointer
+OpBranch %55
+%55 = OpLabel
+OpReturn
+OpFunctionEnd
+#endif

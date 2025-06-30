@@ -1,0 +1,130 @@
+#version 460
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+#extension GL_EXT_float_e4m3 : require
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) writeonly buffer SSBO
+{
+    uvec2 _m0[];
+} _17;
+
+void main()
+{
+    coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _36 = coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(uint16BitsToFloat16(uint16_t(gl_WorkGroupID.x))));
+    coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _37 = coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(uint16BitsToFloat16(uint16_t(gl_WorkGroupID.x | 32768u))));
+    if (gl_LocalInvocationIndex == 0u)
+    {
+        _17._m0[gl_WorkGroupID.x] = uvec2((fe4m3vec4(_36[0], _36[1], _36[2], _36[3])), (fe4m3vec4(_37[0], _37[1], _37[2], _37[3])));
+    }
+}
+
+
+#if 0
+// SPIR-V disassembly
+// WaveSize(32)
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 61
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability Int16
+OpCapability Float8EXT
+OpCapability Float8CooperativeMatrixEXT
+OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
+OpCapability CooperativeMatrixKHR
+OpExtension "SPV_EXT_float8"
+OpExtension "SPV_KHR_cooperative_matrix"
+OpExtension "SPV_KHR_float_controls"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %11 "main" %17 %19 %23
+OpExecutionMode %11 LocalSize 32 1 1
+OpExecutionMode %11 DenormPreserve 16
+OpName %11 "main"
+OpName %15 "SSBO"
+OpDecorate %14 ArrayStride 8
+OpMemberDecorate %15 0 Offset 0
+OpDecorate %15 Block
+OpDecorate %17 DescriptorSet 0
+OpDecorate %17 Binding 0
+OpDecorate %17 NonReadable
+OpDecorate %19 BuiltIn LocalInvocationIndex
+OpDecorate %23 BuiltIn WorkgroupId
+%1 = OpTypeFloat 16
+%2 = OpTypeInt 32 0
+%3 = OpConstant %2 0
+%4 = OpConstant %2 16
+%6 = OpConstant %2 3
+%5 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %3
+%7 = OpTypeFloat 8 Float8E4M3EXT
+%8 = OpTypeCooperativeMatrixKHR %7 %6 %4 %4 %3
+%9 = OpTypeVoid
+%10 = OpTypeFunction %9
+%13 = OpTypeVector %2 2
+%14 = OpTypeRuntimeArray %13
+%15 = OpTypeStruct %14
+%16 = OpTypePointer StorageBuffer %15
+%17 = OpVariable %16 StorageBuffer
+%18 = OpTypePointer Input %2
+%19 = OpVariable %18 Input
+%21 = OpTypeVector %2 3
+%22 = OpTypePointer Input %21
+%23 = OpVariable %22 Input
+%27 = OpTypeInt 16 0
+%32 = OpConstant %2 32768
+%42 = OpTypeVector %7 4
+%51 = OpTypeBool
+%55 = OpTypePointer StorageBuffer %13
+%11 = OpFunction %9 None %10
+%12 = OpLabel
+OpBranch %57
+%57 = OpLabel
+%20 = OpLoad %2 %19
+%24 = OpAccessChain %18 %23 %3
+%25 = OpLoad %2 %24
+%28 = OpUConvert %27 %25
+%29 = OpBitcast %1 %28
+%30 = OpCompositeConstruct %5 %29
+%31 = OpBitwiseOr %2 %25 %32
+%33 = OpUConvert %27 %31
+%34 = OpBitcast %1 %33
+%35 = OpCompositeConstruct %5 %34
+%36 = OpFConvert %8 %30
+%37 = OpFConvert %8 %35
+%38 = OpCompositeExtract %7 %36 0
+%39 = OpCompositeExtract %7 %36 1
+%40 = OpCompositeExtract %7 %36 2
+%41 = OpCompositeExtract %7 %36 3
+%43 = OpCompositeConstruct %42 %38 %39 %40 %41
+%44 = OpBitcast %2 %43
+%45 = OpCompositeExtract %7 %37 0
+%46 = OpCompositeExtract %7 %37 1
+%47 = OpCompositeExtract %7 %37 2
+%48 = OpCompositeExtract %7 %37 3
+%49 = OpCompositeConstruct %42 %45 %46 %47 %48
+%50 = OpBitcast %2 %49
+%52 = OpIEqual %51 %20 %3
+OpSelectionMerge %59 None
+OpBranchConditional %52 %58 %59
+%58 = OpLabel
+%53 = OpShiftLeftLogical %2 %25 %6
+%54 = OpCompositeConstruct %13 %44 %50
+%56 = OpAccessChain %55 %17 %3 %25
+OpStore %56 %54 NonPrivatePointer
+OpBranch %59
+%59 = OpLabel
+OpReturn
+OpFunctionEnd
+#endif
