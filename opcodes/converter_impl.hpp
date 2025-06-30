@@ -186,6 +186,16 @@ private:
 	GlobalConfiguration();
 };
 
+struct AccessTracking
+{
+	bool has_read = false;
+	bool has_written = false;
+	bool has_atomic = false;
+	bool has_atomic_64bit = false;
+	bool has_counter = false;
+	bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
+};
+
 struct Converter::Impl
 {
 	DXIL_SPV_OVERRIDE_NEW_DELETE
@@ -290,15 +300,6 @@ struct Converter::Impl
 		RawVecSize vecsize;
 	};
 
-	struct AccessTracking
-	{
-		bool has_read = false;
-		bool has_written = false;
-		bool has_atomic = false;
-		bool has_atomic_64bit = false;
-		bool has_counter = false;
-		bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
-	};
 	UnorderedMap<uint32_t, AccessTracking> cbv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> srv_access_tracking;
 	UnorderedMap<uint32_t, AccessTracking> uav_access_tracking;
@@ -348,8 +349,6 @@ struct Converter::Impl
 			coopmat_component_mapping.clear();
 		}
 	} ags;
-
-	void push_ags_instruction(const llvm::CallInst *instruction);
 
 	// DXIL has no storage class concept for hit/callable/payload types.
 	const llvm::Type *llvm_hit_attribute_output_type = nullptr;

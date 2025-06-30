@@ -1972,7 +1972,7 @@ bool analyze_magic_ags_instruction(Converter::Impl &impl)
 bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	impl.push_ags_instruction(instruction);
+	push_ags_instruction(impl, instruction);
 
 	// We might be able to retire an instruction now.
 	// Only support exactly what we need to support. Anything else will fail compilation.
@@ -2188,5 +2188,310 @@ bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	}
 
 	return true;
+}
+
+void push_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	uint32_t op = 0;
+	if (!get_constant_operand(instruction, 2, &op))
+		return;
+
+	if (!is_ags_magic(op))
+		return;
+
+	auto inst = decode_ags_instruction(op);
+
+	switch (inst.opcode)
+	{
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavLoad:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavStore:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixCopy:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLdsLoad:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLdsStore:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixFill:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementFill:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLength:
+	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementExtract:
+		impl.shader_analysis.require_subgroups = true;
+		impl.shader_analysis.require_wmma = true;
+		break;
+	}
+
+	auto &ags = impl.ags;
+
+	// Reset if we're beginning a new instruction sequence.
+	// New instruction type, reset.
+	if (inst.phase < ags.current_phase ||
+	    (ags.num_instructions && inst.opcode != ags.instructions[0].opcode))
+	{
+		ags.reset();
+	}
+
+	if ((inst.phase == ags.current_phase || (inst.phase == ags.current_phase + 1)) &&
+	    inst.phase <= ags.num_instructions &&
+	    ags.num_instructions < AgsInstruction::MaxInstructions)
+	{
+		ags.instructions[ags.num_instructions] = inst;
+		ags.backdoor_instructions[ags.num_instructions] = instruction;
+		ags.num_instructions++;
+		ags.current_phase = inst.phase;
+	}
+}
+
+// This is done early to keep track of which resources are supposed to be redirected to AGS
+// when dealing with buffer stores, etc.
+bool analyze_prepass_ags_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *instruction, uint32_t resource_index)
+{
+	// Special magic.
+	if (resource_index == impl.ags.uav_magic_resource_type_index &&
+	    value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
+	{
+		push_ags_instruction(impl, instruction);
+		return true;
+	}
+
+	return false;
+}
+
+// This is done later where we do a more complex analysis.
+bool analyze_ags_dxil_cmpxchg_op(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+	{
+		// Special magic.
+		if (itr->second == impl.ags.uav_magic_resource_type_index &&
+		    value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
+		{
+			push_ags_instruction(impl, instruction);
+			if (!analyze_magic_ags_instruction(impl))
+				return false;
+		}
+	}
+
+	return true;
+}
+
+bool analyze_ags_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, AccessTracking *tracking)
+{
+	if (impl.ags.num_instructions == 1)
+	{
+		if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0])
+		{
+			switch (impl.ags.instructions[0].opcode)
+			{
+			case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavStore:
+				tracking->has_written = true;
+				break;
+
+			case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavLoad:
+				tracking->has_read = true;
+				break;
+
+			default:
+				return true;
+			}
+
+			// Be byte oriented.
+			tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B8)][int(RawVecSize::V1)] = true;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void analyze_ags_buffer_store(Converter::Impl &impl, const llvm::CallInst *instruction,
+                              AccessTracking *tracking, DXIL::Op opcode)
+{
+	// Detect 64-bit atomics.
+	if (impl.ags.num_instructions == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2))
+	{
+		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
+		tracking->has_atomic = true;
+		tracking->has_read = true;
+		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
+		{
+			impl.ags.active_uav_index = itr->second;
+			impl.ags.active_uav_op = opcode;
+		}
+
+		// Mark 64-bit usage.
+		if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
+			tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V1)] = true;
+		else
+			tracking->has_atomic_64bit = true;
+	}
+}
+
+bool emit_ags_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode)
+{
+	if (impl.ags.num_instructions == 1)
+	{
+		if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0])
+		{
+			impl.ags.active_uav_ptr = impl.get_id_for_value(instruction->getOperand(1));
+			impl.ags.active_uav_op = opcode;
+			impl.ags.active_read_backdoor = instruction;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool emit_ags_buffer_store(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Id id)
+{
+	// Deferred 64-bit atomic. Resolve in a later AGS atomic.
+	if (impl.ags.num_instructions == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2))
+	{
+		impl.ags.active_uav_ptr = id;
+		impl.ags.active_uav_op = DXIL::Op::BufferStore;
+		return true;
+	}
+
+	return false;
+}
+
+bool emit_ags_texture_store(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Id id, bool multi_sampled)
+{
+	if (impl.ags.num_instructions == 2 &&
+	    impl.ags.backdoor_instructions[0] == instruction->getOperand(2) && !multi_sampled)
+	{
+		impl.ags.active_uav_ptr = id;
+		impl.ags.active_uav_op = DXIL::Op::TextureStore;
+		return true;
+	}
+
+	return false;
+}
+
+bool emit_ags_resource_uav_handle(Converter::Impl &impl, const llvm::CallInst *instruction, uint32_t resource_range)
+{
+	if (resource_range == impl.ags.uav_magic_resource_type_index)
+	{
+		// Resources tied to constant uints are considered "magic".
+		if (impl.ags.magic_ptr_id == 0)
+		{
+			spv::Id dummy_value = impl.spirv_module.allocate_id();
+			impl.ags.magic_ptr_id = dummy_value;
+		}
+
+		impl.rewrite_value(instruction, impl.ags.magic_ptr_id);
+		return true;
+	}
+
+	return false;
+}
+
+bool ags_llvm_load_filter(Converter::Impl &impl, Operation *op, const llvm::LoadInst *instruction)
+{
+	// Only load if it's the first element.
+	auto component_itr = impl.ags.coopmat_component_mapping.find(instruction->getPointerOperand());
+	if (component_itr != impl.ags.coopmat_component_mapping.end())
+	{
+		op->type_id = component_itr->second.type_id;
+		impl.ags.coopmat_component_mapping[instruction] = component_itr->second;
+		if (component_itr->second.component != 0)
+			return true;
+	}
+
+	return false;
+}
+
+bool emit_ags_extract_value(Converter::Impl &impl, const llvm::ExtractValueInst *instruction)
+{
+	if (instruction->getAggregateOperand() == impl.ags.active_read_backdoor)
+	{
+		impl.ags.active_read_backdoor = instruction;
+		return true;
+	}
+
+	return false;
+}
+
+bool ags_alloca_filter(Converter::Impl &impl, const llvm::AllocaInst *instruction, spv::Id &pointee_type_id)
+{
+	auto ags_itr = impl.ags.alloca_tracking.find(instruction);
+
+	if (ags_itr != impl.ags.alloca_tracking.end() && ags_itr->second.override_element_type)
+	{
+		auto *element_type = instruction->getType()->getPointerElementType();
+		uint32_t elems = element_type->getArrayNumElements();
+		if (ags_itr->second.override_element_stride == 0)
+		{
+			LOGE("Element stride is currently unknown. Something must have been missed during analysis.\n");
+			return false;
+		}
+
+		pointee_type_id = impl.builder().makeArrayType(
+		    ags_itr->second.override_element_type,
+		    impl.builder().makeUintConstant(elems / ags_itr->second.override_element_stride), 0);
+	}
+
+	return true;
+}
+
+bool emit_ags_atomicrmw(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction)
+{
+	if (instruction->getPointerOperand() == impl.ags.active_read_backdoor)
+	{
+		impl.ags.active_read_backdoor = instruction;
+		return true;
+	}
+
+	return false;
+}
+
+bool emit_ags_getelementptr(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
+{
+	if (impl.ags.num_instructions == 1)
+	{
+		if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0] &&
+		    DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) ==
+		    DXIL::AddressSpace::GroupShared)
+		{
+			impl.ags.active_uav_ptr = impl.get_id_for_value(instruction->getOperand(0));
+			// Dummy, signal LDS operation.
+			impl.ags.active_uav_op = DXIL::Op::AtomicBinOp;
+			impl.ags.active_read_backdoor = instruction;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void ags_getelementptr_filter(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction, spv::Id &type_id)
+{
+	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(0)))
+	{
+		auto override_itr = impl.ags.alloca_tracking.find(alloca);
+		if (override_itr != impl.ags.alloca_tracking.end() && override_itr->second.override_element_type)
+			type_id = override_itr->second.override_element_type;
+	}
+}
+
+bool ags_filter_phi(Converter::Impl &impl, const llvm::PHINode &instruction, spv::Id &override_type)
+{
+	for (uint32_t i = 0; i < instruction.getNumIncomingValues() && override_type == 0; i++)
+	{
+		auto *incoming = instruction.getIncomingValue(i);
+		auto itr = impl.ags.coopmat_component_mapping.find(incoming);
+		if (itr != impl.ags.coopmat_component_mapping.end())
+		{
+			override_type = itr->second.type_id;
+			impl.ags.coopmat_component_mapping[&instruction] = { override_type, itr->second.component };
+			if (itr->second.component != 0)
+			{
+				// Dummy value, will not actually emit a PHI. Just need to forward the mapping.
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 }

@@ -5477,21 +5477,8 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 	unsigned count = instruction.getNumIncomingValues();
 	spv::Id override_type = 0;
 
-	for (uint32_t i = 0; i < instruction.getNumIncomingValues() && override_type == 0; i++)
-	{
-		auto *incoming = instruction.getIncomingValue(i);
-		auto itr = ags.coopmat_component_mapping.find(incoming);
-		if (itr != ags.coopmat_component_mapping.end())
-		{
-			override_type = itr->second.type_id;
-			ags.coopmat_component_mapping[&instruction] = { override_type, itr->second.component };
-			if (itr->second.component != 0)
-			{
-				// Dummy value, will not actually emit a PHI. Just need to forward the mapping.
-				return true;
-			}
-		}
-	}
+	if (ags_filter_phi(*this, instruction, override_type))
+		return true;
 
 	if (count == 1)
 	{
@@ -8491,53 +8478,6 @@ void Converter::Impl::suggest_minimum_wave_size(unsigned wave_size)
 	    options.force_subgroup_size == 0)
 	{
 		execution_mode_meta.heuristic_min_wave_size = wave_size;
-	}
-}
-
-void Converter::Impl::push_ags_instruction(const llvm::CallInst *instruction)
-{
-	uint32_t op = 0;
-	if (!get_constant_operand(instruction, 2, &op))
-		return;
-
-	if (!is_ags_magic(op))
-		return;
-
-	auto inst = decode_ags_instruction(op);
-
-	switch (inst.opcode)
-	{
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavLoad:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavStore:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixCopy:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLdsLoad:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLdsStore:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixFill:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementFill:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLength:
-	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementExtract:
-		shader_analysis.require_subgroups = true;
-		shader_analysis.require_wmma = true;
-		break;
-	}
-
-	// Reset if we're beginning a new instruction sequence.
-	// New instruction type, reset.
-	if (inst.phase < ags.current_phase ||
-	    (ags.num_instructions && inst.opcode != ags.instructions[0].opcode))
-	{
-		ags.reset();
-	}
-
-	if ((inst.phase == ags.current_phase || (inst.phase == ags.current_phase + 1)) &&
-	    inst.phase <= ags.num_instructions &&
-	    ags.num_instructions < AgsInstruction::MaxInstructions)
-	{
-		ags.instructions[ags.num_instructions] = inst;
-		ags.backdoor_instructions[ags.num_instructions] = instruction;
-		ags.num_instructions++;
-		ags.current_phase = inst.phase;
 	}
 }
 

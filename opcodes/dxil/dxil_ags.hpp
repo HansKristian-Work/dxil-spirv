@@ -516,4 +516,28 @@ bool analyze_magic_ags_instruction(Converter::Impl &impl);
 bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store);
 spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPtrInst *gep, spv::Id id);
 bool wmma_store_is_masked(Converter::Impl &impl, const llvm::StoreInst *inst);
+
+void push_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool analyze_prepass_ags_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *instruction, uint32_t resource_index);
+bool analyze_ags_dxil_cmpxchg_op(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+struct AccessTracking;
+bool analyze_ags_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, AccessTracking *tracking);
+void analyze_ags_buffer_store(Converter::Impl &impl, const llvm::CallInst *instruction, AccessTracking *tracking, DXIL::Op opcode);
+
+bool emit_ags_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode);
+bool emit_ags_buffer_store(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Id id);
+bool emit_ags_texture_store(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Id id, bool multi_sampled);
+
+bool emit_ags_resource_uav_handle(Converter::Impl &impl, const llvm::CallInst *instruction, uint32_t resource_range);
+
+bool ags_llvm_load_filter(Converter::Impl &impl, Operation *op, const llvm::LoadInst *instruction);
+bool emit_ags_extract_value(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
+bool emit_ags_atomicrmw(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction);
+bool emit_ags_getelementptr(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction);
+bool ags_alloca_filter(Converter::Impl &impl, const llvm::AllocaInst *inst, spv::Id &pointee_type_id);
+void ags_getelementptr_filter(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction, spv::Id &type_id);
+
+bool ags_filter_phi(Converter::Impl &impl, const llvm::PHINode &instruction, spv::Id &override_type);
 }

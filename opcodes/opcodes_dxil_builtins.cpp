@@ -480,8 +480,8 @@ bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction)
 	return ret;
 }
 
-static void update_raw_access_tracking_from_vector_type(Converter::Impl::AccessTracking &tracking,
-                                                        const llvm::Type *type, RawVecSize vec_size)
+static void update_raw_access_tracking_from_vector_type(
+    AccessTracking &tracking, const llvm::Type *type, RawVecSize vec_size)
 {
 	// For SSBOs, always use uint types, except for 64-bit since Float64 vs Int64 are two separate features.
 	if (type->getTypeID() == llvm::Type::TypeID::HalfTyID)
@@ -501,15 +501,14 @@ static void update_raw_access_tracking_from_vector_type(Converter::Impl::AccessT
 	}
 }
 
-static void update_raw_access_tracking_from_scalar_type(Converter::Impl::AccessTracking &tracking,
-                                                        const llvm::Type *type)
+static void update_raw_access_tracking_from_scalar_type(AccessTracking &tracking, const llvm::Type *type)
 {
 	update_raw_access_tracking_from_vector_type(tracking, type, RawVecSize::V1);
 }
 
 static void update_raw_access_tracking_for_byte_address(
 	Converter::Impl &impl,
-	Converter::Impl::AccessTracking &tracking,
+	AccessTracking &tracking,
 	const llvm::Type *type,
 	const llvm::Value *byte_offset,
 	uint32_t mask)
@@ -525,7 +524,7 @@ static void update_raw_access_tracking_for_byte_address(
 
 static void update_raw_access_tracking_for_structured(
 	Converter::Impl &impl,
-	Converter::Impl::AccessTracking &tracking,
+	AccessTracking &tracking,
 	const llvm::Type *type,
 	const llvm::Value *index,
 	unsigned stride,
@@ -613,7 +612,7 @@ bool analyze_alloca_cbv_forwarding_pre_resource_emit(Converter::Impl &impl, cons
 		return true;
 	}
 
-	Converter::Impl::AccessTracking *cbv_tracking = nullptr;
+	AccessTracking *cbv_tracking = nullptr;
 	auto itr = impl.llvm_value_to_cbv_resource_index_map.find(tracking.cbv_handle);
 	if (itr != impl.llvm_value_to_cbv_resource_index_map.end())
 		cbv_tracking = &impl.cbv_access_tracking[itr->second];
@@ -651,7 +650,7 @@ bool analyze_alloca_cbv_forwarding_post_resource_emit(Converter::Impl &impl, All
 
 static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	Converter::Impl::AccessTracking *tracking = nullptr;
+	AccessTracking *tracking = nullptr;
 	auto itr = impl.llvm_value_to_cbv_resource_index_map.find(instruction->getOperand(1));
 	if (itr != impl.llvm_value_to_cbv_resource_index_map.end())
 		tracking = &impl.cbv_access_tracking[itr->second];
@@ -720,7 +719,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 // dxilconv is broken and doesn't flag the UAV counter bit in metadata in all situations.
 static void analyze_dxil_atomic_counter(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	Converter::Impl::AccessTracking *tracking = nullptr;
+	AccessTracking *tracking = nullptr;
 
 	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
@@ -732,7 +731,7 @@ static void analyze_dxil_atomic_counter(Converter::Impl &impl, const llvm::CallI
 
 static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode)
 {
-	Converter::Impl::AccessTracking *tracking = nullptr;
+	AccessTracking *tracking = nullptr;
 
 	// In DXIL, whether or not an opcode is sparse depends on if the 4th argument is statically used by SSA ...
 	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
@@ -755,30 +754,8 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 
 	if (tracking)
 	{
-		if (impl.ags.num_instructions == 1)
-		{
-			if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0])
-			{
-				switch (impl.ags.instructions[0].opcode)
-				{
-				case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavStore:
-					tracking->has_written = true;
-					break;
-
-				case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixUavLoad:
-					tracking->has_read = true;
-					break;
-
-				default:
-					return;
-				}
-
-				// Be byte oriented.
-				tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B8)][int(RawVecSize::V1)] = true;
-
-				return;
-			}
-		}
+		if (analyze_ags_buffer_load(impl, instruction, tracking))
+			return;
 
 		tracking->has_read = true;
 
@@ -816,7 +793,7 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 
 static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallInst *instruction, DXIL::Op opcode)
 {
-	Converter::Impl::AccessTracking *tracking = nullptr;
+	AccessTracking *tracking = nullptr;
 
 	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
@@ -833,23 +810,7 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 	{
 		tracking->has_written = true;
 
-		// Detect 64-bit atomics.
-		if (impl.ags.num_instructions == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2))
-		{
-			tracking->has_atomic = true;
-			tracking->has_read = true;
-			if (itr != impl.llvm_value_to_uav_resource_index_map.end())
-			{
-				impl.ags.active_uav_index = itr->second;
-				impl.ags.active_uav_op = opcode;
-			}
-
-			// Mark 64-bit usage.
-			if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
-				tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V1)] = true;
-			else
-				tracking->has_atomic_64bit = true;
-		}
+		analyze_ags_buffer_store(impl, instruction, tracking, opcode);
 
 		if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
 		{
@@ -877,38 +838,15 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 	}
 }
 
-static bool analyze_dxil_ags_op(Converter::Impl &impl, const llvm::CallInst *instruction)
-{
-	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
-	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
-	{
-		// Special magic.
-		if (itr->second == impl.ags.uav_magic_resource_type_index &&
-		    value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
-		{
-			impl.push_ags_instruction(instruction);
-			if (!analyze_magic_ags_instruction(impl))
-				return false;
-		}
-	}
-
-	return true;
-}
-
 static bool analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	Converter::Impl::AccessTracking *tracking = nullptr;
+	AccessTracking *tracking = nullptr;
 
 	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 	if (itr != impl.llvm_value_to_uav_resource_index_map.end())
 	{
-		// Special magic.
-		if (itr->second == impl.ags.uav_magic_resource_type_index &&
-		    value_is_dx_op_instrinsic(instruction, DXIL::Op::AtomicCompareExchange))
-		{
-			impl.push_ags_instruction(instruction);
+		if (analyze_prepass_ags_dxil_atomic_op(impl, instruction, itr->second))
 			return true;
-		}
 
 		tracking = &impl.uav_access_tracking[itr->second];
 	}
@@ -1411,7 +1349,7 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	}
 
 	case DXIL::Op::AtomicCompareExchange:
-		if (!analyze_dxil_ags_op(impl, instruction))
+		if (!analyze_ags_dxil_cmpxchg_op(impl, instruction))
 			return false;
 		break;
 

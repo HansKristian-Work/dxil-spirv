@@ -30,6 +30,7 @@
 #include "dxil_buffer.hpp"
 #include "dxil_workgraph.hpp"
 #include "dxil_waveops.hpp"
+#include "dxil_ags.hpp"
 
 namespace dxil_spv
 {
@@ -1368,18 +1369,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 
 	case DXIL::ResourceType::UAV:
 	{
-		if (resource_range == impl.ags.uav_magic_resource_type_index)
-		{
-			// Resources tied to constant uints are considered "magic".
-			if (impl.ags.magic_ptr_id == 0)
-			{
-				spv::Id dummy_value = impl.spirv_module.allocate_id();
-				impl.ags.magic_ptr_id = dummy_value;
-			}
-
-			impl.rewrite_value(instruction, impl.ags.magic_ptr_id);
+		if (emit_ags_resource_uav_handle(impl, instruction, resource_range))
 			break;
-		}
 
 		auto &reference = get_resource_reference(impl, resource_type, instruction, resource_range);
 

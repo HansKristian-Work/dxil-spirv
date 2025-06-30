@@ -877,16 +877,8 @@ static bool emit_buffer_load_raw_chain_instruction(Converter::Impl &impl, const 
 
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	if (impl.ags.num_instructions == 1)
-	{
-		if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0])
-		{
-			impl.ags.active_uav_ptr = impl.get_id_for_value(instruction->getOperand(1));
-			impl.ags.active_uav_op = DXIL::Op::BufferLoad;
-			impl.ags.active_read_backdoor = instruction;
-			return true;
-		}
-	}
+	if (emit_ags_buffer_load(impl, instruction, DXIL::Op::BufferLoad))
+		return true;
 
 	// Elide dead loads.
 	if (!impl.composite_is_accessed(instruction))
@@ -1313,16 +1305,8 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 
 bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	if (impl.ags.num_instructions == 1)
-	{
-		if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0])
-		{
-			impl.ags.active_uav_ptr = impl.get_id_for_value(instruction->getOperand(1));
-			impl.ags.active_uav_op = DXIL::Op::RawBufferLoad;
-			impl.ags.active_read_backdoor = instruction;
-			return true;
-		}
-	}
+	if (emit_ags_buffer_load(impl, instruction, DXIL::Op::RawBufferLoad))
+		return true;
 
 	if (!impl.composite_is_accessed(instruction))
 		return true;
@@ -1420,13 +1404,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 
-	// Deferred 64-bit atomic. Resolve in a later AGS atomic.
-	if (impl.ags.num_instructions == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2))
-	{
-		impl.ags.active_uav_ptr = image_id;
-		impl.ags.active_uav_op = DXIL::Op::BufferStore;
+	if (emit_ags_buffer_store(impl, instruction, image_id))
 		return true;
-	}
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
@@ -1588,13 +1567,8 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 {
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 
-	// Deferred 64-bit atomic. Resolve in a later AGS atomic.
-	if (impl.ags.num_instructions == 2 && impl.ags.backdoor_instructions[0] == instruction->getOperand(2))
-	{
-		impl.ags.active_uav_ptr = ptr_id;
-		impl.ags.active_uav_op = DXIL::Op::BufferStore;
+	if (emit_ags_buffer_store(impl, instruction, ptr_id))
 		return true;
-	}
 
 	const auto &meta = impl.handle_to_resource_meta[ptr_id];
 

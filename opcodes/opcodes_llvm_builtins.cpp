@@ -1142,19 +1142,8 @@ static void get_dxbc_tgsm_gep_workaround(Converter::Impl &impl, const llvm::GetE
 
 bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
 {
-	if (impl.ags.num_instructions == 1)
-	{
-		if (instruction->getOperand(2) == impl.ags.backdoor_instructions[0] &&
-		    DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) ==
-		    DXIL::AddressSpace::GroupShared)
-		{
-			impl.ags.active_uav_ptr = impl.get_id_for_value(instruction->getOperand(0));
-			// Dummy, signal LDS operation.
-			impl.ags.active_uav_op = DXIL::Op::AtomicBinOp;
-			impl.ags.active_read_backdoor = instruction;
-			return true;
-		}
-	}
+	if (emit_ags_getelementptr(impl, instruction))
+		return true;
 
 	// This is actually the same as PtrAccessChain, but we would need to use variable pointers to support that properly.
 	// For now, just assert that the first index is constant 0, in which case PtrAccessChain == AccessChain.
@@ -1190,12 +1179,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
 	resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), type_id);
 
-	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(0)))
-	{
-		auto override_itr = impl.ags.alloca_tracking.find(alloca);
-		if (override_itr != impl.ags.alloca_tracking.end() && override_itr->second.override_element_type)
-			type_id = override_itr->second.override_element_type;
-	}
+	ags_getelementptr_filter(impl, instruction, type_id);
 
 	spv::StorageClass storage;
 	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
@@ -1424,15 +1408,8 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 			op->add_id(robust_itr->second);
 		}
 
-		// Only load if it's the first element.
-		auto component_itr = impl.ags.coopmat_component_mapping.find(instruction->getPointerOperand());
-		if (component_itr != impl.ags.coopmat_component_mapping.end())
-		{
-			op->type_id = component_itr->second.type_id;
-			impl.ags.coopmat_component_mapping[instruction] = component_itr->second;
-			if (component_itr->second.component != 0)
-				return true;
-		}
+		if (ags_llvm_load_filter(impl, op, instruction))
+			return true;
 
 		impl.add(op);
 	}
@@ -1675,11 +1652,8 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 
 bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction)
 {
-	if (instruction->getAggregateOperand() == impl.ags.active_read_backdoor)
-	{
-		impl.ags.active_read_backdoor = instruction;
+	if (emit_ags_extract_value(impl, instruction))
 		return true;
-	}
 
 	auto itr = impl.llvm_composite_meta.find(instruction->getAggregateOperand());
 	assert(itr != impl.llvm_composite_meta.end());
@@ -1739,21 +1713,8 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	auto ags_itr = impl.ags.alloca_tracking.find(instruction);
-
-	if (ags_itr != impl.ags.alloca_tracking.end() && ags_itr->second.override_element_type)
-	{
-		uint32_t elems = element_type->getArrayNumElements();
-		if (ags_itr->second.override_element_stride == 0)
-		{
-			LOGE("Element stride is currently unknown. Something must have been missed during analysis.\n");
-			return false;
-		}
-
-		pointee_type_id = impl.builder().makeArrayType(
-		    ags_itr->second.override_element_type,
-			impl.builder().makeUintConstant(elems / ags_itr->second.override_element_stride), 0);
-	}
+	if (!ags_alloca_filter(impl, instruction, pointee_type_id))
+		return false;
 
 	auto storage = impl.get_effective_storage_class(instruction, spv::StorageClassFunction);
 	spv::Id var_id = impl.create_variable(storage, pointee_type_id);
@@ -1881,11 +1842,8 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction)
 {
-	if (instruction->getPointerOperand() == impl.ags.active_read_backdoor)
-	{
-		impl.ags.active_read_backdoor = instruction;
+	if (emit_ags_atomicrmw(impl, instruction))
 		return true;
-	}
 
 	auto &builder = impl.builder();
 	spv::Op opcode;

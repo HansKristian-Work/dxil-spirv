@@ -27,6 +27,7 @@
 #include "spirv_module.hpp"
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "dxil_ags.hpp"
 
 namespace dxil_spv
 {
@@ -1140,13 +1141,8 @@ bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 
 	// Deferred 64-bit atomic. Resolve in a later AGS atomic.
-	if (impl.ags.num_instructions == 2 &&
-	    impl.ags.backdoor_instructions[0] == instruction->getOperand(2) && !multi_sampled)
-	{
-		impl.ags.active_uav_ptr = image_id;
-		impl.ags.active_uav_op = DXIL::Op::TextureStore;
+	if (emit_ags_texture_store(impl, instruction, image_id, multi_sampled))
 		return true;
-	}
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	spv::Id coord[3] = {};
