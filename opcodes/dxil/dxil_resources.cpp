@@ -1371,6 +1371,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 	{
 		if (emit_ags_resource_uav_handle(impl, instruction, resource_range))
 			break;
+		if (emit_nvapi_resource_uav_handle(impl, instruction, resource_range))
+			break;
 
 		auto &reference = get_resource_reference(impl, resource_type, instruction, resource_range);
 

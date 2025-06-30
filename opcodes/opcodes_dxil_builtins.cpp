@@ -38,6 +38,7 @@
 #include "opcodes/dxil/dxil_ray_tracing.hpp"
 #include "opcodes/dxil/dxil_mesh.hpp"
 #include "opcodes/dxil/dxil_ags.hpp"
+#include "opcodes/dxil/dxil_nvapi.hpp"
 #include "opcodes/dxil/dxil_workgraph.hpp"
 
 namespace dxil_spv
@@ -719,6 +720,9 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 // dxilconv is broken and doesn't flag the UAV counter bit in metadata in all situations.
 static void analyze_dxil_atomic_counter(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (analyze_nvapi_buffer_update_counter(impl, instruction))
+		return;
+
 	AccessTracking *tracking = nullptr;
 
 	auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
@@ -755,6 +759,8 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 	if (tracking)
 	{
 		if (analyze_ags_buffer_load(impl, instruction, tracking))
+			return;
+		if (analyze_nvapi_buffer_load(impl, instruction, tracking))
 			return;
 
 		tracking->has_read = true;
@@ -811,6 +817,7 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 		tracking->has_written = true;
 
 		analyze_ags_buffer_store(impl, instruction, tracking, opcode);
+		analyze_nvapi_buffer_store(impl, instruction, tracking, opcode);
 
 		if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
 		{
@@ -1066,6 +1073,8 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	case DXIL::Op::BufferUpdateCounter:
 	{
+		if (nvapi_buffer_update_counter_filter(impl, instruction))
+			break;
 		impl.llvm_values_using_update_counter.insert(instruction->getOperand(1));
 		impl.shader_analysis.has_side_effects = true;
 		break;

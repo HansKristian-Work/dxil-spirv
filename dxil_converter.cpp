@@ -26,7 +26,6 @@
 #include "opcodes/opcodes_dxil_builtins.hpp"
 #include "opcodes/opcodes_llvm_builtins.hpp"
 #include "opcodes/dxil/dxil_common.hpp"
-#include "opcodes/dxil/dxil_ags.hpp"
 #include "opcodes/dxil/dxil_workgraph.hpp"
 
 #include "dxil_converter.hpp"
@@ -762,9 +761,20 @@ bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, con
 		if (type == DXIL::ResourceType::UAV)
 		{
 			unsigned bind_space = get_constant_metadata(resource, 3);
+			unsigned bind_register = get_constant_metadata(resource, 4);
 			auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(resource, 6));
+
 			if (bind_space == AgsUAVMagicRegisterSpace && resource_kind == DXIL::ResourceKind::RawBuffer)
+			{
 				ags.uav_magic_resource_type_index = index;
+			}
+			else if (options.nv_shader_extn.enabled &&
+			         options.nv_shader_extn.slot == bind_register &&
+			         options.nv_shader_extn.space == bind_space &&
+			         resource_kind == DXIL::ResourceKind::StructuredBuffer)
+			{
+				nvapi.uav_magic_resource_type_index = index;
+			}
 		}
 		register_resource_meta_reference(resource->getOperand(1), type, index);
 	}
@@ -1456,12 +1466,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
 
 		// Magic resource that does not actually exist.
-		if (index == ags.uav_magic_resource_type_index)
-			continue;
-
-		if (options.nv_shader_extn.enabled &&
-		    bind_register == options.nv_shader_extn.slot &&
-		    bind_space == options.nv_shader_extn.space)
+		if (index == ags.uav_magic_resource_type_index || index == nvapi.uav_magic_resource_type_index)
 			continue;
 
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
@@ -7300,6 +7305,7 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		}
 
 		ags.reset();
+		nvapi.reset();
 
 		// We don't know if the block is a loop yet, so just tag every BB.
 		// CFG will propagate the information as necessary.
@@ -7696,8 +7702,9 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 			}
 		}
 
-		// Reset AGS tracking for every BB.
+		// Reset vendor tracking for every BB.
 		ags.reset();
+		nvapi.reset();
 	}
 
 	for (auto *bb : visit_order)
@@ -7715,8 +7722,9 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 			}
 		}
 
-		// Reset AGS tracking for every BB.
+		// Reset vendor tracking for every BB.
 		ags.reset();
+		nvapi.reset();
 	}
 
 	for (auto &alloc : alloca_tracking)
@@ -7729,6 +7737,7 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 	}
 
 	ags.reset_analysis();
+	nvapi.reset_analysis();
 
 	if (shader_analysis.require_wmma)
 		execution_mode_meta.memory_model = spv::MemoryModelVulkan;

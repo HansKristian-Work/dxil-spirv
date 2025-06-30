@@ -66,6 +66,7 @@ dxil_spirv_src = [
   'dxil_parser.cpp',
 
   'opcodes/dxil/dxil_ags.cpp',
+  'opcodes/dxil/dxil_nvapi.cpp',
   'opcodes/dxil/dxil_common.cpp',
   'opcodes/dxil/dxil_resources.cpp',
   'opcodes/dxil/dxil_compute.cpp',
