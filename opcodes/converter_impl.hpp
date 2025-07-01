@@ -32,6 +32,7 @@
 #include "descriptor_qa.hpp"
 #include "opcodes.hpp"
 #include "dxil/dxil_ags.hpp"
+#include "dxil/dxil_nvapi.hpp"
 
 #include "GLSL.std.450.h"
 
@@ -305,6 +306,7 @@ struct Converter::Impl
 	UnorderedSet<uint32_t> llvm_attribute_at_vertex_indices;
 
 	AGSState ags;
+	NVAPIState nvapi;
 
 	// DXIL has no storage class concept for hit/callable/payload types.
 	const llvm::Type *llvm_hit_attribute_output_type = nullptr;
@@ -792,6 +794,13 @@ struct Converter::Impl
 		} extended_robustness;
 
 		unsigned max_tess_factor = 0;
+
+		struct
+		{
+			bool enabled = false;
+			unsigned register_index = 0;
+			unsigned register_space = 0;
+		} nvapi;
 	} options;
 
 	struct BindlessInfo

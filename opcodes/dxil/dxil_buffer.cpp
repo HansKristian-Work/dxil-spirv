@@ -879,6 +879,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 {
 	if (emit_ags_buffer_load(impl, instruction, DXIL::Op::BufferLoad))
 		return true;
+	if (emit_nvapi_buffer_load(impl, instruction, DXIL::Op::BufferLoad))
+		return true;
 
 	// Elide dead loads.
 	if (!impl.composite_is_accessed(instruction))
@@ -1307,6 +1309,8 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 {
 	if (emit_ags_buffer_load(impl, instruction, DXIL::Op::RawBufferLoad))
 		return true;
+	if (emit_nvapi_buffer_load(impl, instruction, DXIL::Op::RawBufferLoad))
+		return true;
 
 	if (!impl.composite_is_accessed(instruction))
 		return true;
@@ -1405,6 +1409,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 
 	if (emit_ags_buffer_store(impl, instruction, image_id))
+		return true;
+	if (emit_nvapi_buffer_store(impl, instruction, image_id))
 		return true;
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
@@ -1568,6 +1574,8 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 
 	if (emit_ags_buffer_store(impl, instruction, ptr_id))
+		return true;
+	if (emit_nvapi_buffer_store(impl, instruction, ptr_id))
 		return true;
 
 	const auto &meta = impl.handle_to_resource_meta[ptr_id];
@@ -1807,6 +1815,10 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
+
+	if (emit_nvapi_buffer_update_counter(impl, instruction, image_id))
+		return true;
+
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	int direction = llvm::cast<llvm::ConstantInt>(instruction->getOperand(2))->getUniqueInteger().getSExtValue();
 

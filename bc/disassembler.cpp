@@ -81,9 +81,11 @@ struct StreamState
 	void append(StoreInst *value, bool decl = false);
 	void append(AtomicRMWInst *value, bool decl = false);
 	void append(AtomicCmpXchgInst *xchg, bool decl = false);
+	void append(ConstantAggregate *agg, bool decl = false);
 	void append(ConstantAggregateZero *zero, bool decl = false);
 	void append(ConstantDataArray *data, bool decl = false);
 	void append(ConstantDataVector *vec, bool decl = false);
+	void append(ConstantExpr *expr, bool decl = false);
 
 	void append(MDOperand *md);
 	void append(NamedMDNode *md);
@@ -717,6 +719,19 @@ void StreamState::append(AtomicCmpXchgInst *xchg, bool decl)
 		append("%", xchg->get_tween_id());
 }
 
+void StreamState::append(ConstantAggregate *agg, bool)
+{
+	append("[");
+
+	if (agg->getNumOperands())
+		append(agg->getOperand(0));
+
+	for (unsigned i = 1; i < agg->getNumOperands(); i++)
+		append(", ", agg->getOperand(i));
+
+	append("]");
+}
+
 void StreamState::append(ConstantAggregateZero *zero, bool)
 {
 	append("[zeroinitialized]");
@@ -744,6 +759,24 @@ void StreamState::append(ConstantDataVector *vec, bool)
 			append(", ");
 	}
 	append(">");
+}
+
+void StreamState::append(ConstantExpr *expr, bool decl)
+{
+	if (decl)
+	{
+		append("%", expr->get_tween_id(), " = ", expr->getOpcode(), " ", expr->getType());
+
+		if (expr->getNumOperands())
+			append(" ", expr->getOperand(0));
+
+		for (unsigned i = 1; i < expr->getNumOperands(); i++)
+			append(", ", expr->getOperand(i));
+	}
+	else
+	{
+		append("%", expr->get_tween_id());
+	}
 }
 
 void StreamState::append(PHINode *phi, bool decl)
@@ -912,12 +945,16 @@ void StreamState::append(Value *value, bool decl)
 		return append(cast<AtomicCmpXchgInst>(value), decl);
 	case ValueKind::Global:
 		return append(cast<GlobalVariable>(value), decl);
+	case ValueKind::ConstantAggregate:
+		return append(cast<ConstantAggregate>(value), decl);
 	case ValueKind::ConstantAggregateZero:
 		return append(cast<ConstantAggregateZero>(value), decl);
 	case ValueKind::ConstantDataArray:
 		return append(cast<ConstantDataArray>(value), decl);
 	case ValueKind::ConstantDataVector:
 		return append(cast<ConstantDataVector>(value), decl);
+	case ValueKind::ConstantExpr:
+		return append(cast<ConstantExpr>(value), decl);
 	case ValueKind::Switch:
 		return append(cast<SwitchInst>(value), decl);
 	case ValueKind::ShuffleVector:

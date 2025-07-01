@@ -1143,6 +1143,8 @@ bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::
 	// Deferred 64-bit atomic. Resolve in a later AGS atomic.
 	if (emit_ags_texture_store(impl, instruction, image_id, multi_sampled))
 		return true;
+	if (emit_nvapi_buffer_store(impl, instruction, image_id))
+		return true;
 
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 	spv::Id coord[3] = {};

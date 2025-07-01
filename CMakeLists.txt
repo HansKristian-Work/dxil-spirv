@@ -88,6 +88,7 @@ add_library(dxil-converter STATIC
         opcodes/dxil/dxil_mesh.hpp opcodes/dxil/dxil_mesh.cpp
         opcodes/dxil/dxil_workgraph.hpp opcodes/dxil/dxil_workgraph.cpp
         opcodes/dxil/dxil_ags.hpp opcodes/dxil/dxil_ags.cpp
+        opcodes/dxil/dxil_nvapi.hpp opcodes/dxil/dxil_nvapi.cpp
         opcodes/opcodes_llvm_builtins.hpp opcodes/opcodes_llvm_builtins.cpp
         opcodes/opcodes_dxil_builtins.hpp opcodes/opcodes_dxil_builtins.cpp)
 set_target_properties(dxil-converter PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -150,7 +151,7 @@ if (DXIL_SPIRV_CLI)
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 2)
-set(DXIL_SPV_VERSION_MINOR 53)
+set(DXIL_SPV_VERSION_MINOR 54)
 set(DXIL_SPV_VERSION_PATCH 0)
 set(DXIL_SPV_VERSION ${DXIL_SPV_VERSION_MAJOR}.${DXIL_SPV_VERSION_MINOR}.${DXIL_SPV_VERSION_PATCH})
 set_target_properties(dxil-spirv-c-shared PROPERTIES

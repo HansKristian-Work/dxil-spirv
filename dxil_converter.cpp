@@ -26,7 +26,6 @@
 #include "opcodes/opcodes_dxil_builtins.hpp"
 #include "opcodes/opcodes_llvm_builtins.hpp"
 #include "opcodes/dxil/dxil_common.hpp"
-#include "opcodes/dxil/dxil_ags.hpp"
 #include "opcodes/dxil/dxil_workgraph.hpp"
 
 #include "dxil_converter.hpp"
@@ -762,9 +761,20 @@ bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, con
 		if (type == DXIL::ResourceType::UAV)
 		{
 			unsigned bind_space = get_constant_metadata(resource, 3);
+			unsigned bind_register = get_constant_metadata(resource, 4);
 			auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(resource, 6));
+
 			if (bind_space == AgsUAVMagicRegisterSpace && resource_kind == DXIL::ResourceKind::RawBuffer)
+			{
 				ags.uav_magic_resource_type_index = index;
+			}
+			else if (options.nvapi.enabled &&
+			         options.nvapi.register_index == bind_register &&
+			         options.nvapi.register_space == bind_space &&
+			         resource_kind == DXIL::ResourceKind::StructuredBuffer)
+			{
+				nvapi.uav_magic_resource_type_index = index;
+			}
 		}
 		register_resource_meta_reference(resource->getOperand(1), type, index);
 	}
@@ -988,6 +998,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
+
+		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		{
+			// This seems to be possible in RT shaders when explicit register() is missing?
+			LOGE("Nonsensical SRV binding detected.\n");
+			return false;
+		}
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
 
@@ -1453,10 +1470,17 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
 
+		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		{
+			// This seems to be possible in RT shaders when explicit register() is missing?
+			LOGE("Nonsensical UAV binding detected.\n");
+			return false;
+		}
+
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
 
 		// Magic resource that does not actually exist.
-		if (index == ags.uav_magic_resource_type_index)
+		if (index == ags.uav_magic_resource_type_index || index == nvapi.uav_magic_resource_type_index)
 			continue;
 
 		bool has_counter = get_constant_metadata(uav, 8) != 0;
@@ -2020,6 +2044,13 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
+		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		{
+			// This seems to be possible in RT shaders when explicit register() is missing?
+			LOGE("Nonsensical CBV binding detected.\n");
+			return false;
+		}
+
 		DescriptorTableEntry local_table_entry = {};
 		int local_root_signature_entry = get_local_root_signature_entry(
 		    ResourceClass::CBV, bind_space, bind_register, local_table_entry);
@@ -2242,6 +2273,13 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 		unsigned bind_space = get_constant_metadata(sampler, 3);
 		unsigned bind_register = get_constant_metadata(sampler, 4);
 		unsigned range_size = get_constant_metadata(sampler, 5);
+
+		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		{
+			// This seems to be possible in RT shaders when explicit register() is missing?
+			LOGE("Nonsensical Sampler binding detected.\n");
+			return false;
+		}
 
 		if (range_size != 1)
 		{
@@ -7295,6 +7333,7 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		}
 
 		ags.reset();
+		nvapi.reset();
 
 		// We don't know if the block is a loop yet, so just tag every BB.
 		// CFG will propagate the information as necessary.
@@ -7691,8 +7730,9 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 			}
 		}
 
-		// Reset AGS tracking for every BB.
+		// Reset vendor tracking for every BB.
 		ags.reset();
+		nvapi.reset();
 	}
 
 	for (auto *bb : visit_order)
@@ -7710,8 +7750,9 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 			}
 		}
 
-		// Reset AGS tracking for every BB.
+		// Reset vendor tracking for every BB.
 		ags.reset();
+		nvapi.reset();
 	}
 
 	for (auto &alloc : alloca_tracking)
@@ -7724,6 +7765,7 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 	}
 
 	ags.reset_analysis();
+	nvapi.reset_analysis();
 
 	if (shader_analysis.require_wmma)
 		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
@@ -8453,6 +8495,15 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		auto &float8 = static_cast<const OptionFloat8Support &>(cap);
 		options.wmma_fp8 = float8.wmma_fp8;
 		options.nv_cooperative_matrix2_conversions = float8.nv_cooperative_matrix2_conversions;
+		break;
+	}
+
+	case Option::NvAPI:
+	{
+		auto &nv = static_cast<const OptionNvAPI &>(cap);
+		options.nvapi.enabled = nv.enabled;
+		options.nvapi.register_index = nv.register_index;
+		options.nvapi.register_space = nv.register_space;
 		break;
 	}
 

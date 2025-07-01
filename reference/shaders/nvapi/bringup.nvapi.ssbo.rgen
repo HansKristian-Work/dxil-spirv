@@ -1,0 +1,126 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+
+layout(set = 0, binding = 0, std430) writeonly buffer BlahSSBO
+{
+    uint _m0[];
+} Blah;
+
+layout(set = 0, binding = 1, std430) writeonly buffer BABSSBO
+{
+    uint _m0[];
+} BAB;
+
+layout(set = 0, binding = 2) uniform writeonly image1D RWTex;
+
+void main()
+{
+    Blah._m0[gl_LaunchIDEXT.x] = subgroupShuffle(gl_LaunchIDEXT.x, 9u);
+    uint _33 = atomicAdd(BAB._m0[64u], 9u);
+    Blah._m0[100u] = _33;
+    imageStore(RWTex, int(gl_LaunchIDEXT.x), vec4(2.0));
+    Blah._m0[101u] = 42u;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 47
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability Image1D
+OpCapability StorageImageWriteWithoutFormat
+OpCapability GroupNonUniformShuffle
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint RayGenerationKHR %3 "main" %9 %13 %17 %20
+OpName %3 "main"
+OpName %7 "BlahSSBO"
+OpName %9 "Blah"
+OpName %11 "BABSSBO"
+OpName %13 "BAB"
+OpName %17 "RWTex"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %9 NonReadable
+OpDecorate %10 ArrayStride 4
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 1
+OpDecorate %13 NonReadable
+OpDecorate %17 DescriptorSet 0
+OpDecorate %17 Binding 2
+OpDecorate %17 NonReadable
+OpDecorate %20 BuiltIn LaunchIdKHR
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeRuntimeArray %5
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeFloat 32
+%15 = OpTypeImage %14 1D 0 0 0 2 Unknown
+%16 = OpTypePointer UniformConstant %15
+%17 = OpVariable %16 UniformConstant
+%18 = OpTypeVector %5 3
+%19 = OpTypePointer Input %18
+%20 = OpVariable %19 Input
+%21 = OpTypePointer Input %5
+%23 = OpConstant %5 0
+%26 = OpConstant %5 9
+%28 = OpConstant %5 3
+%29 = OpTypePointer StorageBuffer %5
+%31 = OpConstant %5 64
+%34 = OpConstant %5 1
+%35 = OpConstant %5 100
+%38 = OpConstant %5 10
+%39 = OpConstant %14 2
+%40 = OpTypeVector %14 4
+%41 = OpConstantComposite %40 %39 %39 %39 %39
+%42 = OpConstant %5 42
+%43 = OpConstant %5 101
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %45
+%45 = OpLabel
+%22 = OpAccessChain %21 %20 %23
+%24 = OpLoad %5 %22
+%27 = OpGroupNonUniformShuffle %5 %28 %24 %26
+%30 = OpAccessChain %29 %9 %23 %24
+OpStore %30 %27
+%32 = OpAccessChain %29 %13 %23 %31
+%33 = OpAtomicIAdd %5 %32 %34 %23 %26
+%36 = OpAccessChain %29 %9 %23 %35
+OpStore %36 %33
+%37 = OpLoad %15 %17
+OpImageWrite %37 %24 %41
+%44 = OpAccessChain %29 %9 %23 %43
+OpStore %44 %42
+OpReturn
+OpFunctionEnd
+#endif
