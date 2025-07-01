@@ -118,7 +118,8 @@ void NVAPIState::notify_doorbell(Converter::Impl &impl, const llvm::CallInst *in
 
 		if (clock_output_index < num_expected_clock_outputs)
 		{
-			impl.rewrite_value(instruction, impl.nvapi.fake_doorbell_outputs[clock_output_index]);
+			if (!analysis)
+				impl.rewrite_value(instruction, impl.nvapi.fake_doorbell_outputs[clock_output_index]);
 			clock_output_index++;
 		}
 
