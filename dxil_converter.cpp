@@ -999,6 +999,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
 
+		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		{
+			// This seems to be possible in RT shaders when explicit register() is missing?
+			LOGE("Nonsensical SRV binding detected.\n");
+			return false;
+		}
+
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
 
 		llvm::MDNode *tags = nullptr;
@@ -1462,6 +1469,13 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		unsigned bind_space = get_constant_metadata(uav, 3);
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
+
+		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		{
+			// This seems to be possible in RT shaders when explicit register() is missing?
+			LOGE("Nonsensical UAV binding detected.\n");
+			return false;
+		}
 
 		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
 
@@ -2030,6 +2044,13 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
+		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		{
+			// This seems to be possible in RT shaders when explicit register() is missing?
+			LOGE("Nonsensical CBV binding detected.\n");
+			return false;
+		}
+
 		DescriptorTableEntry local_table_entry = {};
 		int local_root_signature_entry = get_local_root_signature_entry(
 		    ResourceClass::CBV, bind_space, bind_register, local_table_entry);
@@ -2252,6 +2273,13 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 		unsigned bind_space = get_constant_metadata(sampler, 3);
 		unsigned bind_register = get_constant_metadata(sampler, 4);
 		unsigned range_size = get_constant_metadata(sampler, 5);
+
+		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		{
+			// This seems to be possible in RT shaders when explicit register() is missing?
+			LOGE("Nonsensical Sampler binding detected.\n");
+			return false;
+		}
 
 		if (range_size != 1)
 		{

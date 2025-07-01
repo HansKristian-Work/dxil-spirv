@@ -1,0 +1,20 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RWStructuredBuffer<uint> Blah : register(u0);
+
+RWByteAddressBuffer BAB : register(u1);
+RWTexture1D<float2> RWTex : register(u2);
+
+[shader("raygeneration")]
+void main()
+{
+	uint thr = DispatchRaysIndex().x;
+	Blah[thr] = NvShfl(thr, 9);
+
+	// Test UAV reference shenanigans.
+	Blah[100] = NvInterlockedAddFp16x2(BAB, 64, 9);
+	Blah[101] = NvInterlockedAddFp16x2(RWTex, thr, 10);
+}
+
