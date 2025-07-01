@@ -2535,16 +2535,13 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 		bitcast->addIdOperand(load->getResultId());
 
 		// Extract the sign bit.
-		auto *split_input = builder.addInstruction(builder.makeVectorType(builder.makeUintType(8), 2), spv::OpBitcast);
-		split_input->addIdOperand(bitcast->getResultId());
+		auto *sign_in_lsb = builder.addInstruction(s16_type, spv::OpShiftRightLogical);
+		sign_in_lsb->addIdOperand(bitcast->getResultId());
+		sign_in_lsb->addIdOperand(builder.makeUint16Constant(15));
 
-		auto *extract_upper = builder.addInstruction(builder.makeUintType(8), spv::OpCompositeExtract);
-		extract_upper->addIdOperand(split_input->getResultId());
-		extract_upper->addImmediateOperand(1);
-
-		auto *sign_bit = builder.addInstruction(builder.makeUintType(8), spv::OpBitwiseAnd);
-		sign_bit->addIdOperand(extract_upper->getResultId());
-		sign_bit->addIdOperand(builder.makeUint8Constant(0x80));
+		auto *sign_bit = builder.addInstruction(s16_type, spv::OpShiftLeftLogical);
+		sign_bit->addIdOperand(sign_in_lsb->getResultId());
+		sign_bit->addIdOperand(builder.makeInt16Constant(7));
 		///
 
 		// When the input is shifted like this the result is E5M3 in upper byte, which is very handy.
@@ -2615,9 +2612,6 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 		auto *pre_denorm_rounding_bits = builder.addInstruction(s16_type, spv::OpBitwiseAnd);
 		pre_denorm_rounding_bits->addIdOperand(unsigned_e5m11->getResultId());
 		pre_denorm_rounding_bits->addIdOperand(builder.makeInt16Constant(0x7f));
-		auto *trunc = builder.addInstruction(builder.makeIntType(8), spv::OpSConvert);
-		trunc->addIdOperand(pre_denorm_rounding_bits->getResultId());
-		pre_denorm_rounding_bits = trunc;
 
 		// Now we apply the denorm shift.
 		auto *denorm_shift = builder.addInstruction(s16_type, spv::OpShiftRightArithmetic);
@@ -2628,56 +2622,57 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 		// Capture any rounding bits.
 		// If we shift due to denorms,
 		// we have to know if we shifted away bits that are relevant to RTE.
-		auto *split = builder.addInstruction(builder.makeVectorType(builder.makeIntType(8), 2), spv::OpBitcast);
-		split->addIdOperand(unsigned_e5m11->getResultId());
+		auto *rounding_bits = builder.addInstruction(s16_type, spv::OpBitwiseOr);
+		rounding_bits->addIdOperand(unsigned_e5m11->getResultId());
+		rounding_bits->addIdOperand(pre_denorm_rounding_bits->getResultId());
 
-		auto *rounding_bits = builder.addInstruction(builder.makeIntType(8), spv::OpCompositeExtract);
-		rounding_bits->addIdOperand(split->getResultId());
-		rounding_bits->addImmediateOperand(0);
+		auto *unsigned_e5m3 = builder.addInstruction(s16_type, spv::OpShiftRightLogical);
+		unsigned_e5m3->addIdOperand(unsigned_e5m11->getResultId());
+		unsigned_e5m3->addIdOperand(builder.makeInt16Constant(8));
 
-		auto *rounding_bits_or = builder.addInstruction(builder.makeIntType(8), spv::OpBitwiseOr);
-		rounding_bits_or->addIdOperand(rounding_bits->getResultId());
-		rounding_bits_or->addIdOperand(pre_denorm_rounding_bits->getResultId());
-		rounding_bits = rounding_bits_or;
-
-		auto *unsigned_e5m3 = builder.addInstruction(builder.makeIntType(8), spv::OpCompositeExtract);
-		unsigned_e5m3->addIdOperand(split->getResultId());
-		unsigned_e5m3->addImmediateOperand(1);
-
-		auto *is_odd = builder.addInstruction(builder.makeIntType(8), spv::OpBitwiseAnd);
+		auto *is_odd = builder.addInstruction(s16_type, spv::OpBitwiseAnd);
 		is_odd->addIdOperand(unsigned_e5m3->getResultId());
-		is_odd->addIdOperand(builder.makeInt8Constant(1));
+		is_odd->addIdOperand(builder.makeInt16Constant(1));
 
-		auto *or_rounding_bits = builder.addInstruction(builder.makeIntType(8), spv::OpBitwiseOr);
+		auto *or_rounding_bits = builder.addInstruction(s16_type, spv::OpBitwiseOr);
 		or_rounding_bits->addIdOperand(is_odd->getResultId());
 		or_rounding_bits->addIdOperand(rounding_bits->getResultId());
 
 		// To get > 0x80 in lower bits either the fraction is > 0.5, or it's exactly 0.5 and the upper part is odd,
 		// which would make the result 0x81.
+		// We shift the high bits away and then compare with 0x8000
+
+		auto *rounding_bits_in_msb = builder.addInstruction(s16_type, spv::OpShiftLeftLogical);
+		rounding_bits_in_msb->addIdOperand(or_rounding_bits->getResultId());
+		rounding_bits_in_msb->addIdOperand(builder.makeInt16Constant(8));
+
 		auto *should_round = builder.addInstruction(bool_type, spv::OpUGreaterThan);
-		should_round->addIdOperand(or_rounding_bits->getResultId());
-		should_round->addIdOperand(builder.makeUint8Constant(0x80));
+		should_round->addIdOperand(rounding_bits_in_msb->getResultId());
+		should_round->addIdOperand(builder.makeUint16Constant(0x8000));
 
 		// Compensate for exponent bias when dealing with denorms.
-		auto *rounding = builder.addInstruction(builder.makeUintType(8), spv::OpSelect);
+		auto *rounding = builder.addInstruction(s16_type, spv::OpSelect);
 		rounding->addIdOperand(should_round->getResultId());
-		rounding->addIdOperand(builder.makeUint8Constant(1));
-		rounding->addIdOperand(builder.makeUint8Constant(0));
+		rounding->addIdOperand(builder.makeInt16Constant(1));
+		rounding->addIdOperand(builder.makeInt16Constant(0));
 
 		// Add rounding.
-		auto *add_rounding = builder.addInstruction(builder.makeUintType(8), spv::OpIAdd);
+		auto *add_rounding = builder.addInstruction(s16_type, spv::OpIAdd);
 		add_rounding->addIdOperand(unsigned_e5m3->getResultId());
 		add_rounding->addIdOperand(rounding->getResultId());
 
 		// Mask away the top exponent. We should be in range now anyway.
-		auto *e4m3 = builder.addInstruction(builder.makeUintType(8), spv::OpBitwiseAnd);
+		auto *e4m3 = builder.addInstruction(s16_type, spv::OpBitwiseAnd);
 		e4m3->addIdOperand(add_rounding->getResultId());
-		e4m3->addIdOperand(builder.makeUint8Constant(0x7f));
+		e4m3->addIdOperand(builder.makeInt16Constant(0x7f));
 
 		// OR in the sign bit.
-		auto *with_sign = builder.addInstruction(builder.makeUintType(8), spv::OpBitwiseOr);
+		auto *with_sign = builder.addInstruction(s16_type, spv::OpBitwiseOr);
 		with_sign->addIdOperand(e4m3->getResultId());
 		with_sign->addIdOperand(sign_bit->getResultId());
+
+		auto *trunc = builder.addInstruction(builder.makeUintType(8), spv::OpUConvert);
+		trunc->addIdOperand(with_sign->getResultId());
 
 		auto *output_chain = builder.addInstruction(
 			builder.makePointer(spv::StorageClassFunction, builder.makeUintType(8)), spv::OpInBoundsAccessChain);
@@ -2685,7 +2680,7 @@ spv::Id SPIRVModule::Impl::build_coop_mat_fp16_to_fp8(SPIRVModule &module, const
 		output_chain->addIdOperand(phi->getResultId());
 		auto *store = builder.addInstruction(spv::OpStore);
 		store->addIdOperand(output_chain->getResultId());
-		store->addIdOperand(with_sign->getResultId());
+		store->addIdOperand(trunc->getResultId());
 
 		auto *cmp = builder.addInstruction(bool_type, spv::OpULessThan);
 		cmp->addIdOperand(iter->getResultId());
