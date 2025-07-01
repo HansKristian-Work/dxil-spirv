@@ -798,9 +798,9 @@ struct Converter::Impl
 		struct
 		{
 			bool enabled = false;
-			unsigned slot = 0;
-			unsigned space = 0;
-		} nv_shader_extn;
+			unsigned register_index = 0;
+			unsigned register_space = 0;
+		} nvapi;
 	} options;
 
 	struct BindlessInfo

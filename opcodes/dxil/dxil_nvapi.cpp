@@ -257,7 +257,7 @@ bool emit_nvapi_buffer_update_counter(Converter::Impl &impl, const llvm::CallIns
 
 bool analyze_nvapi_buffer_update_counter(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	if (impl.options.nv_shader_extn.enabled)
+	if (impl.options.nvapi.enabled)
 	{
 		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
@@ -275,7 +275,7 @@ bool analyze_nvapi_buffer_update_counter(Converter::Impl &impl, const llvm::Call
 
 bool nvapi_buffer_update_counter_filter(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	if (impl.options.nv_shader_extn.enabled)
+	if (impl.options.nvapi.enabled)
 	{
 		auto itr = impl.llvm_value_to_uav_resource_index_map.find(instruction->getOperand(1));
 		if (itr != impl.llvm_value_to_uav_resource_index_map.end())
@@ -306,7 +306,7 @@ bool emit_nvapi_resource_uav_handle(Converter::Impl &impl, const llvm::CallInst 
 
 bool analyze_nvapi_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, AccessTracking *)
 {
-	if (impl.options.nv_shader_extn.enabled &&
+	if (impl.options.nvapi.enabled &&
 	    impl.nvapi.uav_magic_resource_type_index != NVAPI_MAGIC_RESOURCE_SENTINEL &&
 	    instruction->getOperand(2) == impl.nvapi.doorbell)
 	{
@@ -320,7 +320,7 @@ void analyze_nvapi_buffer_store(Converter::Impl &impl, const llvm::CallInst *ins
                                 AccessTracking *, DXIL::Op)
 {
 	// We don't have the magic_ptr_id yet, but if we write with the doorbell value, we're very sure.
-	if (impl.options.nv_shader_extn.enabled &&
+	if (impl.options.nvapi.enabled &&
 	    impl.nvapi.uav_magic_resource_type_index != NVAPI_MAGIC_RESOURCE_SENTINEL &&
 	    instruction->getOperand(2) == impl.nvapi.doorbell)
 	{

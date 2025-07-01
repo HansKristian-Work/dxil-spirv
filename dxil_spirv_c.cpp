@@ -1384,12 +1384,13 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
-	case DXIL_SPV_OPTION_NV_SHADER_EXTN:
+	case DXIL_SPV_OPTION_NVAPI:
 	{
-		OptionNvShaderExtn helper;
-		auto *nv_shader_extn = reinterpret_cast<const dxil_spv_option_nv_shader_extn *>(option);
-		helper.slot = nv_shader_extn->slot;
-		helper.register_space = nv_shader_extn->register_space;
+		OptionNvAPI helper;
+		auto *nvapi = reinterpret_cast<const dxil_spv_option_nvapi *>(option);
+		helper.enabled = nvapi->enabled;
+		helper.register_index = nvapi->register_index;
+		helper.register_space = nvapi->register_space;
 
 		converter->options.emplace_back(duplicate(helper));
 		break;

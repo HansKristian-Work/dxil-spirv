@@ -443,7 +443,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_MAX_TESS_FACTOR = 44,
 	DXIL_SPV_OPTION_VULKAN_MEMORY_MODEL = 45,
 	DXIL_SPV_OPTION_FLOAT8_SUPPORT = 46,
-	DXIL_SPV_OPTION_NV_SHADER_EXTN = 47,
+	DXIL_SPV_OPTION_NVAPI = 47,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -791,12 +791,13 @@ typedef struct dxil_spv_option_float8_support
 	dxil_spv_bool nv_cooperative_matrix2_conversions;
 } dxil_spv_option_float8_support;
 
-typedef struct dxil_spv_option_nv_shader_extn
+typedef struct dxil_spv_option_nvapi
 {
 	dxil_spv_option_base base;
-	unsigned slot;
+	dxil_spv_bool enabled;
+	unsigned register_index;
 	unsigned register_space;
-} dxil_spv_option_nv_shader_extn;
+} dxil_spv_option_nvapi;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

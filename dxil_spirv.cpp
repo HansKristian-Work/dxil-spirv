@@ -174,7 +174,7 @@ static void print_help()
 	     "\t[--robust-physical-cbv-load]\n"
 	     "\t[--allow-arithmetic-relaxed-precision]\n"
 	     "\t[--physical-address-descriptor-indexing <element stride> <element offset>]\n"
-	     "\t[--nv-shader-extn <slot> <register space>]\n"
+	     "\t[--nvapi <register index> <register space>]\n"
 	     "\t[--subgroup-partitioned-nv]\n"
 	     "\t[--dead-code-eliminate]\n"
 	     "\t[--propagate-precise]\n"
@@ -252,9 +252,9 @@ struct Arguments
 	uint32_t descriptor_qa_set = 0;
 	uint32_t descriptor_qa_binding = 0;
 
-	bool nv_shader_extn = false;
-	unsigned nv_shader_extn_slot = 0;
-	unsigned nv_shader_extn_register_space = 0;
+	bool nvapi = false;
+	unsigned nvapi_register_index = 0;
+	unsigned nvapi_register_space = 0;
 
 	bool instruction_instrumentation = false;
 	uint32_t instruction_instrumentation_set = 0;
@@ -793,10 +793,10 @@ int main(int argc, char **argv)
 		args.physical_address_indexing_stride = parser.next_uint();
 		args.physical_address_indexing_offset = parser.next_uint();
 	});
-	cbs.add("--nv-shader-extn", [&](CLIParser &parser) {
-		args.nv_shader_extn = true;
-		args.nv_shader_extn_slot = parser.next_uint();
-		args.nv_shader_extn_register_space = parser.next_uint();
+	cbs.add("--nvapi", [&](CLIParser &parser) {
+		args.nvapi = true;
+		args.nvapi_register_index = parser.next_uint();
+		args.nvapi_register_space = parser.next_uint();
 	});
 	cbs.add("--subgroup-partitioned-nv", [&](CLIParser &) {
 		args.subgroup_partitioned_nv = true;
@@ -1201,12 +1201,12 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &wmma.base);
 	}
 
-	if (args.nv_shader_extn)
+	if (args.nvapi)
 	{
-		dxil_spv_option_nv_shader_extn extn = {
-			{ DXIL_SPV_OPTION_NV_SHADER_EXTN } };
-		extn.slot = args.nv_shader_extn_slot;
-		extn.register_space = args.nv_shader_extn_register_space;
+		dxil_spv_option_nvapi extn = {{ DXIL_SPV_OPTION_NVAPI }};
+		extn.enabled = DXIL_SPV_TRUE;
+		extn.register_index = args.nvapi_register_index;
+		extn.register_space = args.nvapi_register_space;
 		dxil_spv_converter_add_option(converter, &extn.base);
 	}
 

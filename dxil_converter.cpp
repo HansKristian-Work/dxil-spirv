@@ -768,9 +768,9 @@ bool Converter::Impl::emit_resources_global_mapping(DXIL::ResourceType type, con
 			{
 				ags.uav_magic_resource_type_index = index;
 			}
-			else if (options.nv_shader_extn.enabled &&
-			         options.nv_shader_extn.slot == bind_register &&
-			         options.nv_shader_extn.space == bind_space &&
+			else if (options.nvapi.enabled &&
+			         options.nvapi.register_index == bind_register &&
+			         options.nvapi.register_space == bind_space &&
 			         resource_kind == DXIL::ResourceKind::StructuredBuffer)
 			{
 				nvapi.uav_magic_resource_type_index = index;
@@ -8470,12 +8470,12 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
-	case Option::NvShaderExtn:
+	case Option::NvAPI:
 	{
-		auto &nv_shader_extn = static_cast<const OptionNvShaderExtn &>(cap);
-		options.nv_shader_extn.enabled = true;
-		options.nv_shader_extn.slot = nv_shader_extn.slot;
-		options.nv_shader_extn.space = nv_shader_extn.register_space;
+		auto &nv = static_cast<const OptionNvAPI &>(cap);
+		options.nvapi.enabled = nv.enabled;
+		options.nvapi.register_index = nv.register_index;
+		options.nvapi.register_space = nv.register_space;
 		break;
 	}
 

@@ -261,7 +261,7 @@ enum class Option : uint32_t
 	MaxTessFactor = 44,
 	VulkanMemoryModel = 45,
 	Float8Support = 46,
-	NvShaderExtn = 47,
+	NvAPI = 47,
 	Count
 };
 
@@ -802,14 +802,15 @@ struct OptionFloat8Support : OptionBase
 	bool nv_cooperative_matrix2_conversions = false;
 };
 
-struct OptionNvShaderExtn : OptionBase
+struct OptionNvAPI : OptionBase
 {
-	OptionNvShaderExtn()
-		: OptionBase(Option::NvShaderExtn)
+	OptionNvAPI()
+		: OptionBase(Option::NvAPI)
 	{
 	}
 
-	unsigned slot = 0;
+	bool enabled = false;
+	unsigned register_index = 0;
 	unsigned register_space = 0;
 };
 
