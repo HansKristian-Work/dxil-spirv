@@ -16,7 +16,7 @@ struct _38
     uint _m4;
 };
 
-struct _82
+struct _76
 {
     float _m0;
     float _m1;
@@ -27,12 +27,12 @@ struct _82
 
 uint _40;
 uint _41;
-uint _62;
-uint _63;
-float _86;
-float _87;
-float _107;
-float _108;
+uint _60;
+uint _61;
+float _80;
+float _81;
+float _97;
+float _98;
 
 layout(set = 0, binding = 1) uniform usamplerBuffer _8;
 layout(set = 0, binding = 2) uniform usamplerBuffer _9;
@@ -45,35 +45,33 @@ layout(location = 0) out vec2 SV_Target;
 void main()
 {
     uint _27 = TEXCOORD * 2u;
+    uint _122;
+    uvec4 _123;
+    _122 = sparseTexelFetchARB(_8, int(_27), _123);
+    SparseTexel _31 = SparseTexel(_122, _123);
+    _38 _39 = _38(_31._m1.x, texelFetch(_8, int(_27 + 1u)).x, _40, _41, _31._m0);
+    uint _52 = TEXCOORD * 2u;
     uint _124;
     uvec4 _125;
-    _124 = sparseTexelFetchARB(_8, int(_27), _125);
-    SparseTexel _31 = SparseTexel(_124, _125);
-    _38 _39 = _38(_31._m1.x, texelFetch(_8, int(_27 + 1u)).x, _40, _41, _31._m0);
-    float _49 = float(sparseTexelsResidentARB(int(_39._m4)));
-    uint _54 = TEXCOORD * 2u;
+    _124 = sparseImageLoadARB(_12, int(_52), _125);
+    SparseTexel _53 = SparseTexel(_124, _125);
+    _38 _59 = _38(_53._m1.x, imageLoad(_12, int(_52 + 1u)).x, _60, _61, _53._m0);
+    uint _69 = TEXCOORD * 2u;
     uint _126;
     uvec4 _127;
-    _126 = sparseImageLoadARB(_12, int(_54), _127);
-    SparseTexel _55 = SparseTexel(_126, _127);
-    _38 _61 = _38(_55._m1.x, imageLoad(_12, int(_54 + 1u)).x, _62, _63, _55._m0);
-    float _72 = float(sparseTexelsResidentARB(int(_61._m4)));
-    uint _75 = TEXCOORD * 2u;
+    _126 = sparseTexelFetchARB(_9, int(_69), _127);
+    SparseTexel _70 = SparseTexel(_126, _127);
+    _76 _77 = _76(uintBitsToFloat(_70._m1.x), uintBitsToFloat(texelFetch(_9, int(_69 + 1u)).x), _80, _81, _70._m0);
+    uint _87 = TEXCOORD * 2u;
     uint _128;
     uvec4 _129;
-    _128 = sparseTexelFetchARB(_9, int(_75), _129);
-    SparseTexel _76 = SparseTexel(_128, _129);
-    _82 _83 = _82(uintBitsToFloat(_76._m1.x), uintBitsToFloat(texelFetch(_9, int(_75 + 1u)).x), _86, _87, _76._m0);
-    float _94 = float(sparseTexelsResidentARB(int(_83._m4)));
-    uint _97 = TEXCOORD * 2u;
-    uint _130;
-    uvec4 _131;
-    _130 = sparseImageLoadARB(_13, int(_97), _131);
-    SparseTexel _98 = SparseTexel(_130, _131);
-    _82 _104 = _82(uintBitsToFloat(_98._m1.x), uintBitsToFloat(imageLoad(_13, int(_97 + 1u)).x), _107, _108, _98._m0);
-    float _115 = float(sparseTexelsResidentARB(int(_104._m4)));
-    SV_Target.x = ((((((uintBitsToFloat(_39._m0) + _49) + uintBitsToFloat(_61._m0)) + _72) + _83._m0) + _94) + _104._m0) + _115;
-    SV_Target.y = ((((((uintBitsToFloat(_39._m1) + _49) + uintBitsToFloat(_61._m1)) + _72) + _83._m1) + _94) + _104._m1) + _115;
+    _128 = sparseImageLoadARB(_13, int(_87), _129);
+    SparseTexel _88 = SparseTexel(_128, _129);
+    _76 _94 = _76(uintBitsToFloat(_88._m1.x), uintBitsToFloat(imageLoad(_13, int(_87 + 1u)).x), _97, _98, _88._m0);
+    float _103 = float(sparseTexelsResidentARB(int(_94._m4)));
+    float _105 = float(sparseTexelsResidentARB(int(_77._m4))) + (float(sparseTexelsResidentARB(int(_59._m4))) + float(sparseTexelsResidentARB(int(_39._m4))));
+    SV_Target.x = ((((_105 + uintBitsToFloat(_39._m0)) + uintBitsToFloat(_59._m0)) + _77._m0) + _94._m0) + _103;
+    SV_Target.y = ((((_105 + uintBitsToFloat(_39._m1)) + uintBitsToFloat(_59._m1)) + _77._m1) + _94._m1) + _103;
 }
 
 
@@ -82,7 +80,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 124
+; Bound: 122
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency
@@ -96,7 +94,7 @@ OpName %15 "TEXCOORD"
 OpName %19 "SV_Target"
 OpName %30 "SparseTexel"
 OpName %38 ""
-OpName %82 ""
+OpName %76 ""
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 1
 OpDecorate %9 DescriptorSet 0
@@ -136,21 +134,21 @@ OpDecorate %19 Location 0
 %45 = OpTypeBool
 %50 = OpConstant %16 1
 %51 = OpConstant %16 0
-%82 = OpTypeStruct %16 %16 %16 %16 %5
-%118 = OpTypePointer Output %16
-%120 = OpConstant %5 0
+%76 = OpTypeStruct %16 %16 %16 %16 %5
+%116 = OpTypePointer Output %16
+%118 = OpConstant %5 0
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %40 = OpUndef %5
 %41 = OpUndef %5
-%62 = OpUndef %5
-%63 = OpUndef %5
-%86 = OpUndef %16
-%87 = OpUndef %16
-%107 = OpUndef %16
-%108 = OpUndef %16
-OpBranch %122
-%122 = OpLabel
+%60 = OpUndef %5
+%61 = OpUndef %5
+%80 = OpUndef %16
+%81 = OpUndef %16
+%97 = OpUndef %16
+%98 = OpUndef %16
+OpBranch %120
+%120 = OpLabel
 %20 = OpLoad %10 %13
 %21 = OpLoad %10 %12
 %22 = OpLoad %6 %9
@@ -172,69 +170,67 @@ OpBranch %122
 %47 = OpBitcast %16 %42
 %48 = OpBitcast %16 %43
 %49 = OpSelect %16 %46 %50 %51
-%52 = OpFAdd %16 %47 %49
-%53 = OpFAdd %16 %48 %49
-%54 = OpIMul %5 %24 %28
-%55 = OpImageSparseRead %30 %21 %54
-%56 = OpCompositeExtract %5 %55 0
-%57 = OpCompositeExtract %5 %55 1 0
-%59 = OpIAdd %5 %54 %36
-%58 = OpImageRead %29 %21 %59
-%60 = OpCompositeExtract %5 %58 0
-%61 = OpCompositeConstruct %38 %57 %60 %62 %63 %56
-%64 = OpCompositeExtract %5 %61 0
-%65 = OpCompositeExtract %5 %61 1
-%66 = OpCompositeExtract %5 %61 4
-%67 = OpImageSparseTexelsResident %45 %66
-%68 = OpBitcast %16 %64
-%69 = OpBitcast %16 %65
-%70 = OpFAdd %16 %52 %68
-%71 = OpFAdd %16 %53 %69
-%72 = OpSelect %16 %67 %50 %51
-%73 = OpFAdd %16 %70 %72
-%74 = OpFAdd %16 %71 %72
-%75 = OpIMul %5 %24 %28
-%76 = OpImageSparseFetch %30 %22 %75
-%77 = OpCompositeExtract %5 %76 0
-%78 = OpCompositeExtract %5 %76 1 0
-%80 = OpIAdd %5 %75 %36
-%79 = OpImageFetch %29 %22 %80
-%81 = OpCompositeExtract %5 %79 0
-%84 = OpBitcast %16 %78
-%85 = OpBitcast %16 %81
-%83 = OpCompositeConstruct %82 %84 %85 %86 %87 %77
-%88 = OpCompositeExtract %16 %83 0
-%89 = OpCompositeExtract %16 %83 1
-%90 = OpCompositeExtract %5 %83 4
-%91 = OpImageSparseTexelsResident %45 %90
-%92 = OpFAdd %16 %73 %88
-%93 = OpFAdd %16 %74 %89
-%94 = OpSelect %16 %91 %50 %51
-%95 = OpFAdd %16 %92 %94
-%96 = OpFAdd %16 %93 %94
-%97 = OpIMul %5 %24 %28
-%98 = OpImageSparseRead %30 %20 %97
-%99 = OpCompositeExtract %5 %98 0
-%100 = OpCompositeExtract %5 %98 1 0
-%102 = OpIAdd %5 %97 %36
-%101 = OpImageRead %29 %20 %102
-%103 = OpCompositeExtract %5 %101 0
-%105 = OpBitcast %16 %100
-%106 = OpBitcast %16 %103
-%104 = OpCompositeConstruct %82 %105 %106 %107 %108 %99
-%109 = OpCompositeExtract %16 %104 0
-%110 = OpCompositeExtract %16 %104 1
-%111 = OpCompositeExtract %5 %104 4
-%112 = OpImageSparseTexelsResident %45 %111
-%113 = OpFAdd %16 %95 %109
-%114 = OpFAdd %16 %96 %110
-%115 = OpSelect %16 %112 %50 %51
-%116 = OpFAdd %16 %113 %115
-%117 = OpFAdd %16 %114 %115
-%119 = OpAccessChain %118 %19 %120
-OpStore %119 %116
-%121 = OpAccessChain %118 %19 %36
-OpStore %121 %117
+%52 = OpIMul %5 %24 %28
+%53 = OpImageSparseRead %30 %21 %52
+%54 = OpCompositeExtract %5 %53 0
+%55 = OpCompositeExtract %5 %53 1 0
+%57 = OpIAdd %5 %52 %36
+%56 = OpImageRead %29 %21 %57
+%58 = OpCompositeExtract %5 %56 0
+%59 = OpCompositeConstruct %38 %55 %58 %60 %61 %54
+%62 = OpCompositeExtract %5 %59 0
+%63 = OpCompositeExtract %5 %59 1
+%64 = OpCompositeExtract %5 %59 4
+%65 = OpImageSparseTexelsResident %45 %64
+%66 = OpBitcast %16 %62
+%67 = OpBitcast %16 %63
+%68 = OpSelect %16 %65 %50 %51
+%69 = OpIMul %5 %24 %28
+%70 = OpImageSparseFetch %30 %22 %69
+%71 = OpCompositeExtract %5 %70 0
+%72 = OpCompositeExtract %5 %70 1 0
+%74 = OpIAdd %5 %69 %36
+%73 = OpImageFetch %29 %22 %74
+%75 = OpCompositeExtract %5 %73 0
+%78 = OpBitcast %16 %72
+%79 = OpBitcast %16 %75
+%77 = OpCompositeConstruct %76 %78 %79 %80 %81 %71
+%82 = OpCompositeExtract %16 %77 0
+%83 = OpCompositeExtract %16 %77 1
+%84 = OpCompositeExtract %5 %77 4
+%85 = OpImageSparseTexelsResident %45 %84
+%86 = OpSelect %16 %85 %50 %51
+%87 = OpIMul %5 %24 %28
+%88 = OpImageSparseRead %30 %20 %87
+%89 = OpCompositeExtract %5 %88 0
+%90 = OpCompositeExtract %5 %88 1 0
+%92 = OpIAdd %5 %87 %36
+%91 = OpImageRead %29 %20 %92
+%93 = OpCompositeExtract %5 %91 0
+%95 = OpBitcast %16 %90
+%96 = OpBitcast %16 %93
+%94 = OpCompositeConstruct %76 %95 %96 %97 %98 %89
+%99 = OpCompositeExtract %16 %94 0
+%100 = OpCompositeExtract %16 %94 1
+%101 = OpCompositeExtract %5 %94 4
+%102 = OpImageSparseTexelsResident %45 %101
+%103 = OpSelect %16 %102 %50 %51
+%104 = OpFAdd %16 %68 %49
+%105 = OpFAdd %16 %86 %104
+%106 = OpFAdd %16 %105 %47
+%107 = OpFAdd %16 %106 %66
+%108 = OpFAdd %16 %107 %82
+%109 = OpFAdd %16 %108 %99
+%110 = OpFAdd %16 %109 %103
+%111 = OpFAdd %16 %105 %48
+%112 = OpFAdd %16 %111 %67
+%113 = OpFAdd %16 %112 %83
+%114 = OpFAdd %16 %113 %100
+%115 = OpFAdd %16 %114 %103
+%117 = OpAccessChain %116 %19 %118
+OpStore %117 %110
+%119 = OpAccessChain %116 %19 %36
+OpStore %119 %115
 OpReturn
 OpFunctionEnd
 #endif

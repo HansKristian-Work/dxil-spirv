@@ -13,14 +13,11 @@ layout(location = 0) out vec2 SV_Target;
 void main()
 {
     vec4 _52 = textureOffset(sampler1D(_8, _23), TEXCOORD.x, 1);
-    vec4 _58 = textureOffset(sampler1DArray(_11, _23), vec2(TEXCOORD.x, TEXCOORD.y), 2);
-    float _60 = _58.x;
-    vec4 _67 = textureOffset(sampler2D(_14, _23), vec2(TEXCOORD.x, TEXCOORD.y), ivec2(3, 4));
-    vec4 _79 = textureOffset(sampler2DArray(_17, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), ivec2(5, 6));
-    float _83 = _79.x;
-    vec4 _89 = textureOffset(sampler3D(_20, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), ivec3(7, 6, 5));
-    SV_Target.x = (((_60 + _52.x) + _67.x) + _83) + _89.x;
-    SV_Target.y = (((_60 + _52.y) + _67.y) + _83) + _89.y;
+    vec4 _65 = textureOffset(sampler2D(_14, _23), vec2(TEXCOORD.x, TEXCOORD.y), ivec2(3, 4));
+    vec4 _83 = textureOffset(sampler3D(_20, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), ivec3(7, 6, 5));
+    float _89 = textureOffset(sampler2DArray(_17, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), ivec2(5, 6)).x + textureOffset(sampler1DArray(_11, _23), vec2(TEXCOORD.x, TEXCOORD.y), 2).x;
+    SV_Target.x = ((_65.x + _52.x) + _89) + _83.x;
+    SV_Target.y = ((_65.y + _52.y) + _89) + _83.y;
 }
 
 
@@ -29,7 +26,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 102
+; Bound: 101
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
@@ -91,25 +88,25 @@ OpDecorate %29 Location 0
 %51 = OpConstant %5 0
 %55 = OpTypeSampledImage %9
 %57 = OpConstant %49 2
-%63 = OpTypeSampledImage %12
-%65 = OpConstant %49 3
-%66 = OpConstant %49 4
-%69 = OpTypeVector %49 2
-%70 = OpConstantComposite %69 %65 %66
-%75 = OpTypeSampledImage %15
-%77 = OpConstant %49 5
-%78 = OpConstant %49 6
-%80 = OpTypeVector %5 3
-%82 = OpConstantComposite %69 %77 %78
-%86 = OpTypeSampledImage %18
-%88 = OpConstant %49 7
-%91 = OpTypeVector %49 3
-%92 = OpConstantComposite %91 %88 %78 %77
-%97 = OpTypePointer Output %5
+%61 = OpTypeSampledImage %12
+%63 = OpConstant %49 3
+%64 = OpConstant %49 4
+%67 = OpTypeVector %49 2
+%68 = OpConstantComposite %67 %63 %64
+%71 = OpTypeSampledImage %15
+%73 = OpConstant %49 5
+%74 = OpConstant %49 6
+%76 = OpTypeVector %5 3
+%78 = OpConstantComposite %67 %73 %74
+%80 = OpTypeSampledImage %18
+%82 = OpConstant %49 7
+%85 = OpTypeVector %49 3
+%86 = OpConstantComposite %85 %82 %74 %73
+%96 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %100
-%100 = OpLabel
+OpBranch %99
+%99 = OpLabel
 %30 = OpLoad %18 %20
 %31 = OpLoad %15 %17
 %32 = OpLoad %12 %14
@@ -130,32 +127,31 @@ OpBranch %100
 %59 = OpCompositeConstruct %27 %40 %43
 %58 = OpImageSampleImplicitLod %24 %56 %59 ConstOffset %57
 %60 = OpCompositeExtract %5 %58 0
-%61 = OpFAdd %5 %60 %53
-%62 = OpFAdd %5 %60 %54
-%64 = OpSampledImage %63 %32 %35
-%68 = OpCompositeConstruct %27 %40 %43
-%67 = OpImageSampleImplicitLod %24 %64 %68 ConstOffset %70
-%71 = OpCompositeExtract %5 %67 0
-%72 = OpCompositeExtract %5 %67 1
-%73 = OpFAdd %5 %61 %71
-%74 = OpFAdd %5 %62 %72
-%76 = OpSampledImage %75 %31 %35
-%81 = OpCompositeConstruct %80 %40 %43 %46
-%79 = OpImageSampleImplicitLod %24 %76 %81 ConstOffset %82
-%83 = OpCompositeExtract %5 %79 0
-%84 = OpFAdd %5 %73 %83
-%85 = OpFAdd %5 %74 %83
-%87 = OpSampledImage %86 %30 %35
-%90 = OpCompositeConstruct %80 %40 %43 %46
-%89 = OpImageSampleImplicitLod %24 %87 %90 ConstOffset %92
-%93 = OpCompositeExtract %5 %89 0
-%94 = OpCompositeExtract %5 %89 1
-%95 = OpFAdd %5 %84 %93
-%96 = OpFAdd %5 %85 %94
-%98 = OpAccessChain %97 %29 %39
+%62 = OpSampledImage %61 %32 %35
+%66 = OpCompositeConstruct %27 %40 %43
+%65 = OpImageSampleImplicitLod %24 %62 %66 ConstOffset %68
+%69 = OpCompositeExtract %5 %65 0
+%70 = OpCompositeExtract %5 %65 1
+%72 = OpSampledImage %71 %31 %35
+%77 = OpCompositeConstruct %76 %40 %43 %46
+%75 = OpImageSampleImplicitLod %24 %72 %77 ConstOffset %78
+%79 = OpCompositeExtract %5 %75 0
+%81 = OpSampledImage %80 %30 %35
+%84 = OpCompositeConstruct %76 %40 %43 %46
+%83 = OpImageSampleImplicitLod %24 %81 %84 ConstOffset %86
+%87 = OpCompositeExtract %5 %83 0
+%88 = OpCompositeExtract %5 %83 1
+%89 = OpFAdd %5 %79 %60
+%90 = OpFAdd %5 %69 %53
+%91 = OpFAdd %5 %90 %89
+%92 = OpFAdd %5 %91 %87
+%93 = OpFAdd %5 %70 %54
+%94 = OpFAdd %5 %93 %89
+%95 = OpFAdd %5 %94 %88
+%97 = OpAccessChain %96 %29 %39
+OpStore %97 %92
+%98 = OpAccessChain %96 %29 %42
 OpStore %98 %95
-%99 = OpAccessChain %97 %29 %42
-OpStore %99 %96
 OpReturn
 OpFunctionEnd
 #endif

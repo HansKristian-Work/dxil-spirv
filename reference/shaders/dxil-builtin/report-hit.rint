@@ -12,13 +12,13 @@ hitAttributeEXT _6 hit;
 void main()
 {
     float _14 = gl_RayTmaxEXT;
-    _6 _10;
-    _10._m0 = _14;
     _6 _11;
-    _11._m0 = gl_RayTminEXT;
-    hit = _10;
-    bool _24 = reportIntersectionEXT(4.0, 100u);
+    _11._m0 = _14;
     hit = _11;
+    bool _23 = reportIntersectionEXT(4.0, 100u);
+    _6 _10;
+    _10._m0 = gl_RayTminEXT;
+    hit = _10;
     bool _28 = reportIntersectionEXT(3.0, 50u);
 }
 
@@ -44,13 +44,13 @@ OpCapability StorageImageArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint IntersectionKHR %3 "main" %8 %13 %19
+OpEntryPoint IntersectionKHR %3 "main" %8 %13 %15
 OpName %3 "main"
 OpName %6 ""
 OpName %8 "hit"
 OpDecorate %13 BuiltIn RayTmaxKHR
 OpDecorate %13 Volatile
-OpDecorate %19 BuiltIn RayTminKHR
+OpDecorate %15 BuiltIn RayTminKHR
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -60,15 +60,15 @@ OpDecorate %19 BuiltIn RayTminKHR
 %9 = OpTypePointer Function %6
 %12 = OpTypePointer Input %5
 %13 = OpVariable %12 Input
-%15 = OpTypePointer Function %5
-%17 = OpTypeInt 32 0
-%18 = OpConstant %17 0
-%19 = OpVariable %12 Input
-%23 = OpTypeBool
-%25 = OpConstant %5 4
-%26 = OpConstant %17 100
+%15 = OpVariable %12 Input
+%17 = OpTypePointer Function %5
+%19 = OpTypeInt 32 0
+%20 = OpConstant %19 0
+%22 = OpTypeBool
+%24 = OpConstant %5 4
+%25 = OpConstant %19 100
 %29 = OpConstant %5 3
-%30 = OpConstant %17 50
+%30 = OpConstant %19 50
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %10 = OpVariable %9 Function
@@ -76,17 +76,17 @@ OpDecorate %19 BuiltIn RayTminKHR
 OpBranch %31
 %31 = OpLabel
 %14 = OpLoad %5 %13
-%16 = OpInBoundsAccessChain %15 %10 %18
-OpStore %16 %14
-%20 = OpLoad %5 %19
-%21 = OpInBoundsAccessChain %15 %11 %18
-OpStore %21 %20
-%22 = OpLoad %6 %10
-OpStore %8 %22
-%24 = OpReportIntersectionKHR %23 %25 %26
-%27 = OpLoad %6 %11
+%16 = OpLoad %5 %15
+%18 = OpInBoundsAccessChain %17 %11 %20
+OpStore %18 %14
+%21 = OpLoad %6 %11
+OpStore %8 %21
+%23 = OpReportIntersectionKHR %22 %24 %25
+%26 = OpInBoundsAccessChain %17 %10 %20
+OpStore %26 %16
+%27 = OpLoad %6 %10
 OpStore %8 %27
-%28 = OpReportIntersectionKHR %23 %29 %30
+%28 = OpReportIntersectionKHR %22 %29 %30
 OpReturn
 OpFunctionEnd
 #endif

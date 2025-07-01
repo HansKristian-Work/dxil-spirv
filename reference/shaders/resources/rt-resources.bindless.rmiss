@@ -33,10 +33,10 @@ void main()
     vec4 _45 = texelFetch(_13[registers._m0 + payload._m1], ivec2(uvec2(0u)), int(0u));
     vec4 _62 = texelFetch(_13[(registers._m0 + 10u) + payload._m1], ivec2(uvec2(0u)), int(0u));
     vec4 _72;
-    _72.x = (_31.x + _45.x) + _62.x;
-    _72.y = (_31.y + _45.y) + _62.y;
-    _72.z = (_31.z + _45.z) + _62.z;
-    _72.w = (_31.w + _45.w) + _62.w;
+    _72.x = _62.x + (_45.x + _31.x);
+    _72.y = _62.y + (_45.y + _31.y);
+    _72.z = _62.z + (_45.z + _31.z);
+    _72.w = _62.w + (_45.w + _31.w);
     payload._m0 = _72;
 }
 
@@ -135,10 +135,10 @@ OpBranch %77
 %48 = OpCompositeExtract %9 %45 1
 %49 = OpCompositeExtract %9 %45 2
 %50 = OpCompositeExtract %9 %45 3
-%51 = OpFAdd %9 %34 %47
-%52 = OpFAdd %9 %35 %48
-%53 = OpFAdd %9 %36 %49
-%54 = OpFAdd %9 %37 %50
+%51 = OpFAdd %9 %47 %34
+%52 = OpFAdd %9 %48 %35
+%53 = OpFAdd %9 %49 %36
+%54 = OpFAdd %9 %50 %37
 %56 = OpAccessChain %25 %8 %27
 %57 = OpLoad %5 %56
 %58 = OpIAdd %5 %57 %59
@@ -151,10 +151,10 @@ OpBranch %77
 %65 = OpCompositeExtract %9 %62 1
 %66 = OpCompositeExtract %9 %62 2
 %67 = OpCompositeExtract %9 %62 3
-%68 = OpFAdd %9 %51 %64
-%69 = OpFAdd %9 %52 %65
-%70 = OpFAdd %9 %53 %66
-%71 = OpFAdd %9 %54 %67
+%68 = OpFAdd %9 %64 %51
+%69 = OpFAdd %9 %65 %52
+%70 = OpFAdd %9 %66 %53
+%71 = OpFAdd %9 %67 %54
 %72 = OpCompositeInsert %14 %68 %73 0
 %74 = OpCompositeInsert %14 %69 %72 1
 %75 = OpCompositeInsert %14 %70 %74 2

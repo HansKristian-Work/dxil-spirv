@@ -42,13 +42,19 @@ layout(push_constant, std430) uniform RootConstants
 } registers;
 
 layout(location = 0) rayPayloadEXT _23 _25;
+layout(location = 1) rayPayloadEXT _23 _26;
+layout(location = 2) rayPayloadEXT _23 _27;
+layout(location = 3) rayPayloadEXT _23 _28;
 
 void main()
 {
-    _25._m0 = vec4(1.0, 2.0, 3.0, 4.0);
-    traceRayEXT(accelerationStructureEXT(_20._m0[(4u * subgroupBroadcastFirst((registers._m0 + 100u) + 10u)) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
-    traceRayEXT(accelerationStructureEXT(_20._m0[(4u * subgroupBroadcastFirst(registers._m0 + 3u)) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
-    traceRayEXT(accelerationStructureEXT(_20._m0[(4u * ((registers._m0 + 100u) + uint(int(_25._m0.w)))) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    _28._m0 = vec4(1.0, 2.0, 3.0, 4.0);
+    traceRayEXT(accelerationStructureEXT(_20._m0[(4u * subgroupBroadcastFirst((registers._m0 + 100u) + 10u)) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 3);
+    _27._m0 = _28._m0;
+    traceRayEXT(accelerationStructureEXT(_20._m0[(4u * subgroupBroadcastFirst(registers._m0 + 3u)) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 2);
+    _26._m0 = _27._m0;
+    traceRayEXT(accelerationStructureEXT(_20._m0[(4u * ((registers._m0 + 100u) + uint(int(_27._m0.w)))) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    _25._m0 = _26._m0;
     traceRayEXT(accelerationStructureEXT(_20._m0[(4u * subgroupBroadcastFirst(((SBT._m7.x >> 6u) + 10u) + 200u)) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
 }
 
@@ -58,7 +64,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 98
+; Bound: 106
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -77,7 +83,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint RayGenerationKHR %3 "main" %8 %16 %20 %25
+OpEntryPoint RayGenerationKHR %3 "main" %8 %16 %20 %25 %26 %27 %28
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -138,85 +144,96 @@ OpDecorate %20 Restrict
 %23 = OpTypeStruct %22
 %24 = OpTypePointer RayPayloadKHR %23
 %25 = OpVariable %24 RayPayloadKHR
-%26 = OpTypePointer RayPayloadKHR %22
-%28 = OpConstant %5 0
-%29 = OpConstant %21 1
-%30 = OpConstant %21 2
-%31 = OpConstant %21 3
-%32 = OpConstant %21 4
-%33 = OpConstantComposite %22 %29 %30 %31 %32
-%34 = OpTypePointer PushConstant %5
-%38 = OpConstant %5 100
-%40 = OpConstant %5 10
-%42 = OpConstant %5 3
-%44 = OpConstant %5 4
-%46 = OpTypePointer StorageBuffer %13
-%49 = OpTypeAccelerationStructureKHR
-%51 = OpConstant %21 0
-%52 = OpTypeVector %21 3
-%80 = OpTypePointer ShaderRecordBufferKHR %5
-%82 = OpConstant %5 7
-%87 = OpConstant %5 200
+%26 = OpVariable %24 RayPayloadKHR
+%27 = OpVariable %24 RayPayloadKHR
+%28 = OpVariable %24 RayPayloadKHR
+%29 = OpTypePointer PushConstant %5
+%31 = OpConstant %5 0
+%34 = OpConstant %5 100
+%36 = OpConstant %5 10
+%38 = OpConstant %5 3
+%40 = OpConstant %5 4
+%42 = OpTypePointer StorageBuffer %13
+%45 = OpTypeAccelerationStructureKHR
+%47 = OpTypePointer RayPayloadKHR %22
+%49 = OpConstant %21 1
+%50 = OpConstant %21 2
+%51 = OpConstant %21 3
+%52 = OpConstant %21 4
+%53 = OpConstantComposite %22 %49 %50 %51 %52
+%54 = OpConstant %21 0
+%55 = OpTypeVector %21 3
+%87 = OpTypePointer ShaderRecordBufferKHR %5
+%89 = OpConstant %5 7
+%94 = OpConstant %5 200
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %96
-%96 = OpLabel
-%27 = OpInBoundsAccessChain %26 %25 %28
-OpStore %27 %33
-%35 = OpAccessChain %34 %8 %28
-%36 = OpLoad %5 %35
-%37 = OpIAdd %5 %36 %38
-%39 = OpIAdd %5 %37 %40
-%41 = OpGroupNonUniformBroadcastFirst %5 %42 %39
-%43 = OpIMul %5 %44 %41
-%45 = OpIAdd %5 %43 %42
-%47 = OpAccessChain %46 %20 %28 %45
-%48 = OpLoad %13 %47
-%50 = OpConvertUToAccelerationStructureKHR %49 %48
-%53 = OpCompositeConstruct %52 %29 %30 %31
-%54 = OpCompositeConstruct %52 %51 %51 %29
-OpTraceRayKHR %50 %28 %28 %28 %28 %28 %53 %29 %54 %32 %25
-%55 = OpAccessChain %34 %8 %28
-%56 = OpLoad %5 %55
-%57 = OpIAdd %5 %56 %42
-%58 = OpGroupNonUniformBroadcastFirst %5 %42 %57
-%59 = OpIMul %5 %44 %58
-%60 = OpIAdd %5 %59 %42
-%61 = OpAccessChain %46 %20 %28 %60
-%62 = OpLoad %13 %61
-%63 = OpConvertUToAccelerationStructureKHR %49 %62
-%64 = OpCompositeConstruct %52 %29 %30 %31
-%65 = OpCompositeConstruct %52 %51 %51 %29
-OpTraceRayKHR %63 %28 %28 %28 %28 %28 %64 %29 %65 %32 %25
-%66 = OpLoad %22 %27
-%67 = OpCompositeExtract %21 %66 3
-%68 = OpConvertFToS %5 %67
-%69 = OpAccessChain %34 %8 %28
-%70 = OpLoad %5 %69
-%71 = OpIAdd %5 %70 %38
-%72 = OpIAdd %5 %71 %68
-%73 = OpIMul %5 %44 %72
-%74 = OpIAdd %5 %73 %42
-%75 = OpAccessChain %46 %20 %28 %74
-%76 = OpLoad %13 %75
-%77 = OpConvertUToAccelerationStructureKHR %49 %76
-%78 = OpCompositeConstruct %52 %29 %30 %31
-%79 = OpCompositeConstruct %52 %51 %51 %29
-OpTraceRayKHR %77 %28 %28 %28 %28 %28 %78 %29 %79 %32 %25
-%81 = OpAccessChain %80 %16 %82 %28
-%83 = OpLoad %5 %81
-%84 = OpShiftRightLogical %5 %83 %11
-%85 = OpIAdd %5 %84 %40
-%86 = OpIAdd %5 %85 %87
-%88 = OpGroupNonUniformBroadcastFirst %5 %42 %86
-%89 = OpIMul %5 %44 %88
-%90 = OpIAdd %5 %89 %42
-%91 = OpAccessChain %46 %20 %28 %90
-%92 = OpLoad %13 %91
-%93 = OpConvertUToAccelerationStructureKHR %49 %92
-%94 = OpCompositeConstruct %52 %29 %30 %31
-%95 = OpCompositeConstruct %52 %51 %51 %29
-OpTraceRayKHR %93 %28 %28 %28 %28 %28 %94 %29 %95 %32 %25
+OpBranch %104
+%104 = OpLabel
+%30 = OpAccessChain %29 %8 %31
+%32 = OpLoad %5 %30
+%33 = OpIAdd %5 %32 %34
+%35 = OpIAdd %5 %33 %36
+%37 = OpGroupNonUniformBroadcastFirst %5 %38 %35
+%39 = OpIMul %5 %40 %37
+%41 = OpIAdd %5 %39 %38
+%43 = OpAccessChain %42 %20 %31 %41
+%44 = OpLoad %13 %43
+%46 = OpConvertUToAccelerationStructureKHR %45 %44
+%48 = OpInBoundsAccessChain %47 %28 %31
+OpStore %48 %53
+%56 = OpCompositeConstruct %55 %49 %50 %51
+%57 = OpCompositeConstruct %55 %54 %54 %49
+OpTraceRayKHR %46 %31 %31 %31 %31 %31 %56 %49 %57 %52 %28
+%58 = OpLoad %22 %48
+%59 = OpAccessChain %29 %8 %31
+%60 = OpLoad %5 %59
+%61 = OpIAdd %5 %60 %38
+%62 = OpGroupNonUniformBroadcastFirst %5 %38 %61
+%63 = OpIMul %5 %40 %62
+%64 = OpIAdd %5 %63 %38
+%65 = OpAccessChain %42 %20 %31 %64
+%66 = OpLoad %13 %65
+%67 = OpConvertUToAccelerationStructureKHR %45 %66
+%68 = OpInBoundsAccessChain %47 %27 %31
+OpStore %68 %58
+%69 = OpCompositeConstruct %55 %49 %50 %51
+%70 = OpCompositeConstruct %55 %54 %54 %49
+OpTraceRayKHR %67 %31 %31 %31 %31 %31 %69 %49 %70 %52 %27
+%71 = OpLoad %22 %68
+%72 = OpCompositeExtract %21 %71 3
+%73 = OpConvertFToS %5 %72
+%74 = OpAccessChain %29 %8 %31
+%75 = OpLoad %5 %74
+%76 = OpIAdd %5 %75 %34
+%77 = OpIAdd %5 %76 %73
+%78 = OpIMul %5 %40 %77
+%79 = OpIAdd %5 %78 %38
+%80 = OpAccessChain %42 %20 %31 %79
+%81 = OpLoad %13 %80
+%82 = OpConvertUToAccelerationStructureKHR %45 %81
+%83 = OpInBoundsAccessChain %47 %26 %31
+OpStore %83 %71
+%84 = OpCompositeConstruct %55 %49 %50 %51
+%85 = OpCompositeConstruct %55 %54 %54 %49
+OpTraceRayKHR %82 %31 %31 %31 %31 %31 %84 %49 %85 %52 %26
+%86 = OpLoad %22 %83
+%88 = OpAccessChain %87 %16 %89 %31
+%90 = OpLoad %5 %88
+%91 = OpShiftRightLogical %5 %90 %11
+%92 = OpIAdd %5 %91 %36
+%93 = OpIAdd %5 %92 %94
+%95 = OpGroupNonUniformBroadcastFirst %5 %38 %93
+%96 = OpIMul %5 %40 %95
+%97 = OpIAdd %5 %96 %38
+%98 = OpAccessChain %42 %20 %31 %97
+%99 = OpLoad %13 %98
+%100 = OpConvertUToAccelerationStructureKHR %45 %99
+%101 = OpInBoundsAccessChain %47 %25 %31
+OpStore %101 %86
+%102 = OpCompositeConstruct %55 %49 %50 %51
+%103 = OpCompositeConstruct %55 %54 %54 %49
+OpTraceRayKHR %100 %31 %31 %31 %31 %31 %102 %49 %103 %52 %25
 OpReturn
 OpFunctionEnd
 #endif

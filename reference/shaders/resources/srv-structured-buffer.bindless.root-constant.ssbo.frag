@@ -48,9 +48,9 @@ void main()
     vec2 _78 = uintBitsToFloat(_19[registers._m1 + (uvec4(registers._m4, registers._m5, registers._m6, registers._m7).x + 4u)]._m0[_48]);
     float _81 = _78.x + _52;
     vec3 _93 = uintBitsToFloat(_25[nonuniformEXT(registers._m1 + (INDEX + 100u))]._m0[_48]);
-    SV_Target.x = _81 + _93.x;
+    SV_Target.x = _93.x + _81;
     SV_Target.y = (_78.y + _52) + _93.y;
-    SV_Target.z = _81 + _93.z;
+    SV_Target.z = _93.z + _81;
 }
 
 
@@ -225,9 +225,9 @@ OpBranch %105
 %94 = OpCompositeExtract %26 %93 0
 %95 = OpCompositeExtract %26 %93 1
 %96 = OpCompositeExtract %26 %93 2
-%97 = OpFAdd %26 %81 %94
+%97 = OpFAdd %26 %94 %81
 %98 = OpFAdd %26 %82 %95
-%99 = OpFAdd %26 %81 %96
+%99 = OpFAdd %26 %96 %81
 %101 = OpAccessChain %100 %34 %46
 OpStore %101 %97
 %102 = OpAccessChain %100 %34 %39

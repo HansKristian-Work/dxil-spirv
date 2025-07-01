@@ -10,7 +10,7 @@ layout(location = 1, component = 1) patch in float D;
 
 void main()
 {
-    gl_Position.x = (((SV_CullDistance[1u].y + SV_ClipDistance[1u]) * gl_TessCoord.y) + ((SV_CullDistance[2u].x + SV_ClipDistance[2u]) * gl_TessCoord.z)) + ((SV_CullDistance[0u].z + SV_ClipDistance[0u]) * gl_TessCoord.x);
+    gl_Position.x = (((SV_CullDistance[1u].y + SV_ClipDistance[1u]) * gl_TessCoord.y) + ((SV_CullDistance[0u].z + SV_ClipDistance[0u]) * gl_TessCoord.x)) + ((SV_CullDistance[2u].x + SV_ClipDistance[2u]) * gl_TessCoord.z);
     gl_Position.y = C[1u] + C[0u];
     gl_Position.z = C[2u];
     gl_Position.w = D;
@@ -105,8 +105,8 @@ OpBranch %70
 %51 = OpFMul %5 %50 %32
 %52 = OpFAdd %5 %43 %37
 %53 = OpFMul %5 %52 %30
-%54 = OpFAdd %5 %51 %49
-%55 = OpFAdd %5 %54 %53
+%54 = OpFAdd %5 %51 %53
+%55 = OpFAdd %5 %54 %49
 %56 = OpAccessChain %23 %22 %29
 %57 = OpLoad %5 %56
 %58 = OpAccessChain %23 %22 %18

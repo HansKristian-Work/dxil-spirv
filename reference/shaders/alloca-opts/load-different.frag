@@ -28,10 +28,11 @@ void main()
     _42[2u] = _21._m0[0u].z;
     _42[3u] = _21._m0[0u].w;
     uint _59 = A & 3u;
-    SV_Target.x = (_11._m0[_59] * P.x) * _42[_59];
-    SV_Target.y = (_11._m0[_59] * P.y) * _42[_59];
-    SV_Target.z = (_11._m0[_59] * P.z) * _42[_59];
-    SV_Target.w = (_11._m0[_59] * P.w) * _42[_59];
+    float _65 = _42[_59] * _11._m0[_59];
+    SV_Target.x = _65 * P.x;
+    SV_Target.y = _65 * P.y;
+    SV_Target.z = _65 * P.z;
+    SV_Target.w = _65 * P.w;
 }
 
 
@@ -40,7 +41,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 80
+; Bound: 77
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -105,12 +106,12 @@ OpDecorate %27 Location 0
 %43 = OpTypePointer Uniform %13
 %50 = OpTypePointer Function %7
 %60 = OpTypePointer Uniform %7
-%73 = OpTypePointer Output %7
+%70 = OpTypePointer Output %7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %42 = OpVariable %41 Function
-OpBranch %78
-%78 = OpLabel
+OpBranch %75
+%75 = OpLabel
 %29 = OpAccessChain %28 %25 %30
 %31 = OpLoad %7 %29
 %32 = OpAccessChain %28 %25 %12
@@ -141,24 +142,21 @@ OpStore %58 %57
 %59 = OpBitwiseAnd %5 %40 %38
 %61 = OpAccessChain %60 %11 %30 %59
 %62 = OpLoad %7 %61
-%63 = OpFMul %7 %62 %31
-%64 = OpFMul %7 %62 %33
-%65 = OpFMul %7 %62 %36
-%66 = OpFMul %7 %62 %39
-%67 = OpInBoundsAccessChain %50 %42 %59
-%68 = OpLoad %7 %67
-%69 = OpFMul %7 %63 %68
-%70 = OpFMul %7 %64 %68
-%71 = OpFMul %7 %65 %68
-%72 = OpFMul %7 %66 %68
-%74 = OpAccessChain %73 %27 %30
+%63 = OpInBoundsAccessChain %50 %42 %59
+%64 = OpLoad %7 %63
+%65 = OpFMul %7 %64 %62
+%66 = OpFMul %7 %65 %31
+%67 = OpFMul %7 %65 %33
+%68 = OpFMul %7 %65 %36
+%69 = OpFMul %7 %65 %39
+%71 = OpAccessChain %70 %27 %30
+OpStore %71 %66
+%72 = OpAccessChain %70 %27 %12
+OpStore %72 %67
+%73 = OpAccessChain %70 %27 %35
+OpStore %73 %68
+%74 = OpAccessChain %70 %27 %38
 OpStore %74 %69
-%75 = OpAccessChain %73 %27 %12
-OpStore %75 %70
-%76 = OpAccessChain %73 %27 %35
-OpStore %76 %71
-%77 = OpAccessChain %73 %27 %38
-OpStore %77 %72
 OpReturn
 OpFunctionEnd
 #endif

@@ -9,9 +9,9 @@ void main()
 {
     float _37 = gl_CullDistance[0u] + gl_CullDistance[2u];
     float _39 = gl_CullDistance[1u] + gl_CullDistance[2u];
-    SV_Target.x = _37 + gl_ClipDistance[0u];
-    SV_Target.y = _39 + gl_ClipDistance[1u];
-    SV_Target.z = _37 + gl_ClipDistance[2u];
+    SV_Target.x = gl_ClipDistance[0u] + _37;
+    SV_Target.y = gl_ClipDistance[1u] + _39;
+    SV_Target.z = gl_ClipDistance[2u] + _37;
     SV_Target.w = _39 + gl_ClipDistance[3u];
 }
 
@@ -74,10 +74,10 @@ OpBranch %48
 %35 = OpAccessChain %19 %11 %27
 %36 = OpLoad %5 %35
 %37 = OpFAdd %5 %25 %22
-%38 = OpFAdd %5 %37 %34
+%38 = OpFAdd %5 %34 %37
 %39 = OpFAdd %5 %28 %22
-%40 = OpFAdd %5 %39 %36
-%41 = OpFAdd %5 %37 %32
+%40 = OpFAdd %5 %36 %39
+%41 = OpFAdd %5 %32 %37
 %42 = OpFAdd %5 %39 %30
 %44 = OpAccessChain %43 %18 %24
 OpStore %44 %38

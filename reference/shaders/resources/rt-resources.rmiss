@@ -20,10 +20,10 @@ void main()
     vec4 _28 = texelFetch(Tex[payload._m1 & 1u], ivec2(uvec2(0u)), int(0u));
     vec4 _39 = texelFetch(TexUnsized[payload._m1], ivec2(uvec2(0u)), int(0u));
     vec4 _49;
-    _49.x = _28.x + _39.x;
-    _49.y = _28.y + _39.y;
-    _49.z = _28.z + _39.z;
-    _49.w = _28.w + _39.w;
+    _49.x = _39.x + _28.x;
+    _49.y = _39.y + _28.y;
+    _49.z = _39.z + _28.z;
+    _49.w = _39.w + _28.w;
     payload._m0 = _49;
 }
 
@@ -106,10 +106,10 @@ OpBranch %54
 %42 = OpCompositeExtract %5 %39 1
 %43 = OpCompositeExtract %5 %39 2
 %44 = OpCompositeExtract %5 %39 3
-%45 = OpFAdd %5 %31 %41
-%46 = OpFAdd %5 %32 %42
-%47 = OpFAdd %5 %33 %43
-%48 = OpFAdd %5 %34 %44
+%45 = OpFAdd %5 %41 %31
+%46 = OpFAdd %5 %42 %32
+%47 = OpFAdd %5 %43 %33
+%48 = OpFAdd %5 %44 %34
 %49 = OpCompositeInsert %15 %45 %50 0
 %51 = OpCompositeInsert %15 %46 %49 1
 %52 = OpCompositeInsert %15 %47 %51 2

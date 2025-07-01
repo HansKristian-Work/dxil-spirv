@@ -51,21 +51,21 @@ OpName %8 "payload"
 %8 = OpVariable %7 IncomingCallableDataKHR
 %9 = OpTypePointer CallableDataKHR %6
 %10 = OpVariable %9 CallableDataKHR
-%11 = OpTypePointer CallableDataKHR %5
+%11 = OpTypePointer IncomingCallableDataKHR %5
 %13 = OpTypeInt 32 0
 %14 = OpConstant %13 0
-%15 = OpTypePointer IncomingCallableDataKHR %5
+%16 = OpTypePointer CallableDataKHR %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %19
 %19 = OpLabel
-%12 = OpInBoundsAccessChain %11 %10 %14
-%16 = OpInBoundsAccessChain %15 %8 %14
-%17 = OpLoad %5 %16
-OpStore %12 %17
+%12 = OpInBoundsAccessChain %11 %8 %14
+%15 = OpLoad %5 %12
+%17 = OpInBoundsAccessChain %16 %10 %14
+OpStore %17 %15
 OpExecuteCallableKHR %14 %10
-%18 = OpLoad %5 %12
-OpStore %16 %18
+%18 = OpLoad %5 %17
+OpStore %12 %18
 OpReturn
 OpFunctionEnd
 #endif

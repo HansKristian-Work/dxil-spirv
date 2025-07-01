@@ -22,13 +22,17 @@ layout(push_constant, std430) uniform RootConstants
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT _12[];
 layout(location = 0) rayPayloadEXT _15 _17;
+layout(location = 1) rayPayloadEXT _15 _18;
+layout(location = 2) rayPayloadEXT _15 _19;
 
 void main()
 {
-    _17._m0 = vec4(1.0, 2.0, 3.0, 4.0);
-    traceRayEXT(_12[(registers._m0 + 100u) + 10u], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
-    traceRayEXT(_12[registers._m0 + 3u], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
-    traceRayEXT(_12[nonuniformEXT((registers._m0 + 100u) + uint(int(_17._m0.w)))], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    _19._m0 = vec4(1.0, 2.0, 3.0, 4.0);
+    traceRayEXT(_12[(registers._m0 + 100u) + 10u], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 2);
+    _18._m0 = _19._m0;
+    traceRayEXT(_12[registers._m0 + 3u], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    _17._m0 = _18._m0;
+    traceRayEXT(_12[nonuniformEXT((registers._m0 + 100u) + uint(int(_18._m0.w)))], 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
 }
 
 
@@ -37,7 +41,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 66
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -55,7 +59,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %17
+OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %17 %18 %19
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -71,8 +75,8 @@ OpMemberDecorate %6 6 Offset 24
 OpMemberDecorate %6 7 Offset 28
 OpDecorate %12 DescriptorSet 0
 OpDecorate %12 Binding 0
-OpDecorate %55 NonUniform
-OpDecorate %56 NonUniform
+OpDecorate %59 NonUniform
+OpDecorate %60 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -88,55 +92,62 @@ OpDecorate %56 NonUniform
 %15 = OpTypeStruct %14
 %16 = OpTypePointer RayPayloadKHR %15
 %17 = OpVariable %16 RayPayloadKHR
-%18 = OpTypePointer RayPayloadKHR %14
-%20 = OpConstant %5 0
-%21 = OpConstant %13 1
-%22 = OpConstant %13 2
-%23 = OpConstant %13 3
-%24 = OpConstant %13 4
-%25 = OpConstantComposite %14 %21 %22 %23 %24
-%26 = OpTypePointer UniformConstant %9
-%28 = OpTypePointer PushConstant %5
-%32 = OpConstant %5 100
-%34 = OpConstant %5 10
-%36 = OpConstant %13 0
-%37 = OpTypeVector %13 3
-%44 = OpConstant %5 3
+%18 = OpVariable %16 RayPayloadKHR
+%19 = OpVariable %16 RayPayloadKHR
+%20 = OpTypePointer UniformConstant %9
+%22 = OpTypePointer PushConstant %5
+%24 = OpConstant %5 0
+%27 = OpConstant %5 100
+%29 = OpConstant %5 10
+%31 = OpTypePointer RayPayloadKHR %14
+%33 = OpConstant %13 1
+%34 = OpConstant %13 2
+%35 = OpConstant %13 3
+%36 = OpConstant %13 4
+%37 = OpConstantComposite %14 %33 %34 %35 %36
+%38 = OpConstant %13 0
+%39 = OpTypeVector %13 3
+%47 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %59
-%59 = OpLabel
-%19 = OpInBoundsAccessChain %18 %17 %20
-OpStore %19 %25
-%29 = OpAccessChain %28 %8 %20
-%30 = OpLoad %5 %29
-%31 = OpIAdd %5 %30 %32
-%33 = OpIAdd %5 %31 %34
-%27 = OpAccessChain %26 %12 %33
-%35 = OpLoad %9 %27
-%38 = OpCompositeConstruct %37 %21 %22 %23
-%39 = OpCompositeConstruct %37 %36 %36 %21
-OpTraceRayKHR %35 %20 %20 %20 %20 %20 %38 %21 %39 %24 %17
-%41 = OpAccessChain %28 %8 %20
-%42 = OpLoad %5 %41
-%43 = OpIAdd %5 %42 %44
-%40 = OpAccessChain %26 %12 %43
-%45 = OpLoad %9 %40
-%46 = OpCompositeConstruct %37 %21 %22 %23
-%47 = OpCompositeConstruct %37 %36 %36 %21
-OpTraceRayKHR %45 %20 %20 %20 %20 %20 %46 %21 %47 %24 %17
-%48 = OpLoad %14 %19
-%49 = OpCompositeExtract %13 %48 3
-%50 = OpConvertFToS %5 %49
-%52 = OpAccessChain %28 %8 %20
-%53 = OpLoad %5 %52
-%54 = OpIAdd %5 %53 %32
-%55 = OpIAdd %5 %54 %50
-%51 = OpAccessChain %26 %12 %55
-%56 = OpLoad %9 %51
-%57 = OpCompositeConstruct %37 %21 %22 %23
-%58 = OpCompositeConstruct %37 %36 %36 %21
-OpTraceRayKHR %56 %20 %20 %20 %20 %20 %57 %21 %58 %24 %17
+OpBranch %64
+%64 = OpLabel
+%23 = OpAccessChain %22 %8 %24
+%25 = OpLoad %5 %23
+%26 = OpIAdd %5 %25 %27
+%28 = OpIAdd %5 %26 %29
+%21 = OpAccessChain %20 %12 %28
+%30 = OpLoad %9 %21
+%32 = OpInBoundsAccessChain %31 %19 %24
+OpStore %32 %37
+%40 = OpCompositeConstruct %39 %33 %34 %35
+%41 = OpCompositeConstruct %39 %38 %38 %33
+OpTraceRayKHR %30 %24 %24 %24 %24 %24 %40 %33 %41 %36 %19
+%42 = OpLoad %14 %32
+%44 = OpAccessChain %22 %8 %24
+%45 = OpLoad %5 %44
+%46 = OpIAdd %5 %45 %47
+%43 = OpAccessChain %20 %12 %46
+%48 = OpLoad %9 %43
+%49 = OpInBoundsAccessChain %31 %18 %24
+OpStore %49 %42
+%50 = OpCompositeConstruct %39 %33 %34 %35
+%51 = OpCompositeConstruct %39 %38 %38 %33
+OpTraceRayKHR %48 %24 %24 %24 %24 %24 %50 %33 %51 %36 %18
+%52 = OpLoad %14 %49
+%53 = OpCompositeExtract %13 %52 3
+%54 = OpConvertFToS %5 %53
+%56 = OpAccessChain %22 %8 %24
+%57 = OpLoad %5 %56
+%58 = OpIAdd %5 %57 %27
+%59 = OpIAdd %5 %58 %54
+%55 = OpAccessChain %20 %12 %59
+%60 = OpLoad %9 %55
+%61 = OpInBoundsAccessChain %31 %17 %24
+OpStore %61 %52
+%62 = OpCompositeConstruct %39 %33 %34 %35
+%63 = OpCompositeConstruct %39 %38 %38 %33
+OpTraceRayKHR %60 %24 %24 %24 %24 %24 %62 %33 %63 %36 %17
 OpReturn
 OpFunctionEnd
 #endif

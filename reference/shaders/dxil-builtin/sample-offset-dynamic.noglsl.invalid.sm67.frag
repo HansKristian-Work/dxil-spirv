@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 145
+; Bound: 144
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageGatherExtended
@@ -76,17 +76,17 @@ OpDecorate %35 Location 0
 %60 = OpConstant %55 0
 %61 = OpConstant %55 4
 %70 = OpTypeSampledImage %9
-%86 = OpTypeSampledImage %12
-%92 = OpTypeVector %55 2
-%106 = OpTypeSampledImage %15
-%111 = OpTypeVector %5 3
-%126 = OpTypeSampledImage %18
-%133 = OpTypeVector %55 3
-%140 = OpTypePointer Output %5
+%84 = OpTypeSampledImage %12
+%90 = OpTypeVector %55 2
+%102 = OpTypeSampledImage %15
+%107 = OpTypeVector %5 3
+%120 = OpTypeSampledImage %18
+%127 = OpTypeVector %55 3
+%139 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %143
-%143 = OpLabel
+OpBranch %142
+%142 = OpLabel
 %37 = OpAccessChain %36 %32 %38
 %39 = OpLoad %5 %37
 %40 = OpAccessChain %36 %32 %41
@@ -117,67 +117,66 @@ OpBranch %143
 %75 = OpBitFieldSExtract %55 %72 %60 %61
 %73 = OpImageSampleImplicitLod %23 %71 %74 Offset %75
 %76 = OpCompositeExtract %5 %73 0
-%77 = OpFAdd %5 %76 %62
-%78 = OpFAdd %5 %76 %63
-%79 = OpAccessChain %45 %27 %38 %38
-%80 = OpLoad %23 %79
-%81 = OpBitcast %48 %80
-%82 = OpCompositeExtract %21 %81 1
-%83 = OpCompositeExtract %21 %81 2
-%84 = OpLoad %12 %14
-%85 = OpLoad %28 %30
-%87 = OpSampledImage %86 %84 %85
-%88 = OpBitcast %55 %82
-%89 = OpBitcast %55 %83
-%91 = OpCompositeConstruct %33 %39 %42
-%93 = OpCompositeConstruct %92 %88 %89
-%94 = OpBitFieldSExtract %92 %93 %60 %61
-%90 = OpImageSampleImplicitLod %23 %87 %91 Offset %94
-%95 = OpCompositeExtract %5 %90 0
-%96 = OpCompositeExtract %5 %90 1
-%97 = OpFAdd %5 %77 %95
-%98 = OpFAdd %5 %78 %96
-%99 = OpAccessChain %45 %27 %38 %38
-%100 = OpLoad %23 %99
-%101 = OpBitcast %48 %100
-%102 = OpCompositeExtract %21 %101 1
-%103 = OpCompositeExtract %21 %101 2
-%104 = OpLoad %15 %17
-%105 = OpLoad %28 %30
-%107 = OpSampledImage %106 %104 %105
-%108 = OpBitcast %55 %102
-%109 = OpBitcast %55 %103
-%112 = OpCompositeConstruct %111 %39 %42 %44
-%113 = OpCompositeConstruct %92 %108 %109
-%114 = OpBitFieldSExtract %92 %113 %60 %61
-%110 = OpImageSampleImplicitLod %23 %107 %112 Offset %114
-%115 = OpCompositeExtract %5 %110 0
-%116 = OpFAdd %5 %97 %115
-%117 = OpFAdd %5 %98 %115
-%118 = OpAccessChain %45 %27 %38 %41
-%119 = OpLoad %23 %118
-%120 = OpBitcast %48 %119
-%121 = OpCompositeExtract %21 %120 0
-%122 = OpCompositeExtract %21 %120 1
-%123 = OpCompositeExtract %21 %120 2
-%124 = OpLoad %18 %20
-%125 = OpLoad %28 %30
-%127 = OpSampledImage %126 %124 %125
-%128 = OpBitcast %55 %121
-%129 = OpBitcast %55 %122
-%130 = OpBitcast %55 %123
-%132 = OpCompositeConstruct %111 %39 %42 %44
-%134 = OpCompositeConstruct %133 %128 %129 %130
-%135 = OpBitFieldSExtract %133 %134 %60 %61
-%131 = OpImageSampleImplicitLod %23 %127 %132 Offset %135
-%136 = OpCompositeExtract %5 %131 0
-%137 = OpCompositeExtract %5 %131 1
-%138 = OpFAdd %5 %116 %136
-%139 = OpFAdd %5 %117 %137
-%141 = OpAccessChain %140 %35 %38
+%77 = OpAccessChain %45 %27 %38 %38
+%78 = OpLoad %23 %77
+%79 = OpBitcast %48 %78
+%80 = OpCompositeExtract %21 %79 1
+%81 = OpCompositeExtract %21 %79 2
+%82 = OpLoad %12 %14
+%83 = OpLoad %28 %30
+%85 = OpSampledImage %84 %82 %83
+%86 = OpBitcast %55 %80
+%87 = OpBitcast %55 %81
+%89 = OpCompositeConstruct %33 %39 %42
+%91 = OpCompositeConstruct %90 %86 %87
+%92 = OpBitFieldSExtract %90 %91 %60 %61
+%88 = OpImageSampleImplicitLod %23 %85 %89 Offset %92
+%93 = OpCompositeExtract %5 %88 0
+%94 = OpCompositeExtract %5 %88 1
+%95 = OpAccessChain %45 %27 %38 %38
+%96 = OpLoad %23 %95
+%97 = OpBitcast %48 %96
+%98 = OpCompositeExtract %21 %97 1
+%99 = OpCompositeExtract %21 %97 2
+%100 = OpLoad %15 %17
+%101 = OpLoad %28 %30
+%103 = OpSampledImage %102 %100 %101
+%104 = OpBitcast %55 %98
+%105 = OpBitcast %55 %99
+%108 = OpCompositeConstruct %107 %39 %42 %44
+%109 = OpCompositeConstruct %90 %104 %105
+%110 = OpBitFieldSExtract %90 %109 %60 %61
+%106 = OpImageSampleImplicitLod %23 %103 %108 Offset %110
+%111 = OpCompositeExtract %5 %106 0
+%112 = OpAccessChain %45 %27 %38 %41
+%113 = OpLoad %23 %112
+%114 = OpBitcast %48 %113
+%115 = OpCompositeExtract %21 %114 0
+%116 = OpCompositeExtract %21 %114 1
+%117 = OpCompositeExtract %21 %114 2
+%118 = OpLoad %18 %20
+%119 = OpLoad %28 %30
+%121 = OpSampledImage %120 %118 %119
+%122 = OpBitcast %55 %115
+%123 = OpBitcast %55 %116
+%124 = OpBitcast %55 %117
+%126 = OpCompositeConstruct %107 %39 %42 %44
+%128 = OpCompositeConstruct %127 %122 %123 %124
+%129 = OpBitFieldSExtract %127 %128 %60 %61
+%125 = OpImageSampleImplicitLod %23 %121 %126 Offset %129
+%130 = OpCompositeExtract %5 %125 0
+%131 = OpCompositeExtract %5 %125 1
+%132 = OpFAdd %5 %111 %76
+%133 = OpFAdd %5 %93 %62
+%134 = OpFAdd %5 %133 %132
+%135 = OpFAdd %5 %134 %130
+%136 = OpFAdd %5 %94 %63
+%137 = OpFAdd %5 %136 %132
+%138 = OpFAdd %5 %137 %131
+%140 = OpAccessChain %139 %35 %38
+OpStore %140 %135
+%141 = OpAccessChain %139 %35 %41
 OpStore %141 %138
-%142 = OpAccessChain %140 %35 %41
-OpStore %142 %139
 OpReturn
 OpFunctionEnd
 

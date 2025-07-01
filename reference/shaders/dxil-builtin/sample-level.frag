@@ -15,17 +15,12 @@ layout(location = 0) out vec2 SV_Target;
 void main()
 {
     vec4 _60 = textureLod(sampler1D(_8, _29), TEXCOORD.x, TEXCOORD.w);
-    vec4 _65 = textureLod(sampler1DArray(_11, _29), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w);
-    float _67 = _65.x;
-    vec4 _72 = textureLod(sampler2D(_14, _29), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w);
-    vec4 _80 = textureLod(sampler2DArray(_17, _29), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w);
-    float _83 = _80.x;
-    vec4 _88 = textureLod(sampler3D(_20, _29), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w);
-    vec4 _96 = textureLod(samplerCube(_23, _29), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w);
-    vec4 _104 = textureLod(samplerCubeArray(_26, _29), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w), TEXCOORD.w);
-    float _106 = _104.x;
-    SV_Target.x = (((((_67 + _60.x) + _72.x) + _83) + _88.x) + _96.x) + _106;
-    SV_Target.y = (((((_67 + _60.y) + _72.y) + _83) + _88.y) + _96.y) + _106;
+    vec4 _70 = textureLod(sampler2D(_14, _29), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w);
+    vec4 _82 = textureLod(sampler3D(_20, _29), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w);
+    vec4 _88 = textureLod(samplerCube(_23, _29), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w);
+    float _98 = textureLod(samplerCubeArray(_26, _29), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w), TEXCOORD.w).x + (textureLod(sampler2DArray(_17, _29), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w).x + textureLod(sampler1DArray(_11, _29), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w).x);
+    SV_Target.x = (((_98 + _60.x) + _70.x) + _82.x) + _88.x;
+    SV_Target.y = (((_98 + _60.y) + _70.y) + _82.y) + _88.y;
 }
 
 
@@ -34,7 +29,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 114
+; Bound: 112
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
@@ -104,17 +99,17 @@ OpDecorate %35 Location 0
 %56 = OpConstant %46 3
 %58 = OpTypeSampledImage %6
 %63 = OpTypeSampledImage %9
-%70 = OpTypeSampledImage %12
-%78 = OpTypeSampledImage %15
-%81 = OpTypeVector %5 3
-%86 = OpTypeSampledImage %18
-%94 = OpTypeSampledImage %21
-%102 = OpTypeSampledImage %24
-%109 = OpTypePointer Output %5
+%68 = OpTypeSampledImage %12
+%74 = OpTypeSampledImage %15
+%77 = OpTypeVector %5 3
+%80 = OpTypeSampledImage %18
+%86 = OpTypeSampledImage %21
+%92 = OpTypeSampledImage %24
+%107 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %112
-%112 = OpLabel
+OpBranch %110
+%110 = OpLabel
 %36 = OpLoad %24 %26
 %37 = OpLoad %21 %23
 %38 = OpLoad %18 %20
@@ -139,45 +134,43 @@ OpBranch %112
 %66 = OpCompositeConstruct %33 %48 %51
 %65 = OpImageSampleExplicitLod %30 %64 %66 Lod %57
 %67 = OpCompositeExtract %5 %65 0
-%68 = OpFAdd %5 %67 %61
-%69 = OpFAdd %5 %67 %62
-%71 = OpSampledImage %70 %40 %43
-%73 = OpCompositeConstruct %33 %48 %51
-%72 = OpImageSampleExplicitLod %30 %71 %73 Lod %57
-%74 = OpCompositeExtract %5 %72 0
-%75 = OpCompositeExtract %5 %72 1
-%76 = OpFAdd %5 %68 %74
-%77 = OpFAdd %5 %69 %75
-%79 = OpSampledImage %78 %39 %43
-%82 = OpCompositeConstruct %81 %48 %51 %54
-%80 = OpImageSampleExplicitLod %30 %79 %82 Lod %57
-%83 = OpCompositeExtract %5 %80 0
-%84 = OpFAdd %5 %76 %83
-%85 = OpFAdd %5 %77 %83
-%87 = OpSampledImage %86 %38 %43
-%89 = OpCompositeConstruct %81 %48 %51 %54
+%69 = OpSampledImage %68 %40 %43
+%71 = OpCompositeConstruct %33 %48 %51
+%70 = OpImageSampleExplicitLod %30 %69 %71 Lod %57
+%72 = OpCompositeExtract %5 %70 0
+%73 = OpCompositeExtract %5 %70 1
+%75 = OpSampledImage %74 %39 %43
+%78 = OpCompositeConstruct %77 %48 %51 %54
+%76 = OpImageSampleExplicitLod %30 %75 %78 Lod %57
+%79 = OpCompositeExtract %5 %76 0
+%81 = OpSampledImage %80 %38 %43
+%83 = OpCompositeConstruct %77 %48 %51 %54
+%82 = OpImageSampleExplicitLod %30 %81 %83 Lod %57
+%84 = OpCompositeExtract %5 %82 0
+%85 = OpCompositeExtract %5 %82 1
+%87 = OpSampledImage %86 %37 %43
+%89 = OpCompositeConstruct %77 %48 %51 %54
 %88 = OpImageSampleExplicitLod %30 %87 %89 Lod %57
 %90 = OpCompositeExtract %5 %88 0
 %91 = OpCompositeExtract %5 %88 1
-%92 = OpFAdd %5 %84 %90
-%93 = OpFAdd %5 %85 %91
-%95 = OpSampledImage %94 %37 %43
-%97 = OpCompositeConstruct %81 %48 %51 %54
-%96 = OpImageSampleExplicitLod %30 %95 %97 Lod %57
-%98 = OpCompositeExtract %5 %96 0
-%99 = OpCompositeExtract %5 %96 1
-%100 = OpFAdd %5 %92 %98
-%101 = OpFAdd %5 %93 %99
-%103 = OpSampledImage %102 %36 %43
-%105 = OpCompositeConstruct %30 %48 %51 %54 %57
-%104 = OpImageSampleExplicitLod %30 %103 %105 Lod %57
-%106 = OpCompositeExtract %5 %104 0
-%107 = OpFAdd %5 %100 %106
-%108 = OpFAdd %5 %101 %106
-%110 = OpAccessChain %109 %35 %47
-OpStore %110 %107
-%111 = OpAccessChain %109 %35 %50
-OpStore %111 %108
+%93 = OpSampledImage %92 %36 %43
+%95 = OpCompositeConstruct %30 %48 %51 %54 %57
+%94 = OpImageSampleExplicitLod %30 %93 %95 Lod %57
+%96 = OpCompositeExtract %5 %94 0
+%97 = OpFAdd %5 %79 %67
+%98 = OpFAdd %5 %96 %97
+%99 = OpFAdd %5 %98 %61
+%100 = OpFAdd %5 %99 %72
+%101 = OpFAdd %5 %100 %84
+%102 = OpFAdd %5 %101 %90
+%103 = OpFAdd %5 %98 %62
+%104 = OpFAdd %5 %103 %73
+%105 = OpFAdd %5 %104 %85
+%106 = OpFAdd %5 %105 %91
+%108 = OpAccessChain %107 %35 %47
+OpStore %108 %102
+%109 = OpAccessChain %107 %35 %50
+OpStore %109 %106
 OpReturn
 OpFunctionEnd
 #endif

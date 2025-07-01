@@ -52,9 +52,9 @@ void main()
     vec4 _53 = uintBitsToFloat(uvec4(SBT._m0[0u], SBT._m0[1u], SBT._m0[2u], SBT._m0[3u]));
     vec4 _88;
     _88.x = (payload._m0.x + subgroupBroadcastFirst(_53.x)) + subgroupBroadcastFirst(_24[nonuniformEXT(_38)]._m0[0u].x);
-    _88.y = (payload._m0.y + subgroupBroadcastFirst(_53.y)) + subgroupBroadcastFirst(_24[nonuniformEXT(_38)]._m0[0u].y);
-    _88.z = (payload._m0.z + subgroupBroadcastFirst(_53.z)) + subgroupBroadcastFirst(_24[nonuniformEXT(_38)]._m0[0u].z);
-    _88.w = (payload._m0.w + subgroupBroadcastFirst(_53.w)) + subgroupBroadcastFirst(_24[nonuniformEXT(_38)]._m0[0u].w);
+    _88.y = subgroupBroadcastFirst(_24[nonuniformEXT(_38)]._m0[0u].y) + (payload._m0.y + subgroupBroadcastFirst(_53.y));
+    _88.z = subgroupBroadcastFirst(_24[nonuniformEXT(_38)]._m0[0u].z) + (payload._m0.z + subgroupBroadcastFirst(_53.z));
+    _88.w = subgroupBroadcastFirst(_24[nonuniformEXT(_38)]._m0[0u].w) + (payload._m0.w + subgroupBroadcastFirst(_53.w));
     payload._m0 = _88;
 }
 
@@ -209,9 +209,9 @@ OpBranch %93
 %82 = OpGroupNonUniformBroadcastFirst %17 %49 %78
 %83 = OpGroupNonUniformBroadcastFirst %17 %49 %79
 %84 = OpFAdd %17 %66 %80
-%85 = OpFAdd %17 %68 %81
-%86 = OpFAdd %17 %70 %82
-%87 = OpFAdd %17 %72 %83
+%85 = OpFAdd %17 %81 %68
+%86 = OpFAdd %17 %82 %70
+%87 = OpFAdd %17 %83 %72
 %88 = OpCompositeInsert %18 %84 %89 0
 %90 = OpCompositeInsert %18 %85 %88 1
 %91 = OpCompositeInsert %18 %86 %90 2

@@ -13,12 +13,11 @@ layout(location = 8) patch in uvec4 CVSS[2];
 
 void main()
 {
-    float _86 = float(int(uint(BVS[0u])));
-    float _92 = float(CVS[1u]);
-    gl_Position.x = (((((float(CV.x) + float(int(uint(BV.x)))) + A[0u]) + _86) + _92) + float(int(uint(BVSS[0u].x)))) + float(CVSS[1u].x);
-    gl_Position.y = (((((float(int(uint(BV.y))) + float(int(uint(B)))) + float(CV.y)) + _86) + _92) + float(int(uint(BVSS[0u].y)))) + float(CVSS[1u].y);
-    gl_Position.z = (((((float(int(uint(BV.z))) + float(C)) + float(CV.z)) + _86) + _92) + float(int(uint(BVSS[0u].z)))) + float(CVSS[1u].z);
-    gl_Position.w = (((((float(int(uint(BV.w))) + 1.0) + float(CV.w)) + _86) + _92) + float(int(uint(BVSS[0u].w)))) + float(CVSS[1u].w);
+    float _111 = float(CVS[1u]) + float(int(uint(BVS[0u])));
+    gl_Position.x = ((((float(CV.x) + float(int(uint(BV.x)))) + A[0u]) + _111) + float(int(uint(BVSS[0u].x)))) + float(CVSS[1u].x);
+    gl_Position.y = ((((float(int(uint(BV.y))) + float(int(uint(B)))) + float(CV.y)) + _111) + float(int(uint(BVSS[0u].y)))) + float(CVSS[1u].y);
+    gl_Position.z = ((((float(int(uint(BV.z))) + float(C)) + float(CV.z)) + _111) + float(int(uint(BVSS[0u].z)))) + float(CVSS[1u].z);
+    gl_Position.w = ((((float(int(uint(BV.w))) + 1.0) + float(CV.w)) + _111) + float(int(uint(BVSS[0u].w)))) + float(CVSS[1u].w);
 }
 
 
@@ -27,7 +26,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 143
+; Bound: 140
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
@@ -103,12 +102,12 @@ OpDecorate %37 Patch
 %42 = OpConstant %6 0
 %46 = OpConstant %6 1
 %63 = OpTypePointer Input %5
-%75 = OpConstant %5 1
-%136 = OpTypePointer Output %5
+%128 = OpConstant %5 1
+%133 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %141
-%141 = OpLabel
+OpBranch %138
+%138 = OpLabel
 %38 = OpLoad %14 %16
 %39 = OpBitcast %6 %38
 %40 = OpLoad %6 %18
@@ -140,77 +139,74 @@ OpBranch %141
 %69 = OpConvertSToF %5 %48
 %70 = OpConvertSToF %5 %51
 %71 = OpConvertSToF %5 %54
-%72 = OpFAdd %5 %69 %66
-%73 = OpFAdd %5 %70 %67
-%74 = OpFAdd %5 %71 %75
-%76 = OpConvertUToF %5 %56
-%77 = OpConvertUToF %5 %58
-%78 = OpConvertUToF %5 %60
-%79 = OpConvertUToF %5 %62
-%80 = OpFAdd %5 %72 %77
-%81 = OpFAdd %5 %73 %78
-%82 = OpFAdd %5 %74 %79
-%83 = OpAccessChain %15 %28 %42
+%72 = OpConvertUToF %5 %56
+%73 = OpConvertUToF %5 %58
+%74 = OpConvertUToF %5 %60
+%75 = OpConvertUToF %5 %62
+%76 = OpAccessChain %15 %28 %42
+%77 = OpLoad %14 %76
+%78 = OpBitcast %6 %77
+%79 = OpConvertSToF %5 %78
+%80 = OpAccessChain %17 %31 %46
+%81 = OpLoad %6 %80
+%82 = OpConvertUToF %5 %81
+%83 = OpAccessChain %15 %34 %42 %42
 %84 = OpLoad %14 %83
 %85 = OpBitcast %6 %84
-%86 = OpConvertSToF %5 %85
-%87 = OpFAdd %5 %80 %86
-%88 = OpFAdd %5 %81 %86
-%89 = OpFAdd %5 %82 %86
-%90 = OpAccessChain %17 %31 %46
-%91 = OpLoad %6 %90
-%92 = OpConvertUToF %5 %91
-%93 = OpFAdd %5 %87 %92
-%94 = OpFAdd %5 %88 %92
-%95 = OpFAdd %5 %89 %92
-%96 = OpAccessChain %15 %34 %42 %42
-%97 = OpLoad %14 %96
-%98 = OpBitcast %6 %97
-%99 = OpAccessChain %15 %34 %42 %46
-%100 = OpLoad %14 %99
-%101 = OpBitcast %6 %100
-%102 = OpAccessChain %15 %34 %42 %25
-%103 = OpLoad %14 %102
-%104 = OpBitcast %6 %103
-%105 = OpAccessChain %15 %34 %42 %7
-%106 = OpLoad %14 %105
-%107 = OpBitcast %6 %106
-%108 = OpConvertSToF %5 %98
-%109 = OpConvertSToF %5 %101
-%110 = OpConvertSToF %5 %104
-%111 = OpConvertSToF %5 %107
-%112 = OpFAdd %5 %93 %109
-%113 = OpFAdd %5 %94 %110
-%114 = OpFAdd %5 %95 %111
-%115 = OpAccessChain %17 %37 %46 %42
-%116 = OpLoad %6 %115
-%117 = OpAccessChain %17 %37 %46 %46
-%118 = OpLoad %6 %117
-%119 = OpAccessChain %17 %37 %46 %25
-%120 = OpLoad %6 %119
-%121 = OpAccessChain %17 %37 %46 %7
-%122 = OpLoad %6 %121
-%123 = OpConvertUToF %5 %116
-%124 = OpConvertUToF %5 %118
-%125 = OpConvertUToF %5 %120
-%126 = OpConvertUToF %5 %122
-%127 = OpFAdd %5 %76 %68
-%128 = OpFAdd %5 %127 %65
-%129 = OpFAdd %5 %128 %86
-%130 = OpFAdd %5 %129 %92
-%131 = OpFAdd %5 %130 %108
-%132 = OpFAdd %5 %131 %123
-%133 = OpFAdd %5 %112 %124
-%134 = OpFAdd %5 %113 %125
-%135 = OpFAdd %5 %114 %126
-%137 = OpAccessChain %136 %13 %42
+%86 = OpAccessChain %15 %34 %42 %46
+%87 = OpLoad %14 %86
+%88 = OpBitcast %6 %87
+%89 = OpAccessChain %15 %34 %42 %25
+%90 = OpLoad %14 %89
+%91 = OpBitcast %6 %90
+%92 = OpAccessChain %15 %34 %42 %7
+%93 = OpLoad %14 %92
+%94 = OpBitcast %6 %93
+%95 = OpConvertSToF %5 %85
+%96 = OpConvertSToF %5 %88
+%97 = OpConvertSToF %5 %91
+%98 = OpConvertSToF %5 %94
+%99 = OpAccessChain %17 %37 %46 %42
+%100 = OpLoad %6 %99
+%101 = OpAccessChain %17 %37 %46 %46
+%102 = OpLoad %6 %101
+%103 = OpAccessChain %17 %37 %46 %25
+%104 = OpLoad %6 %103
+%105 = OpAccessChain %17 %37 %46 %7
+%106 = OpLoad %6 %105
+%107 = OpConvertUToF %5 %100
+%108 = OpConvertUToF %5 %102
+%109 = OpConvertUToF %5 %104
+%110 = OpConvertUToF %5 %106
+%111 = OpFAdd %5 %82 %79
+%112 = OpFAdd %5 %72 %68
+%113 = OpFAdd %5 %112 %65
+%114 = OpFAdd %5 %113 %111
+%115 = OpFAdd %5 %114 %95
+%116 = OpFAdd %5 %115 %107
+%117 = OpFAdd %5 %69 %66
+%118 = OpFAdd %5 %117 %73
+%119 = OpFAdd %5 %118 %111
+%120 = OpFAdd %5 %119 %96
+%121 = OpFAdd %5 %120 %108
+%122 = OpFAdd %5 %70 %67
+%123 = OpFAdd %5 %122 %74
+%124 = OpFAdd %5 %123 %111
+%125 = OpFAdd %5 %124 %97
+%126 = OpFAdd %5 %125 %109
+%127 = OpFAdd %5 %71 %128
+%129 = OpFAdd %5 %127 %75
+%130 = OpFAdd %5 %129 %111
+%131 = OpFAdd %5 %130 %98
+%132 = OpFAdd %5 %131 %110
+%134 = OpAccessChain %133 %13 %42
+OpStore %134 %116
+%135 = OpAccessChain %133 %13 %46
+OpStore %135 %121
+%136 = OpAccessChain %133 %13 %25
+OpStore %136 %126
+%137 = OpAccessChain %133 %13 %7
 OpStore %137 %132
-%138 = OpAccessChain %136 %13 %46
-OpStore %138 %133
-%139 = OpAccessChain %136 %13 %25
-OpStore %139 %134
-%140 = OpAccessChain %136 %13 %7
-OpStore %140 %135
 OpReturn
 OpFunctionEnd
 #endif

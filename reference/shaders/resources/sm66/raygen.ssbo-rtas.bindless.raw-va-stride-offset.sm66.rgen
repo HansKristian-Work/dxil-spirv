@@ -4,14 +4,14 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_KHR_shader_subgroup_ballot : require
 
-struct _20
+struct _19
 {
-    vec4 _m0;
+    float _m0;
 };
 
 struct _23
 {
-    float _m0;
+    vec4 _m0;
 };
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer RTASHeap
@@ -32,14 +32,14 @@ layout(push_constant, std430) uniform RootConstants
 } registers;
 
 layout(set = 3, binding = 0) uniform writeonly image2D _18[];
-layout(location = 0) rayPayloadEXT _20 _22;
+layout(location = 0) rayPayloadEXT _19 _21;
 layout(location = 1) rayPayloadEXT _23 _25;
 
 void main()
 {
-    traceRayEXT(accelerationStructureEXT(_13._m0[(4u * subgroupBroadcastFirst(registers._m0 + 30u)) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
-    traceRayEXT(accelerationStructureEXT(_13._m0[(4u * subgroupBroadcastFirst(registers._m0 + 30u)) + 3u]), 0u, 1u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
-    imageStore(_18[registers._m3 + 10u], ivec2(uvec2(0u)), vec4(_22._m0.x + _25._m0, _22._m0.y + _25._m0, _22._m0.z + _25._m0, _22._m0.w + _25._m0));
+    traceRayEXT(accelerationStructureEXT(_13._m0[(4u * subgroupBroadcastFirst(registers._m0 + 30u)) + 3u]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    traceRayEXT(accelerationStructureEXT(_13._m0[(4u * subgroupBroadcastFirst(registers._m0 + 30u)) + 3u]), 0u, 1u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    imageStore(_18[registers._m3 + 10u], ivec2(uvec2(0u)), vec4(_21._m0 + _25._m0.x, _21._m0 + _25._m0.y, _21._m0 + _25._m0.z, _21._m0 + _25._m0.w));
 }
 
 
@@ -68,12 +68,12 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint RayGenerationKHR %3 "main" %8 %13 %18 %22 %25
+OpEntryPoint RayGenerationKHR %3 "main" %8 %13 %18 %21 %25
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
 OpName %11 "RTASHeap"
-OpName %20 ""
+OpName %19 ""
 OpName %23 ""
 OpDecorate %6 Block
 OpMemberDecorate %6 0 Offset 0
@@ -110,11 +110,11 @@ OpDecorate %18 NonReadable
 %16 = OpTypeRuntimeArray %15
 %17 = OpTypePointer UniformConstant %16
 %18 = OpVariable %17 UniformConstant
-%19 = OpTypeVector %14 4
-%20 = OpTypeStruct %19
-%21 = OpTypePointer RayPayloadKHR %20
-%22 = OpVariable %21 RayPayloadKHR
-%23 = OpTypeStruct %14
+%19 = OpTypeStruct %14
+%20 = OpTypePointer RayPayloadKHR %19
+%21 = OpVariable %20 RayPayloadKHR
+%22 = OpTypeVector %14 4
+%23 = OpTypeStruct %22
 %24 = OpTypePointer RayPayloadKHR %23
 %25 = OpVariable %24 RayPayloadKHR
 %26 = OpTypePointer PushConstant %5
@@ -130,8 +130,8 @@ OpDecorate %18 NonReadable
 %45 = OpConstant %14 3
 %46 = OpConstant %14 4
 %47 = OpTypeVector %14 3
-%59 = OpConstant %5 1
-%62 = OpTypePointer RayPayloadKHR %19
+%50 = OpTypePointer RayPayloadKHR %22
+%66 = OpConstant %5 1
 %69 = OpTypePointer RayPayloadKHR %14
 %76 = OpTypePointer UniformConstant %15
 %81 = OpConstant %5 10
@@ -150,38 +150,38 @@ OpBranch %85
 %41 = OpConvertUToAccelerationStructureKHR %40 %39
 %48 = OpCompositeConstruct %47 %42 %44 %45
 %49 = OpCompositeConstruct %47 %43 %43 %42
-OpTraceRayKHR %41 %28 %28 %28 %28 %28 %48 %42 %49 %46 %22
-%50 = OpAccessChain %26 %8 %28
-%51 = OpLoad %5 %50
-%52 = OpIAdd %5 %51 %31
-%53 = OpGroupNonUniformBroadcastFirst %5 %33 %52
-%54 = OpIMul %5 %35 %53
-%55 = OpIAdd %5 %54 %33
-%56 = OpAccessChain %37 %13 %28 %55
-%57 = OpLoad %9 %56
-%58 = OpConvertUToAccelerationStructureKHR %40 %57
-%60 = OpCompositeConstruct %47 %42 %44 %45
-%61 = OpCompositeConstruct %47 %43 %43 %42
-OpTraceRayKHR %58 %28 %59 %28 %28 %28 %60 %42 %61 %46 %25
-%63 = OpInBoundsAccessChain %62 %22 %28
-%64 = OpLoad %19 %63
-%65 = OpCompositeExtract %14 %64 0
-%66 = OpCompositeExtract %14 %64 1
-%67 = OpCompositeExtract %14 %64 2
-%68 = OpCompositeExtract %14 %64 3
-%70 = OpInBoundsAccessChain %69 %25 %28
+OpTraceRayKHR %41 %28 %28 %28 %28 %28 %48 %42 %49 %46 %25
+%51 = OpInBoundsAccessChain %50 %25 %28
+%52 = OpLoad %22 %51
+%53 = OpCompositeExtract %14 %52 0
+%54 = OpCompositeExtract %14 %52 1
+%55 = OpCompositeExtract %14 %52 2
+%56 = OpCompositeExtract %14 %52 3
+%57 = OpAccessChain %26 %8 %28
+%58 = OpLoad %5 %57
+%59 = OpIAdd %5 %58 %31
+%60 = OpGroupNonUniformBroadcastFirst %5 %33 %59
+%61 = OpIMul %5 %35 %60
+%62 = OpIAdd %5 %61 %33
+%63 = OpAccessChain %37 %13 %28 %62
+%64 = OpLoad %9 %63
+%65 = OpConvertUToAccelerationStructureKHR %40 %64
+%67 = OpCompositeConstruct %47 %42 %44 %45
+%68 = OpCompositeConstruct %47 %43 %43 %42
+OpTraceRayKHR %65 %28 %66 %28 %28 %28 %67 %42 %68 %46 %21
+%70 = OpInBoundsAccessChain %69 %21 %28
 %71 = OpLoad %14 %70
-%72 = OpFAdd %14 %65 %71
-%73 = OpFAdd %14 %66 %71
-%74 = OpFAdd %14 %67 %71
-%75 = OpFAdd %14 %68 %71
+%72 = OpFAdd %14 %71 %53
+%73 = OpFAdd %14 %71 %54
+%74 = OpFAdd %14 %71 %55
+%75 = OpFAdd %14 %71 %56
 %78 = OpAccessChain %26 %8 %33
 %79 = OpLoad %5 %78
 %80 = OpIAdd %5 %79 %81
 %77 = OpAccessChain %76 %18 %80
 %82 = OpLoad %15 %77
 %83 = OpCompositeConstruct %9 %28 %28
-%84 = OpCompositeConstruct %19 %72 %73 %74 %75
+%84 = OpCompositeConstruct %22 %72 %73 %74 %75
 OpImageWrite %82 %83 %84
 OpReturn
 OpFunctionEnd
