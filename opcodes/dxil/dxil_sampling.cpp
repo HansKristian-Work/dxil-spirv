@@ -1204,7 +1204,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id sampler_id = impl.get_id_for_value(instruction->getOperand(2));
-	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, false);
+	spv::Id combined_image_sampler_id = impl.build_sampled_image(image_id, sampler_id, compare);
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	uint32_t num_coords_full = 0, num_coords = 0;
