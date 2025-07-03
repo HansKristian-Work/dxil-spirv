@@ -56,6 +56,11 @@ LLVMBCParser::~LLVMBCParser()
 bool LLVMBCParser::parse(const void *data, size_t size)
 {
 #ifdef HAVE_LLVMBC
+	auto *mod = llvm::parseDXBCIR(impl->context, nullptr, 0);
+	String str;
+	llvm::disassemble(*mod, str);
+	fprintf(stderr, "Disasm:\n%s\n", str.c_str());
+
 	impl->module = llvm::parseIR(impl->context, data, size);
 	if (!impl->module)
 		return false;
