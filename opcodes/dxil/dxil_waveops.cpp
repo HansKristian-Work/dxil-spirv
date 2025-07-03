@@ -259,31 +259,30 @@ bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *
 	return false;
 }
 
-static bool value_depends_on_stage_input(
-    const llvm::Instruction *inst, UnorderedSet<const llvm::Instruction *> &visit_cache)
+static bool value_depends_on_dxil_op(
+    const llvm::Instruction *inst, UnorderedSet<const llvm::Instruction *> &visit_cache,
+    const DXIL::Op *ops, unsigned ops_count)
 {
 	if (visit_cache.count(inst))
 		return false;
 	visit_cache.insert(inst);
 
-	if (value_is_dx_op_instrinsic(inst, DXIL::Op::LoadInput) ||
-	    value_is_dx_op_instrinsic(inst, DXIL::Op::InstanceID))
-	{
-		return true;
-	}
+	for (unsigned i = 0; i < ops_count; i++)
+		if (value_is_dx_op_instrinsic(inst, ops[i]))
+			return true;
 
 	if (const auto *phi = llvm::dyn_cast<llvm::PHINode>(inst))
 	{
 		for (uint32_t i = 0; i < phi->getNumIncomingValues(); i++)
 			if (const auto *dependent_inst = llvm::dyn_cast<llvm::Instruction>(phi->getIncomingValue(i)))
-				if (value_depends_on_stage_input(dependent_inst, visit_cache))
+				if (value_depends_on_dxil_op(dependent_inst, visit_cache, ops, ops_count))
 					return true;
 	}
 	else
 	{
 		for (uint32_t i = 0; i < inst->getNumOperands(); i++)
 			if (const auto *dependent_inst = llvm::dyn_cast<llvm::Instruction>(inst->getOperand(i)))
-				if (value_depends_on_stage_input(dependent_inst, visit_cache))
+				if (value_depends_on_dxil_op(dependent_inst, visit_cache, ops, ops_count))
 					return true;
 	}
 
@@ -296,7 +295,24 @@ bool value_is_likely_non_uniform(Converter::Impl &, const llvm::Value *value)
 	// Similar with using InstanceID as bindless index.
 	UnorderedSet<const llvm::Instruction *> visit_cache;
 	if (const auto *inst = llvm::dyn_cast<llvm::Instruction>(value))
-		return value_depends_on_stage_input(inst, visit_cache);
+	{
+		static const DXIL::Op ops[] = { DXIL::Op::LoadInput, DXIL::Op::InstanceID };
+		return value_depends_on_dxil_op(inst, visit_cache, ops, 2);
+	}
+	else
+		return false;
+}
+
+static bool value_is_local_invocation_index_dependent(const llvm::Value *value)
+{
+	// If the index is loaded from VS input or PS varying, it's almost guaranteed to be nonuniform in some way.
+	// Similar with using InstanceID as bindless index.
+	UnorderedSet<const llvm::Instruction *> visit_cache;
+	if (const auto *inst = llvm::dyn_cast<llvm::Instruction>(value))
+	{
+		static const DXIL::Op ops[] = { DXIL::Op::ThreadIdInGroup, DXIL::Op::FlattenedThreadIdInGroup };
+		return value_depends_on_dxil_op(inst, visit_cache, ops, 2);
+	}
 	else
 		return false;
 }
@@ -807,6 +823,25 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	impl.add(op);
 
 	builder.addCapability(spv::CapabilityGroupNonUniformArithmetic);
+
+	if (impl.execution_model == spv::ExecutionModelGLCompute ||
+	    impl.execution_model == spv::ExecutionModelMeshEXT ||
+	    impl.execution_model == spv::ExecutionModelTaskEXT)
+	{
+		if (!impl.shader_analysis.has_group_shared_barrier &&
+		    impl.execution_mode_meta.workgroup_threads[0] == 32 &&
+		    impl.execution_mode_meta.workgroup_threads[1] == 1 &&
+		    impl.execution_mode_meta.workgroup_threads[2] == 1 &&
+		    value_is_local_invocation_index_dependent(instruction->getOperand(1)))
+		{
+			// Intel workaround. Some shaders may simply assume that wave16 doesn't exist.
+			// The heuristic is to check if the broadcast depends on LocalInvocationID.
+			// On wave32, LocalInvocationID is vaguely equal to SubgroupInvocationID,
+			// but on Wave16, that assumption does not hold, so a shader doing that looks sus.
+			impl.suggest_minimum_wave_size(32);
+		}
+	}
+
 	return true;
 }
 
