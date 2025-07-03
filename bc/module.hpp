@@ -86,5 +86,6 @@ private:
 };
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size);
+Module *parseDXBCIR(LLVMContext &context, const void *data, size_t size);
 bool disassemble(Module &module, String &str);
 } // namespace LLVMBC
