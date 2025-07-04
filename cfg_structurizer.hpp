@@ -49,6 +49,7 @@ class CFGStructurizer
 public:
 	CFGStructurizer(CFGNode *entry, CFGNodePool &pool, SPIRVModule &module);
 	bool run();
+	bool run_trivial();
 	void traverse(BlockEmissionInterface &iface);
 	CFGNode *get_entry_block() const;
 
