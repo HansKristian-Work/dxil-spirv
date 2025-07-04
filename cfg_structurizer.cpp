@@ -1198,6 +1198,14 @@ bool CFGStructurizer::rewrite_impossible_back_edges()
 	return did_rewrite;
 }
 
+bool CFGStructurizer::run_trivial()
+{
+	recompute_cfg();
+	sink_ssa_constructs();
+	propagate_branch_control_hints();
+	return true;
+}
+
 bool CFGStructurizer::run()
 {
 	String graphviz_path;

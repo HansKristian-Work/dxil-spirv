@@ -241,17 +241,60 @@ void ParseContext::emit_entry_point()
 	auto *func = context.construct<Function>(func_type, ++tween_id, module);
 	module.add_value_name(tween_id, "main");
 
+	// We're not barbarians.
+	func->set_structured_control_flow();
+
 	auto *bb = context.construct<BasicBlock>(context);
-	Vector<BasicBlock *> bbs { bb };
+	auto *true_bb = context.construct<BasicBlock>(context);
+	auto *false_bb = context.construct<BasicBlock>(context);
+	auto *merge_bb = context.construct<BasicBlock>(context);
+	auto *loop_merge_bb = context.construct<BasicBlock>(context);
 	current_bb = bb;
 
 	auto *load = build_load_input(0, Type::getFloatTy(context), get_constant_uint(0), 0);
 	push_instruction(load);
-	for (int i = 0; i < 4; i++)
-		push_instruction(build_store_output(0, get_constant_uint(0), i, load));
+
+	bb->add_successor(true_bb);
+	bb->add_successor(false_bb);
+	true_bb->add_successor(merge_bb);
+	false_bb->add_successor(merge_bb);
+
+	bb->set_selection_merge(merge_bb);
+	auto *cond_branch = context.construct<BranchInst>(
+	    true_bb, false_bb, ConstantInt::get(Type::getInt1Ty(context), 1));
+	push_instruction(cond_branch);
+
+	current_bb = true_bb;
+	{
+		for (int i = 0; i < 2; i++)
+			push_instruction(build_store_output(0, get_constant_uint(0), i, load));
+		push_instruction(context.construct<BranchInst>(merge_bb));
+	}
+
+	current_bb = false_bb;
+	{
+		for (int i = 2; i < 4; i++)
+			push_instruction(build_store_output(0, get_constant_uint(0), i, load));
+		push_instruction(context.construct<BranchInst>(merge_bb));
+	}
+
+	current_bb = merge_bb;
+	merge_bb->add_successor(loop_merge_bb);
+	merge_bb->set_loop_merge(loop_merge_bb, merge_bb);
+	cond_branch = context.construct<BranchInst>(
+		merge_bb, loop_merge_bb, ConstantInt::get(Type::getInt1Ty(context), 1));
+	push_instruction(cond_branch);
+
+	bb->set_tween_id(++tween_id);
+	true_bb->set_tween_id(++tween_id);
+	false_bb->set_tween_id(++tween_id);
+	merge_bb->set_tween_id(++tween_id);
+	loop_merge_bb->set_tween_id(++tween_id);
+
+	current_bb = loop_merge_bb;
 	push_instruction(context.construct<ReturnInst>(nullptr));
 
-	func->set_basic_blocks(std::move(bbs));
+	func->set_basic_blocks({ bb, true_bb, false_bb, merge_bb, loop_merge_bb });
 	module.add_function_implementation(func);
 	create_named_md_node("dx.entryPoints",
 	                     create_md_node(

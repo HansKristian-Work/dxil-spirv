@@ -51,6 +51,18 @@ public:
 
 	void add_successor(BasicBlock *succ);
 
+	enum class Merge
+	{
+		None,
+		Selection,
+		Loop
+	};
+	Merge get_merge() const;
+	void set_selection_merge(BasicBlock *bb);
+	void set_loop_merge(BasicBlock *merge_bb, BasicBlock *continue_bb);
+	BasicBlock *get_merge_bb() const;
+	BasicBlock *get_continue_bb() const;
+
 	Vector<BasicBlock *>::const_iterator succ_begin() const;
 	Vector<BasicBlock *>::const_iterator succ_end() const;
 
@@ -59,6 +71,9 @@ public:
 private:
 	Vector<Instruction *> instructions;
 	Vector<BasicBlock *> succs;
+	Merge merge = Merge::None;
+	BasicBlock *merge_bb = nullptr;
+	BasicBlock *continue_bb = nullptr;
 };
 
 inline Vector<BasicBlock *>::const_iterator succ_begin(const BasicBlock *bb)
@@ -107,6 +122,9 @@ public:
 	bool hasFnAttribute(const char *attribute) const;
 	void set_attributes(Vector<std::pair<String, String>> attributes);
 
+	bool get_structured_control_flow() const;
+	void set_structured_control_flow();
+
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:
@@ -116,5 +134,6 @@ private:
 	Vector<BasicBlock *> basic_blocks;
 	Vector<Argument *> arguments;
 	Vector<std::pair<String, String>> attributes;
+	bool structured_control_flow = false;
 };
 } // namespace LLVMBC

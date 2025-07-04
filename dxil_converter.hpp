@@ -44,6 +44,7 @@ struct ConvertedFunction
 	{
 		CFGNode *entry;
 		spv::Function *func;
+		bool is_structured;
 	};
 	Function entry = {};
 	Vector<Function> leaf_functions;

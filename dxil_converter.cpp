@@ -7466,6 +7466,24 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 			LOGE("Unsupported terminator ...\n");
 			return {};
 		}
+
+#ifdef HAVE_LLVMBC
+		// Forward structured control flow.
+		if (bb->get_merge() == llvm::BasicBlock::Merge::Selection)
+		{
+			node->ir.merge_info.merge_type = MergeType::Selection;
+			if (bb->get_merge_bb())
+				node->ir.merge_info.merge_block = bb_map[bb->get_merge_bb()]->node;
+		}
+		else if (bb->get_merge() == llvm::BasicBlock::Merge::Loop)
+		{
+			node->ir.merge_info.merge_type = MergeType::Loop;
+			if (bb->get_merge_bb())
+				node->ir.merge_info.merge_block = bb_map[bb->get_merge_bb()]->node;
+			if (bb->get_continue_bb())
+				node->ir.merge_info.continue_block = bb_map[bb->get_continue_bb()]->node;
+		}
+#endif
 	}
 
 	// Rewrite PHI incoming values if we have to.
@@ -7835,6 +7853,11 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
 	auto visit_order = build_function_bb_visit_order_legacy(func, pool);
 	Vector<llvm::BasicBlock *> patch_visit_order;
+
+#ifdef HAVE_LLVMBC
+	if (func->get_structured_control_flow())
+		result.entry.is_structured = true;
+#endif
 
 	// dxilconv emits somewhat broken code for min16float for resource access.
 	// Just use FP32 here since that's what we've tested and avoids lots of awkward workarounds.
