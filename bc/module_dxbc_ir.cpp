@@ -97,6 +97,8 @@ private:
 	uint64_t tween_id = 0;
 
 	ConstantInt *get_constant_uint(uint32_t value);
+
+	// Metadata wrangling
 	ConstantAsMetadata *create_constant_uint_meta(uint32_t value);
 	MDString *create_string_meta(const String &str);
 	ConstantAsMetadata *create_constant_meta(Constant *c);
@@ -114,12 +116,41 @@ private:
 	MDNode *create_stage_io_meta();
 	MDOperand *create_null_meta();
 
+	struct ResourceInfo
+	{
+		Vector<MDOperand *> nodes;
+		// TODO: Some mapping from SsaRef to index so we can translate load descriptor.
+	};
+	ResourceInfo srvs, uavs, cbvs, samplers;
+
+	uint32_t build_texture_srv(uint32_t space, uint32_t index, uint32_t size,
+	                           DXIL::ResourceKind kind,
+	                           DXIL::ComponentType type);
+
+	uint32_t build_texture_uav(uint32_t space, uint32_t index, uint32_t size,
+	                           DXIL::ResourceKind kind,
+	                           DXIL::ComponentType type, bool coherent, bool counter, bool rov);
+
+	uint32_t build_buffer_uav(uint32_t space, uint32_t index, uint32_t size,
+	                          DXIL::ResourceKind kind, uint32_t stride,
+	                          bool coherent, bool counter, bool rov);
+
+	uint32_t build_buffer_srv(uint32_t space, uint32_t index, uint32_t size,
+	                          DXIL::ResourceKind kind, uint32_t stride);
+
+	uint32_t build_cbv(uint32_t space, uint32_t index, uint32_t size, uint32_t cbv_size);
+
+	uint32_t build_sampler(uint32_t space, uint32_t index, uint32_t size);
+
+	// DXIL intrinsic build.
+	DXILIntrinsicTable dxil_intrinsics;
+
 	Instruction *build_load_input(
 		uint32_t index, Type *type,
 		Value *row, uint32_t col, Value *axis = nullptr);
 	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value);
-	DXILIntrinsicTable dxil_intrinsics;
 
+	// BasicBlock emission.
 	BasicBlock *current_bb = nullptr;
 	void push_instruction(Instruction *instruction);
 };
@@ -304,6 +335,134 @@ void ParseContext::emit_entry_point()
 	                         create_null_meta(), create_null_meta()));
 }
 
+uint32_t ParseContext::build_texture_srv(
+    uint32_t space, uint32_t index, uint32_t size,
+    DXIL::ResourceKind kind, DXIL::ComponentType type)
+{
+	uint32_t ret = srvs.nodes.size();
+	auto *srv = create_md_node(
+	    create_constant_uint_meta(ret),
+	    create_null_meta(),
+	    create_string_meta(""),
+	    create_constant_uint_meta(space),
+	    create_constant_uint_meta(index),
+	    create_constant_uint_meta(size),
+	    create_constant_uint_meta(uint32_t(kind)),
+	    create_null_meta(), // SRV sample count? We don't care about that.
+	    create_md_node(
+	        create_constant_uint_meta(0),
+	        create_constant_uint_meta(uint32_t(type))));
+
+	srvs.nodes.push_back(srv);
+	return ret;
+}
+
+uint32_t ParseContext::build_texture_uav(
+    uint32_t space, uint32_t index, uint32_t size,
+    DXIL::ResourceKind kind, DXIL::ComponentType type,
+    bool coherent, bool counter, bool rov)
+{
+	uint32_t ret = uavs.nodes.size();
+
+	auto *uav = create_md_node(
+	    create_constant_uint_meta(ret),
+	    create_null_meta(),
+	    create_string_meta(""),
+	    create_constant_uint_meta(space),
+	    create_constant_uint_meta(index),
+	    create_constant_uint_meta(size),
+	    create_constant_uint_meta(uint32_t(kind)),
+	    create_constant_uint_meta(coherent),
+	    create_constant_uint_meta(counter),
+	    create_constant_uint_meta(rov),
+	    create_md_node(
+	        create_constant_uint_meta(0),
+	        create_constant_uint_meta(uint32_t(type))));
+
+	uavs.nodes.push_back(uav);
+	return ret;
+}
+
+uint32_t ParseContext::build_buffer_uav(
+    uint32_t space, uint32_t index, uint32_t size,
+    DXIL::ResourceKind kind, uint32_t stride,
+    bool coherent, bool counter, bool rov)
+{
+	uint32_t ret = uavs.nodes.size();
+
+	auto *uav = create_md_node(
+	    create_constant_uint_meta(ret),
+	    create_null_meta(),
+	    create_string_meta(""),
+	    create_constant_uint_meta(space),
+	    create_constant_uint_meta(index),
+	    create_constant_uint_meta(size),
+	    create_constant_uint_meta(uint32_t(kind)),
+	    create_constant_uint_meta(coherent),
+	    create_constant_uint_meta(counter),
+	    create_constant_uint_meta(rov),
+	    create_md_node(
+	        create_constant_uint_meta(1),
+	        create_constant_uint_meta(stride)));
+
+	uavs.nodes.push_back(uav);
+	return ret;
+}
+
+uint32_t ParseContext::build_buffer_srv(
+    uint32_t space, uint32_t index, uint32_t size,
+    DXIL::ResourceKind kind, uint32_t stride)
+{
+	uint32_t ret = srvs.nodes.size();
+	auto *srv = create_md_node(
+	    create_constant_uint_meta(ret),
+	    create_null_meta(),
+	    create_string_meta(""),
+	    create_constant_uint_meta(space),
+	    create_constant_uint_meta(index),
+	    create_constant_uint_meta(size),
+	    create_constant_uint_meta(uint32_t(kind)),
+	    create_null_meta(), // SRV sample count? We don't care about that.
+	    create_md_node(
+	        create_constant_uint_meta(1),
+	        create_constant_uint_meta(stride)));
+
+	srvs.nodes.push_back(srv);
+	return ret;
+}
+
+uint32_t ParseContext::build_sampler(uint32_t space, uint32_t index, uint32_t size)
+{
+	uint32_t ret = samplers.nodes.size();
+	auto *sampler = create_md_node(
+	    create_constant_uint_meta(ret),
+	    create_null_meta(),
+	    create_string_meta(""),
+	    create_constant_uint_meta(space),
+	    create_constant_uint_meta(index),
+	    create_constant_uint_meta(size));
+
+	samplers.nodes.push_back(sampler);
+	return ret;
+}
+
+uint32_t ParseContext::build_cbv(
+    uint32_t space, uint32_t index, uint32_t size, uint32_t cbv_size)
+{
+	uint32_t ret = cbvs.nodes.size();
+	auto *sampler = create_md_node(
+	    create_constant_uint_meta(ret),
+	    create_null_meta(),
+	    create_string_meta(""),
+	    create_constant_uint_meta(space),
+	    create_constant_uint_meta(index),
+	    create_constant_uint_meta(size),
+	    create_constant_uint_meta(cbv_size));
+
+	cbvs.nodes.push_back(sampler);
+	return ret;
+}
+
 void ParseContext::emit_metadata()
 {
 	auto *name = create_string_meta("dxbc-spirv");
@@ -313,6 +472,22 @@ void ParseContext::emit_metadata()
 	auto *major = create_constant_uint_meta(6);
 	auto *minor = create_constant_uint_meta(0);
 	create_named_md_node("dx.shaderModel", create_md_node(cs, major, minor));
+
+	build_texture_srv(3, 4, 5, DXIL::ResourceKind::Texture2D, DXIL::ComponentType::F32);
+	build_buffer_srv(3, 4, 5, DXIL::ResourceKind::RawBuffer, 0);
+	build_buffer_srv(3, 4, 5, DXIL::ResourceKind::StructuredBuffer, 4);
+	build_sampler(6, 7, 8);
+	build_cbv(6, 8, 1, 32);
+	build_texture_uav(10, 11, 1, DXIL::ResourceKind::Texture3D, DXIL::ComponentType::U32,
+	                  true, false, false);
+	build_buffer_uav(10, 11, 1, DXIL::ResourceKind::StructuredBuffer, 16,
+	                 true, false, false);
+
+	create_named_md_node("dx.resources", create_md_node(
+		srvs.nodes.empty() ? create_null_meta() : create_md_node(srvs.nodes),
+		uavs.nodes.empty() ? create_null_meta() : create_md_node(uavs.nodes),
+		cbvs.nodes.empty() ? create_null_meta() : create_md_node(cbvs.nodes),
+		samplers.nodes.empty() ? create_null_meta() : create_md_node(samplers.nodes)));
 }
 
 ConstantInt *ParseContext::get_constant_uint(uint32_t value)
