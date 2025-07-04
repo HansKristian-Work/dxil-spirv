@@ -28,23 +28,78 @@
 #include "cast.hpp"
 #include "function.hpp"
 #include "instruction.hpp"
+#include <array>
 
 #include "../dxil.hpp"
+#include <assert.h>
 
 namespace LLVMBC
 {
+struct DXILIntrinsicTable
+{
+	struct FunctionOverload
+	{
+		Function *func;
+		// Either overloaded on return type, or the primary argument for e.g. stores.
+		Type *overload_type;
+	};
+
+	struct FunctionEntry
+	{
+		// At most should be overload for i32/u32/f32 x 16/32/64
+		std::array<FunctionOverload, 9> overloads;
+		unsigned num_overloads;
+	};
+
+	FunctionEntry intrinsic_functions[int(DXIL::Op::Count)] = {};
+
+	Function *get(Module &module, DXIL::Op op,
+	              Type *return_type,
+	              const Vector<Type *> &argument_types,
+	              Type *overload_type, uint64_t &tween);
+};
+
+Function *DXILIntrinsicTable::get(
+	Module &module, DXIL::Op op,
+	Type *return_type, const Vector<Type *> &argument_types,
+	Type *overload_type, uint64_t &tween)
+{
+	auto &entry = intrinsic_functions[int(op)];
+
+	for (unsigned i = 0; i < entry.num_overloads; i++)
+		if (entry.overloads[i].overload_type == overload_type)
+			return entry.overloads[i].func;
+
+	auto &context = module.getContext();
+
+	assert(entry.num_overloads < entry.overloads.size());
+	auto *func_type = context.construct<FunctionType>(context, return_type, argument_types);
+	auto *func = context.construct<Function>(func_type, ++tween, module);
+	// TODO: Can have a look-up for expected intrinsics name.
+	module.add_value_name(tween, "dx.op.intrinsic");
+	entry.overloads[entry.num_overloads++] = { func, overload_type };
+	return func;
+}
+
 class ParseContext
 {
 public:
 	ParseContext(LLVMContext &context_, Module &module_)
 	    : context(context_), module(module_) {}
 
+	void emit_metadata();
+	void emit_entry_point();
+
+private:
+	LLVMContext &context;
+	Module &module;
+	uint64_t metadata_tween_id = 0;
+	uint64_t tween_id = 0;
+
 	ConstantInt *get_constant_uint(uint32_t value);
 	ConstantAsMetadata *create_constant_uint_meta(uint32_t value);
 	MDString *create_string_meta(const String &str);
 	ConstantAsMetadata *create_constant_meta(Constant *c);
-
-	void emit_metadata();
 
 	template <typename... Ops>
 	MDNode *create_md_node(Ops&&... ops)
@@ -56,16 +111,73 @@ public:
 	void create_named_md_node(const String &name, MDNode *node);
 	MDNode *create_md_node(Vector<MDOperand *> ops);
 
-	void emit_entry_point();
-
 	MDNode *create_stage_io_meta();
+	MDOperand *create_null_meta();
 
-private:
-	LLVMContext &context;
-	Module &module;
-	uint64_t metadata_tween_id = 0;
-	uint64_t tween_id = 0;
+	Instruction *build_load_input(
+		uint32_t index, Type *type,
+		Value *row, uint32_t col, Value *axis = nullptr);
+	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value);
+	DXILIntrinsicTable dxil_intrinsics;
+
+	BasicBlock *current_bb = nullptr;
+	void push_instruction(Instruction *instruction);
 };
+
+void ParseContext::push_instruction(Instruction *instruction)
+{
+	assert(current_bb);
+	instruction->set_tween_id(++tween_id);
+	current_bb->add_instruction(instruction);
+}
+
+Instruction *ParseContext::build_load_input(
+    uint32_t index, Type *type, Value *row, uint32_t col, Value *axis)
+{
+	auto *int_type = Type::getInt32Ty(context);
+	auto *func = dxil_intrinsics.get(
+		module, DXIL::Op::LoadInput, type,
+		Vector<Type *> { int_type, int_type, int_type, int_type, int_type },
+		type, tween_id);
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *>{
+	        get_constant_uint(uint32_t(DXIL::Op::LoadInput)),
+	        get_constant_uint(index),
+	        row,
+	        get_constant_uint(col),
+	        axis ? axis : UndefValue::get(Type::getInt32Ty(context)),
+	    });
+
+	return inst;
+}
+
+Instruction *ParseContext::build_store_output(uint32_t index, Value *row, uint32_t col, Value *value)
+{
+	auto *int_type = Type::getInt32Ty(context);
+	auto *func = dxil_intrinsics.get(
+	    module, DXIL::Op::StoreOutput, Type::getVoidTy(context),
+	    Vector<Type *> { int_type, int_type, int_type, int_type, value->getType() },
+	    value->getType(), tween_id);
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *>{
+	        get_constant_uint(uint32_t(DXIL::Op::StoreOutput)),
+	        get_constant_uint(index),
+	        row,
+	        get_constant_uint(col),
+	        value
+	    });
+
+	return inst;
+}
+
+MDOperand *ParseContext::create_null_meta()
+{
+	return context.construct<MDOperand>(&module, MetadataKind::None);
+}
 
 MDNode *ParseContext::create_md_node(Vector<MDOperand *> ops)
 {
@@ -98,7 +210,7 @@ MDNode *ParseContext::create_stage_io_meta()
 		create_constant_uint_meta(1), // cols
 		create_constant_uint_meta(0), // start row
 		create_constant_uint_meta(0), // start col
-		nullptr,
+		create_null_meta(), // dxil-spirv doesn't use this
 	};
 
 	Vector<MDOperand *> out_ops {
@@ -112,7 +224,7 @@ MDNode *ParseContext::create_stage_io_meta()
 		create_constant_uint_meta(4), // cols
 		create_constant_uint_meta(0), // start row
 		create_constant_uint_meta(0), // start col
-		nullptr,
+		create_null_meta(), // dxil-spirv doesn't use this
 	};
 
 	inputs.push_back(create_md_node(std::move(ops)));
@@ -120,19 +232,25 @@ MDNode *ParseContext::create_stage_io_meta()
 
 	auto *input_meta = create_md_node(std::move(inputs));
 	auto *output_meta = create_md_node(std::move(outputs));
-	return create_md_node(input_meta, output_meta, nullptr /* patch meta */);
+	return create_md_node(input_meta, output_meta, create_null_meta() /* patch meta */);
 }
 
 void ParseContext::emit_entry_point()
 {
 	auto *func_type = context.construct<FunctionType>(context, Type::getVoidTy(context), Vector<Type *>{});
 	auto *func = context.construct<Function>(func_type, ++tween_id, module);
+	module.add_value_name(tween_id, "main");
 
 	auto *bb = context.construct<BasicBlock>(context);
-	bb->add_instruction(context.construct<ReturnInst>(nullptr));
 	Vector<BasicBlock *> bbs { bb };
+	current_bb = bb;
 
-	module.add_value_name(tween_id, "main");
+	auto *load = build_load_input(0, Type::getFloatTy(context), get_constant_uint(0), 0);
+	push_instruction(load);
+	for (int i = 0; i < 4; i++)
+		push_instruction(build_store_output(0, get_constant_uint(0), i, load));
+	push_instruction(context.construct<ReturnInst>(nullptr));
+
 	func->set_basic_blocks(std::move(bbs));
 	module.add_function_implementation(func);
 	create_named_md_node("dx.entryPoints",
@@ -140,7 +258,7 @@ void ParseContext::emit_entry_point()
 		                     create_constant_meta(func),
 	                         create_string_meta("main"),
 	                         create_stage_io_meta(),
-	                         nullptr, nullptr));
+	                         create_null_meta(), create_null_meta()));
 }
 
 void ParseContext::emit_metadata()
