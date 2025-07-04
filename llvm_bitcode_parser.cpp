@@ -61,9 +61,10 @@ bool LLVMBCParser::parse(const void *data, size_t size)
 	llvm::disassemble(*mod, str);
 	fprintf(stderr, "Disasm:\n%s\n", str.c_str());
 
-	impl->module = llvm::parseIR(impl->context, data, size);
-	if (!impl->module)
-		return false;
+	//impl->module = llvm::parseIR(impl->context, data, size);
+	//if (!impl->module)
+	//	return false;
+	impl->module = mod;
 #else
 	auto memory = llvm::WritableMemoryBuffer::getNewUninitMemBuffer(size);
 	memcpy(memory->getBufferStart(), data, size);
