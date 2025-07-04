@@ -116,12 +116,12 @@ private:
 	MDNode *create_stage_io_meta();
 	MDOperand *create_null_meta();
 
-	struct ResourceInfo
+	struct MetadataMapping
 	{
 		Vector<MDOperand *> nodes;
 		// TODO: Some mapping from SsaRef to index so we can translate load descriptor.
 	};
-	ResourceInfo srvs, uavs, cbvs, samplers;
+	MetadataMapping srvs, uavs, cbvs, samplers, inputs, outputs, patches;
 
 	uint32_t build_texture_srv(uint32_t space, uint32_t index, uint32_t size,
 	                           DXIL::ResourceKind kind,
@@ -141,6 +141,14 @@ private:
 	uint32_t build_cbv(uint32_t space, uint32_t index, uint32_t size, uint32_t cbv_size);
 
 	uint32_t build_sampler(uint32_t space, uint32_t index, uint32_t size);
+
+	uint32_t build_stage_io(MetadataMapping &mapping, const String &name,
+	                        DXIL::ComponentType type,
+	                        DXIL::Semantic semantic,
+	                        uint32_t semantic_index,
+	                        DXIL::InterpolationMode interpolation,
+	                        uint32_t rows, uint32_t cols,
+	                        uint32_t start_row, uint32_t start_col);
 
 	// DXIL intrinsic build.
 	DXILIntrinsicTable dxil_intrinsics;
@@ -227,43 +235,18 @@ void ParseContext::create_named_md_node(const String &name, MDNode *node)
 
 MDNode *ParseContext::create_stage_io_meta()
 {
-	Vector<MDOperand *> inputs;
-	Vector<MDOperand *> outputs;
+	build_stage_io(inputs, "INPUT", DXIL::ComponentType::F32,
+	               DXIL::Semantic::User, 0, DXIL::InterpolationMode::Undefined,
+	               1, 1, 0, 0);
 
-	Vector<MDOperand *> ops {
-		create_constant_uint_meta(0), // index
-		create_string_meta("INPUT"),
-		create_constant_uint_meta(uint32_t(DXIL::ComponentType::F32)),
-		create_constant_uint_meta(uint32_t(DXIL::Semantic::User)),
-		create_md_node(create_constant_uint_meta(0)), // semantic index
-		create_constant_uint_meta(uint32_t(DXIL::InterpolationMode::Undefined)),
-		create_constant_uint_meta(1), // rows
-		create_constant_uint_meta(1), // cols
-		create_constant_uint_meta(0), // start row
-		create_constant_uint_meta(0), // start col
-		create_null_meta(), // dxil-spirv doesn't use this
-	};
+	build_stage_io(outputs, "SV_Position", DXIL::ComponentType::F32,
+	               DXIL::Semantic::Position, 0, DXIL::InterpolationMode::Undefined,
+	               1, 4, 0, 0);
 
-	Vector<MDOperand *> out_ops {
-		create_constant_uint_meta(0), // index
-		create_string_meta("SV_Position"),
-		create_constant_uint_meta(uint32_t(DXIL::ComponentType::F32)),
-		create_constant_uint_meta(uint32_t(DXIL::Semantic::Position)),
-		create_md_node(create_constant_uint_meta(0)), // semantic index
-		create_constant_uint_meta(uint32_t(DXIL::InterpolationMode::Undefined)),
-		create_constant_uint_meta(1), // rows
-		create_constant_uint_meta(4), // cols
-		create_constant_uint_meta(0), // start row
-		create_constant_uint_meta(0), // start col
-		create_null_meta(), // dxil-spirv doesn't use this
-	};
-
-	inputs.push_back(create_md_node(std::move(ops)));
-	outputs.push_back(create_md_node(std::move(out_ops)));
-
-	auto *input_meta = create_md_node(std::move(inputs));
-	auto *output_meta = create_md_node(std::move(outputs));
-	return create_md_node(input_meta, output_meta, create_null_meta() /* patch meta */);
+	return create_md_node(
+		inputs.nodes.empty() ? create_null_meta() : create_md_node(inputs.nodes),
+		outputs.nodes.empty() ? create_null_meta() : create_md_node(outputs.nodes),
+		patches.nodes.empty() ? create_null_meta() : create_md_node(patches.nodes));
 }
 
 void ParseContext::emit_entry_point()
@@ -460,6 +443,31 @@ uint32_t ParseContext::build_cbv(
 	    create_constant_uint_meta(cbv_size));
 
 	cbvs.nodes.push_back(sampler);
+	return ret;
+}
+
+uint32_t ParseContext::build_stage_io(
+    MetadataMapping &mapping,
+	const String &name, DXIL::ComponentType type, DXIL::Semantic semantic, uint32_t semantic_index,
+    DXIL::InterpolationMode interpolation,
+    uint32_t rows, uint32_t cols,
+    uint32_t start_row, uint32_t start_col)
+{
+	uint32_t ret = mapping.nodes.size();
+	auto *input = create_md_node(
+		create_constant_uint_meta(ret),
+		create_string_meta(name),
+		create_constant_uint_meta(uint32_t(type)),
+		create_constant_uint_meta(uint32_t(semantic)),
+		semantic_index ? create_md_node(create_constant_uint_meta(semantic_index)) : create_null_meta(),
+		create_constant_uint_meta(uint32_t(interpolation)),
+		create_constant_uint_meta(rows),
+		create_constant_uint_meta(cols),
+		create_constant_uint_meta(start_row),
+		create_constant_uint_meta(start_col),
+		create_null_meta());
+
+	mapping.nodes.push_back(input);
 	return ret;
 }
 
