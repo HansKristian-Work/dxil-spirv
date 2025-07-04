@@ -828,8 +828,7 @@ bool emit_wave_active_op_instruction(Converter::Impl &impl, const llvm::CallInst
 	    impl.execution_model == spv::ExecutionModelMeshEXT ||
 	    impl.execution_model == spv::ExecutionModelTaskEXT)
 	{
-		if (!impl.shader_analysis.has_group_shared_barrier &&
-		    impl.execution_mode_meta.workgroup_threads[0] == 32 &&
+		if (impl.execution_mode_meta.workgroup_threads[0] == 32 &&
 		    impl.execution_mode_meta.workgroup_threads[1] == 1 &&
 		    impl.execution_mode_meta.workgroup_threads[2] == 1 &&
 		    value_is_local_invocation_index_dependent(instruction->getOperand(1)))
