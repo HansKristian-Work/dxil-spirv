@@ -1240,7 +1240,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 							op->add_id(clamp_op->id);
 							continue;
 						}
-						else if (address_space == DXIL::AddressSpace::Thread && impl.options.extended_robustness.alloca)
+						else if ((address_space == DXIL::AddressSpace::Thread || address_space == DXIL::AddressSpace::GroupShared) && impl.options.extended_robustness.alloca)
 						{
 							unsigned num_elements = array_type->getArrayNumElements();
 							auto *is_in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
