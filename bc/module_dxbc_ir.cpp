@@ -289,7 +289,8 @@ private:
 
 	// BasicBlock emission.
 	BasicBlock *current_bb = nullptr;
-	void push_instruction(Instruction *instruction);
+	void push_instruction(Instruction *instruction, ir::SsaDef ssa = {});
+	bool push_instruction(const ir::Op &op);
 
 	// ir::Builder helpers
 	UnorderedMap<ir::SsaDef, Function *> function_map;
@@ -306,6 +307,7 @@ private:
 	Value *get_value(const ir::SsaDef &op) const;
 
 	bool emit_constant(const ir::Op &op);
+	uint32_t resolve_constant_uint(const ir::Operand &op) const;
 };
 
 bool ParseContext::emit_constant(const ir::Op &op)
@@ -429,11 +431,139 @@ Type *ParseContext::convert_type(const ir::Type &type)
 	}
 }
 
-void ParseContext::push_instruction(Instruction *instruction)
+void ParseContext::push_instruction(Instruction *instruction, ir::SsaDef ssa)
 {
 	assert(current_bb);
 	instruction->set_tween_id(++tween_id);
 	current_bb->add_instruction(instruction);
+	if (ssa)
+		value_map[ssa] = instruction;
+}
+
+uint32_t ParseContext::resolve_constant_uint(const ir::Operand &op) const
+{
+	auto *value = get_value(op);
+	if (!value)
+		return 0;
+
+	if (auto *cint = llvm::dyn_cast<llvm::ConstantInt>(value))
+		return cint->getUniqueInteger().getZExtValue();
+	else
+		return 0;
+}
+
+bool ParseContext::push_instruction(const ir::Op &op)
+{
+	switch (op.getOpCode())
+	{
+	case ir::OpCode::eInputLoad:
+	{
+		uint32_t io_index = stage_io_map[ir::SsaDef(op.getOperand(0))];
+		auto *type = convert_type(op.getType());
+		auto *scalar_type = type;
+
+		unsigned components = 1;
+		if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+		{
+			components = vec->getVectorSize();
+			scalar_type = vec->getElementType();
+		}
+
+		Instruction *insts[4] = {};
+
+		uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
+
+		for (unsigned c = 0; c < components; c++)
+		{
+			insts[c] = build_load_input(io_index, scalar_type, get_constant_uint(0), col + c);
+			push_instruction(insts[c], op.getDef());
+		}
+
+		if (components != 1)
+		{
+			Value *value = UndefValue::get(type);
+			for (unsigned c = 0; c < components; c++)
+			{
+				auto *inst = context.construct<InsertElementInst>(value, insts[c], get_constant_uint(c));
+				push_instruction(inst, op.getDef());
+				value = inst;
+			}
+		}
+
+		break;
+	}
+
+	case ir::OpCode::eOutputStore:
+	{
+		auto *store_value = get_value(op.getOperand(2));
+		Type *scalar_type = nullptr;
+		uint32_t io_index = stage_io_map[ir::SsaDef(op.getOperand(0))];
+		unsigned components = 1;
+
+		if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(store_value->getType()))
+		{
+			components = vec->getVectorSize();
+			scalar_type = vec->getElementType();
+		}
+
+		uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
+
+		if (components == 1)
+		{
+			push_instruction(build_store_output(io_index, get_constant_uint(0), col, store_value));
+		}
+		else
+		{
+			for (unsigned c = 0; c < components; c++)
+			{
+				Vector<unsigned> indices { c };
+				auto *inst = context.construct<ExtractValueInst>(scalar_type, store_value, std::move(indices));
+				push_instruction(inst);
+				push_instruction(build_store_output(io_index, get_constant_uint(0), col + c, inst));
+			}
+		}
+
+		break;
+	}
+
+	case ir::OpCode::eCompositeConstruct:
+	{
+		// LLVM CompositeConstruct is goofy. May want to add a custom op.
+		auto *type = convert_type(op.getType());
+		Value *value = UndefValue::get(type);
+		for (unsigned i = 0; i < op.getOperandCount(); i++)
+		{
+			auto *inst = context.construct<InsertElementInst>(value, get_value(op.getOperand(i)), get_constant_uint(i));
+			push_instruction(inst, op.getDef());
+			value = inst;
+		}
+
+		break;
+	}
+
+	case ir::OpCode::eCompositeExtract:
+	{
+		auto *type = convert_type(op.getType());
+		Vector<unsigned> indices { resolve_constant_uint(op.getOperand(1)) };
+		auto *inst = context.construct<ExtractValueInst>(type, get_value(op.getOperand(0)), std::move(indices));
+		push_instruction(inst, op.getDef());
+		break;
+	}
+
+	case ir::OpCode::eCompositeInsert:
+	{
+		auto *inst = context.construct<InsertElementInst>(
+		    get_value(op.getOperand(0)), get_value(op.getOperand(2)), get_value(op.getOperand(1)));
+		push_instruction(inst, op.getDef());
+		break;
+	}
+
+	default:
+		LOGE("Unimplemented opcode %u\n", unsigned(op.getOpCode()));
+		return false;
+	}
+
+	return true;
 }
 
 Instruction *ParseContext::build_load_input(
@@ -987,6 +1117,9 @@ bool ParseContext::emit_function_bodies()
 				LOGE("No BB to insert instructions into.\n");
 				return false;
 			}
+
+			if (!push_instruction(op))
+				return false;
 			break;
 		}
 	}

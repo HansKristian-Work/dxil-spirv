@@ -1656,9 +1656,10 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 		return true;
 
 	auto itr = impl.llvm_composite_meta.find(instruction->getAggregateOperand());
-	assert(itr != impl.llvm_composite_meta.end());
 
-	if (itr->second.components == 1 && !itr->second.forced_composite)
+	if (itr != impl.llvm_composite_meta.end() &&
+	    itr->second.components == 1 &&
+	    !itr->second.forced_composite)
 	{
 		// Forward the ID. The composite was originally emitted as a scalar.
 		spv::Id rewrite_id = impl.get_id_for_value(instruction->getAggregateOperand());
