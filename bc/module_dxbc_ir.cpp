@@ -70,6 +70,98 @@ static const char *shader_stage_to_meta(ir::ShaderStage stage)
 	}
 }
 
+static DXIL::Semantic convert_semantic(ir::BuiltIn builtin)
+{
+	switch (builtin)
+	{
+	case ir::BuiltIn::ePosition:
+		return DXIL::Semantic::Position;
+
+	default:
+		return DXIL::Semantic::User;
+	}
+}
+
+static DXIL::InterpolationMode convert_interpolation_mode(ir::InterpolationMode mode)
+{
+	switch (mode)
+	{
+	case ir::InterpolationMode::eCentroid:
+		return DXIL::InterpolationMode::LinearCentroid;
+	case ir::InterpolationMode::eNoPerspective:
+		return DXIL::InterpolationMode::LinearNoperspective;
+	case ir::InterpolationMode::eFlat:
+		return DXIL::InterpolationMode::Constant;
+	case ir::InterpolationMode::eSample:
+		return DXIL::InterpolationMode::LinearSample;
+	default:
+		return DXIL::InterpolationMode::Undefined;
+	}
+}
+
+struct ComponentMapping
+{
+	DXIL::ComponentType type = DXIL::ComponentType::Invalid;
+	uint32_t num_rows = 1;
+	uint32_t num_cols = 1;
+};
+
+static ComponentMapping convert_component_mapping(const ir::Type &type)
+{
+	ComponentMapping mapping = {};
+
+	switch (type.getBaseType(0).getBaseType())
+	{
+	case ir::ScalarType::eF16:
+		mapping.type = DXIL::ComponentType::F16;
+		break;
+
+	case ir::ScalarType::eI16:
+		mapping.type = DXIL::ComponentType::I16;
+		break;
+
+	case ir::ScalarType::eU16:
+		mapping.type = DXIL::ComponentType::U16;
+		break;
+
+	case ir::ScalarType::eF32:
+		mapping.type = DXIL::ComponentType::F32;
+		break;
+
+	case ir::ScalarType::eI32:
+		mapping.type = DXIL::ComponentType::I32;
+		break;
+
+	case ir::ScalarType::eU32:
+		mapping.type = DXIL::ComponentType::U32;
+		break;
+
+	case ir::ScalarType::eF64:
+		mapping.type = DXIL::ComponentType::F64;
+		break;
+
+	case ir::ScalarType::eI64:
+		mapping.type = DXIL::ComponentType::I64;
+		break;
+
+	case ir::ScalarType::eU64:
+		mapping.type = DXIL::ComponentType::U64;
+		break;
+
+	default:
+		LOGE("Unrecognized component type.\n");
+		break;
+	}
+
+	if (type.isArrayType())
+		mapping.num_rows = type.getArraySize(0);
+
+	if (type.isVectorType())
+		mapping.num_cols = type.getBaseType(0).getVectorSize();
+
+	return mapping;
+}
+
 struct DXILIntrinsicTable
 {
 	struct FunctionOverload
@@ -179,7 +271,7 @@ private:
 
 	uint32_t build_sampler(uint32_t space, uint32_t index, uint32_t size);
 
-	uint32_t build_stage_io(MetadataMapping &mapping, const String &name,
+	uint32_t build_stage_io(MetadataMapping &mapping, ir::SsaDef ssa, const String &name,
 	                        DXIL::ComponentType type,
 	                        DXIL::Semantic semantic,
 	                        uint32_t semantic_index,
@@ -205,6 +297,7 @@ private:
 	UnorderedMap<ir::SsaDef, Type *> param_types;
 	Vector<std::pair<ir::SsaDef, Type *>> params;
 	UnorderedMap<ir::SsaDef, Value *> value_map;
+	UnorderedMap<ir::SsaDef, uint32_t> stage_io_map;
 
 	Type *convert_type(const ir::Type &type);
 	BasicBlock *get_basic_block(ir::SsaDef ssa);
@@ -293,7 +386,6 @@ Type *ParseContext::convert_type(const ir::Type &type)
 		switch (base.getBaseType())
 		{
 		case ir::ScalarType::eF16:
-		case ir::ScalarType::eMinF16:
 			llvm_type = Type::getHalfTy(context);
 			break;
 
@@ -306,9 +398,7 @@ Type *ParseContext::convert_type(const ir::Type &type)
 			break;
 
 		case ir::ScalarType::eI16:
-		case ir::ScalarType::eMinI16:
 		case ir::ScalarType::eU16:
-		case ir::ScalarType::eMinU16:
 			llvm_type = Type::getInt16Ty(context);
 			break;
 
@@ -411,91 +501,92 @@ void ParseContext::create_named_md_node(const String &name, MDNode *node)
 
 MDNode *ParseContext::create_stage_io_meta()
 {
-	// TODO: Loop over DclInput/Output and friends.
-	build_stage_io(inputs, "INPUT", DXIL::ComponentType::F32,
-	               DXIL::Semantic::User, 0, DXIL::InterpolationMode::Undefined,
-	               1, 1, 0, 0);
+	struct IOOp
+	{
+		const ir::Op *op;
+		std::string semantic;
+		uint32_t index;
+	};
+	std::vector<IOOp> io_inputs, io_outputs, io_patch;
 
-	build_stage_io(outputs, "SV_Position", DXIL::ComponentType::F32,
-	               DXIL::Semantic::Position, 0, DXIL::InterpolationMode::Undefined,
-	               1, 4, 0, 0);
+	for (auto &op : builder)
+	{
+		switch (op.getOpCode())
+		{
+		case ir::OpCode::eDclInput:
+		case ir::OpCode::eDclInputBuiltIn:
+			io_inputs.push_back({ &op });
+			break;
+
+		case ir::OpCode::eDclOutput:
+		case ir::OpCode::eDclOutputBuiltIn:
+			io_outputs.push_back({ &op });
+			break;
+
+		case ir::OpCode::eSemantic:
+		{
+			std::vector<IOOp> *sems[] = { &io_inputs, &io_outputs, &io_patch };
+			for (auto *sem : sems)
+			{
+				for (auto &ioop : *sem)
+				{
+					if (ioop.op->getDef() == ir::SsaDef(op.getOperand(0)))
+					{
+						ioop.index = uint32_t(op.getOperand(1));
+						ioop.semantic = op.getLiteralString(2);
+					}
+				}
+			}
+			break;
+		}
+
+		default:
+			break;
+		}
+	}
+
+	const struct
+	{
+		std::vector<IOOp> *ioop;
+		MetadataMapping *mapping;
+	} mappings[] = {
+		{ &io_inputs, &inputs },
+		{ &io_outputs, &outputs },
+		{ &io_patch, &patches },
+	};
+
+	for (auto &mapping : mappings)
+	{
+		for (auto &io : *mapping.ioop)
+		{
+			DXIL::Semantic builtin = DXIL::Semantic::User;
+			uint32_t location, component;
+
+			if (io.op->getOperandCount() == 3)
+			{
+				location = uint32_t(io.op->getOperand(1));
+				component = uint32_t(io.op->getOperand(2));
+			}
+			else
+			{
+				builtin = convert_semantic(ir::BuiltIn(io.op->getOperand(1)));
+				location = UINT32_MAX;
+				component = UINT32_MAX;
+			}
+
+			auto interpolation = convert_interpolation_mode(ir::InterpolationMode(io.op->getOperand(3)));
+			auto comp = convert_component_mapping(io.op->getType());
+			build_stage_io(*mapping.mapping, io.op->getDef(), String(io.semantic),
+			               comp.type, builtin, io.index, interpolation,
+			               comp.num_rows, comp.num_cols, location, component);
+		}
+	}
 
 	return create_md_node(
 		inputs.nodes.empty() ? create_null_meta() : create_md_node(inputs.nodes),
 		outputs.nodes.empty() ? create_null_meta() : create_md_node(outputs.nodes),
 		patches.nodes.empty() ? create_null_meta() : create_md_node(patches.nodes));
 }
-
-#if 0
-void ParseContext::emit_entry_point()
-{
-	auto *func_type = context.construct<FunctionType>(context, Type::getVoidTy(context), Vector<Type *>{});
-	auto *func = context.construct<Function>(func_type, ++tween_id, module);
-	module.add_value_name(tween_id, "main");
-
-	// We're not barbarians.
-	func->set_structured_control_flow();
-
-	auto *bb = context.construct<BasicBlock>(context);
-	auto *true_bb = context.construct<BasicBlock>(context);
-	auto *false_bb = context.construct<BasicBlock>(context);
-	auto *merge_bb = context.construct<BasicBlock>(context);
-	auto *loop_merge_bb = context.construct<BasicBlock>(context);
-	current_bb = bb;
-
-	auto *load = build_load_input(0, Type::getFloatTy(context), get_constant_uint(0), 0);
-	push_instruction(load);
-
-	bb->add_successor(true_bb);
-	bb->add_successor(false_bb);
-	true_bb->add_successor(merge_bb);
-	false_bb->add_successor(merge_bb);
-
-	bb->set_selection_merge(merge_bb);
-	auto *cond_branch = context.construct<BranchInst>(
-	    true_bb, false_bb, ConstantInt::get(Type::getInt1Ty(context), 1));
-	push_instruction(cond_branch);
-
-	current_bb = true_bb;
-	{
-		for (int i = 0; i < 2; i++)
-			push_instruction(build_store_output(0, get_constant_uint(0), i, load));
-		push_instruction(context.construct<BranchInst>(merge_bb));
-	}
-
-	current_bb = false_bb;
-	{
-		for (int i = 2; i < 4; i++)
-			push_instruction(build_store_output(0, get_constant_uint(0), i, load));
-		push_instruction(context.construct<BranchInst>(merge_bb));
-	}
-
-	current_bb = merge_bb;
-	merge_bb->add_successor(loop_merge_bb);
-	merge_bb->set_loop_merge(loop_merge_bb, merge_bb);
-	cond_branch = context.construct<BranchInst>(
-		merge_bb, loop_merge_bb, ConstantInt::get(Type::getInt1Ty(context), 1));
-	push_instruction(cond_branch);
-
-	bb->set_tween_id(++tween_id);
-	true_bb->set_tween_id(++tween_id);
-	false_bb->set_tween_id(++tween_id);
-	merge_bb->set_tween_id(++tween_id);
-	loop_merge_bb->set_tween_id(++tween_id);
-
-	current_bb = loop_merge_bb;
-	push_instruction(context.construct<ReturnInst>(nullptr));
-
-	func->set_basic_blocks({ bb, true_bb, false_bb, merge_bb, loop_merge_bb });
-	module.add_function_implementation(func);
-	create_named_md_node("dx.entryPoints",
-	                     create_md_node(
-		                     create_constant_meta(func),
-	                         create_string_meta("main"),
-	                         create_stage_io_meta(),
-	                         create_null_meta(), create_null_meta()));
-}
-#endif
 
 bool ParseContext::emit_entry_point()
 {
@@ -668,13 +759,16 @@ uint32_t ParseContext::build_cbv(
 }
 
 uint32_t ParseContext::build_stage_io(
-    MetadataMapping &mapping,
+    MetadataMapping &mapping, ir::SsaDef ssa,
 	const String &name, DXIL::ComponentType type, DXIL::Semantic semantic, uint32_t semantic_index,
     DXIL::InterpolationMode interpolation,
     uint32_t rows, uint32_t cols,
     uint32_t start_row, uint32_t start_col)
 {
 	uint32_t ret = mapping.nodes.size();
+
+	stage_io_map[ssa] = ret;
+
 	auto *input = create_md_node(
 		create_constant_uint_meta(ret),
 		create_string_meta(name),

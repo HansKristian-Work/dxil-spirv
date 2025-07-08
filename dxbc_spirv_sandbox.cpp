@@ -81,15 +81,11 @@ struct Remapper : ResourceRemappingInterface
 
 	bool remap_stage_input(const D3DStageIO &d3d_input, VulkanStageIO &vk_input) override
 	{
-		vk_input = {};
-		vk_input.location = d3d_input.start_row;
 		return true;
 	}
 
 	bool remap_stage_output(const D3DStageIO &d3d_output, VulkanStageIO &vk_output) override
 	{
-		vk_output = {};
-		vk_output.location = d3d_output.start_row;
 		return true;
 	}
 
