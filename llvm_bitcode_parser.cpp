@@ -56,15 +56,9 @@ LLVMBCParser::~LLVMBCParser()
 bool LLVMBCParser::parse(const void *data, size_t size)
 {
 #ifdef HAVE_LLVMBC
-	auto *mod = llvm::parseDXBCIR(impl->context, nullptr, 0);
-	String str;
-	llvm::disassemble(*mod, str);
-	fprintf(stderr, "Disasm:\n%s\n", str.c_str());
-
-	//impl->module = llvm::parseIR(impl->context, data, size);
-	//if (!impl->module)
-	//	return false;
-	impl->module = mod;
+	impl->module = llvm::parseIR(impl->context, data, size);
+	if (!impl->module)
+		return false;
 #else
 	auto memory = llvm::WritableMemoryBuffer::getNewUninitMemBuffer(size);
 	memcpy(memory->getBufferStart(), data, size);
@@ -79,6 +73,17 @@ bool LLVMBCParser::parse(const void *data, size_t size)
 #endif
 
 	return true;
+}
+
+bool LLVMBCParser::parseDXBC(dxbc_spv::ir::Builder &builder)
+{
+#ifdef HAVE_LLVMBC
+	impl->module = llvm::parseDXBCIR(impl->context, builder);
+	return impl->module != nullptr;
+#else
+	(void)builder;
+	return false;
+#endif
 }
 
 llvm::Module &LLVMBCParser::get_module()

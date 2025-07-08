@@ -33,8 +33,43 @@
 #include "../dxil.hpp"
 #include <assert.h>
 
+// dxbc-spirv
+#include "ir/ir.h"
+#include "ir/ir_builder.h"
+using namespace dxbc_spv;
+
 namespace LLVMBC
 {
+template <typename Func>
+static void for_all_opcodes(ir::Builder &builder, ir::OpCode opcode, const Func &func)
+{
+	for (auto &op : builder)
+		if (op.getOpCode() == opcode)
+			if (!func(op))
+				return;
+}
+
+static const char *shader_stage_to_meta(ir::ShaderStage stage)
+{
+	switch (stage)
+	{
+	case ir::ShaderStage::eVertex:
+		return "vs";
+	case ir::ShaderStage::eHull:
+		return "hs";
+	case ir::ShaderStage::eDomain:
+		return "ds";
+	case ir::ShaderStage::eGeometry:
+		return "gs";
+	case ir::ShaderStage::ePixel:
+		return "ps";
+	case ir::ShaderStage::eCompute:
+		return "cs";
+	default:
+		return "";
+	}
+}
+
 struct DXILIntrinsicTable
 {
 	struct FunctionOverload
@@ -84,14 +119,16 @@ Function *DXILIntrinsicTable::get(
 class ParseContext
 {
 public:
-	ParseContext(LLVMContext &context_, Module &module_)
-	    : context(context_), module(module_) {}
+	ParseContext(LLVMContext &context_, ir::Builder &builder_, Module &module_)
+	    : context(context_), builder(builder_), module(module_) {}
 
-	void emit_metadata();
-	void emit_entry_point();
+	bool emit_metadata();
+	bool emit_entry_point();
+	bool emit_function_bodies();
 
 private:
 	LLVMContext &context;
+	ir::Builder &builder;
 	Module &module;
 	uint64_t metadata_tween_id = 0;
 	uint64_t tween_id = 0;
@@ -161,7 +198,146 @@ private:
 	// BasicBlock emission.
 	BasicBlock *current_bb = nullptr;
 	void push_instruction(Instruction *instruction);
+
+	// ir::Builder helpers
+	UnorderedMap<ir::SsaDef, Function *> function_map;
+	UnorderedMap<ir::SsaDef, BasicBlock *> bb_map;
+	UnorderedMap<ir::SsaDef, Type *> param_types;
+	Vector<std::pair<ir::SsaDef, Type *>> params;
+	UnorderedMap<ir::SsaDef, Value *> value_map;
+
+	Type *convert_type(const ir::Type &type);
+	BasicBlock *get_basic_block(ir::SsaDef ssa);
+
+	Value *get_value(const ir::Operand &op) const;
+	Value *get_value(const ir::SsaDef &op) const;
+
+	bool emit_constant(const ir::Op &op);
 };
+
+bool ParseContext::emit_constant(const ir::Op &op)
+{
+	auto &type = op.getType();
+	Value *value = nullptr;
+
+	if (type.isBasicType())
+	{
+		auto *llvm_type = convert_type(type);
+		if (type.isScalarType())
+		{
+			if (type.getBaseType(0).isIntType())
+				value = ConstantInt::get(llvm_type, uint64_t(op.getOperand(0)));
+			else if (type.getBaseType(0).isFloatType())
+				value = ConstantFP::get(llvm_type, uint64_t(op.getOperand(0)));
+			else
+				return false;
+		}
+		else
+		{
+			Vector<Value *> constants;
+			constants.reserve(op.getOperandCount());
+
+			if (type.getBaseType(0).isIntType())
+			{
+				for (unsigned i = 0; i < op.getOperandCount(); i++)
+					constants.push_back(ConstantInt::get(convert_type(type.getSubType(0)), uint64_t(op.getOperand(i))));
+			}
+			else if (type.getBaseType(0).isFloatType())
+			{
+				for (unsigned i = 0; i < op.getOperandCount(); i++)
+					constants.push_back(ConstantFP::get(convert_type(type.getSubType(0)), uint64_t(op.getOperand(i))));
+			}
+			else
+				return false;
+
+			value = context.construct<ConstantDataVector>(convert_type(type), std::move(constants));
+		}
+	}
+	else
+	{
+		// TODO:
+		return false;
+	}
+
+	if (!value)
+		return false;
+
+	value_map[op.getDef()] = value;
+	return true;
+}
+
+Type *ParseContext::convert_type(const ir::Type &type)
+{
+	if (type.isArrayType())
+	{
+		auto *llvm_type = convert_type(type.getSubType(0));
+		for (unsigned dim = 0; dim < type.getArrayDimensions(); dim++)
+			llvm_type = ArrayType::get(llvm_type, type.getArraySize(dim));
+		return llvm_type;
+	}
+	else if (type.isStructType())
+	{
+		Vector<Type *> members;
+		for (unsigned index = 0; index < type.getStructMemberCount(); index++)
+			members.push_back(convert_type(type.getSubType(index)));
+		return StructType::get(context, std::move(members));
+	}
+	else if (type.isVoidType())
+	{
+		return Type::getVoidTy(context);
+	}
+	else if (type.isBasicType())
+	{
+		Type *llvm_type;
+		ir::BasicType base = type.getBaseType(0);
+		switch (base.getBaseType())
+		{
+		case ir::ScalarType::eF16:
+		case ir::ScalarType::eMinF16:
+			llvm_type = Type::getHalfTy(context);
+			break;
+
+		case ir::ScalarType::eF32:
+			llvm_type = Type::getFloatTy(context);
+			break;
+
+		case ir::ScalarType::eF64:
+			llvm_type = Type::getDoubleTy(context);
+			break;
+
+		case ir::ScalarType::eI16:
+		case ir::ScalarType::eMinI16:
+		case ir::ScalarType::eU16:
+		case ir::ScalarType::eMinU16:
+			llvm_type = Type::getInt16Ty(context);
+			break;
+
+		case ir::ScalarType::eI32:
+		case ir::ScalarType::eU32:
+			llvm_type = Type::getInt32Ty(context);
+			break;
+
+		case ir::ScalarType::eI64:
+		case ir::ScalarType::eU64:
+			llvm_type = Type::getInt64Ty(context);
+			break;
+
+		default:
+			LOGE("Unrecognized basic scalar type %u\n", unsigned(type.isBasicType()));
+			return nullptr;
+		}
+
+		if (base.isVector())
+			llvm_type = VectorType::get(base.getVectorSize(), llvm_type);
+
+		return llvm_type;
+	}
+	else
+	{
+		LOGE("Unrecognized type.\n");
+		return nullptr;
+	}
+}
 
 void ParseContext::push_instruction(Instruction *instruction)
 {
@@ -235,6 +411,7 @@ void ParseContext::create_named_md_node(const String &name, MDNode *node)
 
 MDNode *ParseContext::create_stage_io_meta()
 {
+	// TODO: Loop over DclInput/Output and friends.
 	build_stage_io(inputs, "INPUT", DXIL::ComponentType::F32,
 	               DXIL::Semantic::User, 0, DXIL::InterpolationMode::Undefined,
 	               1, 1, 0, 0);
@@ -249,6 +426,7 @@ MDNode *ParseContext::create_stage_io_meta()
 		patches.nodes.empty() ? create_null_meta() : create_md_node(patches.nodes));
 }
 
+#if 0
 void ParseContext::emit_entry_point()
 {
 	auto *func_type = context.construct<FunctionType>(context, Type::getVoidTy(context), Vector<Type *>{});
@@ -316,6 +494,49 @@ void ParseContext::emit_entry_point()
 	                         create_string_meta("main"),
 	                         create_stage_io_meta(),
 	                         create_null_meta(), create_null_meta()));
+}
+#endif
+
+bool ParseContext::emit_entry_point()
+{
+	const ir::Op *entry = nullptr;
+	for_all_opcodes(builder, ir::OpCode::eEntryPoint, [&](const ir::Op &op) { entry = &op; return false; });
+	if (!entry)
+		return false;
+
+	for (uint32_t i = 0; i < entry->getFirstLiteralOperandIndex(); i++)
+	{
+		auto ssa = ir::SsaDef(entry->getOperand(i));
+
+		Type *type = convert_type(entry->getType());
+
+		// Entry points don't take arguments.
+		auto *func_type = context.construct<FunctionType>(context, type, Vector<Type *>{});
+		auto *func = context.construct<Function>(func_type, ++tween_id, module);
+		module.add_value_name(tween_id, i == 0 ? "main" : "patchMain");
+
+		// We're not barbarians.
+		func->set_structured_control_flow();
+
+		function_map[ssa] = func;
+
+		if (i == 0)
+		{
+			create_named_md_node("dx.entryPoints",
+			                     create_md_node(create_constant_meta(func), create_string_meta("main"),
+			                                    create_stage_io_meta(), create_null_meta(), create_null_meta()));
+		}
+	}
+
+	auto *name = create_string_meta("dxbc-spirv");
+	create_named_md_node("llvm.ident", create_md_node(name));
+
+	const char *stage = shader_stage_to_meta(ir::ShaderStage(entry->getOperand(entry->getFirstLiteralOperandIndex())));
+	auto *stage_type = create_string_meta(stage);
+	auto *major = create_constant_uint_meta(6);
+	auto *minor = create_constant_uint_meta(0);
+	create_named_md_node("dx.shaderModel", create_md_node(stage_type, major, minor));
+	return true;
 }
 
 uint32_t ParseContext::build_texture_srv(
@@ -471,16 +692,9 @@ uint32_t ParseContext::build_stage_io(
 	return ret;
 }
 
-void ParseContext::emit_metadata()
+bool ParseContext::emit_metadata()
 {
-	auto *name = create_string_meta("dxbc-spirv");
-	create_named_md_node("llvm.ident", create_md_node(name));
-
-	auto *cs = create_string_meta("vs");
-	auto *major = create_constant_uint_meta(6);
-	auto *minor = create_constant_uint_meta(0);
-	create_named_md_node("dx.shaderModel", create_md_node(cs, major, minor));
-
+	// Scan over all Dcl opcodes.
 	build_texture_srv(3, 4, 5, DXIL::ResourceKind::Texture2D, DXIL::ComponentType::F32);
 	build_buffer_srv(3, 4, 5, DXIL::ResourceKind::RawBuffer, 0);
 	build_buffer_srv(3, 4, 5, DXIL::ResourceKind::StructuredBuffer, 4);
@@ -496,6 +710,213 @@ void ParseContext::emit_metadata()
 		uavs.nodes.empty() ? create_null_meta() : create_md_node(uavs.nodes),
 		cbvs.nodes.empty() ? create_null_meta() : create_md_node(cbvs.nodes),
 		samplers.nodes.empty() ? create_null_meta() : create_md_node(samplers.nodes)));
+
+	return true;
+}
+
+bool ParseContext::emit_function_bodies()
+{
+	Vector<BasicBlock *> bbs;
+	Function *func = nullptr;
+
+	for (auto &op : builder)
+	{
+		switch (op.getOpCode())
+		{
+		case ir::OpCode::eEntryPoint:
+		case ir::OpCode::eDebugName:
+			break;
+
+		case ir::OpCode::eDclInput:
+		case ir::OpCode::eDclInputBuiltIn:
+		case ir::OpCode::eDclOutput:
+		case ir::OpCode::eDclOutputBuiltIn:
+		case ir::OpCode::eDclSrv:
+		case ir::OpCode::eDclUav:
+		case ir::OpCode::eDclUavCounter:
+		case ir::OpCode::eDclCbv:
+		case ir::OpCode::eDclSampler:
+		case ir::OpCode::eSemantic:
+			break;
+
+		case ir::OpCode::eConstant:
+			if (!emit_constant(op))
+				return false;
+			break;
+
+		// Functions
+		case ir::OpCode::eDclParam:
+			param_types[op.getDef()] = convert_type(op.getType());
+			break;
+
+		case ir::OpCode::eFunction:
+		{
+			auto itr = function_map.find(op.getDef());
+			if (itr == function_map.end())
+			{
+				Type *type = convert_type(op.getType());
+
+				Vector<Type *> types;
+				types.reserve(op.getOperandCount());
+				params.clear();
+
+				for (unsigned i = 0; i < op.getOperandCount(); i++)
+				{
+					auto *param_type = param_types[ir::SsaDef(op.getOperand(i))];
+					types.push_back(param_type);
+					params.emplace_back(ir::SsaDef(op.getOperand(i)), param_type);
+				}
+
+				auto *func_type = context.construct<FunctionType>(context, type, std::move(types));
+				func = context.construct<Function>(func_type, ++tween_id, module);
+				func->set_structured_control_flow();
+				function_map[op.getDef()] = func;
+			}
+			else
+			{
+				func = itr->second;
+			}
+			break;
+		}
+
+		case ir::OpCode::eFunctionEnd:
+		{
+			if (!func)
+			{
+				LOGE("Cannot end function without a function.\n");
+				return false;
+			}
+
+			func->set_basic_blocks(std::move(bbs));
+			module.add_function_implementation(func);
+			bbs = {};
+			break;
+		}
+
+		// Basic Blocks
+		case ir::OpCode::eLabel:
+		{
+			auto *bb = get_basic_block(op.getDef());
+			current_bb = bb;
+			bbs.push_back(bb);
+
+			switch (ir::Construct(op.getOperand(op.getFirstLiteralOperandIndex())))
+			{
+			case ir::Construct::eStructuredSelection:
+				bb->set_selection_merge(get_basic_block(ir::SsaDef(op.getOperand(0))));
+				break;
+
+			case ir::Construct::eStructuredLoop:
+				bb->set_loop_merge(get_basic_block(ir::SsaDef(op.getOperand(0))),
+				                   get_basic_block(ir::SsaDef(op.getOperand(1))));
+				break;
+
+			default:
+				break;
+			}
+
+			break;
+		}
+
+		case ir::OpCode::eReturn:
+		{
+			if (!current_bb)
+				return false;
+
+			if (op.getOperand(0))
+				push_instruction(context.construct<ReturnInst>(get_value(op.getOperand(0))));
+			else
+				push_instruction(context.construct<ReturnInst>(nullptr));
+
+			current_bb = nullptr;
+			break;
+		}
+
+		case ir::OpCode::eBranch:
+		{
+			if (!current_bb)
+				return false;
+			auto *target = get_basic_block(ir::SsaDef(op.getOperand(0)));
+			current_bb->add_successor(target);
+			push_instruction(context.construct<BranchInst>(target));
+			current_bb = nullptr;
+			break;
+		}
+
+		case ir::OpCode::eBranchConditional:
+		{
+			if (!current_bb)
+				return false;
+			auto *value = get_value(op.getOperand(0));
+			auto *true_path = get_basic_block(ir::SsaDef(op.getOperand(1)));
+			auto *false_path = get_basic_block(ir::SsaDef(op.getOperand(2)));
+			current_bb->add_successor(true_path);
+			current_bb->add_successor(false_path);
+			push_instruction(context.construct<BranchInst>(true_path, false_path, value));
+			current_bb = nullptr;
+			break;
+		}
+
+		case ir::OpCode::eSwitch:
+		{
+			if (!current_bb)
+				return false;
+			auto *default_block = get_basic_block(ir::SsaDef(op.getOperand(1)));
+			current_bb->add_successor(default_block);
+
+			unsigned num_cases = (op.getOperandCount() - 2) / 2;
+			auto *inst = context.construct<SwitchInst>(get_value(op.getOperand(0)), default_block, num_cases);
+			for (unsigned i = 0; i < num_cases; i++)
+			{
+				auto *value = get_value(op.getOperand(2 * i + 2));
+				auto *case_label = get_basic_block(ir::SsaDef(op.getOperand(2 * i + 3)));
+				current_bb->add_successor(case_label);
+				inst->addCase(value, case_label);
+			}
+
+			push_instruction(inst);
+			current_bb = nullptr;
+			break;
+		}
+
+		case ir::OpCode::eUnreachable:
+			if (!current_bb)
+				return false;
+			push_instruction(context.construct<UnreachableInst>());
+			current_bb = nullptr;
+			break;
+
+		// Opcodes
+		default:
+			if (!current_bb)
+			{
+				LOGE("No BB to insert instructions into.\n");
+				return false;
+			}
+			break;
+		}
+	}
+
+	return true;
+}
+
+Value *ParseContext::get_value(const ir::Operand &op) const
+{
+	return get_value(ir::SsaDef(op));
+}
+
+Value *ParseContext::get_value(const ir::SsaDef &op) const
+{
+	auto itr = value_map.find(op);
+	return itr == value_map.end() ? nullptr : itr->second;
+}
+
+BasicBlock *ParseContext::get_basic_block(ir::SsaDef ssa)
+{
+	auto &bb = bb_map[ssa];
+	if (!bb)
+		bb = context.construct<BasicBlock>(context);
+	return bb;
 }
 
 ConstantInt *ParseContext::get_constant_uint(uint32_t value)
@@ -519,12 +940,16 @@ MDString *ParseContext::create_string_meta(const String &str)
 }
 
 // Parses the highly simplified and SSA-ified IR coming from dxbc-spirv.
-Module *parseDXBCIR(LLVMContext &context, const void *, size_t)
+Module *parseDXBCIR(LLVMContext &context, ir::Builder &builder)
 {
 	auto *module = context.construct<Module>(context);
-	ParseContext ctx(context, *module);
-	ctx.emit_entry_point();
-	ctx.emit_metadata();
+	ParseContext ctx(context, builder, *module);
+	if (!ctx.emit_entry_point())
+		return nullptr;
+	if (!ctx.emit_metadata())
+		return nullptr;
+	if (!ctx.emit_function_bodies())
+		return nullptr;
 	return module;
 }
 }
