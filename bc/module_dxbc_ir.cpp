@@ -76,6 +76,50 @@ static DXIL::Semantic convert_semantic(ir::BuiltIn builtin)
 	{
 	case ir::BuiltIn::ePosition:
 		return DXIL::Semantic::Position;
+	case ir::BuiltIn::eClipDistance:
+		return DXIL::Semantic::ClipDistance;
+	case ir::BuiltIn::eCullDistance:
+		return DXIL::Semantic::CullDistance;
+	case ir::BuiltIn::eVertexId:
+		return DXIL::Semantic::VertexID;
+	case ir::BuiltIn::eInstanceId:
+		return DXIL::Semantic::InstanceID;
+	case ir::BuiltIn::ePrimitiveId:
+		return DXIL::Semantic::PrimitiveID;
+	case ir::BuiltIn::eLayerIndex:
+		return DXIL::Semantic::RenderTargetArrayIndex;
+	case ir::BuiltIn::eViewportIndex:
+		return DXIL::Semantic::ViewPortArrayIndex;
+	case ir::BuiltIn::eGsInstanceId:
+		return DXIL::Semantic::GSInstanceID;
+	case ir::BuiltIn::eTessControlPointId:
+		return DXIL::Semantic::OutputControlPointID;
+	case ir::BuiltIn::eTessCoord:
+		// dx.op.
+	case ir::BuiltIn::eTessFactorInner:
+		return DXIL::Semantic::InsideTessFactor;
+	case ir::BuiltIn::eTessFactorOuter:
+		return DXIL::Semantic::TessFactor;
+	case ir::BuiltIn::eSampleCount:
+		// dx.op
+	case ir::BuiltIn::eSampleId:
+		return DXIL::Semantic::SampleIndex;
+	case ir::BuiltIn::eSampleMask:
+		return DXIL::Semantic::Coverage;
+	case ir::BuiltIn::eIsFrontFace:
+		return DXIL::Semantic::IsFrontFace;
+	case ir::BuiltIn::eDepth:
+		return DXIL::Semantic::Depth;
+	case ir::BuiltIn::eStencilRef:
+		return DXIL::Semantic::StencilRef;
+	case ir::BuiltIn::eWorkgroupId:
+		// dx.op
+	case ir::BuiltIn::eGlobalThreadId:
+		// dx.op
+	case ir::BuiltIn::eLocalThreadId:
+		// dx.op
+	case ir::BuiltIn::eLocalThreadIndex:
+		// dx.op
 
 	default:
 		return DXIL::Semantic::User;

@@ -181,6 +181,8 @@ cleanup:
 
 static void run_test(const char *name, ir::Builder &builder)
 {
+	LOGI("Testing %s\n", name);
+
 	LLVMBCParser parser;
 	if (!parser.parseDXBC(builder))
 	{
@@ -254,7 +256,7 @@ static void run_test(const char *name, ir::Builder &builder)
 int main()
 {
 	auto tests = test_api::enumerateTests(nullptr);
-	auto &test = tests.front();
+	auto &test = tests[7];
 
 	begin_thread_allocator_context();
 	run_test(test.name.c_str(), test.builder);
