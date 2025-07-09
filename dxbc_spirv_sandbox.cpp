@@ -241,11 +241,13 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 		return {};
 	}
 
+#if 1
 	if (!validate_spirv(spirv.data(), spirv.size() * sizeof(uint32_t)))
 	{
 		LOGE("Failed to validate SPIR-V.\n");
 		return {};
 	}
+#endif
 
 	return spirv;
 }

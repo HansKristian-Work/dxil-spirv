@@ -28,6 +28,8 @@ add_library(dxbc-spirv-test STATIC
         dxbc-spirv/tests/api/test_api_dump.cpp
         dxbc-spirv/tests/api/test_api_io.cpp
         dxbc-spirv/tests/api/test_api_io.h
+        dxbc-spirv/tests/api/test_api_resources.cpp
+        dxbc-spirv/tests/api/test_api_resources.h
         dxbc-spirv/tests/ir/test_ir.h
         dxbc-spirv/tests/ir/test_ir_builder.cpp
         dxbc-spirv/tests/ir/test_ir_op.cpp

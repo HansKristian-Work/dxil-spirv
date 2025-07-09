@@ -340,15 +340,18 @@ private:
 		uint32_t index, Type *type,
 		Value *row, uint32_t col, Value *axis = nullptr);
 	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value);
-
 	Instruction *build_load_builtin(DXIL::Op opcode, ir::SsaDef addr);
+	Instruction *build_descriptor_load(ir::SsaDef resource, ir::SsaDef index);
+	Instruction *build_buffer_load(const ir::Op &op);
+	Instruction *build_buffer_load_cbv(const ir::Op &op);
 
 	// BasicBlock emission.
 	BasicBlock *current_bb = nullptr;
 	void push_instruction(Instruction *instruction, ir::SsaDef ssa = {});
 	bool push_instruction(const ir::Op &op);
 
-	// ir::Builder helpers
+	// ir::Builder helpers.
+	// Need ways to translate between ir::SsaDef <-> LLVM values for the most part.
 	UnorderedMap<ir::SsaDef, Function *> function_map;
 	UnorderedMap<ir::SsaDef, BasicBlock *> bb_map;
 	UnorderedMap<ir::SsaDef, Type *> param_types;
@@ -361,6 +364,15 @@ private:
 		DXIL::Op op = DXIL::Op::Count;
 	};
 	UnorderedMap<ir::SsaDef, StageIOHandler> stage_io_map;
+
+	struct ResourceHandler
+	{
+		DXIL::ResourceType resource_type;
+		DXIL::ResourceKind resource_kind;
+		uint32_t index;
+		uint32_t binding_offset; // DXIL is weird.
+	};
+	UnorderedMap<ir::SsaDef, ResourceHandler> resource_map;
 
 	Type *convert_type(const ir::Type &type);
 	BasicBlock *get_basic_block(ir::SsaDef ssa);
@@ -631,6 +643,25 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
+	// Descriptor handling
+	case ir::OpCode::eDescriptorLoad:
+	{
+		auto *inst = build_descriptor_load(ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+		if (!inst)
+			return false;
+		push_instruction(inst, op.getDef());
+		break;
+	}
+
+	case ir::OpCode::eBufferLoad:
+	{
+		auto *inst = build_buffer_load(op);
+		if (!inst)
+			return false;
+		push_instruction(inst, op.getDef());
+		break;
+	}
+
 	default:
 		LOGE("Unimplemented opcode %u\n", unsigned(op.getOpCode()));
 		return false;
@@ -698,6 +729,153 @@ Instruction *ParseContext::build_load_builtin(DXIL::Op opcode, ir::SsaDef addr)
 
 	if (addr)
 		args.push_back(get_value(addr));
+
+	return context.construct<CallInst>(func->getFunctionType(), func, std::move(args));
+}
+
+Instruction *ParseContext::build_buffer_load_cbv(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+	auto addr = ir::SsaDef(op.getOperand(1));
+	auto *int_type = Type::getInt32Ty(context);
+	Instruction *inst = nullptr;
+
+	if (op.getType().isScalarType())
+	{
+		if (op.getType().byteSize() != 4)
+		{
+			LOGE("Only support 4 byte scalar CBV loads.\n");
+			return nullptr;
+		}
+
+		auto *result_type = convert_type(op.getType());
+		auto *func = dxil_intrinsics.get(
+		    module, DXIL::Op::CBufferLoad, result_type,
+		    Vector<Type *> {
+		        int_type, get_value(descriptor)->getType(), int_type,
+		    }, result_type, tween_id);
+
+		auto *addr_value = get_value(addr);
+		if (!llvm::isa<llvm::VectorType>(addr_value->getType()))
+		{
+			LOGE("Expected a vector type addr for vectors.\n");
+			return nullptr;
+		}
+
+		auto *index16 = context.construct<ExtractValueInst>(int_type, addr_value, Vector<unsigned>{0});
+		auto *index4 = context.construct<ExtractValueInst>(int_type, addr_value, Vector<unsigned>{1});
+		push_instruction(index16);
+		push_instruction(index4);
+
+		auto *mul16 = context.construct<BinaryOperator>(index16, get_constant_uint(16), llvm::BinaryOperator::BinaryOps::Mul);
+		auto *mul4 = context.construct<BinaryOperator>(index4, get_constant_uint(4), llvm::BinaryOperator::BinaryOps::Mul);
+		auto *byte_addr = context.construct<BinaryOperator>(mul16, mul4, llvm::BinaryOperator::BinaryOps::Add);
+
+		inst = context.construct<CallInst>(func->getFunctionType(), func,
+		                                   Vector<Value *>{
+		                                       get_constant_uint(uint32_t(DXIL::Op::CBufferLoad)),
+		                                       get_value(descriptor),
+		                                       byte_addr,
+		                                   });
+	}
+	else if (op.getType().isVectorType())
+	{
+		if (op.getType().getBaseType(0).getVectorSize() != 4 ||
+		    op.getType().byteSize() != 16)
+		{
+			LOGE("We can only support vec4 or scalar loads from CBV.\n");
+			return nullptr;
+		}
+
+		auto *result_type = convert_type(op.getType());
+		auto *func = dxil_intrinsics.get(
+		    module, DXIL::Op::CBufferLoadLegacy, result_type,
+		    Vector<Type *> {
+		        int_type, get_value(descriptor)->getType(), int_type,
+		    }, result_type, tween_id);
+
+		auto *addr_value = get_value(addr);
+
+		inst = context.construct<CallInst>(func->getFunctionType(), func,
+		                                   Vector<Value *>{
+			                                   get_constant_uint(uint32_t(DXIL::Op::CBufferLoadLegacy)),
+			                                   get_value(descriptor),
+			                                   addr_value,
+		                                   });
+	}
+
+	return inst;
+}
+
+Instruction *ParseContext::build_buffer_load(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return nullptr;
+
+	// This function is overloaded, so need to figure out which type of load we should generate.
+	if (itr->second.resource_type == DXIL::ResourceType::CBV)
+	{
+		return build_buffer_load_cbv(op);
+	}
+	else
+	{
+		// TODO.
+		return nullptr;
+	}
+}
+
+Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef index)
+{
+	auto itr = resource_map.find(resource);
+	if (itr == resource_map.end())
+		return nullptr;
+
+	// Dummy pointer type which represents handles.
+	// It's not directly used.
+	auto *ptr_type = PointerType::get(Type::getVoidTy(context), 0);
+	auto *int_type = Type::getInt32Ty(context);
+	auto *bool_type = Type::getInt1Ty(context);
+	auto *func = dxil_intrinsics.get(
+		module, DXIL::Op::CreateHandle, ptr_type,
+		Vector<Type *> {
+	        int_type, int_type, int_type, bool_type,
+	    }, nullptr, tween_id);
+
+	Value *binding_offset;
+
+	if (index)
+	{
+		auto *dynamic_offset = get_value(index);
+		if (!llvm::isa<ConstantInt>(dynamic_offset))
+		{
+			LOGE("FIXME: SM 5.1 bindless.\n");
+			return nullptr;
+		}
+
+		binding_offset = get_constant_uint(
+			llvm::cast<llvm::ConstantInt>(dynamic_offset)->getUniqueInteger().getZExtValue() +
+			itr->second.binding_offset);
+	}
+	else
+	{
+		// DXIL is a bit silly and takes effective register index instead of offset into binding space.
+		binding_offset = get_constant_uint(itr->second.binding_offset);
+	}
+
+	// For now. Should be a flag on the opcode?
+	constexpr bool nonuniform = false;
+
+	Vector<Value *> args = {
+		get_constant_uint(uint32_t(DXIL::Op::CreateHandle)),
+		get_constant_uint(uint32_t(itr->second.resource_type)),
+		get_constant_uint(itr->second.index),
+		binding_offset,
+		ConstantInt::get(bool_type, nonuniform),
+	};
 
 	return context.construct<CallInst>(func->getFunctionType(), func, std::move(args));
 }
@@ -1019,7 +1197,38 @@ uint32_t ParseContext::build_stage_io(
 
 bool ParseContext::emit_metadata()
 {
-	// TODO: Scan over all Dcl opcodes.
+	for (auto &op : builder)
+	{
+		switch (op.getOpCode())
+		{
+		case ir::OpCode::eDclCbv:
+		{
+			uint32_t space = uint32_t(op.getOperand(1));
+			uint32_t binding = uint32_t(op.getOperand(2));
+			uint32_t count = uint32_t(op.getOperand(3));
+			if (!count)
+				count = UINT32_MAX;
+
+			uint32_t cbv_size = op.getType().byteSize();
+			uint32_t index = build_cbv(space, binding, count, cbv_size);
+			resource_map[op.getDef()] = { DXIL::ResourceType::CBV, DXIL::ResourceKind::CBuffer, index, binding };
+			break;
+		}
+
+		case ir::OpCode::eDclSampler:
+			return false;
+
+		case ir::OpCode::eDclSrv:
+			return false;
+
+		case ir::OpCode::eDclUav:
+		case ir::OpCode::eDclUavCounter:
+			return false;
+
+		default:
+			break;
+		}
+	}
 
 	create_named_md_node("dx.resources", create_md_node(
 		srvs.nodes.empty() ? create_null_meta() : create_md_node(srvs.nodes),

@@ -665,10 +665,10 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 
 	if (tracking)
 	{
-		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+		if (type_is_composite_return_value(instruction->getType()))
 		{
 			// Legacy float4 model. However, it seems like DXIL also supports f16x8, f32x4 and f64x2 ... :(
-			switch (get_type_scalar_alignment(impl, instruction->getType()->getStructElementType(0)))
+			switch (get_type_scalar_alignment(impl, get_composite_element_type(instruction->getType())))
 			{
 			case 2:
 			case 4:

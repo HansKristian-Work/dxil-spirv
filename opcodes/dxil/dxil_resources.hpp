@@ -68,4 +68,7 @@ struct AnnotateHandleMeta
 bool get_annotate_handle_meta(Converter::Impl &impl, const llvm::CallInst *instruction, AnnotateHandleMeta &meta);
 
 bool resource_handle_is_uniform_readonly_descriptor(Converter::Impl &impl, const llvm::Value *value);
+
+bool type_is_composite_return_value(llvm::Type *type);
+llvm::Type *get_composite_element_type(llvm::Type *type);
 } // namespace dxil_spv

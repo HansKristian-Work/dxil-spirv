@@ -2414,6 +2414,20 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 }
 
+bool type_is_composite_return_value(llvm::Type *type)
+{
+	return type->getTypeID() == llvm::Type::TypeID::StructTyID || type->getTypeID() == llvm::Type::TypeID::VectorTyID;
+}
+
+llvm::Type *get_composite_element_type(llvm::Type *type)
+{
+	assert(type_is_composite_return_value(type));
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+		return vec->getElementType();
+	else
+		return type->getStructElementType(0);
+}
+
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -2434,9 +2448,10 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 
 		auto *result_type = instruction->getType();
 
-		if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
+		if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID &&
+		    result_type->getTypeID() != llvm::Type::TypeID::VectorTyID)
 		{
-			LOGE("CBufferLoadLegacy: return type must be struct.\n");
+			LOGE("CBufferLoadLegacy: return type must be struct or vector.\n");
 			return false;
 		}
 
@@ -2453,7 +2468,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 		}
 
 		// Handle min16float where we want FP16 value, but FP32 physical.
-		auto *result_component_type = result_type->getStructElementType(0);
+		auto *result_component_type = get_composite_element_type(result_type);
 		spv::Op value_cast_op = spv::OpNop;
 		spv::Id physical_type_id = 0;
 		get_physical_load_store_cast_info(impl, result_component_type, physical_type_id, value_cast_op);
@@ -2496,7 +2511,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
 
 		bool need_bitcast = false;
-		if (result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID && scalar_alignment < 8)
+		if (result_component_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && scalar_alignment < 8)
 			need_bitcast = true;
 
 		Operation *load_op = impl.allocate(spv::OpLoad, instruction, vector_type_id);
