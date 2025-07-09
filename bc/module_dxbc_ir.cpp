@@ -70,6 +70,26 @@ static const char *shader_stage_to_meta(ir::ShaderStage stage)
 	}
 }
 
+static DXIL::Op convert_builtin_opcode(ir::BuiltIn builtin)
+{
+	switch (builtin)
+	{
+	case ir::BuiltIn::eSampleCount:
+		return DXIL::Op::RenderTargetGetSampleCount;
+	case ir::BuiltIn::eWorkgroupId:
+		return DXIL::Op::GroupId;
+	case ir::BuiltIn::eGlobalThreadId:
+		return DXIL::Op::ThreadId;
+	case ir::BuiltIn::eLocalThreadId:
+		return DXIL::Op::ThreadIdInGroup;
+	case ir::BuiltIn::eLocalThreadIndex:
+		return DXIL::Op::FlattenedThreadIdInGroup;
+
+	default:
+		return DXIL::Op::Count;
+	}
+}
+
 static DXIL::Semantic convert_semantic(ir::BuiltIn builtin)
 {
 	switch (builtin)
@@ -95,13 +115,11 @@ static DXIL::Semantic convert_semantic(ir::BuiltIn builtin)
 	case ir::BuiltIn::eTessControlPointId:
 		return DXIL::Semantic::OutputControlPointID;
 	case ir::BuiltIn::eTessCoord:
-		// dx.op.
+		return DXIL::Semantic::DomainLocation;
 	case ir::BuiltIn::eTessFactorInner:
 		return DXIL::Semantic::InsideTessFactor;
 	case ir::BuiltIn::eTessFactorOuter:
 		return DXIL::Semantic::TessFactor;
-	case ir::BuiltIn::eSampleCount:
-		// dx.op
 	case ir::BuiltIn::eSampleId:
 		return DXIL::Semantic::SampleIndex;
 	case ir::BuiltIn::eSampleMask:
@@ -112,14 +130,6 @@ static DXIL::Semantic convert_semantic(ir::BuiltIn builtin)
 		return DXIL::Semantic::Depth;
 	case ir::BuiltIn::eStencilRef:
 		return DXIL::Semantic::StencilRef;
-	case ir::BuiltIn::eWorkgroupId:
-		// dx.op
-	case ir::BuiltIn::eGlobalThreadId:
-		// dx.op
-	case ir::BuiltIn::eLocalThreadId:
-		// dx.op
-	case ir::BuiltIn::eLocalThreadIndex:
-		// dx.op
 
 	default:
 		return DXIL::Semantic::User;
@@ -331,6 +341,8 @@ private:
 		Value *row, uint32_t col, Value *axis = nullptr);
 	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value);
 
+	Instruction *build_load_builtin(DXIL::Op opcode, ir::SsaDef addr);
+
 	// BasicBlock emission.
 	BasicBlock *current_bb = nullptr;
 	void push_instruction(Instruction *instruction, ir::SsaDef ssa = {});
@@ -342,7 +354,13 @@ private:
 	UnorderedMap<ir::SsaDef, Type *> param_types;
 	Vector<std::pair<ir::SsaDef, Type *>> params;
 	UnorderedMap<ir::SsaDef, Value *> value_map;
-	UnorderedMap<ir::SsaDef, uint32_t> stage_io_map;
+
+	struct StageIOHandler
+	{
+		uint32_t index = UINT32_MAX;
+		DXIL::Op op = DXIL::Op::Count;
+	};
+	UnorderedMap<ir::SsaDef, StageIOHandler> stage_io_map;
 
 	Type *convert_type(const ir::Type &type);
 	BasicBlock *get_basic_block(ir::SsaDef ssa);
@@ -502,7 +520,16 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	{
 	case ir::OpCode::eInputLoad:
 	{
-		uint32_t io_index = stage_io_map[ir::SsaDef(op.getOperand(0))];
+		auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
+
+		// Redirect to magic opcode as needed.
+		if (ref.op != DXIL::Op::Count)
+		{
+			auto *inst = build_load_builtin(ref.op, ir::SsaDef(op.getOperand(1)));
+			push_instruction(inst, op.getDef());
+			break;
+		}
+
 		auto *type = convert_type(op.getType());
 		auto *scalar_type = type;
 
@@ -519,7 +546,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 
 		for (unsigned c = 0; c < components; c++)
 		{
-			insts[c] = build_load_input(io_index, scalar_type, get_constant_uint(0), col + c);
+			insts[c] = build_load_input(ref.index, scalar_type, get_constant_uint(0), col + c);
 			push_instruction(insts[c], op.getDef());
 		}
 
@@ -537,7 +564,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	{
 		auto *store_value = get_value(op.getOperand(2));
 		Type *scalar_type = nullptr;
-		uint32_t io_index = stage_io_map[ir::SsaDef(op.getOperand(0))];
+		auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
 		unsigned components = 1;
 
 		if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(store_value->getType()))
@@ -550,7 +577,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 
 		if (components == 1)
 		{
-			push_instruction(build_store_output(io_index, get_constant_uint(0), col, store_value));
+			push_instruction(build_store_output(ref.index, get_constant_uint(0), col, store_value));
 		}
 		else
 		{
@@ -559,7 +586,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 				Vector<unsigned> indices { c };
 				auto *inst = context.construct<ExtractValueInst>(scalar_type, store_value, std::move(indices));
 				push_instruction(inst);
-				push_instruction(build_store_output(io_index, get_constant_uint(0), col + c, inst));
+				push_instruction(build_store_output(ref.index, get_constant_uint(0), col + c, inst));
 			}
 		}
 
@@ -655,6 +682,26 @@ Instruction *ParseContext::build_store_output(uint32_t index, Value *row, uint32
 	return inst;
 }
 
+Instruction *ParseContext::build_load_builtin(DXIL::Op opcode, ir::SsaDef addr)
+{
+	auto *int_type = Type::getInt32Ty(context);
+
+	Vector<Type *> types;
+	if (addr)
+		types.push_back(int_type);
+
+	auto *func = dxil_intrinsics.get(module, opcode, int_type, types, nullptr, tween_id);
+
+	Vector<Value *> args = {
+		get_constant_uint(uint32_t(opcode)),
+	};
+
+	if (addr)
+		args.push_back(get_value(addr));
+
+	return context.construct<CallInst>(func->getFunctionType(), func, std::move(args));
+}
+
 MDOperand *ParseContext::create_null_meta()
 {
 	return context.construct<MDOperand>(&module, MetadataKind::None);
@@ -748,6 +795,14 @@ MDNode *ParseContext::create_stage_io_meta()
 				builtin = convert_semantic(ir::BuiltIn(io.op->getOperand(1)));
 				location = UINT32_MAX;
 				component = UINT32_MAX;
+
+				// Some stage IO builtins are resolved through opcodes, not IO.
+				auto op = convert_builtin_opcode(ir::BuiltIn(io.op->getOperand(1)));
+				if (op != DXIL::Op::Count)
+				{
+					stage_io_map[ir::SsaDef(io.op->getOperand(1))] = { UINT32_MAX, op };
+					continue;
+				}
 			}
 
 			auto interpolation = convert_interpolation_mode(ir::InterpolationMode(io.op->getOperand(3)));
@@ -943,7 +998,7 @@ uint32_t ParseContext::build_stage_io(
 {
 	uint32_t ret = mapping.nodes.size();
 
-	stage_io_map[ssa] = ret;
+	stage_io_map[ssa] = { ret, DXIL::Op::Count };
 
 	auto *input = create_md_node(
 		create_constant_uint_meta(ret),
@@ -964,16 +1019,7 @@ uint32_t ParseContext::build_stage_io(
 
 bool ParseContext::emit_metadata()
 {
-	// Scan over all Dcl opcodes.
-	build_texture_srv(3, 4, 5, DXIL::ResourceKind::Texture2D, DXIL::ComponentType::F32);
-	build_buffer_srv(3, 4, 5, DXIL::ResourceKind::RawBuffer, 0);
-	build_buffer_srv(3, 4, 5, DXIL::ResourceKind::StructuredBuffer, 4);
-	build_sampler(6, 7, 8);
-	build_cbv(6, 8, 1, 32);
-	build_texture_uav(10, 11, 1, DXIL::ResourceKind::Texture3D, DXIL::ComponentType::U32,
-	                  true, false, false);
-	build_buffer_uav(10, 11, 1, DXIL::ResourceKind::StructuredBuffer, 16,
-	                 true, false, false);
+	// TODO: Scan over all Dcl opcodes.
 
 	create_named_md_node("dx.resources", create_md_node(
 		srvs.nodes.empty() ? create_null_meta() : create_md_node(srvs.nodes),

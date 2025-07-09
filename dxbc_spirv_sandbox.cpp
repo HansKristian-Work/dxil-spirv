@@ -179,15 +179,15 @@ cleanup:
 	return ret;
 }
 
-static void run_test(const char *name, ir::Builder &builder)
+static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 {
-	LOGI("Testing %s\n", name);
+	LOGI("Testing %s ...\n", name);
 
 	LLVMBCParser parser;
 	if (!parser.parseDXBC(builder))
 	{
-		fprintf(stderr, "Failed to parse.\n");
-		return;
+		LOGE("Failed to parse.\n");
+		return {};
 	}
 
 	SPIRVModule module;
@@ -204,7 +204,7 @@ static void run_test(const char *name, ir::Builder &builder)
 	if (!entry.entry.entry)
 	{
 		LOGE("Failed to convert function.\n");
-		return;
+		return {};
 	}
 
 	{
@@ -221,7 +221,7 @@ static void run_test(const char *name, ir::Builder &builder)
 		if (!leaf.entry)
 		{
 			LOGE("Leaf function is nullptr!\n");
-			return;
+			return {};
 		}
 		CFGStructurizer structurizer(leaf.entry, *entry.node_pool, module);
 		module.set_entry_build_point(leaf.func);
@@ -238,27 +238,72 @@ static void run_test(const char *name, ir::Builder &builder)
 	if (!module.finalize_spirv(spirv))
 	{
 		LOGE("Failed to finalize SPIR-V.\n");
-		return;
+		return {};
 	}
 
 	if (!validate_spirv(spirv.data(), spirv.size() * sizeof(uint32_t)))
 	{
 		LOGE("Failed to validate SPIR-V.\n");
-		return;
+		return {};
 	}
 
-	auto disasm = convert_to_asm(spirv.data(), spirv.size() * sizeof(uint32_t));
-	LOGI("SPIR-V:\n%s\n", disasm.c_str());
-	auto glsl = convert_to_glsl(spirv.data(), spirv.size() * sizeof(uint32_t));
-	LOGI("GLSL:\n%s\n", glsl.c_str());
+	return spirv;
 }
 
-int main()
+int main(int argc, char **argv)
 {
 	auto tests = test_api::enumerateTests(nullptr);
-	auto &test = tests[7];
 
-	begin_thread_allocator_context();
-	run_test(test.name.c_str(), test.builder);
-	end_thread_allocator_context();
+	for (auto &test : tests)
+	{
+		begin_thread_allocator_context();
+		{
+			auto spirv = run_test(test.name.c_str(), test.builder);
+
+			if (spirv.empty())
+			{
+				LOGE("Failure to convert test to SPIR-V!\n");
+				return EXIT_FAILURE;
+			}
+
+			auto disasm = convert_to_asm(spirv.data(), spirv.size() * sizeof(uint32_t));
+			auto glsl = convert_to_glsl(spirv.data(), spirv.size() * sizeof(uint32_t));
+
+			FILE *file_asm = nullptr;
+			FILE *file_glsl = nullptr;
+
+			if (argc == 2)
+			{
+				std::string path = argv[1];
+				path += '/';
+				path += test.name;
+
+				auto path_asm = path + ".asm";
+				auto path_glsl = path + ".glsl";
+
+				file_asm = fopen(path_asm.c_str(), "w");
+				file_glsl = fopen(path_glsl.c_str(), "w");
+				if (!file_asm || !file_glsl)
+				{
+					LOGE("Failed to open file \"%s\" and \"%s\"\n",
+					     path_asm.c_str(), path_glsl.c_str());
+					return EXIT_FAILURE;
+				}
+			}
+
+			if (file_asm && file_glsl)
+			{
+				fprintf(file_asm, "SPIR-V:\n%s\n", disasm.c_str());
+				fprintf(file_glsl, "GLSL:\n%s\n", glsl.c_str());
+				fclose(file_asm);
+				fclose(file_glsl);
+			}
+			else
+			{
+				LOGI("SPIR-V:\n%s\n", disasm.c_str());
+				LOGI("GLSL:\n%s\n", glsl.c_str());
+			}
+		}
+		end_thread_allocator_context();
+	}
 }
