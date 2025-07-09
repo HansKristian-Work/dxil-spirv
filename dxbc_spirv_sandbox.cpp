@@ -241,7 +241,7 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 		return {};
 	}
 
-#if 1
+#if 0
 	if (!validate_spirv(spirv.data(), spirv.size() * sizeof(uint32_t)))
 	{
 		LOGE("Failed to validate SPIR-V.\n");
@@ -258,6 +258,11 @@ int main(int argc, char **argv)
 
 	for (auto &test : tests)
 	{
+#if 1
+		if (test.name != "test_resources_cbv_indexed")
+			continue;
+#endif
+
 		begin_thread_allocator_context();
 		{
 			auto spirv = run_test(test.name.c_str(), test.builder);

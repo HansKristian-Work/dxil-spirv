@@ -662,6 +662,17 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
+	// Plain instructions
+	case ir::OpCode::eCast:
+	{
+		push_instruction(context.construct<CastInst>(
+			                 convert_type(op.getType()),
+			                 get_value(op.getOperand(0)),
+			                 Instruction::CastOps::BitCast),
+		                 op.getDef());
+		break;
+	}
+
 	default:
 		LOGE("Unimplemented opcode %u\n", unsigned(op.getOpCode()));
 		return false;
@@ -770,6 +781,9 @@ Instruction *ParseContext::build_buffer_load_cbv(const ir::Op &op)
 		auto *mul16 = context.construct<BinaryOperator>(index16, get_constant_uint(16), llvm::BinaryOperator::BinaryOps::Mul);
 		auto *mul4 = context.construct<BinaryOperator>(index4, get_constant_uint(4), llvm::BinaryOperator::BinaryOps::Mul);
 		auto *byte_addr = context.construct<BinaryOperator>(mul16, mul4, llvm::BinaryOperator::BinaryOps::Add);
+		push_instruction(mul16);
+		push_instruction(mul4);
+		push_instruction(byte_addr);
 
 		inst = context.construct<CallInst>(func->getFunctionType(), func,
 		                                   Vector<Value *>{
@@ -850,15 +864,21 @@ Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef
 	if (index)
 	{
 		auto *dynamic_offset = get_value(index);
-		if (!llvm::isa<ConstantInt>(dynamic_offset))
+		if (const auto *const_offset = llvm::dyn_cast<ConstantInt>(dynamic_offset))
 		{
-			LOGE("FIXME: SM 5.1 bindless.\n");
-			return nullptr;
+			binding_offset = get_constant_uint(
+				const_offset->getUniqueInteger().getZExtValue() +
+				itr->second.binding_offset);
 		}
-
-		binding_offset = get_constant_uint(
-			llvm::cast<llvm::ConstantInt>(dynamic_offset)->getUniqueInteger().getZExtValue() +
-			itr->second.binding_offset);
+		else
+		{
+			// SM 5.1 bindless.
+			auto *add = context.construct<BinaryOperator>(dynamic_offset,
+			                                              get_constant_uint(itr->second.binding_offset),
+			                                              BinaryOperator::BinaryOps::Add);
+			push_instruction(add);
+			binding_offset = add;
+		}
 	}
 	else
 	{
@@ -963,7 +983,15 @@ MDNode *ParseContext::create_stage_io_meta()
 			DXIL::Semantic builtin = DXIL::Semantic::User;
 			uint32_t location, component;
 
-			if (io.op->getOperandCount() == 3)
+			bool is_input =
+				io.op->getOpCode() == ir::OpCode::eDclInput ||
+				io.op->getOpCode() == ir::OpCode::eDclInputBuiltIn;
+
+			bool is_user =
+				io.op->getOpCode() == ir::OpCode::eDclInput ||
+				io.op->getOpCode() == ir::OpCode::eDclOutput;
+
+			if (is_user)
 			{
 				location = uint32_t(io.op->getOperand(1));
 				component = uint32_t(io.op->getOperand(2));
@@ -983,7 +1011,10 @@ MDNode *ParseContext::create_stage_io_meta()
 				}
 			}
 
-			auto interpolation = convert_interpolation_mode(ir::InterpolationMode(io.op->getOperand(3)));
+			auto interpolation = DXIL::InterpolationMode::Invalid;
+			if (is_input)
+				interpolation = convert_interpolation_mode(ir::InterpolationMode(io.op->getOperand(3)));
+
 			auto comp = convert_component_mapping(io.op->getType());
 			build_stage_io(*mapping.mapping, io.op->getDef(), String(io.semantic),
 			               comp.type, builtin, io.index, interpolation,
