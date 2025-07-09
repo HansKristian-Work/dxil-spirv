@@ -481,13 +481,9 @@ bool ParseContext::push_instruction(const ir::Op &op)
 
 		if (components != 1)
 		{
-			Value *value = UndefValue::get(type);
-			for (unsigned c = 0; c < components; c++)
-			{
-				auto *inst = context.construct<InsertElementInst>(value, insts[c], get_constant_uint(c));
-				push_instruction(inst, op.getDef());
-				value = inst;
-			}
+			auto *inst = context.construct<CompositeConstructInst>(
+			    type, Vector<Value *>{ insts, insts + components });
+			push_instruction(inst, op.getDef());
 		}
 
 		break;
@@ -528,22 +524,28 @@ bool ParseContext::push_instruction(const ir::Op &op)
 
 	case ir::OpCode::eCompositeConstruct:
 	{
-		// LLVM CompositeConstruct is goofy. May want to add a custom op.
 		auto *type = convert_type(op.getType());
-		Value *value = UndefValue::get(type);
-		for (unsigned i = 0; i < op.getOperandCount(); i++)
-		{
-			auto *inst = context.construct<InsertElementInst>(value, get_value(op.getOperand(i)), get_constant_uint(i));
-			push_instruction(inst, op.getDef());
-			value = inst;
-		}
 
+		Vector<Value *> values;
+		values.reserve(op.getOperandCount());
+
+		for (unsigned i = 0; i < op.getOperandCount(); i++)
+			values.push_back(get_value(op.getOperand(i)));
+
+		auto *inst = context.construct<CompositeConstructInst>(type, std::move(values));
+		push_instruction(inst, op.getDef());
 		break;
 	}
 
 	case ir::OpCode::eCompositeExtract:
 	{
 		auto *type = convert_type(op.getType());
+		if (!llvm::isa<llvm::ConstantInt>(get_value(op.getOperand(1))))
+		{
+			LOGE("CompositeExtract must take a constant index.\n");
+			return false;
+		}
+
 		Vector<unsigned> indices { resolve_constant_uint(op.getOperand(1)) };
 		auto *inst = context.construct<ExtractValueInst>(type, get_value(op.getOperand(0)), std::move(indices));
 		push_instruction(inst, op.getDef());
