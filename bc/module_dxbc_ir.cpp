@@ -187,6 +187,39 @@ static DXIL::InterpolationMode convert_interpolation_mode(ir::InterpolationMode 
 	}
 }
 
+static DXIL::AtomicBinOp convert_atomic_binop(ir::AtomicOp binop)
+{
+	switch (binop)
+	{
+	case ir::AtomicOp::eAdd:
+		return DXIL::AtomicBinOp::IAdd;
+	case ir::AtomicOp::eAnd:
+		return DXIL::AtomicBinOp::And;
+	case ir::AtomicOp::eOr:
+		return DXIL::AtomicBinOp::Or;
+	case ir::AtomicOp::eXor:
+		return DXIL::AtomicBinOp::Xor;
+	case ir::AtomicOp::eExchange:
+		return DXIL::AtomicBinOp::Exchange;
+	case ir::AtomicOp::eSMax:
+		return DXIL::AtomicBinOp::IMax;
+	case ir::AtomicOp::eSMin:
+		return DXIL::AtomicBinOp::IMin;
+	case ir::AtomicOp::eUMax:
+		return DXIL::AtomicBinOp::UMax;
+	case ir::AtomicOp::eUMin:
+		return DXIL::AtomicBinOp::UMin;
+	case ir::AtomicOp::eSub:
+		return DXIL::AtomicBinOp::Sub;
+	case ir::AtomicOp::eLoad:
+		return DXIL::AtomicBinOp::Load;
+	case ir::AtomicOp::eStore:
+		return DXIL::AtomicBinOp::Store;
+	default:
+		return DXIL::AtomicBinOp::Invalid;
+	}
+}
+
 struct ComponentMapping
 {
 	DXIL::ComponentType type = DXIL::ComponentType::Invalid;
@@ -384,6 +417,8 @@ private:
 	bool build_buffer_size(const ir::Op &op);
 	bool build_buffer_store(const ir::Op &op);
 	bool build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind);
+	bool build_buffer_atomic(const ir::Op &op);
+	bool build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKind kind);
 
 	Value *build_extract_vector_component(Value *value, unsigned component);
 
@@ -400,6 +435,8 @@ private:
 	Vector<std::pair<ir::SsaDef, Type *>> params;
 	UnorderedMap<ir::SsaDef, Value *> value_map;
 
+	// Maps stage IO and resources since we need to resolve them back to type + metadata index
+	// when loading descriptor.
 	struct StageIOHandler
 	{
 		uint32_t index = UINT32_MAX;
@@ -701,6 +738,13 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	case ir::OpCode::eBufferStore:
 	{
 		if (!build_buffer_store(op))
+			return false;
+		break;
+	}
+
+	case ir::OpCode::eBufferAtomic:
+	{
+		if (!build_buffer_atomic(op))
 			return false;
 		break;
 	}
@@ -1059,6 +1103,80 @@ bool ParseContext::build_buffer_store(const ir::Op &op)
 		return false;
 
 	return build_buffer_store(op, itr->second.resource_kind);
+}
+
+bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKind kind)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+	auto *int_type = Type::getInt32Ty(context);
+	auto *addr_value = get_value(op.getOperand(1));
+
+	Value *first;
+	Value *second;
+
+	// TODO: Adjust byte offset.
+	if (kind == DXIL::ResourceKind::StructuredBuffer)
+	{
+		first = build_extract_vector_component(addr_value, 0);
+		second = build_extract_vector_component(addr_value, 1);
+	}
+	else
+	{
+		first = addr_value;
+		second = UndefValue::get(int_type);
+	}
+
+	auto atomic_op = ir::AtomicOp(op.getOperand(3));
+	auto binop = convert_atomic_binop(atomic_op);
+
+	Value *value;
+	auto *return_type = convert_type(op.getType());
+
+	if (binop == DXIL::AtomicBinOp::Load)
+		value = UndefValue::get(int_type);
+	else
+	{
+		value = get_value(op.getOperand(2));
+		if (binop != DXIL::AtomicBinOp::Store && op.getType().isVoidType())
+			return_type = int_type;
+	}
+
+	auto *func = dxil_intrinsics.get(
+	    module, DXIL::Op::AtomicBinOp, return_type,
+	    Vector<Type *> {
+	        int_type, get_value(descriptor)->getType(),
+	        int_type,
+	        int_type, int_type, int_type,
+	        int_type,
+	    }, return_type, tween_id);
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *> {
+	        get_constant_uint(uint32_t(DXIL::Op::AtomicBinOp)),
+	        get_value(descriptor),
+	        get_constant_uint(uint32_t(binop)),
+	        first, second, UndefValue::get(int_type),
+	        value,
+	    });
+
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_buffer_atomic(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	if (ir::AtomicOp(op.getOperand(3)) != ir::AtomicOp::eCompareExchange)
+		return build_buffer_atomic_binop(op, itr->second.resource_kind);
+	else
+		return false;
 }
 
 bool ParseContext::build_buffer_size(const ir::Op &op)

@@ -502,7 +502,15 @@ enum class AtomicBinOp : uint8_t
 	IMax = 5,
 	UMin = 6,
 	UMax = 7,
-	Exchange = 8
+	Exchange = 8,
+
+	// Internal extensions for custom IR
+	// Load = optimized or/add of 0
+	// Store = optimized exchange
+	Sub = 200,
+	Load,
+	Store,
+	Invalid = 255
 };
 
 enum class ShaderPropertyTag : uint8_t

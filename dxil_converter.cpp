@@ -7889,8 +7889,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	// Just use FP32 here since that's what we've tested and avoids lots of awkward workarounds.
 	if (module_is_dxilconv(module))
 		options.min_precision_prefer_native_16bit = false;
+
 	if (module_is_dxbc_spirv(module))
+	{
 		backend.skip_non_uniform_promotion = true;
+		// This is new code, might as well exercise it.
+		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
+	}
 
 	// Need to analyze some execution modes early which affect opcode analysis later.
 	if (!analyze_execution_modes_meta())

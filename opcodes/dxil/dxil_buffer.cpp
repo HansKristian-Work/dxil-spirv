@@ -1728,16 +1728,36 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 		opcode = spv::OpAtomicUMax;
 		break;
 
+	// Internal extensions.
+	case DXIL::AtomicBinOp::Load:
+		opcode = spv::OpAtomicLoad;
+		break;
+
+	case DXIL::AtomicBinOp::Store:
+		opcode = spv::OpAtomicStore;
+		break;
+
+	case DXIL::AtomicBinOp::Sub:
+		opcode = spv::OpAtomicISub;
+		break;
+
 	default:
 		return false;
 	}
 
-	Operation *op = impl.allocate(opcode, instruction, impl.get_type_id(component_type, 1, 1));
+	Operation *op;
+
+	if (opcode != spv::OpAtomicStore)
+		op = impl.allocate(opcode, instruction, impl.get_type_id(component_type, 1, 1));
+	else
+		op = impl.allocate(opcode);
 
 	op->add_id(counter_ptr_id);
 	op->add_id(builder.getAtomicDeviceScopeId());
 	op->add_id(builder.makeUintConstant(0));
-	op->add_id(impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))));
+
+	if (opcode != spv::OpAtomicLoad)
+		op->add_id(impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))));
 
 	impl.add(op, meta.rov);
 
