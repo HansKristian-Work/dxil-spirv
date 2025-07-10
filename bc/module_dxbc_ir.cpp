@@ -420,6 +420,7 @@ private:
 	bool build_buffer_load_cbv(const ir::Op &op);
 	bool build_buffer_load(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_buffer_load_return_composite(const ir::Op &op, Value *value);
+	Instruction *build_extract_composite(const ir::Op &op, Value *value, unsigned num_elements);
 	bool build_buffer_size(const ir::Op &op);
 	bool build_buffer_store(const ir::Op &op);
 	bool build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind);
@@ -427,8 +428,9 @@ private:
 	bool build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_counter_atomic(const ir::Op &op);
 	bool build_image_load(const ir::Op &op);
+	bool build_image_query_size(const ir::Op &op);
 
-	Value *build_extract_vector_component(Value *value, unsigned component);
+	Value *build_extract_composite_component(Value *value, unsigned component);
 
 	// BasicBlock emission.
 	BasicBlock *current_bb = nullptr;
@@ -698,7 +700,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 			for (unsigned c = 0; c < components; c++)
 			{
 				Vector<unsigned> indices { c };
-				auto *value = build_extract_vector_component(store_value, c);
+				auto *value = build_extract_composite_component(store_value, c);
 				push_instruction(build_store_output(ref.index, get_constant_uint(0), col + c, value));
 			}
 		}
@@ -729,8 +731,8 @@ bool ParseContext::push_instruction(const ir::Op &op)
 			return false;
 		}
 
-		auto *value = build_extract_vector_component(
-		    get_value(op.getOperand(0)), resolve_constant_uint(op.getOperand(1)));
+		auto *value =
+		    build_extract_composite_component(get_value(op.getOperand(0)), resolve_constant_uint(op.getOperand(1)));
 		value_map[op.getDef()] = value;
 		break;
 	}
@@ -802,6 +804,13 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
+	case ir::OpCode::eImageQuerySize:
+	{
+		if (!build_image_query_size(op))
+			return false;
+		break;
+	}
+
 	// Plain instructions
 	case ir::OpCode::eCast:
 	{
@@ -864,9 +873,9 @@ Instruction *ParseContext::build_load_builtin(DXIL::Op opcode, ir::SsaDef addr)
 		return build_dxil_call(opcode, int_type, nullptr);
 }
 
-Value *ParseContext::build_extract_vector_component(Value *value, unsigned component)
+Value *ParseContext::build_extract_composite_component(Value *value, unsigned component)
 {
-	if (!llvm::isa<VectorType>(value->getType()))
+	if (!isa<VectorType>(value->getType()) && !isa<StructType>(value->getType()))
 	{
 		assert(component == 0);
 		return value;
@@ -895,24 +904,36 @@ static VectorType *get_vec4_variant(Type *type)
 		return VectorType::get(4, type);
 }
 
+Instruction *ParseContext::build_extract_composite(const ir::Op &op, Value *value, unsigned num_elements)
+{
+	if (!num_elements)
+		num_elements = op.getType().getBaseType(0).getVectorSize();
+
+	// We only call this on results on non-trivial instructions, so we will never get scalar forwarding via a composite.
+	if (num_elements == 1)
+	{
+		assert(!llvm::isa<CompositeConstructInst>(value));
+		return cast<Instruction>(build_extract_composite_component(value, 0));
+	}
+
+	Value *values[4];
+	for (unsigned c = 0; c < num_elements; c++)
+		values[c] = build_extract_composite_component(value, c);
+
+	assert(num_elements > 1);
+	auto *result_type = convert_type(op.getType());
+	auto *comp = context.construct<CompositeConstructInst>(
+		result_type, Vector<Value *> { values, values + num_elements });
+	return comp;
+}
+
 bool ParseContext::build_buffer_load_return_composite(const ir::Op &op, Value *value)
 {
 	unsigned num_elements = op.getType().getBaseType(0).getVectorSize();
-	Value *values[4];
-
-	for (unsigned c = 0; c < num_elements; c++)
-		values[c] = build_extract_vector_component(value, c);
-
 	if (num_elements != 1)
-	{
-		auto *result_type = convert_type(op.getType());
-		auto *comp = context.construct<CompositeConstructInst>(
-		    result_type, Vector<Value *> { values, values + num_elements });
-		push_instruction(comp, op.getDef());
-	}
+		push_instruction(build_extract_composite(op, value, num_elements), op.getDef());
 	else
-		value_map[op.getDef()] = values[0];
-
+		value_map[op.getDef()] = build_extract_composite_component(value, 0);
 	return true;
 }
 
@@ -929,8 +950,8 @@ bool ParseContext::build_buffer_load(const ir::Op &op, DXIL::ResourceKind kind)
 	// TODO: Adjust byte offset.
 	if (kind == DXIL::ResourceKind::StructuredBuffer)
 	{
-		first = build_extract_vector_component(addr_value, 0);
-		second = build_extract_vector_component(addr_value, 1);
+		first = build_extract_composite_component(addr_value, 0);
+		second = build_extract_composite_component(addr_value, 1);
 	}
 	else
 	{
@@ -972,8 +993,8 @@ bool ParseContext::build_buffer_load_cbv(const ir::Op &op)
 			return false;
 		}
 
-		auto *index16 = build_extract_vector_component(addr_value, 0);
-		auto *index4 = build_extract_vector_component(addr_value, 1);
+		auto *index16 = build_extract_composite_component(addr_value, 0);
+		auto *index4 = build_extract_composite_component(addr_value, 1);
 
 		auto *mul16 = context.construct<BinaryOperator>(index16, get_constant_uint(16), llvm::BinaryOperator::BinaryOps::Mul);
 		auto *mul4 = context.construct<BinaryOperator>(index4, get_constant_uint(4), llvm::BinaryOperator::BinaryOps::Mul);
@@ -1061,9 +1082,9 @@ bool ParseContext::build_image_load(const ir::Op &op)
 
 	for (unsigned c = 0; c < coord_components; c++)
 	{
-		coords[c] = build_extract_vector_component(get_value(coord), c);
+		coords[c] = build_extract_composite_component(get_value(coord), c);
 		if (offset)
-			offsets[c] = build_extract_vector_component(get_value(offset), c);
+			offsets[c] = build_extract_composite_component(get_value(offset), c);
 	}
 
 	if (kind == DXIL::ResourceKind::Texture1DArray ||
@@ -1094,6 +1115,47 @@ bool ParseContext::build_image_load(const ir::Op &op)
 	return build_buffer_load_return_composite(op, inst);
 }
 
+bool ParseContext::build_image_query_size(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	auto *result_type = convert_type(op.getType());
+	auto *dxil_result_type = VectorType::get(4, Type::getInt32Ty(context));
+	auto kind = itr->second.resource_kind;
+
+	auto *inst = build_dxil_call(
+		DXIL::Op::GetDimensions, dxil_result_type, dxil_result_type,
+		get_value(descriptor),
+		op.getOperand(1) ? get_value(op.getOperand(1)) : UndefValue::get(Type::getInt32Ty(context)));
+	push_instruction(inst);
+
+	unsigned num_dimensions = op.getType().getSubType(0).getBaseType(0).getVectorSize();
+
+	auto *dims = build_extract_composite(op, inst, num_dimensions);
+	push_instruction(dims);
+
+	Value *layers;
+
+	if (kind == DXIL::ResourceKind::Texture1DArray || kind == DXIL::ResourceKind::Texture2DArray ||
+	    kind == DXIL::ResourceKind::Texture2DMSArray || kind == DXIL::ResourceKind::TextureCubeArray)
+	{
+		layers = build_extract_composite_component(inst, num_dimensions);
+	}
+	else
+	{
+		layers = get_constant_uint(1);
+	}
+
+	inst = context.construct<CompositeConstructInst>(result_type, Vector<Value *>{ dims, layers });
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
 bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
 {
 	auto descriptor = ir::SsaDef(op.getOperand(0));
@@ -1107,8 +1169,8 @@ bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
 	// TODO: Adjust byte offset.
 	if (kind == DXIL::ResourceKind::StructuredBuffer)
 	{
-		first = build_extract_vector_component(addr_value, 0);
-		second = build_extract_vector_component(addr_value, 1);
+		first = build_extract_composite_component(addr_value, 0);
+		second = build_extract_composite_component(addr_value, 1);
 	}
 	else
 	{
@@ -1130,7 +1192,7 @@ bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
 	unsigned mask = (1u << num_components) - 1u;
 
 	for (unsigned c = 0; c < num_components; c++)
-		scalar_values[c] = build_extract_vector_component(value, c);
+		scalar_values[c] = build_extract_composite_component(value, c);
 	for (unsigned c = num_components; c < 4; c++)
 		scalar_values[c] = UndefValue::get(scalar_type);
 
@@ -1168,8 +1230,8 @@ bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKin
 	// TODO: Adjust byte offset.
 	if (kind == DXIL::ResourceKind::StructuredBuffer)
 	{
-		first = build_extract_vector_component(addr_value, 0);
-		second = build_extract_vector_component(addr_value, 1);
+		first = build_extract_composite_component(addr_value, 0);
+		second = build_extract_composite_component(addr_value, 1);
 	}
 	else
 	{
@@ -1264,7 +1326,7 @@ bool ParseContext::build_buffer_size(const ir::Op &op)
 
 	push_instruction(inst);
 
-	auto *value = build_extract_vector_component(inst, 0);
+	auto *value = build_extract_composite_component(inst, 0);
 
 	if (itr->second.resource_kind == DXIL::ResourceKind::RawBuffer)
 	{
