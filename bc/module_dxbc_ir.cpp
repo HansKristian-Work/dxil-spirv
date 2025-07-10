@@ -719,7 +719,12 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	// Descriptor handling
 	case ir::OpCode::eDescriptorLoad:
 	{
-		auto *inst = build_descriptor_load(ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)),
+		auto descriptor = ir::SsaDef(op.getOperand(0));
+		auto &dcl_op = builder.getOp(descriptor);
+		if (dcl_op.getOpCode() == ir::OpCode::eDclUavCounter)
+			descriptor = ir::SsaDef(dcl_op.getOperand(1));
+
+		auto *inst = build_descriptor_load(descriptor, ir::SsaDef(op.getOperand(1)),
 		                                   bool(op.getFlags() & ir::OpFlag::eNonUniform));
 
 		if (!inst)
@@ -1638,6 +1643,11 @@ uint32_t ParseContext::build_stage_io(
 
 bool ParseContext::emit_metadata()
 {
+	UnorderedSet<ir::SsaDef> uav_counters;
+	for (auto &op : builder)
+		if (op.getOpCode() == ir::OpCode::eDclUavCounter)
+			uav_counters.insert(ir::SsaDef(op.getOperand(1)));
+
 	for (auto &op : builder)
 	{
 		switch (op.getOpCode())
@@ -1718,7 +1728,8 @@ bool ParseContext::emit_metadata()
 				else
 				{
 					index = build_buffer_uav(space, binding, count, kind, stride,
-					                         bool(uav_flags & ir::UavFlag::eCoherent), false,
+					                         bool(uav_flags & ir::UavFlag::eCoherent),
+					                         uav_counters.count(op.getDef()) != 0,
 					                         bool(uav_flags & ir::UavFlag::eRasterizerOrdered));
 				}
 			}
@@ -1744,9 +1755,6 @@ bool ParseContext::emit_metadata()
 
 			break;
 		}
-
-		case ir::OpCode::eDclUavCounter:
-			return false;
 
 		default:
 			break;
