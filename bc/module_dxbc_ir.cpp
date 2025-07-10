@@ -419,6 +419,7 @@ private:
 	bool build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_buffer_atomic(const ir::Op &op);
 	bool build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKind kind);
+	bool build_counter_atomic(const ir::Op &op);
 
 	Value *build_extract_vector_component(Value *value, unsigned component);
 
@@ -750,6 +751,13 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	case ir::OpCode::eBufferAtomic:
 	{
 		if (!build_buffer_atomic(op))
+			return false;
+		break;
+	}
+
+	case ir::OpCode::eCounterAtomic:
+	{
+		if (!build_counter_atomic(op))
 			return false;
 		break;
 	}
@@ -1182,6 +1190,37 @@ bool ParseContext::build_buffer_atomic(const ir::Op &op)
 		return build_buffer_atomic_binop(op, itr->second.resource_kind);
 	else
 		return false;
+}
+
+bool ParseContext::build_counter_atomic(const ir::Op &op)
+{
+	auto &load_desc_op = builder.getOp(ir::SsaDef(op.getOperand(0)));
+	auto counter_descriptor = ir::SsaDef(load_desc_op.getOperand(0));
+	auto *int_type = Type::getInt32Ty(context);
+
+	auto &counter_resource_op = builder.getOp(counter_descriptor);
+	auto descriptor = ir::SsaDef(counter_resource_op.getOperand(1));
+	auto itr = resource_map.find(descriptor);
+	if (itr == resource_map.end())
+		return false;
+
+	auto *func = dxil_intrinsics.get(
+	    module, DXIL::Op::BufferUpdateCounter, int_type,
+	    Vector<Type *> {
+	        int_type, get_value(load_desc_op.getDef())->getType(),
+	        int_type,
+	    }, nullptr, tween_id);
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *> {
+	        get_constant_uint(uint32_t(DXIL::Op::BufferUpdateCounter)),
+	        get_value(load_desc_op.getDef()),
+	        get_constant_uint(ir::AtomicOp(op.getOperand(1)) == ir::AtomicOp::eInc ? 1 : -1),
+	    });
+
+	push_instruction(inst, op.getDef());
+	return true;
 }
 
 bool ParseContext::build_buffer_size(const ir::Op &op)
