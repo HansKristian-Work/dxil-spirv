@@ -406,6 +406,9 @@ private:
 	// DXIL intrinsic build.
 	DXILIntrinsicTable dxil_intrinsics;
 
+	template <typename... Values>
+	Instruction *build_dxil_call(DXIL::Op op, Type *return_type, Type *overload_type, Values&&... values);
+
 	Instruction *build_load_input(
 		uint32_t index, Type *type,
 		Value *row, uint32_t col, Value *axis = nullptr);
@@ -465,6 +468,25 @@ private:
 	bool emit_constant(const ir::Op &op);
 	uint32_t resolve_constant_uint(const ir::Operand &op) const;
 };
+
+static inline Type *get_value_type(Value *value)
+{
+	return value->getType();
+}
+
+template <typename... Values>
+Instruction *ParseContext::build_dxil_call(DXIL::Op op, Type *return_type, Type *overload_type, Values&&... values)
+{
+	auto *func = dxil_intrinsics.get(
+	    module, op, return_type,
+	    Vector<Type *> { Type::getInt32Ty(context), get_value_type(values)... }, overload_type, tween_id);
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *> { get_constant_uint(uint32_t(op)), values... });
+
+	return inst;
+}
 
 bool ParseContext::emit_constant(const ir::Op &op)
 {
@@ -801,42 +823,24 @@ bool ParseContext::push_instruction(const ir::Op &op)
 Instruction *ParseContext::build_load_input(
     uint32_t index, Type *type, Value *row, uint32_t col, Value *axis)
 {
-	auto *int_type = Type::getInt32Ty(context);
-	auto *func = dxil_intrinsics.get(
-		module, DXIL::Op::LoadInput, type,
-		Vector<Type *> { int_type, int_type, int_type, int_type, int_type },
-		type, tween_id);
-
-	auto *inst = context.construct<CallInst>(
-	    func->getFunctionType(), func,
-	    Vector<Value *>{
-	        get_constant_uint(uint32_t(DXIL::Op::LoadInput)),
-	        get_constant_uint(index),
-	        row,
-	        get_constant_uint(col),
-	        axis ? axis : UndefValue::get(Type::getInt32Ty(context)),
-	    });
+	auto *inst = build_dxil_call(
+		DXIL::Op::LoadInput, type, type,
+		get_constant_uint(index),
+		row,
+		get_constant_uint(col),
+		axis ? axis : UndefValue::get(Type::getInt32Ty(context)));
 
 	return inst;
 }
 
 Instruction *ParseContext::build_store_output(uint32_t index, Value *row, uint32_t col, Value *value)
 {
-	auto *int_type = Type::getInt32Ty(context);
-	auto *func = dxil_intrinsics.get(
-	    module, DXIL::Op::StoreOutput, Type::getVoidTy(context),
-	    Vector<Type *> { int_type, int_type, int_type, int_type, value->getType() },
-	    value->getType(), tween_id);
-
-	auto *inst = context.construct<CallInst>(
-	    func->getFunctionType(), func,
-	    Vector<Value *>{
-	        get_constant_uint(uint32_t(DXIL::Op::StoreOutput)),
-	        get_constant_uint(index),
-	        row,
-	        get_constant_uint(col),
-	        value
-	    });
+	auto *inst = build_dxil_call(
+		DXIL::Op::StoreOutput, Type::getVoidTy(context), value->getType(),
+		get_constant_uint(index),
+		row,
+		get_constant_uint(col),
+		value);
 
 	return inst;
 }
@@ -845,20 +849,10 @@ Instruction *ParseContext::build_load_builtin(DXIL::Op opcode, ir::SsaDef addr)
 {
 	auto *int_type = Type::getInt32Ty(context);
 
-	Vector<Type *> types;
 	if (addr)
-		types.push_back(int_type);
-
-	auto *func = dxil_intrinsics.get(module, opcode, int_type, types, nullptr, tween_id);
-
-	Vector<Value *> args = {
-		get_constant_uint(uint32_t(opcode)),
-	};
-
-	if (addr)
-		args.push_back(get_value(addr));
-
-	return context.construct<CallInst>(func->getFunctionType(), func, std::move(args));
+		return build_dxil_call(opcode, int_type, nullptr, get_value(addr));
+	else
+		return build_dxil_call(opcode, int_type, nullptr);
 }
 
 Value *ParseContext::build_extract_vector_component(Value *value, unsigned component)
@@ -1162,24 +1156,12 @@ bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKin
 			return_type = int_type;
 	}
 
-	auto *func = dxil_intrinsics.get(
-	    module, DXIL::Op::AtomicBinOp, return_type,
-	    Vector<Type *> {
-	        int_type, get_value(descriptor)->getType(),
-	        int_type,
-	        int_type, int_type, int_type,
-	        int_type,
-	    }, return_type, tween_id);
-
-	auto *inst = context.construct<CallInst>(
-	    func->getFunctionType(), func,
-	    Vector<Value *> {
-	        get_constant_uint(uint32_t(DXIL::Op::AtomicBinOp)),
-	        get_value(descriptor),
-	        get_constant_uint(uint32_t(binop)),
-	        first, second, UndefValue::get(int_type),
-	        value,
-	    });
+	auto *inst = build_dxil_call(
+		DXIL::Op::AtomicBinOp, return_type, return_type,
+		get_value(descriptor),
+		get_constant_uint(uint32_t(binop)),
+		first, second, UndefValue::get(int_type),
+		value);
 
 	push_instruction(inst, op.getDef());
 	return true;
@@ -1212,20 +1194,10 @@ bool ParseContext::build_counter_atomic(const ir::Op &op)
 	if (itr == resource_map.end())
 		return false;
 
-	auto *func = dxil_intrinsics.get(
-	    module, DXIL::Op::BufferUpdateCounter, int_type,
-	    Vector<Type *> {
-	        int_type, get_value(load_desc_op.getDef())->getType(),
-	        int_type,
-	    }, nullptr, tween_id);
-
-	auto *inst = context.construct<CallInst>(
-	    func->getFunctionType(), func,
-	    Vector<Value *> {
-	        get_constant_uint(uint32_t(DXIL::Op::BufferUpdateCounter)),
+	auto *inst = build_dxil_call(
+	        DXIL::Op::BufferUpdateCounter, int_type, int_type,
 	        get_value(load_desc_op.getDef()),
-	        get_constant_uint(ir::AtomicOp(op.getOperand(1)) == ir::AtomicOp::eInc ? 1 : -1),
-	    });
+	        get_constant_uint(ir::AtomicOp(op.getOperand(1)) == ir::AtomicOp::eInc ? 1 : -1));
 
 	push_instruction(inst, op.getDef());
 	return true;
@@ -1243,19 +1215,10 @@ bool ParseContext::build_buffer_size(const ir::Op &op)
 	auto *result_type = convert_type(op.getType());
 	auto *vec4_type = get_vec4_variant(result_type);
 
-	auto *func = dxil_intrinsics.get(
-	    module, DXIL::Op::GetDimensions, vec4_type,
-	    Vector<Type *> {
-	        result_type, get_value(descriptor)->getType(), result_type,
-	    }, nullptr, tween_id);
-
-	auto *inst = context.construct<CallInst>(
-	    func->getFunctionType(), func,
-	    Vector<Value *> {
-	        get_constant_uint(uint32_t(DXIL::Op::GetDimensions)),
-	        get_value(descriptor),
-	        UndefValue::get(Type::getInt32Ty(context)),
-	    });
+	auto *inst = build_dxil_call(
+		DXIL::Op::GetDimensions, vec4_type, nullptr,
+		get_value(descriptor),
+		UndefValue::get(Type::getInt32Ty(context)));
 
 	push_instruction(inst);
 
@@ -1285,13 +1248,7 @@ Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef
 	// Dummy pointer type which represents handles.
 	// It's not directly used.
 	auto *ptr_type = PointerType::get(Type::getVoidTy(context), 0);
-	auto *int_type = Type::getInt32Ty(context);
 	auto *bool_type = Type::getInt1Ty(context);
-	auto *func = dxil_intrinsics.get(
-		module, DXIL::Op::CreateHandle, ptr_type,
-		Vector<Type *> {
-	        int_type, int_type, int_type, bool_type,
-	    }, nullptr, tween_id);
 
 	Value *binding_offset;
 
@@ -1324,15 +1281,11 @@ Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef
 		binding_offset = get_constant_uint(itr->second.binding_offset);
 	}
 
-	Vector<Value *> args = {
-		get_constant_uint(uint32_t(DXIL::Op::CreateHandle)),
-		get_constant_uint(uint32_t(itr->second.resource_type)),
-		get_constant_uint(itr->second.index),
-		binding_offset,
-		ConstantInt::get(bool_type, nonuniform),
-	};
-
-	return context.construct<CallInst>(func->getFunctionType(), func, std::move(args));
+	return build_dxil_call(DXIL::Op::CreateHandle, ptr_type, nullptr,
+	                       get_constant_uint(uint32_t(itr->second.resource_type)),
+	                       get_constant_uint(itr->second.index),
+	                       binding_offset,
+	                       ConstantInt::get(bool_type, nonuniform));
 }
 
 MDOperand *ParseContext::create_null_meta()
