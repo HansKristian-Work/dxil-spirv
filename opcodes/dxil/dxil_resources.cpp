@@ -1900,7 +1900,7 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 {
 	auto &builder = impl.builder();
 
-	bool scalar_load = instruction->getType()->getTypeID() != llvm::Type::TypeID::StructTyID;
+	bool scalar_load = !type_is_composite_return_value(instruction->getType());
 	unsigned scalar_alignment;
 	uint32_t alignment;
 
@@ -2052,7 +2052,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	}
 
 	// CBufferLoad vs CBufferLoadLegacy
-	bool scalar_load = instruction->getType()->getTypeID() != llvm::Type::TypeID::StructTyID;
+	bool scalar_load = !type_is_composite_return_value(instruction->getType());
 	auto member_index = unsigned(constant_int->getUniqueInteger().getZExtValue());
 
 	// In scalar load, we index by byte offset. Ignore alignment, we read from registers.
@@ -2481,8 +2481,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 
 		auto *result_type = instruction->getType();
 
-		if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID &&
-		    result_type->getTypeID() != llvm::Type::TypeID::VectorTyID)
+		if (!type_is_composite_return_value(result_type))
 		{
 			LOGE("CBufferLoadLegacy: return type must be struct or vector.\n");
 			return false;

@@ -2215,8 +2215,7 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *inst)
 
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *inst)
 {
-	if (inst->getNumIndices() == 1 &&
-	    inst->getAggregateOperand()->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+	if (inst->getNumIndices() == 1 && type_is_composite_return_value(inst->getAggregateOperand()->getType()))
 	{
 		auto &meta = impl.llvm_composite_meta[inst->getAggregateOperand()];
 		unsigned index = inst->getIndices()[0];
