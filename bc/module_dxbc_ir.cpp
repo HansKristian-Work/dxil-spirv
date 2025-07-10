@@ -938,7 +938,6 @@ bool ParseContext::build_buffer_load_cbv(const ir::Op &op)
 {
 	auto descriptor = ir::SsaDef(op.getOperand(0));
 	auto addr = ir::SsaDef(op.getOperand(1));
-	auto *int_type = Type::getInt32Ty(context);
 	Instruction *inst = nullptr;
 
 	if (op.getType().isScalarType())
