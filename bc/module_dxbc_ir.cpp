@@ -379,11 +379,11 @@ private:
 	Instruction *build_descriptor_load(ir::SsaDef resource, ir::SsaDef index, bool nonuniform);
 	bool build_buffer_load(const ir::Op &op);
 	bool build_buffer_load_cbv(const ir::Op &op);
-	bool build_buffer_load_structured(const ir::Op &op);
-	bool build_buffer_load_raw(const ir::Op &op);
-	bool build_buffer_load_typed(const ir::Op &op);
+	bool build_buffer_load(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_buffer_load_return_composite(const ir::Op &op, Value *value);
 	bool build_buffer_size(const ir::Op &op);
+	bool build_buffer_store(const ir::Op &op);
+	bool build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind);
 
 	Value *build_extract_vector_component(Value *value, unsigned component);
 
@@ -698,6 +698,13 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
+	case ir::OpCode::eBufferStore:
+	{
+		if (!build_buffer_store(op))
+			return false;
+		break;
+	}
+
 	case ir::OpCode::eBufferQuerySize:
 	{
 		if (!build_buffer_size(op))
@@ -841,81 +848,27 @@ bool ParseContext::build_buffer_load_return_composite(const ir::Op &op, Value *v
 	return true;
 }
 
-bool ParseContext::build_buffer_load_structured(const ir::Op &op)
-{
-	auto descriptor = ir::SsaDef(op.getOperand(0));
-	auto *int_type = Type::getInt32Ty(context);
-
-	auto *addr_value = get_value(op.getOperand(1));
-	auto *element = build_extract_vector_component(addr_value, 0);
-	auto *offset = build_extract_vector_component(addr_value, 1);
-
-	auto *result_type = convert_type(op.getType());
-	auto *dxil_result_type = get_vec4_variant(result_type);
-
-	auto *func = dxil_intrinsics.get(
-	    module, DXIL::Op::RawBufferLoad, dxil_result_type,
-	    Vector<Type *> {
-	        int_type, get_value(descriptor)->getType(),
-	        int_type, int_type, int_type, int_type
-	    }, dxil_result_type, tween_id);
-
-	uint32_t mask = (1u << op.getType().getBaseType(0).getVectorSize()) - 1u;
-
-	auto *inst = context.construct<CallInst>(
-		func->getFunctionType(), func,
-		Vector<Value *>{
-			get_constant_uint(uint32_t(DXIL::Op::RawBufferLoad)),
-			get_value(descriptor),
-			element,
-			offset,
-			get_constant_uint(mask),
-			get_constant_uint(4), // This is ignored by dxil-spirv since DXC never cared.
-		});
-
-	push_instruction(inst);
-	return build_buffer_load_return_composite(op, inst);
-}
-
-bool ParseContext::build_buffer_load_raw(const ir::Op &op)
+bool ParseContext::build_buffer_load(const ir::Op &op, DXIL::ResourceKind kind)
 {
 	auto descriptor = ir::SsaDef(op.getOperand(0));
 	auto *int_type = Type::getInt32Ty(context);
 
 	auto *addr_value = get_value(op.getOperand(1));
 
-	auto *result_type = convert_type(op.getType());
-	auto *dxil_result_type = get_vec4_variant(result_type);
+	Value *first;
+	Value *second;
 
-	auto *func = dxil_intrinsics.get(
-	    module, DXIL::Op::RawBufferLoad, dxil_result_type,
-	    Vector<Type *> {
-	        int_type, get_value(descriptor)->getType(),
-	        int_type, int_type, int_type, int_type
-	    }, dxil_result_type, tween_id);
-
-	unsigned num_elements = op.getType().getBaseType(0).getVectorSize();
-	unsigned mask = (1u << num_elements) - 1u;
-
-	auto *inst = context.construct<CallInst>(
-	    func->getFunctionType(), func,
-	    Vector<Value *>{
-	        get_constant_uint(uint32_t(DXIL::Op::RawBufferLoad)),
-	        get_value(descriptor),
-	        addr_value,
-	        UndefValue::get(int_type),
-	        get_constant_uint(mask),
-	        get_constant_uint(4), // This is ignored by dxil-spirv since DXC never cared.
-	    });
-
-	push_instruction(inst);
-	return build_buffer_load_return_composite(op, inst);
-}
-
-bool ParseContext::build_buffer_load_typed(const ir::Op &op)
-{
-	auto descriptor = ir::SsaDef(op.getOperand(0));
-	auto *int_type = Type::getInt32Ty(context);
+	// TODO: Adjust byte offset.
+	if (kind == DXIL::ResourceKind::StructuredBuffer)
+	{
+		first = build_extract_vector_component(addr_value, 0);
+		second = build_extract_vector_component(addr_value, 1);
+	}
+	else
+	{
+		first = addr_value;
+		second = UndefValue::get(int_type);
+	}
 
 	auto *result_type = convert_type(op.getType());
 	auto *dxil_result_type = get_vec4_variant(result_type);
@@ -928,13 +881,12 @@ bool ParseContext::build_buffer_load_typed(const ir::Op &op)
 	    }, dxil_result_type, tween_id);
 
 	auto *inst = context.construct<CallInst>(
-	    func->getFunctionType(), func,
-	    Vector<Value *>{
-	        get_constant_uint(uint32_t(DXIL::Op::BufferLoad)),
-	        get_value(descriptor),
-	        get_value(op.getOperand(1)),
-	        UndefValue::get(int_type),
-	    });
+		func->getFunctionType(), func,
+		Vector<Value *>{
+			get_constant_uint(uint32_t(DXIL::Op::BufferLoad)),
+			get_value(descriptor),
+	        first, second,
+		});
 
 	push_instruction(inst);
 	return build_buffer_load_return_composite(op, inst);
@@ -1030,14 +982,83 @@ bool ParseContext::build_buffer_load(const ir::Op &op)
 	// This function is overloaded, so need to figure out which type of load we should generate.
 	if (itr->second.resource_type == DXIL::ResourceType::CBV)
 		return build_buffer_load_cbv(op);
-	else if (itr->second.resource_kind == DXIL::ResourceKind::StructuredBuffer)
-		return build_buffer_load_structured(op);
-	else if (itr->second.resource_kind == DXIL::ResourceKind::RawBuffer)
-		return build_buffer_load_raw(op);
-	else if (itr->second.resource_kind == DXIL::ResourceKind::TypedBuffer)
-		return build_buffer_load_typed(op);
 	else
+		return build_buffer_load(op, itr->second.resource_kind);
+}
+
+bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+	auto *int_type = Type::getInt32Ty(context);
+
+	auto *addr_value = get_value(op.getOperand(1));
+
+	Value *first;
+	Value *second;
+
+	// TODO: Adjust byte offset.
+	if (kind == DXIL::ResourceKind::StructuredBuffer)
+	{
+		first = build_extract_vector_component(addr_value, 0);
+		second = build_extract_vector_component(addr_value, 1);
+	}
+	else
+	{
+		first = addr_value;
+		second = UndefValue::get(int_type);
+	}
+
+	auto *value = get_value(op.getOperand(2));
+	Value *scalar_values[4];
+
+	auto *scalar_type = value->getType();
+	unsigned num_components = 1;
+	if (const auto *vec = dyn_cast<VectorType>(scalar_type))
+	{
+		scalar_type = vec->getElementType();
+		num_components = vec->getVectorSize();
+	}
+
+	unsigned mask = (1u << num_components) - 1u;
+
+	for (unsigned c = 0; c < num_components; c++)
+		scalar_values[c] = build_extract_vector_component(value, c);
+	for (unsigned c = num_components; c < 4; c++)
+		scalar_values[c] = UndefValue::get(scalar_type);
+
+	auto *func = dxil_intrinsics.get(
+	    module, DXIL::Op::BufferStore, Type::getVoidTy(context),
+	    Vector<Type *> {
+	        int_type, get_value(descriptor)->getType(),
+	        int_type, int_type,
+	        scalar_type, scalar_type, scalar_type, scalar_type,
+	        int_type,
+	    }, scalar_type, tween_id);
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *>{
+	        get_constant_uint(uint32_t(DXIL::Op::BufferStore)),
+	        get_value(descriptor),
+	        first, second,
+	        scalar_values[0], scalar_values[1], scalar_values[2], scalar_values[3],
+	        get_constant_uint(mask),
+	    });
+
+	push_instruction(inst);
+	return true;
+}
+
+bool ParseContext::build_buffer_store(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
 		return false;
+
+	return build_buffer_store(op, itr->second.resource_kind);
 }
 
 bool ParseContext::build_buffer_size(const ir::Op &op)
