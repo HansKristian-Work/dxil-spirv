@@ -926,20 +926,9 @@ bool ParseContext::build_buffer_load(const ir::Op &op, DXIL::ResourceKind kind)
 	auto *result_type = convert_type(op.getType());
 	auto *dxil_result_type = get_vec4_variant(result_type);
 
-	auto *func = dxil_intrinsics.get(
-	    module, DXIL::Op::BufferLoad, dxil_result_type,
-	    Vector<Type *> {
-	        int_type, get_value(descriptor)->getType(),
-	        int_type, int_type,
-	    }, dxil_result_type, tween_id);
-
-	auto *inst = context.construct<CallInst>(
-		func->getFunctionType(), func,
-		Vector<Value *>{
-			get_constant_uint(uint32_t(DXIL::Op::BufferLoad)),
-			get_value(descriptor),
-	        first, second,
-		});
+	auto *inst = build_dxil_call(DXIL::Op::BufferLoad, dxil_result_type, dxil_result_type,
+	                             get_value(descriptor),
+	                             first, second);
 
 	push_instruction(inst);
 	return build_buffer_load_return_composite(op, inst);
@@ -961,11 +950,6 @@ bool ParseContext::build_buffer_load_cbv(const ir::Op &op)
 		}
 
 		auto *result_type = convert_type(op.getType());
-		auto *func = dxil_intrinsics.get(
-		    module, DXIL::Op::CBufferLoad, result_type,
-		    Vector<Type *> {
-		        int_type, get_value(descriptor)->getType(), int_type,
-		    }, result_type, tween_id);
 
 		auto *addr_value = get_value(addr);
 		if (!llvm::isa<llvm::VectorType>(addr_value->getType()))
@@ -984,39 +968,24 @@ bool ParseContext::build_buffer_load_cbv(const ir::Op &op)
 		push_instruction(mul4);
 		push_instruction(byte_addr);
 
-		inst = context.construct<CallInst>(
-			func->getFunctionType(), func,
-			Vector<Value *>{
-				get_constant_uint(uint32_t(DXIL::Op::CBufferLoad)),
-				get_value(descriptor),
-				byte_addr,
-			});
+		inst = build_dxil_call(DXIL::Op::CBufferLoad, result_type, result_type,
+		                       get_value(descriptor),
+		                       byte_addr);
 	}
 	else if (op.getType().isVectorType())
 	{
-		if (op.getType().getBaseType(0).getVectorSize() != 4 ||
-		    op.getType().byteSize() != 16)
+		if (op.getType().getBaseType(0).getVectorSize() != 4 || op.getType().byteSize() != 16)
 		{
 			LOGE("We can only support vec4 or scalar loads from CBV.\n");
 			return false;
 		}
 
 		auto *result_type = convert_type(op.getType());
-		auto *func = dxil_intrinsics.get(
-		    module, DXIL::Op::CBufferLoadLegacy, result_type,
-		    Vector<Type *> {
-		        int_type, get_value(descriptor)->getType(), int_type,
-		    }, result_type, tween_id);
-
 		auto *addr_value = get_value(addr);
 
-		inst = context.construct<CallInst>(
-			func->getFunctionType(), func,
-			Vector<Value *>{
-				get_constant_uint(uint32_t(DXIL::Op::CBufferLoadLegacy)),
-				get_value(descriptor),
-				addr_value,
-			});
+		inst = build_dxil_call(DXIL::Op::CBufferLoadLegacy, result_type, result_type,
+		                       get_value(descriptor),
+		                       addr_value);
 	}
 
 	push_instruction(inst, op.getDef());
@@ -1079,24 +1048,11 @@ bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
 	for (unsigned c = num_components; c < 4; c++)
 		scalar_values[c] = UndefValue::get(scalar_type);
 
-	auto *func = dxil_intrinsics.get(
-	    module, DXIL::Op::BufferStore, Type::getVoidTy(context),
-	    Vector<Type *> {
-	        int_type, get_value(descriptor)->getType(),
-	        int_type, int_type,
-	        scalar_type, scalar_type, scalar_type, scalar_type,
-	        int_type,
-	    }, scalar_type, tween_id);
-
-	auto *inst = context.construct<CallInst>(
-	    func->getFunctionType(), func,
-	    Vector<Value *>{
-	        get_constant_uint(uint32_t(DXIL::Op::BufferStore)),
-	        get_value(descriptor),
-	        first, second,
-	        scalar_values[0], scalar_values[1], scalar_values[2], scalar_values[3],
-	        get_constant_uint(mask),
-	    });
+	auto *inst = build_dxil_call(DXIL::Op::BufferStore, Type::getVoidTy(context), scalar_type,
+	                             get_value(descriptor),
+	                             first, second,
+	                             scalar_values[0], scalar_values[1], scalar_values[2], scalar_values[3],
+	                             get_constant_uint(mask));
 
 	push_instruction(inst);
 	return true;
