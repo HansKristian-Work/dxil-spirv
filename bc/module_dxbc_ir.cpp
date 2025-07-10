@@ -347,7 +347,7 @@ private:
 
 	uint32_t build_texture_uav(uint32_t space, uint32_t index, uint32_t size,
 	                           DXIL::ResourceKind kind,
-	                           DXIL::ComponentType type, bool coherent, bool counter, bool rov);
+	                           DXIL::ComponentType type, bool coherent, bool rov);
 
 	uint32_t build_buffer_uav(uint32_t space, uint32_t index, uint32_t size,
 	                          DXIL::ResourceKind kind, uint32_t stride,
@@ -716,6 +716,14 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
+#define BOP(irop, llvmop) case ir::OpCode::irop: push_instruction(context.construct<BinaryOperator>( \
+    get_value(op.getOperand(0)),                                                                     \
+    get_value(op.getOperand(1)),                                                                     \
+    BinaryOperator::BinaryOps::llvmop), op.getDef()); break
+	BOP(eIMul, Mul);
+	BOP(eIAdd, Add);
+#undef BOP
+
 	default:
 		LOGE("Unimplemented opcode %u\n", unsigned(op.getOpCode()));
 		return false;
@@ -875,7 +883,6 @@ bool ParseContext::build_buffer_load_raw(const ir::Op &op)
 	auto *int_type = Type::getInt32Ty(context);
 
 	auto *addr_value = get_value(op.getOperand(1));
-	auto *offset = build_extract_vector_component(addr_value, 0);
 
 	auto *result_type = convert_type(op.getType());
 	auto *dxil_result_type = get_vec4_variant(result_type);
@@ -895,7 +902,7 @@ bool ParseContext::build_buffer_load_raw(const ir::Op &op)
 	    Vector<Value *>{
 	        get_constant_uint(uint32_t(DXIL::Op::RawBufferLoad)),
 	        get_value(descriptor),
-	        offset,
+	        addr_value,
 	        UndefValue::get(int_type),
 	        get_constant_uint(mask),
 	        get_constant_uint(4), // This is ignored by dxil-spirv since DXC never cared.
@@ -1359,7 +1366,7 @@ uint32_t ParseContext::build_texture_srv(
 uint32_t ParseContext::build_texture_uav(
     uint32_t space, uint32_t index, uint32_t size,
     DXIL::ResourceKind kind, DXIL::ComponentType type,
-    bool coherent, bool counter, bool rov)
+    bool coherent, bool rov)
 {
 	uint32_t ret = uavs.nodes.size();
 
@@ -1372,7 +1379,7 @@ uint32_t ParseContext::build_texture_uav(
 	    create_constant_uint_meta(size),
 	    create_constant_uint_meta(uint32_t(kind)),
 	    create_constant_uint_meta(coherent),
-	    create_constant_uint_meta(counter),
+	    create_constant_uint_meta(false),
 	    create_constant_uint_meta(rov),
 	    create_md_node(
 	        create_constant_uint_meta(0),
@@ -1514,6 +1521,7 @@ bool ParseContext::emit_metadata()
 			return false;
 
 		case ir::OpCode::eDclSrv:
+		case ir::OpCode::eDclUav:
 		{
 			uint32_t space = uint32_t(op.getOperand(1));
 			uint32_t binding = uint32_t(op.getOperand(2));
@@ -1522,7 +1530,12 @@ bool ParseContext::emit_metadata()
 				count = UINT32_MAX;
 
 			auto kind = convert_resource_kind(ir::ResourceKind(uint32_t(op.getOperand(4))));
-			uint32_t srv_index;
+			bool srv = op.getOpCode() == ir::OpCode::eDclSrv;
+			uint32_t index;
+
+			ir::UavFlag uav_flags = {};
+			if (!srv)
+				uav_flags = ir::UavFlag(op.getOperand(5));
 
 			if (kind == DXIL::ResourceKind::RawBuffer || kind == DXIL::ResourceKind::StructuredBuffer)
 			{
@@ -1535,6 +1548,8 @@ bool ParseContext::emit_metadata()
 						LOGE("Expected 2 array dimensions.\n");
 						return false;
 					}
+
+					stride = op.getType().getArraySize(0) * 4;
 				}
 				else
 				{
@@ -1557,19 +1572,40 @@ bool ParseContext::emit_metadata()
 					return false;
 				}
 
-				srv_index = build_buffer_srv(space, binding, count, kind, stride);
+				if (srv)
+				{
+					index = build_buffer_srv(space, binding, count, kind, stride);
+				}
+				else
+				{
+					index = build_buffer_uav(space, binding, count, kind, stride,
+					                         bool(uav_flags & ir::UavFlag::eCoherent), false,
+					                         bool(uav_flags & ir::UavFlag::eRasterizerOrdered));
+				}
 			}
 			else
 			{
 				auto mapping = convert_component_mapping(op.getType());
-				srv_index = build_texture_srv(space, binding, count, kind, mapping.type);
+
+				if (srv)
+				{
+					index = build_texture_srv(space, binding, count, kind, mapping.type);
+				}
+				else
+				{
+					index = build_texture_uav(space, binding, count, kind, mapping.type,
+					                          bool(uav_flags & ir::UavFlag::eCoherent),
+					                          bool(uav_flags & ir::UavFlag::eRasterizerOrdered));
+				}
 			}
 
-			resource_map[op.getDef()] = { DXIL::ResourceType::SRV, kind, srv_index, binding };
+			resource_map[op.getDef()] = {
+				srv ? DXIL::ResourceType::SRV : DXIL::ResourceType::UAV, kind, index, binding
+			};
+
 			break;
 		}
 
-		case ir::OpCode::eDclUav:
 		case ir::OpCode::eDclUavCounter:
 			return false;
 

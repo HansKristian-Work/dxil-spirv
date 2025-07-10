@@ -258,8 +258,8 @@ int main(int argc, char **argv)
 
 	for (auto &test : tests)
 	{
-#if 1
-		if (test.name != "test_resources_srv_buffer_typed_query")
+#if 0
+		if (test.name != "test_resources_uav_buffer_typed_load")
 			continue;
 #endif
 
