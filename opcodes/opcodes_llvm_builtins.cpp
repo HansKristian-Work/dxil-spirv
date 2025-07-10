@@ -1808,7 +1808,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 {
 	auto &builder = impl.builder();
 
-	unsigned bits = instruction->getType()->getStructElementType(0)->getIntegerBitWidth();
+	unsigned bits = get_composite_element_type(instruction->getType())->getIntegerBitWidth();
 	if (bits == 64)
 		builder.addCapability(spv::CapabilityInt64Atomics);
 

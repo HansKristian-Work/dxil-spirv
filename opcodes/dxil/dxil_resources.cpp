@@ -1854,7 +1854,7 @@ static bool build_bitcast_32x4_to_16x8_composite(Converter::Impl &impl, const ll
 	auto &builder = impl.builder();
 
 	Vector<spv::Id> member_types(8);
-	spv::Id type_id = impl.get_type_id(instruction->getType()->getStructElementType(0));
+	spv::Id type_id = impl.get_type_id(get_composite_element_type(instruction->getType()));
 	for (auto &type : member_types)
 		type = type_id;
 
@@ -1908,7 +1908,7 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 
 	if (!scalar_load)
 	{
-		result_component_type = instruction->getType()->getStructElementType(0);
+		result_component_type = get_composite_element_type(instruction->getType());
 		scalar_alignment = get_type_scalar_alignment(impl, result_component_type);
 		alignment = 16;
 	}
@@ -2076,7 +2076,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 		// In legacy load, we index in terms of float4[]s.
 		member_index *= 4;
 
-		if (get_type_scalar_alignment(impl, instruction->getType()->getStructElementType(0)) != 4)
+		if (get_type_scalar_alignment(impl, get_composite_element_type(instruction->getType())) != 4)
 		{
 			LOGE("Attempting to use root constant buffer with non-32bit type.\n");
 			return false;
@@ -2095,7 +2095,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 
 	auto *result_scalar_type = instruction->getType();
 	if (!scalar_load)
-		result_scalar_type = result_scalar_type->getStructElementType(0);
+		result_scalar_type = get_composite_element_type(result_scalar_type);
 
 	// Root constants are emitted as uints as they are typically used as indices.
 	bool need_bitcast = result_scalar_type->getTypeID() != llvm::Type::TypeID::IntegerTyID;

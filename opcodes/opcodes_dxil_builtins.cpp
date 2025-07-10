@@ -680,7 +680,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			{
 				// Need aliases here to handle difference in Float64 vs Int64 support.
 				// For 16-bit, support is gated behind both types.
-				bool is_float = instruction->getType()->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::DoubleTyID;
+				bool is_float = get_composite_element_type(instruction->getType())->getTypeID() == llvm::Type::TypeID::DoubleTyID;
 				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V2)] = true;
 				break;
 			}
@@ -781,13 +781,13 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{
 				update_raw_access_tracking_for_byte_address(impl, *tracking,
-				                                            instruction->getType()->getStructElementType(0),
+				                                            get_composite_element_type(instruction->getType()),
 				                                            instruction->getOperand(2), access_mask);
 			}
 			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 			{
 				update_raw_access_tracking_for_structured(impl, *tracking,
-				                                          instruction->getType()->getStructElementType(0),
+				                                          get_composite_element_type(instruction->getType()),
 				                                          instruction->getOperand(2),
 				                                          meta.stride,
 				                                          instruction->getOperand(3),

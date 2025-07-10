@@ -24,6 +24,7 @@
 
 #include "dxil_sampling.hpp"
 #include "dxil_common.hpp"
+#include "dxil_resources.hpp"
 #include "spirv_module.hpp"
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
@@ -469,7 +470,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	Operation *op = impl.allocate(spv_op, instruction, sample_type);
 
 	if (!sparse)
-		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 	op->add_id(combined_image_sampler_id);
 	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
@@ -499,7 +500,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	impl.add(op);
 
-	auto *target_type = instruction->getType()->getStructElementType(0);
+	auto *target_type = get_composite_element_type(instruction->getType());
 
 	if (sparse)
 	{
@@ -778,7 +779,7 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 	Operation *op = impl.allocate(spv_op, instruction, sample_type);
 
 	if (!sparse)
-		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 	op->add_id(combined_image_sampler_id);
 	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
@@ -804,7 +805,7 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 
 	impl.add(op);
 
-	auto *target_type = instruction->getType()->getStructElementType(0);
+	auto *target_type = get_composite_element_type(instruction->getType());
 
 	if (sparse)
 		impl.repack_sparse_feedback(meta.component_type, comparison_sampling ? 1 : 4, instruction, target_type);
@@ -890,7 +891,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	Operation *op = impl.allocate(opcode, instruction, sample_type);
 	if (!sparse)
-		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 	spv::Id coord_id = impl.build_vector(builder.makeUintType(32), coord, num_coords_full);
 	if (!is_uav && (image_ops & spv::ImageOperandsOffsetMask))
@@ -928,7 +929,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	add_vkmm_access_qualifiers(impl, op, meta.vkmm);
 	impl.add(op, meta.rov);
 
-	auto *target_type = instruction->getType()->getStructElementType(0);
+	auto *target_type = get_composite_element_type(instruction->getType());
 
 	if (sparse)
 		impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
@@ -1251,7 +1252,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 	else
 		sample_type = texel_type;
 
-	bool raw_gather64 = raw && instruction->getType()->getStructElementType(0)->getIntegerBitWidth() == 64;
+	bool raw_gather64 = raw && get_composite_element_type(instruction->getType())->getIntegerBitWidth() == 64;
 
 	spv::Op opcode;
 	if (compare)
@@ -1261,7 +1262,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 
 	Operation *op = impl.allocate(opcode, instruction, sample_type);
 	if (!sparse)
-		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 	op->add_ids({ combined_image_sampler_id, coord_id, aux_id });
 
@@ -1328,7 +1329,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 
 		if (sparse)
 		{
-			auto *target_type = instruction->getType()->getStructElementType(0);
+			auto *target_type = get_composite_element_type(instruction->getType());
 			impl.repack_sparse_feedback(DXIL::ComponentType::U64, 4, instruction, target_type, u64_vector);
 		}
 		else
@@ -1338,7 +1339,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 	}
 	else
 	{
-		auto *target_type = instruction->getType()->getStructElementType(0);
+		auto *target_type = get_composite_element_type(instruction->getType());
 
 		if (sparse)
 			impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);

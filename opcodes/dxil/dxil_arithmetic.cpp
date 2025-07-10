@@ -23,6 +23,7 @@
  */
 
 #include "dxil_arithmetic.hpp"
+#include "dxil_resources.hpp"
 #include "dxil_common.hpp"
 #include "opcodes/converter_impl.hpp"
 
@@ -928,7 +929,7 @@ bool emit_unpack4x8_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	if (!get_constant_operand(instruction, 1, &signed_expand))
 		return false;
 
-	auto *element_type = instruction->getType()->getStructElementType(0);
+	auto *element_type = get_composite_element_type(instruction->getType());
 	spv::Id result_type = builder.makeVectorType(impl.get_type_id(element_type), 4);
 
 	auto *expand_op = impl.allocate(signed_expand ? spv::OpSConvert : spv::OpUConvert,
