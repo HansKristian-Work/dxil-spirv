@@ -914,6 +914,11 @@ struct Converter::Impl
 		bool require_wmma = false;
 	} shader_analysis;
 
+	struct
+	{
+		bool skip_non_uniform_promotion = false;
+	} backend;
+
 	// For descriptor QA, we need to rewrite how resource handles are emitted.
 	UnorderedMap<const llvm::CallInst *, const llvm::BasicBlock *> resource_handle_to_block;
 	UnorderedSet<const llvm::CallInst *> resource_handles_needing_sink;

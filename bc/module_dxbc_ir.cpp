@@ -70,6 +70,40 @@ static const char *shader_stage_to_meta(ir::ShaderStage stage)
 	}
 }
 
+static DXIL::ResourceKind convert_resource_kind(ir::ResourceKind kind)
+{
+	switch (kind)
+	{
+	case ir::ResourceKind::eBufferRaw:
+		return DXIL::ResourceKind::RawBuffer;
+	case ir::ResourceKind::eBufferStructured:
+		return DXIL::ResourceKind::StructuredBuffer;
+	case ir::ResourceKind::eBufferTyped:
+		return DXIL::ResourceKind::TypedBuffer;
+	case ir::ResourceKind::eImage1D:
+		return DXIL::ResourceKind::Texture1D;
+	case ir::ResourceKind::eImage1DArray:
+		return DXIL::ResourceKind::Texture1DArray;
+	case ir::ResourceKind::eImage2D:
+		return DXIL::ResourceKind::Texture2D;
+	case ir::ResourceKind::eImage2DArray:
+		return DXIL::ResourceKind::Texture2DArray;
+	case ir::ResourceKind::eImage3D:
+		return DXIL::ResourceKind::Texture3D;
+	case ir::ResourceKind::eImageCube:
+		return DXIL::ResourceKind::TextureCube;
+	case ir::ResourceKind::eImageCubeArray:
+		return DXIL::ResourceKind::TextureCubeArray;
+	case ir::ResourceKind::eImage2DMS:
+		return DXIL::ResourceKind::Texture2DMS;
+	case ir::ResourceKind::eImage2DMSArray:
+		return DXIL::ResourceKind::Texture2DMSArray;
+	default:
+		LOGE("Unrecognized resource kind %d\n", int(kind));
+		return DXIL::ResourceKind::Invalid;
+	}
+}
+
 static DXIL::Op convert_builtin_opcode(ir::BuiltIn builtin)
 {
 	switch (builtin)
@@ -283,6 +317,7 @@ private:
 
 	// Metadata wrangling
 	ConstantAsMetadata *create_constant_uint_meta(uint32_t value);
+	ConstantAsMetadata *create_constant_uint64_meta(uint32_t value);
 	MDString *create_string_meta(const String &str);
 	ConstantAsMetadata *create_constant_meta(Constant *c);
 
@@ -341,9 +376,13 @@ private:
 		Value *row, uint32_t col, Value *axis = nullptr);
 	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value);
 	Instruction *build_load_builtin(DXIL::Op opcode, ir::SsaDef addr);
-	Instruction *build_descriptor_load(ir::SsaDef resource, ir::SsaDef index);
+	Instruction *build_descriptor_load(ir::SsaDef resource, ir::SsaDef index, bool nonuniform);
 	Instruction *build_buffer_load(const ir::Op &op);
 	Instruction *build_buffer_load_cbv(const ir::Op &op);
+	Instruction *build_buffer_load_structured(const ir::Op &op);
+	Instruction *build_buffer_load_raw(const ir::Op &op);
+	Instruction *build_buffer_load_typed(const ir::Op &op);
+	Value *build_extract_vector_component(Value *value, unsigned component);
 
 	// BasicBlock emission.
 	BasicBlock *current_bb = nullptr;
@@ -575,15 +614,11 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	case ir::OpCode::eOutputStore:
 	{
 		auto *store_value = get_value(op.getOperand(2));
-		Type *scalar_type = nullptr;
 		auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
 		unsigned components = 1;
 
 		if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(store_value->getType()))
-		{
 			components = vec->getVectorSize();
-			scalar_type = vec->getElementType();
-		}
 
 		uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
 
@@ -596,9 +631,8 @@ bool ParseContext::push_instruction(const ir::Op &op)
 			for (unsigned c = 0; c < components; c++)
 			{
 				Vector<unsigned> indices { c };
-				auto *inst = context.construct<ExtractValueInst>(scalar_type, store_value, std::move(indices));
-				push_instruction(inst);
-				push_instruction(build_store_output(ref.index, get_constant_uint(0), col + c, inst));
+				auto *value = build_extract_vector_component(store_value, c);
+				push_instruction(build_store_output(ref.index, get_constant_uint(0), col + c, value));
 			}
 		}
 
@@ -622,16 +656,15 @@ bool ParseContext::push_instruction(const ir::Op &op)
 
 	case ir::OpCode::eCompositeExtract:
 	{
-		auto *type = convert_type(op.getType());
 		if (!llvm::isa<llvm::ConstantInt>(get_value(op.getOperand(1))))
 		{
 			LOGE("CompositeExtract must take a constant index.\n");
 			return false;
 		}
 
-		Vector<unsigned> indices { resolve_constant_uint(op.getOperand(1)) };
-		auto *inst = context.construct<ExtractValueInst>(type, get_value(op.getOperand(0)), std::move(indices));
-		push_instruction(inst, op.getDef());
+		auto *value = build_extract_vector_component(
+		    get_value(op.getOperand(0)), resolve_constant_uint(op.getOperand(1)));
+		value_map[op.getDef()] = value;
 		break;
 	}
 
@@ -646,7 +679,9 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	// Descriptor handling
 	case ir::OpCode::eDescriptorLoad:
 	{
-		auto *inst = build_descriptor_load(ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+		auto *inst = build_descriptor_load(ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)),
+		                                   bool(op.getFlags() & ir::OpFlag::eNonUniform));
+
 		if (!inst)
 			return false;
 		push_instruction(inst, op.getDef());
@@ -744,6 +779,114 @@ Instruction *ParseContext::build_load_builtin(DXIL::Op opcode, ir::SsaDef addr)
 	return context.construct<CallInst>(func->getFunctionType(), func, std::move(args));
 }
 
+Value *ParseContext::build_extract_vector_component(Value *value, unsigned component)
+{
+	// Common pattern where composites are constructed only to be extracted again.
+	if (const auto *comp = dyn_cast<CompositeConstructInst>(value))
+		return comp->getOperand(component);
+
+	auto *extracted = context.construct<ExtractValueInst>(
+	    cast<VectorType>(value->getType())->getElementType(), value, Vector<unsigned>{component});
+	push_instruction(extracted);
+	return extracted;
+}
+
+Instruction *ParseContext::build_buffer_load_structured(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+	auto *int_type = Type::getInt32Ty(context);
+
+	auto *addr_value = get_value(op.getOperand(1));
+	auto *element = build_extract_vector_component(addr_value, 0);
+	auto *offset = build_extract_vector_component(addr_value, 1);
+
+	auto *result_type = convert_type(op.getType());
+
+	auto *func = dxil_intrinsics.get(
+	    module, DXIL::Op::RawBufferLoad, result_type,
+	    Vector<Type *> {
+	        int_type, get_value(descriptor)->getType(),
+	        int_type, int_type, int_type, int_type
+	    }, result_type, tween_id);
+
+	uint32_t mask = (1u << op.getType().getBaseType(0).getVectorSize()) - 1u;
+
+	auto *inst = context.construct<CallInst>(
+		func->getFunctionType(), func,
+		Vector<Value *>{
+			get_constant_uint(uint32_t(DXIL::Op::RawBufferLoad)),
+			get_value(descriptor),
+			element,
+			offset,
+			get_constant_uint(mask),
+			get_constant_uint(4), // This is ignored by dxil-spirv since DXC never cared.
+		});
+
+	push_instruction(inst, op.getDef());
+	return inst;
+}
+
+Instruction *ParseContext::build_buffer_load_raw(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+	auto *int_type = Type::getInt32Ty(context);
+
+	auto *addr_value = get_value(op.getOperand(1));
+	auto *offset = build_extract_vector_component(addr_value, 0);
+
+	auto *result_type = convert_type(op.getType());
+
+	auto *func = dxil_intrinsics.get(
+	    module, DXIL::Op::RawBufferLoad, result_type,
+	    Vector<Type *> {
+	        int_type, get_value(descriptor)->getType(),
+	        int_type, int_type, int_type, int_type
+	    }, result_type, tween_id);
+
+	uint32_t mask = (1u << op.getType().getBaseType(0).getVectorSize()) - 1u;
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *>{
+	        get_constant_uint(uint32_t(DXIL::Op::RawBufferLoad)),
+	        get_value(descriptor),
+	        offset,
+	        UndefValue::get(int_type),
+	        get_constant_uint(mask),
+	        get_constant_uint(4), // This is ignored by dxil-spirv since DXC never cared.
+	    });
+
+	push_instruction(inst, op.getDef());
+	return inst;
+}
+
+Instruction *ParseContext::build_buffer_load_typed(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+	auto *int_type = Type::getInt32Ty(context);
+
+	auto *result_type = convert_type(op.getType());
+
+	auto *func = dxil_intrinsics.get(
+	    module, DXIL::Op::BufferLoad, result_type,
+	    Vector<Type *> {
+	        int_type, get_value(descriptor)->getType(),
+	        int_type, int_type,
+	    }, result_type, tween_id);
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *>{
+	        get_constant_uint(uint32_t(DXIL::Op::BufferLoad)),
+	        get_value(descriptor),
+	        get_value(op.getOperand(1)),
+	        UndefValue::get(int_type),
+	    });
+
+	push_instruction(inst, op.getDef());
+	return inst;
+}
+
 Instruction *ParseContext::build_buffer_load_cbv(const ir::Op &op)
 {
 	auto descriptor = ir::SsaDef(op.getOperand(0));
@@ -773,10 +916,8 @@ Instruction *ParseContext::build_buffer_load_cbv(const ir::Op &op)
 			return nullptr;
 		}
 
-		auto *index16 = context.construct<ExtractValueInst>(int_type, addr_value, Vector<unsigned>{0});
-		auto *index4 = context.construct<ExtractValueInst>(int_type, addr_value, Vector<unsigned>{1});
-		push_instruction(index16);
-		push_instruction(index4);
+		auto *index16 = build_extract_vector_component(addr_value, 0);
+		auto *index4 = build_extract_vector_component(addr_value, 1);
 
 		auto *mul16 = context.construct<BinaryOperator>(index16, get_constant_uint(16), llvm::BinaryOperator::BinaryOps::Mul);
 		auto *mul4 = context.construct<BinaryOperator>(index4, get_constant_uint(4), llvm::BinaryOperator::BinaryOps::Mul);
@@ -785,12 +926,13 @@ Instruction *ParseContext::build_buffer_load_cbv(const ir::Op &op)
 		push_instruction(mul4);
 		push_instruction(byte_addr);
 
-		inst = context.construct<CallInst>(func->getFunctionType(), func,
-		                                   Vector<Value *>{
-		                                       get_constant_uint(uint32_t(DXIL::Op::CBufferLoad)),
-		                                       get_value(descriptor),
-		                                       byte_addr,
-		                                   });
+		inst = context.construct<CallInst>(
+			func->getFunctionType(), func,
+			Vector<Value *>{
+				get_constant_uint(uint32_t(DXIL::Op::CBufferLoad)),
+				get_value(descriptor),
+				byte_addr,
+			});
 	}
 	else if (op.getType().isVectorType())
 	{
@@ -810,12 +952,13 @@ Instruction *ParseContext::build_buffer_load_cbv(const ir::Op &op)
 
 		auto *addr_value = get_value(addr);
 
-		inst = context.construct<CallInst>(func->getFunctionType(), func,
-		                                   Vector<Value *>{
-			                                   get_constant_uint(uint32_t(DXIL::Op::CBufferLoadLegacy)),
-			                                   get_value(descriptor),
-			                                   addr_value,
-		                                   });
+		inst = context.construct<CallInst>(
+			func->getFunctionType(), func,
+			Vector<Value *>{
+				get_constant_uint(uint32_t(DXIL::Op::CBufferLoadLegacy)),
+				get_value(descriptor),
+				addr_value,
+			});
 	}
 
 	return inst;
@@ -832,17 +975,18 @@ Instruction *ParseContext::build_buffer_load(const ir::Op &op)
 
 	// This function is overloaded, so need to figure out which type of load we should generate.
 	if (itr->second.resource_type == DXIL::ResourceType::CBV)
-	{
 		return build_buffer_load_cbv(op);
-	}
+	else if (itr->second.resource_kind == DXIL::ResourceKind::StructuredBuffer)
+		return build_buffer_load_structured(op);
+	else if (itr->second.resource_kind == DXIL::ResourceKind::RawBuffer)
+		return build_buffer_load_raw(op);
+	else if (itr->second.resource_kind == DXIL::ResourceKind::TypedBuffer)
+		return build_buffer_load_typed(op);
 	else
-	{
-		// TODO.
 		return nullptr;
-	}
 }
 
-Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef index)
+Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef index, bool nonuniform)
 {
 	auto itr = resource_map.find(resource);
 	if (itr == resource_map.end())
@@ -870,7 +1014,7 @@ Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef
 				const_offset->getUniqueInteger().getZExtValue() +
 				itr->second.binding_offset);
 		}
-		else
+		else if (itr->second.binding_offset)
 		{
 			// SM 5.1 bindless.
 			auto *add = context.construct<BinaryOperator>(dynamic_offset,
@@ -879,15 +1023,16 @@ Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef
 			push_instruction(add);
 			binding_offset = add;
 		}
+		else
+		{
+			binding_offset = dynamic_offset;
+		}
 	}
 	else
 	{
 		// DXIL is a bit silly and takes effective register index instead of offset into binding space.
 		binding_offset = get_constant_uint(itr->second.binding_offset);
 	}
-
-	// For now. Should be a flag on the opcode?
-	constexpr bool nonuniform = false;
 
 	Vector<Value *> args = {
 		get_constant_uint(uint32_t(DXIL::Op::CreateHandle)),
@@ -1006,7 +1151,7 @@ MDNode *ParseContext::create_stage_io_meta()
 				auto op = convert_builtin_opcode(ir::BuiltIn(io.op->getOperand(1)));
 				if (op != DXIL::Op::Count)
 				{
-					stage_io_map[ir::SsaDef(io.op->getOperand(1))] = { UINT32_MAX, op };
+					stage_io_map[io.op->getDef()] = { UINT32_MAX, op };
 					continue;
 				}
 			}
@@ -1035,6 +1180,32 @@ bool ParseContext::emit_entry_point()
 	if (!entry)
 		return false;
 
+	auto shader_stage = ir::ShaderStage(entry->getOperand(entry->getFirstLiteralOperandIndex()));
+	Vector<MDOperand *> flag_ops;
+
+	uint64_t shader_flags = 0;
+	flag_ops.push_back(create_constant_uint_meta(uint32_t(DXIL::ShaderPropertyTag::ShaderFlags)));
+	flag_ops.push_back(create_constant_uint64_meta(shader_flags));
+
+	if (shader_stage == ir::ShaderStage::eCompute)
+	{
+		flag_ops.push_back(create_constant_uint_meta(uint32_t(DXIL::ShaderPropertyTag::NumThreads)));
+		const ir::Op *threads = nullptr;
+		for_all_opcodes(builder, ir::OpCode::eSetCsWorkgroupSize,
+		                [&](const ir::Op &op) { threads = &op; return false; });
+
+		if (!threads)
+		{
+			LOGE("Need to declare threads.\n");
+			return false;
+		}
+
+		flag_ops.push_back(create_md_node(
+		    create_constant_uint_meta(uint32_t(threads->getOperand(1))),
+		    create_constant_uint_meta(uint32_t(threads->getOperand(2))),
+		    create_constant_uint_meta(uint32_t(threads->getOperand(3)))));
+	}
+
 	for (uint32_t i = 0; i < entry->getFirstLiteralOperandIndex(); i++)
 	{
 		auto ssa = ir::SsaDef(entry->getOperand(i));
@@ -1055,15 +1226,16 @@ bool ParseContext::emit_entry_point()
 		{
 			create_named_md_node("dx.entryPoints",
 			                     create_md_node(create_constant_meta(func), create_string_meta("main"),
-			                                    create_stage_io_meta(), create_null_meta(), create_null_meta()));
+			                                    create_stage_io_meta(), create_null_meta(),
+			                                    flag_ops.empty() ? create_null_meta() : create_md_node(flag_ops)));
 		}
 	}
 
 	auto *name = create_string_meta("dxbc-spirv");
 	create_named_md_node("llvm.ident", create_md_node(name));
 
-	const char *stage = shader_stage_to_meta(ir::ShaderStage(entry->getOperand(entry->getFirstLiteralOperandIndex())));
-	auto *stage_type = create_string_meta(stage);
+	const char *stage_str = shader_stage_to_meta(shader_stage);
+	auto *stage_type = create_string_meta(stage_str);
 	auto *major = create_constant_uint_meta(6);
 	auto *minor = create_constant_uint_meta(0);
 	create_named_md_node("dx.shaderModel", create_md_node(stage_type, major, minor));
@@ -1250,7 +1422,60 @@ bool ParseContext::emit_metadata()
 			return false;
 
 		case ir::OpCode::eDclSrv:
-			return false;
+		{
+			uint32_t space = uint32_t(op.getOperand(1));
+			uint32_t binding = uint32_t(op.getOperand(2));
+			uint32_t count = uint32_t(op.getOperand(3));
+			if (!count)
+				count = UINT32_MAX;
+
+			auto kind = convert_resource_kind(ir::ResourceKind(uint32_t(op.getOperand(4))));
+			uint32_t srv_index;
+
+			if (kind == DXIL::ResourceKind::RawBuffer || kind == DXIL::ResourceKind::StructuredBuffer)
+			{
+				uint32_t stride = 0;
+
+				if (kind == DXIL::ResourceKind::StructuredBuffer)
+				{
+					if (op.getType().getArrayDimensions() != 2)
+					{
+						LOGE("Expected 2 array dimensions.\n");
+						return false;
+					}
+				}
+				else
+				{
+					if (op.getType().getArrayDimensions() != 1)
+					{
+						LOGE("Expected 1 array dimension.\n");
+						return false;
+					}
+				}
+
+				if (op.getType().getArraySize(op.getType().getArrayDimensions() - 1) != 0)
+				{
+					LOGE("Last dimension must be unsized.\n");
+					return false;
+				}
+
+				if (op.getType().getBaseType(0).byteSize() != 4)
+				{
+					LOGE("Expected 4 byte base type for raw buffers.\n");
+					return false;
+				}
+
+				srv_index = build_buffer_srv(space, binding, count, kind, stride);
+			}
+			else
+			{
+				auto mapping = convert_component_mapping(op.getType());
+				srv_index = build_texture_srv(space, binding, count, kind, mapping.type);
+			}
+
+			resource_map[op.getDef()] = { DXIL::ResourceType::SRV, kind, srv_index, binding };
+			break;
+		}
 
 		case ir::OpCode::eDclUav:
 		case ir::OpCode::eDclUavCounter:
@@ -1293,6 +1518,7 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eDclCbv:
 		case ir::OpCode::eDclSampler:
 		case ir::OpCode::eSemantic:
+		case ir::OpCode::eSetCsWorkgroupSize:
 			break;
 
 		case ir::OpCode::eConstant:
@@ -1486,6 +1712,11 @@ ConstantInt *ParseContext::get_constant_uint(uint32_t value)
 ConstantAsMetadata *ParseContext::create_constant_uint_meta(uint32_t value)
 {
 	return create_constant_meta(get_constant_uint(value));
+}
+
+ConstantAsMetadata *ParseContext::create_constant_uint64_meta(uint32_t value)
+{
+	return create_constant_meta(ConstantInt::get(Type::getInt64Ty(context), value));
 }
 
 ConstantAsMetadata *ParseContext::create_constant_meta(Constant *c)

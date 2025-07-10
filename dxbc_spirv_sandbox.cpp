@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 1
-		if (test.name != "test_resources_cbv_indexed")
+		if (test.name != "test_resources_srv_buffer_typed_load")
 			continue;
 #endif
 

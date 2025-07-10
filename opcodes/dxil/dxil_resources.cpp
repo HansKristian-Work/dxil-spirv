@@ -915,6 +915,7 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 
 		if (!is_non_uniform && instruction_offset_value &&
 		    ((reference.resource_kind == DXIL::ResourceKind::CBuffer || impl.options.quirks.aggressive_nonuniform) &&
+		     !impl.backend.skip_non_uniform_promotion &&
 		     value_is_likely_non_uniform(impl, instruction_offset_value)))
 		{
 			// Native drivers seems to apply hacks and workarounds to workaround bugged games.
