@@ -409,6 +409,7 @@ private:
 	template <typename... Values>
 	Instruction *build_dxil_call(DXIL::Op op, Type *return_type, Type *overload_type, Values&&... values);
 
+	// Resource access hell.
 	Instruction *build_load_input(
 		uint32_t index, Type *type,
 		Value *row, uint32_t col, Value *axis = nullptr);
@@ -425,6 +426,7 @@ private:
 	bool build_buffer_atomic(const ir::Op &op);
 	bool build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_counter_atomic(const ir::Op &op);
+	bool build_image_load(const ir::Op &op);
 
 	Value *build_extract_vector_component(Value *value, unsigned component);
 
@@ -793,6 +795,13 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
+	case ir::OpCode::eImageLoad:
+	{
+		if (!build_image_load(op))
+			return false;
+		break;
+	}
+
 	// Plain instructions
 	case ir::OpCode::eCast:
 	{
@@ -857,6 +866,12 @@ Instruction *ParseContext::build_load_builtin(DXIL::Op opcode, ir::SsaDef addr)
 
 Value *ParseContext::build_extract_vector_component(Value *value, unsigned component)
 {
+	if (!llvm::isa<VectorType>(value->getType()))
+	{
+		assert(component == 0);
+		return value;
+	}
+
 	// Common pattern where composites are constructed only to be extracted again.
 	if (const auto *comp = dyn_cast<CompositeConstructInst>(value))
 		return comp->getOperand(component);
@@ -1005,6 +1020,78 @@ bool ParseContext::build_buffer_load(const ir::Op &op)
 		return build_buffer_load_cbv(op);
 	else
 		return build_buffer_load(op, itr->second.resource_kind);
+}
+
+bool ParseContext::build_image_load(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	auto kind = itr->second.resource_kind;
+	auto *result_type = convert_type(op.getType());
+	auto *dxil_result_type = get_vec4_variant(result_type);
+	auto *int_type = Type::getInt32Ty(context);
+
+	auto mip = ir::SsaDef(op.getOperand(1));
+	auto layer = ir::SsaDef(op.getOperand(2));
+	auto coord = ir::SsaDef(op.getOperand(3));
+	auto sample = ir::SsaDef(op.getOperand(4));
+	auto offset = ir::SsaDef(op.getOperand(5));
+
+	Value *mip_or_sample = nullptr;
+	Value *offsets[3] = {};
+	Value *coords[3] = {};
+
+	if (kind == DXIL::ResourceKind::TextureCube || kind == DXIL::ResourceKind::TextureCubeArray)
+	{
+		LOGE("Cubes not allowed for loads.\n");
+		return false;
+	}
+
+	if (kind == DXIL::ResourceKind::Texture2DMS || kind == DXIL::ResourceKind::Texture2DMSArray)
+		mip_or_sample = get_value(sample);
+	else if (itr->second.resource_type == DXIL::ResourceType::SRV)
+		mip_or_sample = get_value(mip);
+
+	unsigned coord_components = builder.getOp(coord).getType().getBaseType(0).getVectorSize();
+
+	for (unsigned c = 0; c < coord_components; c++)
+	{
+		coords[c] = build_extract_vector_component(get_value(coord), c);
+		if (offset)
+			offsets[c] = build_extract_vector_component(get_value(offset), c);
+	}
+
+	if (kind == DXIL::ResourceKind::Texture1DArray ||
+	    kind == DXIL::ResourceKind::Texture2DArray ||
+	    kind == DXIL::ResourceKind::Texture2DMSArray)
+	{
+		coords[coord_components] = get_value(layer);
+	}
+
+	if (!mip_or_sample)
+		mip_or_sample = UndefValue::get(int_type);
+
+	for (auto &off : offsets)
+		if (!off)
+			off = UndefValue::get(int_type);
+
+	for (auto &c : coords)
+		if (!c)
+			c = UndefValue::get(int_type);
+
+	auto *inst = build_dxil_call(DXIL::Op::TextureLoad, dxil_result_type, dxil_result_type,
+	                             get_value(descriptor),
+	                             mip_or_sample,
+	                             coords[0], coords[1], coords[2],
+	                             offsets[0], offsets[1], offsets[2]);
+
+	push_instruction(inst);
+	return build_buffer_load_return_composite(op, inst);
 }
 
 bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
