@@ -192,6 +192,7 @@ static DXIL::AtomicBinOp convert_atomic_binop(ir::AtomicOp binop)
 	switch (binop)
 	{
 	case ir::AtomicOp::eAdd:
+	case ir::AtomicOp::eInc:
 		return DXIL::AtomicBinOp::IAdd;
 	case ir::AtomicOp::eAnd:
 		return DXIL::AtomicBinOp::And;
@@ -210,6 +211,7 @@ static DXIL::AtomicBinOp convert_atomic_binop(ir::AtomicOp binop)
 	case ir::AtomicOp::eUMin:
 		return DXIL::AtomicBinOp::UMin;
 	case ir::AtomicOp::eSub:
+	case ir::AtomicOp::eDec:
 		return DXIL::AtomicBinOp::Sub;
 	case ir::AtomicOp::eLoad:
 		return DXIL::AtomicBinOp::Load;
@@ -1146,7 +1148,13 @@ bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKin
 	auto *return_type = convert_type(op.getType());
 
 	if (binop == DXIL::AtomicBinOp::Load)
+	{
 		value = UndefValue::get(int_type);
+	}
+	else if (atomic_op == ir::AtomicOp::eInc || atomic_op == ir::AtomicOp::eSub)
+	{
+		value = get_constant_uint(1);
+	}
 	else
 	{
 		value = get_value(op.getOperand(2));
