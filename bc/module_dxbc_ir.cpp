@@ -383,6 +383,7 @@ private:
 	bool build_buffer_load_raw(const ir::Op &op);
 	bool build_buffer_load_typed(const ir::Op &op);
 	bool build_buffer_load_return_composite(const ir::Op &op, Value *value);
+	bool build_buffer_size(const ir::Op &op);
 
 	Value *build_extract_vector_component(Value *value, unsigned component);
 
@@ -693,6 +694,13 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	case ir::OpCode::eBufferLoad:
 	{
 		if (!build_buffer_load(op))
+			return false;
+		break;
+	}
+
+	case ir::OpCode::eBufferQuerySize:
+	{
+		if (!build_buffer_size(op))
 			return false;
 		break;
 	}
@@ -1023,6 +1031,51 @@ bool ParseContext::build_buffer_load(const ir::Op &op)
 		return build_buffer_load_typed(op);
 	else
 		return false;
+}
+
+bool ParseContext::build_buffer_size(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	auto *result_type = convert_type(op.getType());
+	auto *vec4_type = get_vec4_variant(result_type);
+
+	auto *func = dxil_intrinsics.get(
+	    module, DXIL::Op::GetDimensions, vec4_type,
+	    Vector<Type *> {
+	        result_type, get_value(descriptor)->getType(), result_type,
+	    }, nullptr, tween_id);
+
+	auto *inst = context.construct<CallInst>(
+	    func->getFunctionType(), func,
+	    Vector<Value *> {
+	        get_constant_uint(uint32_t(DXIL::Op::GetDimensions)),
+	        get_value(descriptor),
+	        UndefValue::get(Type::getInt32Ty(context)),
+	    });
+
+	push_instruction(inst);
+
+	auto *value = build_extract_vector_component(inst, 0);
+
+	if (itr->second.resource_kind == DXIL::ResourceKind::RawBuffer)
+	{
+		// dxbc-spirv expects result in u32 elements.
+		push_instruction(
+		    context.construct<BinaryOperator>(value, get_constant_uint(2), BinaryOperator::BinaryOps::LShr),
+		    op.getDef());
+	}
+	else
+	{
+		value_map[op.getDef()] = value;
+	}
+
+	return true;
 }
 
 Instruction *ParseContext::build_descriptor_load(ir::SsaDef resource, ir::SsaDef index, bool nonuniform)
