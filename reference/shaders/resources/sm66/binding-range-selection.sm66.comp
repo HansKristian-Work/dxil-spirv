@@ -13,7 +13,8 @@ void main()
         imageStore(_13, ivec2(uvec2(gl_GlobalInvocationID.x, 0u)), vec4(0.0));
         if (gl_GlobalInvocationID.x > 90u)
         {
-            imageStore(_17[(gl_GlobalInvocationID.x & 1u) + 7u], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), vec4(0.0));
+            uint _41 = gl_GlobalInvocationID.x & 1u;
+            imageStore(_17[_41], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), vec4(0.0));
         }
     }
     uint _39 = imageAtomicAdd(_9, int(0u), 1u);
@@ -97,7 +98,7 @@ OpBranchConditional %34 %50 %51
 %50 = OpLabel
 %41 = OpBitwiseAnd %5 %24 %40
 %42 = OpIAdd %5 %41 %43
-%44 = OpAccessChain %12 %17 %42
+%44 = OpAccessChain %12 %17 %41
 %45 = OpLoad %11 %44
 %46 = OpCompositeConstruct %30 %23 %24
 %47 = OpCompositeConstruct %32 %29 %29 %29 %29

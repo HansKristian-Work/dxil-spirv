@@ -1302,6 +1302,10 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
 
+			// Counteract any offsets.
+			if (range_size != 1 && !var_meta.is_lib_variable)
+				ref.base_offset = -bind_register;
+
 			if (ref.var_id)
 			{
 				auto &meta = handle_to_resource_meta[ref.var_id];
@@ -1940,6 +1944,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
 
+			// Counteract any offsets.
+			if (range_size != 1 && !var_meta.is_lib_variable)
+				ref.base_offset = -bind_register;
+
 			const auto decorate_variable = [&](spv::Id id) {
 				builder.addDecoration(id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
 				builder.addDecoration(id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
@@ -2224,6 +2232,10 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
+			// Counteract any offsets.
+			if (range_size != 1 && !var_meta.is_lib_variable)
+				ref.base_offset = -bind_register;
+
 			if (ref.var_id)
 			{
 				auto &meta = handle_to_resource_meta[ref.var_id];
@@ -2388,6 +2400,10 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 			ref.var_id = var_id;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = DXIL::ResourceKind::Sampler;
+
+			// Counteract any offsets.
+			if (range_size != 1 && !var_meta.is_lib_variable)
+				ref.base_offset = -bind_register;
 		}
 	}
 

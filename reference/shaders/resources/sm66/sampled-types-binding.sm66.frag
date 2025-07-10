@@ -14,8 +14,9 @@ void main()
 {
     uint _35 = uint(int(UV.x));
     uint _36 = uint(int(UV.y));
-    vec4 _42 = texelFetch(_9[nonuniformEXT(INDEX + 4u)], ivec2(uvec2(_35, _36)), int(0u));
-    vec4 _55 = texelFetch(_15[nonuniformEXT((INDEX + 1u) + 5u)], int(_35));
+    vec4 _42 = texelFetch(_9[nonuniformEXT(INDEX)], ivec2(uvec2(_35, _36)), int(0u));
+    uint _49 = INDEX + 1u;
+    vec4 _55 = texelFetch(_15[nonuniformEXT(_49)], int(_35));
     vec4 _65 = texelFetch(_18, int(_35), int(_36));
     SV_Target.x = (_55.x + _42.x) + _65.x;
     SV_Target.y = (_55.y + _42.y) + _65.y;
@@ -57,9 +58,9 @@ OpDecorate %20 Flat
 OpDecorate %20 Location 0
 OpDecorate %23 Location 1
 OpDecorate %26 Location 0
-OpDecorate %37 NonUniform
+OpDecorate %34 NonUniform
 OpDecorate %41 NonUniform
-OpDecorate %50 NonUniform
+OpDecorate %49 NonUniform
 OpDecorate %54 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -108,7 +109,7 @@ OpBranch %81
 %35 = OpConvertFToS %11 %30
 %36 = OpConvertFToS %11 %33
 %37 = OpIAdd %11 %34 %38
-%40 = OpAccessChain %39 %9 %37
+%40 = OpAccessChain %39 %9 %34
 %41 = OpLoad %6 %40
 %44 = OpCompositeConstruct %43 %35 %36
 %42 = OpImageFetch %24 %41 %44 Lod %29
@@ -118,7 +119,7 @@ OpBranch %81
 %48 = OpCompositeExtract %5 %42 3
 %49 = OpIAdd %11 %34 %32
 %50 = OpIAdd %11 %49 %51
-%53 = OpAccessChain %52 %15 %50
+%53 = OpAccessChain %52 %15 %49
 %54 = OpLoad %10 %53
 %55 = OpImageFetch %24 %54 %35
 %56 = OpCompositeExtract %5 %55 0

@@ -27,10 +27,10 @@ layout(location = 0) out uvec2 SV_Target;
 void main()
 {
     uint _40 = uint(int(gl_FragCoord.x));
-    uint _54 = floatBitsToUint(_28._m0[0u]).x + 4u;
-    uint _64 = INDEX + 100u;
-    SV_Target.x = (_16[_54]._m0[_40].x + _10._m0[_40].x) + _21[nonuniformEXT(_64)]._m0[_40].x;
-    SV_Target.y = (_16[_54]._m0[_40].y + _10._m0[_40].y) + _21[nonuniformEXT(_64)]._m0[_40].y;
+    uvec4 _52 = floatBitsToUint(_28._m0[0u]);
+    uint _53 = _52.x;
+    SV_Target.x = (_16[_53]._m0[_40].x + _10._m0[_40].x) + _21[nonuniformEXT(INDEX)]._m0[_40].x;
+    SV_Target.y = (_16[_53]._m0[_40].y + _10._m0[_40].y) + _21[nonuniformEXT(INDEX)]._m0[_40].y;
 }
 
 
@@ -84,7 +84,7 @@ OpDecorate %30 BuiltIn FragCoord
 OpDecorate %32 Flat
 OpDecorate %32 Location 1
 OpDecorate %34 Location 0
-OpDecorate %64 NonUniform
+OpDecorate %35 NonUniform
 OpDecorate %67 NonUniform
 OpDecorate %68 NonUniform
 %1 = OpTypeVoid
@@ -148,7 +148,7 @@ OpBranch %77
 %52 = OpBitcast %51 %50
 %53 = OpCompositeExtract %5 %52 0
 %54 = OpIAdd %5 %53 %55
-%57 = OpAccessChain %56 %16 %54
+%57 = OpAccessChain %56 %16 %53
 %58 = OpAccessChain %43 %57 %38 %40
 %59 = OpLoad %6 %58
 %60 = OpCompositeExtract %5 %59 0
@@ -156,7 +156,7 @@ OpBranch %77
 %62 = OpIAdd %5 %60 %46
 %63 = OpIAdd %5 %61 %47
 %64 = OpIAdd %5 %35 %65
-%67 = OpAccessChain %66 %21 %64
+%67 = OpAccessChain %66 %21 %35
 %68 = OpAccessChain %43 %67 %38 %40
 %69 = OpLoad %6 %68
 %70 = OpCompositeExtract %5 %69 0

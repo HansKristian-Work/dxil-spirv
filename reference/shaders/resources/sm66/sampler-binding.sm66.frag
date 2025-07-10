@@ -10,7 +10,7 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    vec4 _46 = texture(sampler3D(_9[INDEX + 1u], _13[INDEX + 4u]), vec3(UV.x, UV.y, UV.z));
+    vec4 _46 = texture(sampler3D(_9[INDEX], _13[INDEX]), vec3(UV.x, UV.y, UV.z));
     SV_Target.x = _46.x;
     SV_Target.y = _46.y;
     SV_Target.z = _46.z;
@@ -87,10 +87,10 @@ OpBranch %58
 %32 = OpLoad %5 %30
 %33 = OpLoad %14 %16
 %34 = OpIAdd %14 %33 %28
-%36 = OpAccessChain %35 %9 %34
+%36 = OpAccessChain %35 %9 %33
 %37 = OpLoad %6 %36
 %38 = OpIAdd %14 %33 %39
-%41 = OpAccessChain %40 %13 %38
+%41 = OpAccessChain %40 %13 %33
 %42 = OpLoad %10 %41
 %44 = OpSampledImage %43 %37 %42
 %47 = OpCompositeConstruct %17 %26 %29 %32

@@ -442,27 +442,56 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 				}
 			}
 		}
+		else if (const auto *cint = llvm::dyn_cast<llvm::ConstantInt>(dynamic_offset))
+		{
+			base_offset += uint32_t(cint->getUniqueInteger().getZExtValue());
+			dynamic_offset = nullptr;
+		}
 	}
 
 	if (base_offset != 0)
 	{
-		auto *heap_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		heap_offset->add_id(table_index_id);
-		heap_offset->add_id(builder.makeUintConstant(base_offset));
-		impl.add(heap_offset);
-		table_index_id = heap_offset->id;
+		if (table_index_id)
+		{
+			auto *heap_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+			heap_offset->add_id(table_index_id);
+			heap_offset->add_id(builder.makeUintConstant(base_offset));
+			impl.add(heap_offset);
+			table_index_id = heap_offset->id;
+		}
+		else
+		{
+			table_index_id = builder.makeUintConstant(base_offset);
+		}
 	}
 
 	if (dynamic_offset)
 	{
-		auto *offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
-		offset->add_id(table_index_id);
-		offset->add_id(impl.get_id_for_value(dynamic_offset));
-		impl.add(offset);
-		table_index_id = offset->id;
+		if (table_index_id)
+		{
+			auto *offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+			offset->add_id(table_index_id);
+			offset->add_id(impl.get_id_for_value(dynamic_offset));
+			impl.add(offset);
+			table_index_id = offset->id;
+		}
+		else
+		{
+			table_index_id = impl.get_id_for_value(dynamic_offset);
+		}
 	}
 
+	if (!table_index_id)
+		table_index_id = builder.makeUintConstant(0);
+
 	return table_index_id;
+}
+
+static spv::Id build_adjusted_descriptor_indexing(Converter::Impl &impl,
+                                                  uint32_t base_offset,
+                                                  const llvm::Value *dynamic_offset)
+{
+	return build_bindless_heap_offset(impl, 0, base_offset, dynamic_offset);
 }
 
 static spv::Id build_bindless_heap_offset_shader_record(Converter::Impl &impl, const Converter::Impl::ResourceReference &reference,
@@ -862,7 +891,10 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 		}
 		else
 		{
-			offset_id = impl.get_id_for_value(instruction_offset_value);
+			offset_id = build_adjusted_descriptor_indexing(
+				impl, reference.base_offset,
+				reference.base_resource_is_array ? instruction_offset_value : nullptr);
+
 			if (bindless_offset_id)
 				*bindless_offset_id = 0;
 		}
