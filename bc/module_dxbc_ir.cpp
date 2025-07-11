@@ -417,12 +417,18 @@ private:
 	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value);
 	Instruction *build_load_builtin(DXIL::Op opcode, ir::SsaDef addr);
 	Instruction *build_descriptor_load(ir::SsaDef resource, ir::SsaDef index, bool nonuniform);
+	bool build_input_load(const ir::Op &op);
+	bool build_output_store(const ir::Op &op);
+	bool build_composite_construct(const ir::Op &op);
+	bool build_composite_extract(const ir::Op &op);
+	bool build_composite_insert(const ir::Op &op);
+	bool build_descriptor_load(const ir::Op &op);
 	bool build_buffer_load(const ir::Op &op);
 	bool build_buffer_load_cbv(const ir::Op &op);
 	bool build_buffer_load(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_buffer_load_return_composite(const ir::Op &op, Value *value);
 	Instruction *build_extract_composite(const ir::Op &op, Value *value, unsigned num_elements);
-	bool build_buffer_size(const ir::Op &op);
+	bool build_buffer_query_size(const ir::Op &op);
 	bool build_buffer_store(const ir::Op &op);
 	bool build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_buffer_atomic(const ir::Op &op);
@@ -433,6 +439,7 @@ private:
 	bool build_image_query_mips(const ir::Op &op);
 	bool build_image_sample(const ir::Op &op);
 	bool build_image_compute_lod(const ir::Op &op);
+	bool build_deriv(const ir::Op &op);
 
 	Value *build_extract_composite_component(Value *value, unsigned component);
 
@@ -652,203 +659,164 @@ uint32_t ParseContext::resolve_constant_uint(const ir::Operand &op) const
 		return 0;
 }
 
+bool ParseContext::build_input_load(const ir::Op &op)
+{
+	auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
+
+	// Redirect to magic opcode as needed.
+	if (ref.op != DXIL::Op::Count)
+	{
+		auto *inst = build_load_builtin(ref.op, ir::SsaDef(op.getOperand(1)));
+		push_instruction(inst, op.getDef());
+		return true;
+	}
+
+	auto *type = convert_type(op.getType());
+	auto *scalar_type = type;
+
+	unsigned components = 1;
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+	{
+		components = vec->getVectorSize();
+		scalar_type = vec->getElementType();
+	}
+
+	Instruction *insts[4] = {};
+
+	uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
+
+	for (unsigned c = 0; c < components; c++)
+	{
+		insts[c] = build_load_input(ref.index, scalar_type, get_constant_uint(0), col + c);
+		push_instruction(insts[c], op.getDef());
+	}
+
+	if (components != 1)
+	{
+		auto *inst = context.construct<CompositeConstructInst>(
+		    type, Vector<Value *>{ insts, insts + components });
+		push_instruction(inst, op.getDef());
+	}
+
+	return true;
+}
+
+bool ParseContext::build_output_store(const ir::Op &op)
+{
+	auto *store_value = get_value(op.getOperand(2));
+	auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
+	unsigned components = 1;
+
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(store_value->getType()))
+		components = vec->getVectorSize();
+
+	uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
+
+	if (components == 1)
+	{
+		push_instruction(build_store_output(ref.index, get_constant_uint(0), col, store_value));
+	}
+	else
+	{
+		for (unsigned c = 0; c < components; c++)
+		{
+			Vector<unsigned> indices { c };
+			auto *value = build_extract_composite_component(store_value, c);
+			push_instruction(build_store_output(ref.index, get_constant_uint(0), col + c, value));
+		}
+	}
+
+	return true;
+}
+
+bool ParseContext::build_composite_construct(const ir::Op &op)
+{
+	auto *type = convert_type(op.getType());
+
+	Vector<Value *> values;
+	values.reserve(op.getOperandCount());
+
+	for (unsigned i = 0; i < op.getOperandCount(); i++)
+		values.push_back(get_value(op.getOperand(i)));
+
+	auto *inst = context.construct<CompositeConstructInst>(type, std::move(values));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_composite_extract(const ir::Op &op)
+{
+	if (!llvm::isa<llvm::ConstantInt>(get_value(op.getOperand(1))))
+	{
+		LOGE("CompositeExtract must take a constant index.\n");
+		return false;
+	}
+
+	auto *value =
+	    build_extract_composite_component(get_value(op.getOperand(0)), resolve_constant_uint(op.getOperand(1)));
+	value_map[op.getDef()] = value;
+	return true;
+}
+
+bool ParseContext::build_composite_insert(const ir::Op &op)
+{
+	auto *inst = context.construct<InsertElementInst>(
+	    get_value(op.getOperand(0)), get_value(op.getOperand(2)), get_value(op.getOperand(1)));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_descriptor_load(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+	auto &dcl_op = builder.getOp(descriptor);
+	if (dcl_op.getOpCode() == ir::OpCode::eDclUavCounter)
+		descriptor = ir::SsaDef(dcl_op.getOperand(1));
+
+	auto *inst = build_descriptor_load(descriptor, ir::SsaDef(op.getOperand(1)),
+	                                   bool(op.getFlags() & ir::OpFlag::eNonUniform));
+
+	if (!inst)
+		return false;
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_deriv(const ir::Op &op)
+{
+	auto *inst = build_dxil_call(DXIL::Op::ExtendedDeriv,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)),
+	                             get_constant_uint(op.getOpCode() == ir::OpCode::eDerivY),
+	                             get_constant_uint(uint32_t(op.getOperand(1))));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
 bool ParseContext::push_instruction(const ir::Op &op)
 {
 	switch (op.getOpCode())
 	{
-	case ir::OpCode::eInputLoad:
-	{
-		auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
-
-		// Redirect to magic opcode as needed.
-		if (ref.op != DXIL::Op::Count)
-		{
-			auto *inst = build_load_builtin(ref.op, ir::SsaDef(op.getOperand(1)));
-			push_instruction(inst, op.getDef());
-			break;
-		}
-
-		auto *type = convert_type(op.getType());
-		auto *scalar_type = type;
-
-		unsigned components = 1;
-		if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
-		{
-			components = vec->getVectorSize();
-			scalar_type = vec->getElementType();
-		}
-
-		Instruction *insts[4] = {};
-
-		uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
-
-		for (unsigned c = 0; c < components; c++)
-		{
-			insts[c] = build_load_input(ref.index, scalar_type, get_constant_uint(0), col + c);
-			push_instruction(insts[c], op.getDef());
-		}
-
-		if (components != 1)
-		{
-			auto *inst = context.construct<CompositeConstructInst>(
-			    type, Vector<Value *>{ insts, insts + components });
-			push_instruction(inst, op.getDef());
-		}
-
-		break;
-	}
-
-	case ir::OpCode::eOutputStore:
-	{
-		auto *store_value = get_value(op.getOperand(2));
-		auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
-		unsigned components = 1;
-
-		if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(store_value->getType()))
-			components = vec->getVectorSize();
-
-		uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
-
-		if (components == 1)
-		{
-			push_instruction(build_store_output(ref.index, get_constant_uint(0), col, store_value));
-		}
-		else
-		{
-			for (unsigned c = 0; c < components; c++)
-			{
-				Vector<unsigned> indices { c };
-				auto *value = build_extract_composite_component(store_value, c);
-				push_instruction(build_store_output(ref.index, get_constant_uint(0), col + c, value));
-			}
-		}
-
-		break;
-	}
-
-	case ir::OpCode::eCompositeConstruct:
-	{
-		auto *type = convert_type(op.getType());
-
-		Vector<Value *> values;
-		values.reserve(op.getOperandCount());
-
-		for (unsigned i = 0; i < op.getOperandCount(); i++)
-			values.push_back(get_value(op.getOperand(i)));
-
-		auto *inst = context.construct<CompositeConstructInst>(type, std::move(values));
-		push_instruction(inst, op.getDef());
-		break;
-	}
-
-	case ir::OpCode::eCompositeExtract:
-	{
-		if (!llvm::isa<llvm::ConstantInt>(get_value(op.getOperand(1))))
-		{
-			LOGE("CompositeExtract must take a constant index.\n");
-			return false;
-		}
-
-		auto *value =
-		    build_extract_composite_component(get_value(op.getOperand(0)), resolve_constant_uint(op.getOperand(1)));
-		value_map[op.getDef()] = value;
-		break;
-	}
-
-	case ir::OpCode::eCompositeInsert:
-	{
-		auto *inst = context.construct<InsertElementInst>(
-		    get_value(op.getOperand(0)), get_value(op.getOperand(2)), get_value(op.getOperand(1)));
-		push_instruction(inst, op.getDef());
-		break;
-	}
-
-	// Descriptor handling
-	case ir::OpCode::eDescriptorLoad:
-	{
-		auto descriptor = ir::SsaDef(op.getOperand(0));
-		auto &dcl_op = builder.getOp(descriptor);
-		if (dcl_op.getOpCode() == ir::OpCode::eDclUavCounter)
-			descriptor = ir::SsaDef(dcl_op.getOperand(1));
-
-		auto *inst = build_descriptor_load(descriptor, ir::SsaDef(op.getOperand(1)),
-		                                   bool(op.getFlags() & ir::OpFlag::eNonUniform));
-
-		if (!inst)
-			return false;
-		push_instruction(inst, op.getDef());
-		break;
-	}
-
-	case ir::OpCode::eBufferLoad:
-	{
-		if (!build_buffer_load(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eBufferStore:
-	{
-		if (!build_buffer_store(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eBufferAtomic:
-	{
-		if (!build_buffer_atomic(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eCounterAtomic:
-	{
-		if (!build_counter_atomic(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eBufferQuerySize:
-	{
-		if (!build_buffer_size(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eImageLoad:
-	{
-		if (!build_image_load(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eImageQuerySize:
-	{
-		if (!build_image_query_size(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eImageQueryMips:
-	{
-		if (!build_image_query_mips(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eImageSample:
-	{
-		if (!build_image_sample(op))
-			return false;
-		break;
-	}
-
-	case ir::OpCode::eImageComputeLod:
-	{
-		if (!build_image_compute_lod(op))
-			return false;
-		break;
-	}
+#define OPMAP(irop, llvmop) case ir::OpCode::e##irop: if (!build_##llvmop(op)) return false; break
+	OPMAP(InputLoad, input_load);
+	OPMAP(OutputStore, output_store);
+	OPMAP(CompositeConstruct, composite_construct);
+	OPMAP(CompositeExtract, composite_extract);
+	OPMAP(CompositeInsert, composite_insert);
+	OPMAP(DescriptorLoad, descriptor_load);
+	OPMAP(BufferLoad, buffer_load);
+	OPMAP(BufferStore, buffer_store);
+	OPMAP(BufferAtomic, buffer_atomic);
+	OPMAP(CounterAtomic, counter_atomic);
+	OPMAP(BufferQuerySize, buffer_query_size);
+	OPMAP(ImageLoad, image_load);
+	OPMAP(ImageQuerySize, image_query_size);
+	OPMAP(ImageQueryMips, image_query_mips);
+	OPMAP(ImageSample, image_sample);
+	OPMAP(ImageComputeLod, image_compute_lod);
+	OPMAP(DerivX, deriv);
+	OPMAP(DerivY, deriv);
+#undef OPMAP
 
 	// Plain instructions
 	case ir::OpCode::eCast:
@@ -1344,7 +1312,8 @@ bool ParseContext::build_image_compute_lod(const ir::Op &op)
 		coords[c] = UndefValue::get(Type::getFloatTy(context));
 
 	// Alternate extended formulation since DXIL is weird.
-	auto *inst = build_dxil_call(DXIL::Op::CalculateLOD, convert_type(op.getType()), nullptr,
+	auto *inst = build_dxil_call(DXIL::Op::ExtendedCalculateLOD, convert_type(op.getType()), nullptr,
+	                             get_value(image_desc), get_value(op.getOperand(1)),
 	                             coords[0], coords[1], coords[2]);
 	push_instruction(inst, op.getDef());
 	return true;
@@ -1501,7 +1470,7 @@ bool ParseContext::build_counter_atomic(const ir::Op &op)
 	return true;
 }
 
-bool ParseContext::build_buffer_size(const ir::Op &op)
+bool ParseContext::build_buffer_query_size(const ir::Op &op)
 {
 	auto descriptor = ir::SsaDef(op.getOperand(0));
 

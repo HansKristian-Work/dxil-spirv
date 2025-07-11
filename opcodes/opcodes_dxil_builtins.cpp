@@ -85,7 +85,8 @@ struct DXILDispatcher
 		OP(TextureGather) = emit_texture_gather_dispatch<false, false>;
 		OP(TextureGatherRaw) = emit_texture_gather_dispatch<false, true>;
 		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true, false>;
-		OP(CalculateLOD) = emit_calculate_lod_instruction;
+		OP(CalculateLOD) = emit_calculate_lod_dispatch<false>;
+		OP(ExtendedCalculateLOD) = emit_calculate_lod_dispatch<true>;
 		OP(Texture2DMSGetSamplePosition) = emit_get_sample_position_dispatch<true>;
 		OP(RenderTargetGetSamplePosition) = emit_get_sample_position_dispatch<false>;
 		OP(RenderTargetGetSampleCount) = emit_get_render_target_sample_count;
@@ -202,6 +203,7 @@ struct DXILDispatcher
 		OP(Coverage) = emit_coverage_instruction;
 		OP(InnerCoverage) = emit_inner_coverage_instruction;
 		OP(IsHelperLane) = emit_is_helper_lane_instruction;
+		OP(ExtendedDeriv) = emit_extended_derivative_instruction;
 
 		// dxil_geometry.hpp
 		OP(EmitStream) = emit_stream_instruction;
@@ -1167,6 +1169,8 @@ bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 		break;
 	}
 
+	case DXIL::Op::ExtendedCalculateLOD:
+	case DXIL::Op::ExtendedDeriv:
 	case DXIL::Op::DerivCoarseX:
 	case DXIL::Op::DerivCoarseY:
 	case DXIL::Op::DerivFineX:

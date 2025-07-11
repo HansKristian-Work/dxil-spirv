@@ -1752,7 +1752,7 @@ static bool emit_calculate_lod_instruction_fallback(Converter::Impl &impl, const
 	return true;
 }
 
-bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool extended)
 {
 	auto &builder = impl.builder();
 	if (impl.execution_mode_meta.synthesize_dummy_derivatives)
@@ -1781,13 +1781,12 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	for (unsigned i = 0; i < num_coords; i++)
 		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
 
-	const llvm::ConstantInt *clamped_value = nullptr;
 	bool clamped = false;
 
 	// Internal extension to better match DXBC/SPIR-V.
-	if (!llvm::isa<llvm::VectorType>(instruction->getType()))
+	if (!extended)
 	{
-		clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
+		auto *clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
 		clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
 	}
 
@@ -1795,7 +1794,7 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	query_op->add_ids({ combined_image_sampler_id, impl.build_vector(builder.makeFloatType(32), coords, num_coords) });
 	impl.add(query_op);
 
-	if (clamped_value)
+	if (!extended)
 	{
 		Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
 		op->add_id(query_op->id);

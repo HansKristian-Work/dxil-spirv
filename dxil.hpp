@@ -489,6 +489,10 @@ enum class Op : unsigned
 	StartVertexLocation = 256,
 	StartInstanceLocation = 257,
 
+	// Internal extensions
+	ExtendedDeriv,
+	ExtendedCalculateLOD,
+
 	Count
 };
 

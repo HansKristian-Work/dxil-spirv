@@ -149,6 +149,38 @@ static bool emit_derivative_instruction_quad(spv::Op opcode, Converter::Impl &im
 
 }
 
+bool emit_extended_derivative_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	uint32_t dim, mode;
+	if (!get_constant_operand(instruction, 2, &dim))
+		return false;
+	if (!get_constant_operand(instruction, 3, &mode))
+		return false;
+
+	spv::Op opcode;
+
+	if (dim == 0 && mode == 0)
+		opcode = spv::OpDPdx;
+	else if (dim == 0 && mode == 1)
+		opcode = spv::OpDPdxCoarse;
+	else if (dim == 0 && mode == 2)
+		opcode = spv::OpDPdxFine;
+	else if (dim == 1 && mode == 0)
+		opcode = spv::OpDPdy;
+	else if (dim == 1 && mode == 1)
+		opcode = spv::OpDPdyCoarse;
+	else if (dim == 1 && mode == 2)
+		opcode = spv::OpDPdyFine;
+	else
+		return false;
+
+	auto *op = impl.allocate(opcode, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(op);
+	impl.builder().addCapability(spv::CapabilityDerivativeControl);
+	return true;
+}
+
 bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
