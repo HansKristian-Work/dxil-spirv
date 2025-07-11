@@ -1781,17 +1781,31 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	for (unsigned i = 0; i < num_coords; i++)
 		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
 
-	auto *clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
-	bool clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
+	const llvm::ConstantInt *clamped_value = nullptr;
+	bool clamped = false;
+
+	// Internal extension to better match DXBC/SPIR-V.
+	if (!llvm::isa<llvm::VectorType>(instruction->getType()))
+	{
+		clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
+		clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
+	}
 
 	Operation *query_op = impl.allocate(spv::OpImageQueryLod, builder.makeVectorType(builder.makeFloatType(32), 2));
 	query_op->add_ids({ combined_image_sampler_id, impl.build_vector(builder.makeFloatType(32), coords, num_coords) });
 	impl.add(query_op);
 
-	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
-	op->add_id(query_op->id);
-	op->add_literal(clamped ? 0u : 1u);
-	impl.add(op);
+	if (clamped_value)
+	{
+		Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
+		op->add_id(query_op->id);
+		op->add_literal(clamped ? 0u : 1u);
+		impl.add(op);
+	}
+	else
+	{
+		impl.rewrite_value(instruction, query_op->id);
+	}
 
 	builder.addCapability(spv::CapabilityImageQuery);
 	return true;

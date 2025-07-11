@@ -432,6 +432,7 @@ private:
 	bool build_image_query_size(const ir::Op &op);
 	bool build_image_query_mips(const ir::Op &op);
 	bool build_image_sample(const ir::Op &op);
+	bool build_image_compute_lod(const ir::Op &op);
 
 	Value *build_extract_composite_component(Value *value, unsigned component);
 
@@ -838,6 +839,13 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	case ir::OpCode::eImageSample:
 	{
 		if (!build_image_sample(op))
+			return false;
+		break;
+	}
+
+	case ir::OpCode::eImageComputeLod:
+	{
+		if (!build_image_compute_lod(op))
 			return false;
 		break;
 	}
@@ -1314,7 +1322,32 @@ bool ParseContext::build_image_sample(const ir::Op &op)
 		values.push_back(get_value(lod_index));
 
 	auto *inst = build_dxil_call(opcode, dxil_result_type, dxil_result_type, std::move(values));
+	push_instruction(inst);
 	return build_buffer_load_return_composite(op, inst);
+}
+
+bool ParseContext::build_image_compute_lod(const ir::Op &op)
+{
+	auto image_desc = ir::SsaDef(op.getOperand(0));
+	auto &resource_op = builder.getOp(image_desc);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	auto coord = ir::SsaDef(op.getOperand(2));
+	unsigned num_coord_components = builder.getOp(coord).getType().getBaseType(0).getVectorSize();
+
+	Value *coords[3] = {};
+	for (unsigned c = 0; c < num_coord_components; c++)
+		coords[c] = build_extract_composite_component(get_value(coord), c);
+	for (unsigned c = num_coord_components; c < 3; c++)
+		coords[c] = UndefValue::get(Type::getFloatTy(context));
+
+	// Alternate extended formulation since DXIL is weird.
+	auto *inst = build_dxil_call(DXIL::Op::CalculateLOD, convert_type(op.getType()), nullptr,
+	                             coords[0], coords[1], coords[2]);
+	push_instruction(inst, op.getDef());
+	return true;
 }
 
 bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
