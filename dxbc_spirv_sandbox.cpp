@@ -258,8 +258,8 @@ int main(int argc, char **argv)
 
 	for (auto &test : tests)
 	{
-#if 0
-		if (test.name != "test_resource_srv_buffer_load_sparse_feedback")
+#if 1
+		if (test.name != "test_resources_srv_buffer_raw_load")
 			continue;
 #endif
 

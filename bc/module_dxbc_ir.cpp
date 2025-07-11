@@ -372,7 +372,6 @@ private:
 	struct MetadataMapping
 	{
 		Vector<MDOperand *> nodes;
-		// TODO: Some mapping from SsaRef to index so we can translate load descriptor.
 	};
 	MetadataMapping srvs, uavs, cbvs, samplers, inputs, outputs, patches;
 
@@ -446,6 +445,7 @@ private:
 	bool build_check_sparse_access(const ir::Op &op);
 
 	Value *get_extracted_composite_component(Value *value, unsigned component);
+	Value *get_constant_mul4(Value *value);
 
 	// BasicBlock emission.
 	BasicBlock *current_bb = nullptr;
@@ -938,6 +938,56 @@ Value *ParseContext::get_extracted_composite_component(Value *value, unsigned co
 	return extracted;
 }
 
+Value *ParseContext::get_constant_mul4(Value *value)
+{
+	// If there is already a multiplier, fold it in to help dxil-spirv analysis get proper vectorization.
+	if (const auto *cint = dyn_cast<ConstantInt>(value))
+	{
+		return get_constant_uint(cint->getUniqueInteger().getZExtValue() * 4);
+	}
+	else if (const auto *bop = dyn_cast<BinaryOperator>(value))
+	{
+		if (bop->getOpcode() == BinaryOperator::BinaryOps::Mul)
+		{
+			auto *ca = dyn_cast<ConstantInt>(bop->getOperand(0));
+			auto *cb = dyn_cast<ConstantInt>(bop->getOperand(1));
+
+			if (ca && cb)
+			{
+				return get_constant_uint(
+				    ca->getUniqueInteger().getZExtValue() * cb->getUniqueInteger().getZExtValue() * 4);
+			}
+			else if (ca || cb)
+			{
+				auto *c = ca ? ca : cb;
+				auto *other = bop->getOperand(ca ? 1 : 0);
+				auto *inst =
+					context.construct<BinaryOperator>(
+						get_constant_uint(
+							4 * c->getUniqueInteger().getZExtValue()), other, BinaryOperator::BinaryOps::Mul);
+				push_instruction(inst);
+				return inst;
+			}
+		}
+		else if (bop->getOpcode() == BinaryOperator::BinaryOps::Add)
+		{
+			if (isa<ConstantInt>(bop->getOperand(0)) || isa<ConstantInt>(bop->getOperand(1)))
+			{
+				// Avoid nested scaling. Scale each side. Probably only worth it if at least one of them is a constant.
+				auto *scaled_a = get_constant_mul4(bop->getOperand(0));
+				auto *scaled_b = get_constant_mul4(bop->getOperand(1));
+				auto *inst = context.construct<BinaryOperator>(scaled_a, scaled_b, BinaryOperator::BinaryOps::Add);
+				push_instruction(inst);
+				return inst;
+			}
+		}
+	}
+
+	auto *inst = context.construct<BinaryOperator>(get_constant_uint(4), value, BinaryOperator::BinaryOps::Mul);
+	push_instruction(inst);
+	return inst;
+}
+
 static VectorType *get_vec4_variant(Type *type)
 {
 	if (auto *vec = dyn_cast<VectorType>(type))
@@ -1035,10 +1085,13 @@ bool ParseContext::build_buffer_load(const ir::Op &op, DXIL::ResourceKind kind)
 	{
 		first = get_extracted_composite_component(addr_value, 0);
 		second = get_extracted_composite_component(addr_value, 1);
+		second = get_constant_mul4(second);
 	}
 	else
 	{
 		first = addr_value;
+		if (kind == DXIL::ResourceKind::RawBuffer)
+			first = get_constant_mul4(first);
 		second = UndefValue::get(int_type);
 	}
 
