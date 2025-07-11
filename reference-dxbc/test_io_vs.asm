@@ -1,11 +1,12 @@
 SPIR-V:
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 84
+; Bound: 74
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %8 %9 %10 %11 %14 %17 %19 %21 %22 %23
 OpName %3 "main"
 OpName %8 "POSITION"
@@ -55,12 +56,12 @@ OpDecorate %23 Location 3
 %29 = OpConstant %12 1
 %32 = OpConstant %12 0
 %35 = OpConstant %5 1
-%37 = OpTypePointer Output %5
-%45 = OpConstant %12 3
+%36 = OpTypePointer Output %5
+%41 = OpConstant %12 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %82
-%82 = OpLabel
+OpBranch %72
+%72 = OpLabel
 %25 = OpAccessChain %24 %8 %26
 %27 = OpLoad %5 %25
 %28 = OpAccessChain %24 %8 %29
@@ -68,64 +69,54 @@ OpBranch %82
 %31 = OpAccessChain %24 %8 %32
 %33 = OpLoad %5 %31
 %34 = OpCompositeConstruct %15 %33 %30 %27 %35
-%36 = OpCompositeExtract %5 %34 0
-%38 = OpAccessChain %37 %17 %32
-OpStore %38 %36
-%39 = OpCompositeExtract %5 %34 1
-%40 = OpAccessChain %37 %17 %29
-OpStore %40 %39
-%41 = OpCompositeExtract %5 %34 2
-%42 = OpAccessChain %37 %17 %26
-OpStore %42 %41
-%43 = OpCompositeExtract %5 %34 3
-%44 = OpAccessChain %37 %17 %45
-OpStore %44 %43
-%46 = OpAccessChain %24 %9 %32
+%37 = OpAccessChain %36 %17 %32
+OpStore %37 %33
+%38 = OpAccessChain %36 %17 %29
+OpStore %38 %30
+%39 = OpAccessChain %36 %17 %26
+OpStore %39 %27
+%40 = OpAccessChain %36 %17 %41
+OpStore %40 %35
+%42 = OpAccessChain %24 %9 %32
+%43 = OpLoad %5 %42
+%44 = OpAccessChain %24 %9 %29
+%45 = OpLoad %5 %44
+%46 = OpAccessChain %24 %9 %26
 %47 = OpLoad %5 %46
-%48 = OpAccessChain %24 %9 %29
-%49 = OpLoad %5 %48
-%50 = OpAccessChain %24 %9 %26
-%51 = OpLoad %5 %50
-%52 = OpCompositeConstruct %6 %47 %49 %51
-%53 = OpCompositeExtract %5 %52 0
-%54 = OpAccessChain %37 %19 %32
-OpStore %54 %53
-%55 = OpCompositeExtract %5 %52 1
-%56 = OpAccessChain %37 %19 %29
-OpStore %56 %55
-%57 = OpCompositeExtract %5 %52 2
-%58 = OpAccessChain %37 %19 %26
-OpStore %58 %57
-%59 = OpLoad %12 %14
-OpStore %21 %59
-%60 = OpAccessChain %24 %10 %32
-%61 = OpLoad %5 %60
-%62 = OpAccessChain %24 %10 %29
-%63 = OpLoad %5 %62
-%64 = OpAccessChain %24 %10 %26
-%65 = OpLoad %5 %64
-%66 = OpCompositeConstruct %6 %61 %63 %65
-%67 = OpCompositeExtract %5 %66 0
-%68 = OpAccessChain %37 %22 %32
+%48 = OpCompositeConstruct %6 %43 %45 %47
+%49 = OpAccessChain %36 %19 %32
+OpStore %49 %43
+%50 = OpAccessChain %36 %19 %29
+OpStore %50 %45
+%51 = OpAccessChain %36 %19 %26
+OpStore %51 %47
+%52 = OpLoad %12 %14
+OpStore %21 %52
+%53 = OpAccessChain %24 %10 %32
+%54 = OpLoad %5 %53
+%55 = OpAccessChain %24 %10 %29
+%56 = OpLoad %5 %55
+%57 = OpAccessChain %24 %10 %26
+%58 = OpLoad %5 %57
+%59 = OpCompositeConstruct %6 %54 %56 %58
+%60 = OpAccessChain %36 %22 %32
+OpStore %60 %54
+%61 = OpAccessChain %36 %22 %29
+OpStore %61 %56
+%62 = OpAccessChain %36 %22 %26
+OpStore %62 %58
+%63 = OpAccessChain %24 %11 %32
+%64 = OpLoad %5 %63
+%65 = OpAccessChain %36 %23 %32
+OpStore %65 %64
+%66 = OpAccessChain %24 %11 %29
+%67 = OpLoad %5 %66
+%68 = OpAccessChain %36 %23 %29
 OpStore %68 %67
-%69 = OpCompositeExtract %5 %66 1
-%70 = OpAccessChain %37 %22 %29
-OpStore %70 %69
-%71 = OpCompositeExtract %5 %66 2
-%72 = OpAccessChain %37 %22 %26
-OpStore %72 %71
-%73 = OpAccessChain %24 %11 %32
-%74 = OpLoad %5 %73
-%75 = OpAccessChain %37 %23 %32
-OpStore %75 %74
-%76 = OpAccessChain %24 %11 %29
-%77 = OpLoad %5 %76
-%78 = OpAccessChain %37 %23 %29
-OpStore %78 %77
-%79 = OpAccessChain %24 %11 %26
-%80 = OpLoad %5 %79
-%81 = OpAccessChain %37 %23 %26
-OpStore %81 %80
+%69 = OpAccessChain %24 %11 %26
+%70 = OpLoad %5 %69
+%71 = OpAccessChain %36 %23 %26
+OpStore %71 %70
 OpReturn
 OpFunctionEnd
 

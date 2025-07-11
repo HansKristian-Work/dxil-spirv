@@ -1,12 +1,13 @@
 SPIR-V:
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 32
 ; Schema: 0
 OpCapability Shader
 OpCapability ClipDistance
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %10
 OpName %3 "main"
 OpDecorate %10 BuiltIn ClipDistance
