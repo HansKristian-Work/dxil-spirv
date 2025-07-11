@@ -1194,12 +1194,6 @@ bool ParseContext::build_image_atomic(const ir::Op &op)
 	auto atomic_op = ir::AtomicOp(op.getOperand(4));
 	auto binop = convert_atomic_binop(atomic_op);
 
-	if (atomic_op == ir::AtomicOp::eCompareExchange)
-	{
-		LOGE("TODO: compare exchange.\n");
-		return false;
-	}
-
 	Value *coords[3] = {};
 
 	unsigned num_coord_components = builder.getOp(coord).getType().getBaseType(0).getVectorSize();
@@ -1220,6 +1214,20 @@ bool ParseContext::build_image_atomic(const ir::Op &op)
 
 	default:
 		break;
+	}
+
+	if (atomic_op == ir::AtomicOp::eCompareExchange)
+	{
+		auto *inst = build_dxil_call(
+		    DXIL::Op::AtomicCompareExchange,
+		    int_type, int_type,
+		    get_value(descriptor),
+		    coords[0], coords[1], coords[2],
+		    get_extracted_composite_component(get_value(op.getOperand(3)), 0),
+		    get_extracted_composite_component(get_value(op.getOperand(3)), 1));
+
+		push_instruction(inst, op.getDef());
+		return true;
 	}
 
 	auto *return_type = convert_type(op.getType());
@@ -1658,6 +1666,20 @@ bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKin
 	Value *value;
 	auto *return_type = convert_type(op.getType());
 
+	if (atomic_op == ir::AtomicOp::eCompareExchange)
+	{
+		auto *inst = build_dxil_call(
+		    DXIL::Op::AtomicCompareExchange,
+		    int_type, int_type,
+		    get_value(descriptor),
+		    first, second, UndefValue::get(int_type),
+		    get_extracted_composite_component(get_value(op.getOperand(3)), 0),
+		    get_extracted_composite_component(get_value(op.getOperand(3)), 1));
+
+		push_instruction(inst, op.getDef());
+		return true;
+	}
+
 	if (binop == DXIL::AtomicBinOp::Load)
 	{
 		value = UndefValue::get(int_type);
@@ -1693,10 +1715,7 @@ bool ParseContext::build_buffer_atomic(const ir::Op &op)
 	if (itr == resource_map.end())
 		return false;
 
-	if (ir::AtomicOp(op.getOperand(3)) != ir::AtomicOp::eCompareExchange)
-		return build_buffer_atomic_binop(op, itr->second.resource_kind);
-	else
-		return false;
+	return build_buffer_atomic_binop(op, itr->second.resource_kind);
 }
 
 bool ParseContext::build_counter_atomic(const ir::Op &op)
