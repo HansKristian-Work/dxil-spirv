@@ -891,6 +891,8 @@ Value *ParseContext::get_extracted_composite_component(Value *value, unsigned co
 	// Common pattern where composites are constructed only to be extracted again.
 	if (const auto *comp = dyn_cast<CompositeConstructInst>(value))
 		return comp->getOperand(component);
+	if (const auto *vec = dyn_cast<ConstantDataVector>(value))
+		return vec->getElementAsConstant(component);
 
 	auto *extracted = context.construct<ExtractValueInst>(
 	    cast<VectorType>(value->getType())->getElementType(), value, Vector<unsigned>{component});
