@@ -1804,26 +1804,17 @@ bool ParseContext::build_buffer_query_size(const ir::Op &op)
 	auto *result_type = convert_type(op.getType());
 	auto *vec4_type = get_vec4_variant(result_type);
 
+	// Fold in the mul + div into a plain OpArrayLength.
 	auto *inst = build_dxil_call(
-		DXIL::Op::GetDimensions, vec4_type, nullptr,
+		DXIL::Op::ExtendedGetDimensions, vec4_type, nullptr,
 		get_value(descriptor),
-		UndefValue::get(Type::getInt32Ty(context)));
+		UndefValue::get(Type::getInt32Ty(context)),
+	    get_constant_uint(itr->second.resource_kind == DXIL::ResourceKind::RawBuffer ? 4 : 1));
 
 	push_instruction(inst);
 
 	auto *value = get_extracted_composite_component(inst, 0);
-
-	if (itr->second.resource_kind == DXIL::ResourceKind::RawBuffer)
-	{
-		// dxbc-spirv expects result in u32 elements.
-		push_instruction(
-		    context.construct<BinaryOperator>(value, get_constant_uint(2), BinaryOperator::BinaryOps::LShr),
-		    op.getDef());
-	}
-	else
-	{
-		value_map[op.getDef()] = value;
-	}
+	value_map[op.getDef()] = value;
 
 	return true;
 }

@@ -492,6 +492,7 @@ enum class Op : unsigned
 	// Internal extensions
 	ExtendedDeriv,
 	ExtendedCalculateLOD,
+	ExtendedGetDimensions,
 
 	Count
 };

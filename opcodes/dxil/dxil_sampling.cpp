@@ -941,7 +941,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
-bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool extended)
 {
 	if (!impl.composite_is_accessed(instruction))
 		return true;
@@ -952,6 +952,10 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	auto &meta = impl.handle_to_resource_meta[image_id];
 
 	uint32_t ssbo_element_size = 4;
+	uint32_t divider = 1;
+
+	if (extended && !get_constant_operand(instruction, 3, &divider))
+		return false;
 
 	Operation *levels_or_samples_op = nullptr;
 	Operation *dimensions_op = nullptr;
@@ -1059,10 +1063,28 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		Operation *byte_size_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-		byte_size_op->add_ids({ dimensions_op->id, builder.makeUintConstant(ssbo_element_size) });
-		impl.add(byte_size_op);
-		dimensions_op = byte_size_op;
+		if (divider != 1 && ssbo_element_size % divider == 0)
+		{
+			// Fold the mult/div. A compiler cannot do it since IMul may overflow in theory.
+			ssbo_element_size /= divider;
+			divider = 1;
+		}
+
+		if (ssbo_element_size != 1)
+		{
+			Operation *byte_size_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+			byte_size_op->add_ids({ dimensions_op->id, builder.makeUintConstant(ssbo_element_size) });
+			impl.add(byte_size_op);
+			dimensions_op = byte_size_op;
+		}
+
+		if (divider != 1)
+		{
+			Operation *elements_op = impl.allocate(spv::OpUDiv, builder.makeUintType(32));
+			elements_op->add_ids({ dimensions_op->id, builder.makeUintConstant(divider) });
+			impl.add(elements_op);
+			dimensions_op = elements_op;
+		}
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{

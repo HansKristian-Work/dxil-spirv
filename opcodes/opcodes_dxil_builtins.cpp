@@ -81,7 +81,8 @@ struct DXILDispatcher
 		OP(TextureLoad) = emit_texture_load_instruction;
 		OP(TextureStore) = emit_texture_store_instruction<false>;
 		OP(TextureStoreSample) = emit_texture_store_instruction<true>;
-		OP(GetDimensions) = emit_get_dimensions_instruction;
+		OP(GetDimensions) = emit_get_dimensions_dispatch<false>;
+		OP(ExtendedGetDimensions) = emit_get_dimensions_dispatch<true>;
 		OP(TextureGather) = emit_texture_gather_dispatch<false, false>;
 		OP(TextureGatherRaw) = emit_texture_gather_dispatch<false, true>;
 		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true, false>;
