@@ -408,6 +408,7 @@ private:
 
 	template <typename... Values>
 	Instruction *build_dxil_call(DXIL::Op op, Type *return_type, Type *overload_type, Values&&... values);
+	Instruction *build_dxil_call(DXIL::Op op, Type *return_type, Type *overload_type, Vector<Value *> values);
 
 	// Resource access hell.
 	Instruction *build_load_input(
@@ -429,6 +430,8 @@ private:
 	bool build_counter_atomic(const ir::Op &op);
 	bool build_image_load(const ir::Op &op);
 	bool build_image_query_size(const ir::Op &op);
+	bool build_image_query_mips(const ir::Op &op);
+	bool build_image_sample(const ir::Op &op);
 
 	Value *build_extract_composite_component(Value *value, unsigned component);
 
@@ -489,6 +492,20 @@ Instruction *ParseContext::build_dxil_call(DXIL::Op op, Type *return_type, Type 
 	    func->getFunctionType(), func,
 	    Vector<Value *> { get_constant_uint(uint32_t(op)), values... });
 
+	return inst;
+}
+
+Instruction *ParseContext::build_dxil_call(DXIL::Op op, Type *return_type, Type *overload_type, Vector<Value *> values)
+{
+	Vector<Type *> types;
+	types.reserve(values.size() + 1);
+	types.push_back(Type::getInt32Ty(context));
+	for (auto *v : values)
+		types.push_back(v->getType());
+
+	auto *func = dxil_intrinsics.get(module, op, return_type, types, overload_type, tween_id);
+	values.insert(values.begin(), get_constant_uint(uint32_t(op)));
+	auto *inst = context.construct<CallInst>(func->getFunctionType(), func, std::move(values));
 	return inst;
 }
 
@@ -807,6 +824,20 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	case ir::OpCode::eImageQuerySize:
 	{
 		if (!build_image_query_size(op))
+			return false;
+		break;
+	}
+
+	case ir::OpCode::eImageQueryMips:
+	{
+		if (!build_image_query_mips(op))
+			return false;
+		break;
+	}
+
+	case ir::OpCode::eImageSample:
+	{
+		if (!build_image_sample(op))
 			return false;
 		break;
 	}
@@ -1154,6 +1185,136 @@ bool ParseContext::build_image_query_size(const ir::Op &op)
 	inst = context.construct<CompositeConstructInst>(result_type, Vector<Value *>{ dims, layers });
 	push_instruction(inst, op.getDef());
 	return true;
+}
+
+bool ParseContext::build_image_query_mips(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	auto *dxil_result_type = VectorType::get(4, Type::getInt32Ty(context));
+
+	auto *inst = build_dxil_call(
+	    DXIL::Op::GetDimensions, dxil_result_type, dxil_result_type,
+	    get_value(descriptor), get_constant_uint(0));
+	push_instruction(inst);
+
+	// Mips are encoded in the last structure element, for reasons.
+	auto *value = build_extract_composite_component(inst, 3);
+	value_map[op.getDef()] = value;
+	return true;
+}
+
+bool ParseContext::build_image_sample(const ir::Op &op)
+{
+	auto image_desc = ir::SsaDef(op.getOperand(0));
+	auto &resource_op = builder.getOp(image_desc);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	if (op.getFlags() & ir::OpFlag::eSparseFeedback)
+	{
+		LOGE("TODO: Sparse feedback.\n");
+		return false;
+	}
+
+	auto *result_type = convert_type(op.getType());
+	auto *dxil_result_type = get_vec4_variant(result_type);
+
+	auto layer = ir::SsaDef(op.getOperand(2));
+	auto coord = ir::SsaDef(op.getOperand(3));
+	auto offset = ir::SsaDef(op.getOperand(4));
+	auto lod_index = ir::SsaDef(op.getOperand(5));
+	auto lod_bias = ir::SsaDef(op.getOperand(6));
+	auto lod_clamp = ir::SsaDef(op.getOperand(7));
+	auto dx = ir::SsaDef(op.getOperand(8));
+	auto dy = ir::SsaDef(op.getOperand(9));
+	auto dref = ir::SsaDef(op.getOperand(10));
+
+	auto opcode = DXIL::Op::Sample;
+	if (lod_index)
+		opcode = DXIL::Op::SampleLevel;
+	else if (lod_bias)
+		opcode = DXIL::Op::SampleBias;
+	else if (dx && dy)
+		opcode = DXIL::Op::SampleGrad;
+
+	if (op.getType().isScalarType())
+	{
+		switch (opcode)
+		{
+		case DXIL::Op::Sample: opcode = DXIL::Op::SampleCmp; break;
+		case DXIL::Op::SampleLevel: opcode = DXIL::Op::SampleCmpLevel; break;
+		case DXIL::Op::SampleBias: opcode = DXIL::Op::SampleCmpBias; break;
+		case DXIL::Op::SampleGrad: opcode = DXIL::Op::SampleCmpGrad; break;
+		default: return false;
+		}
+	}
+
+	unsigned num_coord_components = builder.getOp(coord).getType().getBaseType(0).getVectorSize();
+
+	Value *coords[4] = {};
+	Value *offsets[3] = {};
+	Value *ddx[3] = {};
+	Value *ddy[3] = {};
+
+	for (unsigned c = 0; c < num_coord_components; c++)
+	{
+		coords[c] = build_extract_composite_component(get_value(coord), c);
+		if (offset)
+			offsets[c] = build_extract_composite_component(get_value(offset), c);
+		if (dx)
+			ddx[c] = build_extract_composite_component(get_value(dx), c);
+		if (dy)
+			ddy[c] = build_extract_composite_component(get_value(dy), c);
+	}
+
+	switch (itr->second.resource_kind)
+	{
+	case DXIL::ResourceKind::Texture1DArray:
+	case DXIL::ResourceKind::Texture2DArray:
+	case DXIL::ResourceKind::TextureCubeArray:
+		coords[num_coord_components] = get_value(layer);
+		break;
+
+	default:
+		break;
+	}
+
+	Vector<Value *> values;
+	values.push_back(get_value(image_desc));
+	values.push_back(get_value(op.getOperand(1))); // sampler
+	for (auto *c : coords)
+		values.push_back(c ? c : UndefValue::get(Type::getFloatTy(context)));
+	for (auto *o : offsets)
+		values.push_back(o ? o : UndefValue::get(Type::getInt32Ty(context)));
+
+	if (op.getType().isScalarType())
+		values.push_back(get_value(dref));
+
+	if (opcode == DXIL::Op::SampleGrad || opcode == DXIL::Op::SampleCmpGrad)
+	{
+		for (auto *d : ddx)
+			values.push_back(d ? d : UndefValue::get(Type::getFloatTy(context)));
+		for (auto *d : ddy)
+			values.push_back(d ? d : UndefValue::get(Type::getFloatTy(context)));
+	}
+
+	if (opcode == DXIL::Op::SampleBias || opcode == DXIL::Op::SampleCmpBias)
+		values.push_back(get_value(lod_bias));
+
+	if (opcode != DXIL::Op::SampleLevel && opcode != DXIL::Op::SampleCmpLevel)
+		values.push_back(lod_clamp ? get_value(lod_clamp) : UndefValue::get(Type::getFloatTy(context)));
+	else if (lod_index)
+		values.push_back(get_value(lod_index));
+
+	auto *inst = build_dxil_call(opcode, dxil_result_type, dxil_result_type, std::move(values));
+	return build_buffer_load_return_composite(op, inst);
 }
 
 bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
@@ -1771,7 +1932,17 @@ bool ParseContext::emit_metadata()
 		}
 
 		case ir::OpCode::eDclSampler:
-			return false;
+		{
+			uint32_t space = uint32_t(op.getOperand(1));
+			uint32_t binding = uint32_t(op.getOperand(2));
+			uint32_t count = uint32_t(op.getOperand(3));
+			if (!count)
+				count = UINT32_MAX;
+
+			uint32_t index = build_sampler(space, binding, count);
+			resource_map[op.getDef()] = { DXIL::ResourceType::Sampler, DXIL::ResourceKind::Sampler, index, binding };
+			break;
+		}
 
 		case ir::OpCode::eDclSrv:
 		case ir::OpCode::eDclUav:
