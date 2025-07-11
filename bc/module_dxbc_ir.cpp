@@ -443,6 +443,7 @@ private:
 	bool build_image_gather(const ir::Op &op);
 	bool build_image_compute_lod(const ir::Op &op);
 	bool build_deriv(const ir::Op &op);
+	bool build_check_sparse_access(const ir::Op &op);
 
 	Value *get_extracted_composite_component(Value *value, unsigned component);
 
@@ -624,8 +625,12 @@ Type *ParseContext::convert_type(const ir::Type &type)
 			llvm_type = Type::getInt64Ty(context);
 			break;
 
+		case ir::ScalarType::eBool:
+			llvm_type = Type::getInt1Ty(context);
+			break;
+
 		default:
-			LOGE("Unrecognized basic scalar type %u\n", unsigned(type.isBasicType()));
+			LOGE("Unrecognized basic scalar type %u\n", unsigned(base.getBaseType()));
 			return nullptr;
 		}
 
@@ -796,6 +801,15 @@ bool ParseContext::build_deriv(const ir::Op &op)
 	return true;
 }
 
+bool ParseContext::build_check_sparse_access(const ir::Op &op)
+{
+	auto *inst = build_dxil_call(DXIL::Op::CheckAccessFullyMapped,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
 bool ParseContext::push_instruction(const ir::Op &op)
 {
 	switch (op.getOpCode())
@@ -823,6 +837,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(ImageComputeLod, image_compute_lod);
 	OPMAP(DerivX, deriv);
 	OPMAP(DerivY, deriv);
+	OPMAP(CheckSparseAccess, check_sparse_access);
 #undef OPMAP
 
 	// Plain instructions
@@ -832,6 +847,16 @@ bool ParseContext::push_instruction(const ir::Op &op)
 			                 convert_type(op.getType()),
 			                 get_value(op.getOperand(0)),
 			                 Instruction::CastOps::BitCast),
+		                 op.getDef());
+		break;
+	}
+
+	case ir::OpCode::eSelect:
+	{
+		push_instruction(context.construct<SelectInst>(
+			                 get_value(op.getOperand(1)),
+			                 get_value(op.getOperand(2)),
+			                 get_value(op.getOperand(0))),
 		                 op.getDef());
 		break;
 	}
@@ -901,8 +926,14 @@ Value *ParseContext::get_extracted_composite_component(Value *value, unsigned co
 	if (const auto *vec = dyn_cast<ConstantDataVector>(value))
 		return vec->getElementAsConstant(component);
 
-	auto *extracted = context.construct<ExtractValueInst>(
-	    cast<VectorType>(value->getType())->getElementType(), value, Vector<unsigned>{component});
+	ExtractValueInst *extracted;
+	if (const auto *vec_type = dyn_cast<VectorType>(value->getType()))
+		extracted = context.construct<ExtractValueInst>(vec_type->getElementType(), value, Vector<unsigned>{ component });
+	else if (const auto *struct_type = dyn_cast<StructType>(value->getType()))
+		extracted = context.construct<ExtractValueInst>(struct_type->getStructElementType(component), value, Vector<unsigned>{ component });
+	else
+		return nullptr;
+
 	push_instruction(extracted);
 	return extracted;
 }
@@ -924,8 +955,18 @@ static Type *get_scalar_type(Type *type)
 {
 	if (auto *vec = dyn_cast<VectorType>(type))
 		return vec->getElementType();
+	else if (isa<StructType>(type))
+		return type->getStructElementType(0);
 	else
 		return type;
+}
+
+static StructType *get_sparse_feedback_variant(Type *type)
+{
+	auto *scalar_type = get_scalar_type(type->getStructElementType(1));
+	return StructType::get(
+		type->getContext(),
+	    { scalar_type, scalar_type, scalar_type, scalar_type, Type::getInt32Ty(type->getContext()) });
 }
 
 Instruction *ParseContext::build_extract_composite(const ir::Op &op, Value *value, unsigned num_elements)
@@ -934,7 +975,7 @@ Instruction *ParseContext::build_extract_composite(const ir::Op &op, Value *valu
 		num_elements = op.getType().getBaseType(0).getVectorSize();
 
 	if (num_elements == 1)
-		return context.construct<ExtractValueInst>(get_scalar_type(value->getType()), value, Vector<unsigned>{0});
+		return context.construct<ExtractValueInst>(get_scalar_type(value->getType()), value, Vector<unsigned>{ 0 });
 
 	Value *values[4];
 	for (unsigned c = 0; c < num_elements; c++)
@@ -949,11 +990,25 @@ Instruction *ParseContext::build_extract_composite(const ir::Op &op, Value *valu
 
 bool ParseContext::build_buffer_load_return_composite(const ir::Op &op, Value *value)
 {
-	unsigned num_elements = op.getType().getBaseType(0).getVectorSize();
-	if (num_elements != 1)
-		push_instruction(build_extract_composite(op, value, num_elements), op.getDef());
+	if (op.getType().isStructType())
+	{
+		// Sparse feedback.
+		auto *code = get_extracted_composite_component(value, 4);
+		auto *sampled_value = build_extract_composite(op, value, op.getType().getBaseType(1).getVectorSize());
+		push_instruction(sampled_value);
+		auto *inst = context.construct<CompositeConstructInst>(convert_type(op.getType()), Vector<Value *>{ code, sampled_value });
+		push_instruction(inst, op.getDef());
+		return true;
+	}
 	else
-		value_map[op.getDef()] = get_extracted_composite_component(value, 0);
+	{
+		unsigned num_elements = op.getType().getBaseType(0).getVectorSize();
+		if (num_elements != 1)
+			push_instruction(build_extract_composite(op, value, num_elements), op.getDef());
+		else
+			value_map[op.getDef()] = get_extracted_composite_component(value, 0);
+	}
+
 	return true;
 }
 
@@ -980,12 +1035,15 @@ bool ParseContext::build_buffer_load(const ir::Op &op, DXIL::ResourceKind kind)
 	}
 
 	auto *result_type = convert_type(op.getType());
-	auto *dxil_result_type = get_vec4_variant(result_type);
 
-	auto *inst = build_dxil_call(DXIL::Op::BufferLoad, dxil_result_type, dxil_result_type,
-	                             get_value(descriptor),
-	                             first, second);
+	auto *dxil_result_type =
+		(op.getFlags() & ir::OpFlag::eSparseFeedback) ?
+		static_cast<Type *>(get_sparse_feedback_variant(result_type)) :
+		static_cast<Type *>(get_vec4_variant(result_type));
 
+	auto *inst = build_dxil_call(
+		DXIL::Op::BufferLoad, dxil_result_type, dxil_result_type,
+		get_value(descriptor), first, second);
 	push_instruction(inst);
 	return build_buffer_load_return_composite(op, inst);
 }
@@ -1199,8 +1257,6 @@ bool ParseContext::build_image_load(const ir::Op &op)
 		return false;
 
 	auto kind = itr->second.resource_kind;
-	auto *result_type = convert_type(op.getType());
-	auto *dxil_result_type = get_vec4_variant(result_type);
 	auto *int_type = Type::getInt32Ty(context);
 
 	auto mip = ir::SsaDef(op.getOperand(1));
@@ -1251,12 +1307,18 @@ bool ParseContext::build_image_load(const ir::Op &op)
 		if (!c)
 			c = UndefValue::get(int_type);
 
-	auto *inst = build_dxil_call(DXIL::Op::TextureLoad, dxil_result_type, dxil_result_type,
-	                             get_value(descriptor),
-	                             mip_or_sample,
-	                             coords[0], coords[1], coords[2],
-	                             offsets[0], offsets[1], offsets[2]);
+	auto *result_type = convert_type(op.getType());
 
+	auto *dxil_result_type =
+		(op.getFlags() & ir::OpFlag::eSparseFeedback) ?
+		static_cast<Type *>(get_sparse_feedback_variant(result_type)) :
+		static_cast<Type *>(get_vec4_variant(result_type));
+
+	auto *inst = build_dxil_call(
+		DXIL::Op::TextureLoad, dxil_result_type, dxil_result_type,
+		get_value(descriptor), mip_or_sample,
+		coords[0], coords[1], coords[2],
+		offsets[0], offsets[1], offsets[2]);
 	push_instruction(inst);
 	return build_buffer_load_return_composite(op, inst);
 }
@@ -1331,15 +1393,6 @@ bool ParseContext::build_image_sample(const ir::Op &op)
 	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
 	if (itr == resource_map.end())
 		return false;
-
-	if (op.getFlags() & ir::OpFlag::eSparseFeedback)
-	{
-		LOGE("TODO: Sparse feedback.\n");
-		return false;
-	}
-
-	auto *result_type = convert_type(op.getType());
-	auto *dxil_result_type = get_vec4_variant(result_type);
 
 	auto layer = ir::SsaDef(op.getOperand(2));
 	auto coord = ir::SsaDef(op.getOperand(3));
@@ -1428,6 +1481,12 @@ bool ParseContext::build_image_sample(const ir::Op &op)
 	else if (lod_index)
 		values.push_back(get_value(lod_index));
 
+	auto *result_type = convert_type(op.getType());
+	auto *dxil_result_type =
+		(op.getFlags() & ir::OpFlag::eSparseFeedback) ?
+		static_cast<Type *>(get_sparse_feedback_variant(result_type)) :
+		static_cast<Type *>(get_vec4_variant(result_type));
+
 	auto *inst = build_dxil_call(opcode, dxil_result_type, dxil_result_type, std::move(values));
 	push_instruction(inst);
 	return build_buffer_load_return_composite(op, inst);
@@ -1440,15 +1499,6 @@ bool ParseContext::build_image_gather(const ir::Op &op)
 	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
 	if (itr == resource_map.end())
 		return false;
-
-	if (op.getFlags() & ir::OpFlag::eSparseFeedback)
-	{
-		LOGE("TODO: Sparse feedback.\n");
-		return false;
-	}
-
-	auto *result_type = convert_type(op.getType());
-	auto *dxil_result_type = get_vec4_variant(result_type);
 
 	auto layer = ir::SsaDef(op.getOperand(2));
 	auto coord = ir::SsaDef(op.getOperand(3));
@@ -1490,6 +1540,12 @@ bool ParseContext::build_image_gather(const ir::Op &op)
 	values.push_back(get_constant_uint(comp));
 	if (dref)
 		values.push_back(get_value(dref));
+
+	auto *result_type = convert_type(op.getType());
+	auto *dxil_result_type =
+		(op.getFlags() & ir::OpFlag::eSparseFeedback) ?
+		static_cast<Type *>(get_sparse_feedback_variant(result_type)) :
+		static_cast<Type *>(get_vec4_variant(result_type));
 
 	auto *inst = build_dxil_call(opcode, dxil_result_type, dxil_result_type, std::move(values));
 	push_instruction(inst);
