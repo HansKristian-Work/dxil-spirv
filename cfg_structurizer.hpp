@@ -251,6 +251,7 @@ private:
 		const std::function<bool (const CFGNode *)> &path_cb, const String &name);
 
 	void propagate_branch_control_hints();
+	void remove_unused_ssa();
 
 	uint32_t driver_id = 0;
 	uint32_t driver_version = 0;

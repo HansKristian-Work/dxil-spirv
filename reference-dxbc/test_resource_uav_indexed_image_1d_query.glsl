@@ -23,8 +23,7 @@ void main()
 {
     uint _19 = 0u * 16u;
     uint _22 = 0u * 4u;
-    uint _33 = uint(imageSize(_9[nonuniformEXT(floatBitsToUint(_15._m0[(_19 + _22) >> 2u]))]));
-    SV_TARGET = _33;
+    SV_TARGET = uint(imageSize(_9[nonuniformEXT(floatBitsToUint(_15._m0[(_19 + _22) >> 2u]))]));
     SV_TARGET_1 = 1u;
 }
 

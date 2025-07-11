@@ -44,7 +44,6 @@ OpBranch %28
 %16 = OpLoad %5 %14
 %17 = OpIMul %5 %16 %18
 %19 = OpIAdd %5 %17 %20
-%21 = OpCompositeConstruct %10 %22 %20
 %23 = OpShiftRightLogical %5 %19 %20
 %25 = OpAccessChain %24 %9 %15 %23
 OpStore %25 %22 NonPrivatePointer

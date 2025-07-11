@@ -50,16 +50,13 @@ OpBranch %39
 %16 = OpAccessChain %15 %12 %17
 %18 = OpLoad %5 %16
 %19 = OpIMul %5 %18 %20
-%21 = OpIAdd %5 %19 %22
 %23 = OpIMul %5 %24 %18
-%25 = OpIAdd %5 %23 %26
 %27 = OpIMul %5 %18 %22
 %28 = OpIAdd %5 %27 %29
 %31 = OpAccessChain %30 %10 %17 %28
 %32 = OpLoad %6 %31 NonPrivatePointer
 %33 = OpCompositeExtract %5 %32 0
 %34 = OpCompositeExtract %5 %32 1
-%35 = OpCompositeConstruct %6 %33 %34
 %37 = OpAccessChain %36 %14 %17
 OpStore %37 %33
 %38 = OpAccessChain %36 %14 %29

@@ -1130,6 +1130,47 @@ void CFGStructurizer::propagate_branch_control_hints()
 	}
 }
 
+void CFGStructurizer::remove_unused_ssa()
+{
+	UnorderedSet<spv::Id> removed_ids;
+	UnorderedSet<spv::Id> used_ids;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto &phi : node->ir.phi)
+			for (auto &incoming : phi.incoming)
+				used_ids.insert(incoming.id);
+
+		for (auto *op : node->ir.operations)
+			for (unsigned i = 0; i < op->num_arguments; i++)
+				if ((op->literal_mask & (1u << i)) == 0)
+					used_ids.insert(op->arguments[i]);
+	}
+
+	for (auto *node : forward_post_visit_order)
+	{
+		node->ir.phi.erase(std::remove_if(node->ir.phi.begin(), node->ir.phi.end(),
+		                                  [&](const PHI &phi) { return used_ids.count(phi.id) == 0; }),
+		                   node->ir.phi.end());
+
+		node->ir.operations.erase(
+			std::remove_if(
+				node->ir.operations.begin(), node->ir.operations.end(),
+				[&](const Operation *op)
+				{
+					bool ret = op->id != 0 &&
+					           !SPIRVModule::opcode_has_side_effect_and_result(op->op) &&
+					           used_ids.count(op->id) == 0;
+					if (ret)
+						removed_ids.insert(op->id);
+					return ret;
+				}),
+			node->ir.operations.end());
+	}
+
+	module.get_builder().removeDecorations(removed_ids);
+}
+
 bool CFGStructurizer::rewrite_impossible_back_edges()
 {
 	bool did_rewrite = false;
@@ -1203,6 +1244,9 @@ bool CFGStructurizer::run_trivial()
 	recompute_cfg();
 	sink_ssa_constructs();
 	propagate_branch_control_hints();
+	// Remove unused SSA ops in this path.
+	remove_unused_ssa();
+
 	return true;
 }
 

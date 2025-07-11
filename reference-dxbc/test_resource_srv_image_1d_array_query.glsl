@@ -17,10 +17,8 @@ layout(location = 2) out uint SV_TARGET_2;
 void main()
 {
     uvec2 _16 = uvec2(textureSize(_8, int(0u)));
-    uint _18 = _16.x;
-    uint _19 = _16.y;
-    SV_TARGET = _18;
-    SV_TARGET_1 = _19;
+    SV_TARGET = _16.x;
+    SV_TARGET_1 = _16.y;
     SV_TARGET_2 = uint(textureQueryLevels(_8));
 }
 

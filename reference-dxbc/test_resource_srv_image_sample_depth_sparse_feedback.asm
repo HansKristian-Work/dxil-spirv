@@ -87,11 +87,7 @@ OpBranch %79
 %33 = OpLoad %5 %30
 %34 = OpAccessChain %15 %14 %35
 %36 = OpLoad %5 %34
-%37 = OpCompositeConstruct %20 %33 %36
-%38 = OpLoad %5 %16
 %39 = OpLoad %5 %19
-%40 = OpLoad %5 %17
-%41 = OpLoad %5 %18
 %43 = OpSampledImage %42 %28 %29
 %48 = OpCompositeConstruct %12 %33 %36 %39
 %47 = OpImageSparseSampleImplicitLod %46 %43 %48 None
@@ -104,7 +100,6 @@ OpBranch %79
 %56 = OpCompositeConstruct %55 %51 %52 %53 %54 %49
 %57 = OpCompositeExtract %31 %56 4
 %58 = OpCompositeExtract %5 %56 0
-%60 = OpCompositeConstruct %59 %57 %58
 OpStore %24 %58
 %62 = OpImageSparseTexelsResident %61 %57
 %63 = OpSelect %5 %62 %64 %44
@@ -120,7 +115,6 @@ OpStore %25 %63
 %73 = OpCompositeConstruct %55 %69 %70 %71 %72 %67
 %74 = OpCompositeExtract %31 %73 4
 %75 = OpCompositeExtract %5 %73 0
-%76 = OpCompositeConstruct %59 %74 %75
 OpStore %26 %75
 %77 = OpImageSparseTexelsResident %61 %74
 %78 = OpSelect %5 %77 %64 %44

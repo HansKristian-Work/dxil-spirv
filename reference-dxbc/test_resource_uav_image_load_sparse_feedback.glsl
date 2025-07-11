@@ -37,7 +37,6 @@ void main()
     SparseTexel _29 = SparseTexel(_60, _61);
     vec4 _32 = _29._m1;
     _37 _38 = _37(_32.x, _32.y, _32.z, _32.w, _29._m0);
-    uint _39 = _38._m4;
     float _40 = _38._m0;
     float _41 = _38._m1;
     float _42 = _38._m2;
@@ -46,7 +45,7 @@ void main()
     SV_TARGET.y = _41;
     SV_TARGET.z = _42;
     SV_TARGET.w = _43;
-    SV_TARGET_1 = float(sparseTexelsResidentARB(int(_39)));
+    SV_TARGET_1 = float(sparseTexelsResidentARB(int(_38._m4)));
 }
 
 

@@ -48,14 +48,12 @@ OpBranch %41
 %23 = OpLoad %9 %21
 %24 = OpAccessChain %17 %12 %25
 %26 = OpLoad %9 %24
-%27 = OpCompositeConstruct %10 %20 %23 %26
 %29 = OpCompositeConstruct %10 %20 %23 %26
 %28 = OpImageRead %13 %16 %29 NonPrivateTexel
 %30 = OpCompositeExtract %5 %28 0
 %31 = OpCompositeExtract %5 %28 1
 %32 = OpCompositeExtract %5 %28 2
 %33 = OpCompositeExtract %5 %28 3
-%34 = OpCompositeConstruct %13 %30 %31 %32 %33
 %36 = OpAccessChain %35 %15 %19
 OpStore %36 %30
 %37 = OpAccessChain %35 %15 %22

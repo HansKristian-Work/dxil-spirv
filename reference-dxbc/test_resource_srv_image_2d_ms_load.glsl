@@ -11,14 +11,12 @@ layout(location = 1) out vec4 SV_TARGET_1;
 void main()
 {
     vec4 _29 = texelFetch(_8, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(uint(gl_SampleID)));
-    float _31 = _29.x;
-    SV_TARGET.x = _31;
+    SV_TARGET.x = _29.x;
     SV_TARGET.y = _29.y;
     SV_TARGET.z = _29.z;
     SV_TARGET.w = _29.w;
     vec4 _46 = texelFetchOffset(_8, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), ivec2(-1, 0), int(uint(gl_SampleID)));
-    float _50 = _46.x;
-    SV_TARGET_1.x = _50;
+    SV_TARGET_1.x = _46.x;
     SV_TARGET_1.y = _46.y;
     SV_TARGET_1.z = _46.z;
     SV_TARGET_1.w = _46.w;

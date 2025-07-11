@@ -71,7 +71,6 @@ OpBranch %39
 %32 = OpAccessChain %31 %9 %30
 %33 = OpLoad %6 %32
 %34 = OpImageQuerySizeLod %10 %33 %21
-%36 = OpCompositeConstruct %35 %34 %37
 OpStore %17 %34
 OpStore %18 %37
 %38 = OpImageQueryLevels %10 %33

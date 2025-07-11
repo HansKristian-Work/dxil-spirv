@@ -61,8 +61,6 @@ OpBranch %36
 %21 = OpLoad %5 %19
 %22 = OpAccessChain %11 %15 %23
 %24 = OpLoad %5 %22
-%25 = OpCompositeConstruct %13 %21 %24
-%26 = OpCompositeConstruct %13 %23 %27
 %28 = OpIMul %5 %21 %29
 %30 = OpShiftRightLogical %5 %24 %27
 %31 = OpIAdd %5 %28 %30

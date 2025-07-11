@@ -49,8 +49,6 @@ OpBranch %41
 %18 = OpLoad %5 %16
 %19 = OpAccessChain %15 %12 %20
 %21 = OpLoad %5 %19
-%22 = OpCompositeConstruct %10 %18 %21
-%23 = OpIMul %5 %24 %21
 %25 = OpIMul %5 %18 %26
 %27 = OpIAdd %5 %25 %21
 %29 = OpAccessChain %28 %9 %17 %27
@@ -61,7 +59,6 @@ OpBranch %41
 %34 = OpCompositeConstruct %10 %30 %33
 %35 = OpCompositeExtract %5 %34 0
 %36 = OpCompositeExtract %5 %34 1
-%37 = OpCompositeConstruct %10 %35 %36
 %39 = OpAccessChain %38 %14 %17
 OpStore %39 %35
 %40 = OpAccessChain %38 %14 %20

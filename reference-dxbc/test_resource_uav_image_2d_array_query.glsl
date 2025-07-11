@@ -16,10 +16,9 @@ void main()
 {
     uvec3 _17 = uvec3(imageSize(_8));
     uint _18 = _17.x;
-    uint _21 = _17.z;
     SV_TARGET.x = _18;
     SV_TARGET.y = _17.y;
-    SV_TARGET_1 = _21;
+    SV_TARGET_1 = _17.z;
 }
 
 

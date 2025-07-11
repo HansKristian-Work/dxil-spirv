@@ -24,8 +24,7 @@ void main()
     uint _43 = floatBitsToUint(_15._m0[(_33 + _36) >> 2u]);
     vec3 _62 = vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z);
     vec4 _63 = textureGather(nonuniformEXT(samplerCubeShadow(_9[_43], _19[_43])), _62, DEPTH_REF);
-    float _64 = _63.x;
-    SV_TARGET.x = _64;
+    SV_TARGET.x = _63.x;
     SV_TARGET.y = _63.y;
     SV_TARGET.z = _63.z;
     SV_TARGET.w = _63.w;

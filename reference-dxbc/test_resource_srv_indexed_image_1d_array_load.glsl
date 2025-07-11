@@ -21,14 +21,12 @@ void main()
     uint _26 = 0u * 4u;
     uint _33 = floatBitsToUint(_15._m0[(_23 + _26) >> 2u]);
     vec4 _41 = texelFetch(_9[nonuniformEXT(_33)], ivec2(uvec2(TEXCOORD.x, 2u)), int(1u));
-    float _44 = _41.x;
-    SV_TARGET.x = _44;
+    SV_TARGET.x = _41.x;
     SV_TARGET.y = _41.y;
     SV_TARGET.z = _41.z;
     SV_TARGET.w = _41.w;
     vec4 _57 = texelFetchOffset(_9[nonuniformEXT(_33)], ivec2(uvec2(TEXCOORD.x, 2u)), int(1u), -1);
-    float _59 = _57.x;
-    SV_TARGET_1.x = _59;
+    SV_TARGET_1.x = _57.x;
     SV_TARGET_1.y = _57.y;
     SV_TARGET_1.z = _57.z;
     SV_TARGET_1.w = _57.w;

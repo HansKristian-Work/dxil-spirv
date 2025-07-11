@@ -73,7 +73,6 @@ OpBranch %41
 %35 = OpImageQuerySizeLod %34 %33 %21
 %36 = OpCompositeExtract %10 %35 0
 %37 = OpCompositeExtract %10 %35 1
-%39 = OpCompositeConstruct %38 %36 %37
 OpStore %17 %36
 OpStore %18 %37
 %40 = OpImageQueryLevels %10 %33

@@ -137,7 +137,6 @@ OpBranch %187
 %60 = OpLoad %5 %58
 %61 = OpAccessChain %23 %22 %45
 %62 = OpLoad %5 %61
-%63 = OpCompositeConstruct %20 %57 %60 %62
 %65 = OpSampledImage %64 %52 %55
 %68 = OpCompositeConstruct %20 %57 %60 %62
 %67 = OpImageQueryLod %66 %65 %68
@@ -150,7 +149,6 @@ OpBranch %187
 %76 = OpCompositeExtract %5 %73 1
 %77 = OpCompositeExtract %5 %73 2
 %78 = OpCompositeExtract %5 %73 3
-%79 = OpCompositeConstruct %29 %75 %76 %77 %78
 %81 = OpAccessChain %80 %31 %40
 OpStore %81 %75
 %82 = OpAccessChain %80 %31 %59
@@ -165,7 +163,6 @@ OpStore %84 %78
 %95 = OpCompositeExtract %5 %90 1
 %96 = OpCompositeExtract %5 %90 2
 %97 = OpCompositeExtract %5 %90 3
-%98 = OpCompositeConstruct %29 %94 %95 %96 %97
 %99 = OpAccessChain %80 %32 %40
 OpStore %99 %94
 %100 = OpAccessChain %80 %32 %59
@@ -180,7 +177,6 @@ OpStore %102 %97
 %106 = OpCompositeExtract %5 %103 1
 %107 = OpCompositeExtract %5 %103 2
 %108 = OpCompositeExtract %5 %103 3
-%109 = OpCompositeConstruct %29 %105 %106 %107 %108
 %110 = OpAccessChain %80 %33 %40
 OpStore %110 %105
 %111 = OpAccessChain %80 %33 %59
@@ -195,7 +191,6 @@ OpStore %113 %108
 %117 = OpCompositeExtract %5 %114 1
 %118 = OpCompositeExtract %5 %114 2
 %119 = OpCompositeExtract %5 %114 3
-%120 = OpCompositeConstruct %29 %116 %117 %118 %119
 %121 = OpAccessChain %80 %34 %40
 OpStore %121 %116
 %122 = OpAccessChain %80 %34 %59
@@ -210,7 +205,6 @@ OpStore %124 %119
 %128 = OpCompositeExtract %5 %125 1
 %129 = OpCompositeExtract %5 %125 2
 %130 = OpCompositeExtract %5 %125 3
-%131 = OpCompositeConstruct %29 %127 %128 %129 %130
 %132 = OpAccessChain %80 %35 %40
 OpStore %132 %127
 %133 = OpAccessChain %80 %35 %59
@@ -225,7 +219,6 @@ OpStore %135 %130
 %139 = OpCompositeExtract %5 %136 1
 %140 = OpCompositeExtract %5 %136 2
 %141 = OpCompositeExtract %5 %136 3
-%142 = OpCompositeConstruct %29 %138 %139 %140 %141
 %143 = OpAccessChain %80 %36 %40
 OpStore %143 %138
 %144 = OpAccessChain %80 %36 %59
@@ -246,8 +239,6 @@ OpStore %146 %141
 %156 = OpLoad %5 %155
 %157 = OpDPdx %5 %156
 %158 = OpDPdy %5 %156
-%159 = OpCompositeConstruct %20 %149 %153 %157
-%160 = OpCompositeConstruct %20 %150 %154 %158
 %162 = OpCompositeConstruct %20 %57 %60 %62
 %163 = OpCompositeConstruct %20 %149 %153 %157
 %164 = OpCompositeConstruct %20 %150 %154 %158
@@ -256,7 +247,6 @@ OpStore %146 %141
 %166 = OpCompositeExtract %5 %161 1
 %167 = OpCompositeExtract %5 %161 2
 %168 = OpCompositeExtract %5 %161 3
-%169 = OpCompositeConstruct %29 %165 %166 %167 %168
 %170 = OpAccessChain %80 %37 %40
 OpStore %170 %165
 %171 = OpAccessChain %80 %37 %59
@@ -273,7 +263,6 @@ OpStore %173 %168
 %179 = OpCompositeExtract %5 %174 1
 %180 = OpCompositeExtract %5 %174 2
 %181 = OpCompositeExtract %5 %174 3
-%182 = OpCompositeConstruct %29 %178 %179 %180 %181
 %183 = OpAccessChain %80 %38 %40
 OpStore %183 %178
 %184 = OpAccessChain %80 %38 %59

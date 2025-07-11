@@ -69,7 +69,6 @@ OpBranch %56
 %33 = OpLoad %5 %31
 %34 = OpAccessChain %15 %14 %35
 %36 = OpLoad %5 %34
-%37 = OpCompositeConstruct %12 %30 %33 %36
 %38 = OpLoad %5 %16
 %39 = OpLoad %5 %17
 %42 = OpSampledImage %41 %25 %26
@@ -79,7 +78,6 @@ OpBranch %56
 %46 = OpCompositeExtract %5 %44 1
 %47 = OpCompositeExtract %5 %44 2
 %48 = OpCompositeExtract %5 %44 3
-%49 = OpCompositeConstruct %22 %45 %46 %47 %48
 %51 = OpAccessChain %50 %24 %29
 OpStore %51 %45
 %52 = OpAccessChain %50 %24 %32

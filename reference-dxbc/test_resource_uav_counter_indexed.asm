@@ -28,7 +28,6 @@ OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 0
 OpDecorate %16 BuiltIn WorkgroupId
 OpDecorate %20 NonUniform
-OpDecorate %22 NonUniform
 OpDecorate %24 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -56,7 +55,6 @@ OpBranch %28
 %28 = OpLabel
 %18 = OpAccessChain %17 %16 %19
 %20 = OpLoad %5 %18
-%22 = OpAccessChain %21 %10 %20
 %24 = OpImageTexelPointer %23 %13 %19 %19
 %25 = OpAtomicIAdd %5 %24 %26 %19 %27
 OpReturn

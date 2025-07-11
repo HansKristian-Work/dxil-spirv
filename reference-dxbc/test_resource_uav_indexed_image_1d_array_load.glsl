@@ -18,8 +18,7 @@ void main()
     uint _22 = 0u * 16u;
     uint _25 = 0u * 4u;
     vec4 _39 = imageLoad(_9[nonuniformEXT(floatBitsToUint(_15._m0[(_22 + _25) >> 2u]))], ivec2(uvec2(TEXCOORD.x, 2u)));
-    float _42 = _39.x;
-    SV_TARGET.x = _42;
+    SV_TARGET.x = _39.x;
     SV_TARGET.y = _39.y;
     SV_TARGET.z = _39.z;
     SV_TARGET.w = _39.w;

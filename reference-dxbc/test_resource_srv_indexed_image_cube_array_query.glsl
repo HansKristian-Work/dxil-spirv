@@ -28,10 +28,9 @@ void main()
     uint _32 = floatBitsToUint(_15._m0[(_22 + _25) >> 2u]);
     uvec3 _37 = uvec3(textureSize(_9[nonuniformEXT(_32)], int(0u)));
     uint _38 = _37.x;
-    uint _41 = _37.z;
     SV_TARGET.x = _38;
     SV_TARGET.y = _37.y;
-    SV_TARGET_1 = _41;
+    SV_TARGET_1 = _37.z;
     SV_TARGET_2 = uint(textureQueryLevels(_9[nonuniformEXT(_32)]));
 }
 

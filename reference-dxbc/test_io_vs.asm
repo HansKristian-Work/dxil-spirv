@@ -68,7 +68,6 @@ OpBranch %72
 %30 = OpLoad %5 %28
 %31 = OpAccessChain %24 %8 %32
 %33 = OpLoad %5 %31
-%34 = OpCompositeConstruct %15 %33 %30 %27 %35
 %37 = OpAccessChain %36 %17 %32
 OpStore %37 %33
 %38 = OpAccessChain %36 %17 %29
@@ -83,7 +82,6 @@ OpStore %40 %35
 %45 = OpLoad %5 %44
 %46 = OpAccessChain %24 %9 %26
 %47 = OpLoad %5 %46
-%48 = OpCompositeConstruct %6 %43 %45 %47
 %49 = OpAccessChain %36 %19 %32
 OpStore %49 %43
 %50 = OpAccessChain %36 %19 %29
@@ -98,7 +96,6 @@ OpStore %21 %52
 %56 = OpLoad %5 %55
 %57 = OpAccessChain %24 %10 %26
 %58 = OpLoad %5 %57
-%59 = OpCompositeConstruct %6 %54 %56 %58
 %60 = OpAccessChain %36 %22 %32
 OpStore %60 %54
 %61 = OpAccessChain %36 %22 %29

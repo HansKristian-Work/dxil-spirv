@@ -15,8 +15,7 @@ void main()
 {
     uint _32 = (BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y;
     uvec2 _39 = uvec2(_10[nonuniformEXT(BUFFER_INDEX)]._m0[_32], _10[nonuniformEXT(BUFFER_INDEX)]._m0[_32 + 1u]);
-    uint _40 = _39.x;
-    SV_TARGET.x = _40;
+    SV_TARGET.x = _39.x;
     SV_TARGET.y = _39.y;
 }
 

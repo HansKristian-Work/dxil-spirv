@@ -39,7 +39,6 @@ OpBranch %18
 %18 = OpLabel
 %13 = OpLoad %6 %8
 %14 = OpImageQuerySize %9 %13
-%16 = OpCompositeConstruct %15 %14 %17
 OpStore %11 %14
 OpStore %12 %17
 OpReturn

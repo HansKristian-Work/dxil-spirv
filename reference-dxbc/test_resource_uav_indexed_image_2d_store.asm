@@ -78,7 +78,6 @@ OpBranch %57
 %38 = OpLoad %10 %37
 %39 = OpAccessChain %36 %18 %40
 %41 = OpLoad %10 %39
-%43 = OpCompositeConstruct %42 %38 %41
 %45 = OpAccessChain %44 %21 %23
 %46 = OpLoad %5 %45
 %47 = OpAccessChain %44 %21 %40
@@ -87,7 +86,6 @@ OpBranch %57
 %50 = OpLoad %5 %49
 %51 = OpAccessChain %44 %21 %52
 %53 = OpLoad %5 %51
-%54 = OpCompositeConstruct %19 %46 %48 %50 %53
 %55 = OpCompositeConstruct %42 %38 %41
 %56 = OpCompositeConstruct %19 %46 %48 %50 %53
 OpImageWrite %35 %55 %56 NonPrivateTexel

@@ -16,8 +16,7 @@ layout(location = 2) out uint SV_TARGET_2;
 
 void main()
 {
-    uint _15 = uint(textureSize(_8, int(0u)));
-    SV_TARGET = _15;
+    SV_TARGET = uint(textureSize(_8, int(0u)));
     SV_TARGET_1 = 1u;
     SV_TARGET_2 = uint(textureQueryLevels(_8));
 }

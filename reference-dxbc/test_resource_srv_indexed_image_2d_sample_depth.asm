@@ -116,10 +116,7 @@ OpBranch %83
 %53 = OpLoad %5 %52
 %54 = OpAccessChain %23 %22 %55
 %56 = OpLoad %5 %54
-%57 = OpCompositeConstruct %28 %53 %56
 %58 = OpLoad %5 %24
-%59 = OpLoad %5 %25
-%60 = OpLoad %5 %26
 %63 = OpSampledImage %62 %48 %51
 %66 = OpCompositeConstruct %28 %53 %56
 %65 = OpImageSampleDrefImplicitLod %5 %63 %66 %58 None

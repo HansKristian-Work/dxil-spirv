@@ -9,8 +9,7 @@ layout(location = 0) out vec4 SV_TARGET;
 void main()
 {
     vec4 _21 = imageLoad(_8, int(TEXCOORD.x));
-    float _22 = _21.x;
-    SV_TARGET.x = _22;
+    SV_TARGET.x = _21.x;
     SV_TARGET.y = _21.y;
     SV_TARGET.z = _21.z;
     SV_TARGET.w = _21.w;

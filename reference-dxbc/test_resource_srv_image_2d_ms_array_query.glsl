@@ -18,10 +18,9 @@ void main()
 {
     uvec3 _18 = uvec3(textureSize(_8));
     uint _19 = _18.x;
-    uint _22 = _18.z;
     SV_TARGET.x = _19;
     SV_TARGET.y = _18.y;
-    SV_TARGET_1 = _22;
+    SV_TARGET_1 = _18.z;
     SV_TARGET_3 = uint(textureSamples(_8));
 }
 

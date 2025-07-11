@@ -25,10 +25,9 @@ void main()
     uint _24 = 0u * 4u;
     uvec3 _36 = uvec3(imageSize(_9[nonuniformEXT(floatBitsToUint(_15._m0[(_21 + _24) >> 2u]))]));
     uint _37 = _36.x;
-    uint _40 = _36.z;
     SV_TARGET.x = _37;
     SV_TARGET.y = _36.y;
-    SV_TARGET_1 = _40;
+    SV_TARGET_1 = _36.z;
 }
 
 

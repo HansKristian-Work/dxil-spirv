@@ -11,8 +11,7 @@ layout(location = 0) out vec4 SV_TARGET;
 void main()
 {
     vec4 _26 = texelFetch(_9[nonuniformEXT(BUFFER_INDEX)], int(BUFFER_ADDRESS.x));
-    float _27 = _26.x;
-    SV_TARGET.x = _27;
+    SV_TARGET.x = _26.x;
     SV_TARGET.y = _26.y;
     SV_TARGET.z = _26.z;
     SV_TARGET.w = _26.w;

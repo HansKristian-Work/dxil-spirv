@@ -74,7 +74,6 @@ OpBranch %44
 %36 = OpCompositeExtract %10 %35 0
 %37 = OpCompositeExtract %10 %35 1
 %38 = OpCompositeConstruct %16 %36 %37
-%40 = OpCompositeConstruct %39 %38 %41
 %42 = OpAccessChain %19 %18 %22
 OpStore %42 %36
 %43 = OpAccessChain %19 %18 %41

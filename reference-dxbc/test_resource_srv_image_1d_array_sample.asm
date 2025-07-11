@@ -108,7 +108,6 @@ OpBranch %143
 %49 = OpCompositeExtract %5 %46 1
 %50 = OpCompositeExtract %5 %46 2
 %51 = OpCompositeExtract %5 %46 3
-%52 = OpCompositeConstruct %21 %48 %49 %50 %51
 %54 = OpAccessChain %53 %23 %35
 OpStore %54 %48
 %55 = OpAccessChain %53 %23 %56
@@ -123,7 +122,6 @@ OpStore %59 %51
 %66 = OpCompositeExtract %5 %63 1
 %67 = OpCompositeExtract %5 %63 2
 %68 = OpCompositeExtract %5 %63 3
-%69 = OpCompositeConstruct %21 %65 %66 %67 %68
 %70 = OpAccessChain %53 %24 %35
 OpStore %70 %65
 %71 = OpAccessChain %53 %24 %56
@@ -138,7 +136,6 @@ OpStore %73 %68
 %77 = OpCompositeExtract %5 %74 1
 %78 = OpCompositeExtract %5 %74 2
 %79 = OpCompositeExtract %5 %74 3
-%80 = OpCompositeConstruct %21 %76 %77 %78 %79
 %81 = OpAccessChain %53 %25 %35
 OpStore %81 %76
 %82 = OpAccessChain %53 %25 %56
@@ -153,7 +150,6 @@ OpStore %84 %79
 %88 = OpCompositeExtract %5 %85 1
 %89 = OpCompositeExtract %5 %85 2
 %90 = OpCompositeExtract %5 %85 3
-%91 = OpCompositeConstruct %21 %87 %88 %89 %90
 %92 = OpAccessChain %53 %26 %35
 OpStore %92 %87
 %93 = OpAccessChain %53 %26 %56
@@ -168,7 +164,6 @@ OpStore %95 %90
 %99 = OpCompositeExtract %5 %96 1
 %100 = OpCompositeExtract %5 %96 2
 %101 = OpCompositeExtract %5 %96 3
-%102 = OpCompositeConstruct %21 %98 %99 %100 %101
 %103 = OpAccessChain %53 %27 %35
 OpStore %103 %98
 %104 = OpAccessChain %53 %27 %56
@@ -183,7 +178,6 @@ OpStore %106 %101
 %110 = OpCompositeExtract %5 %107 1
 %111 = OpCompositeExtract %5 %107 2
 %112 = OpCompositeExtract %5 %107 3
-%113 = OpCompositeConstruct %21 %109 %110 %111 %112
 %114 = OpAccessChain %53 %28 %35
 OpStore %114 %109
 %115 = OpAccessChain %53 %28 %56
@@ -201,7 +195,6 @@ OpStore %117 %112
 %124 = OpCompositeExtract %5 %121 1
 %125 = OpCompositeExtract %5 %121 2
 %126 = OpCompositeExtract %5 %121 3
-%127 = OpCompositeConstruct %21 %123 %124 %125 %126
 %128 = OpAccessChain %53 %29 %35
 OpStore %128 %123
 %129 = OpAccessChain %53 %29 %56
@@ -216,7 +209,6 @@ OpStore %131 %126
 %135 = OpCompositeExtract %5 %132 1
 %136 = OpCompositeExtract %5 %132 2
 %137 = OpCompositeExtract %5 %132 3
-%138 = OpCompositeConstruct %21 %134 %135 %136 %137
 %139 = OpAccessChain %53 %30 %35
 OpStore %139 %134
 %140 = OpAccessChain %53 %30 %56

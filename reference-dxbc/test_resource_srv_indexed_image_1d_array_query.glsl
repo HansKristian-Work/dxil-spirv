@@ -27,10 +27,8 @@ void main()
     uint _23 = 0u * 4u;
     uint _30 = floatBitsToUint(_15._m0[(_20 + _23) >> 2u]);
     uvec2 _35 = uvec2(textureSize(_9[nonuniformEXT(_30)], int(0u)));
-    uint _36 = _35.x;
-    uint _37 = _35.y;
-    SV_TARGET = _36;
-    SV_TARGET_1 = _37;
+    SV_TARGET = _35.x;
+    SV_TARGET_1 = _35.y;
     SV_TARGET_2 = uint(textureQueryLevels(_9[nonuniformEXT(_30)]));
 }
 

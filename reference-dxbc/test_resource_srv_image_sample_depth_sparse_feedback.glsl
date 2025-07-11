@@ -45,20 +45,16 @@ void main()
     SparseTexel _47 = SparseTexel(_81, _82);
     vec4 _50 = _47._m1;
     _55 _56 = _55(_50.x, _50.y, _50.z, _50.w, _47._m0);
-    uint _57 = _56._m4;
-    float _58 = _56._m0;
-    SV_TARGET = _58;
-    SV_TARGET_1 = float(sparseTexelsResidentARB(int(_57)));
+    SV_TARGET = _56._m0;
+    SV_TARGET_1 = float(sparseTexelsResidentARB(int(_56._m4)));
     uint _83;
     vec4 _84;
     _83 = sparseTextureLodARB(sampler2DArray(_8, _11), vec3(TEXCOORD.x, TEXCOORD.y, LAYER), 0.0, _84);
     SparseTexel _65 = SparseTexel(_83, _84);
     vec4 _68 = _65._m1;
     _55 _73 = _55(_68.x, _68.y, _68.z, _68.w, _65._m0);
-    uint _74 = _73._m4;
-    float _75 = _73._m0;
-    SV_TARGET_2 = _75;
-    SV_TARGET_3 = float(sparseTexelsResidentARB(int(_74)));
+    SV_TARGET_2 = _73._m0;
+    SV_TARGET_3 = float(sparseTexelsResidentARB(int(_73._m4)));
 }
 
 

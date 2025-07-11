@@ -43,7 +43,6 @@ OpDecorate %15 Location 0
 %4 = OpLabel
 OpBranch %28
 %28 = OpLabel
-%16 = OpLoad %6 %8
 %17 = OpAccessChain %12 %11 %18
 %19 = OpLoad %5 %17
 %20 = OpLoad %5 %13

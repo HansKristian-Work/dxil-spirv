@@ -26,8 +26,7 @@ void main()
     uint _20 = 0u * 16u;
     uint _23 = 0u * 4u;
     uint _30 = floatBitsToUint(_15._m0[(_20 + _23) >> 2u]);
-    uint _34 = uint(textureSize(_9[nonuniformEXT(_30)], int(0u)));
-    SV_TARGET = _34;
+    SV_TARGET = uint(textureSize(_9[nonuniformEXT(_30)], int(0u)));
     SV_TARGET_1 = 1u;
     SV_TARGET_2 = uint(textureQueryLevels(_9[nonuniformEXT(_30)]));
 }

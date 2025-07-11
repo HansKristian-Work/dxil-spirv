@@ -42,14 +42,12 @@ OpDecorate %15 Location 0
 %4 = OpLabel
 OpBranch %33
 %33 = OpLabel
-%16 = OpLoad %6 %8
 %17 = OpAccessChain %12 %11 %18
 %19 = OpLoad %5 %17
 %20 = OpAccessChain %12 %11 %21
 %22 = OpLoad %5 %20
 %23 = OpAccessChain %12 %11 %24
 %25 = OpLoad %5 %23
-%26 = OpCompositeConstruct %9 %19 %22 %25
 %27 = OpLoad %5 %13
 %28 = OpCompositeConstruct %9 %19 %22 %25
 %30 = OpImageTexelPointer %29 %8 %28 %18

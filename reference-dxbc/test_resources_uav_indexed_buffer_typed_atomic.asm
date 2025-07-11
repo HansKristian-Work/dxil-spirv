@@ -25,7 +25,6 @@ OpDecorate %11 Component 2
 OpDecorate %14 Flat
 OpDecorate %14 Location 0
 OpDecorate %15 NonUniform
-OpDecorate %18 NonUniform
 OpDecorate %23 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -50,7 +49,6 @@ OpBranch %27
 %27 = OpLabel
 %15 = OpLoad %5 %11
 %17 = OpAccessChain %16 %9 %15
-%18 = OpLoad %6 %17
 %19 = OpAccessChain %10 %14 %20
 %21 = OpLoad %5 %19
 %23 = OpImageTexelPointer %22 %17 %21 %20

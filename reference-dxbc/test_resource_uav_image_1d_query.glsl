@@ -14,8 +14,7 @@ layout(location = 1) out uint SV_TARGET_1;
 
 void main()
 {
-    uint _14 = uint(imageSize(_8));
-    SV_TARGET = _14;
+    SV_TARGET = uint(imageSize(_8));
     SV_TARGET_1 = 1u;
 }
 

@@ -41,7 +41,6 @@ OpBranch %20
 %15 = OpImageQuerySize %14 %13
 %16 = OpCompositeExtract %9 %15 0
 %17 = OpCompositeExtract %9 %15 1
-%19 = OpCompositeConstruct %18 %16 %17
 OpStore %11 %16
 OpStore %12 %17
 OpReturn

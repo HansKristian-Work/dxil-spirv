@@ -14,8 +14,7 @@ void main()
 {
     vec3 _42 = vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z);
     vec4 _43 = textureGather(samplerCubeShadow(_8, _11), _42, DEPTH_REF);
-    float _44 = _43.x;
-    SV_TARGET.x = _44;
+    SV_TARGET.x = _43.x;
     SV_TARGET.y = _43.y;
     SV_TARGET.z = _43.z;
     SV_TARGET.w = _43.w;
