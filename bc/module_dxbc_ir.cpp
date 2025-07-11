@@ -436,8 +436,9 @@ private:
 	bool build_counter_atomic(const ir::Op &op);
 	bool build_image_load(const ir::Op &op);
 	bool build_image_query_size(const ir::Op &op);
-	bool build_image_query_mips(const ir::Op &op);
+	bool build_image_query_mips_samples(const ir::Op &op);
 	bool build_image_sample(const ir::Op &op);
+	bool build_image_gather(const ir::Op &op);
 	bool build_image_compute_lod(const ir::Op &op);
 	bool build_deriv(const ir::Op &op);
 
@@ -811,8 +812,10 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(BufferQuerySize, buffer_query_size);
 	OPMAP(ImageLoad, image_load);
 	OPMAP(ImageQuerySize, image_query_size);
-	OPMAP(ImageQueryMips, image_query_mips);
+	OPMAP(ImageQueryMips, image_query_mips_samples);
+	OPMAP(ImageQuerySamples, image_query_mips_samples);
 	OPMAP(ImageSample, image_sample);
+	OPMAP(ImageGather, image_gather);
 	OPMAP(ImageComputeLod, image_compute_lod);
 	OPMAP(DerivX, deriv);
 	OPMAP(DerivY, deriv);
@@ -1169,7 +1172,7 @@ bool ParseContext::build_image_query_size(const ir::Op &op)
 	return true;
 }
 
-bool ParseContext::build_image_query_mips(const ir::Op &op)
+bool ParseContext::build_image_query_mips_samples(const ir::Op &op)
 {
 	auto descriptor = ir::SsaDef(op.getOperand(0));
 
@@ -1294,6 +1297,69 @@ bool ParseContext::build_image_sample(const ir::Op &op)
 		values.push_back(lod_clamp ? get_value(lod_clamp) : UndefValue::get(Type::getFloatTy(context)));
 	else if (lod_index)
 		values.push_back(get_value(lod_index));
+
+	auto *inst = build_dxil_call(opcode, dxil_result_type, dxil_result_type, std::move(values));
+	push_instruction(inst);
+	return build_buffer_load_return_composite(op, inst);
+}
+
+bool ParseContext::build_image_gather(const ir::Op &op)
+{
+	auto image_desc = ir::SsaDef(op.getOperand(0));
+	auto &resource_op = builder.getOp(image_desc);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	if (op.getFlags() & ir::OpFlag::eSparseFeedback)
+	{
+		LOGE("TODO: Sparse feedback.\n");
+		return false;
+	}
+
+	auto *result_type = convert_type(op.getType());
+	auto *dxil_result_type = get_vec4_variant(result_type);
+
+	auto layer = ir::SsaDef(op.getOperand(2));
+	auto coord = ir::SsaDef(op.getOperand(3));
+	auto offset = ir::SsaDef(op.getOperand(4));
+	auto dref = ir::SsaDef(op.getOperand(5));
+	auto comp = uint32_t(op.getOperand(6));
+
+	auto opcode = dref ? DXIL::Op::TextureGatherCmp : DXIL::Op::TextureGather;
+	unsigned num_coord_components = builder.getOp(coord).getType().getBaseType(0).getVectorSize();
+
+	Value *coords[4] = {};
+	Value *offsets[2] = {};
+
+	for (unsigned c = 0; c < num_coord_components; c++)
+	{
+		coords[c] = get_extracted_composite_component(get_value(coord), c);
+		if (offset)
+			offsets[c] = get_extracted_composite_component(get_value(offset), c);
+	}
+
+	switch (itr->second.resource_kind)
+	{
+	case DXIL::ResourceKind::Texture2DArray:
+	case DXIL::ResourceKind::TextureCubeArray:
+		coords[num_coord_components] = get_value(layer);
+		break;
+
+	default:
+		break;
+	}
+
+	Vector<Value *> values;
+	values.push_back(get_value(image_desc));
+	values.push_back(get_value(op.getOperand(1))); // sampler
+	for (auto *c : coords)
+		values.push_back(c ? c : UndefValue::get(Type::getFloatTy(context)));
+	for (auto *o : offsets)
+		values.push_back(o ? o : UndefValue::get(Type::getInt32Ty(context)));
+	values.push_back(get_constant_uint(comp));
+	if (dref)
+		values.push_back(get_value(dref));
 
 	auto *inst = build_dxil_call(opcode, dxil_result_type, dxil_result_type, std::move(values));
 	push_instruction(inst);

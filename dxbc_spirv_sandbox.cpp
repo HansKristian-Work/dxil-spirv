@@ -258,8 +258,8 @@ int main(int argc, char **argv)
 
 	for (auto &test : tests)
 	{
-#if 0
-		if (test.name != "test_resource_srv_image_2d_sample")
+#if 1
+		if (test.name != "test_resource_srv_image_cube_sample")
 			continue;
 #endif
 
