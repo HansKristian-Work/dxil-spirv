@@ -435,6 +435,8 @@ private:
 	bool build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_counter_atomic(const ir::Op &op);
 	bool build_image_load(const ir::Op &op);
+	bool build_image_store(const ir::Op &op);
+	bool build_image_atomic(const ir::Op &op);
 	bool build_image_query_size(const ir::Op &op);
 	bool build_image_query_mips_samples(const ir::Op &op);
 	bool build_image_sample(const ir::Op &op);
@@ -811,6 +813,8 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(CounterAtomic, counter_atomic);
 	OPMAP(BufferQuerySize, buffer_query_size);
 	OPMAP(ImageLoad, image_load);
+	OPMAP(ImageStore, image_store);
+	OPMAP(ImageAtomic, image_atomic);
 	OPMAP(ImageQuerySize, image_query_size);
 	OPMAP(ImageQueryMips, image_query_mips_samples);
 	OPMAP(ImageQuerySamples, image_query_mips_samples);
@@ -1057,6 +1061,132 @@ bool ParseContext::build_buffer_load(const ir::Op &op)
 		return build_buffer_load_cbv(op);
 	else
 		return build_buffer_load(op, itr->second.resource_kind);
+}
+
+bool ParseContext::build_image_store(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	auto layer = ir::SsaDef(op.getOperand(1));
+	auto coord = ir::SsaDef(op.getOperand(2));
+	auto value = ir::SsaDef(op.getOperand(3));
+
+	Value *coords[3] = {};
+	Value *values[4] = {};
+
+	unsigned num_coord_components = builder.getOp(coord).getType().getBaseType(0).getVectorSize();
+	unsigned num_value_components = builder.getOp(value).getType().getBaseType(0).getVectorSize();
+
+	auto *scalar_type = get_scalar_type(get_value(value)->getType());
+
+	for (unsigned c = 0; c < num_coord_components; c++)
+		coords[c] = get_extracted_composite_component(get_value(coord), c);
+	for (unsigned c = num_coord_components; c < 3; c++)
+		coords[c] = UndefValue::get(Type::getInt32Ty(context));
+
+	switch (itr->second.resource_kind)
+	{
+	case DXIL::ResourceKind::Texture1DArray:
+	case DXIL::ResourceKind::Texture2DArray:
+		coords[num_coord_components] = get_value(layer);
+		break;
+
+	default:
+		break;
+	}
+
+	for (unsigned c = 0; c < num_value_components; c++)
+		values[c] = get_extracted_composite_component(get_value(value), c);
+	for (unsigned c = num_value_components; c < 4; c++)
+		values[c] = UndefValue::get(scalar_type);
+
+	unsigned mask = (1u << num_value_components) - 1u;
+
+	auto *inst = build_dxil_call(DXIL::Op::TextureStore, Type::getVoidTy(context),
+	                             scalar_type,
+	                             get_value(descriptor),
+	                             coords[0], coords[1], coords[2],
+	                             values[0], values[1], values[2], values[3],
+	                             get_constant_uint(mask));
+
+	push_instruction(inst);
+	return true;
+}
+
+bool ParseContext::build_image_atomic(const ir::Op &op)
+{
+	auto descriptor = ir::SsaDef(op.getOperand(0));
+
+	auto &resource_op = builder.getOp(descriptor);
+	auto itr = resource_map.find(ir::SsaDef(resource_op.getOperand(0)));
+	if (itr == resource_map.end())
+		return false;
+
+	auto layer = ir::SsaDef(op.getOperand(1));
+	auto coord = ir::SsaDef(op.getOperand(2));
+	auto atomic_op = ir::AtomicOp(op.getOperand(4));
+	auto binop = convert_atomic_binop(atomic_op);
+
+	if (atomic_op == ir::AtomicOp::eCompareExchange)
+	{
+		LOGE("TODO: compare exchange.\n");
+		return false;
+	}
+
+	Value *coords[3] = {};
+
+	unsigned num_coord_components = builder.getOp(coord).getType().getBaseType(0).getVectorSize();
+
+	auto *int_type = Type::getInt32Ty(context);
+
+	for (unsigned c = 0; c < num_coord_components; c++)
+		coords[c] = get_extracted_composite_component(get_value(coord), c);
+	for (unsigned c = num_coord_components; c < 3; c++)
+		coords[c] = UndefValue::get(Type::getInt32Ty(context));
+
+	switch (itr->second.resource_kind)
+	{
+	case DXIL::ResourceKind::Texture1DArray:
+	case DXIL::ResourceKind::Texture2DArray:
+		coords[num_coord_components] = get_value(layer);
+		break;
+
+	default:
+		break;
+	}
+
+	auto *return_type = convert_type(op.getType());
+	Value *value;
+
+	if (binop == DXIL::AtomicBinOp::Load)
+	{
+		value = UndefValue::get(int_type);
+	}
+	else if (atomic_op == ir::AtomicOp::eInc || atomic_op == ir::AtomicOp::eSub)
+	{
+		value = get_constant_uint(1);
+	}
+	else
+	{
+		value = get_value(op.getOperand(3));
+		if (binop != DXIL::AtomicBinOp::Store && op.getType().isVoidType())
+			return_type = int_type;
+	}
+
+	auto *inst = build_dxil_call(
+		DXIL::Op::AtomicBinOp,
+		return_type, return_type,
+		get_value(descriptor), get_constant_uint(uint32_t(binop)),
+		coords[0], coords[1], coords[2],
+		value);
+
+	push_instruction(inst, op.getDef());
+	return true;
 }
 
 bool ParseContext::build_image_load(const ir::Op &op)
