@@ -167,7 +167,7 @@ void BinaryOperator::setFast(bool enabled)
 }
 
 UnaryOperator::UnaryOperator(UnaryOps uop, Value *value)
-    : Instruction(value->getType(), ValueKind::UnaryOperator)
+    : Instruction(value->getType(), ValueKind::UnaryOperator), op(uop)
 {
 	set_operands({ value });
 }
