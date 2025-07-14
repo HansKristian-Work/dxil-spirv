@@ -25,6 +25,7 @@
 #include "dxil_arithmetic.hpp"
 #include "dxil_common.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "opcodes/opcodes_llvm_builtins.hpp"
 
 namespace dxil_spv
 {
@@ -259,11 +260,43 @@ bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, co
 	return true;
 }
 
+static bool emit_dxil_peephole_iabs(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	if (opcode != GLSLstd450SMax)
+		return false;
+
+	const auto *binop0 = llvm::dyn_cast<llvm::BinaryOperator>(instruction->getOperand(1));
+	const auto *binop1 = llvm::dyn_cast<llvm::BinaryOperator>(instruction->getOperand(2));
+
+	bool peephole0 = binop0 && can_optimize_to_snegate(binop0) && binop0->getOperand(1) == instruction->getOperand(2);
+	bool peephole1 = binop1 && can_optimize_to_snegate(binop1) && binop1->getOperand(1) == instruction->getOperand(1);
+
+	if (peephole0 || peephole1)
+	{
+		Operation *op = impl.allocate(spv::OpExtInst, instruction);
+		op->add_id(impl.glsl_std450_ext);
+		op->add_literal(GLSLstd450SAbs);
+
+		if (peephole0)
+			op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		else
+			op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+
+		impl.add(op);
+		return true;
+	}
+
+	return false;
+}
+
 bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	if (emit_dxil_peephole_iabs(opcode, impl, instruction))
+		return true;
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
