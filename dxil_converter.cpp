@@ -6730,6 +6730,15 @@ bool Converter::Impl::emit_execution_modes_fp_denorm()
 		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 32);
 	}
 
+	if (shader_analysis.require_wmma && GlobalConfiguration::get().wmma_rdna3_workaround)
+	{
+		// FP16 RTZ allows faster conversions on AMD.
+		// This hack only makes sense on RDNA3.
+		builder().addExtension("SPV_KHR_float_controls");
+		builder().addCapability(spv::CapabilityRoundingModeRTZ);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, 16);
+	}
+
 	return true;
 }
 
