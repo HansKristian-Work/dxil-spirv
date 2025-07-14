@@ -250,7 +250,9 @@ def cross_compile_dxil(shader, args, paths, is_asm):
     if '.vkmm.' in shader:
         hlsl_cmd += ['--vkmm']
     if '.full-wmma.' in shader:
-        hlsl_cmd += ['--full-wmma']
+        hlsl_cmd += ['--full-wmma', '1', '1']
+    if '.nv-coopmat2.' in shader:
+        hlsl_cmd += ['--full-wmma', '0', '1']
     if '.nvapi.' in shader:
         hlsl_cmd += ['--nvapi', '127', '0']
 
