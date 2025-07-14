@@ -191,7 +191,7 @@ static void print_help()
 	     "\t[--raw-access-chains-nv]\n"
 	     "\t[--extended-robustness]\n"
 	     "\t[--vkmm]\n"
-	     "\t[--full-wmma]\n"
+	     "\t[--full-wmma <fp8> <nv-coopmat2>]\n"
 	     "\t[--shader-quirk <index>]\n");
 }
 
@@ -239,7 +239,8 @@ struct Arguments
 	bool raw_access_chains_nv = false;
 	bool extended_robustness = false;
 	bool vkmm = false;
-	bool full_wmma = false;
+	bool wmma_fp8 = false;
+	bool wmma_nv_coopmat2 = false;
 	std::vector<dxil_spv_shader_quirk> quirks;
 
 	unsigned ssbo_alignment = 1;
@@ -850,8 +851,9 @@ int main(int argc, char **argv)
 	cbs.add("--vkmm", [&](CLIParser &) {
 		args.vkmm = true;
 	});
-	cbs.add("--full-wmma", [&](CLIParser &) {
-		args.full_wmma = true;
+	cbs.add("--full-wmma", [&](CLIParser &parser) {
+		args.wmma_fp8 = parser.next_uint() != 0;
+		args.wmma_nv_coopmat2 = parser.next_uint() != 0;
 	});
 	cbs.add("--shader-quirk", [&](CLIParser &parser) {
 		args.quirks.push_back(dxil_spv_shader_quirk(parser.next_uint()));
@@ -1194,10 +1196,10 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &vkmm.base);
 	}
 
-	if (args.full_wmma)
+	if (args.wmma_fp8 || args.wmma_nv_coopmat2)
 	{
 		dxil_spv_option_float8_support wmma = {
-			{ DXIL_SPV_OPTION_FLOAT8_SUPPORT }, DXIL_SPV_TRUE, DXIL_SPV_TRUE };
+			{ DXIL_SPV_OPTION_FLOAT8_SUPPORT }, args.wmma_fp8, args.wmma_nv_coopmat2};
 		dxil_spv_converter_add_option(converter, &wmma.base);
 	}
 
