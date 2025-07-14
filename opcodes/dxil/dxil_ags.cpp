@@ -453,16 +453,39 @@ static spv::Id emit_coopmat_transpose_with_convert(
 				// FSR4 only needs FP, don't care about all possible combinations yet.
 				return 0;
 			}
+		}
 
+		builder.addExtension("SPV_NV_cooperative_matrix2");
+		builder.addCapability(spv::CapabilityCooperativeMatrixConversionsNV);
+
+		// Split type and use conversion if we have to insert clamps for fp8 as fp16.
+		// This means less ALU instructions on GFX11 when converting from ACC -> B
+		if (get_type_data_format(output_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
+		         get_type_data_format(input_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
+		         !impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack)
+		{
+			uint32_t type_mask = AmdExtD3DShaderIntrinsicsWaveMatrixModifier_MatrixTypeFlagMask <<
+			                     AmdExtD3DShaderIntrinsicsWaveMatrixModifier_MatrixTypeFlagShift;
+			uint32_t output_type_input_use = (output_imm & ~type_mask) | (input_imm & type_mask);
+			if (effective_input_fmt != effective_output_fmt) {
+				auto *conv = impl.allocate(spv::OpFConvert, build_coopmat_type(impl, output_type_input_use, false));
+				conv->add_id(v);
+				impl.add(conv);
+				v = conv->id;
+				effective_input_fmt = effective_output_fmt;
+			}
+			v = emit_coopmat_saturate_fp8(impl, v, build_coopmat_type(impl, output_type_input_use, false));
+		}
+
+
+		if (effective_input_fmt != effective_output_fmt)
+		{
 			opcode = spv::OpFConvert;
 		}
 		else
 		{
 			opcode = spv::OpCooperativeMatrixConvertNV;
 		}
-
-		builder.addExtension("SPV_NV_cooperative_matrix2");
-		builder.addCapability(spv::CapabilityCooperativeMatrixConversionsNV);
 
 		auto *conv = impl.allocate(opcode, build_coopmat_type(impl, output_imm, false));
 		conv->add_id(v);
@@ -476,12 +499,6 @@ static spv::Id emit_coopmat_transpose_with_convert(
 		{
 			impl.builder().addDecoration(
 				id, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
-		}
-		else if (get_type_data_format(output_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
-		         get_type_data_format(input_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
-		         !impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack)
-		{
-			id = emit_coopmat_saturate_fp8(impl, id, build_coopmat_type(impl, output_imm, false));
 		}
 
 		return id;
