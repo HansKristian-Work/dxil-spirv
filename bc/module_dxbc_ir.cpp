@@ -1244,8 +1244,7 @@ bool ParseContext::build_image_atomic(const ir::Op &op)
 
 	auto layer = ir::SsaDef(op.getOperand(1));
 	auto coord = ir::SsaDef(op.getOperand(2));
-	auto atomic_op = ir::AtomicOp(op.getOperand(4));
-	auto binop = convert_atomic_binop(atomic_op);
+	auto atomic_op = ir::AtomicOp(op.getOperand(op.getFirstLiteralOperandIndex()));
 
 	Value *coords[3] = {};
 
@@ -1276,12 +1275,14 @@ bool ParseContext::build_image_atomic(const ir::Op &op)
 		    int_type, int_type,
 		    get_value(descriptor),
 		    coords[0], coords[1], coords[2],
-		    get_extracted_composite_component(get_value(op.getOperand(3)), 0),
-		    get_extracted_composite_component(get_value(op.getOperand(3)), 1));
+		    get_value(op.getOperand(3)),
+		    get_value(op.getOperand(4)));
 
 		push_instruction(inst, op.getDef());
 		return true;
 	}
+
+	auto binop = convert_atomic_binop(atomic_op);
 
 	auto *return_type = convert_type(op.getType());
 	Value *value;
@@ -1290,7 +1291,7 @@ bool ParseContext::build_image_atomic(const ir::Op &op)
 	{
 		value = UndefValue::get(int_type);
 	}
-	else if (atomic_op == ir::AtomicOp::eInc || atomic_op == ir::AtomicOp::eSub)
+	else if (atomic_op == ir::AtomicOp::eInc || atomic_op == ir::AtomicOp::eDec)
 	{
 		value = get_constant_uint(1);
 	}
@@ -1706,15 +1707,17 @@ bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKin
 	{
 		first = get_extracted_composite_component(addr_value, 0);
 		second = get_extracted_composite_component(addr_value, 1);
+		second = get_constant_mul4(second);
 	}
 	else
 	{
 		first = addr_value;
+		if (kind == DXIL::ResourceKind::RawBuffer)
+			first = get_constant_mul4(first);
 		second = UndefValue::get(int_type);
 	}
 
-	auto atomic_op = ir::AtomicOp(op.getOperand(3));
-	auto binop = convert_atomic_binop(atomic_op);
+	auto atomic_op = ir::AtomicOp(op.getOperand(op.getFirstLiteralOperandIndex()));
 
 	Value *value;
 	auto *return_type = convert_type(op.getType());
@@ -1726,18 +1729,20 @@ bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKin
 		    int_type, int_type,
 		    get_value(descriptor),
 		    first, second, UndefValue::get(int_type),
-		    get_extracted_composite_component(get_value(op.getOperand(3)), 0),
-		    get_extracted_composite_component(get_value(op.getOperand(3)), 1));
+		    get_value(op.getOperand(2)),
+		    get_value(op.getOperand(3)));
 
 		push_instruction(inst, op.getDef());
 		return true;
 	}
 
+	auto binop = convert_atomic_binop(atomic_op);
+
 	if (binop == DXIL::AtomicBinOp::Load)
 	{
 		value = UndefValue::get(int_type);
 	}
-	else if (atomic_op == ir::AtomicOp::eInc || atomic_op == ir::AtomicOp::eSub)
+	else if (atomic_op == ir::AtomicOp::eInc || atomic_op == ir::AtomicOp::eDec)
 	{
 		value = get_constant_uint(1);
 	}

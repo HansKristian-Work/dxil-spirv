@@ -871,11 +871,22 @@ static bool analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 		tracking->has_written = true;
 		tracking->has_atomic = true;
 
-		// Feedback is 64-bit atomic.
-		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VoidTyID ||
-		    instruction->getType()->getIntegerBitWidth() == 64)
+		uint32_t op = 0;
+		get_constant_operand(instruction, 0, &op);
+
+		switch (DXIL::Op(op))
 		{
+		case DXIL::Op::AtomicBinOp:
+		case DXIL::Op::AtomicCompareExchange:
+			if (instruction->getType()->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+			    instruction->getType()->getIntegerBitWidth() == 64)
+				tracking->has_atomic_64bit = true;
+			break;
+
+		default:
+			// Feedback, always 64-bit.
 			tracking->has_atomic_64bit = true;
+			break;
 		}
 
 		auto meta = get_resource_meta_from_buffer_op(impl, instruction);
