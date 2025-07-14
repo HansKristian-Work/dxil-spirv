@@ -123,6 +123,9 @@ struct DXILDispatcher
 		OP(IsNan) = unary_dispatch<spv::OpIsNan>;
 		OP(IsInf) = unary_dispatch<spv::OpIsInf>;
 		OP(IsFinite) = emit_isfinite_instruction;
+		OP(ExtendedFClamp) = std450_trinary_dispatch<GLSLstd450NClamp>;
+		OP(ExtendedIClamp) = std450_trinary_dispatch<GLSLstd450SClamp>;
+		OP(ExtendedUClamp) = std450_trinary_dispatch<GLSLstd450UClamp>;
 
 		OP(Cos) = std450_unary_dispatch<GLSLstd450Cos>;
 		OP(Sin) = std450_unary_dispatch<GLSLstd450Sin>;

@@ -493,6 +493,9 @@ enum class Op : unsigned
 	ExtendedDeriv,
 	ExtendedCalculateLOD,
 	ExtendedGetDimensions,
+	ExtendedFClamp,
+	ExtendedIClamp,
+	ExtendedUClamp,
 
 	Count
 };

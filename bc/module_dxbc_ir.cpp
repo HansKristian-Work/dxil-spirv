@@ -222,6 +222,21 @@ static DXIL::AtomicBinOp convert_atomic_binop(ir::AtomicOp binop)
 	}
 }
 
+static DXIL::Op convert_round_mode(ir::RoundMode mode)
+{
+	switch (mode)
+	{
+	case ir::RoundMode::ePositiveInf:
+		return DXIL::Op::Round_pi;
+	case ir::RoundMode::eNegativeInf:
+		return DXIL::Op::Round_ni;
+	case ir::RoundMode::eZero:
+		return DXIL::Op::Round_z;
+	default:
+		return DXIL::Op::Round_ne;
+	}
+}
+
 struct ComponentMapping
 {
 	DXIL::ComponentType type = DXIL::ComponentType::Invalid;
@@ -443,6 +458,21 @@ private:
 	bool build_image_compute_lod(const ir::Op &op);
 	bool build_deriv(const ir::Op &op);
 	bool build_check_sparse_access(const ir::Op &op);
+	bool build_fround(const ir::Op &op);
+	bool build_fabs(const ir::Op &op);
+	bool build_fmad(const ir::Op &op);
+	bool build_frcp(const ir::Op &op);
+	bool build_ffract(const ir::Op &op);
+	bool build_fmin(const ir::Op &op);
+	bool build_fmax(const ir::Op &op);
+	bool build_imin(const ir::Op &op);
+	bool build_imax(const ir::Op &op);
+	bool build_umin(const ir::Op &op);
+	bool build_umax(const ir::Op &op);
+	bool build_fclamp(const ir::Op &op);
+	bool build_iclamp(const ir::Op &op);
+	bool build_uclamp(const ir::Op &op);
+	bool build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps binop);
 
 	Value *get_extracted_composite_component(Value *value, unsigned component);
 	Value *get_constant_mul4(Value *value);
@@ -810,6 +840,127 @@ bool ParseContext::build_check_sparse_access(const ir::Op &op)
 	return true;
 }
 
+bool ParseContext::build_fround(const ir::Op &op)
+{
+	auto dxop = convert_round_mode(ir::RoundMode(op.getOperand(op.getFirstLiteralOperandIndex())));
+	auto *inst = build_dxil_call(dxop,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_fabs(const ir::Op &op)
+{
+	auto *inst = build_dxil_call(DXIL::Op::FAbs,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_fmad(const ir::Op &op)
+{
+	auto *inst = build_dxil_call(DXIL::Op::FMad,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)),
+	                             get_value(op.getOperand(1)),
+	                             get_value(op.getOperand(2)));
+	if (op.getFlags() & ir::OpFlag::ePrecise)
+		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_frcp(const ir::Op &op)
+{
+	Value *const1;
+
+	switch (op.getType().getBaseType(0).getBaseType())
+	{
+	case ir::ScalarType::eF16:
+		const1 = ConstantFP::get(Type::getHalfTy(context), 0x3c00);
+		break;
+
+	case ir::ScalarType::eF32:
+	{
+		const float one = 1.0f;
+		uint32_t v;
+		memcpy(&v, &one, sizeof(one));
+		const1 = ConstantFP::get(Type::getFloatTy(context), v);
+		break;
+	}
+
+	case ir::ScalarType::eF64:
+	{
+		const double one = 1.0;
+		uint64_t v;
+		memcpy(&v, &one, sizeof(one));
+		const1 = ConstantFP::get(Type::getDoubleTy(context), v);
+		break;
+	}
+
+	default:
+		return false;
+	}
+
+	auto *inst = context.construct<BinaryOperator>(const1, get_value(op.getOperand(0)),
+	                                               BinaryOperator::BinaryOps::FDiv);
+	inst->setFast(!(op.getFlags() & ir::OpFlag::ePrecise));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_ffract(const ir::Op &op)
+{
+	auto *inst = build_dxil_call(DXIL::Op::Frc,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)));
+	if (op.getFlags() & ir::OpFlag::ePrecise)
+		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+#define IMPL_TRIVIAL_DXIL_BOP(buildop, dxilop) \
+bool ParseContext::build_##buildop(const ir::Op &op) \
+{ \
+	auto *inst = build_dxil_call(DXIL::Op::dxilop, \
+	                             convert_type(op.getType()), convert_type(op.getType()), \
+	                             get_value(op.getOperand(0)), get_value(op.getOperand(1))); \
+	push_instruction(inst, op.getDef()); \
+	return true; \
+}
+IMPL_TRIVIAL_DXIL_BOP(fmin, FMin)
+IMPL_TRIVIAL_DXIL_BOP(fmax, FMax)
+IMPL_TRIVIAL_DXIL_BOP(imin, IMin)
+IMPL_TRIVIAL_DXIL_BOP(imax, IMax)
+IMPL_TRIVIAL_DXIL_BOP(umin, UMin)
+IMPL_TRIVIAL_DXIL_BOP(umax, UMax)
+
+#define IMPL_TRIVIAL_DXIL_TOP(buildop, dxilop) \
+bool ParseContext::build_##buildop(const ir::Op &op) \
+{ \
+	auto *inst = build_dxil_call(DXIL::Op::dxilop, \
+	                             convert_type(op.getType()), convert_type(op.getType()), \
+	                             get_value(op.getOperand(0)), get_value(op.getOperand(1)), get_value(op.getOperand(2))); \
+	push_instruction(inst, op.getDef()); \
+	return true; \
+}
+IMPL_TRIVIAL_DXIL_TOP(fclamp, ExtendedFClamp)
+IMPL_TRIVIAL_DXIL_TOP(iclamp, ExtendedIClamp)
+IMPL_TRIVIAL_DXIL_TOP(uclamp, ExtendedUClamp)
+
+bool ParseContext::build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps binop)
+{
+	auto *inst = context.construct<BinaryOperator>(
+	    get_value(op.getOperand(0)), get_value(op.getOperand(1)), binop);
+	push_instruction(inst, op.getDef());
+	if (op.getType().getBaseType(0).isFloatType())
+		inst->setFast(!(op.getFlags() & ir::OpFlag::ePrecise));
+	return true;
+}
+
 bool ParseContext::push_instruction(const ir::Op &op)
 {
 	switch (op.getOpCode())
@@ -838,6 +989,16 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(DerivX, deriv);
 	OPMAP(DerivY, deriv);
 	OPMAP(CheckSparseAccess, check_sparse_access);
+	OPMAP(FRound, fround);
+	OPMAP(FAbs, fabs);
+	OPMAP(FMad, fmad);
+	OPMAP(FRcp, frcp);
+	OPMAP(FFract, ffract);
+	OPMAP(FMin, fmin);
+	OPMAP(FMax, fmax);
+	OPMAP(FClamp, fclamp);
+	OPMAP(SClamp, iclamp);
+	OPMAP(UClamp, uclamp);
 #undef OPMAP
 
 	// Plain instructions
@@ -861,10 +1022,20 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
-#define BOP(irop, llvmop) case ir::OpCode::irop: push_instruction(context.construct<BinaryOperator>( \
-    get_value(op.getOperand(0)),                                                                     \
-    get_value(op.getOperand(1)),                                                                     \
-    BinaryOperator::BinaryOps::llvmop), op.getDef()); break
+	case ir::OpCode::eFNeg:
+	{
+		push_instruction(context.construct<UnaryOperator>(
+			                 UnaryOperator::UnaryOps::FNeg,
+			                 get_value(op.getOperand(0))),
+		                 op.getDef());
+		break;
+	}
+
+#define BOP(irop, llvmop) case ir::OpCode::irop: if (!build_binary_op(op, BinaryOperator::BinaryOps::llvmop)) return false; break
+	BOP(eFAdd, FAdd);
+	BOP(eFSub, FSub);
+	BOP(eFMul, FMul);
+	BOP(eFDiv, FDiv);
 	BOP(eIMul, Mul);
 	BOP(eIAdd, Add);
 #undef BOP
@@ -1275,8 +1446,8 @@ bool ParseContext::build_image_atomic(const ir::Op &op)
 		    int_type, int_type,
 		    get_value(descriptor),
 		    coords[0], coords[1], coords[2],
-		    get_value(op.getOperand(3)),
-		    get_value(op.getOperand(4)));
+		    get_extracted_composite_component(get_value(op.getOperand(3)), 0),
+		    get_extracted_composite_component(get_value(op.getOperand(3)), 1));
 
 		push_instruction(inst, op.getDef());
 		return true;
@@ -1729,8 +1900,8 @@ bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKin
 		    int_type, int_type,
 		    get_value(descriptor),
 		    first, second, UndefValue::get(int_type),
-		    get_value(op.getOperand(2)),
-		    get_value(op.getOperand(3)));
+		    get_extracted_composite_component(get_value(op.getOperand(2)), 0),
+		    get_extracted_composite_component(get_value(op.getOperand(2)), 1));
 
 		push_instruction(inst, op.getDef());
 		return true;
