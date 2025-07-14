@@ -459,20 +459,15 @@ private:
 	bool build_deriv(const ir::Op &op);
 	bool build_check_sparse_access(const ir::Op &op);
 	bool build_fround(const ir::Op &op);
-	bool build_fabs(const ir::Op &op);
-	bool build_fmad(const ir::Op &op);
 	bool build_frcp(const ir::Op &op);
-	bool build_ffract(const ir::Op &op);
-	bool build_fmin(const ir::Op &op);
-	bool build_fmax(const ir::Op &op);
-	bool build_imin(const ir::Op &op);
-	bool build_imax(const ir::Op &op);
-	bool build_umin(const ir::Op &op);
-	bool build_umax(const ir::Op &op);
-	bool build_fclamp(const ir::Op &op);
-	bool build_iclamp(const ir::Op &op);
-	bool build_uclamp(const ir::Op &op);
 	bool build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps binop);
+
+	template <DXIL::Op dxop>
+	bool build_dxil_unary(const ir::Op &op);
+	template <DXIL::Op dxop>
+	bool build_dxil_binary(const ir::Op &op);
+	template <DXIL::Op dxop>
+	bool build_dxil_trinary(const ir::Op &op);
 
 	Value *get_extracted_composite_component(Value *value, unsigned component);
 	Value *get_constant_mul4(Value *value);
@@ -850,28 +845,6 @@ bool ParseContext::build_fround(const ir::Op &op)
 	return true;
 }
 
-bool ParseContext::build_fabs(const ir::Op &op)
-{
-	auto *inst = build_dxil_call(DXIL::Op::FAbs,
-	                             convert_type(op.getType()), convert_type(op.getType()),
-	                             get_value(op.getOperand(0)));
-	push_instruction(inst, op.getDef());
-	return true;
-}
-
-bool ParseContext::build_fmad(const ir::Op &op)
-{
-	auto *inst = build_dxil_call(DXIL::Op::FMad,
-	                             convert_type(op.getType()), convert_type(op.getType()),
-	                             get_value(op.getOperand(0)),
-	                             get_value(op.getOperand(1)),
-	                             get_value(op.getOperand(2)));
-	if (op.getFlags() & ir::OpFlag::ePrecise)
-		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
-	push_instruction(inst, op.getDef());
-	return true;
-}
-
 bool ParseContext::build_frcp(const ir::Op &op)
 {
 	Value *const1;
@@ -911,9 +884,20 @@ bool ParseContext::build_frcp(const ir::Op &op)
 	return true;
 }
 
-bool ParseContext::build_ffract(const ir::Op &op)
+bool ParseContext::build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps binop)
 {
-	auto *inst = build_dxil_call(DXIL::Op::Frc,
+	auto *inst = context.construct<BinaryOperator>(
+	    get_value(op.getOperand(0)), get_value(op.getOperand(1)), binop);
+	push_instruction(inst, op.getDef());
+	if (op.getType().getBaseType(0).isFloatType())
+		inst->setFast(!(op.getFlags() & ir::OpFlag::ePrecise));
+	return true;
+}
+
+template <DXIL::Op dxop>
+bool ParseContext::build_dxil_unary(const ir::Op &op)
+{
+	auto *inst = build_dxil_call(dxop,
 	                             convert_type(op.getType()), convert_type(op.getType()),
 	                             get_value(op.getOperand(0)));
 	if (op.getFlags() & ir::OpFlag::ePrecise)
@@ -922,42 +906,29 @@ bool ParseContext::build_ffract(const ir::Op &op)
 	return true;
 }
 
-#define IMPL_TRIVIAL_DXIL_BOP(buildop, dxilop) \
-bool ParseContext::build_##buildop(const ir::Op &op) \
-{ \
-	auto *inst = build_dxil_call(DXIL::Op::dxilop, \
-	                             convert_type(op.getType()), convert_type(op.getType()), \
-	                             get_value(op.getOperand(0)), get_value(op.getOperand(1))); \
-	push_instruction(inst, op.getDef()); \
-	return true; \
-}
-IMPL_TRIVIAL_DXIL_BOP(fmin, FMin)
-IMPL_TRIVIAL_DXIL_BOP(fmax, FMax)
-IMPL_TRIVIAL_DXIL_BOP(imin, IMin)
-IMPL_TRIVIAL_DXIL_BOP(imax, IMax)
-IMPL_TRIVIAL_DXIL_BOP(umin, UMin)
-IMPL_TRIVIAL_DXIL_BOP(umax, UMax)
-
-#define IMPL_TRIVIAL_DXIL_TOP(buildop, dxilop) \
-bool ParseContext::build_##buildop(const ir::Op &op) \
-{ \
-	auto *inst = build_dxil_call(DXIL::Op::dxilop, \
-	                             convert_type(op.getType()), convert_type(op.getType()), \
-	                             get_value(op.getOperand(0)), get_value(op.getOperand(1)), get_value(op.getOperand(2))); \
-	push_instruction(inst, op.getDef()); \
-	return true; \
-}
-IMPL_TRIVIAL_DXIL_TOP(fclamp, ExtendedFClamp)
-IMPL_TRIVIAL_DXIL_TOP(iclamp, ExtendedIClamp)
-IMPL_TRIVIAL_DXIL_TOP(uclamp, ExtendedUClamp)
-
-bool ParseContext::build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps binop)
+template <DXIL::Op dxop>
+bool ParseContext::build_dxil_binary(const ir::Op &op)
 {
-	auto *inst = context.construct<BinaryOperator>(
-	    get_value(op.getOperand(0)), get_value(op.getOperand(1)), binop);
+	auto *inst = build_dxil_call(dxop,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)), get_value(op.getOperand(1)));
+	if (op.getFlags() & ir::OpFlag::ePrecise)
+		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
 	push_instruction(inst, op.getDef());
-	if (op.getType().getBaseType(0).isFloatType())
-		inst->setFast(!(op.getFlags() & ir::OpFlag::ePrecise));
+	return true;
+}
+
+template <DXIL::Op dxop>
+bool ParseContext::build_dxil_trinary(const ir::Op &op)
+{
+	auto *inst = build_dxil_call(dxop,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)),
+	                             get_value(op.getOperand(1)),
+	                             get_value(op.getOperand(2)));
+	if (op.getFlags() & ir::OpFlag::ePrecise)
+		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
+	push_instruction(inst, op.getDef());
 	return true;
 }
 
@@ -990,15 +961,25 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(DerivY, deriv);
 	OPMAP(CheckSparseAccess, check_sparse_access);
 	OPMAP(FRound, fround);
-	OPMAP(FAbs, fabs);
-	OPMAP(FMad, fmad);
+	OPMAP(FAbs, dxil_unary<DXIL::Op::FAbs>);
+	OPMAP(FMad, dxil_trinary<DXIL::Op::Fma>);
 	OPMAP(FRcp, frcp);
-	OPMAP(FFract, ffract);
-	OPMAP(FMin, fmin);
-	OPMAP(FMax, fmax);
-	OPMAP(FClamp, fclamp);
-	OPMAP(SClamp, iclamp);
-	OPMAP(UClamp, uclamp);
+	OPMAP(FFract, dxil_unary<DXIL::Op::Frc>);
+	OPMAP(FMin, dxil_binary<DXIL::Op::FMin>);
+	OPMAP(FMax, dxil_binary<DXIL::Op::FMax>);
+	OPMAP(SMin, dxil_binary<DXIL::Op::IMin>);
+	OPMAP(SMax, dxil_binary<DXIL::Op::IMax>);
+	OPMAP(UMin, dxil_binary<DXIL::Op::UMin>);
+	OPMAP(UMax, dxil_binary<DXIL::Op::UMax>);
+	OPMAP(FClamp, dxil_trinary<DXIL::Op::ExtendedFClamp>);
+	OPMAP(SClamp, dxil_trinary<DXIL::Op::ExtendedIClamp>);
+	OPMAP(UClamp, dxil_trinary<DXIL::Op::ExtendedUClamp>);
+	OPMAP(FLog2, dxil_unary<DXIL::Op::Log>);
+	OPMAP(FExp2, dxil_unary<DXIL::Op::Exp>);
+	OPMAP(FSin, dxil_unary<DXIL::Op::Sin>);
+	OPMAP(FCos, dxil_unary<DXIL::Op::Cos>);
+	OPMAP(FSqrt, dxil_unary<DXIL::Op::Sqrt>);
+	OPMAP(FRsq, dxil_unary<DXIL::Op::Rsqrt>);
 #undef OPMAP
 
 	// Plain instructions
