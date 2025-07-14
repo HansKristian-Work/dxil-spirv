@@ -319,12 +319,12 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 			spv::Id not_id = 0;
 			if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(0)))
 			{
-				if (c->getUniqueInteger().getZExtValue() != 0)
+				if (c->getUniqueInteger().getZExtValue() & 1)
 					not_id = impl.get_id_for_value(instruction->getOperand(1));
 			}
 			else if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1)))
 			{
-				if (c->getUniqueInteger().getZExtValue() != 0)
+				if (c->getUniqueInteger().getZExtValue() & 1)
 					not_id = impl.get_id_for_value(instruction->getOperand(0));
 			}
 
@@ -438,6 +438,12 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 	case llvm::UnaryOperator::UnaryOps::FNeg:
 		opcode = spv::OpFNegate;
 		break;
+
+#ifdef HAVE_LLVMBC
+	case llvm::UnaryOperator::UnaryOps::INeg:
+		opcode = spv::OpSNegate;
+		break;
+#endif
 
 	default:
 		LOGE("Unknown unary operator.\n");

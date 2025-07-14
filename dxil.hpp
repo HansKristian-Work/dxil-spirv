@@ -496,6 +496,9 @@ enum class Op : unsigned
 	ExtendedFClamp,
 	ExtendedIClamp,
 	ExtendedUClamp,
+	ExtendedLegacyF32ToF16,
+	ExtendedLegacyF16ToF32,
+	ExtendedIAbs,
 
 	Count
 };

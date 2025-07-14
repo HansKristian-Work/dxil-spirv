@@ -193,7 +193,8 @@ public:
 	enum class UnaryOps
 	{
 		Invalid,
-		FNeg
+		FNeg,
+		INeg, // custom extension
 	};
 
 	static constexpr ValueKind get_value_kind()

@@ -7893,6 +7893,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (module_is_dxbc_spirv(module))
 	{
 		backend.skip_non_uniform_promotion = true;
+		options.min_precision_prefer_native_16bit = true;
 		// This is new code, might as well exercise it.
 		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
 	}

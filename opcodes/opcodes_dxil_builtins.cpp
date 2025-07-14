@@ -143,6 +143,7 @@ struct DXILDispatcher
 		OP(Sqrt) = std450_unary_dispatch<GLSLstd450Sqrt>;
 		OP(FAbs) = std450_unary_dispatch<GLSLstd450FAbs>;
 		OP(Frc) = std450_unary_dispatch<GLSLstd450Fract>;
+		OP(ExtendedIAbs) = std450_unary_dispatch<GLSLstd450SAbs>;
 
 		OP(Round_ne) = std450_unary_dispatch<GLSLstd450RoundEven>;
 		OP(Round_ni) = std450_unary_dispatch<GLSLstd450Floor>;
@@ -176,6 +177,8 @@ struct DXILDispatcher
 		OP(SplitDouble) = emit_split_double_instruction;
 		OP(LegacyF16ToF32) = emit_legacy_f16_to_f32_instruction;
 		OP(LegacyF32ToF16) = emit_legacy_f32_to_f16_instruction;
+		OP(ExtendedLegacyF16ToF32) = std450_unary_dispatch<GLSLstd450UnpackHalf2x16>;
+		OP(ExtendedLegacyF32ToF16) = std450_unary_dispatch<GLSLstd450PackHalf2x16>;
 		OP(LegacyDoubleToFloat) = emit_legacy_double_conv_dispatch<spv::OpFConvert>;
 		OP(LegacyDoubleToSInt32) = emit_legacy_double_conv_dispatch<spv::OpConvertFToS>;
 		OP(LegacyDoubleToUInt32) = emit_legacy_double_conv_dispatch<spv::OpConvertFToU>;

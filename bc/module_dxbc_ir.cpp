@@ -847,7 +847,7 @@ bool ParseContext::build_fround(const ir::Op &op)
 
 bool ParseContext::build_frcp(const ir::Op &op)
 {
-	Value *const1;
+	Constant *const1;
 
 	switch (op.getType().getBaseType(0).getBaseType())
 	{
@@ -875,6 +875,16 @@ bool ParseContext::build_frcp(const ir::Op &op)
 
 	default:
 		return false;
+	}
+
+	if (op.getType().isVectorType())
+	{
+		unsigned num_components = op.getType().getBaseType(0).getVectorSize();
+		Vector<Value *> values;
+		values.reserve(num_components);
+		for (unsigned i = 0; i < num_components; i++)
+			values.push_back(const1);
+		const1 = context.construct<ConstantDataVector>(VectorType::get(num_components, const1->getType()), std::move(values));
 	}
 
 	auto *inst = context.construct<BinaryOperator>(const1, get_value(op.getOperand(0)),
@@ -962,6 +972,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(CheckSparseAccess, check_sparse_access);
 	OPMAP(FRound, fround);
 	OPMAP(FAbs, dxil_unary<DXIL::Op::FAbs>);
+	OPMAP(IAbs, dxil_unary<DXIL::Op::ExtendedIAbs>);
 	OPMAP(FMad, dxil_trinary<DXIL::Op::Fma>);
 	OPMAP(FRcp, frcp);
 	OPMAP(FFract, dxil_unary<DXIL::Op::Frc>);
@@ -980,6 +991,9 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(FCos, dxil_unary<DXIL::Op::Cos>);
 	OPMAP(FSqrt, dxil_unary<DXIL::Op::Sqrt>);
 	OPMAP(FRsq, dxil_unary<DXIL::Op::Rsqrt>);
+	OPMAP(FIsNan, dxil_unary<DXIL::Op::IsNan>);
+	OPMAP(ConvertF32toPackedF16, dxil_unary<DXIL::Op::ExtendedLegacyF32ToF16>);
+	OPMAP(ConvertPackedF16toF32, dxil_unary<DXIL::Op::ExtendedLegacyF16ToF32>);
 #undef OPMAP
 
 	// Plain instructions
@@ -1004,22 +1018,134 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	}
 
 	case ir::OpCode::eFNeg:
+	case ir::OpCode::eINeg:
 	{
 		push_instruction(context.construct<UnaryOperator>(
-			                 UnaryOperator::UnaryOps::FNeg,
+			                 op.getOpCode() == ir::OpCode::eFNeg ?
+			                 UnaryOperator::UnaryOps::FNeg : UnaryOperator::UnaryOps::INeg,
 			                 get_value(op.getOperand(0))),
 		                 op.getDef());
 		break;
 	}
+
+#define CMP(irop, type, llvmop) \
+	case ir::OpCode::irop: \
+		push_instruction(context.construct<type##CmpInst>( \
+			                 CmpInst::Predicate::llvmop, \
+			                 get_value(op.getOperand(0)), \
+			                 get_value(op.getOperand(1))), \
+		                 op.getDef()); break
+	CMP(eFNe, F, FCMP_UNE);
+	CMP(eFEq, F, FCMP_OEQ);
+	CMP(eFGt, F, FCMP_OGT);
+	CMP(eFGe, F, FCMP_OGE);
+	CMP(eFLt, F, FCMP_OLT);
+	CMP(eFLe, F, FCMP_OLE);
+	CMP(eINe, I, ICMP_NE);
+	CMP(eIEq, I, ICMP_EQ);
+	CMP(eSGt, I, ICMP_SGT);
+	CMP(eSGe, I, ICMP_SGE);
+	CMP(eSLt, I, ICMP_SLT);
+	CMP(eSLe, I, ICMP_SLE);
+	CMP(eUGt, I, ICMP_UGT);
+	CMP(eUGe, I, ICMP_UGE);
+	CMP(eULt, I, ICMP_ULT);
+	CMP(eULe, I, ICMP_ULE);
 
 #define BOP(irop, llvmop) case ir::OpCode::irop: if (!build_binary_op(op, BinaryOperator::BinaryOps::llvmop)) return false; break
 	BOP(eFAdd, FAdd);
 	BOP(eFSub, FSub);
 	BOP(eFMul, FMul);
 	BOP(eFDiv, FDiv);
-	BOP(eIMul, Mul);
 	BOP(eIAdd, Add);
+	BOP(eISub, Sub);
+	BOP(eIMul, Mul);
+	BOP(eUDiv, UDiv);
+	BOP(eIAnd, And);
+	BOP(eIOr, Or);
+	BOP(eIXor, Xor);
+	BOP(eIShl, Shl);
+	BOP(eUShr, LShr);
+	BOP(eSShr, AShr);
 #undef BOP
+
+	case ir::OpCode::eConvertFtoF:
+	{
+		auto &out_type = op.getType();
+		auto &in_type = builder.getOp(ir::SsaDef(op.getOperand(0))).getType();
+
+		if (out_type.byteSize() == in_type.byteSize())
+		{
+			value_map[op.getDef()] = get_value(op.getOperand(0));
+			break;
+		}
+
+		bool ext = out_type.byteSize() > in_type.byteSize();
+		auto *inst = context.construct<CastInst>(convert_type(out_type),
+		                                         get_value(op.getOperand(0)),
+		                                         ext ? Instruction::CastOps::FPExt : Instruction::CastOps::FPTrunc);
+		push_instruction(inst, op.getDef());
+		break;
+	}
+
+	case ir::OpCode::eConvertFtoI:
+	{
+		auto &out_type = op.getType();
+		bool is_signed = out_type.getBaseType(0).isSignedIntType();
+		auto *inst = context.construct<CastInst>(convert_type(out_type), get_value(op.getOperand(0)),
+		                                         is_signed ? Instruction::CastOps::FPToSI : Instruction::CastOps::FPToUI);
+		push_instruction(inst, op.getDef());
+		break;
+	}
+
+	case ir::OpCode::eConvertItoF:
+	{
+		auto &out_type = op.getType();
+		auto &in_type = builder.getOp(ir::SsaDef(op.getOperand(0))).getType();
+		bool is_signed = in_type.getBaseType(0).isSignedIntType();
+		auto *inst = context.construct<CastInst>(convert_type(out_type), get_value(op.getOperand(0)),
+		                                         is_signed ? Instruction::CastOps::SIToFP : Instruction::CastOps::UIToFP);
+		push_instruction(inst, op.getDef());
+		break;
+	}
+
+	case ir::OpCode::eConvertItoI:
+	{
+		auto &out_type = op.getType();
+		auto &in_type = builder.getOp(ir::SsaDef(op.getOperand(0))).getType();
+		bool is_signed = in_type.getBaseType(0).isSignedIntType();
+		bool ext = out_type.byteSize() > in_type.byteSize();
+
+		if (out_type.byteSize() == in_type.byteSize())
+		{
+			value_map[op.getDef()] = get_value(op.getOperand(0));
+			break;
+		}
+
+		if (!ext)
+		{
+			auto *inst = context.construct<CastInst>(convert_type(out_type), get_value(op.getOperand(0)), Instruction::CastOps::Trunc);
+			push_instruction(inst, op.getDef());
+		}
+		else
+		{
+			auto *inst = context.construct<CastInst>(
+				convert_type(out_type), get_value(op.getOperand(0)),
+				is_signed ? Instruction::CastOps::SExt : Instruction::CastOps::ZExt);
+			push_instruction(inst, op.getDef());
+		}
+
+		break;
+	}
+
+	case ir::OpCode::eINot:
+	{
+		auto *inst = context.construct<BinaryOperator>(get_value(op.getOperand(0)),
+		                                               ConstantInt::get(convert_type(op.getType()), ~0u),
+		                                               Instruction::BinaryOps::Xor);
+		push_instruction(inst, op.getDef());
+		break;
+	}
 
 	default:
 		LOGE("Unimplemented opcode %u\n", unsigned(op.getOpCode()));
