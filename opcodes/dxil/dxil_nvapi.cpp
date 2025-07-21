@@ -213,6 +213,35 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 	return true;
 }
 
+bool NVAPIState::can_commit_opcode()
+{
+	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
+		return false;
+
+	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]))
+	{
+		auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
+		switch (opcode)
+		{
+		case NV_EXTN_OP_SHFL:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2];
+
+		case NV_EXTN_OP_FP16_ATOMIC:
+			return marked_uav &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0];
+
+		default:
+			return false;
+		}
+	}
+	else
+		return false;
+}
+
 bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 {
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
@@ -420,7 +449,7 @@ bool NVAPIState::write_arguments_from_store(Converter::Impl &impl, const llvm::C
 			fake_doorbell_inputs[offset + i] = instruction->getOperand(4 + i);
 	}
 
-	if (offset == NVAPI_ARGUMENT_OPCODE)
+	if (can_commit_opcode())
 		commit_opcode(impl, analysis);
 
 	return true;

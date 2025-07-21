@@ -42,6 +42,7 @@ struct NVAPIState
 	void reset();
 	void reset_analysis() {}
 	void notify_doorbell(Converter::Impl &impl, const llvm::CallInst *instruction, bool analysis);
+	bool can_commit_opcode();
 	bool commit_opcode(Converter::Impl &impl, bool analysis);
 
 	// Some opcodes expect to read outputs by iteratively calling IncrementCounter().
