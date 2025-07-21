@@ -1,0 +1,78 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_shader_realtime_clock : require
+
+layout(set = 0, binding = 0, std430) writeonly buffer BufSSBO
+{
+    uint _m0[];
+} Buf;
+
+void main()
+{
+    uvec2 _12 = clockRealtime2x32EXT();
+    Buf._m0[0u] = _12.x;
+    uvec2 _18 = clockRealtime2x32EXT();
+    Buf._m0[1u] = _18.y;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 23
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
+OpCapability ShaderClockKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpExtension "SPV_KHR_shader_clock"
+OpMemoryModel Logical GLSL450
+OpEntryPoint RayGenerationKHR %3 "main" %9
+OpName %3 "main"
+OpName %7 "BufSSBO"
+OpName %9 "Buf"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %9 NonReadable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%11 = OpTypeVector %5 2
+%13 = OpConstant %5 1
+%15 = OpConstant %5 0
+%16 = OpTypePointer StorageBuffer %5
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %21
+%21 = OpLabel
+%12 = OpReadClockKHR %11 %13
+%14 = OpCompositeExtract %5 %12 0
+%17 = OpAccessChain %16 %9 %15 %15
+OpStore %17 %14
+%18 = OpReadClockKHR %11 %13
+%19 = OpCompositeExtract %5 %18 1
+%20 = OpAccessChain %16 %9 %15 %13
+OpStore %20 %19
+OpReturn
+OpFunctionEnd
+#endif

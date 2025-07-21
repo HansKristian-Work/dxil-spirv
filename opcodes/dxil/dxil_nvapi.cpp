@@ -87,6 +87,14 @@ enum NVExtnOp
 	NV_EXTN_OP_RT_COMMIT_NONOPAQUE_BUILTIN_PRIMITIVE_HIT = 119
 };
 
+enum NVSpecialOp
+{
+	NV_SPECIALOP_THREADLTMASK = 4,
+	NV_SPECIALOP_FOOTPRINT_SINGLELOD_PRED = 5,
+	NV_SPECIALOP_GLOBAL_TIMER_LO = 9,
+	NV_SPECIALOP_GLOBAL_TIMER_HI = 10
+};
+
 void NVAPIState::reset()
 {
 	for (auto &input : fake_doorbell_inputs)
@@ -213,6 +221,42 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
+{
+	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
+		return false;
+
+	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]))
+	{
+		auto subopcode = uint32_t(c->getUniqueInteger().getZExtValue());
+		auto &builder = impl.builder();
+
+		switch (subopcode)
+		{
+			case NV_SPECIALOP_GLOBAL_TIMER_LO:
+			case NV_SPECIALOP_GLOBAL_TIMER_HI:
+			{
+				builder.addExtension("SPV_KHR_shader_clock");
+				builder.addCapability(spv::Capability::CapabilityShaderClockKHR);
+
+				auto *read_op = impl.allocate(spv::OpReadClockKHR, builder.makeVectorType(builder.makeUintType(32), 2));
+				read_op->add_id(builder.makeUintConstant(1));
+				impl.add(read_op);
+
+				auto *extract_op = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+				extract_op->add_id(read_op->id);
+				extract_op->add_literal(subopcode - NV_SPECIALOP_GLOBAL_TIMER_LO);
+				impl.add(extract_op);
+
+				impl.nvapi.fake_doorbell_outputs[0] = extract_op->id;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool NVAPIState::can_commit_opcode()
 {
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
@@ -233,6 +277,9 @@ bool NVAPIState::can_commit_opcode()
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0];
+
+		case NV_EXTN_OP_GET_SPECIAL:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
 
 		default:
 			return false;
@@ -261,6 +308,12 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_FP16_ATOMIC:
 			impl.nvapi.num_expected_clock_outputs = 0;
 			if (!analysis && !emit_nvapi_extn_op_fp16x2_atomic(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_GET_SPECIAL:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_get_special(impl))
 				return false;
 			break;
 
