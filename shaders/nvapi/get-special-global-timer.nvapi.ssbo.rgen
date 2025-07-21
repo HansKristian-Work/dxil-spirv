@@ -1,0 +1,12 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RWStructuredBuffer<uint> Buf : register(u0);
+
+[shader("raygeneration")]
+void main()
+{
+	Buf[0] = NvGetSpecial(NV_SPECIALOP_GLOBAL_TIMER_LO);
+	Buf[1] = NvGetSpecial(NV_SPECIALOP_GLOBAL_TIMER_HI);
+}
