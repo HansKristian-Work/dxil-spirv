@@ -257,6 +257,22 @@ static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 	return false;
 }
 
+static bool emit_nvapi_extn_op_rt_get_cluster_id(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_NV_cluster_acceleration_structure");
+	builder.addCapability(spv::CapabilityRayTracingClusterAccelerationStructureNV);
+
+	spv::Id id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInClusterIDNV);
+	auto *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	op->add_id(id);
+	impl.add(op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = op->id;
+	return true;
+}
+
 bool NVAPIState::can_commit_opcode()
 {
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
@@ -280,6 +296,9 @@ bool NVAPIState::can_commit_opcode()
 
 		case NV_EXTN_OP_GET_SPECIAL:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
+
+		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
+			return true;
 
 		default:
 			return false;
@@ -314,6 +333,13 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_GET_SPECIAL:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_get_special(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_get_cluster_id(impl))
 				return false;
 			break;
 

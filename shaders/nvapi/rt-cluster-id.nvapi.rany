@@ -1,0 +1,14 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+struct Payload
+{
+	uint index;
+};
+
+[shader("anyhit")]
+void RayHit(inout Payload payload, BuiltInTriangleIntersectionAttributes attr)
+{
+	payload.index = NvRtGetClusterID();
+}

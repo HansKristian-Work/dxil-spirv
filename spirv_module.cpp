@@ -258,6 +258,9 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 	case spv::BuiltInFullyCoveredEXT:
 		return builder.makeBoolType();
 
+	case spv::BuiltInClusterIDNV:
+		return builder.makeUintType(32);
+
 	default:
 		return 0;
 	}
