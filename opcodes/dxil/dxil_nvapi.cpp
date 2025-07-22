@@ -5,6 +5,7 @@
 
 #include "dxil_nvapi.hpp"
 #include "dxil_common.hpp"
+#include "dxil_ray_tracing.hpp"
 #include "opcodes/converter_impl.hpp"
 
 namespace dxil_spv
@@ -273,6 +274,33 @@ static bool emit_nvapi_extn_op_rt_get_cluster_id(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_nvapi_extn_op_rt_get_intersection_cluster_id(Converter::Impl &impl, spv::RayQueryIntersection intersection)
+{
+	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
+		return false;
+
+	if (auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]))
+	{
+		auto &builder = impl.builder();
+		spv::Id ray_object_id = 0;
+		if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+			return false;
+
+		builder.addExtension("SPV_NV_cluster_acceleration_structure");
+		builder.addCapability(spv::CapabilityRayTracingClusterAccelerationStructureNV);
+
+		auto *op = impl.allocate(spv::OpRayQueryGetClusterIdNV, builder.makeUintType(32));
+		op->add_id(ray_object_id);
+		op->add_id(builder.makeUintConstant(intersection));
+		impl.add(op);
+
+		impl.nvapi.fake_doorbell_outputs[0] = op->id;
+		return true;
+	}
+
+	return false;
+}
+
 bool NVAPIState::can_commit_opcode()
 {
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
@@ -299,6 +327,10 @@ bool NVAPIState::can_commit_opcode()
 
 		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
 			return true;
+
+		case NV_EXTN_OP_RT_GET_CANDIDATE_CLUSTER_ID:
+		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
 
 		default:
 			return false;
@@ -340,6 +372,20 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_rt_get_cluster_id(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_GET_CANDIDATE_CLUSTER_ID:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_get_intersection_cluster_id(impl, spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_get_intersection_cluster_id(impl, spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
 				return false;
 			break;
 
