@@ -51,6 +51,8 @@ bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *in
 bool emit_ray_tracing_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool build_ray_query_object(Converter::Impl &impl, const llvm::Value *operand, 
+                            spv::Id &object_id, uint32_t *ray_query_flags = nullptr);
 bool emit_ray_query_trace_ray_inline_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_ray_query_proceed_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_ray_query_abort_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
