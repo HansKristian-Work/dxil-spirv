@@ -309,6 +309,41 @@ static bool emit_nvapi_extn_op_hit_object_make_miss(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_nvapi_extn_op_hit_object_reorder_thread(Converter::Impl &impl)
+{
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (c != nullptr)
+	{
+		spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+		spv::Id hint = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 2);
+		spv::Id bits = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 3);
+
+		auto &builder = impl.builder();
+
+		builder.addExtension("SPV_NV_shader_invocation_reorder");
+		builder.addCapability(spv::CapabilityShaderInvocationReorderNV);
+
+		Operation *op;
+
+		if (c->getUniqueInteger().getZExtValue())
+		{
+			op = impl.allocate(spv::OpReorderThreadWithHitObjectNV);
+			op->add_id(hit_object);
+		}
+		else
+			op = impl.allocate(spv::OpReorderThreadWithHintNV);
+
+		op->add_id(hint);
+		op->add_id(bits);
+		impl.add(op);
+
+		impl.nvapi.fake_doorbell_outputs[0] = op->id;
+		return true;
+	}
+
+	return false;
+}
+
 static bool emit_nvapi_extn_op_hit_object_get_bool(Converter::Impl &impl, uint32_t opcode)
 {
 	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
@@ -493,6 +528,12 @@ bool NVAPIState::can_commit_opcode()
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 1] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 2] != nullptr;
 
+		case NV_EXTN_OP_HIT_OBJECT_REORDER_THREAD:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 3] != nullptr;
+
 		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
 		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
@@ -554,6 +595,13 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_make_miss(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_REORDER_THREAD:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_reorder_thread(impl))
 				return false;
 			break;
 
