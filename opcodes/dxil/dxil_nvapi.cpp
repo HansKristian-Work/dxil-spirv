@@ -348,6 +348,57 @@ static bool emit_nvapi_extn_op_hit_object_get_bool(Converter::Impl &impl, uint32
 	return true;
 }
 
+static bool emit_nvapi_extn_op_hit_object_get_uint(Converter::Impl &impl, uint32_t opcode)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto &builder = impl.builder();
+	spv::Op op;
+
+	switch (opcode)
+	{
+	case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_ID:
+		op = spv::OpHitObjectGetInstanceIdNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_INDEX:
+		op = spv::OpHitObjectGetInstanceCustomIndexNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
+		op = spv::OpHitObjectGetPrimitiveIndexNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_GEOMETRY_INDEX:
+		op = spv::OpHitObjectGetGeometryIndexNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_HIT_KIND:
+		op = spv::OpHitObjectGetHitKindNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
+		op = spv::OpHitObjectGetShaderBindingTableRecordIndexNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
+		builder.addExtension("SPV_NV_cluster_acceleration_structure");
+		builder.addCapability(spv::CapabilityRayTracingClusterAccelerationStructureNV);
+		op = spv::OpHitObjectGetClusterIdNV;
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *get_op = impl.allocate(op, builder.makeUintType(32));
+	get_op->add_id(hit_object);
+	impl.add(get_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = get_op->id;
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_make_nop(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -445,6 +496,13 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
 		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_ID:
+		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_GEOMETRY_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_HIT_KIND:
+		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_NOP:
@@ -504,6 +562,18 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_get_bool(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_ID:
+		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_GEOMETRY_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_HIT_KIND:
+		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_uint(impl, opcode))
 				return false;
 			break;
 
