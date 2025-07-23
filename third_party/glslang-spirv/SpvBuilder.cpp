@@ -196,6 +196,21 @@ Id Builder::makeRayQueryType()
     return type->getResultId();
 }
 
+Id Builder::makeHitObjectNVType()
+{
+    Instruction *type;
+    if (!hit_object_nv_type)
+    {
+        type = new Instruction(getUniqueId(), NoType, OpTypeHitObjectNV);
+        hit_object_nv_type = type;
+        constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
+        module.mapInstruction(type);
+    } else
+        type = hit_object_nv_type;
+
+    return type->getResultId();
+}
+
 Id Builder::makePointer(StorageClass storageClass, Id pointee)
 {
     // try to find it

@@ -134,6 +134,7 @@ public:
     Id makeImageType(Id sampledType, Dim, bool depth, bool arrayed, bool ms, unsigned sampled, ImageFormat format);
     Id makeAccelerationStructureType();
     Id makeRayQueryType();
+    Id makeHitObjectNVType();
     Id makeSamplerType();
     Id makeSampledImageType(Id imageType);
 
@@ -686,6 +687,7 @@ protected:
     dxil_spv::Vector<Instruction*> coopmatTypes;
     Instruction *acceleration_structure_type = nullptr;
     Instruction *ray_query_type = nullptr;
+    Instruction *hit_object_nv_type = nullptr;
 
     // stack of switches
     std::stack<Block*> switchMerges;
