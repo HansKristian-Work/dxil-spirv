@@ -434,6 +434,55 @@ static bool emit_nvapi_extn_op_hit_object_get_uint(Converter::Impl &impl, uint32
 	return true;
 }
 
+static bool emit_nvapi_extn_op_hit_object_get_ray_desc(Converter::Impl &impl)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto &builder = impl.builder();
+
+	auto uint32 = builder.makeUintType(32);
+	auto float32 = builder.makeFloatType(32);
+	auto vec3float32 = builder.makeVectorType(float32, 3);
+
+	auto o = 0;
+
+	for (auto op : { spv::OpHitObjectGetRayTMinNV, spv::OpHitObjectGetRayTMaxNV })
+	{
+		auto *get_op = impl.allocate(op, float32);
+		get_op->add_id(hit_object);
+		impl.add(get_op);
+
+		auto *bitcast_op = impl.allocate(spv::OpBitcast, uint32);
+		bitcast_op->add_id(get_op->id);
+		impl.add(bitcast_op);
+
+		impl.nvapi.fake_doorbell_outputs[o++] = bitcast_op->id;
+	}
+
+	for (auto op : { spv::OpHitObjectGetWorldRayOriginNV, spv::OpHitObjectGetWorldRayDirectionNV })
+	{
+		auto *get_op = impl.allocate(op, vec3float32);
+		get_op->add_id(hit_object);
+		impl.add(get_op);
+
+		for (unsigned i = 0; i < 3; i++)
+		{
+			auto *extract_op = impl.allocate(spv::OpCompositeExtract, float32);
+			extract_op->add_id(get_op->id);
+			extract_op->add_literal(i);
+			impl.add(extract_op);
+
+			auto *bitcast_op = impl.allocate(spv::OpBitcast, uint32);
+			bitcast_op->add_id(extract_op->id);
+			impl.add(bitcast_op);
+
+			impl.nvapi.fake_doorbell_outputs[o++] = bitcast_op->id;
+		}
+	}
+
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_make_nop(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -542,6 +591,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_GEOMETRY_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_HIT_KIND:
+		case NV_EXTN_OP_HIT_OBJECT_GET_RAY_DESC:
 		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
@@ -622,6 +672,12 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_get_uint(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_GET_RAY_DESC:
+			impl.nvapi.num_expected_clock_outputs = 8;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_ray_desc(impl))
 				return false;
 			break;
 
