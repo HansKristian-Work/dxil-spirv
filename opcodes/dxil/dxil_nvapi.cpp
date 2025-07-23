@@ -145,6 +145,26 @@ static spv::Id get_argument(Converter::Impl &impl, uint32_t offset)
 	return impl.get_id_for_value(impl.nvapi.fake_doorbell_inputs[offset]);
 }
 
+static spv::Id get_argument_as_float(Converter::Impl &impl, uint32_t offset)
+{
+	auto *op = impl.nvapi.fake_doorbell_inputs[offset];
+	auto *cast_inst = llvm::dyn_cast<llvm::CastInst>(op);
+
+	if (cast_inst != nullptr && cast_inst->getOpcode() == llvm::Instruction::BitCast)
+	{
+		op = cast_inst->getOperand(0);
+
+		if (op->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+			return impl.get_id_for_value(op);
+	}
+
+	auto *bitcast_op = impl.allocate(spv::OpBitcast, impl.builder().makeFloatType(32));
+	bitcast_op->add_id(impl.get_id_for_value(op));
+	impl.add(bitcast_op);
+
+	return bitcast_op->id;
+}
+
 static bool emit_nvapi_extn_op_shuffle(Converter::Impl &impl)
 {
 	// Dummy throwaway implementation.
@@ -250,6 +270,45 @@ static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 	return false;
 }
 
+static bool emit_nvapi_extn_op_hit_object_make_miss(Converter::Impl &impl)
+{
+	spv::Id index = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id tmin = get_argument_as_float(impl, NVAPI_ARGUMENT_SRC0U + 1);
+	spv::Id tmax = get_argument_as_float(impl, NVAPI_ARGUMENT_SRC0U + 2);
+
+	spv::Id ray_origin[3];
+	spv::Id ray_dir[3];
+
+	for (unsigned i = 0; i < 3; i++)
+	{
+		ray_origin[i] = get_argument_as_float(impl, NVAPI_ARGUMENT_SRC1U + i);
+		ray_dir[i] = get_argument_as_float(impl, NVAPI_ARGUMENT_SRC2U + i);
+	}
+
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_NV_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderNV);
+
+	spv::Id float32 = builder.makeFloatType(32);
+	spv::Id ray_origin_vec = impl.build_vector(float32, ray_origin, 3);
+	spv::Id ray_dir_vec = impl.build_vector(float32, ray_dir, 3);
+
+	spv::Id variable = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectNVType());
+
+	auto op = impl.allocate(spv::OpHitObjectRecordMissNV);
+	op->add_id(variable);
+	op->add_id(index);
+	op->add_id(ray_origin_vec);
+	op->add_id(tmin);
+	op->add_id(ray_dir_vec);
+	op->add_id(tmax);
+	impl.add(op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = variable;
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_make_nop(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -333,6 +392,17 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_GET_SPECIAL:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
+		case NV_EXTN_OP_HIT_OBJECT_MAKE_MISS:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 2] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 2] != nullptr;
+
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_NOP:
 		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
 			return true;
@@ -375,6 +445,13 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_GET_SPECIAL:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_get_special(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_MAKE_MISS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_make_miss(impl))
 				return false;
 			break;
 
