@@ -90,7 +90,7 @@ struct Operation
 {
 	enum
 	{
-		MaxArguments = 11
+		MaxArguments = 13
 	};
 
 	Operation() = default;
