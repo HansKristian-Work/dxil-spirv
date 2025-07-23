@@ -309,6 +309,45 @@ static bool emit_nvapi_extn_op_hit_object_make_miss(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_nvapi_extn_op_hit_object_get_bool(Converter::Impl &impl, uint32_t opcode)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto &builder = impl.builder();
+	spv::Op op;
+
+	switch (opcode)
+	{
+	case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
+		op = spv::OpHitObjectIsMissNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
+		op = spv::OpHitObjectIsHitNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+		op = spv::OpHitObjectIsEmptyNV;
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *is_op = impl.allocate(op, builder.makeBoolType());
+	is_op->add_id(hit_object);
+	impl.add(is_op);
+
+	auto *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+	select_op->add_id(is_op->id);
+	select_op->add_id(builder.makeUintConstant(1));
+	select_op->add_id(builder.makeUintConstant(0));
+	impl.add(select_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = select_op->id;
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_make_nop(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -403,6 +442,11 @@ bool NVAPIState::can_commit_opcode()
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 1] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 2] != nullptr;
 
+		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
+		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
+		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
+
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_NOP:
 		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
 			return true;
@@ -452,6 +496,14 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_make_miss(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
+		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
+		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_bool(impl, opcode))
 				return false;
 			break;
 
