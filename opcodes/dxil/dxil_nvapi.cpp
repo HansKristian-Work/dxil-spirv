@@ -483,6 +483,66 @@ static bool emit_nvapi_extn_op_hit_object_get_ray_desc(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_nvapi_extn_op_hit_object_load_local_root_table_constant(Converter::Impl &impl)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id offset = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+
+	auto &builder = impl.builder();
+
+	spv::Id uint32 = builder.makeUintType(32);
+	spv::Id uint64 = builder.makeUintType(64);
+
+	if (!impl.nvapi.hit_object_srb_ptr)
+	{
+		spv::Id srb_struct = builder.makeStructType({ uint32 }, "HitObjectSRB");
+
+		builder.addDecoration(srb_struct, spv::DecorationBlock);
+		builder.addDecoration(srb_struct, spv::DecorationHitObjectShaderRecordBufferNV);
+
+		builder.addMemberDecoration(srb_struct, 0, spv::DecorationOffset, 0);
+		builder.addMemberDecoration(srb_struct, 0, spv::DecorationNonWritable);
+
+		impl.nvapi.hit_object_srb_ptr = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, srb_struct);
+		impl.nvapi.hit_object_srb_member_ptr = builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint32);
+	}
+
+	auto *op = impl.allocate(spv::OpHitObjectGetShaderRecordBufferHandleNV, builder.makeVectorType(uint32, 2));
+	op->add_id(hit_object);
+	impl.add(op);
+
+	auto *cast_op = impl.allocate(spv::OpBitcast, uint64);
+	cast_op->add_id(op->id);
+	impl.add(cast_op);
+
+	auto *convert_op = impl.allocate(spv::OpUConvert, uint64);
+	convert_op->add_id(offset);
+	impl.add(convert_op);
+
+	auto *add_op = impl.allocate(spv::OpIAdd, uint64);
+	add_op->add_id(cast_op->id);
+	add_op->add_id(convert_op->id);
+	impl.add(add_op);
+
+	convert_op = impl.allocate(spv::OpConvertUToPtr, impl.nvapi.hit_object_srb_ptr);
+	convert_op->add_id(add_op->id);
+	impl.add(convert_op);
+
+	auto *chain_op = impl.allocate(spv::OpAccessChain, impl.nvapi.hit_object_srb_member_ptr);
+	chain_op->add_id(convert_op->id);
+	chain_op->add_id(builder.makeUintConstant(0));
+	impl.add(chain_op);
+
+	auto *load_op = impl.allocate(spv::OpLoad, uint32);
+	load_op->add_id(chain_op->id);
+	load_op->add_literal(spv::MemoryAccessAlignedMask);
+	load_op->add_literal(sizeof(uint32_t));
+	impl.add(load_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = load_op->id;
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_make_nop(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -596,6 +656,10 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
+		case NV_EXTN_OP_HIT_OBJECT_LOAD_LOCAL_ROOT_TABLE_CONSTANT:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] != nullptr;
+
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_NOP:
 		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
 			return true;
@@ -678,6 +742,12 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_HIT_OBJECT_GET_RAY_DESC:
 			impl.nvapi.num_expected_clock_outputs = 8;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_get_ray_desc(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_LOAD_LOCAL_ROOT_TABLE_CONSTANT:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_load_local_root_table_constant(impl))
 				return false;
 			break;
 
