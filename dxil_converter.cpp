@@ -8604,9 +8604,7 @@ GlobalConfiguration::GlobalConfiguration()
 	const char *env = getenv("DXIL_SPIRV_CONFIG");
 	if (env)
 	{
-		if (strcmp(env, "wmma_fp8_hack") == 0)
-			wmma_fp8_hack = true;
-		else if (strcmp(env, "wmma_rdna3_workaround") == 0)
+		if (strcmp(env, "wmma_rdna3_workaround") == 0)
 			wmma_rdna3_workaround = true;
 		else if (strcmp(env, "wmma_conv_hack") == 0)
 			wmma_conv_hack = true;

@@ -115,8 +115,8 @@ static bool emit_magic_ags_atomic_u64(Converter::Impl &impl, spv::Id image_id,
 
 static spv::Id make_fp8_type(Converter::Impl &impl, bool load_store)
 {
-	if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
-		return impl.builder().makeFloatType(8, impl.options.wmma_fp8 ? spv::FPEncodingFloat8E4M3EXT : -1);
+	if (impl.options.wmma_fp8)
+		return impl.builder().makeFloatType(8, spv::FPEncodingFloat8E4M3EXT);
 	else if (load_store)
 		return impl.builder().makeUintType(8);
 	else
@@ -422,7 +422,7 @@ static spv::Id emit_coopmat_transpose_with_convert(
 		auto effective_output_fmt = get_type_data_format(output_imm);
 
 		// On RDNA3, it's better to do any per-element operation in C matrix rather than A or B.
-		if (!impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack &&
+		if (!impl.options.wmma_fp8 &&
 		    effective_output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
 		    effective_input_fmt != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 && saturating &&
 		    get_matrix_type(input_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator &&
@@ -445,7 +445,7 @@ static spv::Id emit_coopmat_transpose_with_convert(
 			saturating = false;
 		}
 
-		if (!impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack)
+		if (!impl.options.wmma_fp8)
 		{
 			if (effective_input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
 				effective_input_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16;
@@ -504,7 +504,7 @@ static spv::Id emit_coopmat_transpose_with_convert(
 			}
 			else if (get_type_data_format(output_imm) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
 			         get_type_data_format(input_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
-			         !impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack)
+			         !impl.options.wmma_fp8)
 			{
 				id = emit_coopmat_saturate_fp8(impl, id, build_coopmat_type(impl, output_imm, false));
 			}
@@ -520,7 +520,7 @@ static spv::Id emit_coopmat_transpose(Converter::Impl &impl, spv::Id v, uint32_t
 {
 	auto &builder = impl.builder();
 
-	if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
+	if (impl.options.wmma_fp8)
 	{
 		if (get_matrix_type(input_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_A &&
 		    get_matrix_type(output_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixType_A &&
@@ -727,11 +727,8 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 	spv::Id id = 0;
 
 	// FSR4 doesn't need this, just don't bother if we emulate FP8 as FP16.
-	if (!impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack &&
-	    fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
-	{
+	if (!impl.options.wmma_fp8 && fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
 		return false;
-	}
 
 	if (const auto *const_e = llvm::dyn_cast<llvm::ConstantInt>(elem))
 	{
@@ -934,11 +931,8 @@ static bool emit_wmma_element_extract(Converter::Impl &impl)
 	spv::Id id = 0;
 
 	// FSR4 doesn't need this, just don't bother if we emulate FP8 as FP16.
-	if (!impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack &&
-	    fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
-	{
+	if (!impl.options.wmma_fp8 && fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
 		return false;
-	}
 
 	if (const auto *const_e = llvm::dyn_cast<llvm::ConstantInt>(elem))
 	{
@@ -1135,10 +1129,10 @@ static bool emit_wmma_fill(Converter::Impl &impl)
 		switch (fmt)
 		{
 		case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8:
-			if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
+			if (impl.options.wmma_fp8)
 			{
 				id = builder.makeFloat8Constant(const_v->getUniqueInteger().getZExtValue(),
-				                                impl.options.wmma_fp8 ? spv::FPEncodingFloat8E4M3EXT : -1);
+				                                spv::FPEncodingFloat8E4M3EXT);
 			}
 			else if (const_v->getUniqueInteger().getZExtValue() == 0)
 			{
@@ -1184,7 +1178,7 @@ static bool emit_wmma_fill(Converter::Impl &impl)
 			impl.add(narrow);
 			id = narrow->id;
 
-			if (impl.options.wmma_fp8 || GlobalConfiguration::get().wmma_fp8_hack)
+			if (impl.options.wmma_fp8)
 			{
 				auto *bitcast = impl.allocate(spv::OpBitcast, make_fp8_type(impl, false));
 				bitcast->add_id(id);
@@ -1377,7 +1371,7 @@ static spv::Id emit_wmma_complex_convert(Converter::Impl &impl, spv::Id coopmat,
 
 	auto effective_input_fmt = input_fmt;
 	auto effective_output_fmt = output_fmt;
-	if (!impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack)
+	if (!impl.options.wmma_fp8)
 	{
 		if (effective_input_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
 			effective_input_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16;
@@ -1400,11 +1394,8 @@ static spv::Id emit_wmma_complex_convert(Converter::Impl &impl, spv::Id coopmat,
 		}
 	}
 
-	if (output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 &&
-	    !impl.options.wmma_fp8 && !GlobalConfiguration::get().wmma_fp8_hack)
-	{
+	if (output_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 && !impl.options.wmma_fp8)
 		coopmat = emit_coopmat_saturate_fp8(impl, coopmat, output_type_input_use);
-	}
 
 	if (in_use != out_use)
 	{
@@ -1576,7 +1567,7 @@ static bool emit_wmma_store(Converter::Impl &impl)
 
 	spv::Id store_id = impl.get_id_for_value(impl.ags.backdoor_instructions[1]->getOperand(5));
 
-	if (!GlobalConfiguration::get().wmma_fp8_hack && !impl.options.wmma_fp8 &&
+	if (!impl.options.wmma_fp8 &&
 	    get_type_data_format(type_immediate) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
 	{
 		auto spv_use = convert_matrix_use(get_matrix_type(type_immediate));
@@ -1675,7 +1666,7 @@ static bool emit_wmma_load(Converter::Impl &impl)
 
 	spv::Id id = load->id;
 
-	if (!GlobalConfiguration::get().wmma_fp8_hack && !impl.options.wmma_fp8 &&
+	if (!impl.options.wmma_fp8 &&
 	    get_type_data_format(type_immediate) == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
 	{
 		auto spv_use = convert_matrix_use(get_matrix_type(type_immediate));
