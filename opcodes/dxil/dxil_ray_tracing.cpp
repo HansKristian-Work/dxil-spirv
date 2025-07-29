@@ -30,7 +30,7 @@
 
 namespace dxil_spv
 {
-static spv::Id emit_temp_storage_copy(Converter::Impl &impl, const llvm::Value *value, spv::StorageClass storage)
+spv::Id emit_temp_storage_copy(Converter::Impl &impl, const llvm::Value *value, spv::StorageClass storage)
 {
 	// Make a new temporary variable for the ray payload/callable data.
 	auto *pointer_type = llvm::cast<llvm::PointerType>(value->getType());
@@ -52,7 +52,7 @@ static spv::Id emit_temp_storage_copy(Converter::Impl &impl, const llvm::Value *
 	return var_id;
 }
 
-static void emit_temp_storage_resolve(Converter::Impl &impl, const llvm::Value *real_value, spv::Id temp_storage)
+void emit_temp_storage_resolve(Converter::Impl &impl, const llvm::Value *real_value, spv::Id temp_storage)
 {
 	auto *pointer_type = llvm::cast<llvm::PointerType>(real_value->getType());
 	auto *pointee_type = pointer_type->getPointerElementType();
