@@ -1145,6 +1145,9 @@ void CFGStructurizer::remove_unused_ssa()
 			for (unsigned i = 0; i < op->num_arguments; i++)
 				if ((op->literal_mask & (1u << i)) == 0)
 					used_ids.insert(op->arguments[i]);
+
+		if (node->ir.terminator.conditional_id)
+			used_ids.insert(node->ir.terminator.conditional_id);
 	}
 
 	for (auto *node : forward_post_visit_order)
