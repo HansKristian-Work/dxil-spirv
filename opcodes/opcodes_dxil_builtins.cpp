@@ -923,6 +923,28 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		analyze_dxil_atomic_counter(impl, instruction);
 		break;
 
+	case DXIL::Op::CallShader:
+	{
+		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
+		// Moved to secondary pass to help NVAPI analysis since it uses CallShader for nefarious needs,
+		// and we need to have completed NVAPI analysis first.
+		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(2)))
+		{
+			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
+			if (storage != spv::StorageClassFunction && storage != spv::StorageClassCallableDataKHR)
+			{
+				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
+				if (!impl.get_needs_temp_storage_copy(alloca_inst))
+					impl.needs_temp_storage_copy.insert(alloca_inst);
+			}
+			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
+			{
+				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassCallableDataKHR;
+			}
+		}
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -1117,26 +1139,6 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 			impl.shader_analysis.can_require_opacity_micromap = true;
 		}
 
-		break;
-	}
-
-	case DXIL::Op::CallShader:
-	{
-		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
-		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(2)))
-		{
-			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
-			if (storage != spv::StorageClassFunction && storage != spv::StorageClassCallableDataKHR)
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
-				if (!impl.get_needs_temp_storage_copy(alloca_inst))
-					impl.needs_temp_storage_copy.insert(alloca_inst);
-			}
-			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassCallableDataKHR;
-			}
-		}
 		break;
 	}
 
