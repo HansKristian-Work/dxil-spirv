@@ -838,6 +838,34 @@ bool nvapi_buffer_update_counter_filter(Converter::Impl &impl, const llvm::CallI
 	return false;
 }
 
+static const llvm::Value *get_nvapi_trace_handle(Converter::Impl &impl)
+{
+	switch (impl.nvapi.deferred_opcode)
+	{
+	default:
+		return nullptr;
+	}
+}
+
+static void mark_alloca_variable(Converter::Impl &impl, const llvm::Value *variable, spv::StorageClass storage_class)
+{
+	const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(variable);
+	if (alloca_inst != nullptr)
+	{
+		auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
+		if (storage != spv::StorageClassFunction && storage != storage_class)
+		{
+			impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
+			if (!impl.get_needs_temp_storage_copy(alloca_inst))
+				impl.needs_temp_storage_copy.insert(alloca_inst);
+		}
+		else if (!impl.get_needs_temp_storage_copy(alloca_inst))
+		{
+			impl.handle_to_storage_class[alloca_inst] = storage_class;
+		}
+	}
+}
+
 bool analyze_nvapi_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	return false;
