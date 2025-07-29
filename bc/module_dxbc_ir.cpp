@@ -483,6 +483,7 @@ private:
 	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value);
 	Instruction *build_load_builtin(DXIL::Op opcode, ir::SsaDef addr);
 	Instruction *build_descriptor_load(ir::SsaDef resource, ir::SsaDef index, bool nonuniform);
+
 	bool build_input_load(const ir::Op &op);
 	bool build_output_store(const ir::Op &op);
 	bool build_composite_construct(const ir::Op &op);
@@ -553,6 +554,14 @@ private:
 		bool need_axis = false;
 	};
 	UnorderedMap<ir::SsaDef, StageIOHandler> stage_io_map;
+
+	struct StageIOAccess
+	{
+		Value *axis;
+		Value *row;
+		uint32_t col;
+	};
+	StageIOAccess build_stage_io_access(const StageIOHandler &handler, ir::SsaDef io_decl, ir::SsaDef addr);
 
 	struct ResourceHandler
 	{
@@ -753,6 +762,49 @@ uint32_t ParseContext::resolve_constant_uint(const ir::Operand &op) const
 		return 0;
 }
 
+ParseContext::StageIOAccess
+ParseContext::build_stage_io_access(const StageIOHandler &handler, ir::SsaDef io_decl, ir::SsaDef addr)
+{
+	Value *axis = nullptr;
+	Value *row = get_constant_uint(0);
+	uint32_t col = 0;
+
+	if (addr)
+	{
+		auto &decl = builder.getOp(io_decl);
+		auto &addr_op = builder.getOp(addr);
+
+		uint32_t chain_length = addr_op.getType().getBaseType(0).getVectorSize();
+		uint32_t dim = 0;
+
+		auto *addr_value = get_value(addr);
+
+		if (handler.need_axis)
+			axis = get_extracted_composite_component(addr_value, dim++);
+		if (dim + 1 == decl.getType().getArrayDimensions())
+			row = get_extracted_composite_component(addr_value, dim++);
+
+		// This is optional if we're loading from a scalar, or we're loading the full vector.
+		if (dim < chain_length)
+		{
+			assert(dim == chain_length - 1);
+
+			// The last element is the column. It must be constant.
+			if (const auto *c = dyn_cast<ConstantInt>(get_extracted_composite_component(addr_value, dim)))
+			{
+				col = c->getUniqueInteger().getZExtValue();
+			}
+			else
+			{
+				LOGE("Column index is not compile-time constant.\n");
+				return {};
+			}
+		}
+	}
+
+	return { axis, row, col };
+}
+
 bool ParseContext::build_input_load(const ir::Op &op)
 {
 	auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
@@ -777,45 +829,11 @@ bool ParseContext::build_input_load(const ir::Op &op)
 
 	Instruction *insts[4] = {};
 
-	uint32_t col = 0;
-	Value *axis = nullptr;
-	Value *row = get_constant_uint(0);
-
-	if (op.getOperand(1))
-	{
-		auto &decl = builder.getOp(ir::SsaDef(op.getOperand(0)));
-		auto &addr = builder.getOp(ir::SsaDef(op.getOperand(1)));
-
-		uint32_t chain_length = addr.getType().getBaseType(0).getVectorSize();
-		uint32_t dim = 0;
-
-		auto *addr_value = get_value(op.getOperand(1));
-
-		if (ref.need_axis)
-			axis = get_extracted_composite_component(addr_value, dim++);
-		if (dim + 1 == decl.getType().getArrayDimensions())
-			row = get_extracted_composite_component(addr_value, dim++);
-
-		if (dim < chain_length)
-		{
-			assert(dim == chain_length - 1);
-
-			// The last element is the column. It must be constant.
-			if (const auto *c = dyn_cast<ConstantInt>(get_extracted_composite_component(addr_value, dim)))
-			{
-				col = c->getUniqueInteger().getZExtValue();
-			}
-			else
-			{
-				LOGE("Column index is not compile-time constant.\n");
-				return false;
-			}
-		}
-	}
+	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
 
 	for (unsigned c = 0; c < components; c++)
 	{
-		insts[c] = build_load_input(ref.index, scalar_type, row, col + c, axis);
+		insts[c] = build_load_input(ref.index, scalar_type, access.row, access.col + c, access.axis);
 		push_instruction(insts[c], op.getDef());
 	}
 
@@ -937,11 +955,11 @@ bool ParseContext::build_output_store(const ir::Op &op)
 	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(store_value->getType()))
 		components = vec->getVectorSize();
 
-	uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
+	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
 
 	if (components == 1)
 	{
-		push_instruction(build_store_output(ref.index, get_constant_uint(0), col, store_value));
+		push_instruction(build_store_output(ref.index, access.row, access.col, store_value));
 	}
 	else
 	{
@@ -949,7 +967,7 @@ bool ParseContext::build_output_store(const ir::Op &op)
 		{
 			Vector<unsigned> indices { c };
 			auto *value = get_extracted_composite_component(store_value, c);
-			push_instruction(build_store_output(ref.index, get_constant_uint(0), col + c, value));
+			push_instruction(build_store_output(ref.index, access.row, access.col + c, value));
 		}
 	}
 
