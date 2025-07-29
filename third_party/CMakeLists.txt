@@ -32,6 +32,10 @@ add_library(dxbc-spirv-test STATIC
         dxbc-spirv/tests/api/test_api_resources.h
         dxbc-spirv/tests/api/test_api_arithmetic.cpp
         dxbc-spirv/tests/api/test_api_arithmetic.h
+        dxbc-spirv/tests/api/test_api_misc.cpp
+        dxbc-spirv/tests/api/test_api_misc.h
+        dxbc-spirv/tests/api/test_api_spirv.cpp
+        dxbc-spirv/tests/api/test_api_spirv.h
         dxbc-spirv/tests/ir/test_ir.h
         dxbc-spirv/tests/ir/test_ir_builder.cpp
         dxbc-spirv/tests/ir/test_ir_op.cpp

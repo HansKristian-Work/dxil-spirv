@@ -461,6 +461,7 @@ private:
 	bool build_fround(const ir::Op &op);
 	bool build_frcp(const ir::Op &op);
 	bool build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps binop);
+	bool build_interpolate_at_centroid(const ir::Op &op);
 
 	template <DXIL::Op dxop>
 	bool build_dxil_unary(const ir::Op &op);
@@ -734,6 +735,39 @@ bool ParseContext::build_input_load(const ir::Op &op)
 	return true;
 }
 
+bool ParseContext::build_interpolate_at_centroid(const ir::Op &op)
+{
+	auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
+	auto *type = convert_type(op.getType());
+	auto *scalar_type = type;
+
+	unsigned components = 1;
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+	{
+		components = vec->getVectorSize();
+		scalar_type = vec->getElementType();
+	}
+
+	Instruction *insts[4] = {};
+
+	for (unsigned c = 0; c < components; c++)
+	{
+		insts[c] = build_dxil_call(DXIL::Op::EvalCentroid, scalar_type, scalar_type,
+		                           get_constant_uint(ref.index),
+		                           get_constant_uint(0), get_constant_uint(c));
+		push_instruction(insts[c], op.getDef());
+	}
+
+	if (components != 1)
+	{
+		auto *inst = context.construct<CompositeConstructInst>(
+		    type, Vector<Value *>{ insts, insts + components });
+		push_instruction(inst, op.getDef());
+	}
+
+	return true;
+}
+
 bool ParseContext::build_output_store(const ir::Op &op)
 {
 	auto *store_value = get_value(op.getOperand(2));
@@ -994,6 +1028,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(FIsNan, dxil_unary<DXIL::Op::IsNan>);
 	OPMAP(ConvertF32toPackedF16, dxil_unary<DXIL::Op::ExtendedLegacyF32ToF16>);
 	OPMAP(ConvertPackedF16toF32, dxil_unary<DXIL::Op::ExtendedLegacyF16ToF32>);
+	OPMAP(InterpolateAtCentroid, interpolate_at_centroid);
 #undef OPMAP
 
 	// Plain instructions
