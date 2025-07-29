@@ -236,9 +236,18 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 	uint32_t var_id = meta.id;
 	uint32_t ptr_id;
 
-	uint32_t num_rows = builder.getNumTypeComponents(builder.getDerefTypeId(var_id));
+	spv::Id input_type_id = builder.getDerefTypeId(var_id);
 
-	if (num_rows > 1)
+	bool row_index = false;
+	if (builder.isArrayType(input_type_id))
+	{
+		row_index = true;
+		input_type_id = builder.getContainedTypeId(input_type_id);
+	}
+
+	uint32_t num_cols = builder.getNumTypeComponents(input_type_id);
+
+	if (num_cols > 1 || row_index)
 	{
 		// Need to deal with signed vs unsigned here.
 		Operation *op =
@@ -246,7 +255,13 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 			              builder.makePointer(spv::StorageClassInput,
 			                                  impl.get_effective_input_output_type_id(meta.component_type)));
 
-		op->add_ids({ var_id, impl.get_id_for_value(instruction->getOperand(3), 32) });
+		op->add_id(var_id);
+
+		if (row_index)
+			op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+		if (num_cols > 1)
+			op->add_id(impl.get_id_for_value(instruction->getOperand(3), 32));
+
 		impl.add(op);
 		ptr_id = op->id;
 	}
