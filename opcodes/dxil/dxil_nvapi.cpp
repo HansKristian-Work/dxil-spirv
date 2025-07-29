@@ -5,6 +5,7 @@
 
 #include "dxil_nvapi.hpp"
 #include "dxil_common.hpp"
+#include "dxil_ray_tracing.hpp"
 #include "opcodes/converter_impl.hpp"
 
 namespace dxil_spv
@@ -85,6 +86,14 @@ enum NVExtnOp
 	NV_EXTN_OP_RT_COMMITTED_LSS_HIT_PARAMETER = 117,
 	NV_EXTN_OP_RT_CANDIDATE_BUILTIN_PRIMITIVE_RAY_T = 118,
 	NV_EXTN_OP_RT_COMMIT_NONOPAQUE_BUILTIN_PRIMITIVE_HIT = 119
+};
+
+enum NVSpecialOp
+{
+	NV_SPECIALOP_THREADLTMASK = 4,
+	NV_SPECIALOP_FOOTPRINT_SINGLELOD_PRED = 5,
+	NV_SPECIALOP_GLOBAL_TIMER_LO = 9,
+	NV_SPECIALOP_GLOBAL_TIMER_HI = 10
 };
 
 void NVAPIState::reset()
@@ -213,6 +222,124 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
+{
+	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
+		return false;
+
+	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]))
+	{
+		auto subopcode = uint32_t(c->getUniqueInteger().getZExtValue());
+		auto &builder = impl.builder();
+
+		switch (subopcode)
+		{
+			case NV_SPECIALOP_GLOBAL_TIMER_LO:
+			case NV_SPECIALOP_GLOBAL_TIMER_HI:
+			{
+				builder.addExtension("SPV_KHR_shader_clock");
+				builder.addCapability(spv::Capability::CapabilityShaderClockKHR);
+
+				auto *read_op = impl.allocate(spv::OpReadClockKHR, builder.makeVectorType(builder.makeUintType(32), 2));
+				read_op->add_id(builder.makeUintConstant(1));
+				impl.add(read_op);
+
+				auto *extract_op = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+				extract_op->add_id(read_op->id);
+				extract_op->add_literal(subopcode - NV_SPECIALOP_GLOBAL_TIMER_LO);
+				impl.add(extract_op);
+
+				impl.nvapi.fake_doorbell_outputs[0] = extract_op->id;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool emit_nvapi_extn_op_rt_get_cluster_id(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_NV_cluster_acceleration_structure");
+	builder.addCapability(spv::CapabilityRayTracingClusterAccelerationStructureNV);
+
+	spv::Id id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInClusterIDNV);
+	auto *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	op->add_id(id);
+	impl.add(op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = op->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_get_intersection_cluster_id(Converter::Impl &impl, spv::RayQueryIntersection intersection)
+{
+	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
+		return false;
+
+	if (auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]))
+	{
+		auto &builder = impl.builder();
+		spv::Id ray_object_id = 0;
+		if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+			return false;
+
+		builder.addExtension("SPV_NV_cluster_acceleration_structure");
+		builder.addCapability(spv::CapabilityRayTracingClusterAccelerationStructureNV);
+
+		auto *op = impl.allocate(spv::OpRayQueryGetClusterIdNV, builder.makeUintType(32));
+		op->add_id(ray_object_id);
+		op->add_id(builder.makeUintConstant(intersection));
+		impl.add(op);
+
+		impl.nvapi.fake_doorbell_outputs[0] = op->id;
+		return true;
+	}
+
+	return false;
+}
+
+bool NVAPIState::can_commit_opcode()
+{
+	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
+		return false;
+
+	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]))
+	{
+		auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
+		switch (opcode)
+		{
+		case NV_EXTN_OP_SHFL:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2];
+
+		case NV_EXTN_OP_FP16_ATOMIC:
+			return marked_uav &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0];
+
+		case NV_EXTN_OP_GET_SPECIAL:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
+
+		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
+			return true;
+
+		case NV_EXTN_OP_RT_GET_CANDIDATE_CLUSTER_ID:
+		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
+
+		default:
+			return false;
+		}
+	}
+	else
+		return false;
+}
+
 bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 {
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
@@ -232,6 +359,33 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_FP16_ATOMIC:
 			impl.nvapi.num_expected_clock_outputs = 0;
 			if (!analysis && !emit_nvapi_extn_op_fp16x2_atomic(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_GET_SPECIAL:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_get_special(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_get_cluster_id(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_GET_CANDIDATE_CLUSTER_ID:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_get_intersection_cluster_id(impl, spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_get_intersection_cluster_id(impl, spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
 				return false;
 			break;
 
@@ -420,7 +574,7 @@ bool NVAPIState::write_arguments_from_store(Converter::Impl &impl, const llvm::C
 			fake_doorbell_inputs[offset + i] = instruction->getOperand(4 + i);
 	}
 
-	if (offset == NVAPI_ARGUMENT_OPCODE)
+	if (can_commit_opcode())
 		commit_opcode(impl, analysis);
 
 	return true;

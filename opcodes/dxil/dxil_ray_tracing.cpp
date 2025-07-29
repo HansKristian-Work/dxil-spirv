@@ -370,8 +370,8 @@ static bool ray_query_operand_is_alloca(Converter::Impl &impl, const llvm::Value
 		return false;
 }
 
-static bool build_ray_query_object(Converter::Impl &impl, const llvm::Value *operand,
-                                   spv::Id &object_id, uint32_t *ray_query_flags = nullptr)
+bool build_ray_query_object(Converter::Impl &impl, const llvm::Value *operand,
+                            spv::Id &object_id, uint32_t *ray_query_flags = nullptr)
 {
 	// TODO: We can index into global pool.
 	auto *ray_object = llvm::cast<llvm::CallInst>(operand);

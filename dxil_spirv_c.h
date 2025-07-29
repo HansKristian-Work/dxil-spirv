@@ -538,7 +538,7 @@ typedef struct dxil_spv_option_ssbo_alignment
 typedef struct dxil_spv_option_typed_uav_read_without_format
 {
 	dxil_spv_option_base base;
-	bool supported;
+	dxil_spv_bool supported;
 } dxil_spv_option_typed_uav_read_without_format;
 
 typedef struct dxil_spv_option_shader_source_file

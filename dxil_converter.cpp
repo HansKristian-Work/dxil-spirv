@@ -6740,6 +6740,15 @@ bool Converter::Impl::emit_execution_modes_fp_denorm()
 		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 32);
 	}
 
+	if (shader_analysis.require_wmma && GlobalConfiguration::get().wmma_rdna3_workaround)
+	{
+		// FP16 RTZ allows faster conversions on AMD.
+		// This hack only makes sense on RDNA3.
+		builder().addExtension("SPV_KHR_float_controls");
+		builder().addCapability(spv::CapabilityRoundingModeRTZ);
+		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, 16);
+	}
+
 	return true;
 }
 
@@ -7768,7 +7777,7 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 				auto *called_function = call_inst->getCalledFunction();
 				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 				{
-					if (!analyze_dxil_instruction(*this, call_inst, bb))
+					if (!analyze_dxil_instruction_primary_pass(*this, call_inst, bb))
 						return false;
 				}
 			}
@@ -7788,7 +7797,7 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 				auto *called_function = call_inst->getCalledFunction();
 				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 				{
-					if (!analyze_dxil_buffer_access_instruction(*this, call_inst))
+					if (!analyze_dxil_instruction_secondary_pass(*this, call_inst))
 						return false;
 				}
 			}
@@ -8636,9 +8645,7 @@ GlobalConfiguration::GlobalConfiguration()
 	const char *env = getenv("DXIL_SPIRV_CONFIG");
 	if (env)
 	{
-		if (strcmp(env, "wmma_fp8_hack") == 0)
-			wmma_fp8_hack = true;
-		else if (strcmp(env, "wmma_rdna3_workaround") == 0)
+		if (strcmp(env, "wmma_rdna3_workaround") == 0)
 			wmma_rdna3_workaround = true;
 		else if (strcmp(env, "wmma_conv_hack") == 0)
 			wmma_conv_hack = true;

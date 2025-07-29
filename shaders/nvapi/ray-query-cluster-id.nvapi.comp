@@ -1,0 +1,30 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RaytracingAccelerationStructure RTAS : register(t0);
+RWStructuredBuffer<uint> RWUint : register(u1);
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_GroupIndex)
+{
+	RayQuery<RAY_FLAG_CULL_NON_OPAQUE> q;
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.TMin = 4;
+	ray.Direction = float3(5, 6, 7);
+	ray.TMax = 8;
+	q.TraceRayInline(RTAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xaa, ray);
+
+	while (q.Proceed())
+	{
+		RWUint[2 * thr + 0] = NvRtGetCandidateClusterID(q);
+		q.Abort();
+	}
+
+	if (q.CommittedStatus())
+	{
+		RWUint[2 * thr + 1] = NvRtGetCommittedClusterID(q);
+	}
+}
+

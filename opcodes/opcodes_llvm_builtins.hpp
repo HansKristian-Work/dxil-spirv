@@ -61,4 +61,7 @@ unsigned physical_integer_bit_width(unsigned width);
 spv::Id build_constant_expression(Converter::Impl &impl, const llvm::ConstantExpr *cexpr);
 
 bool can_optimize_conditional_branch_to_static(Converter::Impl &impl, const llvm::Value *value, bool &static_cond_value);
+
+bool can_optimize_to_snegate(const llvm::BinaryOperator *inst);
+bool can_optimize_to_snegate(const llvm::ConstantExpr *inst);
 } // namespace dxil_spv

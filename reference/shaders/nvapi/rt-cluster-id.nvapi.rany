@@ -1,0 +1,79 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_NV_cluster_acceleration_structure : require
+
+struct _6
+{
+    uint _m0;
+};
+
+struct _11
+{
+    vec2 _m0;
+};
+
+layout(location = 0) rayPayloadInEXT _6 payload;
+hitAttributeEXT _11 hit;
+
+void main()
+{
+    payload._m0 = gl_ClusterIDNV;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 23
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability RayTracingClusterAccelerationStructureNV
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpExtension "SPV_NV_cluster_acceleration_structure"
+OpMemoryModel Logical GLSL450
+OpEntryPoint AnyHitKHR %3 "main" %8 %13 %16
+OpName %3 "main"
+OpName %6 ""
+OpName %8 "payload"
+OpName %11 ""
+OpName %13 "hit"
+OpDecorate %16 BuiltIn ClusterIDNV
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeStruct %5
+%7 = OpTypePointer IncomingRayPayloadKHR %6
+%8 = OpVariable %7 IncomingRayPayloadKHR
+%9 = OpTypeFloat 32
+%10 = OpTypeVector %9 2
+%11 = OpTypeStruct %10
+%12 = OpTypePointer HitAttributeKHR %11
+%13 = OpVariable %12 HitAttributeKHR
+%15 = OpTypePointer Input %5
+%16 = OpVariable %15 Input
+%18 = OpTypePointer IncomingRayPayloadKHR %5
+%20 = OpConstant %5 0
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %21
+%21 = OpLabel
+%17 = OpLoad %5 %16
+%19 = OpInBoundsAccessChain %18 %8 %20
+OpStore %19 %17
+OpReturn
+OpFunctionEnd
+#endif

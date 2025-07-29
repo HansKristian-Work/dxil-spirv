@@ -215,6 +215,28 @@ static bool instruction_is_undefined_value(const llvm::Value *value)
 		return false;
 }
 
+template <typename T>
+bool can_optimize_to_snegate_inner(const T *instruction)
+{
+	if (instruction->getOpcode() != llvm::BinaryOperator::BinaryOps::Sub)
+		return false;
+
+	// Peephole. LLVM doesn't have concept of negation apparently ...
+	if (const auto *cint = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(0)))
+		return cint->getUniqueInteger().getZExtValue() == 0;
+	return false;
+}
+
+bool can_optimize_to_snegate(const llvm::BinaryOperator *instruction)
+{
+	return can_optimize_to_snegate_inner(instruction);
+}
+
+bool can_optimize_to_snegate(const llvm::ConstantExpr *instruction)
+{
+	return can_optimize_to_snegate_inner(instruction);
+}
+
 template <typename InstructionType>
 static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
@@ -261,8 +283,19 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Sub:
+	{
+		// Peephole. LLVM doesn't have concept of negation apparently ...
+		if (can_optimize_to_snegate(instruction))
+		{
+			auto op = impl.allocate(spv::OpSNegate, instruction);
+			op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+			impl.add(op);
+			return op->id;
+		}
+
 		opcode = spv::OpISub;
 		break;
+	}
 
 	case llvm::BinaryOperator::BinaryOps::Mul:
 		opcode = spv::OpIMul;
