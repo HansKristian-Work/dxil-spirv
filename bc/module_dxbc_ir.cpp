@@ -280,7 +280,7 @@ struct ComponentMapping
 	uint32_t num_cols = 1;
 };
 
-static ComponentMapping convert_component_mapping(const ir::Type &type)
+static ComponentMapping convert_component_mapping(const ir::Type &type, bool need_axis)
 {
 	ComponentMapping mapping = {};
 
@@ -331,11 +331,20 @@ static ComponentMapping convert_component_mapping(const ir::Type &type)
 		break;
 	}
 
-	if (type.isArrayType())
+	if (need_axis)
+	{
+		// Strip the outermost dimension.
+		if (type.getArrayDimensions() >= 2)
+			mapping.num_rows = type.getArraySize(type.getArrayDimensions() - 2);
+	}
+	else if (type.isArrayType())
+	{
 		mapping.num_rows = type.getArraySize(0);
+		if (type.getArrayDimensions() != 1)
+			LOGE("Unexpected number of array dimensions.\n");
+	}
 
-	if (type.isVectorType())
-		mapping.num_cols = type.getBaseType(0).getVectorSize();
+	mapping.num_cols = type.getBaseType(0).getVectorSize();
 
 	return mapping;
 }
@@ -403,6 +412,8 @@ private:
 	uint64_t metadata_tween_id = 0;
 	uint64_t tween_id = 0;
 
+	ir::ShaderStage shader_stage = {};
+
 	ConstantInt *get_constant_uint(uint32_t value);
 
 	// Metadata wrangling
@@ -455,7 +466,8 @@ private:
 	                        uint32_t semantic_index,
 	                        DXIL::InterpolationMode interpolation,
 	                        uint32_t rows, uint32_t cols,
-	                        uint32_t start_row, uint32_t start_col);
+	                        uint32_t start_row, uint32_t start_col,
+	                        bool need_axis);
 
 	// DXIL intrinsic build.
 	DXILIntrinsicTable dxil_intrinsics;
@@ -538,6 +550,7 @@ private:
 	{
 		uint32_t index = UINT32_MAX;
 		DXIL::Op op = DXIL::Op::Count;
+		bool need_axis = false;
 	};
 	UnorderedMap<ir::SsaDef, StageIOHandler> stage_io_map;
 
@@ -764,11 +777,45 @@ bool ParseContext::build_input_load(const ir::Op &op)
 
 	Instruction *insts[4] = {};
 
-	uint32_t col = op.getOperand(1) ? resolve_constant_uint(op.getOperand(1)) : 0;
+	uint32_t col = 0;
+	Value *axis = nullptr;
+	Value *row = get_constant_uint(0);
+
+	if (op.getOperand(1))
+	{
+		auto &decl = builder.getOp(ir::SsaDef(op.getOperand(0)));
+		auto &addr = builder.getOp(ir::SsaDef(op.getOperand(1)));
+
+		uint32_t chain_length = addr.getType().getBaseType(0).getVectorSize();
+		uint32_t dim = 0;
+
+		auto *addr_value = get_value(op.getOperand(1));
+
+		if (ref.need_axis)
+			axis = get_extracted_composite_component(addr_value, dim++);
+		if (dim + 1 == decl.getType().getArrayDimensions())
+			row = get_extracted_composite_component(addr_value, dim++);
+
+		if (dim < chain_length)
+		{
+			assert(dim == chain_length - 1);
+
+			// The last element is the column. It must be constant.
+			if (const auto *c = dyn_cast<ConstantInt>(get_extracted_composite_component(addr_value, dim)))
+			{
+				col = c->getUniqueInteger().getZExtValue();
+			}
+			else
+			{
+				LOGE("Column index is not compile-time constant.\n");
+				return false;
+			}
+		}
+	}
 
 	for (unsigned c = 0; c < components; c++)
 	{
-		insts[c] = build_load_input(ref.index, scalar_type, get_constant_uint(0), col + c);
+		insts[c] = build_load_input(ref.index, scalar_type, row, col + c, axis);
 		push_instruction(insts[c], op.getDef());
 	}
 
@@ -2461,7 +2508,7 @@ MDNode *ParseContext::create_stage_io_meta()
 
 				if (op != DXIL::Op::Count)
 				{
-					stage_io_map[io.op->getDef()] = { UINT32_MAX, op };
+					stage_io_map[io.op->getDef()] = { UINT32_MAX, op, false };
 					continue;
 				}
 			}
@@ -2470,10 +2517,28 @@ MDNode *ParseContext::create_stage_io_meta()
 			if (is_input)
 				interpolation = convert_interpolation_mode(ir::InterpolationMode(io.op->getOperand(is_user ? 3 : 2)));
 
-			auto comp = convert_component_mapping(io.op->getType());
+			bool is_geom_hull_input = is_input &&
+			                          (shader_stage == ir::ShaderStage::eGeometry ||
+			                           shader_stage == ir::ShaderStage::eHull);
+
+			// Need to deduce this based on types and semantics used when we need to strip outermost dimension.
+			bool need_axis = false;
+
+			if (is_geom_hull_input)
+			{
+				if (builtin == DXIL::Semantic::Position ||
+				    builtin == DXIL::Semantic::ClipDistance ||
+				    builtin == DXIL::Semantic::CullDistance ||
+				    is_user)
+				{
+					need_axis = true;
+				}
+			}
+
+			auto comp = convert_component_mapping(io.op->getType(), need_axis);
 			build_stage_io(*mapping.mapping, io.op->getDef(), String(io.semantic),
 			               comp.type, builtin, io.index, interpolation,
-			               comp.num_rows, comp.num_cols, location, component);
+			               comp.num_rows, comp.num_cols, location, component, need_axis);
 		}
 	}
 
@@ -2490,7 +2555,7 @@ bool ParseContext::emit_entry_point()
 	if (!entry)
 		return false;
 
-	auto shader_stage = ir::ShaderStage(entry->getOperand(entry->getFirstLiteralOperandIndex()));
+	shader_stage = ir::ShaderStage(entry->getOperand(entry->getFirstLiteralOperandIndex()));
 	Vector<MDOperand *> flag_ops;
 
 	uint64_t shader_flags = 0;
@@ -2543,7 +2608,7 @@ bool ParseContext::emit_entry_point()
 
 			case ir::OpCode::eSetGsOutputPrimitive:
 				output_primitive = ir::PrimitiveType(op.getOperand(1));
-				stream_mask |= 1u << uint32_t(op.getOperand(2));
+				stream_mask = uint32_t(op.getOperand(2));
 				break;
 
 			default:
@@ -2728,11 +2793,11 @@ uint32_t ParseContext::build_stage_io(
 	const String &name, DXIL::ComponentType type, DXIL::Semantic semantic, uint32_t semantic_index,
     DXIL::InterpolationMode interpolation,
     uint32_t rows, uint32_t cols,
-    uint32_t start_row, uint32_t start_col)
+    uint32_t start_row, uint32_t start_col, bool need_axis)
 {
 	uint32_t ret = mapping.nodes.size();
 
-	stage_io_map[ssa] = { ret, DXIL::Op::Count };
+	stage_io_map[ssa] = { ret, DXIL::Op::Count, need_axis };
 
 	auto *input = create_md_node(
 		create_constant_uint_meta(ret),
@@ -2855,7 +2920,7 @@ bool ParseContext::emit_metadata()
 			}
 			else
 			{
-				auto mapping = convert_component_mapping(op.getType());
+				auto mapping = convert_component_mapping(op.getType(), false);
 
 				if (srv)
 				{
