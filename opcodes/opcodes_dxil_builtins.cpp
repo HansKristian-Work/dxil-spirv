@@ -59,9 +59,10 @@ struct DXILDispatcher
 		OP(CreateHandleForLib) = emit_create_handle_for_lib_instruction;
 		OP(CBufferLoadLegacy) = emit_cbuffer_load_legacy_instruction;
 		OP(CBufferLoad) = emit_cbuffer_load_instruction;
-		OP(EvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset>;
-		OP(EvalSampleIndex) = emit_interpolate_dispatch<GLSLstd450InterpolateAtSample>;
-		OP(EvalCentroid) = emit_interpolate_dispatch<GLSLstd450InterpolateAtCentroid>;
+		OP(EvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset, false>;
+		OP(ExtendedEvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset, true>;
+		OP(EvalSampleIndex) = emit_interpolate_dispatch<GLSLstd450InterpolateAtSample, false>;
+		OP(EvalCentroid) = emit_interpolate_dispatch<GLSLstd450InterpolateAtCentroid, false>;
 		OP(AnnotateHandle) = emit_annotate_handle_instruction;
 		OP(CreateHandleFromHeap) = emit_create_handle_from_heap_instruction;
 		OP(CreateHandleFromBinding) = emit_create_handle_from_binding_instruction;

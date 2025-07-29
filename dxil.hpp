@@ -499,6 +499,7 @@ enum class Op : unsigned
 	ExtendedLegacyF32ToF16,
 	ExtendedLegacyF16ToF32,
 	ExtendedIAbs,
+	ExtendedEvalSnapped,
 
 	Count
 };

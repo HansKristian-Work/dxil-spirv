@@ -78,7 +78,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			impl.rewrite_value(instruction, sub_op->id);
 			builder.addCapability(spv::CapabilityDrawParameters);
 		}
-		else if (builtin == spv::BuiltInFrontFacing)
+		else if (builtin == spv::BuiltInFrontFacing && instruction->getType()->getIntegerBitWidth() != 1)
 		{
 			Operation *cast_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
 			cast_op->add_id(impl.get_id_for_value(instruction));
@@ -225,7 +225,7 @@ static spv::Id build_attribute_offset(spv::Id id, Converter::Impl &impl)
 	return id;
 }
 
-bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction, bool extended)
 {
 	auto &builder = impl.builder();
 	uint32_t input_element_index;
@@ -273,7 +273,7 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 
 	spv::Id aux_id = 0;
 
-	if (opcode == GLSLstd450InterpolateAtOffset)
+	if (opcode == GLSLstd450InterpolateAtOffset && !extended)
 	{
 		spv::Id offsets[2] = {};
 		bool is_non_const = false;
@@ -301,7 +301,7 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 		else
 			aux_id = impl.build_constant_vector(builder.makeFloatType(32), offsets, 2);
 	}
-	else if (opcode == GLSLstd450InterpolateAtSample)
+	else if (opcode == GLSLstd450InterpolateAtSample || opcode == GLSLstd450InterpolateAtOffset)
 		aux_id = impl.get_id_for_value(instruction->getOperand(4));
 
 	// Need to deal with signed vs unsigned here.

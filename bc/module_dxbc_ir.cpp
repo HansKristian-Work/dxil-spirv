@@ -286,6 +286,10 @@ static ComponentMapping convert_component_mapping(const ir::Type &type)
 		mapping.type = DXIL::ComponentType::U64;
 		break;
 
+	case ir::ScalarType::eBool:
+		mapping.type = DXIL::ComponentType::I1;
+		break;
+
 	default:
 		LOGE("Unrecognized component type.\n");
 		break;
@@ -462,6 +466,8 @@ private:
 	bool build_frcp(const ir::Op &op);
 	bool build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps binop);
 	bool build_interpolate_at_centroid(const ir::Op &op);
+	bool build_interpolate_at_sample(const ir::Op &op);
+	bool build_interpolate_at_offset(const ir::Op &op);
 
 	template <DXIL::Op dxop>
 	bool build_dxil_unary(const ir::Op &op);
@@ -469,6 +475,8 @@ private:
 	bool build_dxil_binary(const ir::Op &op);
 	template <DXIL::Op dxop>
 	bool build_dxil_trinary(const ir::Op &op);
+	template <DXIL::Op dxop>
+	bool build_dxil_quaternary(const ir::Op &op);
 
 	Value *get_extracted_composite_component(Value *value, unsigned component);
 	Value *get_constant_mul4(Value *value);
@@ -768,6 +776,72 @@ bool ParseContext::build_interpolate_at_centroid(const ir::Op &op)
 	return true;
 }
 
+bool ParseContext::build_interpolate_at_sample(const ir::Op &op)
+{
+	auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
+	auto *type = convert_type(op.getType());
+	auto *scalar_type = type;
+
+	unsigned components = 1;
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+	{
+		components = vec->getVectorSize();
+		scalar_type = vec->getElementType();
+	}
+
+	Instruction *insts[4] = {};
+
+	for (unsigned c = 0; c < components; c++)
+	{
+		insts[c] = build_dxil_call(DXIL::Op::EvalSampleIndex, scalar_type, scalar_type,
+		                           get_constant_uint(ref.index),
+		                           get_constant_uint(0), get_constant_uint(c), get_value(op.getOperand(1)));
+		push_instruction(insts[c], op.getDef());
+	}
+
+	if (components != 1)
+	{
+		auto *inst = context.construct<CompositeConstructInst>(
+		    type, Vector<Value *>{ insts, insts + components });
+		push_instruction(inst, op.getDef());
+	}
+
+	return true;
+}
+
+bool ParseContext::build_interpolate_at_offset(const ir::Op &op)
+{
+	auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
+	auto *type = convert_type(op.getType());
+	auto *scalar_type = type;
+
+	unsigned components = 1;
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+	{
+		components = vec->getVectorSize();
+		scalar_type = vec->getElementType();
+	}
+
+	Instruction *insts[4] = {};
+
+	for (unsigned c = 0; c < components; c++)
+	{
+		insts[c] = build_dxil_call(DXIL::Op::ExtendedEvalSnapped, scalar_type, scalar_type,
+		                           get_constant_uint(ref.index),
+		                           get_constant_uint(0), get_constant_uint(c), get_value(op.getOperand(1)));
+		push_instruction(insts[c], op.getDef());
+	}
+
+	if (components != 1)
+	{
+		auto *inst = context.construct<CompositeConstructInst>(
+		    type, Vector<Value *>{ insts, insts + components });
+		push_instruction(inst, op.getDef());
+	}
+
+	return true;
+}
+
 bool ParseContext::build_output_store(const ir::Op &op)
 {
 	auto *store_value = get_value(op.getOperand(2));
@@ -976,6 +1050,21 @@ bool ParseContext::build_dxil_trinary(const ir::Op &op)
 	return true;
 }
 
+template <DXIL::Op dxop>
+bool ParseContext::build_dxil_quaternary(const ir::Op &op)
+{
+	auto *inst = build_dxil_call(dxop,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_value(op.getOperand(0)),
+	                             get_value(op.getOperand(1)),
+	                             get_value(op.getOperand(2)),
+	                             get_value(op.getOperand(3)));
+	if (op.getFlags() & ir::OpFlag::ePrecise)
+		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
 bool ParseContext::push_instruction(const ir::Op &op)
 {
 	switch (op.getOpCode())
@@ -1029,6 +1118,11 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(ConvertF32toPackedF16, dxil_unary<DXIL::Op::ExtendedLegacyF32ToF16>);
 	OPMAP(ConvertPackedF16toF32, dxil_unary<DXIL::Op::ExtendedLegacyF16ToF32>);
 	OPMAP(InterpolateAtCentroid, interpolate_at_centroid);
+	OPMAP(InterpolateAtSample, interpolate_at_sample);
+	OPMAP(InterpolateAtOffset, interpolate_at_offset);
+	OPMAP(UBitExtract, dxil_trinary<DXIL::Op::Ubfe>);
+	OPMAP(SBitExtract, dxil_trinary<DXIL::Op::Ibfe>);
+	OPMAP(IBitInsert, dxil_quaternary<DXIL::Op::Bfi>);
 #undef OPMAP
 
 	// Plain instructions
@@ -2288,8 +2382,20 @@ MDNode *ParseContext::create_stage_io_meta()
 				location = UINT32_MAX;
 				component = UINT32_MAX;
 
+				if (builtin == DXIL::Semantic::Depth)
+				{
+					for_all_opcodes(builder, ir::OpCode::eSetPsDepthLessEqual,
+					                [&](const ir::Op &op) { builtin = DXIL::Semantic::DepthLessEqual; return false; });
+					for_all_opcodes(builder, ir::OpCode::eSetPsDepthGreaterEqual,
+					                [&](const ir::Op &op) { builtin = DXIL::Semantic::DepthGreaterEqual; return false; });
+				}
+
 				// Some stage IO builtins are resolved through opcodes, not IO.
 				auto op = convert_builtin_opcode(ir::BuiltIn(io.op->getOperand(1)));
+
+				if (io.op->getOpCode() == ir::OpCode::eDclInputBuiltIn && builtin == DXIL::Semantic::Coverage)
+					op = DXIL::Op::Coverage;
+
 				if (op != DXIL::Op::Count)
 				{
 					stage_io_map[io.op->getDef()] = { UINT32_MAX, op };
@@ -2299,7 +2405,7 @@ MDNode *ParseContext::create_stage_io_meta()
 
 			auto interpolation = DXIL::InterpolationMode::Invalid;
 			if (is_input)
-				interpolation = convert_interpolation_mode(ir::InterpolationMode(io.op->getOperand(3)));
+				interpolation = convert_interpolation_mode(ir::InterpolationMode(io.op->getOperand(is_user ? 3 : 2)));
 
 			auto comp = convert_component_mapping(io.op->getType());
 			build_stage_io(*mapping.mapping, io.op->getDef(), String(io.semantic),
@@ -2702,6 +2808,8 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eDclSampler:
 		case ir::OpCode::eSemantic:
 		case ir::OpCode::eSetCsWorkgroupSize:
+		case ir::OpCode::eSetPsDepthGreaterEqual:
+		case ir::OpCode::eSetPsDepthLessEqual:
 			break;
 
 		case ir::OpCode::eConstant:
