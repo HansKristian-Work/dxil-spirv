@@ -1334,15 +1334,6 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
-	case ir::OpCode::ePhi:
-	{
-		auto *phi = context.construct<PHINode>(convert_type(op.getType()), op.getOperandCount() / 2);
-		for (uint32_t i = 0; i < op.getOperandCount(); i += 2)
-			phi->add_incoming(get_value(op.getOperand(i + 1)), get_basic_block(ir::SsaDef(op.getOperand(i))));
-		push_instruction(phi, op.getDef());
-		break;
-	}
-
 	default:
 		LOGE("Unimplemented opcode %u\n", unsigned(op.getOpCode()));
 		return false;
@@ -3010,6 +3001,14 @@ bool ParseContext::emit_function_bodies()
 			break;
 		}
 
+		case ir::OpCode::ePhi:
+		{
+			// We might not have emitted all inputs yet. Defer that to a fixup pass later.
+			auto *phi = context.construct<PHINode>(convert_type(op.getType()), op.getOperandCount() / 2);
+			push_instruction(phi, op.getDef());
+			break;
+		}
+
 		case ir::OpCode::eReturn:
 		{
 			if (!current_bb)
@@ -3089,6 +3088,16 @@ bool ParseContext::emit_function_bodies()
 			if (!push_instruction(op))
 				return false;
 			break;
+		}
+	}
+
+	for (auto &op : builder)
+	{
+		if (op.getOpCode() == ir::OpCode::ePhi)
+		{
+			auto *phi = cast<PHINode>(get_value(op.getDef()));
+			for (uint32_t i = 0; i < op.getOperandCount(); i += 2)
+				phi->add_incoming(get_value(op.getOperand(i + 1)), get_basic_block(ir::SsaDef(op.getOperand(i))));
 		}
 	}
 
