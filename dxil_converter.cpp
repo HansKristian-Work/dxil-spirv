@@ -7749,7 +7749,7 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 				auto *called_function = call_inst->getCalledFunction();
 				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 				{
-					if (!analyze_dxil_instruction(*this, call_inst, bb))
+					if (!analyze_dxil_instruction_primary_pass(*this, call_inst, bb))
 						return false;
 				}
 			}
@@ -7769,7 +7769,7 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 				auto *called_function = call_inst->getCalledFunction();
 				if (strncmp(called_function->getName().data(), "dx.op", 5) == 0)
 				{
-					if (!analyze_dxil_buffer_access_instruction(*this, call_inst))
+					if (!analyze_dxil_instruction_secondary_pass(*this, call_inst))
 						return false;
 				}
 			}

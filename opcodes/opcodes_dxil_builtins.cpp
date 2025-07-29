@@ -885,7 +885,7 @@ static bool analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
-bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// The opcode is encoded as a constant integer.
 	uint32_t opcode;
@@ -930,7 +930,7 @@ bool analyze_dxil_buffer_access_instruction(Converter::Impl &impl, const llvm::C
 	return true;
 }
 
-bool analyze_dxil_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb)
+bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::CallInst *instruction, const llvm::BasicBlock *bb)
 {
 	// The opcode is encoded as a constant integer.
 	uint32_t opcode;
