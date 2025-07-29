@@ -142,6 +142,7 @@ private:
 	void split_merge_blocks();
 	void eliminate_degenerate_switch_merges();
 	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;
+	bool merge_candidate_is_inside_continue_construct(const CFGNode *node) const;
 	bool continue_block_can_merge(CFGNode *node) const;
 	static bool block_is_plain_continue(const CFGNode *node);
 	static const CFGNode *scan_plain_continue_block(const CFGNode *node);

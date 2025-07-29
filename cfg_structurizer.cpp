@@ -1758,12 +1758,31 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 		    structured_loop_merge_targets.count(node) == 0 &&
 		    !ladder_chain_has_phi_dependencies(node->succ.front(), node))
 		{
+			auto check_is_load_bearing_continue_succ = [node](const CFGNode *n) {
+				if (!n->succ_back_edge)
+					return false;
+
+				// If we eliminate the block, we want the succ to post-dominate the header,
+				// so it can be considered a merge block.
+				// Similarly, we want the header to dominate the succ.
+				if (!node->succ.front()->post_dominates(n->succ_back_edge))
+					return true;
+				if (!n->succ_back_edge->dominates(node->succ.front()))
+					return true;
+
+				// No point in eliminating since we're inside the construct.
+				if (n->dominates(node))
+					return true;
+
+				return false;
+			};
+
 			// If any pred is a continue block, this block is also load-bearing, since it can be used as a merge block.
-			if (std::find_if(node->pred.begin(), node->pred.end(),
-			                 [](const CFGNode *n) { return n->succ_back_edge != nullptr; }) != node->pred.end())
-			{
+			// Even if a continue block branches to us, it may be a fake load bearing block.
+			// If the succ of node post-dominates the entire loop construct, we can eliminate the block safely
+			// since we're not taking away a nice merge target.
+			if (std::find_if(node->pred.begin(), node->pred.end(), check_is_load_bearing_continue_succ) != node->pred.end())
 				continue;
-			}
 
 			// If any succ is a continue block, this block is also load-bearing, since it can be used as a merge block
 			// (merge-to-continue ladder).
@@ -1787,7 +1806,7 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 				recompute_dominance_frontier(succ);
 				recompute_dominance_frontier(pred);
 			}
-			else if (merge_candidate_is_on_breaking_path(node))
+			else if (merge_candidate_is_inside_continue_construct(node) || merge_candidate_is_on_breaking_path(node))
 			{
 				// If we have two or more preds, we have to be really careful.
 				// If this node is on a breaking path, without being important for merging control flow,
@@ -4850,6 +4869,26 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 	}
 
 	return modified_cfg ? SwitchProgressMode::SimpleModify : SwitchProgressMode::Done;
+}
+
+bool CFGStructurizer::merge_candidate_is_inside_continue_construct(const CFGNode *node) const
+{
+	// If we've reached the continue construct, we cannot merge away from that construct.
+	// Any such merge must be eliminated. We can know this for certain if the succ of node
+	// post dominates the entire loop construct, since that node is the obvious merge node.
+	assert(node->succ.size() == 1);
+	for (auto *pred : node->pred)
+	{
+		if (pred->succ_back_edge &&
+		    node->succ.front()->post_dominates(pred->succ_back_edge) &&
+			pred->succ_back_edge->dominates(node->succ.front()) &&
+		    !pred->dominates(node))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool CFGStructurizer::merge_candidate_is_on_breaking_path(const CFGNode *node) const
