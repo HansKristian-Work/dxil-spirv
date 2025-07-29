@@ -72,6 +72,9 @@ static void emit_temp_storage_resolve(Converter::Impl &impl, const llvm::Value *
 
 bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
+	if (emit_nvapi_trace_ray(impl, inst))
+		return true;
+
 	auto &builder = impl.builder();
 	spv::Id acceleration_structure = impl.get_id_for_value(inst->getOperand(1));
 	spv::Id ray_flags = impl.get_id_for_value(inst->getOperand(2));
@@ -257,6 +260,9 @@ bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *)
 
 bool emit_ray_tracing_call_shader(Converter::Impl &impl, const llvm::CallInst *inst)
 {
+	if (emit_nvapi_call_shader(impl, inst))
+		return true;
+
 	auto *callable_data = inst->getOperand(2);
 
 	bool needs_temp_copy = impl.get_needs_temp_storage_copy(callable_data);

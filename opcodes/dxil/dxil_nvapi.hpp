@@ -26,6 +26,14 @@ enum
 	NVAPI_ARGUMENT_COUNT
 };
 
+enum
+{
+	NVAPI_INTERMEDIATE_HANDLE_0 = 0,
+	NVAPI_INTERMEDIATE_HANDLE_1 = 1,
+	NVAPI_INTERMEDIATE_ATTRIBUTES = 2,
+	NVAPI_INTERMEDIATE_COUNT
+};
+
 // Don't conflict with sentinel index for SM 6.6 heap.
 static constexpr uint32_t NVAPI_MAGIC_RESOURCE_SENTINEL = UINT32_MAX - 1;
 
@@ -36,11 +44,14 @@ struct NVAPIState
 	unsigned uav_magic_resource_type_index = NVAPI_MAGIC_RESOURCE_SENTINEL;
 
 	const llvm::Value *fake_doorbell_inputs[NVAPI_ARGUMENT_COUNT] = {};
+	const llvm::Value *fake_doorbell_intermediates[NVAPI_INTERMEDIATE_COUNT] = {};
 	spv::Id fake_doorbell_outputs[NVAPI_ARGUMENT_COUNT] = {};
 	const llvm::Value *marked_uav = nullptr;
 
 	spv::Id hit_object_srb_ptr = 0;
 	spv::Id hit_object_srb_member_ptr = 0;
+
+	unsigned deferred_opcode = 0;
 
 	void reset();
 	void reset_analysis() {}
@@ -60,6 +71,12 @@ struct NVAPIState
 bool analyze_nvapi_buffer_update_counter(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool nvapi_buffer_update_counter_filter(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_nvapi_buffer_update_counter(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Id id);
+
+bool analyze_nvapi_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool analyze_nvapi_trace_ray(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool emit_nvapi_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_nvapi_trace_ray(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 struct AccessTracking;
 bool analyze_nvapi_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruction, AccessTracking *tracking);

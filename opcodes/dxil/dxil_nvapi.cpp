@@ -100,10 +100,13 @@ void NVAPIState::reset()
 {
 	for (auto &input : fake_doorbell_inputs)
 		input = nullptr;
+	for (auto &intermediate : fake_doorbell_intermediates)
+		intermediate = nullptr;
 	for (auto &output : fake_doorbell_outputs)
 		output = 0;
 
 	doorbell = nullptr;
+	deferred_opcode = 0;
 	clock_output_index = 0;
 	num_expected_clock_outputs = 0;
 	// The marked UAV persists.
@@ -127,12 +130,16 @@ void NVAPIState::notify_doorbell(Converter::Impl &impl, const llvm::CallInst *in
 
 		if (clock_output_index < num_expected_clock_outputs)
 		{
-			if (!analysis)
+			// Deferred instructions will consume the outputs, emitting SPIR-V and rewriting
+			// values as needed when the last fake CallShader/TraceRay call is encountered
+			if (deferred_opcode)
+				fake_doorbell_intermediates[clock_output_index] = instruction;
+			else if (!analysis)
 				impl.rewrite_value(instruction, impl.nvapi.fake_doorbell_outputs[clock_output_index]);
 			clock_output_index++;
 		}
 
-		if (clock_output_index >= num_expected_clock_outputs)
+		if (clock_output_index >= num_expected_clock_outputs && !deferred_opcode)
 		{
 			// We're done consuming the opcode. The next IncrementCounter starts a new opcode.
 			reset();
@@ -828,6 +835,26 @@ bool nvapi_buffer_update_counter_filter(Converter::Impl &impl, const llvm::CallI
 				return true;
 	}
 
+	return false;
+}
+
+bool analyze_nvapi_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return false;
+}
+
+bool analyze_nvapi_trace_ray(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return false;
+}
+
+bool emit_nvapi_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return false;
+}
+
+bool emit_nvapi_trace_ray(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
 	return false;
 }
 

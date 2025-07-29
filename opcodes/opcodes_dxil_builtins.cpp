@@ -928,6 +928,9 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		// Moved to secondary pass to help NVAPI analysis since it uses TraceRay for nefarious needs,
 		// and we need to have completed NVAPI analysis first.
+		if (analyze_nvapi_trace_ray(impl, instruction))
+			break;
+
 		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(15)))
 		{
 			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
@@ -970,6 +973,9 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		// Moved to secondary pass to help NVAPI analysis since it uses CallShader for nefarious needs,
 		// and we need to have completed NVAPI analysis first.
+		if (analyze_nvapi_call_shader(impl, instruction))
+			break;
+
 		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(2)))
 		{
 			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
