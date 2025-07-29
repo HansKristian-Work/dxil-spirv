@@ -296,11 +296,21 @@ bool emit_inner_coverage_instruction(Converter::Impl &impl, const llvm::CallInst
 	load_op->add_id(var_id);
 	impl.add(load_op);
 
-	auto *select_op = impl.allocate(spv::OpSelect, instruction);
-	select_op->add_id(load_op->id);
-	select_op->add_id(builder.makeUintConstant(1));
-	select_op->add_id(builder.makeUintConstant(0));
-	impl.add(select_op);
+	auto *type = instruction->getType();
+
+	if (type->getIntegerBitWidth() == 1)
+	{
+		impl.rewrite_value(instruction, load_op->id);
+	}
+	else
+	{
+		auto *select_op = impl.allocate(spv::OpSelect, instruction);
+		select_op->add_id(load_op->id);
+		select_op->add_id(builder.makeUintConstant(1));
+		select_op->add_id(builder.makeUintConstant(0));
+		impl.add(select_op);
+	}
+
 	return true;
 }
 

@@ -118,6 +118,8 @@ static DXIL::Op convert_builtin_opcode(ir::BuiltIn builtin)
 		return DXIL::Op::ThreadIdInGroup;
 	case ir::BuiltIn::eLocalThreadIndex:
 		return DXIL::Op::FlattenedThreadIdInGroup;
+	case ir::BuiltIn::eIsFullyCovered:
+		return DXIL::Op::InnerCoverage;
 
 	default:
 		return DXIL::Op::Count;
@@ -1311,12 +1313,17 @@ Instruction *ParseContext::build_store_output(uint32_t index, Value *row, uint32
 
 Instruction *ParseContext::build_load_builtin(DXIL::Op opcode, ir::SsaDef addr)
 {
-	auto *int_type = Type::getInt32Ty(context);
+	Type *type;
+
+	if (opcode == DXIL::Op::InnerCoverage)
+		type = Type::getInt1Ty(context);
+	else
+		type = Type::getInt32Ty(context);
 
 	if (addr)
-		return build_dxil_call(opcode, int_type, nullptr, get_value(addr));
+		return build_dxil_call(opcode, type, nullptr, get_value(addr));
 	else
-		return build_dxil_call(opcode, int_type, nullptr);
+		return build_dxil_call(opcode, type, nullptr);
 }
 
 Value *ParseContext::get_extracted_composite_component(Value *value, unsigned component)

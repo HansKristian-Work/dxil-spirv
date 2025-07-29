@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 1
-		if (test.name != "test_io_ps_builtins")
+		if (test.name != "test_io_ps_fully_covered")
 			continue;
 #endif
 
