@@ -70,6 +70,40 @@ static const char *shader_stage_to_meta(ir::ShaderStage stage)
 	}
 }
 
+static DXIL::InputPrimitive convert_input_primitive_type(ir::PrimitiveType type)
+{
+	switch (type)
+	{
+	case ir::PrimitiveType::eLines:
+		return DXIL::InputPrimitive::Line;
+	case ir::PrimitiveType::eLinesAdj:
+		return DXIL::InputPrimitive::LineWithAdjacency;
+	case ir::PrimitiveType::ePoints:
+		return DXIL::InputPrimitive::Point;
+	case ir::PrimitiveType::eTriangles:
+		return DXIL::InputPrimitive::Triangle;
+	case ir::PrimitiveType::eTrianglesAdj:
+		return DXIL::InputPrimitive::TriangleWithAdjaceny;
+	default:
+		return DXIL::InputPrimitive::Undefined;
+	}
+}
+
+static DXIL::PrimitiveTopology convert_output_primitive_type(ir::PrimitiveType type)
+{
+	switch (type)
+	{
+	case ir::PrimitiveType::eLines:
+		return DXIL::PrimitiveTopology::LineStrip;
+	case ir::PrimitiveType::ePoints:
+		return DXIL::PrimitiveTopology::PointList;
+	case ir::PrimitiveType::eTriangles:
+		return DXIL::PrimitiveTopology::TriangleStrip;
+	default:
+		return DXIL::PrimitiveTopology::Undefined;
+	}
+}
+
 static DXIL::ResourceKind convert_resource_kind(ir::ResourceKind kind)
 {
 	switch (kind)
@@ -474,6 +508,8 @@ private:
 	template <DXIL::Op dxop>
 	bool build_dxil_unary(const ir::Op &op);
 	template <DXIL::Op dxop>
+	bool build_dxil_constant_unary(const ir::Op &op);
+	template <DXIL::Op dxop>
 	bool build_dxil_binary(const ir::Op &op);
 	template <DXIL::Op dxop>
 	bool build_dxil_trinary(const ir::Op &op);
@@ -526,6 +562,7 @@ private:
 
 static inline Type *get_value_type(Value *value)
 {
+	assert(value);
 	return value->getType();
 }
 
@@ -1017,6 +1054,7 @@ bool ParseContext::build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps b
 template <DXIL::Op dxop>
 bool ParseContext::build_dxil_unary(const ir::Op &op)
 {
+	assert(op.getOperandCount() == 1);
 	auto *inst = build_dxil_call(dxop,
 	                             convert_type(op.getType()), convert_type(op.getType()),
 	                             get_value(op.getOperand(0)));
@@ -1027,8 +1065,22 @@ bool ParseContext::build_dxil_unary(const ir::Op &op)
 }
 
 template <DXIL::Op dxop>
+bool ParseContext::build_dxil_constant_unary(const ir::Op &op)
+{
+	assert(op.getOperandCount() == 1);
+	auto *inst = build_dxil_call(dxop,
+	                             convert_type(op.getType()), convert_type(op.getType()),
+	                             get_constant_uint(uint32_t(op.getOperand(0))));
+	if (op.getFlags() & ir::OpFlag::ePrecise)
+		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
+template <DXIL::Op dxop>
 bool ParseContext::build_dxil_binary(const ir::Op &op)
 {
+	assert(op.getOperandCount() == 2);
 	auto *inst = build_dxil_call(dxop,
 	                             convert_type(op.getType()), convert_type(op.getType()),
 	                             get_value(op.getOperand(0)), get_value(op.getOperand(1)));
@@ -1041,6 +1093,7 @@ bool ParseContext::build_dxil_binary(const ir::Op &op)
 template <DXIL::Op dxop>
 bool ParseContext::build_dxil_trinary(const ir::Op &op)
 {
+	assert(op.getOperandCount() == 3);
 	auto *inst = build_dxil_call(dxop,
 	                             convert_type(op.getType()), convert_type(op.getType()),
 	                             get_value(op.getOperand(0)),
@@ -1055,6 +1108,7 @@ bool ParseContext::build_dxil_trinary(const ir::Op &op)
 template <DXIL::Op dxop>
 bool ParseContext::build_dxil_quaternary(const ir::Op &op)
 {
+	assert(op.getOperandCount() == 4);
 	auto *inst = build_dxil_call(dxop,
 	                             convert_type(op.getType()), convert_type(op.getType()),
 	                             get_value(op.getOperand(0)),
@@ -1125,6 +1179,8 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(UBitExtract, dxil_trinary<DXIL::Op::Ubfe>);
 	OPMAP(SBitExtract, dxil_trinary<DXIL::Op::Ibfe>);
 	OPMAP(IBitInsert, dxil_quaternary<DXIL::Op::Bfi>);
+	OPMAP(EmitVertex, dxil_constant_unary<DXIL::Op::EmitStream>);
+	OPMAP(EmitPrimitive, dxil_constant_unary<DXIL::Op::CutStream>);
 #undef OPMAP
 
 	// Plain instructions
@@ -1275,6 +1331,15 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		                                               ConstantInt::get(convert_type(op.getType()), ~0u),
 		                                               Instruction::BinaryOps::Xor);
 		push_instruction(inst, op.getDef());
+		break;
+	}
+
+	case ir::OpCode::ePhi:
+	{
+		auto *phi = context.construct<PHINode>(convert_type(op.getType()), op.getOperandCount() / 2);
+		for (uint32_t i = 0; i < op.getOperandCount(); i += 2)
+			phi->add_incoming(get_value(op.getOperand(i + 1)), get_basic_block(ir::SsaDef(op.getOperand(i))));
+		push_instruction(phi, op.getDef());
 		break;
 	}
 
@@ -2459,6 +2524,49 @@ bool ParseContext::emit_entry_point()
 		    create_constant_uint_meta(uint32_t(threads->getOperand(2))),
 		    create_constant_uint_meta(uint32_t(threads->getOperand(3)))));
 	}
+	else if (shader_stage == ir::ShaderStage::eGeometry)
+	{
+		flag_ops.push_back(create_constant_uint_meta(uint32_t(DXIL::ShaderPropertyTag::GSState)));
+
+		ir::PrimitiveType input_primitive = {};
+		ir::PrimitiveType output_primitive = {};
+		uint32_t stream_mask = 0;
+		uint32_t instances = 0;
+		uint32_t output_vertices = 0;
+
+		for (auto &op : builder)
+		{
+			switch (op.getOpCode())
+			{
+			case ir::OpCode::eSetGsInstances:
+				instances = uint32_t(op.getOperand(1));
+				break;
+
+			case ir::OpCode::eSetGsOutputVertices:
+				output_vertices = uint32_t(op.getOperand(1));
+				break;
+
+			case ir::OpCode::eSetGsInputPrimitive:
+				input_primitive = ir::PrimitiveType(op.getOperand(1));
+				break;
+
+			case ir::OpCode::eSetGsOutputPrimitive:
+				output_primitive = ir::PrimitiveType(op.getOperand(1));
+				stream_mask |= 1u << uint32_t(op.getOperand(2));
+				break;
+
+			default:
+				break;
+			}
+		}
+
+		flag_ops.push_back(create_md_node(
+		    create_constant_uint_meta(uint32_t(convert_input_primitive_type(input_primitive))),
+		    create_constant_uint_meta(output_vertices),
+		    create_constant_uint_meta(stream_mask),
+		    create_constant_uint_meta(uint32_t(convert_output_primitive_type(output_primitive))),
+		    create_constant_uint_meta(instances)));
+	}
 
 	for (uint32_t i = 0; i < entry->getFirstLiteralOperandIndex(); i++)
 	{
@@ -2481,7 +2589,7 @@ bool ParseContext::emit_entry_point()
 			create_named_md_node("dx.entryPoints",
 			                     create_md_node(create_constant_meta(func), create_string_meta("main"),
 			                                    create_stage_io_meta(), create_null_meta(),
-			                                    flag_ops.empty() ? create_null_meta() : create_md_node(flag_ops)));
+			                                    create_md_node(flag_ops)));
 		}
 	}
 
@@ -2817,6 +2925,10 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eSetCsWorkgroupSize:
 		case ir::OpCode::eSetPsDepthGreaterEqual:
 		case ir::OpCode::eSetPsDepthLessEqual:
+		case ir::OpCode::eSetGsInputPrimitive:
+		case ir::OpCode::eSetGsOutputPrimitive:
+		case ir::OpCode::eSetGsOutputVertices:
+		case ir::OpCode::eSetGsInstances:
 			break;
 
 		case ir::OpCode::eConstant:
