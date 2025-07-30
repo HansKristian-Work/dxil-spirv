@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 0
-		if (test.name != "test_io_gs_basic_line")
+		if (test.name != "test_io_hs_point")
 			continue;
 #endif
 

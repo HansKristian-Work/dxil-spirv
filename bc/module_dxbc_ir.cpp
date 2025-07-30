@@ -158,6 +158,8 @@ static DXIL::Op convert_builtin_opcode(ir::BuiltIn builtin)
 		return DXIL::Op::GSInstanceID;
 	case ir::BuiltIn::ePrimitiveId:
 		return DXIL::Op::PrimitiveID;
+	case ir::BuiltIn::eTessControlPointId:
+		return DXIL::Op::OutputControlPointID;
 
 	default:
 		return DXIL::Op::Count;
@@ -353,6 +355,53 @@ static ComponentMapping convert_component_mapping(const ir::Type &type, bool nee
 	return mapping;
 }
 
+static DXIL::TessellatorDomain convert_hull_domain(ir::PrimitiveType type)
+{
+	switch (type)
+	{
+	case ir::PrimitiveType::eTriangles:
+		return DXIL::TessellatorDomain::Tri;
+	case ir::PrimitiveType::eQuads:
+		return DXIL::TessellatorDomain::Quad;
+	case ir::PrimitiveType::eLines:
+		return DXIL::TessellatorDomain::IsoLine;
+	default:
+		return DXIL::TessellatorDomain::Undefined;
+	}
+}
+
+static DXIL::TessellatorPartitioning convert_hull_partitioning(ir::TessPartitioning part)
+{
+	switch (part)
+	{
+	case ir::TessPartitioning::eInteger:
+		return DXIL::TessellatorPartitioning::Integer;
+	case ir::TessPartitioning::eFractEven:
+		return DXIL::TessellatorPartitioning::FractionalEven;
+	case ir::TessPartitioning::eFractOdd:
+		return DXIL::TessellatorPartitioning::FractionalOdd;
+	default:
+		return DXIL::TessellatorPartitioning::Undefined;
+	}
+}
+
+static DXIL::TessellatorOutputPrimitive convert_hull_output_primitive(ir::PrimitiveType type, ir::TessWindingOrder winding)
+{
+	switch (type)
+	{
+	case ir::PrimitiveType::eTriangles:
+		return winding == ir::TessWindingOrder::eCw ?
+		       DXIL::TessellatorOutputPrimitive::TriangleCW :
+		       DXIL::TessellatorOutputPrimitive::TriangleCCW;
+	case ir::PrimitiveType::eLines:
+		return DXIL::TessellatorOutputPrimitive::Line;
+	case ir::PrimitiveType::ePoints:
+		return DXIL::TessellatorOutputPrimitive::Point;
+	default:
+		return DXIL::TessellatorOutputPrimitive::Undefined;
+	}
+}
+
 struct DXILIntrinsicTable
 {
 	struct FunctionOverload
@@ -436,6 +485,7 @@ private:
 	void create_named_md_node(const String &name, MDNode *node);
 	MDNode *create_md_node(Vector<MDOperand *> ops);
 
+	MDOperand *create_entry_point_meta(llvm::Function *patch_control_func);
 	MDNode *create_stage_io_meta();
 	MDOperand *create_null_meta();
 
@@ -485,11 +535,15 @@ private:
 	Instruction *build_load_input(
 		uint32_t index, Type *type,
 		Value *row, uint32_t col, Value *axis = nullptr);
-	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value);
+	Instruction *build_load_output(
+		uint32_t index, Type *type,
+		Value *row, uint32_t col, Value *axis = nullptr);
+	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value, bool patch);
 	Instruction *build_load_builtin(DXIL::Op opcode, ir::SsaDef addr);
 	Instruction *build_descriptor_load(ir::SsaDef resource, ir::SsaDef index, bool nonuniform);
 
 	bool build_input_load(const ir::Op &op);
+	bool build_output_load(const ir::Op &op);
 	bool build_output_store(const ir::Op &op);
 	bool build_composite_construct(const ir::Op &op);
 	bool build_composite_extract(const ir::Op &op);
@@ -810,6 +864,27 @@ ParseContext::build_stage_io_access(const StageIOHandler &handler, ir::SsaDef io
 	return { axis, row, col };
 }
 
+static bool io_decl_is_patch(ir::ShaderStage stage, const ir::Op &op)
+{
+	if (stage != ir::ShaderStage::eHull && stage != ir::ShaderStage::eDomain)
+		return false;
+
+	switch (op.getOpCode())
+	{
+	case ir::OpCode::eDclInput:
+		return stage == ir::ShaderStage::eDomain && !op.getType().isArrayType();
+	case ir::OpCode::eDclOutput:
+		return stage == ir::ShaderStage::eHull && !op.getType().isArrayType();
+	default:
+		break;
+	}
+
+	// For builtin-IO, there's tess factors and clip/cull distance that is a bit "special".
+	auto builtin = ir::BuiltIn(op.getOperand(1));
+	return builtin == ir::BuiltIn::eTessFactorOuter || builtin == ir::BuiltIn::eTessFactorInner ||
+	       !op.getType().isArrayType();
+}
+
 bool ParseContext::build_input_load(const ir::Op &op)
 {
 	auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
@@ -839,6 +914,40 @@ bool ParseContext::build_input_load(const ir::Op &op)
 	for (unsigned c = 0; c < components; c++)
 	{
 		insts[c] = build_load_input(ref.index, scalar_type, access.row, access.col + c, access.axis);
+		push_instruction(insts[c], op.getDef());
+	}
+
+	if (components != 1)
+	{
+		auto *inst = context.construct<CompositeConstructInst>(
+		    type, Vector<Value *>{ insts, insts + components });
+		push_instruction(inst, op.getDef());
+	}
+
+	return true;
+}
+
+bool ParseContext::build_output_load(const ir::Op &op)
+{
+	auto &ref = stage_io_map[ir::SsaDef(op.getOperand(0))];
+
+	auto *type = convert_type(op.getType());
+	auto *scalar_type = type;
+
+	unsigned components = 1;
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+	{
+		components = vec->getVectorSize();
+		scalar_type = vec->getElementType();
+	}
+
+	Instruction *insts[4] = {};
+
+	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+
+	for (unsigned c = 0; c < components; c++)
+	{
+		insts[c] = build_load_output(ref.index, scalar_type, access.row, access.col + c, access.axis);
 		push_instruction(insts[c], op.getDef());
 	}
 
@@ -967,10 +1076,11 @@ bool ParseContext::build_output_store(const ir::Op &op)
 		components = vec->getVectorSize();
 
 	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+	bool patch = io_decl_is_patch(shader_stage, builder.getOp(ir::SsaDef(op.getOperand(0))));
 
 	if (components == 1)
 	{
-		push_instruction(build_store_output(ref.index, access.row, access.col, store_value));
+		push_instruction(build_store_output(ref.index, access.row, access.col, store_value, patch));
 	}
 	else
 	{
@@ -978,7 +1088,7 @@ bool ParseContext::build_output_store(const ir::Op &op)
 		{
 			Vector<unsigned> indices { c };
 			auto *value = get_extracted_composite_component(store_value, c);
-			push_instruction(build_store_output(ref.index, access.row, access.col + c, value));
+			push_instruction(build_store_output(ref.index, access.row, access.col + c, value, patch));
 		}
 	}
 
@@ -1203,6 +1313,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	{
 #define OPMAP(irop, llvmop) case ir::OpCode::e##irop: if (!build_##llvmop(op)) return false; break
 	OPMAP(InputLoad, input_load);
+	OPMAP(OutputLoad, output_load);
 	OPMAP(OutputStore, output_store);
 	OPMAP(CompositeConstruct, composite_construct);
 	OPMAP(CompositeExtract, composite_extract);
@@ -1432,11 +1543,27 @@ Instruction *ParseContext::build_load_input(
 	return inst;
 }
 
-Instruction *ParseContext::build_store_output(uint32_t index, Value *row, uint32_t col, Value *value)
+Instruction *ParseContext::build_load_output(
+    uint32_t index, Type *type, Value *row, uint32_t col, Value *axis)
+{
+	assert(index != UINT32_MAX);
+
+	// This is slightly extended internally to allow loading outputs in general.
+	auto *inst = build_dxil_call(
+	    DXIL::Op::LoadOutputControlPoint, type, type,
+	    get_constant_uint(index),
+	    row,
+	    get_constant_uint(col),
+	    axis ? axis : UndefValue::get(Type::getInt32Ty(context)));
+
+	return inst;
+}
+
+Instruction *ParseContext::build_store_output(uint32_t index, Value *row, uint32_t col, Value *value, bool patch)
 {
 	assert(index != UINT32_MAX);
 	auto *inst = build_dxil_call(
-		DXIL::Op::StoreOutput, Type::getVoidTy(context), value->getType(),
+		patch ? DXIL::Op::StorePatchConstant : DXIL::Op::StoreOutput, Type::getVoidTy(context), value->getType(),
 		get_constant_uint(index),
 		row,
 		get_constant_uint(col),
@@ -2457,12 +2584,22 @@ MDNode *ParseContext::create_stage_io_meta()
 		{
 		case ir::OpCode::eDclInput:
 		case ir::OpCode::eDclInputBuiltIn:
-			io_inputs.push_back({ &op });
+			// For user-IO the general rule is that if it's an array it's a control point of some kind.
+			// Multiple rows for stage IO is not used except for certain builtins.
+			if (io_decl_is_patch(shader_stage, op))
+				io_patch.push_back({ &op });
+			else
+				io_inputs.push_back({ &op });
 			break;
 
 		case ir::OpCode::eDclOutput:
 		case ir::OpCode::eDclOutputBuiltIn:
-			io_outputs.push_back({ &op });
+			// For user-IO the general rule is that if it's an array it's a control point of some kind.
+			// Multiple rows for stage IO is not used except for certain builtins.
+			if (io_decl_is_patch(shader_stage, op))
+				io_patch.push_back({ &op });
+			else
+				io_outputs.push_back({ &op });
 			break;
 
 		case ir::OpCode::eSemantic:
@@ -2557,23 +2694,15 @@ MDNode *ParseContext::create_stage_io_meta()
 			if (is_input)
 				interpolation = convert_interpolation_mode(ir::InterpolationMode(io.op->getOperand(is_user ? 3 : 2)));
 
-			bool is_geom_hull_input = is_input &&
-			                          (shader_stage == ir::ShaderStage::eGeometry ||
-			                           shader_stage == ir::ShaderStage::eHull);
+			bool is_geom = shader_stage == ir::ShaderStage::eGeometry;
+			bool is_tess = shader_stage == ir::ShaderStage::eHull || shader_stage == ir::ShaderStage::eDomain;
+			bool is_geom_tess_input = is_input && (is_geom || is_tess);
+			bool is_hull_output = !is_input && shader_stage == ir::ShaderStage::eHull;
 
-			// Need to deduce this based on types and semantics used when we need to strip outermost dimension.
-			bool need_axis = false;
-
-			if (is_geom_hull_input)
-			{
-				if (builtin == DXIL::Semantic::Position ||
-				    builtin == DXIL::Semantic::ClipDistance ||
-				    builtin == DXIL::Semantic::CullDistance ||
-				    is_user)
-				{
-					need_axis = true;
-				}
-			}
+			// TessFactors is the exception since it's a patch array.
+			bool need_axis = io.op->getType().isArrayType() &&
+			                 (builtin != DXIL::Semantic::TessFactor && builtin != DXIL::Semantic::InsideTessFactor) &&
+			                 (is_geom_tess_input || is_hull_output);
 
 			auto comp = convert_component_mapping(io.op->getType(), need_axis);
 			build_stage_io(*mapping.mapping, io.op->getDef(), String(io.semantic),
@@ -2588,14 +2717,8 @@ MDNode *ParseContext::create_stage_io_meta()
 		patches.nodes.empty() ? create_null_meta() : create_md_node(patches.nodes));
 }
 
-bool ParseContext::emit_entry_point()
+MDOperand *ParseContext::create_entry_point_meta(Function *patch_control_func)
 {
-	const ir::Op *entry = nullptr;
-	for_all_opcodes(builder, ir::OpCode::eEntryPoint, [&](const ir::Op &op) { entry = &op; return false; });
-	if (!entry)
-		return false;
-
-	shader_stage = ir::ShaderStage(entry->getOperand(entry->getFirstLiteralOperandIndex()));
 	Vector<MDOperand *> flag_ops;
 
 	uint64_t shader_flags = 0;
@@ -2612,7 +2735,7 @@ bool ParseContext::emit_entry_point()
 		if (!threads)
 		{
 			LOGE("Need to declare threads.\n");
-			return false;
+			return nullptr;
 		}
 
 		flag_ops.push_back(create_md_node(
@@ -2663,9 +2786,66 @@ bool ParseContext::emit_entry_point()
 		    create_constant_uint_meta(uint32_t(convert_output_primitive_type(output_primitive))),
 		    create_constant_uint_meta(instances)));
 	}
-
-	for (uint32_t i = 0; i < entry->getFirstLiteralOperandIndex(); i++)
+	else if (shader_stage == ir::ShaderStage::eHull)
 	{
+		ir::PrimitiveType prim = {};
+		ir::PrimitiveType domain = {};
+		ir::TessWindingOrder winding = {};
+		ir::TessPartitioning partitioning = {};
+		uint32_t input_control_points = 0;
+		uint32_t output_control_points = 0;
+
+		for (auto &op : builder)
+		{
+			switch (op.getOpCode())
+			{
+			case ir::OpCode::eSetTessControlPoints:
+				input_control_points = uint32_t(op.getOperand(1));
+				output_control_points = uint32_t(op.getOperand(2));
+				break;
+
+			case ir::OpCode::eSetTessPrimitive:
+				prim = ir::PrimitiveType(op.getOperand(1));
+				winding = ir::TessWindingOrder(op.getOperand(2));
+				partitioning = ir::TessPartitioning(op.getOperand(3));
+				break;
+
+			case ir::OpCode::eSetTessDomain:
+				domain = ir::PrimitiveType(op.getOperand(1));
+				break;
+
+			default:
+				break;
+			}
+		}
+
+		flag_ops.push_back(create_constant_uint_meta(uint32_t(DXIL::ShaderPropertyTag::HSState)));
+		flag_ops.push_back(create_md_node(
+		    patch_control_func ? create_constant_meta(patch_control_func) : create_null_meta(),
+		    create_constant_uint_meta(input_control_points),
+		    create_constant_uint_meta(output_control_points),
+		    create_constant_uint_meta(uint32_t(convert_hull_domain(domain))),
+		    create_constant_uint_meta(uint32_t(convert_hull_partitioning(partitioning))),
+		    create_constant_uint_meta(uint32_t(convert_hull_output_primitive(prim, winding)))));
+	}
+
+	return flag_ops.empty() ? create_null_meta() : create_md_node(std::move(flag_ops));
+}
+
+bool ParseContext::emit_entry_point()
+{
+	const ir::Op *entry = nullptr;
+	for_all_opcodes(builder, ir::OpCode::eEntryPoint, [&](const ir::Op &op) { entry = &op; return false; });
+	if (!entry)
+		return false;
+
+	shader_stage = ir::ShaderStage(entry->getOperand(entry->getFirstLiteralOperandIndex()));
+
+	llvm::Function *patch_control_func = nullptr;
+
+	for (uint32_t i_plus1 = entry->getFirstLiteralOperandIndex(); i_plus1; i_plus1--)
+	{
+		auto i = i_plus1 - 1;
 		auto ssa = ir::SsaDef(entry->getOperand(i));
 
 		Type *type = convert_type(entry->getType());
@@ -2674,6 +2854,9 @@ bool ParseContext::emit_entry_point()
 		auto *func_type = context.construct<FunctionType>(context, type, Vector<Type *>{});
 		auto *func = context.construct<Function>(func_type, ++tween_id, module);
 		module.add_value_name(tween_id, i == 0 ? "main" : "patchMain");
+
+		if (i == 1)
+			patch_control_func = func;
 
 		// We're not barbarians.
 		func->set_structured_control_flow();
@@ -2685,7 +2868,7 @@ bool ParseContext::emit_entry_point()
 			create_named_md_node("dx.entryPoints",
 			                     create_md_node(create_constant_meta(func), create_string_meta("main"),
 			                                    create_stage_io_meta(), create_null_meta(),
-			                                    create_md_node(flag_ops)));
+			                                    create_entry_point_meta(patch_control_func)));
 		}
 	}
 
@@ -3036,6 +3219,9 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eSetGsOutputPrimitive:
 		case ir::OpCode::eSetGsOutputVertices:
 		case ir::OpCode::eSetGsInstances:
+		case ir::OpCode::eSetTessControlPoints:
+		case ir::OpCode::eSetTessDomain:
+		case ir::OpCode::eSetTessPrimitive:
 		case ir::OpCode::eDclXfb:
 			break;
 
