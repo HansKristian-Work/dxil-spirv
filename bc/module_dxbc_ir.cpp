@@ -862,11 +862,13 @@ bool ParseContext::build_interpolate_at_centroid(const ir::Op &op)
 
 	Instruction *insts[4] = {};
 
+	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+
 	for (unsigned c = 0; c < components; c++)
 	{
 		insts[c] = build_dxil_call(DXIL::Op::EvalCentroid, scalar_type, scalar_type,
 		                           get_constant_uint(ref.index),
-		                           get_constant_uint(0), get_constant_uint(c));
+		                           access.row, get_constant_uint(access.col + c));
 		push_instruction(insts[c], op.getDef());
 	}
 
@@ -895,11 +897,13 @@ bool ParseContext::build_interpolate_at_sample(const ir::Op &op)
 
 	Instruction *insts[4] = {};
 
+	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+
 	for (unsigned c = 0; c < components; c++)
 	{
 		insts[c] = build_dxil_call(DXIL::Op::EvalSampleIndex, scalar_type, scalar_type,
 		                           get_constant_uint(ref.index),
-		                           get_constant_uint(0), get_constant_uint(c), get_value(op.getOperand(1)));
+		                           access.row, get_constant_uint(access.col + c), get_value(op.getOperand(2)));
 		push_instruction(insts[c], op.getDef());
 	}
 
@@ -928,11 +932,13 @@ bool ParseContext::build_interpolate_at_offset(const ir::Op &op)
 
 	Instruction *insts[4] = {};
 
+	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+
 	for (unsigned c = 0; c < components; c++)
 	{
 		insts[c] = build_dxil_call(DXIL::Op::ExtendedEvalSnapped, scalar_type, scalar_type,
 		                           get_constant_uint(ref.index),
-		                           get_constant_uint(0), get_constant_uint(c), get_value(op.getOperand(1)));
+		                           access.row, get_constant_uint(access.col + c), get_value(op.getOperand(2)));
 		push_instruction(insts[c], op.getDef());
 	}
 
