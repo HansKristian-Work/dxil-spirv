@@ -170,9 +170,12 @@ struct DXILDispatcher
 		OP(Dot4AddU8Packed) = emit_i8_dot_instruction<false>;
 		OP(Dot2AddHalf) = emit_dot2_add_half_instruction;
 
-		OP(Ibfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract>;
-		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract>;
-		OP(Bfi) = emit_bfi_instruction;
+		OP(Ibfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract, false>;
+		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract, false>;
+		OP(Bfi) = emit_bfi_dispatch<false>;
+		OP(ExtendedSpirvIbfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract, true>;
+		OP(ExtendedSpirvUbfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract, true>;
+		OP(ExtendedSpirvBfi) = emit_bfi_dispatch<true>;
 
 		OP(MakeDouble) = emit_make_double_instruction;
 		OP(SplitDouble) = emit_split_double_instruction;

@@ -44,8 +44,14 @@ bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 
 bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm::CallInst *instruction);
 
-bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
-bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics);
+bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics);
+
+template <bool spirv_semantics>
+static inline bool emit_bfi_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_bfi_instruction(impl, instruction, spirv_semantics);
+}
 
 bool emit_make_double_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_split_double_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
@@ -101,10 +107,10 @@ static inline bool emit_dot_dispatch(Converter::Impl &impl, const llvm::CallInst
 	return emit_dot_instruction(Dim, impl, instruction);
 }
 
-template <spv::Op opcode>
+template <spv::Op opcode, bool spirv_semantics>
 static inline bool emit_bfe_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	return emit_bfe_instruction(opcode, impl, instruction);
+	return emit_bfe_instruction(opcode, impl, instruction, spirv_semantics);
 }
 
 bool emit_i8_dot_instruction(Converter::Impl &Impl, const llvm::CallInst *instruction, bool sign_extend);

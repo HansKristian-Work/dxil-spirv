@@ -489,7 +489,7 @@ enum class Op : unsigned
 	StartVertexLocation = 256,
 	StartInstanceLocation = 257,
 
-	// Internal extensions
+	// Internal extensions for where there is impedance mismatch
 	ExtendedDeriv,
 	ExtendedCalculateLOD,
 	ExtendedGetDimensions,
@@ -500,6 +500,9 @@ enum class Op : unsigned
 	ExtendedLegacyF16ToF32,
 	ExtendedIAbs,
 	ExtendedEvalSnapped,
+	ExtendedSpirvIbfe,
+	ExtendedSpirvUbfe,
+	ExtendedSpirvBfi,
 
 	Count
 };

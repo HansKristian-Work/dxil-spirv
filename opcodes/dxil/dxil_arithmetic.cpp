@@ -687,31 +687,51 @@ static spv::Id mask_input(Converter::Impl &impl, const llvm::Value *value)
 	return op->id;
 }
 
-bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics)
 {
-	// SPIR-V spec doesn't say anything about masking inputs, but Ibfe/Ubfe do, so ...
-	spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
-	spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
-	masked_width_id = clamp_bitfield_width(impl, masked_offset_id, masked_width_id);
+	if (spirv_semantics)
+	{
+		Operation *op = impl.allocate(opcode, instruction);
+		for (unsigned i = 0; i < 3; i++)
+			op->add_id(impl.get_id_for_value(instruction->getOperand(i + 1)));
+		impl.add(op);
+	}
+	else
+	{
+		// SPIR-V spec doesn't say anything about masking inputs, but Ibfe/Ubfe do, so ...
+		spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
+		spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
+		masked_width_id = clamp_bitfield_width(impl, masked_offset_id, masked_width_id);
 
-	Operation *op = impl.allocate(opcode, instruction);
-	op->add_ids({ impl.get_id_for_value(instruction->getOperand(3)), masked_offset_id, masked_width_id });
-	impl.add(op);
+		Operation *op = impl.allocate(opcode, instruction);
+		op->add_ids({ impl.get_id_for_value(instruction->getOperand(3)), masked_offset_id, masked_width_id });
+		impl.add(op);
+	}
 	return true;
 }
 
-bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics)
 {
-	spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
-	spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
-	masked_width_id = clamp_bitfield_width(impl, masked_offset_id, masked_width_id);
+	if (spirv_semantics)
+	{
+		Operation *op = impl.allocate(spv::OpBitFieldInsert, instruction);
+		for (unsigned i = 0; i < 4; i++)
+			op->add_id(impl.get_id_for_value(instruction->getOperand(i + 1)));
+		impl.add(op);
+	}
+	else
+	{
+		spv::Id masked_width_id = mask_input(impl, instruction->getOperand(1));
+		spv::Id masked_offset_id = mask_input(impl, instruction->getOperand(2));
+		masked_width_id = clamp_bitfield_width(impl, masked_offset_id, masked_width_id);
 
-	spv::Id src_id = impl.get_id_for_value(instruction->getOperand(3));
-	spv::Id dst_id = impl.get_id_for_value(instruction->getOperand(4));
+		spv::Id src_id = impl.get_id_for_value(instruction->getOperand(3));
+		spv::Id dst_id = impl.get_id_for_value(instruction->getOperand(4));
 
-	Operation *op = impl.allocate(spv::OpBitFieldInsert, instruction);
-	op->add_ids({ dst_id, src_id, masked_offset_id, masked_width_id });
-	impl.add(op);
+		Operation *op = impl.allocate(spv::OpBitFieldInsert, instruction);
+		op->add_ids({ dst_id, src_id, masked_offset_id, masked_width_id });
+		impl.add(op);
+	}
 
 	return true;
 }

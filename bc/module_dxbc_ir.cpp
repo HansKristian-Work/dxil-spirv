@@ -1247,9 +1247,9 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(InterpolateAtCentroid, interpolate_at_centroid);
 	OPMAP(InterpolateAtSample, interpolate_at_sample);
 	OPMAP(InterpolateAtOffset, interpolate_at_offset);
-	OPMAP(UBitExtract, dxil_trinary<DXIL::Op::Ubfe>);
-	OPMAP(SBitExtract, dxil_trinary<DXIL::Op::Ibfe>);
-	OPMAP(IBitInsert, dxil_quaternary<DXIL::Op::Bfi>);
+	OPMAP(UBitExtract, dxil_trinary<DXIL::Op::ExtendedSpirvUbfe>);
+	OPMAP(SBitExtract, dxil_trinary<DXIL::Op::ExtendedSpirvIbfe>);
+	OPMAP(IBitInsert, dxil_quaternary<DXIL::Op::ExtendedSpirvBfi>);
 	OPMAP(EmitVertex, dxil_constant_unary<DXIL::Op::EmitStream>);
 	OPMAP(EmitPrimitive, dxil_constant_unary<DXIL::Op::CutStream>);
 #undef OPMAP
