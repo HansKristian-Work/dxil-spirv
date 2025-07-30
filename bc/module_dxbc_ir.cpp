@@ -471,6 +471,7 @@ private:
 	                        DXIL::InterpolationMode interpolation,
 	                        uint32_t rows, uint32_t cols,
 	                        uint32_t start_row, uint32_t start_col,
+	                        uint32_t stream,
 	                        bool need_axis);
 
 	// DXIL intrinsic build.
@@ -2502,6 +2503,7 @@ MDNode *ParseContext::create_stage_io_meta()
 		{
 			DXIL::Semantic builtin = DXIL::Semantic::User;
 			uint32_t location, component;
+			uint32_t stream = UINT32_MAX;
 
 			bool is_input =
 				io.op->getOpCode() == ir::OpCode::eDclInput ||
@@ -2515,12 +2517,17 @@ MDNode *ParseContext::create_stage_io_meta()
 			{
 				location = uint32_t(io.op->getOperand(1));
 				component = uint32_t(io.op->getOperand(2));
+				if (!is_input && io.op->getOperandCount() == 4)
+					stream = uint32_t(io.op->getOperand(3));
 			}
 			else
 			{
 				builtin = convert_semantic(ir::BuiltIn(io.op->getOperand(1)));
 				location = UINT32_MAX;
 				component = UINT32_MAX;
+
+				if (!is_input && io.op->getOperandCount() == 3)
+					stream = uint32_t(io.op->getOperand(2));
 
 				if (builtin == DXIL::Semantic::Depth)
 				{
@@ -2571,7 +2578,7 @@ MDNode *ParseContext::create_stage_io_meta()
 			auto comp = convert_component_mapping(io.op->getType(), need_axis);
 			build_stage_io(*mapping.mapping, io.op->getDef(), String(io.semantic),
 			               comp.type, builtin, io.index, interpolation,
-			               comp.num_rows, comp.num_cols, location, component, need_axis);
+			               comp.num_rows, comp.num_cols, location, component, stream, need_axis);
 		}
 	}
 
@@ -2826,11 +2833,22 @@ uint32_t ParseContext::build_stage_io(
 	const String &name, DXIL::ComponentType type, DXIL::Semantic semantic, uint32_t semantic_index,
     DXIL::InterpolationMode interpolation,
     uint32_t rows, uint32_t cols,
-    uint32_t start_row, uint32_t start_col, bool need_axis)
+    uint32_t start_row, uint32_t start_col, uint32_t stream, bool need_axis)
 {
 	uint32_t ret = mapping.nodes.size();
 
 	stage_io_map[ssa] = { ret, DXIL::Op::Count, need_axis };
+
+	MDOperand *stream_meta;
+
+	if (stream != UINT32_MAX)
+	{
+		stream_meta = create_md_node(
+			create_constant_uint_meta(uint32_t(DXIL::GSStageOutTags::Stream)),
+			create_constant_uint_meta(stream));
+	}
+	else
+		stream_meta = create_null_meta();
 
 	auto *input = create_md_node(
 		create_constant_uint_meta(ret),
@@ -2843,7 +2861,7 @@ uint32_t ParseContext::build_stage_io(
 		create_constant_uint_meta(cols),
 		create_constant_uint_meta(start_row),
 		create_constant_uint_meta(start_col),
-		create_null_meta());
+	    stream_meta);
 
 	mapping.nodes.push_back(input);
 	return ret;
