@@ -154,6 +154,10 @@ static DXIL::Op convert_builtin_opcode(ir::BuiltIn builtin)
 		return DXIL::Op::FlattenedThreadIdInGroup;
 	case ir::BuiltIn::eIsFullyCovered:
 		return DXIL::Op::InnerCoverage;
+	case ir::BuiltIn::eGsInstanceId:
+		return DXIL::Op::GSInstanceID;
+	case ir::BuiltIn::ePrimitiveId:
+		return DXIL::Op::PrimitiveID;
 
 	default:
 		return DXIL::Op::Count;
@@ -1416,6 +1420,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 Instruction *ParseContext::build_load_input(
     uint32_t index, Type *type, Value *row, uint32_t col, Value *axis)
 {
+	assert(index != UINT32_MAX);
 	auto *inst = build_dxil_call(
 		DXIL::Op::LoadInput, type, type,
 		get_constant_uint(index),
@@ -1428,6 +1433,7 @@ Instruction *ParseContext::build_load_input(
 
 Instruction *ParseContext::build_store_output(uint32_t index, Value *row, uint32_t col, Value *value)
 {
+	assert(index != UINT32_MAX);
 	auto *inst = build_dxil_call(
 		DXIL::Op::StoreOutput, Type::getVoidTy(context), value->getType(),
 		get_constant_uint(index),
@@ -2524,16 +2530,19 @@ MDNode *ParseContext::create_stage_io_meta()
 					                [&](const ir::Op &op) { builtin = DXIL::Semantic::DepthGreaterEqual; return false; });
 				}
 
-				// Some stage IO builtins are resolved through opcodes, not IO.
-				auto op = convert_builtin_opcode(ir::BuiltIn(io.op->getOperand(1)));
-
-				if (io.op->getOpCode() == ir::OpCode::eDclInputBuiltIn && builtin == DXIL::Semantic::Coverage)
-					op = DXIL::Op::Coverage;
-
-				if (op != DXIL::Op::Count)
+				if (io.op->getOpCode() == ir::OpCode::eDclInputBuiltIn)
 				{
-					stage_io_map[io.op->getDef()] = { UINT32_MAX, op, false };
-					continue;
+					// Some stage IO builtins are resolved through opcodes, not IO.
+					auto op = convert_builtin_opcode(ir::BuiltIn(io.op->getOperand(1)));
+
+					if (builtin == DXIL::Semantic::Coverage)
+						op = DXIL::Op::Coverage;
+
+					if (op != DXIL::Op::Count)
+					{
+						stage_io_map[io.op->getDef()] = { UINT32_MAX, op, false };
+						continue;
+					}
 				}
 			}
 
@@ -3009,6 +3018,7 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eSetGsOutputPrimitive:
 		case ir::OpCode::eSetGsOutputVertices:
 		case ir::OpCode::eSetGsInstances:
+		case ir::OpCode::eDclXfb:
 			break;
 
 		case ir::OpCode::eConstant:
