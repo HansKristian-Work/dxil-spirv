@@ -227,7 +227,8 @@ static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
 		return false;
 
-	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]))
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (c != nullptr)
 	{
 		auto subopcode = uint32_t(c->getUniqueInteger().getZExtValue());
 		auto &builder = impl.builder();
@@ -279,7 +280,8 @@ static bool emit_nvapi_extn_op_rt_get_intersection_cluster_id(Converter::Impl &i
 	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
 		return false;
 
-	if (auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]))
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (ray_flags != nullptr)
 	{
 		auto &builder = impl.builder();
 		spv::Id ray_object_id = 0;
@@ -306,31 +308,32 @@ bool NVAPIState::can_commit_opcode()
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
 		return false;
 
-	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]))
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]);
+	if (c != nullptr)
 	{
 		auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
 		switch (opcode)
 		{
 		case NV_EXTN_OP_SHFL:
-			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2];
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr;
 
 		case NV_EXTN_OP_FP16_ATOMIC:
 			return marked_uav &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0];
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr;
 
 		case NV_EXTN_OP_GET_SPECIAL:
-			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
 			return true;
 
 		case NV_EXTN_OP_RT_GET_CANDIDATE_CLUSTER_ID:
 		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
-			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		default:
 			return false;
@@ -345,7 +348,8 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
 		return false;
 
-	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]))
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]);
+	if (c != nullptr)
 	{
 		auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
 		switch (opcode)
@@ -527,9 +531,10 @@ bool emit_nvapi_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruc
 bool NVAPIState::mark_uav_write(const llvm::CallInst *instruction)
 {
 	auto *mark = fake_doorbell_inputs[NVAPI_ARGUMENT_MARK_UAV_REF];
-	if (mark)
+	if (mark != nullptr)
 	{
-		if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(mark))
+		const auto *c = llvm::dyn_cast<llvm::ConstantInt>(mark);
+		if (c != nullptr)
 		{
 			if (c->getUniqueInteger().getZExtValue() == 1)
 			{
