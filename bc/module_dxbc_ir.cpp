@@ -547,6 +547,8 @@ private:
 	bool build_input_load(const ir::Op &op);
 	bool build_output_load(const ir::Op &op);
 	bool build_output_store(const ir::Op &op);
+	bool build_gep_load(const ir::Op &op);
+	bool build_gep_store(const ir::Op &op);
 	bool build_composite_construct(const ir::Op &op);
 	bool build_composite_extract(const ir::Op &op);
 	bool build_composite_insert(const ir::Op &op);
@@ -578,6 +580,7 @@ private:
 	bool build_interpolate_at_centroid(const ir::Op &op);
 	bool build_interpolate_at_sample(const ir::Op &op);
 	bool build_interpolate_at_offset(const ir::Op &op);
+	bool build_barrier(const ir::Op &op);
 
 	template <DXIL::Op dxop>
 	bool build_dxil_unary(const ir::Op &op);
@@ -1106,6 +1109,58 @@ bool ParseContext::build_output_store(const ir::Op &op)
 	return true;
 }
 
+bool ParseContext::build_gep_load(const ir::Op &op)
+{
+	auto *type = convert_type(op.getType());
+	Vector<Value *> args;
+	args.push_back(get_value(op.getOperand(0)));
+	args.push_back(get_constant_uint(0));
+
+	if (op.getOperand(1))
+	{
+		auto &addr = builder.getOp(ir::SsaDef(op.getOperand(1)));
+		auto *addr_value = get_value(op.getOperand(1));
+		for (uint32_t i = 0; i < addr.getType().getBaseType(0).getVectorSize(); i++)
+			args.push_back(get_extracted_composite_component(addr_value, i));
+	}
+
+	auto addr_space = op.getOpCode() == ir::OpCode::eScratchLoad ?
+	    DXIL::AddressSpace::Thread : DXIL::AddressSpace::GroupShared;
+
+	auto *gep = context.construct<GetElementPtrInst>(
+		PointerType::get(type, uint32_t(addr_space)), std::move(args), true);
+	auto *load = context.construct<LoadInst>(type, gep);
+	push_instruction(gep);
+	push_instruction(load, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_gep_store(const ir::Op &op)
+{
+	auto *type = convert_type(builder.getOp(ir::SsaDef(op.getOperand(2))).getType());
+	Vector<Value *> args;
+	args.push_back(get_value(op.getOperand(0)));
+	args.push_back(get_constant_uint(0));
+
+	if (op.getOperand(1))
+	{
+		auto &addr = builder.getOp(ir::SsaDef(op.getOperand(1)));
+		auto *addr_value = get_value(op.getOperand(1));
+		for (uint32_t i = 0; i < addr.getType().getBaseType(0).getVectorSize(); i++)
+			args.push_back(get_extracted_composite_component(addr_value, i));
+	}
+
+	auto addr_space = op.getOpCode() == ir::OpCode::eScratchStore ?
+	                      DXIL::AddressSpace::Thread : DXIL::AddressSpace::GroupShared;
+
+	auto *gep = context.construct<GetElementPtrInst>(
+	    PointerType::get(type, uint32_t(addr_space)), std::move(args), true);
+	auto *store = context.construct<StoreInst>(gep, get_value(op.getOperand(2)));
+	push_instruction(gep);
+	push_instruction(store, op.getDef());
+	return true;
+}
+
 bool ParseContext::build_composite_construct(const ir::Op &op)
 {
 	auto *type = convert_type(op.getType());
@@ -1318,6 +1373,35 @@ bool ParseContext::build_dxil_quaternary(const ir::Op &op)
 	return true;
 }
 
+bool ParseContext::build_barrier(const ir::Op &op)
+{
+	auto exec_scope = ir::Scope(op.getOperand(0));
+	auto mem_scope = ir::Scope(op.getOperand(1));
+	auto memory_type = ir::MemoryTypeFlags(op.getOperand(2));
+	auto *void_type = Type::getVoidTy(context);
+
+	uint32_t memory_flags = 0;
+	uint32_t semantic_flags = 0;
+
+	semantic_flags |= DXIL::GroupScopeBit;
+	if (exec_scope != ir::Scope::eThread)
+		semantic_flags |= DXIL::GroupSyncBit;
+	if (mem_scope == ir::Scope::eGlobal)
+		semantic_flags |= DXIL::DeviceScopeBit;
+
+	if (memory_type & ir::MemoryType::eLds)
+		memory_flags |= DXIL::MemoryTypeGroupSharedBit;
+	if (memory_type & (ir::MemoryType::eUavBuffer | ir::MemoryType::eUavImage))
+		memory_flags |= DXIL::MemoryTypeUavBit;
+
+	auto *inst = build_dxil_call(DXIL::Op::BarrierByMemoryType, void_type, void_type,
+	                             get_constant_uint(memory_flags),
+	                             get_constant_uint(semantic_flags));
+
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
 bool ParseContext::push_instruction(const ir::Op &op)
 {
 	switch (op.getOpCode())
@@ -1388,6 +1472,11 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(ISubBorrow, dxil_binary<DXIL::Op::ExtendedSpirvISubBorrow>);
 	OPMAP(SMulExtended, dxil_binary<DXIL::Op::ExtendedSpirvSMulExtended>);
 	OPMAP(UMulExtended, dxil_binary<DXIL::Op::ExtendedSpirvUMulExtended>);
+	OPMAP(ScratchLoad, gep_load);
+	OPMAP(ScratchStore, gep_store);
+	OPMAP(LdsLoad, gep_load);
+	OPMAP(LdsStore, gep_store);
+	OPMAP(Barrier, barrier);
 #undef OPMAP
 
 	// Plain instructions
@@ -3338,6 +3427,12 @@ bool ParseContext::emit_function_bodies()
 				return false;
 			break;
 
+		case ir::OpCode::eUndef:
+		{
+			value_map[op.getDef()] = UndefValue::get(convert_type(op.getType()));
+			break;
+		}
+
 		// Functions
 		case ir::OpCode::eDclParam:
 			param_types[op.getDef()] = convert_type(op.getType());
@@ -3487,6 +3582,23 @@ bool ParseContext::emit_function_bodies()
 			push_instruction(context.construct<UnreachableInst>());
 			current_bb = nullptr;
 			break;
+
+		case ir::OpCode::eDclScratch:
+		case ir::OpCode::eDclLds:
+		{
+			auto *type = convert_type(op.getType());
+
+			auto *value = context.construct<GlobalVariable>(
+				PointerType::get(type, uint32_t(
+					op.getOpCode() == ir::OpCode::eDclLds ?
+					DXIL::AddressSpace::GroupShared :
+					DXIL::AddressSpace::Thread)),
+				GlobalVariable::LinkageTypes::InternalLinkage, false);
+
+			value_map[op.getDef()] = value;
+			module.add_global_variable(value);
+			break;
+		}
 
 		// Opcodes
 		default:

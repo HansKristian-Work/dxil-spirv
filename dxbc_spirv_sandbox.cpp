@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 0
-		if (test.name != "test_arithmetic_int_extended")
+		if (test.name != "test_misc_scratch")
 			continue;
 #endif
 
