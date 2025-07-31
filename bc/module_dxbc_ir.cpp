@@ -1437,6 +1437,8 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	CMP(eFLe, F, FCMP_OLE);
 	CMP(eINe, I, ICMP_NE);
 	CMP(eIEq, I, ICMP_EQ);
+	CMP(eBNe, I, ICMP_NE);
+	CMP(eBEq, I, ICMP_EQ);
 	CMP(eSGt, I, ICMP_SGT);
 	CMP(eSGe, I, ICMP_SGE);
 	CMP(eSLt, I, ICMP_SLT);
@@ -1459,6 +1461,8 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	BOP(eIAnd, And);
 	BOP(eIOr, Or);
 	BOP(eIXor, Xor);
+	BOP(eBAnd, And);
+	BOP(eBOr, Or);
 	BOP(eIShl, Shl);
 	BOP(eUShr, LShr);
 	BOP(eSShr, AShr);
@@ -1534,6 +1538,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	}
 
 	case ir::OpCode::eINot:
+	case ir::OpCode::eBNot:
 	{
 		auto *result_type = convert_type(op.getType());
 		auto *scalar_type = result_type;

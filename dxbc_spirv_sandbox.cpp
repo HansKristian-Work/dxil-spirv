@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 
 	for (auto &test : tests)
 	{
-#if 1
+#if 0
 		if (test.name != "test_arithmetic_int_extended")
 			continue;
 #endif
