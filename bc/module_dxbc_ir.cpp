@@ -617,6 +617,7 @@ private:
 	bool build_interpolate_at_sample(const ir::Op &op);
 	bool build_interpolate_at_offset(const ir::Op &op);
 	bool build_barrier(const ir::Op &op);
+	bool build_demote(const ir::Op &op);
 
 	template <DXIL::Op dxop>
 	bool build_dxil_unary(const ir::Op &op);
@@ -1498,6 +1499,15 @@ bool ParseContext::build_barrier(const ir::Op &op)
 	return true;
 }
 
+bool ParseContext::build_demote(const ir::Op &op)
+{
+	auto *void_type = Type::getVoidTy(context);
+	auto *inst = build_dxil_call(DXIL::Op::Discard, void_type, void_type,
+	                             get_constant_uint(1));
+	push_instruction(inst, op.getDef());
+	return true;
+}
+
 bool ParseContext::push_instruction(const ir::Op &op)
 {
 	switch (op.getOpCode())
@@ -1575,6 +1585,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(ConstantLoad, gep_load);
 	OPMAP(Barrier, barrier);
 	OPMAP(LdsAtomic, lds_atomic);
+	OPMAP(Demote, demote);
 #undef OPMAP
 
 	// Plain instructions
@@ -3001,8 +3012,17 @@ MDOperand *ParseContext::create_entry_point_meta(Function *patch_control_func)
 {
 	Vector<MDOperand *> flag_ops;
 
-	uint64_t shader_flags = 0;
+	uint64_t shader_flags = DXIL::ShaderFlagNativeLowPrecision;
 	flag_ops.push_back(create_constant_uint_meta(uint32_t(DXIL::ShaderPropertyTag::ShaderFlags)));
+
+	if (shader_stage == ir::ShaderStage::ePixel)
+	{
+		for_all_opcodes(builder, ir::OpCode::eSetPsEarlyFragmentTest, [&](const ir::Op &) {
+			shader_flags |= DXIL::ShaderFlagEarlyDepthStencil;
+			return false;
+		});
+	}
+
 	flag_ops.push_back(create_constant_uint64_meta(shader_flags));
 
 	if (shader_stage == ir::ShaderStage::eCompute)
@@ -3181,8 +3201,9 @@ bool ParseContext::emit_entry_point()
 
 	shader_stage = ir::ShaderStage(entry->getOperand(entry->getFirstLiteralOperandIndex()));
 
-	llvm::Function *patch_control_func = nullptr;
+	Function *patch_control_func = nullptr;
 
+	// Process patch constant func first so we can emit metadata.
 	for (uint32_t i_plus1 = entry->getFirstLiteralOperandIndex(); i_plus1; i_plus1--)
 	{
 		auto i = i_plus1 - 1;
@@ -3568,6 +3589,7 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eRovScopedLockBegin:
 		case ir::OpCode::eRovScopedLockEnd:
 		case ir::OpCode::eSetFpMode:
+		case ir::OpCode::eSetPsEarlyFragmentTest:
 			break;
 
 		case ir::OpCode::eConstant:

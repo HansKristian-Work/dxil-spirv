@@ -258,8 +258,8 @@ int main(int argc, char **argv)
 
 	for (auto &test : tests)
 	{
-#if 1
-		if (test.name != "test_misc_constant_load")
+#if 0
+		if (test.name != "test_misc_ps_early_z")
 			continue;
 #endif
 
