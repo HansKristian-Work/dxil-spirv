@@ -264,6 +264,41 @@ static DXIL::AtomicBinOp convert_atomic_binop(ir::AtomicOp binop)
 	}
 }
 
+static AtomicRMWInst::BinOp convert_atomic_binop_llvm(ir::AtomicOp binop)
+{
+	switch (binop)
+	{
+	case ir::AtomicOp::eAdd:
+	case ir::AtomicOp::eInc:
+		return AtomicRMWInst::BinOp::Add;
+	case ir::AtomicOp::eAnd:
+		return AtomicRMWInst::BinOp::And;
+	case ir::AtomicOp::eOr:
+		return AtomicRMWInst::BinOp::Or;
+	case ir::AtomicOp::eXor:
+		return AtomicRMWInst::BinOp::Xor;
+	case ir::AtomicOp::eExchange:
+		return AtomicRMWInst::BinOp::Xchg;
+	case ir::AtomicOp::eSMax:
+		return AtomicRMWInst::BinOp::Max;
+	case ir::AtomicOp::eSMin:
+		return AtomicRMWInst::BinOp::Min;
+	case ir::AtomicOp::eUMax:
+		return AtomicRMWInst::BinOp::UMax;
+	case ir::AtomicOp::eUMin:
+		return AtomicRMWInst::BinOp::UMin;
+	case ir::AtomicOp::eSub:
+	case ir::AtomicOp::eDec:
+		return AtomicRMWInst::BinOp::Sub;
+	case ir::AtomicOp::eLoad:
+		return AtomicRMWInst::BinOp::Or;
+	case ir::AtomicOp::eStore:
+		return AtomicRMWInst::BinOp::Xchg;
+	default:
+		return AtomicRMWInst::BinOp::Invalid;
+	}
+}
+
 static DXIL::Op convert_round_mode(ir::RoundMode mode)
 {
 	switch (mode)
@@ -562,6 +597,7 @@ private:
 	bool build_buffer_store(const ir::Op &op);
 	bool build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_buffer_atomic(const ir::Op &op);
+	bool build_lds_atomic(const ir::Op &op);
 	bool build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKind kind);
 	bool build_counter_atomic(const ir::Op &op);
 	bool build_image_load(const ir::Op &op);
@@ -1477,6 +1513,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(LdsLoad, gep_load);
 	OPMAP(LdsStore, gep_store);
 	OPMAP(Barrier, barrier);
+	OPMAP(LdsAtomic, lds_atomic);
 #undef OPMAP
 
 	// Plain instructions
@@ -2568,6 +2605,66 @@ bool ParseContext::build_buffer_atomic_binop(const ir::Op &op, DXIL::ResourceKin
 		value);
 
 	push_instruction(inst, op.getDef());
+	return true;
+}
+
+bool ParseContext::build_lds_atomic(const ir::Op &op)
+{
+	auto *lds = get_value(op.getOperand(0));
+	Vector<Value *> args;
+	args.push_back(lds);
+	args.push_back(get_constant_uint(0));
+
+	if (op.getOperand(1))
+	{
+		auto &addr = builder.getOp(ir::SsaDef(op.getOperand(1)));
+		auto *addr_value = get_value(op.getOperand(1));
+		for (uint32_t i = 0; i < addr.getType().getBaseType(0).getVectorSize(); i++)
+			args.push_back(get_extracted_composite_component(addr_value, i));
+	}
+
+	Type *type;
+	if (!op.getType().isVoidType())
+		type = convert_type(op.getType());
+	else
+		type = convert_type(builder.getOp(ir::SsaDef(op.getOperand(2))).getType());
+
+	auto *gep = context.construct<GetElementPtrInst>(
+		PointerType::get(type, uint32_t(DXIL::AddressSpace::GroupShared)), std::move(args), true);
+	push_instruction(gep);
+
+	auto *value = get_value(op.getOperand(2));
+	auto atomic_op = ir::AtomicOp(op.getOperand(3));
+
+	if (atomic_op == ir::AtomicOp::eCompareExchange)
+	{
+		auto *inst = context.construct<AtomicCmpXchgInst>(
+			gep,
+			get_extracted_composite_component(value, 0),
+			get_extracted_composite_component(value, 1));
+		push_instruction(inst, op.getDef());
+	}
+	else
+	{
+		auto *ret_type = convert_type(op.getType());
+		if (!ret_type)
+			ret_type = type;
+		// Final fallback, base the type on the LDS itself. Not sure if it ever applies.
+		if (!ret_type)
+			ret_type = get_scalar_type(convert_type(op.getType().getBaseType(0)));
+
+		if (atomic_op == ir::AtomicOp::eInc || atomic_op == ir::AtomicOp::eDec)
+			value = get_constant_uint(1);
+		else if (atomic_op == ir::AtomicOp::eLoad)
+			value = get_constant_uint(0);
+
+		assert(value);
+
+		auto *inst = context.construct<AtomicRMWInst>(
+		    ret_type, gep, value, convert_atomic_binop_llvm(atomic_op));
+		push_instruction(inst, op.getDef());
+	}
+
 	return true;
 }
 
