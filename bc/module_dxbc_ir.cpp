@@ -688,6 +688,16 @@ static inline Type *get_value_type(Value *value)
 	return value->getType();
 }
 
+static Type *get_scalar_type(Type *type)
+{
+	if (auto *vec = dyn_cast<VectorType>(type))
+		return vec->getElementType();
+	else if (isa<StructType>(type))
+		return type->getStructElementType(0);
+	else
+		return type;
+}
+
 template <typename... Values>
 Instruction *ParseContext::build_dxil_call(DXIL::Op op, Type *return_type, Type *overload_type, Values&&... values)
 {
@@ -738,15 +748,17 @@ bool ParseContext::emit_constant(const ir::Op &op)
 			Vector<Value *> constants;
 			constants.reserve(op.getOperandCount());
 
+			auto *llvm_sub_type = get_scalar_type(llvm_type);
+
 			if (type.getBaseType(0).isIntType())
 			{
-				for (unsigned i = 0; i < op.getOperandCount(); i++)
-					constants.push_back(ConstantInt::get(convert_type(type.getSubType(0)), uint64_t(op.getOperand(i))));
+				for (uint32_t i = 0; i < op.getOperandCount(); i++)
+					constants.push_back(ConstantInt::get(llvm_sub_type, uint64_t(op.getOperand(i))));
 			}
 			else if (type.getBaseType(0).isFloatType())
 			{
-				for (unsigned i = 0; i < op.getOperandCount(); i++)
-					constants.push_back(ConstantFP::get(convert_type(type.getSubType(0)), uint64_t(op.getOperand(i))));
+				for (uint32_t i = 0; i < op.getOperandCount(); i++)
+					constants.push_back(ConstantFP::get(llvm_sub_type, uint64_t(op.getOperand(i))));
 			}
 			else
 				return false;
@@ -754,10 +766,58 @@ bool ParseContext::emit_constant(const ir::Op &op)
 			value = context.construct<ConstantDataVector>(convert_type(type), std::move(constants));
 		}
 	}
-	else
+	else if (type.isArrayType())
 	{
-		// TODO:
-		return false;
+		// This is quite flexible, but only support what we can reasonably expect to see. Extend and generalize if needed.
+		auto elem_type = type.getSubType(0);
+		if (!elem_type.isScalarType() && !elem_type.isVectorType())
+			return false;
+
+		uint32_t vecsize = elem_type.getBaseType(0).getVectorSize();
+		assert(vecsize && op.getOperandCount() % vecsize == 0);
+		uint32_t array_elements = op.getOperandCount() / vecsize;
+
+		Vector<Value *> constants;
+		Vector<Value *> values;
+
+		values.reserve(array_elements);
+		constants.reserve(vecsize);
+
+		auto *llvm_sub_type = convert_type(elem_type);
+
+		for (uint32_t elem = 0; elem < array_elements; elem++)
+		{
+			constants.clear();
+
+			for (uint32_t c = 0; c < vecsize; c++)
+			{
+				if (elem_type.getBaseType(0).isIntType())
+				{
+					constants.push_back(ConstantInt::get(get_scalar_type(llvm_sub_type),
+					                                     uint64_t(op.getOperand(elem * vecsize + c))));
+				}
+				else if (elem_type.getBaseType(0).isFloatType())
+				{
+					constants.push_back(ConstantFP::get(get_scalar_type(llvm_sub_type),
+					                                    uint64_t(op.getOperand(elem * vecsize + c))));
+				}
+				else
+					return false;
+			}
+
+			if (elem_type.isVectorType())
+				values.push_back(context.construct<ConstantDataVector>(convert_type(elem_type), constants));
+			else
+				values.push_back(constants[0]);
+		}
+
+		auto *constant_value = context.construct<ConstantDataArray>(convert_type(op.getType()), values);
+		auto *lut = context.construct<GlobalVariable>(
+			PointerType::get(convert_type(op.getType()), uint32_t(DXIL::AddressSpace::Thread)),
+			GlobalVariable::LinkageTypes::InternalLinkage, false);
+		lut->set_initializer(constant_value);
+		module.add_global_variable(lut);
+		value = lut;
 	}
 
 	if (!value)
@@ -1160,8 +1220,8 @@ bool ParseContext::build_gep_load(const ir::Op &op)
 			args.push_back(get_extracted_composite_component(addr_value, i));
 	}
 
-	auto addr_space = op.getOpCode() == ir::OpCode::eScratchLoad ?
-	    DXIL::AddressSpace::Thread : DXIL::AddressSpace::GroupShared;
+	auto addr_space = op.getOpCode() == ir::OpCode::eLdsLoad ?
+	                  DXIL::AddressSpace::GroupShared : DXIL::AddressSpace::Thread;
 
 	auto *gep = context.construct<GetElementPtrInst>(
 		PointerType::get(type, uint32_t(addr_space)), std::move(args), true);
@@ -1186,8 +1246,8 @@ bool ParseContext::build_gep_store(const ir::Op &op)
 			args.push_back(get_extracted_composite_component(addr_value, i));
 	}
 
-	auto addr_space = op.getOpCode() == ir::OpCode::eScratchStore ?
-	                      DXIL::AddressSpace::Thread : DXIL::AddressSpace::GroupShared;
+	auto addr_space = op.getOpCode() == ir::OpCode::eLdsStore ?
+	                  DXIL::AddressSpace::GroupShared : DXIL::AddressSpace::Thread;
 
 	auto *gep = context.construct<GetElementPtrInst>(
 	    PointerType::get(type, uint32_t(addr_space)), std::move(args), true);
@@ -1512,6 +1572,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(ScratchStore, gep_store);
 	OPMAP(LdsLoad, gep_load);
 	OPMAP(LdsStore, gep_store);
+	OPMAP(ConstantLoad, gep_load);
 	OPMAP(Barrier, barrier);
 	OPMAP(LdsAtomic, lds_atomic);
 #undef OPMAP
@@ -1842,16 +1903,6 @@ static VectorType *get_vec4_variant(Type *type)
 	}
 	else
 		return VectorType::get(4, type);
-}
-
-static Type *get_scalar_type(Type *type)
-{
-	if (auto *vec = dyn_cast<VectorType>(type))
-		return vec->getElementType();
-	else if (isa<StructType>(type))
-		return type->getStructElementType(0);
-	else
-		return type;
 }
 
 static StructType *get_sparse_feedback_variant(Type *type)
