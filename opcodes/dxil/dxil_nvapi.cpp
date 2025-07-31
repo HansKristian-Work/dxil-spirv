@@ -226,24 +226,24 @@ static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 
 		switch (subopcode)
 		{
-			case NV_SPECIALOP_GLOBAL_TIMER_LO:
-			case NV_SPECIALOP_GLOBAL_TIMER_HI:
-			{
-				builder.addExtension("SPV_KHR_shader_clock");
-				builder.addCapability(spv::Capability::CapabilityShaderClockKHR);
+		case NV_SPECIALOP_GLOBAL_TIMER_LO:
+		case NV_SPECIALOP_GLOBAL_TIMER_HI:
+		{
+			builder.addExtension("SPV_KHR_shader_clock");
+			builder.addCapability(spv::CapabilityShaderClockKHR);
 
-				auto *read_op = impl.allocate(spv::OpReadClockKHR, builder.makeVectorType(builder.makeUintType(32), 2));
-				read_op->add_id(builder.makeUintConstant(1));
-				impl.add(read_op);
+			auto *read_op = impl.allocate(spv::OpReadClockKHR, builder.makeVectorType(builder.makeUintType(32), 2));
+			read_op->add_id(builder.makeUintConstant(1));
+			impl.add(read_op);
 
-				auto *extract_op = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
-				extract_op->add_id(read_op->id);
-				extract_op->add_literal(subopcode - NV_SPECIALOP_GLOBAL_TIMER_LO);
-				impl.add(extract_op);
+			auto *extract_op = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+			extract_op->add_id(read_op->id);
+			extract_op->add_literal(subopcode - NV_SPECIALOP_GLOBAL_TIMER_LO);
+			impl.add(extract_op);
 
-				impl.nvapi.fake_doorbell_outputs[0] = extract_op->id;
-				return true;
-			}
+			impl.nvapi.fake_doorbell_outputs[0] = extract_op->id;
+			return true;
+		}
 		}
 	}
 
