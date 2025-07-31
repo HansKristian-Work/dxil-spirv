@@ -39,7 +39,7 @@ bool emit_dxil_unary_instruction(spv::Op opcode, Converter::Impl &impl, const ll
 bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
-bool emit_dxil_wide_mul_instruction(spv::Op op, Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_dxil_wide_arith_instruction(spv::Op op, Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics);
 bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm::CallInst *instruction);
@@ -95,10 +95,10 @@ static inline bool unary_dispatch(Converter::Impl &impl, const llvm::CallInst *i
 	return emit_dxil_unary_instruction(opcode, impl, instruction);
 }
 
-template <spv::Op opcode>
+template <spv::Op opcode, bool spirv_semantics>
 static inline bool wide_arith_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	return emit_dxil_wide_mul_instruction(opcode, impl, instruction);
+	return emit_dxil_wide_arith_instruction(opcode, impl, instruction, spirv_semantics);
 }
 
 template <unsigned Dim>

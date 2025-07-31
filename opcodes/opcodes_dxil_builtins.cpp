@@ -116,10 +116,14 @@ struct DXILDispatcher
 		OP(IMax) = std450_binary_dispatch<GLSLstd450SMax>;
 		OP(UMin) = std450_binary_dispatch<GLSLstd450UMin>;
 		OP(UMax) = std450_binary_dispatch<GLSLstd450UMax>;
-		OP(IMul) = wide_arith_dispatch<spv::OpSMulExtended>;
-		OP(UMul) = wide_arith_dispatch<spv::OpUMulExtended>;
-		OP(UAddc) = wide_arith_dispatch<spv::OpIAddCarry>;
-		OP(USubb) = wide_arith_dispatch<spv::OpISubBorrow>;
+		OP(IMul) = wide_arith_dispatch<spv::OpSMulExtended, false>;
+		OP(UMul) = wide_arith_dispatch<spv::OpUMulExtended, false>;
+		OP(UAddc) = wide_arith_dispatch<spv::OpIAddCarry, false>;
+		OP(USubb) = wide_arith_dispatch<spv::OpISubBorrow, false>;
+		OP(ExtendedSpirvSMulExtended) = wide_arith_dispatch<spv::OpSMulExtended, true>;
+		OP(ExtendedSpirvUMulExtended) = wide_arith_dispatch<spv::OpUMulExtended, true>;
+		OP(ExtendedSpirvIAddCarry) = wide_arith_dispatch<spv::OpIAddCarry, true>;
+		OP(ExtendedSpirvISubBorrow) = wide_arith_dispatch<spv::OpISubBorrow, true>;
 		OP(UDiv) = emit_dxbc_udiv_instruction;
 		OP(IsNan) = unary_dispatch<spv::OpIsNan>;
 		OP(IsInf) = unary_dispatch<spv::OpIsInf>;
@@ -176,6 +180,9 @@ struct DXILDispatcher
 		OP(ExtendedSpirvIbfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract, true>;
 		OP(ExtendedSpirvUbfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract, true>;
 		OP(ExtendedSpirvBfi) = emit_bfi_dispatch<true>;
+		OP(ExtendedSpirvFindLSB) = std450_unary_dispatch<GLSLstd450FindILsb>;
+		OP(ExtendedSpirvIFindMSB) = std450_unary_dispatch<GLSLstd450FindSMsb>;
+		OP(ExtendedSpirvUFindMSB) = std450_unary_dispatch<GLSLstd450FindUMsb>;
 
 		OP(MakeDouble) = emit_make_double_instruction;
 		OP(SplitDouble) = emit_split_double_instruction;

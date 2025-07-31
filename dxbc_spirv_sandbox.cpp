@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 1
-		if (test.name != "test_arithmetic_fp16_scalar")
+		if (test.name != "test_arithmetic_int_extended")
 			continue;
 #endif
 

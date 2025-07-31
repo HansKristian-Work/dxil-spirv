@@ -503,6 +503,13 @@ enum class Op : unsigned
 	ExtendedSpirvIbfe,
 	ExtendedSpirvUbfe,
 	ExtendedSpirvBfi,
+	ExtendedSpirvFindLSB,
+	ExtendedSpirvIFindMSB,
+	ExtendedSpirvUFindMSB,
+	ExtendedSpirvIAddCarry,
+	ExtendedSpirvISubBorrow,
+	ExtendedSpirvSMulExtended,
+	ExtendedSpirvUMulExtended,
 
 	Count
 };

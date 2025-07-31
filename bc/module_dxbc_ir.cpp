@@ -1379,6 +1379,15 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(IBitInsert, dxil_quaternary<DXIL::Op::ExtendedSpirvBfi>);
 	OPMAP(EmitVertex, dxil_constant_unary<DXIL::Op::EmitStream>);
 	OPMAP(EmitPrimitive, dxil_constant_unary<DXIL::Op::CutStream>);
+	OPMAP(IBitCount, dxil_unary<DXIL::Op::Countbits>);
+	OPMAP(IBitReverse, dxil_unary<DXIL::Op::Bfrev>);
+	OPMAP(IFindLsb, dxil_unary<DXIL::Op::ExtendedSpirvFindLSB>);
+	OPMAP(SFindMsb, dxil_unary<DXIL::Op::ExtendedSpirvIFindMSB>);
+	OPMAP(UFindMsb, dxil_unary<DXIL::Op::ExtendedSpirvUFindMSB>);
+	OPMAP(IAddCarry, dxil_binary<DXIL::Op::ExtendedSpirvIAddCarry>);
+	OPMAP(ISubBorrow, dxil_binary<DXIL::Op::ExtendedSpirvISubBorrow>);
+	OPMAP(SMulExtended, dxil_binary<DXIL::Op::ExtendedSpirvSMulExtended>);
+	OPMAP(UMulExtended, dxil_binary<DXIL::Op::ExtendedSpirvUMulExtended>);
 #undef OPMAP
 
 	// Plain instructions
@@ -1446,6 +1455,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	BOP(eISub, Sub);
 	BOP(eIMul, Mul);
 	BOP(eUDiv, UDiv);
+	BOP(eUMod, URem);
 	BOP(eIAnd, And);
 	BOP(eIOr, Or);
 	BOP(eIXor, Xor);
@@ -1525,9 +1535,25 @@ bool ParseContext::push_instruction(const ir::Op &op)
 
 	case ir::OpCode::eINot:
 	{
+		auto *result_type = convert_type(op.getType());
+		auto *scalar_type = result_type;
+		Constant *constant_max;
+		if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(result_type))
+		{
+			scalar_type = vec->getElementType();
+			constant_max = ConstantInt::get(scalar_type, UINT64_MAX);
+			// Only vec2 is supported.
+			constant_max = context.construct<ConstantDataVector>(result_type, Vector<Value *>{ constant_max, constant_max });
+		}
+		else
+		{
+			constant_max = ConstantInt::get(scalar_type, UINT64_MAX);
+		}
+
 		auto *inst = context.construct<BinaryOperator>(get_value(op.getOperand(0)),
-		                                               ConstantInt::get(convert_type(op.getType()), ~0u),
+		                                               constant_max,
 		                                               Instruction::BinaryOps::Xor);
+
 		push_instruction(inst, op.getDef());
 		break;
 	}
