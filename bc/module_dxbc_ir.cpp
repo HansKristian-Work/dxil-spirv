@@ -144,12 +144,6 @@ static DXIL::Op convert_builtin_opcode(ir::BuiltIn builtin)
 	{
 	case ir::BuiltIn::eSampleCount:
 		return DXIL::Op::RenderTargetGetSampleCount;
-	case ir::BuiltIn::eWorkgroupId:
-		return DXIL::Op::GroupId;
-	case ir::BuiltIn::eGlobalThreadId:
-		return DXIL::Op::ThreadId;
-	case ir::BuiltIn::eLocalThreadId:
-		return DXIL::Op::ThreadIdInGroup;
 	case ir::BuiltIn::eLocalThreadIndex:
 		return DXIL::Op::FlattenedThreadIdInGroup;
 	case ir::BuiltIn::eIsFullyCovered:
@@ -206,6 +200,12 @@ static DXIL::Semantic convert_semantic(ir::BuiltIn builtin)
 		return DXIL::Semantic::Depth;
 	case ir::BuiltIn::eStencilRef:
 		return DXIL::Semantic::StencilRef;
+	case ir::BuiltIn::eGlobalThreadId:
+		return DXIL::Semantic::DispatchThreadID;
+	case ir::BuiltIn::eLocalThreadId:
+		return DXIL::Semantic::GroupThreadID;
+	case ir::BuiltIn::eWorkgroupId:
+		return DXIL::Semantic::GroupID;
 
 	default:
 		return DXIL::Semantic::User;
@@ -534,7 +534,7 @@ private:
 	// Resource access hell.
 	Instruction *build_load_input(
 		uint32_t index, Type *type,
-		Value *row, uint32_t col, Value *axis = nullptr);
+		Value *row, uint32_t col, Value *axis, bool patch);
 	Instruction *build_load_output(
 		uint32_t index, Type *type,
 		Value *row, uint32_t col, Value *axis = nullptr);
@@ -875,12 +875,20 @@ static bool io_decl_is_patch(ir::ShaderStage stage, const ir::Op &op)
 		return stage == ir::ShaderStage::eDomain && !op.getType().isArrayType();
 	case ir::OpCode::eDclOutput:
 		return stage == ir::ShaderStage::eHull && !op.getType().isArrayType();
+	case ir::OpCode::eDclOutputBuiltIn:
+		if (stage == ir::ShaderStage::eDomain)
+			return false;
+		break;
 	default:
 		break;
 	}
 
 	// For builtin-IO, there's tess factors and clip/cull distance that is a bit "special".
 	auto builtin = ir::BuiltIn(op.getOperand(1));
+
+	if (builtin == ir::BuiltIn::eTessCoord)
+		return false;
+
 	return builtin == ir::BuiltIn::eTessFactorOuter || builtin == ir::BuiltIn::eTessFactorInner ||
 	       !op.getType().isArrayType();
 }
@@ -910,10 +918,11 @@ bool ParseContext::build_input_load(const ir::Op &op)
 	Instruction *insts[4] = {};
 
 	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+	bool patch = io_decl_is_patch(shader_stage, builder.getOp(ir::SsaDef(op.getOperand(0))));
 
 	for (unsigned c = 0; c < components; c++)
 	{
-		insts[c] = build_load_input(ref.index, scalar_type, access.row, access.col + c, access.axis);
+		insts[c] = build_load_input(ref.index, scalar_type, access.row, access.col + c, access.axis, patch);
 		push_instruction(insts[c], op.getDef());
 	}
 
@@ -1530,11 +1539,11 @@ bool ParseContext::push_instruction(const ir::Op &op)
 }
 
 Instruction *ParseContext::build_load_input(
-    uint32_t index, Type *type, Value *row, uint32_t col, Value *axis)
+    uint32_t index, Type *type, Value *row, uint32_t col, Value *axis, bool patch)
 {
 	assert(index != UINT32_MAX);
 	auto *inst = build_dxil_call(
-		DXIL::Op::LoadInput, type, type,
+		patch ? DXIL::Op::LoadPatchConstant : DXIL::Op::LoadInput, type, type,
 		get_constant_uint(index),
 		row,
 		get_constant_uint(col),
@@ -1873,9 +1882,10 @@ bool ParseContext::build_image_store(const ir::Op &op)
 	unsigned num_value_components = builder.getOp(value).getType().getBaseType(0).getVectorSize();
 
 	auto *scalar_type = get_scalar_type(get_value(value)->getType());
+	auto *coord_value = get_value(coord);
 
 	for (unsigned c = 0; c < num_coord_components; c++)
-		coords[c] = get_extracted_composite_component(get_value(coord), c);
+		coords[c] = get_extracted_composite_component(coord_value, c);
 	for (unsigned c = num_coord_components; c < 3; c++)
 		coords[c] = UndefValue::get(Type::getInt32Ty(context));
 
@@ -2827,6 +2837,18 @@ MDOperand *ParseContext::create_entry_point_meta(Function *patch_control_func)
 		    create_constant_uint_meta(uint32_t(convert_hull_domain(domain))),
 		    create_constant_uint_meta(uint32_t(convert_hull_partitioning(partitioning))),
 		    create_constant_uint_meta(uint32_t(convert_hull_output_primitive(prim, winding)))));
+	}
+	else if (shader_stage == ir::ShaderStage::eDomain)
+	{
+		ir::PrimitiveType domain = {};
+		for_all_opcodes(builder, ir::OpCode::eSetTessDomain, [&](const ir::Op &op) {
+			domain = ir::PrimitiveType(op.getOperand(1));
+			return false;
+		});
+		flag_ops.push_back(create_constant_uint_meta(uint32_t(DXIL::ShaderPropertyTag::DSState)));
+		flag_ops.push_back(create_md_node(
+		    create_constant_uint_meta(uint32_t(convert_hull_domain(domain))),
+		    create_constant_uint_meta(32 /* somewhat irrelevant? */)));
 	}
 
 	return flag_ops.empty() ? create_null_meta() : create_md_node(std::move(flag_ops));

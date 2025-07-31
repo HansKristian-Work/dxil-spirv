@@ -4720,6 +4720,31 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		break;
 	}
 
+	case DXIL::Semantic::DomainLocation:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic,
+		// and it's easier to just treat it like a normal builtin input.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInTessCoord);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInTessCoord);
+		break;
+
+	case DXIL::Semantic::DispatchThreadID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInGlobalInvocationId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInGlobalInvocationId);
+		break;
+
+	case DXIL::Semantic::GroupThreadID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInLocalInvocationId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInLocalInvocationId);
+		break;
+
+	case DXIL::Semantic::GroupID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInWorkgroupId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInWorkgroupId);
+		break;
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
@@ -5001,7 +5026,8 @@ bool Converter::Impl::emit_stage_input_variables()
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		// For HS <-> DS, ignore system values.
-		if (execution_model == spv::ExecutionModelTessellationEvaluation)
+		// Allow certain system values that are synthesized however.
+		if (execution_model == spv::ExecutionModelTessellationEvaluation && system_value != DXIL::Semantic::DomainLocation)
 			system_value = DXIL::Semantic::User;
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
@@ -5031,7 +5057,8 @@ bool Converter::Impl::emit_stage_input_variables()
 			continue;
 		}
 		else if (system_value == DXIL::Semantic::PrimitiveID ||
-		         system_value == DXIL::Semantic::ShadingRate)
+		         system_value == DXIL::Semantic::ShadingRate ||
+		         system_value == DXIL::Semantic::DomainLocation)
 		{
 			arrayed_input = false;
 		}
