@@ -489,6 +489,8 @@ private:
 	MDNode *create_stage_io_meta();
 	MDOperand *create_null_meta();
 
+	void set_function_attributes(Function *func);
+
 	struct MetadataMapping
 	{
 		Vector<MDOperand *> nodes;
@@ -2854,6 +2856,54 @@ MDOperand *ParseContext::create_entry_point_meta(Function *patch_control_func)
 	return flag_ops.empty() ? create_null_meta() : create_md_node(std::move(flag_ops));
 }
 
+void ParseContext::set_function_attributes(Function *func)
+{
+	Vector<std::pair<String, String>> attrs;
+
+	for_all_opcodes(builder, ir::OpCode::eSetFpMode, [&](const ir::Op &op) {
+		auto round = ir::RoundMode(op.getOperand(1));
+		auto denorm = ir::DenormMode(op.getOperand(2));
+
+		const char *round_mode = nullptr;
+		const char *denorm_mode = nullptr;
+
+		switch (op.getType().getBaseType(0).getBaseType())
+		{
+		case ir::ScalarType::eF16:
+			round_mode = "fp16-round-mode";
+			denorm_mode = "fp16-denorm-mode";
+			break;
+
+		case ir::ScalarType::eF32:
+			round_mode = "fp32-round-mode";
+			denorm_mode = "fp32-denorm-mode";
+			break;
+
+		case ir::ScalarType::eF64:
+			round_mode = "fp64-round-mode";
+			denorm_mode = "fp64-denorm-mode";
+			break;
+
+		default:
+			break;
+		}
+
+		if (round == ir::RoundMode::eZero)
+			attrs.emplace_back(round_mode, "rtz");
+		else if (round == ir::RoundMode::eNearestEven)
+			attrs.emplace_back(round_mode, "rte");
+
+		if (denorm == ir::DenormMode::eFlush)
+			attrs.emplace_back(denorm_mode, "ftz");
+		else if (denorm == ir::DenormMode::ePreserve)
+			attrs.emplace_back(denorm_mode, "preserve");
+
+		return true;
+	});
+
+	func->set_attributes(std::move(attrs));
+}
+
 bool ParseContext::emit_entry_point()
 {
 	const ir::Op *entry = nullptr;
@@ -2891,6 +2941,8 @@ bool ParseContext::emit_entry_point()
 			                     create_md_node(create_constant_meta(func), create_string_meta("main"),
 			                                    create_stage_io_meta(), create_null_meta(),
 			                                    create_entry_point_meta(patch_control_func)));
+
+			set_function_attributes(func);
 		}
 	}
 
@@ -3245,6 +3297,9 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eSetTessDomain:
 		case ir::OpCode::eSetTessPrimitive:
 		case ir::OpCode::eDclXfb:
+		case ir::OpCode::eRovScopedLockBegin:
+		case ir::OpCode::eRovScopedLockEnd:
+		case ir::OpCode::eSetFpMode:
 			break;
 
 		case ir::OpCode::eConstant:

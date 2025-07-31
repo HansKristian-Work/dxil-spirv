@@ -6745,26 +6745,68 @@ bool Converter::Impl::emit_execution_modes_mesh()
 		return false;
 }
 
-bool Converter::Impl::emit_execution_modes_fp_denorm()
+bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 {
 	// Check for SM 6.2 denorm handling. Only applies to FP32.
 	auto *func = get_entry_point_function(entry_point_meta);
 	if (!func)
 		return true;
 
-	auto attr = func->getFnAttribute("fp32-denorm-mode");
-	auto str = attr.getValueAsString();
-	if (str == "ftz")
+	// Plain DXIL only supports fp32-denorm-mode, the rest are internal extensions.
+	static const struct
 	{
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityDenormFlushToZero);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, 32);
+		const char *tag;
+		int bits;
+	} denorms[] = {
+		{ "fp16-denorm-mode", 16 },
+		{ "fp32-denorm-mode", 32 },
+		{ "fp64-denorm-mode", 64 },
+	};
+
+	static const struct
+	{
+		const char *tag;
+		int bits;
+	} rounding[] = {
+		{ "fp16-round-mode", 16 },
+		{ "fp32-round-mode", 32 },
+		{ "fp64-round-mode", 64 },
+	};
+
+	for (auto &d : denorms)
+	{
+		auto attr = func->getFnAttribute(d.tag);
+		auto str = attr.getValueAsString();
+		if (str == "ftz")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityDenormFlushToZero);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, d.bits);
+		}
+		else if (str == "preserve")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityDenormPreserve);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, d.bits);
+		}
 	}
-	else if (str == "preserve")
+
+	for (auto &r : rounding)
 	{
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityDenormPreserve);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 32);
+		auto attr = func->getFnAttribute(r.tag);
+		auto str = attr.getValueAsString();
+		if (str == "rtz")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityRoundingModeRTZ);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, r.bits);
+		}
+		else if (str == "rte")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityRoundingModeRTE);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTE, r.bits);
+		}
 	}
 
 	if (shader_analysis.require_wmma && GlobalConfiguration::get().wmma_rdna3_workaround)
@@ -6819,21 +6861,23 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 		}
 	}
 
-	// Float16 and Float64 require denorms to be preserved in D3D12.
-	if (b.hasCapability(spv::CapabilityFloat16) &&
-	    options.supports_float16_denorm_preserve)
+	// Custom IR is expected to set this with extended attributes.
+	if (!module_is_dxbc_spirv(bitcode_parser.get_module()))
 	{
-		b.addExtension("SPV_KHR_float_controls");
-		b.addCapability(spv::CapabilityDenormPreserve);
-		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
-	}
+		// Float16 and Float64 require denorms to be preserved in D3D12.
+		if (b.hasCapability(spv::CapabilityFloat16) && options.supports_float16_denorm_preserve)
+		{
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
+		}
 
-	if (b.hasCapability(spv::CapabilityFloat64) &&
-	    options.supports_float64_denorm_preserve)
-	{
-		b.addExtension("SPV_KHR_float_controls");
-		b.addCapability(spv::CapabilityDenormPreserve);
-		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+		if (b.hasCapability(spv::CapabilityFloat64) && options.supports_float64_denorm_preserve)
+		{
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+		}
 	}
 
 	// Opt into quad derivatives and maximal reconvergence for fragment shaders using
@@ -6936,7 +6980,7 @@ bool Converter::Impl::emit_execution_modes()
 		break;
 	}
 
-	if (!emit_execution_modes_fp_denorm())
+	if (!emit_execution_modes_fp_denorm_rounding())
 		return false;
 
 	return true;

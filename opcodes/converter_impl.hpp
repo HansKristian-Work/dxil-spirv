@@ -279,7 +279,7 @@ struct Converter::Impl
 	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
 	bool emit_execution_modes_amplification();
 	bool emit_execution_modes_mesh();
-	bool emit_execution_modes_fp_denorm();
+	bool emit_execution_modes_fp_denorm_rounding();
 	bool emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads);
 
 	bool analyze_instructions(llvm::Function *func);
