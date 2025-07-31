@@ -140,21 +140,16 @@ void NVAPIState::notify_doorbell(Converter::Impl &impl, const llvm::CallInst *in
 	}
 }
 
-static bool get_argument(Converter::Impl &impl, uint32_t offset, spv::Id *id)
+static spv::Id get_argument(Converter::Impl &impl, uint32_t offset)
 {
-	if (!impl.nvapi.fake_doorbell_inputs[offset])
-		return false;
-	*id = impl.get_id_for_value(impl.nvapi.fake_doorbell_inputs[offset]);
-	return true;
+	return impl.get_id_for_value(impl.nvapi.fake_doorbell_inputs[offset]);
 }
 
 static bool emit_nvapi_extn_op_shuffle(Converter::Impl &impl)
 {
 	// Dummy throwaway implementation.
-	uint32_t val, lane;
-	if (!get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0, &val) ||
-	    !get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1, &lane))
-		return false;
+	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id lane = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
 
 	auto &builder = impl.builder();
 	builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
@@ -175,11 +170,10 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 		return false;
 
 	// Dummy throwaway implementation to demonstrate UAV reference plumbing.
-	uint32_t addr, val, type;
-	if (!get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0, &addr) ||
-	    !get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0, &val) ||
-	    !get_argument(impl, NVAPI_ARGUMENT_SRC2U + 0, &type))
-		return false;
+	spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0);
+	spv::Id type = get_argument(impl, NVAPI_ARGUMENT_SRC2U + 0);
+	(void)type;
 
 	auto &builder = impl.builder();
 
@@ -224,9 +218,6 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 
 static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 {
-	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
-		return false;
-
 	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
 	if (c != nullptr)
 	{
@@ -277,9 +268,6 @@ static bool emit_nvapi_extn_op_rt_get_cluster_id(Converter::Impl &impl)
 
 static bool emit_nvapi_extn_op_rt_get_intersection_cluster_id(Converter::Impl &impl, spv::RayQueryIntersection intersection)
 {
-	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
-		return false;
-
 	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
 	if (ray_flags != nullptr)
 	{
