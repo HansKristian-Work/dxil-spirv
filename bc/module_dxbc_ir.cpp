@@ -3581,6 +3581,48 @@ bool ParseContext::emit_function_bodies()
 		{
 		case ir::OpCode::eEntryPoint:
 		case ir::OpCode::eDebugName:
+		case ir::OpCode::eDebugMemberName:
+			break;
+
+		case ir::OpCode::eDclSpecConstant:
+		case ir::OpCode::eDclPushData:
+		case ir::OpCode::eDclTmp:
+		case ir::OpCode::eScopedIf:
+		case ir::OpCode::eScopedElse:
+		case ir::OpCode::eScopedEndIf:
+		case ir::OpCode::eScopedLoop:
+		case ir::OpCode::eScopedLoopBreak:
+		case ir::OpCode::eScopedLoopContinue:
+		case ir::OpCode::eScopedEndLoop:
+		case ir::OpCode::eScopedSwitch:
+		case ir::OpCode::eScopedSwitchCase:
+		case ir::OpCode::eScopedSwitchDefault:
+		case ir::OpCode::eScopedSwitchBreak:
+		case ir::OpCode::eScopedEndSwitch:
+		case ir::OpCode::eConsumeAs:
+		case ir::OpCode::eTmpLoad:
+		case ir::OpCode::eTmpStore:
+		case ir::OpCode::ePushDataLoad:
+		case ir::OpCode::eMemoryLoad:
+		case ir::OpCode::eMemoryStore:
+		case ir::OpCode::eMemoryAtomic:
+		case ir::OpCode::ePointer:
+		case ir::OpCode::eFMulLegacy:
+		case ir::OpCode::eFMadLegacy:
+		case ir::OpCode::eFDot:
+		case ir::OpCode::eFDotLegacy:
+		case ir::OpCode::eUMSad:
+		case ir::OpCode::eMinValue:
+		case ir::OpCode::eMaxValue:
+		case ir::OpCode::eDrain:
+			LOGE("Opcode %u should not appear in final IR at this point.\n", unsigned(op.getOpCode()));
+			return false;
+
+		case ir::OpCode::eDclXfb:
+		case ir::OpCode::eRovScopedLockBegin:
+		case ir::OpCode::eRovScopedLockEnd:
+			// Should not appear, but we can just ignore it since it has no semantic impact at this stage.
+			// ROV is done automatically by dxil-spirv path already, so ignore that here.
 			break;
 
 		case ir::OpCode::eDclInput:
@@ -3603,9 +3645,6 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eSetTessControlPoints:
 		case ir::OpCode::eSetTessDomain:
 		case ir::OpCode::eSetTessPrimitive:
-		case ir::OpCode::eDclXfb:
-		case ir::OpCode::eRovScopedLockBegin:
-		case ir::OpCode::eRovScopedLockEnd:
 		case ir::OpCode::eSetFpMode:
 		case ir::OpCode::eSetPsEarlyFragmentTest:
 			break;
@@ -3616,10 +3655,8 @@ bool ParseContext::emit_function_bodies()
 			break;
 
 		case ir::OpCode::eUndef:
-		{
 			value_map[op.getDef()] = UndefValue::get(convert_type(op.getType()));
 			break;
-		}
 
 		// Functions
 		case ir::OpCode::eDclParam:
@@ -3661,7 +3698,6 @@ bool ParseContext::emit_function_bodies()
 		}
 
 		case ir::OpCode::eFunctionEnd:
-		{
 			if (!func)
 			{
 				LOGE("Cannot end function without a function.\n");
@@ -3672,7 +3708,6 @@ bool ParseContext::emit_function_bodies()
 			module.add_function_implementation(func);
 			bbs = {};
 			break;
-		}
 
 		case ir::OpCode::eParamLoad:
 		{
@@ -3732,7 +3767,6 @@ bool ParseContext::emit_function_bodies()
 		}
 
 		case ir::OpCode::eReturn:
-		{
 			if (!current_bb)
 				return false;
 
@@ -3743,7 +3777,6 @@ bool ParseContext::emit_function_bodies()
 
 			current_bb = nullptr;
 			break;
-		}
 
 		case ir::OpCode::eBranch:
 		{
@@ -3830,6 +3863,7 @@ bool ParseContext::emit_function_bodies()
 		}
 	}
 
+	// Resolve PHI incoming values since we have value-defs for them now.
 	for (auto &op : builder)
 	{
 		if (op.getOpCode() == ir::OpCode::ePhi)
