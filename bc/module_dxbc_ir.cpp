@@ -681,6 +681,8 @@ private:
 
 	bool emit_constant(const ir::Op &op);
 	uint32_t resolve_constant_uint(const ir::Operand &op) const;
+
+	ir::OpFlags global_fp_flags = {};
 };
 
 static inline Type *get_value_type(Value *value)
@@ -1385,7 +1387,7 @@ bool ParseContext::build_frcp(const ir::Op &op)
 
 	auto *inst = context.construct<BinaryOperator>(const1, get_value(op.getOperand(0)),
 	                                               BinaryOperator::BinaryOps::FDiv);
-	inst->setFast(!(op.getFlags() & ir::OpFlag::ePrecise));
+	inst->setFast(!((op.getFlags() | global_fp_flags) & ir::OpFlag::ePrecise));
 	push_instruction(inst, op.getDef());
 	return true;
 }
@@ -1396,7 +1398,7 @@ bool ParseContext::build_binary_op(const ir::Op &op, BinaryOperator::BinaryOps b
 	    get_value(op.getOperand(0)), get_value(op.getOperand(1)), binop);
 	push_instruction(inst, op.getDef());
 	if (op.getType().getBaseType(0).isFloatType())
-		inst->setFast(!(op.getFlags() & ir::OpFlag::ePrecise));
+		inst->setFast(!((op.getFlags() | global_fp_flags) & ir::OpFlag::ePrecise));
 	return true;
 }
 
@@ -1407,7 +1409,7 @@ bool ParseContext::build_dxil_unary(const ir::Op &op)
 	auto *inst = build_dxil_call(dxop,
 	                             convert_type(op.getType()), convert_type(op.getType()),
 	                             get_value(op.getOperand(0)));
-	if (op.getFlags() & ir::OpFlag::ePrecise)
+	if ((op.getFlags() | global_fp_flags) & ir::OpFlag::ePrecise)
 		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
 	push_instruction(inst, op.getDef());
 	return true;
@@ -1420,7 +1422,7 @@ bool ParseContext::build_dxil_constant_unary(const ir::Op &op)
 	auto *inst = build_dxil_call(dxop,
 	                             convert_type(op.getType()), convert_type(op.getType()),
 	                             get_constant_uint(uint32_t(op.getOperand(0))));
-	if (op.getFlags() & ir::OpFlag::ePrecise)
+	if ((op.getFlags() | global_fp_flags) & ir::OpFlag::ePrecise)
 		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
 	push_instruction(inst, op.getDef());
 	return true;
@@ -1433,7 +1435,7 @@ bool ParseContext::build_dxil_binary(const ir::Op &op)
 	auto *inst = build_dxil_call(dxop,
 	                             convert_type(op.getType()), convert_type(op.getType()),
 	                             get_value(op.getOperand(0)), get_value(op.getOperand(1)));
-	if (op.getFlags() & ir::OpFlag::ePrecise)
+	if ((op.getFlags() | global_fp_flags) & ir::OpFlag::ePrecise)
 		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
 	push_instruction(inst, op.getDef());
 	return true;
@@ -1448,7 +1450,7 @@ bool ParseContext::build_dxil_trinary(const ir::Op &op)
 	                             get_value(op.getOperand(0)),
 	                             get_value(op.getOperand(1)),
 	                             get_value(op.getOperand(2)));
-	if (op.getFlags() & ir::OpFlag::ePrecise)
+	if ((op.getFlags() | global_fp_flags) & ir::OpFlag::ePrecise)
 		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
 	push_instruction(inst, op.getDef());
 	return true;
@@ -1464,7 +1466,7 @@ bool ParseContext::build_dxil_quaternary(const ir::Op &op)
 	                             get_value(op.getOperand(1)),
 	                             get_value(op.getOperand(2)),
 	                             get_value(op.getOperand(3)));
-	if (op.getFlags() & ir::OpFlag::ePrecise)
+	if ((op.getFlags() | global_fp_flags) & ir::OpFlag::ePrecise)
 		inst->setMetadata("dx.precise", create_md_node(create_null_meta()));
 	push_instruction(inst, op.getDef());
 	return true;
@@ -3204,6 +3206,7 @@ void ParseContext::set_function_attributes(Function *func)
 		else if (denorm == ir::DenormMode::ePreserve)
 			attrs.emplace_back(denorm_mode, "preserve");
 
+		global_fp_flags |= op.getFlags();
 		return true;
 	});
 

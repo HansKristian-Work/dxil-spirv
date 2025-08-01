@@ -31,6 +31,11 @@ SPIR-V:
                OpDecorate %13 DescriptorSet 0
                OpDecorate %13 Binding 0
                OpDecorate %13 NonReadable
+               OpDecorate %28 NoContraction
+               OpDecorate %34 NoContraction
+               OpDecorate %40 NoContraction
+               OpDecorate %55 NoContraction
+               OpDecorate %56 NoContraction
        %void = OpTypeVoid
           %2 = OpTypeFunction %void
        %uint = OpTypeInt 32 0

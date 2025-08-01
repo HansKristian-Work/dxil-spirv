@@ -28,7 +28,12 @@ spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4
 
 void main()
 {
-    _13._m0[0u] = floatBitsToUint(spvNClamp(spvNMax(spvNMin(fract(1.0 / (fma(ceil(floor(roundEven((-abs(trunc(uintBitsToFloat(_9._m0[0u])))) + uintBitsToFloat(_9._m0[1u])) - uintBitsToFloat(_9._m0[2u])) * uintBitsToFloat(_9._m0[3u])), uintBitsToFloat(_9._m0[4u]), uintBitsToFloat(_9._m0[5u])) / uintBitsToFloat(_9._m0[6u]))), uintBitsToFloat(_9._m0[7u])), uintBitsToFloat(_9._m0[8u])), uintBitsToFloat(_9._m0[9u]), uintBitsToFloat(_9._m0[10u])));
+    precise float _28 = (-abs(trunc(uintBitsToFloat(_9._m0[0u])))) + uintBitsToFloat(_9._m0[1u]);
+    precise float _34 = roundEven(_28) - uintBitsToFloat(_9._m0[2u]);
+    precise float _40 = floor(_34) * uintBitsToFloat(_9._m0[3u]);
+    precise float _55 = fma(ceil(_40), uintBitsToFloat(_9._m0[4u]), uintBitsToFloat(_9._m0[5u])) / uintBitsToFloat(_9._m0[6u]);
+    precise float _56 = 1.0 / _55;
+    _13._m0[0u] = floatBitsToUint(spvNClamp(spvNMax(spvNMin(fract(_56), uintBitsToFloat(_9._m0[7u])), uintBitsToFloat(_9._m0[8u])), uintBitsToFloat(_9._m0[9u]), uintBitsToFloat(_9._m0[10u])));
 }
 
 
