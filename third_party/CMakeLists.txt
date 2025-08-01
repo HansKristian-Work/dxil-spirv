@@ -17,7 +17,26 @@ add_library(dxbc-spirv STATIC
         dxbc-spirv/util/util_float16.h
         dxbc-spirv/util/util_hash.h
         dxbc-spirv/util/util_small_vector.h
-        dxbc-spirv/util/util_vle.h)
+        dxbc-spirv/util/util_vle.h
+        dxbc-spirv/ir/passes/ir_pass_arithmetic.cpp
+        dxbc-spirv/ir/passes/ir_pass_arithmetic.h
+        dxbc-spirv/ir/passes/ir_pass_cfg_cleanup.cpp
+        dxbc-spirv/ir/passes/ir_pass_cfg_cleanup.h
+        dxbc-spirv/ir/passes/ir_pass_cfg_convert.cpp
+        dxbc-spirv/ir/passes/ir_pass_cfg_convert.h
+        dxbc-spirv/ir/passes/ir_pass_lower_consume.cpp
+        dxbc-spirv/ir/passes/ir_pass_lower_consume.h
+        dxbc-spirv/ir/passes/ir_pass_lower_min16.cpp
+        dxbc-spirv/ir/passes/ir_pass_lower_min16.h
+        dxbc-spirv/ir/passes/ir_pass_propagate_types.cpp
+        dxbc-spirv/ir/passes/ir_pass_propagate_types.h
+        dxbc-spirv/ir/passes/ir_pass_remove_unused.cpp
+        dxbc-spirv/ir/passes/ir_pass_remove_unused.h
+        dxbc-spirv/ir/passes/ir_pass_scalarize.cpp
+        dxbc-spirv/ir/passes/ir_pass_scalarize.h
+        dxbc-spirv/ir/passes/ir_pass_ssa.cpp
+        dxbc-spirv/ir/passes/ir_pass_ssa.h
+        dxbc-spirv/ir/passes/ir_pass_ssa_utils.h)
 
 add_library(dxbc-spirv-test STATIC
         dxbc-spirv/tests/test_common.h
@@ -30,6 +49,8 @@ add_library(dxbc-spirv-test STATIC
         dxbc-spirv/tests/api/test_api_io.h
         dxbc-spirv/tests/api/test_api_resources.cpp
         dxbc-spirv/tests/api/test_api_resources.h
+        dxbc-spirv/tests/api/test_api_pass_scalarize.cpp
+        dxbc-spirv/tests/api/test_api_pass_scalarize.h
         dxbc-spirv/tests/api/test_api_arithmetic.cpp
         dxbc-spirv/tests/api/test_api_arithmetic.h
         dxbc-spirv/tests/api/test_api_misc.cpp
@@ -45,7 +66,9 @@ add_library(dxbc-spirv-test STATIC
         dxbc-spirv/tests/util/test_util_small_vector.cpp
         dxbc-spirv/tests/util/test_util_vle.cpp)
 
-target_include_directories(dxbc-spirv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dxbc-spirv)
+target_include_directories(dxbc-spirv
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dxbc-spirv
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/dxbc-spirv/ir)
 target_include_directories(dxbc-spirv-test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dxbc-spirv/tests)
 target_compile_features(dxbc-spirv PUBLIC cxx_std_17)
 target_compile_features(dxbc-spirv-test PUBLIC cxx_std_17)

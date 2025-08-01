@@ -1761,6 +1761,24 @@ bool ParseContext::push_instruction(const ir::Op &op)
 		break;
 	}
 
+	case ir::OpCode::eFunctionCall:
+	{
+		auto itr = function_map.find(ir::SsaDef(op.getOperand(0)));
+		if (itr == function_map.end())
+			return false;
+
+		auto *func = itr->second;
+		Vector<Value *> args;
+		args.reserve(op.getOperandCount() - 1);
+
+		for (uint32_t i = 1; i < op.getOperandCount(); i++)
+			args.push_back(get_value(op.getOperand(i)));
+
+		push_instruction(context.construct<CallInst>(func->getFunctionType(), func, std::move(args)),
+		                 op.getDef());
+		break;
+	}
+
 	default:
 		LOGE("Unimplemented opcode %u\n", unsigned(op.getOpCode()));
 		return false;

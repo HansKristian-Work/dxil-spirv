@@ -3799,6 +3799,9 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 		return builder.makeVectorType(get_type_id(vec_type->getElementType()), vec_type->getVectorNumElements());
 	}
 
+	case llvm::Type::TypeID::VoidTyID:
+		return builder.makeVoidType();
+
 	default:
 		return 0;
 	}
@@ -5680,8 +5683,7 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		}
 		else
 		{
-			LOGE("Normal function call currently unsupported ...\n");
-			return false;
+			return emit_call_instruction(*this, *call_inst);
 		}
 	}
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
@@ -7398,6 +7400,43 @@ void Converter::Impl::emit_write_instrumentation_invocation_id(CFGNode *node)
 	add(store);
 }
 
+bool Converter::Impl::build_callee_functions(CFGNodePool &pool, Vector<ConvertedFunction::Function> &leaves)
+{
+	llvm::Function *func = get_entry_point_function(entry_point_meta);
+
+	for (auto *leaf_func : bitcode_parser.get_module())
+	{
+		if (leaf_func == func || leaf_func == execution_mode_meta.patch_constant_function)
+			continue;
+
+		Vector<spv::Id> arg_types;
+		spv::Block *spv_entry;
+
+		arg_types.reserve(leaf_func->getFunctionType()->getNumParams());
+		for (uint32_t i = 0; i < leaf_func->getFunctionType()->getNumParams(); i++)
+			arg_types.push_back(get_type_id(leaf_func->getFunctionType()->getParamType(i)));
+
+		auto *spv_func =
+		    builder().makeFunctionEntry(spv::NoPrecision, get_type_id(leaf_func->getFunctionType()->getReturnType()),
+		                                leaf_func->getName().c_str(), arg_types, {}, &spv_entry);
+
+		rewrite_value(leaf_func, spv_func->getId());
+
+		auto visit_order = build_function_bb_visit_order_analysis(leaf_func);
+
+		for (auto *bb : visit_order)
+			build_function_bb_visit_register(bb, pool, "");
+
+		auto *entry = convert_function(visit_order, false);
+		if (!entry)
+			return false;
+
+		leaves.push_back({ entry, spv_func });
+	}
+
+	return true;
+}
+
 CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order, bool primary_code)
 {
 	bool has_partial_unroll = false;
@@ -7960,11 +7999,6 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	auto visit_order = build_function_bb_visit_order_legacy(func, pool);
 	Vector<llvm::BasicBlock *> patch_visit_order;
 
-#ifdef HAVE_LLVMBC
-	if (func->get_structured_control_flow())
-		result.entry.is_structured = true;
-#endif
-
 	// dxilconv emits somewhat broken code for min16float for resource access.
 	// Just use FP32 here since that's what we've tested and avoids lots of awkward workarounds.
 	if (module_is_dxilconv(module))
@@ -7992,11 +8026,12 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 
 	if (execution_mode_meta.patch_constant_function)
-	{
 		patch_visit_order = build_function_bb_visit_order_legacy(execution_mode_meta.patch_constant_function, pool);
-		if (!analyze_instructions(execution_mode_meta.patch_constant_function))
+
+	// Analyze all leaf functions.
+	for (auto *leaf_func : bitcode_parser.get_module())
+		if (leaf_func != func && !analyze_instructions(leaf_func))
 			return result;
-	}
 
 	if (!emit_resources())
 		return result;
@@ -8018,6 +8053,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	analyze_instructions_post_execution_modes();
 
 	execution_mode_meta.entry_point_name = get_entry_point_name(entry_point_meta);
+
+	if (!build_callee_functions(pool, result.leaf_functions))
+		return result;
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
 		result.entry = build_hull_main(visit_order, patch_visit_order, pool, result.leaf_functions);
@@ -8042,6 +8080,15 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 		result.entry.func = spirv_module.get_entry_function();
 	}
+
+#ifdef HAVE_LLVMBC
+	if (func->get_structured_control_flow())
+	{
+		result.entry.is_structured = true;
+		for (auto &leaf : result.leaf_functions)
+			leaf.is_structured = true;
+	}
+#endif
 
 	// Some execution modes depend on code generation, handle that here.
 	emit_execution_modes_post_code_generation();
