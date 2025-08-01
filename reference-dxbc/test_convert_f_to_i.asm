@@ -4,55 +4,57 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 34
 ; Schema: 0
-OpCapability Shader
-OpCapability Float16
-OpCapability Float64
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %7 %10 %13
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %7 "INPUT"
-OpName %10 "SV_TARGET"
-OpName %13 "SV_TARGET_1"
-OpDecorate %7 Location 0
-OpDecorate %10 Location 0
-OpDecorate %13 Location 1
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypePointer Input %5
-%7 = OpVariable %6 Input
-%8 = OpTypeInt 32 0
-%9 = OpTypePointer Output %8
-%10 = OpVariable %9 Output
-%11 = OpTypeInt 32 1
-%12 = OpTypePointer Output %11
-%13 = OpVariable %12 Output
-%17 = OpTypeFloat 64
-%24 = OpTypeFloat 16
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %32
-%32 = OpLabel
-%14 = OpLoad %5 %7
-%15 = OpConvertFToU %8 %14
-%16 = OpConvertFToS %8 %14
-%18 = OpFConvert %17 %14
-%19 = OpConvertFToU %8 %18
-%20 = OpIAdd %8 %15 %19
-%21 = OpFConvert %17 %14
-%22 = OpConvertFToS %8 %21
-%23 = OpIAdd %8 %16 %22
-%25 = OpFConvert %24 %14
-%26 = OpConvertFToU %8 %25
-%27 = OpIAdd %8 %20 %26
-%28 = OpFConvert %24 %14
-%29 = OpConvertFToS %8 %28
-%30 = OpIAdd %8 %23 %29
-OpStore %10 %27
-%31 = OpBitcast %11 %30
-OpStore %13 %31
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability Float64
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %INPUT %SV_TARGET %SV_TARGET_1
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %INPUT "INPUT"
+               OpName %SV_TARGET "SV_TARGET"
+               OpName %SV_TARGET_1 "SV_TARGET_1"
+               OpDecorate %INPUT Location 0
+               OpDecorate %SV_TARGET Location 0
+               OpDecorate %SV_TARGET_1 Location 1
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+%_ptr_Input_float = OpTypePointer Input %float
+      %INPUT = OpVariable %_ptr_Input_float Input
+       %uint = OpTypeInt 32 0
+%_ptr_Output_uint = OpTypePointer Output %uint
+  %SV_TARGET = OpVariable %_ptr_Output_uint Output
+        %int = OpTypeInt 32 1
+%_ptr_Output_int = OpTypePointer Output %int
+%SV_TARGET_1 = OpVariable %_ptr_Output_int Output
+     %double = OpTypeFloat 64
+       %half = OpTypeFloat 16
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %32
+
+         %32 = OpLabel
+         %14 =   OpLoad %float %INPUT
+         %15 =   OpConvertFToU %uint %14
+         %16 =   OpConvertFToS %uint %14
+         %18 =   OpFConvert %double %14
+         %19 =   OpConvertFToU %uint %18
+         %20 =   OpIAdd %uint %15 %19
+         %21 =   OpFConvert %double %14
+         %22 =   OpConvertFToS %uint %21
+         %23 =   OpIAdd %uint %16 %22
+         %25 =   OpFConvert %half %14
+         %26 =   OpConvertFToU %uint %25
+         %27 =   OpIAdd %uint %20 %26
+         %28 =   OpFConvert %half %14
+         %29 =   OpConvertFToS %uint %28
+         %30 =   OpIAdd %uint %23 %29
+                 OpStore %SV_TARGET %27
+         %31 =   OpBitcast %int %30
+                 OpStore %SV_TARGET_1 %31
+                 OpReturn
+               OpFunctionEnd
 

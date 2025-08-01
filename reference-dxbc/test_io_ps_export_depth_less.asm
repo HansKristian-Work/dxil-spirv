@@ -4,41 +4,43 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 21
 ; Schema: 0
-OpCapability Shader
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8 %10 %12
-OpExecutionMode %3 OriginUpperLeft
-OpExecutionMode %3 DepthReplacing
-OpExecutionMode %3 DepthLess
-OpName %3 "main"
-OpName %8 "SV_POSITION"
-OpName %10 "DELTA"
-OpName %12 "SV_DEPTH"
-OpDecorate %8 BuiltIn FragCoord
-OpDecorate %10 Location 1
-OpDecorate %12 BuiltIn FragDepth
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeVector %5 4
-%7 = OpTypePointer Input %6
-%8 = OpVariable %7 Input
-%9 = OpTypePointer Input %5
-%10 = OpVariable %9 Input
-%11 = OpTypePointer Output %5
-%12 = OpVariable %11 Output
-%14 = OpTypeInt 32 0
-%15 = OpConstant %14 2
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %19
-%19 = OpLabel
-%13 = OpAccessChain %9 %8 %15
-%16 = OpLoad %5 %13
-%17 = OpLoad %5 %10
-%18 = OpFAdd %5 %17 %16
-OpStore %12 %18
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %SV_POSITION %DELTA %SV_DEPTH
+               OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main DepthReplacing
+               OpExecutionMode %main DepthLess
+               OpName %main "main"
+               OpName %SV_POSITION "SV_POSITION"
+               OpName %DELTA "DELTA"
+               OpName %SV_DEPTH "SV_DEPTH"
+               OpDecorate %SV_POSITION BuiltIn FragCoord
+               OpDecorate %DELTA Location 1
+               OpDecorate %SV_DEPTH BuiltIn FragDepth
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_ptr_Input_v4float = OpTypePointer Input %v4float
+%SV_POSITION = OpVariable %_ptr_Input_v4float Input
+%_ptr_Input_float = OpTypePointer Input %float
+      %DELTA = OpVariable %_ptr_Input_float Input
+%_ptr_Output_float = OpTypePointer Output %float
+   %SV_DEPTH = OpVariable %_ptr_Output_float Output
+       %uint = OpTypeInt 32 0
+     %uint_2 = OpConstant %uint 2
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %19
+
+         %19 = OpLabel
+         %13 =   OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
+         %16 =   OpLoad %float %13
+         %17 =   OpLoad %float %DELTA
+         %18 =   OpFAdd %float %17 %16
+                 OpStore %SV_DEPTH %18
+                 OpReturn
+               OpFunctionEnd
 

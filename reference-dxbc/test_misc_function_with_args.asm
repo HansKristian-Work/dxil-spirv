@@ -4,55 +4,59 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 35
 ; Schema: 0
-OpCapability Shader
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %8 "SV_TARGET"
-OpName %14 ""
-OpDecorate %8 Location 0
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeVector %5 4
-%7 = OpTypePointer Output %6
-%8 = OpVariable %7 Output
-%9 = OpTypeFunction %1 %5 %5 %5 %5
-%16 = OpTypePointer Output %5
-%18 = OpTypeInt 32 0
-%19 = OpConstant %18 0
-%21 = OpConstant %18 1
-%23 = OpConstant %18 2
-%25 = OpConstant %18 3
-%27 = OpConstant %5 1
-%28 = OpConstant %5 2
-%29 = OpConstant %5 3
-%30 = OpConstant %5 4
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %31
-%31 = OpLabel
-%26 = OpFunctionCall %1 %14 %27 %28 %29 %30
-OpReturn
-OpFunctionEnd
-%14 = OpFunction %1 None %9
-%10 = OpFunctionParameter %5
-%11 = OpFunctionParameter %5
-%12 = OpFunctionParameter %5
-%13 = OpFunctionParameter %5
-%15 = OpLabel
-OpBranch %33
-%33 = OpLabel
-%17 = OpAccessChain %16 %8 %19
-OpStore %17 %10
-%20 = OpAccessChain %16 %8 %21
-OpStore %20 %11
-%22 = OpAccessChain %16 %8 %23
-OpStore %22 %12
-%24 = OpAccessChain %16 %8 %25
-OpStore %24 %13
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %SV_TARGET
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %SV_TARGET "SV_TARGET"
+               OpName %_ ""
+               OpDecorate %SV_TARGET Location 0
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %SV_TARGET = OpVariable %_ptr_Output_v4float Output
+          %9 = OpTypeFunction %void %float %float %float %float
+%_ptr_Output_float = OpTypePointer Output %float
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
+     %uint_3 = OpConstant %uint 3
+    %float_1 = OpConstant %float 1
+    %float_2 = OpConstant %float 2
+    %float_3 = OpConstant %float 3
+    %float_4 = OpConstant %float 4
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %31
+
+         %31 = OpLabel
+         %26 =   OpFunctionCall %void %_ %float_1 %float_2 %float_3 %float_4
+                 OpReturn
+               OpFunctionEnd
+          %_ = OpFunction %void None %9
+         %10 = OpFunctionParameter %float
+         %11 = OpFunctionParameter %float
+         %12 = OpFunctionParameter %float
+         %13 = OpFunctionParameter %float
+
+         %15 = OpLabel
+                 OpBranch %33
+
+         %33 = OpLabel
+         %17 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_0
+                 OpStore %17 %10
+         %20 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_1
+                 OpStore %20 %11
+         %22 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_2
+                 OpStore %22 %12
+         %24 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_3
+                 OpStore %24 %13
+                 OpReturn
+               OpFunctionEnd
 

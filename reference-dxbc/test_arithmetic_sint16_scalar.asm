@@ -4,120 +4,122 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 92
 ; Schema: 0
-OpCapability Shader
-OpCapability Int16
-OpCapability VulkanMemoryModel
-%47 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical Vulkan
-OpEntryPoint GLCompute %3 "main" %9 %13
-OpExecutionMode %3 LocalSize 1 1 1
-OpName %3 "main"
-OpName %7 "SSBO"
-OpName %11 "SSBO"
-OpDecorate %6 ArrayStride 4
-OpMemberDecorate %7 0 Offset 0
-OpDecorate %7 Block
-OpDecorate %9 DescriptorSet 0
-OpDecorate %9 Binding 0
-OpDecorate %9 NonWritable
-OpDecorate %9 Restrict
-OpDecorate %10 ArrayStride 4
-OpMemberDecorate %11 0 Offset 0
-OpDecorate %11 Block
-OpDecorate %13 DescriptorSet 0
-OpDecorate %13 Binding 0
-OpDecorate %13 NonReadable
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
-%6 = OpTypeRuntimeArray %5
-%7 = OpTypeStruct %6
-%8 = OpTypePointer StorageBuffer %7
-%9 = OpVariable %8 StorageBuffer
-%10 = OpTypeRuntimeArray %5
-%11 = OpTypeStruct %10
-%12 = OpTypePointer StorageBuffer %11
-%13 = OpVariable %12 StorageBuffer
-%14 = OpConstant %5 0
-%15 = OpTypePointer StorageBuffer %5
-%18 = OpTypeInt 16 0
-%20 = OpConstant %5 1
-%25 = OpConstant %5 2
-%30 = OpConstant %5 3
-%36 = OpConstant %5 4
-%41 = OpConstant %5 5
-%49 = OpConstant %5 6
-%54 = OpConstant %5 7
-%59 = OpConstant %5 8
-%64 = OpConstant %5 9
-%69 = OpConstant %5 10
-%74 = OpConstant %5 11
-%79 = OpConstant %5 12
-%83 = OpConstant %5 13
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %90
-%90 = OpLabel
-%16 = OpAccessChain %15 %9 %14 %14
-%17 = OpLoad %5 %16
-%19 = OpUConvert %18 %17
-%21 = OpAccessChain %15 %9 %14 %20
-%22 = OpLoad %5 %21
-%23 = OpUConvert %18 %22
-%24 = OpBitwiseAnd %18 %19 %23
-%26 = OpAccessChain %15 %9 %14 %25
-%27 = OpLoad %5 %26
-%28 = OpUConvert %18 %27
-%29 = OpBitwiseOr %18 %24 %28
-%31 = OpAccessChain %15 %9 %14 %30
-%32 = OpLoad %5 %31
-%33 = OpUConvert %18 %32
-%34 = OpBitwiseXor %18 %29 %33
-%35 = OpNot %18 %34
-%37 = OpAccessChain %15 %9 %14 %36
-%38 = OpLoad %5 %37
-%39 = OpUConvert %18 %38
-%40 = OpIAdd %18 %35 %39
-%42 = OpAccessChain %15 %9 %14 %41
-%43 = OpLoad %5 %42
-%44 = OpUConvert %18 %43
-%45 = OpISub %18 %40 %44
-%46 = OpSNegate %18 %45
-%48 = OpExtInst %18 %47 SAbs %46
-%50 = OpAccessChain %15 %9 %14 %49
-%51 = OpLoad %5 %50
-%52 = OpUConvert %18 %51
-%53 = OpIMul %18 %48 %52
-%55 = OpAccessChain %15 %9 %14 %54
-%56 = OpLoad %5 %55
-%57 = OpUConvert %18 %56
-%58 = OpShiftLeftLogical %18 %53 %57
-%60 = OpAccessChain %15 %9 %14 %59
-%61 = OpLoad %5 %60
-%62 = OpUConvert %18 %61
-%63 = OpShiftRightArithmetic %18 %58 %62
-%65 = OpAccessChain %15 %9 %14 %64
-%66 = OpLoad %5 %65
-%67 = OpUConvert %18 %66
-%68 = OpShiftRightLogical %18 %63 %67
-%70 = OpAccessChain %15 %9 %14 %69
-%71 = OpLoad %5 %70
-%72 = OpUConvert %18 %71
-%73 = OpExtInst %18 %47 SMin %68 %72
-%75 = OpAccessChain %15 %9 %14 %74
-%76 = OpLoad %5 %75
-%77 = OpUConvert %18 %76
-%78 = OpExtInst %18 %47 SMax %73 %77
-%80 = OpAccessChain %15 %9 %14 %79
-%81 = OpLoad %5 %80
-%82 = OpUConvert %18 %81
-%84 = OpAccessChain %15 %9 %14 %83
-%85 = OpLoad %5 %84
-%86 = OpUConvert %18 %85
-%87 = OpExtInst %18 %47 SClamp %78 %82 %86
-%88 = OpSConvert %5 %87
-%89 = OpAccessChain %15 %13 %14 %14
-OpStore %89 %88 NonPrivatePointer
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability Int16
+               OpCapability VulkanMemoryModel
+         %47 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint GLCompute %main "main" %9 %13
+               OpExecutionMode %main LocalSize 1 1 1
+               OpName %main "main"
+               OpName %SSBO "SSBO"
+               OpName %SSBO_0 "SSBO"
+               OpDecorate %_runtimearr_uint ArrayStride 4
+               OpMemberDecorate %SSBO 0 Offset 0
+               OpDecorate %SSBO Block
+               OpDecorate %9 DescriptorSet 0
+               OpDecorate %9 Binding 0
+               OpDecorate %9 NonWritable
+               OpDecorate %9 Restrict
+               OpDecorate %_runtimearr_uint_0 ArrayStride 4
+               OpMemberDecorate %SSBO_0 0 Offset 0
+               OpDecorate %SSBO_0 Block
+               OpDecorate %13 DescriptorSet 0
+               OpDecorate %13 Binding 0
+               OpDecorate %13 NonReadable
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+%_runtimearr_uint = OpTypeRuntimeArray %uint
+       %SSBO = OpTypeStruct %_runtimearr_uint
+%_ptr_StorageBuffer_SSBO = OpTypePointer StorageBuffer %SSBO
+          %9 = OpVariable %_ptr_StorageBuffer_SSBO StorageBuffer
+%_runtimearr_uint_0 = OpTypeRuntimeArray %uint
+     %SSBO_0 = OpTypeStruct %_runtimearr_uint_0
+%_ptr_StorageBuffer_SSBO_0 = OpTypePointer StorageBuffer %SSBO_0
+         %13 = OpVariable %_ptr_StorageBuffer_SSBO_0 StorageBuffer
+     %uint_0 = OpConstant %uint 0
+%_ptr_StorageBuffer_uint = OpTypePointer StorageBuffer %uint
+     %ushort = OpTypeInt 16 0
+     %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
+     %uint_3 = OpConstant %uint 3
+     %uint_4 = OpConstant %uint 4
+     %uint_5 = OpConstant %uint 5
+     %uint_6 = OpConstant %uint 6
+     %uint_7 = OpConstant %uint 7
+     %uint_8 = OpConstant %uint 8
+     %uint_9 = OpConstant %uint 9
+    %uint_10 = OpConstant %uint 10
+    %uint_11 = OpConstant %uint 11
+    %uint_12 = OpConstant %uint 12
+    %uint_13 = OpConstant %uint 13
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %90
+
+         %90 = OpLabel
+         %16 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_0
+         %17 =   OpLoad %uint %16
+         %19 =   OpUConvert %ushort %17
+         %21 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_1
+         %22 =   OpLoad %uint %21
+         %23 =   OpUConvert %ushort %22
+         %24 =   OpBitwiseAnd %ushort %19 %23
+         %26 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_2
+         %27 =   OpLoad %uint %26
+         %28 =   OpUConvert %ushort %27
+         %29 =   OpBitwiseOr %ushort %24 %28
+         %31 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_3
+         %32 =   OpLoad %uint %31
+         %33 =   OpUConvert %ushort %32
+         %34 =   OpBitwiseXor %ushort %29 %33
+         %35 =   OpNot %ushort %34
+         %37 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_4
+         %38 =   OpLoad %uint %37
+         %39 =   OpUConvert %ushort %38
+         %40 =   OpIAdd %ushort %35 %39
+         %42 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_5
+         %43 =   OpLoad %uint %42
+         %44 =   OpUConvert %ushort %43
+         %45 =   OpISub %ushort %40 %44
+         %46 =   OpSNegate %ushort %45
+         %48 =   OpExtInst %ushort %47 SAbs %46
+         %50 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_6
+         %51 =   OpLoad %uint %50
+         %52 =   OpUConvert %ushort %51
+         %53 =   OpIMul %ushort %48 %52
+         %55 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_7
+         %56 =   OpLoad %uint %55
+         %57 =   OpUConvert %ushort %56
+         %58 =   OpShiftLeftLogical %ushort %53 %57
+         %60 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_8
+         %61 =   OpLoad %uint %60
+         %62 =   OpUConvert %ushort %61
+         %63 =   OpShiftRightArithmetic %ushort %58 %62
+         %65 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_9
+         %66 =   OpLoad %uint %65
+         %67 =   OpUConvert %ushort %66
+         %68 =   OpShiftRightLogical %ushort %63 %67
+         %70 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_10
+         %71 =   OpLoad %uint %70
+         %72 =   OpUConvert %ushort %71
+         %73 =   OpExtInst %ushort %47 SMin %68 %72
+         %75 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
+         %76 =   OpLoad %uint %75
+         %77 =   OpUConvert %ushort %76
+         %78 =   OpExtInst %ushort %47 SMax %73 %77
+         %80 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
+         %81 =   OpLoad %uint %80
+         %82 =   OpUConvert %ushort %81
+         %84 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
+         %85 =   OpLoad %uint %84
+         %86 =   OpUConvert %ushort %85
+         %87 =   OpExtInst %ushort %47 SClamp %78 %82 %86
+         %88 =   OpSConvert %uint %87
+         %89 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
+                 OpStore %89 %88 NonPrivatePointer
+                 OpReturn
+               OpFunctionEnd
 

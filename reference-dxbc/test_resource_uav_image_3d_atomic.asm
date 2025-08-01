@@ -4,55 +4,57 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 35
 ; Schema: 0
-OpCapability Shader
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8 %11 %13 %15
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %11 "TEXCOORD"
-OpName %13 "VALUE"
-OpName %15 "SV_TARGET"
-OpDecorate %8 DescriptorSet 0
-OpDecorate %8 Binding 0
-OpDecorate %11 Flat
-OpDecorate %11 Location 0
-OpDecorate %13 Flat
-OpDecorate %13 Location 2
-OpDecorate %15 Location 0
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
-%6 = OpTypeImage %5 3D 0 0 0 2 R32ui
-%7 = OpTypePointer UniformConstant %6
-%8 = OpVariable %7 UniformConstant
-%9 = OpTypeVector %5 3
-%10 = OpTypePointer Input %9
-%11 = OpVariable %10 Input
-%12 = OpTypePointer Input %5
-%13 = OpVariable %12 Input
-%14 = OpTypePointer Output %5
-%15 = OpVariable %14 Output
-%18 = OpConstant %5 0
-%21 = OpConstant %5 1
-%24 = OpConstant %5 2
-%29 = OpTypePointer Image %5
-%32 = OpConstant %5 5
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %33
-%33 = OpLabel
-%17 = OpAccessChain %12 %11 %18
-%19 = OpLoad %5 %17
-%20 = OpAccessChain %12 %11 %21
-%22 = OpLoad %5 %20
-%23 = OpAccessChain %12 %11 %24
-%25 = OpLoad %5 %23
-%27 = OpLoad %5 %13
-%28 = OpCompositeConstruct %9 %19 %22 %25
-%30 = OpImageTexelPointer %29 %8 %28 %18
-%31 = OpAtomicIAdd %5 %30 %32 %18 %27
-OpStore %15 %31
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %8 %TEXCOORD %VALUE %SV_TARGET
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %TEXCOORD "TEXCOORD"
+               OpName %VALUE "VALUE"
+               OpName %SV_TARGET "SV_TARGET"
+               OpDecorate %8 DescriptorSet 0
+               OpDecorate %8 Binding 0
+               OpDecorate %TEXCOORD Flat
+               OpDecorate %TEXCOORD Location 0
+               OpDecorate %VALUE Flat
+               OpDecorate %VALUE Location 2
+               OpDecorate %SV_TARGET Location 0
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+          %6 = OpTypeImage %uint 3D 0 0 0 2 R32ui
+%_ptr_UniformConstant_6 = OpTypePointer UniformConstant %6
+          %8 = OpVariable %_ptr_UniformConstant_6 UniformConstant
+     %v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+   %TEXCOORD = OpVariable %_ptr_Input_v3uint Input
+%_ptr_Input_uint = OpTypePointer Input %uint
+      %VALUE = OpVariable %_ptr_Input_uint Input
+%_ptr_Output_uint = OpTypePointer Output %uint
+  %SV_TARGET = OpVariable %_ptr_Output_uint Output
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
+%_ptr_Image_uint = OpTypePointer Image %uint
+     %uint_5 = OpConstant %uint 5
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %33
+
+         %33 = OpLabel
+         %17 =   OpAccessChain %_ptr_Input_uint %TEXCOORD %uint_0
+         %19 =   OpLoad %uint %17
+         %20 =   OpAccessChain %_ptr_Input_uint %TEXCOORD %uint_1
+         %22 =   OpLoad %uint %20
+         %23 =   OpAccessChain %_ptr_Input_uint %TEXCOORD %uint_2
+         %25 =   OpLoad %uint %23
+         %27 =   OpLoad %uint %VALUE
+         %28 =   OpCompositeConstruct %v3uint %19 %22 %25
+         %30 =   OpImageTexelPointer %_ptr_Image_uint %8 %28 %uint_0
+         %31 =   OpAtomicIAdd %uint %30 %uint_5 %uint_0 %27
+                 OpStore %SV_TARGET %31
+                 OpReturn
+               OpFunctionEnd
 

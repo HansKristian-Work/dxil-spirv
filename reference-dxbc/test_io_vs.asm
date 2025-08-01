@@ -4,116 +4,118 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 74
 ; Schema: 0
-OpCapability Shader
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Vertex %3 "main" %8 %9 %10 %11 %14 %17 %19 %21 %22 %23
-OpName %3 "main"
-OpName %8 "POSITION"
-OpName %9 "NORMAL"
-OpName %10 "TANGENT"
-OpName %11 "TANGENT_1"
-OpName %14 "COLOR_1"
-OpName %17 "SV_POSITION"
-OpName %19 "NORMAL"
-OpName %21 "COLOR"
-OpName %22 "TANGENT"
-OpName %23 "TANGENT_1"
-OpDecorate %8 Location 0
-OpDecorate %9 Location 1
-OpDecorate %10 Location 2
-OpDecorate %11 Location 3
-OpDecorate %14 Location 4
-OpDecorate %17 BuiltIn Position
-OpDecorate %19 Location 1
-OpDecorate %21 Location 1
-OpDecorate %21 Component 3
-OpDecorate %22 Location 2
-OpDecorate %23 Location 3
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeVector %5 3
-%7 = OpTypePointer Input %6
-%8 = OpVariable %7 Input
-%9 = OpVariable %7 Input
-%10 = OpVariable %7 Input
-%11 = OpVariable %7 Input
-%12 = OpTypeInt 32 0
-%13 = OpTypePointer Input %12
-%14 = OpVariable %13 Input
-%15 = OpTypeVector %5 4
-%16 = OpTypePointer Output %15
-%17 = OpVariable %16 Output
-%18 = OpTypePointer Output %6
-%19 = OpVariable %18 Output
-%20 = OpTypePointer Output %12
-%21 = OpVariable %20 Output
-%22 = OpVariable %18 Output
-%23 = OpVariable %18 Output
-%24 = OpTypePointer Input %5
-%26 = OpConstant %12 2
-%29 = OpConstant %12 1
-%32 = OpConstant %12 0
-%35 = OpConstant %5 1
-%36 = OpTypePointer Output %5
-%41 = OpConstant %12 3
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %72
-%72 = OpLabel
-%25 = OpAccessChain %24 %8 %26
-%27 = OpLoad %5 %25
-%28 = OpAccessChain %24 %8 %29
-%30 = OpLoad %5 %28
-%31 = OpAccessChain %24 %8 %32
-%33 = OpLoad %5 %31
-%37 = OpAccessChain %36 %17 %32
-OpStore %37 %33
-%38 = OpAccessChain %36 %17 %29
-OpStore %38 %30
-%39 = OpAccessChain %36 %17 %26
-OpStore %39 %27
-%40 = OpAccessChain %36 %17 %41
-OpStore %40 %35
-%42 = OpAccessChain %24 %9 %32
-%43 = OpLoad %5 %42
-%44 = OpAccessChain %24 %9 %29
-%45 = OpLoad %5 %44
-%46 = OpAccessChain %24 %9 %26
-%47 = OpLoad %5 %46
-%49 = OpAccessChain %36 %19 %32
-OpStore %49 %43
-%50 = OpAccessChain %36 %19 %29
-OpStore %50 %45
-%51 = OpAccessChain %36 %19 %26
-OpStore %51 %47
-%52 = OpLoad %12 %14
-OpStore %21 %52
-%53 = OpAccessChain %24 %10 %32
-%54 = OpLoad %5 %53
-%55 = OpAccessChain %24 %10 %29
-%56 = OpLoad %5 %55
-%57 = OpAccessChain %24 %10 %26
-%58 = OpLoad %5 %57
-%60 = OpAccessChain %36 %22 %32
-OpStore %60 %54
-%61 = OpAccessChain %36 %22 %29
-OpStore %61 %56
-%62 = OpAccessChain %36 %22 %26
-OpStore %62 %58
-%63 = OpAccessChain %24 %11 %32
-%64 = OpLoad %5 %63
-%65 = OpAccessChain %36 %23 %32
-OpStore %65 %64
-%66 = OpAccessChain %24 %11 %29
-%67 = OpLoad %5 %66
-%68 = OpAccessChain %36 %23 %29
-OpStore %68 %67
-%69 = OpAccessChain %24 %11 %26
-%70 = OpLoad %5 %69
-%71 = OpAccessChain %36 %23 %26
-OpStore %71 %70
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Vertex %main "main" %POSITION %NORMAL %TANGENT %TANGENT_1 %COLOR_1 %SV_POSITION %NORMAL_0 %COLOR %TANGENT_0 %TANGENT_1_0
+               OpName %main "main"
+               OpName %POSITION "POSITION"
+               OpName %NORMAL "NORMAL"
+               OpName %TANGENT "TANGENT"
+               OpName %TANGENT_1 "TANGENT_1"
+               OpName %COLOR_1 "COLOR_1"
+               OpName %SV_POSITION "SV_POSITION"
+               OpName %NORMAL_0 "NORMAL"
+               OpName %COLOR "COLOR"
+               OpName %TANGENT_0 "TANGENT"
+               OpName %TANGENT_1_0 "TANGENT_1"
+               OpDecorate %POSITION Location 0
+               OpDecorate %NORMAL Location 1
+               OpDecorate %TANGENT Location 2
+               OpDecorate %TANGENT_1 Location 3
+               OpDecorate %COLOR_1 Location 4
+               OpDecorate %SV_POSITION BuiltIn Position
+               OpDecorate %NORMAL_0 Location 1
+               OpDecorate %COLOR Location 1
+               OpDecorate %COLOR Component 3
+               OpDecorate %TANGENT_0 Location 2
+               OpDecorate %TANGENT_1_0 Location 3
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v3float = OpTypeVector %float 3
+%_ptr_Input_v3float = OpTypePointer Input %v3float
+   %POSITION = OpVariable %_ptr_Input_v3float Input
+     %NORMAL = OpVariable %_ptr_Input_v3float Input
+    %TANGENT = OpVariable %_ptr_Input_v3float Input
+  %TANGENT_1 = OpVariable %_ptr_Input_v3float Input
+       %uint = OpTypeInt 32 0
+%_ptr_Input_uint = OpTypePointer Input %uint
+    %COLOR_1 = OpVariable %_ptr_Input_uint Input
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+%SV_POSITION = OpVariable %_ptr_Output_v4float Output
+%_ptr_Output_v3float = OpTypePointer Output %v3float
+   %NORMAL_0 = OpVariable %_ptr_Output_v3float Output
+%_ptr_Output_uint = OpTypePointer Output %uint
+      %COLOR = OpVariable %_ptr_Output_uint Output
+  %TANGENT_0 = OpVariable %_ptr_Output_v3float Output
+%TANGENT_1_0 = OpVariable %_ptr_Output_v3float Output
+%_ptr_Input_float = OpTypePointer Input %float
+     %uint_2 = OpConstant %uint 2
+     %uint_1 = OpConstant %uint 1
+     %uint_0 = OpConstant %uint 0
+    %float_1 = OpConstant %float 1
+%_ptr_Output_float = OpTypePointer Output %float
+     %uint_3 = OpConstant %uint 3
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %72
+
+         %72 = OpLabel
+         %25 =   OpAccessChain %_ptr_Input_float %POSITION %uint_2
+         %27 =   OpLoad %float %25
+         %28 =   OpAccessChain %_ptr_Input_float %POSITION %uint_1
+         %30 =   OpLoad %float %28
+         %31 =   OpAccessChain %_ptr_Input_float %POSITION %uint_0
+         %33 =   OpLoad %float %31
+         %37 =   OpAccessChain %_ptr_Output_float %SV_POSITION %uint_0
+                 OpStore %37 %33
+         %38 =   OpAccessChain %_ptr_Output_float %SV_POSITION %uint_1
+                 OpStore %38 %30
+         %39 =   OpAccessChain %_ptr_Output_float %SV_POSITION %uint_2
+                 OpStore %39 %27
+         %40 =   OpAccessChain %_ptr_Output_float %SV_POSITION %uint_3
+                 OpStore %40 %float_1
+         %42 =   OpAccessChain %_ptr_Input_float %NORMAL %uint_0
+         %43 =   OpLoad %float %42
+         %44 =   OpAccessChain %_ptr_Input_float %NORMAL %uint_1
+         %45 =   OpLoad %float %44
+         %46 =   OpAccessChain %_ptr_Input_float %NORMAL %uint_2
+         %47 =   OpLoad %float %46
+         %49 =   OpAccessChain %_ptr_Output_float %NORMAL_0 %uint_0
+                 OpStore %49 %43
+         %50 =   OpAccessChain %_ptr_Output_float %NORMAL_0 %uint_1
+                 OpStore %50 %45
+         %51 =   OpAccessChain %_ptr_Output_float %NORMAL_0 %uint_2
+                 OpStore %51 %47
+         %52 =   OpLoad %uint %COLOR_1
+                 OpStore %COLOR %52
+         %53 =   OpAccessChain %_ptr_Input_float %TANGENT %uint_0
+         %54 =   OpLoad %float %53
+         %55 =   OpAccessChain %_ptr_Input_float %TANGENT %uint_1
+         %56 =   OpLoad %float %55
+         %57 =   OpAccessChain %_ptr_Input_float %TANGENT %uint_2
+         %58 =   OpLoad %float %57
+         %60 =   OpAccessChain %_ptr_Output_float %TANGENT_0 %uint_0
+                 OpStore %60 %54
+         %61 =   OpAccessChain %_ptr_Output_float %TANGENT_0 %uint_1
+                 OpStore %61 %56
+         %62 =   OpAccessChain %_ptr_Output_float %TANGENT_0 %uint_2
+                 OpStore %62 %58
+         %63 =   OpAccessChain %_ptr_Input_float %TANGENT_1 %uint_0
+         %64 =   OpLoad %float %63
+         %65 =   OpAccessChain %_ptr_Output_float %TANGENT_1_0 %uint_0
+                 OpStore %65 %64
+         %66 =   OpAccessChain %_ptr_Input_float %TANGENT_1 %uint_1
+         %67 =   OpLoad %float %66
+         %68 =   OpAccessChain %_ptr_Output_float %TANGENT_1_0 %uint_1
+                 OpStore %68 %67
+         %69 =   OpAccessChain %_ptr_Input_float %TANGENT_1 %uint_2
+         %70 =   OpLoad %float %69
+         %71 =   OpAccessChain %_ptr_Output_float %TANGENT_1_0 %uint_2
+                 OpStore %71 %70
+                 OpReturn
+               OpFunctionEnd
 

@@ -4,130 +4,136 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 88
 ; Schema: 0
-OpCapability Shader
-OpCapability Geometry
-OpCapability ClipDistance
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Geometry %3 "main" %11 %17 %21 %24 %26 %28 %30 %32
-OpExecutionMode %3 Invocations 1
-OpExecutionMode %3 OutputVertices 6
-OpExecutionMode %3 InputTrianglesAdjacency
-OpExecutionMode %3 OutputTriangleStrip
-OpName %3 "main"
-OpName %11 "SV_POSITION"
-OpName %17 "TEXCOORD"
-OpName %21 "NORMAL"
-OpName %26 "SV_POSITION"
-OpName %28 "TEXCOORD"
-OpName %30 "NORMAL"
-OpDecorate %11 BuiltIn Position
-OpDecorate %17 Location 2
-OpDecorate %21 Location 3
-OpDecorate %24 BuiltIn ClipDistance
-OpDecorate %26 BuiltIn Position
-OpDecorate %28 Location 2
-OpDecorate %30 Location 3
-OpDecorate %32 BuiltIn ClipDistance
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeVector %5 4
-%7 = OpTypeInt 32 0
-%8 = OpConstant %7 6
-%9 = OpTypeArray %6 %8
-%10 = OpTypePointer Input %9
-%11 = OpVariable %10 Input
-%12 = OpConstant %7 2
-%13 = OpTypeArray %5 %12
-%14 = OpTypeVector %5 2
-%15 = OpTypeArray %14 %8
-%16 = OpTypePointer Input %15
-%17 = OpVariable %16 Input
-%18 = OpTypeVector %5 3
-%19 = OpTypeArray %18 %8
-%20 = OpTypePointer Input %19
-%21 = OpVariable %20 Input
-%22 = OpTypeArray %13 %8
-%23 = OpTypePointer Input %22
-%24 = OpVariable %23 Input
-%25 = OpTypePointer Output %6
-%26 = OpVariable %25 Output
-%27 = OpTypePointer Output %14
-%28 = OpVariable %27 Output
-%29 = OpTypePointer Output %18
-%30 = OpVariable %29 Output
-%31 = OpTypePointer Output %13
-%32 = OpVariable %31 Output
-%34 = OpConstant %7 0
-%36 = OpTypePointer Input %5
-%40 = OpConstant %7 1
-%45 = OpConstant %7 3
-%48 = OpTypePointer Output %5
-%63 = OpTypeVector %7 2
-%80 = OpTypeBool
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %82
-%82 = OpLabel
-OpBranch %83
-%83 = OpLabel
-%33 = OpPhi %7 %34 %82 %35 %85
-OpLoopMerge %86 %85 None
-OpBranch %84
-%84 = OpLabel
-%37 = OpAccessChain %36 %11 %33 %34
-%38 = OpLoad %5 %37
-%39 = OpAccessChain %36 %11 %33 %40
-%41 = OpLoad %5 %39
-%42 = OpAccessChain %36 %11 %33 %12
-%43 = OpLoad %5 %42
-%44 = OpAccessChain %36 %11 %33 %45
-%46 = OpLoad %5 %44
-%49 = OpAccessChain %48 %26 %34
-OpStore %49 %38
-%50 = OpAccessChain %48 %26 %40
-OpStore %50 %41
-%51 = OpAccessChain %48 %26 %12
-OpStore %51 %43
-%52 = OpAccessChain %48 %26 %45
-OpStore %52 %46
-%53 = OpAccessChain %36 %21 %33 %34
-%54 = OpLoad %5 %53
-%55 = OpAccessChain %36 %21 %33 %40
-%56 = OpLoad %5 %55
-%57 = OpAccessChain %36 %21 %33 %12
-%58 = OpLoad %5 %57
-%60 = OpAccessChain %48 %30 %34
-OpStore %60 %54
-%61 = OpAccessChain %48 %30 %40
-OpStore %61 %56
-%62 = OpAccessChain %48 %30 %12
-OpStore %62 %58
-%65 = OpAccessChain %36 %24 %33 %34
-%66 = OpLoad %5 %65
-%67 = OpAccessChain %48 %32 %34
-OpStore %67 %66
-%69 = OpAccessChain %36 %24 %33 %40
-%70 = OpLoad %5 %69
-%71 = OpAccessChain %48 %32 %40
-OpStore %71 %70
-%73 = OpAccessChain %36 %17 %33 %34
-%74 = OpLoad %5 %73
-%75 = OpAccessChain %48 %28 %34
-OpStore %75 %74
-%77 = OpAccessChain %36 %17 %33 %40
-%78 = OpLoad %5 %77
-%79 = OpAccessChain %48 %28 %40
-OpStore %79 %78
-OpEmitVertex
-OpBranch %85
-%85 = OpLabel
-%35 = OpIAdd %7 %33 %40
-%81 = OpULessThan %80 %35 %8
-OpBranchConditional %81 %83 %86
-%86 = OpLabel
-OpEndPrimitive
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability Geometry
+               OpCapability ClipDistance
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Geometry %main "main" %SV_POSITION %TEXCOORD %NORMAL %gl_ClipDistance %SV_POSITION_0 %TEXCOORD_0 %NORMAL_0 %gl_ClipDistance_0
+               OpExecutionMode %main Invocations 1
+               OpExecutionMode %main OutputVertices 6
+               OpExecutionMode %main InputTrianglesAdjacency
+               OpExecutionMode %main OutputTriangleStrip
+               OpName %main "main"
+               OpName %SV_POSITION "SV_POSITION"
+               OpName %TEXCOORD "TEXCOORD"
+               OpName %NORMAL "NORMAL"
+               OpName %SV_POSITION_0 "SV_POSITION"
+               OpName %TEXCOORD_0 "TEXCOORD"
+               OpName %NORMAL_0 "NORMAL"
+               OpDecorate %SV_POSITION BuiltIn Position
+               OpDecorate %TEXCOORD Location 2
+               OpDecorate %NORMAL Location 3
+               OpDecorate %gl_ClipDistance BuiltIn ClipDistance
+               OpDecorate %SV_POSITION_0 BuiltIn Position
+               OpDecorate %TEXCOORD_0 Location 2
+               OpDecorate %NORMAL_0 Location 3
+               OpDecorate %gl_ClipDistance_0 BuiltIn ClipDistance
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+       %uint = OpTypeInt 32 0
+     %uint_6 = OpConstant %uint 6
+%_arr_v4float_uint_6 = OpTypeArray %v4float %uint_6
+%_ptr_Input__arr_v4float_uint_6 = OpTypePointer Input %_arr_v4float_uint_6
+%SV_POSITION = OpVariable %_ptr_Input__arr_v4float_uint_6 Input
+     %uint_2 = OpConstant %uint 2
+%_arr_float_uint_2 = OpTypeArray %float %uint_2
+    %v2float = OpTypeVector %float 2
+%_arr_v2float_uint_6 = OpTypeArray %v2float %uint_6
+%_ptr_Input__arr_v2float_uint_6 = OpTypePointer Input %_arr_v2float_uint_6
+   %TEXCOORD = OpVariable %_ptr_Input__arr_v2float_uint_6 Input
+    %v3float = OpTypeVector %float 3
+%_arr_v3float_uint_6 = OpTypeArray %v3float %uint_6
+%_ptr_Input__arr_v3float_uint_6 = OpTypePointer Input %_arr_v3float_uint_6
+     %NORMAL = OpVariable %_ptr_Input__arr_v3float_uint_6 Input
+%_arr__arr_float_uint_2_uint_6 = OpTypeArray %_arr_float_uint_2 %uint_6
+%_ptr_Input__arr__arr_float_uint_2_uint_6 = OpTypePointer Input %_arr__arr_float_uint_2_uint_6
+%gl_ClipDistance = OpVariable %_ptr_Input__arr__arr_float_uint_2_uint_6 Input
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+%SV_POSITION_0 = OpVariable %_ptr_Output_v4float Output
+%_ptr_Output_v2float = OpTypePointer Output %v2float
+ %TEXCOORD_0 = OpVariable %_ptr_Output_v2float Output
+%_ptr_Output_v3float = OpTypePointer Output %v3float
+   %NORMAL_0 = OpVariable %_ptr_Output_v3float Output
+%_ptr_Output__arr_float_uint_2 = OpTypePointer Output %_arr_float_uint_2
+%gl_ClipDistance_0 = OpVariable %_ptr_Output__arr_float_uint_2 Output
+     %uint_0 = OpConstant %uint 0
+%_ptr_Input_float = OpTypePointer Input %float
+     %uint_1 = OpConstant %uint 1
+     %uint_3 = OpConstant %uint 3
+%_ptr_Output_float = OpTypePointer Output %float
+     %v2uint = OpTypeVector %uint 2
+       %bool = OpTypeBool
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %82
+
+         %82 = OpLabel
+                 OpBranch %83
+
+         %83 = OpLabel
+         %33 =   OpPhi %uint %uint_0 %82 %35 %85
+                 OpLoopMerge %86 %85 None
+                 OpBranch %84
+
+         %84 =     OpLabel
+         %37 =       OpAccessChain %_ptr_Input_float %SV_POSITION %33 %uint_0
+         %38 =       OpLoad %float %37
+         %39 =       OpAccessChain %_ptr_Input_float %SV_POSITION %33 %uint_1
+         %41 =       OpLoad %float %39
+         %42 =       OpAccessChain %_ptr_Input_float %SV_POSITION %33 %uint_2
+         %43 =       OpLoad %float %42
+         %44 =       OpAccessChain %_ptr_Input_float %SV_POSITION %33 %uint_3
+         %46 =       OpLoad %float %44
+         %49 =       OpAccessChain %_ptr_Output_float %SV_POSITION_0 %uint_0
+                     OpStore %49 %38
+         %50 =       OpAccessChain %_ptr_Output_float %SV_POSITION_0 %uint_1
+                     OpStore %50 %41
+         %51 =       OpAccessChain %_ptr_Output_float %SV_POSITION_0 %uint_2
+                     OpStore %51 %43
+         %52 =       OpAccessChain %_ptr_Output_float %SV_POSITION_0 %uint_3
+                     OpStore %52 %46
+         %53 =       OpAccessChain %_ptr_Input_float %NORMAL %33 %uint_0
+         %54 =       OpLoad %float %53
+         %55 =       OpAccessChain %_ptr_Input_float %NORMAL %33 %uint_1
+         %56 =       OpLoad %float %55
+         %57 =       OpAccessChain %_ptr_Input_float %NORMAL %33 %uint_2
+         %58 =       OpLoad %float %57
+         %60 =       OpAccessChain %_ptr_Output_float %NORMAL_0 %uint_0
+                     OpStore %60 %54
+         %61 =       OpAccessChain %_ptr_Output_float %NORMAL_0 %uint_1
+                     OpStore %61 %56
+         %62 =       OpAccessChain %_ptr_Output_float %NORMAL_0 %uint_2
+                     OpStore %62 %58
+         %65 =       OpAccessChain %_ptr_Input_float %gl_ClipDistance %33 %uint_0
+         %66 =       OpLoad %float %65
+         %67 =       OpAccessChain %_ptr_Output_float %gl_ClipDistance_0 %uint_0
+                     OpStore %67 %66
+         %69 =       OpAccessChain %_ptr_Input_float %gl_ClipDistance %33 %uint_1
+         %70 =       OpLoad %float %69
+         %71 =       OpAccessChain %_ptr_Output_float %gl_ClipDistance_0 %uint_1
+                     OpStore %71 %70
+         %73 =       OpAccessChain %_ptr_Input_float %TEXCOORD %33 %uint_0
+         %74 =       OpLoad %float %73
+         %75 =       OpAccessChain %_ptr_Output_float %TEXCOORD_0 %uint_0
+                     OpStore %75 %74
+         %77 =       OpAccessChain %_ptr_Input_float %TEXCOORD %33 %uint_1
+         %78 =       OpLoad %float %77
+         %79 =       OpAccessChain %_ptr_Output_float %TEXCOORD_0 %uint_1
+                     OpStore %79 %78
+                     OpEmitVertex
+                     OpBranch %85
+
+         %85 =   OpLabel
+         %35 =     OpIAdd %uint %33 %uint_1
+         %81 =     OpULessThan %bool %35 %uint_6
+                   OpBranchConditional %81 %83 %86
+
+         %86 = OpLabel
+                 OpEndPrimitive
+                 OpReturn
+               OpFunctionEnd
 

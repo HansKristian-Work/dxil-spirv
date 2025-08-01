@@ -4,76 +4,78 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 42
 ; Schema: 0
-OpCapability Shader
-OpCapability SampleRateShading
-OpCapability InterpolationFunction
-OpCapability VulkanMemoryModel
-%21 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %7 %10 %13 %14 %16 %18 %19
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %7 "SV_SAMPLEINDEX"
-OpName %10 "IN_SCALAR"
-OpName %13 "IN_VECTOR"
-OpName %14 "IN_VECTOR_1"
-OpName %16 "SV_TARGET"
-OpName %18 "SV_TARGET_1"
-OpName %19 "SV_TARGET_2"
-OpDecorate %7 BuiltIn SampleId
-OpDecorate %7 Flat
-OpDecorate %10 NoPerspective
-OpDecorate %10 Location 0
-OpDecorate %13 Location 1
-OpDecorate %14 Centroid
-OpDecorate %14 Location 2
-OpDecorate %16 Location 0
-OpDecorate %18 Location 1
-OpDecorate %19 Location 2
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
-%6 = OpTypePointer Input %5
-%7 = OpVariable %6 Input
-%8 = OpTypeFloat 32
-%9 = OpTypePointer Input %8
-%10 = OpVariable %9 Input
-%11 = OpTypeVector %8 3
-%12 = OpTypePointer Input %11
-%13 = OpVariable %12 Input
-%14 = OpVariable %12 Input
-%15 = OpTypePointer Output %8
-%16 = OpVariable %15 Output
-%17 = OpTypePointer Output %11
-%18 = OpVariable %17 Output
-%19 = OpVariable %15 Output
-%25 = OpConstant %5 0
-%28 = OpConstant %5 1
-%31 = OpConstant %5 2
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %40
-%40 = OpLabel
-%20 = OpLoad %5 %7
-%22 = OpExtInst %8 %21 InterpolateAtSample %10 %20
-OpStore %16 %22
-%23 = OpLoad %5 %7
-%24 = OpAccessChain %9 %13 %25
-%26 = OpExtInst %8 %21 InterpolateAtSample %24 %23
-%27 = OpAccessChain %9 %13 %28
-%29 = OpExtInst %8 %21 InterpolateAtSample %27 %23
-%30 = OpAccessChain %9 %13 %31
-%32 = OpExtInst %8 %21 InterpolateAtSample %30 %23
-%34 = OpAccessChain %15 %18 %25
-OpStore %34 %26
-%35 = OpAccessChain %15 %18 %28
-OpStore %35 %29
-%36 = OpAccessChain %15 %18 %31
-OpStore %36 %32
-%37 = OpLoad %5 %7
-%38 = OpAccessChain %9 %14 %28
-%39 = OpExtInst %8 %21 InterpolateAtSample %38 %37
-OpStore %19 %39
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability SampleRateShading
+               OpCapability InterpolationFunction
+               OpCapability VulkanMemoryModel
+         %21 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %SV_SAMPLEINDEX %IN_SCALAR %IN_VECTOR %IN_VECTOR_1 %SV_TARGET %SV_TARGET_1 %SV_TARGET_2
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %SV_SAMPLEINDEX "SV_SAMPLEINDEX"
+               OpName %IN_SCALAR "IN_SCALAR"
+               OpName %IN_VECTOR "IN_VECTOR"
+               OpName %IN_VECTOR_1 "IN_VECTOR_1"
+               OpName %SV_TARGET "SV_TARGET"
+               OpName %SV_TARGET_1 "SV_TARGET_1"
+               OpName %SV_TARGET_2 "SV_TARGET_2"
+               OpDecorate %SV_SAMPLEINDEX BuiltIn SampleId
+               OpDecorate %SV_SAMPLEINDEX Flat
+               OpDecorate %IN_SCALAR NoPerspective
+               OpDecorate %IN_SCALAR Location 0
+               OpDecorate %IN_VECTOR Location 1
+               OpDecorate %IN_VECTOR_1 Centroid
+               OpDecorate %IN_VECTOR_1 Location 2
+               OpDecorate %SV_TARGET Location 0
+               OpDecorate %SV_TARGET_1 Location 1
+               OpDecorate %SV_TARGET_2 Location 2
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+%_ptr_Input_uint = OpTypePointer Input %uint
+%SV_SAMPLEINDEX = OpVariable %_ptr_Input_uint Input
+      %float = OpTypeFloat 32
+%_ptr_Input_float = OpTypePointer Input %float
+  %IN_SCALAR = OpVariable %_ptr_Input_float Input
+    %v3float = OpTypeVector %float 3
+%_ptr_Input_v3float = OpTypePointer Input %v3float
+  %IN_VECTOR = OpVariable %_ptr_Input_v3float Input
+%IN_VECTOR_1 = OpVariable %_ptr_Input_v3float Input
+%_ptr_Output_float = OpTypePointer Output %float
+  %SV_TARGET = OpVariable %_ptr_Output_float Output
+%_ptr_Output_v3float = OpTypePointer Output %v3float
+%SV_TARGET_1 = OpVariable %_ptr_Output_v3float Output
+%SV_TARGET_2 = OpVariable %_ptr_Output_float Output
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %40
+
+         %40 = OpLabel
+         %20 =   OpLoad %uint %SV_SAMPLEINDEX
+         %22 =   OpExtInst %float %21 InterpolateAtSample %IN_SCALAR %20
+                 OpStore %SV_TARGET %22
+         %23 =   OpLoad %uint %SV_SAMPLEINDEX
+         %24 =   OpAccessChain %_ptr_Input_float %IN_VECTOR %uint_0
+         %26 =   OpExtInst %float %21 InterpolateAtSample %24 %23
+         %27 =   OpAccessChain %_ptr_Input_float %IN_VECTOR %uint_1
+         %29 =   OpExtInst %float %21 InterpolateAtSample %27 %23
+         %30 =   OpAccessChain %_ptr_Input_float %IN_VECTOR %uint_2
+         %32 =   OpExtInst %float %21 InterpolateAtSample %30 %23
+         %34 =   OpAccessChain %_ptr_Output_float %SV_TARGET_1 %uint_0
+                 OpStore %34 %26
+         %35 =   OpAccessChain %_ptr_Output_float %SV_TARGET_1 %uint_1
+                 OpStore %35 %29
+         %36 =   OpAccessChain %_ptr_Output_float %SV_TARGET_1 %uint_2
+                 OpStore %36 %32
+         %37 =   OpLoad %uint %SV_SAMPLEINDEX
+         %38 =   OpAccessChain %_ptr_Input_float %IN_VECTOR_1 %uint_1
+         %39 =   OpExtInst %float %21 InterpolateAtSample %38 %37
+                 OpStore %SV_TARGET_2 %39
+                 OpReturn
+               OpFunctionEnd
 

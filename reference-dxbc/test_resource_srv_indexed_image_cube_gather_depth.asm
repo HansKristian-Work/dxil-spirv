@@ -4,120 +4,122 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 77
 ; Schema: 0
-OpCapability Shader
-OpCapability SampledImageArrayDynamicIndexing
-OpCapability RuntimeDescriptorArray
-OpCapability SampledImageArrayNonUniformIndexing
-OpCapability VulkanMemoryModel
-OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %9 %15 %19 %22 %24 %25 %29 %32
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %13 ""
-OpName %22 "TEXCOORD"
-OpName %24 "DEPTH_REF"
-OpName %25 "LAYER"
-OpName %29 "OFFSET"
-OpName %32 "SV_TARGET"
-OpDecorate %9 DescriptorSet 0
-OpDecorate %9 Binding 0
-OpDecorate %12 ArrayStride 4
-OpMemberDecorate %13 0 Offset 0
-OpDecorate %13 Block
-OpDecorate %15 DescriptorSet 0
-OpDecorate %15 Binding 0
-OpDecorate %19 DescriptorSet 0
-OpDecorate %19 Binding 0
-OpDecorate %22 Location 0
-OpDecorate %24 Location 1
-OpDecorate %25 Location 1
-OpDecorate %25 Component 1
-OpDecorate %29 Flat
-OpDecorate %29 Location 2
-OpDecorate %32 Location 0
-OpDecorate %43 NonUniform
-OpDecorate %46 NonUniform
-OpDecorate %49 NonUniform
-OpDecorate %61 NonUniform
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeImage %5 Cube 0 0 0 1 Unknown
-%7 = OpTypeRuntimeArray %6
-%8 = OpTypePointer UniformConstant %7
-%9 = OpVariable %8 UniformConstant
-%10 = OpTypeInt 32 0
-%11 = OpConstant %10 4
-%12 = OpTypeArray %5 %11
-%13 = OpTypeStruct %12
-%14 = OpTypePointer Uniform %13
-%15 = OpVariable %14 Uniform
-%16 = OpTypeSampler
-%17 = OpTypeRuntimeArray %16
-%18 = OpTypePointer UniformConstant %17
-%19 = OpVariable %18 UniformConstant
-%20 = OpTypeVector %5 3
-%21 = OpTypePointer Input %20
-%22 = OpVariable %21 Input
-%23 = OpTypePointer Input %5
-%24 = OpVariable %23 Input
-%25 = OpVariable %23 Input
-%26 = OpTypeInt 32 1
-%27 = OpTypeVector %26 3
-%28 = OpTypePointer Input %27
-%29 = OpVariable %28 Input
-%30 = OpTypeVector %5 4
-%31 = OpTypePointer Output %30
-%32 = OpVariable %31 Output
-%34 = OpConstant %10 0
-%35 = OpConstant %10 16
-%39 = OpConstant %10 2
-%40 = OpTypePointer Uniform %5
-%44 = OpTypePointer UniformConstant %6
-%47 = OpTypePointer UniformConstant %16
-%53 = OpConstant %10 1
-%59 = OpTypeImage %5 Cube 1 0 0 1 Unknown
-%60 = OpTypeSampledImage %59
-%69 = OpTypePointer Output %5
-%74 = OpConstant %10 3
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %75
-%75 = OpLabel
-%33 = OpIMul %10 %34 %35
-%36 = OpIMul %10 %34 %11
-%37 = OpIAdd %10 %33 %36
-%38 = OpShiftRightLogical %10 %37 %39
-%41 = OpAccessChain %40 %15 %34 %38
-%42 = OpLoad %5 %41
-%43 = OpBitcast %10 %42
-%45 = OpAccessChain %44 %9 %43
-%46 = OpLoad %6 %45
-%48 = OpAccessChain %47 %19 %43
-%49 = OpLoad %16 %48
-%50 = OpAccessChain %23 %22 %34
-%51 = OpLoad %5 %50
-%52 = OpAccessChain %23 %22 %53
-%54 = OpLoad %5 %52
-%55 = OpAccessChain %23 %22 %39
-%56 = OpLoad %5 %55
-%58 = OpLoad %5 %24
-%61 = OpSampledImage %60 %46 %49
-%62 = OpCompositeConstruct %20 %51 %54 %56
-%63 = OpImageDrefGather %30 %61 %62 %58
-%64 = OpCompositeExtract %5 %63 0
-%65 = OpCompositeExtract %5 %63 1
-%66 = OpCompositeExtract %5 %63 2
-%67 = OpCompositeExtract %5 %63 3
-%70 = OpAccessChain %69 %32 %34
-OpStore %70 %64
-%71 = OpAccessChain %69 %32 %53
-OpStore %71 %65
-%72 = OpAccessChain %69 %32 %39
-OpStore %72 %66
-%73 = OpAccessChain %69 %32 %74
-OpStore %73 %67
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability SampledImageArrayDynamicIndexing
+               OpCapability RuntimeDescriptorArray
+               OpCapability SampledImageArrayNonUniformIndexing
+               OpCapability VulkanMemoryModel
+               OpExtension "SPV_EXT_descriptor_indexing"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %9 %15 %19 %TEXCOORD %DEPTH_REF %LAYER %OFFSET %SV_TARGET
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %_ ""
+               OpName %TEXCOORD "TEXCOORD"
+               OpName %DEPTH_REF "DEPTH_REF"
+               OpName %LAYER "LAYER"
+               OpName %OFFSET "OFFSET"
+               OpName %SV_TARGET "SV_TARGET"
+               OpDecorate %9 DescriptorSet 0
+               OpDecorate %9 Binding 0
+               OpDecorate %_arr_float_uint_4 ArrayStride 4
+               OpMemberDecorate %_ 0 Offset 0
+               OpDecorate %_ Block
+               OpDecorate %15 DescriptorSet 0
+               OpDecorate %15 Binding 0
+               OpDecorate %19 DescriptorSet 0
+               OpDecorate %19 Binding 0
+               OpDecorate %TEXCOORD Location 0
+               OpDecorate %DEPTH_REF Location 1
+               OpDecorate %LAYER Location 1
+               OpDecorate %LAYER Component 1
+               OpDecorate %OFFSET Flat
+               OpDecorate %OFFSET Location 2
+               OpDecorate %SV_TARGET Location 0
+               OpDecorate %43 NonUniform
+               OpDecorate %46 NonUniform
+               OpDecorate %49 NonUniform
+               OpDecorate %61 NonUniform
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+          %6 = OpTypeImage %float Cube 0 0 0 1 Unknown
+%_runtimearr_6 = OpTypeRuntimeArray %6
+%_ptr_UniformConstant__runtimearr_6 = OpTypePointer UniformConstant %_runtimearr_6
+          %9 = OpVariable %_ptr_UniformConstant__runtimearr_6 UniformConstant
+       %uint = OpTypeInt 32 0
+     %uint_4 = OpConstant %uint 4
+%_arr_float_uint_4 = OpTypeArray %float %uint_4
+          %_ = OpTypeStruct %_arr_float_uint_4
+%_ptr_Uniform__ = OpTypePointer Uniform %_
+         %15 = OpVariable %_ptr_Uniform__ Uniform
+         %16 = OpTypeSampler
+%_runtimearr_16 = OpTypeRuntimeArray %16
+%_ptr_UniformConstant__runtimearr_16 = OpTypePointer UniformConstant %_runtimearr_16
+         %19 = OpVariable %_ptr_UniformConstant__runtimearr_16 UniformConstant
+    %v3float = OpTypeVector %float 3
+%_ptr_Input_v3float = OpTypePointer Input %v3float
+   %TEXCOORD = OpVariable %_ptr_Input_v3float Input
+%_ptr_Input_float = OpTypePointer Input %float
+  %DEPTH_REF = OpVariable %_ptr_Input_float Input
+      %LAYER = OpVariable %_ptr_Input_float Input
+        %int = OpTypeInt 32 1
+      %v3int = OpTypeVector %int 3
+%_ptr_Input_v3int = OpTypePointer Input %v3int
+     %OFFSET = OpVariable %_ptr_Input_v3int Input
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %SV_TARGET = OpVariable %_ptr_Output_v4float Output
+     %uint_0 = OpConstant %uint 0
+    %uint_16 = OpConstant %uint 16
+     %uint_2 = OpConstant %uint 2
+%_ptr_Uniform_float = OpTypePointer Uniform %float
+%_ptr_UniformConstant_6 = OpTypePointer UniformConstant %6
+%_ptr_UniformConstant_16 = OpTypePointer UniformConstant %16
+     %uint_1 = OpConstant %uint 1
+         %59 = OpTypeImage %float Cube 1 0 0 1 Unknown
+         %60 = OpTypeSampledImage %59
+%_ptr_Output_float = OpTypePointer Output %float
+     %uint_3 = OpConstant %uint 3
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %75
+
+         %75 = OpLabel
+         %33 =   OpIMul %uint %uint_0 %uint_16
+         %36 =   OpIMul %uint %uint_0 %uint_4
+         %37 =   OpIAdd %uint %33 %36
+         %38 =   OpShiftRightLogical %uint %37 %uint_2
+         %41 =   OpAccessChain %_ptr_Uniform_float %15 %uint_0 %38
+         %42 =   OpLoad %float %41
+         %43 =   OpBitcast %uint %42
+         %45 =   OpAccessChain %_ptr_UniformConstant_6 %9 %43
+         %46 =   OpLoad %6 %45
+         %48 =   OpAccessChain %_ptr_UniformConstant_16 %19 %43
+         %49 =   OpLoad %16 %48
+         %50 =   OpAccessChain %_ptr_Input_float %TEXCOORD %uint_0
+         %51 =   OpLoad %float %50
+         %52 =   OpAccessChain %_ptr_Input_float %TEXCOORD %uint_1
+         %54 =   OpLoad %float %52
+         %55 =   OpAccessChain %_ptr_Input_float %TEXCOORD %uint_2
+         %56 =   OpLoad %float %55
+         %58 =   OpLoad %float %DEPTH_REF
+         %61 =   OpSampledImage %60 %46 %49
+         %62 =   OpCompositeConstruct %v3float %51 %54 %56
+         %63 =   OpImageDrefGather %v4float %61 %62 %58
+         %64 =   OpCompositeExtract %float %63 0
+         %65 =   OpCompositeExtract %float %63 1
+         %66 =   OpCompositeExtract %float %63 2
+         %67 =   OpCompositeExtract %float %63 3
+         %70 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_0
+                 OpStore %70 %64
+         %71 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_1
+                 OpStore %71 %65
+         %72 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_2
+                 OpStore %72 %66
+         %73 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_3
+                 OpStore %73 %67
+                 OpReturn
+               OpFunctionEnd
 

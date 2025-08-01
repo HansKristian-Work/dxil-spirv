@@ -4,124 +4,126 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 120
 ; Schema: 0
-OpCapability Shader
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %9 %12
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %7 "SSBO"
-OpName %12 "BUFFER_ADDRESS"
-OpDecorate %6 ArrayStride 4
-OpMemberDecorate %7 0 Offset 0
-OpDecorate %7 Block
-OpDecorate %9 DescriptorSet 0
-OpDecorate %9 Binding 0
-OpDecorate %12 Flat
-OpDecorate %12 Location 0
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
-%6 = OpTypeRuntimeArray %5
-%7 = OpTypeStruct %6
-%8 = OpTypePointer StorageBuffer %7
-%9 = OpVariable %8 StorageBuffer
-%10 = OpTypeVector %5 2
-%11 = OpTypePointer Input %10
-%12 = OpVariable %11 Input
-%13 = OpTypePointer Input %5
-%15 = OpConstant %5 0
-%18 = OpConstant %5 4
-%20 = OpConstant %5 2
-%22 = OpConstant %5 16
-%24 = OpConstant %5 8
-%27 = OpTypePointer StorageBuffer %5
-%30 = OpConstant %5 5
-%32 = OpConstant %5 10
-%106 = OpConstant %5 1
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %118
-%118 = OpLabel
-%14 = OpAccessChain %13 %12 %15
-%16 = OpLoad %5 %14
-%17 = OpIMul %5 %16 %18
-%21 = OpIMul %5 %22 %16
-%25 = OpIMul %5 %16 %18
-%26 = OpIAdd %5 %25 %20
-%28 = OpAccessChain %27 %9 %15 %26
-%29 = OpAtomicLoad %5 %28 %30 %15
-%31 = OpIAdd %5 %29 %32
-%33 = OpIMul %5 %22 %16
-%35 = OpIMul %5 %16 %18
-%36 = OpIAdd %5 %35 %20
-%37 = OpAccessChain %27 %9 %15 %36
-%38 = OpAtomicExchange %5 %37 %30 %15 %31
-%40 = OpIMul %5 %22 %16
-%42 = OpIMul %5 %16 %18
-%43 = OpIAdd %5 %42 %20
-%44 = OpAccessChain %27 %9 %15 %43
-%45 = OpAtomicCompareExchange %5 %44 %30 %15 %15 %38 %32
-%46 = OpIMul %5 %22 %16
-%48 = OpIMul %5 %16 %18
-%49 = OpIAdd %5 %48 %20
-%50 = OpAccessChain %27 %9 %15 %49
-%51 = OpAtomicIAdd %5 %50 %30 %15 %45
-%52 = OpIMul %5 %22 %16
-%54 = OpIMul %5 %16 %18
-%55 = OpIAdd %5 %54 %20
-%56 = OpAccessChain %27 %9 %15 %55
-%57 = OpAtomicISub %5 %56 %30 %15 %51
-%58 = OpIMul %5 %22 %16
-%60 = OpIMul %5 %16 %18
-%61 = OpIAdd %5 %60 %20
-%62 = OpAccessChain %27 %9 %15 %61
-%63 = OpAtomicSMin %5 %62 %30 %15 %57
-%64 = OpIMul %5 %22 %16
-%66 = OpIMul %5 %16 %18
-%67 = OpIAdd %5 %66 %20
-%68 = OpAccessChain %27 %9 %15 %67
-%69 = OpAtomicSMax %5 %68 %30 %15 %63
-%70 = OpIMul %5 %22 %16
-%72 = OpIMul %5 %16 %18
-%73 = OpIAdd %5 %72 %20
-%74 = OpAccessChain %27 %9 %15 %73
-%75 = OpAtomicUMin %5 %74 %30 %15 %69
-%76 = OpIMul %5 %22 %16
-%78 = OpIMul %5 %16 %18
-%79 = OpIAdd %5 %78 %20
-%80 = OpAccessChain %27 %9 %15 %79
-%81 = OpAtomicUMax %5 %80 %30 %15 %75
-%82 = OpIMul %5 %22 %16
-%84 = OpIMul %5 %16 %18
-%85 = OpIAdd %5 %84 %20
-%86 = OpAccessChain %27 %9 %15 %85
-%87 = OpAtomicAnd %5 %86 %30 %15 %81
-%88 = OpIMul %5 %22 %16
-%90 = OpIMul %5 %16 %18
-%91 = OpIAdd %5 %90 %20
-%92 = OpAccessChain %27 %9 %15 %91
-%93 = OpAtomicOr %5 %92 %30 %15 %87
-%94 = OpIMul %5 %22 %16
-%96 = OpIMul %5 %16 %18
-%97 = OpIAdd %5 %96 %20
-%98 = OpAccessChain %27 %9 %15 %97
-%99 = OpAtomicXor %5 %98 %30 %15 %93
-%100 = OpIMul %5 %22 %16
-%102 = OpIMul %5 %16 %18
-%103 = OpIAdd %5 %102 %20
-%104 = OpAccessChain %27 %9 %15 %103
-%105 = OpAtomicIAdd %5 %104 %30 %15 %106
-%107 = OpIMul %5 %22 %16
-%109 = OpIMul %5 %16 %18
-%110 = OpIAdd %5 %109 %20
-%111 = OpAccessChain %27 %9 %15 %110
-%112 = OpAtomicISub %5 %111 %30 %15 %106
-%113 = OpIMul %5 %22 %16
-%115 = OpIMul %5 %16 %18
-%116 = OpIAdd %5 %115 %20
-%117 = OpAccessChain %27 %9 %15 %116
-OpAtomicStore %117 %30 %15 %112
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %9 %BUFFER_ADDRESS
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %SSBO "SSBO"
+               OpName %BUFFER_ADDRESS "BUFFER_ADDRESS"
+               OpDecorate %_runtimearr_uint ArrayStride 4
+               OpMemberDecorate %SSBO 0 Offset 0
+               OpDecorate %SSBO Block
+               OpDecorate %9 DescriptorSet 0
+               OpDecorate %9 Binding 0
+               OpDecorate %BUFFER_ADDRESS Flat
+               OpDecorate %BUFFER_ADDRESS Location 0
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+%_runtimearr_uint = OpTypeRuntimeArray %uint
+       %SSBO = OpTypeStruct %_runtimearr_uint
+%_ptr_StorageBuffer_SSBO = OpTypePointer StorageBuffer %SSBO
+          %9 = OpVariable %_ptr_StorageBuffer_SSBO StorageBuffer
+     %v2uint = OpTypeVector %uint 2
+%_ptr_Input_v2uint = OpTypePointer Input %v2uint
+%BUFFER_ADDRESS = OpVariable %_ptr_Input_v2uint Input
+%_ptr_Input_uint = OpTypePointer Input %uint
+     %uint_0 = OpConstant %uint 0
+     %uint_4 = OpConstant %uint 4
+     %uint_2 = OpConstant %uint 2
+    %uint_16 = OpConstant %uint 16
+     %uint_8 = OpConstant %uint 8
+%_ptr_StorageBuffer_uint = OpTypePointer StorageBuffer %uint
+     %uint_5 = OpConstant %uint 5
+    %uint_10 = OpConstant %uint 10
+     %uint_1 = OpConstant %uint 1
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %118
+
+        %118 = OpLabel
+         %14 =   OpAccessChain %_ptr_Input_uint %BUFFER_ADDRESS %uint_0
+         %16 =   OpLoad %uint %14
+         %17 =   OpIMul %uint %16 %uint_4
+         %21 =   OpIMul %uint %uint_16 %16
+         %25 =   OpIMul %uint %16 %uint_4
+         %26 =   OpIAdd %uint %25 %uint_2
+         %28 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %26
+         %29 =   OpAtomicLoad %uint %28 %uint_5 %uint_0
+         %31 =   OpIAdd %uint %29 %uint_10
+         %33 =   OpIMul %uint %uint_16 %16
+         %35 =   OpIMul %uint %16 %uint_4
+         %36 =   OpIAdd %uint %35 %uint_2
+         %37 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %36
+         %38 =   OpAtomicExchange %uint %37 %uint_5 %uint_0 %31
+         %40 =   OpIMul %uint %uint_16 %16
+         %42 =   OpIMul %uint %16 %uint_4
+         %43 =   OpIAdd %uint %42 %uint_2
+         %44 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %43
+         %45 =   OpAtomicCompareExchange %uint %44 %uint_5 %uint_0 %uint_0 %38 %uint_10
+         %46 =   OpIMul %uint %uint_16 %16
+         %48 =   OpIMul %uint %16 %uint_4
+         %49 =   OpIAdd %uint %48 %uint_2
+         %50 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %49
+         %51 =   OpAtomicIAdd %uint %50 %uint_5 %uint_0 %45
+         %52 =   OpIMul %uint %uint_16 %16
+         %54 =   OpIMul %uint %16 %uint_4
+         %55 =   OpIAdd %uint %54 %uint_2
+         %56 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %55
+         %57 =   OpAtomicISub %uint %56 %uint_5 %uint_0 %51
+         %58 =   OpIMul %uint %uint_16 %16
+         %60 =   OpIMul %uint %16 %uint_4
+         %61 =   OpIAdd %uint %60 %uint_2
+         %62 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %61
+         %63 =   OpAtomicSMin %uint %62 %uint_5 %uint_0 %57
+         %64 =   OpIMul %uint %uint_16 %16
+         %66 =   OpIMul %uint %16 %uint_4
+         %67 =   OpIAdd %uint %66 %uint_2
+         %68 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %67
+         %69 =   OpAtomicSMax %uint %68 %uint_5 %uint_0 %63
+         %70 =   OpIMul %uint %uint_16 %16
+         %72 =   OpIMul %uint %16 %uint_4
+         %73 =   OpIAdd %uint %72 %uint_2
+         %74 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %73
+         %75 =   OpAtomicUMin %uint %74 %uint_5 %uint_0 %69
+         %76 =   OpIMul %uint %uint_16 %16
+         %78 =   OpIMul %uint %16 %uint_4
+         %79 =   OpIAdd %uint %78 %uint_2
+         %80 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %79
+         %81 =   OpAtomicUMax %uint %80 %uint_5 %uint_0 %75
+         %82 =   OpIMul %uint %uint_16 %16
+         %84 =   OpIMul %uint %16 %uint_4
+         %85 =   OpIAdd %uint %84 %uint_2
+         %86 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %85
+         %87 =   OpAtomicAnd %uint %86 %uint_5 %uint_0 %81
+         %88 =   OpIMul %uint %uint_16 %16
+         %90 =   OpIMul %uint %16 %uint_4
+         %91 =   OpIAdd %uint %90 %uint_2
+         %92 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %91
+         %93 =   OpAtomicOr %uint %92 %uint_5 %uint_0 %87
+         %94 =   OpIMul %uint %uint_16 %16
+         %96 =   OpIMul %uint %16 %uint_4
+         %97 =   OpIAdd %uint %96 %uint_2
+         %98 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %97
+         %99 =   OpAtomicXor %uint %98 %uint_5 %uint_0 %93
+        %100 =   OpIMul %uint %uint_16 %16
+        %102 =   OpIMul %uint %16 %uint_4
+        %103 =   OpIAdd %uint %102 %uint_2
+        %104 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %103
+        %105 =   OpAtomicIAdd %uint %104 %uint_5 %uint_0 %uint_1
+        %107 =   OpIMul %uint %uint_16 %16
+        %109 =   OpIMul %uint %16 %uint_4
+        %110 =   OpIAdd %uint %109 %uint_2
+        %111 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %110
+        %112 =   OpAtomicISub %uint %111 %uint_5 %uint_0 %uint_1
+        %113 =   OpIMul %uint %uint_16 %16
+        %115 =   OpIMul %uint %16 %uint_4
+        %116 =   OpIAdd %uint %115 %uint_2
+        %117 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %116
+                 OpAtomicStore %117 %uint_5 %uint_0 %112
+                 OpReturn
+               OpFunctionEnd
 

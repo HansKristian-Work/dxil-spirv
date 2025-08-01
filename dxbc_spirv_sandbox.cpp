@@ -113,7 +113,10 @@ static std::string convert_to_asm(const void *code, size_t size)
 	                         });
 
 	std::string str;
-	if (!tools.Disassemble(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), &str, 0))
+	if (!tools.Disassemble(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), &str,
+	                       SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES |
+	                       SPV_BINARY_TO_TEXT_OPTION_INDENT |
+	                       SPV_BINARY_TO_TEXT_OPTION_NESTED_INDENT))
 		return "";
 	else
 		return str;

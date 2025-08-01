@@ -4,65 +4,67 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 44
 ; Schema: 0
-OpCapability Shader
-OpCapability StorageImageWriteWithoutFormat
-OpCapability VulkanMemoryModel
-OpCapability FragmentShaderPixelInterlockEXT
-OpExtension "SPV_EXT_fragment_shader_interlock"
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8 %11
-OpExecutionMode %3 OriginUpperLeft
-OpExecutionMode %3 PixelInterlockOrderedEXT
-OpName %3 "main"
-OpName %11 ""
-OpDecorate %8 DescriptorSet 0
-OpDecorate %8 Binding 0
-OpDecorate %11 BuiltIn FragCoord
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeImage %5 2D 0 0 0 2 R32f
-%7 = OpTypePointer UniformConstant %6
-%8 = OpVariable %7 UniformConstant
-%9 = OpTypeVector %5 4
-%10 = OpTypePointer Input %9
-%11 = OpVariable %10 Input
-%13 = OpTypePointer Input %5
-%15 = OpTypeInt 32 0
-%16 = OpConstant %15 1
-%20 = OpConstant %15 0
-%23 = OpTypeVector %15 2
-%27 = OpConstant %15 5
-%34 = OpConstant %5 2
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %42
-%42 = OpLabel
-%12 = OpLoad %6 %8
-%14 = OpAccessChain %13 %11 %16
-%17 = OpLoad %5 %14
-%18 = OpConvertFToS %15 %17
-%19 = OpAccessChain %13 %11 %20
-%21 = OpLoad %5 %19
-%22 = OpConvertFToS %15 %21
-%26 = OpCompositeConstruct %23 %22 %18
-OpBeginInvocationInterlockEXT
-%25 = OpImageRead %9 %12 %26 MakeTexelVisible|NonPrivateTexel %27
-%28 = OpCompositeExtract %5 %25 0
-%29 = OpCompositeExtract %5 %25 1
-%30 = OpCompositeExtract %5 %25 2
-%31 = OpCompositeExtract %5 %25 3
-%32 = OpCompositeConstruct %9 %28 %29 %30 %31
-%33 = OpFMul %5 %28 %34
-%35 = OpCompositeInsert %9 %33 %32 0
-%36 = OpCompositeExtract %5 %35 0
-%37 = OpCompositeExtract %5 %35 1
-%38 = OpCompositeExtract %5 %35 2
-%39 = OpCompositeExtract %5 %35 3
-%40 = OpCompositeConstruct %23 %22 %18
-%41 = OpCompositeConstruct %9 %36 %37 %38 %39
-OpImageWrite %12 %40 %41 MakeTexelAvailable|NonPrivateTexel %27
-OpEndInvocationInterlockEXT
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability StorageImageWriteWithoutFormat
+               OpCapability VulkanMemoryModel
+               OpCapability FragmentShaderPixelInterlockEXT
+               OpExtension "SPV_EXT_fragment_shader_interlock"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %8 %_
+               OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main PixelInterlockOrderedEXT
+               OpName %main "main"
+               OpName %_ ""
+               OpDecorate %8 DescriptorSet 0
+               OpDecorate %8 Binding 0
+               OpDecorate %_ BuiltIn FragCoord
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+          %6 = OpTypeImage %float 2D 0 0 0 2 R32f
+%_ptr_UniformConstant_6 = OpTypePointer UniformConstant %6
+          %8 = OpVariable %_ptr_UniformConstant_6 UniformConstant
+    %v4float = OpTypeVector %float 4
+%_ptr_Input_v4float = OpTypePointer Input %v4float
+          %_ = OpVariable %_ptr_Input_v4float Input
+%_ptr_Input_float = OpTypePointer Input %float
+       %uint = OpTypeInt 32 0
+     %uint_1 = OpConstant %uint 1
+     %uint_0 = OpConstant %uint 0
+     %v2uint = OpTypeVector %uint 2
+     %uint_5 = OpConstant %uint 5
+    %float_2 = OpConstant %float 2
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %42
+
+         %42 = OpLabel
+         %12 =   OpLoad %6 %8
+         %14 =   OpAccessChain %_ptr_Input_float %_ %uint_1
+         %17 =   OpLoad %float %14
+         %18 =   OpConvertFToS %uint %17
+         %19 =   OpAccessChain %_ptr_Input_float %_ %uint_0
+         %21 =   OpLoad %float %19
+         %22 =   OpConvertFToS %uint %21
+         %26 =   OpCompositeConstruct %v2uint %22 %18
+                 OpBeginInvocationInterlockEXT
+         %25 =   OpImageRead %v4float %12 %26 MakeTexelVisible|NonPrivateTexel %uint_5
+         %28 =   OpCompositeExtract %float %25 0
+         %29 =   OpCompositeExtract %float %25 1
+         %30 =   OpCompositeExtract %float %25 2
+         %31 =   OpCompositeExtract %float %25 3
+         %32 =   OpCompositeConstruct %v4float %28 %29 %30 %31
+         %33 =   OpFMul %float %28 %float_2
+         %35 =   OpCompositeInsert %v4float %33 %32 0
+         %36 =   OpCompositeExtract %float %35 0
+         %37 =   OpCompositeExtract %float %35 1
+         %38 =   OpCompositeExtract %float %35 2
+         %39 =   OpCompositeExtract %float %35 3
+         %40 =   OpCompositeConstruct %v2uint %22 %18
+         %41 =   OpCompositeConstruct %v4float %36 %37 %38 %39
+                 OpImageWrite %12 %40 %41 MakeTexelAvailable|NonPrivateTexel %uint_5
+                 OpEndInvocationInterlockEXT
+                 OpReturn
+               OpFunctionEnd
 

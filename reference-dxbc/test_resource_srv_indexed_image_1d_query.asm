@@ -4,77 +4,79 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 41
 ; Schema: 0
-OpCapability Shader
-OpCapability SampledImageArrayDynamicIndexing
-OpCapability Sampled1D
-OpCapability ImageQuery
-OpCapability RuntimeDescriptorArray
-OpCapability SampledImageArrayNonUniformIndexing
-OpCapability VulkanMemoryModel
-OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %9 %15 %17 %18 %19
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %13 ""
-OpName %17 "SV_TARGET"
-OpName %18 "SV_TARGET_1"
-OpName %19 "SV_TARGET_2"
-OpName %35 ""
-OpDecorate %9 DescriptorSet 0
-OpDecorate %9 Binding 0
-OpDecorate %12 ArrayStride 4
-OpMemberDecorate %13 0 Offset 0
-OpDecorate %13 Block
-OpDecorate %15 DescriptorSet 0
-OpDecorate %15 Binding 0
-OpDecorate %17 Location 0
-OpDecorate %18 Location 1
-OpDecorate %19 Location 2
-OpDecorate %30 NonUniform
-OpDecorate %33 NonUniform
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeImage %5 1D 0 0 0 1 Unknown
-%7 = OpTypeRuntimeArray %6
-%8 = OpTypePointer UniformConstant %7
-%9 = OpVariable %8 UniformConstant
-%10 = OpTypeInt 32 0
-%11 = OpConstant %10 4
-%12 = OpTypeArray %5 %11
-%13 = OpTypeStruct %12
-%14 = OpTypePointer Uniform %13
-%15 = OpVariable %14 Uniform
-%16 = OpTypePointer Output %10
-%17 = OpVariable %16 Output
-%18 = OpVariable %16 Output
-%19 = OpVariable %16 Output
-%21 = OpConstant %10 0
-%22 = OpConstant %10 16
-%26 = OpConstant %10 2
-%27 = OpTypePointer Uniform %5
-%31 = OpTypePointer UniformConstant %6
-%35 = OpTypeStruct %10 %10
-%37 = OpConstant %10 1
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %39
-%39 = OpLabel
-%20 = OpIMul %10 %21 %22
-%23 = OpIMul %10 %21 %11
-%24 = OpIAdd %10 %20 %23
-%25 = OpShiftRightLogical %10 %24 %26
-%28 = OpAccessChain %27 %15 %21 %25
-%29 = OpLoad %5 %28
-%30 = OpBitcast %10 %29
-%32 = OpAccessChain %31 %9 %30
-%33 = OpLoad %6 %32
-%34 = OpImageQuerySizeLod %10 %33 %21
-OpStore %17 %34
-OpStore %18 %37
-%38 = OpImageQueryLevels %10 %33
-OpStore %19 %38
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability SampledImageArrayDynamicIndexing
+               OpCapability Sampled1D
+               OpCapability ImageQuery
+               OpCapability RuntimeDescriptorArray
+               OpCapability SampledImageArrayNonUniformIndexing
+               OpCapability VulkanMemoryModel
+               OpExtension "SPV_EXT_descriptor_indexing"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %9 %15 %SV_TARGET %SV_TARGET_1 %SV_TARGET_2
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %_ ""
+               OpName %SV_TARGET "SV_TARGET"
+               OpName %SV_TARGET_1 "SV_TARGET_1"
+               OpName %SV_TARGET_2 "SV_TARGET_2"
+               OpName %__0 ""
+               OpDecorate %9 DescriptorSet 0
+               OpDecorate %9 Binding 0
+               OpDecorate %_arr_float_uint_4 ArrayStride 4
+               OpMemberDecorate %_ 0 Offset 0
+               OpDecorate %_ Block
+               OpDecorate %15 DescriptorSet 0
+               OpDecorate %15 Binding 0
+               OpDecorate %SV_TARGET Location 0
+               OpDecorate %SV_TARGET_1 Location 1
+               OpDecorate %SV_TARGET_2 Location 2
+               OpDecorate %30 NonUniform
+               OpDecorate %33 NonUniform
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+          %6 = OpTypeImage %float 1D 0 0 0 1 Unknown
+%_runtimearr_6 = OpTypeRuntimeArray %6
+%_ptr_UniformConstant__runtimearr_6 = OpTypePointer UniformConstant %_runtimearr_6
+          %9 = OpVariable %_ptr_UniformConstant__runtimearr_6 UniformConstant
+       %uint = OpTypeInt 32 0
+     %uint_4 = OpConstant %uint 4
+%_arr_float_uint_4 = OpTypeArray %float %uint_4
+          %_ = OpTypeStruct %_arr_float_uint_4
+%_ptr_Uniform__ = OpTypePointer Uniform %_
+         %15 = OpVariable %_ptr_Uniform__ Uniform
+%_ptr_Output_uint = OpTypePointer Output %uint
+  %SV_TARGET = OpVariable %_ptr_Output_uint Output
+%SV_TARGET_1 = OpVariable %_ptr_Output_uint Output
+%SV_TARGET_2 = OpVariable %_ptr_Output_uint Output
+     %uint_0 = OpConstant %uint 0
+    %uint_16 = OpConstant %uint 16
+     %uint_2 = OpConstant %uint 2
+%_ptr_Uniform_float = OpTypePointer Uniform %float
+%_ptr_UniformConstant_6 = OpTypePointer UniformConstant %6
+        %__0 = OpTypeStruct %uint %uint
+     %uint_1 = OpConstant %uint 1
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %39
+
+         %39 = OpLabel
+         %20 =   OpIMul %uint %uint_0 %uint_16
+         %23 =   OpIMul %uint %uint_0 %uint_4
+         %24 =   OpIAdd %uint %20 %23
+         %25 =   OpShiftRightLogical %uint %24 %uint_2
+         %28 =   OpAccessChain %_ptr_Uniform_float %15 %uint_0 %25
+         %29 =   OpLoad %float %28
+         %30 =   OpBitcast %uint %29
+         %32 =   OpAccessChain %_ptr_UniformConstant_6 %9 %30
+         %33 =   OpLoad %6 %32
+         %34 =   OpImageQuerySizeLod %uint %33 %uint_0
+                 OpStore %SV_TARGET %34
+                 OpStore %SV_TARGET_1 %uint_1
+         %38 =   OpImageQueryLevels %uint %33
+                 OpStore %SV_TARGET_2 %38
+                 OpReturn
+               OpFunctionEnd
 

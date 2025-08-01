@@ -4,185 +4,187 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 136
 ; Schema: 0
-OpCapability Shader
-OpCapability ImageGatherExtended
-OpCapability SparseResidency
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8 %11 %14 %16 %20 %23 %25 %26 %27 %28 %29
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %14 "TEXCOORD"
-OpName %16 "DEPTH_REF"
-OpName %20 "OFFSET"
-OpName %23 "SV_TARGET"
-OpName %25 "SV_TARGET_1"
-OpName %26 "SV_TARGET_2"
-OpName %27 "SV_TARGET_3"
-OpName %28 "SV_TARGET_4"
-OpName %29 "SV_TARGET_5"
-OpName %55 "SparseTexel"
-OpName %63 ""
-OpName %71 ""
-OpDecorate %8 DescriptorSet 0
-OpDecorate %8 Binding 0
-OpDecorate %11 DescriptorSet 0
-OpDecorate %11 Binding 0
-OpDecorate %14 Location 0
-OpDecorate %16 Location 1
-OpDecorate %20 Flat
-OpDecorate %20 Location 2
-OpDecorate %23 Location 0
-OpDecorate %25 Location 1
-OpDecorate %26 Location 2
-OpDecorate %27 Location 3
-OpDecorate %28 Location 4
-OpDecorate %29 Location 5
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeImage %5 2D 0 0 0 1 Unknown
-%7 = OpTypePointer UniformConstant %6
-%8 = OpVariable %7 UniformConstant
-%9 = OpTypeSampler
-%10 = OpTypePointer UniformConstant %9
-%11 = OpVariable %10 UniformConstant
-%12 = OpTypeVector %5 3
-%13 = OpTypePointer Input %12
-%14 = OpVariable %13 Input
-%15 = OpTypePointer Input %5
-%16 = OpVariable %15 Input
-%17 = OpTypeInt 32 1
-%18 = OpTypeVector %17 2
-%19 = OpTypePointer Input %18
-%20 = OpVariable %19 Input
-%21 = OpTypeVector %5 4
-%22 = OpTypePointer Output %21
-%23 = OpVariable %22 Output
-%24 = OpTypePointer Output %5
-%25 = OpVariable %24 Output
-%26 = OpVariable %22 Output
-%27 = OpVariable %24 Output
-%28 = OpVariable %22 Output
-%29 = OpVariable %24 Output
-%33 = OpTypeInt 32 0
-%34 = OpConstant %33 0
-%37 = OpConstant %33 1
-%39 = OpTypeVector %5 2
-%42 = OpTypePointer Input %17
-%49 = OpTypeVector %33 2
-%51 = OpTypeImage %5 2D 1 0 0 1 Unknown
-%52 = OpTypeSampledImage %51
-%55 = OpTypeStruct %33 %21
-%63 = OpTypeStruct %5 %5 %5 %5 %33
-%71 = OpTypeStruct %33 %21
-%76 = OpConstant %33 2
-%78 = OpConstant %33 3
-%79 = OpTypeBool
-%82 = OpConstant %5 1
-%83 = OpConstant %5 0
-%85 = OpConstant %17 -1
-%86 = OpConstant %17 0
-%88 = OpConstantComposite %18 %85 %86
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %134
-%134 = OpLabel
-%30 = OpLoad %6 %8
-%31 = OpLoad %9 %11
-%32 = OpAccessChain %15 %14 %34
-%35 = OpLoad %5 %32
-%36 = OpAccessChain %15 %14 %37
-%38 = OpLoad %5 %36
-%41 = OpLoad %5 %16
-%43 = OpAccessChain %42 %20 %34
-%44 = OpLoad %17 %43
-%45 = OpBitcast %33 %44
-%46 = OpAccessChain %42 %20 %37
-%47 = OpLoad %17 %46
-%48 = OpBitcast %33 %47
-%53 = OpSampledImage %52 %30 %31
-%54 = OpCompositeConstruct %39 %35 %38
-%56 = OpImageSparseDrefGather %55 %53 %54 %41
-%57 = OpCompositeExtract %33 %56 0
-%58 = OpCompositeExtract %21 %56 1
-%59 = OpCompositeExtract %5 %58 0
-%60 = OpCompositeExtract %5 %58 1
-%61 = OpCompositeExtract %5 %58 2
-%62 = OpCompositeExtract %5 %58 3
-%64 = OpCompositeConstruct %63 %59 %60 %61 %62 %57
-%65 = OpCompositeExtract %33 %64 4
-%66 = OpCompositeExtract %5 %64 0
-%67 = OpCompositeExtract %5 %64 1
-%68 = OpCompositeExtract %5 %64 2
-%69 = OpCompositeExtract %5 %64 3
-%70 = OpCompositeConstruct %21 %66 %67 %68 %69
-%73 = OpAccessChain %24 %23 %34
-OpStore %73 %66
-%74 = OpAccessChain %24 %23 %37
-OpStore %74 %67
-%75 = OpAccessChain %24 %23 %76
-OpStore %75 %68
-%77 = OpAccessChain %24 %23 %78
-OpStore %77 %69
-%80 = OpImageSparseTexelsResident %79 %65
-%81 = OpSelect %5 %80 %82 %83
-OpStore %25 %81
-%84 = OpCompositeConstruct %39 %35 %38
-%87 = OpImageSparseDrefGather %55 %53 %84 %41 ConstOffset %88
-%89 = OpCompositeExtract %33 %87 0
-%90 = OpCompositeExtract %21 %87 1
-%91 = OpCompositeExtract %5 %90 0
-%92 = OpCompositeExtract %5 %90 1
-%93 = OpCompositeExtract %5 %90 2
-%94 = OpCompositeExtract %5 %90 3
-%95 = OpCompositeConstruct %63 %91 %92 %93 %94 %89
-%96 = OpCompositeExtract %33 %95 4
-%97 = OpCompositeExtract %5 %95 0
-%98 = OpCompositeExtract %5 %95 1
-%99 = OpCompositeExtract %5 %95 2
-%100 = OpCompositeExtract %5 %95 3
-%101 = OpCompositeConstruct %21 %97 %98 %99 %100
-%103 = OpAccessChain %24 %26 %34
-OpStore %103 %97
-%104 = OpAccessChain %24 %26 %37
-OpStore %104 %98
-%105 = OpAccessChain %24 %26 %76
-OpStore %105 %99
-%106 = OpAccessChain %24 %26 %78
-OpStore %106 %100
-%107 = OpImageSparseTexelsResident %79 %96
-%108 = OpSelect %5 %107 %82 %83
-OpStore %27 %108
-%109 = OpCompositeConstruct %39 %35 %38
-%110 = OpBitcast %17 %45
-%111 = OpBitcast %17 %48
-%113 = OpCompositeConstruct %18 %110 %111
-%112 = OpImageSparseDrefGather %55 %53 %109 %41 Offset %113
-%114 = OpCompositeExtract %33 %112 0
-%115 = OpCompositeExtract %21 %112 1
-%116 = OpCompositeExtract %5 %115 0
-%117 = OpCompositeExtract %5 %115 1
-%118 = OpCompositeExtract %5 %115 2
-%119 = OpCompositeExtract %5 %115 3
-%120 = OpCompositeConstruct %63 %116 %117 %118 %119 %114
-%121 = OpCompositeExtract %33 %120 4
-%122 = OpCompositeExtract %5 %120 0
-%123 = OpCompositeExtract %5 %120 1
-%124 = OpCompositeExtract %5 %120 2
-%125 = OpCompositeExtract %5 %120 3
-%126 = OpCompositeConstruct %21 %122 %123 %124 %125
-%128 = OpAccessChain %24 %28 %34
-OpStore %128 %122
-%129 = OpAccessChain %24 %28 %37
-OpStore %129 %123
-%130 = OpAccessChain %24 %28 %76
-OpStore %130 %124
-%131 = OpAccessChain %24 %28 %78
-OpStore %131 %125
-%132 = OpImageSparseTexelsResident %79 %121
-%133 = OpSelect %5 %132 %82 %83
-OpStore %29 %133
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability ImageGatherExtended
+               OpCapability SparseResidency
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %8 %11 %TEXCOORD %DEPTH_REF %OFFSET %SV_TARGET %SV_TARGET_1 %SV_TARGET_2 %SV_TARGET_3 %SV_TARGET_4 %SV_TARGET_5
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %TEXCOORD "TEXCOORD"
+               OpName %DEPTH_REF "DEPTH_REF"
+               OpName %OFFSET "OFFSET"
+               OpName %SV_TARGET "SV_TARGET"
+               OpName %SV_TARGET_1 "SV_TARGET_1"
+               OpName %SV_TARGET_2 "SV_TARGET_2"
+               OpName %SV_TARGET_3 "SV_TARGET_3"
+               OpName %SV_TARGET_4 "SV_TARGET_4"
+               OpName %SV_TARGET_5 "SV_TARGET_5"
+               OpName %SparseTexel "SparseTexel"
+               OpName %_ ""
+               OpName %__0 ""
+               OpDecorate %8 DescriptorSet 0
+               OpDecorate %8 Binding 0
+               OpDecorate %11 DescriptorSet 0
+               OpDecorate %11 Binding 0
+               OpDecorate %TEXCOORD Location 0
+               OpDecorate %DEPTH_REF Location 1
+               OpDecorate %OFFSET Flat
+               OpDecorate %OFFSET Location 2
+               OpDecorate %SV_TARGET Location 0
+               OpDecorate %SV_TARGET_1 Location 1
+               OpDecorate %SV_TARGET_2 Location 2
+               OpDecorate %SV_TARGET_3 Location 3
+               OpDecorate %SV_TARGET_4 Location 4
+               OpDecorate %SV_TARGET_5 Location 5
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+          %6 = OpTypeImage %float 2D 0 0 0 1 Unknown
+%_ptr_UniformConstant_6 = OpTypePointer UniformConstant %6
+          %8 = OpVariable %_ptr_UniformConstant_6 UniformConstant
+          %9 = OpTypeSampler
+%_ptr_UniformConstant_9 = OpTypePointer UniformConstant %9
+         %11 = OpVariable %_ptr_UniformConstant_9 UniformConstant
+    %v3float = OpTypeVector %float 3
+%_ptr_Input_v3float = OpTypePointer Input %v3float
+   %TEXCOORD = OpVariable %_ptr_Input_v3float Input
+%_ptr_Input_float = OpTypePointer Input %float
+  %DEPTH_REF = OpVariable %_ptr_Input_float Input
+        %int = OpTypeInt 32 1
+      %v2int = OpTypeVector %int 2
+%_ptr_Input_v2int = OpTypePointer Input %v2int
+     %OFFSET = OpVariable %_ptr_Input_v2int Input
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %SV_TARGET = OpVariable %_ptr_Output_v4float Output
+%_ptr_Output_float = OpTypePointer Output %float
+%SV_TARGET_1 = OpVariable %_ptr_Output_float Output
+%SV_TARGET_2 = OpVariable %_ptr_Output_v4float Output
+%SV_TARGET_3 = OpVariable %_ptr_Output_float Output
+%SV_TARGET_4 = OpVariable %_ptr_Output_v4float Output
+%SV_TARGET_5 = OpVariable %_ptr_Output_float Output
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+    %v2float = OpTypeVector %float 2
+%_ptr_Input_int = OpTypePointer Input %int
+     %v2uint = OpTypeVector %uint 2
+         %51 = OpTypeImage %float 2D 1 0 0 1 Unknown
+         %52 = OpTypeSampledImage %51
+%SparseTexel = OpTypeStruct %uint %v4float
+          %_ = OpTypeStruct %float %float %float %float %uint
+        %__0 = OpTypeStruct %uint %v4float
+     %uint_2 = OpConstant %uint 2
+     %uint_3 = OpConstant %uint 3
+       %bool = OpTypeBool
+    %float_1 = OpConstant %float 1
+    %float_0 = OpConstant %float 0
+     %int_n1 = OpConstant %int -1
+      %int_0 = OpConstant %int 0
+         %88 = OpConstantComposite %v2int %int_n1 %int_0
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %134
+
+        %134 = OpLabel
+         %30 =   OpLoad %6 %8
+         %31 =   OpLoad %9 %11
+         %32 =   OpAccessChain %_ptr_Input_float %TEXCOORD %uint_0
+         %35 =   OpLoad %float %32
+         %36 =   OpAccessChain %_ptr_Input_float %TEXCOORD %uint_1
+         %38 =   OpLoad %float %36
+         %41 =   OpLoad %float %DEPTH_REF
+         %43 =   OpAccessChain %_ptr_Input_int %OFFSET %uint_0
+         %44 =   OpLoad %int %43
+         %45 =   OpBitcast %uint %44
+         %46 =   OpAccessChain %_ptr_Input_int %OFFSET %uint_1
+         %47 =   OpLoad %int %46
+         %48 =   OpBitcast %uint %47
+         %53 =   OpSampledImage %52 %30 %31
+         %54 =   OpCompositeConstruct %v2float %35 %38
+         %56 =   OpImageSparseDrefGather %SparseTexel %53 %54 %41
+         %57 =   OpCompositeExtract %uint %56 0
+         %58 =   OpCompositeExtract %v4float %56 1
+         %59 =   OpCompositeExtract %float %58 0
+         %60 =   OpCompositeExtract %float %58 1
+         %61 =   OpCompositeExtract %float %58 2
+         %62 =   OpCompositeExtract %float %58 3
+         %64 =   OpCompositeConstruct %_ %59 %60 %61 %62 %57
+         %65 =   OpCompositeExtract %uint %64 4
+         %66 =   OpCompositeExtract %float %64 0
+         %67 =   OpCompositeExtract %float %64 1
+         %68 =   OpCompositeExtract %float %64 2
+         %69 =   OpCompositeExtract %float %64 3
+         %70 =   OpCompositeConstruct %v4float %66 %67 %68 %69
+         %73 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_0
+                 OpStore %73 %66
+         %74 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_1
+                 OpStore %74 %67
+         %75 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_2
+                 OpStore %75 %68
+         %77 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_3
+                 OpStore %77 %69
+         %80 =   OpImageSparseTexelsResident %bool %65
+         %81 =   OpSelect %float %80 %float_1 %float_0
+                 OpStore %SV_TARGET_1 %81
+         %84 =   OpCompositeConstruct %v2float %35 %38
+         %87 =   OpImageSparseDrefGather %SparseTexel %53 %84 %41 ConstOffset %88
+         %89 =   OpCompositeExtract %uint %87 0
+         %90 =   OpCompositeExtract %v4float %87 1
+         %91 =   OpCompositeExtract %float %90 0
+         %92 =   OpCompositeExtract %float %90 1
+         %93 =   OpCompositeExtract %float %90 2
+         %94 =   OpCompositeExtract %float %90 3
+         %95 =   OpCompositeConstruct %_ %91 %92 %93 %94 %89
+         %96 =   OpCompositeExtract %uint %95 4
+         %97 =   OpCompositeExtract %float %95 0
+         %98 =   OpCompositeExtract %float %95 1
+         %99 =   OpCompositeExtract %float %95 2
+        %100 =   OpCompositeExtract %float %95 3
+        %101 =   OpCompositeConstruct %v4float %97 %98 %99 %100
+        %103 =   OpAccessChain %_ptr_Output_float %SV_TARGET_2 %uint_0
+                 OpStore %103 %97
+        %104 =   OpAccessChain %_ptr_Output_float %SV_TARGET_2 %uint_1
+                 OpStore %104 %98
+        %105 =   OpAccessChain %_ptr_Output_float %SV_TARGET_2 %uint_2
+                 OpStore %105 %99
+        %106 =   OpAccessChain %_ptr_Output_float %SV_TARGET_2 %uint_3
+                 OpStore %106 %100
+        %107 =   OpImageSparseTexelsResident %bool %96
+        %108 =   OpSelect %float %107 %float_1 %float_0
+                 OpStore %SV_TARGET_3 %108
+        %109 =   OpCompositeConstruct %v2float %35 %38
+        %110 =   OpBitcast %int %45
+        %111 =   OpBitcast %int %48
+        %113 =   OpCompositeConstruct %v2int %110 %111
+        %112 =   OpImageSparseDrefGather %SparseTexel %53 %109 %41 Offset %113
+        %114 =   OpCompositeExtract %uint %112 0
+        %115 =   OpCompositeExtract %v4float %112 1
+        %116 =   OpCompositeExtract %float %115 0
+        %117 =   OpCompositeExtract %float %115 1
+        %118 =   OpCompositeExtract %float %115 2
+        %119 =   OpCompositeExtract %float %115 3
+        %120 =   OpCompositeConstruct %_ %116 %117 %118 %119 %114
+        %121 =   OpCompositeExtract %uint %120 4
+        %122 =   OpCompositeExtract %float %120 0
+        %123 =   OpCompositeExtract %float %120 1
+        %124 =   OpCompositeExtract %float %120 2
+        %125 =   OpCompositeExtract %float %120 3
+        %126 =   OpCompositeConstruct %v4float %122 %123 %124 %125
+        %128 =   OpAccessChain %_ptr_Output_float %SV_TARGET_4 %uint_0
+                 OpStore %128 %122
+        %129 =   OpAccessChain %_ptr_Output_float %SV_TARGET_4 %uint_1
+                 OpStore %129 %123
+        %130 =   OpAccessChain %_ptr_Output_float %SV_TARGET_4 %uint_2
+                 OpStore %130 %124
+        %131 =   OpAccessChain %_ptr_Output_float %SV_TARGET_4 %uint_3
+                 OpStore %131 %125
+        %132 =   OpImageSparseTexelsResident %bool %121
+        %133 =   OpSelect %float %132 %float_1 %float_0
+                 OpStore %SV_TARGET_5 %133
+                 OpReturn
+               OpFunctionEnd
 

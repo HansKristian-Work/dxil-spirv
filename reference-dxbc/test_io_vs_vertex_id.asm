@@ -4,33 +4,35 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 16
 ; Schema: 0
-OpCapability Shader
-OpCapability DrawParameters
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Vertex %3 "main" %7 %9 %11
-OpName %3 "main"
-OpName %7 "SV_VERTEXID"
-OpName %9 "SHADER_OUT"
-OpDecorate %7 BuiltIn VertexIndex
-OpDecorate %9 Location 0
-OpDecorate %11 BuiltIn BaseVertex
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
-%6 = OpTypePointer Input %5
-%7 = OpVariable %6 Input
-%8 = OpTypePointer Output %5
-%9 = OpVariable %8 Output
-%11 = OpVariable %6 Input
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %14
-%14 = OpLabel
-%10 = OpLoad %5 %7
-%12 = OpLoad %5 %11
-%13 = OpISub %5 %10 %12
-OpStore %9 %13
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability DrawParameters
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Vertex %main "main" %SV_VERTEXID %SHADER_OUT %11
+               OpName %main "main"
+               OpName %SV_VERTEXID "SV_VERTEXID"
+               OpName %SHADER_OUT "SHADER_OUT"
+               OpDecorate %SV_VERTEXID BuiltIn VertexIndex
+               OpDecorate %SHADER_OUT Location 0
+               OpDecorate %11 BuiltIn BaseVertex
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+%_ptr_Input_uint = OpTypePointer Input %uint
+%SV_VERTEXID = OpVariable %_ptr_Input_uint Input
+%_ptr_Output_uint = OpTypePointer Output %uint
+ %SHADER_OUT = OpVariable %_ptr_Output_uint Output
+         %11 = OpVariable %_ptr_Input_uint Input
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %14
+
+         %14 = OpLabel
+         %10 =   OpLoad %uint %SV_VERTEXID
+         %12 =   OpLoad %uint %11
+         %13 =   OpISub %uint %10 %12
+                 OpStore %SHADER_OUT %13
+                 OpReturn
+               OpFunctionEnd
 

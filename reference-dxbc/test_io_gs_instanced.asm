@@ -4,71 +4,73 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 36
 ; Schema: 0
-OpCapability Shader
-OpCapability Geometry
-OpCapability MultiViewport
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Geometry %3 "main" %8 %11 %12 %13 %15 %17
-OpExecutionMode %3 Invocations 12
-OpExecutionMode %3 OutputVertices 1
-OpExecutionMode %3 InputPoints
-OpExecutionMode %3 OutputPoints
-OpName %3 "main"
-OpName %8 "SV_POSITION"
-OpName %11 "SV_RenderTargetArrayIndex"
-OpName %12 "SV_ViewportArrayIndex"
-OpName %13 "SV_PrimitiveId"
-OpDecorate %8 BuiltIn Position
-OpDecorate %11 BuiltIn Layer
-OpDecorate %12 BuiltIn ViewportIndex
-OpDecorate %13 BuiltIn PrimitiveId
-OpDecorate %15 BuiltIn InvocationId
-OpDecorate %17 BuiltIn PrimitiveId
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeVector %5 4
-%7 = OpTypePointer Output %6
-%8 = OpVariable %7 Output
-%9 = OpTypeInt 32 0
-%10 = OpTypePointer Output %9
-%11 = OpVariable %10 Output
-%12 = OpVariable %10 Output
-%13 = OpVariable %10 Output
-%14 = OpTypePointer Input %9
-%15 = OpVariable %14 Input
-%17 = OpVariable %14 Input
-%20 = OpConstant %9 12
-%23 = OpConstant %9 1
-%25 = OpTypePointer Output %5
-%27 = OpConstant %9 0
-%28 = OpConstant %5 1
-%31 = OpConstant %9 2
-%33 = OpConstant %9 3
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %34
-%34 = OpLabel
-%16 = OpLoad %9 %15
-%18 = OpLoad %9 %17
-%19 = OpIMul %9 %18 %20
-%21 = OpIAdd %9 %16 %19
-OpStore %13 %21
-%22 = OpShiftRightLogical %9 %16 %23
-OpStore %11 %22
-%24 = OpBitwiseAnd %9 %16 %23
-OpStore %12 %24
-%26 = OpAccessChain %25 %8 %27
-OpStore %26 %28
-%29 = OpAccessChain %25 %8 %23
-OpStore %29 %28
-%30 = OpAccessChain %25 %8 %31
-OpStore %30 %28
-%32 = OpAccessChain %25 %8 %33
-OpStore %32 %28
-OpEmitVertex
-OpEndPrimitive
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability Geometry
+               OpCapability MultiViewport
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Geometry %main "main" %SV_POSITION %SV_RenderTargetArrayIndex %SV_ViewportArrayIndex %SV_PrimitiveId %gl_InvocationID %gl_PrimitiveID
+               OpExecutionMode %main Invocations 12
+               OpExecutionMode %main OutputVertices 1
+               OpExecutionMode %main InputPoints
+               OpExecutionMode %main OutputPoints
+               OpName %main "main"
+               OpName %SV_POSITION "SV_POSITION"
+               OpName %SV_RenderTargetArrayIndex "SV_RenderTargetArrayIndex"
+               OpName %SV_ViewportArrayIndex "SV_ViewportArrayIndex"
+               OpName %SV_PrimitiveId "SV_PrimitiveId"
+               OpDecorate %SV_POSITION BuiltIn Position
+               OpDecorate %SV_RenderTargetArrayIndex BuiltIn Layer
+               OpDecorate %SV_ViewportArrayIndex BuiltIn ViewportIndex
+               OpDecorate %SV_PrimitiveId BuiltIn PrimitiveId
+               OpDecorate %gl_InvocationID BuiltIn InvocationId
+               OpDecorate %gl_PrimitiveID BuiltIn PrimitiveId
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+%SV_POSITION = OpVariable %_ptr_Output_v4float Output
+       %uint = OpTypeInt 32 0
+%_ptr_Output_uint = OpTypePointer Output %uint
+%SV_RenderTargetArrayIndex = OpVariable %_ptr_Output_uint Output
+%SV_ViewportArrayIndex = OpVariable %_ptr_Output_uint Output
+%SV_PrimitiveId = OpVariable %_ptr_Output_uint Output
+%_ptr_Input_uint = OpTypePointer Input %uint
+%gl_InvocationID = OpVariable %_ptr_Input_uint Input
+%gl_PrimitiveID = OpVariable %_ptr_Input_uint Input
+    %uint_12 = OpConstant %uint 12
+     %uint_1 = OpConstant %uint 1
+%_ptr_Output_float = OpTypePointer Output %float
+     %uint_0 = OpConstant %uint 0
+    %float_1 = OpConstant %float 1
+     %uint_2 = OpConstant %uint 2
+     %uint_3 = OpConstant %uint 3
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %34
+
+         %34 = OpLabel
+         %16 =   OpLoad %uint %gl_InvocationID
+         %18 =   OpLoad %uint %gl_PrimitiveID
+         %19 =   OpIMul %uint %18 %uint_12
+         %21 =   OpIAdd %uint %16 %19
+                 OpStore %SV_PrimitiveId %21
+         %22 =   OpShiftRightLogical %uint %16 %uint_1
+                 OpStore %SV_RenderTargetArrayIndex %22
+         %24 =   OpBitwiseAnd %uint %16 %uint_1
+                 OpStore %SV_ViewportArrayIndex %24
+         %26 =   OpAccessChain %_ptr_Output_float %SV_POSITION %uint_0
+                 OpStore %26 %float_1
+         %29 =   OpAccessChain %_ptr_Output_float %SV_POSITION %uint_1
+                 OpStore %29 %float_1
+         %30 =   OpAccessChain %_ptr_Output_float %SV_POSITION %uint_2
+                 OpStore %30 %float_1
+         %32 =   OpAccessChain %_ptr_Output_float %SV_POSITION %uint_3
+                 OpStore %32 %float_1
+                 OpEmitVertex
+                 OpEndPrimitive
+                 OpReturn
+               OpFunctionEnd
 

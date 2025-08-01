@@ -4,77 +4,79 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 50
 ; Schema: 0
-OpCapability Shader
-OpCapability SparseResidency
-OpCapability ImageBuffer
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8 %11 %13
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %11 "SV_TARGET"
-OpName %13 "SV_TARGET_1"
-OpName %17 "SparseTexel"
-OpName %25 ""
-OpName %33 ""
-OpDecorate %8 DescriptorSet 0
-OpDecorate %8 Binding 0
-OpDecorate %8 NonWritable
-OpDecorate %11 Location 0
-OpDecorate %13 Location 1
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeImage %5 Buffer 0 0 0 2 R32f
-%7 = OpTypePointer UniformConstant %6
-%8 = OpVariable %7 UniformConstant
-%9 = OpTypeVector %5 4
-%10 = OpTypePointer Output %9
-%11 = OpVariable %10 Output
-%12 = OpTypePointer Output %5
-%13 = OpVariable %12 Output
-%15 = OpTypeInt 32 0
-%16 = OpConstant %15 12345
-%17 = OpTypeStruct %15 %9
-%25 = OpTypeStruct %5 %5 %5 %5 %15
-%33 = OpTypeStruct %15 %9
-%36 = OpConstant %15 0
-%38 = OpConstant %15 1
-%40 = OpConstant %15 2
-%42 = OpConstant %15 3
-%43 = OpTypeBool
-%46 = OpConstant %5 1
-%47 = OpConstant %5 0
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %48
-%48 = OpLabel
-%14 = OpLoad %6 %8
-%18 = OpImageSparseRead %17 %14 %16 NonPrivateTexel
-%19 = OpCompositeExtract %15 %18 0
-%20 = OpCompositeExtract %9 %18 1
-%21 = OpCompositeExtract %5 %20 0
-%22 = OpCompositeExtract %5 %20 1
-%23 = OpCompositeExtract %5 %20 2
-%24 = OpCompositeExtract %5 %20 3
-%26 = OpCompositeConstruct %25 %21 %22 %23 %24 %19
-%27 = OpCompositeExtract %15 %26 4
-%28 = OpCompositeExtract %5 %26 0
-%29 = OpCompositeExtract %5 %26 1
-%30 = OpCompositeExtract %5 %26 2
-%31 = OpCompositeExtract %5 %26 3
-%32 = OpCompositeConstruct %9 %28 %29 %30 %31
-%35 = OpAccessChain %12 %11 %36
-OpStore %35 %28
-%37 = OpAccessChain %12 %11 %38
-OpStore %37 %29
-%39 = OpAccessChain %12 %11 %40
-OpStore %39 %30
-%41 = OpAccessChain %12 %11 %42
-OpStore %41 %31
-%44 = OpImageSparseTexelsResident %43 %27
-%45 = OpSelect %5 %44 %46 %47
-OpStore %13 %45
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability SparseResidency
+               OpCapability ImageBuffer
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %8 %SV_TARGET %SV_TARGET_1
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %SV_TARGET "SV_TARGET"
+               OpName %SV_TARGET_1 "SV_TARGET_1"
+               OpName %SparseTexel "SparseTexel"
+               OpName %_ ""
+               OpName %__0 ""
+               OpDecorate %8 DescriptorSet 0
+               OpDecorate %8 Binding 0
+               OpDecorate %8 NonWritable
+               OpDecorate %SV_TARGET Location 0
+               OpDecorate %SV_TARGET_1 Location 1
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+          %6 = OpTypeImage %float Buffer 0 0 0 2 R32f
+%_ptr_UniformConstant_6 = OpTypePointer UniformConstant %6
+          %8 = OpVariable %_ptr_UniformConstant_6 UniformConstant
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %SV_TARGET = OpVariable %_ptr_Output_v4float Output
+%_ptr_Output_float = OpTypePointer Output %float
+%SV_TARGET_1 = OpVariable %_ptr_Output_float Output
+       %uint = OpTypeInt 32 0
+ %uint_12345 = OpConstant %uint 12345
+%SparseTexel = OpTypeStruct %uint %v4float
+          %_ = OpTypeStruct %float %float %float %float %uint
+        %__0 = OpTypeStruct %uint %v4float
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
+     %uint_3 = OpConstant %uint 3
+       %bool = OpTypeBool
+    %float_1 = OpConstant %float 1
+    %float_0 = OpConstant %float 0
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %48
+
+         %48 = OpLabel
+         %14 =   OpLoad %6 %8
+         %18 =   OpImageSparseRead %SparseTexel %14 %uint_12345 NonPrivateTexel
+         %19 =   OpCompositeExtract %uint %18 0
+         %20 =   OpCompositeExtract %v4float %18 1
+         %21 =   OpCompositeExtract %float %20 0
+         %22 =   OpCompositeExtract %float %20 1
+         %23 =   OpCompositeExtract %float %20 2
+         %24 =   OpCompositeExtract %float %20 3
+         %26 =   OpCompositeConstruct %_ %21 %22 %23 %24 %19
+         %27 =   OpCompositeExtract %uint %26 4
+         %28 =   OpCompositeExtract %float %26 0
+         %29 =   OpCompositeExtract %float %26 1
+         %30 =   OpCompositeExtract %float %26 2
+         %31 =   OpCompositeExtract %float %26 3
+         %32 =   OpCompositeConstruct %v4float %28 %29 %30 %31
+         %35 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_0
+                 OpStore %35 %28
+         %37 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_1
+                 OpStore %37 %29
+         %39 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_2
+                 OpStore %39 %30
+         %41 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_3
+                 OpStore %41 %31
+         %44 =   OpImageSparseTexelsResident %bool %27
+         %45 =   OpSelect %float %44 %float_1 %float_0
+                 OpStore %SV_TARGET_1 %45
+                 OpReturn
+               OpFunctionEnd
 

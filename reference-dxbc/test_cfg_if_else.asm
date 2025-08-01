@@ -4,51 +4,56 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 31
 ; Schema: 0
-OpCapability Shader
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8 %10
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %8 "SV_POSITION"
-OpName %10 "SV_TARGET"
-OpDecorate %8 BuiltIn FragCoord
-OpDecorate %10 Location 0
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeVector %5 4
-%7 = OpTypePointer Input %6
-%8 = OpVariable %7 Input
-%9 = OpTypePointer Output %5
-%10 = OpVariable %9 Output
-%11 = OpTypePointer Input %5
-%13 = OpTypeInt 32 0
-%14 = OpConstant %13 2
-%17 = OpConstant %13 3
-%20 = OpConstant %5 1
-%21 = OpTypeBool
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %26
-%26 = OpLabel
-%12 = OpAccessChain %11 %8 %14
-%15 = OpLoad %5 %12
-%16 = OpAccessChain %11 %8 %17
-%18 = OpLoad %5 %16
-%19 = OpFDiv %5 %20 %18
-%22 = OpFOrdGreaterThan %21 %15 %19
-OpSelectionMerge %29 None
-OpBranchConditional %22 %28 %27
-%28 = OpLabel
-%23 = OpFDiv %5 %15 %19
-OpBranch %29
-%27 = OpLabel
-%24 = OpFDiv %5 %19 %15
-OpBranch %29
-%29 = OpLabel
-%25 = OpPhi %5 %23 %28 %24 %27
-OpStore %10 %25
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %SV_POSITION %SV_TARGET
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %SV_POSITION "SV_POSITION"
+               OpName %SV_TARGET "SV_TARGET"
+               OpDecorate %SV_POSITION BuiltIn FragCoord
+               OpDecorate %SV_TARGET Location 0
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_ptr_Input_v4float = OpTypePointer Input %v4float
+%SV_POSITION = OpVariable %_ptr_Input_v4float Input
+%_ptr_Output_float = OpTypePointer Output %float
+  %SV_TARGET = OpVariable %_ptr_Output_float Output
+%_ptr_Input_float = OpTypePointer Input %float
+       %uint = OpTypeInt 32 0
+     %uint_2 = OpConstant %uint 2
+     %uint_3 = OpConstant %uint 3
+    %float_1 = OpConstant %float 1
+       %bool = OpTypeBool
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %26
+
+         %26 = OpLabel
+         %12 =   OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
+         %15 =   OpLoad %float %12
+         %16 =   OpAccessChain %_ptr_Input_float %SV_POSITION %uint_3
+         %18 =   OpLoad %float %16
+         %19 =   OpFDiv %float %float_1 %18
+         %22 =   OpFOrdGreaterThan %bool %15 %19
+                 OpSelectionMerge %29 None
+                 OpBranchConditional %22 %28 %27
+
+         %28 =     OpLabel
+         %23 =       OpFDiv %float %15 %19
+                     OpBranch %29
+
+         %27 =     OpLabel
+         %24 =       OpFDiv %float %19 %15
+                     OpBranch %29
+
+         %29 = OpLabel
+         %25 =   OpPhi %float %23 %28 %24 %27
+                 OpStore %SV_TARGET %25
+                 OpReturn
+               OpFunctionEnd
 

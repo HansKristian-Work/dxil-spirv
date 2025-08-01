@@ -4,50 +4,54 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 30
 ; Schema: 0
-OpCapability Shader
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %8 "SV_TARGET"
-OpName %9 ""
-OpDecorate %8 Location 0
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeFloat 32
-%6 = OpTypeVector %5 4
-%7 = OpTypePointer Output %6
-%8 = OpVariable %7 Output
-%11 = OpTypePointer Output %5
-%13 = OpTypeInt 32 0
-%14 = OpConstant %13 0
-%15 = OpConstant %5 1
-%17 = OpConstant %13 1
-%18 = OpConstant %5 2
-%20 = OpConstant %13 2
-%21 = OpConstant %5 3
-%23 = OpConstant %13 3
-%24 = OpConstant %5 4
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %26
-%26 = OpLabel
-%25 = OpFunctionCall %1 %9
-OpReturn
-OpFunctionEnd
-%9 = OpFunction %1 None %2
-%10 = OpLabel
-OpBranch %28
-%28 = OpLabel
-%12 = OpAccessChain %11 %8 %14
-OpStore %12 %15
-%16 = OpAccessChain %11 %8 %17
-OpStore %16 %18
-%19 = OpAccessChain %11 %8 %20
-OpStore %19 %21
-%22 = OpAccessChain %11 %8 %23
-OpStore %22 %24
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %SV_TARGET
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %SV_TARGET "SV_TARGET"
+               OpName %_ ""
+               OpDecorate %SV_TARGET Location 0
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %SV_TARGET = OpVariable %_ptr_Output_v4float Output
+%_ptr_Output_float = OpTypePointer Output %float
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+    %float_1 = OpConstant %float 1
+     %uint_1 = OpConstant %uint 1
+    %float_2 = OpConstant %float 2
+     %uint_2 = OpConstant %uint 2
+    %float_3 = OpConstant %float 3
+     %uint_3 = OpConstant %uint 3
+    %float_4 = OpConstant %float 4
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %26
+
+         %26 = OpLabel
+         %25 =   OpFunctionCall %void %_
+                 OpReturn
+               OpFunctionEnd
+          %_ = OpFunction %void None %2
+
+         %10 = OpLabel
+                 OpBranch %28
+
+         %28 = OpLabel
+         %12 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_0
+                 OpStore %12 %float_1
+         %16 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_1
+                 OpStore %16 %float_2
+         %19 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_2
+                 OpStore %19 %float_3
+         %22 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_3
+                 OpStore %22 %float_4
+                 OpReturn
+               OpFunctionEnd
 

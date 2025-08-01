@@ -4,36 +4,38 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 16
 ; Schema: 0
-OpCapability Shader
-OpCapability Geometry
-OpCapability DrawParameters
-OpCapability ShaderViewportIndexLayerEXT
-OpCapability VulkanMemoryModel
-OpExtension "SPV_EXT_shader_viewport_index_layer"
-OpMemoryModel Logical Vulkan
-OpEntryPoint Vertex %3 "main" %7 %9 %11
-OpName %3 "main"
-OpName %7 "SV_INSTANCEID"
-OpName %9 "SV_RenderTargetArrayIndex"
-OpDecorate %7 BuiltIn InstanceIndex
-OpDecorate %9 BuiltIn Layer
-OpDecorate %11 BuiltIn BaseInstance
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
-%6 = OpTypePointer Input %5
-%7 = OpVariable %6 Input
-%8 = OpTypePointer Output %5
-%9 = OpVariable %8 Output
-%11 = OpVariable %6 Input
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %14
-%14 = OpLabel
-%10 = OpLoad %5 %7
-%12 = OpLoad %5 %11
-%13 = OpISub %5 %10 %12
-OpStore %9 %13
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability Geometry
+               OpCapability DrawParameters
+               OpCapability ShaderViewportIndexLayerEXT
+               OpCapability VulkanMemoryModel
+               OpExtension "SPV_EXT_shader_viewport_index_layer"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Vertex %main "main" %SV_INSTANCEID %SV_RenderTargetArrayIndex %gl_BaseInstance
+               OpName %main "main"
+               OpName %SV_INSTANCEID "SV_INSTANCEID"
+               OpName %SV_RenderTargetArrayIndex "SV_RenderTargetArrayIndex"
+               OpDecorate %SV_INSTANCEID BuiltIn InstanceIndex
+               OpDecorate %SV_RenderTargetArrayIndex BuiltIn Layer
+               OpDecorate %gl_BaseInstance BuiltIn BaseInstance
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+%_ptr_Input_uint = OpTypePointer Input %uint
+%SV_INSTANCEID = OpVariable %_ptr_Input_uint Input
+%_ptr_Output_uint = OpTypePointer Output %uint
+%SV_RenderTargetArrayIndex = OpVariable %_ptr_Output_uint Output
+%gl_BaseInstance = OpVariable %_ptr_Input_uint Input
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %14
+
+         %14 = OpLabel
+         %10 =   OpLoad %uint %SV_INSTANCEID
+         %12 =   OpLoad %uint %gl_BaseInstance
+         %13 =   OpISub %uint %10 %12
+                 OpStore %SV_RenderTargetArrayIndex %13
+                 OpReturn
+               OpFunctionEnd
 

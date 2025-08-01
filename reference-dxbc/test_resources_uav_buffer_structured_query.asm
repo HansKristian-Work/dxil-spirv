@@ -4,40 +4,42 @@ SPIR-V:
 ; Generator: Unknown(30017); 21022
 ; Bound: 17
 ; Schema: 0
-OpCapability Shader
-OpCapability ImageQuery
-OpCapability VulkanMemoryModel
-OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %9 %11
-OpExecutionMode %3 OriginUpperLeft
-OpName %3 "main"
-OpName %7 "SSBO"
-OpName %11 "SV_TARGET"
-OpDecorate %6 ArrayStride 4
-OpMemberDecorate %7 0 Offset 0
-OpDecorate %7 Block
-OpDecorate %9 DescriptorSet 0
-OpDecorate %9 Binding 0
-OpDecorate %9 NonReadable
-OpDecorate %9 NonWritable
-OpDecorate %11 Location 0
-%1 = OpTypeVoid
-%2 = OpTypeFunction %1
-%5 = OpTypeInt 32 0
-%6 = OpTypeRuntimeArray %5
-%7 = OpTypeStruct %6
-%8 = OpTypePointer StorageBuffer %7
-%9 = OpVariable %8 StorageBuffer
-%10 = OpTypePointer Output %5
-%11 = OpVariable %10 Output
-%14 = OpConstant %5 20
-%3 = OpFunction %1 None %2
-%4 = OpLabel
-OpBranch %15
-%15 = OpLabel
-%12 = OpArrayLength %5 %9 0
-%13 = OpUDiv %5 %12 %14
-OpStore %11 %13
-OpReturn
-OpFunctionEnd
+               OpCapability Shader
+               OpCapability ImageQuery
+               OpCapability VulkanMemoryModel
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %9 %SV_TARGET
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %SSBO "SSBO"
+               OpName %SV_TARGET "SV_TARGET"
+               OpDecorate %_runtimearr_uint ArrayStride 4
+               OpMemberDecorate %SSBO 0 Offset 0
+               OpDecorate %SSBO Block
+               OpDecorate %9 DescriptorSet 0
+               OpDecorate %9 Binding 0
+               OpDecorate %9 NonReadable
+               OpDecorate %9 NonWritable
+               OpDecorate %SV_TARGET Location 0
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+%_runtimearr_uint = OpTypeRuntimeArray %uint
+       %SSBO = OpTypeStruct %_runtimearr_uint
+%_ptr_StorageBuffer_SSBO = OpTypePointer StorageBuffer %SSBO
+          %9 = OpVariable %_ptr_StorageBuffer_SSBO StorageBuffer
+%_ptr_Output_uint = OpTypePointer Output %uint
+  %SV_TARGET = OpVariable %_ptr_Output_uint Output
+    %uint_20 = OpConstant %uint 20
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %15
+
+         %15 = OpLabel
+         %12 =   OpArrayLength %uint %9 0
+         %13 =   OpUDiv %uint %12 %uint_20
+                 OpStore %SV_TARGET %13
+                 OpReturn
+               OpFunctionEnd
 
