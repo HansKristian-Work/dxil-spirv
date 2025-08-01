@@ -7400,11 +7400,36 @@ void Converter::Impl::emit_write_instrumentation_invocation_id(CFGNode *node)
 	add(store);
 }
 
-bool Converter::Impl::build_callee_functions(CFGNodePool &pool, Vector<ConvertedFunction::Function> &leaves)
+void Converter::Impl::gather_function_dependencies(llvm::Function *caller, Vector<llvm::Function *> &funcs)
+{
+	if (std::find(funcs.begin(), funcs.end(), caller) != funcs.end())
+		return;
+	funcs.push_back(caller);
+
+	for (auto &bb : *caller)
+	{
+		for (auto &inst : bb)
+		{
+			if (const auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))
+			{
+				auto *fn = call_inst->getCalledFunction();
+				if (strncmp(fn->getName().data(), "dx.op", 5) != 0 &&
+				    strncmp(fn->getName().data(), "llvm.", 5) != 0)
+				{
+					gather_function_dependencies(fn, funcs);
+				}
+			}
+		}
+	}
+}
+
+bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
+                                             const Vector<llvm::Function *> &callees,
+                                             Vector<ConvertedFunction::Function> &leaves)
 {
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
 
-	for (auto *leaf_func : bitcode_parser.get_module())
+	for (auto *leaf_func : callees)
 	{
 		if (leaf_func == func || leaf_func == execution_mode_meta.patch_constant_function)
 			continue;
@@ -8038,8 +8063,14 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (execution_mode_meta.patch_constant_function)
 		patch_visit_order = build_function_bb_visit_order_legacy(execution_mode_meta.patch_constant_function, pool);
 
+	Vector<llvm::Function *> callees;
+	if (func)
+		gather_function_dependencies(func, callees);
+	if (execution_mode_meta.patch_constant_function)
+		gather_function_dependencies(execution_mode_meta.patch_constant_function, callees);
+
 	// Analyze all leaf functions.
-	for (auto *leaf_func : bitcode_parser.get_module())
+	for (auto *leaf_func : callees)
 		if (leaf_func != func && !analyze_instructions(leaf_func))
 			return result;
 
@@ -8064,7 +8095,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	execution_mode_meta.entry_point_name = get_entry_point_name(entry_point_meta);
 
-	if (!build_callee_functions(pool, result.leaf_functions))
+	if (!build_callee_functions(pool, callees, result.leaf_functions))
 		return result;
 
 	if (execution_model == spv::ExecutionModelTessellationControl)

@@ -13,16 +13,16 @@ void main()
     uint _74;
     if (V.x < 10u)
     {
-        uint _37;
-        _37 = V.x;
-        bool _42;
+        uint _36;
+        _36 = V.x;
+        bool _41;
         for (;;)
         {
-            uint _41 = imageAtomicAdd(_8, int(0u), _37);
-            _42 = V.y == 0u;
-            if (!_42)
+            uint _40 = imageAtomicAdd(_8, int(0u), _36);
+            _41 = V.y == 0u;
+            if (!_41)
             {
-                uint _50 = _37 & 3u;
+                uint _50 = _36 & 3u;
                 bool ladder_phi_16;
                 uint _54 = _50;
                 uint _55 = 0u;
@@ -30,12 +30,12 @@ void main()
                 {
                     if (_54 == 0u)
                     {
-                        if (!((_37 & 7u) == 0u))
+                        if (!((_36 & 7u) == 0u))
                         {
                             ladder_phi_16 = false;
                             break;
                         }
-                        uint _69 = imageAtomicAdd(_8, int(0u), _37);
+                        uint _69 = imageAtomicAdd(_8, int(0u), _36);
                         uint _56 = _55 + 1u;
                         if (_56 < V.y)
                         {
@@ -60,28 +60,28 @@ void main()
                     break;
                 }
             }
-            uint _49 = imageAtomicAdd(_8, int(0u), _37);
-            _37++;
+            uint _49 = imageAtomicAdd(_8, int(0u), _36);
+            _36++;
             continue;
         }
-        _71 = _37;
+        _71 = _36;
         _72 = V.y;
         _73 = V.z;
         _74 = V.w;
     }
     else
     {
-        uint _35 = V.y ^ 4294967295u;
-        uint _43;
-        _43 = V.x ^ 4294967295u;
-        bool _47;
+        uint _34 = ~V.y;
+        uint _42;
+        _42 = ~V.x;
+        bool _46;
         for (;;)
         {
-            uint _46 = imageAtomicAdd(_8, int(0u), _43);
-            _47 = V.y == 4294967295u;
-            if (!_47)
+            uint _45 = imageAtomicAdd(_8, int(0u), _42);
+            _46 = V.y == 4294967295u;
+            if (!_46)
             {
-                uint _53 = _43 & 3u;
+                uint _53 = _42 & 3u;
                 bool ladder_phi_19;
                 uint _58 = _53;
                 uint _59 = 0u;
@@ -89,14 +89,14 @@ void main()
                 {
                     if (_58 == 0u)
                     {
-                        if (!((_43 & 7u) == 0u))
+                        if (!((_42 & 7u) == 0u))
                         {
                             ladder_phi_19 = false;
                             break;
                         }
-                        uint _85 = imageAtomicAdd(_8, int(0u), _43);
+                        uint _85 = imageAtomicAdd(_8, int(0u), _42);
                         uint _60 = _59 + 1u;
-                        if (_60 < _35)
+                        if (_60 < _34)
                         {
                             _58 = 0u;
                             _59 = _60;
@@ -119,14 +119,14 @@ void main()
                     break;
                 }
             }
-            uint _52 = imageAtomicAdd(_8, int(0u), _43);
-            _43++;
+            uint _52 = imageAtomicAdd(_8, int(0u), _42);
+            _42++;
             continue;
         }
-        _71 = _43;
-        _72 = _35;
-        _73 = V.z ^ 4294967295u;
-        _74 = V.w ^ 4294967295u;
+        _71 = _42;
+        _72 = _34;
+        _73 = ~V.z;
+        _74 = ~V.w;
     }
     SV_Target.x = float(_71);
     SV_Target.y = float(_72);
@@ -177,8 +177,8 @@ OpDecorate %15 Location 0
 %28 = OpConstant %5 3
 %30 = OpTypeBool
 %32 = OpConstant %5 10
-%34 = OpConstant %5 4294967295
-%39 = OpTypePointer Image %5
+%38 = OpTypePointer Image %5
+%47 = OpConstant %5 4294967295
 %63 = OpConstant %5 7
 %79 = OpTypePointer Output %12
 %88 = OpConstantFalse %30
@@ -202,17 +202,17 @@ OpBranchConditional %31 %105 %92
 %105 = OpLabel
 OpBranch %106
 %106 = OpLabel
-%37 = OpPhi %5 %20 %105 %38 %118
-%40 = OpImageTexelPointer %39 %8 %19 %19
-%41 = OpAtomicIAdd %5 %40 %22 %19 %37
-%42 = OpIEqual %30 %23 %19
+%36 = OpPhi %5 %20 %105 %37 %118
+%39 = OpImageTexelPointer %38 %8 %19 %19
+%40 = OpAtomicIAdd %5 %39 %22 %19 %36
+%41 = OpIEqual %30 %23 %19
 OpLoopMerge %114 %118 None
 OpBranch %107
 %107 = OpLabel
 OpSelectionMerge %117 None
-OpBranchConditional %42 %117 %108
+OpBranchConditional %41 %117 %108
 %108 = OpLabel
-%50 = OpBitwiseAnd %5 %37 %28
+%50 = OpBitwiseAnd %5 %36 %28
 OpBranch %109
 %109 = OpLabel
 %54 = OpPhi %5 %50 %108 %19 %112
@@ -221,15 +221,15 @@ OpBranch %109
 OpLoopMerge %113 %112 None
 OpBranchConditional %57 %110 %113
 %110 = OpLabel
-%62 = OpBitwiseAnd %5 %37 %63
+%62 = OpBitwiseAnd %5 %36 %63
 %64 = OpIEqual %30 %62 %19
 OpSelectionMerge %111 None
 OpBranchConditional %64 %111 %113
 %111 = OpLabel
 OpBranch %112
 %112 = OpLabel
-%68 = OpImageTexelPointer %39 %8 %19 %19
-%69 = OpAtomicIAdd %5 %68 %22 %19 %37
+%68 = OpImageTexelPointer %38 %8 %19 %19
+%69 = OpAtomicIAdd %5 %68 %22 %19 %36
 %56 = OpIAdd %5 %55 %22
 %70 = OpULessThan %30 %56 %23
 OpBranchConditional %70 %109 %113
@@ -242,29 +242,29 @@ OpBranch %117
 %117 = OpLabel
 OpBranch %118
 %118 = OpLabel
-%48 = OpImageTexelPointer %39 %8 %19 %19
-%49 = OpAtomicIAdd %5 %48 %22 %19 %37
-%38 = OpIAdd %5 %37 %22
+%48 = OpImageTexelPointer %38 %8 %19 %19
+%49 = OpAtomicIAdd %5 %48 %22 %19 %36
+%37 = OpIAdd %5 %36 %22
 OpBranch %106
 %114 = OpLabel
 OpBranch %115
 %92 = OpLabel
-%33 = OpBitwiseXor %5 %20 %34
-%35 = OpBitwiseXor %5 %23 %34
-%36 = OpBitwiseXor %5 %26 %34
+%33 = OpNot %5 %20
+%34 = OpNot %5 %23
+%35 = OpNot %5 %26
 OpBranch %93
 %93 = OpLabel
-%43 = OpPhi %5 %33 %92 %44 %104
-%45 = OpImageTexelPointer %39 %8 %19 %19
-%46 = OpAtomicIAdd %5 %45 %22 %19 %43
-%47 = OpIEqual %30 %23 %34
+%42 = OpPhi %5 %33 %92 %43 %104
+%44 = OpImageTexelPointer %38 %8 %19 %19
+%45 = OpAtomicIAdd %5 %44 %22 %19 %42
+%46 = OpIEqual %30 %23 %47
 OpLoopMerge %101 %104 None
 OpBranch %94
 %94 = OpLabel
 OpSelectionMerge %103 None
-OpBranchConditional %47 %103 %95
+OpBranchConditional %46 %103 %95
 %95 = OpLabel
-%53 = OpBitwiseAnd %5 %43 %28
+%53 = OpBitwiseAnd %5 %42 %28
 OpBranch %96
 %96 = OpLabel
 %58 = OpPhi %5 %53 %95 %19 %99
@@ -273,17 +273,17 @@ OpBranch %96
 OpLoopMerge %100 %99 None
 OpBranchConditional %61 %97 %100
 %97 = OpLabel
-%65 = OpBitwiseAnd %5 %43 %63
+%65 = OpBitwiseAnd %5 %42 %63
 %66 = OpIEqual %30 %65 %19
 OpSelectionMerge %98 None
 OpBranchConditional %66 %98 %100
 %98 = OpLabel
 OpBranch %99
 %99 = OpLabel
-%84 = OpImageTexelPointer %39 %8 %19 %19
-%85 = OpAtomicIAdd %5 %84 %22 %19 %43
+%84 = OpImageTexelPointer %38 %8 %19 %19
+%85 = OpAtomicIAdd %5 %84 %22 %19 %42
 %60 = OpIAdd %5 %59 %22
-%86 = OpULessThan %30 %60 %35
+%86 = OpULessThan %30 %60 %34
 OpBranchConditional %86 %96 %100
 %100 = OpLabel
 %90 = OpPhi %30 %88 %97 %88 %99 %89 %96
@@ -294,17 +294,17 @@ OpBranch %103
 %103 = OpLabel
 OpBranch %104
 %104 = OpLabel
-%51 = OpImageTexelPointer %39 %8 %19 %19
-%52 = OpAtomicIAdd %5 %51 %22 %19 %43
-%44 = OpIAdd %5 %43 %22
+%51 = OpImageTexelPointer %38 %8 %19 %19
+%52 = OpAtomicIAdd %5 %51 %22 %19 %42
+%43 = OpIAdd %5 %42 %22
 OpBranch %93
 %101 = OpLabel
-%67 = OpBitwiseXor %5 %29 %34
+%67 = OpNot %5 %29
 OpBranch %115
 %115 = OpLabel
-%71 = OpPhi %5 %37 %114 %43 %101
-%72 = OpPhi %5 %23 %114 %35 %101
-%73 = OpPhi %5 %26 %114 %36 %101
+%71 = OpPhi %5 %36 %114 %42 %101
+%72 = OpPhi %5 %23 %114 %34 %101
+%73 = OpPhi %5 %26 %114 %35 %101
 %74 = OpPhi %5 %29 %114 %67 %101
 %75 = OpConvertUToF %12 %71
 %76 = OpConvertUToF %12 %72
