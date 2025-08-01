@@ -7422,6 +7422,10 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool, Vector<Converted
 
 		rewrite_value(leaf_func, spv_func->getId());
 
+		auto arg_iter = leaf_func->arg_begin();
+		for (uint32_t i = 0, n = leaf_func->getFunctionType()->getNumParams(); i < n; i++, ++arg_iter)
+			rewrite_value(&*arg_iter, spv_func->getParamId(i));
+
 		auto visit_order = build_function_bb_visit_order_analysis(leaf_func);
 
 		for (auto *bb : visit_order)
@@ -8084,7 +8088,8 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 #ifdef HAVE_LLVMBC
 	if (func->get_structured_control_flow())
 	{
-		result.entry.is_structured = true;
+		// For TESC, the entry is a custom dispatch function.
+		result.entry.is_structured = execution_model != spv::ExecutionModelTessellationControl;
 		for (auto &leaf : result.leaf_functions)
 			leaf.is_structured = true;
 	}

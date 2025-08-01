@@ -3644,8 +3644,12 @@ bool ParseContext::emit_function_bodies()
 					params.emplace_back(ir::SsaDef(op.getOperand(i)), param_type);
 				}
 
-				auto *func_type = context.construct<FunctionType>(context, type, std::move(types));
+				auto *func_type = context.construct<FunctionType>(context, type, types);
 				func = context.construct<Function>(func_type, ++tween_id, module);
+
+				for (unsigned i = 0; i < op.getOperandCount(); i++)
+					func->add_argument(context.construct<Argument>(types[i], i));
+
 				func->set_structured_control_flow();
 				function_map[op.getDef()] = func;
 			}
@@ -3667,6 +3671,30 @@ bool ParseContext::emit_function_bodies()
 			func->set_basic_blocks(std::move(bbs));
 			module.add_function_implementation(func);
 			bbs = {};
+			break;
+		}
+
+		case ir::OpCode::eParamLoad:
+		{
+			if (!func)
+			{
+				LOGE("Cannot get parameter without a function.\n");
+				return false;
+			}
+
+			auto &func_op = builder.getOp(ir::SsaDef(op.getOperand(0)));
+			auto param = ir::SsaDef(op.getOperand(1));
+
+			auto arg_iter = func->arg_begin();
+			for (uint32_t i = 0; i < func_op.getOperandCount(); i++, ++arg_iter)
+				if (ir::SsaDef(func_op.getOperand(i)) == param)
+					break;
+
+			if (arg_iter == func->arg_end())
+				return false;
+
+			auto &arg = *arg_iter;
+			value_map[op.getDef()] = const_cast<Argument *>(&arg);
 			break;
 		}
 

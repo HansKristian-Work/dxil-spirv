@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 1
-		if (test.name != "test_misc_function")
+		if (test.name != "test_misc_function_with_args")
 			continue;
 #endif
 
