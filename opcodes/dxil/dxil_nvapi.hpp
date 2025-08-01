@@ -39,6 +39,9 @@ struct NVAPIState
 	spv::Id fake_doorbell_outputs[NVAPI_ARGUMENT_COUNT] = {};
 	const llvm::Value *marked_uav = nullptr;
 
+	spv::Id hit_object_srb_ptr = 0;
+	spv::Id hit_object_srb_member_ptr = 0;
+
 	void reset();
 	void reset_analysis() {}
 	void notify_doorbell(Converter::Impl &impl, const llvm::CallInst *instruction, bool analysis);
