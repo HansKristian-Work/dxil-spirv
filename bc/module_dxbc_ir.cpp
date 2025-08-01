@@ -1593,11 +1593,17 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	// Plain instructions
 	case ir::OpCode::eCast:
 	{
-		push_instruction(context.construct<CastInst>(
-			                 convert_type(op.getType()),
-			                 get_value(op.getOperand(0)),
-			                 Instruction::CastOps::BitCast),
-		                 op.getDef());
+		if (convert_type(op.getType()) == convert_type(builder.getOp(ir::SsaDef(op.getOperand(0))).getType()))
+		{
+			// I <-> U casts are meaningless.
+			value_map[op.getDef()] = get_value(op.getOperand(0));
+		}
+		else
+		{
+			push_instruction(context.construct<CastInst>(convert_type(op.getType()), get_value(op.getOperand(0)),
+			                                             Instruction::CastOps::BitCast),
+			                 op.getDef());
+		}
 		break;
 	}
 

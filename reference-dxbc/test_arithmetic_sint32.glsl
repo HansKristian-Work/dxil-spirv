@@ -14,8 +14,7 @@ layout(set = 0, binding = 0, std430) writeonly buffer _11_13
 
 void main()
 {
-    uint _108 = uint(bitfieldExtract(int(bitfieldInsert(uint(clamp(int(uint(max(int(uint(min(int(uint(int((uint(abs(int(-(((~((((_9._m0[0u]) & (_9._m0[1u])) | (_9._m0[2u])) ^ (_9._m0[3u]))) + (_9._m0[4u])) - (_9._m0[5u]))))) * (_9._m0[6u])) << (_9._m0[7u])) >> int((_9._m0[8u]))) >> (_9._m0[9u])), int((_9._m0[10u]))))), int((_9._m0[11u]))))), int((_9._m0[12u])), int((_9._m0[13u])))), (_9._m0[14u]), int((_9._m0[15u])), int((_9._m0[16u])))), int((_9._m0[17u])), int((_9._m0[18u]))));
-    _13._m0[0u] = (uint(findMSB(int(uint(findLSB(bitfieldReverse(uint(bitCount(_108)))))))));
+    _13._m0[0u] = uint(findMSB(int(uint(findLSB(bitfieldReverse(uint(bitCount(uint(bitfieldExtract(int(bitfieldInsert(uint(clamp(int(uint(max(int(uint(min(int(uint(int((uint(abs(int(-(((~(((_9._m0[0u] & _9._m0[1u]) | _9._m0[2u]) ^ _9._m0[3u])) + _9._m0[4u]) - _9._m0[5u])))) * _9._m0[6u]) << _9._m0[7u]) >> int(_9._m0[8u])) >> _9._m0[9u]), int(_9._m0[10u])))), int(_9._m0[11u])))), int(_9._m0[12u]), int(_9._m0[13u]))), _9._m0[14u], int(_9._m0[15u]), int(_9._m0[16u]))), int(_9._m0[17u]), int(_9._m0[18u])))))))))));
 }
 
 

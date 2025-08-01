@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 80
+; Bound: 76
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
@@ -47,9 +47,9 @@ SPIR-V:
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %78
+                 OpBranch %74
 
-         %78 = OpLabel
+         %74 = OpLabel
          %17 =   OpAccessChain %_ptr_StorageBuffer_v2uint %10 %uint_0 %uint_0
          %18 =   OpLoad %v2uint %17
          %19 =   OpCompositeExtract %uint %18 0
@@ -80,32 +80,28 @@ SPIR-V:
          %47 =   OpLoad %v2uint %46
          %48 =   OpCompositeExtract %uint %47 0
          %49 =   OpCompositeExtract %uint %47 1
-         %51 =   OpBitcast %uint %48
-         %52 =   OpBitcast %uint %49
-         %53 =   OpSMulExtended %WideArithResult %51 %52
-         %54 =   OpCompositeExtract %uint %53 0
-         %55 =   OpCompositeExtract %uint %53 1
-         %56 =   OpCompositeConstruct %v2uint %54 %55
-         %57 =   OpCompositeExtract %uint %56 0
-         %58 =   OpCompositeExtract %uint %56 1
-         %59 =   OpBitcast %uint %57
-         %60 =   OpBitcast %uint %58
-         %62 =   OpCompositeConstruct %v2uint %59 %60
-         %63 =   OpAccessChain %_ptr_StorageBuffer_v2uint %14 %uint_0 %uint_2
-                 OpStore %63 %62 NonPrivatePointer
-         %65 =   OpAccessChain %_ptr_StorageBuffer_v2uint %10 %uint_0 %uint_3
-         %66 =   OpLoad %v2uint %65
+         %51 =   OpSMulExtended %WideArithResult %48 %49
+         %52 =   OpCompositeExtract %uint %51 0
+         %53 =   OpCompositeExtract %uint %51 1
+         %54 =   OpCompositeConstruct %v2uint %52 %53
+         %55 =   OpCompositeExtract %uint %54 0
+         %56 =   OpCompositeExtract %uint %54 1
+         %58 =   OpCompositeConstruct %v2uint %55 %56
+         %59 =   OpAccessChain %_ptr_StorageBuffer_v2uint %14 %uint_0 %uint_2
+                 OpStore %59 %58 NonPrivatePointer
+         %61 =   OpAccessChain %_ptr_StorageBuffer_v2uint %10 %uint_0 %uint_3
+         %62 =   OpLoad %v2uint %61
+         %63 =   OpCompositeExtract %uint %62 0
+         %64 =   OpCompositeExtract %uint %62 1
+         %66 =   OpUMulExtended %WideArithResult %63 %64
          %67 =   OpCompositeExtract %uint %66 0
          %68 =   OpCompositeExtract %uint %66 1
-         %70 =   OpUMulExtended %WideArithResult %67 %68
-         %71 =   OpCompositeExtract %uint %70 0
-         %72 =   OpCompositeExtract %uint %70 1
-         %73 =   OpCompositeConstruct %v2uint %71 %72
-         %74 =   OpCompositeExtract %uint %73 0
-         %75 =   OpCompositeExtract %uint %73 1
-         %76 =   OpCompositeConstruct %v2uint %74 %75
-         %77 =   OpAccessChain %_ptr_StorageBuffer_v2uint %14 %uint_0 %uint_3
-                 OpStore %77 %76 NonPrivatePointer
+         %69 =   OpCompositeConstruct %v2uint %67 %68
+         %70 =   OpCompositeExtract %uint %69 0
+         %71 =   OpCompositeExtract %uint %69 1
+         %72 =   OpCompositeConstruct %v2uint %70 %71
+         %73 =   OpAccessChain %_ptr_StorageBuffer_v2uint %14 %uint_0 %uint_3
+                 OpStore %73 %72 NonPrivatePointer
                  OpReturn
                OpFunctionEnd
 

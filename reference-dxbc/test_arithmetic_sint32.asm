@@ -2,11 +2,11 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 117
+; Bound: 97
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
-         %46 = OpExtInstImport "GLSL.std.450"
+         %40 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan
                OpEntryPoint GLCompute %main "main" %9 %13
                OpExecutionMode %main LocalSize 1 1 1
@@ -60,90 +60,70 @@ SPIR-V:
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %115
+                 OpBranch %95
 
-        %115 = OpLabel
+         %95 = OpLabel
          %16 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_0
          %17 =   OpLoad %uint %16
-         %18 =   OpBitcast %uint %17
-         %20 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_1
-         %21 =   OpLoad %uint %20
-         %22 =   OpBitcast %uint %21
-         %23 =   OpBitwiseAnd %uint %18 %22
-         %25 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_2
-         %26 =   OpLoad %uint %25
-         %27 =   OpBitcast %uint %26
-         %28 =   OpBitwiseOr %uint %23 %27
-         %30 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_3
-         %31 =   OpLoad %uint %30
-         %32 =   OpBitcast %uint %31
-         %33 =   OpBitwiseXor %uint %28 %32
-         %34 =   OpNot %uint %33
-         %36 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_4
+         %19 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_1
+         %20 =   OpLoad %uint %19
+         %21 =   OpBitwiseAnd %uint %17 %20
+         %23 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_2
+         %24 =   OpLoad %uint %23
+         %25 =   OpBitwiseOr %uint %21 %24
+         %27 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_3
+         %28 =   OpLoad %uint %27
+         %29 =   OpBitwiseXor %uint %25 %28
+         %30 =   OpNot %uint %29
+         %32 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_4
+         %33 =   OpLoad %uint %32
+         %34 =   OpIAdd %uint %30 %33
+         %36 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_5
          %37 =   OpLoad %uint %36
-         %38 =   OpBitcast %uint %37
-         %39 =   OpIAdd %uint %34 %38
-         %41 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_5
-         %42 =   OpLoad %uint %41
-         %43 =   OpBitcast %uint %42
-         %44 =   OpISub %uint %39 %43
-         %45 =   OpSNegate %uint %44
-         %47 =   OpExtInst %uint %46 SAbs %45
-         %49 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_6
-         %50 =   OpLoad %uint %49
-         %51 =   OpBitcast %uint %50
-         %52 =   OpIMul %uint %47 %51
-         %54 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_7
-         %55 =   OpLoad %uint %54
-         %56 =   OpBitcast %uint %55
-         %57 =   OpShiftLeftLogical %uint %52 %56
-         %59 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_8
+         %38 =   OpISub %uint %34 %37
+         %39 =   OpSNegate %uint %38
+         %41 =   OpExtInst %uint %40 SAbs %39
+         %43 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_6
+         %44 =   OpLoad %uint %43
+         %45 =   OpIMul %uint %41 %44
+         %47 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_7
+         %48 =   OpLoad %uint %47
+         %49 =   OpShiftLeftLogical %uint %45 %48
+         %51 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_8
+         %52 =   OpLoad %uint %51
+         %53 =   OpShiftRightArithmetic %uint %49 %52
+         %55 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_9
+         %56 =   OpLoad %uint %55
+         %57 =   OpShiftRightLogical %uint %53 %56
+         %59 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_10
          %60 =   OpLoad %uint %59
-         %61 =   OpBitcast %uint %60
-         %62 =   OpShiftRightArithmetic %uint %57 %61
-         %64 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_9
-         %65 =   OpLoad %uint %64
-         %66 =   OpBitcast %uint %65
-         %67 =   OpShiftRightLogical %uint %62 %66
-         %69 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_10
-         %70 =   OpLoad %uint %69
-         %71 =   OpBitcast %uint %70
-         %72 =   OpExtInst %uint %46 SMin %67 %71
-         %74 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
+         %61 =   OpExtInst %uint %40 SMin %57 %60
+         %63 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
+         %64 =   OpLoad %uint %63
+         %65 =   OpExtInst %uint %40 SMax %61 %64
+         %67 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
+         %68 =   OpLoad %uint %67
+         %70 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
+         %71 =   OpLoad %uint %70
+         %72 =   OpExtInst %uint %40 SClamp %65 %68 %71
+         %74 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_14
          %75 =   OpLoad %uint %74
-         %76 =   OpBitcast %uint %75
-         %77 =   OpExtInst %uint %46 SMax %72 %76
-         %79 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
-         %80 =   OpLoad %uint %79
-         %81 =   OpBitcast %uint %80
-         %83 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
-         %84 =   OpLoad %uint %83
-         %85 =   OpBitcast %uint %84
-         %86 =   OpExtInst %uint %46 SClamp %77 %81 %85
-         %88 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_14
-         %89 =   OpLoad %uint %88
-         %90 =   OpBitcast %uint %89
-         %92 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_15
-         %93 =   OpLoad %uint %92
-         %94 =   OpBitcast %uint %93
-         %96 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_16
-         %97 =   OpLoad %uint %96
-         %98 =   OpBitcast %uint %97
-         %99 =   OpBitFieldInsert %uint %86 %90 %94 %98
-        %101 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_17
-        %102 =   OpLoad %uint %101
-        %103 =   OpBitcast %uint %102
-        %105 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_18
-        %106 =   OpLoad %uint %105
-        %107 =   OpBitcast %uint %106
-        %108 =   OpBitFieldSExtract %uint %99 %103 %107
-        %109 =   OpBitCount %uint %108
-        %110 =   OpBitReverse %uint %109
-        %111 =   OpExtInst %uint %46 FindILsb %110
-        %112 =   OpExtInst %uint %46 FindSMsb %111
-        %113 =   OpBitcast %uint %112
-        %114 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
-                 OpStore %114 %113 NonPrivatePointer
+         %77 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_15
+         %78 =   OpLoad %uint %77
+         %80 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_16
+         %81 =   OpLoad %uint %80
+         %82 =   OpBitFieldInsert %uint %72 %75 %78 %81
+         %84 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_17
+         %85 =   OpLoad %uint %84
+         %87 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_18
+         %88 =   OpLoad %uint %87
+         %89 =   OpBitFieldSExtract %uint %82 %85 %88
+         %90 =   OpBitCount %uint %89
+         %91 =   OpBitReverse %uint %90
+         %92 =   OpExtInst %uint %40 FindILsb %91
+         %93 =   OpExtInst %uint %40 FindSMsb %92
+         %94 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
+                 OpStore %94 %93 NonPrivatePointer
                  OpReturn
                OpFunctionEnd
 

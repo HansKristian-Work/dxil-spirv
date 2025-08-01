@@ -26,13 +26,12 @@ void main()
     WideArithResult _37;
     _37._m0 = usubBorrow(_10._m0[1u].x, _10._m0[1u].y, _37._m1);
     _14._m0[1u] = uvec2(uvec2(_37._m0, _37._m1));
-    WideArithResult _53;
-    imulExtended((_10._m0[2u].x), (_10._m0[2u].y), _53._m1, _53._m0);
-    uvec2 _56 = uvec2(_53._m0, _53._m1);
-    _14._m0[2u] = uvec2((_56.x), (_56.y));
-    WideArithResult _70;
-    umulExtended(_10._m0[3u].x, _10._m0[3u].y, _70._m1, _70._m0);
-    _14._m0[3u] = uvec2(uvec2(_70._m0, _70._m1));
+    WideArithResult _51;
+    imulExtended(_10._m0[2u].x, _10._m0[2u].y, _51._m1, _51._m0);
+    _14._m0[2u] = uvec2(uvec2(_51._m0, _51._m1));
+    WideArithResult _66;
+    umulExtended(_10._m0[3u].x, _10._m0[3u].y, _66._m1, _66._m0);
+    _14._m0[3u] = uvec2(uvec2(_66._m0, _66._m1));
 }
 
 
