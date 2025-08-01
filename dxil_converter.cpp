@@ -7621,15 +7621,21 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		if (bb->get_merge() == llvm::BasicBlock::Merge::Selection)
 		{
 			node->ir.merge_info.merge_type = MergeType::Selection;
-			if (bb->get_merge_bb())
+
+			// Assume both paths can return or break, leaving the merge unreachable.
+			if (bb->get_merge_bb() && bb_map.count(bb->get_merge_bb()))
 				node->ir.merge_info.merge_block = bb_map[bb->get_merge_bb()]->node;
 		}
 		else if (bb->get_merge() == llvm::BasicBlock::Merge::Loop)
 		{
 			node->ir.merge_info.merge_type = MergeType::Loop;
-			if (bb->get_merge_bb())
+
+			// In infinite loops, merge block may be unreachable.
+			if (bb->get_merge_bb() && bb_map.count(bb->get_merge_bb()))
 				node->ir.merge_info.merge_block = bb_map[bb->get_merge_bb()]->node;
-			if (bb->get_continue_bb())
+
+			// If back-edge is not reachable, we'll resolve that later.
+			if (bb->get_continue_bb() && bb_map.count(bb->get_continue_bb()))
 				node->ir.merge_info.continue_block = bb_map[bb->get_continue_bb()]->node;
 		}
 #endif

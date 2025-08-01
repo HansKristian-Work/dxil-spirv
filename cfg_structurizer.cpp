@@ -1058,6 +1058,11 @@ void CFGStructurizer::sink_ssa_constructs_run(bool dry_run)
 		{
 			consume_id(n->ir.terminator.conditional_id, n);
 		}
+		else if (n->ir.terminator.type == Terminator::Type::Return &&
+		         n->ir.terminator.return_value != 0)
+		{
+			consume_id(n->ir.terminator.return_value, n);
+		}
 
 		auto &ops = n->ir.operations;
 
@@ -1148,6 +1153,12 @@ void CFGStructurizer::remove_unused_ssa()
 
 		if (node->ir.terminator.conditional_id)
 			used_ids.insert(node->ir.terminator.conditional_id);
+
+		if (node->ir.terminator.type == Terminator::Type::Return &&
+		    node->ir.terminator.return_value != 0)
+		{
+			used_ids.insert(node->ir.terminator.return_value);
+		}
 	}
 
 	for (auto *node : forward_post_visit_order)
