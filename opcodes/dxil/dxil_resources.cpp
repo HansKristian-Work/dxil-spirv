@@ -54,7 +54,8 @@ static bool emit_load_clip_cull_distance(Converter::Impl &impl, const llvm::Call
 	return true;
 }
 
-static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm::CallInst *instruction)
+static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm::CallInst *instruction,
+                               bool spirv_semantics)
 {
 	auto &builder = impl.builder();
 	spv::BuiltIn builtin;
@@ -87,7 +88,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			impl.add(cast_op);
 			impl.rewrite_value(instruction, cast_op->id);
 		}
-		else if (builtin == spv::BuiltInFragCoord)
+		else if (builtin == spv::BuiltInFragCoord && !spirv_semantics)
 		{
 			auto *col = llvm::cast<llvm::ConstantInt>(instruction->getOperand(3));
 			if (col->getUniqueInteger().getZExtValue() == 3)
@@ -112,7 +113,7 @@ static spv::Id get_builtin_load_type(Converter::Impl &impl, const Converter::Imp
 		return impl.get_effective_input_output_type_id(meta.component_type);
 }
 
-bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics)
 {
 	auto &builder = impl.builder();
 	uint32_t input_element_index;
@@ -189,7 +190,7 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	op->add_id(ptr_id);
 	impl.add(op);
 
-	fixup_builtin_load(impl, var_id, instruction);
+	fixup_builtin_load(impl, var_id, instruction, spirv_semantics);
 
 	// Need to bitcast after we load.
 	impl.fixup_load_type_io(meta.component_type, 1, instruction);

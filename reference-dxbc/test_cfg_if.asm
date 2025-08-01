@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 30
+; Bound: 28
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
@@ -26,31 +26,29 @@ SPIR-V:
        %uint = OpTypeInt 32 0
      %uint_2 = OpConstant %uint 2
      %uint_3 = OpConstant %uint 3
-    %float_1 = OpConstant %float 1
        %bool = OpTypeBool
     %float_0 = OpConstant %float 0
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %26
+                 OpBranch %24
 
-         %26 = OpLabel
+         %24 = OpLabel
          %12 =   OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
          %15 =   OpLoad %float %12
          %16 =   OpAccessChain %_ptr_Input_float %SV_POSITION %uint_3
          %18 =   OpLoad %float %16
-         %19 =   OpFDiv %float %float_1 %18
-         %22 =   OpFUnordNotEqual %bool %19 %float_0
-                 OpSelectionMerge %28 None
-                 OpBranchConditional %22 %27 %28
+         %20 =   OpFUnordNotEqual %bool %18 %float_0
+                 OpSelectionMerge %26 None
+                 OpBranchConditional %20 %25 %26
 
-         %27 =     OpLabel
-         %24 =       OpFDiv %float %15 %19
-                     OpBranch %28
+         %25 =     OpLabel
+         %22 =       OpFDiv %float %15 %18
+                     OpBranch %26
 
-         %28 = OpLabel
-         %25 =   OpPhi %float %15 %26 %24 %27
-                 OpStore %SV_TARGET %25
+         %26 = OpLabel
+         %23 =   OpPhi %float %15 %24 %22 %25
+                 OpStore %SV_TARGET %23
                  OpReturn
                OpFunctionEnd
 

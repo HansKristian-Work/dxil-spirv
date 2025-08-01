@@ -510,6 +510,7 @@ enum class Op : unsigned
 	ExtendedSpirvISubBorrow,
 	ExtendedSpirvSMulExtended,
 	ExtendedSpirvUMulExtended,
+	ExtendedSpirvLoadInput,
 
 	Count
 };

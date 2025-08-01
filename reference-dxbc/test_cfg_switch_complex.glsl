@@ -31,7 +31,7 @@ void main()
         }
         case 17u:
         {
-            _17 = 1.0 / gl_FragCoord.w;
+            _17 = gl_FragCoord.w;
             break;
         }
         default:

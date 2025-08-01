@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 31
+; Bound: 29
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
@@ -26,34 +26,32 @@ SPIR-V:
        %uint = OpTypeInt 32 0
      %uint_2 = OpConstant %uint 2
      %uint_3 = OpConstant %uint 3
-    %float_1 = OpConstant %float 1
        %bool = OpTypeBool
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %26
+                 OpBranch %24
 
-         %26 = OpLabel
+         %24 = OpLabel
          %12 =   OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
          %15 =   OpLoad %float %12
          %16 =   OpAccessChain %_ptr_Input_float %SV_POSITION %uint_3
          %18 =   OpLoad %float %16
-         %19 =   OpFDiv %float %float_1 %18
-         %22 =   OpFOrdGreaterThan %bool %15 %19
-                 OpSelectionMerge %29 None
-                 OpBranchConditional %22 %28 %27
+         %20 =   OpFOrdGreaterThan %bool %15 %18
+                 OpSelectionMerge %27 None
+                 OpBranchConditional %20 %26 %25
 
-         %28 =     OpLabel
-         %23 =       OpFDiv %float %15 %19
-                     OpBranch %29
+         %26 =     OpLabel
+         %21 =       OpFDiv %float %15 %18
+                     OpBranch %27
 
-         %27 =     OpLabel
-         %24 =       OpFDiv %float %19 %15
-                     OpBranch %29
+         %25 =     OpLabel
+         %22 =       OpFDiv %float %18 %15
+                     OpBranch %27
 
-         %29 = OpLabel
-         %25 =   OpPhi %float %23 %28 %24 %27
-                 OpStore %SV_TARGET %25
+         %27 = OpLabel
+         %23 =   OpPhi %float %21 %26 %22 %25
+                 OpStore %SV_TARGET %23
                  OpReturn
                OpFunctionEnd
 

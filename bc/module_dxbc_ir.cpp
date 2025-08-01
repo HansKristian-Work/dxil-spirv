@@ -1794,7 +1794,7 @@ Instruction *ParseContext::build_load_input(
 {
 	assert(index != UINT32_MAX);
 	auto *inst = build_dxil_call(
-		patch ? DXIL::Op::LoadPatchConstant : DXIL::Op::LoadInput, type, type,
+		patch ? DXIL::Op::LoadPatchConstant : DXIL::Op::ExtendedSpirvLoadInput, type, type,
 		get_constant_uint(index),
 		row,
 		get_constant_uint(col),

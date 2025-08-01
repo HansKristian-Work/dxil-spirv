@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 44
+; Bound: 42
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
@@ -36,43 +36,41 @@ SPIR-V:
    %float_n1 = OpConstant %float -1
      %uint_2 = OpConstant %uint 2
      %uint_3 = OpConstant %uint 3
-    %float_1 = OpConstant %float 1
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %37
+                 OpBranch %35
 
-         %37 = OpLabel
+         %35 = OpLabel
          %14 =   OpLoad %int %SEL
          %16 =   OpBitcast %uint %14
-                 OpSelectionMerge %42 None
-                 OpSwitch %16 %42 3 %41 7 %39 9 %40 17 %38
-
-         %41 =     OpLabel
-         %23 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_0
-         %19 =       OpLoad %float %23
-                     OpBranch %42
+                 OpSelectionMerge %40 None
+                 OpSwitch %16 %40 3 %39 7 %37 9 %38 17 %36
 
          %39 =     OpLabel
-         %25 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_1
-         %27 =       OpLoad %float %25
+         %23 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_0
+         %19 =       OpLoad %float %23
                      OpBranch %40
 
-         %40 =     OpLabel
-         %28 =       OpPhi %float %float_n1 %37 %27 %39
+         %37 =     OpLabel
+         %25 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_1
+         %27 =       OpLoad %float %25
+                     OpBranch %38
+
+         %38 =     OpLabel
+         %28 =       OpPhi %float %float_n1 %35 %27 %37
          %30 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
          %32 =       OpLoad %float %30
          %20 =       OpFAdd %float %32 %28
-                     OpBranch %42
+                     OpBranch %40
 
-         %38 =     OpLabel
+         %36 =     OpLabel
          %33 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_3
          %21 =       OpLoad %float %33
-         %35 =       OpFDiv %float %float_1 %21
-                     OpBranch %42
+                     OpBranch %40
 
-         %42 = OpLabel
-         %17 =   OpPhi %float %float_0 %37 %19 %41 %20 %40 %35 %38
+         %40 = OpLabel
+         %17 =   OpPhi %float %float_0 %35 %19 %39 %20 %38 %21 %36
                  OpStore %SV_TARGET %17
                  OpReturn
                OpFunctionEnd

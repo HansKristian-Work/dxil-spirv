@@ -51,9 +51,10 @@ struct DXILDispatcher
 		// Work around lack of designated initializers in C++.
 
 		// dxil_resources.hpp
-		OP(LoadInput) = emit_load_input_instruction;
+		OP(LoadInput) = emit_load_input_dispatch<false>;
+		OP(ExtendedSpirvLoadInput) = emit_load_input_dispatch<true>;
 		// Basically exactly the same, where gsVertexAxis is replaced with vertexIndex.
-		OP(AttributeAtVertex) = emit_load_input_instruction;
+		OP(AttributeAtVertex) = emit_load_input_dispatch<false>;
 		OP(StoreOutput) = emit_store_output_instruction;
 		OP(CreateHandle) = emit_create_handle_instruction;
 		OP(CreateHandleForLib) = emit_create_handle_for_lib_instruction;

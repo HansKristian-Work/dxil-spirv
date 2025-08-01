@@ -29,7 +29,14 @@
 
 namespace dxil_spv
 {
-bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics);
+
+template <bool spirv_semantics>
+static bool emit_load_input_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_load_input_instruction(impl, instruction, spirv_semantics);
+}
+
 bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction, bool extended);
 bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);

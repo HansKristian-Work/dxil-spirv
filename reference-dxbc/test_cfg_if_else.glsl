@@ -5,17 +5,16 @@ layout(location = 0) out float SV_TARGET;
 
 void main()
 {
-    float _19 = 1.0 / gl_FragCoord.w;
-    float _25;
-    if (gl_FragCoord.z > _19)
+    float _23;
+    if (gl_FragCoord.z > gl_FragCoord.w)
     {
-        _25 = gl_FragCoord.z / _19;
+        _23 = gl_FragCoord.z / gl_FragCoord.w;
     }
     else
     {
-        _25 = _19 / gl_FragCoord.z;
+        _23 = gl_FragCoord.w / gl_FragCoord.z;
     }
-    SV_TARGET = _25;
+    SV_TARGET = _23;
 }
 
 

@@ -26,7 +26,7 @@ void main()
         }
         default:
         {
-            SV_TARGET = 1.0 / gl_FragCoord.w;
+            SV_TARGET = gl_FragCoord.w;
             break;
         }
     }

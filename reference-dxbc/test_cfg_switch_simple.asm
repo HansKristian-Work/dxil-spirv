@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 39
+; Bound: 37
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
@@ -31,47 +31,45 @@ SPIR-V:
        %uint = OpTypeInt 32 0
 %_ptr_Input_float = OpTypePointer Input %float
      %uint_3 = OpConstant %uint 3
-    %float_1 = OpConstant %float 1
      %uint_0 = OpConstant %uint 0
      %uint_1 = OpConstant %uint 1
      %uint_2 = OpConstant %uint 2
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %32
+                 OpBranch %30
 
-         %32 = OpLabel
+         %30 = OpLabel
          %14 =   OpLoad %int %SEL
          %16 =   OpBitcast %uint %14
-                 OpSelectionMerge %37 None
-                 OpSwitch %16 %36 3 %35 6 %34 7 %34 9 %33
-
-         %36 =     OpLabel
-         %18 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_3
-         %20 =       OpLoad %float %18
-         %21 =       OpFDiv %float %float_1 %20
-                     OpStore %SV_TARGET %21
-                     OpBranch %37
-
-         %35 =     OpLabel
-         %23 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_0
-         %25 =       OpLoad %float %23
-                     OpStore %SV_TARGET %25
-                     OpBranch %37
+                 OpSelectionMerge %35 None
+                 OpSwitch %16 %34 3 %33 6 %32 7 %32 9 %31
 
          %34 =     OpLabel
-         %26 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_1
-         %28 =       OpLoad %float %26
-                     OpStore %SV_TARGET %28
-                     OpBranch %37
+         %18 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_3
+         %20 =       OpLoad %float %18
+                     OpStore %SV_TARGET %20
+                     OpBranch %35
 
          %33 =     OpLabel
-         %29 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
-         %31 =       OpLoad %float %29
-                     OpStore %SV_TARGET %31
-                     OpBranch %37
+         %21 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_0
+         %23 =       OpLoad %float %21
+                     OpStore %SV_TARGET %23
+                     OpBranch %35
 
-         %37 = OpLabel
+         %32 =     OpLabel
+         %24 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_1
+         %26 =       OpLoad %float %24
+                     OpStore %SV_TARGET %26
+                     OpBranch %35
+
+         %31 =     OpLabel
+         %27 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
+         %29 =       OpLoad %float %27
+                     OpStore %SV_TARGET %29
+                     OpBranch %35
+
+         %35 = OpLabel
                  OpReturn
                OpFunctionEnd
 
