@@ -201,6 +201,10 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 	align.alignment = 1;
 	converter.add_option(align);
 
+	OptionShaderDemoteToHelper demote;
+	demote.supported = true;
+	converter.add_option(demote);
+
 	converter.set_resource_remapping_interface(&remapper);
 	auto entry = converter.convert_entry_point();
 

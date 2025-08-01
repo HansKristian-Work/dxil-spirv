@@ -2,18 +2,18 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 64
+; Bound: 53
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
+               OpCapability DemoteToHelperInvocation
+               OpExtension "SPV_EXT_demote_to_helper_invocation"
                OpMemoryModel Logical Vulkan
-               OpEntryPoint Fragment %main "main" %8 %11 %TEXCOORD %SV_TARGET %discard_state
+               OpEntryPoint Fragment %main "main" %8 %11 %TEXCOORD %SV_TARGET
                OpExecutionMode %main OriginUpperLeft
                OpName %main "main"
                OpName %TEXCOORD "TEXCOORD"
                OpName %SV_TARGET "SV_TARGET"
-               OpName %discard_state "discard_state"
-               OpName %discard_exit "discard_exit"
                OpDecorate %8 DescriptorSet 0
                OpDecorate %8 Binding 0
                OpDecorate %11 DescriptorSet 0
@@ -43,20 +43,15 @@ SPIR-V:
     %float_0 = OpConstant %float 0
        %bool = OpTypeBool
 %float_0_00499999989 = OpConstant %float 0.00499999989
-%_ptr_Private_bool = OpTypePointer Private %bool
-%discard_state = OpVariable %_ptr_Private_bool Private
-      %false = OpConstantFalse %bool
 %_ptr_Output_float = OpTypePointer Output %float
      %uint_2 = OpConstant %uint 2
      %uint_3 = OpConstant %uint 3
-       %true = OpConstantTrue %bool
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpStore %discard_state %false
-                 OpBranch %52
+                 OpBranch %49
 
-         %52 = OpLabel
+         %49 = OpLabel
          %18 =   OpLoad %6 %8
          %19 =   OpLoad %9 %11
          %21 =   OpAccessChain %_ptr_Input_float %TEXCOORD %uint_0
@@ -71,36 +66,22 @@ SPIR-V:
          %36 =   OpCompositeExtract %float %32 2
          %37 =   OpCompositeExtract %float %32 3
          %40 =   OpFOrdLessThan %bool %37 %float_0_00499999989
-                 OpSelectionMerge %54 None
-                 OpBranchConditional %40 %53 %54
+                 OpSelectionMerge %51 None
+                 OpBranchConditional %40 %50 %51
 
-         %53 =     OpLabel
-                     OpStore %discard_state %true
-                     OpBranch %54
+         %50 =     OpLabel
+                     OpDemoteToHelperInvocation
+                     OpBranch %51
 
-         %54 = OpLabel
-         %46 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_0
-                 OpStore %46 %34
-         %47 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_1
-                 OpStore %47 %35
-         %48 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_2
-                 OpStore %48 %36
-         %50 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_3
-                 OpStore %50 %37
-         %62 =   OpFunctionCall %void %discard_exit
-                 OpReturn
-               OpFunctionEnd
-%discard_exit = OpFunction %void None %2
-
-         %57 = OpLabel
-         %60 =   OpLoad %bool %discard_state
-                 OpSelectionMerge %59 None
-                 OpBranchConditional %60 %58 %59
-
-         %58 =     OpLabel
-                     OpKill
-
-         %59 = OpLabel
+         %51 = OpLabel
+         %43 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_0
+                 OpStore %43 %34
+         %44 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_1
+                 OpStore %44 %35
+         %45 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_2
+                 OpStore %45 %36
+         %47 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_3
+                 OpStore %47 %37
                  OpReturn
                OpFunctionEnd
 
