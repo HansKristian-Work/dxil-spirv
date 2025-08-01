@@ -17,6 +17,7 @@ OpEntryPoint GLCompute %3 "main" %10 %13 %16
 OpExecutionMode %3 LocalSize 32 1 1
 OpName %3 "main"
 OpName %7 "SSBO"
+OpName %16 "SV_GROUPID"
 OpDecorate %6 ArrayStride 4
 OpMemberDecorate %7 0 Offset 0
 OpDecorate %7 Block

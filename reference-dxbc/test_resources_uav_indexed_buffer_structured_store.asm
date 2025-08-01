@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 38
+; Bound: 52
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageBufferArrayDynamicIndexing
@@ -30,8 +30,13 @@ OpDecorate %15 Flat
 OpDecorate %15 Location 0
 OpDecorate %16 NonUniform
 OpDecorate %18 NonUniform
-OpDecorate %33 NonUniform
-OpDecorate %34 NonUniform
+OpDecorate %37 NonUniform
+OpDecorate %38 NonUniform
+OpDecorate %40 NonUniform
+OpDecorate %43 NonUniform
+OpDecorate %44 NonUniform
+OpDecorate %46 NonUniform
+OpDecorate %49 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -48,27 +53,45 @@ OpDecorate %34 NonUniform
 %17 = OpTypePointer StorageBuffer %7
 %20 = OpConstant %5 0
 %23 = OpConstant %5 1
-%27 = OpConstant %5 2
-%29 = OpConstant %5 20
-%32 = OpTypePointer StorageBuffer %5
+%27 = OpConstant %5 7
+%28 = OpConstant %5 3
+%29 = OpTypeVector %5 3
+%31 = OpConstant %5 2
+%33 = OpConstant %5 20
+%36 = OpTypePointer StorageBuffer %5
+%42 = OpConstant %5 140
+%48 = OpConstant %5 6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %36
-%36 = OpLabel
+OpBranch %50
+%50 = OpLabel
 %16 = OpLoad %5 %12
 %18 = OpAccessChain %17 %10 %16
 %19 = OpAccessChain %11 %15 %20
 %21 = OpLoad %5 %19
 %22 = OpAccessChain %11 %15 %23
 %24 = OpLoad %5 %22
-%28 = OpIMul %5 %21 %29
-%30 = OpShiftRightLogical %5 %24 %27
-%31 = OpIAdd %5 %28 %30
-%33 = OpAccessChain %32 %18 %20 %31
-OpStore %33 %23 NonPrivatePointer
-%35 = OpIAdd %5 %31 %23
-%34 = OpAccessChain %32 %18 %20 %35
-OpStore %34 %27 NonPrivatePointer
+%32 = OpIMul %5 %21 %33
+%34 = OpShiftRightLogical %5 %24 %31
+%35 = OpIAdd %5 %32 %34
+%37 = OpAccessChain %36 %18 %20 %35
+OpStore %37 %23 NonPrivatePointer
+%39 = OpIAdd %5 %35 %23
+%38 = OpAccessChain %36 %18 %20 %39
+OpStore %38 %31 NonPrivatePointer
+%41 = OpIAdd %5 %35 %31
+%40 = OpAccessChain %36 %18 %20 %41
+OpStore %40 %28 NonPrivatePointer
+%43 = OpAccessChain %36 %18 %20 %42
+OpStore %43 %23 NonPrivatePointer
+%45 = OpIAdd %5 %42 %23
+%44 = OpAccessChain %36 %18 %20 %45
+OpStore %44 %31 NonPrivatePointer
+%47 = OpIAdd %5 %42 %31
+%46 = OpAccessChain %36 %18 %20 %47
+OpStore %46 %28 NonPrivatePointer
+%49 = OpAccessChain %36 %18 %20 %42
+OpStore %49 %48 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 

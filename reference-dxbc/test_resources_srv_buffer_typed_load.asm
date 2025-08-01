@@ -2,22 +2,24 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 37
+; Bound: 49
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability VulkanMemoryModel
 OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %8 %12 %15
+OpEntryPoint Fragment %3 "main" %8 %12 %15 %16
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %12 "BUFFER_ADDRESS"
 OpName %15 "SV_TARGET"
+OpName %16 "SV_TARGET_1"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 Flat
 OpDecorate %12 Location 0
 OpDecorate %15 Location 0
+OpDecorate %16 Location 1
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -31,32 +33,47 @@ OpDecorate %15 Location 0
 %13 = OpTypeVector %5 4
 %14 = OpTypePointer Output %13
 %15 = OpVariable %14 Output
-%17 = OpTypePointer Input %9
-%19 = OpConstant %9 0
-%27 = OpTypePointer Output %5
-%30 = OpConstant %9 1
-%32 = OpConstant %9 2
-%34 = OpConstant %9 3
+%16 = OpVariable %14 Output
+%18 = OpTypePointer Input %9
+%20 = OpConstant %9 0
+%28 = OpConstant %9 7
+%35 = OpTypePointer Output %5
+%38 = OpConstant %9 1
+%40 = OpConstant %9 2
+%42 = OpConstant %9 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %35
-%35 = OpLabel
-%16 = OpLoad %6 %8
-%18 = OpAccessChain %17 %12 %19
-%20 = OpLoad %9 %18
-%21 = OpImageFetch %13 %16 %20
-%22 = OpCompositeExtract %5 %21 0
-%23 = OpCompositeExtract %5 %21 1
-%24 = OpCompositeExtract %5 %21 2
-%25 = OpCompositeExtract %5 %21 3
-%28 = OpAccessChain %27 %15 %19
-OpStore %28 %22
-%29 = OpAccessChain %27 %15 %30
-OpStore %29 %23
-%31 = OpAccessChain %27 %15 %32
-OpStore %31 %24
-%33 = OpAccessChain %27 %15 %34
-OpStore %33 %25
+OpBranch %47
+%47 = OpLabel
+%17 = OpLoad %6 %8
+%19 = OpAccessChain %18 %12 %20
+%21 = OpLoad %9 %19
+%22 = OpImageFetch %13 %17 %21
+%23 = OpCompositeExtract %5 %22 0
+%24 = OpCompositeExtract %5 %22 1
+%25 = OpCompositeExtract %5 %22 2
+%26 = OpCompositeExtract %5 %22 3
+%29 = OpImageFetch %13 %17 %28
+%30 = OpCompositeExtract %5 %29 0
+%31 = OpCompositeExtract %5 %29 1
+%32 = OpCompositeExtract %5 %29 2
+%33 = OpCompositeExtract %5 %29 3
+%36 = OpAccessChain %35 %15 %20
+OpStore %36 %23
+%37 = OpAccessChain %35 %15 %38
+OpStore %37 %24
+%39 = OpAccessChain %35 %15 %40
+OpStore %39 %25
+%41 = OpAccessChain %35 %15 %42
+OpStore %41 %26
+%43 = OpAccessChain %35 %16 %20
+OpStore %43 %30
+%44 = OpAccessChain %35 %16 %38
+OpStore %44 %31
+%45 = OpAccessChain %35 %16 %40
+OpStore %45 %32
+%46 = OpAccessChain %35 %16 %42
+OpStore %46 %33
 OpReturn
 OpFunctionEnd
 

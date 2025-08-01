@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 35
+; Bound: 46
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageBufferArrayDynamicIndexing
@@ -30,8 +30,13 @@ OpDecorate %15 Flat
 OpDecorate %15 Location 0
 OpDecorate %16 NonUniform
 OpDecorate %18 NonUniform
-OpDecorate %30 NonUniform
-OpDecorate %31 NonUniform
+OpDecorate %32 NonUniform
+OpDecorate %33 NonUniform
+OpDecorate %35 NonUniform
+OpDecorate %37 NonUniform
+OpDecorate %38 NonUniform
+OpDecorate %40 NonUniform
+OpDecorate %43 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -49,24 +54,40 @@ OpDecorate %31 NonUniform
 %20 = OpConstant %5 0
 %23 = OpConstant %5 4
 %25 = OpConstant %5 2
-%27 = OpConstant %5 1
-%29 = OpTypePointer StorageBuffer %5
+%26 = OpTypeVector %5 3
+%28 = OpConstant %5 1
+%29 = OpConstant %5 3
+%31 = OpTypePointer StorageBuffer %5
+%42 = OpConstant %5 6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %33
-%33 = OpLabel
+OpBranch %44
+%44 = OpLabel
 %16 = OpLoad %5 %12
 %18 = OpAccessChain %17 %10 %16
 %19 = OpAccessChain %11 %15 %20
 %21 = OpLoad %5 %19
 %22 = OpIMul %5 %21 %23
 %24 = OpIAdd %5 %22 %25
-%28 = OpShiftRightLogical %5 %24 %25
-%30 = OpAccessChain %29 %18 %20 %28
-OpStore %30 %27 NonPrivatePointer
-%32 = OpIAdd %5 %28 %27
-%31 = OpAccessChain %29 %18 %20 %32
-OpStore %31 %25 NonPrivatePointer
+%30 = OpShiftRightLogical %5 %24 %25
+%32 = OpAccessChain %31 %18 %20 %30
+OpStore %32 %28 NonPrivatePointer
+%34 = OpIAdd %5 %30 %28
+%33 = OpAccessChain %31 %18 %20 %34
+OpStore %33 %25 NonPrivatePointer
+%36 = OpIAdd %5 %30 %25
+%35 = OpAccessChain %31 %18 %20 %36
+OpStore %35 %29 NonPrivatePointer
+%37 = OpAccessChain %31 %18 %20 %28
+OpStore %37 %28 NonPrivatePointer
+%39 = OpIAdd %5 %28 %28
+%38 = OpAccessChain %31 %18 %20 %39
+OpStore %38 %25 NonPrivatePointer
+%41 = OpIAdd %5 %28 %25
+%40 = OpAccessChain %31 %18 %20 %41
+OpStore %40 %29 NonPrivatePointer
+%43 = OpAccessChain %31 %18 %20 %28
+OpStore %43 %42 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 

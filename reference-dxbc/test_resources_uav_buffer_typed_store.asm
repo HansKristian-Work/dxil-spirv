@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 27
+; Bound: 29
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -35,15 +35,18 @@ OpDecorate %12 Location 0
 %21 = OpConstant %5 2
 %22 = OpConstant %5 3
 %23 = OpConstant %5 4
+%25 = OpConstant %9 7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %25
-%25 = OpLabel
+OpBranch %27
+%27 = OpLabel
 %13 = OpLoad %6 %8
 %15 = OpAccessChain %14 %12 %16
 %17 = OpLoad %9 %15
 %24 = OpCompositeConstruct %18 %20 %21 %22 %23
 OpImageWrite %13 %17 %24 NonPrivateTexel
+%26 = OpCompositeConstruct %18 %20 %21 %22 %23
+OpImageWrite %13 %25 %26 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 

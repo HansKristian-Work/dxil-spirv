@@ -2,66 +2,104 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 41
+; Bound: 66
 ; Schema: 0
 OpCapability Shader
 OpCapability VulkanMemoryModel
 OpMemoryModel Logical Vulkan
-OpEntryPoint Fragment %3 "main" %10 %12 %14
+OpEntryPoint Fragment %3 "main" %9 %14 %16 %18 %19 %21
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
-OpName %8 "SSBO"
-OpName %12 "BUFFER_ADDRESS"
-OpName %14 "SV_TARGET"
-OpDecorate %7 ArrayStride 8
-OpMemberDecorate %8 0 Offset 0
-OpDecorate %8 Block
-OpDecorate %10 DescriptorSet 0
-OpDecorate %10 Binding 0
-OpDecorate %10 NonWritable
-OpDecorate %10 Restrict
-OpDecorate %12 Flat
-OpDecorate %12 Location 0
-OpDecorate %14 Location 0
+OpName %7 "SSBO"
+OpName %12 "SSBO"
+OpName %16 "BUFFER_ADDRESS"
+OpName %18 "SV_TARGET"
+OpName %19 "SV_TARGET_1"
+OpName %21 "SV_TARGET_3"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %11 ArrayStride 8
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %9 NonWritable
+OpDecorate %9 Restrict
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 0
+OpDecorate %14 NonWritable
+OpDecorate %14 Restrict
+OpDecorate %16 Flat
+OpDecorate %16 Location 0
+OpDecorate %18 Location 0
+OpDecorate %19 Location 1
+OpDecorate %21 Location 3
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
-%6 = OpTypeVector %5 2
-%7 = OpTypeRuntimeArray %6
-%8 = OpTypeStruct %7
-%9 = OpTypePointer StorageBuffer %8
-%10 = OpVariable %9 StorageBuffer
-%11 = OpTypePointer Input %6
-%12 = OpVariable %11 Input
-%13 = OpTypePointer Output %6
-%14 = OpVariable %13 Output
-%15 = OpTypePointer Input %5
-%17 = OpConstant %5 0
-%20 = OpConstant %5 4
-%22 = OpConstant %5 2
-%24 = OpConstant %5 16
-%26 = OpConstant %5 8
-%29 = OpConstant %5 1
-%30 = OpTypePointer StorageBuffer %6
-%36 = OpTypePointer Output %5
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeVector %5 2
+%11 = OpTypeRuntimeArray %10
+%12 = OpTypeStruct %11
+%13 = OpTypePointer StorageBuffer %12
+%14 = OpVariable %13 StorageBuffer
+%15 = OpTypePointer Input %10
+%16 = OpVariable %15 Input
+%17 = OpTypePointer Output %10
+%18 = OpVariable %17 Output
+%19 = OpVariable %17 Output
+%20 = OpTypePointer Output %5
+%21 = OpVariable %20 Output
+%22 = OpTypePointer Input %5
+%24 = OpConstant %5 0
+%27 = OpConstant %5 4
+%29 = OpConstant %5 2
+%31 = OpConstant %5 16
+%33 = OpConstant %5 8
+%36 = OpConstant %5 1
+%37 = OpTypePointer StorageBuffer %10
+%43 = OpConstant %5 7
+%44 = OpTypePointer StorageBuffer %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %39
-%39 = OpLabel
-%16 = OpAccessChain %15 %12 %17
-%18 = OpLoad %5 %16
-%19 = OpIMul %5 %18 %20
-%23 = OpIMul %5 %24 %18
-%27 = OpIMul %5 %18 %22
-%28 = OpIAdd %5 %27 %29
-%31 = OpAccessChain %30 %10 %17 %28
-%32 = OpLoad %6 %31
-%33 = OpCompositeExtract %5 %32 0
-%34 = OpCompositeExtract %5 %32 1
-%37 = OpAccessChain %36 %14 %17
-OpStore %37 %33
-%38 = OpAccessChain %36 %14 %29
-OpStore %38 %34
+OpBranch %64
+%64 = OpLabel
+%23 = OpAccessChain %22 %16 %24
+%25 = OpLoad %5 %23
+%26 = OpIMul %5 %25 %27
+%30 = OpIMul %5 %31 %25
+%34 = OpIMul %5 %25 %29
+%35 = OpIAdd %5 %34 %36
+%38 = OpAccessChain %37 %14 %24 %35
+%39 = OpLoad %10 %38
+%40 = OpCompositeExtract %5 %39 0
+%41 = OpCompositeExtract %5 %39 1
+%45 = OpAccessChain %44 %9 %24 %43
+%46 = OpLoad %5 %45
+%48 = OpIAdd %5 %43 %36
+%47 = OpAccessChain %44 %9 %24 %48
+%49 = OpLoad %5 %47
+%50 = OpCompositeConstruct %10 %46 %49
+%51 = OpCompositeExtract %5 %50 0
+%52 = OpCompositeExtract %5 %50 1
+%54 = OpAccessChain %20 %18 %24
+OpStore %54 %40
+%55 = OpAccessChain %20 %18 %36
+OpStore %55 %41
+%56 = OpAccessChain %20 %19 %24
+OpStore %56 %51
+%57 = OpAccessChain %20 %19 %36
+OpStore %57 %52
+%58 = OpIMul %5 %31 %25
+%60 = OpIMul %5 %25 %27
+%61 = OpIAdd %5 %60 %29
+%62 = OpAccessChain %44 %9 %24 %61
+%63 = OpLoad %5 %62
+OpStore %21 %63
 OpReturn
 OpFunctionEnd
 
