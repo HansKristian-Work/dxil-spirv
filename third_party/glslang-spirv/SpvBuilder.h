@@ -268,6 +268,7 @@ public:
     void addName(Id, const char* name);
     void addMemberName(Id, int member, const char* name);
     void addDecoration(Id, Decoration, int num = -1);
+    void removeDecorations(const dxil_spv::UnorderedSet<spv::Id> &ids);
     bool hasDecoration(Id, Decoration) const;
     void addUniqueDecoration(Id, Decoration, int num = -1);
     void addMemberDecoration(Id, unsigned int member, Decoration, int num = -1);

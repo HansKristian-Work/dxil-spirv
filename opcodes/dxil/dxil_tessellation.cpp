@@ -173,18 +173,32 @@ bool emit_store_patch_constant_instruction(Converter::Impl &impl, const llvm::Ca
 	return true;
 }
 
-bool emit_load_output_control_point_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_load_output_generic_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	uint32_t input_element_index;
 	if (!get_constant_operand(instruction, 1, &input_element_index))
 		return false;
 
+	// Normally this is only used for control point reads in tess, but here we make it generic to
+	// allow reading outputs at any time.
+	// Technically mesh shader path could go here, but custom IR doesn't support that.
+	bool is_hull = impl.execution_model == spv::ExecutionModelTessellationControl;
+	bool array_index = !llvm::isa<llvm::UndefValue>(instruction->getOperand(4)) && is_hull;
+
+	if (is_hull && !array_index)
+	{
+		LOGE("Hull outputs must be read with array index.\n");
+		return false;
+	}
+
 	const auto &meta = impl.output_elements_meta[input_element_index];
 	uint32_t var_id = meta.id;
 
 	spv::Id input_type_id = builder.getDerefTypeId(var_id);
-	input_type_id = builder.getContainedTypeId(input_type_id);
+
+	if (array_index)
+		input_type_id = builder.getContainedTypeId(input_type_id);
 
 	bool row_index = false;
 	if (builder.isArrayType(input_type_id))
@@ -201,7 +215,8 @@ bool emit_load_output_control_point_instruction(Converter::Impl &impl, const llv
 	spv::Id ptr_id = op->id;
 
 	op->add_id(var_id);
-	op->add_id(impl.get_id_for_value(instruction->getOperand(4)));
+	if (array_index)
+		op->add_id(impl.get_id_for_value(instruction->getOperand(4)));
 	if (row_index)
 		op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
 	if (num_cols > 1)

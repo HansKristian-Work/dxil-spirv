@@ -193,7 +193,8 @@ public:
 	enum class UnaryOps
 	{
 		Invalid,
-		FNeg
+		FNeg,
+		INeg, // custom extension
 	};
 
 	static constexpr ValueKind get_value_kind()
@@ -558,6 +559,18 @@ public:
 		return ValueKind::InsertElement;
 	}
 	InsertElementInst(Value *vec, Value *value, Value *index);
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+};
+
+// Extension of LLVM to better map to SPIR-V / DXBC-IR
+class CompositeConstructInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::CompositeConstruct;
+	}
+	CompositeConstructInst(Type *type, Vector<Value *> constituents);
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 };
 } // namespace LLVMBC

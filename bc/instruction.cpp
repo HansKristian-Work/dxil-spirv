@@ -531,4 +531,10 @@ InsertElementInst::InsertElementInst(Value *vec, Value *value, Value *index)
 {
 	set_operands({ vec, value, index });
 }
+
+CompositeConstructInst::CompositeConstructInst(Type *type, Vector<Value *> constituents)
+	: Instruction(type, ValueKind::CompositeConstruct)
+{
+	set_operands(std::move(constituents));
+}
 } // namespace LLVMBC

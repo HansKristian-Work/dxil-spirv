@@ -34,9 +34,22 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction, bool multi_sampled);
-bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool extended);
 
-bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+template <bool extended>
+bool emit_get_dimensions_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_get_dimensions_instruction(impl, instruction, extended);
+}
+
+bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool extended);
+
+template <bool extended>
+bool emit_calculate_lod_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_calculate_lod_instruction(impl, instruction, extended);
+}
+
 bool emit_get_sample_position(Converter::Impl &impl, const llvm::CallInst *instruction, bool image);
 bool emit_get_render_target_sample_count(Converter::Impl &impl, const llvm::CallInst *instruction);
 

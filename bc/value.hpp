@@ -71,7 +71,8 @@ enum class ValueKind
 	Global,
 	ShuffleVector,
 	ExtractElement,
-	InsertElement
+	InsertElement,
+	CompositeConstruct
 };
 
 #define LLVMBC_DEFAULT_VALUE_KIND_IMPL                \

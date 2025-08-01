@@ -237,6 +237,40 @@ bool can_optimize_to_snegate(const llvm::ConstantExpr *instruction)
 	return can_optimize_to_snegate_inner(instruction);
 }
 
+static bool constant_is_all_bits_set(llvm::Value *v)
+{
+	if (auto *vec = llvm::dyn_cast<llvm::ConstantDataVector>(v))
+	{
+		for (unsigned i = 0; i < vec->getNumElements(); i++)
+			if (!constant_is_all_bits_set(vec->getElementAsConstant(i)))
+				return false;
+
+		return true;
+	}
+	else if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(v))
+	{
+		uint64_t mask;
+		if (c->getType()->getIntegerBitWidth() == 64)
+			mask = UINT64_MAX;
+		else
+			mask = (1ull << c->getType()->getIntegerBitWidth()) - 1ull;
+
+		return (c->getUniqueInteger().getZExtValue() & mask) == mask;
+	}
+	else
+		return false;
+}
+
+static llvm::Value *get_bitwise_not_from_xor(llvm::Value *a, llvm::Value *b)
+{
+	if (constant_is_all_bits_set(a))
+		return b;
+	else if (constant_is_all_bits_set(b))
+		return a;
+	else
+		return nullptr;
+}
+
 template <typename InstructionType>
 static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
@@ -245,6 +279,10 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 	bool is_precision_sensitive = false;
 	bool can_relax_precision = false;
 	spv::Op opcode;
+
+	auto *type = instruction->getType();
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+		type = vec->getElementType();
 
 	switch (llvm::Instruction::BinaryOps(instruction->getOpcode()))
 	{
@@ -346,51 +384,35 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Xor:
-		if (instruction->getType()->getIntegerBitWidth() == 1)
+		// Logical not in LLVM IR is encoded as XOR i1 against true.
+		if (const auto *not_value = get_bitwise_not_from_xor(instruction->getOperand(0), instruction->getOperand(1)))
 		{
-			// Logical not in LLVM IR is encoded as XOR i1 against true.
-			spv::Id not_id = 0;
-			if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(0)))
-			{
-				if (c->getUniqueInteger().getZExtValue() != 0)
-					not_id = impl.get_id_for_value(instruction->getOperand(1));
-			}
-			else if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(1)))
-			{
-				if (c->getUniqueInteger().getZExtValue() != 0)
-					not_id = impl.get_id_for_value(instruction->getOperand(0));
-			}
+			spv::Id not_id = impl.get_id_for_value(not_value);
+			opcode = type->getIntegerBitWidth() == 1 ? spv::OpLogicalNot : spv::OpNot;
 
-			if (not_id)
-			{
-				opcode = spv::OpLogicalNot;
+			Operation *op;
+			if (llvm::isa<llvm::ConstantExpr>(instruction))
+				op = impl.allocate(opcode, impl.get_type_id(instruction->getType()));
+			else
+				op = impl.allocate(opcode, instruction);
 
-				Operation *op;
-				if (llvm::isa<llvm::ConstantExpr>(instruction))
-					op = impl.allocate(opcode, impl.get_type_id(instruction->getType()));
-				else
-					op = impl.allocate(opcode, instruction);
-
-				op->add_id(not_id);
-				impl.add(op);
-				return op->id;
-			}
-
-			opcode = spv::OpLogicalNotEqual;
+			op->add_id(not_id);
+			impl.add(op);
+			return op->id;
 		}
-		else
-			opcode = spv::OpBitwiseXor;
+
+		opcode = type->getIntegerBitWidth() == 1 ? spv::OpLogicalNotEqual : spv::OpBitwiseXor;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::And:
-		if (instruction->getType()->getIntegerBitWidth() == 1)
+		if (type->getIntegerBitWidth() == 1)
 			opcode = spv::OpLogicalAnd;
 		else
 			opcode = spv::OpBitwiseAnd;
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::Or:
-		if (instruction->getType()->getIntegerBitWidth() == 1)
+		if (type->getIntegerBitWidth() == 1)
 			opcode = spv::OpLogicalOr;
 		else
 			opcode = spv::OpBitwiseOr;
@@ -471,6 +493,12 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 	case llvm::UnaryOperator::UnaryOps::FNeg:
 		opcode = spv::OpFNegate;
 		break;
+
+#ifdef HAVE_LLVMBC
+	case llvm::UnaryOperator::UnaryOps::INeg:
+		opcode = spv::OpSNegate;
+		break;
+#endif
 
 	default:
 		LOGE("Unknown unary operator.\n");
@@ -1689,9 +1717,10 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 		return true;
 
 	auto itr = impl.llvm_composite_meta.find(instruction->getAggregateOperand());
-	assert(itr != impl.llvm_composite_meta.end());
 
-	if (itr->second.components == 1 && !itr->second.forced_composite)
+	if (itr != impl.llvm_composite_meta.end() &&
+	    itr->second.components == 1 &&
+	    !itr->second.forced_composite)
 	{
 		// Forward the ID. The composite was originally emitted as a scalar.
 		spv::Id rewrite_id = impl.get_id_for_value(instruction->getAggregateOperand());
@@ -1840,7 +1869,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 {
 	auto &builder = impl.builder();
 
-	unsigned bits = instruction->getType()->getStructElementType(0)->getIntegerBitWidth();
+	unsigned bits = get_composite_element_type(instruction->getType())->getIntegerBitWidth();
 	if (bits == 64)
 		builder.addCapability(spv::CapabilityInt64Atomics);
 
@@ -2247,8 +2276,7 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *inst)
 
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *inst)
 {
-	if (inst->getNumIndices() == 1 &&
-	    inst->getAggregateOperand()->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+	if (inst->getNumIndices() == 1 && type_is_composite_return_value(inst->getAggregateOperand()->getType()))
 	{
 		auto &meta = impl.llvm_composite_meta[inst->getAggregateOperand()];
 		unsigned index = inst->getIndices()[0];
@@ -2358,6 +2386,28 @@ bool can_optimize_conditional_branch_to_static(
 	}
 }
 
+#ifdef HAVE_LLVMBC
+// Extensions to normal LLVM API used by custom IR.
+static bool emit_composite_construct_instruction(Converter::Impl &impl, const llvm::CompositeConstructInst *inst)
+{
+	auto *constr = impl.allocate(spv::OpCompositeConstruct, inst);
+	for (unsigned i = 0; i < inst->getNumOperands(); i++)
+		constr->add_id(impl.get_id_for_value(inst->getOperand(i)));
+	impl.add(constr);
+	return true;
+}
+#endif
+
+bool emit_call_instruction(Converter::Impl &impl, const llvm::CallInst &inst)
+{
+	auto *call = impl.allocate(spv::OpFunctionCall, &inst);
+	call->add_id(impl.get_id_for_value(inst.getCalledFunction()));
+	for (uint32_t i = 0; i < inst.getNumOperands(); i++)
+		call->add_id(impl.get_id_for_value(inst.getOperand(i)));
+	impl.add(call);
+	return true;
+}
+
 bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instruction)
 {
 	if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))
@@ -2390,6 +2440,10 @@ bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instr
 		return emit_extractelement_instruction(impl, extractelement_inst);
 	else if (auto *insertelement_inst = llvm::dyn_cast<llvm::InsertElementInst>(&instruction))
 		return emit_insertelement_instruction(impl, insertelement_inst);
+#ifdef HAVE_LLVMBC
+	else if (auto *composite_construct_inst = llvm::dyn_cast<llvm::CompositeConstructInst>(&instruction))
+		return emit_composite_construct_instruction(impl, composite_construct_inst);
+#endif
 	else
 		return false;
 }

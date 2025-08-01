@@ -1,0 +1,89 @@
+SPIR-V:
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 52
+; Schema: 0
+               OpCapability Shader
+               OpCapability StorageImageArrayDynamicIndexing
+               OpCapability RuntimeDescriptorArray
+               OpCapability StorageImageArrayNonUniformIndexing
+               OpCapability VulkanMemoryModel
+               OpExtension "SPV_EXT_descriptor_indexing"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Fragment %main "main" %9 %15 %TEXCOORD %VALUE %SV_TARGET
+               OpExecutionMode %main OriginUpperLeft
+               OpName %main "main"
+               OpName %_ ""
+               OpName %TEXCOORD "TEXCOORD"
+               OpName %VALUE "VALUE"
+               OpName %SV_TARGET "SV_TARGET"
+               OpDecorate %9 DescriptorSet 0
+               OpDecorate %9 Binding 0
+               OpDecorate %_arr_float_uint_4 ArrayStride 4
+               OpMemberDecorate %_ 0 Offset 0
+               OpDecorate %_ Block
+               OpDecorate %15 DescriptorSet 0
+               OpDecorate %15 Binding 0
+               OpDecorate %TEXCOORD Flat
+               OpDecorate %TEXCOORD Location 0
+               OpDecorate %VALUE Flat
+               OpDecorate %VALUE Location 2
+               OpDecorate %SV_TARGET Location 0
+               OpDecorate %33 NonUniform
+               OpDecorate %47 NonUniform
+       %void = OpTypeVoid
+          %2 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+          %6 = OpTypeImage %uint 2D 0 1 0 2 R32ui
+%_runtimearr_6 = OpTypeRuntimeArray %6
+%_ptr_UniformConstant__runtimearr_6 = OpTypePointer UniformConstant %_runtimearr_6
+          %9 = OpVariable %_ptr_UniformConstant__runtimearr_6 UniformConstant
+     %uint_4 = OpConstant %uint 4
+      %float = OpTypeFloat 32
+%_arr_float_uint_4 = OpTypeArray %float %uint_4
+          %_ = OpTypeStruct %_arr_float_uint_4
+%_ptr_Uniform__ = OpTypePointer Uniform %_
+         %15 = OpVariable %_ptr_Uniform__ Uniform
+     %v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+   %TEXCOORD = OpVariable %_ptr_Input_v3uint Input
+%_ptr_Input_uint = OpTypePointer Input %uint
+      %VALUE = OpVariable %_ptr_Input_uint Input
+%_ptr_Output_uint = OpTypePointer Output %uint
+  %SV_TARGET = OpVariable %_ptr_Output_uint Output
+     %uint_0 = OpConstant %uint 0
+    %uint_16 = OpConstant %uint 16
+     %uint_2 = OpConstant %uint 2
+%_ptr_Uniform_float = OpTypePointer Uniform %float
+%_ptr_UniformConstant_6 = OpTypePointer UniformConstant %6
+     %uint_1 = OpConstant %uint 1
+     %v2uint = OpTypeVector %uint 2
+%_ptr_Image_uint = OpTypePointer Image %uint
+     %uint_5 = OpConstant %uint 5
+       %main = OpFunction %void None %2
+
+          %4 = OpLabel
+                 OpBranch %50
+
+         %50 = OpLabel
+         %23 =   OpIMul %uint %uint_0 %uint_16
+         %26 =   OpIMul %uint %uint_0 %uint_4
+         %27 =   OpIAdd %uint %23 %26
+         %28 =   OpShiftRightLogical %uint %27 %uint_2
+         %31 =   OpAccessChain %_ptr_Uniform_float %15 %uint_0 %28
+         %32 =   OpLoad %float %31
+         %33 =   OpBitcast %uint %32
+         %35 =   OpAccessChain %_ptr_UniformConstant_6 %9 %33
+         %37 =   OpAccessChain %_ptr_Input_uint %TEXCOORD %uint_0
+         %38 =   OpLoad %uint %37
+         %39 =   OpAccessChain %_ptr_Input_uint %TEXCOORD %uint_1
+         %41 =   OpLoad %uint %39
+         %44 =   OpLoad %uint %VALUE
+         %45 =   OpCompositeConstruct %v3uint %38 %41 %uint_2
+         %47 =   OpImageTexelPointer %_ptr_Image_uint %35 %45 %uint_0
+         %48 =   OpAtomicIAdd %uint %47 %uint_5 %uint_0 %44
+                 OpStore %SV_TARGET %48
+                 OpReturn
+               OpFunctionEnd
+

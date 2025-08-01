@@ -375,7 +375,7 @@ OpDecorate %166 BuiltIn GlobalInvocationId
 %60 = OpConstant %5 2
 %62 = OpConstant %5 5
 %64 = OpConstant %5 3
-%65 = OpConstant %5 26952
+%65 = OpConstant %5 24648
 %66 = OpTypeFunction %28 %7
 %72 = OpTypePointer Input %5
 %73 = OpVariable %72 Input

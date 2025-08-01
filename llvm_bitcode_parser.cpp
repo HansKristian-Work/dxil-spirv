@@ -75,6 +75,17 @@ bool LLVMBCParser::parse(const void *data, size_t size)
 	return true;
 }
 
+bool LLVMBCParser::parseDXBC(dxbc_spv::ir::Builder &builder)
+{
+#ifdef HAVE_LLVMBC
+	impl->module = llvm::parseDXBCIR(impl->context, builder);
+	return impl->module != nullptr;
+#else
+	(void)builder;
+	return false;
+#endif
+}
+
 llvm::Module &LLVMBCParser::get_module()
 {
 	return *impl->module;
