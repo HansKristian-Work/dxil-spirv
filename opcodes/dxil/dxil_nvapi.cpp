@@ -140,21 +140,36 @@ void NVAPIState::notify_doorbell(Converter::Impl &impl, const llvm::CallInst *in
 	}
 }
 
-static bool get_argument(Converter::Impl &impl, uint32_t offset, spv::Id *id)
+static spv::Id get_argument(Converter::Impl &impl, uint32_t offset)
 {
-	if (!impl.nvapi.fake_doorbell_inputs[offset])
-		return false;
-	*id = impl.get_id_for_value(impl.nvapi.fake_doorbell_inputs[offset]);
-	return true;
+	return impl.get_id_for_value(impl.nvapi.fake_doorbell_inputs[offset]);
+}
+
+static spv::Id get_argument_as_float(Converter::Impl &impl, uint32_t offset)
+{
+	auto *op = impl.nvapi.fake_doorbell_inputs[offset];
+	auto *cast_inst = llvm::dyn_cast<llvm::CastInst>(op);
+
+	if (cast_inst != nullptr && cast_inst->getOpcode() == llvm::Instruction::BitCast)
+	{
+		op = cast_inst->getOperand(0);
+
+		if (op->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+			return impl.get_id_for_value(op);
+	}
+
+	auto *bitcast_op = impl.allocate(spv::OpBitcast, impl.builder().makeFloatType(32));
+	bitcast_op->add_id(impl.get_id_for_value(op));
+	impl.add(bitcast_op);
+
+	return bitcast_op->id;
 }
 
 static bool emit_nvapi_extn_op_shuffle(Converter::Impl &impl)
 {
 	// Dummy throwaway implementation.
-	uint32_t val, lane;
-	if (!get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0, &val) ||
-	    !get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1, &lane))
-		return false;
+	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id lane = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
 
 	auto &builder = impl.builder();
 	builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
@@ -175,11 +190,10 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 		return false;
 
 	// Dummy throwaway implementation to demonstrate UAV reference plumbing.
-	uint32_t addr, val, type;
-	if (!get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0, &addr) ||
-	    !get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0, &val) ||
-	    !get_argument(impl, NVAPI_ARGUMENT_SRC2U + 0, &type))
-		return false;
+	spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0);
+	spv::Id type = get_argument(impl, NVAPI_ARGUMENT_SRC2U + 0);
+	(void)type;
 
 	auto &builder = impl.builder();
 
@@ -224,38 +238,182 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 
 static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 {
-	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
-		return false;
-
-	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]))
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (c != nullptr)
 	{
 		auto subopcode = uint32_t(c->getUniqueInteger().getZExtValue());
 		auto &builder = impl.builder();
 
 		switch (subopcode)
 		{
-			case NV_SPECIALOP_GLOBAL_TIMER_LO:
-			case NV_SPECIALOP_GLOBAL_TIMER_HI:
-			{
-				builder.addExtension("SPV_KHR_shader_clock");
-				builder.addCapability(spv::Capability::CapabilityShaderClockKHR);
+		case NV_SPECIALOP_GLOBAL_TIMER_LO:
+		case NV_SPECIALOP_GLOBAL_TIMER_HI:
+		{
+			builder.addExtension("SPV_KHR_shader_clock");
+			builder.addCapability(spv::CapabilityShaderClockKHR);
 
-				auto *read_op = impl.allocate(spv::OpReadClockKHR, builder.makeVectorType(builder.makeUintType(32), 2));
-				read_op->add_id(builder.makeUintConstant(1));
-				impl.add(read_op);
+			auto *read_op = impl.allocate(spv::OpReadClockKHR, builder.makeVectorType(builder.makeUintType(32), 2));
+			read_op->add_id(builder.makeUintConstant(1));
+			impl.add(read_op);
 
-				auto *extract_op = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
-				extract_op->add_id(read_op->id);
-				extract_op->add_literal(subopcode - NV_SPECIALOP_GLOBAL_TIMER_LO);
-				impl.add(extract_op);
+			auto *extract_op = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(32));
+			extract_op->add_id(read_op->id);
+			extract_op->add_literal(subopcode - NV_SPECIALOP_GLOBAL_TIMER_LO);
+			impl.add(extract_op);
 
-				impl.nvapi.fake_doorbell_outputs[0] = extract_op->id;
-				return true;
-			}
+			impl.nvapi.fake_doorbell_outputs[0] = extract_op->id;
+			return true;
+		}
 		}
 	}
 
 	return false;
+}
+
+static bool emit_nvapi_extn_op_hit_object_make_miss(Converter::Impl &impl)
+{
+	spv::Id index = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id tmin = get_argument_as_float(impl, NVAPI_ARGUMENT_SRC0U + 1);
+	spv::Id tmax = get_argument_as_float(impl, NVAPI_ARGUMENT_SRC0U + 2);
+
+	spv::Id ray_origin[3];
+	spv::Id ray_dir[3];
+
+	for (unsigned i = 0; i < 3; i++)
+	{
+		ray_origin[i] = get_argument_as_float(impl, NVAPI_ARGUMENT_SRC1U + i);
+		ray_dir[i] = get_argument_as_float(impl, NVAPI_ARGUMENT_SRC2U + i);
+	}
+
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_NV_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderNV);
+
+	spv::Id float32 = builder.makeFloatType(32);
+	spv::Id ray_origin_vec = impl.build_vector(float32, ray_origin, 3);
+	spv::Id ray_dir_vec = impl.build_vector(float32, ray_dir, 3);
+
+	spv::Id variable = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectNVType());
+
+	auto op = impl.allocate(spv::OpHitObjectRecordMissNV);
+	op->add_id(variable);
+	op->add_id(index);
+	op->add_id(ray_origin_vec);
+	op->add_id(tmin);
+	op->add_id(ray_dir_vec);
+	op->add_id(tmax);
+	impl.add(op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = variable;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_hit_object_get_bool(Converter::Impl &impl, uint32_t opcode)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto &builder = impl.builder();
+	spv::Op op;
+
+	switch (opcode)
+	{
+	case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
+		op = spv::OpHitObjectIsMissNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
+		op = spv::OpHitObjectIsHitNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+		op = spv::OpHitObjectIsEmptyNV;
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *is_op = impl.allocate(op, builder.makeBoolType());
+	is_op->add_id(hit_object);
+	impl.add(is_op);
+
+	auto *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+	select_op->add_id(is_op->id);
+	select_op->add_id(builder.makeUintConstant(1));
+	select_op->add_id(builder.makeUintConstant(0));
+	impl.add(select_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = select_op->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_hit_object_get_uint(Converter::Impl &impl, uint32_t opcode)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto &builder = impl.builder();
+	spv::Op op;
+
+	switch (opcode)
+	{
+	case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_ID:
+		op = spv::OpHitObjectGetInstanceIdNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_INDEX:
+		op = spv::OpHitObjectGetInstanceCustomIndexNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
+		op = spv::OpHitObjectGetPrimitiveIndexNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_GEOMETRY_INDEX:
+		op = spv::OpHitObjectGetGeometryIndexNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_HIT_KIND:
+		op = spv::OpHitObjectGetHitKindNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
+		op = spv::OpHitObjectGetShaderBindingTableRecordIndexNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
+		builder.addExtension("SPV_NV_cluster_acceleration_structure");
+		builder.addCapability(spv::CapabilityRayTracingClusterAccelerationStructureNV);
+		op = spv::OpHitObjectGetClusterIdNV;
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *get_op = impl.allocate(op, builder.makeUintType(32));
+	get_op->add_id(hit_object);
+	impl.add(get_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = get_op->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_hit_object_make_nop(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_NV_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderNV);
+
+	spv::Id variable = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectNVType());
+
+	auto op = impl.allocate(spv::OpHitObjectRecordEmptyNV);
+	op->add_id(variable);
+	impl.add(op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = variable;
+	return true;
 }
 
 static bool emit_nvapi_extn_op_rt_get_cluster_id(Converter::Impl &impl)
@@ -276,10 +434,8 @@ static bool emit_nvapi_extn_op_rt_get_cluster_id(Converter::Impl &impl)
 
 static bool emit_nvapi_extn_op_rt_get_intersection_cluster_id(Converter::Impl &impl, spv::RayQueryIntersection intersection)
 {
-	if (!impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0])
-		return false;
-
-	if (auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]))
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (ray_flags != nullptr)
 	{
 		auto &builder = impl.builder();
 		spv::Id ray_object_id = 0;
@@ -306,31 +462,56 @@ bool NVAPIState::can_commit_opcode()
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
 		return false;
 
-	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]))
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]);
+	if (c != nullptr)
 	{
 		auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
 		switch (opcode)
 		{
 		case NV_EXTN_OP_SHFL:
-			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2];
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr;
 
 		case NV_EXTN_OP_FP16_ATOMIC:
 			return marked_uav &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] &&
-			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0];
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr;
 
 		case NV_EXTN_OP_GET_SPECIAL:
-			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
+		case NV_EXTN_OP_HIT_OBJECT_MAKE_MISS:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 2] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 1] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 2] != nullptr;
+
+		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
+		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
+		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_ID:
+		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_GEOMETRY_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_HIT_KIND:
+		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
+
+		case NV_EXTN_OP_HIT_OBJECT_MAKE_NOP:
 		case NV_EXTN_OP_RT_GET_CLUSTER_ID:
 			return true;
 
 		case NV_EXTN_OP_RT_GET_CANDIDATE_CLUSTER_ID:
 		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
-			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0];
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		default:
 			return false;
@@ -345,7 +526,8 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
 		return false;
 
-	if (auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]))
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]);
+	if (c != nullptr)
 	{
 		auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
 		switch (opcode)
@@ -365,6 +547,40 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_GET_SPECIAL:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_get_special(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_MAKE_MISS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_make_miss(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
+		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
+		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_bool(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_ID:
+		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_GEOMETRY_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_HIT_KIND:
+		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_uint(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_MAKE_NOP:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_make_nop(impl))
 				return false;
 			break;
 
@@ -527,9 +743,10 @@ bool emit_nvapi_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruc
 bool NVAPIState::mark_uav_write(const llvm::CallInst *instruction)
 {
 	auto *mark = fake_doorbell_inputs[NVAPI_ARGUMENT_MARK_UAV_REF];
-	if (mark)
+	if (mark != nullptr)
 	{
-		if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(mark))
+		const auto *c = llvm::dyn_cast<llvm::ConstantInt>(mark);
+		if (c != nullptr)
 		{
 			if (c->getUniqueInteger().getZExtValue() == 1)
 			{
