@@ -1058,6 +1058,11 @@ void CFGStructurizer::sink_ssa_constructs_run(bool dry_run)
 		{
 			consume_id(n->ir.terminator.conditional_id, n);
 		}
+		else if (n->ir.terminator.type == Terminator::Type::Return &&
+		         n->ir.terminator.return_value != 0)
+		{
+			consume_id(n->ir.terminator.return_value, n);
+		}
 
 		auto &ops = n->ir.operations;
 
