@@ -1561,6 +1561,20 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				else
 				{
 					meta.counter_var_id = counter_reference.var_id;
+
+					if (counter_reference.base_resource_is_array)
+					{
+						spv::Id image_type_id = builder.getContainedTypeId(builder.getDerefTypeId(meta.counter_var_id));
+						offset_id = build_adjusted_descriptor_indexing(
+						    impl, reference.base_offset, instruction_offset);
+						auto *chain = impl.allocate(spv::OpAccessChain,
+						                            builder.makePointer(spv::StorageClassUniformConstant, image_type_id));
+						chain->add_id(meta.counter_var_id);
+						chain->add_id(offset_id);
+						impl.add(chain);
+						meta.counter_var_id = chain->id;
+					}
+
 					meta.counter_is_physical_pointer = false;
 				}
 			}

@@ -1862,23 +1862,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				}
 				else
 				{
-					auto element_type_id = get_type_id(DXIL::ComponentType::U32, 1, 1);
-					spv::Id type_id = builder.makeImageType(element_type_id, spv::DimBuffer, false, false, false, 2,
-					                                        spv::ImageFormatR32ui);
-
-					spv::Id counter_var_id = create_variable(spv::StorageClassUniformConstant,
-					                                         type_id, name.empty() ? nullptr : (name + "Counter").c_str());
-
-					builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
-					                      vulkan_binding.counter_binding.descriptor_set);
-					builder.addDecoration(counter_var_id, spv::DecorationBinding,
-					                      vulkan_binding.counter_binding.binding);
-
-					auto &counter_ref = uav_index_to_counter[index];
-					counter_ref.var_id = counter_var_id;
-					counter_ref.stride = 4;
-					counter_ref.base_resource_is_array = range_size != 1;
-					counter_ref.resource_kind = DXIL::ResourceKind::TypedBuffer;
+					LOGE("If base UAV uses bindless heap, UAV counter must also do so.\n");
+					return false;
 				}
 			}
 		}
@@ -1982,6 +1967,14 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
 					                      image_dimension_is_arrayed(resource_kind),
 					                      image_dimension_is_multisampled(resource_kind), 2, format);
+
+				if (range_size != 1)
+				{
+					if (range_size == ~0u)
+						type_id = builder.makeRuntimeArray(type_id);
+					else
+						type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+				}
 
 				counter_var_id = create_variable(spv::StorageClassUniformConstant, type_id,
 				                                 name.empty() ? nullptr : (name + "Counter").c_str());
