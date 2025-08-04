@@ -148,6 +148,14 @@ if (DXIL_SPIRV_CLI)
         target_link_libraries(dxil-spirv PRIVATE -static gcc stdc++ winpthread)
         target_link_libraries(dxil-extract PRIVATE -static gcc stdc++ winpthread)
     endif()
+
+    if (NOT DXIL_SPV_NATIVE_LLVM)
+        add_executable(dxbc-spirv-sandbox dxbc_spirv_sandbox.cpp)
+        target_link_libraries(dxbc-spirv-sandbox PRIVATE
+                dxil-utils dxil-debug llvm-bc dxil-converter
+                dxbc-spirv dxbc-spirv-test
+                spirv-cross-c SPIRV-Tools-static)
+    endif()
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 2)
