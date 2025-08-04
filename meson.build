@@ -47,6 +47,7 @@ dxil_spirv_src = [
   'bc/context.cpp',
   'bc/type.cpp',
   'bc/module.cpp',
+  'bc/module_dxbc_ir.cpp',
   'bc/metadata.cpp',
   'bc/disassembler.cpp',
 
