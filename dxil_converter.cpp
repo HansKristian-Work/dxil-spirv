@@ -7549,6 +7549,30 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 			LOGE("Unsupported terminator ...\n");
 			return {};
 		}
+
+#ifdef HAVE_LLVMBC
+		// Forward structured control flow.
+		if (bb->get_merge() == llvm::BasicBlock::Merge::Selection)
+		{
+			node->ir.merge_info.merge_type = MergeType::Selection;
+
+			// Assume both paths can return or break, leaving the merge unreachable.
+			if (bb->get_merge_bb() && bb_map.count(bb->get_merge_bb()))
+				node->ir.merge_info.merge_block = bb_map[bb->get_merge_bb()]->node;
+		}
+		else if (bb->get_merge() == llvm::BasicBlock::Merge::Loop)
+		{
+			node->ir.merge_info.merge_type = MergeType::Loop;
+
+			// In infinite loops, merge block may be unreachable.
+			if (bb->get_merge_bb() && bb_map.count(bb->get_merge_bb()))
+				node->ir.merge_info.merge_block = bb_map[bb->get_merge_bb()]->node;
+
+			// If back-edge is not reachable, we'll resolve that later.
+			if (bb->get_continue_bb() && bb_map.count(bb->get_continue_bb()))
+				node->ir.merge_info.continue_block = bb_map[bb->get_continue_bb()]->node;
+		}
+#endif
 	}
 
 	// Rewrite PHI incoming values if we have to.
@@ -7999,6 +8023,16 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 		result.entry.func = spirv_module.get_entry_function();
 	}
+
+#ifdef HAVE_LLVMBC
+	if (func->get_structured_control_flow())
+	{
+		// For TESC, the entry is a custom dispatch function.
+		result.entry.is_structured = execution_model != spv::ExecutionModelTessellationControl;
+		for (auto &leaf : result.leaf_functions)
+			leaf.is_structured = true;
+	}
+#endif
 
 	// Some execution modes depend on code generation, handle that here.
 	emit_execution_modes_post_code_generation();
