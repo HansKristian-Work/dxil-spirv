@@ -955,11 +955,59 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		analyze_dxil_atomic_counter(impl, instruction);
 		break;
 
+	case DXIL::Op::TraceRay:
+	{
+		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
+		// Moved to secondary pass to help NVAPI analysis since it uses TraceRay for nefarious needs,
+		// and we need to have completed NVAPI analysis first.
+		if (analyze_nvapi_trace_ray(impl, instruction))
+			break;
+
+		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(15)))
+		{
+			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
+			if (storage != spv::StorageClassFunction && storage != spv::StorageClassRayPayloadKHR)
+			{
+				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
+				if (!impl.get_needs_temp_storage_copy(alloca_inst))
+					impl.needs_temp_storage_copy.insert(alloca_inst);
+			}
+			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
+			{
+				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassRayPayloadKHR;
+			}
+		}
+
+		if (const auto *flags_inst = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2)))
+		{
+			auto value = flags_inst->getUniqueInteger().getZExtValue();
+			if ((value & (spv::RayFlagsSkipTrianglesKHRMask | spv::RayFlagsSkipAABBsKHRMask)) != 0)
+			{
+				impl.shader_analysis.can_require_primitive_culling = true;
+			}
+			if ((value & spv::RayFlagsForceOpacityMicromap2StateEXTMask) != 0)
+			{
+				impl.shader_analysis.can_require_opacity_micromap = true;
+			}
+		}
+		else
+		{
+			// Non constant flags, so we must be conservative.
+			impl.shader_analysis.can_require_primitive_culling = true;
+			impl.shader_analysis.can_require_opacity_micromap = true;
+		}
+
+		break;
+	}
+
 	case DXIL::Op::CallShader:
 	{
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		// Moved to secondary pass to help NVAPI analysis since it uses CallShader for nefarious needs,
 		// and we need to have completed NVAPI analysis first.
+		if (analyze_nvapi_call_shader(impl, instruction))
+			break;
+
 		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(2)))
 		{
 			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
@@ -1131,46 +1179,6 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 			break;
 		impl.llvm_values_using_update_counter.insert(instruction->getOperand(1));
 		impl.shader_analysis.has_side_effects = true;
-		break;
-	}
-
-	case DXIL::Op::TraceRay:
-	{
-		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
-		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(15)))
-		{
-			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
-			if (storage != spv::StorageClassFunction && storage != spv::StorageClassRayPayloadKHR)
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
-				if (!impl.get_needs_temp_storage_copy(alloca_inst))
-					impl.needs_temp_storage_copy.insert(alloca_inst);
-			}
-			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassRayPayloadKHR;
-			}
-		}
-
-		if (const auto *flags_inst = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2)))
-		{
-			auto value = flags_inst->getUniqueInteger().getZExtValue();
-			if ((value & (spv::RayFlagsSkipTrianglesKHRMask | spv::RayFlagsSkipAABBsKHRMask)) != 0)
-			{
-				impl.shader_analysis.can_require_primitive_culling = true;
-			}
-			if ((value & spv::RayFlagsForceOpacityMicromap2StateEXTMask) != 0)
-			{
-				impl.shader_analysis.can_require_opacity_micromap = true;
-			}
-		}
-		else
-		{
-			// Non constant flags, so we must be conservative.
-			impl.shader_analysis.can_require_primitive_culling = true;
-			impl.shader_analysis.can_require_opacity_micromap = true;
-		}
-
 		break;
 	}
 

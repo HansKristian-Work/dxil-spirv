@@ -28,6 +28,8 @@
 
 namespace dxil_spv
 {
+spv::Id emit_temp_storage_copy(Converter::Impl &impl, const llvm::Value *value, spv::StorageClass storage);
+void emit_temp_storage_resolve(Converter::Impl &impl, const llvm::Value *real_value, spv::Id temp_storage);
 bool emit_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dispatch_rays_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_dispatch_rays_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
