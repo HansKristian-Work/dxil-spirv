@@ -5636,8 +5636,7 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		}
 		else
 		{
-			LOGE("Normal function call currently unsupported ...\n");
-			return false;
+			return emit_call_instruction(*this, *call_inst);
 		}
 	}
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
@@ -7310,6 +7309,72 @@ void Converter::Impl::emit_write_instrumentation_invocation_id(CFGNode *node)
 	add(store);
 }
 
+void Converter::Impl::gather_function_dependencies(llvm::Function *caller, Vector<llvm::Function *> &funcs)
+{
+	if (std::find(funcs.begin(), funcs.end(), caller) != funcs.end())
+		return;
+	funcs.push_back(caller);
+
+	for (auto &bb : *caller)
+	{
+		for (auto &inst : bb)
+		{
+			if (const auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))
+			{
+				auto *fn = call_inst->getCalledFunction();
+				if (strncmp(fn->getName().data(), "dx.op", 5) != 0 &&
+				    strncmp(fn->getName().data(), "llvm.", 5) != 0)
+				{
+					gather_function_dependencies(fn, funcs);
+				}
+			}
+		}
+	}
+}
+
+bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
+                                             const Vector<llvm::Function *> &callees,
+                                             Vector<ConvertedFunction::Function> &leaves)
+{
+	llvm::Function *func = get_entry_point_function(entry_point_meta);
+
+	for (auto *leaf_func : callees)
+	{
+		if (leaf_func == func || leaf_func == execution_mode_meta.patch_constant_function)
+			continue;
+
+		Vector<spv::Id> arg_types;
+		spv::Block *spv_entry;
+
+		arg_types.reserve(leaf_func->getFunctionType()->getNumParams());
+		for (uint32_t i = 0; i < leaf_func->getFunctionType()->getNumParams(); i++)
+			arg_types.push_back(get_type_id(leaf_func->getFunctionType()->getParamType(i)));
+
+		auto *spv_func =
+		    builder().makeFunctionEntry(spv::NoPrecision, get_type_id(leaf_func->getFunctionType()->getReturnType()),
+		                                leaf_func->getName().c_str(), arg_types, {}, &spv_entry);
+
+		rewrite_value(leaf_func, spv_func->getId());
+
+		auto arg_iter = leaf_func->arg_begin();
+		for (uint32_t i = 0, n = leaf_func->getFunctionType()->getNumParams(); i < n; i++, ++arg_iter)
+			rewrite_value(&*arg_iter, spv_func->getParamId(i));
+
+		auto visit_order = build_function_bb_visit_order_analysis(leaf_func);
+
+		for (auto *bb : visit_order)
+			build_function_bb_visit_register(bb, pool, "");
+
+		auto *entry = convert_function(visit_order, false);
+		if (!entry)
+			return false;
+
+		leaves.push_back({ entry, spv_func });
+	}
+
+	return true;
+}
+
 CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order, bool primary_code)
 {
 	bool has_partial_unroll = false;
@@ -7874,11 +7939,18 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 
 	if (execution_mode_meta.patch_constant_function)
-	{
 		patch_visit_order = build_function_bb_visit_order_legacy(execution_mode_meta.patch_constant_function, pool);
-		if (!analyze_instructions(execution_mode_meta.patch_constant_function))
+
+	Vector<llvm::Function *> callees;
+	if (func)
+		gather_function_dependencies(func, callees);
+	if (execution_mode_meta.patch_constant_function)
+		gather_function_dependencies(execution_mode_meta.patch_constant_function, callees);
+
+	// Analyze all leaf functions.
+	for (auto *leaf_func : callees)
+		if (leaf_func != func && !analyze_instructions(leaf_func))
 			return result;
-	}
 
 	if (!emit_resources())
 		return result;
@@ -7900,6 +7972,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	analyze_instructions_post_execution_modes();
 
 	execution_mode_meta.entry_point_name = get_entry_point_name(entry_point_meta);
+
+	if (!build_callee_functions(pool, callees, result.leaf_functions))
+		return result;
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
 		result.entry = build_hull_main(visit_order, patch_visit_order, pool, result.leaf_functions);

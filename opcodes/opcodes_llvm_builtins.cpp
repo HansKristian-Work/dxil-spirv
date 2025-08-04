@@ -2358,6 +2358,28 @@ bool can_optimize_conditional_branch_to_static(
 	}
 }
 
+#ifdef HAVE_LLVMBC
+// Extensions to normal LLVM API used by custom IR.
+static bool emit_composite_construct_instruction(Converter::Impl &impl, const llvm::CompositeConstructInst *inst)
+{
+	auto *constr = impl.allocate(spv::OpCompositeConstruct, inst);
+	for (unsigned i = 0; i < inst->getNumOperands(); i++)
+		constr->add_id(impl.get_id_for_value(inst->getOperand(i)));
+	impl.add(constr);
+	return true;
+}
+#endif
+
+bool emit_call_instruction(Converter::Impl &impl, const llvm::CallInst &inst)
+{
+	auto *call = impl.allocate(spv::OpFunctionCall, &inst);
+	call->add_id(impl.get_id_for_value(inst.getCalledFunction()));
+	for (uint32_t i = 0; i < inst.getNumOperands(); i++)
+		call->add_id(impl.get_id_for_value(inst.getOperand(i)));
+	impl.add(call);
+	return true;
+}
+
 bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instruction)
 {
 	if (auto *binary_inst = llvm::dyn_cast<llvm::BinaryOperator>(&instruction))
@@ -2390,6 +2412,10 @@ bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instr
 		return emit_extractelement_instruction(impl, extractelement_inst);
 	else if (auto *insertelement_inst = llvm::dyn_cast<llvm::InsertElementInst>(&instruction))
 		return emit_insertelement_instruction(impl, insertelement_inst);
+#ifdef HAVE_LLVMBC
+	else if (auto *composite_construct_inst = llvm::dyn_cast<llvm::CompositeConstructInst>(&instruction))
+		return emit_composite_construct_instruction(impl, composite_construct_inst);
+#endif
 	else
 		return false;
 }

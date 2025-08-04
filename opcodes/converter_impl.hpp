@@ -234,6 +234,9 @@ struct Converter::Impl
 	ConvertedFunction::Function build_node_main(const Vector<llvm::BasicBlock *> &bbs,
 	                                            CFGNodePool &pool,
 	                                            Vector<ConvertedFunction::Function> &leaves);
+	void gather_function_dependencies(llvm::Function *caller, Vector<llvm::Function *> &funcs);
+	bool build_callee_functions(CFGNodePool &pool, const Vector<llvm::Function *> &callees,
+	                            Vector<ConvertedFunction::Function> &leaves);
 	spv::Id get_id_for_value(const llvm::Value *value, unsigned forced_integer_width = 0);
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_padded_constant_array(spv::Id padded_type_id, const llvm::Constant *constant);
