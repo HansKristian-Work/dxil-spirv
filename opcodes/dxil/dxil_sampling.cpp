@@ -24,6 +24,7 @@
 
 #include "dxil_sampling.hpp"
 #include "dxil_common.hpp"
+#include "dxil_resources.hpp"
 #include "spirv_module.hpp"
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
@@ -469,7 +470,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	Operation *op = impl.allocate(spv_op, instruction, sample_type);
 
 	if (!sparse)
-		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 	op->add_id(combined_image_sampler_id);
 	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
@@ -499,7 +500,7 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 
 	impl.add(op);
 
-	auto *target_type = instruction->getType()->getStructElementType(0);
+	auto *target_type = get_composite_element_type(instruction->getType());
 
 	if (sparse)
 	{
@@ -778,7 +779,7 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 	Operation *op = impl.allocate(spv_op, instruction, sample_type);
 
 	if (!sparse)
-		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 	op->add_id(combined_image_sampler_id);
 	op->add_id(impl.build_vector(builder.makeFloatType(32), coord, num_coords_full));
@@ -804,7 +805,7 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 
 	impl.add(op);
 
-	auto *target_type = instruction->getType()->getStructElementType(0);
+	auto *target_type = get_composite_element_type(instruction->getType());
 
 	if (sparse)
 		impl.repack_sparse_feedback(meta.component_type, comparison_sampling ? 1 : 4, instruction, target_type);
@@ -890,7 +891,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	Operation *op = impl.allocate(opcode, instruction, sample_type);
 	if (!sparse)
-		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 	spv::Id coord_id = impl.build_vector(builder.makeUintType(32), coord, num_coords_full);
 	if (!is_uav && (image_ops & spv::ImageOperandsOffsetMask))
@@ -928,7 +929,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	add_vkmm_access_qualifiers(impl, op, meta.vkmm);
 	impl.add(op, meta.rov);
 
-	auto *target_type = instruction->getType()->getStructElementType(0);
+	auto *target_type = get_composite_element_type(instruction->getType());
 
 	if (sparse)
 		impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
@@ -940,7 +941,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
-bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool extended)
 {
 	if (!impl.composite_is_accessed(instruction))
 		return true;
@@ -951,6 +952,10 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	auto &meta = impl.handle_to_resource_meta[image_id];
 
 	uint32_t ssbo_element_size = 4;
+	uint32_t divider = 1;
+
+	if (extended && !get_constant_operand(instruction, 3, &divider))
+		return false;
 
 	Operation *levels_or_samples_op = nullptr;
 	Operation *dimensions_op = nullptr;
@@ -1058,10 +1063,28 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		Operation *byte_size_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
-		byte_size_op->add_ids({ dimensions_op->id, builder.makeUintConstant(ssbo_element_size) });
-		impl.add(byte_size_op);
-		dimensions_op = byte_size_op;
+		if (divider != 1 && ssbo_element_size % divider == 0)
+		{
+			// Fold the mult/div. A compiler cannot do it since IMul may overflow in theory.
+			ssbo_element_size /= divider;
+			divider = 1;
+		}
+
+		if (ssbo_element_size != 1)
+		{
+			Operation *byte_size_op = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+			byte_size_op->add_ids({ dimensions_op->id, builder.makeUintConstant(ssbo_element_size) });
+			impl.add(byte_size_op);
+			dimensions_op = byte_size_op;
+		}
+
+		if (divider != 1)
+		{
+			Operation *elements_op = impl.allocate(spv::OpUDiv, builder.makeUintType(32));
+			elements_op->add_ids({ dimensions_op->id, builder.makeUintConstant(divider) });
+			impl.add(elements_op);
+			dimensions_op = elements_op;
+		}
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
@@ -1251,7 +1274,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 	else
 		sample_type = texel_type;
 
-	bool raw_gather64 = raw && instruction->getType()->getStructElementType(0)->getIntegerBitWidth() == 64;
+	bool raw_gather64 = raw && get_composite_element_type(instruction->getType())->getIntegerBitWidth() == 64;
 
 	spv::Op opcode;
 	if (compare)
@@ -1261,7 +1284,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 
 	Operation *op = impl.allocate(opcode, instruction, sample_type);
 	if (!sparse)
-		impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 	op->add_ids({ combined_image_sampler_id, coord_id, aux_id });
 
@@ -1328,7 +1351,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 
 		if (sparse)
 		{
-			auto *target_type = instruction->getType()->getStructElementType(0);
+			auto *target_type = get_composite_element_type(instruction->getType());
 			impl.repack_sparse_feedback(DXIL::ComponentType::U64, 4, instruction, target_type, u64_vector);
 		}
 		else
@@ -1338,7 +1361,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 	}
 	else
 	{
-		auto *target_type = instruction->getType()->getStructElementType(0);
+		auto *target_type = get_composite_element_type(instruction->getType());
 
 		if (sparse)
 			impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
@@ -1751,7 +1774,7 @@ static bool emit_calculate_lod_instruction_fallback(Converter::Impl &impl, const
 	return true;
 }
 
-bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool extended)
 {
 	auto &builder = impl.builder();
 	if (impl.execution_mode_meta.synthesize_dummy_derivatives)
@@ -1780,17 +1803,30 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	for (unsigned i = 0; i < num_coords; i++)
 		coords[i] = impl.get_id_for_value(instruction->getOperand(3 + i));
 
-	auto *clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
-	bool clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
+	bool clamped = false;
+
+	// Internal extension to better match DXBC/SPIR-V.
+	if (!extended)
+	{
+		auto *clamped_value = llvm::cast<llvm::ConstantInt>(instruction->getOperand(6));
+		clamped = clamped_value->getUniqueInteger().getZExtValue() != 0;
+	}
 
 	Operation *query_op = impl.allocate(spv::OpImageQueryLod, builder.makeVectorType(builder.makeFloatType(32), 2));
 	query_op->add_ids({ combined_image_sampler_id, impl.build_vector(builder.makeFloatType(32), coords, num_coords) });
 	impl.add(query_op);
 
-	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
-	op->add_id(query_op->id);
-	op->add_literal(clamped ? 0u : 1u);
-	impl.add(op);
+	if (!extended)
+	{
+		Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
+		op->add_id(query_op->id);
+		op->add_literal(clamped ? 0u : 1u);
+		impl.add(op);
+	}
+	else
+	{
+		impl.rewrite_value(instruction, query_op->id);
+	}
 
 	builder.addCapability(spv::CapabilityImageQuery);
 	return true;

@@ -29,8 +29,15 @@
 
 namespace dxil_spv
 {
-bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics);
+
+template <bool spirv_semantics>
+static bool emit_load_input_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_load_input_instruction(impl, instruction, spirv_semantics);
+}
+
+bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction, bool extended);
 bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_create_handle_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_create_handle_for_lib_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
@@ -45,10 +52,10 @@ bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetEle
 bool cbuffer_supports_gep_punchthrough(Converter::Impl &impl, const llvm::Value *cbv_handle);
 bool emit_load_draw_parameter_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction);
 
-template <GLSLstd450 opcode>
+template <GLSLstd450 opcode, bool extended>
 static inline bool emit_interpolate_dispatch(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	return emit_interpolate_instruction(opcode, impl, instruction);
+	return emit_interpolate_instruction(opcode, impl, instruction, extended);
 }
 
 template <spv::BuiltIn builtin>
@@ -68,4 +75,7 @@ struct AnnotateHandleMeta
 bool get_annotate_handle_meta(Converter::Impl &impl, const llvm::CallInst *instruction, AnnotateHandleMeta &meta);
 
 bool resource_handle_is_uniform_readonly_descriptor(Converter::Impl &impl, const llvm::Value *value);
+
+bool type_is_composite_return_value(llvm::Type *type);
+llvm::Type *get_composite_element_type(llvm::Type *type);
 } // namespace dxil_spv

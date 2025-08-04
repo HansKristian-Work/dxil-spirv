@@ -26,6 +26,7 @@
 #include "dxil_common.hpp"
 #include "dxil_sampling.hpp"
 #include "dxil_ags.hpp"
+#include "dxil_resources.hpp"
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
@@ -75,7 +76,7 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 		if (bda_operation == BDAOperation::Store)
 			element_type = instruction->getOperand(4)->getType();
 		else
-			element_type = instruction->getType()->getStructElementType(0);
+			element_type = get_composite_element_type(instruction->getType());
 
 		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
 		{
@@ -633,7 +634,7 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 		return false;
 	}
 
-	auto *element_type = instruction->getType()->getStructElementType(0);
+	auto *element_type = get_composite_element_type(instruction->getType());
 	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
 	// If we cannot do it trivially, fallback to raw pointer arithmetic.
 	spv::Id array_id = build_vectorized_physical_load_store_access(impl, instruction, vecsize, element_type);
@@ -831,7 +832,7 @@ static bool emit_buffer_load_raw_chain_instruction(Converter::Impl &impl, const 
                                                    Converter::Impl::CompositeMeta &access_meta)
 {
 	auto *result_type = instruction->getType();
-	auto *target_type = result_type->getStructElementType(0);
+	auto *target_type = get_composite_element_type(result_type);
 
 	unsigned num_elements = 1;
 	for (unsigned i = 0; i < 4; i++)
@@ -930,11 +931,11 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		return emit_buffer_load_raw_chain_instruction(impl, instruction, meta, access_meta);
 
 	auto *result_type = instruction->getType();
-	auto *target_type = result_type->getStructElementType(0);
+	auto *target_type = get_composite_element_type(result_type);
 
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
-	                                  result_type->getStructElementType(0),
+	                                  get_composite_element_type(result_type),
 	                                  smeared_access_mask);
 
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, target_type);
@@ -979,7 +980,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		spv::Id constructed_id = 0;
 		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
 
-		auto *element_type = result_type->getStructElementType(0);
+		auto *element_type = get_composite_element_type(result_type);
 		bool need_cast = (element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID) ||
 		                 (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
 		                  impl.options.min_precision_prefer_native_16bit);
@@ -1191,7 +1192,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		Operation *op = impl.allocate(opcode, instruction, sample_type);
 
 		if (!sparse)
-			impl.decorate_relaxed_precision(instruction->getType()->getStructElementType(0), op->id, true);
+			impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
 		op->add_ids({ image_id, access.index_id });
 		add_vkmm_access_qualifiers(impl, op, meta.vkmm);
@@ -1320,7 +1321,7 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
-		auto *ret_component = instruction->getType()->getStructElementType(0);
+		auto *ret_component = get_composite_element_type(instruction->getType());
 		if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
 		    !(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
 		      ret_component->getIntegerBitWidth() == 32) &&
@@ -1727,16 +1728,36 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 		opcode = spv::OpAtomicUMax;
 		break;
 
+	// Internal extensions.
+	case DXIL::AtomicBinOp::Load:
+		opcode = spv::OpAtomicLoad;
+		break;
+
+	case DXIL::AtomicBinOp::Store:
+		opcode = spv::OpAtomicStore;
+		break;
+
+	case DXIL::AtomicBinOp::Sub:
+		opcode = spv::OpAtomicISub;
+		break;
+
 	default:
 		return false;
 	}
 
-	Operation *op = impl.allocate(opcode, instruction, impl.get_type_id(component_type, 1, 1));
+	Operation *op;
+
+	if (opcode != spv::OpAtomicStore)
+		op = impl.allocate(opcode, instruction, impl.get_type_id(component_type, 1, 1));
+	else
+		op = impl.allocate(opcode);
 
 	op->add_id(counter_ptr_id);
 	op->add_id(builder.getAtomicDeviceScopeId());
 	op->add_id(builder.makeUintConstant(0));
-	op->add_id(impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))));
+
+	if (opcode != spv::OpAtomicLoad)
+		op->add_id(impl.fixup_store_type_atomic(component_type, 1, impl.get_id_for_value(instruction->getOperand(6))));
 
 	impl.add(op, meta.rov);
 

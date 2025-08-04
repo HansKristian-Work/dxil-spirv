@@ -1150,6 +1150,14 @@ void Builder::addDecoration(Id id, Decoration decoration, int num)
     decorations.push_back(std::unique_ptr<Instruction>(dec));
 }
 
+void Builder::removeDecorations(const dxil_spv::UnorderedSet<spv::Id> &ids)
+{
+    decorations.erase(std::remove_if(decorations.begin(), decorations.end(),
+                [&](const std::unique_ptr<Instruction> &inst) {
+                    return inst->getOpCode() == OpDecorate && ids.count(inst->getIdOperand(0)) != 0;
+                }), decorations.end());
+}
+
 bool Builder::hasDecoration(spv::Id id, spv::Decoration decoration) const
 {
     for (auto &dec : decorations)

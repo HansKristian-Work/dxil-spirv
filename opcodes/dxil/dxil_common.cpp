@@ -86,6 +86,9 @@ spv::Id emit_u32x2_u32_add(Converter::Impl &impl, spv::Id u32x2_value, spv::Id u
 
 unsigned get_type_scalar_alignment(Converter::Impl &impl, const llvm::Type *type)
 {
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+		type = vec->getElementType();
+
 	unsigned scalar_alignment;
 	switch (type->getTypeID())
 	{

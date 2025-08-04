@@ -37,7 +37,7 @@ option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
 include(GNUInstallDirs)
 
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
-    set(DXIL_SPV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -Wno-unused-parameter -fno-exceptions -fvisibility=hidden)
+    set(DXIL_SPV_CXX_FLAGS -Wall -Wextra -Wno-missing-field-initializers -Wno-empty-body -Wno-unused-parameter -fno-exceptions -fno-rtti -fvisibility=hidden)
 elseif (MSVC)
     set(DXIL_SPV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4244 /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
@@ -147,6 +147,14 @@ if (DXIL_SPIRV_CLI)
     if (WIN32 AND CMAKE_COMPILER_IS_GNUCXX)
         target_link_libraries(dxil-spirv PRIVATE -static gcc stdc++ winpthread)
         target_link_libraries(dxil-extract PRIVATE -static gcc stdc++ winpthread)
+    endif()
+
+    if (NOT DXIL_SPV_NATIVE_LLVM)
+        add_executable(dxbc-spirv-sandbox dxbc_spirv_sandbox.cpp)
+        target_link_libraries(dxbc-spirv-sandbox PRIVATE
+                dxil-utils dxil-debug llvm-bc dxil-converter
+                dxbc-spirv dxbc-spirv-test
+                spirv-cross-c SPIRV-Tools-static)
     endif()
 endif()
 

@@ -489,6 +489,29 @@ enum class Op : unsigned
 	StartVertexLocation = 256,
 	StartInstanceLocation = 257,
 
+	// Internal extensions for where there is impedance mismatch
+	ExtendedDeriv,
+	ExtendedCalculateLOD,
+	ExtendedGetDimensions,
+	ExtendedFClamp,
+	ExtendedIClamp,
+	ExtendedUClamp,
+	ExtendedLegacyF32ToF16,
+	ExtendedLegacyF16ToF32,
+	ExtendedIAbs,
+	ExtendedEvalSnapped,
+	ExtendedSpirvIbfe,
+	ExtendedSpirvUbfe,
+	ExtendedSpirvBfi,
+	ExtendedSpirvFindLSB,
+	ExtendedSpirvIFindMSB,
+	ExtendedSpirvUFindMSB,
+	ExtendedSpirvIAddCarry,
+	ExtendedSpirvISubBorrow,
+	ExtendedSpirvSMulExtended,
+	ExtendedSpirvUMulExtended,
+	ExtendedSpirvLoadInput,
+
 	Count
 };
 
@@ -502,7 +525,15 @@ enum class AtomicBinOp : uint8_t
 	IMax = 5,
 	UMin = 6,
 	UMax = 7,
-	Exchange = 8
+	Exchange = 8,
+
+	// Internal extensions for custom IR
+	// Load = optimized or/add of 0
+	// Store = optimized exchange
+	Sub = 200,
+	Load,
+	Store,
+	Invalid = 255
 };
 
 enum class ShaderPropertyTag : uint8_t

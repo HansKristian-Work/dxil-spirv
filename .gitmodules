@@ -7,3 +7,6 @@
 [submodule "third_party/SPIRV-Cross"]
 	path = third_party/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross
+[submodule "third_party/dxbc-spirv"]
+	path = third_party/dxbc-spirv
+	url = https://github.com/doitsujin/dxbc-spirv

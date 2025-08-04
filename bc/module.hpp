@@ -24,6 +24,14 @@
 
 #pragma once
 
+namespace dxbc_spv
+{
+namespace ir
+{
+class Builder;
+}
+}
+
 #include "data_structures.hpp"
 #include "iterator.hpp"
 #include <exception>
@@ -86,5 +94,6 @@ private:
 };
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size);
+Module *parseDXBCIR(LLVMContext &context, dxbc_spv::ir::Builder &builder);
 bool disassemble(Module &module, String &str);
 } // namespace LLVMBC

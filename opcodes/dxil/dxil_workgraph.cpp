@@ -401,11 +401,11 @@ static bool emit_barrier(Converter::Impl &impl, uint32_t memory_flags, uint32_t 
 	op->add_id(builder.makeUintConstant(memory_scope));
 
 	uint32_t semantics = spv::MemorySemanticsAcquireReleaseMask;
-	if ((semantic_flags & (DXIL::MemoryTypeNodeInputBit | DXIL::MemoryTypeNodeOutputBit | DXIL::MemoryTypeUavBit)) != 0)
+	if ((memory_flags & (DXIL::MemoryTypeNodeInputBit | DXIL::MemoryTypeNodeOutputBit | DXIL::MemoryTypeUavBit)) != 0)
 		semantics |= spv::MemorySemanticsUniformMemoryMask;
-	if ((semantic_flags & DXIL::MemoryTypeUavBit) != 0)
+	if ((memory_flags & DXIL::MemoryTypeUavBit) != 0)
 		semantics |= spv::MemorySemanticsImageMemoryMask;
-	if ((semantic_flags & DXIL::MemoryTypeGroupSharedBit) != 0)
+	if ((memory_flags & DXIL::MemoryTypeGroupSharedBit) != 0)
 		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
 
 	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)

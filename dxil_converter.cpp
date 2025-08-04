@@ -3792,6 +3792,9 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 		return builder.makeVectorType(get_type_id(vec_type->getElementType()), vec_type->getVectorNumElements());
 	}
 
+	case llvm::Type::TypeID::VoidTyID:
+		return builder.makeVoidType();
+
 	default:
 		return 0;
 	}
@@ -3980,16 +3983,26 @@ spv::Id Converter::Impl::get_type_id(spv::Id id) const
 		return itr->second;
 }
 
-static bool module_is_dxilconv(llvm::Module &module)
+static bool module_is_ident(llvm::Module &module, const char *ident)
 {
 	auto *ident_meta = module.getNamedMetadata("llvm.ident");
 	if (ident_meta)
 		if (auto *arg0 = ident_meta->getOperand(0))
 			if (auto *str = llvm::dyn_cast<llvm::MDString>(arg0->getOperand(0)))
-				if (str->getString().find("dxbc2dxil") != std::string::npos)
+				if (str->getString().find(ident) != std::string::npos)
 					return true;
 
 	return false;
+}
+
+static bool module_is_dxilconv(llvm::Module &module)
+{
+	return module_is_ident(module, "dxbc2dxil");
+}
+
+static bool module_is_dxbc_spirv(llvm::Module &module)
+{
+	return module_is_ident(module, "dxbc-spirv");
 }
 
 bool Converter::Impl::emit_patch_variables()
@@ -4703,6 +4716,31 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		break;
 	}
 
+	case DXIL::Semantic::DomainLocation:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic,
+		// and it's easier to just treat it like a normal builtin input.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInTessCoord);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInTessCoord);
+		break;
+
+	case DXIL::Semantic::DispatchThreadID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInGlobalInvocationId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInGlobalInvocationId);
+		break;
+
+	case DXIL::Semantic::GroupThreadID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInLocalInvocationId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInLocalInvocationId);
+		break;
+
+	case DXIL::Semantic::GroupID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInWorkgroupId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInWorkgroupId);
+		break;
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
@@ -4984,7 +5022,8 @@ bool Converter::Impl::emit_stage_input_variables()
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		// For HS <-> DS, ignore system values.
-		if (execution_model == spv::ExecutionModelTessellationEvaluation)
+		// Allow certain system values that are synthesized however.
+		if (execution_model == spv::ExecutionModelTessellationEvaluation && system_value != DXIL::Semantic::DomainLocation)
 			system_value = DXIL::Semantic::User;
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
@@ -5014,7 +5053,8 @@ bool Converter::Impl::emit_stage_input_variables()
 			continue;
 		}
 		else if (system_value == DXIL::Semantic::PrimitiveID ||
-		         system_value == DXIL::Semantic::ShadingRate)
+		         system_value == DXIL::Semantic::ShadingRate ||
+		         system_value == DXIL::Semantic::DomainLocation)
 		{
 			arrayed_input = false;
 		}
@@ -5636,8 +5676,7 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		}
 		else
 		{
-			LOGE("Normal function call currently unsupported ...\n");
-			return false;
+			return emit_call_instruction(*this, *call_inst);
 		}
 	}
 	else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&instruction))
@@ -6701,26 +6740,68 @@ bool Converter::Impl::emit_execution_modes_mesh()
 		return false;
 }
 
-bool Converter::Impl::emit_execution_modes_fp_denorm()
+bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 {
 	// Check for SM 6.2 denorm handling. Only applies to FP32.
 	auto *func = get_entry_point_function(entry_point_meta);
 	if (!func)
 		return true;
 
-	auto attr = func->getFnAttribute("fp32-denorm-mode");
-	auto str = attr.getValueAsString();
-	if (str == "ftz")
+	// Plain DXIL only supports fp32-denorm-mode, the rest are internal extensions.
+	static const struct
 	{
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityDenormFlushToZero);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, 32);
+		const char *tag;
+		int bits;
+	} denorms[] = {
+		{ "fp16-denorm-mode", 16 },
+		{ "fp32-denorm-mode", 32 },
+		{ "fp64-denorm-mode", 64 },
+	};
+
+	static const struct
+	{
+		const char *tag;
+		int bits;
+	} rounding[] = {
+		{ "fp16-round-mode", 16 },
+		{ "fp32-round-mode", 32 },
+		{ "fp64-round-mode", 64 },
+	};
+
+	for (auto &d : denorms)
+	{
+		auto attr = func->getFnAttribute(d.tag);
+		auto str = attr.getValueAsString();
+		if (str == "ftz")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityDenormFlushToZero);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, d.bits);
+		}
+		else if (str == "preserve")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityDenormPreserve);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, d.bits);
+		}
 	}
-	else if (str == "preserve")
+
+	for (auto &r : rounding)
 	{
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityDenormPreserve);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 32);
+		auto attr = func->getFnAttribute(r.tag);
+		auto str = attr.getValueAsString();
+		if (str == "rtz")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityRoundingModeRTZ);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, r.bits);
+		}
+		else if (str == "rte")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityRoundingModeRTE);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTE, r.bits);
+		}
 	}
 
 	if (shader_analysis.require_wmma && GlobalConfiguration::get().wmma_rdna3_workaround)
@@ -6775,21 +6856,23 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 		}
 	}
 
-	// Float16 and Float64 require denorms to be preserved in D3D12.
-	if (b.hasCapability(spv::CapabilityFloat16) &&
-	    options.supports_float16_denorm_preserve)
+	// Custom IR is expected to set this with extended attributes.
+	if (!module_is_dxbc_spirv(bitcode_parser.get_module()))
 	{
-		b.addExtension("SPV_KHR_float_controls");
-		b.addCapability(spv::CapabilityDenormPreserve);
-		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
-	}
+		// Float16 and Float64 require denorms to be preserved in D3D12.
+		if (b.hasCapability(spv::CapabilityFloat16) && options.supports_float16_denorm_preserve)
+		{
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
+		}
 
-	if (b.hasCapability(spv::CapabilityFloat64) &&
-	    options.supports_float64_denorm_preserve)
-	{
-		b.addExtension("SPV_KHR_float_controls");
-		b.addCapability(spv::CapabilityDenormPreserve);
-		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+		if (b.hasCapability(spv::CapabilityFloat64) && options.supports_float64_denorm_preserve)
+		{
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+		}
 	}
 
 	// Opt into quad derivatives and maximal reconvergence for fragment shaders using
@@ -6892,7 +6975,7 @@ bool Converter::Impl::emit_execution_modes()
 		break;
 	}
 
-	if (!emit_execution_modes_fp_denorm())
+	if (!emit_execution_modes_fp_denorm_rounding())
 		return false;
 
 	return true;
@@ -7310,6 +7393,72 @@ void Converter::Impl::emit_write_instrumentation_invocation_id(CFGNode *node)
 	add(store);
 }
 
+void Converter::Impl::gather_function_dependencies(llvm::Function *caller, Vector<llvm::Function *> &funcs)
+{
+	if (std::find(funcs.begin(), funcs.end(), caller) != funcs.end())
+		return;
+	funcs.push_back(caller);
+
+	for (auto &bb : *caller)
+	{
+		for (auto &inst : bb)
+		{
+			if (const auto *call_inst = llvm::dyn_cast<llvm::CallInst>(&inst))
+			{
+				auto *fn = call_inst->getCalledFunction();
+				if (strncmp(fn->getName().data(), "dx.op", 5) != 0 &&
+				    strncmp(fn->getName().data(), "llvm.", 5) != 0)
+				{
+					gather_function_dependencies(fn, funcs);
+				}
+			}
+		}
+	}
+}
+
+bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
+                                             const Vector<llvm::Function *> &callees,
+                                             Vector<ConvertedFunction::Function> &leaves)
+{
+	llvm::Function *func = get_entry_point_function(entry_point_meta);
+
+	for (auto *leaf_func : callees)
+	{
+		if (leaf_func == func || leaf_func == execution_mode_meta.patch_constant_function)
+			continue;
+
+		Vector<spv::Id> arg_types;
+		spv::Block *spv_entry;
+
+		arg_types.reserve(leaf_func->getFunctionType()->getNumParams());
+		for (uint32_t i = 0; i < leaf_func->getFunctionType()->getNumParams(); i++)
+			arg_types.push_back(get_type_id(leaf_func->getFunctionType()->getParamType(i)));
+
+		auto *spv_func =
+		    builder().makeFunctionEntry(spv::NoPrecision, get_type_id(leaf_func->getFunctionType()->getReturnType()),
+		                                leaf_func->getName().c_str(), arg_types, {}, &spv_entry);
+
+		rewrite_value(leaf_func, spv_func->getId());
+
+		auto arg_iter = leaf_func->arg_begin();
+		for (uint32_t i = 0, n = leaf_func->getFunctionType()->getNumParams(); i < n; i++, ++arg_iter)
+			rewrite_value(&*arg_iter, spv_func->getParamId(i));
+
+		auto visit_order = build_function_bb_visit_order_analysis(leaf_func);
+
+		for (auto *bb : visit_order)
+			build_function_bb_visit_register(bb, pool, "");
+
+		auto *entry = convert_function(visit_order, false);
+		if (!entry)
+			return false;
+
+		leaves.push_back({ entry, spv_func });
+	}
+
+	return true;
+}
+
 CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &visit_order, bool primary_code)
 {
 	bool has_partial_unroll = false;
@@ -7484,6 +7633,30 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 			LOGE("Unsupported terminator ...\n");
 			return {};
 		}
+
+#ifdef HAVE_LLVMBC
+		// Forward structured control flow.
+		if (bb->get_merge() == llvm::BasicBlock::Merge::Selection)
+		{
+			node->ir.merge_info.merge_type = MergeType::Selection;
+
+			// Assume both paths can return or break, leaving the merge unreachable.
+			if (bb->get_merge_bb() && bb_map.count(bb->get_merge_bb()))
+				node->ir.merge_info.merge_block = bb_map[bb->get_merge_bb()]->node;
+		}
+		else if (bb->get_merge() == llvm::BasicBlock::Merge::Loop)
+		{
+			node->ir.merge_info.merge_type = MergeType::Loop;
+
+			// In infinite loops, merge block may be unreachable.
+			if (bb->get_merge_bb() && bb_map.count(bb->get_merge_bb()))
+				node->ir.merge_info.merge_block = bb_map[bb->get_merge_bb()]->node;
+
+			// If back-edge is not reachable, we'll resolve that later.
+			if (bb->get_continue_bb() && bb_map.count(bb->get_continue_bb()))
+				node->ir.merge_info.continue_block = bb_map[bb->get_continue_bb()]->node;
+		}
+#endif
 	}
 
 	// Rewrite PHI incoming values if we have to.
@@ -7859,6 +8032,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (module_is_dxilconv(module))
 		options.min_precision_prefer_native_16bit = false;
 
+	if (module_is_dxbc_spirv(module))
+	{
+		backend.skip_non_uniform_promotion = true;
+		// This is new code, might as well exercise it.
+		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
+	}
+
 	// Need to analyze some execution modes early which affect opcode analysis later.
 	if (!analyze_execution_modes_meta())
 		return result;
@@ -7874,11 +8054,18 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 
 	if (execution_mode_meta.patch_constant_function)
-	{
 		patch_visit_order = build_function_bb_visit_order_legacy(execution_mode_meta.patch_constant_function, pool);
-		if (!analyze_instructions(execution_mode_meta.patch_constant_function))
+
+	Vector<llvm::Function *> callees;
+	if (func)
+		gather_function_dependencies(func, callees);
+	if (execution_mode_meta.patch_constant_function)
+		gather_function_dependencies(execution_mode_meta.patch_constant_function, callees);
+
+	// Analyze all leaf functions.
+	for (auto *leaf_func : callees)
+		if (leaf_func != func && !analyze_instructions(leaf_func))
 			return result;
-	}
 
 	if (!emit_resources())
 		return result;
@@ -7900,6 +8087,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	analyze_instructions_post_execution_modes();
 
 	execution_mode_meta.entry_point_name = get_entry_point_name(entry_point_meta);
+
+	if (!build_callee_functions(pool, callees, result.leaf_functions))
+		return result;
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
 		result.entry = build_hull_main(visit_order, patch_visit_order, pool, result.leaf_functions);
@@ -7924,6 +8114,16 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 		result.entry.func = spirv_module.get_entry_function();
 	}
+
+#ifdef HAVE_LLVMBC
+	if (func->get_structured_control_flow())
+	{
+		// For TESC, the entry is a custom dispatch function.
+		result.entry.is_structured = execution_model != spv::ExecutionModelTessellationControl;
+		for (auto &leaf : result.leaf_functions)
+			leaf.is_structured = true;
+	}
+#endif
 
 	// Some execution modes depend on code generation, handle that here.
 	emit_execution_modes_post_code_generation();

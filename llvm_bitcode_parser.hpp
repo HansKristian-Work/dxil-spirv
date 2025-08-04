@@ -34,6 +34,14 @@
 #include <memory>
 #include <stddef.h>
 
+namespace dxbc_spv
+{
+namespace ir
+{
+class Builder;
+}
+}
+
 namespace dxil_spv
 {
 class LLVMBCParser
@@ -42,6 +50,7 @@ public:
 	LLVMBCParser();
 	~LLVMBCParser();
 	bool parse(const void *data, size_t size);
+	bool parseDXBC(dxbc_spv::ir::Builder &builder);
 	llvm::Module &get_module();
 	const llvm::Module &get_module() const;
 
