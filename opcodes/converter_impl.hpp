@@ -282,7 +282,7 @@ struct Converter::Impl
 	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
 	bool emit_execution_modes_amplification();
 	bool emit_execution_modes_mesh();
-	bool emit_execution_modes_fp_denorm();
+	bool emit_execution_modes_fp_denorm_rounding();
 	bool emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads);
 
 	bool analyze_instructions(llvm::Function *func);
@@ -915,6 +915,11 @@ struct Converter::Impl
 		bool needs_auto_group_shared_barriers = false;
 		bool require_wmma = false;
 	} shader_analysis;
+
+	struct
+	{
+		bool skip_non_uniform_promotion = false;
+	} backend;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.
 	UnorderedMap<const llvm::CallInst *, const llvm::BasicBlock *> resource_handle_to_block;

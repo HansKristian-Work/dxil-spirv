@@ -51,17 +51,19 @@ struct DXILDispatcher
 		// Work around lack of designated initializers in C++.
 
 		// dxil_resources.hpp
-		OP(LoadInput) = emit_load_input_instruction;
+		OP(LoadInput) = emit_load_input_dispatch<false>;
+		OP(ExtendedSpirvLoadInput) = emit_load_input_dispatch<true>;
 		// Basically exactly the same, where gsVertexAxis is replaced with vertexIndex.
-		OP(AttributeAtVertex) = emit_load_input_instruction;
+		OP(AttributeAtVertex) = emit_load_input_dispatch<false>;
 		OP(StoreOutput) = emit_store_output_instruction;
 		OP(CreateHandle) = emit_create_handle_instruction;
 		OP(CreateHandleForLib) = emit_create_handle_for_lib_instruction;
 		OP(CBufferLoadLegacy) = emit_cbuffer_load_legacy_instruction;
 		OP(CBufferLoad) = emit_cbuffer_load_instruction;
-		OP(EvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset>;
-		OP(EvalSampleIndex) = emit_interpolate_dispatch<GLSLstd450InterpolateAtSample>;
-		OP(EvalCentroid) = emit_interpolate_dispatch<GLSLstd450InterpolateAtCentroid>;
+		OP(EvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset, false>;
+		OP(ExtendedEvalSnapped) = emit_interpolate_dispatch<GLSLstd450InterpolateAtOffset, true>;
+		OP(EvalSampleIndex) = emit_interpolate_dispatch<GLSLstd450InterpolateAtSample, false>;
+		OP(EvalCentroid) = emit_interpolate_dispatch<GLSLstd450InterpolateAtCentroid, false>;
 		OP(AnnotateHandle) = emit_annotate_handle_instruction;
 		OP(CreateHandleFromHeap) = emit_create_handle_from_heap_instruction;
 		OP(CreateHandleFromBinding) = emit_create_handle_from_binding_instruction;
@@ -81,11 +83,13 @@ struct DXILDispatcher
 		OP(TextureLoad) = emit_texture_load_instruction;
 		OP(TextureStore) = emit_texture_store_instruction<false>;
 		OP(TextureStoreSample) = emit_texture_store_instruction<true>;
-		OP(GetDimensions) = emit_get_dimensions_instruction;
+		OP(GetDimensions) = emit_get_dimensions_dispatch<false>;
+		OP(ExtendedGetDimensions) = emit_get_dimensions_dispatch<true>;
 		OP(TextureGather) = emit_texture_gather_dispatch<false, false>;
 		OP(TextureGatherRaw) = emit_texture_gather_dispatch<false, true>;
 		OP(TextureGatherCmp) = emit_texture_gather_dispatch<true, false>;
-		OP(CalculateLOD) = emit_calculate_lod_instruction;
+		OP(CalculateLOD) = emit_calculate_lod_dispatch<false>;
+		OP(ExtendedCalculateLOD) = emit_calculate_lod_dispatch<true>;
 		OP(Texture2DMSGetSamplePosition) = emit_get_sample_position_dispatch<true>;
 		OP(RenderTargetGetSamplePosition) = emit_get_sample_position_dispatch<false>;
 		OP(RenderTargetGetSampleCount) = emit_get_render_target_sample_count;
@@ -113,14 +117,21 @@ struct DXILDispatcher
 		OP(IMax) = std450_binary_dispatch<GLSLstd450SMax>;
 		OP(UMin) = std450_binary_dispatch<GLSLstd450UMin>;
 		OP(UMax) = std450_binary_dispatch<GLSLstd450UMax>;
-		OP(IMul) = wide_arith_dispatch<spv::OpSMulExtended>;
-		OP(UMul) = wide_arith_dispatch<spv::OpUMulExtended>;
-		OP(UAddc) = wide_arith_dispatch<spv::OpIAddCarry>;
-		OP(USubb) = wide_arith_dispatch<spv::OpISubBorrow>;
+		OP(IMul) = wide_arith_dispatch<spv::OpSMulExtended, false>;
+		OP(UMul) = wide_arith_dispatch<spv::OpUMulExtended, false>;
+		OP(UAddc) = wide_arith_dispatch<spv::OpIAddCarry, false>;
+		OP(USubb) = wide_arith_dispatch<spv::OpISubBorrow, false>;
+		OP(ExtendedSpirvSMulExtended) = wide_arith_dispatch<spv::OpSMulExtended, true>;
+		OP(ExtendedSpirvUMulExtended) = wide_arith_dispatch<spv::OpUMulExtended, true>;
+		OP(ExtendedSpirvIAddCarry) = wide_arith_dispatch<spv::OpIAddCarry, true>;
+		OP(ExtendedSpirvISubBorrow) = wide_arith_dispatch<spv::OpISubBorrow, true>;
 		OP(UDiv) = emit_dxbc_udiv_instruction;
 		OP(IsNan) = unary_dispatch<spv::OpIsNan>;
 		OP(IsInf) = unary_dispatch<spv::OpIsInf>;
 		OP(IsFinite) = emit_isfinite_instruction;
+		OP(ExtendedFClamp) = std450_trinary_dispatch<GLSLstd450NClamp>;
+		OP(ExtendedIClamp) = std450_trinary_dispatch<GLSLstd450SClamp>;
+		OP(ExtendedUClamp) = std450_trinary_dispatch<GLSLstd450UClamp>;
 
 		OP(Cos) = std450_unary_dispatch<GLSLstd450Cos>;
 		OP(Sin) = std450_unary_dispatch<GLSLstd450Sin>;
@@ -138,6 +149,7 @@ struct DXILDispatcher
 		OP(Sqrt) = std450_unary_dispatch<GLSLstd450Sqrt>;
 		OP(FAbs) = std450_unary_dispatch<GLSLstd450FAbs>;
 		OP(Frc) = std450_unary_dispatch<GLSLstd450Fract>;
+		OP(ExtendedIAbs) = std450_unary_dispatch<GLSLstd450SAbs>;
 
 		OP(Round_ne) = std450_unary_dispatch<GLSLstd450RoundEven>;
 		OP(Round_ni) = std450_unary_dispatch<GLSLstd450Floor>;
@@ -163,14 +175,22 @@ struct DXILDispatcher
 		OP(Dot4AddU8Packed) = emit_i8_dot_instruction<false>;
 		OP(Dot2AddHalf) = emit_dot2_add_half_instruction;
 
-		OP(Ibfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract>;
-		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract>;
-		OP(Bfi) = emit_bfi_instruction;
+		OP(Ibfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract, false>;
+		OP(Ubfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract, false>;
+		OP(Bfi) = emit_bfi_dispatch<false>;
+		OP(ExtendedSpirvIbfe) = emit_bfe_dispatch<spv::OpBitFieldSExtract, true>;
+		OP(ExtendedSpirvUbfe) = emit_bfe_dispatch<spv::OpBitFieldUExtract, true>;
+		OP(ExtendedSpirvBfi) = emit_bfi_dispatch<true>;
+		OP(ExtendedSpirvFindLSB) = std450_unary_dispatch<GLSLstd450FindILsb>;
+		OP(ExtendedSpirvIFindMSB) = std450_unary_dispatch<GLSLstd450FindSMsb>;
+		OP(ExtendedSpirvUFindMSB) = std450_unary_dispatch<GLSLstd450FindUMsb>;
 
 		OP(MakeDouble) = emit_make_double_instruction;
 		OP(SplitDouble) = emit_split_double_instruction;
 		OP(LegacyF16ToF32) = emit_legacy_f16_to_f32_instruction;
 		OP(LegacyF32ToF16) = emit_legacy_f32_to_f16_instruction;
+		OP(ExtendedLegacyF16ToF32) = std450_unary_dispatch<GLSLstd450UnpackHalf2x16>;
+		OP(ExtendedLegacyF32ToF16) = std450_unary_dispatch<GLSLstd450PackHalf2x16>;
 		OP(LegacyDoubleToFloat) = emit_legacy_double_conv_dispatch<spv::OpFConvert>;
 		OP(LegacyDoubleToSInt32) = emit_legacy_double_conv_dispatch<spv::OpConvertFToS>;
 		OP(LegacyDoubleToUInt32) = emit_legacy_double_conv_dispatch<spv::OpConvertFToU>;
@@ -202,6 +222,7 @@ struct DXILDispatcher
 		OP(Coverage) = emit_coverage_instruction;
 		OP(InnerCoverage) = emit_inner_coverage_instruction;
 		OP(IsHelperLane) = emit_is_helper_lane_instruction;
+		OP(ExtendedDeriv) = emit_extended_derivative_instruction;
 
 		// dxil_geometry.hpp
 		OP(EmitStream) = emit_stream_instruction;
@@ -213,7 +234,7 @@ struct DXILDispatcher
 
 		// dxil_tessellation.hpp
 		OP(StorePatchConstant) = emit_store_patch_constant_instruction;
-		OP(LoadOutputControlPoint) = emit_load_output_control_point_instruction;
+		OP(LoadOutputControlPoint) = emit_load_output_generic_instruction;
 		OP(DomainLocation) = emit_domain_location_instruction;
 		OP(LoadPatchConstant) = emit_load_patch_constant_instruction;
 		OP(OutputControlPointID) = emit_output_control_point_instruction;
@@ -665,10 +686,10 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 
 	if (tracking)
 	{
-		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+		if (type_is_composite_return_value(instruction->getType()))
 		{
 			// Legacy float4 model. However, it seems like DXIL also supports f16x8, f32x4 and f64x2 ... :(
-			switch (get_type_scalar_alignment(impl, instruction->getType()->getStructElementType(0)))
+			switch (get_type_scalar_alignment(impl, get_composite_element_type(instruction->getType())))
 			{
 			case 2:
 			case 4:
@@ -680,7 +701,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			{
 				// Need aliases here to handle difference in Float64 vs Int64 support.
 				// For 16-bit, support is gated behind both types.
-				bool is_float = instruction->getType()->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::DoubleTyID;
+				bool is_float = get_composite_element_type(instruction->getType())->getTypeID() == llvm::Type::TypeID::DoubleTyID;
 				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V2)] = true;
 				break;
 			}
@@ -781,13 +802,13 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{
 				update_raw_access_tracking_for_byte_address(impl, *tracking,
-				                                            instruction->getType()->getStructElementType(0),
+				                                            get_composite_element_type(instruction->getType()),
 				                                            instruction->getOperand(2), access_mask);
 			}
 			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 			{
 				update_raw_access_tracking_for_structured(impl, *tracking,
-				                                          instruction->getType()->getStructElementType(0),
+				                                          get_composite_element_type(instruction->getType()),
 				                                          instruction->getOperand(2),
 				                                          meta.stride,
 				                                          instruction->getOperand(3),
@@ -868,11 +889,22 @@ static bool analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 		tracking->has_written = true;
 		tracking->has_atomic = true;
 
-		// Feedback is 64-bit atomic.
-		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VoidTyID ||
-		    instruction->getType()->getIntegerBitWidth() == 64)
+		uint32_t op = 0;
+		get_constant_operand(instruction, 0, &op);
+
+		switch (DXIL::Op(op))
 		{
+		case DXIL::Op::AtomicBinOp:
+		case DXIL::Op::AtomicCompareExchange:
+			if (instruction->getType()->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+			    instruction->getType()->getIntegerBitWidth() == 64)
+				tracking->has_atomic_64bit = true;
+			break;
+
+		default:
+			// Feedback, always 64-bit.
 			tracking->has_atomic_64bit = true;
+			break;
 		}
 
 		auto meta = get_resource_meta_from_buffer_op(impl, instruction);
@@ -1169,6 +1201,8 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 		break;
 	}
 
+	case DXIL::Op::ExtendedCalculateLOD:
+	case DXIL::Op::ExtendedDeriv:
 	case DXIL::Op::DerivCoarseX:
 	case DXIL::Op::DerivCoarseY:
 	case DXIL::Op::DerivFineX:

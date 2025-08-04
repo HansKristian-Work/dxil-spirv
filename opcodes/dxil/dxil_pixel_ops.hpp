@@ -43,4 +43,6 @@ static inline bool emit_derivative_dispatch(Converter::Impl &impl, const llvm::C
 {
 	return emit_derivative_instruction(opcode, impl, instruction);
 }
+
+bool emit_extended_derivative_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv

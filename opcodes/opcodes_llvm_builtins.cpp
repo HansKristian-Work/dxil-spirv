@@ -494,6 +494,12 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 		opcode = spv::OpFNegate;
 		break;
 
+#ifdef HAVE_LLVMBC
+	case llvm::UnaryOperator::UnaryOps::INeg:
+		opcode = spv::OpSNegate;
+		break;
+#endif
+
 	default:
 		LOGE("Unknown unary operator.\n");
 		return false;
@@ -1711,9 +1717,10 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 		return true;
 
 	auto itr = impl.llvm_composite_meta.find(instruction->getAggregateOperand());
-	assert(itr != impl.llvm_composite_meta.end());
 
-	if (itr->second.components == 1 && !itr->second.forced_composite)
+	if (itr != impl.llvm_composite_meta.end() &&
+	    itr->second.components == 1 &&
+	    !itr->second.forced_composite)
 	{
 		// Forward the ID. The composite was originally emitted as a scalar.
 		spv::Id rewrite_id = impl.get_id_for_value(instruction->getAggregateOperand());
@@ -1862,7 +1869,7 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 {
 	auto &builder = impl.builder();
 
-	unsigned bits = instruction->getType()->getStructElementType(0)->getIntegerBitWidth();
+	unsigned bits = get_composite_element_type(instruction->getType())->getIntegerBitWidth();
 	if (bits == 64)
 		builder.addCapability(spv::CapabilityInt64Atomics);
 
@@ -2269,8 +2276,7 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *inst)
 
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *inst)
 {
-	if (inst->getNumIndices() == 1 &&
-	    inst->getAggregateOperand()->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+	if (inst->getNumIndices() == 1 && type_is_composite_return_value(inst->getAggregateOperand()->getType()))
 	{
 		auto &meta = impl.llvm_composite_meta[inst->getAggregateOperand()];
 		unsigned index = inst->getIndices()[0];

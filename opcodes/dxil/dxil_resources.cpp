@@ -54,7 +54,8 @@ static bool emit_load_clip_cull_distance(Converter::Impl &impl, const llvm::Call
 	return true;
 }
 
-static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm::CallInst *instruction)
+static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm::CallInst *instruction,
+                               bool spirv_semantics)
 {
 	auto &builder = impl.builder();
 	spv::BuiltIn builtin;
@@ -78,7 +79,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			impl.rewrite_value(instruction, sub_op->id);
 			builder.addCapability(spv::CapabilityDrawParameters);
 		}
-		else if (builtin == spv::BuiltInFrontFacing)
+		else if (builtin == spv::BuiltInFrontFacing && instruction->getType()->getIntegerBitWidth() != 1)
 		{
 			Operation *cast_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
 			cast_op->add_id(impl.get_id_for_value(instruction));
@@ -87,7 +88,7 @@ static void fixup_builtin_load(Converter::Impl &impl, spv::Id var_id, const llvm
 			impl.add(cast_op);
 			impl.rewrite_value(instruction, cast_op->id);
 		}
-		else if (builtin == spv::BuiltInFragCoord)
+		else if (builtin == spv::BuiltInFragCoord && !spirv_semantics)
 		{
 			auto *col = llvm::cast<llvm::ConstantInt>(instruction->getOperand(3));
 			if (col->getUniqueInteger().getZExtValue() == 3)
@@ -112,7 +113,7 @@ static spv::Id get_builtin_load_type(Converter::Impl &impl, const Converter::Imp
 		return impl.get_effective_input_output_type_id(meta.component_type);
 }
 
-bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics)
 {
 	auto &builder = impl.builder();
 	uint32_t input_element_index;
@@ -189,7 +190,7 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	op->add_id(ptr_id);
 	impl.add(op);
 
-	fixup_builtin_load(impl, var_id, instruction);
+	fixup_builtin_load(impl, var_id, instruction, spirv_semantics);
 
 	// Need to bitcast after we load.
 	impl.fixup_load_type_io(meta.component_type, 1, instruction);
@@ -225,7 +226,7 @@ static spv::Id build_attribute_offset(spv::Id id, Converter::Impl &impl)
 	return id;
 }
 
-bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction, bool extended)
 {
 	auto &builder = impl.builder();
 	uint32_t input_element_index;
@@ -273,7 +274,7 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 
 	spv::Id aux_id = 0;
 
-	if (opcode == GLSLstd450InterpolateAtOffset)
+	if (opcode == GLSLstd450InterpolateAtOffset && !extended)
 	{
 		spv::Id offsets[2] = {};
 		bool is_non_const = false;
@@ -301,7 +302,7 @@ bool emit_interpolate_instruction(GLSLstd450 opcode, Converter::Impl &impl, cons
 		else
 			aux_id = impl.build_constant_vector(builder.makeFloatType(32), offsets, 2);
 	}
-	else if (opcode == GLSLstd450InterpolateAtSample)
+	else if (opcode == GLSLstd450InterpolateAtSample || opcode == GLSLstd450InterpolateAtOffset)
 		aux_id = impl.get_id_for_value(instruction->getOperand(4));
 
 	// Need to deal with signed vs unsigned here.
@@ -930,6 +931,7 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 
 		if (!is_non_uniform && instruction_offset_value &&
 		    ((reference.resource_kind == DXIL::ResourceKind::CBuffer || impl.options.quirks.aggressive_nonuniform) &&
+		     !impl.backend.skip_non_uniform_promotion &&
 		     value_is_likely_non_uniform(impl, instruction_offset_value)))
 		{
 			// Native drivers seems to apply hacks and workarounds to workaround bugged games.
@@ -1882,7 +1884,7 @@ static bool build_bitcast_32x4_to_16x8_composite(Converter::Impl &impl, const ll
 	auto &builder = impl.builder();
 
 	Vector<spv::Id> member_types(8);
-	spv::Id type_id = impl.get_type_id(instruction->getType()->getStructElementType(0));
+	spv::Id type_id = impl.get_type_id(get_composite_element_type(instruction->getType()));
 	for (auto &type : member_types)
 		type = type_id;
 
@@ -1928,7 +1930,7 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 {
 	auto &builder = impl.builder();
 
-	bool scalar_load = instruction->getType()->getTypeID() != llvm::Type::TypeID::StructTyID;
+	bool scalar_load = !type_is_composite_return_value(instruction->getType());
 	unsigned scalar_alignment;
 	uint32_t alignment;
 
@@ -1936,7 +1938,7 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 
 	if (!scalar_load)
 	{
-		result_component_type = instruction->getType()->getStructElementType(0);
+		result_component_type = get_composite_element_type(instruction->getType());
 		scalar_alignment = get_type_scalar_alignment(impl, result_component_type);
 		alignment = 16;
 	}
@@ -2080,7 +2082,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	}
 
 	// CBufferLoad vs CBufferLoadLegacy
-	bool scalar_load = instruction->getType()->getTypeID() != llvm::Type::TypeID::StructTyID;
+	bool scalar_load = !type_is_composite_return_value(instruction->getType());
 	auto member_index = unsigned(constant_int->getUniqueInteger().getZExtValue());
 
 	// In scalar load, we index by byte offset. Ignore alignment, we read from registers.
@@ -2104,7 +2106,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 		// In legacy load, we index in terms of float4[]s.
 		member_index *= 4;
 
-		if (get_type_scalar_alignment(impl, instruction->getType()->getStructElementType(0)) != 4)
+		if (get_type_scalar_alignment(impl, get_composite_element_type(instruction->getType())) != 4)
 		{
 			LOGE("Attempting to use root constant buffer with non-32bit type.\n");
 			return false;
@@ -2123,7 +2125,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 
 	auto *result_scalar_type = instruction->getType();
 	if (!scalar_load)
-		result_scalar_type = result_scalar_type->getStructElementType(0);
+		result_scalar_type = get_composite_element_type(result_scalar_type);
 
 	// Root constants are emitted as uints as they are typically used as indices.
 	bool need_bitcast = result_scalar_type->getTypeID() != llvm::Type::TypeID::IntegerTyID;
@@ -2475,6 +2477,20 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 }
 
+bool type_is_composite_return_value(llvm::Type *type)
+{
+	return type->getTypeID() == llvm::Type::TypeID::StructTyID || type->getTypeID() == llvm::Type::TypeID::VectorTyID;
+}
+
+llvm::Type *get_composite_element_type(llvm::Type *type)
+{
+	assert(type_is_composite_return_value(type));
+	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
+		return vec->getElementType();
+	else
+		return type->getStructElementType(0);
+}
+
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -2495,9 +2511,9 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 
 		auto *result_type = instruction->getType();
 
-		if (result_type->getTypeID() != llvm::Type::TypeID::StructTyID)
+		if (!type_is_composite_return_value(result_type))
 		{
-			LOGE("CBufferLoadLegacy: return type must be struct.\n");
+			LOGE("CBufferLoadLegacy: return type must be struct or vector.\n");
 			return false;
 		}
 
@@ -2514,7 +2530,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 		}
 
 		// Handle min16float where we want FP16 value, but FP32 physical.
-		auto *result_component_type = result_type->getStructElementType(0);
+		auto *result_component_type = get_composite_element_type(result_type);
 		spv::Op value_cast_op = spv::OpNop;
 		spv::Id physical_type_id = 0;
 		get_physical_load_store_cast_info(impl, result_component_type, physical_type_id, value_cast_op);
@@ -2557,7 +2573,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			builder.addDecoration(access_chain_op->id, spv::DecorationNonUniformEXT);
 
 		bool need_bitcast = false;
-		if (result_type->getStructElementType(0)->getTypeID() == llvm::Type::TypeID::IntegerTyID && scalar_alignment < 8)
+		if (result_component_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && scalar_alignment < 8)
 			need_bitcast = true;
 
 		Operation *load_op = impl.allocate(spv::OpLoad, instruction, vector_type_id);

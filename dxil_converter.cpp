@@ -3792,6 +3792,9 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 		return builder.makeVectorType(get_type_id(vec_type->getElementType()), vec_type->getVectorNumElements());
 	}
 
+	case llvm::Type::TypeID::VoidTyID:
+		return builder.makeVoidType();
+
 	default:
 		return 0;
 	}
@@ -4713,6 +4716,31 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		break;
 	}
 
+	case DXIL::Semantic::DomainLocation:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic,
+		// and it's easier to just treat it like a normal builtin input.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInTessCoord);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInTessCoord);
+		break;
+
+	case DXIL::Semantic::DispatchThreadID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInGlobalInvocationId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInGlobalInvocationId);
+		break;
+
+	case DXIL::Semantic::GroupThreadID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInLocalInvocationId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInLocalInvocationId);
+		break;
+
+	case DXIL::Semantic::GroupID:
+		// This is normally an opcode in DXIL, but custom IR likes it to be a semantic.
+		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInWorkgroupId);
+		spirv_module.register_builtin_shader_input(id, spv::BuiltInWorkgroupId);
+		break;
+
 	default:
 		LOGE("Unknown DXIL semantic.\n");
 		break;
@@ -4994,7 +5022,8 @@ bool Converter::Impl::emit_stage_input_variables()
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		// For HS <-> DS, ignore system values.
-		if (execution_model == spv::ExecutionModelTessellationEvaluation)
+		// Allow certain system values that are synthesized however.
+		if (execution_model == spv::ExecutionModelTessellationEvaluation && system_value != DXIL::Semantic::DomainLocation)
 			system_value = DXIL::Semantic::User;
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
@@ -5024,7 +5053,8 @@ bool Converter::Impl::emit_stage_input_variables()
 			continue;
 		}
 		else if (system_value == DXIL::Semantic::PrimitiveID ||
-		         system_value == DXIL::Semantic::ShadingRate)
+		         system_value == DXIL::Semantic::ShadingRate ||
+		         system_value == DXIL::Semantic::DomainLocation)
 		{
 			arrayed_input = false;
 		}
@@ -6710,26 +6740,68 @@ bool Converter::Impl::emit_execution_modes_mesh()
 		return false;
 }
 
-bool Converter::Impl::emit_execution_modes_fp_denorm()
+bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 {
 	// Check for SM 6.2 denorm handling. Only applies to FP32.
 	auto *func = get_entry_point_function(entry_point_meta);
 	if (!func)
 		return true;
 
-	auto attr = func->getFnAttribute("fp32-denorm-mode");
-	auto str = attr.getValueAsString();
-	if (str == "ftz")
+	// Plain DXIL only supports fp32-denorm-mode, the rest are internal extensions.
+	static const struct
 	{
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityDenormFlushToZero);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, 32);
+		const char *tag;
+		int bits;
+	} denorms[] = {
+		{ "fp16-denorm-mode", 16 },
+		{ "fp32-denorm-mode", 32 },
+		{ "fp64-denorm-mode", 64 },
+	};
+
+	static const struct
+	{
+		const char *tag;
+		int bits;
+	} rounding[] = {
+		{ "fp16-round-mode", 16 },
+		{ "fp32-round-mode", 32 },
+		{ "fp64-round-mode", 64 },
+	};
+
+	for (auto &d : denorms)
+	{
+		auto attr = func->getFnAttribute(d.tag);
+		auto str = attr.getValueAsString();
+		if (str == "ftz")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityDenormFlushToZero);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, d.bits);
+		}
+		else if (str == "preserve")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityDenormPreserve);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, d.bits);
+		}
 	}
-	else if (str == "preserve")
+
+	for (auto &r : rounding)
 	{
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityDenormPreserve);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 32);
+		auto attr = func->getFnAttribute(r.tag);
+		auto str = attr.getValueAsString();
+		if (str == "rtz")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityRoundingModeRTZ);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, r.bits);
+		}
+		else if (str == "rte")
+		{
+			builder().addExtension("SPV_KHR_float_controls");
+			builder().addCapability(spv::CapabilityRoundingModeRTE);
+			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTE, r.bits);
+		}
 	}
 
 	if (shader_analysis.require_wmma && GlobalConfiguration::get().wmma_rdna3_workaround)
@@ -6784,21 +6856,23 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 		}
 	}
 
-	// Float16 and Float64 require denorms to be preserved in D3D12.
-	if (b.hasCapability(spv::CapabilityFloat16) &&
-	    options.supports_float16_denorm_preserve)
+	// Custom IR is expected to set this with extended attributes.
+	if (!module_is_dxbc_spirv(bitcode_parser.get_module()))
 	{
-		b.addExtension("SPV_KHR_float_controls");
-		b.addCapability(spv::CapabilityDenormPreserve);
-		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
-	}
+		// Float16 and Float64 require denorms to be preserved in D3D12.
+		if (b.hasCapability(spv::CapabilityFloat16) && options.supports_float16_denorm_preserve)
+		{
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
+		}
 
-	if (b.hasCapability(spv::CapabilityFloat64) &&
-	    options.supports_float64_denorm_preserve)
-	{
-		b.addExtension("SPV_KHR_float_controls");
-		b.addCapability(spv::CapabilityDenormPreserve);
-		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+		if (b.hasCapability(spv::CapabilityFloat64) && options.supports_float64_denorm_preserve)
+		{
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+		}
 	}
 
 	// Opt into quad derivatives and maximal reconvergence for fragment shaders using
@@ -6901,7 +6975,7 @@ bool Converter::Impl::emit_execution_modes()
 		break;
 	}
 
-	if (!emit_execution_modes_fp_denorm())
+	if (!emit_execution_modes_fp_denorm_rounding())
 		return false;
 
 	return true;
@@ -7957,6 +8031,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	// Just use FP32 here since that's what we've tested and avoids lots of awkward workarounds.
 	if (module_is_dxilconv(module))
 		options.min_precision_prefer_native_16bit = false;
+
+	if (module_is_dxbc_spirv(module))
+	{
+		backend.skip_non_uniform_promotion = true;
+		// This is new code, might as well exercise it.
+		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
+	}
 
 	// Need to analyze some execution modes early which affect opcode analysis later.
 	if (!analyze_execution_modes_meta())
