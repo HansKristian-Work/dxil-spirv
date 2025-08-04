@@ -3980,16 +3980,26 @@ spv::Id Converter::Impl::get_type_id(spv::Id id) const
 		return itr->second;
 }
 
-static bool module_is_dxilconv(llvm::Module &module)
+static bool module_is_ident(llvm::Module &module, const char *ident)
 {
 	auto *ident_meta = module.getNamedMetadata("llvm.ident");
 	if (ident_meta)
 		if (auto *arg0 = ident_meta->getOperand(0))
 			if (auto *str = llvm::dyn_cast<llvm::MDString>(arg0->getOperand(0)))
-				if (str->getString().find("dxbc2dxil") != std::string::npos)
+				if (str->getString().find(ident) != std::string::npos)
 					return true;
 
 	return false;
+}
+
+static bool module_is_dxilconv(llvm::Module &module)
+{
+	return module_is_ident(module, "dxbc2dxil");
+}
+
+static bool module_is_dxbc_spirv(llvm::Module &module)
+{
+	return module_is_ident(module, "dxbc-spirv");
 }
 
 bool Converter::Impl::emit_patch_variables()
