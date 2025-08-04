@@ -110,6 +110,16 @@ void Function::set_attributes(Vector<std::pair<String, String>> attributes_)
 	attributes = std::move(attributes_);
 }
 
+void Function::set_structured_control_flow()
+{
+	structured_control_flow = true;
+}
+
+bool Function::get_structured_control_flow() const
+{
+	return structured_control_flow;
+}
+
 IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> Function::arg_begin() const
 {
 	return arguments.begin();
@@ -142,6 +152,34 @@ void BasicBlock::add_successor(BasicBlock *succ)
 {
 	if (std::find(succs.begin(), succs.end(), succ) == succs.end())
 		succs.push_back(succ);
+}
+
+BasicBlock::Merge BasicBlock::get_merge() const
+{
+	return merge;
+}
+
+BasicBlock *BasicBlock::get_merge_bb() const
+{
+	return merge_bb;
+}
+
+BasicBlock *BasicBlock::get_continue_bb() const
+{
+	return continue_bb;
+}
+
+void BasicBlock::set_selection_merge(BasicBlock *bb)
+{
+	merge = Merge::Selection;
+	merge_bb = bb;
+}
+
+void BasicBlock::set_loop_merge(BasicBlock *merge_bb_, BasicBlock *continue_bb_)
+{
+	merge = Merge::Loop;
+	merge_bb = merge_bb_;
+	continue_bb = continue_bb_;
 }
 
 IteratorAdaptor<Instruction, Vector<Instruction *>::const_iterator> BasicBlock::begin() const
