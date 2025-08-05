@@ -493,6 +493,7 @@ static bool emit_nvapi_extn_op_hit_object_reorder_thread(Converter::Impl &impl)
 
 	return false;
 }
+
 static bool emit_nvapi_extn_op_hit_object_invoke(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
