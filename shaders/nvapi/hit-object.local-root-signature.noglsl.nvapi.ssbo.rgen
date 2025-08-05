@@ -1,0 +1,72 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+struct Payload
+{
+	uint index;
+};
+
+RaytracingAccelerationStructure AS : register(t0);
+RWStructuredBuffer<float> RWFloat : register(u1);
+RWStructuredBuffer<uint> RWUint : register(u2);
+
+[shader("raygeneration")]
+void main()
+{
+	BuiltInTriangleIntersectionAttributes attributes;
+	NvHitObject hitobject;
+	Payload payload;
+	RayDesc ray;
+
+	ray.Origin = float3(1, 2, 3);
+	ray.Direction = float3(4, 5, 6);
+	ray.TMin = 7.0;
+	ray.TMax = 8.0;
+
+	hitobject = NvMakeNop();
+	hitobject = NvMakeMiss(0, ray);
+	hitobject = NvMakeHit(AS, 0, 1, 2, 3, 4, 5, ray, attributes);
+	hitobject = NvMakeHitWithRecordIndex(4, AS, 0, 1, 2, 3, ray, attributes);
+	hitobject = NvTraceRayHitObject(AS, 17, 0, 1, 2, 3, ray, payload);
+
+	RWUint[0] = payload.index;
+
+	NvReorderThread(1, 2);
+	NvReorderThread(hitobject);
+
+	NvInvokeHitObject(AS, hitobject, payload);
+
+	RWUint[1] = payload.index;
+
+	RWUint[2] = hitobject.IsNop() ? 1 : 0;
+	RWUint[3] = hitobject.IsMiss() ? 1 : 0;
+	RWUint[4] = hitobject.IsHit() ? 1 : 0;
+
+	RWUint[5] = hitobject.GetClusterID();
+
+	RWUint[6] = hitobject.GetInstanceID();
+	RWUint[7] = hitobject.GetInstanceIndex();
+	RWUint[8] = hitobject.GetPrimitiveIndex();
+	RWUint[9] = hitobject.GetGeometryIndex();
+	RWUint[10] = hitobject.GetHitKind();
+	RWUint[11] = hitobject.GetShaderTableIndex();
+
+	RWUint[12] = hitobject.LoadLocalRootTableConstant(32);
+
+	ray = hitobject.GetRayDesc();
+
+	RWFloat[0] = ray.TMin;
+	RWFloat[1] = ray.TMax;
+	RWFloat[2] = ray.Origin.x;
+	RWFloat[3] = ray.Origin.y;
+	RWFloat[4] = ray.Origin.z;
+	RWFloat[5] = ray.Direction.x;
+	RWFloat[6] = ray.Direction.y;
+	RWFloat[7] = ray.Direction.z;
+
+	attributes = hitobject.GetAttributes<BuiltInTriangleIntersectionAttributes>();
+
+	RWFloat[8] = attributes.barycentrics.x;
+	RWFloat[9] = attributes.barycentrics.y;
+}

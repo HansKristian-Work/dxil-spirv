@@ -277,6 +277,70 @@ static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 	return false;
 }
 
+static bool emit_nvapi_extn_op_hit_object_trace_ray(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id miss_index = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto *hit_object = impl.nvapi.fake_doorbell_intermediates[NVAPI_INTERMEDIATE_HANDLE_0];
+
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_NV_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderNV);
+
+	spv::Id acceleration_structure = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id ray_flags = impl.get_id_for_value(instruction->getOperand(2));
+	spv::Id instance_inclusion_mask = impl.get_id_for_value(instruction->getOperand(3));
+	spv::Id ray_contribution_to_hit_group = impl.get_id_for_value(instruction->getOperand(4));
+	spv::Id multiplier_for_geometry = impl.get_id_for_value(instruction->getOperand(5));
+
+	spv::Id ray_origin[3];
+	spv::Id ray_dir[3];
+
+	for (unsigned i = 0; i < 3; i++)
+	{
+		ray_origin[i] = impl.get_id_for_value(instruction->getOperand(7 + i));
+		ray_dir[i] = impl.get_id_for_value(instruction->getOperand(11 + i));
+	}
+
+	spv::Id tmin = impl.get_id_for_value(instruction->getOperand(10));
+	spv::Id tmax = impl.get_id_for_value(instruction->getOperand(14));
+
+	spv::Id float32 = builder.makeFloatType(32);
+	spv::Id ray_origin_vec = impl.build_vector(float32, ray_origin, 3);
+	spv::Id ray_dir_vec = impl.build_vector(float32, ray_dir, 3);
+
+	auto *ray_payload = instruction->getOperand(15);
+
+	bool needs_temp_copy = impl.get_needs_temp_storage_copy(ray_payload);
+	spv::Id ray_payload_var_id = needs_temp_copy
+		? emit_temp_storage_copy(impl, ray_payload, spv::StorageClassRayPayloadKHR)
+		: impl.get_id_for_value(ray_payload);
+
+	spv::Id variable = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectNVType());
+
+	auto op = impl.allocate(spv::OpHitObjectTraceRayNV);
+	op->add_id(variable);
+	op->add_id(acceleration_structure);
+	op->add_id(ray_flags);
+	op->add_id(instance_inclusion_mask);
+	op->add_id(ray_contribution_to_hit_group);
+	op->add_id(multiplier_for_geometry);
+	op->add_id(miss_index);
+	op->add_id(ray_origin_vec);
+	op->add_id(tmin);
+	op->add_id(ray_dir_vec);
+	op->add_id(tmax);
+	op->add_id(ray_payload_var_id);
+	impl.add(op);
+
+	if (needs_temp_copy)
+		emit_temp_storage_resolve(impl, ray_payload, ray_payload_var_id);
+
+	impl.rewrite_value(hit_object, variable);
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_make_hit(Converter::Impl &impl, const llvm::CallInst *instruction, bool with_index)
 {
 	spv::Id instance_index = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
@@ -430,6 +494,28 @@ static bool emit_nvapi_extn_op_hit_object_reorder_thread(Converter::Impl &impl)
 	return false;
 }
 
+static bool emit_nvapi_extn_op_hit_object_invoke(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto *ray_payload = instruction->getOperand(15);
+
+	bool needs_temp_copy = impl.get_needs_temp_storage_copy(ray_payload);
+	spv::Id ray_payload_var_id = needs_temp_copy
+		? emit_temp_storage_copy(impl, ray_payload, spv::StorageClassRayPayloadKHR)
+		: impl.get_id_for_value(ray_payload);
+
+	auto *op = impl.allocate(spv::Op::OpHitObjectExecuteShaderNV);
+	op->add_id(hit_object);
+	op->add_id(ray_payload_var_id);
+	impl.add(op);
+
+	if (needs_temp_copy)
+		emit_temp_storage_resolve(impl, ray_payload, ray_payload_var_id);
+
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_get_bool(Converter::Impl &impl, uint32_t opcode)
 {
 	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
@@ -565,6 +651,28 @@ static bool emit_nvapi_extn_op_hit_object_get_ray_desc(Converter::Impl &impl)
 			impl.nvapi.fake_doorbell_outputs[o++] = bitcast_op->id;
 		}
 	}
+
+	return true;
+}
+
+static bool emit_nvapi_extn_op_hit_object_get_attributes(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto *attributes = instruction->getOperand(2);
+
+	bool needs_temp_copy = impl.get_needs_temp_storage_copy(attributes);
+	spv::Id attributes_var_id = needs_temp_copy
+		? emit_temp_storage_copy(impl, attributes, spv::StorageClassHitObjectAttributeNV)
+		: impl.get_id_for_value(attributes);
+
+	auto op = impl.allocate(spv::OpHitObjectGetAttributesNV);
+	op->add_id(hit_object);
+	op->add_id(attributes_var_id);
+	impl.add(op);
+
+	if (needs_temp_copy)
+		emit_temp_storage_resolve(impl, attributes, attributes_var_id);
 
 	return true;
 }
@@ -712,6 +820,10 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_GET_SPECIAL:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
+		case NV_EXTN_OP_HIT_OBJECT_TRACE_RAY:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_NUM_OUTPUTS_FOR_INC_COUNTER] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
+
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_NUM_OUTPUTS_FOR_INC_COUNTER] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
@@ -746,6 +858,7 @@ bool NVAPIState::can_commit_opcode()
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 3] != nullptr;
 
+		case NV_EXTN_OP_HIT_OBJECT_INVOKE:
 		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
 		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
@@ -755,6 +868,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_GET_GEOMETRY_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_HIT_KIND:
 		case NV_EXTN_OP_HIT_OBJECT_GET_RAY_DESC:
+		case NV_EXTN_OP_HIT_OBJECT_GET_ATTRIBUTES:
 		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
@@ -808,6 +922,7 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 				return false;
 			break;
 
+		case NV_EXTN_OP_HIT_OBJECT_TRACE_RAY:
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT_WITH_RECORD_INDEX:
 			impl.spirv_module.set_override_spirv_version(0x10400);
@@ -827,6 +942,12 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_reorder_thread(impl))
 				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_INVOKE:
+		case NV_EXTN_OP_HIT_OBJECT_GET_ATTRIBUTES:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			impl.nvapi.deferred_opcode = opcode;
 			break;
 
 		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
@@ -945,9 +1066,13 @@ static const llvm::Value *get_nvapi_trace_handle(Converter::Impl &impl)
 {
 	switch (impl.nvapi.deferred_opcode)
 	{
+	case NV_EXTN_OP_HIT_OBJECT_TRACE_RAY:
 	case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT:
 	case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT_WITH_RECORD_INDEX:
 		return impl.nvapi.fake_doorbell_intermediates[NVAPI_INTERMEDIATE_HANDLE_1];
+	case NV_EXTN_OP_HIT_OBJECT_INVOKE:
+	case NV_EXTN_OP_HIT_OBJECT_GET_ATTRIBUTES:
+		return impl.nvapi.fake_doorbell_intermediates[NVAPI_INTERMEDIATE_HANDLE_0];
 	default:
 		return nullptr;
 	}
@@ -983,6 +1108,10 @@ bool analyze_nvapi_call_shader(Converter::Impl &impl, const llvm::CallInst *inst
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT_WITH_RECORD_INDEX:
 			mark_alloca_variable(impl, instruction->getOperand(2), spv::StorageClassHitObjectAttributeNV);
 			return true;
+		case NV_EXTN_OP_HIT_OBJECT_GET_ATTRIBUTES:
+			mark_alloca_variable(impl, instruction->getOperand(2), spv::StorageClassHitObjectAttributeNV);
+			impl.nvapi.reset();
+			return true;
 		}
 	}
 
@@ -996,8 +1125,10 @@ bool analyze_nvapi_trace_ray(Converter::Impl &impl, const llvm::CallInst *instru
 	{
 		switch (impl.nvapi.deferred_opcode)
 		{
+		case NV_EXTN_OP_HIT_OBJECT_TRACE_RAY:
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT_WITH_RECORD_INDEX:
+		case NV_EXTN_OP_HIT_OBJECT_INVOKE:
 			mark_alloca_variable(impl, instruction->getOperand(15), spv::StorageClassRayPayloadKHR);
 			impl.nvapi.reset();
 			return true;
@@ -1018,6 +1149,10 @@ bool emit_nvapi_call_shader(Converter::Impl &impl, const llvm::CallInst *instruc
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT_WITH_RECORD_INDEX:
 			impl.nvapi.fake_doorbell_intermediates[NVAPI_INTERMEDIATE_ATTRIBUTES] = instruction->getOperand(2);
 			return true;
+		case NV_EXTN_OP_HIT_OBJECT_GET_ATTRIBUTES:
+			if (!emit_nvapi_extn_op_hit_object_get_attributes(impl, instruction))
+				return false;
+			break;
 		default:
 			return false;
 		}
@@ -1036,12 +1171,20 @@ bool emit_nvapi_trace_ray(Converter::Impl &impl, const llvm::CallInst *instructi
 	{
 		switch (impl.nvapi.deferred_opcode)
 		{
+		case NV_EXTN_OP_HIT_OBJECT_TRACE_RAY:
+			if (!emit_nvapi_extn_op_hit_object_trace_ray(impl, instruction))
+				return false;
+			break;
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT:
 			if (!emit_nvapi_extn_op_hit_object_make_hit(impl, instruction, false))
 				return false;
 			break;
 		case NV_EXTN_OP_HIT_OBJECT_MAKE_HIT_WITH_RECORD_INDEX:
 			if (!emit_nvapi_extn_op_hit_object_make_hit(impl, instruction, true))
+				return false;
+			break;
+		case NV_EXTN_OP_HIT_OBJECT_INVOKE:
+			if (!emit_nvapi_extn_op_hit_object_invoke(impl, instruction))
 				return false;
 			break;
 		default:
