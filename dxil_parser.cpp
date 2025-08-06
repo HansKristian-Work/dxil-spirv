@@ -462,13 +462,28 @@ bool DXILContainerParser::parse_container(const void *data, size_t size, bool re
 			return false;
 
 		auto fourcc = static_cast<DXIL::FourCC>(part_header.part_fourcc);
+
+		if (fourcc == DXIL::FourCC::SHDR || fourcc == DXIL::FourCC::SHEX)
+			dxbc_binary = true;
+	}
+
+	for (auto &part_offset : parts)
+	{
+		if (!stream.seek(part_offset))
+			return false;
+
+		DXIL::PartHeader part_header;
+		if (!stream.read(part_header))
+			return false;
+
+		auto fourcc = static_cast<DXIL::FourCC>(part_header.part_fourcc);
 		switch (fourcc)
 		{
 		case DXIL::FourCC::DXIL:
 		case DXIL::FourCC::ShaderStatistics:
 		{
 			DXIL::FourCC expected = reflection ? DXIL::FourCC::ShaderStatistics : DXIL::FourCC::DXIL;
-			if (expected != fourcc)
+			if (expected != fourcc || dxbc_binary)
 				break;
 
 			// The STAT block includes a DXIL blob that is literally the same DXIL IR

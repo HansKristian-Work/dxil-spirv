@@ -89,6 +89,8 @@ enum class FourCC : uint32_t
 	PrivateData = fourcc('P', 'R', 'I', 'V'),
 	RootSignature = fourcc('R', 'T', 'S', '0'),
 	DXIL = fourcc('D', 'X', 'I', 'L'),
+	SHDR = fourcc('S', 'H', 'D', 'R'),
+	SHEX = fourcc('S', 'H', 'E', 'X'),
 	PipelineStateValidation = fourcc('P', 'S', 'V', '0'),
 	RuntimeData = fourcc('R', 'D', 'A', 'T'),
 	ShaderHash = fourcc('H', 'A', 'S', 'H')

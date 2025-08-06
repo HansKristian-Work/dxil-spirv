@@ -62,12 +62,15 @@ public:
 	bool parse_container(const void *data, size_t size, bool reflection);
 	Vector<uint8_t> &get_blob();
 	Vector<RDATSubobject> &get_rdat_subobjects();
+	bool is_dxbc_binary() const { return dxbc_binary; }
 
 private:
 	Vector<uint8_t> dxil_blob;
 	Vector<DXIL::IOElement> input_elements;
 	Vector<DXIL::IOElement> output_elements;
 	Vector<RDATSubobject> rdat_subobjects;
+
+	bool dxbc_binary = false;
 
 	bool parse_dxil(MemoryStream &stream);
 	bool parse_iosg1(MemoryStream &stream, Vector<DXIL::IOElement> &elements);

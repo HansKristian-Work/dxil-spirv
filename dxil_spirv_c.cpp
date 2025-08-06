@@ -426,7 +426,14 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 	parsed->dxil_blob = std::move(parser.get_blob());
 	parsed->rdat_subobjects = std::move(parser.get_rdat_subobjects());
 
-	if (!parsed->bc.parse(parsed->dxil_blob.data(), parsed->dxil_blob.size()))
+	bool success;
+
+	if (parser.is_dxbc_binary())
+		success = parsed->bc.parseDXBCBinary(data, size);
+	else
+		success = parsed->bc.parse(parsed->dxil_blob.data(), parsed->dxil_blob.size());
+
+	if (!success)
 	{
 		delete parsed;
 		return DXIL_SPV_ERROR_PARSER;
