@@ -47,7 +47,6 @@ dxil_spirv_src = [
   'bc/context.cpp',
   'bc/type.cpp',
   'bc/module.cpp',
-  'bc/module_dxbc_ir.cpp',
   'bc/metadata.cpp',
   'bc/disassembler.cpp',
 
@@ -91,8 +90,24 @@ dxil_spirv_src = [
   'debug/logging.cpp',
 ]
 
+dxbc_spirv = subproject('dxbc-spirv')
+
+dxbc_spirv_include_dirs = include_directories([
+  'subprojects/dxbc-spirv'
+])
+
+dxbc_spirv_dep = dependency('dxbc-spirv',
+  fallback        : [ 'dxbc-spirv', 'dxbc_spv_dep' ],
+  default_options : [ 'cpp_std=c++17' ])
+
+dxbc_spv_module = static_library('dxbc_spv_module', files('bc/module_dxbc_ir.cpp'),
+  include_directories : [ dxil_spirv_include_dirs ],
+  dependencies        : [ dxbc_spirv_dep ],
+  override_options    : [ 'cpp_std=c++17' ])
+
 dxil_spirv_lib = static_library('dxil-spirv', dxil_spirv_src,
-  include_directories : dxil_spirv_include_dirs,
+  include_directories : [ dxil_spirv_include_dirs ],
+  link_with           : [ dxbc_spv_module ],
   override_options    : [
     'cpp_std='       + dxil_spirv_cpp_std,
     'warning_level=' + dxil_spirv_warning_level
