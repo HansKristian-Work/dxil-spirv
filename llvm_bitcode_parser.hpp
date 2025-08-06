@@ -50,6 +50,7 @@ public:
 	LLVMBCParser();
 	~LLVMBCParser();
 	bool parse(const void *data, size_t size);
+	bool parseDXBCBinary(const void *data, size_t size);
 	bool parseDXBC(dxbc_spv::ir::Builder &builder);
 	llvm::Module &get_module();
 	const llvm::Module &get_module() const;

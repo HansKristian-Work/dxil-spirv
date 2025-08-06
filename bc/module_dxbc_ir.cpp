@@ -36,6 +36,7 @@
 // dxbc-spirv
 #include "ir/ir.h"
 #include "ir/ir_builder.h"
+#include "dxbc/dxbc_api.h"
 using namespace dxbc_spv;
 
 namespace LLVMBC
@@ -3951,4 +3952,37 @@ Module *parseDXBCIR(LLVMContext &context, ir::Builder &builder)
 		return nullptr;
 	return module;
 }
+
+Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
+{
+	dxbc::CompileOptions options;
+	options.validateHash = false;
+
+	options.convertOptions.includeDebugNames = false;
+	options.convertOptions.uniqueIoLocations = false;
+
+	options.arithmeticOptions.lowerDot = true;
+	options.arithmeticOptions.lowerSinCos = false;
+	options.arithmeticOptions.lowerMsad = true;
+	options.arithmeticOptions.lowerF32toF16 = false;
+
+	options.min16Options.enableFloat16 = true;
+	options.min16Options.enableInt16 = true;
+
+	options.resourceOptions.allowSubDwordScratchAndLds = false;
+	options.resourceOptions.flattenLds = true;
+	options.resourceOptions.flattenScratch = true;
+	options.resourceOptions.structuredCbv = false;
+	options.resourceOptions.structuredSrvUav = false;
+
+	options.scalarizeOptions.subDwordVectors = true;
+
+	auto builder = dxbc::compileShaderToLegalizedIr(data, size, options);
+
+	if (!builder)
+		return nullptr;
+
+	return parseDXBCIR(context, *builder);
+}
+
 }

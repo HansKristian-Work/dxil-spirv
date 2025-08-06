@@ -75,6 +75,18 @@ bool LLVMBCParser::parse(const void *data, size_t size)
 	return true;
 }
 
+bool LLVMBCParser::parseDXBCBinary(const void *data, size_t size)
+{
+#ifdef HAVE_LLVMBC
+	impl->module = llvm::parseDXBCBinary(impl->context, data, size);
+	return impl->module != nullptr;
+#else
+	(void)data;
+	(void)size;
+	return false;
+#endif
+}
+
 bool LLVMBCParser::parseDXBC(dxbc_spv::ir::Builder &builder)
 {
 #ifdef HAVE_LLVMBC
