@@ -37,7 +37,31 @@
 #include "ir/ir.h"
 #include "ir/ir_builder.h"
 #include "dxbc/dxbc_api.h"
+#include "util/util_log.h"
 using namespace dxbc_spv;
+
+class ScopedLogger : util::Logger
+{
+
+public:
+
+	virtual void message(util::LogLevel severity, const char* text)
+	{
+		switch (severity)
+		{
+			case util::LogLevel::eDebug:
+			case util::LogLevel::eInfo: LOGI("%s\n", text); break;
+			case util::LogLevel::eWarn: LOGW("%s\n", text); break;
+			case util::LogLevel::eError: LOGE("%s\n", text); break;
+		}
+	}
+
+	virtual util::LogLevel getMinimumSeverity()
+	{
+		return util::LogLevel::eInfo;
+	}
+
+};
 
 namespace LLVMBC
 {
@@ -3958,6 +3982,8 @@ Module *parseDXBCIR(LLVMContext &context, ir::Builder &builder)
 
 Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 {
+	ScopedLogger logger;
+
 	dxbc::CompileOptions options;
 	options.validateHash = false;
 
