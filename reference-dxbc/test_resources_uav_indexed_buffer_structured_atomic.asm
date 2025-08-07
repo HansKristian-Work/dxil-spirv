@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 109
+; Bound: 120
 ; Schema: 0
                OpCapability Shader
                OpCapability StorageBufferArrayDynamicIndexing
@@ -44,6 +44,8 @@ SPIR-V:
                OpDecorate %96 NonUniform
                OpDecorate %101 NonUniform
                OpDecorate %106 NonUniform
+               OpDecorate %110 NonUniform
+               OpDecorate %115 NonUniform
        %void = OpTypeVoid
           %2 = OpTypeFunction %void
        %uint = OpTypeInt 32 0
@@ -65,12 +67,13 @@ SPIR-V:
 %_ptr_StorageBuffer_uint = OpTypePointer StorageBuffer %uint
      %uint_5 = OpConstant %uint 5
     %uint_10 = OpConstant %uint 10
+     %uint_2 = OpConstant %uint 2
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %107
+                 OpBranch %118
 
-        %107 = OpLabel
+        %118 = OpLabel
          %16 =   OpLoad %uint %BUFFER_INDEX
          %18 =   OpAccessChain %_ptr_StorageBuffer_SSBO %10 %16
          %19 =   OpAccessChain %_ptr_Input_uint %BUFFER_ADDRESS %uint_0
@@ -138,6 +141,14 @@ SPIR-V:
         %105 =   OpIAdd %uint %104 %24
         %106 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %105
                  OpAtomicStore %106 %uint_5 %uint_0 %102
+        %108 =   OpIMul %uint %21 %uint_20
+        %109 =   OpIAdd %uint %108 %24
+        %110 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %109
+        %111 =   OpAtomicIAdd %uint %110 %uint_5 %uint_0 %uint_1
+        %113 =   OpIMul %uint %21 %uint_20
+        %114 =   OpIAdd %uint %113 %24
+        %115 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %114
+        %116 =   OpAtomicISub %uint %115 %uint_5 %uint_0 %uint_2
                  OpReturn
                OpFunctionEnd
 

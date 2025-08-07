@@ -22,6 +22,8 @@ void main()
     uint _47 = imageAtomicAdd(_8, int(BUFFER_ADDRESS.x), 1u);
     uint _50 = imageAtomicAdd(_8, int(BUFFER_ADDRESS.x), -1u);
     imageAtomicExchange(_8, int(BUFFER_ADDRESS.x), _50);
+    uint _53 = imageAtomicAdd(_8, int(BUFFER_ADDRESS.x), 1u);
+    uint _55 = imageAtomicAdd(_8, int(BUFFER_ADDRESS.x), -2u);
 }
 
 

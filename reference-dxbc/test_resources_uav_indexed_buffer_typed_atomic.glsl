@@ -24,6 +24,8 @@ void main()
     uint _52 = imageAtomicAdd(_9[nonuniformEXT(BUFFER_INDEX)], int(BUFFER_ADDRESS.x), 1u);
     uint _55 = imageAtomicAdd(_9[nonuniformEXT(BUFFER_INDEX)], int(BUFFER_ADDRESS.x), -1u);
     imageAtomicExchange(_9[nonuniformEXT(BUFFER_INDEX)], int(BUFFER_ADDRESS.x), _55);
+    uint _58 = imageAtomicAdd(_9[nonuniformEXT(BUFFER_INDEX)], int(BUFFER_ADDRESS.x), 1u);
+    uint _60 = imageAtomicAdd(_9[nonuniformEXT(BUFFER_INDEX)], int(BUFFER_ADDRESS.x), -2u);
 }
 
 

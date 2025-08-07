@@ -25,6 +25,8 @@ void main()
     uint _92 = atomicAdd(_9._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], 1u);
     uint _97 = atomicAdd(_9._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], -1u);
     atomicExchange(_9._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], _97);
+    uint _106 = atomicAdd(_9._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], 1u);
+    uint _111 = atomicAdd(_9._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], -2u);
 }
 
 

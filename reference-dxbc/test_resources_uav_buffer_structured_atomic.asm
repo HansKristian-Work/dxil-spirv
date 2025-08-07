@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 104
+; Bound: 115
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
@@ -37,12 +37,13 @@ SPIR-V:
 %_ptr_StorageBuffer_uint = OpTypePointer StorageBuffer %uint
      %uint_5 = OpConstant %uint 5
     %uint_10 = OpConstant %uint 10
+     %uint_2 = OpConstant %uint 2
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %102
+                 OpBranch %113
 
-        %102 = OpLabel
+        %113 = OpLabel
          %14 =   OpAccessChain %_ptr_Input_uint %BUFFER_ADDRESS %uint_0
          %16 =   OpLoad %uint %14
          %17 =   OpAccessChain %_ptr_Input_uint %BUFFER_ADDRESS %uint_1
@@ -108,6 +109,14 @@ SPIR-V:
         %100 =   OpIAdd %uint %99 %19
         %101 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %100
                  OpAtomicStore %101 %uint_5 %uint_0 %97
+        %103 =   OpIMul %uint %16 %uint_20
+        %104 =   OpIAdd %uint %103 %19
+        %105 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %104
+        %106 =   OpAtomicIAdd %uint %105 %uint_5 %uint_0 %uint_1
+        %108 =   OpIMul %uint %16 %uint_20
+        %109 =   OpIAdd %uint %108 %19
+        %110 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %109
+        %111 =   OpAtomicISub %uint %110 %uint_5 %uint_0 %uint_2
                  OpReturn
                OpFunctionEnd
 

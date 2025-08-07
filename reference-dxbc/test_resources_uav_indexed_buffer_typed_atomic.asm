@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 59
+; Bound: 64
 ; Schema: 0
                OpCapability Shader
                OpCapability ImageBuffer
@@ -40,6 +40,8 @@ SPIR-V:
                OpDecorate %51 NonUniform
                OpDecorate %54 NonUniform
                OpDecorate %56 NonUniform
+               OpDecorate %57 NonUniform
+               OpDecorate %59 NonUniform
        %void = OpTypeVoid
           %2 = OpTypeFunction %void
        %uint = OpTypeInt 32 0
@@ -58,12 +60,13 @@ SPIR-V:
      %uint_5 = OpConstant %uint 5
     %uint_10 = OpConstant %uint 10
      %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %57
+                 OpBranch %62
 
-         %57 = OpLabel
+         %62 = OpLabel
          %15 =   OpLoad %uint %BUFFER_INDEX
          %17 =   OpAccessChain %_ptr_UniformConstant_6 %9 %15
          %19 =   OpAccessChain %_ptr_Input_uint %BUFFER_ADDRESS %uint_0
@@ -99,6 +102,10 @@ SPIR-V:
          %55 =   OpAtomicISub %uint %54 %uint_5 %uint_0 %uint_1
          %56 =   OpImageTexelPointer %_ptr_Image_uint %17 %21 %uint_0
                  OpAtomicStore %56 %uint_5 %uint_0 %55
+         %57 =   OpImageTexelPointer %_ptr_Image_uint %17 %21 %uint_0
+         %58 =   OpAtomicIAdd %uint %57 %uint_5 %uint_0 %uint_1
+         %59 =   OpImageTexelPointer %_ptr_Image_uint %17 %21 %uint_0
+         %60 =   OpAtomicISub %uint %59 %uint_5 %uint_0 %uint_2
                  OpReturn
                OpFunctionEnd
 

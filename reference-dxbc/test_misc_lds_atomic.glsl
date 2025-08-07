@@ -17,7 +17,8 @@ shared uint _20[1];
 void main()
 {
     uint _32 = atomicAdd(_20[0u], _9._m0[gl_GlobalInvocationID.x]);
-    _13._m0[gl_GlobalInvocationID.x] = _32;
+    uint _35 = atomicXor(_20[0u], _9._m0[gl_GlobalInvocationID.x]);
+    _13._m0[gl_GlobalInvocationID.x] = _35;
 }
 
 

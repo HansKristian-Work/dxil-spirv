@@ -27,6 +27,8 @@ void main()
     uint _97 = atomicAdd(_10[nonuniformEXT(BUFFER_INDEX)]._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], 1u);
     uint _102 = atomicAdd(_10[nonuniformEXT(BUFFER_INDEX)]._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], -1u);
     atomicExchange(_10[nonuniformEXT(BUFFER_INDEX)]._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], _102);
+    uint _111 = atomicAdd(_10[nonuniformEXT(BUFFER_INDEX)]._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], 1u);
+    uint _116 = atomicAdd(_10[nonuniformEXT(BUFFER_INDEX)]._m0[(BUFFER_ADDRESS.x * 20u) + BUFFER_ADDRESS.y], -2u);
 }
 
 
