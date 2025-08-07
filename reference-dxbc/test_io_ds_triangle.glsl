@@ -30,10 +30,10 @@ void main()
     PRIMID = uint(gl_PrimitiveID);
     uint _103 = INDEX ^ 1u;
     uint _121 = INDEX ^ 2u;
-    gl_Position.x = fma(SV_POSITION[_121].x, gl_TessCoord.x, fma(SV_POSITION[_103].x, gl_TessCoord.x, SV_POSITION[INDEX].x * gl_TessCoord.x));
-    gl_Position.y = fma(SV_POSITION[_121].y, gl_TessCoord.x, fma(SV_POSITION[_103].y, gl_TessCoord.x, SV_POSITION[INDEX].y * gl_TessCoord.x));
-    gl_Position.z = fma(SV_POSITION[_121].z, gl_TessCoord.x, fma(SV_POSITION[_103].z, gl_TessCoord.x, SV_POSITION[INDEX].z * gl_TessCoord.x));
-    gl_Position.w = fma(SV_POSITION[_121].w, gl_TessCoord.x, fma(SV_POSITION[_103].w, gl_TessCoord.x, SV_POSITION[INDEX].w * gl_TessCoord.x));
+    gl_Position.x = fma(SV_POSITION[_121].x, gl_TessCoord.z, fma(SV_POSITION[_103].x, gl_TessCoord.y, SV_POSITION[INDEX].x * gl_TessCoord.x));
+    gl_Position.y = fma(SV_POSITION[_121].y, gl_TessCoord.z, fma(SV_POSITION[_103].y, gl_TessCoord.y, SV_POSITION[INDEX].y * gl_TessCoord.x));
+    gl_Position.z = fma(SV_POSITION[_121].z, gl_TessCoord.z, fma(SV_POSITION[_103].z, gl_TessCoord.y, SV_POSITION[INDEX].z * gl_TessCoord.x));
+    gl_Position.w = fma(SV_POSITION[_121].w, gl_TessCoord.z, fma(SV_POSITION[_103].w, gl_TessCoord.y, SV_POSITION[INDEX].w * gl_TessCoord.x));
     COLOR.x = R_COLOR[0u];
     COLOR.y = G_COLOR[1u];
     COLOR.z = B_COLOR[2u];

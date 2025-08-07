@@ -266,7 +266,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 0
-		if (test.name != "test_misc_function_with_return")
+		if (test.name != "test_io_ds_triangle")
 			continue;
 #endif
 

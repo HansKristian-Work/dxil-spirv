@@ -163,7 +163,7 @@ SPIR-V:
          %79 =   OpLoad %uint %INDEX
          %80 =   OpAccessChain %_ptr_Input_float %SV_DOMAINLOCATION %uint_0
          %81 =   OpLoad %float %80
-         %82 =   OpAccessChain %_ptr_Input_float %SV_DOMAINLOCATION %uint_0
+         %82 =   OpAccessChain %_ptr_Input_float %SV_DOMAINLOCATION %uint_1
          %83 =   OpLoad %float %82
          %86 =   OpAccessChain %_ptr_Input_float %SV_POSITION %79 %uint_0
          %87 =   OpLoad %float %86

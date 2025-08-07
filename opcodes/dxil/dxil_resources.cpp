@@ -132,13 +132,19 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	spv::Id input_type_id = builder.getDerefTypeId(var_id);
 
 	bool array_index = false;
-	if (impl.execution_model == spv::ExecutionModelTessellationControl ||
-	    impl.execution_model == spv::ExecutionModelGeometry ||
-	    impl.execution_model == spv::ExecutionModelTessellationEvaluation ||
-	    impl.llvm_attribute_at_vertex_indices.count(input_element_index) != 0)
+
+	// Deal with custom IR routing through this function.
+	// In plain DXIL, this check is not necessary.
+	if (builder.getTypeClass(input_type_id) == spv::OpTypeArray)
 	{
-		input_type_id = builder.getContainedTypeId(input_type_id);
-		array_index = true;
+		if (impl.execution_model == spv::ExecutionModelTessellationControl ||
+		    impl.execution_model == spv::ExecutionModelGeometry ||
+		    impl.execution_model == spv::ExecutionModelTessellationEvaluation ||
+		    impl.llvm_attribute_at_vertex_indices.count(input_element_index) != 0)
+		{
+			input_type_id = builder.getContainedTypeId(input_type_id);
+			array_index = true;
+		}
 	}
 
 	bool row_index = false;

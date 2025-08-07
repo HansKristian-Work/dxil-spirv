@@ -36,10 +36,10 @@ void main()
     float _145 = fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 1u].z - SV_POSITION[INDEX].z, SV_POSITION[INDEX].z);
     uint _156 = INDEX ^ 2u;
     float _166 = fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 1u].w - SV_POSITION[INDEX].w, SV_POSITION[INDEX].w);
-    gl_Position.x = fma(gl_TessCoord.x, fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 3u].x - SV_POSITION[_92].x, SV_POSITION[_92].x) - _103, _103);
-    gl_Position.y = fma(gl_TessCoord.x, fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 3u].y - SV_POSITION[_114].y, SV_POSITION[_114].y) - _124, _124);
-    gl_Position.z = fma(gl_TessCoord.x, fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 3u].z - SV_POSITION[_135].z, SV_POSITION[_135].z) - _145, _145);
-    gl_Position.w = fma(gl_TessCoord.x, fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 3u].w - SV_POSITION[_156].w, SV_POSITION[_156].w) - _166, _166);
+    gl_Position.x = fma(gl_TessCoord.y, fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 3u].x - SV_POSITION[_92].x, SV_POSITION[_92].x) - _103, _103);
+    gl_Position.y = fma(gl_TessCoord.y, fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 3u].y - SV_POSITION[_114].y, SV_POSITION[_114].y) - _124, _124);
+    gl_Position.z = fma(gl_TessCoord.y, fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 3u].z - SV_POSITION[_135].z, SV_POSITION[_135].z) - _145, _145);
+    gl_Position.w = fma(gl_TessCoord.y, fma(gl_TessCoord.x, SV_POSITION[INDEX ^ 3u].w - SV_POSITION[_156].w, SV_POSITION[_156].w) - _166, _166);
     COLOR.x = R_COLOR[0u];
     COLOR.y = G_COLOR[1u];
     COLOR.z = B_COLOR[2u];
