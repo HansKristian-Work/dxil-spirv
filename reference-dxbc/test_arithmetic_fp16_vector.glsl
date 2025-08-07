@@ -39,7 +39,7 @@ void main()
     f16vec2 _107 = f16vec2(float16_t(1.0)) / (fma(ceil(floor(roundEven((-abs(trunc(f16vec2(float16_t(uintBitsToFloat(_9._m0[0u])), float16_t(uintBitsToFloat(_9._m0[1u])))))) + f16vec2(float16_t(uintBitsToFloat(_9._m0[2u])), float16_t(uintBitsToFloat(_9._m0[3u])))) - f16vec2(float16_t(uintBitsToFloat(_9._m0[4u])), float16_t(uintBitsToFloat(_9._m0[5u])))) * f16vec2(float16_t(uintBitsToFloat(_9._m0[6u])), float16_t(uintBitsToFloat(_9._m0[7u])))), f16vec2(float16_t(uintBitsToFloat(_9._m0[8u])), float16_t(uintBitsToFloat(_9._m0[9u]))), f16vec2(float16_t(uintBitsToFloat(_9._m0[10u])), float16_t(uintBitsToFloat(_9._m0[11u])))) / f16vec2(float16_t(uintBitsToFloat(_9._m0[12u])), float16_t(uintBitsToFloat(_9._m0[13u]))));
     f16vec2 _157 = spvNClamp(spvNMax(spvNMin(fract(_107), f16vec2(float16_t(uintBitsToFloat(_9._m0[14u])), float16_t(uintBitsToFloat(_9._m0[15u])))), f16vec2(float16_t(uintBitsToFloat(_9._m0[16u])), float16_t(uintBitsToFloat(_9._m0[17u])))), f16vec2(float16_t(uintBitsToFloat(_9._m0[18u])), float16_t(uintBitsToFloat(_9._m0[19u]))), f16vec2(float16_t(uintBitsToFloat(_9._m0[20u])), float16_t(uintBitsToFloat(_9._m0[21u]))));
     _13._m0[0u] = floatBitsToUint(float(_157.x));
-    _13._m0[0u] = floatBitsToUint(float(_157.y));
+    _13._m0[1u] = floatBitsToUint(float(_157.y));
 }
 
 
