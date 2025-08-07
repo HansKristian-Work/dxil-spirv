@@ -203,7 +203,7 @@ SPIR-V:
         %162 =   OpCompositeExtract %half %157 1
         %163 =   OpFConvert %float %162
         %164 =   OpBitcast %uint %163
-        %165 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
+        %165 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_1
                  OpStore %165 %164 NonPrivatePointer
                  OpReturn
                OpFunctionEnd

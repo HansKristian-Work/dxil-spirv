@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 52
+; Bound: 53
 ; Schema: 0
                OpCapability Shader
                OpCapability StorageBufferArrayDynamicIndexing
@@ -30,13 +30,13 @@ SPIR-V:
                OpDecorate %BUFFER_ADDRESS Location 0
                OpDecorate %16 NonUniform
                OpDecorate %18 NonUniform
-               OpDecorate %37 NonUniform
                OpDecorate %38 NonUniform
-               OpDecorate %40 NonUniform
-               OpDecorate %43 NonUniform
+               OpDecorate %39 NonUniform
+               OpDecorate %41 NonUniform
                OpDecorate %44 NonUniform
-               OpDecorate %46 NonUniform
-               OpDecorate %49 NonUniform
+               OpDecorate %45 NonUniform
+               OpDecorate %47 NonUniform
+               OpDecorate %50 NonUniform
        %void = OpTypeVoid
           %2 = OpTypeFunction %void
        %uint = OpTypeInt 32 0
@@ -57,43 +57,43 @@ SPIR-V:
      %uint_3 = OpConstant %uint 3
      %v3uint = OpTypeVector %uint 3
      %uint_2 = OpConstant %uint 2
+     %uint_4 = OpConstant %uint 4
     %uint_20 = OpConstant %uint 20
 %_ptr_StorageBuffer_uint = OpTypePointer StorageBuffer %uint
-   %uint_140 = OpConstant %uint 140
+   %uint_143 = OpConstant %uint 143
      %uint_6 = OpConstant %uint 6
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %50
+                 OpBranch %51
 
-         %50 = OpLabel
+         %51 = OpLabel
          %16 =   OpLoad %uint %BUFFER_INDEX
          %18 =   OpAccessChain %_ptr_StorageBuffer_SSBO %10 %16
          %19 =   OpAccessChain %_ptr_Input_uint %BUFFER_ADDRESS %uint_0
          %21 =   OpLoad %uint %19
          %22 =   OpAccessChain %_ptr_Input_uint %BUFFER_ADDRESS %uint_1
          %24 =   OpLoad %uint %22
-         %32 =   OpIMul %uint %21 %uint_20
-         %34 =   OpShiftRightLogical %uint %24 %uint_2
-         %35 =   OpIAdd %uint %32 %34
-         %37 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %35
-                 OpStore %37 %uint_1 NonPrivatePointer
-         %39 =   OpIAdd %uint %35 %uint_1
-         %38 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %39
-                 OpStore %38 %uint_2 NonPrivatePointer
-         %41 =   OpIAdd %uint %35 %uint_2
-         %40 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %41
-                 OpStore %40 %uint_3 NonPrivatePointer
-         %43 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %uint_140
-                 OpStore %43 %uint_1 NonPrivatePointer
-         %45 =   OpIAdd %uint %uint_140 %uint_1
-         %44 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %45
-                 OpStore %44 %uint_2 NonPrivatePointer
-         %47 =   OpIAdd %uint %uint_140 %uint_2
-         %46 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %47
-                 OpStore %46 %uint_3 NonPrivatePointer
-         %49 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %uint_140
-                 OpStore %49 %uint_6 NonPrivatePointer
+         %34 =   OpIMul %uint %21 %uint_20
+         %36 =   OpIAdd %uint %34 %24
+         %38 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %36
+                 OpStore %38 %uint_1 NonPrivatePointer
+         %40 =   OpIAdd %uint %36 %uint_1
+         %39 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %40
+                 OpStore %39 %uint_2 NonPrivatePointer
+         %42 =   OpIAdd %uint %36 %uint_2
+         %41 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %42
+                 OpStore %41 %uint_3 NonPrivatePointer
+         %44 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %uint_143
+                 OpStore %44 %uint_1 NonPrivatePointer
+         %46 =   OpIAdd %uint %uint_143 %uint_1
+         %45 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %46
+                 OpStore %45 %uint_2 NonPrivatePointer
+         %48 =   OpIAdd %uint %uint_143 %uint_2
+         %47 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %48
+                 OpStore %47 %uint_3 NonPrivatePointer
+         %50 =   OpAccessChain %_ptr_StorageBuffer_uint %18 %uint_0 %uint_143
+                 OpStore %50 %uint_6 NonPrivatePointer
                  OpReturn
                OpFunctionEnd
 
