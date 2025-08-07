@@ -135,7 +135,7 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 
 	// Deal with custom IR routing through this function.
 	// In plain DXIL, this check is not necessary.
-	if (builder.getTypeClass(input_type_id) == spv::OpTypeArray)
+	if (builder.isArrayType(input_type_id))
 	{
 		if (impl.execution_model == spv::ExecutionModelTessellationControl ||
 		    impl.execution_model == spv::ExecutionModelGeometry ||
