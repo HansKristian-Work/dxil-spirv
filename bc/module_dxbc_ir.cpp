@@ -2774,13 +2774,6 @@ bool ParseContext::build_lds_atomic(const ir::Op &op)
 	}
 	else
 	{
-		auto *ret_type = convert_type(op.getType());
-		if (!ret_type)
-			ret_type = type;
-		// Final fallback, base the type on the LDS itself. Not sure if it ever applies.
-		if (!ret_type)
-			ret_type = get_scalar_type(convert_type(op.getType().getBaseType(0)));
-
 		if (atomic_op == ir::AtomicOp::eInc || atomic_op == ir::AtomicOp::eDec)
 			value = get_constant_uint(1);
 		else if (atomic_op == ir::AtomicOp::eLoad)
@@ -2789,7 +2782,7 @@ bool ParseContext::build_lds_atomic(const ir::Op &op)
 		assert(value);
 
 		auto *inst = context.construct<AtomicRMWInst>(
-		    ret_type, gep, value, convert_atomic_binop_llvm(atomic_op));
+		    type, gep, value, convert_atomic_binop_llvm(atomic_op));
 		push_instruction(inst, op.getDef());
 	}
 
