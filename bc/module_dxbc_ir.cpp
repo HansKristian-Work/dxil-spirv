@@ -1301,14 +1301,18 @@ bool ParseContext::build_composite_construct(const ir::Op &op)
 
 bool ParseContext::build_composite_extract(const ir::Op &op)
 {
-	if (!llvm::isa<llvm::ConstantInt>(get_value(op.getOperand(1))))
+	auto &address = builder.getOpForOperand(op, 1);
+	if (!address.isConstant())
 	{
 		LOGE("CompositeExtract must take a constant index.\n");
 		return false;
 	}
 
-	auto *value =
-	    get_extracted_composite_component(get_value(op.getOperand(0)), resolve_constant_uint(op.getOperand(1)));
+	auto *value = get_value(op.getOperand(0));
+
+	for (unsigned i = 0; i < address.getOperandCount(); i++)
+		value = get_extracted_composite_component(value, uint32_t(address.getOperand(i)));
+
 	value_map[op.getDef()] = value;
 	return true;
 }
