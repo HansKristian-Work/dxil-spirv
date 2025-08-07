@@ -705,7 +705,6 @@ private:
 	Value *get_value(const ir::SsaDef &op) const;
 
 	bool emit_constant(const ir::Op &op);
-	uint32_t resolve_constant_uint(const ir::Operand &op) const;
 
 	ir::OpFlags global_fp_flags = {};
 };
@@ -936,18 +935,6 @@ void ParseContext::push_instruction(Instruction *instruction, ir::SsaDef ssa)
 	current_bb->add_instruction(instruction);
 	if (ssa)
 		value_map[ssa] = instruction;
-}
-
-uint32_t ParseContext::resolve_constant_uint(const ir::Operand &op) const
-{
-	auto *value = get_value(op);
-	if (!value)
-		return 0;
-
-	if (auto *cint = llvm::dyn_cast<llvm::ConstantInt>(value))
-		return cint->getUniqueInteger().getZExtValue();
-	else
-		return 0;
 }
 
 ParseContext::StageIOAccess
