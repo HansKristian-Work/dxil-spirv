@@ -2587,10 +2587,13 @@ bool ParseContext::build_buffer_store(const ir::Op &op, DXIL::ResourceKind kind)
 	{
 		first = get_extracted_composite_component(addr_value, 0);
 		second = get_extracted_composite_component(addr_value, 1);
+		second = get_constant_mul(second, 4);
 	}
 	else
 	{
 		first = addr_value;
+		if (kind == DXIL::ResourceKind::RawBuffer)
+			first = get_constant_mul(first, 4);
 		second = UndefValue::get(int_type);
 	}
 
