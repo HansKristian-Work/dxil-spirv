@@ -35,6 +35,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_container.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_disasm.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_disasm.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/ir_dominance.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/ir_dominance.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_utils.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_utils.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_validation.cpp
@@ -45,6 +47,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_cleanup.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_convert.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_convert.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cse.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cse.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_min16.cpp
@@ -71,26 +75,7 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/util/util_md5.cpp
         ${DXBC_SPV_SOURCE_DIR}/util/util_md5.h
         ${DXBC_SPV_SOURCE_DIR}/util/util_small_vector.h
-        ${DXBC_SPV_SOURCE_DIR}/util/util_vle.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_cleanup.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_cleanup.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_convert.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_convert.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_min16.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_min16.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_propagate_types.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_propagate_types.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_remove_unused.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_remove_unused.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_scalarize.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_scalarize.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa_utils.h)
+        ${DXBC_SPV_SOURCE_DIR}/util/util_vle.h)
 
 add_library(dxbc-spirv-test STATIC
         ${DXBC_SPV_SOURCE_DIR}/tests/test_common.h
@@ -103,6 +88,8 @@ add_library(dxbc-spirv-test STATIC
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_io.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_resources.cpp
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_resources.h
+        ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_arithmetic.cpp
+        ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_arithmetic.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_scalarize.cpp
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_scalarize.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_arithmetic.cpp

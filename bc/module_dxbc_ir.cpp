@@ -3643,8 +3643,6 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eFDot:
 		case ir::OpCode::eFDotLegacy:
 		case ir::OpCode::eUMSad:
-		case ir::OpCode::eMinValue:
-		case ir::OpCode::eMaxValue:
 		case ir::OpCode::eDrain:
 			LOGE("Opcode %u should not appear in final IR at this point.\n", unsigned(op.getOpCode()));
 			return false;
@@ -3974,12 +3972,12 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.validateHash = false;
 
 	options.convertOptions.includeDebugNames = false;
-	options.convertOptions.uniqueIoLocations = false;
 
 	options.arithmeticOptions.lowerDot = true;
 	options.arithmeticOptions.lowerSinCos = false;
 	options.arithmeticOptions.lowerMsad = true;
-	options.arithmeticOptions.lowerF32toF16 = false;
+	options.arithmeticOptions.lowerF32toF16 = true;
+	options.arithmeticOptions.lowerConvertFtoI = false;
 
 	options.min16Options.enableFloat16 = true;
 	options.min16Options.enableInt16 = true;
