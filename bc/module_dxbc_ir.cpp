@@ -767,6 +767,8 @@ bool ParseContext::emit_constant(const ir::Op &op)
 				value = ConstantInt::get(llvm_type, uint64_t(op.getOperand(0)));
 			else if (type.getBaseType(0).isFloatType())
 				value = ConstantFP::get(llvm_type, uint64_t(op.getOperand(0)));
+			else if (type.getBaseType(0).isBoolType())
+				value = ConstantInt::get(llvm_type, bool(op.getOperand(0)));
 			else
 				return false;
 		}
