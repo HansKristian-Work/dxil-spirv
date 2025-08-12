@@ -7420,6 +7420,8 @@ void Converter::Impl::gather_function_dependencies(llvm::Function *caller, Vecto
 {
 	if (std::find(funcs.begin(), funcs.end(), caller) != funcs.end())
 		return;
+
+	// Avoid exponential explosion while traversing.
 	funcs.push_back(caller);
 
 	for (auto &bb : *caller)
@@ -7437,6 +7439,10 @@ void Converter::Impl::gather_function_dependencies(llvm::Function *caller, Vecto
 			}
 		}
 	}
+
+	// Ensure leaves come before their caller.
+	funcs.erase(std::find(funcs.begin(), funcs.end(), caller));
+	funcs.push_back(caller);
 }
 
 bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
