@@ -213,6 +213,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 	case spv::BuiltInShadingRateKHR:
 	case spv::BuiltInPrimitiveShadingRateKHR:
 	case spv::BuiltInViewIndex:
+	case spv::BuiltInPatchVertices:
 		requires_flat = true;
 		return builder.makeUintType(32);
 

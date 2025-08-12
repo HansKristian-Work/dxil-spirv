@@ -423,7 +423,7 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 bool emit_load_draw_parameter_instruction(spv::BuiltIn builtin, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	auto& builder = impl.builder();
+	auto &builder = impl.builder();
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
 
 	Operation *op = impl.allocate(spv::OpLoad, instruction);
@@ -431,6 +431,15 @@ bool emit_load_draw_parameter_instruction(spv::BuiltIn builtin, Converter::Impl 
 	impl.add(op);
 
 	builder.addCapability(spv::CapabilityDrawParameters);
+	return true;
+}
+
+bool emit_load_control_point_count_in(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInPatchVertices);
+	Operation *op = impl.allocate(spv::OpLoad, instruction);
+	op->add_id(var_id);
+	impl.add(op);
 	return true;
 }
 

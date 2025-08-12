@@ -69,6 +69,7 @@ struct DXILDispatcher
 		OP(CreateHandleFromBinding) = emit_create_handle_from_binding_instruction;
 		OP(StartVertexLocation) = emit_load_draw_parameter_dispatch<spv::BuiltInBaseVertex>;
 		OP(StartInstanceLocation) = emit_load_draw_parameter_dispatch<spv::BuiltInBaseInstance>;
+		OP(ExtendedSpirvControlPointCountIn) = emit_load_control_point_count_in;
 
 		// dxil_sampling.hpp
 		OP(Sample) = emit_sample_instruction_dispatch<DXIL::Op::Sample>;

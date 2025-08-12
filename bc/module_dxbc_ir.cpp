@@ -179,6 +179,8 @@ static DXIL::Op convert_builtin_opcode(ir::BuiltIn builtin)
 		return DXIL::Op::PrimitiveID;
 	case ir::BuiltIn::eTessControlPointId:
 		return DXIL::Op::OutputControlPointID;
+	case ir::BuiltIn::eTessControlPointCountIn:
+		return DXIL::Op::ExtendedSpirvControlPointCountIn;
 
 	default:
 		return DXIL::Op::Count;

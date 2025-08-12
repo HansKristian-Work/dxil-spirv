@@ -64,6 +64,8 @@ static inline bool emit_load_draw_parameter_dispatch(Converter::Impl &impl, cons
 	return emit_load_draw_parameter_instruction(builtin, impl, instruction);
 }
 
+bool emit_load_control_point_count_in(Converter::Impl &impl, const llvm::CallInst *instruction);
+
 struct AnnotateHandleMeta
 {
 	DXIL::Op resource_op;
