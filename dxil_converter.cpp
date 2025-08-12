@@ -81,6 +81,16 @@ void Converter::add_local_root_descriptor_table(const DescriptorTableEntry *entr
 	add_local_root_descriptor_table({ entries, entries + count });
 }
 
+uint32_t Converter::get_patch_location_offset() const
+{
+	return impl->patch_location_offset;
+}
+
+void Converter::set_patch_location_offset(uint32_t offset)
+{
+	impl->patch_location_offset = offset;
+}
+
 void Converter::get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const
 {
 	x = impl->execution_mode_meta.workgroup_threads[0];
@@ -4018,6 +4028,10 @@ bool Converter::Impl::emit_patch_variables()
 	if (!patch_variables)
 		return true;
 
+	// There are no control points, and there's no explicit parameter, so force 0.
+	if (patch_location_offset == ~0u)
+		patch_location_offset = 0;
+
 	// dxilconv is broken and emits patch the fork phase in a way that is non-sensical.
 	// It assumes that you can write outside the bounds of a signature element.
 	// To make this work, we need to lower the patch constant variables from Private variables instead.
@@ -4238,6 +4252,11 @@ bool Converter::Impl::emit_stage_output_variables()
 
 	unsigned clip_distance_count = 0;
 	unsigned cull_distance_count = 0;
+	bool auto_patch_location = patch_location_offset == ~0u &&
+	                           (execution_model == spv::ExecutionModelTessellationControl ||
+	                            execution_model == spv::ExecutionModelMeshEXT);
+	if (auto_patch_location)
+		patch_location_offset = 0;
 
 	// If we have multiple geometry streams, need to hallucinate locations.
 	// This is okay since we're not going to support multi-stream rasterization anyways.
@@ -4271,7 +4290,7 @@ bool Converter::Impl::emit_stage_output_variables()
 			continue;
 		}
 
-		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
+		if (auto_patch_location)
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
@@ -4994,6 +5013,10 @@ bool Converter::Impl::emit_stage_input_variables()
 
 	unsigned clip_distance_count = 0;
 	unsigned cull_distance_count = 0;
+	bool auto_patch_location = patch_location_offset == ~0u &&
+	                           execution_model == spv::ExecutionModelTessellationEvaluation;
+	if (auto_patch_location)
+		patch_location_offset = 0;
 
 	for (unsigned i = 0; i < inputs_node->getNumOperands(); i++)
 	{
@@ -5018,7 +5041,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		auto start_row = get_constant_metadata(input, 8);
 		auto start_col = get_constant_metadata(input, 9);
 
-		if (execution_model == spv::ExecutionModelTessellationEvaluation)
+		if (auto_patch_location)
 			patch_location_offset = std::max(patch_location_offset, start_row + rows);
 
 		// For HS <-> DS, ignore system values.

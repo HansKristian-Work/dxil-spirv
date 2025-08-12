@@ -402,6 +402,7 @@ struct dxil_spv_converter_s
 	bool uses_subgroup_size = false;
 	uint32_t workgroup_size[3] = {};
 	uint32_t patch_vertex_count = 0;
+    uint32_t patch_location_offset = UINT32_MAX;
 	uint32_t wave_size_min = 0;
 	uint32_t wave_size_max = 0;
 	uint32_t wave_size_preferred = 0;
@@ -736,6 +737,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	for (auto &opt : converter->options)
 		dxil_converter.add_option(*opt);
 
+	if (converter->patch_location_offset != UINT32_MAX)
+		dxil_converter.set_patch_location_offset(converter->patch_location_offset);
+
 	for (auto &local_param : converter->local_root_parameters)
 	{
 		switch (local_param.type)
@@ -815,6 +819,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	converter->heuristic_min_wave_size = dxil_converter.get_compute_heuristic_min_wave_size();
 	converter->heuristic_max_wave_size = dxil_converter.get_compute_heuristic_max_wave_size();
 	converter->patch_vertex_count = dxil_converter.get_patch_vertex_count();
+	converter->patch_location_offset = dxil_converter.get_patch_location_offset();
 	for (int i = 0; i < int(ShaderFeature::Count); i++)
 		converter->shader_feature_used[i] = dxil_converter.shader_requires_feature(ShaderFeature(i));
 	converter->analysis_warnings = dxil_converter.get_analysis_warnings();
@@ -1494,6 +1499,12 @@ dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 	return DXIL_SPV_SUCCESS;
 }
 
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_patch_location_offset(
+		dxil_spv_converter converter, unsigned offset)
+{
+	converter->patch_location_offset = offset;
+}
+
 unsigned dxil_spv_parsed_blob_get_num_rdat_subobjects(dxil_spv_parsed_blob blob)
 {
 	return unsigned(blob->rdat_subobjects.size());
@@ -1567,6 +1578,13 @@ dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
 		dxil_spv_converter converter, unsigned *patch_vertices)
 {
 	*patch_vertices = converter->patch_vertex_count;
+	return DXIL_SPV_SUCCESS;
+}
+
+dxil_spv_result dxil_spv_converter_get_patch_location_offset(
+		dxil_spv_converter converter, unsigned *patch_location_offset)
+{
+	*patch_location_offset = converter->patch_location_offset;
 	return DXIL_SPV_SUCCESS;
 }
 

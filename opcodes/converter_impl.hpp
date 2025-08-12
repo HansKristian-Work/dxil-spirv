@@ -463,7 +463,7 @@ struct Converter::Impl
 	spv::Id root_constant_id = 0;
 	unsigned root_descriptor_count = 0;
 	unsigned root_constant_num_words = 0;
-	unsigned patch_location_offset = 0;
+	unsigned patch_location_offset = ~0u;
 	unsigned descriptor_qa_counter = 0;
 	spv::Id primitive_index_array_id = 0;
 

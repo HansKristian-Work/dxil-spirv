@@ -903,10 +903,13 @@ public:
 	void add_local_root_descriptor_table(Vector<DescriptorTableEntry> entries);
 	void add_local_root_descriptor_table(const DescriptorTableEntry *entries, size_t count);
 
+	void set_patch_location_offset(uint32_t offset);
+
 	// After compilation, query CS workgroup size.
 	void get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const;
 	// After compilation, query expected patch size.
 	uint32_t get_patch_vertex_count() const;
+	uint32_t get_patch_location_offset() const;
 	// If any of these are non-zero, a CS may have to be compiled for a specific wave size.
 	void get_compute_wave_size_range(uint32_t &min, uint32_t &max, uint32_t &preferred) const;
 	// If non-zero, similar to required, but can be ignored. Used as a workaround hint or performance hint.

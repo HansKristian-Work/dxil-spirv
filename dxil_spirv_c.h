@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 54
+#define DXIL_SPV_API_VERSION_MINOR 55
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -948,6 +948,11 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_begin_local_root_descript
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 	dxil_spv_converter converter);
 
+/* For domain shader, when linking with hull shader. */
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_patch_location_offset(
+        dxil_spv_converter converter,
+        unsigned int offset);
+
 /* After setting up converter, runs the converted to SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter);
 
@@ -997,6 +1002,9 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_compute_heuristic_min
 /* After compilation, queries num vertices for HS. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_vertex_count(
 	dxil_spv_converter converter, unsigned *patch_vertices);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_location_offset(
+        dxil_spv_converter converter, unsigned *patch_location_offset);
 
 /* After compilation, queries if shader feature is used.
  * Designed to map closely to D3D12 feature checks. */
