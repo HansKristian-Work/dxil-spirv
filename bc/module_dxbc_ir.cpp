@@ -2979,7 +2979,10 @@ MDNode *ParseContext::create_stage_io_meta()
 	{
 		for (auto &io : *mapping.ioop)
 		{
-			DXIL::Semantic builtin = DXIL::Semantic::User;
+			DXIL::Semantic builtin = shader_stage == ir::ShaderStage::ePixel &&
+			                         io.op->getOpCode() == ir::OpCode::eDclOutput ?
+			                         DXIL::Semantic::Target : DXIL::Semantic::User;
+
 			uint32_t location, component;
 			uint32_t stream = UINT32_MAX;
 
