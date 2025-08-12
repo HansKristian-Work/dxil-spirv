@@ -7472,6 +7472,10 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
 		for (auto *bb : visit_order)
 			build_function_bb_visit_register(bb, pool, "");
 
+		for (auto *bb : visit_order)
+			for (auto itr = llvm::succ_begin(bb); itr != llvm::succ_end(bb); ++itr)
+				bb_map[bb]->node->add_branch(bb_map[*itr]->node);
+
 		auto *entry = convert_function(visit_order, false);
 		if (!entry)
 			return false;
