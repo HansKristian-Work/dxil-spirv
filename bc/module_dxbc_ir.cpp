@@ -175,6 +175,8 @@ static DXIL::Op convert_builtin_opcode(ir::BuiltIn builtin)
 		return DXIL::Op::InnerCoverage;
 	case ir::BuiltIn::eGsInstanceId:
 		return DXIL::Op::GSInstanceID;
+	case ir::BuiltIn::ePrimitiveId:
+		return DXIL::Op::PrimitiveID;
 	case ir::BuiltIn::eTessControlPointId:
 		return DXIL::Op::OutputControlPointID;
 	case ir::BuiltIn::eTessControlPointCountIn:

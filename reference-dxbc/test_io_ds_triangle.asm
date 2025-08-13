@@ -14,7 +14,7 @@ SPIR-V:
                OpExtension "SPV_EXT_shader_viewport_index_layer"
         %107 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan
-               OpEntryPoint TessellationEvaluation %main "main" %SV_DOMAINLOCATION %SV_POSITION %R_COLOR %G_COLOR %B_COLOR %TEXCOORD %SV_POSITION_0 %SV_RENDERTARGETARRAYINDEX %SV_VIEWPORTARRAYINDEX %COLOR %PRIMID %TEXCOORD_0 %TESS_INNER %TESS_OUTER %gl_ClipDistance %SV_INSIDETESSFACTOR %SV_TESSFACTOR %SV_PRIMITIVEID %LAYER %VIEWPORT %INDEX
+               OpEntryPoint TessellationEvaluation %main "main" %SV_DOMAINLOCATION %SV_POSITION %R_COLOR %G_COLOR %B_COLOR %TEXCOORD %SV_POSITION_0 %SV_RENDERTARGETARRAYINDEX %SV_VIEWPORTARRAYINDEX %COLOR %PRIMID %TEXCOORD_0 %TESS_INNER %TESS_OUTER %gl_ClipDistance %SV_INSIDETESSFACTOR %SV_TESSFACTOR %LAYER %VIEWPORT %INDEX %gl_PrimitiveID
                OpExecutionMode %main Triangles
                OpName %main "main"
                OpName %SV_DOMAINLOCATION "SV_DOMAINLOCATION"
@@ -33,7 +33,6 @@ SPIR-V:
                OpName %TESS_OUTER "TESS_OUTER"
                OpName %SV_INSIDETESSFACTOR "SV_INSIDETESSFACTOR"
                OpName %SV_TESSFACTOR "SV_TESSFACTOR"
-               OpName %SV_PRIMITIVEID "SV_PRIMITIVEID"
                OpName %LAYER "LAYER"
                OpName %VIEWPORT "VIEWPORT"
                OpName %INDEX "INDEX"
@@ -60,8 +59,6 @@ SPIR-V:
                OpDecorate %SV_INSIDETESSFACTOR Patch
                OpDecorate %SV_TESSFACTOR BuiltIn TessLevelOuter
                OpDecorate %SV_TESSFACTOR Patch
-               OpDecorate %SV_PRIMITIVEID BuiltIn PrimitiveId
-               OpDecorate %SV_PRIMITIVEID Patch
                OpDecorate %LAYER Location 6
                OpDecorate %LAYER Patch
                OpDecorate %VIEWPORT Location 6
@@ -70,6 +67,7 @@ SPIR-V:
                OpDecorate %INDEX Location 6
                OpDecorate %INDEX Component 2
                OpDecorate %INDEX Patch
+               OpDecorate %gl_PrimitiveID BuiltIn PrimitiveId
        %void = OpTypeVoid
           %2 = OpTypeFunction %void
       %float = OpTypeFloat 32
@@ -116,7 +114,6 @@ SPIR-V:
 %_ptr_Input__arr_float_uint_4 = OpTypePointer Input %_arr_float_uint_4
 %SV_TESSFACTOR = OpVariable %_ptr_Input__arr_float_uint_4 Input
 %_ptr_Input_uint = OpTypePointer Input %uint
-%SV_PRIMITIVEID = OpVariable %_ptr_Input_uint Input
       %LAYER = OpVariable %_ptr_Input_uint Input
    %VIEWPORT = OpVariable %_ptr_Input_uint Input
       %INDEX = OpVariable %_ptr_Input_uint Input
@@ -125,6 +122,7 @@ SPIR-V:
 %_ptr_Output_float = OpTypePointer Output %float
      %uint_1 = OpConstant %uint 1
      %uint_3 = OpConstant %uint 3
+%gl_PrimitiveID = OpVariable %_ptr_Input_uint Input
      %v2uint = OpTypeVector %uint 2
        %main = OpFunction %void None %2
 
@@ -132,35 +130,35 @@ SPIR-V:
                  OpBranch %158
 
         %158 = OpLabel
-         %54 =   OpAccessChain %_ptr_Input_float %SV_INSIDETESSFACTOR %uint_0
-         %56 =   OpLoad %float %54
-         %58 =   OpAccessChain %_ptr_Output_float %TESS_INNER %uint_0
-                 OpStore %58 %56
-         %59 =   OpAccessChain %_ptr_Input_float %SV_INSIDETESSFACTOR %uint_1
-         %61 =   OpLoad %float %59
-         %62 =   OpAccessChain %_ptr_Output_float %TESS_INNER %uint_1
-                 OpStore %62 %61
-         %63 =   OpAccessChain %_ptr_Input_float %SV_TESSFACTOR %uint_0
-         %64 =   OpLoad %float %63
-         %65 =   OpAccessChain %_ptr_Output_float %TESS_OUTER %uint_0
-                 OpStore %65 %64
-         %66 =   OpAccessChain %_ptr_Input_float %SV_TESSFACTOR %uint_1
-         %67 =   OpLoad %float %66
-         %68 =   OpAccessChain %_ptr_Output_float %TESS_OUTER %uint_1
-                 OpStore %68 %67
-         %69 =   OpAccessChain %_ptr_Input_float %SV_TESSFACTOR %uint_2
-         %70 =   OpLoad %float %69
-         %71 =   OpAccessChain %_ptr_Output_float %TESS_OUTER %uint_2
-                 OpStore %71 %70
-         %72 =   OpAccessChain %_ptr_Input_float %SV_TESSFACTOR %uint_3
-         %74 =   OpLoad %float %72
-         %75 =   OpAccessChain %_ptr_Output_float %TESS_OUTER %uint_3
-                 OpStore %75 %74
-         %76 =   OpLoad %uint %LAYER
-                 OpStore %SV_RENDERTARGETARRAYINDEX %76
-         %77 =   OpLoad %uint %VIEWPORT
-                 OpStore %SV_VIEWPORTARRAYINDEX %77
-         %78 =   OpLoad %uint %SV_PRIMITIVEID
+         %53 =   OpAccessChain %_ptr_Input_float %SV_INSIDETESSFACTOR %uint_0
+         %55 =   OpLoad %float %53
+         %57 =   OpAccessChain %_ptr_Output_float %TESS_INNER %uint_0
+                 OpStore %57 %55
+         %58 =   OpAccessChain %_ptr_Input_float %SV_INSIDETESSFACTOR %uint_1
+         %60 =   OpLoad %float %58
+         %61 =   OpAccessChain %_ptr_Output_float %TESS_INNER %uint_1
+                 OpStore %61 %60
+         %62 =   OpAccessChain %_ptr_Input_float %SV_TESSFACTOR %uint_0
+         %63 =   OpLoad %float %62
+         %64 =   OpAccessChain %_ptr_Output_float %TESS_OUTER %uint_0
+                 OpStore %64 %63
+         %65 =   OpAccessChain %_ptr_Input_float %SV_TESSFACTOR %uint_1
+         %66 =   OpLoad %float %65
+         %67 =   OpAccessChain %_ptr_Output_float %TESS_OUTER %uint_1
+                 OpStore %67 %66
+         %68 =   OpAccessChain %_ptr_Input_float %SV_TESSFACTOR %uint_2
+         %69 =   OpLoad %float %68
+         %70 =   OpAccessChain %_ptr_Output_float %TESS_OUTER %uint_2
+                 OpStore %70 %69
+         %71 =   OpAccessChain %_ptr_Input_float %SV_TESSFACTOR %uint_3
+         %73 =   OpLoad %float %71
+         %74 =   OpAccessChain %_ptr_Output_float %TESS_OUTER %uint_3
+                 OpStore %74 %73
+         %75 =   OpLoad %uint %LAYER
+                 OpStore %SV_RENDERTARGETARRAYINDEX %75
+         %76 =   OpLoad %uint %VIEWPORT
+                 OpStore %SV_VIEWPORTARRAYINDEX %76
+         %78 =   OpLoad %uint %gl_PrimitiveID
                  OpStore %PRIMID %78
          %79 =   OpLoad %uint %INDEX
          %80 =   OpAccessChain %_ptr_Input_float %SV_DOMAINLOCATION %uint_0
