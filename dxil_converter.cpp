@@ -7482,12 +7482,15 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
 			for (auto itr = llvm::succ_begin(bb); itr != llvm::succ_end(bb); ++itr)
 				bb_map[bb]->node->add_branch(bb_map[*itr]->node);
 
+		builder().setBuildPoint(spv_entry);
 		auto *entry = convert_function(visit_order, false);
 		if (!entry)
 			return false;
 
 		leaves.push_back({ entry, spv_func });
 	}
+
+	builder().setBuildPoint(spirv_module.get_entry_function()->getEntryBlock());
 
 	return true;
 }
