@@ -289,7 +289,7 @@ public:
     void addLocalVariable(std::unique_ptr<Instruction> inst);
     Id getReturnType() const { return functionInstruction.getTypeId(); }
 
-    void moveLocalVariablesFrom(Function* other);
+    void moveLocalDeclarationsFrom(Function* other);
 
     void setImplicitThis() { implicitThis = true; }
     bool hasImplicitThis() const { return implicitThis; }
@@ -398,10 +398,29 @@ __inline Function::Function(Id id, Id resultType, Id functionType, Id firstParam
     }
 }
 
-__inline void Function::moveLocalVariablesFrom(Function* other)
+__inline void Function::moveLocalDeclarationsFrom(Function* other)
 {
     blocks[0]->localVariables.clear();
     std::swap(blocks[0]->localVariables, other->blocks[0]->localVariables);
+
+    // There shouldn't be any actual code here yet, just Undef declarations, if anything.
+    for (auto &b : other->blocks)
+    {
+        for (auto &inst : b->instructions)
+        {
+            if (inst->getOpCode() == spv::OpUndef)
+            {
+                blocks[0]->instructions.push_back(std::move(inst));
+                inst = {};
+            }
+        }
+
+        auto itr = std::remove_if(b->instructions.begin(), b->instructions.end(),
+                [](const std::unique_ptr<spv::Instruction> &inst) {
+                    return !inst;
+                });
+        b->instructions.erase(itr, b->instructions.end());
+    }
 }
 
 __inline void Function::addLocalVariable(std::unique_ptr<Instruction> inst)

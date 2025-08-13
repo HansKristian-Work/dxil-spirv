@@ -7025,7 +7025,7 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
 	auto *code_func =
 	    builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "code_main", {}, {}, &code_entry);
 
-	code_func->moveLocalVariablesFrom(spirv_module.get_entry_function());
+	code_func->moveLocalDeclarationsFrom(spirv_module.get_entry_function());
 
 	auto *entry = pool.create_node();
 	entry->ir.operations.push_back(allocate(spv::OpBeginInvocationInterlockEXT));
