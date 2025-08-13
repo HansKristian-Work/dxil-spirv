@@ -601,7 +601,7 @@ private:
 		Value *row, uint32_t col, Value *axis, bool patch);
 	Instruction *build_load_output(
 		uint32_t index, Type *type,
-		Value *row, uint32_t col, Value *axis = nullptr);
+		Value *row, uint32_t col, Value *axis, bool patch);
 	Instruction *build_store_output(uint32_t index, Value *row, uint32_t col, Value *value, bool patch);
 	Instruction *build_load_builtin(DXIL::Op opcode, ir::SsaDef addr);
 	Instruction *build_descriptor_load(ir::SsaDef resource, ir::SsaDef index, bool nonuniform);
@@ -1073,10 +1073,11 @@ bool ParseContext::build_output_load(const ir::Op &op)
 	Instruction *insts[4] = {};
 
 	auto access = build_stage_io_access(ref, ir::SsaDef(op.getOperand(0)), ir::SsaDef(op.getOperand(1)));
+	bool patch = io_decl_is_patch(shader_stage, builder.getOp(ir::SsaDef(op.getOperand(0))));
 
 	for (unsigned c = 0; c < components; c++)
 	{
-		insts[c] = build_load_output(ref.index, scalar_type, access.row, access.col + c, access.axis);
+		insts[c] = build_load_output(ref.index, scalar_type, access.row, access.col + c, access.axis, patch);
 		push_instruction(insts[c], op.getDef());
 	}
 
@@ -1829,17 +1830,23 @@ Instruction *ParseContext::build_load_input(
 }
 
 Instruction *ParseContext::build_load_output(
-    uint32_t index, Type *type, Value *row, uint32_t col, Value *axis)
+    uint32_t index, Type *type, Value *row, uint32_t col, Value *axis, bool patch)
 {
 	assert(index != UINT32_MAX);
 
+	Instruction *inst;
+
 	// This is slightly extended internally to allow loading outputs in general.
-	auto *inst = build_dxil_call(
-	    DXIL::Op::LoadOutputControlPoint, type, type,
-	    get_constant_uint(index),
-	    row,
-	    get_constant_uint(col),
-	    axis ? axis : UndefValue::get(Type::getInt32Ty(context)));
+	if (patch)
+	{
+		inst = build_dxil_call(DXIL::Op::LoadPatchConstant, type, type, get_constant_uint(index), row,
+		                       get_constant_uint(col));
+	}
+	else
+	{
+		inst = build_dxil_call(DXIL::Op::LoadOutputControlPoint, type, type, get_constant_uint(index), row,
+		                       get_constant_uint(col), axis ? axis : UndefValue::get(Type::getInt32Ty(context)));
+	}
 
 	return inst;
 }
