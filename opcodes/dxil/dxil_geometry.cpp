@@ -101,6 +101,10 @@ bool emit_primitive_id_instruction(Converter::Impl &impl, const llvm::CallInst *
 	Operation *op = impl.allocate(spv::OpLoad, instruction);
 	op->add_id(var_id);
 	impl.add(op);
+
+	if (impl.execution_model == spv::ExecutionModelFragment)
+		impl.builder().addCapability(spv::CapabilityGeometry);
+
 	return true;
 }
 
