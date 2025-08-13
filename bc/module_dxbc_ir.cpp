@@ -4000,6 +4000,11 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.resourceOptions.structuredCbv = false;
 	options.resourceOptions.structuredSrvUav = false;
 
+	options.bufferOptions.useTypedForRaw = false;
+	options.bufferOptions.useTypedForStructured = false;
+	options.bufferOptions.useTypedForSparseFeedback = true;
+	options.bufferOptions.useRawForTypedAtomic = false;
+
 	options.scalarizeOptions.subDwordVectors = true;
 
 	auto builder = dxbc::compileShaderToLegalizedIr(data, size, options);

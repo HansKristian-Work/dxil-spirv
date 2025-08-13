@@ -43,6 +43,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_validation.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_buffer_kind.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_buffer_kind.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_cleanup.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_cleanup.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_convert.cpp
@@ -90,6 +92,8 @@ add_library(dxbc-spirv-test STATIC
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_resources.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_arithmetic.cpp
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_arithmetic.h
+        ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_buffer_kind.cpp
+        ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_buffer_kind.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_scalarize.cpp
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_scalarize.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_arithmetic.cpp
