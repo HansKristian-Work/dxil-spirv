@@ -39,8 +39,6 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_dominance.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_utils.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_utils.h
-        ${DXBC_SPV_SOURCE_DIR}/ir/ir_validation.cpp
-        ${DXBC_SPV_SOURCE_DIR}/ir/ir_validation.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_buffer_kind.cpp
