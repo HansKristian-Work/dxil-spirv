@@ -3994,6 +3994,7 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.arithmeticOptions.lowerF32toF16 = true;
 	options.arithmeticOptions.lowerConvertFtoI = false;
 	options.arithmeticOptions.lowerGsVertexCountIn = true;
+	options.arithmeticOptions.hasNvUnsignedItoFBug = true;
 
 	options.min16Options.enableFloat16 = true;
 	options.min16Options.enableInt16 = true;
@@ -4010,7 +4011,6 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.bufferOptions.useRawForTypedAtomic = false;
 
 	options.scalarizeOptions.subDwordVectors = true;
-	options.scalarizeOptions.subDwordConversions = false;
 
 	auto builder = dxbc::compileShaderToLegalizedIr(data, size, options);
 
