@@ -7,13 +7,16 @@ SPIR-V:
                OpCapability Shader
                OpCapability Geometry
                OpCapability MultiViewport
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Geometry %main "main" %SV_POSITION %SV_RenderTargetArrayIndex %SV_ViewportArrayIndex %SV_PrimitiveId %gl_InvocationID %gl_PrimitiveID
                OpExecutionMode %main Invocations 12
                OpExecutionMode %main OutputVertices 1
                OpExecutionMode %main InputPoints
                OpExecutionMode %main OutputPoints
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_POSITION "SV_POSITION"
                OpName %SV_RenderTargetArrayIndex "SV_RenderTargetArrayIndex"

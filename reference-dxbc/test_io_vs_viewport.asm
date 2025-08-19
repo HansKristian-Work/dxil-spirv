@@ -7,11 +7,14 @@ SPIR-V:
                OpCapability Shader
                OpCapability MultiViewport
                OpCapability DrawParameters
+               OpCapability SignedZeroInfNanPreserve
                OpCapability ShaderViewportIndexLayerEXT
                OpCapability VulkanMemoryModel
                OpExtension "SPV_EXT_shader_viewport_index_layer"
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Vertex %main "main" %SV_INSTANCEID %SV_ViewportArrayIndex %gl_BaseInstance
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_INSTANCEID "SV_INSTANCEID"
                OpName %SV_ViewportArrayIndex "SV_ViewportArrayIndex"

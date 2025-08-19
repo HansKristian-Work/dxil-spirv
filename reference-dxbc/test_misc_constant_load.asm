@@ -6,10 +6,13 @@ SPIR-V:
 ; Schema: 0
                OpCapability Shader
                OpCapability DrawParameters
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
          %27 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Vertex %main "main" %SV_VERTEXID %SV_POSITION %22 %24
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_VERTEXID "SV_VERTEXID"
                OpName %SV_POSITION "SV_POSITION"

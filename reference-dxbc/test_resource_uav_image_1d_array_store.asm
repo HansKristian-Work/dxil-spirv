@@ -7,10 +7,13 @@ SPIR-V:
                OpCapability Shader
                OpCapability Image1D
                OpCapability StorageImageWriteWithoutFormat
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %8 %TEXCOORD %COLOR
                OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %TEXCOORD "TEXCOORD"
                OpName %COLOR "COLOR"

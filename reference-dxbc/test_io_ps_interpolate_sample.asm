@@ -7,11 +7,14 @@ SPIR-V:
                OpCapability Shader
                OpCapability SampleRateShading
                OpCapability InterpolationFunction
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
          %21 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %SV_SAMPLEINDEX %IN_SCALAR %IN_VECTOR %IN_VECTOR_1 %SV_TARGET %SV_TARGET_1 %SV_TARGET_2
                OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_SAMPLEINDEX "SV_SAMPLEINDEX"
                OpName %IN_SCALAR "IN_SCALAR"

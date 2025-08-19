@@ -6,13 +6,16 @@ SPIR-V:
 ; Schema: 0
                OpCapability Shader
                OpCapability StorageImageWriteWithoutFormat
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
                OpCapability FragmentShaderPixelInterlockEXT
                OpExtension "SPV_EXT_fragment_shader_interlock"
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %8 %_
                OpExecutionMode %main OriginUpperLeft
                OpExecutionMode %main PixelInterlockOrderedEXT
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %_ ""
                OpDecorate %8 DescriptorSet 0

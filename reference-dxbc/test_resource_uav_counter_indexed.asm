@@ -7,14 +7,17 @@ SPIR-V:
                OpCapability Shader
                OpCapability StorageBufferArrayDynamicIndexing
                OpCapability ImageBuffer
+               OpCapability SignedZeroInfNanPreserve
                OpCapability RuntimeDescriptorArray
                OpCapability StorageTexelBufferArrayDynamicIndexing
                OpCapability StorageBufferArrayNonUniformIndexing
                OpCapability VulkanMemoryModel
                OpExtension "SPV_EXT_descriptor_indexing"
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint GLCompute %main "main" %10 %14 %SV_GROUPID
                OpExecutionMode %main LocalSize 32 1 1
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SSBO "SSBO"
                OpName %SV_GROUPID "SV_GROUPID"

@@ -5,13 +5,16 @@ SPIR-V:
 ; Bound: 13
 ; Schema: 0
                OpCapability Shader
+               OpCapability SignedZeroInfNanPreserve
                OpCapability StencilExportEXT
                OpCapability VulkanMemoryModel
                OpExtension "SPV_EXT_shader_stencil_export"
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %STENCIL_REF %SV_STENCILREF
                OpExecutionMode %main OriginUpperLeft
                OpExecutionMode %main StencilRefReplacingEXT
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %STENCIL_REF "STENCIL_REF"
                OpName %SV_STENCILREF "SV_STENCILREF"

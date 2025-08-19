@@ -3218,18 +3218,18 @@ void ParseContext::set_function_attributes(Function *func)
 		switch (op.getType().getBaseType(0).getBaseType())
 		{
 		case ir::ScalarType::eF16:
-			round_mode = "fp16-round-mode";
-			denorm_mode = "fp16-denorm-mode";
+			round_mode = "dxbc-fp16-round-mode";
+			denorm_mode = "dxbc-fp16-denorm-mode";
 			break;
 
 		case ir::ScalarType::eF32:
-			round_mode = "fp32-round-mode";
-			denorm_mode = "fp32-denorm-mode";
+			round_mode = "dxbc-fp32-round-mode";
+			denorm_mode = "dxbc-fp32-denorm-mode";
 			break;
 
 		case ir::ScalarType::eF64:
-			round_mode = "fp64-round-mode";
-			denorm_mode = "fp64-denorm-mode";
+			round_mode = "dxbc-fp64-round-mode";
+			denorm_mode = "dxbc-fp64-denorm-mode";
 			break;
 
 		default:

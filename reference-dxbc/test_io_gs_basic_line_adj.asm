@@ -7,13 +7,16 @@ SPIR-V:
                OpCapability Shader
                OpCapability Geometry
                OpCapability ClipDistance
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Geometry %main "main" %SV_POSITION %TEXCOORD %NORMAL %gl_ClipDistance %SV_POSITION_0 %TEXCOORD_0 %NORMAL_0 %gl_ClipDistance_0
                OpExecutionMode %main Invocations 1
                OpExecutionMode %main OutputVertices 4
                OpExecutionMode %main InputLinesAdjacency
                OpExecutionMode %main OutputLineStrip
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_POSITION "SV_POSITION"
                OpName %TEXCOORD "TEXCOORD"

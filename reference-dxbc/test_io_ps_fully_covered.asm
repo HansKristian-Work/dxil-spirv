@@ -5,12 +5,15 @@ SPIR-V:
 ; Bound: 17
 ; Schema: 0
                OpCapability Shader
+               OpCapability SignedZeroInfNanPreserve
                OpCapability FragmentFullyCoveredEXT
                OpCapability VulkanMemoryModel
                OpExtension "SPV_EXT_fragment_fully_covered"
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %SV_TARGET %10
                OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_TARGET "SV_TARGET"
                OpDecorate %SV_TARGET Location 0

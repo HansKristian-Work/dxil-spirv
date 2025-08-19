@@ -6,7 +6,9 @@ SPIR-V:
 ; Schema: 0
                OpCapability Shader
                OpCapability Tessellation
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
          %84 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan
                OpEntryPoint TessellationControl %main "main" %SV_POSITION %NORMAL %FACTOR %SV_POSITION_0 %NORMAL_0 %INSTANCE_ID %TANGENT %TANGENT_1 %SV_TESSFACTOR %SV_INSIDETESSFACTOR %gl_InvocationID %gl_PrimitiveID
@@ -14,6 +16,7 @@ SPIR-V:
                OpExecutionMode %main SpacingEqual
                OpExecutionMode %main PointMode
                OpExecutionMode %main OutputVertices 4
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_POSITION "SV_POSITION"
                OpName %NORMAL "NORMAL"

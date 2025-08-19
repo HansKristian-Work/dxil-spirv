@@ -6773,29 +6773,45 @@ bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 	if (!func)
 		return true;
 
+	// NVIDIA hack. The way the driver exposes float controls is very unfortunate.
+	// If only partial denorm support is enabled, assume we cannot freely control FP32 behavior either.
+	// However, for SM 6.2+, we have to force it on NVIDIA, even if driver doesn't actually expose it.
+	bool supports_full_denorm_control_fp32 =
+		options.supports_float16_denorm_preserve &&
+		options.supports_float64_denorm_preserve;
+
 	// Plain DXIL only supports fp32-denorm-mode, the rest are internal extensions.
-	static const struct
+	const struct
 	{
 		const char *tag;
 		int bits;
+		bool supported;
 	} denorms[] = {
-		{ "fp16-denorm-mode", 16 },
-		{ "fp32-denorm-mode", 32 },
-		{ "fp64-denorm-mode", 64 },
+		{ "dxbc-fp16-denorm-mode", 16, options.supports_float16_denorm_preserve },
+		{ "dxbc-fp32-denorm-mode", 32, supports_full_denorm_control_fp32 },
+		{ "dxbc-fp64-denorm-mode", 64, options.supports_float64_denorm_preserve },
+		{ "fp32-denorm-mode", 32, true },
 	};
 
+	// For whatever reason, NVIDIA loses a tremendous amount of performance from setting rounding modes.
+	// Just ignore it since it's always RTE in practice anyway.
+#if 0
 	static const struct
 	{
 		const char *tag;
 		int bits;
 	} rounding[] = {
-		{ "fp16-round-mode", 16 },
-		{ "fp32-round-mode", 32 },
-		{ "fp64-round-mode", 64 },
+		{ "dxbc-fp16-round-mode", 16 },
+		{ "dxbc-fp32-round-mode", 32 },
+		{ "dxbc-fp64-round-mode", 64 },
 	};
+#endif
 
 	for (auto &d : denorms)
 	{
+		if (!d.supported)
+			continue;
+
 		auto attr = func->getFnAttribute(d.tag);
 		auto str = attr.getValueAsString();
 		if (str == "ftz")
@@ -6812,6 +6828,7 @@ bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 		}
 	}
 
+#if 0
 	for (auto &r : rounding)
 	{
 		auto attr = func->getFnAttribute(r.tag);
@@ -6829,6 +6846,7 @@ bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTE, r.bits);
 		}
 	}
+#endif
 
 	if (shader_analysis.require_wmma && GlobalConfiguration::get().wmma_rdna3_workaround)
 	{
@@ -6898,6 +6916,22 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 			b.addExtension("SPV_KHR_float_controls");
 			b.addCapability(spv::CapabilityDenormPreserve);
 			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
+		}
+	}
+	else
+	{
+		// If instrumentation didn't add these already.
+		if (!builder().hasCapability(spv::CapabilitySignedZeroInfNanPreserve))
+		{
+			// Set SignedZeroInfNanPreserve by default for new IR.
+			// We should use these globally, but don't want to invalidate all Fossilize archives just yet.
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilitySignedZeroInfNanPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 32);
+			if (b.hasCapability(spv::CapabilityFloat16))
+				b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 16);
+			if (b.hasCapability(spv::CapabilityFloat64))
+				b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 64);
 		}
 	}
 

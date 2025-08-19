@@ -7,13 +7,16 @@ SPIR-V:
                OpCapability Shader
                OpCapability Geometry
                OpCapability GeometryStreams
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Geometry %main "main" %SV_POSITION %BUFFER_A_ATTR_1 %BUFFER_B_ATTR
                OpExecutionMode %main Invocations 1
                OpExecutionMode %main OutputVertices 1
                OpExecutionMode %main InputPoints
                OpExecutionMode %main OutputPoints
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_POSITION "SV_POSITION"
                OpName %BUFFER_A_ATTR_1 "BUFFER_A_ATTR_1"

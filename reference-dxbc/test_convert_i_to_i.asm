@@ -7,10 +7,13 @@ SPIR-V:
                OpCapability Shader
                OpCapability Int64
                OpCapability Int16
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %INPUT %SV_TARGET
                OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %INPUT "INPUT"
                OpName %SV_TARGET "SV_TARGET"

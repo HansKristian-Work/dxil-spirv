@@ -6,10 +6,13 @@ SPIR-V:
 ; Schema: 0
                OpCapability Shader
                OpCapability SampleRateShading
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %SV_ISFRONTFACE %SV_SAMPLEINDEX %SV_COVERAGE %gl_SampleMask
                OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_ISFRONTFACE "SV_ISFRONTFACE"
                OpName %SV_SAMPLEINDEX "SV_SAMPLEINDEX"

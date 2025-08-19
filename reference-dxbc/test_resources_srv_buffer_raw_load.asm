@@ -5,10 +5,13 @@ SPIR-V:
 ; Bound: 66
 ; Schema: 0
                OpCapability Shader
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %9 %14 %BUFFER_ADDRESS %SV_TARGET %SV_TARGET_1 %SV_TARGET_3
                OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SSBO "SSBO"
                OpName %SSBO_0 "SSBO"

@@ -7,13 +7,16 @@ SPIR-V:
                OpCapability Shader
                OpCapability SampledImageArrayDynamicIndexing
                OpCapability Sampled1D
+               OpCapability SignedZeroInfNanPreserve
                OpCapability RuntimeDescriptorArray
                OpCapability SampledImageArrayNonUniformIndexing
                OpCapability VulkanMemoryModel
                OpExtension "SPV_EXT_descriptor_indexing"
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %9 %15 %TEXCOORD %SV_TARGET %SV_TARGET_1
                OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %_ ""
                OpName %TEXCOORD "TEXCOORD"

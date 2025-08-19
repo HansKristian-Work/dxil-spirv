@@ -6,9 +6,12 @@ SPIR-V:
 ; Schema: 0
                OpCapability Shader
                OpCapability ClipDistance
+               OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Vertex %main "main" %gl_ClipDistance
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpDecorate %gl_ClipDistance BuiltIn ClipDistance
        %void = OpTypeVoid

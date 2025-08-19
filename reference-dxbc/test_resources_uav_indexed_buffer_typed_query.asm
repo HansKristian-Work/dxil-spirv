@@ -7,14 +7,17 @@ SPIR-V:
                OpCapability Shader
                OpCapability ImageBuffer
                OpCapability ImageQuery
+               OpCapability SignedZeroInfNanPreserve
                OpCapability RuntimeDescriptorArray
                OpCapability StorageTexelBufferArrayDynamicIndexing
                OpCapability StorageTexelBufferArrayNonUniformIndexing
                OpCapability VulkanMemoryModel
                OpExtension "SPV_EXT_descriptor_indexing"
+               OpExtension "SPV_KHR_float_controls"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Fragment %main "main" %9 %BUFFER_INDEX %SV_TARGET
                OpExecutionMode %main OriginUpperLeft
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %BUFFER_INDEX "BUFFER_INDEX"
                OpName %SV_TARGET "SV_TARGET"

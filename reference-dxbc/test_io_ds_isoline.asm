@@ -9,13 +9,16 @@ SPIR-V:
                OpCapability Tessellation
                OpCapability ClipDistance
                OpCapability MultiViewport
+               OpCapability SignedZeroInfNanPreserve
                OpCapability ShaderViewportIndexLayerEXT
                OpCapability VulkanMemoryModel
                OpExtension "SPV_EXT_shader_viewport_index_layer"
+               OpExtension "SPV_KHR_float_controls"
         %102 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan
                OpEntryPoint TessellationEvaluation %main "main" %SV_DOMAINLOCATION %SV_POSITION %R_COLOR %G_COLOR %B_COLOR %TEXCOORD %SV_POSITION_0 %SV_RENDERTARGETARRAYINDEX %SV_VIEWPORTARRAYINDEX %COLOR %PRIMID %TEXCOORD_0 %TESS_INNER %TESS_OUTER %gl_ClipDistance %SV_INSIDETESSFACTOR %SV_TESSFACTOR %LAYER %VIEWPORT %INDEX %gl_PrimitiveID
                OpExecutionMode %main Isolines
+               OpExecutionMode %main SignedZeroInfNanPreserve 32
                OpName %main "main"
                OpName %SV_DOMAINLOCATION "SV_DOMAINLOCATION"
                OpName %SV_POSITION "SV_POSITION"
