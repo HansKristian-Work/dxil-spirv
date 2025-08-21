@@ -1510,7 +1510,7 @@ bool ParseContext::build_barrier(const ir::Op &op)
 
 	if (memory_type & ir::MemoryType::eLds)
 		memory_flags |= DXIL::MemoryTypeGroupSharedBit;
-	if (memory_type & (ir::MemoryType::eUavBuffer | ir::MemoryType::eUavImage))
+	if (memory_type & ir::MemoryType::eUav)
 		memory_flags |= DXIL::MemoryTypeUavBit;
 
 	auto *inst = build_dxil_call(DXIL::Op::BarrierByMemoryType, void_type, void_type,
@@ -4011,6 +4011,14 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.bufferOptions.useRawForTypedAtomic = false;
 
 	options.scalarizeOptions.subDwordVectors = true;
+
+	options.syncOptions.insertRovLocks = false;
+	options.syncOptions.insertLdsBarriers = false;
+	options.syncOptions.insertUavBarriers = false;
+
+	options.derivativeOptions.hoistNontrivialDerivativeOps = true;
+	options.derivativeOptions.hoistNontrivialImplicitLodOps = false;
+	options.derivativeOptions.hoistDescriptorLoads = false;
 
 	auto builder = dxbc::compileShaderToLegalizedIr(data, size, options);
 
