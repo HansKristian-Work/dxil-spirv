@@ -35,6 +35,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_container.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_disasm.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_disasm.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/ir_divergence.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/ir_divergence.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_dominance.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_dominance.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_utils.cpp
@@ -49,8 +51,12 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_convert.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cse.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cse.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_derivative.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_derivative.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_io.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_io.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_min16.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_min16.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_propagate_types.cpp
@@ -64,6 +70,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa_utils.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_sync.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_sync.h
         ${DXBC_SPV_SOURCE_DIR}/util/util_bit.h
         ${DXBC_SPV_SOURCE_DIR}/util/util_debug.h
         ${DXBC_SPV_SOURCE_DIR}/util/util_flags.h
@@ -92,6 +100,8 @@ add_library(dxbc-spirv-test STATIC
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_arithmetic.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_buffer_kind.cpp
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_buffer_kind.h
+        ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_lower_io.cpp
+        ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_lower_io.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_scalarize.cpp
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_pass_scalarize.h
         ${DXBC_SPV_SOURCE_DIR}/tests/api/test_api_arithmetic.cpp
