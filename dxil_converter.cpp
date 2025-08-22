@@ -437,6 +437,23 @@ Vector<Converter::Impl::RawDeclarationVariable> Converter::Impl::create_ubo_vari
 	return group;
 }
 
+static const char *convert_component_type_to_str(DXIL::ComponentType type)
+{
+	switch (type)
+	{
+	case DXIL::ComponentType::U16: return "U16";
+	case DXIL::ComponentType::U32: return "U32";
+	case DXIL::ComponentType::U64: return "U64";
+	case DXIL::ComponentType::I16: return "I16";
+	case DXIL::ComponentType::I32: return "I32";
+	case DXIL::ComponentType::I64: return "I64";
+	case DXIL::ComponentType::F16: return "F16";
+	case DXIL::ComponentType::F32: return "F32";
+	case DXIL::ComponentType::F64: return "F64";
+	default: return "";
+	}
+}
+
 spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 {
 	auto itr = std::find_if(bindless_resources.begin(), bindless_resources.end(), [&](const BindlessResource &resource) {
@@ -455,7 +472,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			resource.info.aliased == info.aliased &&
 			resource.info.counters == info.counters &&
 			resource.info.offsets == info.offsets &&
-			resource.info.descriptor_type == info.descriptor_type;
+			resource.info.descriptor_type == info.descriptor_type &&
+			(!options.extended_debug_info || resource.info.debug.stride == info.debug.stride);
 	});
 
 	if (itr != bindless_resources.end())
@@ -635,6 +653,98 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		builder().addExtension("SPV_EXT_descriptor_indexing");
 		builder().addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 		resource.var_id = create_variable(storage, type_id);
+
+		if (options.extended_debug_info)
+		{
+			String name;
+			switch (info.type)
+			{
+			case DXIL::ResourceType::SRV: name = "SRV"; break;
+			case DXIL::ResourceType::UAV: name = "UAV"; break;
+			case DXIL::ResourceType::CBV: name = "CBV"; break;
+			case DXIL::ResourceType::Sampler: name = "Sampler"; break;
+			default: break;
+			}
+
+			const char *component_type_name = convert_component_type_to_str(info.component);
+
+			switch (info.kind)
+			{
+			case DXIL::ResourceKind::RawBuffer:
+				name += "_ByteAddressBuffer";
+				name += "_vec";
+				name += std::to_string(raw_vecsize_to_vecsize(info.raw_vecsize)).c_str();
+				builder().addName(builder().getContainedTypeId(type_id), (name + "_Block").c_str());
+				break;
+
+			case DXIL::ResourceKind::StructuredBuffer:
+				name += "_StructuredBuffer_";
+				name += std::to_string(info.debug.stride).c_str();
+				name += "_vec";
+				name += std::to_string(raw_vecsize_to_vecsize(info.raw_vecsize)).c_str();
+				builder().addName(builder().getContainedTypeId(type_id), (name + "_Block").c_str());
+				break;
+
+			case DXIL::ResourceKind::CBuffer:
+				builder().addName(builder().getContainedTypeId(type_id), (name + "_Block").c_str());
+				break;
+
+			case DXIL::ResourceKind::TypedBuffer:
+				name += "_TypedBuffer_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture1D:
+				name += "_1D_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture1DArray:
+				name += "_1DArray_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture2D:
+				name += "_2D_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture2DArray:
+				name += "_2DArray_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture2DMS:
+				name += "_2DMS_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture2DMSArray:
+				name += "_2DMSArray_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::TextureCube:
+				name += "_Cube_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::TextureCubeArray:
+				name += "_CubeArray_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture3D:
+				name += "_3D_";
+				name += component_type_name;
+				break;
+
+			default:
+				break;
+			}
+
+			builder().addName(resource.var_id, name.c_str());
+		}
 
 		auto &meta = handle_to_resource_meta[resource.var_id];
 		meta = {};
@@ -1114,6 +1224,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
 		bindless_info.relaxed_precision = actual_component_type != effective_component_type &&
 		                                  component_type_is_16bit(actual_component_type);
+		bindless_info.debug.stride = stride;
 
 		if (local_root_signature_entry >= 0)
 		{
@@ -1655,6 +1766,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
 		bindless_info.relaxed_precision = actual_component_type != effective_component_type &&
 		                                  component_type_is_16bit(actual_component_type);
+		bindless_info.debug.stride = stride;
 
 		// If we emit two SSBOs which both access the same buffer, we must emit Aliased decoration to be safe.
 		bindless_info.aliased = aliased_access.requires_alias_decoration;
@@ -3080,6 +3192,7 @@ bool Converter::Impl::emit_global_heaps()
 		info.binding = vulkan_binding.binding;
 		info.descriptor_type = vulkan_binding.descriptor_type;
 		info.aliased = aliased_access.requires_alias_decoration;
+		info.debug.stride = annotation->stride;
 
 		annotation->reference.bindless = true;
 		annotation->reference.base_resource_is_array = true;

@@ -803,6 +803,8 @@ struct Converter::Impl
 			unsigned register_index = 0;
 			unsigned register_space = 0;
 		} nvapi;
+
+		bool extended_debug_info = true;
 	} options;
 
 	struct BindlessInfo
@@ -822,6 +824,10 @@ struct Converter::Impl
 		bool relaxed_precision;
 		uint32_t desc_set;
 		uint32_t binding;
+		struct
+		{
+			uint32_t stride;
+		} debug;
 	};
 
 	spv::Id create_bindless_heap_variable(const BindlessInfo &info);
