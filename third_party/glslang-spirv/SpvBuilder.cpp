@@ -123,6 +123,20 @@ void Builder::addLine(Id fileName, int lineNum, int column)
     buildPoint->addInstruction(std::unique_ptr<Instruction>(line));
 }
 
+void Builder::addExternal(std::unique_ptr<Instruction> inst)
+{
+    externals.push_back(std::move(inst));
+}
+
+spv::Id Builder::addString(const dxil_spv::String &str)
+{
+    auto spv_str = std::make_unique<Instruction>(getUniqueId(), NoType, OpString);
+    spv_str->addStringOperand(str.c_str());
+    spv::Id ret = spv_str->getResultId();
+    strings.push_back(std::move(spv_str));
+    return ret;
+}
+
 // For creating new groupedTypes (will return old type if the requested one was already made).
 Id Builder::makeVoidType()
 {

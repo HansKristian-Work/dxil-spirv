@@ -1100,6 +1100,40 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 	return true;
 }
 
+void Converter::Impl::emit_root_parameter_index_from_push_index(const char *tag, uint32_t index, uint32_t size, bool bda)
+{
+	uint32_t effective_offset = bda ? index * 8 : (index * 4 + root_descriptor_count * 8);
+	uint32_t parameter_index = UINT32_MAX;
+	for (auto &mapping : root_parameter_mappings)
+	{
+		if (mapping.offset == effective_offset)
+		{
+			parameter_index = mapping.root_parameter_index;
+			break;
+		}
+	}
+
+	if (parameter_index == UINT32_MAX)
+		return;
+
+	// Avoid lots of spam.
+	if ((1ull << parameter_index) & root_parameter_emit_mask)
+		return;
+	root_parameter_emit_mask |= 1ull << parameter_index;
+
+	auto &b = spirv_module.get_builder();
+	b.addExtension("SPV_KHR_non_semantic_info");
+	spv::Id ext = b.import("NonSemantic.dxil-spirv.signature");
+	auto inst = std::make_unique<spv::Instruction>(b.getUniqueId(), b.makeVoidType(), spv::OpExtInst);
+	inst->addIdOperand(ext);
+	inst->addImmediateOperand(0);
+	inst->addIdOperand(b.addString(tag));
+	inst->addIdOperand(b.makeUintConstant(parameter_index));
+	inst->addIdOperand(b.makeUintConstant(effective_offset));
+	inst->addIdOperand(b.makeUintConstant(size));
+	b.addExternal(std::move(inst));
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *refl)
 {
 	auto &builder = spirv_module.get_builder();
@@ -1313,6 +1347,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
 
+			if (options.extended_debug_info)
+				emit_root_parameter_index_from_push_index("SRV", ref.push_constant_member, 8, true);
+
 			if (range_size != 1)
 			{
 				LOGE("Cannot use descriptor array for root descriptors.\n");
@@ -1353,6 +1390,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
+
+			if (options.extended_debug_info)
+				emit_root_parameter_index_from_push_index("ResourceTable", ref.push_constant_member, 4, false);
 		}
 		else
 		{
@@ -1916,6 +1956,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
 
+			if (options.extended_debug_info)
+				emit_root_parameter_index_from_push_index("UAV", ref.push_constant_member, 8, true);
+
 			if (range_size != 1)
 			{
 				LOGE("Cannot use descriptor array for root descriptors.\n");
@@ -1959,6 +2002,12 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
+
+			if (options.extended_debug_info)
+			{
+				emit_root_parameter_index_from_push_index(
+					"ResourceTable", vulkan_binding.buffer_binding.root_constant_index, 4, false);
+			}
 
 			if (has_counter)
 			{
@@ -2287,6 +2336,9 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.var_id = root_constant_id;
 			ref.push_constant_member = vulkan_binding.push.offset_in_words + root_descriptor_count;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
+
+			if (options.extended_debug_info)
+				emit_root_parameter_index_from_push_index("Constant", vulkan_binding.push.offset_in_words, 0, false);
 		}
 		else if (vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -2295,6 +2347,9 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer.root_constant_index;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
+
+			if (options.extended_debug_info)
+				emit_root_parameter_index_from_push_index("CBV", ref.push_constant_member, cbv_size, true);
 
 			if (range_size != 1)
 			{
@@ -2328,6 +2383,9 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.base_resource_is_array = range_size != 1;
 			ref.bindless = true;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
+
+			if (options.extended_debug_info)
+				emit_root_parameter_index_from_push_index("ResourceTable", vulkan_binding.buffer.root_constant_index, 4, false);
 		}
 		else
 		{
@@ -2493,6 +2551,9 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = DXIL::ResourceKind::Sampler;
+
+			if (options.extended_debug_info)
+				emit_root_parameter_index_from_push_index("SamplerTable", vulkan_binding.root_constant_index, 4, false);
 		}
 		else
 		{
@@ -8968,6 +9029,11 @@ bool Converter::recognizes_option(Option cap)
 void Converter::set_entry_point(const char *entry)
 {
 	impl->options.entry_point = entry;
+}
+
+void Converter::add_root_parameter_mapping(uint32_t root_parameter_index, uint32_t offset)
+{
+	impl->root_parameter_mappings.push_back({ root_parameter_index, offset });
 }
 
 const String &Converter::get_compiled_entry_point() const

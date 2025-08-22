@@ -903,6 +903,11 @@ public:
 	void add_local_root_descriptor_table(Vector<DescriptorTableEntry> entries);
 	void add_local_root_descriptor_table(const DescriptorTableEntry *entries, size_t count);
 
+	// For debug purposes. Makes it possible to map a computed push constant offset
+	// back to corresponding root parameter index.
+	// Not needed by codegen, but is used by extended debug info.
+	void add_root_parameter_mapping(uint32_t root_parameter_index, uint32_t offset);
+
 	void set_patch_location_offset(uint32_t offset);
 
 	// After compilation, query CS workgroup size.

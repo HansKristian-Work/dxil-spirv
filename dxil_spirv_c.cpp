@@ -408,6 +408,7 @@ struct dxil_spv_converter_s
 	uint32_t wave_size_preferred = 0;
 	uint32_t heuristic_min_wave_size = 0;
 	uint32_t heuristic_max_wave_size = 0;
+	Vector<std::pair<unsigned, unsigned>> root_parameter_mappings;
 	bool shader_feature_used[unsigned(ShaderFeature::Count)] = {};
 };
 
@@ -739,6 +740,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 	if (converter->patch_location_offset != UINT32_MAX)
 		dxil_converter.set_patch_location_offset(converter->patch_location_offset);
+
+	for (auto &mapping : converter->root_parameter_mappings)
+		dxil_converter.add_root_parameter_mapping(mapping.first, mapping.second);
 
 	for (auto &local_param : converter->local_root_parameters)
 	{
@@ -1499,7 +1503,13 @@ dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 	return DXIL_SPV_SUCCESS;
 }
 
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_patch_location_offset(
+void dxil_spv_converter_add_root_parameter_mapping(
+	dxil_spv_converter converter, unsigned root_parameter_index, unsigned offset)
+{
+	converter->root_parameter_mappings.emplace_back(root_parameter_index, offset);
+}
+
+void dxil_spv_converter_set_patch_location_offset(
 		dxil_spv_converter converter, unsigned offset)
 {
 	converter->patch_location_offset = offset;
