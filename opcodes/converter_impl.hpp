@@ -807,7 +807,7 @@ struct Converter::Impl
 			unsigned register_space = 0;
 		} nvapi;
 
-		bool extended_debug_info = true;
+		bool extended_non_semantic_info = false;
 	} options;
 
 	struct BindlessInfo

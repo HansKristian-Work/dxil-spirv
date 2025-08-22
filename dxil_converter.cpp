@@ -473,7 +473,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			resource.info.counters == info.counters &&
 			resource.info.offsets == info.offsets &&
 			resource.info.descriptor_type == info.descriptor_type &&
-			(!options.extended_debug_info || resource.info.debug.stride == info.debug.stride);
+			(!options.extended_non_semantic_info || resource.info.debug.stride == info.debug.stride);
 	});
 
 	if (itr != bindless_resources.end())
@@ -654,7 +654,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		builder().addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 		resource.var_id = create_variable(storage, type_id);
 
-		if (options.extended_debug_info)
+		if (options.extended_non_semantic_info)
 		{
 			String name;
 			switch (info.type)
@@ -1347,7 +1347,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
 
-			if (options.extended_debug_info)
+			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("SRV", ref.push_constant_member, 8, true);
 
 			if (range_size != 1)
@@ -1391,7 +1391,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
 
-			if (options.extended_debug_info)
+			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("ResourceTable", ref.push_constant_member, 4, false);
 		}
 		else
@@ -1956,7 +1956,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
 
-			if (options.extended_debug_info)
+			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("UAV", ref.push_constant_member, 8, true);
 
 			if (range_size != 1)
@@ -2003,7 +2003,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
 
-			if (options.extended_debug_info)
+			if (options.extended_non_semantic_info)
 			{
 				emit_root_parameter_index_from_push_index(
 					"ResourceTable", vulkan_binding.buffer_binding.root_constant_index, 4, false);
@@ -2337,7 +2337,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.push_constant_member = vulkan_binding.push.offset_in_words + root_descriptor_count;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
-			if (options.extended_debug_info)
+			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("Constant", vulkan_binding.push.offset_in_words, 0, false);
 		}
 		else if (vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
@@ -2348,7 +2348,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.push_constant_member = vulkan_binding.buffer.root_constant_index;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
-			if (options.extended_debug_info)
+			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("CBV", ref.push_constant_member, cbv_size, true);
 
 			if (range_size != 1)
@@ -2384,7 +2384,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.bindless = true;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
-			if (options.extended_debug_info)
+			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("ResourceTable", vulkan_binding.buffer.root_constant_index, 4, false);
 		}
 		else
@@ -2552,7 +2552,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = DXIL::ResourceKind::Sampler;
 
-			if (options.extended_debug_info)
+			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("SamplerTable", vulkan_binding.root_constant_index, 4, false);
 		}
 		else
@@ -8972,6 +8972,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.nvapi.enabled = nv.enabled;
 		options.nvapi.register_index = nv.register_index;
 		options.nvapi.register_space = nv.register_space;
+		break;
+	}
+
+	case Option::ExtendedNonSemantic:
+	{
+		auto &sem = static_cast<const OptionExtendedNonSemantic &>(cap);
+		options.extended_non_semantic_info = sem.enabled;
 		break;
 	}
 

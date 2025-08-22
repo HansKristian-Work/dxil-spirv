@@ -263,6 +263,7 @@ enum class Option : uint32_t
 	VulkanMemoryModel = 45,
 	Float8Support = 46,
 	NvAPI = 47,
+	ExtendedNonSemantic = 48,
 	Count
 };
 
@@ -813,6 +814,16 @@ struct OptionNvAPI : OptionBase
 	bool enabled = false;
 	unsigned register_index = 0;
 	unsigned register_space = 0;
+};
+
+struct OptionExtendedNonSemantic : OptionBase
+{
+	OptionExtendedNonSemantic()
+		: OptionBase(Option::ExtendedNonSemantic)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry

@@ -444,6 +444,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_VULKAN_MEMORY_MODEL = 45,
 	DXIL_SPV_OPTION_FLOAT8_SUPPORT = 46,
 	DXIL_SPV_OPTION_NVAPI = 47,
+	DXIL_SPV_OPTION_EXTENDED_NON_SEMANTIC = 48,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -798,6 +799,12 @@ typedef struct dxil_spv_option_nvapi
 	unsigned register_index;
 	unsigned register_space;
 } dxil_spv_option_nvapi;
+
+typedef struct dxil_spv_option_extended_non_semantic
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool enabled;
+} dxil_spv_option_extended_non_semantic;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
