@@ -949,6 +949,8 @@ struct Converter::Impl
 		uint32_t offset;
 	};
 	Vector<RootParameterMapping> root_parameter_mappings;
+	Vector<NonSemanticDebugInfo> non_semantic_debug_info;
+	void emit_non_semantic_debug_info(const NonSemanticDebugInfo &info);
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);

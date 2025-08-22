@@ -1100,6 +1100,38 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 	return true;
 }
 
+void Converter::Impl::emit_non_semantic_debug_info(const NonSemanticDebugInfo &info)
+{
+	auto &b = spirv_module.get_builder();
+	b.addExtension("SPV_KHR_non_semantic_info");
+	spv::Id ext = b.import("NonSemantic.dxil-spirv.signature");
+	auto *u8_data = static_cast<const uint8_t *>(info.data);
+
+	// If the root sig is massive (likely because it came from a full DXIL blob or something),
+	// need to dump in multiple stages due to opcode limits.
+	for (size_t i = 0; i < info.size; i += 64 * 1024)
+	{
+		size_t to_dump = std::min<size_t>(info.size - i, 64 * 1024);
+		auto inst = std::make_unique<spv::Instruction>(
+		    b.getUniqueId(), b.makeVoidType(), spv::OpExtInst);
+		inst->addIdOperand(ext);
+		inst->addImmediateOperand(1);
+		inst->addIdOperand(b.addString(info.tag));
+
+		for (size_t j = 0; j < (to_dump & ~size_t(3)); j += 4)
+		{
+			uint32_t v;
+			memcpy(&v, u8_data + i + j, sizeof(v));
+			inst->addIdOperand(b.makeUintConstant(v));
+		}
+
+		for (size_t j = to_dump & ~size_t(3); j < to_dump; j++)
+			inst->addIdOperand(b.makeUint8Constant(u8_data[i + j]));
+
+		b.addExternal(std::move(inst));
+	}
+}
+
 void Converter::Impl::emit_root_parameter_index_from_push_index(const char *tag, uint32_t index, uint32_t size, bool bda)
 {
 	uint32_t effective_offset = bda ? index * 8 : (index * 4 + root_descriptor_count * 8);
@@ -8330,6 +8362,10 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_global_variables())
 		return result;
 
+	if (options.extended_non_semantic_info)
+		for (auto &info : non_semantic_debug_info)
+			emit_non_semantic_debug_info(info);
+
 	// Some execution modes depend on other execution modes, so handle that here.
 	if (!emit_execution_modes_late())
 		return result;
@@ -9041,6 +9077,11 @@ void Converter::set_entry_point(const char *entry)
 void Converter::add_root_parameter_mapping(uint32_t root_parameter_index, uint32_t offset)
 {
 	impl->root_parameter_mappings.push_back({ root_parameter_index, offset });
+}
+
+void Converter::add_non_semantic_debug_info(const NonSemanticDebugInfo &info)
+{
+	impl->non_semantic_debug_info.push_back(info);
 }
 
 const String &Converter::get_compiled_entry_point() const

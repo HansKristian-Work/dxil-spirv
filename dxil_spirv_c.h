@@ -958,6 +958,10 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_end_local_root_descriptor
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_root_parameter_mapping(
 	dxil_spv_converter converter, unsigned root_parameter_index, unsigned offset);
 
+/* Pointer is owned by application. Must remain valid until compile() is called. */
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_non_semantic_debug_info(
+	dxil_spv_converter converter, const char *tag, const void *data, size_t size);
+
 /* For domain shader, when linking with hull shader. */
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_patch_location_offset(
 	dxil_spv_converter converter, unsigned offset);

@@ -876,6 +876,13 @@ struct NodeOutputData
 	bool sparse_array;
 };
 
+struct NonSemanticDebugInfo
+{
+	const char *tag;
+	const void *data;
+	size_t size;
+};
+
 enum class ShaderFeature
 {
 	Native16BitOperations = 0,
@@ -918,6 +925,10 @@ public:
 	// back to corresponding root parameter index.
 	// Not needed by codegen, but is used by extended debug info.
 	void add_root_parameter_mapping(uint32_t root_parameter_index, uint32_t offset);
+
+	// For debug purposes. Emits arbitrary data with NonSemantic.dxil-spirv.*.
+	// Pointers are owned by application and must remain valid until compilation is done.
+	void add_non_semantic_debug_info(const NonSemanticDebugInfo &info);
 
 	void set_patch_location_offset(uint32_t offset);
 

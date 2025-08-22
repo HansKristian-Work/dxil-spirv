@@ -409,6 +409,7 @@ struct dxil_spv_converter_s
 	uint32_t heuristic_min_wave_size = 0;
 	uint32_t heuristic_max_wave_size = 0;
 	Vector<std::pair<unsigned, unsigned>> root_parameter_mappings;
+	Vector<NonSemanticDebugInfo> non_semantic_debug_info;
 	bool shader_feature_used[unsigned(ShaderFeature::Count)] = {};
 };
 
@@ -743,6 +744,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 	for (auto &mapping : converter->root_parameter_mappings)
 		dxil_converter.add_root_parameter_mapping(mapping.first, mapping.second);
+
+	for (auto &info : converter->non_semantic_debug_info)
+		dxil_converter.add_non_semantic_debug_info(info);
 
 	for (auto &local_param : converter->local_root_parameters)
 	{
@@ -1517,6 +1521,12 @@ void dxil_spv_converter_add_root_parameter_mapping(
 	dxil_spv_converter converter, unsigned root_parameter_index, unsigned offset)
 {
 	converter->root_parameter_mappings.emplace_back(root_parameter_index, offset);
+}
+
+void dxil_spv_converter_add_non_semantic_debug_info(
+	dxil_spv_converter converter, const char *tag, const void *data, size_t size)
+{
+	converter->non_semantic_debug_info.push_back({ tag, data, size });
 }
 
 void dxil_spv_converter_set_patch_location_offset(
