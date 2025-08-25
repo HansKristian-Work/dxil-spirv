@@ -2370,7 +2370,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
 			if (options.extended_non_semantic_info)
-				emit_root_parameter_index_from_push_index("Constant", vulkan_binding.push.offset_in_words, 0, false);
+				emit_root_parameter_index_from_push_index("Constant", vulkan_binding.push.offset_in_words, cbv_size, false);
 		}
 		else if (vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -2381,7 +2381,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
 
 			if (options.extended_non_semantic_info)
-				emit_root_parameter_index_from_push_index("CBV", ref.push_constant_member, cbv_size, true);
+				emit_root_parameter_index_from_push_index("CBV", ref.push_constant_member, 8, true);
 
 			if (range_size != 1)
 			{
