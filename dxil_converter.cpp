@@ -1424,7 +1424,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.resource_kind = resource_kind;
 
 			if (options.extended_non_semantic_info)
-				emit_root_parameter_index_from_push_index("ResourceTable", ref.push_constant_member, 4, false);
+				emit_root_parameter_index_from_push_index("ResourceTable", vulkan_binding.buffer_binding.root_constant_index, 4, false);
 		}
 		else
 		{
