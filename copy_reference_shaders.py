@@ -60,18 +60,29 @@ def copy_reference_shader(output_dir, input_path, raw, noglsl):
 
 def main():
     parser = argparse.ArgumentParser(description = 'Script for copying VKD3D shader dumps to regression suite.')
-    parser.add_argument('--dxil', required = True, help = 'Folder containing a bunch of .dxil shaders.')
+    parser.add_argument('--dxil', help = 'Folder containing a bunch of .dxil shaders.')
+    parser.add_argument('--dxbc', help = 'Folder containing a bunch of .dxbc shaders.')
     parser.add_argument('--output', required = True, help = 'Output directory.')
     parser.add_argument('--raw', help = 'Skip hashing. Files must be in format $hash.dxil', action = 'store_true')
     parser.add_argument('--noglsl', help = 'Add .noglsl. tag.', action = 'store_true')
 
     args = parser.parse_args()
 
-    for root, dirs, files in os.walk(args.dxil):
-        for file in files:
-            if os.path.splitext(file)[1] == '.dxil':
-                print('Copying DXIL reference file:', file)
-                copy_reference_shader(args.output, os.path.join(args.dxil, file), args.raw, args.noglsl)
+    if args.dxil is not None:
+        for root, dirs, files in os.walk(args.dxil):
+            for file in files:
+                ext = os.path.splitext(file)[1]
+                if ext == '.dxil':
+                    print('Copying DXIL reference file:', file)
+                    copy_reference_shader(args.output, os.path.join(args.dxil, file), args.raw, args.noglsl)
+
+    if args.dxbc is not None:
+        for root, dirs, files in os.walk(args.dxbc):
+            for file in files:
+                ext = os.path.splitext(file)[1]
+                if ext == '.dxbc':
+                    print('Copying DXBC reference file:', file)
+                    copy_reference_shader(args.output, os.path.join(args.dxbc, file), args.raw, args.noglsl)
 
 if __name__ == '__main__':
     main()

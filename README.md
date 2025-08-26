@@ -2,12 +2,13 @@
 
 This project aims to provide translation of DXIL (SM 6.x) shaders to SPIR-V which can be used in the vkd3d project,
 which implements D3D12 on top of Vulkan.
+Using [dxbc-spirv](https://github.com/doitsujin/dxbc-spirv) it also handles legacy DXBC shaders.
 
 ## Building
 
 ### Dependencies
 
-Check out submodules first with `git submodule update --init`.
+Check out submodules first with `git submodule update --init --recursive`.
 No external dependencies apart from the submodules are required to build.
 
 This project implements a "small" LLVM C++ API subset which acts as a drop-in replacement for the full LLVM.
@@ -18,7 +19,7 @@ See `checkout_llvm.sh` script.
 
 Standard CMake build.
 
-```
+```shell
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -31,7 +32,7 @@ Only the C API is installed and is expected to be kept ABI/API stable when it re
 
 ### pkg-config
 
-```
+```shell
 pkg-config dxil-spirv-c-shared --cflags --libs
 ```
 
@@ -60,7 +61,7 @@ The primary method of testing dxil-spirv and avoiding regressions is through a r
 First, build DXC. To keep output consistent, we must use a fixed version of DXC.
 Currently, this only works on Linux, the Windows build of DXC does not seem to support CMake properly.
 
-```
+```shell
 ./checkout_dxc.sh
 ./build_dxc.sh
 ```
@@ -71,19 +72,54 @@ The test suite accepts an arbitrary path to DXC, so if you have a standalone bin
 
 When adding new tests, place the HLSL test in `shaders/` somewhere and run:
 
-```
+```shell
 ./test_shaders.py shaders --dxc external/dxc-build/bin/dxc --dxil-spirv cmake-build-debug/dxil-spirv
 ```
 
 If there is any mismatch, the test script will complain. If there are legitimate changes to be made,
 add `--update` to the command. The updated files should now be committed alongside the dxil-spirv change.
+`--parallel` can (and should) be used to speed up the process.
+
+To update DXBC references, run:
+
+```shell
+./cmake-build-debug/dxbc-spirv-sandbox ./reference-dxbc
+```
+
+### Running large repro suites
+
+For internal development, we also have an extensive repro suite which cover real-world content.
+These cannot be made public for obvious reasons, so the intent is that symlinks are set up during development.
+Shaders can be dumped with `VKD3D_SHADER_DUMP_PATH`.
+
+```shell
+# The scripts might not work properly if the paths aren't laid out like this.
+ln -s ${DXIL_SPIRV_REPO}/shaders shaders-dxil
+ln -s ${DXBC_SPIRV_REPO}/shaders shaders-dxbc
+ln -s ${DXIL_SPIRV_REPO}/reference/shaders reference/shaders-dxil
+ln -s ${DXBC_SPIRV_REPO}/reference/shaders reference/shaders-dxbc
+
+./test_shaders.py shaders-dxil --dxil-spirv cmake-build-release/dxil-spirv --parallel --update
+./test_shaders.py shaders-dxbc --dxil-spirv cmake-build-release/dxil-spirv --parallel --update
+```
+
+To import shaders into the suite:
+
+```shell
+mkdir shaders-dxil/dxilgame
+mkdir shaders-dxbc/dxbcgame
+# For DXIL
+./copy_reference_shaders.py --dxil /tmp/path/to/vkd3d-shader-dump-path --raw --output shaders-dxil/dxilgame
+# For DXBC
+./copy_reference_shaders.py --dxbc /tmp/path/to/vkd3d-shader-dump-path --raw --output shaders-dxbc/dxbcgame
+```
 
 ## License
 
 dxil-spirv is currently licensed as MIT. See LICENSE.MIT for more details.
 
-```
-/* Copyright (c) 2019-2022 Hans-Kristian Arntzen for Valve Corporation
+```c
+/* Copyright (c) 2019-2025 Hans-Kristian Arntzen for Valve Corporation
  *
  * SPDX-License-Identifier: MIT
  *

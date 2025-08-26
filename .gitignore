@@ -8,6 +8,8 @@
 /external/DirectXShaderCompiler
 /external/llvm
 /shaders-dxil
+/shaders-dxbc
 /reference/shaders-dxil
+/reference/shaders-dxbc
 /build
 /out/build

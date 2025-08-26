@@ -325,7 +325,7 @@ def test_shader(shader, args, paths):
 
     print('Testing shader:', joined_path)
 
-    if joined_path.endswith('.dxil'):
+    if joined_path.endswith('.dxil') or joined_path.endswith('.dxbc'):
         glsl = cross_compile_dxil(joined_path, args, paths, True)
         if not args.bench:
             regression_check(shader, glsl, args)
