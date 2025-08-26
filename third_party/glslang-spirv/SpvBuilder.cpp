@@ -465,7 +465,8 @@ Id Builder::makeArrayType(Id element, Id sizeId, int stride)
         for (int t = 0; t < (int)groupedTypes[OpTypeArray].size(); ++t) {
             type = groupedTypes[OpTypeArray][t];
             if (type->getIdOperand(0) == element &&
-                type->getIdOperand(1) == sizeId)
+                type->getIdOperand(1) == sizeId &&
+                !hasDecoration(type->getResultId(), spv::DecorationArrayStride))
                 return type->getResultId();
         }
     }

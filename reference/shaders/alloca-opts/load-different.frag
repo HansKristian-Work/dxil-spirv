@@ -22,17 +22,17 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    float _42[4];
-    _42[0u] = _17._m0[0u].x;
-    _42[1u] = _17._m0[0u].y;
-    _42[2u] = _21._m0[0u].z;
-    _42[3u] = _21._m0[0u].w;
-    uint _59 = A & 3u;
-    float _65 = _42[_59] * _11._m0[_59];
-    SV_Target.x = _65 * P.x;
-    SV_Target.y = _65 * P.y;
-    SV_Target.z = _65 * P.z;
-    SV_Target.w = _65 * P.w;
+    float _43[4];
+    _43[0u] = _17._m0[0u].x;
+    _43[1u] = _17._m0[0u].y;
+    _43[2u] = _21._m0[0u].z;
+    _43[3u] = _21._m0[0u].w;
+    uint _60 = A & 3u;
+    float _66 = _43[_60] * _11._m0[_60];
+    SV_Target.x = _66 * P.x;
+    SV_Target.y = _66 * P.y;
+    SV_Target.z = _66 * P.z;
+    SV_Target.w = _66 * P.w;
 }
 
 
@@ -41,7 +41,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 77
+; Bound: 78
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -102,16 +102,17 @@ OpDecorate %27 Location 0
 %30 = OpConstant %5 0
 %35 = OpConstant %5 2
 %38 = OpConstant %5 3
-%41 = OpTypePointer Function %8
-%43 = OpTypePointer Uniform %13
-%50 = OpTypePointer Function %7
-%60 = OpTypePointer Uniform %7
-%70 = OpTypePointer Output %7
+%41 = OpTypeArray %7 %6
+%42 = OpTypePointer Function %41
+%44 = OpTypePointer Uniform %13
+%51 = OpTypePointer Function %7
+%61 = OpTypePointer Uniform %7
+%71 = OpTypePointer Output %7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%42 = OpVariable %41 Function
-OpBranch %75
-%75 = OpLabel
+%43 = OpVariable %42 Function
+OpBranch %76
+%76 = OpLabel
 %29 = OpAccessChain %28 %25 %30
 %31 = OpLoad %7 %29
 %32 = OpAccessChain %28 %25 %12
@@ -121,42 +122,42 @@ OpBranch %75
 %37 = OpAccessChain %28 %25 %38
 %39 = OpLoad %7 %37
 %40 = OpLoad %5 %23
-%44 = OpAccessChain %43 %17 %30 %30
-%45 = OpLoad %13 %44
-%46 = OpCompositeExtract %7 %45 0
-%47 = OpCompositeExtract %7 %45 1
-%48 = OpCompositeExtract %7 %45 2
-%49 = OpCompositeExtract %7 %45 3
-%51 = OpInBoundsAccessChain %50 %42 %30
-OpStore %51 %46
-%52 = OpInBoundsAccessChain %50 %42 %12
+%45 = OpAccessChain %44 %17 %30 %30
+%46 = OpLoad %13 %45
+%47 = OpCompositeExtract %7 %46 0
+%48 = OpCompositeExtract %7 %46 1
+%49 = OpCompositeExtract %7 %46 2
+%50 = OpCompositeExtract %7 %46 3
+%52 = OpInBoundsAccessChain %51 %43 %30
 OpStore %52 %47
-%53 = OpAccessChain %43 %21 %30 %30
-%54 = OpLoad %13 %53
-%55 = OpCompositeExtract %7 %54 2
-%56 = OpInBoundsAccessChain %50 %42 %35
-OpStore %56 %55
-%57 = OpCompositeExtract %7 %54 3
-%58 = OpInBoundsAccessChain %50 %42 %38
-OpStore %58 %57
-%59 = OpBitwiseAnd %5 %40 %38
-%61 = OpAccessChain %60 %11 %30 %59
-%62 = OpLoad %7 %61
-%63 = OpInBoundsAccessChain %50 %42 %59
-%64 = OpLoad %7 %63
-%65 = OpFMul %7 %64 %62
-%66 = OpFMul %7 %65 %31
-%67 = OpFMul %7 %65 %33
-%68 = OpFMul %7 %65 %36
-%69 = OpFMul %7 %65 %39
-%71 = OpAccessChain %70 %27 %30
-OpStore %71 %66
-%72 = OpAccessChain %70 %27 %12
+%53 = OpInBoundsAccessChain %51 %43 %12
+OpStore %53 %48
+%54 = OpAccessChain %44 %21 %30 %30
+%55 = OpLoad %13 %54
+%56 = OpCompositeExtract %7 %55 2
+%57 = OpInBoundsAccessChain %51 %43 %35
+OpStore %57 %56
+%58 = OpCompositeExtract %7 %55 3
+%59 = OpInBoundsAccessChain %51 %43 %38
+OpStore %59 %58
+%60 = OpBitwiseAnd %5 %40 %38
+%62 = OpAccessChain %61 %11 %30 %60
+%63 = OpLoad %7 %62
+%64 = OpInBoundsAccessChain %51 %43 %60
+%65 = OpLoad %7 %64
+%66 = OpFMul %7 %65 %63
+%67 = OpFMul %7 %66 %31
+%68 = OpFMul %7 %66 %33
+%69 = OpFMul %7 %66 %36
+%70 = OpFMul %7 %66 %39
+%72 = OpAccessChain %71 %27 %30
 OpStore %72 %67
-%73 = OpAccessChain %70 %27 %35
+%73 = OpAccessChain %71 %27 %12
 OpStore %73 %68
-%74 = OpAccessChain %70 %27 %38
+%74 = OpAccessChain %71 %27 %35
 OpStore %74 %69
+%75 = OpAccessChain %71 %27 %38
+OpStore %75 %70
 OpReturn
 OpFunctionEnd
 #endif
