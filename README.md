@@ -114,6 +114,8 @@ mkdir shaders-dxbc/dxbcgame
 ./copy_reference_shaders.py --dxbc /tmp/path/to/vkd3d-shader-dump-path --raw --output shaders-dxbc/dxbcgame
 ```
 
+To run an isolated subfolder only, there's `--subfolder`.
+
 ## License
 
 dxil-spirv is currently licensed as MIT. See LICENSE.MIT for more details.
