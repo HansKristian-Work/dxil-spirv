@@ -263,6 +263,7 @@ enum class Option : uint32_t
 	VulkanMemoryModel = 45,
 	Float8Support = 46,
 	NvAPI = 47,
+	ExtendedNonSemantic = 48,
 	Count
 };
 
@@ -815,6 +816,16 @@ struct OptionNvAPI : OptionBase
 	unsigned register_space = 0;
 };
 
+struct OptionExtendedNonSemantic : OptionBase
+{
+	OptionExtendedNonSemantic()
+		: OptionBase(Option::ExtendedNonSemantic)
+	{
+	}
+
+	bool enabled = false;
+};
+
 struct DescriptorTableEntry
 {
 	ResourceClass type;
@@ -865,6 +876,13 @@ struct NodeOutputData
 	bool sparse_array;
 };
 
+struct NonSemanticDebugInfo
+{
+	const char *tag;
+	const void *data;
+	size_t size;
+};
+
 enum class ShaderFeature
 {
 	Native16BitOperations = 0,
@@ -902,6 +920,15 @@ public:
 	// Thus, we translate GPU VA to index by a simple shift on the lower 32-bit value.
 	void add_local_root_descriptor_table(Vector<DescriptorTableEntry> entries);
 	void add_local_root_descriptor_table(const DescriptorTableEntry *entries, size_t count);
+
+	// For debug purposes. Makes it possible to map a computed push constant offset
+	// back to corresponding root parameter index.
+	// Not needed by codegen, but is used by extended debug info.
+	void add_root_parameter_mapping(uint32_t root_parameter_index, uint32_t offset);
+
+	// For debug purposes. Emits arbitrary data with NonSemantic.dxil-spirv.*.
+	// Pointers are owned by application and must remain valid until compilation is done.
+	void add_non_semantic_debug_info(const NonSemanticDebugInfo &info);
 
 	void set_patch_location_offset(uint32_t offset);
 

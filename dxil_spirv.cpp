@@ -192,7 +192,8 @@ static void print_help()
 	     "\t[--extended-robustness]\n"
 	     "\t[--vkmm]\n"
 	     "\t[--full-wmma <fp8> <nv-coopmat2>]\n"
-	     "\t[--shader-quirk <index>]\n");
+	     "\t[--shader-quirk <index>]\n"
+	     "\t[--non-semantic]\n");
 }
 
 struct Arguments
@@ -241,6 +242,7 @@ struct Arguments
 	bool vkmm = false;
 	bool wmma_fp8 = false;
 	bool wmma_nv_coopmat2 = false;
+	bool non_semantic = false;
 	std::vector<dxil_spv_shader_quirk> quirks;
 
 	unsigned ssbo_alignment = 1;
@@ -858,6 +860,7 @@ int main(int argc, char **argv)
 	cbs.add("--shader-quirk", [&](CLIParser &parser) {
 		args.quirks.push_back(dxil_spv_shader_quirk(parser.next_uint()));
 	});
+	cbs.add("--non-semantic", [&](CLIParser &) { args.non_semantic = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -949,6 +952,13 @@ int main(int argc, char **argv)
 		dxil_spv_option_sbt_descriptor_size_log2 desc_size =
 			{ { DXIL_SPV_OPTION_SBT_DESCRIPTOR_SIZE_LOG2 }, 6, 5 };
 		dxil_spv_converter_add_option(converter, &desc_size.base);
+	}
+
+	if (remapper.bindless)
+	{
+		// Dummy mappings.
+		for (uint32_t i = 0; i < 64; i++)
+			dxil_spv_converter_add_root_parameter_mapping(converter, i, 4 * i);
 	}
 
 	if (args.shader_demote)
@@ -1210,6 +1220,12 @@ int main(int argc, char **argv)
 		extn.register_index = args.nvapi_register_index;
 		extn.register_space = args.nvapi_register_space;
 		dxil_spv_converter_add_option(converter, &extn.base);
+	}
+
+	if (args.non_semantic)
+	{
+		dxil_spv_option_extended_non_semantic sem = {{ DXIL_SPV_OPTION_EXTENDED_NON_SEMANTIC }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &sem.base);
 	}
 
 	for (auto &quirk : args.quirks)

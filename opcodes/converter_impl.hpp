@@ -407,6 +407,9 @@ struct Converter::Impl
 	int get_local_root_signature_entry(ResourceClass resource_class, uint32_t space, uint32_t binding,
 	                                   DescriptorTableEntry &local_table_entry) const;
 
+	void emit_root_parameter_index_from_push_index(const char *tag, uint32_t index, uint32_t size, bool bda);
+	uint64_t root_parameter_emit_mask = 0;
+
 	struct RawDeclarationVariable
 	{
 		RawDeclaration declaration;
@@ -803,6 +806,8 @@ struct Converter::Impl
 			unsigned register_index = 0;
 			unsigned register_space = 0;
 		} nvapi;
+
+		bool extended_non_semantic_info = false;
 	} options;
 
 	struct BindlessInfo
@@ -822,6 +827,10 @@ struct Converter::Impl
 		bool relaxed_precision;
 		uint32_t desc_set;
 		uint32_t binding;
+		struct
+		{
+			uint32_t stride;
+		} debug;
 	};
 
 	spv::Id create_bindless_heap_variable(const BindlessInfo &info);
@@ -933,6 +942,15 @@ struct Converter::Impl
 	UnorderedSet<const llvm::Value *> llvm_used_ssa_values;
 	UnorderedMap<const llvm::AllocaInst *, AllocaCBVForwardingTracking> alloca_tracking;
 	UnorderedSet<const llvm::GetElementPtrInst *> masked_alloca_forward_gep;
+
+	struct RootParameterMapping
+	{
+		uint32_t root_parameter_index;
+		uint32_t offset;
+	};
+	Vector<RootParameterMapping> root_parameter_mappings;
+	Vector<NonSemanticDebugInfo> non_semantic_debug_info;
+	void emit_non_semantic_debug_info(const NonSemanticDebugInfo &info);
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);

@@ -408,6 +408,8 @@ struct dxil_spv_converter_s
 	uint32_t wave_size_preferred = 0;
 	uint32_t heuristic_min_wave_size = 0;
 	uint32_t heuristic_max_wave_size = 0;
+	Vector<std::pair<unsigned, unsigned>> root_parameter_mappings;
+	Vector<NonSemanticDebugInfo> non_semantic_debug_info;
 	bool shader_feature_used[unsigned(ShaderFeature::Count)] = {};
 };
 
@@ -739,6 +741,12 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 	if (converter->patch_location_offset != UINT32_MAX)
 		dxil_converter.set_patch_location_offset(converter->patch_location_offset);
+
+	for (auto &mapping : converter->root_parameter_mappings)
+		dxil_converter.add_root_parameter_mapping(mapping.first, mapping.second);
+
+	for (auto &info : converter->non_semantic_debug_info)
+		dxil_converter.add_non_semantic_debug_info(info);
 
 	for (auto &local_param : converter->local_root_parameters)
 	{
@@ -1419,6 +1427,16 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_EXTENDED_NON_SEMANTIC:
+	{
+		OptionExtendedNonSemantic helper;
+		auto *sem = reinterpret_cast<const dxil_spv_option_extended_non_semantic *>(option);
+		helper.enabled = sem->enabled;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
@@ -1499,7 +1517,19 @@ dxil_spv_result dxil_spv_converter_end_local_root_descriptor_table(
 	return DXIL_SPV_SUCCESS;
 }
 
-DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_patch_location_offset(
+void dxil_spv_converter_add_root_parameter_mapping(
+	dxil_spv_converter converter, unsigned root_parameter_index, unsigned offset)
+{
+	converter->root_parameter_mappings.emplace_back(root_parameter_index, offset);
+}
+
+void dxil_spv_converter_add_non_semantic_debug_info(
+	dxil_spv_converter converter, const char *tag, const void *data, size_t size)
+{
+	converter->non_semantic_debug_info.push_back({ tag, data, size });
+}
+
+void dxil_spv_converter_set_patch_location_offset(
 		dxil_spv_converter converter, unsigned offset)
 {
 	converter->patch_location_offset = offset;

@@ -437,6 +437,23 @@ Vector<Converter::Impl::RawDeclarationVariable> Converter::Impl::create_ubo_vari
 	return group;
 }
 
+static const char *convert_component_type_to_str(DXIL::ComponentType type)
+{
+	switch (type)
+	{
+	case DXIL::ComponentType::U16: return "U16";
+	case DXIL::ComponentType::U32: return "U32";
+	case DXIL::ComponentType::U64: return "U64";
+	case DXIL::ComponentType::I16: return "I16";
+	case DXIL::ComponentType::I32: return "I32";
+	case DXIL::ComponentType::I64: return "I64";
+	case DXIL::ComponentType::F16: return "F16";
+	case DXIL::ComponentType::F32: return "F32";
+	case DXIL::ComponentType::F64: return "F64";
+	default: return "";
+	}
+}
+
 spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 {
 	auto itr = std::find_if(bindless_resources.begin(), bindless_resources.end(), [&](const BindlessResource &resource) {
@@ -455,7 +472,8 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			resource.info.aliased == info.aliased &&
 			resource.info.counters == info.counters &&
 			resource.info.offsets == info.offsets &&
-			resource.info.descriptor_type == info.descriptor_type;
+			resource.info.descriptor_type == info.descriptor_type &&
+			(!options.extended_non_semantic_info || resource.info.debug.stride == info.debug.stride);
 	});
 
 	if (itr != bindless_resources.end())
@@ -635,6 +653,98 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		builder().addExtension("SPV_EXT_descriptor_indexing");
 		builder().addCapability(spv::CapabilityRuntimeDescriptorArrayEXT);
 		resource.var_id = create_variable(storage, type_id);
+
+		if (options.extended_non_semantic_info)
+		{
+			String name;
+			switch (info.type)
+			{
+			case DXIL::ResourceType::SRV: name = "SRV"; break;
+			case DXIL::ResourceType::UAV: name = "UAV"; break;
+			case DXIL::ResourceType::CBV: name = "CBV"; break;
+			case DXIL::ResourceType::Sampler: name = "Sampler"; break;
+			default: break;
+			}
+
+			const char *component_type_name = convert_component_type_to_str(info.component);
+
+			switch (info.kind)
+			{
+			case DXIL::ResourceKind::RawBuffer:
+				name += "_ByteAddressBuffer";
+				name += "_vec";
+				name += std::to_string(raw_vecsize_to_vecsize(info.raw_vecsize)).c_str();
+				builder().addName(builder().getContainedTypeId(type_id), (name + "_Block").c_str());
+				break;
+
+			case DXIL::ResourceKind::StructuredBuffer:
+				name += "_StructuredBuffer_";
+				name += std::to_string(info.debug.stride).c_str();
+				name += "_vec";
+				name += std::to_string(raw_vecsize_to_vecsize(info.raw_vecsize)).c_str();
+				builder().addName(builder().getContainedTypeId(type_id), (name + "_Block").c_str());
+				break;
+
+			case DXIL::ResourceKind::CBuffer:
+				builder().addName(builder().getContainedTypeId(type_id), (name + "_Block").c_str());
+				break;
+
+			case DXIL::ResourceKind::TypedBuffer:
+				name += "_TypedBuffer_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture1D:
+				name += "_1D_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture1DArray:
+				name += "_1DArray_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture2D:
+				name += "_2D_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture2DArray:
+				name += "_2DArray_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture2DMS:
+				name += "_2DMS_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture2DMSArray:
+				name += "_2DMSArray_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::TextureCube:
+				name += "_Cube_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::TextureCubeArray:
+				name += "_CubeArray_";
+				name += component_type_name;
+				break;
+
+			case DXIL::ResourceKind::Texture3D:
+				name += "_3D_";
+				name += component_type_name;
+				break;
+
+			default:
+				break;
+			}
+
+			builder().addName(resource.var_id, name.c_str());
+		}
 
 		auto &meta = handle_to_resource_meta[resource.var_id];
 		meta = {};
@@ -990,6 +1100,72 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 	return true;
 }
 
+void Converter::Impl::emit_non_semantic_debug_info(const NonSemanticDebugInfo &info)
+{
+	auto &b = spirv_module.get_builder();
+	b.addExtension("SPV_KHR_non_semantic_info");
+	spv::Id ext = b.import("NonSemantic.dxil-spirv.signature");
+	auto *u8_data = static_cast<const uint8_t *>(info.data);
+
+	// If the root sig is massive (likely because it came from a full DXIL blob or something),
+	// need to dump in multiple stages due to opcode limits.
+	for (size_t i = 0; i < info.size; i += 64 * 1024)
+	{
+		size_t to_dump = std::min<size_t>(info.size - i, 64 * 1024);
+		auto inst = std::make_unique<spv::Instruction>(
+		    b.getUniqueId(), b.makeVoidType(), spv::OpExtInst);
+		inst->addIdOperand(ext);
+		inst->addImmediateOperand(1);
+		inst->addIdOperand(b.addString(info.tag));
+
+		for (size_t j = 0; j < (to_dump & ~size_t(3)); j += 4)
+		{
+			uint32_t v;
+			memcpy(&v, u8_data + i + j, sizeof(v));
+			inst->addIdOperand(b.makeUintConstant(v));
+		}
+
+		for (size_t j = to_dump & ~size_t(3); j < to_dump; j++)
+			inst->addIdOperand(b.makeUint8Constant(u8_data[i + j]));
+
+		b.addExternal(std::move(inst));
+	}
+}
+
+void Converter::Impl::emit_root_parameter_index_from_push_index(const char *tag, uint32_t index, uint32_t size, bool bda)
+{
+	uint32_t effective_offset = bda ? index * 8 : (index * 4 + root_descriptor_count * 8);
+	uint32_t parameter_index = UINT32_MAX;
+	for (auto &mapping : root_parameter_mappings)
+	{
+		if (mapping.offset == effective_offset)
+		{
+			parameter_index = mapping.root_parameter_index;
+			break;
+		}
+	}
+
+	if (parameter_index == UINT32_MAX)
+		return;
+
+	// Avoid lots of spam.
+	if ((1ull << parameter_index) & root_parameter_emit_mask)
+		return;
+	root_parameter_emit_mask |= 1ull << parameter_index;
+
+	auto &b = spirv_module.get_builder();
+	b.addExtension("SPV_KHR_non_semantic_info");
+	spv::Id ext = b.import("NonSemantic.dxil-spirv.signature");
+	auto inst = std::make_unique<spv::Instruction>(b.getUniqueId(), b.makeVoidType(), spv::OpExtInst);
+	inst->addIdOperand(ext);
+	inst->addImmediateOperand(0);
+	inst->addIdOperand(b.addString(tag));
+	inst->addIdOperand(b.makeUintConstant(parameter_index));
+	inst->addIdOperand(b.makeUintConstant(effective_offset));
+	inst->addIdOperand(b.makeUintConstant(size));
+	b.addExternal(std::move(inst));
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *refl)
 {
 	auto &builder = spirv_module.get_builder();
@@ -1114,6 +1290,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
 		bindless_info.relaxed_precision = actual_component_type != effective_component_type &&
 		                                  component_type_is_16bit(actual_component_type);
+		bindless_info.debug.stride = stride;
 
 		if (local_root_signature_entry >= 0)
 		{
@@ -1202,6 +1379,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
 
+			if (options.extended_non_semantic_info)
+				emit_root_parameter_index_from_push_index("SRV", ref.push_constant_member, 8, true);
+
 			if (range_size != 1)
 			{
 				LOGE("Cannot use descriptor array for root descriptors.\n");
@@ -1242,6 +1422,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
+
+			if (options.extended_non_semantic_info)
+				emit_root_parameter_index_from_push_index("ResourceTable", vulkan_binding.buffer_binding.root_constant_index, 4, false);
 		}
 		else
 		{
@@ -1655,6 +1838,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		bindless_info.descriptor_type = vulkan_binding.buffer_binding.descriptor_type;
 		bindless_info.relaxed_precision = actual_component_type != effective_component_type &&
 		                                  component_type_is_16bit(actual_component_type);
+		bindless_info.debug.stride = stride;
 
 		// If we emit two SSBOs which both access the same buffer, we must emit Aliased decoration to be safe.
 		bindless_info.aliased = aliased_access.requires_alias_decoration;
@@ -1804,6 +1988,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
 
+			if (options.extended_non_semantic_info)
+				emit_root_parameter_index_from_push_index("UAV", ref.push_constant_member, 8, true);
+
 			if (range_size != 1)
 			{
 				LOGE("Cannot use descriptor array for root descriptors.\n");
@@ -1847,6 +2034,12 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
+
+			if (options.extended_non_semantic_info)
+			{
+				emit_root_parameter_index_from_push_index(
+					"ResourceTable", vulkan_binding.buffer_binding.root_constant_index, 4, false);
+			}
 
 			if (has_counter)
 			{
@@ -2175,6 +2368,9 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.var_id = root_constant_id;
 			ref.push_constant_member = vulkan_binding.push.offset_in_words + root_descriptor_count;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
+
+			if (options.extended_non_semantic_info)
+				emit_root_parameter_index_from_push_index("Constant", vulkan_binding.push.offset_in_words, cbv_size, false);
 		}
 		else if (vulkan_binding.buffer.descriptor_type == VulkanDescriptorType::BufferDeviceAddress)
 		{
@@ -2183,6 +2379,9 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.root_descriptor = true;
 			ref.push_constant_member = vulkan_binding.buffer.root_constant_index;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
+
+			if (options.extended_non_semantic_info)
+				emit_root_parameter_index_from_push_index("CBV", ref.push_constant_member, 8, true);
 
 			if (range_size != 1)
 			{
@@ -2216,6 +2415,9 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			ref.base_resource_is_array = range_size != 1;
 			ref.bindless = true;
 			ref.resource_kind = DXIL::ResourceKind::CBuffer;
+
+			if (options.extended_non_semantic_info)
+				emit_root_parameter_index_from_push_index("ResourceTable", vulkan_binding.buffer.root_constant_index, 4, false);
 		}
 		else
 		{
@@ -2381,6 +2583,9 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = DXIL::ResourceKind::Sampler;
+
+			if (options.extended_non_semantic_info)
+				emit_root_parameter_index_from_push_index("SamplerTable", vulkan_binding.root_constant_index, 4, false);
 		}
 		else
 		{
@@ -3080,6 +3285,7 @@ bool Converter::Impl::emit_global_heaps()
 		info.binding = vulkan_binding.binding;
 		info.descriptor_type = vulkan_binding.descriptor_type;
 		info.aliased = aliased_access.requires_alias_decoration;
+		info.debug.stride = annotation->stride;
 
 		annotation->reference.bindless = true;
 		annotation->reference.base_resource_is_array = true;
@@ -8156,6 +8362,10 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (!emit_global_variables())
 		return result;
 
+	if (options.extended_non_semantic_info)
+		for (auto &info : non_semantic_debug_info)
+			emit_non_semantic_debug_info(info);
+
 	// Some execution modes depend on other execution modes, so handle that here.
 	if (!emit_execution_modes_late())
 		return result;
@@ -8801,6 +9011,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::ExtendedNonSemantic:
+	{
+		auto &sem = static_cast<const OptionExtendedNonSemantic &>(cap);
+		options.extended_non_semantic_info = sem.enabled;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -8855,6 +9072,16 @@ bool Converter::recognizes_option(Option cap)
 void Converter::set_entry_point(const char *entry)
 {
 	impl->options.entry_point = entry;
+}
+
+void Converter::add_root_parameter_mapping(uint32_t root_parameter_index, uint32_t offset)
+{
+	impl->root_parameter_mappings.push_back({ root_parameter_index, offset });
+}
+
+void Converter::add_non_semantic_debug_info(const NonSemanticDebugInfo &info)
+{
+	impl->non_semantic_debug_info.push_back(info);
 }
 
 const String &Converter::get_compiled_entry_point() const

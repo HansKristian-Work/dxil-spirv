@@ -114,6 +114,8 @@ public:
     void setLine(int line);
     // Low-level OpLine. See setLine() for a layered helper.
     void addLine(Id fileName, int line, int column);
+    void addExternal(std::unique_ptr<spv::Instruction> inst);
+    spv::Id addString(const dxil_spv::String &str);
 
     // For creating new types (will return old type if the requested one was already made).
     Id makeVoidType();
