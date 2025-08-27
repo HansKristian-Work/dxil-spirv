@@ -925,6 +925,7 @@ public:
 	// back to corresponding root parameter index.
 	// Not needed by codegen, but is used by extended debug info.
 	void add_root_parameter_mapping(uint32_t root_parameter_index, uint32_t offset);
+    static uint32_t pack_desc_set_binding_to_virtual_offset(uint32_t desc_set, uint32_t binding);
 
 	// For debug purposes. Emits arbitrary data with NonSemantic.dxil-spirv.*.
 	// Pointers are owned by application and must remain valid until compilation is done.

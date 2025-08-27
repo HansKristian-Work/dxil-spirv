@@ -1523,6 +1523,15 @@ void dxil_spv_converter_add_root_parameter_mapping(
 	converter->root_parameter_mappings.emplace_back(root_parameter_index, offset);
 }
 
+void dxil_spv_converter_add_root_descriptor_mapping(
+    dxil_spv_converter converter, unsigned root_parameter_index,
+    unsigned desc_set, unsigned binding)
+{
+    converter->root_parameter_mappings.emplace_back(
+            root_parameter_index,
+            Converter::pack_desc_set_binding_to_virtual_offset(desc_set, binding));
+}
+
 void dxil_spv_converter_add_non_semantic_debug_info(
 	dxil_spv_converter converter, const char *tag, const void *data, size_t size)
 {

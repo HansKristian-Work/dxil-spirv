@@ -1134,16 +1134,33 @@ void Converter::Impl::emit_non_semantic_debug_info(const NonSemanticDebugInfo &i
 
 void Converter::Impl::emit_root_parameter_index_from_push_index(const char *tag, uint32_t index, uint32_t size, bool bda)
 {
-	uint32_t effective_offset = bda ? index * 8 : (index * 4 + root_descriptor_count * 8);
-	uint32_t parameter_index = UINT32_MAX;
-	for (auto &mapping : root_parameter_mappings)
-	{
-		if (mapping.offset == effective_offset)
-		{
-			parameter_index = mapping.root_parameter_index;
-			break;
-		}
-	}
+    bool descriptor_packing = (index & 0x80000000) != 0;
+    uint32_t parameter_index = UINT32_MAX;
+    uint32_t effective_offset = 0;
+
+    if (descriptor_packing)
+    {
+        for (auto &mapping : root_parameter_mappings)
+        {
+            if (mapping.offset == index)
+            {
+                parameter_index = mapping.root_parameter_index;
+                break;
+            }
+        }
+    }
+    else
+    {
+        effective_offset = bda ? index * 8 : (index * 4 + root_descriptor_count * 8);
+        for (auto &mapping: root_parameter_mappings)
+        {
+            if (mapping.offset == effective_offset)
+            {
+                parameter_index = mapping.root_parameter_index;
+                break;
+            }
+        }
+    }
 
 	if (parameter_index == UINT32_MAX)
 		return;
@@ -1161,8 +1178,18 @@ void Converter::Impl::emit_root_parameter_index_from_push_index(const char *tag,
 	inst->addImmediateOperand(0);
 	inst->addIdOperand(b.addString(tag));
 	inst->addIdOperand(b.makeUintConstant(parameter_index));
-	inst->addIdOperand(b.makeUintConstant(effective_offset));
-	inst->addIdOperand(b.makeUintConstant(size));
+
+    if (descriptor_packing)
+    {
+        inst->addIdOperand(b.makeUintConstant((index >> 24) & 0x7f));
+        inst->addIdOperand(b.makeUintConstant(index & 0xffffff));
+    }
+    else
+    {
+        inst->addIdOperand(b.makeUintConstant(effective_offset));
+        inst->addIdOperand(b.makeUintConstant(size));
+    }
+
 	b.addExternal(std::move(inst));
 }
 
@@ -2466,6 +2493,13 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 				builder.addDecoration(meta.var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
 				builder.addDecoration(meta.var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
 			}
+
+            if (options.extended_non_semantic_info)
+            {
+                emit_root_parameter_index_from_push_index("PushCBV",
+                        Converter::pack_desc_set_binding_to_virtual_offset(
+                                vulkan_binding.buffer.descriptor_set, vulkan_binding.buffer.binding), 0, false);
+            }
 		}
 	}
 
@@ -9077,6 +9111,11 @@ void Converter::set_entry_point(const char *entry)
 void Converter::add_root_parameter_mapping(uint32_t root_parameter_index, uint32_t offset)
 {
 	impl->root_parameter_mappings.push_back({ root_parameter_index, offset });
+}
+
+uint32_t Converter::pack_desc_set_binding_to_virtual_offset(uint32_t desc_set, uint32_t binding)
+{
+    return 0x80000000u | (desc_set << 24) | binding;
 }
 
 void Converter::add_non_semantic_debug_info(const NonSemanticDebugInfo &info)

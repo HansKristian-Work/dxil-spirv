@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 56
+#define DXIL_SPV_API_VERSION_MINOR 57
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 1
@@ -957,6 +957,9 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_end_local_root_descriptor
 
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_root_parameter_mapping(
 	dxil_spv_converter converter, unsigned root_parameter_index, unsigned offset);
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_root_descriptor_mapping(
+        dxil_spv_converter converter, unsigned root_parameter_index,
+        unsigned desc_set, unsigned binding);
 
 /* Pointer is owned by application. Must remain valid until compile() is called. */
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_non_semantic_debug_info(
