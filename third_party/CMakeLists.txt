@@ -53,6 +53,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cse.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_derivative.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_derivative.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_function.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_function.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_io.cpp
@@ -67,6 +69,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_remove_unused.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_scalarize.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_scalarize.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_scratch.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_scratch.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_ssa_utils.h

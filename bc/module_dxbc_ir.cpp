@@ -3984,9 +3984,12 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.validateHash = false;
 
 	options.convertOptions.includeDebugNames = false;
-	options.convertOptions.boundCheckScratch = true;
 	options.convertOptions.boundCheckShaderIo = true;
-	options.convertOptions.boundCheckIcb = true;
+
+	options.scratchOptions.enableBoundChecking = true;
+	options.scratchOptions.resolveCbvCopy = false;
+	options.scratchOptions.unpackConstantIndexedArrays = true;
+	options.scratchOptions.unpackSmallArrays = true;
 
 	options.arithmeticOptions.lowerDot = true;
 	options.arithmeticOptions.lowerSinCos = false;
