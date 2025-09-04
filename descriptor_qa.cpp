@@ -35,16 +35,16 @@ static spv::Id build_descriptor_qa_heap_buffer_type(spv::Builder &builder)
 	// DescriptorHeapQAData {
 	//  uint descriptor_count;
 	//  uint heap_id;
-	//  uvec2 cookies_descriptor_info[];
+	//  uvec3 cookies_descriptor_info[];
 	// }
 	spv::Id u32_type = builder.makeUintType(32);
-	spv::Id uvec2_type = builder.makeVectorType(u32_type, 2);
-	spv::Id uvec2_arr_type = builder.makeRuntimeArray(uvec2_type);
-	builder.addDecoration(uvec2_arr_type, spv::DecorationArrayStride, 8);
+	spv::Id uvec3_type = builder.makeVectorType(u32_type, 3);
+	spv::Id uvec3_arr_type = builder.makeRuntimeArray(uvec3_type);
+	builder.addDecoration(uvec3_arr_type, spv::DecorationArrayStride, 12);
 
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
-	member_types.push_back(uvec2_arr_type);
+	member_types.push_back(uvec3_arr_type);
 
 	spv::Id id = builder.makeStructType(member_types, "DescriptorHeapQAData");
 
@@ -74,6 +74,7 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	//  uint failed_descriptor_type_mask;
 	//  uint actual_descriptor_type_mask;
 	//  uint fault_type;
+	//  uint va_map_timestamp;
 	//  uint live_status_table[];
 	// }
 	spv::Id u32_type = builder.makeUintType(32);
@@ -82,6 +83,7 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	builder.addDecoration(u32_arr_type, spv::DecorationArrayStride, 4);
 
 	member_types.push_back(uvec2_type);
+	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
 	member_types.push_back(u32_type);
@@ -108,7 +110,8 @@ static spv::Id build_descriptor_global_buffer_type(spv::Builder &builder)
 	set_info(DescriptorQAGlobalMembers::FailedDescriptorTypeMask, 28, "failed_descriptor_type_mask");
 	set_info(DescriptorQAGlobalMembers::ActualDescriptorTypeMask, 32, "actual_descriptor_type_mask");
 	set_info(DescriptorQAGlobalMembers::FaultType, 36, "fault_type");
-	set_info(DescriptorQAGlobalMembers::LiveStatusTable, 40, "live_status_table");
+	set_info(DescriptorQAGlobalMembers::VAMapTimestamp, 40, "va_map_timestamp");
+	set_info(DescriptorQAGlobalMembers::LiveStatusTable, 44, "live_status_table");
 
 	builder.addDecoration(id, spv::DecorationBlock);
 
@@ -170,34 +173,36 @@ static void build_cookie_descriptor_info_split(spv::Builder &builder, spv::Id co
                                                spv::Id &cookie_id,
                                                spv::Id &cookie_shifted_id,
                                                spv::Id &cookie_masked_id,
+                                               spv::Id &descriptor_timestamp_id,
                                                spv::Id &descriptor_info_id)
 {
 	spv::Id u32_type = builder.makeUintType(32);
 
-	auto cookie = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpCompositeExtract);
+	auto *cookie = builder.addInstruction(u32_type, spv::OpCompositeExtract);
 	cookie->addIdOperand(composite_id);
 	cookie->addImmediateOperand(0);
 
-	auto info = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpCompositeExtract);
-	info->addIdOperand(composite_id);
-	info->addImmediateOperand(1);
+	auto *descriptor_timestamp = builder.addInstruction(u32_type, spv::OpCompositeExtract);
+	descriptor_timestamp->addIdOperand(composite_id);
+	descriptor_timestamp->addImmediateOperand(1);
 
-	auto shifted = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpShiftRightLogical);
+	auto *descriptor_type = builder.addInstruction(u32_type, spv::OpCompositeExtract);
+	descriptor_type->addIdOperand(composite_id);
+	descriptor_type->addImmediateOperand(2);
+
+	auto *shifted = builder.addInstruction(u32_type, spv::OpShiftRightLogical);
 	shifted->addIdOperand(cookie->getResultId());
 	shifted->addIdOperand(builder.makeUintConstant(5));
 
-	auto masked = std::make_unique<spv::Instruction>(builder.getUniqueId(), u32_type, spv::OpBitwiseAnd);
+	auto *masked = builder.addInstruction(u32_type, spv::OpBitwiseAnd);
 	masked->addIdOperand(cookie->getResultId());
 	masked->addIdOperand(builder.makeUintConstant(31));
 
 	cookie_id = cookie->getResultId();
-	descriptor_info_id = info->getResultId();
+	descriptor_timestamp_id = descriptor_timestamp->getResultId();
+	descriptor_info_id = descriptor_type->getResultId();
 	cookie_shifted_id = shifted->getResultId();
 	cookie_masked_id = masked->getResultId();
-	builder.getBuildPoint()->addInstruction(std::move(cookie));
-	builder.getBuildPoint()->addInstruction(std::move(shifted));
-	builder.getBuildPoint()->addInstruction(std::move(masked));
-	builder.getBuildPoint()->addInstruction(std::move(info));
 }
 
 static spv::Id build_live_check(spv::Builder &builder, spv::Id status_id, spv::Id bit_id)
@@ -386,16 +391,20 @@ spv::Id build_descriptor_qa_check_function(SPIRVModule &module)
 
 	spv::Id heap_id = build_ssbo_load(builder, builder.makeUintType(32), heap_buffer_id,
 	                                  uint32_t(DescriptorQAHeapMembers::HeapIndex));
-	spv::Id cookie_descriptor_info = build_ssbo_load_array(builder, builder.makeVectorType(builder.makeUintType(32), 2),
+	spv::Id timestamp_id = build_ssbo_load(builder, builder.makeUintType(32), global_buffer_id,
+	                                       uint32_t(DescriptorQAGlobalMembers::VAMapTimestamp));
+	spv::Id cookie_descriptor_info = build_ssbo_load_array(builder, builder.makeVectorType(builder.makeUintType(32), 3),
 	                                                       heap_buffer_id,
 	                                                       uint32_t(DescriptorQAHeapMembers::CookiesDescriptorInfo),
 	                                                       offset_id);
 	spv::Id cookie_id;
 	spv::Id cookie_shifted_id;
 	spv::Id cookie_mask_id;
+	spv::Id descriptor_timestamp_id;
 	spv::Id descriptor_info_id;
 	build_cookie_descriptor_info_split(builder, cookie_descriptor_info, cookie_id,
-	                                   cookie_shifted_id, cookie_mask_id, descriptor_info_id);
+	                                   cookie_shifted_id, cookie_mask_id,
+	                                   descriptor_timestamp_id, descriptor_info_id);
 
 	spv::Id live_status_id = build_ssbo_load_array(builder, builder.makeUintType(32),
 	                                               global_buffer_id,
@@ -411,43 +420,49 @@ spv::Id build_descriptor_qa_check_function(SPIRVModule &module)
 	                                          offset_id, descriptor_count_id);
 
 	// First check: descriptor index is in range of heap.
-	auto range_check = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeUintType(32), spv::OpSelect);
+	auto *range_check = builder.addInstruction(builder.makeUintType(32), spv::OpSelect);
 	range_check->addIdOperand(out_of_range_id);
 	range_check->addIdOperand(builder.makeUintConstant(DESCRIPTOR_QA_FAULT_INDEX_OUT_OF_RANGE_BIT));
 	range_check->addIdOperand(builder.makeUintConstant(0u));
 
 	// Second: Check if type matches.
-	auto type_check = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeUintType(32), spv::OpSelect);
+	auto *type_check = builder.addInstruction(builder.makeUintType(32), spv::OpSelect);
 	type_check->addIdOperand(type_cond_id);
 	type_check->addIdOperand(builder.makeUintConstant(0u));
 	type_check->addIdOperand(builder.makeUintConstant(DESCRIPTOR_QA_FAULT_INVALID_TYPE_BIT));
 
 	// Third: Check if cookie is alive.
-	auto alive_check = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeUintType(32), spv::OpSelect);
+	auto *alive_check = builder.addInstruction(builder.makeUintType(32), spv::OpSelect);
 	alive_check->addIdOperand(live_status_cond_id);
 	alive_check->addIdOperand(builder.makeUintConstant(0u));
 	alive_check->addIdOperand(builder.makeUintConstant(DESCRIPTOR_QA_FAULT_RESOURCE_DESTROYED_BIT));
 
-	auto merge_check0 = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeUintType(32), spv::OpBitwiseOr);
-	auto merge_check1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeUintType(32), spv::OpBitwiseOr);
+	// Fourth: Check if the view was created before GPU submission happened.
+	auto *time_check_cond = builder.addInstruction(builder.makeBoolType(), spv::OpUGreaterThanEqual);
+	time_check_cond->addIdOperand(timestamp_id);
+	time_check_cond->addIdOperand(descriptor_timestamp_id);
+
+	auto *time_check = builder.addInstruction(builder.makeUintType(32), spv::OpSelect);
+	time_check->addIdOperand(time_check_cond->getResultId());
+	time_check->addIdOperand(builder.makeUintConstant(0u));
+	time_check->addIdOperand(builder.makeUintConstant(DESCRIPTOR_QA_FAULT_VA_TIMESTAMP_INVALID_BIT));
+
+	auto *merge_check0 = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
+	auto *merge_check1 = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
+	auto *merge_check2 = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
 	merge_check0->addIdOperand(range_check->getResultId());
 	merge_check0->addIdOperand(type_check->getResultId());
 	merge_check1->addIdOperand(merge_check0->getResultId());
 	merge_check1->addIdOperand(alive_check->getResultId());
+	merge_check2->addIdOperand(merge_check1->getResultId());
+	merge_check2->addIdOperand(time_check->getResultId());
 
-	auto fault_cond = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpINotEqual);
-	fault_cond->addIdOperand(merge_check1->getResultId());
+	auto *fault_cond = builder.addInstruction(builder.makeBoolType(), spv::OpINotEqual);
+	fault_cond->addIdOperand(merge_check2->getResultId());
 	fault_cond->addIdOperand(builder.makeUintConstant(0u));
 
-	spv::Id fault_type_id = merge_check1->getResultId();
+	spv::Id fault_type_id = merge_check2->getResultId();
 	spv::Id fault_cond_id = fault_cond->getResultId();
-
-	builder.getBuildPoint()->addInstruction(std::move(range_check));
-	builder.getBuildPoint()->addInstruction(std::move(type_check));
-	builder.getBuildPoint()->addInstruction(std::move(alive_check));
-	builder.getBuildPoint()->addInstruction(std::move(merge_check0));
-	builder.getBuildPoint()->addInstruction(std::move(merge_check1));
-	builder.getBuildPoint()->addInstruction(std::move(fault_cond));
 
 	auto *fault_block = new spv::Block(builder.getUniqueId(), *func);
 	auto *correct_block = new spv::Block(builder.getUniqueId(), *func);
@@ -455,7 +470,7 @@ spv::Id build_descriptor_qa_check_function(SPIRVModule &module)
 	builder.createConditionalBranch(fault_cond_id, fault_block, correct_block);
 	{
 		builder.setBuildPoint(fault_block);
-		auto call = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeVoidType(), spv::OpFunctionCall);
+		auto *call = builder.addInstruction(builder.makeVoidType(), spv::OpFunctionCall);
 		call->addIdOperand(fault_func_id);
 		call->addIdOperand(fault_type_id);
 		call->addIdOperand(offset_id);
@@ -464,7 +479,6 @@ spv::Id build_descriptor_qa_check_function(SPIRVModule &module)
 		call->addIdOperand(descriptor_type_id);
 		call->addIdOperand(descriptor_info_id);
 		call->addIdOperand(instruction_id);
-		builder.getBuildPoint()->addInstruction(std::move(call));
 		builder.makeReturn(false, fallback_offset_id);
 	}
 	builder.setBuildPoint(correct_block);

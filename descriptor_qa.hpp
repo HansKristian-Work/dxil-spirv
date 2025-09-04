@@ -29,7 +29,7 @@
 
 namespace dxil_spv
 {
-static constexpr uint32_t Version = 1;
+static constexpr uint32_t Version = 2;
 
 struct DescriptorQAInfo
 {
@@ -110,6 +110,7 @@ enum class DescriptorQAGlobalMembers
 	FailedDescriptorTypeMask,
 	ActualDescriptorTypeMask,
 	FaultType,
+	VAMapTimestamp,
 	LiveStatusTable
 };
 
@@ -117,7 +118,8 @@ enum DescriptorQAFaultTypeBits
 {
 	DESCRIPTOR_QA_FAULT_INDEX_OUT_OF_RANGE_BIT = 1 << 0,
 	DESCRIPTOR_QA_FAULT_INVALID_TYPE_BIT = 1 << 1,
-	DESCRIPTOR_QA_FAULT_RESOURCE_DESTROYED_BIT = 1 << 2
+	DESCRIPTOR_QA_FAULT_RESOURCE_DESTROYED_BIT = 1 << 2,
+	DESCRIPTOR_QA_FAULT_VA_TIMESTAMP_INVALID_BIT = 1 << 3
 };
 
 enum class DescriptorQAHeapMembers
