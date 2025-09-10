@@ -154,6 +154,7 @@ static void print_help()
 	     "\t[--no-bda]\n"
 	     "\t[--local-root-signature]\n"
 	     "\t[--uav-counter-force-texel-buffer]\n"
+	     "\t[--uav-counter-force-ssbo]\n"
 	     "\t[--bindless-cbv-as-ssbo]\n"
 	     "\t[--ssbo-uav]\n"
 	     "\t[--ssbo-srv]\n"
@@ -310,6 +311,7 @@ struct Remapper
 	bool bindless = false;
 	bool bda = true;
 	bool uav_counter_force_texel_buffer = false;
+	bool uav_counter_force_ssbo = false;
 
 	bool ssbo_uav = false;
 	bool ssbo_srv = false;
@@ -490,8 +492,6 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 				vk_binding->counter_binding.bindless.heap_root_offset = binding->d3d_binding.register_index;
 				vk_binding->counter_binding.set = 7;
 				vk_binding->counter_binding.binding = 0;
-				if (remapper->uav_counter_force_texel_buffer)
-					vk_binding->counter_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_TEXEL_BUFFER;
 			}
 			else
 			{
@@ -499,6 +499,11 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 				vk_binding->counter_binding.set = 7;
 				vk_binding->counter_binding.binding = binding->d3d_binding.resource_index;
 			}
+
+			if (remapper->uav_counter_force_texel_buffer)
+				vk_binding->counter_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_TEXEL_BUFFER;
+			else if (remapper->uav_counter_force_ssbo)
+				vk_binding->counter_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
 		}
 	}
 
@@ -668,6 +673,9 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--uav-counter-force-texel-buffer", [&](CLIParser &) {
 		remapper.uav_counter_force_texel_buffer = true;
+	});
+	cbs.add("--uav-counter-force-ssbo", [&](CLIParser &) {
+		remapper.uav_counter_force_ssbo = true;
 	});
 	cbs.add("--local-root-signature", [&](CLIParser &) {
 		local_root_signature = true;

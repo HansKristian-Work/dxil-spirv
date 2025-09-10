@@ -505,11 +505,11 @@ struct Converter::Impl
 		Vector<RawDeclarationVariable> var_alias_group;
 		bool aliased;
 		bool non_uniform;
-		bool counter_is_physical_pointer;
 		bool rov;
 		ReferenceVkMemoryModel vkmm;
 
 		spv::StorageClass storage;
+		spv::StorageClass counter_storage;
 
 		spv::Id counter_var_id;
 		PhysicalPointerMeta physical_pointer_meta;
