@@ -549,17 +549,30 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		{
 			if (info.counters)
 			{
-				spv::Id uint_type = builder().makeUintType(32);
-				spv::Id uvec2_type = builder().makeVectorType(uint_type, 2);
+				if (info.kind == DXIL::ResourceKind::Invalid)
+				{
+					spv::Id uint_type = builder().makeUintType(32);
+					spv::Id uvec2_type = builder().makeVectorType(uint_type, 2);
 
-				spv::Id runtime_array_type_id = builder().makeRuntimeArray(uvec2_type);
-				builder().addDecoration(runtime_array_type_id, spv::DecorationArrayStride, sizeof(uint64_t));
+					spv::Id runtime_array_type_id = builder().makeRuntimeArray(uvec2_type);
+					builder().addDecoration(runtime_array_type_id, spv::DecorationArrayStride, sizeof(uint64_t));
 
-				type_id = get_struct_type({ runtime_array_type_id }, 0, "AtomicCounters");
-				builder().addDecoration(type_id, spv::DecorationBlock);
-				builder().addMemberName(type_id, 0, "counters");
-				builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
-				builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
+					type_id = get_struct_type({ runtime_array_type_id }, 0, "AtomicCounters");
+					builder().addDecoration(type_id, spv::DecorationBlock);
+					builder().addMemberName(type_id, 0, "counters");
+					builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+					builder().addMemberDecoration(type_id, 0, spv::DecorationNonWritable);
+				}
+				else
+				{
+					spv::Id uint_type = builder().makeUintType(32);
+					type_id = get_struct_type({ uint_type }, 0, "AtomicCounters");
+					builder().addDecoration(type_id, spv::DecorationBlock);
+					builder().addMemberName(type_id, 0, "counter");
+					builder().addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+					type_id = builder().makeRuntimeArray(type_id);
+				}
+
 				storage = spv::StorageClassStorageBuffer;
 			}
 			else if (info.descriptor_type == VulkanDescriptorType::SSBO)
@@ -790,7 +803,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			if (info.uav_coherent && execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
 				builder().addDecoration(resource.var_id, spv::DecorationCoherent);
 		}
-		else if (info.counters)
+		else if (info.counters && info.kind == DXIL::ResourceKind::Invalid)
 		{
 			builder().addDecoration(resource.var_id, spv::DecorationAliasedPointer);
 		}
@@ -1832,7 +1845,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			if (has_counter)
 			{
 				builder.addExtension("SPV_EXT_descriptor_indexing");
-				builder.addCapability(spv::CapabilityStorageTexelBufferArrayDynamicIndexingEXT);
+				if (vulkan_binding.counter_binding.descriptor_type == VulkanDescriptorType::SSBO)
+					builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
+				else
+					builder.addCapability(spv::CapabilityStorageTexelBufferArrayDynamicIndexingEXT);
 			}
 
 			if ((resource_kind == DXIL::ResourceKind::StructuredBuffer ||
@@ -1877,15 +1893,20 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		counter_info.desc_set = vulkan_binding.counter_binding.descriptor_set;
 		counter_info.binding = vulkan_binding.counter_binding.binding;
 
-		if (options.physical_storage_buffer &&
-		    vulkan_binding.counter_binding.descriptor_type != VulkanDescriptorType::TexelBuffer)
+		if (vulkan_binding.counter_binding.descriptor_type == VulkanDescriptorType::SSBO)
+		{
+			counter_info.kind = DXIL::ResourceKind::RawBuffer;
+			counter_info.counters = true;
+		}
+		else if (options.physical_storage_buffer &&
+		         vulkan_binding.counter_binding.descriptor_type != VulkanDescriptorType::TexelBuffer)
 		{
 			counter_info.kind = DXIL::ResourceKind::Invalid;
 			counter_info.counters = true;
 		}
 		else
 		{
-			counter_info.kind = DXIL::ResourceKind::RawBuffer;
+			counter_info.kind = DXIL::ResourceKind::TypedBuffer;
 			counter_info.uav_read = true;
 			counter_info.uav_written = true;
 			counter_info.uav_coherent = globally_coherent;
@@ -2087,8 +2108,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					counter_ref.base_resource_is_array = range_size != 1;
 
 					// Signals the underlying type of the counter buffer.
-					counter_ref.resource_kind =
-					    counter_info.counters ? DXIL::ResourceKind::RawBuffer : DXIL::ResourceKind::TypedBuffer;
+					counter_ref.resource_kind = counter_info.kind;
 				}
 				else
 				{
@@ -2190,13 +2210,26 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					return false;
 				}
 
-				// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
-				auto element_type_id = get_type_id(DXIL::ComponentType::U32, 1, 1);
+				spv::StorageClass counter_storage;
+				spv::Id type_id;
 
-				spv::Id type_id =
-					builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
-					                      image_dimension_is_arrayed(resource_kind),
-					                      image_dimension_is_multisampled(resource_kind), 2, format);
+				if (vulkan_binding.counter_binding.descriptor_type == VulkanDescriptorType::SSBO)
+				{
+					spv::Id uint_type = builder.makeUintType(32);
+					type_id = builder.makeStructType({ uint_type }, "AtomicCounterSSBO");
+					builder.addDecoration(type_id, spv::DecorationBlock);
+					builder.addMemberName(type_id, 0, "counter");
+					builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
+					counter_storage = spv::StorageClassStorageBuffer;
+				}
+				else
+				{
+					// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
+					auto element_type_id = get_type_id(DXIL::ComponentType::U32, 1, 1);
+					type_id = builder.makeImageType(
+						element_type_id, spv::DimBuffer, false, false, false, 2, format);
+					counter_storage = spv::StorageClassUniformConstant;
+				}
 
 				if (range_size != 1)
 				{
@@ -2206,8 +2239,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 						type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 				}
 
-				counter_var_id = create_variable(spv::StorageClassUniformConstant, type_id,
-				                                 name.empty() ? nullptr : (name + "Counter").c_str());
+				counter_var_id = create_variable(counter_storage, type_id, name.empty() ? nullptr : (name + "Counter").c_str());
 
 				builder.addDecoration(counter_var_id, spv::DecorationDescriptorSet,
 				                      vulkan_binding.counter_binding.descriptor_set);
@@ -2217,7 +2249,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				counter_ref.var_id = counter_var_id;
 				counter_ref.stride = 4;
 				counter_ref.base_resource_is_array = range_size != 1;
-				counter_ref.resource_kind = DXIL::ResourceKind::TypedBuffer;
+				counter_ref.resource_kind = counter_storage == spv::StorageClassStorageBuffer ?
+					DXIL::ResourceKind::RawBuffer : DXIL::ResourceKind::TypedBuffer;
 			}
 
 			if (var_id)
@@ -3260,23 +3293,27 @@ bool Converter::Impl::emit_global_heaps()
 					counter_info.desc_set = counter_binding.descriptor_set;
 					counter_info.binding = counter_binding.binding;
 
-					if (options.physical_storage_buffer &&
-					    counter_binding.descriptor_type != VulkanDescriptorType::TexelBuffer)
+					if (counter_binding.descriptor_type == VulkanDescriptorType::SSBO)
+					{
+						counter_info.kind = DXIL::ResourceKind::RawBuffer;
+						counter_info.counters = true;
+					}
+					else if (options.physical_storage_buffer &&
+					         counter_binding.descriptor_type != VulkanDescriptorType::TexelBuffer)
 					{
 						counter_info.kind = DXIL::ResourceKind::Invalid;
 						counter_info.counters = true;
-						annotation->counter_reference.resource_kind = DXIL::ResourceKind::RawBuffer;
 					}
 					else
 					{
-						counter_info.kind = DXIL::ResourceKind::RawBuffer;
+						counter_info.kind = DXIL::ResourceKind::TypedBuffer;
 						counter_info.uav_read = true;
 						counter_info.uav_written = true;
 						counter_info.uav_coherent = false;
 						counter_info.format = spv::ImageFormatR32ui;
-						annotation->counter_reference.resource_kind = DXIL::ResourceKind::TypedBuffer;
 					}
 
+					annotation->counter_reference.resource_kind = counter_info.kind;
 					annotation->counter_reference.var_id = create_bindless_heap_variable(counter_info);
 				}
 				break;

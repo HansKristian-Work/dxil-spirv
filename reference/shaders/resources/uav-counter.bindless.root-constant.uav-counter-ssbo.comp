@@ -1,0 +1,159 @@
+#version 460
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_nonuniform_qualifier : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 7, binding = 0, std430) buffer AtomicCounters
+{
+    uint counter;
+} _16[];
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uint _m0;
+    uint _m1;
+    uint _m2;
+    uint _m3;
+    uint _m4;
+    uint _m5;
+    uint _m6;
+    uint _m7;
+    uint _m8;
+    uint _m9;
+    uint _m10;
+    uint _m11;
+    uint _m12;
+    uint _m13;
+    uint _m14;
+    uint _m15;
+} registers;
+
+layout(set = 4, binding = 0, r32ui) uniform readonly writeonly uimageBuffer _12[];
+
+void main()
+{
+    uint _24 = gl_GlobalInvocationID.x + 2u;
+    uint _41 = atomicAdd(_16[nonuniformEXT(registers._m4 + _24)].counter, 1u);
+    uint _44 = (gl_GlobalInvocationID.x ^ 1u) + 2u;
+    uint _55 = atomicAdd(_16[nonuniformEXT(registers._m4 + _44)].counter, 1u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 58
+; Schema: 0
+OpCapability Shader
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability ImageBuffer
+OpCapability RuntimeDescriptorArray
+OpCapability StorageTexelBufferArrayDynamicIndexing
+OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint GLCompute %3 "main" %19
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %6 "RootConstants"
+OpName %8 "registers"
+OpName %13 "AtomicCounters"
+OpMemberName %13 0 "counter"
+OpDecorate %6 Block
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 4
+OpMemberDecorate %6 2 Offset 8
+OpMemberDecorate %6 3 Offset 12
+OpMemberDecorate %6 4 Offset 16
+OpMemberDecorate %6 5 Offset 20
+OpMemberDecorate %6 6 Offset 24
+OpMemberDecorate %6 7 Offset 28
+OpMemberDecorate %6 8 Offset 32
+OpMemberDecorate %6 9 Offset 36
+OpMemberDecorate %6 10 Offset 40
+OpMemberDecorate %6 11 Offset 44
+OpMemberDecorate %6 12 Offset 48
+OpMemberDecorate %6 13 Offset 52
+OpMemberDecorate %6 14 Offset 56
+OpMemberDecorate %6 15 Offset 60
+OpDecorate %12 DescriptorSet 4
+OpDecorate %12 Binding 0
+OpDecorate %12 NonReadable
+OpDecorate %12 NonWritable
+OpDecorate %13 Block
+OpMemberDecorate %13 0 Offset 0
+OpDecorate %16 DescriptorSet 7
+OpDecorate %16 Binding 0
+OpDecorate %19 BuiltIn GlobalInvocationId
+OpDecorate %32 NonUniform
+OpDecorate %33 NonUniform
+OpDecorate %38 NonUniform
+OpDecorate %40 NonUniform
+OpDecorate %48 NonUniform
+OpDecorate %49 NonUniform
+OpDecorate %53 NonUniform
+OpDecorate %54 NonUniform
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeStruct %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5 %5
+%7 = OpTypePointer PushConstant %6
+%8 = OpVariable %7 PushConstant
+%9 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeStruct %5
+%14 = OpTypeRuntimeArray %13
+%15 = OpTypePointer StorageBuffer %14
+%16 = OpVariable %15 StorageBuffer
+%17 = OpTypeVector %5 3
+%18 = OpTypePointer Input %17
+%19 = OpVariable %18 Input
+%20 = OpTypePointer Input %5
+%22 = OpConstant %5 0
+%25 = OpConstant %5 2
+%26 = OpTypePointer UniformConstant %9
+%28 = OpTypePointer PushConstant %5
+%30 = OpConstant %5 4
+%34 = OpTypePointer StorageBuffer %13
+%39 = OpTypePointer StorageBuffer %5
+%42 = OpConstant %5 1
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %56
+%56 = OpLabel
+%21 = OpAccessChain %20 %19 %22
+%23 = OpLoad %5 %21
+%24 = OpIAdd %5 %23 %25
+%29 = OpAccessChain %28 %8 %30
+%31 = OpLoad %5 %29
+%32 = OpIAdd %5 %31 %24
+%27 = OpAccessChain %26 %12 %32
+%33 = OpLoad %9 %27
+%36 = OpAccessChain %28 %8 %30
+%37 = OpLoad %5 %36
+%38 = OpIAdd %5 %37 %24
+%35 = OpAccessChain %34 %16 %38
+%40 = OpAccessChain %39 %35 %22
+%41 = OpAtomicIAdd %5 %40 %42 %22 %42
+%43 = OpBitwiseXor %5 %23 %42
+%44 = OpIAdd %5 %43 %25
+%46 = OpAccessChain %28 %8 %30
+%47 = OpLoad %5 %46
+%48 = OpIAdd %5 %47 %44
+%45 = OpAccessChain %26 %12 %48
+%49 = OpLoad %9 %45
+%51 = OpAccessChain %28 %8 %30
+%52 = OpLoad %5 %51
+%53 = OpIAdd %5 %52 %44
+%50 = OpAccessChain %34 %16 %53
+%54 = OpAccessChain %39 %50 %22
+%55 = OpAtomicIAdd %5 %54 %42 %22 %42
+OpReturn
+OpFunctionEnd
+#endif

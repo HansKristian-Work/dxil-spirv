@@ -1552,13 +1552,15 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			if (impl.llvm_values_using_update_counter.count(instruction) != 0)
 			{
 				auto &counter_reference = get_resource_counter_reference(impl, instruction, resource_range);
+				meta.counter_storage = counter_reference.resource_kind == DXIL::ResourceKind::RawBuffer ?
+				                       spv::StorageClassStorageBuffer : spv::StorageClassUniformConstant;
 
 				if (counter_reference.bindless)
 				{
-					if (counter_reference.resource_kind == DXIL::ResourceKind::RawBuffer)
+					if (counter_reference.resource_kind == DXIL::ResourceKind::Invalid)
 					{
 						meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction_offset, instruction);
-						meta.counter_is_physical_pointer = true;
+						meta.counter_storage = spv::StorageClassPhysicalStorageBuffer;
 						// Don't support this since the physical pointer we get from heap is actually the counter.
 						meta.instrumentation = {};
 					}
@@ -1572,27 +1574,64 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 							LOGE("Failed to load UAV counter pointer.\n");
 							return false;
 						}
-						meta.counter_is_physical_pointer = false;
+
+						if (counter_reference.resource_kind == DXIL::ResourceKind::RawBuffer)
+						{
+							auto *chain = impl.allocate(
+							    spv::OpAccessChain,
+							    builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+							chain->add_id(meta.counter_var_id);
+							chain->add_id(builder.makeUintConstant(0));
+							impl.add(chain);
+							meta.counter_var_id = chain->id;
+							if (meta.non_uniform)
+								builder.addDecoration(meta.counter_var_id, spv::DecorationNonUniformEXT);
+						}
 					}
 				}
 				else
 				{
 					meta.counter_var_id = counter_reference.var_id;
-
 					if (counter_reference.base_resource_is_array)
 					{
-						spv::Id image_type_id = builder.getContainedTypeId(builder.getDerefTypeId(meta.counter_var_id));
-						offset_id = build_adjusted_descriptor_indexing(
-						    impl, reference.base_offset, instruction_offset);
-						auto *chain = impl.allocate(spv::OpAccessChain,
-						                            builder.makePointer(spv::StorageClassUniformConstant, image_type_id));
+						offset_id = build_adjusted_descriptor_indexing(impl, reference.base_offset, instruction_offset);
+						if (counter_reference.resource_kind == DXIL::ResourceKind::TypedBuffer)
+						{
+							spv::Id image_type_id = builder.getContainedTypeId(builder.getDerefTypeId(meta.counter_var_id));
+							auto *chain = impl.allocate(
+								spv::OpAccessChain,
+								builder.makePointer(spv::StorageClassUniformConstant, image_type_id));
+							chain->add_id(meta.counter_var_id);
+							chain->add_id(offset_id);
+							impl.add(chain);
+							meta.counter_var_id = chain->id;
+						}
+						else
+						{
+							auto *chain = impl.allocate(
+							    spv::OpAccessChain,
+							    builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
+							chain->add_id(meta.counter_var_id);
+							chain->add_id(offset_id);
+							chain->add_id(builder.makeUintConstant(0));
+							impl.add(chain);
+							meta.counter_var_id = chain->id;
+							if (meta.non_uniform)
+								builder.addDecoration(meta.counter_var_id, spv::DecorationNonUniformEXT);
+						}
+					}
+					else if (counter_reference.resource_kind == DXIL::ResourceKind::RawBuffer)
+					{
+						auto *chain = impl.allocate(
+							spv::OpAccessChain,
+						builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
 						chain->add_id(meta.counter_var_id);
-						chain->add_id(offset_id);
+						chain->add_id(builder.makeUintConstant(0));
 						impl.add(chain);
 						meta.counter_var_id = chain->id;
+						if (meta.non_uniform)
+							builder.addDecoration(meta.counter_var_id, spv::DecorationNonUniformEXT);
 					}
-
-					meta.counter_is_physical_pointer = false;
 				}
 			}
 		}
