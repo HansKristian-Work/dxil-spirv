@@ -1286,11 +1286,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			return false;
 		}
 
-		bool rtas_bindless_ssbo = resource_kind == DXIL::ResourceKind::RTAccelerationStructure &&
-		                          vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO &&
-		                          vulkan_binding.buffer_binding.bindless.use_heap;
-
-		if (range_size != 1 && !rtas_bindless_ssbo)
+		if (range_size != 1 && resource_kind != DXIL::ResourceKind::RTAccelerationStructure)
 		{
 			if (range_size == ~0u)
 			{
