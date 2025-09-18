@@ -819,6 +819,9 @@ bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallI
 
 bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (impl.support_native_fp16_operations() && emit_bypass_fp16_trunc(impl, instruction))
+		return true;
+
 	auto &builder = impl.builder();
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");

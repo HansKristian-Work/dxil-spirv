@@ -777,6 +777,92 @@ static spv::Id emit_dxbc_tgsm_bitcast(Converter::Impl &impl, const InstructionTy
 	return 0;
 }
 
+spv::Id emit_bypass_fp16_trunc(Converter::Impl &impl, const llvm::Instruction *instruction)
+{
+	auto &builder = impl.builder();
+
+	// Try to find a cast chain where we can extract the native half value as-is.
+	auto *value = instruction->getOperand(llvm::isa<llvm::CallInst>(instruction) ? 1 : 0);
+
+	if (value_is_dx_op_instrinsic(value, DXIL::Op::LegacyF16ToF32))
+	{
+		auto *input_uint = llvm::cast<llvm::CallInst>(value)->getOperand(1);
+		int component = 0;
+		uint32_t cop = 0;
+
+		if (const auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(input_uint))
+		{
+			if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::LShr &&
+			    get_constant_operand(binop, 1, &cop) && cop == 16)
+			{
+				input_uint = binop->getOperand(0);
+				component = 1;
+			}
+			else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::And &&
+			         get_constant_operand(binop, 1, &cop) && (cop & 0xffffu) == 0xffffu)
+			{
+				input_uint = binop->getOperand(0);
+			}
+		}
+
+		auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(16), 2));
+		bitcast->add_id(impl.get_id_for_value(input_uint));
+		impl.add(bitcast);
+
+		auto *ext = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(16));
+		ext->add_id(bitcast->id);
+		ext->add_literal(component);
+		impl.add(ext);
+
+		if (instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID)
+		{
+			auto *fp16_cast = impl.allocate(spv::OpBitcast, instruction);
+			fp16_cast->add_id(ext->id);
+			impl.add(fp16_cast);
+			return fp16_cast->id;
+		}
+		else
+		{
+			auto *upcast = impl.allocate(spv::OpUConvert, instruction);
+			upcast->add_id(ext->id);
+			impl.add(upcast);
+			return upcast->id;
+		}
+	}
+	else if (const auto *cast = llvm::dyn_cast<llvm::CastInst>(value))
+	{
+		if (cast->getOpcode() == llvm::CastInst::CastOps::FPExt &&
+		    cast->getOperand(0)->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID)
+		{
+			spv::Id id = impl.get_id_for_value(cast->getOperand(0));
+			if (instruction->getType()->getTypeID() != llvm::Type::TypeID::HalfTyID)
+			{
+				auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeUintType(16));
+				bitcast->add_id(id);
+				impl.add(bitcast);
+
+				auto *upcast = impl.allocate(spv::OpUConvert, instruction);
+				upcast->add_id(bitcast->id);
+				impl.add(upcast);
+				return upcast->id;
+			}
+			else
+			{
+				impl.rewrite_value(instruction, id);
+				return id;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static spv::Id emit_bypass_fp16_trunc(Converter::Impl &, const llvm::ConstantExpr *)
+{
+	// If it's constexpr, no point in optimizing ourselves. Really won't happen.
+	return 0;
+}
+
 template <typename InstructionType>
 static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
@@ -820,6 +906,15 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		}
 
 		return id;
+	}
+
+	if (instruction->getOpcode() == llvm::Instruction::CastOps::FPTrunc &&
+	    instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
+	    impl.support_native_fp16_operations())
+	{
+		// Avoid roundtrip. Can happen for shaders which cast between min16 types, legacy packing, etc, etc.
+		if (spv::Id id = emit_bypass_fp16_trunc(impl, instruction))
+			return id;
 	}
 
 	switch (instruction->getOpcode())

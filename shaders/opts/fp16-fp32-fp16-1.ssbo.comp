@@ -1,0 +1,21 @@
+RWStructuredBuffer<uint> RWBuf;
+RWStructuredBuffer<float16_t> RWBuf2;
+RWStructuredBuffer<uint> RWBuf3;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	float f32_1 = f16tof32(RWBuf[thr] & 0xffff);
+	float f32_2 = f16tof32(RWBuf[thr] >> 16);
+
+	RWBuf2[2 * thr + 0] = float16_t(f32_1);
+	RWBuf2[2 * thr + 1] = float16_t(f32_2);
+
+	float2 a = float2(f32_1, f32_2);
+	RWBuf3[2 * thr + 0] = f32tof16(a.x);
+	RWBuf3[2 * thr + 1] = f32tof16(a.y);
+
+	min16float2 b = min16float2(f32_1, f32_2);
+	RWBuf3[2 * thr + 1024 + 0] = f32tof16(b.x);
+	RWBuf3[2 * thr + 1024 + 1] = f32tof16(b.y);
+}
