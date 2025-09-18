@@ -345,7 +345,14 @@ public:
         idToInstruction[resultId] = instruction;
     }
 
-    Instruction* getInstruction(Id id) const { return idToInstruction[id]; }
+    Instruction* getInstruction(Id id) const
+    {
+        if (id < idToInstruction.size())
+            return idToInstruction[id];
+        else
+            return nullptr;
+    }
+
     const dxil_spv::Vector<Function*>& getFunctions() const { return functions; }
     spv::Id getTypeId(Id resultId) const { return idToInstruction[resultId]->getTypeId(); }
     StorageClass getStorageClass(Id typeId) const

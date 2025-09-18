@@ -789,6 +789,7 @@ struct Converter::Impl
 			bool aggressive_nonuniform = false;
 			bool promote_group_to_device_memory_barrier = false;
 			bool group_shared_auto_barrier = false;
+			bool fixup_loop_header_undef_phis = false;
 		} quirks;
 
 		struct

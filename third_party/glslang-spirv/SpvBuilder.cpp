@@ -1330,6 +1330,7 @@ Id Builder::createUndefined(Id type)
 {
   Instruction* inst = new Instruction(getUniqueId(), type, OpUndef);
   buildPoint->addInstruction(std::unique_ptr<Instruction>(inst));
+  module.mapInstruction(inst);
   return inst->getResultId();
 }
 
@@ -1337,6 +1338,7 @@ Id Builder::createUndefinedConstant(Id type)
 {
   Instruction* inst = new Instruction(getUniqueId(), type, OpUndef);
   constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(inst));
+  module.mapInstruction(inst);
   return inst->getResultId();
 }
 

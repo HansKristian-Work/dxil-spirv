@@ -56,6 +56,7 @@ public:
 	bool rewrite_rov_lock_region();
 	void rewrite_auto_group_shared_barrier();
 	void flatten_subgroup_shuffles();
+	void fixup_loop_header_undef_phis();
 
 	// For esoteric CFG workarounds.
 	void set_driver_version(uint32_t driver_id, uint32_t driver_version);

@@ -1933,6 +1933,27 @@ static void rewrite_consumed_ids(IRBlock &ir, spv::Id from, spv::Id to)
 		ir.terminator.return_value = to;
 }
 
+void CFGStructurizer::fixup_loop_header_undef_phis()
+{
+	auto &builder = module.get_builder();
+
+	// If the incoming value to the loop is undef, something is deeply wrong.
+	// This is almost a guarantee that we will consume the value as undef, causing breakage in the wild.
+	// Observed in Dune.
+	for (auto *node : forward_post_visit_order)
+	{
+		if (!node->pred_back_edge)
+			continue;
+
+		for (auto &phi : node->ir.phi)
+			for (auto &incoming : phi.incoming)
+				if (incoming.block != node && incoming.block->dominates(node))
+					if (const auto *inst = builder.getInstruction(incoming.id))
+						if (inst->getOpCode() == spv::OpUndef)
+							incoming.id = builder.makeNullConstant(phi.type_id);
+	}
+}
+
 void CFGStructurizer::fixup_broken_value_dominance()
 {
 	struct Origin

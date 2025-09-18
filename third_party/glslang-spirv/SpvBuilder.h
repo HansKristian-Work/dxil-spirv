@@ -141,6 +141,7 @@ public:
     Id makeSampledImageType(Id imageType);
 
     // For querying about types.
+    spv::Instruction *getInstruction(Id id) { return module.getInstruction(id); }
     Id getTypeId(Id resultId) const { return module.getTypeId(resultId); }
     Id getDerefTypeId(Id resultId) const;
     Op getOpCode(Id id) const { return module.getInstruction(id)->getOpCode(); }

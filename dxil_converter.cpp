@@ -8465,6 +8465,12 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 			cfg.flatten_subgroup_shuffles();
 		}
 
+		if (options.quirks.fixup_loop_header_undef_phis)
+		{
+			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
+			cfg.fixup_loop_header_undef_phis();
+		}
+
 		result.entry.func = spirv_module.get_entry_function();
 	}
 
@@ -9030,6 +9036,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::GroupSharedAutoBarrier:
 			options.quirks.group_shared_auto_barrier = true;
+			break;
+
+		case ShaderQuirk::FixupLoopHeaderUndefPhis:
+			options.quirks.fixup_loop_header_undef_phis = true;
 			break;
 
 		default:
