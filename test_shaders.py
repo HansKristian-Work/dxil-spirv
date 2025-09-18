@@ -231,7 +231,7 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--storage-input-output-16bit']
     if '.descriptor-qa.' in shader:
         hlsl_cmd += ['--descriptor-qa', '10', '10', 'deadbeef']
-    if '.native-fp16.' in shader:
+    if ('.native-fp16.' in shader) or is_asm:
         hlsl_cmd += ['--min-precision-native-16bit']
     if '.invariant.' in shader:
         hlsl_cmd += ['--invariant-position']
