@@ -2339,36 +2339,6 @@ bool analyze_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *i
 	return true;
 }
 
-bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *inst)
-{
-	auto *type = inst->getType();
-	if (type->getTypeID() != llvm::Type::TypeID::StructTyID || type->getStructNumElements() != 4)
-		return true;
-
-	// If a PHI is the exploded struct type we expect from resource load operations,
-	// we need to drop the neat vector types that are actually readable
-	// and fall back to struct types instead like DXIL wants.
-	// At this point we cannot track SSA uses through all possible PHIs,
-	// and we must assume that all components can be used.
-
-	for (unsigned i = 0; i < inst->getNumIncomingValues(); i++)
-	{
-		auto &m = impl.llvm_composite_meta[inst->getIncomingValue(i)];
-		m.forced_struct = true;
-		m.access_mask = 0xf;
-		m.components = 4;
-
-		// Assume we're consuming the entire uvec4.
-		if (instruction_is_ballot(inst->getIncomingValue(i)))
-		{
-			impl.shader_analysis.subgroup_ballot_reads_first = true;
-			impl.shader_analysis.subgroup_ballot_reads_upper = true;
-		}
-	}
-
-	return true;
-}
-
 static void analyze_extractvalue_instruction(
     Converter::Impl &impl, const llvm::Value *aggregate, unsigned index)
 {

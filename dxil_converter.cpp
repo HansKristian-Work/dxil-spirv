@@ -5890,7 +5890,25 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 	{
 		PHI phi;
 		phi.id = get_id_for_value(&instruction);
-		phi.type_id = override_type ? override_type : get_type_id(instruction.getType());
+
+		auto itr = llvm_composite_meta.find(&instruction);
+
+		if (itr != llvm_composite_meta.end() && !itr->second.forced_struct &&
+		    instruction.getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+		{
+			// Using PHI as a composite is exceedingly quirky, but it does come up.
+			// FIXME: This could go wrong if one incoming value uses different components
+			// from the others, but this scenario has only ever been observed from single-incoming
+			// values, so this code path shouldn't really be taken at all.
+			phi.type_id = get_type_id(instruction.getType()->getStructElementType(0));
+			if (itr->second.components > 1)
+				phi.type_id = builder().makeVectorType(phi.type_id, itr->second.components);
+		}
+		else
+		{
+			phi.type_id = override_type ? override_type : get_type_id(instruction.getType());
+		}
+
 		phi.relaxed = type_can_relax_precision(instruction.getType(), false);
 
 		for (unsigned i = 0; i < count; i++)
@@ -8217,11 +8235,6 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 			if (auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst))
 			{
 				if (!analyze_load_instruction(*this, load_inst))
-					return false;
-			}
-			else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&inst))
-			{
-				if (!analyze_phi_instruction(*this, phi_inst))
 					return false;
 			}
 			else if (auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst))

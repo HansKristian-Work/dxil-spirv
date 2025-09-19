@@ -49,7 +49,6 @@ bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *ins
 bool analyze_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction);
 bool analyze_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgInst *instruction);
 bool analyze_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction);
-bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *instruction);
 bool analyze_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction);
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
 bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instruction);
