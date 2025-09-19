@@ -523,8 +523,6 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
 	}
 
-	build_exploded_composite_from_vector(impl, instruction, 4);
-
 	return true;
 }
 
@@ -823,7 +821,6 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 	else
 	{
 		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
-		build_exploded_composite_from_vector(impl, instruction, 4);
 	}
 	return true;
 }
@@ -934,10 +931,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (sparse)
 		impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
 	else
-	{
 		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
-		build_exploded_composite_from_vector(impl, instruction, 4);
-	}
 	return true;
 }
 
@@ -1366,10 +1360,7 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 		if (sparse)
 			impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
 		else
-		{
 			impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
-			build_exploded_composite_from_vector(impl, instruction, 4);
-		}
 	}
 
 	return true;

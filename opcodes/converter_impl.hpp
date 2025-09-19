@@ -324,10 +324,9 @@ struct Converter::Impl
 		unsigned components = 0;
 		// If true, the composite was loaded as a vector, i.e. typed buffer or texture read.
 		bool forced_composite = true;
-		// Forces a composite to be treated as a struct instead of vector or scalar.
-		bool forced_struct = false;
 	};
 	UnorderedMap<const llvm::Value *, CompositeMeta> llvm_composite_meta;
+	Vector<const llvm::Type *> llvm_dxil_op_fake_struct_types;
 
 	bool composite_is_accessed(const llvm::Value *composite) const;
 

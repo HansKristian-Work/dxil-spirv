@@ -2339,54 +2339,67 @@ bool analyze_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *i
 	return true;
 }
 
-bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *inst)
+static void analyze_extractvalue_instruction(
+    Converter::Impl &impl, const llvm::Value *aggregate, unsigned index)
 {
-	auto *type = inst->getType();
-	if (type->getTypeID() != llvm::Type::TypeID::StructTyID || type->getStructNumElements() != 4)
-		return true;
+	auto &meta = impl.llvm_composite_meta[aggregate];
+	bool forward_progress = false;
+	const auto *phi = llvm::dyn_cast<llvm::PHINode>(aggregate);
 
-	// If a PHI is the exploded struct type we expect from resource load operations,
-	// we need to drop the neat vector types that are actually readable
-	// and fall back to struct types instead like DXIL wants.
-	// At this point we cannot track SSA uses through all possible PHIs,
-	// and we must assume that all components can be used.
+	bool is_fake_struct =
+	    std::find(impl.llvm_dxil_op_fake_struct_types.begin(),
+	              impl.llvm_dxil_op_fake_struct_types.end(), aggregate->getType()) !=
+	    impl.llvm_dxil_op_fake_struct_types.end();
 
-	for (unsigned i = 0; i < inst->getNumIncomingValues(); i++)
+	bool splat_composite_access = phi && index < 4 && is_fake_struct;
+
+	if (splat_composite_access)
 	{
-		auto &m = impl.llvm_composite_meta[inst->getIncomingValue(i)];
-		m.forced_struct = true;
-		m.access_mask = 0xf;
-		m.components = 4;
-
-		// Assume we're consuming the entire uvec4.
-		if (instruction_is_ballot(inst->getIncomingValue(i)))
+		if ((meta.access_mask & 0xf) != 0xf)
 		{
-			impl.shader_analysis.subgroup_ballot_reads_first = true;
-			impl.shader_analysis.subgroup_ballot_reads_upper = true;
+			meta.access_mask |= 0xf;
+			meta.components = std::max<uint32_t>(4, meta.components);
+			forward_progress = true;
 		}
 	}
+	else if ((meta.access_mask & (1u << index)) == 0)
+	{
+		meta.access_mask |= 1u << index;
+		meta.components = std::max<uint32_t>(index + 1, meta.components);
+		forward_progress = true;
+	}
 
-	return true;
+	if (instruction_is_ballot(aggregate))
+	{
+		if (index == 0)
+			impl.shader_analysis.subgroup_ballot_reads_first = true;
+		else
+			impl.shader_analysis.subgroup_ballot_reads_upper = true;
+	}
+	else if (forward_progress && phi)
+	{
+		// Incoming values to a PHI aggregate must also be flagged as having access.
+		// Try to avoid potential cycles if there are PHIs in a loop.
+		for (uint32_t i = 0; i < phi->getNumIncomingValues(); i++)
+		{
+			if (splat_composite_access)
+			{
+				// Enforce that we get the full 4 components from a normal resource load.
+				for (uint32_t c = 0; c < 4; c++)
+					analyze_extractvalue_instruction(impl, phi->getIncomingValue(i), c);
+			}
+			else
+			{
+				analyze_extractvalue_instruction(impl, phi->getIncomingValue(i), index);
+			}
+		}
+	}
 }
 
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *inst)
 {
 	if (inst->getNumIndices() == 1 && type_is_composite_return_value(inst->getAggregateOperand()->getType()))
-	{
-		auto &meta = impl.llvm_composite_meta[inst->getAggregateOperand()];
-		unsigned index = inst->getIndices()[0];
-		meta.access_mask |= 1u << index;
-		if (index >= meta.components)
-			meta.components = index + 1;
-
-		if (instruction_is_ballot(inst->getAggregateOperand()))
-		{
-			if (index == 0)
-				impl.shader_analysis.subgroup_ballot_reads_first = true;
-			else
-				impl.shader_analysis.subgroup_ballot_reads_upper = true;
-		}
-	}
+		analyze_extractvalue_instruction(impl, inst->getAggregateOperand(), inst->getIndices()[0]);
 	return true;
 }
 

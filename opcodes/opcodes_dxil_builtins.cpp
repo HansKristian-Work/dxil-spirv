@@ -1043,6 +1043,20 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 	if (impl.options.descriptor_qa_enabled && impl.options.descriptor_qa_sink_handles)
 		analyze_descriptor_handle_sink(impl, instruction, bb);
 
+	// Mark struct types which are never really used as "proper" struct types.
+	// We prefer to use normal vector types instead when possible.
+	// The only real exception to this rule is when using sparse.
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::StructTyID &&
+	    instruction->getType()->getStructNumElements() >= 4)
+	{
+		if (std::find(impl.llvm_dxil_op_fake_struct_types.begin(),
+		              impl.llvm_dxil_op_fake_struct_types.end(),
+		              instruction->getType()) == impl.llvm_dxil_op_fake_struct_types.end())
+		{
+			impl.llvm_dxil_op_fake_struct_types.push_back(instruction->getType());
+		}
+	}
+
 	auto op = static_cast<DXIL::Op>(opcode);
 
 	switch (op)
