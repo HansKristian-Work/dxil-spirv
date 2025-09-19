@@ -519,7 +519,7 @@ void build_exploded_composite_from_vector(Converter::Impl &impl, const llvm::Ins
 			if (i < active_lanes)
 				struct_op->add_id(extracted[i]);
 			else
-				struct_op->add_id(extracted[active_lanes - 1]);
+				struct_op->add_id(impl.builder().makeNullConstant(impl.get_type_id(value->getType()->getStructElementType(i))));
 		}
 
 		impl.add(struct_op);
