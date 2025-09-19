@@ -2365,9 +2365,7 @@ static void analyze_extractvalue_instruction(
 	else if ((meta.access_mask & (1u << index)) == 0)
 	{
 		meta.access_mask |= 1u << index;
-		meta.components = std::min<uint32_t>(4, std::max<uint32_t>(index + 1, meta.components));
-		if (index > 4)
-			meta.forced_struct = true;
+		meta.components = std::max<uint32_t>(index + 1, meta.components);
 		forward_progress = true;
 	}
 

@@ -5893,7 +5893,7 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 
 		auto itr = llvm_composite_meta.find(&instruction);
 
-		if (itr != llvm_composite_meta.end() && !itr->second.forced_struct &&
+		if (itr != llvm_composite_meta.end() && itr->second.components <= 4 && (itr->second.access_mask & ~0xfu) == 0 &&
 		    std::find(llvm_dxil_op_fake_struct_types.begin(), llvm_dxil_op_fake_struct_types.end(), instruction.getType()) !=
 		    llvm_dxil_op_fake_struct_types.end())
 		{

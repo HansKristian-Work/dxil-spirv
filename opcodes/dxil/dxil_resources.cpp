@@ -2116,8 +2116,6 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 		impl.rewrite_value(instruction, cast_op->id);
 	}
 
-	build_exploded_composite_from_vector(impl, instruction, 4);
-
 	return true;
 }
 
@@ -2254,8 +2252,6 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 		impl.add(cast_op);
 		impl.rewrite_value(instruction, cast_op->id);
 	}
-
-	build_exploded_composite_from_vector(impl, instruction, 4);
 
 	return true;
 }
@@ -2525,8 +2521,6 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 			impl.rewrite_value(instruction, cast_op->id);
 		}
 
-		build_exploded_composite_from_vector(impl, instruction, 4);
-
 		return true;
 	}
 }
@@ -2658,8 +2652,6 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			impl.add(cast_op);
 			impl.rewrite_value(instruction, cast_op->id);
 		}
-
-		build_exploded_composite_from_vector(impl, instruction, 4);
 	}
 
 	return true;

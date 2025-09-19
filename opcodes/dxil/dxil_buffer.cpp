@@ -696,8 +696,6 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	if (vecsize == 1)
 		impl.llvm_composite_meta[instruction].forced_composite = false;
 
-	build_exploded_composite_from_vector(impl, instruction, vecsize);
-
 	return true;
 }
 
@@ -871,7 +869,6 @@ static bool emit_buffer_load_raw_chain_instruction(Converter::Impl &impl, const 
 		impl.rewrite_value(instruction, narrow_op->id);
 	}
 
-	build_exploded_composite_from_vector(impl, instruction, num_elements);
 	access_meta.forced_composite = false;
 	return true;
 }
@@ -1164,8 +1161,6 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			}
 			else
 				impl.rewrite_value(instruction, constructed_id);
-
-			build_exploded_composite_from_vector(impl, instruction, conservative_num_elements);
 		}
 
 		access_meta.forced_composite = false;
@@ -1201,10 +1196,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		if (sparse)
 			impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
 		else
-		{
 			impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
-			build_exploded_composite_from_vector(impl, instruction, 4);
-		}
 	}
 
 	return true;

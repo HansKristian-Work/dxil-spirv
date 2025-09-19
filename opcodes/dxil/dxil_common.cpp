@@ -490,43 +490,6 @@ Converter::Impl::ClipCullMeta *output_clip_cull_distance_meta(Converter::Impl &i
 		return nullptr;
 }
 
-void build_exploded_composite_from_vector(Converter::Impl &impl, const llvm::Instruction *value, unsigned active_lanes)
-{
-	auto itr = impl.llvm_composite_meta.find(value);
-	if (itr == impl.llvm_composite_meta.end())
-		return;
-
-	auto &m = *itr;
-	if (m.second.forced_struct)
-	{
-		// This value will be consumed by something other than plain OpCompositeExtract, force output struct type.
-		unsigned elems = value->getType()->getStructNumElements();
-		spv::Id id = impl.get_id_for_value(value);
-
-		spv::Id extracted[4] = {};
-		for (unsigned i = 0; i < active_lanes; i++)
-		{
-			auto *ext = impl.allocate(spv::OpCompositeExtract, impl.get_type_id(value->getType()->getStructElementType(i)));
-			ext->add_id(id);
-			ext->add_literal(i);
-			impl.add(ext);
-			extracted[i] = ext->id;
-		}
-
-		auto *struct_op = impl.allocate(spv::OpCompositeConstruct, impl.get_type_id(value->getType()));
-		for (unsigned i = 0; i < elems; i++)
-		{
-			if (i < active_lanes)
-				struct_op->add_id(extracted[i]);
-			else
-				struct_op->add_id(impl.builder().makeNullConstant(impl.get_type_id(value->getType()->getStructElementType(i))));
-		}
-
-		impl.add(struct_op);
-		impl.rewrite_value(value, struct_op->id);
-	}
-}
-
 bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
 {
 	auto *call = llvm::dyn_cast<llvm::CallInst>(value);
