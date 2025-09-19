@@ -2344,8 +2344,23 @@ static void analyze_extractvalue_instruction(
 {
 	auto &meta = impl.llvm_composite_meta[aggregate];
 	bool forward_progress = false;
+	const auto *phi = llvm::dyn_cast<llvm::PHINode>(aggregate);
 
-	if ((meta.access_mask & (1u << index)) == 0)
+	// This is somewhat dubious with non-resource loaded structs.
+	bool splat_composite_access =
+	    phi && index < 4 && aggregate->getType()->getTypeID() == llvm::Type::TypeID::StructTyID &&
+	    aggregate->getType()->getStructNumElements() >= 4;
+
+	if (splat_composite_access)
+	{
+		if ((meta.access_mask & 0xf) != 0xf)
+		{
+			meta.access_mask |= 0xf;
+			meta.components = std::max<uint32_t>(4, meta.components);
+			forward_progress = true;
+		}
+	}
+	else if ((meta.access_mask & (1u << index)) == 0)
 	{
 		meta.access_mask |= 1u << index;
 		meta.components = std::min<uint32_t>(4, std::max<uint32_t>(index + 1, meta.components));
@@ -2359,13 +2374,24 @@ static void analyze_extractvalue_instruction(
 		else
 			impl.shader_analysis.subgroup_ballot_reads_upper = true;
 	}
-
-	// Incoming values to a PHI aggregate must also be flagged as having access.
-	// Try to avoid potential cycles if there are PHIs in a loop.
-	if (forward_progress)
-		if (const auto *phi = llvm::dyn_cast<llvm::PHINode>(aggregate))
-			for (uint32_t i = 0; i < phi->getNumIncomingValues(); i++)
+	else if (forward_progress && phi)
+	{
+		// Incoming values to a PHI aggregate must also be flagged as having access.
+		// Try to avoid potential cycles if there are PHIs in a loop.
+		for (uint32_t i = 0; i < phi->getNumIncomingValues(); i++)
+		{
+			if (splat_composite_access)
+			{
+				// Enforce that we get the full 4 components from a normal resource load.
+				for (uint32_t c = 0; c < 4; c++)
+					analyze_extractvalue_instruction(impl, phi->getIncomingValue(i), c);
+			}
+			else
+			{
 				analyze_extractvalue_instruction(impl, phi->getIncomingValue(i), index);
+			}
+		}
+	}
 }
 
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *inst)
