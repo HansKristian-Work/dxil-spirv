@@ -1937,6 +1937,8 @@ void CFGStructurizer::fixup_loop_header_undef_phis()
 {
 	auto &builder = module.get_builder();
 
+	recompute_cfg();
+
 	// If the incoming value to the loop is undef, something is deeply wrong.
 	// This is almost a guarantee that we will consume the value as undef, causing breakage in the wild.
 	// Observed in Dune.
