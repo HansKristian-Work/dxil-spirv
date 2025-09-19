@@ -2369,24 +2369,39 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *inst)
 	return true;
 }
 
+static void analyze_extractvalue_instruction(
+    Converter::Impl &impl, const llvm::Value *aggregate, unsigned index)
+{
+	auto &meta = impl.llvm_composite_meta[aggregate];
+	bool forward_progress = false;
+
+	if ((meta.access_mask & (1u << index)) == 0)
+	{
+		meta.access_mask |= 1u << index;
+		meta.components = std::min<uint32_t>(4, std::max<uint32_t>(index + 1, meta.components));
+		forward_progress = true;
+	}
+
+	if (instruction_is_ballot(aggregate))
+	{
+		if (index == 0)
+			impl.shader_analysis.subgroup_ballot_reads_first = true;
+		else
+			impl.shader_analysis.subgroup_ballot_reads_upper = true;
+	}
+
+	// Incoming values to a PHI aggregate must also be flagged as having access.
+	// Try to avoid potential cycles if there are PHIs in a loop.
+	if (forward_progress)
+		if (const auto *phi = llvm::dyn_cast<llvm::PHINode>(aggregate))
+			for (uint32_t i = 0; i < phi->getNumIncomingValues(); i++)
+				analyze_extractvalue_instruction(impl, phi->getIncomingValue(i), index);
+}
+
 bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *inst)
 {
 	if (inst->getNumIndices() == 1 && type_is_composite_return_value(inst->getAggregateOperand()->getType()))
-	{
-		auto &meta = impl.llvm_composite_meta[inst->getAggregateOperand()];
-		unsigned index = inst->getIndices()[0];
-		meta.access_mask |= 1u << index;
-		if (index >= meta.components)
-			meta.components = index + 1;
-
-		if (instruction_is_ballot(inst->getAggregateOperand()))
-		{
-			if (index == 0)
-				impl.shader_analysis.subgroup_ballot_reads_first = true;
-			else
-				impl.shader_analysis.subgroup_ballot_reads_upper = true;
-		}
-	}
+		analyze_extractvalue_instruction(impl, inst->getAggregateOperand(), inst->getIndices()[0]);
 	return true;
 }
 
