@@ -328,6 +328,7 @@ struct Converter::Impl
 		bool forced_struct = false;
 	};
 	UnorderedMap<const llvm::Value *, CompositeMeta> llvm_composite_meta;
+	Vector<const llvm::Type *> llvm_dxil_op_fake_struct_types;
 
 	bool composite_is_accessed(const llvm::Value *composite) const;
 

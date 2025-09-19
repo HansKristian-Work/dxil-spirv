@@ -2346,10 +2346,12 @@ static void analyze_extractvalue_instruction(
 	bool forward_progress = false;
 	const auto *phi = llvm::dyn_cast<llvm::PHINode>(aggregate);
 
-	// This is somewhat dubious with non-resource loaded structs.
-	bool splat_composite_access =
-	    phi && index < 4 && aggregate->getType()->getTypeID() == llvm::Type::TypeID::StructTyID &&
-	    aggregate->getType()->getStructNumElements() >= 4;
+	bool is_fake_struct =
+	    std::find(impl.llvm_dxil_op_fake_struct_types.begin(),
+	              impl.llvm_dxil_op_fake_struct_types.end(), aggregate->getType()) !=
+	    impl.llvm_dxil_op_fake_struct_types.end();
+
+	bool splat_composite_access = phi && index < 4 && is_fake_struct;
 
 	if (splat_composite_access)
 	{
@@ -2364,6 +2366,8 @@ static void analyze_extractvalue_instruction(
 	{
 		meta.access_mask |= 1u << index;
 		meta.components = std::min<uint32_t>(4, std::max<uint32_t>(index + 1, meta.components));
+		if (index > 4)
+			meta.forced_struct = true;
 		forward_progress = true;
 	}
 

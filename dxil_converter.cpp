@@ -5894,7 +5894,8 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 		auto itr = llvm_composite_meta.find(&instruction);
 
 		if (itr != llvm_composite_meta.end() && !itr->second.forced_struct &&
-		    instruction.getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+		    std::find(llvm_dxil_op_fake_struct_types.begin(), llvm_dxil_op_fake_struct_types.end(), instruction.getType()) !=
+		    llvm_dxil_op_fake_struct_types.end())
 		{
 			// Using PHI as a composite is exceedingly quirky, but it does come up.
 			// FIXME: This could go wrong if one incoming value uses different components
