@@ -809,6 +809,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 				return false;
 			}
 
+			constants.reserve(struct_type->getStructNumElements());
 			for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
 				constants.push_back(get_value(entry.ops[i], struct_type->getStructElementType(i), true));
 			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
@@ -816,6 +817,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		else if (isa<ArrayType>(get_constant_type()))
 		{
 			auto *element_type = get_constant_type()->getArrayElementType();
+			constants.reserve(entry.ops.size());
 			for (auto &op : entry.ops)
 				constants.push_back(get_value(op, element_type, true));
 			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
@@ -823,6 +825,7 @@ bool ModuleParseContext::parse_constants_record(const BlockOrRecord &entry)
 		else if (isa<VectorType>(get_constant_type()))
 		{
 			auto *element_type = cast<VectorType>(get_constant_type())->getElementType();
+			constants.reserve(entry.ops.size());
 			for (auto &op : entry.ops)
 				constants.push_back(get_value(op, element_type, true));
 			value = context->construct<ConstantAggregate>(get_constant_type(), std::move(constants));
@@ -1134,9 +1137,11 @@ bool ModuleParseContext::parse_paramattr_block(const BlockOrRecord &entry)
 			return false;
 
 		Vector<std::pair<String, String>> pairs;
+		pairs.reserve(child.ops.size());
 		for (auto op : child.ops)
 		{
 			auto &grp = attribute_groups[op];
+			pairs.reserve(grp.size());
 			for (auto &elem : grp)
 				pairs.push_back(elem);
 		}
@@ -1204,6 +1209,7 @@ bool ModuleParseContext::parse_paramattr_group_block(const BlockOrRecord &entry)
 				bool has_value = child.ops[i++] == 4;
 				String kind, value;
 
+				kind.reserve(count - i);
 				while (child.ops[i] != 0 && i < count)
 					kind.push_back(char(child.ops[i++]));
 				if (child.ops[i] != 0)
@@ -1212,6 +1218,7 @@ bool ModuleParseContext::parse_paramattr_group_block(const BlockOrRecord &entry)
 
 				if (has_value)
 				{
+					value.reserve(count - i);
 					while (child.ops[i] != 0 && i < count)
 						value.push_back(char(child.ops[i++]));
 					if (child.ops[i] != 0)
