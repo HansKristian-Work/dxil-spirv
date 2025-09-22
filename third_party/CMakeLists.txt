@@ -39,6 +39,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_divergence.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_dominance.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_dominance.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/ir_legalize.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/ir_legalize.h
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_utils.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_utils.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.cpp
@@ -87,6 +89,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/util/util_md5.cpp
         ${DXBC_SPV_SOURCE_DIR}/util/util_md5.h
         ${DXBC_SPV_SOURCE_DIR}/util/util_small_vector.h
+        ${DXBC_SPV_SOURCE_DIR}/util/util_swizzle.cpp
+        ${DXBC_SPV_SOURCE_DIR}/util/util_swizzle.h
         ${DXBC_SPV_SOURCE_DIR}/util/util_vle.h)
 
 add_library(dxbc-spirv-test STATIC
