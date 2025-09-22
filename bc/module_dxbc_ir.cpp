@@ -3980,12 +3980,11 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 {
 	ScopedLogger logger;
 
-	dxbc::CompileOptions options;
-	options.validateHash = false;
+	dxbc::Converter::Options convertOptions = { };
+	convertOptions.includeDebugNames = false;
+	convertOptions.boundCheckShaderIo = true;
 
-	options.convertOptions.includeDebugNames = false;
-	options.convertOptions.boundCheckShaderIo = true;
-
+	ir::CompileOptions options = { };
 	options.scratchOptions.enableBoundChecking = true;
 	options.scratchOptions.resolveCbvCopy = false;
 	options.scratchOptions.unpackConstantIndexedArrays = true;
@@ -4023,7 +4022,7 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.derivativeOptions.hoistNontrivialImplicitLodOps = false;
 	options.derivativeOptions.hoistDescriptorLoads = false;
 
-	auto builder = dxbc::compileShaderToLegalizedIr(data, size, options);
+	auto builder = dxbc::compileShaderToLegalizedIr(data, size, convertOptions, options);
 
 	if (!builder)
 		return nullptr;
