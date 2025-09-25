@@ -646,9 +646,19 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	if (vecsize > 1)
 		physical_type_id = builder.makeVectorType(physical_type_id, vecsize);
 
+	auto scalar_alignment = get_type_scalar_alignment(impl, element_type);
+	// Fixup broken DXIL.
+	alignment = std::max<uint32_t>(alignment, scalar_alignment);
+
 	auto tmp_ptr_meta = ptr_meta;
-	tmp_ptr_meta.stride = array_id ? vecsize * get_type_scalar_alignment(impl, element_type) : 0;
+	tmp_ptr_meta.stride = array_id ? vecsize * scalar_alignment : 0;
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(physical_type_id, tmp_ptr_meta);
+
+	if (tmp_ptr_meta.stride && (tmp_ptr_meta.stride & (tmp_ptr_meta.stride - 1)) == 0)
+	{
+		alignment = std::max<uint32_t>(alignment, tmp_ptr_meta.stride);
+		alignment = std::min<uint32_t>(alignment, 16);
+	}
 
 	spv::Id u64_ptr_id;
 	if (array_id)
@@ -1245,9 +1255,19 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	if (vecsize > 1)
 		vec_type_id = builder.makeVectorType(physical_type_id, vecsize);
 
+	auto scalar_alignment = get_type_scalar_alignment(impl, element_type);
+	// Fixup broken DXIL.
+	alignment = std::max<uint32_t>(alignment, scalar_alignment);
+
 	auto tmp_ptr_meta = ptr_meta;
-	tmp_ptr_meta.stride = array_id ? vecsize * get_type_scalar_alignment(impl, element_type) : 0;
+	tmp_ptr_meta.stride = array_id ? vecsize * scalar_alignment : 0;
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, tmp_ptr_meta);
+
+	if (tmp_ptr_meta.stride && (tmp_ptr_meta.stride & (tmp_ptr_meta.stride - 1)) == 0)
+	{
+		alignment = std::max<uint32_t>(alignment, tmp_ptr_meta.stride);
+		alignment = std::min<uint32_t>(alignment, 16);
+	}
 
 	spv::Id u64_ptr_id;
 	if (array_id)

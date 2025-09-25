@@ -19,7 +19,7 @@ layout(early_fragment_tests) in;
 
 layout(buffer_reference) buffer PhysicalPointerFloat4CoherentArray;
 
-layout(buffer_reference, buffer_reference_align = 4, std430) coherent buffer PhysicalPointerFloat4CoherentArray
+layout(buffer_reference, buffer_reference_align = 16, std430) coherent buffer PhysicalPointerFloat4CoherentArray
 {
     vec4 value[];
 };
@@ -117,7 +117,7 @@ OpBranch %52
 %33 = OpBitcast %32 %17
 %35 = OpInBoundsAccessChain %34 %33 %20 %29
 OpBeginInvocationInterlockEXT
-%36 = OpLoad %11 %35 Aligned 4
+%36 = OpLoad %11 %35 Aligned 16
 %37 = OpCompositeExtract %10 %36 0
 %38 = OpCompositeExtract %10 %36 1
 %39 = OpCompositeExtract %10 %36 2
@@ -129,7 +129,7 @@ OpBeginInvocationInterlockEXT
 %49 = OpBitcast %32 %17
 %50 = OpInBoundsAccessChain %34 %49 %20 %29
 %51 = OpCompositeConstruct %11 %41 %43 %45 %47
-OpStore %50 %51 Aligned 4
+OpStore %50 %51 Aligned 16
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

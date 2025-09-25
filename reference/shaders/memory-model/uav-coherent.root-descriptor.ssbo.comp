@@ -8,7 +8,7 @@ layout(buffer_reference) buffer PhysicalPointerUint4NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerFloat4Array;
 layout(buffer_reference) buffer PhysicalPointerUintNonWriteArray;
 
-layout(buffer_reference, buffer_reference_align = 4, std430) coherent buffer PhysicalPointerFloat4CoherentArray
+layout(buffer_reference, buffer_reference_align = 16, std430) coherent buffer PhysicalPointerFloat4CoherentArray
 {
     vec4 value[];
 };
@@ -18,7 +18,7 @@ layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer Ph
     uvec4 value[4096];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat4Array
+layout(buffer_reference, buffer_reference_align = 16, std430) buffer PhysicalPointerFloat4Array
 {
     vec4 value[];
 };
@@ -209,7 +209,7 @@ OpBranch %114
 %40 = OpBitcast %39 %25
 %42 = OpInBoundsAccessChain %41 %40 %30 %34
 %44 = OpCompositeConstruct %36 %43 %43 %43 %43
-OpStore %42 %44 Aligned 4
+OpStore %42 %44 Aligned 16
 %49 = OpBitcast %48 %31
 %51 = OpInBoundsAccessChain %50 %49 %30 %30
 %52 = OpLoad %10 %51 Aligned 16
@@ -243,7 +243,7 @@ OpBranchConditional %86 %118 %119
 %94 = OpCompositeExtract %35 %90 3
 %95 = OpBitcast %39 %25
 %96 = OpInBoundsAccessChain %41 %95 %30 %84
-%97 = OpLoad %36 %96 Aligned 4
+%97 = OpLoad %36 %96 Aligned 16
 %98 = OpCompositeExtract %35 %97 0
 %99 = OpCompositeExtract %35 %97 1
 %100 = OpCompositeExtract %35 %97 2
@@ -255,7 +255,7 @@ OpBranchConditional %86 %118 %119
 %106 = OpBitcast %39 %25
 %107 = OpInBoundsAccessChain %41 %106 %30 %84
 %108 = OpCompositeConstruct %36 %102 %103 %104 %105
-OpStore %107 %108 Aligned 4
+OpStore %107 %108 Aligned 16
 OpBranch %119
 %119 = OpLabel
 OpBranch %120
@@ -272,7 +272,7 @@ OpBranch %122
 %122 = OpLabel
 %59 = OpBitcast %58 %22
 %60 = OpInBoundsAccessChain %41 %59 %30 %34
-%61 = OpLoad %36 %60 Aligned 4
+%61 = OpLoad %36 %60 Aligned 16
 %62 = OpCompositeExtract %35 %61 0
 %63 = OpCompositeExtract %35 %61 1
 %64 = OpCompositeExtract %35 %61 2

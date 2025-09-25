@@ -8,7 +8,7 @@ layout(buffer_reference) buffer PhysicalPointerUint4NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerFloat4Array;
 layout(buffer_reference) buffer PhysicalPointerUintNonWriteArray;
 
-layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat4CoherentArray
+layout(buffer_reference, buffer_reference_align = 16, std430) buffer PhysicalPointerFloat4CoherentArray
 {
     vec4 value[];
 };
@@ -18,7 +18,7 @@ layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer Ph
     uvec4 value[4096];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat4Array
+layout(buffer_reference, buffer_reference_align = 16, std430) buffer PhysicalPointerFloat4Array
 {
     vec4 value[];
 };
@@ -209,7 +209,7 @@ OpBranch %115
 %40 = OpBitcast %39 %25
 %42 = OpInBoundsAccessChain %41 %40 %30 %34
 %44 = OpCompositeConstruct %36 %43 %43 %43 %43
-OpStore %42 %44 Aligned|MakePointerAvailable|NonPrivatePointer 4 %45
+OpStore %42 %44 Aligned|MakePointerAvailable|NonPrivatePointer 16 %45
 %50 = OpBitcast %49 %31
 %52 = OpInBoundsAccessChain %51 %50 %30 %30
 %53 = OpLoad %10 %52 Aligned 16
@@ -243,7 +243,7 @@ OpBranchConditional %87 %119 %120
 %95 = OpCompositeExtract %35 %91 3
 %96 = OpBitcast %39 %25
 %97 = OpInBoundsAccessChain %41 %96 %30 %85
-%98 = OpLoad %36 %97 Aligned|MakePointerVisible|NonPrivatePointer 4 %45
+%98 = OpLoad %36 %97 Aligned|MakePointerVisible|NonPrivatePointer 16 %45
 %99 = OpCompositeExtract %35 %98 0
 %100 = OpCompositeExtract %35 %98 1
 %101 = OpCompositeExtract %35 %98 2
@@ -255,7 +255,7 @@ OpBranchConditional %87 %119 %120
 %107 = OpBitcast %39 %25
 %108 = OpInBoundsAccessChain %41 %107 %30 %85
 %109 = OpCompositeConstruct %36 %103 %104 %105 %106
-OpStore %108 %109 Aligned|MakePointerAvailable|NonPrivatePointer 4 %45
+OpStore %108 %109 Aligned|MakePointerAvailable|NonPrivatePointer 16 %45
 OpBranch %120
 %120 = OpLabel
 OpBranch %121
@@ -272,7 +272,7 @@ OpBranch %123
 %123 = OpLabel
 %60 = OpBitcast %59 %22
 %61 = OpInBoundsAccessChain %41 %60 %30 %34
-%62 = OpLoad %36 %61 Aligned|NonPrivatePointer 4
+%62 = OpLoad %36 %61 Aligned|NonPrivatePointer 16
 %63 = OpCompositeExtract %35 %62 0
 %64 = OpCompositeExtract %35 %62 1
 %65 = OpCompositeExtract %35 %62 2

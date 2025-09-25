@@ -29,7 +29,7 @@ layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer Ph
     vec4 value[4096];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
     vec4 value[];
 };
@@ -39,7 +39,7 @@ layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer Phy
     uint value[];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerUint2NonWriteArray
+layout(buffer_reference, buffer_reference_align = 8, std430) readonly buffer PhysicalPointerUint2NonWriteArray
 {
     uvec2 value[];
 };
@@ -49,7 +49,7 @@ layout(buffer_reference, buffer_reference_align = 4, scalar) readonly buffer Phy
     uvec3 value[];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerUint4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerUint4NonWriteArray
 {
     uvec4 value[];
 };
@@ -559,7 +559,7 @@ OpBranch %383
 %260 = OpLoad %13 %259
 %264 = OpBitcast %263 %260
 %265 = OpInBoundsAccessChain %195 %264 %45 %58
-%266 = OpLoad %26 %265 Aligned 4
+%266 = OpLoad %26 %265 Aligned 16
 %267 = OpCompositeExtract %17 %266 0
 %268 = OpCompositeExtract %17 %266 1
 %269 = OpCompositeExtract %17 %266 2
@@ -582,7 +582,7 @@ OpBranch %383
 %290 = OpShiftLeftLogical %5 %58 %165
 %294 = OpBitcast %293 %277
 %296 = OpInBoundsAccessChain %295 %294 %45 %58
-%297 = OpLoad %13 %296 Aligned 4
+%297 = OpLoad %13 %296 Aligned 8
 %298 = OpCompositeExtract %5 %297 0
 %299 = OpCompositeExtract %5 %297 1
 %300 = OpBitcast %17 %298
@@ -608,7 +608,7 @@ OpBranch %383
 %325 = OpShiftLeftLogical %5 %58 %179
 %329 = OpBitcast %328 %277
 %331 = OpInBoundsAccessChain %330 %329 %45 %58
-%332 = OpLoad %167 %331 Aligned 4
+%332 = OpLoad %167 %331 Aligned 16
 %333 = OpCompositeExtract %5 %332 0
 %334 = OpCompositeExtract %5 %332 1
 %335 = OpCompositeExtract %5 %332 2
