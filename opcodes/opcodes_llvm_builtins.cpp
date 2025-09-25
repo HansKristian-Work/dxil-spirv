@@ -1964,7 +1964,12 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 {
 	auto &builder = impl.builder();
 
-	unsigned bits = get_composite_element_type(instruction->getType())->getIntegerBitWidth();
+	unsigned bits;
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+		bits = get_composite_element_type(instruction->getType())->getIntegerBitWidth();
+	else
+		bits = instruction->getType()->getIntegerBitWidth();
+
 	if (bits == 64)
 		builder.addCapability(spv::CapabilityInt64Atomics);
 
@@ -1982,17 +1987,23 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 
 	impl.add(atomic_op);
 
-	Operation *cmp_op = impl.allocate(spv::OpIEqual, builder.makeBoolType());
-	cmp_op->add_ids({ atomic_op->id, impl.get_id_for_value(instruction->getCompareOperand()) });
-	impl.add(cmp_op);
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::StructTyID)
+	{
+		Operation *cmp_op = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+		cmp_op->add_ids({ atomic_op->id, impl.get_id_for_value(instruction->getCompareOperand()) });
+		impl.add(cmp_op);
 
-	if (!impl.cmpxchg_type)
-		impl.cmpxchg_type =
-		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, 0, "CmpXchgResult");
+		spv::Id cmpxchg_type = impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, 0, "CmpXchgResult");
 
-	Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, impl.cmpxchg_type);
-	op->add_ids({ atomic_op->id, cmp_op->id });
-	impl.add(op);
+		Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, cmpxchg_type);
+		op->add_ids({ atomic_op->id, cmp_op->id });
+		impl.add(op);
+	}
+	else
+	{
+		// Extension for custom IR, we don't care about success bit.
+		impl.rewrite_value(instruction, atomic_op->id);
+	}
 
 	return true;
 }

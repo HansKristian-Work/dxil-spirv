@@ -2767,7 +2767,8 @@ bool ParseContext::build_lds_atomic(const ir::Op &op)
 		auto *inst = context.construct<AtomicCmpXchgInst>(
 			gep,
 			get_extracted_composite_component(value, 0),
-			get_extracted_composite_component(value, 1));
+			get_extracted_composite_component(value, 1), type);
+
 		push_instruction(inst, op.getDef());
 	}
 	else

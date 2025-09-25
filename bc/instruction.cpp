@@ -467,10 +467,12 @@ AtomicRMWInst::BinOp AtomicRMWInst::getOperation() const
 	return op;
 }
 
-AtomicCmpXchgInst::AtomicCmpXchgInst(Value *ptr_, Value *cmp_, Value *new_value_)
-	: Instruction(StructType::get(new_value_->getType()->getContext(),
-								  { new_value_->getType(), Type::getInt1Ty(new_value_->getType()->getContext()) }),
-				  ValueKind::AtomicCmpXchg)
+AtomicCmpXchgInst::AtomicCmpXchgInst(Value *ptr_, Value *cmp_, Value *new_value_, Type *type_override)
+	: Instruction(type_override ?
+	              type_override :
+	              StructType::get(new_value_->getType()->getContext(),
+	                              { new_value_->getType(), Type::getInt1Ty(new_value_->getType()->getContext()) }),
+	              ValueKind::AtomicCmpXchg)
 	, ptr(ptr_)
 	, new_value(new_value_)
 	, cmp_value(cmp_)

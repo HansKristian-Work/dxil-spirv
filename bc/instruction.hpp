@@ -502,7 +502,7 @@ public:
 	{
 		return ValueKind::AtomicCmpXchg;
 	}
-	AtomicCmpXchgInst(Value *ptr, Value *cmp, Value *new_value);
+	AtomicCmpXchgInst(Value *ptr, Value *cmp, Value *new_value, Type *type_override = nullptr);
 
 	Value *getPointerOperand() const;
 	Value *getNewValOperand() const;
