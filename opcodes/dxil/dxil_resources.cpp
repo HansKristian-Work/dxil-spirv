@@ -2141,6 +2141,9 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	                   storage == spv::StorageClassPhysicalStorageBuffer;
 
 	auto *constant_int = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2));
+
+	// It's UB code to get here anyway.
+#if 0
 	if (!constant_int)
 	{
 		if (!is_physical && !value_is_statically_wave_uniform(impl, instruction->getOperand(2)))
@@ -2149,6 +2152,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 			return false;
 		}
 	}
+#endif
 
 	// CBufferLoad vs CBufferLoadLegacy
 	bool scalar_load = !type_is_composite_return_value(instruction->getType());
