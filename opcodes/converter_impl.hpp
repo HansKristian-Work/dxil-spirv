@@ -187,6 +187,7 @@ struct AccessTracking
 	bool has_atomic = false;
 	bool has_atomic_64bit = false;
 	bool has_counter = false;
+	bool dynamically_indexed_cbv = false;
 	bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
 };
 
@@ -394,6 +395,7 @@ struct Converter::Impl
 	spv::Id emit_shader_record_buffer_block_type(bool physical_storage);
 	void register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index);
 	void emit_root_constants(unsigned num_descriptors, unsigned num_constant_words);
+	bool require_arrayed_root_constants() const;
 	static void scan_resources(ResourceRemappingInterface *iface, const LLVMBCParser &parser);
 	static bool scan_srvs(ResourceRemappingInterface *iface, const llvm::MDNode *srvs, ShaderStage stage);
 	static bool scan_uavs(ResourceRemappingInterface *iface, const llvm::MDNode *uavs, ShaderStage stage);
@@ -465,6 +467,7 @@ struct Converter::Impl
 	spv::Id root_constant_id = 0;
 	unsigned root_descriptor_count = 0;
 	unsigned root_constant_num_words = 0;
+	bool root_constant_arrayed = false;
 	unsigned patch_location_offset = ~0u;
 	unsigned descriptor_qa_counter = 0;
 	spv::Id primitive_index_array_id = 0;

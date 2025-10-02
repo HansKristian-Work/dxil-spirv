@@ -206,6 +206,16 @@ bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *
 	// not be wave uniform. We might end up promoting an undef value to not undef, but that is fine, since undef is ...
 	// well, undef.
 
+	if (const auto *unary = llvm::dyn_cast<llvm::UnaryOperator>(value))
+	{
+		return value_is_statically_wave_uniform(impl, unary->getOperand(0));
+	}
+	else if (const auto *binary = llvm::dyn_cast<llvm::BinaryOperator>(value))
+	{
+		return value_is_statically_wave_uniform(impl, binary->getOperand(0)) &&
+		       value_is_statically_wave_uniform(impl, binary->getOperand(1));
+	}
+
 	if (value_is_dx_op_instrinsic(value, DXIL::Op::AnnotateNodeHandle))
 	{
 		auto *node = llvm::cast<llvm::CallInst>(value)->getOperand(1);

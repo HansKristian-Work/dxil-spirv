@@ -687,6 +687,11 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 
 	if (tracking)
 	{
+		// For root parameters this is not normally allowed by D3D12, but some games are broken.
+		// We can work around it robustly since it's legal code in Vulkan (if dynamically uniform).
+		if (!llvm::isa<llvm::ConstantInt>(instruction->getOperand(2)))
+			tracking->dynamically_indexed_cbv = true;
+
 		if (type_is_composite_return_value(instruction->getType()))
 		{
 			// Legacy float4 model. However, it seems like DXIL also supports f16x8, f32x4 and f64x2 ... :(
