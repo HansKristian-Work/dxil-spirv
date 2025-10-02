@@ -9,6 +9,6 @@ RWStructuredBuffer<float4> RW1 : register(u2);
 [numthreads(64, 1, 1)]
 void main(uint gid : SV_DispatchThreadID, uint thr : SV_GroupID)
 {
-	RW0[gid] = v[thr];
+	RW0[gid] = v[2 * thr + 1];
 	RW1[gid] = v[3];
 }
