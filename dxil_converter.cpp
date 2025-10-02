@@ -2765,18 +2765,92 @@ bool Converter::Impl::scan_uavs(ResourceRemappingInterface *iface, const llvm::M
 	return true;
 }
 
+bool Converter::Impl::require_arrayed_root_constants() const
+{
+	if (!resource_mapping_iface)
+		return false;
+
+	auto &module = bitcode_parser.get_module();
+	auto *resource_meta = module.getNamedMetadata("dx.resources");
+	if (!resource_meta)
+		return false;
+
+	auto *metas = resource_meta->getOperand(0);
+	if (!metas->getOperand(2))
+		return false;
+
+	auto *cbvs = llvm::dyn_cast<llvm::MDNode>(metas->getOperand(2));
+	if (!cbvs)
+		return false;
+
+	unsigned num_cbvs = cbvs->getNumOperands();
+	for (unsigned i = 0; i < num_cbvs; i++)
+	{
+		auto *cbv = llvm::cast<llvm::MDNode>(cbvs->getOperand(i));
+		auto var_meta = get_resource_variable_meta(cbv);
+		if (!var_meta.is_active)
+			continue;
+
+		unsigned index = get_constant_metadata(cbv, 0);
+
+		auto itr = cbv_access_tracking.find(index);
+		if (itr == cbv_access_tracking.end())
+			continue;
+
+		unsigned bind_space = get_constant_metadata(cbv, 3);
+		unsigned bind_register = get_constant_metadata(cbv, 4);
+
+		DescriptorTableEntry local_table_entry = {};
+		int local_root_signature_entry = get_local_root_signature_entry(
+		    ResourceClass::CBV, bind_space, bind_register, local_table_entry);
+		if (local_root_signature_entry >= 0)
+			continue;
+
+		D3DBinding d3d_binding = { get_remapping_stage(execution_model),
+			                       DXIL::ResourceKind::CBuffer,
+			                       index,
+			                       bind_space,
+			                       bind_register,
+			                       UINT32_MAX, 0 };
+		VulkanCBVBinding vulkan_binding = {};
+		vulkan_binding.buffer = { bind_space, bind_register };
+		if (!resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
+			continue;
+		if (!vulkan_binding.push_constant)
+			continue;
+
+		if (itr->second.dynamically_indexed_cbv)
+			return true;
+	}
+
+	return false;
+}
+
 void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num_constant_words)
 {
 	auto &builder = spirv_module.get_builder();
 
+	bool array_root_constants = require_arrayed_root_constants();
+
 	// Root constants cannot be dynamically indexed in DXIL, so emit them as members.
-	Vector<spv::Id> members(num_constant_words + num_descriptors);
+	Vector<spv::Id> members((array_root_constants ? 1 : num_constant_words) + num_descriptors);
 
 	// Emit root descriptors as u32x2 to work around missing SGPR promotion on RADV.
 	for (unsigned i = 0; i < num_descriptors; i++)
 		members[i] = builder.makeVectorType(builder.makeUintType(32), 2);
-	for (unsigned i = 0; i < num_constant_words; i++)
-		members[i + num_descriptors] = builder.makeUintType(32);
+
+	if (array_root_constants)
+	{
+		spv::Id type_id = builder.makeUintType(32);
+		type_id = builder.makeArrayType(type_id, builder.makeUintConstant(num_constant_words), 4);
+		builder.addDecoration(type_id, spv::DecorationArrayStride, 4);
+		members[num_descriptors] = type_id;
+	}
+	else
+	{
+		for (unsigned i = 0; i < num_constant_words; i++)
+			members[i + num_descriptors] = builder.makeUintType(32);
+	}
 
 	spv::Id type_id = get_struct_type(members, 0, "RootConstants");
 	builder.addDecoration(type_id, spv::DecorationBlock);
@@ -2784,11 +2858,14 @@ void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num
 	for (unsigned i = 0; i < num_descriptors; i++)
 		builder.addMemberDecoration(type_id, i, spv::DecorationOffset, sizeof(uint64_t) * i);
 
-	for (unsigned i = 0; i < num_constant_words; i++)
+	for (unsigned i = 0; i < (array_root_constants ? 1 : num_constant_words); i++)
 	{
 		builder.addMemberDecoration(type_id, i + num_descriptors, spv::DecorationOffset,
 		                            sizeof(uint64_t) * num_descriptors + sizeof(uint32_t) * i);
 	}
+
+	if (array_root_constants)
+		builder.addMemberName(type_id, num_descriptors, "root_constants_and_tables");
 
 	if (options.inline_ubo_enable)
 	{
@@ -2801,6 +2878,7 @@ void Converter::Impl::emit_root_constants(unsigned num_descriptors, unsigned num
 
 	root_descriptor_count = num_descriptors;
 	root_constant_num_words = num_constant_words;
+	root_constant_arrayed = array_root_constants;
 }
 
 static bool execution_model_is_ray_tracing(spv::ExecutionModel model)

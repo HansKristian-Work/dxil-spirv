@@ -1,0 +1,186 @@
+#version 460
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference_uvec2 : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(buffer_reference) buffer PhysicalPointerFloat4Array;
+
+layout(buffer_reference, buffer_reference_align = 16, std430) buffer PhysicalPointerFloat4Array
+{
+    vec4 value[];
+};
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uvec2 _m0;
+    uvec2 _m1;
+    uvec2 _m2;
+    uvec2 _m3;
+    uint root_constants_and_tables[16];
+} registers;
+
+layout(set = 4, binding = 0, r32ui) uniform writeonly uimageBuffer _15[];
+
+void main()
+{
+    uint _22 = registers.root_constants_and_tables[4u] + 2u;
+    PhysicalPointerFloat4Array(registers._m2).value[gl_GlobalInvocationID.x] = vec4(uintBitsToFloat(uvec4(registers.root_constants_and_tables[min((gl_WorkGroupID.x + 0u), 15u)], registers.root_constants_and_tables[min((gl_WorkGroupID.x + 1u), 15u)], registers.root_constants_and_tables[min((gl_WorkGroupID.x + 2u), 15u)], registers.root_constants_and_tables[min((gl_WorkGroupID.x + 3u), 15u)])));
+    vec4 _86 = uintBitsToFloat(uvec4(registers.root_constants_and_tables[12u], registers.root_constants_and_tables[13u], registers.root_constants_and_tables[14u], registers.root_constants_and_tables[15u]));
+    uint _91 = gl_GlobalInvocationID.x * 4u;
+    imageStore(_15[_22], int(_91), uvec4(floatBitsToUint(_86.x)));
+    imageStore(_15[_22], int(_91 + 1u), uvec4(floatBitsToUint(_86.y)));
+    imageStore(_15[_22], int(_91 + 2u), uvec4(floatBitsToUint(_86.z)));
+    imageStore(_15[_22], int(_91 + 3u), uvec4(floatBitsToUint(_86.w)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 105
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability RuntimeDescriptorArray
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_physical_storage_buffer"
+%40 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint GLCompute %3 "main" %30 %35
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %9 "RootConstants"
+OpMemberName %9 4 "root_constants_and_tables"
+OpName %11 "registers"
+OpName %68 "PhysicalPointerFloat4Array"
+OpMemberName %68 0 "value"
+OpDecorate %8 ArrayStride 4
+OpDecorate %9 Block
+OpMemberDecorate %9 0 Offset 0
+OpMemberDecorate %9 1 Offset 8
+OpMemberDecorate %9 2 Offset 16
+OpMemberDecorate %9 3 Offset 24
+OpMemberDecorate %9 4 Offset 32
+OpDecorate %15 DescriptorSet 4
+OpDecorate %15 Binding 0
+OpDecorate %15 NonReadable
+OpDecorate %30 BuiltIn GlobalInvocationId
+OpDecorate %35 BuiltIn WorkgroupId
+OpDecorate %67 ArrayStride 16
+OpMemberDecorate %68 0 Offset 0
+OpDecorate %68 Block
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeVector %5 2
+%7 = OpConstant %5 16
+%8 = OpTypeArray %5 %7
+%9 = OpTypeStruct %6 %6 %6 %6 %8
+%10 = OpTypePointer PushConstant %9
+%11 = OpVariable %10 PushConstant
+%12 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%13 = OpTypeRuntimeArray %12
+%14 = OpTypePointer UniformConstant %13
+%15 = OpVariable %14 UniformConstant
+%16 = OpTypePointer UniformConstant %12
+%18 = OpTypePointer PushConstant %5
+%20 = OpConstant %5 4
+%23 = OpConstant %5 2
+%25 = OpTypePointer PushConstant %6
+%28 = OpTypeVector %5 3
+%29 = OpTypePointer Input %28
+%30 = OpVariable %29 Input
+%31 = OpTypePointer Input %5
+%33 = OpConstant %5 0
+%35 = OpVariable %29 Input
+%42 = OpConstant %5 15
+%46 = OpConstant %5 1
+%55 = OpConstant %5 3
+%58 = OpTypeVector %5 4
+%60 = OpTypeFloat 32
+%61 = OpTypeVector %60 4
+%67 = OpTypeRuntimeArray %61
+%68 = OpTypeStruct %67
+%69 = OpTypePointer PhysicalStorageBuffer %68
+%71 = OpTypePointer PhysicalStorageBuffer %61
+%75 = OpConstant %5 12
+%78 = OpConstant %5 13
+%81 = OpConstant %5 14
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %103
+%103 = OpLabel
+%19 = OpAccessChain %18 %11 %20 %20
+%21 = OpLoad %5 %19
+%22 = OpIAdd %5 %21 %23
+%17 = OpAccessChain %16 %15 %22
+%24 = OpLoad %12 %17
+%26 = OpAccessChain %25 %11 %23
+%27 = OpLoad %6 %26
+%32 = OpAccessChain %31 %30 %33
+%34 = OpLoad %5 %32
+%36 = OpAccessChain %31 %35 %33
+%37 = OpLoad %5 %36
+%39 = OpIAdd %5 %37 %33
+%41 = OpExtInst %5 %40 UMin %39 %42
+%38 = OpAccessChain %18 %11 %20 %41
+%43 = OpLoad %5 %38
+%45 = OpIAdd %5 %37 %46
+%47 = OpExtInst %5 %40 UMin %45 %42
+%44 = OpAccessChain %18 %11 %20 %47
+%48 = OpLoad %5 %44
+%50 = OpIAdd %5 %37 %23
+%51 = OpExtInst %5 %40 UMin %50 %42
+%49 = OpAccessChain %18 %11 %20 %51
+%52 = OpLoad %5 %49
+%54 = OpIAdd %5 %37 %55
+%56 = OpExtInst %5 %40 UMin %54 %42
+%53 = OpAccessChain %18 %11 %20 %56
+%57 = OpLoad %5 %53
+%59 = OpCompositeConstruct %58 %43 %48 %52 %57
+%62 = OpBitcast %61 %59
+%63 = OpCompositeExtract %60 %62 0
+%64 = OpCompositeExtract %60 %62 1
+%65 = OpCompositeExtract %60 %62 2
+%66 = OpCompositeExtract %60 %62 3
+%70 = OpBitcast %69 %27
+%72 = OpInBoundsAccessChain %71 %70 %33 %34
+%73 = OpCompositeConstruct %61 %63 %64 %65 %66
+OpStore %72 %73 Aligned 16
+%74 = OpAccessChain %18 %11 %20 %75
+%76 = OpLoad %5 %74
+%77 = OpAccessChain %18 %11 %20 %78
+%79 = OpLoad %5 %77
+%80 = OpAccessChain %18 %11 %20 %81
+%82 = OpLoad %5 %80
+%83 = OpAccessChain %18 %11 %20 %42
+%84 = OpLoad %5 %83
+%85 = OpCompositeConstruct %58 %76 %79 %82 %84
+%86 = OpBitcast %61 %85
+%87 = OpCompositeExtract %60 %86 0
+%88 = OpCompositeExtract %60 %86 1
+%89 = OpCompositeExtract %60 %86 2
+%90 = OpCompositeExtract %60 %86 3
+%91 = OpIMul %5 %34 %20
+%92 = OpBitcast %5 %87
+%93 = OpBitcast %5 %88
+%94 = OpBitcast %5 %89
+%95 = OpBitcast %5 %90
+%96 = OpCompositeConstruct %58 %92 %92 %92 %92
+OpImageWrite %24 %91 %96
+%97 = OpCompositeConstruct %58 %93 %93 %93 %93
+%98 = OpIAdd %5 %91 %46
+OpImageWrite %24 %98 %97
+%99 = OpCompositeConstruct %58 %94 %94 %94 %94
+%100 = OpIAdd %5 %91 %23
+OpImageWrite %24 %100 %99
+%101 = OpCompositeConstruct %58 %95 %95 %95 %95
+%102 = OpIAdd %5 %91 %55
+OpImageWrite %24 %102 %101
+OpReturn
+OpFunctionEnd
+#endif

@@ -594,7 +594,17 @@ static spv::Id build_bindless_heap_offset_push_constant(Converter::Impl &impl, c
 		builder.makePointer(impl.options.inline_ubo_enable ? spv::StorageClassUniform : spv::StorageClassPushConstant,
 		                    builder.makeUintType(32)));
 	descriptor_table->add_id(impl.root_constant_id);
-	descriptor_table->add_id(builder.makeUintConstant(reference.push_constant_member));
+
+	if (impl.root_constant_arrayed)
+	{
+		descriptor_table->add_id(builder.makeUintConstant(impl.root_descriptor_count));
+		descriptor_table->add_id(builder.makeUintConstant(reference.push_constant_member - impl.root_descriptor_count));
+	}
+	else
+	{
+		descriptor_table->add_id(builder.makeUintConstant(reference.push_constant_member));
+	}
+
 	impl.add(descriptor_table);
 
 	auto *loaded_word = impl.allocate(spv::OpLoad, builder.makeUintType(32));
@@ -2126,26 +2136,50 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 {
 	auto &builder = impl.builder();
 
+	// For shader record buffers and workgraph local root signature, we are more flexible.
+	bool is_physical = storage == spv::StorageClassShaderRecordBufferKHR ||
+	                   storage == spv::StorageClassPhysicalStorageBuffer;
+
 	auto *constant_int = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2));
 	if (!constant_int)
 	{
-		LOGE("Cannot dynamically index into root constants.\n");
-		return false;
+		if (!is_physical && !value_is_statically_wave_uniform(impl, instruction->getOperand(2)))
+		{
+			LOGE("Cannot dynamically index into push constants unless we prove dynamically uniform requirement.\n");
+			return false;
+		}
 	}
 
 	// CBufferLoad vs CBufferLoadLegacy
 	bool scalar_load = !type_is_composite_return_value(instruction->getType());
-	auto member_index = unsigned(constant_int->getUniqueInteger().getZExtValue());
+	unsigned member_index = UINT32_MAX;
+	spv::Id dynamic_member_index = 0;
+
+	if (constant_int)
+		member_index = unsigned(constant_int->getUniqueInteger().getZExtValue());
+	else
+		dynamic_member_index = impl.get_id_for_value(instruction->getOperand(2));
 
 	// In scalar load, we index by byte offset. Ignore alignment, we read from registers.
 	if (scalar_load)
 	{
-		if (member_index % 4)
+		if (dynamic_member_index)
 		{
-			LOGE("Scalar CBufferLoad on root constant buffer is not aligned to 4 bytes.\n");
-			return false;
+			auto *shr = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+			shr->add_id(dynamic_member_index);
+			shr->add_id(builder.makeUintConstant(2));
+			impl.add(shr);
+			dynamic_member_index = shr->id;
 		}
-		member_index /= 4;
+		else
+		{
+			if (member_index % 4)
+			{
+				LOGE("Scalar CBufferLoad on root constant buffer is not aligned to 4 bytes.\n");
+				return false;
+			}
+			member_index /= 4;
+		}
 
 		if (get_type_scalar_alignment(impl, instruction->getType()) != 4)
 		{
@@ -2156,7 +2190,8 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	else
 	{
 		// In legacy load, we index in terms of float4[]s.
-		member_index *= 4;
+		if (!dynamic_member_index)
+			member_index *= 4;
 
 		if (get_type_scalar_alignment(impl, get_composite_element_type(instruction->getType())) != 4)
 		{
@@ -2165,15 +2200,26 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 		}
 	}
 
-	member_index += index_offset;
-
-	if (member_index >= num_elements)
+	if (!dynamic_member_index)
 	{
-		LOGE("Root constant CBV is accessed out of bounds. (%u > %u).\n", member_index, num_elements);
-		return false;
+		member_index += index_offset;
+
+		if (member_index >= num_elements)
+		{
+			LOGE("Root constant CBV is accessed out of bounds. (%u > %u).\n", member_index, num_elements);
+			return false;
+		}
+	}
+	else if (!is_physical && index_offset != impl.root_descriptor_count)
+	{
+		auto *dyn_offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		dyn_offset->add_id(dynamic_member_index);
+		dyn_offset->add_id(builder.makeUintConstant(index_offset - impl.root_descriptor_count));
+		impl.add(dyn_offset);
+		dynamic_member_index = dyn_offset->id;
 	}
 
-	unsigned num_words = std::min(scalar_load ? 1u : 4u, num_elements - member_index);
+	unsigned num_words = std::min(scalar_load ? 1u : 4u, dynamic_member_index ? UINT32_MAX : num_elements - member_index);
 
 	auto *result_scalar_type = instruction->getType();
 	if (!scalar_load)
@@ -2194,7 +2240,42 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 				                    builder.makeUintType(32)));
 
 			op->add_id(base_ptr);
-			op->add_id(builder.makeUintConstant(member_index + i));
+
+			if (impl.root_constant_arrayed && !is_physical)
+				op->add_id(builder.makeUintConstant(impl.root_descriptor_count));
+
+			if (constant_int)
+			{
+				if (impl.root_constant_arrayed && !is_physical)
+					op->add_id(builder.makeUintConstant(member_index + i - impl.root_descriptor_count));
+				else
+					op->add_id(builder.makeUintConstant(member_index + i));
+			}
+			else
+			{
+				auto *index_add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+				index_add->add_id(dynamic_member_index);
+				index_add->add_id(builder.makeUintConstant(i));
+				impl.add(index_add);
+
+				if (!impl.glsl_std450_ext)
+					impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+				// Robustness. This is illegal D3D12 code, so we don't really care if it's slow.
+				auto *clamp = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+				clamp->add_id(impl.glsl_std450_ext);
+				clamp->add_literal(GLSLstd450UMin);
+				clamp->add_id(index_add->id);
+
+				if (is_physical)
+					clamp->add_id(builder.makeUintConstant(num_elements - 1));
+				else
+					clamp->add_id(builder.makeUintConstant(impl.root_constant_num_words - 1));
+				impl.add(clamp);
+
+				op->add_id(clamp->id);
+			}
+
 			impl.add(op);
 
 			auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
