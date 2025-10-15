@@ -2195,7 +2195,18 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	{
 		// In legacy load, we index in terms of float4[]s.
 		if (!dynamic_member_index)
+		{
 			member_index *= 4;
+		}
+		else
+		{
+			auto *mul4 = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+			mul4->add_id(builder.makeUintConstant(4));
+			mul4->add_id(dynamic_member_index);
+			impl.add(mul4);
+
+			dynamic_member_index = mul4->id;
+		}
 
 		if (get_type_scalar_alignment(impl, get_composite_element_type(instruction->getType())) != 4)
 		{

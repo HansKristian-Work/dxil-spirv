@@ -9,8 +9,8 @@ struct _17
     uvec4 _m1;
 };
 
-vec4 _62;
-uvec4 _99;
+vec4 _63;
+uvec4 _101;
 
 layout(shaderRecordEXT, std430) buffer SBTBlock
 {
@@ -32,21 +32,23 @@ layout(location = 0) rayPayloadInEXT _17 payload;
 void main()
 {
     uvec4 _28 = payload._m1;
-    uvec4 _56 = uvec4(SBT._m0[4u], 0u, 0u, 0u);
-    uint _59 = _56.z;
-    vec4 _61;
-    _61.x = uintBitsToFloat(uvec4(SBT._m0[min((_28.x + 0u), 4u)], SBT._m0[min((_28.x + 1u), 4u)], SBT._m0[min((_28.x + 2u), 4u)], SBT._m0[min((_28.x + 3u), 4u)])).x;
-    _61.y = float(_56.y);
-    _61.z = float(int(_59));
-    _61.w = 1.0;
-    payload._m0 = _61;
-    vec4 _87 = uintBitsToFloat(uvec4(SBT._m1[min((_28.y + 0u), 5u)], SBT._m1[min((_28.y + 1u), 5u)], SBT._m1[min((_28.y + 2u), 5u)], SBT._m1[min((_28.y + 3u), 5u)]));
-    uvec4 _98;
-    _98.x = uint(int(_87.x));
-    _98.y = uint(int(_87.y));
-    _98.z = uvec4(SBT._m1[4u], SBT._m1[5u], 0u, 0u).z;
-    _98.w = _59;
-    payload._m1 = _98;
+    uint _30 = 4u * _28.x;
+    uvec4 _57 = uvec4(SBT._m0[4u], 0u, 0u, 0u);
+    uint _60 = _57.z;
+    vec4 _62;
+    _62.x = uintBitsToFloat(uvec4(SBT._m0[min((_30 + 0u), 4u)], SBT._m0[min((_30 + 1u), 4u)], SBT._m0[min((_30 + 2u), 4u)], SBT._m0[min((_30 + 3u), 4u)])).x;
+    _62.y = float(_57.y);
+    _62.z = float(int(_60));
+    _62.w = 1.0;
+    payload._m0 = _62;
+    uint _71 = 4u * _28.y;
+    vec4 _89 = uintBitsToFloat(uvec4(SBT._m1[min((_71 + 0u), 5u)], SBT._m1[min((_71 + 1u), 5u)], SBT._m1[min((_71 + 2u), 5u)], SBT._m1[min((_71 + 3u), 5u)]));
+    uvec4 _100;
+    _100.x = uint(int(_89.x));
+    _100.y = uint(int(_89.y));
+    _100.z = uvec4(SBT._m1[4u], SBT._m1[5u], 0u, 0u).z;
+    _100.w = _60;
+    payload._m1 = _100;
 }
 
 
@@ -55,7 +57,7 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 105
+; Bound: 107
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -72,7 +74,7 @@ OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
-%33 = OpExtInstImport "GLSL.std.450"
+%35 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint MissKHR %3 "main" %13 %19
 OpName %3 "main"
@@ -116,89 +118,91 @@ OpMemberDecorate %11 10 Offset 112
 %23 = OpTypePointer ShaderRecordBufferKHR %7
 %25 = OpConstant %5 0
 %26 = OpTypePointer IncomingRayPayloadKHR %16
-%30 = OpTypePointer ShaderRecordBufferKHR %5
-%35 = OpConstant %5 4
-%43 = OpConstant %5 2
-%48 = OpConstant %5 3
-%66 = OpConstant %14 1
-%67 = OpTypePointer IncomingRayPayloadKHR %15
+%31 = OpConstant %5 4
+%32 = OpTypePointer ShaderRecordBufferKHR %5
+%44 = OpConstant %5 2
+%49 = OpConstant %5 3
+%67 = OpConstant %14 1
+%68 = OpTypePointer IncomingRayPayloadKHR %15
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%62 = OpUndef %15
-%99 = OpUndef %16
-OpBranch %103
-%103 = OpLabel
+%63 = OpUndef %15
+%101 = OpUndef %16
+OpBranch %105
+%105 = OpLabel
 %21 = OpAccessChain %20 %13 %22
 %24 = OpAccessChain %23 %13 %25
 %27 = OpInBoundsAccessChain %26 %19 %22
 %28 = OpLoad %16 %27
 %29 = OpCompositeExtract %5 %28 0
-%32 = OpIAdd %5 %29 %25
-%34 = OpExtInst %5 %33 UMin %32 %35
-%31 = OpAccessChain %30 %24 %34
-%36 = OpLoad %5 %31
-%38 = OpIAdd %5 %29 %22
-%39 = OpExtInst %5 %33 UMin %38 %35
-%37 = OpAccessChain %30 %24 %39
-%40 = OpLoad %5 %37
-%42 = OpIAdd %5 %29 %43
-%44 = OpExtInst %5 %33 UMin %42 %35
-%41 = OpAccessChain %30 %24 %44
-%45 = OpLoad %5 %41
-%47 = OpIAdd %5 %29 %48
-%49 = OpExtInst %5 %33 UMin %47 %35
-%46 = OpAccessChain %30 %24 %49
-%50 = OpLoad %5 %46
-%51 = OpCompositeConstruct %16 %36 %40 %45 %50
-%52 = OpBitcast %15 %51
-%53 = OpCompositeExtract %14 %52 0
-%54 = OpAccessChain %30 %24 %35
-%55 = OpLoad %5 %54
-%56 = OpCompositeConstruct %16 %55 %25 %25 %25
-%57 = OpCompositeExtract %5 %56 1
-%58 = OpConvertUToF %14 %57
-%59 = OpCompositeExtract %5 %56 2
-%60 = OpConvertSToF %14 %59
-%61 = OpCompositeInsert %15 %53 %62 0
-%63 = OpCompositeInsert %15 %58 %61 1
-%64 = OpCompositeInsert %15 %60 %63 2
-%65 = OpCompositeInsert %15 %66 %64 3
-%68 = OpInBoundsAccessChain %67 %19 %25
-OpStore %68 %65
-%69 = OpCompositeExtract %5 %28 1
-%71 = OpIAdd %5 %69 %25
-%72 = OpExtInst %5 %33 UMin %71 %6
-%70 = OpAccessChain %30 %21 %72
-%73 = OpLoad %5 %70
-%75 = OpIAdd %5 %69 %22
-%76 = OpExtInst %5 %33 UMin %75 %6
-%74 = OpAccessChain %30 %21 %76
-%77 = OpLoad %5 %74
-%79 = OpIAdd %5 %69 %43
-%80 = OpExtInst %5 %33 UMin %79 %6
-%78 = OpAccessChain %30 %21 %80
-%81 = OpLoad %5 %78
-%83 = OpIAdd %5 %69 %48
-%84 = OpExtInst %5 %33 UMin %83 %6
-%82 = OpAccessChain %30 %21 %84
-%85 = OpLoad %5 %82
-%86 = OpCompositeConstruct %16 %73 %77 %81 %85
-%87 = OpBitcast %15 %86
-%88 = OpCompositeExtract %14 %87 0
-%89 = OpCompositeExtract %14 %87 1
-%90 = OpAccessChain %30 %21 %35
-%91 = OpLoad %5 %90
-%92 = OpAccessChain %30 %21 %6
+%30 = OpIMul %5 %31 %29
+%34 = OpIAdd %5 %30 %25
+%36 = OpExtInst %5 %35 UMin %34 %31
+%33 = OpAccessChain %32 %24 %36
+%37 = OpLoad %5 %33
+%39 = OpIAdd %5 %30 %22
+%40 = OpExtInst %5 %35 UMin %39 %31
+%38 = OpAccessChain %32 %24 %40
+%41 = OpLoad %5 %38
+%43 = OpIAdd %5 %30 %44
+%45 = OpExtInst %5 %35 UMin %43 %31
+%42 = OpAccessChain %32 %24 %45
+%46 = OpLoad %5 %42
+%48 = OpIAdd %5 %30 %49
+%50 = OpExtInst %5 %35 UMin %48 %31
+%47 = OpAccessChain %32 %24 %50
+%51 = OpLoad %5 %47
+%52 = OpCompositeConstruct %16 %37 %41 %46 %51
+%53 = OpBitcast %15 %52
+%54 = OpCompositeExtract %14 %53 0
+%55 = OpAccessChain %32 %24 %31
+%56 = OpLoad %5 %55
+%57 = OpCompositeConstruct %16 %56 %25 %25 %25
+%58 = OpCompositeExtract %5 %57 1
+%59 = OpConvertUToF %14 %58
+%60 = OpCompositeExtract %5 %57 2
+%61 = OpConvertSToF %14 %60
+%62 = OpCompositeInsert %15 %54 %63 0
+%64 = OpCompositeInsert %15 %59 %62 1
+%65 = OpCompositeInsert %15 %61 %64 2
+%66 = OpCompositeInsert %15 %67 %65 3
+%69 = OpInBoundsAccessChain %68 %19 %25
+OpStore %69 %66
+%70 = OpCompositeExtract %5 %28 1
+%71 = OpIMul %5 %31 %70
+%73 = OpIAdd %5 %71 %25
+%74 = OpExtInst %5 %35 UMin %73 %6
+%72 = OpAccessChain %32 %21 %74
+%75 = OpLoad %5 %72
+%77 = OpIAdd %5 %71 %22
+%78 = OpExtInst %5 %35 UMin %77 %6
+%76 = OpAccessChain %32 %21 %78
+%79 = OpLoad %5 %76
+%81 = OpIAdd %5 %71 %44
+%82 = OpExtInst %5 %35 UMin %81 %6
+%80 = OpAccessChain %32 %21 %82
+%83 = OpLoad %5 %80
+%85 = OpIAdd %5 %71 %49
+%86 = OpExtInst %5 %35 UMin %85 %6
+%84 = OpAccessChain %32 %21 %86
+%87 = OpLoad %5 %84
+%88 = OpCompositeConstruct %16 %75 %79 %83 %87
+%89 = OpBitcast %15 %88
+%90 = OpCompositeExtract %14 %89 0
+%91 = OpCompositeExtract %14 %89 1
+%92 = OpAccessChain %32 %21 %31
 %93 = OpLoad %5 %92
-%94 = OpCompositeConstruct %16 %91 %93 %25 %25
-%95 = OpCompositeExtract %5 %94 2
-%96 = OpConvertFToS %5 %88
-%97 = OpConvertFToS %5 %89
-%98 = OpCompositeInsert %16 %96 %99 0
-%100 = OpCompositeInsert %16 %97 %98 1
-%101 = OpCompositeInsert %16 %95 %100 2
-%102 = OpCompositeInsert %16 %59 %101 3
-OpStore %27 %102
+%94 = OpAccessChain %32 %21 %6
+%95 = OpLoad %5 %94
+%96 = OpCompositeConstruct %16 %93 %95 %25 %25
+%97 = OpCompositeExtract %5 %96 2
+%98 = OpConvertFToS %5 %90
+%99 = OpConvertFToS %5 %91
+%100 = OpCompositeInsert %16 %98 %101 0
+%102 = OpCompositeInsert %16 %99 %100 1
+%103 = OpCompositeInsert %16 %97 %102 2
+%104 = OpCompositeInsert %16 %60 %103 3
+OpStore %27 %104
 OpReturn
 OpFunctionEnd
 #endif
