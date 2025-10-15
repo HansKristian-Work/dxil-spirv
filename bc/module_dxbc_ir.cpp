@@ -4023,6 +4023,10 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.derivativeOptions.hoistNontrivialImplicitLodOps = false;
 	options.derivativeOptions.hoistDescriptorLoads = false;
 
+	options.cseOptions.relocateDescriptorLoad = false;
+
+	options.descriptorIndexing.optimizeDescriptorIndexing = false;
+
 	auto builder = dxbc::compileShaderToLegalizedIr(data, size, convertOptions, options);
 
 	if (!builder)
