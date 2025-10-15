@@ -791,6 +791,7 @@ struct Converter::Impl
 			bool promote_group_to_device_memory_barrier = false;
 			bool group_shared_auto_barrier = false;
 			bool fixup_loop_header_undef_phis = false;
+			bool fixup_rsqrt = false;
 		} quirks;
 
 		struct
@@ -862,6 +863,14 @@ struct Converter::Impl
 		bool non_uniform;
 	};
 	Vector<CombinedImageSampler> combined_image_sampler_cache;
+
+	struct PeepholeTransformation
+	{
+		spv::Id input_id;
+		spv::Id result_id;
+		uint64_t key; // Depends on the transform. Extend to something more sophisticated if needed.
+	};
+	Vector<PeepholeTransformation> peephole_transformation_cache;
 
 	struct PhysicalPointerEntry
 	{

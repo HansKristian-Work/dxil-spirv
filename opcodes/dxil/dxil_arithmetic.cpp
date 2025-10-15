@@ -27,6 +27,7 @@
 #include "dxil_common.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "opcodes/opcodes_llvm_builtins.hpp"
+#include <limits>
 
 namespace dxil_spv
 {
@@ -592,6 +593,20 @@ bool emit_dxil_std450_unary_instruction(GLSLstd450 opcode, Converter::Impl &impl
 
 	impl.add(op);
 	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+
+	if (opcode == GLSLstd450InverseSqrt && impl.options.quirks.fixup_rsqrt &&
+	    instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+	{
+		// Only consider normal FP32 floats for simplicity since this is just a workaround.
+		auto *clamp = impl.allocate(spv::OpExtInst, impl.get_type_id(instruction->getType()));
+		clamp->add_id(impl.glsl_std450_ext);
+		clamp->add_literal(GLSLstd450NMin);
+		clamp->add_id(op->id);
+		clamp->add_id(impl.builder().makeFloatConstant(std::numeric_limits<float>::max()));
+		impl.add(clamp);
+		impl.rewrite_value(instruction, clamp->id);
+	}
+
 	return true;
 }
 

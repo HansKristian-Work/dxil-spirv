@@ -30,6 +30,7 @@
 #include "dxil/dxil_resources.hpp"
 #include "dxil/dxil_arithmetic.hpp"
 #include "dxil/dxil_ags.hpp"
+#include <limits>
 
 namespace dxil_spv
 {
@@ -101,6 +102,74 @@ static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm:
 
 	auto logical_bits = value->getType()->getIntegerBitWidth();
 	return build_naturally_extended_value(impl, value, logical_bits, is_signed);
+}
+
+static spv::Id emit_fixup_fdiv_sqrt(Converter::Impl &, const llvm::ConstantExpr *)
+{
+	return 0;
+}
+
+static spv::Id emit_fixup_fdiv_sqrt(Converter::Impl &impl, const llvm::BinaryOperator *instruction)
+{
+	// Only peephole fast math.
+	if (!instruction->isFast() || impl.options.force_precise || !impl.options.quirks.fixup_rsqrt)
+		return 0;
+
+	// Only consider normal FP32 floats for simplicity since this is just a workaround.
+	if (instruction->getType()->getTypeID() != llvm::Type::TypeID::FloatTyID)
+		return 0;
+
+	if (value_is_dx_op_instrinsic(instruction->getOperand(1), DXIL::Op::Sqrt))
+	{
+		auto *sqrt_op = llvm::cast<llvm::CallInst>(instruction->getOperand(1));
+		if (sqrt_op->hasMetadata("dx.precise"))
+			return 0;
+
+		auto *sqrt_input = sqrt_op->getOperand(1);
+
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = impl.builder().import("GLSL.std.450");
+
+		spv::Id input_id = impl.get_id_for_value(sqrt_input);
+		spv::Id inv_sqrt_id = 0;
+
+		for (auto &transform : impl.peephole_transformation_cache)
+		{
+			if (transform.input_id == input_id && transform.key == GLSLstd450InverseSqrt)
+			{
+				inv_sqrt_id = transform.result_id;
+				break;
+			}
+		}
+
+		if (inv_sqrt_id == 0)
+		{
+			auto *inv_sqrt = impl.allocate(spv::OpExtInst, impl.get_type_id(instruction->getType()));
+			inv_sqrt->add_id(impl.glsl_std450_ext);
+			inv_sqrt->add_literal(GLSLstd450InverseSqrt);
+			inv_sqrt->add_id(impl.get_id_for_value(sqrt_input));
+			impl.add(inv_sqrt);
+
+			auto *clamp = impl.allocate(spv::OpExtInst, impl.get_type_id(instruction->getType()));
+			clamp->add_id(impl.glsl_std450_ext);
+			clamp->add_literal(GLSLstd450NMin);
+			clamp->add_id(inv_sqrt->id);
+			clamp->add_id(impl.builder().makeFloatConstant(std::numeric_limits<float>::max()));
+			impl.add(clamp);
+
+			inv_sqrt_id = clamp->id;
+			impl.peephole_transformation_cache.push_back({ input_id, inv_sqrt_id, GLSLstd450InverseSqrt });
+		}
+
+		auto *mul = impl.allocate(spv::OpFMul, instruction);
+		mul->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		mul->add_id(inv_sqrt_id);
+		impl.add(mul);
+
+		return mul->id;
+	}
+
+	return 0;
 }
 
 static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &,
@@ -313,6 +382,8 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		is_precision_sensitive = true;
 		can_relax_precision = true;
 		if (spv::Id id = peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FMul, false))
+			return id;
+		if (spv::Id id = emit_fixup_fdiv_sqrt(impl, instruction))
 			return id;
 		break;
 

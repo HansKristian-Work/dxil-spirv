@@ -7914,6 +7914,7 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		auto *meta = bb_map[bb];
 		CFGNode *node = meta->node;
 		combined_image_sampler_cache.clear();
+		peephole_transformation_cache.clear();
 
 		if (bb == visit_order.front() && instrumentation.invocation_id_var_id && primary_code)
 			emit_write_instrumentation_invocation_id(node);
@@ -9132,6 +9133,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::FixupLoopHeaderUndefPhis:
 			options.quirks.fixup_loop_header_undef_phis = true;
+			break;
+
+		case ShaderQuirk::FixupRsqrtInfNan:
+			options.quirks.fixup_rsqrt = true;
 			break;
 
 		default:
