@@ -16,6 +16,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/dxbc/dxbc_converter.h
         ${DXBC_SPV_SOURCE_DIR}/dxbc/dxbc_disasm.cpp
         ${DXBC_SPV_SOURCE_DIR}/dxbc/dxbc_disasm.h
+        ${DXBC_SPV_SOURCE_DIR}/dxbc/dxbc_interface.cpp
+        ${DXBC_SPV_SOURCE_DIR}/dxbc/dxbc_interface.h
         ${DXBC_SPV_SOURCE_DIR}/dxbc/dxbc_io_map.cpp
         ${DXBC_SPV_SOURCE_DIR}/dxbc/dxbc_io_map.h
         ${DXBC_SPV_SOURCE_DIR}/dxbc/dxbc_parser.cpp
@@ -55,6 +57,8 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cse.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_derivative.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_derivative.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_descriptor_indexing.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_descriptor_indexing.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_function.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_function.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.cpp
