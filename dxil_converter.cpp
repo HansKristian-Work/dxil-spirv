@@ -552,8 +552,10 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				if (info.kind == DXIL::ResourceKind::Invalid)
 				{
 					auto &mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::RawDescriptorHeapView)];
+                    auto &size_mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::ResourceDescriptorHeapSize)];
 
-					if (mapping.desc_set != UINT32_MAX && mapping.desc_binding != UINT32_MAX)
+                    if (mapping.desc_set != UINT32_MAX && mapping.desc_binding != UINT32_MAX &&
+                        size_mapping.desc_set != UINT32_MAX && size_mapping.desc_binding != UINT32_MAX)
 					{
 						if (info.desc_set != mapping.desc_set || info.binding != mapping.desc_binding)
 							LOGW("Using meta CBV mapping for physical descriptors, but there is a mismatch in requested bindings.\n");
