@@ -793,8 +793,8 @@ static spv::Id build_load_physical_uav_counter(Converter::Impl &impl, const Conv
 		load_ptr->add_id(chain_op->id);
 		impl.add(load_ptr);
 
-		chain_op = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPhysicalStorageBuffer,
-		                                                                 uvec2_type));
+        chain_op = impl.allocate(spv::OpInBoundsAccessChain,
+                builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uvec2_type));
 		chain_op->add_id(load_ptr->id);
 		chain_op->add_id(builder.makeUintConstant(0));
 
