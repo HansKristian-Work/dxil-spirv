@@ -3195,10 +3195,15 @@ bool Converter::Impl::emit_descriptor_heap_introspection_buffer()
 	// Somewhat hacky is that we can ask for a global heap of RTAS, which gets us this descriptor.
 	VulkanSRVBinding vulkan_binding = {};
 
+    auto &size_mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::ResourceDescriptorHeapSize)];
 	auto &mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::RawDescriptorHeapView)];
-	bool use_real_descriptor = mapping.desc_set == UINT32_MAX && mapping.desc_binding == UINT32_MAX;
 
-	if (use_real_descriptor)
+    // TODO: This is very questionable. Should probably rethink this a bit.
+    bool use_real_descriptor =
+            (mapping.desc_set == UINT32_MAX && mapping.desc_binding == UINT32_MAX) ||
+            (size_mapping.desc_set == UINT32_MAX && size_mapping.desc_binding == UINT32_MAX);
+
+	if (use_real_descriptor && mapping.desc_set == UINT32_MAX && mapping.desc_binding == UINT32_MAX)
 	{
 		D3DBinding d3d_binding = {
 			get_remapping_stage(execution_model),
