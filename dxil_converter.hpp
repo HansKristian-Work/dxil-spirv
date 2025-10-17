@@ -891,6 +891,16 @@ enum class ShaderFeature
 	Count
 };
 
+enum class MetaUniformDescriptors
+{
+	// u32 containing number of descriptors in CBV_SRV_UAV heap.
+	ResourceDescriptorHeapSize = 0,
+	// A BDA pointing to first descriptor payload in resource heap.
+	// Stride / offset of pointer is determined by Option::PhysicalAddressDescriptorIndexing.
+	RawDescriptorHeapView = 1,
+	Count
+};
+
 class Converter
 {
 public:
@@ -955,6 +965,8 @@ public:
 	static Vector<NodeOutputData> get_node_outputs(const LLVMBCParser &parser, const char *entry);
 
 	String get_analysis_warnings() const;
+
+	void set_meta_uniform_descriptor(MetaUniformDescriptors desc, uint32_t desc_set, uint32_t binding);
 
 	struct Impl;
 

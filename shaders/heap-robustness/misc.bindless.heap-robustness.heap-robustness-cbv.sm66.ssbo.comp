@@ -1,0 +1,43 @@
+Texture2D<float4> Tex[] : register(t0, space0);
+SamplerState S[] : register(s0, space0);
+RWTexture2D<float4> RWTex[] : register(u0, space0);
+RWBuffer<float4> RWBuf[] : register(u0, space1);
+RWStructuredBuffer<float4> RWStruct[] : register(u0, space2);
+
+struct C { float4 v; };
+ConstantBuffer<C> Cbufs[] : register(b0, space0);
+
+RWStructuredBuffer<float4> Blah : register(u100, space3);
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	Blah[thr] = Tex[NonUniformResourceIndex(thr)].SampleLevel(S[NonUniformResourceIndex(thr)], 0.5.xx, 0.0);
+	GroupMemoryBarrierWithGroupSync();
+	RWTex[NonUniformResourceIndex(thr)][int2(thr, 0)] = Tex[NonUniformResourceIndex(thr)].SampleLevel(S[NonUniformResourceIndex(thr)], 0.5.xx, 0.0);
+	GroupMemoryBarrierWithGroupSync();
+	RWBuf[NonUniformResourceIndex(thr)][thr] = Cbufs[NonUniformResourceIndex(thr)].v;
+	GroupMemoryBarrierWithGroupSync();
+	RWStruct[NonUniformResourceIndex(thr)][thr] = Tex[NonUniformResourceIndex(thr)].SampleLevel(S[NonUniformResourceIndex(thr)], 0.5.xx, 0.0);
+	GroupMemoryBarrierWithGroupSync();
+	RWStruct[NonUniformResourceIndex(thr)].IncrementCounter();
+	GroupMemoryBarrierWithGroupSync();
+
+	Texture2D<float4> HeapTex = ResourceDescriptorHeap[NonUniformResourceIndex(thr)];
+	SamplerState HeapS = SamplerDescriptorHeap[NonUniformResourceIndex(thr + 100)];
+	RWTexture2D<float4> HeapRWTex = ResourceDescriptorHeap[NonUniformResourceIndex(thr + 200)];
+	RWBuffer<float4> HeapRWBuf = ResourceDescriptorHeap[NonUniformResourceIndex(thr + 300)];
+	RWStructuredBuffer<float4> HeapRWStruct = ResourceDescriptorHeap[NonUniformResourceIndex(thr + 400)];
+	ConstantBuffer<C> HeapCbufs = ResourceDescriptorHeap[NonUniformResourceIndex(thr + 500)];
+
+	Blah[thr] = HeapTex.SampleLevel(HeapS, 0.5.xx, 0.0);
+	GroupMemoryBarrierWithGroupSync();
+	HeapRWTex[int2(thr, 0)] = HeapTex.SampleLevel(HeapS, 0.5.xx, 0.0);
+	GroupMemoryBarrierWithGroupSync();
+	HeapRWBuf[thr] = HeapCbufs.v;
+	GroupMemoryBarrierWithGroupSync();
+	HeapRWStruct[thr] = HeapTex.SampleLevel(HeapS, 0.5.xx, 0.0);
+	GroupMemoryBarrierWithGroupSync();
+	HeapRWStruct.IncrementCounter();
+	GroupMemoryBarrierWithGroupSync();
+}

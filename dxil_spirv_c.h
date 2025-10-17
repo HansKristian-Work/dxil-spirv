@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 59
+#define DXIL_SPV_API_VERSION_MINOR 60
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -236,6 +236,13 @@ typedef enum dxil_spv_shader_quirk
 	DXIL_SPV_SHADER_QUIRK_FIXUP_RSQRT_INF_NAN = 10,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
+
+typedef enum dxil_spv_meta_uniform_descriptors
+{
+	DXIL_SPV_META_UNIFORM_DESCRIPTORS_RESOURCE_DESCRIPTOR_HEAP_SIZE = 0,
+	DXIL_SPV_META_UNIFORM_DESCRIPTORS_RAW_DESCRIPTOR_HEAP_VIEW = 1,
+	DXIL_SPV_META_UNIFORM_DESCRIPTORS_INT_MAX = 0x7fffffff
+} dxil_spv_meta_uniform_descriptors;
 
 #ifdef DXIL_SPV_ENABLE_EXPERIMENTAL_WORKGRAPHS
 typedef enum dxil_spv_node_launch_type
@@ -1034,6 +1041,9 @@ DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_shader_feature(
  * Lifetime of string is only as long as converter is alive.
  * Returns NULL when there are no warnings. */
 DXIL_SPV_PUBLIC_API const char *dxil_spv_converter_get_analysis_warnings(dxil_spv_converter converter);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_meta_uniform_descriptor(
+	dxil_spv_converter converter, dxil_spv_meta_uniform_descriptors meta, unsigned desc_set, unsigned binding);
 
 /* Use an optimized allocation scheme.
  * Call begin before allocating any dxil_spv objects,
