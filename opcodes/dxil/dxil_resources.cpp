@@ -646,7 +646,7 @@ static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id o
 	if (impl.instrumentation.descriptor_heap_size_var_id)
 	{
 		auto *chain = impl.allocate(spv::OpAccessChain,
-		                         builder.makePointer(spv::StorageClassUniform, builder.makeUintType(32)));
+		                            builder.makePointer(spv::StorageClassUniform, builder.makeUintType(32)));
 		chain->add_id(impl.instrumentation.descriptor_heap_size_var_id);
 		chain->add_id(builder.makeUintConstant(0));
 		impl.add(chain);
