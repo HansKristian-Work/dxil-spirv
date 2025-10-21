@@ -526,7 +526,7 @@ OpControlBarrier %95 %95 %124
 %235 = OpAccessChain %85 %51 %76
 %236 = OpLoad %5 %235
 %237 = OpExtInst %5 %88 UMin %234 %236
-%231 = OpAccessChain %230 %229 %76 %237 %76 %76
+%231 = OpInBoundsAccessChain %230 %229 %76 %237 %76 %76
 %238 = OpLoad %26 %231 Aligned 8
 %258 = OpFunctionCall %5 %243 %238 %27 %76
 OpControlBarrier %95 %95 %124
@@ -560,7 +560,7 @@ OpControlBarrier %95 %95 %124
 %291 = OpAccessChain %85 %51 %76
 %292 = OpLoad %5 %291
 %293 = OpExtInst %5 %88 UMin %281 %292
-%290 = OpAccessChain %230 %289 %76 %293 %76 %76
+%290 = OpInBoundsAccessChain %230 %289 %76 %293 %76 %76
 %294 = OpLoad %26 %290 Aligned 8
 %295 = OpIAdd %5 %77 %296
 %299 = OpAccessChain %85 %51 %76

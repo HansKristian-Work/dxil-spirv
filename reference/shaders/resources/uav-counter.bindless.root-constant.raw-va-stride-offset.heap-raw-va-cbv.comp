@@ -191,7 +191,7 @@ OpBranch %85
 %44 = OpAccessChain %34 %8 %14
 %45 = OpLoad %5 %44
 %46 = OpIAdd %5 %45 %30
-%43 = OpAccessChain %42 %41 %28 %46 %28 %47
+%43 = OpInBoundsAccessChain %42 %41 %28 %46 %28 %47
 %48 = OpLoad %13 %43 Aligned 8
 %69 = OpFunctionCall %5 %53 %48 %65 %28
 %70 = OpBitwiseXor %5 %29 %65
@@ -206,7 +206,7 @@ OpBranch %85
 %80 = OpAccessChain %34 %8 %14
 %81 = OpLoad %5 %80
 %82 = OpIAdd %5 %81 %71
-%79 = OpAccessChain %42 %78 %28 %82 %28 %47
+%79 = OpInBoundsAccessChain %42 %78 %28 %82 %28 %47
 %83 = OpLoad %13 %79 Aligned 8
 %84 = OpFunctionCall %5 %53 %83 %65 %28
 OpReturn

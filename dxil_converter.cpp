@@ -551,12 +551,11 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			{
 				if (info.kind == DXIL::ResourceKind::Invalid)
 				{
-					auto &mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::RawDescriptorHeapView)];
-                    auto &size_mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::ResourceDescriptorHeapSize)];
+					auto &mapping = options.meta_descriptor_mappings[int(MetaDescriptor::RawDescriptorHeapView)];
 
-                    if (mapping.desc_set != UINT32_MAX && mapping.desc_binding != UINT32_MAX &&
-                        size_mapping.desc_set != UINT32_MAX && size_mapping.desc_binding != UINT32_MAX)
+					if (mapping.kind == MetaDescriptorKind::UBOContainingBDA)
 					{
+						// This is faster access than the normal SSBO descriptor path.
 						if (info.desc_set != mapping.desc_set || info.binding != mapping.desc_binding)
 							LOGW("Using meta CBV mapping for physical descriptors, but there is a mismatch in requested bindings.\n");
 
@@ -3177,7 +3176,7 @@ bool Converter::Impl::emit_descriptor_heap_size_ubo()
 	builder().addDecoration(block_type, spv::DecorationBlock);
 	builder().addMemberDecoration(block_type, 0, spv::DecorationOffset, 0);
 
-	auto &mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::ResourceDescriptorHeapSize)];
+	auto &mapping = options.meta_descriptor_mappings[int(MetaDescriptor::ResourceDescriptorHeapSize)];
 	spv::Id var_id = create_variable(spv::StorageClassUniform, block_type, "DescriptorHeapSize");
 	builder().addDecoration(var_id, spv::DecorationDescriptorSet, mapping.desc_set);
 	builder().addDecoration(var_id, spv::DecorationBinding, mapping.desc_binding);
@@ -3197,16 +3196,18 @@ bool Converter::Impl::emit_descriptor_heap_introspection_buffer()
 	// Somewhat hacky is that we can ask for a global heap of RTAS, which gets us this descriptor.
 	VulkanSRVBinding vulkan_binding = {};
 
-    auto &size_mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::ResourceDescriptorHeapSize)];
-	auto &mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::RawDescriptorHeapView)];
+	auto &mapping = options.meta_descriptor_mappings[int(MetaDescriptor::RawDescriptorHeapView)];
 
-    // TODO: This is very questionable. Should probably rethink this a bit.
-    bool use_real_descriptor =
-            (mapping.desc_set == UINT32_MAX && mapping.desc_binding == UINT32_MAX) ||
-            (size_mapping.desc_set == UINT32_MAX && size_mapping.desc_binding == UINT32_MAX);
+	if (mapping.kind != MetaDescriptorKind::ReadonlySSBO &&
+	    mapping.kind != MetaDescriptorKind::UBOContainingBDA &&
+	    mapping.kind != MetaDescriptorKind::Invalid)
+		return false;
 
-	if (use_real_descriptor && mapping.desc_set == UINT32_MAX && mapping.desc_binding == UINT32_MAX)
+	bool use_full_descriptor = mapping.kind != MetaDescriptorKind::UBOContainingBDA;
+
+	if (mapping.kind == MetaDescriptorKind::Invalid)
 	{
+		// Legacy proxy. The RTAS heap does what we want in the legacy model.
 		D3DBinding d3d_binding = {
 			get_remapping_stage(execution_model),
 			DXIL::ResourceKind::RTAccelerationStructure,
@@ -3242,14 +3243,14 @@ bool Converter::Impl::emit_descriptor_heap_introspection_buffer()
 	spv::Id u32_type = builder().makeUintType(32);
 	uint32_t elems = options.physical_address_descriptor_stride;
 
-	if (options.instruction_instrumentation.enabled || !use_real_descriptor)
+	if (options.instruction_instrumentation.enabled || !use_full_descriptor)
 		u32_type = builder().makeVectorType(u32_type, 2);
 	else
 		elems *= 2;
 
 	spv::Id u32_array_type = builder().makeArrayType(u32_type, builder().makeUintConstant(elems), 0);
 	builder().addDecoration(u32_array_type, spv::DecorationArrayStride,
-	                        options.instruction_instrumentation.enabled || !use_real_descriptor ? 8 : 4);
+	                        options.instruction_instrumentation.enabled || !use_full_descriptor ? 8 : 4);
 
 	spv::Id inner_struct_type = get_struct_type({ u32_array_type }, 0, "DescriptorHeapRawPayload");
 	builder().addMemberDecoration(inner_struct_type, 0, spv::DecorationOffset, 0);
@@ -3262,20 +3263,20 @@ bool Converter::Impl::emit_descriptor_heap_introspection_buffer()
 		options.instruction_instrumentation.enabled &&
 		options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation;
 
-	spv::Id block_type_id = get_struct_type({ inner_struct_array_type }, 0,
-	                                        use_real_descriptor ? "DescriptorHeapRobustnessSSBO" : "DescriptorHeapRawBlock");
+	spv::Id block_type_id = get_struct_type(
+		{ inner_struct_array_type }, 0, use_full_descriptor ? "DescriptorHeapRobustnessSSBO" : "DescriptorHeapRawBlock");
 	builder().addDecoration(block_type_id, spv::DecorationBlock);
 	builder().addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
 	if (!sync_val)
 	{
 		builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonWritable);
-		if (use_real_descriptor)
+		if (use_full_descriptor)
 			builder().addMemberDecoration(block_type_id, 0, spv::DecorationNonReadable);
 	}
 	builder().addMemberName(block_type_id, 0, "descriptors");
 
 	spv::Id var_id;
-	if (use_real_descriptor)
+	if (use_full_descriptor)
 	{
 		var_id = create_variable(spv::StorageClassStorageBuffer, block_type_id, "DescriptorHeapRobustness");
 	}
@@ -3295,9 +3296,8 @@ bool Converter::Impl::emit_descriptor_heap_introspection_buffer()
 	builder().addDecoration(var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer_binding.descriptor_set);
 	builder().addDecoration(var_id, spv::DecorationBinding, vulkan_binding.buffer_binding.binding);
 
-	// Take OpArrayLength of this variable's first member and we have it.
 	instrumentation.descriptor_heap_introspection_var_id = var_id;
-	instrumentation.descriptor_heap_introspection_is_bda = !use_real_descriptor;
+	instrumentation.descriptor_heap_introspection_is_bda = !use_full_descriptor;
 
 	if (sync_val)
 	{
@@ -3568,19 +3568,12 @@ bool Converter::Impl::emit_resources()
 
 	if (options.descriptor_heap_robustness)
 	{
-		auto &mapping = options.meta_descriptor_mappings[int(MetaUniformDescriptors::ResourceDescriptorHeapSize)];
-		if (mapping.desc_set != UINT32_MAX && mapping.desc_binding != UINT32_MAX)
+		auto &mapping = options.meta_descriptor_mappings[int(MetaDescriptor::ResourceDescriptorHeapSize)];
+		if (mapping.kind == MetaDescriptorKind::UBOContainingConstant)
 		{
 			// Use legacy path.
 			if (!emit_descriptor_heap_size_ubo())
 				return false;
-
-			if (options.instruction_instrumentation.enabled &&
-			    options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation)
-			{
-				// Failure is not a big deal.
-				emit_descriptor_heap_introspection_buffer();
-			}
 		}
 		else
 		{
@@ -3588,9 +3581,10 @@ bool Converter::Impl::emit_resources()
 				return false;
 		}
 	}
-	else if (options.instruction_instrumentation.enabled &&
-	         (options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume ||
-	          options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation))
+
+	if (options.instruction_instrumentation.enabled &&
+	    (options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume ||
+	     options.instruction_instrumentation.type == InstructionInstrumentationType::BufferSynchronizationValidation))
 	{
 		// Failure is not a big deal.
 		emit_descriptor_heap_introspection_buffer();
@@ -9317,11 +9311,11 @@ void Converter::set_resource_remapping_interface(ResourceRemappingInterface *ifa
 	impl->resource_mapping_iface = iface;
 }
 
-void Converter::set_meta_uniform_descriptor(MetaUniformDescriptors desc, uint32_t desc_set, uint32_t binding)
+void Converter::set_meta_descriptor(MetaDescriptor desc, MetaDescriptorKind kind, uint32_t desc_set, uint32_t binding)
 {
-	if (int(desc) >= int(MetaUniformDescriptors::Count))
+	if (int(desc) >= int(MetaDescriptor::Count))
 		return;
-	impl->options.meta_descriptor_mappings[int(desc)] = { desc_set, binding };
+	impl->options.meta_descriptor_mappings[int(desc)] = { kind, desc_set, binding };
 }
 
 ShaderStage Converter::get_shader_stage(const LLVMBCParser &bitcode_parser, const char *entry)

@@ -818,9 +818,10 @@ struct Converter::Impl
 
 		struct
 		{
+			MetaDescriptorKind kind = MetaDescriptorKind::Invalid;
 			uint32_t desc_set = UINT32_MAX;
 			uint32_t desc_binding = UINT32_MAX;
-		} meta_descriptor_mappings[int(MetaUniformDescriptors::Count)];
+		} meta_descriptor_mappings[int(MetaDescriptor::Count)];
 	} options;
 
 	struct BindlessInfo

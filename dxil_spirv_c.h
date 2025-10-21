@@ -237,12 +237,23 @@ typedef enum dxil_spv_shader_quirk
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 
-typedef enum dxil_spv_meta_uniform_descriptors
+typedef enum dxil_spv_meta_descriptor
 {
-	DXIL_SPV_META_UNIFORM_DESCRIPTORS_RESOURCE_DESCRIPTOR_HEAP_SIZE = 0,
-	DXIL_SPV_META_UNIFORM_DESCRIPTORS_RAW_DESCRIPTOR_HEAP_VIEW = 1,
-	DXIL_SPV_META_UNIFORM_DESCRIPTORS_INT_MAX = 0x7fffffff
-} dxil_spv_meta_uniform_descriptors;
+	DXIL_SPV_META_DESCRIPTOR_RESOURCE_DESCRIPTOR_HEAP_SIZE = 0,
+	DXIL_SPV_META_DESCRIPTOR_RAW_DESCRIPTOR_HEAP_VIEW = 1,
+	DXIL_SPV_META_DESCRIPTOR_INT_MAX = 0x7fffffff
+} dxil_spv_meta_descriptor;
+
+typedef enum dxil_spv_meta_descriptor_kind
+{
+	DXIL_SPV_META_DESCRIPTOR_KIND_INVALID = 0,
+	DXIL_SPV_META_DESCRIPTOR_KIND_PUSH_CONSTANT,
+	DXIL_SPV_META_DESCRIPTOR_KIND_PUSH_BDA,
+	DXIL_SPV_META_DESCRIPTOR_KIND_UBO_CONTAINING_CONSTANT,
+	DXIL_SPV_META_DESCRIPTOR_KIND_UBO_CONTAINING_BDA,
+	DXIL_SPV_META_DESCRIPTOR_KIND_READONLY_SSBO,
+	DXIL_SPV_META_DESCRIPTOR_KIND_INT_MAX = 0x7fffffff
+} dxil_spv_meta_descriptor_kind;
 
 #ifdef DXIL_SPV_ENABLE_EXPERIMENTAL_WORKGRAPHS
 typedef enum dxil_spv_node_launch_type
@@ -1042,8 +1053,10 @@ DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_shader_feature(
  * Returns NULL when there are no warnings. */
 DXIL_SPV_PUBLIC_API const char *dxil_spv_converter_get_analysis_warnings(dxil_spv_converter converter);
 
-DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_meta_uniform_descriptor(
-	dxil_spv_converter converter, dxil_spv_meta_uniform_descriptors meta, unsigned desc_set, unsigned binding);
+/* Adds explicit mapping for system descriptors. */
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_set_meta_descriptor(
+		dxil_spv_converter converter, dxil_spv_meta_descriptor meta,
+		dxil_spv_meta_descriptor_kind kind, unsigned desc_set, unsigned binding_or_push_index);
 
 /* Use an optimized allocation scheme.
  * Call begin before allocating any dxil_spv objects,

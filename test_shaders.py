@@ -258,9 +258,9 @@ def cross_compile_dxil(shader, args, paths, is_asm):
     if '.nvapi.' in shader:
         hlsl_cmd += ['--nvapi', '127', '0']
     if '.heap-robustness-cbv.' in shader:
-        hlsl_cmd += ['--meta-ubo-descriptor', '0', '10', '20']
+        hlsl_cmd += ['--meta-descriptor', '0', '3', '10', '20']
     if '.heap-raw-va-cbv.' in shader:
-        hlsl_cmd += ['--meta-ubo-descriptor', '1', '10', '21']
+        hlsl_cmd += ['--meta-descriptor', '1', '4', '10', '21']
     if '.heap-robustness.' in shader:
         hlsl_cmd += ['--descriptor-heap-robustness']
 

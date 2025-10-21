@@ -399,7 +399,8 @@ struct dxil_spv_converter_s
 
 	struct MetaDescriptorMapping
 	{
-		MetaUniformDescriptors meta;
+		MetaDescriptor meta;
+		MetaDescriptorKind kind;
 		uint32_t desc_set;
 		uint32_t desc_binding;
 	};
@@ -757,7 +758,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 		dxil_converter.add_non_semantic_debug_info(info);
 
 	for (auto &mapping : converter->meta_mappings)
-		dxil_converter.set_meta_uniform_descriptor(mapping.meta, mapping.desc_set, mapping.desc_binding);
+		dxil_converter.set_meta_descriptor(mapping.meta, mapping.kind, mapping.desc_set, mapping.desc_binding);
 
 	for (auto &local_param : converter->local_root_parameters)
 	{
@@ -1647,10 +1648,11 @@ dxil_spv_bool dxil_spv_converter_uses_shader_feature(
 		return DXIL_SPV_FALSE;
 }
 
-dxil_spv_result dxil_spv_converter_set_meta_uniform_descriptor(
-	dxil_spv_converter converter, dxil_spv_meta_uniform_descriptors meta, unsigned desc_set, unsigned binding)
+dxil_spv_result dxil_spv_converter_set_meta_descriptor(
+		dxil_spv_converter converter, dxil_spv_meta_descriptor meta,
+		dxil_spv_meta_descriptor_kind kind, unsigned desc_set, unsigned binding_or_push_index)
 {
-	converter->meta_mappings.push_back({ MetaUniformDescriptors(meta), desc_set, binding });
+	converter->meta_mappings.push_back({ MetaDescriptor(meta), MetaDescriptorKind(kind), desc_set, binding_or_push_index });
 	return DXIL_SPV_SUCCESS;
 }
 

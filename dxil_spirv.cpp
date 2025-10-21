@@ -195,12 +195,13 @@ static void print_help()
 	     "\t[--full-wmma <fp8> <nv-coopmat2>]\n"
 	     "\t[--shader-quirk <index>]\n"
 	     "\t[--non-semantic]\n"
-	     "\t[--meta-ubo-descriptor index set binding]\n");
+	     "\t[--meta-descriptor descriptor kind set binding]\n");
 }
 
 struct MetaDescriptor
 {
-	dxil_spv_meta_uniform_descriptors meta;
+	dxil_spv_meta_descriptor meta;
+	dxil_spv_meta_descriptor_kind kind;
 	uint32_t desc_set;
 	uint32_t desc_binding;
 };
@@ -879,9 +880,10 @@ int main(int argc, char **argv)
 		args.quirks.push_back(dxil_spv_shader_quirk(parser.next_uint()));
 	});
 	cbs.add("--non-semantic", [&](CLIParser &) { args.non_semantic = true; });
-	cbs.add("--meta-ubo-descriptor", [&](CLIParser &parser) {
+	cbs.add("--meta-descriptor", [&](CLIParser &parser) {
 		MetaDescriptor meta = {};
-		meta.meta = dxil_spv_meta_uniform_descriptors(parser.next_uint());
+		meta.meta = dxil_spv_meta_descriptor(parser.next_uint());
+		meta.kind = dxil_spv_meta_descriptor_kind(parser.next_uint());
 		meta.desc_set = parser.next_uint();
 		meta.desc_binding = parser.next_uint();
 		args.meta_descriptors.push_back(meta);
@@ -1261,7 +1263,7 @@ int main(int argc, char **argv)
 	}
 
 	for (auto &meta : args.meta_descriptors)
-		dxil_spv_converter_set_meta_uniform_descriptor(converter, meta.meta, meta.desc_set, meta.desc_binding);
+		dxil_spv_converter_set_meta_descriptor(converter, meta.meta, meta.kind, meta.desc_set, meta.desc_binding);
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 

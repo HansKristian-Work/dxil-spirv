@@ -891,14 +891,36 @@ enum class ShaderFeature
 	Count
 };
 
-enum class MetaUniformDescriptors
+enum class MetaDescriptor
 {
 	// u32 containing number of descriptors in CBV_SRV_UAV heap.
+	// Must be UBOContainingConstant.
 	ResourceDescriptorHeapSize = 0,
 	// A BDA pointing to first descriptor payload in resource heap.
+	// May point to real descriptors, or only UAV counters depending on driver needs.
 	// Stride / offset of pointer is determined by Option::PhysicalAddressDescriptorIndexing.
+	// Must be UBOContainingBDA or ReadonlySSBO.
 	RawDescriptorHeapView = 1,
 	Count
+};
+
+enum class MetaDescriptorKind
+{
+	Invalid,
+
+	// Currently unused, could be extended as needed.
+	PushConstant,
+	PushBDA,
+
+	// An UBO containing plain constants.
+	// May not be backed by a real descriptor, and be hoisted through some special mechanism.
+	UBOContainingConstant,
+	// An UBO containing a BDA. May not be backed by a real descriptor.
+	// May not be backed by a real descriptor, and be hoisted through some special mechanism.
+	UBOContainingBDA,
+
+	// An SSBO backed by a real descriptor, i.e. OpArrayLength is valid.
+	ReadonlySSBO
 };
 
 class Converter
@@ -966,7 +988,8 @@ public:
 
 	String get_analysis_warnings() const;
 
-	void set_meta_uniform_descriptor(MetaUniformDescriptors desc, uint32_t desc_set, uint32_t binding);
+	void set_meta_descriptor(MetaDescriptor desc, MetaDescriptorKind kind,
+	                         uint32_t desc_set, uint32_t binding_or_push_index);
 
 	struct Impl;
 
