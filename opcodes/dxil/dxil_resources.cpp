@@ -640,10 +640,32 @@ static spv::Id build_descriptor_qa_check(Converter::Impl &impl, spv::Id offset_i
 static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id offset_id)
 {
 	auto &builder = impl.builder();
-	auto *op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
-	op->add_id(impl.instrumentation.descriptor_heap_introspection_var_id);
-	op->add_literal(0);
-	impl.add(op);
+
+	spv::Id size_id;
+
+	if (impl.instrumentation.descriptor_heap_size_var_id)
+	{
+		auto *chain = impl.allocate(spv::OpAccessChain,
+		                            builder.makePointer(spv::StorageClassUniform, builder.makeUintType(32)));
+		chain->add_id(impl.instrumentation.descriptor_heap_size_var_id);
+		chain->add_id(builder.makeUintConstant(0));
+		impl.add(chain);
+
+		auto *load = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+		load->add_id(chain->id);
+		impl.add(load);
+
+		size_id = load->id;
+	}
+	else
+	{
+		auto *op = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
+		op->add_id(impl.instrumentation.descriptor_heap_introspection_var_id);
+		op->add_literal(0);
+		impl.add(op);
+
+		size_id = op->id;
+	}
 
     if (impl.options.instruction_instrumentation.enabled &&
             impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
@@ -651,7 +673,7 @@ static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id o
         // If we can just assert instead, go for that.
         auto *less_than = impl.allocate(spv::OpULessThan, builder.makeBoolType());
         less_than->add_id(offset_id);
-        less_than->add_id(op->id);
+        less_than->add_id(size_id);
         impl.add(less_than);
 
         auto *assert_in_bounds = impl.allocate(spv::OpAssumeTrueKHR);
@@ -668,7 +690,7 @@ static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id o
         clamp_op->add_id(impl.glsl_std450_ext);
         clamp_op->add_literal(GLSLstd450UMin);
         clamp_op->add_id(offset_id);
-        clamp_op->add_id(op->id);
+        clamp_op->add_id(size_id);
         impl.add(clamp_op);
         return clamp_op->id;
     }
@@ -696,11 +718,21 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 		offset_id = impl.get_id_for_value(dynamic_offset);
 	}
 
+	bool need_heap_robustness_check =
+	    impl.options.descriptor_heap_robustness ||
+	    (impl.options.instruction_instrumentation.enabled &&
+	     impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume);
+
 	if (impl.options.descriptor_qa_enabled)
+	{
 		offset_id = build_descriptor_qa_check(impl, offset_id, type);
-	else if (type != DESCRIPTOR_QA_TYPE_SAMPLER_BIT && dynamic_offset &&
-	         impl.instrumentation.descriptor_heap_introspection_var_id)
+	}
+	else if (need_heap_robustness_check && type != DESCRIPTOR_QA_TYPE_SAMPLER_BIT && dynamic_offset &&
+	         (impl.instrumentation.descriptor_heap_introspection_var_id ||
+	          impl.instrumentation.descriptor_heap_size_var_id))
+	{
 		offset_id = build_descriptor_heap_robustness(impl, offset_id);
+	}
 
 	return offset_id;
 }
@@ -730,32 +762,78 @@ static spv::Id build_physical_address_indexing_from_ssbo(Converter::Impl &impl, 
 	return offset_id;
 }
 
-static spv::Id build_load_physical_pointer(Converter::Impl &impl, const Converter::Impl::ResourceReference &counter,
-                                           const llvm::Value *offset, const llvm::CallInst *instruction)
+static spv::Id build_load_physical_uav_counter(Converter::Impl &impl, const Converter::Impl::ResourceReference &counter,
+                                               const llvm::Value *offset, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 
 	spv::Id uint_type = builder.makeUintType(32);
 	spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+	spv::Id ptr_id;
 
-	auto *chain_op = impl.allocate(spv::OpAccessChain,
-	                               builder.makePointer(spv::StorageClassStorageBuffer, uvec2_type));
-	chain_op->add_id(counter.var_id);
-	chain_op->add_id(builder.makeUintConstant(0));
+	if (impl.instrumentation.descriptor_heap_introspection_var_id == counter.var_id)
+	{
+		if (!impl.instrumentation.descriptor_heap_introspection_is_bda)
+		{
+			LOGE("When using introspection variable for UAV counter mapping, it must be BDA based.\n");
+			return 0;
+		}
 
-	spv::Id offset_id = build_bindless_heap_offset(
-		impl, counter, DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
-		counter.base_resource_is_array ? offset : nullptr);
+		auto *chain_op =
+			impl.allocate(spv::OpAccessChain, builder.makePointer(
+				spv::StorageClassUniform,
+				impl.instrumentation.descriptor_heap_introspection_block_ptr_type_id));
 
-	offset_id = build_physical_address_indexing_from_ssbo(impl, offset_id);
+		chain_op->add_id(impl.instrumentation.descriptor_heap_introspection_var_id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		impl.add(chain_op);
 
-	chain_op->add_id(offset_id);
-	impl.add(chain_op);
+		auto *load_ptr = impl.allocate(
+		    spv::OpLoad, impl.instrumentation.descriptor_heap_introspection_block_ptr_type_id);
+		load_ptr->add_id(chain_op->id);
+		impl.add(load_ptr);
+
+        chain_op = impl.allocate(spv::OpInBoundsAccessChain,
+                builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uvec2_type));
+		chain_op->add_id(load_ptr->id);
+		chain_op->add_id(builder.makeUintConstant(0));
+
+		spv::Id offset_id = build_bindless_heap_offset(impl, counter, DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
+		                                               counter.base_resource_is_array ? offset : nullptr);
+		chain_op->add_id(offset_id);
+		chain_op->add_id(builder.makeUintConstant(0));
+		chain_op->add_id(builder.makeUintConstant(impl.options.physical_address_descriptor_offset));
+		impl.add(chain_op);
+
+		ptr_id = chain_op->id;
+	}
+	else
+	{
+		auto *chain_op =
+		    impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, uvec2_type));
+		chain_op->add_id(counter.var_id);
+		chain_op->add_id(builder.makeUintConstant(0));
+
+		spv::Id offset_id = build_bindless_heap_offset(impl, counter, DESCRIPTOR_QA_TYPE_RAW_VA_BIT,
+		                                               counter.base_resource_is_array ? offset : nullptr);
+		offset_id = build_physical_address_indexing_from_ssbo(impl, offset_id);
+
+		chain_op->add_id(offset_id);
+		impl.add(chain_op);
+
+		ptr_id = chain_op->id;
+	}
 
 	auto *load_op = impl.allocate(spv::OpLoad, uvec2_type);
-	load_op->add_id(chain_op->id);
-	impl.add(load_op);
+	load_op->add_id(ptr_id);
 
+	if (impl.instrumentation.descriptor_heap_introspection_var_id == counter.var_id)
+	{
+		load_op->add_literal(spv::MemoryAccessAlignedMask);
+		load_op->add_literal(8);
+	}
+
+	impl.add(load_op);
 	return load_op->id;
 }
 
@@ -1569,7 +1647,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				{
 					if (counter_reference.resource_kind == DXIL::ResourceKind::Invalid)
 					{
-						meta.counter_var_id = build_load_physical_pointer(impl, counter_reference, instruction_offset, instruction);
+						meta.counter_var_id =
+						    build_load_physical_uav_counter(impl, counter_reference, instruction_offset, instruction);
 						meta.counter_storage = spv::StorageClassPhysicalStorageBuffer;
 						// Don't support this since the physical pointer we get from heap is actually the counter.
 						meta.instrumentation = {};

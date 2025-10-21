@@ -386,7 +386,8 @@ struct Converter::Impl
 	bool emit_resources_global_mapping(DXIL::ResourceType type, const llvm::MDNode *node);
 	bool emit_resources();
 	bool emit_global_heaps();
-	bool emit_descriptor_heap_introspection_ssbo();
+	bool emit_descriptor_heap_introspection_buffer();
+	bool emit_descriptor_heap_size_ubo();
 	bool emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *refl);
 	bool emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *refl);
 	bool emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *refl);
@@ -474,8 +475,11 @@ struct Converter::Impl
 
 	struct
 	{
+		spv::Id descriptor_heap_size_var_id;
 		spv::Id descriptor_heap_introspection_var_id;
+		spv::Id descriptor_heap_introspection_block_ptr_type_id;
 		spv::Id invocation_id_var_id;
+		bool descriptor_heap_introspection_is_bda;
 	} instrumentation = {};
 	void emit_write_instrumentation_invocation_id(CFGNode *node);
 
@@ -811,6 +815,13 @@ struct Converter::Impl
 		} nvapi;
 
 		bool extended_non_semantic_info = false;
+
+		struct
+		{
+			MetaDescriptorKind kind = MetaDescriptorKind::Invalid;
+			uint32_t desc_set = UINT32_MAX;
+			uint32_t desc_binding = UINT32_MAX;
+		} meta_descriptor_mappings[int(MetaDescriptor::Count)];
 	} options;
 
 	struct BindlessInfo

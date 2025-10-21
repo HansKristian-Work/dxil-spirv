@@ -194,8 +194,17 @@ static void print_help()
 	     "\t[--vkmm]\n"
 	     "\t[--full-wmma <fp8> <nv-coopmat2>]\n"
 	     "\t[--shader-quirk <index>]\n"
-	     "\t[--non-semantic]\n");
+	     "\t[--non-semantic]\n"
+	     "\t[--meta-descriptor descriptor kind set binding]\n");
 }
+
+struct MetaDescriptor
+{
+	dxil_spv_meta_descriptor meta;
+	dxil_spv_meta_descriptor_kind kind;
+	uint32_t desc_set;
+	uint32_t desc_binding;
+};
 
 struct Arguments
 {
@@ -268,6 +277,8 @@ struct Arguments
 	uint64_t shader_hash = 0;
 
 	dxil_spv_option_bindless_offset_buffer_layout offset_buffer_layout;
+
+	std::vector<MetaDescriptor> meta_descriptors;
 };
 
 struct Remapper
@@ -869,6 +880,14 @@ int main(int argc, char **argv)
 		args.quirks.push_back(dxil_spv_shader_quirk(parser.next_uint()));
 	});
 	cbs.add("--non-semantic", [&](CLIParser &) { args.non_semantic = true; });
+	cbs.add("--meta-descriptor", [&](CLIParser &parser) {
+		MetaDescriptor meta = {};
+		meta.meta = dxil_spv_meta_descriptor(parser.next_uint());
+		meta.kind = dxil_spv_meta_descriptor_kind(parser.next_uint());
+		meta.desc_set = parser.next_uint();
+		meta.desc_binding = parser.next_uint();
+		args.meta_descriptors.push_back(meta);
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1242,6 +1261,9 @@ int main(int argc, char **argv)
 			{ DXIL_SPV_OPTION_SHADER_QUIRK }, quirk };
 		dxil_spv_converter_add_option(converter, &helper.base);
 	}
+
+	for (auto &meta : args.meta_descriptors)
+		dxil_spv_converter_set_meta_descriptor(converter, meta.meta, meta.kind, meta.desc_set, meta.desc_binding);
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 

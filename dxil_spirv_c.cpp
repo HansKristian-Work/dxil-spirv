@@ -397,6 +397,15 @@ struct dxil_spv_converter_s
 
 	Vector<std::unique_ptr<OptionBase>> options;
 
+	struct MetaDescriptorMapping
+	{
+		MetaDescriptor meta;
+		MetaDescriptorKind kind;
+		uint32_t desc_set;
+		uint32_t desc_binding;
+	};
+	Vector<MetaDescriptorMapping> meta_mappings;
+
 	Vector<DescriptorTableEntry> local_entries;
 	bool active_table = false;
 	bool uses_subgroup_size = false;
@@ -747,6 +756,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 	for (auto &info : converter->non_semantic_debug_info)
 		dxil_converter.add_non_semantic_debug_info(info);
+
+	for (auto &mapping : converter->meta_mappings)
+		dxil_converter.set_meta_descriptor(mapping.meta, mapping.kind, mapping.desc_set, mapping.desc_binding);
 
 	for (auto &local_param : converter->local_root_parameters)
 	{
@@ -1634,6 +1646,14 @@ dxil_spv_bool dxil_spv_converter_uses_shader_feature(
 		return converter->shader_feature_used[feature] ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	else
 		return DXIL_SPV_FALSE;
+}
+
+dxil_spv_result dxil_spv_converter_set_meta_descriptor(
+		dxil_spv_converter converter, dxil_spv_meta_descriptor meta,
+		dxil_spv_meta_descriptor_kind kind, unsigned desc_set, unsigned binding_or_push_index)
+{
+	converter->meta_mappings.push_back({ MetaDescriptor(meta), MetaDescriptorKind(kind), desc_set, binding_or_push_index });
+	return DXIL_SPV_SUCCESS;
 }
 
 const char *dxil_spv_converter_get_analysis_warnings(dxil_spv_converter converter)
