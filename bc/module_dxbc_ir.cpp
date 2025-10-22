@@ -3073,7 +3073,7 @@ MDOperand *ParseContext::create_entry_point_meta(Function *patch_control_func)
 {
 	Vector<MDOperand *> flag_ops;
 
-	uint64_t shader_flags = DXIL::ShaderFlagNativeLowPrecision;
+	uint64_t shader_flags = 0;
 	flag_ops.push_back(create_constant_uint_meta(uint32_t(DXIL::ShaderPropertyTag::ShaderFlags)));
 
 	if (shader_stage == ir::ShaderStage::ePixel)
