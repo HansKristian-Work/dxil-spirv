@@ -928,7 +928,127 @@ spv::Id emit_bypass_fp16_trunc(Converter::Impl &impl, const llvm::Instruction *i
 	return 0;
 }
 
+static spv::Id emit_special_non_native_packing_bitcast(Converter::Impl &impl, const llvm::CastInst *instruction)
+{
+	auto &builder = impl.builder();
+	auto *input = instruction->getOperand(0);
+
+	auto *output_scalar_type = instruction->getType();
+	bool output_is_vec2 = false;
+	auto *input_scalar_type = input->getType();
+	bool input_is_vec2 = false;
+
+	if (auto *vec_type = llvm::dyn_cast<llvm::VectorType>(output_scalar_type))
+	{
+		output_scalar_type = vec_type->getElementType();
+		output_is_vec2 = true;
+	}
+
+	if (auto *vec_type = llvm::dyn_cast<llvm::VectorType>(input_scalar_type))
+	{
+		input_scalar_type = vec_type->getElementType();
+		input_is_vec2 = true;
+	}
+
+	if (output_scalar_type->getTypeID() == llvm::Type::TypeID::HalfTyID &&
+	    input_scalar_type->getTypeID() == llvm::Type::TypeID::IntegerTyID)
+	{
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+		spv::Id id = impl.get_id_for_value(input);
+
+		if (input_is_vec2 == output_is_vec2)
+		{
+			if (!input_is_vec2)
+			{
+				auto *upconv = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
+				upconv->add_id(id);
+				impl.add(upconv);
+				id = upconv->id;
+			}
+			else
+			{
+				auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+				bitcast->add_id(id);
+				impl.add(bitcast);
+				id = bitcast->id;
+			}
+		}
+
+		auto *cast = impl.allocate(spv::OpExtInst, builder.makeVectorType(builder.makeFloatType(32), 2));
+		cast->add_id(impl.glsl_std450_ext);
+		cast->add_literal(GLSLstd450UnpackHalf2x16);
+		cast->add_id(id);
+		impl.add(cast);
+
+		if (output_is_vec2)
+		{
+			impl.rewrite_value(instruction, cast->id);
+			return cast->id;
+		}
+		else
+		{
+			auto *ext = impl.allocate(spv::OpCompositeExtract, instruction);
+			ext->add_id(cast->id);
+			ext->add_literal(0);
+			impl.add(ext);
+			return ext->id;
+		}
+	}
+	else if (output_scalar_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+	         input_scalar_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+	{
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+		spv::Id id = impl.get_id_for_value(input);
+		if (!input_is_vec2)
+		{
+			spv::Id lanes[2] = { id, builder.makeFloatConstant(0.0f) };
+			id = impl.build_vector(builder.makeFloatType(32), lanes, 2);
+		}
+
+		auto *cast = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+		cast->add_id(impl.glsl_std450_ext);
+		cast->add_literal(GLSLstd450PackHalf2x16);
+		cast->add_id(id);
+		impl.add(cast);
+
+		if (output_is_vec2 == input_is_vec2)
+		{
+			if (output_is_vec2)
+			{
+				auto *bitcast = impl.allocate(spv::OpBitcast, instruction);
+				bitcast->add_id(cast->id);
+				impl.add(bitcast);
+				return bitcast->id;
+			}
+			else
+			{
+				auto *downconv = impl.allocate(spv::OpUConvert, instruction);
+				downconv->add_id(cast->id);
+				impl.add(downconv);
+				return downconv->id;
+			}
+		}
+		else
+		{
+			impl.rewrite_value(instruction, cast->id);
+			return cast->id;
+		}
+	}
+
+	return 0;
+}
+
 static spv::Id emit_bypass_fp16_trunc(Converter::Impl &, const llvm::ConstantExpr *)
+{
+	// If it's constexpr, no point in optimizing ourselves. Really won't happen.
+	return 0;
+}
+
+static spv::Id emit_special_non_native_packing_bitcast(Converter::Impl &, const llvm::ConstantExpr *)
 {
 	// If it's constexpr, no point in optimizing ourselves. Really won't happen.
 	return 0;
@@ -991,6 +1111,9 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	switch (instruction->getOpcode())
 	{
 	case llvm::Instruction::CastOps::BitCast:
+		if (!impl.support_native_fp16_operations())
+			if (spv::Id id = emit_special_non_native_packing_bitcast(impl, instruction))
+				return id;
 		opcode = spv::OpBitcast;
 		break;
 

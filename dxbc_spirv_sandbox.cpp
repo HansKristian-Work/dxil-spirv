@@ -205,6 +205,12 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 	demote.supported = true;
 	converter.add_option(demote);
 
+#if 1
+	OptionMinPrecisionNative16Bit native_16bit;
+	native_16bit.enabled = true;
+	converter.add_option(native_16bit);
+#endif
+
 	converter.set_resource_remapping_interface(&remapper);
 	auto entry = converter.convert_entry_point();
 
@@ -266,7 +272,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 0
-		if (test.name != "test_io_ds_triangle")
+		if (test.name != "test_arithmetic_fp16_packing")
 			continue;
 #endif
 
