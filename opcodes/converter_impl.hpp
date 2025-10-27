@@ -285,6 +285,7 @@ struct Converter::Impl
 	bool emit_execution_modes_mesh();
 	bool emit_execution_modes_fp_denorm_rounding();
 	bool emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads);
+	void analyze_unrolled_thread_group_z(const unsigned threads[3]);
 
 	bool analyze_instructions(llvm::Function *func);
 	void analyze_instructions_post_execution_modes();
@@ -372,6 +373,7 @@ struct Converter::Impl
 		bool per_sample_shading = false;
 		bool waveops_include_helper_lanes = false;
 		bool needs_quad_derivatives = false;
+		bool unroll_workgroup_z = false;
 		String entry_point_name;
 
 		// Eventually, we should use Vulkan memory model across the board,
@@ -943,6 +945,7 @@ struct Converter::Impl
 		bool need_maximal_reconvergence_helper_call = false;
 		bool has_group_shared_barrier = false;
 		bool has_group_shared_access = false;
+		bool has_execution_barrier = false;
 		bool needs_auto_group_shared_barriers = false;
 		bool require_wmma = false;
 		// Should just do this always, but don't want to nuke FOZ caches needlessly.

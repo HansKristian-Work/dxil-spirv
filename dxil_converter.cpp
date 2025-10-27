@@ -7034,9 +7034,81 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 	return true;
 }
 
+void Converter::Impl::analyze_unrolled_thread_group_z(const unsigned threads[3])
+{
+	auto &module = bitcode_parser.get_module();
+
+	// Optimization attempt. If we see UAV writes to 3D images with a 2D kernel,
+	// try to rewrite by fusing the Z dimension.
+	// Only do this if the CS dispatch is trivial,
+	// i.e. there is no meaningful communication between lanes.
+
+	// dxbc-spirv path accesses compute builtins in ways which are
+	// unusual and won't be caught by normal DXIL paths.
+	// Don't bother unless we have to.
+
+	// If we have a normal 2D dispatch,
+	// try promoting that to 3D by unrolling workgroups in Z first.
+	// If 1D, it's likely a case of a shader that does Z-order coding on its own.
+	// Unrolling in Z isn't problematic since order of workgroups is not well-defined,
+	// but it's also somewhat of a pointless optimization.
+
+	// This is expressed as spec constants rather than plain rewrite.
+	// Caller can ignore this rewrite and the shader will work exactly the same.
+
+	if (!shader_analysis.has_execution_barrier &&
+	    !shader_analysis.require_subgroups &&
+	    !shader_analysis.require_compute_shader_derivatives &&
+	    !module_is_dxbc_spirv(module) &&
+	    !execution_model_lib_target &&
+	    threads[0] * threads[1] <= 64 && threads[1] > 1 && threads[2] == 1)
+	{
+		auto *resource_meta = module.getNamedMetadata("dx.resources");
+		if (!resource_meta)
+			return;
+
+		auto *metas = resource_meta->getOperand(0);
+		llvm::MDNode *uavs = nullptr;
+		if (metas->getOperand(1))
+			uavs = llvm::dyn_cast<llvm::MDNode>(metas->getOperand(1));
+
+		if (!uavs)
+			return;
+
+		unsigned num_uavs = uavs->getNumOperands();
+		for (unsigned i = 0; i < num_uavs; i++)
+		{
+			auto *uav = llvm::cast<llvm::MDNode>(uavs->getOperand(i));
+			auto var_meta = get_resource_variable_meta(uav);
+			if (!var_meta.is_active)
+				continue;
+
+			auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
+			if (resource_kind != DXIL::ResourceKind::Texture3D)
+				continue;
+
+			unsigned index = get_constant_metadata(uav, 0);
+			auto &access_meta = uav_access_tracking[index];
+
+			if (access_meta.has_written)
+			{
+				execution_mode_meta.unroll_workgroup_z = true;
+				return;
+			}
+		}
+	}
+}
+
 bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads)
 {
 	auto &builder = spirv_module.get_builder();
+
+	unsigned threads[3];
+	for (unsigned dim = 0; dim < 3; dim++)
+		threads[dim] = get_constant_metadata(num_threads, dim);
+	unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
+
+	analyze_unrolled_thread_group_z(threads);
 
 	if (options.force_wave_size_enable && options.force_subgroup_size)
 	{
@@ -7064,11 +7136,6 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 			execution_mode_meta.wave_size_preferred = 0;
 		}
 	}
-
-	unsigned threads[3];
-	for (unsigned dim = 0; dim < 3; dim++)
-		threads[dim] = get_constant_metadata(num_threads, dim);
-	unsigned total_workgroup_threads = threads[0] * threads[1] * threads[2];
 
 	if (execution_model == spv::ExecutionModelGLCompute)
 	{
@@ -7146,8 +7213,23 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 	}
 	else
 	{
-		builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
-		                         threads[0], threads[1], threads[2]);
+		if (execution_mode_meta.unroll_workgroup_z)
+		{
+			threads[0] = builder.makeUintConstant(threads[0]);
+			threads[1] = builder.makeUintConstant(threads[1]);
+			threads[2] = builder.makeUintConstant(threads[2], true);
+
+			builder.addDecoration(threads[2], spv::DecorationSpecId, 0);
+			builder.addExecutionModeId(spirv_module.get_entry_function(),
+			                           spv::ExecutionModeLocalSizeId,
+			                           threads[0], threads[1], threads[2]);
+			spirv_module.set_override_spirv_version(0x10400);
+		}
+		else
+		{
+			builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeLocalSize,
+			                         threads[0], threads[1], threads[2]);
+		}
 	}
 
 	return true;

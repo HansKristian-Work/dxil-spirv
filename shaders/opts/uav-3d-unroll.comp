@@ -1,0 +1,10 @@
+RWTexture3D<uint4> T0 : register(u0);
+RWTexture3D<uint4> T1 : register(u1);
+
+[numthreads(7, 6, 1)]
+void main(uint local_index : SV_GroupIndex, uint3 group_id : SV_GroupID, uint3 dispatch_thread_id : SV_DispatchThreadID, uint3 local_id : SV_GroupThreadID)
+{
+	T0[dispatch_thread_id] += uint4(local_id, local_index);
+	if (local_index < 10)
+		T1[group_id] += uint4(group_id, local_index);
+}

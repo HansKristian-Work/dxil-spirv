@@ -250,15 +250,20 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl
 
 	// Awkward NVIDIA workaround. If loading LocalInvocationId, check if we can return constant 0.
 	// This is key to avoid some particular shader compiler bugs.
+	// Also, if we're unrolling Z, then LocalID.z is always going to be 0.
 	if (builtin == spv::BuiltInLocalInvocationId)
 	{
-		if (component <= 2 && impl.execution_mode_meta.workgroup_threads[component] == 1)
+		if ((component == 2 && impl.execution_mode_meta.unroll_workgroup_z != 0) ||
+		    (component <= 2 && impl.execution_mode_meta.workgroup_threads[component] == 1))
 		{
 			spv::Id const_zero = impl.builder().makeUintConstant(0);
 			impl.rewrite_value(instruction, const_zero);
 			return true;
 		}
 	}
+
+	if (component == 2 && builtin == spv::BuiltInWorkgroupId && impl.execution_mode_meta.unroll_workgroup_z)
+		builtin = spv::BuiltInGlobalInvocationId;
 
 	spv::Id var_id = impl.spirv_module.get_builtin_shader_input(builtin);
 
@@ -274,9 +279,43 @@ bool emit_thread_id_load_instruction(spv::BuiltIn builtin, Converter::Impl &impl
 		var_id = op->id;
 	}
 
-	Operation *op = impl.allocate(spv::OpLoad, instruction);
-	op->add_id(var_id);
-	impl.add(op);
+	if (builtin == spv::BuiltInLocalInvocationIndex && impl.execution_mode_meta.unroll_workgroup_z)
+	{
+		auto &builder = impl.builder();
+		spv::Id local_ids[2];
+
+		for (unsigned i = 0; i < 2; i++)
+		{
+			auto *chain = impl.allocate(
+			    spv::OpAccessChain, builder.makePointer(spv::StorageClassInput, builder.makeUintType(32)));
+			chain->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInLocalInvocationId));
+			chain->add_id(builder.makeUintConstant(i));
+			impl.add(chain);
+
+			auto *load = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+			load->add_id(chain->id);
+			impl.add(load);
+
+			local_ids[i] = load->id;
+		}
+
+		auto *mul = impl.allocate(spv::OpIMul, builder.makeUintType(32));
+		mul->add_id(local_ids[1]);
+		mul->add_id(builder.makeUintConstant(impl.execution_mode_meta.workgroup_threads[0]));
+		impl.add(mul);
+
+		auto *add = impl.allocate(spv::OpIAdd, instruction);
+		add->add_id(mul->id);
+		add->add_id(local_ids[0]);
+		impl.add(add);
+	}
+	else
+	{
+		Operation *op = impl.allocate(spv::OpLoad, instruction);
+		op->add_id(var_id);
+		impl.add(op);
+	}
+
 	return true;
 }
 } // namespace dxil_spv

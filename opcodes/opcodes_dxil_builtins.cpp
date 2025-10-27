@@ -1313,6 +1313,9 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 		if (!get_constant_operand(instruction, 1, &operation))
 			return false;
 
+		if ((operation & DXIL::SyncThreadGroup) != 0)
+			impl.shader_analysis.has_execution_barrier = true;
+
 		// See D3D11 functional spec: 7.14.4 Global vs Group/Local Coherency on Non-Atomic UAV Reads.
 		// In the GLSL memory model, we need coherent between invocations in general.
 		// There is no guarantee for intra-workgroup coherence sadly :(
@@ -1335,6 +1338,9 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 			return false;
 		if (!get_constant_operand(instruction, 2, &semantic_flags))
 			return false;
+
+		if ((semantic_flags & DXIL::GroupSyncBit) != 0)
+			impl.shader_analysis.has_execution_barrier = true;
 
 		if ((semantic_flags & DXIL::GroupScopeBit) != 0)
 		{
@@ -1363,10 +1369,15 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 		if (!get_constant_operand(instruction, 2, &semantics))
 			return false;
 
+		if ((semantics & DXIL::GroupSyncBit) != 0)
+			impl.shader_analysis.has_execution_barrier = true;
+
 		if ((semantics & DXIL::GroupScopeBit) != 0)
 		{
 			if (!value_is_dx_op_instrinsic(instruction->getOperand(1), DXIL::Op::AnnotateNodeRecordHandle))
 				return false;
+
+			impl.shader_analysis.has_execution_barrier = true;
 
 			auto *annotation = llvm::cast<llvm::CallInst>(instruction->getOperand(1));
 			uint32_t node_io = get_node_io_from_annotate_handle(annotation);
@@ -1390,6 +1401,9 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 		uint32_t semantics = 0;
 		if (!get_constant_operand(instruction, 2, &semantics))
 			return false;
+
+		if ((semantics & DXIL::GroupSyncBit) != 0)
+			impl.shader_analysis.has_execution_barrier = true;
 
 		if ((semantics & DXIL::GroupScopeBit) != 0)
 		{
