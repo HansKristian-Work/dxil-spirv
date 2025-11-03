@@ -8657,7 +8657,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	}
 
 #ifdef HAVE_LLVMBC
-	if (func->get_structured_control_flow())
+	if (func && func->get_structured_control_flow())
 	{
 		// For TESC, the entry is a custom dispatch function.
 		result.entry.is_structured = execution_model != spv::ExecutionModelTessellationControl;
