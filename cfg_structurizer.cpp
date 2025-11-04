@@ -877,8 +877,9 @@ bool CFGStructurizer::rewrite_rov_lock_region()
 
 	auto *pdom = find_common_post_dominator(rov_blocks);
 
-	if (!find_single_entry_exit_lock_region(idom, pdom, rov_blocks) ||
-	    !idom || !idom->dominates(pdom))
+	if (!pdom || !idom ||
+	    !find_single_entry_exit_lock_region(idom, pdom, rov_blocks) ||
+	    !idom->dominates(pdom))
 	{
 		idom = nullptr;
 		pdom = nullptr;
