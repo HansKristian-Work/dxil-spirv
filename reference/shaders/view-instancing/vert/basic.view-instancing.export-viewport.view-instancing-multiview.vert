@@ -18,7 +18,8 @@ void main()
 
 #if 0
 // SPIR-V disassembly
-// MultiviewCompatible; SPIR-V
+// MultiviewCompatible
+; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
 ; Bound: 32

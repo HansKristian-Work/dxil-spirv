@@ -1374,7 +1374,7 @@ int main(int argc, char **argv)
 
 			dxil_spv_bool compat;
 			if (dxil_spv_converter_is_multiview_compatible(converter, &compat) == DXIL_SPV_SUCCESS && compat)
-				spirv_asm_string += "// MultiviewCompatible";
+				spirv_asm_string += "// MultiviewCompatible\n";
 
 			if (demangled_entry && !args.glsl)
 			{
