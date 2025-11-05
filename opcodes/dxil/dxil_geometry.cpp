@@ -174,7 +174,7 @@ spv::Id build_layer_offset_id(Converter::Impl &impl)
 	ext->add_id(builder.makeUintConstant(16));
 	impl.add(ext);
 
-	return load->id;
+	return ext->id;
 }
 
 static bool should_emit_view_instancing_fixed_layer_viewport(Converter::Impl &impl, bool entry_point)

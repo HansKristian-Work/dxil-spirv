@@ -20,7 +20,7 @@ void main()
     {
         return;
     }
-    gl_Layer = int(ViewInstancingOffsets.ViewID_Layer);
+    gl_Layer = int(bitfieldExtract(ViewInstancingOffsets.ViewID_Layer, int(16u), int(16u)));
     float _42 = float(bitfieldExtract(ViewInstancingOffsets.ViewID_Layer, int(0u), int(16u)));
     gl_Position.x = _42;
     gl_Position.y = _42;
@@ -114,7 +114,7 @@ OpReturn
 %34 = OpAccessChain %20 %19 %22
 %35 = OpLoad %5 %34
 %36 = OpBitFieldUExtract %5 %35 %25 %25
-OpStore %37 %35
+OpStore %37 %36
 %38 = OpLoad %5 %7
 %39 = OpAccessChain %20 %19 %22
 %40 = OpLoad %5 %39
