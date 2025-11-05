@@ -561,6 +561,7 @@ struct Converter::Impl
 		spv::Id id;
 		DXIL::ComponentType component_type;
 		unsigned semantic_offset;
+		DXIL::Semantic semantic;
 	};
 
 	struct ElementPatchMeta : ElementMeta

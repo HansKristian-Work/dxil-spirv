@@ -4759,7 +4759,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			output_clip_cull_meta[element_id] = { clip_distance_count, cols, spv::BuiltInClipDistance };
-			output_elements_meta[element_id] = { 0, actual_element_type, 0 };
+			output_elements_meta[element_id] = { 0, actual_element_type, 0, system_value };
 			clip_distance_count += rows * cols;
 			continue;
 		}
@@ -4767,7 +4767,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			output_clip_cull_meta[element_id] = { cull_distance_count, cols, spv::BuiltInCullDistance };
-			output_elements_meta[element_id] = { 0, actual_element_type, 0 };
+			output_elements_meta[element_id] = { 0, actual_element_type, 0, system_value };
 			cull_distance_count += rows * cols;
 			continue;
 		}
@@ -4786,7 +4786,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
-		output_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
+		output_elements_meta[element_id] = { variable_id, actual_element_type, 0, system_value };
 
 		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))
 			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
@@ -5506,7 +5506,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			input_clip_cull_meta[element_id] = { clip_distance_count, cols, spv::BuiltInClipDistance };
-			input_elements_meta[element_id] = { 0, actual_element_type, 0 };
+			input_elements_meta[element_id] = { 0, actual_element_type, 0, system_value };
 			clip_distance_count += rows * cols;
 			continue;
 		}
@@ -5514,7 +5514,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			input_clip_cull_meta[element_id] = { cull_distance_count, cols, spv::BuiltInCullDistance };
-			input_elements_meta[element_id] = { 0, actual_element_type, 0 };
+			input_elements_meta[element_id] = { 0, actual_element_type, 0, system_value };
 			cull_distance_count += rows * cols;
 			continue;
 		}
@@ -5548,7 +5548,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
-		input_elements_meta[element_id] = { variable_id, actual_element_type, system_value != DXIL::Semantic::User ? start_row : 0 };
+		input_elements_meta[element_id] = { variable_id, actual_element_type, system_value != DXIL::Semantic::User ? start_row : 0, system_value };
 
 		if (per_vertex)
 		{
