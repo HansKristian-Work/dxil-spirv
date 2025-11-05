@@ -1,11 +1,6 @@
 #version 460
 #extension GL_ARB_shader_viewport_layer_array : require
 
-layout(set = 10, binding = 23, std140) uniform ViewInstanceMaskUBO
-{
-    uint Mask;
-} ViewInstanceMask;
-
 layout(set = 10, binding = 22, std140) uniform ViewInstancingOffsetsUBO
 {
     uint ViewID_Layer;
@@ -15,16 +10,11 @@ layout(location = 0) in uint LAYER;
 
 void main()
 {
-    gl_Position = vec4(-1.0);
-    if (bitfieldExtract(ViewInstanceMask.Mask, int(bitfieldExtract(ViewInstancingOffsets.ViewID_Layer, int(0u), int(16u))), int(1u)) == 0u)
-    {
-        return;
-    }
-    float _38 = float(bitfieldExtract(ViewInstancingOffsets.ViewID_Layer, int(0u), int(16u)));
-    gl_Position.x = _38;
-    gl_Position.y = _38;
-    gl_Position.z = _38;
-    gl_Position.w = _38;
+    float _24 = float(bitfieldExtract(ViewInstancingOffsets.ViewID_Layer, int(0u), int(16u)));
+    gl_Position.x = _24;
+    gl_Position.y = _24;
+    gl_Position.z = _24;
+    gl_Position.w = _24;
     gl_Layer = int(LAYER + bitfieldExtract(ViewInstancingOffsets.ViewID_Layer, int(16u), int(16u)));
 }
 
@@ -34,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 55
+; Bound: 39
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
@@ -46,23 +36,16 @@ OpName %3 "main"
 OpName %7 "LAYER"
 OpName %11 "SV_Position"
 OpName %13 "SV_RenderTargetArrayIndex"
-OpName %14 "ViewInstanceMaskUBO"
-OpMemberName %14 0 "Mask"
-OpName %16 "ViewInstanceMask"
-OpName %17 "ViewInstancingOffsetsUBO"
-OpMemberName %17 0 "ViewID_Layer"
-OpName %19 "ViewInstancingOffsets"
+OpName %15 "ViewInstancingOffsetsUBO"
+OpMemberName %15 0 "ViewID_Layer"
+OpName %17 "ViewInstancingOffsets"
 OpDecorate %7 Location 0
 OpDecorate %11 BuiltIn Position
 OpDecorate %13 BuiltIn Layer
-OpDecorate %14 Block
-OpMemberDecorate %14 0 Offset 0
-OpDecorate %16 DescriptorSet 10
-OpDecorate %16 Binding 23
-OpDecorate %17 Block
-OpMemberDecorate %17 0 Offset 0
-OpDecorate %19 DescriptorSet 10
-OpDecorate %19 Binding 22
+OpDecorate %15 Block
+OpMemberDecorate %15 0 Offset 0
+OpDecorate %17 DescriptorSet 10
+OpDecorate %17 Binding 22
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -74,57 +57,38 @@ OpDecorate %19 Binding 22
 %11 = OpVariable %10 Output
 %12 = OpTypePointer Output %5
 %13 = OpVariable %12 Output
-%14 = OpTypeStruct %5
-%15 = OpTypePointer Uniform %14
-%16 = OpVariable %15 Uniform
-%17 = OpTypeStruct %5
-%18 = OpTypePointer Uniform %17
-%19 = OpVariable %18 Uniform
-%20 = OpTypePointer Uniform %5
-%22 = OpConstant %5 0
-%25 = OpConstant %5 16
-%29 = OpConstant %5 1
-%30 = OpTypeBool
-%32 = OpConstant %8 -1
-%33 = OpConstantComposite %9 %32 %32 %32 %32
-%39 = OpTypePointer Output %8
-%43 = OpConstant %5 2
-%45 = OpConstant %5 3
+%15 = OpTypeStruct %5
+%16 = OpTypePointer Uniform %15
+%17 = OpVariable %16 Uniform
+%18 = OpTypePointer Uniform %5
+%20 = OpConstant %5 0
+%23 = OpConstant %5 16
+%25 = OpTypePointer Output %8
+%28 = OpConstant %5 1
+%30 = OpConstant %5 2
+%32 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %50
-%50 = OpLabel
-%21 = OpAccessChain %20 %19 %22
-%23 = OpLoad %5 %21
-%24 = OpBitFieldUExtract %5 %23 %22 %25
-%26 = OpAccessChain %20 %16 %22
-%27 = OpLoad %5 %26
-%28 = OpBitFieldUExtract %5 %27 %24 %29
-%31 = OpIEqual %30 %28 %22
-OpStore %11 %33
-OpSelectionMerge %52 None
-OpBranchConditional %31 %51 %52
-%51 = OpLabel
-OpReturn
-%52 = OpLabel
-%34 = OpLoad %5 %7
-%35 = OpAccessChain %20 %19 %22
-%36 = OpLoad %5 %35
-%37 = OpBitFieldUExtract %5 %36 %22 %25
-%38 = OpConvertUToF %8 %37
-%40 = OpAccessChain %39 %11 %22
-OpStore %40 %38
-%41 = OpAccessChain %39 %11 %29
-OpStore %41 %38
-%42 = OpAccessChain %39 %11 %43
-OpStore %42 %38
-%44 = OpAccessChain %39 %11 %45
-OpStore %44 %38
-%47 = OpAccessChain %20 %19 %22
-%48 = OpLoad %5 %47
-%49 = OpBitFieldUExtract %5 %48 %25 %25
-%46 = OpIAdd %5 %34 %49
-OpStore %13 %46
+OpBranch %37
+%37 = OpLabel
+%14 = OpLoad %5 %7
+%19 = OpAccessChain %18 %17 %20
+%21 = OpLoad %5 %19
+%22 = OpBitFieldUExtract %5 %21 %20 %23
+%24 = OpConvertUToF %8 %22
+%26 = OpAccessChain %25 %11 %20
+OpStore %26 %24
+%27 = OpAccessChain %25 %11 %28
+OpStore %27 %24
+%29 = OpAccessChain %25 %11 %30
+OpStore %29 %24
+%31 = OpAccessChain %25 %11 %32
+OpStore %31 %24
+%34 = OpAccessChain %18 %17 %20
+%35 = OpLoad %5 %34
+%36 = OpBitFieldUExtract %5 %35 %23 %23
+%33 = OpIAdd %5 %14 %36
+OpStore %13 %33
 OpReturn
 OpFunctionEnd
 #endif
