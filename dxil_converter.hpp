@@ -901,6 +901,13 @@ enum class MetaDescriptor
 	// Stride / offset of pointer is determined by Option::PhysicalAddressDescriptorIndexing.
 	// Must be UBOContainingBDA or ReadonlySSBO.
 	RawDescriptorHeapView = 1,
+	// - u32 ViewID;
+	// - u32 LayerOffset;
+	// Must be UBOContainingConstant.
+	DynamicViewInstancingOffsets = 2,
+	// - u32 ActiveViewIDMask
+	// Must be UBOContainingConstant.
+	DynamicViewInstancingMask = 3,
 	Count
 };
 

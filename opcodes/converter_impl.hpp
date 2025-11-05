@@ -824,7 +824,29 @@ struct Converter::Impl
 			uint32_t desc_set = UINT32_MAX;
 			uint32_t desc_binding = UINT32_MAX;
 		} meta_descriptor_mappings[int(MetaDescriptor::Count)];
+
+		struct
+		{
+			// If view instancing is enabled at all.
+			// If not, ViewID will just return constant 0.
+			bool enable = true;
+
+			// One u32 spec constant mapping 16 ViewIndex back to ViewID.
+			// If this is not set, it's implied we source the ViewID and layer offset from a constant.
+			uint32_t view_index_to_view_instance_spec_id = UINT32_MAX;
+
+			// If any view instance maps to a viewport index != 0.
+			// If shader does not write to viewport, we will need to export a default viewport.
+			bool implicit_viewport_offset = true;
+			uint32_t view_instance_to_viewport_spec_id = 100;
+		} multiview;
 	} options;
+
+	struct
+	{
+		spv::Id view_index_to_view_instance_id = 0;
+		spv::Id view_instance_to_viewport_id = 0;
+	} multiview;
 
 	struct BindlessInfo
 	{

@@ -27,6 +27,7 @@
 #include "opcodes/opcodes_llvm_builtins.hpp"
 #include "opcodes/dxil/dxil_common.hpp"
 #include "opcodes/dxil/dxil_workgraph.hpp"
+#include "opcodes/dxil/dxil_geometry.hpp"
 
 #include "dxil_converter.hpp"
 #include "logging.hpp"
@@ -8078,8 +8079,16 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		combined_image_sampler_cache.clear();
 		peephole_transformation_cache.clear();
 
-		if (bb == visit_order.front() && instrumentation.invocation_id_var_id && primary_code)
-			emit_write_instrumentation_invocation_id(node);
+		if (bb == visit_order.front())
+		{
+			current_block = &node->ir.operations;
+			if (!emit_view_masking(*this))
+				return {};
+			if (!emit_view_instancing_fixed_layer_viewport(*this, true))
+				return {};
+			if (instrumentation.invocation_id_var_id && primary_code)
+				emit_write_instrumentation_invocation_id(node);
+		}
 
 		auto sink_itr = bb_to_sinks.find(bb);
 		if (sink_itr != bb_to_sinks.end())
