@@ -225,6 +225,7 @@ struct Converter::Impl
 
 	ConvertedFunction convert_entry_point();
 	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs, bool primary_code);
+	CFGNode *build_hull_passthrough_function(CFGNodePool &pool);
 	ConvertedFunction::Function build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
 	                                            const Vector<llvm::BasicBlock *> &patch_bbs,
 	                                            CFGNodePool &pool,
