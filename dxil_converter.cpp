@@ -7665,6 +7665,74 @@ void Converter::Impl::emit_patch_output_lowering(CFGNode *bb)
 	}
 }
 
+CFGNode *Converter::Impl::build_hull_passthrough_function(CFGNodePool &pool)
+{
+	// Hull shader may have a null main entry, which indicates a default passthrough function should be invoked to copy
+	// all inputs to corresponding outputs
+	auto *entry = pool.create_node();
+
+	auto &signature = entry_point_meta->getOperand(2);
+	if (!signature)
+		return {};
+	auto *signature_node = llvm::cast<llvm::MDNode>(signature);
+
+	auto &inputs = signature_node->getOperand(0);
+	if (!inputs)
+		return {};
+	auto *inputs_node = llvm::dyn_cast<llvm::MDNode>(inputs);
+
+	auto &outputs = signature_node->getOperand(1);
+	if (!outputs)
+		return {};
+	auto *outputs_node = llvm::dyn_cast<llvm::MDNode>(outputs);
+
+	auto &builder = spirv_module.get_builder();
+
+	// InvocationId is the control point ID used to index into the input arrays.
+	auto *load_cipd_op = allocate(spv::OpLoad, builder.makeUintType(32));
+	load_cipd_op->add_id(spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId));
+	entry->ir.operations.push_back(load_cipd_op);
+
+	for (unsigned i = 0; i < inputs_node->getNumOperands() && i < outputs_node->getNumOperands(); i++)
+	{
+		auto *input = llvm::cast<llvm::MDNode>(inputs_node->getOperand(i));
+		auto element_id = get_constant_metadata(input, 0);
+		auto actual_element_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(input, 2)));
+		auto effective_element_type = get_effective_input_output_type(actual_element_type);
+
+		auto rows = get_constant_metadata(input, 6);
+		auto cols = get_constant_metadata(input, 7);
+
+		auto type_id = get_type_id(effective_element_type, rows, cols);
+
+		auto *input_chain = allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassInput, type_id));
+		input_chain->add_id(input_elements_meta[element_id].id);
+		input_chain->add_id(load_cipd_op->id);
+		entry->ir.operations.push_back(input_chain);
+
+		auto *load_op = allocate(spv::OpLoad, type_id);
+		load_op->add_id(input_chain->id);
+		entry->ir.operations.push_back(load_op);
+
+		auto *output = llvm::cast<llvm::MDNode>(outputs_node->getOperand(i));
+		element_id = get_constant_metadata(output, 0);
+
+		auto *output_chain = allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, type_id));
+		output_chain->add_id(output_elements_meta[element_id].id);
+		output_chain->add_id(load_cipd_op->id);
+		entry->ir.operations.push_back(output_chain);
+
+		auto *store_op = allocate(spv::OpStore);
+		store_op->add_id(output_chain->id);
+		store_op->add_id(load_op->id);
+		entry->ir.operations.push_back(store_op);
+	}
+
+	entry->ir.terminator.type = Terminator::Type::Return;
+
+	return entry;
+}
+
 ConvertedFunction::Function
 Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
                                  const Vector<llvm::BasicBlock *> &patch_visit_order,
@@ -7673,12 +7741,8 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 {
 	// Just make sure there is an entry block already created.
 	spv::Block *hull_entry = nullptr, *patch_entry = nullptr;
-	spv::Function *hull_func = nullptr;
-	if (!visit_order.empty())
-	{
-		hull_func =
-			builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {}, &hull_entry);
-	}
+	auto *hull_func =
+		builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "hull_main", {}, {}, &hull_entry);
 
 	auto *patch_func =
 	    builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "patch_main", {}, {}, &patch_entry);
@@ -7689,6 +7753,8 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 	CFGNode *hull_main = nullptr;
 	if (!visit_order.empty())
 		hull_main = convert_function(visit_order, true);
+	else
+		hull_main = build_hull_passthrough_function(pool);
 
 	builder().setBuildPoint(patch_entry);
 	auto *patch_main = convert_function(patch_visit_order, false);
