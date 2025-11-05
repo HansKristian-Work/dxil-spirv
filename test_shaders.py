@@ -265,6 +265,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--descriptor-heap-robustness']
     if '.view-instancing.' in shader:
         hlsl_cmd += ['--view-instancing']
+        hlsl_cmd += ['--meta-descriptor', '2', '3', '10', '22']
+        hlsl_cmd += ['--meta-descriptor', '3', '3', '10', '23']
     if '.last-pre-raster.' in shader:
         hlsl_cmd += ['--view-instancing-last-pre-rasterization-stage']
     if '.view-instancing-multiview.' in shader:

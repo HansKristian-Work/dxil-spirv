@@ -418,13 +418,21 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	if (impl.options.multiview.enable && impl.options.multiview.last_pre_rasterization_stage)
 	{
-		if (meta.semantic == DXIL::Semantic::RenderTargetArrayIndex ||
-		    meta.semantic == DXIL::Semantic::ViewPortArrayIndex)
+		if (meta.semantic == DXIL::Semantic::RenderTargetArrayIndex)
 		{
 			auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
 			add->add_id(store_value);
-			add->add_id(meta.semantic == DXIL::Semantic::RenderTargetArrayIndex ?
-			            build_layer_offset_id(impl) : build_viewport_offset_id(impl));
+			add->add_id(build_layer_offset_id(impl));
+			impl.add(add);
+
+			store_value = add->id;
+		}
+		else if (meta.semantic == DXIL::Semantic::ViewPortArrayIndex &&
+		         impl.options.multiview.view_instance_to_viewport_spec_id != UINT32_MAX)
+		{
+			auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+			add->add_id(store_value);
+			add->add_id(build_viewport_offset_id(impl));
 			impl.add(add);
 
 			store_value = add->id;
