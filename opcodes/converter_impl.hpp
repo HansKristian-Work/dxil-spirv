@@ -846,6 +846,8 @@ struct Converter::Impl
 	{
 		spv::Id view_index_to_view_instance_id = 0;
 		spv::Id view_instance_to_viewport_id = 0;
+		bool custom_layer_index = false;
+		bool custom_viewport_index = false;
 	} multiview;
 
 	struct BindlessInfo

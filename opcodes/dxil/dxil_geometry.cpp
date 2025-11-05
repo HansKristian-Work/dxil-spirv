@@ -175,7 +175,7 @@ spv::Id build_layer_offset_id(Converter::Impl &impl)
 
 static bool emit_view_instancing_fixed_layer(Converter::Impl &impl, bool entry_point)
 {
-	if (!impl.options.multiview.enable)
+	if (!impl.options.multiview.enable || impl.multiview.custom_layer_index)
 		return true;
 
 	auto &mapping = impl.options.meta_descriptor_mappings[int(MetaDescriptor::DynamicViewInstancingOffsets)];
@@ -240,7 +240,7 @@ spv::Id build_viewport_offset_id(Converter::Impl &impl)
 
 static bool emit_view_instancing_fixed_viewport(Converter::Impl &impl, bool entry_point)
 {
-	if (!impl.options.multiview.enable)
+	if (!impl.options.multiview.enable || impl.multiview.custom_viewport_index)
 		return true;
 
 	// There is a viewport offset in the view instancing mask.

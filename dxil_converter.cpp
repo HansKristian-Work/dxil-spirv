@@ -4773,6 +4773,15 @@ bool Converter::Impl::emit_stage_output_variables()
 			continue;
 		}
 
+		// Application can emit these in ViewInstancing, in which case it's just an offset.
+		if (options.multiview.enable)
+		{
+			if (system_value == DXIL::Semantic::RenderTargetArrayIndex)
+				multiview.custom_layer_index = true;
+			if (system_value == DXIL::Semantic::ViewPortArrayIndex)
+				multiview.custom_viewport_index = true;
+		}
+
 		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
 		{
 			type_id = builder.makeArrayType(
