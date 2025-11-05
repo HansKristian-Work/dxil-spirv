@@ -416,9 +416,10 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	impl.register_externally_visible_write(instruction->getOperand(4));
 	spv::Id store_value = impl.get_id_for_value(instruction->getOperand(4));
 
-	if (impl.options.multiview.enable)
+	if (impl.options.multiview.enable && impl.options.multiview.last_pre_rasterization_stage)
 	{
-		if (meta.semantic == DXIL::Semantic::RenderTargetArrayIndex || meta.semantic == DXIL::Semantic::ViewPortArrayIndex)
+		if (meta.semantic == DXIL::Semantic::RenderTargetArrayIndex ||
+		    meta.semantic == DXIL::Semantic::ViewPortArrayIndex)
 		{
 			auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
 			add->add_id(store_value);

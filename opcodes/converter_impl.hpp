@@ -829,16 +829,19 @@ struct Converter::Impl
 		{
 			// If view instancing is enabled at all.
 			// If not, ViewID will just return constant 0.
-			bool enable = true;
+			bool enable = false;
 
-			// One u32 spec constant mapping 16 ViewIndex back to ViewID.
-			// If this is not set, it's implied we source the ViewID and layer offset from a constant.
+			// If false and multiview is enabled, it only means we're interested in ViewID potentially ...
+			bool last_pre_rasterization_stage = false;
+
+			// One u32 spec constant mapping 16 ViewIndices back to ViewID.
+			// If this is not set, it's implied we always the ViewID and layer offset from a constant.
+			// If the shader exports Layer offset, this is ignored,
+			// and we must fall back to draw level instancing.
 			uint32_t view_index_to_view_instance_spec_id = UINT32_MAX;
 
-			// If any view instance maps to a viewport index != 0.
-			// If shader does not write to viewport, we will need to export a default viewport.
-			bool implicit_viewport_offset = true;
-			uint32_t view_instance_to_viewport_spec_id = 100;
+			// If not UINT32_MAX, implies view instancing needs to apply a non-zero offset to output ViewportIndex.
+			uint32_t view_instance_to_viewport_spec_id = UINT32_MAX;
 		} multiview;
 	} options;
 

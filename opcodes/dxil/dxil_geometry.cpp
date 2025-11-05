@@ -127,12 +127,10 @@ static bool emit_view_instance_ubo(Converter::Impl &impl)
 		return false;
 	}
 
-	spv::Id type_id = builder.makeStructType({ u32_type, u32_type }, "ViewInstancingOffsetsUBO");
+	spv::Id type_id = builder.makeStructType({ u32_type }, "ViewInstancingOffsetsUBO");
 	builder.addDecoration(type_id, spv::DecorationBlock);
 	builder.addMemberDecoration(type_id, 0, spv::DecorationOffset, 0);
-	builder.addMemberDecoration(type_id, 1, spv::DecorationOffset, 4);
-	builder.addMemberName(type_id, 0, "ViewID");
-	builder.addMemberName(type_id, 1, "Layer");
+	builder.addMemberName(type_id, 0, "ViewID_Layer");
 
 	impl.multiview.view_index_to_view_instance_id =
 	    impl.create_variable(spv::StorageClassUniform, type_id, "ViewInstancingOffsets");
@@ -163,19 +161,34 @@ spv::Id build_layer_offset_id(Converter::Impl &impl)
 	auto *chain = impl.allocate(
 	    spv::OpAccessChain, builder.makePointer(spv::StorageClassUniform, u32_type));
 	chain->add_id(impl.multiview.view_index_to_view_instance_id);
-	chain->add_id(builder.makeUintConstant(1));
+	chain->add_id(builder.makeUintConstant(0));
 	impl.add(chain);
 
 	auto *load = impl.allocate(spv::OpLoad, u32_type);
 	load->add_id(chain->id);
 	impl.add(load);
 
+	auto *ext = impl.allocate(spv::OpBitFieldUExtract, u32_type);
+	ext->add_id(load->id);
+	ext->add_id(builder.makeUintConstant(16));
+	ext->add_id(builder.makeUintConstant(16));
+	impl.add(ext);
+
 	return load->id;
+}
+
+static bool should_emit_view_instancing_fixed_layer_viewport(Converter::Impl &impl, bool entry_point)
+{
+	return impl.execution_model == spv::ExecutionModelVertex ||
+	       impl.execution_model == spv::ExecutionModelTessellationEvaluation ||
+	       (impl.execution_model == spv::ExecutionModelGeometry && !entry_point);
 }
 
 static bool emit_view_instancing_fixed_layer(Converter::Impl &impl, bool entry_point)
 {
-	if (!impl.options.multiview.enable || impl.multiview.custom_layer_index)
+	if (!impl.options.multiview.enable || impl.multiview.custom_layer_index ||
+	    !impl.options.multiview.last_pre_rasterization_stage ||
+	    !should_emit_view_instancing_fixed_layer_viewport(impl, entry_point))
 		return true;
 
 	auto &mapping = impl.options.meta_descriptor_mappings[int(MetaDescriptor::DynamicViewInstancingOffsets)];
@@ -240,35 +253,29 @@ spv::Id build_viewport_offset_id(Converter::Impl &impl)
 
 static bool emit_view_instancing_fixed_viewport(Converter::Impl &impl, bool entry_point)
 {
-	if (!impl.options.multiview.enable || impl.multiview.custom_viewport_index)
+	if (!impl.options.multiview.enable || impl.multiview.custom_viewport_index ||
+	    !impl.options.multiview.last_pre_rasterization_stage ||
+	    impl.options.multiview.view_instance_to_viewport_spec_id == UINT32_MAX ||
+	    !should_emit_view_instancing_fixed_layer_viewport(impl, entry_point))
 		return true;
 
-	// There is a viewport offset in the view instancing mask.
-	if (!impl.options.multiview.implicit_viewport_offset)
-		return true;
+	auto &builder = impl.builder();
 
-	if (impl.execution_model == spv::ExecutionModelVertex ||
-	    impl.execution_model == spv::ExecutionModelTessellationEvaluation ||
-	    (impl.execution_model == spv::ExecutionModelGeometry && !entry_point))
+	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id viewport_id = build_viewport_offset_id(impl);
+	spv::Id vp_id = impl.spirv_module.get_builtin_shader_output(spv::BuiltInViewportIndex);
+
+	if (!vp_id)
 	{
-		auto &builder = impl.builder();
-
-		spv::Id u32_type = builder.makeUintType(32);
-		spv::Id viewport_id = build_viewport_offset_id(impl);
-		spv::Id vp_id = impl.spirv_module.get_builtin_shader_output(spv::BuiltInViewportIndex);
-
-		if (!vp_id)
-		{
-			vp_id = impl.create_variable(spv::StorageClassOutput, u32_type);
-			impl.spirv_module.register_builtin_shader_output(vp_id, spv::BuiltInViewportIndex);
-			impl.emit_builtin_decoration(vp_id, DXIL::Semantic::ViewPortArrayIndex, spv::StorageClassOutput);
-		}
-
-		auto *store = impl.allocate(spv::OpStore);
-		store->add_id(vp_id);
-		store->add_id(viewport_id);
-		impl.add(store);
+		vp_id = impl.create_variable(spv::StorageClassOutput, u32_type);
+		impl.spirv_module.register_builtin_shader_output(vp_id, spv::BuiltInViewportIndex);
+		impl.emit_builtin_decoration(vp_id, DXIL::Semantic::ViewPortArrayIndex, spv::StorageClassOutput);
 	}
+
+	auto *store = impl.allocate(spv::OpStore);
+	store->add_id(vp_id);
+	store->add_id(viewport_id);
+	impl.add(store);
 
 	return true;
 }
@@ -285,7 +292,7 @@ bool emit_view_instancing_fixed_layer_viewport(Converter::Impl &impl, bool entry
 
 bool emit_view_masking(Converter::Impl &impl)
 {
-	if (!impl.options.multiview.enable)
+	if (!impl.options.multiview.enable || !impl.options.multiview.last_pre_rasterization_stage)
 		return true;
 
 	auto &mapping = impl.options.meta_descriptor_mappings[int(MetaDescriptor::DynamicViewInstancingMask)];
@@ -359,8 +366,10 @@ spv::Id build_view_instance_id(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
 
-	if (impl.options.multiview.view_index_to_view_instance_spec_id != UINT32_MAX)
+	if (!impl.multiview.custom_layer_index &&
+	    impl.options.multiview.view_index_to_view_instance_spec_id != UINT32_MAX)
 	{
+		// We're using proper multiview.
 		if (!impl.multiview.view_index_to_view_instance_id)
 		{
 			impl.multiview.view_index_to_view_instance_id = builder.makeUintConstant(0, true);
@@ -369,7 +378,6 @@ spv::Id build_view_instance_id(Converter::Impl &impl)
 			builder.addName(impl.multiview.view_index_to_view_instance_id, "ViewIndexToViewInstanceMap");
 		}
 
-		// We're using proper multiview.
 		spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInViewIndex);
 		Operation *op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
 		op->add_id(var_id);
@@ -406,7 +414,13 @@ spv::Id build_view_instance_id(Converter::Impl &impl)
 		load->add_id(chain->id);
 		impl.add(load);
 
-		return load->id;
+		auto *ext = impl.allocate(spv::OpBitFieldUExtract, u32_type);
+		ext->add_id(load->id);
+		ext->add_id(builder.makeUintConstant(0));
+		ext->add_id(builder.makeUintConstant(16));
+		impl.add(ext);
+
+		return ext->id;
 	}
 }
 

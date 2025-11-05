@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 60
+#define DXIL_SPV_API_VERSION_MINOR 61
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -241,6 +241,8 @@ typedef enum dxil_spv_meta_descriptor
 {
 	DXIL_SPV_META_DESCRIPTOR_RESOURCE_DESCRIPTOR_HEAP_SIZE = 0,
 	DXIL_SPV_META_DESCRIPTOR_RAW_DESCRIPTOR_HEAP_VIEW = 1,
+	DXIL_SPV_META_DESCRIPTOR_DYNAMIC_VIEW_INSTANCING_OFFSETS = 2,
+	DXIL_SPV_META_DESCRIPTOR_DYNAMIC_VIEW_INSTANCING_MASK = 3,
 	DXIL_SPV_META_DESCRIPTOR_INT_MAX = 0x7fffffff
 } dxil_spv_meta_descriptor;
 
@@ -465,6 +467,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_FLOAT8_SUPPORT = 46,
 	DXIL_SPV_OPTION_NVAPI = 47,
 	DXIL_SPV_OPTION_EXTENDED_NON_SEMANTIC = 48,
+	DXIL_SPV_OPTION_VIEW_INSTANCING = 49,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -826,6 +829,15 @@ typedef struct dxil_spv_option_extended_non_semantic
 	dxil_spv_bool enabled;
 } dxil_spv_option_extended_non_semantic;
 
+typedef struct dxil_spv_option_view_instancing
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool enabled;
+	dxil_spv_bool last_pre_rasterization_stage;
+	unsigned view_index_to_view_instance_spec_id;
+	unsigned view_instance_to_viewport_spec_id;
+} dxil_spv_option_view_instancing;
+
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
 
@@ -1043,9 +1055,13 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_location_offset
         dxil_spv_converter converter, unsigned *patch_location_offset);
 
 /* After compilation, queries if shader feature is used.
- * Designed to map closely to D3D12 feature checks. */
+ * Designed to map closely to D3D12 feature checks.
+ * NOTE: This is obsolete now, and replaced with a simple SPIR-V scan in vkd3d-proton. */
 DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_shader_feature(
 	dxil_spv_converter converter, dxil_spv_shader_feature feature);
+
+DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_is_multiview_compatible(
+	dxil_spv_converter converter, dxil_spv_bool *result);
 
 /* Intended to be added to the GLSL output in repro suite.
  * Attempts to analyze the DXIL for potential out of spec behavior that needs another pair of eyes.

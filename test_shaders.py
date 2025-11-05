@@ -263,6 +263,14 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--meta-descriptor', '1', '4', '10', '21']
     if '.heap-robustness.' in shader:
         hlsl_cmd += ['--descriptor-heap-robustness']
+    if '.view-instancing.' in shader:
+        hlsl_cmd += ['--view-instancing']
+    if '.last-pre-raster.' in shader:
+        hlsl_cmd += ['--view-instancing-last-pre-rasterization-stage']
+    if '.view-instancing-multiview.' in shader:
+        hlsl_cmd += ['--view-index-to-view-instance-spec-id', '1000']
+    if '.view-instancing-viewport-offset.' in shader:
+        hlsl_cmd += ['--view-instance-to-viewport-spec-id', '1001']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

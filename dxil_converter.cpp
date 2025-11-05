@@ -127,6 +127,15 @@ uint32_t Converter::get_compute_heuristic_min_wave_size() const
 	return impl->execution_mode_meta.heuristic_min_wave_size;
 }
 
+bool Converter::is_multiview_compatible() const
+{
+	// We're not multiview compatible if ViewIndex does not correspond 1:1 with output layer index.
+	// ViewIndex is limited, and if the constant Layer offset is too large, it may force "slow" path
+	// with draw-level instancing.
+	return impl->options.multiview.enable && !impl->multiview.custom_layer_index &&
+	       impl->options.multiview.view_index_to_view_instance_spec_id != UINT32_MAX;
+}
+
 bool Converter::shader_requires_feature(ShaderFeature feature) const
 {
 	switch (feature)
@@ -9369,6 +9378,16 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &sem = static_cast<const OptionExtendedNonSemantic &>(cap);
 		options.extended_non_semantic_info = sem.enabled;
+		break;
+	}
+
+	case Option::ViewInstancing:
+	{
+		auto &inst = static_cast<const OptionViewInstancing &>(cap);
+		options.multiview.enable = inst.enabled;
+		options.multiview.last_pre_rasterization_stage = inst.last_pre_rasterization_stage;
+		options.multiview.view_index_to_view_instance_spec_id = inst.view_index_to_view_instance_spec_id;
+		options.multiview.view_instance_to_viewport_spec_id = inst.view_instance_to_viewport_spec_id;
 		break;
 	}
 

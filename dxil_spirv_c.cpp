@@ -409,6 +409,7 @@ struct dxil_spv_converter_s
 	Vector<DescriptorTableEntry> local_entries;
 	bool active_table = false;
 	bool uses_subgroup_size = false;
+	bool is_multiview_compatible = false;
 	uint32_t workgroup_size[3] = {};
 	uint32_t patch_vertex_count = 0;
     uint32_t patch_location_offset = UINT32_MAX;
@@ -832,6 +833,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 	converter->compiled_entry_point = dxil_converter.get_compiled_entry_point();
 	converter->uses_subgroup_size = module.has_builtin_shader_input(spv::BuiltInSubgroupSize);
+	converter->is_multiview_compatible = dxil_converter.is_multiview_compatible();
 	dxil_converter.get_workgroup_dimensions(converter->workgroup_size[0],
 	                                        converter->workgroup_size[1],
 	                                        converter->workgroup_size[2]);
@@ -1449,6 +1451,19 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_VIEW_INSTANCING:
+	{
+		OptionViewInstancing helper;
+		auto *inst = reinterpret_cast<const dxil_spv_option_view_instancing *>(option);
+		helper.enabled = inst->enabled == DXIL_SPV_TRUE;
+		helper.last_pre_rasterization_stage = inst->last_pre_rasterization_stage == DXIL_SPV_TRUE;
+		helper.view_index_to_view_instance_spec_id = inst->view_index_to_view_instance_spec_id;
+		helper.view_instance_to_viewport_spec_id = inst->view_instance_to_viewport_spec_id;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}
@@ -1646,6 +1661,13 @@ dxil_spv_bool dxil_spv_converter_uses_shader_feature(
 		return converter->shader_feature_used[feature] ? DXIL_SPV_TRUE : DXIL_SPV_FALSE;
 	else
 		return DXIL_SPV_FALSE;
+}
+
+dxil_spv_result dxil_spv_converter_is_multiview_compatible(
+		dxil_spv_converter converter, dxil_spv_bool *result)
+{
+	*result = converter->is_multiview_compatible;
+	return DXIL_SPV_SUCCESS;
 }
 
 dxil_spv_result dxil_spv_converter_set_meta_descriptor(
