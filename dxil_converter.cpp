@@ -7686,6 +7686,9 @@ CFGNode *Converter::Impl::build_hull_passthrough_function(CFGNodePool &pool)
 		return {};
 	auto *outputs_node = llvm::dyn_cast<llvm::MDNode>(outputs);
 
+	if (!inputs_node || !outputs_node)
+		return {};
+
 	auto &builder = spirv_module.get_builder();
 
 	// InvocationId is the control point ID used to index into the input arrays.
@@ -7693,7 +7696,11 @@ CFGNode *Converter::Impl::build_hull_passthrough_function(CFGNodePool &pool)
 	load_cipd_op->add_id(spirv_module.get_builtin_shader_input(spv::BuiltInInvocationId));
 	entry->ir.operations.push_back(load_cipd_op);
 
-	for (unsigned i = 0; i < inputs_node->getNumOperands() && i < outputs_node->getNumOperands(); i++)
+	unsigned num_entries = std::min<uint32_t>(inputs_node->getNumOperands(), outputs_node->getNumOperands());
+
+	// It's a little unclear if match by meta entry order, or by row/col.
+	// Without any test to prove otherwise, keep it simple.
+	for (unsigned i = 0; i < num_entries; i++)
 	{
 		auto *input = llvm::cast<llvm::MDNode>(inputs_node->getOperand(i));
 		auto element_id = get_constant_metadata(input, 0);
