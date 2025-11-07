@@ -188,6 +188,7 @@ static bool emit_view_instancing_fixed_layer(Converter::Impl &impl, bool entry_p
 {
 	if (!impl.options.multiview.enable || impl.multiview.custom_layer_index ||
 	    !impl.options.multiview.last_pre_rasterization_stage ||
+	    impl.options.multiview.view_index_to_view_instance_spec_id != UINT32_MAX ||
 	    !should_emit_view_instancing_fixed_layer_viewport(impl, entry_point))
 		return true;
 
