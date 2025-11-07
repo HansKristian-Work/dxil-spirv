@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <vector>
 
+#define DXIL_SPV_ENABLE_EXPERIMENTAL_MULTIVIEW
 #include "dxil_spirv_c.h"
 
 #include "cli_parser.hpp"
@@ -195,6 +196,10 @@ static void print_help()
 	     "\t[--full-wmma <fp8> <nv-coopmat2>]\n"
 	     "\t[--shader-quirk <index>]\n"
 	     "\t[--non-semantic]\n"
+	     "\t[--view-instancing]\n"
+	     "\t[--view-instancing-last-pre-rasterization-stage]\n"
+	     "\t[--view-instance-to-viewport-spec-id <id>]\n"
+	     "\t[--view-index-to-view-instance-spec-id <id>]\n"
 	     "\t[--meta-descriptor descriptor kind set binding]\n");
 }
 
@@ -279,6 +284,11 @@ struct Arguments
 	dxil_spv_option_bindless_offset_buffer_layout offset_buffer_layout;
 
 	std::vector<MetaDescriptor> meta_descriptors;
+
+	bool view_instancing = false;
+	bool view_instancing_last_pre_rasterization_stage = false;
+	uint32_t view_index_to_view_instance_spec_id = UINT32_MAX;
+	uint32_t view_instance_to_viewport_spec_id = UINT32_MAX;
 };
 
 struct Remapper
@@ -888,6 +898,18 @@ int main(int argc, char **argv)
 		meta.desc_binding = parser.next_uint();
 		args.meta_descriptors.push_back(meta);
 	});
+	cbs.add("--view-instancing", [&](CLIParser &parser) {
+		args.view_instancing = true;
+	});
+	cbs.add("--view-instancing-last-pre-rasterization-stage", [&](CLIParser &parser) {
+		args.view_instancing_last_pre_rasterization_stage = true;
+	});
+	cbs.add("--view-instance-to-viewport-spec-id", [&](CLIParser &parser) {
+		args.view_instance_to_viewport_spec_id = parser.next_uint();
+	});
+	cbs.add("--view-index-to-view-instance-spec-id", [&](CLIParser &parser) {
+		args.view_index_to_view_instance_spec_id = parser.next_uint();
+	});
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1255,6 +1277,16 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &sem.base);
 	}
 
+	if (args.view_instancing)
+	{
+		dxil_spv_option_view_instancing inst = {{ DXIL_SPV_OPTION_VIEW_INSTANCING }};
+		inst.enabled = DXIL_SPV_TRUE;
+		inst.last_pre_rasterization_stage = args.view_instancing_last_pre_rasterization_stage;
+		inst.view_index_to_view_instance_spec_id = args.view_index_to_view_instance_spec_id;
+		inst.view_instance_to_viewport_spec_id = args.view_instance_to_viewport_spec_id;
+		dxil_spv_converter_add_option(converter, &inst.base);
+	}
+
 	for (auto &quirk : args.quirks)
 	{
 		dxil_spv_option_shader_quirk helper = {
@@ -1340,6 +1372,10 @@ int main(int argc, char **argv)
 				spirv_asm_string += std::to_string(heuristic_max_wave_size);
 				spirv_asm_string += ")\n";
 			}
+
+			dxil_spv_bool compat;
+			if (dxil_spv_converter_is_multiview_compatible(converter, &compat) == DXIL_SPV_SUCCESS && compat)
+				spirv_asm_string += "// MultiviewCompatible\n";
 
 			if (demangled_entry && !args.glsl)
 			{

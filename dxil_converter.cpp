@@ -27,6 +27,7 @@
 #include "opcodes/opcodes_llvm_builtins.hpp"
 #include "opcodes/dxil/dxil_common.hpp"
 #include "opcodes/dxil/dxil_workgraph.hpp"
+#include "opcodes/dxil/dxil_geometry.hpp"
 
 #include "dxil_converter.hpp"
 #include "logging.hpp"
@@ -124,6 +125,15 @@ uint32_t Converter::get_compute_heuristic_min_wave_size() const
 		return 0;
 
 	return impl->execution_mode_meta.heuristic_min_wave_size;
+}
+
+bool Converter::is_multiview_compatible() const
+{
+	// We're not multiview compatible if ViewIndex does not correspond 1:1 with output layer index.
+	// ViewIndex is limited, and if the constant Layer offset is too large, it may force "slow" path
+	// with draw-level instancing.
+	return impl->options.multiview.enable && !impl->multiview.custom_layer_index &&
+	       impl->options.multiview.view_index_to_view_instance_spec_id != UINT32_MAX;
 }
 
 bool Converter::shader_requires_feature(ShaderFeature feature) const
@@ -4519,6 +4529,7 @@ bool Converter::Impl::emit_patch_variables()
 			num_broken_user_rows = std::max<unsigned>(num_broken_user_rows, start_row + rows);
 
 		auto &meta = patch_elements_meta[element_id];
+		meta.semantic = system_value;
 
 		// Handle case where shader declares the tess factors twice at different offsets.
 		unsigned semantic_offset = 0;
@@ -4532,8 +4543,18 @@ bool Converter::Impl::emit_patch_variables()
 				meta.id = spirv_module.get_builtin_shader_input(builtin);
 				meta.component_type = actual_element_type;
 				meta.semantic_offset = start_row;
+				meta.semantic = system_value;
 				continue;
 			}
+		}
+
+		// Application can emit these in ViewInstancing, in which case it's just an offset.
+		if (options.multiview.enable && execution_model == spv::ExecutionModelMeshEXT)
+		{
+			if (system_value == DXIL::Semantic::RenderTargetArrayIndex)
+				multiview.custom_layer_index = true;
+			if (system_value == DXIL::Semantic::ViewPortArrayIndex)
+				multiview.custom_viewport_index = true;
 		}
 
 		spv::Id type_id;
@@ -4759,7 +4780,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			output_clip_cull_meta[element_id] = { clip_distance_count, cols, spv::BuiltInClipDistance };
-			output_elements_meta[element_id] = { 0, actual_element_type, 0 };
+			output_elements_meta[element_id] = { 0, actual_element_type, 0, system_value };
 			clip_distance_count += rows * cols;
 			continue;
 		}
@@ -4767,9 +4788,18 @@ bool Converter::Impl::emit_stage_output_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			output_clip_cull_meta[element_id] = { cull_distance_count, cols, spv::BuiltInCullDistance };
-			output_elements_meta[element_id] = { 0, actual_element_type, 0 };
+			output_elements_meta[element_id] = { 0, actual_element_type, 0, system_value };
 			cull_distance_count += rows * cols;
 			continue;
+		}
+
+		// Application can emit these in ViewInstancing, in which case it's just an offset.
+		if (options.multiview.enable)
+		{
+			if (system_value == DXIL::Semantic::RenderTargetArrayIndex)
+				multiview.custom_layer_index = true;
+			if (system_value == DXIL::Semantic::ViewPortArrayIndex)
+				multiview.custom_viewport_index = true;
 		}
 
 		if (execution_model == spv::ExecutionModelTessellationControl || execution_model == spv::ExecutionModelMeshEXT)
@@ -4786,7 +4816,7 @@ bool Converter::Impl::emit_stage_output_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
-		output_elements_meta[element_id] = { variable_id, actual_element_type, 0 };
+		output_elements_meta[element_id] = { variable_id, actual_element_type, 0, system_value };
 
 		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))
 			builder.addDecoration(variable_id, spv::DecorationRelaxedPrecision);
@@ -5506,7 +5536,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			input_clip_cull_meta[element_id] = { clip_distance_count, cols, spv::BuiltInClipDistance };
-			input_elements_meta[element_id] = { 0, actual_element_type, 0 };
+			input_elements_meta[element_id] = { 0, actual_element_type, 0, system_value };
 			clip_distance_count += rows * cols;
 			continue;
 		}
@@ -5514,7 +5544,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		{
 			// DX is rather weird here and you can declare clip distance either as a vector or array, or both!
 			input_clip_cull_meta[element_id] = { cull_distance_count, cols, spv::BuiltInCullDistance };
-			input_elements_meta[element_id] = { 0, actual_element_type, 0 };
+			input_elements_meta[element_id] = { 0, actual_element_type, 0, system_value };
 			cull_distance_count += rows * cols;
 			continue;
 		}
@@ -5548,7 +5578,7 @@ bool Converter::Impl::emit_stage_input_variables()
 		}
 
 		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
-		input_elements_meta[element_id] = { variable_id, actual_element_type, system_value != DXIL::Semantic::User ? start_row : 0 };
+		input_elements_meta[element_id] = { variable_id, actual_element_type, system_value != DXIL::Semantic::User ? start_row : 0, system_value };
 
 		if (per_vertex)
 		{
@@ -8078,8 +8108,16 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		combined_image_sampler_cache.clear();
 		peephole_transformation_cache.clear();
 
-		if (bb == visit_order.front() && instrumentation.invocation_id_var_id && primary_code)
-			emit_write_instrumentation_invocation_id(node);
+		if (bb == visit_order.front())
+		{
+			current_block = &node->ir.operations;
+			if (!emit_view_masking(*this))
+				return {};
+			if (!emit_view_instancing_fixed_layer_viewport(*this, true))
+				return {};
+			if (instrumentation.invocation_id_var_id && primary_code)
+				emit_write_instrumentation_invocation_id(node);
+		}
 
 		auto sink_itr = bb_to_sinks.find(bb);
 		if (sink_itr != bb_to_sinks.end())
@@ -9351,6 +9389,16 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &sem = static_cast<const OptionExtendedNonSemantic &>(cap);
 		options.extended_non_semantic_info = sem.enabled;
+		break;
+	}
+
+	case Option::ViewInstancing:
+	{
+		auto &inst = static_cast<const OptionViewInstancing &>(cap);
+		options.multiview.enable = inst.enabled;
+		options.multiview.last_pre_rasterization_stage = inst.last_pre_rasterization_stage;
+		options.multiview.view_index_to_view_instance_spec_id = inst.view_index_to_view_instance_spec_id;
+		options.multiview.view_instance_to_viewport_spec_id = inst.view_instance_to_viewport_spec_id;
 		break;
 	}
 

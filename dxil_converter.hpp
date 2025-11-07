@@ -264,6 +264,7 @@ enum class Option : uint32_t
 	Float8Support = 46,
 	NvAPI = 47,
 	ExtendedNonSemantic = 48,
+	ViewInstancing = 49,
 	Count
 };
 
@@ -828,6 +829,20 @@ struct OptionExtendedNonSemantic : OptionBase
 	bool enabled = false;
 };
 
+struct OptionViewInstancing : OptionBase
+{
+	OptionViewInstancing()
+		: OptionBase(Option::ViewInstancing)
+	{
+	}
+
+	bool enabled = false;
+	bool implicit_viewport_offset = false;
+	bool last_pre_rasterization_stage = false;
+	uint32_t view_index_to_view_instance_spec_id = UINT32_MAX;
+	uint32_t view_instance_to_viewport_spec_id = UINT32_MAX;
+};
+
 struct DescriptorTableEntry
 {
 	ResourceClass type;
@@ -901,6 +916,14 @@ enum class MetaDescriptor
 	// Stride / offset of pointer is determined by Option::PhysicalAddressDescriptorIndexing.
 	// Must be UBOContainingBDA or ReadonlySSBO.
 	RawDescriptorHeapView = 1,
+	// - u16 ViewID;
+	// - u16 LayerOffset;
+	// Packed into one u32.
+	// Must be UBOContainingConstant.
+	DynamicViewInstancingOffsets = 2,
+	// - u32 ActiveViewIDMask
+	// Must be UBOContainingConstant.
+	DynamicViewInstancingMask = 3,
 	Count
 };
 
@@ -977,6 +1000,9 @@ public:
 	// If non-zero, similar to required, but can be ignored. Used as a workaround hint or performance hint.
 	uint32_t get_compute_heuristic_min_wave_size() const;
 	uint32_t get_compute_heuristic_max_wave_size() const;
+
+	// Returns true if view instancing is enabled and the result can be lowered directly to Vulkan.
+	bool is_multiview_compatible() const;
 
 	bool shader_requires_feature(ShaderFeature feature) const;
 

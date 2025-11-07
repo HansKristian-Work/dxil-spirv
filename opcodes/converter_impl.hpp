@@ -561,6 +561,7 @@ struct Converter::Impl
 		spv::Id id;
 		DXIL::ComponentType component_type;
 		unsigned semantic_offset;
+		DXIL::Semantic semantic;
 	};
 
 	struct ElementPatchMeta : ElementMeta
@@ -823,7 +824,34 @@ struct Converter::Impl
 			uint32_t desc_set = UINT32_MAX;
 			uint32_t desc_binding = UINT32_MAX;
 		} meta_descriptor_mappings[int(MetaDescriptor::Count)];
+
+		struct
+		{
+			// If view instancing is enabled at all.
+			// If not, ViewID will just return constant 0.
+			bool enable = false;
+
+			// If false and multiview is enabled, it only means we're interested in ViewID potentially ...
+			bool last_pre_rasterization_stage = false;
+
+			// One u32 spec constant mapping 16 ViewIndices back to ViewID.
+			// If this is not set, it's implied we always the ViewID and layer offset from a constant.
+			// If the shader exports Layer offset, this is ignored,
+			// and we must fall back to draw level instancing.
+			uint32_t view_index_to_view_instance_spec_id = UINT32_MAX;
+
+			// If not UINT32_MAX, implies view instancing needs to apply a non-zero offset to output ViewportIndex.
+			uint32_t view_instance_to_viewport_spec_id = UINT32_MAX;
+		} multiview;
 	} options;
+
+	struct
+	{
+		spv::Id view_index_to_view_instance_id = 0;
+		spv::Id view_instance_to_viewport_id = 0;
+		bool custom_layer_index = false;
+		bool custom_viewport_index = false;
+	} multiview;
 
 	struct BindlessInfo
 	{
