@@ -1,7 +1,7 @@
 #version 460
 #extension GL_EXT_multiview : require
 layout(triangles) in;
-layout(max_vertices = 1, points) out;
+layout(max_vertices = 2, points) out;
 
 layout(constant_id = 1000) const uint ViewIndexToViewInstanceMap = 0u;
 
@@ -11,10 +11,23 @@ layout(location = 0) out vec4 TEXCOORD_1;
 void main()
 {
     float _34 = float(bitfieldExtract(ViewIndexToViewInstanceMap, int(gl_ViewIndex * 2u), int(2u)));
-    TEXCOORD_1.x = TEXCOORD[0u].x + _34;
-    TEXCOORD_1.y = TEXCOORD[0u].y + _34;
-    TEXCOORD_1.z = TEXCOORD[0u].z + _34;
-    TEXCOORD_1.w = TEXCOORD[0u].w + _34;
+    float _35 = TEXCOORD[0u].x + _34;
+    float _36 = TEXCOORD[0u].y + _34;
+    float _37 = TEXCOORD[0u].z + _34;
+    float _38 = TEXCOORD[0u].w + _34;
+    TEXCOORD_1.x = _35;
+    TEXCOORD_1.y = _36;
+    TEXCOORD_1.z = _37;
+    TEXCOORD_1.w = _38;
+    gl_Position.x = gl_in[1u].gl_Position.x;
+    gl_Position.y = gl_in[1u].gl_Position.y;
+    gl_Position.z = gl_in[1u].gl_Position.z;
+    gl_Position.w = gl_in[1u].gl_Position.w;
+    EmitVertex();
+    TEXCOORD_1.x = _35;
+    TEXCOORD_1.y = _36;
+    TEXCOORD_1.z = _37;
+    TEXCOORD_1.w = _38;
     gl_Position.x = gl_in[1u].gl_Position.x;
     gl_Position.y = gl_in[1u].gl_Position.y;
     gl_Position.z = gl_in[1u].gl_Position.z;
@@ -29,7 +42,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 58
+; Bound: 66
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
@@ -37,7 +50,7 @@ OpCapability MultiView
 OpMemoryModel Logical GLSL450
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %15 %18
 OpExecutionMode %3 Invocations 1
-OpExecutionMode %3 OutputVertices 1
+OpExecutionMode %3 OutputVertices 2
 OpExecutionMode %3 Triangles
 OpExecutionMode %3 OutputPoints
 OpName %3 "main"
@@ -75,8 +88,8 @@ OpDecorate %18 BuiltIn ViewIndex
 %47 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %56
-%56 = OpLabel
+OpBranch %64
+%64 = OpLabel
 %19 = OpLoad %7 %18
 %20 = OpIMul %7 %19 %21
 %22 = OpBitFieldUExtract %7 %16 %20 %21
@@ -117,6 +130,23 @@ OpStore %53 %42
 OpStore %54 %44
 %55 = OpAccessChain %47 %15 %8
 OpStore %55 %46
+OpEmitVertex
+%56 = OpAccessChain %47 %14 %25
+OpStore %56 %35
+%57 = OpAccessChain %47 %14 %28
+OpStore %57 %36
+%58 = OpAccessChain %47 %14 %21
+OpStore %58 %37
+%59 = OpAccessChain %47 %14 %8
+OpStore %59 %38
+%60 = OpAccessChain %47 %15 %25
+OpStore %60 %40
+%61 = OpAccessChain %47 %15 %28
+OpStore %61 %42
+%62 = OpAccessChain %47 %15 %21
+OpStore %62 %44
+%63 = OpAccessChain %47 %15 %8
+OpStore %63 %46
 OpEmitVertex
 OpReturn
 OpFunctionEnd
