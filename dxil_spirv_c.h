@@ -829,6 +829,7 @@ typedef struct dxil_spv_option_extended_non_semantic
 	dxil_spv_bool enabled;
 } dxil_spv_option_extended_non_semantic;
 
+#ifdef DXIL_SPV_ENABLE_EXPERIMENTAL_MULTIVIEW
 typedef struct dxil_spv_option_view_instancing
 {
 	dxil_spv_option_base base;
@@ -837,6 +838,7 @@ typedef struct dxil_spv_option_view_instancing
 	unsigned view_index_to_view_instance_spec_id;
 	unsigned view_instance_to_viewport_spec_id;
 } dxil_spv_option_view_instancing;
+#endif
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);
@@ -1060,8 +1062,10 @@ DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_get_patch_location_offset
 DXIL_SPV_PUBLIC_API dxil_spv_bool dxil_spv_converter_uses_shader_feature(
 	dxil_spv_converter converter, dxil_spv_shader_feature feature);
 
+#ifdef DXIL_SPV_ENABLE_EXPERIMENTAL_MULTIVIEW
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_is_multiview_compatible(
 	dxil_spv_converter converter, dxil_spv_bool *result);
+#endif
 
 /* Intended to be added to the GLSL output in repro suite.
  * Attempts to analyze the DXIL for potential out of spec behavior that needs another pair of eyes.

@@ -23,6 +23,7 @@
  */
 
 #define DXIL_SPV_ENABLE_EXPERIMENTAL_WORKGRAPHS
+#define DXIL_SPV_ENABLE_EXPERIMENTAL_MULTIVIEW
 #include "thread_local_allocator.hpp"
 #include "dxil_spirv_c.h"
 #include "dxil_converter.hpp"

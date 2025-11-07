@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <vector>
 
+#define DXIL_SPV_ENABLE_EXPERIMENTAL_MULTIVIEW
 #include "dxil_spirv_c.h"
 
 #include "cli_parser.hpp"
