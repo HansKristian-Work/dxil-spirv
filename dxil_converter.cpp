@@ -4529,6 +4529,7 @@ bool Converter::Impl::emit_patch_variables()
 			num_broken_user_rows = std::max<unsigned>(num_broken_user_rows, start_row + rows);
 
 		auto &meta = patch_elements_meta[element_id];
+		meta.semantic = system_value;
 
 		// Handle case where shader declares the tess factors twice at different offsets.
 		unsigned semantic_offset = 0;
@@ -4542,8 +4543,18 @@ bool Converter::Impl::emit_patch_variables()
 				meta.id = spirv_module.get_builtin_shader_input(builtin);
 				meta.component_type = actual_element_type;
 				meta.semantic_offset = start_row;
+				meta.semantic = system_value;
 				continue;
 			}
+		}
+
+		// Application can emit these in ViewInstancing, in which case it's just an offset.
+		if (options.multiview.enable && execution_model == spv::ExecutionModelMeshEXT)
+		{
+			if (system_value == DXIL::Semantic::RenderTargetArrayIndex)
+				multiview.custom_layer_index = true;
+			if (system_value == DXIL::Semantic::ViewPortArrayIndex)
+				multiview.custom_viewport_index = true;
 		}
 
 		spv::Id type_id;

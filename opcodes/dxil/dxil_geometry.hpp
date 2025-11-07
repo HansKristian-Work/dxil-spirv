@@ -38,5 +38,5 @@ spv::Id build_view_instance_id(Converter::Impl &impl);
 spv::Id build_viewport_offset_id(Converter::Impl &impl);
 spv::Id build_layer_offset_id(Converter::Impl &impl);
 bool emit_view_masking(Converter::Impl &impl);
-bool emit_view_instancing_fixed_layer_viewport(Converter::Impl &impl, bool entry_point);
+bool emit_view_instancing_fixed_layer_viewport(Converter::Impl &impl, bool entry_point, spv::Id limit_id = 0);
 } // namespace dxil_spv

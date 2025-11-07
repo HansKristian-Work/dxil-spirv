@@ -1,0 +1,206 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+layout(local_size_x = 2, local_size_y = 3, local_size_z = 4) in;
+layout(max_vertices = 24, max_primitives = 8, triangles) out;
+
+layout(set = 10, binding = 23, std140) uniform ViewInstanceMaskUBO
+{
+    uint Mask;
+} ViewInstanceMask;
+
+layout(set = 10, binding = 22, std140) uniform ViewInstancingOffsetsUBO
+{
+    uint ViewID_Layer;
+} ViewInstancingOffsets;
+
+layout(location = 1) out float B[24];
+
+void main()
+{
+    if (bitfieldExtract(ViewInstanceMask.Mask, int(bitfieldExtract(ViewInstancingOffsets.ViewID_Layer, int(0u), int(16u))), int(1u)) == 0u)
+    {
+        return;
+    }
+    SetMeshOutputsEXT(24u, 8u);
+    if ((gl_NumSubgroups == 1u) && ((subgroupBroadcastFirst(24u) == 0u) || (subgroupBroadcastFirst(8u) == 0u)))
+    {
+        return;
+    }
+    uint _58 = gl_LocalInvocationIndex + 0u;
+    if (_58 < 8u)
+    {
+        gl_MeshPrimitivesEXT[_58].gl_Layer = int(bitfieldExtract(ViewInstancingOffsets.ViewID_Layer, int(16u), int(16u)));
+    }
+    float _62 = float(gl_LocalInvocationIndex);
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.x = _62;
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.y = _62;
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.z = _62;
+    gl_MeshVerticesEXT[gl_LocalInvocationIndex].gl_Position.w = _62;
+    B[gl_LocalInvocationIndex] = float(gl_LocalInvocationIndex ^ 1u);
+    if (gl_LocalInvocationIndex < 8u)
+    {
+        uint _73 = gl_LocalInvocationIndex * 3u;
+        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex] = uvec3(_73, _73 + 1u, _73 + 2u);
+    }
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.4
+; Generator: Unknown(30017); 21022
+; Bound: 91
+; Schema: 0
+OpCapability Shader
+OpCapability Geometry
+OpCapability GroupNonUniform
+OpCapability GroupNonUniformBallot
+OpCapability ShaderViewportIndexLayerEXT
+OpCapability MeshShadingEXT
+OpExtension "SPV_EXT_mesh_shader"
+OpExtension "SPV_EXT_shader_viewport_index_layer"
+OpMemoryModel Logical GLSL450
+OpEntryPoint MeshEXT %3 "main" %11 %14 %19 %22 %25 %39 %41 %56
+OpExecutionMode %3 OutputVertices 24
+OpExecutionMode %3 OutputPrimitivesEXT 8
+OpExecutionMode %3 OutputTrianglesEXT
+OpExecutionMode %3 LocalSize 2 3 4
+OpName %3 "main"
+OpName %11 "SV_Position"
+OpName %14 "B"
+OpName %19 "indices"
+OpName %20 "ViewInstanceMaskUBO"
+OpMemberName %20 0 "Mask"
+OpName %22 "ViewInstanceMask"
+OpName %23 "ViewInstancingOffsetsUBO"
+OpMemberName %23 0 "ViewID_Layer"
+OpName %25 "ViewInstancingOffsets"
+OpDecorate %11 BuiltIn Position
+OpDecorate %14 Location 1
+OpDecorate %19 BuiltIn PrimitiveTriangleIndicesEXT
+OpDecorate %20 Block
+OpMemberDecorate %20 0 Offset 0
+OpDecorate %22 DescriptorSet 10
+OpDecorate %22 Binding 23
+OpDecorate %23 Block
+OpMemberDecorate %23 0 Offset 0
+OpDecorate %25 DescriptorSet 10
+OpDecorate %25 Binding 22
+OpDecorate %39 BuiltIn LocalInvocationIndex
+OpDecorate %41 BuiltIn NumSubgroups
+OpDecorate %56 BuiltIn Layer
+OpDecorate %56 PerPrimitiveEXT
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 4
+%7 = OpTypeInt 32 0
+%8 = OpConstant %7 24
+%9 = OpTypeArray %6 %8
+%10 = OpTypePointer Output %9
+%11 = OpVariable %10 Output
+%12 = OpTypeArray %5 %8
+%13 = OpTypePointer Output %12
+%14 = OpVariable %13 Output
+%15 = OpConstant %7 8
+%16 = OpTypeVector %7 3
+%17 = OpTypeArray %16 %15
+%18 = OpTypePointer Output %17
+%19 = OpVariable %18 Output
+%20 = OpTypeStruct %7
+%21 = OpTypePointer Uniform %20
+%22 = OpVariable %21 Uniform
+%23 = OpTypeStruct %7
+%24 = OpTypePointer Uniform %23
+%25 = OpVariable %24 Uniform
+%26 = OpTypePointer Uniform %7
+%28 = OpConstant %7 0
+%31 = OpConstant %7 16
+%35 = OpConstant %7 1
+%36 = OpTypeBool
+%38 = OpTypePointer Input %7
+%39 = OpVariable %38 Input
+%41 = OpVariable %38 Input
+%45 = OpConstant %7 3
+%54 = OpTypeArray %7 %15
+%55 = OpTypePointer Output %54
+%56 = OpVariable %55 Output
+%60 = OpTypePointer Output %7
+%63 = OpTypePointer Output %5
+%67 = OpConstant %7 2
+%77 = OpTypePointer Output %16
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %79
+%79 = OpLabel
+%27 = OpAccessChain %26 %25 %28
+%29 = OpLoad %7 %27
+%30 = OpBitFieldUExtract %7 %29 %28 %31
+%32 = OpAccessChain %26 %22 %28
+%33 = OpLoad %7 %32
+%34 = OpBitFieldUExtract %7 %33 %30 %35
+%37 = OpIEqual %36 %34 %28
+OpSelectionMerge %83 None
+OpBranchConditional %37 %82 %83
+%82 = OpLabel
+OpReturn
+%83 = OpLabel
+%40 = OpLoad %7 %39
+OpSetMeshOutputsEXT %8 %15
+%42 = OpLoad %7 %41
+%43 = OpIEqual %36 %42 %35
+%44 = OpGroupNonUniformBroadcastFirst %7 %45 %8
+%46 = OpGroupNonUniformBroadcastFirst %7 %45 %15
+%47 = OpIEqual %36 %44 %28
+%48 = OpIEqual %36 %46 %28
+%49 = OpLogicalOr %36 %47 %48
+%50 = OpLogicalAnd %36 %43 %49
+OpSelectionMerge %86 None
+OpBranchConditional %50 %85 %86
+%85 = OpLabel
+OpReturn
+%86 = OpLabel
+%51 = OpAccessChain %26 %25 %28
+%52 = OpLoad %7 %51
+%53 = OpBitFieldUExtract %7 %52 %31 %31
+%57 = OpLoad %7 %39
+%58 = OpIAdd %7 %57 %28
+%59 = OpULessThan %36 %58 %15
+%61 = OpAccessChain %60 %56 %58
+OpSelectionMerge %89 None
+OpBranchConditional %59 %88 %89
+%88 = OpLabel
+OpStore %61 %53
+OpBranch %89
+%89 = OpLabel
+%62 = OpConvertUToF %5 %40
+%64 = OpAccessChain %63 %11 %40 %28
+OpStore %64 %62
+%65 = OpAccessChain %63 %11 %40 %35
+OpStore %65 %62
+%66 = OpAccessChain %63 %11 %40 %67
+OpStore %66 %62
+%68 = OpAccessChain %63 %11 %40 %45
+OpStore %68 %62
+%69 = OpBitwiseXor %7 %40 %35
+%70 = OpConvertUToF %5 %69
+%71 = OpAccessChain %63 %14 %40
+OpStore %71 %70
+%72 = OpULessThan %36 %40 %15
+OpSelectionMerge %81 None
+OpBranchConditional %72 %80 %81
+%80 = OpLabel
+%73 = OpIMul %7 %40 %45
+%74 = OpIAdd %7 %73 %35
+%75 = OpIAdd %7 %73 %67
+%76 = OpCompositeConstruct %16 %73 %74 %75
+%78 = OpAccessChain %77 %19 %40
+OpStore %78 %76
+OpBranch %81
+%81 = OpLabel
+OpReturn
+OpFunctionEnd
+#endif

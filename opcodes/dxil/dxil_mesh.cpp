@@ -28,6 +28,7 @@
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
+#include "dxil_geometry.hpp"
 
 namespace dxil_spv
 {
@@ -158,6 +159,8 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 		impl.add(cond_ret);
 	}
 
+	emit_view_instancing_fixed_layer_viewport(impl, false, num_prim_id);
+
 	return true;
 }
 
@@ -287,6 +290,29 @@ bool emit_store_primitive_output_instruction(Converter::Impl &impl, const llvm::
 		op->add_id(builder.makeUintConstant(0));
 		impl.add(op);
 		store_value = op->id;
+	}
+
+	if (impl.options.multiview.enable && impl.options.multiview.last_pre_rasterization_stage)
+	{
+		if (meta.semantic == DXIL::Semantic::RenderTargetArrayIndex)
+		{
+			auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+			add->add_id(store_value);
+			add->add_id(build_layer_offset_id(impl));
+			impl.add(add);
+
+			store_value = add->id;
+		}
+		else if (meta.semantic == DXIL::Semantic::ViewPortArrayIndex &&
+		         impl.options.multiview.view_instance_to_viewport_spec_id != UINT32_MAX)
+		{
+			auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+			add->add_id(store_value);
+			add->add_id(build_viewport_offset_id(impl));
+			impl.add(add);
+
+			store_value = add->id;
+		}
 	}
 
 	op = impl.allocate(spv::OpAccessChain,

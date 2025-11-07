@@ -181,10 +181,51 @@ static bool should_emit_view_instancing_fixed_layer_viewport(Converter::Impl &im
 {
 	return impl.execution_model == spv::ExecutionModelVertex ||
 	       impl.execution_model == spv::ExecutionModelTessellationEvaluation ||
-	       (impl.execution_model == spv::ExecutionModelGeometry && !entry_point);
+	       (impl.execution_model == spv::ExecutionModelGeometry && !entry_point) ||
+	       (impl.execution_model == spv::ExecutionModelMeshEXT && !entry_point);
 }
 
-static bool emit_view_instancing_fixed_layer(Converter::Impl &impl, bool entry_point)
+static void emit_workgroup_unrolled_array_store(Converter::Impl &impl,
+                                                spv::Id var_id, spv::Id value_id, spv::Id limit_id)
+{
+	auto &builder = impl.builder();
+
+	unsigned num_threads = impl.execution_mode_meta.workgroup_threads[0] *
+	                       impl.execution_mode_meta.workgroup_threads[1] *
+	                       impl.execution_mode_meta.workgroup_threads[2];
+
+	spv::Id local_index = impl.spirv_module.get_builtin_shader_input(spv::BuiltInLocalInvocationIndex);
+	auto *load = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+	load->add_id(local_index);
+	impl.add(load);
+
+	// Statically unroll. Simplifies the implementation.
+	for (unsigned i = 0; i < impl.execution_mode_meta.stage_output_num_primitive; i += num_threads)
+	{
+		auto *offset = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+		offset->add_id(load->id);
+		offset->add_id(builder.makeUintConstant(i));
+		impl.add(offset);
+
+		auto *in_bounds = impl.allocate(spv::OpULessThan, builder.makeBoolType());
+		in_bounds->add_id(offset->id);
+		in_bounds->add_id(limit_id);
+		impl.add(in_bounds);
+
+		auto *chain = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.makeUintType(32)));
+		chain->add_id(var_id);
+		chain->add_id(offset->id);
+		impl.add(chain);
+
+		auto *store = impl.allocate(spv::PseudoOpMaskedStore);
+		store->add_id(chain->id);
+		store->add_id(value_id);
+		store->add_id(in_bounds->id);
+		impl.add(store);
+	}
+}
+
+static bool emit_view_instancing_fixed_layer(Converter::Impl &impl, bool entry_point, spv::Id limit_id)
 {
 	if (!impl.options.multiview.enable || impl.multiview.custom_layer_index ||
 	    !impl.options.multiview.last_pre_rasterization_stage ||
@@ -201,18 +242,33 @@ static bool emit_view_instancing_fixed_layer(Converter::Impl &impl, bool entry_p
 		return false;
 
 	spv::Id layer_id = impl.spirv_module.get_builtin_shader_output(spv::BuiltInLayer);
+	auto &builder = impl.builder();
 
 	if (!layer_id)
 	{
-		layer_id = impl.create_variable(spv::StorageClassOutput, impl.builder().makeUintType(32));
+		spv::Id type_id = builder.makeUintType(32);
+		if (impl.execution_model == spv::ExecutionModelMeshEXT)
+			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(impl.execution_mode_meta.stage_output_num_primitive), 0);
+		layer_id = impl.create_variable(spv::StorageClassOutput, type_id);
+
 		impl.spirv_module.register_builtin_shader_output(layer_id, spv::BuiltInLayer);
 		impl.emit_builtin_decoration(layer_id, DXIL::Semantic::RenderTargetArrayIndex, spv::StorageClassOutput);
+
+		if (impl.execution_model == spv::ExecutionModelMeshEXT)
+			builder.addDecoration(layer_id, spv::DecorationPerPrimitiveEXT);
 	}
 
-	auto *store = impl.allocate(spv::OpStore);
-	store->add_id(layer_id);
-	store->add_id(layer_offset_id);
-	impl.add(store);
+	if (impl.execution_model == spv::ExecutionModelMeshEXT)
+	{
+		emit_workgroup_unrolled_array_store(impl, layer_id, layer_offset_id, limit_id);
+	}
+	else
+	{
+		auto *store = impl.allocate(spv::OpStore);
+		store->add_id(layer_id);
+		store->add_id(layer_offset_id);
+		impl.add(store);
+	}
 
 	return true;
 }
@@ -252,7 +308,7 @@ spv::Id build_viewport_offset_id(Converter::Impl &impl)
 	return mask->id;
 }
 
-static bool emit_view_instancing_fixed_viewport(Converter::Impl &impl, bool entry_point)
+static bool emit_view_instancing_fixed_viewport(Converter::Impl &impl, bool entry_point, spv::Id limit_id)
 {
 	if (!impl.options.multiview.enable || impl.multiview.custom_viewport_index ||
 	    !impl.options.multiview.last_pre_rasterization_stage ||
@@ -262,30 +318,43 @@ static bool emit_view_instancing_fixed_viewport(Converter::Impl &impl, bool entr
 
 	auto &builder = impl.builder();
 
-	spv::Id u32_type = builder.makeUintType(32);
 	spv::Id viewport_id = build_viewport_offset_id(impl);
 	spv::Id vp_id = impl.spirv_module.get_builtin_shader_output(spv::BuiltInViewportIndex);
 
 	if (!vp_id)
 	{
-		vp_id = impl.create_variable(spv::StorageClassOutput, u32_type);
+		spv::Id type_id = builder.makeUintType(32);
+		if (impl.execution_model == spv::ExecutionModelMeshEXT)
+			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(impl.execution_mode_meta.stage_output_num_primitive), 0);
+
+		vp_id = impl.create_variable(spv::StorageClassOutput, type_id);
 		impl.spirv_module.register_builtin_shader_output(vp_id, spv::BuiltInViewportIndex);
 		impl.emit_builtin_decoration(vp_id, DXIL::Semantic::ViewPortArrayIndex, spv::StorageClassOutput);
+
+		if (impl.execution_model == spv::ExecutionModelMeshEXT)
+			builder.addDecoration(vp_id, spv::DecorationPerPrimitiveEXT);
 	}
 
-	auto *store = impl.allocate(spv::OpStore);
-	store->add_id(vp_id);
-	store->add_id(viewport_id);
-	impl.add(store);
+	if (impl.execution_model == spv::ExecutionModelMeshEXT)
+	{
+		emit_workgroup_unrolled_array_store(impl, vp_id, viewport_id, limit_id);
+	}
+	else
+	{
+		auto *store = impl.allocate(spv::OpStore);
+		store->add_id(vp_id);
+		store->add_id(viewport_id);
+		impl.add(store);
+	}
 
 	return true;
 }
 
-bool emit_view_instancing_fixed_layer_viewport(Converter::Impl &impl, bool entry_point)
+bool emit_view_instancing_fixed_layer_viewport(Converter::Impl &impl, bool entry_point, spv::Id limit_id)
 {
-	if (!emit_view_instancing_fixed_layer(impl, entry_point))
+	if (!emit_view_instancing_fixed_layer(impl, entry_point, limit_id))
 		return false;
-	if (!emit_view_instancing_fixed_viewport(impl, entry_point))
+	if (!emit_view_instancing_fixed_viewport(impl, entry_point, limit_id))
 		return false;
 
 	return true;
