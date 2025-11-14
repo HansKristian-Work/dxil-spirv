@@ -1705,7 +1705,21 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 	// We might have placed ladders in between so that we need to fixup PHI later than just plain succ.
 	// Chase down the chain and replace all PHIs.
 
+	// First, collect all the succs that we are supposed to examine.
+	// The list should also include succ_back_edge because it is not in the succ chain after recompute_cfg.
+	Vector<CFGNode *> succs;
 	while (succ)
+	{
+		if (succ->succ_back_edge)
+			succs.push_back(succ->succ_back_edge);
+		succs.push_back(succ);
+		if (succ->succ.size() == 1)
+			succ = succ->succ.front();
+		else
+			succ = nullptr;
+	}
+
+	for (auto *succ : succs)
 	{
 		bool done = false;
 		for (auto &phi : succ->ir.phi)
@@ -1731,10 +1745,8 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 			}
 		}
 
-		if (!done && succ->succ.size() == 1)
-			succ = succ->succ.front();
-		else
-			succ = nullptr;
+		if (done)
+			break;
 	}
 }
 
