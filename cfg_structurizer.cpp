@@ -2074,15 +2074,15 @@ void CFGStructurizer::fixup_broken_value_dominance()
 				}
 			}
 
-			auto *sunk_chain = module.allocate_op();
-			*sunk_chain = chain_op;
-			sunk_chain->id = module.allocate_id();
-
-			if (module.get_builder().hasDecoration(chain_op.id, spv::DecorationNonUniform))
-				module.get_builder().addDecoration(chain_op.id, spv::DecorationNonUniform);
-
 			for (auto *non_local_node : local_consumers_sorted)
 			{
+				auto *sunk_chain = module.allocate_op();
+				*sunk_chain = chain_op;
+				sunk_chain->id = module.allocate_id();
+
+				if (module.get_builder().hasDecoration(chain_op.id, spv::DecorationNonUniform))
+					module.get_builder().addDecoration(sunk_chain->id, spv::DecorationNonUniform);
+
 				auto &ops = non_local_node->ir.operations;
 				rewrite_consumed_ids(non_local_node->ir, chain_op.id, sunk_chain->id);
 				ops.insert(ops.begin(), sunk_chain);
