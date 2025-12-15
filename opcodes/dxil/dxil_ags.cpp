@@ -1240,6 +1240,69 @@ static bool emit_wmma_fill(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_wmma_element_wise_arith(Converter::Impl &impl)
+{
+	if (impl.ags.instructions[8].phase != 1)
+		return false;
+
+	if (!validate_wmma_io_registers(impl, 0, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_A_TempReg, 0, true))
+		return false;
+	if (!validate_wmma_io_registers(impl, 4, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_B_TempReg, 0, true))
+		return false;
+
+	uint32_t type_imm = impl.ags.instructions[8].immediate;
+	spv::Id type = build_coopmat_type(impl, type_imm, false);
+
+	spv::Id a = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
+	spv::Id b = impl.get_id_for_value(impl.ags.backdoor_instructions[4]->getOperand(5));
+
+	spv::Op op;
+
+	uint32_t float_op = 0;
+	if (!get_constant_operand(impl.ags.backdoor_instructions[8], 5, &float_op))
+		return false;
+
+	switch (float_op)
+	{
+	case AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Add:
+		op = spv::OpFAdd;
+		break;
+
+	case AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Sub:
+		op = spv::OpFSub;
+		break;
+
+	case AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Mul:
+		op = spv::OpFMul;
+		break;
+
+	case AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Div:
+		op = spv::OpFDiv;
+		break;
+
+	case AmdExtD3DShaderIntrinsicsMatrixElementWiseOp_Times:
+		// No idea what the difference between this and Mul is?
+		op = spv::OpFMul;
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *arith_op = impl.allocate(op, type);
+	arith_op->add_id(a);
+	arith_op->add_id(b);
+	impl.add(arith_op);
+
+	if (!emit_wmma_return_values(impl, type, arith_op->id, 2))
+	{
+		LOGE("Failed to emit WMMA return values.\n");
+		return false;
+	}
+
+	return true;
+}
+
 static spv::Id get_matmul_result_type(Converter::Impl &impl, uint32_t opcode)
 {
 	auto &builder = impl.builder();
@@ -2197,6 +2260,17 @@ bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 		break;
 	}
 
+	case AmdExtD3DShaderIntrinsicsOpcode_MatrixElementWiseArithmetic:
+	{
+		if (impl.ags.num_instructions == 17)
+		{
+			if (!emit_wmma_element_wise_arith(impl))
+				return false;
+			impl.ags.num_instructions = 0;
+		}
+		break;
+	}
+
 	default:
 		LOGE("Unsupported AGS magic instruction 0x%x (immediate %u).\n",
 		     impl.ags.instructions[0].opcode,
@@ -2230,6 +2304,7 @@ void push_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instructi
 	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementFill:
 	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLength:
 	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementExtract:
+	case AmdExtD3DShaderIntrinsicsOpcode_MatrixElementWiseArithmetic:
 		impl.shader_analysis.require_subgroups = true;
 		impl.shader_analysis.require_wmma = true;
 		break;
