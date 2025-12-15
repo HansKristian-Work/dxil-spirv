@@ -3305,6 +3305,45 @@ const CFGNode *CFGStructurizer::scan_plain_continue_block(const CFGNode *node)
 	return node;
 }
 
+bool CFGStructurizer::selection_requires_structured_header(const CFGNode *node) const
+{
+	// From SPIR-V spec. SelectionMerge is required for:
+	// ... an OpBranchConditional instruction that has different
+	// True Label and False Label operands where neither are declared merge blocks or Continue Targets.
+	// Ensure that there is a real merge block.
+	// Only safe to do this in pass1, since we're not supposed to rewrite control flow there.
+	// In first passes, it's okay to merge in the wrong direction.
+
+	// Only consider normal selection merges. Switch and loop exits are stronger than selection exits,
+	// so we don't need to apply special cases.
+	// This consideration is purely to avoid excessive deltas in shader outputs, and having merge
+	// blocks makes SPIRV-Cross output a little more readable.
+	assert(node->succ.size() == 2 && !node->succ_back_edge);
+
+	// We can use proper merge blocks if both paths converge to same location.
+	// If we have a direct branch to continue block on one path,
+	// we can use merge blocks in the opposing path just fine.
+	for (int i = 0; i < 2; i++)
+		if (query_reachability(*node->succ[i], *node->succ[1 - i]) || block_is_plain_continue(node->succ[i]))
+			return true;
+
+	for (int i = 0; i < 2; i++)
+	{
+		auto *s = node->succ[i];
+
+		bool succ_is_plain_selection_merge =
+			std::find_if(s->headers.begin(), s->headers.end(), [&](const CFGNode *head) {
+			  return head->ir.terminator.type != Terminator::Type::Switch &&
+			         head->merge == MergeType::Selection && head->selection_merge_block == s;
+			}) != s->headers.end();
+
+		if (succ_is_plain_selection_merge)
+			return false;
+	}
+
+	return true;
+}
+
 void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 {
 	// Here we deal with selection branches where one path breaks and one path merges.
@@ -3329,6 +3368,9 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 		// Continue blocks should also be considered to have a header already. Makes sure we don't merge to them.
 		bool merge_a_has_header = !node->succ[0]->headers.empty() || block_is_plain_continue(node->succ[0]);
 		bool merge_b_has_header = !node->succ[1]->headers.empty() || block_is_plain_continue(node->succ[1]);
+
+		if (pass == 1 && !selection_requires_structured_header(node))
+			continue;
 
 		int trivial_merge_index = -1;
 
