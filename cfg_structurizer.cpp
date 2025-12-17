@@ -5121,7 +5121,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				auto *break_target = find_break_target_for_selection_construct(idom, node);
 
 				// Have not observed any scenario where we won't have a dominated break target we can use.
-				if (break_target && idom->dominates(break_target) && break_target->headers.empty())
+				if (break_target && idom->dominates(break_target) && break_target->headers.empty() && !is_within_loop(break_target))
 				{
 					// Enclose this scope in a loop.
 					auto *helper_pred = create_helper_pred_block(idom);
@@ -5465,6 +5465,35 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 
 	node->add_branch(succ_node);
 	return succ_node;
+}
+
+bool CFGStructurizer::is_within_loop(CFGNode* node)
+{
+    CFGNode* continue_node = find_loop_continue_node(node);
+    if (continue_node && continue_node->post_dominates(node))
+    {
+        CFGNode* header_node = continue_node->succ_back_edge;
+        assert(header_node);
+        return header_node->dominates(node);
+    }
+    return false;
+}
+
+CFGNode *CFGStructurizer::find_loop_continue_node(CFGNode* node)
+{
+    if (node)
+    {
+        if (node->succ_back_edge)
+            return node;
+
+        for (CFGNode* node : node->succ)
+        {
+            CFGNode* continue_node = find_loop_continue_node(node);
+            if (continue_node)
+                return continue_node;
+        }
+    }
+    return nullptr;
 }
 
 CFGNode *CFGStructurizer::find_common_post_dominator(const Vector<CFGNode *> &candidates)

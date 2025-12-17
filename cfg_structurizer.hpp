@@ -163,6 +163,8 @@ private:
 	                                                       CFGNode *full_break_target,
 	                                                       const UnorderedSet<const CFGNode *> &normal_preds);
 
+	static bool is_within_loop(CFGNode* node);
+	static CFGNode *find_loop_continue_node(CFGNode* node);
 	static CFGNode *find_common_post_dominator(const Vector<CFGNode *> &candidates);
 	static CFGNode *find_common_post_dominator_with_ignored_break(Vector<CFGNode *> candidates,
 	                                                              const CFGNode *break_node);
