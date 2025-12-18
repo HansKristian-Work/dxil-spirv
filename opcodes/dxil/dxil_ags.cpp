@@ -710,6 +710,47 @@ static bool emit_wmma_length(Converter::Impl &impl)
 	return true;
 }
 
+static spv::Id build_packed_fp8_to_fp16_vec4(Converter::Impl &impl, spv::Id packed_id)
+{
+	auto &builder = impl.builder();
+	spv::Id u8_type = builder.makeUintType(8);
+	spv::Id u8vec4_type = builder.makeVectorType(u8_type, 4);
+	spv::Id i16_type = builder.makeIntType(16);
+	spv::Id i16vec4_type = builder.makeVectorType(i16_type, 4);
+	spv::Id f16_type = builder.makeFloatType(16);
+	spv::Id f16vec4_type = builder.makeVectorType(f16_type, 4);
+
+	auto *cast = impl.allocate(spv::OpBitcast, u8vec4_type);
+	cast->add_id(packed_id);
+	impl.add(cast);
+
+	auto *sext = impl.allocate(spv::OpSConvert, i16vec4_type);
+	sext->add_id(cast->id);
+	impl.add(sext);
+
+	auto *shift = impl.allocate(spv::OpShiftLeftLogical, i16vec4_type);
+	shift->add_id(sext->id);
+	shift->add_id(impl.build_splat_constant_vector(i16_type, builder.makeInt16Constant(7), 4));
+	impl.add(shift);
+
+	auto *mask = impl.allocate(spv::OpBitwiseAnd, i16vec4_type);
+	mask->add_id(shift->id);
+	mask->add_id(impl.build_splat_constant_vector(i16_type, builder.makeInt16Constant(int16_t(0xffff ^ 0x4000)), 4));
+	impl.add(mask);
+
+	auto *bitcast = impl.allocate(spv::OpBitcast, f16vec4_type);
+	bitcast->add_id(mask->id);
+	impl.add(bitcast);
+
+	// Need post-scale to correctly deal with denorms.
+	auto *mul = impl.allocate(spv::OpVectorTimesScalar, f16vec4_type);
+	mul->add_id(bitcast->id);
+	mul->add_id(builder.makeFloat16Constant(0x5c00 /* 256.0 */));
+	impl.add(mul);
+
+	return mul->id;
+}
+
 static bool emit_wmma_element_insert(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -725,10 +766,8 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 	const llvm::Value *elem = impl.ags.backdoor_instructions[4]->getOperand(5);
 	spv::Id data_id = impl.get_id_for_value(impl.ags.backdoor_instructions[4]->getOperand(6));
 	spv::Id id = 0;
-
-	// FSR4 doesn't need this, just don't bother if we emulate FP8 as FP16.
 	if (!impl.options.wmma_fp8 && fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
-		return false;
+		data_id = build_packed_fp8_to_fp16_vec4(impl, data_id);
 
 	if (const auto *const_e = llvm::dyn_cast<llvm::ConstantInt>(elem))
 	{
@@ -739,21 +778,30 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 			// 8-bit elements are packed in AGS for some reason ...
 			id = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
 
-			auto *cast = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(8), 4));
-			cast->add_id(data_id);
-			impl.add(cast);
+			spv::Id cast_id = 0;
+			if (impl.options.wmma_fp8)
+			{
+				auto *cast = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(8), 4));
+				cast->add_id(data_id);
+				impl.add(cast);
+				cast_id = cast->id;
+			}
 
 			for (int i = 0; i < 4; i++)
 			{
-				auto *ext = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(8));
-				ext->add_id(cast->id);
+				auto *ext = impl.allocate(spv::OpCompositeExtract,
+				                          impl.options.wmma_fp8 ? builder.makeUintType(8) : builder.makeFloatType(16));
+				ext->add_id(cast_id ? cast_id : data_id);
 				ext->add_literal(i);
 				impl.add(ext);
 
-				auto *bitcast = impl.allocate(spv::OpBitcast, make_fp8_type(impl, false));
-				bitcast->add_id(ext->id);
-				impl.add(bitcast);
-				ext = bitcast;
+				if (impl.options.wmma_fp8)
+				{
+					auto *bitcast = impl.allocate(spv::OpBitcast, make_fp8_type(impl, false));
+					bitcast->add_id(ext->id);
+					impl.add(bitcast);
+					ext = bitcast;
+				}
 
 				auto *insert = impl.allocate(spv::OpCompositeInsert, coop_type);
 				insert->add_id(ext->id);
@@ -820,9 +868,15 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 		case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8:
 		{
 			// 8-bit elements are packed in AGS for some reason ...
-			auto *cast = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(8), 4));
-			cast->add_id(data_id);
-			impl.add(cast);
+			spv::Id cast_id = 0;
+
+			if (impl.options.wmma_fp8)
+			{
+				auto *cast = impl.allocate(spv::OpBitcast, builder.makeVectorType(builder.makeUintType(8), 4));
+				cast->add_id(data_id);
+				impl.add(cast);
+				cast_id = cast->id;
+			}
 
 			auto *index4 = impl.allocate(spv::OpIMul, builder.makeUintType(32));
 			index4->add_id(impl.get_id_for_value(elem));
@@ -831,15 +885,19 @@ static bool emit_wmma_element_insert(Converter::Impl &impl)
 
 			for (int i = 0; i < 4; i++)
 			{
-				auto *ext = impl.allocate(spv::OpCompositeExtract, builder.makeUintType(8));
-				ext->add_id(cast->id);
+				auto *ext = impl.allocate(spv::OpCompositeExtract,
+				                          impl.options.wmma_fp8 ? builder.makeUintType(8) : builder.makeFloatType(16));
+				ext->add_id(cast_id ? cast_id : data_id);
 				ext->add_literal(i);
 				impl.add(ext);
 
-				auto *bitcast = impl.allocate(spv::OpBitcast, make_fp8_type(impl, false));
-				bitcast->add_id(ext->id);
-				impl.add(bitcast);
-				ext = bitcast;
+				if (impl.options.wmma_fp8)
+				{
+					auto *bitcast = impl.allocate(spv::OpBitcast, make_fp8_type(impl, false));
+					bitcast->add_id(ext->id);
+					impl.add(bitcast);
+					ext = bitcast;
+				}
 
 				auto *index = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
 				index->add_id(index4->id);
