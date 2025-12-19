@@ -454,6 +454,7 @@ dxil_spv_result dxil_spv_parse_dxil_blob(const void *data, size_t size, dxil_spv
 	}
 
 	auto names = Converter::get_entry_points(parsed->bc);
+	parsed->entry_points.reserve(names.size());
 	for (auto &name : names)
 	{
 		parsed->entry_points.push_back({
@@ -511,6 +512,7 @@ dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_pars
 	}
 
 	auto names = Converter::get_entry_points(parsed->bc);
+	parsed->entry_points.reserve(names.size());
 	for (auto &name : names)
 	{
 		parsed->entry_points.push_back({

@@ -277,6 +277,7 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 				// We know this block does not generate this ID, so it must be either a value generated at global scope
 				// (constant), or a value created by a block which dominates this node,
 				// which also means it dominates all preds to this node.
+				phi.incoming.reserve(break_nodes.size());
 				for (auto *break_pred : break_nodes)
 					phi.incoming.push_back({ break_pred, incoming_from_node });
 				validate_phi(succ->ir.phi);
@@ -1689,6 +1690,7 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 			remap[phi.id] = itr->id;
 		}
 
+		block->ir.operations.reserve(node->ir.operations.size());
 		for (auto *op : node->ir.operations)
 			block->ir.operations.push_back(duplicate_op(op, remap));
 
@@ -1734,7 +1736,8 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 				spv::Id incoming_from_node = incoming_itr->id;
 				phi.incoming.erase(incoming_itr);
 
-				for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
+				phi.incoming.reserve(tmp_pred.size());
+				for (size_t i = 0; i < tmp_pred.size(); i++)
 				{
 					auto &remap = rewritten_ids[i];
 					phi.incoming.push_back({ break_blocks[i], get_remapped_id_for_duplicated_block(incoming_from_node, remap) });
@@ -2189,9 +2192,11 @@ void CFGStructurizer::insert_phi()
 	// Build a map of value ID -> creating block.
 	// This allows us to detect if a value is consumed in a situation where the declaration does not dominate use.
 	// This can happen when introducing ladder blocks or similar.
+	phi_nodes.reserve(forward_post_visit_order.size());
 	for (auto *node : forward_post_visit_order)
 	{
 		unsigned phi_index = 0;
+		phi_nodes.reserve(node->ir.phi.size());
 		for (auto &phi : node->ir.phi)
 		{
 			phi_nodes.push_back({ node, phi_index });
@@ -2498,6 +2503,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				Vector<IncomingValue> final_incoming;
 
 				// Final merge.
+				final_incoming.reserve(frontier->pred.size());
 				for (auto *input : frontier->pred)
 				{
 					auto itr = find_incoming_value(input, incoming_values);
@@ -2546,6 +2552,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		module.get_builder().addName(frontier_phi.id, (String("frontier_phi_") + frontier->name).c_str());
 
 		assert(!frontier->pred_back_edge);
+		frontier_phi.incoming.reserve(frontier->pred.size());
 		for (auto *input : frontier->pred)
 		{
 			auto itr = find_incoming_value(input, incoming_values);
@@ -2643,6 +2650,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 			// we created along this path turned out to be irrelevant after all.
 
 			unsigned normal_branch_count = 0;
+			merge_phi.incoming.reserve(frontier->pred.size());
 			for (auto *input : frontier->pred)
 			{
 				IncomingValue value = {};
@@ -2874,6 +2882,7 @@ void CFGStructurizer::backwards_visit()
 			leaf_nodes.push_back(node);
 	}
 
+	backward_post_visit_order.reserve(leaf_nodes.size());
 	for (auto *leaf : leaf_nodes)
 		backwards_visit(*leaf);
 
@@ -4191,6 +4200,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		pdf_ranges.reserve(inner_constructs.size());
 
 		// If breaking merge constructs are entangled, their PDFs will overlap.
+		pdf_ranges.reserve(valid_constructs.size());
 		for (auto *candidate : valid_constructs)
 		{
 			auto &pdf = candidate->post_dominance_frontier;
@@ -5498,6 +5508,7 @@ CFGNode *CFGStructurizer::find_break_target_for_selection_construct(CFGNode *ido
 
 			if (query_reachability(*n, *merge))
 			{
+				new_visit_queue.reserve(n->succ.size());
 				for (auto *succ : n->succ)
 					new_visit_queue.push_back(succ);
 			}
@@ -5585,6 +5596,7 @@ void CFGStructurizer::rewrite_ladder_conditional_branch_from_incoming_blocks(
 	phi.type_id = module.get_builder().makeBoolType();
 	module.get_builder().addName(phi.id, name.c_str());
 
+	phi.incoming.reserve(ladder->pred.size());
 	for (auto *pred : ladder->pred)
 	{
 		IncomingValue incoming = {};
@@ -5610,6 +5622,7 @@ CFGNode *CFGStructurizer::transpose_code_path_through_ladder_block(
 	auto *ladder = create_ladder_block(header, merge, ".transpose");
 
 	UnorderedSet<const CFGNode *> normal_preds;
+	normal_preds.reserve(ladder->pred.size());
 	for (auto *p : ladder->pred)
 		normal_preds.insert(p);
 	traverse_dominated_blocks_and_rewrite_branch(header, path, ladder);
@@ -6181,6 +6194,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 		plain_branch = !need_default_case && constructs.size() == 2;
 		if (!plain_branch)
 		{
+			phi.incoming.reserve(cutoff_index);
 			for (size_t i = 0; i < cutoff_index; i++)
 				phi.incoming.push_back({ dispatcher->pred[i], builder.makeIntConstant(-1) });
 			phi.type_id = builder.makeIntType(32);
@@ -6208,6 +6222,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 		auto *candidate = constructs[i];
 		traverse_dominated_blocks_and_rewrite_branch(common_idom, candidate, dispatcher);
 		size_t next_cutoff_index = dispatcher->pred.size();
+		phi.incoming.reserve(next_cutoff_index - cutoff_index);
 		for (size_t j = cutoff_index; j < next_cutoff_index; j++)
 		{
 			spv::Id cond_id;
@@ -7006,9 +7021,14 @@ void CFGStructurizer::split_merge_blocks()
 		// This will influence if a pred block gets false or true when emitting ladder breaking blocks later.
 		Vector<UnorderedSet<const CFGNode *>> normal_preds(node->headers.size());
 		for (size_t i = 0; i < node->headers.size(); i++)
+		{
 			if (node->headers[i]->loop_ladder_block)
+			{
+				normal_preds[i].reserve(node->headers[i]->loop_ladder_block->pred.size());
 				for (auto *pred : node->headers[i]->loop_ladder_block->pred)
 					normal_preds[i].insert(pred);
+			}
+		}
 
 		bool has_rewrites_to_outer_ladder = false;
 
@@ -7261,6 +7281,7 @@ CFGNode *CFGStructurizer::get_post_dominance_frontier_with_cfg_subset_that_reach
 		{
 			promoted_post_dominators.insert(frontier);
 			frontiers.pop_back();
+			frontiers.reserve(frontier->post_dominance_frontier.size());
 			for (auto *pdoms : frontier->post_dominance_frontier)
 				frontiers.push_back(pdoms);
 		}
@@ -7390,6 +7411,7 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 		phi.type_id = module.get_builder().makeBoolType();
 		module.get_builder().addName(phi.id, (String("break_selector_") + merge->name).c_str());
 
+		phi.incoming.reserve(natural_preds + dispatcher->pred.size());
 		for (size_t i = 0; i < natural_preds; i++)
 		{
 			IncomingValue incoming = {};
@@ -7398,7 +7420,7 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 			phi.incoming.push_back(incoming);
 		}
 
-		for (size_t i = natural_preds, n = dispatcher->pred.size(); i < n; i++)
+		for (size_t i = natural_preds; i < dispatcher->pred.size(); i++)
 		{
 			IncomingValue incoming = {};
 			incoming.block = dispatcher->pred[i];
