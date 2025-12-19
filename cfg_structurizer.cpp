@@ -5503,6 +5503,13 @@ CFGNode *CFGStructurizer::find_break_target_for_selection_construct(CFGNode *ido
 			}
 			else
 			{
+				// Cannot merge into a loop construct.
+				// Merging towards an outer loop construct would probably lead to weird results,
+				// but allow it here.
+				auto *inner = get_innermost_loop_header_for(n);
+				if (inner != entry_block && query_reachability(*idom, *inner))
+					continue;
+
 				// The breaking path might be vestigal.
 				// I.e., it might just be exiting directly without dominating anything.
 				// Have to detect this false positive, since it's not really a break, just early return.
