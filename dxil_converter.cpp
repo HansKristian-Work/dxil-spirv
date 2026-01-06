@@ -1294,10 +1294,22 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment,
 		};
 		VulkanSRVBinding vulkan_binding = { { bind_space, bind_register }, {} };
-		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
+		if (need_resource_remapping && resource_mapping_iface &&
+		    !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
 		{
-			LOGE("Failed to remap SRV %u:%u.\n", bind_space, bind_register);
-			return false;
+			// We may be rejected if the unbound range has 1 non-bindless descriptor.
+			bool retry = d3d_binding.range_size == UINT32_MAX;
+			if (retry)
+			{
+				d3d_binding.range_size = 1;
+				range_size = 1;
+			}
+
+			if (!retry || !resource_mapping_iface->remap_srv(d3d_binding, vulkan_binding))
+			{
+				LOGE("Failed to remap SRV %u:%u.\n", bind_space, bind_register);
+				return false;
+			}
 		}
 
 		auto &access_meta = srv_access_tracking[index];
@@ -1832,10 +1844,22 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment
 		};
 		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register }, {} };
-		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
+		if (need_resource_remapping && resource_mapping_iface &&
+		    !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
 		{
-			LOGE("Failed to remap UAV %u:%u.\n", bind_space, bind_register);
-			return false;
+			// We may be rejected if the unbound range has 1 non-bindless descriptor.
+			bool retry = d3d_binding.binding.range_size == UINT32_MAX;
+			if (retry)
+			{
+				d3d_binding.binding.range_size = 1;
+				range_size = 1;
+			}
+
+			if (!retry || !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
+			{
+				LOGE("Failed to remap UAV %u:%u.\n", bind_space, bind_register);
+				return false;
+			}
 		}
 
 		AliasedAccess aliased_access;
@@ -2350,10 +2374,22 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			                       range_size, 0 };
 		VulkanCBVBinding vulkan_binding = {};
 		vulkan_binding.buffer = { bind_space, bind_register };
-		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
+		if (need_resource_remapping && resource_mapping_iface &&
+		    !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
 		{
-			LOGE("Failed to remap CBV %u:%u.\n", bind_space, bind_register);
-			return false;
+			// We may be rejected if the unbound range has 1 non-bindless descriptor.
+			bool retry = d3d_binding.range_size == UINT32_MAX;
+			if (retry)
+			{
+				d3d_binding.range_size = 1;
+				range_size = 1;
+			}
+
+			if (!retry || !resource_mapping_iface->remap_cbv(d3d_binding, vulkan_binding))
+			{
+				LOGE("Failed to remap CBV %u:%u.\n", bind_space, bind_register);
+				return false;
+			}
 		}
 
 		auto &access_meta = cbv_access_tracking[index];
@@ -2611,10 +2647,22 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 			                       bind_register,
 			                       range_size, 0 };
 		VulkanBinding vulkan_binding = { bind_space, bind_register };
-		if (need_resource_remapping && resource_mapping_iface && !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
+		if (need_resource_remapping && resource_mapping_iface &&
+		    !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
 		{
-			LOGE("Failed to remap sampler %u:%u.\n", bind_space, bind_register);
-			return false;
+			// We may be rejected if the unbound range has 1 non-bindless descriptor.
+			bool retry = d3d_binding.range_size == UINT32_MAX;
+			if (retry)
+			{
+				d3d_binding.range_size = 1;
+				range_size = 1;
+			}
+
+			if (!retry || !resource_mapping_iface->remap_sampler(d3d_binding, vulkan_binding))
+			{
+				LOGE("Failed to remap sampler %u:%u.\n", bind_space, bind_register);
+				return false;
+			}
 		}
 
 		sampler_index_to_reference.resize(std::max(sampler_index_to_reference.size(), size_t(index + 1)));
