@@ -6930,11 +6930,6 @@ bool CFGStructurizer::is_rewind_candidate_split_node(
 	if (is_trivially_no_split_node(candidate))
 		return false;
 
-	// Avoid any awkward scenario where a node is visited twice. It really shouldn't happen.
-	if (std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), candidate) !=
-	    forward_post_visit_order.end())
-		return false;
-
 	if (std::find(visited_orphans.begin(), visited_orphans.end(), candidate) != visited_orphans.end())
 		return false;
 
