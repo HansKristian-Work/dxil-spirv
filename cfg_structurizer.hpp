@@ -117,7 +117,9 @@ private:
 	static bool is_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
 	bool serialize_interleaved_merge_scopes();
 	void split_merge_scopes();
-	static CFGNode *rewind_candidate_split_node(CFGNode *node);
+	bool is_rewind_candidate_split_node(const Vector<const CFGNode *> &visited_orphans, CFGNode *node,
+	                                    CFGNode *candidate) const;
+	bool is_trivially_no_split_node(CFGNode *node) const;
 	void eliminate_degenerate_blocks();
 	static bool ladder_chain_has_phi_dependencies(const CFGNode *chain, const CFGNode *incoming);
 	void duplicate_impossible_merge_constructs();
@@ -143,6 +145,8 @@ private:
 	bool loop_exit_supports_infinite_loop(const CFGNode *header, const CFGNode *loop_exit) const;
 
 	void split_merge_blocks();
+	bool split_merge_blocks(CFGNode *node);
+	void split_merge_blocks_and_visit_orphan_preds(Vector<const CFGNode *> &visited, CFGNode *merge, CFGNode *node);
 	void eliminate_degenerate_switch_merges();
 	bool merge_candidate_is_on_breaking_path(const CFGNode *node) const;
 	bool merge_candidate_is_inside_continue_construct(const CFGNode *node) const;

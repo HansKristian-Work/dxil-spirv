@@ -5363,10 +5363,6 @@ CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 		header->fixup_merge_info_after_branch_rewrite(node, pred_node);
 	node->headers.clear();
 
-	// When splitting merge scopes, need to consider these pred blocks as well
-	// since they might end up with headers.size() >= 2.
-	node->split_merge_block_candidate = pred_node;
-
 	// We're replacing entry block.
 	if (node == node->immediate_dominator)
 		pred_node->immediate_dominator = pred_node;
@@ -6926,8 +6922,28 @@ void CFGStructurizer::eliminate_degenerate_switch_merges()
 	}
 }
 
-CFGNode *CFGStructurizer::rewind_candidate_split_node(CFGNode *node)
+bool CFGStructurizer::is_rewind_candidate_split_node(
+	const Vector<const CFGNode *> &visited_orphans, CFGNode *node, CFGNode *candidate) const
 {
+	if (node->forward_post_visit_order != candidate->forward_post_visit_order)
+		return false;
+
+	if (is_trivially_no_split_node(candidate))
+		return false;
+
+	// Avoid any awkward scenario where a node is visited twice. It really shouldn't happen.
+	if (std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), candidate) !=
+	    forward_post_visit_order.end())
+		return false;
+
+	if (std::find(visited_orphans.begin(), visited_orphans.end(), candidate) != visited_orphans.end())
+		return false;
+
+	// For whatever reason, the node is no longer a meaningful merge target.
+	for (auto *header : candidate->headers)
+		if (!candidate->can_backtrace_to(header))
+			return false;
+
 	// If we created a new helper pred block during traversal, it might not
 	// exist in forward_post_visit_order.
 	// Look for the replacement block here to make sure it gets processed in the appropriate order.
@@ -6935,196 +6951,210 @@ CFGNode *CFGStructurizer::rewind_candidate_split_node(CFGNode *node)
 	// so there is no chance to re-traverse the CFG.
 	// Only consider blocks that we trivially post-dominate and that
 	// definitely have no entry in forward_post_visit_order already.
-	while (node->headers.empty() &&
-	       node->pred.size() == 1 &&
-	       node->split_merge_block_candidate &&
-	       node->split_merge_block_candidate->forward_post_visit_order == node->forward_post_visit_order)
+	if (candidate->succ.size() != 1 || candidate->succ.front() != node)
 	{
-		auto *candidate = node->split_merge_block_candidate;
-		if (candidate->succ.size() != 1 || candidate->succ.front() != node)
-		{
-			// This is a ladder block of some sort. It's possible we're already in a "resolved" state,
-			// so we really should not try to split further.
-			// If we're considered a proper ladder block by any of our headers, bail.
-			for (auto *header : candidate->headers)
-				if (header->loop_ladder_block == node || header->loop_merge_block == node)
-					return node;
-		}
-
-		node = candidate;
+		// This is a ladder block of some sort. It's possible we're already in a "resolved" state,
+		// so we really should not try to split further.
+		// If we're considered a proper ladder block by any of our headers, bail.
+		for (auto *header : candidate->headers)
+			if (header->loop_ladder_block == node || header->loop_merge_block == node)
+				return false;
 	}
 
-	return node;
+	return true;
+}
+
+bool CFGStructurizer::is_trivially_no_split_node(CFGNode *node) const
+{
+	if (node->headers.size() <= 1 && !block_is_plain_continue(node))
+		return true;
+
+	// It's possible that we have just one header.
+	// One loop has a ladder block which is not this block, but the post-dominator is a pure continue block.
+	// This gets rather awkward, since we need to special case this scenario.
+	if (node->headers.empty())
+		return true;
+
+	return false;
+}
+
+bool CFGStructurizer::split_merge_blocks(CFGNode *node)
+{
+	if (is_trivially_no_split_node(node))
+		return false;
+
+	// If this block was the merge target for more than one construct,
+	// we will need to split the block. In SPIR-V, a merge block can only be the merge target for one construct.
+	// However, we can set up a chain of merges where inner scope breaks to outer scope with a dummy basic block.
+	// The outer scope comes before the inner scope merge.
+
+	// We cannot fully trust a sort on post-visit order, since if we have two split blocks here,
+	// they will have the same post-visit order until we recompute them.
+	// FIXME: Should probably be smarter about this ...
+	std::sort(node->headers.begin(), node->headers.end(),
+	          [](const CFGNode *a, const CFGNode *b) -> bool
+	          {
+		          if (a->dominates(b))
+			          return true;
+		          else if (b->dominates(a))
+			          return false;
+		          else
+			          return a->forward_post_visit_order > b->forward_post_visit_order;
+	          });
+
+	//LOGI("Splitting merge blocks for %s\n", node->name.c_str());
+	//for (auto *header : node->headers)
+	//	LOGI("  Header: %s.\n", header->name.c_str());
+
+	CFGNode *full_break_target = nullptr;
+
+	// If we're a plain continue block, we're implicitly the full break target.
+	bool plain_continue_resolve = block_is_plain_continue(node);
+	if (plain_continue_resolve)
+		full_break_target = node;
+
+	// Before we start splitting and rewriting branches, we need to know which preds are considered "normal",
+	// and which branches are considered ladder breaking branches (rewritten branches).
+	// This will influence if a pred block gets false or true when emitting ladder breaking blocks later.
+	Vector<UnorderedSet<const CFGNode *>> normal_preds(node->headers.size());
+	for (size_t i = 0; i < node->headers.size(); i++)
+		if (node->headers[i]->loop_ladder_block)
+			for (auto *pred : node->headers[i]->loop_ladder_block->pred)
+				normal_preds[i].insert(pred);
+
+	bool has_rewrites_to_outer_ladder = false;
+
+	// Start from innermost scope, and rewrite all escape branches to a merge block which is dominated by the loop header in question.
+	// The merge block for the loop must have a ladder block before the old merge block.
+	// This ladder block will break to outer scope, or keep executing the old merge block.
+	for (size_t i = node->headers.size() - 1; i || plain_continue_resolve; i--)
+	{
+		auto *current_node = node->headers[i];
+
+		// Find innermost loop header scope we can break to when resolving ladders.
+		CFGNode *target_header = i != 0 ? get_target_break_block_for_inner_header(node, i) : nullptr;
+
+		//LOGI("Current: %s, target: %s.\n", current_node->name.c_str(), target_header->name.c_str());
+
+		if (current_node->merge == MergeType::Loop)
+		{
+			auto *loop_ladder = get_or_create_ladder_block(node, i);
+
+			// The loop ladder needs to break to somewhere.
+			// Either this is an outer loop scope, or we need to create a fake loop we can break out of if
+			// the break is non-trivial.
+			if (loop_ladder && !target_header && !full_break_target)
+				full_break_target = build_enclosing_break_target_for_loop_ladder(node, loop_ladder);
+
+			CFGNode *new_ladder_block = nullptr;
+			if (loop_ladder)
+			{
+				new_ladder_block = build_ladder_block_for_escaping_edge_handling(
+				    node, current_node, loop_ladder, target_header, full_break_target, normal_preds[i]);
+
+				if (target_header == node->headers[0])
+					has_rewrites_to_outer_ladder = true;
+			}
+
+			// We won't analyze this again, so make sure header knows
+			// about the new merge block.
+			if (current_node->freeze_structured_analysis)
+			{
+				if (new_ladder_block)
+					current_node->loop_ladder_block = new_ladder_block;
+				current_node->loop_merge_block = current_node->loop_ladder_block;
+				current_node->loop_ladder_block = nullptr;
+			}
+		}
+		else if (current_node->merge == MergeType::Selection)
+		{
+			if (target_header)
+			{
+				// Breaks out to outer available scope.
+				CFGNode *rewrite_to = nullptr;
+				if (target_header->loop_ladder_block)
+					rewrite_to = target_header->loop_ladder_block;
+				else if (target_header->loop_merge_block)
+					rewrite_to = target_header->loop_merge_block;
+
+				if (rewrite_to)
+				{
+					traverse_dominated_blocks_and_rewrite_branch(current_node, node, rewrite_to);
+					if (target_header == node->headers[0])
+						has_rewrites_to_outer_ladder = true;
+				}
+				else
+					LOGW("No loop merge block?\n");
+			}
+			else if (full_break_target)
+			{
+				traverse_dominated_blocks_and_rewrite_branch(current_node, node, full_break_target);
+			}
+			else
+			{
+				// The outer scope *must* now become a loop, no matter what.
+				// We cannot rely on a traversal to rewrite breaking constructs in the entire loop,
+				// so "everything" must essentially become a break instead.
+				full_break_target = node;
+				assert(node->headers[0]->merge == MergeType::Selection);
+				node->headers[0]->merge = MergeType::Loop;
+				node->headers[0]->freeze_structured_analysis = true;
+
+				assert(node->headers[0]->selection_merge_block == node);
+				node->headers[0]->loop_merge_block = node->headers[0]->selection_merge_block;
+				node->headers[0]->selection_merge_block = nullptr;
+			}
+		}
+		else
+			LOGE("Invalid merge type.\n");
+
+		if (i == 0)
+			break;
+	}
+
+	auto *outer_header = node->headers[0];
+	if (has_rewrites_to_outer_ladder && outer_header->merge == MergeType::Loop && outer_header->loop_ladder_block &&
+	    outer_header->loop_merge_block && outer_header->loop_ladder_block->dominates(outer_header->loop_merge_block))
+	{
+		auto *ladder = outer_header->loop_ladder_block;
+		bool non_trivial_ladder =
+		    !ladder->ir.operations.empty() || ladder_chain_has_phi_dependencies(ladder, outer_header->loop_merge_block);
+
+		if (non_trivial_ladder)
+		{
+			// It's possible we have branches that intended to rewrite to loop_merge_block
+			// but ended up writing to loop_ladder_block instead.
+			// Perform a final fixup branch if this is necessary.
+			// If the ladder block is a dummy, we can ignore this.
+			build_ladder_block_for_escaping_edge_handling(node, outer_header, outer_header->loop_ladder_block, nullptr,
+			                                              outer_header->loop_merge_block, normal_preds[0]);
+		}
+	}
+
+	return true;
+}
+
+void CFGStructurizer::split_merge_blocks_and_visit_orphan_preds(
+	Vector<const CFGNode *> &visited_orphans, CFGNode *merge, CFGNode *node)
+{
+	if (split_merge_blocks(node))
+		return;
+
+	for (auto *pred : node->pred)
+	{
+		if (is_rewind_candidate_split_node(visited_orphans, merge, pred))
+		{
+			visited_orphans.push_back(pred);
+			split_merge_blocks_and_visit_orphan_preds(visited_orphans, merge, pred);
+		}
+	}
 }
 
 void CFGStructurizer::split_merge_blocks()
 {
+	Vector<const CFGNode *> visited_orphans;
 	for (auto *node : forward_post_visit_order)
-	{
-		node = rewind_candidate_split_node(node);
-
-		if (node->headers.size() <= 1 && !block_is_plain_continue(node))
-			continue;
-
-		// It's possible that we have just one header.
-		// One loop has a ladder block which is not this block, but the post-dominator is a pure continue block.
-		// This gets rather awkward, since we need to special case this scenario.
-		if (node->headers.empty())
-			continue;
-
-		// If this block was the merge target for more than one construct,
-		// we will need to split the block. In SPIR-V, a merge block can only be the merge target for one construct.
-		// However, we can set up a chain of merges where inner scope breaks to outer scope with a dummy basic block.
-		// The outer scope comes before the inner scope merge.
-
-		// We cannot fully trust a sort on post-visit order, since if we have two split blocks here,
-		// they will have the same post-visit order until we recompute them.
-		// FIXME: Should probably be smarter about this ...
-		std::sort(node->headers.begin(), node->headers.end(),
-		          [](const CFGNode *a, const CFGNode *b) -> bool {
-			          if (a->dominates(b))
-				          return true;
-			          else if (b->dominates(a))
-				          return false;
-			          else
-				          return a->forward_post_visit_order > b->forward_post_visit_order;
-		          });
-
-		//LOGI("Splitting merge blocks for %s\n", node->name.c_str());
-		//for (auto *header : node->headers)
-		//	LOGI("  Header: %s.\n", header->name.c_str());
-
-		CFGNode *full_break_target = nullptr;
-
-		// If we're a plain continue block, we're implicitly the full break target.
-		bool plain_continue_resolve = block_is_plain_continue(node);
-		if (plain_continue_resolve)
-			full_break_target = node;
-
-		// Before we start splitting and rewriting branches, we need to know which preds are considered "normal",
-		// and which branches are considered ladder breaking branches (rewritten branches).
-		// This will influence if a pred block gets false or true when emitting ladder breaking blocks later.
-		Vector<UnorderedSet<const CFGNode *>> normal_preds(node->headers.size());
-		for (size_t i = 0; i < node->headers.size(); i++)
-			if (node->headers[i]->loop_ladder_block)
-				for (auto *pred : node->headers[i]->loop_ladder_block->pred)
-					normal_preds[i].insert(pred);
-
-		bool has_rewrites_to_outer_ladder = false;
-
-		// Start from innermost scope, and rewrite all escape branches to a merge block which is dominated by the loop header in question.
-		// The merge block for the loop must have a ladder block before the old merge block.
-		// This ladder block will break to outer scope, or keep executing the old merge block.
-		for (size_t i = node->headers.size() - 1; i || plain_continue_resolve; i--)
-		{
-			auto *current_node = node->headers[i];
-
-			// Find innermost loop header scope we can break to when resolving ladders.
-			CFGNode *target_header = i != 0 ? get_target_break_block_for_inner_header(node, i) : nullptr;
-
-			//LOGI("Current: %s, target: %s.\n", current_node->name.c_str(), target_header->name.c_str());
-
-			if (current_node->merge == MergeType::Loop)
-			{
-				auto *loop_ladder = get_or_create_ladder_block(node, i);
-
-				// The loop ladder needs to break to somewhere.
-				// Either this is an outer loop scope, or we need to create a fake loop we can break out of if
-				// the break is non-trivial.
-				if (loop_ladder && !target_header && !full_break_target)
-					full_break_target = build_enclosing_break_target_for_loop_ladder(node, loop_ladder);
-
-				CFGNode *new_ladder_block = nullptr;
-				if (loop_ladder)
-				{
-					new_ladder_block = build_ladder_block_for_escaping_edge_handling(
-						node, current_node, loop_ladder,
-						target_header, full_break_target,
-						normal_preds[i]);
-
-					if (target_header == node->headers[0])
-						has_rewrites_to_outer_ladder = true;
-				}
-
-				// We won't analyze this again, so make sure header knows
-				// about the new merge block.
-				if (current_node->freeze_structured_analysis)
-				{
-					if (new_ladder_block)
-						current_node->loop_ladder_block = new_ladder_block;
-					current_node->loop_merge_block = current_node->loop_ladder_block;
-					current_node->loop_ladder_block = nullptr;
-				}
-			}
-			else if (current_node->merge == MergeType::Selection)
-			{
-				if (target_header)
-				{
-					// Breaks out to outer available scope.
-					CFGNode *rewrite_to = nullptr;
-					if (target_header->loop_ladder_block)
-						rewrite_to = target_header->loop_ladder_block;
-					else if (target_header->loop_merge_block)
-						rewrite_to = target_header->loop_merge_block;
-
-					if (rewrite_to)
-					{
-						traverse_dominated_blocks_and_rewrite_branch(current_node, node, rewrite_to);
-						if (target_header == node->headers[0])
-							has_rewrites_to_outer_ladder = true;
-					}
-					else
-						LOGW("No loop merge block?\n");
-				}
-				else if (full_break_target)
-				{
-					traverse_dominated_blocks_and_rewrite_branch(current_node, node, full_break_target);
-				}
-				else
-				{
-					// The outer scope *must* now become a loop, no matter what.
-					// We cannot rely on a traversal to rewrite breaking constructs in the entire loop,
-					// so "everything" must essentially become a break instead.
-					full_break_target = node;
-					assert(node->headers[0]->merge == MergeType::Selection);
-					node->headers[0]->merge = MergeType::Loop;
-					node->headers[0]->freeze_structured_analysis = true;
-
-					assert(node->headers[0]->selection_merge_block == node);
-					node->headers[0]->loop_merge_block = node->headers[0]->selection_merge_block;
-					node->headers[0]->selection_merge_block = nullptr;
-				}
-			}
-			else
-				LOGE("Invalid merge type.\n");
-
-			if (i == 0)
-				break;
-		}
-
-		auto *outer_header = node->headers[0];
-		if (has_rewrites_to_outer_ladder &&
-		    outer_header->merge == MergeType::Loop &&
-		    outer_header->loop_ladder_block &&
-		    outer_header->loop_merge_block &&
-		    outer_header->loop_ladder_block->dominates(outer_header->loop_merge_block))
-		{
-			auto *ladder = outer_header->loop_ladder_block;
-			bool non_trivial_ladder = !ladder->ir.operations.empty() ||
-			                          ladder_chain_has_phi_dependencies(ladder, outer_header->loop_merge_block);
-
-			if (non_trivial_ladder)
-			{
-				// It's possible we have branches that intended to rewrite to loop_merge_block
-				// but ended up writing to loop_ladder_block instead.
-				// Perform a final fixup branch if this is necessary.
-				// If the ladder block is a dummy, we can ignore this.
-				build_ladder_block_for_escaping_edge_handling(
-					node, outer_header, outer_header->loop_ladder_block,
-					nullptr, outer_header->loop_merge_block, normal_preds[0]);
-			}
-		}
-	}
+		split_merge_blocks_and_visit_orphan_preds(visited_orphans, node, node);
 }
 
 bool CFGStructurizer::structurize(unsigned pass)
