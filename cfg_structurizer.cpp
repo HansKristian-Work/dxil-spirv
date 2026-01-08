@@ -2766,7 +2766,6 @@ void CFGStructurizer::reset_traversal()
 		node.traversing = false;
 		node.immediate_dominator = nullptr;
 		node.immediate_post_dominator = nullptr;
-		node.split_merge_block_candidate = nullptr;
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 
