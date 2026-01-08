@@ -203,6 +203,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd.append('--ssbo-srv')
     if '.ssbo-rtas.' in shader:
         hlsl_cmd.append('--ssbo-rtas')
+    if '.input-attachment.' in shader:
+        hlsl_cmd.append('--input-attachments')
     if '.raw-va-stride-offset.' in shader:
         hlsl_cmd.append('--physical-address-descriptor-indexing')
         hlsl_cmd.append('4')

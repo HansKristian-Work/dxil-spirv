@@ -1515,6 +1515,30 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				storage = spv::StorageClassStorageBuffer;
 				// Defer typing the SSBOs.
 			}
+			else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::InputAttachment)
+			{
+				if (execution_model != spv::ExecutionModelFragment)
+				{
+					LOGE("InputAttachments can only be used in pixel shaders.\n");
+					return false;
+				}
+
+				if (range_size != 1)
+				{
+					LOGE("Cannot bind input attachment to array of descriptors.\n");
+					return false;
+				}
+
+				if (resource_kind != DXIL::ResourceKind::Texture2D && resource_kind != DXIL::ResourceKind::Texture2DMS)
+				{
+					LOGE("Can only bind Texture2D and Texture2DMS to input attachments.\n");
+					return false;
+				}
+
+				type_id =
+					builder.makeImageType(sampled_type_id, spv::DimSubpassData, false, false,
+										  image_dimension_is_multisampled(resource_kind), 2, spv::ImageFormatUnknown);
+			}
 			else
 			{
 				type_id =
@@ -1555,6 +1579,12 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 					// since we cannot observe writes from other descriptors anyways.
 					builder.addDecoration(id, spv::DecorationNonWritable);
 					builder.addDecoration(id, spv::DecorationRestrict);
+				}
+				else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::InputAttachment &&
+				         vulkan_binding.buffer_binding.input_attachment_index != -1u)
+				{
+					builder.addDecoration(id, spv::DecorationInputAttachmentIndex,
+					                      int(vulkan_binding.buffer_binding.input_attachment_index));
 				}
 			};
 

@@ -41,6 +41,10 @@ bool get_image_dimensions_query_size(Converter::Impl &impl, spv::Builder &builde
 
 	switch (dim)
 	{
+	case spv::DimSubpassData:
+		*num_coords = 0;
+		break;
+
 	case spv::Dim1D:
 	case spv::DimBuffer:
 		*num_coords = 1;
@@ -75,6 +79,10 @@ bool get_image_dimensions(Converter::Impl &impl, spv::Id image_id, uint32_t *num
 
 	switch (dim)
 	{
+	case spv::DimSubpassData:
+		*num_coords = 0;
+		break;
+
 	case spv::Dim1D:
 	case spv::DimBuffer:
 		*num_dimensions = 1;
@@ -316,6 +324,12 @@ bool emit_sample_instruction(DXIL::Op opcode, Converter::Impl &impl, const llvm:
 	unsigned num_coords_full = 0, num_coords = 0;
 	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
+
+	if (num_coords == 0)
+	{
+		LOGE("Cannot use sampling instructions with input attachment.\n");
+		return false;
+	}
 
 	spv::Id coord[4] = {};
 	for (unsigned i = 0; i < num_coords_full; i++)
@@ -695,6 +709,12 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 
+	if (num_coords == 0)
+	{
+		LOGE("Cannot use sampling instructions with input attachment.\n");
+		return false;
+	}
+
 	uint32_t image_ops = spv::ImageOperandsGradMask;
 
 	spv::Id coord[4] = {};
@@ -863,13 +883,20 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 		coord[i] = impl.get_id_for_value(instruction->getOperand(i + 3));
 
 	spv::Id offsets[4] = {};
-	if (!get_texel_offsets(impl, instruction, image_ops, 6, num_coords, offsets, false))
+	if (num_coords != 0 && !get_texel_offsets(impl, instruction, image_ops, 6, num_coords, offsets, false))
 		return false;
 
 	auto &access_meta = impl.llvm_composite_meta[instruction];
 	bool sparse = (access_meta.access_mask & (1u << 4)) != 0;
 	if (sparse)
+	{
+		if (num_coords == 0)
+		{
+			LOGE("InputAttachment does not support sparse residency query.\n");
+			return false;
+		}
 		builder.addCapability(spv::CapabilitySparseResidency);
+	}
 
 	auto effective_component_type = Converter::Impl::get_effective_typed_resource_type(meta.component_type);
 	spv::Id texel_type = impl.get_type_id(effective_component_type, 1, 4);
@@ -881,7 +908,12 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 		sample_type = texel_type;
 
 	spv::Op opcode;
-	if (is_uav)
+	if (num_coords == 0)
+	{
+		opcode = spv::OpImageRead;
+		image_ops &= ~spv::ImageOperandsLodMask;
+	}
+	else if (is_uav)
 		opcode = sparse ? spv::OpImageSparseRead : spv::OpImageRead;
 	else
 		opcode = sparse ? spv::OpImageSparseFetch : spv::OpImageFetch;
@@ -890,7 +922,12 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (!sparse)
 		impl.decorate_relaxed_precision(get_composite_element_type(instruction->getType()), op->id, true);
 
-	spv::Id coord_id = impl.build_vector(builder.makeUintType(32), coord, num_coords_full);
+	spv::Id coord_id;
+	if (num_coords == 0) // SubpassInput
+		coord_id = impl.build_splat_constant_vector(builder.makeUintType(32), builder.makeUintConstant(0), 2);
+	else
+		coord_id = impl.build_vector(builder.makeUintType(32), coord, num_coords_full);
+
 	if (!is_uav && (image_ops & spv::ImageOperandsOffsetMask))
 	{
 		// Don't need fancy features for fetch, just do arith.
@@ -1227,6 +1264,12 @@ bool emit_texture_gather_instruction(bool compare, bool raw, Converter::Impl &im
 	uint32_t num_coords_full = 0, num_coords = 0;
 	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
+
+	if (num_coords == 0)
+	{
+		LOGE("Cannot use gather instructions with input attachment.\n");
+		return false;
+	}
 
 	spv::Id coords[4] = {};
 	spv::Id offsets[2] = {};
@@ -1789,6 +1832,12 @@ bool emit_calculate_lod_instruction(Converter::Impl &impl, const llvm::CallInst 
 	uint32_t num_coords_full = 0, num_coords = 0;
 	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
+
+	if (num_coords == 0)
+	{
+		LOGE("Cannot use calculate lod instructions with input attachment.\n");
+		return false;
+	}
 
 	spv::Id coords[3] = {};
 	for (unsigned i = 0; i < num_coords; i++)

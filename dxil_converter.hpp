@@ -99,7 +99,8 @@ enum class VulkanDescriptorType : unsigned
 	SSBO = 1,
 	TexelBuffer = 2,
 	BufferDeviceAddress = 3,
-	UBO = 4
+	UBO = 4,
+	InputAttachment = 5
 };
 
 struct VulkanBinding
@@ -109,7 +110,11 @@ struct VulkanBinding
 
 	// For bindless, refers to the Nth root constant.
 	// For buffer device address, refers to the Nth root descriptor.
-	unsigned root_constant_index;
+	union
+	{
+		unsigned root_constant_index;
+		unsigned input_attachment_index;
+	};
 
 	struct
 	{
@@ -150,7 +155,8 @@ struct VulkanPushConstantBinding
 
 struct VulkanCBVBinding
 {
-	union {
+	union
+	{
 		VulkanBinding buffer;
 		VulkanPushConstantBinding push;
 	};

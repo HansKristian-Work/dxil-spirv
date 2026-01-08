@@ -160,6 +160,7 @@ static void print_help()
 	     "\t[--ssbo-uav]\n"
 	     "\t[--ssbo-srv]\n"
 	     "\t[--ssbo-rtas]\n"
+	     "\t[--input-attachments]\n"
 	     "\t[--ssbo-alignment <align>]\n"
 	     "\t[--typed-uav-read-without-format]\n"
 	     "\t[--bindless-typed-buffer-offsets]\n"
@@ -337,6 +338,7 @@ struct Remapper
 	bool ssbo_uav = false;
 	bool ssbo_srv = false;
 	bool ssbo_rtas = false;
+	bool input_attachments = false;
 };
 
 static bool kind_is_buffer(dxil_spv_resource_kind kind)
@@ -408,6 +410,17 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 		if (binding->kind == DXIL_SPV_RESOURCE_KIND_RT_ACCELERATION_STRUCTURE)
 			if ((remapper->bindless || is_global_heap) && remapper->ssbo_rtas)
 				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+
+		if (remapper->input_attachments &&
+			(binding->register_space == 1000 || binding->register_space == 1001) &&
+		    (binding->kind == DXIL_SPV_RESOURCE_KIND_TEXTURE_2D ||
+		     binding->kind == DXIL_SPV_RESOURCE_KIND_TEXTURE_2DMS))
+		{
+			vk_binding->buffer_binding.bindless.use_heap = DXIL_SPV_FALSE;
+			vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+			vk_binding->buffer_binding.input_attachment_index =
+			    binding->register_space == 1000 ? binding->register_index : -1u;
+		}
 
 		if (remapper->ssbo_srv)
 		{
@@ -791,6 +804,7 @@ int main(int argc, char **argv)
 	cbs.add("--ssbo-uav", [&](CLIParser &) { remapper.ssbo_uav = true; });
 	cbs.add("--ssbo-srv", [&](CLIParser &) { remapper.ssbo_srv = true; });
 	cbs.add("--ssbo-rtas", [&](CLIParser &) { remapper.ssbo_rtas = true; });
+	cbs.add("--input-attachments", [&](CLIParser &) { remapper.input_attachments = true; });
 	cbs.add("--ssbo-alignment", [&](CLIParser &parser) { args.ssbo_alignment = parser.next_uint(); });
 	cbs.add("--typed-uav-read-without-format", [&](CLIParser &) { args.typed_uav_read_without_format = true; });
 	cbs.add("--bindless-typed-buffer-offsets", [&](CLIParser &) { args.bindless_typed_buffer_offsets = true; });

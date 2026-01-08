@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 61
+#define DXIL_SPV_API_VERSION_MINOR 62
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -194,6 +194,9 @@ typedef enum dxil_spv_vulkan_descriptor_type
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO = 1,
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_TEXEL_BUFFER = 2,
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_BUFFER_DEVICE_ADDRESS = 3,
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_UBO = 4,
+	/* Special magic for tilers. Does not map to anything directly in D3D12 API. */
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INPUT_ATTACHMENT = 5,
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INT_MAX = 0x7fffffff
 } dxil_spv_vulkan_descriptor_type;
 
@@ -287,9 +290,17 @@ typedef struct dxil_spv_vulkan_binding
 	unsigned set;
 	unsigned binding;
 
-	/* For bindless, refers to the Nth root constant.
-	 * For buffer device address, refers to the Nth root descriptor. */
-	unsigned root_constant_index;
+	union
+	{
+		/* For bindless, refers to the Nth root constant.
+		 * For buffer device address, refers to the Nth root descriptor.
+		 */
+		unsigned root_constant_index;
+
+		/* For input attachments, refers to the input_attachment_index.
+		* -1u maps to depth-stencil attachment and anything else maps to color attachment index. */
+		unsigned input_attachment_index;
+	};
 
 	struct
 	{
