@@ -795,9 +795,6 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	{
 		dxil_spv::CFGStructurizer structurizer(entry_point.entry.entry, *entry_point.node_pool, module);
 
-		uint32_t driver_id, driver_version;
-		if (dxil_converter.get_driver_version(driver_id, driver_version))
-			structurizer.set_driver_version(driver_id, driver_version);
 		module.set_entry_build_point(entry_point.entry.func);
 
 		if (entry_point.entry.is_structured)

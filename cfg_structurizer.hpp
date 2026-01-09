@@ -58,9 +58,6 @@ public:
 	void flatten_subgroup_shuffles();
 	void fixup_loop_header_undef_phis();
 
-	// For esoteric CFG workarounds.
-	void set_driver_version(uint32_t driver_id, uint32_t driver_version);
-
 private:
 	CFGNode *entry_block;
 	CFGNode *exit_block;
@@ -259,9 +256,6 @@ private:
 
 	void propagate_branch_control_hints();
 	void remove_unused_ssa();
-
-	uint32_t driver_id = 0;
-	uint32_t driver_version = 0;
 
 	bool find_single_entry_exit_lock_region(
 	    CFGNode *&idom, CFGNode *&pdom, const Vector<CFGNode *> &rov_blocks);

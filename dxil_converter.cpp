@@ -7617,7 +7617,6 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
 
 	// Need to figure out if our ROV use is trivial. If not, we will wrap the entire function in ROV pairs.
 	CFGStructurizer cfg{code_main, pool, spirv_module};
-	cfg.set_driver_version(options.driver_id, options.driver_version);
 	bool trivial_rewrite = cfg.rewrite_rov_lock_region();
 
 	if (trivial_rewrite)
