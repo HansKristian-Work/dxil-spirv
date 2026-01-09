@@ -2809,7 +2809,7 @@ struct LoopMergeTracer
 
 	void trace_from_parent(CFGNode *header);
 	const LoopBacktracer &backtracer;
-	UnorderedSet<CFGNode *> loop_exits;
+	Vector<CFGNode *> loop_exits;
 	UnorderedSet<CFGNode *> traced_blocks;
 };
 
@@ -2841,7 +2841,8 @@ void LoopMergeTracer::trace_from_parent(CFGNode *header)
 {
 	if (backtracer.traced_blocks.count(header) == 0)
 	{
-		loop_exits.insert(header);
+		if (std::find(loop_exits.begin(), loop_exits.end(), header) == loop_exits.end())
+			loop_exits.push_back(header);
 		return;
 	}
 
