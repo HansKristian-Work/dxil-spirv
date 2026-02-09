@@ -4304,7 +4304,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		if (need_deinterleave)
 		{
 			if (common_anchor)
-				collect_and_dispatch_control_flow_from_anchor(common_anchor, node, valid_constructs);
+				collect_and_dispatch_control_flow_from_anchor(common_anchor, valid_constructs);
 			else
 				collect_and_dispatch_control_flow(idom, node, valid_constructs, collect_all_paths_to_pdom);
 
@@ -6027,7 +6027,7 @@ CFGStructurizer::LoopMergeAnalysis CFGStructurizer::analyze_loop_merge(CFGNode *
 }
 
 void CFGStructurizer::collect_and_dispatch_control_flow_from_anchor(
-	CFGNode *anchor, CFGNode *common_pdom, const Vector<CFGNode *> &constructs)
+	CFGNode *anchor, const Vector<CFGNode *> &constructs)
 {
 	auto &builder = module.get_builder();
 
