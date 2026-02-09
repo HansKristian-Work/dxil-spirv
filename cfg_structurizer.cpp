@@ -7343,6 +7343,7 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 	// so hitting the slow path isn't a real concern until proven otherwise.
 	CFGNode *rewrite_header = nullptr;
 	CFGNode *invalid_target = nullptr;
+	CFGNode *invalid_merge = nullptr;
 
 	// Process from inside out.
 	for (auto *node : forward_post_visit_order)
@@ -7385,6 +7386,31 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 				break;
 			}
 		}
+		else if (node->merge == MergeType::Loop && node->loop_merge_block && node->pred_back_edge &&
+		         node->pred_back_edge->succ.empty())
+		{
+			// Only consider "infinite" loops here. Otherwise, the break from continue will always be
+			// a suitable merge target and the ladder block for any loop exits.
+
+			if (!node->dominates(node->loop_merge_block))
+			{
+				// We must dominate the loop merge block here.
+				// There is a risk that with breaks happening into multiple scopes in certain cases,
+				// we won't be able to guarantee this in the two-phase structurizer.
+				invalid_merge = node;
+				break;
+			}
+		}
+	}
+
+	if (invalid_merge)
+	{
+		auto result = analyze_loop(invalid_merge);
+		result.dominated_exit.insert(result.dominated_exit.end(), result.non_dominated_exit.begin(),
+		                             result.non_dominated_exit.end());
+		collect_and_dispatch_control_flow(invalid_merge, invalid_merge->loop_merge_block, result.dominated_exit, false);
+		recompute_cfg();
+		return true;
 	}
 
 	if (invalid_target)
