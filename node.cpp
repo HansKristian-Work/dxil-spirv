@@ -222,7 +222,7 @@ bool CFGNode::post_dominates_any_work(const CFGNode *parent, UnorderedSet<const 
 	return false;
 }
 
-bool CFGNode::post_dominates_any_work() const
+unsigned CFGNode::count_post_dominates_work_from_incoming_preds() const
 {
 	auto *start_node = this;
 	// Trivial back-trace as far as we can go.
@@ -236,11 +236,18 @@ bool CFGNode::post_dominates_any_work() const
 	if (!start_node->ir.operations.empty() || !start_node->ir.phi.empty())
 		return true;
 
+	unsigned num_post_dominated_preds = 0;
 	UnorderedSet<const CFGNode *> node_cache;
+
 	for (auto *p : start_node->pred)
 		if (start_node->post_dominates_any_work(p, node_cache))
-			return true;
-	return false;
+			num_post_dominated_preds++;
+	return num_post_dominated_preds;
+}
+
+bool CFGNode::post_dominates_any_work() const
+{
+	return count_post_dominates_work_from_incoming_preds() != 0;
 }
 
 bool CFGNode::post_dominates(const CFGNode *start_node) const

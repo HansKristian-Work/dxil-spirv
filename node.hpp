@@ -108,6 +108,7 @@ private:
 	bool can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes,
 	                                    UnorderedSet<const CFGNode *> &node_cache) const;
 	bool post_dominates_any_work() const;
+	unsigned count_post_dominates_work_from_incoming_preds() const;
 	bool post_dominates_any_work(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
 	bool reaches_backward_visited_node() const;
 

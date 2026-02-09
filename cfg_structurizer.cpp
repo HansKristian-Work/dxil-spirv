@@ -3213,7 +3213,10 @@ bool CFGStructurizer::control_flow_is_escaping(const CFGNode *node, const CFGNod
 		// C -> node
 		// node -> merge
 		// This super jank diamond pattern will break the heuristics.
-		if (!node->post_dominates_any_work())
+
+		// If we only post dominate work from one pred, we're not meaningfully merging anything,
+		// so it should be safe to elide.
+		if (node->count_post_dominates_work_from_incoming_preds() <= 1)
 			return true;
 	}
 
