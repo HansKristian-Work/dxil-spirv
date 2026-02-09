@@ -7367,7 +7367,24 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 				// If the succ can reach outside the loop construct, we have an error condition.
 				for (auto *succ : candidate->succ)
 				{
-					if (!query_reachability(*succ, *merge))
+					bool can_reach_merge = query_reachability(*succ, *merge);
+					auto *candidate_continue = scan_plain_continue_block(succ);
+
+					// Need to be a bit more careful about continue blocks in infinite loops.
+					// Include loop exits as well in the reachability analysis.
+					if (!can_reach_merge && candidate_continue->succ_back_edge)
+					{
+						for (auto *fake_succ : candidate_continue->fake_succ)
+						{
+							if (query_reachability(*fake_succ, *merge))
+							{
+								can_reach_merge = true;
+								break;
+							}
+						}
+					}
+
+					if (!can_reach_merge)
 					{
 						// Determine if we're an inner terminate/return, or a loop exit.
 						// If the common post-dominator is EXIT node, this is a return-like relationship,
