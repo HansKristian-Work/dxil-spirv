@@ -266,8 +266,7 @@ private:
 		bool collect_all_code_paths_to_pdom);
 
 	void collect_and_dispatch_control_flow_from_anchor(
-		CFGNode *anchor, CFGNode *common_pdom,
-		const Vector<CFGNode *> &constructs);
+		CFGNode *anchor, const Vector<CFGNode *> &constructs);
 
 	void sink_ssa_constructs();
 	void sink_ssa_constructs_run(bool dry_run);
