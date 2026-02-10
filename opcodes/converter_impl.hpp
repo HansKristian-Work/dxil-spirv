@@ -976,6 +976,30 @@ struct Converter::Impl
 		bool require_wmma = false;
 		// Should just do this always, but don't want to nuke FOZ caches needlessly.
 		bool global_undefs = false;
+
+		struct
+		{
+			bool uses_non_direct_indexing = false;
+
+			// If every instance of ray query uses the same handle IDs,
+			// we can conveniently ignore any weird Phis, etc.
+			// This might get somewhat spicy when considering loops,
+			// but if the loop always starts with a resetting TraceInlineRay,
+			// there cannot be cases where multiple instances of the loop body
+			// refers to different objects each time.
+			const llvm::Value *reference_handle_value = nullptr;
+			bool uses_divergent_handles = false;
+
+			// If we need to treat ray query objects as pure index into global table.
+			uint32_t num_ray_query_alloca = 0;
+
+			struct Mapping
+			{
+				const llvm::AllocaInst *alloca;
+				uint32_t ray_query_flags;
+			};
+			Vector<Mapping> alloca_mappings;
+		} ray_query;
 	} shader_analysis;
 
 	struct
@@ -993,6 +1017,14 @@ struct Converter::Impl
 	UnorderedSet<const llvm::Value *> llvm_used_ssa_values;
 	UnorderedMap<const llvm::AllocaInst *, AllocaCBVForwardingTracking> alloca_tracking;
 	UnorderedSet<const llvm::GetElementPtrInst *> masked_alloca_forward_gep;
+
+	struct
+	{
+		spv::Id global_query_objects_id = 0;
+		uint32_t ray_query_index = 0;
+	} ray_query;
+
+	bool emit_ray_query_globals();
 
 	struct RootParameterMapping
 	{
