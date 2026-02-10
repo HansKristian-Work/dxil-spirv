@@ -1,0 +1,124 @@
+#version 460
+#extension GL_EXT_ray_query : require
+#extension GL_EXT_ray_flags_primitive_culling : require
+#extension GL_EXT_nonuniform_qualifier : require
+layout(primitive_culling);
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std140) uniform _14_16
+{
+    vec4 _m0[1];
+} _16;
+
+layout(set = 0, binding = 0) uniform accelerationStructureEXT _8[];
+
+rayQueryEXT RayQueryHeap[2];
+
+void main()
+{
+    float _33 = float(gl_GlobalInvocationID.x) + 0.5;
+    float _35 = float(gl_GlobalInvocationID.y) + 0.5;
+    uvec4 _40 = floatBitsToUint(_16._m0[0u]);
+    uint _45 = _40.x;
+    rayQueryInitializeEXT(RayQueryHeap[uint(_40.y != 0u)], _8[_45], 4u, 255u, vec3(_33, _35, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
+    rayQueryInitializeEXT(RayQueryHeap[1u], _8[_45], 4u, 255u, vec3(_33, _35, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 66
+; Schema: 0
+OpCapability Shader
+OpCapability RayQueryKHR
+OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability RuntimeDescriptorArray
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_query"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %24
+OpExecutionMode %3 LocalSize 8 8 1
+OpName %3 "main"
+OpName %14 ""
+OpName %21 "RayQueryHeap"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %13 ArrayStride 16
+OpMemberDecorate %14 0 Offset 0
+OpDecorate %14 Block
+OpDecorate %16 DescriptorSet 0
+OpDecorate %16 Binding 0
+OpDecorate %24 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeAccelerationStructureKHR
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeInt 32 0
+%10 = OpConstant %9 1
+%11 = OpTypeFloat 32
+%12 = OpTypeVector %11 4
+%13 = OpTypeArray %12 %10
+%14 = OpTypeStruct %13
+%15 = OpTypePointer Uniform %14
+%16 = OpVariable %15 Uniform
+%17 = OpTypeRayQueryKHR
+%18 = OpConstant %9 2
+%19 = OpTypeArray %17 %18
+%20 = OpTypePointer Private %19
+%21 = OpVariable %20 Private
+%22 = OpTypeVector %9 3
+%23 = OpTypePointer Input %22
+%24 = OpVariable %23 Input
+%25 = OpTypePointer Input %9
+%27 = OpConstant %9 0
+%34 = OpConstant %11 0.5
+%36 = OpTypePointer Uniform %12
+%39 = OpTypeVector %9 4
+%42 = OpTypeBool
+%46 = OpTypePointer UniformConstant %5
+%49 = OpTypePointer Private %17
+%51 = OpConstant %9 4
+%52 = OpConstant %9 255
+%53 = OpConstant %11 0
+%54 = OpConstant %11 -1
+%55 = OpConstant %11 1
+%56 = OpTypeVector %11 3
+%58 = OpConstant %11 0.100000001
+%60 = OpConstant %11 1000
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %64
+%64 = OpLabel
+%26 = OpAccessChain %25 %24 %27
+%28 = OpLoad %9 %26
+%29 = OpAccessChain %25 %24 %10
+%30 = OpLoad %9 %29
+%31 = OpConvertUToF %11 %28
+%32 = OpConvertUToF %11 %30
+%33 = OpFAdd %11 %31 %34
+%35 = OpFAdd %11 %32 %34
+%37 = OpAccessChain %36 %16 %27 %27
+%38 = OpLoad %12 %37
+%40 = OpBitcast %39 %38
+%41 = OpCompositeExtract %9 %40 1
+%43 = OpINotEqual %42 %41 %27
+%44 = OpSelect %9 %43 %10 %27
+%45 = OpCompositeExtract %9 %40 0
+%47 = OpAccessChain %46 %8 %45
+%48 = OpLoad %5 %47
+%50 = OpInBoundsAccessChain %49 %21 %44
+%57 = OpCompositeConstruct %56 %33 %35 %54
+%59 = OpCompositeConstruct %56 %53 %53 %55
+OpRayQueryInitializeKHR %50 %48 %51 %52 %57 %58 %59 %60
+%61 = OpInBoundsAccessChain %49 %21 %10
+%62 = OpCompositeConstruct %56 %33 %35 %54
+%63 = OpCompositeConstruct %56 %53 %53 %55
+OpRayQueryInitializeKHR %61 %48 %51 %52 %62 %58 %63 %60
+OpReturn
+OpFunctionEnd
+#endif

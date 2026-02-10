@@ -1426,6 +1426,36 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 			return false;
 		break;
 
+	case DXIL::Op::RayQuery_TraceRayInline:
+	{
+		// Any ray query object being used must be initialized first with TraceRayInline,
+		// so there isn't much point in testing every instruction.
+
+		// If every TraceRayInline uses the same handle value, we can collapse all ray query
+		// object allocations into one, since there cannot be concurrent, valid instances in flight.
+		auto *object = instruction->getOperand(1);
+
+		if (impl.shader_analysis.ray_query.reference_handle_value &&
+			impl.shader_analysis.ray_query.reference_handle_value != object)
+		{
+			impl.shader_analysis.ray_query.uses_divergent_handles = true;
+		}
+		else
+		{
+			impl.shader_analysis.ray_query.reference_handle_value = object;
+		}
+
+		if (!value_is_dx_op_instrinsic(object, DXIL::Op::AllocateRayQuery))
+			impl.shader_analysis.ray_query.uses_non_direct_indexing = true;
+
+		break;
+	}
+
+	case DXIL::Op::AllocateRayQuery:
+		// If we have to do worst-case allocation.
+		impl.shader_analysis.ray_query.num_ray_query_alloca++;
+		break;
+
 	default:
 		break;
 	}

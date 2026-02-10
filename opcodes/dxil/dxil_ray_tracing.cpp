@@ -346,52 +346,111 @@ static void emit_ray_query_capabilities(Converter::Impl &impl)
 
 bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *inst)
 {
-	// TODO: It seems like we can use full variable pointers with RayQuery in DXIL.
-	// To implement this, we will need some kind of global "bank" of ray query objects,
-	// and allocateRayQuery could assign indices into that global array.
-	// Until we actually see this happen in practice, we can just allocate RayQuery objects like this.
-	// The return type of allocateRayQuery appears to be i32, so this might be how it's intended to be done ...
 	auto &builder = impl.builder();
-	spv::Id var_id = impl.spirv_module.create_variable(spv::StorageClassPrivate, builder.makeRayQueryType());
-	impl.rewrite_value(inst, var_id);
-	impl.handle_to_storage_class[inst] = spv::StorageClassPrivate;
+
+	if (impl.ray_query.global_query_objects_id)
+	{
+		uint32_t index;
+		if (impl.shader_analysis.ray_query.uses_divergent_handles)
+			index = impl.ray_query.ray_query_index++;
+		else
+			index = 0;
+
+		impl.rewrite_value(inst, builder.makeUintConstant(index));
+	}
+	else
+	{
+		spv::Id var_id = impl.spirv_module.create_variable(spv::StorageClassPrivate, builder.makeRayQueryType());
+		impl.rewrite_value(inst, var_id);
+		impl.handle_to_storage_class[inst] = spv::StorageClassPrivate;
+	}
+
 	emit_ray_query_capabilities(impl);
 	return true;
 }
 
-static bool ray_query_operand_is_alloca(Converter::Impl &impl, const llvm::Value *operand)
+static bool get_representative_ray_query_flags(Converter::Impl &impl, const llvm::Value *operand,
+                                               uint32_t &ray_query_flags)
 {
-	if (auto *alloca = llvm::dyn_cast<llvm::CallInst>(operand))
+	if (value_is_dx_op_instrinsic(operand, DXIL::Op::AllocateRayQuery))
 	{
-		uint32_t op = 0;
-		if (!get_constant_operand(alloca, 0, &op))
-			return false;
-		if (strncmp(alloca->getCalledFunction()->getName().data(), "dx.op", 5) != 0)
-			return false;
-		if (DXIL::Op(op) != DXIL::Op::AllocateRayQuery)
-			return false;
-		return true;
+		return get_constant_operand(llvm::cast<llvm::CallInst>(operand), 1, &ray_query_flags);
 	}
-	else
+	else if (const auto *phi = llvm::dyn_cast<llvm::PHINode>(operand))
+	{
+		// HLSL expectation is that all ray query flags are the same, so pick the static flags from first incoming.
+		return get_representative_ray_query_flags(impl, phi->getIncomingValue(0), ray_query_flags);
+	}
+	else if (const auto *select = llvm::dyn_cast<llvm::SelectInst>(operand))
+	{
+		return get_representative_ray_query_flags(impl, select->getOperand(1), ray_query_flags);
+	}
+	else if (const auto *load = llvm::dyn_cast<llvm::LoadInst>(operand))
+	{
+		return get_representative_ray_query_flags(impl, load->getPointerOperand(), ray_query_flags);
+	}
+	else if (const auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(operand))
+	{
+		return get_representative_ray_query_flags(impl, gep->getOperand(0), ray_query_flags);
+	}
+	else if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(operand))
+	{
+		for (auto &mapping : impl.shader_analysis.ray_query.alloca_mappings)
+		{
+			if (mapping.alloca == alloca)
+			{
+				ray_query_flags = mapping.ray_query_flags;
+				return true;
+			}
+		}
+
+		LOGE("Cannot find ray query flags mapping.\n");
 		return false;
+	}
+
+	// No idea ...
+	LOGE("Cannot find representative ray query flags.\n");
+	return false;
 }
 
 bool build_ray_query_object(Converter::Impl &impl, const llvm::Value *operand,
                             spv::Id &object_id, uint32_t *ray_query_flags = nullptr)
 {
-	// TODO: We can index into global pool.
-	auto *ray_object = llvm::cast<llvm::CallInst>(operand);
-	if (ray_query_flags && !get_constant_operand(ray_object, 1, ray_query_flags))
-		return false;
-
-	// For now, we must observe that the ray object came directly from an allocateRayObject.
-	if (!ray_query_operand_is_alloca(impl, operand))
+	if (impl.ray_query.global_query_objects_id)
 	{
-		LOGE("RayQuery object must come directly from allocateRayQuery for now.\n");
-		return false;
+		auto &builder = impl.builder();
+
+		if (impl.shader_analysis.ray_query.uses_divergent_handles)
+		{
+			// Painful case.
+			auto *chain = impl.allocate(spv::OpInBoundsAccessChain,
+			                            builder.makePointer(spv::StorageClassPrivate, builder.makeRayQueryType()));
+			chain->add_id(impl.ray_query.global_query_objects_id);
+			chain->add_id(impl.get_id_for_value(operand));
+			impl.add(chain);
+
+			object_id = chain->id;
+		}
+		else
+		{
+			// Trivial case.
+			object_id = impl.ray_query.global_query_objects_id;
+		}
+
+		// Need to deduce the flags for the allocation.
+		// This must be statically deducible from an HLSL point of view.
+		// If we fail this check, fail compilation.
+		if (ray_query_flags && !get_representative_ray_query_flags(impl, operand, *ray_query_flags))
+			return false;
+	}
+	else
+	{
+		object_id = impl.get_id_for_value(operand);
+		auto *ray_object = llvm::cast<llvm::CallInst>(operand);
+		if (ray_query_flags && !get_constant_operand(ray_object, 1, ray_query_flags))
+			return false;
 	}
 
-	object_id = impl.get_id_for_value(ray_object);
 	return true;
 }
 

@@ -2470,6 +2470,30 @@ static bool analyze_alloca_store(Converter::Impl &impl,
 	return true;
 }
 
+static void register_ray_query_mapping(Converter::Impl &impl, const llvm::Value *store_value,
+                                       const llvm::Value *store_ptr)
+{
+	if (!value_is_dx_op_instrinsic(store_value, DXIL::Op::AllocateRayQuery))
+		return;
+
+	if (auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(store_ptr))
+	{
+		if (auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(gep->getOperand(0)))
+		{
+			auto &mappings = impl.shader_analysis.ray_query.alloca_mappings;
+			auto itr = std::find_if(mappings.begin(), mappings.end(),
+									[&](const auto &mapping) { return mapping.alloca == alloca; });
+
+			if (itr == mappings.end())
+			{
+				uint32_t ray_flags;
+				if (get_constant_operand(llvm::cast<llvm::CallInst>(store_value), 1, &ray_flags))
+					mappings.push_back({ alloca, ray_flags });
+			}
+		}
+	}
+}
+
 bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *inst)
 {
 	auto tracked = gep_pointer_to_alloca_tracked_inst(impl, inst->getOperand(1));
@@ -2485,6 +2509,9 @@ bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *ins
 
 	if (!analyze_ags_wmma_store(impl, inst))
 		return false;
+
+	// If we store ray query allocas into an array we need to mark the compile time constant ray query flags.
+	register_ray_query_mapping(impl, inst->getOperand(0), inst->getOperand(1));
 
 	// Assume we're consuming the entire uvec4.
 	if (instruction_is_ballot(inst->getOperand(0)))

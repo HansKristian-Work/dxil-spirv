@@ -1,0 +1,25 @@
+cbuffer Bindings : register(b0)
+{
+    uint tlasSrv;
+	uint test;
+};
+
+[numthreads(8, 8, 1)]
+void main(uint2 dispatchThreadId : SV_DispatchThreadID)
+{
+    float2 pixelCenter = dispatchThreadId + 0.5f;
+    float3 wsPos = float3(pixelCenter, -1);
+    RayDesc ray;
+    ray.Origin = wsPos;
+    ray.TMin = 0.1;
+    ray.TMax = 1000.0;
+    ray.Direction = float3(0, 0, 1);
+
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> a;
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> q[4];
+
+	bool alphaTest = test != 0;
+	a = q[test];
+    RaytracingAccelerationStructure tlas = ResourceDescriptorHeap[tlasSrv];
+    a.TraceRayInline(tlas, 0, 0xff, ray);
+}

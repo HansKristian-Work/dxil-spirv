@@ -3633,6 +3633,24 @@ bool Converter::Impl::emit_global_heaps()
 	return true;
 }
 
+bool Converter::Impl::emit_ray_query_globals()
+{
+	if (shader_analysis.ray_query.uses_non_direct_indexing)
+	{
+		auto &b = builder();
+		spv::Id type_id = b.makeRayQueryType();
+		if (shader_analysis.ray_query.uses_divergent_handles)
+		{
+			type_id = b.makeArrayType(
+				type_id, b.makeUintConstant(shader_analysis.ray_query.num_ray_query_alloca), 0);
+		}
+
+		ray_query.global_query_objects_id = create_variable(spv::StorageClassPrivate, type_id, "RayQueryHeap");
+	}
+
+	return true;
+}
+
 bool Converter::Impl::emit_resources()
 {
 	unsigned num_root_descriptors = 0;
@@ -3726,6 +3744,9 @@ bool Converter::Impl::emit_resources()
 		if (!analyze_alloca_cbv_forwarding_post_resource_emit(*this, alloc.second))
 			return false;
 	}
+
+	if (!emit_ray_query_globals())
+		return false;
 
 	return true;
 }

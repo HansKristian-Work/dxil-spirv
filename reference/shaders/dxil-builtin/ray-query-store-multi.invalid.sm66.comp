@@ -1,0 +1,164 @@
+#version 460
+#extension GL_EXT_ray_query : require
+#extension GL_EXT_ray_flags_primitive_culling : require
+#extension GL_EXT_nonuniform_qualifier : require
+layout(primitive_culling);
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std140) uniform _14_16
+{
+    vec4 _m0[1];
+} _16;
+
+layout(set = 0, binding = 0) uniform accelerationStructureEXT _8[];
+
+rayQueryEXT RayQueryHeap[8];
+
+void main()
+{
+    float _38 = float(gl_GlobalInvocationID.x) + 0.5;
+    float _40 = float(gl_GlobalInvocationID.y) + 0.5;
+    uint _34[4];
+    _34[0u] = 0u;
+    _34[1u] = 1u;
+    _34[2u] = 2u;
+    _34[3u] = 3u;
+    uint _35[4];
+    _35[0u] = 4u;
+    _35[1u] = 5u;
+    _35[2u] = 6u;
+    _35[3u] = 7u;
+    uvec4 _59 = floatBitsToUint(_16._m0[0u]);
+    uint _60 = _59.y;
+    uint _67 = _59.x;
+    rayQueryInitializeEXT(RayQueryHeap[_34[_60 ^ 1u]], _8[_67], 4u, 255u, vec3(_38, _40, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
+    rayQueryInitializeEXT(RayQueryHeap[_35[_60 ^ 2u]], _8[_67], 1u, 255u, vec3(_38, _40, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 87
+; Schema: 0
+OpCapability Shader
+OpCapability RayQueryKHR
+OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability RuntimeDescriptorArray
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_query"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %24
+OpExecutionMode %3 LocalSize 8 8 1
+OpName %3 "main"
+OpName %14 ""
+OpName %21 "RayQueryHeap"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %13 ArrayStride 16
+OpMemberDecorate %14 0 Offset 0
+OpDecorate %14 Block
+OpDecorate %16 DescriptorSet 0
+OpDecorate %16 Binding 0
+OpDecorate %24 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeAccelerationStructureKHR
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeInt 32 0
+%10 = OpConstant %9 1
+%11 = OpTypeFloat 32
+%12 = OpTypeVector %11 4
+%13 = OpTypeArray %12 %10
+%14 = OpTypeStruct %13
+%15 = OpTypePointer Uniform %14
+%16 = OpVariable %15 Uniform
+%17 = OpTypeRayQueryKHR
+%18 = OpConstant %9 8
+%19 = OpTypeArray %17 %18
+%20 = OpTypePointer Private %19
+%21 = OpVariable %20 Private
+%22 = OpTypeVector %9 3
+%23 = OpTypePointer Input %22
+%24 = OpVariable %23 Input
+%25 = OpTypePointer Input %9
+%27 = OpConstant %9 0
+%31 = OpConstant %9 4
+%32 = OpTypeArray %9 %31
+%33 = OpTypePointer Function %32
+%39 = OpConstant %11 0.5
+%41 = OpTypePointer Function %9
+%44 = OpConstant %9 2
+%46 = OpConstant %9 3
+%49 = OpConstant %9 5
+%51 = OpConstant %9 6
+%53 = OpConstant %9 7
+%55 = OpTypePointer Uniform %12
+%58 = OpTypeVector %9 4
+%68 = OpTypePointer UniformConstant %5
+%71 = OpTypePointer Private %17
+%73 = OpConstant %9 255
+%74 = OpConstant %11 0
+%75 = OpConstant %11 -1
+%76 = OpConstant %11 1
+%77 = OpTypeVector %11 3
+%79 = OpConstant %11 0.100000001
+%81 = OpConstant %11 1000
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%34 = OpVariable %33 Function
+%35 = OpVariable %33 Function
+OpBranch %85
+%85 = OpLabel
+%26 = OpAccessChain %25 %24 %27
+%28 = OpLoad %9 %26
+%29 = OpAccessChain %25 %24 %10
+%30 = OpLoad %9 %29
+%36 = OpConvertUToF %11 %28
+%37 = OpConvertUToF %11 %30
+%38 = OpFAdd %11 %36 %39
+%40 = OpFAdd %11 %37 %39
+%42 = OpInBoundsAccessChain %41 %34 %27
+OpStore %42 %27
+%43 = OpInBoundsAccessChain %41 %34 %10
+OpStore %43 %10
+%45 = OpInBoundsAccessChain %41 %34 %44
+OpStore %45 %44
+%47 = OpInBoundsAccessChain %41 %34 %46
+OpStore %47 %46
+%48 = OpInBoundsAccessChain %41 %35 %27
+OpStore %48 %31
+%50 = OpInBoundsAccessChain %41 %35 %10
+OpStore %50 %49
+%52 = OpInBoundsAccessChain %41 %35 %44
+OpStore %52 %51
+%54 = OpInBoundsAccessChain %41 %35 %46
+OpStore %54 %53
+%56 = OpAccessChain %55 %16 %27 %27
+%57 = OpLoad %12 %56
+%59 = OpBitcast %58 %57
+%60 = OpCompositeExtract %9 %59 1
+%61 = OpBitwiseXor %9 %60 %10
+%62 = OpInBoundsAccessChain %41 %34 %61
+%63 = OpLoad %9 %62
+%64 = OpBitwiseXor %9 %60 %44
+%65 = OpInBoundsAccessChain %41 %35 %64
+%66 = OpLoad %9 %65
+%67 = OpCompositeExtract %9 %59 0
+%69 = OpAccessChain %68 %8 %67
+%70 = OpLoad %5 %69
+%72 = OpInBoundsAccessChain %71 %21 %63
+%78 = OpCompositeConstruct %77 %38 %40 %75
+%80 = OpCompositeConstruct %77 %74 %74 %76
+OpRayQueryInitializeKHR %72 %70 %31 %73 %78 %79 %80 %81
+%82 = OpInBoundsAccessChain %71 %21 %66
+%83 = OpCompositeConstruct %77 %38 %40 %75
+%84 = OpCompositeConstruct %77 %74 %74 %76
+OpRayQueryInitializeKHR %82 %70 %10 %73 %83 %79 %84 %81
+OpReturn
+OpFunctionEnd
+#endif
