@@ -4115,20 +4115,20 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		for (auto itr = inner_constructs.begin(); itr != inner_constructs.end(); )
 		{
 			bool eliminated = false;
-			for (auto candidate_itr = itr + 1; candidate_itr != inner_constructs.end() && !eliminated; ++candidate_itr)
+			for (auto candidate_itr = itr + 1; candidate_itr != inner_constructs.end(); ++candidate_itr)
 			{
-				// Don't let the common idom of constructs consume subsequent constructs.
-				if ((*candidate_itr) == common_idom ||
-				    !(*candidate_itr)->dominates(*itr) ||
-				    (*itr)->post_dominates(*candidate_itr))
-				{
-					continue;
-				}
+				bool keep_candidate = (*candidate_itr) == common_idom || !(*candidate_itr)->dominates(*itr) ||
+				                      (*itr)->post_dominates(*candidate_itr);
 
-				// To accept a dominator, we don't want any common idom removing every node.
-				std::move(itr + 1, inner_constructs.end(), itr);
-				inner_constructs.pop_back();
-				eliminated = true;
+				// Don't let the common idom of constructs consume subsequent constructs.
+				if (!keep_candidate)
+				{
+					// To accept a dominator, we don't want any common idom removing every node.
+					std::move(itr + 1, inner_constructs.end(), itr);
+					inner_constructs.pop_back();
+					eliminated = true;
+					break;
+				}
 			}
 
 			if (!eliminated)
