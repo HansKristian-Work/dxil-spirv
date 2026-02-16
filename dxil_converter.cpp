@@ -4846,6 +4846,7 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		auto start_row = get_constant_metadata(output, 8);
 		auto start_col = get_constant_metadata(output, 9);
+		bool masked_output = false;
 
 		if (options.dual_source_blending && start_row >= 2)
 		{
@@ -4858,13 +4859,19 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
 
-		// For HS <-> DS, ignore system values.
-		// Shading rate is also ignored in DS. RE4 hits this case. Just treat it as a normal user varying.
-		if (execution_model == spv::ExecutionModelTessellationControl ||
-		    (execution_model == spv::ExecutionModelTessellationEvaluation &&
-		     system_value == DXIL::Semantic::ShadingRate))
+		if (system_value == DXIL::Semantic::ShadingRate)
 		{
-			system_value = DXIL::Semantic::User;
+			// For HS <-> DS, ignore system values.
+			// Shading rate is also ignored in DS. RE4 hits this case. Just treat it as a normal user varying.
+			if (execution_model == spv::ExecutionModelTessellationControl ||
+			    execution_model == spv::ExecutionModelTessellationEvaluation)
+			{
+				system_value = DXIL::Semantic::User;
+			}
+			else if (options.quirks.ignore_primitive_shading_rate && system_value == DXIL::Semantic::ShadingRate)
+			{
+				masked_output = true;
+			}
 		}
 
 		if (system_value == DXIL::Semantic::Position)
@@ -4914,7 +4921,8 @@ bool Converter::Impl::emit_stage_output_variables()
 			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
-		spv::Id variable_id = create_variable(spv::StorageClassOutput, type_id, variable_name.c_str());
+		spv::Id variable_id = create_variable(
+			masked_output ? spv::StorageClassPrivate : spv::StorageClassOutput, type_id, variable_name.c_str());
 		output_elements_meta[element_id] = { variable_id, actual_element_type, 0, system_value };
 
 		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))
@@ -5268,7 +5276,8 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::ShadingRate:
 		if (storage == spv::StorageClassOutput)
 		{
-			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPrimitiveShadingRateKHR);
+			if (!options.quirks.ignore_primitive_shading_rate)
+				builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInPrimitiveShadingRateKHR);
 			spirv_module.register_builtin_shader_output(id, spv::BuiltInPrimitiveShadingRateKHR);
 		}
 		else
@@ -9435,6 +9444,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::FixupRsqrtInfNan:
 			options.quirks.fixup_rsqrt = true;
+			break;
+
+		case ShaderQuirk::IgnorePrimitiveShadingRate:
+			options.quirks.ignore_primitive_shading_rate = true;
 			break;
 
 		default:

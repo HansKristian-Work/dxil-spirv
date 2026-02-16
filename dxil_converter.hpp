@@ -757,7 +757,8 @@ enum class ShaderQuirk : uint32_t
 	PromoteGroupToDeviceMemoryBarrier,
 	GroupSharedAutoBarrier,
 	FixupLoopHeaderUndefPhis,
-	FixupRsqrtInfNan
+	FixupRsqrtInfNan,
+	IgnorePrimitiveShadingRate
 };
 
 struct OptionShaderQuirk : OptionBase

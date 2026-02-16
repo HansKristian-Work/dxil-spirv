@@ -798,6 +798,7 @@ struct Converter::Impl
 			bool group_shared_auto_barrier = false;
 			bool fixup_loop_header_undef_phis = false;
 			bool fixup_rsqrt = false;
+			bool ignore_primitive_shading_rate = false;
 		} quirks;
 
 		struct
