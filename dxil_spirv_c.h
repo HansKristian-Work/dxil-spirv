@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 62
+#define DXIL_SPV_API_VERSION_MINOR 63
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -480,6 +480,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_NVAPI = 47,
 	DXIL_SPV_OPTION_EXTENDED_NON_SEMANTIC = 48,
 	DXIL_SPV_OPTION_VIEW_INSTANCING = 49,
+	DXIL_SPV_OPTION_MIXED_FLOAT_DOT_PRODUCT = 50,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -851,6 +852,13 @@ typedef struct dxil_spv_option_view_instancing
 	unsigned view_instance_to_viewport_spec_id;
 } dxil_spv_option_view_instancing;
 #endif
+
+typedef struct dxil_spv_option_mixed_float_dot_product
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool fp16_fp16_fp32;
+	dxil_spv_bool reserved[4]; /* 4 unique features in the extension + reserved for hypothetical promoted EXT to avoid revving ABI again. */
+} dxil_spv_option_mixed_float_dot_product;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

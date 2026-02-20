@@ -1,0 +1,216 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 143
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability Int16
+OpCapability StorageBuffer16BitAccess
+OpCapability DenormPreserve
+OpCapability DotProductFloat16AccFloat32VALVE
+OpExtension "SPV_KHR_float_controls"
+OpExtension "SPV_VALVE_mixed_float_dot_product"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %34
+OpExecutionMode %3 LocalSize 64 1 1
+OpExecutionMode %3 DenormPreserve 16
+OpName %3 "main"
+OpName %7 "SSBO"
+OpName %11 "SSBO"
+OpName %17 "SSBO"
+OpName %21 "SSBO"
+OpName %25 "SSBO"
+OpName %29 "SSBO"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %9 NonWritable
+OpDecorate %9 Restrict
+OpDecorate %10 ArrayStride 4
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 1
+OpDecorate %13 NonWritable
+OpDecorate %13 Restrict
+OpDecorate %16 ArrayStride 4
+OpMemberDecorate %17 0 Offset 0
+OpDecorate %17 Block
+OpDecorate %19 DescriptorSet 0
+OpDecorate %19 Binding 2
+OpDecorate %19 NonWritable
+OpDecorate %19 Restrict
+OpDecorate %20 ArrayStride 4
+OpMemberDecorate %21 0 Offset 0
+OpDecorate %21 Block
+OpDecorate %23 DescriptorSet 0
+OpDecorate %23 Binding 3
+OpDecorate %23 NonWritable
+OpDecorate %23 Restrict
+OpDecorate %24 ArrayStride 4
+OpMemberDecorate %25 0 Offset 0
+OpDecorate %25 Block
+OpDecorate %27 DescriptorSet 0
+OpDecorate %27 Binding 0
+OpDecorate %28 ArrayStride 4
+OpMemberDecorate %29 0 Offset 0
+OpDecorate %29 Block
+OpDecorate %31 DescriptorSet 0
+OpDecorate %31 Binding 1
+OpDecorate %34 BuiltIn GlobalInvocationId
+OpDecorate %125 NoContraction
+OpDecorate %127 NoContraction
+OpDecorate %133 NoContraction
+OpDecorate %135 NoContraction
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeRuntimeArray %5
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeInt 16 0
+%15 = OpTypeVector %14 2
+%16 = OpTypeRuntimeArray %15
+%17 = OpTypeStruct %16
+%18 = OpTypePointer StorageBuffer %17
+%19 = OpVariable %18 StorageBuffer
+%20 = OpTypeRuntimeArray %15
+%21 = OpTypeStruct %20
+%22 = OpTypePointer StorageBuffer %21
+%23 = OpVariable %22 StorageBuffer
+%24 = OpTypeRuntimeArray %5
+%25 = OpTypeStruct %24
+%26 = OpTypePointer StorageBuffer %25
+%27 = OpVariable %26 StorageBuffer
+%28 = OpTypeRuntimeArray %5
+%29 = OpTypeStruct %28
+%30 = OpTypePointer StorageBuffer %29
+%31 = OpVariable %30 StorageBuffer
+%32 = OpTypeVector %5 3
+%33 = OpTypePointer Input %32
+%34 = OpVariable %33 Input
+%35 = OpTypePointer Input %5
+%37 = OpConstant %5 0
+%39 = OpTypePointer StorageBuffer %5
+%47 = OpConstant %5 8
+%56 = OpConstant %5 16
+%61 = OpConstant %5 24
+%91 = OpTypeFloat 32
+%93 = OpTypePointer StorageBuffer %15
+%96 = OpTypeFloat 16
+%97 = OpTypeVector %96 2
+%102 = OpConstant %96 0x1.8p+1
+%110 = OpConstant %96 0x1p+1
+%126 = OpConstant %96 0x1.4p+2
+%134 = OpConstant %96 0x1p+2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %141
+%141 = OpLabel
+%36 = OpAccessChain %35 %34 %37
+%38 = OpLoad %5 %36
+%40 = OpAccessChain %39 %27 %37 %38
+%41 = OpLoad %5 %40
+%42 = OpAccessChain %39 %13 %37 %38
+%43 = OpLoad %5 %42
+%44 = OpAccessChain %39 %9 %37 %38
+%45 = OpLoad %5 %44
+%46 = OpBitFieldUExtract %5 %45 %37 %47
+%48 = OpBitFieldUExtract %5 %43 %37 %47
+%49 = OpIMul %5 %46 %48
+%50 = OpIAdd %5 %41 %49
+%51 = OpBitFieldUExtract %5 %45 %47 %47
+%52 = OpBitFieldUExtract %5 %43 %47 %47
+%53 = OpIMul %5 %51 %52
+%54 = OpIAdd %5 %50 %53
+%55 = OpBitFieldUExtract %5 %45 %56 %47
+%57 = OpBitFieldUExtract %5 %43 %56 %47
+%58 = OpIMul %5 %55 %57
+%59 = OpIAdd %5 %54 %58
+%60 = OpBitFieldUExtract %5 %45 %61 %47
+%62 = OpBitFieldUExtract %5 %43 %61 %47
+%63 = OpIMul %5 %60 %62
+%64 = OpIAdd %5 %59 %63
+%65 = OpAccessChain %39 %27 %37 %38
+OpStore %65 %64
+%66 = OpAccessChain %39 %27 %37 %38
+%67 = OpLoad %5 %66
+%68 = OpAccessChain %39 %13 %37 %38
+%69 = OpLoad %5 %68
+%70 = OpAccessChain %39 %9 %37 %38
+%71 = OpLoad %5 %70
+%72 = OpBitFieldSExtract %5 %71 %37 %47
+%73 = OpBitFieldSExtract %5 %69 %37 %47
+%74 = OpIMul %5 %72 %73
+%75 = OpIAdd %5 %67 %74
+%76 = OpBitFieldSExtract %5 %71 %47 %47
+%77 = OpBitFieldSExtract %5 %69 %47 %47
+%78 = OpIMul %5 %76 %77
+%79 = OpIAdd %5 %75 %78
+%80 = OpBitFieldSExtract %5 %71 %56 %47
+%81 = OpBitFieldSExtract %5 %69 %56 %47
+%82 = OpIMul %5 %80 %81
+%83 = OpIAdd %5 %79 %82
+%84 = OpBitFieldSExtract %5 %71 %61 %47
+%85 = OpBitFieldSExtract %5 %69 %61 %47
+%86 = OpIMul %5 %84 %85
+%87 = OpIAdd %5 %83 %86
+%88 = OpAccessChain %39 %27 %37 %38
+OpStore %88 %87
+%89 = OpAccessChain %39 %31 %37 %38
+%90 = OpLoad %5 %89
+%92 = OpBitcast %91 %90
+%94 = OpAccessChain %93 %23 %37 %38
+%95 = OpLoad %15 %94
+%98 = OpBitcast %97 %95
+%99 = OpCompositeExtract %96 %98 0
+%100 = OpCompositeExtract %96 %98 1
+%101 = OpFMul %96 %99 %102
+%103 = OpFMul %96 %100 %102
+%104 = OpAccessChain %93 %19 %37 %38
+%105 = OpLoad %15 %104
+%106 = OpBitcast %97 %105
+%107 = OpCompositeExtract %96 %106 0
+%108 = OpCompositeExtract %96 %106 1
+%109 = OpFMul %96 %107 %110
+%111 = OpFMul %96 %108 %110
+%112 = OpCompositeConstruct %97 %109 %111
+%113 = OpCompositeConstruct %97 %101 %103
+%114 = OpFDot2MixAcc32VALVE %91 %112 %113 %92
+%115 = OpBitcast %5 %114
+%116 = OpAccessChain %39 %31 %37 %38
+OpStore %116 %115
+%117 = OpAccessChain %39 %31 %37 %38
+%118 = OpLoad %5 %117
+%119 = OpBitcast %91 %118
+%120 = OpAccessChain %93 %23 %37 %38
+%121 = OpLoad %15 %120
+%122 = OpBitcast %97 %121
+%123 = OpCompositeExtract %96 %122 0
+%124 = OpCompositeExtract %96 %122 1
+%125 = OpFMul %96 %123 %126
+%127 = OpFMul %96 %124 %126
+%128 = OpAccessChain %93 %19 %37 %38
+%129 = OpLoad %15 %128
+%130 = OpBitcast %97 %129
+%131 = OpCompositeExtract %96 %130 0
+%132 = OpCompositeExtract %96 %130 1
+%133 = OpFMul %96 %131 %134
+%135 = OpFMul %96 %132 %134
+%136 = OpCompositeConstruct %97 %133 %135
+%137 = OpCompositeConstruct %97 %125 %127
+%138 = OpFDot2MixAcc32VALVE %91 %136 %137 %119
+%139 = OpBitcast %5 %138
+%140 = OpAccessChain %39 %31 %37 %38
+OpStore %140 %139
+OpReturn
+OpFunctionEnd
+

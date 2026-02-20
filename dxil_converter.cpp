@@ -9511,6 +9511,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::MixedDotProduct:
+	{
+		auto &dot = static_cast<const OptionMixedDotProduct &>(cap);
+		options.mixed_dot_product_fp16_fp16_fp32 = dot.fp16_fp16_fp32;
+		break;
+	}
+
 	default:
 		break;
 	}

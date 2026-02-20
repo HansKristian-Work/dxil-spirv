@@ -115,7 +115,7 @@ OpBranchConditional %37 %58 %61
 OpBranch %59
 %59 = OpLabel
 %42 = OpRayQueryGetRayFlagsKHR %9 %21
-%43 = OpRayQueryGetClusterIdNV %9 %21 %41
+%43 = OpRayQueryGetIntersectionClusterIdNV %9 %21 %41
 %44 = OpShiftLeftLogical %9 %18 %39
 %45 = OpIMul %9 %18 %46
 %48 = OpCompositeConstruct %47 %43 %43 %43 %43
@@ -133,7 +133,7 @@ OpSelectionMerge %63 None
 OpBranchConditional %40 %63 %62
 %62 = OpLabel
 %50 = OpRayQueryGetRayFlagsKHR %9 %21
-%51 = OpRayQueryGetClusterIdNV %9 %21 %39
+%51 = OpRayQueryGetIntersectionClusterIdNV %9 %21 %39
 %52 = OpShiftLeftLogical %9 %18 %39
 %53 = OpBitwiseOr %9 %52 %39
 %54 = OpIMul %9 %18 %46

@@ -7,7 +7,7 @@ OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability GroupNonUniformBallot
-OpCapability GroupNonUniformPartitionedNV
+OpCapability GroupNonUniformPartitionedEXT
 OpExtension "SPV_NV_shader_subgroup_partitioned"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %18
@@ -78,7 +78,7 @@ OpBranch %230
 %48 = OpCompositeConstruct %25 %41 %42 %43 %44
 %49 = OpGroupNonUniformBallot %25 %38 %51
 %52 = OpBitwiseAnd %25 %48 %49
-%47 = OpGroupNonUniformIAdd %5 %38 PartitionedExclusiveScanNV %46 %52
+%47 = OpGroupNonUniformIAdd %5 %38 PartitionedExclusiveScanEXT %46 %52
 %53 = OpIMul %5 %22 %54
 %55 = OpIMul %5 %22 %54
 %56 = OpCompositeConstruct %25 %47 %47 %47 %47
@@ -106,7 +106,7 @@ OpImageWrite %13 %55 %56
 %79 = OpCompositeConstruct %25 %70 %71 %72 %73
 %80 = OpGroupNonUniformBallot %25 %38 %51
 %81 = OpBitwiseAnd %25 %79 %80
-%78 = OpGroupNonUniformFAdd %76 %38 PartitionedExclusiveScanNV %77 %81
+%78 = OpGroupNonUniformFAdd %76 %38 PartitionedExclusiveScanEXT %77 %81
 %82 = OpConvertFToU %5 %78
 %83 = OpIAdd %5 %53 %30
 %84 = OpIMul %5 %22 %54
@@ -135,7 +135,7 @@ OpImageWrite %13 %85 %86
 %107 = OpCompositeConstruct %25 %100 %101 %102 %103
 %108 = OpGroupNonUniformBallot %25 %38 %51
 %109 = OpBitwiseAnd %25 %107 %108
-%106 = OpGroupNonUniformIMul %5 %38 PartitionedExclusiveScanNV %105 %109
+%106 = OpGroupNonUniformIMul %5 %38 PartitionedExclusiveScanEXT %105 %109
 %110 = OpIAdd %5 %53 %34
 %111 = OpIMul %5 %22 %54
 %112 = OpIAdd %5 %111 %34
@@ -164,7 +164,7 @@ OpImageWrite %13 %112 %113
 %135 = OpCompositeConstruct %25 %127 %128 %129 %130
 %136 = OpGroupNonUniformBallot %25 %38 %51
 %137 = OpBitwiseAnd %25 %135 %136
-%134 = OpGroupNonUniformFMul %76 %38 PartitionedExclusiveScanNV %133 %137
+%134 = OpGroupNonUniformFMul %76 %38 PartitionedExclusiveScanEXT %133 %137
 %138 = OpConvertFToU %5 %134
 %139 = OpIAdd %5 %53 %38
 %140 = OpIMul %5 %22 %54
@@ -193,7 +193,7 @@ OpImageWrite %13 %141 %142
 %163 = OpCompositeConstruct %25 %156 %157 %158 %159
 %164 = OpGroupNonUniformBallot %25 %38 %51
 %165 = OpBitwiseAnd %25 %163 %164
-%162 = OpGroupNonUniformBitwiseOr %5 %38 PartitionedExclusiveScanNV %161 %165
+%162 = OpGroupNonUniformBitwiseOr %5 %38 PartitionedExclusiveScanEXT %161 %165
 %166 = OpIAdd %5 %53 %24
 %167 = OpIMul %5 %22 %54
 %168 = OpIAdd %5 %167 %24
@@ -223,7 +223,7 @@ OpImageWrite %13 %168 %169
 %192 = OpCompositeConstruct %25 %183 %184 %185 %186
 %193 = OpGroupNonUniformBallot %25 %38 %51
 %194 = OpBitwiseAnd %25 %192 %193
-%191 = OpGroupNonUniformBitwiseAnd %5 %38 PartitionedExclusiveScanNV %190 %194
+%191 = OpGroupNonUniformBitwiseAnd %5 %38 PartitionedExclusiveScanEXT %190 %194
 %195 = OpIAdd %5 %53 %196
 %197 = OpIMul %5 %22 %54
 %198 = OpIAdd %5 %197 %196
@@ -253,7 +253,7 @@ OpImageWrite %13 %198 %199
 %222 = OpCompositeConstruct %25 %213 %214 %215 %216
 %223 = OpGroupNonUniformBallot %25 %38 %51
 %224 = OpBitwiseAnd %25 %222 %223
-%221 = OpGroupNonUniformBitwiseXor %5 %38 PartitionedExclusiveScanNV %220 %224
+%221 = OpGroupNonUniformBitwiseXor %5 %38 PartitionedExclusiveScanEXT %220 %224
 %225 = OpIAdd %5 %53 %226
 %227 = OpIMul %5 %22 %54
 %228 = OpIAdd %5 %227 %226

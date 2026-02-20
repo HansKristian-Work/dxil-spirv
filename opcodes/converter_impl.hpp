@@ -818,6 +818,7 @@ struct Converter::Impl
 		} nvapi;
 
 		bool extended_non_semantic_info = false;
+		bool mixed_dot_product_fp16_fp16_fp32 = false;
 
 		struct
 		{

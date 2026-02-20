@@ -1462,6 +1462,16 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		break;
 	}
 
+	case DXIL_SPV_OPTION_MIXED_FLOAT_DOT_PRODUCT:
+	{
+		OptionMixedDotProduct helper;
+		auto *dot = reinterpret_cast<const dxil_spv_option_mixed_float_dot_product *>(option);
+		helper.fp16_fp16_fp32 = dot->fp16_fp16_fp32;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
 	default:
 		return DXIL_SPV_ERROR_UNSUPPORTED_FEATURE;
 	}

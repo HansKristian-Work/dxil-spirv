@@ -197,6 +197,7 @@ static void print_help()
 	     "\t[--full-wmma <fp8> <nv-coopmat2>]\n"
 	     "\t[--shader-quirk <index>]\n"
 	     "\t[--non-semantic]\n"
+	     "\t[--mixed-float-dot-product]\n"
 	     "\t[--view-instancing]\n"
 	     "\t[--view-instancing-last-pre-rasterization-stage]\n"
 	     "\t[--view-instance-to-viewport-spec-id <id>]\n"
@@ -259,6 +260,7 @@ struct Arguments
 	bool wmma_fp8 = false;
 	bool wmma_nv_coopmat2 = false;
 	bool non_semantic = false;
+	bool mixed_float_dot_product = false;
 	std::vector<dxil_spv_shader_quirk> quirks;
 
 	unsigned ssbo_alignment = 1;
@@ -904,6 +906,7 @@ int main(int argc, char **argv)
 		args.quirks.push_back(dxil_spv_shader_quirk(parser.next_uint()));
 	});
 	cbs.add("--non-semantic", [&](CLIParser &) { args.non_semantic = true; });
+	cbs.add("--mixed-float-dot-product", [&](CLIParser &) { args.mixed_float_dot_product = true; });
 	cbs.add("--meta-descriptor", [&](CLIParser &parser) {
 		MetaDescriptor meta = {};
 		meta.meta = dxil_spv_meta_descriptor(parser.next_uint());
@@ -1289,6 +1292,12 @@ int main(int argc, char **argv)
 	{
 		dxil_spv_option_extended_non_semantic sem = {{ DXIL_SPV_OPTION_EXTENDED_NON_SEMANTIC }, DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &sem.base);
+	}
+
+	if (args.mixed_float_dot_product)
+	{
+		dxil_spv_option_mixed_float_dot_product mixed = {{ DXIL_SPV_OPTION_MIXED_FLOAT_DOT_PRODUCT }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &mixed.base);
 	}
 
 	if (args.view_instancing)

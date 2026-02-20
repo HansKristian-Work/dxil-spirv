@@ -962,6 +962,19 @@ bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst 
 	spv::Id a = impl.build_vector(half_type_id, as, 2);
 	spv::Id b = impl.build_vector(half_type_id, bs, 2);
 
+	if (impl.options.mixed_dot_product_fp16_fp16_fp32)
+	{
+		builder.addExtension("SPV_VALVE_mixed_float_dot_product");
+		builder.addCapability(spv::CapabilityDotProductFloat16AccFloat32VALVE);
+
+		auto *acc_op = impl.allocate(spv::OpFDot2MixAcc32VALVE, instruction);
+		acc_op->add_id(a);
+		acc_op->add_id(b);
+		acc_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(acc_op);
+		return true;
+	}
+
 	auto *dot_op = impl.allocate(spv::OpFMul, builder.makeVectorType(half_type_id, 2));
 	dot_op->add_id(a);
 	dot_op->add_id(b);

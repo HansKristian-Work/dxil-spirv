@@ -6,7 +6,7 @@
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
-OpCapability GroupNonUniformPartitionedNV
+OpCapability GroupNonUniformPartitionedEXT
 OpExtension "SPV_NV_shader_subgroup_partitioned"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %16
@@ -52,7 +52,7 @@ OpBranch %73
 %20 = OpLoad %5 %18
 %22 = OpImageFetch %21 %13 %20
 %23 = OpCompositeExtract %5 %22 0
-%24 = OpGroupNonUniformPartitionNV %21 %23
+%24 = OpGroupNonUniformPartitionEXT %21 %23
 %25 = OpCompositeExtract %5 %24 0
 %26 = OpCompositeExtract %5 %24 1
 %27 = OpCompositeExtract %5 %24 2
@@ -61,7 +61,7 @@ OpBranch %73
 %30 = OpCompositeExtract %5 %29 0
 %32 = OpBitcast %31 %30
 %33 = OpBitcast %5 %32
-%34 = OpGroupNonUniformPartitionNV %21 %33
+%34 = OpGroupNonUniformPartitionEXT %21 %33
 %35 = OpCompositeExtract %5 %34 0
 %36 = OpCompositeExtract %5 %34 1
 %37 = OpCompositeExtract %5 %34 2
@@ -75,7 +75,7 @@ OpBranch %73
 %46 = OpINotEqual %45 %44 %47
 %50 = OpSelect %31 %46 %49 %48
 %51 = OpBitcast %5 %50
-%52 = OpGroupNonUniformPartitionNV %21 %51
+%52 = OpGroupNonUniformPartitionEXT %21 %51
 %53 = OpCompositeExtract %5 %52 0
 %54 = OpCompositeExtract %5 %52 1
 %55 = OpCompositeExtract %5 %52 2

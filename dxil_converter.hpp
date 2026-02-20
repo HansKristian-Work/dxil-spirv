@@ -271,6 +271,7 @@ enum class Option : uint32_t
 	NvAPI = 47,
 	ExtendedNonSemantic = 48,
 	ViewInstancing = 49,
+	MixedDotProduct = 50,
 	Count
 };
 
@@ -848,6 +849,16 @@ struct OptionViewInstancing : OptionBase
 	bool last_pre_rasterization_stage = false;
 	uint32_t view_index_to_view_instance_spec_id = UINT32_MAX;
 	uint32_t view_instance_to_viewport_spec_id = UINT32_MAX;
+};
+
+struct OptionMixedDotProduct : OptionBase
+{
+	OptionMixedDotProduct()
+		: OptionBase(Option::MixedDotProduct)
+	{
+	}
+
+	bool fp16_fp16_fp32 = false;
 };
 
 struct DescriptorTableEntry

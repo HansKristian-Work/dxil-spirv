@@ -276,6 +276,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--view-index-to-view-instance-spec-id', '1000']
     if '.view-instancing-viewport-offset.' in shader:
         hlsl_cmd += ['--view-instance-to-viewport-spec-id', '1001']
+    if '.mixed-float-dot-product.' in shader:
+        hlsl_cmd += ['--mixed-float-dot-product']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:
