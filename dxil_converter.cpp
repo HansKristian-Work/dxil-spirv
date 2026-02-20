@@ -4859,19 +4859,17 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
 
-		if (system_value == DXIL::Semantic::ShadingRate)
+		if (options.quirks.ignore_primitive_shading_rate && system_value == DXIL::Semantic::ShadingRate)
+		{
+			masked_output = true;
+		}
+		else if (execution_model == spv::ExecutionModelTessellationControl ||
+		         (execution_model == spv::ExecutionModelTessellationEvaluation &&
+		          system_value == DXIL::Semantic::ShadingRate))
 		{
 			// For HS <-> DS, ignore system values.
 			// Shading rate is also ignored in DS. RE4 hits this case. Just treat it as a normal user varying.
-			if (execution_model == spv::ExecutionModelTessellationControl ||
-			    execution_model == spv::ExecutionModelTessellationEvaluation)
-			{
-				system_value = DXIL::Semantic::User;
-			}
-			else if (options.quirks.ignore_primitive_shading_rate && system_value == DXIL::Semantic::ShadingRate)
-			{
-				masked_output = true;
-			}
+			system_value = DXIL::Semantic::User;
 		}
 
 		if (system_value == DXIL::Semantic::Position)
