@@ -1857,6 +1857,13 @@ void CFGStructurizer::eliminate_degenerate_blocks()
 			if (std::find_if(node->pred.begin(), node->pred.end(), check_is_load_bearing_continue_succ) != node->pred.end())
 				continue;
 
+			// We might be a viable merge target for an infinite loop. If we only have one pred, we're probably not
+			// a painful break merge. Removing this block shouldn't be problematic for correctness, but removing
+			// a block only to add back a ladder is a little silly.
+			if (node->pred.size() == 1 && node->pred.front()->pred_back_edge &&
+				node->pred.front()->pred_back_edge->succ.empty())
+				continue;
+
 			// If any succ is a continue block, this block is also load-bearing, since it can be used as a merge block
 			// (merge-to-continue ladder).
 			if (std::find_if(node->succ.begin(), node->succ.end(),
