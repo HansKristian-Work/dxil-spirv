@@ -102,6 +102,7 @@ private:
 	struct LoopMergeAnalysis
 	{
 		CFGNode *merge;
+		CFGNode *weak_merge;
 		CFGNode *dominated_merge;
 		CFGNode *infinite_continue_ladder;
 	};

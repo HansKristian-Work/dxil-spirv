@@ -6022,7 +6022,39 @@ CFGStructurizer::LoopMergeAnalysis CFGStructurizer::analyze_loop_merge(CFGNode *
 
 	LoopMergeAnalysis merge_result = {};
 	merge_result.merge = merge;
+	merge_result.weak_merge = merge;
 	merge_result.dominated_merge = dominated_merge;
+
+	if (!merge)
+	{
+		// Try to find a candidate merge point which ignores any early exits through common post domination frontier
+		// analysis.
+		Vector<CFGNode *> frontiers;
+		for (auto *m : merges)
+			frontiers.insert(frontiers.end(), m->dominance_frontier.begin(), m->dominance_frontier.end());
+
+		// Find the innermost frontier that satisfies the requirements.
+		std::stable_sort(frontiers.begin(), frontiers.end(), [](const CFGNode *a, const CFGNode *b)
+		{
+			return a->forward_post_visit_order > b->forward_post_visit_order;
+		});
+		frontiers.erase(std::unique(frontiers.begin(), frontiers.end()), frontiers.end());
+
+		for (auto *front : frontiers)
+		{
+			// All merge nodes must reach the candidate for it to be considered a proper merge.
+			auto itr = std::find_if(merges.begin(), merges.end(), [&](const CFGNode *c)
+			{
+				return !query_reachability(*c, *front);
+			});
+
+			if (itr == merges.end())
+			{
+				merge_result.weak_merge = front;
+				break;
+			}
+		}
+	}
 
 	if (!analysis.dominated_continue_exit.empty())
 	{
@@ -6533,6 +6565,12 @@ bool CFGStructurizer::find_loops(unsigned pass)
 
 			if (pass == 0 && rewrite_complex_loop_exits(node, merge, dominated_exit))
 				return true;
+
+			if (!merge)
+			{
+				// Most likely this means we have an early return somewhere. Try the weak merge candidate.
+				merge = merge_result.weak_merge;
+			}
 
 			if (!merge)
 			{
