@@ -1454,6 +1454,49 @@ bool CFGStructurizer::continue_block_can_merge(CFGNode *node) const
 	// we see in the wild. It's probably safe to block continue merge in far more cases than this, but we
 	// want to be maximally convergent as often as we can.
 
+#if 0
+	// This path breaks many shaders, but keep it as a reference for potential future fixes ...
+	bool continue_block_is_control_dependent = block_is_control_dependent(node);
+
+	if (!continue_block_is_control_dependent && node->pred.size() >= 3 &&
+	    block_is_plain_continue(node) && node->post_dominates(header))
+	{
+		// If we have more than 2 preds and we're not control dependent,
+		// we should probably treat this as an unmerged continue block.
+
+		// Try to find any proof of an entry-exit relationship inside the loop where the continue is the exit.
+		UnorderedSet<const CFGNode *> traversed;
+		bool has_inner_loop_construct = false;
+		bool has_candidate = false;
+
+		header->traverse_dominated_blocks([&](const CFGNode *candidate) -> bool {
+			if (candidate == node)
+				return false;
+			if (traversed.count(candidate))
+				return false;
+			traversed.insert(candidate);
+
+			if (candidate != header && candidate->pred_back_edge)
+			{
+				auto *post_dominator = find_common_post_dominator(candidate->succ);
+				if (post_dominator == node)
+					has_inner_loop_construct = true;
+			}
+
+			if (candidate->num_forward_preds() >= 2 && !candidate->dominates(node) &&
+			    candidate->immediate_dominator != header &&
+			    candidate->immediate_dominator->immediate_post_dominator == node)
+			{
+				has_candidate = true;
+			}
+
+			return true;
+		});
+
+		return !has_candidate || has_inner_loop_construct;
+	}
+#endif
+
 	for (auto *pred : node->pred)
 	{
 		// This is the merge block of another inner loop, we really need an intermediate merge.
