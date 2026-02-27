@@ -2207,8 +2207,13 @@ void CFGStructurizer::insert_phi()
 	}
 
 	// Resolve phi-nodes top-down since PHI nodes may depend on other PHI nodes.
-	std::sort(phi_nodes.begin(), phi_nodes.end(),
-	          [](const PHINode &a, const PHINode &b) { return a.block->forward_post_visit_order > b.block->forward_post_visit_order; });
+	std::sort(
+		phi_nodes.begin(), phi_nodes.end(),
+		[](const PHINode &a, const PHINode &b) {
+			if (a.block->forward_post_visit_order == b.block->forward_post_visit_order)
+			    return a.phi_index < b.phi_index;
+			return a.block->forward_post_visit_order > b.block->forward_post_visit_order;
+		});
 
 	for (auto &phi_node : phi_nodes)
 	{
