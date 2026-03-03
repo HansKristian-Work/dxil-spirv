@@ -1365,6 +1365,84 @@ static bool emit_wmma_element_wise_arith(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_float8_conversion(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	auto convert_op = AmdExtD3DShaderIntrinsicsFloat8CvtOp(impl.ags.instructions[0].immediate &
+	                                                       AmdExtD3DShaderIntrinsicsFloat8Conversion_CvtOpMask);
+	bool saturate = ((impl.ags.instructions[0].immediate >> AmdExtD3DShaderIntrinsicsFloat8Conversion_SatShift) &
+	                 AmdExtD3DShaderIntrinsicsFloat8Conversion_SatMask) != 0;
+
+	builder.addExtension("SPV_EXT_float8");
+	builder.addCapability(spv::CapabilityFloat8EXT);
+	builder.addCapability(spv::CapabilityInt8);
+	bool is_bfloat = false;
+
+	uint32_t dummy_value;
+	if (!get_constant_operand(impl.ags.backdoor_instructions[0], 6, &dummy_value) || dummy_value != 0)
+		return false;
+
+	switch (convert_op)
+	{
+	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_BF8:
+		is_bfloat = true;
+		// fallthrough
+	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_FP8:
+	{
+		auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(32));
+		bitcast->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
+		impl.add(bitcast);
+
+		auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
+		                                                                                 spv::FPEncodingFloat8E4M3EXT));
+		conv->add_id(bitcast->id);
+		impl.add(conv);
+
+		if (saturate)
+			builder.addDecoration(conv->id, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
+
+		bitcast = impl.allocate(spv::OpBitcast, builder.makeUintType(8));
+		bitcast->add_id(conv->id);
+		impl.add(bitcast);
+
+		auto *ext = impl.allocate(spv::OpUConvert, impl.ags.backdoor_instructions[0]);
+		ext->add_id(bitcast->id);
+		impl.add(ext);
+		break;
+	}
+
+	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_BF8_2_F32:
+		is_bfloat = true;
+		// fallthrough
+	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_FP8_2_F32:
+	{
+		auto *trunc = impl.allocate(spv::OpUConvert, builder.makeUintType(8));
+		trunc->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
+		impl.add(trunc);
+
+		auto *bitcast =
+		    impl.allocate(spv::OpBitcast, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
+		                                                                       spv::FPEncodingFloat8E4M3EXT));
+		bitcast->add_id(trunc->id);
+		impl.add(bitcast);
+
+		auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
+		conv->add_id(bitcast->id);
+		impl.add(conv);
+
+		bitcast = impl.allocate(spv::OpBitcast, impl.ags.backdoor_instructions[0]);
+		bitcast->add_id(conv->id);
+		impl.add(bitcast);
+		break;
+	}
+
+	default:
+		return false;
+	}
+
+	return true;
+}
+
 static spv::Id get_matmul_result_type(Converter::Impl &impl, uint32_t opcode)
 {
 	auto &builder = impl.builder();
@@ -2327,6 +2405,17 @@ bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 		if (impl.ags.num_instructions == 17)
 		{
 			if (!emit_wmma_element_wise_arith(impl))
+				return false;
+			impl.ags.num_instructions = 0;
+		}
+		break;
+	}
+
+	case AmdExtD3DShaderIntrinsicsOpcode_Float8Conversion:
+	{
+		if (impl.ags.num_instructions == 1)
+		{
+			if (!emit_float8_conversion(impl))
 				return false;
 			impl.ags.num_instructions = 0;
 		}
