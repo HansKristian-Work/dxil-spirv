@@ -29,6 +29,7 @@
 #include "dxil_common.hpp"
 #include "dxil_sampling.hpp"
 #include "dxil_buffer.hpp"
+#include <limits>
 
 namespace dxil_spv
 {
@@ -1392,6 +1393,22 @@ static bool emit_float8_conversion(Converter::Impl &impl)
 		auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(32));
 		bitcast->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
 		impl.add(bitcast);
+
+		if (saturate)
+		{
+			// Fixup for RDNA4 HW compat.
+			auto *is_inf = impl.allocate(spv::OpIsInf, builder.makeBoolType());
+			is_inf->add_id(bitcast->id);
+			impl.add(is_inf);
+
+			auto *select = impl.allocate(spv::OpSelect, builder.makeFloatType(32));
+			select->add_id(is_inf->id);
+			select->add_id(builder.makeFloatConstant(std::numeric_limits<float>::quiet_NaN()));
+			select->add_id(bitcast->id);
+			impl.add(select);
+
+			bitcast = select;
+		}
 
 		auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
 		                                                                                 spv::FPEncodingFloat8E4M3EXT));
