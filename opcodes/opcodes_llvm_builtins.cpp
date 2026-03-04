@@ -2494,6 +2494,14 @@ static void register_ray_query_mapping(Converter::Impl &impl, const llvm::Value 
 	}
 }
 
+bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *instruction)
+{
+	// Just need to forward the mapping in case it's used as a store to alloca.
+	spv::Id override_type = 0;
+	ags_filter_phi(impl, *instruction, override_type);
+	return true;
+}
+
 bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *inst)
 {
 	auto tracked = gep_pointer_to_alloca_tracked_inst(impl, inst->getOperand(1));

@@ -8627,6 +8627,11 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 				if (!analyze_store_instruction(*this, store_inst))
 					return false;
 			}
+			else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(&inst))
+			{
+				if (!analyze_phi_instruction(*this, phi_inst))
+					return false;
+			}
 			else if (auto *atomicrmw_inst = llvm::dyn_cast<llvm::AtomicRMWInst>(&inst))
 			{
 				if (!analyze_atomicrmw_instruction(*this, atomicrmw_inst))
