@@ -1,0 +1,430 @@
+#version 460
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
+{
+    uint8_t _m0[];
+} _20;
+
+layout(set = 0, binding = 0, std430) writeonly buffer _22_24
+{
+    uint8_t _m0[];
+} _24;
+
+layout(set = 0, binding = 0, std140) uniform _27_29
+{
+    vec4 _m0[1];
+} _29;
+
+coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> CoopMatFP8toFP16(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _50)
+{
+    uint _58;
+    _58 = 0u;
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> coop_output;
+    for (;;)
+    {
+        uint _59 = _58 + 1u;
+        coop_output[_58] = int16BitsToFloat16((int16_t(int8_t(_50[_58])) << 7s) & (-16385s));
+        if (_59 < uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length()))
+        {
+            _58 = _59;
+        }
+        else
+        {
+            break;
+        }
+    }
+    return coop_output * float16_t(256.0);
+}
+
+coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> CoopMatFP8toFP16_1(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _121)
+{
+    uint _129;
+    _129 = 0u;
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> coop_output;
+    for (;;)
+    {
+        uint _130 = _129 + 1u;
+        coop_output[_129] = int16BitsToFloat16((int16_t(int8_t(_121[_129])) << 7s) & (-16385s));
+        if (_130 < uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(0).length()))
+        {
+            _129 = _130;
+        }
+        else
+        {
+            break;
+        }
+    }
+    return coop_output * float16_t(256.0);
+}
+
+void main()
+{
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _146;
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _33[2];
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _36[2];
+    coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _77;
+    uint _37 = 0u;
+    uint _39;
+    bool _113;
+    for (;;)
+    {
+        _39 = _37 << 5u;
+        coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _46;
+        coopMatLoad(_46, _20._m0, _39, 64u, gl_CooperativeMatrixLayoutRowMajor);
+        _77 = _46;
+        _36[_37] = CoopMatFP8toFP16(_77);
+        _113 = floatBitsToUint(_29._m0[0u]).x == 1u;
+        coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> frontier_phi_4_pred;
+        if (_113)
+        {
+            coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _118;
+            coopMatLoad(_118, _20._m0, _39 + 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
+            coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _142 = _118;
+            frontier_phi_4_pred = CoopMatFP8toFP16_1(_142);
+        }
+        else
+        {
+            frontier_phi_4_pred = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(float16_t(0.0));
+        }
+        _146 = frontier_phi_4_pred;
+        _33[_37] = _146;
+        uint _38 = _37 + 1u;
+        if (_38 == 2u)
+        {
+            break;
+        }
+        else
+        {
+            _37 = _38;
+            continue;
+        }
+    }
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _174;
+    uint _176;
+    _174 = coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0);
+    _176 = 0u;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _242;
+    for (;;)
+    {
+        _242 = coopMatMulAdd(_36[_176], _33[_176], _174, 0);
+        uint _177 = _176 + 1u;
+        if (_177 == 2u)
+        {
+            break;
+        }
+        else
+        {
+            _174 = _242;
+            _176 = _177;
+        }
+    }
+    coopMatStore(_242, _24._m0, 0u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
+}
+
+
+#if 0
+// SPIR-V disassembly
+// WaveSize(32)
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 257
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability Int16
+OpCapability Int8
+OpCapability StorageBuffer8BitAccess
+OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
+OpCapability CooperativeMatrixKHR
+OpExtension "SPV_KHR_8bit_storage"
+OpExtension "SPV_KHR_cooperative_matrix"
+OpExtension "SPV_KHR_float_controls"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %14 "main" %20 %24 %29
+OpExecutionMode %14 LocalSize 32 1 1
+OpExecutionMode %14 DenormPreserve 16
+OpName %14 "main"
+OpName %18 "SSBO"
+OpName %22 "SSBO"
+OpName %27 ""
+OpName %51 "CoopMatFP8toFP16"
+OpName %54 "coop_output"
+OpName %122 "CoopMatFP8toFP16"
+OpName %125 "coop_output"
+OpName %245 "frontier_phi_4.pred"
+OpDecorate %17 ArrayStride 1
+OpMemberDecorate %18 0 Offset 0
+OpDecorate %18 Block
+OpDecorate %20 DescriptorSet 0
+OpDecorate %20 Binding 0
+OpDecorate %20 NonWritable
+OpDecorate %20 Restrict
+OpDecorate %21 ArrayStride 1
+OpMemberDecorate %22 0 Offset 0
+OpDecorate %22 Block
+OpDecorate %24 DescriptorSet 0
+OpDecorate %24 Binding 0
+OpDecorate %24 NonReadable
+OpDecorate %26 ArrayStride 16
+OpMemberDecorate %27 0 Offset 0
+OpDecorate %27 Block
+OpDecorate %29 DescriptorSet 0
+OpDecorate %29 Binding 0
+%1 = OpTypeFloat 16
+%2 = OpTypeInt 32 0
+%3 = OpConstant %2 0
+%4 = OpConstant %2 16
+%6 = OpConstant %2 3
+%5 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %3
+%7 = OpConstant %2 1
+%8 = OpTypeCooperativeMatrixKHR %1 %6 %4 %4 %7
+%9 = OpTypeFloat 32
+%10 = OpConstant %2 2
+%11 = OpTypeCooperativeMatrixKHR %9 %6 %4 %4 %10
+%12 = OpTypeVoid
+%13 = OpTypeFunction %12
+%16 = OpTypeInt 8 0
+%17 = OpTypeRuntimeArray %16
+%18 = OpTypeStruct %17
+%19 = OpTypePointer StorageBuffer %18
+%20 = OpVariable %19 StorageBuffer
+%21 = OpTypeRuntimeArray %16
+%22 = OpTypeStruct %21
+%23 = OpTypePointer StorageBuffer %22
+%24 = OpVariable %23 StorageBuffer
+%25 = OpTypeVector %9 4
+%26 = OpTypeArray %25 %7
+%27 = OpTypeStruct %26
+%28 = OpTypePointer Uniform %27
+%29 = OpVariable %28 Uniform
+%30 = OpTypeArray %2 %4
+%31 = OpTypeArray %8 %10
+%32 = OpTypePointer Function %31
+%34 = OpTypeArray %5 %10
+%35 = OpTypePointer Function %34
+%40 = OpConstant %2 5
+%42 = OpTypeCooperativeMatrixKHR %16 %6 %4 %4 %3
+%43 = OpTypePointer StorageBuffer %16
+%45 = OpConstant %2 64
+%47 = OpTypeBool
+%48 = OpTypePointer Function %42
+%49 = OpTypeFunction %5 %48
+%53 = OpTypePointer Function %5
+%60 = OpTypePointer Function %16
+%63 = OpTypeInt 16 1
+%66 = OpConstant %63 7
+%68 = OpConstant %63 -16385
+%70 = OpTypePointer Function %1
+%75 = OpConstant %1 0x1p+8
+%80 = OpConstant %2 8
+%94 = OpConstant %2 4
+%101 = OpConstant %2 6
+%105 = OpConstant %2 7
+%107 = OpTypePointer Uniform %25
+%110 = OpTypeVector %2 4
+%115 = OpConstant %2 1024
+%116 = OpTypeCooperativeMatrixKHR %16 %6 %4 %4 %7
+%119 = OpTypePointer Function %116
+%120 = OpTypeFunction %8 %119
+%124 = OpTypePointer Function %8
+%144 = OpConstant %1 0x0p+0
+%145 = OpConstantComposite %8 %144
+%172 = OpConstant %9 0
+%173 = OpConstantComposite %11 %172
+%14 = OpFunction %12 None %13
+%15 = OpLabel
+%33 = OpVariable %32 Function
+%36 = OpVariable %35 Function
+%77 = OpVariable %48 Function
+%142 = OpVariable %119 Function
+OpBranch %246
+%246 = OpLabel
+OpBranch %247
+%247 = OpLabel
+%37 = OpPhi %2 %3 %246 %38 %252
+%39 = OpShiftLeftLogical %2 %37 %40
+%44 = OpAccessChain %43 %20 %3 %39
+%46 = OpCooperativeMatrixLoadKHR %42 %44 %3 %45 NonPrivatePointer
+OpStore %77 %46
+%78 = OpFunctionCall %5 %51 %77
+%79 = OpIMul %2 %37 %80
+%81 = OpIAdd %2 %3 %79
+%82 = OpAccessChain %53 %36 %37
+OpStore %82 %78
+%83 = OpIMul %2 %37 %80
+%84 = OpIAdd %2 %7 %83
+%86 = OpIMul %2 %37 %80
+%87 = OpIAdd %2 %10 %86
+%89 = OpIMul %2 %37 %80
+%90 = OpIAdd %2 %6 %89
+%92 = OpIMul %2 %37 %80
+%93 = OpIAdd %2 %94 %92
+%96 = OpIMul %2 %37 %80
+%97 = OpIAdd %2 %40 %96
+%99 = OpIMul %2 %37 %80
+%100 = OpIAdd %2 %101 %99
+%103 = OpIMul %2 %37 %80
+%104 = OpIAdd %2 %105 %103
+%108 = OpAccessChain %107 %29 %3 %3
+%109 = OpLoad %25 %108
+%111 = OpBitcast %110 %109
+%112 = OpCompositeExtract %2 %111 0
+%113 = OpIEqual %47 %112 %7
+OpLoopMerge %253 %252 None
+OpBranch %248
+%248 = OpLabel
+OpSelectionMerge %251 None
+OpBranchConditional %113 %250 %249
+%250 = OpLabel
+%114 = OpIAdd %2 %39 %115
+%117 = OpAccessChain %43 %20 %3 %114
+%118 = OpCooperativeMatrixLoadKHR %116 %117 %7 %45 NonPrivatePointer
+OpStore %142 %118
+%143 = OpFunctionCall %8 %122 %142
+OpBranch %251
+%249 = OpLabel
+OpBranch %251
+%251 = OpLabel
+%245 = OpPhi %8 %143 %250 %145 %249
+%146 = OpCopyObject %8 %245
+OpBranch %252
+%252 = OpLabel
+%147 = OpIMul %2 %37 %80
+%148 = OpIAdd %2 %3 %147
+%149 = OpAccessChain %124 %33 %37
+OpStore %149 %146
+%150 = OpIMul %2 %37 %80
+%151 = OpIAdd %2 %7 %150
+%153 = OpIMul %2 %37 %80
+%154 = OpIAdd %2 %10 %153
+%156 = OpIMul %2 %37 %80
+%157 = OpIAdd %2 %6 %156
+%159 = OpIMul %2 %37 %80
+%160 = OpIAdd %2 %94 %159
+%162 = OpIMul %2 %37 %80
+%163 = OpIAdd %2 %40 %162
+%165 = OpIMul %2 %37 %80
+%166 = OpIAdd %2 %101 %165
+%168 = OpIMul %2 %37 %80
+%169 = OpIAdd %2 %105 %168
+%38 = OpIAdd %2 %37 %7
+%171 = OpIEqual %47 %38 %10
+OpBranchConditional %171 %253 %247
+%253 = OpLabel
+OpBranch %254
+%254 = OpLabel
+%174 = OpPhi %11 %173 %253 %242 %254
+%176 = OpPhi %2 %3 %253 %177 %254
+%178 = OpIMul %2 %176 %80
+%179 = OpIAdd %2 %7 %178
+%182 = OpIMul %2 %176 %80
+%183 = OpIAdd %2 %3 %182
+%184 = OpAccessChain %53 %36 %176
+%185 = OpLoad %5 %184
+%186 = OpIMul %2 %176 %80
+%187 = OpIAdd %2 %6 %186
+%190 = OpIMul %2 %176 %80
+%191 = OpIAdd %2 %10 %190
+%194 = OpIMul %2 %176 %80
+%195 = OpIAdd %2 %40 %194
+%198 = OpIMul %2 %176 %80
+%199 = OpIAdd %2 %94 %198
+%202 = OpIMul %2 %176 %80
+%203 = OpIAdd %2 %105 %202
+%206 = OpIMul %2 %176 %80
+%207 = OpIAdd %2 %101 %206
+%210 = OpIMul %2 %176 %80
+%211 = OpIAdd %2 %7 %210
+%214 = OpIMul %2 %176 %80
+%215 = OpIAdd %2 %3 %214
+%216 = OpAccessChain %124 %33 %176
+%217 = OpLoad %8 %216
+%218 = OpIMul %2 %176 %80
+%219 = OpIAdd %2 %6 %218
+%222 = OpIMul %2 %176 %80
+%223 = OpIAdd %2 %10 %222
+%226 = OpIMul %2 %176 %80
+%227 = OpIAdd %2 %40 %226
+%230 = OpIMul %2 %176 %80
+%231 = OpIAdd %2 %94 %230
+%234 = OpIMul %2 %176 %80
+%235 = OpIAdd %2 %105 %234
+%238 = OpIMul %2 %176 %80
+%239 = OpIAdd %2 %101 %238
+%242 = OpCooperativeMatrixMulAddKHR %11 %185 %217 %174
+%177 = OpIAdd %2 %176 %7
+%243 = OpIEqual %47 %177 %10
+OpLoopMerge %255 %254 None
+OpBranchConditional %243 %255 %254
+%255 = OpLabel
+%244 = OpAccessChain %43 %24 %3 %3
+OpCooperativeMatrixStoreKHR %244 %242 %7 %45 NonPrivatePointer
+OpReturn
+OpFunctionEnd
+%51 = OpFunction %5 None %49
+%50 = OpFunctionParameter %48
+%52 = OpLabel
+%54 = OpVariable %53 Function
+%55 = OpCooperativeMatrixLengthKHR %2 %42
+OpBranch %56
+%56 = OpLabel
+%58 = OpPhi %2 %3 %52 %59 %56
+%59 = OpIAdd %2 %58 %7
+%61 = OpInBoundsAccessChain %60 %50 %58
+%62 = OpLoad %16 %61
+%64 = OpSConvert %63 %62
+%65 = OpShiftLeftLogical %63 %64 %66
+%67 = OpBitwiseAnd %63 %65 %68
+%69 = OpBitcast %1 %67
+%71 = OpInBoundsAccessChain %70 %54 %58
+OpStore %71 %69
+%72 = OpULessThan %47 %59 %55
+OpLoopMerge %57 %56 None
+OpBranchConditional %72 %56 %57
+%57 = OpLabel
+%73 = OpLoad %5 %54
+%74 = OpMatrixTimesScalar %5 %73 %75
+OpReturnValue %74
+OpFunctionEnd
+%122 = OpFunction %8 None %120
+%121 = OpFunctionParameter %119
+%123 = OpLabel
+%125 = OpVariable %124 Function
+%126 = OpCooperativeMatrixLengthKHR %2 %116
+OpBranch %127
+%127 = OpLabel
+%129 = OpPhi %2 %3 %123 %130 %127
+%130 = OpIAdd %2 %129 %7
+%131 = OpInBoundsAccessChain %60 %121 %129
+%132 = OpLoad %16 %131
+%133 = OpSConvert %63 %132
+%134 = OpShiftLeftLogical %63 %133 %66
+%135 = OpBitwiseAnd %63 %134 %68
+%136 = OpBitcast %1 %135
+%137 = OpInBoundsAccessChain %70 %125 %129
+OpStore %137 %136
+%138 = OpULessThan %47 %130 %126
+OpLoopMerge %128 %127 None
+OpBranchConditional %138 %127 %128
+%128 = OpLabel
+%139 = OpLoad %8 %125
+%140 = OpMatrixTimesScalar %8 %139 %75
+OpReturnValue %140
+OpFunctionEnd
+#endif
