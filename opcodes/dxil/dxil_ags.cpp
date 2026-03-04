@@ -1394,6 +1394,8 @@ static bool emit_float8_conversion(Converter::Impl &impl)
 		bitcast->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
 		impl.add(bitcast);
 
+#if 0
+		// Native implementation seems to correctly treat saturated inf in this case.
 		if (saturate && !is_bfloat)
 		{
 			// Fixup for RDNA4 HW compat.
@@ -1409,6 +1411,7 @@ static bool emit_float8_conversion(Converter::Impl &impl)
 
 			bitcast = select;
 		}
+#endif
 
 		auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
 		                                                                                 spv::FPEncodingFloat8E4M3EXT));
