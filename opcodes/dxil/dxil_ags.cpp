@@ -1894,6 +1894,8 @@ static bool emit_wmma_load(Converter::Impl &impl)
 		id = emit_fp8_to_fp16_coopmat(impl, id, spv_use);
 	}
 
+	type_id = build_coopmat_type(impl, type_immediate, false);
+
 	if (!emit_wmma_return_values(impl, type_id, id, 2))
 	{
 		LOGE("Failed to emit WMMA return values.\n");
