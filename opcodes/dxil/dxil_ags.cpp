@@ -1954,10 +1954,28 @@ static spv::Id rewrite_gep_rdna3(Converter::Impl &impl, const llvm::Value *value
 
 static const llvm::Value *get_underlying_gep_array(const llvm::GetElementPtrInst *gep)
 {
+	if (!gep)
+		return nullptr;
+
 	auto *source_variable = gep->getOperand(0);
 	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(source_variable))
 		return alloca;
 	else if (const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(source_variable))
+		return global;
+	return nullptr;
+}
+
+static const llvm::Value *get_underlying_gep_array(const llvm::ConstantExpr *cexpr)
+{
+	if (!cexpr)
+		return nullptr;
+
+	if (cexpr->getOpcode() != llvm::Instruction::GetElementPtr)
+		return nullptr;
+
+	// Not possible to constexpr-gep into alloca, since alloca isn't constant expression.
+	auto *source_variable = cexpr->getOperand(0);
+	if (const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(source_variable))
 		return global;
 	return nullptr;
 }
@@ -2011,6 +2029,16 @@ spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPt
 	return id;
 }
 
+static bool is_gep_instruction(const llvm::Value *value)
+{
+	if (llvm::isa<llvm::GetElementPtrInst>(value))
+		return true;
+	else if (const auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(value))
+		return cexpr->getOpcode() == llvm::Instruction::GetElementPtr;
+	else
+		return false;
+}
+
 bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store)
 {
 	auto itr = impl.ags.coopmat_component_mapping.find(store->getOperand(0));
@@ -2019,22 +2047,27 @@ bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store)
 
 	auto *store_ptr = store->getOperand(1);
 
-	const auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(store_ptr);
-	if (!gep)
+	if (!is_gep_instruction(store_ptr))
 	{
 		LOGE("Trying to store a WMMA matrix without GEP.\n");
 		return false;
 	}
 
-	auto *value = get_underlying_gep_array(gep);
+	auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(store_ptr);
+	auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(store_ptr);
+	const llvm::Value *value = nullptr;
+	if (gep)
+		value = get_underlying_gep_array(gep);
+	else if (cexpr)
+		value = get_underlying_gep_array(cexpr);
 
-	if (!value || gep->getNumOperands() < 3)
+	if (!value || (gep ? gep->getNumOperands() : cexpr->getNumOperands()) < 3)
 	{
 		LOGE("Trying to store WMMA to something not Alloca or global array.\n");
 		return false;
 	}
 
-	const auto *index = gep->getOperand(2);
+	const auto *index = gep ? gep->getOperand(2) : cexpr->getOperand(2);
 	auto split = split_index_scale_bias(index);
 	if (!split.stride)
 		return false;
@@ -2747,6 +2780,99 @@ void ags_getelementptr_filter(Converter::Impl &impl, const llvm::GetElementPtrIn
 		if (override_itr != impl.ags.alloca_or_global_tracking.end() && override_itr->second.override_element_type)
 			type_id = override_itr->second.override_element_type;
 	}
+}
+
+static spv::Id ags_build_cexpr_gep(Converter::Impl &impl, const llvm::Value *load_store_pointer, spv::Id &type_id,
+                                   uint32_t &split_elem)
+{
+	if (auto *value = get_underlying_gep_array(llvm::dyn_cast<llvm::ConstantExpr>(load_store_pointer)))
+	{
+		auto itr = impl.ags.alloca_or_global_tracking.find(value);
+		if (itr != impl.ags.alloca_or_global_tracking.end() && itr->second.override_element_type)
+		{
+			auto &builder = impl.builder();
+
+			type_id = itr->second.override_element_type;
+			auto *cexpr = llvm::cast<llvm::ConstantExpr>(load_store_pointer);
+
+			auto split = split_index_scale_bias(cexpr->getOperand(2));
+			if (!split.stride)
+				return 0;
+			if (split.stride != UINT32_MAX && split.stride != itr->second.override_element_stride)
+				return 0;
+
+			uint32_t const_index = 0;
+
+			if (split.stride == UINT32_MAX && itr->second.override_element_stride && !split.index)
+			{
+				const_index = split.elem / itr->second.override_element_stride;
+				split.elem -= const_index * itr->second.override_element_stride;
+			}
+
+			split_elem = split.elem;
+
+			// If we're writing anything other than the first element, skip the actual write.
+			if (split.elem != 0)
+				return UINT32_MAX;
+
+			spv::Id index_id = 0;
+
+			if (split.index)
+				index_id = impl.get_id_for_value(split.index);
+			else
+				index_id = impl.builder().makeUintConstant(const_index);
+
+			auto *chain = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPrivate, type_id));
+			chain->add_id(impl.get_id_for_value(cexpr->getOperand(0)));
+			chain->add_id(index_id);
+			impl.add(chain);
+			return chain->id;
+		}
+	}
+
+	return 0;
+}
+
+bool ags_llvm_load_filter_cexpr(Converter::Impl &impl, const llvm::LoadInst *instruction)
+{
+	if (!impl.shader_analysis.require_wmma)
+		return false;
+
+	uint32_t split_elem = 0;
+	spv::Id type_id = 0;
+	spv::Id ptr_id = ags_build_cexpr_gep(impl, instruction->getPointerOperand(), type_id, split_elem);
+
+	if (ptr_id != 0)
+		impl.ags.coopmat_component_mapping[instruction] = { type_id, split_elem };
+
+	if (ptr_id != 0 && ptr_id != UINT32_MAX)
+	{
+		auto *load = impl.allocate(spv::OpLoad, instruction, type_id);
+		load->add_id(ptr_id);
+		impl.add(load);
+	}
+
+	return ptr_id != 0;
+}
+
+bool ags_store_filter(Converter::Impl &impl, const llvm::StoreInst *instruction)
+{
+	if (!impl.shader_analysis.require_wmma)
+		return false;
+
+	uint32_t split_elem = 0;
+	spv::Id type_id = 0;
+	spv::Id ptr_id = ags_build_cexpr_gep(impl, instruction->getOperand(1), type_id, split_elem);
+
+	if (ptr_id != 0 && ptr_id != UINT32_MAX)
+	{
+		auto *store = impl.allocate(spv::OpStore);
+		store->add_id(ptr_id);
+		store->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		impl.add(store);
+	}
+
+	return ptr_id != 0;
 }
 
 bool ags_filter_phi(Converter::Impl &impl, const llvm::PHINode &instruction, spv::Id &override_type)

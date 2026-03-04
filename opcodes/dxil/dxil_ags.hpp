@@ -535,9 +535,11 @@ bool emit_ags_texture_store(Converter::Impl &impl, const llvm::CallInst *instruc
 bool emit_ags_resource_uav_handle(Converter::Impl &impl, const llvm::CallInst *instruction, uint32_t resource_range);
 
 bool ags_llvm_load_filter(Converter::Impl &impl, Operation *op, const llvm::LoadInst *instruction);
+bool ags_llvm_load_filter_cexpr(Converter::Impl &impl, const llvm::LoadInst *instruction);
 bool emit_ags_extract_value(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
 bool emit_ags_atomicrmw(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction);
 bool emit_ags_getelementptr(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction);
+bool ags_store_filter(Converter::Impl &impl, const llvm::StoreInst *instruction);
 bool ags_alloca_or_global_filter(Converter::Impl &impl, const llvm::Value *value, spv::Id &pointee_type_id);
 void ags_getelementptr_filter(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction, spv::Id &type_id);
 
