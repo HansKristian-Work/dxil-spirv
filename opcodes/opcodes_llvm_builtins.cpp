@@ -1688,6 +1688,9 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	if (itr != impl.llvm_global_variable_to_resource_mapping.end())
 		return true;
 
+	if (ags_llvm_load_filter_cexpr(impl, instruction))
+		return true;
+
 	// We need to get the ID here as the constexpr chain could set our type.
 	spv::Id value_id = impl.get_id_for_value(instruction->getPointerOperand());
 
@@ -1776,6 +1779,10 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 
 	// Ignore stores of WMMA if it's not the first component
 	if (wmma_store_is_masked(impl, instruction))
+		return true;
+
+	// May need to handle constexpr GEP.
+	if (ags_store_filter(impl, instruction))
 		return true;
 
 	auto robust_itr = impl.handle_to_robustness.find(instruction->getOperand(1));
@@ -2064,7 +2071,7 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	if (!ags_alloca_filter(impl, instruction, pointee_type_id))
+	if (!ags_alloca_or_global_filter(impl, instruction, pointee_type_id))
 		return false;
 
 	auto storage = impl.get_effective_storage_class(instruction, spv::StorageClassFunction);
@@ -2492,6 +2499,14 @@ static void register_ray_query_mapping(Converter::Impl &impl, const llvm::Value 
 			}
 		}
 	}
+}
+
+bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *instruction)
+{
+	// Just need to forward the mapping in case it's used as a store to alloca.
+	spv::Id override_type = 0;
+	ags_filter_phi(impl, *instruction, override_type);
+	return true;
 }
 
 bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *inst)

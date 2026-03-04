@@ -29,6 +29,7 @@
 #include "dxil_common.hpp"
 #include "dxil_sampling.hpp"
 #include "dxil_buffer.hpp"
+#include <limits>
 
 namespace dxil_spv
 {
@@ -1365,6 +1366,103 @@ static bool emit_wmma_element_wise_arith(Converter::Impl &impl)
 	return true;
 }
 
+static bool emit_float8_conversion(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	auto convert_op = AmdExtD3DShaderIntrinsicsFloat8CvtOp(impl.ags.instructions[0].immediate &
+	                                                       AmdExtD3DShaderIntrinsicsFloat8Conversion_CvtOpMask);
+	bool saturate = ((impl.ags.instructions[0].immediate >> AmdExtD3DShaderIntrinsicsFloat8Conversion_SatShift) &
+	                 AmdExtD3DShaderIntrinsicsFloat8Conversion_SatMask) != 0;
+
+	builder.addExtension("SPV_EXT_float8");
+	builder.addCapability(spv::CapabilityFloat8EXT);
+	builder.addCapability(spv::CapabilityInt8);
+	bool is_bfloat = false;
+
+	uint32_t dummy_value;
+	if (!get_constant_operand(impl.ags.backdoor_instructions[0], 6, &dummy_value) || dummy_value != 0)
+		return false;
+
+	switch (convert_op)
+	{
+	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_BF8:
+		is_bfloat = true;
+		// fallthrough
+	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_FP8:
+	{
+		auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(32));
+		bitcast->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
+		impl.add(bitcast);
+
+#if 0
+		// Native implementation seems to correctly treat saturated inf in this case.
+		if (saturate && !is_bfloat)
+		{
+			// Fixup for RDNA4 HW compat.
+			auto *is_inf = impl.allocate(spv::OpIsInf, builder.makeBoolType());
+			is_inf->add_id(bitcast->id);
+			impl.add(is_inf);
+
+			auto *select = impl.allocate(spv::OpSelect, builder.makeFloatType(32));
+			select->add_id(is_inf->id);
+			select->add_id(builder.makeFloatConstant(std::numeric_limits<float>::quiet_NaN()));
+			select->add_id(bitcast->id);
+			impl.add(select);
+
+			bitcast = select;
+		}
+#endif
+
+		auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
+		                                                                                 spv::FPEncodingFloat8E4M3EXT));
+		conv->add_id(bitcast->id);
+		impl.add(conv);
+
+		if (saturate)
+			builder.addDecoration(conv->id, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
+
+		bitcast = impl.allocate(spv::OpBitcast, builder.makeUintType(8));
+		bitcast->add_id(conv->id);
+		impl.add(bitcast);
+
+		auto *ext = impl.allocate(spv::OpUConvert, impl.ags.backdoor_instructions[0]);
+		ext->add_id(bitcast->id);
+		impl.add(ext);
+		break;
+	}
+
+	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_BF8_2_F32:
+		is_bfloat = true;
+		// fallthrough
+	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_FP8_2_F32:
+	{
+		auto *trunc = impl.allocate(spv::OpUConvert, builder.makeUintType(8));
+		trunc->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
+		impl.add(trunc);
+
+		auto *bitcast =
+		    impl.allocate(spv::OpBitcast, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
+		                                                                       spv::FPEncodingFloat8E4M3EXT));
+		bitcast->add_id(trunc->id);
+		impl.add(bitcast);
+
+		auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
+		conv->add_id(bitcast->id);
+		impl.add(conv);
+
+		bitcast = impl.allocate(spv::OpBitcast, impl.ags.backdoor_instructions[0]);
+		bitcast->add_id(conv->id);
+		impl.add(bitcast);
+		break;
+	}
+
+	default:
+		return false;
+	}
+
+	return true;
+}
+
 static spv::Id get_matmul_result_type(Converter::Impl &impl, uint32_t opcode)
 {
 	auto &builder = impl.builder();
@@ -1799,6 +1897,8 @@ static bool emit_wmma_load(Converter::Impl &impl)
 		id = emit_fp8_to_fp16_coopmat(impl, id, spv_use);
 	}
 
+	type_id = build_coopmat_type(impl, type_immediate, false);
+
 	if (!emit_wmma_return_values(impl, type_id, id, 2))
 	{
 		LOGE("Failed to emit WMMA return values.\n");
@@ -1821,9 +1921,9 @@ bool wmma_store_is_masked(Converter::Impl &impl, const llvm::StoreInst *inst)
 	return true;
 }
 
-static spv::Id rewrite_gep_rdna3(Converter::Impl &impl, const llvm::AllocaInst *alloca, spv::Id id)
+static spv::Id rewrite_gep_rdna3(Converter::Impl &impl, const llvm::Value *value, spv::Id id)
 {
-	if (impl.ags.column_oriented_allocas.count(alloca) == 0)
+	if (impl.ags.column_oriented_allocas_or_globals.count(value) == 0)
 		return id;
 
 	auto &builder = impl.builder();
@@ -1855,21 +1955,49 @@ static spv::Id rewrite_gep_rdna3(Converter::Impl &impl, const llvm::AllocaInst *
 	return add->id;
 }
 
+static const llvm::Value *get_underlying_gep_array(const llvm::GetElementPtrInst *gep)
+{
+	if (!gep)
+		return nullptr;
+
+	auto *source_variable = gep->getOperand(0);
+	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(source_variable))
+		return alloca;
+	else if (const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(source_variable))
+		return global;
+	return nullptr;
+}
+
+static const llvm::Value *get_underlying_gep_array(const llvm::ConstantExpr *cexpr)
+{
+	if (!cexpr)
+		return nullptr;
+
+	if (cexpr->getOpcode() != llvm::Instruction::GetElementPtr)
+		return nullptr;
+
+	// Not possible to constexpr-gep into alloca, since alloca isn't constant expression.
+	auto *source_variable = cexpr->getOperand(0);
+	if (const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(source_variable))
+		return global;
+	return nullptr;
+}
+
 spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPtrInst *gep, spv::Id id)
 {
-	auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(gep->getOperand(0));
-	if (!alloca)
+	auto *value = get_underlying_gep_array(gep);
+	if (!value)
 		return id;
 
 	if (!llvm::isa<llvm::Constant>(gep->getOperand(2)))
 	{
-		spv::Id rdna3_gep_id = rewrite_gep_rdna3(impl, alloca, id);
+		spv::Id rdna3_gep_id = rewrite_gep_rdna3(impl, value, id);
 		if (rdna3_gep_id != id)
 			return rdna3_gep_id;
 	}
 
-	auto itr = impl.ags.alloca_tracking.find(alloca);
-	if (itr == impl.ags.alloca_tracking.end())
+	auto itr = impl.ags.alloca_or_global_tracking.find(value);
+	if (itr == impl.ags.alloca_or_global_tracking.end())
 		return id;
 
 	if (itr->second.override_element_type && itr->second.override_element_stride)
@@ -1904,32 +2032,50 @@ spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPt
 	return id;
 }
 
+static bool is_gep_instruction(const llvm::Value *value)
+{
+	if (llvm::isa<llvm::GetElementPtrInst>(value))
+		return true;
+	else if (const auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(value))
+		return cexpr->getOpcode() == llvm::Instruction::GetElementPtr;
+	else
+		return false;
+}
+
 bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store)
 {
 	auto itr = impl.ags.coopmat_component_mapping.find(store->getOperand(0));
 	if (itr == impl.ags.coopmat_component_mapping.end())
 		return true;
 
-	const auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(store->getOperand(1));
-	if (!gep)
+	auto *store_ptr = store->getOperand(1);
+
+	if (!is_gep_instruction(store_ptr))
 	{
 		LOGE("Trying to store a WMMA matrix without GEP.\n");
 		return false;
 	}
 
-	auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(gep->getOperand(0));
-	if (!alloca || gep->getNumOperands() < 3)
+	auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(store_ptr);
+	auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(store_ptr);
+	const llvm::Value *value = nullptr;
+	if (gep)
+		value = get_underlying_gep_array(gep);
+	else if (cexpr)
+		value = get_underlying_gep_array(cexpr);
+
+	if (!value || (gep ? gep->getNumOperands() : cexpr->getNumOperands()) < 3)
 	{
-		LOGE("Trying to store WMMA to something not Alloca.\n");
+		LOGE("Trying to store WMMA to something not Alloca or global array.\n");
 		return false;
 	}
 
-	const auto *index = gep->getOperand(2);
+	const auto *index = gep ? gep->getOperand(2) : cexpr->getOperand(2);
 	auto split = split_index_scale_bias(index);
 	if (!split.stride)
 		return false;
 
-	auto &tracking = impl.ags.alloca_tracking[alloca];
+	auto &tracking = impl.ags.alloca_or_global_tracking[value];
 	if (tracking.override_element_stride &&
 	    tracking.override_element_stride != split.stride &&
 	    split.stride != UINT32_MAX)
@@ -2017,7 +2163,7 @@ static void analyze_dubious_implementation_defined_column_behavior(
 				auto *type = alloca->getType()->getPointerElementType();
 				if (type->getTypeID() == llvm::Type::TypeID::ArrayTyID && type->getArrayNumElements() == 8)
 				{
-					impl.ags.column_oriented_allocas.insert(alloca);
+					impl.ags.column_oriented_allocas_or_globals.insert(alloca);
 				}
 			}
 		}
@@ -2333,6 +2479,17 @@ bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 		break;
 	}
 
+	case AmdExtD3DShaderIntrinsicsOpcode_Float8Conversion:
+	{
+		if (impl.ags.num_instructions == 1)
+		{
+			if (!emit_float8_conversion(impl))
+				return false;
+			impl.ags.num_instructions = 0;
+		}
+		break;
+	}
+
 	default:
 		LOGE("Unsupported AGS magic instruction 0x%x (immediate %u).\n",
 		     impl.ags.instructions[0].opcode,
@@ -2566,13 +2723,13 @@ bool emit_ags_extract_value(Converter::Impl &impl, const llvm::ExtractValueInst 
 	return false;
 }
 
-bool ags_alloca_filter(Converter::Impl &impl, const llvm::AllocaInst *instruction, spv::Id &pointee_type_id)
+bool ags_alloca_or_global_filter(Converter::Impl &impl, const llvm::Value *value, spv::Id &pointee_type_id)
 {
-	auto ags_itr = impl.ags.alloca_tracking.find(instruction);
+	auto ags_itr = impl.ags.alloca_or_global_tracking.find(value);
 
-	if (ags_itr != impl.ags.alloca_tracking.end() && ags_itr->second.override_element_type)
+	if (ags_itr != impl.ags.alloca_or_global_tracking.end() && ags_itr->second.override_element_type)
 	{
-		auto *element_type = instruction->getType()->getPointerElementType();
+		auto *element_type = value->getType()->getPointerElementType();
 		uint32_t elems = element_type->getArrayNumElements();
 		if (ags_itr->second.override_element_stride == 0)
 		{
@@ -2585,7 +2742,7 @@ bool ags_alloca_filter(Converter::Impl &impl, const llvm::AllocaInst *instructio
 		    impl.builder().makeUintConstant(elems / ags_itr->second.override_element_stride), 0);
 	}
 
-	return true;
+	return pointee_type_id != 0;
 }
 
 bool emit_ags_atomicrmw(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction)
@@ -2620,12 +2777,105 @@ bool emit_ags_getelementptr(Converter::Impl &impl, const llvm::GetElementPtrInst
 
 void ags_getelementptr_filter(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction, spv::Id &type_id)
 {
-	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(0)))
+	if (const auto *value = get_underlying_gep_array(instruction))
 	{
-		auto override_itr = impl.ags.alloca_tracking.find(alloca);
-		if (override_itr != impl.ags.alloca_tracking.end() && override_itr->second.override_element_type)
+		auto override_itr = impl.ags.alloca_or_global_tracking.find(value);
+		if (override_itr != impl.ags.alloca_or_global_tracking.end() && override_itr->second.override_element_type)
 			type_id = override_itr->second.override_element_type;
 	}
+}
+
+static spv::Id ags_build_cexpr_gep(Converter::Impl &impl, const llvm::Value *load_store_pointer, spv::Id &type_id,
+                                   uint32_t &split_elem)
+{
+	if (auto *value = get_underlying_gep_array(llvm::dyn_cast<llvm::ConstantExpr>(load_store_pointer)))
+	{
+		auto itr = impl.ags.alloca_or_global_tracking.find(value);
+		if (itr != impl.ags.alloca_or_global_tracking.end() && itr->second.override_element_type)
+		{
+			auto &builder = impl.builder();
+
+			type_id = itr->second.override_element_type;
+			auto *cexpr = llvm::cast<llvm::ConstantExpr>(load_store_pointer);
+
+			auto split = split_index_scale_bias(cexpr->getOperand(2));
+			if (!split.stride)
+				return 0;
+			if (split.stride != UINT32_MAX && split.stride != itr->second.override_element_stride)
+				return 0;
+
+			uint32_t const_index = 0;
+
+			if (split.stride == UINT32_MAX && itr->second.override_element_stride && !split.index)
+			{
+				const_index = split.elem / itr->second.override_element_stride;
+				split.elem -= const_index * itr->second.override_element_stride;
+			}
+
+			split_elem = split.elem;
+
+			// If we're writing anything other than the first element, skip the actual write.
+			if (split.elem != 0)
+				return UINT32_MAX;
+
+			spv::Id index_id = 0;
+
+			if (split.index)
+				index_id = impl.get_id_for_value(split.index);
+			else
+				index_id = impl.builder().makeUintConstant(const_index);
+
+			auto *chain = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassPrivate, type_id));
+			chain->add_id(impl.get_id_for_value(cexpr->getOperand(0)));
+			chain->add_id(index_id);
+			impl.add(chain);
+			return chain->id;
+		}
+	}
+
+	return 0;
+}
+
+bool ags_llvm_load_filter_cexpr(Converter::Impl &impl, const llvm::LoadInst *instruction)
+{
+	if (!impl.shader_analysis.require_wmma)
+		return false;
+
+	uint32_t split_elem = 0;
+	spv::Id type_id = 0;
+	spv::Id ptr_id = ags_build_cexpr_gep(impl, instruction->getPointerOperand(), type_id, split_elem);
+
+	if (ptr_id != 0)
+		impl.ags.coopmat_component_mapping[instruction] = { type_id, split_elem };
+
+	if (ptr_id != 0 && ptr_id != UINT32_MAX)
+	{
+		auto *load = impl.allocate(spv::OpLoad, instruction, type_id);
+		load->add_id(ptr_id);
+		impl.add(load);
+	}
+
+	return ptr_id != 0;
+}
+
+bool ags_store_filter(Converter::Impl &impl, const llvm::StoreInst *instruction)
+{
+	if (!impl.shader_analysis.require_wmma)
+		return false;
+
+	uint32_t split_elem = 0;
+	spv::Id type_id = 0;
+	spv::Id ptr_id = ags_build_cexpr_gep(impl, instruction->getOperand(1), type_id, split_elem);
+
+	if (ptr_id != 0 && ptr_id != UINT32_MAX)
+	{
+		auto *store = impl.allocate(spv::OpStore);
+		store->add_id(ptr_id);
+		store->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		impl.add(store);
+	}
+
+	return ptr_id != 0;
 }
 
 bool ags_filter_phi(Converter::Impl &impl, const llvm::PHINode &instruction, spv::Id &override_type)
