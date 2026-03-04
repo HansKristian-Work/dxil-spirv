@@ -5458,6 +5458,7 @@ bool Converter::Impl::emit_global_variables()
 		spv::Id pointee_type_id = 0;
 		spv::Id scalar_type_id = 0;
 		bool padded_composite = false;
+		bool complex_composite = false;
 
 		if (address_space == DXIL::AddressSpace::Thread &&
 		    options.extended_robustness.constant_lut &&
@@ -5488,6 +5489,11 @@ bool Converter::Impl::emit_global_variables()
 					scalar_type_id, builder().makeUintConstant(elem_count), false);
 			}
 		}
+		else if (shader_analysis.require_wmma)
+		{
+			if (ags_alloca_or_global_filter(*this, &global, pointee_type_id))
+				complex_composite = true;
+		}
 
 		if (!pointee_type_id)
 			pointee_type_id = get_type_id(global.getType()->getPointerElementType());
@@ -5516,7 +5522,16 @@ bool Converter::Impl::emit_global_variables()
 
 		if (initializer)
 		{
-			if (padded_composite)
+			if (complex_composite)
+			{
+				if (!llvm::isa<llvm::ConstantAggregateZero>(initializer))
+				{
+					LOGE("WMMA initializer must be all zero.\n");
+					return false;
+				}
+				initializer_id = builder().makeNullConstant(pointee_type_id);
+			}
+			else if (padded_composite)
 				initializer_id = get_padded_constant_array(pointee_type_id, initializer);
 			else
 				initializer_id = get_id_for_constant(initializer, 0);

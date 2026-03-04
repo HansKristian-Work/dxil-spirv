@@ -2064,7 +2064,7 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (address_space != DXIL::AddressSpace::Thread)
 		return false;
 
-	if (!ags_alloca_filter(impl, instruction, pointee_type_id))
+	if (!ags_alloca_or_global_filter(impl, instruction, pointee_type_id))
 		return false;
 
 	auto storage = impl.get_effective_storage_class(instruction, spv::StorageClassFunction);

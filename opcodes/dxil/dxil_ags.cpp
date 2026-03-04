@@ -1918,9 +1918,9 @@ bool wmma_store_is_masked(Converter::Impl &impl, const llvm::StoreInst *inst)
 	return true;
 }
 
-static spv::Id rewrite_gep_rdna3(Converter::Impl &impl, const llvm::AllocaInst *alloca, spv::Id id)
+static spv::Id rewrite_gep_rdna3(Converter::Impl &impl, const llvm::Value *value, spv::Id id)
 {
-	if (impl.ags.column_oriented_allocas.count(alloca) == 0)
+	if (impl.ags.column_oriented_allocas_or_globals.count(value) == 0)
 		return id;
 
 	auto &builder = impl.builder();
@@ -1952,21 +1952,31 @@ static spv::Id rewrite_gep_rdna3(Converter::Impl &impl, const llvm::AllocaInst *
 	return add->id;
 }
 
+static const llvm::Value *get_underlying_gep_array(const llvm::GetElementPtrInst *gep)
+{
+	auto *source_variable = gep->getOperand(0);
+	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(source_variable))
+		return alloca;
+	else if (const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(source_variable))
+		return global;
+	return nullptr;
+}
+
 spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPtrInst *gep, spv::Id id)
 {
-	auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(gep->getOperand(0));
-	if (!alloca)
+	auto *value = get_underlying_gep_array(gep);
+	if (!value)
 		return id;
 
 	if (!llvm::isa<llvm::Constant>(gep->getOperand(2)))
 	{
-		spv::Id rdna3_gep_id = rewrite_gep_rdna3(impl, alloca, id);
+		spv::Id rdna3_gep_id = rewrite_gep_rdna3(impl, value, id);
 		if (rdna3_gep_id != id)
 			return rdna3_gep_id;
 	}
 
-	auto itr = impl.ags.alloca_tracking.find(alloca);
-	if (itr == impl.ags.alloca_tracking.end())
+	auto itr = impl.ags.alloca_or_global_tracking.find(value);
+	if (itr == impl.ags.alloca_or_global_tracking.end())
 		return id;
 
 	if (itr->second.override_element_type && itr->second.override_element_stride)
@@ -2007,17 +2017,20 @@ bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store)
 	if (itr == impl.ags.coopmat_component_mapping.end())
 		return true;
 
-	const auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(store->getOperand(1));
+	auto *store_ptr = store->getOperand(1);
+
+	const auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(store_ptr);
 	if (!gep)
 	{
 		LOGE("Trying to store a WMMA matrix without GEP.\n");
 		return false;
 	}
 
-	auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(gep->getOperand(0));
-	if (!alloca || gep->getNumOperands() < 3)
+	auto *value = get_underlying_gep_array(gep);
+
+	if (!value || gep->getNumOperands() < 3)
 	{
-		LOGE("Trying to store WMMA to something not Alloca.\n");
+		LOGE("Trying to store WMMA to something not Alloca or global array.\n");
 		return false;
 	}
 
@@ -2026,7 +2039,7 @@ bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store)
 	if (!split.stride)
 		return false;
 
-	auto &tracking = impl.ags.alloca_tracking[alloca];
+	auto &tracking = impl.ags.alloca_or_global_tracking[value];
 	if (tracking.override_element_stride &&
 	    tracking.override_element_stride != split.stride &&
 	    split.stride != UINT32_MAX)
@@ -2114,7 +2127,7 @@ static void analyze_dubious_implementation_defined_column_behavior(
 				auto *type = alloca->getType()->getPointerElementType();
 				if (type->getTypeID() == llvm::Type::TypeID::ArrayTyID && type->getArrayNumElements() == 8)
 				{
-					impl.ags.column_oriented_allocas.insert(alloca);
+					impl.ags.column_oriented_allocas_or_globals.insert(alloca);
 				}
 			}
 		}
@@ -2674,13 +2687,13 @@ bool emit_ags_extract_value(Converter::Impl &impl, const llvm::ExtractValueInst 
 	return false;
 }
 
-bool ags_alloca_filter(Converter::Impl &impl, const llvm::AllocaInst *instruction, spv::Id &pointee_type_id)
+bool ags_alloca_or_global_filter(Converter::Impl &impl, const llvm::Value *value, spv::Id &pointee_type_id)
 {
-	auto ags_itr = impl.ags.alloca_tracking.find(instruction);
+	auto ags_itr = impl.ags.alloca_or_global_tracking.find(value);
 
-	if (ags_itr != impl.ags.alloca_tracking.end() && ags_itr->second.override_element_type)
+	if (ags_itr != impl.ags.alloca_or_global_tracking.end() && ags_itr->second.override_element_type)
 	{
-		auto *element_type = instruction->getType()->getPointerElementType();
+		auto *element_type = value->getType()->getPointerElementType();
 		uint32_t elems = element_type->getArrayNumElements();
 		if (ags_itr->second.override_element_stride == 0)
 		{
@@ -2693,7 +2706,7 @@ bool ags_alloca_filter(Converter::Impl &impl, const llvm::AllocaInst *instructio
 		    impl.builder().makeUintConstant(elems / ags_itr->second.override_element_stride), 0);
 	}
 
-	return true;
+	return pointee_type_id != 0;
 }
 
 bool emit_ags_atomicrmw(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction)
@@ -2728,10 +2741,10 @@ bool emit_ags_getelementptr(Converter::Impl &impl, const llvm::GetElementPtrInst
 
 void ags_getelementptr_filter(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction, spv::Id &type_id)
 {
-	if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(0)))
+	if (const auto *value = get_underlying_gep_array(instruction))
 	{
-		auto override_itr = impl.ags.alloca_tracking.find(alloca);
-		if (override_itr != impl.ags.alloca_tracking.end() && override_itr->second.override_element_type)
+		auto override_itr = impl.ags.alloca_or_global_tracking.find(value);
+		if (override_itr != impl.ags.alloca_or_global_tracking.end() && override_itr->second.override_element_type)
 			type_id = override_itr->second.override_element_type;
 	}
 }

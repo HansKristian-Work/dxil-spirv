@@ -538,7 +538,7 @@ bool ags_llvm_load_filter(Converter::Impl &impl, Operation *op, const llvm::Load
 bool emit_ags_extract_value(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
 bool emit_ags_atomicrmw(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction);
 bool emit_ags_getelementptr(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction);
-bool ags_alloca_filter(Converter::Impl &impl, const llvm::AllocaInst *inst, spv::Id &pointee_type_id);
+bool ags_alloca_or_global_filter(Converter::Impl &impl, const llvm::Value *value, spv::Id &pointee_type_id);
 void ags_getelementptr_filter(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction, spv::Id &type_id);
 
 bool ags_filter_phi(Converter::Impl &impl, const llvm::PHINode &instruction, spv::Id &override_type);
@@ -572,8 +572,8 @@ struct AGSState
 	spv::Id debug_var_id = 0;
 	const llvm::Value *active_read_backdoor = nullptr;
 	UnorderedMap<const llvm::Value *, AGSCoopMatMapping> coopmat_component_mapping;
-	UnorderedSet<const llvm::Value *> column_oriented_allocas;
-	UnorderedMap<const llvm::AllocaInst *, AllocaAGSForwardingTracking> alloca_tracking;
+	UnorderedSet<const llvm::Value *> column_oriented_allocas_or_globals;
+	UnorderedMap<const llvm::Value *, AllocaAGSForwardingTracking> alloca_or_global_tracking;
 	spv::Id u8_array_bda_type = 0;
 	spv::Id coopmat_transpose_scratch = 0;
 
