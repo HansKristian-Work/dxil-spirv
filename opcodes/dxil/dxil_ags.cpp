@@ -1394,7 +1394,7 @@ static bool emit_float8_conversion(Converter::Impl &impl)
 		bitcast->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
 		impl.add(bitcast);
 
-		if (saturate)
+		if (saturate && !is_bfloat)
 		{
 			// Fixup for RDNA4 HW compat.
 			auto *is_inf = impl.allocate(spv::OpIsInf, builder.makeBoolType());
