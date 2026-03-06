@@ -6182,6 +6182,10 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 	size_t cutoff_index = 0;
 	CFGNode *dispatcher;
 
+	// If there is no strict dominance relationship, it's too risky to freeze a loop here,
+	// since we may have stray breaks that will invert merge ordering, and cause issues.
+	bool freeze_control_flow = !common_idom->pred_back_edge && common_pdom->post_dominates(common_idom);
+
 	PHI phi;
 	phi.id = module.allocate_id();
 
@@ -6242,7 +6246,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 		cutoff_index = next_cutoff_index;
 	}
 
-	if (!common_idom->pred_back_edge)
+	if (freeze_control_flow)
 	{
 		common_idom->freeze_structured_analysis = true;
 		common_idom->merge = MergeType::Loop;
