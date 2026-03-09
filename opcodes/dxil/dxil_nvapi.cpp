@@ -7,6 +7,7 @@
 #include "dxil_common.hpp"
 #include "dxil_ray_tracing.hpp"
 #include "opcodes/converter_impl.hpp"
+#include "logging.hpp"
 
 namespace dxil_spv
 {

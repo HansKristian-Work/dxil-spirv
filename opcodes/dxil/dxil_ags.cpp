@@ -29,6 +29,7 @@
 #include "dxil_common.hpp"
 #include "dxil_sampling.hpp"
 #include "dxil_buffer.hpp"
+#include "logging.hpp"
 #include <limits>
 
 namespace dxil_spv

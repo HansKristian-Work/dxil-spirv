@@ -8187,7 +8187,12 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
 
 		auto *spv_func =
 		    builder().makeFunctionEntry(spv::NoPrecision, get_type_id(leaf_func->getFunctionType()->getReturnType()),
-		                                leaf_func->getName().c_str(), arg_types, {}, &spv_entry);
+#ifdef HAVE_LLVMBC
+		                                leaf_func->getName().c_str(),
+#else
+		                                leaf_func->getName().str().c_str(),
+#endif
+		                                arg_types, {}, &spv_entry);
 
 		rewrite_value(leaf_func, spv_func->getId());
 
