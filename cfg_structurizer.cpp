@@ -1301,6 +1301,15 @@ bool CFGStructurizer::run()
 
 	create_continue_block_ladders();
 
+	while (serialize_interleaved_early_returns())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".serialize-early-return";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+	}
+
 	while (serialize_interleaved_merge_scopes())
 	{
 		if (!graphviz_path.empty())
@@ -3972,6 +3981,49 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const 
 		return false;
 }
 
+bool CFGStructurizer::serialize_interleaved_early_returns()
+{
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->num_forward_preds() <= 1)
+			continue;
+
+		// Never merge to continue block.
+		// We should never hit this path unless we explicitly
+		// avoided creating a continue ladder block earlier.
+		if (block_is_plain_continue(node))
+			continue;
+
+		auto *idom = node->immediate_dominator;
+		auto *merge_candidate = CFGNode::find_common_post_dominator(idom, node);
+		bool post_dominator_is_exit_node =
+		    merge_candidate && merge_candidate->immediate_post_dominator == merge_candidate;
+		bool merged_into_terminating_path = post_dominator_is_exit_node && node->dominates_all_reachable_exits();
+
+		// If our candidate idom post dominates the entry block, we consider this the main path of execution.
+		if (merged_into_terminating_path && idom->post_dominates(entry_block))
+			merged_into_terminating_path = false;
+
+		if (merged_into_terminating_path)
+		{
+			// Similar to loops, find the break target for this construct.
+			auto *break_target = find_break_target_for_selection_construct(idom, node);
+
+			if (break_target)
+			{
+				Vector<CFGNode *> valid = { break_target, node };
+				collect_and_dispatch_control_flow(idom, break_target, valid, false);
+
+				// This completely transposes the CFG, so need to recompute CFG to keep going.
+				recompute_cfg();
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool CFGStructurizer::serialize_interleaved_merge_scopes()
 {
 	// Try to fixup scenarios which arise from unrolled loops with multiple break blocks.
@@ -5088,44 +5140,6 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 				idom = const_cast<CFGNode *>(inner_loop_header);
 		}
 
-		if (pass == 0)
-		{
-			// Check that we're not merging ourselves into the aether.
-			// This is a scenario that can happen if we attempt to merge to a block which terminates the CFG
-			// (return or unreachable),
-			// but does not post-dominate the idom candidate,
-			// i.e. the selection construct needs to break to some other scope.
-			// If this happens, we won't be able to register a typical breaking scenario
-			// (since post-domination analysis won't help us),
-			// and we need to do some magic fixups.
-
-			auto *merge_candidate = CFGNode::find_common_post_dominator(idom, node);
-			bool post_dominator_is_exit_node =
-				merge_candidate && merge_candidate->immediate_post_dominator == merge_candidate;
-			bool merged_into_terminating_path = post_dominator_is_exit_node && node->dominates_all_reachable_exits();
-
-			// If our candidate idom post dominates the entry block, we consider this the main path of execution.
-			if (merged_into_terminating_path && idom->post_dominates(entry_block))
-				merged_into_terminating_path = false;
-
-			if (merged_into_terminating_path)
-			{
-				// Similar to loops, find the break target for this construct.
-				auto *break_target = find_break_target_for_selection_construct(idom, node);
-
-				// Have not observed any scenario where we won't have a dominated break target we can use.
-				if (break_target && idom->dominates(break_target) && break_target->headers.empty())
-				{
-					// Enclose this scope in a loop.
-					auto *helper_pred = create_helper_pred_block(idom);
-					helper_pred->merge = MergeType::Loop;
-					helper_pred->loop_merge_block = break_target;
-					helper_pred->freeze_structured_analysis = true;
-					break_target->headers.push_back(helper_pred);
-				}
-			}
-		}
-
 		if (idom->merge == MergeType::None || idom->merge == MergeType::Selection)
 		{
 			// We just found a switch block which we have already handled.
@@ -5485,6 +5499,9 @@ CFGNode *CFGStructurizer::find_break_target_for_selection_construct(CFGNode *ido
 				continue;
 			visited.insert(n);
 
+			if (query_reachability(*merge, *n))
+				continue;
+
 			if (query_reachability(*n, *merge))
 			{
 				for (auto *succ : n->succ)
@@ -5502,7 +5519,9 @@ CFGNode *CFGStructurizer::find_break_target_for_selection_construct(CFGNode *ido
 				// The breaking path might be vestigal.
 				// I.e., it might just be exiting directly without dominating anything.
 				// Have to detect this false positive, since it's not really a break, just early return.
-				if (!n->dominates_all_reachable_exits())
+				// If we hit a dominance frontier, allow it as a candidate since it cannot be early return within
+				// the construct.
+				if (!n->dominates_all_reachable_exits() || !idom->dominates(n))
 					candidates.push_back(n);
 			}
 		}

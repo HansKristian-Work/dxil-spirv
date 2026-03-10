@@ -114,6 +114,7 @@ private:
 
 	static bool is_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
 	bool serialize_interleaved_merge_scopes();
+	bool serialize_interleaved_early_returns();
 	void split_merge_scopes();
 	bool is_rewind_candidate_split_node(const Vector<const CFGNode *> &visited_orphans, CFGNode *node,
 	                                    CFGNode *candidate) const;
