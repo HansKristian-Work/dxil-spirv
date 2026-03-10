@@ -343,9 +343,9 @@ CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
 			// other nodes in some cases. Fixing this up requires a full traversal of the entire CFG,
 			// so as a fallback we can do direct reachability and domination analysis.
 			if (b->post_dominates(a))
-				return const_cast<CFGNode *>(b);
+				return b;
 			else if (a->post_dominates(b))
-				return const_cast<CFGNode *>(a);
+				return a;
 
 			// If there is no clear domination relationship, then we need to iterate both a and b.
 			// This is fine as we now know that neither a nor b can be the common node.
@@ -365,7 +365,8 @@ CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
 			b = b->immediate_post_dominator;
 		}
 	}
-	return const_cast<CFGNode *>(a);
+
+	return a;
 }
 
 CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
