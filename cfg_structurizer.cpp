@@ -1692,8 +1692,21 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 			remap[phi.id] = itr->id;
 		}
 
+		UnorderedSet<spv::Id> remove_decoration_ids;
+
 		for (auto *op : node->ir.operations)
-			block->ir.operations.push_back(duplicate_op(op, remap));
+		{
+			auto *dup_op = duplicate_op(op, remap);
+			bool nocontract = module.get_builder().hasDecoration(op->id, spv::DecorationNoContraction);
+			if (nocontract)
+			{
+				remove_decoration_ids.insert(op->id);
+				module.get_builder().addDecoration(dup_op->id, spv::DecorationNoContraction);
+			}
+			block->ir.operations.push_back(dup_op);
+		}
+
+		module.get_builder().removeDecorations(remove_decoration_ids);
 
 		break_blocks[i] = block;
 	}
