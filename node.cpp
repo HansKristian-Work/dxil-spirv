@@ -118,6 +118,25 @@ bool CFGNode::reaches_domination_frontier_before_merge(const CFGNode *merge) con
 	return false;
 }
 
+bool CFGNode::dominates_outer_continue(const CFGNode *loop_header) const
+{
+	if (loop_header->pred.empty())
+		return false;
+
+	loop_header = loop_header->immediate_dominator;
+	while (loop_header)
+	{
+		if (loop_header->pred_back_edge && dominates(loop_header->pred_back_edge))
+			return true;
+
+		if (loop_header->pred.empty())
+			break;
+		loop_header = loop_header->immediate_dominator;
+	}
+
+	return false;
+}
+
 bool CFGNode::dominates(const CFGNode *other) const
 {
 	// Follow immediate dominator graph. Either we end up at this, or entry block.

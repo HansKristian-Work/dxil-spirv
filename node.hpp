@@ -95,6 +95,7 @@ private:
 	bool has_pred_back_edges() const;
 	bool dominates(const CFGNode *other) const;
 	bool reaches_domination_frontier_before_merge(const CFGNode *merge) const;
+	bool dominates_outer_continue(const CFGNode *loop_header) const;
 	bool can_loop_merge_to(const CFGNode *other) const;
 	bool post_dominates(const CFGNode *other) const;
 	bool post_dominates_perfect_structured_construct() const;

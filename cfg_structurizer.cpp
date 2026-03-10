@@ -5716,11 +5716,17 @@ bool CFGStructurizer::rewrite_transposed_loops()
 		{
 			auto *common_break_target = find_common_post_dominator(result.non_dominated_exit);
 			if (common_break_target && common_break_target != merge &&
-			    common_break_target->reaches_domination_frontier_before_merge(merge) &&
 			    !query_reachability(*dominated_merge, *common_break_target) &&
 			    !query_reachability(*common_break_target, *dominated_merge))
 			{
-				impossible_merge_target = common_break_target;
+				// Another weird scenario is where we dominate the outer continue,
+				// which would escape the DF analysis, but that is strong evidence we need to transpose.
+				// A normal break would never dominate anything like that.
+				if (common_break_target->reaches_domination_frontier_before_merge(merge) ||
+					common_break_target->dominates_outer_continue(node))
+				{
+					impossible_merge_target = common_break_target;
+				}
 			}
 		}
 
