@@ -4015,6 +4015,7 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 
 	options.scalarizeOptions.subDwordVectors = true;
 
+	options.syncOptions.allowWorkgroupCoherence = false;
 	options.syncOptions.insertRovLocks = false;
 	options.syncOptions.insertLdsBarriers = false;
 	options.syncOptions.insertUavBarriers = false;
