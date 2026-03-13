@@ -272,6 +272,7 @@ enum class Option : uint32_t
 	ExtendedNonSemantic = 48,
 	ViewInstancing = 49,
 	MixedDotProduct = 50,
+	ComputeShaderDerivativesQuad = 51,
 	Count
 };
 
@@ -859,6 +860,16 @@ struct OptionMixedDotProduct : OptionBase
 	}
 
 	bool fp16_fp16_fp32 = false;
+};
+
+struct OptionComputeShaderDerivativesQuad : OptionBase
+{
+	OptionComputeShaderDerivativesQuad()
+		: OptionBase(Option::ComputeShaderDerivativesQuad)
+	{
+	}
+
+	bool supports_quad = false;
 };
 
 struct DescriptorTableEntry

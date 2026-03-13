@@ -7246,20 +7246,33 @@ bool Converter::Impl::emit_execution_modes_thread_wave_properties(const llvm::MD
 		// Spec says that product of workgroup size must align with 4.
 		if (total_workgroup_threads % 4 == 0)
 		{
+			bool derivatives_2d = (threads[0] % 2 == 0) && (threads[1] % 2 == 0);
 			if (options.compute_shader_derivatives)
 			{
 				builder.addExtension(options.compute_shader_derivatives_khr
 					? "SPV_KHR_compute_shader_derivatives" : "SPV_NV_compute_shader_derivatives");
-				builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearNV);
 
-				// It is technically not in spec to just assume this since subgroup lane mapping to local invocation index
-				// is not defined without this. In practice on NV, this holds based on our testing.
-				builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupLinearNV);
+				if (derivatives_2d && options.compute_shader_derivatives_quad)
+				{
+					builder.addCapability(spv::CapabilityComputeDerivativeGroupQuadsKHR);
+
+					// It is technically not in spec to just assume this since subgroup lane mapping to local invocation index
+					// is not defined without this. In practice on NV, this holds based on our testing.
+					builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupQuadsKHR);
+				}
+				else
+				{
+					builder.addCapability(spv::CapabilityComputeDerivativeGroupLinearKHR);
+
+					// It is technically not in spec to just assume this since subgroup lane mapping to local invocation index
+					// is not defined without this. In practice on NV, this holds based on our testing.
+					builder.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDerivativeGroupLinearKHR);
+				}
 			}
 
 			// If the X and Y dimensions align with 2,
 			// we need to assume that any quad op works on a 2D dispatch.
-			execution_mode_meta.synthesize_2d_quad_dispatch = (threads[0] % 2 == 0) && (threads[1] % 2 == 0);
+			execution_mode_meta.synthesize_2d_quad_dispatch = !options.compute_shader_derivatives_quad && derivatives_2d;
 			if (execution_mode_meta.synthesize_2d_quad_dispatch)
 			{
 				threads[0] *= 2;
@@ -9540,6 +9553,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &dot = static_cast<const OptionMixedDotProduct &>(cap);
 		options.mixed_dot_product_fp16_fp16_fp32 = dot.fp16_fp16_fp32;
+		break;
+	}
+
+	case Option::ComputeShaderDerivativesQuad:
+	{
+		auto &c = static_cast<const OptionComputeShaderDerivativesQuad &>(cap);
+		options.compute_shader_derivatives_quad = c.supports_quad;
 		break;
 	}
 

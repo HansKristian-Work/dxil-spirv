@@ -748,6 +748,7 @@ struct Converter::Impl
 		// is updated on its own.
 		bool compute_shader_derivatives = true;
 		bool compute_shader_derivatives_khr = false;
+		bool compute_shader_derivatives_quad = false;
 		bool eliminate_dead_code = false;
 		bool propagate_precise = false;
 		bool force_precise = false;

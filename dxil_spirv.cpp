@@ -1229,11 +1229,20 @@ int main(int argc, char **argv)
 	}
 
 	{
-		const dxil_spv_option_compute_shader_derivatives_nv derivs = {
-			{ DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES_NV },
-			args.compute_shader_derivatives ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
+		const dxil_spv_option_compute_shader_derivatives derivs = {
+			{ DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES },
+			args.compute_shader_derivatives ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
+			args.compute_shader_derivatives ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
 		};
 		dxil_spv_converter_add_option(converter, &derivs.base);
+
+		if (args.compute_shader_derivatives)
+		{
+			const dxil_spv_option_compute_shader_derivatives_quad quad = {
+				{ DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES_QUAD }, DXIL_SPV_TRUE,
+			};
+			dxil_spv_converter_add_option(converter, &quad.base);
+		}
 	}
 
 	{
