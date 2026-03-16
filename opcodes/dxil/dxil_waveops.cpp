@@ -1217,7 +1217,68 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 		op->add_id(impl.get_id_for_value(lane));
+		impl.add(op);
+
 		builder.addCapability(spv::CapabilityGroupNonUniformQuad);
+
+		if (impl.options.quirks.robust_compute_quad_broadcast && impl.execution_model == spv::ExecutionModelGLCompute)
+		{
+			builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+
+			// Very stupid workaround. Check if the lane is active, and mask in 0 if not.
+			if (!impl.memoized.current_ballot_value_id)
+			{
+				auto *ballot = impl.allocate(
+					spv::OpGroupNonUniformBallot, builder.makeVectorType(builder.makeUintType(32), 4));
+				ballot->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+				ballot->add_id(builder.makeBoolConstant(true));
+				impl.add(ballot);
+				impl.memoized.current_ballot_value_id = ballot->id;
+			}
+
+			if (!impl.memoized.current_subgroup_quad_index_id)
+			{
+				spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSubgroupLocalInvocationId);
+				auto *load_op = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+				load_op->add_id(var_id);
+				impl.add(load_op);
+
+				auto *mask = impl.allocate(spv::OpBitwiseAnd, builder.makeUintType(32));
+				mask->add_id(load_op->id);
+				mask->add_id(builder.makeUintConstant(~3u));
+				impl.add(mask);
+
+				impl.memoized.current_subgroup_quad_index_id = mask->id;
+			}
+
+			uint32_t quad_lane = 0;
+			if (!get_constant_int(lane, &quad_lane) || quad_lane >= 4)
+				return false;
+
+			if (!impl.memoized.current_quad_lane_active_id[quad_lane])
+			{
+				auto *add = impl.allocate(spv::OpIAdd, builder.makeUintType(32));
+				add->add_id(impl.memoized.current_subgroup_quad_index_id);
+				add->add_id(impl.get_id_for_value(lane));
+				impl.add(add);
+
+				auto *extract = impl.allocate(spv::OpGroupNonUniformBallotBitExtract, builder.makeBoolType());
+				extract->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+				extract->add_id(impl.memoized.current_ballot_value_id);
+				extract->add_id(add->id);
+				impl.add(extract);
+
+				impl.memoized.current_quad_lane_active_id[quad_lane] = extract->id;
+			}
+
+			auto *sel = impl.allocate(spv::OpSelect, impl.get_type_id(instruction->getType()));
+			sel->add_id(impl.memoized.current_quad_lane_active_id[quad_lane]);
+			sel->add_id(op->id);
+			sel->add_id(builder.makeNullConstant(impl.get_type_id(instruction->getType())));
+			impl.add(sel);
+
+			impl.rewrite_value(instruction, sel->id);
+		}
 	}
 	else
 	{
@@ -1257,11 +1318,10 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 
 		// For shuffle, wave64 is particularly slow on RDNA, so suggest wave32.
 		impl.suggest_maximum_wave_size(32);
+		impl.add(op);
 	}
 
 	impl.shader_analysis.require_subgroup_shuffles = true;
-
-	impl.add(op);
 	return true;
 }
 

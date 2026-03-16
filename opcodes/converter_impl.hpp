@@ -800,6 +800,7 @@ struct Converter::Impl
 			bool fixup_loop_header_undef_phis = false;
 			bool fixup_rsqrt = false;
 			bool ignore_primitive_shading_rate = false;
+			bool robust_compute_quad_broadcast = false;
 		} quirks;
 
 		struct
@@ -914,6 +915,14 @@ struct Converter::Impl
 		uint64_t key; // Depends on the transform. Extend to something more sophisticated if needed.
 	};
 	Vector<PeepholeTransformation> peephole_transformation_cache;
+
+	// For quirk workarounds which need to check if a lane is active or not.
+	struct
+	{
+		spv::Id current_ballot_value_id;
+		spv::Id current_subgroup_quad_index_id;
+		spv::Id current_quad_lane_active_id[4];
+	} memoized = {};
 
 	struct PhysicalPointerEntry
 	{

@@ -8245,6 +8245,7 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 		CFGNode *node = meta->node;
 		combined_image_sampler_cache.clear();
 		peephole_transformation_cache.clear();
+		memoized = {};
 
 		if (bb == visit_order.front())
 		{
@@ -9484,6 +9485,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::IgnorePrimitiveShadingRate:
 			options.quirks.ignore_primitive_shading_rate = true;
+			break;
+
+		case ShaderQuirk::RobustComputeQuadBroadcast:
+			options.quirks.robust_compute_quad_broadcast = true;
 			break;
 
 		default:
