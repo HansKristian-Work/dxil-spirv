@@ -14,7 +14,7 @@ layout(set = 0, binding = 0, std430) writeonly buffer _11_13
 
 void main()
 {
-    _13._m0[0u] = floatBitsToUint(cos(inversesqrt(exp2(sqrt(sin(log2(uintBitsToFloat(_9._m0[0u]))))))));
+    _13._m0[0u] = floatBitsToUint(pow(cos(inversesqrt(exp2(sqrt(sin(log2(uintBitsToFloat(_9._m0[0u]))))))), 2.400000095367431640625));
 }
 
 

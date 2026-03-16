@@ -1580,6 +1580,7 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(FCos, dxil_unary<DXIL::Op::Cos>);
 	OPMAP(FSqrt, dxil_unary<DXIL::Op::Sqrt>);
 	OPMAP(FRsq, dxil_unary<DXIL::Op::Rsqrt>);
+	OPMAP(FPow, dxil_binary<DXIL::Op::ExtendedPow>);
 	OPMAP(FIsNan, dxil_unary<DXIL::Op::IsNan>);
 	OPMAP(ConvertF32toPackedF16, dxil_unary<DXIL::Op::ExtendedLegacyF32ToF16>);
 	OPMAP(ConvertPackedF16toF32, dxil_unary<DXIL::Op::ExtendedLegacyF16ToF32>);
@@ -3655,6 +3656,7 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eFMadLegacy:
 		case ir::OpCode::eFDot:
 		case ir::OpCode::eFDotLegacy:
+		case ir::OpCode::eFPowLegacy:
 		case ir::OpCode::eUMSad:
 		case ir::OpCode::eDrain:
 			LOGE("Opcode %u should not appear in final IR at this point.\n", unsigned(op.getOpCode()));

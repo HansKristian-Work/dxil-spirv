@@ -514,6 +514,7 @@ enum class Op : unsigned
 	ExtendedSpirvUMulExtended,
 	ExtendedSpirvLoadInput,
 	ExtendedSpirvControlPointCountIn,
+	ExtendedPow,
 
 	Count
 };

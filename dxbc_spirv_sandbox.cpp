@@ -272,7 +272,7 @@ int main(int argc, char **argv)
 	for (auto &test : tests)
 	{
 #if 0
-		if (test.name != "test_arithmetic_fp16_packing")
+		if (test.name != "test_arithmetic_fp32_special")
 			continue;
 #endif
 

@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 31
+; Bound: 33
 ; Schema: 0
                OpCapability Shader
                OpCapability SignedZeroInfNanPreserve
@@ -43,12 +43,13 @@ SPIR-V:
      %uint_0 = OpConstant %uint 0
 %_ptr_StorageBuffer_uint = OpTypePointer StorageBuffer %uint
       %float = OpTypeFloat 32
+%float_2_4000001 = OpConstant %float 2.4000001
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %29
+                 OpBranch %31
 
-         %29 = OpLabel
+         %31 = OpLabel
          %16 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_0
          %17 =   OpLoad %uint %16
          %19 =   OpBitcast %float %17
@@ -58,9 +59,10 @@ SPIR-V:
          %24 =   OpExtInst %float %20 Exp2 %23
          %25 =   OpExtInst %float %20 InverseSqrt %24
          %26 =   OpExtInst %float %20 Cos %25
-         %27 =   OpBitcast %uint %26
-         %28 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
-                 OpStore %28 %27 NonPrivatePointer
+         %27 =   OpExtInst %float %20 Pow %26 %float_2_4000001
+         %29 =   OpBitcast %uint %27
+         %30 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
+                 OpStore %30 %29 NonPrivatePointer
                  OpReturn
                OpFunctionEnd
 
