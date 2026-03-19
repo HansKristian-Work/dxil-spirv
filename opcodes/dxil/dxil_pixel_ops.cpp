@@ -26,6 +26,7 @@
 #include "dxil_common.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
+#include "dxil_waveops.hpp"
 
 namespace dxil_spv
 {
@@ -251,6 +252,28 @@ bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const ll
 		auto *cast_op = impl.allocate(spv::OpFConvert, instruction);
 		cast_op->add_id(op->id);
 		impl.add(cast_op);
+		op = cast_op;
+	}
+
+	if (impl.execution_model == spv::ExecutionModelGLCompute && impl.options.quirks.robust_compute_quad_broadcast &&
+		(opcode == spv::OpDPdxCoarse || opcode == spv::OpDPdyCoarse))
+	{
+		// Could implement for Fine too, but it gets a little more complicated.
+		spv::Id base_active_id = emit_current_quad_lane_active(impl, 0);
+		spv::Id other_active_id = emit_current_quad_lane_active(impl, opcode == spv::OpDPdxCoarse ? 1 : 2);
+
+		auto *both_active = impl.allocate(spv::OpLogicalAnd, builder.makeBoolType());
+		both_active->add_id(base_active_id);
+		both_active->add_id(other_active_id);
+		impl.add(both_active);
+
+		auto *sel = impl.allocate(spv::OpSelect, impl.get_type_id(instruction->getType()));
+		sel->add_id(both_active->id);
+		sel->add_id(op->id);
+		sel->add_id(builder.makeNullConstant(impl.get_type_id(instruction->getType())));
+		impl.add(sel);
+
+		impl.rewrite_value(instruction, sel->id);
 	}
 
 	impl.builder().addCapability(spv::CapabilityDerivativeControl);
