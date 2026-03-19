@@ -5825,6 +5825,79 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			// Continue until we have eliminated all impossible loops (should be extremely rare).
 			did_rewrite = true;
 		}
+		else if (!result.non_dominated_exit.empty() && dominated_merge->dominance_frontier.size() >= 2)
+		{
+			// If we cannot find the impossible merge target through post-domination analysis,
+			// we might find it through domination frontier analysis.
+			// If all loop exits and the loop header share a domination frontier,
+			// it's probably our candidate.
+
+			// Only apply this analysis to cases where a loop has at least two dominance frontiers,
+			// which also don't have a dominance relationship with each other.
+			// This is evidence that the loop is attempting to break to multiple different scopes.
+			auto frontier = dominated_merge->dominance_frontier;
+
+			std::stable_sort(frontier.begin(), frontier.end(), [](const CFGNode *a, const CFGNode *b)
+			{
+				return a->forward_post_visit_order > b->forward_post_visit_order;
+			});
+
+			bool frontier_has_dominance_relationship = false;
+			for (size_t i = 0, n = frontier.size(); i < n && !frontier_has_dominance_relationship; i++)
+				for (size_t j = i + 1; j < n && !frontier_has_dominance_relationship; j++)
+					if (frontier[i]->dominates(frontier[j]))
+						frontier_has_dominance_relationship = true;
+
+			if (frontier_has_dominance_relationship)
+				continue;
+
+			for (auto *candidate : dominated_merge->dominance_frontier)
+			{
+				bool all_frontier = std::find(node->dominance_frontier.begin(), node->dominance_frontier.end(),
+				                              candidate) != node->dominance_frontier.end();
+
+				if (all_frontier)
+				{
+					for (auto *non_dominated : result.non_dominated_exit)
+					{
+						if (!node->dominates(non_dominated))
+						{
+							all_frontier = false;
+							break;
+						}
+
+						if (std::find(non_dominated->dominance_frontier.begin(), non_dominated->dominance_frontier.end(),
+									  candidate) == non_dominated->dominance_frontier.end())
+						{
+							all_frontier = false;
+							break;
+						}
+					}
+				}
+
+				if (all_frontier)
+				{
+					if (!impossible_merge_target ||
+						candidate->forward_post_visit_order > impossible_merge_target->forward_post_visit_order)
+					{
+						impossible_merge_target = candidate;
+					}
+				}
+				else
+				{
+					impossible_merge_target = nullptr;
+					break;
+				}
+			}
+
+			if (impossible_merge_target)
+			{
+				auto constructs = result.non_dominated_exit;
+				constructs.push_back(dominated_merge);
+				collect_and_dispatch_control_flow(node, dominated_merge, constructs, false);
+				did_rewrite = true;
+			}
+		}
 	}
 
 	if (did_rewrite)
