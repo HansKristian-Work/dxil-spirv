@@ -761,7 +761,8 @@ enum class ShaderQuirk : uint32_t
 	FixupLoopHeaderUndefPhis,
 	FixupRsqrtInfNan,
 	IgnorePrimitiveShadingRate,
-	RobustComputeQuadBroadcast
+	RobustComputeQuadBroadcast,
+	PreciseFMA
 };
 
 struct OptionShaderQuirk : OptionBase

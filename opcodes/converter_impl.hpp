@@ -801,6 +801,7 @@ struct Converter::Impl
 			bool fixup_rsqrt = false;
 			bool ignore_primitive_shading_rate = false;
 			bool robust_compute_quad_broadcast = false;
+			bool precise_fma = false;
 		} quirks;
 
 		struct

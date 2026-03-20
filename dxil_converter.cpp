@@ -9491,6 +9491,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			options.quirks.robust_compute_quad_broadcast = true;
 			break;
 
+		case ShaderQuirk::PreciseFMA:
+			options.quirks.precise_fma = true;
+			break;
+
 		default:
 			break;
 		}

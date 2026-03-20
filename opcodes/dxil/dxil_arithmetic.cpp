@@ -52,7 +52,9 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	auto &builder = impl.builder();
 	spv::Id result_id;
 
-	if (instruction->hasMetadata("dx.precise") || impl.options.force_precise)
+	bool is_precise = instruction->hasMetadata("dx.precise") || impl.options.force_precise;
+
+	if (!impl.options.quirks.precise_fma && is_precise)
 	{
 		// DXIL docs says to split the expression explicitly.
 		// HLSL docs says it just has to be invariant.
@@ -86,6 +88,9 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		for (unsigned i = 1; i < 4; i++)
 			op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 		impl.add(op);
+
+		if (is_precise)
+			builder.addDecoration(op->id, spv::DecorationNoContraction);
 
 		result_id = op->id;
 	}
