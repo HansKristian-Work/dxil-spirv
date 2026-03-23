@@ -5280,9 +5280,12 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		}
 		else
 		{
-			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInShadingRateKHR);
+			if (!options.quirks.ignore_primitive_shading_rate)
+			{
+				builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInShadingRateKHR);
+				requires_flat_input = true;
+			}
 			spirv_module.register_builtin_shader_input(id, spv::BuiltInShadingRateKHR);
-			requires_flat_input = true;
 		}
 		builder.addExtension("SPV_KHR_fragment_shading_rate");
 		builder.addCapability(spv::CapabilityFragmentShadingRateKHR);
@@ -5292,16 +5295,25 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 	case DXIL::Semantic::InternalBarycentricsNoPerspective:
 	{
 		if (options.khr_barycentrics_enabled)
-			builder.addExtension("SPV_KHR_fragment_shader_barycentric");
-		else
-			builder.addExtension("SPV_NV_fragment_shader_barycentric");
+		{
+			auto builtin =
+			    semantic == DXIL::Semantic::Barycentrics ? spv::BuiltInBaryCoordKHR : spv::BuiltInBaryCoordNoPerspKHR;
 
-		// These enums all alias.
-		builder.addCapability(spv::CapabilityFragmentBarycentricKHR);
-		auto builtin = semantic == DXIL::Semantic::Barycentrics ?
-		               spv::BuiltInBaryCoordKHR : spv::BuiltInBaryCoordNoPerspKHR;
-		builder.addDecoration(id, spv::DecorationBuiltIn, builtin);
-		spirv_module.register_builtin_shader_input(id, builtin);
+			builder.addExtension("SPV_KHR_fragment_shader_barycentric");
+			builder.addCapability(spv::CapabilityFragmentBarycentricKHR);
+			builder.addDecoration(id, spv::DecorationBuiltIn, builtin);
+			spirv_module.register_builtin_shader_input(id, builtin);
+		}
+		else
+		{
+			// TODO: We're not dealing with centroid vs per-sample decorations here.
+			auto builtin =
+			    semantic == DXIL::Semantic::Barycentrics ? spv::BuiltInBaryCoordSmoothAMD : spv::BuiltInBaryCoordNoPerspAMD;
+
+			builder.addExtension("SPV_AMD_shader_explicit_vertex_parameter");
+			builder.addDecoration(id, spv::DecorationBuiltIn, builtin);
+			spirv_module.register_builtin_shader_input(id, builtin);
+		}
 		break;
 	}
 
@@ -5643,6 +5655,19 @@ bool Converter::Impl::emit_stage_input_variables()
 		if (execution_model == spv::ExecutionModelTessellationEvaluation && system_value != DXIL::Semantic::DomainLocation)
 			system_value = DXIL::Semantic::User;
 
+		bool masked_input = false;
+		if (system_value == DXIL::Semantic::ShadingRate && options.quirks.ignore_primitive_shading_rate)
+			masked_input = true;
+
+		if (!options.khr_barycentrics_enabled)
+		{
+			if (system_value == DXIL::Semantic::Barycentrics ||
+				system_value == DXIL::Semantic::InternalBarycentricsNoPerspective)
+			{
+				cols = 2;
+			}
+		}
+
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
 		if (system_value == DXIL::Semantic::Position)
 		{
@@ -5683,7 +5708,7 @@ bool Converter::Impl::emit_stage_input_variables()
 			type_id =
 			    builder.makeArrayType(type_id, builder.makeUintConstant(stage_input_vertices), 0);
 		}
-		else if (per_vertex)
+		else if (per_vertex && options.khr_barycentrics_enabled)
 		{
 			// TODO: Does this change for barycentrics with lines?
 			type_id = builder.makeArrayType(type_id, builder.makeUintConstant(3), 0);
@@ -5698,17 +5723,23 @@ bool Converter::Impl::emit_stage_input_variables()
 			variable_name += dxil_spv::to_string(semantic_index);
 		}
 
-		spv::Id variable_id = create_variable(spv::StorageClassInput, type_id, variable_name.c_str());
+		spv::Id variable_id = create_variable(masked_input ? spv::StorageClassPrivate : spv::StorageClassInput, type_id,
+		                                      variable_name.c_str());
 		input_elements_meta[element_id] = { variable_id, actual_element_type, system_value != DXIL::Semantic::User ? start_row : 0, system_value };
 
 		if (per_vertex)
 		{
 			if (options.khr_barycentrics_enabled)
+			{
 				builder.addExtension("SPV_KHR_fragment_shader_barycentric");
+				builder.addCapability(spv::CapabilityFragmentBarycentricKHR);
+				builder.addDecoration(variable_id, spv::DecorationPerVertexKHR);
+			}
 			else
-				builder.addExtension("SPV_NV_fragment_shader_barycentric");
-			builder.addCapability(spv::CapabilityFragmentBarycentricKHR);
-			builder.addDecoration(variable_id, spv::DecorationPerVertexKHR);
+			{
+				builder.addExtension("SPV_AMD_shader_explicit_vertex_parameter");
+				builder.addDecoration(variable_id, spv::DecorationExplicitInterpAMD);
+			}
 		}
 
 		if (effective_element_type != actual_element_type && component_type_is_16bit(actual_element_type))

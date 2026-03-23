@@ -114,6 +114,55 @@ static spv::Id get_builtin_load_type(Converter::Impl &impl, const Converter::Imp
 		return impl.get_effective_input_output_type_id(meta.component_type);
 }
 
+static bool emit_amd_bary_coord_load(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Id var_id)
+{
+	auto &builder = impl.builder();
+
+	uint32_t col = 0;
+	if (!get_constant_operand(instruction, 3, &col) || col > 2)
+	{
+		LOGE("Bary coord index must be constant {0, 1, 2}.\n");
+		return false;
+	}
+
+	/* Need to swizzle the bary coord appropriately. */
+	auto *bary = impl.allocate(spv::OpLoad, builder.makeVectorType(builder.makeFloatType(32), 2));
+	bary->add_id(var_id);
+	impl.add(bary);
+
+	if (col >= 1)
+	{
+		auto *ext = impl.allocate(spv::OpCompositeExtract, instruction);
+		ext->add_id(bary->id);
+		ext->add_literal(col - 1);
+		impl.add(ext);
+	}
+	else
+	{
+		auto *bary_i = impl.allocate(spv::OpCompositeExtract, builder.makeFloatType(32));
+		bary_i->add_id(bary->id);
+		bary_i->add_literal(0);
+		impl.add(bary_i);
+
+		auto *bary_j = impl.allocate(spv::OpCompositeExtract, builder.makeFloatType(32));
+		bary_j->add_id(bary->id);
+		bary_j->add_literal(1);
+		impl.add(bary_j);
+
+		auto *sub_i = impl.allocate(spv::OpFSub, builder.makeFloatType(32));
+		sub_i->add_id(builder.makeFloatConstant(1.0f));
+		sub_i->add_id(bary_i->id);
+		impl.add(sub_i);
+
+		auto *sub_j = impl.allocate(spv::OpFSub, instruction);
+		sub_j->add_id(sub_i->id);
+		sub_j->add_id(bary_j->id);
+		impl.add(sub_j);
+	}
+
+	return true;
+}
+
 bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics)
 {
 	auto &builder = impl.builder();
@@ -130,6 +179,18 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	uint32_t var_id = meta.id;
 	uint32_t ptr_id;
 
+	if (impl.options.quirks.ignore_primitive_shading_rate && meta.semantic == DXIL::Semantic::ShadingRate)
+	{
+		impl.rewrite_value(instruction, builder.makeUintConstant(0));
+		return true;
+	}
+	else if ((meta.semantic == DXIL::Semantic::Barycentrics ||
+	          meta.semantic == DXIL::Semantic::InternalBarycentricsNoPerspective) &&
+	         !impl.options.khr_barycentrics_enabled)
+	{
+		return emit_amd_bary_coord_load(impl, instruction, var_id);
+	}
+
 	spv::Id input_type_id = builder.getDerefTypeId(var_id);
 
 	bool array_index = false;
@@ -141,7 +202,8 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 		if (impl.execution_model == spv::ExecutionModelTessellationControl ||
 		    impl.execution_model == spv::ExecutionModelGeometry ||
 		    impl.execution_model == spv::ExecutionModelTessellationEvaluation ||
-		    impl.llvm_attribute_at_vertex_indices.count(input_element_index) != 0)
+		    (impl.llvm_attribute_at_vertex_indices.count(input_element_index) != 0 &&
+		     impl.options.khr_barycentrics_enabled))
 		{
 			input_type_id = builder.getContainedTypeId(input_type_id);
 			array_index = true;
@@ -193,9 +255,34 @@ bool emit_load_input_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	// Need to deal with signed vs unsigned here.
 	spv::Id load_type = get_builtin_load_type(impl, meta);
 
-	Operation *op = impl.allocate(spv::OpLoad, instruction, load_type);
-	op->add_id(ptr_id);
-	impl.add(op);
+	if (impl.llvm_attribute_at_vertex_indices.count(input_element_index) != 0 &&
+		!impl.options.khr_barycentrics_enabled)
+	{
+		builder.addCapability(spv::CapabilityInterpolationFunction);
+		constexpr uint32_t InterpolateAtVertexAMD = 1;
+		spv::Id ext_id = builder.import("SPV_AMD_shader_explicit_vertex_parameter");
+		auto *op = impl.allocate(spv::OpExtInst, instruction, load_type);
+		op->add_id(ext_id);
+		op->add_literal(InterpolateAtVertexAMD);
+		op->add_id(ptr_id);
+
+		uint32_t vid = 0;
+		if (!llvm::isa<llvm::UndefValue>(instruction->getOperand(4)) &&
+		    (!get_constant_operand(instruction, 4, &vid) || vid > 2))
+		{
+			LOGE("InterpolateAtVertexAMD only takes constant vid {0, 1, 2}.\n");
+			return false;
+		}
+
+		op->add_id(builder.makeUintConstant(vid));
+		impl.add(op);
+	}
+	else
+	{
+		auto *op = impl.allocate(spv::OpLoad, instruction, load_type);
+		op->add_id(ptr_id);
+		impl.add(op);
+	}
 
 	fixup_builtin_load(impl, var_id, instruction, spirv_semantics);
 
