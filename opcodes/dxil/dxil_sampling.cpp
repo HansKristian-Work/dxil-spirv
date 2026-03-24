@@ -842,6 +842,7 @@ bool emit_sample_grad_instruction(DXIL::Op opcode, Converter::Impl &impl, const 
 	{
 		impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
 	}
+
 	return true;
 }
 

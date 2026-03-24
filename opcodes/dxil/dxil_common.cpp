@@ -511,7 +511,8 @@ bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
 void emit_expect_assume_quad_uniform(Converter::Impl &impl)
 {
 	if (impl.options.instruction_instrumentation.enabled &&
-	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume &&
+	    !impl.memoized.current_quad_uniform_checked)
 	{
 		spv::Id call_id = impl.spirv_module.get_helper_call_id(HelperCall::IsQuadUniformControlFlow);
 		auto *call = impl.allocate(spv::OpFunctionCall, impl.builder().makeBoolType());
@@ -521,6 +522,8 @@ void emit_expect_assume_quad_uniform(Converter::Impl &impl)
 		auto *assert_uniform = impl.allocate(spv::OpAssumeTrueKHR);
 		assert_uniform->add_id(call->id);
 		impl.add(assert_uniform);
+
+		impl.memoized.current_quad_uniform_checked = true;
 	}
 }
 

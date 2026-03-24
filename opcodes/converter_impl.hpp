@@ -923,6 +923,7 @@ struct Converter::Impl
 		spv::Id current_ballot_value_id;
 		spv::Id current_subgroup_quad_index_id;
 		spv::Id current_quad_lane_active_id[4];
+		bool current_quad_uniform_checked;
 	} memoized = {};
 
 	struct PhysicalPointerEntry

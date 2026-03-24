@@ -134,6 +134,8 @@ static bool emit_derivative_instruction_quad_fine(
 
 static bool emit_derivative_instruction_quad(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	emit_expect_assume_quad_uniform(impl);
+
 	switch (opcode)
 	{
 	case spv::OpDPdxCoarse:
@@ -147,11 +149,12 @@ static bool emit_derivative_instruction_quad(spv::Op opcode, Converter::Impl &im
 	default:
 		return false;
 	}
-
 }
 
 bool emit_extended_derivative_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	emit_expect_assume_quad_uniform(impl);
+
 	uint32_t dim, mode;
 	if (!get_constant_operand(instruction, 2, &dim))
 		return false;
@@ -185,6 +188,8 @@ bool emit_extended_derivative_instruction(Converter::Impl &impl, const llvm::Cal
 bool emit_derivative_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
+
+	emit_expect_assume_quad_uniform(impl);
 
 	if (impl.execution_mode_meta.synthesize_dummy_derivatives)
 	{

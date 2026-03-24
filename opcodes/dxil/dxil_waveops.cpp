@@ -1128,6 +1128,8 @@ bool emit_wave_quad_vote_instruction(Converter::Impl &impl, const llvm::CallInst
 	if (!get_constant_operand(instruction, 2, &vote_kind))
 		return false;
 
+	emit_expect_assume_quad_uniform(impl);
+
 	if (impl.options.supports_quad_control)
 	{
 		auto &builder = impl.builder();
@@ -1167,6 +1169,8 @@ bool emit_wave_quad_op_instruction(Converter::Impl &impl, const llvm::CallInst *
 		impl.rewrite_value(instruction, impl.get_id_for_value(instruction->getOperand(1)));
 		return true;
 	}
+
+	emit_expect_assume_quad_uniform(impl);
 
 	// Matches with SPIR-V.
 	uint32_t swap_kind;
@@ -1272,6 +1276,8 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 		impl.rewrite_value(instruction, impl.get_id_for_value(instruction->getOperand(1)));
 		return true;
 	}
+
+	emit_expect_assume_quad_uniform(impl);
 
 	auto *lane = instruction->getOperand(2);
 

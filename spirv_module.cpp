@@ -2204,15 +2204,15 @@ spv::Id SPIRVModule::Impl::build_is_quad_uniform_control_flow(SPIRVModule &modul
 	auto shift_2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpShiftRightLogical);
 	shift_2->addIdOperand(ballot_op->getResultId());
 	shift_2->addIdOperand(uint_2);
-	auto or_2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpBitwiseOr);
-	or_2->addIdOperand(ballot_op->getResultId());
-	or_2->addIdOperand(shift_2->getResultId());
+	auto and_2 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpBitwiseAnd);
+	and_2->addIdOperand(ballot_op->getResultId());
+	and_2->addIdOperand(shift_2->getResultId());
 	auto shift_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpShiftRightLogical);
-	shift_1->addIdOperand(or_2->getResultId());
+	shift_1->addIdOperand(and_2->getResultId());
 	shift_1->addIdOperand(uint_1);
-	auto or_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpBitwiseOr);
-	or_1->addIdOperand(or_2->getResultId());
-	or_1->addIdOperand(shift_1->getResultId());
+	auto and_1 = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpBitwiseAnd);
+	and_1->addIdOperand(and_2->getResultId());
+	and_1->addIdOperand(shift_1->getResultId());
 
 	auto load_invocation_id = std::make_unique<spv::Instruction>(builder.getUniqueId(), uint_type, spv::OpLoad);
 	load_invocation_id->addIdOperand(get_builtin_shader_input(spv::BuiltInSubgroupLocalInvocationId));
@@ -2223,15 +2223,15 @@ spv::Id SPIRVModule::Impl::build_is_quad_uniform_control_flow(SPIRVModule &modul
 
 	auto extract_op = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpGroupNonUniformBallotBitExtract);
 	extract_op->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
-	extract_op->addIdOperand(or_1->getResultId());
+	extract_op->addIdOperand(and_1->getResultId());
 	extract_op->addIdOperand(and_invocation_id->getResultId());
 	spv::Id result_id = extract_op->getResultId();
 
 	entry->addInstruction(std::move(ballot_op));
 	entry->addInstruction(std::move(shift_2));
-	entry->addInstruction(std::move(or_2));
+	entry->addInstruction(std::move(and_2));
 	entry->addInstruction(std::move(shift_1));
-	entry->addInstruction(std::move(or_1));
+	entry->addInstruction(std::move(and_1));
 	entry->addInstruction(std::move(load_invocation_id));
 	entry->addInstruction(std::move(and_invocation_id));
 	entry->addInstruction(std::move(extract_op));
