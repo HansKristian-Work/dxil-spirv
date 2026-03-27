@@ -1,0 +1,62 @@
+using namespace dx;
+
+struct [raypayload] Payload
+{
+	float4 color : write(closesthit, miss) : read(caller);
+};
+
+RaytracingAccelerationStructure AS : register(t30, space40);
+RWTexture2D<float4> IMG : register(u10, space20);
+
+[shader("raygeneration")]
+void RayGen()
+{
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.Direction = float3(0, 0, 1);
+	ray.TMin = 1.0;
+	ray.TMax = 4.0;
+
+	Payload payload;
+	HitObject hit = HitObject::TraceRay(AS, RAY_FLAG_NONE, 0, 0, 0, 0, ray, payload);
+
+	float4 color;
+	if (hit.IsHit())
+	{
+		float3 temp_f3 = hit.GetRayTMin();
+		temp_f3.y = hit.GetRayTCurrent();
+		temp_f3 += hit.GetWorldRayOrigin();
+		temp_f3 += hit.GetWorldRayDirection();
+		temp_f3 += hit.GetObjectRayOrigin();
+		temp_f3 += hit.GetObjectRayDirection();
+		temp_f3 += hit.GetObjectToWorld3x4()[0].xyz;
+		temp_f3 += hit.GetObjectToWorld4x3()[0];
+		temp_f3 += hit.GetWorldToObject3x4()[0].xyz;
+		temp_f3 += hit.GetWorldToObject4x3()[0];
+
+		uint temp_u = hit.GetRayFlags();
+		temp_u += hit.GetInstanceIndex();
+		temp_u += hit.GetInstanceID();
+		temp_u += hit.GetGeometryIndex();
+		temp_u += hit.GetPrimitiveIndex();
+		temp_u += hit.GetHitKind();
+		temp_u += hit.GetShaderTableIndex();
+
+		BuiltInTriangleIntersectionAttributes attr;
+		hit.GetAttributes(attr);
+
+		color = float4(temp_f3, temp_u);
+		color += float4(attr.barycentrics.x, attr.barycentrics.x, payload.color.z, 1);
+	}
+	else if (hit.IsMiss())
+	{
+		color = float4(1, 0, 0, 1);
+	}
+	else if (hit.IsNop())
+	{
+		color = float4(0, 1, 0, 1);
+	}
+
+
+	IMG[int2(0, 0)] = color;
+}

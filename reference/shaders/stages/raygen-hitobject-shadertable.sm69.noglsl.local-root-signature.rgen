@@ -1,0 +1,132 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 68
+; Schema: 0
+OpCapability Shader
+OpCapability Int64
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability StorageImageWriteWithoutFormat
+OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability PhysicalStorageBufferAddresses
+OpCapability ShaderInvocationReorderEXT
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_EXT_shader_invocation_reorder"
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint RayGenerationKHR %3 "main" %13 %17 %21 %25 %26
+OpName %3 "main"
+OpName %11 "SBTBlock"
+OpName %13 "SBT"
+OpName %17 "AS"
+OpName %21 "IMG"
+OpName %23 ""
+OpName %46 "HitObjectSRB"
+OpDecorate %7 ArrayStride 4
+OpDecorate %9 ArrayStride 4
+OpDecorate %11 Block
+OpMemberDecorate %11 0 Offset 0
+OpMemberDecorate %11 1 Offset 20
+OpMemberDecorate %11 2 Offset 48
+OpMemberDecorate %11 3 Offset 56
+OpMemberDecorate %11 4 Offset 64
+OpMemberDecorate %11 5 Offset 72
+OpMemberDecorate %11 6 Offset 80
+OpMemberDecorate %11 7 Offset 88
+OpMemberDecorate %11 8 Offset 96
+OpMemberDecorate %11 9 Offset 104
+OpMemberDecorate %11 10 Offset 112
+OpDecorate %17 DescriptorSet 40
+OpDecorate %17 Binding 30
+OpDecorate %21 DescriptorSet 20
+OpDecorate %21 Binding 10
+OpDecorate %21 NonReadable
+OpDecorate %46 Block
+OpDecorate %46 HitObjectShaderRecordBufferEXT
+OpMemberDecorate %46 0 Offset 0
+OpMemberDecorate %46 0 NonWritable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpConstant %5 5
+%7 = OpTypeArray %5 %6
+%8 = OpConstant %5 6
+%9 = OpTypeArray %5 %8
+%10 = OpTypeVector %5 2
+%11 = OpTypeStruct %7 %9 %10 %10 %10 %10 %10 %10 %10 %10 %10
+%12 = OpTypePointer ShaderRecordBufferKHR %11
+%13 = OpVariable %12 ShaderRecordBufferKHR
+%14 = OpTypeInt 32 1
+%15 = OpTypeAccelerationStructureKHR
+%16 = OpTypePointer UniformConstant %15
+%17 = OpVariable %16 UniformConstant
+%18 = OpTypeFloat 32
+%19 = OpTypeImage %18 2D 0 0 0 2 Unknown
+%20 = OpTypePointer UniformConstant %19
+%21 = OpVariable %20 UniformConstant
+%22 = OpTypeVector %18 4
+%23 = OpTypeStruct %22
+%24 = OpTypePointer RayPayloadKHR %23
+%25 = OpVariable %24 RayPayloadKHR
+%26 = OpVariable %24 RayPayloadKHR
+%28 = OpConstant %5 0
+%29 = OpConstant %18 1
+%30 = OpConstant %18 0
+%31 = OpConstant %18 2
+%32 = OpConstant %18 3
+%33 = OpConstant %18 4
+%34 = OpTypeVector %18 3
+%37 = OpTypeHitObjectEXT
+%38 = OpTypePointer Function %37
+%40 = OpTypePointer RayPayloadKHR %22
+%44 = OpConstant %5 4
+%45 = OpTypeInt 64 0
+%46 = OpTypeStruct %5
+%47 = OpTypePointer PhysicalStorageBuffer %46
+%48 = OpTypePointer PhysicalStorageBuffer %5
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%39 = OpVariable %38 Function
+OpBranch %66
+%66 = OpLabel
+%27 = OpLoad %15 %17
+%35 = OpCompositeConstruct %34 %29 %31 %32
+%36 = OpCompositeConstruct %34 %30 %30 %29
+OpHitObjectTraceRayEXT %39 %27 %28 %28 %28 %28 %28 %35 %29 %36 %33 %26
+%41 = OpInBoundsAccessChain %40 %26 %28
+%42 = OpLoad %22 %41
+%43 = OpHitObjectGetShaderBindingTableRecordIndexEXT %5 %39
+%49 = OpHitObjectGetShaderRecordBufferHandleEXT %10 %39
+%50 = OpBitcast %45 %49
+%51 = OpUConvert %45 %44
+%52 = OpIAdd %45 %50 %51
+%53 = OpConvertUToPtr %47 %52
+%54 = OpAccessChain %48 %53 %28
+%55 = OpLoad %5 %54 Aligned 4
+%56 = OpIMul %5 %55 %43
+OpHitObjectSetShaderBindingTableRecordIndexEXT %39 %56
+%57 = OpInBoundsAccessChain %40 %25 %28
+OpStore %57 %42
+OpHitObjectExecuteShaderEXT %39 %25
+%58 = OpLoad %22 %57
+%59 = OpLoad %19 %21
+%60 = OpCompositeExtract %18 %58 0
+%61 = OpCompositeExtract %18 %58 1
+%62 = OpCompositeExtract %18 %58 2
+%63 = OpCompositeExtract %18 %58 3
+%64 = OpCompositeConstruct %10 %28 %28
+%65 = OpCompositeConstruct %22 %60 %61 %62 %63
+OpImageWrite %59 %64 %65
+OpReturn
+OpFunctionEnd
+
