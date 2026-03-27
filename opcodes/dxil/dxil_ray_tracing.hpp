@@ -104,4 +104,18 @@ bool emit_hit_object_make_nop_instruction(Converter::Impl &impl, const llvm::Cal
 bool emit_hit_object_invoke_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_maybe_reoder_thread_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
+bool emit_hit_object_get_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Op op, uint32_t vecsize);
+template <spv::Op opcode, uint32_t vecsize>
+inline bool emit_hit_object_get_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_hit_object_get_value_instruction(impl, instruction, opcode, vecsize);
+}
+
+bool emit_hit_object_get_matrix_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Op op);
+template <spv::Op opcode>
+inline bool emit_hit_object_get_matrix_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_hit_object_get_matrix_value_instruction(impl, instruction, opcode);
+}
+
 } // namespace dxil_spv

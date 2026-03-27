@@ -892,4 +892,64 @@ bool emit_maybe_reoder_thread_instruction(Converter::Impl &impl, const llvm::Cal
 	return true;
 }
 
+bool emit_hit_object_get_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                           spv::Op opcode, uint32_t vecsize)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id hit_object = impl.get_id_for_value(instruction->getOperand(1));
+
+	if (vecsize == 1)
+	{
+		auto *op = impl.allocate(opcode, instruction);
+		op->add_id(hit_object);
+		impl.add(op);
+	}
+	else
+	{
+		auto *op = impl.allocate(opcode, builder.makeVectorType(impl.get_type_id(instruction->getType()), vecsize));
+		op->add_id(hit_object);
+		impl.add(op);
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, instruction);
+		extract_op->add_id(op->id);
+
+		uint32_t index = 0;
+		if (!get_constant_operand(instruction, 2, &index))
+			return false;
+		extract_op->add_literal(index);
+		impl.add(extract_op);
+	}
+	return true;
+}
+
+bool emit_hit_object_get_matrix_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                  spv::Op opcode)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id hit_object = impl.get_id_for_value(instruction->getOperand(1));
+
+	auto *op = impl.allocate(opcode, builder.makeMatrixType(impl.get_type_id(instruction->getType()), 4, 3));
+	op->add_id(hit_object);
+	impl.add(op);
+
+	auto *extract_op = impl.allocate(spv::OpCompositeExtract, instruction);
+	uint32_t row = 0, col = 0;
+	if (!get_constant_operand(instruction, 2, &row))
+		return false;
+	if (!get_constant_operand(instruction, 3, &col))
+		return false;
+	extract_op->add_id(op->id);
+	extract_op->add_literal(col);
+	extract_op->add_literal(row);
+	impl.add(extract_op);
+	return true;
+}
+
 }

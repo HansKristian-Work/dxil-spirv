@@ -292,6 +292,8 @@ struct DXILDispatcher
 		OP(AcceptHitAndEndSearch) = emit_ray_tracing_accept_hit_and_end_search;
 		OP(IgnoreHit) = emit_ray_tracing_ignore_hit;
 		OP(CallShader) = emit_ray_tracing_call_shader;
+
+		// Hit object + shader invocation reordering
 		OP(HitObject_TraceRay) = emit_hit_object_trace_ray_instruction;
 		OP(HitObject_FromRayQuery) = emit_hit_object_from_ray_query_instruction;
 		OP(HitObject_FromRayQueryWithAttrs) = emit_hit_object_from_ray_query_with_attrs_instruction;
@@ -299,6 +301,25 @@ struct DXILDispatcher
 		OP(HitObject_MakeNop) = emit_hit_object_make_nop_instruction;
 		OP(HitObject_Invoke) = emit_hit_object_invoke_instruction;
 		OP(MaybeReorderThread) = emit_maybe_reoder_thread_instruction;
+
+		OP(HitObject_IsMiss) = emit_hit_object_get_value_instruction<spv::OpHitObjectIsMissEXT, 1>;
+		OP(HitObject_IsHit) = emit_hit_object_get_value_instruction<spv::OpHitObjectIsHitEXT, 1>;
+		OP(HitObject_IsNop) = emit_hit_object_get_value_instruction<spv::OpHitObjectIsEmptyEXT, 1>;
+		OP(HitObject_RayFlags) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetRayFlagsEXT, 1>;
+		OP(HitObject_RayTMin) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetRayTMinEXT, 1>;
+		OP(HitObject_RayTCurrent) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetRayTMaxEXT, 1>;
+		OP(HitObject_WorldRayOrigin) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetWorldRayOriginEXT, 3>;
+		OP(HitObject_WorldRayDirection) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetWorldRayDirectionEXT, 3>;
+		OP(HitObject_ObjectRayOrigin) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetObjectRayOriginEXT, 3>;
+		OP(HitObject_ObjectRayDirection) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetObjectRayDirectionEXT, 3>;
+		OP(HitObject_ObjectToWorld3x4) = emit_hit_object_get_matrix_value_instruction<spv::OpHitObjectGetObjectToWorldEXT>;
+		OP(HitObject_WorldToObject3x4) = emit_hit_object_get_matrix_value_instruction<spv::OpHitObjectGetWorldToObjectEXT>;
+		OP(HitObject_GeometryIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetGeometryIndexEXT, 1>;
+		OP(HitObject_InstanceIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetInstanceCustomIndexEXT, 1>;
+		OP(HitObject_InstanceID) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetInstanceIdEXT, 1>;
+		OP(HitObject_PrimitiveIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetPrimitiveIndexEXT, 1>;
+		OP(HitObject_HitKind) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetHitKindEXT, 1>;
+		OP(HitObject_ShaderTableIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetShaderBindingTableRecordIndexEXT, 1>;
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
