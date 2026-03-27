@@ -322,6 +322,7 @@ struct DXILDispatcher
 		OP(HitObject_ShaderTableIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetShaderBindingTableRecordIndexEXT, 1>;
 		OP(HitObject_SetShaderTableIndex) = emit_hit_object_set_shader_table_index_instruction;
 		OP(HitObject_LoadLocalRootTableConstant) = emit_hit_object_load_local_root_table_constant_instruction;
+		OP(HitObject_Attributes) = emit_hit_object_attributes_instruction;
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
@@ -1094,6 +1095,10 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		update_storage_class(impl, instruction->getOperand(2), spv::StorageClassCallableDataKHR);
 		break;
 	}
+
+	case DXIL::Op::HitObject_Attributes:
+		update_storage_class(impl, instruction->getOperand(2), spv::StorageClassHitObjectAttributeEXT);
+		break;
 
 	case DXIL::Op::HitObject_FromRayQueryWithAttrs:
 		update_storage_class(impl, instruction->getOperand(3), spv::StorageClassHitObjectAttributeEXT);

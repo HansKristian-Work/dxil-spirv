@@ -1039,4 +1039,24 @@ bool emit_hit_object_load_local_root_table_constant_instruction(Converter::Impl 
 
 	return true;
 }
+
+bool emit_hit_object_attributes_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id hit_object = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id attributes = impl.get_id_for_value(instruction->getOperand(2));
+
+	auto *op = impl.allocate(spv::OpHitObjectGetAttributesEXT);
+	op->add_ids({
+	    hit_object,
+	    attributes
+	});
+	impl.add(op);
+	return true;
+}
+
 }
