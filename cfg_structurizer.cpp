@@ -1438,6 +1438,9 @@ bool CFGStructurizer::run()
 
 	insert_phi();
 
+	// IGNORE NON-ENTRY-FUNCTIONS TODO remove
+	unsetenv("DXIL_SPIRV_GRAPHVIZ_PATH");
+
 	return true;
 }
 
@@ -6296,6 +6299,24 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 	// If there is no strict dominance relationship, it's too risky to freeze a loop here,
 	// since we may have stray breaks that will invert merge ordering, and cause issues.
 	bool freeze_control_flow = !common_idom->pred_back_edge && common_pdom->post_dominates(common_idom);
+
+	if (freeze_control_flow)
+	{
+		// Also check that there are no back edges that leave the scope between common_idom
+		// and common_pdom and don't freeze if so.
+		for (unsigned index = common_pdom->forward_post_visit_order; index < common_idom->forward_post_visit_order; index++)
+		{
+			CFGNode *current_node = forward_post_visit_order[index];
+			if (current_node->succ_back_edge != nullptr
+					&& common_idom->dominates(current_node)
+					&& !common_idom->dominates(current_node->succ_back_edge))
+			{
+				freeze_control_flow = false;
+				break;
+			}
+		}
+	}
+
 
 	PHI phi;
 	phi.id = module.allocate_id();

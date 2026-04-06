@@ -1,0 +1,250 @@
+#version 460
+layout(local_size_x = 8, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer SSBO
+{
+    uint _m0[];
+} _9;
+
+layout(set = 0, binding = 1, std430) readonly buffer _11_13
+{
+    uint _m0[];
+} _13;
+
+void _someFn_YAXI_Z(uint _15)
+{
+    uint _21 = atomicAdd(_9._m0[0u], 1u);
+    _9._m0[_21] = _15;
+}
+
+uint _getBranchTarget_YAII_Z(uint _25)
+{
+    return _13._m0[_25];
+}
+
+void main()
+{
+    uint _32;
+    bool selector_5;
+    uint _31 = 0u;
+    for (;;)
+    {
+        _32 = 17u;
+        _someFn_YAXI_Z(_32);
+        _31++;
+        _32 = 18u;
+        _someFn_YAXI_Z(_32);
+        if (_getBranchTarget_YAII_Z(_32) == 20u)
+        {
+            selector_5 = false;
+            break;
+        }
+        _32 = 21u;
+        _someFn_YAXI_Z(_32);
+        if (!(_getBranchTarget_YAII_Z(_32) == 32u))
+        {
+            _32 = 24u;
+            _someFn_YAXI_Z(_32);
+            if (_getBranchTarget_YAII_Z(_32) == 30u)
+            {
+                selector_5 = true;
+                break;
+            }
+            _32 = 43u;
+            _someFn_YAXI_Z(_32);
+            if (_getBranchTarget_YAII_Z(_32) == 30u)
+            {
+                selector_5 = true;
+                break;
+            }
+        }
+        _32 = 32u;
+        _someFn_YAXI_Z(_32);
+        if (int(_31) < int(99u))
+        {
+            continue;
+        }
+        else
+        {
+            selector_5 = false;
+            break;
+        }
+    }
+    if (selector_5)
+    {
+        _32 = 30u;
+        _someFn_YAXI_Z(_32);
+    }
+    else
+    {
+        _32 = 20u;
+        _someFn_YAXI_Z(_32);
+    }
+    _32 = 23u;
+    _someFn_YAXI_Z(_32);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 99
+; Schema: 0
+OpCapability Shader
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main"
+OpExecutionMode %3 LocalSize 8 1 1
+OpName %3 "main"
+OpName %7 "SSBO"
+OpName %11 "SSBO"
+OpName %16 "?someFn@@YAXI@Z"
+OpName %26 "?getBranchTarget@@YAII@Z"
+OpName %78 "selector_5"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %10 ArrayStride 4
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 1
+OpDecorate %13 NonWritable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeRuntimeArray %5
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeFunction %1 %5
+%18 = OpConstant %5 0
+%19 = OpTypePointer StorageBuffer %5
+%22 = OpConstant %5 1
+%24 = OpTypeFunction %5 %5
+%30 = OpTypePointer Function %5
+%33 = OpConstant %5 17
+%38 = OpConstant %5 18
+%43 = OpTypeBool
+%45 = OpConstant %5 20
+%48 = OpConstant %5 21
+%54 = OpConstant %5 32
+%55 = OpConstant %5 23
+%62 = OpConstant %5 99
+%63 = OpConstant %5 24
+%69 = OpConstant %5 30
+%72 = OpConstant %5 43
+%79 = OpConstantFalse %43
+%80 = OpConstantTrue %43
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%31 = OpVariable %30 Function
+%32 = OpVariable %30 Function
+OpBranch %81
+%81 = OpLabel
+OpStore %31 %18
+OpBranch %82
+%82 = OpLabel
+OpStore %32 %33
+%34 = OpLoad %5 %32
+%35 = OpFunctionCall %1 %16 %34
+%36 = OpLoad %5 %31
+%37 = OpIAdd %5 %36 %22
+OpStore %31 %37
+OpLoopMerge %90 %89 None
+OpBranch %83
+%83 = OpLabel
+OpStore %32 %38
+%39 = OpLoad %5 %32
+%40 = OpFunctionCall %1 %16 %39
+%41 = OpLoad %5 %32
+%42 = OpFunctionCall %5 %26 %41
+%44 = OpIEqual %43 %42 %45
+OpSelectionMerge %84 None
+OpBranchConditional %44 %90 %84
+%84 = OpLabel
+OpStore %32 %48
+%49 = OpLoad %5 %32
+%50 = OpFunctionCall %1 %16 %49
+%51 = OpLoad %5 %32
+%52 = OpFunctionCall %5 %26 %51
+%53 = OpIEqual %43 %52 %54
+OpSelectionMerge %88 None
+OpBranchConditional %53 %88 %85
+%85 = OpLabel
+OpStore %32 %63
+%64 = OpLoad %5 %32
+%65 = OpFunctionCall %1 %16 %64
+%66 = OpLoad %5 %32
+%67 = OpFunctionCall %5 %26 %66
+%68 = OpIEqual %43 %67 %69
+OpSelectionMerge %86 None
+OpBranchConditional %68 %90 %86
+%86 = OpLabel
+OpStore %32 %72
+%73 = OpLoad %5 %32
+%74 = OpFunctionCall %1 %16 %73
+%75 = OpLoad %5 %32
+%76 = OpFunctionCall %5 %26 %75
+%77 = OpIEqual %43 %76 %69
+OpSelectionMerge %87 None
+OpBranchConditional %77 %90 %87
+%87 = OpLabel
+OpBranch %88
+%88 = OpLabel
+OpBranch %89
+%89 = OpLabel
+OpStore %32 %54
+%58 = OpLoad %5 %32
+%59 = OpFunctionCall %1 %16 %58
+%60 = OpLoad %5 %31
+%61 = OpSLessThan %43 %60 %62
+OpBranchConditional %61 %82 %90
+%90 = OpLabel
+%78 = OpPhi %43 %79 %83 %79 %89 %80 %85 %80 %86
+OpSelectionMerge %93 None
+OpBranchConditional %78 %91 %92
+%91 = OpLabel
+OpStore %32 %69
+%70 = OpLoad %5 %32
+%71 = OpFunctionCall %1 %16 %70
+OpBranch %93
+%92 = OpLabel
+OpStore %32 %45
+%46 = OpLoad %5 %32
+%47 = OpFunctionCall %1 %16 %46
+OpBranch %93
+%93 = OpLabel
+OpStore %32 %55
+%56 = OpLoad %5 %32
+%57 = OpFunctionCall %1 %16 %56
+OpReturn
+OpFunctionEnd
+%16 = OpFunction %1 None %14
+%15 = OpFunctionParameter %5
+%17 = OpLabel
+OpBranch %95
+%95 = OpLabel
+%20 = OpAccessChain %19 %9 %18 %18
+%21 = OpAtomicIAdd %5 %20 %22 %18 %22
+%23 = OpAccessChain %19 %9 %18 %21
+OpStore %23 %15
+OpReturn
+OpFunctionEnd
+%26 = OpFunction %5 None %24
+%25 = OpFunctionParameter %5
+%27 = OpLabel
+OpBranch %97
+%97 = OpLabel
+%28 = OpAccessChain %19 %13 %18 %25
+%29 = OpLoad %5 %28
+OpReturnValue %29
+OpFunctionEnd
+#endif
