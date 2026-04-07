@@ -29,6 +29,7 @@
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "dxil_ags.hpp"
+#include "dxil_buffer.hpp"
 
 namespace dxil_spv
 {
@@ -1244,6 +1245,7 @@ bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::
 	}
 
 	add_vkmm_access_qualifiers(impl, op, meta.vkmm);
+	emit_post_store_quirk_barriers(impl);
 
 	impl.add(op, meta.rov);
 	return true;

@@ -1787,7 +1787,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		bool is_rov = get_constant_metadata(uav, 9) != 0;
 
 		// ROV implies coherent in Vulkan memory models.
-		bool globally_coherent = get_constant_metadata(uav, 7) != 0 || is_rov;
+		bool globally_coherent = get_constant_metadata(uav, 7) != 0 || is_rov || options.quirks.full_uav_coherency;
 
 		llvm::MDNode *tags = nullptr;
 		if (uav->getNumOperands() >= 11 && uav->getOperand(10))
@@ -9524,6 +9524,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::PreciseFMA:
 			options.quirks.precise_fma = true;
+			break;
+
+		case ShaderQuirk::FullUAVCoherency:
+			options.quirks.full_uav_coherency = true;
 			break;
 
 		default:

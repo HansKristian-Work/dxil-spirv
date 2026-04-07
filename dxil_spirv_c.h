@@ -240,6 +240,8 @@ typedef enum dxil_spv_shader_quirk
 	DXIL_SPV_SHADER_QUIRK_IGNORE_PRIMITIVE_SHADING_RATE = 11,
 	DXIL_SPV_SHADER_QUIRK_ROBUST_COMPUTE_QUAD_BROADCAST = 12,
 	DXIL_SPV_SHADER_QUIRK_PRECISE_FMA = 13,
+	/* Forces all UAVs to be coherent, and adds subgroup memory barriers after each store. */
+	DXIL_SPV_SHADER_QUIRK_FULL_UAV_COHERENCY = 14,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 

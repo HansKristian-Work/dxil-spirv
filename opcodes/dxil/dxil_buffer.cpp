@@ -1312,6 +1312,7 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	store_op->add_literal(spv::MemoryAccessAlignedMask);
 	store_op->add_literal(alignment);
 	add_vkmm_access_qualifiers(impl, store_op, vkmm);
+	emit_post_store_quirk_barriers(impl);
 
 	impl.add(store_op, ptr_meta.rov);
 
@@ -1461,6 +1462,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		store_op->add_literal(spv::MemoryAccessAlignedMask);
 		store_op->add_literal(raw.alignment);
 		add_vkmm_access_qualifiers(impl, store_op, meta.vkmm);
+		emit_post_store_quirk_barriers(impl);
 
 		impl.add(store_op);
 		return true;
@@ -1579,6 +1581,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (is_typed)
 		builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
 
+	emit_post_store_quirk_barriers(impl);
 	return true;
 }
 
@@ -1910,4 +1913,18 @@ bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::C
 	return true;
 }
 
+void emit_post_store_quirk_barriers(Converter::Impl &impl)
+{
+	if (!impl.options.quirks.full_uav_coherency)
+		return;
+
+	auto &builder = impl.builder();
+	auto *barrier = impl.allocate(spv::OpControlBarrier);
+	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	barrier->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	barrier->add_id(builder.makeUintConstant(spv::MemorySemanticsImageMemoryMask |
+	                                         spv::MemorySemanticsUniformMemoryMask |
+	                                         spv::MemorySemanticsAcquireReleaseMask));
+	impl.add(barrier);
+}
 } // namespace dxil_spv

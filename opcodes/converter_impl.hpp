@@ -802,6 +802,7 @@ struct Converter::Impl
 			bool ignore_primitive_shading_rate = false;
 			bool robust_compute_quad_broadcast = false;
 			bool precise_fma = false;
+			bool full_uav_coherency = false;
 		} quirks;
 
 		struct

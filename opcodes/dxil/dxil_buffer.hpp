@@ -68,4 +68,6 @@ spv::Id emit_atomic_access_chain(Converter::Impl &impl,
                                  const Converter::Impl::ResourceMeta &meta,
                                  RawWidth width, spv::Id image_id, spv::Id coord,
                                  DXIL::ComponentType &component_type);
+
+void emit_post_store_quirk_barriers(Converter::Impl &impl);
 } // namespace dxil_spv
