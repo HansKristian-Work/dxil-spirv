@@ -6301,12 +6301,21 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 	{
 		// Also check that there are no back edges that leave the scope between common_idom
 		// and common_pdom and don't freeze if so.
-		for (unsigned index = common_pdom->forward_post_visit_order; index < common_idom->forward_post_visit_order; index++)
+
+		// node->forward_post_visit_order should map 1:1 to the post-visit array,
+		// but in extreme circumstances where there have been inline cfg rewrites before recompute,
+		// this may not be true, so be defensive.
+		auto itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), common_pdom);
+		auto end = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), common_idom);
+
+		assert(itr != forward_post_visit_order.end());
+		assert(end != forward_post_visit_order.end());
+
+		for (; itr != end; ++itr)
 		{
-			CFGNode *current_node = forward_post_visit_order[index];
-			if (current_node->succ_back_edge != nullptr
-					&& common_idom->dominates(current_node)
-					&& !common_idom->dominates(current_node->succ_back_edge))
+			CFGNode *node = *itr;
+			if (node->succ_back_edge != nullptr && node->succ_back_edge != common_idom &&
+			    common_idom->dominates(node) && query_reachability(*node->succ_back_edge, *common_idom))
 			{
 				freeze_control_flow = false;
 				break;

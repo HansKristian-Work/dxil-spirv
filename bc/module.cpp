@@ -1389,8 +1389,8 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 	case FunctionRecord::INST_RET:
 	{
-		Value *returnVal = !entry.ops.empty() ? get_value(entry.ops[0]) : nullptr;
-		auto *ret = context->construct<ReturnInst>(returnVal);
+		Value *return_val = !entry.ops.empty() ? get_value(entry.ops[0]) : nullptr;
+		auto *ret = context->construct<ReturnInst>(return_val);
 		if (!add_instruction(ret))
 			return false;
 		break;
