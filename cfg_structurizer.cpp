@@ -6297,6 +6297,32 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 	// since we may have stray breaks that will invert merge ordering, and cause issues.
 	bool freeze_control_flow = !common_idom->pred_back_edge && common_pdom->post_dominates(common_idom);
 
+	if (freeze_control_flow)
+	{
+		// Also check that there are no back edges that leave the scope between common_idom
+		// and common_pdom and don't freeze if so.
+
+		// node->forward_post_visit_order should map 1:1 to the post-visit array,
+		// but in extreme circumstances where there have been inline cfg rewrites before recompute,
+		// this may not be true, so be defensive.
+		auto itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), common_pdom);
+		auto end = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), common_idom);
+
+		assert(itr != forward_post_visit_order.end());
+		assert(end != forward_post_visit_order.end());
+
+		for (; itr != end; ++itr)
+		{
+			CFGNode *node = *itr;
+			if (node->succ_back_edge != nullptr && node->succ_back_edge != common_idom &&
+			    common_idom->dominates(node) && query_reachability(*node->succ_back_edge, *common_idom))
+			{
+				freeze_control_flow = false;
+				break;
+			}
+		}
+	}
+
 	PHI phi;
 	phi.id = module.allocate_id();
 
