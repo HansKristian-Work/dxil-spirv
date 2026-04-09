@@ -1438,9 +1438,6 @@ bool CFGStructurizer::run()
 
 	insert_phi();
 
-	// IGNORE NON-ENTRY-FUNCTIONS TODO remove
-	unsetenv("DXIL_SPIRV_GRAPHVIZ_PATH");
-
 	return true;
 }
 
@@ -6316,7 +6313,6 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 			}
 		}
 	}
-
 
 	PHI phi;
 	phi.id = module.allocate_id();
