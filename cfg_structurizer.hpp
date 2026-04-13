@@ -26,6 +26,7 @@
 
 #include "thread_local_allocator.hpp"
 #include "ir.hpp"
+
 #include <memory>
 #include <stdint.h>
 
@@ -114,8 +115,13 @@ private:
 
 	static bool is_strictly_dominance_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
 	bool is_reachability_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
+	bool serialize_interleaved_merge_scopes_aggressive();
 	bool serialize_interleaved_merge_scopes();
 	bool serialize_interleaved_early_returns();
+	static Vector<std::pair<CFGNode *, CFGNode *>> build_pdf_ranges(const Vector<CFGNode *> &candidates);
+	static bool pdf_ranges_have_strict_dominance_ordering(
+		const Vector<std::pair<CFGNode *, CFGNode *>> &candidates);
+	void filter_serialization_candidates(Vector<CFGNode *> &candidates) const;
 	void split_merge_scopes();
 	bool is_rewind_candidate_split_node(const Vector<const CFGNode *> &visited_orphans, CFGNode *node,
 	                                    CFGNode *candidate) const;
@@ -246,10 +252,13 @@ private:
 
 	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to);
 	template <typename Op>
-	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to, const Op &op);
+	void traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to, const Op &op,
+	                                                  const Vector<CFGNode *> &barrier);
+
 	template <typename Op>
 	void traverse_dominated_blocks_and_rewrite_branch(const CFGNode *dominator, CFGNode *candidate,
 	                                                  CFGNode *from, CFGNode *to, const Op &op,
+	                                                  const Vector<CFGNode *> &barrier,
 	                                                  UnorderedSet<CFGNode *> &visitation_cache);
 
 	CFGNode *transpose_code_path_through_ladder_block(CFGNode *header, CFGNode *merge, CFGNode *succ);
@@ -266,7 +275,7 @@ private:
 
 	void collect_and_dispatch_control_flow(
 		CFGNode *common_idom, CFGNode *common_pdom, const Vector<CFGNode *> &constructs,
-		bool collect_all_code_paths_to_pdom);
+		bool collect_all_code_paths_to_pdom, bool allow_crossing_branches);
 
 	void collect_and_dispatch_control_flow_from_anchor(
 		CFGNode *anchor, const Vector<CFGNode *> &constructs);

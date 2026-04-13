@@ -1310,6 +1310,15 @@ bool CFGStructurizer::run()
 		}
 	}
 
+	while (serialize_interleaved_merge_scopes_aggressive())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".serialize-aggressive";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+	}
+
 	while (serialize_interleaved_merge_scopes())
 	{
 		if (!graphviz_path.empty())
@@ -3867,7 +3876,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 		traverse_dominated_blocks_and_rewrite_branch(inner_block,
 		    ladder_to, ladder, [inner_block](CFGNode *node) -> bool {
 			    return inner_block->selection_merge_block != node;
-		    });
+		    }, {});
 
 		ladder->recompute_immediate_dominator();
 		rewrite_selection_breaks(inner_block, ladder);
@@ -4030,7 +4039,7 @@ bool CFGStructurizer::serialize_interleaved_early_returns()
 			if (break_target)
 			{
 				Vector<CFGNode *> valid = { break_target, node };
-				collect_and_dispatch_control_flow(idom, break_target, valid, false);
+				collect_and_dispatch_control_flow(idom, break_target, valid, false, false);
 
 				// This completely transposes the CFG, so need to recompute CFG to keep going.
 				recompute_cfg();
@@ -4040,6 +4049,178 @@ bool CFGStructurizer::serialize_interleaved_early_returns()
 	}
 
 	return false;
+}
+
+bool CFGStructurizer::serialize_interleaved_merge_scopes_aggressive()
+{
+	for (auto *node : forward_post_visit_order)
+	{
+		// Eagerly collapse ridiculous unrolled loops if they exist.
+		// We normally handle it, but we need to consider cases with cross-branches as well.
+		constexpr size_t PredThreshold = 32;
+		if (node->num_forward_preds() < PredThreshold)
+			continue;
+		if (block_is_plain_continue(node))
+			continue;
+
+		auto *idom = node->immediate_dominator;
+
+		// Only consider simpler cases that we can collapse.
+		if (!node->post_dominates(idom))
+			continue;
+
+		// node->forward_post_visit_order should map 1:1 to the post-visit array,
+		// but in extreme circumstances where there have been inline cfg rewrites before recompute,
+		// this may not be true, so be defensive.
+		auto itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), node);
+		auto end = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), idom);
+		assert(itr != forward_post_visit_order.end());
+		assert(end != forward_post_visit_order.end());
+
+		Vector<CFGNode *> constructs;
+
+		for (; itr != end; ++itr)
+		{
+			auto *candidate = *itr;
+			if (candidate->num_forward_preds() < PredThreshold)
+				continue;
+			if (!idom->dominates(candidate))
+				continue;
+			auto &df = candidate->dominance_frontier;
+			if (std::find(df.begin(), df.end(), node) != df.end())
+				constructs.push_back(candidate);
+		}
+
+		if (constructs.empty())
+			continue;
+
+		if (constructs.size() >= 2)
+			filter_serialization_candidates(constructs);
+
+		if (constructs.empty())
+			continue;
+
+		constructs.push_back(node);
+		collect_and_dispatch_control_flow(idom, node, constructs, false, true);
+		recompute_cfg();
+		return true;
+	}
+
+	return false;
+}
+
+Vector<std::pair<CFGNode *, CFGNode *>> CFGStructurizer::build_pdf_ranges(const Vector<CFGNode *> &candidates)
+{
+	Vector<std::pair<CFGNode *, CFGNode *>> pdf_ranges;
+	pdf_ranges.reserve(candidates.size());
+
+	// If breaking merge constructs are entangled, their PDFs will overlap.
+	for (auto *candidate : candidates)
+	{
+		auto &pdf = candidate->post_dominance_frontier;
+		assert(!pdf.empty());
+		CFGNode *first = pdf.front();
+		CFGNode *last = first;
+
+		for (auto *n : pdf)
+		{
+			if (n->forward_post_visit_order > first->forward_post_visit_order)
+				first = n;
+			if (n->forward_post_visit_order < last->forward_post_visit_order)
+				last = n;
+		}
+
+		pdf_ranges.push_back({ first, last });
+	}
+
+	return pdf_ranges;
+}
+
+bool CFGStructurizer::pdf_ranges_have_strict_dominance_ordering(const Vector<std::pair<CFGNode *, CFGNode *>> &pdf_ranges)
+{
+	bool need_deinterleave = false;
+	auto count = pdf_ranges.size();
+	for (size_t i = 0; i < count && !need_deinterleave; i++)
+		for (size_t j = 0; j < count && !need_deinterleave; j++)
+			if (i != j)
+				need_deinterleave = is_strictly_dominance_ordered(pdf_ranges[i].first, pdf_ranges[j].first, pdf_ranges[i].second);
+
+	return need_deinterleave;
+}
+
+void CFGStructurizer::filter_serialization_candidates(Vector<CFGNode *> &candidates) const
+{
+	// Ensure stable order.
+	std::sort(candidates.begin(), candidates.end(), [](const CFGNode *a, const CFGNode *b)
+	          { return a->forward_post_visit_order < b->forward_post_visit_order; });
+
+	auto *common_idom = candidates[0];
+	for (size_t i = 1, n = candidates.size(); i < n; i++)
+		common_idom = CFGNode::find_common_dominator(common_idom, candidates[i]);
+
+	// Filter out false positive inner constructs.
+	// If we're dominated by another inner construct, and we don't post-dominate that construct, we should yield.
+	for (auto itr = candidates.begin(); itr != candidates.end(); )
+	{
+		bool eliminated = false;
+		for (auto candidate_itr = itr + 1; candidate_itr != candidates.end(); ++candidate_itr)
+		{
+			bool keep_candidate = (*candidate_itr) == common_idom || !(*candidate_itr)->dominates(*itr) ||
+			                      (*itr)->post_dominates(*candidate_itr);
+
+			// Don't let the common idom of constructs consume subsequent constructs.
+			if (!keep_candidate)
+			{
+				// To accept a dominator, we don't want any common idom removing every node.
+				std::move(itr + 1, candidates.end(), itr);
+				candidates.pop_back();
+				eliminated = true;
+				break;
+			}
+		}
+
+		if (!eliminated)
+			++itr;
+	}
+
+	Vector<CFGNode *> valid_constructs;
+
+	// Prune any candidate that can reach another candidate. The sort ensures that candidate to be removed comes last.
+	size_t count = candidates.size();
+	for (size_t i = 0; i < count; i++)
+	{
+		bool valid = true;
+		for (size_t j = 0; j < i; j++)
+		{
+			if (query_reachability(*candidates[i], *candidates[j]))
+			{
+				valid = false;
+				break;
+			}
+		}
+
+		// Another sanity check for candidates, the idom must be able to reach other nodes.
+		if (valid)
+		{
+			valid = false;
+			for (size_t j = 0; j < count; j++)
+			{
+				if (i == j)
+					continue;
+
+				if (query_reachability(*candidates[i]->immediate_dominator, *candidates[j]))
+				{
+					valid = true;
+					break;
+				}
+			}
+		}
+
+		if (valid)
+			valid_constructs.push_back(candidates[i]);
+	}
+
+	candidates = std::move(valid_constructs);
 }
 
 bool CFGStructurizer::serialize_interleaved_merge_scopes()
@@ -4068,8 +4249,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		auto *idom = node->immediate_dominator;
 
 		Vector<CFGNode *> complex_inner_constructs;
-		Vector<CFGNode *> inner_constructs;
-		Vector<CFGNode *> valid_constructs;
+		Vector<CFGNode *> constructs;
 
 		// Find merge block candidates that are strictly dominated by idom and immediately post-dominated by node.
 		// They also must not be good merge candidates on their own.
@@ -4089,7 +4269,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 				// Accept a construct and determine if we need to promote the complex constructs instead of the inner constructs.
 				// The inner construct may just be a false positive that ends up blocking the rewrite.
 				if (direct_dominance_frontier)
-					inner_constructs.push_back(candidate);
+					constructs.push_back(candidate);
 				else
 					complex_inner_constructs.push_back(candidate);
 			}
@@ -4101,12 +4281,12 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		// The simplified flow requires that all code paths from idom flow through the complex inner candidates.
 		bool collect_all_paths_to_pdom = true;
 
-		if (inner_constructs.size() == 1 && complex_inner_constructs.size() >= 2)
+		if (constructs.size() == 1 && complex_inner_constructs.size() >= 2)
 		{
-			auto *candidate_inner = inner_constructs.front();
+			auto *candidate_inner = constructs.front();
 			auto *common_idom = candidate_inner;
 
-			inner_constructs.clear();
+			constructs.clear();
 
 			// Try to detect a false positive where we should ignore inner_constructs.
 
@@ -4157,127 +4337,35 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 							is_reachable = true;
 
 					if (!is_reachable)
-						inner_constructs.push_back(complex_inner_constructs[j]);
+						constructs.push_back(complex_inner_constructs[j]);
 				}
 			}
 
-			if (should_promote_complex && inner_constructs.size() >= 2)
+			if (should_promote_complex && constructs.size() >= 2)
 			{
-				for (auto *inner : inner_constructs)
+				for (auto *inner : constructs)
 					common_idom = CFGNode::find_common_dominator(common_idom, inner);
 
 				// Verify that all paths to node must go through the inner constructs.
 				// We cannot handle more awkward merges.
-				should_promote_complex = !node->can_backtrace_to_with_blockers(common_idom, inner_constructs);
+				should_promote_complex = !node->can_backtrace_to_with_blockers(common_idom, constructs);
 			}
 
 			if (!should_promote_complex)
 				continue;
 		}
 
-		// Ensure stable order.
-		std::sort(inner_constructs.begin(), inner_constructs.end(), [](const CFGNode *a, const CFGNode *b) {
-			return a->forward_post_visit_order < b->forward_post_visit_order;
-		});
-
-		if (inner_constructs.size() < 2)
+		if (constructs.size() < 2)
 			continue;
 
-		auto *common_idom = inner_constructs[0];
-		for (size_t i = 1, n = inner_constructs.size(); i < n; i++)
-			common_idom = CFGNode::find_common_dominator(common_idom, inner_constructs[i]);
+		filter_serialization_candidates(constructs);
 
-		// Filter out false positive inner constructs.
-		// If we're dominated by another inner construct, and we don't post-dominate that construct, we should yield.
-		for (auto itr = inner_constructs.begin(); itr != inner_constructs.end(); )
-		{
-			bool eliminated = false;
-			for (auto candidate_itr = itr + 1; candidate_itr != inner_constructs.end(); ++candidate_itr)
-			{
-				bool keep_candidate = (*candidate_itr) == common_idom || !(*candidate_itr)->dominates(*itr) ||
-				                      (*itr)->post_dominates(*candidate_itr);
-
-				// Don't let the common idom of constructs consume subsequent constructs.
-				if (!keep_candidate)
-				{
-					// To accept a dominator, we don't want any common idom removing every node.
-					std::move(itr + 1, inner_constructs.end(), itr);
-					inner_constructs.pop_back();
-					eliminated = true;
-					break;
-				}
-			}
-
-			if (!eliminated)
-				++itr;
-		}
-
-		// Prune any candidate that can reach another candidate. The sort ensures that candidate to be removed comes last.
-		size_t count = inner_constructs.size();
-		for (size_t i = 0; i < count; i++)
-		{
-			bool valid = true;
-			for (size_t j = 0; j < i; j++)
-			{
-				if (query_reachability(*inner_constructs[i], *inner_constructs[j]))
-				{
-					valid = false;
-					break;
-				}
-			}
-
-			// Another sanity check for candidates, the idom must be able to reach other nodes.
-			if (valid)
-			{
-				valid = false;
-				for (size_t j = 0; j < count; j++)
-				{
-					if (i == j)
-						continue;
-
-					if (query_reachability(*inner_constructs[i]->immediate_dominator, *inner_constructs[j]))
-					{
-						valid = true;
-						break;
-					}
-				}
-			}
-
-			if (valid)
-				valid_constructs.push_back(inner_constructs[i]);
-		}
-
-		if (valid_constructs.size() < 2)
+		if (constructs.size() < 2)
 			continue;
 
-		Vector<std::pair<CFGNode *, CFGNode *>> pdf_ranges;
-		pdf_ranges.reserve(inner_constructs.size());
-
-		// If breaking merge constructs are entangled, their PDFs will overlap.
-		for (auto *candidate : valid_constructs)
-		{
-			auto &pdf = candidate->post_dominance_frontier;
-			assert(!pdf.empty());
-			CFGNode *first = pdf.front();
-			CFGNode *last = first;
-
-			for (auto *n : pdf)
-			{
-				if (n->forward_post_visit_order > first->forward_post_visit_order)
-					first = n;
-				if (n->forward_post_visit_order < last->forward_post_visit_order)
-					last = n;
-			}
-
-			pdf_ranges.push_back({ first, last });
-		}
-
-		bool need_deinterleave = false;
-		count = valid_constructs.size();
-		for (size_t i = 0; i < count && !need_deinterleave; i++)
-			for (size_t j = 0; j < count && !need_deinterleave; j++)
-				if (i != j)
-					need_deinterleave = is_strictly_dominance_ordered(pdf_ranges[i].first, pdf_ranges[j].first, pdf_ranges[i].second);
+		auto pdf_ranges = build_pdf_ranges(constructs);
+		bool need_deinterleave = pdf_ranges_have_strict_dominance_ordering(pdf_ranges);
+		size_t count = constructs.size();
 
 		CFGNode *common_anchor = nullptr;
 
@@ -4317,7 +4405,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 				need_deinterleave = need_deinterleave &&
 				                    std::find(common_anchor->dominance_frontier.begin(),
 				                              common_anchor->dominance_frontier.end(),
-				                              valid_constructs[i]) != common_anchor->dominance_frontier.end();
+				                              constructs[i]) != common_anchor->dominance_frontier.end();
 			}
 
 			if (!need_deinterleave)
@@ -4335,7 +4423,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 			// First, look at the PDFs, try to find a node in an inner loop.
 			// If the loop exits in a way where they can both reach the interleaving candidates,
 			// that's a scenario where we need to consider rewriting.
-			for (auto *candidate : valid_constructs)
+			for (auto *candidate : constructs)
 			{
 				auto &pdf = candidate->post_dominance_frontier;
 				for (auto *pdf_candidate : pdf)
@@ -4354,7 +4442,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 
 							unsigned back_edge_reach_count = 0;
 							unsigned pdf_reach_count = 0;
-							for (auto *reach_candidate : valid_constructs)
+							for (auto *reach_candidate : constructs)
 							{
 								if (query_reachability(*inner_header->pred_back_edge, *reach_candidate))
 									back_edge_reach_count++;
@@ -4362,7 +4450,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 									pdf_reach_count++;
 							}
 
-							if (back_edge_reach_count == 1 && pdf_reach_count == valid_constructs.size())
+							if (back_edge_reach_count == 1 && pdf_reach_count == constructs.size())
 							{
 								// We've found two candidates now, break out.
 								need_deinterleave = interleaved_exit_loop != nullptr;
@@ -4400,7 +4488,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 					// can be nested in unexpected ways. This threshold is mostly a heuristic to avoid
 					// doing complex transforms unless we really know for sure we need them.
 					for (size_t k = 0; k < count && all_in_frontier; k++)
-						all_in_frontier = std::find(df.begin(), df.end(), valid_constructs[k]) != df.end();
+						all_in_frontier = std::find(df.begin(), df.end(), constructs[k]) != df.end();
 					need_deinterleave = all_in_frontier;
 				}
 			}
@@ -4409,9 +4497,9 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		if (need_deinterleave)
 		{
 			if (common_anchor)
-				collect_and_dispatch_control_flow_from_anchor(common_anchor, valid_constructs);
+				collect_and_dispatch_control_flow_from_anchor(common_anchor, constructs);
 			else
-				collect_and_dispatch_control_flow(idom, node, valid_constructs, collect_all_paths_to_pdom);
+				collect_and_dispatch_control_flow(idom, node, constructs, collect_all_paths_to_pdom, false);
 
 			// This completely transposes the CFG, so need to recompute CFG to keep going.
 			recompute_cfg();
@@ -4907,7 +4995,7 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 
 					if (constructs.size() >= 2)
 					{
-						collect_and_dispatch_control_flow(node, merge, constructs, false);
+						collect_and_dispatch_control_flow(node, merge, constructs, false, false);
 						return SwitchProgressMode::IterativeModify;
 					}
 				}
@@ -5927,7 +6015,7 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			{
 				auto constructs = result.non_dominated_exit;
 				constructs.push_back(dominated_merge);
-				collect_and_dispatch_control_flow(node, dominated_merge, constructs, false);
+				collect_and_dispatch_control_flow(node, dominated_merge, constructs, false, false);
 				did_rewrite = true;
 			}
 		}
@@ -6317,7 +6405,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow_from_anchor(
 
 void CFGStructurizer::collect_and_dispatch_control_flow(
 	CFGNode *common_idom, CFGNode *common_pdom, const Vector<CFGNode *> &constructs,
-	bool collect_all_code_paths_to_pdom)
+	bool collect_all_code_paths_to_pdom, bool allow_crossing_branches)
 {
 	assert(constructs.size() >= 2);
 	auto &builder = module.get_builder();
@@ -6401,7 +6489,18 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 	for (size_t i = 0, n = constructs.size(); i < n; i++)
 	{
 		auto *candidate = constructs[i];
-		traverse_dominated_blocks_and_rewrite_branch(common_idom, candidate, dispatcher);
+
+		if (allow_crossing_branches)
+		{
+			traverse_dominated_blocks_and_rewrite_branch(common_idom, candidate, dispatcher,
+				[](const CFGNode *) { return true; },
+				constructs);
+		}
+		else
+		{
+			traverse_dominated_blocks_and_rewrite_branch(common_idom, candidate, dispatcher);
+		}
+
 		size_t next_cutoff_index = dispatcher->pred.size();
 		for (size_t j = cutoff_index; j < next_cutoff_index; j++)
 		{
@@ -6578,7 +6677,7 @@ bool CFGStructurizer::rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, 
 			// First collect the inner break blocks in a neat bow.
 			node->pred_back_edge->fake_succ.clear();
 			node->pred_back_edge->fake_pred.clear();
-			collect_and_dispatch_control_flow(node, merge, dominated_exits, false);
+			collect_and_dispatch_control_flow(node, merge, dominated_exits, false, false);
 
 			recompute_cfg();
 
@@ -6594,7 +6693,7 @@ bool CFGStructurizer::rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, 
 		// We're going to recompute the CFG after this anyway.
 		node->pred_back_edge->fake_succ.clear();
 		node->pred_back_edge->fake_pred.clear();
-		collect_and_dispatch_control_flow(common_idom, merge, dominated_exits, false);
+		collect_and_dispatch_control_flow(common_idom, merge, dominated_exits, false, false);
 		return true;
 	}
 
@@ -7023,7 +7122,7 @@ CFGNode *CFGStructurizer::build_ladder_block_for_escaping_edge_handling(CFGNode 
 							return false;
 					}
 					return true;
-				});
+				}, {});
 		}
 
 		CFGNode *true_block = nullptr;
@@ -7644,7 +7743,8 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 		auto result = analyze_loop(invalid_merge);
 		result.dominated_exit.insert(result.dominated_exit.end(), result.non_dominated_exit.begin(),
 		                             result.non_dominated_exit.end());
-		collect_and_dispatch_control_flow(invalid_merge, invalid_merge->loop_merge_block, result.dominated_exit, false);
+		collect_and_dispatch_control_flow(invalid_merge, invalid_merge->loop_merge_block, result.dominated_exit, false,
+		                                  false);
 		recompute_cfg();
 		return true;
 	}
@@ -7744,6 +7844,7 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 template <typename Op>
 void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode *dominator, CFGNode *candidate,
                                                                    CFGNode *from, CFGNode *to, const Op &op,
+                                                                   const Vector<CFGNode *> &barrier,
                                                                    UnorderedSet<CFGNode *> &visitation_cache)
 {
 	visitation_cache.insert(candidate);
@@ -7777,10 +7878,12 @@ void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode
 				candidate->retarget_branch_with_intermediate_node(from, to);
 			}
 		}
-		else if (dominator->dominates(node) && node != to) // Do not traverse beyond the new branch target.
+		else if (dominator->dominates(node) && node != to &&
+		         std::find(barrier.begin(), barrier.end(), node) == barrier.end())
 		{
+			// Do not traverse beyond the new branch target.
 			if (!visitation_cache.count(node))
-				traverse_dominated_blocks_and_rewrite_branch(dominator, node, from, to, op, visitation_cache);
+				traverse_dominated_blocks_and_rewrite_branch(dominator, node, from, to, op, barrier, visitation_cache);
 		}
 	}
 
@@ -7800,13 +7903,13 @@ void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(const CFGNode
 
 template <typename Op>
 void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to,
-                                                                   const Op &op)
+                                                                   const Op &op, const Vector<CFGNode *> &barrier)
 {
 	if (from == to)
 		return;
 
 	UnorderedSet<CFGNode *> visitation_cache;
-	traverse_dominated_blocks_and_rewrite_branch(dominator, dominator, from, to, op, visitation_cache);
+	traverse_dominated_blocks_and_rewrite_branch(dominator, dominator, from, to, op, barrier, visitation_cache);
 	dominator->fixup_merge_info_after_branch_rewrite(from, to);
 
 	// Force all post-domination information to be recomputed.
@@ -7846,6 +7949,6 @@ void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *domi
 
 void CFGStructurizer::traverse_dominated_blocks_and_rewrite_branch(CFGNode *dominator, CFGNode *from, CFGNode *to)
 {
-	traverse_dominated_blocks_and_rewrite_branch(dominator, from, to, [](const CFGNode *node) -> bool { return true; });
+	traverse_dominated_blocks_and_rewrite_branch(dominator, from, to, [](const CFGNode *node) -> bool { return true; }, {});
 }
 } // namespace dxil_spv
