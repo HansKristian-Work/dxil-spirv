@@ -112,7 +112,8 @@ private:
 	void rewrite_transposed_loop_outer(CFGNode *node, CFGNode *impossible_merge_target,
 	                                   const LoopMergeAnalysis &analysis);
 
-	static bool is_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
+	static bool is_strictly_dominance_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
+	bool is_reachability_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c);
 	bool serialize_interleaved_merge_scopes();
 	bool serialize_interleaved_early_returns();
 	void split_merge_scopes();

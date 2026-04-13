@@ -3874,9 +3874,14 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	}
 }
 
-bool CFGStructurizer::is_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c)
+bool CFGStructurizer::is_strictly_dominance_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c)
 {
 	return a != b && a->dominates(b) && b != c && b->dominates(c);
+}
+
+bool CFGStructurizer::is_reachability_ordered(const CFGNode *a, const CFGNode *b, const CFGNode *c)
+{
+	return a != b && query_reachability(*a, *b) && b != c && query_reachability(*b, *c);
 }
 
 bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const CFGNode *header, const CFGNode *merge) const
@@ -3986,9 +3991,9 @@ bool CFGStructurizer::header_and_merge_block_have_entry_exit_relationship(const 
 	}
 
 	// Crossing break scenario.
-	if (is_ordered(first_natural_breaks_to_inner, first_natural_breaks_to_outer, last_natural_breaks_to_inner))
+	if (is_strictly_dominance_ordered(first_natural_breaks_to_inner, first_natural_breaks_to_outer, last_natural_breaks_to_inner))
 		return true;
-	else if (is_ordered(first_natural_breaks_to_outer, first_natural_breaks_to_inner, last_natural_breaks_to_outer))
+	else if (is_strictly_dominance_ordered(first_natural_breaks_to_outer, first_natural_breaks_to_inner, last_natural_breaks_to_outer))
 		return true;
 	else
 		return false;
@@ -4272,7 +4277,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 		for (size_t i = 0; i < count && !need_deinterleave; i++)
 			for (size_t j = 0; j < count && !need_deinterleave; j++)
 				if (i != j)
-					need_deinterleave = is_ordered(pdf_ranges[i].first, pdf_ranges[j].first, pdf_ranges[i].second);
+					need_deinterleave = is_strictly_dominance_ordered(pdf_ranges[i].first, pdf_ranges[j].first, pdf_ranges[i].second);
 
 		CFGNode *common_anchor = nullptr;
 
@@ -4370,6 +4375,34 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 
 				if (need_deinterleave)
 					break;
+			}
+		}
+
+		if (!need_deinterleave && count >= 3)
+		{
+			// More special cases.
+			// We might not find an interleaving scenario by looking at strict dominance,
+			// but there might be difficult cases lurking if we look at pure reachability.
+			for (size_t i = 0; i < count && !need_deinterleave; i++)
+			{
+				for (size_t j = 0; j < count && !need_deinterleave; j++)
+				{
+					if (i == j)
+						continue;
+
+					if (!is_reachability_ordered(pdf_ranges[i].first, pdf_ranges[j].first, pdf_ranges[i].second))
+						continue;
+
+					auto &df = pdf_ranges[i].second->dominance_frontier;
+					bool all_in_frontier = true;
+					// If all the valid constructs are in the dominance frontier, consider this a highly difficult case.
+					// If there's just two candidate blocks we can resolve them with ladder breaks, but three and above
+					// can be nested in unexpected ways. This threshold is mostly a heuristic to avoid
+					// doing complex transforms unless we really know for sure we need them.
+					for (size_t k = 0; k < count && all_in_frontier; k++)
+						all_in_frontier = std::find(df.begin(), df.end(), valid_constructs[k]) != df.end();
+					need_deinterleave = all_in_frontier;
+				}
 			}
 		}
 
