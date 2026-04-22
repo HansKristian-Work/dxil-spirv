@@ -6416,11 +6416,13 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 
 	// If there is no strict dominance relationship, it's too risky to freeze a loop here,
 	// since we may have stray breaks that will invert merge ordering, and cause issues.
+	// Freezing control flow is important for interleaved merge patterns where we don't want to explode
+	// the control flow ladders all over the place.
 	bool freeze_control_flow = !common_idom->pred_back_edge && common_pdom->post_dominates(common_idom);
 
 	if (freeze_control_flow)
 	{
-		// Also check that there are no back edges that leave the scope between common_idom
+		// Also check that there are no edges that leave the scope between common_idom
 		// and common_pdom and don't freeze if so.
 
 		// node->forward_post_visit_order should map 1:1 to the post-visit array,
@@ -6432,14 +6434,56 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 		assert(itr != forward_post_visit_order.end());
 		assert(end != forward_post_visit_order.end());
 
-		for (; itr != end; ++itr)
+		const auto can_reach_any_construct = [&](const CFGNode *succ)
+		{
+			for (auto *construct : constructs)
+				if (query_reachability(*succ, *construct))
+					return true;
+
+			return false;
+		};
+
+		const auto any_succ_escapes_constructs = [&](const CFGNode *n)
+		{
+			// idom is not included in the loop below, but it can branch beyond all constructs.
+			for (auto *succ : n->succ)
+				if (!can_reach_any_construct(succ))
+					return true;
+
+			return false;
+		};
+
+		const auto is_construct = [&](const CFGNode *n)
+		{
+			return std::find(constructs.begin(), constructs.end(), n) != constructs.end();
+		};
+
+		if (!collect_all_code_paths_to_pdom)
+		{
+			// idom is not included in the loop below, but it can branch beyond all constructs.
+			freeze_control_flow = !any_succ_escapes_constructs(common_idom);
+		}
+
+		for (; itr != end && freeze_control_flow; ++itr)
 		{
 			CFGNode *node = *itr;
+
+			if (!common_idom->dominates(node))
+				continue;
+
 			if (node->succ_back_edge != nullptr && node->succ_back_edge != common_idom &&
-			    common_idom->dominates(node) && query_reachability(*node->succ_back_edge, *common_idom))
+			    query_reachability(*node->succ_back_edge, *common_idom))
 			{
+				// Branches backwards.
 				freeze_control_flow = false;
-				break;
+			}
+			else if (!collect_all_code_paths_to_pdom && !is_construct(node) && common_idom->dominates(node) &&
+			         can_reach_any_construct(node) && any_succ_escapes_constructs(node))
+			{
+				// If we're using the simple collector, we merge at the constructs instead.
+				// Make absolutely sure this is safe to merge to be checking that the dispatch point would be
+				// a suitable merge.
+				freeze_control_flow = false;
 			}
 		}
 	}
@@ -6549,7 +6593,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 		for (size_t i = 0, n = constructs.size(); i < n; i++)
 		{
 			auto *candidate = constructs[i];
-			assert(candidate->pred.empty() || candidate == default_case.node);
+			assert(allow_crossing_branches || candidate->pred.empty() || candidate == default_case.node);
 			dispatcher->add_branch(candidate);
 
 			if (need_default_case || i)
