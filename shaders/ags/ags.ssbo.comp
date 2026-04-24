@@ -17,4 +17,5 @@ void main(uint3 thr : SV_DispatchThreadID)
 	Out[thr.x].x += AmdExtD3DShaderIntrinsics_ReadfirstlaneF(thr.y * 16);
 	Out[thr.x].y += AmdExtD3DShaderIntrinsics_ReadlaneU(thr.z * 16, 7);
 	Out[thr.x].y += AmdExtD3DShaderIntrinsics_ReadlaneF(thr.x * 16, 9);
+	Out[thr.x] += AmdExtD3DShaderIntrinsics_LaneId();
 }

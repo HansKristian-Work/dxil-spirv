@@ -7,6 +7,7 @@
 #extension GL_EXT_shader_image_int64 : require
 #extension GL_EXT_shader_atomic_int64 : require
 #extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_basic : require
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) buffer SSBO
@@ -51,6 +52,7 @@ void main()
     _27._m0[gl_GlobalInvocationID.x * 2u] = uint(float(_27._m0[gl_GlobalInvocationID.x * 2u]) + uintBitsToFloat(subgroupBroadcastFirst(floatBitsToUint(float(gl_GlobalInvocationID.y << 4u)))));
     _27._m0[(gl_GlobalInvocationID.x * 2u) + 1u] = _32._m0[gl_GlobalInvocationID.x].y + subgroupBroadcast(gl_GlobalInvocationID.z << 4u, 7u);
     _27._m0[(gl_GlobalInvocationID.x * 2u) + 1u] = uint(float(_32._m0[gl_GlobalInvocationID.x].y) + uintBitsToFloat(subgroupBroadcast(floatBitsToUint(float(_119)), 9u)));
+    _32._m0[gl_GlobalInvocationID.x] = uvec2(_32._m0[gl_GlobalInvocationID.x].x + gl_SubgroupInvocationID, _32._m0[gl_GlobalInvocationID.x].y + gl_SubgroupInvocationID);
 }
 
 
@@ -59,17 +61,18 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 169
+; Bound: 179
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
 OpCapability Image1D
+OpCapability GroupNonUniform
 OpCapability GroupNonUniformBallot
 OpCapability Int64ImageEXT
 OpExtension "SPV_EXT_shader_image_int64"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %39
+OpEntryPoint GLCompute %3 "main" %39 %167
 OpExecutionMode %3 LocalSize 8 8 1
 OpName %3 "main"
 OpName %7 "SSBO"
@@ -107,6 +110,7 @@ OpDecorate %32 DescriptorSet 0
 OpDecorate %32 Binding 4
 OpDecorate %32 Aliased
 OpDecorate %39 BuiltIn GlobalInvocationId
+OpDecorate %167 BuiltIn SubgroupLocalInvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -161,10 +165,11 @@ OpDecorate %39 BuiltIn GlobalInvocationId
 %130 = OpTypeFloat 32
 %145 = OpConstant %5 7
 %156 = OpConstant %5 9
+%167 = OpVariable %40 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %167
-%167 = OpLabel
+OpBranch %177
+%177 = OpLabel
 %34 = OpLoad %21 %23
 %35 = OpLoad %18 %20
 %36 = OpLoad %15 %17
@@ -282,6 +287,16 @@ OpStore %152 %149
 %165 = OpIAdd %5 %164 %45
 %166 = OpAccessChain %123 %27 %42 %165
 OpStore %166 %163
+%168 = OpLoad %5 %167
+%169 = OpAccessChain %63 %32 %42 %43
+%170 = OpLoad %28 %169
+%171 = OpCompositeExtract %5 %170 0
+%172 = OpCompositeExtract %5 %170 1
+%173 = OpIAdd %5 %171 %168
+%174 = OpIAdd %5 %172 %168
+%175 = OpCompositeConstruct %28 %173 %174
+%176 = OpAccessChain %63 %32 %42 %43
+OpStore %176 %175
 OpReturn
 OpFunctionEnd
 #endif

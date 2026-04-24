@@ -2296,6 +2296,17 @@ bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 		break;
 	}
 
+	case AmdExtD3DShaderIntrinsicsOpcode_LaneId:
+	{
+		spv::Id var_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSubgroupLocalInvocationId);
+		auto *load_op = impl.allocate(spv::OpLoad, instruction);
+		load_op->add_id(var_id);
+		impl.add(load_op);
+		builder.addCapability(spv::CapabilityGroupNonUniform);
+		impl.ags.num_instructions = 0;
+		break;
+	}
+
 	case AmdExtD3DShaderIntrinsicsOpcode_DrawIndex:
 	{
 		spv::Id draw_index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInDrawIndex);
