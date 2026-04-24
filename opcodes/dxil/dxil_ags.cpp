@@ -2296,6 +2296,18 @@ bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 		break;
 	}
 
+	case AmdExtD3DShaderIntrinsicsOpcode_DrawIndex:
+	{
+		spv::Id draw_index_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInDrawIndex);
+		builder.addCapability(spv::CapabilityDrawParameters);
+
+		auto *op = impl.allocate(spv::OpLoad, instruction);
+		op->add_id(draw_index_id);
+		impl.add(op);
+		impl.ags.num_instructions = 0;
+		break;
+	}
+
 	case AmdExtD3DShaderIntrinsicsOpcode_AtomicU64:
 	{
 		spv::Op atomic_op = spv::OpNop;

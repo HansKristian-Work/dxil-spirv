@@ -203,6 +203,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 		return builder.makeVectorType(builder.makeFloatType(32), 3);
 
 	case spv::BuiltInLocalInvocationIndex:
+	case spv::BuiltInDrawIndex:
 	case spv::BuiltInSampleId:
 	case spv::BuiltInVertexIndex:
 	case spv::BuiltInInstanceIndex:
