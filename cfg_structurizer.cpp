@@ -4503,6 +4503,50 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 			}
 		}
 
+		if (!need_deinterleave && pdf_ranges[0].first != pdf_ranges[0].second)
+		{
+			// Special case of the above. If the PDFs overlap exactly we have criss-cross merge patterns.
+			// Be very conservative when we accept this since this pattern comes up as innocent
+			// breaking patterns. Some complicating factors is when idom is a loop header and
+			// We don't post-dominate the idom and is more likely a breaking path.
+
+			bool same_pdfs = true;
+			for (size_t i = 1; i < count && !same_pdfs; i++)
+				same_pdfs = pdf_ranges[i].first == pdf_ranges[0].first && pdf_ranges[i].second == pdf_ranges[0].second;
+
+			// Heuristic to avoid needing to do needless rewrites.
+			// The issues only seem to manifest in this situation.
+			// Likely the problem is that different idoms with wrong ladder resolve order
+			// can lead to backwards branches in some extremely rare cases ...
+			auto *first = pdf_ranges[0].first->immediate_dominator;
+			auto *second = pdf_ranges[0].second->immediate_dominator;
+			auto *common_idom = CFGNode::find_common_dominator(first, second);
+
+			bool crossing_idoms = first != second && first != common_idom && second != common_idom &&
+			                      (query_reachability(*first, *second) || query_reachability(*second, *first));
+
+			if (same_pdfs && crossing_idoms)
+			{
+				// All PDFs must have all candidates in their DFs.
+				bool all_in_frontier = true;
+				// If all the valid constructs are in the dominance frontier, consider this a highly difficult case.
+				// If there's just two candidate blocks we can resolve them with ladder breaks, but three and above
+				// can be nested in unexpected ways. This threshold is mostly a heuristic to avoid
+				// doing complex transforms unless we really know for sure we need them.
+
+				const Vector<CFGNode *> *dfs[] = {
+					&pdf_ranges[0].first->dominance_frontier,
+					&pdf_ranges[0].second->dominance_frontier,
+				};
+
+				for (auto *df : dfs)
+					for (size_t i = 0; i < count && all_in_frontier; i++)
+						all_in_frontier = std::find(df->begin(), df->end(), constructs[i]) != df->end();
+
+				need_deinterleave = all_in_frontier;
+			}
+		}
+
 		if (need_deinterleave)
 		{
 			if (common_anchor)
