@@ -2001,6 +2001,12 @@ void CFGStructurizer::fixup_loop_header_undef_phis()
 	}
 }
 
+static bool type_class_is_opaque(spv::Op type_op)
+{
+	return type_op == spv::OpTypeImage || type_op == spv::OpTypeSampler ||
+	       type_op == spv::OpTypeAccelerationStructureKHR;
+}
+
 void CFGStructurizer::fixup_broken_value_dominance()
 {
 	struct Origin
@@ -2050,7 +2056,7 @@ void CFGStructurizer::fixup_broken_value_dominance()
 	};
 
 	// Need value copy here since we might be updating node->ir.operations inline leading to iterator invalidation.
-	Vector<Operation> access_chain_operations;
+	Vector<Operation> variable_pointer_like_operations[2];
 
 	// Now, scan through all blocks and figure out which values are consumed in different blocks.
 	for (auto *node : forward_post_visit_order)
@@ -2062,9 +2068,10 @@ void CFGStructurizer::fixup_broken_value_dominance()
 				if (((1u << i) & literal_mask) == 0)
 					mark_node_value_access(node, op->arguments[i]);
 
-			// We're only interested in bindless-style access here.
-			if (op->op == spv::OpAccessChain)
-				access_chain_operations.push_back(*op);
+			if (op->op == spv::OpLoad && type_class_is_opaque(module.get_builder().getTypeClass(op->type_id)))
+				variable_pointer_like_operations[0].push_back(*op);
+			else if (op->op == spv::OpAccessChain)
+				variable_pointer_like_operations[1].push_back(*op);
 		}
 
 		// Incoming PHI values are handled elsewhere by modifying the incoming block to the creating block.
@@ -2076,48 +2083,48 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			mark_node_value_access(node, node->ir.terminator.return_value);
 	}
 
-	for (auto &chain_op : access_chain_operations)
+	// First, sink any opaque objects which are accessed in unexpected blocks after CFG rewrite.
+
+	for (auto &rewrite_ordering : variable_pointer_like_operations)
 	{
-		auto itr = id_to_non_local_consumers.find(chain_op.id);
-		if (itr != id_to_non_local_consumers.end())
+		for (auto &variable_op : rewrite_ordering)
 		{
-			// We will need to sink the AccessChain.
-			// Make sure the resource index is also marked as used in potentially non-local block.
-
-			// Sort for deterministic output.
-			Vector<CFGNode *> local_consumers_sorted;
-			for (auto *non_local_node : itr->second)
-				local_consumers_sorted.push_back(non_local_node);
-
-			std::sort(local_consumers_sorted.begin(), local_consumers_sorted.end(),
-			          [](const CFGNode *a, const CFGNode *b) {
-			              return a->forward_post_visit_order < b->forward_post_visit_order;
-			          });
-
-			auto literal_mask = chain_op.literal_mask;
-
-			// The first access chain is always OpVariable, so don't bother checking that.
-			for (unsigned i = 1; i < chain_op.num_arguments; i++)
+			auto itr = id_to_non_local_consumers.find(variable_op.id);
+			if (itr != id_to_non_local_consumers.end())
 			{
-				if (((1u << i) & literal_mask) == 0)
+				// We will need to sink the operation.
+				// Make sure all dependencies are also marked as used in potentially non-local block.
+
+				// Sort for deterministic output.
+				Vector<CFGNode *> local_consumers_sorted;
+				for (auto *non_local_node : itr->second)
+					local_consumers_sorted.push_back(non_local_node);
+
+				std::sort(local_consumers_sorted.begin(), local_consumers_sorted.end(),
+						  [](const CFGNode *a, const CFGNode *b) {
+							  return a->forward_post_visit_order < b->forward_post_visit_order;
+						  });
+
+				auto literal_mask = variable_op.literal_mask;
+
+				for (unsigned i = 0; i < variable_op.num_arguments; i++)
+					if (((1u << i) & literal_mask) == 0)
+						for (auto *non_local_node : local_consumers_sorted)
+							mark_node_value_access(non_local_node, variable_op.arguments[i]);
+
+				for (auto *non_local_node : local_consumers_sorted)
 				{
-					for (auto *non_local_node : local_consumers_sorted)
-						mark_node_value_access(non_local_node, chain_op.arguments[i]);
+					auto *sunk_chain = module.allocate_op();
+					*sunk_chain = variable_op;
+					sunk_chain->id = module.allocate_id();
+
+					if (module.get_builder().hasDecoration(variable_op.id, spv::DecorationNonUniform))
+						module.get_builder().addDecoration(sunk_chain->id, spv::DecorationNonUniform);
+
+					auto &ops = non_local_node->ir.operations;
+					rewrite_consumed_ids(non_local_node->ir, variable_op.id, sunk_chain->id);
+					ops.insert(ops.begin(), sunk_chain);
 				}
-			}
-
-			for (auto *non_local_node : local_consumers_sorted)
-			{
-				auto *sunk_chain = module.allocate_op();
-				*sunk_chain = chain_op;
-				sunk_chain->id = module.allocate_id();
-
-				if (module.get_builder().hasDecoration(chain_op.id, spv::DecorationNonUniform))
-					module.get_builder().addDecoration(sunk_chain->id, spv::DecorationNonUniform);
-
-				auto &ops = non_local_node->ir.operations;
-				rewrite_consumed_ids(non_local_node->ir, chain_op.id, sunk_chain->id);
-				ops.insert(ops.begin(), sunk_chain);
 			}
 		}
 	}
@@ -2147,7 +2154,9 @@ void CFGStructurizer::fixup_broken_value_dominance()
 		auto &orig = origin[rewrite.id];
 
 		// We don't rely on VariablePointers, so if this comes up, we need to figure out something else.
-		bool is_invalid_pointer = module.get_builder().isPointerType(orig.type_id);
+		// These kinds of ops are handled specially by re-creating them as needed.
+		bool rematerialized = module.get_builder().isPointerType(orig.type_id) ||
+		                      type_class_is_opaque(module.get_builder().getTypeClass(orig.type_id));
 
 		if (orig.rematerialize_op)
 		{
@@ -2164,7 +2173,7 @@ void CFGStructurizer::fixup_broken_value_dominance()
 				consumer->ir.operations.insert(consumer->ir.operations.begin(), rematerialize_op);
 			}
 		}
-		else if (!is_invalid_pointer)
+		else if (!rematerialized)
 		{
 			// Invalid access chains are resolved above. We end up rewriting any non-dominated values instead.
 			spv::Id alloca_var_id = module.create_variable(spv::StorageClassFunction, orig.type_id);
