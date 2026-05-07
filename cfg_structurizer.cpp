@@ -7779,11 +7779,30 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 				if (candidate == merge || invalid_target)
 					return false;
 
+				// Try to cut off the traversal early.
+				// If a continue block is post-dominating us, there is no point in scanning thorugh a long chain.
+				bool can_reach_merge = query_reachability(*candidate, *merge);
+				if (!can_reach_merge)
+				{
+					auto *header = get_innermost_loop_header_for(candidate);
+					if (header && header->pred_back_edge && header->pred_back_edge->post_dominates(candidate))
+						for (auto *fake_succ : header->pred_back_edge->fake_succ)
+							if (query_reachability(*fake_succ, *merge))
+								return false;
+				}
+
 				// If the succ can reach outside the loop construct, we have an error condition.
 				for (auto *succ : candidate->succ)
 				{
 					bool can_reach_merge = query_reachability(*succ, *merge);
 					auto *candidate_continue = scan_plain_continue_block(succ);
+
+					if (!candidate_continue->succ_back_edge)
+					{
+						auto *header = get_innermost_loop_header_for(succ);
+						if (header && header->pred_back_edge && header->pred_back_edge->post_dominates(succ))
+							candidate_continue = header->pred_back_edge;
+					}
 
 					// Need to be a bit more careful about continue blocks in infinite loops.
 					// Include loop exits as well in the reachability analysis.
