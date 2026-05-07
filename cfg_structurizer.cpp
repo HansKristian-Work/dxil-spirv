@@ -33,6 +33,13 @@
 
 namespace dxil_spv
 {
+template <typename Container, typename T>
+static inline bool has_element(const Container &c, const T &value)
+{
+	auto itr = std::find(c.begin(), c.end(), value);
+	return itr != c.end();
+}
+
 CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule &module_)
     : entry_block(entry)
     , pool(pool_)
@@ -5936,6 +5943,43 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			}
 		}
 
+		if (!impossible_merge_target && !result.inner_dominated_exit.empty())
+		{
+			const auto find_shared_df_node = [&](CFGNode *a, CFGNode *b) -> CFGNode *
+			{
+				for (auto *n : a->dominance_frontier)
+				{
+					// Don't find duplicates.
+					if (has_element(result.non_dominated_exit, n) ||
+						has_element(result.dominated_exit, n) ||
+						has_element(result.inner_dominated_exit, n))
+						continue;
+
+					if (has_element(b->dominance_frontier, n))
+						return n;
+				}
+				return nullptr;
+			};
+
+			// One of our inner dominated exits might share a dominance frontier with a non-dominated exit,
+			// which is extremely weird too. Move the exit forward to aid further analysis.
+			for (auto &non_dominated : result.non_dominated_exit)
+			{
+				if (query_reachability(*dominated_merge, *non_dominated))
+					continue;
+
+				for (auto &inner : result.inner_dominated_exit)
+				{
+					CFGNode *shared_df = find_shared_df_node(non_dominated, inner);
+					if (shared_df)
+					{
+						non_dominated = shared_df;
+						break;
+					}
+				}
+			}
+		}
+
 		if (!impossible_merge_target)
 		{
 			// We might have a different scenario where there are multiple breaks, but they break out to different
@@ -6126,7 +6170,6 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			frontiers.erase(frontiers.begin());
 			collect_and_dispatch_control_flow_from_anchor(anchor, frontiers);
 			did_rewrite = true;
-			break;
 		}
 	}
 
