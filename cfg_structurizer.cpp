@@ -6072,6 +6072,62 @@ bool CFGStructurizer::rewrite_transposed_loops()
 				did_rewrite = true;
 			}
 		}
+		else if (result.non_dominated_exit.size() >= 2)
+		{
+			auto frontiers = result.non_dominated_exit;
+			frontiers.push_back(dominated_merge);
+
+			bool invalid_frontier = false;
+			for (auto &front : frontiers)
+			{
+				if (node->dominates(front))
+				{
+					if (front->dominance_frontier.size() != 1)
+					{
+						invalid_frontier = true;
+						break;
+					}
+
+					front = front->dominance_frontier.front();
+				}
+			}
+
+			if (invalid_frontier)
+				continue;
+
+			std::sort(frontiers.begin(), frontiers.end(), [](const CFGNode *a, const CFGNode *b)
+			{
+				return a->forward_post_visit_order > b->forward_post_visit_order;
+			});
+
+			// Check for an anchor like pattern where one dominance frontier branches off into two or more different directions.
+			bool valid_anchor = true;
+			for (size_t i = 1, n = frontiers.size(); i < n && valid_anchor; i++)
+			{
+				valid_anchor =
+				    std::find(frontiers[0]->dominance_frontier.begin(), frontiers[0]->dominance_frontier.end(),
+				              frontiers[i]) != frontiers[0]->dominance_frontier.end();
+			}
+
+			// Verify that there are no crossing branches between non-anchor nodes, as that would break the rewrite.
+			const auto is_crossing_branch = [this](const CFGNode *a, const CFGNode *b)
+			{
+				return query_reachability(*a, *b) || query_reachability(*b, *a);
+			};
+
+			for (size_t i = 2, n = frontiers.size(); i < n && valid_anchor; i++)
+				for (size_t j = 1; j < i && valid_anchor; j++)
+					valid_anchor = !is_crossing_branch(frontiers[i], frontiers[j]);
+
+			if (!valid_anchor)
+				continue;
+
+			auto *anchor = frontiers.front();
+			frontiers.erase(frontiers.begin());
+			collect_and_dispatch_control_flow_from_anchor(anchor, frontiers);
+			did_rewrite = true;
+			break;
+		}
 	}
 
 	if (did_rewrite)
