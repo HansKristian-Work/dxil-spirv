@@ -7879,7 +7879,7 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 					return false;
 
 				// Try to cut off the traversal early.
-				// If a continue block is post-dominating us, there is no point in scanning thorugh a long chain.
+				// If a continue block is post-dominating us, there is no point in scanning through a long chain.
 				bool can_reach_merge = query_reachability(*candidate, *merge);
 				if (!can_reach_merge)
 				{
