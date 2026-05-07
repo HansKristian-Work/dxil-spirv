@@ -33,6 +33,13 @@
 
 namespace dxil_spv
 {
+template <typename Container, typename T>
+static inline bool has_element(const Container &c, const T &value)
+{
+	auto itr = std::find(c.begin(), c.end(), value);
+	return itr != c.end();
+}
+
 CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule &module_)
     : entry_block(entry)
     , pool(pool_)
@@ -5936,6 +5943,43 @@ bool CFGStructurizer::rewrite_transposed_loops()
 			}
 		}
 
+		if (!impossible_merge_target && !result.inner_dominated_exit.empty())
+		{
+			const auto find_shared_df_node = [&](CFGNode *a, CFGNode *b) -> CFGNode *
+			{
+				for (auto *n : a->dominance_frontier)
+				{
+					// Don't find duplicates.
+					if (has_element(result.non_dominated_exit, n) ||
+						has_element(result.dominated_exit, n) ||
+						has_element(result.inner_dominated_exit, n))
+						continue;
+
+					if (has_element(b->dominance_frontier, n))
+						return n;
+				}
+				return nullptr;
+			};
+
+			// One of our inner dominated exits might share a dominance frontier with a non-dominated exit,
+			// which is extremely weird too. Move the exit forward to aid further analysis.
+			for (auto &non_dominated : result.non_dominated_exit)
+			{
+				if (query_reachability(*dominated_merge, *non_dominated))
+					continue;
+
+				for (auto &inner : result.inner_dominated_exit)
+				{
+					CFGNode *shared_df = find_shared_df_node(non_dominated, inner);
+					if (shared_df)
+					{
+						non_dominated = shared_df;
+						break;
+					}
+				}
+			}
+		}
+
 		if (!impossible_merge_target)
 		{
 			// We might have a different scenario where there are multiple breaks, but they break out to different
@@ -6071,6 +6115,61 @@ bool CFGStructurizer::rewrite_transposed_loops()
 				collect_and_dispatch_control_flow(node, dominated_merge, constructs, false, false);
 				did_rewrite = true;
 			}
+		}
+		else if (result.non_dominated_exit.size() >= 2)
+		{
+			auto frontiers = result.non_dominated_exit;
+			frontiers.push_back(dominated_merge);
+
+			bool invalid_frontier = false;
+			for (auto &front : frontiers)
+			{
+				if (node->dominates(front))
+				{
+					if (front->dominance_frontier.size() != 1)
+					{
+						invalid_frontier = true;
+						break;
+					}
+
+					front = front->dominance_frontier.front();
+				}
+			}
+
+			if (invalid_frontier)
+				continue;
+
+			std::sort(frontiers.begin(), frontiers.end(), [](const CFGNode *a, const CFGNode *b)
+			{
+				return a->forward_post_visit_order > b->forward_post_visit_order;
+			});
+
+			// Check for an anchor like pattern where one dominance frontier branches off into two or more different directions.
+			bool valid_anchor = true;
+			for (size_t i = 1, n = frontiers.size(); i < n && valid_anchor; i++)
+			{
+				valid_anchor =
+				    std::find(frontiers[0]->dominance_frontier.begin(), frontiers[0]->dominance_frontier.end(),
+				              frontiers[i]) != frontiers[0]->dominance_frontier.end();
+			}
+
+			// Verify that there are no crossing branches between non-anchor nodes, as that would break the rewrite.
+			const auto is_crossing_branch = [this](const CFGNode *a, const CFGNode *b)
+			{
+				return query_reachability(*a, *b) || query_reachability(*b, *a);
+			};
+
+			for (size_t i = 2, n = frontiers.size(); i < n && valid_anchor; i++)
+				for (size_t j = 1; j < i && valid_anchor; j++)
+					valid_anchor = !is_crossing_branch(frontiers[i], frontiers[j]);
+
+			if (!valid_anchor)
+				continue;
+
+			auto *anchor = frontiers.front();
+			frontiers.erase(frontiers.begin());
+			collect_and_dispatch_control_flow_from_anchor(anchor, frontiers);
+			did_rewrite = true;
 		}
 	}
 
@@ -7779,11 +7878,30 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 				if (candidate == merge || invalid_target)
 					return false;
 
+				// Try to cut off the traversal early.
+				// If a continue block is post-dominating us, there is no point in scanning thorugh a long chain.
+				bool can_reach_merge = query_reachability(*candidate, *merge);
+				if (!can_reach_merge)
+				{
+					auto *header = get_innermost_loop_header_for(candidate);
+					if (header && header->pred_back_edge && header->pred_back_edge->post_dominates(candidate))
+						for (auto *fake_succ : header->pred_back_edge->fake_succ)
+							if (query_reachability(*fake_succ, *merge))
+								return false;
+				}
+
 				// If the succ can reach outside the loop construct, we have an error condition.
 				for (auto *succ : candidate->succ)
 				{
 					bool can_reach_merge = query_reachability(*succ, *merge);
 					auto *candidate_continue = scan_plain_continue_block(succ);
+
+					if (!candidate_continue->succ_back_edge)
+					{
+						auto *header = get_innermost_loop_header_for(succ);
+						if (header && header->pred_back_edge && header->pred_back_edge->post_dominates(succ))
+							candidate_continue = header->pred_back_edge;
+					}
 
 					// Need to be a bit more careful about continue blocks in infinite loops.
 					// Include loop exits as well in the reachability analysis.
