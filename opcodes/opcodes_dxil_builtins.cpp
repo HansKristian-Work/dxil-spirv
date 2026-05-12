@@ -101,8 +101,9 @@ struct DXILDispatcher
 		OP(WriteSamplerFeedbackBias) = emit_write_sampler_feedback_instruction<DXIL::Op::WriteSamplerFeedbackBias>;
 
 		// dxil_buffer.hpp
-		OP(BufferLoad) = emit_buffer_load_instruction;
-		OP(RawBufferLoad) = emit_raw_buffer_load_instruction;
+		OP(BufferLoad) = emit_buffer_load_instruction<false>;
+		OP(RawBufferLoad) = emit_raw_buffer_load_instruction<false>;
+		OP(RawBufferVectorLoad) = emit_raw_buffer_load_instruction<true>;
 		OP(BufferStore) = emit_buffer_store_instruction;
 		OP(RawBufferStore) = emit_raw_buffer_store_instruction;
 		OP(BufferUpdateCounter) = emit_buffer_update_counter_instruction;
@@ -797,25 +798,36 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 		{
 			auto meta = get_resource_meta_from_buffer_op(impl, instruction);
 
+			auto *type = get_composite_element_type(instruction->getType());
+
 			uint32_t access_mask = 0;
 			auto composite_itr = impl.llvm_composite_meta.find(instruction);
 			if (composite_itr != impl.llvm_composite_meta.end())
 				access_mask = composite_itr->second.access_mask & 0xfu;
 
-			// Smear read masks.
-			access_mask |= access_mask >> 1u;
-			access_mask |= access_mask >> 2u;
+			if (opcode == DXIL::Op::RawBufferVectorLoad)
+			{
+				unsigned vecsize = type->getVectorNumElements();
+				assert(vecsize <= sizeof(access_mask) * 8);
+				access_mask = (1u << vecsize) - 1u;
+				type = type->getVectorElementType();
+			}
+			else
+			{
+				// Smear read masks.
+				access_mask |= access_mask >> 1u;
+				access_mask |= access_mask >> 2u;
+			}
 
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{
-				update_raw_access_tracking_for_byte_address(impl, *tracking,
-				                                            get_composite_element_type(instruction->getType()),
+				update_raw_access_tracking_for_byte_address(impl, *tracking, type,
 				                                            instruction->getOperand(2), access_mask);
 			}
 			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 			{
 				update_raw_access_tracking_for_structured(impl, *tracking,
-				                                          get_composite_element_type(instruction->getType()),
+				                                          type,
 				                                          instruction->getOperand(2),
 				                                          meta.stride,
 				                                          instruction->getOperand(3),
@@ -937,6 +949,7 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 	{
 	case DXIL::Op::BufferLoad:
 	case DXIL::Op::RawBufferLoad:
+	case DXIL::Op::RawBufferVectorLoad:
 		analyze_dxil_buffer_load(impl, instruction, op);
 		break;
 

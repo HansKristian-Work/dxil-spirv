@@ -2878,7 +2878,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			return false;
 		}
 
-		emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
+		emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load, false);
 
 		if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 		{
