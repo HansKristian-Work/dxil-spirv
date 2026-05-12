@@ -89,6 +89,33 @@ bool emit_wave_builtin_instruction(spv::BuiltIn builtin, Converter::Impl &impl, 
 	add_vkmm_volatile(impl, op, builtin);
 
 	impl.add(op);
+
+	if (builtin == spv::BuiltInSubgroupSize && impl.options.quirks.clamp_wave_size_to_thread_group32 &&
+	    (impl.execution_model == spv::ExecutionModelGLCompute || impl.execution_model == spv::ExecutionModelMeshEXT ||
+	     impl.execution_model == spv::ExecutionModelTaskEXT))
+	{
+		auto &builder = impl.builder();
+
+		uint32_t num_threads = 1;
+		for (auto thr : impl.execution_mode_meta.workgroup_threads)
+			num_threads *= thr;
+
+		// Only apply this workaround to workgroups that look a lot like wave32.
+		// Larger workgroups likely already deal with it.
+		if (num_threads == 32)
+		{
+			if (!impl.glsl_std450_ext)
+				impl.glsl_std450_ext = builder.import("GLSL.std.450");
+			auto *lower = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+			lower->add_id(impl.glsl_std450_ext);
+			lower->add_literal(GLSLstd450UMin);
+			lower->add_id(op->id);
+			lower->add_id(builder.makeUintConstant(num_threads));
+			impl.add(lower);
+			impl.rewrite_value(instruction, lower->id);
+		}
+	}
+
 	return true;
 }
 

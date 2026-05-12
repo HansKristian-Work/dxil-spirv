@@ -762,7 +762,8 @@ enum class ShaderQuirk : uint32_t
 	FixupRsqrtInfNan,
 	IgnorePrimitiveShadingRate,
 	RobustComputeQuadBroadcast,
-	PreciseFMA
+	PreciseFMA,
+	ClampWaveSizeToThreadGroup32
 };
 
 struct OptionShaderQuirk : OptionBase
