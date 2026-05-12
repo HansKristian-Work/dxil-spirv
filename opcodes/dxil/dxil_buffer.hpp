@@ -48,8 +48,20 @@ inline bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::
     return emit_raw_buffer_load_instruction(impl, instruction, is_vector);
 }
 
-bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector);
+template <bool is_vector>
+inline bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+    return emit_buffer_store_instruction(impl, instruction, is_vector);
+}
+
+bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector);
+template <bool is_vector>
+inline bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+    return emit_raw_buffer_store_instruction(impl, instruction, is_vector);
+}
+
 bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_buffer_update_counter_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);

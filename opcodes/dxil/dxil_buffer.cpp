@@ -1303,33 +1303,52 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                    const Converter::Impl::PhysicalPointerMeta &ptr_meta,
                                                    const ReferenceVkMemoryModel &vkmm,
-                                                   uint32_t alignment = 0)
+                                                   uint32_t alignment = 0, bool is_vector = false)
 {
 	auto &builder = impl.builder();
 
-	uint32_t mask = 0;
-	if (!get_constant_operand(instruction, 8, &mask))
-		return false;
-
-	if (alignment == 0 && !get_constant_operand(instruction, 9, &alignment))
-		return false;
-
+	const auto *data_type = instruction->getOperand(4)->getType();
+	const auto *element_type = data_type;
 	unsigned vecsize = 0;
-	if (mask == 1)
-		vecsize = 1;
-	else if (mask == 3)
-		vecsize = 2;
-	else if (mask == 7)
-		vecsize = 3;
-	else if (mask == 15)
-		vecsize = 4;
+
+	if (is_vector)
+	{
+		element_type = data_type->getVectorElementType();
+		vecsize = data_type->getVectorNumElements();
+
+		//TODO
+		if (vecsize > 4)
+		{
+			LOGE("Long vector is not supported.\n");
+			return false;
+		}
+
+		if (alignment == 0 && !get_constant_operand(instruction, 5, &alignment))
+			return false;
+	}
 	else
 	{
-		LOGE("Unexpected mask for RawBufferStore = %u.\n", mask);
-		return false;
-	}
+		uint32_t mask = 0;
+		if (!get_constant_operand(instruction, 8, &mask))
+			return false;
 
-	auto *element_type = instruction->getOperand(4)->getType();
+		if (alignment == 0 && !get_constant_operand(instruction, 9, &alignment))
+			return false;
+
+		if (mask == 1)
+			vecsize = 1;
+		else if (mask == 3)
+			vecsize = 2;
+		else if (mask == 7)
+			vecsize = 3;
+		else if (mask == 15)
+			vecsize = 4;
+		else
+		{
+			LOGE("Unexpected mask for RawBufferStore = %u.\n", mask);
+			return false;
+		}
+	}
 
 	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
 	// If we cannot do it trivially, fallback to raw pointer arithmetic.
@@ -1363,7 +1382,7 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	else
 		u64_ptr_id = build_physical_pointer_address_for_raw_load_store(impl, instruction);
 
-	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store, false);
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store, is_vector);
 
 	auto *ptr_bitcast_op = impl.allocate(spv::OpBitcast, ptr_type_id);
 	ptr_bitcast_op->add_id(u64_ptr_id);
@@ -1377,17 +1396,26 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 		chain_op->add_id(array_id);
 	impl.add(chain_op);
 
-	spv::Id elems[4] = {};
-	for (unsigned i = 0; i < 4; i++)
+	spv::Id vec_id;
+	if (is_vector)
 	{
-		impl.register_externally_visible_write(instruction->getOperand(4 + i));
-		elems[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+		impl.register_externally_visible_write(instruction->getOperand(4));
+		vec_id = impl.get_id_for_value(instruction->getOperand(4));
+	}
+	else
+	{
+		spv::Id elems[4] = {};
+		for (unsigned i = 0; i < 4; i++)
+		{
+			impl.register_externally_visible_write(instruction->getOperand(4 + i));
+			elems[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+		}
+		vec_id = impl.build_vector(physical_type_id, elems, vecsize);
 	}
 
 	auto *store_op = impl.allocate(spv::OpStore);
 	store_op->add_id(chain_op->id);
 
-	spv::Id vec_id = impl.build_vector(physical_type_id, elems, vecsize);
 	if (value_cast_op != spv::OpNop)
 	{
 		auto *op = impl.allocate(value_cast_op, vec_type_id);
@@ -1450,12 +1478,90 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, 0, 0, is_vector);
 }
 
+static unsigned emit_buffer_store_values_bitcast_vector(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                        spv::Id *store_values, RawWidth raw_width,
+                                                        bool ignore_bitcast)
+{
+	// Vector raw-buffer stores always target untyped buffers.
+	const auto *data_type = instruction->getOperand(4)->getType();
+	const auto *element_type = data_type->getVectorElementType();
+	unsigned num_elements = data_type->getVectorNumElements();
+
+	auto &builder = impl.builder();
+
+	impl.register_externally_visible_write(instruction->getOperand(4));
+	spv::Id vec_id = impl.get_id_for_value(instruction->getOperand(4));
+	spv::Id cur_elem_type_id = impl.get_type_id(element_type);
+
+	if (!impl.execution_mode_meta.native_16bit_operations &&
+	    impl.options.min_precision_prefer_native_16bit &&
+	    type_is_16bit(element_type))
+	{
+		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
+		{
+			spv::Id f32_elem = builder.makeFloatType(32);
+			Operation *op = impl.allocate(
+			    spv::OpFConvert, builder.makeVectorType(f32_elem, num_elements));
+			op->add_id(vec_id);
+			vec_id = op->id;
+			cur_elem_type_id = f32_elem;
+			impl.add(op);
+
+			if (!ignore_bitcast)
+			{
+				spv::Id u32_elem = builder.makeUintType(32);
+				Operation *bitcast_op = impl.allocate(
+				    spv::OpBitcast, builder.makeVectorType(u32_elem, num_elements));
+				bitcast_op->add_id(vec_id);
+				impl.add(bitcast_op);
+				vec_id = bitcast_op->id;
+				cur_elem_type_id = u32_elem;
+			}
+		}
+		else
+		{
+			spv::Id u32_elem = builder.makeUintType(32);
+			Operation *op = impl.allocate(
+			    spv::OpUConvert, builder.makeVectorType(u32_elem, num_elements));
+			op->add_id(vec_id);
+			vec_id = op->id;
+			cur_elem_type_id = u32_elem;
+			impl.add(op);
+		}
+	}
+	else if (!ignore_bitcast &&
+	         element_type->getTypeID() != llvm::Type::TypeID::DoubleTyID &&
+	         element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+	{
+		spv::Id u_elem = builder.makeUintType(raw_width_to_bits(raw_width));
+		Operation *op = impl.allocate(
+		    spv::OpBitcast, builder.makeVectorType(u_elem, num_elements));
+		op->add_id(vec_id);
+		vec_id = op->id;
+		cur_elem_type_id = u_elem;
+		impl.add(op);
+	}
+
+	for (unsigned i = 0; i < num_elements; i++)
+	{
+		Operation *extract = impl.allocate(spv::OpCompositeExtract, cur_elem_type_id);
+		extract->add_id(vec_id);
+		extract->add_literal(i);
+		impl.add(extract);
+		store_values[i] = extract->id;
+	}
+
+	return num_elements;
+}
+
 static unsigned emit_buffer_store_values_bitcast(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                  spv::Id *store_values, unsigned write_mask,
                                                  RawWidth raw_width,
                                                  bool is_typed, bool ignore_bitcast)
 {
-	auto *element_type = instruction->getOperand(4)->getType();
+	auto *data_type = instruction->getOperand(4)->getType();
+	auto *element_type = data_type;
+
 	auto &builder = impl.builder();
 	unsigned raw_vecsize = 0;
 
@@ -1516,7 +1622,7 @@ static unsigned emit_buffer_store_values_bitcast(Converter::Impl &impl, const ll
 	return raw_vecsize;
 }
 
-bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -1533,17 +1639,29 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		// We don't more about alignment in SM 5.1 BufferStore.
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
-		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, 4);
+		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, 4, is_vector);
 	}
 
-	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store, false);
+	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store, is_vector);
 
-	auto *element_type = instruction->getOperand(4)->getType();
+	auto *data_type = instruction->getOperand(4)->getType();
+	auto *element_type = data_type;
+
+	if (is_vector)
+		element_type = data_type->getVectorElementType();
 
 	// SSBO operations with min16* types are actually 32-bit.
 	// We only get native 16-bit load-store with native_16bit_operations.
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
-	unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+	unsigned mask = 0;
+	if (is_vector)
+	{
+		unsigned vecsize = data_type->getVectorNumElements();
+		assert(vecsize <= sizeof(mask) * 8);
+		mask = (1u << vecsize) - 1u;
+	}
+	else
+		mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
 
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta);
@@ -1551,7 +1669,9 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	if (raw_access_chain)
 	{
-		auto raw_vecsize = emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, false, true);
+		auto raw_vecsize = is_vector
+		                       ? emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, true)
+		                       : emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, false, true);
 		auto raw = emit_raw_access_chain(impl, meta, instruction, element_type, raw_vecsize);
 		spv::Id vector_value_id = impl.build_vector(raw.component_type_id, store_values, raw_vecsize);
 
@@ -1567,7 +1687,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
-	                                  instruction->getOperand(4)->getType(),
+	                                  element_type,
 	                                  meta.storage != spv::StorageClassUniformConstant ? mask : 1u);
 
 	RawType raw_type = element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
@@ -1578,11 +1698,14 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	// We could hoist the call to emit_buffer_store_values_bitcast,
 	// but causes too much churn on shader deltas.
-	emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, is_typed, false);
+	if (is_vector)
+		emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, false);
+	else
+		emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, is_typed, false);
 
 	if (is_typed)
 	{
-		spv::Id element_type_id = impl.get_type_id(instruction->getOperand(4)->getType());
+		spv::Id element_type_id = impl.get_type_id(data_type);
 
 		// Deal with signed resource store.
 		Operation *op = impl.allocate(spv::OpImageWrite);
@@ -1682,7 +1805,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
-bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector)
 {
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 
@@ -1696,6 +1819,16 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
 		auto *store_type = instruction->getOperand(4)->getType();
+		if (is_vector)
+		{
+			//TODO
+			if (store_type->getVectorNumElements() > 4)
+			{
+				LOGE("Long vector is not supported.\n");
+				return false;
+			}
+			store_type = store_type->getVectorElementType();
+		}
 		if (store_type->getTypeID() != llvm::Type::TypeID::FloatTyID &&
 		    !(store_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && store_type->getIntegerBitWidth() == 32) &&
 		    meta.storage != spv::StorageClassStorageBuffer)
@@ -1704,10 +1837,10 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 			return false;
 		}
 
-		return emit_buffer_store_instruction(impl, instruction);
+		return emit_buffer_store_instruction(impl, instruction, is_vector);
 	}
 	else
-		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm);
+		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, 0, is_vector);
 }
 
 spv::Id emit_atomic_access_chain(Converter::Impl &impl,
