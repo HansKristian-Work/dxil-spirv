@@ -907,15 +907,10 @@ static RawAccessChain emit_raw_access_chain(Converter::Impl &impl, const Convert
 
 static bool emit_buffer_load_raw_chain_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                    const Converter::Impl::ResourceMeta &meta,
-                                                   Converter::Impl::CompositeMeta &access_meta)
+                                                   Converter::Impl::CompositeMeta &access_meta,
+                                                   const llvm::Type *target_type,
+                                                   unsigned num_elements)
 {
-	auto *result_type = instruction->getType();
-	auto *target_type = get_composite_element_type(result_type);
-
-	unsigned num_elements = 1;
-	for (unsigned i = 0; i < 4; i++)
-		if ((access_meta.access_mask & (1u << i)) != 0)
-			num_elements = i + 1;
 	auto raw = emit_raw_access_chain(impl, meta, instruction, target_type, num_elements);
 
 	auto *load_op = impl.allocate(spv::OpLoad, instruction, raw.vector_type_id);
@@ -1025,7 +1020,19 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta) && !sparse;
 	if (raw_access_chain)
-		return emit_buffer_load_raw_chain_instruction(impl, instruction, meta, access_meta);
+	{
+		unsigned num_elements = 1;
+		if (is_vector)
+			num_elements = target_type->getVectorNumElements();
+		else
+		{
+			for (unsigned i = 0; i < 4; i++)
+				if ((access_mask & (1u << i)) != 0)
+					num_elements = i + 1;
+		}
+
+		return emit_buffer_load_raw_chain_instruction(impl, instruction, meta, access_meta, element_type, num_elements);
+	}
 
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
