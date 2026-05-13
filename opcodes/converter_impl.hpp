@@ -803,6 +803,7 @@ struct Converter::Impl
 			bool robust_compute_quad_broadcast = false;
 			bool precise_fma = false;
 			bool clamp_wave_size_to_thread_group32 = false;
+			bool non_semantic_signal_concurrent_workgroup = false;
 		} quirks;
 
 		struct
@@ -1049,6 +1050,7 @@ struct Converter::Impl
 	Vector<RootParameterMapping> root_parameter_mappings;
 	Vector<NonSemanticDebugInfo> non_semantic_debug_info;
 	void emit_non_semantic_debug_info(const NonSemanticDebugInfo &info);
+	void emit_non_semantic_signal_quirk(ShaderQuirk quirk);
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);

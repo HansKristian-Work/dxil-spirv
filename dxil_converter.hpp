@@ -763,7 +763,8 @@ enum class ShaderQuirk : uint32_t
 	IgnorePrimitiveShadingRate,
 	RobustComputeQuadBroadcast,
 	PreciseFMA,
-	ClampWaveSizeToThreadGroup32
+	ClampWaveSizeToThreadGroup32,
+    NonSemanticSignalConcurrentWorkgroup
 };
 
 struct OptionShaderQuirk : OptionBase

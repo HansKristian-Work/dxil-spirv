@@ -1138,6 +1138,17 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 	return true;
 }
 
+void Converter::Impl::emit_non_semantic_signal_quirk(ShaderQuirk quirk)
+{
+	auto &b = spirv_module.get_builder();
+	b.addExtension("SPV_KHR_non_semantic_info");
+	spv::Id ext = b.import("NonSemantic.dxil-spirv.quirks");
+	auto inst = std::make_unique<spv::Instruction>(b.getUniqueId(), b.makeVoidType(), spv::OpExtInst);
+	inst->addIdOperand(ext);
+	inst->addImmediateOperand(int(quirk));
+	b.addExternal(std::move(inst));
+}
+
 void Converter::Impl::emit_non_semantic_debug_info(const NonSemanticDebugInfo &info)
 {
 	auto &b = spirv_module.get_builder();
@@ -8901,6 +8912,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		for (auto &info : non_semantic_debug_info)
 			emit_non_semantic_debug_info(info);
 
+	if (options.quirks.non_semantic_signal_concurrent_workgroup)
+		emit_non_semantic_signal_quirk(ShaderQuirk::NonSemanticSignalConcurrentWorkgroup);
+
 	// Some execution modes depend on other execution modes, so handle that here.
 	if (!emit_execution_modes_late())
 		return result;
@@ -9528,6 +9542,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::ClampWaveSizeToThreadGroup32:
 			options.quirks.clamp_wave_size_to_thread_group32 = true;
+			break;
+
+		case ShaderQuirk::NonSemanticSignalConcurrentWorkgroup:
+			options.quirks.non_semantic_signal_concurrent_workgroup = true;
 			break;
 
 		default:

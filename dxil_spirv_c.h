@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 67
+#define DXIL_SPV_API_VERSION_MINOR 68
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -242,6 +242,10 @@ typedef enum dxil_spv_shader_quirk
 	DXIL_SPV_SHADER_QUIRK_PRECISE_FMA = 13,
 	/* If the threadgroup size is 32, clamps the wave size down to 32. */
 	DXIL_SPV_SHADER_QUIRK_CLAMP_WAVE_SIZE_TO_THREAD_GROUP_32 = 14,
+	/* Adds a non-semantic instruction to flag to potential shader compilers that
+	 * they should force concurrent workgroups or similar fair scheduling.
+	 * Only used for surgical game workarounds. */
+	DXIL_SPV_SHADER_QUIRK_NON_SEMANTIC_SIGNAL_CONCURRENT_WORKGROUP = 15,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 
