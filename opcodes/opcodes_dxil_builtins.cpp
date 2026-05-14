@@ -170,6 +170,8 @@ struct DXILDispatcher
 		OP(Dot3) = emit_dot_dispatch<3>;
 		OP(Dot4) = emit_dot_dispatch<4>;
 
+		OP(FDot) = emit_fdot_instruction;
+
 		OP(Fma) = std450_trinary_dispatch<GLSLstd450Fma>;
 		OP(FMad) = emit_fmad_instruction;
 		OP(IMad) = emit_imad_instruction;

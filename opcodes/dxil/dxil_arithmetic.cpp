@@ -713,6 +713,24 @@ bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm
 	return true;
 }
 
+bool emit_fdot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	Operation *op = impl.allocate(spv::OpDot, instruction);
+
+	spv::Id vec0 = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id vec1 = impl.get_id_for_value(instruction->getOperand(2));
+
+	op->add_ids({ vec0, vec1 });
+	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+
+	bool precise = instruction->hasMetadata("dx.precise") || impl.options.force_precise;
+	if (precise)
+		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
+
+	return true;
+}
+
 static spv::Id clamp_bitfield_width(Converter::Impl &impl, spv::Id offset, spv::Id width)
 {
 	auto &builder = impl.builder();
