@@ -43,6 +43,7 @@ bool emit_dxil_wide_arith_instruction(spv::Op op, Converter::Impl &impl, const l
 bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_fdot_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_bfe_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics);
 bool emit_bfi_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool spirv_semantics);
