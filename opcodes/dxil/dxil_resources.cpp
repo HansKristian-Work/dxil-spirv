@@ -748,16 +748,24 @@ static spv::Id build_descriptor_qa_check(Converter::Impl &impl, spv::Id offset_i
 	return call_op->id;
 }
 
-static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id offset_id)
+static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id offset_id, DescriptorQATypeFlags qa_type)
 {
 	auto &builder = impl.builder();
 
 	spv::Id size_id;
 
-	if (impl.instrumentation.descriptor_heap_size_var_id)
+	bool sampler_heap = qa_type == DESCRIPTOR_QA_TYPE_SAMPLER_BIT;
+
+	if (sampler_heap)
+	{
+		// D3D12 basic sampler heap limit.
+		constexpr uint32_t Tier2SamplerLimitMinus1 = 2048 - 1;
+		size_id = builder.makeUintConstant(Tier2SamplerLimitMinus1);
+	}
+	else if (impl.instrumentation.descriptor_heap_size_var_id)
 	{
 		auto *chain = impl.allocate(spv::OpAccessChain,
-		                            builder.makePointer(spv::StorageClassUniform, builder.makeUintType(32)));
+				builder.makePointer(spv::StorageClassUniform, builder.makeUintType(32)));
 		chain->add_id(impl.instrumentation.descriptor_heap_size_var_id);
 		chain->add_id(builder.makeUintConstant(0));
 		impl.add(chain);
@@ -778,35 +786,38 @@ static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id o
 		size_id = op->id;
 	}
 
-    if (impl.options.instruction_instrumentation.enabled &&
-            impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
-    {
-        // If we can just assert instead, go for that.
-        auto *less_than = impl.allocate(spv::OpULessThan, builder.makeBoolType());
-        less_than->add_id(offset_id);
-        less_than->add_id(size_id);
-        impl.add(less_than);
+	if (impl.options.instruction_instrumentation.enabled &&
+			impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	{
+		// If we can just assert instead, go for that.
+		// We don't have a +1 padding descriptor for sampler heap, so just use the last one.
+		// We should never fault on a sampler, it might just render a bit goofy at worst.
+		auto *less_than = impl.allocate(sampler_heap ? spv::OpULessThanEqual : spv::OpULessThan,
+				builder.makeBoolType());
+		less_than->add_id(offset_id);
+		less_than->add_id(size_id);
+		impl.add(less_than);
 
-        auto *assert_in_bounds = impl.allocate(spv::OpAssumeTrueKHR);
-        assert_in_bounds->add_id(less_than->id);
-        impl.add(assert_in_bounds);
-    }
+		auto *assert_in_bounds = impl.allocate(spv::OpAssumeTrueKHR);
+		assert_in_bounds->add_id(less_than->id);
+		impl.add(assert_in_bounds);
+	}
 
-    if (impl.options.descriptor_heap_robustness)
-    {
-        if (!impl.glsl_std450_ext)
-            impl.glsl_std450_ext = builder.import("GLSL.std.450");
+	if (impl.options.descriptor_heap_robustness)
+	{
+		if (!impl.glsl_std450_ext)
+			impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
-        auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
-        clamp_op->add_id(impl.glsl_std450_ext);
-        clamp_op->add_literal(GLSLstd450UMin);
-        clamp_op->add_id(offset_id);
-        clamp_op->add_id(size_id);
-        impl.add(clamp_op);
-        return clamp_op->id;
-    }
+		auto *clamp_op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+		clamp_op->add_id(impl.glsl_std450_ext);
+		clamp_op->add_literal(GLSLstd450UMin);
+		clamp_op->add_id(offset_id);
+		clamp_op->add_id(size_id);
+		impl.add(clamp_op);
+		return clamp_op->id;
+	}
 
-    return offset_id;
+	return offset_id;
 }
 
 static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
@@ -814,6 +825,8 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
                                           DescriptorQATypeFlags type,
                                           const llvm::Value *dynamic_offset)
 {
+	bool has_non_trivial_indexing = dynamic_offset || reference.local_root_signature_entry >= 0;
+
 	spv::Id offset_id;
 	if (reference.local_root_signature_entry >= 0)
 		offset_id = build_bindless_heap_offset_shader_record(impl, reference, dynamic_offset);
@@ -838,11 +851,11 @@ static spv::Id build_bindless_heap_offset(Converter::Impl &impl,
 	{
 		offset_id = build_descriptor_qa_check(impl, offset_id, type);
 	}
-	else if (need_heap_robustness_check && type != DESCRIPTOR_QA_TYPE_SAMPLER_BIT && dynamic_offset &&
+	else if (need_heap_robustness_check && has_non_trivial_indexing &&
 	         (impl.instrumentation.descriptor_heap_introspection_var_id ||
 	          impl.instrumentation.descriptor_heap_size_var_id))
 	{
-		offset_id = build_descriptor_heap_robustness(impl, offset_id);
+		offset_id = build_descriptor_heap_robustness(impl, offset_id, type);
 	}
 
 	return offset_id;
