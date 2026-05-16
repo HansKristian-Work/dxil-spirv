@@ -803,6 +803,7 @@ struct Converter::Impl
 			bool robust_compute_quad_broadcast = false;
 			bool precise_fma = false;
 			bool clamp_wave_size_to_thread_group32 = false;
+			bool force_nonuniform = false;
 		} quirks;
 
 		struct

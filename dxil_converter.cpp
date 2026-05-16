@@ -9530,6 +9530,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			options.quirks.clamp_wave_size_to_thread_group32 = true;
 			break;
 
+		case ShaderQuirk::ForceNonUniform:
+			options.quirks.force_nonuniform = true;
+			break;
+
 		default:
 			break;
 		}

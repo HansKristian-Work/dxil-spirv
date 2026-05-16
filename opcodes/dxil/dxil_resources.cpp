@@ -1156,15 +1156,24 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 			op->flags |= Operation::SinkableBit;
 		}
 
-		if (!is_non_uniform && instruction_offset_value &&
-		    ((reference.resource_kind == DXIL::ResourceKind::CBuffer || impl.options.quirks.aggressive_nonuniform) &&
-		     !impl.backend.skip_non_uniform_promotion &&
-		     value_is_likely_non_uniform(impl, instruction_offset_value)))
+		if (!is_non_uniform && instruction_offset_value && !impl.backend.skip_non_uniform_promotion)
 		{
-			// Native drivers seems to apply hacks and workarounds to workaround bugged games.
-			// Only apply this for bindless CBV for now, unless we opt in to more aggressive checks.
-			// I have not been able to prove this effect for other resource types so far.
-			is_non_uniform = true;
+			bool analyze_plausible_non_uniform =
+					reference.resource_kind == DXIL::ResourceKind::CBuffer || impl.options.quirks.aggressive_nonuniform;
+
+			if (impl.options.quirks.force_nonuniform &&
+				!value_is_statically_wave_uniform(impl, instruction_offset_value))
+			{
+				is_non_uniform = true;
+			}
+			else if (analyze_plausible_non_uniform &&
+			         value_is_likely_non_uniform(impl, instruction_offset_value))
+			{
+				// Native drivers seems to apply hacks and workarounds to workaround bugged games.
+				// Only apply this for bindless CBV for now, unless we opt in to more aggressive checks.
+				// I have not been able to prove this effect for other resource types so far.
+				is_non_uniform = true;
+			}
 		}
 
 		if (impl.options.instruction_instrumentation.enabled &&

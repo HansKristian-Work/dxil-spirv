@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 67
+#define DXIL_SPV_API_VERSION_MINOR 68
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -242,6 +242,9 @@ typedef enum dxil_spv_shader_quirk
 	DXIL_SPV_SHADER_QUIRK_PRECISE_FMA = 13,
 	/* If the threadgroup size is 32, clamps the wave size down to 32. */
 	DXIL_SPV_SHADER_QUIRK_CLAMP_WAVE_SIZE_TO_THREAD_GROUP_32 = 14,
+	/* 15 is already reserved. */
+	/* Heavy hammer, aggressive_nonuniform tries to be a bit smarter. */
+	DXIL_SPV_SHADER_QUIRK_FORCE_NONUNIFORM = 16,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 
