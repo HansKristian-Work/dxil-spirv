@@ -90,7 +90,13 @@ dxil_spirv_src = [
   'debug/logging.cpp',
 ]
 
-dxbc_spirv = subproject('dxbc-spirv')
+dxbc_spirv_options = {
+  'enable_sm3'    : false,
+  'enable_sm5'    : true,
+  'enable_spirv'  : false,
+}
+
+dxbc_spirv = subproject('dxbc-spirv', default_options : dxbc_spirv_options)
 
 dxbc_spirv_include_dirs = include_directories([
   'subprojects/dxbc-spirv'

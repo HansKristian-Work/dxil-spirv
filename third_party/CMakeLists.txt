@@ -137,6 +137,8 @@ target_include_directories(dxbc-spirv
 target_include_directories(dxbc-spirv-test PUBLIC ${DXBC_SPV_SOURCE_DIR}/tests)
 target_compile_features(dxbc-spirv PUBLIC cxx_std_17)
 target_compile_features(dxbc-spirv-test PUBLIC cxx_std_17)
+target_compile_definitions(dxbc-spirv PUBLIC "DXBC_SPV_ENABLE_SM5")
+target_compile_definitions(dxbc-spirv-test PUBLIC "DXBC_SPV_ENABLE_SM5")
 set_target_properties(dxbc-spirv PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
     target_compile_options(dxbc-spirv PRIVATE -fvisibility=hidden)

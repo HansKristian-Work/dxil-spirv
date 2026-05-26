@@ -613,7 +613,6 @@ private:
 	bool build_gep_store(const ir::Op &op);
 	bool build_composite_construct(const ir::Op &op);
 	bool build_composite_extract(const ir::Op &op);
-	bool build_composite_insert(const ir::Op &op);
 	bool build_descriptor_load(const ir::Op &op);
 	bool build_buffer_load(const ir::Op &op);
 	bool build_buffer_load_cbv(const ir::Op &op);
@@ -1309,14 +1308,6 @@ bool ParseContext::build_composite_extract(const ir::Op &op)
 	return true;
 }
 
-bool ParseContext::build_composite_insert(const ir::Op &op)
-{
-	auto *inst = context.construct<InsertElementInst>(
-	    get_value(op.getOperand(0)), get_value(op.getOperand(2)), get_value(op.getOperand(1)));
-	push_instruction(inst, op.getDef());
-	return true;
-}
-
 bool ParseContext::build_descriptor_load(const ir::Op &op)
 {
 	auto descriptor = ir::SsaDef(op.getOperand(0));
@@ -1540,7 +1531,6 @@ bool ParseContext::push_instruction(const ir::Op &op)
 	OPMAP(OutputStore, output_store);
 	OPMAP(CompositeConstruct, composite_construct);
 	OPMAP(CompositeExtract, composite_extract);
-	OPMAP(CompositeInsert, composite_insert);
 	OPMAP(DescriptorLoad, descriptor_load);
 	OPMAP(BufferLoad, buffer_load);
 	OPMAP(BufferStore, buffer_store);
@@ -3632,6 +3622,7 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eDclSpecConstant:
 		case ir::OpCode::eDclPushData:
 		case ir::OpCode::eDclTmp:
+		case ir::OpCode::eDclInputTarget:
 		case ir::OpCode::eScopedIf:
 		case ir::OpCode::eScopedElse:
 		case ir::OpCode::eScopedEndIf:
@@ -3651,6 +3642,7 @@ bool ParseContext::emit_function_bodies()
 		case ir::OpCode::eMemoryLoad:
 		case ir::OpCode::eMemoryStore:
 		case ir::OpCode::eMemoryAtomic:
+		case ir::OpCode::eInputTargetLoad:
 		case ir::OpCode::ePointer:
 		case ir::OpCode::eFMulLegacy:
 		case ir::OpCode::eFMadLegacy:
