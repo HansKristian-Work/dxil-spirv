@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 44
+; Bound: 40
 ; Schema: 0
                OpCapability Shader
                OpCapability StorageImageWriteWithoutFormat
@@ -40,9 +40,9 @@ SPIR-V:
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %42
+                 OpBranch %38
 
-         %42 = OpLabel
+         %38 = OpLabel
          %12 =   OpLoad %6 %8
          %14 =   OpAccessChain %_ptr_Input_float %_ %uint_1
          %17 =   OpLoad %float %14
@@ -57,16 +57,10 @@ SPIR-V:
          %29 =   OpCompositeExtract %float %25 1
          %30 =   OpCompositeExtract %float %25 2
          %31 =   OpCompositeExtract %float %25 3
-         %32 =   OpCompositeConstruct %v4float %28 %29 %30 %31
          %33 =   OpFMul %float %28 %float_2
-         %35 =   OpCompositeInsert %v4float %33 %32 0
-         %36 =   OpCompositeExtract %float %35 0
-         %37 =   OpCompositeExtract %float %35 1
-         %38 =   OpCompositeExtract %float %35 2
-         %39 =   OpCompositeExtract %float %35 3
-         %40 =   OpCompositeConstruct %v2uint %22 %18
-         %41 =   OpCompositeConstruct %v4float %36 %37 %38 %39
-                 OpImageWrite %12 %40 %41 MakeTexelAvailable|NonPrivateTexel %uint_5
+         %36 =   OpCompositeConstruct %v2uint %22 %18
+         %37 =   OpCompositeConstruct %v4float %33 %29 %30 %31
+                 OpImageWrite %12 %36 %37 MakeTexelAvailable|NonPrivateTexel %uint_5
                  OpEndInvocationInterlockEXT
                  OpReturn
                OpFunctionEnd

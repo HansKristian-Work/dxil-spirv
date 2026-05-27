@@ -23,10 +23,7 @@ void main()
     uint _22 = uint(int(gl_FragCoord.x));
     SPIRV_Cross_beginInvocationInterlock();
     vec4 _25 = imageLoad(_8, ivec2(uvec2(_22, _18)));
-    float _28 = _25.x;
-    vec4 _32 = vec4(_28, _25.yzw);
-    _32.x = _28 * 2.0;
-    imageStore(_8, ivec2(uvec2(_22, _18)), vec4(_32));
+    imageStore(_8, ivec2(uvec2(_22, _18)), vec4(_25.x * 2.0, _25.yzw));
     SPIRV_Cross_endInvocationInterlock();
 }
 
