@@ -464,7 +464,9 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 		// We are not required to implement the wrapping per component as our test coverage demonstrates,
 		// so we can just do the wrap once here.
 		bool requires_explicit_wrap =
-			!impl.options.ssbo_wraps_32bit_before_robustness || meta.storage == spv::StorageClassUniformConstant;
+				!impl.options.ssbo_wraps_32bit_before_robustness || meta.storage == spv::StorageClassUniformConstant ||
+				(impl.options.instruction_instrumentation.enabled &&
+				 impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume);
 
 		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset),
 		                               addr_shift_log2, raw_vecsize_to_vecsize(raw_vecsize), requires_explicit_wrap);
@@ -808,8 +810,14 @@ static RawAccessChain emit_raw_access_chain(Converter::Impl &impl, const Convert
 			// can straddle a 16 byte boundary.
 			// If we care enough, we can split this load into two, and use per-element on both, but that's overkill.
 
+			bool requires_wrap = !impl.options.raw_access_chain_wraps_32bit_before_robustness ||
+			                     (impl.options.instruction_instrumentation.enabled &&
+			                      impl.options.instruction_instrumentation.type ==
+			                      InstructionInstrumentationType::ExpectAssume);
+
 			spv::Id element_id = build_index_divider(impl, inst->getOperand(2), addr_shift_log2, raw.alignment,
-			                                         !impl.options.raw_access_chain_wraps_32bit_before_robustness);
+			                                         requires_wrap);
+
 			op->add_id(builder.makeUintConstant(raw.alignment * scalar_size));
 			op->add_id(element_id);
 			op->add_id(builder.makeUintConstant(0));
