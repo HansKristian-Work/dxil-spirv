@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DXC_REV=a9d33d3500d37bd24c10288c76aca8e1c948d4a2
+DXC_REV=ea53cb53ba1ce62bf5bbc139ec65aeba40251526
 
 if [ -d external/DirectXShaderCompiler ]; then
 	echo "Updating DirectXShaderCompiler to revision $DXC_REV."

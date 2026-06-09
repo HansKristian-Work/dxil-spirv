@@ -7,7 +7,7 @@
 layout(buffer_reference) buffer PhysicalPointerFloatNonWriteArray;
 layout(buffer_reference) buffer PhysicalPointerFloatArray;
 
-float _47;
+float _49;
 
 layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloatNonWriteArray
 {
@@ -34,11 +34,9 @@ void main()
 {
     uint16_t _24 = uint16_t(A);
     uint _25 = uint(int16_t(_24));
-    float _34 = PhysicalPointerFloatNonWriteArray(registers._m1).value[_25];
-    mediump float mp_copy_34 = _34;
-    float _40 = PhysicalPointerFloatNonWriteArray(registers._m1).value[uint(int16_t(_24 + 1us))];
-    mediump float mp_copy_40 = _40;
-    PhysicalPointerFloatArray(registers._m2).value[_25] = mp_copy_40 + mp_copy_34;
+    mediump float _35 = PhysicalPointerFloatNonWriteArray(registers._m1).value[_25];
+    mediump float _42 = PhysicalPointerFloatNonWriteArray(registers._m1).value[uint(int16_t(_24 + 1us))];
+    PhysicalPointerFloatArray(registers._m2).value[_25] = _42 + _35;
     SV_Target = int(10u);
 }
 
@@ -48,7 +46,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 52
+; Bound: 54
 ; Schema: 0
 OpCapability Shader
 OpCapability Int16
@@ -64,8 +62,8 @@ OpName %12 "A"
 OpName %14 "SV_Target"
 OpName %28 "PhysicalPointerFloatNonWriteArray"
 OpMemberName %28 0 "value"
-OpName %43 "PhysicalPointerFloatArray"
-OpMemberName %43 0 "value"
+OpName %45 "PhysicalPointerFloatArray"
+OpMemberName %45 0 "value"
 OpDecorate %7 Block
 OpMemberDecorate %7 0 Offset 0
 OpMemberDecorate %7 1 Offset 8
@@ -79,10 +77,12 @@ OpDecorate %27 ArrayStride 4
 OpMemberDecorate %28 0 Offset 0
 OpDecorate %28 Block
 OpMemberDecorate %28 0 NonWritable
-OpDecorate %41 RelaxedPrecision
-OpDecorate %42 ArrayStride 4
-OpMemberDecorate %43 0 Offset 0
-OpDecorate %43 Block
+OpDecorate %35 RelaxedPrecision
+OpDecorate %42 RelaxedPrecision
+OpDecorate %43 RelaxedPrecision
+OpDecorate %44 ArrayStride 4
+OpMemberDecorate %45 0 Offset 0
+OpDecorate %45 Block
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -105,16 +105,16 @@ OpDecorate %43 Block
 %29 = OpTypePointer PhysicalStorageBuffer %28
 %31 = OpTypePointer PhysicalStorageBuffer %26
 %33 = OpConstant %5 0
-%36 = OpConstant %23 1
-%42 = OpTypeRuntimeArray %26
-%43 = OpTypeStruct %42
-%44 = OpTypePointer PhysicalStorageBuffer %43
-%48 = OpConstant %5 10
+%37 = OpConstant %23 1
+%44 = OpTypeRuntimeArray %26
+%45 = OpTypeStruct %44
+%46 = OpTypePointer PhysicalStorageBuffer %45
+%50 = OpConstant %5 10
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%47 = OpUndef %26
-OpBranch %50
-%50 = OpLabel
+%49 = OpUndef %26
+OpBranch %52
+%52 = OpLabel
 %16 = OpAccessChain %15 %9 %17
 %18 = OpLoad %6 %16
 %19 = OpAccessChain %15 %9 %20
@@ -125,17 +125,19 @@ OpBranch %50
 %30 = OpBitcast %29 %21
 %32 = OpInBoundsAccessChain %31 %30 %33 %25
 %34 = OpLoad %26 %32 Aligned 4
-%35 = OpIAdd %23 %24 %36
-%37 = OpSConvert %5 %35
-%38 = OpBitcast %29 %21
-%39 = OpInBoundsAccessChain %31 %38 %33 %37
-%40 = OpLoad %26 %39 Aligned 4
-%41 = OpFAdd %26 %40 %34
-%45 = OpBitcast %44 %18
-%46 = OpInBoundsAccessChain %31 %45 %33 %25
-OpStore %46 %41 Aligned 4
-%49 = OpBitcast %10 %48
-OpStore %14 %49
+%35 = OpCopyObject %26 %34
+%36 = OpIAdd %23 %24 %37
+%38 = OpSConvert %5 %36
+%39 = OpBitcast %29 %21
+%40 = OpInBoundsAccessChain %31 %39 %33 %38
+%41 = OpLoad %26 %40 Aligned 4
+%42 = OpCopyObject %26 %41
+%43 = OpFAdd %26 %42 %35
+%47 = OpBitcast %46 %18
+%48 = OpInBoundsAccessChain %31 %47 %33 %25
+OpStore %48 %43 Aligned 4
+%51 = OpBitcast %10 %50
+OpStore %14 %51
 OpReturn
 OpFunctionEnd
 #endif
