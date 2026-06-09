@@ -19,11 +19,9 @@ void main()
 {
     uint16_t _21 = uint16_t(A);
     uint _22 = uint(int16_t(_21));
-    float _28 = uintBitsToFloat(_9._m0[_22]);
-    mediump float mp_copy_28 = _28;
-    float _34 = uintBitsToFloat(_9._m0[uint(int16_t(_21 + 1us))]);
-    mediump float mp_copy_34 = _34;
-    _13._m0[_22] = floatBitsToUint(mp_copy_34 + mp_copy_28);
+    mediump float _29 = uintBitsToFloat(_9._m0[_22]);
+    mediump float _36 = uintBitsToFloat(_9._m0[uint(int16_t(_21 + 1us))]);
+    _13._m0[_22] = floatBitsToUint(_36 + _29);
     SV_Target = int(10u);
 }
 
@@ -33,7 +31,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 42
+; Bound: 44
 ; Schema: 0
 OpCapability Shader
 OpCapability Int16
@@ -62,7 +60,9 @@ OpDecorate %16 RelaxedPrecision
 OpDecorate %16 Flat
 OpDecorate %16 Location 0
 OpDecorate %18 Location 0
-OpDecorate %35 RelaxedPrecision
+OpDecorate %29 RelaxedPrecision
+OpDecorate %36 RelaxedPrecision
+OpDecorate %37 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -83,29 +83,31 @@ OpDecorate %35 RelaxedPrecision
 %23 = OpTypePointer StorageBuffer %5
 %25 = OpConstant %5 0
 %27 = OpTypeFloat 32
-%30 = OpConstant %20 1
-%38 = OpConstant %5 10
+%31 = OpConstant %20 1
+%40 = OpConstant %5 10
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %40
-%40 = OpLabel
+OpBranch %42
+%42 = OpLabel
 %19 = OpLoad %14 %16
 %21 = OpSConvert %20 %19
 %22 = OpSConvert %5 %21
 %24 = OpAccessChain %23 %9 %25 %22
 %26 = OpLoad %5 %24
 %28 = OpBitcast %27 %26
-%29 = OpIAdd %20 %21 %30
-%31 = OpSConvert %5 %29
-%32 = OpAccessChain %23 %9 %25 %31
-%33 = OpLoad %5 %32
-%34 = OpBitcast %27 %33
-%35 = OpFAdd %27 %34 %28
-%36 = OpBitcast %5 %35
-%37 = OpAccessChain %23 %13 %25 %22
-OpStore %37 %36
-%39 = OpBitcast %14 %38
-OpStore %18 %39
+%29 = OpCopyObject %27 %28
+%30 = OpIAdd %20 %21 %31
+%32 = OpSConvert %5 %30
+%33 = OpAccessChain %23 %9 %25 %32
+%34 = OpLoad %5 %33
+%35 = OpBitcast %27 %34
+%36 = OpCopyObject %27 %35
+%37 = OpFAdd %27 %36 %29
+%38 = OpBitcast %5 %37
+%39 = OpAccessChain %23 %13 %25 %22
+OpStore %39 %38
+%41 = OpBitcast %14 %40
+OpStore %18 %41
 OpReturn
 OpFunctionEnd
 #endif

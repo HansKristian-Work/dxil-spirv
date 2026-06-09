@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 27
+; Bound: 28
 ; Schema: 0
 OpCapability Shader
 OpCapability RawAccessChainsNV
@@ -18,6 +18,7 @@ OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
 OpDecorate %22 RelaxedPrecision
+OpDecorate %23 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -33,18 +34,19 @@ OpDecorate %22 RelaxedPrecision
 %17 = OpTypeFloat 32
 %18 = OpTypePointer StorageBuffer %17
 %20 = OpConstant %5 4
-%23 = OpConstant %17 4
+%24 = OpConstant %17 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %25
-%25 = OpLabel
+OpBranch %26
+%26 = OpLabel
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %19 = OpRawAccessChainNV %18 %9 %20 %16 %15 RobustnessPerElementNV
 %21 = OpLoad %17 %19 Aligned 4
-%22 = OpFAdd %17 %21 %23
-%24 = OpRawAccessChainNV %18 %9 %20 %16 %15 RobustnessPerElementNV
-OpStore %24 %22 Aligned 4
+%22 = OpCopyObject %17 %21
+%23 = OpFAdd %17 %22 %24
+%25 = OpRawAccessChainNV %18 %9 %20 %16 %15 RobustnessPerElementNV
+OpStore %25 %23 Aligned 4
 OpReturn
 OpFunctionEnd
 
