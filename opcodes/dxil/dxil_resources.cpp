@@ -800,6 +800,8 @@ static spv::Id build_descriptor_heap_robustness(Converter::Impl &impl, spv::Id o
 
 		auto *assert_in_bounds = impl.allocate(spv::OpAssumeTrueKHR);
 		assert_in_bounds->add_id(less_than->id);
+		assert_in_bounds->add_id(impl.builder().makeUintConstant(
+			sampler_heap ? ExpectAssumeSamplerHeapOOB : ExpectAssumeResourceHeapOOB));
 		impl.add(assert_in_bounds);
 	}
 
@@ -1192,6 +1194,7 @@ static bool build_load_resource_handle(Converter::Impl &impl, spv::Id base_resou
 
 			auto *assert_op = impl.allocate(spv::OpAssumeTrueKHR);
 			assert_op->add_id(is_valid->id);
+			assert_op->add_id(impl.builder().makeUintConstant(ExpectAssumeMissedNURI));
 			impl.add(assert_op);
 		}
 
@@ -2287,6 +2290,7 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 
 		auto *assert_that = impl.allocate(spv::OpAssumeTrueKHR);
 		assert_that->add_id(is_in_bounds->id);
+		assert_that->add_id(impl.builder().makeUintConstant(ExpectAssumeRootCBVOOB));
 		impl.add(assert_that);
 	}
 
@@ -2652,6 +2656,7 @@ bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetEle
 
 					auto *assert_that = impl.allocate(spv::OpAssumeTrueKHR);
 					assert_that->add_id(is_in_bounds->id);
+					assert_that->add_id(impl.builder().makeUintConstant(ExpectAssumeRootCBVOOB));
 					impl.add(assert_that);
 				}
 

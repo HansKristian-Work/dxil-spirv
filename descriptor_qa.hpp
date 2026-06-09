@@ -56,6 +56,22 @@ enum class InstructionInstrumentationType
 	BufferSynchronizationValidation = 4
 };
 
+enum ExpectAssumeCodes
+{
+	// Pick some large numbers that are very unlikely to be confused for something else.
+	ExpectAssumeUnknown = 0,
+	ExpectAssumeQuadUniform = 1234000001,
+	ExpectAssumeMeshVertexOverflow = 1234000002,
+	ExpectAssumeMeshPrimOverflow = 1234000003,
+	ExpectAssumeSamplerHeapOOB = 1234000004,
+	ExpectAssumeResourceHeapOOB = 1234000005,
+	ExpectAssumeMissedNURI = 1234000006,
+	ExpectAssumeRootCBVOOB = 1234000007,
+	ExpectAssumeGroupSharedGEPOOB = 1234000008,
+	ExpectAssumeConstantGEPOOB = 1234000009,
+	ExpectAssumeAllocaGEPOOB = 1234000010,
+};
+
 struct InstructionInstrumentationInfo
 {
 	uint32_t version = 0;

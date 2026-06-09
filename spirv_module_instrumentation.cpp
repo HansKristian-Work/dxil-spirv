@@ -850,7 +850,8 @@ void emit_instrumentation_hash(SPIRVModule &module, const InstructionInstrumenta
 	builder.setBuildPoint(merge_payload_path);
 }
 
-spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionInstrumentationState &instrumentation)
+spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionInstrumentationState &instrumentation,
+                                        bool has_code_id)
 {
 	auto &builder = module.get_builder();
 
@@ -860,12 +861,19 @@ spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionIn
 	spv::Id bool_type = builder.makeBoolType();
 	spv::Id u32_type = builder.makeUintType(32);
 
+	Vector<spv::Id> param_types = { bool_type, u32_type };
+	if (has_code_id)
+		param_types.push_back(u32_type);
+
 	auto *func = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(),
 	                                       "AssumeTrue",
-	                                       { bool_type, u32_type }, {}, &entry);
+	                                       param_types, {}, &entry);
 
 	builder.addName(func->getParamId(0), "value");
 	builder.addName(func->getParamId(1), "inst");
+
+	if (has_code_id)
+		builder.addName(func->getParamId(2), "code");
 
 	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
 	auto *fail_block = new spv::Block(builder.getUniqueId(), *func);
@@ -891,8 +899,8 @@ spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionIn
 
 	builder.setBuildPoint(fail_block);
 	{
-		// Dummy value is stored.
-		emit_instrumentation_hash(module, instrumentation, func, 0, func->getParamId(1));
+		emit_instrumentation_hash(module, instrumentation, func,
+		                          has_code_id ? func->getParamId(2) : 0, func->getParamId(1));
 		builder.createBranch(merge_block);
 	}
 

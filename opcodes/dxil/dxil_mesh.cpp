@@ -88,12 +88,14 @@ bool emit_set_mesh_output_counts_instruction(Converter::Impl &impl, const llvm::
 		assert_vertex->add_id(impl.builder().makeUintConstant(impl.execution_mode_meta.stage_output_num_vertex));
 		auto *assume_vertex = impl.allocate(spv::OpAssumeTrueKHR);
 		assume_vertex->add_id(assert_vertex->id);
+		assert_vertex->add_id(impl.builder().makeUintConstant(ExpectAssumeMeshVertexOverflow));
 
 		auto *assert_prim = impl.allocate(spv::OpULessThanEqual, impl.builder().makeBoolType());
 		assert_prim->add_id(num_prim_id);
 		assert_prim->add_id(impl.builder().makeUintConstant(impl.execution_mode_meta.stage_output_num_primitive));
 		auto *assume_prim = impl.allocate(spv::OpAssumeTrueKHR);
 		assume_prim->add_id(assert_prim->id);
+		assume_prim->add_id(impl.builder().makeUintConstant(ExpectAssumeMeshPrimOverflow));
 
 		impl.add(assert_vertex);
 		impl.add(assume_vertex);

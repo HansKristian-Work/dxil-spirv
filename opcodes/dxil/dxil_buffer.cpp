@@ -215,6 +215,7 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 
 	auto *expect_true = impl.allocate(spv::OpAssumeTrueKHR);
 	expect_true->add_id(call->id);
+	// Automatically synthesize the fault code based on sync counter.
 	impl.add(expect_true);
 }
 

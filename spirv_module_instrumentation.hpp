@@ -36,7 +36,8 @@ namespace dxil_spv
 {
 spv::Id build_validate_bda_load_store_function(SPIRVModule &module, uint32_t desc_set, uint32_t binding);
 spv::Id build_allocate_invocation_id_function(SPIRVModule &module, uint32_t desc_set, uint32_t binding);
-spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionInstrumentationState &instrumentation);
+spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionInstrumentationState &instrumentation,
+                                        bool has_code_id);
 spv::Id build_nan_inf_instrument_call_function(
     SPIRVModule &module, const InstructionInstrumentationState &instrumentation, spv::Id type_id);
 void emit_instrumentation_hash(SPIRVModule &module, const InstructionInstrumentationState &instrumentation,

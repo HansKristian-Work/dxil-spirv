@@ -546,6 +546,7 @@ void emit_expect_assume_quad_uniform(Converter::Impl &impl)
 
 		auto *assert_uniform = impl.allocate(spv::OpAssumeTrueKHR);
 		assert_uniform->add_id(call->id);
+		assert_uniform->add_id(impl.builder().makeUintConstant(ExpectAssumeQuadUniform));
 		impl.add(assert_uniform);
 
 		impl.memoized.current_quad_uniform_checked = true;

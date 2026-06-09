@@ -188,7 +188,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	bool helper_lanes_participate_in_wave_ops = true;
 
 	void add_instruction(spv::Block *bb, std::unique_ptr<spv::Instruction> inst);
-	void add_instrumented_instruction(spv::Op op, spv::Block *bb, spv::Id id);
+	void add_instrumented_instruction(spv::Op op, spv::Block *bb, spv::Id id, spv::Id code_id);
 	InstructionInstrumentationState instruction_instrumentation;
 };
 
@@ -3062,7 +3062,7 @@ void SPIRVModule::Impl::register_block(CFGNode *node)
 	}
 }
 
-void SPIRVModule::Impl::add_instrumented_instruction(spv::Op op, spv::Block *bb, spv::Id id)
+void SPIRVModule::Impl::add_instrumented_instruction(spv::Op op, spv::Block *bb, spv::Id id, spv::Id code_id)
 {
 	if (id == 0 || !instruction_instrumentation.info.enabled)
 		return;
@@ -3144,15 +3144,22 @@ void SPIRVModule::Impl::add_instrumented_instruction(spv::Op op, spv::Block *bb,
 	if (call_id && !*call_id)
 	{
 		if (op == spv::OpAssumeTrueKHR)
-			*call_id = build_assume_true_call_function(self, instruction_instrumentation);
+			*call_id = build_assume_true_call_function(self, instruction_instrumentation, code_id != 0);
 		else
 			*call_id = build_nan_inf_instrument_call_function(self, instruction_instrumentation, type_id);
 	}
+
+	if (!call_id || !*call_id)
+		return;
 
 	auto call = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeVoidType(), spv::OpFunctionCall);
 	call->addIdOperand(*call_id);
 	call->addIdOperand(id);
 	call->addIdOperand(builder.makeUintConstant(++instruction_instrumentation.instruction_count));
+
+	if (op == spv::OpAssumeTrueKHR && code_id != 0)
+		call->addIdOperand(code_id);
+
 	bb->addInstruction(std::move(call));
 }
 
@@ -3192,7 +3199,7 @@ void SPIRVModule::Impl::add_instruction(spv::Block *bb, std::unique_ptr<spv::Ins
 		    instruction_instrumentation.info.type == InstructionInstrumentationType::FullNanInf &&
 		    op != spv::OpPhi)
 		{
-			add_instrumented_instruction(op, bb, id);
+			add_instrumented_instruction(op, bb, id, 0);
 		}
 	}
 }
@@ -3334,7 +3341,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else if (op->op == spv::PseudoOpInstrumentExternallyVisibleStore || op->op == spv::OpAssumeTrueKHR)
 		{
-			add_instrumented_instruction(op->op, bb, op->arguments[0]);
+			add_instrumented_instruction(op->op, bb, op->arguments[0], op->num_arguments >= 2 ? op->arguments[1] : 0);
 		}
 		else if (op->op == spv::PseudoOpReturnCond ||
 		         op->op == spv::PseudoOpMaskedLoad ||

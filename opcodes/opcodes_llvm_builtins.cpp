@@ -1615,8 +1615,17 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 							is_in_bounds->add_id(builder.makeUintConstant(num_elements));
 							impl.add(is_in_bounds);
 
+							ExpectAssumeCodes code;
+							if (address_space == DXIL::AddressSpace::Thread)
+								code = ExpectAssumeGroupSharedGEPOOB;
+							else if (global_var && global_var->hasInitializer() && global_var->isConstant())
+								code = ExpectAssumeConstantGEPOOB;
+							else
+								code = ExpectAssumeAllocaGEPOOB;
+
 							auto *assert_that = impl.allocate(spv::OpAssumeTrueKHR);
 							assert_that->add_id(is_in_bounds->id);
+							assert_that->add_id(impl.builder().makeUintConstant(code));
 							impl.add(assert_that);
 						}
 					}
