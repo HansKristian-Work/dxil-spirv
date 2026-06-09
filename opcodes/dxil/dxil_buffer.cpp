@@ -345,6 +345,25 @@ static spv::Id build_structured_index(Converter::Impl &impl, const llvm::Value *
 	auto &builder = impl.builder();
 	RawBufferAccessSplit stride_split = {};
 	RawBufferAccessSplit byte_split = {};
+
+	if (impl.options.instruction_instrumentation.enabled &&
+	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	{
+		uint32_t max_unwrapped_index = UINT32_MAX / stride;
+		// If this fails, application is likely doing something rather dodgy.
+		// We expect clamping behavior in D3D12 API, but real world implementations have a tendency to wrap
+		// around back to a 0 index.
+		auto *check_invariance = impl.allocate(spv::OpULessThanEqual, builder.makeBoolType());
+		check_invariance->add_id(impl.get_id_for_value(index));
+		check_invariance->add_id(builder.makeUintConstant(max_unwrapped_index));
+		impl.add(check_invariance);
+
+		auto *assert_op = impl.allocate(spv::OpAssumeTrueKHR);
+		assert_op->add_id(check_invariance->id);
+		assert_op->add_id(impl.builder().makeUintConstant(ExpectAssumeQuestionableStructuredOverflow));
+		impl.add(assert_op);
+	}
+
 	if (extract_raw_buffer_access_split(index, stride, addr_shift_log2, vecsize, stride_split) &&
 	    extract_raw_buffer_access_split(byte_offset, 1, addr_shift_log2, vecsize, byte_split))
 	{

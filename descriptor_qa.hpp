@@ -70,6 +70,8 @@ enum ExpectAssumeCodes
 	ExpectAssumeGroupSharedGEPOOB = 1234000008,
 	ExpectAssumeConstantGEPOOB = 1234000009,
 	ExpectAssumeAllocaGEPOOB = 1234000010,
+	ExpectAssumeQuestionableBABOverflow = 1234000011,
+	ExpectAssumeQuestionableStructuredOverflow = 1234000012,
 };
 
 struct InstructionInstrumentationInfo

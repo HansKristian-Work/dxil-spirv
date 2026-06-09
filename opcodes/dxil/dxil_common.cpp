@@ -383,6 +383,21 @@ spv::Id build_index_divider(Converter::Impl &impl, const llvm::Value *offset,
 			mask->add_id(builder.makeUintConstant(vecsize << addr_shift_log2));
 			impl.add(mask);
 
+			if (impl.options.instruction_instrumentation.enabled &&
+			    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+			{
+				// If this fails, application is likely doing something rather dodgy.
+				auto *check_invariance = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+				check_invariance->add_id(mask->id);
+				check_invariance->add_id(index_id);
+				impl.add(check_invariance);
+
+				auto *assert_op = impl.allocate(spv::OpAssumeTrueKHR);
+				assert_op->add_id(check_invariance->id);
+				assert_op->add_id(impl.builder().makeUintConstant(ExpectAssumeQuestionableBABOverflow));
+				impl.add(assert_op);
+			}
+
 			index_id = mask->id;
 		}
 
