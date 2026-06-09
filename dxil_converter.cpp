@@ -6122,8 +6122,9 @@ void Converter::Impl::fixup_load_type_typed(DXIL::ComponentType &component_type,
 			// Only convert if we actually want half here.
 			// Certain operations always return float even if the resource type is half for some silly reason.
 			output_component_type = DXIL::ComponentType::F32;
-		} else if (target_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
-		           target_type->getIntegerBitWidth() == 32 && component_type_is_16bit(output_component_type))
+		}
+		else if (target_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+		         target_type->getIntegerBitWidth() == 32 && component_type_is_16bit(output_component_type))
 		{
 			output_component_type = convert_16bit_component_to_32bit(output_component_type);
 		}
