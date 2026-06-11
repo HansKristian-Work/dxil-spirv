@@ -281,7 +281,8 @@ struct Converter::Impl
 	bool emit_execution_modes_domain();
 	bool emit_execution_modes_pixel();
 	bool emit_execution_modes_pixel_late();
-	bool emit_execution_modes_ray_tracing(spv::ExecutionModel model);
+	bool emit_execution_modes_ray_tracing();
+	bool emit_execution_modes_ray_query();
 	bool emit_execution_modes_amplification();
 	bool emit_execution_modes_mesh();
 	bool emit_execution_modes_fp_denorm_rounding();
@@ -719,6 +720,7 @@ struct Converter::Impl
 		bool typed_uav_read_without_format = false;
 		bool bindless_typed_buffer_offsets = false;
 		bool storage_16bit_input_output = false;
+		bool ray_query_force_omm_execution_mode = false;
 
 		struct
 		{
@@ -1018,6 +1020,9 @@ struct Converter::Impl
 				uint32_t ray_query_flags;
 			};
 			Vector<Mapping> alloca_mappings;
+
+			bool requires_opacity_micromap_tracing = false;
+			bool statically_used = false;
 		} ray_query;
 	} shader_analysis;
 

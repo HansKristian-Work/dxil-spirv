@@ -1485,6 +1485,7 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 	case DXIL::Op::AllocateRayQuery:
 		// If we have to do worst-case allocation.
 		impl.shader_analysis.ray_query.num_ray_query_alloca++;
+		impl.shader_analysis.ray_query.statically_used = true;
 		break;
 
 	default:

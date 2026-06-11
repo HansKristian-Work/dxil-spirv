@@ -28,6 +28,7 @@
 #include "opcodes/dxil/dxil_common.hpp"
 #include "opcodes/dxil/dxil_workgraph.hpp"
 #include "opcodes/dxil/dxil_geometry.hpp"
+#include "opcodes/dxil/dxil_ray_tracing.hpp"
 
 #include "dxil_converter.hpp"
 #include "logging.hpp"
@@ -7203,17 +7204,58 @@ bool Converter::Impl::emit_execution_modes_geometry()
 		return false;
 }
 
-bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model)
+static void emit_opacity_micromap_extension(Converter::Impl &impl)
+{
+	impl.spirv_module.set_override_spirv_version(0x10400);
+	impl.spirv_module.get_builder().addExtension("SPV_KHR_opacity_micromap");
+}
+
+static void emit_opacity_micromap_capability(Converter::Impl &impl)
+{
+	emit_opacity_micromap_extension(impl);
+	impl.spirv_module.get_builder().addCapability(spv::CapabilityRayTracingOpacityMicromapKHR);
+}
+
+bool Converter::Impl::emit_execution_modes_ray_query()
+{
+	auto &builder = spirv_module.get_builder();
+
+	if (shader_analysis.ray_query.statically_used)
+	{
+		builder.addExtension("SPV_KHR_ray_query");
+		builder.addCapability(spv::CapabilityRayQueryKHR);
+		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
+
+		if (options.opacity_micromap_enabled || shader_analysis.ray_query.requires_opacity_micromap_tracing)
+		{
+			emit_opacity_micromap_extension(*this);
+			builder.addCapability(spv::CapabilityRayTracingOpacityMicromapExecutionModeKHR);
+
+			spv::Id enable_id = builder.makeBoolConstant(
+				shader_analysis.ray_query.requires_opacity_micromap_tracing || options.ray_query_force_omm_execution_mode);
+
+			builder.addExecutionModeId(spirv_module.get_entry_function(),
+									   spv::ExecutionModeOpacityMicromapIdKHR,
+									   enable_id);
+		}
+	}
+
+	return true;
+}
+
+bool Converter::Impl::emit_execution_modes_ray_tracing()
 {
 	auto &builder = spirv_module.get_builder();
 	builder.addCapability(spv::CapabilityRayTracingKHR);
 	if (options.ray_tracing_primitive_culling_enabled && shader_analysis.can_require_primitive_culling)
 		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
-	if (options.opacity_micromap_enabled && shader_analysis.can_require_opacity_micromap)
+
+	if ((options.opacity_micromap_enabled || shader_analysis.ray_query.requires_opacity_micromap_tracing) &&
+		shader_analysis.can_require_opacity_micromap)
 	{
-		builder.addCapability(spv::CapabilityRayTracingOpacityMicromapEXT);
-		builder.addExtension("SPV_EXT_opacity_micromap");
+		emit_opacity_micromap_capability(*this);
 	}
+
 	builder.addExtension("SPV_KHR_ray_tracing");
 	builder.addExtension("SPV_EXT_descriptor_indexing");
 
@@ -7687,7 +7729,7 @@ bool Converter::Impl::emit_execution_modes()
 	case spv::ExecutionModelAnyHitKHR:
 	case spv::ExecutionModelCallableKHR:
 	case spv::ExecutionModelClosestHitKHR:
-		if (!emit_execution_modes_ray_tracing(execution_model))
+		if (!emit_execution_modes_ray_tracing())
 			return false;
 		break;
 
@@ -7706,6 +7748,9 @@ bool Converter::Impl::emit_execution_modes()
 	}
 
 	if (!emit_execution_modes_fp_denorm_rounding())
+		return false;
+
+	if (!emit_execution_modes_ray_query())
 		return false;
 
 	return true;
@@ -9424,6 +9469,8 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	case Option::OpacityMicromap:
 		options.opacity_micromap_enabled =
 		    static_cast<const OptionOpacityMicromap &>(cap).enabled;
+		options.ray_query_force_omm_execution_mode =
+		    static_cast<const OptionOpacityMicromap &>(cap).ray_query_force_omm_execution_mode;
 		break;
 
 	case Option::BranchControl:

@@ -282,6 +282,10 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--mixed-float-dot-product']
     if is_asm or ('.assume-32bit-wrap.' in shader):
         hlsl_cmd += ['--assume-ssbo-32bit-wrapping']
+    if '.omm.' in shader:
+        hlsl_cmd += ['--opacity-micromap']
+    if '.rq-omm.' in shader:
+        hlsl_cmd += ['--ray-query-force-opacity-micromap']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:
