@@ -637,6 +637,7 @@ struct OptionOpacityMicromap : OptionBase
 	}
 
 	bool enabled = false;
+	bool ray_query_ub_assumes_omm = false;
 };
 
 struct OptionBranchControl : OptionBase

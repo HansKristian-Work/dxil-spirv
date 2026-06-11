@@ -735,6 +735,7 @@ typedef struct dxil_spv_option_opacity_micromap
 {
 	dxil_spv_option_base base;
 	dxil_spv_bool enabled;
+	dxil_spv_bool ray_query_ub_assumes_omm;
 } dxil_spv_option_opacity_micromap;
 
 typedef struct dxil_spv_option_branch_control

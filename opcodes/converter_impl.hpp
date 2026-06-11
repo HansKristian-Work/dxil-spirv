@@ -719,6 +719,7 @@ struct Converter::Impl
 		bool typed_uav_read_without_format = false;
 		bool bindless_typed_buffer_offsets = false;
 		bool storage_16bit_input_output = false;
+		bool ray_query_ub_assumes_omm = false;
 
 		struct
 		{
@@ -1041,6 +1042,7 @@ struct Converter::Impl
 	{
 		spv::Id global_query_objects_id = 0;
 		uint32_t ray_query_index = 0;
+		bool omm_execution_mode_emitted = false;
 	} ray_query;
 
 	bool emit_ray_query_globals();

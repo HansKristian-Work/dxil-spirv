@@ -52,6 +52,7 @@ bool emit_ray_tracing_accept_hit_and_end_search(Converter::Impl &impl, const llv
 bool emit_ray_tracing_ignore_hit(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_ray_tracing_call_shader(Converter::Impl &impl, const llvm::CallInst *instruction);
 
+void emit_opacity_micromap_capability(Converter::Impl &impl);
 bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool build_ray_query_object(Converter::Impl &impl, const llvm::Value *operand, 
                             spv::Id &object_id, uint32_t *ray_query_flags = nullptr);

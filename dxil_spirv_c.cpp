@@ -1263,6 +1263,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		OptionOpacityMicromap helper;
 		auto *omm = reinterpret_cast<const dxil_spv_option_opacity_micromap *>(option);
 		helper.enabled = omm->enabled;
+		helper.ray_query_ub_assumes_omm = omm->ray_query_ub_assumes_omm;
 
 		converter->options.emplace_back(duplicate(helper));
 		break;

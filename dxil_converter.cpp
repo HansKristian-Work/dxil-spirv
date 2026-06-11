@@ -28,6 +28,7 @@
 #include "opcodes/dxil/dxil_common.hpp"
 #include "opcodes/dxil/dxil_workgraph.hpp"
 #include "opcodes/dxil/dxil_geometry.hpp"
+#include "opcodes/dxil/dxil_ray_tracing.hpp"
 
 #include "dxil_converter.hpp"
 #include "logging.hpp"
@@ -7210,10 +7211,7 @@ bool Converter::Impl::emit_execution_modes_ray_tracing(spv::ExecutionModel model
 	if (options.ray_tracing_primitive_culling_enabled && shader_analysis.can_require_primitive_culling)
 		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
 	if (options.opacity_micromap_enabled && shader_analysis.can_require_opacity_micromap)
-	{
-		builder.addCapability(spv::CapabilityRayTracingOpacityMicromapEXT);
-		builder.addExtension("SPV_EXT_opacity_micromap");
-	}
+		emit_opacity_micromap_capability(*this);
 	builder.addExtension("SPV_KHR_ray_tracing");
 	builder.addExtension("SPV_EXT_descriptor_indexing");
 
@@ -9424,6 +9422,8 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	case Option::OpacityMicromap:
 		options.opacity_micromap_enabled =
 		    static_cast<const OptionOpacityMicromap &>(cap).enabled;
+		options.ray_query_ub_assumes_omm =
+		    static_cast<const OptionOpacityMicromap &>(cap).ray_query_ub_assumes_omm;
 		break;
 
 	case Option::BranchControl:

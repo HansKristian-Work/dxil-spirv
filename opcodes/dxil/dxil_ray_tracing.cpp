@@ -331,17 +331,35 @@ bool emit_ray_tracing_hit_kind_instruction(Converter::Impl &impl, const llvm::Ca
 	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInHitKindKHR);
 }
 
+static void emit_opacity_micromap_extension(Converter::Impl &impl)
+{
+	impl.spirv_module.set_override_spirv_version(0x10400);
+	impl.spirv_module.get_builder().addExtension("SPV_KHR_opacity_micromap");
+}
+
 static void emit_ray_query_capabilities(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
 	builder.addExtension("SPV_KHR_ray_query");
 	builder.addCapability(spv::CapabilityRayQueryKHR);
 	builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
-	if (impl.options.opacity_micromap_enabled)
+	if (impl.options.opacity_micromap_enabled && !impl.ray_query.omm_execution_mode_emitted)
 	{
-		builder.addExtension("SPV_EXT_opacity_micromap");
-		builder.addCapability(spv::CapabilityRayTracingOpacityMicromapEXT);
+		emit_opacity_micromap_extension(impl);
+		auto &builder = impl.spirv_module.get_builder();
+		builder.addCapability(spv::CapabilityRayTracingOpacityMicromapExecutionModeKHR);
+		spv::Id enable_id = builder.makeBoolConstant(impl.options.ray_query_ub_assumes_omm);
+		builder.addExecutionModeId(impl.spirv_module.get_entry_function(),
+								   spv::ExecutionModeOpacityMicromapIdKHR,
+								   enable_id);
+		impl.ray_query.omm_execution_mode_emitted = true;
 	}
+}
+
+void emit_opacity_micromap_capability(Converter::Impl &impl)
+{
+	emit_opacity_micromap_extension(impl);
+	impl.spirv_module.get_builder().addCapability(spv::CapabilityRayTracingOpacityMicromapKHR);
 }
 
 bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *inst)
