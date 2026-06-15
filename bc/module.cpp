@@ -1775,7 +1775,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		if (!a.first || !b || !shuf.first || !isa<VectorType>(a.second))
 			return false;
 
-		auto *vec_type = VectorType::get(cast<ConstantDataVector>(shuf.first)->getNumElements(),
+		auto *vec_type = VectorType::get(shuf.first->getType()->getVectorNumElements(),
 		                                 cast<VectorType>(a.second)->getElementType());
 		auto *value = context->construct<ShuffleVectorInst>(vec_type, a.first, b, shuf.first);
 		if (!add_instruction(value))

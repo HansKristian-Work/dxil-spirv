@@ -499,10 +499,20 @@ ShuffleVectorInst::ShuffleVectorInst(Type *type, Value *a, Value *b, Value *shuf
 	: Instruction(type, ValueKind::ShuffleVector)
 {
 	set_operands({ a, b });
-	auto *masks = cast<ConstantDataVector>(shuf);
-	shuffle_mask.reserve(masks->getNumElements());
-	for (unsigned i = 0; i < masks->getNumElements(); i++)
-		shuffle_mask.push_back(cast<ConstantInt>(masks->getElementAsConstant(i))->getUniqueInteger().getSExtValue());
+
+	unsigned num_elements = shuf->getType()->getVectorNumElements();
+	shuffle_mask.reserve(num_elements);
+
+	if (auto *masks = dyn_cast<ConstantDataVector>(shuf))
+	{
+		for (unsigned i = 0; i < masks->getNumElements(); i++)
+			shuffle_mask.push_back(cast<ConstantInt>(masks->getElementAsConstant(i))->getUniqueInteger().getSExtValue());
+	}
+	else
+	{
+		// Aggregate zero. Just splat.
+		shuffle_mask.resize(num_elements, 0);
+	}
 }
 
 int ShuffleVectorInst::getMaskValue(unsigned index) const
