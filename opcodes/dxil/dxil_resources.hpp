@@ -80,4 +80,5 @@ bool resource_handle_is_uniform_readonly_descriptor(Converter::Impl &impl, const
 
 bool type_is_composite_return_value(llvm::Type *type);
 llvm::Type *get_composite_element_type(llvm::Type *type);
+unsigned get_composite_element_count(llvm::Type *type);
 } // namespace dxil_spv

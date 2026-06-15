@@ -74,38 +74,51 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 
 	if (bda_operation == BDAOperation::Store || bda_operation == BDAOperation::Load)
 	{
-		const llvm::Type *data_type;
-		if (bda_operation == BDAOperation::Store)
-			data_type = instruction->getOperand(4)->getType();
-		else
-			data_type = get_composite_element_type(instruction->getType());
+		const bool is_load = bda_operation == BDAOperation::Load;
+		const bool is_composite_type = is_load || is_vector;
 
-		const llvm::Type *element_type = is_vector ? data_type->getVectorElementType() : data_type;
+		llvm::Type *value_type = is_load ? instruction->getType() : instruction->getOperand(4)->getType();
+
+		const llvm::Type *element_type;
+		unsigned element_count;
+		if (is_composite_type)
+		{
+			element_type = get_composite_element_type(value_type);
+			element_count = get_composite_element_count(value_type);
+		}
+		else
+		{
+			element_type = value_type;
+			element_count = 4;
+		}
 
 		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
 		{
-			unsigned mask;
+			unsigned num_elems = 0;
 
 			if (is_vector)
 			{
-				mask = (1u << data_type->getVectorNumElements()) - 1u;
-			}
-			else if (bda_operation == BDAOperation::Load)
-			{
-				auto &access_meta = impl.llvm_composite_meta[instruction];
-				mask = access_meta.access_mask & 0xf;
+				num_elems = element_count;
 			}
 			else
 			{
-				mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+				unsigned mask;
+				if (bda_operation == BDAOperation::Load)
+				{
+					auto &access_meta = impl.llvm_composite_meta[instruction];
+					mask = access_meta.access_mask & 0xf;
+				}
+				else
+				{
+					mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+				}
+
+				for (unsigned i = 0; i < 4; i++)
+					if ((mask & (1u << i)) != 0)
+						num_elems = i + 1;
 			}
 
 			unsigned width = raw_width_to_bits(get_buffer_access_bits_per_component(impl, meta.storage, element_type));
-
-			unsigned num_elems = 0;
-			for (unsigned i = 0; i < 4; i++)
-				if ((mask & (1u << i)) != 0)
-					num_elems = i + 1;
 
 			len_id = builder.makeUintConstant(num_elems * width / 8);
 		}
@@ -658,20 +671,19 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 {
 	auto &builder = impl.builder();
 
-	const llvm::Type *element_type = nullptr;
+	const llvm::Type *element_type = get_composite_element_type(instruction->getType());
 	unsigned vecsize = 0;
 
 	if (is_vector)
 	{
-		const auto *data_type = get_composite_element_type(instruction->getType());
-		element_type = data_type->getVectorElementType();
-		vecsize = data_type->getVectorNumElements();
+		vecsize = get_composite_element_count(instruction->getType());
 		//TODO
 		if (vecsize > 4)
 		{
 			LOGE("Long vector is not supported.\n");
 			return false;
 		}
+
 		if (alignment == 0 && !get_constant_operand(instruction, 4, &alignment))
 			return false;
 	}
@@ -695,8 +707,6 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 			LOGE("Unexpected mask for RawBufferLoad = %u.\n", mask);
 			return false;
 		}
-
-		element_type = get_composite_element_type(instruction->getType());
 	}
 	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
 	// If we cannot do it trivially, fallback to raw pointer arithmetic.
@@ -968,17 +978,15 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	auto access_mask = access_meta.access_mask;
 
 	auto *result_type = instruction->getType();
-	const auto *target_type = get_composite_element_type(result_type);
-	const auto *element_type = target_type;
+	const auto *element_type = get_composite_element_type(result_type);
 
 	bool sparse = false;
 
 	if (is_vector)
 	{
-		element_type = target_type->getVectorElementType();
-
 		sparse = (access_mask & (1u << 1)) != 0;
-		unsigned vecsize = target_type->getVectorNumElements();
+
+		unsigned vecsize = get_composite_element_count(result_type);
 		assert(vecsize <= sizeof(access_mask) * 8);
 		access_mask = (1u << vecsize) - 1u;
 	}
@@ -1023,7 +1031,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	{
 		unsigned num_elements = 1;
 		if (is_vector)
-			num_elements = target_type->getVectorNumElements();
+			num_elements = get_composite_element_count(result_type);
 		else
 		{
 			for (unsigned i = 0; i < 4; i++)
@@ -1063,7 +1071,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		if (vectorized_load)
 			conservative_num_elements = vecsize;
 		else if (is_vector)
-			conservative_num_elements = target_type->getVectorNumElements();
+			conservative_num_elements = get_composite_element_count(result_type);
 		else
 		{
 			for (unsigned i = 0; i < 4; i++)
@@ -1299,9 +1307,9 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		impl.add(op, meta.rov);
 
 		if (sparse)
-			impl.repack_sparse_feedback(meta.component_type, 4, instruction, target_type);
+			impl.repack_sparse_feedback(meta.component_type, 4, instruction, element_type);
 		else
-			impl.fixup_load_type_typed(meta.component_type, 4, instruction, target_type);
+			impl.fixup_load_type_typed(meta.component_type, 4, instruction, element_type);
 	}
 
 	return true;
@@ -1457,16 +1465,15 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
-		const auto *ret_component = get_composite_element_type(instruction->getType());
+		auto *ret_component = get_composite_element_type(instruction->getType());
 		if (is_vector)
 		{
 			//TODO
-			if (ret_component->getVectorNumElements() > 4)
+			if (get_composite_element_count(instruction->getType()) > 4)
 			{
 				LOGE("Long vector is not supported.\n");
 				return false;
 			}
-			ret_component = ret_component->getVectorElementType();
 		}
 
 		if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&

@@ -809,10 +809,9 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 
 			if (opcode == DXIL::Op::RawBufferVectorLoad)
 			{
-				unsigned vecsize = type->getVectorNumElements();
+				unsigned vecsize = get_composite_element_count(instruction->getType());
 				assert(vecsize <= sizeof(access_mask) * 8);
 				access_mask = (1u << vecsize) - 1u;
-				type = type->getVectorElementType();
 			}
 			else
 			{
