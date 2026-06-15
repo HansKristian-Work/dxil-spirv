@@ -872,8 +872,9 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 			if (opcode == DXIL::Op::RawBufferVectorStore)
 			{
 				unsigned vecsize = type->getVectorNumElements();
-				assert(vecsize <= sizeof(mask) * 8);
 				mask = (1u << vecsize) - 1u;
+				if (vecsize > 4)
+					mask = 0xfu; // TODO: long vector
 				type = type->getVectorElementType();
 			}
 			else

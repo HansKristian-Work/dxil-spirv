@@ -80,17 +80,10 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 		llvm::Type *value_type = is_load ? instruction->getType() : instruction->getOperand(4)->getType();
 
 		const llvm::Type *element_type;
-		unsigned element_count;
 		if (is_composite_type)
-		{
 			element_type = get_composite_element_type(value_type);
-			element_count = get_composite_element_count(value_type);
-		}
 		else
-		{
 			element_type = value_type;
-			element_count = 4;
-		}
 
 		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
 		{
@@ -98,7 +91,7 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 
 			if (is_vector)
 			{
-				num_elems = element_count;
+				num_elems = get_composite_element_count(value_type);
 			}
 			else
 			{
@@ -1030,11 +1023,15 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta) && !sparse;
 	if (raw_access_chain)
 	{
-		unsigned num_elements = 1;
+		unsigned num_elements;
+
 		if (is_vector)
+		{
 			num_elements = get_composite_element_count(result_type);
+		}
 		else
 		{
+			num_elements = 1;
 			for (unsigned i = 0; i < 4; i++)
 				if ((access_mask & (1u << i)) != 0)
 					num_elements = i + 1;
@@ -1409,7 +1406,9 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 		chain_op->add_id(array_id);
 	impl.add(chain_op);
 
-	spv::Id vec_id;
+	spv::Id vec_id = 0;
+	spv::Id elems[4] = {};
+
 	if (is_vector)
 	{
 		impl.register_externally_visible_write(instruction->getOperand(4));
@@ -1417,17 +1416,19 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	}
 	else
 	{
-		spv::Id elems[4] = {};
 		for (unsigned i = 0; i < 4; i++)
 		{
 			impl.register_externally_visible_write(instruction->getOperand(4 + i));
 			elems[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
 		}
-		vec_id = impl.build_vector(physical_type_id, elems, vecsize);
 	}
 
 	auto *store_op = impl.allocate(spv::OpStore);
 	store_op->add_id(chain_op->id);
+
+	// Technically unnecessary, but avoids causing shader cache churn.
+	if (!vec_id)
+		vec_id = impl.build_vector(physical_type_id, elems, vecsize);
 
 	if (value_cast_op != spv::OpNop)
 	{
@@ -1666,7 +1667,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (is_vector)
 	{
 		unsigned vecsize = data_type->getVectorNumElements();
-		assert(vecsize <= sizeof(mask) * 8);
+		if (vecsize > 4)
+			return false; // TODO: long vector
 		mask = (1u << vecsize) - 1u;
 	}
 	else
@@ -1708,8 +1710,10 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	// We could hoist the call to emit_buffer_store_values_bitcast,
 	// but causes too much churn on shader deltas.
 	if (is_vector)
+	{
 		// TODO: optimize splitting the input vector when a vectorized store can be used
 		emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, false);
+	}
 	else
 		emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, is_typed, false);
 
@@ -1837,9 +1841,8 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 	{
 		auto *store_type = instruction->getOperand(4)->getType();
 		if (is_vector)
-		{
 			store_type = store_type->getVectorElementType();
-		}
+
 		if (store_type->getTypeID() != llvm::Type::TypeID::FloatTyID &&
 		    !(store_type->getTypeID() == llvm::Type::TypeID::IntegerTyID && store_type->getIntegerBitWidth() == 32) &&
 		    meta.storage != spv::StorageClassStorageBuffer)
