@@ -671,7 +671,6 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 {
 	auto &builder = impl.builder();
 
-	const llvm::Type *element_type = get_composite_element_type(instruction->getType());
 	unsigned vecsize = 0;
 
 	if (is_vector)
@@ -705,6 +704,8 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 			return false;
 		}
 	}
+
+	auto *element_type = get_composite_element_type(instruction->getType());
 	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
 	// If we cannot do it trivially, fallback to raw pointer arithmetic.
 	spv::Id array_id = build_vectorized_physical_load_store_access(impl, instruction, vecsize, element_type);
@@ -1568,8 +1569,7 @@ static unsigned emit_buffer_store_values_bitcast(Converter::Impl &impl, const ll
                                                  RawWidth raw_width,
                                                  bool is_typed, bool ignore_bitcast)
 {
-	auto *data_type = instruction->getOperand(4)->getType();
-	auto *element_type = data_type;
+	auto *element_type = instruction->getOperand(4)->getType();
 
 	auto &builder = impl.builder();
 	unsigned raw_vecsize = 0;

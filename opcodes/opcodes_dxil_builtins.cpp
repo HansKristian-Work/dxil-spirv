@@ -800,8 +800,6 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 		{
 			auto meta = get_resource_meta_from_buffer_op(impl, instruction);
 
-			auto *type = get_composite_element_type(instruction->getType());
-
 			uint32_t access_mask = 0;
 			auto composite_itr = impl.llvm_composite_meta.find(instruction);
 			if (composite_itr != impl.llvm_composite_meta.end())
@@ -825,13 +823,14 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{
-				update_raw_access_tracking_for_byte_address(impl, *tracking, type,
+				update_raw_access_tracking_for_byte_address(impl, *tracking,
+				                                            get_composite_element_type(instruction->getType()),
 				                                            instruction->getOperand(2), access_mask);
 			}
 			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 			{
 				update_raw_access_tracking_for_structured(impl, *tracking,
-				                                          type,
+				                                          get_composite_element_type(instruction->getType()),
 				                                          instruction->getOperand(2),
 				                                          meta.stride,
 				                                          instruction->getOperand(3),
