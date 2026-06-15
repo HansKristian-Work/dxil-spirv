@@ -9,9 +9,11 @@ void main(uint tid : SV_DispatchThreadID)
 	float3 v3 = InBuf.Load<float3>(tid * 12 + 768);
 	float4 v4a = InBuf.Load<float4>(tid * 16 + 1536);
 	vector<float,4> v4b = InBuf.Load<vector<float,4> >(tid * 16 + 2560);
+	vector<float,1> v1b = InBuf.Load<vector<float,1> >(tid * 16 + 2560);
 	OutBuf.Store<float>(tid * 4, v1);
+	OutBuf.Store<vector<float, 1> >(tid * 4, v1b);
 	OutBuf.Store<float2>(tid * 8 + 256, v2);
 	OutBuf.Store<float3>(tid * 12 + 768, v3);
 	OutBuf.Store<float4>(tid * 16 + 1536, v4a);
-	OutBuf.Store<vector<float,4> >(tid * 16 + 2560, v4b);
+	OutBuf.Store<vector<float,4> >(tid * 16 + 2560, v4b + v1b);
 }
