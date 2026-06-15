@@ -810,8 +810,11 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 			if (opcode == DXIL::Op::RawBufferVectorLoad)
 			{
 				unsigned vecsize = get_composite_element_count(instruction->getType());
-				assert(vecsize <= sizeof(access_mask) * 8);
 				access_mask = (1u << vecsize) - 1u;
+				// TODO: Add support for long vector.
+				if (vecsize > 4)
+					access_mask = 0xfu;
+
 			}
 			else
 			{

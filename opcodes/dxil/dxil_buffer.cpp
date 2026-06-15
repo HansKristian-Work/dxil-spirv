@@ -677,12 +677,9 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	if (is_vector)
 	{
 		vecsize = get_composite_element_count(instruction->getType());
-		//TODO
+		// TODO: Add support for long vector.
 		if (vecsize > 4)
-		{
-			LOGE("Long vector is not supported.\n");
 			return false;
-		}
 
 		if (alignment == 0 && !get_constant_operand(instruction, 4, &alignment))
 			return false;
@@ -986,8 +983,11 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	{
 		sparse = (access_mask & (1u << 1)) != 0;
 
+		// TODO: Add support for long vector.
 		unsigned vecsize = get_composite_element_count(result_type);
-		assert(vecsize <= sizeof(access_mask) * 8);
+		if (vecsize > 4)
+			return false;
+
 		access_mask = (1u << vecsize) - 1u;
 	}
 	else
@@ -1331,12 +1331,9 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 		element_type = data_type->getVectorElementType();
 		vecsize = data_type->getVectorNumElements();
 
-		//TODO
+		// TODO: Add support for long vector.
 		if (vecsize > 4)
-		{
-			LOGE("Long vector is not supported.\n");
 			return false;
-		}
 
 		if (alignment == 0 && !get_constant_operand(instruction, 5, &alignment))
 			return false;
@@ -1451,6 +1448,13 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 
 bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector)
 {
+	// TODO: Add support for long vector.
+	if (is_vector && (get_composite_element_count(instruction->getType()) > 4))
+	{
+		LOGE("Long vector is not supported.\n");
+		return false;
+	}
+
 	DXIL::Op op = is_vector ? DXIL::Op::RawBufferVectorLoad : DXIL::Op::RawBufferLoad;
 	if (emit_ags_buffer_load(impl, instruction, op))
 		return true;
@@ -1466,15 +1470,6 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 	if (meta.storage != spv::StorageClassPhysicalStorageBuffer)
 	{
 		auto *ret_component = get_composite_element_type(instruction->getType());
-		if (is_vector)
-		{
-			//TODO
-			if (get_composite_element_count(instruction->getType()) > 4)
-			{
-				LOGE("Long vector is not supported.\n");
-				return false;
-			}
-		}
 
 		if (ret_component->getTypeID() != llvm::Type::TypeID::FloatTyID &&
 		    !(ret_component->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
@@ -1713,6 +1708,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	// We could hoist the call to emit_buffer_store_values_bitcast,
 	// but causes too much churn on shader deltas.
 	if (is_vector)
+		// TODO: optimize splitting the input vector when a vectorized store can be used
 		emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, false);
 	else
 		emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, is_typed, false);
@@ -1821,6 +1817,13 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector)
 {
+	// TODO: Add support for long vector.
+	if (is_vector && (get_composite_element_count(instruction->getOperand(4)->getType()) > 4))
+	{
+		LOGE("Long vector is not supported.\n");
+		return false;
+	}
+
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 
 	if (emit_ags_buffer_store(impl, instruction, ptr_id))
@@ -1835,12 +1838,6 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 		auto *store_type = instruction->getOperand(4)->getType();
 		if (is_vector)
 		{
-			//TODO
-			if (store_type->getVectorNumElements() > 4)
-			{
-				LOGE("Long vector is not supported.\n");
-				return false;
-			}
 			store_type = store_type->getVectorElementType();
 		}
 		if (store_type->getTypeID() != llvm::Type::TypeID::FloatTyID &&
