@@ -647,6 +647,9 @@ static Type *resolve_gep_element_type(Type *type, const Vector<Value *> &args)
 
 static BinaryOperator::BinaryOps translate_binop(BinOp op, Type *type)
 {
+	if (const auto *vec_type = dyn_cast<VectorType>(type))
+		type = vec_type->getVectorElementType();
+
 	bool is_fp = type->isFloatingPointTy();
 	switch (op)
 	{
