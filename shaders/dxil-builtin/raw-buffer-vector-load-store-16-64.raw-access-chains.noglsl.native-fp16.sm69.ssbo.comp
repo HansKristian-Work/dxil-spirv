@@ -5,12 +5,14 @@ RWByteAddressBuffer OutBuf : register(u0);
 void main(uint tid : SV_DispatchThreadID)
 {
 	uint16_t2 h2 = InBuf.Load<uint16_t2>(tid * 4);
-	half4 h4 = InBuf.Load<half4>(tid * 8 + 256);
-	uint64_t2 u64 = InBuf.Load<uint64_t2>(tid * 24 + 512);
-	double4 f64 = InBuf.Load<double4>(tid * 32 + 1024);
+	int16_t3 h3 = InBuf.Load<int16_t3>(tid * 6 + 256);
+	half4 h4 = InBuf.Load<half4>(tid * 8 + 640);
+	uint64_t2 u64 = InBuf.Load<uint64_t2>(tid * 24 + 1152);
+	double4 f64 = InBuf.Load<double4>(tid * 32 + 2688);
 
 	OutBuf.Store<uint16_t2>(tid * 4, h2);
-	OutBuf.Store<half4>(tid * 8 + 256, h4);
-	OutBuf.Store<uint64_t2>(tid * 24 + 512, u64);
-	OutBuf.Store<double4>(tid * 32 + 1024, f64);
+	OutBuf.Store<int16_t3>(tid * 6 + 256, h3);
+	OutBuf.Store<half4>(tid * 8 + 640, h4);
+	OutBuf.Store<uint64_t2>(tid * 24 + 1152, u64);
+	OutBuf.Store<double4>(tid * 32 + 2688, f64);
 }
