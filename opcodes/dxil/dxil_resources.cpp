@@ -2846,10 +2846,28 @@ bool type_is_composite_return_value(llvm::Type *type)
 llvm::Type *get_composite_element_type(llvm::Type *type)
 {
 	assert(type_is_composite_return_value(type));
-	if (const auto *vec = llvm::dyn_cast<llvm::VectorType>(type))
-		return vec->getElementType();
+
+	// Try to unwrap the struct first
+	if (type->getTypeID() == llvm::Type::TypeID::StructTyID)
+		type = type->getStructElementType(0);
+
+	if (type->getTypeID() == llvm::Type::TypeID::VectorTyID)
+		return type->getVectorElementType();
 	else
-		return type->getStructElementType(0);
+		return type;
+}
+
+unsigned get_composite_element_count(llvm::Type *type)
+{
+	assert(type_is_composite_return_value(type));
+
+	if (type->getTypeID() == llvm::Type::TypeID::StructTyID)
+		type = type->getStructElementType(0);
+
+	if (type->getTypeID() == llvm::Type::TypeID::VectorTyID)
+		return type->getVectorNumElements();
+	else
+		return 1;
 }
 
 bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
@@ -2878,7 +2896,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 			return false;
 		}
 
-		emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load);
+		emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load, false);
 
 		if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 		{

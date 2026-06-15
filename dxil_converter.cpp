@@ -9070,6 +9070,33 @@ void Converter::Impl::register_externally_visible_write(const llvm::Value *value
 		break;
 	}
 
+	case llvm::Type::TypeID::VectorTyID:
+	{
+		const auto *vec_type = value->getType();
+		const auto *elem_type = vec_type->getVectorElementType();
+		auto elem_type_id = elem_type->getTypeID();
+		if (elem_type_id != llvm::Type::TypeID::HalfTyID &&
+		    elem_type_id != llvm::Type::TypeID::FloatTyID &&
+		    elem_type_id != llvm::Type::TypeID::DoubleTyID)
+			break;
+
+		spv::Id vec_id = get_id_for_value(value);
+		spv::Id elem_spv_type = get_type_id(elem_type);
+		unsigned num_elements = vec_type->getVectorNumElements();
+		for (unsigned i = 0; i < num_elements; i++)
+		{
+			auto *extract = allocate(spv::OpCompositeExtract, elem_spv_type);
+			extract->add_id(vec_id);
+			extract->add_literal(i);
+			add(extract);
+
+			auto *op = allocate(spv::PseudoOpInstrumentExternallyVisibleStore);
+			op->add_id(extract->id);
+			add(op);
+		}
+		break;
+	}
+
 	default:
 		break;
 	}

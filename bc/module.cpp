@@ -647,6 +647,9 @@ static Type *resolve_gep_element_type(Type *type, const Vector<Value *> &args)
 
 static BinaryOperator::BinaryOps translate_binop(BinOp op, Type *type)
 {
+	if (const auto *vec_type = dyn_cast<VectorType>(type))
+		type = vec_type->getVectorElementType();
+
 	bool is_fp = type->isFloatingPointTy();
 	switch (op)
 	{
@@ -1775,7 +1778,7 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		if (!a.first || !b || !shuf.first || !isa<VectorType>(a.second))
 			return false;
 
-		auto *vec_type = VectorType::get(cast<ConstantDataVector>(shuf.first)->getNumElements(),
+		auto *vec_type = VectorType::get(shuf.first->getType()->getVectorNumElements(),
 		                                 cast<VectorType>(a.second)->getElementType());
 		auto *value = context->construct<ShuffleVectorInst>(vec_type, a.first, b, shuf.first);
 		if (!add_instruction(value))

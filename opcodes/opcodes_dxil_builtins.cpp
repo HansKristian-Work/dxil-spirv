@@ -101,10 +101,12 @@ struct DXILDispatcher
 		OP(WriteSamplerFeedbackBias) = emit_write_sampler_feedback_instruction<DXIL::Op::WriteSamplerFeedbackBias>;
 
 		// dxil_buffer.hpp
-		OP(BufferLoad) = emit_buffer_load_instruction;
-		OP(RawBufferLoad) = emit_raw_buffer_load_instruction;
-		OP(BufferStore) = emit_buffer_store_instruction;
-		OP(RawBufferStore) = emit_raw_buffer_store_instruction;
+		OP(BufferLoad) = emit_buffer_load_instruction<false>;
+		OP(RawBufferLoad) = emit_raw_buffer_load_instruction<false>;
+		OP(RawBufferVectorLoad) = emit_raw_buffer_load_instruction<true>;
+		OP(BufferStore) = emit_buffer_store_instruction<false>;
+		OP(RawBufferStore) = emit_raw_buffer_store_instruction<false>;
+		OP(RawBufferVectorStore) = emit_raw_buffer_store_instruction<true>;
 		OP(BufferUpdateCounter) = emit_buffer_update_counter_instruction;
 		OP(AtomicBinOp) = emit_atomic_binop_instruction;
 		OP(AtomicCompareExchange) = emit_atomic_cmpxchg_instruction;
@@ -473,6 +475,7 @@ bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction)
 	case DXIL::Op::EmitThenCutStream:
 	case DXIL::Op::StorePatchConstant:
 	case DXIL::Op::RawBufferStore:
+	case DXIL::Op::RawBufferVectorStore:
 	case DXIL::Op::IgnoreHit:
 	case DXIL::Op::AcceptHitAndEndSearch:
 	case DXIL::Op::TraceRay:
@@ -802,9 +805,21 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 			if (composite_itr != impl.llvm_composite_meta.end())
 				access_mask = composite_itr->second.access_mask & 0xfu;
 
-			// Smear read masks.
-			access_mask |= access_mask >> 1u;
-			access_mask |= access_mask >> 2u;
+			if (opcode == DXIL::Op::RawBufferVectorLoad)
+			{
+				unsigned vecsize = get_composite_element_count(instruction->getType());
+				access_mask = (1u << vecsize) - 1u;
+				// TODO: Add support for long vector.
+				if (vecsize > 4)
+					access_mask = 0xfu;
+
+			}
+			else
+			{
+				// Smear read masks.
+				access_mask |= access_mask >> 1u;
+				access_mask |= access_mask >> 2u;
+			}
 
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{
@@ -851,18 +866,31 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 		{
 			auto meta = get_resource_meta_from_buffer_op(impl, instruction);
 
+			const auto *type = instruction->getOperand(4)->getType();
+			uint32_t mask = 0;
+
+			if (opcode == DXIL::Op::RawBufferVectorStore)
+			{
+				unsigned vecsize = type->getVectorNumElements();
+				mask = (1u << vecsize) - 1u;
+				if (vecsize > 4)
+					mask = 0xfu; // TODO: long vector
+				type = type->getVectorElementType();
+			}
+			else
+			{
+				mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+			}
+
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{
-				unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
-				update_raw_access_tracking_for_byte_address(impl, *tracking,
-				                                            instruction->getOperand(4)->getType(),
+				update_raw_access_tracking_for_byte_address(impl, *tracking, type,
 				                                            instruction->getOperand(2), mask);
 			}
 			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 			{
-				unsigned mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
 				update_raw_access_tracking_for_structured(impl, *tracking,
-				                                          instruction->getOperand(4)->getType(),
+				                                          type,
 				                                          instruction->getOperand(2),
 				                                          meta.stride,
 				                                          instruction->getOperand(3),
@@ -937,6 +965,7 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 	{
 	case DXIL::Op::BufferLoad:
 	case DXIL::Op::RawBufferLoad:
+	case DXIL::Op::RawBufferVectorLoad:
 		analyze_dxil_buffer_load(impl, instruction, op);
 		break;
 
@@ -954,6 +983,7 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 	case DXIL::Op::TextureStore:
 	case DXIL::Op::BufferStore:
 	case DXIL::Op::RawBufferStore:
+	case DXIL::Op::RawBufferVectorStore:
 		// TextureStore only needed here to track AGS U64 image atomics.
 		analyze_dxil_buffer_store(impl, instruction, op);
 		break;

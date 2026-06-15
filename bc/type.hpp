@@ -81,6 +81,7 @@ public:
 	unsigned getIntegerBitWidth() const;
 	unsigned getAddressSpace() const;
 	unsigned getVectorNumElements() const;
+	Type *getVectorElementType() const;
 	unsigned getPointerAddressSpace() const;
 
 protected:
