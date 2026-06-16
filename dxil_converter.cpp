@@ -8941,13 +8941,20 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 	}
 
+	uint32_t sm_major = 0, sm_minor = 0;
+	get_shader_model(module, nullptr, &sm_major, &sm_minor);
+
 	if (!options.shader_source_file.empty())
 	{
 		auto &builder = spirv_module.get_builder();
-		uint32_t sm_major = 0, sm_minor = 0;
-		get_shader_model(module, nullptr, &sm_major, &sm_minor);
 		builder.setSource(spv::SourceLanguageUnknown, sm_major * 100 + sm_minor);
 		builder.setSourceFile(options.shader_source_file);
+	}
+
+	if (sm_major > 6 || (sm_major == 6 && sm_minor >= 9))
+	{
+		// Use SPIR-V 1.6 for SM 6.9 for easier use of OpSelect - condition does not have to be a vector
+		spirv_module.set_override_spirv_version(0x10600);
 	}
 
 	result.node_pool = std::make_unique<CFGNodePool>();
