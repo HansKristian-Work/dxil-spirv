@@ -645,7 +645,7 @@ static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv:
 	if (!get_constant_operand(instruction, 3, &sign_kind))
 		return spv::OpNop;
 
-	if (instruction->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+	if (instruction->getType()->getScalarType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 		return fp;
 	else if (static_cast<DXIL::SignedOpKind>(sign_kind) == DXIL::SignedOpKind::Signed)
 		return s;
@@ -686,27 +686,28 @@ static spv::Id build_mask_reduction_input_arith(Converter::Impl &impl, const llv
 } while(0)
 
 	spv::Id replacement_value;
-	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+	auto *scalar_output_type = instruction->getType()->getScalarType();
+	if (scalar_output_type->getTypeID() == llvm::Type::TypeID::FloatTyID)
 	{
 		DECLARE_TYPE_TEMPLATE(Float,
 		                      1.0f, 0.0f,
 		                      std::numeric_limits<float>::infinity(),
 		                      -std::numeric_limits<float>::infinity());
 	}
-	else if (instruction->getType()->getTypeID() == llvm::Type::TypeID::DoubleTyID)
+	else if (scalar_output_type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
 	{
 		DECLARE_TYPE_TEMPLATE(Double,
 		                      1.0, 0.0,
 		                      std::numeric_limits<double>::infinity(),
 		                      -std::numeric_limits<double>::infinity());
 	}
-	else if (instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID)
+	else if (scalar_output_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 	{
 		DECLARE_TYPE_TEMPLATE(Float16, 0x3c00, 0, 0x7c00, 0xfc00);
 	}
 	else if (static_cast<DXIL::SignedOpKind>(sign_kind) == DXIL::SignedOpKind::Signed)
 	{
-		switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+		switch (instruction->getOperand(1)->getType()->getScalarType()->getIntegerBitWidth())
 		{
 		case 16:
 			DECLARE_TYPE_TEMPLATE(Uint16, 1, 0,
@@ -732,7 +733,7 @@ static spv::Id build_mask_reduction_input_arith(Converter::Impl &impl, const llv
 	}
 	else
 	{
-		switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+		switch (instruction->getOperand(1)->getType()->getScalarType()->getIntegerBitWidth())
 		{
 		case 16:
 			DECLARE_TYPE_TEMPLATE(Uint16, 1, 0,
@@ -755,6 +756,12 @@ static spv::Id build_mask_reduction_input_arith(Converter::Impl &impl, const llv
 		default:
 			return 0;
 		}
+	}
+
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		replacement_value = impl.build_splat_constant_vector(impl.get_type_id(scalar_output_type), replacement_value,
+		                    instruction->getType()->getVectorNumElements());
 	}
 
 	auto *replace_op = impl.allocate(spv::OpSelect, impl.get_type_id(instruction->getOperand(1)->getType()));
@@ -808,7 +815,7 @@ static spv::Id build_mask_reduction_input_bitwise(Converter::Impl &impl, const l
 
 static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv::Op i)
 {
-	if (instruction->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+	if (instruction->getType()->getScalarType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 		return fp;
 	else
 		return i;
