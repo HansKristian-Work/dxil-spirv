@@ -716,16 +716,6 @@ static inline Type *get_value_type(Value *value)
 	return value->getType();
 }
 
-static Type *get_scalar_type(Type *type)
-{
-	if (auto *vec = dyn_cast<VectorType>(type))
-		return vec->getElementType();
-	else if (isa<StructType>(type))
-		return type->getStructElementType(0);
-	else
-		return type;
-}
-
 template <typename... Values>
 Instruction *ParseContext::build_dxil_call(DXIL::Op op, Type *return_type, Type *overload_type, Values&&... values)
 {
@@ -778,7 +768,7 @@ bool ParseContext::emit_constant(const ir::Op &op)
 			Vector<Value *> constants;
 			constants.reserve(op.getOperandCount());
 
-			auto *llvm_sub_type = get_scalar_type(llvm_type);
+			auto *llvm_sub_type = llvm_type->getScalarType();
 
 			if (type.getBaseType(0).isIntType())
 			{
@@ -823,12 +813,12 @@ bool ParseContext::emit_constant(const ir::Op &op)
 			{
 				if (elem_type.getBaseType(0).isIntType())
 				{
-					constants.push_back(ConstantInt::get(get_scalar_type(llvm_sub_type),
+					constants.push_back(ConstantInt::get(llvm_sub_type->getScalarType(),
 					                                     uint64_t(op.getOperand(elem * vecsize + c))));
 				}
 				else if (elem_type.getBaseType(0).isFloatType())
 				{
-					constants.push_back(ConstantFP::get(get_scalar_type(llvm_sub_type),
+					constants.push_back(ConstantFP::get(llvm_sub_type->getScalarType(),
 					                                    uint64_t(op.getOperand(elem * vecsize + c))));
 				}
 				else
@@ -1961,7 +1951,7 @@ static VectorType *get_vec4_variant(Type *type)
 
 static StructType *get_sparse_feedback_variant(Type *type)
 {
-	auto *scalar_type = get_scalar_type(type->getStructElementType(1));
+	auto *scalar_type = type->getStructElementType(1)->getScalarType();
 	return StructType::get(
 		type->getContext(),
 		{ scalar_type, scalar_type, scalar_type, scalar_type, Type::getInt32Ty(type->getContext()) });
@@ -1981,14 +1971,14 @@ Instruction *ParseContext::build_extract_composite(const ir::Op &op, Value *valu
 		num_elements = op.getType().getBaseType(0).getVectorSize();
 
 	if (num_elements == 1)
-		return context.construct<ExtractValueInst>(get_scalar_type(value->getType()), value, Vector<unsigned>{ 0 });
+		return context.construct<ExtractValueInst>(value->getType()->getScalarType(), value, Vector<unsigned>{ 0 });
 
 	Value *values[4];
 	for (unsigned c = 0; c < num_elements; c++)
 		values[c] = get_extracted_composite_component(value, c);
 
 	assert(num_elements > 1);
-	auto *result_type = VectorType::get(num_elements, get_scalar_type(value->getType()));
+	auto *result_type = VectorType::get(num_elements, value->getType()->getScalarType());
 	auto *comp = context.construct<CompositeConstructInst>(
 		result_type, Vector<Value *> { values, values + num_elements });
 	return comp;
@@ -2154,7 +2144,7 @@ bool ParseContext::build_image_store(const ir::Op &op)
 	unsigned num_coord_components = builder.getOp(coord).getType().getBaseType(0).getVectorSize();
 	unsigned num_value_components = builder.getOp(value).getType().getBaseType(0).getVectorSize();
 
-	auto *scalar_type = get_scalar_type(get_value(value)->getType());
+	auto *scalar_type = get_value(value)->getType()->getScalarType();
 	auto *coord_value = get_value(coord);
 
 	for (unsigned c = 0; c < num_coord_components; c++)
