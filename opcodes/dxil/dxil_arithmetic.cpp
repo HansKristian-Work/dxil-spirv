@@ -632,7 +632,10 @@ bool emit_saturate_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 
 	spv::Id constant_0, constant_1;
 
-	switch (instruction->getType()->getTypeID())
+	auto *scalar_output_type = instruction->getType()->getScalarType();
+	llvm::Type::TypeID type_id = scalar_output_type->getTypeID();
+
+	switch (type_id)
 	{
 	case llvm::Type::TypeID::HalfTyID:
 		if (impl.support_native_fp16_operations())
@@ -659,6 +662,14 @@ bool emit_saturate_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 
 	default:
 		return false;
+	}
+
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		spv::Id scalar_type_id = impl.get_type_id(scalar_output_type);
+		unsigned count = instruction->getType()->getVectorNumElements();
+		constant_0 = impl.build_splat_constant_vector(scalar_type_id, constant_0, count);
+		constant_1 = impl.build_splat_constant_vector(scalar_type_id, constant_1, count);
 	}
 
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
