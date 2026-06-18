@@ -1,0 +1,27 @@
+struct Payload
+{
+	float4 color;
+};
+
+RaytracingAccelerationStructure AS : register(t0);
+RWTexture2D<float4> IMG : register(u0);
+
+cbuffer Flags : register(b0)
+{
+	uint flags;
+};
+
+[shader("raygeneration")]
+void RayGen()
+{
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.Direction = float3(4, 5, 6);
+	ray.TMin = 7.0;
+	ray.TMax = 8.0;
+
+	Payload payload0;
+	TraceRay(AS, flags, 0, 1, 2, 3, ray, payload0);
+
+	IMG[int2(0, 0)] = payload0.color;
+}
