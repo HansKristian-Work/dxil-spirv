@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 70
+#define DXIL_SPV_API_VERSION_MINOR 71
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -472,7 +472,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_DEAD_CODE_ELIMINATE = 29,
 	DXIL_SPV_OPTION_PRECISE_CONTROL = 30,
 	DXIL_SPV_OPTION_SAMPLE_GRAD_OPTIMIZATION_CONTROL = 31,
-	DXIL_SPV_OPTION_OPACITY_MICROMAP = 32,
+	/* 32 = older EXT opacity micromap option that was never used by vkd3d-proton. */
 	DXIL_SPV_OPTION_BRANCH_CONTROL = 33,
 	DXIL_SPV_OPTION_SUBGROUP_PROPERTIES = 34,
 	DXIL_SPV_OPTION_DESCRIPTOR_HEAP_ROBUSTNESS = 35,
@@ -493,6 +493,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_MIXED_FLOAT_DOT_PRODUCT = 50,
 	DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES_QUAD = 51,
 	DXIL_SPV_OPTION_SSBO_ADDRESSING_BEHAVIOR = 52,
+	DXIL_SPV_OPTION_OPACITY_MICROMAP = 53,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -735,6 +736,7 @@ typedef struct dxil_spv_option_opacity_micromap
 {
 	dxil_spv_option_base base;
 	dxil_spv_bool enabled;
+	dxil_spv_bool ray_query_force_omm_execution_mode;
 } dxil_spv_option_opacity_micromap;
 
 typedef struct dxil_spv_option_branch_control

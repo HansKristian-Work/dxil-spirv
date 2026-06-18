@@ -253,7 +253,7 @@ enum class Option : uint32_t
 	DeadCodeEliminate = 29,
 	PreciseControl = 30,
 	SampleGradOptimizationControl = 31,
-	OpacityMicromap = 32,
+	// Older OpacityMicromap. It was never used by vkd3d-proton and has been retired.
 	BranchControl = 33,
 	SubgroupProperties = 34,
 	DescriptorHeapRobustness = 35,
@@ -274,6 +274,7 @@ enum class Option : uint32_t
 	MixedDotProduct = 50,
 	ComputeShaderDerivativesQuad = 51,
 	SSBOAddressingBehavior = 52,
+	OpacityMicromap = 53,
 	Count
 };
 
@@ -636,7 +637,23 @@ struct OptionOpacityMicromap : OptionBase
 	{
 	}
 
+	// Flags if SPV_KHR_opacity_micromap is supported and enabled for the pipeline in question, i.e.
+	// D3D12_RAYTRACING_PIPELINE_FLAG_ALLOW_OPACITY_MICROMAPS.
+	// If ForceOpacityMicromap2StateKHR can potentially be used with this enabled,
+	// CapabilityRayTracingOpacityMicromapKHR is turned on.
 	bool enabled = false;
+
+	// In Ray Query with KHR_omm,
+	// accessing OMMs without appropriate execution modes is UB.
+	// There are two ways to enable this mode:
+	// - SM 6.9 RayQuery has a flag to enable it per RayQuery object. We will conservatively enable the execution mode
+	//   if at least one such ray query is present.
+	//   Presence of explicit SM 6.9 ray query flag will force SPV_KHR_omm to be enabled.
+	// - Force it with this flag. It will present that every RayQuery object is marked with the SM 6.9 flag.
+	//   This flag is intended to be used with NVAPI OMM,
+	//   but also to workaround potential UB scenarios apps will introduce in the wild.
+	//   Enabled must also be set for this to take effect.
+	bool ray_query_force_omm_execution_mode = false;
 };
 
 struct OptionBranchControl : OptionBase

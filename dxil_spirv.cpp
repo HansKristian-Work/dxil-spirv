@@ -203,7 +203,8 @@ static void print_help()
 	     "\t[--view-instancing-last-pre-rasterization-stage]\n"
 	     "\t[--view-instance-to-viewport-spec-id <id>]\n"
 	     "\t[--view-index-to-view-instance-spec-id <id>]\n"
-	     "\t[--meta-descriptor descriptor kind set binding]\n");
+	     "\t[--meta-descriptor descriptor kind set binding]\n"
+	     "\t[--ray-query-force-opacity-micromap]\n");
 }
 
 struct MetaDescriptor
@@ -247,6 +248,7 @@ struct Arguments
 	bool propagate_precise = false;
 	bool force_precise = false;
 	bool opacity_micromap = false;
+	bool ray_query_force_omm = false;
 	bool force_flatten = false;
 	bool force_loop = false;
 	bool force_branch = false;
@@ -864,6 +866,9 @@ int main(int argc, char **argv)
 	cbs.add("--opacity-micromap", [&](CLIParser &) {
 		args.opacity_micromap = true;
 	});
+	cbs.add("--ray-query-force-opacity-micromap", [&](CLIParser &) {
+		args.ray_query_force_omm = true;
+	});
 	cbs.add("--force-flatten", [&](CLIParser &) {
 		args.force_flatten = true;
 	});
@@ -1207,8 +1212,11 @@ int main(int argc, char **argv)
 	}
 
 	{
-		const dxil_spv_option_opacity_micromap omm = { { DXIL_SPV_OPTION_OPACITY_MICROMAP },
-		                                               args.opacity_micromap ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		const dxil_spv_option_opacity_micromap omm = {
+			{ DXIL_SPV_OPTION_OPACITY_MICROMAP },
+			args.opacity_micromap ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
+			args.ray_query_force_omm ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
+		};
 		dxil_spv_converter_add_option(converter, &omm.base);
 	}
 

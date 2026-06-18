@@ -331,19 +331,6 @@ bool emit_ray_tracing_hit_kind_instruction(Converter::Impl &impl, const llvm::Ca
 	return emit_ray_tracing_load_uint(impl, inst, spv::BuiltInHitKindKHR);
 }
 
-static void emit_ray_query_capabilities(Converter::Impl &impl)
-{
-	auto &builder = impl.builder();
-	builder.addExtension("SPV_KHR_ray_query");
-	builder.addCapability(spv::CapabilityRayQueryKHR);
-	builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
-	if (impl.options.opacity_micromap_enabled)
-	{
-		builder.addExtension("SPV_EXT_opacity_micromap");
-		builder.addCapability(spv::CapabilityRayTracingOpacityMicromapEXT);
-	}
-}
-
 bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
@@ -365,14 +352,14 @@ bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *inst)
 		impl.handle_to_storage_class[inst] = spv::StorageClassPrivate;
 	}
 
-	emit_ray_query_capabilities(impl);
 	return true;
 }
 
 static bool get_representative_ray_query_flags(Converter::Impl &impl, const llvm::Value *operand,
                                                uint32_t &ray_query_flags)
 {
-	if (value_is_dx_op_instrinsic(operand, DXIL::Op::AllocateRayQuery))
+	if (value_is_dx_op_instrinsic(operand, DXIL::Op::AllocateRayQuery) ||
+		value_is_dx_op_instrinsic(operand, DXIL::Op::AllocateRayQuery2))
 	{
 		return get_constant_operand(llvm::cast<llvm::CallInst>(operand), 1, &ray_query_flags);
 	}
