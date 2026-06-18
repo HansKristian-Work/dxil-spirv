@@ -4363,7 +4363,13 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 	case llvm::Type::TypeID::VectorTyID:
 	{
 		auto *vec_type = llvm::cast<llvm::VectorType>(type);
-		return builder.makeVectorType(get_type_id(vec_type->getElementType()), vec_type->getVectorNumElements());
+		unsigned count = vec_type->getVectorNumElements();
+		if (count < 2 || count > 4)
+		{
+			LOGE("Long vector is not supported.\n");
+			std::terminate();
+		}
+		return builder.makeVectorType(get_type_id(vec_type->getElementType()), count);
 	}
 
 	case llvm::Type::TypeID::VoidTyID:
@@ -5902,6 +5908,9 @@ spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, const spv::
 
 spv::Id Converter::Impl::build_splat_constant_vector(spv::Id element_type, spv::Id value, unsigned count)
 {
+	// TODO: Add support for long vector.
+	assert(count >=2 && count <= 4);
+
 	spv::Id ids[4];
 	for (unsigned i = 0; i < count; i++)
 		ids[i] = value;
