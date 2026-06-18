@@ -290,6 +290,7 @@ struct DXILDispatcher
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
+		OP(AllocateRayQuery2) = emit_allocate_ray_query; // These are compatible.
 		OP(RayQuery_TraceRayInline) = emit_ray_query_trace_ray_inline_instruction;
 		OP(RayQuery_Proceed) = emit_ray_query_proceed_instruction;
 		OP(RayQuery_Abort) = emit_ray_query_abort_instruction;
@@ -952,6 +953,24 @@ static bool analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 	return true;
 }
 
+static void analyze_ray_tracing_flags(Converter::Impl &impl, const llvm::Value *flags)
+{
+	if (const auto *flags_inst = llvm::dyn_cast<llvm::ConstantInt>(flags))
+	{
+		auto value = flags_inst->getUniqueInteger().getZExtValue();
+		if ((value & (spv::RayFlagsSkipTrianglesKHRMask | spv::RayFlagsSkipAABBsKHRMask)) != 0)
+			impl.shader_analysis.can_require_primitive_culling = true;
+		if ((value & spv::RayFlagsForceOpacityMicromap2StateKHRMask) != 0)
+			impl.shader_analysis.can_require_opacity_micromap = true;
+	}
+	else
+	{
+		// Non constant flags, so we must be conservative.
+		impl.shader_analysis.can_require_primitive_culling = true;
+		impl.shader_analysis.can_require_opacity_micromap = true;
+	}
+}
+
 bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// The opcode is encoded as a constant integer.
@@ -1015,25 +1034,7 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 			}
 		}
 
-		if (const auto *flags_inst = llvm::dyn_cast<llvm::ConstantInt>(instruction->getOperand(2)))
-		{
-			auto value = flags_inst->getUniqueInteger().getZExtValue();
-			if ((value & (spv::RayFlagsSkipTrianglesKHRMask | spv::RayFlagsSkipAABBsKHRMask)) != 0)
-			{
-				impl.shader_analysis.can_require_primitive_culling = true;
-			}
-			if ((value & spv::RayFlagsForceOpacityMicromap2StateEXTMask) != 0)
-			{
-				impl.shader_analysis.can_require_opacity_micromap = true;
-			}
-		}
-		else
-		{
-			// Non constant flags, so we must be conservative.
-			impl.shader_analysis.can_require_primitive_culling = true;
-			impl.shader_analysis.can_require_opacity_micromap = true;
-		}
-
+		analyze_ray_tracing_flags(impl, instruction->getOperand(2));
 		break;
 	}
 
@@ -1479,9 +1480,28 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 		if (!value_is_dx_op_instrinsic(object, DXIL::Op::AllocateRayQuery))
 			impl.shader_analysis.ray_query.uses_non_direct_indexing = true;
 
+		// Primitive culling flag is implied, only analyze for Force2State flag.
+		// HLSL blocks any attempt to declare the Force2StateFlag unless SM 6.9 flag is also set.
+		// If OMM mode is forced, assume the Force2StateFlag can be passed through by some other means
+		// that HLSL compiler wouldn't be able to catch.
+		if (impl.shader_analysis.ray_query.requires_opacity_micromap_tracing ||
+			impl.options.ray_query_force_omm_execution_mode)
+		{
+			analyze_ray_tracing_flags(impl, instruction->getOperand(3));
+		}
 		break;
 	}
 
+	case DXIL::Op::AllocateRayQuery2:
+	{
+		uint32_t rq_flags;
+		if (!get_constant_operand(instruction, 2, &rq_flags))
+			return false;
+
+		if (rq_flags & DXIL::RayQueryFlagAllowOpacityMicromaps)
+			impl.shader_analysis.ray_query.requires_opacity_micromap_tracing = true;
+	}
+		// fallthrough
 	case DXIL::Op::AllocateRayQuery:
 		// If we have to do worst-case allocation.
 		impl.shader_analysis.ray_query.num_ray_query_alloca++;

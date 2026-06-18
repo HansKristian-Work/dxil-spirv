@@ -7226,17 +7226,22 @@ bool Converter::Impl::emit_execution_modes_ray_query()
 		builder.addCapability(spv::CapabilityRayQueryKHR);
 		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
 
-		if (options.opacity_micromap_enabled || shader_analysis.ray_query.requires_opacity_micromap_tracing)
+		bool omm_possible =
+				(options.opacity_micromap_enabled && options.ray_query_force_omm_execution_mode) ||
+				shader_analysis.ray_query.requires_opacity_micromap_tracing;
+
+		if (omm_possible)
 		{
+			// No need to declare the execution mode if it's not used.
 			emit_opacity_micromap_extension(*this);
 			builder.addCapability(spv::CapabilityRayTracingOpacityMicromapExecutionModeKHR);
+			spv::Id enable_id = builder.makeBoolConstant(true);
+			builder.addExecutionModeId(
+				spirv_module.get_entry_function(), spv::ExecutionModeOpacityMicromapIdKHR, enable_id);
 
-			spv::Id enable_id = builder.makeBoolConstant(
-				shader_analysis.ray_query.requires_opacity_micromap_tracing || options.ray_query_force_omm_execution_mode);
-
-			builder.addExecutionModeId(spirv_module.get_entry_function(),
-									   spv::ExecutionModeOpacityMicromapIdKHR,
-									   enable_id);
+			// OMM and ray query is only relevant if explicitly asked for.
+			if (shader_analysis.can_require_opacity_micromap)
+				emit_opacity_micromap_capability(*this);
 		}
 	}
 

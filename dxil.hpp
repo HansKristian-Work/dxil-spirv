@@ -827,4 +827,11 @@ enum BarrierSemanticsFlagBits
 	GroupScopeBit = 0x2,
 	DeviceScopeBit = 0x4
 };
+
+enum RayQueryFlags
+{
+	RayQueryFlagNone = 0,
+	RayQueryFlagAllowOpacityMicromaps = 0x1,
+	RayQueryFlagAllowClusteredGeometry = 0x2
+};
 } // namespace DXIL

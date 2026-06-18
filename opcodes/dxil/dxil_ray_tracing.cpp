@@ -358,7 +358,8 @@ bool emit_allocate_ray_query(Converter::Impl &impl, const llvm::CallInst *inst)
 static bool get_representative_ray_query_flags(Converter::Impl &impl, const llvm::Value *operand,
                                                uint32_t &ray_query_flags)
 {
-	if (value_is_dx_op_instrinsic(operand, DXIL::Op::AllocateRayQuery))
+	if (value_is_dx_op_instrinsic(operand, DXIL::Op::AllocateRayQuery) ||
+		value_is_dx_op_instrinsic(operand, DXIL::Op::AllocateRayQuery2))
 	{
 		return get_constant_operand(llvm::cast<llvm::CallInst>(operand), 1, &ray_query_flags);
 	}
