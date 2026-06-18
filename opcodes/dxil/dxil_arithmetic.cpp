@@ -104,15 +104,20 @@ bool emit_isfinite_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	auto &builder = impl.builder();
 	// There is an OpIsFinite instruction, but it's only supported in kernel mode, so we have to decompose here.
 
-	Operation *nan_op = impl.allocate(spv::OpIsNan, builder.makeBoolType());
-	Operation *inf_op = impl.allocate(spv::OpIsInf, builder.makeBoolType());
+	auto bool_type = builder.makeBoolType();
+
+	if (instruction->getType()->getTypeID() == LLVMBC::Type::TypeID::VectorTyID)
+		bool_type = builder.makeVectorType(bool_type, instruction->getType()->getVectorNumElements());
+
+	Operation *nan_op = impl.allocate(spv::OpIsNan, bool_type);
+	Operation *inf_op = impl.allocate(spv::OpIsInf, bool_type);
 	nan_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	inf_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 
 	impl.add(nan_op);
 	impl.add(inf_op);
 
-	Operation *non_finite_op = impl.allocate(spv::OpLogicalOr, builder.makeBoolType());
+	Operation *non_finite_op = impl.allocate(spv::OpLogicalOr, bool_type);
 	non_finite_op->add_ids({ nan_op->id, inf_op->id });
 	impl.add(non_finite_op);
 
