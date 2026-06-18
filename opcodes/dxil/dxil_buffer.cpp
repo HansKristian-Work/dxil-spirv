@@ -1210,10 +1210,18 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 					}
 				}
 
-				for (unsigned i = 0; i < conservative_num_elements; i++)
-					op->add_id(component_ids[i]);
-				for (unsigned i = conservative_num_elements; i < 4; i++)
-					op->add_id(builder.createUndefined(impl.get_type_id(element_type)));
+				if (is_vector)
+				{
+					constructed_id = impl.build_vector(impl.get_type_id(element_type), component_ids, conservative_num_elements);
+					op->add_id(constructed_id);
+				}
+				else
+				{
+					for (unsigned i = 0; i < conservative_num_elements; i++)
+						op->add_id(component_ids[i]);
+					for (unsigned i = conservative_num_elements; i < 4; i++)
+						op->add_id(builder.createUndefined(impl.get_type_id(element_type)));
+				}
 				op->add_id(sparse_code_id);
 				impl.add(op);
 			}
