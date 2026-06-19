@@ -1,0 +1,21 @@
+ByteAddressBuffer InBuf : register(t0);
+RWByteAddressBuffer OutBuf : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint tid : SV_DispatchThreadID)
+{
+	float4 fa = InBuf.Load<float4>(tid * 16 + 0);
+	float4 fb = InBuf.Load<float4>(tid * 16 + 16);
+	uint4 ua = InBuf.Load<uint4>(tid * 16 + 32);
+	uint4 ub = InBuf.Load<uint4>(tid * 16 + 48);
+	int4 sa = InBuf.Load<int4>(tid * 16 + 64);
+	int4 sb = InBuf.Load<int4>(tid * 16 + 72);
+
+	bool4 fcmp = fa == fb;
+	bool4 ucmp = ua <= ub;
+	bool4 scmp = sa > sb;
+
+	bool4 bcmp = fcmp == ucmp == scmp;
+	
+	OutBuf.Store<bool4>(tid * 16, bcmp);
+}
