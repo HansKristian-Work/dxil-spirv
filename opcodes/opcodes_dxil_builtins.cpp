@@ -211,6 +211,9 @@ struct DXILDispatcher
 
 		OP(Msad) = emit_msad_instruction;
 
+		OP(VectorReduceAnd) = unary_dispatch<spv::OpAll>;
+		OP(VectorReduceOr) = unary_dispatch<spv::OpAny>;
+
 		// dxil_compute.hpp
 		OP(Barrier) = emit_barrier_instruction;
 		OP(ThreadId) = emit_thread_id_load_dispatch<spv::BuiltInGlobalInvocationId>;
