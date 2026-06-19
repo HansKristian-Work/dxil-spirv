@@ -79,108 +79,104 @@ layout(location = 3) out uint SV_Target_3;
 
 void main()
 {
-    uint _422;
-    vec4 _423;
-    _422 = sparseTextureARB(sampler2D(_8, _28), vec2(UV.x, UV.y), _423);
-    SparseTexel _63 = SparseTexel(_422, _423);
+    uint _423;
+    vec4 _424;
+    _423 = sparseTextureARB(sampler2D(_8, _28), vec2(UV.x, UV.y), _424);
+    SparseTexel _63 = SparseTexel(_423, _424);
     f16vec4 _69 = f16vec4(_63._m1);
     _74 _75 = _74(_69.x, _69.y, _69.z, _69.w, _63._m0);
-    uint _424;
-    ivec4 _425;
-    _424 = sparseTexelFetchARB(_12, ivec2(uvec2(1u, 2u)), int(3u), _425);
-    SparseTexel_1 _86 = SparseTexel_1(_424, _425);
+    uint _425;
+    ivec4 _426;
+    _425 = sparseTexelFetchARB(_12, ivec2(uvec2(1u, 2u)), int(3u), _426);
+    SparseTexel_1 _86 = SparseTexel_1(_425, _426);
     u16vec4 _93 = u16vec4(_86._m1);
     _98 _99 = _98(_93.x, _93.y, _93.z, _93.w, _86._m0);
-    uint _426;
-    uvec4 _427;
-    _426 = sparseTexelFetchARB(_16, ivec2(uvec2(4u, 5u)), int(6u), _427);
-    SparseTexel_2 _111 = SparseTexel_2(_426, _427);
+    uint _427;
+    uvec4 _428;
+    _427 = sparseTexelFetchARB(_16, ivec2(uvec2(4u, 5u)), int(6u), _428);
+    SparseTexel_2 _111 = SparseTexel_2(_427, _428);
     u16vec4 _115 = u16vec4(_111._m1);
     _98 _120 = _98(_115.x, _115.y, _115.z, _115.w, _111._m0);
-    uint _428;
-    vec4 _429;
-    _428 = sparseTextureGatherARB(sampler2D(_8, _28), vec2(UV.x, UV.y), _429);
-    SparseTexel _129 = SparseTexel(_428, _429);
+    uint _429;
+    vec4 _430;
+    _429 = sparseTextureGatherARB(sampler2D(_8, _28), vec2(UV.x, UV.y), _430);
+    SparseTexel _129 = SparseTexel(_429, _430);
     f16vec4 _132 = f16vec4(_129._m1);
     _74 _137 = _74(_132.x, _132.y, _132.z, _132.w, _129._m0);
-    uint _430;
-    ivec4 _431;
-    _430 = sparseTextureGatherARB(isampler2D(_12, _28), vec2(UV.x, UV.y), _431, int(1u));
-    SparseTexel_1 _152 = SparseTexel_1(_430, _431);
+    uint _431;
+    ivec4 _432;
+    _431 = sparseTextureGatherARB(isampler2D(_12, _28), vec2(UV.x, UV.y), _432, int(1u));
+    SparseTexel_1 _152 = SparseTexel_1(_431, _432);
     u16vec4 _155 = u16vec4(_152._m1);
     _98 _160 = _98(_155.x, _155.y, _155.z, _155.w, _152._m0);
-    uint _432;
-    uvec4 _433;
-    _432 = sparseTextureGatherARB(usampler2D(_16, _28), vec2(UV.x, UV.y), _433, int(2u));
-    SparseTexel_2 _175 = SparseTexel_2(_432, _433);
+    uint _433;
+    uvec4 _434;
+    _433 = sparseTextureGatherARB(usampler2D(_16, _28), vec2(UV.x, UV.y), _434, int(2u));
+    SparseTexel_2 _175 = SparseTexel_2(_433, _434);
     u16vec4 _178 = u16vec4(_175._m1);
     _98 _183 = _98(_178.x, _178.y, _178.z, _178.w, _175._m0);
-    uint _434;
-    float _435;
-    _434 = sparseTextureARB(sampler2DShadow(_8, _29), vec3(vec2(UV.x, UV.y), 0.5), _435);
-    SparseTexel_3 _200 = SparseTexel_3(_434, _435);
+    uint _435;
+    float _436;
+    _435 = sparseTextureARB(sampler2DShadow(_8, _29), vec3(vec2(UV.x, UV.y), 0.5), _436);
+    SparseTexel_3 _200 = SparseTexel_3(_435, _436);
     mediump float _203 = _200._m1;
     _204 _205 = _204(_203, _203, _203, _203, _200._m0);
     mediump float _206 = _205._m0;
-    float _213 = _206 + float(_137._m0 + _75._m0);
-    float _214 = _206 + float(_137._m1 + _75._m1);
-    float _215 = _206 + float(_137._m2 + _75._m2);
-    float _216 = _206 + float(_137._m3 + _75._m3);
-    uint _436;
-    float _437;
-    _436 = sparseTextureLodARB(sampler2DShadow(_8, _29), vec3(vec2(UV.x, UV.y), 0.5), 0.0, _437);
-    SparseTexel_3 _222 = SparseTexel_3(_436, _437);
+    uint _437;
+    float _438;
+    _437 = sparseTextureLodARB(sampler2DShadow(_8, _29), vec3(vec2(UV.x, UV.y), 0.5), 0.0, _438);
+    SparseTexel_3 _222 = SparseTexel_3(_437, _438);
     mediump float _225 = _222._m1;
     _204 _226 = _204(_225, _225, _225, _225, _222._m0);
     mediump float _227 = _226._m0;
     vec2 _243 = vec2(UV.x, UV.y);
-    uint _438;
-    vec4 _439;
-    _438 = sparseTextureGatherARB(sampler2DShadow(_8, _29), _243, 0.5, _439);
-    SparseTexel _244 = SparseTexel(_438, _439);
+    uint _439;
+    vec4 _440;
+    _439 = sparseTextureGatherARB(sampler2DShadow(_8, _29), _243, 0.5, _440);
+    SparseTexel _244 = SparseTexel(_439, _440);
     f16vec4 _247 = f16vec4(_244._m1);
     _74 _252 = _74(_247.x, _247.y, _247.z, _247.w, _244._m0);
-    uint _440;
-    vec4 _441;
-    _440 = sparseTextureLodARB(sampler2D(_8, _28), vec2(UV.x, UV.y), 0.0, _441);
-    SparseTexel _264 = SparseTexel(_440, _441);
+    uint _441;
+    vec4 _442;
+    _441 = sparseTextureLodARB(sampler2D(_8, _28), vec2(UV.x, UV.y), 0.0, _442);
+    SparseTexel _264 = SparseTexel(_441, _442);
     f16vec4 _268 = f16vec4(_264._m1);
     _74 _273 = _74(_268.x, _268.y, _268.z, _268.w, _264._m0);
-    uint _442;
-    vec4 _443;
-    _442 = sparseTextureGradARB(sampler2D(_8, _28), vec2(UV.x, UV.y), vec2(0.20000000298023223876953125, 0.300000011920928955078125), vec2(0.4000000059604644775390625, 0.5), _443);
-    SparseTexel _288 = SparseTexel(_442, _443);
+    uint _443;
+    vec4 _444;
+    _443 = sparseTextureGradARB(sampler2D(_8, _28), vec2(UV.x, UV.y), vec2(0.20000000298023223876953125, 0.300000011920928955078125), vec2(0.4000000059604644775390625, 0.5), _444);
+    SparseTexel _288 = SparseTexel(_443, _444);
     f16vec4 _294 = f16vec4(_288._m1);
     _74 _299 = _74(_294.x, _294.y, _294.z, _294.w, _288._m0);
-    uint _444;
-    vec4 _445;
-    _444 = sparseTextureARB(sampler2D(_8, _28), vec2(UV.x, UV.y), _445, 0.5);
-    SparseTexel _311 = SparseTexel(_444, _445);
+    uint _445;
+    vec4 _446;
+    _445 = sparseTextureARB(sampler2D(_8, _28), vec2(UV.x, UV.y), _446, 0.5);
+    SparseTexel _311 = SparseTexel(_445, _446);
     f16vec4 _315 = f16vec4(_311._m1);
     _74 _320 = _74(_315.x, _315.y, _315.z, _315.w, _311._m0);
     uint _332 = uint(int(UV.x));
-    uint _446;
-    vec4 _447;
-    _446 = sparseTexelFetchARB(_19, int(_332), _447);
-    SparseTexel _333 = SparseTexel(_446, _447);
+    uint _447;
+    vec4 _448;
+    _447 = sparseTexelFetchARB(_19, int(_332), _448);
+    SparseTexel _333 = SparseTexel(_447, _448);
     f16vec4 _336 = f16vec4(_333._m1);
     _74 _341 = _74(_336.x, _336.y, _336.z, _336.w, _333._m0);
-    uint _448;
-    ivec4 _449;
-    _448 = sparseTexelFetchARB(_22, int(_332), _449);
-    SparseTexel_1 _353 = SparseTexel_1(_448, _449);
+    uint _449;
+    ivec4 _450;
+    _449 = sparseTexelFetchARB(_22, int(_332), _450);
+    SparseTexel_1 _353 = SparseTexel_1(_449, _450);
     u16vec4 _356 = u16vec4(_353._m1);
     _98 _361 = _98(_356.x, _356.y, _356.z, _356.w, _353._m0);
-    uint _450;
-    uvec4 _451;
-    _450 = sparseTexelFetchARB(_25, int(_332), _451);
-    SparseTexel_2 _373 = SparseTexel_2(_450, _451);
+    uint _451;
+    uvec4 _452;
+    _451 = sparseTexelFetchARB(_25, int(_332), _452);
+    SparseTexel_2 _373 = SparseTexel_2(_451, _452);
     u16vec4 _376 = u16vec4(_373._m1);
     _98 _381 = _98(_376.x, _376.y, _376.z, _376.w, _373._m0);
-    SV_Target.x = float(((((float16_t(unpackHalf2x16(packHalf2x16(vec2(_213))).x + _227) + _252._m0) + _273._m0) + _299._m0) + _320._m0) + _341._m0);
-    SV_Target.y = float(((((float16_t(unpackHalf2x16(packHalf2x16(vec2(_214))).x + _227) + _252._m1) + _273._m1) + _299._m1) + _320._m1) + _341._m1);
-    SV_Target.z = float(((((float16_t(unpackHalf2x16(packHalf2x16(vec2(_215))).x + _227) + _252._m2) + _273._m2) + _299._m2) + _320._m2) + _341._m2);
-    SV_Target.w = float(((((float16_t(unpackHalf2x16(packHalf2x16(vec2(_216))).x + _227) + _252._m3) + _273._m3) + _299._m3) + _320._m3) + _341._m3);
+    SV_Target.x = float(((((float16_t(float(float16_t(_206 + float(_137._m0 + _75._m0))) + _227) + _252._m0) + _273._m0) + _299._m0) + _320._m0) + _341._m0);
+    SV_Target.y = float(((((float16_t(float(float16_t(_206 + float(_137._m1 + _75._m1))) + _227) + _252._m1) + _273._m1) + _299._m1) + _320._m1) + _341._m1);
+    SV_Target.z = float(((((float16_t(float(float16_t(_206 + float(_137._m2 + _75._m2))) + _227) + _252._m2) + _273._m2) + _299._m2) + _320._m2) + _341._m2);
+    SV_Target.w = float(((((float16_t(float(float16_t(_206 + float(_137._m3 + _75._m3))) + _227) + _252._m3) + _273._m3) + _299._m3) + _320._m3) + _341._m3);
     SV_Target_1.x = int(int16_t((_160._m0 + _99._m0) + _361._m0));
     SV_Target_1.y = int(int16_t((_160._m1 + _99._m1) + _361._m1));
     SV_Target_1.z = int(int16_t((_160._m2 + _99._m2) + _361._m2));
@@ -198,7 +194,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 422
+; Bound: 423
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -206,11 +202,15 @@ OpCapability Int16
 OpCapability SparseResidency
 OpCapability SampledBuffer
 OpCapability DenormPreserve
+OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls"
+OpExtension "SPV_KHR_float_controls2"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %32 %35 %38 %41 %43
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
+OpExecutionModeId %3 FPFastMathDefault %5 %420
+OpExecutionModeId %3 FPFastMathDefault %67 %420
 OpName %3 "main"
 OpName %32 "UV"
 OpName %35 "SV_Target"
@@ -254,6 +254,10 @@ OpDecorate %38 Location 1
 OpDecorate %41 RelaxedPrecision
 OpDecorate %41 Location 2
 OpDecorate %43 Location 3
+OpDecorate %230 FPFastMathMode AllowRecip
+OpDecorate %231 FPFastMathMode AllowRecip
+OpDecorate %232 FPFastMathMode AllowRecip
+OpDecorate %233 FPFastMathMode AllowRecip
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -328,10 +332,11 @@ OpDecorate %43 Location 3
 %287 = OpConstant %5 0.400000006
 %394 = OpTypePointer Output %5
 %403 = OpTypePointer Output %9
+%420 = OpConstant %13 458767
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %420
-%420 = OpLabel
+OpBranch %421
+%421 = OpLabel
 %44 = OpLoad %23 %25
 %45 = OpLoad %20 %22
 %46 = OpLoad %17 %19
@@ -490,10 +495,10 @@ OpBranch %420
 %227 = OpCompositeExtract %5 %226 0
 %228 = OpCompositeExtract %13 %226 4
 %229 = OpImageSparseTexelsResident %81 %228
-%230 = OpQuantizeToF16 %5 %213
-%231 = OpQuantizeToF16 %5 %214
-%232 = OpQuantizeToF16 %5 %215
-%233 = OpQuantizeToF16 %5 %216
+%230 = OpFConvert %5 %217
+%231 = OpFConvert %5 %218
+%232 = OpFConvert %5 %219
+%233 = OpFConvert %5 %220
 %234 = OpFAdd %5 %230 %227
 %235 = OpFAdd %5 %231 %227
 %236 = OpFAdd %5 %232 %227

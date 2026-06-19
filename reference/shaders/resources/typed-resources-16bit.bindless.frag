@@ -69,10 +69,6 @@ void main()
     u16vec4 _251 = u16vec4(textureGather(usampler2D(_22[_139], _62[registers._m2]), vec2(UV.x, UV.y), int(2u)));
     mediump vec4 _266 = vec4(texture(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5)));
     mediump float _267 = _266.x;
-    float _272 = _267 + float(_225.x + _203.x);
-    float _273 = _267 + float(_225.y + _203.y);
-    float _274 = _267 + float(_225.z + _203.z);
-    float _275 = _267 + float(_225.w + _203.w);
     mediump vec4 _282 = vec4(textureLod(sampler2DShadow(_13[registers._m0], _62[registers._m2 + 1u]), vec3(vec2(UV.x, UV.y), 0.5), 0.0));
     mediump float _283 = _282.x;
     vec2 _296 = vec2(UV.x, UV.y);
@@ -83,10 +79,10 @@ void main()
     f16vec4 _330 = f16vec4(texelFetch(_26[registers._m1 + 3u], int(_170)));
     u16vec4 _356 = u16vec4(texelFetch(_30[registers._m1 + 4u], int(_170)));
     u16vec4 _366 = u16vec4(texelFetch(_34[registers._m1 + 5u], int(_170)));
-    SV_Target.x = float(((((_305.x + _298.x) + _317.x) + float16_t(unpackHalf2x16(packHalf2x16(vec2(_272))).x + _283)) + _324.x) + _330.x);
-    SV_Target.y = float(((((_305.y + _298.y) + _317.y) + float16_t(unpackHalf2x16(packHalf2x16(vec2(_273))).x + _283)) + _324.y) + _330.y);
-    SV_Target.z = float(((((_305.z + _298.z) + _317.z) + float16_t(unpackHalf2x16(packHalf2x16(vec2(_274))).x + _283)) + _324.z) + _330.z);
-    SV_Target.w = float(((((_305.w + _298.w) + _317.w) + float16_t(unpackHalf2x16(packHalf2x16(vec2(_275))).x + _283)) + _324.w) + _330.w);
+    SV_Target.x = float(((((_305.x + _298.x) + _317.x) + float16_t(float(float16_t(_267 + float(_225.x + _203.x))) + _283)) + _324.x) + _330.x);
+    SV_Target.y = float(((((_305.y + _298.y) + _317.y) + float16_t(float(float16_t(_267 + float(_225.y + _203.y))) + _283)) + _324.y) + _330.y);
+    SV_Target.z = float(((((_305.z + _298.z) + _317.z) + float16_t(float(float16_t(_267 + float(_225.z + _203.z))) + _283)) + _324.z) + _330.z);
+    SV_Target.w = float(((((_305.w + _298.w) + _317.w) + float16_t(float(float16_t(_267 + float(_225.w + _203.w))) + _283)) + _324.w) + _330.w);
     SV_Target_1.x = int(int16_t((_238.x + _210.x) + _356.x));
     SV_Target_1.y = int(int16_t((_238.y + _210.y) + _356.y));
     SV_Target_1.z = int(int16_t((_238.z + _210.z) + _356.z));
@@ -103,7 +99,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 404
+; Bound: 405
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -114,13 +110,17 @@ OpCapability StorageImageWriteWithoutFormat
 OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpCapability PhysicalStorageBufferAddresses
+OpCapability FloatControls2
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
+OpExtension "SPV_KHR_float_controls2"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint Fragment %3 "main" %65 %68 %71 %74
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
+OpExecutionModeId %3 FPFastMathDefault %9 %402
+OpExecutionModeId %3 FPFastMathDefault %167 %402
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -188,6 +188,10 @@ OpDecorate %71 RelaxedPrecision
 OpDecorate %71 Location 1
 OpDecorate %74 RelaxedPrecision
 OpDecorate %74 Location 2
+OpDecorate %284 FPFastMathMode AllowRecip
+OpDecorate %285 FPFastMathMode AllowRecip
+OpDecorate %286 FPFastMathMode AllowRecip
+OpDecorate %287 FPFastMathMode AllowRecip
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -303,10 +307,11 @@ OpDecorate %74 Location 2
 %375 = OpTypePointer Output %9
 %384 = OpTypePointer Output %14
 %393 = OpTypePointer Output %5
+%402 = OpConstant %5 458767
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %402
-%402 = OpLabel
+OpBranch %403
+%403 = OpLabel
 %78 = OpAccessChain %77 %8 %79
 %80 = OpLoad %5 %78
 %81 = OpIAdd %5 %80 %82
@@ -485,10 +490,10 @@ OpImageWrite %83 %170 %197
 %280 = OpImageSampleDrefExplicitLod %9 %262 %281 %263 Lod %200
 %282 = OpCompositeConstruct %66 %280 %280 %280 %280
 %283 = OpCompositeExtract %9 %282 0
-%284 = OpQuantizeToF16 %9 %272
-%285 = OpQuantizeToF16 %9 %273
-%286 = OpQuantizeToF16 %9 %274
-%287 = OpQuantizeToF16 %9 %275
+%284 = OpFConvert %9 %276
+%285 = OpFConvert %9 %277
+%286 = OpFConvert %9 %278
+%287 = OpFConvert %9 %279
 %288 = OpFAdd %9 %284 %283
 %289 = OpFAdd %9 %285 %283
 %290 = OpFAdd %9 %286 %283

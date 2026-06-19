@@ -750,7 +750,7 @@ static bool value_cast_is_noop(Converter::Impl &impl, const InstructionType *ins
 	return false;
 }
 
-static bool value_cast_is_fp16_quantization(Converter::Impl &impl, const llvm::CastInst *cast_inst, spv::Id &value_id)
+static bool value_cast_is_fp16_quantization(Converter::Impl &impl, const llvm::CastInst *cast_inst, spv::Id *value_id)
 {
 	if (cast_inst->getOpcode() == llvm::Instruction::CastOps::FPExt &&
 	    cast_inst->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
@@ -761,7 +761,8 @@ static bool value_cast_is_fp16_quantization(Converter::Impl &impl, const llvm::C
 			    trunc_inst->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
 			    trunc_inst->getOperand(0)->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
 			{
-				value_id = impl.get_id_for_value(trunc_inst->getOperand(0));
+				if (value_id)
+					*value_id = impl.get_id_for_value(trunc_inst->getOperand(0));
 				return true;
 			}
 		}
@@ -770,7 +771,7 @@ static bool value_cast_is_fp16_quantization(Converter::Impl &impl, const llvm::C
 	return false;
 }
 
-static bool value_cast_is_fp16_quantization(Converter::Impl &, const llvm::ConstantExpr *, spv::Id &)
+static bool value_cast_is_fp16_quantization(Converter::Impl &, const llvm::ConstantExpr *, spv::Id *)
 {
 	return false;
 }
@@ -1062,8 +1063,10 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	spv::Id value_id = 0;
 	spv::Op opcode;
 
-	if (value_cast_is_fp16_quantization(impl, instruction, value_id) &&
-	    impl.execution_mode_meta.native_16bit_operations)
+	bool is_fp16_quant = value_cast_is_fp16_quantization(impl, instruction, &value_id);
+
+	if (is_fp16_quant && impl.execution_mode_meta.native_16bit_operations &&
+	    !impl.execution_mode_meta.float_controls2)
 	{
 		// D3D12 compilers will enforce a truncate here through a FP32 -> FP16 -> FP32 chain,
 		// where Vulkan compilers ... don't :(
@@ -1287,6 +1290,10 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		impl.add(op);
 		if (can_relax_precision)
 			impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+
+		if (is_fp16_quant && impl.execution_mode_meta.float_controls2)
+			add_nocontract_decoration(impl, op->id);
+
 		return op->id;
 	}
 }
@@ -2656,6 +2663,14 @@ bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Extract
 {
 	if (inst->getNumIndices() == 1 && type_is_composite_return_value(inst->getAggregateOperand()->getType()))
 		analyze_extractvalue_instruction(impl, inst->getAggregateOperand(), inst->getIndices()[0]);
+	return true;
+}
+
+bool analyze_cast_instruction(Converter::Impl &impl, const llvm::CastInst *inst)
+{
+	if (value_cast_is_fp16_quantization(impl, inst, nullptr))
+		impl.shader_analysis.fp16_truncate_observed = true;
+
 	return true;
 }
 

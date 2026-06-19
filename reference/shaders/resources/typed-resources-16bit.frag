@@ -54,10 +54,6 @@ void main()
     u16vec4 _169 = u16vec4(textureGather(usampler2D(_16, _46), vec2(UV.x, UV.y), int(2u)));
     mediump vec4 _184 = vec4(texture(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5)));
     mediump float _185 = _184.x;
-    float _190 = _185 + float(_143.x + _117.x);
-    float _191 = _185 + float(_143.y + _117.y);
-    float _192 = _185 + float(_143.z + _117.z);
-    float _193 = _185 + float(_143.w + _117.w);
     mediump vec4 _200 = vec4(textureLod(sampler2DShadow(_8, _47), vec3(vec2(UV.x, UV.y), 0.5), 0.0));
     mediump float _201 = _200.x;
     vec2 _214 = vec2(UV.x, UV.y);
@@ -68,10 +64,10 @@ void main()
     f16vec4 _248 = f16vec4(texelFetch(_19, int(_84)));
     u16vec4 _274 = u16vec4(texelFetch(_22, int(_84)));
     u16vec4 _284 = u16vec4(texelFetch(_25, int(_84)));
-    SV_Target.x = float(((((_223.x + _216.x) + _235.x) + float16_t(unpackHalf2x16(packHalf2x16(vec2(_190))).x + _201)) + _242.x) + _248.x);
-    SV_Target.y = float(((((_223.y + _216.y) + _235.y) + float16_t(unpackHalf2x16(packHalf2x16(vec2(_191))).x + _201)) + _242.y) + _248.y);
-    SV_Target.z = float(((((_223.z + _216.z) + _235.z) + float16_t(unpackHalf2x16(packHalf2x16(vec2(_192))).x + _201)) + _242.z) + _248.z);
-    SV_Target.w = float(((((_223.w + _216.w) + _235.w) + float16_t(unpackHalf2x16(packHalf2x16(vec2(_193))).x + _201)) + _242.w) + _248.w);
+    SV_Target.x = float(((((_223.x + _216.x) + _235.x) + float16_t(float(float16_t(_185 + float(_143.x + _117.x))) + _201)) + _242.x) + _248.x);
+    SV_Target.y = float(((((_223.y + _216.y) + _235.y) + float16_t(float(float16_t(_185 + float(_143.y + _117.y))) + _201)) + _242.y) + _248.y);
+    SV_Target.z = float(((((_223.z + _216.z) + _235.z) + float16_t(float(float16_t(_185 + float(_143.z + _117.z))) + _201)) + _242.z) + _248.z);
+    SV_Target.w = float(((((_223.w + _216.w) + _235.w) + float16_t(float(float16_t(_185 + float(_143.w + _117.w))) + _201)) + _242.w) + _248.w);
     SV_Target_1.x = int(int16_t((_156.x + _126.x) + _274.x));
     SV_Target_1.y = int(int16_t((_156.y + _126.y) + _274.y));
     SV_Target_1.z = int(int16_t((_156.z + _126.z) + _274.z));
@@ -88,7 +84,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 322
+; Bound: 323
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -97,11 +93,15 @@ OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability DenormPreserve
+OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls"
+OpExtension "SPV_KHR_float_controls2"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %50 %53 %56 %59
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
+OpExecutionModeId %3 FPFastMathDefault %5 %320
+OpExecutionModeId %3 FPFastMathDefault %81 %320
 OpName %3 "main"
 OpName %50 "UV"
 OpName %53 "SV_Target"
@@ -160,6 +160,10 @@ OpDecorate %56 RelaxedPrecision
 OpDecorate %56 Location 1
 OpDecorate %59 RelaxedPrecision
 OpDecorate %59 Location 2
+OpDecorate %202 FPFastMathMode AllowRecip
+OpDecorate %203 FPFastMathMode AllowRecip
+OpDecorate %204 FPFastMathMode AllowRecip
+OpDecorate %205 FPFastMathMode AllowRecip
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -246,10 +250,11 @@ OpDecorate %59 Location 2
 %293 = OpTypePointer Output %5
 %302 = OpTypePointer Output %9
 %311 = OpTypePointer Output %13
+%320 = OpConstant %13 458767
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %320
-%320 = OpLabel
+OpBranch %321
+%321 = OpLabel
 %60 = OpLoad %41 %43
 %61 = OpLoad %38 %40
 %62 = OpLoad %35 %37
@@ -375,10 +380,10 @@ OpImageWrite %60 %84 %111
 %198 = OpImageSampleDrefExplicitLod %5 %180 %199 %181 Lod %114
 %200 = OpCompositeConstruct %51 %198 %198 %198 %198
 %201 = OpCompositeExtract %5 %200 0
-%202 = OpQuantizeToF16 %5 %190
-%203 = OpQuantizeToF16 %5 %191
-%204 = OpQuantizeToF16 %5 %192
-%205 = OpQuantizeToF16 %5 %193
+%202 = OpFConvert %5 %194
+%203 = OpFConvert %5 %195
+%204 = OpFConvert %5 %196
+%205 = OpFConvert %5 %197
 %206 = OpFAdd %5 %202 %201
 %207 = OpFAdd %5 %203 %201
 %208 = OpFAdd %5 %204 %201

@@ -84,7 +84,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 339
+; Bound: 340
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -93,11 +93,15 @@ OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability DenormPreserve
+OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls"
+OpExtension "SPV_KHR_float_controls2"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %50 %53 %56 %59
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
+OpExecutionModeId %3 FPFastMathDefault %5 %337
+OpExecutionModeId %3 FPFastMathDefault %81 %337
 OpName %3 "main"
 OpName %50 "UV"
 OpName %53 "SV_Target"
@@ -156,6 +160,10 @@ OpDecorate %56 RelaxedPrecision
 OpDecorate %56 Location 1
 OpDecorate %59 RelaxedPrecision
 OpDecorate %59 Location 2
+OpDecorate %209 FPFastMathMode AllowRecip
+OpDecorate %210 FPFastMathMode AllowRecip
+OpDecorate %211 FPFastMathMode AllowRecip
+OpDecorate %212 FPFastMathMode AllowRecip
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -242,10 +250,11 @@ OpDecorate %59 Location 2
 %310 = OpTypePointer Output %5
 %319 = OpTypePointer Output %9
 %328 = OpTypePointer Output %13
+%337 = OpConstant %13 458767
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %337
-%337 = OpLabel
+OpBranch %338
+%338 = OpLabel
 %60 = OpLoad %41 %43
 %61 = OpLoad %38 %40
 %62 = OpLoad %35 %37

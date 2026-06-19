@@ -45,19 +45,23 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 89
+; Bound: 90
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
+OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls"
+OpExtension "SPV_KHR_float_controls2"
 %31 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %21
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
+OpExecutionModeId %3 FPFastMathDefault %32 %87
+OpExecutionModeId %3 FPFastMathDefault %43 %87
 OpName %3 "main"
 OpName %7 "SSBO"
 OpName %12 "SSBO"
@@ -81,6 +85,8 @@ OpDecorate %18 DescriptorSet 0
 OpDecorate %18 Binding 2
 OpDecorate %18 NonReadable
 OpDecorate %21 BuiltIn GlobalInvocationId
+OpDecorate %71 FPFastMathMode AllowRecip
+OpDecorate %79 FPFastMathMode AllowRecip
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -114,10 +120,11 @@ OpDecorate %21 BuiltIn GlobalInvocationId
 %50 = OpTypePointer StorageBuffer %10
 %75 = OpConstant %5 1024
 %83 = OpConstant %5 1025
+%87 = OpConstant %5 458767
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %87
-%87 = OpLabel
+OpBranch %88
+%88 = OpLabel
 %23 = OpAccessChain %22 %21 %24
 %25 = OpLoad %5 %23
 %27 = OpAccessChain %26 %9 %24 %25
@@ -158,7 +165,7 @@ OpStore %64 %62
 %69 = OpIAdd %5 %68 %46
 %70 = OpAccessChain %26 %18 %24 %69
 OpStore %70 %67
-%71 = OpQuantizeToF16 %32 %35
+%71 = OpFConvert %32 %44
 %72 = OpBitcast %10 %44
 %73 = OpUConvert %5 %72
 %74 = OpIAdd %5 %45 %75
@@ -166,7 +173,7 @@ OpStore %70 %67
 %77 = OpIAdd %5 %76 %75
 %78 = OpAccessChain %26 %18 %24 %77
 OpStore %78 %73
-%79 = OpQuantizeToF16 %32 %39
+%79 = OpFConvert %32 %54
 %80 = OpBitcast %10 %54
 %81 = OpUConvert %5 %80
 %82 = OpIAdd %5 %45 %83

@@ -116,7 +116,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 399
+; Bound: 400
 ; Schema: 0
 OpCapability Shader
 OpCapability Int16
@@ -125,11 +125,14 @@ OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability RuntimeDescriptorArray
 OpCapability PhysicalStorageBufferAddresses
+OpCapability FloatControls2
 OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_float_controls2"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint Fragment %3 "main" %65 %68 %71 %74
 OpExecutionMode %3 OriginUpperLeft
+OpExecutionModeId %3 FPFastMathDefault %9 %397
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -380,10 +383,11 @@ OpDecorate %346 RelaxedPrecision
 %374 = OpTypePointer Output %9
 %379 = OpTypePointer Output %14
 %388 = OpTypePointer Output %5
+%397 = OpConstant %5 458767
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %397
-%397 = OpLabel
+OpBranch %398
+%398 = OpLabel
 %78 = OpAccessChain %77 %8 %79
 %80 = OpLoad %5 %78
 %81 = OpIAdd %5 %80 %82
