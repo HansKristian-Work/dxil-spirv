@@ -188,10 +188,16 @@ OpDecorate %71 RelaxedPrecision
 OpDecorate %71 Location 1
 OpDecorate %74 RelaxedPrecision
 OpDecorate %74 Location 2
-OpDecorate %284 FPFastMathMode AllowRecip
-OpDecorate %285 FPFastMathMode AllowRecip
-OpDecorate %286 FPFastMathMode AllowRecip
-OpDecorate %287 FPFastMathMode AllowRecip
+OpDecorate %168 FPFastMathMode AllowRecip
+OpDecorate %169 FPFastMathMode AllowRecip
+OpDecorate %276 FPFastMathMode AllowRecip
+OpDecorate %277 FPFastMathMode AllowRecip
+OpDecorate %278 FPFastMathMode AllowRecip
+OpDecorate %279 FPFastMathMode AllowRecip
+OpDecorate %292 FPFastMathMode AllowRecip
+OpDecorate %293 FPFastMathMode AllowRecip
+OpDecorate %294 FPFastMathMode AllowRecip
+OpDecorate %295 FPFastMathMode AllowRecip
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

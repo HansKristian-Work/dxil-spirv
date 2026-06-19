@@ -7584,8 +7584,7 @@ bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 
 	// Only enable float controls2 path when really needed.
 	// It's overcomplicated for DXIL purposes.
-	if (options.supports_float_controls2 &&
-	    (shader_analysis.precise_f16_to_f32_observed || shader_analysis.fp16_truncate_observed))
+	if (options.supports_float_controls2 && shader_analysis.precise_f16_to_f32_observed)
 	{
 		execution_mode_meta.float_controls2 = true;
 

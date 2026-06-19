@@ -85,8 +85,6 @@ OpDecorate %18 DescriptorSet 0
 OpDecorate %18 Binding 2
 OpDecorate %18 NonReadable
 OpDecorate %21 BuiltIn GlobalInvocationId
-OpDecorate %71 FPFastMathMode AllowRecip
-OpDecorate %79 FPFastMathMode AllowRecip
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0

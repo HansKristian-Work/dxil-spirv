@@ -990,7 +990,6 @@ struct Converter::Impl
 		bool can_require_primitive_culling = false;
 		bool require_compute_shader_derivatives = false;
 		bool precise_f16_to_f32_observed = false;
-		bool fp16_truncate_observed = false;
 		bool require_uav_thread_group_coherence = false;
 		bool require_node_output_group_coherence = false;
 		bool require_node_input_group_coherence = false;

@@ -1291,7 +1291,8 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		if (can_relax_precision)
 			impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 
-		if (is_fp16_quant && impl.execution_mode_meta.float_controls2)
+		// Truncates should be observed.
+		if (impl.execution_mode_meta.float_controls2 && instruction->getOpcode() == llvm::CastInst::CastOps::FPTrunc)
 			add_nocontract_decoration(impl, op->id);
 
 		return op->id;
@@ -2669,7 +2670,7 @@ bool analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Extract
 bool analyze_cast_instruction(Converter::Impl &impl, const llvm::CastInst *inst)
 {
 	if (value_cast_is_fp16_quantization(impl, inst, nullptr))
-		impl.shader_analysis.fp16_truncate_observed = true;
+		impl.shader_analysis.precise_f16_to_f32_observed = true;
 
 	return true;
 }

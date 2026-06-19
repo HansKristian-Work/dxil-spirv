@@ -41,7 +41,7 @@ OpName %7 "V"
 OpName %9 "SV_Target"
 OpDecorate %7 Location 0
 OpDecorate %9 Location 0
-OpDecorate %13 FPFastMathMode AllowRecip
+OpDecorate %12 FPFastMathMode AllowRecip
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
