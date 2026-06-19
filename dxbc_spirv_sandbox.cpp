@@ -205,6 +205,11 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 	demote.supported = true;
 	converter.add_option(demote);
 
+	OptionSSBOAddressingBehavior ssbo;
+	ssbo.ssbo_wraps_32bit_offset_before_robustness = true;
+	ssbo.raw_access_chain_wraps_32bit_offset_before_robustness = true;
+	converter.add_option(ssbo);
+
 #if 1
 	OptionMinPrecisionNative16Bit native_16bit;
 	native_16bit.enabled = true;
