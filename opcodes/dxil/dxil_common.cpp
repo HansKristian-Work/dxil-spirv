@@ -548,6 +548,23 @@ bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
 	return op == DXIL::Op(opcode);
 }
 
+bool value_depends_on_dx_op(const llvm::Value *value, DXIL::Op op)
+{
+	// Only find simple patterns that we need to care about.
+	// For f32 -> f16 -> f32, it's just binary operation mangling that matters for now.
+
+	if (value_is_dx_op_instrinsic(value, op))
+		return true;
+
+	if (const auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(value))
+	{
+		return value_depends_on_dx_op(binop->getOperand(0), op) ||
+			   value_depends_on_dx_op(binop->getOperand(1), op);
+	}
+	else
+		return false;
+}
+
 void emit_expect_assume_quad_uniform(Converter::Impl &impl)
 {
 	if (impl.options.instruction_instrumentation.enabled &&

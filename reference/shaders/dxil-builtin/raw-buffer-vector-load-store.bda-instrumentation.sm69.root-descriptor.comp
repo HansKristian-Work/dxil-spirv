@@ -317,9 +317,8 @@ OpExtension "SPV_KHR_physical_storage_buffer"
 %150 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint GLCompute %3 "main" %37
-OpExecutionMode %3 SignedZeroInfNanPreserve 32
-OpExecutionMode %3 SignedZeroInfNanPreserve 64
 OpExecutionMode %3 LocalSize 64 1 1
+OpExecutionMode %3 SignedZeroInfNanPreserve 32
 OpName %3 "main"
 OpName %7 "RootConstants"
 OpName %9 "registers"

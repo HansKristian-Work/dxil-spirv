@@ -67,4 +67,6 @@ bool can_optimize_to_snegate(const llvm::BinaryOperator *inst);
 bool can_optimize_to_snegate(const llvm::ConstantExpr *inst);
 
 spv::Id emit_bypass_fp16_trunc(Converter::Impl &impl, const llvm::Instruction *instruction);
+
+void add_nocontract_decoration(Converter::Impl &impl, spv::Id id);
 } // namespace dxil_spv

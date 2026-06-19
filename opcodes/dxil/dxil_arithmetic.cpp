@@ -65,7 +65,7 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		mul_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 		mul_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
 		impl.add(mul_op);
-		builder.addDecoration(mul_op->id, spv::DecorationNoContraction);
+		add_nocontract_decoration(impl, mul_op->id);
 
 		impl.decorate_relaxed_precision(instruction->getType(), mul_op->id, false);
 
@@ -73,7 +73,7 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		add_op->add_id(mul_op->id);
 		add_op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
 		impl.add(add_op);
-		builder.addDecoration(add_op->id, spv::DecorationNoContraction);
+		add_nocontract_decoration(impl, add_op->id);
 
 		result_id = add_op->id;
 	}
@@ -90,7 +90,7 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		impl.add(op);
 
 		if (is_precise)
-			builder.addDecoration(op->id, spv::DecorationNoContraction);
+			add_nocontract_decoration(impl, op->id);
 
 		result_id = op->id;
 	}
@@ -692,7 +692,7 @@ bool emit_dot_instruction(unsigned dimensions, Converter::Impl &impl, const llvm
 
 	bool precise = instruction->hasMetadata("dx.precise") || impl.options.force_precise;
 	if (precise)
-		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
+		add_nocontract_decoration(impl, op->id);
 
 	return true;
 }
@@ -858,7 +858,7 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 	// Only do this hack when heuristics deduce it to be necessary.
 	spv::Id input_id = impl.get_id_for_value(instruction->getOperand(1));
 
-	if (impl.shader_analysis.precise_f16_to_f32_observed)
+	if (impl.shader_analysis.precise_f16_to_f32_observed && !impl.execution_mode_meta.float_controls2)
 	{
 		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, builder.makeFloatType(32));
 		quant_op->add_id(input_id);
@@ -869,6 +869,9 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
 	op->add_literal(GLSLstd450PackHalf2x16);
+
+	if (impl.shader_analysis.precise_f16_to_f32_observed && impl.execution_mode_meta.float_controls2)
+		add_nocontract_decoration(impl, op->id);
 
 	spv::Id inputs[2] = { input_id, builder.makeFloatConstant(0.0f) };
 	op->add_id(impl.build_vector(builder.makeFloatType(32), inputs, 2));
@@ -985,7 +988,7 @@ bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst 
 	dot_op->add_id(b);
 	impl.add(dot_op);
 	if (precise)
-		builder.addDecoration(dot_op->id, spv::DecorationNoContraction);
+		add_nocontract_decoration(impl, dot_op->id);
 
 	spv::Id expanded_input = dot_op->id;
 	if (impl.support_native_fp16_operations())
@@ -1011,14 +1014,14 @@ bool emit_dot2_add_half_instruction(Converter::Impl &impl, const llvm::CallInst 
 	dot_sum->add_id(components[1]);
 	impl.add(dot_sum);
 	if (precise)
-		builder.addDecoration(dot_sum->id, spv::DecorationNoContraction);
+		add_nocontract_decoration(impl, dot_sum->id);
 
 	auto *acc_op = impl.allocate(spv::OpFAdd, instruction);
 	acc_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 	acc_op->add_id(dot_sum->id);
 	impl.add(acc_op);
 	if (precise)
-		builder.addDecoration(acc_op->id, spv::DecorationNoContraction);
+		add_nocontract_decoration(impl, acc_op->id);
 
 	// This opcode requires native FP16, so RelaxedPrecision is useless.
 

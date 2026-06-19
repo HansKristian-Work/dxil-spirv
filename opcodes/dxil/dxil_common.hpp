@@ -67,6 +67,7 @@ bool emit_store_clip_cull_distance(
 	const Converter::Impl::ClipCullMeta &meta);
 
 bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op);
+bool value_depends_on_dx_op(const llvm::Value *value, DXIL::Op op);
 
 spv::Id build_load_invocation_id(Converter::Impl &impl);
 

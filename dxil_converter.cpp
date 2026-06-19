@@ -7490,6 +7490,8 @@ bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 	if (!func)
 		return true;
 
+	auto &b = builder();
+
 	// NVIDIA hack. The way the driver exposes float controls is very unfortunate.
 	// If only partial denorm support is enabled, assume we cannot freely control FP32 behavior either.
 	// However, for SM 6.2+, we have to force it on NVIDIA, even if driver doesn't actually expose it.
@@ -7533,15 +7535,15 @@ bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 		auto str = attr.getValueAsString();
 		if (str == "ftz")
 		{
-			builder().addExtension("SPV_KHR_float_controls");
-			builder().addCapability(spv::CapabilityDenormFlushToZero);
-			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, d.bits);
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormFlushToZero);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, d.bits);
 		}
 		else if (str == "preserve")
 		{
-			builder().addExtension("SPV_KHR_float_controls");
-			builder().addCapability(spv::CapabilityDenormPreserve);
-			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, d.bits);
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormPreserve);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, d.bits);
 		}
 	}
 
@@ -7552,15 +7554,15 @@ bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 		auto str = attr.getValueAsString();
 		if (str == "rtz")
 		{
-			builder().addExtension("SPV_KHR_float_controls");
-			builder().addCapability(spv::CapabilityRoundingModeRTZ);
-			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, r.bits);
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityRoundingModeRTZ);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, r.bits);
 		}
 		else if (str == "rte")
 		{
-			builder().addExtension("SPV_KHR_float_controls");
-			builder().addCapability(spv::CapabilityRoundingModeRTE);
-			builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTE, r.bits);
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityRoundingModeRTE);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTE, r.bits);
 		}
 	}
 #endif
@@ -7569,10 +7571,49 @@ bool Converter::Impl::emit_execution_modes_fp_denorm_rounding()
 	{
 		// FP16 RTZ allows faster conversions on AMD.
 		// This hack only makes sense on RDNA3.
-		builder().addExtension("SPV_KHR_float_controls");
-		builder().addCapability(spv::CapabilityRoundingModeRTZ);
-		builder().addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, 16);
+		b.addExtension("SPV_KHR_float_controls");
+		b.addCapability(spv::CapabilityRoundingModeRTZ);
+		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeRoundingModeRTZ, 16);
 	}
+
+	// We should use these globally, but don't want to invalidate all Fossilize archives just yet.
+	bool preserve_nan_inf_signed_zero =
+			module_is_dxilconv(bitcode_parser.get_module()) ||
+			module_is_dxbc_spirv(bitcode_parser.get_module()) ||
+			options.instruction_instrumentation.enabled;
+
+	// Only enable float controls2 path when really needed.
+	// It's overcomplicated for DXIL purposes.
+	if (options.supports_float_controls2 && shader_analysis.precise_f16_to_f32_observed)
+	{
+		execution_mode_meta.float_controls2 = true;
+
+		// The only good way to implement precise fp32 -> fp16 -> fp32 is with float controls2
+		// since normal NoContract does not seem to apply to packHalf and friends.
+		b.addExtension("SPV_KHR_float_controls2");
+		b.addCapability(spv::CapabilityFloatControls2);
+
+		// Default fast math as specified by SPIR-V.
+		spv::FPFastMathModeMask mask = spv::FPFastMathModeAllowRecipMask;
+
+		if (!options.force_precise)
+		{
+			mask = mask | spv::FPFastMathModeAllowContractMask | spv::FPFastMathModeAllowReassocMask |
+			       spv::FPFastMathModeAllowTransformMask;
+		}
+		else
+		{
+			preserve_nan_inf_signed_zero = true;
+		}
+
+		if (!preserve_nan_inf_signed_zero)
+			mask = mask | spv::FPFastMathModeNotInfMask | spv::FPFastMathModeNotNaNMask | spv::FPFastMathModeNSZMask;
+
+		// NoContract needs to know the default mode since it can chop off fast math flags as necessary.
+		execution_mode_meta.default_fast_math_mode = mask;
+	}
+
+	execution_mode_meta.preserve_nan_inf_signed_zero = preserve_nan_inf_signed_zero;
 
 	return true;
 }
@@ -7596,18 +7637,6 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 
 	if (module_is_dxilconv(bitcode_parser.get_module()))
 	{
-		// We should use these globally, but don't want to invalidate all Fossilize archives just yet.
-		// Shader instrumentation may declare its own preservation modes, so only declare execution modes
-		// if we haven't done anything.
-		if (!builder().hasCapability(spv::CapabilitySignedZeroInfNanPreserve))
-		{
-			b.addExtension("SPV_KHR_float_controls");
-			b.addCapability(spv::CapabilitySignedZeroInfNanPreserve);
-			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 32);
-			if (b.hasCapability(spv::CapabilityFloat64))
-				b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 64);
-		}
-
 		// DXBC assumes flush-to-zero, but dxilconv doesn't explicitly emit that, since it's not in SM 6.0.
 		if (!b.hasCapability(spv::CapabilityDenormFlushToZero) && !b.hasCapability(spv::CapabilityDenormPreserve))
 		{
@@ -7635,21 +7664,42 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 64);
 		}
 	}
-	else
+
+	if (execution_mode_meta.float_controls2)
 	{
-		// If instrumentation didn't add these already.
-		if (!builder().hasCapability(spv::CapabilitySignedZeroInfNanPreserve))
+		// We have to exhaustively declare fast math type for everything, or they get no-fast math by default.
+		spv::Id mask_id = b.makeUintConstant(execution_mode_meta.default_fast_math_mode);
+
+		b.addExecutionModeId(spirv_module.get_entry_function(), spv::ExecutionModeFPFastMathDefault,
+			b.makeFloatType(32), mask_id);
+
+		if (b.hasCapability(spv::CapabilityFloat8EXT))
 		{
-			// Set SignedZeroInfNanPreserve by default for new IR.
-			// We should use these globally, but don't want to invalidate all Fossilize archives just yet.
-			b.addExtension("SPV_KHR_float_controls");
-			b.addCapability(spv::CapabilitySignedZeroInfNanPreserve);
-			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 32);
-			if (b.hasCapability(spv::CapabilityFloat16))
-				b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 16);
-			if (b.hasCapability(spv::CapabilityFloat64))
-				b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 64);
+			b.addExecutionModeId(spirv_module.get_entry_function(), spv::ExecutionModeFPFastMathDefault,
+				b.makeFloatType(8, spv::FPEncodingFloat8E4M3EXT), mask_id);
 		}
+
+		if (b.hasCapability(spv::CapabilityFloat16))
+		{
+			b.addExecutionModeId(spirv_module.get_entry_function(), spv::ExecutionModeFPFastMathDefault,
+				b.makeFloatType(16), mask_id);
+		}
+
+		if (b.hasCapability(spv::CapabilityFloat64))
+		{
+			b.addExecutionModeId(spirv_module.get_entry_function(), spv::ExecutionModeFPFastMathDefault,
+				b.makeFloatType(64), mask_id);
+		}
+	}
+	else if (execution_mode_meta.preserve_nan_inf_signed_zero)
+	{
+		b.addExtension("SPV_KHR_float_controls");
+		b.addCapability(spv::CapabilitySignedZeroInfNanPreserve);
+		b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 32);
+		if (b.hasCapability(spv::CapabilityFloat16))
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 16);
+		if (b.hasCapability(spv::CapabilityFloat64))
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeSignedZeroInfNanPreserve, 64);
 	}
 
 	// Opt into quad derivatives and maximal reconvergence for fragment shaders using
@@ -8902,8 +8952,6 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		 execution_model == spv::ExecutionModelGLCompute);
 
 	spirv_module.set_descriptor_qa_info(options.descriptor_qa);
-	options.instruction_instrumentation.fp16 =
-	    options.min_precision_prefer_native_16bit || execution_mode_meta.native_16bit_operations;
 	spirv_module.set_instruction_instrumentation_info(options.instruction_instrumentation);
 
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
@@ -9549,9 +9597,6 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.instruction_instrumentation.enabled = qa.enabled;
 		options.instruction_instrumentation.version = qa.version;
 		options.instruction_instrumentation.shader_hash = qa.shader_hash;
-		options.instruction_instrumentation.fp16 = false;
-		options.instruction_instrumentation.fp32 = true;
-		options.instruction_instrumentation.fp64 = true;
 		options.instruction_instrumentation.type = qa.type;
 		options.instruction_instrumentation.control_desc_set = qa.control_desc_set;
 		options.instruction_instrumentation.control_binding = qa.control_binding;
@@ -9719,6 +9764,12 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		options.ssbo_wraps_32bit_before_robustness = c.ssbo_wraps_32bit_offset_before_robustness;
 		options.raw_access_chain_wraps_32bit_before_robustness = c.raw_access_chain_wraps_32bit_offset_before_robustness;
 		break;
+	}
+
+	case Option::FloatControls2:
+	{
+		auto &c = static_cast<const OptionFloatControls2 &>(cap);
+		options.supports_float_controls2 = c.supported;
 	}
 
 	default:

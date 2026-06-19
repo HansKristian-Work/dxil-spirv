@@ -397,24 +397,6 @@ void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model,
 	entry_point = builder.addEntryPoint(model, entry_function, name);
 	if (model == spv::ExecutionModel::ExecutionModelFragment)
 		builder.addExecutionMode(entry_function, spv::ExecutionModeOriginUpperLeft);
-
-	if (instruction_instrumentation.info.enabled)
-	{
-		builder.addExtension("SPV_KHR_float_controls");
-		builder.addCapability(spv::CapabilitySignedZeroInfNanPreserve);
-
-		if (instruction_instrumentation.info.fp16)
-		{
-			builder.addCapability(spv::CapabilityFloat16);
-			builder.addExecutionMode(entry_function, spv::ExecutionModeSignedZeroInfNanPreserve, 16);
-		}
-
-		if (instruction_instrumentation.info.fp32)
-			builder.addExecutionMode(entry_function, spv::ExecutionModeSignedZeroInfNanPreserve, 32);
-
-		if (instruction_instrumentation.info.fp64)
-			builder.addExecutionMode(entry_function, spv::ExecutionModeSignedZeroInfNanPreserve, 64);
-	}
 }
 
 void SPIRVModule::Impl::enable_shader_discard(bool supports_demote)

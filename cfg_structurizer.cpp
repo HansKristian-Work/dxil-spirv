@@ -1713,12 +1713,24 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 		for (auto *op : node->ir.operations)
 		{
 			auto *dup_op = duplicate_op(op, remap);
+
 			bool nocontract = module.get_builder().hasDecoration(op->id, spv::DecorationNoContraction);
 			if (nocontract)
 			{
 				remove_decoration_ids.insert(op->id);
 				module.get_builder().addDecoration(dup_op->id, spv::DecorationNoContraction);
 			}
+
+			bool fpmode = module.get_builder().hasDecoration(op->id, spv::DecorationFPFastMathMode);
+			if (fpmode)
+			{
+				// Reciprocals should always be allowed.
+				// Should not be needed, but some drivers might get confused if it's not set on an fdiv.
+				remove_decoration_ids.insert(op->id);
+				module.get_builder().addDecoration(dup_op->id, spv::DecorationFPFastMathMode,
+				                                   spv::FPFastMathModeAllowRecipMask);
+			}
+
 			block->ir.operations.push_back(dup_op);
 		}
 

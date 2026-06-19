@@ -275,6 +275,7 @@ enum class Option : uint32_t
 	ComputeShaderDerivativesQuad = 51,
 	SSBOAddressingBehavior = 52,
 	OpacityMicromap = 53,
+	FloatControls2 = 54,
 	Count
 };
 
@@ -910,6 +911,16 @@ struct OptionSSBOAddressingBehavior : OptionBase
 	// For per-element NV_raw_access_chains, does the implementation compute the product before checking robustness?
 	// If not, we need explicit wrap to do optimized BAB.
 	bool raw_access_chain_wraps_32bit_offset_before_robustness = false;
+};
+
+struct OptionFloatControls2 : OptionBase
+{
+	OptionFloatControls2()
+		: OptionBase(Option::FloatControls2)
+	{
+	}
+
+	bool supported = false;
 };
 
 struct DescriptorTableEntry

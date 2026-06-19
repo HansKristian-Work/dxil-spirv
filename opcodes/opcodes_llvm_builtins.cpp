@@ -541,7 +541,7 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 
 	impl.add(op);
 	if (is_precision_sensitive && (impl.options.force_precise || !instruction_is_fast_math(instruction)))
-		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
+		add_nocontract_decoration(impl, op->id);
 
 	// Only bother relaxing FP, since Integers are murky w.r.t. signage in DXIL.
 	if (can_relax_precision)
@@ -2770,6 +2770,20 @@ bool emit_call_instruction(Converter::Impl &impl, const llvm::CallInst &inst)
 		call->add_id(impl.get_id_for_value(inst.getOperand(i)));
 	impl.add(call);
 	return true;
+}
+
+void add_nocontract_decoration(Converter::Impl &impl, spv::Id id)
+{
+	// Reciprocals should always be allowed.
+	// Should not be needed, but some drivers might get confused if it's not set on an fdiv.
+	if (impl.execution_mode_meta.float_controls2)
+	{
+		// If we force precise, we set global flags to not be fast-math.
+		if (!impl.options.force_precise)
+			impl.builder().addDecoration(id, spv::DecorationFPFastMathMode, spv::FPFastMathModeAllowRecipMask);
+	}
+	else
+		impl.builder().addDecoration(id, spv::DecorationNoContraction);
 }
 
 bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instruction)

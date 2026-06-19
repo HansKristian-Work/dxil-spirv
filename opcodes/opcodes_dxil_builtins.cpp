@@ -1331,7 +1331,8 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 
 	case DXIL::Op::LegacyF16ToF32:
 		// Very specific check for HZD invariance. See f32_to_f16 code for details.
-		if (instruction->hasMetadata("dx.precise") || impl.options.force_precise)
+		if ((instruction->hasMetadata("dx.precise") || impl.options.force_precise) &&
+			value_depends_on_dx_op(instruction->getOperand(1), DXIL::Op::LegacyF32ToF16))
 			impl.shader_analysis.precise_f16_to_f32_observed = true;
 		break;
 

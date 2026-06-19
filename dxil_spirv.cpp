@@ -1340,6 +1340,11 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &behavior.base);
 	}
 
+	{
+		dxil_spv_options_float_controls_2 fc2 = { { DXIL_SPV_OPTION_FLOAT_CONTROLS_2 }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &fc2.base);
+	}
+
 	for (auto &quirk : args.quirks)
 	{
 		dxil_spv_option_shader_quirk helper = {

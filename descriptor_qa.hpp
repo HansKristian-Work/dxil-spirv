@@ -78,9 +78,6 @@ struct InstructionInstrumentationInfo
 {
 	uint32_t version = 0;
 	bool enabled = false;
-	bool fp16 = false;
-	bool fp32 = false;
-	bool fp64 = false;
 	uint32_t control_desc_set = 0;
 	uint32_t control_binding = 0;
 	uint32_t payload_desc_set = 0;

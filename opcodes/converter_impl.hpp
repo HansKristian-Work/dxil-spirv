@@ -379,6 +379,13 @@ struct Converter::Impl
 		// Eventually, we should use Vulkan memory model across the board,
 		// but don't want to invalidate all Foz caches.
 		spv::MemoryModel memory_model = spv::MemoryModelGLSL450;
+
+		// Eventually, we should use this across the board,
+		// but don't want to invalidate all Foz caches.
+		// Need to determine which default float controls flags to use though.
+		bool float_controls2 = false;
+		bool preserve_nan_inf_signed_zero = false;
+		spv::FPFastMathModeMask default_fast_math_mode = {};
 	} execution_mode_meta;
 
 	static ShaderStage get_remapping_stage(spv::ExecutionModel model);
@@ -829,6 +836,7 @@ struct Converter::Impl
 
 		bool extended_non_semantic_info = false;
 		bool mixed_dot_product_fp16_fp16_fp32 = false;
+		bool supports_float_controls2 = false;
 
 		struct
 		{

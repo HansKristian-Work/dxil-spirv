@@ -98,9 +98,8 @@ OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
 OpEntryPoint GLCompute %3 "main" %64
-OpExecutionMode %3 SignedZeroInfNanPreserve 32
-OpExecutionMode %3 SignedZeroInfNanPreserve 64
 OpExecutionMode %3 LocalSize 1 1 1
+OpExecutionMode %3 SignedZeroInfNanPreserve 32
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
