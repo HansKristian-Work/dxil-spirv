@@ -1557,10 +1557,10 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		if (!true_value.first || index + 2 > entry.ops.size())
 			return false;
 		auto *false_value = get_value(entry.ops[index++], true_value.second);
-		auto *cond_value = get_value(entry.ops[index++], Type::getInt1Ty(*context));
-		if (!false_value || !cond_value)
+		auto cond_value = get_value_and_type(entry.ops, index);
+		if (!false_value || cond_value.second->getScalarType() != Type::getInt1Ty(*context))
 			return false;
-		auto *value = context->construct<SelectInst>(true_value.first, false_value, cond_value);
+		auto *value = context->construct<SelectInst>(true_value.first, false_value, cond_value.first);
 		if (!add_instruction(value))
 			return false;
 		break;
