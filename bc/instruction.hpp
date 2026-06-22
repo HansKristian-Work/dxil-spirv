@@ -181,6 +181,10 @@ public:
 	CallInst(FunctionType *function_type, Function *callee, Vector<Value *> params);
 	Function *getCalledFunction() const;
 
+	// LLVM stores callee as the last operand. LLVM API exposes these functions to handle arguments propely.
+	unsigned getNumArgOperands() const { return getNumOperands(); }
+	Value *getArgOperand(unsigned index) const { return getOperand(index); }
+
 	LLVMBC_DEFAULT_VALUE_KIND_IMPL
 
 private:

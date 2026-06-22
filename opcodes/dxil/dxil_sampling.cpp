@@ -2201,7 +2201,7 @@ static spv::Id emit_accessed_lod(DXIL::Op opcode, Converter::Impl &impl, const l
 		// Normally, that clamp value will be integer, which should be fine.
 		// This comes after [0, levels - 1] clamp, since if we clamp LOD to out of bounds of view,
 		// we end up accessing OOB.
-		auto *clamp_value = instruction->getOperand(instruction->getNumOperands() - 1);
+		auto *clamp_value = instruction->getArgOperand(instruction->getNumArgOperands() - 1);
 		if (!llvm::isa<llvm::UndefValue>(clamp_value))
 		{
 			auto *clamp_lod = impl.allocate(spv::OpExtInst, f32_type);

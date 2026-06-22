@@ -2782,8 +2782,8 @@ bool emit_call_instruction(Converter::Impl &impl, const llvm::CallInst &inst)
 {
 	auto *call = impl.allocate(spv::OpFunctionCall, &inst);
 	call->add_id(impl.get_id_for_value(inst.getCalledFunction()));
-	for (uint32_t i = 0; i < inst.getNumOperands(); i++)
-		call->add_id(impl.get_id_for_value(inst.getOperand(i)));
+	for (uint32_t i = 0; i < inst.getNumArgOperands(); i++)
+		call->add_id(impl.get_id_for_value(inst.getArgOperand(i)));
 	impl.add(call);
 	return true;
 }
