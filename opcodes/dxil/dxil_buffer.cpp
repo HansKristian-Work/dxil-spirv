@@ -30,7 +30,6 @@
 #include "logging.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
-#include "type.hpp"
 
 namespace dxil_spv
 {

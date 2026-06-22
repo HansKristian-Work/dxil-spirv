@@ -106,7 +106,7 @@ bool emit_isfinite_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 
 	auto bool_type = builder.makeBoolType();
 
-	if (instruction->getType()->getTypeID() == LLVMBC::Type::TypeID::VectorTyID)
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
 		bool_type = builder.makeVectorType(bool_type, instruction->getType()->getVectorNumElements());
 
 	Operation *nan_op = impl.allocate(spv::OpIsNan, bool_type);
