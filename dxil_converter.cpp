@@ -5909,7 +5909,7 @@ spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, const spv::
 spv::Id Converter::Impl::build_splat_constant_vector(spv::Id element_type, spv::Id value, unsigned count)
 {
 	// TODO: Add support for long vector.
-	assert(count >=2 && count <= 4);
+	assert(count >= 2 && count <= 4);
 
 	spv::Id ids[4];
 	for (unsigned i = 0; i < count; i++)

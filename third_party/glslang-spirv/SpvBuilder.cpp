@@ -408,7 +408,7 @@ Id Builder::makeStructResultType(Id type0, Id type1)
 Id Builder::makeVectorType(Id component, int size)
 {
     // TODO: Add support for long vector.
-    assert(size >=2 && size <= 4);
+    assert(size >= 2 && size <= 4);
 
     // try to find it
     Instruction* type;
