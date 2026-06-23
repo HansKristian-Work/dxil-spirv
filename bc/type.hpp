@@ -83,6 +83,7 @@ public:
 	unsigned getVectorNumElements() const;
 	Type *getVectorElementType() const;
 	unsigned getPointerAddressSpace() const;
+	Type *getScalarType() const;
 
 protected:
 	LLVMContext &context;

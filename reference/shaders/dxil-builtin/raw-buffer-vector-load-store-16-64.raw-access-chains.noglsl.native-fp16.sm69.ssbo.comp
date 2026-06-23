@@ -1,5 +1,5 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 108
 ; Schema: 0
@@ -13,7 +13,7 @@ OpCapability RawAccessChainsNV
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_NV_raw_access_chains"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %16
+OpEntryPoint GLCompute %3 "main" %9 %13 %16
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
 OpExecutionMode %3 DenormPreserve 64

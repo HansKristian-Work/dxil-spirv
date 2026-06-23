@@ -207,8 +207,17 @@ Value *ReturnInst::getReturnValue() const
 	return Internal::resolve_proxy(value);
 }
 
+static Type *get_cmp_result_type(Type *type)
+{
+	Type *bool_type = Type::getInt1Ty(type->getContext());
+	if (auto *vec_type = dyn_cast<VectorType>(type))
+		return VectorType::get(vec_type->getVectorSize(), bool_type);
+	else
+		return bool_type;
+}
+
 CmpInst::CmpInst(ValueKind kind, Predicate pred_, Value *LHS, Value *RHS)
-    : Instruction(Type::getInt1Ty(LHS->getType()->getContext()), kind)
+    : Instruction(get_cmp_result_type(LHS->getType()), kind)
     , pred(pred_)
 {
 	set_operands({ LHS, RHS });

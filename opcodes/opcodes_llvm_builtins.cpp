@@ -73,10 +73,11 @@ static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm:
                                               unsigned bits, bool is_signed)
 {
 	spv::Id id = impl.get_id_for_value(value);
-	if (value->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+	auto *scalar_type = value->getType()->getScalarType();
+	if (scalar_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 		return id;
 
-	auto logical_bits = value->getType()->getIntegerBitWidth();
+	auto logical_bits = scalar_type->getIntegerBitWidth();
 	auto physical_bits = physical_integer_bit_width(logical_bits);
 
 	if (bits == 0)
@@ -97,10 +98,11 @@ static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm:
 static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm::Value *value, bool is_signed)
 {
 	spv::Id id = impl.get_id_for_value(value);
-	if (value->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+	auto *scalar_type = value->getType()->getScalarType();
+	if (scalar_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 		return id;
 
-	auto logical_bits = value->getType()->getIntegerBitWidth();
+	auto logical_bits = scalar_type->getIntegerBitWidth();
 	return build_naturally_extended_value(impl, value, logical_bits, is_signed);
 }
 
@@ -587,30 +589,55 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 template <typename InstructionType>
 static spv::Id emit_boolean_trunc_instruction(Converter::Impl &impl, const InstructionType *instruction)
 {
+	// Boolean trunc is a quirky thing that does bool(V & 1); effectively.
+	// It's modelled as a 1-bit integer mask, just like ZExt/SExt on i1 is a funky 1-bit sign/zero-extend.
+	// This codegen never comes up in the wild ...
 	auto &builder = impl.builder();
-	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
-	op->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), false));
 
-	unsigned physical_width = physical_integer_bit_width(instruction->getOperand(0)->getType()->getIntegerBitWidth());
+	auto *input_type = instruction->getOperand(0)->getType();
+	auto *scalar_input_type = input_type->getScalarType();
+
+	unsigned physical_width = physical_integer_bit_width(scalar_input_type->getIntegerBitWidth());
+	spv::Id const_0;
+	spv::Id const_1;
 
 	switch (physical_width)
 	{
 	case 16:
-		op->add_id(builder.makeUint16Constant(0));
+		const_0 = builder.makeUint16Constant(0);
+		const_1 = builder.makeUint16Constant(1);
 		break;
 
 	case 32:
-		op->add_id(builder.makeUintConstant(0));
+		const_0 = builder.makeUintConstant(0);
+		const_1 = builder.makeUintConstant(1);
 		break;
 
 	case 64:
-		op->add_id(builder.makeUint64Constant(0));
+		const_0 = builder.makeUint64Constant(0);
+		const_1 = builder.makeUint64Constant(1);
 		break;
 
 	default:
 		return 0;
 	}
 
+	if (input_type->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		const_0 = impl.build_splat_constant_vector(impl.get_type_id(scalar_input_type), const_0,
+		                                           input_type->getVectorNumElements());
+		const_1 = impl.build_splat_constant_vector(impl.get_type_id(scalar_input_type), const_1,
+		                                           input_type->getVectorNumElements());
+	}
+
+	auto *mask = impl.allocate(spv::OpBitwiseAnd, impl.get_type_id(input_type));
+	mask->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), false));
+	mask->add_id(const_1);
+	impl.add(mask);
+
+	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
+	op->add_id(mask->id);
+	op->add_id(const_0);
 	impl.add(op);
 	return op->id;
 }
@@ -619,10 +646,12 @@ template <typename InstructionType>
 static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const InstructionType *instruction, bool is_signed)
 {
 	auto &builder = impl.builder();
+	auto *output_type = instruction->getType();
+	auto *scalar_output_type = output_type->getScalarType();
 	spv::Id const_0;
 	spv::Id const_1;
 
-	switch (instruction->getType()->getTypeID())
+	switch (scalar_output_type->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
 		if (impl.support_native_fp16_operations())
@@ -648,7 +677,7 @@ static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const Ins
 		break;
 
 	case llvm::Type::TypeID::IntegerTyID:
-		switch (physical_integer_bit_width(instruction->getType()->getIntegerBitWidth()))
+		switch (physical_integer_bit_width(scalar_output_type->getIntegerBitWidth()))
 		{
 		case 16:
 			const_0 = builder.makeUint16Constant(0);
@@ -674,6 +703,14 @@ static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const Ins
 		return 0;
 	}
 
+	if (output_type->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		spv::Id scalar_type_id = impl.get_type_id(scalar_output_type);
+		unsigned count = output_type->getVectorNumElements();
+		const_0 = impl.build_splat_constant_vector(scalar_type_id, const_0, count);
+		const_1 = impl.build_splat_constant_vector(scalar_type_id, const_1, count);
+	}
+
 	Operation *op = impl.allocate(spv::OpSelect, instruction);
 	op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 	op->add_ids({ const_1, const_0 });
@@ -685,8 +722,9 @@ static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const Ins
 template <typename InstructionType>
 static spv::Id emit_masked_cast_instruction(Converter::Impl &impl, const InstructionType *instruction, spv::Op opcode)
 {
-	auto logical_output_bits = instruction->getType()->getIntegerBitWidth();
-	auto logical_input_bits = instruction->getOperand(0)->getType()->getIntegerBitWidth();
+	auto logical_output_bits = instruction->getType()->getScalarType()->getIntegerBitWidth();
+	auto logical_input_bits = instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth();
+
 	auto physical_output_bits = physical_integer_bit_width(logical_output_bits);
 	auto physical_input_bits = physical_integer_bit_width(logical_input_bits);
 	auto logical_bits = (std::min)(logical_output_bits, logical_input_bits);
@@ -1121,7 +1159,7 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		break;
 
 	case llvm::Instruction::CastOps::SExt:
-		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+		if (instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, true);
 		opcode = spv::OpSConvert;
 		signed_input = true;
@@ -1130,15 +1168,15 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		break;
 
 	case llvm::Instruction::CastOps::ZExt:
-		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+		if (instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, false);
 		opcode = spv::OpUConvert;
 		if (spv::Id id = emit_masked_cast_instruction(impl, instruction, opcode))
-		    return id;
+			return id;
 		break;
 
 	case llvm::Instruction::CastOps::Trunc:
-		if (instruction->getType()->getIntegerBitWidth() == 1)
+		if (instruction->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			return emit_boolean_trunc_instruction(impl, instruction);
 		opcode = spv::OpUConvert;
 		if (spv::Id id = emit_masked_cast_instruction(impl, instruction, opcode))
@@ -1161,14 +1199,14 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		break;
 
 	case llvm::Instruction::CastOps::SIToFP:
-		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+		if (instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, true);
 		opcode = spv::OpConvertSToF;
 		signed_input = true;
 		break;
 
 	case llvm::Instruction::CastOps::UIToFP:
-		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+		if (instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, false);
 		opcode = spv::OpConvertUToF;
 		break;
@@ -1924,14 +1962,14 @@ bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instru
 	}
 
 	case llvm::CmpInst::Predicate::ICMP_EQ:
-		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+		if (instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			opcode = spv::OpLogicalEqual;
 		else
 			opcode = spv::OpIEqual;
 		break;
 
 	case llvm::CmpInst::Predicate::ICMP_NE:
-		if (instruction->getOperand(0)->getType()->getIntegerBitWidth() == 1)
+		if (instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			opcode = spv::OpLogicalNotEqual;
 		else
 			opcode = spv::OpINotEqual;

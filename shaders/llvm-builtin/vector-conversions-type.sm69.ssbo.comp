@@ -1,0 +1,16 @@
+ByteAddressBuffer InBuf : register(t0);
+RWByteAddressBuffer OutBuf : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint tid : SV_DispatchThreadID)
+{
+	uint4 u = InBuf.Load<uint4>(tid * 16);
+	
+	float4 u2f = u;
+	int4 f2s = u2f;
+	uint4 s2u = f2s;
+
+	OutBuf.Store<int4>(tid * 16 + 0, u2f);
+	OutBuf.Store<float4>(tid * 16 + 256, f2s);
+	OutBuf.Store<uint4>(tid * 16 + 512, s2u);	
+}

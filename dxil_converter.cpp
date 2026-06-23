@@ -4363,7 +4363,13 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 	case llvm::Type::TypeID::VectorTyID:
 	{
 		auto *vec_type = llvm::cast<llvm::VectorType>(type);
-		return builder.makeVectorType(get_type_id(vec_type->getElementType()), vec_type->getVectorNumElements());
+		unsigned count = vec_type->getVectorNumElements();
+		if (count < 2 || count > 4)
+		{
+			LOGE("Long vector is not supported.\n");
+			std::terminate();
+		}
+		return builder.makeVectorType(get_type_id(vec_type->getElementType()), count);
 	}
 
 	case llvm::Type::TypeID::VoidTyID:
@@ -5902,6 +5908,9 @@ spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, const spv::
 
 spv::Id Converter::Impl::build_splat_constant_vector(spv::Id element_type, spv::Id value, unsigned count)
 {
+	// TODO: Add support for long vector.
+	assert(count >= 2 && count <= 4);
+
 	spv::Id ids[4];
 	for (unsigned i = 0; i < count; i++)
 		ids[i] = value;
@@ -8941,13 +8950,20 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 	}
 
+	uint32_t sm_major = 0, sm_minor = 0;
+	get_shader_model(module, nullptr, &sm_major, &sm_minor);
+
 	if (!options.shader_source_file.empty())
 	{
 		auto &builder = spirv_module.get_builder();
-		uint32_t sm_major = 0, sm_minor = 0;
-		get_shader_model(module, nullptr, &sm_major, &sm_minor);
 		builder.setSource(spv::SourceLanguageUnknown, sm_major * 100 + sm_minor);
 		builder.setSourceFile(options.shader_source_file);
+	}
+
+	if (sm_major > 6 || (sm_major == 6 && sm_minor >= 9))
+	{
+		// Use SPIR-V 1.6 for SM 6.9 for easier use of OpSelect - condition does not have to be a vector
+		spirv_module.set_override_spirv_version(0x10600);
 	}
 
 	result.node_pool = std::make_unique<CFGNodePool>();

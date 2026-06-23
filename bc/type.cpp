@@ -181,6 +181,14 @@ Type *Type::getPointerElementType() const
 	return cast<PointerType>(this)->getElementType();
 }
 
+Type *Type::getScalarType() const
+{
+	if (auto *vec = dyn_cast<VectorType>(this))
+		return vec->getElementType();
+	else
+		return const_cast<Type *>(this);
+}
+
 StructType::StructType(LLVMContext &context, Vector<Type *> member_types_)
     : Type(context, TypeID::StructTyID)
     , member_types(std::move(member_types_))
