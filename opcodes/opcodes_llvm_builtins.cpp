@@ -1160,7 +1160,7 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		break;
 
 	case llvm::Instruction::CastOps::Trunc:
-		if (instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth() == 1)
+		if (instruction->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			return emit_boolean_trunc_instruction(impl, instruction);
 		opcode = spv::OpUConvert;
 		if (spv::Id id = emit_masked_cast_instruction(impl, instruction, opcode))
