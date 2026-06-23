@@ -1211,6 +1211,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 				if (is_vector)
 				{
+					// vecsize == conservative_num_elements.
 					constructed_id = impl.build_vector(impl.get_type_id(element_type), component_ids, conservative_num_elements);
 					op->add_id(constructed_id);
 				}
