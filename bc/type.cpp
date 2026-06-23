@@ -185,10 +185,8 @@ Type *Type::getScalarType() const
 {
 	if (auto *vec = dyn_cast<VectorType>(this))
 		return vec->getElementType();
-	else if (isa<StructType>(this))
-		return this->getStructElementType(0);
 	else
-		return const_cast<Type*>(this);
+		return const_cast<Type *>(this);
 }
 
 StructType::StructType(LLVMContext &context, Vector<Type *> member_types_)
