@@ -589,38 +589,54 @@ bool emit_unary_instruction(Converter::Impl &impl, const llvm::UnaryOperator *in
 template <typename InstructionType>
 static spv::Id emit_boolean_trunc_instruction(Converter::Impl &impl, const InstructionType *instruction)
 {
+	// Boolean trunc is a quirky thing that does bool(V & 1); effectively.
+	// It's modelled as a 1-bit integer mask, just like ZExt/SExt on i1 is a funky 1-bit sign/zero-extend.
+	// This codegen never comes up in the wild ...
 	auto &builder = impl.builder();
-	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
-	op->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), false));
 
-	auto *output_type = instruction->getOperand(0)->getType();
-	auto *scalar_output_type = output_type->getScalarType();
+	auto *input_type = instruction->getOperand(0)->getType();
+	auto *scalar_input_type = input_type->getScalarType();
 
-	unsigned physical_width = physical_integer_bit_width(scalar_output_type->getIntegerBitWidth());
+	unsigned physical_width = physical_integer_bit_width(scalar_input_type->getIntegerBitWidth());
 	spv::Id const_0;
+	spv::Id const_1;
 
 	switch (physical_width)
 	{
 	case 16:
 		const_0 = builder.makeUint16Constant(0);
+		const_1 = builder.makeUint16Constant(1);
 		break;
 
 	case 32:
 		const_0 = builder.makeUintConstant(0);
+		const_1 = builder.makeUintConstant(1);
 		break;
 
 	case 64:
 		const_0 = builder.makeUint64Constant(0);
+		const_1 = builder.makeUint64Constant(1);
 		break;
 
 	default:
 		return 0;
 	}
 
-	if (output_type->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	if (input_type->getTypeID() == llvm::Type::TypeID::VectorTyID)
 	{
-		const_0 = impl.build_splat_constant_vector(impl.get_type_id(scalar_output_type), const_0, output_type->getVectorNumElements());
+		const_0 = impl.build_splat_constant_vector(impl.get_type_id(scalar_input_type), const_0,
+		                                           input_type->getVectorNumElements());
+		const_1 = impl.build_splat_constant_vector(impl.get_type_id(scalar_input_type), const_1,
+		                                           input_type->getVectorNumElements());
 	}
+
+	auto *mask = impl.allocate(spv::OpBitwiseAnd, impl.get_type_id(input_type));
+	mask->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), false));
+	mask->add_id(const_1);
+	impl.add(mask);
+
+	Operation *op = impl.allocate(spv::OpINotEqual, instruction);
+	op->add_id(mask->id);
 	op->add_id(const_0);
 	impl.add(op);
 	return op->id;
