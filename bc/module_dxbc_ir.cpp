@@ -1965,20 +1965,30 @@ static Type *get_composite_return_type(Type *type)
 		return get_vec4_variant(type);
 }
 
+static const Type *extract_struct_composite_scalar_type(const Type *type)
+{
+	if (const auto *struct_type = llvm::dyn_cast<llvm::StructType>(type))
+		return struct_type->getElementType(0);
+	else
+		return type;
+}
+
 Instruction *ParseContext::build_extract_composite(const ir::Op &op, Value *value, unsigned num_elements)
 {
 	if (!num_elements)
 		num_elements = op.getType().getBaseType(0).getVectorSize();
 
+	auto *type = extract_struct_composite_scalar_type(value->getType());
+
 	if (num_elements == 1)
-		return context.construct<ExtractValueInst>(value->getType()->getScalarType(), value, Vector<unsigned>{ 0 });
+		return context.construct<ExtractValueInst>(type->getScalarType(), value, Vector<unsigned>{ 0 });
 
 	Value *values[4];
 	for (unsigned c = 0; c < num_elements; c++)
 		values[c] = get_extracted_composite_component(value, c);
 
 	assert(num_elements > 1);
-	auto *result_type = VectorType::get(num_elements, value->getType()->getScalarType());
+	auto *result_type = VectorType::get(num_elements, type->getScalarType());
 	auto *comp = context.construct<CompositeConstructInst>(
 		result_type, Vector<Value *> { values, values + num_elements });
 	return comp;
