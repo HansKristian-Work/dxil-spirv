@@ -493,8 +493,9 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_MIXED_FLOAT_DOT_PRODUCT = 50,
 	DXIL_SPV_OPTION_COMPUTE_SHADER_DERIVATIVES_QUAD = 51,
 	DXIL_SPV_OPTION_SSBO_ADDRESSING_BEHAVIOR = 52,
-	DXIL_SPV_OPTION_OPACITY_MICROMAP = 53,
+	/* 53 = older KHR opacity micromap option that was never used by vkd3d-proton. */
 	DXIL_SPV_OPTION_FLOAT_CONTROLS_2 = 54,
+	DXIL_SPV_OPTION_OPACITY_MICROMAP = 55,
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -737,6 +738,7 @@ typedef struct dxil_spv_option_opacity_micromap
 {
 	dxil_spv_option_base base;
 	dxil_spv_bool enabled;
+	dxil_spv_bool rtpso_has_omm;
 	dxil_spv_bool ray_query_force_omm_execution_mode;
 } dxil_spv_option_opacity_micromap;
 

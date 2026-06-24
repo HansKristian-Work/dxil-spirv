@@ -1264,6 +1264,7 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		auto *omm = reinterpret_cast<const dxil_spv_option_opacity_micromap *>(option);
 		helper.enabled = omm->enabled;
 		helper.ray_query_force_omm_execution_mode = omm->ray_query_force_omm_execution_mode;
+		helper.rtpso_has_omm = omm->rtpso_has_omm;
 
 		converter->options.emplace_back(duplicate(helper));
 		break;

@@ -776,6 +776,7 @@ struct Converter::Impl
 			bool assume_uniform_scale = false;
 		} grad_opt;
 		bool opacity_micromap_enabled = false;
+		bool opacity_micromap_rtpso_has_omm = false;
 		unsigned physical_address_descriptor_stride = 1;
 		unsigned physical_address_descriptor_offset = 0;
 		unsigned force_subgroup_size = 0;

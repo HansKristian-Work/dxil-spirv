@@ -7236,8 +7236,9 @@ bool Converter::Impl::emit_execution_modes_ray_query()
 		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
 
 		bool omm_possible =
-				(options.opacity_micromap_enabled && options.ray_query_force_omm_execution_mode) ||
-				shader_analysis.ray_query.requires_opacity_micromap_tracing;
+				options.opacity_micromap_enabled &&
+				(options.ray_query_force_omm_execution_mode ||
+				 shader_analysis.ray_query.requires_opacity_micromap_tracing);
 
 		if (omm_possible)
 		{
@@ -7264,7 +7265,8 @@ bool Converter::Impl::emit_execution_modes_ray_tracing()
 	if (options.ray_tracing_primitive_culling_enabled && shader_analysis.can_require_primitive_culling)
 		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
 
-	if ((options.opacity_micromap_enabled || shader_analysis.ray_query.requires_opacity_micromap_tracing) &&
+	if (options.opacity_micromap_enabled &&
+		(options.opacity_micromap_rtpso_has_omm || shader_analysis.ray_query.requires_opacity_micromap_tracing) &&
 		shader_analysis.can_require_opacity_micromap)
 	{
 		emit_opacity_micromap_capability(*this);
@@ -9547,6 +9549,8 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		    static_cast<const OptionOpacityMicromap &>(cap).enabled;
 		options.ray_query_force_omm_execution_mode =
 		    static_cast<const OptionOpacityMicromap &>(cap).ray_query_force_omm_execution_mode;
+		options.opacity_micromap_rtpso_has_omm =
+		    static_cast<const OptionOpacityMicromap &>(cap).rtpso_has_omm;
 		break;
 
 	case Option::BranchControl:

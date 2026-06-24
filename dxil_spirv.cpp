@@ -249,6 +249,7 @@ struct Arguments
 	bool force_precise = false;
 	bool opacity_micromap = false;
 	bool ray_query_force_omm = false;
+	bool rtpso_has_omm = false;
 	bool force_flatten = false;
 	bool force_loop = false;
 	bool force_branch = false;
@@ -869,6 +870,9 @@ int main(int argc, char **argv)
 	cbs.add("--ray-query-force-opacity-micromap", [&](CLIParser &) {
 		args.ray_query_force_omm = true;
 	});
+	cbs.add("--rtpso-has-opacity-micromap", [&](CLIParser &) {
+		args.rtpso_has_omm = true;
+	});
 	cbs.add("--force-flatten", [&](CLIParser &) {
 		args.force_flatten = true;
 	});
@@ -1215,6 +1219,7 @@ int main(int argc, char **argv)
 		const dxil_spv_option_opacity_micromap omm = {
 			{ DXIL_SPV_OPTION_OPACITY_MICROMAP },
 			args.opacity_micromap ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
+			args.rtpso_has_omm ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
 			args.ray_query_force_omm ? DXIL_SPV_TRUE : DXIL_SPV_FALSE
 		};
 		dxil_spv_converter_add_option(converter, &omm.base);

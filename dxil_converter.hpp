@@ -274,8 +274,9 @@ enum class Option : uint32_t
 	MixedDotProduct = 50,
 	ComputeShaderDerivativesQuad = 51,
 	SSBOAddressingBehavior = 52,
-	OpacityMicromap = 53,
+	// Older OpacityMicromap. It was never used by vkd3d-proton and has been retired.
 	FloatControls2 = 54,
+	OpacityMicromap = 55,
 	Count
 };
 
@@ -638,11 +639,14 @@ struct OptionOpacityMicromap : OptionBase
 	{
 	}
 
-	// Flags if SPV_KHR_opacity_micromap is supported and enabled for the pipeline in question, i.e.
+	// Flags if SPV_KHR_opacity_micromap is supported
+	bool enabled = false;
+
+	// Flags if the pipeline in question supports OMM, i.e.
 	// D3D12_RAYTRACING_PIPELINE_FLAG_ALLOW_OPACITY_MICROMAPS.
 	// If ForceOpacityMicromap2StateKHR can potentially be used with this enabled,
 	// CapabilityRayTracingOpacityMicromapKHR is turned on.
-	bool enabled = false;
+	bool rtpso_has_omm = false;
 
 	// In Ray Query with KHR_omm,
 	// accessing OMMs without appropriate execution modes is UB.
@@ -653,7 +657,7 @@ struct OptionOpacityMicromap : OptionBase
 	// - Force it with this flag. It will present that every RayQuery object is marked with the SM 6.9 flag.
 	//   This flag is intended to be used with NVAPI OMM,
 	//   but also to workaround potential UB scenarios apps will introduce in the wild.
-	//   Enabled must also be set for this to take effect.
+	//   `enabled` must also be set for this to take effect.
 	bool ray_query_force_omm_execution_mode = false;
 };
 
