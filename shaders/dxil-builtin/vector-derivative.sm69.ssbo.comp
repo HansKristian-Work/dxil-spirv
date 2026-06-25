@@ -1,0 +1,21 @@
+StructuredBuffer<float4> I : register(t0);
+RWStructuredBuffer<float4> O : register(u0);
+
+[numthreads(4, 1, 1)]
+void main(uint3 tid : SV_DispatchThreadID)
+{
+	float2 uv = I[tid.x].xy;
+	float2 dx = ddx(uv);
+	float2 dy = ddy(uv);
+	O[tid.x] = float4(dx, dy);
+
+	half3 uv_h = half3(I[tid.x + 1].xyz);
+	half3 dx_h = ddx(uv_h);
+	half3 dy_h = ddy(uv_h);
+	O[tid.x + 1] = float4(dx_h + dy_h, 0);
+
+	double4 uv_d = double4(I[tid.x + 2]);
+	double4 dx_d = ddx(uv_d);
+	double4 dy_d = ddy(uv_d);
+	O[tid.x + 2] = float4(dx_d + dy_d);
+}
