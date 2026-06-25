@@ -1,0 +1,238 @@
+#version 460
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+layout(local_size_x = 4, local_size_y = 1, local_size_z = 1) in;
+
+vec4 _30;
+f16vec3 _56;
+dvec4 _103;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
+{
+    uvec4 _m0[];
+} _10;
+
+layout(set = 0, binding = 0, std430) writeonly buffer _12_14
+{
+    uvec4 _m0[];
+} _14;
+
+void main()
+{
+    vec2 _29 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x]).xy;
+    vec2 _31 = dFdxCoarse(_29);
+    vec2 _32 = dFdyCoarse(_29);
+    _14._m0[gl_GlobalInvocationID.x] = uvec4(floatBitsToUint(vec4(_31.x, _31.y, _32.x, _32.y)));
+    vec4 _46 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x + 1u]);
+    f16vec3 _55;
+    _55.x = float16_t(_46.x);
+    _55.y = float16_t(_46.y);
+    _55.z = float16_t(_46.z);
+    f16vec3 _66 = f16vec3(dFdyCoarse(vec3(_55))) + f16vec3(dFdxCoarse(vec3(_55)));
+    vec4 _73;
+    _73.x = float(_66.x);
+    _73.y = float(_66.y);
+    _73.z = float(_66.z);
+    _73.w = 0.0;
+    _14._m0[gl_GlobalInvocationID.x + 1u] = uvec4(floatBitsToUint(_73));
+    vec4 _91 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x + 2u]);
+    dvec4 _102;
+    _102.x = double(_91.x);
+    _102.y = double(_91.y);
+    _102.z = double(_91.z);
+    _102.w = double(_91.w);
+    vec4 _107 = vec4(_102);
+    dvec4 _112 = dvec4(dFdyCoarse(_107)) + dvec4(dFdxCoarse(_107));
+    vec4 _121;
+    _121.x = float(_112.x);
+    _121.y = float(_112.y);
+    _121.z = float(_112.z);
+    _121.w = float(_112.w);
+    _14._m0[gl_GlobalInvocationID.x + 2u] = uvec4(floatBitsToUint(_121));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 135
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability Float64
+OpCapability DerivativeControl
+OpCapability DenormPreserve
+OpCapability ComputeDerivativeGroupLinearKHR
+OpExtension "SPV_KHR_compute_shader_derivatives"
+OpExtension "SPV_KHR_float_controls"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %10 %14 %17
+OpExecutionMode %3 DerivativeGroupLinearKHR
+OpExecutionMode %3 LocalSize 4 1 1
+OpExecutionMode %3 DenormPreserve 16
+OpExecutionMode %3 DenormPreserve 64
+OpName %3 "main"
+OpName %8 "SSBO"
+OpName %12 "SSBO"
+OpDecorate %7 ArrayStride 16
+OpMemberDecorate %8 0 Offset 0
+OpDecorate %8 Block
+OpDecorate %10 DescriptorSet 0
+OpDecorate %10 Binding 0
+OpDecorate %10 NonWritable
+OpDecorate %10 Restrict
+OpDecorate %11 ArrayStride 16
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 0
+OpDecorate %14 NonReadable
+OpDecorate %17 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeVector %5 4
+%7 = OpTypeRuntimeArray %6
+%8 = OpTypeStruct %7
+%9 = OpTypePointer StorageBuffer %8
+%10 = OpVariable %9 StorageBuffer
+%11 = OpTypeRuntimeArray %6
+%12 = OpTypeStruct %11
+%13 = OpTypePointer StorageBuffer %12
+%14 = OpVariable %13 StorageBuffer
+%15 = OpTypeVector %5 3
+%16 = OpTypePointer Input %15
+%17 = OpVariable %16 Input
+%18 = OpTypePointer Input %5
+%20 = OpConstant %5 0
+%22 = OpTypePointer StorageBuffer %6
+%25 = OpTypeFloat 32
+%26 = OpTypeVector %25 4
+%28 = OpTypeVector %25 2
+%42 = OpConstant %5 1
+%50 = OpTypeFloat 16
+%54 = OpTypeVector %50 3
+%59 = OpTypeVector %25 3
+%77 = OpConstant %25 0
+%87 = OpConstant %5 2
+%96 = OpTypeFloat 64
+%101 = OpTypeVector %96 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%30 = OpUndef %26
+%56 = OpUndef %54
+%103 = OpUndef %101
+OpBranch %133
+%133 = OpLabel
+%19 = OpAccessChain %18 %17 %20
+%21 = OpLoad %5 %19
+%23 = OpAccessChain %22 %10 %20 %21
+%24 = OpLoad %6 %23
+%27 = OpBitcast %26 %24
+%29 = OpVectorShuffle %28 %27 %30 0 1
+%31 = OpDPdxCoarse %28 %29
+%32 = OpDPdyCoarse %28 %29
+%33 = OpVectorShuffle %26 %31 %32 0 1 2 3
+%34 = OpBitcast %6 %33
+%35 = OpCompositeExtract %5 %34 0
+%36 = OpCompositeExtract %5 %34 1
+%37 = OpCompositeExtract %5 %34 2
+%38 = OpCompositeExtract %5 %34 3
+%39 = OpCompositeConstruct %6 %35 %36 %37 %38
+%40 = OpAccessChain %22 %14 %20 %21
+OpStore %40 %39
+%41 = OpIAdd %5 %21 %42
+%43 = OpIAdd %5 %21 %42
+%44 = OpAccessChain %22 %10 %20 %43
+%45 = OpLoad %6 %44
+%46 = OpBitcast %26 %45
+%47 = OpCompositeExtract %25 %46 0
+%48 = OpCompositeExtract %25 %46 1
+%49 = OpCompositeExtract %25 %46 2
+%51 = OpFConvert %50 %47
+%52 = OpFConvert %50 %48
+%53 = OpFConvert %50 %49
+%55 = OpCompositeInsert %54 %51 %56 0
+%57 = OpCompositeInsert %54 %52 %55 1
+%58 = OpCompositeInsert %54 %53 %57 2
+%60 = OpFConvert %59 %58
+%61 = OpDPdxCoarse %59 %60
+%62 = OpFConvert %54 %61
+%63 = OpFConvert %59 %58
+%64 = OpDPdyCoarse %59 %63
+%65 = OpFConvert %54 %64
+%66 = OpFAdd %54 %65 %62
+%67 = OpCompositeExtract %50 %66 0
+%68 = OpCompositeExtract %50 %66 1
+%69 = OpCompositeExtract %50 %66 2
+%70 = OpFConvert %25 %67
+%71 = OpFConvert %25 %68
+%72 = OpFConvert %25 %69
+%73 = OpCompositeInsert %26 %70 %30 0
+%74 = OpCompositeInsert %26 %71 %73 1
+%75 = OpCompositeInsert %26 %72 %74 2
+%76 = OpCompositeInsert %26 %77 %75 3
+%78 = OpIAdd %5 %21 %42
+%79 = OpBitcast %6 %76
+%80 = OpCompositeExtract %5 %79 0
+%81 = OpCompositeExtract %5 %79 1
+%82 = OpCompositeExtract %5 %79 2
+%83 = OpCompositeExtract %5 %79 3
+%84 = OpCompositeConstruct %6 %80 %81 %82 %83
+%85 = OpAccessChain %22 %14 %20 %78
+OpStore %85 %84
+%86 = OpIAdd %5 %21 %87
+%88 = OpIAdd %5 %21 %87
+%89 = OpAccessChain %22 %10 %20 %88
+%90 = OpLoad %6 %89
+%91 = OpBitcast %26 %90
+%92 = OpCompositeExtract %25 %91 0
+%93 = OpCompositeExtract %25 %91 1
+%94 = OpCompositeExtract %25 %91 2
+%95 = OpCompositeExtract %25 %91 3
+%97 = OpFConvert %96 %92
+%98 = OpFConvert %96 %93
+%99 = OpFConvert %96 %94
+%100 = OpFConvert %96 %95
+%102 = OpCompositeInsert %101 %97 %103 0
+%104 = OpCompositeInsert %101 %98 %102 1
+%105 = OpCompositeInsert %101 %99 %104 2
+%106 = OpCompositeInsert %101 %100 %105 3
+%107 = OpFConvert %26 %106
+%108 = OpDPdxCoarse %26 %107
+%109 = OpFConvert %101 %108
+%110 = OpDPdyCoarse %26 %107
+%111 = OpFConvert %101 %110
+%112 = OpFAdd %101 %111 %109
+%113 = OpCompositeExtract %96 %112 0
+%114 = OpCompositeExtract %96 %112 1
+%115 = OpCompositeExtract %96 %112 2
+%116 = OpCompositeExtract %96 %112 3
+%117 = OpFConvert %25 %113
+%118 = OpFConvert %25 %114
+%119 = OpFConvert %25 %115
+%120 = OpFConvert %25 %116
+%121 = OpCompositeInsert %26 %117 %30 0
+%122 = OpCompositeInsert %26 %118 %121 1
+%123 = OpCompositeInsert %26 %119 %122 2
+%124 = OpCompositeInsert %26 %120 %123 3
+%125 = OpIAdd %5 %21 %87
+%126 = OpBitcast %6 %124
+%127 = OpCompositeExtract %5 %126 0
+%128 = OpCompositeExtract %5 %126 1
+%129 = OpCompositeExtract %5 %126 2
+%130 = OpCompositeExtract %5 %126 3
+%131 = OpCompositeConstruct %6 %127 %128 %129 %130
+%132 = OpAccessChain %22 %14 %20 %125
+OpStore %132 %131
+OpReturn
+OpFunctionEnd
+#endif
