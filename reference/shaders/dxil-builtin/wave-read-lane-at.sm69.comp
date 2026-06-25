@@ -1,0 +1,156 @@
+#version 460
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_quad : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+uvec3 _17;
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+
+uint ByteAddressMask(uint index, uint stride)
+{
+    return index & (4294967295u / stride);
+}
+
+void main()
+{
+    uvec3 _16;
+    _16.x = gl_GlobalInvocationID.x;
+    _16.y = gl_GlobalInvocationID.y;
+    _16.z = gl_GlobalInvocationID.z;
+    uvec3 _68 = (((((((subgroupBroadcast(_16, 11u) + subgroupShuffle(_16, (gl_SubgroupSize + 4294967295u) & gl_GlobalInvocationID.x)) + subgroupQuadSwapHorizontal(_16)) + subgroupQuadSwapVertical(_16)) + subgroupQuadSwapDiagonal(_16)) + subgroupShuffleXor(_16, 4u)) + subgroupShuffleXor(_16, 8u)) + subgroupShuffleXor(_16, 16u)) + subgroupShuffleXor(_16, 32u);
+    uint _81 = ByteAddressMask(gl_GlobalInvocationID.x * 3u, 4u);
+    imageStore(_8, int(_81), uvec4(_68.x));
+    imageStore(_8, int(_81 + 1u), uvec4(_68.y));
+    imageStore(_8, int(_81 + 2u), uvec4(_68.z));
+}
+
+
+#if 0
+// SPIR-V disassembly
+// HeuristicWaveSize(32)
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 93
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability GroupNonUniform
+OpCapability GroupNonUniformBallot
+OpCapability GroupNonUniformShuffle
+OpCapability GroupNonUniformQuad
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %8 %11 %26 %36
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %76 "ByteAddressMask"
+OpName %74 "index"
+OpName %75 "stride"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %11 BuiltIn GlobalInvocationId
+OpDecorate %26 BuiltIn SubgroupSize
+OpDecorate %36 BuiltIn SubgroupLocalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeVector %5 3
+%10 = OpTypePointer Input %9
+%11 = OpVariable %10 Input
+%12 = OpTypePointer Input %5
+%14 = OpConstant %5 0
+%19 = OpConstant %5 1
+%23 = OpConstant %5 2
+%26 = OpVariable %12 Input
+%29 = OpConstant %5 4294967295
+%32 = OpConstant %5 3
+%34 = OpConstant %5 11
+%36 = OpVariable %12 Input
+%51 = OpConstant %5 4
+%56 = OpConstant %5 8
+%61 = OpConstant %5 16
+%66 = OpConstant %5 32
+%70 = OpConstant %5 12
+%73 = OpTypeFunction %5 %5 %5
+%85 = OpTypeVector %5 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%17 = OpUndef %9
+OpBranch %91
+%91 = OpLabel
+%13 = OpAccessChain %12 %11 %14
+%15 = OpLoad %5 %13
+%16 = OpCompositeInsert %9 %15 %17 0
+%18 = OpAccessChain %12 %11 %19
+%20 = OpLoad %5 %18
+%21 = OpCompositeInsert %9 %20 %16 1
+%22 = OpAccessChain %12 %11 %23
+%24 = OpLoad %5 %22
+%25 = OpCompositeInsert %9 %24 %21 2
+%27 = OpLoad %5 %26
+%28 = OpIAdd %5 %27 %29
+%30 = OpBitwiseAnd %5 %28 %15
+%31 = OpGroupNonUniformShuffle %9 %32 %25 %30
+%33 = OpGroupNonUniformBroadcast %9 %32 %25 %34
+%35 = OpIAdd %9 %33 %31
+%37 = OpLoad %5 %36
+%38 = OpBitwiseXor %5 %37 %19
+%39 = OpGroupNonUniformQuadSwap %9 %32 %25 %14
+%40 = OpIAdd %9 %35 %39
+%41 = OpLoad %5 %36
+%42 = OpBitwiseXor %5 %41 %23
+%43 = OpGroupNonUniformQuadSwap %9 %32 %25 %19
+%44 = OpIAdd %9 %40 %43
+%45 = OpLoad %5 %36
+%46 = OpBitwiseXor %5 %45 %32
+%47 = OpGroupNonUniformQuadSwap %9 %32 %25 %23
+%48 = OpIAdd %9 %44 %47
+%49 = OpLoad %5 %36
+%50 = OpBitwiseXor %5 %49 %51
+%52 = OpGroupNonUniformShuffleXor %9 %32 %25 %51
+%53 = OpIAdd %9 %48 %52
+%54 = OpLoad %5 %36
+%55 = OpBitwiseXor %5 %54 %56
+%57 = OpGroupNonUniformShuffleXor %9 %32 %25 %56
+%58 = OpIAdd %9 %53 %57
+%59 = OpLoad %5 %36
+%60 = OpBitwiseXor %5 %59 %61
+%62 = OpGroupNonUniformShuffleXor %9 %32 %25 %61
+%63 = OpIAdd %9 %58 %62
+%64 = OpLoad %5 %36
+%65 = OpBitwiseXor %5 %64 %66
+%67 = OpGroupNonUniformShuffleXor %9 %32 %25 %66
+%68 = OpIAdd %9 %63 %67
+%69 = OpIMul %5 %15 %70
+%71 = OpLoad %6 %8
+%72 = OpIMul %5 %15 %32
+%81 = OpFunctionCall %5 %76 %72 %51
+%82 = OpCompositeExtract %5 %68 0
+%83 = OpCompositeExtract %5 %68 1
+%84 = OpCompositeExtract %5 %68 2
+%86 = OpCompositeConstruct %85 %82 %82 %82 %82
+OpImageWrite %71 %81 %86
+%87 = OpCompositeConstruct %85 %83 %83 %83 %83
+%88 = OpIAdd %5 %81 %19
+OpImageWrite %71 %88 %87
+%89 = OpCompositeConstruct %85 %84 %84 %84 %84
+%90 = OpIAdd %5 %81 %23
+OpImageWrite %71 %90 %89
+OpReturn
+OpFunctionEnd
+%76 = OpFunction %5 None %73
+%74 = OpFunctionParameter %5
+%75 = OpFunctionParameter %5
+%77 = OpLabel
+%78 = OpUDiv %5 %29 %75
+%79 = OpBitwiseAnd %5 %74 %78
+OpReturnValue %79
+OpFunctionEnd
+#endif
