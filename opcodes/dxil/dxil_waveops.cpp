@@ -782,8 +782,9 @@ static spv::Id build_mask_reduction_input_bitwise(Converter::Impl &impl, const l
 	auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
 	impl.add(is_helper_lane);
 
+	auto *scalar_input_type = instruction->getOperand(1)->getType()->getScalarType();
 	spv::Id replacement_value;
-	switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+	switch (scalar_input_type->getIntegerBitWidth())
 	{
 	case 16:
 		replacement_value = builder.makeUint16Constant(
@@ -803,6 +804,12 @@ static spv::Id build_mask_reduction_input_bitwise(Converter::Impl &impl, const l
 	default:
 		replacement_value = 0;
 		break;
+	}
+
+	if (instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		replacement_value = impl.build_splat_constant_vector(impl.get_type_id(scalar_input_type), replacement_value,
+		                    instruction->getOperand(1)->getType()->getVectorNumElements());
 	}
 
 	auto *replace_op = impl.allocate(spv::OpSelect, impl.get_type_id(instruction->getOperand(1)->getType()));
