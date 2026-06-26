@@ -1042,7 +1042,7 @@ bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::Ca
 
 	HelperCall helper_call;
 	spv::Op partitioned_op;
-	bool fp = !instruction->getOperand(1)->getType()->isIntegerTy();
+	bool fp = !instruction->getOperand(1)->getType()->getScalarType()->isIntegerTy();
 
 	switch (static_cast<DXIL::WaveMultiPrefixOpKind>(op_kind))
 	{
