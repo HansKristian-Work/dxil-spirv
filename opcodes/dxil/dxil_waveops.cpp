@@ -141,8 +141,8 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 #endif
 
 	auto &builder = impl.builder();
-	auto *op = impl.allocate(opcode, instruction);
-	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+
+	bool is_vector = (instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID);
 
 	spv::Id value = impl.get_id_for_value(instruction->getOperand(1));
 
@@ -150,7 +150,7 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 	{
 		// Helper lanes cannot affect the result, but let them participate.
 		// Just force a specific boolean value here that ensures invariant result.
-
+		// WaveAllTrue and WaveAnyTrue are not vectorized in SM 6.9
 		if (opcode == spv::OpGroupNonUniformAny)
 		{
 			auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
@@ -180,10 +180,35 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 		}
 	}
 
-	op->add_id(value);
-
 	builder.addCapability(spv::CapabilityGroupNonUniformVote);
-	impl.add(op);
+	if (is_vector)
+	{
+		unsigned num_components = instruction->getOperand(1)->getType()->getVectorNumElements();
+		auto *combine = impl.allocate(spv::OpCompositeConstruct, instruction);
+		for (unsigned i = 0; i < num_components; ++i)
+		{
+			auto *extract = impl.allocate(spv::OpCompositeExtract,
+				impl.get_type_id(instruction->getOperand(1)->getType()->getScalarType()));
+			extract->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+			extract->add_literal(i);
+			impl.add(extract);
+
+			auto *op = impl.allocate(opcode, builder.makeBoolType());
+			op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			op->add_id(extract->id);
+			impl.add(op);
+
+			combine->add_id(op->id);
+		}
+		impl.add(combine);
+	}
+	else
+	{
+		auto *op = impl.allocate(opcode, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+		op->add_id(value);
+		impl.add(op);
+	}
 	return true;
 }
 

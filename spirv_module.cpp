@@ -817,6 +817,9 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_count_bits(SPIRVModule &modul
 
 spv::Id SPIRVModule::Impl::build_wave_active_all_equal_masked(SPIRVModule &module, spv::Id type_id)
 {
+	// TODO: Add support of vectorized all equal
+	assert(builder.getTypeClass(builder.getScalarTypeId(type_id)) != spv::OpTypeVector);
+
 	for (auto &calls : wave_active_all_equal_masked_ids)
 		if (calls.first == type_id)
 			return calls.second;
