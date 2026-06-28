@@ -1422,13 +1422,14 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	spv::Id type_id = impl.get_type_id(instruction->getOperand(1)->getType());
+	auto *scalar_type = instruction->getOperand(1)->getType()->getScalarType();
+	spv::Id type_id = impl.get_type_id(scalar_type);
 	spv::Id value_id = impl.get_id_for_value(instruction->getOperand(1));
 
 	// It's not safe to use FOrdEqual since a loop with NaN will never compare equal to BroadcastFirst().
 	// Make sure we compare equal with uint.
 	spv::Op cast_op = spv::OpNop;
-	switch (instruction->getOperand(1)->getType()->getTypeID())
+	switch (scalar_type->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
 		type_id = builder.makeUintType(impl.support_native_fp16_operations() ? 16 : 32);
@@ -1447,6 +1448,11 @@ bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *in
 
 	default:
 		break;
+	}
+
+	if (instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		type_id = builder.makeVectorType(type_id, instruction->getOperand(1)->getType()->getVectorNumElements());
 	}
 
 	if (cast_op != spv::OpNop)
