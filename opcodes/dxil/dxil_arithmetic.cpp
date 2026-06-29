@@ -726,7 +726,7 @@ bool emit_fdot_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 
 	bool precise = instruction->hasMetadata("dx.precise") || impl.options.force_precise;
 	if (precise)
-		impl.builder().addDecoration(op->id, spv::DecorationNoContraction);
+		add_nocontract_decoration(impl, op->id);
 
 	return true;
 }
