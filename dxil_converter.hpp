@@ -642,7 +642,8 @@ struct OptionOpacityMicromap : OptionBase
 	// D3D12_RAYTRACING_PIPELINE_FLAG_ALLOW_OPACITY_MICROMAPS.
 	// If ForceOpacityMicromap2StateKHR can potentially be used with this enabled,
 	// CapabilityRayTracingOpacityMicromapKHR is turned on.
-	bool enabled = false;
+	// This only applies to TraceRay() in RTPSOs and has no effect on Ray Queries.
+	bool trace_ray_enabled = false;
 
 	// In Ray Query with KHR_omm,
 	// accessing OMMs without appropriate execution modes is UB.
@@ -650,11 +651,14 @@ struct OptionOpacityMicromap : OptionBase
 	// - SM 6.9 RayQuery has a flag to enable it per RayQuery object. We will conservatively enable the execution mode
 	//   if at least one such ray query is present.
 	//   Presence of explicit SM 6.9 ray query flag will force SPV_KHR_omm to be enabled.
-	// - Force it with this flag. It will present that every RayQuery object is marked with the SM 6.9 flag.
+	//   If the shader is >= 6.9, this is the only way to enable Ray Query OMM.
+	//   Using explicit RayQuery OMM implies support for it and dxil-spirv will emit OMM code.
+	// - Force it with this flag for legacy models (ignored in SM >= 6.9).
+	//   It will pretend that every RayQuery object is marked with the SM 6.9 flag.
 	//   This flag is intended to be used with NVAPI OMM,
 	//   but also to workaround potential UB scenarios apps will introduce in the wild.
-	//   Enabled must also be set for this to take effect.
-	bool ray_query_force_omm_execution_mode = false;
+	//   Setting this bit implies OMMs are supported by the device, regardless of trace_ray_enabled.
+	bool ray_query_force_omm_execution_mode_in_legacy_sm = false;
 };
 
 struct OptionBranchControl : OptionBase

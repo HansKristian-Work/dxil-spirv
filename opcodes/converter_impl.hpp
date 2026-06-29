@@ -727,7 +727,7 @@ struct Converter::Impl
 		bool typed_uav_read_without_format = false;
 		bool bindless_typed_buffer_offsets = false;
 		bool storage_16bit_input_output = false;
-		bool ray_query_force_omm_execution_mode = false;
+		bool ray_query_force_omm_execution_mode_in_legacy_sm = false;
 
 		struct
 		{
@@ -997,7 +997,7 @@ struct Converter::Impl
 		bool require_subgroup_shuffles = false;
 		bool subgroup_ballot_reads_upper = false;
 		bool subgroup_ballot_reads_first = false;
-		bool can_require_opacity_micromap = false;
+		bool can_require_opacity_micromap_ray_flags = false;
 		bool need_maximal_reconvergence_helper_call = false;
 		bool has_group_shared_barrier = false;
 		bool has_group_shared_access = false;

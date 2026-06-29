@@ -7219,7 +7219,7 @@ static void emit_opacity_micromap_extension(Converter::Impl &impl)
 	impl.spirv_module.get_builder().addExtension("SPV_KHR_opacity_micromap");
 }
 
-static void emit_opacity_micromap_capability(Converter::Impl &impl)
+static void emit_opacity_micromap_flags_capability(Converter::Impl &impl)
 {
 	emit_opacity_micromap_extension(impl);
 	impl.spirv_module.get_builder().addCapability(spv::CapabilityRayTracingOpacityMicromapKHR);
@@ -7235,8 +7235,17 @@ bool Converter::Impl::emit_execution_modes_ray_query()
 		builder.addCapability(spv::CapabilityRayQueryKHR);
 		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
 
+		auto &module = bitcode_parser.get_module();
+		uint32_t sm_major = 0, sm_minor = 0;
+		get_shader_model(module, nullptr, &sm_major, &sm_minor);
+
+		// Intended to match NV workaround behavior for legacy content.
+		// In older SMs, there was no way to flag that OMMs were going to be used,
+		// so have to be conservative. This is only relevant for NVAPI OMM.
+		bool is_legacy = sm_major * 100 + sm_minor < 609;
+
 		bool omm_possible =
-				(options.opacity_micromap_enabled && options.ray_query_force_omm_execution_mode) ||
+				(is_legacy && options.ray_query_force_omm_execution_mode_in_legacy_sm) ||
 				shader_analysis.ray_query.requires_opacity_micromap_tracing;
 
 		if (omm_possible)
@@ -7249,8 +7258,8 @@ bool Converter::Impl::emit_execution_modes_ray_query()
 				spirv_module.get_entry_function(), spv::ExecutionModeOpacityMicromapIdKHR, enable_id);
 
 			// OMM and ray query is only relevant if explicitly asked for.
-			if (shader_analysis.can_require_opacity_micromap)
-				emit_opacity_micromap_capability(*this);
+			if (shader_analysis.can_require_opacity_micromap_ray_flags)
+				emit_opacity_micromap_flags_capability(*this);
 		}
 	}
 
@@ -7264,11 +7273,8 @@ bool Converter::Impl::emit_execution_modes_ray_tracing()
 	if (options.ray_tracing_primitive_culling_enabled && shader_analysis.can_require_primitive_culling)
 		builder.addCapability(spv::CapabilityRayTraversalPrimitiveCullingKHR);
 
-	if ((options.opacity_micromap_enabled || shader_analysis.ray_query.requires_opacity_micromap_tracing) &&
-		shader_analysis.can_require_opacity_micromap)
-	{
-		emit_opacity_micromap_capability(*this);
-	}
+	if (options.opacity_micromap_enabled && shader_analysis.can_require_opacity_micromap_ray_flags)
+		emit_opacity_micromap_flags_capability(*this);
 
 	builder.addExtension("SPV_KHR_ray_tracing");
 	builder.addExtension("SPV_EXT_descriptor_indexing");
@@ -9544,9 +9550,9 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 	case Option::OpacityMicromap:
 		options.opacity_micromap_enabled =
-		    static_cast<const OptionOpacityMicromap &>(cap).enabled;
-		options.ray_query_force_omm_execution_mode =
-		    static_cast<const OptionOpacityMicromap &>(cap).ray_query_force_omm_execution_mode;
+		    static_cast<const OptionOpacityMicromap &>(cap).trace_ray_enabled;
+		options.ray_query_force_omm_execution_mode_in_legacy_sm =
+		    static_cast<const OptionOpacityMicromap &>(cap).ray_query_force_omm_execution_mode_in_legacy_sm;
 		break;
 
 	case Option::BranchControl:

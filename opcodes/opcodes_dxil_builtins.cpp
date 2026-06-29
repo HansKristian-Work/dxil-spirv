@@ -961,13 +961,13 @@ static void analyze_ray_tracing_flags(Converter::Impl &impl, const llvm::Value *
 		if ((value & (spv::RayFlagsSkipTrianglesKHRMask | spv::RayFlagsSkipAABBsKHRMask)) != 0)
 			impl.shader_analysis.can_require_primitive_culling = true;
 		if ((value & spv::RayFlagsForceOpacityMicromap2StateKHRMask) != 0)
-			impl.shader_analysis.can_require_opacity_micromap = true;
+			impl.shader_analysis.can_require_opacity_micromap_ray_flags = true;
 	}
 	else
 	{
 		// Non constant flags, so we must be conservative.
 		impl.shader_analysis.can_require_primitive_culling = true;
-		impl.shader_analysis.can_require_opacity_micromap = true;
+		impl.shader_analysis.can_require_opacity_micromap_ray_flags = true;
 	}
 }
 
@@ -1485,8 +1485,13 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 		// HLSL blocks any attempt to declare the Force2StateFlag unless SM 6.9 flag is also set.
 		// If OMM mode is forced, assume the Force2StateFlag can be passed through by some other means
 		// that HLSL compiler wouldn't be able to catch.
+
+		uint32_t sm_major = 0, sm_minor = 0;
+		Converter::Impl::get_shader_model(impl.bitcode_parser.get_module(), nullptr, &sm_major, &sm_minor);
+		bool is_legacy = sm_major * 100 + sm_minor < 609;
+
 		if (impl.shader_analysis.ray_query.requires_opacity_micromap_tracing ||
-			impl.options.ray_query_force_omm_execution_mode)
+			(is_legacy && impl.options.ray_query_force_omm_execution_mode_in_legacy_sm))
 		{
 			analyze_ray_tracing_flags(impl, instruction->getOperand(3));
 		}

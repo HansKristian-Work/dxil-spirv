@@ -35,7 +35,7 @@ extern "C" {
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
 #define DXIL_SPV_API_VERSION_MINOR 72
-#define DXIL_SPV_API_VERSION_PATCH 0
+#define DXIL_SPV_API_VERSION_PATCH 1
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
 #define DXIL_SPV_INSTRUCTION_INSTRUMENTATION_INTERFACE_VERSION 2
@@ -736,8 +736,8 @@ typedef struct dxil_spv_option_sample_grad_optimization_control
 typedef struct dxil_spv_option_opacity_micromap
 {
 	dxil_spv_option_base base;
-	dxil_spv_bool enabled;
-	dxil_spv_bool ray_query_force_omm_execution_mode;
+	dxil_spv_bool trace_ray_enabled;
+	dxil_spv_bool ray_query_force_omm_execution_mode_in_legacy_sm;
 } dxil_spv_option_opacity_micromap;
 
 typedef struct dxil_spv_option_branch_control
