@@ -74,7 +74,7 @@ OpDecorate %49 BuiltIn HelperInvocation
 %17 = OpVariable %16 Private
 %18 = OpConstantFalse %13
 %20 = OpConstant %5 100
-%22 = OpConstant %5 3
+%25 = OpConstant %5 3
 %27 = OpConstant %5 2
 %28 = OpTypeFunction %5 %5 %5
 %34 = OpConstant %5 4294967295
@@ -101,12 +101,12 @@ OpBranch %44
 %19 = OpULessThan %13 %12 %20
 %50 = OpLoad %13 %49
 %51 = OpLoad %13 %17
-%23 = OpLogicalOr %13 %50 %51
-%24 = OpLogicalNot %13 %23
-%25 = OpLogicalAnd %13 %19 %24
-%21 = OpGroupNonUniformAny %13 %22 %25
+%21 = OpLogicalOr %13 %50 %51
+%22 = OpLogicalNot %13 %21
+%23 = OpLogicalAnd %13 %19 %22
+%24 = OpGroupNonUniformAny %13 %25 %23
 OpSelectionMerge %46 None
-OpBranchConditional %21 %45 %46
+OpBranchConditional %24 %45 %46
 %45 = OpLabel
 %26 = OpShiftLeftLogical %5 %12 %27
 %37 = OpFunctionCall %5 %31 %12 %38
