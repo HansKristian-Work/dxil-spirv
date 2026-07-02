@@ -142,7 +142,15 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 
 	auto &builder = impl.builder();
 
-	bool is_vector = (instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID);
+	bool is_vector = instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID;
+	Operation *op = nullptr;
+
+	if (!is_vector)
+	{
+		// Unnecessary to do it like this, but avoids needless shader deltas.
+		op = impl.allocate(opcode, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	}
 
 	spv::Id value = impl.get_id_for_value(instruction->getOperand(1));
 
@@ -185,7 +193,7 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 	{
 		unsigned num_components = instruction->getOperand(1)->getType()->getVectorNumElements();
 		auto *combine = impl.allocate(spv::OpCompositeConstruct, instruction);
-		for (unsigned i = 0; i < num_components; ++i)
+		for (unsigned i = 0; i < num_components; i++)
 		{
 			auto *extract = impl.allocate(spv::OpCompositeExtract,
 				impl.get_type_id(instruction->getOperand(1)->getType()->getScalarType()));
@@ -193,7 +201,7 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 			extract->add_literal(i);
 			impl.add(extract);
 
-			auto *op = impl.allocate(opcode, builder.makeBoolType());
+			op = impl.allocate(opcode, builder.makeBoolType());
 			op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 			op->add_id(extract->id);
 			impl.add(op);
@@ -204,8 +212,6 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 	}
 	else
 	{
-		auto *op = impl.allocate(opcode, instruction);
-		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
 		op->add_id(value);
 		impl.add(op);
 	}
@@ -1451,9 +1457,7 @@ bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	}
 
 	if (instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
-	{
 		type_id = builder.makeVectorType(type_id, instruction->getOperand(1)->getType()->getVectorNumElements());
-	}
 
 	if (cast_op != spv::OpNop)
 	{

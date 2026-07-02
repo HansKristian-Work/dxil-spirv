@@ -818,7 +818,8 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_count_bits(SPIRVModule &modul
 spv::Id SPIRVModule::Impl::build_wave_active_all_equal_masked(SPIRVModule &module, spv::Id type_id)
 {
 	// TODO: Add support of vectorized all equal
-	assert(builder.getTypeClass(builder.getScalarTypeId(type_id)) != spv::OpTypeVector);
+	// FIXME: This function likely needs to be rewritten.
+	// It's currently not used and has bitrotted.
 
 	for (auto &calls : wave_active_all_equal_masked_ids)
 		if (calls.first == type_id)
@@ -1066,9 +1067,7 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	auto compare_type = builder.makeBoolType();
 	unsigned num_components = builder.getNumTypeComponents(type_id);
 	if (num_components > 1)
-	{
 		compare_type = builder.makeVectorType(compare_type, num_components);
-	}
 
 	auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), compare_type, equal_op);
 	compare->addIdOperand(value_id);
@@ -1092,9 +1091,7 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	add_instruction(body_block, std::move(broadcast_first));
 	add_instruction(body_block, std::move(compare));
 	if (num_components > 1)
-	{
 		add_instruction(body_block, std::move(compare_reduce));
-	}
 
 	add_instruction(body_block, std::move(ballot));
 	builder.createConditionalBranch(compare_id, merge_block, header_block);
