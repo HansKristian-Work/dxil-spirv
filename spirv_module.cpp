@@ -817,6 +817,10 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_count_bits(SPIRVModule &modul
 
 spv::Id SPIRVModule::Impl::build_wave_active_all_equal_masked(SPIRVModule &module, spv::Id type_id)
 {
+	// TODO: Add support of vectorized all equal
+	// FIXME: This function likely needs to be rewritten.
+	// It's currently not used and has bitrotted.
+
 	for (auto &calls : wave_active_all_equal_masked_ids)
 		if (calls.first == type_id)
 			return calls.second;
@@ -1053,26 +1057,42 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	broadcast_first->addIdOperand(value_id);
 
 	// We cannot scalarize floats safely due to NaNs. Caller will bitcast to uint first.
-	assert(builder.getTypeClass(type_id) != spv::OpTypeFloat);
+	assert(builder.getTypeClass(builder.getScalarTypeId(type_id)) != spv::OpTypeFloat);
 	spv::Op equal_op;
-	if (builder.getTypeClass(type_id) == spv::OpTypeBool)
+	if (builder.getTypeClass(builder.getScalarTypeId(type_id)) == spv::OpTypeBool)
 		equal_op = spv::OpLogicalEqual;
 	else
 		equal_op = spv::OpIEqual;
 
-	auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), equal_op);
+	auto compare_type = builder.makeBoolType();
+	unsigned num_components = builder.getNumTypeComponents(type_id);
+	if (num_components > 1)
+		compare_type = builder.makeVectorType(compare_type, num_components);
+
+	auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), compare_type, equal_op);
 	compare->addIdOperand(value_id);
 	compare->addIdOperand(broadcast_first->getResultId());
 	spv::Id compare_id = compare->getResultId();
 
+	std::unique_ptr<spv::Instruction> compare_reduce;
+	if (num_components > 1)
+	{
+		compare_reduce = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpAll);
+		compare_reduce->addIdOperand(compare_id);
+		compare_id = compare_reduce->getResultId();
+	}
+
 	auto ballot = std::make_unique<spv::Instruction>(builder.getUniqueId(), uvec4_type, spv::OpGroupNonUniformBallot);
 	ballot->addIdOperand(builder.makeUintConstant(spv::ScopeSubgroup));
-	ballot->addIdOperand(compare->getResultId());
+	ballot->addIdOperand(compare_id);
 	spv::Id ballot_id = ballot->getResultId();
 
 	builder.setBuildPoint(body_block);
 	add_instruction(body_block, std::move(broadcast_first));
 	add_instruction(body_block, std::move(compare));
+	if (num_components > 1)
+		add_instruction(body_block, std::move(compare_reduce));
+
 	add_instruction(body_block, std::move(ballot));
 	builder.createConditionalBranch(compare_id, merge_block, header_block);
 

@@ -141,8 +141,16 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 #endif
 
 	auto &builder = impl.builder();
-	auto *op = impl.allocate(opcode, instruction);
-	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+
+	bool is_vector = instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID;
+	Operation *op = nullptr;
+
+	if (!is_vector)
+	{
+		// Unnecessary to do it like this, but avoids needless shader deltas.
+		op = impl.allocate(opcode, instruction);
+		op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	}
 
 	spv::Id value = impl.get_id_for_value(instruction->getOperand(1));
 
@@ -150,7 +158,7 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 	{
 		// Helper lanes cannot affect the result, but let them participate.
 		// Just force a specific boolean value here that ensures invariant result.
-
+		// WaveAllTrue and WaveAnyTrue are not vectorized in SM 6.9
 		if (opcode == spv::OpGroupNonUniformAny)
 		{
 			auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
@@ -180,10 +188,33 @@ bool emit_wave_boolean_instruction(spv::Op opcode, Converter::Impl &impl, const 
 		}
 	}
 
-	op->add_id(value);
-
 	builder.addCapability(spv::CapabilityGroupNonUniformVote);
-	impl.add(op);
+	if (is_vector)
+	{
+		unsigned num_components = instruction->getOperand(1)->getType()->getVectorNumElements();
+		auto *combine = impl.allocate(spv::OpCompositeConstruct, instruction);
+		for (unsigned i = 0; i < num_components; i++)
+		{
+			auto *extract = impl.allocate(spv::OpCompositeExtract,
+				impl.get_type_id(instruction->getOperand(1)->getType()->getScalarType()));
+			extract->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+			extract->add_literal(i);
+			impl.add(extract);
+
+			op = impl.allocate(opcode, builder.makeBoolType());
+			op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+			op->add_id(extract->id);
+			impl.add(op);
+
+			combine->add_id(op->id);
+		}
+		impl.add(combine);
+	}
+	else
+	{
+		op->add_id(value);
+		impl.add(op);
+	}
 	return true;
 }
 
@@ -645,7 +676,7 @@ static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv:
 	if (!get_constant_operand(instruction, 3, &sign_kind))
 		return spv::OpNop;
 
-	if (instruction->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+	if (instruction->getType()->getScalarType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 		return fp;
 	else if (static_cast<DXIL::SignedOpKind>(sign_kind) == DXIL::SignedOpKind::Signed)
 		return s;
@@ -686,27 +717,28 @@ static spv::Id build_mask_reduction_input_arith(Converter::Impl &impl, const llv
 } while(0)
 
 	spv::Id replacement_value;
-	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::FloatTyID)
+	auto *scalar_output_type = instruction->getType()->getScalarType();
+	if (scalar_output_type->getTypeID() == llvm::Type::TypeID::FloatTyID)
 	{
 		DECLARE_TYPE_TEMPLATE(Float,
 		                      1.0f, 0.0f,
 		                      std::numeric_limits<float>::infinity(),
 		                      -std::numeric_limits<float>::infinity());
 	}
-	else if (instruction->getType()->getTypeID() == llvm::Type::TypeID::DoubleTyID)
+	else if (scalar_output_type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
 	{
 		DECLARE_TYPE_TEMPLATE(Double,
 		                      1.0, 0.0,
 		                      std::numeric_limits<double>::infinity(),
 		                      -std::numeric_limits<double>::infinity());
 	}
-	else if (instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID)
+	else if (scalar_output_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 	{
 		DECLARE_TYPE_TEMPLATE(Float16, 0x3c00, 0, 0x7c00, 0xfc00);
 	}
 	else if (static_cast<DXIL::SignedOpKind>(sign_kind) == DXIL::SignedOpKind::Signed)
 	{
-		switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+		switch (instruction->getOperand(1)->getType()->getScalarType()->getIntegerBitWidth())
 		{
 		case 16:
 			DECLARE_TYPE_TEMPLATE(Uint16, 1, 0,
@@ -732,7 +764,7 @@ static spv::Id build_mask_reduction_input_arith(Converter::Impl &impl, const llv
 	}
 	else
 	{
-		switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+		switch (instruction->getOperand(1)->getType()->getScalarType()->getIntegerBitWidth())
 		{
 		case 16:
 			DECLARE_TYPE_TEMPLATE(Uint16, 1, 0,
@@ -757,6 +789,12 @@ static spv::Id build_mask_reduction_input_arith(Converter::Impl &impl, const llv
 		}
 	}
 
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		replacement_value = impl.build_splat_constant_vector(impl.get_type_id(scalar_output_type), replacement_value,
+		                    instruction->getType()->getVectorNumElements());
+	}
+
 	auto *replace_op = impl.allocate(spv::OpSelect, impl.get_type_id(instruction->getOperand(1)->getType()));
 	replace_op->add_id(is_helper_lane->id);
 	replace_op->add_id(replacement_value);
@@ -775,8 +813,9 @@ static spv::Id build_mask_reduction_input_bitwise(Converter::Impl &impl, const l
 	auto *is_helper_lane = impl.allocate(spv::OpIsHelperInvocationEXT, impl.builder().makeBoolType());
 	impl.add(is_helper_lane);
 
+	auto *scalar_input_type = instruction->getOperand(1)->getType()->getScalarType();
 	spv::Id replacement_value;
-	switch (instruction->getOperand(1)->getType()->getIntegerBitWidth())
+	switch (scalar_input_type->getIntegerBitWidth())
 	{
 	case 16:
 		replacement_value = builder.makeUint16Constant(
@@ -798,6 +837,12 @@ static spv::Id build_mask_reduction_input_bitwise(Converter::Impl &impl, const l
 		break;
 	}
 
+	if (instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		replacement_value = impl.build_splat_constant_vector(impl.get_type_id(scalar_input_type), replacement_value,
+		                    instruction->getOperand(1)->getType()->getVectorNumElements());
+	}
+
 	auto *replace_op = impl.allocate(spv::OpSelect, impl.get_type_id(instruction->getOperand(1)->getType()));
 	replace_op->add_id(is_helper_lane->id);
 	replace_op->add_id(replacement_value);
@@ -808,7 +853,7 @@ static spv::Id build_mask_reduction_input_bitwise(Converter::Impl &impl, const l
 
 static spv::Op select_opcode(const llvm::CallInst *instruction, spv::Op fp, spv::Op i)
 {
-	if (instruction->getType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+	if (instruction->getType()->getScalarType()->getTypeID() != llvm::Type::TypeID::IntegerTyID)
 		return fp;
 	else
 		return i;
@@ -1028,7 +1073,7 @@ bool emit_wave_multi_prefix_op_instruction(Converter::Impl &impl, const llvm::Ca
 
 	HelperCall helper_call;
 	spv::Op partitioned_op;
-	bool fp = !instruction->getOperand(1)->getType()->isIntegerTy();
+	bool fp = !instruction->getOperand(1)->getType()->getScalarType()->isIntegerTy();
 
 	switch (static_cast<DXIL::WaveMultiPrefixOpKind>(op_kind))
 	{
@@ -1383,13 +1428,14 @@ bool emit_wave_quad_read_lane_at_instruction(Converter::Impl &impl, const llvm::
 bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	spv::Id type_id = impl.get_type_id(instruction->getOperand(1)->getType());
+	auto *scalar_type = instruction->getOperand(1)->getType()->getScalarType();
+	spv::Id type_id = impl.get_type_id(scalar_type);
 	spv::Id value_id = impl.get_id_for_value(instruction->getOperand(1));
 
 	// It's not safe to use FOrdEqual since a loop with NaN will never compare equal to BroadcastFirst().
 	// Make sure we compare equal with uint.
 	spv::Op cast_op = spv::OpNop;
-	switch (instruction->getOperand(1)->getType()->getTypeID())
+	switch (scalar_type->getTypeID())
 	{
 	case llvm::Type::TypeID::HalfTyID:
 		type_id = builder.makeUintType(impl.support_native_fp16_operations() ? 16 : 32);
@@ -1409,6 +1455,9 @@ bool emit_wave_match_instruction(Converter::Impl &impl, const llvm::CallInst *in
 	default:
 		break;
 	}
+
+	if (instruction->getOperand(1)->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+		type_id = builder.makeVectorType(type_id, instruction->getOperand(1)->getType()->getVectorNumElements());
 
 	if (cast_op != spv::OpNop)
 	{
