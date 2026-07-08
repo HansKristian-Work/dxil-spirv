@@ -320,6 +320,7 @@ struct DXILDispatcher
 		OP(HitObject_PrimitiveIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetPrimitiveIndexEXT, 1>;
 		OP(HitObject_HitKind) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetHitKindEXT, 1>;
 		OP(HitObject_ShaderTableIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetShaderBindingTableRecordIndexEXT, 1>;
+		OP(HitObject_SetShaderTableIndex) = emit_hit_object_set_shader_table_index_instruction;
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
@@ -531,6 +532,7 @@ bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction)
 	case DXIL::Op::RayQuery_CommitProceduralPrimitiveHit:
 	case DXIL::Op::TextureStoreSample:
 	case DXIL::Op::HitObject_TraceRay:
+	case DXIL::Op::HitObject_SetShaderTableIndex:
 		ret = true;
 		break;
 

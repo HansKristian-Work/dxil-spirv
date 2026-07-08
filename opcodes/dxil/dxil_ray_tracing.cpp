@@ -952,4 +952,25 @@ bool emit_hit_object_get_matrix_value_instruction(Converter::Impl &impl, const l
 	return true;
 }
 
+bool emit_hit_object_set_shader_table_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id hit_object = impl.get_id_for_value(instruction->getOperand(1));
+	spv::Id shader_table_index = impl.get_id_for_value(instruction->getOperand(2));
+
+	auto *op = impl.allocate(spv::OpHitObjectSetShaderBindingTableRecordIndexEXT);
+	op->add_ids({
+	    hit_object,
+	    shader_table_index
+	});
+	impl.add(op);
+	// HitObject_SetShaderTableIndex returns new hit object, but OpHitObjectSetShaderBindingTableRecordIndexEXT does not
+	// Remap output to input.
+	impl.rewrite_value(instruction, hit_object);
+	return true;
+}
 }
