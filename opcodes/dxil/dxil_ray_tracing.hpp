@@ -119,5 +119,5 @@ inline bool emit_hit_object_get_matrix_value_instruction(Converter::Impl &impl, 
 }
 
 bool emit_hit_object_set_shader_table_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
-
+bool emit_hit_object_load_local_root_table_constant_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv

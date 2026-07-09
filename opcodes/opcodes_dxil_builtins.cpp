@@ -321,6 +321,7 @@ struct DXILDispatcher
 		OP(HitObject_HitKind) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetHitKindEXT, 1>;
 		OP(HitObject_ShaderTableIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetShaderBindingTableRecordIndexEXT, 1>;
 		OP(HitObject_SetShaderTableIndex) = emit_hit_object_set_shader_table_index_instruction;
+		OP(HitObject_LoadLocalRootTableConstant) = emit_hit_object_load_local_root_table_constant_instruction;
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;

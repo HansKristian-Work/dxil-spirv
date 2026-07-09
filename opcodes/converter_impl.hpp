@@ -1076,5 +1076,11 @@ struct Converter::Impl
 
 	static NodeInputData get_node_input(llvm::MDNode *meta);
 	static NodeOutputData get_node_output(llvm::MDNode *meta);
+
+	struct
+	{
+		spv::Id shader_record_buffer_ptr = 0;
+		spv::Id shader_record_buffer_member_ptr = 0;
+	} hit_object;
 };
 } // namespace dxil_spv
