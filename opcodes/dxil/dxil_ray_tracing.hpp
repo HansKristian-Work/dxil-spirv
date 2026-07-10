@@ -102,5 +102,6 @@ bool emit_hit_object_from_ray_query_with_attrs_instruction(Converter::Impl &impl
 bool emit_hit_object_make_miss_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_hit_object_make_nop_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_hit_object_invoke_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_maybe_reoder_thread_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 } // namespace dxil_spv

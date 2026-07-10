@@ -870,4 +870,26 @@ bool emit_hit_object_invoke_instruction(Converter::Impl &impl, const llvm::CallI
 	return true;
 }
 
+bool emit_maybe_reoder_thread_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id hit_object = impl.get_id_for_value(inst->getOperand(1));
+	spv::Id hint = impl.get_id_for_value(inst->getOperand(2));
+	spv::Id bits = impl.get_id_for_value(inst->getOperand(3));
+
+	auto *op = impl.allocate(spv::OpReorderThreadWithHitObjectEXT);
+	op->add_ids({
+		hit_object,
+		hint,
+		bits
+	});
+	impl.add(op);
+
+	return true;
+}
+
 }
