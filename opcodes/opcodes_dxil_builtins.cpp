@@ -293,6 +293,8 @@ struct DXILDispatcher
 		OP(IgnoreHit) = emit_ray_tracing_ignore_hit;
 		OP(CallShader) = emit_ray_tracing_call_shader;
 		OP(HitObject_TraceRay) = emit_hit_object_trace_ray_instruction;
+		OP(HitObject_FromRayQuery) = emit_hit_object_from_ray_query_instruction;
+		OP(HitObject_FromRayQueryWithAttrs) = emit_hit_object_from_ray_query_with_attrs_instruction;
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
@@ -1062,6 +1064,10 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		update_storage_class(impl, instruction->getOperand(2), spv::StorageClassCallableDataKHR);
 		break;
 	}
+
+	case DXIL::Op::HitObject_FromRayQueryWithAttrs:
+		update_storage_class(impl, instruction->getOperand(3), spv::StorageClassHitObjectAttributeEXT);
+		break;
 
 	default:
 		break;

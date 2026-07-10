@@ -727,4 +727,60 @@ bool emit_hit_object_trace_ray_instruction(Converter::Impl &impl, const llvm::Ca
 	return true;
 }
 
+bool emit_hit_object_from_ray_query_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id ray_query = impl.get_id_for_value(inst->getOperand(1));
+
+	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+	spv::Id sbt_record_index = builder.makeUintConstant(0);
+	spv::Id empty_attributes = impl.create_variable(spv::StorageClassHitObjectAttributeEXT, builder.makeVoidType());
+
+	auto *op = impl.allocate(spv::OpHitObjectRecordFromQueryEXT);
+	op->add_ids({
+	    hit_object,
+		ray_query,
+		sbt_record_index,
+		empty_attributes
+	});
+	impl.add(op);
+
+	impl.rewrite_value(inst, hit_object);
+
+	return true;
+}
+
+bool emit_hit_object_from_ray_query_with_attrs_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id ray_query = impl.get_id_for_value(inst->getOperand(1));
+	spv::Id hit_kind = impl.get_id_for_value(inst->getOperand(2));
+	spv::Id attributes = impl.get_id_for_value(inst->getOperand(3));
+
+	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+	spv::Id sbt_record_index = builder.makeUintConstant(0);
+
+	auto *op = impl.allocate(spv::OpHitObjectRecordFromQueryEXT);
+	op->add_ids({
+	    hit_object,
+		ray_query,
+		sbt_record_index,
+		attributes,
+		hit_kind
+	});
+	impl.add(op);
+
+	impl.rewrite_value(inst, hit_object);
+
+	return true;
+}
+
 }
