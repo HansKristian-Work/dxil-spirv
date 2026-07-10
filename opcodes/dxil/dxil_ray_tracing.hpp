@@ -99,5 +99,6 @@ inline bool emit_ray_query_get_matrix_value_instruction(Converter::Impl &impl, c
 bool emit_hit_object_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_hit_object_from_ray_query_instruction(Converter::Impl &impl, const llvm::CallInst *instuction);
 bool emit_hit_object_from_ray_query_with_attrs_instruction(Converter::Impl &impl, const llvm::CallInst *instuction);
+bool emit_hit_object_make_miss_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 } // namespace dxil_spv

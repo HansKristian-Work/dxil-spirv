@@ -783,4 +783,48 @@ bool emit_hit_object_from_ray_query_with_attrs_instruction(Converter::Impl &impl
 	return true;
 }
 
+bool emit_hit_object_make_miss_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+
+	spv::Id ray_flags = impl.get_id_for_value(inst->getOperand(1));
+	spv::Id miss_shader_index = impl.get_id_for_value(inst->getOperand(2));
+
+	spv::Id ray_origin[3];
+	spv::Id ray_dir[3];
+
+	for (unsigned i = 0; i < 3; i++)
+	{
+		ray_origin[i] = impl.get_id_for_value(inst->getOperand(3 + i));
+		ray_dir[i] = impl.get_id_for_value(inst->getOperand(7 + i));
+	}
+
+	spv::Id tmin = impl.get_id_for_value(inst->getOperand(6));
+	spv::Id tmax = impl.get_id_for_value(inst->getOperand(10));
+
+	spv::Id ray_origin_vec = impl.build_vector(builder.makeFloatType(32), ray_origin, 3);
+	spv::Id ray_dir_vec = impl.build_vector(builder.makeFloatType(32), ray_dir, 3);
+
+	auto *op = impl.allocate(spv::OpHitObjectRecordMissEXT);
+	op->add_ids({
+	    hit_object,
+	    ray_flags,
+	    miss_shader_index,
+	    ray_origin_vec,
+	    tmin,
+	    ray_dir_vec,
+	    tmax,
+	});
+	impl.add(op);
+
+	impl.rewrite_value(inst, hit_object);
+
+	return true;
+}
+
 }

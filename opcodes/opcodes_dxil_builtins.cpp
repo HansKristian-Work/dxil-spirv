@@ -295,6 +295,7 @@ struct DXILDispatcher
 		OP(HitObject_TraceRay) = emit_hit_object_trace_ray_instruction;
 		OP(HitObject_FromRayQuery) = emit_hit_object_from_ray_query_instruction;
 		OP(HitObject_FromRayQueryWithAttrs) = emit_hit_object_from_ray_query_with_attrs_instruction;
+		OP(HitObject_MakeMiss) = emit_hit_object_make_miss_instruction;
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
