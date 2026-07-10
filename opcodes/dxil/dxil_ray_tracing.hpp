@@ -95,4 +95,7 @@ inline bool emit_ray_query_get_matrix_value_instruction(Converter::Impl &impl, c
 {
 	return emit_ray_query_get_matrix_value_instruction(impl, instruction, opcode, intersection);
 }
+
+bool emit_hit_object_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
 } // namespace dxil_spv

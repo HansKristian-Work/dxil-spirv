@@ -292,6 +292,7 @@ struct DXILDispatcher
 		OP(AcceptHitAndEndSearch) = emit_ray_tracing_accept_hit_and_end_search;
 		OP(IgnoreHit) = emit_ray_tracing_ignore_hit;
 		OP(CallShader) = emit_ray_tracing_call_shader;
+		OP(HitObject_TraceRay) = emit_hit_object_trace_ray_instruction;
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
@@ -502,6 +503,7 @@ bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction)
 	case DXIL::Op::RayQuery_CommitNonOpaqueTriangleHit:
 	case DXIL::Op::RayQuery_CommitProceduralPrimitiveHit:
 	case DXIL::Op::TextureStoreSample:
+	case DXIL::Op::HitObject_TraceRay:
 		ret = true;
 		break;
 
@@ -976,6 +978,24 @@ static void analyze_ray_tracing_flags(Converter::Impl &impl, const llvm::Value *
 	}
 }
 
+static void update_storage_class(Converter::Impl &impl, const llvm::Value *value, spv::StorageClass desired_class)
+{
+	if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(value))
+	{
+		auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
+		if (storage != spv::StorageClassFunction && storage != desired_class)
+		{
+			impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
+			if (!impl.get_needs_temp_storage_copy(alloca_inst))
+				impl.needs_temp_storage_copy.insert(alloca_inst);
+		}
+		else if (!impl.get_needs_temp_storage_copy(alloca_inst))
+		{
+			impl.handle_to_storage_class[alloca_inst] = desired_class;
+		}
+	}
+}
+
 bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// The opcode is encoded as a constant integer.
@@ -1017,6 +1037,7 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		break;
 
 	case DXIL::Op::TraceRay:
+	case DXIL::Op::HitObject_TraceRay:
 	{
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		// Moved to secondary pass to help NVAPI analysis since it uses TraceRay for nefarious needs,
@@ -1024,20 +1045,7 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		if (analyze_nvapi_trace_ray(impl, instruction))
 			break;
 
-		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(15)))
-		{
-			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
-			if (storage != spv::StorageClassFunction && storage != spv::StorageClassRayPayloadKHR)
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
-				if (!impl.get_needs_temp_storage_copy(alloca_inst))
-					impl.needs_temp_storage_copy.insert(alloca_inst);
-			}
-			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassRayPayloadKHR;
-			}
-		}
+		update_storage_class(impl, instruction->getOperand(15), spv::StorageClassRayPayloadKHR);
 
 		analyze_ray_tracing_flags(impl, instruction->getOperand(2));
 		break;
@@ -1051,20 +1059,7 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		if (analyze_nvapi_call_shader(impl, instruction))
 			break;
 
-		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(2)))
-		{
-			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
-			if (storage != spv::StorageClassFunction && storage != spv::StorageClassCallableDataKHR)
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
-				if (!impl.get_needs_temp_storage_copy(alloca_inst))
-					impl.needs_temp_storage_copy.insert(alloca_inst);
-			}
-			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassCallableDataKHR;
-			}
-		}
+		update_storage_class(impl, instruction->getOperand(2), spv::StorageClassCallableDataKHR);
 		break;
 	}
 

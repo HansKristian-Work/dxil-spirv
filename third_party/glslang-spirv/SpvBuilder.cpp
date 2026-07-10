@@ -225,6 +225,22 @@ Id Builder::makeHitObjectNVType()
     return type->getResultId();
 }
 
+Id Builder::makeHitObjectType()
+{
+    Instruction *type;
+    if (!hit_object_type)
+    {
+        type = new Instruction(getUniqueId(), NoType, OpTypeHitObjectEXT);
+        hit_object_type = type;
+        constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
+        module.mapInstruction(type);
+    } else
+        type = hit_object_type;
+
+    return type->getResultId();
+}
+
+
 Id Builder::makePointer(StorageClass storageClass, Id pointee)
 {
     // try to find it
