@@ -827,4 +827,22 @@ bool emit_hit_object_make_miss_instruction(Converter::Impl &impl, const llvm::Ca
 	return true;
 }
 
+bool emit_hit_object_make_nop_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+
+	auto *op = impl.allocate(spv::OpHitObjectRecordEmptyEXT);
+	op->add_id(hit_object);
+	impl.add(op);
+
+	impl.rewrite_value(inst, hit_object);
+
+	return true;
+}
+
 }
