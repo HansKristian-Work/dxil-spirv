@@ -297,6 +297,7 @@ struct DXILDispatcher
 		OP(HitObject_FromRayQueryWithAttrs) = emit_hit_object_from_ray_query_with_attrs_instruction;
 		OP(HitObject_MakeMiss) = emit_hit_object_make_miss_instruction;
 		OP(HitObject_MakeNop) = emit_hit_object_make_nop_instruction;
+		OP(HitObject_Invoke) = emit_hit_object_invoke_instruction;
 
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
@@ -1042,6 +1043,7 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 
 	case DXIL::Op::TraceRay:
 	case DXIL::Op::HitObject_TraceRay:
+	case DXIL::Op::HitObject_Invoke:
 	{
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		// Moved to secondary pass to help NVAPI analysis since it uses TraceRay for nefarious needs,
@@ -1049,7 +1051,8 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		if (analyze_nvapi_trace_ray(impl, instruction))
 			break;
 
-		update_storage_class(impl, instruction->getOperand(15), spv::StorageClassRayPayloadKHR);
+		unsigned pos = (op == DXIL::Op::HitObject_Invoke) ? 2 : 15;
+		update_storage_class(impl, instruction->getOperand(pos), spv::StorageClassRayPayloadKHR);
 
 		analyze_ray_tracing_flags(impl, instruction->getOperand(2));
 		break;

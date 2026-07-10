@@ -845,4 +845,29 @@ bool emit_hit_object_make_nop_instruction(Converter::Impl &impl, const llvm::Cal
 	return true;
 }
 
+bool emit_hit_object_invoke_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_EXT_shader_invocation_reorder");
+	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
+
+	spv::Id hit_object = impl.get_id_for_value(inst->getOperand(1));
+	auto *ray_payload = inst->getOperand(2);
+
+	bool needs_temp_copy = impl.get_needs_temp_storage_copy(ray_payload);
+	spv::Id ray_payload_var_id = needs_temp_copy
+		? emit_temp_storage_copy(impl, ray_payload, spv::StorageClassRayPayloadKHR)
+		: impl.get_id_for_value(ray_payload);
+
+	auto *op = impl.allocate(spv::OpHitObjectExecuteShaderEXT);
+	op->add_ids({
+	    hit_object,
+	    ray_payload_var_id
+	});
+	impl.add(op);
+
+	return true;
+}
+
 }
