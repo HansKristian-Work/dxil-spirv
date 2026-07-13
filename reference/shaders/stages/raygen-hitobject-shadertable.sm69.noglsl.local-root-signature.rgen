@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 68
+; Bound: 69
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -51,6 +51,7 @@ OpDecorate %17 Binding 30
 OpDecorate %21 DescriptorSet 20
 OpDecorate %21 Binding 10
 OpDecorate %21 NonReadable
+OpDecorate %45 ArrayStride 4
 OpDecorate %46 Block
 OpDecorate %46 HitObjectShaderRecordBufferEXT
 OpMemberDecorate %46 0 Offset 0
@@ -90,15 +91,17 @@ OpMemberDecorate %46 0 NonWritable
 %38 = OpTypePointer Function %37
 %40 = OpTypePointer RayPayloadKHR %22
 %44 = OpConstant %5 4
-%45 = OpTypeInt 64 0
-%46 = OpTypeStruct %5
+%45 = OpTypeRuntimeArray %5
+%46 = OpTypeStruct %45
 %47 = OpTypePointer PhysicalStorageBuffer %46
 %48 = OpTypePointer PhysicalStorageBuffer %5
+%50 = OpTypeInt 64 0
+%54 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %39 = OpVariable %38 Function
-OpBranch %66
-%66 = OpLabel
+OpBranch %67
+%67 = OpLabel
 %27 = OpLoad %15 %17
 %35 = OpCompositeConstruct %34 %29 %31 %32
 %36 = OpCompositeConstruct %34 %30 %30 %29
@@ -107,26 +110,25 @@ OpHitObjectTraceRayEXT %39 %27 %28 %28 %28 %28 %28 %35 %29 %36 %33 %26
 %42 = OpLoad %22 %41
 %43 = OpHitObjectGetShaderBindingTableRecordIndexEXT %5 %39
 %49 = OpHitObjectGetShaderRecordBufferHandleEXT %10 %39
-%50 = OpBitcast %45 %49
-%51 = OpUConvert %45 %44
-%52 = OpIAdd %45 %50 %51
-%53 = OpConvertUToPtr %47 %52
-%54 = OpAccessChain %48 %53 %28
-%55 = OpLoad %5 %54 Aligned 4
-%56 = OpIMul %5 %55 %43
-OpHitObjectSetShaderBindingTableRecordIndexEXT %39 %56
-%57 = OpInBoundsAccessChain %40 %25 %28
-OpStore %57 %42
+%51 = OpBitcast %50 %49
+%52 = OpConvertUToPtr %47 %51
+%53 = OpShiftRightLogical %5 %44 %54
+%55 = OpInBoundsAccessChain %48 %52 %28 %53
+%56 = OpLoad %5 %55 Aligned 4
+%57 = OpIMul %5 %56 %43
+OpHitObjectSetShaderBindingTableRecordIndexEXT %39 %57
+%58 = OpInBoundsAccessChain %40 %25 %28
+OpStore %58 %42
 OpHitObjectExecuteShaderEXT %39 %25
-%58 = OpLoad %22 %57
-%59 = OpLoad %19 %21
-%60 = OpCompositeExtract %18 %58 0
-%61 = OpCompositeExtract %18 %58 1
-%62 = OpCompositeExtract %18 %58 2
-%63 = OpCompositeExtract %18 %58 3
-%64 = OpCompositeConstruct %10 %28 %28
-%65 = OpCompositeConstruct %22 %60 %61 %62 %63
-OpImageWrite %59 %64 %65
+%59 = OpLoad %22 %58
+%60 = OpLoad %19 %21
+%61 = OpCompositeExtract %18 %59 0
+%62 = OpCompositeExtract %18 %59 1
+%63 = OpCompositeExtract %18 %59 2
+%64 = OpCompositeExtract %18 %59 3
+%65 = OpCompositeConstruct %10 %28 %28
+%66 = OpCompositeConstruct %22 %61 %62 %63 %64
+OpImageWrite %60 %65 %66
 OpReturn
 OpFunctionEnd
 
