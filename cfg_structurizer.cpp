@@ -7114,11 +7114,24 @@ bool CFGStructurizer::find_loops(unsigned pass)
 					//     dominated_merge->name.c_str());
 				//}
 
-				// We will use this block as a ladder.
-				node->loop_ladder_block = dominated_merge;
-				node->loop_merge_block = merge;
+				// If this merge target is already claimed by another header, adopting it would emit
+				// two OpLoopMerge to the same block (invalid SPIR-V). When we dominate a private ladder,
+				// merge to that instead and freeze so pass 1 preserves it rather than re-sharing merge.
+				if (dominated_merge && !merge->headers.empty() && node->dominates(dominated_merge))
+				{
+					node->loop_ladder_block = nullptr;
+					node->loop_merge_block = dominated_merge;
+					node->freeze_structured_analysis = true;
+					const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
+				}
+				else
+				{
+					// We will use this block as a ladder.
+					node->loop_ladder_block = dominated_merge;
+					node->loop_merge_block = merge;
 
-				const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
+					const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
+				}
 			}
 		}
 	}
