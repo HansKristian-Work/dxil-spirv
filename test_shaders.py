@@ -398,13 +398,15 @@ def test_shaders(args):
             results.append(pool.apply_async(test_shader_file,
                 args = (f, args)))
 
+        index = 0
         for res in results:
             error = res.get()
             if error is not None:
                 pool.close()
                 pool.join()
-                print('Error:', error)
+                print(f'Error in {all_files[index]}:', error)
                 sys.exit(1)
+            index += 1
     else:
         for i in all_files:
             e = test_shader_file(i, args)
