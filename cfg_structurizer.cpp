@@ -3556,10 +3556,28 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 						// support such a break.
 						// If we hit this path, the common post-dominator will not find the intended merge
 						// target for B, so we never get to perform the necessary fixup.
-						auto *a_front = node->succ[0]->dominance_frontier.size() == 1 ?
-						                node->succ[0]->dominance_frontier.front() : nullptr;
-						auto *b_front = node->succ[1]->dominance_frontier.size() == 1 ?
-						                node->succ[1]->dominance_frontier.front() : nullptr;
+						const auto top_most_domination_frontier = [](const CFGNode *n) -> CFGNode *
+						{
+							if (n->dominance_frontier.empty())
+								return nullptr;
+							auto *candidate = n->dominance_frontier.front();
+							for (auto *df : n->dominance_frontier)
+								if (df->forward_post_visit_order > candidate->forward_post_visit_order)
+									candidate = df;
+
+							return candidate;
+						};
+
+						auto *a_front = top_most_domination_frontier(node->succ[0]);
+						auto *b_front = top_most_domination_frontier(node->succ[1]);
+
+						// 100% ambiguous, don't try to merge anything.
+						if (a_front == b_front)
+						{
+							a_front = nullptr;
+							b_front = nullptr;
+						}
+
 						bool found_candidate = false;
 
 						CFGNode *inner_merge_candidate = nullptr;
