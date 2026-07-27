@@ -3519,10 +3519,28 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				{
 					if (a_path_is_break_or_continue && b_path_is_break_or_continue)
 					{
-						// Both paths break, so we don't need to merge anything. Use Unreachable merge target.
-						node->merge = MergeType::Selection;
-						node->selection_merge_block = nullptr;
-						//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
+						// We might not have been able to find a continue block through direct scan.
+						// E.g. a continue block might be reachable in one path, but not reachable in another.
+						auto *header_a = get_innermost_loop_header_for(node->succ[0]);
+						auto *header_b = get_innermost_loop_header_for(node->succ[1]);
+
+						if (header_a && header_a->pred_back_edge && header_a == header_b)
+						{
+							bool a_reaches_continue = query_reachability(*node->succ[0], *header_a->pred_back_edge);
+							bool b_reaches_continue = query_reachability(*node->succ[1], *header_b->pred_back_edge);
+							if (a_reaches_continue && !b_reaches_continue)
+								merge_to_succ(node, 1);
+							else if (!a_reaches_continue && b_reaches_continue)
+								merge_to_succ(node, 0);
+						}
+
+						if (node->merge == MergeType::None)
+						{
+							// Both paths break, so we don't need to merge anything. Use Unreachable merge target.
+							node->merge = MergeType::Selection;
+							node->selection_merge_block = nullptr;
+							//LOGI("Merging %s -> Unreachable\n", node->name.c_str());
+						}
 					}
 					else if (b_path_is_break_or_continue)
 						merge_to_succ(node, 0);
