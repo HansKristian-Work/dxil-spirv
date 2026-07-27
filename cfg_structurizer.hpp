@@ -283,5 +283,8 @@ private:
 
 	void sink_ssa_constructs();
 	void sink_ssa_constructs_run(bool dry_run);
+
+	template <typename Op>
+	void iterate_dominated_node_range_bottom_up(const CFGNode *start, const CFGNode *end, const Op &op);
 };
 } // namespace dxil_spv

@@ -40,6 +40,26 @@ static inline bool has_element(const Container &c, const T &value)
 	return itr != c.end();
 }
 
+template <typename Op>
+void CFGStructurizer::iterate_dominated_node_range_bottom_up(const CFGNode *start, const CFGNode *end, const Op &op)
+{
+	// node->forward_post_visit_order should map 1:1 to the post-visit array,
+	// but in extreme circumstances where there have been inline cfg rewrites before recompute,
+	// this may not be true, so be defensive.
+	assert(start->dominates(end));
+	auto begin_itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), end);
+	auto end_itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), start);
+	assert(begin_itr != forward_post_visit_order.end());
+	assert(end_itr != forward_post_visit_order.end());
+
+	for (; begin_itr != end_itr; ++begin_itr)
+	{
+		auto *n = *begin_itr;
+		if (start->dominates(n) && query_reachability(*n, *end))
+			op(n);
+	}
+}
+
 CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule &module_)
     : entry_block(entry)
     , pool(pool_)
@@ -4133,27 +4153,18 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes_aggressive()
 		if (!node->post_dominates(idom))
 			continue;
 
-		// node->forward_post_visit_order should map 1:1 to the post-visit array,
-		// but in extreme circumstances where there have been inline cfg rewrites before recompute,
-		// this may not be true, so be defensive.
-		auto itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), node);
-		auto end = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), idom);
-		assert(itr != forward_post_visit_order.end());
-		assert(end != forward_post_visit_order.end());
-
 		Vector<CFGNode *> constructs;
 
-		for (; itr != end; ++itr)
+		iterate_dominated_node_range_bottom_up(idom, node, [&](CFGNode *candidate)
 		{
-			auto *candidate = *itr;
 			if (candidate->num_forward_preds() < PredThreshold)
-				continue;
+				return;
 			if (!idom->dominates(candidate))
-				continue;
+				return;
 			auto &df = candidate->dominance_frontier;
 			if (std::find(df.begin(), df.end(), node) != df.end())
 				constructs.push_back(candidate);
-		}
+		});
 
 		if (constructs.empty())
 			continue;
@@ -6625,15 +6636,6 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 		// Also check that there are no edges that leave the scope between common_idom
 		// and common_pdom and don't freeze if so.
 
-		// node->forward_post_visit_order should map 1:1 to the post-visit array,
-		// but in extreme circumstances where there have been inline cfg rewrites before recompute,
-		// this may not be true, so be defensive.
-		auto itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), common_pdom);
-		auto end = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), common_idom);
-
-		assert(itr != forward_post_visit_order.end());
-		assert(end != forward_post_visit_order.end());
-
 		const auto can_reach_any_construct = [&](const CFGNode *succ)
 		{
 			for (auto *construct : constructs)
@@ -6664,12 +6666,10 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 			freeze_control_flow = !any_succ_escapes_constructs(common_idom);
 		}
 
-		for (; itr != end && freeze_control_flow; ++itr)
+		iterate_dominated_node_range_bottom_up(common_idom, common_pdom, [&](CFGNode *node)
 		{
-			CFGNode *node = *itr;
-
-			if (!common_idom->dominates(node))
-				continue;
+			if (!freeze_control_flow)
+				return;
 
 			if (node->succ_back_edge != nullptr && node->succ_back_edge != common_idom &&
 			    query_reachability(*node->succ_back_edge, *common_idom))
@@ -6677,7 +6677,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 				// Branches backwards.
 				freeze_control_flow = false;
 			}
-			else if (!collect_all_code_paths_to_pdom && !is_construct(node) && common_idom->dominates(node) &&
+			else if (!collect_all_code_paths_to_pdom && !is_construct(node) &&
 			         can_reach_any_construct(node) && any_succ_escapes_constructs(node))
 			{
 				// If we're using the simple collector, we merge at the constructs instead.
@@ -6685,7 +6685,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 				// a suitable merge.
 				freeze_control_flow = false;
 			}
-		}
+		});
 	}
 
 	PHI phi;
@@ -8086,27 +8086,17 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 		{
 			// If we have a switch block at inner scope, it might want to use our loop header
 			// as a break target, so we cannot just demote.
-			auto itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), rewrite_header->loop_merge_block);
-			auto end = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), rewrite_header);
-			assert(itr != forward_post_visit_order.end());
-			assert(end != forward_post_visit_order.end());
 			bool has_inner_complex_switch = false;
 
-			for (; itr != end; ++itr)
-			{
-				auto *n = *itr;
-				if (rewrite_header == n)
-					continue;
-
-				if (rewrite_header->dominates(n) && query_reachability(*n, *rewrite_header->loop_merge_block))
+			iterate_dominated_node_range_bottom_up(rewrite_header, rewrite_header->loop_merge_block,
+				[&](const CFGNode *n)
 				{
+					if (rewrite_header == n)
+						return;
+
 					if (n->ir.terminator.type == Terminator::Type::Switch && !n->selection_merge_block->post_dominates(n))
-					{
 						has_inner_complex_switch = true;
-						break;
-					}
-				}
-			}
+				});
 
 			if (!has_inner_complex_switch)
 			{
