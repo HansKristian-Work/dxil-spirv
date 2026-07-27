@@ -1,0 +1,88 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 48
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability StorageImageWriteWithoutFormat
+OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability ShaderInvocationReorderEXT
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_EXT_shader_invocation_reorder"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %16 %17
+OpName %3 "main"
+OpName %8 "AS"
+OpName %12 "IMG"
+OpName %14 ""
+OpDecorate %8 DescriptorSet 40
+OpDecorate %8 Binding 30
+OpDecorate %12 DescriptorSet 20
+OpDecorate %12 Binding 10
+OpDecorate %12 NonReadable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 1
+%6 = OpTypeAccelerationStructureKHR
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeFloat 32
+%10 = OpTypeImage %9 2D 0 0 0 2 Unknown
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeVector %9 4
+%14 = OpTypeStruct %13
+%15 = OpTypePointer RayPayloadKHR %14
+%16 = OpVariable %15 RayPayloadKHR
+%17 = OpVariable %15 RayPayloadKHR
+%19 = OpTypeInt 32 0
+%20 = OpConstant %19 0
+%21 = OpConstant %9 1
+%22 = OpConstant %9 0
+%23 = OpConstant %9 2
+%24 = OpConstant %9 3
+%25 = OpConstant %9 4
+%26 = OpTypeVector %9 3
+%29 = OpTypeHitObjectEXT
+%30 = OpTypePointer Function %29
+%32 = OpTypePointer RayPayloadKHR %13
+%43 = OpTypeVector %19 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%31 = OpVariable %30 Function
+%35 = OpUndef %19
+OpBranch %46
+%46 = OpLabel
+%18 = OpLoad %6 %8
+%27 = OpCompositeConstruct %26 %21 %23 %24
+%28 = OpCompositeConstruct %26 %22 %22 %21
+OpHitObjectTraceRayEXT %31 %18 %20 %20 %20 %20 %20 %27 %21 %28 %25 %17
+%33 = OpInBoundsAccessChain %32 %17 %20
+%34 = OpLoad %13 %33
+OpReorderThreadWithHitObjectEXT %31 %35 %20
+%36 = OpInBoundsAccessChain %32 %16 %20
+OpStore %36 %34
+OpHitObjectExecuteShaderEXT %31 %16
+%37 = OpLoad %13 %36
+%38 = OpLoad %10 %12
+%39 = OpCompositeExtract %9 %37 0
+%40 = OpCompositeExtract %9 %37 1
+%41 = OpCompositeExtract %9 %37 2
+%42 = OpCompositeExtract %9 %37 3
+%44 = OpCompositeConstruct %43 %20 %20
+%45 = OpCompositeConstruct %13 %39 %40 %41 %42
+OpImageWrite %38 %44 %45
+OpReturn
+OpFunctionEnd
+

@@ -1,0 +1,108 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 65
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability StorageImageWriteWithoutFormat
+OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability ShaderInvocationReorderEXT
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_EXT_shader_invocation_reorder"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %15 %16 %20 %21
+OpName %3 "main"
+OpName %8 "AS"
+OpName %12 "IMG"
+OpName %13 ""
+OpName %18 ""
+OpDecorate %8 DescriptorSet 40
+OpDecorate %8 Binding 30
+OpDecorate %12 DescriptorSet 20
+OpDecorate %12 Binding 10
+OpDecorate %12 NonReadable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 1
+%6 = OpTypeAccelerationStructureKHR
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeFloat 32
+%10 = OpTypeImage %9 2D 0 0 0 2 Unknown
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeStruct %9
+%14 = OpTypePointer RayPayloadKHR %13
+%15 = OpVariable %14 RayPayloadKHR
+%16 = OpVariable %14 RayPayloadKHR
+%17 = OpTypeVector %9 4
+%18 = OpTypeStruct %17
+%19 = OpTypePointer RayPayloadKHR %18
+%20 = OpVariable %19 RayPayloadKHR
+%21 = OpVariable %19 RayPayloadKHR
+%23 = OpTypeInt 32 0
+%24 = OpConstant %23 0
+%25 = OpConstant %9 1
+%26 = OpConstant %9 0
+%27 = OpConstant %9 2
+%28 = OpConstant %9 3
+%29 = OpConstant %9 4
+%30 = OpTypeVector %9 3
+%33 = OpTypeHitObjectEXT
+%34 = OpTypePointer Function %33
+%36 = OpTypePointer RayPayloadKHR %17
+%42 = OpConstant %23 1
+%46 = OpTypePointer RayPayloadKHR %9
+%60 = OpTypeVector %23 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%35 = OpVariable %34 Function
+%45 = OpVariable %34 Function
+%52 = OpUndef %17
+OpBranch %63
+%63 = OpLabel
+%22 = OpLoad %6 %8
+%31 = OpCompositeConstruct %30 %25 %27 %28
+%32 = OpCompositeConstruct %30 %26 %26 %25
+OpHitObjectTraceRayEXT %35 %22 %24 %24 %24 %24 %24 %31 %25 %32 %29 %21
+%37 = OpInBoundsAccessChain %36 %21 %24
+%38 = OpLoad %17 %37
+%39 = OpInBoundsAccessChain %36 %20 %24
+OpStore %39 %38
+OpHitObjectExecuteShaderEXT %35 %20
+%40 = OpLoad %17 %39
+%41 = OpLoad %6 %8
+%43 = OpCompositeConstruct %30 %25 %27 %28
+%44 = OpCompositeConstruct %30 %26 %26 %25
+OpHitObjectTraceRayEXT %45 %41 %24 %42 %24 %24 %24 %43 %25 %44 %29 %16
+%47 = OpInBoundsAccessChain %46 %16 %24
+%48 = OpLoad %9 %47
+%49 = OpInBoundsAccessChain %46 %15 %24
+OpStore %49 %48
+OpHitObjectExecuteShaderEXT %45 %15
+%50 = OpLoad %9 %49
+%51 = OpCompositeInsert %17 %50 %52 0
+%53 = OpVectorShuffle %17 %51 %52 0 0 0 0
+%54 = OpFAdd %17 %53 %40
+%55 = OpLoad %10 %12
+%56 = OpCompositeExtract %9 %54 0
+%57 = OpCompositeExtract %9 %54 1
+%58 = OpCompositeExtract %9 %54 2
+%59 = OpCompositeExtract %9 %54 3
+%61 = OpCompositeConstruct %60 %24 %24
+%62 = OpCompositeConstruct %17 %56 %57 %58 %59
+OpImageWrite %55 %61 %62
+OpReturn
+OpFunctionEnd
+

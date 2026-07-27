@@ -137,6 +137,7 @@ public:
     Id makeAccelerationStructureType();
     Id makeRayQueryType();
     Id makeHitObjectNVType();
+    Id makeHitObjectType();
     Id makeSamplerType();
     Id makeSampledImageType(Id imageType);
 
@@ -692,6 +693,7 @@ protected:
     Instruction *acceleration_structure_type = nullptr;
     Instruction *ray_query_type = nullptr;
     Instruction *hit_object_nv_type = nullptr;
+    Instruction *hit_object_type = nullptr;
 
     // stack of switches
     std::stack<Block*> switchMerges;

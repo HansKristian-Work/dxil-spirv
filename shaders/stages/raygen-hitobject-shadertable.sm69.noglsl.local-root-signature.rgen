@@ -1,0 +1,32 @@
+using namespace dx;
+
+struct [raypayload] Payload
+{
+	float4 color : write(closesthit, miss) : read(caller);
+};
+
+RaytracingAccelerationStructure AS : register(t30, space40);
+RWTexture2D<float4> IMG : register(u10, space20);
+
+[shader("raygeneration")]
+void RayGen()
+{
+	const uint2 pixelIndex = DispatchRaysIndex().xy;
+
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.Direction = float3(0, 0, 1);
+	ray.TMin = 1.0;
+	ray.TMax = 4.0;
+
+	Payload payload;
+	HitObject hit = HitObject::TraceRay(AS, RAY_FLAG_NONE, 0, 0, 0, 0, ray, payload);
+
+	uint index = hit.GetShaderTableIndex();
+	uint value = hit.LoadLocalRootTableConstant(4);
+	hit.SetShaderTableIndex(index * value);
+
+	HitObject::Invoke(hit, payload);
+
+	IMG[int2(0, 0)] = payload.color;
+}

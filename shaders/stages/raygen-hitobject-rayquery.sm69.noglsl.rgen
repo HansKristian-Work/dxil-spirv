@@ -1,0 +1,81 @@
+using namespace dx;
+
+RaytracingAccelerationStructure AS : register(t30, space40);
+RWTexture2D<float4> IMG : register(u10, space20);
+
+struct [RayPayload] RayPayload
+{
+    float3 value : read (caller): write(caller, closesthit);
+};
+
+struct Attributes
+{
+    float2 uv;
+};
+
+
+[shader("raygeneration")]
+void RayGeneration()
+{
+    uint2 pixel = DispatchRaysIndex().xy;
+
+    RayQuery<RAY_FLAG_CULL_NON_OPAQUE> q;
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.TMin = 4;
+	ray.Direction = float3(5, 6, 7);
+	ray.TMax = 8;
+
+	q.TraceRayInline(AS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, ray);
+
+	Attributes committedAttributes;
+	uint committedCustomHitKind = 0;
+
+	while (q.Proceed())
+	{
+		if (q.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+		{
+			q.CommitNonOpaqueTriangleHit();
+		}
+		else if (q.CandidateType() == CANDIDATE_PROCEDURAL_PRIMITIVE)
+		{
+			Attributes candidateAttributes;
+
+			if (q.CandidatePrimitiveIndex() > 2)
+			{
+				continue;
+			}
+
+			q.CommitProceduralPrimitiveHit(q.RayTMin());
+
+			committedAttributes.uv = q.CandidateObjectRayOrigin().xy;
+			committedCustomHitKind = q.CandidateObjectRayDirection().z;
+		}
+	}
+
+	RayPayload payload;
+	payload.value = 0.0f;
+
+	COMMITTED_STATUS status = q.CommittedStatus();
+
+	if (status == COMMITTED_PROCEDURAL_PRIMITIVE_HIT)
+	{
+		HitObject hit = HitObject::FromRayQuery(q, committedCustomHitKind, committedAttributes);
+		hit.SetShaderTableIndex(0);
+		MaybeReorderThread(hit);
+		HitObject::Invoke(hit, payload);
+	}
+	else if (status == COMMITTED_TRIANGLE_HIT)
+	{
+		HitObject hit = HitObject::FromRayQuery(q);
+		hit.SetShaderTableIndex(1);
+		MaybeReorderThread(hit);
+		HitObject::Invoke(hit, payload);
+	}
+	else
+	{
+		payload.value = float3(0.1, 0.2, 0.3);
+	}
+
+	IMG[pixel] = float4(payload.value, 1);
+}

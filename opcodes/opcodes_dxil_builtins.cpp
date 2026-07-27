@@ -293,6 +293,37 @@ struct DXILDispatcher
 		OP(IgnoreHit) = emit_ray_tracing_ignore_hit;
 		OP(CallShader) = emit_ray_tracing_call_shader;
 
+		// Hit object + shader invocation reordering
+		OP(HitObject_TraceRay) = emit_hit_object_trace_ray_instruction;
+		OP(HitObject_FromRayQuery) = emit_hit_object_from_ray_query_instruction;
+		OP(HitObject_FromRayQueryWithAttrs) = emit_hit_object_from_ray_query_with_attrs_instruction;
+		OP(HitObject_MakeMiss) = emit_hit_object_make_miss_instruction;
+		OP(HitObject_MakeNop) = emit_hit_object_make_nop_instruction;
+		OP(HitObject_Invoke) = emit_hit_object_invoke_instruction;
+		OP(MaybeReorderThread) = emit_maybe_reoder_thread_instruction;
+
+		OP(HitObject_IsMiss) = emit_hit_object_get_value_instruction<spv::OpHitObjectIsMissEXT, 1>;
+		OP(HitObject_IsHit) = emit_hit_object_get_value_instruction<spv::OpHitObjectIsHitEXT, 1>;
+		OP(HitObject_IsNop) = emit_hit_object_get_value_instruction<spv::OpHitObjectIsEmptyEXT, 1>;
+		OP(HitObject_RayFlags) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetRayFlagsEXT, 1>;
+		OP(HitObject_RayTMin) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetRayTMinEXT, 1>;
+		OP(HitObject_RayTCurrent) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetRayTMaxEXT, 1>;
+		OP(HitObject_WorldRayOrigin) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetWorldRayOriginEXT, 3>;
+		OP(HitObject_WorldRayDirection) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetWorldRayDirectionEXT, 3>;
+		OP(HitObject_ObjectRayOrigin) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetObjectRayOriginEXT, 3>;
+		OP(HitObject_ObjectRayDirection) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetObjectRayDirectionEXT, 3>;
+		OP(HitObject_ObjectToWorld3x4) = emit_hit_object_get_matrix_value_instruction<spv::OpHitObjectGetObjectToWorldEXT>;
+		OP(HitObject_WorldToObject3x4) = emit_hit_object_get_matrix_value_instruction<spv::OpHitObjectGetWorldToObjectEXT>;
+		OP(HitObject_GeometryIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetGeometryIndexEXT, 1>;
+		OP(HitObject_InstanceIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetInstanceCustomIndexEXT, 1>;
+		OP(HitObject_InstanceID) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetInstanceIdEXT, 1>;
+		OP(HitObject_PrimitiveIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetPrimitiveIndexEXT, 1>;
+		OP(HitObject_HitKind) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetHitKindEXT, 1>;
+		OP(HitObject_ShaderTableIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetShaderBindingTableRecordIndexEXT, 1>;
+		OP(HitObject_SetShaderTableIndex) = emit_hit_object_set_shader_table_index_instruction;
+		OP(HitObject_LoadLocalRootTableConstant) = emit_hit_object_load_local_root_table_constant_instruction;
+		OP(HitObject_Attributes) = emit_hit_object_attributes_instruction;
+
 		// Ray query
 		OP(AllocateRayQuery) = emit_allocate_ray_query;
 		OP(AllocateRayQuery2) = emit_allocate_ray_query; // These are compatible.
@@ -502,6 +533,8 @@ bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction)
 	case DXIL::Op::RayQuery_CommitNonOpaqueTriangleHit:
 	case DXIL::Op::RayQuery_CommitProceduralPrimitiveHit:
 	case DXIL::Op::TextureStoreSample:
+	case DXIL::Op::HitObject_TraceRay:
+	case DXIL::Op::HitObject_SetShaderTableIndex:
 		ret = true;
 		break;
 
@@ -976,6 +1009,24 @@ static void analyze_ray_tracing_flags(Converter::Impl &impl, const llvm::Value *
 	}
 }
 
+static void update_storage_class(Converter::Impl &impl, const llvm::Value *value, spv::StorageClass desired_class)
+{
+	if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(value))
+	{
+		auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
+		if (storage != spv::StorageClassFunction && storage != desired_class)
+		{
+			impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
+			if (!impl.get_needs_temp_storage_copy(alloca_inst))
+				impl.needs_temp_storage_copy.insert(alloca_inst);
+		}
+		else if (!impl.get_needs_temp_storage_copy(alloca_inst))
+		{
+			impl.handle_to_storage_class[alloca_inst] = desired_class;
+		}
+	}
+}
+
 bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	// The opcode is encoded as a constant integer.
@@ -1017,6 +1068,8 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		break;
 
 	case DXIL::Op::TraceRay:
+	case DXIL::Op::HitObject_TraceRay:
+	case DXIL::Op::HitObject_Invoke:
 	{
 		// Mark alloca'd variables which should be considered as payloads rather than StorageClassFunction.
 		// Moved to secondary pass to help NVAPI analysis since it uses TraceRay for nefarious needs,
@@ -1024,20 +1077,8 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		if (analyze_nvapi_trace_ray(impl, instruction))
 			break;
 
-		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(15)))
-		{
-			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
-			if (storage != spv::StorageClassFunction && storage != spv::StorageClassRayPayloadKHR)
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
-				if (!impl.get_needs_temp_storage_copy(alloca_inst))
-					impl.needs_temp_storage_copy.insert(alloca_inst);
-			}
-			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassRayPayloadKHR;
-			}
-		}
+		unsigned pos = (op == DXIL::Op::HitObject_Invoke) ? 2 : 15;
+		update_storage_class(impl, instruction->getOperand(pos), spv::StorageClassRayPayloadKHR);
 
 		analyze_ray_tracing_flags(impl, instruction->getOperand(2));
 		break;
@@ -1051,22 +1092,17 @@ bool analyze_dxil_instruction_secondary_pass(Converter::Impl &impl, const llvm::
 		if (analyze_nvapi_call_shader(impl, instruction))
 			break;
 
-		if (const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(instruction->getOperand(2)))
-		{
-			auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
-			if (storage != spv::StorageClassFunction && storage != spv::StorageClassCallableDataKHR)
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
-				if (!impl.get_needs_temp_storage_copy(alloca_inst))
-					impl.needs_temp_storage_copy.insert(alloca_inst);
-			}
-			else if (!impl.get_needs_temp_storage_copy(alloca_inst))
-			{
-				impl.handle_to_storage_class[alloca_inst] = spv::StorageClassCallableDataKHR;
-			}
-		}
+		update_storage_class(impl, instruction->getOperand(2), spv::StorageClassCallableDataKHR);
 		break;
 	}
+
+	case DXIL::Op::HitObject_Attributes:
+		update_storage_class(impl, instruction->getOperand(2), spv::StorageClassHitObjectAttributeEXT);
+		break;
+
+	case DXIL::Op::HitObject_FromRayQueryWithAttrs:
+		update_storage_class(impl, instruction->getOperand(3), spv::StorageClassHitObjectAttributeEXT);
+		break;
 
 	default:
 		break;

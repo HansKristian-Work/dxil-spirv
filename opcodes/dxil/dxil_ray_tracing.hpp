@@ -95,4 +95,31 @@ inline bool emit_ray_query_get_matrix_value_instruction(Converter::Impl &impl, c
 {
 	return emit_ray_query_get_matrix_value_instruction(impl, instruction, opcode, intersection);
 }
+
+bool emit_hit_object_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_hit_object_from_ray_query_instruction(Converter::Impl &impl, const llvm::CallInst *instuction);
+bool emit_hit_object_from_ray_query_with_attrs_instruction(Converter::Impl &impl, const llvm::CallInst *instuction);
+bool emit_hit_object_make_miss_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_hit_object_make_nop_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_hit_object_invoke_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_maybe_reoder_thread_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool emit_hit_object_get_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Op op, uint32_t vecsize);
+template <spv::Op opcode, uint32_t vecsize>
+inline bool emit_hit_object_get_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_hit_object_get_value_instruction(impl, instruction, opcode, vecsize);
+}
+
+bool emit_hit_object_get_matrix_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Op op);
+template <spv::Op opcode>
+inline bool emit_hit_object_get_matrix_value_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
+{
+	return emit_hit_object_get_matrix_value_instruction(impl, instruction, opcode);
+}
+
+bool emit_hit_object_set_shader_table_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_hit_object_load_local_root_table_constant_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_hit_object_attributes_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 } // namespace dxil_spv
+
