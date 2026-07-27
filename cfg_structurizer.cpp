@@ -3625,7 +3625,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 							// The breaking path tries to break to this node.
 							// This will only trigger in pass 1.
 							auto *header = inner_merge_candidate->headers.front();
-							if (header->merge == MergeType::Selection)
+							if (header->merge == MergeType::Selection && !header->freeze_structured_analysis)
 							{
 								// Promote to loop header instead.
 								// We might have to enter the loop ladder fixup stages later
@@ -8074,6 +8074,67 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 		                                  false);
 		recompute_cfg();
 		return true;
+	}
+
+	if (invalid_target)
+	{
+		// We branched outside our construct, but if we're a switch statement, so we can abuse SPIR-V rules and
+		// let continue/breaks punch through ourselves. This only works if we're breaking a single level though.
+		auto *rewrite_scope = get_innermost_loop_header_for(rewrite_header);
+
+		if (rewrite_scope && rewrite_scope->loop_merge_block == invalid_target)
+		{
+			// If we have a switch block at inner scope, it might want to use our loop header
+			// as a break target, so we cannot just demote.
+			auto itr = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), rewrite_header->loop_merge_block);
+			auto end = std::find(forward_post_visit_order.begin(), forward_post_visit_order.end(), rewrite_header);
+			assert(itr != forward_post_visit_order.end());
+			assert(end != forward_post_visit_order.end());
+			bool has_inner_complex_switch = false;
+
+			for (; itr != end; ++itr)
+			{
+				auto *n = *itr;
+				if (rewrite_header == n)
+					continue;
+
+				if (rewrite_header->dominates(n) && query_reachability(*n, *rewrite_header->loop_merge_block))
+				{
+					if (n->ir.terminator.type == Terminator::Type::Switch && !n->selection_merge_block->post_dominates(n))
+					{
+						has_inner_complex_switch = true;
+						break;
+					}
+				}
+			}
+
+			if (!has_inner_complex_switch)
+			{
+				auto *pred = create_helper_pred_block(rewrite_header);
+				pred->merge = MergeType::Selection;
+				pred->selection_merge_block = rewrite_header->loop_merge_block;
+				pred->freeze_structured_analysis = true;
+				pred->ir.merge_info.merge_type = MergeType::Selection;
+				pred->ir.merge_info.merge_block = rewrite_header->loop_merge_block;
+				pred->ir.terminator.conditional_id = module.get_builder().makeNullConstant(module.get_builder().makeUintType(32));
+				Terminator::Case default_case = {};
+				default_case.is_default = true;
+				default_case.node = pred->ir.terminator.direct_block;
+				pred->ir.terminator.direct_block = nullptr;
+				pred->ir.terminator.type = Terminator::Type::Switch;
+				pred->ir.terminator.cases.push_back(default_case);
+
+				rewrite_header->merge = MergeType::None;
+				rewrite_header->loop_merge_block = nullptr;
+				rewrite_header->loop_ladder_block = nullptr;
+				rewrite_header->freeze_structured_analysis = false;
+				rewrite_header->ir.merge_info.merge_block = nullptr;
+				rewrite_header->ir.merge_info.merge_type = MergeType::None;
+
+				recompute_cfg();
+				return true;
+			}
+		}
 	}
 
 	if (invalid_target)
