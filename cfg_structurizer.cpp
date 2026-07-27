@@ -7091,6 +7091,45 @@ bool CFGStructurizer::find_loops(unsigned pass)
 				//     node->name.c_str(), static_cast<const void *>(node->loop_merge_block),
 				//     node->loop_merge_block->name.c_str());
 
+				if (!merge->headers.empty() && merge == dominated_merge)
+				{
+					CFGNode *innermost_outer_header = nullptr;
+					// Apparently dominance analysis thinks we have a clean merge, but we may have to split anyway.
+					// Try to find a candidate ladder block that is a better merge target if we need to split.
+					for (auto *existing_header : merge->headers)
+					{
+						auto *back_edge = existing_header->pred_back_edge;
+						if (!back_edge)
+							continue;
+
+						// The ladder candidate must break as little as possible.
+						if (innermost_outer_header && query_reachability(*existing_header, *innermost_outer_header))
+							continue;
+
+						// We cannot use a pure continue block as ladder. Step one block back.
+						// We should hit the dedicated ladder block.
+						if (back_edge->pred.size() != 1 || !back_edge->post_dominates(back_edge->pred.front()))
+							continue;
+
+						back_edge = back_edge->pred.front();
+
+						// Our node needs to dominate the back edge.
+						if (!node->dominates(back_edge))
+							continue;
+
+						// If this back-edge post dominates any loop exits, it's a candidate ladder block.
+						auto itr = std::find_if(
+							result.dominated_exit.begin(), result.dominated_exit.end(),
+							[&](const CFGNode *n) { return back_edge->post_dominates(n); });
+
+						if (itr != result.dominated_exit.end())
+						{
+							node->loop_ladder_block = back_edge;
+							innermost_outer_header = existing_header;
+						}
+					}
+				}
+
 				node->loop_merge_block = merge;
 				const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
 			}
