@@ -3645,10 +3645,15 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 								auto *a_header = a_front->headers.front();
 								auto *b_header = b_front->headers.front();
 
+								bool a_is_earlier = a_header->forward_post_visit_order > b_header->forward_post_visit_order;
+
 								// Pick the largest enclosing header as a heuristic.
-								inner_merge_candidate =
-									a_header->forward_post_visit_order > b_header->forward_post_visit_order ?
-									a_front : b_front;
+								inner_merge_candidate = a_is_earlier ? a_front : b_front;
+
+								// Merge away from the candidate that will be promoted to a loop header.
+								// This allows us to deal more gracefully with switch demotion if the loop headers
+								// gets fixed up.
+								merge_to_succ(node, a_is_earlier ? 1 : 0);
 							}
 						}
 
