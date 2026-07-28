@@ -2537,6 +2537,17 @@ void CFGStructurizer::insert_phi(PHINode &node)
 						continue;
 					}
 
+					// Infinite loop continue blocks should never be a frontier unless the final node is the header.
+					// Continue blocks sometimes have "fake" succ blocks that confuse this analysis.
+					if (candidate_frontier->succ_back_edge &&
+						candidate_frontier->ir.terminator.type == Terminator::Type::Branch &&
+						node.block != candidate_frontier->succ_back_edge)
+					{
+						// Makes sure we don't redundantly test this again.
+						placed_frontiers.insert(candidate_frontier);
+						continue;
+					}
+
 					// Only consider a frontier if we can reach node.block or its back edge from it.
 					if (query_reachability_through_back_edges(*candidate_frontier, *node.block))
 					{
