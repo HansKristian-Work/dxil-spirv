@@ -1233,6 +1233,7 @@ bool CFGStructurizer::rewrite_impossible_back_edges()
 		// outside the loop, stop any attempt to transpose.
 		const auto validate_header_suitability = [this, node](const CFGNode *header) {
 			return !query_reachability(*node, *header->pred_back_edge) &&
+			       !header->can_loop_merge_to(node) &&
 			       !query_reachability(*header->pred_back_edge, *node);
 		};
 
@@ -5581,6 +5582,7 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 				                                                          innermost_loop_header->immediate_dominator);
 				if (outer_infinite_loop && outer_infinite_loop->pred_back_edge &&
 				    outer_infinite_loop->pred_back_edge->succ.empty() &&
+				    outer_infinite_loop->pred_back_edge->fake_succ.size() != 1 &&
 				    outer_infinite_loop->pred_back_edge->post_dominates(&node))
 				{
 					return LoopExitType::MergeToInfiniteLoop;
