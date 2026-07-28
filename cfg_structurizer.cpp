@@ -3002,7 +3002,7 @@ void CFGStructurizer::backwards_visit()
 				if (transpose_loop_exit)
 				{
 					for (auto *f : exits)
-						node->pred_back_edge->add_branch(f);
+						node->pred_back_edge->add_fake_branch(f);
 				}
 				else
 				{
