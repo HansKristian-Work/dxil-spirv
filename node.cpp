@@ -170,6 +170,10 @@ bool CFGNode::can_loop_merge_to(const CFGNode *other) const
 			return false;
 	}
 
+	// Fallback to fake succ check for infinite loop.
+	if (c && c->succ.empty() && c->fake_succ.size() == 1 && c->fake_succ.front() != other)
+		return false;
+
 	return true;
 }
 
