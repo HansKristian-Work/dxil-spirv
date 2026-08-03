@@ -4586,6 +4586,29 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 			}
 		}
 
+		if (!need_deinterleave && count >= 3)
+		{
+			// A very strange situation where PDF ranges are not reachable at all for any of the nodes.
+			// This suggests heavy criss-crossing weirdness that the other heuristics don't cover
+			// since they need some form of interleaving to work, but this is pure spaghetti code heuristic.
+
+			// If all candidates share the same PDF, it's a false positive.
+			// It's okay to do the transformation, but it's unnecessary since we need to see multiple
+			// parallel merge scopes happening to observe the bug in question.
+			bool same_pdfs = true;
+			for (size_t i = 1; i < count && same_pdfs; i++)
+				same_pdfs = pdf_ranges[i].first == pdf_ranges[0].first && pdf_ranges[i].second == pdf_ranges[0].second;
+
+			bool unreachable_pdf_ranges = !same_pdfs;
+			for (size_t i = 0; i < count && unreachable_pdf_ranges; i++)
+			{
+				unreachable_pdf_ranges =
+						!query_reachability(*pdf_ranges[i].first, *pdf_ranges[i].second) &&
+						!query_reachability(*pdf_ranges[i].second, *pdf_ranges[i].first);
+			}
+			need_deinterleave = unreachable_pdf_ranges;
+		}
+
 		if (!need_deinterleave && pdf_ranges[0].first != pdf_ranges[0].second)
 		{
 			// Special case of the above. If the PDFs overlap exactly we have criss-cross merge patterns.
