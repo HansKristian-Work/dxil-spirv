@@ -4594,7 +4594,7 @@ bool CFGStructurizer::serialize_interleaved_merge_scopes()
 			// We don't post-dominate the idom and is more likely a breaking path.
 
 			bool same_pdfs = true;
-			for (size_t i = 1; i < count && !same_pdfs; i++)
+			for (size_t i = 1; i < count && same_pdfs; i++)
 				same_pdfs = pdf_ranges[i].first == pdf_ranges[0].first && pdf_ranges[i].second == pdf_ranges[0].second;
 
 			// Heuristic to avoid needing to do needless rewrites.
