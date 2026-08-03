@@ -65,6 +65,7 @@ OpDecorate %23 Block
 OpDecorate %25 DescriptorSet 0
 OpDecorate %25 Binding 2
 OpDecorate %25 NonReadable
+OpDecorate %136 ArrayStride 4
 OpDecorate %137 Block
 OpDecorate %137 HitObjectShaderRecordBufferNV
 OpMemberDecorate %137 0 Offset 0
@@ -141,10 +142,11 @@ OpMemberDecorate %137 0 NonWritable
 %130 = OpConstant %5 10
 %133 = OpConstant %5 11
 %135 = OpConstant %5 32
-%136 = OpTypeInt 64 0
-%137 = OpTypeStruct %5
+%136 = OpTypeRuntimeArray %5
+%137 = OpTypeStruct %136
 %138 = OpTypePointer PhysicalStorageBuffer %137
 %139 = OpTypePointer PhysicalStorageBuffer %5
+%141 = OpTypeInt 64 0
 %147 = OpConstant %5 12
 %191 = OpTypePointer HitObjectAttributeNV %27
 %3 = OpFunction %1 None %2
@@ -233,11 +235,10 @@ OpStore %131 %129
 %134 = OpAccessChain %94 %25 %45 %133
 OpStore %134 %132
 %140 = OpHitObjectGetShaderRecordBufferHandleNV %10 %90
-%141 = OpBitcast %136 %140
-%142 = OpUConvert %136 %135
-%143 = OpIAdd %136 %141 %142
-%144 = OpConvertUToPtr %138 %143
-%145 = OpAccessChain %139 %144 %45
+%142 = OpBitcast %141 %140
+%143 = OpConvertUToPtr %138 %142
+%144 = OpShiftRightLogical %5 %135 %68
+%145 = OpInBoundsAccessChain %139 %143 %45 %144
 %146 = OpLoad %5 %145 Aligned 4
 %148 = OpAccessChain %94 %25 %45 %147
 OpStore %148 %146
