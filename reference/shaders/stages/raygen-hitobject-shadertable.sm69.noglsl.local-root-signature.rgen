@@ -1,10 +1,9 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 67
 ; Schema: 0
 OpCapability Shader
-OpCapability Int64
 OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
@@ -95,13 +94,12 @@ OpMemberDecorate %46 0 NonWritable
 %46 = OpTypeStruct %45
 %47 = OpTypePointer PhysicalStorageBuffer %46
 %48 = OpTypePointer PhysicalStorageBuffer %5
-%50 = OpTypeInt 64 0
-%54 = OpConstant %5 2
+%52 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %39 = OpVariable %38 Function
-OpBranch %67
-%67 = OpLabel
+OpBranch %65
+%65 = OpLabel
 %27 = OpLoad %15 %17
 %35 = OpCompositeConstruct %34 %29 %31 %32
 %36 = OpCompositeConstruct %34 %30 %30 %29
@@ -110,25 +108,24 @@ OpHitObjectTraceRayEXT %39 %27 %28 %28 %28 %28 %28 %35 %29 %36 %33 %26
 %42 = OpLoad %22 %41
 %43 = OpHitObjectGetShaderBindingTableRecordIndexEXT %5 %39
 %49 = OpHitObjectGetShaderRecordBufferHandleEXT %10 %39
-%51 = OpBitcast %50 %49
-%52 = OpConvertUToPtr %47 %51
-%53 = OpShiftRightLogical %5 %44 %54
-%55 = OpInBoundsAccessChain %48 %52 %28 %53
-%56 = OpLoad %5 %55 Aligned 4
-%57 = OpIMul %5 %56 %43
-OpHitObjectSetShaderBindingTableRecordIndexEXT %39 %57
-%58 = OpInBoundsAccessChain %40 %25 %28
-OpStore %58 %42
+%50 = OpBitcast %47 %49
+%51 = OpShiftRightLogical %5 %44 %52
+%53 = OpInBoundsAccessChain %48 %50 %28 %51
+%54 = OpLoad %5 %53 Aligned 4
+%55 = OpIMul %5 %54 %43
+OpHitObjectSetShaderBindingTableRecordIndexEXT %39 %55
+%56 = OpInBoundsAccessChain %40 %25 %28
+OpStore %56 %42
 OpHitObjectExecuteShaderEXT %39 %25
-%59 = OpLoad %22 %58
-%60 = OpLoad %19 %21
-%61 = OpCompositeExtract %18 %59 0
-%62 = OpCompositeExtract %18 %59 1
-%63 = OpCompositeExtract %18 %59 2
-%64 = OpCompositeExtract %18 %59 3
-%65 = OpCompositeConstruct %10 %28 %28
-%66 = OpCompositeConstruct %22 %61 %62 %63 %64
-OpImageWrite %60 %65 %66
+%57 = OpLoad %22 %56
+%58 = OpLoad %19 %21
+%59 = OpCompositeExtract %18 %57 0
+%60 = OpCompositeExtract %18 %57 1
+%61 = OpCompositeExtract %18 %57 2
+%62 = OpCompositeExtract %18 %57 3
+%63 = OpCompositeConstruct %10 %28 %28
+%64 = OpCompositeConstruct %22 %59 %60 %61 %62
+OpImageWrite %58 %63 %64
 OpReturn
 OpFunctionEnd
 

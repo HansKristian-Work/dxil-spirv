@@ -1,10 +1,9 @@
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 202
+; Bound: 200
 ; Schema: 0
 OpCapability Shader
-OpCapability Int64
 OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
@@ -65,6 +64,7 @@ OpDecorate %23 Block
 OpDecorate %25 DescriptorSet 0
 OpDecorate %25 Binding 2
 OpDecorate %25 NonReadable
+OpDecorate %136 ArrayStride 4
 OpDecorate %137 Block
 OpDecorate %137 HitObjectShaderRecordBufferNV
 OpMemberDecorate %137 0 Offset 0
@@ -141,12 +141,12 @@ OpMemberDecorate %137 0 NonWritable
 %130 = OpConstant %5 10
 %133 = OpConstant %5 11
 %135 = OpConstant %5 32
-%136 = OpTypeInt 64 0
-%137 = OpTypeStruct %5
+%136 = OpTypeRuntimeArray %5
+%137 = OpTypeStruct %136
 %138 = OpTypePointer PhysicalStorageBuffer %137
 %139 = OpTypePointer PhysicalStorageBuffer %5
-%147 = OpConstant %5 12
-%191 = OpTypePointer HitObjectAttributeNV %27
+%145 = OpConstant %5 12
+%189 = OpTypePointer HitObjectAttributeNV %27
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %44 = OpVariable %43 Function
@@ -154,8 +154,8 @@ OpMemberDecorate %137 0 NonWritable
 %81 = OpVariable %43 Function
 %85 = OpVariable %43 Function
 %90 = OpVariable %43 Function
-OpBranch %200
-%200 = OpLabel
+OpBranch %198
+%198 = OpLabel
 OpHitObjectRecordEmptyNV %44
 %46 = OpBitcast %26 %47
 %48 = OpBitcast %26 %49
@@ -233,75 +233,73 @@ OpStore %131 %129
 %134 = OpAccessChain %94 %25 %45 %133
 OpStore %134 %132
 %140 = OpHitObjectGetShaderRecordBufferHandleNV %10 %90
-%141 = OpBitcast %136 %140
-%142 = OpUConvert %136 %135
-%143 = OpIAdd %136 %141 %142
-%144 = OpConvertUToPtr %138 %143
-%145 = OpAccessChain %139 %144 %45
-%146 = OpLoad %5 %145 Aligned 4
-%148 = OpAccessChain %94 %25 %45 %147
-OpStore %148 %146
-%149 = OpHitObjectGetRayTMinNV %26 %90
+%141 = OpBitcast %138 %140
+%142 = OpShiftRightLogical %5 %135 %68
+%143 = OpInBoundsAccessChain %139 %141 %45 %142
+%144 = OpLoad %5 %143 Aligned 4
+%146 = OpAccessChain %94 %25 %45 %145
+OpStore %146 %144
+%147 = OpHitObjectGetRayTMinNV %26 %90
+%148 = OpBitcast %5 %147
+%149 = OpHitObjectGetRayTMaxNV %26 %90
 %150 = OpBitcast %5 %149
-%151 = OpHitObjectGetRayTMaxNV %26 %90
-%152 = OpBitcast %5 %151
-%153 = OpHitObjectGetWorldRayOriginNV %62 %90
-%154 = OpCompositeExtract %26 %153 0
+%151 = OpHitObjectGetWorldRayOriginNV %62 %90
+%152 = OpCompositeExtract %26 %151 0
+%153 = OpBitcast %5 %152
+%154 = OpCompositeExtract %26 %151 1
 %155 = OpBitcast %5 %154
-%156 = OpCompositeExtract %26 %153 1
+%156 = OpCompositeExtract %26 %151 2
 %157 = OpBitcast %5 %156
-%158 = OpCompositeExtract %26 %153 2
-%159 = OpBitcast %5 %158
-%160 = OpHitObjectGetWorldRayDirectionNV %62 %90
-%161 = OpCompositeExtract %26 %160 0
+%158 = OpHitObjectGetWorldRayDirectionNV %62 %90
+%159 = OpCompositeExtract %26 %158 0
+%160 = OpBitcast %5 %159
+%161 = OpCompositeExtract %26 %158 1
 %162 = OpBitcast %5 %161
-%163 = OpCompositeExtract %26 %160 1
+%163 = OpCompositeExtract %26 %158 2
 %164 = OpBitcast %5 %163
-%165 = OpCompositeExtract %26 %160 2
-%166 = OpBitcast %5 %165
-%167 = OpBitcast %26 %150
-%168 = OpBitcast %26 %152
-%169 = OpBitcast %26 %155
-%170 = OpBitcast %26 %157
-%171 = OpBitcast %26 %159
-%172 = OpBitcast %26 %162
-%173 = OpBitcast %26 %164
-%174 = OpBitcast %26 %166
-%175 = OpBitcast %5 %167
-%176 = OpAccessChain %94 %21 %45 %45
+%165 = OpBitcast %26 %148
+%166 = OpBitcast %26 %150
+%167 = OpBitcast %26 %153
+%168 = OpBitcast %26 %155
+%169 = OpBitcast %26 %157
+%170 = OpBitcast %26 %160
+%171 = OpBitcast %26 %162
+%172 = OpBitcast %26 %164
+%173 = OpBitcast %5 %165
+%174 = OpAccessChain %94 %21 %45 %45
+OpStore %174 %173
+%175 = OpBitcast %5 %166
+%176 = OpAccessChain %94 %21 %45 %67
 OpStore %176 %175
-%177 = OpBitcast %5 %168
-%178 = OpAccessChain %94 %21 %45 %67
+%177 = OpBitcast %5 %167
+%178 = OpAccessChain %94 %21 %45 %68
 OpStore %178 %177
-%179 = OpBitcast %5 %169
-%180 = OpAccessChain %94 %21 %45 %68
+%179 = OpBitcast %5 %168
+%180 = OpAccessChain %94 %21 %45 %69
 OpStore %180 %179
-%181 = OpBitcast %5 %170
-%182 = OpAccessChain %94 %21 %45 %69
+%181 = OpBitcast %5 %169
+%182 = OpAccessChain %94 %21 %45 %70
 OpStore %182 %181
-%183 = OpBitcast %5 %171
-%184 = OpAccessChain %94 %21 %45 %70
+%183 = OpBitcast %5 %170
+%184 = OpAccessChain %94 %21 %45 %6
 OpStore %184 %183
-%185 = OpBitcast %5 %172
-%186 = OpAccessChain %94 %21 %45 %6
+%185 = OpBitcast %5 %171
+%186 = OpAccessChain %94 %21 %45 %8
 OpStore %186 %185
-%187 = OpBitcast %5 %173
-%188 = OpAccessChain %94 %21 %45 %8
+%187 = OpBitcast %5 %172
+%188 = OpAccessChain %94 %21 %45 %121
 OpStore %188 %187
-%189 = OpBitcast %5 %174
-%190 = OpAccessChain %94 %21 %45 %121
-OpStore %190 %189
 OpHitObjectGetAttributesNV %90 %30
-%192 = OpInBoundsAccessChain %191 %30 %45
-%193 = OpLoad %27 %192
-%194 = OpCompositeExtract %26 %193 0
-%195 = OpBitcast %5 %194
-%196 = OpAccessChain %94 %21 %45 %124
-OpStore %196 %195
-%197 = OpCompositeExtract %26 %193 1
-%198 = OpBitcast %5 %197
-%199 = OpAccessChain %94 %21 %45 %127
-OpStore %199 %198
+%190 = OpInBoundsAccessChain %189 %30 %45
+%191 = OpLoad %27 %190
+%192 = OpCompositeExtract %26 %191 0
+%193 = OpBitcast %5 %192
+%194 = OpAccessChain %94 %21 %45 %124
+OpStore %194 %193
+%195 = OpCompositeExtract %26 %191 1
+%196 = OpBitcast %5 %195
+%197 = OpAccessChain %94 %21 %45 %127
+OpStore %197 %196
 OpReturn
 OpFunctionEnd
 

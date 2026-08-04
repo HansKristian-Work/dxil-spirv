@@ -1008,13 +1008,9 @@ bool emit_hit_object_load_local_root_table_constant_instruction(Converter::Impl 
 	op->add_id(hit_object);
 	impl.add(op);
 
-	auto *cast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(64));
+	auto *cast_op = impl.allocate(spv::OpBitcast, impl.hit_object.shader_record_buffer_ptr);
 	cast_op->add_id(op->id);
 	impl.add(cast_op);
-
-	auto *convert_op = impl.allocate(spv::OpConvertUToPtr, impl.hit_object.shader_record_buffer_ptr);
-	convert_op->add_id(cast_op->id);
-	impl.add(convert_op);
 
 	auto *index_op = impl.allocate(spv::OpShiftRightLogical, uint32);
 	index_op->add_id(offset);
@@ -1022,7 +1018,7 @@ bool emit_hit_object_load_local_root_table_constant_instruction(Converter::Impl 
 	impl.add(index_op);
 
 	auto *chain_op = impl.allocate(spv::OpInBoundsAccessChain, impl.hit_object.shader_record_buffer_member_ptr);
-	chain_op->add_id(convert_op->id);
+	chain_op->add_id(cast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
 	chain_op->add_id(index_op->id);
 	impl.add(chain_op);

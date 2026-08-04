@@ -686,11 +686,13 @@ static bool emit_nvapi_extn_op_hit_object_load_local_root_table_constant(Convert
 	auto &builder = impl.builder();
 
 	spv::Id uint32 = builder.makeUintType(32);
-	spv::Id uint64 = builder.makeUintType(64);
 
 	if (!impl.nvapi.hit_object_srb_ptr)
 	{
-		spv::Id srb_struct = builder.makeStructType({ uint32 }, "HitObjectSRB");
+		spv::Id srb_array = builder.makeRuntimeArray(uint32);
+		builder.addDecoration(srb_array, spv::DecorationArrayStride, sizeof(uint32_t));
+
+		spv::Id srb_struct = builder.makeStructType({ srb_array }, "HitObjectSRB");
 
 		builder.addDecoration(srb_struct, spv::DecorationBlock);
 		builder.addDecoration(srb_struct, spv::DecorationHitObjectShaderRecordBufferNV);
@@ -706,26 +708,19 @@ static bool emit_nvapi_extn_op_hit_object_load_local_root_table_constant(Convert
 	op->add_id(hit_object);
 	impl.add(op);
 
-	auto *cast_op = impl.allocate(spv::OpBitcast, uint64);
+	auto *cast_op = impl.allocate(spv::OpBitcast, impl.nvapi.hit_object_srb_ptr);
 	cast_op->add_id(op->id);
 	impl.add(cast_op);
 
-	auto *convert_op = impl.allocate(spv::OpUConvert, uint64);
-	convert_op->add_id(offset);
-	impl.add(convert_op);
+	auto *index_op = impl.allocate(spv::OpShiftRightLogical, uint32);
+	index_op->add_id(offset);
+	index_op->add_id(builder.makeUintConstant(2));
+	impl.add(index_op);
 
-	auto *add_op = impl.allocate(spv::OpIAdd, uint64);
-	add_op->add_id(cast_op->id);
-	add_op->add_id(convert_op->id);
-	impl.add(add_op);
-
-	convert_op = impl.allocate(spv::OpConvertUToPtr, impl.nvapi.hit_object_srb_ptr);
-	convert_op->add_id(add_op->id);
-	impl.add(convert_op);
-
-	auto *chain_op = impl.allocate(spv::OpAccessChain, impl.nvapi.hit_object_srb_member_ptr);
-	chain_op->add_id(convert_op->id);
+	auto *chain_op = impl.allocate(spv::OpInBoundsAccessChain, impl.nvapi.hit_object_srb_member_ptr);
+	chain_op->add_id(cast_op->id);
 	chain_op->add_id(builder.makeUintConstant(0));
+	chain_op->add_id(index_op->id);
 	impl.add(chain_op);
 
 	auto *load_op = impl.allocate(spv::OpLoad, uint32);
