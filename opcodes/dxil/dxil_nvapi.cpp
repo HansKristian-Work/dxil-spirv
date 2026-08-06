@@ -882,6 +882,7 @@ bool NVAPIState::can_commit_opcode()
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		default:
+			LOGE("NVAPI opcode %u not supported.\n", opcode);
 			return false;
 		}
 	}
