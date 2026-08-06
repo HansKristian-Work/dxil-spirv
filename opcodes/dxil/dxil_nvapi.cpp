@@ -808,7 +808,9 @@ bool NVAPIState::can_commit_opcode()
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr;
 
 		case NV_EXTN_OP_FP16_ATOMIC:
-			return marked_uav &&
+			LOGE("NVAPI opcode %u not fully implemented.\n", opcode);
+			return false && // emit_nvapi_extn_op_fp16x2_atomic is currently just a dummy implementation
+			       marked_uav &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr;
