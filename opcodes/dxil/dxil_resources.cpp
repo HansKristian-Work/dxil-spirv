@@ -1028,7 +1028,8 @@ static spv::Id build_instrumentation_size_query(Converter::Impl &impl,
 		// catch blatant OOB.
 		return builder.makeUintConstant(64 * 1024);
 	}
-	else if (reference.resource_kind == DXIL::ResourceKind::TypedBuffer ||
+	else if ((reference.resource_kind == DXIL::ResourceKind::TypedBuffer &&
+	          !reference.typed_uav_atomic_as_raw) ||
 	         (is_raw && storage == spv::StorageClassUniformConstant))
 	{
 		auto *num_elems = impl.allocate(spv::OpImageQuerySize, builder.makeUintType(32));
@@ -1049,13 +1050,16 @@ static spv::Id build_instrumentation_size_query(Converter::Impl &impl,
 			return num_elems->id;
 		}
 	}
-	else if (is_raw)
+	else if (is_raw || reference.typed_uav_atomic_as_raw)
 	{
 		// This is a little questionable for unaligned vectors like vec3, but it'll be good enough in practice.
 		auto *array_len = impl.allocate(spv::OpArrayLength, builder.makeUintType(32));
 		array_len->add_id(resource_id);
 		array_len->add_literal(0);
 		impl.add(array_len);
+
+		if (reference.typed_uav_atomic_as_raw)
+			return array_len->id;
 
 		spv::Id member_type_id = builder.getContainedTypeId(builder.getContainedTypeId(type_id, 0));
 		uint32_t vec_size = 1;
@@ -1398,7 +1402,7 @@ static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::
 	}
 
 	bool untyped_buffer = meta.storage != spv::StorageClassUniformConstant &&
-	                      meta.kind != DXIL::ResourceKind::TypedBuffer;
+	                      (meta.kind != DXIL::ResourceKind::TypedBuffer || meta.typed_uav_atomic_as_raw);
 	unsigned layout_offset = untyped_buffer ? impl.options.offset_buffer_layout.untyped_offset :
 	                         impl.options.offset_buffer_layout.typed_offset;
 
@@ -1748,6 +1752,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
 			meta.rov = reference.rov;
+			meta.typed_uav_atomic_as_raw = reference.typed_uav_atomic_as_raw;
 			meta.vkmm = reference.vkmm;
 			meta.physical_pointer_meta.coherent = reference.coherent;
 			meta.instrumentation = instrumentation;

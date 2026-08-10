@@ -1,0 +1,12 @@
+RWBuffer<uint> Data : register(u0);
+
+[numthreads(1, 1, 1)]
+void main(uint3 thread_id : SV_DispatchThreadID)
+{
+	uint original;
+	uint status;
+	InterlockedAdd(Data[thread_id.x], 1, original);
+	Data[thread_id.x + 1] = Data.Load(thread_id.x + 2, status);
+	if (CheckAccessFullyMapped(status))
+		Data[thread_id.x + 3] = original;
+}

@@ -1,0 +1,10 @@
+RWBuffer<uint> Data : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint3 thread_id : SV_DispatchThreadID)
+{
+	uint count;
+	Data.GetDimensions(count);
+	uint value = Data[thread_id.x];
+	Data[(thread_id.x + 1) % count] = value + 1;
+}

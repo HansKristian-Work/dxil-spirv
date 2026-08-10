@@ -481,6 +481,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			resource.info.uav_coherent == info.uav_coherent &&
 			resource.info.relaxed_precision == info.relaxed_precision &&
 			resource.info.aliased == info.aliased &&
+			resource.info.typed_uav_atomic_as_raw == info.typed_uav_atomic_as_raw &&
 			resource.info.counters == info.counters &&
 			resource.info.offsets == info.offsets &&
 			resource.info.descriptor_type == info.descriptor_type &&
@@ -792,6 +793,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 		meta.raw_component_vecsize = info.raw_vecsize;
 		meta.var_id = resource.var_id;
 		meta.storage = storage;
+		meta.typed_uav_atomic_as_raw = info.typed_uav_atomic_as_raw;
 
 		builder().addDecoration(resource.var_id, spv::DecorationDescriptorSet, info.desc_set);
 		builder().addDecoration(resource.var_id, spv::DecorationBinding, info.binding);
@@ -1869,26 +1871,43 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				stride = get_constant_metadata(tags, 1);
 		}
 
-		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
-
-		if (!get_uav_image_format(resource_kind, actual_component_type, access_meta, format))
-			return false;
-
 		DescriptorTableEntry local_table_entry = {};
 		int local_root_signature_entry = get_local_root_signature_entry(
 		    ResourceClass::UAV, bind_space, bind_register, local_table_entry);
 		bool need_resource_remapping = local_root_signature_entry < 0 ||
 		                               local_root_signature[local_root_signature_entry].type == LocalRootSignatureType::Table;
 
+		// Valid DXIL requires typed resources used in atomic operations to have scalar element types.
+		bool typed_uav_atomic_as_raw =
+			options.quirks.typed_uav_atomic_as_raw &&
+			need_resource_remapping && resource_mapping_iface &&
+			resource_kind == DXIL::ResourceKind::TypedBuffer &&
+			access_meta.has_atomic && !access_meta.has_atomic_64bit &&
+			!access_meta.has_sparse_feedback &&
+			(actual_component_type == DXIL::ComponentType::I32 ||
+			 actual_component_type == DXIL::ComponentType::U32);
+		auto effective_descriptor_kind = typed_uav_atomic_as_raw ?
+		                                 DXIL::ResourceKind::RawBuffer : resource_kind;
+		unsigned resource_alignment = resource_kind == DXIL::ResourceKind::RawBuffer ?
+		                              16 : (stride & -int(stride));
+		unsigned alignment = typed_uav_atomic_as_raw ? 1 : resource_alignment;
+		unsigned declared_range_size = range_size;
+
 		D3DUAVBinding d3d_binding = {};
 		d3d_binding.counter = has_counter;
 		d3d_binding.binding = {
-			get_remapping_stage(execution_model), resource_kind, index, bind_space, bind_register, range_size, alignment
+			get_remapping_stage(execution_model),
+			typed_uav_atomic_as_raw ? DXIL::ResourceKind::RawBuffer : resource_kind,
+			index, bind_space, bind_register, range_size, alignment
 		};
 		VulkanUAVBinding vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register }, {} };
-		if (need_resource_remapping && resource_mapping_iface &&
-		    !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
+		auto remap_uav = [&]()
 		{
+			if (!need_resource_remapping || !resource_mapping_iface)
+				return true;
+			if (resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
+				return true;
+
 			// We may be rejected if the unbound range has 1 non-bindless descriptor.
 			bool retry = d3d_binding.binding.range_size == UINT32_MAX;
 			if (retry)
@@ -1897,12 +1916,39 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				range_size = 1;
 			}
 
-			if (!retry || !resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding))
-			{
-				LOGE("Failed to remap UAV %u:%u.\n", bind_space, bind_register);
-				return false;
-			}
+			return retry && resource_mapping_iface->remap_uav(d3d_binding, vulkan_binding);
+		};
+
+		bool remap_success = remap_uav();
+		if (typed_uav_atomic_as_raw &&
+		    (!remap_success || vulkan_binding.buffer_binding.descriptor_type != VulkanDescriptorType::SSBO))
+		{
+			typed_uav_atomic_as_raw = false;
+			effective_descriptor_kind = resource_kind;
+			alignment = resource_alignment;
+			range_size = declared_range_size;
+			d3d_binding.binding.kind = resource_kind;
+			d3d_binding.binding.range_size = range_size;
+			d3d_binding.binding.alignment = alignment;
+			vulkan_binding = { { bind_space, bind_register }, { bind_space + 1, bind_register }, {} };
+			remap_success = remap_uav();
 		}
+
+		if (!remap_success)
+		{
+			LOGE("Failed to remap UAV %u:%u.\n", bind_space, bind_register);
+			return false;
+		}
+
+		if (typed_uav_atomic_as_raw)
+		{
+			actual_component_type = DXIL::ComponentType::U32;
+			effective_component_type = DXIL::ComponentType::U32;
+			format = spv::ImageFormatR32ui;
+		}
+
+		if (!get_uav_image_format(resource_kind, actual_component_type, access_meta, format))
+			return false;
 
 		AliasedAccess aliased_access;
 		if (!analyze_aliased_access(access_meta,
@@ -1918,7 +1964,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		uav_index_to_offset.resize(std::max(uav_index_to_offset.size(), size_t(index + 1)));
 
 		if (!get_ssbo_offset_buffer_id(uav_index_to_offset[index], vulkan_binding.buffer_binding,
-		                               vulkan_binding.offset_binding, resource_kind, alignment))
+		                               vulkan_binding.offset_binding, effective_descriptor_kind, alignment))
 			return false;
 
 		if (range_size != 1)
@@ -1939,7 +1985,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			}
 
 			if ((resource_kind == DXIL::ResourceKind::StructuredBuffer ||
-			     resource_kind == DXIL::ResourceKind::RawBuffer) &&
+			     resource_kind == DXIL::ResourceKind::RawBuffer ||
+			     typed_uav_atomic_as_raw) &&
 			    vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
 			{
 				builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
@@ -1972,6 +2019,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 
 		// If we emit two SSBOs which both access the same buffer, we must emit Aliased decoration to be safe.
 		bindless_info.aliased = aliased_access.requires_alias_decoration;
+		bindless_info.typed_uav_atomic_as_raw = typed_uav_atomic_as_raw;
 
 		BindlessInfo counter_info = {};
 
@@ -2349,6 +2397,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				meta.var_id = var_id;
 				meta.storage = storage;
 				meta.component_type = actual_component_type;
+				meta.typed_uav_atomic_as_raw = typed_uav_atomic_as_raw;
 				meta.vkmm = vkmm;
 
 				if (aliased_access.override_primary_component_types)
@@ -2369,8 +2418,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
 				meta.raw_component_vecsize = var.declaration.vecsize;
 				meta.vkmm = vkmm;
+				meta.typed_uav_atomic_as_raw = typed_uav_atomic_as_raw;
 			}
 		}
+
+		uav_index_to_reference[index].typed_uav_atomic_as_raw = typed_uav_atomic_as_raw;
 	}
 
 	return true;
@@ -9708,6 +9760,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::NonSemanticSignalConcurrentWorkgroup:
 			options.quirks.non_semantic_signal_concurrent_workgroup = true;
+			break;
+
+		case ShaderQuirk::TypedUAVAtomicAsRaw:
+			options.quirks.typed_uav_atomic_as_raw = true;
 			break;
 
 		default:

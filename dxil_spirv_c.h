@@ -34,8 +34,8 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 72
-#define DXIL_SPV_API_VERSION_PATCH 1
+#define DXIL_SPV_API_VERSION_MINOR 73
+#define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
 #define DXIL_SPV_INSTRUCTION_INSTRUMENTATION_INTERFACE_VERSION 2
@@ -248,6 +248,9 @@ typedef enum dxil_spv_shader_quirk
 	DXIL_SPV_SHADER_QUIRK_NON_SEMANTIC_SIGNAL_CONCURRENT_WORKGROUP = 15,
 	/* Heavy hammer, aggressive_nonuniform tries to be a bit smarter. */
 	DXIL_SPV_SHADER_QUIRK_FORCE_NONUNIFORM = 16,
+	/* Lower scalar 32-bit typed buffer UAV atomics through a raw SSBO descriptor
+	 * when the resource remapper supports it. */
+	DXIL_SPV_SHADER_QUIRK_TYPED_UAV_ATOMIC_AS_RAW = 17,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 
@@ -290,9 +293,9 @@ typedef struct dxil_spv_d3d_binding
 	unsigned register_space;
 	unsigned register_index;
 	unsigned range_size;
-	/* For raw buffers, this is equal to 16, for structured buffers this is equal to the stride of the elements.
-	 * This can be used by the implementation to select an appropriate descriptor type.
-	 * Otherwise, 0. */
+	/* For raw buffers, this is a conservative byte alignment, normally 16.
+	 * For structured buffers this is equal to the stride of the elements.
+	 * This can be used by the implementation to select an appropriate descriptor type. Otherwise, 0. */
 	unsigned alignment;
 } dxil_spv_d3d_binding;
 

@@ -129,8 +129,16 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 		else if (meta.kind == DXIL::ResourceKind::TypedBuffer)
 		{
 			elem_id = impl.get_id_for_value(instruction->getOperand(2));
-			stride_id = meta.instrumentation.elem_size_id;
-			len_id = meta.instrumentation.elem_size_id;
+			if (meta.typed_uav_atomic_as_raw)
+			{
+				stride_id = builder.makeUintConstant(4);
+				len_id = stride_id;
+			}
+			else
+			{
+				stride_id = meta.instrumentation.elem_size_id;
+				len_id = meta.instrumentation.elem_size_id;
+			}
 		}
 		else
 		{
@@ -162,7 +170,8 @@ void emit_buffer_synchronization_validation(Converter::Impl &impl,
 		else if (meta.kind == DXIL::ResourceKind::TypedBuffer)
 		{
 			elem_id = impl.get_id_for_value(instruction->getOperand(elem_index));
-			stride_id = meta.instrumentation.elem_size_id;
+			stride_id = meta.typed_uav_atomic_as_raw ?
+			            builder.makeUintConstant(4) : meta.instrumentation.elem_size_id;
 		}
 
 		len_id = builder.makeUintConstant(instruction->getType()->getIntegerBitWidth() / 8);
@@ -783,6 +792,7 @@ struct RawAccessChain
 static bool buffer_access_is_raw_access_chain(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta)
 {
     return impl.options.nv_raw_access_chains &&
+            !meta.typed_uav_atomic_as_raw &&
             (meta.storage == spv::StorageClassStorageBuffer || meta.storage == spv::StorageClassPhysicalStorageBuffer);
 }
 
@@ -988,6 +998,12 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		sparse = (access_mask & (1u << 4)) != 0;
 	}
 
+	if (meta.typed_uav_atomic_as_raw && (is_vector || (access_mask & 0xeu) != 0))
+	{
+		LOGE("Typed UAV atomic raw lowering only supports scalar buffer loads.\n");
+		return false;
+	}
+
 	// Leave no gaps in the access mask to aid vectorization.
 	// For reads, we can safely read components we not strictly need to read.
 	uint32_t smeared_access_mask;
@@ -1039,7 +1055,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		return emit_buffer_load_raw_chain_instruction(impl, instruction, meta, access_meta, element_type, num_elements);
 	}
 
-	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
+	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer && !meta.typed_uav_atomic_as_raw;
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
 	                                  element_type,
 	                                  smeared_access_mask);
@@ -1670,7 +1686,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	// SSBO operations with min16* types are actually 32-bit.
 	// We only get native 16-bit load-store with native_16bit_operations.
-	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
+	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer && !meta.typed_uav_atomic_as_raw;
 	unsigned mask = 0;
 	if (is_vector)
 	{
@@ -1681,6 +1697,10 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 	else
 		mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+
+	if (meta.typed_uav_atomic_as_raw)
+		mask = 1;
+
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
 
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta);
@@ -1738,7 +1758,8 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		add_vkmm_access_qualifiers(impl, op, meta.vkmm);
 		impl.add(op, meta.rov);
 	}
-	else if (meta.storage == spv::StorageClassStorageBuffer)
+	else if (meta.storage == spv::StorageClassStorageBuffer &&
+	         (meta.kind != DXIL::ResourceKind::TypedBuffer || meta.typed_uav_atomic_as_raw))
 	{
 		if (vectorized_store)
 		{
@@ -1890,7 +1911,8 @@ spv::Id emit_atomic_access_chain(Converter::Impl &impl,
 		                               builder.makePointer(spv::StorageClassPhysicalStorageBuffer, uint_type));
 		counter_ptr_op->add_ids({ ptr_bitcast_op->id, builder.makeUintConstant(0), coord });
 	}
-	else if (meta.storage == spv::StorageClassStorageBuffer)
+	else if (meta.storage == spv::StorageClassStorageBuffer &&
+	         (meta.kind != DXIL::ResourceKind::TypedBuffer || meta.typed_uav_atomic_as_raw))
 	{
 		counter_ptr_op =
 		    impl.allocate(spv::OpAccessChain,

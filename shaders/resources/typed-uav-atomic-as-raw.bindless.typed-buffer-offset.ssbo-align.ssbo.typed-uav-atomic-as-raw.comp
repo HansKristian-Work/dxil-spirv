@@ -1,0 +1,16 @@
+RWBuffer<uint> Data : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint3 thread_id : SV_DispatchThreadID)
+{
+	uint index = thread_id.x + 3;
+	uint original;
+	uint count;
+
+	InterlockedAdd(Data[index], 1, original);
+	uint loaded = Data[index + 1];
+	Data[index + 2] = loaded ^ original;
+	Data.GetDimensions(count);
+	if (count == 0)
+		Data[0] = original;
+}

@@ -996,7 +996,8 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	bool has_samples = false;
 	bool has_lod = false;
 
-	if (meta.storage == spv::StorageClassStorageBuffer)
+	if (meta.storage == spv::StorageClassStorageBuffer &&
+	    (meta.kind != DXIL::ResourceKind::TypedBuffer || meta.typed_uav_atomic_as_raw))
 	{
 		if (meta.index_offset_id)
 		{

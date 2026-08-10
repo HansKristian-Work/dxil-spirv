@@ -253,6 +253,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--instruction-instrumentation', '4', '0', '2', 'abcd']
     if '.auto-group-shared-barrier.' in shader:
         hlsl_cmd += ['--shader-quirk', '8']
+    if '.typed-uav-atomic-as-raw.' in shader:
+        hlsl_cmd += ['--shader-quirk', '17']
     if '.vkmm.' in shader:
         hlsl_cmd += ['--vkmm']
     if '.full-wmma.' in shader:

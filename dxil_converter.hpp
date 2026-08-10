@@ -88,8 +88,8 @@ struct D3DBinding
 	// -1 -> unsized, 1 means non-arrayed resource.
 	unsigned range_size;
 
-	// For raw buffers, this is equal to 16, for structured buffers this is equal to the stride of the elements.
-	// Otherwise, 0.
+	// For raw buffers, this is a conservative byte alignment, normally 16.
+	// For structured buffers this is equal to the stride of the elements. Otherwise, 0.
 	unsigned alignment;
 };
 
@@ -788,7 +788,8 @@ enum class ShaderQuirk : uint32_t
 	PreciseFMA,
 	ClampWaveSizeToThreadGroup32,
     NonSemanticSignalConcurrentWorkgroup,
-	ForceNonUniform
+	ForceNonUniform,
+	TypedUAVAtomicAsRaw
 };
 
 struct OptionShaderQuirk : OptionBase

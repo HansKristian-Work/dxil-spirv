@@ -1,0 +1,64 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _9[];
+
+void main()
+{
+    uint _22 = imageAtomicAdd(_9[0u], int(gl_GlobalInvocationID.x), 1u);
+    imageStore(_9[0u], int(gl_GlobalInvocationID.x + 1u), uvec4(_22));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 29
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability StorageImageWriteWithoutFormat
+OpCapability RuntimeDescriptorArray
+OpExtension "SPV_EXT_descriptor_indexing"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %12
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypeRuntimeArray %6
+%8 = OpTypePointer UniformConstant %7
+%9 = OpVariable %8 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%17 = OpTypePointer UniformConstant %6
+%20 = OpTypePointer Image %5
+%23 = OpConstant %5 1
+%25 = OpTypeVector %5 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %27
+%27 = OpLabel
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%18 = OpAccessChain %17 %9 %15
+%19 = OpLoad %6 %18
+%21 = OpImageTexelPointer %20 %18 %16 %15
+%22 = OpAtomicIAdd %5 %21 %23 %15 %23
+%24 = OpIAdd %5 %16 %23
+%26 = OpCompositeConstruct %25 %22 %22 %22 %22
+OpImageWrite %19 %24 %26
+OpReturn
+OpFunctionEnd
+#endif

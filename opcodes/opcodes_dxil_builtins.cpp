@@ -842,7 +842,12 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 			uint32_t access_mask = 0;
 			auto composite_itr = impl.llvm_composite_meta.find(instruction);
 			if (composite_itr != impl.llvm_composite_meta.end())
-				access_mask = composite_itr->second.access_mask & 0xfu;
+			{
+				access_mask = composite_itr->second.access_mask;
+				if (opcode == DXIL::Op::BufferLoad && (access_mask & (1u << 4)) != 0)
+					tracking->has_sparse_feedback = true;
+				access_mask &= 0xfu;
+			}
 
 			if (opcode == DXIL::Op::RawBufferVectorLoad)
 			{
@@ -982,8 +987,13 @@ static bool analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 		}
 
 		auto meta = get_resource_meta_from_buffer_op(impl, instruction);
-		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		if (meta.kind == DXIL::ResourceKind::RawBuffer ||
+		    meta.kind == DXIL::ResourceKind::StructuredBuffer ||
+		    (impl.options.quirks.typed_uav_atomic_as_raw &&
+		     meta.kind == DXIL::ResourceKind::TypedBuffer && !tracking->has_atomic_64bit))
+		{
 			update_raw_access_tracking_from_scalar_type(*tracking, instruction->getType());
+		}
 
 		impl.shader_analysis.has_side_effects = true;
 	}

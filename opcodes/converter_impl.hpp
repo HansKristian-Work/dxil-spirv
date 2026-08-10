@@ -186,6 +186,7 @@ struct AccessTracking
 	bool has_written = false;
 	bool has_atomic = false;
 	bool has_atomic_64bit = false;
+	bool has_sparse_feedback = false;
 	bool has_counter = false;
 	bool dynamically_indexed_cbv = false;
 	bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
@@ -441,6 +442,7 @@ struct Converter::Impl
 		bool root_descriptor = false;
 		bool coherent = false;
 		bool rov = false;
+		bool typed_uav_atomic_as_raw = false;
 		DXIL::ResourceKind resource_kind = DXIL::ResourceKind::Invalid;
 		int local_root_signature_entry = -1;
 		ReferenceVkMemoryModel vkmm;
@@ -521,6 +523,7 @@ struct Converter::Impl
 		bool aliased;
 		bool non_uniform;
 		bool rov;
+		bool typed_uav_atomic_as_raw;
 		ReferenceVkMemoryModel vkmm;
 
 		spv::StorageClass storage;
@@ -816,6 +819,7 @@ struct Converter::Impl
 			bool clamp_wave_size_to_thread_group32 = false;
 			bool non_semantic_signal_concurrent_workgroup = false;
 			bool force_nonuniform = false;
+			bool typed_uav_atomic_as_raw = false;
 		} quirks;
 
 		struct
@@ -888,6 +892,7 @@ struct Converter::Impl
 		bool offsets;
 		bool aliased;
 		bool relaxed_precision;
+		bool typed_uav_atomic_as_raw;
 		uint32_t desc_set;
 		uint32_t binding;
 		struct

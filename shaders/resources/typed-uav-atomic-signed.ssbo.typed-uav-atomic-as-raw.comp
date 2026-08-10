@@ -1,0 +1,14 @@
+RWBuffer<int> Data : register(u0);
+
+[numthreads(64, 1, 1)]
+void main(uint3 thread_id : SV_DispatchThreadID)
+{
+	uint index = thread_id.x;
+	int minimum;
+	int maximum;
+
+	InterlockedMin(Data[index], -3, minimum);
+	InterlockedMax(Data[index + 1], minimum, maximum);
+	int loaded = Data[index + 2];
+	Data[index + 3] = loaded + maximum;
+}

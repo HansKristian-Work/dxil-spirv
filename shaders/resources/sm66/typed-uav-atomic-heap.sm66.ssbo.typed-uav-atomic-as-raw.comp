@@ -1,0 +1,8 @@
+[numthreads(64, 1, 1)]
+void main(uint3 thread_id : SV_DispatchThreadID)
+{
+	RWBuffer<uint> data = ResourceDescriptorHeap[0];
+	uint original;
+	InterlockedAdd(data[thread_id.x], 1, original);
+	data[thread_id.x + 1] = original;
+}
