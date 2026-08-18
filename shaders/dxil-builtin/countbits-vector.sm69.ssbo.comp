@@ -1,0 +1,12 @@
+RWStructuredBuffer<vector<uint, 4> > U32;
+RWStructuredBuffer<vector<uint16_t, 2> > U16;
+RWStructuredBuffer<vector<uint64_t, 2> > U64;
+RWStructuredBuffer<vector<uint, 2> > result;
+
+[numthreads(1, 1, 1)]
+void main()
+{
+	result[0] = countbits(U32[0]);
+	result[1] = countbits(U16[0]);
+	result[2] = countbits(U64[0]);
+}

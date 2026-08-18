@@ -1,0 +1,12 @@
+RWStructuredBuffer<vector<int, 4> > I32;
+RWStructuredBuffer<vector<int16_t, 2> > I16;
+RWStructuredBuffer<vector<int64_t, 2> > I64;
+RWStructuredBuffer<vector<uint, 2> > result;
+
+[numthreads(1, 1, 1)]
+void main()
+{
+	result[0] = firstbithigh(I32[0]);
+	result[1] = firstbithigh(I16[0]);
+	result[2] = firstbithigh(I64[0]);
+}
