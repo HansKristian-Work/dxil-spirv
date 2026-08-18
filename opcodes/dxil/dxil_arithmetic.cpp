@@ -1253,7 +1253,10 @@ bool emit_msad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 bool emit_bit_reverse_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	auto int_width = instruction->getType()->getIntegerBitWidth();
+	auto *result_type_llvm = instruction->getType();
+	unsigned num_elements =
+	    result_type_llvm->getTypeID() == llvm::Type::TypeID::VectorTyID ? result_type_llvm->getVectorNumElements() : 1;
+	auto int_width = result_type_llvm->getScalarType()->getIntegerBitWidth();
 
 	if (int_width == 32)
 	{
@@ -1264,46 +1267,69 @@ bool emit_bit_reverse_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	}
 	else if (int_width == 16)
 	{
+		bool is_vector = num_elements > 1;
+
 		spv::Id uint_type = builder.makeUintType(32);
 		spv::Id u16_type = builder.makeUintType(16);
-		spv::Id u16vec2_type = builder.makeVectorType(u16_type, 2);
+		spv::Id u16vec_type = builder.makeVectorType(u16_type, 2 * num_elements);
 
-		auto *conv_op = impl.allocate(spv::OpUConvert, uint_type);
+		spv::Id conv_type = uint_type;
+		if (is_vector)
+			conv_type = builder.makeVectorType(uint_type, num_elements);
+
+		auto *conv_op = impl.allocate(spv::OpUConvert, conv_type);
 		conv_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 		impl.add(conv_op);
 
-		auto *reverse_op = impl.allocate(spv::OpBitReverse, uint_type);
+		auto *reverse_op = impl.allocate(spv::OpBitReverse, conv_type);
 		reverse_op->add_id(conv_op->id);
 		impl.add(reverse_op);
 
-		auto *cast_op = impl.allocate(spv::OpBitcast, u16vec2_type);
+		auto *cast_op = impl.allocate(spv::OpBitcast, u16vec_type);
 		cast_op->add_id(reverse_op->id);
 		impl.add(cast_op);
 
-		auto *ext1 = impl.allocate(spv::OpCompositeExtract, instruction);
-		ext1->add_id(cast_op->id);
-		ext1->add_literal(1);
-		impl.add(ext1);
+		if (!is_vector)
+		{
+			auto *ext1 = impl.allocate(spv::OpCompositeExtract, instruction);
+			ext1->add_id(cast_op->id);
+			ext1->add_literal(1);
+			impl.add(ext1);
+		}
+		else
+		{
+			auto *shuf_op = impl.allocate(spv::OpVectorShuffle, instruction);
+			shuf_op->add_id(cast_op->id);
+			shuf_op->add_id(cast_op->id);
+			for (unsigned i = 0; i < num_elements; i++)
+			{
+				shuf_op->add_literal(2 * i + 1);
+			}
+			impl.add(shuf_op);
+		}
 		return true;
 	}
 	else if (int_width == 64)
 	{
 		spv::Id uint_type = builder.makeUintType(32);
-		spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+		spv::Id uvec_type = builder.makeVectorType(uint_type, 2 * num_elements);
 
-		auto *conv_op = impl.allocate(spv::OpBitcast, uvec2_type);
+		auto *conv_op = impl.allocate(spv::OpBitcast, uvec_type);
 		conv_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 		impl.add(conv_op);
 
-		auto *reverse_op = impl.allocate(spv::OpBitReverse, uvec2_type);
+		auto *reverse_op = impl.allocate(spv::OpBitReverse, uvec_type);
 		reverse_op->add_id(conv_op->id);
 		impl.add(reverse_op);
 
-		auto *shuf_op = impl.allocate(spv::OpVectorShuffle, uvec2_type);
+		auto *shuf_op = impl.allocate(spv::OpVectorShuffle, uvec_type);
 		shuf_op->add_id(reverse_op->id);
 		shuf_op->add_id(reverse_op->id);
-		shuf_op->add_literal(1);
-		shuf_op->add_literal(0);
+		for (unsigned i = 0; i < num_elements; i++)
+		{
+			shuf_op->add_literal(2 * i + 1);
+			shuf_op->add_literal(2 * i);
+		}
 		impl.add(shuf_op);
 
 		auto *cast_op = impl.allocate(spv::OpBitcast, instruction);
