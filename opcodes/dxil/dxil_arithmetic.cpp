@@ -1320,7 +1320,10 @@ bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 {
 	// Vulkan only allows 32-bit types here for whatever reason ...
 	auto &builder = impl.builder();
-	auto int_width = instruction->getOperand(1)->getType()->getIntegerBitWidth();
+	auto *operand_type = instruction->getOperand(1)->getType();
+	bool is_vector = operand_type->getTypeID() == llvm::Type::TypeID::VectorTyID;
+	unsigned num_elements = is_vector ? operand_type->getVectorNumElements() : 1;
+	auto int_width = operand_type->getScalarType()->getIntegerBitWidth();
 
 	if (int_width == 32)
 	{
@@ -1331,7 +1334,11 @@ bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	}
 	else if (int_width == 16)
 	{
-		auto *conv_op = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
+		spv::Id conv_type = builder.makeUintType(32);
+		if (is_vector)
+			conv_type = builder.makeVectorType(conv_type, num_elements);
+
+		auto *conv_op = impl.allocate(spv::OpUConvert, conv_type);
 		conv_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 		impl.add(conv_op);
 
@@ -1343,30 +1350,56 @@ bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	else if (int_width == 64)
 	{
 		spv::Id uint_type = builder.makeUintType(32);
-		spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+		spv::Id uvec_type = builder.makeVectorType(uint_type, 2 * num_elements);
 
-		auto *conv_op = impl.allocate(spv::OpBitcast, uvec2_type);
+		auto *conv_op = impl.allocate(spv::OpBitcast, uvec_type);
 		conv_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
 		impl.add(conv_op);
 
-		auto *count_op = impl.allocate(spv::OpBitCount, uvec2_type);
+		auto *count_op = impl.allocate(spv::OpBitCount, uvec_type);
 		count_op->add_id(conv_op->id);
 		impl.add(count_op);
 
-		auto *ext0 = impl.allocate(spv::OpCompositeExtract, uint_type);
-		ext0->add_id(count_op->id);
-		ext0->add_literal(0);
-		impl.add(ext0);
+		if (!is_vector)
+		{
+			auto *ext0 = impl.allocate(spv::OpCompositeExtract, uint_type);
+			ext0->add_id(count_op->id);
+			ext0->add_literal(0);
+			impl.add(ext0);
 
-		auto *ext1 = impl.allocate(spv::OpCompositeExtract, uint_type);
-		ext1->add_id(count_op->id);
-		ext1->add_literal(1);
-		impl.add(ext1);
+			auto *ext1 = impl.allocate(spv::OpCompositeExtract, uint_type);
+			ext1->add_id(count_op->id);
+			ext1->add_literal(1);
+			impl.add(ext1);
 
-		auto *add_op = impl.allocate(spv::OpIAdd, instruction);
-		add_op->add_id(ext0->id);
-		add_op->add_id(ext1->id);
-		impl.add(add_op);
+			auto *add_op = impl.allocate(spv::OpIAdd, instruction);
+			add_op->add_id(ext0->id);
+			add_op->add_id(ext1->id);
+			impl.add(add_op);
+		}
+		else
+		{
+			spv::Id result_type = builder.makeVectorType(uint_type, num_elements);
+
+			auto *lo = impl.allocate(spv::OpVectorShuffle, result_type);
+			auto *hi = impl.allocate(spv::OpVectorShuffle, result_type);
+			lo->add_id(count_op->id);
+			lo->add_id(count_op->id);
+			hi->add_id(count_op->id);
+			hi->add_id(count_op->id);
+			for (unsigned i = 0; i < num_elements; i++)
+			{
+				lo->add_literal(2 * i);
+				hi->add_literal(2 * i + 1);
+			}
+			impl.add(lo);
+			impl.add(hi);
+
+			auto *add_op = impl.allocate(spv::OpIAdd, instruction);
+			add_op->add_id(lo->id);
+			add_op->add_id(hi->id);
+			impl.add(add_op);
+		}
 		return true;
 	}
 
