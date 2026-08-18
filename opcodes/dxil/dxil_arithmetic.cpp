@@ -144,11 +144,19 @@ spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
 
 	Operation *op;
 
+	auto *value_type = value->getType();
+	bool is_vector = value_type->getTypeID() == llvm::Type::TypeID::VectorTyID;
+	unsigned num_elements = is_vector ? value_type->getVectorNumElements() : 1;
+
 	// Vulkan currently does not allow 16/64-bit for these ... :(
-	if (value->getType()->getIntegerBitWidth() == 16)
+	if (value_type->getScalarType()->getIntegerBitWidth() == 16)
 	{
-		auto *extend = impl.allocate(
-		    opcode == GLSLstd450FindSMsb ? spv::OpSConvert : spv::OpUConvert, builder.makeUintType(32));
+		spv::Id result_type = builder.makeUintType(32);
+
+		if (is_vector)
+			result_type = builder.makeVectorType(result_type, num_elements);
+
+		auto *extend = impl.allocate(opcode == GLSLstd450FindSMsb ? spv::OpSConvert : spv::OpUConvert, result_type);
 
 		extend->add_id(impl.get_id_for_value(value));
 		impl.add(extend);
@@ -156,85 +164,163 @@ spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
 		if (instruction)
 			op = impl.allocate(spv::OpExtInst, instruction);
 		else
-			op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+			op = impl.allocate(spv::OpExtInst, result_type);
 
 		op->add_id(impl.glsl_std450_ext);
 		op->add_literal(opcode);
 		op->add_id(extend->id);
 	}
-	else if (value->getType()->getIntegerBitWidth() == 64)
+	else if (value_type->getScalarType()->getIntegerBitWidth() == 64)
 	{
 		spv::Id uint_type = builder.makeUintType(32);
-		spv::Id uvec2_type = builder.makeVectorType(uint_type, 2);
+		spv::Id uvec_type = builder.makeVectorType(uint_type, 2 * num_elements);
 
-		auto *bitcast = impl.allocate(spv::OpBitcast, uvec2_type);
+		auto *bitcast = impl.allocate(spv::OpBitcast, uvec_type);
 		bitcast->add_id(impl.get_id_for_value(value));
 		impl.add(bitcast);
 
+		spv::Id result_type = uint_type;
+		if (is_vector)
+			result_type = builder.makeVectorType(uint_type, num_elements);
+
 		if (opcode == GLSLstd450FindSMsb)
 		{
-			auto *ext = impl.allocate(spv::OpCompositeExtract, uint_type);
-			ext->add_id(bitcast->id);
-			ext->add_literal(1);
-			impl.add(ext);
+			if (!is_vector)
+			{
+				auto *ext = impl.allocate(spv::OpCompositeExtract, uint_type);
+				ext->add_id(bitcast->id);
+				ext->add_literal(1);
+				impl.add(ext);
 
-			spv::Id int_type = builder.makeIntType(32);
-			auto *shifted = impl.allocate(spv::OpShiftRightArithmetic, int_type);
-			shifted->add_id(ext->id);
-			shifted->add_id(builder.makeIntConstant(31));
-			impl.add(shifted);
+				spv::Id int_type = builder.makeIntType(32);
+				auto *shifted = impl.allocate(spv::OpShiftRightArithmetic, int_type);
+				shifted->add_id(ext->id);
+				shifted->add_id(builder.makeIntConstant(31));
+				impl.add(shifted);
 
-			const spv::Id elems[] = { shifted->id, shifted->id };
+				const spv::Id elems[] = { shifted->id, shifted->id };
 
-			auto *xored = impl.allocate(spv::OpBitwiseXor, uvec2_type);
-			xored->add_id(bitcast->id);
-			xored->add_id(impl.build_vector(int_type, elems, 2));
-			impl.add(xored);
+				auto *xored = impl.allocate(spv::OpBitwiseXor, uvec_type);
+				xored->add_id(bitcast->id);
+				xored->add_id(impl.build_vector(int_type, elems, 2));
+				impl.add(xored);
 
-			bitcast = xored;
+				bitcast = xored;
+			}
+			else
+			{
+				auto *hi = impl.allocate(spv::OpVectorShuffle, result_type);
+				hi->add_id(bitcast->id);
+				hi->add_id(bitcast->id);
+				for (unsigned i = 0; i < num_elements; i++)
+				{
+					hi->add_literal(2 * i + 1);
+				}
+				impl.add(hi);
+
+				spv::Id int_type = builder.makeIntType(32);
+
+				auto *shifted = impl.allocate(spv::OpShiftRightArithmetic, builder.makeVectorType(int_type, num_elements));
+				shifted->add_id(hi->id);
+				shifted->add_id(impl.build_splat_constant_vector(int_type, builder.makeIntConstant(31), num_elements));
+				impl.add(shifted);
+
+				auto *dup = impl.allocate(spv::OpVectorShuffle, builder.makeVectorType(int_type, 2 * num_elements));
+				dup->add_id(shifted->id);
+				dup->add_id(shifted->id);
+				for (unsigned i = 0; i < num_elements; i++)
+				{
+					dup->add_literal(i);
+					dup->add_literal(i);
+				}
+				impl.add(dup);
+
+				auto *xored = impl.allocate(spv::OpBitwiseXor, uvec_type);
+				xored->add_id(bitcast->id);
+				xored->add_id(dup->id);
+				impl.add(xored);
+
+				bitcast = xored;
+			}
+
 			opcode = GLSLstd450FindUMsb;
 		}
 
-		auto *ilsb = impl.allocate(spv::OpExtInst, uvec2_type);
+		auto *ilsb = impl.allocate(spv::OpExtInst, uvec_type);
 		ilsb->add_id(impl.glsl_std450_ext);
 		ilsb->add_literal(opcode);
 		ilsb->add_id(bitcast->id);
 		impl.add(ilsb);
 
-		spv::Id scalars[2];
-		for (int i = 0; i < 2; i++)
+		spv::Id lo_id, hi_id;
+
+		if (!is_vector)
 		{
-			auto *ext = impl.allocate(spv::OpCompositeExtract, uint_type);
-			ext->add_id(ilsb->id);
-			ext->add_literal(i);
-			impl.add(ext);
-			scalars[i] = ext->id;
+			spv::Id scalars[2];
+			for (int i = 0; i < 2; i++)
+			{
+				auto *ext = impl.allocate(spv::OpCompositeExtract, uint_type);
+				ext->add_id(ilsb->id);
+				ext->add_literal(i);
+				impl.add(ext);
+				scalars[i] = ext->id;
+			}
+			lo_id = scalars[0];
+			hi_id = scalars[1];
+		}
+		else
+		{
+			auto *lo = impl.allocate(spv::OpVectorShuffle, result_type);
+			auto *hi = impl.allocate(spv::OpVectorShuffle, result_type);
+			lo->add_id(ilsb->id);
+			lo->add_id(ilsb->id);
+			hi->add_id(ilsb->id);
+			hi->add_id(ilsb->id);
+			for (unsigned i = 0; i < num_elements; i++)
+			{
+				lo->add_literal(2 * i);
+				hi->add_literal(2 * i + 1);
+			}
+			impl.add(lo);
+			impl.add(hi);
+			lo_id = lo->id;
+			hi_id = hi->id;
 		}
 
-		auto *or32 = impl.allocate(spv::OpBitwiseOr, uint_type);
-		or32->add_id(scalars[1]);
-		or32->add_id(builder.makeUintConstant(32));
+		auto *or32 = impl.allocate(spv::OpBitwiseOr, result_type);
+		or32->add_id(hi_id);
+		{
+			spv::Id const32 = builder.makeUintConstant(32);
+			if (is_vector)
+				const32 = impl.build_splat_constant_vector(uint_type, const32, num_elements);
+			or32->add_id(const32);
+		}
 		impl.add(or32);
-		scalars[1] = or32->id;
+		hi_id = or32->id;
 
 		auto merge_op = opcode == GLSLstd450FindILsb ? GLSLstd450UMin : GLSLstd450SMax;
 
 		if (instruction)
 			op = impl.allocate(spv::OpExtInst, instruction);
 		else
-			op = impl.allocate(spv::OpExtInst, uint_type);
+			op = impl.allocate(spv::OpExtInst, result_type);
 
 		op->add_id(impl.glsl_std450_ext);
 		op->add_literal(merge_op);
-		op->add_id(scalars[0]);
-		op->add_id(scalars[1]);
+		op->add_id(lo_id);
+		op->add_id(hi_id);
 	}
 	else
 	{
 		if (instruction)
 			op = impl.allocate(spv::OpExtInst, instruction);
 		else
-			op = impl.allocate(spv::OpExtInst, builder.makeUintType(32));
+		{
+			spv::Id result_type = builder.makeUintType(32);
+			if (is_vector)
+				result_type = builder.makeVectorType(result_type, num_elements);
+			op = impl.allocate(spv::OpExtInst, result_type);
+		}
 
 		op->add_id(impl.glsl_std450_ext);
 		op->add_literal(opcode);
@@ -259,23 +345,39 @@ bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, co
 	auto *value = instruction->getOperand(1);
 	spv::Id msb_id = emit_native_bitscan(opcode, impl, nullptr, value);
 
-	Operation *eq_neg1_op = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+	auto *value_type = value->getType();
+	bool is_vector = value_type->getTypeID() == llvm::Type::TypeID::VectorTyID;
+	unsigned num_elements = is_vector ? value_type->getVectorNumElements() : 1;
+
+	spv::Id bool_type = builder.makeBoolType();
+	if (is_vector)
+		bool_type = builder.makeVectorType(bool_type, num_elements);
+
+	Operation *eq_neg1_op = impl.allocate(spv::OpIEqual, bool_type);
 	{
-		eq_neg1_op->add_ids({ msb_id, builder.makeUintConstant(~0u) });
+		spv::Id neg1_const = builder.makeUintConstant(~0u);
+		if (is_vector)
+			neg1_const = impl.build_splat_constant_vector(builder.makeUintType(32), neg1_const, num_elements);
+		eq_neg1_op->add_ids({ msb_id, neg1_const });
 		impl.add(eq_neg1_op);
 	}
 
 	Operation *msb_sub_op = impl.allocate(spv::OpISub, impl.get_type_id(instruction->getType()));
 	{
-		msb_sub_op->add_ids({
-		    builder.makeUintConstant(value->getType()->getIntegerBitWidth() - 1),
-		    msb_id
-		});
+		spv::Id width_minus_1 = builder.makeUintConstant(value_type->getScalarType()->getIntegerBitWidth() - 1);
+		if (is_vector)
+			width_minus_1 = impl.build_splat_constant_vector(builder.makeUintType(32), width_minus_1, num_elements);
+		msb_sub_op->add_ids({ width_minus_1, msb_id });
 		impl.add(msb_sub_op);
 	}
 
 	Operation *op = impl.allocate(spv::OpSelect, instruction);
-	op->add_ids({ eq_neg1_op->id, builder.makeUintConstant(~0u), msb_sub_op->id });
+	{
+		spv::Id neg1_const = builder.makeUintConstant(~0u);
+		if (is_vector)
+			neg1_const = impl.build_splat_constant_vector(builder.makeUintType(32), neg1_const, num_elements);
+		op->add_ids({ eq_neg1_op->id, neg1_const, msb_sub_op->id });
+	}
 	impl.add(op);
 	return true;
 }
