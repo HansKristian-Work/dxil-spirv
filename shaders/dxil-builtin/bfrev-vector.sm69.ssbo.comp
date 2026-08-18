@@ -1,0 +1,11 @@
+RWStructuredBuffer<vector<uint, 4> > U32;
+RWStructuredBuffer<vector<uint16_t, 2> > U16;
+RWStructuredBuffer<vector<uint64_t, 2> > U64;
+
+[numthreads(1, 1, 1)]
+void main()
+{
+	U32[0] = reversebits(U32[0]);
+	U16[0] = reversebits(U16[0]);
+	U64[0] = reversebits(U64[0]);
+}
