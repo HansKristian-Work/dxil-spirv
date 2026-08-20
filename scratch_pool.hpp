@@ -26,6 +26,7 @@
 #define DXIL_SPV_SCRATCH_POOL_H_
 
 #include "thread_local_allocator.hpp"
+#include <exception>
 
 namespace dxil_spv
 {
