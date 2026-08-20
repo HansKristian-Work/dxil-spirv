@@ -3566,6 +3566,28 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 								merge_to_succ(node, 0);
 						}
 
+						if (node->merge == MergeType::None && a_path_is_continue && b_path_is_continue &&
+						    !node->succ[0]->dominance_frontier.empty() && !node->succ[1]->dominance_frontier.empty())
+						{
+							// Another tie break, both paths may reach continue, but their dominance frontier may tell
+							// a different story.
+							const auto earliest_df = [](const CFGNode *node)
+							{
+								const CFGNode *earliest = nullptr;
+								for (auto *df : node->dominance_frontier)
+									if (!earliest || (df->forward_post_visit_order > earliest->forward_post_visit_order))
+										earliest = df;
+								return earliest;
+							};
+
+							auto *a_earliest = earliest_df(node->succ[0]);
+							auto *b_earliest = earliest_df(node->succ[1]);
+							if (a_earliest->forward_post_visit_order > b_earliest->forward_post_visit_order)
+								merge_to_succ(node, 0);
+							else if (b_earliest->forward_post_visit_order > a_earliest->forward_post_visit_order)
+								merge_to_succ(node, 1);
+						}
+
 						if (node->merge == MergeType::None)
 						{
 							// Both paths break, so we don't need to merge anything. Use Unreachable merge target.
