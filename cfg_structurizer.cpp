@@ -3014,7 +3014,23 @@ void CFGStructurizer::backwards_visit()
 				if (transpose_loop_exit)
 				{
 					for (auto *f : exits)
-						node->pred_back_edge->add_fake_branch(f);
+					{
+						if (f->immediate_dominator &&
+						    f->immediate_dominator->ir.terminator.type == Terminator::Type::Switch &&
+						    node->dominates(f->immediate_dominator))
+						{
+							// Relevant where a switch case label needs to fully "own" the case label.
+							// If this is the only exit path out of a loop, the loop exit deduction
+							// will keep inferring that the interposing dummy block is the new exit point,
+							// leading to no forward progress.
+							// A "true" branch locks the analysis in place.
+							node->pred_back_edge->add_branch(f);
+						}
+						else
+						{
+							node->pred_back_edge->add_fake_branch(f);
+						}
+					}
 				}
 				else
 				{
