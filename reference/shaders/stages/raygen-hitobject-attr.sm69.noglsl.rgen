@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 172
+; Bound: 176
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -62,26 +62,26 @@ OpDecorate %12 NonReadable
 %35 = OpTypeBool
 %37 = OpTypePointer RayPayloadKHR %13
 %86 = OpTypeMatrix %29 4
-%134 = OpConstantNull %18
-%144 = OpTypePointer HitObjectAttributeEXT %17
-%156 = OpConstantComposite %13 %24 %25 %25 %24
-%157 = OpConstantComposite %13 %25 %24 %25 %24
-%164 = OpTypeVector %22 2
+%136 = OpConstantNull %18
+%146 = OpTypePointer HitObjectAttributeEXT %17
+%158 = OpConstantComposite %13 %24 %25 %25 %24
+%159 = OpConstantComposite %13 %25 %24 %25 %24
+%166 = OpTypeVector %22 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %34 = OpVariable %33 Function
 %42 = OpUndef %29
-%140 = OpUndef %13
-OpBranch %167
-%167 = OpLabel
+%142 = OpUndef %13
+OpBranch %169
+%169 = OpLabel
 %21 = OpLoad %6 %8
 %30 = OpCompositeConstruct %29 %24 %26 %27
 %31 = OpCompositeConstruct %29 %25 %25 %24
 OpHitObjectTraceRayEXT %34 %21 %23 %23 %23 %23 %23 %30 %24 %31 %28 %16
 %36 = OpHitObjectIsHitEXT %35 %34
-OpSelectionMerge %170 None
-OpBranchConditional %36 %169 %168
-%169 = OpLabel
+OpSelectionMerge %172 None
+OpBranchConditional %36 %171 %170
+%171 = OpLabel
 %38 = OpInBoundsAccessChain %37 %16 %23
 %39 = OpLoad %13 %38
 %40 = OpHitObjectGetRayTMinEXT %9 %34
@@ -164,9 +164,9 @@ OpBranchConditional %36 %169 %168
 %119 = OpCompositeInsert %29 %118 %116 2
 %120 = OpFAdd %29 %113 %119
 %121 = OpHitObjectGetRayFlagsEXT %22 %34
-%122 = OpHitObjectGetInstanceCustomIndexEXT %22 %34
+%122 = OpHitObjectGetInstanceIdEXT %22 %34
 %123 = OpIAdd %22 %122 %121
-%124 = OpHitObjectGetInstanceIdEXT %22 %34
+%124 = OpHitObjectGetInstanceCustomIndexEXT %22 %34
 %125 = OpIAdd %22 %123 %124
 %126 = OpHitObjectGetGeometryIndexEXT %22 %34
 %127 = OpIAdd %22 %125 %126
@@ -176,40 +176,47 @@ OpBranchConditional %36 %169 %168
 %131 = OpIAdd %22 %129 %130
 %132 = OpHitObjectGetShaderBindingTableRecordIndexEXT %22 %34
 %133 = OpIAdd %22 %131 %132
-OpStore %20 %134
 OpHitObjectGetAttributesEXT %34 %20
-%135 = OpCompositeExtract %9 %120 0
-%136 = OpCompositeExtract %9 %120 1
-%137 = OpCompositeExtract %9 %120 2
-%138 = OpConvertUToF %9 %133
-%139 = OpCompositeInsert %13 %135 %140 0
-%141 = OpCompositeInsert %13 %136 %139 1
-%142 = OpCompositeInsert %13 %137 %141 2
-%143 = OpCompositeInsert %13 %138 %142 3
-%145 = OpInBoundsAccessChain %144 %20 %23
-%146 = OpLoad %17 %145
-%147 = OpCompositeExtract %9 %146 0
-%148 = OpCompositeExtract %9 %39 2
-%149 = OpCompositeInsert %13 %147 %140 0
-%150 = OpCompositeInsert %13 %147 %149 1
-%151 = OpCompositeInsert %13 %148 %150 2
-%152 = OpCompositeInsert %13 %24 %151 3
-%153 = OpFAdd %13 %152 %143
-OpBranch %170
-%168 = OpLabel
-%154 = OpHitObjectIsMissEXT %35 %34
-%155 = OpSelect %13 %154 %156 %157
-OpBranch %170
+%134 = OpHitObjectIsHitEXT %35 %34
+%135 = OpLogicalNot %35 %134
+OpSelectionMerge %174 None
+OpBranchConditional %135 %173 %174
+%173 = OpLabel
+OpStore %20 %136
+OpBranch %174
+%174 = OpLabel
+%137 = OpCompositeExtract %9 %120 0
+%138 = OpCompositeExtract %9 %120 1
+%139 = OpCompositeExtract %9 %120 2
+%140 = OpConvertUToF %9 %133
+%141 = OpCompositeInsert %13 %137 %142 0
+%143 = OpCompositeInsert %13 %138 %141 1
+%144 = OpCompositeInsert %13 %139 %143 2
+%145 = OpCompositeInsert %13 %140 %144 3
+%147 = OpInBoundsAccessChain %146 %20 %23
+%148 = OpLoad %17 %147
+%149 = OpCompositeExtract %9 %148 0
+%150 = OpCompositeExtract %9 %39 2
+%151 = OpCompositeInsert %13 %149 %142 0
+%152 = OpCompositeInsert %13 %149 %151 1
+%153 = OpCompositeInsert %13 %150 %152 2
+%154 = OpCompositeInsert %13 %24 %153 3
+%155 = OpFAdd %13 %154 %145
+OpBranch %172
 %170 = OpLabel
-%158 = OpPhi %13 %153 %169 %155 %168
-%159 = OpLoad %10 %12
-%160 = OpCompositeExtract %9 %158 0
-%161 = OpCompositeExtract %9 %158 1
-%162 = OpCompositeExtract %9 %158 2
-%163 = OpCompositeExtract %9 %158 3
-%165 = OpCompositeConstruct %164 %23 %23
-%166 = OpCompositeConstruct %13 %160 %161 %162 %163
-OpImageWrite %159 %165 %166
+%156 = OpHitObjectIsMissEXT %35 %34
+%157 = OpSelect %13 %156 %158 %159
+OpBranch %172
+%172 = OpLabel
+%160 = OpPhi %13 %155 %174 %157 %170
+%161 = OpLoad %10 %12
+%162 = OpCompositeExtract %9 %160 0
+%163 = OpCompositeExtract %9 %160 1
+%164 = OpCompositeExtract %9 %160 2
+%165 = OpCompositeExtract %9 %160 3
+%167 = OpCompositeConstruct %166 %23 %23
+%168 = OpCompositeConstruct %13 %162 %163 %164 %165
+OpImageWrite %161 %167 %168
 OpReturn
 OpFunctionEnd
 

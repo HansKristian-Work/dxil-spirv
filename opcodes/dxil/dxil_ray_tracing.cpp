@@ -763,7 +763,8 @@ bool emit_hit_object_from_ray_query_instruction(Converter::Impl &impl, const llv
 		return false;
 
 	spv::Id sbt_record_index = builder.makeUintConstant(0);
-	spv::Id empty_attributes = impl.create_variable(spv::StorageClassHitObjectAttributeEXT, builder.makeVoidType());
+    spv::Id empty_struct = builder.makeStructType({}, "EmptyStruct");
+	spv::Id empty_attributes = impl.create_variable(spv::StorageClassHitObjectAttributeEXT, empty_struct);
 
 	auto *op = impl.allocate(spv::OpHitObjectRecordFromQueryEXT);
 	op->add_ids({
@@ -1113,19 +1114,29 @@ bool emit_hit_object_attributes_instruction(Converter::Impl &impl, const llvm::C
 	spv::Id hit_object = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id attributes = impl.get_id_for_value(instruction->getOperand(2));
 
-	// NVIDIA driver doesn't seem to clear out miss/nop to null properly.
-	// It's unclear from SPIR-V spec what should happen.
-	auto *store = impl.allocate(spv::OpStore);
-	store->add_id(attributes);
-	store->add_id(builder.makeNullConstant(impl.get_type_id(instruction->getOperand(2)->getType()->getPointerElementType())));
-	impl.add(store);
-
 	auto *op = impl.allocate(spv::OpHitObjectGetAttributesEXT);
 	op->add_ids({
 	    hit_object,
 	    attributes
 	});
 	impl.add(op);
+
+    auto *is_hit = impl.allocate(spv::OpHitObjectIsHitEXT, builder.makeBoolType());
+    is_hit->add_id(hit_object);
+    impl.add(is_hit);
+
+    auto *not_hit = impl.allocate(spv::OpLogicalNot, builder.makeBoolType());
+    not_hit->add_id(is_hit->id);
+    impl.add(not_hit);
+
+    // NVIDIA driver doesn't seem to clear out miss/nop to null properly.
+    // It's unclear from SPIR-V spec what should happen.
+    auto *store = impl.allocate(spv::PseudoOpMaskedStore);
+    store->add_id(attributes);
+    store->add_id(builder.makeNullConstant(impl.get_type_id(instruction->getOperand(2)->getType()->getPointerElementType())));
+    store->add_id(not_hit->id);
+    impl.add(store);
+
 	return true;
 }
 

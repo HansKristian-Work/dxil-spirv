@@ -315,8 +315,8 @@ struct DXILDispatcher
 		OP(HitObject_ObjectToWorld3x4) = emit_hit_object_get_matrix_value_instruction<spv::OpHitObjectGetObjectToWorldEXT>;
 		OP(HitObject_WorldToObject3x4) = emit_hit_object_get_matrix_value_instruction<spv::OpHitObjectGetWorldToObjectEXT>;
 		OP(HitObject_GeometryIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetGeometryIndexEXT, 1>;
-		OP(HitObject_InstanceIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetInstanceCustomIndexEXT, 1>;
-		OP(HitObject_InstanceID) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetInstanceIdEXT, 1>;
+		OP(HitObject_InstanceIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetInstanceIdEXT, 1>;
+		OP(HitObject_InstanceID) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetInstanceCustomIndexEXT, 1>;
 		OP(HitObject_PrimitiveIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetPrimitiveIndexEXT, 1>;
 		OP(HitObject_HitKind) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetHitKindEXT, 1>;
 		OP(HitObject_ShaderTableIndex) = emit_hit_object_get_value_instruction<spv::OpHitObjectGetShaderBindingTableRecordIndexEXT, 1>;
