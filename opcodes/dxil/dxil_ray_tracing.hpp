@@ -121,5 +121,8 @@ inline bool emit_hit_object_get_matrix_value_instruction(Converter::Impl &impl, 
 bool emit_hit_object_set_shader_table_index_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_hit_object_load_local_root_table_constant_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_hit_object_attributes_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+
+bool analyze_phi_hitobject(Converter::Impl &impl, const llvm::PHINode *instruction);
+bool emit_hitobject_phi(Converter::Impl &impl, const llvm::PHINode *instruction);
 } // namespace dxil_spv
 

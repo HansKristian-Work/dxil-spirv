@@ -30,6 +30,7 @@
 #include "dxil/dxil_resources.hpp"
 #include "dxil/dxil_arithmetic.hpp"
 #include "dxil/dxil_ags.hpp"
+#include "dxil/dxil_ray_tracing.hpp"
 #include <limits>
 
 namespace dxil_spv
@@ -2561,6 +2562,16 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *instruc
 	// Just need to forward the mapping in case it's used as a store to alloca.
 	spv::Id override_type = 0;
 	ags_filter_phi(impl, *instruction, override_type);
+
+	if (const auto *struct_type = llvm::dyn_cast<llvm::StructType>(instruction->getType()))
+	{
+		// It's not possible to express a Phi of hitobject directly due to fundamental
+		// incompatibility with HLSL version of hit objects.
+		// We'll handle this in a different way as a workaround.
+		if (struct_type->hasName() && struct_type->getName() == "dx.types.HitObject")
+			return analyze_phi_hitobject(impl, instruction);
+	}
+
 	return true;
 }
 

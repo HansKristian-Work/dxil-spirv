@@ -1,0 +1,54 @@
+struct [raypayload] Payload
+{
+	uint value : read(miss, caller) : write(miss, caller);
+};
+
+struct Results
+{
+	uint data;
+};
+
+RWStructuredBuffer<Results> Buf : register(u0);
+
+[shader("raygeneration")]
+void RayGen()
+{
+	uint index = DispatchRaysIndex().x;
+	Results results = (Results)0;
+
+	Payload payload;
+	payload.value = 50;
+
+	RayDesc ray;
+	ray.Origin = float3(float(index), 0, 1);
+	ray.Direction = float3(0.0, float(index), -1.0);
+	ray.TMin = float(index);
+	ray.TMax = 10 + float(index);
+
+	// Test basic behavior for a nop or miss object.
+	// Hit objects are value types, it's valid to mix and match like this.
+	dx::HitObject hit;
+
+	[branch]
+	if (index & 1)
+		hit = dx::HitObject::MakeMiss(0x2, 1, ray);
+	else
+		hit = dx::HitObject::MakeNop();
+
+	// This creates a "new" SSA value, test that we can deal with it.
+	hit.SetShaderTableIndex(2);
+
+	[branch]
+	if (index & 2)
+		hit = dx::HitObject::MakeMiss(0x4, 1, ray);
+
+	// Should not affect "hit". It has its own state.
+	dx::HitObject copy = hit;
+	copy.SetShaderTableIndex(1);
+
+	dx::HitObject::Invoke(hit, payload);
+	dx::HitObject::Invoke(copy, payload);
+
+	results.data = payload.value;
+	Buf[index] = results;
+}

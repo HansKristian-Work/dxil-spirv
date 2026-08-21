@@ -663,6 +663,26 @@ bool emit_ray_query_candidate_procedural_primitive_non_opaque_instruction(Conver
 	return true;
 }
 
+static bool build_hit_object(Converter::Impl &impl, const llvm::CallInst *instruction, spv::Id &var_id)
+{
+	auto itr = impl.hit_object.payload_to_consuming_phi.find(instruction);
+	if (itr != impl.hit_object.payload_to_consuming_phi.end())
+	{
+		auto *mapping = &impl.hit_object.payload_mapping[itr->second];
+		while (mapping->consuming_phi)
+			mapping = &impl.hit_object.payload_mapping[mapping->consuming_phi];
+		if (!mapping->var_id)
+			mapping->var_id = impl.create_variable(spv::StorageClassFunction, impl.builder().makeHitObjectType());
+		var_id = mapping->var_id;
+	}
+	else
+	{
+		var_id = impl.create_variable(spv::StorageClassFunction, impl.builder().makeHitObjectType());
+	}
+
+	return true;
+}
+
 bool emit_hit_object_trace_ray_instruction(Converter::Impl &impl, const llvm::CallInst *inst)
 {
 	auto &builder = impl.builder();
@@ -699,7 +719,9 @@ bool emit_hit_object_trace_ray_instruction(Converter::Impl &impl, const llvm::Ca
 		? emit_temp_storage_copy(impl, ray_payload, spv::StorageClassRayPayloadKHR)
 		: impl.get_id_for_value(ray_payload);
 
-	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+	spv::Id hit_object;
+	if (!build_hit_object(impl, inst, hit_object))
+		return false;
 
 	auto *op = impl.allocate(spv::OpHitObjectTraceRayEXT);
 	op->add_ids({
@@ -736,7 +758,10 @@ bool emit_hit_object_from_ray_query_instruction(Converter::Impl &impl, const llv
 
 	spv::Id ray_query = impl.get_id_for_value(inst->getOperand(1));
 
-	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+	spv::Id hit_object;
+	if (!build_hit_object(impl, inst, hit_object))
+		return false;
+
 	spv::Id sbt_record_index = builder.makeUintConstant(0);
 	spv::Id empty_attributes = impl.create_variable(spv::StorageClassHitObjectAttributeEXT, builder.makeVoidType());
 
@@ -765,7 +790,12 @@ bool emit_hit_object_from_ray_query_with_attrs_instruction(Converter::Impl &impl
 	spv::Id hit_kind = impl.get_id_for_value(inst->getOperand(2));
 	spv::Id attributes = impl.get_id_for_value(inst->getOperand(3));
 
-	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+	spv::Id hit_object;
+	if (!build_hit_object(impl, inst, hit_object))
+		return false;
+
+	// This is an incompatibility with HLSL. FromRayQuery should start off with a pseudo-nop state
+	// until an SBT is assigned.
 	spv::Id sbt_record_index = builder.makeUintConstant(0);
 
 	auto *op = impl.allocate(spv::OpHitObjectRecordFromQueryEXT);
@@ -790,7 +820,9 @@ bool emit_hit_object_make_miss_instruction(Converter::Impl &impl, const llvm::Ca
 	builder.addExtension("SPV_EXT_shader_invocation_reorder");
 	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
 
-	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+	spv::Id hit_object;
+	if (!build_hit_object(impl, inst, hit_object))
+		return false;
 
 	spv::Id ray_flags = impl.get_id_for_value(inst->getOperand(1));
 	spv::Id miss_shader_index = impl.get_id_for_value(inst->getOperand(2));
@@ -834,7 +866,9 @@ bool emit_hit_object_make_nop_instruction(Converter::Impl &impl, const llvm::Cal
 	builder.addExtension("SPV_EXT_shader_invocation_reorder");
 	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
 
-	spv::Id hit_object = impl.create_variable(spv::StorageClassFunction, builder.makeHitObjectType());
+	spv::Id hit_object;
+	if (!build_hit_object(impl, inst, hit_object))
+		return false;
 
 	auto *op = impl.allocate(spv::OpHitObjectRecordEmptyEXT);
 	op->add_id(hit_object);
@@ -1052,4 +1086,69 @@ bool emit_hit_object_attributes_instruction(Converter::Impl &impl, const llvm::C
 	return true;
 }
 
+bool analyze_phi_hitobject(Converter::Impl &impl, const llvm::PHINode *instruction)
+{
+	unsigned num_blocks = instruction->getNumIncomingValues();
+	for (unsigned i = 0; i < num_blocks; i++)
+	{
+		auto *incoming = instruction->getIncomingValue(i);
+
+		// SetShaderTableIndex is the only hitobject opcode that mutates the hitobject
+		// and creates a new copy. Chain back to the original value.
+		// The original value must be undef, a callinst (makemiss/nop/trace/rq) or another PHI.
+		while (value_is_dx_op_instrinsic(incoming, DXIL::Op::HitObject_SetShaderTableIndex))
+			incoming = llvm::cast<llvm::CallInst>(incoming)->getOperand(1);
+
+		// Ensure that every incoming value is consumed by one exact PHI node.
+		// Ignore any undef inputs.
+		if (auto *call_inst = llvm::dyn_cast<llvm::CallInst>(incoming))
+		{
+			auto &mapping = impl.hit_object.payload_to_consuming_phi[call_inst];
+			if (mapping && mapping != instruction)
+			{
+				LOGE("A hitobject is used as input to multiple PHI nodes. This cannot be expressed in EXT.\n");
+				return false;
+			}
+			mapping = instruction;
+		}
+		else if (auto *phi_inst = llvm::dyn_cast<llvm::PHINode>(incoming))
+		{
+			// If another PHI node is incoming, we have to ensure that all incoming PHI nodes
+			// share the same payload.
+			auto &mapping = impl.hit_object.payload_mapping[phi_inst];
+			if (mapping.consuming_phi && mapping.consuming_phi != instruction)
+			{
+				LOGE("A phi hitobject is used as input to multiple PHI nodes. This cannot be expressed in EXT.\n");
+				return false;
+			}
+			mapping.consuming_phi = instruction;
+		}
+	}
+
+	// Ensure that codegen observes this as a HitObject.
+	impl.hit_object.payload_mapping[instruction] = {};
+	return true;
+}
+
+bool emit_hitobject_phi(Converter::Impl &impl, const llvm::PHINode *instruction)
+{
+	auto itr = impl.hit_object.payload_mapping.find(instruction);
+	if (itr != impl.hit_object.payload_mapping.end())
+	{
+		// It's not possible to express a Phi of hitobject directly due to fundamental
+		// incompatibility with HLSL version of hit objects.
+		// We'll handle this in a different way.
+		auto *mapping = &itr->second;
+		while (mapping->consuming_phi)
+			mapping = &impl.hit_object.payload_mapping[mapping->consuming_phi];
+
+		if (!mapping->var_id)
+			mapping->var_id = impl.create_variable(spv::StorageClassFunction, impl.builder().makeHitObjectType());
+
+		impl.rewrite_value(instruction, mapping->var_id);
+		return true;
+	}
+
+	return false;
+}
 }

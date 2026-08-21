@@ -1081,6 +1081,21 @@ struct Converter::Impl
 	{
 		spv::Id shader_record_buffer_ptr = 0;
 		spv::Id shader_record_buffer_member_ptr = 0;
+
+		// Ugly hack to attempt to workaround the fact that DX is by-value
+		// while Vulkan models it as alloca of opaque storage that cannot be copied around.
+		// Two workarounds are in place to sort of make this work for most plausible shaders in the wild.
+		// If a PHI node of HitObject is used, enforce that all incoming nodes share the same payload.
+		// This way we can get a sort-of-broken reg2mem thing going.
+		// Copy semantics are not possible to implement. We will implement "copy-reference" approach and pray it's good enough.
+		// If HitObject is used in function call contexts, pray to $deity it does not happen in the wild ... :')
+		struct PayloadMapping
+		{
+			spv::Id var_id = 0;
+			const llvm::PHINode *consuming_phi = nullptr;
+		};
+		UnorderedMap<const llvm::PHINode *, PayloadMapping> payload_mapping;
+		UnorderedMap<const llvm::CallInst *, const llvm::PHINode *> payload_to_consuming_phi;
 	} hit_object;
 };
 } // namespace dxil_spv
