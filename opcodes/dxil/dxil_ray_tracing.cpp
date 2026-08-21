@@ -1113,6 +1113,13 @@ bool emit_hit_object_attributes_instruction(Converter::Impl &impl, const llvm::C
 	spv::Id hit_object = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id attributes = impl.get_id_for_value(instruction->getOperand(2));
 
+	// NVIDIA driver doesn't seem to clear out miss/nop to null properly.
+	// It's unclear from SPIR-V spec what should happen.
+	auto *store = impl.allocate(spv::OpStore);
+	store->add_id(attributes);
+	store->add_id(builder.makeNullConstant(impl.get_type_id(instruction->getOperand(2)->getType()->getPointerElementType())));
+	impl.add(store);
+
 	auto *op = impl.allocate(spv::OpHitObjectGetAttributesEXT);
 	op->add_ids({
 	    hit_object,
