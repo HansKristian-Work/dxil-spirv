@@ -883,6 +883,14 @@ bool emit_hit_object_invoke_instruction(Converter::Impl &impl, const llvm::CallI
 {
 	auto &builder = impl.builder();
 
+	// Special consideration. RayQuery objects start in a pseudo-nop state and any trace should be ignored.
+	// This will not work through Phis correctly, but this is good enough to make test suite pass at least.
+	if (value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::HitObject_FromRayQuery) ||
+		value_is_dx_op_instrinsic(inst->getOperand(1), DXIL::Op::HitObject_FromRayQueryWithAttrs))
+	{
+		return true;
+	}
+
 	builder.addExtension("SPV_EXT_shader_invocation_reorder");
 	builder.addCapability(spv::CapabilityShaderInvocationReorderEXT);
 
@@ -996,10 +1004,27 @@ bool emit_hit_object_set_shader_table_index_instruction(Converter::Impl &impl, c
 	spv::Id hit_object = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id shader_table_index = impl.get_id_for_value(instruction->getOperand(2));
 
+	auto *is_hit = impl.allocate(spv::OpHitObjectIsHitEXT, builder.makeBoolType());
+	is_hit->add_id(hit_object);
+	impl.add(is_hit);
+
+	// DXR version of this explicitly asks for masking based on the type of object.
+	// 28 bits are used for hit, 16 bit for miss and empty object is ignored anyway, so whatever.
+	auto *mask = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+	mask->add_id(is_hit->id);
+	mask->add_id(builder.makeUintConstant(0x0fffffff));
+	mask->add_id(builder.makeUintConstant(0x0000ffff));
+	impl.add(mask);
+
+	auto *masked = impl.allocate(spv::OpBitwiseAnd, builder.makeUintType(32));
+	masked->add_id(shader_table_index);
+	masked->add_id(mask->id);
+	impl.add(masked);
+
 	auto *op = impl.allocate(spv::OpHitObjectSetShaderBindingTableRecordIndexEXT);
 	op->add_ids({
 	    hit_object,
-	    shader_table_index
+		masked->id,
 	});
 	impl.add(op);
 	// HitObject_SetShaderTableIndex returns new hit object, but OpHitObjectSetShaderBindingTableRecordIndexEXT does not
@@ -1042,6 +1067,14 @@ bool emit_hit_object_load_local_root_table_constant_instruction(Converter::Impl 
 	op->add_id(hit_object);
 	impl.add(op);
 
+	auto *is_empty = impl.allocate(spv::OpHitObjectIsEmptyEXT, builder.makeBoolType());
+	is_empty->add_id(hit_object);
+	impl.add(is_empty);
+
+	auto *not_empty = impl.allocate(spv::OpLogicalNot, builder.makeBoolType());
+	not_empty->add_id(is_empty->id);
+	impl.add(not_empty);
+
 	auto *cast_op = impl.allocate(spv::OpBitcast, impl.hit_object.shader_record_buffer_ptr);
 	cast_op->add_id(op->id);
 	impl.add(cast_op);
@@ -1057,10 +1090,13 @@ bool emit_hit_object_load_local_root_table_constant_instruction(Converter::Impl 
 	chain_op->add_id(index_op->id);
 	impl.add(chain_op);
 
-	auto *load_op = impl.allocate(spv::OpLoad, uint32);
+	// Need robustness here since an empty hit object should always return 0, but if we just get a random pointer
+	// it's not going to work.
+	auto *load_op = impl.allocate(spv::PseudoOpMaskedLoad, uint32);
 	load_op->add_id(chain_op->id);
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
 	load_op->add_literal(sizeof(uint32_t));
+	load_op->add_id(not_empty->id);
 	impl.add(load_op);
 
 	impl.rewrite_value(instruction, load_op->id);

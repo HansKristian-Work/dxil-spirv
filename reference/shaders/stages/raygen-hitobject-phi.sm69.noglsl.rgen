@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 59
+; Bound: 67
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -55,55 +55,63 @@ OpDecorate %15 BuiltIn LaunchIdKHR
 %33 = OpConstant %20 1
 %34 = OpConstant %20 -1
 %35 = OpTypeVector %20 3
-%40 = OpTypePointer RayPayloadKHR %5
-%42 = OpConstant %5 50
-%47 = OpTypeVector %5 4
-%49 = OpConstant %5 4
+%40 = OpConstant %5 268435455
+%41 = OpConstant %5 65535
+%48 = OpTypePointer RayPayloadKHR %5
+%50 = OpConstant %5 50
+%55 = OpTypeVector %5 4
+%57 = OpConstant %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %30 = OpVariable %29 Function
-OpBranch %52
-%52 = OpLabel
+OpBranch %60
+%60 = OpLabel
 %17 = OpAccessChain %16 %15 %18
 %19 = OpLoad %5 %17
 %21 = OpConvertUToF %20 %19
 %22 = OpFAdd %20 %21 %23
 %24 = OpBitwiseAnd %5 %19 %25
 %27 = OpIEqual %26 %24 %18
-OpSelectionMerge %55 None
-OpBranchConditional %27 %54 %53
-%54 = OpLabel
+OpSelectionMerge %63 None
+OpBranchConditional %27 %62 %61
+%62 = OpLabel
 OpHitObjectRecordEmptyEXT %30
-OpBranch %55
-%53 = OpLabel
+OpBranch %63
+%61 = OpLabel
 %36 = OpCompositeConstruct %35 %21 %32 %33
 %37 = OpCompositeConstruct %35 %32 %21 %34
 OpHitObjectRecordMissEXT %30 %31 %25 %36 %21 %37 %22
-OpBranch %55
-%55 = OpLabel
-OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %31
-%38 = OpBitwiseAnd %5 %19 %31
-%39 = OpIEqual %26 %38 %18
-OpSelectionMerge %57 None
-OpBranchConditional %39 %57 %56
-%56 = OpLabel
-%50 = OpCompositeConstruct %35 %21 %32 %33
-%51 = OpCompositeConstruct %35 %32 %21 %34
-OpHitObjectRecordMissEXT %30 %49 %25 %50 %21 %51 %22
-OpBranch %57
-%57 = OpLabel
-OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %25
-%41 = OpInBoundsAccessChain %40 %12 %18
-OpStore %41 %42
+OpBranch %63
+%63 = OpLabel
+%38 = OpHitObjectIsHitEXT %26 %30
+%39 = OpSelect %5 %38 %40 %41
+%42 = OpBitwiseAnd %5 %31 %39
+OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %42
+%43 = OpBitwiseAnd %5 %19 %31
+%44 = OpIEqual %26 %43 %18
+OpSelectionMerge %65 None
+OpBranchConditional %44 %65 %64
+%64 = OpLabel
+%58 = OpCompositeConstruct %35 %21 %32 %33
+%59 = OpCompositeConstruct %35 %32 %21 %34
+OpHitObjectRecordMissEXT %30 %57 %25 %58 %21 %59 %22
+OpBranch %65
+%65 = OpLabel
+%45 = OpHitObjectIsHitEXT %26 %30
+%46 = OpSelect %5 %45 %40 %41
+%47 = OpBitwiseAnd %5 %25 %46
+OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %47
+%49 = OpInBoundsAccessChain %48 %12 %18
+OpStore %49 %50
 OpHitObjectExecuteShaderEXT %30 %12
-%43 = OpLoad %5 %41
-%44 = OpInBoundsAccessChain %40 %11 %18
-OpStore %44 %43
+%51 = OpLoad %5 %49
+%52 = OpInBoundsAccessChain %48 %11 %18
+OpStore %52 %51
 OpHitObjectExecuteShaderEXT %30 %11
-%45 = OpLoad %5 %44
-%46 = OpLoad %6 %8
-%48 = OpCompositeConstruct %47 %45 %45 %45 %45
-OpImageWrite %46 %19 %48
+%53 = OpLoad %5 %52
+%54 = OpLoad %6 %8
+%56 = OpCompositeConstruct %55 %53 %53 %53 %53
+OpImageWrite %54 %19 %56
 OpReturn
 OpFunctionEnd
 
