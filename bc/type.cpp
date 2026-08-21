@@ -189,10 +189,21 @@ Type *Type::getScalarType() const
 		return const_cast<Type *>(this);
 }
 
-StructType::StructType(LLVMContext &context, Vector<Type *> member_types_)
+StructType::StructType(LLVMContext &context, Vector<Type *> member_types_, String name_)
     : Type(context, TypeID::StructTyID)
     , member_types(std::move(member_types_))
+    , name(std::move(name_))
 {
+}
+
+const String &StructType::getName() const
+{
+	return name;
+}
+
+bool StructType::hasName() const
+{
+	return !name.empty();
 }
 
 unsigned StructType::getNumElements() const
@@ -206,7 +217,7 @@ Type *StructType::getElementType(unsigned N) const
 	return member_types[N];
 }
 
-StructType *StructType::get(LLVMContext &context, Vector<Type *> member_types)
+StructType *StructType::get(LLVMContext &context, Vector<Type *> member_types, const String &name)
 {
 	auto &cache = context.get_type_cache();
 	for (auto *type : cache)
@@ -227,13 +238,13 @@ StructType *StructType::get(LLVMContext &context, Vector<Type *> member_types)
 					}
 				}
 
-				if (equal)
+				if (equal && struct_type->getName() == name)
 					return struct_type;
 			}
 		}
 	}
 
-	auto *type = context.construct<StructType>(context, std::move(member_types));
+	auto *type = context.construct<StructType>(context, std::move(member_types), name);
 	cache.push_back(type);
 	return type;
 }

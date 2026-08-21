@@ -326,6 +326,7 @@ struct ModuleParseContext
 	UnorderedMap<uint64_t, Vector<std::pair<String, String>>> attribute_groups;
 	Type *constant_type = nullptr;
 	String current_metadata_name;
+	String current_struct_name;
 
 	bool parse_function_child_block(const BlockOrRecord &entry);
 	bool parse_record(const BlockOrRecord &entry);
@@ -1924,7 +1925,10 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 	switch (TypeRecord(child.id))
 	{
 	case TypeRecord::NUMENTRY:
+		return true;
+
 	case TypeRecord::STRUCT_NAME:
+		current_struct_name = child.getString();
 		return true;
 
 	case TypeRecord::VOID_TYPE:
@@ -1991,7 +1995,11 @@ bool ModuleParseContext::parse_type(const BlockOrRecord &child)
 		members.reserve(num_members);
 		for (unsigned i = 0; i < num_members; i++)
 			members.push_back(get_type(child.ops[i + 1]));
-		type = StructType::get(*context, std::move(members));
+
+		String name;
+		if (TypeRecord(child.id) == TypeRecord::STRUCT_NAMED)
+			name = current_struct_name;
+		type = StructType::get(*context, std::move(members), name);
 		break;
 	}
 

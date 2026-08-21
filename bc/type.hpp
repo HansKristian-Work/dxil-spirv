@@ -145,14 +145,18 @@ public:
 	{
 		return TypeID::StructTyID;
 	}
-	StructType(LLVMContext &context, Vector<Type *> member_types);
-	static StructType *get(LLVMContext &context, Vector<Type *> member_types);
+	StructType(LLVMContext &context, Vector<Type *> member_types, String name);
+	static StructType *get(LLVMContext &context, Vector<Type *> member_types, const String &name);
 
 	unsigned getNumElements() const;
 	Type *getElementType(unsigned N) const;
 
+	bool hasName() const;
+	const String &getName() const;
+
 private:
 	Vector<Type *> member_types;
+	String name;
 };
 
 class VectorType : public Type

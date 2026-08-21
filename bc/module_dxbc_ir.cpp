@@ -861,7 +861,7 @@ Type *ParseContext::convert_type(const ir::Type &type)
 		Vector<Type *> members;
 		for (unsigned index = 0; index < type.getStructMemberCount(); index++)
 			members.push_back(convert_type(type.getSubType(index)));
-		return StructType::get(context, std::move(members));
+		return StructType::get(context, std::move(members), "");
 	}
 	else if (type.isVoidType())
 	{
@@ -1954,7 +1954,7 @@ static StructType *get_sparse_feedback_variant(Type *type)
 	auto *scalar_type = type->getStructElementType(1)->getScalarType();
 	return StructType::get(
 		type->getContext(),
-		{ scalar_type, scalar_type, scalar_type, scalar_type, Type::getInt32Ty(type->getContext()) });
+		{ scalar_type, scalar_type, scalar_type, scalar_type, Type::getInt32Ty(type->getContext()) , }, "");
 }
 
 static Type *get_composite_return_type(Type *type)
