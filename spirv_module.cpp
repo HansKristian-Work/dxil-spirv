@@ -3461,20 +3461,21 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else if (op->op == spv::OpDemoteToHelperInvocationEXT && !caps.supports_demote)
 		{
-			if (op->num_arguments)
-				build_discard_call_early_cond(op->arguments[0]);
+			if (op->num_arguments())
+				build_discard_call_early_cond(op->argument(0));
 			else
 				build_discard_call_early();
 		}
-		else if (op->op == spv::OpDemoteToHelperInvocationEXT && op->num_arguments)
+		else if (op->op == spv::OpDemoteToHelperInvocationEXT && op->num_arguments())
 		{
 			builder.addExtension("SPV_EXT_demote_to_helper_invocation");
 			builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
-			build_demote_call_cond(op->arguments[0]);
+			build_demote_call_cond(op->argument(0));
 		}
 		else if (op->op == spv::PseudoOpInstrumentExternallyVisibleStore || op->op == spv::OpAssumeTrueKHR)
 		{
-			add_instrumented_instruction(op->op, bb, op->arguments[0], op->num_arguments >= 2 ? op->arguments[1] : 0);
+			add_instrumented_instruction(op->op, bb, op->argument(0),
+			                             op->num_arguments() >= 2 ? op->argument(1) : 0);
 		}
 		else if (op->op == spv::PseudoOpReturnCond ||
 		         op->op == spv::PseudoOpMaskedLoad ||
@@ -3503,7 +3504,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			active_function->addBlock(inner_bb);
 			active_function->addBlock(merge_bb);
 			builder.createSelectionMerge(merge_bb, 0);
-			builder.createConditionalBranch(op->arguments[op->num_arguments - 1], inner_bb, merge_bb);
+			builder.createConditionalBranch(op->argument(op->num_arguments() - 1), inner_bb, merge_bb);
 			builder.setBuildPoint(inner_bb);
 
 			spv::Id inner_id = 0;
@@ -3526,18 +3527,16 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 					assert(op->type_id);
 				}
 
-				unsigned literal_mask = op->get_literal_mask();
-				for (unsigned i = 0; i < op->num_arguments - 1; i++)
+				for (unsigned i = 0; i < op->num_arguments() - 1; i++)
 				{
-					spv::Id arg = op->arguments[i];
-					if (literal_mask & 1u)
+					spv::Id arg = op->argument(i);
+					if (op->argument_is_literal(i))
 						inst->addImmediateOperand(arg);
 					else
 					{
 						assert(arg);
 						inst->addIdOperand(arg);
 					}
-					literal_mask >>= 1u;
 				}
 				add_instruction(inner_bb, std::move(inst));
 				builder.createBranch(merge_bb);
@@ -3587,18 +3586,16 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			else
 				inst = std::make_unique<spv::Instruction>(op->op);
 
-			unsigned literal_mask = op->get_literal_mask();
-
-			for (auto &arg : *op)
+			for (unsigned i = 0; i < op->num_arguments(); i++)
 			{
-				if (literal_mask & 1u)
+				spv::Id arg = op->argument(i);
+				if (op->argument_is_literal(i))
 					inst->addImmediateOperand(arg);
 				else
 				{
 					assert(arg);
 					inst->addIdOperand(arg);
 				}
-				literal_mask >>= 1u;
 			}
 			add_instruction(bb, std::move(inst));
 		}

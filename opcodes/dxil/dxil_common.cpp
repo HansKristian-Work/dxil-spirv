@@ -691,8 +691,8 @@ void add_vkmm_access_qualifiers(Converter::Impl &impl, Operation *op, const Refe
 
 	if (mm_flags)
 	{
-		if (op->num_arguments > mm_argument_index)
-			op->arguments[mm_argument_index] |= mm_flags;
+		if (op->num_arguments() > mm_argument_index)
+			op->set_argument(mm_argument_index, op->argument(mm_argument_index) | mm_flags);
 		else
 			op->add_literal(mm_flags);
 

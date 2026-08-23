@@ -2410,6 +2410,7 @@ bool emit_shufflevector_instruction(Converter::Impl &impl, const llvm::ShuffleVe
 		op->add_id(impl.get_id_for_value(inst->getOperand(i)));
 
 	unsigned num_outputs = inst->getType()->getVectorNumElements();
+	op->reserve_arguments(2 + num_outputs);
 	for (unsigned i = 0; i < num_outputs; i++)
 		op->add_literal(inst->getMaskValue(i));
 
@@ -2885,6 +2886,7 @@ bool can_optimize_conditional_branch_to_static(
 static bool emit_composite_construct_instruction(Converter::Impl &impl, const llvm::CompositeConstructInst *inst)
 {
 	auto *constr = impl.allocate(spv::OpCompositeConstruct, inst);
+	constr->reserve_arguments(inst->getNumOperands());
 	for (unsigned i = 0; i < inst->getNumOperands(); i++)
 		constr->add_id(impl.get_id_for_value(inst->getOperand(i)));
 	impl.add(constr);

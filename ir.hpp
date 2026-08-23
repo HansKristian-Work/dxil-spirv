@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <initializer_list>
 #include <stdint.h>
+#include <string.h>
 
 // A simple IR representation which allows the CFGStructurizer to do some simple rewrites of blocks,
 // PHI nodes in particular.
@@ -88,12 +89,23 @@ struct LiteralArgument
 
 struct Operation
 {
-	enum
+	enum : unsigned
 	{
-		MaxArguments = 13
+		InlineArguments = 13
 	};
 
 	Operation() = default;
+	Operation(const Operation &other)
+	{
+		copy_from(other);
+	}
+
+	Operation &operator=(const Operation &other)
+	{
+		if (this != &other)
+			copy_from(other);
+		return *this;
+	}
 
 	explicit Operation(spv::Op op_)
 	    : op(op_)
@@ -109,13 +121,13 @@ struct Operation
 
 	void add_id(spv::Id arg)
 	{
-		assert(num_arguments < MaxArguments);
 		assert(arg != 0);
-		arguments[num_arguments++] = arg;
+		add_argument(arg, false);
 	}
 
 	void add_ids(const std::initializer_list<spv::Id> &args)
 	{
+		reserve_arguments(argument_count + unsigned(args.size()));
 		for (auto &arg : args)
 		{
 			assert(arg != 0);
@@ -125,33 +137,70 @@ struct Operation
 
 	void add_literal(uint32_t lit)
 	{
-		assert(num_arguments < MaxArguments);
-		literal_mask |= 1u << num_arguments;
-		arguments[num_arguments++] = lit;
+		add_argument(lit, true);
 	}
 
-	const spv::Id *begin() const
+	void reserve_arguments(unsigned count)
+	{
+		if (count <= argument_capacity)
+			return;
+
+		size_t literal_word_count = get_literal_word_count(count);
+		size_t allocation_words = size_t(count) + literal_word_count;
+		auto *new_values = static_cast<uint32_t *>(
+			allocate_in_thread(sizeof(uint32_t) * allocation_words));
+		if (!new_values)
+			std::terminate();
+
+		auto *old_literal_mask = get_literal_mask();
+		auto *new_literal_mask = new_values + count;
+		memcpy(new_values, arguments, sizeof(uint32_t) * argument_count);
+		memset(new_literal_mask, 0, sizeof(uint32_t) * literal_word_count);
+		memcpy(new_literal_mask, old_literal_mask,
+		       sizeof(uint32_t) * get_literal_word_count(argument_count));
+
+		arguments = new_values;
+		argument_capacity = count;
+	}
+
+	unsigned num_arguments() const
+	{
+		return argument_count;
+	}
+
+	uint32_t argument(unsigned index) const
+	{
+		assert(index < argument_count);
+		return arguments[index];
+	}
+
+	void set_argument(unsigned index, uint32_t value)
+	{
+		assert(index < argument_count);
+		assert(argument_is_literal(index) || value != 0);
+		arguments[index] = value;
+	}
+
+	bool argument_is_literal(unsigned index) const
+	{
+		assert(index < argument_count);
+		return (get_literal_mask()[index / 32] &
+		        (1u << (index % 32))) != 0;
+	}
+
+	const uint32_t *begin() const
 	{
 		return arguments;
 	}
 
-	const spv::Id *end() const
+	const uint32_t *end() const
 	{
-		return arguments + num_arguments;
-	}
-
-	uint8_t get_literal_mask() const
-	{
-		return literal_mask;
+		return arguments + argument_count;
 	}
 
 	spv::Op op = spv::OpNop;
 	spv::Id id = 0;
 	spv::Id type_id = 0;
-
-	spv::Id arguments[MaxArguments];
-	unsigned num_arguments = 0;
-	uint8_t literal_mask = 0;
 
 	enum : uint8_t
 	{
@@ -163,6 +212,59 @@ struct Operation
 		SubgroupSyncPost = 1 << 4
 	};
 	uint8_t flags = 0;
+
+private:
+	const uint32_t *get_literal_mask() const
+	{
+		return arguments == inline_arguments ?
+		       &inline_literal_mask : arguments + argument_capacity;
+	}
+
+	uint32_t *get_literal_mask()
+	{
+		return arguments == inline_arguments ?
+		       &inline_literal_mask : arguments + argument_capacity;
+	}
+
+	static unsigned get_literal_word_count(unsigned count)
+	{
+		return (count + 31) / 32;
+	}
+
+	void add_argument(uint32_t value, bool literal)
+	{
+		if (argument_count == argument_capacity)
+			reserve_arguments(argument_capacity * 2);
+
+		unsigned index = argument_count++;
+		arguments[index] = value;
+		uint32_t &literal_word = get_literal_mask()[index / 32];
+		uint32_t literal_bit = 1u << (index % 32);
+		if (literal)
+			literal_word |= literal_bit;
+		else
+			literal_word &= ~literal_bit;
+	}
+
+	void copy_from(const Operation &other)
+	{
+		op = other.op;
+		id = other.id;
+		type_id = other.type_id;
+		flags = other.flags;
+
+		reserve_arguments(other.argument_count);
+		argument_count = other.argument_count;
+		memcpy(arguments, other.arguments, sizeof(uint32_t) * argument_count);
+		memcpy(get_literal_mask(), other.get_literal_mask(),
+		       sizeof(uint32_t) * get_literal_word_count(argument_count));
+	}
+
+	uint32_t inline_arguments[InlineArguments];
+	uint32_t *arguments = inline_arguments;
+	uint32_t inline_literal_mask = 0;
+	unsigned argument_count = 0;
+	unsigned argument_capacity = InlineArguments;
 };
 
 struct Terminator
