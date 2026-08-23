@@ -1717,7 +1717,7 @@ static WMMAAccessChain build_wmma_access_chain(
 	if (meta.storage == spv::StorageClassStorageBuffer || impl.ags.active_uav_op == DXIL::Op::AtomicBinOp)
 	{
 		spv::Id buffer_id = get_buffer_alias_handle(
-			impl, meta, impl.ags.active_uav_ptr, RawType::Integer, RawWidth::B8, RawVecSize::V1);
+			impl, meta, impl.ags.active_uav_ptr, RawType::Integer, RawWidth::B8, 1);
 
 		if (!buffer_id)
 		{
@@ -2635,7 +2635,7 @@ bool analyze_ags_buffer_load(Converter::Impl &impl, const llvm::CallInst *instru
 			}
 
 			// Be byte oriented.
-			tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B8)][int(RawVecSize::V1)] = true;
+			tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B8)][0] = true;
 
 			return true;
 		}
@@ -2661,7 +2661,7 @@ void analyze_ags_buffer_store(Converter::Impl &impl, const llvm::CallInst *instr
 
 		// Mark 64-bit usage.
 		if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
-			tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V1)] = true;
+			tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B64)][0] = true;
 		else
 			tracking->has_atomic_64bit = true;
 	}

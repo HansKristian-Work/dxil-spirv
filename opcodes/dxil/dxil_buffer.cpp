@@ -290,21 +290,21 @@ bool raw_access_structured_can_vectorize(
 	       extract_raw_buffer_access_split(byte_offset, 1, addr_shift_log2, vecsize, split);
 }
 
-RawVecSize raw_access_byte_address_vectorize(
+unsigned raw_access_byte_address_vectorize(
 	Converter::Impl &impl, const llvm::Type *type,
     const llvm::Value *byte_offset, uint32_t mask)
 {
 	if (mask == 0xfu && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 4))
-		return RawVecSize::V4;
+		return 4;
 	else if (mask == 0x7u && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 3))
-		return RawVecSize::V3;
+		return 3;
 	else if (mask == 0x3u && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 2))
-		return RawVecSize::V2;
+		return 2;
 	else
-		return RawVecSize::V1;
+		return 1;
 }
 
-RawVecSize raw_access_structured_vectorize(
+unsigned raw_access_structured_vectorize(
 	Converter::Impl &impl, const llvm::Type *type,
 	const llvm::Value *index,
 	unsigned stride,
@@ -312,13 +312,13 @@ RawVecSize raw_access_structured_vectorize(
 	uint32_t mask)
 {
 	if (mask == 0xfu && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 4))
-		return RawVecSize::V4;
+		return 4;
 	else if (mask == 0x7u && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 3))
-		return RawVecSize::V3;
+		return 3;
 	else if (mask == 0x3u && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 2))
-		return RawVecSize::V2;
+		return 2;
 	else
-		return RawVecSize::V1;
+		return 1;
 }
 
 static spv::Id build_accumulate_offsets(Converter::Impl &impl, const spv::Id *ids, unsigned count)
@@ -465,7 +465,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	const auto &meta = impl.handle_to_resource_meta[image_id];
 
 	spv::Id index_id = 0;
-	RawVecSize raw_vecsize = RawVecSize::V1;
+	unsigned raw_vecsize = 1;
 	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, data_type);
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
@@ -482,7 +482,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 				 impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume);
 
 		index_id = build_index_divider(impl, instruction->getOperand(2 + operand_offset),
-		                               addr_shift_log2, raw_vecsize_to_vecsize(raw_vecsize), requires_explicit_wrap);
+		                               addr_shift_log2, raw_vecsize, requires_explicit_wrap);
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
@@ -499,7 +499,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 			meta.stride,
 			instruction->getOperand(3 + operand_offset),
 			addr_shift_log2,
-			raw_vecsize_to_vecsize(raw_vecsize));
+			raw_vecsize);
 	}
 	else
 		index_id = impl.get_id_for_value(instruction->getOperand(2 + operand_offset));
@@ -510,17 +510,17 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 
 		switch (raw_vecsize)
 		{
-		case RawVecSize::V2:
+		case 2:
 			vectorized_addr_shift_log2 += 1;
 			break;
 
-		case RawVecSize::V4:
+		case 4:
 			vectorized_addr_shift_log2 += 2;
 			break;
 
 		default:
 			// If we need offset buffers, we should never hit this case.
-			assert(raw_vecsize != RawVecSize::V3);
+			assert(raw_vecsize != 3);
 			break;
 		}
 
@@ -572,7 +572,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 		uint32_t oob_index;
 		if (meta.kind == DXIL::ResourceKind::TypedBuffer)
 			oob_index = 0xffffffffu;
-		else if (raw_vecsize != RawVecSize::V1)
+		else if (raw_vecsize != 1)
 			oob_index = 0xffffffffu >> vectorized_addr_shift_log2;
 		else
 			oob_index = (0xffffffffu >> addr_shift_log2) - 3u;
@@ -1049,7 +1049,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	                   RawType::Float : RawType::Integer;
 
 	image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
-	bool vectorized_load = access.raw_vec_size != RawVecSize::V1;
+	bool vectorized_load = access.raw_vec_size != 1;
 
 	// Sparse information is stored in the 5th component.
 	if (sparse)
@@ -1063,7 +1063,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		// The best we can do is to infer it from stride if we can.
 		//unsigned conservative_num_elements = std::min(access.num_components, std::min(4u, access_meta.components));
 		unsigned conservative_num_elements = 0;
-		unsigned vecsize = raw_vecsize_to_vecsize(access.raw_vec_size);
+		unsigned vecsize = access.raw_vec_size;
 
 		if (vectorized_load)
 			conservative_num_elements = vecsize;
@@ -1713,7 +1713,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	                   RawType::Float : RawType::Integer;
 
 	image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
-	bool vectorized_store = access.raw_vec_size != RawVecSize::V1;
+	bool vectorized_store = access.raw_vec_size != 1;
 
 	// We could hoist the call to emit_buffer_store_values_bitcast,
 	// but causes too much churn on shader deltas.
@@ -1746,7 +1746,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 			                       builder.makeUintType(raw_width_to_bits(width)) :
 			                       builder.makeFloatType(raw_width_to_bits(width));
 
-			unsigned vecsize = raw_vecsize_to_vecsize(access.raw_vec_size);
+			unsigned vecsize = access.raw_vec_size;
 			spv::Id vec_type_id = builder.makeVectorType(elem_type_id, vecsize);
 			spv::Id vector_value_id = impl.build_vector(elem_type_id, store_values, vecsize);
 			Operation *chain_op = impl.allocate(
@@ -1873,7 +1873,7 @@ spv::Id emit_atomic_access_chain(Converter::Impl &impl,
 	auto &builder = impl.builder();
 	Operation *counter_ptr_op = nullptr;
 	component_type = raw_width_to_component_type(RawType::Integer, width);
-	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, RawType::Integer, width, RawVecSize::V1);
+	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, RawType::Integer, width, 1);
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
 		spv::Id uint_type = builder.makeUintType(raw_width_to_bits(width));

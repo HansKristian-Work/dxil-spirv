@@ -43,7 +43,6 @@ namespace dxil_spv
 {
 enum class RawType { Integer, Float, Count };
 enum class RawWidth { B8 = 0, B16, B32, B64, Count };
-enum class RawVecSize { V1 = 0, V2, V3, V4, Count };
 
 enum class MagicResource : uint8_t
 {

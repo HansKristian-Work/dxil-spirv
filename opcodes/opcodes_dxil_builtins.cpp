@@ -546,30 +546,55 @@ bool dxil_instruction_has_side_effects(const llvm::CallInst *instruction)
 	return ret;
 }
 
-static void update_raw_access_tracking_from_vector_type(
-    AccessTracking &tracking, const llvm::Type *type, RawVecSize vec_size)
+static bool get_raw_declaration_from_llvm_type(const llvm::Type *type, RawType &raw_type, RawWidth &raw_width)
 {
-	// For SSBOs, always use uint types, except for 64-bit since Float64 vs Int64 are two separate features.
 	if (type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-		tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B16)][int(vec_size)] = true;
+	{
+		raw_type = RawType::Integer;
+		raw_width = RawWidth::B16;
+	}
 	else if (type->getTypeID() == llvm::Type::TypeID::FloatTyID)
-		tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B32)][int(vec_size)] = true;
+	{
+		raw_type = RawType::Integer;
+		raw_width = RawWidth::B32;
+	}
 	else if (type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
-		tracking.raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B64)][int(vec_size)] = true;
+	{
+		raw_type = RawType::Float;
+		raw_width = RawWidth::B64;
+	}
 	else if (type->getTypeID() == llvm::Type::TypeID::IntegerTyID)
 	{
-		if (type->getIntegerBitWidth() == 16)
-			tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B16)][int(vec_size)] = true;
-		else if (type->getIntegerBitWidth() == 32)
-			tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B32)][int(vec_size)] = true;
-		else if (type->getIntegerBitWidth() == 64)
-			tracking.raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B64)][int(vec_size)] = true;
+		raw_type = RawType::Integer;
+		switch (type->getIntegerBitWidth())
+		{
+		case 16:
+			raw_width = RawWidth::B16;
+			break;
+		case 32:
+			raw_width = RawWidth::B32;
+			break;
+		case 64:
+			raw_width = RawWidth::B64;
+			break;
+		default:
+			return false;
+		}
 	}
+	else
+		return false;
+
+	return true;
 }
 
-static void update_raw_access_tracking_from_scalar_type(AccessTracking &tracking, const llvm::Type *type)
+static void update_raw_access_tracking(AccessTracking &tracking, const llvm::Type *type, unsigned vecsize = 1)
 {
-	update_raw_access_tracking_from_vector_type(tracking, type, RawVecSize::V1);
+	RawType raw_type;
+	RawWidth raw_width;
+	if (!get_raw_declaration_from_llvm_type(type, raw_type, raw_width))
+		return;
+
+	tracking.raw_access_buffer_declarations[int(raw_type)][int(raw_width)][vecsize - 1] = true;
 }
 
 static void update_raw_access_tracking_for_byte_address(
@@ -584,7 +609,7 @@ static void update_raw_access_tracking_for_byte_address(
     if (!impl.options.nv_raw_access_chains)
     {
         auto vec = raw_access_byte_address_vectorize(impl, type, byte_offset, mask);
-        update_raw_access_tracking_from_vector_type(tracking, type, vec);
+        update_raw_access_tracking(tracking, type, vec);
     }
 }
 
@@ -600,7 +625,7 @@ static void update_raw_access_tracking_for_structured(
     if (!impl.options.nv_raw_access_chains)
     {
         auto vec = raw_access_structured_vectorize(impl, type, index, stride, byte_offset, mask);
-        update_raw_access_tracking_from_vector_type(tracking, type, vec);
+        update_raw_access_tracking(tracking, type, vec);
     }
 }
 
@@ -693,7 +718,7 @@ bool analyze_alloca_cbv_forwarding_pre_resource_emit(Converter::Impl &impl, cons
 	if (cbv_tracking)
 	{
 		auto raw_type = scalar_type->isFloatingPointTy() ? RawType::Float : RawType::Integer;
-		cbv_tracking->raw_access_buffer_declarations[int(raw_type)][int(RawWidth::B32)][int(RawVecSize::V1)] = true;
+		cbv_tracking->raw_access_buffer_declarations[int(raw_type)][int(RawWidth::B32)][0] = true;
 	}
 
 	return true;
@@ -743,7 +768,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			case 2:
 			case 4:
 				// We'll bit-cast on-demand for f16x8.
-				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B32)][int(RawVecSize::V4)] = true;
+				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B32)][3] = true;
 				break;
 
 			case 8:
@@ -751,7 +776,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 				// Need aliases here to handle difference in Float64 vs Int64 support.
 				// For 16-bit, support is gated behind both types.
 				bool is_float = get_composite_element_type(instruction->getType())->getTypeID() == llvm::Type::TypeID::DoubleTyID;
-				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V2)] = true;
+				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][1] = true;
 				break;
 			}
 
@@ -764,11 +789,11 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			switch (get_type_scalar_alignment(impl, instruction->getType()))
 			{
 			case 2:
-				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B16)][int(RawVecSize::V1)] = true;
+				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B16)][0] = true;
 				break;
 
 			case 4:
-				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B32)][int(RawVecSize::V1)] = true;
+				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B32)][0] = true;
 				break;
 
 			case 8:
@@ -776,7 +801,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 				// Need aliases here to handle difference in Float64 vs Int64 support.
 				// For 16-bit, support is gated behind both types.
 				bool is_float = instruction->getType()->getTypeID() == llvm::Type::TypeID::DoubleTyID;
-				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][int(RawVecSize::V1)] = true;
+				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][0] = true;
 				break;
 			}
 
@@ -983,7 +1008,7 @@ static bool analyze_dxil_atomic_op(Converter::Impl &impl, const llvm::CallInst *
 
 		auto meta = get_resource_meta_from_buffer_op(impl, instruction);
 		if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
-			update_raw_access_tracking_from_scalar_type(*tracking, instruction->getType());
+			update_raw_access_tracking(*tracking, instruction->getType());
 
 		impl.shader_analysis.has_side_effects = true;
 	}

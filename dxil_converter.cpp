@@ -367,7 +367,7 @@ spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uin
 {
 	auto &builder = spirv_module.get_builder();
 
-	unsigned element_size = raw_width_to_bits(raw_decl.width) * raw_vecsize_to_vecsize(raw_decl.vecsize) / 8;
+	unsigned element_size = raw_width_to_bits(raw_decl.width) * raw_decl.vecsize / 8;
 	unsigned array_length = (cbv_size + element_size - 1) / element_size;
 
 	// It seems like we will have to bitcast ourselves away from vec4 here after loading.
@@ -376,8 +376,8 @@ spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uin
 	unsigned bits = raw_width_to_bits(raw_decl.width);
 	spv::Id element_type = raw_decl.type == RawType::Float ? builder.makeFloatType(bits) : builder.makeUintType(bits);
 
-	if (raw_decl.vecsize != RawVecSize::V1)
-		element_type = builder.makeVectorType(element_type, raw_vecsize_to_vecsize(raw_decl.vecsize));
+	if (raw_decl.vecsize != 1)
+		element_type = builder.makeVectorType(element_type, raw_decl.vecsize);
 	spv::Id member_array_type = builder.makeArrayType(element_type, size_id, element_size);
 
 	builder.addDecoration(member_array_type, spv::DecorationArrayStride, element_size);
@@ -412,7 +412,7 @@ spv::Id Converter::Impl::create_raw_ssbo_variable(const RawDeclaration &raw_decl
 	spv::Id type_id = build_ssbo_runtime_array_type(*this,
 	                                                raw_decl.type,
 	                                                raw_width_to_bits(raw_decl.width),
-	                                                raw_vecsize_to_vecsize(raw_decl.vecsize),
+	                                                raw_decl.vecsize,
 	                                                range_size, name + "SSBO");
 
 	if (raw_decl.width == RawWidth::B16)
@@ -525,7 +525,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				if (info.offsets)
 					type_id = build_ssbo_runtime_array_type(*this, raw_type, 32, 2, 1, "SSBO_Offsets");
 				else
-					type_id = build_ssbo_runtime_array_type(*this, raw_type, bits, raw_vecsize_to_vecsize(info.raw_vecsize),
+					type_id = build_ssbo_runtime_array_type(*this, raw_type, bits, info.raw_vecsize,
 					                                        ~0u, "SSBO");
 				storage = spv::StorageClassStorageBuffer;
 				if (bits == 16)
@@ -606,7 +606,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				RawType raw_type = raw_component_type_to_type(info.component);
 				unsigned bits = raw_component_type_to_bits(info.component);
 
-				type_id = build_ssbo_runtime_array_type(*this, raw_type, bits, raw_vecsize_to_vecsize(info.raw_vecsize),
+				type_id = build_ssbo_runtime_array_type(*this, raw_type, bits, info.raw_vecsize,
 				                                        ~0u, "SSBO");
 				storage = spv::StorageClassStorageBuffer;
 				if (bits == 16)
@@ -649,7 +649,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			RawType raw_type = raw_component_type_to_type(info.component);
 			unsigned bits = raw_component_type_to_bits(info.component);
 
-			unsigned vecsize = raw_vecsize_to_vecsize(info.raw_vecsize);
+			unsigned vecsize = info.raw_vecsize;
 			type_id = raw_type == RawType::Float ? builder().makeFloatType(bits) : builder().makeUintType(bits);
 			if (vecsize > 1)
 				type_id = builder().makeVectorType(type_id, vecsize);
@@ -712,7 +712,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 			case DXIL::ResourceKind::RawBuffer:
 				name += "_ByteAddressBuffer";
 				name += "_vec";
-				name += std::to_string(raw_vecsize_to_vecsize(info.raw_vecsize)).c_str();
+				name += std::to_string(info.raw_vecsize).c_str();
 				builder().addName(builder().getContainedTypeId(type_id), (name + "_Block").c_str());
 				break;
 
@@ -720,7 +720,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				name += "_StructuredBuffer_";
 				name += std::to_string(info.debug.stride).c_str();
 				name += "_vec";
-				name += std::to_string(raw_vecsize_to_vecsize(info.raw_vecsize)).c_str();
+				name += std::to_string(info.raw_vecsize).c_str();
 				builder().addName(builder().getContainedTypeId(type_id), (name + "_Block").c_str());
 				break;
 
@@ -1064,14 +1064,13 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 			if (width == RawWidth::B16 && !execution_mode_meta.native_16bit_operations)
 				continue;
 
-			for (int vecsize_ = 0; vecsize_ < int(RawVecSize::Count); vecsize_++)
+			for (unsigned vecsize = 1; vecsize <= 4; vecsize++)
 			{
-				auto vecsize = RawVecSize(vecsize_);
 				auto type = RawType(type_);
 				// Non-native 16-bit SSBOs are declared as 32-bit, so avoid false aliases.
-				bool has_decl = tracking.raw_access_buffer_declarations[type_][width_][vecsize_];
+				bool has_decl = tracking.raw_access_buffer_declarations[type_][width_][vecsize - 1];
 				if (!has_decl && RawWidth(width) == RawWidth::B32 && !execution_mode_meta.native_16bit_operations)
-					has_decl = tracking.raw_access_buffer_declarations[type_][unsigned(RawWidth::B16)][vecsize_];
+					has_decl = tracking.raw_access_buffer_declarations[type_][unsigned(RawWidth::B16)][vecsize - 1];
 
 				if (has_decl)
 				{
@@ -1119,11 +1118,11 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 
 	// If the SSBO is never actually accessed (UAV counters for example), fudge the default type.
 	if (descriptor_type == VulkanDescriptorType::SSBO && aliased_access.raw_declarations.empty())
-		aliased_access.raw_declarations.push_back({ RawType::Integer, RawWidth::B32, RawVecSize::V1 });
+		aliased_access.raw_declarations.push_back({ RawType::Integer, RawWidth::B32, 1 });
 
 	// If the CBV is never actually accessed, fudge the default legacy CBV type.
 	if (descriptor_type == VulkanDescriptorType::UBO && aliased_access.raw_declarations.empty())
-		aliased_access.raw_declarations.push_back({ RawType::Float, RawWidth::B32, RawVecSize::V4 });
+		aliased_access.raw_declarations.push_back({ RawType::Float, RawWidth::B32, 4 });
 
 	// Safeguard against unused variables where we never end up setting any primary component type.
 	if ((descriptor_type == VulkanDescriptorType::SSBO ||

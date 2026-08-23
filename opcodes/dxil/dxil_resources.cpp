@@ -1443,7 +1443,7 @@ static spv::Id build_load_buffer_offset(Converter::Impl &impl, Converter::Impl::
 		shift_op->add_id(offset_id);
 
 		unsigned ssbo_element_size =
-			raw_vecsize_to_vecsize(meta.raw_component_vecsize) *
+			meta.raw_component_vecsize *
 			raw_component_type_to_bits(meta.component_type) / 8;
 
 		unsigned shamt = 0;
@@ -2722,7 +2722,7 @@ bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetEle
 	else
 	{
 		RawType raw_type = elem_type->isIntegerTy() ? RawType::Integer : RawType::Float;
-		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, RawWidth::B32, RawVecSize::V1);
+		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, RawWidth::B32, 1);
 
 		Operation *access_chain_op = impl.allocate(
 		    spv::OpAccessChain, instruction, builder.makePointer(meta.storage, impl.get_type_id(elem_type)));
@@ -2793,7 +2793,7 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 		                   RawType::Integer : RawType::Float;
 
 		unsigned raw_bits = raw_width_to_bits(raw_width);
-		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, raw_width, RawVecSize::V1);
+		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, raw_width, 1);
 
 		spv::Id array_index_id = build_index_divider(impl, instruction->getOperand(2), addr_shift, 1, false);
 
@@ -2914,24 +2914,23 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 		spv::Id physical_type_id = 0;
 		get_physical_load_store_cast_info(impl, result_component_type, physical_type_id, value_cast_op);
 
-		RawVecSize alias_vecsize;
+		unsigned alias_vecsize;
 		RawWidth alias_width;
 		unsigned scalar_alignment = get_type_scalar_alignment(impl, result_component_type);
-		unsigned bits, vecsize;
 
 		if (scalar_alignment == 8)
 		{
 			alias_width = RawWidth::B64;
-			alias_vecsize = RawVecSize::V2;
+			alias_vecsize = 2;
 		}
 		else
 		{
 			alias_width = RawWidth::B32;
-			alias_vecsize = RawVecSize::V4;
+			alias_vecsize = 4;
 		}
 
-		bits = raw_width_to_bits(alias_width);
-		vecsize = raw_vecsize_to_vecsize(alias_vecsize);
+		unsigned bits = raw_width_to_bits(alias_width);
+		unsigned vecsize = alias_vecsize;
 
 		RawType raw_type = result_component_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
 		                   scalar_alignment == 8 ? RawType::Integer : RawType::Float;

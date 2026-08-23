@@ -106,11 +106,6 @@ static inline DXIL::ComponentType raw_width_to_component_type(RawType type, RawW
 	}
 }
 
-static inline unsigned raw_vecsize_to_vecsize(RawVecSize raw_vecsize)
-{
-	return unsigned(raw_vecsize) + 1;
-}
-
 static inline unsigned raw_component_type_to_bits(DXIL::ComponentType type)
 {
 	switch (type)
@@ -188,7 +183,7 @@ struct AccessTracking
 	bool has_atomic_64bit = false;
 	bool has_counter = false;
 	bool dynamically_indexed_cbv = false;
-	bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][unsigned(RawVecSize::Count)] = {};
+	bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][4] = {};
 };
 
 struct Converter::Impl
@@ -299,7 +294,7 @@ struct Converter::Impl
 	{
 		RawType type;
 		RawWidth width;
-		RawVecSize vecsize;
+		unsigned vecsize;
 	};
 
 	UnorderedMap<uint32_t, AccessTracking> cbv_access_tracking;
@@ -515,7 +510,7 @@ struct Converter::Impl
 	{
 		DXIL::ResourceKind kind;
 		DXIL::ComponentType component_type;
-		RawVecSize raw_component_vecsize;
+		unsigned raw_component_vecsize;
 		unsigned stride;
 
 		spv::Id var_id;
@@ -880,7 +875,7 @@ struct Converter::Impl
 	{
 		DXIL::ResourceType type;
 		DXIL::ComponentType component;
-		RawVecSize raw_vecsize;
+		unsigned raw_vecsize = 1;
 		DXIL::ResourceKind kind;
 		spv::ImageFormat format;
 		VulkanDescriptorType descriptor_type;
@@ -979,7 +974,7 @@ struct Converter::Impl
 		bool requires_alias_decoration = false;
 		bool override_primary_component_types = false;
 		DXIL::ComponentType primary_component_type = DXIL::ComponentType::Invalid;
-		RawVecSize primary_raw_vecsize = RawVecSize::V1;
+		unsigned primary_raw_vecsize = 1;
 	};
 	bool analyze_aliased_access(const AccessTracking &tracking,
 	                            VulkanDescriptorType descriptor_type,

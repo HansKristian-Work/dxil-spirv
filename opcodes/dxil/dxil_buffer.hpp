@@ -31,7 +31,7 @@ namespace dxil_spv
 struct BufferAccessInfo
 {
 	spv::Id index_id;
-	RawVecSize raw_vec_size;
+	unsigned raw_vec_size;
 };
 
 bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector);
@@ -77,14 +77,14 @@ bool raw_access_structured_can_vectorize(Converter::Impl &impl, const llvm::Type
                                          const llvm::Value *byte_offset,
                                          unsigned vecsize);
 
-RawVecSize raw_access_byte_address_vectorize(Converter::Impl &impl, const llvm::Type *type,
-                                             const llvm::Value *byte_offset, uint32_t mask);
+unsigned raw_access_byte_address_vectorize(Converter::Impl &impl, const llvm::Type *type,
+                                           const llvm::Value *byte_offset, uint32_t mask);
 
-RawVecSize raw_access_structured_vectorize(Converter::Impl &impl, const llvm::Type *type,
-                                           const llvm::Value *index,
-                                           unsigned stride,
-                                           const llvm::Value *byte_offset,
-                                           uint32_t mask);
+unsigned raw_access_structured_vectorize(Converter::Impl &impl, const llvm::Type *type,
+                                         const llvm::Value *index,
+                                         unsigned stride,
+                                         const llvm::Value *byte_offset,
+                                         uint32_t mask);
 
 void emit_buffer_synchronization_validation(Converter::Impl &impl, const llvm::CallInst *instruction,
                                             BDAOperation bda_operation, bool is_vector);
