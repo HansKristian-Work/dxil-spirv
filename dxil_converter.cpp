@@ -4372,11 +4372,7 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 	{
 		auto *vec_type = llvm::cast<llvm::VectorType>(type);
 		unsigned count = vec_type->getVectorNumElements();
-		if (count < 2 || count > 4)
-		{
-			LOGE("Long vector is not supported.\n");
-			std::terminate();
-		}
+		assert(count >= 1 && count <= 1024);
 		return builder.makeVectorType(get_type_id(vec_type->getElementType()), count);
 	}
 
@@ -5898,6 +5894,7 @@ spv::Id Converter::Impl::build_vector(spv::Id element_type, const spv::Id *eleme
 	auto &builder = spirv_module.get_builder();
 
 	Operation *op = allocate(spv::OpCompositeConstruct, builder.makeVectorType(element_type, count));
+	op->reserve_arguments(count);
 	for (unsigned i = 0; i < count; i++)
 		op->add_id(elements[i]);
 
@@ -5916,13 +5913,9 @@ spv::Id Converter::Impl::build_constant_vector(spv::Id element_type, const spv::
 
 spv::Id Converter::Impl::build_splat_constant_vector(spv::Id element_type, spv::Id value, unsigned count)
 {
-	// TODO: Add support for long vector.
-	assert(count >= 2 && count <= 4);
-
-	spv::Id ids[4];
-	for (unsigned i = 0; i < count; i++)
-		ids[i] = value;
-	return build_constant_vector(element_type, ids, count);
+	assert(count >= 1 && count <= 1024);
+	Vector<spv::Id> ids(count, value);
+	return build_constant_vector(element_type, ids.data(), count);
 }
 
 spv::Id Converter::Impl::build_offset(spv::Id value, unsigned offset)
