@@ -683,7 +683,7 @@ void CFGStructurizer::flatten_subgroup_shuffles()
 				{
 					// Only allow loads if it's loading from plain OpVariables.
 					// Hoisting a buffer read is not acceptable.
-					if (!module.get_builder().hasDecoration(op->arguments[0], spv::DecorationBuiltIn))
+					if (!module.get_builder().hasDecoration(op->argument(0), spv::DecorationBuiltIn))
 					{
 						has_dubious_shuffle = false;
 						break;
@@ -977,12 +977,12 @@ void CFGStructurizer::sink_ssa_constructs_run(bool dry_run)
 			         !SPIRVModule::opcode_has_side_effect_and_result(op->op))
 			{
 				// We cannot sink any opcode which is control dependent, or has side effects.
-				for (uint32_t i = 0; i < op->num_arguments; i++)
+				for (uint32_t i = 0; i < op->num_arguments(); i++)
 				{
-					if ((op->literal_mask & (1u << i)) != 0)
+					if (op->argument_is_literal(i))
 						continue;
 
-					spv::Id consumed_id = op->arguments[i];
+					spv::Id consumed_id = op->argument(i);
 					if (std::find(sinkable_ops.begin(), sinkable_ops.end(), consumed_id) != sinkable_ops.end())
 					{
 						sinkable_ops.push_back(op->id);
@@ -1121,9 +1121,9 @@ void CFGStructurizer::sink_ssa_constructs_run(bool dry_run)
 			}
 
 			// Mark uses after we have sunk the instruction. This allows us to sink a chain of SSA instructions.
-			for (uint32_t j = 0; j < op->num_arguments; j++)
-				if ((op->literal_mask & (1u << j)) == 0)
-					consume_id(op->arguments[j], target_block);
+			for (uint32_t j = 0; j < op->num_arguments(); j++)
+				if (!op->argument_is_literal(j))
+					consume_id(op->argument(j), target_block);
 		}
 	}
 
@@ -1169,9 +1169,9 @@ void CFGStructurizer::remove_unused_ssa()
 				used_ids.insert(incoming.id);
 
 		for (auto *op : node->ir.operations)
-			for (unsigned i = 0; i < op->num_arguments; i++)
-				if ((op->literal_mask & (1u << i)) == 0)
-					used_ids.insert(op->arguments[i]);
+			for (unsigned i = 0; i < op->num_arguments(); i++)
+				if (!op->argument_is_literal(i))
+					used_ids.insert(op->argument(i));
 
 		if (node->ir.terminator.conditional_id)
 			used_ids.insert(node->ir.terminator.conditional_id);
@@ -1646,12 +1646,13 @@ Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, sp
 	else
 		duplicated_op = module.allocate_op(op->op);
 
-	for (unsigned i = 0; i < op->num_arguments; i++)
+	duplicated_op->reserve_arguments(op->num_arguments());
+	for (unsigned i = 0; i < op->num_arguments(); i++)
 	{
-		if (op->literal_mask & (1u << i))
-			duplicated_op->add_literal(op->arguments[i]);
+		if (op->argument_is_literal(i))
+			duplicated_op->add_literal(op->argument(i));
 		else
-			duplicated_op->add_id(get_remapped_id_for_duplicated_block(op->arguments[i], id_remap));
+			duplicated_op->add_id(get_remapped_id_for_duplicated_block(op->argument(i), id_remap));
 	}
 
 	if (op->id)
@@ -2013,11 +2014,11 @@ static void rewrite_consumed_ids(IRBlock &ir, spv::Id from, spv::Id to)
 {
 	for (auto *op : ir.operations)
 	{
-		for (unsigned i = 0; i < op->num_arguments; i++)
+		for (unsigned i = 0; i < op->num_arguments(); i++)
 		{
-			if ((op->literal_mask & (1u << i)) == 0)
-				if (op->arguments[i] == from)
-					op->arguments[i] = to;
+			if (!op->argument_is_literal(i))
+				if (op->argument(i) == from)
+					op->set_argument(i, to);
 		}
 	}
 
@@ -2112,10 +2113,9 @@ void CFGStructurizer::fixup_broken_value_dominance()
 	{
 		for (auto *op : node->ir.operations)
 		{
-			auto literal_mask = op->literal_mask;
-			for (unsigned i = 0; i < op->num_arguments; i++)
-				if (((1u << i) & literal_mask) == 0)
-					mark_node_value_access(node, op->arguments[i]);
+			for (unsigned i = 0; i < op->num_arguments(); i++)
+				if (!op->argument_is_literal(i))
+					mark_node_value_access(node, op->argument(i));
 
 			if (op->op == spv::OpLoad && type_class_is_opaque(module.get_builder().getTypeClass(op->type_id)))
 				variable_pointer_like_operations[0].push_back(*op);
@@ -2154,12 +2154,10 @@ void CFGStructurizer::fixup_broken_value_dominance()
 							  return a->forward_post_visit_order < b->forward_post_visit_order;
 						  });
 
-				auto literal_mask = variable_op.literal_mask;
-
-				for (unsigned i = 0; i < variable_op.num_arguments; i++)
-					if (((1u << i) & literal_mask) == 0)
+				for (unsigned i = 0; i < variable_op.num_arguments(); i++)
+					if (!variable_op.argument_is_literal(i))
 						for (auto *non_local_node : local_consumers_sorted)
-							mark_node_value_access(non_local_node, variable_op.arguments[i]);
+							mark_node_value_access(non_local_node, variable_op.argument(i));
 
 				for (auto *non_local_node : local_consumers_sorted)
 				{
