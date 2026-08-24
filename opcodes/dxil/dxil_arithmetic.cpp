@@ -1261,9 +1261,9 @@ bool emit_msad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 bool emit_bit_reverse_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
-	auto int_width = instruction->getType()->getIntegerBitWidth();
+	auto int_width = instruction->getType()->getScalarType()->getIntegerBitWidth();
 
-	if (int_width == 32)
+	if (!is_legacy_shader_model(impl) || int_width == 32)
 	{
 		auto *op = impl.allocate(spv::OpBitReverse, instruction);
 		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
@@ -1328,9 +1328,9 @@ bool emit_bit_count_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 {
 	// Vulkan only allows 32-bit types here for whatever reason ...
 	auto &builder = impl.builder();
-	auto int_width = instruction->getOperand(1)->getType()->getIntegerBitWidth();
+	auto int_width = instruction->getOperand(1)->getType()->getScalarType()->getIntegerBitWidth();
 
-	if (int_width == 32)
+	if (!is_legacy_shader_model(impl) || int_width == 32)
 	{
 		auto *op = impl.allocate(spv::OpBitCount, instruction);
 		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
