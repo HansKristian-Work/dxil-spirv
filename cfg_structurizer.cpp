@@ -7809,14 +7809,17 @@ bool CFGStructurizer::split_merge_blocks(CFGNode *node)
 				else if (target_header->loop_merge_block)
 					rewrite_to = target_header->loop_merge_block;
 
-				if (rewrite_to)
+				if (node != rewrite_to)
 				{
-					traverse_dominated_blocks_and_rewrite_branch(current_node, node, rewrite_to);
-					if (target_header == node->headers[0])
-						has_rewrites_to_outer_ladder = true;
+					if (rewrite_to)
+					{
+						traverse_dominated_blocks_and_rewrite_branch(current_node, node, rewrite_to);
+						if (target_header == node->headers[0])
+							has_rewrites_to_outer_ladder = true;
+					}
+					else
+						LOGW("No loop merge block?\n");
 				}
-				else
-					LOGW("No loop merge block?\n");
 			}
 			else if (full_break_target)
 			{
