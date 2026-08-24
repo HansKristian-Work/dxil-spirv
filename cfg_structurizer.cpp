@@ -5650,20 +5650,16 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 			if (!header.can_loop_merge_to(&node))
 			{
 				// This is an escape we dominate, but this could also be a case where we break
-				// to a continue construct in the outer loop which is not reachable through back traversal.
-				// This will confuse loop analysis, since this kind of double continue will not resolve properly.
-				// In this case we need to rendezvous at this block with a ladder to avoid
-				// double-continue.
+				// to a continue construct in the outer loop.
+				// We may need to treat this path as the true merge path for the loop
+				// since we will have no easy way to branch back into this continue once we've merged in the
+				// other directions.
+				// There are many situations where this analysis is a false positive,
+				// which will be rewritten to a normal Escape instead.
 
-				auto *outer_infinite_loop = get_innermost_loop_header_for(entry_block,
-				                                                          innermost_loop_header->immediate_dominator);
-				if (outer_infinite_loop && outer_infinite_loop->pred_back_edge &&
-				    outer_infinite_loop->pred_back_edge->succ.empty() &&
-				    outer_infinite_loop->pred_back_edge->fake_succ.size() != 1 &&
-				    outer_infinite_loop->pred_back_edge->post_dominates(&node))
-				{
-					return LoopExitType::MergeToInfiniteLoop;
-				}
+				auto *outer_loop = get_innermost_loop_header_for(entry_block, innermost_loop_header->immediate_dominator);
+				if (outer_loop && outer_loop->pred_back_edge && outer_loop->pred_back_edge->post_dominates(&node))
+					return LoopExitType::MergeToOuterBackEdge;
 				else
 					return LoopExitType::Escape;
 			}
@@ -6378,7 +6374,7 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 			result.non_dominated_exit.push_back(loop_exit);
 			break;
 
-		case LoopExitType::MergeToInfiniteLoop:
+		case LoopExitType::MergeToOuterBackEdge:
 			result.dominated_continue_exit.push_back(loop_exit);
 			break;
 		}
@@ -6387,13 +6383,45 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 	// A dominated continue exit should not be considered as such if it can reach other "normal" exits.
 	// In this case, it's just a break.
 	auto continue_itr = result.dominated_continue_exit.begin();
+
+	auto *outer_loop_back_edge = get_innermost_loop_header_for(entry_block, node->immediate_dominator);
+	if (outer_loop_back_edge && outer_loop_back_edge->pred_back_edge)
+		outer_loop_back_edge = outer_loop_back_edge->pred_back_edge;
+	else
+		outer_loop_back_edge = nullptr;
+
 	while (continue_itr != result.dominated_continue_exit.end())
 	{
 		auto *candidate = *continue_itr;
 		bool found_candidate = false;
+		assert(outer_loop_back_edge);
+
+		const auto takes_convergent_path = [this, outer_loop_back_edge](const CFGNode *candidate, const CFGNode *exit_node)
+		{
+			// Before accepting a continue exit, we must determine that it's not taking the same paths
+			// as the normal exits.
+			if (query_reachability(*candidate, *exit_node))
+				return true;
+
+			// Sharing post dominator is an easy proof of convergence.
+			if (candidate->immediate_post_dominator == exit_node->immediate_post_dominator)
+				return true;
+
+			// Sharing DF is another one.
+			for (auto *df : candidate->dominance_frontier)
+				if (has_element(exit_node->dominance_frontier, df))
+					return true;
+
+			// If an exit can reach the same outer loop back edge, demote the continue.
+			if (query_reachability(*exit_node, *outer_loop_back_edge))
+				return true;
+
+			return false;
+		};
+
 		for (auto *dominated : result.dominated_exit)
 		{
-			if (query_reachability(*candidate, *dominated))
+			if (takes_convergent_path(candidate, dominated))
 			{
 				result.non_dominated_exit.push_back(candidate);
 				continue_itr = result.dominated_continue_exit.erase(continue_itr);
@@ -6406,7 +6434,7 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 		{
 			for (auto *non_dominated : result.non_dominated_exit)
 			{
-				if (query_reachability(*candidate, *non_dominated))
+				if (takes_convergent_path(candidate, non_dominated))
 				{
 					result.non_dominated_exit.push_back(candidate);
 					continue_itr = result.dominated_continue_exit.erase(continue_itr);

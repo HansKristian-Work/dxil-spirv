@@ -194,7 +194,7 @@ private:
 		Exit,
 		Merge,
 		Escape,
-		MergeToInfiniteLoop,
+		MergeToOuterBackEdge,
 		InnerLoopExit,
 		InnerLoopMerge,
 		InnerLoopFalsePositive
