@@ -5659,9 +5659,23 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 
 				auto *outer_loop = get_innermost_loop_header_for(entry_block, innermost_loop_header->immediate_dominator);
 				if (outer_loop && outer_loop->pred_back_edge && outer_loop->pred_back_edge->post_dominates(&node))
-					return LoopExitType::MergeToOuterBackEdge;
+				{
+					if (node.pred_back_edge && !node.pred_back_edge->succ.empty() &&
+					    query_reachability(*node.pred_back_edge, *outer_loop->pred_back_edge))
+					{
+						// Detect this false positive early. We're branching to an outer continue,
+						// but so is the loop in general, so treat it as a normal Escape.
+						return LoopExitType::Escape;
+					}
+					else
+					{
+						return LoopExitType::MergeToOuterBackEdge;
+					}
+				}
 				else
+				{
 					return LoopExitType::Escape;
+				}
 			}
 
 			return LoopExitType::Merge;
