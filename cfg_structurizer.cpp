@@ -1388,6 +1388,15 @@ bool CFGStructurizer::run()
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
 
+	while (rewrite_complex_loop_header_switch_constructs())
+	{
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".loop-header-switch-rewrite";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+	}
+
 	while (rewrite_transposed_loops())
 	{
 		if (!graphviz_path.empty())
@@ -5391,6 +5400,43 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 	return modified_cfg ? SwitchProgressMode::SimpleModify : SwitchProgressMode::Done;
 }
 
+bool CFGStructurizer::rewrite_complex_loop_header_switch_constructs()
+{
+	for (auto *node : forward_post_visit_order)
+	{
+		// Important to process inside-out.
+		if (node->ir.terminator.type != Terminator::Type::Switch || !node->pred_back_edge)
+			continue;
+
+		auto *merge = find_common_post_dominator(node->succ);
+		auto *natural_merge = find_natural_switch_merge_block(node, merge);
+		if (!merge)
+			merge = natural_merge;
+
+		if (merge && natural_merge && merge != natural_merge && !node->dominates(merge) && node->dominates(natural_merge))
+		{
+			CFGNode *inner_merge = merge;
+			for (auto *frontier_node : natural_merge->dominance_frontier)
+			{
+				if (node->dominates(frontier_node) && merge->post_dominates(frontier_node) &&
+					frontier_node->forward_post_visit_order > inner_merge->forward_post_visit_order)
+				{
+					inner_merge = frontier_node;
+				}
+			}
+
+			if (merge == inner_merge)
+			{
+				transpose_code_path_through_ladder_block(node, natural_merge, inner_merge);
+				recompute_cfg();
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool CFGStructurizer::merge_candidate_is_inside_continue_construct(const CFGNode *node) const
 {
 	// If we've reached the continue construct, we cannot merge away from that construct.
@@ -5953,7 +5999,7 @@ void CFGStructurizer::rewrite_ladder_conditional_branch_from_incoming_blocks(
 CFGNode *CFGStructurizer::transpose_code_path_through_ladder_block(
     CFGNode *header, CFGNode *merge, CFGNode *path)
 {
-	assert(header->dominates(merge) && header->dominates(path));
+	assert(header->dominates(merge) && (header->dominates(path) || has_element(header->dominance_frontier, path)));
 	assert(query_reachability(*merge, *path));
 	assert(!merge->dominates(path));
 	assert(header != merge);

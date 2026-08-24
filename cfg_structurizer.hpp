@@ -141,6 +141,7 @@ private:
 
 	enum class SwitchProgressMode { Done, SimpleModify, IterativeModify };
 	SwitchProgressMode process_switch_blocks(unsigned pass);
+	bool rewrite_complex_loop_header_switch_constructs();
 
 	void hoist_switch_branches_to_frontier(CFGNode *node, CFGNode *merge, CFGNode *frontier);
 	Operation *build_switch_case_equal_check(const CFGNode *header, CFGNode *insert_node,
