@@ -7896,6 +7896,13 @@ bool CFGStructurizer::structurize(unsigned pass)
 	{
 		// For complex rewrites, we damage the CFG, so need to start over every iteration.
 		recompute_cfg();
+
+		if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
+		{
+			auto graphviz_path = env + std::string(".switch-iterate");
+			log_cfg_graphviz(graphviz_path.c_str());
+		}
+
 		switch_mode = process_switch_blocks(pass);
 	}
 
