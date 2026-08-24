@@ -5202,7 +5202,7 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 				// Relying on loop ladder system might not be possible in all situations.
 				// It's possible that the switch block is also a loop header for example.
 				// Need to transpose the code with a ladder to avoid impossible problems later.
-				if (node->pred_back_edge)
+				if (node->pred_back_edge && node->dominates(inner_merge))
 					natural_merge = transpose_code_path_through_ladder_block(node, natural_merge, inner_merge);
 			}
 			else if (merge && !node->dominates(merge))
