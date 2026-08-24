@@ -1521,6 +1521,14 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			if (resource_kind == DXIL::ResourceKind::RTAccelerationStructure)
 			{
 				type_id = builder.makeAccelerationStructureType();
+
+				if (range_size != 1)
+				{
+					if (range_size == ~0u)
+						type_id = builder.makeRuntimeArray(type_id);
+					else
+						type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
+				}
 			}
 			else if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
 			{

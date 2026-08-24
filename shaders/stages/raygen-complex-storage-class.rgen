@@ -10,6 +10,7 @@ struct Payload
 };
 
 RaytracingAccelerationStructure AS : register(t30, space40);
+RaytracingAccelerationStructure AS2[4] : register(t31, space40);
 RWTexture2D<float4> IMG : register(u10, space20);
 
 [shader("raygeneration")]
@@ -23,8 +24,8 @@ void RayGen()
 
 	Payload p;
 	TraceRay(AS, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p);
-	TraceRay(AS, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p.a);
-	TraceRay(AS, RAY_FLAG_NONE, 0, 0, 0, 0, ray, p.b);
+	TraceRay(AS2[0], RAY_FLAG_NONE, 0, 0, 0, 0, ray, p.a);
+	TraceRay(AS2[1], RAY_FLAG_NONE, 0, 0, 0, 0, ray, p.b);
 
 	CallShader(0, p);
 	CallShader(0, p.a);
