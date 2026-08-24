@@ -74,6 +74,7 @@ static bool validate_spirv(const void *code, size_t size)
 	});
 	spvtools::ValidatorOptions opts;
 	opts.SetScalarBlockLayout(true);
+	opts.SetAllowVulkan32BitBitwise(true);
 	return tools.Validate(static_cast<const uint32_t *>(code), size / sizeof(uint32_t), opts) ||
 	       (expected_failure && !unexpected_failure);
 }
