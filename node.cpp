@@ -566,8 +566,7 @@ void CFGNode::fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to)
 	// to keep splitting merge scopes in innermost scopes.
 	if (std::find(from->headers.begin(), from->headers.end(), this) != from->headers.end())
 	{
-		if (std::find(to->headers.begin(), to->headers.end(), this) == to->headers.end())
-			to->headers.push_back(this);
+		to->add_unique_header(this);
 		if (selection_merge_block == from)
 			selection_merge_block = to;
 		if (loop_merge_block == from)

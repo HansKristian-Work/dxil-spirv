@@ -3169,7 +3169,7 @@ void CFGStructurizer::visit(CFGNode &entry)
 
 void CFGStructurizer::merge_to_succ(CFGNode *node, unsigned index)
 {
-	node->succ[index]->headers.push_back(node);
+	node->succ[index]->add_unique_header(node);
 	node->selection_merge_block = node->succ[index];
 	node->merge = MergeType::Selection;
 	//LOGI("Fixup selection merge %s -> %s\n", node->name.c_str(), node->selection_merge_block->name.c_str());
@@ -3718,7 +3718,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 					assert(merge);
 					node->selection_merge_block = merge;
 					node->merge = MergeType::Selection;
-					merge->headers.push_back(node);
+					merge->add_unique_header(node);
 					//LOGI("Merging %s -> %s\n", node->name.c_str(), node->selection_merge_block->name.c_str());
 				}
 			}
@@ -3816,7 +3816,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				{
 					node->selection_merge_block = merge;
 					node->merge = MergeType::Selection;
-					merge->headers.push_back(node);
+					merge->add_unique_header(node);
 					//LOGI("Merging %s -> %s\n", node->name.c_str(), node->selection_merge_block->name.c_str());
 				}
 			}
@@ -3835,7 +3835,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				{
 					// We might have a trivial merge, yet the other branch direction
 					// is a breaking construct. We will have to split some blocks.
-					merge->headers.push_back(node);
+					merge->add_unique_header(node);
 				}
 
 				auto *current_candidate = node->succ[trivial_merge_index];
@@ -4728,7 +4728,7 @@ void CFGStructurizer::split_merge_scopes()
 			idom->merge = MergeType::Selection;
 			idom->selection_merge_block = node;
 		}
-		node->headers.push_back(idom);
+		node->add_unique_header(idom);
 	}
 
 	for (auto *node : forward_post_visit_order)
@@ -5254,7 +5254,7 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 				switch_outer->merge = MergeType::Loop;
 				switch_outer->loop_merge_block = merge;
 				switch_outer->freeze_structured_analysis = true;
-				merge->headers.push_back(switch_outer);
+				merge->add_unique_header(switch_outer);
 
 				// Shouldn't be needed (I believe), but spirv-val is a bit temperamental when double breaking
 				// straight out of a switch block in some situations,
@@ -7091,7 +7091,7 @@ bool CFGStructurizer::find_loops(unsigned pass)
 			// just propagate the header information and be done with it.
 			if (node->merge == MergeType::Loop)
 			{
-				node->loop_merge_block->headers.push_back(node);
+				node->loop_merge_block->add_unique_header(node);
 				continue;
 			}
 		}
