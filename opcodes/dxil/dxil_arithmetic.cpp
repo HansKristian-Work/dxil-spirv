@@ -127,6 +127,14 @@ bool emit_isfinite_instruction(Converter::Impl &impl, const llvm::CallInst *inst
 	return true;
 }
 
+static bool is_legacy_shader_model(Converter::Impl &impl)
+{
+	auto &module = impl.bitcode_parser.get_module();
+	uint32_t sm_major = 0, sm_minor = 0;
+	Converter::Impl::get_shader_model(module, nullptr, &sm_major, &sm_minor);
+	return sm_major * 100 + sm_minor < 609;
+}
+
 spv::Id emit_native_bitscan(GLSLstd450 opcode, Converter::Impl &impl,
                             const llvm::Instruction *instruction, const llvm::Value *value)
 {
