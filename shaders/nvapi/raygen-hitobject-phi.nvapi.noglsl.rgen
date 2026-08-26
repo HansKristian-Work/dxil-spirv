@@ -1,0 +1,71 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+struct Payload
+{
+	uint value;
+};
+
+struct Results
+{
+	uint data;
+};
+
+RaytracingAccelerationStructure AS : register(t0);
+RWStructuredBuffer<Results> Buf : register(u0);
+
+[shader("raygeneration")]
+void RayGen()
+{
+	uint index = DispatchRaysIndex().x;
+	Results results = (Results)0;
+
+	Payload payload;
+	payload.value = 50;
+
+	RayDesc ray;
+	ray.Origin = float3(float(index), 0, 1);
+	ray.Direction = float3(0.0, float(index), -1.0);
+	ray.TMin = float(index);
+	ray.TMax = 10 + float(index);
+
+	// Test basic behavior for a nop or miss object.
+	// Hit objects are value types, it's valid to mix and match like this.
+	NvHitObject hit;
+
+	[branch]
+	if (index & 1)
+		hit = NvMakeMiss(1, ray);
+	else
+		hit = NvMakeNop();
+
+	[branch]
+	if (index & 2)
+		hit = NvMakeMiss(1, ray);
+
+	NvHitObject copy = hit;
+
+	NvInvokeHitObject(AS, hit, payload);
+	NvInvokeHitObject(AS, copy, payload);
+
+	NvHitObject traced = (NvHitObject)0;
+	bool useTraced = false;
+
+	[branch]
+	if (index & 4)
+	{
+		traced = NvTraceRayHitObject(AS, RAY_FLAG_NONE, 0xff, 0, 1, 0, ray, payload);
+		useTraced = traced.IsHit();
+	}
+
+	[branch]
+	if (!useTraced)
+		traced = NvTraceRayHitObject(AS, RAY_FLAG_FORCE_OPAQUE, 0xff, 0, 1, 1, ray, payload);
+
+	NvReorderThread(traced, index & 3, 2);
+	NvInvokeHitObject(AS, traced, payload);
+
+	results.data = payload.value;
+	Buf[index] = results;
+}
