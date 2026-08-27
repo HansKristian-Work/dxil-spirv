@@ -4915,6 +4915,51 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 		case_labels_can_be_candidate_frontier = true;
 	}
 
+	if (!candidate && !node->dominates(post_dominator))
+	{
+		const CFGNode *loop_header = nullptr;
+
+		// It's possible that we have a trivial case where all but one case labels hit continue paths.
+		// In this case we can just pick the non-continuing path as the natural merge.
+		for (auto &c : node->ir.terminator.cases)
+		{
+			// We can scan through to a continue block without hitting a frontier first.
+			auto *back_edge = scan_plain_continue_block(c.node);
+
+			if (!back_edge->succ_back_edge)
+			{
+				if (candidate)
+				{
+					// No unique candidate.
+					candidate = nullptr;
+					break;
+				}
+				else
+				{
+					candidate = c.node;
+				}
+			}
+			else
+			{
+				if (loop_header && loop_header != back_edge->succ_back_edge)
+				{
+					// No unique loop header.
+					loop_header = nullptr;
+					break;
+				}
+
+				loop_header = back_edge->succ_back_edge;
+			}
+		}
+
+		if (!loop_header)
+			candidate = nullptr;
+
+		// This is a good candidate.
+		if (candidate)
+			return candidate;
+	}
+
 	// We found a candidate, but there might be multiple candidates which are considered impossible.
 
 	// If two case labels merge execution before the candidate merge, we should consider that the natural merge,
