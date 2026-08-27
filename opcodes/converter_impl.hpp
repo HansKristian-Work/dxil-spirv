@@ -223,6 +223,8 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, spv::Id> value_map;
 	UnorderedMap<spv::Id, spv::Id> phi_incoming_rewrite;
 
+	Vector<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>> skip_phi_preds;
+
 	ConvertedFunction convert_entry_point();
 	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs, bool primary_code);
 	CFGNode *build_hull_passthrough_function(CFGNodePool &pool);
@@ -657,6 +659,7 @@ struct Converter::Impl
 	bool support_native_fp16_operations() const;
 
 	Vector<Operation *> *current_block = nullptr;
+	llvm::BasicBlock *current_bb = nullptr;
 	void add(Operation *op, bool is_rov = false);
 	Operation *allocate(spv::Op op);
 	Operation *allocate(spv::Op op, const llvm::Value *value);

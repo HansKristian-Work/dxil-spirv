@@ -6300,6 +6300,16 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 
 		for (unsigned i = 0; i < count; i++)
 		{
+			// If the pred has been removed out of existence, must skip it to not confuse phi fixup later.
+			if (std::find_if(skip_phi_preds.begin(), skip_phi_preds.end(),
+			                 [&](const std::pair<llvm::BasicBlock *, llvm::BasicBlock *> &candidate)
+			                 {
+				                 return candidate.first == instruction.getIncomingBlock(i) && candidate.second == current_bb;
+			                 }) != skip_phi_preds.end())
+			{
+				continue;
+			}
+
 			IncomingValue incoming = {};
 			auto bb_itr = bb_map.find(instruction.getIncomingBlock(i));
 
@@ -8444,6 +8454,8 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 				emit_write_instrumentation_invocation_id(node);
 		}
 
+		current_bb = bb;
+
 		auto sink_itr = bb_to_sinks.find(bb);
 		if (sink_itr != bb_to_sinks.end())
 		{
@@ -8470,6 +8482,8 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 				return {};
 			}
 		}
+
+		current_bb = nullptr;
 
 		ags.reset();
 		nvapi.reset();
@@ -8530,6 +8544,10 @@ CFGNode *Converter::Impl::convert_function(const Vector<llvm::BasicBlock *> &vis
 				{
 					node->ir.terminator.type = Terminator::Type::Branch;
 					node->ir.terminator.direct_block = bb_map[inst->getSuccessor(cond_value ? 0 : 1)]->node;
+
+					// Important to not emit phi inputs from these nodes, it will confuse phi insertion to see
+					// phi inputs that are post-dominated by other inputs.
+					skip_phi_preds.emplace_back(bb, inst->getSuccessor(cond_value ? 1 : 0));
 				}
 				else
 				{
