@@ -2531,6 +2531,16 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		{
 			frontier = nullptr;
 
+			const auto update_frontier = [&](CFGNode *candidate_frontier)
+			{
+				if (frontier == nullptr || candidate_frontier->forward_post_visit_order > frontier->forward_post_visit_order)
+				{
+					// Pick the earliest frontier in the CFG.
+					// We want to merge top to bottom.
+					frontier = candidate_frontier;
+				}
+			};
+
 			// We need some intermediate merge, so find a frontier node to work on.
 			for (auto &incoming : incoming_values)
 			{
@@ -2559,14 +2569,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 
 					// Only consider a frontier if we can reach node.block or its back edge from it.
 					if (query_reachability_through_back_edges(*candidate_frontier, *node.block))
-					{
-						if (frontier == nullptr || candidate_frontier->forward_post_visit_order > frontier->forward_post_visit_order)
-						{
-							// Pick the earliest frontier in the CFG.
-							// We want to merge top to bottom.
-							frontier = candidate_frontier;
-						}
-					}
+						update_frontier(candidate_frontier);
 				}
 			}
 
