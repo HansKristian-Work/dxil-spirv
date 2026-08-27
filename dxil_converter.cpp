@@ -6307,6 +6307,17 @@ bool Converter::Impl::emit_phi_instruction(CFGNode *block, const llvm::PHINode &
 			if (bb_itr != bb_map.end())
 			{
 				incoming.block = bb_itr->second->node;
+
+				// Avoid duplicates. Seems like LLVM can emit jank like this in some cases.
+				if (std::find_if(phi.incoming.begin(), phi.incoming.end(),
+				                 [&](const IncomingValue &existing)
+				                 {
+					                 return existing.block == incoming.block;
+				                 }) != phi.incoming.end())
+				{
+					continue;
+				}
+
 				auto *value = instruction.getIncomingValue(i);
 				incoming.id = get_id_for_value(value);
 				phi.incoming.push_back(incoming);
