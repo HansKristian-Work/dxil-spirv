@@ -344,6 +344,109 @@ static llvm::Value *get_bitwise_not_from_xor(llvm::Value *a, llvm::Value *b)
 }
 
 template <typename InstructionType>
+static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const InstructionType *instruction, spv::Op opcode)
+{
+	auto &builder = impl.builder();
+
+	// UDiv and UMod have special behaviour regarding division by 0: At the HLSL
+	// and LLVM IR level, division by 0 is undefined behaviour and compilers may
+	// optimize assuming that the divisor is non-zero. Any UDiv or URem in the
+	// IR itself however behaves like DXBC when 0 is encountered, i.e. the result
+	// is -1.
+	//
+	// In SPIR-V, UDiv and UMod by zero also constitute undefined behaviour, and
+	// at least Nvidia drivers will optimize. Any solution that ensures the
+	// divisor cannot be zero works, but since we have no easy way to insert control
+	// flow here, simply set the divisor to -1.
+	//
+	// This does explicitly *not* apply to the signed variants.
+	//
+	// See: https://github.com/microsoft/DirectXShaderCompiler/issues/3150
+	auto divisor = instruction->getOperand(1);
+
+	// No need to add any extra code for instructions that have a constant
+	// divisor that isn't zero
+	bool is_constant_divisor = llvm::isa<llvm::ConstantInt>(divisor) &&
+		instruction->getType()->getTypeID() != llvm::Type::TypeID::VectorTyID;
+
+	if (is_constant_divisor && llvm::cast<llvm::ConstantInt>(divisor)->getUniqueInteger().getZExtValue())
+	{
+		auto op = impl.allocate(opcode, instruction);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(op);
+		return op->id;
+	}
+
+	auto scalar_type = instruction->getType()->getScalarType();
+
+	spv::Id const_0;
+	spv::Id const_neg1;
+
+	switch (physical_integer_bit_width(scalar_type->getIntegerBitWidth()))
+	{
+	case 16:
+		const_0 = builder.makeUint16Constant(0u);
+		const_neg1 = builder.makeUint16Constant(0xffffu);
+		break;
+
+	case 32:
+		const_0 = builder.makeUintConstant(0u);
+		const_neg1 = builder.makeUintConstant(0xffffffffu);
+		break;
+
+	case 64:
+		const_0 = builder.makeUint64Constant(0ull);
+		const_neg1 = builder.makeUint64Constant(0xffffffffffffffffull);
+		break;
+
+	default:
+		return 0;
+	}
+
+	// Any constant divisor would be 0 here
+	if (is_constant_divisor)
+		return const_neg1;
+
+	spv::Id cond_type = builder.makeBoolType();
+
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		auto vector_size = instruction->getType()->getVectorNumElements();
+		cond_type = builder.makeVectorType(cond_type, vector_size);
+
+		const_0 = impl.build_splat_constant_vector(impl.get_type_id(scalar_type),
+																								const_0, vector_size);
+		const_neg1 = impl.build_splat_constant_vector(impl.get_type_id(scalar_type),
+																									const_neg1, vector_size);
+	}
+
+	spv::Id id0 = impl.get_id_for_value(instruction->getOperand(0));
+	spv::Id id1 = impl.get_id_for_value(instruction->getOperand(1));
+
+	auto *is_nonzero = impl.allocate(spv::OpINotEqual, cond_type);
+	is_nonzero->add_id(id1);
+	is_nonzero->add_id(const_0);
+	impl.add(is_nonzero);
+
+	auto type_id = impl.get_type_id(instruction->getType());
+
+	auto *divisor_select = impl.allocate(spv::OpSelect, type_id);
+	divisor_select->add_ids({ is_nonzero->id, id1, const_neg1 });
+	impl.add(divisor_select);
+
+	auto op = impl.allocate(opcode, type_id);
+	op->add_ids({ id0, divisor_select->id });
+	impl.add(op);
+
+	auto result_select = impl.allocate(spv::OpSelect, instruction);
+	result_select->add_ids({ is_nonzero->id, op->id, const_neg1 });
+	impl.add(result_select);
+
+	return result_select->id;
+}
+
+template <typename InstructionType>
 static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
 	bool signed_input = false;
@@ -420,9 +523,7 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::UDiv:
-		opcode = spv::OpUDiv;
-		is_width_sensitive = true;
-		break;
+		return emit_integer_division_instruction(impl, instruction, spv::OpUDiv);
 
 	case llvm::BinaryOperator::BinaryOps::Shl:
 		opcode = spv::OpShiftLeftLogical;
@@ -452,10 +553,7 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::URem:
-		// Is this correct? There is no URem.
-		opcode = spv::OpUMod;
-		is_width_sensitive = true;
-		break;
+		return emit_integer_division_instruction(impl, instruction, spv::OpUMod);
 
 	case llvm::BinaryOperator::BinaryOps::Xor:
 		// Logical not in LLVM IR is encoded as XOR i1 against true.
