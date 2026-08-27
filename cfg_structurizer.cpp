@@ -2423,6 +2423,30 @@ void CFGStructurizer::fixup_phi(PHINode &node)
 	}
 }
 
+CFGNode *CFGStructurizer::find_linear_phi_control_flow_frontier(
+	const IncomingValue &incoming, const Vector<IncomingValue> &incoming_values, const CFGNode *end_node)
+{
+	if (incoming.block->pred_back_edge)
+		return nullptr;
+
+	auto itr = std::find_if(
+		incoming_values.begin(), incoming_values.end(),
+		[&](const IncomingValue &inc)
+		{
+			// Any block that is a loop header is ignored. It's expected to dominate other blocks.
+			// If two nodes fall on opposite ends of a loop header w.r.t reachability, then ignore that case.
+			return incoming.block != inc.block && !inc.block->pred_back_edge &&
+				   incoming.block->dominates(inc.block) &&
+				   inc.block->post_dominates(incoming.block) &&
+				   query_reachability(*end_node, *inc.block) == query_reachability(*end_node, *incoming.block);
+		});
+
+	if (itr != incoming_values.end())
+		return itr->block;
+	else
+		return nullptr;
+}
+
 bool CFGStructurizer::can_complete_phi_insertion(const PHI &phi, const CFGNode *block)
 {
 	// If all incoming values have at least one pred block they dominate, we can merge the final PHI.
@@ -2438,6 +2462,13 @@ bool CFGStructurizer::can_complete_phi_insertion(const PHI &phi, const CFGNode *
 			return false;
 		}
 	}
+
+	// We cannot have a case where we have a dominance + post-dominance relationship between blocks.
+	// We'll need to insert a PHI selection fixup to resolve this.
+	// This can happen if CFG was rewritten via trivial ladder blocks.
+	for (auto &incoming : incoming_values)
+		if (find_linear_phi_control_flow_frontier(incoming, incoming_values, block))
+			return false;
 
 	return true;
 }
@@ -2573,6 +2604,14 @@ void CFGStructurizer::insert_phi(PHINode &node)
 				}
 			}
 
+			if (!frontier)
+			{
+				// Find false positives where we need to OpSelect in PHI nodes instead.
+				for (auto &incoming : incoming_values)
+					if (auto *candidate_frontier = find_linear_phi_control_flow_frontier(incoming, incoming_values, node.block))
+						update_frontier(candidate_frontier);
+			}
+
 			if (frontier)
 				placed_frontiers.insert(frontier);
 		}
@@ -2688,11 +2727,6 @@ void CFGStructurizer::insert_phi(PHINode &node)
 		for (size_t i = 0; i < num_alive_incoming_values; )
 		{
 			auto *incoming_block = incoming_values[i].block;
-
-			// This is fundamentally ambiguous and should never happen.
-			if (incoming_block == frontier)
-				LOGE("Invalid PHI collapse detected!\n");
-			assert(incoming_block != frontier);
 
 			if (!exists_path_in_cfg_without_intermediate_node(incoming_block, node.block, frontier))
 			{

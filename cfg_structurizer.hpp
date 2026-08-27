@@ -246,7 +246,9 @@ private:
 	void log_cfg(const char *tag) const;
 	void log_cfg_graphviz(const char *path) const;
 
-	static bool can_complete_phi_insertion(const PHI &phi, const CFGNode *end_node);
+	bool can_complete_phi_insertion(const PHI &phi, const CFGNode *end_node);
+	CFGNode *find_linear_phi_control_flow_frontier(
+		const IncomingValue &incoming, const Vector<IncomingValue> &incoming_values, const CFGNode *end_node);
 	bool query_reachability_through_back_edges(const CFGNode &from, const CFGNode &to) const;
 	bool query_reachability_split_loop_header(const CFGNode &from, const CFGNode &to, const CFGNode &end_node) const;
 	bool phi_frontier_makes_forward_progress(const PHI &phi, const CFGNode *frontier,
