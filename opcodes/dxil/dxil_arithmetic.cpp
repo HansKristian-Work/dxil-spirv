@@ -496,20 +496,26 @@ bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	spv::Id id0 = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id id1 = impl.get_id_for_value(instruction->getOperand(2));
 
+	auto *is_zero_divider = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+	is_zero_divider->add_id(id1);
+	is_zero_divider->add_id(builder.makeUintConstant(0));
+	impl.add(is_zero_divider);
+
+	auto *divisor_select = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+	divisor_select->add_id(is_zero_divider->id);
+	divisor_select->add_id(builder.makeUintConstant(UINT32_MAX));
+	divisor_select->add_id(id1);
+	impl.add(divisor_select);
+
 	auto *div_op = impl.allocate(spv::OpUDiv, builder.makeUintType(32));
 	div_op->add_id(id0);
-	div_op->add_id(id1);
+	div_op->add_id(divisor_select->id);
 	impl.add(div_op);
 
 	auto *mod_op = impl.allocate(spv::OpUMod, builder.makeUintType(32));
 	mod_op->add_id(id0);
 	mod_op->add_id(id1);
 	impl.add(mod_op);
-
-	auto *is_zero_divider = impl.allocate(spv::OpIEqual, builder.makeBoolType());
-	is_zero_divider->add_id(id1);
-	is_zero_divider->add_id(builder.makeUintConstant(0));
-	impl.add(is_zero_divider);
 
 	auto *quot_select = impl.allocate(spv::OpSelect, builder.makeUintType(32));
 	quot_select->add_id(is_zero_divider->id);
