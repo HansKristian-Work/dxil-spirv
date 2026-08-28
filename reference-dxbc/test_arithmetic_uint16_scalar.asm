@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 102
+; Bound: 127
 ; Schema: 0
                OpCapability Shader
                OpCapability Int16
@@ -17,6 +17,12 @@ SPIR-V:
                OpName %main "main"
                OpName %SSBO "SSBO"
                OpName %SSBO_0 "SSBO"
+               OpName %UDiv "UDiv"
+               OpName %num "num"
+               OpName %den "den"
+               OpName %UMod "UMod"
+               OpName %num_0 "num"
+               OpName %den_0 "den"
                OpDecorate %_runtimearr_uint ArrayStride 4
                OpMemberDecorate %SSBO 0 Offset 0
                OpDecorate %SSBO Block
@@ -54,7 +60,12 @@ SPIR-V:
      %uint_8 = OpConstant %uint 8
      %uint_9 = OpConstant %uint 9
     %uint_10 = OpConstant %uint 10
+         %73 = OpTypeFunction %ushort %ushort %ushort
+%ushort_65535 = OpConstant %ushort 65535
+       %bool = OpTypeBool
+         %83 = OpConstantNull %ushort
     %uint_11 = OpConstant %uint 11
+         %99 = OpConstantNull %ushort
     %uint_12 = OpConstant %uint 12
     %uint_13 = OpConstant %uint 13
     %uint_14 = OpConstant %uint 14
@@ -62,9 +73,9 @@ SPIR-V:
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %100
+                 OpBranch %125
 
-        %100 = OpLabel
+        %125 = OpLabel
          %16 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_0
          %17 =   OpLoad %uint %16
          %19 =   OpUConvert %ushort %17
@@ -110,29 +121,63 @@ SPIR-V:
          %70 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_10
          %71 =   OpLoad %uint %70
          %72 =   OpUConvert %ushort %71
-         %73 =   OpUDiv %ushort %68 %72
-         %75 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
-         %76 =   OpLoad %uint %75
-         %77 =   OpUConvert %ushort %76
-         %78 =   OpUMod %ushort %73 %77
-         %80 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
-         %81 =   OpLoad %uint %80
-         %82 =   OpUConvert %ushort %81
-         %83 =   OpExtInst %ushort %47 UMin %78 %82
-         %85 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
-         %86 =   OpLoad %uint %85
-         %87 =   OpUConvert %ushort %86
-         %88 =   OpExtInst %ushort %47 UMax %83 %87
-         %90 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_14
-         %91 =   OpLoad %uint %90
-         %92 =   OpUConvert %ushort %91
-         %94 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_15
-         %95 =   OpLoad %uint %94
-         %96 =   OpUConvert %ushort %95
-         %97 =   OpExtInst %ushort %47 UClamp %88 %92 %96
-         %98 =   OpUConvert %uint %97
-         %99 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
-                 OpStore %99 %98 NonPrivatePointer
+         %87 =   OpFunctionCall %ushort %UDiv %68 %72
+         %89 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
+         %90 =   OpLoad %uint %89
+         %91 =   OpUConvert %ushort %90
+        %103 =   OpFunctionCall %ushort %UMod %87 %91
+        %105 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
+        %106 =   OpLoad %uint %105
+        %107 =   OpUConvert %ushort %106
+        %108 =   OpExtInst %ushort %47 UMin %103 %107
+        %110 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
+        %111 =   OpLoad %uint %110
+        %112 =   OpUConvert %ushort %111
+        %113 =   OpExtInst %ushort %47 UMax %108 %112
+        %115 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_14
+        %116 =   OpLoad %uint %115
+        %117 =   OpUConvert %ushort %116
+        %119 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_15
+        %120 =   OpLoad %uint %119
+        %121 =   OpUConvert %ushort %120
+        %122 =   OpExtInst %ushort %47 UClamp %113 %117 %121
+        %123 =   OpUConvert %uint %122
+        %124 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
+                 OpStore %124 %123 NonPrivatePointer
                  OpReturn
+               OpFunctionEnd
+       %UDiv = OpFunction %ushort None %73
+        %num = OpFunctionParameter %ushort
+        %den = OpFunctionParameter %ushort
+
+         %77 = OpLabel
+         %82 =   OpIEqual %bool %den %83
+                 OpSelectionMerge %80 Flatten
+                 OpBranchConditional %82 %80 %79
+
+         %79 =     OpLabel
+         %84 =       OpUDiv %ushort %num %den
+                     OpBranch %80
+
+         %80 = OpLabel
+         %85 =   OpPhi %ushort %ushort_65535 %77 %84 %79
+                 OpReturnValue %85
+               OpFunctionEnd
+       %UMod = OpFunction %ushort None %73
+      %num_0 = OpFunctionParameter %ushort
+      %den_0 = OpFunctionParameter %ushort
+
+         %95 = OpLabel
+         %98 =   OpIEqual %bool %den_0 %99
+                 OpSelectionMerge %97 Flatten
+                 OpBranchConditional %98 %97 %96
+
+         %96 =     OpLabel
+        %100 =       OpUMod %ushort %num_0 %den_0
+                     OpBranch %97
+
+         %97 = OpLabel
+        %101 =   OpPhi %ushort %ushort_65535 %95 %100 %96
+                 OpReturnValue %101
                OpFunctionEnd
 

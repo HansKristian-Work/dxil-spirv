@@ -496,40 +496,24 @@ bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	spv::Id id0 = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id id1 = impl.get_id_for_value(instruction->getOperand(2));
 
-	auto *is_zero_divider = impl.allocate(spv::OpIEqual, builder.makeBoolType());
-	is_zero_divider->add_id(id1);
-	is_zero_divider->add_id(builder.makeUintConstant(0));
-	impl.add(is_zero_divider);
+	spv::Id type_id = impl.get_type_id(instruction->getType());
+	spv::Id quot_id = impl.spirv_module.get_helper_call_id(HelperCall::UDiv, type_id);
+	spv::Id rem_id = impl.spirv_module.get_helper_call_id(HelperCall::UMod, type_id);
 
-	auto *divisor_select = impl.allocate(spv::OpSelect, builder.makeUintType(32));
-	divisor_select->add_id(is_zero_divider->id);
-	divisor_select->add_id(builder.makeUintConstant(UINT32_MAX));
-	divisor_select->add_id(id1);
-	impl.add(divisor_select);
+	auto *quot = impl.allocate(spv::OpFunctionCall, type_id);
+	auto *rem = impl.allocate(spv::OpFunctionCall, type_id);
 
-	auto *div_op = impl.allocate(spv::OpUDiv, builder.makeUintType(32));
-	div_op->add_id(id0);
-	div_op->add_id(divisor_select->id);
-	impl.add(div_op);
+	quot->add_id(quot_id);
+	quot->add_id(id0);
+	quot->add_id(id1);
+	impl.add(quot);
 
-	auto *mod_op = impl.allocate(spv::OpUMod, builder.makeUintType(32));
-	mod_op->add_id(id0);
-	mod_op->add_id(id1);
-	impl.add(mod_op);
+	rem->add_id(rem_id);
+	rem->add_id(id0);
+	rem->add_id(id1);
+	impl.add(rem);
 
-	auto *quot_select = impl.allocate(spv::OpSelect, builder.makeUintType(32));
-	quot_select->add_id(is_zero_divider->id);
-	quot_select->add_id(builder.makeUintConstant(UINT32_MAX));
-	quot_select->add_id(div_op->id);
-	impl.add(quot_select);
-
-	auto *rem_select = impl.allocate(spv::OpSelect, builder.makeUintType(32));
-	rem_select->add_id(is_zero_divider->id);
-	rem_select->add_id(builder.makeUintConstant(UINT32_MAX));
-	rem_select->add_id(mod_op->id);
-	impl.add(rem_select);
-
-	spv::Id elems[2] = { quot_select->id, rem_select->id };
+	spv::Id elems[2] = { quot->id, rem->id };
 	impl.rewrite_value(instruction, impl.build_vector(builder.makeUintType(32), elems, 2));
 	return true;
 }

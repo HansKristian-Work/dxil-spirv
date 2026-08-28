@@ -92,6 +92,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_validate_bda_load_store(SPIRVModule &module);
 	spv::Id build_allocate_invocation_id(SPIRVModule &module);
 	spv::Id build_byte_address_mask_id(SPIRVModule &module);
+	spv::Id build_udiv_umod(SPIRVModule &module, spv::Id type_id, spv::Op op);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -181,6 +182,14 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 		HelperCall call;
 	};
 	Vector<CoopMatConvOp> coop_mat_conv_ids;
+
+	struct UDivUModCall
+	{
+		spv::Id type_id;
+		spv::Op op;
+		spv::Id id;
+	};
+	Vector<UDivUModCall> udiv_umod_calls;
 
 	DescriptorQAInfo descriptor_qa_info;
 
@@ -2213,6 +2222,124 @@ spv::Id SPIRVModule::Impl::build_byte_address_mask_id(SPIRVModule &module)
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_udiv_umod(SPIRVModule &module, spv::Id type_id, spv::Op op)
+{
+	for (auto &udiv_umod_call : udiv_umod_calls)
+		if (udiv_umod_call.type_id == type_id && udiv_umod_call.op == op)
+			return udiv_umod_call.id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, type_id,
+	                                       op == spv::OpUDiv ? "UDiv" : "UMod",
+	                                       {type_id, type_id}, {}, &entry);
+
+	builder.addName(func->getParamId(0), "num");
+	builder.addName(func->getParamId(1), "den");
+
+	bool is_scalar = builder.getTypeClass(type_id) == spv::OpTypeInt;
+	spv::Id result_id = 0;
+
+	spv::Id constant_max_id;
+	switch (builder.getScalarTypeWidth(type_id))
+	{
+	case 16:
+		constant_max_id = builder.makeUint16Constant(UINT16_MAX);
+		break;
+
+	case 32:
+		constant_max_id = builder.makeUintConstant(UINT32_MAX);
+		break;
+
+	default:
+		constant_max_id = builder.makeUint64Constant(UINT64_MAX);
+		break;
+	}
+
+	unsigned vecsize = is_scalar ? 1 : builder.getNumTypeComponents(type_id);
+	spv::Id scalar_type_id = builder.getScalarTypeId(type_id);
+
+	auto *current = entry;
+
+	// Could in theory emit a loop in code with vector extract/insert dynamic, but that's overcomplicating it.
+	for (unsigned c = 0; c < vecsize; c++)
+	{
+		auto *nonzero_block = new spv::Block(builder.getUniqueId(), *func);
+		auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+
+		builder.setBuildPoint(current);
+
+		spv::Id num_id, den_id;
+
+		if (is_scalar)
+		{
+			num_id = func->getParamId(0);
+			den_id = func->getParamId(1);
+		}
+		else
+		{
+			auto *num = builder.addInstruction(scalar_type_id, spv::OpCompositeExtract);
+			num->addIdOperand(func->getParamId(0));
+			num->addImmediateOperand(c);
+			num_id = num->getResultId();
+
+			auto *den = builder.addInstruction(scalar_type_id, spv::OpCompositeExtract);
+			den->addIdOperand(func->getParamId(1));
+			den->addImmediateOperand(c);
+			den_id = den->getResultId();
+		}
+
+		auto *is_zero = builder.addInstruction(builder.makeBoolType(), spv::OpIEqual);
+		is_zero->addIdOperand(den_id);
+		is_zero->addIdOperand(builder.makeNullConstant(scalar_type_id));
+
+		builder.createSelectionMerge(merge_block, spv::SelectionControlFlattenMask);
+		builder.createConditionalBranch(is_zero->getResultId(), merge_block, nonzero_block);
+
+		builder.setBuildPoint(nonzero_block);
+		spv::Id actual_op_id;
+		{
+			auto *uop = builder.addInstruction(scalar_type_id, op);
+			uop->addIdOperand(num_id);
+			uop->addIdOperand(den_id);
+			actual_op_id = uop->getResultId();
+			builder.createBranch(merge_block);
+		}
+
+		builder.setBuildPoint(merge_block);
+		auto *phi = builder.addInstruction(scalar_type_id, spv::OpPhi);
+		phi->addIdOperand(constant_max_id);
+		phi->addIdOperand(current->getId());
+		phi->addIdOperand(actual_op_id);
+		phi->addIdOperand(nonzero_block->getId());
+
+		if (is_scalar)
+		{
+			result_id = phi->getResultId();
+		}
+		else
+		{
+			if (!result_id)
+				result_id = builder.createUndefinedConstant(type_id);
+
+			auto *insert = builder.addInstruction(type_id, spv::OpCompositeInsert);
+			insert->addIdOperand(phi->getResultId());
+			insert->addIdOperand(result_id);
+			insert->addImmediateOperand(c);
+			result_id = insert->getResultId();
+		}
+
+		current = merge_block;
+	}
+
+	builder.makeReturn(false, result_id);
+	builder.setBuildPoint(current_build_point);
+
+	udiv_umod_calls.push_back({ type_id, op, func->getId() });
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_is_quad_uniform_control_flow(SPIRVModule &module)
 {
 	if (is_quad_uniform_call_id)
@@ -2975,6 +3102,10 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_coop_mat_saturate_fp8(module, type_id);
 	case HelperCall::ByteAddressMask:
 		return build_byte_address_mask_id(module);
+	case HelperCall::UDiv:
+		return build_udiv_umod(module, type_id, spv::OpUDiv);
+	case HelperCall::UMod:
+		return build_udiv_umod(module, type_id, spv::OpUMod);
 
 	default:
 		break;
