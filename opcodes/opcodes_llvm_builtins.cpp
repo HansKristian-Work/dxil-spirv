@@ -416,9 +416,9 @@ static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const In
 		cond_type = builder.makeVectorType(cond_type, vector_size);
 
 		const_0 = impl.build_splat_constant_vector(impl.get_type_id(scalar_type),
-																								const_0, vector_size);
+		                                           const_0, vector_size);
 		const_neg1 = impl.build_splat_constant_vector(impl.get_type_id(scalar_type),
-																									const_neg1, vector_size);
+		                                              const_neg1, vector_size);
 	}
 
 	spv::Id id0 = impl.get_id_for_value(instruction->getOperand(0));
