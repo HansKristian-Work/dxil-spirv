@@ -89,6 +89,18 @@ enum NVExtnOp
 	NV_EXTN_OP_RT_COMMIT_NONOPAQUE_BUILTIN_PRIMITIVE_HIT = 119
 };
 
+enum NVAtomicOp
+{
+	NV_EXTN_ATOM_AND = 0,
+	NV_EXTN_ATOM_OR = 1,
+	NV_EXTN_ATOM_XOR = 2,
+	NV_EXTN_ATOM_ADD = 3,
+	NV_EXTN_ATOM_MAX = 6,
+	NV_EXTN_ATOM_MIN = 7,
+	NV_EXTN_ATOM_SWAP = 8,
+	NV_EXTN_ATOM_CAS = 9
+};
+
 enum NVSpecialOp
 {
 	NV_SPECIALOP_THREADLTMASK = 4,
@@ -173,22 +185,185 @@ static spv::Id get_argument_as_float(Converter::Impl &impl, uint32_t offset)
 	return bitcast_op->id;
 }
 
-static bool emit_nvapi_extn_op_shuffle(Converter::Impl &impl)
+static bool emit_nvapi_extn_op_shuffle(Converter::Impl &impl, uint32_t opcode)
 {
-	// Dummy throwaway implementation.
-	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
-	spv::Id lane = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+	// https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#OpGroupNonUniformShuffle
+	// https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#OpGroupNonUniformShuffleXor
 
 	auto &builder = impl.builder();
 	builder.addCapability(spv::CapabilityGroupNonUniformShuffle);
 
-	auto *op = impl.allocate(spv::OpGroupNonUniformShuffle, builder.makeUintType(32));
-	op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
-	op->add_id(val);
-	op->add_id(lane);
-	impl.add(op);
+	auto uint32_type = builder.makeUintType(32);
 
-	impl.nvapi.fake_doorbell_outputs[0] = op->id;
+	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id lane = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+	// spv::Id shflMask = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 2);
+	// should shflMask affect any of those?
+	// impl.suggest_maximum_wave_size(32);
+	// impl.shader_analysis.require_subgroup_shuffles = true;
+
+	spv::Op op;
+	switch (opcode)
+	{
+	case NV_EXTN_OP_SHFL:
+		op = spv::OpGroupNonUniformShuffle;
+		break;
+
+	case NV_EXTN_OP_SHFL_XOR:
+		op = spv::OpGroupNonUniformShuffleXor;
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *shfl_op = impl.allocate(op, uint32_type);
+	shfl_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	shfl_op->add_id(val);
+	shfl_op->add_id(lane);
+	impl.add(shfl_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = shfl_op->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_shuffle_relative(Converter::Impl &impl, uint32_t opcode)
+{
+	// https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#OpGroupNonUniformShuffleUp
+	// https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#OpGroupNonUniformShuffleDown
+
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityGroupNonUniformShuffleRelative);
+
+	auto uint32_type = builder.makeUintType(32);
+
+	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	spv::Id delta = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+	// spv::Id shflMask = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 2);
+	// should shflMask affect any of those?
+	// impl.suggest_maximum_wave_size(32);
+	// impl.shader_analysis.require_subgroup_shuffles = true;
+
+	spv::Op op;
+	switch (opcode)
+	{
+	case NV_EXTN_OP_SHFL_UP:
+		op = spv::OpGroupNonUniformShuffleUp;
+		break;
+
+	case NV_EXTN_OP_SHFL_DOWN:
+		op = spv::OpGroupNonUniformShuffleDown;
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *shfl_op = impl.allocate(op, uint32_type);
+	shfl_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	shfl_op->add_id(val);
+	shfl_op->add_id(delta);
+	impl.add(shfl_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = shfl_op->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_vote(Converter::Impl &impl, uint32_t opcode)
+{
+	// https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#OpGroupNonUniformAll
+	// https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#OpGroupNonUniformAny
+
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityGroupNonUniformVote);
+
+	auto bool_type = builder.makeBoolType();
+	auto uint32_type = builder.makeUintType(32);
+
+	spv::Id predicate = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto *predicate_bool = impl.allocate(spv::OpINotEqual, bool_type);
+	predicate_bool->add_id(predicate);
+	predicate_bool->add_id(builder.makeUintConstant(0));
+	impl.add(predicate_bool);
+
+	spv::Op op;
+	switch (opcode)
+	{
+	case NV_EXTN_OP_VOTE_ALL:
+		op = spv::OpGroupNonUniformAll;
+		break;
+
+	case NV_EXTN_OP_VOTE_ANY:
+		op = spv::OpGroupNonUniformAny;
+		break;
+
+	default:
+		return false;
+	}
+
+	auto *vote_op = impl.allocate(op, bool_type);
+	vote_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	vote_op->add_id(predicate_bool->id);
+	impl.add(vote_op);
+
+	auto *result = impl.allocate(spv::OpSelect, uint32_type);
+	result->add_id(vote_op->id);
+	result->add_id(builder.makeUintConstant(0xffffffff));
+	result->add_id(builder.makeUintConstant(0));
+	impl.add(result);
+
+	impl.nvapi.fake_doorbell_outputs[0] = result->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_ballot(Converter::Impl &impl)
+{
+	// https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#OpGroupNonUniformBallot
+
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+
+	auto bool_type = builder.makeBoolType();
+	auto uint32_type = builder.makeUintType(32);
+	auto ivec4_type = builder.makeVectorType(uint32_type, 4);
+
+	spv::Id predicate = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+
+	auto *predicate_bool = impl.allocate(spv::OpINotEqual, bool_type);
+	predicate_bool->add_id(predicate);
+	predicate_bool->add_id(builder.makeUintConstant(0));
+	impl.add(predicate_bool);
+
+	auto *ballot_op = impl.allocate(spv::OpGroupNonUniformBallot, ivec4_type);
+	ballot_op->add_id(builder.makeUintConstant(spv::ScopeSubgroup));
+	ballot_op->add_id(predicate_bool->id);
+	impl.add(ballot_op);
+
+	auto *extract_op = impl.allocate(spv::OpCompositeExtract, uint32_type);
+	extract_op->add_id(ballot_op->id);
+	extract_op->add_literal(0); // NVIDIA's warp size is 32, but OpGroupNonUniformBallot returns 128, so hopefully the first vector element fits
+	impl.add(extract_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = extract_op->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_get_lane_id(Converter::Impl &impl)
+{
+	// https://registry.khronos.org/VulkanSC/specs/1.0-extensions/man/html/SubgroupLocalInvocationId.html
+
+	auto &builder = impl.builder();
+	builder.addCapability(spv::CapabilityGroupNonUniform);
+
+	auto uint32_type = builder.makeUintType(32);
+
+	spv::Id local_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInSubgroupLocalInvocationId);
+	auto *load_op = impl.allocate(spv::OpLoad, uint32_type);
+	load_op->add_id(local_id);
+	impl.add(load_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = load_op->id;
 	return true;
 }
 
@@ -197,51 +372,276 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 	if (!impl.nvapi.marked_uav)
 		return false;
 
-	// Dummy throwaway implementation to demonstrate UAV reference plumbing.
-	spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
-	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0);
-	spv::Id type = get_argument(impl, NVAPI_ARGUMENT_SRC2U + 0);
-	(void)type;
-
-	auto &builder = impl.builder();
-
-	spv::Id id = impl.get_id_for_value(impl.nvapi.marked_uav);
-	const auto &meta = impl.handle_to_resource_meta[id];
-
-	if (meta.storage == spv::StorageClassStorageBuffer)
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0]);
+	if (c != nullptr)
 	{
-		spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, RawVecSize::V1);
+		auto subopcode = uint32_t(c->getUniqueInteger().getZExtValue());
+		// LOGE("NVAPI 12 subopcode %u\n", subopcode);
 
-		auto *chain = impl.allocate(spv::OpAccessChain,
-		                            builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
-		chain->add_id(ssbo_id);
-		chain->add_id(builder.makeUintConstant(0));
-		chain->add_id(addr);
-		impl.add(chain);
+		auto &builder = impl.builder();
+		auto uint32_type = builder.makeUintType(32);
+		auto f16_type = builder.makeFloatType(16);
+		auto f16vec2_type = builder.makeVectorType(f16_type, 2);
 
-		auto *atomic = impl.allocate(spv::OpAtomicIAdd, builder.makeUintType(32));
-		atomic->add_id(chain->id);
-		atomic->add_id(builder.makeUintConstant(spv::ScopeDevice));
-		atomic->add_id(builder.makeUintConstant(0));
-		atomic->add_id(val);
-		impl.add(atomic);
+		// TODO May be https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_untyped_pointers.html#OpTypeUntypedPointerKHR to fix validation?
+		// builder.addExtension("SPV_KHR_untyped_pointers");
+		// builder.addCapability(spv::CapabilityUntypedPointersKHR);
 
-		impl.nvapi.fake_doorbell_outputs[NVAPI_ARGUMENT_DST0U + 0] = atomic->id;
+		builder.addExtension("SPV_NV_shader_atomic_fp16_vector");
+		builder.addCapability(spv::CapabilityAtomicFloat16VectorNV);
+
+		spv::Id id = impl.get_id_for_value(impl.nvapi.marked_uav);
+		const auto &meta = impl.handle_to_resource_meta[id];
+		// LOGE("NVAPI 12 storage %u, kind %u\n", static_cast<uint32_t>(meta.storage), static_cast<uint32_t>(meta.kind));
+
+		Operation *ptr;
+		if (meta.storage == spv::StorageClassStorageBuffer)
+		{
+			spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+			spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, RawVecSize::V1);
+
+			ptr = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, f16vec2_type));
+			ptr->add_id(ssbo_id);
+			ptr->add_id(builder.makeUintConstant(0));
+			ptr->add_id(addr);
+			impl.add(ptr); // SPIRV-Tools message: OpAccessChain result type <id> '49[%v2half]' (OpTypeVector) does not match the type that results from indexing into the base <id> '5[%uint]' (OpTypeInt).
+			// TODO: For buffers you need a new alias group, which is omega-hnnnnnnng, that's a quite invasive change
+
+			builder.addCapability(spv::CapabilityStorageBuffer16BitAccess);
+		}
+		else if (meta.storage == spv::StorageClassUniformConstant)
+		{
+			spv::Id addrs[3] = {};
+			addrs[0] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+			spv::Id texture_addr;
+			switch (meta.kind)
+			{
+			case DXIL::ResourceKind::Texture1D:
+				texture_addr = impl.build_vector(uint32_type, addrs, 1);
+				break;
+			case DXIL::ResourceKind::Texture2D:
+				addrs[1] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+				texture_addr = impl.build_vector(uint32_type, addrs, 2);
+				break;
+			case DXIL::ResourceKind::Texture3D:
+				addrs[1] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+				addrs[2] =  get_argument(impl, NVAPI_ARGUMENT_SRC0U + 2);
+				texture_addr = impl.build_vector(uint32_type, addrs, 3);
+				break;
+			default:
+				LOGE("Unsupported storage kind: %u\n", static_cast<uint32_t>(meta.kind));
+				return false;
+			}
+
+			ptr = impl.allocate(spv::OpImageTexelPointer, builder.makePointer(spv::StorageClassImage, f16vec2_type));
+			ptr->add_id(meta.var_id);
+			ptr->add_id(texture_addr);
+			ptr->add_id(builder.makeUintConstant(0));
+			impl.add(ptr); // SPIRV-Tools message: [VUID-StandaloneSpirv-OpImageTexelPointer-04658] Expected the Image Format in Image to be R64i, R64ui, R32f, R32i, or R32ui for Vulkan environment using OpImageTexelPointer
+			// TODO: This means you need to catch that during analysis pass and when emitting resources, override the component format.
+
+			builder.addCapability(spv::CapabilityStorageImageExtendedFormats);
+		}
+		else
+		{
+			LOGE("Unsupported storage: %u\n", static_cast<uint32_t>(meta.storage));
+			return false;
+		}
+
+		spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0);
+
+		// unpack val
+
+		auto *val_low = impl.allocate(spv::OpBitwiseAnd, uint32_type);
+		val_low->add_id(val);
+		val_low->add_id(builder.makeUintConstant(0xffff));
+		impl.add(val_low);
+
+		auto *val_x_f16 = impl.allocate(spv::OpConvertUToF, f16_type);
+		val_x_f16->add_id(val_low->id);
+		impl.add(val_x_f16);
+
+		auto *val_hi = impl.allocate(spv::OpShiftRightLogical, uint32_type);
+		val_hi->add_id(val);
+		val_hi->add_id(builder.makeUintConstant(16));
+		impl.add(val_hi);
+
+		auto *val_y_f16 = impl.allocate(spv::OpConvertUToF, f16_type);
+		val_y_f16->add_id(val_hi->id);
+		impl.add(val_y_f16);
+
+		spv::Id vals[2] = {};
+		vals[0] = val_x_f16->id;
+		vals[1] = val_y_f16->id;
+		spv::Id val_fp16_vec = impl.build_vector(f16_type, vals, 2);
+
+		// atomic operation
+
+		spv::Op op;
+		switch (subopcode)
+		{
+		case NV_EXTN_ATOM_ADD:
+			op = spv::OpAtomicFAddEXT;
+			break;
+		case NV_EXTN_ATOM_MAX:
+			op = spv::OpAtomicFMaxEXT;
+			break;
+		case NV_EXTN_ATOM_MIN:
+			op = spv::OpAtomicFMinEXT;
+			break;
+		default:
+			return false;
+		}
+
+		auto *atomic_op = impl.allocate(op, f16vec2_type);
+		atomic_op->add_id(ptr->id);
+		atomic_op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->add_id(builder.makeUintConstant(0));
+		atomic_op->add_id(val_fp16_vec);
+		impl.add(atomic_op);
+
+		// pack result
+
+		auto *result_x = impl.allocate(spv::OpCompositeExtract, f16_type);
+		result_x->add_id(atomic_op->id);
+		result_x->add_literal(0);
+		impl.add(result_x);
+
+		auto *result_x_uint32 = impl.allocate(spv::OpConvertFToU, uint32_type);
+		result_x_uint32->add_id(result_x->id);
+		impl.add(result_x_uint32);
+
+		auto *result_y = impl.allocate(spv::OpCompositeExtract, f16_type);
+		result_y->add_id(atomic_op->id);
+		result_y->add_literal(1);
+		impl.add(result_y);
+
+		auto *result_y_uint32 = impl.allocate(spv::OpConvertFToU, uint32_type);
+		result_y_uint32->add_id(result_y->id);
+		impl.add(result_y_uint32);
+
+		auto *result_hi = impl.allocate(spv::OpShiftLeftLogical, uint32_type);
+		result_hi->add_id(result_y_uint32->id);
+		result_hi->add_id(builder.makeUintConstant(16));
+		impl.add(result_hi);
+
+		auto *result = impl.allocate(spv::OpBitwiseAnd, uint32_type);
+		result->add_id(result_hi->id);
+		result->add_id(result_x_uint32->id);
+		impl.add(result);
+
+		impl.nvapi.fake_doorbell_outputs[NVAPI_ARGUMENT_DST0U + 0] = result->id;
+		return true;
 	}
-	else if (meta.storage == spv::StorageClassUniformConstant)
+
+	return false;
+}
+
+static bool emit_nvapi_extn_op_fp32_atomic(Converter::Impl &impl)
+{
+	if (!impl.nvapi.marked_uav)
+		return false;
+
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0]);
+	if (c != nullptr)
 	{
-		auto *ptr = impl.allocate(spv::OpImageWrite);
-		ptr->add_id(id);
-		ptr->add_id(addr);
-		ptr->add_id(impl.build_splat_constant_vector(builder.makeFloatType(32), builder.makeFloatConstant(2.0f), 4));
-		impl.add(ptr);
+		auto subopcode = uint32_t(c->getUniqueInteger().getZExtValue());
+		// LOGE("NVAPI 13 subopcode %u\n", subopcode);
 
-		builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
-		impl.nvapi.fake_doorbell_outputs[NVAPI_ARGUMENT_DST0U + 0] = builder.makeUintConstant(42);
+		auto &builder = impl.builder();
+		auto uint32_type = builder.makeUintType(32);
+		auto f32_type = builder.makeFloatType(32);
+
+		// TODO May be https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_untyped_pointers.html#OpTypeUntypedPointerKHR to fix validation?
+		// builder.addExtension("SPV_KHR_untyped_pointers");
+		// builder.addCapability(spv::CapabilityUntypedPointersKHR);
+
+		builder.addExtension("SPV_EXT_shader_atomic_float_add");
+		builder.addCapability(spv::CapabilityAtomicFloat32AddEXT);
+
+		spv::Id id = impl.get_id_for_value(impl.nvapi.marked_uav);
+		const auto &meta = impl.handle_to_resource_meta[id];
+		// LOGE("NVAPI 13 storage %u, kind %u\n", static_cast<uint32_t>(meta.storage), static_cast<uint32_t>(meta.kind));
+
+		Operation *ptr;
+		if (meta.storage == spv::StorageClassStorageBuffer)
+		{
+			spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+			spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, RawVecSize::V1);
+
+			ptr = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, uint32_type));
+			ptr->add_id(ssbo_id);
+			ptr->add_id(builder.makeUintConstant(0));
+			ptr->add_id(addr);
+			impl.add(ptr);
+		}
+		else if (meta.storage == spv::StorageClassUniformConstant)
+		{
+			spv::Id addrs[3] = {};
+			addrs[0] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+			spv::Id texture_addr;
+			switch (meta.kind)
+			{
+			case DXIL::ResourceKind::Texture1D:
+				texture_addr = impl.build_vector(uint32_type, addrs, 1);
+				break;
+			case DXIL::ResourceKind::Texture2D:
+				addrs[1] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+				texture_addr = impl.build_vector(uint32_type, addrs, 2);
+				break;
+			case DXIL::ResourceKind::Texture3D:
+				addrs[1] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+				addrs[2] =  get_argument(impl, NVAPI_ARGUMENT_SRC0U + 2);
+				texture_addr = impl.build_vector(uint32_type, addrs, 3);
+				break;
+			default:
+				LOGE("Unsupported storage kind: %u\n", static_cast<uint32_t>(meta.kind));
+				return false;
+			}
+
+			ptr = impl.allocate(spv::OpImageTexelPointer, builder.makePointer(spv::StorageClassImage, f32_type));
+			ptr->add_id(meta.var_id);
+			ptr->add_id(texture_addr);
+			ptr->add_id(builder.makeUintConstant(0));
+			impl.add(ptr); // SPIRV-Tools message: [VUID-StandaloneSpirv-OpImageTexelPointer-04658] Expected the Image Format in Image to be R64i, R64ui, R32f, R32i, or R32ui for Vulkan environment using OpImageTexelPointer
+			// TODO: This means you need to catch that during analysis pass and when emitting resources, override the component format.
+
+			builder.addCapability(spv::CapabilityStorageImageExtendedFormats);
+		}
+		else
+		{
+			LOGE("Unsupported storage: %u\n", static_cast<uint32_t>(meta.storage));
+			return false;
+		}
+
+		spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0);
+
+		auto *val_f32 = impl.allocate(spv::OpBitcast, f32_type);
+		val_f32->add_id(val);
+		impl.add(val_f32);
+
+		if (subopcode != NV_EXTN_ATOM_ADD)
+		{
+			LOGE("Unsupported sub opcode: %u\n",subopcode);
+			return false;
+		}
+
+		auto *atomic_op = impl.allocate(spv::OpAtomicFAddEXT, f32_type);
+		atomic_op->add_id(ptr->id);
+		atomic_op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->add_id(builder.makeUintConstant(0));
+		atomic_op->add_id(val_f32->id);
+		impl.add(atomic_op);
+
+		auto *result_uin32 = impl.allocate(spv::OpBitcast, uint32_type);
+		result_uin32->add_id(atomic_op->id);
+		impl.add(result_uin32);
+
+		impl.nvapi.fake_doorbell_outputs[NVAPI_ARGUMENT_DST0U + 0] = result_uin32->id;
+		return true;
 	}
 
-	impl.nvapi.marked_uav = nullptr;
-	return true;
+	return false;
 }
 
 static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
@@ -254,6 +654,34 @@ static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 
 		switch (subopcode)
 		{
+		case NV_SPECIALOP_THREADLTMASK:
+		{
+			// https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_shader_ballot.html
+
+			builder.addExtension("SPV_KHR_shader_ballot");
+			builder.addCapability(spv::CapabilitySubgroupBallotKHR);
+
+			auto uint32_type = builder.makeUintType(32);
+			auto uint32vec4_type = builder.makeVectorType(uint32_type, 4);
+
+			auto builtin = spv::BuiltInSubgroupLtMaskKHR;
+			spv::Id var_id = impl.create_variable(spv::StorageClassInput, uint32vec4_type);
+			builder.addDecoration(var_id, spv::DecorationBuiltIn, builtin);
+			builder.addDecoration(var_id, spv::DecorationVolatile);
+			impl.spirv_module.register_builtin_shader_input(var_id, builtin);
+
+			auto *load_op = impl.allocate(spv::OpLoad, uint32vec4_type);
+			load_op->add_id(var_id);
+			impl.add(load_op);
+
+			auto *extract_op = impl.allocate(spv::OpCompositeExtract, uint32_type);
+			extract_op->add_id(load_op->id);
+			extract_op->add_literal(0);
+			impl.add(extract_op);
+
+			impl.nvapi.fake_doorbell_outputs[0] = extract_op->id;
+			return true;
+		}
 		case NV_SPECIALOP_GLOBAL_TIMER_LO:
 		case NV_SPECIALOP_GLOBAL_TIMER_HI:
 		{
@@ -803,14 +1231,24 @@ bool NVAPIState::can_commit_opcode()
 		switch (opcode)
 		{
 		case NV_EXTN_OP_SHFL:
+		case NV_EXTN_OP_SHFL_UP:
+		case NV_EXTN_OP_SHFL_DOWN:
+		case NV_EXTN_OP_SHFL_XOR:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 1] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr;
 
+		case NV_EXTN_OP_VOTE_ALL:
+		case NV_EXTN_OP_VOTE_ANY:
+		case NV_EXTN_OP_VOTE_BALLOT:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
+
+		case NV_EXTN_OP_GET_LANE_ID:
+			return true;
+
 		case NV_EXTN_OP_FP16_ATOMIC:
-			LOGE("NVAPI opcode %u not fully implemented.\n", opcode);
-			return false && // emit_nvapi_extn_op_fp16x2_atomic is currently just a dummy implementation
-			       marked_uav &&
+		case NV_EXTN_OP_FP32_ATOMIC:
+			return marked_uav &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr;
@@ -904,14 +1342,47 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		switch (opcode)
 		{
 		case NV_EXTN_OP_SHFL:
+		case NV_EXTN_OP_SHFL_XOR:
 			impl.nvapi.num_expected_clock_outputs = 1;
-			if (!analysis && !emit_nvapi_extn_op_shuffle(impl))
+			if (!analysis && !emit_nvapi_extn_op_shuffle(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_SHFL_UP:
+		case NV_EXTN_OP_SHFL_DOWN:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_shuffle_relative(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_VOTE_ALL:
+		case NV_EXTN_OP_VOTE_ANY:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_vote(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_VOTE_BALLOT:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_ballot(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_GET_LANE_ID:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_get_lane_id(impl))
 				return false;
 			break;
 
 		case NV_EXTN_OP_FP16_ATOMIC:
 			impl.nvapi.num_expected_clock_outputs = 0;
 			if (!analysis && !emit_nvapi_extn_op_fp16x2_atomic(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_FP32_ATOMIC:
+			impl.nvapi.num_expected_clock_outputs = 0;
+			if (!analysis && !emit_nvapi_extn_op_fp32_atomic(impl))
 				return false;
 			break;
 
