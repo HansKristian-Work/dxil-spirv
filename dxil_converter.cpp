@@ -1064,13 +1064,13 @@ bool Converter::Impl::analyze_aliased_access(const AccessTracking &tracking,
 			if (width == RawWidth::B16 && !execution_mode_meta.native_16bit_operations)
 				continue;
 
-			for (unsigned vecsize = 1; vecsize <= 4; vecsize++)
+			for (unsigned vecsize = 1; vecsize <= AccessTracking::MaxVecSize; vecsize++)
 			{
 				auto type = RawType(type_);
 				// Non-native 16-bit SSBOs are declared as 32-bit, so avoid false aliases.
-				bool has_decl = tracking.raw_access_buffer_declarations[type_][width_][vecsize - 1];
-				if (!has_decl && RawWidth(width) == RawWidth::B32 && !execution_mode_meta.native_16bit_operations)
-					has_decl = tracking.raw_access_buffer_declarations[type_][unsigned(RawWidth::B16)][vecsize - 1];
+				bool has_decl = tracking.uses_vecsize(type, width, vecsize);
+				if (!has_decl && width == RawWidth::B32 && !execution_mode_meta.native_16bit_operations)
+					has_decl = tracking.uses_vecsize(type, RawWidth::B16, vecsize);
 
 				if (has_decl)
 				{
