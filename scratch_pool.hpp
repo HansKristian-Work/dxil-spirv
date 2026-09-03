@@ -34,16 +34,24 @@ template <typename T>
 class ScratchPool
 {
 public:
-	ScratchPool()
+	~ScratchPool()
 	{
-		static_assert(std::is_trivially_destructible<T>::value, "T must be trivially destructible.");
+		for (auto *obj : allocated_objects)
+			obj->~T();
 	}
+
+	ScratchPool() = default;
+	void operator=(const ScratchPool &) = delete;
+	ScratchPool(const ScratchPool &) = delete;
 
 	template <typename... P>
 	T *allocate(P &&... p)
 	{
 		T *t = allocate_raw();
-		return new (t) T(std::forward<P>(p)...);
+		T *obj = new (t) T(std::forward<P>(p)...);
+		if (!std::is_trivially_destructible<T>::value)
+			allocated_objects.push_back(obj);
+		return obj;
 	}
 
 	T *allocate_raw()
@@ -86,6 +94,7 @@ private:
 	Block current = {};
 	size_t next_allocate_size = 64;
 	Vector<std::unique_ptr<T, MallocDeleter>> blocks;
+	Vector<T *> allocated_objects;
 };
 } // namespace dxil_spv
 
