@@ -78,13 +78,13 @@ bool raw_access_structured_can_vectorize(Converter::Impl &impl, const llvm::Type
                                          unsigned vecsize);
 
 unsigned raw_access_byte_address_vectorize(Converter::Impl &impl, const llvm::Type *type,
-                                           const llvm::Value *byte_offset, uint32_t mask);
+                                           const llvm::Value *byte_offset, uint32_t vecsize);
 
 unsigned raw_access_structured_vectorize(Converter::Impl &impl, const llvm::Type *type,
                                          const llvm::Value *index,
                                          unsigned stride,
                                          const llvm::Value *byte_offset,
-                                         uint32_t mask);
+                                         uint32_t vecsize);
 
 void emit_buffer_synchronization_validation(Converter::Impl &impl, const llvm::CallInst *instruction,
                                             BDAOperation bda_operation, bool is_vector);

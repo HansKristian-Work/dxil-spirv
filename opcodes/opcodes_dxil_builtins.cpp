@@ -602,13 +602,13 @@ static void update_raw_access_tracking_for_byte_address(
 	AccessTracking &tracking,
 	const llvm::Type *type,
 	const llvm::Value *byte_offset,
-	uint32_t mask)
+	uint32_t vecsize)
 {
     // If we have raw access chains, we don't bother trying to vectorize the SSBOs.
     // Just emit one alias and we can go from there.
     if (!impl.options.nv_raw_access_chains)
     {
-        auto vec = raw_access_byte_address_vectorize(impl, type, byte_offset, mask);
+        auto vec = raw_access_byte_address_vectorize(impl, type, byte_offset, vecsize);
         update_raw_access_tracking(tracking, type, vec);
     }
 }
@@ -620,11 +620,11 @@ static void update_raw_access_tracking_for_structured(
 	const llvm::Value *index,
 	unsigned stride,
 	const llvm::Value *byte_offset,
-	uint32_t mask)
+	uint32_t vecsize)
 {
     if (!impl.options.nv_raw_access_chains)
     {
-        auto vec = raw_access_structured_vectorize(impl, type, index, stride, byte_offset, mask);
+        auto vec = raw_access_structured_vectorize(impl, type, index, stride, byte_offset, vecsize);
         update_raw_access_tracking(tracking, type, vec);
     }
 }
@@ -869,27 +869,25 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 			if (composite_itr != impl.llvm_composite_meta.end())
 				access_mask = composite_itr->second.access_mask & 0xfu;
 
+			unsigned vecsize;
+
 			if (opcode == DXIL::Op::RawBufferVectorLoad)
 			{
-				unsigned vecsize = get_composite_element_count(instruction->getType());
-				access_mask = (1u << vecsize) - 1u;
-				// TODO: Add support for long vector.
-				if (vecsize > 4)
-					access_mask = 0xfu;
-
+				vecsize = get_composite_element_count(instruction->getType());
 			}
 			else
 			{
 				// Smear read masks.
 				access_mask |= access_mask >> 1u;
 				access_mask |= access_mask >> 2u;
+				vecsize = access_mask_to_vecsize(access_mask);
 			}
 
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{
 				update_raw_access_tracking_for_byte_address(impl, *tracking,
 				                                            get_composite_element_type(instruction->getType()),
-				                                            instruction->getOperand(2), access_mask);
+				                                            instruction->getOperand(2), vecsize);
 			}
 			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 			{
@@ -898,7 +896,7 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 				                                          instruction->getOperand(2),
 				                                          meta.stride,
 				                                          instruction->getOperand(3),
-				                                          access_mask);
+				                                          vecsize);
 			}
 		}
 	}
@@ -931,25 +929,22 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 			auto meta = get_resource_meta_from_buffer_op(impl, instruction);
 
 			const auto *type = instruction->getOperand(4)->getType();
-			uint32_t mask = 0;
+			unsigned vecsize;
 
 			if (opcode == DXIL::Op::RawBufferVectorStore)
 			{
-				unsigned vecsize = type->getVectorNumElements();
-				mask = (1u << vecsize) - 1u;
-				if (vecsize > 4)
-					mask = 0xfu; // TODO: long vector
+				vecsize = type->getVectorNumElements();
 				type = type->getVectorElementType();
 			}
 			else
 			{
-				mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+				vecsize = access_mask_to_vecsize(llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue());
 			}
 
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{
 				update_raw_access_tracking_for_byte_address(impl, *tracking, type,
-				                                            instruction->getOperand(2), mask);
+				                                            instruction->getOperand(2), vecsize);
 			}
 			else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 			{
@@ -958,7 +953,7 @@ static void analyze_dxil_buffer_store(Converter::Impl &impl, const llvm::CallIns
 				                                          instruction->getOperand(2),
 				                                          meta.stride,
 				                                          instruction->getOperand(3),
-				                                          mask);
+				                                          vecsize);
 			}
 		}
 		impl.shader_analysis.has_side_effects = true;
