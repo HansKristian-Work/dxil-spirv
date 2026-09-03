@@ -44,6 +44,11 @@ enum class MergeType
 	Selection
 };
 
+static constexpr unsigned get_literal_word_count(unsigned count)
+{
+	return (count + 31) / 32;
+}
+
 struct CFGNode;
 struct MergeInfo
 {
@@ -92,7 +97,7 @@ struct Operation
 {
 	enum : unsigned
 	{
-		InlineArguments = 6
+		InlineArguments = 7
 	};
 
 	~Operation()
@@ -230,19 +235,12 @@ struct Operation
 private:
 	const uint32_t *get_literal_mask() const
 	{
-		return arguments == inline_arguments ?
-		       &inline_literal_mask : arguments + argument_capacity;
+		return arguments + argument_capacity;
 	}
 
 	uint32_t *get_literal_mask()
 	{
-		return arguments == inline_arguments ?
-		       &inline_literal_mask : arguments + argument_capacity;
-	}
-
-	static unsigned get_literal_word_count(unsigned count)
-	{
-		return (count + 31) / 32;
+		return arguments + argument_capacity;
 	}
 
 	void add_argument(uint32_t value, bool literal)
@@ -274,9 +272,9 @@ private:
 		       sizeof(uint32_t) * get_literal_word_count(argument_count));
 	}
 
-	uint32_t inline_arguments[InlineArguments];
+	// Literals are packed after the capacity limit as packed bitfield.
+	uint32_t inline_arguments[InlineArguments + get_literal_word_count(InlineArguments)];
 	uint32_t *arguments = inline_arguments;
-	uint32_t inline_literal_mask = 0;
 	unsigned argument_count = 0;
 	unsigned argument_capacity = InlineArguments;
 };
