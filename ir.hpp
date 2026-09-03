@@ -30,6 +30,7 @@
 #include <initializer_list>
 #include <stdint.h>
 #include <string.h>
+#include <exception>
 
 // A simple IR representation which allows the CFGStructurizer to do some simple rewrites of blocks,
 // PHI nodes in particular.
@@ -91,8 +92,18 @@ struct Operation
 {
 	enum : unsigned
 	{
-		InlineArguments = 13
+		InlineArguments = 6
 	};
+
+	~Operation()
+	{
+		if (arguments != inline_arguments)
+			free_in_thread(arguments);
+	}
+
+	// Don't bother with move operations.
+	// Due to the inline nature of this struct,
+	// we need a copy in almost all cases anyway.
 
 	Operation() = default;
 	Operation(const Operation &other)
@@ -158,6 +169,9 @@ struct Operation
 		memset(new_literal_mask, 0, sizeof(uint32_t) * literal_word_count);
 		memcpy(new_literal_mask, old_literal_mask,
 		       sizeof(uint32_t) * get_literal_word_count(argument_count));
+
+		if (arguments != inline_arguments)
+			free_in_thread(arguments);
 
 		arguments = new_values;
 		argument_capacity = count;
