@@ -594,7 +594,7 @@ static void update_raw_access_tracking(AccessTracking &tracking, const llvm::Typ
 	if (!get_raw_declaration_from_llvm_type(type, raw_type, raw_width))
 		return;
 
-	tracking.raw_access_buffer_declarations[int(raw_type)][int(raw_width)][vecsize - 1] = true;
+	tracking.add_accessed_vecsize(raw_type, raw_width, vecsize);
 }
 
 static void update_raw_access_tracking_for_byte_address(
@@ -718,7 +718,7 @@ bool analyze_alloca_cbv_forwarding_pre_resource_emit(Converter::Impl &impl, cons
 	if (cbv_tracking)
 	{
 		auto raw_type = scalar_type->isFloatingPointTy() ? RawType::Float : RawType::Integer;
-		cbv_tracking->raw_access_buffer_declarations[int(raw_type)][int(RawWidth::B32)][0] = true;
+		cbv_tracking->add_accessed_vecsize(raw_type, RawWidth::B32, 1);
 	}
 
 	return true;
@@ -768,7 +768,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			case 2:
 			case 4:
 				// We'll bit-cast on-demand for f16x8.
-				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B32)][3] = true;
+				tracking->add_accessed_vecsize(RawType::Float, RawWidth::B32, 4);
 				break;
 
 			case 8:
@@ -776,7 +776,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 				// Need aliases here to handle difference in Float64 vs Int64 support.
 				// For 16-bit, support is gated behind both types.
 				bool is_float = get_composite_element_type(instruction->getType())->getTypeID() == llvm::Type::TypeID::DoubleTyID;
-				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][1] = true;
+				tracking->add_accessed_vecsize(is_float ? RawType::Float : RawType::Integer, RawWidth::B64, 2);
 				break;
 			}
 
@@ -789,11 +789,11 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 			switch (get_type_scalar_alignment(impl, instruction->getType()))
 			{
 			case 2:
-				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B16)][0] = true;
+				tracking->add_accessed_vecsize(RawType::Float, RawWidth::B16, 1);
 				break;
 
 			case 4:
-				tracking->raw_access_buffer_declarations[int(RawType::Float)][int(RawWidth::B32)][0] = true;
+				tracking->add_accessed_vecsize(RawType::Float, RawWidth::B32, 1);
 				break;
 
 			case 8:
@@ -801,7 +801,7 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 				// Need aliases here to handle difference in Float64 vs Int64 support.
 				// For 16-bit, support is gated behind both types.
 				bool is_float = instruction->getType()->getTypeID() == llvm::Type::TypeID::DoubleTyID;
-				tracking->raw_access_buffer_declarations[int(is_float ? RawType::Float : RawType::Integer)][int(RawWidth::B64)][0] = true;
+				tracking->add_accessed_vecsize(is_float ? RawType::Float : RawType::Integer, RawWidth::B64, 1);
 				break;
 			}
 

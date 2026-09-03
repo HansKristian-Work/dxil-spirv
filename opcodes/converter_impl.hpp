@@ -183,7 +183,26 @@ struct AccessTracking
 	bool has_atomic_64bit = false;
 	bool has_counter = false;
 	bool dynamically_indexed_cbv = false;
-	bool raw_access_buffer_declarations[unsigned(RawType::Count)][unsigned(RawWidth::Count)][4] = {};
+
+	// Can be bumped to 32 when we're ready for it.
+	enum { MaxVecSize = 4 };
+
+	void add_accessed_vecsize(RawType type, RawWidth width, uint32_t vecsize)
+	{
+		assert(vecsize <= MaxVecSize && vecsize >= 1);
+		raw_access_buffer_declarations_vecsize[int(type)][int(width)] |= 1u << (vecsize - 1);
+	}
+
+	bool uses_vecsize(RawType type, RawWidth width, uint32_t vecsize) const
+	{
+		assert(vecsize <= MaxVecSize && vecsize >= 1);
+		return (raw_access_buffer_declarations_vecsize[int(type)][int(width)] & 1u << (vecsize - 1)) != 0;
+	}
+
+private:
+	// Store a bitmask that would allow us to emit vectorized aliases for all vector sizes up to 32.
+	// Anything beyond that gets silly.
+	uint32_t raw_access_buffer_declarations_vecsize[unsigned(RawType::Count)][unsigned(RawWidth::Count)] = {};
 };
 
 struct Converter::Impl

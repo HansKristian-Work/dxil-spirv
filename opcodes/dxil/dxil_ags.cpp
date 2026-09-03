@@ -2635,7 +2635,7 @@ bool analyze_ags_buffer_load(Converter::Impl &impl, const llvm::CallInst *instru
 			}
 
 			// Be byte oriented.
-			tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B8)][0] = true;
+			tracking->add_accessed_vecsize(RawType::Integer, RawWidth::B8, 1);
 
 			return true;
 		}
@@ -2661,7 +2661,7 @@ void analyze_ags_buffer_store(Converter::Impl &impl, const llvm::CallInst *instr
 
 		// Mark 64-bit usage.
 		if (opcode != DXIL::Op::TextureStore && opcode != DXIL::Op::TextureStoreSample)
-			tracking->raw_access_buffer_declarations[int(RawType::Integer)][int(RawWidth::B64)][0] = true;
+			tracking->add_accessed_vecsize(RawType::Integer, RawWidth::B64, 1);
 		else
 			tracking->has_atomic_64bit = true;
 	}
