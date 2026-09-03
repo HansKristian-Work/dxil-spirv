@@ -700,4 +700,14 @@ void add_vkmm_access_qualifiers(Converter::Impl &impl, Operation *op, const Refe
 			op->add_id(impl.builder().makeUintConstant(spv::ScopeQueueFamily));
 	}
 }
+
+unsigned access_mask_to_vecsize(unsigned mask)
+{
+	for (unsigned vecsize = 4, expected_mask = 0xf; vecsize; vecsize--, expected_mask >>= 1)
+		if ((mask & expected_mask) == expected_mask)
+			return vecsize;
+
+	assert(0 && "Expected to get vecsize.\n");
+	return 1;
+}
 } // namespace dxil_spv

@@ -292,13 +292,13 @@ bool raw_access_structured_can_vectorize(
 
 unsigned raw_access_byte_address_vectorize(
 	Converter::Impl &impl, const llvm::Type *type,
-    const llvm::Value *byte_offset, uint32_t mask)
+    const llvm::Value *byte_offset, uint32_t vecsize)
 {
-	if (mask == 0xfu && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 4))
+	if (vecsize == 4 && raw_access_byte_address_can_vectorize(impl, type, byte_offset, vecsize))
 		return 4;
-	else if (mask == 0x7u && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 3))
+	else if (vecsize == 3 && raw_access_byte_address_can_vectorize(impl, type, byte_offset, vecsize))
 		return 3;
-	else if (mask == 0x3u && raw_access_byte_address_can_vectorize(impl, type, byte_offset, 2))
+	else if (vecsize == 2 && raw_access_byte_address_can_vectorize(impl, type, byte_offset, vecsize))
 		return 2;
 	else
 		return 1;
@@ -309,13 +309,13 @@ unsigned raw_access_structured_vectorize(
 	const llvm::Value *index,
 	unsigned stride,
     const llvm::Value *byte_offset,
-	uint32_t mask)
+	uint32_t vecsize)
 {
-	if (mask == 0xfu && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 4))
+	if (vecsize == 4 && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, vecsize))
 		return 4;
-	else if (mask == 0x7u && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 3))
+	else if (vecsize == 3 && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, vecsize))
 		return 3;
-	else if (mask == 0x3u && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, 2))
+	else if (vecsize == 2 && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, vecsize))
 		return 2;
 	else
 		return 1;
@@ -445,6 +445,8 @@ static spv::Id build_structured_index(Converter::Impl &impl, const llvm::Value *
 
 unsigned raw_buffer_data_type_to_addr_shift_log2(Converter::Impl &impl, const llvm::Type *data_type)
 {
+	assert(!llvm::isa<llvm::VectorType>(data_type));
+
 	// A 16-bit raw load is only actually 16-bit if native 16-bit operations are enabled.
 	if (impl.execution_mode_meta.native_16bit_operations && type_is_16bit(data_type))
 		return 1;
@@ -458,7 +460,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
                                             unsigned operand_offset,
                                             spv::Id index_offset_id,
                                             const llvm::Type *data_type,
-                                            uint32_t access_mask)
+                                            uint32_t vecsize)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -471,7 +473,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		// For raw buffers, the index is in bytes.
-		raw_vecsize = raw_access_byte_address_vectorize(impl, data_type, instruction->getOperand(2 + operand_offset), access_mask);
+		raw_vecsize = raw_access_byte_address_vectorize(impl, data_type, instruction->getOperand(2 + operand_offset), vecsize);
 
 		// If we emulate with texel buffers we will never observe the u32 wrapping, so insert that manually.
 		// We are not required to implement the wrapping per component as our test coverage demonstrates,
@@ -491,7 +493,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 			instruction->getOperand(2 + operand_offset),
 		    meta.stride,
 			instruction->getOperand(3 + operand_offset),
-			access_mask);
+			vecsize);
 
 		index_id = build_structured_index(
 			impl,
@@ -625,7 +627,6 @@ static spv::Id build_vectorized_physical_load_store_access(Converter::Impl &impl
 {
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 	const auto &meta = impl.handle_to_resource_meta[ptr_id];
-	unsigned mask = (1u << vecsize) - 1u;
 
 	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
 	// If we cannot do it trivially, fallback to raw pointer arithmetic.
@@ -648,7 +649,7 @@ static spv::Id build_vectorized_physical_load_store_access(Converter::Impl &impl
 
 	if (can_vectorize)
 	{
-		auto access = build_buffer_access(impl, instruction, 0, 0, element_type, mask);
+		auto access = build_buffer_access(impl, instruction, 0, 0, element_type, vecsize);
 		return access.index_id;
 	}
 	else
@@ -658,43 +659,27 @@ static spv::Id build_vectorized_physical_load_store_access(Converter::Impl &impl
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
                                                   const Converter::Impl::PhysicalPointerMeta &ptr_meta,
                                                   const ReferenceVkMemoryModel &vkmm,
-                                                  uint32_t mask = 0, uint32_t alignment = 0,
+                                                  uint32_t vecsize, uint32_t alignment = 0,
                                                   bool is_vector = false)
 {
 	auto &builder = impl.builder();
 
-	unsigned vecsize = 0;
-
 	if (is_vector)
 	{
-		vecsize = get_composite_element_count(instruction->getType());
 		// TODO: Add support for long vector.
-		if (vecsize > 4)
+		if (vecsize > 4 && !impl.options.nv_raw_access_chains)
+		{
+			LOGE("Long vector load-store currently requires NV_raw_access_chains.");
 			return false;
+		}
 
 		if (alignment == 0 && !get_constant_operand(instruction, 4, &alignment))
 			return false;
 	}
 	else
 	{
-		if (mask == 0 && !get_constant_operand(instruction, 4, &mask))
-			return false;
 		if (alignment == 0 && !get_constant_operand(instruction, 5, &alignment))
 			return false;
-
-		if (mask == 1)
-			vecsize = 1;
-		else if (mask == 3)
-			vecsize = 2;
-		else if (mask == 7)
-			vecsize = 3;
-		else if (mask == 15)
-			vecsize = 4;
-		else
-		{
-			LOGE("Unexpected mask for RawBufferLoad = %u.\n", mask);
-			return false;
-		}
 	}
 
 	auto *element_type = get_composite_element_type(instruction->getType());
@@ -971,35 +956,33 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	const auto *element_type = get_composite_element_type(result_type);
 
 	bool sparse = false;
+	unsigned vecsize;
+
+	uint32_t smeared_access_mask = access_mask & 0xf;
+	smeared_access_mask |= smeared_access_mask >> 1u;
+	smeared_access_mask |= smeared_access_mask >> 2u;
 
 	if (is_vector)
 	{
 		sparse = (access_mask & (1u << 1)) != 0;
 
 		// TODO: Add support for long vector.
-		unsigned vecsize = get_composite_element_count(result_type);
-		if (vecsize > 4)
+		vecsize = get_composite_element_count(result_type);
+		if (vecsize > 4 && !impl.options.nv_raw_access_chains)
+		{
+			LOGE("Long-vector load-store requires NV_raw_access_chains currently.\n");
 			return false;
-
-		access_mask = (1u << vecsize) - 1u;
+		}
 	}
 	else
 	{
 		sparse = (access_mask & (1u << 4)) != 0;
+		vecsize = access_mask_to_vecsize(smeared_access_mask);
 	}
 
-	// Leave no gaps in the access mask to aid vectorization.
-	// For reads, we can safely read components we not strictly need to read.
-	uint32_t smeared_access_mask;
-
-	if (meta.storage != spv::StorageClassUniformConstant)
-	{
-		smeared_access_mask = access_mask & 0xfu;
-		smeared_access_mask |= smeared_access_mask >> 1u;
-		smeared_access_mask |= smeared_access_mask >> 2u;
-	}
-	else
-		smeared_access_mask = 1;
+	// We cannot vectorize these loads.
+	if (meta.storage == spv::StorageClassUniformConstant)
+		vecsize = 1;
 
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
@@ -1014,35 +997,19 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		// Might be possible to do some fancy analysis to deduce a better alignment.
 
 		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm,
-		                                             smeared_access_mask, 4, is_vector);
+		                                             vecsize, 4, is_vector);
 	}
 
 	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Load, is_vector);
 
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta) && !sparse;
 	if (raw_access_chain)
-	{
-		unsigned num_elements;
-
-		if (is_vector)
-		{
-			num_elements = get_composite_element_count(result_type);
-		}
-		else
-		{
-			num_elements = 1;
-			for (unsigned i = 0; i < 4; i++)
-				if ((access_mask & (1u << i)) != 0)
-					num_elements = i + 1;
-		}
-
-		return emit_buffer_load_raw_chain_instruction(impl, instruction, meta, access_meta, element_type, num_elements);
-	}
+		return emit_buffer_load_raw_chain_instruction(impl, instruction, meta, access_meta, element_type, vecsize);
 
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
 	                                  element_type,
-	                                  smeared_access_mask);
+	                                  vecsize);
 
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
 	RawType raw_type = element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
@@ -1061,20 +1028,16 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		// how many components we need to load here, and the number of components we load is not necessarily constant,
 		// so we cannot reliably encode this information in the SRV.
 		// The best we can do is to infer it from stride if we can.
-		//unsigned conservative_num_elements = std::min(access.num_components, std::min(4u, access_meta.components));
-		unsigned conservative_num_elements = 0;
-		unsigned vecsize = access.raw_vec_size;
-
+		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
+		unsigned conservative_num_elements;
 		if (vectorized_load)
 			conservative_num_elements = vecsize;
 		else if (is_vector)
 			conservative_num_elements = get_composite_element_count(result_type);
 		else
-		{
-			for (unsigned i = 0; i < 4; i++)
-				if ((access_mask & (1u << i)) != 0)
-					conservative_num_elements = i + 1;
-		}
+			conservative_num_elements = access_mask_to_vecsize(smeared_access_mask);
+
+		vecsize = access.raw_vec_size;
 
 		spv::Id component_ids[4] = {};
 
@@ -1086,7 +1049,6 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			extracted_id_type = builder.makeVectorType(extracted_id_type, vecsize);
 
 		spv::Id constructed_id = 0;
-		bool ssbo = meta.storage == spv::StorageClassStorageBuffer;
 
 		bool need_cast = (element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID) ||
 		                 (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
@@ -1107,7 +1069,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			spv::Id ptr_type = builder.makePointer(spv::StorageClassStorageBuffer, extracted_id_type);
 			for (unsigned i = 0; i < (vectorized_load ? 1 : conservative_num_elements); i++)
 			{
-				if (vectorized_load || (access_mask & (1u << i)) != 0)
+				if (vectorized_load || is_vector || (access_mask & (1u << i)) != 0)
 				{
 					auto *chain_op = impl.allocate(spv::OpAccessChain, ptr_type);
 					chain_op->add_id(image_id);
@@ -1147,7 +1109,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			bool first_load = true;
 			for (unsigned i = 0; i < conservative_num_elements; i++)
 			{
-				if (access_mask & (1u << i))
+				if (is_vector || (access_mask & (1u << i)))
 				{
 					// There is no sane way to combine sparse feedback code, since it's completely opaque to application.
 					// We could hypothetically return a vector of status code and deal with it magically, but let's not go there ...
@@ -1494,12 +1456,28 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 		return emit_buffer_load_instruction(impl, instruction, is_vector);
 	}
 	else
-		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, 0, 0, is_vector);
+	{
+		unsigned vecsize;
+
+		if (is_vector)
+		{
+			vecsize = get_composite_element_count(instruction->getType());
+		}
+		else
+		{
+			uint32_t mask;
+			if (!get_constant_operand(instruction, 4, &mask))
+				return false;
+			vecsize = access_mask_to_vecsize(mask);
+		}
+
+		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, vecsize, 0, is_vector);
+	}
 }
 
-static unsigned emit_buffer_store_values_bitcast_vector(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                        spv::Id *store_values, RawWidth raw_width,
-                                                        bool ignore_bitcast)
+static void emit_buffer_store_values_bitcast_vector(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                    spv::Id *store_values, RawWidth raw_width,
+                                                    bool ignore_bitcast)
 {
 	// Vector raw-buffer stores always target untyped buffers.
 	const auto *data_type = instruction->getOperand(4)->getType();
@@ -1569,75 +1547,64 @@ static unsigned emit_buffer_store_values_bitcast_vector(Converter::Impl &impl, c
 		impl.add(extract);
 		store_values[i] = extract->id;
 	}
-
-	return num_elements;
 }
 
-static unsigned emit_buffer_store_values_bitcast(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                 spv::Id *store_values, unsigned write_mask,
-                                                 RawWidth raw_width,
-                                                 bool is_typed, bool ignore_bitcast)
+static void emit_buffer_store_values_bitcast(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                             spv::Id *store_values, unsigned vecsize,
+                                             RawWidth raw_width,
+                                             bool is_typed, bool ignore_bitcast)
 {
 	auto *element_type = instruction->getOperand(4)->getType();
-
 	auto &builder = impl.builder();
-	unsigned raw_vecsize = 0;
 
-	for (unsigned i = 0; i < 4; i++)
+	for (unsigned i = 0; i < vecsize; i++)
 	{
-		if ((write_mask & (1u << i)) != 0)
+		impl.register_externally_visible_write(instruction->getOperand(4 + i));
+		store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
+		if (!is_typed)
 		{
-			impl.register_externally_visible_write(instruction->getOperand(4 + i));
-			store_values[i] = impl.get_id_for_value(instruction->getOperand(4 + i));
-			if (!is_typed)
+			// If we're storing to min16 types and we use native 16-bit in arithmetic,
+			// we have to expand to 32-bit before storing :(
+			// This will probably fall over with int vs uint, since we don't know how to sign-extend.
+			if (!impl.execution_mode_meta.native_16bit_operations &&
+				impl.options.min_precision_prefer_native_16bit &&
+				type_is_16bit(element_type))
 			{
-				// If we're storing to min16 types and we use native 16-bit in arithmetic,
-				// we have to expand to 32-bit before storing :(
-				// This will probably fall over with int vs uint, since we don't know how to sign-extend.
-				if (!impl.execution_mode_meta.native_16bit_operations &&
-				    impl.options.min_precision_prefer_native_16bit &&
-				    type_is_16bit(element_type))
+				if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 				{
-					if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
-					{
-						Operation *op = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
-						op->add_id(store_values[i]);
-						store_values[i] = op->id;
-						impl.add(op);
+					Operation *op = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
+					op->add_id(store_values[i]);
+					store_values[i] = op->id;
+					impl.add(op);
 
-						if (!ignore_bitcast)
-						{
-							Operation *bitcast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
-							bitcast_op->add_id(store_values[i]);
-							impl.add(bitcast_op);
-							store_values[i] = bitcast_op->id;
-						}
-					}
-					else
+					if (!ignore_bitcast)
 					{
-						// SConvert or UConvert, who knows. :)
-						Operation *op = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
-						op->add_id(store_values[i]);
-						store_values[i] = op->id;
-						impl.add(op);
+						Operation *bitcast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+						bitcast_op->add_id(store_values[i]);
+						impl.add(bitcast_op);
+						store_values[i] = bitcast_op->id;
 					}
 				}
-				else if (!ignore_bitcast &&
-				         element_type->getTypeID() != llvm::Type::TypeID::DoubleTyID &&
-				         element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+				else
 				{
-					Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(raw_width_to_bits(raw_width)));
+					// SConvert or UConvert, who knows. :)
+					Operation *op = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
 					op->add_id(store_values[i]);
 					store_values[i] = op->id;
 					impl.add(op);
 				}
 			}
-
-			raw_vecsize = i + 1;
+			else if (!ignore_bitcast &&
+					 element_type->getTypeID() != llvm::Type::TypeID::DoubleTyID &&
+					 element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID)
+			{
+				Operation *op = impl.allocate(spv::OpBitcast, builder.makeUintType(raw_width_to_bits(raw_width)));
+				op->add_id(store_values[i]);
+				store_values[i] = op->id;
+				impl.add(op);
+			}
 		}
 	}
-
-	return raw_vecsize;
 }
 
 bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector)
@@ -1671,16 +1638,13 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	// SSBO operations with min16* types are actually 32-bit.
 	// We only get native 16-bit load-store with native_16bit_operations.
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
-	unsigned mask = 0;
+	unsigned vecsize;
+
 	if (is_vector)
-	{
-		unsigned vecsize = data_type->getVectorNumElements();
-		if (vecsize > 4)
-			return false; // TODO: long vector
-		mask = (1u << vecsize) - 1u;
-	}
+		vecsize = data_type->getVectorNumElements();
 	else
-		mask = llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue();
+		vecsize = access_mask_to_vecsize(llvm::cast<llvm::ConstantInt>(instruction->getOperand(8))->getUniqueInteger().getZExtValue());
+
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
 
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta);
@@ -1688,11 +1652,13 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	if (raw_access_chain)
 	{
-		auto raw_vecsize = is_vector
-		                       ? emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, true)
-		                       : emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, false, true);
-		auto raw = emit_raw_access_chain(impl, meta, instruction, element_type, raw_vecsize);
-		spv::Id vector_value_id = impl.build_vector(raw.component_type_id, store_values, raw_vecsize);
+		if (is_vector)
+			emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, true);
+		else
+			emit_buffer_store_values_bitcast(impl, instruction, store_values, vecsize, width, false, true);
+
+		auto raw = emit_raw_access_chain(impl, meta, instruction, element_type, vecsize);
+		spv::Id vector_value_id = impl.build_vector(raw.component_type_id, store_values, vecsize);
 
 		auto *store_op = impl.allocate(spv::OpStore);
 		store_op->add_id(raw.ptr_id);
@@ -1707,7 +1673,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
 	                                  element_type,
-	                                  meta.storage != spv::StorageClassUniformConstant ? mask : 1u);
+	                                  meta.storage != spv::StorageClassUniformConstant ? vecsize : 1u);
 
 	RawType raw_type = element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
 	                   RawType::Float : RawType::Integer;
@@ -1723,7 +1689,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, false);
 	}
 	else
-		emit_buffer_store_values_bitcast(impl, instruction, store_values, mask, width, is_typed, false);
+		emit_buffer_store_values_bitcast(impl, instruction, store_values, vecsize, width, is_typed, false);
 
 	if (is_typed)
 	{
@@ -1746,7 +1712,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 			                       builder.makeUintType(raw_width_to_bits(width)) :
 			                       builder.makeFloatType(raw_width_to_bits(width));
 
-			unsigned vecsize = access.raw_vec_size;
+			vecsize = access.raw_vec_size;
 			spv::Id vec_type_id = builder.makeVectorType(elem_type_id, vecsize);
 			spv::Id vector_value_id = impl.build_vector(elem_type_id, store_values, vecsize);
 			Operation *chain_op = impl.allocate(
@@ -1769,55 +1735,49 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		}
 		else
 		{
-			for (unsigned i = 0; i < 4; i++)
+			for (unsigned i = 0; i < vecsize; i++)
 			{
-				if (mask & (1u << i))
-				{
-					spv::Id elem_type_id = raw_type == RawType::Integer ?
-					                       builder.makeUintType(raw_width_to_bits(width)) :
-					                       builder.makeFloatType(raw_width_to_bits(width));
+				spv::Id elem_type_id = raw_type == RawType::Integer ?
+									   builder.makeUintType(raw_width_to_bits(width)) :
+									   builder.makeFloatType(raw_width_to_bits(width));
 
-					Operation *chain_op = impl.allocate(
-					    spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, elem_type_id));
-					chain_op->add_id(image_id);
-					chain_op->add_id(builder.makeUintConstant(0));
-					chain_op->add_id(impl.build_offset(access.index_id, i));
-					impl.add(chain_op);
+				Operation *chain_op = impl.allocate(
+					spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, elem_type_id));
+				chain_op->add_id(image_id);
+				chain_op->add_id(builder.makeUintConstant(0));
+				chain_op->add_id(impl.build_offset(access.index_id, i));
+				impl.add(chain_op);
 
-					if (meta.non_uniform)
-						builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
+				if (meta.non_uniform)
+					builder.addDecoration(chain_op->id, spv::DecorationNonUniform);
 
-					Operation *store_op = impl.allocate(spv::OpStore);
-					store_op->add_id(chain_op->id);
-					store_op->add_id(store_values[i]);
+				Operation *store_op = impl.allocate(spv::OpStore);
+				store_op->add_id(chain_op->id);
+				store_op->add_id(store_values[i]);
 
-					add_vkmm_access_qualifiers(impl, store_op, meta.vkmm);
-					impl.add(store_op, meta.rov);
-				}
+				add_vkmm_access_qualifiers(impl, store_op, meta.vkmm);
+				impl.add(store_op, meta.rov);
 			}
 		}
 	}
 	else
 	{
 		spv::Id splat_type_id = builder.makeVectorType(builder.makeUintType(32), 4);
-		for (unsigned i = 0; i < 4; i++)
+		for (unsigned i = 0; i < vecsize; i++)
 		{
-			if (mask & (1u << i))
-			{
-				Operation *splat_op = impl.allocate(spv::OpCompositeConstruct, splat_type_id);
-				splat_op->add_ids({ store_values[i], store_values[i], store_values[i], store_values[i] });
-				impl.add(splat_op);
+			Operation *splat_op = impl.allocate(spv::OpCompositeConstruct, splat_type_id);
+			splat_op->add_ids({ store_values[i], store_values[i], store_values[i], store_values[i] });
+			impl.add(splat_op);
 
-				Operation *op = impl.allocate(spv::OpImageWrite);
-				op->add_ids({
-				    image_id,
-				    impl.build_offset(access.index_id, i),
-				    splat_op->id,
-				});
+			Operation *op = impl.allocate(spv::OpImageWrite);
+			op->add_ids({
+				image_id,
+				impl.build_offset(access.index_id, i),
+				splat_op->id,
+			});
 
-				add_vkmm_access_qualifiers(impl, op, meta.vkmm);
-				impl.add(op, meta.rov);
-			}
+			add_vkmm_access_qualifiers(impl, op, meta.vkmm);
+			impl.add(op, meta.rov);
 		}
 	}
 
